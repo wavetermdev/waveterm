@@ -1,0 +1,217 @@
+.main {
+    .title.scripthaus-logo-small {
+        padding-left: 10px;
+        padding-top: 8px;
+        padding-bottom: 8px;
+        margin-bottom: 0;
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 400;
+        background-color: black;
+        color: rgb(0, 177, 10);
+        position: relative;
+        font-size: 1.5rem;
+
+        .title-cursor {
+            position: absolute;
+            left: 157px;
+            bottom: 12px;
+            color: rgb(0, 177, 10);
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 400;
+            font-size: 1rem;
+        }
+    }
+}
+
+.line {
+    margin: 5px;
+    border-radius: 5px;
+    padding: 5px;
+    display: flex;
+    flex-direction: row;
+    line-height: 1.25;
+
+    .avatar {
+        height: 38px;
+        width: 38px;
+        background-color: #729fcf;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        color: white;
+        font-size: 1rem;
+        margin-right: 15px;
+        border-radius: 5px;
+
+        &.num4 {
+            font-size: 0.8rem;
+        }
+
+        &.num5 {
+            font-size: 0.7rem;
+        }
+
+        &.running {
+            background-color: #cc0000;
+        }
+    }
+
+    .line-content {
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+
+        .meta {
+            display: flex;
+            flex-direction: row;
+            font-size: 1rem;
+            margin-top: -4px;
+
+            .user {
+                font-weight: bold;
+            }
+
+            .ts {
+                margin-left: 10px;
+                margin-top: 4px;
+                font-size: 0.75rem;
+                color: #777;
+            }
+
+            .cmdtext {
+                font-family: 'JetBrains Mono', monospace;
+                font-weight: 400;
+                font-size: 0.75rem;
+                margin-top: 5px;
+                margin-left: 8px;
+                overflow: hidden;
+            }
+        }
+
+        .text {
+            font-size: 1rem;
+        }
+    }
+
+    .terminal-wrapper {
+        background-color: #000;
+        padding: 5px;
+        width: calc(100% - 8px);
+        margin-right: 8px;
+        margin-top: 2px;
+
+        &.focus {
+            outline: 3px solid blue;
+        }
+    }
+}
+
+.line.line-cmd {
+}
+
+.line.line-invalid {
+    color: #000;
+    margin-left: 5px;
+}
+
+.lines {
+    background-color: #f7f7f7;
+    display: flex;
+    flex-direction: column;
+    height: 80vh;
+    overflow-y: scroll;
+    padding-bottom: 10px;
+    padding-top: 10px;
+    border-top: 2px solid #ddd;
+}
+
+.cmd-input {
+    border-radius: 0;
+    border-top: 2px solid white;
+
+    .cmd-input-context {
+        color: #fff;
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 400;
+    }
+
+    .cmd-input-field {
+        textarea {
+            color: white;
+            background-color: black;
+            font-family: 'JetBrains Mono', monospace;
+
+            &:active, &:focus {
+                border-color: white !important;
+            }
+        }
+
+        .cmd-quick-context .button {
+            background-color: #000 !important;
+            color: white;
+        }
+
+        .cmd-exec .button {
+            background-color: #000 !important;
+            color: #d3d7cf;
+        }
+    }
+}
+
+.bold {
+    font-weight: bold;
+}
+
+.term-black {
+    color: #000;
+}
+
+.term-red {
+    color: #cc0000;
+}
+
+.term-green {
+    color: #4e9a06;
+}
+
+.term-yellow {
+    color: #c4a000;
+}
+
+.term-blue {
+    color: #729fcf;
+}
+
+.term-magenta {
+    color: #75507b;
+}
+
+.term-cyan {
+    color: #06989a;
+}
+
+.term-white {
+    color: #d3d7cf;
+}
+
+.term-bright-white {
+    color: #fff;
+}
+
+.monofont-thin {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 200;
+}
+
+.monofont-normal {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 400;
+}
+
+.monofont-bold {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+}
+
+
