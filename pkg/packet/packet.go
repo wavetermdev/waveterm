@@ -11,13 +11,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sync"
 )
 
 const RunPacketStr = "run"
 const PingPacketStr = "ping"
 const DonePacketStr = "done"
 const ErrorPacketStr = "error"
-const OkCmdPacketStr = "okcmd"
+const MessagePacketStr = "message"
+const CmdStartPacketStr = "cmdstart"
+const CmdDonePacketStr = "cmddone"
 
 type PingPacketType struct {
 	Type string `json:"type"`
@@ -29,6 +32,19 @@ func (*PingPacketType) GetType() string {
 
 func MakePingPacket() *PingPacketType {
 	return &PingPacketType{Type: PingPacketStr}
+}
+
+type MessagePacketType struct {
+	Type    string `json:"type"`
+	Message string `json:"message"`
+}
+
+func (*MessagePacketType) GetType() string {
+	return MessagePacketStr
+}
+
+func MakeMessagePacket(message string) *MessagePacketType {
+	return &MessagePacketType{Type: MessagePacketStr, Message: message}
 }
 
 type DonePacketType struct {
@@ -43,27 +59,44 @@ func MakeDonePacket() *DonePacketType {
 	return &DonePacketType{Type: DonePacketStr}
 }
 
-type OkCmdPacketType struct {
-	Type    string `json:"type"`
-	Message string `json:"message"`
-	CmdId   string `json:"cmdid"`
-	Pid     int    `json:"pid"`
+type CmdDonePacketType struct {
+	Type       string `json:"type"`
+	Ts         int64  `json:"ts"`
+	CmdId      string `json:"cmdid"`
+	ExitCode   int    `json:"exitcode"`
+	DurationMs int64  `json:"durationms"`
 }
 
-func (*OkCmdPacketType) GetType() string {
-	return OkCmdPacketStr
+func (*CmdDonePacketType) GetType() string {
+	return CmdDonePacketStr
 }
 
-func MakeOkCmdPacket(message string, cmdId string, pid int) *OkCmdPacketType {
-	return &OkCmdPacketType{Type: OkCmdPacketStr, Message: message, CmdId: cmdId, Pid: pid}
+func MakeCmdDonePacket() *CmdDonePacketType {
+	return &CmdDonePacketType{Type: CmdDonePacketStr}
+}
+
+type CmdStartPacketType struct {
+	Type      string `json:"type"`
+	Ts        int64  `json:"ts"`
+	CmdId     string `json:"cmdid"`
+	Pid       int    `json:"pid"`
+	RunnerPid int    `json:"runnerpid"`
+}
+
+func (*CmdStartPacketType) GetType() string {
+	return CmdStartPacketStr
+}
+
+func MakeCmdStartPacket() *CmdStartPacketType {
+	return &CmdStartPacketType{Type: CmdStartPacketStr}
 }
 
 type RunPacketType struct {
 	Type      string            `json:"type"`
 	SessionId string            `json:"sessionid"`
 	CmdId     string            `json:"cmdid"`
-	ChDir     string            `json:"chdir"`
-	Env       map[string]string `json:"env"`
+	ChDir     string            `json:"chdir,omitempty"`
+	Env       map[string]string `json:"env,omitempty"`
 	Command   string            `json:"command"`
 }
 
@@ -76,6 +109,7 @@ type BarePacketType struct {
 }
 
 type ErrorPacketType struct {
+	Id    string `json:"id,omitempty"`
 	Type  string `json:"type"`
 	Error string `json:"error"`
 }
@@ -86,6 +120,10 @@ func (et *ErrorPacketType) GetType() string {
 
 func MakeErrorPacket(errorStr string) *ErrorPacketType {
 	return &ErrorPacketType{Type: ErrorPacketStr, Error: errorStr}
+}
+
+func MakeIdErrorPacket(id string, errorStr string) *ErrorPacketType {
+	return &ErrorPacketType{Type: ErrorPacketStr, Id: id, Error: errorStr}
 }
 
 type PacketType interface {
@@ -123,13 +161,21 @@ func ParseJsonPacket(jsonBuf []byte) (PacketType, error) {
 		}
 		return &errorPacket, nil
 	}
-	if bareCmd.Type == OkCmdPacketStr {
-		var okPacket OkCmdPacketType
-		err = json.Unmarshal(jsonBuf, &okPacket)
+	if bareCmd.Type == CmdStartPacketStr {
+		var startPacket CmdStartPacketType
+		err = json.Unmarshal(jsonBuf, &startPacket)
 		if err != nil {
 			return nil, err
 		}
-		return &okPacket, nil
+		return &startPacket, nil
+	}
+	if bareCmd.Type == CmdDonePacketStr {
+		var donePacket CmdDonePacketType
+		err = json.Unmarshal(jsonBuf, &donePacket)
+		if err != nil {
+			return nil, err
+		}
+		return &donePacket, nil
 	}
 	return nil, fmt.Errorf("invalid packet-type '%s'", bareCmd.Type)
 }
@@ -152,6 +198,73 @@ func SendPacket(w io.Writer, packet PacketType) error {
 
 func SendErrorPacket(w io.Writer, errorStr string) error {
 	return SendPacket(w, MakeErrorPacket(errorStr))
+}
+
+type PacketSender struct {
+	Lock   *sync.Mutex
+	SendCh chan PacketType
+	Err    error
+	Done   bool
+	DoneCh chan bool
+}
+
+func MakePacketSender(output io.Writer) *PacketSender {
+	sender := &PacketSender{
+		Lock:   &sync.Mutex{},
+		SendCh: make(chan PacketType),
+		DoneCh: make(chan bool),
+	}
+	go func() {
+		defer func() {
+			sender.Lock.Lock()
+			sender.Done = true
+			sender.Lock.Unlock()
+			close(sender.DoneCh)
+		}()
+		for pk := range sender.SendCh {
+			err := SendPacket(output, pk)
+			if err != nil {
+				sender.Lock.Lock()
+				sender.Err = err
+				sender.Lock.Unlock()
+				return
+			}
+		}
+	}()
+	return sender
+}
+
+func (sender *PacketSender) CloseSendCh() {
+	close(sender.SendCh)
+}
+
+func (sender *PacketSender) WaitForDone() {
+	<-sender.DoneCh
+}
+
+func (sender *PacketSender) checkStatus() error {
+	sender.Lock.Lock()
+	defer sender.Lock.Unlock()
+	if sender.Done {
+		return fmt.Errorf("cannot send packet, sender write loop is closed")
+	}
+	if sender.Err != nil {
+		return fmt.Errorf("cannot send packet, sender had error: %w", sender.Err)
+	}
+	return nil
+}
+
+func (sender *PacketSender) SendPacket(pk PacketType) error {
+	err := sender.checkStatus()
+	if err != nil {
+		return err
+	}
+	sender.SendCh <- pk
+	return nil
+}
+
+func (sender *PacketSender) SendErrorPacket(errVal string) error {
+	return sender.SendPacket(MakeErrorPacket(errVal))
 }
 
 func PacketParser(input io.Reader) chan PacketType {

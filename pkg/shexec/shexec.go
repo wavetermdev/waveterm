@@ -7,7 +7,6 @@
 package shexec
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -23,11 +22,6 @@ import (
 	"github.com/scripthaus-dev/sh2-runner/pkg/base"
 	"github.com/scripthaus-dev/sh2-runner/pkg/packet"
 )
-
-type DoneData struct {
-	DurationMs int64 `json:"durationms"`
-	ExitCode   int   `json:"exitcode"`
-}
 
 type ShExecType struct {
 	FileNames *base.CommandFileNames
@@ -95,6 +89,15 @@ func MakeExecCmd(pk *packet.RunPacketType, cmdTty *os.File) *exec.Cmd {
 	return ecmd
 }
 
+func MakeRunnerExec(cmdId string) (*exec.Cmd, error) {
+	runnerPath, err := base.GetScRunnerPath()
+	if err != nil {
+		return nil, err
+	}
+	ecmd := exec.Command(runnerPath, cmdId)
+	return ecmd, nil
+}
+
 // this will never return (unless there is an error creating/opening the file), as fifoFile will never EOF
 func MakeAndCopyStdinFifo(dst *os.File, fifoName string) error {
 	os.Remove(fifoName)
@@ -147,8 +150,8 @@ func ValidateRunPacket(pk *packet.RunPacketType) error {
 	return nil
 }
 
-// returning nil error means the process has successfully been kicked-off
-func RunCommand(pk *packet.RunPacketType) (*ShExecType, error) {
+// when err is nil, the command will have already been started
+func RunCommand(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecType, error) {
 	if pk.CmdId == "" {
 		pk.CmdId = uuid.New().String()
 	}
@@ -184,14 +187,14 @@ func RunCommand(pk *packet.RunPacketType) (*ShExecType, error) {
 		// copy pty output to .ptyout file
 		_, copyErr := io.Copy(ptyOutFd, cmdPty)
 		if copyErr != nil {
-			base.WriteErrorMsg(fileNames.PtyOutFile, fmt.Sprintf("copying pty output to ptyout file: %v", copyErr))
+			sender.SendErrorPacket(fmt.Sprintf("copying pty output to ptyout file: %v", copyErr))
 		}
 	}()
 	go func() {
 		// copy .stdin fifo contents to pty input
 		copyFifoErr := MakeAndCopyStdinFifo(cmdPty, fileNames.StdinFifo)
 		if copyFifoErr != nil {
-			base.WriteErrorMsg(fileNames.PtyOutFile, fmt.Sprintf("reading from stdin fifo: %v", copyFifoErr))
+			sender.SendErrorPacket(fmt.Sprintf("reading from stdin fifo: %v", copyFifoErr))
 		}
 	}()
 	return &ShExecType{
@@ -202,9 +205,10 @@ func RunCommand(pk *packet.RunPacketType) (*ShExecType, error) {
 	}, nil
 }
 
-func (c *ShExecType) WaitForCommand() {
+func (c *ShExecType) WaitForCommand(cmdId string) *packet.CmdDonePacketType {
 	err := c.Cmd.Wait()
-	cmdDuration := time.Since(c.StartTs)
+	endTs := time.Now()
+	cmdDuration := endTs.Sub(c.StartTs)
 	exitCode := 0
 	if err != nil {
 		exitErr, ok := err.(*exec.ExitError)
@@ -212,15 +216,11 @@ func (c *ShExecType) WaitForCommand() {
 			exitCode = exitErr.ExitCode()
 		}
 	}
-	doneData := DoneData{
-		DurationMs: int64(cmdDuration / time.Millisecond),
-		ExitCode:   exitCode,
-	}
-	doneDataBytes, _ := json.Marshal(doneData)
-	doneDataBytes = append(doneDataBytes, '\n')
-	err = os.WriteFile(c.FileNames.DoneFile, doneDataBytes, 0600)
-	if err != nil {
-		base.WriteErrorMsg(c.FileNames.PtyOutFile, fmt.Sprintf("reading from stdin fifo: %v", err))
-	}
-	return
+	donePacket := packet.MakeCmdDonePacket()
+	donePacket.Ts = endTs.UnixMilli()
+	donePacket.CmdId = cmdId
+	donePacket.ExitCode = exitCode
+	donePacket.DurationMs = int64(cmdDuration / time.Millisecond)
+	os.Remove(c.FileNames.StdinFifo) // best effort (no need to check error)
+	return donePacket
 }

@@ -27,9 +27,9 @@ const ScReadyString = "scripthaus runner ready"
 const OSCEscError = "error"
 
 type CommandFileNames struct {
-	PtyOutFile string
-	StdinFifo  string
-	DoneFile   string
+	PtyOutFile    string
+	StdinFifo     string
+	RunnerOutFile string
 }
 
 func GetScHomeDir() (string, error) {
@@ -54,9 +54,9 @@ func GetCommandFileNames(sessionId string, cmdId string) (*CommandFileNames, err
 	}
 	base := path.Join(sdir, cmdId)
 	return &CommandFileNames{
-		PtyOutFile: base + ".ptyout",
-		StdinFifo:  base + ".stdin",
-		DoneFile:   base + ".done",
+		PtyOutFile:    base + ".ptyout",
+		StdinFifo:     base + ".stdin",
+		RunnerOutFile: base + ".runout",
 	}, nil
 }
 
@@ -108,32 +108,50 @@ func EnsureSessionDir(sessionId string) (string, error) {
 	return sdir, nil
 }
 
-func GetScRunnerPath() string {
+func GetScRunnerPath() (string, error) {
 	runnerPath := os.Getenv(ScRunnerVarName)
 	if runnerPath != "" {
-		return runnerPath
+		return runnerPath, nil
 	}
 	scHome, err := GetScHomeDir()
 	if err != nil {
-		panic(err)
+		return "", err
 	}
-	return path.Join(scHome, RunnerBaseName)
+	return path.Join(scHome, RunnerBaseName), nil
 }
 
-func GetScSessionsDir() string {
-	scHome, err := GetScHomeDir()
+func EnsureRunnerPath() error {
+	runnerPath, err := GetScRunnerPath()
 	if err != nil {
-		panic(err)
+		return err
 	}
-	return path.Join(scHome, SessionsDirBaseName)
+	info, err := os.Stat(runnerPath)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("cannot find scripthaus runner at path '%s'", runnerPath)
+		}
+		return fmt.Errorf("error stating scripthaus runner at path '%s'", runnerPath)
+	}
+	if info.Mode()&0100 == 0 {
+		return fmt.Errorf("scripthaus runner at path '%s' is not executable mode=%#o", runnerPath, info.Mode())
+	}
+	return nil
 }
 
-func GetSessionDBName(sessionId string) string {
+func GetScSessionsDir() (string, error) {
 	scHome, err := GetScHomeDir()
 	if err != nil {
-		panic(err)
+		return "", err
 	}
-	return path.Join(scHome, SessionDBName)
+	return path.Join(scHome, SessionsDirBaseName), nil
+}
+
+func GetSessionDBName(sessionId string) (string, error) {
+	scHome, err := GetScHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return path.Join(scHome, SessionDBName), nil
 }
 
 // SH OSC Escapes (code 198, S=19, H=8)
