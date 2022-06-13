@@ -7,13 +7,16 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 
 	"github.com/scripthaus-dev/sh2-runner/pkg/base"
 	"github.com/scripthaus-dev/sh2-runner/pkg/packet"
+	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
 	"github.com/scripthaus-dev/sh2-server/pkg/wsshell"
 )
 
@@ -144,12 +147,8 @@ func GetPtyOut(w http.ResponseWriter, r *http.Request) {
 	io.Copy(w, fd)
 }
 
-type runCommandParams struct {
-	SessionId string `json:"sessionid"`
-	Command   string `json:"command"`
-}
-
 func WriteJsonError(w http.ResponseWriter, errVal error) {
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(500)
 	errMap := make(map[string]interface{})
 	errMap["error"] = errVal.Error()
@@ -159,6 +158,7 @@ func WriteJsonError(w http.ResponseWriter, errVal error) {
 }
 
 func WriteJsonSuccess(w http.ResponseWriter, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
 	rtnMap := make(map[string]interface{})
 	rtnMap["success"] = true
 	if data != nil {
@@ -172,6 +172,15 @@ func WriteJsonSuccess(w http.ResponseWriter, data interface{}) {
 	w.WriteHeader(200)
 	w.Write(barr)
 	return
+}
+
+type runCommandParams struct {
+	SessionId string `json:"sessionid"`
+	Command   string `json:"command"`
+}
+
+type runCommandResponse struct {
+	Line *sstore.LineType `json:"line"`
 }
 
 func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
@@ -191,8 +200,27 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 		WriteJsonError(w, fmt.Errorf("error decoding json: %w", err))
 		return
 	}
-	fmt.Printf("RUN COMMAND sessionid[%s] cmd[%s]\n", params.SessionId, params.Command)
-	WriteJsonSuccess(w, nil)
+	if _, err = uuid.Parse(params.SessionId); err != nil {
+		WriteJsonError(w, fmt.Errorf("invalid sessionid '%s': %w", params.SessionId, err))
+		return
+	}
+	commandStr := strings.TrimSpace(params.Command)
+	if commandStr == "" {
+		WriteJsonError(w, fmt.Errorf("invalid emtpty command"))
+		return
+	}
+	rtnLine := sstore.MakeNewLineCmd(commandStr)
+	runPacket := packet.MakeRunPacket()
+	runPacket.SessionId = params.SessionId
+	runPacket.CmdId = rtnLine.CmdId
+	runPacket.ChDir = ""
+	runPacket.Env = nil
+	runPacket.Command = commandStr
+	fmt.Printf("run-packet %v\n", runPacket)
+	WriteJsonSuccess(w, &runCommandResponse{Line: rtnLine})
+	go func() {
+		GlobalRunnerProc.Input.SendPacket(runPacket)
+	}()
 	return
 }
 
