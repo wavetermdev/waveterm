@@ -16,7 +16,46 @@ type LineType = {
     text : string,
     cmdid : string,
     cmdtext : string,
+    isnew : boolean,
 };
+
+var GlobalLines = mobx.observable.box([
+    {lineid: 1, userid: "sawka", ts: 1654631122000, linetype: "text", text: "hello"},
+    {lineid: 2, userid: "sawka", ts: 1654631125000, linetype: "text", text: "again"},
+]);
+
+function fetchJsonData(resp : any, ctErr : boolean) : Promise<any> {
+    let contentType = resp.headers.get("Content-Type");
+    if (contentType != null && contentType.startsWith("application/json")) {
+        return resp.text().then((textData) => {
+            try {
+                return JSON.parse(textData);
+            }
+            catch (err) {
+                let errMsg = sprintf("Unparseable JSON: " + err.message);
+                let rtnErr = new Error(errMsg);
+                throw rtnErr;
+            }
+        });
+    }
+    if (ctErr) {
+        throw new Error("non-json content-type");
+    }
+}
+
+function handleJsonFetchResponse(url : URL, resp : any) : Promise<any> {
+    if (!resp.ok) {
+        let errData = fetchJsonData(resp, false);
+        if (errData && errData["error"]) {
+            throw new Error(errData["error"])
+        }
+        let errMsg = sprintf("Bad status code response from fetch '%s': %d %s", url.toString(), resp.status, resp.statusText);
+        let rtnErr = new Error(errMsg);
+        throw rtnErr;
+    }
+    let rtnData = fetchJsonData(resp, true);
+    return rtnData;
+}
 
 @mobxReact.observer
 class LineMeta extends React.Component<{line : LineType}, {}> {
@@ -56,6 +95,7 @@ class LineText extends React.Component<{line : LineType}, {}> {
 }
 
 function loadPtyOut(term : Terminal, sessionId : string, cmdId : string) {
+    term.clear()
     let url = sprintf("http://localhost:8080/api/ptyout?sessionid=%s&cmdid=%s", sessionId, cmdId);
     fetch(url).then((resp) => {
         if (!resp.ok) {
@@ -63,7 +103,6 @@ function loadPtyOut(term : Terminal, sessionId : string, cmdId : string) {
         }
         return resp.text()
     }).then((resptext) => {
-        console.log(resptext);
         term.write(resptext);
     });
 }
@@ -75,11 +114,10 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
     
     componentDidMount() {
         let {line, sessionid} = this.props;
-        console.log("load terminal", sessionid, line.cmdid);
         this.terminal = new Terminal();
-        this.terminal.open(document.getElementById(this.getId()));
+        let termElem = document.getElementById(this.getId());
+        this.terminal.open(termElem);
         loadPtyOut(this.terminal, sessionid, line.cmdid);
-        console.log(this.terminal, this.terminal.element);
         this.terminal.textarea.addEventListener("focus", () => {
             mobx.action(() => {
                 this.focus.set(true);
@@ -90,11 +128,29 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
                 this.focus.set(false);
             })();
         });
+        if (line.isnew) {
+            setTimeout(() => {
+                let lineElem = document.getElementById("line-" + this.getId());
+                lineElem.scrollIntoView({block: "end"});
+                mobx.action(() => {
+                    line.isnew = false;
+                })();
+            }, 100);
+            setTimeout(() => {
+                loadPtyOut(this.terminal, sessionid, line.cmdid);
+            }, 1000);
+        }
     }
 
     getId() : string {
         let {line} = this.props;
         return "cmd-" + line.lineid + "-" + line.cmdid;
+    }
+
+    @boundMethod
+    doRefresh() {
+        let {line, sessionid} = this.props;
+        loadPtyOut(this.terminal, sessionid, line.cmdid);
     }
     
     render() {
@@ -102,7 +158,7 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
         let lineid = line.lineid.toString();
         let running = false;
         return (
-            <div className="line line-cmd">
+            <div className="line line-cmd" id={"line-" + this.getId()}>
                 <div className={cn("avatar",{"num4": lineid.length == 4}, {"num5": lineid.length >= 5}, {"running": running})}>
                     {lineid}
                 </div>
@@ -115,6 +171,9 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
                     <div className={cn("terminal-wrapper", {"focus": this.focus.get()})}>
                         <div className="terminal" id={this.getId()}></div>
                     </div>
+                </div>
+                <div>
+                    <div onClick={this.doRefresh} className="button">Refresh</div>
                 </div>
             </div>
         );
@@ -136,7 +195,7 @@ class Line extends React.Component<{line : LineType}, {}> {
 }
 
 @mobxReact.observer
-class CmdInput extends React.Component<{line : LineType}, {}> {
+class CmdInput extends React.Component<{line : LineType, sessionid : string}, {}> {
     curLine : mobx.IObservableValue<string> = mobx.observable("", {name: "command-line"});
 
     @mobx.action @boundMethod
@@ -144,13 +203,11 @@ class CmdInput extends React.Component<{line : LineType}, {}> {
         mobx.action(() => {
             let ctrlMod = e.getModifierState("Control") || e.getModifierState("Meta") || e.getModifierState("Shift");
             if (e.code == "Enter" && !ctrlMod) {
-                let cmdLine = this.curLine.get();
-                this.curLine.set("");
-                console.log("START COMMAND", cmdLine);
                 e.preventDefault();
+                setTimeout(() => this.doSubmitCmd(), 0);
                 return;
             }
-            console.log(e.code, e.keyCode, e.key, event.which, ctrlMod, e);
+            // console.log(e.code, e.keyCode, e.key, event.which, ctrlMod, e);
         })();
     }
 
@@ -159,6 +216,26 @@ class CmdInput extends React.Component<{line : LineType}, {}> {
         mobx.action(() => {
             this.curLine.set(e.target.value);
         })();
+    }
+
+    @boundMethod
+    doSubmitCmd() {
+        let commandStr = this.curLine.get();
+        mobx.action(() => {
+            this.curLine.set("");
+        })();
+        let url = sprintf("http://localhost:8080/api/run-command");
+        let data = {sessionid: this.props.sessionid, command: commandStr};
+        fetch(url, {method: "post", body: JSON.stringify(data)}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
+            console.log("got success data", data);
+            mobx.action(() => {
+                let lines = GlobalLines.get();
+                data.data.line.isnew = true;
+                lines.push(data.data.line);
+            })();
+        }).catch((err) => {
+            console.log("error calling run-command", err)
+        });
     }
     
     render() {
@@ -177,7 +254,7 @@ class CmdInput extends React.Component<{line : LineType}, {}> {
                         <textarea value={this.curLine.get()} onKeyDown={this.onKeyDown} onChange={this.onChange} className="input" type="text"></textarea>
                     </div>
                     <div className="control cmd-exec">
-                        <div className="button">
+                        <div onClick={this.doSubmitCmd} className="button">
                             <span className="icon">
                                 <i className="fa fa-rocket"/>
                             </span>
@@ -192,13 +269,8 @@ class CmdInput extends React.Component<{line : LineType}, {}> {
 @mobxReact.observer
 class Main extends React.Component<{sessionid : string}, {}> {
     render() {
-        let lines = [
-            {lineid: 1, userid: "sawka", ts: 1654631122000, linetype: "text", text: "hello"},
-            {lineid: 2, userid: "sawka", ts: 1654631125000, linetype: "text", text: "again"},
-            {lineid: 3, userid: "sawka", ts: 1654631125000, linetype: "??", text: "again"},
-            {lineid: 4, userid: "sawka", ts: 1654631125000, linetype: "cmd", cmdid: "47445c53-cfcf-4943-8339-2c04447f20a1", cmdtext: "ls -l"},
-            {lineid: 5, userid: "sawka", ts: 1654631135000, linetype: "cmd", cmdid: "792a66ab-577c-4fe1-88f4-862703bdb42d", cmdtext: "ls -l | grep go"},
-        ];
+        let lines = GlobalLines.get();
+        console.log("main-lines", mobx.toJS(lines));
         return (
             <div className="main">
                 <h1 className="title scripthaus-logo-small">
@@ -210,7 +282,7 @@ class Main extends React.Component<{sessionid : string}, {}> {
                         <Line key={line.lineid} line={line} sessionid={this.props.sessionid}/>
                     </For>
                 </div>
-                <CmdInput/>
+                <CmdInput sessionid={this.props.sessionid}/>
             </div>
         );
     }
