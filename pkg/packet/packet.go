@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"reflect"
 	"sync"
 )
 
@@ -21,6 +22,32 @@ const ErrorPacketStr = "error"
 const MessagePacketStr = "message"
 const CmdStartPacketStr = "cmdstart"
 const CmdDonePacketStr = "cmddone"
+const ListCmdPacketStr = "lscmd"
+const GetCmdPacketStr = "getcmd"
+
+var TypeStrToFactory map[string]reflect.Type
+
+func init() {
+	TypeStrToFactory = make(map[string]reflect.Type)
+	TypeStrToFactory[RunPacketStr] = reflect.TypeOf(RunPacketType{})
+	TypeStrToFactory[PingPacketStr] = reflect.TypeOf(PingPacketType{})
+	TypeStrToFactory[DonePacketStr] = reflect.TypeOf(DonePacketType{})
+	TypeStrToFactory[ErrorPacketStr] = reflect.TypeOf(ErrorPacketType{})
+	TypeStrToFactory[MessagePacketStr] = reflect.TypeOf(MessagePacketType{})
+	TypeStrToFactory[CmdStartPacketStr] = reflect.TypeOf(CmdStartPacketType{})
+	TypeStrToFactory[CmdDonePacketStr] = reflect.TypeOf(CmdDonePacketType{})
+	TypeStrToFactory[ListCmdPacketStr] = reflect.TypeOf(ListCmdPacketType{})
+	TypeStrToFactory[GetCmdPacketStr] = reflect.TypeOf(GetCmdPacketType{})
+}
+
+func MakePacket(packetType string) (PacketType, error) {
+	rtype := TypeStrToFactory[packetType]
+	if rtype == nil {
+		return nil, fmt.Errorf("invalid packet type '%s'", packetType)
+	}
+	rtn := reflect.New(rtype)
+	return rtn.Interface().(PacketType), nil
+}
 
 type PingPacketType struct {
 	Type string `json:"type"`
@@ -32,6 +59,35 @@ func (*PingPacketType) GetType() string {
 
 func MakePingPacket() *PingPacketType {
 	return &PingPacketType{Type: PingPacketStr}
+}
+
+type GetCmdPacketType struct {
+	Type      string `json:"type"`
+	SessionId string `json:"sessionid"`
+	CmdId     string `json:"cmdid"`
+	Tail      bool   `json:"tail,omitempty"`
+	RunOut    bool   `json:"runout,omitempty"`
+}
+
+func (*GetCmdPacketType) GetType() string {
+	return GetCmdPacketStr
+}
+
+func MakeGetCmdPacket() *GetCmdPacketType {
+	return &GetCmdPacketType{Type: GetCmdPacketStr}
+}
+
+type ListCmdPacketType struct {
+	Type      string `json:"type"`
+	SessionId string `json:"sessionid"`
+}
+
+func (*ListCmdPacketType) GetType() string {
+	return ListCmdPacketStr
+}
+
+func MakeListCmdPacket(sessionId string) *ListCmdPacketType {
+	return &ListCmdPacketType{Type: ListCmdPacketStr, SessionId: sessionId}
 }
 
 type MessagePacketType struct {
@@ -104,6 +160,10 @@ func (ct *RunPacketType) GetType() string {
 	return RunPacketStr
 }
 
+func MakeRunPacket() *RunPacketType {
+	return &RunPacketType{Type: RunPacketStr}
+}
+
 type BarePacketType struct {
 	Type string `json:"type"`
 }
@@ -139,45 +199,15 @@ func ParseJsonPacket(jsonBuf []byte) (PacketType, error) {
 	if bareCmd.Type == "" {
 		return nil, fmt.Errorf("received packet with no type")
 	}
-	if bareCmd.Type == RunPacketStr {
-		var runPacket RunPacketType
-		err = json.Unmarshal(jsonBuf, &runPacket)
-		if err != nil {
-			return nil, err
-		}
-		return &runPacket, nil
+	pk, err := MakePacket(bareCmd.Type)
+	if err != nil {
+		return nil, err
 	}
-	if bareCmd.Type == PingPacketStr {
-		return MakePingPacket(), nil
+	err = json.Unmarshal(jsonBuf, pk)
+	if err != nil {
+		return nil, err
 	}
-	if bareCmd.Type == DonePacketStr {
-		return MakeDonePacket(), nil
-	}
-	if bareCmd.Type == ErrorPacketStr {
-		var errorPacket ErrorPacketType
-		err = json.Unmarshal(jsonBuf, &errorPacket)
-		if err != nil {
-			return nil, err
-		}
-		return &errorPacket, nil
-	}
-	if bareCmd.Type == CmdStartPacketStr {
-		var startPacket CmdStartPacketType
-		err = json.Unmarshal(jsonBuf, &startPacket)
-		if err != nil {
-			return nil, err
-		}
-		return &startPacket, nil
-	}
-	if bareCmd.Type == CmdDonePacketStr {
-		var donePacket CmdDonePacketType
-		err = json.Unmarshal(jsonBuf, &donePacket)
-		if err != nil {
-			return nil, err
-		}
-		return &donePacket, nil
-	}
-	return nil, fmt.Errorf("invalid packet-type '%s'", bareCmd.Type)
+	return pk, nil
 }
 
 func SendPacket(w io.Writer, packet PacketType) error {
