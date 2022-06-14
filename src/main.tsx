@@ -98,7 +98,6 @@ class LineText extends React.Component<{line : LineType}, {}> {
 }
 
 function loadPtyOut(term : Terminal, sessionId : string, cmdId : string, callback?: () => void) {
-    console.log("loadptyout", cmdId);
     term.clear()
     let url = sprintf("http://localhost:8080/api/ptyout?sessionid=%s&cmdid=%s", sessionId, cmdId);
     fetch(url).then((resp) => {
@@ -119,11 +118,12 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
     
     componentDidMount() {
         let {line, sessionid} = this.props;
-        let terminal = new Terminal();
+        let terminal = new Terminal({rows: 2, cols: 80});
         TermMap[line.cmdid] = terminal;
         let termElem = document.getElementById(this.getId());
         terminal.open(termElem);
-        loadPtyOut(terminal, sessionid, line.cmdid, this.incVersion);
+        mobx.action(() => this.terminal.set(terminal))();
+        this.reloadTerminal();
         terminal.textarea.addEventListener("focus", () => {
             mobx.action(() => {
                 this.focus.set(true);
@@ -143,15 +143,19 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
                 })();
             }, 100);
             setTimeout(() => {
-                loadPtyOut(terminal, sessionid, line.cmdid);
+                this.reloadTerminal();
             }, 1000);
         }
-        mobx.action(() => this.terminal.set(terminal))();
+    }
+
+    reloadTerminal() {
+        let {line, sessionid} = this.props;
+        let terminal = this.terminal.get();
+        loadPtyOut(terminal, sessionid, line.cmdid, this.incVersion);
     }
 
     @boundMethod
     incVersion() : void {
-        console.log("inc version!", this.version.get()+1);
         mobx.action(() => this.version.set(this.version.get() + 1))();
     }
 
@@ -162,8 +166,23 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
 
     @boundMethod
     doRefresh() {
-        let {line, sessionid} = this.props;
-        loadPtyOut(this.terminal.get(), sessionid, line.cmdid, this.incVersion);
+        this.reloadTerminal();
+    }
+
+    @boundMethod
+    singleLineCmdText(cmdText : string) {
+        if (cmdText == null) {
+            return "(none)";
+        }
+        cmdText = cmdText.trim();
+        let nlIdx = cmdText.indexOf("\n");
+        if (nlIdx != -1) {
+            cmdText = cmdText.substr(0, nlIdx) + "...";
+        }
+        if (cmdText.length > 80) {
+            cmdText = cmdText.substr(0, 77) + "...";
+        }
+        return cmdText;
     }
     
     render() {
@@ -171,14 +190,19 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
         let lineid = line.lineid.toString();
         let running = false;
         let term = this.terminal.get();
-        let termNumLines = 0;
-        let termYPos = 0;
         let version = this.version.get();
-        console.log("render version!", this.version.get(), line.cmdid);
+        let rows = 0;
+        let cols = 0;
         if (term != null) {
-            termNumLines = term._core.buffer.lines.length;
-            termYPos = term._core.buffer.y;
-            console.log(term._core.buffer.y, termYPos, term._core.buffer);
+            let termNumLines = term._core.buffer.lines.length;
+            let termYPos = term._core.buffer.y;
+            if (term.rows < 25 && termNumLines > term.rows) {
+                term.resize(80, Math.min(25, termNumLines));
+            } else if (term.rows < 25 && termYPos >= term.rows) {
+                term.resize(80, Math.min(25, termYPos+1));
+            }
+            rows = term.rows;
+            cols = term.cols;
         }
         return (
             <div className="line line-cmd" id={"line-" + this.getId()}>
@@ -189,8 +213,8 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
                     <div className="meta">
                         <div className="user">{line.userid}</div>
                         <div className="ts">{dayjs(line.ts).format("hh:mm:ss a")}</div>
-                        <div className="cmdid">{line.cmdid} ({termNumLines}) ({termYPos}) v{version}</div>
-                        <div className="cmdtext">&gt; {line.cmdtext}</div>
+                        <div className="cmdid">{line.cmdid} <If condition={rows > 0}>({rows}x{cols})</If> v{version}</div>
+                        <div className="cmdtext">&gt; {this.singleLineCmdText(line.cmdtext)}</div>
                     </div>
                     <div className={cn("terminal-wrapper", {"focus": this.focus.get()})}>
                         <div className="terminal" id={this.getId()}></div>
