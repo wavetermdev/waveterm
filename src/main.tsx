@@ -24,6 +24,9 @@ var GlobalLines = mobx.observable.box([
     {lineid: 2, userid: "sawka", ts: 1654631125000, linetype: "text", text: "again"},
 ]);
 
+var TermMap = {};
+window.TermMap = TermMap;
+
 function fetchJsonData(resp : any, ctErr : boolean) : Promise<any> {
     let contentType = resp.headers.get("Content-Type");
     if (contentType != null && contentType.startsWith("application/json")) {
@@ -94,7 +97,8 @@ class LineText extends React.Component<{line : LineType}, {}> {
     }
 }
 
-function loadPtyOut(term : Terminal, sessionId : string, cmdId : string) {
+function loadPtyOut(term : Terminal, sessionId : string, cmdId : string, callback?: () => void) {
+    console.log("loadptyout", cmdId);
     term.clear()
     let url = sprintf("http://localhost:8080/api/ptyout?sessionid=%s&cmdid=%s", sessionId, cmdId);
     fetch(url).then((resp) => {
@@ -103,27 +107,29 @@ function loadPtyOut(term : Terminal, sessionId : string, cmdId : string) {
         }
         return resp.text()
     }).then((resptext) => {
-        term.write(resptext);
+        setTimeout(() => term.write(resptext, callback), 0);
     });
 }
 
 @mobxReact.observer
 class LineCmd extends React.Component<{line : LineType}, {}> {
-    terminal : Terminal;
+    terminal : mobx.IObservableValue<Terminal> = mobx.observable.box(null, {name: "terminal"});
     focus : mobx.IObservableValue<boolean> = mobx.observable.box(false, {name: "focus"});
+    version : mobx.IObservableValue<int> = mobx.observable.box(0, {name: "lineversion"});
     
     componentDidMount() {
         let {line, sessionid} = this.props;
-        this.terminal = new Terminal();
+        let terminal = new Terminal();
+        TermMap[line.cmdid] = terminal;
         let termElem = document.getElementById(this.getId());
-        this.terminal.open(termElem);
-        loadPtyOut(this.terminal, sessionid, line.cmdid);
-        this.terminal.textarea.addEventListener("focus", () => {
+        terminal.open(termElem);
+        loadPtyOut(terminal, sessionid, line.cmdid, this.incVersion);
+        terminal.textarea.addEventListener("focus", () => {
             mobx.action(() => {
                 this.focus.set(true);
             })();
         });
-        this.terminal.textarea.addEventListener("blur", () => {
+        terminal.textarea.addEventListener("blur", () => {
             mobx.action(() => {
                 this.focus.set(false);
             })();
@@ -137,9 +143,16 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
                 })();
             }, 100);
             setTimeout(() => {
-                loadPtyOut(this.terminal, sessionid, line.cmdid);
+                loadPtyOut(terminal, sessionid, line.cmdid);
             }, 1000);
         }
+        mobx.action(() => this.terminal.set(terminal))();
+    }
+
+    @boundMethod
+    incVersion() : void {
+        console.log("inc version!", this.version.get()+1);
+        mobx.action(() => this.version.set(this.version.get() + 1))();
     }
 
     getId() : string {
@@ -150,13 +163,23 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
     @boundMethod
     doRefresh() {
         let {line, sessionid} = this.props;
-        loadPtyOut(this.terminal, sessionid, line.cmdid);
+        loadPtyOut(this.terminal.get(), sessionid, line.cmdid, this.incVersion);
     }
     
     render() {
         let {line} = this.props;
         let lineid = line.lineid.toString();
         let running = false;
+        let term = this.terminal.get();
+        let termNumLines = 0;
+        let termYPos = 0;
+        let version = this.version.get();
+        console.log("render version!", this.version.get(), line.cmdid);
+        if (term != null) {
+            termNumLines = term._core.buffer.lines.length;
+            termYPos = term._core.buffer.y;
+            console.log(term._core.buffer.y, termYPos, term._core.buffer);
+        }
         return (
             <div className="line line-cmd" id={"line-" + this.getId()}>
                 <div className={cn("avatar",{"num4": lineid.length == 4}, {"num5": lineid.length >= 5}, {"running": running})}>
@@ -166,6 +189,7 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
                     <div className="meta">
                         <div className="user">{line.userid}</div>
                         <div className="ts">{dayjs(line.ts).format("hh:mm:ss a")}</div>
+                        <div className="cmdid">{line.cmdid} ({termNumLines}) ({termYPos}) v{version}</div>
                         <div className="cmdtext">&gt; {line.cmdtext}</div>
                     </div>
                     <div className={cn("terminal-wrapper", {"focus": this.focus.get()})}>
