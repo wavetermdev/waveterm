@@ -32,6 +32,14 @@ type CommandFileNames struct {
 	RunnerOutFile string
 }
 
+func GetHomeDir() string {
+	homeVar := os.Getenv(HomeVarName)
+	if homeVar == "" {
+		return "/"
+	}
+	return homeVar
+}
+
 func GetScHomeDir() (string, error) {
 	scHome := os.Getenv(ScHomeVarName)
 	if scHome == "" {
@@ -58,6 +66,15 @@ func GetCommandFileNames(sessionId string, cmdId string) (*CommandFileNames, err
 		StdinFifo:     base + ".stdin",
 		RunnerOutFile: base + ".runout",
 	}, nil
+}
+
+func MakeCommandFileNamesWithHome(scHome string, sessionId string, cmdId string) *CommandFileNames {
+	base := path.Join(scHome, SessionsDirBaseName, sessionId, cmdId)
+	return &CommandFileNames{
+		PtyOutFile:    base + ".ptyout",
+		StdinFifo:     base + ".stdin",
+		RunnerOutFile: base + ".runout",
+	}
 }
 
 func CleanUpCmdFiles(sessionId string, cmdId string) error {
@@ -90,7 +107,7 @@ func EnsureSessionDir(sessionId string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	sdir := path.Join(shhome, ".sessions", sessionId)
+	sdir := path.Join(shhome, SessionsDirBaseName, sessionId)
 	info, err := os.Stat(sdir)
 	if errors.Is(err, fs.ErrNotExist) {
 		err = os.MkdirAll(sdir, 0777)

@@ -15,6 +15,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/scripthaus-dev/sh2-runner/pkg/base"
+	"github.com/scripthaus-dev/sh2-runner/pkg/cmdtail"
 	"github.com/scripthaus-dev/sh2-runner/pkg/packet"
 	"github.com/scripthaus-dev/sh2-runner/pkg/shexec"
 )
@@ -125,15 +126,26 @@ func doMainRun(pk *packet.RunPacketType, sender *packet.PacketSender) {
 	}()
 }
 
+func doGetCmd(tailer *cmdtail.Tailer, pk *packet.GetCmdPacketType, sender *packet.PacketSender) error {
+	// non-tail packets?
+	sender.SendPacket(packet.MakeMessagePacket(fmt.Sprintf("getcmd %s", pk.CmdId)))
+	err := tailer.AddWatch(pk)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func doMain() {
-	homeDir, err := base.GetScHomeDir()
+	scHomeDir, err := base.GetScHomeDir()
 	if err != nil {
 		packet.SendErrorPacket(os.Stdout, err.Error())
 		return
 	}
+	homeDir := base.GetHomeDir()
 	err = os.Chdir(homeDir)
 	if err != nil {
-		packet.SendErrorPacket(os.Stdout, fmt.Sprintf("cannot change directory to scripthaus home '%s': %v", homeDir, err))
+		packet.SendErrorPacket(os.Stdout, fmt.Sprintf("cannot change directory to $HOME '%s': %v", homeDir, err))
 		return
 	}
 	err = base.EnsureRunnerPath()
@@ -143,13 +155,32 @@ func doMain() {
 	}
 	packetCh := packet.PacketParser(os.Stdin)
 	sender := packet.MakePacketSender(os.Stdout)
-	sender.SendPacket(packet.MakeMessagePacket(fmt.Sprintf("starting scripthaus runner @ %s", homeDir)))
+	tailer, err := cmdtail.MakeTailer(sender)
+	if err != nil {
+		packet.SendErrorPacket(os.Stdout, err.Error())
+		return
+	}
+	go tailer.Run()
+	sender.SendPacket(packet.MakeMessagePacket(fmt.Sprintf("starting scripthaus runner @ %s", scHomeDir)))
+	initPacket := packet.MakeRunnerInitPacket()
+	initPacket.Env = os.Environ()
+	initPacket.HomeDir = homeDir
+	initPacket.ScHomeDir = scHomeDir
+	sender.SendPacket(initPacket)
 	for pk := range packetCh {
 		if pk.GetType() == packet.PingPacketStr {
 			continue
 		}
 		if pk.GetType() == packet.RunPacketStr {
 			doMainRun(pk.(*packet.RunPacketType), sender)
+			continue
+		}
+		if pk.GetType() == packet.GetCmdPacketStr {
+			err = doGetCmd(tailer, pk.(*packet.GetCmdPacketType), sender)
+			if err != nil {
+				errPk := packet.MakeErrorPacket(err.Error())
+				sender.SendPacket(errPk)
+			}
 			continue
 		}
 		if pk.GetType() == packet.ErrorPacketStr {

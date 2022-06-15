@@ -24,6 +24,10 @@ const CmdStartPacketStr = "cmdstart"
 const CmdDonePacketStr = "cmddone"
 const ListCmdPacketStr = "lscmd"
 const GetCmdPacketStr = "getcmd"
+const RunnerInitPacketStr = "runnerinit"
+const CdPacketStr = "cd"
+const CdResponseStr = "cdresp"
+const CmdDataPacketStr = "cmddata"
 
 var TypeStrToFactory map[string]reflect.Type
 
@@ -38,6 +42,11 @@ func init() {
 	TypeStrToFactory[CmdDonePacketStr] = reflect.TypeOf(CmdDonePacketType{})
 	TypeStrToFactory[ListCmdPacketStr] = reflect.TypeOf(ListCmdPacketType{})
 	TypeStrToFactory[GetCmdPacketStr] = reflect.TypeOf(GetCmdPacketType{})
+	TypeStrToFactory[RunnerInitPacketStr] = reflect.TypeOf(RunnerInitPacketType{})
+	TypeStrToFactory[CdPacketStr] = reflect.TypeOf(CdPacketType{})
+	TypeStrToFactory[CdResponseStr] = reflect.TypeOf(CdResponseType{})
+	TypeStrToFactory[CmdDataPacketStr] = reflect.TypeOf(CmdDataPacketType{})
+
 }
 
 func MakePacket(packetType string) (PacketType, error) {
@@ -47,6 +56,26 @@ func MakePacket(packetType string) (PacketType, error) {
 	}
 	rtn := reflect.New(rtype)
 	return rtn.Interface().(PacketType), nil
+}
+
+type CmdDataPacketType struct {
+	Type      string `json:"type"`
+	SessionId string `json:"sessionid"`
+	CmdId     string `json:"cmdid"`
+	PtyPos    int64  `json:"ptypos"`
+	RunPos    int64  `json:"runpos"`
+	PtyData   string `json:"ptydata"`
+	RunData   string `json:"rundata"`
+	Done      bool   `json:"done"`
+	Error     string `json:"error"`
+}
+
+func (*CmdDataPacketType) GetType() string {
+	return CmdDataPacketStr
+}
+
+func MakeCmdDataPacket() *CmdDataPacketType {
+	return &CmdDataPacketType{Type: CmdDataPacketStr}
 }
 
 type PingPacketType struct {
@@ -65,8 +94,9 @@ type GetCmdPacketType struct {
 	Type      string `json:"type"`
 	SessionId string `json:"sessionid"`
 	CmdId     string `json:"cmdid"`
+	PtyPos    int64  `json:"ptypos"`
+	RunPos    int64  `json:"runpos"`
 	Tail      bool   `json:"tail,omitempty"`
-	RunOut    bool   `json:"runout,omitempty"`
 }
 
 func (*GetCmdPacketType) GetType() string {
@@ -90,6 +120,35 @@ func MakeListCmdPacket(sessionId string) *ListCmdPacketType {
 	return &ListCmdPacketType{Type: ListCmdPacketStr, SessionId: sessionId}
 }
 
+type CdPacketType struct {
+	Type     string `json:"type"`
+	PacketId string `json:"packetid"`
+	Dir      string `json:"dir"`
+}
+
+func (*CdPacketType) GetType() string {
+	return CdPacketStr
+}
+
+func MakeCdPacket() *CdPacketType {
+	return &CdPacketType{Type: CdPacketStr}
+}
+
+type CdResponseType struct {
+	Type     string `json:"type"`
+	PacketId string `json:"packetid"`
+	Success  bool   `json:"success"`
+	Error    string `json:"error"`
+}
+
+func (*CdResponseType) GetType() string {
+	return CdResponseStr
+}
+
+func MakeCdResponse() *CdResponseType {
+	return &CdResponseType{Type: CdResponseStr}
+}
+
 type MessagePacketType struct {
 	Type    string `json:"type"`
 	Message string `json:"message"`
@@ -101,6 +160,21 @@ func (*MessagePacketType) GetType() string {
 
 func MakeMessagePacket(message string) *MessagePacketType {
 	return &MessagePacketType{Type: MessagePacketStr, Message: message}
+}
+
+type RunnerInitPacketType struct {
+	Type      string   `json:"type"`
+	ScHomeDir string   `json:"schomedir"`
+	HomeDir   string   `json:"homedir"`
+	Env       []string `json:"env"`
+}
+
+func (*RunnerInitPacketType) GetType() string {
+	return RunnerInitPacketStr
+}
+
+func MakeRunnerInitPacket() *RunnerInitPacketType {
+	return &RunnerInitPacketType{Type: RunnerInitPacketStr}
 }
 
 type DonePacketType struct {
@@ -295,6 +369,10 @@ func (sender *PacketSender) SendPacket(pk PacketType) error {
 
 func (sender *PacketSender) SendErrorPacket(errVal string) error {
 	return sender.SendPacket(MakeErrorPacket(errVal))
+}
+
+func (sender *PacketSender) SendMessage(fmtStr string, args ...interface{}) error {
+	return sender.SendPacket(MakeMessagePacket(fmt.Sprintf(fmtStr, args...)))
 }
 
 func PacketParser(input io.Reader) chan PacketType {
