@@ -35,6 +35,16 @@ type WSShell struct {
 	ReadChan  chan []byte
 }
 
+func (ws *WSShell) NonBlockingWrite(data []byte) bool {
+	select {
+	case ws.WriteChan <- data:
+		return true
+
+	default:
+		return false
+	}
+}
+
 func (ws *WSShell) WritePump() {
 	writeWait := 2 * time.Second
 	pingPeriod := 2 * time.Second
