@@ -10,12 +10,9 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
-	"regexp"
 	"sync"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/google/uuid"
 	"github.com/scripthaus-dev/sh2-runner/pkg/base"
 	"github.com/scripthaus-dev/sh2-runner/pkg/packet"
@@ -26,11 +23,15 @@ const MaxDataBytes = 4096
 type TailPos struct {
 	CmdKey     CmdKey
 	Running    bool // an active tailer sending data
-	Version    int
 	FilePtyLen int64
 	FileRunLen int64
 	TailPtyPos int64
 	TailRunPos int64
+	Follow     bool
+}
+
+func (pos TailPos) IsCurrent() bool {
+	return pos.TailPtyPos >= pos.FilePtyLen && pos.TailRunPos >= pos.FileRunLen
 }
 
 type CmdKey struct {
@@ -41,9 +42,8 @@ type CmdKey struct {
 type Tailer struct {
 	Lock      *sync.Mutex
 	WatchList map[CmdKey]TailPos
-	Sessions  map[string]bool
-	Watcher   *fsnotify.Watcher
 	ScHomeDir string
+	Watcher   *SessionWatcher
 	Sender    *packet.PacketSender
 }
 
@@ -55,11 +55,10 @@ func MakeTailer(sender *packet.PacketSender) (*Tailer, error) {
 	rtn := &Tailer{
 		Lock:      &sync.Mutex{},
 		WatchList: make(map[CmdKey]TailPos),
-		Sessions:  make(map[string]bool),
 		ScHomeDir: scHomeDir,
 		Sender:    sender,
 	}
-	rtn.Watcher, err = fsnotify.NewWatcher()
+	rtn.Watcher, err = MakeSessionWatcher()
 	if err != nil {
 		return nil, err
 	}
@@ -105,8 +104,6 @@ func (t *Tailer) makeCmdDataPacket(fileNames *base.CommandFileNames, pos TailPos
 	return dataPacket
 }
 
-var updateFileRe = regexp.MustCompile("/([a-z0-9-]+)/([a-z0-9-]+)\\.(ptyout|runout)$")
-
 // returns (data-packet, keepRunning)
 func (t *Tailer) runSingleDataTransfer(key CmdKey) (*packet.CmdDataPacketType, bool) {
 	t.Lock.Lock()
@@ -150,6 +147,18 @@ func (t *Tailer) runSingleDataTransfer(key CmdKey) (*packet.CmdDataPacketType, b
 	return dataPacket, pos.Running
 }
 
+func (t *Tailer) checkRemoveNoFollow(cmdKey CmdKey) {
+	t.Lock.Lock()
+	defer t.Lock.Unlock()
+	pos, foundPos := t.WatchList[cmdKey]
+	if !foundPos {
+		return
+	}
+	if !pos.Follow {
+		delete(t.WatchList, cmdKey)
+	}
+}
+
 func (t *Tailer) RunDataTransfer(key CmdKey) {
 	for {
 		dataPacket, keepRunning := t.runSingleDataTransfer(key)
@@ -157,72 +166,77 @@ func (t *Tailer) RunDataTransfer(key CmdKey) {
 			t.Sender.SendPacket(dataPacket)
 		}
 		if !keepRunning {
+			t.checkRemoveNoFollow(key)
 			break
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
 }
 
-func (t *Tailer) UpdateFile(relFileName string) {
-	m := updateFileRe.FindStringSubmatch(relFileName)
-	if m == nil {
+// should already hold t.Lock
+func (t *Tailer) tryStartRun_nolock(pos TailPos) {
+	if pos.Running || pos.IsCurrent() {
 		return
 	}
-	finfo, err := os.Stat(relFileName)
-	if err != nil {
-		t.Sender.SendMessage("error stating file '%s': %w", relFileName, err)
+	pos.Running = true
+	t.WatchList[pos.CmdKey] = pos
+	go t.RunDataTransfer(pos.CmdKey)
+}
+
+func (t *Tailer) updateFile(event FileUpdateEvent) {
+	if event.Err != nil {
+		t.Sender.SendMessage("error in FileUpdateEvent %s/%s: %v", event.SessionId, event.CmdId, event.Err)
 		return
 	}
-	isPtyFile := m[3] == "ptyout"
-	cmdKey := CmdKey{m[1], m[2]}
-	fileSize := finfo.Size()
+	cmdKey := CmdKey{SessionId: event.SessionId, CmdId: event.CmdId}
 	t.Lock.Lock()
 	defer t.Lock.Unlock()
 	pos, foundPos := t.WatchList[cmdKey]
 	if !foundPos {
 		return
 	}
-	if isPtyFile {
-		pos.FilePtyLen = fileSize
-	} else {
-		pos.FileRunLen = fileSize
+	if event.FileType == FileTypePty {
+		pos.FilePtyLen = event.Size
+	} else if event.FileType == FileTypeRun {
+		pos.FileRunLen = event.Size
 	}
 	t.WatchList[cmdKey] = pos
-	if !pos.Running && (pos.FilePtyLen > pos.TailPtyPos || pos.FileRunLen > pos.TailRunPos) {
-		go t.RunDataTransfer(cmdKey)
-	}
+	t.tryStartRun_nolock(pos)
 }
 
-func (t *Tailer) Run() {
-	for {
-		select {
-		case event, ok := <-t.Watcher.Events:
-			if !ok {
-				return
-			}
-			if (event.Op&fsnotify.Write == fsnotify.Write) || (event.Op&fsnotify.Create == fsnotify.Create) {
-				t.UpdateFile(event.Name)
-			}
-
-		case err, ok := <-t.Watcher.Errors:
-			if !ok {
-				return
-			}
-			// what to do with watcher error?
-			t.Sender.SendMessage("error in tailer '%v'", err)
+func (t *Tailer) Run() error {
+	go func() {
+		for event := range t.Watcher.EventCh {
+			t.updateFile(event)
 		}
-	}
+	}()
+	err := t.Watcher.Run(nil)
+	return err
 }
 
+func max(v1 int64, v2 int64) int64 {
+	if v1 > v2 {
+		return v1
+	}
+	return v2
+}
+
+// also converts negative positions to positive positions
 func (tp *TailPos) fillFilePos(scHomeDir string) {
 	fileNames := base.MakeCommandFileNamesWithHome(scHomeDir, tp.CmdKey.SessionId, tp.CmdKey.CmdId)
 	ptyInfo, _ := os.Stat(fileNames.PtyOutFile)
 	if ptyInfo != nil {
 		tp.FilePtyLen = ptyInfo.Size()
 	}
+	if tp.TailPtyPos < 0 {
+		tp.TailPtyPos = max(0, tp.FilePtyLen-tp.TailPtyPos)
+	}
 	runoutInfo, _ := os.Stat(fileNames.RunnerOutFile)
 	if runoutInfo != nil {
 		tp.FileRunLen = runoutInfo.Size()
+	}
+	if tp.TailRunPos < 0 {
+		tp.TailRunPos = max(0, tp.FileRunLen-tp.TailRunPos)
 	}
 }
 
@@ -241,17 +255,13 @@ func (t *Tailer) AddWatch(getPacket *packet.GetCmdPacketType) error {
 	t.Lock.Lock()
 	defer t.Lock.Unlock()
 	key := CmdKey{getPacket.SessionId, getPacket.CmdId}
-	if !t.Sessions[getPacket.SessionId] {
-		sessionDir := path.Join(t.ScHomeDir, base.SessionsDirBaseName, getPacket.SessionId)
-		err = t.Watcher.Add(sessionDir)
-		if err != nil {
-			return fmt.Errorf("error adding watcher for session dir '%s': %v", sessionDir, err)
-		}
-		t.Sessions[getPacket.SessionId] = true
+	err = t.Watcher.WatchSession(getPacket.SessionId)
+	if err != nil {
+		return fmt.Errorf("error trying to watch sesion '%s': %v", getPacket.SessionId, err)
 	}
-	oldPos := t.WatchList[key]
-	pos := TailPos{CmdKey: key, TailPtyPos: getPacket.PtyPos, TailRunPos: getPacket.RunPos, Version: oldPos.Version + 1}
+	pos := TailPos{CmdKey: key, TailPtyPos: getPacket.PtyPos, TailRunPos: getPacket.RunPos, Follow: getPacket.Tail}
 	pos.fillFilePos(t.ScHomeDir)
 	t.WatchList[key] = pos
+	t.tryStartRun_nolock(pos)
 	return nil
 }

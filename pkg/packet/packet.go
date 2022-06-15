@@ -8,10 +8,13 @@ package packet
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"reflect"
+	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -28,6 +31,7 @@ const RunnerInitPacketStr = "runnerinit"
 const CdPacketStr = "cd"
 const CdResponseStr = "cdresp"
 const CmdDataPacketStr = "cmddata"
+const RawPacketStr = "raw"
 
 var TypeStrToFactory map[string]reflect.Type
 
@@ -46,7 +50,7 @@ func init() {
 	TypeStrToFactory[CdPacketStr] = reflect.TypeOf(CdPacketType{})
 	TypeStrToFactory[CdResponseStr] = reflect.TypeOf(CdResponseType{})
 	TypeStrToFactory[CmdDataPacketStr] = reflect.TypeOf(CmdDataPacketType{})
-
+	TypeStrToFactory[RawPacketStr] = reflect.TypeOf(RawPacketType{})
 }
 
 func MakePacket(packetType string) (PacketType, error) {
@@ -63,11 +67,13 @@ type CmdDataPacketType struct {
 	SessionId string `json:"sessionid"`
 	CmdId     string `json:"cmdid"`
 	PtyPos    int64  `json:"ptypos"`
+	PtyLen    int64  `json:"ptylen"`
 	RunPos    int64  `json:"runpos"`
+	RunLen    int64  `json:"runlen"`
 	PtyData   string `json:"ptydata"`
 	RunData   string `json:"rundata"`
-	Done      bool   `json:"done"`
 	Error     string `json:"error"`
+	NotFound  bool   `json:"notfound,omitempty"`
 }
 
 func (*CmdDataPacketType) GetType() string {
@@ -147,6 +153,19 @@ func (*CdResponseType) GetType() string {
 
 func MakeCdResponse() *CdResponseType {
 	return &CdResponseType{Type: CdResponseStr}
+}
+
+type RawPacketType struct {
+	Type string `json:"type"`
+	Data string `json:"data"`
+}
+
+func (*RawPacketType) GetType() string {
+	return RawPacketStr
+}
+
+func MakeRawPacket(val string) *RawPacketType {
+	return &RawPacketType{Type: RawPacketStr, Data: val}
 }
 
 type MessagePacketType struct {
@@ -288,12 +307,16 @@ func SendPacket(w io.Writer, packet PacketType) error {
 	if packet == nil {
 		return nil
 	}
-	barr, err := json.Marshal(packet)
+	jsonBytes, err := json.Marshal(packet)
 	if err != nil {
 		return fmt.Errorf("marshaling '%s' packet: %w", packet.GetType(), err)
 	}
-	barr = append(barr, '\n')
-	_, err = w.Write(barr)
+	var outBuf bytes.Buffer
+	outBuf.WriteByte('\n')
+	outBuf.WriteString(fmt.Sprintf("##%d", len(jsonBytes)))
+	outBuf.Write(jsonBytes)
+	outBuf.WriteByte('\n')
+	_, err = w.Write(outBuf.Bytes())
 	if err != nil {
 		return err
 	}
@@ -392,7 +415,22 @@ func PacketParser(input io.Reader) chan PacketType {
 				rtnCh <- errPacket
 				return
 			}
-			pk, err := ParseJsonPacket([]byte(line))
+			if line == "\n" {
+				continue
+			}
+			// ##[len][json]\n
+			// ##14{"hello":true}\n
+			bracePos := strings.Index(line, "{")
+			if !strings.HasPrefix(line, "##") || bracePos == -1 {
+				rtnCh <- MakeRawPacket(line[:len(line)-1])
+				continue
+			}
+			packetLen, err := strconv.Atoi(line[2:bracePos])
+			if err != nil || packetLen != len(line)-bracePos-1 {
+				rtnCh <- MakeRawPacket(line[:len(line)-1])
+				continue
+			}
+			pk, err := ParseJsonPacket([]byte(line[bracePos:]))
 			if err != nil {
 				errPk := MakeErrorPacket(fmt.Sprintf("parsing packet json from input: %v", err))
 				rtnCh <- errPk

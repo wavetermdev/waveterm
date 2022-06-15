@@ -128,7 +128,6 @@ func doMainRun(pk *packet.RunPacketType, sender *packet.PacketSender) {
 
 func doGetCmd(tailer *cmdtail.Tailer, pk *packet.GetCmdPacketType, sender *packet.PacketSender) error {
 	// non-tail packets?
-	sender.SendPacket(packet.MakeMessagePacket(fmt.Sprintf("getcmd %s", pk.CmdId)))
 	err := tailer.AddWatch(pk)
 	if err != nil {
 		return err
@@ -161,7 +160,6 @@ func doMain() {
 		return
 	}
 	go tailer.Run()
-	sender.SendPacket(packet.MakeMessagePacket(fmt.Sprintf("starting scripthaus runner @ %s", scHomeDir)))
 	initPacket := packet.MakeRunnerInitPacket()
 	initPacket.Env = os.Environ()
 	initPacket.HomeDir = homeDir

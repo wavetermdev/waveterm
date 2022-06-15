@@ -205,17 +205,22 @@ func RunCommand(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecT
 	}, nil
 }
 
+func GetExitCode(err error) int {
+	if err == nil {
+		return 0
+	}
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		return exitErr.ExitCode()
+	} else {
+		return -1
+	}
+}
+
 func (c *ShExecType) WaitForCommand(cmdId string) *packet.CmdDonePacketType {
-	err := c.Cmd.Wait()
+	exitErr := c.Cmd.Wait()
 	endTs := time.Now()
 	cmdDuration := endTs.Sub(c.StartTs)
-	exitCode := 0
-	if err != nil {
-		exitErr, ok := err.(*exec.ExitError)
-		if ok {
-			exitCode = exitErr.ExitCode()
-		}
-	}
+	exitCode := GetExitCode(exitErr)
 	donePacket := packet.MakeCmdDonePacket()
 	donePacket.Ts = endTs.UnixMilli()
 	donePacket.CmdId = cmdId
