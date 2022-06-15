@@ -16,6 +16,7 @@ import (
 
 	"github.com/scripthaus-dev/sh2-runner/pkg/base"
 	"github.com/scripthaus-dev/sh2-runner/pkg/packet"
+	"github.com/scripthaus-dev/sh2-runner/pkg/shexec"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
 	"github.com/scripthaus-dev/sh2-server/pkg/wsshell"
 )
@@ -38,6 +39,8 @@ type RunnerProc struct {
 	Input     *packet.PacketSender
 	Output    chan packet.PacketType
 	WsConnMap map[string]*WsConnType
+	IsLocal   bool
+	DoneCh    chan bool
 }
 
 func (rp *RunnerProc) AddWsConn(ws *WsConnType) {
@@ -278,11 +281,18 @@ func LaunchRunnerProc() (*RunnerProc, error) {
 	if err != nil {
 		return nil, err
 	}
-	ecmd.Stderr = nil // /dev/null
+	ecmd.Stderr = ecmd.Stdout // /dev/null
 	ecmd.Start()
-	rtn := &RunnerProc{Lock: &sync.Mutex{}, Cmd: ecmd, WsConnMap: make(map[string]*WsConnType)}
+	rtn := &RunnerProc{Lock: &sync.Mutex{}, IsLocal: true, Cmd: ecmd, WsConnMap: make(map[string]*WsConnType)}
 	rtn.Output = packet.PacketParser(outputReader)
 	rtn.Input = packet.MakePacketSender(inputWriter)
+	rtn.DoneCh = make(chan bool)
+	go func() {
+		exitErr := ecmd.Wait()
+		exitCode := shexec.GetExitCode(exitErr)
+		fmt.Printf("[error] RUNNER PROC EXITED code[%d]\n", exitCode)
+		close(rtn.DoneCh)
+	}()
 	return rtn, nil
 }
 
@@ -312,7 +322,6 @@ func (runner *RunnerProc) ProcessPackets() {
 			dataPacket := pk.(*packet.CmdDataPacketType)
 			runner.ForwardDataPacket(dataPacket)
 			fmt.Printf("cmd-data %s/%s pty=%d run=%d\n", dataPacket.SessionId, dataPacket.CmdId, len(dataPacket.PtyData), len(dataPacket.RunData))
-
 			continue
 		}
 		if pk.GetType() == packet.RunnerInitPacketStr {
@@ -320,8 +329,17 @@ func (runner *RunnerProc) ProcessPackets() {
 			fmt.Printf("runner-init %s\n", initPacket.ScHomeDir)
 			continue
 		}
+		if pk.GetType() == packet.MessagePacketStr {
+			msgPacket := pk.(*packet.MessagePacketType)
+			fmt.Printf("# %s\n", msgPacket.Message)
+			continue
+		}
+		if pk.GetType() == packet.RawPacketStr {
+			rawPacket := pk.(*packet.RawPacketType)
+			fmt.Printf("stderr> %s\n", rawPacket.Data)
+			continue
+		}
 		fmt.Printf("runner-packet: %v\n", pk)
-
 	}
 }
 
