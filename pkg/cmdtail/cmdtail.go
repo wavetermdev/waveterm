@@ -44,10 +44,10 @@ type Tailer struct {
 	WatchList map[CmdKey]TailPos
 	ScHomeDir string
 	Watcher   *SessionWatcher
-	Sender    *packet.PacketSender
+	SendCh    chan packet.PacketType
 }
 
-func MakeTailer(sender *packet.PacketSender) (*Tailer, error) {
+func MakeTailer(sendCh chan packet.PacketType) (*Tailer, error) {
 	scHomeDir, err := base.GetScHomeDir()
 	if err != nil {
 		return nil, err
@@ -56,7 +56,7 @@ func MakeTailer(sender *packet.PacketSender) (*Tailer, error) {
 		Lock:      &sync.Mutex{},
 		WatchList: make(map[CmdKey]TailPos),
 		ScHomeDir: scHomeDir,
-		Sender:    sender,
+		SendCh:    sendCh,
 	}
 	rtn.Watcher, err = MakeSessionWatcher()
 	if err != nil {
@@ -163,7 +163,7 @@ func (t *Tailer) RunDataTransfer(key CmdKey) {
 	for {
 		dataPacket, keepRunning := t.runSingleDataTransfer(key)
 		if dataPacket != nil {
-			t.Sender.SendPacket(dataPacket)
+			t.SendCh <- dataPacket
 		}
 		if !keepRunning {
 			t.checkRemoveNoFollow(key)
@@ -185,7 +185,7 @@ func (t *Tailer) tryStartRun_nolock(pos TailPos) {
 
 func (t *Tailer) updateFile(event FileUpdateEvent) {
 	if event.Err != nil {
-		t.Sender.SendMessage("error in FileUpdateEvent %s/%s: %v", event.SessionId, event.CmdId, event.Err)
+		t.SendCh <- packet.FmtMessagePacket("error in FileUpdateEvent %s/%s: %v", event.SessionId, event.CmdId, event.Err)
 		return
 	}
 	cmdKey := CmdKey{SessionId: event.SessionId, CmdId: event.CmdId}

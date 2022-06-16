@@ -154,7 +154,7 @@ func doMain() {
 	}
 	packetCh := packet.PacketParser(os.Stdin)
 	sender := packet.MakePacketSender(os.Stdout)
-	tailer, err := cmdtail.MakeTailer(sender)
+	tailer, err := cmdtail.MakeTailer(sender.SendCh)
 	if err != nil {
 		packet.SendErrorPacket(os.Stdout, err.Error())
 		return

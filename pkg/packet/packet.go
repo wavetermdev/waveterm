@@ -181,6 +181,11 @@ func MakeMessagePacket(message string) *MessagePacketType {
 	return &MessagePacketType{Type: MessagePacketStr, Message: message}
 }
 
+func FmtMessagePacket(fmtStr string, args ...interface{}) *MessagePacketType {
+	message := fmt.Sprintf(fmtStr, args...)
+	return &MessagePacketType{Type: MessagePacketStr, Message: message}
+}
+
 type RunnerInitPacketType struct {
 	Type      string   `json:"type"`
 	ScHomeDir string   `json:"schomedir"`
@@ -443,4 +448,31 @@ func PacketParser(input io.Reader) chan PacketType {
 		}
 	}()
 	return rtnCh
+}
+
+type ErrorReporter interface {
+	ReportError(err error)
+}
+
+func PacketToByteArrBridge(pkCh chan PacketType, byteCh chan []byte, errorReporter ErrorReporter, closeOnDone bool) {
+	go func() {
+		defer func() {
+			if closeOnDone {
+				close(byteCh)
+			}
+		}()
+		for pk := range pkCh {
+			if pk == nil {
+				continue
+			}
+			jsonBytes, err := json.Marshal(pk)
+			if err != nil {
+				if errorReporter != nil {
+					errorReporter.ReportError(fmt.Errorf("error marshaling packet: %w", err))
+				}
+				continue
+			}
+			byteCh <- jsonBytes
+		}
+	}()
 }
