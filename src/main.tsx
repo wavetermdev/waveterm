@@ -24,6 +24,8 @@ var GlobalLines = mobx.observable.box([
     {lineid: 2, userid: "sawka", ts: 1654631125000, linetype: "text", text: "again"},
 ]);
 
+var GlobalWS : any = null;
+
 var TermMap = {};
 window.TermMap = TermMap;
 
@@ -315,22 +317,154 @@ class CmdInput extends React.Component<{line : LineType, sessionid : string}, {}
 }
 
 @mobxReact.observer
-class Main extends React.Component<{sessionid : string}, {}> {
+class SessionView extends React.Component<{sessionid : string}, {}> {
     render() {
         let lines = GlobalLines.get();
-        console.log("main-lines", mobx.toJS(lines));
         return (
-            <div className="main">
-                <h1 className="title scripthaus-logo-small">
-                    <div className="title-cursor">&#9608;</div>
-                    ScriptHaus
-                </h1>
+            <div className="session-view">
                 <div className="lines">
                     <For each="line" of={lines}>
                         <Line key={line.lineid} line={line} sessionid={this.props.sessionid}/>
                     </For>
                 </div>
                 <CmdInput sessionid={this.props.sessionid}/>
+            </div>
+        );
+    }
+}
+
+class WSControl {
+    wsConn : any;
+    openCallback : any;
+    open : boolean;
+    opening : boolean;
+    reconnectTimes : int;
+    
+    constructor(openCallback : any) {
+        this.reconnectTimes = 0;
+        this.open = false;
+        this.opening = false;
+        this.openCallback = openCallback;
+        setInterval(this.sendPing, 5000);
+        this.reconnect();
+    }
+
+    reconnect() {
+        if (this.open) {
+            this.wsConn.close();
+            return;
+        }
+        this.reconnectTimes++;
+        let timeoutArr = [0, 0, 2, 5, 10, 10, 30, 60];
+        let timeout = 60;
+        if (this.reconnectTimes < timeoutArr.length) {
+            timeout = timeoutArr[this.reconnectTimes];
+        }
+        if (timeout > 0 || true) {
+            console.log(sprintf("websocket reconnect(%d), sleep %ds", this.reconnectTimes, timeout));
+        }
+        setTimeout(() => {
+            console.log(sprintf("websocket reconnect(%d)", this.reconnectTimes));
+            this.opening = true;
+            this.wsConn = new WebSocket("ws://localhost:8081/ws");
+            this.wsConn.onopen = this.onopen;
+            this.wsConn.onmessage = this.onmessage;
+            this.wsConn.onerror = this.onerror;
+            this.wsConn.onclose = this.onclose;
+        }, timeout*1000);
+    }
+
+    @boundMethod
+    onerror(event : any) {
+        console.log("websocket error", event);
+        if (this.open || this.opening) {
+            this.open = false;
+            this.opening = false;
+            this.reconnect();
+        }
+    }
+
+    @boundMethod
+    onclose(event : any) {
+        console.log("websocket closed", event);
+        if (this.open || this.opening) {
+            this.open = false;
+            this.opening = false;
+            this.reconnect();
+        }
+    }
+
+    @boundMethod
+    onopen() {
+        console.log("websocket open");
+        this.open = true;
+        this.opening = false;
+        this.reconnectTimes = 0;
+        if (this.openCallback != null) {
+            this.openCallback();
+        }
+    }
+
+    @boundMethod
+    onmessage(event : any) {
+        let eventData = null;
+        if (event.data != null) {
+            eventData = JSON.parse(event.data);
+        }
+        if (eventData == null) {
+            return;
+        }
+        if (eventData.type == "ping") {
+            this.wsConn.send(JSON.stringify({type: "pong", stime: parseInt(Date.now()/1000)}));
+            return;
+        }
+        if (eventData.type == "pong") {
+            // nothing
+            return;
+        }
+        console.log("websocket message", event);
+    }
+
+    @boundMethod
+    sendPing() {
+        if (!this.open) {
+            return;
+        }
+        this.wsConn.send(JSON.stringify({type: "ping", stime: Date.now()}));
+    }
+
+    sendMessage(data : any){
+        if (!this.open) {
+            return;
+        }
+        this.wsConn.send(JSON.stringify(data));
+    }
+}
+
+@mobxReact.observer
+class Main extends React.Component<{sessionid : string}, {}> {
+    version : mobx.IObservableValue<int> = mobx.observable.box(false);
+    
+    constructor(props : any) {
+        super(props);
+        GlobalWS = new WSControl(this.updateVersion);
+        window.GlobalWS = GlobalWS;
+    }
+
+    @boundMethod
+    updateVersion() {
+        mobx.action(() => this.version.set(this.version.get()+1))();
+    }
+    
+    render() {
+        let version = this.version.get();
+        return (
+            <div className="main">
+                <h1 className="title scripthaus-logo-small">
+                    <div className="title-cursor">&#9608;</div>
+                    ScriptHaus
+                </h1>
+                <SessionView sessionid={this.props.sessionid}/>
             </div>
         );
     }
