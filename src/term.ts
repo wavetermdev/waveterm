@@ -6,7 +6,7 @@ import {GlobalWS} from "./ws";
 
 var TermMap : Record<string, TermWrap>;
 
-function loadPtyOut(term : Terminal, sessionId : string, cmdId : string, callback?: () => void) {
+function loadPtyOut(term : Terminal, sessionId : string, cmdId : string, delayMs : number, callback?: () => void) {
     term.clear()
     let url = sprintf("http://localhost:8080/api/ptyout?sessionid=%s&cmdid=%s", sessionId, cmdId);
     fetch(url).then((resp) => {
@@ -15,7 +15,7 @@ function loadPtyOut(term : Terminal, sessionId : string, cmdId : string, callbac
         }
         return resp.text()
     }).then((resptext) => {
-        setTimeout(() => term.write(resptext, callback), 0);
+        setTimeout(() => term.write(resptext, callback), delayMs);
     });
 }
 
@@ -68,8 +68,8 @@ class TermWrap {
         mobx.action(() => this.renderVersion.set(this.renderVersion.get() + 1))();
     }
 
-    reloadTerminal() {
-        loadPtyOut(this.terminal, this.sessionId, this.cmdId, this.incRenderVersion);
+    reloadTerminal(delayMs : number) {
+        loadPtyOut(this.terminal, this.sessionId, this.cmdId, delayMs, this.incRenderVersion);
     }
 
     connectToElem(elem : Element) {

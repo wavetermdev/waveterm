@@ -112,7 +112,7 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
         let {line, sessionid} = this.props;
         let termElem = document.getElementById(this.getId());
         this.termWrap.connectToElem(termElem);
-        this.termWrap.reloadTerminal();
+        this.termWrap.reloadTerminal(0);
         if (line.isnew) {
             setTimeout(() => {
                 let lineElem = document.getElementById("line-" + this.getId());
@@ -122,7 +122,7 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
                 })();
             }, 100);
             setTimeout(() => {
-                this.termWrap.reloadTerminal();
+                this.termWrap.reloadTerminal(0);
             }, 1000);
         }
     }
@@ -134,7 +134,7 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
 
     @boundMethod
     doRefresh() {
-        this.termWRap.reloadTerminal();
+        this.termWrap.reloadTerminal(500);
     }
 
     @boundMethod
