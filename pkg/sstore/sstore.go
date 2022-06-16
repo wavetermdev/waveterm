@@ -12,6 +12,8 @@ const LineTypeCmd = "cmd"
 const LineTypeText = "text"
 
 type LineType struct {
+	SessionId string `json:"sessionid"`
+	WindowId  string `json:"windowid"`
 	LineId    int    `json:"lineid"`
 	Ts        int64  `json:"ts"`
 	UserId    string `json:"userid"`
@@ -22,8 +24,10 @@ type LineType struct {
 	CmdRemote string `json:"cmdremote,omitempty"`
 }
 
-func MakeNewLineCmd(cmdText string) *LineType {
+func MakeNewLineCmd(sessionId string, windowId string, cmdText string) *LineType {
 	rtn := &LineType{}
+	rtn.SessionId = sessionId
+	rtn.WindowId = windowId
 	rtn.LineId = NextLineId
 	NextLineId++
 	rtn.Ts = time.Now().UnixMilli()
@@ -34,8 +38,10 @@ func MakeNewLineCmd(cmdText string) *LineType {
 	return rtn
 }
 
-func MakeNewLineText(text string) *LineType {
+func MakeNewLineText(sessionId string, windowId string, text string) *LineType {
 	rtn := &LineType{}
+	rtn.SessionId = sessionId
+	rtn.WindowId = windowId
 	rtn.LineId = NextLineId
 	NextLineId++
 	rtn.Ts = time.Now().UnixMilli()

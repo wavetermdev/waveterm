@@ -141,6 +141,7 @@ func WriteJsonSuccess(w http.ResponseWriter, data interface{}) {
 
 type runCommandParams struct {
 	SessionId string `json:"sessionid"`
+	WindowId  string `json:"windowid"`
 	Command   string `json:"command"`
 }
 
@@ -174,7 +175,7 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 		WriteJsonError(w, fmt.Errorf("invalid emtpty command"))
 		return
 	}
-	rtnLine := sstore.MakeNewLineCmd(commandStr)
+	rtnLine := sstore.MakeNewLineCmd(params.SessionId, params.WindowId, commandStr)
 	runPacket := packet.MakeRunPacket()
 	runPacket.SessionId = params.SessionId
 	runPacket.CmdId = rtnLine.CmdId
