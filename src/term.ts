@@ -4,19 +4,6 @@ import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 import {GlobalWS} from "./ws";
 
-// 
-var TermMap : Record<string, TermWrap>;
-
-function getOrCreateTermWrap(sessionId : string, cmdId : string, windowId : string, lineid : number) : TermWrap {
-    let termKey = makeTermKey(sessionId, cmdId, windowId, lineid);
-    let termWrap = TermMap[termKey];
-    if (termWrap != null) {
-        return termWrap;
-    }
-    termWrap = new TermWrap(sessionId, cmdId, windowId, lineid);
-    return termWrap;
-}
-
 function makeTermKey(sessionId : string, cmdId : string, windowId : string, lineid : number) : string {
     return sprintf("%s/%s/%s/%s", sessionId, cmdId, windowId, lineid);
 }
@@ -57,7 +44,6 @@ class TermWrap {
         this.windowId = windowId;
         this.lineid = lineid;
         this.terminal = new Terminal({rows: 2, cols: 80});
-        TermMap[cmdId] = this;
     }
 
     destroy() {
@@ -150,9 +136,4 @@ class TermWrap {
     }
 }
 
-if (window.TermMap == null) {
-    TermMap = {};
-    window.TermMap = TermMap;
-}
-
-export {TermWrap, TermMap, makeTermKey, getOrCreateTermWrap};
+export {TermWrap, makeTermKey};
