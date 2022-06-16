@@ -12,6 +12,10 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+const readWaitTimeout = 15 * time.Second
+const writeWaitTimeout = 10 * time.Second
+const pingPeriodTickTime = 10 * time.Second
+
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:   4 * 1024,
 	WriteBufferSize:  4 * 1024,
@@ -45,31 +49,38 @@ func (ws *WSShell) NonBlockingWrite(data []byte) bool {
 	}
 }
 
+func (ws *WSShell) WritePing() error {
+	now := time.Now()
+	pingMessage := map[string]interface{}{"type": "ping", "stime": now.Unix()}
+	jsonVal, _ := json.Marshal(pingMessage)
+	_ = ws.Conn.SetWriteDeadline(time.Now().Add(writeWaitTimeout)) // no error
+	err := ws.Conn.WriteMessage(websocket.TextMessage, jsonVal)
+	ws.NumPings++
+	ws.LastPing = now
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (ws *WSShell) WritePump() {
-	writeWait := 2 * time.Second
-	pingPeriod := 2 * time.Second
-	ticker := time.NewTicker(pingPeriod)
+	ticker := time.NewTicker(pingPeriodTickTime)
 	defer func() {
 		ticker.Stop()
 		ws.Conn.Close()
 	}()
+	ws.WritePing()
 	for {
 		select {
 		case <-ticker.C:
-			now := time.Now()
-			pingMessage := map[string]interface{}{"type": "ping", "stime": now.Unix()}
-			jsonVal, _ := json.Marshal(pingMessage)
-			_ = ws.Conn.SetWriteDeadline(time.Now().Add(writeWait)) // no error
-			err := ws.Conn.WriteMessage(websocket.TextMessage, jsonVal)
-			ws.NumPings++
-			ws.LastPing = now
+			err := ws.WritePing()
 			if err != nil {
 				log.Printf("WritePump %s err: %v\n", ws.RemoteAddr, err)
 				return
 			}
 
 		case msgBytes := <-ws.WriteChan:
-			_ = ws.Conn.SetWriteDeadline(time.Now().Add(writeWait)) // no error
+			_ = ws.Conn.SetWriteDeadline(time.Now().Add(writeWaitTimeout)) // no error
 			err := ws.Conn.WriteMessage(websocket.TextMessage, msgBytes)
 			if err != nil {
 				log.Printf("WritePump %s err: %v\n", ws.RemoteAddr, err)
@@ -80,7 +91,7 @@ func (ws *WSShell) WritePump() {
 }
 
 func (ws *WSShell) ReadPump() {
-	readWait := 5 * time.Second
+	readWait := readWaitTimeout
 	defer func() {
 		ws.Conn.Close()
 	}()
@@ -102,6 +113,13 @@ func (ws *WSShell) ReadPump() {
 		ws.LastRecv = time.Now()
 		if str, ok := jmsg["type"].(string); ok && str == "pong" {
 			// nothing
+			continue
+		}
+		if str, ok := jmsg["type"].(string); ok && str == "ping" {
+			now := time.Now()
+			pongMessage := map[string]interface{}{"type": "pong", "stime": now.Unix()}
+			jsonVal, _ := json.Marshal(pongMessage)
+			ws.WriteChan <- jsonVal
 			continue
 		}
 		ws.ReadChan <- message
