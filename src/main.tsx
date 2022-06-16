@@ -1,12 +1,13 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
-import {Terminal} from 'xterm';
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 import * as dayjs from 'dayjs'
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import cn from "classnames"
+import {GlobalWS} from "./ws";
+import {TermWrap} from "./term";
 
 type LineType = {
     lineid : number,
@@ -23,8 +24,6 @@ var GlobalLines = mobx.observable.box([
     {lineid: 1, userid: "sawka", ts: 1654631122000, linetype: "text", text: "hello"},
     {lineid: 2, userid: "sawka", ts: 1654631125000, linetype: "text", text: "again"},
 ]);
-
-var GlobalWS : any = null;
 
 var TermMap = {};
 window.TermMap = TermMap;
@@ -99,43 +98,21 @@ class LineText extends React.Component<{line : LineType}, {}> {
     }
 }
 
-function loadPtyOut(term : Terminal, sessionId : string, cmdId : string, callback?: () => void) {
-    term.clear()
-    let url = sprintf("http://localhost:8080/api/ptyout?sessionid=%s&cmdid=%s", sessionId, cmdId);
-    fetch(url).then((resp) => {
-        if (!resp.ok) {
-            throw new Error(sprintf("Bad fetch response for /api/ptyout: %d %s", resp.status, resp.statusText));
-        }
-        return resp.text()
-    }).then((resptext) => {
-        setTimeout(() => term.write(resptext, callback), 0);
-    });
-}
-
 @mobxReact.observer
 class LineCmd extends React.Component<{line : LineType}, {}> {
-    terminal : mobx.IObservableValue<Terminal> = mobx.observable.box(null, {name: "terminal"});
-    focus : mobx.IObservableValue<boolean> = mobx.observable.box(false, {name: "focus"});
-    version : mobx.IObservableValue<int> = mobx.observable.box(0, {name: "lineversion"});
+    termWrap : TermWrap;
+
+    constructor(props) {
+        super(props);
+        let {line, sessionid} = this.props;
+        this.termWrap = new TermWrap(sessionid, line.cmdid);
+    }
     
     componentDidMount() {
         let {line, sessionid} = this.props;
-        let terminal = new Terminal({rows: 2, cols: 80});
-        TermMap[line.cmdid] = terminal;
         let termElem = document.getElementById(this.getId());
-        terminal.open(termElem);
-        mobx.action(() => this.terminal.set(terminal))();
-        this.reloadTerminal();
-        terminal.textarea.addEventListener("focus", () => {
-            mobx.action(() => {
-                this.focus.set(true);
-            })();
-        });
-        terminal.textarea.addEventListener("blur", () => {
-            mobx.action(() => {
-                this.focus.set(false);
-            })();
-        });
+        this.termWrap.connectToElem(termElem);
+        this.termWrap.reloadTerminal();
         if (line.isnew) {
             setTimeout(() => {
                 let lineElem = document.getElementById("line-" + this.getId());
@@ -145,20 +122,9 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
                 })();
             }, 100);
             setTimeout(() => {
-                this.reloadTerminal();
+                this.termWrap.reloadTerminal();
             }, 1000);
         }
-    }
-
-    reloadTerminal() {
-        let {line, sessionid} = this.props;
-        let terminal = this.terminal.get();
-        loadPtyOut(terminal, sessionid, line.cmdid, this.incVersion);
-    }
-
-    @boundMethod
-    incVersion() : void {
-        mobx.action(() => this.version.set(this.version.get() + 1))();
     }
 
     getId() : string {
@@ -168,7 +134,7 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
 
     @boundMethod
     doRefresh() {
-        this.reloadTerminal();
+        this.termWRap.reloadTerminal();
     }
 
     @boundMethod
@@ -191,21 +157,11 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
         let {line} = this.props;
         let lineid = line.lineid.toString();
         let running = false;
-        let term = this.terminal.get();
-        let version = this.version.get();
         let rows = 0;
         let cols = 0;
-        if (term != null) {
-            let termNumLines = term._core.buffer.lines.length;
-            let termYPos = term._core.buffer.y;
-            if (term.rows < 25 && termNumLines > term.rows) {
-                term.resize(80, Math.min(25, termNumLines));
-            } else if (term.rows < 25 && termYPos >= term.rows) {
-                term.resize(80, Math.min(25, termYPos+1));
-            }
-            rows = term.rows;
-            cols = term.cols;
-        }
+        let renderVersion = this.termWrap.getRenderVersion();
+        this.termWrap.resizeToContent();
+        let termSize = this.termWrap.getSize();
         return (
             <div className="line line-cmd" id={"line-" + this.getId()}>
                 <div className={cn("avatar",{"num4": lineid.length == 4}, {"num5": lineid.length >= 5}, {"running": running})}>
@@ -215,10 +171,10 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
                     <div className="meta">
                         <div className="user">{line.userid}</div>
                         <div className="ts">{dayjs(line.ts).format("hh:mm:ss a")}</div>
-                        <div className="cmdid">{line.cmdid} <If condition={rows > 0}>({rows}x{cols})</If> v{version}</div>
+                        <div className="cmdid">{line.cmdid} <If condition={termSize.rows > 0}>({termSize.rows}x{termSize.cols})</If> v{renderVersion}</div>
                         <div className="cmdtext">&gt; {this.singleLineCmdText(line.cmdtext)}</div>
                     </div>
-                    <div className={cn("terminal-wrapper", {"focus": this.focus.get()})}>
+                    <div className={cn("terminal-wrapper", {"focus": this.termWrap.isFocused.get()})}>
                         <div className="terminal" id={this.getId()}></div>
                     </div>
                 </div>
@@ -277,7 +233,6 @@ class CmdInput extends React.Component<{line : LineType, sessionid : string}, {}
         let url = sprintf("http://localhost:8080/api/run-command");
         let data = {sessionid: this.props.sessionid, command: commandStr};
         fetch(url, {method: "post", body: JSON.stringify(data)}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
-            console.log("got success data", data);
             mobx.action(() => {
                 let lines = GlobalLines.get();
                 data.data.line.isnew = true;
@@ -333,131 +288,13 @@ class SessionView extends React.Component<{sessionid : string}, {}> {
     }
 }
 
-class WSControl {
-    wsConn : any;
-    openCallback : any;
-    open : boolean;
-    opening : boolean;
-    reconnectTimes : int;
-    
-    constructor(openCallback : any) {
-        this.reconnectTimes = 0;
-        this.open = false;
-        this.opening = false;
-        this.openCallback = openCallback;
-        setInterval(this.sendPing, 5000);
-        this.reconnect();
-    }
-
-    reconnect() {
-        if (this.open) {
-            this.wsConn.close();
-            return;
-        }
-        this.reconnectTimes++;
-        let timeoutArr = [0, 0, 2, 5, 10, 10, 30, 60];
-        let timeout = 60;
-        if (this.reconnectTimes < timeoutArr.length) {
-            timeout = timeoutArr[this.reconnectTimes];
-        }
-        if (timeout > 0 || true) {
-            console.log(sprintf("websocket reconnect(%d), sleep %ds", this.reconnectTimes, timeout));
-        }
-        setTimeout(() => {
-            console.log(sprintf("websocket reconnect(%d)", this.reconnectTimes));
-            this.opening = true;
-            this.wsConn = new WebSocket("ws://localhost:8081/ws");
-            this.wsConn.onopen = this.onopen;
-            this.wsConn.onmessage = this.onmessage;
-            this.wsConn.onerror = this.onerror;
-            this.wsConn.onclose = this.onclose;
-        }, timeout*1000);
-    }
-
-    @boundMethod
-    onerror(event : any) {
-        console.log("websocket error", event);
-        if (this.open || this.opening) {
-            this.open = false;
-            this.opening = false;
-            this.reconnect();
-        }
-    }
-
-    @boundMethod
-    onclose(event : any) {
-        console.log("websocket closed", event);
-        if (this.open || this.opening) {
-            this.open = false;
-            this.opening = false;
-            this.reconnect();
-        }
-    }
-
-    @boundMethod
-    onopen() {
-        console.log("websocket open");
-        this.open = true;
-        this.opening = false;
-        this.reconnectTimes = 0;
-        if (this.openCallback != null) {
-            this.openCallback();
-        }
-    }
-
-    @boundMethod
-    onmessage(event : any) {
-        let eventData = null;
-        if (event.data != null) {
-            eventData = JSON.parse(event.data);
-        }
-        if (eventData == null) {
-            return;
-        }
-        if (eventData.type == "ping") {
-            this.wsConn.send(JSON.stringify({type: "pong", stime: parseInt(Date.now()/1000)}));
-            return;
-        }
-        if (eventData.type == "pong") {
-            // nothing
-            return;
-        }
-        console.log("websocket message", event);
-    }
-
-    @boundMethod
-    sendPing() {
-        if (!this.open) {
-            return;
-        }
-        this.wsConn.send(JSON.stringify({type: "ping", stime: Date.now()}));
-    }
-
-    sendMessage(data : any){
-        if (!this.open) {
-            return;
-        }
-        this.wsConn.send(JSON.stringify(data));
-    }
-}
-
 @mobxReact.observer
 class Main extends React.Component<{sessionid : string}, {}> {
-    version : mobx.IObservableValue<int> = mobx.observable.box(false);
-    
     constructor(props : any) {
         super(props);
-        GlobalWS = new WSControl(this.updateVersion);
-        window.GlobalWS = GlobalWS;
     }
 
-    @boundMethod
-    updateVersion() {
-        mobx.action(() => this.version.set(this.version.get()+1))();
-    }
-    
     render() {
-        let version = this.version.get();
         return (
             <div className="main">
                 <h1 className="title scripthaus-logo-small">
