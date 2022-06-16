@@ -7,9 +7,11 @@ import * as dayjs from 'dayjs'
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import cn from "classnames"
 import {GlobalWS} from "./ws";
-import {TermWrap} from "./term";
+import {TermWrap, getOrCreateTermWrap} from "./term";
 
 type LineType = {
+    sessionid : string,
+    windowid : string,
     lineid : number,
     ts : number,
     userid : string,
@@ -20,9 +22,25 @@ type LineType = {
     isnew : boolean,
 };
 
+type SessionType = {
+    sessionid : string;
+    name : string;
+    windows : WindowType[];
+};
+
+type WindowType = {
+    windowid : string;
+    name : string;
+    lines : LineType[];
+};
+
+var GlobalUser = "sawka";
+var GSessionId = "47445c53-cfcf-4943-8339-2c04447f20a1";
+var GWindowId = "1";
+
 var GlobalLines = mobx.observable.box([
-    {lineid: 1, userid: "sawka", ts: 1654631122000, linetype: "text", text: "hello"},
-    {lineid: 2, userid: "sawka", ts: 1654631125000, linetype: "text", text: "again"},
+    {sessionid: GSessionId, windowid: GWindowId, lineid: 1, userid: "sawka", ts: 1654631122000, linetype: "text", text: "hello"},
+    {sessionid: GSessionId, windowid: GWindowId, lineid: 2, userid: "sawka", ts: 1654631125000, linetype: "text", text: "again"},
 ]);
 
 function fetchJsonData(resp : any, ctErr : boolean) : Promise<any> {
@@ -101,12 +119,12 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
 
     constructor(props) {
         super(props);
-        let {line, sessionid} = this.props;
-        this.termWrap = new TermWrap(sessionid, line.cmdid);
+        let {line} = this.props;
+        this.termWrap = new TermWrap(line.sessionid, line.cmdid, line.windowid, line.lineid);
     }
     
     componentDidMount() {
-        let {line, sessionid} = this.props;
+        let {line} = this.props;
         let termElem = document.getElementById(this.getId());
         this.termWrap.connectToElem(termElem);
         this.termWrap.reloadTerminal(0);
@@ -168,8 +186,8 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
                     <div className="meta">
                         <div className="user">{line.userid}</div>
                         <div className="ts">{dayjs(line.ts).format("hh:mm:ss a")}</div>
-                        <div className="cmdid">{line.cmdid} <If condition={termSize.rows > 0}>({termSize.rows}x{termSize.cols})</If> v{renderVersion}</div>
-                        <div className="cmdtext">&gt; {this.singleLineCmdText(line.cmdtext)}</div>
+                        <div className="metapart-mono">{line.cmdid} <If condition={termSize.rows > 0}>({termSize.rows}x{termSize.cols})</If> {this.termWrap.ptyPos} bytes, v{renderVersion}</div>
+                        <div className="metapart-mono cmdtext">&gt; {this.singleLineCmdText(line.cmdtext)}</div>
                     </div>
                     <div className={cn("terminal-wrapper", {"focus": this.termWrap.isFocused.get()})}>
                         <div className="terminal" id={this.getId()}></div>
@@ -198,7 +216,7 @@ class Line extends React.Component<{line : LineType}, {}> {
 }
 
 @mobxReact.observer
-class CmdInput extends React.Component<{line : LineType, sessionid : string}, {}> {
+class CmdInput extends React.Component<{sessionid : string, windowid : string}, {}> {
     curLine : mobx.IObservableValue<string> = mobx.observable("", {name: "command-line"});
 
     @mobx.action @boundMethod
@@ -223,12 +241,13 @@ class CmdInput extends React.Component<{line : LineType, sessionid : string}, {}
 
     @boundMethod
     doSubmitCmd() {
+        let {sessionid, windowid} = this.props;
         let commandStr = this.curLine.get();
         mobx.action(() => {
             this.curLine.set("");
         })();
         let url = sprintf("http://localhost:8080/api/run-command");
-        let data = {sessionid: this.props.sessionid, command: commandStr};
+        let data = {sessionid: sessionid, windowid: windowid, command: commandStr, userid: GlobalUser};
         fetch(url, {method: "post", body: JSON.stringify(data)}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
             mobx.action(() => {
                 let lines = GlobalLines.get();
@@ -269,36 +288,46 @@ class CmdInput extends React.Component<{line : LineType, sessionid : string}, {}
 }
 
 @mobxReact.observer
-class SessionView extends React.Component<{sessionid : string}, {}> {
+class SessionView extends React.Component<{session : SessionType}, {}> {
     render() {
-        let lines = GlobalLines.get();
+        let session = this.props.session;
+        let window = session.windows[0];
+        let lines = window.lines;
         return (
             <div className="session-view">
                 <div className="lines">
                     <For each="line" of={lines}>
-                        <Line key={line.lineid} line={line} sessionid={this.props.sessionid}/>
+                        <Line key={line.lineid} line={line}/>
                     </For>
                 </div>
-                <CmdInput sessionid={this.props.sessionid}/>
+                <CmdInput sessionid={session.sessionid} windowid={window.windowid}/>
             </div>
         );
     }
 }
 
 @mobxReact.observer
-class Main extends React.Component<{sessionid : string}, {}> {
+class Main extends React.Component<{}, {}> {
     constructor(props : any) {
         super(props);
     }
 
     render() {
+        let windowLines = GlobalLines.get();
+        let session : SessionType = {
+            sessionid: GSessionId,
+            name: "default",
+            windows: [
+                {windowid: GWindowId, name: "default", lines: windowLines},
+            ],
+        };
         return (
             <div className="main">
                 <h1 className="title scripthaus-logo-small">
                     <div className="title-cursor">&#9608;</div>
                     ScriptHaus
                 </h1>
-                <SessionView sessionid={this.props.sessionid}/>
+                <SessionView session={session}/>
             </div>
         );
     }

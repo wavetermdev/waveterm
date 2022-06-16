@@ -4,7 +4,22 @@ import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 import {GlobalWS} from "./ws";
 
+// 
 var TermMap : Record<string, TermWrap>;
+
+function getOrCreateTermWrap(sessionId : string, cmdId : string, windowId : string, lineid : number) : TermWrap {
+    let termKey = makeTermKey(sessionId, cmdId, windowId, lineid);
+    let termWrap = TermMap[termKey];
+    if (termWrap != null) {
+        return termWrap;
+    }
+    termWrap = new TermWrap(sessionId, cmdId, windowId, lineid);
+    return termWrap;
+}
+
+function makeTermKey(sessionId : string, cmdId : string, windowId : string, lineid : number) : string {
+    return sprintf("%s/%s/%s/%s", sessionId, cmdId, windowId, lineid);
+}
 
 function loadPtyOut(term : Terminal, sessionId : string, cmdId : string, delayMs : number, callback?: (number) => void) {
     term.clear()
@@ -23,32 +38,44 @@ class TermWrap {
     terminal : Terminal;
     sessionId : string;
     cmdId : string;
-    ptyPos : number;
-    runPos : number;
-    runData : string;
+    windowId : string;
+    lineid : number;
+    ptyPos : number = 0;
+    runPos : number = 0;
+    runData : string = "";
     renderVersion : mobx.IObservableValue<number> = mobx.observable.box(1, {name: "renderVersion"});
     isFocused : mobx.IObservableValue<boolean> = mobx.observable.box(false, {name: "focus"});
-    flexRows : boolean;
-    maxRows : number;
-    cols : number;
-    atRowMax : boolean;
+    flexRows : boolean = true;
+    maxRows : number = 25;
+    cols : number = 80;
+    atRowMax : boolean = false;
+    initialized : boolean = false;
 
-    constructor(sessionId : string, cmdId : string) {
+    constructor(sessionId : string, cmdId : string, windowId : string, lineid : number) {
         this.sessionId = sessionId;
         this.cmdId = cmdId;
-        this.ptyPos = 0;
-        this.runPos = 0;
-        this.runData = "";
-        this.maxRows = 25;
-        this.cols = 80;
-        this.flexRows = true;
-        this.atRowMax = false;
+        this.windowId = windowId;
+        this.lineid = lineid;
         this.terminal = new Terminal({rows: 2, cols: 80});
         TermMap[cmdId] = this;
     }
 
     destroy() {
         
+    }
+
+    // datalen is passed because data could be utf-8 and data.length is not the actual *byte* length
+    updatePtyData(pos : number, data : string, datalen : number) {
+        if (pos != this.ptyPos) {
+            throw new Error(sprintf("invalid pty-update, data-pos[%d] does not match term-pos[%d]", pos, this.ptyPos));
+        }
+        this.ptyPos += datalen;
+        term.write(data, () => {
+            mobx.action(() => {
+                this.resizeToContent();
+                this.incRenderVersion();
+            })();
+        });
     }
 
     resizeToContent() {
@@ -128,4 +155,4 @@ if (window.TermMap == null) {
     window.TermMap = TermMap;
 }
 
-export {TermWrap, TermMap};
+export {TermWrap, TermMap, makeTermKey, getOrCreateTermWrap};

@@ -6,12 +6,10 @@ import {Main} from "./main";
 import {GlobalWS} from "./ws";
 
 let VERSION = __SHVERSION__;
-let terminal = null;
-let sessionId = "47445c53-cfcf-4943-8339-2c04447f20a1";
 
 document.addEventListener("DOMContentLoaded", () => {
     GlobalWS.reconnect();
-    let reactElem = React.createElement(Main, {sessionid: sessionId}, null);
+    let reactElem = React.createElement(Main, null, null);
     let elem = document.getElementById("main");
     let root = createRoot(elem);
     root.render(reactElem);
