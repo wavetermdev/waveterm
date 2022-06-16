@@ -6,7 +6,7 @@ import {GlobalWS} from "./ws";
 
 var TermMap : Record<string, TermWrap>;
 
-function loadPtyOut(term : Terminal, sessionId : string, cmdId : string, delayMs : number, callback?: () => void) {
+function loadPtyOut(term : Terminal, sessionId : string, cmdId : string, delayMs : number, callback?: (number) => void) {
     term.clear()
     let url = sprintf("http://localhost:8080/api/ptyout?sessionid=%s&cmdid=%s", sessionId, cmdId);
     fetch(url).then((resp) => {
@@ -15,7 +15,7 @@ function loadPtyOut(term : Terminal, sessionId : string, cmdId : string, delayMs
         }
         return resp.text()
     }).then((resptext) => {
-        setTimeout(() => term.write(resptext, callback), delayMs);
+        setTimeout(() => term.write(resptext, () => { callback(resptext.length) }), delayMs);
     });
 }
 
@@ -28,26 +28,61 @@ class TermWrap {
     runData : string;
     renderVersion : mobx.IObservableValue<number> = mobx.observable.box(1, {name: "renderVersion"});
     isFocused : mobx.IObservableValue<boolean> = mobx.observable.box(false, {name: "focus"});
+    flexRows : boolean;
+    maxRows : number;
+    cols : number;
+    atRowMax : boolean;
 
     constructor(sessionId : string, cmdId : string) {
-        this.terminal = new Terminal({rows: 2, cols: 80});
         this.sessionId = sessionId;
         this.cmdId = cmdId;
         this.ptyPos = 0;
         this.runPos = 0;
         this.runData = "";
+        this.maxRows = 25;
+        this.cols = 80;
+        this.flexRows = true;
+        this.atRowMax = false;
+        this.terminal = new Terminal({rows: 2, cols: 80});
         TermMap[cmdId] = this;
     }
 
+    destroy() {
+        
+    }
+
     resizeToContent() {
+        if (this.atRowMax) {
+            return;
+        }
         let term = this.terminal;
         let termNumLines = term._core.buffer.lines.length;
         let termYPos = term._core.buffer.y;
-        if (term.rows < 25 && termNumLines > term.rows) {
-            term.resize(80, Math.min(25, termNumLines));
-        } else if (term.rows < 25 && termYPos >= term.rows) {
-            term.resize(80, Math.min(25, termYPos+1));
+        let newRows : number = term.rows;
+        if (term.rows < this.maxRows && termNumLines > term.rows) {
+            newRows = Math.min(this.maxRows, termNumLines);
+        } else if (term.rows < this.maxRows && termYPos >= term.rows) {
+            newRows = Math.min(this.maxRows, termYPos+1);
         }
+        if (newRows == this.maxRows) {
+            this.atRowMax = true;
+        }
+        if (newRows == term.rows) {
+            return;
+        }
+        term.resize(this.cols, newRows);
+    }
+
+    setSize(rows : number, cols : number, flexRows : boolean) {
+        this.flexRows = true;
+        this.maxRows = rows;
+        this.cols = cols;
+        if (!flexRows) {
+            term.resize(rows, cols);
+            setTimeout(() => incRenderVersion(), 10);
+            return;
+        }
+        resizeToContent();
     }
 
     getSize() : {rows : number, cols : number} {
@@ -69,7 +104,12 @@ class TermWrap {
     }
 
     reloadTerminal(delayMs : number) {
-        loadPtyOut(this.terminal, this.sessionId, this.cmdId, delayMs, this.incRenderVersion);
+        loadPtyOut(this.terminal, this.sessionId, this.cmdId, delayMs, (ptyoutLen) => {
+            mobx.action(() => {
+                this.incRenderVersion();
+                this.ptyPos = ptyoutLen;
+            })();
+        });
     }
 
     connectToElem(elem : Element) {

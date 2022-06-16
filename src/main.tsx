@@ -25,9 +25,6 @@ var GlobalLines = mobx.observable.box([
     {lineid: 2, userid: "sawka", ts: 1654631125000, linetype: "text", text: "again"},
 ]);
 
-var TermMap = {};
-window.TermMap = TermMap;
-
 function fetchJsonData(resp : any, ctErr : boolean) : Promise<any> {
     let contentType = resp.headers.get("Content-Type");
     if (contentType != null && contentType.startsWith("application/json")) {
