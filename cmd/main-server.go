@@ -15,6 +15,7 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/scripthaus-dev/sh2-runner/pkg/base"
+	"github.com/scripthaus-dev/sh2-runner/pkg/cmdtail"
 	"github.com/scripthaus-dev/sh2-runner/pkg/packet"
 	"github.com/scripthaus-dev/sh2-runner/pkg/shexec"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
@@ -32,8 +33,9 @@ const MainServerAddr = "localhost:8080"
 var GlobalRunnerProc *RunnerProc
 
 type WsConnType struct {
-	Id    string
-	Shell *wsshell.WSShell
+	Id     string
+	Shell  *wsshell.WSShell
+	Tailer *cmdtail.Tailer
 }
 
 type RunnerProc struct {
@@ -71,14 +73,13 @@ func HandleWs(w http.ResponseWriter, r *http.Request) {
 		wsConn.Shell.Conn.Close()
 	}()
 	fmt.Printf("WebSocket opened %s\n", shell.RemoteAddr)
-	for msg := range shell.ReadChan {
-		jmsg := map[string]interface{}{}
-		err = json.Unmarshal(msg, &jmsg)
+	for msgBytes := range shell.ReadChan {
+		pk, err := packet.ParseJsonPacket(msgBytes)
 		if err != nil {
 			fmt.Printf("error unmarshalling ws message: %v\n", err)
-			break
+			continue
 		}
-		fmt.Printf("got ws message: %v\n", jmsg)
+		fmt.Printf("got ws message: %v\n", pk)
 	}
 }
 
