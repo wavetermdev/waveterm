@@ -58,6 +58,10 @@ func MakeSessionWatcher() (*SessionWatcher, error) {
 	return rtn, nil
 }
 
+func (w *SessionWatcher) Close() error {
+	return w.Watcher.Close()
+}
+
 func (w *SessionWatcher) UnWatchSession(sessionId string) error {
 	_, err := uuid.Parse(sessionId)
 	if err != nil {

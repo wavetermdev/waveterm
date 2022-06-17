@@ -44,14 +44,14 @@ func (w CmdWatchEntry) getTailPos(reqId string) (TailPos, bool) {
 	return TailPos{}, false
 }
 
-func (w *CmdWatchEntry) updateTailPos(reqId string, pos TailPos) {
+func (w *CmdWatchEntry) updateTailPos(reqId string, newPos TailPos) {
 	for idx, pos := range w.Tails {
 		if pos.ReqId == reqId {
-			w.Tails[idx] = pos
+			w.Tails[idx] = newPos
 			return
 		}
 	}
-	w.Tails = append(w.Tails, pos)
+	w.Tails = append(w.Tails, newPos)
 }
 
 func (w *CmdWatchEntry) removeTailPos(reqId string) {
@@ -284,6 +284,10 @@ func (t *Tailer) Run() error {
 	return err
 }
 
+func (t *Tailer) Close() error {
+	return t.Watcher.Close()
+}
+
 func max(v1 int64, v2 int64) int64 {
 	if v1 > v2 {
 		return v1
@@ -304,9 +308,6 @@ func (entry *CmdWatchEntry) fillFilePos(scHomeDir string) {
 }
 
 func (t *Tailer) AddWatch(getPacket *packet.GetCmdPacketType) error {
-	if !getPacket.Tail {
-		return fmt.Errorf("cannot add a watch for non-tail packet")
-	}
 	_, err := uuid.Parse(getPacket.SessionId)
 	if err != nil {
 		return fmt.Errorf("getcmd, bad sessionid '%s': %w", getPacket.SessionId, err)
