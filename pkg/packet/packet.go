@@ -33,6 +33,7 @@ const CdPacketStr = "cd"
 const CdResponseStr = "cdresp"
 const CmdDataPacketStr = "cmddata"
 const RawPacketStr = "raw"
+const InputPacketStr = "input"
 
 var TypeStrToFactory map[string]reflect.Type
 
@@ -53,6 +54,7 @@ func init() {
 	TypeStrToFactory[CdResponseStr] = reflect.TypeOf(CdResponseType{})
 	TypeStrToFactory[CmdDataPacketStr] = reflect.TypeOf(CmdDataPacketType{})
 	TypeStrToFactory[RawPacketStr] = reflect.TypeOf(RawPacketType{})
+	TypeStrToFactory[InputPacketStr] = reflect.TypeOf(InputPacketType{})
 }
 
 func MakePacket(packetType string) (PacketType, error) {
@@ -99,6 +101,27 @@ func (*PingPacketType) GetType() string {
 
 func MakePingPacket() *PingPacketType {
 	return &PingPacketType{Type: PingPacketStr}
+}
+
+// InputData gets written to PTY directly
+// SigNum gets sent to process via a signal
+// WinSize, if set, will run TIOCSWINSZ to set size, and then send SIGWINCH
+type InputPacketType struct {
+	Type        string `json:"type"`
+	SessionId   string `json:"sessionid"`
+	CmdId       string `json:"cmdid"`
+	InputData   string `json:"inputdata"`
+	SigNum      int    `json:"signum,omitempty"`
+	WinSizeRows int    `json:"winsizerows"`
+	WinSizeCols int    `json:"winsizecols"`
+}
+
+func (*InputPacketType) GetType() string {
+	return InputPacketStr
+}
+
+func MakeInputPacket() *InputPacketType {
+	return &InputPacketType{Type: InputPacketStr}
 }
 
 type UntailCmdPacketType struct {
