@@ -55,7 +55,7 @@ class LineCmd extends React.Component<{line : LineType, session : Session}, {}> 
     componentDidMount() {
         let {session, line} = this.props;
         let termElem = document.getElementById(this.getId());
-        let termWrap = session.getTermWrap(line);
+        let termWrap = session.getTermWrapByLine(line);
         termWrap.connectToElem(termElem);
         if (line.isnew) {
             setTimeout(() => {
@@ -65,9 +65,6 @@ class LineCmd extends React.Component<{line : LineType, session : Session}, {}> 
                     line.isnew = false;
                 })();
             }, 100);
-            setTimeout(() => {
-                termWrap.reloadTerminal(0);
-            }, 1000);
         }
     }
 
@@ -79,8 +76,8 @@ class LineCmd extends React.Component<{line : LineType, session : Session}, {}> 
     @boundMethod
     doRefresh() {
         let {session, line} = this.props;
-        let termWrap = session.getTermWrap(line);
-        termWrap.reloadTerminal(500);
+        let termWrap = session.getTermWrapByLine(line);
+        termWrap.reloadTerminal(line.sessionid, line.cmdid, 500);
     }
 
     @boundMethod
@@ -105,7 +102,7 @@ class LineCmd extends React.Component<{line : LineType, session : Session}, {}> 
         let running = false;
         let rows = 0;
         let cols = 0;
-        let termWrap = session.getTermWrap(line);
+        let termWrap = session.getTermWrapByLine(line);
         let renderVersion = termWrap.getRenderVersion();
         termWrap.resizeToContent();
         let termSize = termWrap.getSize();

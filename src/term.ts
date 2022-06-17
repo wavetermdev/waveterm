@@ -3,10 +3,7 @@ import {Terminal} from 'xterm';
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 import {GlobalWS} from "./ws";
-
-function makeTermKey(sessionId : string, cmdId : string, windowId : string, lineid : number) : string {
-    return sprintf("%s/%s/%s/%s", sessionId, cmdId, windowId, lineid);
-}
+import {v4 as uuidv4} from "uuid";
 
 function loadPtyOut(term : Terminal, sessionId : string, cmdId : string, delayMs : number, callback?: (number) => void) {
     term.clear()
@@ -23,10 +20,7 @@ function loadPtyOut(term : Terminal, sessionId : string, cmdId : string, delayMs
 
 class TermWrap {
     terminal : Terminal;
-    sessionId : string;
-    cmdId : string;
-    windowId : string;
-    lineid : number;
+    termId : string;
     ptyPos : number = 0;
     runPos : number = 0;
     runData : string = "";
@@ -38,16 +32,26 @@ class TermWrap {
     atRowMax : boolean = false;
     initialized : boolean = false;
 
-    constructor(sessionId : string, cmdId : string, windowId : string, lineid : number) {
-        this.sessionId = sessionId;
-        this.cmdId = cmdId;
-        this.windowId = windowId;
-        this.lineid = lineid;
+    constructor() {
+        this.termId = uuidv4();
         this.terminal = new Terminal({rows: 2, cols: 80});
     }
 
     destroy() {
         
+    }
+
+    startPtyTail(sessionId : string, cmdId : string) {
+        let getCmdPacket = {
+            type: "getcmd",
+            reqid: this.termId,
+            sessionid: sessionId,
+            cmdid: cmdId,
+            ptypos: this.ptyPos,
+        };
+        GlobalWS.registerAndSendGetCmd(getCmdPacket, (dataPacket) => {
+            console.log("data-packet", dataPacket);
+        });
     }
 
     // datalen is passed because data could be utf-8 and data.length is not the actual *byte* length
@@ -116,8 +120,8 @@ class TermWrap {
         mobx.action(() => this.renderVersion.set(this.renderVersion.get() + 1))();
     }
 
-    reloadTerminal(delayMs : number) {
-        loadPtyOut(this.terminal, this.sessionId, this.cmdId, delayMs, (ptyoutLen) => {
+    reloadTerminal(sessionId : string, cmdId : string, delayMs : number) {
+        loadPtyOut(this.terminal, sessionId, cmdId, delayMs, (ptyoutLen) => {
             mobx.action(() => {
                 this.incRenderVersion();
                 this.ptyPos = ptyoutLen;
@@ -136,4 +140,4 @@ class TermWrap {
     }
 }
 
-export {TermWrap, makeTermKey};
+export {TermWrap};

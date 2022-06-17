@@ -22,6 +22,10 @@ class WSControl {
         this.open.set(val);
     }
 
+    registerAndSendGetCmd(pk : any) {
+        this.pushMessage(pk)
+    }
+
     reconnect() {
         if (this.open.get()) {
             this.wsConn.close();
@@ -72,8 +76,8 @@ class WSControl {
         console.log("websocket open");
         this.setOpen(true);
         this.opening = false;
-        this.reconnectTimes = 0;
         this.runMsgQueue();
+        // reconnectTimes is reset in onmessage:hello
     }
 
     runMsgQueue() {
@@ -105,6 +109,10 @@ class WSControl {
         }
         if (eventData.type == "pong") {
             // nothing
+            return;
+        }
+        if (eventData.type == "hello") {
+            this.reconnectTimes = 0;
             return;
         }
         console.log("websocket message", event);

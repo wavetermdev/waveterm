@@ -4,8 +4,11 @@ import {sprintf} from "sprintf-js";
 import {Terminal} from 'xterm';
 import {Main} from "./main";
 import {GlobalWS} from "./ws";
+import {v4 as uuidv4} from "uuid";
 
 let VERSION = __SHVERSION__;
+
+window.ScriptHausClientId = uuidv4();
 
 document.addEventListener("DOMContentLoaded", () => {
     GlobalWS.reconnect();

@@ -2,8 +2,8 @@ import * as mobx from "mobx";
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 import {handleJsonFetchResponse} from "./util";
-import {GlobalWS} from "./ws";
-import {TermWrap, makeTermKey} from "./term";
+import {TermWrap} from "./term";
+import {v4 as uuidv4} from "uuid";
 
 var GlobalUser = "sawka";
 var GSessionId = "47445c53-cfcf-4943-8339-2c04447f20a1";
@@ -13,6 +13,10 @@ var GlobalLines = mobx.observable.box([
     {sessionid: GSessionId, windowid: GWindowId, lineid: 1, userid: "sawka", ts: 1654631122000, linetype: "text", text: "hello"},
     {sessionid: GSessionId, windowid: GWindowId, lineid: 2, userid: "sawka", ts: 1654631125000, linetype: "text", text: "again"},
 ]);
+
+function makeTermKey(sessionId : string, cmdId : string, windowId : string, lineid : number) : string {
+    return sprintf("%s/%s/%s/%s", sessionId, cmdId, windowId, lineid);
+}
 
 type LineType = {
     sessionid : string,
@@ -35,15 +39,19 @@ type WindowType = {
 };
 
 class Session {
-    sessionid : string;
+    sessionId : string;
     name : string;
     windows : WindowType[];
     activeWindowId : string;
     termMap : Record<string, TermWrap> = {};
+    termMapById : Record<string, TermWrap> = {};
+
+    constructor() {
+    }
 
     submitCommand(windowid : string, commandStr : string) {
         let url = sprintf("http://localhost:8080/api/run-command");
-        let data = {sessionid: this.sessionid, windowid: windowid, command: commandStr, userid: GlobalUser};
+        let data = {sessionid: this.sessionId, windowid: windowid, command: commandStr, userid: GlobalUser};
         fetch(url, {method: "post", body: JSON.stringify(data)}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
             mobx.action(() => {
                 let lines = GlobalLines.get();
@@ -55,17 +63,27 @@ class Session {
         });
     }
 
-    getTermWrap(line : LineType) {
+    getTermWrapByLine(line : LineType) : TermWrap {
         let termKey = makeTermKey(line.sessionid, line.cmdid, line.windowid, line.lineid);
         let termWrap = this.termMap[termKey];
         if (termWrap != null) {
             return termWrap;
         }
-        termWrap = new TermWrap(line.sessionid, line.cmdid, line.windowid, line.lineid);
+        termWrap = new TermWrap();
         this.termMap[termKey] = termWrap;
+        this.termMapById[termWrap.termId] = termWrap;
         termWrap.initialized = true;
         termWrap.reloadTerminal(0);
+        termWrap.startPtyTail(line.sessionid, line.cmdid);
         return termWrap;
+    }
+
+    getTermById(termId : string) : TermWrap {
+        return this.termMapById[termId];
+    }
+
+    recvCmdData(termWrap : TermWrap, pk : any) {
+        console.log("cmddata", pk);
     }
 
     getActiveWindow() : WindowType {
@@ -84,7 +102,7 @@ class Session {
 function getDefaultSession() : Session {
     let windowLines = GlobalLines.get();
     let session = new Session();
-    session.sessionid = GSessionId;
+    session.sessionId = GSessionId;
     session.name = "default";
     session.activeWindowId = GWindowId;
     session.windows = [
