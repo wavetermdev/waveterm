@@ -48,9 +48,10 @@ class TermWrap {
             sessionid: sessionId,
             cmdid: cmdId,
             ptypos: this.ptyPos,
+            tail: true,
         };
         GlobalWS.registerAndSendGetCmd(getCmdPacket, (dataPacket) => {
-            console.log("data-packet", dataPacket);
+            this.updatePtyData(this.ptyPos, dataPacket.ptydata, dataPacket.ptydatalen);
         });
     }
 
@@ -60,7 +61,7 @@ class TermWrap {
             throw new Error(sprintf("invalid pty-update, data-pos[%d] does not match term-pos[%d]", pos, this.ptyPos));
         }
         this.ptyPos += datalen;
-        term.write(data, () => {
+        this.terminal.write(data, () => {
             mobx.action(() => {
                 this.resizeToContent();
                 this.incRenderVersion();

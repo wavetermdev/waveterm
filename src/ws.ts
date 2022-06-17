@@ -5,15 +5,13 @@ import {boundMethod} from "autobind-decorator";
 class WSControl {
     wsConn : any;
     open : mobx.IObservableValue<boolean>;
-    opening : boolean;
-    reconnectTimes : int;
-    msgQueue : any[];
+    opening : boolean = false;
+    reconnectTimes : int = 0;
+    msgQueue : any[] = [];
+    reqMap : Record<string, (dataPacket : any) => void> = {};
     
     constructor() {
-        this.reconnectTimes = 0;
         this.open = mobx.observable.box(false, {name: "WSOpen"});
-        this.opening = false;
-        this.msgQueue = [];
         setInterval(this.sendPing, 5000);
     }
 
@@ -22,7 +20,10 @@ class WSControl {
         this.open.set(val);
     }
 
-    registerAndSendGetCmd(pk : any) {
+    registerAndSendGetCmd(pk : any, callback : (dataPacket : any) => void) {
+        if (pk.reqid) {
+            this.reqMap[pk.reqid] = callback;
+        }
         this.pushMessage(pk)
     }
 
@@ -43,7 +44,7 @@ class WSControl {
         setTimeout(() => {
             console.log(sprintf("websocket reconnect(%d)", this.reconnectTimes));
             this.opening = true;
-            this.wsConn = new WebSocket("ws://localhost:8081/ws");
+            this.wsConn = new WebSocket("ws://localhost:8081/ws?clientid=" + window.ScriptHausClientId);
             this.wsConn.onopen = this.onopen;
             this.wsConn.onmessage = this.onmessage;
             this.wsConn.onerror = this.onerror;
@@ -115,7 +116,16 @@ class WSControl {
             this.reconnectTimes = 0;
             return;
         }
-        console.log("websocket message", event);
+        if (eventData.type == "cmddata") {
+            let cb = this.reqMap[eventData.reqid];
+            if (!cb) {
+                console.log(sprintf("websocket cmddata req=%s -- no callback", eventData.reqid));
+                return;
+            }
+            cb(eventData);
+            return;
+        }
+        console.log("websocket message", eventData);
     }
 
     @boundMethod
