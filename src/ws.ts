@@ -33,6 +33,10 @@ class WSControl {
             return;
         }
         this.reconnectTimes++;
+        if (this.reconnectTimes > 20) {
+            console.log("websocket cannot connect, giving up");
+            return;
+        }
         let timeoutArr = [0, 0, 2, 5, 10, 10, 30, 60];
         let timeout = 60;
         if (this.reconnectTimes < timeoutArr.length) {

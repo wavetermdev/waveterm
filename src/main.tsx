@@ -77,7 +77,7 @@ class LineCmd extends React.Component<{line : LineType, session : Session}, {}> 
     doRefresh() {
         let {session, line} = this.props;
         let termWrap = session.getTermWrapByLine(line);
-        termWrap.reloadTerminal(line.sessionid, line.cmdid, 500);
+        termWrap.reloadTerminal(true, 500);
     }
 
     @boundMethod

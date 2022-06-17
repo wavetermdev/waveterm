@@ -21,6 +21,8 @@ function loadPtyOut(term : Terminal, sessionId : string, cmdId : string, delayMs
 class TermWrap {
     terminal : Terminal;
     termId : string;
+    sessionId : string;
+    cmdId : string;
     ptyPos : number = 0;
     runPos : number = 0;
     runData : string = "";
@@ -32,8 +34,10 @@ class TermWrap {
     atRowMax : boolean = false;
     initialized : boolean = false;
 
-    constructor() {
+    constructor(sessionId : string, cmdId : string) {
         this.termId = uuidv4();
+        this.sessionId = sessionId;
+        this.cmdId = cmdId;
         this.terminal = new Terminal({rows: 2, cols: 80});
     }
 
@@ -41,12 +45,23 @@ class TermWrap {
         
     }
 
-    startPtyTail(sessionId : string, cmdId : string) {
+    @boundMethod
+    onKeyHandler(event : any) {
+        let inputPacket = {
+            type: "input",
+            sessionid: this.sessionId,
+            cmdid: this.cmdId,
+            inputdata: event.key,
+        };
+        GlobalWS.pushMessage(inputPacket);
+    }
+
+    startPtyTail() {
         let getCmdPacket = {
             type: "getcmd",
             reqid: this.termId,
-            sessionid: sessionId,
-            cmdid: cmdId,
+            sessionid: this.sessionId,
+            cmdid: this.cmdId,
             ptypos: this.ptyPos,
             tail: true,
         };
@@ -121,12 +136,15 @@ class TermWrap {
         mobx.action(() => this.renderVersion.set(this.renderVersion.get() + 1))();
     }
 
-    reloadTerminal(sessionId : string, cmdId : string, delayMs : number) {
-        loadPtyOut(this.terminal, sessionId, cmdId, delayMs, (ptyoutLen) => {
+    reloadTerminal(startTail : boolean, delayMs : number) {
+        loadPtyOut(this.terminal, this.sessionId, this.cmdId, delayMs, (ptyoutLen) => {
             mobx.action(() => {
                 this.incRenderVersion();
                 this.ptyPos = ptyoutLen;
             })();
+            if (startTail) {
+                this.startPtyTail();
+            }
         });
     }
 
@@ -138,6 +156,7 @@ class TermWrap {
         this.terminal.textarea.addEventListener("blur", () => {
             this.setFocus(false);
         });
+        this.terminal.onKey(this.onKeyHandler);
     }
 }
 

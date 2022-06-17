@@ -69,12 +69,11 @@ class Session {
         if (termWrap != null) {
             return termWrap;
         }
-        termWrap = new TermWrap();
+        termWrap = new TermWrap(line.sessionid, line.cmdid);
         this.termMap[termKey] = termWrap;
         this.termMapById[termWrap.termId] = termWrap;
         termWrap.initialized = true;
-        termWrap.reloadTerminal(0);
-        termWrap.startPtyTail(line.sessionid, line.cmdid);
+        termWrap.reloadTerminal(true, 0);
         return termWrap;
     }
 
