@@ -15,6 +15,7 @@ import (
 const readWaitTimeout = 15 * time.Second
 const writeWaitTimeout = 10 * time.Second
 const pingPeriodTickTime = 10 * time.Second
+const initialPingTime = 1 * time.Second
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:   4 * 1024,
@@ -63,13 +64,25 @@ func (ws *WSShell) WritePing() error {
 	return nil
 }
 
+func (ws *WSShell) WriteJson(val interface{}) error {
+	barr, err := json.Marshal(val)
+	if err != nil {
+		return err
+	}
+	ws.WriteChan <- barr
+	return nil
+}
+
 func (ws *WSShell) WritePump() {
 	ticker := time.NewTicker(pingPeriodTickTime)
 	defer func() {
 		ticker.Stop()
 		ws.Conn.Close()
 	}()
-	ws.WritePing()
+	go func() {
+		time.Sleep(initialPingTime)
+		ws.WritePing()
+	}()
 	for {
 		select {
 		case <-ticker.C:
@@ -79,7 +92,10 @@ func (ws *WSShell) WritePump() {
 				return
 			}
 
-		case msgBytes := <-ws.WriteChan:
+		case msgBytes, ok := <-ws.WriteChan:
+			if !ok {
+				return
+			}
 			_ = ws.Conn.SetWriteDeadline(time.Now().Add(writeWaitTimeout)) // no error
 			err := ws.Conn.WriteMessage(websocket.TextMessage, msgBytes)
 			if err != nil {
@@ -124,7 +140,16 @@ func (ws *WSShell) ReadPump() {
 		}
 		ws.ReadChan <- message
 	}
+}
 
+func (ws *WSShell) IsClosed() bool {
+	select {
+	case <-ws.CloseChan:
+		return true
+
+	default:
+		return false
+	}
 }
 
 func StartWS(w http.ResponseWriter, r *http.Request) (*WSShell, error) {
