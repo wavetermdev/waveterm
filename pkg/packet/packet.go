@@ -27,6 +27,7 @@ const CmdStartPacketStr = "cmdstart"
 const CmdDonePacketStr = "cmddone"
 const ListCmdPacketStr = "lscmd"
 const GetCmdPacketStr = "getcmd"
+const UntailCmdPacketStr = "untailcmd"
 const RunnerInitPacketStr = "runnerinit"
 const CdPacketStr = "cd"
 const CdResponseStr = "cdresp"
@@ -46,6 +47,7 @@ func init() {
 	TypeStrToFactory[CmdDonePacketStr] = reflect.TypeOf(CmdDonePacketType{})
 	TypeStrToFactory[ListCmdPacketStr] = reflect.TypeOf(ListCmdPacketType{})
 	TypeStrToFactory[GetCmdPacketStr] = reflect.TypeOf(GetCmdPacketType{})
+	TypeStrToFactory[UntailCmdPacketStr] = reflect.TypeOf(UntailCmdPacketType{})
 	TypeStrToFactory[RunnerInitPacketStr] = reflect.TypeOf(RunnerInitPacketType{})
 	TypeStrToFactory[CdPacketStr] = reflect.TypeOf(CdPacketType{})
 	TypeStrToFactory[CdResponseStr] = reflect.TypeOf(CdResponseType{})
@@ -63,17 +65,20 @@ func MakePacket(packetType string) (PacketType, error) {
 }
 
 type CmdDataPacketType struct {
-	Type      string `json:"type"`
-	SessionId string `json:"sessionid"`
-	CmdId     string `json:"cmdid"`
-	PtyPos    int64  `json:"ptypos"`
-	PtyLen    int64  `json:"ptylen"`
-	RunPos    int64  `json:"runpos"`
-	RunLen    int64  `json:"runlen"`
-	PtyData   string `json:"ptydata"`
-	RunData   string `json:"rundata"`
-	Error     string `json:"error"`
-	NotFound  bool   `json:"notfound,omitempty"`
+	Type       string `json:"type"`
+	ReqId      string `json:"reqid"`
+	SessionId  string `json:"sessionid"`
+	CmdId      string `json:"cmdid"`
+	PtyPos     int64  `json:"ptypos"`
+	PtyLen     int64  `json:"ptylen"`
+	RunPos     int64  `json:"runpos"`
+	RunLen     int64  `json:"runlen"`
+	PtyData    string `json:"ptydata"`
+	PtyDataLen int    `json:"ptydatalen"`
+	RunData    string `json:"rundata"`
+	RunDataLen int    `json:"rundatalen"`
+	Error      string `json:"error"`
+	NotFound   bool   `json:"notfound,omitempty"`
 }
 
 func (*CmdDataPacketType) GetType() string {
@@ -96,8 +101,24 @@ func MakePingPacket() *PingPacketType {
 	return &PingPacketType{Type: PingPacketStr}
 }
 
+type UntailCmdPacketType struct {
+	Type      string `json:"type"`
+	ReqId     string `json:"reqid"`
+	SessionId string `json:"sessionid"`
+	CmdId     string `json:"cmdid"`
+}
+
+func (*UntailCmdPacketType) GetType() string {
+	return UntailCmdPacketStr
+}
+
+func MakeUntailCmdPacket() *UntailCmdPacketType {
+	return &UntailCmdPacketType{Type: UntailCmdPacketStr}
+}
+
 type GetCmdPacketType struct {
 	Type      string `json:"type"`
+	ReqId     string `json:"reqid"`
 	SessionId string `json:"sessionid"`
 	CmdId     string `json:"cmdid"`
 	PtyPos    int64  `json:"ptypos"`
