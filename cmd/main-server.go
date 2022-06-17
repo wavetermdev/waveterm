@@ -34,6 +34,8 @@ const MainServerAddr = "localhost:8080"
 const WSStateReconnectTime = 30 * time.Second
 const WSStatePacketChSize = 20
 
+const MaxInputDataSize = 1000
+
 var GlobalRunnerProc *RunnerProc
 var GlobalLock = &sync.Mutex{}
 var WSStateMap = make(map[string]*WSState) // clientid -> WsState
@@ -205,12 +207,65 @@ func HandleWs(w http.ResponseWriter, r *http.Request) {
 		if pk.GetType() == "getcmd" {
 			err = state.Tailer.AddWatch(pk.(*packet.GetCmdPacketType))
 			if err != nil {
-				fmt.Printf("error adding watch to tailer: %v\n", err)
+				fmt.Printf("[error] adding watch to tailer: %v\n", err)
 			}
+			continue
+		}
+		if pk.GetType() == "input" {
+			go func() {
+				err = sendCmdInput(pk.(*packet.InputPacketType))
+				if err != nil {
+					fmt.Printf("[error] sending command input: %v\n", err)
+				}
+			}()
 			continue
 		}
 		fmt.Printf("got ws bad message: %v\n", pk.GetType())
 	}
+}
+
+// todo: sync multiple writes to the same fifoName into a single go-routine and do liveness checking on fifo
+// if this returns an error, likely the fifo is dead and the cmd should be marked as 'done'
+func writeToFifo(fifoName string, data []byte) error {
+	rwfd, err := os.OpenFile(fifoName, os.O_RDWR, 0600)
+	if err != nil {
+		return err
+	}
+	defer rwfd.Close()
+	fifoWriter, err := os.OpenFile(fifoName, os.O_WRONLY, 0600) // blocking open (open won't block because of rwfd)
+	if err != nil {
+		return err
+	}
+	defer fifoWriter.Close()
+	// this *could* block if the fifo buffer is full
+	// unlikely because if the reader is dead, and len(data) < pipe size, then the buffer will be empty and will clear after rwfd is closed
+	_, err = fifoWriter.Write(data)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func sendCmdInput(pk *packet.InputPacketType) error {
+	var err error
+	if _, err = uuid.Parse(pk.SessionId); err != nil {
+		return fmt.Errorf("invalid sessionid '%s': %w", pk.SessionId, err)
+	}
+	if _, err = uuid.Parse(pk.CmdId); err != nil {
+		return fmt.Errorf("invalid cmdid '%s': %w", pk.CmdId, err)
+	}
+	if len(pk.InputData) > MaxInputDataSize {
+		return fmt.Errorf("input data size too large, len=%d (max=%d)", len(pk.InputData), MaxInputDataSize)
+	}
+	fileNames, err := base.GetCommandFileNames(pk.SessionId, pk.CmdId)
+	if err != nil {
+		return err
+	}
+	err = writeToFifo(fileNames.StdinFifo, []byte(pk.InputData))
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func GetPtyOutFile(sessionId string, cmdId string) string {
