@@ -7,10 +7,8 @@
 package shexec
 
 import (
-	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"os/exec"
 	"strings"
@@ -163,8 +161,12 @@ func RunCommand(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecT
 	if err != nil {
 		return nil, err
 	}
-	if _, err = os.Stat(fileNames.PtyOutFile); !errors.Is(err, fs.ErrNotExist) {
-		return nil, fmt.Errorf("cmdid '%s' was already used", pk.CmdId)
+	ptyOutInfo, err := os.Stat(fileNames.PtyOutFile)
+	if err == nil { // non-nil error will be caught by regular OpenFile below
+		// must have size 0
+		if ptyOutInfo.Size() != 0 {
+			return nil, fmt.Errorf("cmdid '%s' was already used (ptyout len=%d)", pk.CmdId, ptyOutInfo.Size())
+		}
 	}
 	cmdPty, cmdTty, err := pty.Open()
 	if err != nil {

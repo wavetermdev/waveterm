@@ -101,6 +101,13 @@ func doMainRun(pk *packet.RunPacketType, sender *packet.PacketSender) {
 		sender.SendPacket(packet.MakeIdErrorPacket(pk.CmdId, fmt.Sprintf("cannot pipe stdin to command: %v", err)))
 		return
 	}
+	// touch ptyout file (should exist for tailer to work correctly)
+	ptyOutFd, err := os.OpenFile(fileNames.PtyOutFile, os.O_CREATE|os.O_TRUNC|os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		sender.SendPacket(packet.MakeIdErrorPacket(pk.CmdId, fmt.Sprintf("cannot open pty out file '%s': %v", fileNames.PtyOutFile, err)))
+		return
+	}
+	ptyOutFd.Close() // just opened to create the file, can close right after
 	runnerOutFd, err := os.OpenFile(fileNames.RunnerOutFile, os.O_CREATE|os.O_TRUNC|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		sender.SendPacket(packet.MakeIdErrorPacket(pk.CmdId, fmt.Sprintf("cannot open runner out file '%s': %v", fileNames.RunnerOutFile, err)))
@@ -199,6 +206,7 @@ func main() {
 			return
 		}
 		doSingle(cmdId.String())
+		time.Sleep(100 * time.Millisecond)
 		return
 	} else {
 		doMain()

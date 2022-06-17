@@ -10,15 +10,19 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"sync"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/google/uuid"
 	"github.com/scripthaus-dev/sh2-runner/pkg/base"
 	"github.com/scripthaus-dev/sh2-runner/pkg/packet"
 )
 
 const MaxDataBytes = 4096
+const FileTypePty = "ptyout"
+const FileTypeRun = "runout"
 
 type TailPos struct {
 	ReqId      string
@@ -78,7 +82,7 @@ type Tailer struct {
 	Lock      *sync.Mutex
 	WatchList map[CmdKey]CmdWatchEntry
 	ScHomeDir string
-	Watcher   *SessionWatcher
+	Watcher   *fsnotify.Watcher
 	SendCh    chan packet.PacketType
 }
 
@@ -89,6 +93,24 @@ func (t *Tailer) updateTailPos_nolock(cmdKey CmdKey, reqId string, pos TailPos) 
 	}
 	entry.updateTailPos(reqId, pos)
 	t.WatchList[cmdKey] = entry
+}
+
+func (t *Tailer) removeTailPos_nolock(cmdKey CmdKey, reqId string) {
+	entry, found := t.WatchList[cmdKey]
+	if !found {
+		return
+	}
+	entry.removeTailPos(reqId)
+	if len(entry.Tails) > 0 {
+		t.WatchList[cmdKey] = entry
+		return
+	}
+
+	// delete from watchlist, remove watches
+	fileNames := base.MakeCommandFileNamesWithHome(t.ScHomeDir, cmdKey.SessionId, cmdKey.CmdId)
+	delete(t.WatchList, cmdKey)
+	t.Watcher.Remove(fileNames.PtyOutFile)
+	t.Watcher.Remove(fileNames.RunnerOutFile)
 }
 
 func (t *Tailer) updateEntrySizes_nolock(cmdKey CmdKey, ptyLen int64, runLen int64) {
@@ -124,7 +146,7 @@ func MakeTailer(sendCh chan packet.PacketType) (*Tailer, error) {
 		ScHomeDir: scHomeDir,
 		SendCh:    sendCh,
 	}
-	rtn.Watcher, err = MakeSessionWatcher()
+	rtn.Watcher, err = fsnotify.NewWatcher()
 	if err != nil {
 		return nil, err
 	}
@@ -213,17 +235,12 @@ func (t *Tailer) runSingleDataTransfer(key CmdKey, reqId string) (*packet.CmdDat
 func (t *Tailer) checkRemoveNoFollow(cmdKey CmdKey, reqId string) {
 	t.Lock.Lock()
 	defer t.Lock.Unlock()
-	entry, pos, foundPos := t.getEntryAndPos_nolock(cmdKey, reqId)
+	_, pos, foundPos := t.getEntryAndPos_nolock(cmdKey, reqId)
 	if !foundPos {
 		return
 	}
 	if !pos.Follow {
-		entry.removeTailPos(reqId)
-		if len(entry.Tails) == 0 {
-			delete(t.WatchList, cmdKey)
-		} else {
-			t.WatchList[cmdKey] = entry
-		}
+		t.removeTailPos_nolock(cmdKey, reqId)
 	}
 }
 
@@ -241,9 +258,12 @@ func (t *Tailer) RunDataTransfer(key CmdKey, reqId string) {
 	}
 }
 
-// should already hold t.Lock
 func (t *Tailer) tryStartRun_nolock(entry CmdWatchEntry, pos TailPos) {
-	if pos.Running || pos.IsCurrent(entry) {
+	if pos.Running {
+		return
+	}
+	if pos.IsCurrent(entry) {
+
 		return
 	}
 	pos.Running = true
@@ -251,22 +271,30 @@ func (t *Tailer) tryStartRun_nolock(entry CmdWatchEntry, pos TailPos) {
 	go t.RunDataTransfer(entry.CmdKey, pos.ReqId)
 }
 
-func (t *Tailer) updateFile(event FileUpdateEvent) {
-	if event.Err != nil {
-		t.SendCh <- packet.FmtMessagePacket("error in FileUpdateEvent %s/%s: %v", event.SessionId, event.CmdId, event.Err)
+var updateFileRe = regexp.MustCompile("/([a-z0-9-]+)/([a-z0-9-]+)\\.(ptyout|runout)$")
+
+func (t *Tailer) updateFile(relFileName string) {
+	m := updateFileRe.FindStringSubmatch(relFileName)
+	if m == nil {
 		return
 	}
-	cmdKey := CmdKey{SessionId: event.SessionId, CmdId: event.CmdId}
+	finfo, err := os.Stat(relFileName)
+	if err != nil {
+		t.SendCh <- packet.FmtMessagePacket("error trying to stat file '%s': %v", relFileName, err)
+		return
+	}
+	cmdKey := CmdKey{SessionId: m[1], CmdId: m[2]}
 	t.Lock.Lock()
 	defer t.Lock.Unlock()
 	entry, foundEntry := t.WatchList[cmdKey]
 	if !foundEntry {
 		return
 	}
-	if event.FileType == FileTypePty {
-		entry.FilePtyLen = event.Size
-	} else if event.FileType == FileTypeRun {
-		entry.FileRunLen = event.Size
+	fileType := m[3]
+	if fileType == FileTypePty {
+		entry.FilePtyLen = finfo.Size()
+	} else if fileType == FileTypeRun {
+		entry.FileRunLen = finfo.Size()
 	}
 	t.WatchList[cmdKey] = entry
 	for _, pos := range entry.Tails {
@@ -274,14 +302,26 @@ func (t *Tailer) updateFile(event FileUpdateEvent) {
 	}
 }
 
-func (t *Tailer) Run() error {
-	go func() {
-		for event := range t.Watcher.EventCh {
-			t.updateFile(event)
+func (t *Tailer) Run() {
+	for {
+		select {
+		case event, ok := <-t.Watcher.Events:
+			if !ok {
+				return
+			}
+			if event.Op&fsnotify.Write == fsnotify.Write {
+				t.updateFile(event.Name)
+			}
+
+		case err, ok := <-t.Watcher.Errors:
+			if !ok {
+				return
+			}
+			// what to do with this error?  just send a message
+			t.SendCh <- packet.FmtMessagePacket("error in tailer: %v", err)
 		}
-	}()
-	err := t.Watcher.Run(nil)
-	return err
+	}
+	return
 }
 
 func (t *Tailer) Close() error {
@@ -307,6 +347,13 @@ func (entry *CmdWatchEntry) fillFilePos(scHomeDir string) {
 	}
 }
 
+func (t *Tailer) RemoveWatch(pk *packet.UntailCmdPacketType) {
+	t.Lock.Lock()
+	defer t.Lock.Unlock()
+	key := CmdKey{pk.SessionId, pk.CmdId}
+	t.removeTailPos_nolock(key, pk.ReqId)
+}
+
 func (t *Tailer) AddWatch(getPacket *packet.GetCmdPacketType) error {
 	_, err := uuid.Parse(getPacket.SessionId)
 	if err != nil {
@@ -319,19 +366,34 @@ func (t *Tailer) AddWatch(getPacket *packet.GetCmdPacketType) error {
 	if getPacket.ReqId == "" {
 		return fmt.Errorf("getcmd, no reqid specified")
 	}
+	fileNames := base.MakeCommandFileNamesWithHome(t.ScHomeDir, getPacket.SessionId, getPacket.CmdId)
 	t.Lock.Lock()
 	defer t.Lock.Unlock()
 	key := CmdKey{getPacket.SessionId, getPacket.CmdId}
-	err = t.Watcher.WatchSession(getPacket.SessionId)
-	if err != nil {
-		return fmt.Errorf("error trying to watch sesion '%s': %v", getPacket.SessionId, err)
-	}
 	entry, foundEntry := t.WatchList[key]
 	if !foundEntry {
+		// add watches, initialize entry
+		err = t.Watcher.Add(fileNames.PtyOutFile)
+		if err != nil {
+			return err
+		}
+		err = t.Watcher.Add(fileNames.RunnerOutFile)
+		if err != nil {
+			t.Watcher.Remove(fileNames.PtyOutFile) // best effort clean up
+			return err
+		}
 		entry = CmdWatchEntry{CmdKey: key}
 		entry.fillFilePos(t.ScHomeDir)
 	}
-	pos := TailPos{ReqId: getPacket.ReqId, TailPtyPos: getPacket.PtyPos, TailRunPos: getPacket.RunPos, Follow: getPacket.Tail}
+	pos, foundPos := entry.getTailPos(getPacket.ReqId)
+	if !foundPos {
+		// initialize a new tailpos
+		pos = TailPos{ReqId: getPacket.ReqId}
+	}
+	// update tailpos with new values from getpacket
+	pos.TailPtyPos = getPacket.PtyPos
+	pos.TailRunPos = getPacket.RunPos
+	pos.Follow = getPacket.Tail
 	// convert negative pos to positive
 	if pos.TailPtyPos < 0 {
 		pos.TailPtyPos = max(0, entry.FilePtyLen+pos.TailPtyPos) // + because negative
