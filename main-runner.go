@@ -106,6 +106,7 @@ func doMainRun(pk *packet.RunPacketType, sender *packet.PacketSender) {
 		sender.SendPacket(packet.MakeIdErrorPacket(pk.CmdId, fmt.Sprintf("cannot open runner out file '%s': %v", fileNames.RunnerOutFile, err)))
 		return
 	}
+	defer runnerOutFd.Close()
 	cmd.Stdout = runnerOutFd
 	cmd.Stderr = runnerOutFd
 	err = cmd.Start()
