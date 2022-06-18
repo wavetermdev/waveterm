@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"os/user"
 	"syscall"
 	"time"
 
@@ -171,6 +172,9 @@ func doMain() {
 	initPacket.Env = os.Environ()
 	initPacket.HomeDir = homeDir
 	initPacket.ScHomeDir = scHomeDir
+	if user, _ := user.Current(); user != nil {
+		initPacket.User = user.Username
+	}
 	sender.SendPacket(initPacket)
 	for pk := range packetCh {
 		if pk.GetType() == packet.PingPacketStr {

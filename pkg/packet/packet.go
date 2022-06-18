@@ -235,6 +235,7 @@ type RunnerInitPacketType struct {
 	ScHomeDir string   `json:"schomedir"`
 	HomeDir   string   `json:"homedir"`
 	Env       []string `json:"env"`
+	User      string   `json:"user"`
 }
 
 func (*RunnerInitPacketType) GetType() string {
