@@ -158,12 +158,30 @@ func (ws *WSState) replaceExistingShell(shell *wsshell.WSShell) {
 }
 
 type RunnerProc struct {
-	Lock   *sync.Mutex
-	Cmd    *exec.Cmd
-	Input  *packet.PacketSender
-	Output chan packet.PacketType
-	Local  bool
-	DoneCh chan bool
+	Lock        *sync.Mutex
+	Cmd         *exec.Cmd
+	Input       *packet.PacketSender
+	Output      chan packet.PacketType
+	Local       bool
+	DoneCh      chan bool
+	CurDir      string
+	HomeDir     string
+	User        string
+	Host        string
+	Env         []string
+	Initialized bool
+}
+
+func (r *RunnerProc) GetPrompt() string {
+	r.Lock.Lock()
+	defer r.Lock.Unlock()
+	var curDir = r.CurDir
+	if r.CurDir == r.HomeDir {
+		curDir = "~"
+	} else if strings.HasPrefix(r.CurDir, r.HomeDir+"/") {
+		curDir = "~/" + r.CurDir[0:len(r.HomeDir)+1]
+	}
+	return fmt.Sprintf("[%s@%s %s]", r.User, r.Host, curDir)
 }
 
 func HandleWs(w http.ResponseWriter, r *http.Request) {
@@ -501,7 +519,17 @@ func (runner *RunnerProc) ProcessPackets() {
 		}
 		if pk.GetType() == packet.RunnerInitPacketStr {
 			initPacket := pk.(*packet.RunnerInitPacketType)
-			fmt.Printf("runner-init %s\n", initPacket.ScHomeDir)
+			fmt.Printf("runner-init %s user=%s dir=%s\n", initPacket.ScHomeDir, initPacket.User, initPacket.HomeDir)
+			runner.Lock.Lock()
+			runner.Initialized = true
+			runner.User = initPacket.User
+			runner.CurDir = initPacket.HomeDir
+			runner.HomeDir = initPacket.HomeDir
+			runner.Env = initPacket.Env
+			if runner.Local {
+				runner.Host = "local"
+			}
+			runner.Lock.Unlock()
 			continue
 		}
 		if pk.GetType() == packet.MessagePacketStr {
