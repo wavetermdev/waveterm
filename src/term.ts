@@ -33,6 +33,7 @@ class TermWrap {
     cols : number = 80;
     atRowMax : boolean = false;
     initialized : boolean = false;
+    changeSizeCallback : (TermWrap) => void = null;
 
     constructor(sessionId : string, cmdId : string) {
         this.termId = uuidv4();
@@ -104,6 +105,9 @@ class TermWrap {
             return;
         }
         term.resize(this.cols, newRows);
+        if (this.changeSizeCallback) {
+            setTimeout(() => this.changeSizeCallback(this), 0);
+        }
     }
 
     setSize(rows : number, cols : number, flexRows : boolean) {

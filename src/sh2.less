@@ -21,15 +21,26 @@
             font-size: 1rem;
         }
     }
+
+    .session-view {
+        background-color: black;
+    }
 }
 
 .line {
-    margin: 5px;
+    padding: 10px 5px 5px 5px;
+    margin: 0px 5px 5px 5px;
     border-radius: 5px;
-    padding: 5px;
     display: flex;
     flex-direction: row;
     line-height: 1.25;
+    border-top: 1px solid #777;
+
+    &:first-child {
+        margin: 0px 5px 5px 5px;
+        padding: 0px 5px 5px 5px;
+        border-top: none;
+    }
 
     .avatar {
         height: 38px;
@@ -69,33 +80,39 @@
             margin-top: -4px;
 
             .user {
+                color: lighten(#729fcf, 10%);
                 font-weight: bold;
+                margin-top: 1px;
+                margin-right: 10px;
             }
 
             .ts {
-                margin-left: 10px;
-                margin-top: 4px;
-                font-size: 0.75rem;
-                color: #777;
+                color: #ddd;
+                margin-top: 5px;
+                font-size: 12px;
             }
 
             .metapart-mono {
-                color: #777;
+                color: #ddd;
                 margin-left: 8px;
-                font-size: 0.75rem;
-                margin-top: 5px;
+                font-size: 14px;
+                margin-top: 4px;
                 font-family: 'JetBrains Mono', monospace;
                 font-weight: 400;
             }
 
             .cmdtext {
-                color: black;
+                color: #fff;
+                font-size: 16px;
+                font-weight: bold;
                 overflow: hidden;
+                margin-left: 0;
             }
         }
 
         .text {
             font-size: 1rem;
+            color: #ddd;
         }
     }
 
@@ -107,9 +124,22 @@
         align-self: flex-start;
 
         &.focus {
-            outline: 3px solid blue;
+            box-shadow: -8px 0 12px -5px #aaa;
         }
     }
+}
+
+body .xterm .xterm-viewport {
+    overflow-y: auto;
+}
+
+.xterm-viewport::-webkit-scrollbar {
+    background-color: #777;
+    width: 5px;
+}
+
+.xterm-viewport::-webkit-scrollbar-thumb {
+    background: white;
 }
 
 .line.line-cmd {
@@ -121,13 +151,14 @@
 }
 
 .lines {
-    background-color: #f7f7f7;
+    background-color: black;
     display: flex;
     flex-direction: column;
     height: 80vh;
     overflow-y: scroll;
     padding-bottom: 10px;
     padding-top: 10px;
+    padding-right: 15px;
     border-top: 2px solid #ddd;
 }
 
@@ -202,6 +233,10 @@
 
 .term-bright-white {
     color: #fff;
+}
+
+.term-bright-green {
+    color: #8ae234;
 }
 
 .monofont-thin {

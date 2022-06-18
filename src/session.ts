@@ -10,8 +10,10 @@ var GSessionId = "47445c53-cfcf-4943-8339-2c04447f20a1";
 var GWindowId = "1";
 
 var GlobalLines = mobx.observable.box([
-    {sessionid: GSessionId, windowid: GWindowId, lineid: 1, userid: "sawka", ts: 1654631122000, linetype: "text", text: "hello"},
+    {sessionid: GSessionId, windowid: GWindowId, lineid: 1, userid: "sawka", ts: 1424631125000, linetype: "text", text: "hello"},
     {sessionid: GSessionId, windowid: GWindowId, lineid: 2, userid: "sawka", ts: 1654631125000, linetype: "text", text: "again"},
+    {sessionid: GSessionId, windowid: GWindowId, lineid: 3, userid: "sawka", ts: 1655403002683, linetype: "text", text: "more..."},
+    {sessionid: GSessionId, windowid: GWindowId, lineid: 4, userid: "sawka", ts: 1655513202683, linetype: "cmd", cmdid: "e74a7db7-58f5-47ef-b351-364c7ba2bfbb", cmdtext: "ls"},
 ]);
 
 function makeTermKey(sessionId : string, cmdId : string, windowId : string, lineid : number) : string {
@@ -30,6 +32,10 @@ type LineType = {
     cmdtext : string,
     isnew : boolean,
 };
+
+function getLineId(line : LineType) : string {
+    return sprintf("%s-%s-%s", line.sessionid, line.windowid, line.lineid);
+}
 
 type WindowType = {
     sessionid : string;
@@ -112,5 +118,5 @@ function getDefaultSession() : Session {
 
 window.getDefaultSession = getDefaultSession;
 
-export {Session, getDefaultSession};
+export {Session, getDefaultSession, getLineId};
 export type {LineType, WindowType};
