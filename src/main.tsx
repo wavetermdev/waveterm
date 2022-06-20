@@ -174,15 +174,37 @@ class Line extends React.Component<{line : LineType, session : Session}, {}> {
 
 @mobxReact.observer
 class CmdInput extends React.Component<{session : Session, windowid : string}, {}> {
-    curLine : mobx.IObservableValue<string> = mobx.observable("", {name: "command-line"});
+    historyIndex : mobx.IObservableValue<number> = mobx.observable.box(0, {name: "history-index"});
+    modHistory : mobx.IObservableArray<string> = mobx.observable.array([""], {name: "mod-history"});
 
     @mobx.action @boundMethod
     onKeyDown(e : any) {
         mobx.action(() => {
+            let {session} = this.props;
             let ctrlMod = e.getModifierState("Control") || e.getModifierState("Meta") || e.getModifierState("Shift");
             if (e.code == "Enter" && !ctrlMod) {
                 e.preventDefault();
                 setTimeout(() => this.doSubmitCmd(), 0);
+                return;
+            }
+            if (e.code == "ArrowUp") {
+                e.preventDefault();
+                let hidx = this.historyIndex.get();
+                hidx += 1;
+                if (hidx > session.getNumHistoryItems()) {
+                    hidx = session.getNumHistoryItems();
+                }
+                this.historyIndex.set(hidx);
+                return;
+            }
+            if (e.code == "ArrowDown") {
+                e.preventDefault();
+                let hidx = this.historyIndex.get();
+                hidx -= 1;
+                if (hidx < 0) {
+                    hidx = 0;
+                }
+                this.historyIndex.set(hidx);
                 return;
             }
             // console.log(e.code, e.keyCode, e.key, event.which, ctrlMod, e);
@@ -190,23 +212,53 @@ class CmdInput extends React.Component<{session : Session, windowid : string}, {
     }
 
     @boundMethod
+    clearCurLine() {
+        mobx.action(() => {
+            this.historyIndex.set(0);
+            this.modHistory.clear();
+            this.modHistory[0] = "";
+        })();
+    }
+
+    @boundMethod
+    getCurLine() : string {
+        let {session} = this.props;
+        let hidx = this.historyIndex.get();
+        if (hidx < this.modHistory.length && this.modHistory[hidx] != null) {
+            return this.modHistory[hidx];
+        }
+        let hitem = session.getHistoryItem(-hidx);
+        if (hitem == null) {
+            return "";
+        }
+        return hitem.cmdtext;
+    }
+
+    @boundMethod
+    setCurLine(val : string) {
+        let hidx = this.historyIndex.get();
+        this.modHistory[hidx] = val;
+    }
+
+    @boundMethod
     onChange(e : any) {
         mobx.action(() => {
-            this.curLine.set(e.target.value);
+            this.setCurLine(e.target.value);
         })();
     }
 
     @boundMethod
     doSubmitCmd() {
         let {session, windowid} = this.props;
-        let commandStr = this.curLine.get();
-        mobx.action(() => {
-            this.curLine.set("");
-        })();
+        let commandStr = this.getCurLine();
+        let hitem = {cmdtext: commandStr};
+        session.addToHistory(hitem);
+        this.clearCurLine();
         session.submitCommand(windowid, commandStr);
     }
     
     render() {
+        let curLine = this.getCurLine();
         return (
             <div className="box cmd-input has-background-black">
                 <div className="cmd-input-context">
@@ -219,7 +271,7 @@ class CmdInput extends React.Component<{session : Session, windowid : string}, {
                         <div className="button is-static">mike@local</div>
                     </div>
                     <div className="control cmd-input-control is-expanded">
-                        <textarea value={this.curLine.get()} onKeyDown={this.onKeyDown} onChange={this.onChange} className="input" type="text"></textarea>
+                        <textarea value={curLine} onKeyDown={this.onKeyDown} onChange={this.onChange} className="input" type="text"></textarea>
                     </div>
                     <div className="control cmd-exec">
                         <div onClick={this.doSubmitCmd} className="button">
@@ -338,7 +390,7 @@ class MainSideBar extends React.Component<{}, {}> {
                         </a></li>
                         <li><a className="activity">
                             <i className="user-status status fa fa-circle"/>
-                            <img className="avatar" src="https://i.pravatar.cc/48?img=6"/>
+                            <img className="avatar" src="https://i.pravatar.cc/48?img=5"/>
                             Michelle T <div className="tag is-link">2</div>
                         </a></li>
                     </ul>

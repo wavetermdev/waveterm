@@ -38,10 +38,14 @@ function getLineId(line : LineType) : string {
 }
 
 type WindowType = {
-    sessionid : string;
-    windowid : string;
-    name : string;
-    lines : LineType[];
+    sessionid : string,
+    windowid : string,
+    name : string,
+    lines : LineType[],
+};
+
+type HistoryItem = {
+    cmdtext : string,
 };
 
 class Session {
@@ -51,6 +55,7 @@ class Session {
     activeWindowId : string;
     termMap : Record<string, TermWrap> = {};
     termMapById : Record<string, TermWrap> = {};
+    history : HistoryItem[] = [];
 
     constructor() {
     }
@@ -67,6 +72,31 @@ class Session {
         }).catch((err) => {
             console.log("error calling run-command", err)
         });
+    }
+
+    addToHistory(hitem : HistoryItem) {
+        this.history.push(hitem);
+    }
+
+    getNumHistoryItems() : number {
+        return this.history.length;
+    }
+
+    getHistoryItem(index : number) : HistoryItem {
+        if (index == 0) {
+            return null;
+        }
+        if (index > 0) {
+            if (index > this.history.length-1) {
+                return null;
+            }
+            return this.history[index];
+        }
+        let absIndex = Math.abs(index);
+        if (absIndex > this.history.length) {
+            return null;
+        }
+        return this.history[this.history.length-absIndex];
     }
 
     getTermWrapByLine(line : LineType) : TermWrap {
