@@ -13,7 +13,7 @@ window.ScriptHausClientId = uuidv4();
 document.addEventListener("DOMContentLoaded", () => {
     GlobalWS.reconnect();
     let reactElem = React.createElement(Main, null, null);
-    let elem = document.getElementById("main");
+    let elem = document.getElementById("app");
     let root = createRoot(elem);
     root.render(reactElem);
 });

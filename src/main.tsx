@@ -150,7 +150,9 @@ class LineCmd extends React.Component<{line : LineType, session : Session, chang
                         <div className="terminal" id={"term-" + getLineId(line)}></div>
                     </div>
                 </div>
-                <div onClick={this.doRefresh} className="button has-background-black has-text-white">Refresh</div>
+                <div onClick={this.doRefresh} className="button refresh-button has-background-black is-small">
+                    <span className="icon"><i className="fa fa-refresh"/></span>
+                </div>
             </div>
         );
     }
@@ -209,7 +211,7 @@ class CmdInput extends React.Component<{session : Session, windowid : string}, {
             <div className="box cmd-input has-background-black">
                 <div className="cmd-input-context">
                     <div className="has-text-white">
-                        <span className="bold term-bright-green">[ mike@imac27 master ~/work/gopath/src/github.com/sawka/darktile-termutil ]</span>
+                        <span className="bold term-bright-green">[mike@local ~]</span>
                     </div>
                 </div>
                 <div className="cmd-input-field field has-addons">
@@ -278,6 +280,87 @@ class SessionView extends React.Component<{session : SessionType}, {}> {
 }
 
 @mobxReact.observer
+class MainSideBar extends React.Component<{}, {}> {
+    collapsed : mobx.IObservableValue<boolean> = mobx.observable.box(false);
+
+    @boundMethod
+    toggleCollapsed() {
+        mobx.action(() => {
+            this.collapsed.set(!this.collapsed.get());
+        })();
+    }
+    
+    render() {
+        return (
+            <div className={cn("main-sidebar", {"collapsed": this.collapsed.get()})}>
+                <div className="collapse-container">
+                    <div className="arrow-container" onClick={this.toggleCollapsed}>
+                        <If condition={!this.collapsed.get()}><i className="fa fa-arrow-left"/></If>
+                        <If condition={this.collapsed.get()}><i className="fa fa-arrow-right"/></If>
+                    </div>
+                </div>
+                <div className="menu">
+                    <p className="menu-label">
+                        Shared Sessions
+                    </p>
+                    <ul className="menu-list">
+                        <li><a className="is-active">#default</a></li>
+                        <li><a>#server-status</a></li>
+                        <li><a className="activity">#bug-3458 <div className="tag is-link">3</div></a></li>
+                        <li><a>#dev-build</a></li>
+                        <li className="new-session"><a className="new-session"><i className="fa fa-plus"/> New Session</a></li>
+                    </ul>
+                    <p className="menu-label">
+                        Private Sessions
+                    </p>
+                    <ul className="menu-list">
+                        <li><a>#default</a></li>
+                        <li className="new-session"><a className="new-session"><i className="fa fa-plus"/> New Session</a></li>
+                    </ul>
+                    <p className="menu-label">
+                        Direct Messages
+                    </p>
+                    <ul className="menu-list">
+                        <li><a>
+                            <i className="user-status status fa fa-circle"/>
+                            <img className="avatar" src="https://i.pravatar.cc/48?img=4"/>
+                            Mike S <span className="sub-label">you</span>
+                        </a></li>
+                        <li><a>
+                            <i className="user-status status offline fa fa-circle"/>
+                            <img className="avatar" src="https://i.pravatar.cc/48?img=8"/>                            
+                            Matt P
+                        </a></li>
+                        <li><a>
+                            <i className="user-status status offline fa fa-circle"/>
+                            <img className="avatar" src="https://i.pravatar.cc/48?img=12"/>
+                            Adam B
+                        </a></li>
+                        <li><a className="activity">
+                            <i className="user-status status fa fa-circle"/>
+                            <img className="avatar" src="https://i.pravatar.cc/48?img=6"/>
+                            Michelle T <div className="tag is-link">2</div>
+                        </a></li>
+                    </ul>
+                    <div className="spacer"></div>
+                    <p className="menu-label">
+                        Remotes
+                    </p>
+                    <ul className="menu-list">
+                        <li><a><i className="status fa fa-circle"/>local</a></li>
+                        <li><a><i className="status fa fa-circle"/>local-sudo</a></li>
+                        <li><a><i className="status offline fa fa-circle"/>mike@app01.ec2</a></li>
+                        <li><a><i className="status fa fa-circle"/>mike@test01.ec2</a></li>
+                        <li><a><i className="status offline fa fa-circle"/>root@app01.ec2</a></li>
+                    </ul>
+                    <div className="bottom-spacer"></div>
+                </div>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
 class Main extends React.Component<{}, {}> {
     constructor(props : any) {
         super(props);
@@ -286,12 +369,15 @@ class Main extends React.Component<{}, {}> {
     render() {
         let session = getDefaultSession();
         return (
-            <div className="main">
+            <div id="main">
                 <h1 className="title scripthaus-logo-small">
                     <div className="title-cursor">&#9608;</div>
                     ScriptHaus
                 </h1>
-                <SessionView session={session}/>
+                <div className="main-content">
+                    <MainSideBar/>
+                    <SessionView session={session}/>
+                </div>
             </div>
         );
     }

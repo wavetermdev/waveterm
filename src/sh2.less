@@ -1,4 +1,8 @@
-.main {
+#main {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    
     .title.scripthaus-logo-small {
         padding-left: 10px;
         padding-top: 8px;
@@ -10,6 +14,7 @@
         color: rgb(0, 177, 10);
         position: relative;
         font-size: 1.5rem;
+        border-bottom: 2px solid #ddd;
 
         .title-cursor {
             position: absolute;
@@ -22,9 +27,161 @@
         }
     }
 
-    .session-view {
+    .main-content {
+        display: flex;
+        flex-direction: row;
         background-color: black;
+        flex-grow: 1;
+
+        .main-sidebar {
+            border-right: 1px solid #aaa;
+            padding: 0 5px 5px 5px;
+            width: 200px;
+            overflow-x: auto;
+            display: flex;
+            flex-direction: column;
+            color: #ddd;
+            position: relative;
+
+            .menu {
+                padding-top: 10px;
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+
+                .spacer {
+                    flex-grow: 1;
+                }
+
+                .bottom-spacer {
+                    height: 10px;
+                }
+            }
+
+            .menu-label {
+                color: #bbb;
+            }
+
+            p.menu-label {
+                margin-bottom: 0px;
+            }
+
+            .menu-list li.new-session {
+                a.new-session {
+                    color: #666;
+                    font-size: 13px;
+                }
+                
+                .fa {
+                    font-size: 10px;
+                }
+            }
+
+            .menu-list li a {
+                color: #bbb;
+                white-space: nowrap;
+                padding: 5px 5px 5px 12px;
+                vertical-align: middle;
+                position: relative;
+
+                
+
+                .user-status {
+                    position: absolute !important;
+                    top: 24px !important;
+                    left: 32px !important;
+                }
+
+                .avatar {
+                    width: 24px;
+                    height: 24px;
+                    margin-right: 5px;
+                    vertical-align: middle;
+                }
+
+                &.is-active {
+                    color: #ddd;
+                    font-weight: bold;
+                }
+
+                .sub-label {
+                    font-size: 12px;
+                    font-style: italic;
+                }
+
+                &.activity {
+                    font-weight: bold;
+                    color: #ddd;
+
+                    .tag {
+                        margin-left: 4px;
+                        padding: 0 5px 0 5px;
+                        position: relative;
+                        top: -1px;
+                    }
+                }
+
+                &.is-active:hover {
+                    background-color: #3273dc;
+                }
+
+                &:hover {
+                    background-color: #444;
+                    color: #ddd;
+                }
+
+                .status {
+                    font-size: 8px;
+                    margin-right: 5px;
+                    position: relative;
+                    top: -3px;
+                    color: #4e9a06;
+
+                    &.offline {
+                        color: #cc0000;
+                    }
+                }
+            }
+
+            &.collapsed {
+                width: 50px;
+
+                .collapse-container {
+                    right: 12px;
+                }
+
+                .menu {
+                    display: none;
+                }
+            }
+
+            .collapse-container {
+                position: absolute;
+                right: 3px;
+                top: -4px;
+
+                .arrow-container {
+                    color: #777;
+                    padding: 5px;
+                    cursor: pointer;
+
+                    &:hover {
+                        color: #ddd;
+                    }
+                }
+            }
+        }
+
+        .session-view {
+            flex-grow: 1;
+
+            display: flex;
+            flex-direction: column;
+        }
     }
+}
+
+.main-sidebar {
 }
 
 .line {
@@ -143,6 +300,17 @@ body .xterm .xterm-viewport {
 }
 
 .line.line-cmd {
+    .button.refresh-button {
+        border-color: #777;
+        color: #777;
+
+        &:hover {
+            border-color: #fff;
+            .icon i {
+                color: #fff;
+            }
+        }
+    }
 }
 
 .line.line-invalid {
@@ -159,7 +327,7 @@ body .xterm .xterm-viewport {
     padding-bottom: 10px;
     padding-top: 10px;
     padding-right: 15px;
-    border-top: 2px solid #ddd;
+    flex-grow: 1;
 }
 
 .cmd-input {
