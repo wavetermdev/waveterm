@@ -39,7 +39,7 @@ class TermWrap {
         this.termId = uuidv4();
         this.sessionId = sessionId;
         this.cmdId = cmdId;
-        this.terminal = new Terminal({rows: 2, cols: 80});
+        this.terminal = new Terminal({rows: 2, cols: 80, theme: {foreground: "#d3d7cf"}});
     }
 
     destroy() {

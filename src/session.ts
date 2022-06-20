@@ -76,6 +76,7 @@ class Session {
             return termWrap;
         }
         termWrap = new TermWrap(line.sessionid, line.cmdid);
+        console.log("create term", termWrap);
         this.termMap[termKey] = termWrap;
         this.termMapById[termWrap.termId] = termWrap;
         termWrap.initialized = true;
@@ -104,7 +105,12 @@ class Session {
     }
 }
 
+var DefaultSession : Session = null;
+
 function getDefaultSession() : Session {
+    if (DefaultSession != null) {
+        return DefaultSession;
+    }
     let windowLines = GlobalLines.get();
     let session = new Session();
     session.sessionId = GSessionId;
@@ -113,6 +119,7 @@ function getDefaultSession() : Session {
     session.windows = [
         {sessionid: GSessionId, windowid: GWindowId, name: "default", lines: windowLines},
     ];
+    DefaultSession = session;
     return session;
 }
 
