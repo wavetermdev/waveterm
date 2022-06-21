@@ -30,16 +30,17 @@ class TermWrap {
     isFocused : mobx.IObservableValue<boolean> = mobx.observable.box(false, {name: "focus"});
     flexRows : boolean = true;
     maxRows : number = 25;
-    cols : number = 80;
     atRowMax : boolean = false;
     initialized : boolean = false;
     changeSizeCallback : (TermWrap) => void = null;
+    usedRows : number = null;
 
     constructor(sessionId : string, cmdId : string) {
         this.termId = uuidv4();
         this.sessionId = sessionId;
         this.cmdId = cmdId;
-        this.terminal = new Terminal({rows: 2, cols: 80, theme: {foreground: "#d3d7cf"}});
+        this.terminal = new Terminal({rows: 25, cols: 80, theme: {foreground: "#d3d7cf"}});
+        this.usedRows = mobx.observable.box(2, {name: "usedRows"});
     }
 
     destroy() {
@@ -90,30 +91,31 @@ class TermWrap {
             return;
         }
         let term = this.terminal;
-        let termNumLines = term._core.buffer.lines.length;
-        let termYPos = term._core.buffer.y;
-        let newRows : number = term.rows;
-        if (term.rows < this.maxRows && termNumLines > term.rows) {
-            newRows = Math.min(this.maxRows, termNumLines);
-        } else if (term.rows < this.maxRows && termYPos >= term.rows) {
-            newRows = Math.min(this.maxRows, termYPos+1);
-        }
-        if (newRows == this.maxRows) {
+        let termBuf = term._core.buffer;
+        let termNumLines = termBuf.lines.length;
+        let termYPos = termBuf.y;
+        let usedRows = 2;
+        if (termNumLines > term.rows) {
+            this.usedRows = term.rows;
             this.atRowMax = true;
-        }
-        if (newRows == term.rows) {
             return;
         }
-        term.resize(this.cols, newRows);
-        if (this.changeSizeCallback) {
-            setTimeout(() => this.changeSizeCallback(this), 0);
+        if (termYPos >= usedRows) {
+            usedRows = termYPos + 1;
         }
+        for (let i=usedRows; i<term.rows; i++) {
+            let line = termBuf.translateBufferLineToString(i, true);
+            if (line != null && line.trim() != "") {
+                usedRows = i+1;
+            }
+        }
+        this.usedRows = usedRows;
+        return;
     }
 
     setSize(rows : number, cols : number, flexRows : boolean) {
         this.flexRows = true;
         this.maxRows = rows;
-        this.cols = cols;
         if (!flexRows) {
             term.resize(rows, cols);
             setTimeout(() => incRenderVersion(), 10);

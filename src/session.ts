@@ -56,6 +56,8 @@ class Session {
     termMap : Record<string, TermWrap> = {};
     termMapById : Record<string, TermWrap> = {};
     history : HistoryItem[] = [];
+    curRemote : string;
+    curDir : string;
 
     constructor() {
     }

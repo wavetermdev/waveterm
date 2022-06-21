@@ -126,6 +126,8 @@ class LineCmd extends React.Component<{line : LineType, session : Session, chang
         termWrap.resizeToContent();
         let termSize = termWrap.getSize();
         let formattedTime = getLineDateStr(line.ts);
+        let cellHeightPx = 17;
+        let totalHeight = cellHeightPx * termWrap.usedRows;
         return (
             <div className="line line-cmd" id={"line-" + getLineId(line)}>
                 <div className={cn("avatar",{"num4": lineid.length == 4}, {"num5": lineid.length >= 5}, {"running": running})}>
@@ -146,8 +148,8 @@ class LineCmd extends React.Component<{line : LineType, session : Session, chang
                             <span className="term-bright-green">[mike@local ~]</span> {this.singleLineCmdText(line.cmdtext)}
                         </div>
                     </div>
-                    <div className={cn("terminal-wrapper", {"focus": termWrap.isFocused.get()})}>
-                        <div className="terminal" id={"term-" + getLineId(line)}></div>
+                    <div className={cn("terminal-wrapper", {"focus": termWrap.isFocused.get()})} style={{overflowY: "hidden"}}>
+                        <div className="terminal" id={"term-" + getLineId(line)} data-cmdid={line.cmdid} style={{height: totalHeight}}></div>
                     </div>
                 </div>
                 <div onClick={this.doRefresh} className="button refresh-button has-background-black is-small">
