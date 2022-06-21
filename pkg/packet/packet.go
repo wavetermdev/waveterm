@@ -297,9 +297,11 @@ type RunPacketType struct {
 	ChDir     string            `json:"chdir,omitempty"`
 	Env       map[string]string `json:"env,omitempty"`
 	Command   string            `json:"command"`
+	Rows      int               `json:"rows"`
+	Cols      int               `json:'cols"`
 }
 
-func (ct *RunPacketType) GetType() string {
+func (*RunPacketType) GetType() string {
 	return RunPacketStr
 }
 

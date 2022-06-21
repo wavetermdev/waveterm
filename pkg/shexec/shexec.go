@@ -21,6 +21,11 @@ import (
 	"github.com/scripthaus-dev/sh2-runner/pkg/packet"
 )
 
+const DefaultRows = 25
+const DefaultCols = 80
+const MaxRows = 1024
+const MaxCols = 1024
+
 type ShExecType struct {
 	FileNames *base.CommandFileNames
 	Cmd       *exec.Cmd
@@ -148,6 +153,18 @@ func ValidateRunPacket(pk *packet.RunPacketType) error {
 	return nil
 }
 
+func GetWinsize(p *packet.RunPacketType) *pty.Winsize {
+	rows := DefaultRows
+	cols := DefaultCols
+	if p.Rows > 0 && p.Rows <= MaxRows {
+		rows = p.Rows
+	}
+	if p.Cols > 0 && p.Cols <= MaxCols {
+		cols = p.Cols
+	}
+	return &pty.Winsize{Rows: uint16(rows), Cols: uint16(cols)}
+}
+
 // when err is nil, the command will have already been started
 func RunCommand(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecType, error) {
 	if pk.CmdId == "" {
@@ -172,6 +189,7 @@ func RunCommand(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecT
 	if err != nil {
 		return nil, fmt.Errorf("opening new pty: %w", err)
 	}
+	pty.Setsize(cmdPty, GetWinsize(pk))
 	defer func() {
 		cmdTty.Close()
 	}()
