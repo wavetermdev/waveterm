@@ -382,7 +382,14 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 		WriteJsonError(w, fmt.Errorf("invalid emtpty command"))
 		return
 	}
-	rtnLine := sstore.MakeNewLineCmd(params.SessionId, params.WindowId, commandStr)
+	if strings.HasPrefix(commandStr, "/comment ") {
+		text := strings.TrimSpace(commandStr[9:])
+		rtnLine := sstore.MakeNewLineText(params.SessionId, params.WindowId, text)
+		WriteJsonSuccess(w, &runCommandResponse{Line: rtnLine})
+		return
+	}
+	rtnLine := sstore.MakeNewLineCmd(params.SessionId, params.WindowId)
+	rtnLine.CmdText = commandStr
 	runPacket := packet.MakeRunPacket()
 	runPacket.SessionId = params.SessionId
 	runPacket.CmdId = rtnLine.CmdId
