@@ -189,7 +189,20 @@ func doMain() {
 			if err != nil {
 				errPk := packet.MakeErrorPacket(err.Error())
 				sender.SendPacket(errPk)
+				continue
 			}
+			continue
+		}
+		if pk.GetType() == packet.CdPacketStr {
+			cdPacket := pk.(*packet.CdPacketType)
+			err := os.Chdir(cdPacket.Dir)
+			resp := packet.MakeResponsePacket(cdPacket.PacketId)
+			if err != nil {
+				resp.Error = err.Error()
+			} else {
+				resp.Success = true
+			}
+			sender.SendPacket(resp)
 			continue
 		}
 		if pk.GetType() == packet.ErrorPacketStr {
