@@ -17,6 +17,7 @@ import (
 )
 
 const DefaultMShellPath = "mshell"
+const DefaultUserMShellPath = ".mshell/mshell"
 const MShellPathVarName = "MSHELL_PATH"
 const SSHCommandVarName = "SSH_COMMAND"
 const ScHomeVarName = "SCRIPTHAUS_HOME"
@@ -128,21 +129,17 @@ func EnsureSessionDir(sessionId string) (string, error) {
 	return sdir, nil
 }
 
-func GetMShellPath() string {
+func GetMShellPath() (string, error) {
 	msPath := os.Getenv(MShellPathVarName)
 	if msPath != "" {
-		return msPath
+		return exec.LookPath(msPath)
 	}
-	return DefaultMShellPath
-}
-
-func EnsureMShellPath() error {
-	msPath := GetMShellPath()
-	_, err := exec.LookPath(msPath)
+	userMShellPath := path.Join(GetHomeDir(), DefaultUserMShellPath)
+	msPath, err := exec.LookPath(userMShellPath)
 	if err != nil {
-		return err
+		return msPath, nil
 	}
-	return nil
+	return exec.LookPath(DefaultMShellPath)
 }
 
 func GetScSessionsDir() (string, error) {

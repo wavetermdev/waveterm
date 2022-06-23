@@ -18,28 +18,28 @@ import (
 	"sync"
 )
 
-// remote: runnerinit, run, ping, data, cmdstart, cmddone
-// remote(detached): runnerinit, run, cmdstart
-// server: runnerinit, run, ping, cmdstart, cmddone, cd, resp, getcmd, untailcmd, cmddata, input, data, [comp]
+// remote: init, run, ping, data, cmdstart, cmddone
+// remote(detached): init, run, cmdstart
+// server: init, run, ping, cmdstart, cmddone, cd, resp, getcmd, untailcmd, cmddata, input, data, [comp]
 // all: error, message
 
 const (
-	RunPacketStr        = "run"
-	PingPacketStr       = "ping"
-	RunnerInitPacketStr = "runnerinit"
-	DataPacketStr       = "data"
-	CmdStartPacketStr   = "cmdstart"
-	CmdDonePacketStr    = "cmddone"
-	ResponsePacketStr   = "resp"
-	DonePacketStr       = "done"
-	ErrorPacketStr      = "error"
-	MessagePacketStr    = "message"
-	GetCmdPacketStr     = "getcmd"
-	UntailCmdPacketStr  = "untailcmd"
-	CdPacketStr         = "cd"
-	CmdDataPacketStr    = "cmddata"
-	RawPacketStr        = "raw"
-	InputPacketStr      = "input"
+	RunPacketStr       = "run"
+	PingPacketStr      = "ping"
+	InitPacketStr      = "init"
+	DataPacketStr      = "data"
+	CmdStartPacketStr  = "cmdstart"
+	CmdDonePacketStr   = "cmddone"
+	ResponsePacketStr  = "resp"
+	DonePacketStr      = "done"
+	ErrorPacketStr     = "error"
+	MessagePacketStr   = "message"
+	GetCmdPacketStr    = "getcmd"
+	UntailCmdPacketStr = "untailcmd"
+	CdPacketStr        = "cd"
+	CmdDataPacketStr   = "cmddata"
+	RawPacketStr       = "raw"
+	InputPacketStr     = "input"
 )
 
 var TypeStrToFactory map[string]reflect.Type
@@ -56,7 +56,7 @@ func init() {
 	TypeStrToFactory[CmdDonePacketStr] = reflect.TypeOf(CmdDonePacketType{})
 	TypeStrToFactory[GetCmdPacketStr] = reflect.TypeOf(GetCmdPacketType{})
 	TypeStrToFactory[UntailCmdPacketStr] = reflect.TypeOf(UntailCmdPacketType{})
-	TypeStrToFactory[RunnerInitPacketStr] = reflect.TypeOf(RunnerInitPacketType{})
+	TypeStrToFactory[InitPacketStr] = reflect.TypeOf(InitPacketType{})
 	TypeStrToFactory[CdPacketStr] = reflect.TypeOf(CdPacketType{})
 	TypeStrToFactory[CmdDataPacketStr] = reflect.TypeOf(CmdDataPacketType{})
 	TypeStrToFactory[RawPacketStr] = reflect.TypeOf(RawPacketType{})
@@ -112,18 +112,20 @@ func MakePingPacket() *PingPacketType {
 
 type DataPacketType struct {
 	Type      string `json:"type"`
-	SessionId string `json:"sessionid"`
-	CmdId     string `json:"cmdid"`
+	SessionId string `json:"sessionid,omitempty"`
+	CmdId     string `json:"cmdid,omitempty"`
 	FdNum     int    `json:"fdnum"`
 	Data      string `json:"data"`
+	Eof       bool   `json:"eof,omitempty"`
+	Error     string `json:"error,omitempty"`
 }
 
 func (*DataPacketType) GetType() string {
 	return DataPacketStr
 }
 
-func MakeDataPacket(fdNum int, data string) *DataPacketType {
-	return &DataPacketType{Type: DataPacketStr, FdNum: fdNum, Data: data}
+func MakeDataPacket() *DataPacketType {
+	return &DataPacketType{Type: DataPacketStr}
 }
 
 // InputData gets written to PTY directly
@@ -249,7 +251,7 @@ func FmtMessagePacket(fmtStr string, args ...interface{}) *MessagePacketType {
 	return &MessagePacketType{Type: MessagePacketStr, Message: message}
 }
 
-type RunnerInitPacketType struct {
+type InitPacketType struct {
 	Type      string   `json:"type"`
 	Version   string   `json:"version"`
 	ScHomeDir string   `json:"schomedir,omitempty"`
@@ -258,12 +260,12 @@ type RunnerInitPacketType struct {
 	User      string   `json:"user,omitempty"`
 }
 
-func (*RunnerInitPacketType) GetType() string {
-	return RunnerInitPacketStr
+func (*InitPacketType) GetType() string {
+	return InitPacketStr
 }
 
-func MakeRunnerInitPacket() *RunnerInitPacketType {
-	return &RunnerInitPacketType{Type: RunnerInitPacketStr}
+func MakeInitPacket() *InitPacketType {
+	return &InitPacketType{Type: InitPacketStr}
 }
 
 type DonePacketType struct {
@@ -281,7 +283,8 @@ func MakeDonePacket() *DonePacketType {
 type CmdDonePacketType struct {
 	Type       string `json:"type"`
 	Ts         int64  `json:"ts"`
-	CmdId      string `json:"cmdid"`
+	SessionId  string `json:"sessionid,omitempty"`
+	CmdId      string `json:"cmdid,omitempty"`
 	ExitCode   int    `json:"exitcode"`
 	DurationMs int64  `json:"durationms"`
 }
@@ -297,9 +300,10 @@ func MakeCmdDonePacket() *CmdDonePacketType {
 type CmdStartPacketType struct {
 	Type      string `json:"type"`
 	Ts        int64  `json:"ts"`
-	CmdId     string `json:"cmdid"`
+	SessionId string `json:"sessionid,omitempty"`
+	CmdId     string `json:"cmdid,omitempty"`
 	Pid       int    `json:"pid"`
-	RunnerPid int    `json:"runnerpid"`
+	MShellPid int    `json:"mshellpid"`
 }
 
 func (*CmdStartPacketType) GetType() string {
@@ -323,13 +327,14 @@ type RemoteFd struct {
 
 type RunPacketType struct {
 	Type      string            `json:"type"`
-	SessionId string            `json:"sessionid"`
-	CmdId     string            `json:"cmdid"`
+	SessionId string            `json:"sessionid,omitempty"`
+	CmdId     string            `json:"cmdid,omitempty"`
 	Command   string            `json:"command"`
 	Cwd       string            `json:"cwd,omitempty"`
 	Env       map[string]string `json:"env,omitempty"`
-	TermSize  TermSize          `json:"termsize"`
-	Fds       []RemoteFd        `json:"fds"`
+	TermSize  TermSize          `json:"termsize,omitempty"`
+	Fds       []RemoteFd        `json:"fds,omitempty"`
+	Detached  bool              `json:"detached,omitempty"`
 }
 
 func (*RunPacketType) GetType() string {
