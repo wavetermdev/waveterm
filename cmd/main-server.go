@@ -16,10 +16,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 
-	"github.com/scripthaus-dev/sh2-runner/pkg/base"
-	"github.com/scripthaus-dev/sh2-runner/pkg/cmdtail"
-	"github.com/scripthaus-dev/sh2-runner/pkg/packet"
-	"github.com/scripthaus-dev/sh2-runner/pkg/shexec"
+	"github.com/scripthaus-dev/mshell/pkg/base"
+	"github.com/scripthaus-dev/mshell/pkg/cmdtail"
+	"github.com/scripthaus-dev/mshell/pkg/packet"
+	"github.com/scripthaus-dev/mshell/pkg/shexec"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
 	"github.com/scripthaus-dev/sh2-server/pkg/wsshell"
 )
@@ -36,7 +36,7 @@ const WSStatePacketChSize = 20
 
 const MaxInputDataSize = 1000
 
-var GlobalRunnerProc *RunnerProc
+var GlobalMShellProc *MShellProc
 var GlobalLock = &sync.Mutex{}
 var WSStateMap = make(map[string]*WSState) // clientid -> WsState
 
@@ -157,7 +157,12 @@ func (ws *WSState) replaceExistingShell(shell *wsshell.WSShell) {
 	return
 }
 
-type RunnerProc struct {
+type RpcEntry struct {
+	PacketId string
+	RespCh   chan packet.RpcPacketType
+}
+
+type MShellProc struct {
 	Lock        *sync.Mutex
 	Cmd         *exec.Cmd
 	Input       *packet.PacketSender
@@ -170,9 +175,10 @@ type RunnerProc struct {
 	Host        string
 	Env         []string
 	Initialized bool
+	RpcMap      map[string]*RpcEntry
 }
 
-func (r *RunnerProc) GetPrompt() string {
+func (r *MShellProc) GetPrompt() string {
 	r.Lock.Lock()
 	defer r.Lock.Unlock()
 	var curDir = r.CurDir
@@ -388,24 +394,32 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 		WriteJsonSuccess(w, &runCommandResponse{Line: rtnLine})
 		return
 	}
+	if strings.HasPrefix(commandStr, "cd ") {
+		newDir := strings.TrimSpace(commandStr[3:])
+		cdPacket := packet.MakeCdPacket()
+		cdPacket.PacketId = uuid.New().String()
+		cdPacket.Dir = newDir
+		GlobalMShellProc.Input.SendPacket(cdPacket)
+		return
+	}
 	rtnLine := sstore.MakeNewLineCmd(params.SessionId, params.WindowId)
 	rtnLine.CmdText = commandStr
 	runPacket := packet.MakeRunPacket()
 	runPacket.SessionId = params.SessionId
 	runPacket.CmdId = rtnLine.CmdId
-	runPacket.ChDir = ""
+	runPacket.Cwd = ""
 	runPacket.Env = nil
 	runPacket.Command = commandStr
 	fmt.Printf("run-packet %v\n", runPacket)
 	WriteJsonSuccess(w, &runCommandResponse{Line: rtnLine})
 	go func() {
-		GlobalRunnerProc.Input.SendPacket(runPacket)
-		if !GlobalRunnerProc.Local {
+		GlobalMShellProc.Input.SendPacket(runPacket)
+		if !GlobalMShellProc.Local {
 			getPacket := packet.MakeGetCmdPacket()
 			getPacket.SessionId = runPacket.SessionId
 			getPacket.CmdId = runPacket.CmdId
 			getPacket.Tail = true
-			GlobalRunnerProc.Input.SendPacket(getPacket)
+			GlobalMShellProc.Input.SendPacket(getPacket)
 		}
 	}()
 	return
@@ -488,12 +502,9 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 //       startcmd will figure out the correct
 //
 
-func LaunchRunnerProc() (*RunnerProc, error) {
-	runnerPath, err := base.GetScRunnerPath()
-	if err != nil {
-		return nil, err
-	}
-	ecmd := exec.Command(runnerPath)
+func LaunchMShell() (*MShellProc, error) {
+	msPath := base.GetMShellPath()
+	ecmd := exec.Command(msPath)
 	inputWriter, err := ecmd.StdinPipe()
 	if err != nil {
 		return nil, err
@@ -503,10 +514,14 @@ func LaunchRunnerProc() (*RunnerProc, error) {
 		return nil, err
 	}
 	ecmd.Stderr = ecmd.Stdout // /dev/null
-	ecmd.Start()
-	rtn := &RunnerProc{Lock: &sync.Mutex{}, Local: true, Cmd: ecmd}
+	err = ecmd.Start()
+	if err != nil {
+		return nil, err
+	}
+	rtn := &MShellProc{Lock: &sync.Mutex{}, Local: true, Cmd: ecmd}
 	rtn.Output = packet.PacketParser(outputReader)
 	rtn.Input = packet.MakePacketSender(inputWriter)
+	rtn.RpcMap = make(map[string]*RpcEntry)
 	rtn.DoneCh = make(chan bool)
 	go func() {
 		exitErr := ecmd.Wait()
@@ -517,8 +532,48 @@ func LaunchRunnerProc() (*RunnerProc, error) {
 	return rtn, nil
 }
 
-func (runner *RunnerProc) ProcessPackets() {
+func (runner *MShellProc) PacketRpc(pk packet.RpcPacketType, timeout time.Duration) (packet.RpcPacketType, error) {
+	if pk == nil {
+		return nil, fmt.Errorf("PacketRpc passed nil packet")
+	}
+	id := pk.GetPacketId()
+	respCh := make(chan packet.RpcPacketType)
+	runner.Lock.Lock()
+	runner.RpcMap[id] = &RpcEntry{PacketId: id, RespCh: respCh}
+	runner.Lock.Unlock()
+	defer func() {
+		runner.Lock.Lock()
+		delete(runner.RpcMap, id)
+		runner.Lock.Unlock()
+	}()
+	runner.Input.SendPacket(pk)
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	select {
+	case rtnPk := <-respCh:
+		return rtnPk, nil
+
+	case <-timer.C:
+		return nil, fmt.Errorf("PacketRpc timeout")
+	}
+}
+
+func (runner *MShellProc) ProcessPackets() {
 	for pk := range runner.Output {
+		if rpcPk, ok := pk.(packet.RpcPacketType); ok {
+			rpcId := rpcPk.GetPacketId()
+			runner.Lock.Lock()
+			entry := runner.RpcMap[rpcId]
+			if entry != nil {
+				delete(runner.RpcMap, rpcId)
+				go func() {
+					entry.RespCh <- rpcPk
+					close(entry.RespCh)
+				}()
+			}
+			runner.Lock.Unlock()
+
+		}
 		if pk.GetType() == packet.CmdDataPacketStr {
 			dataPacket := pk.(*packet.CmdDataPacketType)
 			fmt.Printf("cmd-data %s/%s pty=%d run=%d\n", dataPacket.SessionId, dataPacket.CmdId, len(dataPacket.PtyData), len(dataPacket.RunData))
@@ -572,12 +627,12 @@ func runWebSocketServer() {
 }
 
 func main() {
-	runnerProc, err := LaunchRunnerProc()
+	runnerProc, err := LaunchMShell()
 	if err != nil {
 		fmt.Printf("error launching runner-proc: %v\n", err)
 		return
 	}
-	GlobalRunnerProc = runnerProc
+	GlobalMShellProc = runnerProc
 	go runnerProc.ProcessPackets()
 	fmt.Printf("Started local runner pid[%d]\n", runnerProc.Cmd.Process.Pid)
 	go runWebSocketServer()
