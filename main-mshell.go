@@ -15,10 +15,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/scripthaus-dev/sh2-runner/pkg/base"
-	"github.com/scripthaus-dev/sh2-runner/pkg/cmdtail"
-	"github.com/scripthaus-dev/sh2-runner/pkg/packet"
-	"github.com/scripthaus-dev/sh2-runner/pkg/shexec"
+	"github.com/scripthaus-dev/mshell/pkg/base"
+	"github.com/scripthaus-dev/mshell/pkg/cmdtail"
+	"github.com/scripthaus-dev/mshell/pkg/packet"
+	"github.com/scripthaus-dev/mshell/pkg/shexec"
 )
 
 // in single run mode, we don't want the runner to die from signals
@@ -155,7 +155,7 @@ func doMain() {
 		packet.SendErrorPacket(os.Stdout, fmt.Sprintf("cannot change directory to $HOME '%s': %v", homeDir, err))
 		return
 	}
-	err = base.EnsureRunnerPath()
+	err = base.EnsureMShellPath()
 	if err != nil {
 		packet.SendErrorPacket(os.Stdout, err.Error())
 		return

@@ -17,8 +17,8 @@ import (
 
 	"github.com/creack/pty"
 	"github.com/google/uuid"
-	"github.com/scripthaus-dev/sh2-runner/pkg/base"
-	"github.com/scripthaus-dev/sh2-runner/pkg/packet"
+	"github.com/scripthaus-dev/mshell/pkg/base"
+	"github.com/scripthaus-dev/mshell/pkg/packet"
 )
 
 const DefaultRows = 25
@@ -79,8 +79,8 @@ func UpdateCmdEnv(cmd *exec.Cmd, envVars map[string]string) {
 func MakeExecCmd(pk *packet.RunPacketType, cmdTty *os.File) *exec.Cmd {
 	ecmd := exec.Command("bash", "-c", pk.Command)
 	UpdateCmdEnv(ecmd, pk.Env)
-	if pk.ChDir != "" {
-		ecmd.Dir = pk.ChDir
+	if pk.Cwd != "" {
+		ecmd.Dir = pk.Cwd
 	}
 	ecmd.Stdin = cmdTty
 	ecmd.Stdout = cmdTty
@@ -93,11 +93,8 @@ func MakeExecCmd(pk *packet.RunPacketType, cmdTty *os.File) *exec.Cmd {
 }
 
 func MakeRunnerExec(cmdId string) (*exec.Cmd, error) {
-	runnerPath, err := base.GetScRunnerPath()
-	if err != nil {
-		return nil, err
-	}
-	ecmd := exec.Command(runnerPath, cmdId)
+	msPath := base.GetMShellPath()
+	ecmd := exec.Command(msPath, cmdId)
 	return ecmd, nil
 }
 
@@ -141,13 +138,13 @@ func ValidateRunPacket(pk *packet.RunPacketType) error {
 	if err != nil {
 		return fmt.Errorf("invalid cmdid '%s' for command", pk.CmdId)
 	}
-	if pk.ChDir != "" {
-		dirInfo, err := os.Stat(pk.ChDir)
+	if pk.Cwd != "" {
+		dirInfo, err := os.Stat(pk.Cwd)
 		if err != nil {
-			return fmt.Errorf("invalid cwd '%s' for command: %v", pk.ChDir, err)
+			return fmt.Errorf("invalid cwd '%s' for command: %v", pk.Cwd, err)
 		}
 		if !dirInfo.IsDir() {
-			return fmt.Errorf("invalid cwd '%s' for command, not a directory", pk.ChDir)
+			return fmt.Errorf("invalid cwd '%s' for command, not a directory", pk.Cwd)
 		}
 	}
 	return nil
@@ -156,11 +153,11 @@ func ValidateRunPacket(pk *packet.RunPacketType) error {
 func GetWinsize(p *packet.RunPacketType) *pty.Winsize {
 	rows := DefaultRows
 	cols := DefaultCols
-	if p.Rows > 0 && p.Rows <= MaxRows {
-		rows = p.Rows
+	if p.TermSize.Rows > 0 && p.TermSize.Rows <= MaxRows {
+		rows = p.TermSize.Rows
 	}
-	if p.Cols > 0 && p.Cols <= MaxCols {
-		cols = p.Cols
+	if p.TermSize.Cols > 0 && p.TermSize.Cols <= MaxCols {
+		cols = p.TermSize.Cols
 	}
 	return &pty.Winsize{Rows: uint16(rows), Cols: uint16(cols)}
 }

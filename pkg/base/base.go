@@ -11,11 +11,14 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 )
 
-const ScRunnerVarName = "SCRIPTHAUS_RUNNER"
+const DefaultMShellPath = "mshell"
+const MShellPathVarName = "MSHELL_PATH"
+const SSHCommandVarName = "SSH_COMMAND"
 const ScHomeVarName = "SCRIPTHAUS_HOME"
 const HomeVarName = "HOME"
 const ScShell = "bash"
@@ -125,32 +128,19 @@ func EnsureSessionDir(sessionId string) (string, error) {
 	return sdir, nil
 }
 
-func GetScRunnerPath() (string, error) {
-	runnerPath := os.Getenv(ScRunnerVarName)
-	if runnerPath != "" {
-		return runnerPath, nil
+func GetMShellPath() string {
+	msPath := os.Getenv(MShellPathVarName)
+	if msPath != "" {
+		return msPath
 	}
-	scHome, err := GetScHomeDir()
-	if err != nil {
-		return "", err
-	}
-	return path.Join(scHome, RunnerBaseName), nil
+	return DefaultMShellPath
 }
 
-func EnsureRunnerPath() error {
-	runnerPath, err := GetScRunnerPath()
+func EnsureMShellPath() error {
+	msPath := GetMShellPath()
+	_, err := exec.LookPath(msPath)
 	if err != nil {
 		return err
-	}
-	info, err := os.Stat(runnerPath)
-	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return fmt.Errorf("cannot find scripthaus runner at path '%s'", runnerPath)
-		}
-		return fmt.Errorf("error stating scripthaus runner at path '%s'", runnerPath)
-	}
-	if info.Mode()&0100 == 0 {
-		return fmt.Errorf("scripthaus runner at path '%s' is not executable mode=%#o", runnerPath, info.Mode())
 	}
 	return nil
 }

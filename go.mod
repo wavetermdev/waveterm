@@ -1,4 +1,4 @@
-module github.com/scripthaus-dev/sh2-runner
+module github.com/scripthaus-dev/mshell
 
 go 1.17
 

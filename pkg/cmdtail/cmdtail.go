@@ -16,8 +16,8 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/google/uuid"
-	"github.com/scripthaus-dev/sh2-runner/pkg/base"
-	"github.com/scripthaus-dev/sh2-runner/pkg/packet"
+	"github.com/scripthaus-dev/mshell/pkg/base"
+	"github.com/scripthaus-dev/mshell/pkg/packet"
 )
 
 const MaxDataBytes = 4096
