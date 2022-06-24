@@ -28,6 +28,7 @@ const (
 	PingPacketStr      = "ping"
 	InitPacketStr      = "init"
 	DataPacketStr      = "data"
+	DataAckPacketStr   = "dataack"
 	CmdStartPacketStr  = "cmdstart"
 	CmdDonePacketStr   = "cmddone"
 	ResponsePacketStr  = "resp"
@@ -62,6 +63,7 @@ func init() {
 	TypeStrToFactory[RawPacketStr] = reflect.TypeOf(RawPacketType{})
 	TypeStrToFactory[InputPacketStr] = reflect.TypeOf(InputPacketType{})
 	TypeStrToFactory[DataPacketStr] = reflect.TypeOf(DataPacketType{})
+	TypeStrToFactory[DataAckPacketStr] = reflect.TypeOf(DataAckPacketType{})
 }
 
 func MakePacket(packetType string) (PacketType, error) {
@@ -126,6 +128,23 @@ func (*DataPacketType) GetType() string {
 
 func MakeDataPacket() *DataPacketType {
 	return &DataPacketType{Type: DataPacketStr}
+}
+
+type DataAckPacketType struct {
+	Type      string `json:"type"`
+	SessionId string `json:"sessionid,omitempty"`
+	CmdId     string `json:"cmdid,omitempty"`
+	FdNum     int    `json:"fdnum"`
+	AckLen    int    `json:"acklen"`
+	Error     string `json:"error"`
+}
+
+func (*DataAckPacketType) GetType() string {
+	return DataAckPacketStr
+}
+
+func MakeDataAckPacket() *DataAckPacketType {
+	return &DataAckPacketType{Type: DataAckPacketStr}
 }
 
 // InputData gets written to PTY directly

@@ -245,7 +245,7 @@ func handleRemote() {
 	defer cmd.Close()
 	startPacket := cmd.MakeCmdStartPacket()
 	sender.SendPacket(startPacket)
-	cmd.RunIOAndWait(sender)
+	cmd.RunIOAndWait(packetCh, sender)
 }
 
 func handleServer() {

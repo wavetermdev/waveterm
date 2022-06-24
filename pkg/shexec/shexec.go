@@ -26,36 +26,43 @@ const DefaultRows = 25
 const DefaultCols = 80
 const MaxRows = 1024
 const MaxCols = 1024
+const ReadBufSize = 128 * 1024
+const WriteBufSize = 128 * 1024
 
 type ShExecType struct {
+	Lock            *sync.Mutex
 	StartTs         time.Time
 	RunPacket       *packet.RunPacketType
 	FileNames       *base.CommandFileNames
 	Cmd             *exec.Cmd
 	CmdPty          *os.File
-	FdReaders       map[int]*os.File
-	FdWriters       map[int]*os.File
-	CloseAfterStart []*os.File
+	FdReaders       map[int]*FdReader // synchronized
+	FdWriters       map[int]*FdWriter // synchronized
+	CloseAfterStart []*os.File        // synchronized
 }
 
 func MakeShExec(pk *packet.RunPacketType) *ShExecType {
 	return &ShExecType{
+		Lock:      &sync.Mutex{},
 		StartTs:   time.Now(),
 		RunPacket: pk,
-		FdReaders: make(map[int]*os.File),
-		FdWriters: make(map[int]*os.File),
+		FdReaders: make(map[int]*FdReader),
+		FdWriters: make(map[int]*FdWriter),
 	}
 }
 
 func (c *ShExecType) Close() {
+	c.Lock.Lock()
+	defer c.Lock.Unlock()
+
 	if c.CmdPty != nil {
 		c.CmdPty.Close()
 	}
 	for _, fd := range c.FdReaders {
 		fd.Close()
 	}
-	for _, fd := range c.FdWriters {
-		fd.Close()
+	for _, fw := range c.FdWriters {
+		fw.Close()
 	}
 	for _, fd := range c.CloseAfterStart {
 		fd.Close()
@@ -221,7 +228,9 @@ func (cmd *ShExecType) makeReaderPipe(fdNum int) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	cmd.FdReaders[fdNum] = pr
+	cmd.Lock.Lock()
+	defer cmd.Lock.Unlock()
+	cmd.FdReaders[fdNum] = MakeFdReader(cmd, pr, fdNum)
 	cmd.CloseAfterStart = append(cmd.CloseAfterStart, pw)
 	return pw, nil
 }
@@ -232,51 +241,81 @@ func (cmd *ShExecType) makeWriterPipe(fdNum int) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	cmd.FdWriters[fdNum] = pw
+	cmd.Lock.Lock()
+	defer cmd.Lock.Unlock()
+	cmd.FdWriters[fdNum] = MakeFdWriter(cmd, pw, fdNum)
 	cmd.CloseAfterStart = append(cmd.CloseAfterStart, pr)
 	return pr, nil
 }
 
-func (cmd *ShExecType) MakeDataPacket(fdNum int, data []byte) *packet.DataPacketType {
-	pk := packet.MakeDataPacket()
-	pk.SessionId = cmd.RunPacket.SessionId
-	pk.CmdId = cmd.RunPacket.CmdId
-	pk.FdNum = fdNum
-	pk.Data = string(data)
-	return pk
+func (cmd *ShExecType) MakeDataAckPacket(fdNum int, ackLen int, err error) *packet.DataAckPacketType {
+	ack := packet.MakeDataAckPacket()
+	ack.SessionId = cmd.RunPacket.SessionId
+	ack.CmdId = cmd.RunPacket.CmdId
+	ack.FdNum = fdNum
+	ack.AckLen = ackLen
+	if err != nil {
+		ack.Error = err.Error()
+	}
+	return ack
 }
 
-func (cmd *ShExecType) runReadLoop(wg *sync.WaitGroup, fdNum int, fd *os.File, sender *packet.PacketSender) {
-	go func() {
-		defer fd.Close()
-		defer wg.Done()
-		buf := make([]byte, 4096)
-		for {
-			nr, err := fd.Read(buf)
-			pk := cmd.MakeDataPacket(fdNum, buf[0:nr])
-			if err == io.EOF {
-				pk.Eof = true
-				sender.SendPacket(pk)
-				break
-			} else if err != nil {
-				pk.Error = err.Error()
-				sender.SendPacket(pk)
-				break
-			} else {
-				sender.SendPacket(pk)
-			}
+func (cmd *ShExecType) launchWriters(sender *packet.PacketSender) {
+	cmd.Lock.Lock()
+	defer cmd.Lock.Unlock()
+	for _, fw := range cmd.FdWriters {
+		go fw.WriteLoop(sender)
+	}
+}
+
+func (cmd *ShExecType) writeDataPacket(dataPacket *packet.DataPacketType) error {
+	cmd.Lock.Lock()
+	defer cmd.Lock.Unlock()
+	fw := cmd.FdWriters[dataPacket.FdNum]
+	if fw == nil {
+		// add a closed FdWriter as a placeholder so we only send one error
+		fw := MakeFdWriter(cmd, nil, dataPacket.FdNum)
+		fw.Close()
+		cmd.FdWriters[dataPacket.FdNum] = fw
+		return fmt.Errorf("write to closed file")
+	}
+	err := fw.AddData([]byte(dataPacket.Data), dataPacket.Eof)
+	if err != nil {
+		fw.Close()
+		return err
+	}
+	return nil
+}
+
+func (cmd *ShExecType) runMainWriteLoop(packetCh chan packet.PacketType, sender *packet.PacketSender) {
+	for pk := range packetCh {
+		if pk.GetType() != packet.DataPacketStr {
+			// other packets are ignored
+			continue
 		}
-	}()
+		dataPacket := pk.(*packet.DataPacketType)
+		err := cmd.writeDataPacket(dataPacket)
+		if err != nil {
+			errPacket := cmd.MakeDataAckPacket(dataPacket.FdNum, 0, err)
+			sender.SendPacket(errPacket)
+		}
+	}
 }
 
-func (cmd *ShExecType) RunIOAndWait(sender *packet.PacketSender) {
-	var wg sync.WaitGroup
+func (cmd *ShExecType) launchReaders(wg *sync.WaitGroup, sender *packet.PacketSender) {
+	cmd.Lock.Lock()
+	defer cmd.Lock.Unlock()
 	wg.Add(len(cmd.FdReaders))
-	go func() {
-		for fdNum, fd := range cmd.FdReaders {
-			cmd.runReadLoop(&wg, fdNum, fd, sender)
-		}
-	}()
+	for _, fr := range cmd.FdReaders {
+		go fr.ReadLoop(wg, sender)
+	}
+}
+
+func (cmd *ShExecType) RunIOAndWait(packetCh chan packet.PacketType, sender *packet.PacketSender) {
+	var wg sync.WaitGroup
+	cmd.launchReaders(&wg, sender)
+	cmd.launchWriters(sender)
+	go cmd.runMainWriteLoop(packetCh, sender)
 	donePacket := cmd.WaitForCommand()
 	wg.Wait()
 	sender.SendPacket(donePacket)
