@@ -28,6 +28,8 @@ const MaxRows = 1024
 const MaxCols = 1024
 const ReadBufSize = 128 * 1024
 const WriteBufSize = 128 * 1024
+const MaxFdNum = 1023
+const FirstExtraFilesFdNum = 3
 
 type ShExecType struct {
 	Lock            *sync.Mutex
@@ -344,6 +346,56 @@ func runCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender) (*S
 		cmd.Close()
 		return nil, err
 	}
+	extraFiles := make([]*os.File, 0, MaxFdNum+1)
+	for _, rfd := range pk.Fds {
+		if rfd.FdNum < 0 {
+			cmd.Close()
+			return nil, fmt.Errorf("mshell negative fd numbers fd=%d", rfd.FdNum)
+		}
+		if rfd.FdNum < FirstExtraFilesFdNum {
+			cmd.Close()
+			return nil, fmt.Errorf("mshell does not support re-opening fd=%d (0, 1, and 2, are always open)", rfd.FdNum)
+		}
+		if rfd.FdNum > MaxFdNum {
+			cmd.Close()
+			return nil, fmt.Errorf("mshell does not support opening fd numbers above %d", MaxFdNum)
+		}
+		if rfd.FdNum >= len(extraFiles) {
+			extraFiles = extraFiles[:rfd.FdNum+1]
+		}
+		if extraFiles[rfd.FdNum] != nil {
+			cmd.Close()
+			return nil, fmt.Errorf("mshell got duplicate entries for fd=%d", rfd.FdNum)
+		}
+		if rfd.Read && rfd.Write {
+			cmd.Close()
+			return nil, fmt.Errorf("mshell does not support opening fd numbers for reading and writing, fd=%d", rfd.FdNum)
+		}
+		if !rfd.Read && !rfd.Write {
+			cmd.Close()
+			return nil, fmt.Errorf("invalid fd=%d, neither reading or writing mode specified", rfd.FdNum)
+		}
+		if rfd.Read {
+			// client file is open for reading, so we make a writer pipe
+			extraFiles[rfd.FdNum], err = cmd.makeWriterPipe(rfd.FdNum)
+			if err != nil {
+				cmd.Close()
+				return nil, err
+			}
+		}
+		if rfd.Write {
+			// client file is open for writing, so we make a reader pipe
+			extraFiles[rfd.FdNum], err = cmd.makeReaderPipe(rfd.FdNum)
+			if err != nil {
+				cmd.Close()
+				return nil, err
+			}
+		}
+	}
+	if len(extraFiles) > FirstExtraFilesFdNum {
+		cmd.Cmd.ExtraFiles = extraFiles[FirstExtraFilesFdNum:]
+	}
+
 	err = cmd.Cmd.Start()
 	if err != nil {
 		cmd.Close()

@@ -270,8 +270,7 @@ Options:
     --fds [fdspec]    - open fds based off [fdspec], comma separated (implies --no-auto-fds)
                         <[num] opens for reading
                         >[num] opens for writing
-                        <>[num] opens for read/write
-                        e.g. --fds '<5,>6,<>7'
+                        e.g. --fds '<5,>6,>7'
 
 mshell is licensed under the MPLv2
 Please see https://github.com/scripthaus-dev/mshell for extended usage modes, source code, bugs, and feature requests
