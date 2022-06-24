@@ -9,6 +9,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
 	"os/user"
 	"strings"
@@ -234,6 +235,11 @@ func handleRemote() {
 			runPacket, _ = pk.(*packet.RunPacketType)
 			break
 		}
+		if pk.GetType() == packet.RawPacketStr {
+			rawPk := pk.(*packet.RawPacketType)
+			sender.SendMessage("got raw packet '%s'", rawPk.Data)
+			continue
+		}
 		sender.SendErrorPacket(fmt.Sprintf("invalid packet '%s' sent to mshell", pk.GetType()))
 		return
 	}
@@ -251,26 +257,128 @@ func handleRemote() {
 func handleServer() {
 }
 
-func handleClient() {
-	fmt.Printf("mshell client\n")
+func detectOpenFds() {
+
 }
 
-func handleUsage(extended bool) {
+type ClientOpts struct {
+	IsSSH       bool
+	SSHOptsTerm bool
+	SSHOpts     []string
+	Command     string
+	Fds         []packet.RemoteFd
+	Cwd         string
+}
+
+func parseClientOpts() (*ClientOpts, error) {
+	opts := &ClientOpts{}
+	iter := base.MakeOptsIter(os.Args[1:])
+	for iter.HasNext() {
+		argStr := iter.Next()
+		if argStr == "--ssh" {
+			if opts.IsSSH {
+				return nil, fmt.Errorf("duplicate '--ssh' option")
+			}
+			opts.IsSSH = true
+			break
+		}
+	}
+	if opts.IsSSH {
+		// parse SSH opts
+		for iter.HasNext() {
+			argStr := iter.Next()
+			if argStr == "--" {
+				opts.SSHOptsTerm = true
+				break
+			}
+			if argStr == "--cwd" {
+				if !iter.HasNext() {
+					return nil, fmt.Errorf("'--cwd [dir]' missing directory")
+				}
+			}
+			opts.SSHOpts = append(opts.SSHOpts, argStr)
+		}
+		if !opts.SSHOptsTerm {
+			return nil, fmt.Errorf("ssh options must be terminated with '--' followed by [command]")
+		}
+		if !iter.HasNext() {
+			return nil, fmt.Errorf("no command specified")
+		}
+		opts.Command = strings.Join(iter.Rest(), " ")
+		if strings.TrimSpace(opts.Command) == "" {
+			return nil, fmt.Errorf("no command or empty command specified")
+		}
+	}
+	return opts, nil
+}
+
+func handleClient() (int, error) {
+	fmt.Printf("mshell client\n")
+	opts, err := parseClientOpts()
+	if err != nil {
+		return 1, fmt.Errorf("parsing opts: %w", err)
+	}
+	if !opts.IsSSH {
+		return 1, fmt.Errorf("when running in client mode '--ssh' option must be present")
+	}
+	fmt.Printf("opts: %v\n", opts)
+	sshRemoteCommand := `PATH=$PATH:~/.mshell; mshell --remote`
+	sshOpts := append(opts.SSHOpts, sshRemoteCommand)
+	ecmd := exec.Command("ssh", sshOpts...)
+	inputWriter, err := ecmd.StdinPipe()
+	if err != nil {
+		return 1, fmt.Errorf("creating stdin pipe: %v", err)
+	}
+	outputReader, err := ecmd.StdoutPipe()
+	if err != nil {
+		return 1, fmt.Errorf("creating stdout pipe: %v", err)
+	}
+	ecmd.Stderr = ecmd.Stdout
+	err = ecmd.Start()
+	if err != nil {
+		return 1, fmt.Errorf("running ssh command: %w", err)
+	}
+	parser := packet.PacketParser(outputReader)
+	go func() {
+		fmt.Printf("%v %v\n", parser, inputWriter)
+	}()
+	exitErr := ecmd.Wait()
+	return shexec.GetExitCode(exitErr), nil
+}
+
+func handleUsage() {
 	usage := `
-Client Usage: mshell [mshell-opts] [ssh-opts] user@host [command]
+Client Usage: mshell [mshell-opts] --ssh [ssh-opts] user@host -- [command]
 
 mshell multiplexes input and output streams to a remote command over ssh.
 
 Options:
-    --env 'X=Y,A=B'   - set remote environment variables for command, comma or newline separated
+    --env 'X=Y;A=B'   - set remote environment variables for command, semicolon separated
     --env-file [file] - load environment variables from [file] (.env format)
     --env-copy [glob] - copy local environment variables to remote using [glob] pattern
     --cwd [dir]       - execute remote command in [dir]
     --no-auto-fds     - do not auto-detect additional fds
+    --sudo            - execute "sudo [command]"
     --fds [fdspec]    - open fds based off [fdspec], comma separated (implies --no-auto-fds)
                         <[num] opens for reading
                         >[num] opens for writing
                         e.g. --fds '<5,>6,>7'
+    [command]         - a single argument (should be quoted)
+
+Examples:
+    # execute a python script remotely, with stdin still hooked up correctly
+    mshell --cwd "~/work" --ssh -i key.pem ubuntu@somehost -- "python /dev/fd/4" 4< myscript.py
+
+    # capture multiple outputs
+    mshell --ssh ubuntu@test -- "cat file1.txt > /dev/fd/3; cat file2.txt > /dev/fd/4" 3> file1.txt 4> file2.txt
+
+    # environment variable copying, setting working directory
+    # note the single quotes on command (otherwise the local shell will expand the variables)
+    TEST1=hello TEST2=world mshell --cwd "~/work" --env-copy "TEST*" --ssh user@host -- 'echo $(pwd) $TEST1 $TEST2'
+
+    # execute a script, catpure stdout/stderr in fd-3 and fd-4
+    # useful if you need to see stdout for interacting with ssh (password or host auth)
+    mshell --ssh user@host -- "test.sh > /dev/fd/3 2> /dev/fd/4" 3> test.stdout 4> test.stderr
 
 mshell is licensed under the MPLv2
 Please see https://github.com/scripthaus-dev/mshell for extended usage modes, source code, bugs, and feature requests
@@ -280,12 +388,12 @@ Please see https://github.com/scripthaus-dev/mshell for extended usage modes, so
 
 func main() {
 	if len(os.Args) == 1 {
-		handleUsage(false)
+		handleUsage()
 		return
 	}
 	firstArg := os.Args[1]
 	if firstArg == "--help" {
-		handleUsage(true)
+		handleUsage()
 		return
 	} else if firstArg == "--version" {
 		fmt.Printf("mshell v%s\n", MShellVersion)
@@ -297,7 +405,11 @@ func main() {
 		handleServer()
 		return
 	} else {
-		handleClient()
+		rtnCode, err := handleClient()
+		if err != nil {
+			fmt.Printf("[error] %v\n", err)
+		}
+		os.Exit(rtnCode)
 		return
 	}
 

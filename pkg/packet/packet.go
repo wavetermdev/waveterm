@@ -43,6 +43,8 @@ const (
 	InputPacketStr     = "input"
 )
 
+const PacketSenderQueueSize = 20
+
 var TypeStrToFactory map[string]reflect.Type
 
 func init() {
@@ -450,7 +452,7 @@ type PacketSender struct {
 func MakePacketSender(output io.Writer) *PacketSender {
 	sender := &PacketSender{
 		Lock:   &sync.Mutex{},
-		SendCh: make(chan PacketType),
+		SendCh: make(chan PacketType, PacketSenderQueueSize),
 		DoneCh: make(chan bool),
 	}
 	go func() {

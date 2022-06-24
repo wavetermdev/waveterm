@@ -14,6 +14,8 @@ import (
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 )
 
+const MaxSingleWriteSize = 4 * 1024
+
 type FdWriter struct {
 	CVar      *sync.Cond
 	SessionId string
@@ -97,16 +99,20 @@ func (w *FdWriter) WriteLoop(sender *packet.PacketSender) {
 	defer w.Close()
 	for {
 		data, isEof := w.WaitForData()
-		if w.Closed {
-			return
-		}
-		if len(data) > 0 {
-			nw, err := w.Fd.Write(data)
+		// chunk the writes to make sure we send ample ack packets
+		for len(data) > 0 {
+			if w.Closed {
+				return
+			}
+			chunkSize := min(len(data), MaxSingleWriteSize)
+			chunk := data[0:chunkSize]
+			nw, err := w.Fd.Write(chunk)
 			ack := w.MakeDataAckPacket(nw, err)
 			sender.SendPacket(ack)
 			if err != nil {
 				return
 			}
+			data = data[chunkSize:]
 		}
 		if isEof {
 			return

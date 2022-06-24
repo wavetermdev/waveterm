@@ -50,6 +50,9 @@ func (r *FdReader) Close() {
 func (r *FdReader) NotifyAck(ackLen int) {
 	r.CVar.L.Lock()
 	defer r.CVar.L.Unlock()
+	if r.Closed {
+		return
+	}
 	r.BufSize -= ackLen
 	if r.BufSize < 0 {
 		r.BufSize = 0
@@ -57,11 +60,17 @@ func (r *FdReader) NotifyAck(ackLen int) {
 	r.CVar.Broadcast()
 }
 
+// !! inverse locking.  must already hold the lock when you call this method.
+// will *unlock*, send the packet, and then *relock* once it is done.
+// this can prevent an unlikely deadlock where we are holding r.CVar.L and stuck on sender.SendCh
+func (r *FdReader) sendPacket_unlock(sender *packet.PacketSender, pk packet.PacketType) {
+	r.CVar.L.Unlock()
+	defer r.CVar.L.Lock()
+	sender.SendPacket(pk)
+}
+
 // returns (success)
 func (r *FdReader) WriteWait(sender *packet.PacketSender, data []byte, isEof bool) bool {
-	if len(data) == 0 {
-		return true
-	}
 	r.CVar.L.Lock()
 	defer r.CVar.L.Unlock()
 	for {
@@ -75,13 +84,15 @@ func (r *FdReader) WriteWait(sender *packet.PacketSender, data []byte, isEof boo
 		}
 		writeLen := min(bufAvail, len(data))
 		pk := r.MakeDataPacket(data[0:writeLen], nil)
-		sender.SendPacket(pk)
+		pk.Eof = isEof && (writeLen == len(data))
 		r.BufSize += writeLen
 		data = data[writeLen:]
+		r.sendPacket_unlock(sender, pk)
 		if len(data) == 0 {
 			return true
 		}
-		r.CVar.Wait()
+		// do *not* do a CVar.Wait() here -- because we *unlocked* to send the packet, we should
+		// recheck the condition before waiting to avoid deadlock.
 	}
 }
 
@@ -104,12 +115,21 @@ func (r *FdReader) MakeDataPacket(data []byte, err error) *packet.DataPacketType
 	return pk
 }
 
+func (r *FdReader) isClosed() bool {
+	r.CVar.L.Lock()
+	defer r.CVar.L.Unlock()
+	return r.Closed
+}
+
 func (r *FdReader) ReadLoop(wg *sync.WaitGroup, sender *packet.PacketSender) {
 	defer r.Close()
 	defer wg.Done()
 	buf := make([]byte, 4096)
 	for {
 		nr, err := r.Fd.Read(buf)
+		if r.isClosed() {
+			return // should not send data or error if we already closed the fd
+		}
 		if nr > 0 || err == io.EOF {
 			isOpen := r.WriteWait(sender, buf[0:nr], (err == io.EOF))
 			if !isOpen {

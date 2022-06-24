@@ -270,7 +270,7 @@ func (cmd *ShExecType) launchWriters(sender *packet.PacketSender) {
 	}
 }
 
-func (cmd *ShExecType) writeDataPacket(dataPacket *packet.DataPacketType) error {
+func (cmd *ShExecType) processDataPacket(dataPacket *packet.DataPacketType) error {
 	cmd.Lock.Lock()
 	defer cmd.Lock.Unlock()
 	fw := cmd.FdWriters[dataPacket.FdNum]
@@ -289,18 +289,32 @@ func (cmd *ShExecType) writeDataPacket(dataPacket *packet.DataPacketType) error 
 	return nil
 }
 
-func (cmd *ShExecType) runMainWriteLoop(packetCh chan packet.PacketType, sender *packet.PacketSender) {
+func (cmd *ShExecType) processAckPacket(ackPacket *packet.DataAckPacketType) {
+	cmd.Lock.Lock()
+	defer cmd.Lock.Unlock()
+	fr := cmd.FdReaders[ackPacket.FdNum]
+	if fr == nil {
+		return
+	}
+	fr.NotifyAck(ackPacket.AckLen)
+}
+
+func (cmd *ShExecType) runPacketInputLoop(packetCh chan packet.PacketType, sender *packet.PacketSender) {
 	for pk := range packetCh {
-		if pk.GetType() != packet.DataPacketStr {
-			// other packets are ignored
+		if pk.GetType() == packet.DataPacketStr {
+			dataPacket := pk.(*packet.DataPacketType)
+			err := cmd.processDataPacket(dataPacket)
+			if err != nil {
+				errPacket := cmd.MakeDataAckPacket(dataPacket.FdNum, 0, err)
+				sender.SendPacket(errPacket)
+			}
 			continue
 		}
-		dataPacket := pk.(*packet.DataPacketType)
-		err := cmd.writeDataPacket(dataPacket)
-		if err != nil {
-			errPacket := cmd.MakeDataAckPacket(dataPacket.FdNum, 0, err)
-			sender.SendPacket(errPacket)
+		if pk.GetType() == packet.DataAckPacketStr {
+			ackPacket := pk.(*packet.DataAckPacketType)
+			cmd.processAckPacket(ackPacket)
 		}
+		// other packet types are ignored
 	}
 }
 
@@ -317,7 +331,7 @@ func (cmd *ShExecType) RunIOAndWait(packetCh chan packet.PacketType, sender *pac
 	var wg sync.WaitGroup
 	cmd.launchReaders(&wg, sender)
 	cmd.launchWriters(sender)
-	go cmd.runMainWriteLoop(packetCh, sender)
+	go cmd.runPacketInputLoop(packetCh, sender)
 	donePacket := cmd.WaitForCommand()
 	wg.Wait()
 	sender.SendPacket(donePacket)
