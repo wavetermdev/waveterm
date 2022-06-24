@@ -45,14 +45,29 @@ func (m *Multiplexer) Close() {
 	m.Lock.Lock()
 	defer m.Lock.Unlock()
 
-	for _, fd := range m.FdReaders {
-		fd.Close()
+	for _, fr := range m.FdReaders {
+		fr.Close()
 	}
-	for _, fd := range m.FdWriters {
-		fd.Close()
+	for _, fw := range m.FdWriters {
+		fw.Close()
 	}
 	for _, fd := range m.CloseAfterStart {
 		fd.Close()
+	}
+}
+
+func (m *Multiplexer) HandleInputDone() {
+	m.Lock.Lock()
+	defer m.Lock.Unlock()
+
+	// close readers (obviously the done command needs no more input)
+	for _, fr := range m.FdReaders {
+		fr.Close()
+	}
+
+	// ensure EOF on all writers (ignore error)
+	for _, fw := range m.FdWriters {
+		fw.AddData(nil, true)
 	}
 }
 
@@ -64,7 +79,7 @@ func (m *Multiplexer) MakeReaderPipe(fdNum int) (*os.File, error) {
 	}
 	m.Lock.Lock()
 	defer m.Lock.Unlock()
-	m.FdReaders[fdNum] = MakeFdReader(m, pr, fdNum)
+	m.FdReaders[fdNum] = MakeFdReader(m, pr, fdNum, true)
 	m.CloseAfterStart = append(m.CloseAfterStart, pw)
 	return pw, nil
 }
@@ -77,9 +92,21 @@ func (m *Multiplexer) MakeWriterPipe(fdNum int) (*os.File, error) {
 	}
 	m.Lock.Lock()
 	defer m.Lock.Unlock()
-	m.FdWriters[fdNum] = MakeFdWriter(m, pw, fdNum)
+	m.FdWriters[fdNum] = MakeFdWriter(m, pw, fdNum, true)
 	m.CloseAfterStart = append(m.CloseAfterStart, pr)
 	return pr, nil
+}
+
+func (m *Multiplexer) MakeRawFdReader(fdNum int, fd *os.File) {
+	m.Lock.Lock()
+	defer m.Lock.Unlock()
+	m.FdReaders[fdNum] = MakeFdReader(m, fd, fdNum, false)
+}
+
+func (m *Multiplexer) MakeRawFdWriter(fdNum int, fd *os.File) {
+	m.Lock.Lock()
+	defer m.Lock.Unlock()
+	m.FdWriters[fdNum] = MakeFdWriter(m, fd, fdNum, false)
 }
 
 func (m *Multiplexer) makeDataAckPacket(fdNum int, ackLen int, err error) *packet.DataAckPacketType {
@@ -110,18 +137,23 @@ func (m *Multiplexer) sendPacket(p packet.PacketType) {
 	m.Sender.SendPacket(p)
 }
 
-func (m *Multiplexer) launchWriters() {
+func (m *Multiplexer) launchWriters(wg *sync.WaitGroup) {
 	m.Lock.Lock()
 	defer m.Lock.Unlock()
+	if wg != nil {
+		wg.Add(len(m.FdWriters))
+	}
 	for _, fw := range m.FdWriters {
-		go fw.WriteLoop()
+		go fw.WriteLoop(wg)
 	}
 }
 
 func (m *Multiplexer) launchReaders(wg *sync.WaitGroup) {
 	m.Lock.Lock()
 	defer m.Lock.Unlock()
-	wg.Add(len(m.FdReaders))
+	if wg != nil {
+		wg.Add(len(m.FdReaders))
+	}
 	for _, fr := range m.FdReaders {
 		go fr.ReadLoop(wg)
 	}
@@ -138,7 +170,8 @@ func (m *Multiplexer) startIO(packetCh chan packet.PacketType, sender *packet.Pa
 	m.Started = true
 }
 
-func (m *Multiplexer) runPacketInputLoop() {
+func (m *Multiplexer) runPacketInputLoop() *packet.CmdDonePacketType {
+	defer m.HandleInputDone()
 	for pk := range m.Input {
 		if pk.GetType() == packet.DataPacketStr {
 			dataPacket := pk.(*packet.DataPacketType)
@@ -152,9 +185,15 @@ func (m *Multiplexer) runPacketInputLoop() {
 		if pk.GetType() == packet.DataAckPacketStr {
 			ackPacket := pk.(*packet.DataAckPacketType)
 			m.processAckPacket(ackPacket)
+			continue
+		}
+		if pk.GetType() == packet.CmdDonePacketStr {
+			donePacket := pk.(*packet.CmdDonePacketType)
+			return donePacket
 		}
 		// other packet types are ignored
 	}
+	return nil
 }
 
 func (m *Multiplexer) processDataPacket(dataPacket *packet.DataPacketType) error {
@@ -163,7 +202,7 @@ func (m *Multiplexer) processDataPacket(dataPacket *packet.DataPacketType) error
 	fw := m.FdWriters[dataPacket.FdNum]
 	if fw == nil {
 		// add a closed FdWriter as a placeholder so we only send one error
-		fw := MakeFdWriter(m, nil, dataPacket.FdNum)
+		fw := MakeFdWriter(m, nil, dataPacket.FdNum, false)
 		fw.Close()
 		m.FdWriters[dataPacket.FdNum] = fw
 		return fmt.Errorf("write to closed file")
@@ -195,12 +234,38 @@ func (m *Multiplexer) closeTempStartFds() {
 	m.CloseAfterStart = nil
 }
 
-func (m *Multiplexer) RunIOAndWait(packetCh chan packet.PacketType, sender *packet.PacketSender) {
+func (m *Multiplexer) RunIOAndWait(packetCh chan packet.PacketType, sender *packet.PacketSender, waitOnReaders bool, waitOnWriters bool, waitForInputLoop bool) *packet.CmdDonePacketType {
 	m.startIO(packetCh, sender)
 	m.closeTempStartFds()
 	var wg sync.WaitGroup
-	m.launchReaders(&wg)
-	m.launchWriters()
-	go m.runPacketInputLoop()
+	if waitOnReaders {
+		m.launchReaders(&wg)
+	} else {
+		m.launchReaders(nil)
+	}
+	if waitOnWriters {
+		m.launchWriters(&wg)
+	} else {
+		m.launchWriters(nil)
+	}
+	var donePacket *packet.CmdDonePacketType
+	if waitForInputLoop {
+		wg.Add(1)
+	}
+	go func() {
+		if waitForInputLoop {
+			defer wg.Done()
+		}
+		pkRtn := m.runPacketInputLoop()
+		if pkRtn != nil {
+			m.Lock.Lock()
+			donePacket = pkRtn
+			m.Lock.Unlock()
+		}
+	}()
 	wg.Wait()
+
+	m.Lock.Lock()
+	defer m.Lock.Unlock()
+	return donePacket
 }

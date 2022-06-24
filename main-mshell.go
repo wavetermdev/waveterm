@@ -9,7 +9,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"os/signal"
 	"os/user"
 	"strings"
@@ -251,7 +250,7 @@ func handleRemote() {
 	defer cmd.Close()
 	startPacket := cmd.MakeCmdStartPacket()
 	sender.SendPacket(startPacket)
-	cmd.RunIOAndWait(packetCh, sender)
+	cmd.RunRemoteIOAndWait(packetCh, sender)
 }
 
 func handleServer() {
@@ -261,17 +260,8 @@ func detectOpenFds() {
 
 }
 
-type ClientOpts struct {
-	IsSSH       bool
-	SSHOptsTerm bool
-	SSHOpts     []string
-	Command     string
-	Fds         []packet.RemoteFd
-	Cwd         string
-}
-
-func parseClientOpts() (*ClientOpts, error) {
-	opts := &ClientOpts{}
+func parseClientOpts() (*shexec.ClientOpts, error) {
+	opts := &shexec.ClientOpts{}
 	iter := base.MakeOptsIter(os.Args[1:])
 	for iter.HasNext() {
 		argStr := iter.Next()
@@ -313,7 +303,6 @@ func parseClientOpts() (*ClientOpts, error) {
 }
 
 func handleClient() (int, error) {
-	fmt.Printf("mshell client\n")
 	opts, err := parseClientOpts()
 	if err != nil {
 		return 1, fmt.Errorf("parsing opts: %w", err)
@@ -321,29 +310,11 @@ func handleClient() (int, error) {
 	if !opts.IsSSH {
 		return 1, fmt.Errorf("when running in client mode '--ssh' option must be present")
 	}
-	fmt.Printf("opts: %v\n", opts)
-	sshRemoteCommand := `PATH=$PATH:~/.mshell; mshell --remote`
-	sshOpts := append(opts.SSHOpts, sshRemoteCommand)
-	ecmd := exec.Command("ssh", sshOpts...)
-	inputWriter, err := ecmd.StdinPipe()
+	donePacket, err := shexec.RunClientSSHCommandAndWait(opts)
 	if err != nil {
-		return 1, fmt.Errorf("creating stdin pipe: %v", err)
+		return 1, err
 	}
-	outputReader, err := ecmd.StdoutPipe()
-	if err != nil {
-		return 1, fmt.Errorf("creating stdout pipe: %v", err)
-	}
-	ecmd.Stderr = ecmd.Stdout
-	err = ecmd.Start()
-	if err != nil {
-		return 1, fmt.Errorf("running ssh command: %w", err)
-	}
-	parser := packet.PacketParser(outputReader)
-	go func() {
-		fmt.Printf("%v %v\n", parser, inputWriter)
-	}()
-	exitErr := ecmd.Wait()
-	return shexec.GetExitCode(exitErr), nil
+	return donePacket.ExitCode, nil
 }
 
 func handleUsage() {

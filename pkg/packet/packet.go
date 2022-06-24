@@ -23,6 +23,8 @@ import (
 // server: init, run, ping, cmdstart, cmddone, cd, resp, getcmd, untailcmd, cmddata, input, data, [comp]
 // all: error, message
 
+var GlobalDebug = false
+
 const (
 	RunPacketStr       = "run"
 	PingPacketStr      = "ping"
@@ -353,7 +355,7 @@ type RunPacketType struct {
 	Command   string            `json:"command"`
 	Cwd       string            `json:"cwd,omitempty"`
 	Env       map[string]string `json:"env,omitempty"`
-	TermSize  TermSize          `json:"termsize,omitempty"`
+	TermSize  *TermSize         `json:"termsize,omitempty"`
 	Fds       []RemoteFd        `json:"fds,omitempty"`
 	Detached  bool              `json:"detached,omitempty"`
 }
@@ -430,6 +432,10 @@ func SendPacket(w io.Writer, packet PacketType) error {
 	outBuf.WriteString(fmt.Sprintf("##%d", len(jsonBytes)))
 	outBuf.Write(jsonBytes)
 	outBuf.WriteByte('\n')
+	if GlobalDebug {
+		outBytes := outBuf.Bytes()
+		fmt.Printf("SEND>%s", string(outBytes[1:]))
+	}
 	_, err = w.Write(outBuf.Bytes())
 	if err != nil {
 		return err

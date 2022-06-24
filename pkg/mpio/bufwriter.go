@@ -13,21 +13,23 @@ import (
 )
 
 type FdWriter struct {
-	CVar   *sync.Cond
-	M      *Multiplexer
-	FdNum  int
-	Buffer []byte
-	Fd     *os.File
-	Eof    bool
-	Closed bool
+	CVar          *sync.Cond
+	M             *Multiplexer
+	FdNum         int
+	Buffer        []byte
+	Fd            *os.File
+	Eof           bool
+	Closed        bool
+	ShouldCloseFd bool
 }
 
-func MakeFdWriter(m *Multiplexer, fd *os.File, fdNum int) *FdWriter {
+func MakeFdWriter(m *Multiplexer, fd *os.File, fdNum int, shouldCloseFd bool) *FdWriter {
 	fw := &FdWriter{
-		CVar:  sync.NewCond(&sync.Mutex{}),
-		Fd:    fd,
-		M:     m,
-		FdNum: fdNum,
+		CVar:          sync.NewCond(&sync.Mutex{}),
+		Fd:            fd,
+		M:             m,
+		FdNum:         fdNum,
+		ShouldCloseFd: shouldCloseFd,
 	}
 	return fw
 }
@@ -39,7 +41,7 @@ func (w *FdWriter) Close() {
 		return
 	}
 	w.Closed = true
-	if w.Fd != nil {
+	if w.Fd != nil && w.ShouldCloseFd {
 		w.Fd.Close()
 	}
 	w.Buffer = nil
@@ -65,6 +67,9 @@ func (w *FdWriter) AddData(data []byte, eof bool) error {
 	if w.Closed {
 		return fmt.Errorf("write to closed file")
 	}
+	if w.Eof {
+		return fmt.Errorf("write to closed file (eof)")
+	}
 	if len(data) > 0 {
 		if len(data)+len(w.Buffer) > WriteBufSize {
 			return fmt.Errorf("write exceeds buffer size")
@@ -78,8 +83,11 @@ func (w *FdWriter) AddData(data []byte, eof bool) error {
 	return nil
 }
 
-func (w *FdWriter) WriteLoop() {
+func (w *FdWriter) WriteLoop(wg *sync.WaitGroup) {
 	defer w.Close()
+	if wg != nil {
+		defer wg.Done()
+	}
 	for {
 		data, isEof := w.WaitForData()
 		// chunk the writes to make sure we send ample ack packets
@@ -90,8 +98,10 @@ func (w *FdWriter) WriteLoop() {
 			chunkSize := min(len(data), MaxSingleWriteSize)
 			chunk := data[0:chunkSize]
 			nw, err := w.Fd.Write(chunk)
-			ack := w.M.makeDataAckPacket(w.FdNum, nw, err)
-			w.M.sendPacket(ack)
+			if nw > 0 || err != nil {
+				ack := w.M.makeDataAckPacket(w.FdNum, nw, err)
+				w.M.sendPacket(ack)
+			}
 			if err != nil {
 				return
 			}

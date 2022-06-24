@@ -33,19 +33,21 @@ const FirstExtraFilesFdNum = 3
 type ShExecType struct {
 	Lock        *sync.Mutex
 	StartTs     time.Time
-	RunPacket   *packet.RunPacketType
+	SessionId   string
+	CmdId       string
 	FileNames   *base.CommandFileNames
 	Cmd         *exec.Cmd
 	CmdPty      *os.File
 	Multiplexer *mpio.Multiplexer
 }
 
-func MakeShExec(pk *packet.RunPacketType) *ShExecType {
+func MakeShExec(sessionId string, cmdId string) *ShExecType {
 	return &ShExecType{
 		Lock:        &sync.Mutex{},
 		StartTs:     time.Now(),
-		RunPacket:   pk,
-		Multiplexer: mpio.MakeMultiplexer(pk.SessionId, pk.CmdId),
+		SessionId:   sessionId,
+		CmdId:       cmdId,
+		Multiplexer: mpio.MakeMultiplexer(sessionId, cmdId),
 	}
 }
 
@@ -59,8 +61,8 @@ func (c *ShExecType) Close() {
 func (c *ShExecType) MakeCmdStartPacket() *packet.CmdStartPacketType {
 	startPacket := packet.MakeCmdStartPacket()
 	startPacket.Ts = time.Now().UnixMilli()
-	startPacket.SessionId = c.RunPacket.SessionId
-	startPacket.CmdId = c.RunPacket.CmdId
+	startPacket.SessionId = c.SessionId
+	startPacket.CmdId = c.CmdId
 	startPacket.Pid = c.Cmd.Process.Pid
 	startPacket.MShellPid = os.Getpid()
 	return startPacket
@@ -209,14 +211,89 @@ func RunCommand(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecT
 	}
 }
 
-func (cmd *ShExecType) RunIOAndWait(packetCh chan packet.PacketType, sender *packet.PacketSender) {
-	cmd.Multiplexer.RunIOAndWait(packetCh, sender)
+type ClientOpts struct {
+	IsSSH       bool
+	SSHOptsTerm bool
+	SSHOpts     []string
+	Command     string
+	Fds         []packet.RemoteFd
+	Cwd         string
+}
+
+func (opts *ClientOpts) MakeRunPacket() *packet.RunPacketType {
+	runPacket := packet.MakeRunPacket()
+	runPacket.Command = opts.Command
+	runPacket.Cwd = opts.Cwd
+	runPacket.Fds = opts.Fds
+	return runPacket
+}
+
+func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, error) {
+	// packet.GlobalDebug = true
+	cmd := MakeShExec("", "")
+	sshRemoteCommand := `PATH=$PATH:~/.mshell; mshell --remote`
+	var fullSshOpts []string
+	fullSshOpts = append(fullSshOpts, opts.SSHOpts...)
+	fullSshOpts = append(fullSshOpts, sshRemoteCommand)
+	ecmd := exec.Command("ssh", fullSshOpts...)
+	cmd.Cmd = ecmd
+	inputWriter, err := ecmd.StdinPipe()
+	if err != nil {
+		return nil, fmt.Errorf("creating stdin pipe: %v", err)
+	}
+	stdoutReader, err := ecmd.StdoutPipe()
+	if err != nil {
+		return nil, fmt.Errorf("creating stdout pipe: %v", err)
+	}
+	stderrReader, err := ecmd.StderrPipe()
+	if err != nil {
+		return nil, fmt.Errorf("creating stderr pipe: %v", err)
+	}
+	err = ecmd.Start()
+	if err != nil {
+		return nil, fmt.Errorf("running ssh command: %w", err)
+	}
+	defer cmd.Close()
+	packetCh := packet.PacketParser(stdoutReader)
+	go func() {
+		io.Copy(os.Stderr, stderrReader)
+	}()
+	sender := packet.MakePacketSender(inputWriter)
+	for pk := range packetCh {
+		if pk.GetType() == packet.RawPacketStr {
+			rawPk := pk.(*packet.RawPacketType)
+			fmt.Printf("%s\n", rawPk.Data)
+			continue
+		}
+		if pk.GetType() == packet.InitPacketStr {
+			initPk := pk.(*packet.InitPacketType)
+			if initPk.Version != "0.1.0" {
+				return nil, fmt.Errorf("invalid remote mshell version 'v%s', must be v0.1.0", initPk.Version)
+			}
+			break
+		}
+	}
+	runPacket := opts.MakeRunPacket()
+	sender.SendPacket(runPacket)
+	cmd.Multiplexer.MakeRawFdReader(0, os.Stdin)
+	cmd.Multiplexer.MakeRawFdWriter(1, os.Stdout)
+	cmd.Multiplexer.MakeRawFdWriter(2, os.Stderr)
+	remoteDonePacket := cmd.Multiplexer.RunIOAndWait(packetCh, sender, false, true, true)
+	donePacket := cmd.WaitForCommand()
+	if remoteDonePacket != nil {
+		donePacket = remoteDonePacket
+	}
+	return donePacket, nil
+}
+
+func (cmd *ShExecType) RunRemoteIOAndWait(packetCh chan packet.PacketType, sender *packet.PacketSender) {
+	cmd.Multiplexer.RunIOAndWait(packetCh, sender, true, false, false)
 	donePacket := cmd.WaitForCommand()
 	sender.SendPacket(donePacket)
 }
 
 func runCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecType, error) {
-	cmd := MakeShExec(pk)
+	cmd := MakeShExec(pk.SessionId, pk.CmdId)
 	cmd.Cmd = exec.Command("bash", "-c", pk.Command)
 	UpdateCmdEnv(cmd.Cmd, pk.Env)
 	if pk.Cwd != "" {
@@ -316,7 +393,7 @@ func runCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) (
 	defer func() {
 		cmdTty.Close()
 	}()
-	rtn := MakeShExec(pk)
+	rtn := MakeShExec(pk.SessionId, pk.CmdId)
 	ecmd := MakeExecCmd(pk, cmdTty)
 	err = ecmd.Start()
 	if err != nil {
@@ -364,8 +441,8 @@ func (c *ShExecType) WaitForCommand() *packet.CmdDonePacketType {
 	exitCode := GetExitCode(exitErr)
 	donePacket := packet.MakeCmdDonePacket()
 	donePacket.Ts = endTs.UnixMilli()
-	donePacket.SessionId = c.RunPacket.SessionId
-	donePacket.CmdId = c.RunPacket.CmdId
+	donePacket.SessionId = c.SessionId
+	donePacket.CmdId = c.CmdId
 	donePacket.ExitCode = exitCode
 	donePacket.DurationMs = int64(cmdDuration / time.Millisecond)
 	if c.FileNames != nil {

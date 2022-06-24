@@ -15,21 +15,23 @@ import (
 )
 
 type FdReader struct {
-	CVar    *sync.Cond
-	M       *Multiplexer
-	FdNum   int
-	Fd      *os.File
-	BufSize int
-	Closed  bool
+	CVar          *sync.Cond
+	M             *Multiplexer
+	FdNum         int
+	Fd            *os.File
+	BufSize       int
+	Closed        bool
+	ShouldCloseFd bool
 }
 
-func MakeFdReader(m *Multiplexer, fd *os.File, fdNum int) *FdReader {
+func MakeFdReader(m *Multiplexer, fd *os.File, fdNum int, shouldCloseFd bool) *FdReader {
 	fr := &FdReader{
-		CVar:    sync.NewCond(&sync.Mutex{}),
-		M:       m,
-		FdNum:   fdNum,
-		Fd:      fd,
-		BufSize: 0,
+		CVar:          sync.NewCond(&sync.Mutex{}),
+		M:             m,
+		FdNum:         fdNum,
+		Fd:            fd,
+		BufSize:       0,
+		ShouldCloseFd: shouldCloseFd,
 	}
 	return fr
 }
@@ -40,7 +42,7 @@ func (r *FdReader) Close() {
 	if r.Closed {
 		return
 	}
-	if r.Fd != nil {
+	if r.Fd != nil && r.ShouldCloseFd {
 		r.Fd.Close()
 	}
 	r.CVar.Broadcast()
@@ -110,7 +112,9 @@ func (r *FdReader) isClosed() bool {
 
 func (r *FdReader) ReadLoop(wg *sync.WaitGroup) {
 	defer r.Close()
-	defer wg.Done()
+	if wg != nil {
+		defer wg.Done()
+	}
 	buf := make([]byte, 4096)
 	for {
 		nr, err := r.Fd.Read(buf)
