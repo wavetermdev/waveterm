@@ -4,37 +4,32 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-package shexec
+package mpio
 
 import (
 	"fmt"
 	"os"
 	"sync"
-
-	"github.com/scripthaus-dev/mshell/pkg/packet"
 )
 
-const MaxSingleWriteSize = 4 * 1024
-
 type FdWriter struct {
-	CVar      *sync.Cond
-	SessionId string
-	CmdId     string
-	FdNum     int
-	Buffer    []byte
-	Fd        *os.File
-	Eof       bool
-	Closed    bool
+	CVar   *sync.Cond
+	M      *Multiplexer
+	FdNum  int
+	Buffer []byte
+	Fd     *os.File
+	Eof    bool
+	Closed bool
 }
 
-func MakeFdWriter(c *ShExecType, fd *os.File, fdNum int) *FdWriter {
-	return &FdWriter{
-		CVar:      sync.NewCond(&sync.Mutex{}),
-		Fd:        fd,
-		SessionId: c.RunPacket.SessionId,
-		CmdId:     c.RunPacket.CmdId,
-		FdNum:     fdNum,
+func MakeFdWriter(m *Multiplexer, fd *os.File, fdNum int) *FdWriter {
+	fw := &FdWriter{
+		CVar:  sync.NewCond(&sync.Mutex{}),
+		Fd:    fd,
+		M:     m,
+		FdNum: fdNum,
 	}
+	return fw
 }
 
 func (w *FdWriter) Close() {
@@ -64,18 +59,6 @@ func (w *FdWriter) WaitForData() ([]byte, bool) {
 	}
 }
 
-func (w *FdWriter) MakeDataAckPacket(ackLen int, err error) *packet.DataAckPacketType {
-	ack := packet.MakeDataAckPacket()
-	ack.SessionId = w.SessionId
-	ack.CmdId = w.CmdId
-	ack.FdNum = w.FdNum
-	ack.AckLen = ackLen
-	if err != nil {
-		ack.Error = err.Error()
-	}
-	return ack
-}
-
 func (w *FdWriter) AddData(data []byte, eof bool) error {
 	w.CVar.L.Lock()
 	defer w.CVar.L.Unlock()
@@ -95,7 +78,7 @@ func (w *FdWriter) AddData(data []byte, eof bool) error {
 	return nil
 }
 
-func (w *FdWriter) WriteLoop(sender *packet.PacketSender) {
+func (w *FdWriter) WriteLoop() {
 	defer w.Close()
 	for {
 		data, isEof := w.WaitForData()
@@ -107,8 +90,8 @@ func (w *FdWriter) WriteLoop(sender *packet.PacketSender) {
 			chunkSize := min(len(data), MaxSingleWriteSize)
 			chunk := data[0:chunkSize]
 			nw, err := w.Fd.Write(chunk)
-			ack := w.MakeDataAckPacket(nw, err)
-			sender.SendPacket(ack)
+			ack := w.M.makeDataAckPacket(w.FdNum, nw, err)
+			w.M.sendPacket(ack)
 			if err != nil {
 				return
 			}

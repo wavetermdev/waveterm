@@ -4,7 +4,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-package shexec
+package mpio
 
 import (
 	"io"
@@ -15,24 +15,23 @@ import (
 )
 
 type FdReader struct {
-	CVar      *sync.Cond
-	SessionId string
-	CmdId     string
-	FdNum     int
-	Fd        *os.File
-	BufSize   int
-	Closed    bool
+	CVar    *sync.Cond
+	M       *Multiplexer
+	FdNum   int
+	Fd      *os.File
+	BufSize int
+	Closed  bool
 }
 
-func MakeFdReader(c *ShExecType, fd *os.File, fdNum int) *FdReader {
-	return &FdReader{
-		CVar:      sync.NewCond(&sync.Mutex{}),
-		SessionId: c.RunPacket.SessionId,
-		CmdId:     c.RunPacket.CmdId,
-		FdNum:     fdNum,
-		Fd:        fd,
-		BufSize:   0,
+func MakeFdReader(m *Multiplexer, fd *os.File, fdNum int) *FdReader {
+	fr := &FdReader{
+		CVar:    sync.NewCond(&sync.Mutex{}),
+		M:       m,
+		FdNum:   fdNum,
+		Fd:      fd,
+		BufSize: 0,
 	}
+	return fr
 }
 
 func (r *FdReader) Close() {
@@ -63,14 +62,14 @@ func (r *FdReader) NotifyAck(ackLen int) {
 // !! inverse locking.  must already hold the lock when you call this method.
 // will *unlock*, send the packet, and then *relock* once it is done.
 // this can prevent an unlikely deadlock where we are holding r.CVar.L and stuck on sender.SendCh
-func (r *FdReader) sendPacket_unlock(sender *packet.PacketSender, pk packet.PacketType) {
+func (r *FdReader) sendPacket_unlock(pk packet.PacketType) {
 	r.CVar.L.Unlock()
 	defer r.CVar.L.Lock()
-	sender.SendPacket(pk)
+	r.M.sendPacket(pk)
 }
 
 // returns (success)
-func (r *FdReader) WriteWait(sender *packet.PacketSender, data []byte, isEof bool) bool {
+func (r *FdReader) WriteWait(data []byte, isEof bool) bool {
 	r.CVar.L.Lock()
 	defer r.CVar.L.Unlock()
 	for {
@@ -83,11 +82,11 @@ func (r *FdReader) WriteWait(sender *packet.PacketSender, data []byte, isEof boo
 			continue
 		}
 		writeLen := min(bufAvail, len(data))
-		pk := r.MakeDataPacket(data[0:writeLen], nil)
+		pk := r.M.makeDataPacket(r.FdNum, data[0:writeLen], nil)
 		pk.Eof = isEof && (writeLen == len(data))
 		r.BufSize += writeLen
 		data = data[writeLen:]
-		r.sendPacket_unlock(sender, pk)
+		r.sendPacket_unlock(pk)
 		if len(data) == 0 {
 			return true
 		}
@@ -103,25 +102,13 @@ func min(v1 int, v2 int) int {
 	return v2
 }
 
-func (r *FdReader) MakeDataPacket(data []byte, err error) *packet.DataPacketType {
-	pk := packet.MakeDataPacket()
-	pk.SessionId = r.SessionId
-	pk.CmdId = r.CmdId
-	pk.FdNum = r.FdNum
-	pk.Data = string(data)
-	if err != nil {
-		pk.Error = err.Error()
-	}
-	return pk
-}
-
 func (r *FdReader) isClosed() bool {
 	r.CVar.L.Lock()
 	defer r.CVar.L.Unlock()
 	return r.Closed
 }
 
-func (r *FdReader) ReadLoop(wg *sync.WaitGroup, sender *packet.PacketSender) {
+func (r *FdReader) ReadLoop(wg *sync.WaitGroup) {
 	defer r.Close()
 	defer wg.Done()
 	buf := make([]byte, 4096)
@@ -131,14 +118,17 @@ func (r *FdReader) ReadLoop(wg *sync.WaitGroup, sender *packet.PacketSender) {
 			return // should not send data or error if we already closed the fd
 		}
 		if nr > 0 || err == io.EOF {
-			isOpen := r.WriteWait(sender, buf[0:nr], (err == io.EOF))
+			isOpen := r.WriteWait(buf[0:nr], (err == io.EOF))
 			if !isOpen {
+				return
+			}
+			if err == io.EOF {
 				return
 			}
 		}
 		if err != nil {
-			errPk := r.MakeDataPacket(nil, err)
-			sender.SendPacket(errPk)
+			errPk := r.M.makeDataPacket(r.FdNum, nil, err)
+			r.M.sendPacket(errPk)
 			return
 		}
 	}

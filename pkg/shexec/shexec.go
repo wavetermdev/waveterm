@@ -19,6 +19,7 @@ import (
 	"github.com/creack/pty"
 	"github.com/google/uuid"
 	"github.com/scripthaus-dev/mshell/pkg/base"
+	"github.com/scripthaus-dev/mshell/pkg/mpio"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 )
 
@@ -26,49 +27,33 @@ const DefaultRows = 25
 const DefaultCols = 80
 const MaxRows = 1024
 const MaxCols = 1024
-const ReadBufSize = 128 * 1024
-const WriteBufSize = 128 * 1024
 const MaxFdNum = 1023
 const FirstExtraFilesFdNum = 3
 
 type ShExecType struct {
-	Lock            *sync.Mutex
-	StartTs         time.Time
-	RunPacket       *packet.RunPacketType
-	FileNames       *base.CommandFileNames
-	Cmd             *exec.Cmd
-	CmdPty          *os.File
-	FdReaders       map[int]*FdReader // synchronized
-	FdWriters       map[int]*FdWriter // synchronized
-	CloseAfterStart []*os.File        // synchronized
+	Lock        *sync.Mutex
+	StartTs     time.Time
+	RunPacket   *packet.RunPacketType
+	FileNames   *base.CommandFileNames
+	Cmd         *exec.Cmd
+	CmdPty      *os.File
+	Multiplexer *mpio.Multiplexer
 }
 
 func MakeShExec(pk *packet.RunPacketType) *ShExecType {
 	return &ShExecType{
-		Lock:      &sync.Mutex{},
-		StartTs:   time.Now(),
-		RunPacket: pk,
-		FdReaders: make(map[int]*FdReader),
-		FdWriters: make(map[int]*FdWriter),
+		Lock:        &sync.Mutex{},
+		StartTs:     time.Now(),
+		RunPacket:   pk,
+		Multiplexer: mpio.MakeMultiplexer(pk.SessionId, pk.CmdId),
 	}
 }
 
 func (c *ShExecType) Close() {
-	c.Lock.Lock()
-	defer c.Lock.Unlock()
-
 	if c.CmdPty != nil {
 		c.CmdPty.Close()
 	}
-	for _, fd := range c.FdReaders {
-		fd.Close()
-	}
-	for _, fw := range c.FdWriters {
-		fw.Close()
-	}
-	for _, fd := range c.CloseAfterStart {
-		fd.Close()
-	}
+	c.Multiplexer.Close()
 }
 
 func (c *ShExecType) MakeCmdStartPacket() *packet.CmdStartPacketType {
@@ -224,116 +209,9 @@ func RunCommand(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecT
 	}
 }
 
-// returns the *writer* to connect to process, reader is put in FdReaders
-func (cmd *ShExecType) makeReaderPipe(fdNum int) (*os.File, error) {
-	pr, pw, err := os.Pipe()
-	if err != nil {
-		return nil, err
-	}
-	cmd.Lock.Lock()
-	defer cmd.Lock.Unlock()
-	cmd.FdReaders[fdNum] = MakeFdReader(cmd, pr, fdNum)
-	cmd.CloseAfterStart = append(cmd.CloseAfterStart, pw)
-	return pw, nil
-}
-
-// returns the *reader* to connect to process, writer is put in FdWriters
-func (cmd *ShExecType) makeWriterPipe(fdNum int) (*os.File, error) {
-	pr, pw, err := os.Pipe()
-	if err != nil {
-		return nil, err
-	}
-	cmd.Lock.Lock()
-	defer cmd.Lock.Unlock()
-	cmd.FdWriters[fdNum] = MakeFdWriter(cmd, pw, fdNum)
-	cmd.CloseAfterStart = append(cmd.CloseAfterStart, pr)
-	return pr, nil
-}
-
-func (cmd *ShExecType) MakeDataAckPacket(fdNum int, ackLen int, err error) *packet.DataAckPacketType {
-	ack := packet.MakeDataAckPacket()
-	ack.SessionId = cmd.RunPacket.SessionId
-	ack.CmdId = cmd.RunPacket.CmdId
-	ack.FdNum = fdNum
-	ack.AckLen = ackLen
-	if err != nil {
-		ack.Error = err.Error()
-	}
-	return ack
-}
-
-func (cmd *ShExecType) launchWriters(sender *packet.PacketSender) {
-	cmd.Lock.Lock()
-	defer cmd.Lock.Unlock()
-	for _, fw := range cmd.FdWriters {
-		go fw.WriteLoop(sender)
-	}
-}
-
-func (cmd *ShExecType) processDataPacket(dataPacket *packet.DataPacketType) error {
-	cmd.Lock.Lock()
-	defer cmd.Lock.Unlock()
-	fw := cmd.FdWriters[dataPacket.FdNum]
-	if fw == nil {
-		// add a closed FdWriter as a placeholder so we only send one error
-		fw := MakeFdWriter(cmd, nil, dataPacket.FdNum)
-		fw.Close()
-		cmd.FdWriters[dataPacket.FdNum] = fw
-		return fmt.Errorf("write to closed file")
-	}
-	err := fw.AddData([]byte(dataPacket.Data), dataPacket.Eof)
-	if err != nil {
-		fw.Close()
-		return err
-	}
-	return nil
-}
-
-func (cmd *ShExecType) processAckPacket(ackPacket *packet.DataAckPacketType) {
-	cmd.Lock.Lock()
-	defer cmd.Lock.Unlock()
-	fr := cmd.FdReaders[ackPacket.FdNum]
-	if fr == nil {
-		return
-	}
-	fr.NotifyAck(ackPacket.AckLen)
-}
-
-func (cmd *ShExecType) runPacketInputLoop(packetCh chan packet.PacketType, sender *packet.PacketSender) {
-	for pk := range packetCh {
-		if pk.GetType() == packet.DataPacketStr {
-			dataPacket := pk.(*packet.DataPacketType)
-			err := cmd.processDataPacket(dataPacket)
-			if err != nil {
-				errPacket := cmd.MakeDataAckPacket(dataPacket.FdNum, 0, err)
-				sender.SendPacket(errPacket)
-			}
-			continue
-		}
-		if pk.GetType() == packet.DataAckPacketStr {
-			ackPacket := pk.(*packet.DataAckPacketType)
-			cmd.processAckPacket(ackPacket)
-		}
-		// other packet types are ignored
-	}
-}
-
-func (cmd *ShExecType) launchReaders(wg *sync.WaitGroup, sender *packet.PacketSender) {
-	cmd.Lock.Lock()
-	defer cmd.Lock.Unlock()
-	wg.Add(len(cmd.FdReaders))
-	for _, fr := range cmd.FdReaders {
-		go fr.ReadLoop(wg, sender)
-	}
-}
-
 func (cmd *ShExecType) RunIOAndWait(packetCh chan packet.PacketType, sender *packet.PacketSender) {
-	var wg sync.WaitGroup
-	cmd.launchReaders(&wg, sender)
-	cmd.launchWriters(sender)
-	go cmd.runPacketInputLoop(packetCh, sender)
+	cmd.Multiplexer.RunIOAndWait(packetCh, sender)
 	donePacket := cmd.WaitForCommand()
-	wg.Wait()
 	sender.SendPacket(donePacket)
 }
 
@@ -345,17 +223,17 @@ func runCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender) (*S
 		cmd.Cmd.Dir = pk.Cwd
 	}
 	var err error
-	cmd.Cmd.Stdin, err = cmd.makeWriterPipe(0)
+	cmd.Cmd.Stdin, err = cmd.Multiplexer.MakeWriterPipe(0)
 	if err != nil {
 		cmd.Close()
 		return nil, err
 	}
-	cmd.Cmd.Stdout, err = cmd.makeReaderPipe(1)
+	cmd.Cmd.Stdout, err = cmd.Multiplexer.MakeReaderPipe(1)
 	if err != nil {
 		cmd.Close()
 		return nil, err
 	}
-	cmd.Cmd.Stderr, err = cmd.makeReaderPipe(2)
+	cmd.Cmd.Stderr, err = cmd.Multiplexer.MakeReaderPipe(2)
 	if err != nil {
 		cmd.Close()
 		return nil, err
@@ -391,7 +269,7 @@ func runCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender) (*S
 		}
 		if rfd.Read {
 			// client file is open for reading, so we make a writer pipe
-			extraFiles[rfd.FdNum], err = cmd.makeWriterPipe(rfd.FdNum)
+			extraFiles[rfd.FdNum], err = cmd.Multiplexer.MakeWriterPipe(rfd.FdNum)
 			if err != nil {
 				cmd.Close()
 				return nil, err
@@ -399,7 +277,7 @@ func runCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender) (*S
 		}
 		if rfd.Write {
 			// client file is open for writing, so we make a reader pipe
-			extraFiles[rfd.FdNum], err = cmd.makeReaderPipe(rfd.FdNum)
+			extraFiles[rfd.FdNum], err = cmd.Multiplexer.MakeReaderPipe(rfd.FdNum)
 			if err != nil {
 				cmd.Close()
 				return nil, err
@@ -415,10 +293,6 @@ func runCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender) (*S
 		cmd.Close()
 		return nil, err
 	}
-	for _, fd := range cmd.CloseAfterStart {
-		fd.Close()
-	}
-	cmd.CloseAfterStart = nil
 	return cmd, nil
 }
 
