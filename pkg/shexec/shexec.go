@@ -219,6 +219,7 @@ type ClientOpts struct {
 	Command     string
 	Fds         []packet.RemoteFd
 	Cwd         string
+	Debug       bool
 }
 
 func (opts *ClientOpts) MakeRunPacket() *packet.RunPacketType {
@@ -318,6 +319,9 @@ func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, er
 	}
 	runPacket := opts.MakeRunPacket()
 	sender.SendPacket(runPacket)
+	if opts.Debug {
+		cmd.Multiplexer.Debug = true
+	}
 	remoteDonePacket := cmd.Multiplexer.RunIOAndWait(packetCh, sender, false, true, true)
 	donePacket := cmd.WaitForCommand()
 	if remoteDonePacket != nil {
