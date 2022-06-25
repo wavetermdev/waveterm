@@ -303,6 +303,7 @@ func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, er
 	stderrPacketCh := packet.PacketParser(stderrReader)
 	packetCh := packet.CombinePacketParsers(stdoutPacketCh, stderrPacketCh)
 	sender := packet.MakePacketSender(inputWriter)
+	versionOk := false
 	for pk := range packetCh {
 		if pk.GetType() == packet.RawPacketStr {
 			rawPk := pk.(*packet.RawPacketType)
@@ -314,8 +315,12 @@ func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, er
 			if initPk.Version != "0.1.0" {
 				return nil, fmt.Errorf("invalid remote mshell version 'v%s', must be v0.1.0", initPk.Version)
 			}
+			versionOk = true
 			break
 		}
+	}
+	if !versionOk {
+		return nil, fmt.Errorf("did not receive version from remote mshell")
 	}
 	runPacket := opts.MakeRunPacket()
 	sender.SendPacket(runPacket)
