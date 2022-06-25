@@ -298,8 +298,9 @@ func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, er
 		return nil, fmt.Errorf("running ssh command: %w", err)
 	}
 	defer cmd.Close()
-	packetCh := packet.PacketParser(stdoutReader)
-	packet.PacketParserAttach(stderrReader, packetCh)
+	stdoutPacketCh := packet.PacketParser(stdoutReader)
+	stderrPacketCh := packet.PacketParser(stderrReader)
+	packetCh := packet.CombinePacketParsers(stdoutPacketCh, stderrPacketCh)
 	sender := packet.MakePacketSender(inputWriter)
 	for pk := range packetCh {
 		if pk.GetType() == packet.RawPacketStr {

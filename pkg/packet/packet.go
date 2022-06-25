@@ -566,15 +566,36 @@ func (sender *PacketSender) SendMessage(fmtStr string, args ...interface{}) erro
 	return sender.SendPacket(MakeMessagePacket(fmt.Sprintf(fmtStr, args...)))
 }
 
-func PacketParser(input io.Reader) chan PacketType {
+func CombinePacketParsers(p1 chan PacketType, p2 chan PacketType) chan PacketType {
 	rtnCh := make(chan PacketType)
-	PacketParserAttach(input, rtnCh)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		for v := range p1 {
+			rtnCh <- v
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for v := range p2 {
+			rtnCh <- v
+		}
+	}()
+	go func() {
+		wg.Wait()
+		close(rtnCh)
+	}()
 	return rtnCh
 }
 
-func PacketParserAttach(input io.Reader, rtnCh chan PacketType) {
+func PacketParser(input io.Reader) chan PacketType {
+	rtnCh := make(chan PacketType)
 	bufReader := bufio.NewReader(input)
 	go func() {
+		defer func() {
+			close(rtnCh)
+		}()
 		for {
 			line, err := bufReader.ReadString('\n')
 			if err == io.EOF {
@@ -612,6 +633,7 @@ func PacketParserAttach(input io.Reader, rtnCh chan PacketType) {
 			rtnCh <- pk
 		}
 	}()
+	return rtnCh
 }
 
 type ErrorReporter interface {
