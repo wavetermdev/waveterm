@@ -243,6 +243,10 @@ func handleRemote() {
 		sender.SendErrorPacket(fmt.Sprintf("invalid packet '%s' sent to mshell", pk.GetType()))
 		return
 	}
+	if runPacket == nil {
+		sender.SendErrorPacket(fmt.Sprintf("no run packet received"))
+		return
+	}
 	cmd, err := shexec.RunCommand(runPacket, sender)
 	if err != nil {
 		sender.SendErrorPacket(fmt.Sprintf("error running command: %v", err))
@@ -310,6 +314,9 @@ func parseClientOpts() (*shexec.ClientOpts, error) {
 			if argStr == "--" {
 				opts.SSHOptsTerm = true
 				break
+			}
+			if argStr == "-t" || argStr == "-tt" {
+				return nil, fmt.Errorf("mshell cannot run over ssh -t")
 			}
 			opts.SSHOpts = append(opts.SSHOpts, argStr)
 		}
