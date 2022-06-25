@@ -48,6 +48,12 @@ func (r *FdReader) Close() {
 	r.CVar.Broadcast()
 }
 
+func (r *FdReader) GetBufSize() int {
+	r.CVar.L.Lock()
+	defer r.CVar.L.Unlock()
+	return r.BufSize
+}
+
 func (r *FdReader) NotifyAck(ackLen int) {
 	r.CVar.L.Lock()
 	defer r.CVar.L.Unlock()

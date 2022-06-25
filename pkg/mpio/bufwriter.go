@@ -64,15 +64,15 @@ func (w *FdWriter) WaitForData() ([]byte, bool) {
 func (w *FdWriter) AddData(data []byte, eof bool) error {
 	w.CVar.L.Lock()
 	defer w.CVar.L.Unlock()
-	if w.Closed {
-		return fmt.Errorf("write to closed file")
-	}
-	if w.Eof {
-		return fmt.Errorf("write to closed file (eof)")
+	if w.Closed || w.Eof {
+		if len(data) == 0 {
+			return nil
+		}
+		return fmt.Errorf("write to closed file eof[%v]", w.Eof)
 	}
 	if len(data) > 0 {
 		if len(data)+len(w.Buffer) > WriteBufSize {
-			return fmt.Errorf("write exceeds buffer size")
+			return fmt.Errorf("write exceeds buffer size bufsize=%d (max=%d)", len(data)+len(w.Buffer), WriteBufSize)
 		}
 		w.Buffer = append(w.Buffer, data...)
 	}

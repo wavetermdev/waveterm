@@ -121,13 +121,39 @@ type DataPacketType struct {
 	SessionId string `json:"sessionid,omitempty"`
 	CmdId     string `json:"cmdid,omitempty"`
 	FdNum     int    `json:"fdnum"`
-	Data      string `json:"data"`
+	Data64    string `json:"data64"` // base64 encoded
 	Eof       bool   `json:"eof,omitempty"`
 	Error     string `json:"error,omitempty"`
 }
 
 func (*DataPacketType) GetType() string {
 	return DataPacketStr
+}
+
+func B64DecodedLen(b64 string) int {
+	if len(b64) < 4 {
+		return 0 // we use padded strings, so < 4 is always 0
+	}
+	realLen := 3 * (len(b64) / 4)
+	if b64[len(b64)-1] == '=' {
+		realLen--
+	}
+	if b64[len(b64)-2] == '=' {
+		realLen--
+	}
+	return realLen
+}
+
+func (p *DataPacketType) String() string {
+	eofStr := ""
+	if p.Eof {
+		eofStr = ", eof"
+	}
+	errStr := ""
+	if p.Error != "" {
+		errStr = fmt.Sprintf(", err=%s", p.Error)
+	}
+	return fmt.Sprintf("data[fd=%d, len=%d%s%s]", p.FdNum, B64DecodedLen(p.Data64), eofStr, errStr)
 }
 
 func MakeDataPacket() *DataPacketType {
@@ -140,11 +166,19 @@ type DataAckPacketType struct {
 	CmdId     string `json:"cmdid,omitempty"`
 	FdNum     int    `json:"fdnum"`
 	AckLen    int    `json:"acklen"`
-	Error     string `json:"error"`
+	Error     string `json:"error,omitempty"`
 }
 
 func (*DataAckPacketType) GetType() string {
 	return DataAckPacketStr
+}
+
+func (p *DataAckPacketType) String() string {
+	errStr := ""
+	if p.Error != "" {
+		errStr = fmt.Sprintf(" err=%s", p.Error)
+	}
+	return fmt.Sprintf("ack[fd=%d, acklen=%d%s]", p.FdNum, p.AckLen, errStr)
 }
 
 func MakeDataAckPacket() *DataAckPacketType {
@@ -252,6 +286,10 @@ func (*RawPacketType) GetType() string {
 	return RawPacketStr
 }
 
+func (p *RawPacketType) String() string {
+	return fmt.Sprintf("raw[%s]", p.Data)
+}
+
 func MakeRawPacket(val string) *RawPacketType {
 	return &RawPacketType{Type: RawPacketStr, Data: val}
 }
@@ -263,6 +301,10 @@ type MessagePacketType struct {
 
 func (*MessagePacketType) GetType() string {
 	return MessagePacketStr
+}
+
+func (p *MessagePacketType) String() string {
+	return fmt.Sprintf("messsage[%s]", p.Message)
 }
 
 func MakeMessagePacket(message string) *MessagePacketType {
@@ -394,6 +436,13 @@ type PacketType interface {
 	GetType() string
 }
 
+func AsString(pk PacketType) string {
+	if s, ok := pk.(fmt.Stringer); ok {
+		return s.String()
+	}
+	return fmt.Sprintf("%s[]", pk.GetType())
+}
+
 type RpcPacketType interface {
 	GetType() string
 	GetPacketId() string
@@ -433,8 +482,7 @@ func SendPacket(w io.Writer, packet PacketType) error {
 	outBuf.Write(jsonBytes)
 	outBuf.WriteByte('\n')
 	if GlobalDebug {
-		outBytes := outBuf.Bytes()
-		fmt.Printf("SEND>%s", string(outBytes[1:]))
+		fmt.Printf("SEND> %s\n", AsString(packet))
 	}
 	_, err = w.Write(outBuf.Bytes())
 	if err != nil {
@@ -519,12 +567,14 @@ func (sender *PacketSender) SendMessage(fmtStr string, args ...interface{}) erro
 }
 
 func PacketParser(input io.Reader) chan PacketType {
-	bufReader := bufio.NewReader(input)
 	rtnCh := make(chan PacketType)
+	PacketParserAttach(input, rtnCh)
+	return rtnCh
+}
+
+func PacketParserAttach(input io.Reader, rtnCh chan PacketType) {
+	bufReader := bufio.NewReader(input)
 	go func() {
-		defer func() {
-			close(rtnCh)
-		}()
 		for {
 			line, err := bufReader.ReadString('\n')
 			if err == io.EOF {
@@ -562,7 +612,6 @@ func PacketParser(input io.Reader) chan PacketType {
 			rtnCh <- pk
 		}
 	}()
-	return rtnCh
 }
 
 type ErrorReporter interface {

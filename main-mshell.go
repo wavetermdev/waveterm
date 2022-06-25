@@ -20,6 +20,7 @@ import (
 	"github.com/scripthaus-dev/mshell/pkg/cmdtail"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
+	"golang.org/x/sys/unix"
 )
 
 const MShellVersion = "0.1.0"
@@ -256,8 +257,26 @@ func handleRemote() {
 func handleServer() {
 }
 
-func detectOpenFds() {
-
+func detectOpenFds() ([]packet.RemoteFd, error) {
+	var fds []packet.RemoteFd
+	for fdNum := 3; fdNum <= 64; fdNum++ {
+		flags, err := unix.FcntlInt(uintptr(fdNum), unix.F_GETFL, 0)
+		if err != nil {
+			continue
+		}
+		flags = flags & 3
+		rfd := packet.RemoteFd{FdNum: fdNum}
+		if flags&2 == 2 {
+			return nil, fmt.Errorf("invalid fd=%d, mshell does not support fds open for reading and writing", fdNum)
+		}
+		if flags&1 == 1 {
+			rfd.Write = true
+		} else {
+			rfd.Read = true
+		}
+		fds = append(fds, rfd)
+	}
+	return fds, nil
 }
 
 func parseClientOpts() (*shexec.ClientOpts, error) {
@@ -272,6 +291,13 @@ func parseClientOpts() (*shexec.ClientOpts, error) {
 			opts.IsSSH = true
 			break
 		}
+		if argStr == "--cwd" {
+			if !iter.HasNext() {
+				return nil, fmt.Errorf("'--cwd [dir]' missing directory")
+			}
+			opts.Cwd = iter.Next()
+			continue
+		}
 	}
 	if opts.IsSSH {
 		// parse SSH opts
@@ -280,11 +306,6 @@ func parseClientOpts() (*shexec.ClientOpts, error) {
 			if argStr == "--" {
 				opts.SSHOptsTerm = true
 				break
-			}
-			if argStr == "--cwd" {
-				if !iter.HasNext() {
-					return nil, fmt.Errorf("'--cwd [dir]' missing directory")
-				}
 			}
 			opts.SSHOpts = append(opts.SSHOpts, argStr)
 		}
@@ -310,6 +331,11 @@ func handleClient() (int, error) {
 	if !opts.IsSSH {
 		return 1, fmt.Errorf("when running in client mode '--ssh' option must be present")
 	}
+	fds, err := detectOpenFds()
+	if err != nil {
+		return 1, err
+	}
+	opts.Fds = fds
 	donePacket, err := shexec.RunClientSSHCommandAndWait(opts)
 	if err != nil {
 		return 1, err

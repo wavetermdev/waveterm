@@ -7,6 +7,7 @@
 package mpio
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
 	"sync"
@@ -14,8 +15,8 @@ import (
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 )
 
-const ReadBufSize = 128 * 1024
-const WriteBufSize = 128 * 1024
+const ReadBufSize = 32 * 1024
+const WriteBufSize = 32 * 1024
 const MaxSingleWriteSize = 4 * 1024
 
 type Multiplexer struct {
@@ -29,6 +30,8 @@ type Multiplexer struct {
 	Sender  *packet.PacketSender
 	Input   chan packet.PacketType
 	Started bool
+
+	Debug bool
 }
 
 func MakeMultiplexer(sessionId string, cmdId string) *Multiplexer {
@@ -97,16 +100,16 @@ func (m *Multiplexer) MakeWriterPipe(fdNum int) (*os.File, error) {
 	return pr, nil
 }
 
-func (m *Multiplexer) MakeRawFdReader(fdNum int, fd *os.File) {
+func (m *Multiplexer) MakeRawFdReader(fdNum int, fd *os.File, shouldClose bool) {
 	m.Lock.Lock()
 	defer m.Lock.Unlock()
-	m.FdReaders[fdNum] = MakeFdReader(m, fd, fdNum, false)
+	m.FdReaders[fdNum] = MakeFdReader(m, fd, fdNum, shouldClose)
 }
 
-func (m *Multiplexer) MakeRawFdWriter(fdNum int, fd *os.File) {
+func (m *Multiplexer) MakeRawFdWriter(fdNum int, fd *os.File, shouldClose bool) {
 	m.Lock.Lock()
 	defer m.Lock.Unlock()
-	m.FdWriters[fdNum] = MakeFdWriter(m, fd, fdNum, false)
+	m.FdWriters[fdNum] = MakeFdWriter(m, fd, fdNum, shouldClose)
 }
 
 func (m *Multiplexer) makeDataAckPacket(fdNum int, ackLen int, err error) *packet.DataAckPacketType {
@@ -126,7 +129,7 @@ func (m *Multiplexer) makeDataPacket(fdNum int, data []byte, err error) *packet.
 	pk.SessionId = m.SessionId
 	pk.CmdId = m.CmdId
 	pk.FdNum = fdNum
-	pk.Data = string(data)
+	pk.Data64 = base64.StdEncoding.EncodeToString(data)
 	if err != nil {
 		pk.Error = err.Error()
 	}
@@ -173,6 +176,9 @@ func (m *Multiplexer) startIO(packetCh chan packet.PacketType, sender *packet.Pa
 func (m *Multiplexer) runPacketInputLoop() *packet.CmdDonePacketType {
 	defer m.HandleInputDone()
 	for pk := range m.Input {
+		if m.Debug {
+			fmt.Printf("PK> %s\n", packet.AsString(pk))
+		}
 		if pk.GetType() == packet.DataPacketStr {
 			dataPacket := pk.(*packet.DataPacketType)
 			err := m.processDataPacket(dataPacket)
@@ -191,12 +197,26 @@ func (m *Multiplexer) runPacketInputLoop() *packet.CmdDonePacketType {
 			donePacket := pk.(*packet.CmdDonePacketType)
 			return donePacket
 		}
-		// other packet types are ignored
+		if pk.GetType() == packet.ErrorPacketStr {
+			errPacket := pk.(*packet.ErrorPacketType)
+			// at this point, just send the error packet to stderr rather than try to do something special
+			fmt.Fprintf(os.Stderr, "%s\n", errPacket.Error)
+			return nil
+		}
+		if pk.GetType() == packet.RawPacketStr {
+			rawPacket := pk.(*packet.RawPacketType)
+			fmt.Fprintf(os.Stderr, "%s\n", rawPacket.Data)
+			continue
+		}
 	}
 	return nil
 }
 
 func (m *Multiplexer) processDataPacket(dataPacket *packet.DataPacketType) error {
+	realData, err := base64.StdEncoding.DecodeString(dataPacket.Data64)
+	if err != nil {
+		return fmt.Errorf("decoding base64 data: %w", err)
+	}
 	m.Lock.Lock()
 	defer m.Lock.Unlock()
 	fw := m.FdWriters[dataPacket.FdNum]
@@ -205,9 +225,9 @@ func (m *Multiplexer) processDataPacket(dataPacket *packet.DataPacketType) error
 		fw := MakeFdWriter(m, nil, dataPacket.FdNum, false)
 		fw.Close()
 		m.FdWriters[dataPacket.FdNum] = fw
-		return fmt.Errorf("write to closed file")
+		return fmt.Errorf("write to closed file (no fd)")
 	}
-	err := fw.AddData([]byte(dataPacket.Data), dataPacket.Eof)
+	err = fw.AddData(realData, dataPacket.Eof)
 	if err != nil {
 		fw.Close()
 		return err

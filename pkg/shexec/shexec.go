@@ -111,7 +111,7 @@ func MakeExecCmd(pk *packet.RunPacketType, cmdTty *os.File) *exec.Cmd {
 	ecmd := exec.Command("bash", "-c", pk.Command)
 	UpdateCmdEnv(ecmd, pk.Env)
 	if pk.Cwd != "" {
-		ecmd.Dir = pk.Cwd
+		ecmd.Dir = base.ExpandHomeDir(pk.Cwd)
 	}
 	ecmd.Stdin = cmdTty
 	ecmd.Stdout = cmdTty
@@ -175,12 +175,13 @@ func ValidateRunPacket(pk *packet.RunPacketType) error {
 		}
 	}
 	if pk.Cwd != "" {
-		dirInfo, err := os.Stat(pk.Cwd)
+		realCwd := base.ExpandHomeDir(pk.Cwd)
+		dirInfo, err := os.Stat(realCwd)
 		if err != nil {
-			return fmt.Errorf("invalid cwd '%s' for command: %v", pk.Cwd, err)
+			return fmt.Errorf("invalid cwd '%s' for command: %v", realCwd, err)
 		}
 		if !dirInfo.IsDir() {
-			return fmt.Errorf("invalid cwd '%s' for command, not a directory", pk.Cwd)
+			return fmt.Errorf("invalid cwd '%s' for command, not a directory", realCwd)
 		}
 	}
 	return nil
@@ -228,8 +229,37 @@ func (opts *ClientOpts) MakeRunPacket() *packet.RunPacketType {
 	return runPacket
 }
 
+func ValidateRemoteFds(rfds []packet.RemoteFd) error {
+	dupMap := make(map[int]bool)
+	for _, rfd := range rfds {
+		if rfd.FdNum < 0 {
+			return fmt.Errorf("mshell negative fd numbers fd=%d", rfd.FdNum)
+		}
+		if rfd.FdNum < FirstExtraFilesFdNum {
+			return fmt.Errorf("mshell does not support re-opening fd=%d (0, 1, and 2, are always open)", rfd.FdNum)
+		}
+		if rfd.FdNum > MaxFdNum {
+			return fmt.Errorf("mshell does not support opening fd numbers above %d", MaxFdNum)
+		}
+		if dupMap[rfd.FdNum] {
+			return fmt.Errorf("mshell got duplicate entries for fd=%d", rfd.FdNum)
+		}
+		if rfd.Read && rfd.Write {
+			return fmt.Errorf("mshell does not support opening fd numbers for reading and writing, fd=%d", rfd.FdNum)
+		}
+		if !rfd.Read && !rfd.Write {
+			return fmt.Errorf("invalid fd=%d, neither reading or writing mode specified", rfd.FdNum)
+		}
+		dupMap[rfd.FdNum] = true
+	}
+	return nil
+}
+
 func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, error) {
-	// packet.GlobalDebug = true
+	err := ValidateRemoteFds(opts.Fds)
+	if err != nil {
+		return nil, err
+	}
 	cmd := MakeShExec("", "")
 	sshRemoteCommand := `PATH=$PATH:~/.mshell; mshell --remote`
 	var fullSshOpts []string
@@ -249,15 +279,27 @@ func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, er
 	if err != nil {
 		return nil, fmt.Errorf("creating stderr pipe: %v", err)
 	}
+	cmd.Multiplexer.MakeRawFdReader(0, os.Stdin, false)
+	cmd.Multiplexer.MakeRawFdWriter(1, os.Stdout, false)
+	cmd.Multiplexer.MakeRawFdWriter(2, os.Stderr, false)
+	for _, rfd := range opts.Fds {
+		fd := os.NewFile(uintptr(rfd.FdNum), fmt.Sprintf("/dev/fd/%d", rfd.FdNum))
+		if fd == nil {
+			return nil, fmt.Errorf("cannot open fd %d", rfd.FdNum)
+		}
+		if rfd.Read {
+			cmd.Multiplexer.MakeRawFdReader(rfd.FdNum, fd, true)
+		} else if rfd.Write {
+			cmd.Multiplexer.MakeRawFdWriter(rfd.FdNum, fd, true)
+		}
+	}
 	err = ecmd.Start()
 	if err != nil {
 		return nil, fmt.Errorf("running ssh command: %w", err)
 	}
 	defer cmd.Close()
 	packetCh := packet.PacketParser(stdoutReader)
-	go func() {
-		io.Copy(os.Stderr, stderrReader)
-	}()
+	packet.PacketParserAttach(stderrReader, packetCh)
 	sender := packet.MakePacketSender(inputWriter)
 	for pk := range packetCh {
 		if pk.GetType() == packet.RawPacketStr {
@@ -275,9 +317,6 @@ func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, er
 	}
 	runPacket := opts.MakeRunPacket()
 	sender.SendPacket(runPacket)
-	cmd.Multiplexer.MakeRawFdReader(0, os.Stdin)
-	cmd.Multiplexer.MakeRawFdWriter(1, os.Stdout)
-	cmd.Multiplexer.MakeRawFdWriter(2, os.Stderr)
 	remoteDonePacket := cmd.Multiplexer.RunIOAndWait(packetCh, sender, false, true, true)
 	donePacket := cmd.WaitForCommand()
 	if remoteDonePacket != nil {
@@ -287,6 +326,7 @@ func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, er
 }
 
 func (cmd *ShExecType) RunRemoteIOAndWait(packetCh chan packet.PacketType, sender *packet.PacketSender) {
+	defer cmd.Close()
 	cmd.Multiplexer.RunIOAndWait(packetCh, sender, true, false, false)
 	donePacket := cmd.WaitForCommand()
 	sender.SendPacket(donePacket)
@@ -297,9 +337,13 @@ func runCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender) (*S
 	cmd.Cmd = exec.Command("bash", "-c", pk.Command)
 	UpdateCmdEnv(cmd.Cmd, pk.Env)
 	if pk.Cwd != "" {
-		cmd.Cmd.Dir = pk.Cwd
+		cmd.Cmd.Dir = base.ExpandHomeDir(pk.Cwd)
 	}
-	var err error
+	err := ValidateRemoteFds(pk.Fds)
+	if err != nil {
+		cmd.Close()
+		return nil, err
+	}
 	cmd.Cmd.Stdin, err = cmd.Multiplexer.MakeWriterPipe(0)
 	if err != nil {
 		cmd.Close()
@@ -317,32 +361,8 @@ func runCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender) (*S
 	}
 	extraFiles := make([]*os.File, 0, MaxFdNum+1)
 	for _, rfd := range pk.Fds {
-		if rfd.FdNum < 0 {
-			cmd.Close()
-			return nil, fmt.Errorf("mshell negative fd numbers fd=%d", rfd.FdNum)
-		}
-		if rfd.FdNum < FirstExtraFilesFdNum {
-			cmd.Close()
-			return nil, fmt.Errorf("mshell does not support re-opening fd=%d (0, 1, and 2, are always open)", rfd.FdNum)
-		}
-		if rfd.FdNum > MaxFdNum {
-			cmd.Close()
-			return nil, fmt.Errorf("mshell does not support opening fd numbers above %d", MaxFdNum)
-		}
 		if rfd.FdNum >= len(extraFiles) {
 			extraFiles = extraFiles[:rfd.FdNum+1]
-		}
-		if extraFiles[rfd.FdNum] != nil {
-			cmd.Close()
-			return nil, fmt.Errorf("mshell got duplicate entries for fd=%d", rfd.FdNum)
-		}
-		if rfd.Read && rfd.Write {
-			cmd.Close()
-			return nil, fmt.Errorf("mshell does not support opening fd numbers for reading and writing, fd=%d", rfd.FdNum)
-		}
-		if !rfd.Read && !rfd.Write {
-			cmd.Close()
-			return nil, fmt.Errorf("invalid fd=%d, neither reading or writing mode specified", rfd.FdNum)
 		}
 		if rfd.Read {
 			// client file is open for reading, so we make a writer pipe

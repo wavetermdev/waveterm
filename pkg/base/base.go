@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"strings"
 )
 
 const DefaultMShellPath = "mshell"
@@ -175,4 +176,15 @@ func WriteErrorMsg(fileName string, errVal string) error {
 	oscEsc := MakeSHOSCEsc(OSCEscError, errVal)
 	_, writeErr := fd.Write([]byte(oscEsc))
 	return writeErr
+}
+
+func ExpandHomeDir(pathStr string) string {
+	if pathStr != "~" && !strings.HasPrefix(pathStr, "~/") {
+		return pathStr
+	}
+	homeDir := GetHomeDir()
+	if pathStr == "~" {
+		return homeDir
+	}
+	return path.Join(homeDir, pathStr[2:])
 }
