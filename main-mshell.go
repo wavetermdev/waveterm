@@ -391,32 +391,31 @@ Client Usage: mshell [mshell-opts] --ssh [ssh-opts] user@host -- [command]
 mshell multiplexes input and output streams to a remote command over ssh.
 
 Options:
-    --env 'X=Y;A=B'   - set remote environment variables for command, semicolon separated
-    --env-file [file] - load environment variables from [file] (.env format)
-    --env-copy [glob] - copy local environment variables to remote using [glob] pattern
     --cwd [dir]       - execute remote command in [dir]
-    --no-auto-fds     - do not auto-detect additional fds
-    --sudo            - execute "sudo [command]"
-    --fds [fdspec]    - open fds based off [fdspec], comma separated (implies --no-auto-fds)
-                        <[num] opens for reading
-                        >[num] opens for writing
-                        e.g. --fds '<5,>6,>7'
     [command]         - a single argument (should be quoted)
+
+Sudo Options:
+    --sudo
+    --sudo-with-password [pw]    (not recommended, use --sudo-with-passfile if possible)
+    --sudo-with-passfile [file]
+
+Sudo options allow you to run the given command using "sudo".  The first
+option only works when you can sudo without a password.  Your password will be passed
+securely through a high numbered fd to "sudo -S".  See full documentation for more details.
 
 Examples:
     # execute a python script remotely, with stdin still hooked up correctly
-    mshell --cwd "~/work" --ssh -i key.pem ubuntu@somehost -- "python /dev/fd/4" 4< myscript.py
+    mshell --cwd "~/work" --ssh -i key.pem ubuntu@somehost -- "python3 /dev/fd/4" 4< myscript.py
 
     # capture multiple outputs
     mshell --ssh ubuntu@test -- "cat file1.txt > /dev/fd/3; cat file2.txt > /dev/fd/4" 3> file1.txt 4> file2.txt
 
-    # environment variable copying, setting working directory
-    # note the single quotes on command (otherwise the local shell will expand the variables)
-    TEST1=hello TEST2=world mshell --cwd "~/work" --env-copy "TEST*" --ssh user@host -- 'echo $(pwd) $TEST1 $TEST2'
-
     # execute a script, catpure stdout/stderr in fd-3 and fd-4
     # useful if you need to see stdout for interacting with ssh (password or host auth)
     mshell --ssh user@host -- "test.sh > /dev/fd/3 2> /dev/fd/4" 3> test.stdout 4> test.stderr
+
+    # run a script as root (via sudo), capture output
+    mshell --sudo-with-passfile pw.txt --ssh ubuntu@somehost -- "python3 /dev/fd/3 > /dev/fd/4" 3< myscript.py 4> script-output.txt < script-input.txt
 
 mshell is licensed under the MPLv2
 Please see https://github.com/scripthaus-dev/mshell for extended usage modes, source code, bugs, and feature requests
