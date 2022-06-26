@@ -385,9 +385,11 @@ type TermSize struct {
 }
 
 type RemoteFd struct {
-	FdNum int  `json:"fdnum"`
-	Read  bool `json:"read"`
-	Write bool `json:"write"`
+	FdNum    int    `json:"fdnum"`
+	Read     bool   `json:"read"`
+	Write    bool   `json:"write"`
+	Content  string `json:"-"`
+	DupStdin bool   `json:"-"`
 }
 
 type RunPacketType struct {

@@ -306,6 +306,33 @@ func parseClientOpts() (*shexec.ClientOpts, error) {
 			opts.Debug = true
 			continue
 		}
+		if argStr == "--sudo" {
+			opts.Sudo = true
+			continue
+		}
+		if argStr == "--sudo-with-password" {
+			if !iter.HasNext() {
+				return nil, fmt.Errorf("'--sudo-with-password [pw]', missing password")
+			}
+			opts.Sudo = true
+			opts.SudoWithPass = true
+			opts.SudoPw = iter.Next()
+			continue
+		}
+		if argStr == "--sudo-with-passfile" {
+			if !iter.HasNext() {
+				return nil, fmt.Errorf("'--sudo-with-passfile [file]', missing file")
+			}
+			opts.Sudo = true
+			opts.SudoWithPass = true
+			fileName := iter.Next()
+			contents, err := os.ReadFile(fileName)
+			if err != nil {
+				return nil, fmt.Errorf("cannot read --sudo-with-passfile file '%s': %w", fileName, err)
+			}
+			opts.SudoPw = string(contents)
+			continue
+		}
 	}
 	if opts.IsSSH {
 		// parse SSH opts
@@ -338,6 +365,9 @@ func handleClient() (int, error) {
 	opts, err := parseClientOpts()
 	if err != nil {
 		return 1, fmt.Errorf("parsing opts: %w", err)
+	}
+	if opts.Debug {
+		packet.GlobalDebug = true
 	}
 	if !opts.IsSSH {
 		return 1, fmt.Errorf("when running in client mode '--ssh' option must be present")

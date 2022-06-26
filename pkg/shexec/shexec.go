@@ -30,6 +30,12 @@ const MaxCols = 1024
 const MaxFdNum = 1023
 const FirstExtraFilesFdNum = 3
 
+const SSHRemoteCommand = `PATH=$PATH:~/.mshell; mshell --remote`
+
+const RemoteCommandFmt = `%s`
+const RemoteSudoCommandFmt = `sudo -C %d bash /dev/fd/%d`
+const RemoteSudoPasswordCommandFmt = `cat /dev/fd/%d | sudo -S -C %d bash -c "echo '[from-mshell]'; bash /dev/fd/%d < /dev/fd/%d"`
+
 type ShExecType struct {
 	Lock        *sync.Mutex
 	StartTs     time.Time
@@ -213,21 +219,87 @@ func RunCommand(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecT
 }
 
 type ClientOpts struct {
-	IsSSH       bool
-	SSHOptsTerm bool
-	SSHOpts     []string
-	Command     string
-	Fds         []packet.RemoteFd
-	Cwd         string
-	Debug       bool
+	IsSSH             bool
+	SSHOptsTerm       bool
+	SSHOpts           []string
+	Command           string
+	Fds               []packet.RemoteFd
+	Cwd               string
+	Debug             bool
+	Sudo              bool
+	SudoWithPass      bool
+	SudoPw            string
+	CommandStdinFdNum int
 }
 
-func (opts *ClientOpts) MakeRunPacket() *packet.RunPacketType {
+func (opts *ClientOpts) MakeRunPacket() (*packet.RunPacketType, error) {
 	runPacket := packet.MakeRunPacket()
-	runPacket.Command = opts.Command
 	runPacket.Cwd = opts.Cwd
 	runPacket.Fds = opts.Fds
-	return runPacket
+	if !opts.Sudo {
+		// normal, non-sudo command
+		runPacket.Command = opts.Command
+		return runPacket, nil
+	}
+	if opts.SudoWithPass {
+		pwFdNum, err := opts.NextFreeFdNum()
+		if err != nil {
+			return nil, err
+		}
+		pwRfd := packet.RemoteFd{FdNum: pwFdNum, Read: true, Content: opts.SudoPw}
+		opts.Fds = append(opts.Fds, pwRfd)
+		commandFdNum, err := opts.NextFreeFdNum()
+		if err != nil {
+			return nil, err
+		}
+		commandRfd := packet.RemoteFd{FdNum: commandFdNum, Read: true, Content: opts.Command}
+		opts.Fds = append(opts.Fds, commandRfd)
+		commandStdinFdNum, err := opts.NextFreeFdNum()
+		if err != nil {
+			return nil, err
+		}
+		commandStdinRfd := packet.RemoteFd{FdNum: commandStdinFdNum, Read: true, DupStdin: true}
+		opts.Fds = append(opts.Fds, commandStdinRfd)
+		opts.CommandStdinFdNum = commandStdinFdNum
+		maxFdNum := opts.MaxFdNum()
+		runPacket.Command = fmt.Sprintf(RemoteSudoPasswordCommandFmt, pwFdNum, maxFdNum+1, commandFdNum, commandStdinFdNum)
+		runPacket.Fds = opts.Fds
+		return runPacket, nil
+	} else {
+		commandFdNum, err := opts.NextFreeFdNum()
+		if err != nil {
+			return nil, err
+		}
+		rfd := packet.RemoteFd{FdNum: commandFdNum, Read: true, Content: opts.Command}
+		opts.Fds = append(opts.Fds, rfd)
+		maxFdNum := opts.MaxFdNum()
+		runPacket.Command = fmt.Sprintf(RemoteSudoCommandFmt, maxFdNum+1, commandFdNum)
+		runPacket.Fds = opts.Fds
+		return runPacket, nil
+	}
+}
+
+func (opts *ClientOpts) NextFreeFdNum() (int, error) {
+	fdMap := make(map[int]bool)
+	for _, fd := range opts.Fds {
+		fdMap[fd.FdNum] = true
+	}
+	for i := 3; i <= MaxFdNum; i++ {
+		if !fdMap[i] {
+			return i, nil
+		}
+	}
+	return 0, fmt.Errorf("reached maximum number of fds, all fds between 3-%d are in use", MaxFdNum)
+}
+
+func (opts *ClientOpts) MaxFdNum() int {
+	maxFdNum := 3
+	for _, fd := range opts.Fds {
+		if fd.FdNum > maxFdNum {
+			maxFdNum = fd.FdNum
+		}
+	}
+	return maxFdNum
 }
 
 func ValidateRemoteFds(rfds []packet.RemoteFd) error {
@@ -261,11 +333,14 @@ func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, er
 	if err != nil {
 		return nil, err
 	}
+	runPacket, err := opts.MakeRunPacket() // modifies opts
+	if err != nil {
+		return nil, err
+	}
 	cmd := MakeShExec("", "")
-	sshRemoteCommand := `PATH=$PATH:~/.mshell; mshell --remote`
 	var fullSshOpts []string
 	fullSshOpts = append(fullSshOpts, opts.SSHOpts...)
-	fullSshOpts = append(fullSshOpts, sshRemoteCommand)
+	fullSshOpts = append(fullSshOpts, SSHRemoteCommand)
 	ecmd := exec.Command("ssh", fullSshOpts...)
 	cmd.Cmd = ecmd
 	inputWriter, err := ecmd.StdinPipe()
@@ -280,10 +355,23 @@ func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, er
 	if err != nil {
 		return nil, fmt.Errorf("creating stderr pipe: %v", err)
 	}
-	cmd.Multiplexer.MakeRawFdReader(0, os.Stdin, false)
+	if !opts.SudoWithPass {
+		cmd.Multiplexer.MakeRawFdReader(0, os.Stdin, false)
+	}
 	cmd.Multiplexer.MakeRawFdWriter(1, os.Stdout, false)
 	cmd.Multiplexer.MakeRawFdWriter(2, os.Stderr, false)
-	for _, rfd := range opts.Fds {
+	for _, rfd := range runPacket.Fds {
+		if rfd.Read && rfd.Content != "" {
+			err = cmd.Multiplexer.MakeStringFdReader(rfd.FdNum, rfd.Content)
+			if err != nil {
+				return nil, fmt.Errorf("creating content fd %d", rfd.FdNum)
+			}
+			continue
+		}
+		if rfd.Read && rfd.DupStdin {
+			cmd.Multiplexer.MakeRawFdReader(rfd.FdNum, os.Stdin, false)
+			continue
+		}
 		fd := os.NewFile(uintptr(rfd.FdNum), fmt.Sprintf("/dev/fd/%d", rfd.FdNum))
 		if fd == nil {
 			return nil, fmt.Errorf("cannot open fd %d", rfd.FdNum)
@@ -322,7 +410,6 @@ func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, er
 	if !versionOk {
 		return nil, fmt.Errorf("did not receive version from remote mshell")
 	}
-	runPacket := opts.MakeRunPacket()
 	sender.SendPacket(runPacket)
 	if opts.Debug {
 		cmd.Multiplexer.Debug = true

@@ -100,6 +100,18 @@ func (m *Multiplexer) MakeWriterPipe(fdNum int) (*os.File, error) {
 	return pr, nil
 }
 
+func (m *Multiplexer) MakeStringFdReader(fdNum int, contents string) error {
+	pw, err := m.MakeReaderPipe(fdNum)
+	if err != nil {
+		return err
+	}
+	go func() {
+		pw.Write([]byte(contents))
+		pw.Close()
+	}()
+	return nil
+}
+
 func (m *Multiplexer) MakeRawFdReader(fdNum int, fd *os.File, shouldClose bool) {
 	m.Lock.Lock()
 	defer m.Lock.Unlock()
