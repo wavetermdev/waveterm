@@ -38,10 +38,10 @@ func setupSingleSignals(cmd *shexec.ShExecType) {
 }
 
 func doSingle(ck base.CommandKey) {
-	packetCh := packet.PacketParser(os.Stdin)
+	packetParser := packet.MakePacketParser(os.Stdin)
 	sender := packet.MakePacketSender(os.Stdout)
 	var runPacket *packet.RunPacketType
-	for pk := range packetCh {
+	for pk := range packetParser.MainCh {
 		if pk.GetType() == packet.PingPacketStr {
 			continue
 		}
@@ -156,7 +156,7 @@ func doMain() {
 		packet.SendErrorPacket(os.Stdout, err.Error())
 		return
 	}
-	packetCh := packet.PacketParser(os.Stdin)
+	packetParser := packet.MakePacketParser(os.Stdin)
 	sender := packet.MakePacketSender(os.Stdout)
 	tailer, err := cmdtail.MakeTailer(sender.SendCh)
 	if err != nil {
@@ -172,7 +172,7 @@ func doMain() {
 		initPacket.User = user.Username
 	}
 	sender.SendPacket(initPacket)
-	for pk := range packetCh {
+	for pk := range packetParser.MainCh {
 		if pk.GetType() == packet.PingPacketStr {
 			continue
 		}
@@ -212,7 +212,7 @@ func doMain() {
 }
 
 func handleRemote() {
-	packetCh := packet.PacketParser(os.Stdin)
+	packetParser := packet.MakePacketParser(os.Stdin)
 	sender := packet.MakePacketSender(os.Stdout)
 	defer func() {
 		// wait for sender to complete
@@ -223,7 +223,7 @@ func handleRemote() {
 	initPacket.Version = MShellVersion
 	sender.SendPacket(initPacket)
 	var runPacket *packet.RunPacketType
-	for pk := range packetCh {
+	for pk := range packetParser.MainCh {
 		if pk.GetType() == packet.PingPacketStr {
 			continue
 		}
@@ -251,7 +251,7 @@ func handleRemote() {
 	defer cmd.Close()
 	startPacket := cmd.MakeCmdStartPacket()
 	sender.SendPacket(startPacket)
-	cmd.RunRemoteIOAndWait(packetCh, sender)
+	cmd.RunRemoteIOAndWait(packetParser, sender)
 }
 
 func handleServer() {

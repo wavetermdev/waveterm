@@ -28,7 +28,7 @@ type Multiplexer struct {
 	CloseAfterStart []*os.File        // synchronized
 
 	Sender  *packet.PacketSender
-	Input   chan packet.PacketType
+	Input   *packet.PacketParser
 	Started bool
 
 	Debug bool
@@ -171,20 +171,20 @@ func (m *Multiplexer) launchReaders(wg *sync.WaitGroup) {
 	}
 }
 
-func (m *Multiplexer) startIO(packetCh chan packet.PacketType, sender *packet.PacketSender) {
+func (m *Multiplexer) startIO(packetParser *packet.PacketParser, sender *packet.PacketSender) {
 	m.Lock.Lock()
 	defer m.Lock.Unlock()
 	if m.Started {
 		panic("Multiplexer is already running, cannot start again")
 	}
-	m.Input = packetCh
+	m.Input = packetParser
 	m.Sender = sender
 	m.Started = true
 }
 
 func (m *Multiplexer) runPacketInputLoop() *packet.CmdDonePacketType {
 	defer m.HandleInputDone()
-	for pk := range m.Input {
+	for pk := range m.Input.MainCh {
 		if m.Debug {
 			fmt.Printf("PK> %s\n", packet.AsString(pk))
 		}
@@ -263,8 +263,8 @@ func (m *Multiplexer) closeTempStartFds() {
 	m.CloseAfterStart = nil
 }
 
-func (m *Multiplexer) RunIOAndWait(packetCh chan packet.PacketType, sender *packet.PacketSender, waitOnReaders bool, waitOnWriters bool, waitForInputLoop bool) *packet.CmdDonePacketType {
-	m.startIO(packetCh, sender)
+func (m *Multiplexer) RunIOAndWait(packetParser *packet.PacketParser, sender *packet.PacketSender, waitOnReaders bool, waitOnWriters bool, waitForInputLoop bool) *packet.CmdDonePacketType {
+	m.startIO(packetParser, sender)
 	m.closeTempStartFds()
 	var wg sync.WaitGroup
 	if waitOnReaders {

@@ -7,14 +7,11 @@
 package packet
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"reflect"
-	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/scripthaus-dev/mshell/pkg/base"
@@ -600,76 +597,6 @@ func (sender *PacketSender) SendErrorPacket(errVal string) error {
 
 func (sender *PacketSender) SendMessage(fmtStr string, args ...interface{}) error {
 	return sender.SendPacket(MakeMessagePacket(fmt.Sprintf(fmtStr, args...)))
-}
-
-func CombinePacketParsers(p1 chan PacketType, p2 chan PacketType) chan PacketType {
-	rtnCh := make(chan PacketType)
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		for v := range p1 {
-			rtnCh <- v
-		}
-	}()
-	go func() {
-		defer wg.Done()
-		for v := range p2 {
-			rtnCh <- v
-		}
-	}()
-	go func() {
-		wg.Wait()
-		close(rtnCh)
-	}()
-	return rtnCh
-}
-
-func PacketParser(input io.Reader) chan PacketType {
-	rtnCh := make(chan PacketType)
-	bufReader := bufio.NewReader(input)
-	go func() {
-		defer func() {
-			close(rtnCh)
-		}()
-		for {
-			line, err := bufReader.ReadString('\n')
-			if err == io.EOF {
-				return
-			}
-			if err != nil {
-				errPacket := MakeErrorPacket(fmt.Sprintf("reading packets from input: %v", err))
-				rtnCh <- errPacket
-				return
-			}
-			if line == "\n" {
-				continue
-			}
-			// ##[len][json]\n
-			// ##14{"hello":true}\n
-			bracePos := strings.Index(line, "{")
-			if !strings.HasPrefix(line, "##") || bracePos == -1 {
-				rtnCh <- MakeRawPacket(line[:len(line)-1])
-				continue
-			}
-			packetLen, err := strconv.Atoi(line[2:bracePos])
-			if err != nil || packetLen != len(line)-bracePos-1 {
-				rtnCh <- MakeRawPacket(line[:len(line)-1])
-				continue
-			}
-			pk, err := ParseJsonPacket([]byte(line[bracePos:]))
-			if err != nil {
-				errPk := MakeErrorPacket(fmt.Sprintf("parsing packet json from input: %v", err))
-				rtnCh <- errPk
-				return
-			}
-			if pk.GetType() == DonePacketStr {
-				return
-			}
-			rtnCh <- pk
-		}
-	}()
-	return rtnCh
 }
 
 type ErrorReporter interface {

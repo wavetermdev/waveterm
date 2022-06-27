@@ -373,12 +373,12 @@ func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, er
 		return nil, fmt.Errorf("running ssh command: %w", err)
 	}
 	defer cmd.Close()
-	stdoutPacketCh := packet.PacketParser(stdoutReader)
-	stderrPacketCh := packet.PacketParser(stderrReader)
-	packetCh := packet.CombinePacketParsers(stdoutPacketCh, stderrPacketCh)
+	stdoutPacketParser := packet.MakePacketParser(stdoutReader)
+	stderrPacketParser := packet.MakePacketParser(stderrReader)
+	packetParser := packet.CombinePacketParsers(stdoutPacketParser, stderrPacketParser)
 	sender := packet.MakePacketSender(inputWriter)
 	versionOk := false
-	for pk := range packetCh {
+	for pk := range packetParser.MainCh {
 		if pk.GetType() == packet.RawPacketStr {
 			rawPk := pk.(*packet.RawPacketType)
 			fmt.Printf("%s\n", rawPk.Data)
@@ -400,7 +400,7 @@ func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, er
 	if opts.Debug {
 		cmd.Multiplexer.Debug = true
 	}
-	remoteDonePacket := cmd.Multiplexer.RunIOAndWait(packetCh, sender, false, true, true)
+	remoteDonePacket := cmd.Multiplexer.RunIOAndWait(packetParser, sender, false, true, true)
 	donePacket := cmd.WaitForCommand()
 	if remoteDonePacket != nil {
 		donePacket = remoteDonePacket
@@ -408,9 +408,9 @@ func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, er
 	return donePacket, nil
 }
 
-func (cmd *ShExecType) RunRemoteIOAndWait(packetCh chan packet.PacketType, sender *packet.PacketSender) {
+func (cmd *ShExecType) RunRemoteIOAndWait(packetParser *packet.PacketParser, sender *packet.PacketSender) {
 	defer cmd.Close()
-	cmd.Multiplexer.RunIOAndWait(packetCh, sender, true, false, false)
+	cmd.Multiplexer.RunIOAndWait(packetParser, sender, true, false, false)
 	donePacket := cmd.WaitForCommand()
 	sender.SendPacket(donePacket)
 }
