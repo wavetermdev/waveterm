@@ -30,7 +30,7 @@ const MaxCols = 1024
 const MaxFdNum = 1023
 const FirstExtraFilesFdNum = 3
 
-const SSHRemoteCommand = `
+const ClientCommand = `
 PATH=$PATH:~/.mshell;
 which mshell > /dev/null;
 if [[ "$?" -ne 0 ]]
@@ -229,20 +229,26 @@ type ClientOpts struct {
 	CommandStdinFdNum int
 }
 
-func (opts *ClientOpts) MakeSSHCommandString() string {
-	var moreSSHOpts []string
-	if opts.SSHIdentity != "" {
-		identityOpt := fmt.Sprintf("-i %s", shellescape.Quote(opts.SSHIdentity))
-		moreSSHOpts = append(moreSSHOpts, identityOpt)
+func (opts *ClientOpts) MakeExecCmd() *exec.Cmd {
+	if opts.SSHHost == "" {
+		ecmd := exec.Command("bash", "-c", strings.TrimSpace(ClientCommand))
+		return ecmd
+	} else {
+		var moreSSHOpts []string
+		if opts.SSHIdentity != "" {
+			identityOpt := fmt.Sprintf("-i %s", shellescape.Quote(opts.SSHIdentity))
+			moreSSHOpts = append(moreSSHOpts, identityOpt)
+		}
+		if opts.SSHUser != "" {
+			userOpt := fmt.Sprintf("-l %s", shellescape.Quote(opts.SSHUser))
+			moreSSHOpts = append(moreSSHOpts, userOpt)
+		}
+		remoteCommand := strings.TrimSpace(ClientCommand)
+		// note that SSHOptsStr is *not* escaped
+		sshCmd := fmt.Sprintf("ssh %s %s %s %s", strings.Join(moreSSHOpts, " "), opts.SSHOptsStr, shellescape.Quote(opts.SSHHost), shellescape.Quote(remoteCommand))
+		ecmd := exec.Command("bash", "-c", sshCmd)
+		return ecmd
 	}
-	if opts.SSHUser != "" {
-		userOpt := fmt.Sprintf("-l %s", shellescape.Quote(opts.SSHUser))
-		moreSSHOpts = append(moreSSHOpts, userOpt)
-	}
-	remoteCommand := strings.TrimSpace(SSHRemoteCommand)
-	// note that SSHOptsStr is *not* escaped
-	sshCmd := fmt.Sprintf("ssh %s %s %s %s", strings.Join(moreSSHOpts, " "), opts.SSHOptsStr, shellescape.Quote(opts.SSHHost), shellescape.Quote(remoteCommand))
-	return sshCmd
 }
 
 func (opts *ClientOpts) MakeRunPacket() (*packet.RunPacketType, error) {
@@ -351,8 +357,7 @@ func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, er
 		return nil, err
 	}
 	cmd := MakeShExec("")
-	sshCmdStr := opts.MakeSSHCommandString()
-	ecmd := exec.Command("bash", "-c", sshCmdStr)
+	ecmd := opts.MakeExecCmd()
 	cmd.Cmd = ecmd
 	inputWriter, err := ecmd.StdinPipe()
 	if err != nil {

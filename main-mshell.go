@@ -369,9 +369,6 @@ func handleClient() (int, error) {
 	if opts.Debug {
 		packet.GlobalDebug = true
 	}
-	if opts.SSHHost == "" {
-		return 1, fmt.Errorf("when running in client mode '--ssh' option must be present")
-	}
 	if opts.Command == "" {
 		return 1, fmt.Errorf("no [command] specified.  [command] follows '--' option (see usage)")
 	}
