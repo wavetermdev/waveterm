@@ -42,8 +42,8 @@ fi
 `
 
 const RunCommandFmt = `%s`
-const RunSudoCommandFmt = `sudo -C %d bash /dev/fd/%d`
-const RunSudoPasswordCommandFmt = `cat /dev/fd/%d | sudo -S -C %d bash -c "echo '[from-mshell]'; bash /dev/fd/%d < /dev/fd/%d"`
+const RunSudoCommandFmt = `sudo -n -C %d bash /dev/fd/%d`
+const RunSudoPasswordCommandFmt = `cat /dev/fd/%d | sudo -k -S -C %d bash -c "echo '[from-mshell]'; exec %d>&-; bash /dev/fd/%d < /dev/fd/%d"`
 
 type ShExecType struct {
 	Lock        *sync.Mutex
@@ -281,7 +281,7 @@ func (opts *ClientOpts) MakeRunPacket() (*packet.RunPacketType, error) {
 		opts.Fds = append(opts.Fds, commandStdinRfd)
 		opts.CommandStdinFdNum = commandStdinFdNum
 		maxFdNum := opts.MaxFdNum()
-		runPacket.Command = fmt.Sprintf(RunSudoPasswordCommandFmt, pwFdNum, maxFdNum+1, commandFdNum, commandStdinFdNum)
+		runPacket.Command = fmt.Sprintf(RunSudoPasswordCommandFmt, pwFdNum, maxFdNum+1, pwFdNum, commandFdNum, commandStdinFdNum)
 		runPacket.Fds = opts.Fds
 		return runPacket, nil
 	} else {
@@ -423,6 +423,9 @@ func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, er
 				return nil, fmt.Errorf("invalid remote mshell version 'v%s', must be v0.1.0", initPk.Version)
 			}
 			versionOk = true
+			if opts.Debug {
+				fmt.Printf("VERSION> %s\n", initPk.Version)
+			}
 			break
 		}
 	}

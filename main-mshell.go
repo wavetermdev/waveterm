@@ -7,6 +7,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/signal"
@@ -347,7 +348,10 @@ func parseClientOpts() (*shexec.ClientOpts, error) {
 			if err != nil {
 				return nil, fmt.Errorf("cannot read --sudo-with-passfile file '%s': %w", fileName, err)
 			}
-			opts.SudoPw = string(contents)
+			if newlineIdx := bytes.Index(contents, []byte{'\n'}); newlineIdx != -1 {
+				contents = contents[0:newlineIdx]
+			}
+			opts.SudoPw = string(contents) + "\n"
 			continue
 		}
 		if argStr == "--" {
