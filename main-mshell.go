@@ -15,7 +15,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/cmdtail"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
@@ -38,7 +37,7 @@ func setupSingleSignals(cmd *shexec.ShExecType) {
 	}()
 }
 
-func doSingle(cmdId string) {
+func doSingle(ck base.CommandKey) {
 	packetCh := packet.PacketParser(os.Stdin)
 	sender := packet.MakePacketSender(os.Stdout)
 	var runPacket *packet.RunPacketType
@@ -57,11 +56,11 @@ func doSingle(cmdId string) {
 		sender.SendErrorPacket("did not receive a 'run' packet")
 		return
 	}
-	if runPacket.CmdId == "" {
-		runPacket.CmdId = cmdId
+	if runPacket.CK.IsEmpty() {
+		runPacket.CK = ck
 	}
-	if runPacket.CmdId != cmdId {
-		sender.SendErrorPacket(fmt.Sprintf("run packet cmdid[%s] did not match arg[%s]", runPacket.CmdId, cmdId))
+	if runPacket.CK != ck {
+		sender.SendErrorPacket(fmt.Sprintf("run packet cmdid[%s] did not match arg[%s]", runPacket.CK, ck))
 		return
 	}
 	cmd, err := shexec.RunCommand(runPacket, sender)
@@ -79,39 +78,36 @@ func doSingle(cmdId string) {
 }
 
 func doMainRun(pk *packet.RunPacketType, sender *packet.PacketSender) {
-	if pk.CmdId == "" {
-		pk.CmdId = uuid.New().String()
-	}
 	err := shexec.ValidateRunPacket(pk)
 	if err != nil {
-		sender.SendPacket(packet.MakeIdErrorPacket(pk.CmdId, fmt.Sprintf("invalid run packet: %v", err)))
+		sender.SendPacket(packet.MakeCKErrorPacket(pk.CK, fmt.Sprintf("invalid run packet: %v", err)))
 		return
 	}
-	fileNames, err := base.GetCommandFileNames(pk.SessionId, pk.CmdId)
+	fileNames, err := base.GetCommandFileNames(pk.CK)
 	if err != nil {
-		sender.SendPacket(packet.MakeIdErrorPacket(pk.CmdId, fmt.Sprintf("cannot get command file names: %v", err)))
+		sender.SendPacket(packet.MakeCKErrorPacket(pk.CK, fmt.Sprintf("cannot get command file names: %v", err)))
 		return
 	}
-	cmd, err := shexec.MakeRunnerExec(pk.CmdId)
+	cmd, err := shexec.MakeRunnerExec(pk.CK)
 	if err != nil {
-		sender.SendPacket(packet.MakeIdErrorPacket(pk.CmdId, fmt.Sprintf("cannot make mshell command: %v", err)))
+		sender.SendPacket(packet.MakeCKErrorPacket(pk.CK, fmt.Sprintf("cannot make mshell command: %v", err)))
 		return
 	}
 	cmdStdin, err := cmd.StdinPipe()
 	if err != nil {
-		sender.SendPacket(packet.MakeIdErrorPacket(pk.CmdId, fmt.Sprintf("cannot pipe stdin to command: %v", err)))
+		sender.SendPacket(packet.MakeCKErrorPacket(pk.CK, fmt.Sprintf("cannot pipe stdin to command: %v", err)))
 		return
 	}
 	// touch ptyout file (should exist for tailer to work correctly)
 	ptyOutFd, err := os.OpenFile(fileNames.PtyOutFile, os.O_CREATE|os.O_TRUNC|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		sender.SendPacket(packet.MakeIdErrorPacket(pk.CmdId, fmt.Sprintf("cannot open pty out file '%s': %v", fileNames.PtyOutFile, err)))
+		sender.SendPacket(packet.MakeCKErrorPacket(pk.CK, fmt.Sprintf("cannot open pty out file '%s': %v", fileNames.PtyOutFile, err)))
 		return
 	}
 	ptyOutFd.Close() // just opened to create the file, can close right after
 	runnerOutFd, err := os.OpenFile(fileNames.RunnerOutFile, os.O_CREATE|os.O_TRUNC|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		sender.SendPacket(packet.MakeIdErrorPacket(pk.CmdId, fmt.Sprintf("cannot open runner out file '%s': %v", fileNames.RunnerOutFile, err)))
+		sender.SendPacket(packet.MakeCKErrorPacket(pk.CK, fmt.Sprintf("cannot open runner out file '%s': %v", fileNames.RunnerOutFile, err)))
 		return
 	}
 	defer runnerOutFd.Close()
@@ -119,13 +115,13 @@ func doMainRun(pk *packet.RunPacketType, sender *packet.PacketSender) {
 	cmd.Stderr = runnerOutFd
 	err = cmd.Start()
 	if err != nil {
-		sender.SendPacket(packet.MakeIdErrorPacket(pk.CmdId, fmt.Sprintf("error starting command: %v", err)))
+		sender.SendPacket(packet.MakeCKErrorPacket(pk.CK, fmt.Sprintf("error starting command: %v", err)))
 		return
 	}
 	go func() {
 		err = packet.SendPacket(cmdStdin, pk)
 		if err != nil {
-			sender.SendPacket(packet.MakeIdErrorPacket(pk.CmdId, fmt.Sprintf("error sending forked runner command: %v", err)))
+			sender.SendPacket(packet.MakeCKErrorPacket(pk.CK, fmt.Sprintf("error sending forked runner command: %v", err)))
 			return
 		}
 		cmdStdin.Close()
@@ -451,12 +447,12 @@ func main() {
 	}
 
 	if len(os.Args) >= 2 {
-		cmdId, err := uuid.Parse(os.Args[1])
-		if err != nil {
-			packet.SendErrorPacket(os.Stdout, fmt.Sprintf("invalid non-cmdid passed to mshell", err))
+		ck := base.CommandKey(os.Args[1])
+		if err := ck.Validate("mshell arg"); err != nil {
+			packet.SendErrorPacket(os.Stdout, err.Error())
 			return
 		}
-		doSingle(cmdId.String())
+		doSingle(ck)
 		time.Sleep(100 * time.Millisecond)
 		return
 	} else {

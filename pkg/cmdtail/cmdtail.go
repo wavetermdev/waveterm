@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/google/uuid"
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 )
@@ -33,7 +32,7 @@ type TailPos struct {
 }
 
 type CmdWatchEntry struct {
-	CmdKey     CmdKey
+	CmdKey     base.CommandKey
 	FilePtyLen int64
 	FileRunLen int64
 	Tails      []TailPos
@@ -73,20 +72,15 @@ func (pos TailPos) IsCurrent(entry CmdWatchEntry) bool {
 	return pos.TailPtyPos >= entry.FilePtyLen && pos.TailRunPos >= entry.FileRunLen
 }
 
-type CmdKey struct {
-	SessionId string
-	CmdId     string
-}
-
 type Tailer struct {
 	Lock      *sync.Mutex
-	WatchList map[CmdKey]CmdWatchEntry
+	WatchList map[base.CommandKey]CmdWatchEntry
 	ScHomeDir string
 	Watcher   *fsnotify.Watcher
 	SendCh    chan packet.PacketType
 }
 
-func (t *Tailer) updateTailPos_nolock(cmdKey CmdKey, reqId string, pos TailPos) {
+func (t *Tailer) updateTailPos_nolock(cmdKey base.CommandKey, reqId string, pos TailPos) {
 	entry, found := t.WatchList[cmdKey]
 	if !found {
 		return
@@ -95,7 +89,7 @@ func (t *Tailer) updateTailPos_nolock(cmdKey CmdKey, reqId string, pos TailPos) 
 	t.WatchList[cmdKey] = entry
 }
 
-func (t *Tailer) removeTailPos_nolock(cmdKey CmdKey, reqId string) {
+func (t *Tailer) removeTailPos_nolock(cmdKey base.CommandKey, reqId string) {
 	entry, found := t.WatchList[cmdKey]
 	if !found {
 		return
@@ -107,13 +101,13 @@ func (t *Tailer) removeTailPos_nolock(cmdKey CmdKey, reqId string) {
 	}
 
 	// delete from watchlist, remove watches
-	fileNames := base.MakeCommandFileNamesWithHome(t.ScHomeDir, cmdKey.SessionId, cmdKey.CmdId)
+	fileNames := base.MakeCommandFileNamesWithHome(t.ScHomeDir, cmdKey)
 	delete(t.WatchList, cmdKey)
 	t.Watcher.Remove(fileNames.PtyOutFile)
 	t.Watcher.Remove(fileNames.RunnerOutFile)
 }
 
-func (t *Tailer) updateEntrySizes_nolock(cmdKey CmdKey, ptyLen int64, runLen int64) {
+func (t *Tailer) updateEntrySizes_nolock(cmdKey base.CommandKey, ptyLen int64, runLen int64) {
 	entry, found := t.WatchList[cmdKey]
 	if !found {
 		return
@@ -123,7 +117,7 @@ func (t *Tailer) updateEntrySizes_nolock(cmdKey CmdKey, ptyLen int64, runLen int
 	t.WatchList[cmdKey] = entry
 }
 
-func (t *Tailer) getEntryAndPos_nolock(cmdKey CmdKey, reqId string) (CmdWatchEntry, TailPos, bool) {
+func (t *Tailer) getEntryAndPos_nolock(cmdKey base.CommandKey, reqId string) (CmdWatchEntry, TailPos, bool) {
 	entry, found := t.WatchList[cmdKey]
 	if !found {
 		return CmdWatchEntry{}, TailPos{}, false
@@ -142,7 +136,7 @@ func MakeTailer(sendCh chan packet.PacketType) (*Tailer, error) {
 	}
 	rtn := &Tailer{
 		Lock:      &sync.Mutex{},
-		WatchList: make(map[CmdKey]CmdWatchEntry),
+		WatchList: make(map[base.CommandKey]CmdWatchEntry),
 		ScHomeDir: scHomeDir,
 		SendCh:    sendCh,
 	}
@@ -170,8 +164,7 @@ func (t *Tailer) readDataFromFile(fileName string, pos int64, maxBytes int) ([]b
 func (t *Tailer) makeCmdDataPacket(fileNames *base.CommandFileNames, entry CmdWatchEntry, pos TailPos) *packet.CmdDataPacketType {
 	dataPacket := packet.MakeCmdDataPacket()
 	dataPacket.ReqId = pos.ReqId
-	dataPacket.SessionId = entry.CmdKey.SessionId
-	dataPacket.CmdId = entry.CmdKey.CmdId
+	dataPacket.CK = entry.CmdKey
 	dataPacket.PtyPos = pos.TailPtyPos
 	dataPacket.RunPos = pos.TailRunPos
 	if entry.FilePtyLen > pos.TailPtyPos {
@@ -196,14 +189,14 @@ func (t *Tailer) makeCmdDataPacket(fileNames *base.CommandFileNames, entry CmdWa
 }
 
 // returns (data-packet, keepRunning)
-func (t *Tailer) runSingleDataTransfer(key CmdKey, reqId string) (*packet.CmdDataPacketType, bool) {
+func (t *Tailer) runSingleDataTransfer(key base.CommandKey, reqId string) (*packet.CmdDataPacketType, bool) {
 	t.Lock.Lock()
 	entry, pos, foundPos := t.getEntryAndPos_nolock(key, reqId)
 	t.Lock.Unlock()
 	if !foundPos {
 		return nil, false
 	}
-	fileNames := base.MakeCommandFileNamesWithHome(t.ScHomeDir, key.SessionId, key.CmdId)
+	fileNames := base.MakeCommandFileNamesWithHome(t.ScHomeDir, key)
 	dataPacket := t.makeCmdDataPacket(fileNames, entry, pos)
 
 	t.Lock.Lock()
@@ -232,7 +225,7 @@ func (t *Tailer) runSingleDataTransfer(key CmdKey, reqId string) (*packet.CmdDat
 	return dataPacket, pos.Running
 }
 
-func (t *Tailer) checkRemoveNoFollow(cmdKey CmdKey, reqId string) {
+func (t *Tailer) checkRemoveNoFollow(cmdKey base.CommandKey, reqId string) {
 	t.Lock.Lock()
 	defer t.Lock.Unlock()
 	_, pos, foundPos := t.getEntryAndPos_nolock(cmdKey, reqId)
@@ -244,7 +237,7 @@ func (t *Tailer) checkRemoveNoFollow(cmdKey CmdKey, reqId string) {
 	}
 }
 
-func (t *Tailer) RunDataTransfer(key CmdKey, reqId string) {
+func (t *Tailer) RunDataTransfer(key base.CommandKey, reqId string) {
 	for {
 		dataPacket, keepRunning := t.runSingleDataTransfer(key, reqId)
 		if dataPacket != nil {
@@ -283,7 +276,7 @@ func (t *Tailer) updateFile(relFileName string) {
 		t.SendCh <- packet.FmtMessagePacket("error trying to stat file '%s': %v", relFileName, err)
 		return
 	}
-	cmdKey := CmdKey{SessionId: m[1], CmdId: m[2]}
+	cmdKey := base.MakeCommandKey(m[1], m[2])
 	t.Lock.Lock()
 	defer t.Lock.Unlock()
 	entry, foundEntry := t.WatchList[cmdKey]
@@ -336,7 +329,7 @@ func max(v1 int64, v2 int64) int64 {
 }
 
 func (entry *CmdWatchEntry) fillFilePos(scHomeDir string) {
-	fileNames := base.MakeCommandFileNamesWithHome(scHomeDir, entry.CmdKey.SessionId, entry.CmdKey.CmdId)
+	fileNames := base.MakeCommandFileNamesWithHome(scHomeDir, entry.CmdKey)
 	ptyInfo, _ := os.Stat(fileNames.PtyOutFile)
 	if ptyInfo != nil {
 		entry.FilePtyLen = ptyInfo.Size()
@@ -350,30 +343,24 @@ func (entry *CmdWatchEntry) fillFilePos(scHomeDir string) {
 func (t *Tailer) RemoveWatch(pk *packet.UntailCmdPacketType) {
 	t.Lock.Lock()
 	defer t.Lock.Unlock()
-	key := CmdKey{pk.SessionId, pk.CmdId}
-	t.removeTailPos_nolock(key, pk.ReqId)
+	t.removeTailPos_nolock(pk.CK, pk.ReqId)
 }
 
 func (t *Tailer) AddWatch(getPacket *packet.GetCmdPacketType) error {
-	_, err := uuid.Parse(getPacket.SessionId)
-	if err != nil {
-		return fmt.Errorf("getcmd, bad sessionid '%s': %w", getPacket.SessionId, err)
-	}
-	_, err = uuid.Parse(getPacket.CmdId)
-	if err != nil {
-		return fmt.Errorf("getcmd, bad cmdid '%s': %w", getPacket.CmdId, err)
+	if err := getPacket.CK.Validate("getcmd"); err != nil {
+		return err
 	}
 	if getPacket.ReqId == "" {
 		return fmt.Errorf("getcmd, no reqid specified")
 	}
-	fileNames := base.MakeCommandFileNamesWithHome(t.ScHomeDir, getPacket.SessionId, getPacket.CmdId)
+	fileNames := base.MakeCommandFileNamesWithHome(t.ScHomeDir, getPacket.CK)
 	t.Lock.Lock()
 	defer t.Lock.Unlock()
-	key := CmdKey{getPacket.SessionId, getPacket.CmdId}
+	key := getPacket.CK
 	entry, foundEntry := t.WatchList[key]
 	if !foundEntry {
 		// add watches, initialize entry
-		err = t.Watcher.Add(fileNames.PtyOutFile)
+		err := t.Watcher.Add(fileNames.PtyOutFile)
 		if err != nil {
 			return err
 		}

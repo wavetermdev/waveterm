@@ -12,6 +12,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 )
 
@@ -21,8 +22,7 @@ const MaxSingleWriteSize = 4 * 1024
 
 type Multiplexer struct {
 	Lock            *sync.Mutex
-	SessionId       string
-	CmdId           string
+	CK              base.CommandKey
 	FdReaders       map[int]*FdReader // synchronized
 	FdWriters       map[int]*FdWriter // synchronized
 	CloseAfterStart []*os.File        // synchronized
@@ -34,11 +34,10 @@ type Multiplexer struct {
 	Debug bool
 }
 
-func MakeMultiplexer(sessionId string, cmdId string) *Multiplexer {
+func MakeMultiplexer(ck base.CommandKey) *Multiplexer {
 	return &Multiplexer{
 		Lock:      &sync.Mutex{},
-		SessionId: sessionId,
-		CmdId:     cmdId,
+		CK:        ck,
 		FdReaders: make(map[int]*FdReader),
 		FdWriters: make(map[int]*FdWriter),
 	}
@@ -126,8 +125,7 @@ func (m *Multiplexer) MakeRawFdWriter(fdNum int, fd *os.File, shouldClose bool) 
 
 func (m *Multiplexer) makeDataAckPacket(fdNum int, ackLen int, err error) *packet.DataAckPacketType {
 	ack := packet.MakeDataAckPacket()
-	ack.SessionId = m.SessionId
-	ack.CmdId = m.CmdId
+	ack.CK = m.CK
 	ack.FdNum = fdNum
 	ack.AckLen = ackLen
 	if err != nil {
@@ -138,8 +136,7 @@ func (m *Multiplexer) makeDataAckPacket(fdNum int, ackLen int, err error) *packe
 
 func (m *Multiplexer) makeDataPacket(fdNum int, data []byte, err error) *packet.DataPacketType {
 	pk := packet.MakeDataPacket()
-	pk.SessionId = m.SessionId
-	pk.CmdId = m.CmdId
+	pk.CK = m.CK
 	pk.FdNum = fdNum
 	pk.Data64 = base64.StdEncoding.EncodeToString(data)
 	if err != nil {

@@ -15,6 +15,8 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 const DefaultMShellPath = "mshell"
@@ -37,6 +39,68 @@ type CommandFileNames struct {
 	RunnerOutFile string
 }
 
+type CommandKey string
+
+func MakeCommandKey(sessionId string, cmdId string) CommandKey {
+	if sessionId == "" && cmdId == "" {
+		return CommandKey("")
+	}
+	return CommandKey(fmt.Sprintf("%s/%s", sessionId, cmdId))
+}
+
+func (ckey CommandKey) IsEmpty() bool {
+	return string(ckey) == ""
+}
+
+func (ckey CommandKey) GetSessionId() string {
+	slashIdx := strings.Index(string(ckey), "/")
+	if slashIdx == -1 {
+		return ""
+	}
+	return string(ckey[0:slashIdx])
+}
+
+func (ckey CommandKey) GetCmdId() string {
+	slashIdx := strings.Index(string(ckey), "/")
+	if slashIdx == -1 {
+		return ""
+	}
+	return string(ckey[slashIdx+1:])
+}
+
+func (ckey CommandKey) Split() (string, string) {
+	fields := strings.SplitN(string(ckey), "/", 2)
+	if len(fields) < 2 {
+		return "", ""
+	}
+	return fields[0], fields[1]
+}
+
+func (ckey CommandKey) Validate(typeStr string) error {
+	if typeStr == "" {
+		typeStr = "ck"
+	}
+	if ckey == "" {
+		return fmt.Errorf("%s has empty commandkey", typeStr)
+	}
+	sessionId, cmdId := ckey.Split()
+	if sessionId == "" {
+		return fmt.Errorf("%s does not have sessionid", typeStr)
+	}
+	_, err := uuid.Parse(sessionId)
+	if err != nil {
+		return fmt.Errorf("%s has invalid sessionid '%s'", typeStr, sessionId)
+	}
+	if cmdId == "" {
+		return fmt.Errorf("%s does not have cmdid", typeStr)
+	}
+	_, err = uuid.Parse(cmdId)
+	if err != nil {
+		return fmt.Errorf("%s has invalid cmdid '%s'", typeStr, cmdId)
+	}
+	return nil
+}
+
 func GetHomeDir() string {
 	homeVar := os.Getenv(HomeVarName)
 	if homeVar == "" {
@@ -57,10 +121,11 @@ func GetScHomeDir() (string, error) {
 	return scHome, nil
 }
 
-func GetCommandFileNames(sessionId string, cmdId string) (*CommandFileNames, error) {
-	if sessionId == "" || cmdId == "" {
-		return nil, fmt.Errorf("cannot get command-files when sessionid or cmdid is empty")
+func GetCommandFileNames(ck CommandKey) (*CommandFileNames, error) {
+	if err := ck.Validate("ck"); err != nil {
+		return nil, fmt.Errorf("cannot get command files: %w", err)
 	}
+	sessionId, cmdId := ck.Split()
 	sdir, err := EnsureSessionDir(sessionId)
 	if err != nil {
 		return nil, err
@@ -73,8 +138,8 @@ func GetCommandFileNames(sessionId string, cmdId string) (*CommandFileNames, err
 	}, nil
 }
 
-func MakeCommandFileNamesWithHome(scHome string, sessionId string, cmdId string) *CommandFileNames {
-	base := path.Join(scHome, SessionsDirBaseName, sessionId, cmdId)
+func MakeCommandFileNamesWithHome(scHome string, ck CommandKey) *CommandFileNames {
+	base := path.Join(scHome, SessionsDirBaseName, ck.GetSessionId(), ck.GetCmdId())
 	return &CommandFileNames{
 		PtyOutFile:    base + ".ptyout",
 		StdinFifo:     base + ".stdin",

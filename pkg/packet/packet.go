@@ -16,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/scripthaus-dev/mshell/pkg/base"
 )
 
 // remote: init, run, ping, data, cmdstart, cmddone
@@ -80,24 +82,27 @@ func MakePacket(packetType string) (PacketType, error) {
 }
 
 type CmdDataPacketType struct {
-	Type       string `json:"type"`
-	ReqId      string `json:"reqid"`
-	SessionId  string `json:"sessionid"`
-	CmdId      string `json:"cmdid"`
-	PtyPos     int64  `json:"ptypos"`
-	PtyLen     int64  `json:"ptylen"`
-	RunPos     int64  `json:"runpos"`
-	RunLen     int64  `json:"runlen"`
-	PtyData    string `json:"ptydata"`
-	PtyDataLen int    `json:"ptydatalen"`
-	RunData    string `json:"rundata"`
-	RunDataLen int    `json:"rundatalen"`
-	Error      string `json:"error"`
-	NotFound   bool   `json:"notfound,omitempty"`
+	Type       string          `json:"type"`
+	ReqId      string          `json:"reqid"`
+	CK         base.CommandKey `json:"ck"`
+	PtyPos     int64           `json:"ptypos"`
+	PtyLen     int64           `json:"ptylen"`
+	RunPos     int64           `json:"runpos"`
+	RunLen     int64           `json:"runlen"`
+	PtyData    string          `json:"ptydata"`
+	PtyDataLen int             `json:"ptydatalen"`
+	RunData    string          `json:"rundata"`
+	RunDataLen int             `json:"rundatalen"`
+	Error      string          `json:"error"`
+	NotFound   bool            `json:"notfound,omitempty"`
 }
 
 func (*CmdDataPacketType) GetType() string {
 	return CmdDataPacketStr
+}
+
+func (p *CmdDataPacketType) GetCK() base.CommandKey {
+	return p.CK
 }
 
 func MakeCmdDataPacket() *CmdDataPacketType {
@@ -117,17 +122,20 @@ func MakePingPacket() *PingPacketType {
 }
 
 type DataPacketType struct {
-	Type      string `json:"type"`
-	SessionId string `json:"sessionid,omitempty"`
-	CmdId     string `json:"cmdid,omitempty"`
-	FdNum     int    `json:"fdnum"`
-	Data64    string `json:"data64"` // base64 encoded
-	Eof       bool   `json:"eof,omitempty"`
-	Error     string `json:"error,omitempty"`
+	Type   string          `json:"type"`
+	CK     base.CommandKey `json:"ck"`
+	FdNum  int             `json:"fdnum"`
+	Data64 string          `json:"data64"` // base64 encoded
+	Eof    bool            `json:"eof,omitempty"`
+	Error  string          `json:"error,omitempty"`
 }
 
 func (*DataPacketType) GetType() string {
 	return DataPacketStr
+}
+
+func (p *DataPacketType) GetCK() base.CommandKey {
+	return p.CK
 }
 
 func B64DecodedLen(b64 string) int {
@@ -161,16 +169,19 @@ func MakeDataPacket() *DataPacketType {
 }
 
 type DataAckPacketType struct {
-	Type      string `json:"type"`
-	SessionId string `json:"sessionid,omitempty"`
-	CmdId     string `json:"cmdid,omitempty"`
-	FdNum     int    `json:"fdnum"`
-	AckLen    int    `json:"acklen"`
-	Error     string `json:"error,omitempty"`
+	Type   string          `json:"type"`
+	CK     base.CommandKey `json:"ck"`
+	FdNum  int             `json:"fdnum"`
+	AckLen int             `json:"acklen"`
+	Error  string          `json:"error,omitempty"`
 }
 
 func (*DataAckPacketType) GetType() string {
 	return DataAckPacketStr
+}
+
+func (p *DataAckPacketType) GetCK() base.CommandKey {
+	return p.CK
 }
 
 func (p *DataAckPacketType) String() string {
@@ -189,17 +200,20 @@ func MakeDataAckPacket() *DataAckPacketType {
 // SigNum gets sent to process via a signal
 // WinSize, if set, will run TIOCSWINSZ to set size, and then send SIGWINCH
 type InputPacketType struct {
-	Type        string `json:"type"`
-	SessionId   string `json:"sessionid"`
-	CmdId       string `json:"cmdid"`
-	InputData   string `json:"inputdata"`
-	SigNum      int    `json:"signum,omitempty"`
-	WinSizeRows int    `json:"winsizerows"`
-	WinSizeCols int    `json:"winsizecols"`
+	Type        string          `json:"type"`
+	CK          base.CommandKey `json:"ck"`
+	InputData   string          `json:"inputdata"`
+	SigNum      int             `json:"signum,omitempty"`
+	WinSizeRows int             `json:"winsizerows"`
+	WinSizeCols int             `json:"winsizecols"`
 }
 
 func (*InputPacketType) GetType() string {
 	return InputPacketStr
+}
+
+func (p *InputPacketType) GetCK() base.CommandKey {
+	return p.CK
 }
 
 func MakeInputPacket() *InputPacketType {
@@ -207,14 +221,17 @@ func MakeInputPacket() *InputPacketType {
 }
 
 type UntailCmdPacketType struct {
-	Type      string `json:"type"`
-	ReqId     string `json:"reqid"`
-	SessionId string `json:"sessionid"`
-	CmdId     string `json:"cmdid"`
+	Type  string          `json:"type"`
+	ReqId string          `json:"reqid"`
+	CK    base.CommandKey `json:"ck"`
 }
 
 func (*UntailCmdPacketType) GetType() string {
 	return UntailCmdPacketStr
+}
+
+func (p *UntailCmdPacketType) GetCK() base.CommandKey {
+	return p.CK
 }
 
 func MakeUntailCmdPacket() *UntailCmdPacketType {
@@ -222,17 +239,20 @@ func MakeUntailCmdPacket() *UntailCmdPacketType {
 }
 
 type GetCmdPacketType struct {
-	Type      string `json:"type"`
-	ReqId     string `json:"reqid"`
-	SessionId string `json:"sessionid"`
-	CmdId     string `json:"cmdid"`
-	PtyPos    int64  `json:"ptypos"`
-	RunPos    int64  `json:"runpos"`
-	Tail      bool   `json:"tail,omitempty"`
+	Type   string          `json:"type"`
+	ReqId  string          `json:"reqid"`
+	CK     base.CommandKey `json:"ck"`
+	PtyPos int64           `json:"ptypos"`
+	RunPos int64           `json:"runpos"`
+	Tail   bool            `json:"tail,omitempty"`
 }
 
 func (*GetCmdPacketType) GetType() string {
 	return GetCmdPacketStr
+}
+
+func (p *GetCmdPacketType) GetCK() base.CommandKey {
+	return p.CK
 }
 
 func MakeGetCmdPacket() *GetCmdPacketType {
@@ -346,16 +366,19 @@ func MakeDonePacket() *DonePacketType {
 }
 
 type CmdDonePacketType struct {
-	Type       string `json:"type"`
-	Ts         int64  `json:"ts"`
-	SessionId  string `json:"sessionid,omitempty"`
-	CmdId      string `json:"cmdid,omitempty"`
-	ExitCode   int    `json:"exitcode"`
-	DurationMs int64  `json:"durationms"`
+	Type       string          `json:"type"`
+	Ts         int64           `json:"ts"`
+	CK         base.CommandKey `json:"ck"`
+	ExitCode   int             `json:"exitcode"`
+	DurationMs int64           `json:"durationms"`
 }
 
 func (*CmdDonePacketType) GetType() string {
 	return CmdDonePacketStr
+}
+
+func (p *CmdDonePacketType) GetCK() base.CommandKey {
+	return p.CK
 }
 
 func MakeCmdDonePacket() *CmdDonePacketType {
@@ -363,16 +386,19 @@ func MakeCmdDonePacket() *CmdDonePacketType {
 }
 
 type CmdStartPacketType struct {
-	Type      string `json:"type"`
-	Ts        int64  `json:"ts"`
-	SessionId string `json:"sessionid,omitempty"`
-	CmdId     string `json:"cmdid,omitempty"`
-	Pid       int    `json:"pid"`
-	MShellPid int    `json:"mshellpid"`
+	Type      string          `json:"type"`
+	Ts        int64           `json:"ts"`
+	CK        base.CommandKey `json:"ck"`
+	Pid       int             `json:"pid"`
+	MShellPid int             `json:"mshellpid"`
 }
 
 func (*CmdStartPacketType) GetType() string {
 	return CmdStartPacketStr
+}
+
+func (p *CmdStartPacketType) GetCK() base.CommandKey {
+	return p.CK
 }
 
 func MakeCmdStartPacket() *CmdStartPacketType {
@@ -393,19 +419,22 @@ type RemoteFd struct {
 }
 
 type RunPacketType struct {
-	Type      string            `json:"type"`
-	SessionId string            `json:"sessionid,omitempty"`
-	CmdId     string            `json:"cmdid,omitempty"`
-	Command   string            `json:"command"`
-	Cwd       string            `json:"cwd,omitempty"`
-	Env       map[string]string `json:"env,omitempty"`
-	TermSize  *TermSize         `json:"termsize,omitempty"`
-	Fds       []RemoteFd        `json:"fds,omitempty"`
-	Detached  bool              `json:"detached,omitempty"`
+	Type     string            `json:"type"`
+	CK       base.CommandKey   `json:"ck"`
+	Command  string            `json:"command"`
+	Cwd      string            `json:"cwd,omitempty"`
+	Env      map[string]string `json:"env,omitempty"`
+	TermSize *TermSize         `json:"termsize,omitempty"`
+	Fds      []RemoteFd        `json:"fds,omitempty"`
+	Detached bool              `json:"detached,omitempty"`
 }
 
 func (*RunPacketType) GetType() string {
 	return RunPacketStr
+}
+
+func (p *RunPacketType) GetCK() base.CommandKey {
+	return p.CK
 }
 
 func MakeRunPacket() *RunPacketType {
@@ -417,9 +446,9 @@ type BarePacketType struct {
 }
 
 type ErrorPacketType struct {
-	Id    string `json:"id,omitempty"`
-	Type  string `json:"type"`
-	Error string `json:"error"`
+	CK    base.CommandKey `json:"ck,omitempty"`
+	Type  string          `json:"type"`
+	Error string          `json:"error"`
 }
 
 func (et *ErrorPacketType) GetType() string {
@@ -430,8 +459,8 @@ func MakeErrorPacket(errorStr string) *ErrorPacketType {
 	return &ErrorPacketType{Type: ErrorPacketStr, Error: errorStr}
 }
 
-func MakeIdErrorPacket(id string, errorStr string) *ErrorPacketType {
-	return &ErrorPacketType{Type: ErrorPacketStr, Id: id, Error: errorStr}
+func MakeCKErrorPacket(ck base.CommandKey, errorStr string) *ErrorPacketType {
+	return &ErrorPacketType{Type: ErrorPacketStr, CK: ck, Error: errorStr}
 }
 
 type PacketType interface {
@@ -448,6 +477,11 @@ func AsString(pk PacketType) string {
 type RpcPacketType interface {
 	GetType() string
 	GetPacketId() string
+}
+
+type CommandPacketType interface {
+	GetType() string
+	GetCK() base.CommandKey
 }
 
 func ParseJsonPacket(jsonBuf []byte) (PacketType, error) {

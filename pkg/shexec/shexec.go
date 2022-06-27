@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/creack/pty"
-	"github.com/google/uuid"
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/mpio"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
@@ -39,21 +38,19 @@ const RemoteSudoPasswordCommandFmt = `cat /dev/fd/%d | sudo -S -C %d bash -c "ec
 type ShExecType struct {
 	Lock        *sync.Mutex
 	StartTs     time.Time
-	SessionId   string
-	CmdId       string
+	CK          base.CommandKey
 	FileNames   *base.CommandFileNames
 	Cmd         *exec.Cmd
 	CmdPty      *os.File
 	Multiplexer *mpio.Multiplexer
 }
 
-func MakeShExec(sessionId string, cmdId string) *ShExecType {
+func MakeShExec(ck base.CommandKey) *ShExecType {
 	return &ShExecType{
 		Lock:        &sync.Mutex{},
 		StartTs:     time.Now(),
-		SessionId:   sessionId,
-		CmdId:       cmdId,
-		Multiplexer: mpio.MakeMultiplexer(sessionId, cmdId),
+		CK:          ck,
+		Multiplexer: mpio.MakeMultiplexer(ck),
 	}
 }
 
@@ -67,8 +64,7 @@ func (c *ShExecType) Close() {
 func (c *ShExecType) MakeCmdStartPacket() *packet.CmdStartPacketType {
 	startPacket := packet.MakeCmdStartPacket()
 	startPacket.Ts = time.Now().UnixMilli()
-	startPacket.SessionId = c.SessionId
-	startPacket.CmdId = c.CmdId
+	startPacket.CK = c.CK
 	startPacket.Pid = c.Cmd.Process.Pid
 	startPacket.MShellPid = os.Getpid()
 	return startPacket
@@ -129,12 +125,12 @@ func MakeExecCmd(pk *packet.RunPacketType, cmdTty *os.File) *exec.Cmd {
 	return ecmd
 }
 
-func MakeRunnerExec(cmdId string) (*exec.Cmd, error) {
+func MakeRunnerExec(ck base.CommandKey) (*exec.Cmd, error) {
 	msPath, err := base.GetMShellPath()
 	if err != nil {
 		return nil, err
 	}
-	ecmd := exec.Command(msPath, cmdId)
+	ecmd := exec.Command(msPath, string(ck))
 	return ecmd, nil
 }
 
@@ -165,19 +161,9 @@ func ValidateRunPacket(pk *packet.RunPacketType) error {
 		return fmt.Errorf("run packet has wrong type: %s", pk.Type)
 	}
 	if pk.Detached {
-		if pk.SessionId == "" {
-			return fmt.Errorf("run packet does not have sessionid")
-		}
-		_, err := uuid.Parse(pk.SessionId)
+		err := pk.CK.Validate("run packet")
 		if err != nil {
-			return fmt.Errorf("invalid sessionid '%s' for command", pk.SessionId)
-		}
-		if pk.CmdId == "" {
-			return fmt.Errorf("run packet does not have cmdid")
-		}
-		_, err = uuid.Parse(pk.CmdId)
-		if err != nil {
-			return fmt.Errorf("invalid cmdid '%s' for command", pk.CmdId)
+			return err
 		}
 	}
 	if pk.Cwd != "" {
@@ -337,7 +323,7 @@ func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, er
 	if err != nil {
 		return nil, err
 	}
-	cmd := MakeShExec("", "")
+	cmd := MakeShExec("")
 	var fullSshOpts []string
 	fullSshOpts = append(fullSshOpts, opts.SSHOpts...)
 	fullSshOpts = append(fullSshOpts, SSHRemoteCommand)
@@ -430,7 +416,7 @@ func (cmd *ShExecType) RunRemoteIOAndWait(packetCh chan packet.PacketType, sende
 }
 
 func runCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecType, error) {
-	cmd := MakeShExec(pk.SessionId, pk.CmdId)
+	cmd := MakeShExec(pk.CK)
 	cmd.Cmd = exec.Command("bash", "-c", pk.Command)
 	UpdateCmdEnv(cmd.Cmd, pk.Env)
 	if pk.Cwd != "" {
@@ -491,7 +477,7 @@ func runCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender) (*S
 }
 
 func runCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecType, error) {
-	fileNames, err := base.GetCommandFileNames(pk.SessionId, pk.CmdId)
+	fileNames, err := base.GetCommandFileNames(pk.CK)
 	if err != nil {
 		return nil, err
 	}
@@ -499,7 +485,7 @@ func runCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) (
 	if err == nil { // non-nil error will be caught by regular OpenFile below
 		// must have size 0
 		if ptyOutInfo.Size() != 0 {
-			return nil, fmt.Errorf("cmdid '%s' was already used (ptyout len=%d)", pk.CmdId, ptyOutInfo.Size())
+			return nil, fmt.Errorf("cmdkey '%s' was already used (ptyout len=%d)", pk.CK, ptyOutInfo.Size())
 		}
 	}
 	cmdPty, cmdTty, err := pty.Open()
@@ -510,7 +496,7 @@ func runCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) (
 	defer func() {
 		cmdTty.Close()
 	}()
-	rtn := MakeShExec(pk.SessionId, pk.CmdId)
+	rtn := MakeShExec(pk.CK)
 	ecmd := MakeExecCmd(pk, cmdTty)
 	err = ecmd.Start()
 	if err != nil {
@@ -558,8 +544,7 @@ func (c *ShExecType) WaitForCommand() *packet.CmdDonePacketType {
 	exitCode := GetExitCode(exitErr)
 	donePacket := packet.MakeCmdDonePacket()
 	donePacket.Ts = endTs.UnixMilli()
-	donePacket.SessionId = c.SessionId
-	donePacket.CmdId = c.CmdId
+	donePacket.CK = c.CK
 	donePacket.ExitCode = exitCode
 	donePacket.DurationMs = int64(cmdDuration / time.Millisecond)
 	if c.FileNames != nil {
