@@ -211,7 +211,7 @@ func doMain() {
 	}
 }
 
-func handleRemote() {
+func handleSingle() {
 	packetParser := packet.MakePacketParser(os.Stdin)
 	sender := packet.MakePacketSender(os.Stdout)
 	defer func() {
@@ -285,14 +285,35 @@ func parseClientOpts() (*shexec.ClientOpts, error) {
 	for iter.HasNext() {
 		argStr := iter.Next()
 		if argStr == "--ssh" {
-			if opts.IsSSH {
-				return nil, fmt.Errorf("duplicate '--ssh' option")
+			if !iter.IsNextPlain() {
+				return nil, fmt.Errorf("'--ssh [user@host]' missing host")
 			}
-			opts.IsSSH = true
-			break
+			opts.SSHHost = iter.Next()
+			continue
+		}
+		if argStr == "--ssh-opts" {
+			if !iter.HasNext() {
+				return nil, fmt.Errorf("'--ssh-opts [options]' missing options")
+			}
+			opts.SSHOptsStr = iter.Next()
+			continue
+		}
+		if argStr == "-i" {
+			if !iter.IsNextPlain() {
+				return nil, fmt.Errorf("-i [identity-file]' missing file")
+			}
+			opts.SSHIdentity = iter.Next()
+			continue
+		}
+		if argStr == "-l" {
+			if !iter.IsNextPlain() {
+				return nil, fmt.Errorf("-l [user]' missing user")
+			}
+			opts.SSHUser = iter.Next()
+			continue
 		}
 		if argStr == "--cwd" {
-			if !iter.HasNext() {
+			if !iter.IsNextPlain() {
 				return nil, fmt.Errorf("'--cwd [dir]' missing directory")
 			}
 			opts.Cwd = iter.Next()
@@ -316,7 +337,7 @@ func parseClientOpts() (*shexec.ClientOpts, error) {
 			continue
 		}
 		if argStr == "--sudo-with-passfile" {
-			if !iter.HasNext() {
+			if !iter.IsNextPlain() {
 				return nil, fmt.Errorf("'--sudo-with-passfile [file]', missing file")
 			}
 			opts.Sudo = true
@@ -329,29 +350,12 @@ func parseClientOpts() (*shexec.ClientOpts, error) {
 			opts.SudoPw = string(contents)
 			continue
 		}
-	}
-	if opts.IsSSH {
-		// parse SSH opts
-		for iter.HasNext() {
-			argStr := iter.Next()
-			if argStr == "--" {
-				opts.SSHOptsTerm = true
-				break
+		if argStr == "--" {
+			if !iter.HasNext() {
+				return nil, fmt.Errorf("'--' should be followed by command")
 			}
-			if argStr == "-t" || argStr == "-tt" {
-				return nil, fmt.Errorf("mshell cannot run over ssh -t")
-			}
-			opts.SSHOpts = append(opts.SSHOpts, argStr)
-		}
-		if !opts.SSHOptsTerm {
-			return nil, fmt.Errorf("ssh options must be terminated with '--' followed by [command]")
-		}
-		if !iter.HasNext() {
-			return nil, fmt.Errorf("no command specified")
-		}
-		opts.Command = strings.Join(iter.Rest(), " ")
-		if strings.TrimSpace(opts.Command) == "" {
-			return nil, fmt.Errorf("no command or empty command specified")
+			opts.Command = strings.Join(iter.Rest(), " ")
+			break
 		}
 	}
 	return opts, nil
@@ -365,8 +369,11 @@ func handleClient() (int, error) {
 	if opts.Debug {
 		packet.GlobalDebug = true
 	}
-	if !opts.IsSSH {
+	if opts.SSHHost == "" {
 		return 1, fmt.Errorf("when running in client mode '--ssh' option must be present")
+	}
+	if opts.Command == "" {
+		return 1, fmt.Errorf("no [command] specified.  [command] follows '--' option (see usage)")
 	}
 	fds, err := detectOpenFds()
 	if err != nil {
@@ -382,17 +389,20 @@ func handleClient() (int, error) {
 
 func handleUsage() {
 	usage := `
-Client Usage: mshell [mshell-opts] --ssh [ssh-opts] user@host -- [command]
+Client Usage: mshell [opts] --ssh user@host -- [command]
 
 mshell multiplexes input and output streams to a remote command over ssh.
 
 Options:
-    --cwd [dir]       - execute remote command in [dir]
-    [command]         - a single argument (should be quoted)
+    -i [identity-file] - used to set '-i' option for ssh command
+    -l [user]          - used to set '-l' option for ssh command
+    --cwd [dir]        - execute remote command in [dir]
+    --ssh-opts [opts]  - addition options to pass to ssh command
+    [command]          - the remote command to execute
 
 Sudo Options:
-    --sudo
-    --sudo-with-password [pw]    (not recommended, use --sudo-with-passfile if possible)
+    --sudo                      - use only if sudo never requires a password
+    --sudo-with-password [pw]   - not recommended, use --sudo-with-passfile if possible
     --sudo-with-passfile [file]
 
 Sudo options allow you to run the given command using "sudo".  The first
@@ -401,7 +411,7 @@ securely through a high numbered fd to "sudo -S".  See full documentation for mo
 
 Examples:
     # execute a python script remotely, with stdin still hooked up correctly
-    mshell --cwd "~/work" --ssh -i key.pem ubuntu@somehost -- "python3 /dev/fd/4" 4< myscript.py
+    mshell --cwd "~/work" -i key.pem --ssh ubuntu@somehost -- "python3 /dev/fd/4" 4< myscript.py
 
     # capture multiple outputs
     mshell --ssh ubuntu@test -- "cat file1.txt > /dev/fd/3; cat file2.txt > /dev/fd/4" 3> file1.txt 4> file2.txt
@@ -431,8 +441,8 @@ func main() {
 	} else if firstArg == "--version" {
 		fmt.Printf("mshell v%s\n", MShellVersion)
 		return
-	} else if firstArg == "--remote" {
-		handleRemote()
+	} else if firstArg == "--single" {
+		handleSingle()
 		return
 	} else if firstArg == "--server" {
 		handleServer()

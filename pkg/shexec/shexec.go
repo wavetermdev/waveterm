@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alessio/shellescape"
 	"github.com/creack/pty"
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/mpio"
@@ -29,11 +30,20 @@ const MaxCols = 1024
 const MaxFdNum = 1023
 const FirstExtraFilesFdNum = 3
 
-const SSHRemoteCommand = `PATH=$PATH:~/.mshell; mshell --remote`
+const SSHRemoteCommand = `
+PATH=$PATH:~/.mshell;
+which mshell > /dev/null;
+if [[ "$?" -ne 0 ]]
+then
+  printf "\n##34{\"type\": \"init\", \"notfound\": true}\n"
+else
+  mshell --single
+fi
+`
 
-const RemoteCommandFmt = `%s`
-const RemoteSudoCommandFmt = `sudo -C %d bash /dev/fd/%d`
-const RemoteSudoPasswordCommandFmt = `cat /dev/fd/%d | sudo -S -C %d bash -c "echo '[from-mshell]'; bash /dev/fd/%d < /dev/fd/%d"`
+const RunCommandFmt = `%s`
+const RunSudoCommandFmt = `sudo -C %d bash /dev/fd/%d`
+const RunSudoPasswordCommandFmt = `cat /dev/fd/%d | sudo -S -C %d bash -c "echo '[from-mshell]'; bash /dev/fd/%d < /dev/fd/%d"`
 
 type ShExecType struct {
 	Lock        *sync.Mutex
@@ -205,9 +215,10 @@ func RunCommand(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecT
 }
 
 type ClientOpts struct {
-	IsSSH             bool
-	SSHOptsTerm       bool
-	SSHOpts           []string
+	SSHHost           string
+	SSHOptsStr        string
+	SSHIdentity       string
+	SSHUser           string
 	Command           string
 	Fds               []packet.RemoteFd
 	Cwd               string
@@ -218,13 +229,29 @@ type ClientOpts struct {
 	CommandStdinFdNum int
 }
 
+func (opts *ClientOpts) MakeSSHCommandString() string {
+	var moreSSHOpts []string
+	if opts.SSHIdentity != "" {
+		identityOpt := fmt.Sprintf("-i %s", shellescape.Quote(opts.SSHIdentity))
+		moreSSHOpts = append(moreSSHOpts, identityOpt)
+	}
+	if opts.SSHUser != "" {
+		userOpt := fmt.Sprintf("-l %s", shellescape.Quote(opts.SSHUser))
+		moreSSHOpts = append(moreSSHOpts, userOpt)
+	}
+	remoteCommand := strings.TrimSpace(SSHRemoteCommand)
+	// note that SSHOptsStr is *not* escaped
+	sshCmd := fmt.Sprintf("ssh %s %s %s %s", strings.Join(moreSSHOpts, " "), opts.SSHOptsStr, shellescape.Quote(opts.SSHHost), shellescape.Quote(remoteCommand))
+	return sshCmd
+}
+
 func (opts *ClientOpts) MakeRunPacket() (*packet.RunPacketType, error) {
 	runPacket := packet.MakeRunPacket()
 	runPacket.Cwd = opts.Cwd
 	runPacket.Fds = opts.Fds
 	if !opts.Sudo {
 		// normal, non-sudo command
-		runPacket.Command = opts.Command
+		runPacket.Command = fmt.Sprintf(RunCommandFmt, opts.Command)
 		return runPacket, nil
 	}
 	if opts.SudoWithPass {
@@ -248,7 +275,7 @@ func (opts *ClientOpts) MakeRunPacket() (*packet.RunPacketType, error) {
 		opts.Fds = append(opts.Fds, commandStdinRfd)
 		opts.CommandStdinFdNum = commandStdinFdNum
 		maxFdNum := opts.MaxFdNum()
-		runPacket.Command = fmt.Sprintf(RemoteSudoPasswordCommandFmt, pwFdNum, maxFdNum+1, commandFdNum, commandStdinFdNum)
+		runPacket.Command = fmt.Sprintf(RunSudoPasswordCommandFmt, pwFdNum, maxFdNum+1, commandFdNum, commandStdinFdNum)
 		runPacket.Fds = opts.Fds
 		return runPacket, nil
 	} else {
@@ -259,7 +286,7 @@ func (opts *ClientOpts) MakeRunPacket() (*packet.RunPacketType, error) {
 		rfd := packet.RemoteFd{FdNum: commandFdNum, Read: true, Content: opts.Command}
 		opts.Fds = append(opts.Fds, rfd)
 		maxFdNum := opts.MaxFdNum()
-		runPacket.Command = fmt.Sprintf(RemoteSudoCommandFmt, maxFdNum+1, commandFdNum)
+		runPacket.Command = fmt.Sprintf(RunSudoCommandFmt, maxFdNum+1, commandFdNum)
 		runPacket.Fds = opts.Fds
 		return runPacket, nil
 	}
@@ -324,10 +351,8 @@ func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, er
 		return nil, err
 	}
 	cmd := MakeShExec("")
-	var fullSshOpts []string
-	fullSshOpts = append(fullSshOpts, opts.SSHOpts...)
-	fullSshOpts = append(fullSshOpts, SSHRemoteCommand)
-	ecmd := exec.Command("ssh", fullSshOpts...)
+	sshCmdStr := opts.MakeSSHCommandString()
+	ecmd := exec.Command("bash", "-c", sshCmdStr)
 	cmd.Cmd = ecmd
 	inputWriter, err := ecmd.StdinPipe()
 	if err != nil {
@@ -386,6 +411,9 @@ func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, er
 		}
 		if pk.GetType() == packet.InitPacketStr {
 			initPk := pk.(*packet.InitPacketType)
+			if initPk.NotFound {
+				return nil, fmt.Errorf("mshell command not found on remote server, can install with 'mshell --install'")
+			}
 			if initPk.Version != "0.1.0" {
 				return nil, fmt.Errorf("invalid remote mshell version 'v%s', must be v0.1.0", initPk.Version)
 			}

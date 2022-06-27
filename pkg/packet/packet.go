@@ -340,6 +340,7 @@ type InitPacketType struct {
 	HomeDir   string   `json:"homedir,omitempty"`
 	Env       []string `json:"env,omitempty"`
 	User      string   `json:"user,omitempty"`
+	NotFound  bool     `json:"notfound,omitempty"`
 }
 
 func (*InitPacketType) GetType() string {

@@ -25,6 +25,13 @@ func (iter *OptsIter) HasNext() bool {
 	return iter.Pos <= len(iter.Opts)-1
 }
 
+func (iter *OptsIter) IsNextPlain() bool {
+	if !iter.HasNext() {
+		return false
+	}
+	return !IsOption(iter.Opts[iter.Pos])
+}
+
 func (iter *OptsIter) Next() string {
 	if iter.Pos >= len(iter.Opts) {
 		return ""
