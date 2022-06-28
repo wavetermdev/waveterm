@@ -77,7 +77,7 @@ type Tailer struct {
 	WatchList map[base.CommandKey]CmdWatchEntry
 	ScHomeDir string
 	Watcher   *fsnotify.Watcher
-	SendCh    chan packet.PacketType
+	Sender    *packet.PacketSender
 }
 
 func (t *Tailer) updateTailPos_nolock(cmdKey base.CommandKey, reqId string, pos TailPos) {
@@ -129,7 +129,7 @@ func (t *Tailer) getEntryAndPos_nolock(cmdKey base.CommandKey, reqId string) (Cm
 	return entry, pos, true
 }
 
-func MakeTailer(sendCh chan packet.PacketType) (*Tailer, error) {
+func MakeTailer(sender *packet.PacketSender) (*Tailer, error) {
 	scHomeDir, err := base.GetScHomeDir()
 	if err != nil {
 		return nil, err
@@ -138,7 +138,7 @@ func MakeTailer(sendCh chan packet.PacketType) (*Tailer, error) {
 		Lock:      &sync.Mutex{},
 		WatchList: make(map[base.CommandKey]CmdWatchEntry),
 		ScHomeDir: scHomeDir,
-		SendCh:    sendCh,
+		Sender:    sender,
 	}
 	rtn.Watcher, err = fsnotify.NewWatcher()
 	if err != nil {
@@ -241,7 +241,7 @@ func (t *Tailer) RunDataTransfer(key base.CommandKey, reqId string) {
 	for {
 		dataPacket, keepRunning := t.runSingleDataTransfer(key, reqId)
 		if dataPacket != nil {
-			t.SendCh <- dataPacket
+			t.Sender.SendPacket(dataPacket)
 		}
 		if !keepRunning {
 			t.checkRemoveNoFollow(key, reqId)
@@ -273,7 +273,7 @@ func (t *Tailer) updateFile(relFileName string) {
 	}
 	finfo, err := os.Stat(relFileName)
 	if err != nil {
-		t.SendCh <- packet.FmtMessagePacket("error trying to stat file '%s': %v", relFileName, err)
+		t.Sender.SendPacket(packet.FmtMessagePacket("error trying to stat file '%s': %v", relFileName, err))
 		return
 	}
 	cmdKey := base.MakeCommandKey(m[1], m[2])
@@ -311,7 +311,7 @@ func (t *Tailer) Run() {
 				return
 			}
 			// what to do with this error?  just send a message
-			t.SendCh <- packet.FmtMessagePacket("error in tailer: %v", err)
+			t.Sender.SendPacket(packet.FmtMessagePacket("error in tailer: %v", err))
 		}
 	}
 	return

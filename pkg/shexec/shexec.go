@@ -236,91 +236,74 @@ func RunCommand(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecT
 	}
 }
 
-type SharedSSHOpts struct {
-	SSHHost     string
-	SSHOptsStr  string
-	SSHIdentity string
-	SSHUser     string
+type SSHOpts struct {
+	SSHHost      string
+	SSHOptsStr   string
+	SSHIdentity  string
+	SSHUser      string
+	SudoWithPass bool
 }
 
 type InstallOpts struct {
-	SSHOpts SharedSSHOpts
+	SSHOpts SSHOpts
 	ArchStr string
 	OptName string
 	Detect  bool
 }
 
 type ClientOpts struct {
-	SSHOpts           SharedSSHOpts
+	SSHOpts           SSHOpts
 	Command           string
 	Fds               []packet.RemoteFd
 	Cwd               string
 	Debug             bool
 	Sudo              bool
-	SudoWithPass      bool
 	SudoPw            string
 	CommandStdinFdNum int
 	Detach            bool
 }
 
-func (opts *ClientOpts) MakeExecCmd() *exec.Cmd {
-	if opts.SSHOpts.SSHHost == "" {
-		ecmd := exec.Command("bash", "-c", strings.TrimSpace(ClientCommand))
+func (opts SSHOpts) MakeSSHExecCmd(remoteCommand string) *exec.Cmd {
+	remoteCommand = strings.TrimSpace(remoteCommand)
+	if opts.SSHHost == "" {
+		ecmd := exec.Command("bash", "-c", remoteCommand)
 		return ecmd
 	} else {
 		var moreSSHOpts []string
-		if opts.SSHOpts.SSHIdentity != "" {
-			identityOpt := fmt.Sprintf("-i %s", shellescape.Quote(opts.SSHOpts.SSHIdentity))
+		if opts.SSHIdentity != "" {
+			identityOpt := fmt.Sprintf("-i %s", shellescape.Quote(opts.SSHIdentity))
 			moreSSHOpts = append(moreSSHOpts, identityOpt)
 		}
-		if opts.SSHOpts.SSHUser != "" {
-			userOpt := fmt.Sprintf("-l %s", shellescape.Quote(opts.SSHOpts.SSHUser))
+		if opts.SSHUser != "" {
+			userOpt := fmt.Sprintf("-l %s", shellescape.Quote(opts.SSHUser))
 			moreSSHOpts = append(moreSSHOpts, userOpt)
 		}
-		remoteCommand := strings.TrimSpace(ClientCommand)
 		// note that SSHOptsStr is *not* escaped
-		sshCmd := fmt.Sprintf("ssh %s %s %s %s", strings.Join(moreSSHOpts, " "), opts.SSHOpts.SSHOptsStr, shellescape.Quote(opts.SSHOpts.SSHHost), shellescape.Quote(remoteCommand))
+		sshCmd := fmt.Sprintf("ssh %s %s %s %s", strings.Join(moreSSHOpts, " "), opts.SSHOptsStr, shellescape.Quote(opts.SSHHost), shellescape.Quote(remoteCommand))
 		ecmd := exec.Command("bash", "-c", sshCmd)
 		return ecmd
 	}
 }
 
-func (opts *InstallOpts) MakeExecCmd() *exec.Cmd {
+func (opts SSHOpts) MakeMShellSSHOpts() string {
 	var moreSSHOpts []string
-	if opts.SSHOpts.SSHIdentity != "" {
-		identityOpt := fmt.Sprintf("-i %s", shellescape.Quote(opts.SSHOpts.SSHIdentity))
+	if opts.SSHIdentity != "" {
+		identityOpt := fmt.Sprintf("-i %s", shellescape.Quote(opts.SSHIdentity))
 		moreSSHOpts = append(moreSSHOpts, identityOpt)
 	}
-	if opts.SSHOpts.SSHUser != "" {
-		userOpt := fmt.Sprintf("-l %s", shellescape.Quote(opts.SSHOpts.SSHUser))
+	if opts.SSHUser != "" {
+		userOpt := fmt.Sprintf("-l %s", shellescape.Quote(opts.SSHUser))
 		moreSSHOpts = append(moreSSHOpts, userOpt)
 	}
-	// note that SSHOptsStr is *not* escaped
-	command := strings.TrimSpace(InstallCommand)
-	sshCmd := fmt.Sprintf("ssh %s %s %s %s", strings.Join(moreSSHOpts, " "), opts.SSHOpts.SSHOptsStr, shellescape.Quote(opts.SSHOpts.SSHHost), shellescape.Quote(command))
-	ecmd := exec.Command("bash", "-c", sshCmd)
-	return ecmd
-}
-
-func (opts *ClientOpts) MakeInstallCommandString(goos string, goarch string) string {
-	var moreSSHOpts []string
-	if opts.SSHOpts.SSHIdentity != "" {
-		identityOpt := fmt.Sprintf("-i %s", shellescape.Quote(opts.SSHOpts.SSHIdentity))
-		moreSSHOpts = append(moreSSHOpts, identityOpt)
-	}
-	if opts.SSHOpts.SSHUser != "" {
-		userOpt := fmt.Sprintf("-l %s", shellescape.Quote(opts.SSHOpts.SSHUser))
-		moreSSHOpts = append(moreSSHOpts, userOpt)
-	}
-	if opts.SSHOpts.SSHOptsStr != "" {
-		optsOpt := fmt.Sprintf("--ssh-opts %s", shellescape.Quote(opts.SSHOpts.SSHOptsStr))
+	if opts.SSHOptsStr != "" {
+		optsOpt := fmt.Sprintf("--ssh-opts %s", shellescape.Quote(opts.SSHOptsStr))
 		moreSSHOpts = append(moreSSHOpts, optsOpt)
 	}
-	if opts.SSHOpts.SSHHost != "" {
-		sshArg := fmt.Sprintf("--ssh %s", shellescape.Quote(opts.SSHOpts.SSHHost))
+	if opts.SSHHost != "" {
+		sshArg := fmt.Sprintf("--ssh %s", shellescape.Quote(opts.SSHHost))
 		moreSSHOpts = append(moreSSHOpts, sshArg)
 	}
-	return fmt.Sprintf("mshell --install %s %s.%s", strings.Join(moreSSHOpts, " "), goos, goarch)
+	return strings.Join(moreSSHOpts, " ")
 }
 
 func (opts *ClientOpts) MakeRunPacket() (*packet.RunPacketType, error) {
@@ -333,7 +316,7 @@ func (opts *ClientOpts) MakeRunPacket() (*packet.RunPacketType, error) {
 		runPacket.Command = fmt.Sprintf(RunCommandFmt, opts.Command)
 		return runPacket, nil
 	}
-	if opts.SudoWithPass {
+	if opts.SSHOpts.SudoWithPass {
 		pwFdNum, err := opts.NextFreeFdNum()
 		if err != nil {
 			return nil, err
@@ -434,7 +417,7 @@ func sendOptFile(input io.WriteCloser, optName string) error {
 
 func RunInstallSSHCommand(opts *InstallOpts) error {
 	tryDetect := opts.Detect
-	ecmd := opts.MakeExecCmd()
+	ecmd := opts.SSHOpts.MakeSSHExecCmd(InstallCommand)
 	inputWriter, err := ecmd.StdinPipe()
 	if err != nil {
 		return fmt.Errorf("creating stdin pipe: %v", err)
@@ -497,17 +480,9 @@ func RunInstallSSHCommand(opts *InstallOpts) error {
 	return fmt.Errorf("did not receive version string from client, install not successful")
 }
 
-func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, error) {
-	err := ValidateRemoteFds(opts.Fds)
-	if err != nil {
-		return nil, err
-	}
-	runPacket, err := opts.MakeRunPacket() // modifies opts
-	if err != nil {
-		return nil, err
-	}
+func RunClientSSHCommandAndWait(runPacket *packet.RunPacketType, sshOpts SSHOpts, debug bool) (*packet.CmdDonePacketType, error) {
 	cmd := MakeShExec("")
-	ecmd := opts.MakeExecCmd()
+	ecmd := sshOpts.MakeSSHExecCmd(ClientCommand)
 	cmd.Cmd = ecmd
 	inputWriter, err := ecmd.StdinPipe()
 	if err != nil {
@@ -521,7 +496,7 @@ func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, er
 	if err != nil {
 		return nil, fmt.Errorf("creating stderr pipe: %v", err)
 	}
-	if !opts.SudoWithPass {
+	if !sshOpts.SudoWithPass {
 		cmd.Multiplexer.MakeRawFdReader(0, os.Stdin, false)
 	}
 	cmd.Multiplexer.MakeRawFdWriter(1, os.Stdout, false)
@@ -567,6 +542,9 @@ func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, er
 		if pk.GetType() == packet.InitPacketStr {
 			initPk := pk.(*packet.InitPacketType)
 			if initPk.NotFound {
+				if sshOpts.SSHHost == "" {
+					return nil, fmt.Errorf("mshell command not found on local server")
+				}
 				if initPk.UName == "" {
 					return nil, fmt.Errorf("mshell command not found on remote server, no uname detected")
 				}
@@ -574,14 +552,14 @@ func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, er
 				if err != nil {
 					return nil, fmt.Errorf("mshell command not found on remote server, architecture cannot be detected (might be incompatible with mshell): %w", err)
 				}
-				installCmd := opts.MakeInstallCommandString(goos, goarch)
-				return nil, fmt.Errorf("mshell command not found on remote server, can install with '%s' (or --auto-install)", installCmd)
+				sshOptsStr := sshOpts.MakeMShellSSHOpts()
+				return nil, fmt.Errorf("mshell command not found on remote server, can install with 'mshell --install %s %s.%s'", sshOptsStr, goos, goarch)
 			}
 			if initPk.Version != base.MShellVersion {
 				return nil, fmt.Errorf("invalid remote mshell version 'v%s', must be v%s", initPk.Version, base.MShellVersion)
 			}
 			versionOk = true
-			if opts.Debug {
+			if debug {
 				fmt.Printf("VERSION> %s\n", initPk.Version)
 			}
 			break
@@ -591,7 +569,7 @@ func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, er
 		return nil, fmt.Errorf("did not receive version from remote mshell")
 	}
 	sender.SendPacket(runPacket)
-	if opts.Debug {
+	if debug {
 		cmd.Multiplexer.Debug = true
 	}
 	remoteDonePacket := cmd.Multiplexer.RunIOAndWait(packetParser, sender, false, true, true)

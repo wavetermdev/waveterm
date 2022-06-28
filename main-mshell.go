@@ -19,6 +19,7 @@ import (
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/cmdtail"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
+	"github.com/scripthaus-dev/mshell/pkg/server"
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
 	"golang.org/x/sys/unix"
 )
@@ -72,7 +73,7 @@ func doSingle(ck base.CommandKey) {
 	sender.SendPacket(startPacket)
 	donePacket := cmd.WaitForCommand()
 	sender.SendPacket(donePacket)
-	sender.CloseSendCh()
+	sender.Close()
 	sender.WaitForDone()
 }
 
@@ -157,7 +158,7 @@ func doMain() {
 	}
 	packetParser := packet.MakePacketParser(os.Stdin)
 	sender := packet.MakePacketSender(os.Stdout)
-	tailer, err := cmdtail.MakeTailer(sender.SendCh)
+	tailer, err := cmdtail.MakeTailer(sender)
 	if err != nil {
 		packet.SendErrorPacket(os.Stdout, err.Error())
 		return
@@ -215,8 +216,8 @@ func handleSingle() {
 	sender := packet.MakePacketSender(os.Stdout)
 	defer func() {
 		// wait for sender to complete
-		close(sender.SendCh)
-		<-sender.DoneCh
+		sender.Close()
+		sender.WaitForDone()
 	}()
 	if len(os.Args) >= 3 && os.Args[2] == "--version" {
 		initPacket := packet.MakeInitPacket()
@@ -257,9 +258,6 @@ func handleSingle() {
 	startPacket := cmd.MakeCmdStartPacket()
 	sender.SendPacket(startPacket)
 	cmd.RunRemoteIOAndWait(packetParser, sender)
-}
-
-func handleServer() {
 }
 
 func detectOpenFds() ([]packet.RemoteFd, error) {
@@ -309,7 +307,7 @@ func parseInstallOpts() (*shexec.InstallOpts, error) {
 	return opts, nil
 }
 
-func tryParseSSHOpt(iter *base.OptsIter, sshOpts *shexec.SharedSSHOpts) (bool, error) {
+func tryParseSSHOpt(iter *base.OptsIter, sshOpts *shexec.SSHOpts) (bool, error) {
 	argStr := iter.Current()
 	if argStr == "--ssh" {
 		if !iter.IsNextPlain() {
@@ -378,7 +376,7 @@ func parseClientOpts() (*shexec.ClientOpts, error) {
 				return nil, fmt.Errorf("'--sudo-with-password [pw]', missing password")
 			}
 			opts.Sudo = true
-			opts.SudoWithPass = true
+			opts.SSHOpts.SudoWithPass = true
 			opts.SudoPw = iter.Next()
 			continue
 		}
@@ -387,7 +385,7 @@ func parseClientOpts() (*shexec.ClientOpts, error) {
 				return nil, fmt.Errorf("'--sudo-with-passfile [file]', missing file")
 			}
 			opts.Sudo = true
-			opts.SudoWithPass = true
+			opts.SSHOpts.SudoWithPass = true
 			fileName := iter.Next()
 			contents, err := os.ReadFile(fileName)
 			if err != nil {
@@ -427,7 +425,15 @@ func handleClient() (int, error) {
 		return 1, err
 	}
 	opts.Fds = fds
-	donePacket, err := shexec.RunClientSSHCommandAndWait(opts)
+	err = shexec.ValidateRemoteFds(opts.Fds)
+	if err != nil {
+		return 1, err
+	}
+	runPacket, err := opts.MakeRunPacket() // modifies opts
+	if err != nil {
+		return 1, err
+	}
+	donePacket, err := shexec.RunClientSSHCommandAndWait(runPacket, opts.SSHOpts, opts.Debug)
 	if err != nil {
 		return 1, err
 	}
@@ -530,21 +536,29 @@ func main() {
 		handleSingle()
 		return
 	} else if firstArg == "--server" {
-		handleServer()
+		rtnCode, err := server.RunServer()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "[error] %v\n", err)
+		}
+		if rtnCode != 0 {
+			os.Exit(rtnCode)
+		}
 		return
 	} else if firstArg == "--install" {
 		rtnCode, err := handleInstall()
 		if err != nil {
-			fmt.Printf("[error] %v\n", err)
+			fmt.Fprintf(os.Stderr, "[error] %v\n", err)
 		}
 		os.Exit(rtnCode)
 		return
 	} else {
 		rtnCode, err := handleClient()
 		if err != nil {
-			fmt.Printf("[error] %v\n", err)
+			fmt.Fprintf(os.Stderr, "[error] %v\n", err)
 		}
-		os.Exit(rtnCode)
+		if rtnCode != 0 {
+			os.Exit(rtnCode)
+		}
 		return
 	}
 

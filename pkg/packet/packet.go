@@ -483,6 +483,16 @@ type CommandPacketType interface {
 	GetCK() base.CommandKey
 }
 
+func AsExtType(pk PacketType) string {
+	if rpcPacket, ok := pk.(RpcPacketType); ok {
+		return fmt.Sprintf("%s[%s]", rpcPacket.GetType(), rpcPacket.GetPacketId())
+	} else if cmdPacket, ok := pk.(CommandPacketType); ok {
+		return fmt.Sprintf("%s[%s]", cmdPacket.GetType(), cmdPacket.GetCK())
+	} else {
+		return pk.GetType()
+	}
+}
+
 func ParseJsonPacket(jsonBuf []byte) (PacketType, error) {
 	var bareCmd BarePacketType
 	err := json.Unmarshal(jsonBuf, &bareCmd)
@@ -545,12 +555,8 @@ func MakePacketSender(output io.Writer) *PacketSender {
 		DoneCh: make(chan bool),
 	}
 	go func() {
-		defer func() {
-			sender.Lock.Lock()
-			sender.Done = true
-			sender.Lock.Unlock()
-			close(sender.DoneCh)
-		}()
+		defer close(sender.DoneCh)
+		defer sender.Close()
 		for pk := range sender.SendCh {
 			err := SendPacket(output, pk)
 			if err != nil {
@@ -564,7 +570,13 @@ func MakePacketSender(output io.Writer) *PacketSender {
 	return sender
 }
 
-func (sender *PacketSender) CloseSendCh() {
+func (sender *PacketSender) Close() {
+	sender.Lock.Lock()
+	defer sender.Lock.Unlock()
+	if sender.Done {
+		return
+	}
+	sender.Done = true
 	close(sender.SendCh)
 }
 
