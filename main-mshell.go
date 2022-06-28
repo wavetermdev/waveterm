@@ -320,6 +320,10 @@ func parseClientOpts() (*shexec.ClientOpts, error) {
 			opts.Cwd = iter.Next()
 			continue
 		}
+		if argStr == "--detach" {
+			opts.Detach = true
+			continue
+		}
 		if argStr == "--debug" {
 			opts.Debug = true
 			continue

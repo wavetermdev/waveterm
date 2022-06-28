@@ -16,8 +16,8 @@ import (
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 )
 
-const ReadBufSize = 32 * 1024
-const WriteBufSize = 32 * 1024
+const ReadBufSize = 128 * 1024
+const WriteBufSize = 128 * 1024
 const MaxSingleWriteSize = 4 * 1024
 
 type Multiplexer struct {

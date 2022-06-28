@@ -76,10 +76,13 @@ func MakePacketParser(input io.Reader) *PacketParser {
 				parser.MainCh <- MakeRawPacket(line[:len(line)-1])
 				continue
 			}
-			packetLen, err := strconv.Atoi(line[2:bracePos])
-			if err != nil || packetLen != len(line)-bracePos-1 {
-				parser.MainCh <- MakeRawPacket(line[:len(line)-1])
-				continue
+			packetLen := -1
+			if line[2:bracePos] != "N" {
+				packetLen, err = strconv.Atoi(line[2:bracePos])
+				if err != nil || packetLen != len(line)-bracePos-1 {
+					parser.MainCh <- MakeRawPacket(line[:len(line)-1])
+					continue
+				}
 			}
 			pk, err := ParseJsonPacket([]byte(line[bracePos:]))
 			if err != nil {

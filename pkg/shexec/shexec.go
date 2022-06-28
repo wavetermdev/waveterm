@@ -32,10 +32,10 @@ const FirstExtraFilesFdNum = 3
 
 const ClientCommand = `
 PATH=$PATH:~/.mshell;
-which mshell > /dev/null;
+which mshell2 > /dev/null;
 if [[ "$?" -ne 0 ]]
 then
-  printf "\n##34{\"type\": \"init\", \"notfound\": true}\n"
+  printf "\n##N{\"type\": \"init\", \"notfound\": true, \"uname\": \"%s | %s\"}\n" "$(uname -s)" "$(uname -m)"
 else
   mshell --single
 fi
@@ -175,6 +175,19 @@ func ValidateRunPacket(pk *packet.RunPacketType) error {
 		if err != nil {
 			return err
 		}
+		for _, rfd := range pk.Fds {
+			if rfd.Write {
+				return fmt.Errorf("cannot detach command with writable remote files fd=%d", rfd.FdNum)
+			}
+			if rfd.Read {
+				if rfd.Content == "" {
+					return fmt.Errorf("cannot detach command with readable remote files fd=%d", rfd.FdNum)
+				}
+				if len(rfd.Content) > mpio.ReadBufSize {
+					return fmt.Errorf("cannot detach command, constant readable input too large fd=%d, len=%d, max=%d", rfd.FdNum, len(rfd.Content), mpio.ReadBufSize)
+				}
+			}
+		}
 	}
 	if pk.Cwd != "" {
 		realCwd := base.ExpandHomeDir(pk.Cwd)
@@ -227,6 +240,7 @@ type ClientOpts struct {
 	SudoWithPass      bool
 	SudoPw            string
 	CommandStdinFdNum int
+	Detach            bool
 }
 
 func (opts *ClientOpts) MakeExecCmd() *exec.Cmd {
@@ -251,8 +265,30 @@ func (opts *ClientOpts) MakeExecCmd() *exec.Cmd {
 	}
 }
 
+func (opts *ClientOpts) MakeInstallCommandString(goos string, goarch string) string {
+	var moreSSHOpts []string
+	if opts.SSHIdentity != "" {
+		identityOpt := fmt.Sprintf("-i %s", shellescape.Quote(opts.SSHIdentity))
+		moreSSHOpts = append(moreSSHOpts, identityOpt)
+	}
+	if opts.SSHUser != "" {
+		userOpt := fmt.Sprintf("-l %s", shellescape.Quote(opts.SSHUser))
+		moreSSHOpts = append(moreSSHOpts, userOpt)
+	}
+	if opts.SSHOptsStr != "" {
+		optsOpt := fmt.Sprintf("--ssh-opts %s", shellescape.Quote(opts.SSHOptsStr))
+		moreSSHOpts = append(moreSSHOpts, optsOpt)
+	}
+	if opts.SSHHost != "" {
+		sshArg := fmt.Sprintf("--ssh %s", shellescape.Quote(opts.SSHHost))
+		moreSSHOpts = append(moreSSHOpts, sshArg)
+	}
+	return fmt.Sprintf("mshell --install %s %s_%s", strings.Join(moreSSHOpts, " "), goos, goarch)
+}
+
 func (opts *ClientOpts) MakeRunPacket() (*packet.RunPacketType, error) {
 	runPacket := packet.MakeRunPacket()
+	runPacket.Detached = opts.Detach
 	runPacket.Cwd = opts.Cwd
 	runPacket.Fds = opts.Fds
 	if !opts.Sudo {
@@ -417,7 +453,16 @@ func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, er
 		if pk.GetType() == packet.InitPacketStr {
 			initPk := pk.(*packet.InitPacketType)
 			if initPk.NotFound {
-				return nil, fmt.Errorf("mshell command not found on remote server, can install with 'mshell --install'")
+				fmt.Printf("UNAME> %s\n", initPk.UName)
+				if initPk.UName == "" {
+					return nil, fmt.Errorf("mshell command not found on remote server, no uname detected")
+				}
+				goos, goarch, err := UNameStringToGoArch(initPk.UName)
+				if err != nil {
+					return nil, fmt.Errorf("mshell command not found on remote server, architecture cannot be detected (might be incompatible with mshell): %w", err)
+				}
+				installCmd := opts.MakeInstallCommandString(goos, goarch)
+				return nil, fmt.Errorf("mshell command not found on remote server, can install with '%s'", installCmd)
 			}
 			if initPk.Version != "0.1.0" {
 				return nil, fmt.Errorf("invalid remote mshell version 'v%s', must be v0.1.0", initPk.Version)
@@ -442,6 +487,29 @@ func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, er
 		donePacket = remoteDonePacket
 	}
 	return donePacket, nil
+}
+
+func UNameStringToGoArch(uname string) (string, string, error) {
+	fields := strings.SplitN(uname, "|", 2)
+	if len(fields) != 2 {
+		return "", "", fmt.Errorf("invalid uname string returned")
+	}
+	osVal := strings.TrimSpace(strings.ToLower(fields[0]))
+	archVal := strings.TrimSpace(strings.ToLower(fields[1]))
+	if osVal != "darwin" && osVal != "linux" {
+		return "", "", fmt.Errorf("invalid uname OS '%s', mshell only supports OS X (darwin) and linux", osVal)
+	}
+	goos := osVal
+	goarch := ""
+	if archVal == "x86_64" || archVal == "i686" || archVal == "amd64" {
+		goarch = "amd64"
+	} else if archVal == "aarch64" || archVal == "amd64" {
+		goarch = "arm64"
+	}
+	if goarch == "" {
+		return "", "", fmt.Errorf("invalid uname machine type '%s', mshell only supports aarch64 (amd64) and x86_64 (amd64)", archVal)
+	}
+	return goos, goarch, nil
 }
 
 func (cmd *ShExecType) RunRemoteIOAndWait(packetParser *packet.PacketParser, sender *packet.PacketSender) {
