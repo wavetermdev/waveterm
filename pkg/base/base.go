@@ -30,6 +30,7 @@ const SessionsDirBaseName = ".sessions"
 const RunnerBaseName = "runner"
 const SessionDBName = "session.db"
 const ScReadyString = "scripthaus runner ready"
+const MShellVersion = "0.1.0"
 
 const OSCEscError = "error"
 
@@ -252,4 +253,12 @@ func ExpandHomeDir(pathStr string) string {
 		return homeDir
 	}
 	return path.Join(homeDir, pathStr[2:])
+}
+
+func ValidGoArch(goos string, goarch string) bool {
+	return (goos == "darwin" || goos == "linux") && (goarch == "amd64" || goarch == "arm64")
+}
+
+func GoArchOptFile(goos string, goarch string) string {
+	return fmt.Sprintf("/opt/mshell/bin/mshell.%s.%s", goos, goarch)
 }

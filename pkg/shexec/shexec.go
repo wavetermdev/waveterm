@@ -32,13 +32,21 @@ const FirstExtraFilesFdNum = 3
 
 const ClientCommand = `
 PATH=$PATH:~/.mshell;
-which mshell2 > /dev/null;
+which mshell > /dev/null;
 if [[ "$?" -ne 0 ]]
 then
   printf "\n##N{\"type\": \"init\", \"notfound\": true, \"uname\": \"%s | %s\"}\n" "$(uname -s)" "$(uname -m)"
 else
   mshell --single
 fi
+`
+
+const InstallCommand = `
+mkdir -p ~/.mshell/;
+cat > ~/.mshell/mshell.temp; 
+mv ~/.mshell/mshell.temp ~/.mshell/mshell;
+chmod a+x ~/.mshell/mshell;
+~/.mshell/mshell --single --version
 `
 
 const RunCommandFmt = `%s`
@@ -227,11 +235,21 @@ func RunCommand(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecT
 	}
 }
 
+type SharedSSHOpts struct {
+	SSHHost     string
+	SSHOptsStr  string
+	SSHIdentity string
+	SSHUser     string
+}
+
+type InstallOpts struct {
+	SSHOpts SharedSSHOpts
+	ArchStr string
+	OptName string
+}
+
 type ClientOpts struct {
-	SSHHost           string
-	SSHOptsStr        string
-	SSHIdentity       string
-	SSHUser           string
+	SSHOpts           SharedSSHOpts
 	Command           string
 	Fds               []packet.RemoteFd
 	Cwd               string
@@ -244,46 +262,63 @@ type ClientOpts struct {
 }
 
 func (opts *ClientOpts) MakeExecCmd() *exec.Cmd {
-	if opts.SSHHost == "" {
+	if opts.SSHOpts.SSHHost == "" {
 		ecmd := exec.Command("bash", "-c", strings.TrimSpace(ClientCommand))
 		return ecmd
 	} else {
 		var moreSSHOpts []string
-		if opts.SSHIdentity != "" {
-			identityOpt := fmt.Sprintf("-i %s", shellescape.Quote(opts.SSHIdentity))
+		if opts.SSHOpts.SSHIdentity != "" {
+			identityOpt := fmt.Sprintf("-i %s", shellescape.Quote(opts.SSHOpts.SSHIdentity))
 			moreSSHOpts = append(moreSSHOpts, identityOpt)
 		}
-		if opts.SSHUser != "" {
-			userOpt := fmt.Sprintf("-l %s", shellescape.Quote(opts.SSHUser))
+		if opts.SSHOpts.SSHUser != "" {
+			userOpt := fmt.Sprintf("-l %s", shellescape.Quote(opts.SSHOpts.SSHUser))
 			moreSSHOpts = append(moreSSHOpts, userOpt)
 		}
 		remoteCommand := strings.TrimSpace(ClientCommand)
 		// note that SSHOptsStr is *not* escaped
-		sshCmd := fmt.Sprintf("ssh %s %s %s %s", strings.Join(moreSSHOpts, " "), opts.SSHOptsStr, shellescape.Quote(opts.SSHHost), shellescape.Quote(remoteCommand))
+		sshCmd := fmt.Sprintf("ssh %s %s %s %s", strings.Join(moreSSHOpts, " "), opts.SSHOpts.SSHOptsStr, shellescape.Quote(opts.SSHOpts.SSHHost), shellescape.Quote(remoteCommand))
 		ecmd := exec.Command("bash", "-c", sshCmd)
 		return ecmd
 	}
 }
 
-func (opts *ClientOpts) MakeInstallCommandString(goos string, goarch string) string {
+func (opts *InstallOpts) MakeExecCmd() *exec.Cmd {
 	var moreSSHOpts []string
-	if opts.SSHIdentity != "" {
-		identityOpt := fmt.Sprintf("-i %s", shellescape.Quote(opts.SSHIdentity))
+	if opts.SSHOpts.SSHIdentity != "" {
+		identityOpt := fmt.Sprintf("-i %s", shellescape.Quote(opts.SSHOpts.SSHIdentity))
 		moreSSHOpts = append(moreSSHOpts, identityOpt)
 	}
-	if opts.SSHUser != "" {
-		userOpt := fmt.Sprintf("-l %s", shellescape.Quote(opts.SSHUser))
+	if opts.SSHOpts.SSHUser != "" {
+		userOpt := fmt.Sprintf("-l %s", shellescape.Quote(opts.SSHOpts.SSHUser))
 		moreSSHOpts = append(moreSSHOpts, userOpt)
 	}
-	if opts.SSHOptsStr != "" {
-		optsOpt := fmt.Sprintf("--ssh-opts %s", shellescape.Quote(opts.SSHOptsStr))
+	// note that SSHOptsStr is *not* escaped
+	installCommand := strings.TrimSpace(InstallCommand)
+	sshCmd := fmt.Sprintf("ssh %s %s %s %s", strings.Join(moreSSHOpts, " "), opts.SSHOpts.SSHOptsStr, shellescape.Quote(opts.SSHOpts.SSHHost), shellescape.Quote(installCommand))
+	ecmd := exec.Command("bash", "-c", sshCmd)
+	return ecmd
+}
+
+func (opts *ClientOpts) MakeInstallCommandString(goos string, goarch string) string {
+	var moreSSHOpts []string
+	if opts.SSHOpts.SSHIdentity != "" {
+		identityOpt := fmt.Sprintf("-i %s", shellescape.Quote(opts.SSHOpts.SSHIdentity))
+		moreSSHOpts = append(moreSSHOpts, identityOpt)
+	}
+	if opts.SSHOpts.SSHUser != "" {
+		userOpt := fmt.Sprintf("-l %s", shellescape.Quote(opts.SSHOpts.SSHUser))
+		moreSSHOpts = append(moreSSHOpts, userOpt)
+	}
+	if opts.SSHOpts.SSHOptsStr != "" {
+		optsOpt := fmt.Sprintf("--ssh-opts %s", shellescape.Quote(opts.SSHOpts.SSHOptsStr))
 		moreSSHOpts = append(moreSSHOpts, optsOpt)
 	}
-	if opts.SSHHost != "" {
-		sshArg := fmt.Sprintf("--ssh %s", shellescape.Quote(opts.SSHHost))
+	if opts.SSHOpts.SSHHost != "" {
+		sshArg := fmt.Sprintf("--ssh %s", shellescape.Quote(opts.SSHOpts.SSHHost))
 		moreSSHOpts = append(moreSSHOpts, sshArg)
 	}
-	return fmt.Sprintf("mshell --install %s %s_%s", strings.Join(moreSSHOpts, " "), goos, goarch)
+	return fmt.Sprintf("mshell --install %s %s.%s", strings.Join(moreSSHOpts, " "), goos, goarch)
 }
 
 func (opts *ClientOpts) MakeRunPacket() (*packet.RunPacketType, error) {
@@ -383,6 +418,55 @@ func ValidateRemoteFds(rfds []packet.RemoteFd) error {
 	return nil
 }
 
+func RunInstallSSHCommand(opts *InstallOpts) error {
+	ecmd := opts.MakeExecCmd()
+	inputWriter, err := ecmd.StdinPipe()
+	if err != nil {
+		return fmt.Errorf("creating stdin pipe: %v", err)
+	}
+	stdoutReader, err := ecmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("creating stdout pipe: %v", err)
+	}
+	stderrReader, err := ecmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("creating stderr pipe: %v", err)
+	}
+	go func() {
+		io.Copy(os.Stderr, stderrReader)
+	}()
+	fd, err := os.Open(opts.OptName)
+	if err != nil {
+		return fmt.Errorf("cannot open '%s': %w", opts.OptName, err)
+	}
+	go func() {
+		defer inputWriter.Close()
+		io.Copy(inputWriter, fd)
+	}()
+	packetParser := packet.MakePacketParser(stdoutReader)
+	err = ecmd.Start()
+	if err != nil {
+		return fmt.Errorf("running ssh command: %w", err)
+	}
+	for pk := range packetParser.MainCh {
+		if pk.GetType() == packet.InitPacketStr {
+			initPacket := pk.(*packet.InitPacketType)
+			if initPacket.Version == base.MShellVersion {
+				fmt.Printf("mshell %s, installed successfully at %s:~/.mshell/mshell\n", initPacket.Version, opts.SSHOpts.SSHHost)
+				return nil
+			}
+			return fmt.Errorf("invalid version '%s' received from client, expecting '%s'", initPacket.Version, base.MShellVersion)
+		}
+		if pk.GetType() == packet.RawPacketStr {
+			rawPk := pk.(*packet.RawPacketType)
+			fmt.Printf("%s\n", rawPk.Data)
+			continue
+		}
+		return fmt.Errorf("invalid response packet '%s' received from client", pk.GetType())
+	}
+	return fmt.Errorf("did not receive version string from client, install not successful")
+}
+
 func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, error) {
 	err := ValidateRemoteFds(opts.Fds)
 	if err != nil {
@@ -464,8 +548,8 @@ func RunClientSSHCommandAndWait(opts *ClientOpts) (*packet.CmdDonePacketType, er
 				installCmd := opts.MakeInstallCommandString(goos, goarch)
 				return nil, fmt.Errorf("mshell command not found on remote server, can install with '%s'", installCmd)
 			}
-			if initPk.Version != "0.1.0" {
-				return nil, fmt.Errorf("invalid remote mshell version 'v%s', must be v0.1.0", initPk.Version)
+			if initPk.Version != base.MShellVersion {
+				return nil, fmt.Errorf("invalid remote mshell version 'v%s', must be v%s", initPk.Version, base.MShellVersion)
 			}
 			versionOk = true
 			if opts.Debug {
@@ -508,6 +592,9 @@ func UNameStringToGoArch(uname string) (string, string, error) {
 	}
 	if goarch == "" {
 		return "", "", fmt.Errorf("invalid uname machine type '%s', mshell only supports aarch64 (amd64) and x86_64 (amd64)", archVal)
+	}
+	if !base.ValidGoArch(goos, goarch) {
+		return "", "", fmt.Errorf("invalid arch detected %s.%s", goos, goarch)
 	}
 	return goos, goarch, nil
 }

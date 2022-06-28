@@ -41,6 +41,13 @@ func (iter *OptsIter) Next() string {
 	return rtn
 }
 
+func (iter *OptsIter) Current() string {
+	if iter.Pos == 0 {
+		return ""
+	}
+	return iter.Opts[iter.Pos-1]
+}
+
 func (iter *OptsIter) Rest() []string {
 	return iter.Opts[iter.Pos:]
 }

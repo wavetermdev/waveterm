@@ -23,8 +23,6 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const MShellVersion = "0.1.0"
-
 // in single run mode, we don't want mshell to die from signals
 // since we want the single mshell to persist even if session / main mshell
 // is terminated.
@@ -220,8 +218,14 @@ func handleSingle() {
 		close(sender.SendCh)
 		<-sender.DoneCh
 	}()
+	if len(os.Args) >= 3 && os.Args[2] == "--version" {
+		initPacket := packet.MakeInitPacket()
+		initPacket.Version = base.MShellVersion
+		sender.SendPacket(initPacket)
+		return
+	}
 	initPacket := packet.MakeInitPacket()
-	initPacket.Version = MShellVersion
+	initPacket.Version = base.MShellVersion
 	sender.SendPacket(initPacket)
 	var runPacket *packet.RunPacketType
 	for pk := range packetParser.MainCh {
@@ -280,37 +284,70 @@ func detectOpenFds() ([]packet.RemoteFd, error) {
 	return fds, nil
 }
 
+func parseInstallOpts() (*shexec.InstallOpts, error) {
+	opts := &shexec.InstallOpts{}
+	iter := base.MakeOptsIter(os.Args[2:]) // first arg is --install
+	for iter.HasNext() {
+		argStr := iter.Next()
+		found, err := tryParseSSHOpt(iter, &opts.SSHOpts)
+		if err != nil {
+			return nil, err
+		}
+		if found {
+			continue
+		}
+		if base.IsOption(argStr) {
+			return nil, fmt.Errorf("invalid option '%s' passed to mshell --install", argStr)
+		}
+		opts.ArchStr = argStr
+		break
+	}
+	return opts, nil
+}
+
+func tryParseSSHOpt(iter *base.OptsIter, sshOpts *shexec.SharedSSHOpts) (bool, error) {
+	argStr := iter.Current()
+	if argStr == "--ssh" {
+		if !iter.IsNextPlain() {
+			return false, fmt.Errorf("'--ssh [user@host]' missing host")
+		}
+		sshOpts.SSHHost = iter.Next()
+		return true, nil
+	}
+	if argStr == "--ssh-opts" {
+		if !iter.HasNext() {
+			return false, fmt.Errorf("'--ssh-opts [options]' missing options")
+		}
+		sshOpts.SSHOptsStr = iter.Next()
+		return true, nil
+	}
+	if argStr == "-i" {
+		if !iter.IsNextPlain() {
+			return false, fmt.Errorf("-i [identity-file]' missing file")
+		}
+		sshOpts.SSHIdentity = iter.Next()
+		return true, nil
+	}
+	if argStr == "-l" {
+		if !iter.IsNextPlain() {
+			return false, fmt.Errorf("-l [user]' missing user")
+		}
+		sshOpts.SSHUser = iter.Next()
+		return true, nil
+	}
+	return false, nil
+}
+
 func parseClientOpts() (*shexec.ClientOpts, error) {
 	opts := &shexec.ClientOpts{}
 	iter := base.MakeOptsIter(os.Args[1:])
 	for iter.HasNext() {
 		argStr := iter.Next()
-		if argStr == "--ssh" {
-			if !iter.IsNextPlain() {
-				return nil, fmt.Errorf("'--ssh [user@host]' missing host")
-			}
-			opts.SSHHost = iter.Next()
-			continue
+		found, err := tryParseSSHOpt(iter, &opts.SSHOpts)
+		if err != nil {
+			return nil, err
 		}
-		if argStr == "--ssh-opts" {
-			if !iter.HasNext() {
-				return nil, fmt.Errorf("'--ssh-opts [options]' missing options")
-			}
-			opts.SSHOptsStr = iter.Next()
-			continue
-		}
-		if argStr == "-i" {
-			if !iter.IsNextPlain() {
-				return nil, fmt.Errorf("-i [identity-file]' missing file")
-			}
-			opts.SSHIdentity = iter.Next()
-			continue
-		}
-		if argStr == "-l" {
-			if !iter.IsNextPlain() {
-				return nil, fmt.Errorf("-l [user]' missing user")
-			}
-			opts.SSHUser = iter.Next()
+		if found {
 			continue
 		}
 		if argStr == "--cwd" {
@@ -392,6 +429,36 @@ func handleClient() (int, error) {
 	return donePacket.ExitCode, nil
 }
 
+func handleInstall() (int, error) {
+	opts, err := parseInstallOpts()
+	if err != nil {
+		return 1, fmt.Errorf("parsing opts: %w", err)
+	}
+	if opts.SSHOpts.SSHHost == "" {
+		return 1, fmt.Errorf("cannot install without '--ssh user@host' option")
+	}
+	fullArch := opts.ArchStr
+	fields := strings.SplitN(fullArch, ".", 2)
+	if len(fields) != 2 {
+		return 1, fmt.Errorf("invalid arch format '%s' passed to mshell --install", fullArch)
+	}
+	goos, goarch := fields[0], fields[1]
+	if !base.ValidGoArch(goos, goarch) {
+		return 1, fmt.Errorf("invalid arch '%s' passed to mshell --install", fullArch)
+	}
+	optName := base.GoArchOptFile(goos, goarch)
+	_, err = os.Stat(optName)
+	if err != nil {
+		return 1, fmt.Errorf("cannot install mshell to remote host, cannot read '%s': %w", optName, err)
+	}
+	opts.OptName = optName
+	err = shexec.RunInstallSSHCommand(opts)
+	if err != nil {
+		return 1, err
+	}
+	return 0, nil
+}
+
 func handleUsage() {
 	usage := `
 Client Usage: mshell [opts] --ssh user@host -- [command]
@@ -444,13 +511,20 @@ func main() {
 		handleUsage()
 		return
 	} else if firstArg == "--version" {
-		fmt.Printf("mshell v%s\n", MShellVersion)
+		fmt.Printf("mshell v%s\n", base.MShellVersion)
 		return
 	} else if firstArg == "--single" {
 		handleSingle()
 		return
 	} else if firstArg == "--server" {
 		handleServer()
+		return
+	} else if firstArg == "--install" {
+		rtnCode, err := handleInstall()
+		if err != nil {
+			fmt.Printf("[error] %v\n", err)
+		}
+		os.Exit(rtnCode)
 		return
 	} else {
 		rtnCode, err := handleClient()
