@@ -296,6 +296,10 @@ func parseInstallOpts() (*shexec.InstallOpts, error) {
 		if found {
 			continue
 		}
+		if argStr == "--detect" {
+			opts.Detect = true
+			continue
+		}
 		if base.IsOption(argStr) {
 			return nil, fmt.Errorf("invalid option '%s' passed to mshell --install", argStr)
 		}
@@ -402,6 +406,7 @@ func parseClientOpts() (*shexec.ClientOpts, error) {
 			opts.Command = strings.Join(iter.Rest(), " ")
 			break
 		}
+		return nil, fmt.Errorf("invalid option '%s' passed to mshell", argStr)
 	}
 	return opts, nil
 }
@@ -437,21 +442,29 @@ func handleInstall() (int, error) {
 	if opts.SSHOpts.SSHHost == "" {
 		return 1, fmt.Errorf("cannot install without '--ssh user@host' option")
 	}
-	fullArch := opts.ArchStr
-	fields := strings.SplitN(fullArch, ".", 2)
-	if len(fields) != 2 {
-		return 1, fmt.Errorf("invalid arch format '%s' passed to mshell --install", fullArch)
+	if opts.Detect && opts.ArchStr != "" {
+		return 1, fmt.Errorf("cannot supply both --detect and arch '%s'", opts.ArchStr)
 	}
-	goos, goarch := fields[0], fields[1]
-	if !base.ValidGoArch(goos, goarch) {
-		return 1, fmt.Errorf("invalid arch '%s' passed to mshell --install", fullArch)
+	if opts.ArchStr == "" && !opts.Detect {
+		return 1, fmt.Errorf("must supply an arch string or '--detect' to auto detect")
 	}
-	optName := base.GoArchOptFile(goos, goarch)
-	_, err = os.Stat(optName)
-	if err != nil {
-		return 1, fmt.Errorf("cannot install mshell to remote host, cannot read '%s': %w", optName, err)
+	if opts.ArchStr != "" {
+		fullArch := opts.ArchStr
+		fields := strings.SplitN(fullArch, ".", 2)
+		if len(fields) != 2 {
+			return 1, fmt.Errorf("invalid arch format '%s' passed to mshell --install", fullArch)
+		}
+		goos, goarch := fields[0], fields[1]
+		if !base.ValidGoArch(goos, goarch) {
+			return 1, fmt.Errorf("invalid arch '%s' passed to mshell --install", fullArch)
+		}
+		optName := base.GoArchOptFile(goos, goarch)
+		_, err = os.Stat(optName)
+		if err != nil {
+			return 1, fmt.Errorf("cannot install mshell to remote host, cannot read '%s': %w", optName, err)
+		}
+		opts.OptName = optName
 	}
-	opts.OptName = optName
 	err = shexec.RunInstallSSHCommand(opts)
 	if err != nil {
 		return 1, err
