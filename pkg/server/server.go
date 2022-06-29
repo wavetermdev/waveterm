@@ -147,20 +147,24 @@ func RunServer() (int, error) {
 	initPacket := packet.MakeInitPacket()
 	initPacket.Version = base.MShellVersion
 	server.Sender.SendPacket(initPacket)
+	builder := packet.MakeRunPacketBuilder()
 	for pk := range server.MainInput.MainCh {
 		if server.Debug {
 			fmt.Printf("PK> %s\n", packet.AsString(pk))
 		}
-		if pk.GetType() == packet.RunPacketStr {
-			runPacket := pk.(*packet.RunPacketType)
-			server.runCommand(runPacket)
+		ok, runPacket := builder.ProcessPacket(pk)
+		if ok {
+			if runPacket != nil {
+				server.runCommand(runPacket)
+				continue
+			}
 			continue
 		}
 		if cmdPk, ok := pk.(packet.CommandPacketType); ok {
 			server.ProcessCommandPacket(cmdPk)
 			continue
 		}
-		server.Sender.SendErrorPacket(fmt.Sprintf("invalid packet '%s' sent to mshell", packet.AsExtType(pk)))
+		server.Sender.SendErrorPacket(fmt.Sprintf("invalid packet '%s' sent to mshell", packet.AsString(pk)))
 		continue
 	}
 	return 0, nil

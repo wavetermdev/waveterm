@@ -477,8 +477,16 @@ type ErrorPacketType struct {
 	Error string          `json:"error"`
 }
 
-func (et *ErrorPacketType) GetType() string {
+func (*ErrorPacketType) GetType() string {
 	return ErrorPacketStr
+}
+
+func (p *ErrorPacketType) String() string {
+	ckStr := ""
+	if p.CK != "" {
+		ckStr = fmt.Sprintf(", ck=%s", p.CK)
+	}
+	return fmt.Sprintf("error[%s%s]", p.Error, ckStr)
 }
 
 func MakeErrorPacket(errorStr string) *ErrorPacketType {
