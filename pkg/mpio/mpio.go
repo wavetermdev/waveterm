@@ -9,6 +9,7 @@ package mpio
 import (
 	"encoding/base64"
 	"fmt"
+	"io"
 	"os"
 	"sync"
 
@@ -111,13 +112,13 @@ func (m *Multiplexer) MakeStringFdReader(fdNum int, contents string) error {
 	return nil
 }
 
-func (m *Multiplexer) MakeRawFdReader(fdNum int, fd *os.File, shouldClose bool) {
+func (m *Multiplexer) MakeRawFdReader(fdNum int, fd io.ReadCloser, shouldClose bool) {
 	m.Lock.Lock()
 	defer m.Lock.Unlock()
 	m.FdReaders[fdNum] = MakeFdReader(m, fd, fdNum, shouldClose)
 }
 
-func (m *Multiplexer) MakeRawFdWriter(fdNum int, fd *os.File, shouldClose bool) {
+func (m *Multiplexer) MakeRawFdWriter(fdNum int, fd io.WriteCloser, shouldClose bool) {
 	m.Lock.Lock()
 	defer m.Lock.Unlock()
 	m.FdWriters[fdNum] = MakeFdWriter(m, fd, fdNum, shouldClose)

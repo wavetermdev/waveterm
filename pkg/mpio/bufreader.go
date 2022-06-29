@@ -8,7 +8,6 @@ package mpio
 
 import (
 	"io"
-	"os"
 	"sync"
 
 	"github.com/scripthaus-dev/mshell/pkg/packet"
@@ -18,13 +17,13 @@ type FdReader struct {
 	CVar          *sync.Cond
 	M             *Multiplexer
 	FdNum         int
-	Fd            *os.File
+	Fd            io.ReadCloser
 	BufSize       int
 	Closed        bool
 	ShouldCloseFd bool
 }
 
-func MakeFdReader(m *Multiplexer, fd *os.File, fdNum int, shouldCloseFd bool) *FdReader {
+func MakeFdReader(m *Multiplexer, fd io.ReadCloser, fdNum int, shouldCloseFd bool) *FdReader {
 	fr := &FdReader{
 		CVar:          sync.NewCond(&sync.Mutex{}),
 		M:             m,

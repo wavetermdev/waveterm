@@ -8,7 +8,7 @@ package mpio
 
 import (
 	"fmt"
-	"os"
+	"io"
 	"sync"
 )
 
@@ -17,13 +17,13 @@ type FdWriter struct {
 	M             *Multiplexer
 	FdNum         int
 	Buffer        []byte
-	Fd            *os.File
+	Fd            io.WriteCloser
 	Eof           bool
 	Closed        bool
 	ShouldCloseFd bool
 }
 
-func MakeFdWriter(m *Multiplexer, fd *os.File, fdNum int, shouldCloseFd bool) *FdWriter {
+func MakeFdWriter(m *Multiplexer, fd io.WriteCloser, fdNum int, shouldCloseFd bool) *FdWriter {
 	fw := &FdWriter{
 		CVar:          sync.NewCond(&sync.Mutex{}),
 		Fd:            fd,

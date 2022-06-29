@@ -64,6 +64,41 @@ type ShExecType struct {
 	Multiplexer *mpio.Multiplexer
 }
 
+type StdContext struct{}
+
+func (StdContext) GetWriter(fdNum int) io.WriteCloser {
+	if fdNum == 0 {
+		return os.Stdin
+	}
+	if fdNum == 1 {
+		return os.Stdout
+	}
+	if fdNum == 2 {
+		return os.Stderr
+	}
+	fd := os.NewFile(uintptr(fdNum), fmt.Sprintf("/dev/fd/%d", fdNum))
+	return fd
+}
+
+func (StdContext) GetReader(fdNum int) io.ReadCloser {
+	if fdNum == 0 {
+		return os.Stdin
+	}
+	if fdNum == 1 {
+		return os.Stdout
+	}
+	if fdNum == 2 {
+		return os.Stdout
+	}
+	fd := os.NewFile(uintptr(fdNum), fmt.Sprintf("/dev/fd/%d", fdNum))
+	return fd
+}
+
+type FdContext interface {
+	GetWriter(fdNum int) io.WriteCloser
+	GetReader(fdNum int) io.ReadCloser
+}
+
 func MakeShExec(ck base.CommandKey) *ShExecType {
 	return &ShExecType{
 		Lock:        &sync.Mutex{},
@@ -237,11 +272,10 @@ func RunCommand(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecT
 }
 
 type SSHOpts struct {
-	SSHHost      string
-	SSHOptsStr   string
-	SSHIdentity  string
-	SSHUser      string
-	SudoWithPass bool
+	SSHHost     string
+	SSHOptsStr  string
+	SSHIdentity string
+	SSHUser     string
 }
 
 type InstallOpts struct {
@@ -258,6 +292,7 @@ type ClientOpts struct {
 	Cwd               string
 	Debug             bool
 	Sudo              bool
+	SudoWithPass      bool
 	SudoPw            string
 	CommandStdinFdNum int
 	Detach            bool
@@ -316,7 +351,7 @@ func (opts *ClientOpts) MakeRunPacket() (*packet.RunPacketType, error) {
 		runPacket.Command = fmt.Sprintf(RunCommandFmt, opts.Command)
 		return runPacket, nil
 	}
-	if opts.SSHOpts.SudoWithPass {
+	if opts.SudoWithPass {
 		pwFdNum, err := opts.NextFreeFdNum()
 		if err != nil {
 			return nil, err
@@ -480,7 +515,16 @@ func RunInstallSSHCommand(opts *InstallOpts) error {
 	return fmt.Errorf("did not receive version string from client, install not successful")
 }
 
-func RunClientSSHCommandAndWait(runPacket *packet.RunPacketType, sshOpts SSHOpts, debug bool) (*packet.CmdDonePacketType, error) {
+func HasDupStdin(fds []packet.RemoteFd) bool {
+	for _, rfd := range fds {
+		if rfd.Read && rfd.DupStdin {
+			return true
+		}
+	}
+	return false
+}
+
+func RunClientSSHCommandAndWait(runPacket *packet.RunPacketType, fdContext FdContext, sshOpts SSHOpts, debug bool) (*packet.CmdDonePacketType, error) {
 	cmd := MakeShExec("")
 	ecmd := sshOpts.MakeSSHExecCmd(ClientCommand)
 	cmd.Cmd = ecmd
@@ -496,11 +540,11 @@ func RunClientSSHCommandAndWait(runPacket *packet.RunPacketType, sshOpts SSHOpts
 	if err != nil {
 		return nil, fmt.Errorf("creating stderr pipe: %v", err)
 	}
-	if !sshOpts.SudoWithPass {
-		cmd.Multiplexer.MakeRawFdReader(0, os.Stdin, false)
+	if !HasDupStdin(runPacket.Fds) {
+		cmd.Multiplexer.MakeRawFdReader(0, fdContext.GetReader(0), false)
 	}
-	cmd.Multiplexer.MakeRawFdWriter(1, os.Stdout, false)
-	cmd.Multiplexer.MakeRawFdWriter(2, os.Stderr, false)
+	cmd.Multiplexer.MakeRawFdWriter(1, fdContext.GetWriter(1), false)
+	cmd.Multiplexer.MakeRawFdWriter(2, fdContext.GetWriter(2), false)
 	for _, rfd := range runPacket.Fds {
 		if rfd.Read && rfd.Content != "" {
 			err = cmd.Multiplexer.MakeStringFdReader(rfd.FdNum, rfd.Content)
@@ -510,16 +554,14 @@ func RunClientSSHCommandAndWait(runPacket *packet.RunPacketType, sshOpts SSHOpts
 			continue
 		}
 		if rfd.Read && rfd.DupStdin {
-			cmd.Multiplexer.MakeRawFdReader(rfd.FdNum, os.Stdin, false)
+			cmd.Multiplexer.MakeRawFdReader(rfd.FdNum, fdContext.GetReader(0), false)
 			continue
 		}
-		fd := os.NewFile(uintptr(rfd.FdNum), fmt.Sprintf("/dev/fd/%d", rfd.FdNum))
-		if fd == nil {
-			return nil, fmt.Errorf("cannot open fd %d", rfd.FdNum)
-		}
 		if rfd.Read {
-			cmd.Multiplexer.MakeRawFdReader(rfd.FdNum, fd, true)
+			fd := fdContext.GetReader(rfd.FdNum)
+			cmd.Multiplexer.MakeRawFdReader(rfd.FdNum, fd, false)
 		} else if rfd.Write {
+			fd := fdContext.GetWriter(rfd.FdNum)
 			cmd.Multiplexer.MakeRawFdWriter(rfd.FdNum, fd, true)
 		}
 	}

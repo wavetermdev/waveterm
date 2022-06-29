@@ -376,7 +376,7 @@ func parseClientOpts() (*shexec.ClientOpts, error) {
 				return nil, fmt.Errorf("'--sudo-with-password [pw]', missing password")
 			}
 			opts.Sudo = true
-			opts.SSHOpts.SudoWithPass = true
+			opts.SudoWithPass = true
 			opts.SudoPw = iter.Next()
 			continue
 		}
@@ -385,7 +385,7 @@ func parseClientOpts() (*shexec.ClientOpts, error) {
 				return nil, fmt.Errorf("'--sudo-with-passfile [file]', missing file")
 			}
 			opts.Sudo = true
-			opts.SSHOpts.SudoWithPass = true
+			opts.SudoWithPass = true
 			fileName := iter.Next()
 			contents, err := os.ReadFile(fileName)
 			if err != nil {
@@ -433,7 +433,7 @@ func handleClient() (int, error) {
 	if err != nil {
 		return 1, err
 	}
-	donePacket, err := shexec.RunClientSSHCommandAndWait(runPacket, opts.SSHOpts, opts.Debug)
+	donePacket, err := shexec.RunClientSSHCommandAndWait(runPacket, shexec.StdContext{}, opts.SSHOpts, opts.Debug)
 	if err != nil {
 		return 1, err
 	}
