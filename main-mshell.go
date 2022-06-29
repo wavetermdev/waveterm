@@ -42,9 +42,6 @@ func doSingle(ck base.CommandKey) {
 	sender := packet.MakePacketSender(os.Stdout)
 	var runPacket *packet.RunPacketType
 	for pk := range packetParser.MainCh {
-		if pk.GetType() == packet.PingPacketStr {
-			continue
-		}
 		if pk.GetType() == packet.RunPacketStr {
 			runPacket, _ = pk.(*packet.RunPacketType)
 			break
@@ -173,9 +170,6 @@ func doMain() {
 	}
 	sender.SendPacket(initPacket)
 	for pk := range packetParser.MainCh {
-		if pk.GetType() == packet.PingPacketStr {
-			continue
-		}
 		if pk.GetType() == packet.RunPacketStr {
 			doMainRun(pk.(*packet.RunPacketType), sender)
 			continue
@@ -211,6 +205,20 @@ func doMain() {
 	}
 }
 
+func readFullRunPacket(packetParser *packet.PacketParser) (*packet.RunPacketType, error) {
+	rpb := packet.MakeRunPacketBuilder()
+	for pk := range packetParser.MainCh {
+		ok, runPacket := rpb.ProcessPacket(pk)
+		if runPacket != nil {
+			return runPacket, nil
+		}
+		if !ok {
+			return nil, fmt.Errorf("invalid packet '%s' sent to mshell", pk.GetType())
+		}
+	}
+	return nil, fmt.Errorf("no run packet received")
+}
+
 func handleSingle() {
 	packetParser := packet.MakePacketParser(os.Stdin)
 	sender := packet.MakePacketSender(os.Stdout)
@@ -228,20 +236,13 @@ func handleSingle() {
 	initPacket := packet.MakeInitPacket()
 	initPacket.Version = base.MShellVersion
 	sender.SendPacket(initPacket)
-	var runPacket *packet.RunPacketType
-	for pk := range packetParser.MainCh {
-		if pk.GetType() == packet.PingPacketStr {
-			continue
+	runPacket, err := readFullRunPacket(packetParser)
+	if err != nil {
+		ck := base.CommandKey("")
+		if runPacket != nil {
+			ck = runPacket.CK
 		}
-		if pk.GetType() == packet.RunPacketStr {
-			runPacket, _ = pk.(*packet.RunPacketType)
-			break
-		}
-		sender.SendErrorPacket(fmt.Sprintf("invalid packet '%s' sent to mshell", pk.GetType()))
-		return
-	}
-	if runPacket == nil {
-		sender.SendErrorPacket(fmt.Sprintf("no run packet received"))
+		sender.SendCKErrorPacket(ck, err.Error())
 		return
 	}
 	cmd, err := shexec.RunCommand(runPacket, sender)

@@ -93,6 +93,9 @@ func MakePacketParser(input io.Reader) *PacketParser {
 			if pk.GetType() == DonePacketStr {
 				return
 			}
+			if pk.GetType() == PingPacketStr {
+				continue
+			}
 			parser.MainCh <- pk
 		}
 	}()

@@ -151,9 +151,6 @@ func RunServer() (int, error) {
 		if server.Debug {
 			fmt.Printf("PK> %s\n", packet.AsString(pk))
 		}
-		if pk.GetType() == packet.PingPacketStr {
-			continue
-		}
 		if pk.GetType() == packet.RunPacketStr {
 			runPacket := pk.(*packet.RunPacketType)
 			server.runCommand(runPacket)

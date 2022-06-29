@@ -7,6 +7,7 @@
 package shexec
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -223,14 +224,19 @@ func ValidateRunPacket(pk *packet.RunPacketType) error {
 			if rfd.Write {
 				return fmt.Errorf("cannot detach command with writable remote files fd=%d", rfd.FdNum)
 			}
-			if rfd.Read {
-				if rfd.Content == "" {
-					return fmt.Errorf("cannot detach command with readable remote files fd=%d", rfd.FdNum)
-				}
-				if len(rfd.Content) > mpio.ReadBufSize {
-					return fmt.Errorf("cannot detach command, constant readable input too large fd=%d, len=%d, max=%d", rfd.FdNum, len(rfd.Content), mpio.ReadBufSize)
-				}
+			if rfd.Read && !rfd.DupStdin {
+				return fmt.Errorf("cannot detach command with readable remote files fd=%d", rfd.FdNum)
 			}
+		}
+		totalRunData := 0
+		for _, rd := range pk.RunData {
+			if rd.DataLen > mpio.ReadBufSize {
+				return fmt.Errorf("cannot detach command, constant rundata input too large fd=%d, len=%d, max=%d", rd.FdNum, rd.DataLen, mpio.ReadBufSize)
+			}
+			totalRunData += rd.DataLen
+		}
+		if totalRunData > mpio.MaxTotalRunDataSize {
+			return fmt.Errorf("cannot detach command, constant rundata input too large len=%d, max=%d", totalRunData, mpio.MaxTotalRunDataSize)
 		}
 	}
 	if pk.Cwd != "" {
@@ -241,6 +247,11 @@ func ValidateRunPacket(pk *packet.RunPacketType) error {
 		}
 		if !dirInfo.IsDir() {
 			return fmt.Errorf("invalid cwd '%s' for command, not a directory", realCwd)
+		}
+	}
+	for _, runData := range pk.RunData {
+		if runData.DataLen != len(runData.Data) {
+			return fmt.Errorf("rundata length mismatch, fd=%d, datalen=%d, expected=%d", runData.FdNum, len(runData.Data), runData.DataLen)
 		}
 	}
 	return nil
@@ -286,16 +297,15 @@ type InstallOpts struct {
 }
 
 type ClientOpts struct {
-	SSHOpts           SSHOpts
-	Command           string
-	Fds               []packet.RemoteFd
-	Cwd               string
-	Debug             bool
-	Sudo              bool
-	SudoWithPass      bool
-	SudoPw            string
-	CommandStdinFdNum int
-	Detach            bool
+	SSHOpts      SSHOpts
+	Command      string
+	Fds          []packet.RemoteFd
+	Cwd          string
+	Debug        bool
+	Sudo         bool
+	SudoWithPass bool
+	SudoPw       string
+	Detach       bool
 }
 
 func (opts SSHOpts) MakeSSHExecCmd(remoteCommand string) *exec.Cmd {
@@ -352,47 +362,54 @@ func (opts *ClientOpts) MakeRunPacket() (*packet.RunPacketType, error) {
 		return runPacket, nil
 	}
 	if opts.SudoWithPass {
-		pwFdNum, err := opts.NextFreeFdNum()
+		pwFdNum, err := AddRunData(runPacket, opts.SudoPw, "sudo pw")
 		if err != nil {
 			return nil, err
 		}
-		pwRfd := packet.RemoteFd{FdNum: pwFdNum, Read: true, Content: opts.SudoPw}
-		opts.Fds = append(opts.Fds, pwRfd)
-		commandFdNum, err := opts.NextFreeFdNum()
+		commandFdNum, err := AddRunData(runPacket, opts.Command, "command")
 		if err != nil {
 			return nil, err
 		}
-		commandRfd := packet.RemoteFd{FdNum: commandFdNum, Read: true, Content: opts.Command}
-		opts.Fds = append(opts.Fds, commandRfd)
-		commandStdinFdNum, err := opts.NextFreeFdNum()
+		commandStdinFdNum, err := NextFreeFdNum(runPacket)
 		if err != nil {
 			return nil, err
 		}
 		commandStdinRfd := packet.RemoteFd{FdNum: commandStdinFdNum, Read: true, DupStdin: true}
-		opts.Fds = append(opts.Fds, commandStdinRfd)
-		opts.CommandStdinFdNum = commandStdinFdNum
-		maxFdNum := opts.MaxFdNum()
+		runPacket.Fds = append(runPacket.Fds, commandStdinRfd)
+		maxFdNum := MaxFdNumInPacket(runPacket)
 		runPacket.Command = fmt.Sprintf(RunSudoPasswordCommandFmt, pwFdNum, maxFdNum+1, pwFdNum, commandFdNum, commandStdinFdNum)
-		runPacket.Fds = opts.Fds
 		return runPacket, nil
 	} else {
-		commandFdNum, err := opts.NextFreeFdNum()
+		commandFdNum, err := AddRunData(runPacket, opts.Command, "command")
 		if err != nil {
 			return nil, err
 		}
-		rfd := packet.RemoteFd{FdNum: commandFdNum, Read: true, Content: opts.Command}
-		opts.Fds = append(opts.Fds, rfd)
-		maxFdNum := opts.MaxFdNum()
+		maxFdNum := MaxFdNumInPacket(runPacket)
 		runPacket.Command = fmt.Sprintf(RunSudoCommandFmt, maxFdNum+1, commandFdNum)
-		runPacket.Fds = opts.Fds
 		return runPacket, nil
 	}
 }
 
-func (opts *ClientOpts) NextFreeFdNum() (int, error) {
+func AddRunData(pk *packet.RunPacketType, data string, dataType string) (int, error) {
+	if len(data) > mpio.ReadBufSize {
+		return 0, fmt.Errorf("%s too large, exceeds read buffer size", dataType)
+	}
+	fdNum, err := NextFreeFdNum(pk)
+	if err != nil {
+		return 0, err
+	}
+	runData := packet.RunDataType{FdNum: fdNum, DataLen: len(data), Data: []byte(data)}
+	pk.RunData = append(pk.RunData, runData)
+	return fdNum, nil
+}
+
+func NextFreeFdNum(pk *packet.RunPacketType) (int, error) {
 	fdMap := make(map[int]bool)
-	for _, fd := range opts.Fds {
+	for _, fd := range pk.Fds {
 		fdMap[fd.FdNum] = true
+	}
+	for _, rd := range pk.RunData {
+		fdMap[rd.FdNum] = true
 	}
 	for i := 3; i <= MaxFdNum; i++ {
 		if !fdMap[i] {
@@ -402,11 +419,16 @@ func (opts *ClientOpts) NextFreeFdNum() (int, error) {
 	return 0, fmt.Errorf("reached maximum number of fds, all fds between 3-%d are in use", MaxFdNum)
 }
 
-func (opts *ClientOpts) MaxFdNum() int {
+func MaxFdNumInPacket(pk *packet.RunPacketType) int {
 	maxFdNum := 3
-	for _, fd := range opts.Fds {
+	for _, fd := range pk.Fds {
 		if fd.FdNum > maxFdNum {
 			maxFdNum = fd.FdNum
+		}
+	}
+	for _, rd := range pk.RunData {
+		if rd.FdNum > maxFdNum {
+			maxFdNum = rd.FdNum
 		}
 	}
 	return maxFdNum
@@ -546,13 +568,6 @@ func RunClientSSHCommandAndWait(runPacket *packet.RunPacketType, fdContext FdCon
 	cmd.Multiplexer.MakeRawFdWriter(1, fdContext.GetWriter(1), false)
 	cmd.Multiplexer.MakeRawFdWriter(2, fdContext.GetWriter(2), false)
 	for _, rfd := range runPacket.Fds {
-		if rfd.Read && rfd.Content != "" {
-			err = cmd.Multiplexer.MakeStringFdReader(rfd.FdNum, rfd.Content)
-			if err != nil {
-				return nil, fmt.Errorf("creating content fd %d", rfd.FdNum)
-			}
-			continue
-		}
 		if rfd.Read && rfd.DupStdin {
 			cmd.Multiplexer.MakeRawFdReader(rfd.FdNum, fdContext.GetReader(0), false)
 			continue
@@ -610,7 +625,7 @@ func RunClientSSHCommandAndWait(runPacket *packet.RunPacketType, fdContext FdCon
 	if !versionOk {
 		return nil, fmt.Errorf("did not receive version from remote mshell")
 	}
-	sender.SendPacket(runPacket)
+	SendRunPacketAndRunData(sender, runPacket)
 	if debug {
 		cmd.Multiplexer.Debug = true
 	}
@@ -620,6 +635,32 @@ func RunClientSSHCommandAndWait(runPacket *packet.RunPacketType, fdContext FdCon
 		donePacket = remoteDonePacket
 	}
 	return donePacket, nil
+}
+
+func min(v1 int, v2 int) int {
+	if v1 <= v2 {
+		return v1
+	}
+	return v2
+}
+
+func SendRunPacketAndRunData(sender *packet.PacketSender, runPacket *packet.RunPacketType) {
+	sender.SendPacket(runPacket)
+	for _, runData := range runPacket.RunData {
+		sendBuf := runData.Data
+		for len(sendBuf) > 0 {
+			chunkSize := min(len(sendBuf), mpio.MaxSingleWriteSize)
+			chunk := sendBuf[0:chunkSize]
+			dataPk := packet.MakeDataPacket()
+			dataPk.CK = runPacket.CK
+			dataPk.FdNum = runData.FdNum
+			dataPk.Data64 = base64.StdEncoding.EncodeToString(chunk)
+			dataPk.Eof = (len(chunk) == len(sendBuf))
+			sendBuf = sendBuf[chunkSize:]
+			sender.SendPacket(dataPk)
+		}
+	}
+	sender.SendPacket(packet.MakeDataEndPacket(runPacket.CK))
 }
 
 func DetectGoArch(uname string) (string, string, error) {
@@ -683,6 +724,16 @@ func runCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender) (*S
 		return nil, err
 	}
 	extraFiles := make([]*os.File, 0, MaxFdNum+1)
+	for _, runData := range pk.RunData {
+		if runData.FdNum >= len(extraFiles) {
+			extraFiles = extraFiles[:runData.FdNum+1]
+		}
+		extraFiles[runData.FdNum], err = cmd.Multiplexer.MakeStaticWriterPipe(runData.FdNum, runData.Data)
+		if err != nil {
+			cmd.Close()
+			return nil, err
+		}
+	}
 	for _, rfd := range pk.Fds {
 		if rfd.FdNum >= len(extraFiles) {
 			extraFiles = extraFiles[:rfd.FdNum+1]

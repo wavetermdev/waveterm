@@ -8,6 +8,7 @@ package packet
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -33,6 +34,7 @@ const (
 	DataAckPacketStr   = "dataack"
 	CmdStartPacketStr  = "cmdstart"
 	CmdDonePacketStr   = "cmddone"
+	DataEndPacketStr   = "dataend"
 	ResponsePacketStr  = "resp"
 	DonePacketStr      = "done"
 	ErrorPacketStr     = "error"
@@ -68,6 +70,7 @@ func init() {
 	TypeStrToFactory[InputPacketStr] = reflect.TypeOf(InputPacketType{})
 	TypeStrToFactory[DataPacketStr] = reflect.TypeOf(DataPacketType{})
 	TypeStrToFactory[DataAckPacketStr] = reflect.TypeOf(DataAckPacketType{})
+	TypeStrToFactory[DataEndPacketStr] = reflect.TypeOf(DataEndPacketType{})
 }
 
 func MakePacket(packetType string) (PacketType, error) {
@@ -164,6 +167,23 @@ func (p *DataPacketType) String() string {
 
 func MakeDataPacket() *DataPacketType {
 	return &DataPacketType{Type: DataPacketStr}
+}
+
+type DataEndPacketType struct {
+	Type string          `json:"type"`
+	CK   base.CommandKey `json:"ck"`
+}
+
+func MakeDataEndPacket(ck base.CommandKey) *DataEndPacketType {
+	return &DataEndPacketType{Type: DataEndPacketStr, CK: ck}
+}
+
+func (*DataEndPacketType) GetType() string {
+	return DataEndPacketStr
+}
+
+func (p *DataEndPacketType) GetCK() base.CommandKey {
+	return p.CK
 }
 
 type DataAckPacketType struct {
@@ -411,11 +431,16 @@ type TermSize struct {
 }
 
 type RemoteFd struct {
-	FdNum    int    `json:"fdnum"`
-	Read     bool   `json:"read"`
-	Write    bool   `json:"write"`
-	Content  string `json:"-"`
-	DupStdin bool   `json:"-"`
+	FdNum    int  `json:"fdnum"`
+	Read     bool `json:"read"`
+	Write    bool `json:"write"`
+	DupStdin bool `json:"-"`
+}
+
+type RunDataType struct {
+	FdNum   int    `json:"fdnum"`
+	DataLen int    `json:"datalen"`
+	Data    []byte `json:"-"`
 }
 
 type RunPacketType struct {
@@ -426,6 +451,7 @@ type RunPacketType struct {
 	Env      map[string]string `json:"env,omitempty"`
 	TermSize *TermSize         `json:"termsize,omitempty"`
 	Fds      []RemoteFd        `json:"fds,omitempty"`
+	RunData  []RunDataType     `json:"rundata,omitempty"`
 	Detached bool              `json:"detached,omitempty"`
 }
 
@@ -636,4 +662,48 @@ func (DefaultUPR) UnknownPacket(pk PacketType) {
 		fmt.Fprintf(os.Stderr, "[error] invalid packet received '%s'", AsExtType(pk))
 	}
 
+}
+
+// todo: clean hanging entries in RunMap when in server mode
+type RunPacketBuilder struct {
+	RunMap map[base.CommandKey]*RunPacketType
+}
+
+func MakeRunPacketBuilder() *RunPacketBuilder {
+	return &RunPacketBuilder{
+		RunMap: make(map[base.CommandKey]*RunPacketType),
+	}
+}
+
+// returns (consumed, fullRunPacket)
+func (b *RunPacketBuilder) ProcessPacket(pk PacketType) (bool, *RunPacketType) {
+	if pk.GetType() == RunPacketStr {
+		runPacket := pk.(*RunPacketType)
+		b.RunMap[runPacket.CK] = runPacket
+		return true, nil
+	}
+	if pk.GetType() == DataEndPacketStr {
+		endPacket := pk.(*DataEndPacketType)
+		runPacket := b.RunMap[endPacket.CK] // might be nil
+		delete(b.RunMap, endPacket.CK)
+		return true, runPacket
+	}
+	if pk.GetType() == DataPacketStr {
+		dataPacket := pk.(*DataPacketType)
+		runPacket := b.RunMap[dataPacket.CK]
+		if runPacket == nil {
+			return false, nil
+		}
+		for idx, runData := range runPacket.RunData {
+			if runData.FdNum == dataPacket.FdNum {
+				// can ignore error, will get caught later with RunData.DataLen check
+				realData, _ := base64.StdEncoding.DecodeString(dataPacket.Data64)
+				runData.Data = append(runData.Data, realData...)
+				runPacket.RunData[idx] = runData
+				break
+			}
+		}
+		return true, nil
+	}
+	return false, nil
 }

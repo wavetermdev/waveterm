@@ -20,12 +20,14 @@ import (
 const ReadBufSize = 128 * 1024
 const WriteBufSize = 128 * 1024
 const MaxSingleWriteSize = 4 * 1024
+const MaxTotalRunDataSize = 10 * ReadBufSize
 
 type Multiplexer struct {
 	Lock            *sync.Mutex
 	CK              base.CommandKey
 	FdReaders       map[int]*FdReader // synchronized
 	FdWriters       map[int]*FdWriter // synchronized
+	RunData         map[int]*FdReader // synchronized
 	CloseAfterStart []*os.File        // synchronized
 
 	Sender  *packet.PacketSender
@@ -105,16 +107,22 @@ func (m *Multiplexer) MakeWriterPipe(fdNum int) (*os.File, error) {
 	return pr, nil
 }
 
-func (m *Multiplexer) MakeStringFdReader(fdNum int, contents string) error {
-	pw, err := m.MakeReaderPipe(fdNum)
+// returns the *reader* to connect to process, writer is put in FdWriters
+func (m *Multiplexer) MakeStaticWriterPipe(fdNum int, data []byte) (*os.File, error) {
+	pr, pw, err := os.Pipe()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	go func() {
-		pw.Write([]byte(contents))
-		pw.Close()
-	}()
-	return nil
+	m.Lock.Lock()
+	defer m.Lock.Unlock()
+	fdWriter := MakeFdWriter(m, pw, fdNum, true)
+	err = fdWriter.AddData(data, true)
+	if err != nil {
+		return nil, err
+	}
+	m.FdWriters[fdNum] = fdWriter
+	m.CloseAfterStart = append(m.CloseAfterStart, pr)
+	return pr, nil
 }
 
 func (m *Multiplexer) MakeRawFdReader(fdNum int, fd io.ReadCloser, shouldClose bool) {
@@ -211,6 +219,10 @@ func (m *Multiplexer) runPacketInputLoop() *packet.CmdDonePacketType {
 		if pk.GetType() == packet.CmdDonePacketStr {
 			donePacket := pk.(*packet.CmdDonePacketType)
 			return donePacket
+		}
+		if pk.GetType() == packet.CmdStartPacketStr {
+			// nothing
+			continue
 		}
 		m.UPR.UnknownPacket(pk)
 	}
