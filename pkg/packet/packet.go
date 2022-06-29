@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"reflect"
 	"sync"
 
@@ -609,33 +610,30 @@ func (sender *PacketSender) SendErrorPacket(errVal string) error {
 	return sender.SendPacket(MakeErrorPacket(errVal))
 }
 
+func (sender *PacketSender) SendCKErrorPacket(ck base.CommandKey, errVal string) error {
+	return sender.SendPacket(MakeCKErrorPacket(ck, errVal))
+}
+
 func (sender *PacketSender) SendMessage(fmtStr string, args ...interface{}) error {
 	return sender.SendPacket(MakeMessagePacket(fmt.Sprintf(fmtStr, args...)))
 }
 
-type ErrorReporter interface {
-	ReportError(err error)
+type UnknownPacketReporter interface {
+	UnknownPacket(pk PacketType)
 }
 
-func PacketToByteArrBridge(pkCh chan PacketType, byteCh chan []byte, errorReporter ErrorReporter, closeOnDone bool) {
-	go func() {
-		defer func() {
-			if closeOnDone {
-				close(byteCh)
-			}
-		}()
-		for pk := range pkCh {
-			if pk == nil {
-				continue
-			}
-			jsonBytes, err := json.Marshal(pk)
-			if err != nil {
-				if errorReporter != nil {
-					errorReporter.ReportError(fmt.Errorf("error marshaling packet: %w", err))
-				}
-				continue
-			}
-			byteCh <- jsonBytes
-		}
-	}()
+type DefaultUPR struct{}
+
+func (DefaultUPR) UnknownPacket(pk PacketType) {
+	if pk.GetType() == ErrorPacketStr {
+		errPacket := pk.(*ErrorPacketType)
+		// at this point, just send the error packet to stderr rather than try to do something special
+		fmt.Fprintf(os.Stderr, "[error] %s\n", errPacket.Error)
+	} else if pk.GetType() == RawPacketStr {
+		rawPacket := pk.(*RawPacketType)
+		fmt.Fprintf(os.Stderr, "%s\n", rawPacket.Data)
+	} else {
+		fmt.Fprintf(os.Stderr, "[error] invalid packet received '%s'", AsExtType(pk))
+	}
+
 }

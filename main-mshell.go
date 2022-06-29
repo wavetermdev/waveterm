@@ -80,34 +80,34 @@ func doSingle(ck base.CommandKey) {
 func doMainRun(pk *packet.RunPacketType, sender *packet.PacketSender) {
 	err := shexec.ValidateRunPacket(pk)
 	if err != nil {
-		sender.SendPacket(packet.MakeCKErrorPacket(pk.CK, fmt.Sprintf("invalid run packet: %v", err)))
+		sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("invalid run packet: %v", err))
 		return
 	}
 	fileNames, err := base.GetCommandFileNames(pk.CK)
 	if err != nil {
-		sender.SendPacket(packet.MakeCKErrorPacket(pk.CK, fmt.Sprintf("cannot get command file names: %v", err)))
+		sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("cannot get command file names: %v", err))
 		return
 	}
 	cmd, err := shexec.MakeRunnerExec(pk.CK)
 	if err != nil {
-		sender.SendPacket(packet.MakeCKErrorPacket(pk.CK, fmt.Sprintf("cannot make mshell command: %v", err)))
+		sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("cannot make mshell command: %v", err))
 		return
 	}
 	cmdStdin, err := cmd.StdinPipe()
 	if err != nil {
-		sender.SendPacket(packet.MakeCKErrorPacket(pk.CK, fmt.Sprintf("cannot pipe stdin to command: %v", err)))
+		sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("cannot pipe stdin to command: %v", err))
 		return
 	}
 	// touch ptyout file (should exist for tailer to work correctly)
 	ptyOutFd, err := os.OpenFile(fileNames.PtyOutFile, os.O_CREATE|os.O_TRUNC|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		sender.SendPacket(packet.MakeCKErrorPacket(pk.CK, fmt.Sprintf("cannot open pty out file '%s': %v", fileNames.PtyOutFile, err)))
+		sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("cannot open pty out file '%s': %v", fileNames.PtyOutFile, err))
 		return
 	}
 	ptyOutFd.Close() // just opened to create the file, can close right after
 	runnerOutFd, err := os.OpenFile(fileNames.RunnerOutFile, os.O_CREATE|os.O_TRUNC|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		sender.SendPacket(packet.MakeCKErrorPacket(pk.CK, fmt.Sprintf("cannot open runner out file '%s': %v", fileNames.RunnerOutFile, err)))
+		sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("cannot open runner out file '%s': %v", fileNames.RunnerOutFile, err))
 		return
 	}
 	defer runnerOutFd.Close()
@@ -115,13 +115,13 @@ func doMainRun(pk *packet.RunPacketType, sender *packet.PacketSender) {
 	cmd.Stderr = runnerOutFd
 	err = cmd.Start()
 	if err != nil {
-		sender.SendPacket(packet.MakeCKErrorPacket(pk.CK, fmt.Sprintf("error starting command: %v", err)))
+		sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("error starting command: %v", err))
 		return
 	}
 	go func() {
 		err = packet.SendPacket(cmdStdin, pk)
 		if err != nil {
-			sender.SendPacket(packet.MakeCKErrorPacket(pk.CK, fmt.Sprintf("error sending forked runner command: %v", err)))
+			sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("error sending forked runner command: %v", err))
 			return
 		}
 		cmdStdin.Close()
@@ -237,11 +237,6 @@ func handleSingle() {
 			runPacket, _ = pk.(*packet.RunPacketType)
 			break
 		}
-		if pk.GetType() == packet.RawPacketStr {
-			rawPk := pk.(*packet.RawPacketType)
-			sender.SendMessage("got raw packet '%s'", rawPk.Data)
-			continue
-		}
 		sender.SendErrorPacket(fmt.Sprintf("invalid packet '%s' sent to mshell", pk.GetType()))
 		return
 	}
@@ -251,7 +246,7 @@ func handleSingle() {
 	}
 	cmd, err := shexec.RunCommand(runPacket, sender)
 	if err != nil {
-		sender.SendErrorPacket(fmt.Sprintf("error running command: %v", err))
+		sender.SendCKErrorPacket(runPacket.CK, fmt.Sprintf("error running command: %v", err))
 		return
 	}
 	defer cmd.Close()
@@ -433,7 +428,7 @@ func handleClient() (int, error) {
 	if err != nil {
 		return 1, err
 	}
-	donePacket, err := shexec.RunClientSSHCommandAndWait(runPacket, shexec.StdContext{}, opts.SSHOpts, opts.Debug)
+	donePacket, err := shexec.RunClientSSHCommandAndWait(runPacket, shexec.StdContext{}, opts.SSHOpts, nil, opts.Debug)
 	if err != nil {
 		return 1, err
 	}

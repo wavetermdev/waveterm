@@ -99,12 +99,12 @@ type FdContext interface {
 	GetReader(fdNum int) io.ReadCloser
 }
 
-func MakeShExec(ck base.CommandKey) *ShExecType {
+func MakeShExec(ck base.CommandKey, upr packet.UnknownPacketReporter) *ShExecType {
 	return &ShExecType{
 		Lock:        &sync.Mutex{},
 		StartTs:     time.Now(),
 		CK:          ck,
-		Multiplexer: mpio.MakeMultiplexer(ck),
+		Multiplexer: mpio.MakeMultiplexer(ck, upr),
 	}
 }
 
@@ -524,8 +524,8 @@ func HasDupStdin(fds []packet.RemoteFd) bool {
 	return false
 }
 
-func RunClientSSHCommandAndWait(runPacket *packet.RunPacketType, fdContext FdContext, sshOpts SSHOpts, debug bool) (*packet.CmdDonePacketType, error) {
-	cmd := MakeShExec("")
+func RunClientSSHCommandAndWait(runPacket *packet.RunPacketType, fdContext FdContext, sshOpts SSHOpts, upr packet.UnknownPacketReporter, debug bool) (*packet.CmdDonePacketType, error) {
+	cmd := MakeShExec(runPacket.CK, upr)
 	ecmd := sshOpts.MakeSSHExecCmd(ClientCommand)
 	cmd.Cmd = ecmd
 	inputWriter, err := ecmd.StdinPipe()
@@ -656,7 +656,7 @@ func (cmd *ShExecType) RunRemoteIOAndWait(packetParser *packet.PacketParser, sen
 }
 
 func runCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecType, error) {
-	cmd := MakeShExec(pk.CK)
+	cmd := MakeShExec(pk.CK, nil)
 	cmd.Cmd = exec.Command("bash", "-c", pk.Command)
 	UpdateCmdEnv(cmd.Cmd, pk.Env)
 	if pk.Cwd != "" {
@@ -736,7 +736,7 @@ func runCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) (
 	defer func() {
 		cmdTty.Close()
 	}()
-	rtn := MakeShExec(pk.CK)
+	rtn := MakeShExec(pk.CK, nil)
 	ecmd := MakeExecCmd(pk, cmdTty)
 	err = ecmd.Start()
 	if err != nil {
@@ -750,14 +750,14 @@ func runCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) (
 		// copy pty output to .ptyout file
 		_, copyErr := io.Copy(ptyOutFd, cmdPty)
 		if copyErr != nil {
-			sender.SendErrorPacket(fmt.Sprintf("copying pty output to ptyout file: %v", copyErr))
+			sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("copying pty output to ptyout file: %v", copyErr))
 		}
 	}()
 	go func() {
 		// copy .stdin fifo contents to pty input
 		copyFifoErr := MakeAndCopyStdinFifo(cmdPty, fileNames.StdinFifo)
 		if copyFifoErr != nil {
-			sender.SendErrorPacket(fmt.Sprintf("reading from stdin fifo: %v", copyFifoErr))
+			sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("reading from stdin fifo: %v", copyFifoErr))
 		}
 	}()
 	rtn.FileNames = fileNames

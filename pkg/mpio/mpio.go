@@ -31,16 +31,21 @@ type Multiplexer struct {
 	Sender  *packet.PacketSender
 	Input   *packet.PacketParser
 	Started bool
+	UPR     packet.UnknownPacketReporter
 
 	Debug bool
 }
 
-func MakeMultiplexer(ck base.CommandKey) *Multiplexer {
+func MakeMultiplexer(ck base.CommandKey, upr packet.UnknownPacketReporter) *Multiplexer {
+	if upr == nil {
+		upr = packet.DefaultUPR{}
+	}
 	return &Multiplexer{
 		Lock:      &sync.Mutex{},
 		CK:        ck,
 		FdReaders: make(map[int]*FdReader),
 		FdWriters: make(map[int]*FdWriter),
+		UPR:       upr,
 	}
 }
 
@@ -207,17 +212,7 @@ func (m *Multiplexer) runPacketInputLoop() *packet.CmdDonePacketType {
 			donePacket := pk.(*packet.CmdDonePacketType)
 			return donePacket
 		}
-		if pk.GetType() == packet.ErrorPacketStr {
-			errPacket := pk.(*packet.ErrorPacketType)
-			// at this point, just send the error packet to stderr rather than try to do something special
-			fmt.Fprintf(os.Stderr, "%s\n", errPacket.Error)
-			return nil
-		}
-		if pk.GetType() == packet.RawPacketStr {
-			rawPacket := pk.(*packet.RawPacketType)
-			fmt.Fprintf(os.Stderr, "%s\n", rawPacket.Data)
-			continue
-		}
+		m.UPR.UnknownPacket(pk)
 	}
 	return nil
 }

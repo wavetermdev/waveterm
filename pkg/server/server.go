@@ -19,10 +19,11 @@ import (
 )
 
 type MServer struct {
-	Lock      *sync.Mutex
-	MainInput *packet.PacketParser
-	Sender    *packet.PacketSender
-	FdContext *serverFdContext
+	Lock         *sync.Mutex
+	MainInput    *packet.PacketParser
+	Sender       *packet.PacketSender
+	FdContextMap map[base.CommandKey]*serverFdContext
+	Debug        bool
 }
 
 func (m *MServer) Close() {
@@ -38,17 +39,6 @@ type serverFdContext struct {
 	Readers map[int]*mpio.PacketReader
 }
 
-func (m *MServer) MakeServerFdContext(ck base.CommandKey) *serverFdContext {
-	rtn := &serverFdContext{
-		M:       m,
-		Lock:    &sync.Mutex{},
-		Sender:  m.Sender,
-		CK:      ck,
-		Readers: make(map[int]*mpio.PacketReader),
-	}
-	return rtn
-}
-
 func (c *serverFdContext) processDataPacket(pk *packet.DataPacketType) {
 	c.Lock.Lock()
 	reader := c.Readers[pk.FdNum]
@@ -62,7 +52,43 @@ func (c *serverFdContext) processDataPacket(pk *packet.DataPacketType) {
 		return
 	}
 	reader.AddData(pk)
-	return
+}
+
+func (m *MServer) MakeServerFdContext(ck base.CommandKey) *serverFdContext {
+	rtn := &serverFdContext{
+		M:       m,
+		Lock:    &sync.Mutex{},
+		Sender:  m.Sender,
+		CK:      ck,
+		Readers: make(map[int]*mpio.PacketReader),
+	}
+	return rtn
+}
+
+func (m *MServer) ProcessCommandPacket(pk packet.CommandPacketType) {
+	ck := pk.GetCK()
+	if ck == "" {
+		m.Sender.SendErrorPacket(fmt.Sprintf("received '%s' packet without ck", pk.GetType()))
+		return
+	}
+	m.Lock.Lock()
+	fdContext := m.FdContextMap[ck]
+	m.Lock.Unlock()
+	if fdContext == nil {
+		m.Sender.SendCKErrorPacket(ck, fmt.Sprintf("no server context for ck '%s'", ck))
+		return
+	}
+	if pk.GetType() == packet.DataPacketStr {
+		dataPacket := pk.(*packet.DataPacketType)
+		fdContext.processDataPacket(dataPacket)
+		return
+	} else if pk.GetType() == packet.DataAckPacketStr {
+		m.Sender.SendPacket(pk)
+		return
+	} else {
+		m.Sender.SendCKErrorPacket(ck, fmt.Sprintf("invalid packet '%s' received", packet.AsExtType(pk)))
+		return
+	}
 }
 
 func (c *serverFdContext) GetWriter(fdNum int) io.WriteCloser {
@@ -78,21 +104,42 @@ func (c *serverFdContext) GetReader(fdNum int) io.ReadCloser {
 }
 
 func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
+	if err := runPacket.CK.Validate("packet"); err != nil {
+		m.Sender.SendErrorPacket(fmt.Sprintf("server run packets require valid ck: %s", err))
+		return
+	}
 	fdContext := m.MakeServerFdContext(runPacket.CK)
 	m.Lock.Lock()
-	m.FdContext = fdContext
+	m.FdContextMap[runPacket.CK] = fdContext
 	m.Lock.Unlock()
 	go func() {
-		donePk, err := shexec.RunClientSSHCommandAndWait(runPacket, fdContext, shexec.SSHOpts{}, true)
-		fmt.Printf("done: err:%v, %v\n", err, donePk)
+		donePk, err := shexec.RunClientSSHCommandAndWait(runPacket, fdContext, shexec.SSHOpts{}, m, m.Debug)
+		if donePk != nil {
+			m.Sender.SendPacket(donePk)
+		}
+		if err != nil {
+			m.Sender.SendCKErrorPacket(runPacket.CK, err.Error())
+		}
 	}()
 }
 
+func (m *MServer) UnknownPacket(pk packet.PacketType) {
+	m.Sender.SendPacket(pk)
+}
+
 func RunServer() (int, error) {
-	server := &MServer{
-		Lock: &sync.Mutex{},
+	debug := false
+	if len(os.Args) >= 3 && os.Args[2] == "--debug" {
+		debug = true
 	}
-	packet.GlobalDebug = true
+	server := &MServer{
+		Lock:         &sync.Mutex{},
+		FdContextMap: make(map[base.CommandKey]*serverFdContext),
+		Debug:        debug,
+	}
+	if debug {
+		packet.GlobalDebug = true
+	}
 	server.MainInput = packet.MakePacketParser(os.Stdin)
 	server.Sender = packet.MakePacketSender(os.Stdout)
 	defer server.Close()
@@ -101,7 +148,9 @@ func RunServer() (int, error) {
 	initPacket.Version = base.MShellVersion
 	server.Sender.SendPacket(initPacket)
 	for pk := range server.MainInput.MainCh {
-		fmt.Printf("PK> %s\n", packet.AsString(pk))
+		if server.Debug {
+			fmt.Printf("PK> %s\n", packet.AsString(pk))
+		}
 		if pk.GetType() == packet.PingPacketStr {
 			continue
 		}
@@ -110,9 +159,8 @@ func RunServer() (int, error) {
 			server.runCommand(runPacket)
 			continue
 		}
-		if pk.GetType() == packet.DataPacketStr {
-			dataPacket := pk.(*packet.DataPacketType)
-			server.FdContext.processDataPacket(dataPacket)
+		if cmdPk, ok := pk.(packet.CommandPacketType); ok {
+			server.ProcessCommandPacket(cmdPk)
 			continue
 		}
 		server.Sender.SendErrorPacket(fmt.Sprintf("invalid packet '%s' sent to mshell", packet.AsExtType(pk)))
