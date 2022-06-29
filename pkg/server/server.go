@@ -55,6 +55,8 @@ func (c *serverFdContext) processDataPacket(pk *packet.DataPacketType) {
 }
 
 func (m *MServer) MakeServerFdContext(ck base.CommandKey) *serverFdContext {
+	m.Lock.Lock()
+	defer m.Lock.Unlock()
 	rtn := &serverFdContext{
 		M:       m,
 		Lock:    &sync.Mutex{},
@@ -62,6 +64,7 @@ func (m *MServer) MakeServerFdContext(ck base.CommandKey) *serverFdContext {
 		CK:      ck,
 		Readers: make(map[int]*mpio.PacketReader),
 	}
+	m.FdContextMap[ck] = rtn
 	return rtn
 }
 
@@ -103,16 +106,20 @@ func (c *serverFdContext) GetReader(fdNum int) io.ReadCloser {
 	return reader
 }
 
+func (m *MServer) RemoveFdContext(ck base.CommandKey) {
+	m.Lock.Lock()
+	defer m.Lock.Unlock()
+	delete(m.FdContextMap, ck)
+}
+
 func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
 	if err := runPacket.CK.Validate("packet"); err != nil {
 		m.Sender.SendErrorPacket(fmt.Sprintf("server run packets require valid ck: %s", err))
 		return
 	}
 	fdContext := m.MakeServerFdContext(runPacket.CK)
-	m.Lock.Lock()
-	m.FdContextMap[runPacket.CK] = fdContext
-	m.Lock.Unlock()
 	go func() {
+		defer m.RemoveFdContext(runPacket.CK)
 		donePk, err := shexec.RunClientSSHCommandAndWait(runPacket, fdContext, shexec.SSHOpts{}, m, m.Debug)
 		if donePk != nil {
 			m.Sender.SendPacket(donePk)
@@ -143,7 +150,6 @@ func RunServer() (int, error) {
 	server.MainInput = packet.MakePacketParser(os.Stdin)
 	server.Sender = packet.MakePacketSender(os.Stdout)
 	defer server.Close()
-	defer fmt.Printf("runserver done\n")
 	initPacket := packet.MakeInitPacket()
 	initPacket.Version = base.MShellVersion
 	server.Sender.SendPacket(initPacket)

@@ -10,10 +10,8 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"os/signal"
 	"os/user"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/scripthaus-dev/mshell/pkg/base"
@@ -23,19 +21,6 @@ import (
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
 	"golang.org/x/sys/unix"
 )
-
-// in single run mode, we don't want mshell to die from signals
-// since we want the single mshell to persist even if session / main mshell
-// is terminated.
-func setupSingleSignals(cmd *shexec.ShExecType) {
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
-	go func() {
-		for range sigCh {
-			// do nothing
-		}
-	}()
-}
 
 func doSingle(ck base.CommandKey) {
 	packetParser := packet.MakePacketParser(os.Stdin)
@@ -60,12 +45,12 @@ func doSingle(ck base.CommandKey) {
 		sender.SendErrorPacket(fmt.Sprintf("run packet cmdid[%s] did not match arg[%s]", runPacket.CK, ck))
 		return
 	}
-	cmd, err := shexec.RunCommand(runPacket, sender)
+	cmd, err := shexec.RunCommandDetached(runPacket, sender)
 	if err != nil {
 		sender.SendErrorPacket(fmt.Sprintf("error running command: %v", err))
 		return
 	}
-	setupSingleSignals(cmd)
+	shexec.SetupSignalsForDetach()
 	startPacket := cmd.MakeCmdStartPacket()
 	sender.SendPacket(startPacket)
 	donePacket := cmd.WaitForCommand()
@@ -245,15 +230,30 @@ func handleSingle() {
 		sender.SendCKErrorPacket(ck, err.Error())
 		return
 	}
-	cmd, err := shexec.RunCommand(runPacket, sender)
+	err = shexec.ValidateRunPacket(runPacket)
 	if err != nil {
-		sender.SendCKErrorPacket(runPacket.CK, fmt.Sprintf("error running command: %v", err))
+		sender.SendCKErrorPacket(runPacket.CK, err.Error())
 		return
 	}
-	defer cmd.Close()
-	startPacket := cmd.MakeCmdStartPacket()
-	sender.SendPacket(startPacket)
-	cmd.RunRemoteIOAndWait(packetParser, sender)
+	if runPacket.Detached {
+		cmd, err := shexec.RunCommandDetached(runPacket, sender)
+		if err != nil {
+			sender.SendCKErrorPacket(runPacket.CK, err.Error())
+			return
+		}
+		cmd.WaitForCommand()
+	} else {
+		cmd, err := shexec.RunCommandSimple(runPacket, sender)
+		if err != nil {
+			sender.SendCKErrorPacket(runPacket.CK, fmt.Sprintf("error running command: %v", err))
+			return
+		}
+		defer cmd.Close()
+		startPacket := cmd.MakeCmdStartPacket()
+		sender.SendPacket(startPacket)
+		cmd.RunRemoteIOAndWait(packetParser, sender)
+		return
+	}
 }
 
 func detectOpenFds() ([]packet.RemoteFd, error) {
@@ -494,7 +494,10 @@ Sudo Options:
 
 Sudo options allow you to run the given command using "sudo".  The first
 option only works when you can sudo without a password.  Your password will be passed
-securely through a high numbered fd to "sudo -S".  See full documentation for more details.
+securely through a high numbered fd to "sudo -S".  Note that to use high numbered
+file descriptors with sudo, you will need to add this line to your /etc/sudoers file:
+    Defaults        closefrom_override
+See full documentation for more details.
 
 Examples:
     # execute a python script remotely, with stdin still hooked up correctly

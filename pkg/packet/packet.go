@@ -548,6 +548,14 @@ func ParseJsonPacket(jsonBuf []byte) (PacketType, error) {
 	return pk, nil
 }
 
+func sanitizeBytes(buf []byte) {
+	for idx, b := range buf {
+		if b >= 127 || (b < 32 && b != 10 && b != 13) {
+			buf[idx] = '?'
+		}
+	}
+}
+
 func SendPacket(w io.Writer, packet PacketType) error {
 	if packet == nil {
 		return nil
@@ -564,7 +572,9 @@ func SendPacket(w io.Writer, packet PacketType) error {
 	if GlobalDebug {
 		fmt.Printf("SEND> %s\n", AsString(packet))
 	}
-	_, err = w.Write(outBuf.Bytes())
+	outBytes := outBuf.Bytes()
+	sanitizeBytes(outBytes)
+	_, err = w.Write(outBytes)
 	if err != nil {
 		return err
 	}
@@ -687,6 +697,9 @@ func MakeRunPacketBuilder() *RunPacketBuilder {
 func (b *RunPacketBuilder) ProcessPacket(pk PacketType) (bool, *RunPacketType) {
 	if pk.GetType() == RunPacketStr {
 		runPacket := pk.(*RunPacketType)
+		if len(runPacket.RunData) == 0 {
+			return true, runPacket
+		}
 		b.RunMap[runPacket.CK] = runPacket
 		return true, nil
 	}

@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strings"
 	"sync"
 	"syscall"
@@ -164,20 +165,59 @@ func UpdateCmdEnv(cmd *exec.Cmd, envVars map[string]string) {
 	cmd.Env = newEnv
 }
 
-func MakeExecCmd(pk *packet.RunPacketType, cmdTty *os.File) *exec.Cmd {
+// returns (pr, err)
+func MakeSimpleStaticWriterPipe(data []byte) (*os.File, error) {
+	pr, pw, err := os.Pipe()
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		defer pw.Close()
+		pw.Write(data)
+	}()
+	return pr, err
+}
+
+func MakeDetachedExecCmd(pk *packet.RunPacketType, cmdTty *os.File) (*exec.Cmd, error) {
 	ecmd := exec.Command("bash", "-c", pk.Command)
 	UpdateCmdEnv(ecmd, pk.Env)
 	if pk.Cwd != "" {
 		ecmd.Dir = base.ExpandHomeDir(pk.Cwd)
 	}
-	ecmd.Stdin = cmdTty
+	if !HasDupStdin(pk.Fds) {
+		ecmd.Stdin = cmdTty
+	}
 	ecmd.Stdout = cmdTty
 	ecmd.Stderr = cmdTty
 	ecmd.SysProcAttr = &syscall.SysProcAttr{
 		Setsid:  true,
 		Setctty: true,
 	}
-	return ecmd
+	extraFiles := make([]*os.File, 0, MaxFdNum+1)
+	for _, rfd := range pk.Fds {
+		if rfd.FdNum >= len(extraFiles) {
+			extraFiles = extraFiles[:rfd.FdNum+1]
+		}
+		if rfd.Read && rfd.DupStdin {
+			extraFiles[rfd.FdNum] = cmdTty
+			continue
+		}
+		return nil, fmt.Errorf("invalid fd %d passed to detached command", rfd.FdNum)
+	}
+	for _, runData := range pk.RunData {
+		if runData.FdNum >= len(extraFiles) {
+			extraFiles = extraFiles[:runData.FdNum+1]
+		}
+		var err error
+		extraFiles[runData.FdNum], err = MakeSimpleStaticWriterPipe(runData.Data)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if len(extraFiles) > FirstExtraFilesFdNum {
+		ecmd.ExtraFiles = extraFiles[FirstExtraFilesFdNum:]
+	}
+	return ecmd, nil
 }
 
 func MakeRunnerExec(ck base.CommandKey) (*exec.Cmd, error) {
@@ -269,19 +309,6 @@ func GetWinsize(p *packet.RunPacketType) *pty.Winsize {
 	return &pty.Winsize{Rows: uint16(rows), Cols: uint16(cols)}
 }
 
-// when err is nil, the command will have already been started
-func RunCommand(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecType, error) {
-	err := ValidateRunPacket(pk)
-	if err != nil {
-		return nil, err
-	}
-	if !pk.Detached {
-		return runCommandSimple(pk, sender)
-	} else {
-		return runCommandDetached(pk, sender)
-	}
-}
-
 type SSHOpts struct {
 	SSHHost     string
 	SSHOptsStr  string
@@ -306,6 +333,25 @@ type ClientOpts struct {
 	SudoWithPass bool
 	SudoPw       string
 	Detach       bool
+}
+
+func (opts SSHOpts) MakeSSHInstallCmd() (*exec.Cmd, error) {
+	if opts.SSHHost == "" {
+		return nil, fmt.Errorf("no ssh host provided, can only install to a remote host")
+	}
+	return opts.MakeSSHExecCmd(InstallCommand), nil
+}
+
+func (opts SSHOpts) MakeMShellSingleCmd() (*exec.Cmd, error) {
+	if opts.SSHHost == "" {
+		execFile, err := os.Executable()
+		if err != nil {
+			return nil, fmt.Errorf("cannot find local mshell executable: %w", err)
+		}
+		ecmd := exec.Command(execFile, "--single")
+		return ecmd, nil
+	}
+	return opts.MakeSSHExecCmd(ClientCommand), nil
 }
 
 func (opts SSHOpts) MakeSSHExecCmd(remoteCommand string) *exec.Cmd {
@@ -474,7 +520,10 @@ func sendOptFile(input io.WriteCloser, optName string) error {
 
 func RunInstallSSHCommand(opts *InstallOpts) error {
 	tryDetect := opts.Detect
-	ecmd := opts.SSHOpts.MakeSSHExecCmd(InstallCommand)
+	ecmd, err := opts.SSHOpts.MakeSSHInstallCmd()
+	if err != nil {
+		return err
+	}
 	inputWriter, err := ecmd.StdinPipe()
 	if err != nil {
 		return fmt.Errorf("creating stdin pipe: %v", err)
@@ -548,7 +597,10 @@ func HasDupStdin(fds []packet.RemoteFd) bool {
 
 func RunClientSSHCommandAndWait(runPacket *packet.RunPacketType, fdContext FdContext, sshOpts SSHOpts, upr packet.UnknownPacketReporter, debug bool) (*packet.CmdDonePacketType, error) {
 	cmd := MakeShExec(runPacket.CK, upr)
-	ecmd := sshOpts.MakeSSHExecCmd(ClientCommand)
+	ecmd, err := sshOpts.MakeMShellSingleCmd()
+	if err != nil {
+		return nil, err
+	}
 	cmd.Cmd = ecmd
 	inputWriter, err := ecmd.StdinPipe()
 	if err != nil {
@@ -646,6 +698,9 @@ func min(v1 int, v2 int) int {
 
 func SendRunPacketAndRunData(sender *packet.PacketSender, runPacket *packet.RunPacketType) {
 	sender.SendPacket(runPacket)
+	if len(runPacket.RunData) == 0 {
+		return
+	}
 	for _, runData := range runPacket.RunData {
 		sendBuf := runData.Data
 		for len(sendBuf) > 0 {
@@ -696,7 +751,7 @@ func (cmd *ShExecType) RunRemoteIOAndWait(packetParser *packet.PacketParser, sen
 	sender.SendPacket(donePacket)
 }
 
-func runCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecType, error) {
+func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecType, error) {
 	cmd := MakeShExec(pk.CK, nil)
 	cmd.Cmd = exec.Command("bash", "-c", pk.Command)
 	UpdateCmdEnv(cmd.Cmd, pk.Env)
@@ -767,7 +822,19 @@ func runCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender) (*S
 	return cmd, nil
 }
 
-func runCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecType, error) {
+// in detached run mode, we don't want mshell to die from signals
+// since we want mshell to persist even if the mshell --server is terminated
+func SetupSignalsForDetach() {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	go func() {
+		for range sigCh {
+			// do nothing
+		}
+	}()
+}
+
+func RunCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecType, error) {
 	fileNames, err := base.GetCommandFileNames(pk.CK)
 	if err != nil {
 		return nil, err
@@ -788,10 +855,19 @@ func runCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) (
 		cmdTty.Close()
 	}()
 	rtn := MakeShExec(pk.CK, nil)
-	ecmd := MakeExecCmd(pk, cmdTty)
+	ecmd, err := MakeDetachedExecCmd(pk, cmdTty)
+	if err != nil {
+		return nil, err
+	}
+	SetupSignalsForDetach()
 	err = ecmd.Start()
 	if err != nil {
 		return nil, fmt.Errorf("starting command: %w", err)
+	}
+	for _, fd := range ecmd.ExtraFiles {
+		if fd != cmdTty {
+			fd.Close()
+		}
 	}
 	ptyOutFd, err := os.OpenFile(fileNames.PtyOutFile, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
