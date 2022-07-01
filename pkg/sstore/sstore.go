@@ -1,10 +1,12 @@
 package sstore
 
 import (
+	"path"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 )
 
 var NextLineId = 10
@@ -12,6 +14,12 @@ var NextLineLock = &sync.Mutex{}
 
 const LineTypeCmd = "cmd"
 const LineTypeText = "text"
+const DBFileName = "scripthaus.db"
+
+func GetSessionDBName(sessionId string) string {
+	scHome := scbase.GetScHomeDir()
+	return path.Join(scHome, DBFileName)
+}
 
 type SessionType struct {
 	SessionId string `json:"sessionid"`
