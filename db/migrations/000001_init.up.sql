@@ -39,6 +39,8 @@ CREATE TABLE remote (
     remoteid varchar(36) PRIMARY KEY,
     remotetype varchar(10) NOT NULL,
     remotename varchar(50) NOT NULL,
+    hostname varchar(200) NOT NULL,
+    lastconnectts bigint NOT NULL,
     connectopts varchar(300) NOT NULL,
     ptyout BLOB NOT NULL
 );
@@ -62,7 +64,7 @@ CREATE TABLE history (
     sessionid varchar(36) NOT NULL,
     windowid varchar(36) NOT NULL,
     userid varchar(36) NOT NULL,
-    ts int64 NOT NULL,
+    ts bigint NOT NULL,
     lineid varchar(36) NOT NULL,
     PRIMARY KEY (sessionid, windowid, lineid)
 );

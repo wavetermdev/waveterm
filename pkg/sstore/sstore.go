@@ -2,8 +2,9 @@ package sstore
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
+	"log"
+	"os"
 	"path"
 	"sync"
 	"time"
@@ -27,6 +28,8 @@ const DBFileName = "sh2.db"
 const DefaultSessionName = "default"
 const DefaultWindowName = "default"
 const LocalRemoteName = "local"
+
+const DefaultCwd = "~"
 
 var globalDBLock = &sync.Mutex{}
 var globalDB *sqlx.DB
@@ -84,12 +87,17 @@ type LineType struct {
 }
 
 type RemoteType struct {
-	RowId       int64  `json:"rowid"`
-	RemoteId    string `json:"remoteid"`
-	RemoteType  string `json:"remotetype"`
-	RemoteName  string `json:"remotename"`
-	ConnectOpts string `json:"connectopts"`
-	Connected   bool   `json:"connected"`
+	RowId         int64  `json:"rowid"`
+	RemoteId      string `json:"remoteid"`
+	RemoteType    string `json:"remotetype"`
+	RemoteName    string `json:"remotename"`
+	HostName      string `json:"hostname"`
+	LastConnectTs int64  `json:"lastconnectts"`
+	ConnectOpts   string `json:"connectopts"`
+
+	// runtime
+	Connected bool                   `json:"connected"`
+	InitPk    *packet.InitPacketType `json:"-"`
 }
 
 type CmdType struct {
@@ -139,60 +147,6 @@ func GetNextLine() int {
 	return rtn
 }
 
-func NumSessions(ctx context.Context) (int, error) {
-	db, err := GetDB()
-	if err != nil {
-		return 0, err
-	}
-	query := "SELECT count(*) FROM session"
-	var count int
-	err = db.GetContext(ctx, &count, query)
-	if err != nil {
-		return 0, err
-	}
-	return count, nil
-}
-
-func GetRemoteById(ctx context.Context, remoteId string) (*RemoteType, error) {
-	db, err := GetDB()
-	if err != nil {
-		return nil, err
-	}
-	query := `SELECT rowid, remoteid, remotetype, remotename, connectopts FROM remote WHERE remoteid = ?`
-	var remote RemoteType
-	err = db.GetContext(ctx, &remote, query, remoteId)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &remote, nil
-}
-
-func InsertRemote(ctx context.Context, remote *RemoteType) error {
-	if remote == nil {
-		return fmt.Errorf("cannot insert nil remote")
-	}
-	if remote.RowId != 0 {
-		return fmt.Errorf("cannot insert a remote that already has rowid set, rowid=%d", remote.RowId)
-	}
-	db, err := GetDB()
-	if err != nil {
-		return err
-	}
-	query := `INSERT INTO remote (remoteid, remotetype, remotename, connectopts, ptyout) VALUES (:remoteid, :remotetype, :remotename, :connectopts, '')`
-	result, err := db.NamedExec(query, remote)
-	if err != nil {
-		return err
-	}
-	remote.RowId, err = result.LastInsertId()
-	if err != nil {
-		return fmt.Errorf("cannot get lastinsertid from insert remote: %w", err)
-	}
-	return nil
-}
-
 func EnsureLocalRemote(ctx context.Context) error {
 	remoteId, err := base.GetRemoteId()
 	if err != nil {
@@ -205,13 +159,34 @@ func EnsureLocalRemote(ctx context.Context) error {
 	if remote != nil {
 		return nil
 	}
+	hostName, err := os.Hostname()
+	if err != nil {
+		return fmt.Errorf("cannot get hostname: %w", err)
+	}
 	// create the local remote
 	localRemote := &RemoteType{
 		RemoteId:   remoteId,
 		RemoteType: "ssh",
 		RemoteName: LocalRemoteName,
+		HostName:   hostName,
 	}
 	err = InsertRemote(ctx, localRemote)
+	if err != nil {
+		return err
+	}
+	log.Printf("[db] added remote '%s', id=%s\n", localRemote.RemoteName, localRemote.RemoteId)
+	return nil
+}
+
+func EnsureDefaultSession(ctx context.Context) error {
+	session, err := GetSessionByName(ctx, DefaultSessionName)
+	if err != nil {
+		return err
+	}
+	if session != nil {
+		return nil
+	}
+	err = InsertSessionWithName(ctx, DefaultSessionName)
 	if err != nil {
 		return err
 	}
