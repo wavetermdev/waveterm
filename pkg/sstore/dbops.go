@@ -94,17 +94,23 @@ func GetSessionById(ctx context.Context, id string) (*SessionType, error) {
 }
 
 func GetSessionByName(ctx context.Context, name string) (*SessionType, error) {
-	db, err := GetDB()
-	query := `SELECT * FROM session WHERE name = ?`
-	var session SessionType
-	err = db.GetContext(ctx, &session, query, name)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
+	var rtnSession *SessionType
+	err := WithTx(ctx, func(tx *TxWrap) error {
+		var session SessionType
+		query := `SELECT * FROM session WHERE name = ?`
+		found := tx.GetWrap(&session, query, name)
+		if !found {
+			return nil
+		}
+		rtnSession = &session
+		query = `SELECT sessionid, windowid, name, curremote, version FROM window WHERE sessionid = ?`
+		tx.SelectWrap(&session.Windows, query, session.SessionId)
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	return &session, nil
+	return rtnSession, nil
 }
 
 // also creates window, and sessionremote

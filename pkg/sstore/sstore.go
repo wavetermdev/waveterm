@@ -51,20 +51,19 @@ func GetDB() (*sqlx.DB, error) {
 
 type SessionType struct {
 	SessionId string        `json:"sessionid"`
-	Remote    string        `json:"remote"`
 	Name      string        `json:"name"`
 	Windows   []*WindowType `json:"windows"`
 	Cmds      []*CmdType    `json:"cmds"`
 }
 
 type WindowType struct {
-	SessionId string           `json:"sessionid"`
-	WindowId  string           `json:"windowid"`
-	Name      string           `json:"name"`
-	CurRemote string           `json:"curremote"`
-	Remotes   []*SessionRemote `json:"remotes"`
-	Lines     []*LineType      `json:"lines"`
-	Version   int              `json:"version"`
+	SessionId string        `json:"sessionid"`
+	WindowId  string        `json:"windowid"`
+	Name      string        `json:"name"`
+	CurRemote string        `json:"curremote"`
+	Remotes   []*RemoteType `json:"remotes"`
+	Lines     []*LineType   `json:"lines"`
+	Version   int           `json:"version"`
 }
 
 type SessionRemote struct {
@@ -178,19 +177,19 @@ func EnsureLocalRemote(ctx context.Context) error {
 	return nil
 }
 
-func EnsureDefaultSession(ctx context.Context) error {
+func EnsureDefaultSession(ctx context.Context) (*SessionType, error) {
 	session, err := GetSessionByName(ctx, DefaultSessionName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if session != nil {
-		return nil
+		return session, nil
 	}
 	err = InsertSessionWithName(ctx, DefaultSessionName)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return GetSessionByName(ctx, DefaultSessionName)
 }
 
 func CreateInitialSession(ctx context.Context) error {

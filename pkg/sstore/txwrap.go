@@ -65,24 +65,28 @@ func (tx *TxWrap) ExecWrap(query string, args ...interface{}) sql.Result {
 	return result
 }
 
-func (tx *TxWrap) GetWrap(dest interface{}, query string, args ...interface{}) error {
+func (tx *TxWrap) GetWrap(dest interface{}, query string, args ...interface{}) bool {
 	if tx.Err != nil {
-		return nil
+		return false
 	}
 	err := tx.Txx.Get(dest, query, args...)
-	if err != nil && err != sql.ErrNoRows {
-		tx.Err = err
+	if err != nil && err == sql.ErrNoRows {
+		return false
 	}
-	return err
+	if err != nil {
+		tx.Err = err
+		return false
+	}
+	return true
 }
 
-func (tx *TxWrap) SelectWrap(dest interface{}, query string, args ...interface{}) error {
+func (tx *TxWrap) SelectWrap(dest interface{}, query string, args ...interface{}) {
 	if tx.Err != nil {
-		return nil
+		return
 	}
 	err := tx.Txx.Select(dest, query, args...)
 	if err != nil {
 		tx.Err = err
 	}
-	return err
+	return
 }

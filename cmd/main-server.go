@@ -496,20 +496,17 @@ func main() {
 		fmt.Printf("[error] %v\n", err)
 		return
 	}
-	numSessions, err := sstore.NumSessions(context.Background())
-	if err != nil {
-		fmt.Printf("[error] getting num sessions: %v\n", err)
-		return
-	}
 	err = sstore.EnsureLocalRemote(context.Background())
 	if err != nil {
 		fmt.Printf("[error] ensuring local remote: %v\n", err)
 		return
 	}
-	fmt.Printf("[db] sessions count=%d\n", numSessions)
-	if numSessions == 0 {
-		sstore.CreateInitialSession(context.Background())
+	defaultSession, err := sstore.EnsureDefaultSession(context.Background())
+	if err != nil {
+		fmt.Printf("[error] ensuring default session: %v\n", err)
+		return
 	}
+	fmt.Printf("session: %#v\n", defaultSession)
 	return
 
 	runnerProc, err := remote.LaunchMShell()
