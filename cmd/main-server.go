@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -495,6 +496,22 @@ func main() {
 		fmt.Printf("[error] %v\n", err)
 		return
 	}
+	numSessions, err := sstore.NumSessions(context.Background())
+	if err != nil {
+		fmt.Printf("[error] getting num sessions: %v\n", err)
+		return
+	}
+	err = sstore.EnsureLocalRemote(context.Background())
+	if err != nil {
+		fmt.Printf("[error] ensuring local remote: %v\n", err)
+		return
+	}
+	fmt.Printf("[db] sessions count=%d\n", numSessions)
+	if numSessions == 0 {
+		sstore.CreateInitialSession(context.Background())
+	}
+	return
+
 	runnerProc, err := remote.LaunchMShell()
 	if err != nil {
 		fmt.Printf("error launching runner-proc: %v\n", err)

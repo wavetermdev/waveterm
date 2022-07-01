@@ -37,7 +37,8 @@ CREATE TABLE remote (
     remoteid varchar(36) PRIMARY KEY,
     remotetype varchar(10) NOT NULL,
     remotename varchar(50) NOT NULL,
-    connectopts varchar(300) NOT NULL
+    connectopts varchar(300) NOT NULL,
+    ptyout BLOB NOT NULL
 );
 CREATE TABLE session_cmd (
     sessionid varchar(36) NOT NULL,
