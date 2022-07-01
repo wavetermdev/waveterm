@@ -14,28 +14,33 @@ import (
 
 const RemoteTypeMShell = "mshell"
 
+type Store struct {
+	Lock *sync.Mutex
+	Map  map[string]*MShellProc
+}
+
 type MShellProc struct {
-	Lock       *sync.Mutex
-	RemoteId   string
-	WindowId   string
-	RemoteName string
-	Cmd        *exec.Cmd
-	Input      *packet.PacketSender
-	Output     *packet.PacketParser
-	Local      bool
-	DoneCh     chan bool
-	CurDir     string
-	HomeDir    string
-	User       string
-	Host       string
-	Env        []string
-	Connected  bool
-	RpcMap     map[string]*RpcEntry
+	Lock   *sync.Mutex
+	Remote *RemoteType
+
+	// runtime
+	Connected bool
+	InitPk    *packet.InitPacketType
+	Cmd       *exec.Cmd
+	Input     *packet.PacketSender
+	Output    *packet.PacketParser
+	Local     bool
+	DoneCh    chan bool
+	RpcMap    map[string]*RpcEntry
 }
 
 type RpcEntry struct {
 	PacketId string
 	RespCh   chan packet.RpcPacketType
+}
+
+func LoadRemotes() {
+
 }
 
 func LaunchMShell() (*MShellProc, error) {

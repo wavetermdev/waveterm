@@ -93,10 +93,6 @@ type RemoteType struct {
 	HostName      string `json:"hostname"`
 	LastConnectTs int64  `json:"lastconnectts"`
 	ConnectOpts   string `json:"connectopts"`
-
-	// runtime
-	Connected bool                   `json:"connected"`
-	InitPk    *packet.InitPacketType `json:"-"`
 }
 
 type CmdType struct {
