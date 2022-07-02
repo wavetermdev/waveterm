@@ -22,12 +22,28 @@ func NumSessions(ctx context.Context) (int, error) {
 	return count, nil
 }
 
+const remoteSelectCols = "rowid, remoteid, remotetype, remotename, autoconnect, sshhost, sshopts, sshidentity, sshuser, lastconnectts"
+
+func GetAllRemotes(ctx context.Context) ([]*RemoteType, error) {
+	db, err := GetDB()
+	if err != nil {
+		return nil, err
+	}
+	query := fmt.Sprintf(`SELECT %s FROM remote`, remoteSelectCols)
+	var remoteArr []*RemoteType
+	err = db.SelectContext(ctx, &remoteArr, query)
+	if err != nil {
+		return nil, err
+	}
+	return remoteArr, nil
+}
+
 func GetRemoteByName(ctx context.Context, remoteName string) (*RemoteType, error) {
 	db, err := GetDB()
 	if err != nil {
 		return nil, err
 	}
-	query := `SELECT rowid, remoteid, remotetype, remotename, hostname, connectopts, lastconnectts FROM remote WHERE remotename = ?`
+	query := fmt.Sprintf(`SELECT %s FROM remote WHERE remotename = ?`, remoteSelectCols)
 	var remote RemoteType
 	err = db.GetContext(ctx, &remote, query, remoteName)
 	if err == sql.ErrNoRows {
@@ -44,7 +60,7 @@ func GetRemoteById(ctx context.Context, remoteId string) (*RemoteType, error) {
 	if err != nil {
 		return nil, err
 	}
-	query := `SELECT rowid, remoteid, remotetype, remotename, hostname, connectopts, lastconnectts FROM remote WHERE remoteid = ?`
+	query := fmt.Sprintf(`SELECT %s FROM remote WHERE remoteid = ?`, remoteSelectCols)
 	var remote RemoteType
 	err = db.GetContext(ctx, &remote, query, remoteId)
 	if err == sql.ErrNoRows {
@@ -67,7 +83,8 @@ func InsertRemote(ctx context.Context, remote *RemoteType) error {
 	if err != nil {
 		return err
 	}
-	query := `INSERT INTO remote (remoteid, remotetype, remotename, hostname, connectopts, lastconnectts, ptyout) VALUES (:remoteid, :remotetype, :remotename, :hostname, :connectopts, 0, '')`
+	query := `INSERT INTO remote ( remoteid, remotetype, remotename, autoconnect, sshhost, sshopts, sshidentity, sshuser, lastconnectts, ptyout) VALUES 
+                                 (:remoteid,:remotetype,:remotename,:autoconnect,:sshhost,:sshopts,:sshidentity,:sshuser, 0            , '')`
 	result, err := db.NamedExec(query, remote)
 	if err != nil {
 		return err

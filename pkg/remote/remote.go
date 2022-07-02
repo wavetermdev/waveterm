@@ -1,18 +1,31 @@
 package remote
 
 import (
+	"context"
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
+	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
 )
 
 const RemoteTypeMShell = "mshell"
+
+const (
+	StatusInit         = "init"
+	StatusConnecting   = "connecting"
+	StatusConnected    = "connected"
+	StatusDisconnected = "disconnected"
+	StatusError        = "error"
+)
+
+var GlobalStore *Store
 
 type Store struct {
 	Lock *sync.Mutex
@@ -21,17 +34,18 @@ type Store struct {
 
 type MShellProc struct {
 	Lock   *sync.Mutex
-	Remote *RemoteType
+	Remote *sstore.RemoteType
 
 	// runtime
-	Connected bool
-	InitPk    *packet.InitPacketType
-	Cmd       *exec.Cmd
-	Input     *packet.PacketSender
-	Output    *packet.PacketParser
-	Local     bool
-	DoneCh    chan bool
-	RpcMap    map[string]*RpcEntry
+	Status string
+	InitPk *packet.InitPacketType
+	Cmd    *exec.Cmd
+	Input  *packet.PacketSender
+	Output *packet.PacketParser
+	DoneCh chan bool
+	RpcMap map[string]*RpcEntry
+
+	Err error
 }
 
 type RpcEntry struct {
@@ -39,57 +53,117 @@ type RpcEntry struct {
 	RespCh   chan packet.RpcPacketType
 }
 
-func LoadRemotes() {
-
+func LoadRemotes(ctx context.Context) error {
+	GlobalStore = &Store{
+		Lock: &sync.Mutex{},
+		Map:  make(map[string]*MShellProc),
+	}
+	allRemotes, err := sstore.GetAllRemotes(ctx)
+	if err != nil {
+		return err
+	}
+	for _, remote := range allRemotes {
+		msh := MakeMShell(remote)
+		GlobalStore.Map[remote.RemoteName] = msh
+		if remote.AutoConnect {
+			go msh.Launch()
+		}
+	}
+	return nil
 }
 
-func LaunchMShell() (*MShellProc, error) {
+func GetRemote(name string) *MShellProc {
+	GlobalStore.Lock.Lock()
+	defer GlobalStore.Lock.Unlock()
+	return GlobalStore.Map[name]
+}
+
+func MakeMShell(r *sstore.RemoteType) *MShellProc {
+	rtn := &MShellProc{Lock: &sync.Mutex{}, Remote: r, Status: StatusInit}
+	return rtn
+}
+
+func (msh *MShellProc) Launch() {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+
 	msPath, err := base.GetMShellPath()
 	if err != nil {
-		return nil, err
+		msh.Status = StatusError
+		msh.Err = err
+		return
 	}
-	ecmd := exec.Command(msPath)
+	ecmd := exec.Command(msPath, "--server")
+	msh.Cmd = ecmd
 	inputWriter, err := ecmd.StdinPipe()
 	if err != nil {
-		return nil, err
+		msh.Status = StatusError
+		msh.Err = fmt.Errorf("create stdin pipe: %w", err)
+		return
 	}
-	outputReader, err := ecmd.StdoutPipe()
+	stdoutReader, err := ecmd.StdoutPipe()
 	if err != nil {
-		return nil, err
+		msh.Status = StatusError
+		msh.Err = fmt.Errorf("create stdout pipe: %w", err)
+		return
 	}
-	ecmd.Stderr = ecmd.Stdout
+	stderrReader, err := ecmd.StderrPipe()
+	if err != nil {
+		msh.Status = StatusError
+		msh.Err = fmt.Errorf("create stderr pipe: %w", err)
+		return
+	}
+	go func() {
+		io.Copy(os.Stderr, stderrReader)
+	}()
 	err = ecmd.Start()
 	if err != nil {
-		return nil, err
+		msh.Status = StatusError
+		msh.Err = fmt.Errorf("starting mshell server: %w", err)
+		return
 	}
-	rtn := &MShellProc{Lock: &sync.Mutex{}, Local: true, Cmd: ecmd}
-	rtn.Output = packet.MakePacketParser(outputReader)
-	rtn.Input = packet.MakePacketSender(inputWriter)
-	rtn.RpcMap = make(map[string]*RpcEntry)
-	rtn.DoneCh = make(chan bool)
+	fmt.Printf("Started remote '%s' pid=%d\n", msh.Remote.RemoteName, msh.Cmd.Process.Pid)
+	msh.Status = StatusConnecting
+	msh.Output = packet.MakePacketParser(stdoutReader)
+	msh.Input = packet.MakePacketSender(inputWriter)
+	msh.RpcMap = make(map[string]*RpcEntry)
+	msh.DoneCh = make(chan bool)
 	go func() {
 		exitErr := ecmd.Wait()
 		exitCode := shexec.GetExitCode(exitErr)
+		msh.WithLock(func() {
+			if msh.Status == StatusConnected || msh.Status == StatusConnecting {
+				msh.Status = StatusDisconnected
+			}
+		})
 		fmt.Printf("[error] RUNNER PROC EXITED code[%d]\n", exitCode)
-		close(rtn.DoneCh)
+		close(msh.DoneCh)
 	}()
-	return rtn, nil
+	go msh.ProcessPackets()
+	return
+}
+
+func (msh *MShellProc) IsConnected() bool {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	return msh.Status == StatusConnected
 }
 
 func (runner *MShellProc) PacketRpc(pk packet.RpcPacketType, timeout time.Duration) (packet.RpcPacketType, error) {
+	if !runner.IsConnected() {
+		return nil, fmt.Errorf("runner is not connected")
+	}
 	if pk == nil {
 		return nil, fmt.Errorf("PacketRpc passed nil packet")
 	}
 	id := pk.GetPacketId()
 	respCh := make(chan packet.RpcPacketType)
-	runner.Lock.Lock()
-	runner.RpcMap[id] = &RpcEntry{PacketId: id, RespCh: respCh}
-	runner.Lock.Unlock()
-	defer func() {
-		runner.Lock.Lock()
+	runner.WithLock(func() {
+		runner.RpcMap[id] = &RpcEntry{PacketId: id, RespCh: respCh}
+	})
+	defer runner.WithLock(func() {
 		delete(runner.RpcMap, id)
-		runner.Lock.Unlock()
-	}()
+	})
 	runner.Input.SendPacket(pk)
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
@@ -102,21 +176,32 @@ func (runner *MShellProc) PacketRpc(pk packet.RpcPacketType, timeout time.Durati
 	}
 }
 
+func (runner *MShellProc) WithLock(fn func()) {
+	runner.Lock.Lock()
+	defer runner.Lock.Unlock()
+	fn()
+}
+
 func (runner *MShellProc) ProcessPackets() {
+	defer runner.WithLock(func() {
+		if runner.Status == StatusConnected || runner.Status == StatusConnecting {
+			runner.Status = StatusDisconnected
+		}
+	})
 	for pk := range runner.Output.MainCh {
 		if rpcPk, ok := pk.(packet.RpcPacketType); ok {
 			rpcId := rpcPk.GetPacketId()
-			runner.Lock.Lock()
-			entry := runner.RpcMap[rpcId]
-			if entry != nil {
+			runner.WithLock(func() {
+				entry := runner.RpcMap[rpcId]
+				if entry == nil {
+					return
+				}
 				delete(runner.RpcMap, rpcId)
 				go func() {
 					entry.RespCh <- rpcPk
 					close(entry.RespCh)
 				}()
-			}
-			runner.Lock.Unlock()
-
+			})
 		}
 		if pk.GetType() == packet.CmdDataPacketStr {
 			dataPacket := pk.(*packet.CmdDataPacketType)
@@ -126,16 +211,10 @@ func (runner *MShellProc) ProcessPackets() {
 		if pk.GetType() == packet.InitPacketStr {
 			initPacket := pk.(*packet.InitPacketType)
 			fmt.Printf("runner-init %s user=%s dir=%s\n", initPacket.MShellHomeDir, initPacket.User, initPacket.HomeDir)
-			runner.Lock.Lock()
-			runner.Connected = true
-			runner.User = initPacket.User
-			runner.CurDir = initPacket.HomeDir
-			runner.HomeDir = initPacket.HomeDir
-			runner.Env = initPacket.Env
-			if runner.Local {
-				runner.Host = "local"
-			}
-			runner.Lock.Unlock()
+			runner.WithLock(func() {
+				runner.InitPk = initPacket
+				runner.Status = StatusConnected
+			})
 			continue
 		}
 		if pk.GetType() == packet.MessagePacketStr {
@@ -150,16 +229,4 @@ func (runner *MShellProc) ProcessPackets() {
 		}
 		fmt.Printf("runner-packet: %v\n", pk)
 	}
-}
-
-func (r *MShellProc) GetPrompt() string {
-	r.Lock.Lock()
-	defer r.Lock.Unlock()
-	var curDir = r.CurDir
-	if r.CurDir == r.HomeDir {
-		curDir = "~"
-	} else if strings.HasPrefix(r.CurDir, r.HomeDir+"/") {
-		curDir = "~/" + r.CurDir[0:len(r.HomeDir)+1]
-	}
-	return fmt.Sprintf("[%s@%s %s]", r.User, r.Host, curDir)
 }

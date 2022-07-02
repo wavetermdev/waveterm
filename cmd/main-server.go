@@ -36,7 +36,6 @@ const WSStatePacketChSize = 20
 
 const MaxInputDataSize = 1000
 
-var GlobalMShellProc *remote.MShellProc
 var GlobalLock = &sync.Mutex{}
 var WSStateMap = make(map[string]*WSState) // clientid -> WsState
 
@@ -364,7 +363,11 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 		cdPacket := packet.MakeCdPacket()
 		cdPacket.PacketId = uuid.New().String()
 		cdPacket.Dir = newDir
-		GlobalMShellProc.Input.SendPacket(cdPacket)
+		localRemote := remote.GetRemote("local")
+		if localRemote != nil {
+			localRemote.Input.SendPacket(cdPacket)
+			return
+		}
 		return
 	}
 	rtnLine := sstore.MakeNewLineCmd(params.SessionId, params.WindowId)
@@ -377,12 +380,9 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("run-packet %v\n", runPacket)
 	WriteJsonSuccess(w, &runCommandResponse{Line: rtnLine})
 	go func() {
-		GlobalMShellProc.Input.SendPacket(runPacket)
-		if !GlobalMShellProc.Local {
-			getPacket := packet.MakeGetCmdPacket()
-			getPacket.CK = runPacket.CK
-			getPacket.Tail = true
-			GlobalMShellProc.Input.SendPacket(getPacket)
+		localRemote := remote.GetRemote("local")
+		if localRemote != nil {
+			localRemote.Input.SendPacket(runPacket)
 		}
 	}()
 	return
@@ -506,17 +506,12 @@ func main() {
 		fmt.Printf("[error] ensuring default session: %v\n", err)
 		return
 	}
-	fmt.Printf("session: %#v\n", defaultSession)
-	return
-
-	runnerProc, err := remote.LaunchMShell()
+	fmt.Printf("session: %v\n", defaultSession)
+	err = remote.LoadRemotes(context.Background())
 	if err != nil {
-		fmt.Printf("error launching runner-proc: %v\n", err)
+		fmt.Printf("[error] loading remotes: %v\n", err)
 		return
 	}
-	GlobalMShellProc = runnerProc
-	go runnerProc.ProcessPackets()
-	fmt.Printf("Started local runner pid[%d]\n", runnerProc.Cmd.Process.Pid)
 	go runWebSocketServer()
 	gr := mux.NewRouter()
 	gr.HandleFunc("/api/ptyout", GetPtyOut)

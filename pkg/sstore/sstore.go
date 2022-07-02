@@ -2,9 +2,7 @@ package sstore
 
 import (
 	"context"
-	"fmt"
 	"log"
-	"os"
 	"path"
 	"sync"
 	"time"
@@ -86,13 +84,20 @@ type LineType struct {
 }
 
 type RemoteType struct {
-	RowId         int64  `json:"rowid"`
-	RemoteId      string `json:"remoteid"`
-	RemoteType    string `json:"remotetype"`
-	RemoteName    string `json:"remotename"`
-	HostName      string `json:"hostname"`
-	LastConnectTs int64  `json:"lastconnectts"`
-	ConnectOpts   string `json:"connectopts"`
+	RowId       int64  `json:"rowid"`
+	RemoteId    string `json:"remoteid"`
+	RemoteType  string `json:"remotetype"`
+	RemoteName  string `json:"remotename"`
+	AutoConnect bool   `json:"autoconnect"`
+
+	// type=ssh options
+	SSHHost     string `json:"sshhost"`
+	SSHOpts     string `json:"sshopts"`
+	SSHIdentity string `json:"sshidentity"`
+	SSHUser     string `json:"sshuser"`
+
+	// runtime data
+	LastConnectTs int64 `json:"lastconnectts"`
 }
 
 type CmdType struct {
@@ -154,16 +159,12 @@ func EnsureLocalRemote(ctx context.Context) error {
 	if remote != nil {
 		return nil
 	}
-	hostName, err := os.Hostname()
-	if err != nil {
-		return fmt.Errorf("cannot get hostname: %w", err)
-	}
 	// create the local remote
 	localRemote := &RemoteType{
-		RemoteId:   remoteId,
-		RemoteType: "ssh",
-		RemoteName: LocalRemoteName,
-		HostName:   hostName,
+		RemoteId:    remoteId,
+		RemoteType:  "ssh",
+		RemoteName:  LocalRemoteName,
+		AutoConnect: true,
 	}
 	err = InsertRemote(ctx, localRemote)
 	if err != nil {
@@ -186,39 +187,4 @@ func EnsureDefaultSession(ctx context.Context) (*SessionType, error) {
 		return nil, err
 	}
 	return GetSessionByName(ctx, DefaultSessionName)
-}
-
-func CreateInitialSession(ctx context.Context) error {
-	db, err := GetDB()
-	if err != nil {
-		return err
-	}
-	session := &SessionType{
-		SessionId: uuid.New().String(),
-		Name:      DefaultSessionName,
-	}
-	window := &WindowType{
-		SessionId: session.SessionId,
-		WindowId:  uuid.New().String(),
-		Name:      DefaultWindowName,
-		CurRemote: LocalRemoteName,
-	}
-	remoteId, err := base.GetRemoteId()
-	if err != nil {
-		return err
-	}
-	localRemote := &RemoteType{
-		RemoteId:   remoteId,
-		RemoteType: "ssh",
-		RemoteName: LocalRemoteName,
-	}
-	sessRemote := &SessionRemote{
-		SessionId:  session.SessionId,
-		WindowId:   window.WindowId,
-		RemoteId:   remoteId,
-		RemoteName: localRemote.RemoteName,
-		Cwd:        base.GetHomeDir(),
-	}
-	fmt.Printf("db=%v s=%v w=%v r=%v sr=%v\n", db, session, window, localRemote, sessRemote)
-	return nil
 }

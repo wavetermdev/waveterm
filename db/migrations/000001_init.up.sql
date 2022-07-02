@@ -39,9 +39,16 @@ CREATE TABLE remote (
     remoteid varchar(36) PRIMARY KEY,
     remotetype varchar(10) NOT NULL,
     remotename varchar(50) NOT NULL,
-    hostname varchar(200) NOT NULL,
+    autoconnect boolean NOT NULL,
+
+    -- ssh specific opts
+    sshhost varchar(300) NOT NULL,
+    sshopts varchar(300) NOT NULL,
+    sshidentity varchar(300) NOT NULL,
+    sshuser varchar(100) NOT NULL,
+
+    -- runtime data
     lastconnectts bigint NOT NULL,
-    connectopts varchar(300) NOT NULL,
     ptyout BLOB NOT NULL
 );
 
