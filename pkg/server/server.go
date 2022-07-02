@@ -150,8 +150,11 @@ func RunServer() (int, error) {
 	server.MainInput = packet.MakePacketParser(os.Stdin)
 	server.Sender = packet.MakePacketSender(os.Stdout)
 	defer server.Close()
-	initPacket := packet.MakeInitPacket()
-	initPacket.Version = base.MShellVersion
+	var err error
+	initPacket, err := shexec.MakeServerInitPacket()
+	if err != nil {
+		return 1, err
+	}
 	server.Sender.SendPacket(initPacket)
 	builder := packet.MakeRunPacketBuilder()
 	for pk := range server.MainInput.MainCh {
@@ -159,11 +162,21 @@ func RunServer() (int, error) {
 			fmt.Printf("PK> %s\n", packet.AsString(pk))
 		}
 		ok, runPacket := builder.ProcessPacket(pk)
+		if server.Debug {
+			fmt.Printf("PP> %s | %v\n", pk.GetType(), ok)
+		}
 		if ok {
 			if runPacket != nil {
 				server.runCommand(runPacket)
 				continue
 			}
+			continue
+		}
+		if startPk, ok := pk.(*packet.CmdStartPacketType); ok {
+			if server.Debug {
+				fmt.Printf("START> %v", startPk)
+			}
+			server.Sender.SendPacket(startPk)
 			continue
 		}
 		if cmdPk, ok := pk.(packet.CommandPacketType); ok {

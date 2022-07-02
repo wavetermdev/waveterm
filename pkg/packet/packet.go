@@ -73,6 +73,10 @@ func init() {
 	TypeStrToFactory[DataEndPacketStr] = reflect.TypeOf(DataEndPacketType{})
 }
 
+func RegisterPacketType(typeStr string, rtype reflect.Type) {
+	TypeStrToFactory[typeStr] = rtype
+}
+
 func MakePacket(packetType string) (PacketType, error) {
 	rtype := TypeStrToFactory[packetType]
 	if rtype == nil {
@@ -355,14 +359,15 @@ func FmtMessagePacket(fmtStr string, args ...interface{}) *MessagePacketType {
 }
 
 type InitPacketType struct {
-	Type      string   `json:"type"`
-	Version   string   `json:"version"`
-	ScHomeDir string   `json:"schomedir,omitempty"`
-	HomeDir   string   `json:"homedir,omitempty"`
-	Env       []string `json:"env,omitempty"`
-	User      string   `json:"user,omitempty"`
-	NotFound  bool     `json:"notfound,omitempty"`
-	UName     string   `json:"uname,omitempty"`
+	Type          string   `json:"type"`
+	Version       string   `json:"version"`
+	MShellHomeDir string   `json:"mshellhomedir,omitempty"`
+	HomeDir       string   `json:"homedir,omitempty"`
+	Env           []string `json:"env,omitempty"`
+	User          string   `json:"user,omitempty"`
+	NotFound      bool     `json:"notfound,omitempty"`
+	UName         string   `json:"uname,omitempty"`
+	RemoteId      string   `json:"remoteid,omitempty"`
 }
 
 func (*InitPacketType) GetType() string {
@@ -615,6 +620,22 @@ func MakePacketSender(output io.Writer) *PacketSender {
 	return sender
 }
 
+func MakeChannelPacketSender(packetCh chan PacketType) *PacketSender {
+	sender := &PacketSender{
+		Lock:   &sync.Mutex{},
+		SendCh: make(chan PacketType, PacketSenderQueueSize),
+		DoneCh: make(chan bool),
+	}
+	go func() {
+		defer close(sender.DoneCh)
+		defer sender.Close()
+		for pk := range sender.SendCh {
+			packetCh <- pk
+		}
+	}()
+	return sender
+}
+
 func (sender *PacketSender) Close() {
 	sender.Lock.Lock()
 	defer sender.Lock.Unlock()
@@ -676,6 +697,8 @@ func (DefaultUPR) UnknownPacket(pk PacketType) {
 	} else if pk.GetType() == RawPacketStr {
 		rawPacket := pk.(*RawPacketType)
 		fmt.Fprintf(os.Stderr, "%s\n", rawPacket.Data)
+	} else if pk.GetType() == CmdStartPacketStr {
+		return // do nothing
 	} else {
 		fmt.Fprintf(os.Stderr, "[error] invalid packet received '%s'", AsExtType(pk))
 	}

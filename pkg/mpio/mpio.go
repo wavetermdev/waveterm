@@ -200,7 +200,7 @@ func (m *Multiplexer) runPacketInputLoop() *packet.CmdDonePacketType {
 	defer m.HandleInputDone()
 	for pk := range m.Input.MainCh {
 		if m.Debug {
-			fmt.Printf("PK> %s\n", packet.AsString(pk))
+			fmt.Printf("PK-M> %s\n", packet.AsString(pk))
 		}
 		if pk.GetType() == packet.DataPacketStr {
 			dataPacket := pk.(*packet.DataPacketType)
@@ -219,10 +219,6 @@ func (m *Multiplexer) runPacketInputLoop() *packet.CmdDonePacketType {
 		if pk.GetType() == packet.CmdDonePacketStr {
 			donePacket := pk.(*packet.CmdDonePacketType)
 			return donePacket
-		}
-		if pk.GetType() == packet.CmdStartPacketStr {
-			// nothing
-			continue
 		}
 		m.UPR.UnknownPacket(pk)
 	}

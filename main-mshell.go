@@ -10,9 +10,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"os/user"
 	"strings"
-	"time"
 
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/cmdtail"
@@ -21,43 +19,6 @@ import (
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
 	"golang.org/x/sys/unix"
 )
-
-func doSingle(ck base.CommandKey) {
-	packetParser := packet.MakePacketParser(os.Stdin)
-	sender := packet.MakePacketSender(os.Stdout)
-	var runPacket *packet.RunPacketType
-	for pk := range packetParser.MainCh {
-		if pk.GetType() == packet.RunPacketStr {
-			runPacket, _ = pk.(*packet.RunPacketType)
-			break
-		}
-		sender.SendErrorPacket(fmt.Sprintf("invalid packet '%s' sent to mshell", pk.GetType()))
-		return
-	}
-	if runPacket == nil {
-		sender.SendErrorPacket("did not receive a 'run' packet")
-		return
-	}
-	if runPacket.CK.IsEmpty() {
-		runPacket.CK = ck
-	}
-	if runPacket.CK != ck {
-		sender.SendErrorPacket(fmt.Sprintf("run packet cmdid[%s] did not match arg[%s]", runPacket.CK, ck))
-		return
-	}
-	cmd, err := shexec.RunCommandDetached(runPacket, sender)
-	if err != nil {
-		sender.SendErrorPacket(fmt.Sprintf("error running command: %v", err))
-		return
-	}
-	shexec.SetupSignalsForDetach()
-	startPacket := cmd.MakeCmdStartPacket()
-	sender.SendPacket(startPacket)
-	donePacket := cmd.WaitForCommand()
-	sender.SendPacket(donePacket)
-	sender.Close()
-	sender.WaitForDone()
-}
 
 func doMainRun(pk *packet.RunPacketType, sender *packet.PacketSender) {
 	err := shexec.ValidateRunPacket(pk)
@@ -122,13 +83,8 @@ func doGetCmd(tailer *cmdtail.Tailer, pk *packet.GetCmdPacketType, sender *packe
 }
 
 func doMain() {
-	scHomeDir, err := base.GetScHomeDir()
-	if err != nil {
-		packet.SendErrorPacket(os.Stdout, err.Error())
-		return
-	}
 	homeDir := base.GetHomeDir()
-	err = os.Chdir(homeDir)
+	err := os.Chdir(homeDir)
 	if err != nil {
 		packet.SendErrorPacket(os.Stdout, fmt.Sprintf("cannot change directory to $HOME '%s': %v", homeDir, err))
 		return
@@ -146,13 +102,7 @@ func doMain() {
 		return
 	}
 	go tailer.Run()
-	initPacket := packet.MakeInitPacket()
-	initPacket.Env = os.Environ()
-	initPacket.HomeDir = homeDir
-	initPacket.ScHomeDir = scHomeDir
-	if user, _ := user.Current(); user != nil {
-		initPacket.User = user.Username
-	}
+	initPacket := shexec.MakeInitPacket()
 	sender.SendPacket(initPacket)
 	for pk := range packetParser.MainCh {
 		if pk.GetType() == packet.RunPacketStr {
@@ -208,19 +158,14 @@ func handleSingle() {
 	packetParser := packet.MakePacketParser(os.Stdin)
 	sender := packet.MakePacketSender(os.Stdout)
 	defer func() {
-		// wait for sender to complete
 		sender.Close()
 		sender.WaitForDone()
 	}()
+	initPacket := shexec.MakeInitPacket()
+	sender.SendPacket(initPacket)
 	if len(os.Args) >= 3 && os.Args[2] == "--version" {
-		initPacket := packet.MakeInitPacket()
-		initPacket.Version = base.MShellVersion
-		sender.SendPacket(initPacket)
 		return
 	}
-	initPacket := packet.MakeInitPacket()
-	initPacket.Version = base.MShellVersion
-	sender.SendPacket(initPacket)
 	runPacket, err := readFullRunPacket(packetParser)
 	if err != nil {
 		ck := base.CommandKey("")
@@ -236,12 +181,11 @@ func handleSingle() {
 		return
 	}
 	if runPacket.Detached {
-		cmd, err := shexec.RunCommandDetached(runPacket, sender)
+		err := shexec.RunCommandDetached(runPacket, sender)
 		if err != nil {
 			sender.SendCKErrorPacket(runPacket.CK, err.Error())
 			return
 		}
-		cmd.WaitForCommand()
 	} else {
 		cmd, err := shexec.RunCommandSimple(runPacket, sender)
 		if err != nil {
@@ -559,18 +503,5 @@ func main() {
 			os.Exit(rtnCode)
 		}
 		return
-	}
-
-	if len(os.Args) >= 2 {
-		ck := base.CommandKey(os.Args[1])
-		if err := ck.Validate("mshell arg"); err != nil {
-			packet.SendErrorPacket(os.Stdout, err.Error())
-			return
-		}
-		doSingle(ck)
-		time.Sleep(100 * time.Millisecond)
-		return
-	} else {
-		doMain()
 	}
 }

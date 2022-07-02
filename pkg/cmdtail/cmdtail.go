@@ -75,7 +75,7 @@ func (pos TailPos) IsCurrent(entry CmdWatchEntry) bool {
 type Tailer struct {
 	Lock      *sync.Mutex
 	WatchList map[base.CommandKey]CmdWatchEntry
-	ScHomeDir string
+	MHomeDir  string
 	Watcher   *fsnotify.Watcher
 	Sender    *packet.PacketSender
 }
@@ -101,7 +101,7 @@ func (t *Tailer) removeTailPos_nolock(cmdKey base.CommandKey, reqId string) {
 	}
 
 	// delete from watchlist, remove watches
-	fileNames := base.MakeCommandFileNamesWithHome(t.ScHomeDir, cmdKey)
+	fileNames := base.MakeCommandFileNamesWithHome(t.MHomeDir, cmdKey)
 	delete(t.WatchList, cmdKey)
 	t.Watcher.Remove(fileNames.PtyOutFile)
 	t.Watcher.Remove(fileNames.RunnerOutFile)
@@ -130,16 +130,14 @@ func (t *Tailer) getEntryAndPos_nolock(cmdKey base.CommandKey, reqId string) (Cm
 }
 
 func MakeTailer(sender *packet.PacketSender) (*Tailer, error) {
-	scHomeDir, err := base.GetScHomeDir()
-	if err != nil {
-		return nil, err
-	}
+	mhomeDir := base.GetMShellHomeDir()
 	rtn := &Tailer{
 		Lock:      &sync.Mutex{},
 		WatchList: make(map[base.CommandKey]CmdWatchEntry),
-		ScHomeDir: scHomeDir,
+		MHomeDir:  mhomeDir,
 		Sender:    sender,
 	}
+	var err error
 	rtn.Watcher, err = fsnotify.NewWatcher()
 	if err != nil {
 		return nil, err
@@ -196,7 +194,7 @@ func (t *Tailer) runSingleDataTransfer(key base.CommandKey, reqId string) (*pack
 	if !foundPos {
 		return nil, false
 	}
-	fileNames := base.MakeCommandFileNamesWithHome(t.ScHomeDir, key)
+	fileNames := base.MakeCommandFileNamesWithHome(t.MHomeDir, key)
 	dataPacket := t.makeCmdDataPacket(fileNames, entry, pos)
 
 	t.Lock.Lock()
@@ -353,7 +351,7 @@ func (t *Tailer) AddWatch(getPacket *packet.GetCmdPacketType) error {
 	if getPacket.ReqId == "" {
 		return fmt.Errorf("getcmd, no reqid specified")
 	}
-	fileNames := base.MakeCommandFileNamesWithHome(t.ScHomeDir, getPacket.CK)
+	fileNames := base.MakeCommandFileNamesWithHome(t.MHomeDir, getPacket.CK)
 	t.Lock.Lock()
 	defer t.Lock.Unlock()
 	key := getPacket.CK
@@ -370,7 +368,7 @@ func (t *Tailer) AddWatch(getPacket *packet.GetCmdPacketType) error {
 			return err
 		}
 		entry = CmdWatchEntry{CmdKey: key}
-		entry.fillFilePos(t.ScHomeDir)
+		entry.fillFilePos(t.MHomeDir)
 	}
 	pos, foundPos := entry.getTailPos(getPacket.ReqId)
 	if !foundPos {

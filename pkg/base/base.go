@@ -9,6 +9,7 @@ package base
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -19,20 +20,15 @@ import (
 	"github.com/google/uuid"
 )
 
-const DefaultMShellPath = "mshell"
-const DefaultUserMShellPath = ".mshell/mshell"
-const MShellPathVarName = "MSHELL_PATH"
-const SSHCommandVarName = "SSH_COMMAND"
-const ScHomeVarName = "SCRIPTHAUS_HOME"
 const HomeVarName = "HOME"
-const ScShell = "bash"
-const SessionsDirBaseName = ".sessions"
-const RunnerBaseName = "runner"
-const SessionDBName = "session.db"
-const ScReadyString = "scripthaus runner ready"
+const DefaultMShellHome = "~/.mshell"
+const DefaultMShellName = "mshell"
+const MShellPathVarName = "MSHELL_PATH"
+const MShellHomeVarName = "MSHELL_HOME"
+const SSHCommandVarName = "SSH_COMMAND"
+const SessionsDirBaseName = "sessions"
 const MShellVersion = "0.1.0"
-
-const OSCEscError = "error"
+const RemoteIdFile = "remoteid"
 
 type CommandFileNames struct {
 	PtyOutFile    string
@@ -110,16 +106,12 @@ func GetHomeDir() string {
 	return homeVar
 }
 
-func GetScHomeDir() (string, error) {
-	scHome := os.Getenv(ScHomeVarName)
-	if scHome == "" {
-		homeVar := os.Getenv(HomeVarName)
-		if homeVar == "" {
-			return "", fmt.Errorf("Cannot resolve scripthaus home directory (SCRIPTHAUS_HOME and HOME not set)")
-		}
-		scHome = path.Join(homeVar, "scripthaus")
+func GetMShellHomeDir() string {
+	homeVar := os.Getenv(MShellHomeVarName)
+	if homeVar != "" {
+		return homeVar
 	}
-	return scHome, nil
+	return ExpandHomeDir(DefaultMShellHome)
 }
 
 func GetCommandFileNames(ck CommandKey) (*CommandFileNames, error) {
@@ -139,8 +131,8 @@ func GetCommandFileNames(ck CommandKey) (*CommandFileNames, error) {
 	}, nil
 }
 
-func MakeCommandFileNamesWithHome(scHome string, ck CommandKey) *CommandFileNames {
-	base := path.Join(scHome, SessionsDirBaseName, ck.GetSessionId(), ck.GetCmdId())
+func MakeCommandFileNamesWithHome(mhome string, ck CommandKey) *CommandFileNames {
+	base := path.Join(mhome, SessionsDirBaseName, ck.GetSessionId(), ck.GetCmdId())
 	return &CommandFileNames{
 		PtyOutFile:    base + ".ptyout",
 		StdinFifo:     base + ".stdin",
@@ -174,11 +166,8 @@ func EnsureSessionDir(sessionId string) (string, error) {
 	if sessionId == "" {
 		return "", fmt.Errorf("Bad sessionid, cannot be empty")
 	}
-	shhome, err := GetScHomeDir()
-	if err != nil {
-		return "", err
-	}
-	sdir := path.Join(shhome, SessionsDirBaseName, sessionId)
+	mhome := GetMShellHomeDir()
+	sdir := path.Join(mhome, SessionsDirBaseName, sessionId)
 	info, err := os.Stat(sdir)
 	if errors.Is(err, fs.ErrNotExist) {
 		err = os.MkdirAll(sdir, 0777)
@@ -197,51 +186,22 @@ func EnsureSessionDir(sessionId string) (string, error) {
 }
 
 func GetMShellPath() (string, error) {
-	msPath := os.Getenv(MShellPathVarName)
+	msPath := os.Getenv(MShellPathVarName) // use MSHELL_PATH
 	if msPath != "" {
 		return exec.LookPath(msPath)
 	}
-	userMShellPath := path.Join(GetHomeDir(), DefaultUserMShellPath)
+	mhome := GetMShellHomeDir()
+	userMShellPath := path.Join(mhome, DefaultMShellName) // look in ~/.mshell
 	msPath, err := exec.LookPath(userMShellPath)
-	if err != nil {
+	if err == nil {
 		return msPath, nil
 	}
-	return exec.LookPath(DefaultMShellPath)
+	return exec.LookPath(DefaultMShellName) // standard path lookup for 'mshell'
 }
 
-func GetScSessionsDir() (string, error) {
-	scHome, err := GetScHomeDir()
-	if err != nil {
-		return "", err
-	}
-	return path.Join(scHome, SessionsDirBaseName), nil
-}
-
-func GetSessionDBName(sessionId string) (string, error) {
-	scHome, err := GetScHomeDir()
-	if err != nil {
-		return "", err
-	}
-	return path.Join(scHome, SessionDBName), nil
-}
-
-// SH OSC Escapes (code 198, S=19, H=8)
-//   \e]198;cmdid;(cmd-id)BEL - return command-id to server
-//   \e]198;remote;0BEL       - runner program not available
-//   \e]198;remote;1BEL       - runner program is available
-//   \e]198;error;(error-str)BEL - communicate an internal error
-func MakeSHOSCEsc(escName string, data string) string {
-	return fmt.Sprintf("\033]198;%s;%s\007", escName, data)
-}
-
-func WriteErrorMsg(fileName string, errVal string) error {
-	fd, err := os.OpenFile(fileName, os.O_APPEND|os.O_WRONLY, 0600)
-	if err != nil {
-		return err
-	}
-	oscEsc := MakeSHOSCEsc(OSCEscError, errVal)
-	_, writeErr := fd.Write([]byte(oscEsc))
-	return writeErr
+func GetMShellSessionsDir() (string, error) {
+	mhome := GetMShellHomeDir()
+	return path.Join(mhome, SessionsDirBaseName), nil
 }
 
 func ExpandHomeDir(pathStr string) string {
@@ -261,4 +221,33 @@ func ValidGoArch(goos string, goarch string) bool {
 
 func GoArchOptFile(goos string, goarch string) string {
 	return fmt.Sprintf("/opt/mshell/bin/mshell.%s.%s", goos, goarch)
+}
+
+func GetRemoteId() (string, error) {
+	mhome := GetMShellHomeDir()
+	remoteIdFile := path.Join(mhome, RemoteIdFile)
+	fd, err := os.Open(remoteIdFile)
+	if errors.Is(err, fs.ErrNotExist) {
+		// write the file
+		remoteId := uuid.New().String()
+		err = os.WriteFile(remoteIdFile, []byte(remoteId), 0644)
+		if err != nil {
+			return "", fmt.Errorf("cannot write remoteid to '%s': %w", remoteIdFile, err)
+		}
+		return remoteId, nil
+	} else if err != nil {
+		return "", fmt.Errorf("cannot read remoteid file '%s': %w", remoteIdFile, err)
+	} else {
+		defer fd.Close()
+		contents, err := io.ReadAll(fd)
+		if err != nil {
+			return "", fmt.Errorf("cannot read remoteid file '%s': %w", remoteIdFile, err)
+		}
+		uuidStr := string(contents)
+		_, err = uuid.Parse(uuidStr)
+		if err != nil {
+			return "", fmt.Errorf("invalid uuid read from '%s': %w", remoteIdFile, err)
+		}
+		return uuidStr, nil
+	}
 }
