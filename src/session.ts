@@ -37,27 +37,46 @@ function getLineId(line : LineType) : string {
     return sprintf("%s-%s-%s", line.sessionid, line.windowid, line.lineid);
 }
 
-type WindowType = {
+type SessionRemoteDataType = {
+    sessionid : string,
+    windowid : string,
+    remoteid : string,
+    remotename : string,
+    cwd : string,
+}
+
+type WindowDataType = {
     sessionid : string,
     windowid : string,
     name : string,
+    curremote : string,
+    remotes : SessionRemoteDataType[],
     lines : LineType[],
+    version : number,
 };
 
 type HistoryItem = {
     cmdtext : string,
 };
 
+type SessionDataType = {
+    sessionid : string,
+    name : string,
+    windows : WindowDataType[],
+    cmds : CmdDataType[],
+};
+
 class Session {
     sessionId : string;
     name : string;
-    windows : WindowType[];
-    activeWindowId : string;
+    windows : WindowDataType[];
+    activeWindowId : mobx.IObservableValue<string> = mobx.observable.box(null);
     termMap : Record<string, TermWrap> = {};
     termMapById : Record<string, TermWrap> = {};
     history : HistoryItem[] = [];
     curRemote : string;
     curDir : string;
+    loading : mobx.IObservableValue<boolean> = mobx.observable.box(false);
 
     constructor() {
     }
@@ -124,12 +143,13 @@ class Session {
         console.log("cmddata", pk);
     }
 
-    getActiveWindow() : WindowType {
-        if (this.windows == null) {
+    getActiveWindow() : WindowDataType {
+        if (this.windows == null || this.windows.length == 0) {
             return null;
         }
+        let awid = this.activeWindowId.get();
         for (let i=0; i<this.windows.length; i++) {
-            if (this.windows[i].windowid == this.activeWindowId) {
+            if (this.windows[i].windowid == awid) {
                 return this.windows[i];
             }
         }
@@ -137,9 +157,31 @@ class Session {
     }
 }
 
-var DefaultSession : Session = null;
+var DefaultSession : Session = new Session();
+
+function loadDefaultSession() {
+    if (DefaultSession.loading.get()) {
+        return;
+    }
+    let usp = new URLSearchParams({name: "default"});
+    let url = sprintf("http://localhost:8080/api/get-session?") + usp.toString();
+    fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
+        mobx.action(() => {
+            let sdata = data.data;
+            DefaultSession.loading.set(false);
+            DefaultSession.name = sdata.name;
+            DefaultSession.windows = sdata.windows;
+            DefaultSession.activeWindowId.set(sdata.windows[0].windowid);
+            console.log("session", sdata);
+        })();
+    }).catch((err) => {
+        console.log("error calling get-session", err)
+    });
+}
 
 function getDefaultSession() : Session {
+    return DefaultSession;
+    
     if (DefaultSession != null) {
         return DefaultSession;
     }
@@ -157,5 +199,5 @@ function getDefaultSession() : Session {
 
 window.getDefaultSession = getDefaultSession;
 
-export {Session, getDefaultSession, getLineId};
-export type {LineType, WindowType};
+export {Session, getDefaultSession, getLineId, loadDefaultSession};
+export type {LineType, WindowDataType};

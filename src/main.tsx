@@ -318,8 +318,14 @@ class SessionView extends React.Component<{session : SessionType}, {}> {
     render() {
         let session = this.props.session;
         let window = session.getActiveWindow();
-        let lines = window.lines;
+        if (window == null) {
+            return <div className="session-view">(no active window {session.activeWindowId.get()})</div>;
+        }
+        let lines = window.lines || [];
         let idx = 0;
+        if (session.loading.get()) {
+            return <div className="session-view">(loading)</div>;
+        }
         return (
             <div className="session-view">
                 <div className="lines" onScroll={this.scrollHandler}>
