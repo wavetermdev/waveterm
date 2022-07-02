@@ -55,13 +55,13 @@ type SessionType struct {
 }
 
 type WindowType struct {
-	SessionId string        `json:"sessionid"`
-	WindowId  string        `json:"windowid"`
-	Name      string        `json:"name"`
-	CurRemote string        `json:"curremote"`
-	Remotes   []*RemoteType `json:"remotes"`
-	Lines     []*LineType   `json:"lines"`
-	Version   int           `json:"version"`
+	SessionId string           `json:"sessionid"`
+	WindowId  string           `json:"windowid"`
+	Name      string           `json:"name"`
+	CurRemote string           `json:"curremote"`
+	Remotes   []*SessionRemote `json:"remotes"`
+	Lines     []*LineType      `json:"lines"`
+	Version   int              `json:"version"`
 }
 
 type SessionRemote struct {

@@ -130,6 +130,20 @@ func GetSessionByName(ctx context.Context, name string) (*SessionType, error) {
 	return rtnSession, nil
 }
 
+func GetWindowLines(ctx context.Context, sessionId string, windowId string) ([]*LineType, error) {
+	var lines []*LineType
+	db, err := GetDB()
+	if err != nil {
+		return nil, err
+	}
+	query := `SELECT * FROM line WHERE sessionid = ? AND windowid = ?`
+	err = db.SelectContext(ctx, &lines, query, sessionId, windowId)
+	if err != nil {
+		return nil, err
+	}
+	return lines, nil
+}
+
 // also creates window, and sessionremote
 func InsertSessionWithName(ctx context.Context, sessionName string) error {
 	if sessionName == "" {
@@ -165,6 +179,31 @@ func InsertSessionWithName(ctx context.Context, sessionName string) error {
 		}
 		query = `INSERT INTO session_remote (sessionid, windowid, remotename, remoteid, cwd) VALUES (:sessionid, :windowid, :remotename, :remoteid, :cwd)`
 		tx.NamedExecWrap(query, sr)
+		return nil
+	})
+}
+
+func InsertLine(ctx context.Context, line *LineType) error {
+	if line == nil {
+		return fmt.Errorf("line cannot be nil")
+	}
+	if line.LineId != 0 {
+		return fmt.Errorf("new line cannot have LineId set")
+	}
+	return WithTx(ctx, func(tx *TxWrap) error {
+		var windowId string
+		query := `SELECT windowid FROM window WHERE sessionid = ? AND windowid = ?`
+		hasWindow := tx.GetWrap(&windowId, query, line.SessionId, line.WindowId)
+		if !hasWindow {
+			return fmt.Errorf("window not found, cannot insert line[%s/%s]", line.SessionId, line.WindowId)
+		}
+		var maxLineId int
+		query = `SELECT max(lineid) FROM line WHERE sessionid = ? AND windowid = ?`
+		tx.GetWrap(&maxLineId, query, line.SessionId, line.WindowId)
+		line.LineId = maxLineId + 1
+		query = `INSERT INTO line  ( sessionid, windowid, lineid, ts, userid, linetype, text, cmdid)
+                            VALUES (:sessionid,:windowid,:lineid,:ts,:userid,:linetype,:text,:cmdid)`
+		tx.NamedExecWrap(query, line)
 		return nil
 	})
 }

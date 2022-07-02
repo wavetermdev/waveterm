@@ -20,6 +20,7 @@ import (
 	"github.com/scripthaus-dev/mshell/pkg/cmdtail"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/sh2-server/pkg/remote"
+	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
 	"github.com/scripthaus-dev/sh2-server/pkg/wsshell"
 )
@@ -256,6 +257,53 @@ func sendCmdInput(pk *packet.InputPacketType) error {
 	return nil
 }
 
+// params: name
+func GetSession(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Vary", "Origin")
+	w.Header().Set("Cache-Control", "no-cache")
+	qvals := r.URL.Query()
+	name := qvals.Get("name")
+	if name == "" {
+		WriteJsonError(w, fmt.Errorf("must specify a name"))
+		return
+	}
+	session, err := sstore.GetSessionByName(r.Context(), name)
+	if err != nil {
+		WriteJsonError(w, err)
+		return
+	}
+	WriteJsonSuccess(w, session)
+	return
+}
+
+// params: sessionid, windowid
+func GetWindowLines(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Vary", "Origin")
+	w.Header().Set("Cache-Control", "no-cache")
+	qvals := r.URL.Query()
+	sessionId := qvals.Get("sessionid")
+	windowId := qvals.Get("windowid")
+	if _, err := uuid.Parse(sessionId); err != nil {
+		WriteJsonError(w, fmt.Errorf("invalid sessionid: %w", err))
+		return
+	}
+	if _, err := uuid.Parse(windowId); err != nil {
+		WriteJsonError(w, fmt.Errorf("invalid windowid: %w", err))
+		return
+	}
+	lines, err := sstore.GetWindowLines(r.Context(), sessionId, windowId)
+	if err != nil {
+		WriteJsonError(w, err)
+		return
+	}
+	WriteJsonSuccess(w, lines)
+	return
+}
+
 func GetPtyOutFile(sessionId string, cmdId string) string {
 	pathStr := fmt.Sprintf("/Users/mike/scripthaus/.sessions/%s/%s.ptyout", sessionId, cmdId)
 	return pathStr
@@ -337,24 +385,24 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	decoder := json.NewDecoder(r.Body)
-	var params runCommandParams
-	err := decoder.Decode(&params)
+	var commandPk scpacket.FeCommandPacketType
+	err := decoder.Decode(&commandPk)
 	if err != nil {
 		WriteJsonError(w, fmt.Errorf("error decoding json: %w", err))
 		return
 	}
-	if _, err = uuid.Parse(params.SessionId); err != nil {
-		WriteJsonError(w, fmt.Errorf("invalid sessionid '%s': %w", params.SessionId, err))
+	if _, err = uuid.Parse(commandPk.SessionId); err != nil {
+		WriteJsonError(w, fmt.Errorf("invalid sessionid '%s': %w", commandPk.SessionId, err))
 		return
 	}
-	commandStr := strings.TrimSpace(params.Command)
+	commandStr := strings.TrimSpace(commandPk.CmdStr)
 	if commandStr == "" {
 		WriteJsonError(w, fmt.Errorf("invalid emtpty command"))
 		return
 	}
 	if strings.HasPrefix(commandStr, "/comment ") {
 		text := strings.TrimSpace(commandStr[9:])
-		rtnLine := sstore.MakeNewLineText(params.SessionId, params.WindowId, text)
+		rtnLine := sstore.MakeNewLineText(commandPk.SessionId, commandPk.WindowId, text)
 		WriteJsonSuccess(w, &runCommandResponse{Line: rtnLine})
 		return
 	}
@@ -370,10 +418,10 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	rtnLine := sstore.MakeNewLineCmd(params.SessionId, params.WindowId)
+	rtnLine := sstore.MakeNewLineCmd(commandPk.SessionId, commandPk.WindowId)
 	// rtnLine.CmdText = commandStr
 	runPacket := packet.MakeRunPacket()
-	runPacket.CK = base.MakeCommandKey(params.SessionId, rtnLine.CmdId)
+	runPacket.CK = base.MakeCommandKey(commandPk.SessionId, rtnLine.CmdId)
 	runPacket.Cwd = ""
 	runPacket.Env = nil
 	runPacket.Command = commandStr
@@ -392,6 +440,12 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 //   returns:
 //     * userid
 //     * sessionid
+//
+// /api/get-session
+//   params:
+//     * name
+//   returns:
+//     * session
 //
 // /api/ptyout (pos=[position]) - returns contents of ptyout file
 //   params:
@@ -515,6 +569,8 @@ func main() {
 	go runWebSocketServer()
 	gr := mux.NewRouter()
 	gr.HandleFunc("/api/ptyout", GetPtyOut)
+	gr.HandleFunc("/api/get-session", GetSession)
+	gr.HandleFunc("/api/get-window-lines", GetWindowLines)
 	gr.HandleFunc("/api/run-command", HandleRunCommand).Methods("GET", "POST", "OPTIONS")
 	server := &http.Server{
 		Addr:           MainServerAddr,
