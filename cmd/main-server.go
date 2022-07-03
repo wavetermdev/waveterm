@@ -258,7 +258,7 @@ func sendCmdInput(pk *packet.InputPacketType) error {
 }
 
 // params: name
-func GetSession(w http.ResponseWriter, r *http.Request) {
+func HandleGetSession(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Vary", "Origin")
@@ -279,7 +279,7 @@ func GetSession(w http.ResponseWriter, r *http.Request) {
 }
 
 // params: sessionid, windowid
-func GetWindowLines(w http.ResponseWriter, r *http.Request) {
+func HandleGetWindowLines(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Vary", "Origin")
@@ -309,7 +309,7 @@ func GetPtyOutFile(sessionId string, cmdId string) string {
 	return pathStr
 }
 
-func GetPtyOut(w http.ResponseWriter, r *http.Request) {
+func HandleGetPtyOut(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Vary", "Origin")
@@ -364,12 +364,6 @@ func WriteJsonSuccess(w http.ResponseWriter, data interface{}) {
 	return
 }
 
-type runCommandParams struct {
-	SessionId string `json:"sessionid"`
-	WindowId  string `json:"windowid"`
-	Command   string `json:"command"`
-}
-
 type runCommandResponse struct {
 	Line *sstore.LineType `json:"line"`
 }
@@ -395,16 +389,24 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 		WriteJsonError(w, fmt.Errorf("invalid sessionid '%s': %w", commandPk.SessionId, err))
 		return
 	}
-	commandStr := strings.TrimSpace(commandPk.CmdStr)
-	if commandStr == "" {
-		WriteJsonError(w, fmt.Errorf("invalid emtpty command"))
+	line, err := ProcessFeCommandPacket(&commandPk)
+	if err != nil {
+		WriteJsonError(w, err)
 		return
+	}
+	WriteJsonSuccess(w, &runCommandResponse{Line: line})
+	return
+}
+
+func ProcessFeCommandPacket(pk *scpacket.FeCommandPacketType) (*sstore.LineType, error) {
+	commandStr := strings.TrimSpace(pk.CmdStr)
+	if commandStr == "" {
+		return nil, fmt.Errorf("invalid emtpty command")
 	}
 	if strings.HasPrefix(commandStr, "/comment ") {
 		text := strings.TrimSpace(commandStr[9:])
-		rtnLine := sstore.MakeNewLineText(commandPk.SessionId, commandPk.WindowId, text)
-		WriteJsonSuccess(w, &runCommandResponse{Line: rtnLine})
-		return
+		rtnLine := sstore.MakeNewLineText(pk.SessionId, pk.WindowId, text)
+		return rtnLine, nil
 	}
 	if strings.HasPrefix(commandStr, "cd ") {
 		newDir := strings.TrimSpace(commandStr[3:])
@@ -414,26 +416,23 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 		localRemote := remote.GetRemote("local")
 		if localRemote != nil {
 			localRemote.Input.SendPacket(cdPacket)
-			return
 		}
-		return
+		return nil, nil
 	}
-	rtnLine := sstore.MakeNewLineCmd(commandPk.SessionId, commandPk.WindowId)
-	// rtnLine.CmdText = commandStr
+	rtnLine := sstore.MakeNewLineCmd(pk.SessionId, pk.WindowId)
 	runPacket := packet.MakeRunPacket()
-	runPacket.CK = base.MakeCommandKey(commandPk.SessionId, rtnLine.CmdId)
+	runPacket.CK = base.MakeCommandKey(pk.SessionId, rtnLine.CmdId)
 	runPacket.Cwd = ""
 	runPacket.Env = nil
 	runPacket.Command = commandStr
 	fmt.Printf("run-packet %v\n", runPacket)
-	WriteJsonSuccess(w, &runCommandResponse{Line: rtnLine})
 	go func() {
 		localRemote := remote.GetRemote("local")
 		if localRemote != nil {
 			localRemote.Input.SendPacket(runPacket)
 		}
 	}()
-	return
+	return rtnLine, nil
 }
 
 // /api/start-session
@@ -568,9 +567,9 @@ func main() {
 	}
 	go runWebSocketServer()
 	gr := mux.NewRouter()
-	gr.HandleFunc("/api/ptyout", GetPtyOut)
-	gr.HandleFunc("/api/get-session", GetSession)
-	gr.HandleFunc("/api/get-window-lines", GetWindowLines)
+	gr.HandleFunc("/api/ptyout", HandleGetPtyOut)
+	gr.HandleFunc("/api/get-session", HandleGetSession)
+	gr.HandleFunc("/api/get-window-lines", HandleGetWindowLines)
 	gr.HandleFunc("/api/run-command", HandleRunCommand).Methods("GET", "POST", "OPTIONS")
 	server := &http.Server{
 		Addr:           MainServerAddr,

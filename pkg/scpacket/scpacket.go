@@ -18,6 +18,7 @@ type FeCommandPacketType struct {
 	Type        string      `json:"type"`
 	SessionId   string      `json:"sessionid"`
 	WindowId    string      `json:"windowid"`
+	UserId      string      `json:"userid"`
 	CmdStr      string      `json:"cmdstr"`
 	RemoteState RemoteState `json:"remotestate"`
 }
