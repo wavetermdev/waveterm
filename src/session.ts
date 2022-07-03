@@ -81,9 +81,36 @@ class Session {
     constructor() {
     }
 
+    getWindowCurRemoteData(windowid : string) : SessionRemoteDataType {
+        let window = this.getWindowById(windowid);
+        if (window == null) {
+            return null;
+        }
+        for (let i=0; i<window.remotes.length; i++) {
+            let rdata = window.remotes[i];
+            if (rdata.remotename == window.curremote) {
+                return rdata;
+            }
+        }
+        return null;
+    }
+
+    getWindowById(windowid : string) : WindowDataType {
+        for (let i=0; i<windows.length; i++) {
+            if (windows[i].windowid == windowid) {
+                return windows[i];
+            }
+        }
+        return null;
+    }
+
     submitCommand(windowid : string, commandStr : string) {
         let url = sprintf("http://localhost:8080/api/run-command");
-        let data = {sessionid: this.sessionId, windowid: windowid, command: commandStr, userid: GlobalUser};
+        let data = {type: "fecmd", sessionid: this.sessionId, windowid: windowid, cmdstr: commandStr, userid: GlobalUser};
+        data.remotestate = this.getWindowCurRemoteData();
+        if (data.remotestate == null) {
+            throw new Error(sprintf("no remotestate found for windowid:%s, cannot submit command", windowid));
+        }
         fetch(url, {method: "post", body: JSON.stringify(data)}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
             mobx.action(() => {
                 let lines = GlobalLines.get();
