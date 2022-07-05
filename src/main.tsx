@@ -3,11 +3,12 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
-import * as dayjs from 'dayjs'
+import dayjs from 'dayjs'
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import cn from "classnames"
 import {TermWrap} from "./term";
-import {getDefaultSession, getLineId} from "./session";
+import {getDefaultSession, getLineId, Session} from "./session";
+import type {LineType} from "./session";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 
 dayjs.extend(localizedFormat)
@@ -70,7 +71,7 @@ class LineText extends React.Component<{line : LineType, session : Session}, {}>
 }
 
 @mobxReact.observer
-class LineCmd extends React.Component<{line : LineType, session : Session, changeSizeCallback : () => void}, {}> {
+class LineCmd extends React.Component<{line : LineType, session : Session, changeSizeCallback? : (term : TermWrap) => void}, {}> {
     constructor(props) {
         super(props);
     }
@@ -127,7 +128,7 @@ class LineCmd extends React.Component<{line : LineType, session : Session, chang
         let termSize = termWrap.getSize();
         let formattedTime = getLineDateStr(line.ts);
         let cellHeightPx = 17;
-        let totalHeight = cellHeightPx * termWrap.usedRows;
+        let totalHeight = cellHeightPx * termWrap.usedRows.get();
         return (
             <div className="line line-cmd" id={"line-" + getLineId(line)}>
                 <div className={cn("avatar",{"num4": lineid.length == 4}, {"num5": lineid.length >= 5}, {"running": running})}>
@@ -161,7 +162,7 @@ class LineCmd extends React.Component<{line : LineType, session : Session, chang
 }
 
 @mobxReact.observer
-class Line extends React.Component<{line : LineType, session : Session}, {}> {
+class Line extends React.Component<{line : LineType, session : Session, changeSizeCallback? : (term : TermWrap) => void}, {}> {
     render() {
         let line = this.props.line;
         if (line.linetype == "text") {
@@ -273,7 +274,7 @@ class CmdInput extends React.Component<{session : Session, windowid : string}, {
                         <div className="button is-static">mike@local</div>
                     </div>
                     <div className="control cmd-input-control is-expanded">
-                        <textarea value={curLine} onKeyDown={this.onKeyDown} onChange={this.onChange} className="input" type="text"></textarea>
+                        <textarea value={curLine} onKeyDown={this.onKeyDown} onChange={this.onChange} className="input"></textarea>
                     </div>
                     <div className="control cmd-exec">
                         <div onClick={this.doSubmitCmd} className="button">
@@ -289,8 +290,8 @@ class CmdInput extends React.Component<{session : Session, windowid : string}, {
 }
 
 @mobxReact.observer
-class SessionView extends React.Component<{session : SessionType}, {}> {
-    shouldFollow : IObservableValue<boolean> = mobx.observable.box(true);
+class SessionView extends React.Component<{session : Session}, {}> {
+    shouldFollow : mobx.IObservableValue<boolean> = mobx.observable.box(true);
 
     @boundMethod
     scrollHandler(event : any) {
@@ -325,6 +326,7 @@ class SessionView extends React.Component<{session : SessionType}, {}> {
             return <div className="session-view">(loading)</div>;
         }
         let idx = 0;
+        let line : LineType = null;
         return (
             <div className="session-view">
                 <div className="lines" onScroll={this.scrollHandler}>

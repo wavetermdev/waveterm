@@ -2,11 +2,13 @@ import * as mobx from "mobx";
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 
+declare var window : any;
+
 class WSControl {
     wsConn : any;
     open : mobx.IObservableValue<boolean>;
     opening : boolean = false;
-    reconnectTimes : int = 0;
+    reconnectTimes : number = 0;
     msgQueue : any[] = [];
     reqMap : Record<string, (dataPacket : any) => void> = {};
     
@@ -109,7 +111,7 @@ class WSControl {
             return;
         }
         if (eventData.type == "ping") {
-            this.wsConn.send(JSON.stringify({type: "pong", stime: parseInt(Date.now()/1000)}));
+            this.wsConn.send(JSON.stringify({type: "pong", stime: Date.now()}));
             return;
         }
         if (eventData.type == "pong") {

@@ -1,3 +1,5 @@
+import {sprintf} from "sprintf-js";
+
 function fetchJsonData(resp : any, ctErr : boolean) : Promise<any> {
     let contentType = resp.headers.get("Content-Type");
     if (contentType != null && contentType.startsWith("application/json")) {

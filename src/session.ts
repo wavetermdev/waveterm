@@ -49,7 +49,8 @@ type WindowDataType = {
     windowid : string,
     name : string,
     curremote : string,
-    lines : mobx.IObservableValue<LineType[]>,
+    lines : mobx.IObservableArray<LineType>,
+    linesLoading : mobx.IObservableValue<boolean>,
     version : number,
 };
 
@@ -62,6 +63,9 @@ type SessionDataType = {
     name : string,
     windows : WindowDataType[],
     cmds : CmdDataType[],
+};
+
+type CmdDataType = {
 };
 
 class Session {
@@ -112,7 +116,7 @@ class Session {
     }
 
     getCurWindow() : WindowDataType {
-        return this.getWindowById(this.activeWindowId);
+        return this.getWindowById(this.activeWindowId.get());
     }
 
     loadWindowLines(windowid : string) {
@@ -127,7 +131,7 @@ class Session {
         window.linesLoading.set(true);
         
         let usp = new URLSearchParams({sessionid: this.sessionId, windowid: windowid});
-        let url = sprintf("http://localhost:8080/api/get-window-lines?") + usp.toString();
+        let url = new URL(sprintf("http://localhost:8080/api/get-window-lines?") + usp.toString());
         fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
             mobx.action(() => {
                 window.lines.replace(data.data || []);
@@ -146,15 +150,16 @@ class Session {
 
     submitCommand(windowid : string, commandStr : string) {
         let url = sprintf("http://localhost:8080/api/run-command");
-        let data = {type: "fecmd", sessionid: this.sessionId, windowid: windowid, cmdstr: commandStr, userid: GlobalUser};
+        let data = {type: "fecmd", sessionid: this.sessionId, windowid: windowid, cmdstr: commandStr, userid: GlobalUser, remotestate: null};
         let curWindow = this.getCurWindow();
         if (curWindow == null) {
             throw new Error(sprintf("invalid current window=%s", this.activeWindowId));
         }
-        data.remotestate = this.getWindowCurRemoteData(this.activeWindowId);
-        if (data.remotestate == null) {
-            throw new Error(sprintf("no remotestate found for windowid:%s (remote=%s), cannot submit command", windowid, window.curremote));
+        let rstate = this.getWindowCurRemoteData(this.activeWindowId.get());
+        if (rstate == null) {
+            throw new Error(sprintf("no remotestate found for windowid:%s (remote=%s), cannot submit command", windowid, curWindow.curremote));
         }
+        data.remotestate = rstate;
         fetch(url, {method: "post", body: JSON.stringify(data)}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
             mobx.action(() => {
                 if (data.data != null && data.data.line != null) {
@@ -280,7 +285,7 @@ function initSession() {
     });
     
     let usp = new URLSearchParams({name: "default"});
-    let url = sprintf("http://localhost:8080/api/get-session?") + usp.toString();
+    let url = new URL(sprintf("http://localhost:8080/api/get-session?") + usp.toString());
     fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
         mobx.action(() => {
             let sdata = data.data;
@@ -307,7 +312,7 @@ function getDefaultSession() : Session {
     return DefaultSession;
 }
 
-window.getDefaultSession = getDefaultSession;
+(window as any).getDefaultSession = getDefaultSession;
 
 export {Session, getDefaultSession, getLineId, initSession};
 export type {LineType, WindowDataType};

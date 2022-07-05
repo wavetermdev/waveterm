@@ -19,7 +19,7 @@ function loadPtyOut(term : Terminal, sessionId : string, cmdId : string, delayMs
 }
 
 class TermWrap {
-    terminal : Terminal;
+    terminal : any;
     termId : string;
     sessionId : string;
     cmdId : string;
@@ -33,7 +33,7 @@ class TermWrap {
     atRowMax : boolean = false;
     initialized : boolean = false;
     changeSizeCallback : (TermWrap) => void = null;
-    usedRows : number = null;
+    usedRows : mobx.IObservableValue<number> = null;
 
     constructor(sessionId : string, cmdId : string) {
         this.termId = uuidv4();
@@ -109,7 +109,7 @@ class TermWrap {
                 usedRows = i+1;
             }
         }
-        this.usedRows = usedRows;
+        this.usedRows.set(usedRows);
         return;
     }
 
@@ -117,11 +117,11 @@ class TermWrap {
         this.flexRows = true;
         this.maxRows = rows;
         if (!flexRows) {
-            term.resize(rows, cols);
-            setTimeout(() => incRenderVersion(), 10);
+            this.terminal.resize(rows, cols);
+            setTimeout(() => this.incRenderVersion(), 10);
             return;
         }
-        resizeToContent();
+        this.resizeToContent();
     }
 
     getSize() : {rows : number, cols : number} {

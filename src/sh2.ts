@@ -7,9 +7,10 @@ import {GlobalWS} from "./ws";
 import {v4 as uuidv4} from "uuid";
 import {initSession} from "./session";
 
+// @ts-ignore
 let VERSION = __SHVERSION__;
 
-window.ScriptHausClientId = uuidv4();
+(window as any).ScriptHausClientId = uuidv4();
 
 document.addEventListener("DOMContentLoaded", () => {
     initSession();
