@@ -33,15 +33,21 @@ type RemoteType = {
     remoteid : string,
     remotename : string,
     status : string,
+    defaultstate : RemoteStateType,
+};
+
+type RemoteStateType = {
     cwd : string,
 };
 
-type SessionRemoteDataType = {
+type RemoteInstanceType = {
+    riid : string,
+    name : string,
     sessionid : string,
     windowid : string,
     remoteid : string,
-    remotename : string,
-    cwd : string,
+    sessionscope : boolean,
+    state : RemoteStateType,
 }
 
 type WindowDataType = {
@@ -77,30 +83,37 @@ class Session {
     termMapById : Record<string, TermWrap> = {};
     history : HistoryItem[] = [];
     loading : mobx.IObservableValue<boolean> = mobx.observable.box(false);
-    remotes : SessionRemoteDataType[] = [];
+    remotes : RemoteInstanceType[] = [];
     globalRemotes : RemoteType[];
 
     constructor() {
     }
 
-    getWindowCurRemoteData(windowid : string) : SessionRemoteDataType {
-        let window = this.getWindowById(windowid);
-        if (window == null) {
+    getWindowCurRemoteData(windowid : string) : RemoteInstanceType {
+        let win = this.getWindowById(windowid);
+        if (win == null) {
             return null;
+        }
+        let rname = win.curremote;
+        let sessionScope = false;
+        if (rname.startsWith("^")) {
+            rname = rname.substr(1);
+            sessionScope = true;
         }
         for (let i=0; i<this.remotes.length; i++) {
             let rdata = this.remotes[i];
-            if (rdata.windowid == windowid && rdata.remotename == window.curremote) {
+            if (sessionScope && rdata.sessionscope && rdata.name == rname) {
                 return rdata;
             }
-            if (!rdata.windowid && ("^" + rdata.remotename == window.curremote)) {
+            if (!sessionScope && !rdata.sessionscope && rdata.name == rname && rdata.windowid == windowid) {
                 return rdata;
             }
         }
         for (let i=0; i<this.globalRemotes.length; i++) {
             let gr = this.globalRemotes[i];
-            if ((gr.remotename == window.curremote) || ("^" + gr.remotename == window.curremote)) {
-                return {sessionid: this.sessionId, windowid: windowid, remoteid: gr.remoteid, remotename: gr.remotename, cwd: gr.cwd};
+            if (gr.remotename == rname) {
+                return {riid: "", sessionid: this.sessionId, windowid: windowid, remoteid: gr.remoteid,
+                        name: rname, state: gr.defaultstate, sessionscope: sessionScope};
             }
         }
         return null;
