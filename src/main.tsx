@@ -306,7 +306,7 @@ class SessionView extends React.Component<{session : SessionType}, {}> {
             let session = this.props.session;
             let window = session.getActiveWindow();
             let lines = window.lines;
-            if (lines == null || lines.length == 0) {
+            if (lines == null) {
                 return;
             }
             let lastLine = lines[lines.length-1];
@@ -321,15 +321,14 @@ class SessionView extends React.Component<{session : SessionType}, {}> {
         if (window == null) {
             return <div className="session-view">(no active window {session.activeWindowId.get()})</div>;
         }
-        let lines = window.lines || [];
-        let idx = 0;
-        if (session.loading.get()) {
+        if (session.loading.get() || window.linesLoading.get()) {
             return <div className="session-view">(loading)</div>;
         }
+        let idx = 0;
         return (
             <div className="session-view">
                 <div className="lines" onScroll={this.scrollHandler}>
-                    <For each="line" of={lines} index="idx">
+                    <For each="line" of={window.lines} index="idx">
                         <Line key={line.lineid} line={line} session={session} changeSizeCallback={this.changeSizeCallback}/>
                     </For>
                 </div>

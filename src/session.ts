@@ -6,15 +6,6 @@ import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
 
 var GlobalUser = "sawka";
-var GSessionId = "47445c53-cfcf-4943-8339-2c04447f20a1";
-var GWindowId = "1";
-
-var GlobalLines = mobx.observable.box([
-    {sessionid: GSessionId, windowid: GWindowId, lineid: 1, userid: "sawka", ts: 1424631125000, linetype: "text", text: "hello"},
-    {sessionid: GSessionId, windowid: GWindowId, lineid: 2, userid: "sawka", ts: 1654631125000, linetype: "text", text: "again"},
-    {sessionid: GSessionId, windowid: GWindowId, lineid: 3, userid: "sawka", ts: 1655403002683, linetype: "text", text: "more..."},
-    {sessionid: GSessionId, windowid: GWindowId, lineid: 4, userid: "sawka", ts: 1655513202683, linetype: "cmd", cmdid: "e74a7db7-58f5-47ef-b351-364c7ba2bfbb", cmdtext: "ls"},
-]);
 
 function makeTermKey(sessionId : string, cmdId : string, windowId : string, lineid : number) : string {
     return sprintf("%s/%s/%s/%s", sessionId, cmdId, windowId, lineid);
@@ -37,6 +28,14 @@ function getLineId(line : LineType) : string {
     return sprintf("%s-%s-%s", line.sessionid, line.windowid, line.lineid);
 }
 
+type RemoteType = {
+    remotetype : string,
+    remoteid : string,
+    remotename : string,
+    status : string,
+    cwd : string,
+};
+
 type SessionRemoteDataType = {
     sessionid : string,
     windowid : string,
@@ -50,8 +49,7 @@ type WindowDataType = {
     windowid : string,
     name : string,
     curremote : string,
-    remotes : SessionRemoteDataType[],
-    lines : LineType[],
+    lines : mobx.IObservableValue<LineType[]>,
     version : number,
 };
 
@@ -74,9 +72,9 @@ class Session {
     termMap : Record<string, TermWrap> = {};
     termMapById : Record<string, TermWrap> = {};
     history : HistoryItem[] = [];
-    curRemote : string;
-    curDir : string;
     loading : mobx.IObservableValue<boolean> = mobx.observable.box(false);
+    remotes : SessionRemoteDataType[] = [];
+    globalRemotes : RemoteType[];
 
     constructor() {
     }
@@ -86,40 +84,116 @@ class Session {
         if (window == null) {
             return null;
         }
-        for (let i=0; i<window.remotes.length; i++) {
-            let rdata = window.remotes[i];
-            if (rdata.remotename == window.curremote) {
+        for (let i=0; i<this.remotes.length; i++) {
+            let rdata = this.remotes[i];
+            if (rdata.windowid == windowid && rdata.remotename == window.curremote) {
                 return rdata;
+            }
+            if (!rdata.windowid && ("^" + rdata.remotename == window.curremote)) {
+                return rdata;
+            }
+        }
+        for (let i=0; i<this.globalRemotes.length; i++) {
+            let gr = this.globalRemotes[i];
+            if ((gr.remotename == window.curremote) || ("^" + gr.remotename == window.curremote)) {
+                return {sessionid: this.sessionId, windowid: windowid, remoteid: gr.remoteid, remotename: gr.remotename, cwd: gr.cwd};
             }
         }
         return null;
     }
 
     getWindowById(windowid : string) : WindowDataType {
-        for (let i=0; i<windows.length; i++) {
-            if (windows[i].windowid == windowid) {
-                return windows[i];
+        for (let i=0; i<this.windows.length; i++) {
+            if (this.windows[i].windowid == windowid) {
+                return this.windows[i];
             }
         }
         return null;
     }
 
+    getCurWindow() : WindowDataType {
+        return this.getWindowById(this.activeWindowId);
+    }
+
+    loadWindowLines(windowid : string) {
+        let window = this.getWindowById(windowid);
+        if (window == null) {
+            console.log(sprintf("cannot load lines on window=%s, window not found", windowid));
+            return;
+        }
+        if (window.linesLoading.get()) {
+            return;
+        }
+        window.linesLoading.set(true);
+        
+        let usp = new URLSearchParams({sessionid: this.sessionId, windowid: windowid});
+        let url = sprintf("http://localhost:8080/api/get-window-lines?") + usp.toString();
+        fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
+            mobx.action(() => {
+                window.lines.replace(data.data || []);
+                window.linesLoading.set(false);
+            })();
+            return;
+        }).catch((err) => {
+            console.log(sprintf("error getting window=%s lines", windowid), err)
+        });
+    }
+
+    setActiveWindow(windowid : string) {
+        this.activeWindowId.set(windowid);
+        this.loadWindowLines(windowid);
+    }
+
     submitCommand(windowid : string, commandStr : string) {
         let url = sprintf("http://localhost:8080/api/run-command");
         let data = {type: "fecmd", sessionid: this.sessionId, windowid: windowid, cmdstr: commandStr, userid: GlobalUser};
-        data.remotestate = this.getWindowCurRemoteData();
+        let curWindow = this.getCurWindow();
+        if (curWindow == null) {
+            throw new Error(sprintf("invalid current window=%s", this.activeWindowId));
+        }
+        data.remotestate = this.getWindowCurRemoteData(this.activeWindowId);
         if (data.remotestate == null) {
-            throw new Error(sprintf("no remotestate found for windowid:%s, cannot submit command", windowid));
+            throw new Error(sprintf("no remotestate found for windowid:%s (remote=%s), cannot submit command", windowid, window.curremote));
         }
         fetch(url, {method: "post", body: JSON.stringify(data)}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
             mobx.action(() => {
-                let lines = GlobalLines.get();
-                data.data.line.isnew = true;
-                lines.push(data.data.line);
+                if (data.data != null && data.data.line != null) {
+                    this.addLine(data.data.line);
+                }
             })();
         }).catch((err) => {
             console.log("error calling run-command", err)
         });
+    }
+
+    addLine(line : LineType) {
+        if (line.sessionid != this.sessionId) {
+            return;
+        }
+        let window = this.getWindowById(line.windowid);
+        if (window == null) {
+            return;
+        }
+        mobx.action(() => {
+            let lines = window.lines;
+            let lineIdx = 0;
+            for (lineIdx=0; lineIdx<lines.length; lineIdx++) {
+                let lineId = lines[lineIdx].lineid;
+                if (lineId == line.lineid) {
+                    window.lines[lineIdx] = line;
+                    return;
+                }
+                if (lineId > line.lineid) {
+                    break;
+                }
+            }
+            if (lineIdx == lines.length) {
+                window.lines.push(line);
+                return;
+            }
+            window.lines.splice(lineIdx, 0, line);
+        })();
+        return;
     }
 
     addToHistory(hitem : HistoryItem) {
@@ -186,20 +260,43 @@ class Session {
 
 var DefaultSession : Session = new Session();
 
-function loadDefaultSession() {
+function initSession() {
     if (DefaultSession.loading.get()) {
         return;
     }
+    let remotesLoaded = false;
+    let sessionLoaded = false;
+    DefaultSession.loading.set(true);
+    fetch("http://localhost:8080/api/get-remotes").then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
+        mobx.action(() => {
+            DefaultSession.globalRemotes = data.data
+            remotesLoaded = true;
+            if (remotesLoaded && sessionLoaded) {
+                DefaultSession.loading.set(false);
+            }
+        })();
+    }).catch((err) => {
+        console.log("error calling get-remotes", err)
+    });
+    
     let usp = new URLSearchParams({name: "default"});
     let url = sprintf("http://localhost:8080/api/get-session?") + usp.toString();
     fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
         mobx.action(() => {
             let sdata = data.data;
-            DefaultSession.loading.set(false);
+            DefaultSession.sessionId = sdata.sessionid;
             DefaultSession.name = sdata.name;
-            DefaultSession.windows = sdata.windows;
-            DefaultSession.activeWindowId.set(sdata.windows[0].windowid);
-            console.log("session", sdata);
+            DefaultSession.windows = sdata.windows || [];
+            for (let i=0; i<DefaultSession.windows.length; i++) {
+                DefaultSession.windows[i].lines = mobx.observable.array([]);
+                DefaultSession.windows[i].linesLoading = mobx.observable.box(false);
+            }
+            DefaultSession.remotes = sdata.remotes || [];
+            DefaultSession.setActiveWindow(sdata.windows[0].windowid);
+            sessionLoaded = true;
+            if (remotesLoaded && sessionLoaded) {
+                DefaultSession.loading.set(false);
+            }
         })();
     }).catch((err) => {
         console.log("error calling get-session", err)
@@ -208,23 +305,9 @@ function loadDefaultSession() {
 
 function getDefaultSession() : Session {
     return DefaultSession;
-    
-    if (DefaultSession != null) {
-        return DefaultSession;
-    }
-    let windowLines = GlobalLines.get();
-    let session = new Session();
-    session.sessionId = GSessionId;
-    session.name = "default";
-    session.activeWindowId = GWindowId;
-    session.windows = [
-        {sessionid: GSessionId, windowid: GWindowId, name: "default", lines: windowLines},
-    ];
-    DefaultSession = session;
-    return session;
 }
 
 window.getDefaultSession = getDefaultSession;
 
-export {Session, getDefaultSession, getLineId, loadDefaultSession};
+export {Session, getDefaultSession, getLineId, initSession};
 export type {LineType, WindowDataType};
