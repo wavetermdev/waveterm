@@ -97,37 +97,42 @@ func InsertRemote(ctx context.Context, remote *RemoteType) error {
 }
 
 func GetSessionById(ctx context.Context, id string) (*SessionType, error) {
-	db, err := GetDB()
-	query := `SELECT * FROM session WHERE sessionid = ?`
-	var session SessionType
-	err = db.GetContext(ctx, &session, query, id)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &session, nil
-}
-
-func GetSessionByName(ctx context.Context, name string) (*SessionType, error) {
 	var rtnSession *SessionType
 	err := WithTx(ctx, func(tx *TxWrap) error {
 		var session SessionType
-		query := `SELECT * FROM session WHERE name = ?`
-		found := tx.GetWrap(&session, query, name)
+		query := `SELECT * FROM session WHERE sessionid = ?`
+		found := tx.GetWrap(&session, query, id)
 		if !found {
 			return nil
 		}
 		rtnSession = &session
 		query = `SELECT sessionid, windowid, name, curremote, version FROM window WHERE sessionid = ?`
 		tx.SelectWrap(&session.Windows, query, session.SessionId)
+		query = `SELECT * FROM session_remote WHERE sessionid = ?`
+		tx.SelectWrap(&session.Remotes, query, session.SessionId)
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
 	return rtnSession, nil
+}
+
+func GetSessionByName(ctx context.Context, name string) (*SessionType, error) {
+	db, err := GetDB()
+	if err != nil {
+		return nil, err
+	}
+	var sessionId string
+	query := `SELECT sessionid FROM session WHERE name = ?`
+	err = db.GetContext(ctx, &sessionId, query, name)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return GetSessionById(ctx, sessionId)
 }
 
 func GetWindowLines(ctx context.Context, sessionId string, windowId string) ([]*LineType, error) {
@@ -153,10 +158,6 @@ func InsertSessionWithName(ctx context.Context, sessionName string) error {
 		SessionId: uuid.New().String(),
 		Name:      sessionName,
 	}
-	localRemote, err := GetRemoteByName(ctx, LocalRemoteName)
-	if err != nil {
-		return err
-	}
 	return WithTx(ctx, func(tx *TxWrap) error {
 		query := `INSERT INTO session (sessionid, name) VALUES (:sessionid, :name)`
 		tx.NamedExecWrap(query, session)
@@ -169,16 +170,6 @@ func InsertSessionWithName(ctx context.Context, sessionName string) error {
 		}
 		query = `INSERT INTO window (sessionid, windowid, name, curremote, version) VALUES (:sessionid, :windowid, :name, :curremote, :version)`
 		tx.NamedExecWrap(query, window)
-
-		sr := &SessionRemote{
-			SessionId:  session.SessionId,
-			WindowId:   window.WindowId,
-			RemoteName: localRemote.RemoteName,
-			RemoteId:   localRemote.RemoteId,
-			Cwd:        DefaultCwd,
-		}
-		query = `INSERT INTO session_remote (sessionid, windowid, remotename, remoteid, cwd) VALUES (:sessionid, :windowid, :remotename, :remoteid, :cwd)`
-		tx.NamedExecWrap(query, sr)
 		return nil
 	})
 }

@@ -278,6 +278,17 @@ func HandleGetSession(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+// params: [none]
+func HandleGetRemotes(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Vary", "Origin")
+	w.Header().Set("Cache-Control", "no-cache")
+	remotes := remote.GetAllRemoteState()
+	WriteJsonSuccess(w, remotes)
+	return
+}
+
 // params: sessionid, windowid
 func HandleGetWindowLines(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
@@ -570,6 +581,7 @@ func main() {
 	gr.HandleFunc("/api/ptyout", HandleGetPtyOut)
 	gr.HandleFunc("/api/get-session", HandleGetSession)
 	gr.HandleFunc("/api/get-window-lines", HandleGetWindowLines)
+	gr.HandleFunc("/api/get-remotes", HandleGetRemotes)
 	gr.HandleFunc("/api/run-command", HandleRunCommand).Methods("GET", "POST", "OPTIONS")
 	server := &http.Server{
 		Addr:           MainServerAddr,

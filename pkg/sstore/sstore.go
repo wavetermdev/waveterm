@@ -48,20 +48,20 @@ func GetDB() (*sqlx.DB, error) {
 }
 
 type SessionType struct {
-	SessionId string        `json:"sessionid"`
-	Name      string        `json:"name"`
-	Windows   []*WindowType `json:"windows"`
-	Cmds      []*CmdType    `json:"cmds"`
+	SessionId string           `json:"sessionid"`
+	Name      string           `json:"name"`
+	Windows   []*WindowType    `json:"windows"`
+	Cmds      []*CmdType       `json:"cmds"`
+	Remotes   []*SessionRemote `json:"remotes"`
 }
 
 type WindowType struct {
-	SessionId string           `json:"sessionid"`
-	WindowId  string           `json:"windowid"`
-	Name      string           `json:"name"`
-	CurRemote string           `json:"curremote"`
-	Remotes   []*SessionRemote `json:"remotes"`
-	Lines     []*LineType      `json:"lines"`
-	Version   int              `json:"version"`
+	SessionId string      `json:"sessionid"`
+	WindowId  string      `json:"windowid"`
+	Name      string      `json:"name"`
+	CurRemote string      `json:"curremote"`
+	Lines     []*LineType `json:"lines"`
+	Version   int         `json:"version"`
 }
 
 type SessionRemote struct {

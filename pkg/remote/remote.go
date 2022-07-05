@@ -32,6 +32,14 @@ type Store struct {
 	Map  map[string]*MShellProc
 }
 
+type RemoteState struct {
+	RemoteType string `json:"remotetype"`
+	RemoteId   string `json:"remoteid"`
+	RemoteName string `json:"remotename"`
+	Status     string `json:"status"`
+	Cwd        string `json:"cwd"`
+}
+
 type MShellProc struct {
 	Lock   *sync.Mutex
 	Remote *sstore.RemoteType
@@ -76,6 +84,26 @@ func GetRemote(name string) *MShellProc {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
 	return GlobalStore.Map[name]
+}
+
+func GetAllRemoteState() []RemoteState {
+	GlobalStore.Lock.Lock()
+	defer GlobalStore.Lock.Unlock()
+
+	var rtn []RemoteState
+	for _, proc := range GlobalStore.Map {
+		state := RemoteState{
+			RemoteType: proc.Remote.RemoteType,
+			RemoteId:   proc.Remote.RemoteId,
+			RemoteName: proc.Remote.RemoteName,
+			Status:     proc.Status,
+		}
+		if proc.InitPk != nil {
+			state.Cwd = proc.InitPk.HomeDir
+		}
+		rtn = append(rtn, state)
+	}
+	return rtn
 }
 
 func MakeMShell(r *sstore.RemoteType) *MShellProc {
