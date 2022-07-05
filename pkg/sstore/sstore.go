@@ -115,28 +115,44 @@ type CmdType struct {
 	RunOut packet.PacketType `json:"runout"`
 }
 
-func MakeNewLineCmd(sessionId string, windowId string) *LineType {
+func makeNewLineCmd(sessionId string, windowId string, userId string) *LineType {
 	rtn := &LineType{}
 	rtn.SessionId = sessionId
 	rtn.WindowId = windowId
-	rtn.LineId = GetNextLine()
 	rtn.Ts = time.Now().UnixMilli()
-	rtn.UserId = "mike"
+	rtn.UserId = userId
 	rtn.LineType = LineTypeCmd
 	rtn.CmdId = uuid.New().String()
 	return rtn
 }
 
-func MakeNewLineText(sessionId string, windowId string, text string) *LineType {
+func makeNewLineText(sessionId string, windowId string, userId string, text string) *LineType {
 	rtn := &LineType{}
 	rtn.SessionId = sessionId
 	rtn.WindowId = windowId
-	rtn.LineId = GetNextLine()
 	rtn.Ts = time.Now().UnixMilli()
-	rtn.UserId = "mike"
+	rtn.UserId = userId
 	rtn.LineType = LineTypeText
 	rtn.Text = text
 	return rtn
+}
+
+func AddCommentLine(ctx context.Context, sessionId string, windowId string, userId string, commentText string) (*LineType, error) {
+	rtnLine := makeNewLineText(sessionId, windowId, userId, commentText)
+	err := InsertLine(ctx, rtnLine)
+	if err != nil {
+		return nil, err
+	}
+	return rtnLine, nil
+}
+
+func AddCmdLine(ctx context.Context, sessionId string, windowId string, userId string) (*LineType, error) {
+	rtnLine := makeNewLineCmd(sessionId, windowId, userId)
+	err := InsertLine(ctx, rtnLine)
+	if err != nil {
+		return nil, err
+	}
+	return rtnLine, nil
 }
 
 func GetNextLine() int {

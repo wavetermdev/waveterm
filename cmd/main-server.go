@@ -400,7 +400,7 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 		WriteJsonError(w, fmt.Errorf("invalid sessionid '%s': %w", commandPk.SessionId, err))
 		return
 	}
-	line, err := ProcessFeCommandPacket(&commandPk)
+	line, err := ProcessFeCommandPacket(r.Context(), &commandPk)
 	if err != nil {
 		WriteJsonError(w, err)
 		return
@@ -409,14 +409,17 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func ProcessFeCommandPacket(pk *scpacket.FeCommandPacketType) (*sstore.LineType, error) {
+func ProcessFeCommandPacket(ctx context.Context, pk *scpacket.FeCommandPacketType) (*sstore.LineType, error) {
 	commandStr := strings.TrimSpace(pk.CmdStr)
 	if commandStr == "" {
 		return nil, fmt.Errorf("invalid emtpty command")
 	}
 	if strings.HasPrefix(commandStr, "/comment ") {
 		text := strings.TrimSpace(commandStr[9:])
-		rtnLine := sstore.MakeNewLineText(pk.SessionId, pk.WindowId, text)
+		rtnLine, err := sstore.AddCommentLine(ctx, pk.SessionId, pk.WindowId, pk.UserId, text)
+		if err != nil {
+			return nil, err
+		}
 		return rtnLine, nil
 	}
 	if strings.HasPrefix(commandStr, "cd ") {
@@ -430,10 +433,13 @@ func ProcessFeCommandPacket(pk *scpacket.FeCommandPacketType) (*sstore.LineType,
 		}
 		return nil, nil
 	}
-	rtnLine := sstore.MakeNewLineCmd(pk.SessionId, pk.WindowId)
+	rtnLine, err := sstore.AddCmdLine(ctx, pk.SessionId, pk.WindowId, pk.UserId)
+	if err != nil {
+		return nil, err
+	}
 	runPacket := packet.MakeRunPacket()
 	runPacket.CK = base.MakeCommandKey(pk.SessionId, rtnLine.CmdId)
-	runPacket.Cwd = ""
+	runPacket.Cwd = pk.RemoteState.Cwd
 	runPacket.Env = nil
 	runPacket.Command = commandStr
 	fmt.Printf("run-packet %v\n", runPacket)

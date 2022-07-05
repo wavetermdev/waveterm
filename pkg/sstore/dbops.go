@@ -189,7 +189,7 @@ func InsertLine(ctx context.Context, line *LineType) error {
 			return fmt.Errorf("window not found, cannot insert line[%s/%s]", line.SessionId, line.WindowId)
 		}
 		var maxLineId int
-		query = `SELECT max(lineid) FROM line WHERE sessionid = ? AND windowid = ?`
+		query = `SELECT COALESCE(max(lineid), 0) FROM line WHERE sessionid = ? AND windowid = ?`
 		tx.GetWrap(&maxLineId, query, line.SessionId, line.WindowId)
 		line.LineId = maxLineId + 1
 		query = `INSERT INTO line  ( sessionid, windowid, lineid, ts, userid, linetype, text, cmdid)
