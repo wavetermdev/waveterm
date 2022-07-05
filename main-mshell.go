@@ -121,7 +121,7 @@ func doMain() {
 		if pk.GetType() == packet.CdPacketStr {
 			cdPacket := pk.(*packet.CdPacketType)
 			err := os.Chdir(cdPacket.Dir)
-			resp := packet.MakeResponsePacket(cdPacket.PacketId)
+			resp := packet.MakeResponsePacket(cdPacket.ReqId)
 			if err != nil {
 				resp.Error = err.Error()
 			} else {

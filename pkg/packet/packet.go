@@ -27,24 +27,24 @@ import (
 var GlobalDebug = false
 
 const (
-	RunPacketStr       = "run"
+	RunPacketStr       = "run" // rpc
 	PingPacketStr      = "ping"
 	InitPacketStr      = "init"
-	DataPacketStr      = "data"
-	DataAckPacketStr   = "dataack"
-	CmdStartPacketStr  = "cmdstart"
-	CmdDonePacketStr   = "cmddone"
+	DataPacketStr      = "data"     // command
+	DataAckPacketStr   = "dataack"  // command
+	CmdStartPacketStr  = "cmdstart" // rpc-response
+	CmdDonePacketStr   = "cmddone"  // command
 	DataEndPacketStr   = "dataend"
-	ResponsePacketStr  = "resp"
+	ResponsePacketStr  = "resp" // rpc-response
 	DonePacketStr      = "done"
 	ErrorPacketStr     = "error"
 	MessagePacketStr   = "message"
-	GetCmdPacketStr    = "getcmd"
-	UntailCmdPacketStr = "untailcmd"
-	CdPacketStr        = "cd"
-	CmdDataPacketStr   = "cmddata"
+	GetCmdPacketStr    = "getcmd"    // rpc
+	UntailCmdPacketStr = "untailcmd" // rpc
+	CdPacketStr        = "cd"        // rpc
+	CmdDataPacketStr   = "cmddata"   // rpc-response
 	RawPacketStr       = "raw"
-	InputPacketStr     = "input"
+	InputPacketStr     = "input" // command
 )
 
 const PacketSenderQueueSize = 20
@@ -71,6 +71,20 @@ func init() {
 	TypeStrToFactory[DataPacketStr] = reflect.TypeOf(DataPacketType{})
 	TypeStrToFactory[DataAckPacketStr] = reflect.TypeOf(DataAckPacketType{})
 	TypeStrToFactory[DataEndPacketStr] = reflect.TypeOf(DataEndPacketType{})
+
+	var _ RpcPacketType = (*RunPacketType)(nil)
+	var _ RpcPacketType = (*GetCmdPacketType)(nil)
+	var _ RpcPacketType = (*UntailCmdPacketType)(nil)
+	var _ RpcPacketType = (*CdPacketType)(nil)
+
+	var _ RpcResponsePacketType = (*CmdStartPacketType)(nil)
+	var _ RpcResponsePacketType = (*ResponsePacketType)(nil)
+	var _ RpcResponsePacketType = (*CmdDataPacketType)(nil)
+
+	var _ CommandPacketType = (*DataPacketType)(nil)
+	var _ CommandPacketType = (*DataAckPacketType)(nil)
+	var _ CommandPacketType = (*CmdDonePacketType)(nil)
+	var _ CommandPacketType = (*InputPacketType)(nil)
 }
 
 func RegisterPacketType(typeStr string, rtype reflect.Type) {
@@ -88,7 +102,7 @@ func MakePacket(packetType string) (PacketType, error) {
 
 type CmdDataPacketType struct {
 	Type       string          `json:"type"`
-	ReqId      string          `json:"reqid"`
+	RespId     string          `json:"respid"`
 	CK         base.CommandKey `json:"ck"`
 	PtyPos     int64           `json:"ptypos"`
 	PtyLen     int64           `json:"ptylen"`
@@ -106,8 +120,8 @@ func (*CmdDataPacketType) GetType() string {
 	return CmdDataPacketStr
 }
 
-func (p *CmdDataPacketType) GetCK() base.CommandKey {
-	return p.CK
+func (p *CmdDataPacketType) GetResponseId() string {
+	return p.RespId
 }
 
 func MakeCmdDataPacket() *CmdDataPacketType {
@@ -186,10 +200,6 @@ func (*DataEndPacketType) GetType() string {
 	return DataEndPacketStr
 }
 
-func (p *DataEndPacketType) GetCK() base.CommandKey {
-	return p.CK
-}
-
 type DataAckPacketType struct {
 	Type   string          `json:"type"`
 	CK     base.CommandKey `json:"ck"`
@@ -252,8 +262,8 @@ func (*UntailCmdPacketType) GetType() string {
 	return UntailCmdPacketStr
 }
 
-func (p *UntailCmdPacketType) GetCK() base.CommandKey {
-	return p.CK
+func (p *UntailCmdPacketType) GetReqId() string {
+	return p.ReqId
 }
 
 func MakeUntailCmdPacket() *UntailCmdPacketType {
@@ -273,8 +283,8 @@ func (*GetCmdPacketType) GetType() string {
 	return GetCmdPacketStr
 }
 
-func (p *GetCmdPacketType) GetCK() base.CommandKey {
-	return p.CK
+func (p *GetCmdPacketType) GetReqId() string {
+	return p.ReqId
 }
 
 func MakeGetCmdPacket() *GetCmdPacketType {
@@ -282,17 +292,17 @@ func MakeGetCmdPacket() *GetCmdPacketType {
 }
 
 type CdPacketType struct {
-	Type     string `json:"type"`
-	PacketId string `json:"packetid"`
-	Dir      string `json:"dir"`
+	Type  string `json:"type"`
+	ReqId string `json:"reqid"`
+	Dir   string `json:"dir"`
 }
 
 func (*CdPacketType) GetType() string {
 	return CdPacketStr
 }
 
-func (p *CdPacketType) GetPacketId() string {
-	return p.PacketId
+func (p *CdPacketType) GetReqId() string {
+	return p.ReqId
 }
 
 func MakeCdPacket() *CdPacketType {
@@ -300,23 +310,23 @@ func MakeCdPacket() *CdPacketType {
 }
 
 type ResponsePacketType struct {
-	Type     string      `json:"type"`
-	PacketId string      `json:"packetid"`
-	Success  bool        `json:"success"`
-	Error    string      `json:"error"`
-	Data     interface{} `json:"data"`
+	Type    string      `json:"type"`
+	RespId  string      `json:"respid"`
+	Success bool        `json:"success"`
+	Error   string      `json:"error"`
+	Data    interface{} `json:"data"`
 }
 
 func (*ResponsePacketType) GetType() string {
 	return ResponsePacketStr
 }
 
-func (p *ResponsePacketType) GetPacketId() string {
-	return p.PacketId
+func (p *ResponsePacketType) GetResponseId() string {
+	return p.RespId
 }
 
-func MakeResponsePacket(packetId string) *ResponsePacketType {
-	return &ResponsePacketType{Type: ResponsePacketStr, PacketId: packetId}
+func MakeResponsePacket(reqId string) *ResponsePacketType {
+	return &ResponsePacketType{Type: ResponsePacketStr, RespId: reqId}
 }
 
 type RawPacketType struct {
@@ -412,6 +422,7 @@ func MakeCmdDonePacket() *CmdDonePacketType {
 
 type CmdStartPacketType struct {
 	Type      string          `json:"type"`
+	RespId    string          `json:"respid"`
 	Ts        int64           `json:"ts"`
 	CK        base.CommandKey `json:"ck"`
 	Pid       int             `json:"pid"`
@@ -422,8 +433,8 @@ func (*CmdStartPacketType) GetType() string {
 	return CmdStartPacketStr
 }
 
-func (p *CmdStartPacketType) GetCK() base.CommandKey {
-	return p.CK
+func (p *CmdStartPacketType) GetResponseId() string {
+	return p.RespId
 }
 
 func MakeCmdStartPacket() *CmdStartPacketType {
@@ -450,6 +461,7 @@ type RunDataType struct {
 
 type RunPacketType struct {
 	Type     string            `json:"type"`
+	ReqId    string            `json:"packetid"`
 	CK       base.CommandKey   `json:"ck"`
 	Command  string            `json:"command"`
 	Cwd      string            `json:"cwd,omitempty"`
@@ -464,8 +476,8 @@ func (*RunPacketType) GetType() string {
 	return RunPacketStr
 }
 
-func (p *RunPacketType) GetCK() base.CommandKey {
-	return p.CK
+func (p *RunPacketType) GetReqId() string {
+	return p.ReqId
 }
 
 func MakeRunPacket() *RunPacketType {
@@ -477,9 +489,8 @@ type BarePacketType struct {
 }
 
 type ErrorPacketType struct {
-	CK    base.CommandKey `json:"ck,omitempty"`
-	Type  string          `json:"type"`
-	Error string          `json:"error"`
+	Type  string `json:"type"`
+	Error string `json:"error"`
 }
 
 func (*ErrorPacketType) GetType() string {
@@ -487,19 +498,11 @@ func (*ErrorPacketType) GetType() string {
 }
 
 func (p *ErrorPacketType) String() string {
-	ckStr := ""
-	if p.CK != "" {
-		ckStr = fmt.Sprintf(", ck=%s", p.CK)
-	}
-	return fmt.Sprintf("error[%s%s]", p.Error, ckStr)
+	return fmt.Sprintf("error[%s]", p.Error)
 }
 
 func MakeErrorPacket(errorStr string) *ErrorPacketType {
 	return &ErrorPacketType{Type: ErrorPacketStr, Error: errorStr}
-}
-
-func MakeCKErrorPacket(ck base.CommandKey, errorStr string) *ErrorPacketType {
-	return &ErrorPacketType{Type: ErrorPacketStr, CK: ck, Error: errorStr}
 }
 
 type PacketType interface {
@@ -515,7 +518,12 @@ func AsString(pk PacketType) string {
 
 type RpcPacketType interface {
 	GetType() string
-	GetPacketId() string
+	GetReqId() string
+}
+
+type RpcResponsePacketType interface {
+	GetType() string
+	GetResponseId() string
 }
 
 type CommandPacketType interface {
@@ -525,7 +533,7 @@ type CommandPacketType interface {
 
 func AsExtType(pk PacketType) string {
 	if rpcPacket, ok := pk.(RpcPacketType); ok {
-		return fmt.Sprintf("%s[%s]", rpcPacket.GetType(), rpcPacket.GetPacketId())
+		return fmt.Sprintf("%s[%s]", rpcPacket.GetType(), rpcPacket.GetReqId())
 	} else if cmdPacket, ok := pk.(CommandPacketType); ok {
 		return fmt.Sprintf("%s[%s]", cmdPacket.GetType(), cmdPacket.GetCK())
 	} else {
@@ -676,7 +684,7 @@ func (sender *PacketSender) SendErrorPacket(errVal string) error {
 }
 
 func (sender *PacketSender) SendCKErrorPacket(ck base.CommandKey, errVal string) error {
-	return sender.SendPacket(MakeCKErrorPacket(ck, errVal))
+	return sender.SendPacket(MakeErrorPacket(errVal))
 }
 
 func (sender *PacketSender) SendMessage(fmtStr string, args ...interface{}) error {

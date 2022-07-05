@@ -161,7 +161,7 @@ func (t *Tailer) readDataFromFile(fileName string, pos int64, maxBytes int) ([]b
 
 func (t *Tailer) makeCmdDataPacket(fileNames *base.CommandFileNames, entry CmdWatchEntry, pos TailPos) *packet.CmdDataPacketType {
 	dataPacket := packet.MakeCmdDataPacket()
-	dataPacket.ReqId = pos.ReqId
+	dataPacket.RespId = pos.ReqId
 	dataPacket.CK = entry.CmdKey
 	dataPacket.PtyPos = pos.TailPtyPos
 	dataPacket.RunPos = pos.TailRunPos
