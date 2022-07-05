@@ -108,7 +108,7 @@ func GetSessionById(ctx context.Context, id string) (*SessionType, error) {
 		rtnSession = &session
 		query = `SELECT sessionid, windowid, name, curremote, version FROM window WHERE sessionid = ?`
 		tx.SelectWrap(&session.Windows, query, session.SessionId)
-		query = `SELECT * FROM session_remote WHERE sessionid = ?`
+		query = `SELECT * FROM remote_instance WHERE sessionid = ?`
 		tx.SelectWrap(&session.Remotes, query, session.SessionId)
 		return nil
 	})
@@ -149,7 +149,7 @@ func GetWindowLines(ctx context.Context, sessionId string, windowId string) ([]*
 	return lines, nil
 }
 
-// also creates window, and sessionremote
+// also creates window
 func InsertSessionWithName(ctx context.Context, sessionName string) error {
 	if sessionName == "" {
 		return fmt.Errorf("invalid session name '%s'", sessionName)

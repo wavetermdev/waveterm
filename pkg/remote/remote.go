@@ -6,12 +6,14 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
+	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
 )
 
@@ -29,15 +31,15 @@ var GlobalStore *Store
 
 type Store struct {
 	Lock *sync.Mutex
-	Map  map[string]*MShellProc
+	Map  map[string]*MShellProc // key=remoteid
 }
 
 type RemoteState struct {
-	RemoteType string `json:"remotetype"`
-	RemoteId   string `json:"remoteid"`
-	RemoteName string `json:"remotename"`
-	Status     string `json:"status"`
-	Cwd        string `json:"cwd"`
+	RemoteType   string              `json:"remotetype"`
+	RemoteId     string              `json:"remoteid"`
+	RemoteName   string              `json:"remotename"`
+	Status       string              `json:"status"`
+	DefaultState *sstore.RemoteState `json:"defaultstate"`
 }
 
 type MShellProc struct {
@@ -57,8 +59,8 @@ type MShellProc struct {
 }
 
 type RpcEntry struct {
-	PacketId string
-	RespCh   chan packet.RpcPacketType
+	ReqId  string
+	RespCh chan packet.RpcResponsePacketType
 }
 
 func LoadRemotes(ctx context.Context) error {
@@ -72,7 +74,7 @@ func LoadRemotes(ctx context.Context) error {
 	}
 	for _, remote := range allRemotes {
 		msh := MakeMShell(remote)
-		GlobalStore.Map[remote.RemoteName] = msh
+		GlobalStore.Map[remote.RemoteId] = msh
 		if remote.AutoConnect {
 			go msh.Launch()
 		}
@@ -80,10 +82,21 @@ func LoadRemotes(ctx context.Context) error {
 	return nil
 }
 
-func GetRemote(name string) *MShellProc {
+func GetRemoteByName(name string) *MShellProc {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
-	return GlobalStore.Map[name]
+	for _, msh := range GlobalStore.Map {
+		if msh.Remote.RemoteName == name {
+			return msh
+		}
+	}
+	return nil
+}
+
+func GetRemoteById(remoteId string) *MShellProc {
+	GlobalStore.Lock.Lock()
+	defer GlobalStore.Lock.Unlock()
+	return GlobalStore.Map[remoteId]
 }
 
 func GetAllRemoteState() []RemoteState {
@@ -99,7 +112,7 @@ func GetAllRemoteState() []RemoteState {
 			Status:     proc.Status,
 		}
 		if proc.InitPk != nil {
-			state.Cwd = proc.InitPk.HomeDir
+			state.DefaultState = &sstore.RemoteState{Cwd: proc.InitPk.HomeDir}
 		}
 		rtn = append(rtn, state)
 	}
@@ -177,17 +190,37 @@ func (msh *MShellProc) IsConnected() bool {
 	return msh.Status == StatusConnected
 }
 
-func (runner *MShellProc) PacketRpc(pk packet.RpcPacketType, timeout time.Duration) (packet.RpcPacketType, error) {
+func RunCommand(pk *scpacket.FeCommandPacketType, cmdId string) error {
+	msh := GetRemoteById(pk.RemoteState.RemoteId)
+	if msh == nil {
+		return fmt.Errorf("no remote id=%s found", pk.RemoteState.RemoteId)
+	}
+	if !msh.IsConnected() {
+		return fmt.Errorf("remote '%s' is not connected", msh.Remote.RemoteName)
+	}
+	runPacket := packet.MakeRunPacket()
+	runPacket.CK = base.MakeCommandKey(pk.SessionId, cmdId)
+	runPacket.Cwd = pk.RemoteState.Cwd
+	runPacket.Env = nil
+	runPacket.Command = strings.TrimSpace(pk.CmdStr)
+	fmt.Printf("run-packet %v\n", runPacket)
+	go func() {
+		msh.Input.SendPacket(runPacket)
+	}()
+	return nil
+}
+
+func (runner *MShellProc) PacketRpc(pk packet.RpcPacketType, timeout time.Duration) (packet.RpcResponsePacketType, error) {
 	if !runner.IsConnected() {
 		return nil, fmt.Errorf("runner is not connected")
 	}
 	if pk == nil {
 		return nil, fmt.Errorf("PacketRpc passed nil packet")
 	}
-	id := pk.GetPacketId()
-	respCh := make(chan packet.RpcPacketType)
+	id := pk.GetReqId()
+	respCh := make(chan packet.RpcResponsePacketType)
 	runner.WithLock(func() {
-		runner.RpcMap[id] = &RpcEntry{PacketId: id, RespCh: respCh}
+		runner.RpcMap[id] = &RpcEntry{ReqId: id, RespCh: respCh}
 	})
 	defer runner.WithLock(func() {
 		delete(runner.RpcMap, id)
@@ -217,8 +250,9 @@ func (runner *MShellProc) ProcessPackets() {
 		}
 	})
 	for pk := range runner.Output.MainCh {
-		if rpcPk, ok := pk.(packet.RpcPacketType); ok {
-			rpcId := rpcPk.GetPacketId()
+		fmt.Printf("MSH> %s\n", packet.AsString(pk))
+		if rpcPk, ok := pk.(packet.RpcResponsePacketType); ok {
+			rpcId := rpcPk.GetResponseId()
 			runner.WithLock(func() {
 				entry := runner.RpcMap[rpcId]
 				if entry == nil {

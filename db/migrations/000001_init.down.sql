@@ -1,6 +1,6 @@
 DROP TABLE session;
 DROP TABLE window;
-DROP TABLE session_remote;
+DROP TABLE remote_instance;
 DROP TABLE line;
 DROP TABLE remote;
 DROP TABLE session_cmd;

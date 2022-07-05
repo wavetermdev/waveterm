@@ -2,6 +2,9 @@ package sstore
 
 import (
 	"context"
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"log"
 	"path"
 	"sync"
@@ -48,11 +51,11 @@ func GetDB() (*sqlx.DB, error) {
 }
 
 type SessionType struct {
-	SessionId string           `json:"sessionid"`
-	Name      string           `json:"name"`
-	Windows   []*WindowType    `json:"windows"`
-	Cmds      []*CmdType       `json:"cmds"`
-	Remotes   []*SessionRemote `json:"remotes"`
+	SessionId string            `json:"sessionid"`
+	Name      string            `json:"name"`
+	Windows   []*WindowType     `json:"windows"`
+	Cmds      []*CmdType        `json:"cmds"`
+	Remotes   []*RemoteInstance `json:"remotes"`
 }
 
 type WindowType struct {
@@ -64,12 +67,36 @@ type WindowType struct {
 	Version   int         `json:"version"`
 }
 
-type SessionRemote struct {
-	SessionId  string `json:"sessionid"`
-	WindowId   string `json:"windowid"`
-	RemoteId   string `json"remoteid"`
-	RemoteName string `json:"name"`
-	Cwd        string `json:"cwd"`
+type RemoteState struct {
+	Cwd string `json:"cwd"`
+}
+
+func (s *RemoteState) Scan(val interface{}) error {
+	if strVal, ok := val.(string); ok {
+		if strVal == "" {
+			return nil
+		}
+		err := json.Unmarshal([]byte(strVal), s)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("cannot scan '%T' into RemoteState", val)
+}
+
+func (s *RemoteState) Value() (driver.Value, error) {
+	return json.Marshal(s)
+}
+
+type RemoteInstance struct {
+	RIId         string      `json:"riid"`
+	Name         string      `json:"name"`
+	SessionId    string      `json:"sessionid"`
+	WindowId     string      `json:"windowid"`
+	RemoteId     string      `json"remoteid"`
+	SessionScope bool        `json:"sessionscope"`
+	State        RemoteState `json:"state"`
 }
 
 type LineType struct {
@@ -101,16 +128,18 @@ type RemoteType struct {
 }
 
 type CmdType struct {
-	RowId     int64  `json:"rowid"`
-	SessionId string `json:"sessionid"`
-	CmdId     string `json:"cmdid"`
-	RemoteId  string `json:"remoteid"`
-	Status    string `json:"status"`
-	StartTs   int64  `json:"startts"`
-	DoneTs    int64  `json:"donets"`
-	Pid       int    `json:"pid"`
-	RunnerPid int    `json:"runnerpid"`
-	ExitCode  int    `json:"exitcode"`
+	RowId       int64  `json:"rowid"`
+	SessionId   string `json:"sessionid"`
+	CmdId       string `json:"cmdid"`
+	RSId        string `json:"rsid"`
+	RemoteId    string `json:"remoteid"`
+	RemoteState string `json:"remotestate"`
+	Status      string `json:"status"`
+	StartTs     int64  `json:"startts"`
+	DoneTs      int64  `json:"donets"`
+	Pid         int    `json:"pid"`
+	RunnerPid   int    `json:"runnerpid"`
+	ExitCode    int    `json:"exitcode"`
 
 	RunOut packet.PacketType `json:"runout"`
 }

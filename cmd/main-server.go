@@ -377,6 +377,7 @@ func WriteJsonSuccess(w http.ResponseWriter, data interface{}) {
 
 type runCommandResponse struct {
 	Line *sstore.LineType `json:"line"`
+	Cmd  *sstore.CmdType  `json:"cmd"`
 }
 
 func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
@@ -400,16 +401,16 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 		WriteJsonError(w, fmt.Errorf("invalid sessionid '%s': %w", commandPk.SessionId, err))
 		return
 	}
-	line, err := ProcessFeCommandPacket(r.Context(), &commandPk)
+	resp, err := ProcessFeCommandPacket(r.Context(), &commandPk)
 	if err != nil {
 		WriteJsonError(w, err)
 		return
 	}
-	WriteJsonSuccess(w, &runCommandResponse{Line: line})
+	WriteJsonSuccess(w, resp)
 	return
 }
 
-func ProcessFeCommandPacket(ctx context.Context, pk *scpacket.FeCommandPacketType) (*sstore.LineType, error) {
+func ProcessFeCommandPacket(ctx context.Context, pk *scpacket.FeCommandPacketType) (*runCommandResponse, error) {
 	commandStr := strings.TrimSpace(pk.CmdStr)
 	if commandStr == "" {
 		return nil, fmt.Errorf("invalid emtpty command")
@@ -420,14 +421,14 @@ func ProcessFeCommandPacket(ctx context.Context, pk *scpacket.FeCommandPacketTyp
 		if err != nil {
 			return nil, err
 		}
-		return rtnLine, nil
+		return &runCommandResponse{Line: rtnLine}, nil
 	}
 	if strings.HasPrefix(commandStr, "cd ") {
 		newDir := strings.TrimSpace(commandStr[3:])
 		cdPacket := packet.MakeCdPacket()
-		cdPacket.PacketId = uuid.New().String()
+		cdPacket.ReqId = uuid.New().String()
 		cdPacket.Dir = newDir
-		localRemote := remote.GetRemote("local")
+		localRemote := remote.GetRemoteById(pk.RemoteState.RemoteId)
 		if localRemote != nil {
 			localRemote.Input.SendPacket(cdPacket)
 		}
@@ -437,19 +438,8 @@ func ProcessFeCommandPacket(ctx context.Context, pk *scpacket.FeCommandPacketTyp
 	if err != nil {
 		return nil, err
 	}
-	runPacket := packet.MakeRunPacket()
-	runPacket.CK = base.MakeCommandKey(pk.SessionId, rtnLine.CmdId)
-	runPacket.Cwd = pk.RemoteState.Cwd
-	runPacket.Env = nil
-	runPacket.Command = commandStr
-	fmt.Printf("run-packet %v\n", runPacket)
-	go func() {
-		localRemote := remote.GetRemote("local")
-		if localRemote != nil {
-			localRemote.Input.SendPacket(runPacket)
-		}
-	}()
-	return rtnLine, nil
+	err = remote.RunCommand(pk, rtnLine.CmdId)
+	return &runCommandResponse{Line: rtnLine}, nil
 }
 
 // /api/start-session

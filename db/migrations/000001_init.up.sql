@@ -14,13 +14,14 @@ CREATE TABLE window (
 );
 CREATE UNIQUE INDEX window_name_unique ON window(sessionid, name);
 
-CREATE TABLE session_remote (
+CREATE TABLE remote_instance (
+    riid varchar(36) PRIMARY KEY,
+    name varchar(50) NOT NULL,
     sessionid varchar(36) NOT NULL,
     windowid varchar(36) NOT NULL,
-    remotename varchar(50) NOT NULL,
     remoteid varchar(36) NOT NULL,
-    cwd varchar(300) NOT NULL,
-    PRIMARY KEY (sessionid, windowid, remotename)
+    sessionscope boolean NOT NULL,
+    state json NOT NULL
 );
 
 CREATE TABLE line (
@@ -55,7 +56,9 @@ CREATE TABLE remote (
 CREATE TABLE session_cmd (
     sessionid varchar(36) NOT NULL,
     cmdid varchar(36) NOT NULL,
+    rsid varchar(36) NOT NULL,
     remoteid varchar(36) NOT NULL,
+    remotestate json NOT NULL,
     status varchar(10) NOT NULL,
     startts bigint NOT NULL,
     pid int NOT NULL,
