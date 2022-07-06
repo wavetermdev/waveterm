@@ -33,6 +33,7 @@ const MaxRows = 1024
 const MaxCols = 1024
 const MaxFdNum = 1023
 const FirstExtraFilesFdNum = 3
+const DefaultTermType = "xterm-256color"
 
 const ClientCommand = `
 PATH=$PATH:~/.mshell;
@@ -193,6 +194,7 @@ func MakeSimpleStaticWriterPipe(data []byte) (*os.File, error) {
 func MakeDetachedExecCmd(pk *packet.RunPacketType, cmdTty *os.File) (*exec.Cmd, error) {
 	ecmd := exec.Command("bash", "-c", pk.Command)
 	UpdateCmdEnv(ecmd, pk.Env)
+	UpdateCmdEnv(ecmd, map[string]string{"TERM": getTermType(pk)})
 	if pk.Cwd != "" {
 		ecmd.Dir = base.ExpandHomeDir(pk.Cwd)
 	}
@@ -312,12 +314,12 @@ func ValidateRunPacket(pk *packet.RunPacketType) error {
 func GetWinsize(p *packet.RunPacketType) *pty.Winsize {
 	rows := DefaultRows
 	cols := DefaultCols
-	if p.TermSize != nil {
-		if p.TermSize.Rows > 0 && p.TermSize.Rows <= MaxRows {
-			rows = p.TermSize.Rows
+	if p.TermOpts != nil {
+		if p.TermOpts.Rows > 0 && p.TermOpts.Rows <= MaxRows {
+			rows = p.TermOpts.Rows
 		}
-		if p.TermSize.Cols > 0 && p.TermSize.Cols <= MaxCols {
-			cols = p.TermSize.Cols
+		if p.TermOpts.Cols > 0 && p.TermOpts.Cols <= MaxCols {
+			cols = p.TermOpts.Cols
 		}
 	}
 	return &pty.Winsize{Rows: uint16(rows), Cols: uint16(cols)}
@@ -412,12 +414,33 @@ func (opts SSHOpts) MakeMShellSSHOpts() string {
 	return strings.Join(moreSSHOpts, " ")
 }
 
+func GetTerminalSize() (int, int, error) {
+	fd, err := os.Open("/dev/tty")
+	if err != nil {
+		return 0, 0, err
+	}
+	defer fd.Close()
+	return pty.Getsize(fd)
+}
+
 func (opts *ClientOpts) MakeRunPacket() (*packet.RunPacketType, error) {
 	runPacket := packet.MakeRunPacket()
 	runPacket.Detached = opts.Detach
 	runPacket.Cwd = opts.Cwd
 	runPacket.Fds = opts.Fds
-	runPacket.UsePty = opts.UsePty
+	if opts.UsePty {
+		runPacket.UsePty = true
+		runPacket.TermOpts = &packet.TermOpts{}
+		rows, cols, err := GetTerminalSize()
+		if err == nil {
+			runPacket.TermOpts.Rows = rows
+			runPacket.TermOpts.Cols = cols
+		}
+		term := os.Getenv("TERM")
+		if term != "" {
+			runPacket.TermOpts.Term = term
+		}
+	}
 	if !opts.Sudo {
 		// normal, non-sudo command
 		runPacket.Command = fmt.Sprintf(RunCommandFmt, opts.Command)
@@ -767,6 +790,14 @@ func (cmd *ShExecType) RunRemoteIOAndWait(packetParser *packet.PacketParser, sen
 	sender.SendPacket(donePacket)
 }
 
+func getTermType(pk *packet.RunPacketType) string {
+	termType := DefaultTermType
+	if pk.TermOpts != nil && pk.TermOpts.Term != "" {
+		termType = pk.TermOpts.Term
+	}
+	return termType
+}
+
 func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecType, error) {
 	cmd := MakeShExec(pk.CK, nil)
 	cmd.Cmd = exec.Command("bash", "-c", pk.Command)
@@ -791,7 +822,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender) (*S
 			cmdTty.Close()
 		}()
 		cmd.CmdPty = cmdPty
-		UpdateCmdEnv(cmd.Cmd, map[string]string{"TERM": "xterm-256color"})
+		UpdateCmdEnv(cmd.Cmd, map[string]string{"TERM": getTermType(pk)})
 	}
 	if cmdTty != nil {
 		cmd.Cmd.Stdin = cmdTty
