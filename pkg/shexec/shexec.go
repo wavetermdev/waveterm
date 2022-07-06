@@ -850,33 +850,30 @@ func SetupSignalsForDetach() {
 
 func (cmd *ShExecType) DetachedWait(startPacket *packet.CmdStartPacketType) {
 	// after Start(), any output/errors must go to DetachedOutput
-	// close stdin/stdout/stderr, but wait for cmdstart packet to get sent
-	nullFd, err := os.OpenFile("/dev/null", os.O_RDWR, 0)
-	if err != nil {
-		cmd.DetachedOutput.SendCmdError(cmd.CK, fmt.Errorf("cannot open /dev/null: %w", err))
-	}
-	if nullFd != nil {
-		err := unix.Dup2(int(nullFd.Fd()), int(os.Stdin.Fd()))
-		if err != nil {
-			cmd.DetachedOutput.SendCmdError(cmd.CK, fmt.Errorf("cannot dup2 stdin to /dev/null: %w", err))
-		}
-		err = unix.Dup2(int(nullFd.Fd()), int(os.Stdout.Fd()))
-		if err != nil {
-			cmd.DetachedOutput.SendCmdError(cmd.CK, fmt.Errorf("cannot dup2 stdin to /dev/null: %w", err))
-		}
-		err = unix.Dup2(int(nullFd.Fd()), int(os.Stderr.Fd()))
-		if err != nil {
-			cmd.DetachedOutput.SendCmdError(cmd.CK, fmt.Errorf("cannot dup2 stdin to /dev/null: %w", err))
-		}
-	}
+	// close stdin, redirect stdout/stderr to /dev/null, but wait for cmdstart packet to get sent
 	cmd.DetachedOutput.SendPacket(startPacket)
+	err := os.Stdin.Close()
+	if err != nil {
+		cmd.DetachedOutput.SendCmdError(cmd.CK, fmt.Errorf("cannot close stdin: %w", err))
+	}
+	err = unix.Dup2(int(cmd.RunnerOutFd.Fd()), int(os.Stdout.Fd()))
+	if err != nil {
+		cmd.DetachedOutput.SendCmdError(cmd.CK, fmt.Errorf("cannot dup2 stdin to runout: %w", err))
+	}
+	err = unix.Dup2(int(cmd.RunnerOutFd.Fd()), int(os.Stderr.Fd()))
+	if err != nil {
+		cmd.DetachedOutput.SendCmdError(cmd.CK, fmt.Errorf("cannot dup2 stdin to runout: %w", err))
+	}
 	ptyOutFd, err := os.OpenFile(cmd.FileNames.PtyOutFile, os.O_TRUNC|os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		cmd.DetachedOutput.SendCmdError(cmd.CK, fmt.Errorf("cannot open ptyout file '%s': %w", cmd.FileNames.PtyOutFile, err))
 		// don't return (command is already running)
 	}
+	ptyCopyDone := make(chan bool)
 	go func() {
 		// copy pty output to .ptyout file
+		defer close(ptyCopyDone)
+		defer ptyOutFd.Close()
 		_, copyErr := io.Copy(ptyOutFd, cmd.CmdPty)
 		if copyErr != nil {
 			cmd.DetachedOutput.SendCmdError(cmd.CK, fmt.Errorf("copying pty output to ptyout file: %w", copyErr))
@@ -891,6 +888,8 @@ func (cmd *ShExecType) DetachedWait(startPacket *packet.CmdStartPacketType) {
 	}()
 	donePacket := cmd.WaitForCommand()
 	cmd.DetachedOutput.SendPacket(donePacket)
+	<-ptyCopyDone
+	cmd.Close()
 	return
 }
 

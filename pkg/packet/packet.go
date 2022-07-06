@@ -316,8 +316,8 @@ type ResponsePacketType struct {
 	Type    string      `json:"type"`
 	RespId  string      `json:"respid"`
 	Success bool        `json:"success"`
-	Error   string      `json:"error"`
-	Data    interface{} `json:"data"`
+	Error   string      `json:"error,omitempty"`
+	Data    interface{} `json:"data,omitempty"`
 }
 
 func (*ResponsePacketType) GetType() string {
@@ -476,7 +476,7 @@ type RunDataType struct {
 
 type RunPacketType struct {
 	Type     string            `json:"type"`
-	ReqId    string            `json:"packetid"`
+	ReqId    string            `json:"reqid"`
 	CK       base.CommandKey   `json:"ck"`
 	Command  string            `json:"command"`
 	Cwd      string            `json:"cwd,omitempty"`

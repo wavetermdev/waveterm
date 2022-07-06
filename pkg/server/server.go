@@ -114,7 +114,7 @@ func (m *MServer) RemoveFdContext(ck base.CommandKey) {
 
 func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
 	if err := runPacket.CK.Validate("packet"); err != nil {
-		m.Sender.SendResponse(runPacket.ReqId, fmt.Errorf("server run packets require valid ck: %s", err))
+		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("server run packets require valid ck: %s", err))
 		return
 	}
 	fdContext := m.MakeServerFdContext(runPacket.CK)
