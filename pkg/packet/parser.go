@@ -8,7 +8,6 @@ package packet
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -18,6 +17,7 @@ import (
 type PacketParser struct {
 	Lock   *sync.Mutex
 	MainCh chan PacketType
+	Err    error
 }
 
 func CombinePacketParsers(p1 *PacketParser, p2 *PacketParser) *PacketParser {
@@ -46,6 +46,20 @@ func CombinePacketParsers(p1 *PacketParser, p2 *PacketParser) *PacketParser {
 	return rtnParser
 }
 
+func (p *PacketParser) GetErr() error {
+	p.Lock.Lock()
+	defer p.Lock.Unlock()
+	return p.Err
+}
+
+func (p *PacketParser) SetErr(err error) {
+	p.Lock.Lock()
+	defer p.Lock.Unlock()
+	if p.Err == nil {
+		p.Err = err
+	}
+}
+
 func MakePacketParser(input io.Reader) *PacketParser {
 	parser := &PacketParser{
 		Lock:   &sync.Mutex{},
@@ -62,8 +76,7 @@ func MakePacketParser(input io.Reader) *PacketParser {
 				return
 			}
 			if err != nil {
-				errPacket := MakeErrorPacket(fmt.Sprintf("reading packets from input: %v", err))
-				parser.MainCh <- errPacket
+				parser.SetErr(err)
 				return
 			}
 			if line == "\n" {
@@ -86,9 +99,8 @@ func MakePacketParser(input io.Reader) *PacketParser {
 			}
 			pk, err := ParseJsonPacket([]byte(line[bracePos:]))
 			if err != nil {
-				errPk := MakeErrorPacket(fmt.Sprintf("parsing packet json from input: %v", err))
-				parser.MainCh <- errPk
-				return
+				parser.MainCh <- MakeRawPacket(line[:len(line)-1])
+				continue
 			}
 			if pk.GetType() == DonePacketStr {
 				return

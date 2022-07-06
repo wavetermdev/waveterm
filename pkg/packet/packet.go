@@ -19,10 +19,11 @@ import (
 	"github.com/scripthaus-dev/mshell/pkg/base"
 )
 
-// remote: init, run, ping, data, cmdstart, cmddone
-// remote(detached): init, run, cmdstart
-// server: init, run, ping, cmdstart, cmddone, cd, resp, getcmd, untailcmd, cmddata, input, data, [comp]
-// all: error, message
+// single          : <init, >run, >cmddata, >cmddone, <cmdstart, <>data, <>dataack, <cmddone
+// single(detached): <init, >run, >cmddata, >cmddone, <cmdstart
+// server          : <init, >run, >cmddata, >cmddone, <cmdstart, <>data, <>dataack, <cmddone
+//                   >cd, >getcmd, >untailcmd, >input, <resp
+// all             : <>error, <>message, <>ping, <raw
 
 var GlobalDebug = false
 
@@ -37,7 +38,7 @@ const (
 	DataEndPacketStr   = "dataend"
 	ResponsePacketStr  = "resp" // rpc-response
 	DonePacketStr      = "done"
-	ErrorPacketStr     = "error"
+	CmdErrorPacketStr  = "cmderror"
 	MessagePacketStr   = "message"
 	GetCmdPacketStr    = "getcmd"    // rpc
 	UntailCmdPacketStr = "untailcmd" // rpc
@@ -57,7 +58,7 @@ func init() {
 	TypeStrToFactory[PingPacketStr] = reflect.TypeOf(PingPacketType{})
 	TypeStrToFactory[ResponsePacketStr] = reflect.TypeOf(ResponsePacketType{})
 	TypeStrToFactory[DonePacketStr] = reflect.TypeOf(DonePacketType{})
-	TypeStrToFactory[ErrorPacketStr] = reflect.TypeOf(ErrorPacketType{})
+	TypeStrToFactory[CmdErrorPacketStr] = reflect.TypeOf(CmdErrorPacketType{})
 	TypeStrToFactory[MessagePacketStr] = reflect.TypeOf(MessagePacketType{})
 	TypeStrToFactory[CmdStartPacketStr] = reflect.TypeOf(CmdStartPacketType{})
 	TypeStrToFactory[CmdDonePacketStr] = reflect.TypeOf(CmdDonePacketType{})
@@ -325,8 +326,12 @@ func (p *ResponsePacketType) GetResponseId() string {
 	return p.RespId
 }
 
-func MakeResponsePacket(reqId string) *ResponsePacketType {
-	return &ResponsePacketType{Type: ResponsePacketStr, RespId: reqId}
+func MakeErrorResponsePacket(reqId string, err error) *ResponsePacketType {
+	return &ResponsePacketType{Type: ResponsePacketStr, RespId: reqId, Error: err.Error()}
+}
+
+func MakeResponsePacket(reqId string, data interface{}) *ResponsePacketType {
+	return &ResponsePacketType{Type: ResponsePacketStr, RespId: reqId, Success: true, Data: data}
 }
 
 type RawPacketType struct {
@@ -488,21 +493,26 @@ type BarePacketType struct {
 	Type string `json:"type"`
 }
 
-type ErrorPacketType struct {
-	Type  string `json:"type"`
-	Error string `json:"error"`
+type CmdErrorPacketType struct {
+	Type  string          `json:"type"`
+	CK    base.CommandKey `json:"ck"`
+	Error string          `json:"error"`
 }
 
-func (*ErrorPacketType) GetType() string {
-	return ErrorPacketStr
+func (*CmdErrorPacketType) GetType() string {
+	return CmdErrorPacketStr
 }
 
-func (p *ErrorPacketType) String() string {
+func (p *CmdErrorPacketType) GetCK() base.CommandKey {
+	return p.CK
+}
+
+func (p *CmdErrorPacketType) String() string {
 	return fmt.Sprintf("error[%s]", p.Error)
 }
 
-func MakeErrorPacket(errorStr string) *ErrorPacketType {
-	return &ErrorPacketType{Type: ErrorPacketStr, Error: errorStr}
+func MakeCmdErrorPacket(ck base.CommandKey, err error) *CmdErrorPacketType {
+	return &CmdErrorPacketType{Type: CmdErrorPacketStr, CK: ck, Error: err.Error()}
 }
 
 type PacketType interface {
@@ -594,8 +604,8 @@ func SendPacket(w io.Writer, packet PacketType) error {
 	return nil
 }
 
-func SendErrorPacket(w io.Writer, errorStr string) error {
-	return SendPacket(w, MakeErrorPacket(errorStr))
+func SendCmdError(w io.Writer, ck base.CommandKey, err error) error {
+	return SendPacket(w, MakeCmdErrorPacket(ck, err))
 }
 
 type PacketSender struct {
@@ -679,12 +689,18 @@ func (sender *PacketSender) SendPacket(pk PacketType) error {
 	return nil
 }
 
-func (sender *PacketSender) SendErrorPacket(errVal string) error {
-	return sender.SendPacket(MakeErrorPacket(errVal))
+func (sender *PacketSender) SendCmdError(ck base.CommandKey, err error) error {
+	return sender.SendPacket(MakeCmdErrorPacket(ck, err))
 }
 
-func (sender *PacketSender) SendCKErrorPacket(ck base.CommandKey, errVal string) error {
-	return sender.SendPacket(MakeErrorPacket(errVal))
+func (sender *PacketSender) SendErrorResponse(reqId string, err error) error {
+	pk := MakeErrorResponsePacket(reqId, err)
+	return sender.SendPacket(pk)
+}
+
+func (sender *PacketSender) SendResponse(reqId string, data interface{}) error {
+	pk := MakeResponsePacket(reqId, data)
+	return sender.SendPacket(pk)
 }
 
 func (sender *PacketSender) SendMessage(fmtStr string, args ...interface{}) error {
@@ -698,8 +714,8 @@ type UnknownPacketReporter interface {
 type DefaultUPR struct{}
 
 func (DefaultUPR) UnknownPacket(pk PacketType) {
-	if pk.GetType() == ErrorPacketStr {
-		errPacket := pk.(*ErrorPacketType)
+	if pk.GetType() == CmdErrorPacketStr {
+		errPacket := pk.(*CmdErrorPacketType)
 		// at this point, just send the error packet to stderr rather than try to do something special
 		fmt.Fprintf(os.Stderr, "[error] %s\n", errPacket.Error)
 	} else if pk.GetType() == RawPacketStr {

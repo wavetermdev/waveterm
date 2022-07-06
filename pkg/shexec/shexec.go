@@ -906,35 +906,35 @@ func RunCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) e
 		fmt.Printf("sender done! start: %v\n", startPacket)
 		err = unix.Dup2(int(nullFd.Fd()), int(os.Stdin.Fd()))
 		if err != nil {
-			cmd.DetachedOutput.SendCKErrorPacket(pk.CK, fmt.Sprintf("cannot dup2 stdin to /dev/null: %w", err))
+			cmd.DetachedOutput.SendCmdError(pk.CK, fmt.Errorf("cannot dup2 stdin to /dev/null: %w", err))
 		}
 		err = unix.Dup2(int(nullFd.Fd()), int(os.Stdout.Fd()))
 		if err != nil {
-			cmd.DetachedOutput.SendCKErrorPacket(pk.CK, fmt.Sprintf("cannot dup2 stdin to /dev/null: %w", err))
+			cmd.DetachedOutput.SendCmdError(pk.CK, fmt.Errorf("cannot dup2 stdin to /dev/null: %w", err))
 		}
 		err = unix.Dup2(int(nullFd.Fd()), int(os.Stderr.Fd()))
 		if err != nil {
-			cmd.DetachedOutput.SendCKErrorPacket(pk.CK, fmt.Sprintf("cannot dup2 stdin to /dev/null: %w", err))
+			cmd.DetachedOutput.SendCmdError(pk.CK, fmt.Errorf("cannot dup2 stdin to /dev/null: %w", err))
 		}
 		cmd.DetachedOutput.SendPacket(startPacket)
 	}()
 	ptyOutFd, err := os.OpenFile(fileNames.PtyOutFile, os.O_TRUNC|os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
-		cmd.DetachedOutput.SendCKErrorPacket(pk.CK, fmt.Sprintf("cannot open ptyout file '%s': %v", fileNames.PtyOutFile, err))
+		cmd.DetachedOutput.SendCmdError(pk.CK, fmt.Errorf("cannot open ptyout file '%s': %w", fileNames.PtyOutFile, err))
 		// don't return (command is already running)
 	}
 	go func() {
 		// copy pty output to .ptyout file
 		_, copyErr := io.Copy(ptyOutFd, cmdPty)
 		if copyErr != nil {
-			cmd.DetachedOutput.SendCKErrorPacket(pk.CK, fmt.Sprintf("copying pty output to ptyout file: %v", copyErr))
+			cmd.DetachedOutput.SendCmdError(pk.CK, fmt.Errorf("copying pty output to ptyout file: %w", copyErr))
 		}
 	}()
 	go func() {
 		// copy .stdin fifo contents to pty input
 		copyFifoErr := MakeAndCopyStdinFifo(cmdPty, fileNames.StdinFifo)
 		if copyFifoErr != nil {
-			cmd.DetachedOutput.SendCKErrorPacket(pk.CK, fmt.Sprintf("reading from stdin fifo: %v", copyFifoErr))
+			cmd.DetachedOutput.SendCmdError(pk.CK, fmt.Errorf("reading from stdin fifo: %w", copyFifoErr))
 		}
 	}()
 	donePacket := cmd.WaitForCommand()

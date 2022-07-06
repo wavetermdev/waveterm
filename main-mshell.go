@@ -13,132 +13,131 @@ import (
 	"strings"
 
 	"github.com/scripthaus-dev/mshell/pkg/base"
-	"github.com/scripthaus-dev/mshell/pkg/cmdtail"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/mshell/pkg/server"
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
 	"golang.org/x/sys/unix"
 )
 
-func doMainRun(pk *packet.RunPacketType, sender *packet.PacketSender) {
-	err := shexec.ValidateRunPacket(pk)
-	if err != nil {
-		sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("invalid run packet: %v", err))
-		return
-	}
-	fileNames, err := base.GetCommandFileNames(pk.CK)
-	if err != nil {
-		sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("cannot get command file names: %v", err))
-		return
-	}
-	cmd, err := shexec.MakeRunnerExec(pk.CK)
-	if err != nil {
-		sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("cannot make mshell command: %v", err))
-		return
-	}
-	cmdStdin, err := cmd.StdinPipe()
-	if err != nil {
-		sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("cannot pipe stdin to command: %v", err))
-		return
-	}
-	// touch ptyout file (should exist for tailer to work correctly)
-	ptyOutFd, err := os.OpenFile(fileNames.PtyOutFile, os.O_CREATE|os.O_TRUNC|os.O_APPEND|os.O_WRONLY, 0600)
-	if err != nil {
-		sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("cannot open pty out file '%s': %v", fileNames.PtyOutFile, err))
-		return
-	}
-	ptyOutFd.Close() // just opened to create the file, can close right after
-	runnerOutFd, err := os.OpenFile(fileNames.RunnerOutFile, os.O_CREATE|os.O_TRUNC|os.O_APPEND|os.O_WRONLY, 0600)
-	if err != nil {
-		sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("cannot open runner out file '%s': %v", fileNames.RunnerOutFile, err))
-		return
-	}
-	defer runnerOutFd.Close()
-	cmd.Stdout = runnerOutFd
-	cmd.Stderr = runnerOutFd
-	err = cmd.Start()
-	if err != nil {
-		sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("error starting command: %v", err))
-		return
-	}
-	go func() {
-		err = packet.SendPacket(cmdStdin, pk)
-		if err != nil {
-			sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("error sending forked runner command: %v", err))
-			return
-		}
-		cmdStdin.Close()
+// func doMainRun(pk *packet.RunPacketType, sender *packet.PacketSender) {
+// 	err := shexec.ValidateRunPacket(pk)
+// 	if err != nil {
+// 		sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("invalid run packet: %v", err))
+// 		return
+// 	}
+// 	fileNames, err := base.GetCommandFileNames(pk.CK)
+// 	if err != nil {
+// 		sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("cannot get command file names: %v", err))
+// 		return
+// 	}
+// 	cmd, err := shexec.MakeRunnerExec(pk.CK)
+// 	if err != nil {
+// 		sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("cannot make mshell command: %v", err))
+// 		return
+// 	}
+// 	cmdStdin, err := cmd.StdinPipe()
+// 	if err != nil {
+// 		sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("cannot pipe stdin to command: %v", err))
+// 		return
+// 	}
+// 	// touch ptyout file (should exist for tailer to work correctly)
+// 	ptyOutFd, err := os.OpenFile(fileNames.PtyOutFile, os.O_CREATE|os.O_TRUNC|os.O_APPEND|os.O_WRONLY, 0600)
+// 	if err != nil {
+// 		sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("cannot open pty out file '%s': %v", fileNames.PtyOutFile, err))
+// 		return
+// 	}
+// 	ptyOutFd.Close() // just opened to create the file, can close right after
+// 	runnerOutFd, err := os.OpenFile(fileNames.RunnerOutFile, os.O_CREATE|os.O_TRUNC|os.O_APPEND|os.O_WRONLY, 0600)
+// 	if err != nil {
+// 		sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("cannot open runner out file '%s': %v", fileNames.RunnerOutFile, err))
+// 		return
+// 	}
+// 	defer runnerOutFd.Close()
+// 	cmd.Stdout = runnerOutFd
+// 	cmd.Stderr = runnerOutFd
+// 	err = cmd.Start()
+// 	if err != nil {
+// 		sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("error starting command: %v", err))
+// 		return
+// 	}
+// 	go func() {
+// 		err = packet.SendPacket(cmdStdin, pk)
+// 		if err != nil {
+// 			sender.SendCKErrorPacket(pk.CK, fmt.Sprintf("error sending forked runner command: %v", err))
+// 			return
+// 		}
+// 		cmdStdin.Close()
 
-		// clean up zombies
-		cmd.Wait()
-	}()
-}
+// 		// clean up zombies
+// 		cmd.Wait()
+// 	}()
+// }
 
-func doGetCmd(tailer *cmdtail.Tailer, pk *packet.GetCmdPacketType, sender *packet.PacketSender) error {
-	err := tailer.AddWatch(pk)
-	if err != nil {
-		return err
-	}
-	return nil
-}
+// func doGetCmd(tailer *cmdtail.Tailer, pk *packet.GetCmdPacketType, sender *packet.PacketSender) error {
+// 	err := tailer.AddWatch(pk)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
 
-func doMain() {
-	homeDir := base.GetHomeDir()
-	err := os.Chdir(homeDir)
-	if err != nil {
-		packet.SendErrorPacket(os.Stdout, fmt.Sprintf("cannot change directory to $HOME '%s': %v", homeDir, err))
-		return
-	}
-	_, err = base.GetMShellPath()
-	if err != nil {
-		packet.SendErrorPacket(os.Stdout, err.Error())
-		return
-	}
-	packetParser := packet.MakePacketParser(os.Stdin)
-	sender := packet.MakePacketSender(os.Stdout)
-	tailer, err := cmdtail.MakeTailer(sender)
-	if err != nil {
-		packet.SendErrorPacket(os.Stdout, err.Error())
-		return
-	}
-	go tailer.Run()
-	initPacket := shexec.MakeInitPacket()
-	sender.SendPacket(initPacket)
-	for pk := range packetParser.MainCh {
-		if pk.GetType() == packet.RunPacketStr {
-			doMainRun(pk.(*packet.RunPacketType), sender)
-			continue
-		}
-		if pk.GetType() == packet.GetCmdPacketStr {
-			err = doGetCmd(tailer, pk.(*packet.GetCmdPacketType), sender)
-			if err != nil {
-				errPk := packet.MakeErrorPacket(err.Error())
-				sender.SendPacket(errPk)
-				continue
-			}
-			continue
-		}
-		if pk.GetType() == packet.CdPacketStr {
-			cdPacket := pk.(*packet.CdPacketType)
-			err := os.Chdir(cdPacket.Dir)
-			resp := packet.MakeResponsePacket(cdPacket.ReqId)
-			if err != nil {
-				resp.Error = err.Error()
-			} else {
-				resp.Success = true
-			}
-			sender.SendPacket(resp)
-			continue
-		}
-		if pk.GetType() == packet.ErrorPacketStr {
-			errPk := pk.(*packet.ErrorPacketType)
-			errPk.Error = "invalid packet sent to mshell: " + errPk.Error
-			sender.SendPacket(errPk)
-			continue
-		}
-		sender.SendErrorPacket(fmt.Sprintf("invalid packet '%s' sent to mshell", pk.GetType()))
-	}
-}
+// func doMain() {
+// 	homeDir := base.GetHomeDir()
+// 	err := os.Chdir(homeDir)
+// 	if err != nil {
+// 		packet.SendErrorPacket(os.Stdout, fmt.Sprintf("cannot change directory to $HOME '%s': %v", homeDir, err))
+// 		return
+// 	}
+// 	_, err = base.GetMShellPath()
+// 	if err != nil {
+// 		packet.SendErrorPacket(os.Stdout, err.Error())
+// 		return
+// 	}
+// 	packetParser := packet.MakePacketParser(os.Stdin)
+// 	sender := packet.MakePacketSender(os.Stdout)
+// 	tailer, err := cmdtail.MakeTailer(sender)
+// 	if err != nil {
+// 		packet.SendErrorPacket(os.Stdout, err.Error())
+// 		return
+// 	}
+// 	go tailer.Run()
+// 	initPacket := shexec.MakeInitPacket()
+// 	sender.SendPacket(initPacket)
+// 	for pk := range packetParser.MainCh {
+// 		if pk.GetType() == packet.RunPacketStr {
+// 			doMainRun(pk.(*packet.RunPacketType), sender)
+// 			continue
+// 		}
+// 		if pk.GetType() == packet.GetCmdPacketStr {
+// 			err = doGetCmd(tailer, pk.(*packet.GetCmdPacketType), sender)
+// 			if err != nil {
+// 				errPk := packet.MakeErrorPacket(err.Error())
+// 				sender.SendPacket(errPk)
+// 				continue
+// 			}
+// 			continue
+// 		}
+// 		if pk.GetType() == packet.CdPacketStr {
+// 			cdPacket := pk.(*packet.CdPacketType)
+// 			err := os.Chdir(cdPacket.Dir)
+// 			resp := packet.MakeResponsePacket(cdPacket.ReqId)
+// 			if err != nil {
+// 				resp.Error = err.Error()
+// 			} else {
+// 				resp.Success = true
+// 			}
+// 			sender.SendPacket(resp)
+// 			continue
+// 		}
+// 		if pk.GetType() == packet.ErrorPacketStr {
+// 			errPk := pk.(*packet.ErrorPacketType)
+// 			errPk.Error = "invalid packet sent to mshell: " + errPk.Error
+// 			sender.SendPacket(errPk)
+// 			continue
+// 		}
+// 		sender.SendErrorPacket(fmt.Sprintf("invalid packet '%s' sent to mshell", pk.GetType()))
+// 	}
+// }
 
 func readFullRunPacket(packetParser *packet.PacketParser) (*packet.RunPacketType, error) {
 	rpb := packet.MakeRunPacketBuilder()
@@ -168,28 +167,24 @@ func handleSingle() {
 	}
 	runPacket, err := readFullRunPacket(packetParser)
 	if err != nil {
-		ck := base.CommandKey("")
-		if runPacket != nil {
-			ck = runPacket.CK
-		}
-		sender.SendCKErrorPacket(ck, err.Error())
+		sender.SendErrorResponse(runPacket.ReqId, err)
 		return
 	}
 	err = shexec.ValidateRunPacket(runPacket)
 	if err != nil {
-		sender.SendCKErrorPacket(runPacket.CK, err.Error())
+		sender.SendErrorResponse(runPacket.ReqId, err)
 		return
 	}
 	if runPacket.Detached {
 		err := shexec.RunCommandDetached(runPacket, sender)
 		if err != nil {
-			sender.SendCKErrorPacket(runPacket.CK, err.Error())
+			sender.SendErrorResponse(runPacket.ReqId, err)
 			return
 		}
 	} else {
 		cmd, err := shexec.RunCommandSimple(runPacket, sender)
 		if err != nil {
-			sender.SendCKErrorPacket(runPacket.CK, fmt.Sprintf("error running command: %v", err))
+			sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("error running command: %w", err))
 			return
 		}
 		defer cmd.Close()

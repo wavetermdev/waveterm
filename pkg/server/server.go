@@ -71,14 +71,14 @@ func (m *MServer) MakeServerFdContext(ck base.CommandKey) *serverFdContext {
 func (m *MServer) ProcessCommandPacket(pk packet.CommandPacketType) {
 	ck := pk.GetCK()
 	if ck == "" {
-		m.Sender.SendErrorPacket(fmt.Sprintf("received '%s' packet without ck", pk.GetType()))
+		m.Sender.SendMessage(fmt.Sprintf("received '%s' packet without ck", pk.GetType()))
 		return
 	}
 	m.Lock.Lock()
 	fdContext := m.FdContextMap[ck]
 	m.Lock.Unlock()
 	if fdContext == nil {
-		m.Sender.SendCKErrorPacket(ck, fmt.Sprintf("no server context for ck '%s'", ck))
+		m.Sender.SendCmdError(ck, fmt.Errorf("no server context for ck '%s'", ck))
 		return
 	}
 	if pk.GetType() == packet.DataPacketStr {
@@ -89,7 +89,7 @@ func (m *MServer) ProcessCommandPacket(pk packet.CommandPacketType) {
 		m.Sender.SendPacket(pk)
 		return
 	} else {
-		m.Sender.SendCKErrorPacket(ck, fmt.Sprintf("invalid packet '%s' received", packet.AsExtType(pk)))
+		m.Sender.SendCmdError(ck, fmt.Errorf("invalid packet '%s' received", packet.AsExtType(pk)))
 		return
 	}
 }
@@ -114,7 +114,7 @@ func (m *MServer) RemoveFdContext(ck base.CommandKey) {
 
 func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
 	if err := runPacket.CK.Validate("packet"); err != nil {
-		m.Sender.SendErrorPacket(fmt.Sprintf("server run packets require valid ck: %s", err))
+		m.Sender.SendResponse(runPacket.ReqId, fmt.Errorf("server run packets require valid ck: %s", err))
 		return
 	}
 	fdContext := m.MakeServerFdContext(runPacket.CK)
@@ -125,7 +125,7 @@ func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
 			m.Sender.SendPacket(donePk)
 		}
 		if err != nil {
-			m.Sender.SendCKErrorPacket(runPacket.CK, err.Error())
+			m.Sender.SendErrorResponse(runPacket.ReqId, err)
 		}
 	}()
 }
@@ -183,7 +183,7 @@ func RunServer() (int, error) {
 			server.ProcessCommandPacket(cmdPk)
 			continue
 		}
-		server.Sender.SendErrorPacket(fmt.Sprintf("invalid packet '%s' sent to mshell", packet.AsString(pk)))
+		server.Sender.SendMessage(fmt.Sprintf("invalid packet '%s' sent to mshell", packet.AsString(pk)))
 		continue
 	}
 	return 0, nil
