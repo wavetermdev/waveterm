@@ -121,7 +121,7 @@ func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
 	go func() {
 		defer m.RemoveFdContext(runPacket.CK)
 		donePk, err := shexec.RunClientSSHCommandAndWait(runPacket, fdContext, shexec.SSHOpts{}, m, m.Debug)
-		if donePk != nil {
+		if donePk != nil && !runPacket.Detached {
 			m.Sender.SendPacket(donePk)
 		}
 		if err != nil {
