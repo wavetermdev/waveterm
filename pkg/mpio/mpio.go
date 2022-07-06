@@ -89,7 +89,7 @@ func (m *Multiplexer) MakeReaderPipe(fdNum int) (*os.File, error) {
 	}
 	m.Lock.Lock()
 	defer m.Lock.Unlock()
-	m.FdReaders[fdNum] = MakeFdReader(m, pr, fdNum, true)
+	m.FdReaders[fdNum] = MakeFdReader(m, pr, fdNum, true, false)
 	m.CloseAfterStart = append(m.CloseAfterStart, pw)
 	return pw, nil
 }
@@ -125,10 +125,10 @@ func (m *Multiplexer) MakeStaticWriterPipe(fdNum int, data []byte) (*os.File, er
 	return pr, nil
 }
 
-func (m *Multiplexer) MakeRawFdReader(fdNum int, fd io.ReadCloser, shouldClose bool) {
+func (m *Multiplexer) MakeRawFdReader(fdNum int, fd io.ReadCloser, shouldClose bool, isPty bool) {
 	m.Lock.Lock()
 	defer m.Lock.Unlock()
-	m.FdReaders[fdNum] = MakeFdReader(m, fd, fdNum, shouldClose)
+	m.FdReaders[fdNum] = MakeFdReader(m, fd, fdNum, shouldClose, isPty)
 }
 
 func (m *Multiplexer) MakeRawFdWriter(fdNum int, fd io.WriteCloser, shouldClose bool) {

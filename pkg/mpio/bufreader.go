@@ -21,9 +21,10 @@ type FdReader struct {
 	BufSize       int
 	Closed        bool
 	ShouldCloseFd bool
+	IsPty         bool
 }
 
-func MakeFdReader(m *Multiplexer, fd io.ReadCloser, fdNum int, shouldCloseFd bool) *FdReader {
+func MakeFdReader(m *Multiplexer, fd io.ReadCloser, fdNum int, shouldCloseFd bool, isPty bool) *FdReader {
 	fr := &FdReader{
 		CVar:          sync.NewCond(&sync.Mutex{}),
 		M:             m,
@@ -31,6 +32,7 @@ func MakeFdReader(m *Multiplexer, fd io.ReadCloser, fdNum int, shouldCloseFd boo
 		Fd:            fd,
 		BufSize:       0,
 		ShouldCloseFd: shouldCloseFd,
+		IsPty:         isPty,
 	}
 	return fr
 }
@@ -136,6 +138,10 @@ func (r *FdReader) ReadLoop(wg *sync.WaitGroup) {
 			}
 		}
 		if err != nil {
+			if r.IsPty {
+				r.WriteWait(nil, true)
+				return
+			}
 			errPk := r.M.makeDataPacket(r.FdNum, nil, err)
 			r.M.sendPacket(errPk)
 			return

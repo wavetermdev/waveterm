@@ -150,7 +150,7 @@ func UpdateCmdEnv(cmd *exec.Cmd, envVars map[string]string) {
 	if len(envVars) == 0 {
 		return
 	}
-	if cmd.Env != nil {
+	if cmd.Env == nil {
 		cmd.Env = os.Environ()
 	}
 	found := make(map[string]bool)
@@ -631,18 +631,18 @@ func RunClientSSHCommandAndWait(runPacket *packet.RunPacketType, fdContext FdCon
 		return nil, fmt.Errorf("creating stderr pipe: %v", err)
 	}
 	if !HasDupStdin(runPacket.Fds) {
-		cmd.Multiplexer.MakeRawFdReader(0, fdContext.GetReader(0), false)
+		cmd.Multiplexer.MakeRawFdReader(0, fdContext.GetReader(0), false, false)
 	}
 	cmd.Multiplexer.MakeRawFdWriter(1, fdContext.GetWriter(1), false)
 	cmd.Multiplexer.MakeRawFdWriter(2, fdContext.GetWriter(2), false)
 	for _, rfd := range runPacket.Fds {
 		if rfd.Read && rfd.DupStdin {
-			cmd.Multiplexer.MakeRawFdReader(rfd.FdNum, fdContext.GetReader(0), false)
+			cmd.Multiplexer.MakeRawFdReader(rfd.FdNum, fdContext.GetReader(0), false, false)
 			continue
 		}
 		if rfd.Read {
 			fd := fdContext.GetReader(rfd.FdNum)
-			cmd.Multiplexer.MakeRawFdReader(rfd.FdNum, fd, false)
+			cmd.Multiplexer.MakeRawFdReader(rfd.FdNum, fd, false, false)
 		} else if rfd.Write {
 			fd := fdContext.GetWriter(rfd.FdNum)
 			cmd.Multiplexer.MakeRawFdWriter(rfd.FdNum, fd, true)
@@ -791,6 +791,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender) (*S
 			cmdTty.Close()
 		}()
 		cmd.CmdPty = cmdPty
+		UpdateCmdEnv(cmd.Cmd, map[string]string{"TERM": "xterm-256color"})
 	}
 	if cmdTty != nil {
 		cmd.Cmd.Stdin = cmdTty
@@ -801,13 +802,13 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender) (*S
 			Setctty: true,
 		}
 		cmd.Multiplexer.MakeRawFdWriter(0, cmdPty, false)
-		cmd.Multiplexer.MakeRawFdReader(1, cmdPty, false)
+		cmd.Multiplexer.MakeRawFdReader(1, cmdPty, false, true)
 		nullFd, err := os.Open("/dev/null")
 		if err != nil {
 			cmd.Close()
 			return nil, fmt.Errorf("cannot open /dev/null: %w", err)
 		}
-		cmd.Multiplexer.MakeRawFdReader(2, nullFd, true)
+		cmd.Multiplexer.MakeRawFdReader(2, nullFd, true, false)
 	} else {
 		cmd.Cmd.Stdin, err = cmd.Multiplexer.MakeWriterPipe(0)
 		if err != nil {
