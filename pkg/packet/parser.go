@@ -8,6 +8,7 @@ package packet
 
 import (
 	"bufio"
+	"context"
 	"io"
 	"strconv"
 	"strings"
@@ -17,7 +18,13 @@ import (
 type PacketParser struct {
 	Lock   *sync.Mutex
 	MainCh chan PacketType
+	RpcMap map[string]*RpcEntry
 	Err    error
+}
+
+type RpcEntry struct {
+	ReqId  string
+	RespCh chan RpcResponsePacketType
 }
 
 func CombinePacketParsers(p1 *PacketParser, p2 *PacketParser) *PacketParser {
@@ -44,6 +51,70 @@ func CombinePacketParsers(p1 *PacketParser, p2 *PacketParser) *PacketParser {
 		close(rtnParser.MainCh)
 	}()
 	return rtnParser
+}
+
+// should have already registered rpc
+func (p *PacketParser) WaitForResponse(ctx context.Context, reqId string) RpcResponsePacketType {
+	entry := p.getRpcEntry(reqId, false)
+	if entry == nil {
+		return nil
+	}
+	defer p.UnRegisterRpc(reqId)
+	select {
+	case resp := <-entry.RespCh:
+		return resp
+	case <-ctx.Done():
+		return nil
+	}
+}
+
+func (p *PacketParser) UnRegisterRpc(reqId string) {
+	p.Lock.Lock()
+	defer p.Lock.Unlock()
+	entry := p.RpcMap[reqId]
+	if entry != nil {
+		close(entry.RespCh)
+		delete(p.RpcMap, reqId)
+	}
+}
+
+func (p *PacketParser) RegisterRpc(reqId string, queueSize int) chan RpcResponsePacketType {
+	p.Lock.Lock()
+	defer p.Lock.Unlock()
+	ch := make(chan RpcResponsePacketType, queueSize)
+	entry := &RpcEntry{ReqId: reqId, RespCh: ch}
+	p.RpcMap[reqId] = entry
+	return ch
+}
+
+func (p *PacketParser) getRpcEntry(reqId string, remove bool) *RpcEntry {
+	p.Lock.Lock()
+	defer p.Lock.Unlock()
+	entry := p.RpcMap[reqId]
+	if entry != nil && remove {
+		delete(p.RpcMap, reqId)
+		close(entry.RespCh)
+	}
+	return entry
+}
+
+func (p *PacketParser) trySendRpcResponse(respPk RpcResponsePacketType) bool {
+	p.Lock.Lock()
+	defer p.Lock.Unlock()
+	entry := p.RpcMap[respPk.GetResponseId()]
+	if entry == nil {
+		return false
+	}
+	// nonblocking send
+	select {
+	case entry.RespCh <- respPk:
+	default:
+	}
+	if respPk.GetResponseDone() {
+		delete(p.RpcMap, respPk.GetResponseId())
+		close(entry.RespCh)
+	}
+	return true
 }
 
 func (p *PacketParser) GetErr() error {
@@ -107,6 +178,12 @@ func MakePacketParser(input io.Reader) *PacketParser {
 			}
 			if pk.GetType() == PingPacketStr {
 				continue
+			}
+			if respPk, ok := pk.(RpcResponsePacketType); ok {
+				sent := parser.trySendRpcResponse(respPk)
+				if sent {
+					continue
+				}
 			}
 			parser.MainCh <- pk
 		}

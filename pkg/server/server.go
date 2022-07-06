@@ -161,6 +161,8 @@ func RunServer() (int, error) {
 		if server.Debug {
 			fmt.Printf("PK> %s\n", packet.AsString(pk))
 		}
+
+		// run-start combo
 		ok, runPacket := builder.ProcessPacket(pk)
 		if server.Debug {
 			fmt.Printf("PP> %s | %v\n", pk.GetType(), ok)
@@ -179,6 +181,8 @@ func RunServer() (int, error) {
 			server.Sender.SendPacket(startPk)
 			continue
 		}
+
+		// command packet
 		if cmdPk, ok := pk.(packet.CommandPacketType); ok {
 			server.ProcessCommandPacket(cmdPk)
 			continue

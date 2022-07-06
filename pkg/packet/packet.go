@@ -109,12 +109,10 @@ type CmdDataPacketType struct {
 	PtyLen     int64           `json:"ptylen"`
 	RunPos     int64           `json:"runpos"`
 	RunLen     int64           `json:"runlen"`
-	PtyData    string          `json:"ptydata"`
+	PtyData64  string          `json:"ptydata64"`
 	PtyDataLen int             `json:"ptydatalen"`
-	RunData    string          `json:"rundata"`
+	RunData64  string          `json:"rundata64"`
 	RunDataLen int             `json:"rundatalen"`
-	Error      string          `json:"error"`
-	NotFound   bool            `json:"notfound,omitempty"`
 }
 
 func (*CmdDataPacketType) GetType() string {
@@ -125,8 +123,12 @@ func (p *CmdDataPacketType) GetResponseId() string {
 	return p.RespId
 }
 
-func MakeCmdDataPacket() *CmdDataPacketType {
-	return &CmdDataPacketType{Type: CmdDataPacketStr}
+func (*CmdDataPacketType) GetResponseDone() bool {
+	return false
+}
+
+func MakeCmdDataPacket(reqId string) *CmdDataPacketType {
+	return &CmdDataPacketType{Type: CmdDataPacketStr, RespId: reqId}
 }
 
 type PingPacketType struct {
@@ -326,6 +328,10 @@ func (p *ResponsePacketType) GetResponseId() string {
 	return p.RespId
 }
 
+func (*ResponsePacketType) GetResponseDone() bool {
+	return true
+}
+
 func MakeErrorResponsePacket(reqId string, err error) *ResponsePacketType {
 	return &ResponsePacketType{Type: ResponsePacketStr, RespId: reqId, Error: err.Error()}
 }
@@ -421,8 +427,8 @@ func (p *CmdDonePacketType) GetCK() base.CommandKey {
 	return p.CK
 }
 
-func MakeCmdDonePacket() *CmdDonePacketType {
-	return &CmdDonePacketType{Type: CmdDonePacketStr}
+func MakeCmdDonePacket(ck base.CommandKey) *CmdDonePacketType {
+	return &CmdDonePacketType{Type: CmdDonePacketStr, CK: ck}
 }
 
 type CmdStartPacketType struct {
@@ -442,8 +448,12 @@ func (p *CmdStartPacketType) GetResponseId() string {
 	return p.RespId
 }
 
-func MakeCmdStartPacket() *CmdStartPacketType {
-	return &CmdStartPacketType{Type: CmdStartPacketStr}
+func (*CmdStartPacketType) GetResponseDone() bool {
+	return true
+}
+
+func MakeCmdStartPacket(reqId string) *CmdStartPacketType {
+	return &CmdStartPacketType{Type: CmdStartPacketStr, RespId: reqId}
 }
 
 type TermSize struct {
@@ -534,6 +544,7 @@ type RpcPacketType interface {
 type RpcResponsePacketType interface {
 	GetType() string
 	GetResponseId() string
+	GetResponseDone() bool
 }
 
 type CommandPacketType interface {

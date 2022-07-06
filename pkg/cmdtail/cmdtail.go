@@ -7,6 +7,7 @@
 package cmdtail
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -89,6 +90,12 @@ func (t *Tailer) updateTailPos_nolock(cmdKey base.CommandKey, reqId string, pos 
 	t.WatchList[cmdKey] = entry
 }
 
+func (t *Tailer) removeTailPos(cmdKey base.CommandKey, reqId string) {
+	t.Lock.Lock()
+	defer t.Lock.Unlock()
+	t.removeTailPos_nolock(cmdKey, reqId)
+}
+
 func (t *Tailer) removeTailPos_nolock(cmdKey base.CommandKey, reqId string) {
 	entry, found := t.WatchList[cmdKey]
 	if !found {
@@ -105,16 +112,6 @@ func (t *Tailer) removeTailPos_nolock(cmdKey base.CommandKey, reqId string) {
 	delete(t.WatchList, cmdKey)
 	t.Watcher.Remove(fileNames.PtyOutFile)
 	t.Watcher.Remove(fileNames.RunnerOutFile)
-}
-
-func (t *Tailer) updateEntrySizes_nolock(cmdKey base.CommandKey, ptyLen int64, runLen int64) {
-	entry, found := t.WatchList[cmdKey]
-	if !found {
-		return
-	}
-	entry.FilePtyLen = ptyLen
-	entry.FileRunLen = runLen
-	t.WatchList[cmdKey] = entry
 }
 
 func (t *Tailer) getEntryAndPos_nolock(cmdKey base.CommandKey, reqId string) (CmdWatchEntry, TailPos, bool) {
@@ -159,90 +156,98 @@ func (t *Tailer) readDataFromFile(fileName string, pos int64, maxBytes int) ([]b
 	return buf[0:nr], nil
 }
 
-func (t *Tailer) makeCmdDataPacket(fileNames *base.CommandFileNames, entry CmdWatchEntry, pos TailPos) *packet.CmdDataPacketType {
-	dataPacket := packet.MakeCmdDataPacket()
-	dataPacket.RespId = pos.ReqId
+func (t *Tailer) makeCmdDataPacket(fileNames *base.CommandFileNames, entry CmdWatchEntry, pos TailPos) (*packet.CmdDataPacketType, error) {
+	dataPacket := packet.MakeCmdDataPacket(pos.ReqId)
 	dataPacket.CK = entry.CmdKey
 	dataPacket.PtyPos = pos.TailPtyPos
 	dataPacket.RunPos = pos.TailRunPos
 	if entry.FilePtyLen > pos.TailPtyPos {
 		ptyData, err := t.readDataFromFile(fileNames.PtyOutFile, pos.TailPtyPos, MaxDataBytes)
 		if err != nil {
-			dataPacket.Error = err.Error()
-			return dataPacket
+			return nil, err
 		}
-		dataPacket.PtyData = string(ptyData)
+		dataPacket.PtyData64 = base64.StdEncoding.EncodeToString(ptyData)
 		dataPacket.PtyDataLen = len(ptyData)
 	}
 	if entry.FileRunLen > pos.TailRunPos {
 		runData, err := t.readDataFromFile(fileNames.RunnerOutFile, pos.TailRunPos, MaxDataBytes)
 		if err != nil {
-			dataPacket.Error = err.Error()
-			return dataPacket
+			return nil, err
 		}
-		dataPacket.RunData = string(runData)
+		dataPacket.RunData64 = base64.StdEncoding.EncodeToString(runData)
 		dataPacket.RunDataLen = len(runData)
 	}
-	return dataPacket
+	return dataPacket, nil
 }
 
 // returns (data-packet, keepRunning)
-func (t *Tailer) runSingleDataTransfer(key base.CommandKey, reqId string) (*packet.CmdDataPacketType, bool) {
+func (t *Tailer) runSingleDataTransfer(key base.CommandKey, reqId string) (*packet.CmdDataPacketType, bool, error) {
 	t.Lock.Lock()
 	entry, pos, foundPos := t.getEntryAndPos_nolock(key, reqId)
 	t.Lock.Unlock()
 	if !foundPos {
-		return nil, false
+		return nil, false, nil
 	}
 	fileNames := base.MakeCommandFileNamesWithHome(t.MHomeDir, key)
-	dataPacket := t.makeCmdDataPacket(fileNames, entry, pos)
+	dataPacket, dataErr := t.makeCmdDataPacket(fileNames, entry, pos)
 
 	t.Lock.Lock()
 	defer t.Lock.Unlock()
 	entry, pos, foundPos = t.getEntryAndPos_nolock(key, reqId)
 	if !foundPos {
-		return nil, false
+		return nil, false, nil
 	}
 	// pos was updated between first and second get, throw out data-packet and re-run
 	if pos.TailPtyPos != dataPacket.PtyPos || pos.TailRunPos != dataPacket.RunPos {
-		return nil, true
+		return nil, true, nil
 	}
-	if dataPacket.Error != "" {
+	if dataErr != nil {
 		// error, so return error packet, and stop running
 		pos.Running = false
 		t.updateTailPos_nolock(key, reqId, pos)
-		return dataPacket, false
+		return nil, false, dataErr
 	}
-	pos.TailPtyPos += int64(len(dataPacket.PtyData))
-	pos.TailRunPos += int64(len(dataPacket.RunData))
+	pos.TailPtyPos += int64(dataPacket.PtyDataLen)
+	pos.TailRunPos += int64(dataPacket.RunDataLen)
 	if pos.TailPtyPos >= entry.FilePtyLen && pos.TailRunPos >= entry.FileRunLen {
 		// we caught up, tail position equals file length
 		pos.Running = false
 	}
 	t.updateTailPos_nolock(key, reqId, pos)
-	return dataPacket, pos.Running
+	return dataPacket, pos.Running, nil
 }
 
-func (t *Tailer) checkRemoveNoFollow(cmdKey base.CommandKey, reqId string) {
+// returns (removed)
+func (t *Tailer) checkRemoveNoFollow(cmdKey base.CommandKey, reqId string) bool {
 	t.Lock.Lock()
 	defer t.Lock.Unlock()
 	_, pos, foundPos := t.getEntryAndPos_nolock(cmdKey, reqId)
 	if !foundPos {
-		return
+		return false
 	}
 	if !pos.Follow {
 		t.removeTailPos_nolock(cmdKey, reqId)
+		return true
 	}
+	return false
 }
 
 func (t *Tailer) RunDataTransfer(key base.CommandKey, reqId string) {
 	for {
-		dataPacket, keepRunning := t.runSingleDataTransfer(key, reqId)
+		dataPacket, keepRunning, err := t.runSingleDataTransfer(key, reqId)
 		if dataPacket != nil {
 			t.Sender.SendPacket(dataPacket)
 		}
+		if err != nil {
+			t.removeTailPos(key, reqId)
+			t.Sender.SendErrorResponse(reqId, err)
+			break
+		}
 		if !keepRunning {
-			t.checkRemoveNoFollow(key, reqId)
+			removed := t.checkRemoveNoFollow(key, reqId)
+			if removed {
+				t.Sender.SendResponse(reqId, true)
+			}
 			break
 		}
 		time.Sleep(10 * time.Millisecond)
@@ -254,7 +259,6 @@ func (t *Tailer) tryStartRun_nolock(entry CmdWatchEntry, pos TailPos) {
 		return
 	}
 	if pos.IsCurrent(entry) {
-
 		return
 	}
 	pos.Running = true
@@ -344,6 +348,19 @@ func (t *Tailer) RemoveWatch(pk *packet.UntailCmdPacketType) {
 	t.removeTailPos_nolock(pk.CK, pk.ReqId)
 }
 
+func (t *Tailer) AddFileWatches_nolock(fileNames *base.CommandFileNames) error {
+	err := t.Watcher.Add(fileNames.PtyOutFile)
+	if err != nil {
+		return err
+	}
+	err = t.Watcher.Add(fileNames.RunnerOutFile)
+	if err != nil {
+		t.Watcher.Remove(fileNames.PtyOutFile) // best effort clean up
+		return err
+	}
+	return nil
+}
+
 func (t *Tailer) AddWatch(getPacket *packet.GetCmdPacketType) error {
 	if err := getPacket.CK.Validate("getcmd"); err != nil {
 		return err
@@ -357,16 +374,7 @@ func (t *Tailer) AddWatch(getPacket *packet.GetCmdPacketType) error {
 	key := getPacket.CK
 	entry, foundEntry := t.WatchList[key]
 	if !foundEntry {
-		// add watches, initialize entry
-		err := t.Watcher.Add(fileNames.PtyOutFile)
-		if err != nil {
-			return err
-		}
-		err = t.Watcher.Add(fileNames.RunnerOutFile)
-		if err != nil {
-			t.Watcher.Remove(fileNames.PtyOutFile) // best effort clean up
-			return err
-		}
+		// initialize entry, add watches
 		entry = CmdWatchEntry{CmdKey: key}
 		entry.fillFilePos(t.MHomeDir)
 	}
@@ -387,6 +395,14 @@ func (t *Tailer) AddWatch(getPacket *packet.GetCmdPacketType) error {
 		pos.TailRunPos = max(0, entry.FileRunLen+pos.TailRunPos) // + because negative
 	}
 	entry.updateTailPos(pos.ReqId, pos)
+	if !pos.Follow && pos.IsCurrent(entry) {
+		// don't add to t.WatchList, don't t.AddFileWatches_nolock, send rpc response
+		go func() { t.Sender.SendResponse(getPacket.ReqId, true) }()
+		return nil
+	}
+	if !foundEntry {
+		t.AddFileWatches_nolock(fileNames)
+	}
 	t.WatchList[key] = entry
 	t.tryStartRun_nolock(entry, pos)
 	return nil

@@ -129,8 +129,8 @@ func (c *ShExecType) Close() {
 	}
 }
 
-func (c *ShExecType) MakeCmdStartPacket() *packet.CmdStartPacketType {
-	startPacket := packet.MakeCmdStartPacket()
+func (c *ShExecType) MakeCmdStartPacket(reqId string) *packet.CmdStartPacketType {
+	startPacket := packet.MakeCmdStartPacket(reqId)
 	startPacket.Ts = time.Now().UnixMilli()
 	startPacket.CK = c.CK
 	startPacket.Pid = c.Cmd.Process.Pid
@@ -848,21 +848,67 @@ func SetupSignalsForDetach() {
 	}()
 }
 
-func RunCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) error {
+func (cmd *ShExecType) DetachedWait(startPacket *packet.CmdStartPacketType) {
+	// after Start(), any output/errors must go to DetachedOutput
+	// close stdin/stdout/stderr, but wait for cmdstart packet to get sent
+	nullFd, err := os.OpenFile("/dev/null", os.O_RDWR, 0)
+	if err != nil {
+		cmd.DetachedOutput.SendCmdError(cmd.CK, fmt.Errorf("cannot open /dev/null: %w", err))
+	}
+	if nullFd != nil {
+		err := unix.Dup2(int(nullFd.Fd()), int(os.Stdin.Fd()))
+		if err != nil {
+			cmd.DetachedOutput.SendCmdError(cmd.CK, fmt.Errorf("cannot dup2 stdin to /dev/null: %w", err))
+		}
+		err = unix.Dup2(int(nullFd.Fd()), int(os.Stdout.Fd()))
+		if err != nil {
+			cmd.DetachedOutput.SendCmdError(cmd.CK, fmt.Errorf("cannot dup2 stdin to /dev/null: %w", err))
+		}
+		err = unix.Dup2(int(nullFd.Fd()), int(os.Stderr.Fd()))
+		if err != nil {
+			cmd.DetachedOutput.SendCmdError(cmd.CK, fmt.Errorf("cannot dup2 stdin to /dev/null: %w", err))
+		}
+	}
+	cmd.DetachedOutput.SendPacket(startPacket)
+	ptyOutFd, err := os.OpenFile(cmd.FileNames.PtyOutFile, os.O_TRUNC|os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+	if err != nil {
+		cmd.DetachedOutput.SendCmdError(cmd.CK, fmt.Errorf("cannot open ptyout file '%s': %w", cmd.FileNames.PtyOutFile, err))
+		// don't return (command is already running)
+	}
+	go func() {
+		// copy pty output to .ptyout file
+		_, copyErr := io.Copy(ptyOutFd, cmd.CmdPty)
+		if copyErr != nil {
+			cmd.DetachedOutput.SendCmdError(cmd.CK, fmt.Errorf("copying pty output to ptyout file: %w", copyErr))
+		}
+	}()
+	go func() {
+		// copy .stdin fifo contents to pty input
+		copyFifoErr := MakeAndCopyStdinFifo(cmd.CmdPty, cmd.FileNames.StdinFifo)
+		if copyFifoErr != nil {
+			cmd.DetachedOutput.SendCmdError(cmd.CK, fmt.Errorf("reading from stdin fifo: %w", copyFifoErr))
+		}
+	}()
+	donePacket := cmd.WaitForCommand()
+	cmd.DetachedOutput.SendPacket(donePacket)
+	return
+}
+
+func RunCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecType, *packet.CmdStartPacketType, error) {
 	fileNames, err := base.GetCommandFileNames(pk.CK)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	ptyOutInfo, err := os.Stat(fileNames.PtyOutFile)
 	if err == nil { // non-nil error will be caught by regular OpenFile below
 		// must have size 0
 		if ptyOutInfo.Size() != 0 {
-			return fmt.Errorf("cmdkey '%s' was already used (ptyout len=%d)", pk.CK, ptyOutInfo.Size())
+			return nil, nil, fmt.Errorf("cmdkey '%s' was already used (ptyout len=%d)", pk.CK, ptyOutInfo.Size())
 		}
 	}
 	cmdPty, cmdTty, err := pty.Open()
 	if err != nil {
-		return fmt.Errorf("opening new pty: %w", err)
+		return nil, nil, fmt.Errorf("opening new pty: %w", err)
 	}
 	pty.Setsize(cmdPty, GetWinsize(pk))
 	defer func() {
@@ -874,72 +920,26 @@ func RunCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) e
 	cmd.Detached = true
 	cmd.RunnerOutFd, err = os.OpenFile(fileNames.RunnerOutFile, os.O_TRUNC|os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
-		return fmt.Errorf("cannot open runout file '%s': %w", fileNames.RunnerOutFile, err)
-	}
-	nullFd, err := os.OpenFile("/dev/null", os.O_RDWR, 0)
-	if err != nil {
-		return fmt.Errorf("cannot open /dev/null: %w", err)
+		return nil, nil, fmt.Errorf("cannot open runout file '%s': %w", fileNames.RunnerOutFile, err)
 	}
 	cmd.DetachedOutput = packet.MakePacketSender(cmd.RunnerOutFd)
 	ecmd, err := MakeDetachedExecCmd(pk, cmdTty)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	cmd.Cmd = ecmd
 	SetupSignalsForDetach()
 	err = ecmd.Start()
 	if err != nil {
-		return fmt.Errorf("starting command: %w", err)
+		return nil, nil, fmt.Errorf("starting command: %w", err)
 	}
 	for _, fd := range ecmd.ExtraFiles {
 		if fd != cmdTty {
 			fd.Close()
 		}
 	}
-	// after Start(), any errors must go to DetachedOutput
-	// close stdin/stdout/stderr, but wait for cmdstart packet to get sent
-	startPacket := cmd.MakeCmdStartPacket()
-	go func() {
-		sender.SendPacket(startPacket)
-		sender.Close()
-		sender.WaitForDone()
-		fmt.Printf("sender done! start: %v\n", startPacket)
-		err = unix.Dup2(int(nullFd.Fd()), int(os.Stdin.Fd()))
-		if err != nil {
-			cmd.DetachedOutput.SendCmdError(pk.CK, fmt.Errorf("cannot dup2 stdin to /dev/null: %w", err))
-		}
-		err = unix.Dup2(int(nullFd.Fd()), int(os.Stdout.Fd()))
-		if err != nil {
-			cmd.DetachedOutput.SendCmdError(pk.CK, fmt.Errorf("cannot dup2 stdin to /dev/null: %w", err))
-		}
-		err = unix.Dup2(int(nullFd.Fd()), int(os.Stderr.Fd()))
-		if err != nil {
-			cmd.DetachedOutput.SendCmdError(pk.CK, fmt.Errorf("cannot dup2 stdin to /dev/null: %w", err))
-		}
-		cmd.DetachedOutput.SendPacket(startPacket)
-	}()
-	ptyOutFd, err := os.OpenFile(fileNames.PtyOutFile, os.O_TRUNC|os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
-	if err != nil {
-		cmd.DetachedOutput.SendCmdError(pk.CK, fmt.Errorf("cannot open ptyout file '%s': %w", fileNames.PtyOutFile, err))
-		// don't return (command is already running)
-	}
-	go func() {
-		// copy pty output to .ptyout file
-		_, copyErr := io.Copy(ptyOutFd, cmdPty)
-		if copyErr != nil {
-			cmd.DetachedOutput.SendCmdError(pk.CK, fmt.Errorf("copying pty output to ptyout file: %w", copyErr))
-		}
-	}()
-	go func() {
-		// copy .stdin fifo contents to pty input
-		copyFifoErr := MakeAndCopyStdinFifo(cmdPty, fileNames.StdinFifo)
-		if copyFifoErr != nil {
-			cmd.DetachedOutput.SendCmdError(pk.CK, fmt.Errorf("reading from stdin fifo: %w", copyFifoErr))
-		}
-	}()
-	donePacket := cmd.WaitForCommand()
-	cmd.DetachedOutput.SendPacket(donePacket)
-	return nil
+	startPacket := cmd.MakeCmdStartPacket(pk.ReqId)
+	return cmd, startPacket, nil
 }
 
 func GetExitCode(err error) int {
@@ -958,9 +958,8 @@ func (c *ShExecType) WaitForCommand() *packet.CmdDonePacketType {
 	endTs := time.Now()
 	cmdDuration := endTs.Sub(c.StartTs)
 	exitCode := GetExitCode(exitErr)
-	donePacket := packet.MakeCmdDonePacket()
+	donePacket := packet.MakeCmdDonePacket(c.CK)
 	donePacket.Ts = endTs.UnixMilli()
-	donePacket.CK = c.CK
 	donePacket.ExitCode = exitCode
 	donePacket.DurationMs = int64(cmdDuration / time.Millisecond)
 	if c.FileNames != nil {

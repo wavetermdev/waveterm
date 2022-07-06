@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/scripthaus-dev/mshell/pkg/base"
+	"github.com/scripthaus-dev/mshell/pkg/cmdtail"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/mshell/pkg/server"
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
@@ -73,13 +74,13 @@ import (
 // 	}()
 // }
 
-// func doGetCmd(tailer *cmdtail.Tailer, pk *packet.GetCmdPacketType, sender *packet.PacketSender) error {
-// 	err := tailer.AddWatch(pk)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
+func doGetCmd(tailer *cmdtail.Tailer, pk *packet.GetCmdPacketType, sender *packet.PacketSender) error {
+	err := tailer.AddWatch(pk)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 // func doMain() {
 // 	homeDir := base.GetHomeDir()
@@ -176,11 +177,16 @@ func handleSingle() {
 		return
 	}
 	if runPacket.Detached {
-		err := shexec.RunCommandDetached(runPacket, sender)
+		cmd, startPk, err := shexec.RunCommandDetached(runPacket, sender)
 		if err != nil {
 			sender.SendErrorResponse(runPacket.ReqId, err)
 			return
 		}
+		sender.SendPacket(startPk)
+		sender.Close()
+		sender.WaitForDone()
+		cmd.DetachedWait(startPk)
+		return
 	} else {
 		cmd, err := shexec.RunCommandSimple(runPacket, sender)
 		if err != nil {
@@ -188,7 +194,7 @@ func handleSingle() {
 			return
 		}
 		defer cmd.Close()
-		startPacket := cmd.MakeCmdStartPacket()
+		startPacket := cmd.MakeCmdStartPacket(runPacket.ReqId)
 		sender.SendPacket(startPacket)
 		cmd.RunRemoteIOAndWait(packetParser, sender)
 		return
