@@ -196,9 +196,10 @@ func MakeDetachedExecCmd(pk *packet.RunPacketType, cmdTty *os.File) (*exec.Cmd, 
 	if pk.Cwd != "" {
 		ecmd.Dir = base.ExpandHomeDir(pk.Cwd)
 	}
-	if !HasDupStdin(pk.Fds) {
-		ecmd.Stdin = cmdTty
+	if HasDupStdin(pk.Fds) {
+		return nil, fmt.Errorf("cannot detach command with dup stdin")
 	}
+	ecmd.Stdin = cmdTty
 	ecmd.Stdout = cmdTty
 	ecmd.Stderr = cmdTty
 	ecmd.SysProcAttr = &syscall.SysProcAttr{
@@ -206,15 +207,8 @@ func MakeDetachedExecCmd(pk *packet.RunPacketType, cmdTty *os.File) (*exec.Cmd, 
 		Setctty: true,
 	}
 	extraFiles := make([]*os.File, 0, MaxFdNum+1)
-	for _, rfd := range pk.Fds {
-		if rfd.FdNum >= len(extraFiles) {
-			extraFiles = extraFiles[:rfd.FdNum+1]
-		}
-		if rfd.Read && rfd.DupStdin {
-			extraFiles[rfd.FdNum] = cmdTty
-			continue
-		}
-		return nil, fmt.Errorf("invalid fd %d passed to detached command", rfd.FdNum)
+	if len(pk.Fds) > 0 {
+		return nil, fmt.Errorf("invalid fd %d passed to detached command", pk.Fds[0].FdNum)
 	}
 	for _, runData := range pk.RunData {
 		if runData.FdNum >= len(extraFiles) {
@@ -276,7 +270,10 @@ func ValidateRunPacket(pk *packet.RunPacketType) error {
 			if rfd.Write {
 				return fmt.Errorf("cannot detach command with writable remote files fd=%d", rfd.FdNum)
 			}
-			if rfd.Read && !rfd.DupStdin {
+			if rfd.Read && rfd.DupStdin {
+				return fmt.Errorf("cannot detach command with dup stdin fd=%d", rfd.FdNum)
+			}
+			if rfd.Read {
 				return fmt.Errorf("cannot detach command with readable remote files fd=%d", rfd.FdNum)
 			}
 		}
@@ -305,6 +302,9 @@ func ValidateRunPacket(pk *packet.RunPacketType) error {
 		if runData.DataLen != len(runData.Data) {
 			return fmt.Errorf("rundata length mismatch, fd=%d, datalen=%d, expected=%d", runData.FdNum, len(runData.Data), runData.DataLen)
 		}
+	}
+	if pk.UsePty && HasDupStdin(pk.Fds) {
+		return fmt.Errorf("cannot use pty with command that has dup stdin")
 	}
 	return nil
 }
@@ -347,6 +347,7 @@ type ClientOpts struct {
 	SudoWithPass bool
 	SudoPw       string
 	Detach       bool
+	UsePty       bool
 }
 
 func (opts SSHOpts) MakeSSHInstallCmd() (*exec.Cmd, error) {
@@ -416,6 +417,7 @@ func (opts *ClientOpts) MakeRunPacket() (*packet.RunPacketType, error) {
 	runPacket.Detached = opts.Detach
 	runPacket.Cwd = opts.Cwd
 	runPacket.Fds = opts.Fds
+	runPacket.UsePty = opts.UsePty
 	if !opts.Sudo {
 		// normal, non-sudo command
 		runPacket.Command = fmt.Sprintf(RunCommandFmt, opts.Command)
@@ -777,20 +779,51 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender) (*S
 		cmd.Close()
 		return nil, err
 	}
-	cmd.Cmd.Stdin, err = cmd.Multiplexer.MakeWriterPipe(0)
-	if err != nil {
-		cmd.Close()
-		return nil, err
+	var cmdPty *os.File
+	var cmdTty *os.File
+	if pk.UsePty {
+		cmdPty, cmdTty, err = pty.Open()
+		if err != nil {
+			return nil, fmt.Errorf("opening new pty: %w", err)
+		}
+		pty.Setsize(cmdPty, GetWinsize(pk))
+		defer func() {
+			cmdTty.Close()
+		}()
+		cmd.CmdPty = cmdPty
 	}
-	cmd.Cmd.Stdout, err = cmd.Multiplexer.MakeReaderPipe(1)
-	if err != nil {
-		cmd.Close()
-		return nil, err
-	}
-	cmd.Cmd.Stderr, err = cmd.Multiplexer.MakeReaderPipe(2)
-	if err != nil {
-		cmd.Close()
-		return nil, err
+	if cmdTty != nil {
+		cmd.Cmd.Stdin = cmdTty
+		cmd.Cmd.Stdout = cmdTty
+		cmd.Cmd.Stderr = cmdTty
+		cmd.Cmd.SysProcAttr = &syscall.SysProcAttr{
+			Setsid:  true,
+			Setctty: true,
+		}
+		cmd.Multiplexer.MakeRawFdWriter(0, cmdPty, false)
+		cmd.Multiplexer.MakeRawFdReader(1, cmdPty, false)
+		nullFd, err := os.Open("/dev/null")
+		if err != nil {
+			cmd.Close()
+			return nil, fmt.Errorf("cannot open /dev/null: %w", err)
+		}
+		cmd.Multiplexer.MakeRawFdReader(2, nullFd, true)
+	} else {
+		cmd.Cmd.Stdin, err = cmd.Multiplexer.MakeWriterPipe(0)
+		if err != nil {
+			cmd.Close()
+			return nil, err
+		}
+		cmd.Cmd.Stdout, err = cmd.Multiplexer.MakeReaderPipe(1)
+		if err != nil {
+			cmd.Close()
+			return nil, err
+		}
+		cmd.Cmd.Stderr, err = cmd.Multiplexer.MakeReaderPipe(2)
+		if err != nil {
+			cmd.Close()
+			return nil, err
+		}
 	}
 	extraFiles := make([]*os.File, 0, MaxFdNum+1)
 	for _, runData := range pk.RunData {
@@ -898,11 +931,11 @@ func RunCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) (
 	if err != nil {
 		return nil, nil, err
 	}
-	ptyOutInfo, err := os.Stat(fileNames.PtyOutFile)
+	runOutInfo, err := os.Stat(fileNames.RunnerOutFile)
 	if err == nil { // non-nil error will be caught by regular OpenFile below
 		// must have size 0
-		if ptyOutInfo.Size() != 0 {
-			return nil, nil, fmt.Errorf("cmdkey '%s' was already used (ptyout len=%d)", pk.CK, ptyOutInfo.Size())
+		if runOutInfo.Size() != 0 {
+			return nil, nil, fmt.Errorf("cmdkey '%s' was already used (runout len=%d)", pk.CK, runOutInfo.Size())
 		}
 	}
 	cmdPty, cmdTty, err := pty.Open()

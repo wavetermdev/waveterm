@@ -304,6 +304,10 @@ func parseClientOpts() (*shexec.ClientOpts, error) {
 			opts.Detach = true
 			continue
 		}
+		if argStr == "--pty" {
+			opts.UsePty = true
+			continue
+		}
 		if argStr == "--debug" {
 			opts.Debug = true
 			continue

@@ -481,6 +481,7 @@ type RunPacketType struct {
 	Command  string            `json:"command"`
 	Cwd      string            `json:"cwd,omitempty"`
 	Env      map[string]string `json:"env,omitempty"`
+	UsePty   bool              `json:"usepty,omitempty"`
 	TermSize *TermSize         `json:"termsize,omitempty"`
 	Fds      []RemoteFd        `json:"fds,omitempty"`
 	RunData  []RunDataType     `json:"rundata,omitempty"`
