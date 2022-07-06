@@ -8,6 +8,7 @@ package packet
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -691,6 +692,19 @@ func (sender *PacketSender) checkStatus() error {
 		return fmt.Errorf("cannot send packet, sender had error: %w", sender.Err)
 	}
 	return nil
+}
+
+func (sender *PacketSender) SendPacketCtx(ctx context.Context, pk PacketType) error {
+	err := sender.checkStatus()
+	if err != nil {
+		return err
+	}
+	select {
+	case sender.SendCh <- pk:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (sender *PacketSender) SendPacket(pk PacketType) error {

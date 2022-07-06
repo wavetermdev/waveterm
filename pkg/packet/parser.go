@@ -31,6 +31,7 @@ func CombinePacketParsers(p1 *PacketParser, p2 *PacketParser) *PacketParser {
 	rtnParser := &PacketParser{
 		Lock:   &sync.Mutex{},
 		MainCh: make(chan PacketType),
+		RpcMap: make(map[string]*RpcEntry),
 	}
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -78,7 +79,11 @@ func (p *PacketParser) UnRegisterRpc(reqId string) {
 	}
 }
 
-func (p *PacketParser) RegisterRpc(reqId string, queueSize int) chan RpcResponsePacketType {
+func (p *PacketParser) RegisterRpc(reqId string) chan RpcResponsePacketType {
+	return p.RegisterRpcSz(reqId, 2)
+}
+
+func (p *PacketParser) RegisterRpcSz(reqId string, queueSize int) chan RpcResponsePacketType {
 	p.Lock.Lock()
 	defer p.Lock.Unlock()
 	ch := make(chan RpcResponsePacketType, queueSize)
@@ -135,6 +140,7 @@ func MakePacketParser(input io.Reader) *PacketParser {
 	parser := &PacketParser{
 		Lock:   &sync.Mutex{},
 		MainCh: make(chan PacketType),
+		RpcMap: make(map[string]*RpcEntry),
 	}
 	bufReader := bufio.NewReader(input)
 	go func() {
