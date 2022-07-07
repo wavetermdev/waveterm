@@ -1060,6 +1060,7 @@ func MakeInitPacket() *packet.InitPacketType {
 	if user, _ := user.Current(); user != nil {
 		initPacket.User = user.Username
 	}
+	initPacket.HostName, _ = os.Hostname()
 	return initPacket
 }
 

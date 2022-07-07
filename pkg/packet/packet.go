@@ -387,6 +387,7 @@ type InitPacketType struct {
 	HomeDir       string   `json:"homedir,omitempty"`
 	Env           []string `json:"env,omitempty"`
 	User          string   `json:"user,omitempty"`
+	HostName      string   `json:"hostname,omitempty"`
 	NotFound      bool     `json:"notfound,omitempty"`
 	UName         string   `json:"uname,omitempty"`
 	RemoteId      string   `json:"remoteid,omitempty"`
