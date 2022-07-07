@@ -89,6 +89,30 @@ func (s *RemoteState) Value() (driver.Value, error) {
 	return json.Marshal(s)
 }
 
+type TermOpts struct {
+	Rows     int  `json:"rows"`
+	Cols     int  `json:"cols"`
+	FlexRows bool `json:"flexrows,omitempty"`
+}
+
+func (opts *TermOpts) Scan(val interface{}) error {
+	if strVal, ok := val.(string); ok {
+		if strVal == "" {
+			return nil
+		}
+		err := json.Unmarshal([]byte(strVal), opts)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("cannot scan '%T' into TermOpts", val)
+}
+
+func (opts *TermOpts) Value() (driver.Value, error) {
+	return json.Marshal(opts)
+}
+
 type RemoteInstance struct {
 	RIId         string      `json:"riid"`
 	Name         string      `json:"name"`
@@ -127,19 +151,81 @@ type RemoteType struct {
 }
 
 type CmdType struct {
-	SessionId   string `json:"sessionid"`
-	CmdId       string `json:"cmdid"`
-	RSId        string `json:"rsid"`
-	RemoteId    string `json:"remoteid"`
-	RemoteState string `json:"remotestate"`
-	Status      string `json:"status"`
-	StartTs     int64  `json:"startts"`
-	DoneTs      int64  `json:"donets"`
-	Pid         int    `json:"pid"`
-	RunnerPid   int    `json:"runnerpid"`
-	ExitCode    int    `json:"exitcode"`
+	SessionId   string                     `json:"sessionid"`
+	CmdId       string                     `json:"cmdid"`
+	RemoteId    string                     `json:"remoteid"`
+	CmdStr      string                     `json:"cmdstr"`
+	RemoteState RemoteState                `json:"remotestate"`
+	TermOpts    TermOpts                   `json:"termopts"`
+	Status      string                     `json:"status"`
+	StartPk     *packet.CmdStartPacketType `json:"startpk"`
+	DonePk      *packet.CmdDonePacketType  `json:"donepk"`
+	RunOut      []packet.PacketType        `json:"runout"`
+}
 
-	RunOut packet.PacketType `json:"runout"`
+func quickJson(v interface{}) string {
+	if v == nil {
+		return ""
+	}
+	barr, _ := json.Marshal(v)
+	return string(barr)
+}
+
+func (cmd *CmdType) ToMap() map[string]interface{} {
+	rtn := make(map[string]interface{})
+	rtn["sessionid"] = cmd.SessionId
+	rtn["cmdid"] = cmd.CmdId
+	rtn["remoteid"] = cmd.RemoteId
+	rtn["cmdstr"] = cmd.CmdStr
+	rtn["remotestate"] = quickJson(cmd.RemoteState)
+	rtn["termopts"] = quickJson(cmd.TermOpts)
+	rtn["status"] = cmd.Status
+	rtn["startpk"] = quickJson(cmd.StartPk)
+	rtn["donepk"] = quickJson(cmd.DonePk)
+	rtn["runout"] = quickJson(cmd.RunOut)
+	return rtn
+}
+
+func quickSetStr(strVal *string, m map[string]interface{}, name string) {
+	v, ok := m[name]
+	if !ok {
+		return
+	}
+	str, ok := v.(string)
+	if !ok {
+		return
+	}
+	*strVal = str
+}
+
+func quickSetJson(ptr interface{}, m map[string]interface{}, name string) {
+	v, ok := m[name]
+	if !ok {
+		return
+	}
+	str, ok := v.(string)
+	if !ok {
+		return
+	}
+	if str == "" {
+		return
+	}
+	json.Unmarshal([]byte(str), ptr)
+}
+
+func CmdFromMap(m map[string]interface{}) *CmdType {
+	var cmd CmdType
+	quickSetStr(&cmd.SessionId, m, "sessionid")
+	quickSetStr(&cmd.CmdId, m, "cmdid")
+	quickSetStr(&cmd.RemoteId, m, "remoteid")
+	quickSetStr(&cmd.CmdStr, m, "cmdstr")
+	quickSetJson(&cmd.RemoteState, m, "remotestate")
+	quickSetJson(&cmd.TermOpts, m, "termopts")
+	quickSetStr(&cmd.Status, m, "status")
+	quickSetJson(&cmd.StartPk, m, "startpk")
+	quickSetJson(&cmd.DonePk, m, "donepk")
+	quickSetJson(&cmd.RunOut, m, "runout")
+	return &cmd
 }
 
 func makeNewLineCmd(sessionId string, windowId string, userId string) *LineType {

@@ -459,12 +459,15 @@ func ProcessFeCommandPacket(ctx context.Context, pk *scpacket.FeCommandPacketTyp
 	if err != nil {
 		return nil, err
 	}
-	startPk, err := remote.RunCommand(ctx, pk, rtnLine.CmdId)
+	cmd, err := remote.RunCommand(ctx, pk, rtnLine.CmdId)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("START CMD: %s\n", packet.AsString(startPk))
-	return &runCommandResponse{Line: rtnLine}, nil
+	err = sstore.InsertCmd(ctx, cmd)
+	if err != nil {
+		return nil, err
+	}
+	return &runCommandResponse{Line: rtnLine, Cmd: cmd}, nil
 }
 
 // /api/start-session

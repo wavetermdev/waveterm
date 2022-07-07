@@ -154,7 +154,15 @@ func (msh *MShellProc) IsConnected() bool {
 	return msh.Status == StatusConnected
 }
 
-func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, cmdId string) (*packet.CmdStartPacketType, error) {
+func convertRemoteState(rs scpacket.RemoteState) sstore.RemoteState {
+	return sstore.RemoteState{Cwd: rs.Cwd}
+}
+
+func makeTermOpts() sstore.TermOpts {
+	return sstore.TermOpts{Rows: DefaultTermRows, Cols: DefaultTermCols, FlexRows: true}
+}
+
+func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, cmdId string) (*sstore.CmdType, error) {
 	msh := GetRemoteById(pk.RemoteState.RemoteId)
 	if msh == nil {
 		return nil, fmt.Errorf("no remote id=%s found", pk.RemoteState.RemoteId)
@@ -177,15 +185,29 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, cmdId str
 		return nil, fmt.Errorf("sending run packet to remote: %w", err)
 	}
 	rtnPk := msh.ServerProc.Output.WaitForResponse(ctx, runPacket.ReqId)
-	if startPk, ok := rtnPk.(*packet.CmdStartPacketType); ok {
-		return startPk, nil
-	}
-	if respPk, ok := rtnPk.(*packet.ResponsePacketType); ok {
+	startPk, ok := rtnPk.(*packet.CmdStartPacketType)
+	if !ok {
+		respPk, ok := rtnPk.(*packet.ResponsePacketType)
+		if !ok {
+			return nil, fmt.Errorf("invalid response received from server for run packet: %s", packet.AsString(rtnPk))
+		}
 		if respPk.Error != "" {
 			return nil, errors.New(respPk.Error)
 		}
+		return nil, fmt.Errorf("invalid response received from server for run packet: %s", packet.AsString(rtnPk))
 	}
-	return nil, fmt.Errorf("invalid response received from server for run packet: %s", packet.AsString(rtnPk))
+	cmd := &sstore.CmdType{
+		SessionId:   pk.SessionId,
+		CmdId:       startPk.CK.GetCmdId(),
+		RemoteId:    msh.Remote.RemoteId,
+		RemoteState: convertRemoteState(pk.RemoteState),
+		TermOpts:    makeTermOpts(),
+		Status:      "running",
+		StartPk:     startPk,
+		DonePk:      nil,
+		RunOut:      nil,
+	}
+	return cmd, nil
 }
 
 func (msh *MShellProc) PacketRpc(ctx context.Context, pk packet.RpcPacketType) (*packet.ResponsePacketType, error) {

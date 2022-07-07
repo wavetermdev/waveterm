@@ -90,3 +90,25 @@ func (tx *TxWrap) SelectWrap(dest interface{}, query string, args ...interface{}
 	}
 	return
 }
+
+func (tx *TxWrap) SelectMaps(query string, args ...interface{}) []map[string]interface{} {
+	if tx.Err != nil {
+		return nil
+	}
+	rows, err := tx.Txx.Queryx(query, args...)
+	if err != nil {
+		tx.Err = err
+		return nil
+	}
+	var rtn []map[string]interface{}
+	for rows.Next() {
+		m := make(map[string]interface{})
+		err = rows.MapScan(m)
+		if err != nil {
+			tx.Err = err
+			return nil
+		}
+		rtn = append(rtn, m)
+	}
+	return rtn
+}

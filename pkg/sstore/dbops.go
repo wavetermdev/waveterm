@@ -103,6 +103,11 @@ func GetSessionById(ctx context.Context, id string) (*SessionType, error) {
 		tx.SelectWrap(&session.Windows, query, session.SessionId)
 		query = `SELECT * FROM remote_instance WHERE sessionid = ?`
 		tx.SelectWrap(&session.Remotes, query, session.SessionId)
+		query = `SELECT * FROM cmd WHERE sessionid = ?`
+		marr := tx.SelectMaps(query, session.SessionId)
+		for _, m := range marr {
+			session.Cmds = append(session.Cmds, CmdFromMap(m))
+		}
 		return nil
 	})
 	if err != nil {
@@ -190,4 +195,42 @@ func InsertLine(ctx context.Context, line *LineType) error {
 		tx.NamedExecWrap(query, line)
 		return nil
 	})
+}
+
+func InsertCmd(ctx context.Context, cmd *CmdType) error {
+	if cmd == nil {
+		return fmt.Errorf("cmd cannot be nil")
+	}
+	return WithTx(ctx, func(tx *TxWrap) error {
+		var sessionId string
+		query := `SELECT sessionid FROM session WHERE sessionid = ?`
+		hasSession := tx.GetWrap(&sessionId, query, cmd.SessionId)
+		if !hasSession {
+			return fmt.Errorf("session not found, cannot insert cmd")
+		}
+		cmdMap := cmd.ToMap()
+		query = `
+INSERT INTO cmd  ( sessionid, cmdid, remoteid, cmdstr, remotestate, termopts, status, startpk, donepk, runout)
+          VALUES (:sessionid,:cmdid,:remoteid,:cmdstr,:remotestate,:termopts,:status,:startpk,:donepk,:runout)
+`
+		tx.NamedExecWrap(query, cmdMap)
+		return nil
+	})
+}
+
+func GetCmd(ctx context.Context, sessionId string, cmdId string) (*CmdType, error) {
+	db, err := GetDB()
+	if err != nil {
+		return nil, err
+	}
+	var m map[string]interface{}
+	query := `SELECT * FROM cmd WHERE sessionid = ? AND cmdid = ?`
+	err = db.GetContext(ctx, &m, query, sessionId, cmdId)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return CmdFromMap(m), nil
 }

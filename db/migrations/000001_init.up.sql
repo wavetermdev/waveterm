@@ -52,18 +52,17 @@ CREATE TABLE remote (
     lastconnectts bigint NOT NULL
 );
 
-CREATE TABLE session_cmd (
+CREATE TABLE cmd (
     sessionid varchar(36) NOT NULL,
     cmdid varchar(36) NOT NULL,
-    rsid varchar(36) NOT NULL,
     remoteid varchar(36) NOT NULL,
+    cmdstr text NOT NULL,
     remotestate json NOT NULL,
+    termopts json NOT NULL,
     status varchar(10) NOT NULL,
-    startts bigint NOT NULL,
-    pid int NOT NULL,
-    runnerpid int NOT NULL,
-    donets bigint NOT NULL,
-    exitcode int NOT NULL,
+    startpk json NOT NULL,
+    donepk json NOT NULL,
+    runout json NOT NULL,
     PRIMARY KEY (sessionid, cmdid)
 );
 
