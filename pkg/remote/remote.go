@@ -2,14 +2,13 @@ package remote
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"io"
-	"os"
 	"os/exec"
 	"strings"
 	"sync"
-	"time"
 
+	"github.com/google/uuid"
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
@@ -18,10 +17,12 @@ import (
 )
 
 const RemoteTypeMShell = "mshell"
+const DefaultTermRows = 25
+const DefaultTermCols = 80
+const DefaultTerm = "xterm-256color"
 
 const (
 	StatusInit         = "init"
-	StatusConnecting   = "connecting"
 	StatusConnected    = "connected"
 	StatusDisconnected = "disconnected"
 	StatusError        = "error"
@@ -47,20 +48,9 @@ type MShellProc struct {
 	Remote *sstore.RemoteType
 
 	// runtime
-	Status string
-	InitPk *packet.InitPacketType
-	Cmd    *exec.Cmd
-	Input  *packet.PacketSender
-	Output *packet.PacketParser
-	DoneCh chan bool
-	RpcMap map[string]*RpcEntry
-
-	Err error
-}
-
-type RpcEntry struct {
-	ReqId  string
-	RespCh chan packet.RpcResponsePacketType
+	Status     string
+	ServerProc *shexec.ClientProc
+	Err        error
 }
 
 func LoadRemotes(ctx context.Context) error {
@@ -111,8 +101,8 @@ func GetAllRemoteState() []RemoteState {
 			RemoteName: proc.Remote.RemoteName,
 			Status:     proc.Status,
 		}
-		if proc.InitPk != nil {
-			state.DefaultState = &sstore.RemoteState{Cwd: proc.InitPk.HomeDir}
+		if proc.ServerProc != nil && proc.ServerProc.InitPk != nil {
+			state.DefaultState = &sstore.RemoteState{Cwd: proc.ServerProc.InitPk.HomeDir}
 		}
 		rtn = append(rtn, state)
 	}
@@ -135,50 +125,24 @@ func (msh *MShellProc) Launch() {
 		return
 	}
 	ecmd := exec.Command(msPath, "--server")
-	msh.Cmd = ecmd
-	inputWriter, err := ecmd.StdinPipe()
+	cproc, err := shexec.MakeClientProc(ecmd)
 	if err != nil {
 		msh.Status = StatusError
-		msh.Err = fmt.Errorf("create stdin pipe: %w", err)
+		msh.Err = err
 		return
 	}
-	stdoutReader, err := ecmd.StdoutPipe()
-	if err != nil {
-		msh.Status = StatusError
-		msh.Err = fmt.Errorf("create stdout pipe: %w", err)
-		return
-	}
-	stderrReader, err := ecmd.StderrPipe()
-	if err != nil {
-		msh.Status = StatusError
-		msh.Err = fmt.Errorf("create stderr pipe: %w", err)
-		return
-	}
+	msh.ServerProc = cproc
+	fmt.Printf("START MAKECLIENTPROC: %#v\n", msh.ServerProc.InitPk)
+	msh.Status = StatusConnected
 	go func() {
-		io.Copy(os.Stderr, stderrReader)
-	}()
-	err = ecmd.Start()
-	if err != nil {
-		msh.Status = StatusError
-		msh.Err = fmt.Errorf("starting mshell server: %w", err)
-		return
-	}
-	fmt.Printf("Started remote '%s' pid=%d\n", msh.Remote.RemoteName, msh.Cmd.Process.Pid)
-	msh.Status = StatusConnecting
-	msh.Output = packet.MakePacketParser(stdoutReader)
-	msh.Input = packet.MakePacketSender(inputWriter)
-	msh.RpcMap = make(map[string]*RpcEntry)
-	msh.DoneCh = make(chan bool)
-	go func() {
-		exitErr := ecmd.Wait()
+		exitErr := cproc.Cmd.Wait()
 		exitCode := shexec.GetExitCode(exitErr)
 		msh.WithLock(func() {
-			if msh.Status == StatusConnected || msh.Status == StatusConnecting {
+			if msh.Status == StatusConnected {
 				msh.Status = StatusDisconnected
 			}
 		})
 		fmt.Printf("[error] RUNNER PROC EXITED code[%d]\n", exitCode)
-		close(msh.DoneCh)
 	}()
 	go msh.ProcessPackets()
 	return
@@ -190,51 +154,62 @@ func (msh *MShellProc) IsConnected() bool {
 	return msh.Status == StatusConnected
 }
 
-func RunCommand(pk *scpacket.FeCommandPacketType, cmdId string) error {
+func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, cmdId string) (*packet.CmdStartPacketType, error) {
 	msh := GetRemoteById(pk.RemoteState.RemoteId)
 	if msh == nil {
-		return fmt.Errorf("no remote id=%s found", pk.RemoteState.RemoteId)
+		return nil, fmt.Errorf("no remote id=%s found", pk.RemoteState.RemoteId)
 	}
 	if !msh.IsConnected() {
-		return fmt.Errorf("remote '%s' is not connected", msh.Remote.RemoteName)
+		return nil, fmt.Errorf("remote '%s' is not connected", msh.Remote.RemoteName)
 	}
 	runPacket := packet.MakeRunPacket()
+	runPacket.ReqId = uuid.New().String()
 	runPacket.CK = base.MakeCommandKey(pk.SessionId, cmdId)
 	runPacket.Cwd = pk.RemoteState.Cwd
 	runPacket.Env = nil
+	runPacket.UsePty = true
+	runPacket.TermOpts = &packet.TermOpts{Rows: DefaultTermRows, Cols: DefaultTermCols, Term: DefaultTerm}
 	runPacket.Command = strings.TrimSpace(pk.CmdStr)
-	fmt.Printf("run-packet %v\n", runPacket)
-	go func() {
-		msh.Input.SendPacket(runPacket)
-	}()
-	return nil
+	fmt.Printf("RUN-CMD> %s\n", runPacket.CK)
+	msh.ServerProc.Output.RegisterRpc(runPacket.ReqId)
+	err := shexec.SendRunPacketAndRunData(ctx, msh.ServerProc.Input, runPacket)
+	if err != nil {
+		return nil, fmt.Errorf("sending run packet to remote: %w", err)
+	}
+	rtnPk := msh.ServerProc.Output.WaitForResponse(ctx, runPacket.ReqId)
+	if startPk, ok := rtnPk.(*packet.CmdStartPacketType); ok {
+		return startPk, nil
+	}
+	if respPk, ok := rtnPk.(*packet.ResponsePacketType); ok {
+		if respPk.Error != "" {
+			return nil, errors.New(respPk.Error)
+		}
+	}
+	return nil, fmt.Errorf("invalid response received from server for run packet: %s", packet.AsString(rtnPk))
 }
 
-func (runner *MShellProc) PacketRpc(pk packet.RpcPacketType, timeout time.Duration) (packet.RpcResponsePacketType, error) {
-	if !runner.IsConnected() {
+func (msh *MShellProc) PacketRpc(ctx context.Context, pk packet.RpcPacketType) (*packet.ResponsePacketType, error) {
+	if !msh.IsConnected() {
 		return nil, fmt.Errorf("runner is not connected")
 	}
 	if pk == nil {
 		return nil, fmt.Errorf("PacketRpc passed nil packet")
 	}
-	id := pk.GetReqId()
-	respCh := make(chan packet.RpcResponsePacketType)
-	runner.WithLock(func() {
-		runner.RpcMap[id] = &RpcEntry{ReqId: id, RespCh: respCh}
-	})
-	defer runner.WithLock(func() {
-		delete(runner.RpcMap, id)
-	})
-	runner.Input.SendPacket(pk)
-	timer := time.NewTimer(timeout)
-	defer timer.Stop()
-	select {
-	case rtnPk := <-respCh:
-		return rtnPk, nil
-
-	case <-timer.C:
-		return nil, fmt.Errorf("PacketRpc timeout")
+	reqId := pk.GetReqId()
+	msh.ServerProc.Output.RegisterRpc(reqId)
+	defer msh.ServerProc.Output.UnRegisterRpc(reqId)
+	err := msh.ServerProc.Input.SendPacketCtx(ctx, pk)
+	if err != nil {
+		return nil, err
 	}
+	rtnPk := msh.ServerProc.Output.WaitForResponse(ctx, reqId)
+	if rtnPk == nil {
+		return nil, ctx.Err()
+	}
+	if respPk, ok := rtnPk.(*packet.ResponsePacketType); ok {
+		return respPk, nil
+	}
+	return nil, fmt.Errorf("invalid response packet received: %s", packet.AsString(rtnPk))
 }
 
 func (runner *MShellProc) WithLock(fn func()) {
@@ -245,38 +220,25 @@ func (runner *MShellProc) WithLock(fn func()) {
 
 func (runner *MShellProc) ProcessPackets() {
 	defer runner.WithLock(func() {
-		if runner.Status == StatusConnected || runner.Status == StatusConnecting {
+		if runner.Status == StatusConnected {
 			runner.Status = StatusDisconnected
 		}
 	})
-	for pk := range runner.Output.MainCh {
-		fmt.Printf("MSH> %s\n", packet.AsString(pk))
-		if rpcPk, ok := pk.(packet.RpcResponsePacketType); ok {
-			rpcId := rpcPk.GetResponseId()
-			runner.WithLock(func() {
-				entry := runner.RpcMap[rpcId]
-				if entry == nil {
-					return
-				}
-				delete(runner.RpcMap, rpcId)
-				go func() {
-					entry.RespCh <- rpcPk
-					close(entry.RespCh)
-				}()
-			})
+	for pk := range runner.ServerProc.Output.MainCh {
+		fmt.Printf("MSH> %s | %#v\n", packet.AsString(pk), pk)
+		if pk.GetType() == packet.DataPacketStr {
+			dataPacket := pk.(*packet.DataPacketType)
+			fmt.Printf("data %s fd=%d len=%d eof=%v err=%v\n", dataPacket.CK, dataPacket.FdNum, packet.B64DecodedLen(dataPacket.Data64), dataPacket.Eof, dataPacket.Error)
+			continue
 		}
 		if pk.GetType() == packet.CmdDataPacketStr {
 			dataPacket := pk.(*packet.CmdDataPacketType)
-			fmt.Printf("cmd-data %s pty=%d run=%d\n", dataPacket.CK, len(dataPacket.PtyData), len(dataPacket.RunData))
+			fmt.Printf("cmd-data %s pty=%d run=%d\n", dataPacket.CK, dataPacket.PtyDataLen, dataPacket.RunDataLen)
 			continue
 		}
-		if pk.GetType() == packet.InitPacketStr {
-			initPacket := pk.(*packet.InitPacketType)
-			fmt.Printf("runner-init %s user=%s dir=%s\n", initPacket.MShellHomeDir, initPacket.User, initPacket.HomeDir)
-			runner.WithLock(func() {
-				runner.InitPk = initPacket
-				runner.Status = StatusConnected
-			})
+		if pk.GetType() == packet.CmdDonePacketStr {
+			donePacket := pk.(*packet.CmdDonePacketType)
+			fmt.Printf("cmd-done %s\n", donePacket.CK)
 			continue
 		}
 		if pk.GetType() == packet.MessagePacketStr {

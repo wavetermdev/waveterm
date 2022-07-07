@@ -111,7 +111,6 @@ type LineType struct {
 }
 
 type RemoteType struct {
-	RowId       int64  `json:"rowid"`
 	RemoteId    string `json:"remoteid"`
 	RemoteType  string `json:"remotetype"`
 	RemoteName  string `json:"remotename"`
@@ -128,7 +127,6 @@ type RemoteType struct {
 }
 
 type CmdType struct {
-	RowId       int64  `json:"rowid"`
 	SessionId   string `json:"sessionid"`
 	CmdId       string `json:"cmdid"`
 	RSId        string `json:"rsid"`

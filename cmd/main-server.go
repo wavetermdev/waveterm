@@ -429,16 +429,25 @@ func ProcessFeCommandPacket(ctx context.Context, pk *scpacket.FeCommandPacketTyp
 		cdPacket.ReqId = uuid.New().String()
 		cdPacket.Dir = newDir
 		localRemote := remote.GetRemoteById(pk.RemoteState.RemoteId)
-		if localRemote != nil {
-			localRemote.Input.SendPacket(cdPacket)
+		if localRemote == nil {
+			return nil, fmt.Errorf("invalid remote, cannot execute command")
 		}
+		resp, err := localRemote.PacketRpc(ctx, cdPacket)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Printf("GOT cd RESP: %v\n", resp)
 		return nil, nil
 	}
 	rtnLine, err := sstore.AddCmdLine(ctx, pk.SessionId, pk.WindowId, pk.UserId)
 	if err != nil {
 		return nil, err
 	}
-	err = remote.RunCommand(pk, rtnLine.CmdId)
+	startPk, err := remote.RunCommand(ctx, pk, rtnLine.CmdId)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("START CMD: %s\n", packet.AsString(startPk))
 	return &runCommandResponse{Line: rtnLine}, nil
 }
 
@@ -572,6 +581,9 @@ func main() {
 		fmt.Printf("[error] loading remotes: %v\n", err)
 		return
 	}
+
+	sstore.AppendToCmdPtyBlob(context.Background(), "", "", nil)
+
 	go runWebSocketServer()
 	gr := mux.NewRouter()
 	gr.HandleFunc("/api/ptyout", HandleGetPtyOut)

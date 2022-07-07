@@ -22,7 +22,7 @@ func NumSessions(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-const remoteSelectCols = "rowid, remoteid, remotetype, remotename, autoconnect, sshhost, sshopts, sshidentity, sshuser, lastconnectts"
+const remoteSelectCols = "remoteid, remotetype, remotename, autoconnect, sshhost, sshopts, sshidentity, sshuser, lastconnectts"
 
 func GetAllRemotes(ctx context.Context) ([]*RemoteType, error) {
 	db, err := GetDB()
@@ -76,22 +76,15 @@ func InsertRemote(ctx context.Context, remote *RemoteType) error {
 	if remote == nil {
 		return fmt.Errorf("cannot insert nil remote")
 	}
-	if remote.RowId != 0 {
-		return fmt.Errorf("cannot insert a remote that already has rowid set, rowid=%d", remote.RowId)
-	}
 	db, err := GetDB()
 	if err != nil {
 		return err
 	}
-	query := `INSERT INTO remote ( remoteid, remotetype, remotename, autoconnect, sshhost, sshopts, sshidentity, sshuser, lastconnectts, ptyout) VALUES 
-                                 (:remoteid,:remotetype,:remotename,:autoconnect,:sshhost,:sshopts,:sshidentity,:sshuser, 0            , '')`
-	result, err := db.NamedExec(query, remote)
+	query := `INSERT INTO remote ( remoteid, remotetype, remotename, autoconnect, sshhost, sshopts, sshidentity, sshuser, lastconnectts) VALUES 
+                                 (:remoteid,:remotetype,:remotename,:autoconnect,:sshhost,:sshopts,:sshidentity,:sshuser, 0            )`
+	_, err = db.NamedExec(query, remote)
 	if err != nil {
 		return err
-	}
-	remote.RowId, err = result.LastInsertId()
-	if err != nil {
-		return fmt.Errorf("cannot get lastinsertid from insert remote: %w", err)
 	}
 	return nil
 }

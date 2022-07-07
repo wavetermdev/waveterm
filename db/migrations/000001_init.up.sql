@@ -49,8 +49,7 @@ CREATE TABLE remote (
     sshuser varchar(100) NOT NULL,
 
     -- runtime data
-    lastconnectts bigint NOT NULL,
-    ptyout BLOB NOT NULL
+    lastconnectts bigint NOT NULL
 );
 
 CREATE TABLE session_cmd (
@@ -65,8 +64,6 @@ CREATE TABLE session_cmd (
     runnerpid int NOT NULL,
     donets bigint NOT NULL,
     exitcode int NOT NULL,
-    ptyout BLOB NOT NULL,
-    runout BLOB NOT NULL,
     PRIMARY KEY (sessionid, cmdid)
 );
 
