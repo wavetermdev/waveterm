@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"path"
+	"strings"
 	"sync"
 	"time"
 
@@ -134,20 +135,35 @@ type LineType struct {
 	CmdId     string `json:"cmdid,omitempty"`
 }
 
-type RemoteType struct {
-	RemoteId    string `json:"remoteid"`
-	RemoteType  string `json:"remotetype"`
-	RemoteName  string `json:"remotename"`
-	AutoConnect bool   `json:"autoconnect"`
-
-	// type=ssh options
+type SSHOpts struct {
 	SSHHost     string `json:"sshhost"`
-	SSHOpts     string `json:"sshopts"`
+	SSHOptsStr  string `json:"sshopts"`
 	SSHIdentity string `json:"sshidentity"`
 	SSHUser     string `json:"sshuser"`
+}
 
-	// runtime data
-	LastConnectTs int64 `json:"lastconnectts"`
+type RemoteType struct {
+	RemoteId      string                 `json:"remoteid"`
+	RemoteType    string                 `json:"remotetype"`
+	RemoteName    string                 `json:"remotename"`
+	AutoConnect   bool                   `json:"autoconnect"`
+	InitPk        *packet.InitPacketType `json:"inipk"`
+	SSHOpts       *SSHOpts               `json:"sshopts"`
+	LastConnectTs int64                  `json:"lastconnectts"`
+}
+
+func (r *RemoteType) GetUserHost() (string, string) {
+	if r.SSHOpts == nil {
+		return "", ""
+	}
+	if r.SSHOpts.SSHUser != "" {
+		return r.SSHOpts.SSHUser, r.SSHOpts.SSHHost
+	}
+	atIdx := strings.Index(r.SSHOpts.SSHHost, "@")
+	if atIdx == -1 {
+		return "", r.SSHOpts.SSHHost
+	}
+	return r.SSHOpts.SSHHost[0:atIdx], r.SSHOpts.SSHHost[atIdx+1:]
 }
 
 type CmdType struct {
@@ -163,12 +179,31 @@ type CmdType struct {
 	RunOut      []packet.PacketType        `json:"runout"`
 }
 
-func quickJson(v interface{}) string {
-	if v == nil {
-		return ""
+func (r *RemoteType) ToMap() map[string]interface{} {
+	rtn := make(map[string]interface{})
+	rtn["remoteid"] = r.RemoteId
+	rtn["remotetype"] = r.RemoteType
+	rtn["remotename"] = r.RemoteName
+	rtn["autoconnect"] = r.AutoConnect
+	rtn["initpk"] = quickJson(r.InitPk)
+	rtn["sshopts"] = quickJson(r.SSHOpts)
+	rtn["lastconnectts"] = r.LastConnectTs
+	return rtn
+}
+
+func RemoteFromMap(m map[string]interface{}) *RemoteType {
+	if len(m) == 0 {
+		return nil
 	}
-	barr, _ := json.Marshal(v)
-	return string(barr)
+	var r RemoteType
+	quickSetStr(&r.RemoteId, m, "remoteid")
+	quickSetStr(&r.RemoteType, m, "remotetype")
+	quickSetStr(&r.RemoteName, m, "remotename")
+	quickSetBool(&r.AutoConnect, m, "autoconnect")
+	quickSetJson(&r.InitPk, m, "initpk")
+	quickSetJson(&r.SSHOpts, m, "sshopts")
+	quickSetInt64(&r.LastConnectTs, m, "lastconnectts")
+	return &r
 }
 
 func (cmd *CmdType) ToMap() map[string]interface{} {
@@ -186,34 +221,10 @@ func (cmd *CmdType) ToMap() map[string]interface{} {
 	return rtn
 }
 
-func quickSetStr(strVal *string, m map[string]interface{}, name string) {
-	v, ok := m[name]
-	if !ok {
-		return
-	}
-	str, ok := v.(string)
-	if !ok {
-		return
-	}
-	*strVal = str
-}
-
-func quickSetJson(ptr interface{}, m map[string]interface{}, name string) {
-	v, ok := m[name]
-	if !ok {
-		return
-	}
-	str, ok := v.(string)
-	if !ok {
-		return
-	}
-	if str == "" {
-		return
-	}
-	json.Unmarshal([]byte(str), ptr)
-}
-
 func CmdFromMap(m map[string]interface{}) *CmdType {
+	if len(m) == 0 {
+		return nil
+	}
 	var cmd CmdType
 	quickSetStr(&cmd.SessionId, m, "sessionid")
 	quickSetStr(&cmd.CmdId, m, "cmdid")

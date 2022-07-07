@@ -112,3 +112,20 @@ func (tx *TxWrap) SelectMaps(query string, args ...interface{}) []map[string]int
 	}
 	return rtn
 }
+
+func (tx *TxWrap) GetMap(query string, args ...interface{}) map[string]interface{} {
+	if tx.Err != nil {
+		return nil
+	}
+	row := tx.Txx.QueryRowx(query, args...)
+	m := make(map[string]interface{})
+	err := row.MapScan(m)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil
+		}
+		tx.Err = err
+		return nil
+	}
+	return m
+}

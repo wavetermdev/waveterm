@@ -40,6 +40,7 @@ type RemoteState struct {
 	RemoteType   string              `json:"remotetype"`
 	RemoteId     string              `json:"remoteid"`
 	RemoteName   string              `json:"remotename"`
+	RemoteVars   map[string]string   `json:"remotevars"`
 	Status       string              `json:"status"`
 	DefaultState *sstore.RemoteState `json:"defaultstate"`
 }
@@ -102,9 +103,18 @@ func GetAllRemoteState() []RemoteState {
 			RemoteName: proc.Remote.RemoteName,
 			Status:     proc.Status,
 		}
+		vars := make(map[string]string)
+		vars["user"], vars["host"] = proc.Remote.GetUserHost()
 		if proc.ServerProc != nil && proc.ServerProc.InitPk != nil {
 			state.DefaultState = &sstore.RemoteState{Cwd: proc.ServerProc.InitPk.HomeDir}
+			vars["home"] = proc.ServerProc.InitPk.HomeDir
+			vars["remoteuser"] = proc.ServerProc.InitPk.User
+			vars["remotehost"] = proc.ServerProc.InitPk.HostName
+			if proc.Remote.SSHOpts == nil || proc.Remote.SSHOpts.SSHHost == "" {
+				vars["local"] = "1"
+			}
 		}
+		state.RemoteVars = vars
 		rtn = append(rtn, state)
 	}
 	return rtn
@@ -199,6 +209,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, cmdId str
 	cmd := &sstore.CmdType{
 		SessionId:   pk.SessionId,
 		CmdId:       startPk.CK.GetCmdId(),
+		CmdStr:      runPacket.Command,
 		RemoteId:    msh.Remote.RemoteId,
 		RemoteState: convertRemoteState(pk.RemoteState),
 		TermOpts:    makeTermOpts(),

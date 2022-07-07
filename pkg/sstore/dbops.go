@@ -22,54 +22,48 @@ func NumSessions(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-const remoteSelectCols = "remoteid, remotetype, remotename, autoconnect, sshhost, sshopts, sshidentity, sshuser, lastconnectts"
-
 func GetAllRemotes(ctx context.Context) ([]*RemoteType, error) {
-	db, err := GetDB()
+	var rtn []*RemoteType
+	err := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT * FROM remote`
+		marr := tx.SelectMaps(query)
+		for _, m := range marr {
+			rtn = append(rtn, RemoteFromMap(m))
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	query := fmt.Sprintf(`SELECT %s FROM remote`, remoteSelectCols)
-	var remoteArr []*RemoteType
-	err = db.SelectContext(ctx, &remoteArr, query)
-	if err != nil {
-		return nil, err
-	}
-	return remoteArr, nil
+	return rtn, nil
 }
 
 func GetRemoteByName(ctx context.Context, remoteName string) (*RemoteType, error) {
-	db, err := GetDB()
+	var remote *RemoteType
+	err := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT * FROM remote WHERE remotename = ?`
+		m := tx.GetMap(query, remoteName)
+		remote = RemoteFromMap(m)
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	query := fmt.Sprintf(`SELECT %s FROM remote WHERE remotename = ?`, remoteSelectCols)
-	var remote RemoteType
-	err = db.GetContext(ctx, &remote, query, remoteName)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &remote, nil
+	return remote, nil
 }
 
 func GetRemoteById(ctx context.Context, remoteId string) (*RemoteType, error) {
-	db, err := GetDB()
+	var remote *RemoteType
+	err := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT * FROM remote WHERE remoteid = ?`
+		m := tx.GetMap(query, remoteId)
+		remote = RemoteFromMap(m)
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	query := fmt.Sprintf(`SELECT %s FROM remote WHERE remoteid = ?`, remoteSelectCols)
-	var remote RemoteType
-	err = db.GetContext(ctx, &remote, query, remoteId)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &remote, nil
+	return remote, nil
 }
 
 func InsertRemote(ctx context.Context, remote *RemoteType) error {
@@ -80,9 +74,9 @@ func InsertRemote(ctx context.Context, remote *RemoteType) error {
 	if err != nil {
 		return err
 	}
-	query := `INSERT INTO remote ( remoteid, remotetype, remotename, autoconnect, sshhost, sshopts, sshidentity, sshuser, lastconnectts) VALUES 
-                                 (:remoteid,:remotetype,:remotename,:autoconnect,:sshhost,:sshopts,:sshidentity,:sshuser, 0            )`
-	_, err = db.NamedExec(query, remote)
+	query := `INSERT INTO remote ( remoteid, remotetype, remotename, autoconnect, initpk, sshopts, lastconnectts) VALUES 
+                                 (:remoteid,:remotetype,:remotename,:autoconnect,:initpk,:sshopts,:lastconnectts)`
+	_, err = db.NamedExec(query, remote.ToMap())
 	if err != nil {
 		return err
 	}
@@ -218,19 +212,16 @@ INSERT INTO cmd  ( sessionid, cmdid, remoteid, cmdstr, remotestate, termopts, st
 	})
 }
 
-func GetCmd(ctx context.Context, sessionId string, cmdId string) (*CmdType, error) {
-	db, err := GetDB()
+func GetCmdById(ctx context.Context, sessionId string, cmdId string) (*CmdType, error) {
+	var cmd *CmdType
+	err := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT * FROM cmd WHERE sessionid = ? AND cmdid = ?`
+		m := tx.GetMap(query, sessionId, cmdId)
+		cmd = CmdFromMap(m)
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	var m map[string]interface{}
-	query := `SELECT * FROM cmd WHERE sessionid = ? AND cmdid = ?`
-	err = db.GetContext(ctx, &m, query, sessionId, cmdId)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return CmdFromMap(m), nil
+	return cmd, nil
 }
