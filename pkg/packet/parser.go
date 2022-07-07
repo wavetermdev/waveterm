@@ -37,14 +37,22 @@ func CombinePacketParsers(p1 *PacketParser, p2 *PacketParser) *PacketParser {
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		for v := range p1.MainCh {
-			rtnParser.MainCh <- v
+		for pk := range p1.MainCh {
+			sent := rtnParser.trySendRpcResponse(pk)
+			if sent {
+				continue
+			}
+			rtnParser.MainCh <- pk
 		}
 	}()
 	go func() {
 		defer wg.Done()
-		for v := range p2.MainCh {
-			rtnParser.MainCh <- v
+		for pk := range p2.MainCh {
+			sent := rtnParser.trySendRpcResponse(pk)
+			if sent {
+				continue
+			}
+			rtnParser.MainCh <- pk
 		}
 	}()
 	go func() {
@@ -56,7 +64,7 @@ func CombinePacketParsers(p1 *PacketParser, p2 *PacketParser) *PacketParser {
 
 // should have already registered rpc
 func (p *PacketParser) WaitForResponse(ctx context.Context, reqId string) RpcResponsePacketType {
-	entry := p.getRpcEntry(reqId, false)
+	entry := p.getRpcEntry(reqId)
 	if entry == nil {
 		return nil
 	}
@@ -92,18 +100,18 @@ func (p *PacketParser) RegisterRpcSz(reqId string, queueSize int) chan RpcRespon
 	return ch
 }
 
-func (p *PacketParser) getRpcEntry(reqId string, remove bool) *RpcEntry {
+func (p *PacketParser) getRpcEntry(reqId string) *RpcEntry {
 	p.Lock.Lock()
 	defer p.Lock.Unlock()
 	entry := p.RpcMap[reqId]
-	if entry != nil && remove {
-		delete(p.RpcMap, reqId)
-		close(entry.RespCh)
-	}
 	return entry
 }
 
-func (p *PacketParser) trySendRpcResponse(respPk RpcResponsePacketType) bool {
+func (p *PacketParser) trySendRpcResponse(pk PacketType) bool {
+	respPk, ok := pk.(RpcResponsePacketType)
+	if !ok {
+		return false
+	}
 	p.Lock.Lock()
 	defer p.Lock.Unlock()
 	entry := p.RpcMap[respPk.GetResponseId()]
@@ -185,11 +193,9 @@ func MakePacketParser(input io.Reader) *PacketParser {
 			if pk.GetType() == PingPacketStr {
 				continue
 			}
-			if respPk, ok := pk.(RpcResponsePacketType); ok {
-				sent := parser.trySendRpcResponse(respPk)
-				if sent {
-					continue
-				}
+			sent := parser.trySendRpcResponse(pk)
+			if sent {
+				continue
 			}
 			parser.MainCh <- pk
 		}
