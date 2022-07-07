@@ -572,6 +572,12 @@ func runWebSocketServer() {
 }
 
 func main() {
+	scLock, err := scbase.AcquireSCLock()
+	if err != nil || scLock == nil {
+		fmt.Printf("[error] cannot acquire sh2 lock: %v\n", err)
+		return
+	}
+
 	if len(os.Args) >= 2 && strings.HasPrefix(os.Args[1], "--migrate") {
 		err := sstore.MigrateCommandOpts(os.Args[1:])
 		if err != nil {
@@ -579,7 +585,7 @@ func main() {
 		}
 		return
 	}
-	err := sstore.TryMigrateUp()
+	err = sstore.TryMigrateUp()
 	if err != nil {
 		fmt.Printf("[error] %v\n", err)
 		return
@@ -601,7 +607,10 @@ func main() {
 		return
 	}
 
-	sstore.AppendToCmdPtyBlob(context.Background(), "", "", nil)
+	err = sstore.HangupAllRunningCmds(context.Background())
+	if err != nil {
+		fmt.Printf("[error] calling HUP on all running commands\n")
+	}
 
 	go runWebSocketServer()
 	gr := mux.NewRouter()

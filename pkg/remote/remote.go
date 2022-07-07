@@ -152,6 +152,7 @@ func (msh *MShellProc) Launch() {
 				msh.Status = StatusDisconnected
 			}
 		})
+
 		fmt.Printf("[error] RUNNER PROC EXITED code[%d]\n", exitCode)
 	}()
 	go msh.ProcessPackets()
@@ -206,6 +207,10 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, cmdId str
 		}
 		return nil, fmt.Errorf("invalid response received from server for run packet: %s", packet.AsString(rtnPk))
 	}
+	status := sstore.CmdStatusRunning
+	if runPacket.Detached {
+		status = sstore.CmdStatusDetached
+	}
 	cmd := &sstore.CmdType{
 		SessionId:   pk.SessionId,
 		CmdId:       startPk.CK.GetCmdId(),
@@ -213,7 +218,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, cmdId str
 		RemoteId:    msh.Remote.RemoteId,
 		RemoteState: convertRemoteState(pk.RemoteState),
 		TermOpts:    makeTermOpts(),
-		Status:      "running",
+		Status:      status,
 		StartPk:     startPk,
 		DonePk:      nil,
 		RunOut:      nil,
@@ -262,10 +267,32 @@ func makeDataAckPacket(ck base.CommandKey, fdNum int, ackLen int, err error) *pa
 	return ack
 }
 
+func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
+	err := sstore.UpdateCmdDonePk(context.Background(), donePk)
+	if err != nil {
+		fmt.Printf("[error] updating cmddone: %v\n", err)
+		return
+	}
+	return
+}
+
+func (msh *MShellProc) handleCmdErrorPacket(errPk *packet.CmdErrorPacketType) {
+	err := sstore.AppendCmdErrorPk(context.Background(), errPk)
+	if err != nil {
+		fmt.Printf("[error] adding cmderr: %v\n", err)
+		return
+	}
+	return
+}
+
 func (runner *MShellProc) ProcessPackets() {
 	defer runner.WithLock(func() {
 		if runner.Status == StatusConnected {
 			runner.Status = StatusDisconnected
+		}
+		err := sstore.HangupRunningCmdsByRemoteId(context.Background(), runner.Remote.RemoteId)
+		if err != nil {
+			fmt.Printf("[error] calling HUP on remoteid=%d cmds\n", runner.Remote.RemoteId)
 		}
 	})
 	for pk := range runner.ServerProc.Output.MainCh {
@@ -298,8 +325,11 @@ func (runner *MShellProc) ProcessPackets() {
 			continue
 		}
 		if pk.GetType() == packet.CmdDonePacketStr {
-			donePacket := pk.(*packet.CmdDonePacketType)
-			fmt.Printf("cmd-done %s\n", donePacket.CK)
+			runner.handleCmdDonePacket(pk.(*packet.CmdDonePacketType))
+			continue
+		}
+		if pk.GetType() == packet.CmdErrorPacketStr {
+			runner.handleCmdErrorPacket(pk.(*packet.CmdErrorPacketType))
 			continue
 		}
 		if pk.GetType() == packet.MessagePacketStr {

@@ -33,6 +33,12 @@ const LocalRemoteName = "local"
 
 const DefaultCwd = "~"
 
+const CmdStatusRunning = "running"
+const CmdStatusDetached = "detached"
+const CmdStatusError = "error"
+const CmdStatusDone = "done"
+const CmdStatusHangup = "hangup"
+
 var globalDBLock = &sync.Mutex{}
 var globalDB *sqlx.DB
 var globalDBErr error

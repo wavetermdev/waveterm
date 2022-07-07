@@ -7,12 +7,15 @@ import (
 	"os"
 	"path"
 	"sync"
+
+	"golang.org/x/sys/unix"
 )
 
 const HomeVarName = "HOME"
 const ScHomeVarName = "SCRIPTHAUS_HOME"
 const SessionsDirBaseName = "sessions"
 const RemotesDirBaseName = "remotes"
+const SCLockFile = "sh2.lock"
 
 var SessionDirCache = make(map[string]string)
 var BaseLock = &sync.Mutex{}
@@ -27,6 +30,21 @@ func GetScHomeDir() string {
 		scHome = path.Join(homeVar, "scripthaus")
 	}
 	return scHome
+}
+
+func AcquireSCLock() (*os.File, error) {
+	homeDir := GetScHomeDir()
+	lockFileName := path.Join(homeDir, SCLockFile)
+	fd, err := os.Create(lockFileName)
+	if err != nil {
+		return nil, err
+	}
+	err = unix.Flock(int(fd.Fd()), unix.LOCK_EX|unix.LOCK_NB)
+	if err != nil {
+		fd.Close()
+		return nil, err
+	}
+	return fd, nil
 }
 
 func EnsureSessionDir(sessionId string) (string, error) {
