@@ -8,7 +8,7 @@ import {If, For, When, Otherwise, Choose} from "tsx-control-statements/component
 import cn from "classnames"
 import {TermWrap} from "./term";
 import {getDefaultSession, getLineId, Session} from "./session";
-import type {LineType} from "./session";
+import type {LineType, CmdDataType, RemoteType} from "./session";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 
 dayjs.extend(localizedFormat)
@@ -115,6 +115,54 @@ class LineCmd extends React.Component<{line : LineType, session : Session, chang
         }
         return cmdText;
     }
+
+    replaceHomePath(path : string, homeDir : string) : string {
+        if (path == homeDir) {
+            return "~";
+        }
+        if (path.startsWith(homeDir + "/")) {
+            return "~" + path.substr(homeDir.length);
+        }
+        return path;
+    }
+
+    renderCmdText(cmd : CmdDataType, remote : RemoteType) : any {
+        if (cmd == null) {
+            return (
+                <div className="metapart-mono cmdtext">
+                    <span className="term-bright-green">(cmd not found)</span>
+                </div>
+            );
+        }
+        let promptStr = "";
+        if (remote.remotevars.local) {
+            promptStr = sprintf("%s@%s", remote.remotevars.remoteuser, "local")
+        }
+        else if (remote.remotevars.remotehost) {
+            promptStr = sprintf("%s@%s", remote.remotevars.remoteuser, remote.remotevars.remotehost)
+        }
+        else {
+            let host = remote.remotevars.host || "unknown";
+            if (remote.remotevars.user) {
+                promptStr = sprintf("%s@%s", remote.remotevars.user, host)
+            }
+            else {
+                promptStr = host;
+            }
+        }
+        let cwd = "(unknown)";
+        if (cmd.remotestate && cmd.remotestate.cwd) {
+            cwd = cmd.remotestate.cwd;
+        }
+        if (remote.remotevars.home) {
+            cwd = this.replaceHomePath(cwd, remote.remotevars.home)
+        }
+        return (
+            <div className="metapart-mono cmdtext">
+                <span className="term-bright-green">[{promptStr} {cwd}]</span> {this.singleLineCmdText(cmd.cmdstr)}
+            </div>
+        );
+    }
     
     render() {
         let {session, line} = this.props;
@@ -128,7 +176,12 @@ class LineCmd extends React.Component<{line : LineType, session : Session, chang
         let termSize = termWrap.getSize();
         let formattedTime = getLineDateStr(line.ts);
         let cellHeightPx = 17;
-        let totalHeight = cellHeightPx * termWrap.usedRows.get();
+        let totalHeight = cellHeightPx * termWrap.usedRows;
+        let cmd : CmdDataType = session.getCmd(line.cmdid);
+        let remote : RemoteType = null;
+        if (cmd != null) {
+            remote = session.getRemote(cmd.remoteid);
+        }
         return (
             <div className="line line-cmd" id={"line-" + getLineId(line)}>
                 <div className={cn("avatar",{"num4": lineid.length == 4}, {"num5": lineid.length >= 5}, {"running": running})}>
@@ -145,9 +198,7 @@ class LineCmd extends React.Component<{line : LineType, session : Session, chang
                             <If condition={termSize.rows > 0}>({termSize.rows}x{termSize.cols})</If>
                             {termWrap.ptyPos} bytes, v{renderVersion}
                         </div>
-                        <div className="metapart-mono cmdtext">
-                            <span className="term-bright-green">[mike@local ~]</span> {this.singleLineCmdText(line.cmdtext)}
-                        </div>
+                        {this.renderCmdText(cmd, remote)}
                     </div>
                     <div className={cn("terminal-wrapper", {"focus": termWrap.isFocused.get()})} style={{overflowY: "hidden"}}>
                         <div className="terminal" id={"term-" + getLineId(line)} data-cmdid={line.cmdid} style={{height: totalHeight}}></div>
@@ -446,3 +497,4 @@ class Main extends React.Component<{}, {}> {
 
 
 export {Main};
+

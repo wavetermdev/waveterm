@@ -33,14 +33,14 @@ class TermWrap {
     atRowMax : boolean = false;
     initialized : boolean = false;
     changeSizeCallback : (TermWrap) => void = null;
-    usedRows : mobx.IObservableValue<number> = null;
+    usedRows : number;
 
     constructor(sessionId : string, cmdId : string) {
         this.termId = uuidv4();
         this.sessionId = sessionId;
         this.cmdId = cmdId;
         this.terminal = new Terminal({rows: 25, cols: 80, theme: {foreground: "#d3d7cf"}});
-        this.usedRows = mobx.observable.box(2, {name: "usedRows"});
+        this.usedRows = 2;
     }
 
     destroy() {
@@ -109,7 +109,7 @@ class TermWrap {
                 usedRows = i+1;
             }
         }
-        this.usedRows.set(usedRows);
+        this.usedRows = usedRows;
         return;
     }
 

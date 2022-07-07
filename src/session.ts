@@ -20,7 +20,6 @@ type LineType = {
     linetype : string,
     text : string,
     cmdid : string,
-    cmdtext : string,
     isnew : boolean,
 };
 
@@ -32,6 +31,7 @@ type RemoteType = {
     remotetype : string,
     remoteid : string,
     remotename : string,
+    remotevars : Record<string, string>,
     status : string,
     defaultstate : RemoteStateType,
 };
@@ -86,7 +86,40 @@ type FeCmdPacketType = {
     remotestate : CmdRemoteStateType,
 }
 
+type TermOptsType = {
+    rows : number,
+    cols : number,
+    flexrows : boolean,
+};
+
+type CmdStartPacketType = {
+    type : string,
+    respid : string,
+    ts : number,
+    ck : string,
+    pid : number,
+    mshellpid : number,
+};
+
+type CmdDonePacketType = {
+    type : string,
+    ts : number,
+    ck : string,
+    exitcode : number,
+    durationms : number,
+};
+
 type CmdDataType = {
+    sessionid : string,
+    cmdid : string,
+    remoteid : string,
+    cmdstr : string,
+    remotestate : RemoteStateType,
+    termopts : TermOptsType,
+    status : string,
+    startpk : CmdStartPacketType,
+    donepk : CmdDonePacketType,
+    runout : any[],
 };
 
 class Session {
@@ -100,6 +133,7 @@ class Session {
     loading : mobx.IObservableValue<boolean> = mobx.observable.box(false);
     remotes : RemoteInstanceType[] = [];
     globalRemotes : RemoteType[];
+    cmds : CmdDataType[];
 
     constructor() {
     }
@@ -171,6 +205,30 @@ class Session {
         });
     }
 
+    getCmd(cmdId : string) : CmdDataType {
+        if (!cmdId) {
+            return null;
+        }
+        for (let i=0; i<this.cmds.length; i++) {
+            if (this.cmds[i].cmdid == cmdId) {
+                return this.cmds[i];
+            }
+        }
+        return null;
+    }
+
+    getRemote(remoteId : string) : RemoteType {
+        if (!remoteId) {
+            return null;
+        }
+        for (let i=0; i<this.globalRemotes.length; i++) {
+            if (this.globalRemotes[i].remoteid == remoteId) {
+                return this.globalRemotes[i];
+            }
+        }
+        return null;
+    }
+
     setActiveWindow(windowid : string) {
         this.activeWindowId.set(windowid);
         this.loadWindowLines(windowid);
@@ -191,7 +249,12 @@ class Session {
         fetch(url, {method: "post", body: JSON.stringify(data)}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
             mobx.action(() => {
                 if (data.data != null && data.data.line != null) {
-                    this.addLine(data.data.line);
+                    let line = data.data.line;
+                    line.isnew = true;
+                    this.addLine(line);
+                }
+                if (data.data != null && data.data.cmd != null) {
+                    this.cmds.push(data.data.cmd);
                 }
             })();
         }).catch((err) => {
@@ -325,6 +388,7 @@ function initSession() {
                 DefaultSession.windows[i].linesLoading = mobx.observable.box(false);
             }
             DefaultSession.remotes = sdata.remotes || [];
+            DefaultSession.cmds = sdata.cmds || [];
             DefaultSession.setActiveWindow(sdata.windows[0].windowid);
             sessionLoaded = true;
             if (remotesLoaded && sessionLoaded) {
@@ -343,4 +407,4 @@ function getDefaultSession() : Session {
 (window as any).getDefaultSession = getDefaultSession;
 
 export {Session, getDefaultSession, getLineId, initSession};
-export type {LineType, WindowDataType};
+export type {LineType, WindowDataType, CmdDataType, RemoteType};
