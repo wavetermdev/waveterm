@@ -7,6 +7,7 @@
 package shexec
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -357,6 +358,15 @@ func (opts SSHOpts) MakeSSHInstallCmd() (*exec.Cmd, error) {
 		return nil, fmt.Errorf("no ssh host provided, can only install to a remote host")
 	}
 	return opts.MakeSSHExecCmd(InstallCommand), nil
+}
+
+func (opts SSHOpts) MakeMShellServerCmd() (*exec.Cmd, error) {
+	msPath, err := base.GetMShellPath()
+	if err != nil {
+		return nil, err
+	}
+	ecmd := exec.Command(msPath, "--server")
+	return ecmd, nil
 }
 
 func (opts SSHOpts) MakeMShellSingleCmd() (*exec.Cmd, error) {
@@ -716,7 +726,7 @@ func RunClientSSHCommandAndWait(runPacket *packet.RunPacketType, fdContext FdCon
 	if !versionOk {
 		return nil, fmt.Errorf("did not receive version from remote mshell")
 	}
-	SendRunPacketAndRunData(sender, runPacket)
+	SendRunPacketAndRunData(context.Background(), sender, runPacket)
 	if debug {
 		cmd.Multiplexer.Debug = true
 	}
@@ -735,10 +745,13 @@ func min(v1 int, v2 int) int {
 	return v2
 }
 
-func SendRunPacketAndRunData(sender *packet.PacketSender, runPacket *packet.RunPacketType) {
-	sender.SendPacket(runPacket)
+func SendRunPacketAndRunData(ctx context.Context, sender *packet.PacketSender, runPacket *packet.RunPacketType) error {
+	err := sender.SendPacketCtx(ctx, runPacket)
+	if err != nil {
+		return err
+	}
 	if len(runPacket.RunData) == 0 {
-		return
+		return nil
 	}
 	for _, runData := range runPacket.RunData {
 		sendBuf := runData.Data
@@ -751,10 +764,17 @@ func SendRunPacketAndRunData(sender *packet.PacketSender, runPacket *packet.RunP
 			dataPk.Data64 = base64.StdEncoding.EncodeToString(chunk)
 			dataPk.Eof = (len(chunk) == len(sendBuf))
 			sendBuf = sendBuf[chunkSize:]
-			sender.SendPacket(dataPk)
+			err = sender.SendPacketCtx(ctx, dataPk)
+			if err != nil {
+				return err
+			}
 		}
 	}
-	sender.SendPacket(packet.MakeDataEndPacket(runPacket.CK))
+	err = sender.SendPacketCtx(ctx, packet.MakeDataEndPacket(runPacket.CK))
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func DetectGoArch(uname string) (string, string, error) {

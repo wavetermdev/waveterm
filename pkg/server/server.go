@@ -7,6 +7,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sync"
@@ -52,12 +53,16 @@ func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
 		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("server run packets require valid ck: %s", err))
 		return
 	}
-	cproc, err := shexec.MakeClientProc(runPacket.CK)
+	ecmd, err := shexec.SSHOpts{}.MakeMShellSingleCmd()
+	if err != nil {
+		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("server run packets require valid ck: %s", err))
+		return
+	}
+	cproc, err := shexec.MakeClientProc(ecmd)
 	if err != nil {
 		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("starting mshell client: %s", err))
 		return
 	}
-	fmt.Printf("client start: %v\n", runPacket.CK)
 	m.Lock.Lock()
 	m.ClientMap[runPacket.CK] = cproc
 	m.Lock.Unlock()
@@ -67,10 +72,9 @@ func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
 			delete(m.ClientMap, runPacket.CK)
 			m.Lock.Unlock()
 			cproc.Close()
-			fmt.Printf("client done: %v\n", runPacket.CK)
 		}()
-		shexec.SendRunPacketAndRunData(cproc.Input, runPacket)
-		cproc.ProxyOutput(m.Sender)
+		shexec.SendRunPacketAndRunData(context.Background(), cproc.Input, runPacket)
+		cproc.ProxySingleOutput(runPacket.CK, m.Sender)
 	}()
 }
 

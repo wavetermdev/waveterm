@@ -12,7 +12,7 @@ import (
 
 type ClientProc struct {
 	Cmd          *exec.Cmd
-	CK           base.CommandKey
+	InitPk       *packet.InitPacketType
 	StartTs      time.Time
 	StdinWriter  io.WriteCloser
 	StdoutReader io.ReadCloser
@@ -21,11 +21,7 @@ type ClientProc struct {
 	Output       *packet.PacketParser
 }
 
-func MakeClientProc(ck base.CommandKey) (*ClientProc, error) {
-	ecmd, err := SSHOpts{}.MakeMShellSingleCmd()
-	if err != nil {
-		return nil, err
-	}
+func MakeClientProc(ecmd *exec.Cmd) (*ClientProc, error) {
 	inputWriter, err := ecmd.StdinPipe()
 	if err != nil {
 		return nil, fmt.Errorf("creating stdin pipe: %v", err)
@@ -49,7 +45,6 @@ func MakeClientProc(ck base.CommandKey) (*ClientProc, error) {
 	packetParser := packet.CombinePacketParsers(stdoutPacketParser, stderrPacketParser)
 	cproc := &ClientProc{
 		Cmd:          ecmd,
-		CK:           ck,
 		StartTs:      startTs,
 		StdinWriter:  inputWriter,
 		StdoutReader: stdoutReader,
@@ -57,7 +52,6 @@ func MakeClientProc(ck base.CommandKey) (*ClientProc, error) {
 		Input:        sender,
 		Output:       packetParser,
 	}
-	versionOk := false
 	for pk := range packetParser.MainCh {
 		if pk.GetType() != packet.InitPacketStr {
 			cproc.Close()
@@ -72,10 +66,10 @@ func MakeClientProc(ck base.CommandKey) (*ClientProc, error) {
 			cproc.Close()
 			return nil, fmt.Errorf("invalid remote mshell version 'v%s', must be v%s", initPk.Version, base.MShellVersion)
 		}
-		versionOk = true
+		cproc.InitPk = initPk
 		break
 	}
-	if !versionOk {
+	if cproc.InitPk == nil {
 		cproc.Close()
 		return nil, fmt.Errorf("no init packet received from mshell client")
 	}
@@ -100,7 +94,7 @@ func (cproc *ClientProc) Close() {
 	}
 }
 
-func (cproc *ClientProc) ProxyOutput(sender *packet.PacketSender) {
+func (cproc *ClientProc) ProxySingleOutput(ck base.CommandKey, sender *packet.PacketSender) {
 	sentDonePk := false
 	for pk := range cproc.Output.MainCh {
 		if pk.GetType() == packet.CmdDonePacketStr {
@@ -112,7 +106,7 @@ func (cproc *ClientProc) ProxyOutput(sender *packet.PacketSender) {
 	if !sentDonePk {
 		endTs := time.Now()
 		cmdDuration := endTs.Sub(cproc.StartTs)
-		donePacket := packet.MakeCmdDonePacket(cproc.CK)
+		donePacket := packet.MakeCmdDonePacket(ck)
 		donePacket.Ts = endTs.UnixMilli()
 		donePacket.ExitCode = GetExitCode(exitErr)
 		donePacket.DurationMs = int64(cmdDuration / time.Millisecond)
