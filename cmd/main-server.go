@@ -20,6 +20,7 @@ import (
 	"github.com/scripthaus-dev/mshell/pkg/cmdtail"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/sh2-server/pkg/remote"
+	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
 	"github.com/scripthaus-dev/sh2-server/pkg/wsshell"
@@ -333,7 +334,22 @@ func HandleGetPtyOut(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("must specify sessionid and cmdid")))
 		return
 	}
-	pathStr := GetPtyOutFile(sessionId, cmdId)
+	if _, err := uuid.Parse(sessionId); err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("invalid sessionid: %v", err)))
+		return
+	}
+	if _, err := uuid.Parse(cmdId); err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("invalid cmdid: %v", err)))
+		return
+	}
+	pathStr, err := scbase.PtyOutFile(sessionId, cmdId)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("cannot get ptyout file name: %v", err)))
+		return
+	}
 	fd, err := os.Open(pathStr)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {

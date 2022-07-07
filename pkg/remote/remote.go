@@ -2,6 +2,7 @@ package remote
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os/exec"
@@ -132,7 +133,6 @@ func (msh *MShellProc) Launch() {
 		return
 	}
 	msh.ServerProc = cproc
-	fmt.Printf("START MAKECLIENTPROC: %#v\n", msh.ServerProc.InitPk)
 	msh.Status = StatusConnected
 	go func() {
 		exitErr := cproc.Cmd.Wait()
@@ -170,7 +170,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, cmdId str
 	runPacket.UsePty = true
 	runPacket.TermOpts = &packet.TermOpts{Rows: DefaultTermRows, Cols: DefaultTermCols, Term: DefaultTerm}
 	runPacket.Command = strings.TrimSpace(pk.CmdStr)
-	fmt.Printf("RUN-CMD> %s\n", runPacket.CK)
+	fmt.Printf("RUN-CMD> %s reqid=%s (msh=%v)\n", runPacket.CK, runPacket.ReqId, msh.Remote)
 	msh.ServerProc.Output.RegisterRpc(runPacket.ReqId)
 	err := shexec.SendRunPacketAndRunData(ctx, msh.ServerProc.Input, runPacket)
 	if err != nil {
@@ -218,6 +218,17 @@ func (runner *MShellProc) WithLock(fn func()) {
 	fn()
 }
 
+func makeDataAckPacket(ck base.CommandKey, fdNum int, ackLen int, err error) *packet.DataAckPacketType {
+	ack := packet.MakeDataAckPacket()
+	ack.CK = ck
+	ack.FdNum = fdNum
+	ack.AckLen = ackLen
+	if err != nil {
+		ack.Error = err.Error()
+	}
+	return ack
+}
+
 func (runner *MShellProc) ProcessPackets() {
 	defer runner.WithLock(func() {
 		if runner.Status == StatusConnected {
@@ -225,10 +236,27 @@ func (runner *MShellProc) ProcessPackets() {
 		}
 	})
 	for pk := range runner.ServerProc.Output.MainCh {
-		fmt.Printf("MSH> %s | %#v\n", packet.AsString(pk), pk)
 		if pk.GetType() == packet.DataPacketStr {
-			dataPacket := pk.(*packet.DataPacketType)
-			fmt.Printf("data %s fd=%d len=%d eof=%v err=%v\n", dataPacket.CK, dataPacket.FdNum, packet.B64DecodedLen(dataPacket.Data64), dataPacket.Eof, dataPacket.Error)
+			dataPk := pk.(*packet.DataPacketType)
+			realData, err := base64.StdEncoding.DecodeString(dataPk.Data64)
+			if err != nil {
+				ack := makeDataAckPacket(dataPk.CK, dataPk.FdNum, 0, err)
+				runner.ServerProc.Input.SendPacket(ack)
+				continue
+			}
+			var ack *packet.DataAckPacketType
+			if len(realData) > 0 {
+				err = sstore.AppendToCmdPtyBlob(context.Background(), dataPk.CK.GetSessionId(), dataPk.CK.GetCmdId(), realData)
+				if err != nil {
+					ack = makeDataAckPacket(dataPk.CK, dataPk.FdNum, 0, err)
+				} else {
+					ack = makeDataAckPacket(dataPk.CK, dataPk.FdNum, len(realData), nil)
+				}
+			}
+			if ack != nil {
+				runner.ServerProc.Input.SendPacket(ack)
+			}
+			fmt.Printf("data %s fd=%d len=%d eof=%v err=%v\n", dataPk.CK, dataPk.FdNum, len(realData), dataPk.Eof, dataPk.Error)
 			continue
 		}
 		if pk.GetType() == packet.CmdDataPacketStr {
@@ -251,6 +279,11 @@ func (runner *MShellProc) ProcessPackets() {
 			fmt.Printf("stderr> %s\n", rawPacket.Data)
 			continue
 		}
-		fmt.Printf("runner-packet: %v\n", pk)
+		if pk.GetType() == packet.CmdStartPacketStr {
+			startPk := pk.(*packet.CmdStartPacketType)
+			fmt.Printf("start> reqid=%s (%p)\n", startPk.RespId, runner.ServerProc.Output)
+			continue
+		}
+		fmt.Printf("MSH> %s\n", packet.AsString(pk))
 	}
 }
