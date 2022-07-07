@@ -71,6 +71,21 @@ type SessionDataType = {
     cmds : CmdDataType[],
 };
 
+type CmdRemoteStateType = {
+    remoteid : string
+    remotename : string,
+    cwd : string,
+};
+
+type FeCmdPacketType = {
+    type : string,
+    sessionid : string,
+    windowid : string,
+    userid : string,
+    cmdstr : string,
+    remotestate : CmdRemoteStateType,
+}
+
 type CmdDataType = {
 };
 
@@ -163,7 +178,7 @@ class Session {
 
     submitCommand(windowid : string, commandStr : string) {
         let url = sprintf("http://localhost:8080/api/run-command");
-        let data = {type: "fecmd", sessionid: this.sessionId, windowid: windowid, cmdstr: commandStr, userid: GlobalUser, remotestate: null};
+        let data : FeCmdPacketType = {type: "fecmd", sessionid: this.sessionId, windowid: windowid, cmdstr: commandStr, userid: GlobalUser, remotestate: null};
         let curWindow = this.getCurWindow();
         if (curWindow == null) {
             throw new Error(sprintf("invalid current window=%s", this.activeWindowId));
@@ -172,7 +187,7 @@ class Session {
         if (rstate == null) {
             throw new Error(sprintf("no remotestate found for windowid:%s (remote=%s), cannot submit command", windowid, curWindow.curremote));
         }
-        data.remotestate = rstate;
+        data.remotestate = {remoteid: rstate.remoteid, remotename: rstate.name, ...rstate.state};
         fetch(url, {method: "post", body: JSON.stringify(data)}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
             mobx.action(() => {
                 if (data.data != null && data.data.line != null) {
