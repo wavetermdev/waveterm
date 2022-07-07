@@ -8,64 +8,26 @@ package server
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"sync"
 
 	"github.com/scripthaus-dev/mshell/pkg/base"
-	"github.com/scripthaus-dev/mshell/pkg/mpio"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
 )
 
+// TODO create unblockable packet-sender (backed by an array) for clientproc
 type MServer struct {
-	Lock         *sync.Mutex
-	MainInput    *packet.PacketParser
-	Sender       *packet.PacketSender
-	FdContextMap map[base.CommandKey]*serverFdContext
-	Debug        bool
+	Lock      *sync.Mutex
+	MainInput *packet.PacketParser
+	Sender    *packet.PacketSender
+	ClientMap map[base.CommandKey]*shexec.ClientProc
+	Debug     bool
 }
 
 func (m *MServer) Close() {
 	m.Sender.Close()
 	m.Sender.WaitForDone()
-}
-
-type serverFdContext struct {
-	M       *MServer
-	Lock    *sync.Mutex
-	Sender  *packet.PacketSender
-	CK      base.CommandKey
-	Readers map[int]*mpio.PacketReader
-}
-
-func (c *serverFdContext) processDataPacket(pk *packet.DataPacketType) {
-	c.Lock.Lock()
-	reader := c.Readers[pk.FdNum]
-	c.Lock.Unlock()
-	if reader == nil {
-		ackPacket := packet.MakeDataAckPacket()
-		ackPacket.CK = c.CK
-		ackPacket.FdNum = pk.FdNum
-		ackPacket.Error = "write to closed file (no fd)"
-		c.M.Sender.SendPacket(ackPacket)
-		return
-	}
-	reader.AddData(pk)
-}
-
-func (m *MServer) MakeServerFdContext(ck base.CommandKey) *serverFdContext {
-	m.Lock.Lock()
-	defer m.Lock.Unlock()
-	rtn := &serverFdContext{
-		M:       m,
-		Lock:    &sync.Mutex{},
-		Sender:  m.Sender,
-		CK:      ck,
-		Readers: make(map[int]*mpio.PacketReader),
-	}
-	m.FdContextMap[ck] = rtn
-	return rtn
 }
 
 func (m *MServer) ProcessCommandPacket(pk packet.CommandPacketType) {
@@ -75,41 +37,14 @@ func (m *MServer) ProcessCommandPacket(pk packet.CommandPacketType) {
 		return
 	}
 	m.Lock.Lock()
-	fdContext := m.FdContextMap[ck]
+	cproc := m.ClientMap[ck]
 	m.Lock.Unlock()
-	if fdContext == nil {
-		m.Sender.SendCmdError(ck, fmt.Errorf("no server context for ck '%s'", ck))
+	if cproc == nil {
+		m.Sender.SendCmdError(ck, fmt.Errorf("no client proc for ck '%s'", ck))
 		return
 	}
-	if pk.GetType() == packet.DataPacketStr {
-		dataPacket := pk.(*packet.DataPacketType)
-		fdContext.processDataPacket(dataPacket)
-		return
-	} else if pk.GetType() == packet.DataAckPacketStr {
-		m.Sender.SendPacket(pk)
-		return
-	} else {
-		m.Sender.SendCmdError(ck, fmt.Errorf("invalid packet '%s' received", packet.AsExtType(pk)))
-		return
-	}
-}
-
-func (c *serverFdContext) GetWriter(fdNum int) io.WriteCloser {
-	return mpio.MakePacketWriter(fdNum, c.Sender, c.CK)
-}
-
-func (c *serverFdContext) GetReader(fdNum int) io.ReadCloser {
-	c.Lock.Lock()
-	defer c.Lock.Unlock()
-	reader := mpio.MakePacketReader(fdNum)
-	c.Readers[fdNum] = reader
-	return reader
-}
-
-func (m *MServer) RemoveFdContext(ck base.CommandKey) {
-	m.Lock.Lock()
-	defer m.Lock.Unlock()
-	delete(m.FdContextMap, ck)
+	cproc.Input.SendPacket(pk)
+	return
 }
 
 func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
@@ -117,21 +52,26 @@ func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
 		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("server run packets require valid ck: %s", err))
 		return
 	}
-	fdContext := m.MakeServerFdContext(runPacket.CK)
+	cproc, err := shexec.MakeClientProc(runPacket.CK)
+	if err != nil {
+		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("starting mshell client: %s", err))
+		return
+	}
+	fmt.Printf("client start: %v\n", runPacket.CK)
+	m.Lock.Lock()
+	m.ClientMap[runPacket.CK] = cproc
+	m.Lock.Unlock()
 	go func() {
-		defer m.RemoveFdContext(runPacket.CK)
-		donePk, err := shexec.RunClientSSHCommandAndWait(runPacket, fdContext, shexec.SSHOpts{}, m, m.Debug)
-		if donePk != nil && !runPacket.Detached {
-			m.Sender.SendPacket(donePk)
-		}
-		if err != nil {
-			m.Sender.SendErrorResponse(runPacket.ReqId, err)
-		}
+		defer func() {
+			m.Lock.Lock()
+			delete(m.ClientMap, runPacket.CK)
+			m.Lock.Unlock()
+			cproc.Close()
+			fmt.Printf("client done: %v\n", runPacket.CK)
+		}()
+		shexec.SendRunPacketAndRunData(cproc.Input, runPacket)
+		cproc.ProxyOutput(m.Sender)
 	}()
-}
-
-func (m *MServer) UnknownPacket(pk packet.PacketType) {
-	m.Sender.SendPacket(pk)
 }
 
 func RunServer() (int, error) {
@@ -140,9 +80,9 @@ func RunServer() (int, error) {
 		debug = true
 	}
 	server := &MServer{
-		Lock:         &sync.Mutex{},
-		FdContextMap: make(map[base.CommandKey]*serverFdContext),
-		Debug:        debug,
+		Lock:      &sync.Mutex{},
+		ClientMap: make(map[base.CommandKey]*shexec.ClientProc),
+		Debug:     debug,
 	}
 	if debug {
 		packet.GlobalDebug = true
@@ -161,12 +101,7 @@ func RunServer() (int, error) {
 		if server.Debug {
 			fmt.Printf("PK> %s\n", packet.AsString(pk))
 		}
-
-		// run-start combo
 		ok, runPacket := builder.ProcessPacket(pk)
-		if server.Debug {
-			fmt.Printf("PP> %s | %v\n", pk.GetType(), ok)
-		}
 		if ok {
 			if runPacket != nil {
 				server.runCommand(runPacket)
@@ -174,20 +109,11 @@ func RunServer() (int, error) {
 			}
 			continue
 		}
-		if startPk, ok := pk.(*packet.CmdStartPacketType); ok {
-			if server.Debug {
-				fmt.Printf("START> %v", startPk)
-			}
-			server.Sender.SendPacket(startPk)
-			continue
-		}
-
-		// command packet
 		if cmdPk, ok := pk.(packet.CommandPacketType); ok {
 			server.ProcessCommandPacket(cmdPk)
 			continue
 		}
-		server.Sender.SendMessage(fmt.Sprintf("invalid packet '%s' sent to mshell", packet.AsString(pk)))
+		server.Sender.SendMessage(fmt.Sprintf("invalid packet '%s' sent to mshell server", packet.AsString(pk)))
 		continue
 	}
 	return 0, nil
