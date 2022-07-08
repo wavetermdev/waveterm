@@ -318,13 +318,19 @@ class Session {
     }
 
     getTermWrapByLine(line : LineType) : TermWrap {
+        if (!line.cmdid) {
+            return null;
+        }
         let termKey = makeTermKey(line.sessionid, line.cmdid, line.windowid, line.lineid);
         let termWrap = this.termMap[termKey];
         if (termWrap != null) {
             return termWrap;
         }
-        termWrap = new TermWrap(line.sessionid, line.cmdid);
-        console.log("create term", termWrap);
+        let cmd = this.getCmd(line.cmdid);
+        if (!cmd) {
+            return null;
+        }
+        termWrap = new TermWrap(line.sessionid, line.cmdid, cmd.status);
         this.termMap[termKey] = termWrap;
         this.termMapById[termWrap.termId] = termWrap;
         termWrap.initialized = true;

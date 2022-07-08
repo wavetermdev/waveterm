@@ -168,6 +168,7 @@ class LineCmd extends React.Component<{line : LineType, session : Session, chang
         let {session, line} = this.props;
         let lineid = line.lineid.toString();
         let running = false;
+        let detached = false;
         let rows = 0;
         let cols = 0;
         let termWrap = session.getTermWrapByLine(line);
@@ -181,10 +182,12 @@ class LineCmd extends React.Component<{line : LineType, session : Session, chang
         let remote : RemoteType = null;
         if (cmd != null) {
             remote = session.getRemote(cmd.remoteid);
+            running = (cmd.status == "running");
+            detached = (cmd.status == "detached");
         }
         return (
             <div className="line line-cmd" id={"line-" + getLineId(line)}>
-                <div className={cn("avatar",{"num4": lineid.length == 4}, {"num5": lineid.length >= 5}, {"running": running})}>
+                <div className={cn("avatar",{"num4": lineid.length == 4}, {"num5": lineid.length >= 5}, {"running": running}, {"detached": detached})}>
                     {lineid}
                 </div>
                 <div className="line-content">
@@ -353,7 +356,6 @@ class SessionView extends React.Component<{session : Session}, {}> {
 
     @boundMethod
     changeSizeCallback(term : TermWrap) {
-        console.log("changesize", term);
         if (this.shouldFollow.get()) {
             let session = this.props.session;
             let window = session.getActiveWindow();

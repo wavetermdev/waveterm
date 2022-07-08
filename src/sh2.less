@@ -203,7 +203,7 @@ html, body, #main {
     .avatar {
         height: 38px;
         width: 38px;
-        background-color: #729fcf;
+        background-color: #555;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -222,7 +222,12 @@ html, body, #main {
         }
 
         &.running {
-            background-color: #cc0000;
+            background-color: #729fcf;
+        }
+
+        &.detached {
+            background-color: #729fcf;
+            outline: 2px solid white;
         }
     }
 

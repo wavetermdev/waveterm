@@ -34,41 +34,79 @@ class TermWrap {
     initialized : boolean = false;
     changeSizeCallback : (TermWrap) => void = null;
     usedRows : number;
+    tailReqId : string;
+    cmdStatus : string;
 
-    constructor(sessionId : string, cmdId : string) {
+    constructor(sessionId : string, cmdId : string, status : string) {
         this.termId = uuidv4();
         this.sessionId = sessionId;
         this.cmdId = cmdId;
+        this.cmdStatus = status;
         this.terminal = new Terminal({rows: 25, cols: 80, theme: {foreground: "#d3d7cf"}});
         this.usedRows = 2;
     }
 
     destroy() {
-        
+        this.stopPtyTail();
+    }
+
+    setCmdStatus(status : string) {
+        if (this.cmdStatus == status) {
+            return;
+        }
+        this.cmdStatus = status;
+        if (!this.canTailPty() && this.tailReqId) {
+            this.stopPtyTail();
+        }
+    }
+
+    canTailPty() : boolean {
+        return this.cmdStatus == "running" || this.cmdStatus == "detached";
     }
 
     @boundMethod
     onKeyHandler(event : any) {
         let inputPacket = {
             type: "input",
-            sessionid: this.sessionId,
-            cmdid: this.cmdId,
+            ck: this.sessionId + "/" + this.cmdId,
             inputdata: event.key,
         };
         GlobalWS.pushMessage(inputPacket);
     }
 
+    stopPtyTail() {
+        if (this.tailReqId == null) {
+            return;
+        }
+        let untailCmdPacket = {
+            type: "untailcmd",
+            reqid: uuidv4(),
+            ck: this.sessionId + "/" + this.cmdId,
+        };
+        GlobalWS.sendMessage(untailCmdPacket);
+        GlobalWS.unregisterReq(this.tailReqId);
+        this.tailReqId = null;
+    }
+
     startPtyTail() {
+        if (this.tailReqId != null) {
+            return;
+        }
+        if (!this.canTailPty()) {
+            return;
+        }
+        this.tailReqId = uuidv4();
         let getCmdPacket = {
             type: "getcmd",
-            reqid: this.termId,
-            sessionid: this.sessionId,
-            cmdid: this.cmdId,
+            reqid: this.tailReqId,
+            ck: this.sessionId + "/" + this.cmdId,
             ptypos: this.ptyPos,
             tail: true,
+            ptyonly: true,
         };
         GlobalWS.registerAndSendGetCmd(getCmdPacket, (dataPacket) => {
-            this.updatePtyData(this.ptyPos, dataPacket.ptydata, dataPacket.ptydatalen);
+            let realData = atob(dataPacket.ptydata64);
+            this.updatePtyData(this.ptyPos, realData, dataPacket.ptydatalen);
         });
     }
 
@@ -109,7 +147,13 @@ class TermWrap {
                 usedRows = i+1;
             }
         }
-        this.usedRows = usedRows;
+        if (this.usedRows != usedRows) {
+            this.usedRows = usedRows;
+            if (this.changeSizeCallback != null) {
+                let cb = this.changeSizeCallback;
+                setTimeout(() => cb(this), 0);
+            }
+        }
         return;
     }
 

@@ -29,6 +29,10 @@ class WSControl {
         this.pushMessage(pk)
     }
 
+    unregisterReq(reqid : string) {
+        delete this.reqMap[reqid];
+    }
+
     reconnect() {
         if (this.open.get()) {
             this.wsConn.close();
@@ -123,9 +127,9 @@ class WSControl {
             return;
         }
         if (eventData.type == "cmddata") {
-            let cb = this.reqMap[eventData.reqid];
+            let cb = this.reqMap[eventData.respid];
             if (!cb) {
-                console.log(sprintf("websocket cmddata req=%s -- no callback", eventData.reqid));
+                console.log(sprintf("websocket cmddata req=%s -- no callback", eventData.respid));
                 return;
             }
             cb(eventData);
