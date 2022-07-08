@@ -32,8 +32,9 @@ const (
 var GlobalStore *Store
 
 type Store struct {
-	Lock *sync.Mutex
-	Map  map[string]*MShellProc // key=remoteid
+	Lock              *sync.Mutex
+	Map               map[string]*MShellProc // key=remoteid
+	CmdStatusCallback func(ck base.CommandKey, status string)
 }
 
 type RemoteState struct {
@@ -53,6 +54,8 @@ type MShellProc struct {
 	Status     string
 	ServerProc *shexec.ClientProc
 	Err        error
+
+	RunningCmds []base.CommandKey
 }
 
 func LoadRemotes(ctx context.Context) error {
@@ -227,7 +230,14 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, cmdId str
 	if err != nil {
 		return nil, err
 	}
+	msh.AddRunningCmd(startPk.CK)
 	return cmd, nil
+}
+
+func (msh *MShellProc) AddRunningCmd(ck base.CommandKey) {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	msh.RunningCmds = append(msh.RunningCmds, ck)
 }
 
 func (msh *MShellProc) PacketRpc(ctx context.Context, pk packet.RpcPacketType) (*packet.ResponsePacketType, error) {
@@ -277,6 +287,9 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 		fmt.Printf("[error] updating cmddone: %v\n", err)
 		return
 	}
+	if GlobalStore.CmdStatusCallback != nil {
+		GlobalStore.CmdStatusCallback(donePk.CK, sstore.CmdStatusDone)
+	}
 	return
 }
 
@@ -289,6 +302,15 @@ func (msh *MShellProc) handleCmdErrorPacket(errPk *packet.CmdErrorPacketType) {
 	return
 }
 
+func (msh *MShellProc) notifyHangups_nolock() {
+	if GlobalStore.CmdStatusCallback != nil {
+		for _, ck := range msh.RunningCmds {
+			GlobalStore.CmdStatusCallback(ck, sstore.CmdStatusHangup)
+		}
+	}
+	msh.RunningCmds = nil
+}
+
 func (runner *MShellProc) ProcessPackets() {
 	defer runner.WithLock(func() {
 		if runner.Status == StatusConnected {
@@ -298,6 +320,7 @@ func (runner *MShellProc) ProcessPackets() {
 		if err != nil {
 			fmt.Printf("[error] calling HUP on remoteid=%d cmds\n", runner.Remote.RemoteId)
 		}
+		runner.notifyHangups_nolock()
 	})
 	for pk := range runner.ServerProc.Output.MainCh {
 		if pk.GetType() == packet.DataPacketStr {
