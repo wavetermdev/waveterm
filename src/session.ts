@@ -330,7 +330,7 @@ class Session {
         if (!cmd) {
             return null;
         }
-        termWrap = new TermWrap(line.sessionid, line.cmdid, cmd.status);
+        termWrap = new TermWrap(line.sessionid, line.cmdid, cmd.remoteid, cmd.status);
         this.termMap[termKey] = termWrap;
         this.termMapById[termWrap.termId] = termWrap;
         termWrap.initialized = true;

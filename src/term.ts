@@ -36,11 +36,13 @@ class TermWrap {
     usedRows : number;
     tailReqId : string;
     cmdStatus : string;
+    remoteId : string;
 
-    constructor(sessionId : string, cmdId : string, status : string) {
+    constructor(sessionId : string, cmdId : string, remoteId : string, status : string) {
         this.termId = uuidv4();
         this.sessionId = sessionId;
         this.cmdId = cmdId;
+        this.remoteId = remoteId;
         this.cmdStatus = status;
         this.terminal = new Terminal({rows: 25, cols: 80, theme: {foreground: "#d3d7cf"}});
         this.usedRows = 2;
@@ -55,12 +57,12 @@ class TermWrap {
             return;
         }
         this.cmdStatus = status;
-        if (!this.canTailPty() && this.tailReqId) {
+        if (!this.isRunning() && this.tailReqId) {
             this.stopPtyTail();
         }
     }
 
-    canTailPty() : boolean {
+    isRunning() : boolean {
         return this.cmdStatus == "running" || this.cmdStatus == "detached";
     }
 
@@ -69,7 +71,8 @@ class TermWrap {
         let inputPacket = {
             type: "input",
             ck: this.sessionId + "/" + this.cmdId,
-            inputdata: event.key,
+            inputdata: btoa(event.key),
+            remoteid: this.remoteId,
         };
         GlobalWS.pushMessage(inputPacket);
     }
@@ -92,7 +95,7 @@ class TermWrap {
         if (this.tailReqId != null) {
             return;
         }
-        if (!this.canTailPty()) {
+        if (!this.isRunning()) {
             return;
         }
         this.tailReqId = uuidv4();
@@ -200,13 +203,15 @@ class TermWrap {
 
     connectToElem(elem : Element) {
         this.terminal.open(elem);
-        this.terminal.textarea.addEventListener("focus", () => {
-            this.setFocus(true);
-        });
-        this.terminal.textarea.addEventListener("blur", () => {
-            this.setFocus(false);
-        });
-        this.terminal.onKey(this.onKeyHandler);
+        if (this.isRunning()) {
+            this.terminal.textarea.addEventListener("focus", () => {
+                this.setFocus(true);
+            });
+            this.terminal.textarea.addEventListener("blur", () => {
+                this.setFocus(false);
+            });
+            this.terminal.onKey(this.onKeyHandler);
+        }
     }
 }
 
