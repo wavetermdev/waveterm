@@ -5,7 +5,7 @@ import {Terminal} from 'xterm';
 import {Main} from "./main";
 import {GlobalWS} from "./ws";
 import {v4 as uuidv4} from "uuid";
-import {initSession} from "./session";
+import {loadSessionList} from "./session";
 
 // @ts-ignore
 let VERSION = __SHVERSION__;
@@ -13,7 +13,7 @@ let VERSION = __SHVERSION__;
 (window as any).ScriptHausClientId = uuidv4();
 
 document.addEventListener("DOMContentLoaded", () => {
-    initSession("default");
+    loadSessionList(true);
     GlobalWS.reconnect();
     let reactElem = React.createElement(Main, null, null);
     let elem = document.getElementById("app");

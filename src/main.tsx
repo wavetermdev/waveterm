@@ -7,8 +7,8 @@ import dayjs from 'dayjs'
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import cn from "classnames"
 import {TermWrap} from "./term";
-import {getCurrentSession, getLineId, Session, initSession, newSession} from "./session";
-import type {LineType, CmdDataType, RemoteType} from "./session";
+import {getCurrentSession, getLineId, Session, newSession, getAllSessions, getCurrentSessionId} from "./session";
+import type {SessionType, LineType, CmdDataType, RemoteType} from "./session";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 
 dayjs.extend(localizedFormat)
@@ -403,8 +403,15 @@ class MainSideBar extends React.Component<{}, {}> {
             this.collapsed.set(!this.collapsed.get());
         })();
     }
+
+    handleSessionClick(sessionId : string) {
+        console.log("click session", sessionId);
+    }
     
     render() {
+        let curSessionId = getCurrentSessionId();
+        let sessions = getAllSessions();
+        let session : SessionType = null;
         return (
             <div className={cn("main-sidebar", {"collapsed": this.collapsed.get()})}>
                 <div className="collapse-container">
@@ -418,7 +425,9 @@ class MainSideBar extends React.Component<{}, {}> {
                         Private Sessions
                     </p>
                     <ul className="menu-list">
-                        <li><a className="is-active">#default</a></li>
+                        <For each="session" of={sessions}>
+                            <li key={session.sessionid}><a className={cn({"is-active": curSessionId == session.sessionid})} onClick={() => this.handleSessionClick(session.sessionid)}>#{session.name}</a></li>
+                        </For>
                         <li className="new-session"><a className="new-session"><i className="fa fa-plus"/> New Session</a></li>
                     </ul>
                     <p className="menu-label">

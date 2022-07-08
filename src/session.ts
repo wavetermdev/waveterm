@@ -11,6 +11,11 @@ function makeTermKey(sessionId : string, cmdId : string, windowId : string, line
     return sprintf("%s/%s/%s/%s", sessionId, cmdId, windowId, lineid);
 }
 
+type SessionType = {
+    sessionid : string,
+    name : string,
+};
+
 type LineType = {
     sessionid : string,
     windowid : string,
@@ -139,7 +144,7 @@ class Session {
     termMap : Record<string, TermWrap> = {};
     termMapById : Record<string, TermWrap> = {};
     history : HistoryItem[] = [];
-    loading : mobx.IObservableValue<boolean> = mobx.observable.box(false);
+    loading : mobx.IObservableValue<boolean> = mobx.observable.box(true);
     remotes : RemoteInstanceType[] = [];
     globalRemotes : RemoteType[];
     cmds : CmdDataType[];
@@ -387,10 +392,12 @@ class Session {
     }
 }
 
+var SessionList : mobx.IObservableArray<SessionType> = mobx.observable.array([]);
 var CurrentSession : Session = new Session();
+var CurrentSessionId : mobx.IObservableValue<string> = mobx.observable.box(null);
 
-function initSession(name : string) {
-    if (CurrentSession.loading.get()) {
+function initSession(sessionId : string, force : boolean) {
+    if (CurrentSession.loading.get() && !force) {
         return;
     }
     let remotesLoaded = false;
@@ -408,7 +415,7 @@ function initSession(name : string) {
         console.log("error calling get-remotes", err)
     });
     
-    let usp = new URLSearchParams({name: name});
+    let usp = new URLSearchParams({sessionid: sessionId});
     let url = new URL(sprintf("http://localhost:8080/api/get-session?") + usp.toString());
     fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
         mobx.action(() => {
@@ -453,7 +460,42 @@ function newSession() {
     
 }
 
-(window as any).getCurrentSession = getCurrentSession;
+function loadSessionList(init : boolean) {
+    let url = new URL("http://localhost:8080/api/get-all-sessions");
+    fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
+        mobx.action(() => {
+            SessionList.replace(data.data || []);
+            if (init) {
+                for (let i=0; i<SessionList.length; i++) {
+                    if (SessionList[i].name == "default") {
+                        setCurrentSessionId(SessionList[i].sessionid);
+                    }
+                }
+            }
+        })();
+        
+    }).catch((err) => {
+        console.log("error getting session list");
+    });
+}
 
-export {Session, getCurrentSession, getLineId, initSession, newSession};
-export type {LineType, WindowType, CmdDataType, RemoteType};
+function getAllSessions() : mobx.IObservableArray<SessionType> {
+    return SessionList;
+}
+
+function setCurrentSessionId(sessionId : string) {
+    if (CurrentSessionId.get() == sessionId) {
+        return;
+    }
+    mobx.action(() => {
+        CurrentSessionId.set(sessionId);
+        initSession(sessionId, true);
+    })();
+}
+
+function getCurrentSessionId() : string {
+    return CurrentSessionId.get();
+}
+
+export {Session, getCurrentSession, getLineId, newSession, loadSessionList, getAllSessions, getCurrentSessionId};
+export type {LineType, WindowType, CmdDataType, RemoteType, SessionType};
