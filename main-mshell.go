@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/scripthaus-dev/mshell/pkg/base"
-	"github.com/scripthaus-dev/mshell/pkg/cmdtail"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/mshell/pkg/server"
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
@@ -74,13 +73,13 @@ import (
 // 	}()
 // }
 
-func doGetCmd(tailer *cmdtail.Tailer, pk *packet.GetCmdPacketType, sender *packet.PacketSender) error {
-	err := tailer.AddWatch(pk)
-	if err != nil {
-		return err
-	}
-	return nil
-}
+// func doGetCmd(tailer *cmdtail.Tailer, pk *packet.GetCmdPacketType, sender *packet.PacketSender) error {
+// 	err := tailer.AddWatch(pk)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
 
 // func doMain() {
 // 	homeDir := base.GetHomeDir()
