@@ -39,7 +39,7 @@ const (
 	DataEndPacketStr   = "dataend"
 	ResponsePacketStr  = "resp" // rpc-response
 	DonePacketStr      = "done"
-	CmdErrorPacketStr  = "cmderror"
+	CmdErrorPacketStr  = "cmderror" // command
 	MessagePacketStr   = "message"
 	GetCmdPacketStr    = "getcmd"    // rpc
 	UntailCmdPacketStr = "untailcmd" // rpc
@@ -275,12 +275,13 @@ func MakeUntailCmdPacket() *UntailCmdPacketType {
 }
 
 type GetCmdPacketType struct {
-	Type   string          `json:"type"`
-	ReqId  string          `json:"reqid"`
-	CK     base.CommandKey `json:"ck"`
-	PtyPos int64           `json:"ptypos"`
-	RunPos int64           `json:"runpos"`
-	Tail   bool            `json:"tail,omitempty"`
+	Type    string          `json:"type"`
+	ReqId   string          `json:"reqid"`
+	CK      base.CommandKey `json:"ck"`
+	PtyPos  int64           `json:"ptypos"`
+	RunPos  int64           `json:"runpos"`
+	Tail    bool            `json:"tail,omitempty"`
+	PtyOnly bool            `json:"ptyonly,omitempty"`
 }
 
 func (*GetCmdPacketType) GetType() string {
