@@ -223,6 +223,10 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, cmdId str
 		DonePk:      nil,
 		RunOut:      nil,
 	}
+	err = sstore.AppendToCmdPtyBlob(ctx, cmd.SessionId, cmd.CmdId, nil)
+	if err != nil {
+		return nil, err
+	}
 	return cmd, nil
 }
 
@@ -316,7 +320,7 @@ func (runner *MShellProc) ProcessPackets() {
 			if ack != nil {
 				runner.ServerProc.Input.SendPacket(ack)
 			}
-			fmt.Printf("data %s fd=%d len=%d eof=%v err=%v\n", dataPk.CK, dataPk.FdNum, len(realData), dataPk.Eof, dataPk.Error)
+			// fmt.Printf("data %s fd=%d len=%d eof=%v err=%v\n", dataPk.CK, dataPk.FdNum, len(realData), dataPk.Eof, dataPk.Error)
 			continue
 		}
 		if pk.GetType() == packet.CmdDataPacketStr {

@@ -87,7 +87,8 @@ func MakeWSState(clientId string) (*WSState, error) {
 	rtn.ConnectTime = time.Now()
 	rtn.PacketCh = make(chan packet.PacketType, WSStatePacketChSize)
 	chSender := packet.MakeChannelPacketSender(rtn.PacketCh)
-	rtn.Tailer, err = cmdtail.MakeTailer(chSender)
+	gen := scbase.ScFileNameGenerator{ScHome: scbase.GetScHomeDir()}
+	rtn.Tailer, err = cmdtail.MakeTailer(chSender, gen)
 	if err != nil {
 		return nil, err
 	}
@@ -198,9 +199,18 @@ func HandleWs(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if pk.GetType() == "getcmd" {
-			err = state.Tailer.AddWatch(pk.(*packet.GetCmdPacketType))
+			getPk := pk.(*packet.GetCmdPacketType)
+			done, err := state.Tailer.AddWatch(getPk)
 			if err != nil {
+				// TODO: send responseerror
+				respPk := packet.MakeErrorResponsePacket(getPk.ReqId, err)
 				fmt.Printf("[error] adding watch to tailer: %v\n", err)
+				fmt.Printf("%v\n", respPk)
+			}
+			if done {
+				respPk := packet.MakeResponsePacket(getPk.ReqId, true)
+				fmt.Printf("%v\n", respPk)
+				// TODO: send response
 			}
 			continue
 		}
@@ -455,15 +465,12 @@ func ProcessFeCommandPacket(ctx context.Context, pk *scpacket.FeCommandPacketTyp
 		fmt.Printf("GOT cd RESP: %v\n", resp)
 		return nil, nil
 	}
-	rtnLine, err := sstore.AddCmdLine(ctx, pk.SessionId, pk.WindowId, pk.UserId)
+	cmdId := uuid.New().String()
+	cmd, err := remote.RunCommand(ctx, pk, cmdId)
 	if err != nil {
 		return nil, err
 	}
-	cmd, err := remote.RunCommand(ctx, pk, rtnLine.CmdId)
-	if err != nil {
-		return nil, err
-	}
-	err = sstore.InsertCmd(ctx, cmd)
+	rtnLine, err := sstore.AddCmdLine(ctx, pk.SessionId, pk.WindowId, pk.UserId, cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -595,12 +602,11 @@ func main() {
 		fmt.Printf("[error] ensuring local remote: %v\n", err)
 		return
 	}
-	defaultSession, err := sstore.EnsureDefaultSession(context.Background())
+	_, err = sstore.EnsureDefaultSession(context.Background())
 	if err != nil {
 		fmt.Printf("[error] ensuring default session: %v\n", err)
 		return
 	}
-	fmt.Printf("session: %v\n", defaultSession)
 	err = remote.LoadRemotes(context.Background())
 	if err != nil {
 		fmt.Printf("[error] loading remotes: %v\n", err)

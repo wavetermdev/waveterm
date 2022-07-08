@@ -167,7 +167,7 @@ func InsertSessionWithName(ctx context.Context, sessionName string) error {
 	})
 }
 
-func InsertLine(ctx context.Context, line *LineType) error {
+func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 	if line == nil {
 		return fmt.Errorf("line cannot be nil")
 	}
@@ -188,27 +188,14 @@ func InsertLine(ctx context.Context, line *LineType) error {
 		query = `INSERT INTO line  ( sessionid, windowid, lineid, ts, userid, linetype, text, cmdid)
                             VALUES (:sessionid,:windowid,:lineid,:ts,:userid,:linetype,:text,:cmdid)`
 		tx.NamedExecWrap(query, line)
-		return nil
-	})
-}
-
-func InsertCmd(ctx context.Context, cmd *CmdType) error {
-	if cmd == nil {
-		return fmt.Errorf("cmd cannot be nil")
-	}
-	return WithTx(ctx, func(tx *TxWrap) error {
-		var sessionId string
-		query := `SELECT sessionid FROM session WHERE sessionid = ?`
-		hasSession := tx.GetWrap(&sessionId, query, cmd.SessionId)
-		if !hasSession {
-			return fmt.Errorf("session not found, cannot insert cmd")
-		}
-		cmdMap := cmd.ToMap()
-		query = `
+		if cmd != nil {
+			cmdMap := cmd.ToMap()
+			query = `
 INSERT INTO cmd  ( sessionid, cmdid, remoteid, cmdstr, remotestate, termopts, status, startpk, donepk, runout)
           VALUES (:sessionid,:cmdid,:remoteid,:cmdstr,:remotestate,:termopts,:status,:startpk,:donepk,:runout)
 `
-		tx.NamedExecWrap(query, cmdMap)
+			tx.NamedExecWrap(query, cmdMap)
+		}
 		return nil
 	})
 }

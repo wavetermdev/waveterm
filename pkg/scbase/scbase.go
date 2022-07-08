@@ -8,6 +8,7 @@ import (
 	"path"
 	"sync"
 
+	"github.com/scripthaus-dev/mshell/pkg/base"
 	"golang.org/x/sys/unix"
 )
 
@@ -108,4 +109,16 @@ func RemotePtyOut(remoteId string) (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("%s/%s.ptyout", rdir, remoteId), nil
+}
+
+type ScFileNameGenerator struct {
+	ScHome string
+}
+
+func (g ScFileNameGenerator) PtyOutFile(ck base.CommandKey) string {
+	return path.Join(g.ScHome, SessionsDirBaseName, ck.GetSessionId(), ck.GetCmdId()+".ptyout")
+}
+
+func (g ScFileNameGenerator) RunOutFile(ck base.CommandKey) string {
+	return path.Join(g.ScHome, SessionsDirBaseName, ck.GetSessionId(), ck.GetCmdId()+".runout")
 }

@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
@@ -245,14 +244,14 @@ func CmdFromMap(m map[string]interface{}) *CmdType {
 	return &cmd
 }
 
-func makeNewLineCmd(sessionId string, windowId string, userId string) *LineType {
+func makeNewLineCmd(sessionId string, windowId string, userId string, cmdId string) *LineType {
 	rtn := &LineType{}
 	rtn.SessionId = sessionId
 	rtn.WindowId = windowId
 	rtn.Ts = time.Now().UnixMilli()
 	rtn.UserId = userId
 	rtn.LineType = LineTypeCmd
-	rtn.CmdId = uuid.New().String()
+	rtn.CmdId = cmdId
 	return rtn
 }
 
@@ -269,16 +268,16 @@ func makeNewLineText(sessionId string, windowId string, userId string, text stri
 
 func AddCommentLine(ctx context.Context, sessionId string, windowId string, userId string, commentText string) (*LineType, error) {
 	rtnLine := makeNewLineText(sessionId, windowId, userId, commentText)
-	err := InsertLine(ctx, rtnLine)
+	err := InsertLine(ctx, rtnLine, nil)
 	if err != nil {
 		return nil, err
 	}
 	return rtnLine, nil
 }
 
-func AddCmdLine(ctx context.Context, sessionId string, windowId string, userId string) (*LineType, error) {
-	rtnLine := makeNewLineCmd(sessionId, windowId, userId)
-	err := InsertLine(ctx, rtnLine)
+func AddCmdLine(ctx context.Context, sessionId string, windowId string, userId string, cmd *CmdType) (*LineType, error) {
+	rtnLine := makeNewLineCmd(sessionId, windowId, userId, cmd.CmdId)
+	err := InsertLine(ctx, rtnLine, cmd)
 	if err != nil {
 		return nil, err
 	}
