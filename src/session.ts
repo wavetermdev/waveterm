@@ -50,13 +50,22 @@ type RemoteInstanceType = {
     state : RemoteStateType,
 }
 
-type WindowDataType = {
+type WindowType = {
     sessionid : string,
     windowid : string,
     name : string,
     curremote : string,
     lines : mobx.IObservableArray<LineType>,
     linesLoading : mobx.IObservableValue<boolean>,
+    version : number,
+};
+
+type WindowDataType = {
+    sessionid : string,
+    windowid : string,
+    name : string,
+    curremote : string,
+    lines : LineType[],
     version : number,
 };
 
@@ -125,7 +134,7 @@ type CmdDataType = {
 class Session {
     sessionId : string;
     name : string;
-    windows : WindowDataType[];
+    windows : WindowType[];
     activeWindowId : mobx.IObservableValue<string> = mobx.observable.box(null);
     termMap : Record<string, TermWrap> = {};
     termMapById : Record<string, TermWrap> = {};
@@ -168,7 +177,7 @@ class Session {
         return null;
     }
 
-    getWindowById(windowid : string) : WindowDataType {
+    getWindowById(windowid : string) : WindowType {
         for (let i=0; i<this.windows.length; i++) {
             if (this.windows[i].windowid == windowid) {
                 return this.windows[i];
@@ -177,8 +186,25 @@ class Session {
         return null;
     }
 
-    getCurWindow() : WindowDataType {
+    getCurWindow() : WindowType {
         return this.getWindowById(this.activeWindowId.get());
+    }
+
+    setWindowInSession(win : WindowDataType) {
+        mobx.action(() => {
+            for (let i=0; i<this.windows.length; i++) {
+                if (this.windows[i].windowid == win.windowid) {
+                    let curWindow = this.windows[i];
+                    curWindow.name = win.name
+                    curWindow.curremote = win.curremote;
+                    curWindow.lines.replace(win.lines || []);
+                    curWindow.linesLoading.set(false);
+                    curWindow.version = win.version;
+                    return;
+                }
+            }
+            this.windows.push(winDataToWindow(win));
+        })();
     }
 
     loadWindowLines(windowid : string) {
@@ -193,12 +219,13 @@ class Session {
         window.linesLoading.set(true);
         
         let usp = new URLSearchParams({sessionid: this.sessionId, windowid: windowid});
-        let url = new URL(sprintf("http://localhost:8080/api/get-window-lines?") + usp.toString());
+        let url = new URL(sprintf("http://localhost:8080/api/get-window?") + usp.toString());
         fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
-            mobx.action(() => {
-                window.lines.replace(data.data || []);
-                window.linesLoading.set(false);
-            })();
+            if (data.data == null) {
+                console.log("null window returned from get-window");
+                return;
+            }
+            this.setWindowInSession(data.data);
             return;
         }).catch((err) => {
             console.log(sprintf("error getting window=%s lines", windowid), err)
@@ -346,7 +373,7 @@ class Session {
         console.log("cmddata", pk);
     }
 
-    getActiveWindow() : WindowDataType {
+    getActiveWindow() : WindowType {
         if (this.windows == null || this.windows.length == 0) {
             return null;
         }
@@ -360,45 +387,44 @@ class Session {
     }
 }
 
-var DefaultSession : Session = new Session();
+var CurrentSession : Session = new Session();
 
-function initSession() {
-    if (DefaultSession.loading.get()) {
+function initSession(name : string) {
+    if (CurrentSession.loading.get()) {
         return;
     }
     let remotesLoaded = false;
     let sessionLoaded = false;
-    DefaultSession.loading.set(true);
+    CurrentSession.loading.set(true);
     fetch("http://localhost:8080/api/get-remotes").then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
         mobx.action(() => {
-            DefaultSession.globalRemotes = data.data
+            CurrentSession.globalRemotes = data.data
             remotesLoaded = true;
             if (remotesLoaded && sessionLoaded) {
-                DefaultSession.loading.set(false);
+                CurrentSession.loading.set(false);
             }
         })();
     }).catch((err) => {
         console.log("error calling get-remotes", err)
     });
     
-    let usp = new URLSearchParams({name: "default"});
+    let usp = new URLSearchParams({name: name});
     let url = new URL(sprintf("http://localhost:8080/api/get-session?") + usp.toString());
     fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
         mobx.action(() => {
             let sdata = data.data;
-            DefaultSession.sessionId = sdata.sessionid;
-            DefaultSession.name = sdata.name;
-            DefaultSession.windows = sdata.windows || [];
-            for (let i=0; i<DefaultSession.windows.length; i++) {
-                DefaultSession.windows[i].lines = mobx.observable.array([]);
-                DefaultSession.windows[i].linesLoading = mobx.observable.box(false);
+            CurrentSession.sessionId = sdata.sessionid;
+            CurrentSession.name = sdata.name;
+            CurrentSession.windows = [];
+            for (let i=0; i<sdata.windows.length; i++) {
+                CurrentSession.windows.push(winDataToWindow(sdata.windows[i]))
             }
-            DefaultSession.remotes = sdata.remotes || [];
-            DefaultSession.cmds = sdata.cmds || [];
-            DefaultSession.setActiveWindow(sdata.windows[0].windowid);
+            CurrentSession.remotes = sdata.remotes || [];
+            CurrentSession.cmds = sdata.cmds || [];
+            CurrentSession.setActiveWindow(sdata.windows[0].windowid);
             sessionLoaded = true;
             if (remotesLoaded && sessionLoaded) {
-                DefaultSession.loading.set(false);
+                CurrentSession.loading.set(false);
             }
         })();
     }).catch((err) => {
@@ -406,11 +432,28 @@ function initSession() {
     });
 }
 
-function getDefaultSession() : Session {
-    return DefaultSession;
+function winDataToWindow(win : WindowDataType) : WindowType {
+    let w = {
+        sessionid: win.sessionid,
+        windowid: win.windowid,
+        name: win.name,
+        curremote: win.curremote,
+        lines: mobx.observable.array(win.lines || []),
+        linesLoading: mobx.observable.box(false),
+        version: win.version,
+    };
+    return w;
 }
 
-(window as any).getDefaultSession = getDefaultSession;
+function getCurrentSession() : Session {
+    return CurrentSession;
+}
 
-export {Session, getDefaultSession, getLineId, initSession};
-export type {LineType, WindowDataType, CmdDataType, RemoteType};
+function newSession() {
+    
+}
+
+(window as any).getCurrentSession = getCurrentSession;
+
+export {Session, getCurrentSession, getLineId, initSession, newSession};
+export type {LineType, WindowType, CmdDataType, RemoteType};

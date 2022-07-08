@@ -13,7 +13,7 @@ let VERSION = __SHVERSION__;
 (window as any).ScriptHausClientId = uuidv4();
 
 document.addEventListener("DOMContentLoaded", () => {
-    initSession();
+    initSession("default");
     GlobalWS.reconnect();
     let reactElem = React.createElement(Main, null, null);
     let elem = document.getElementById("app");

@@ -7,7 +7,7 @@ import dayjs from 'dayjs'
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import cn from "classnames"
 import {TermWrap} from "./term";
-import {getDefaultSession, getLineId, Session} from "./session";
+import {getCurrentSession, getLineId, Session, initSession, newSession} from "./session";
 import type {LineType, CmdDataType, RemoteType} from "./session";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 
@@ -415,20 +415,19 @@ class MainSideBar extends React.Component<{}, {}> {
                 </div>
                 <div className="menu">
                     <p className="menu-label">
-                        Shared Sessions
-                    </p>
-                    <ul className="menu-list">
-                        <li><a className="is-active">#default</a></li>
-                        <li><a>#server-status</a></li>
-                        <li><a className="activity">#bug-3458 <div className="tag is-link">3</div></a></li>
-                        <li><a>#dev-build</a></li>
-                        <li className="new-session"><a className="new-session"><i className="fa fa-plus"/> New Session</a></li>
-                    </ul>
-                    <p className="menu-label">
                         Private Sessions
                     </p>
                     <ul className="menu-list">
-                        <li><a>#default</a></li>
+                        <li><a className="is-active">#default</a></li>
+                        <li className="new-session"><a className="new-session"><i className="fa fa-plus"/> New Session</a></li>
+                    </ul>
+                    <p className="menu-label">
+                        Shared Sessions
+                    </p>
+                    <ul className="menu-list">
+                        <li><a>#server-status</a></li>
+                        <li><a className="activity">#bug-3458 <div className="tag is-link">3</div></a></li>
+                        <li><a>#dev-build</a></li>
                         <li className="new-session"><a className="new-session"><i className="fa fa-plus"/> New Session</a></li>
                     </ul>
                     <p className="menu-label">
@@ -481,7 +480,7 @@ class Main extends React.Component<{}, {}> {
     }
 
     render() {
-        let session = getDefaultSession();
+        let session = getCurrentSession();
         return (
             <div id="main">
                 <h1 className="title scripthaus-logo-small">
