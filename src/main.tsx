@@ -233,6 +233,25 @@ class Line extends React.Component<{line : LineType, session : Session, changeSi
 class CmdInput extends React.Component<{session : Session, windowid : string}, {}> {
     historyIndex : mobx.IObservableValue<number> = mobx.observable.box(0, {name: "history-index"});
     modHistory : mobx.IObservableArray<string> = mobx.observable.array([""], {name: "mod-history"});
+    elistener : any;
+
+    componentDidMount() {
+        this.elistener = this.handleKeyPress.bind(this);
+        document.addEventListener("keypress", this.elistener);
+    }
+
+    componentWillUnmount() {
+        document.removeEventListener("keypress", this.elistener);
+    }
+
+    handleKeyPress(event : any) {
+        if (event.code == "KeyI" && event.metaKey) {
+            let elem = document.getElementById("main-cmd-input");
+            if (elem != null) {
+                elem.focus();
+            }
+        }
+    }
 
     @mobx.action @boundMethod
     onKeyDown(e : any) {
@@ -328,7 +347,7 @@ class CmdInput extends React.Component<{session : Session, windowid : string}, {
                         <div className="button is-static">mike@local</div>
                     </div>
                     <div className="control cmd-input-control is-expanded">
-                        <textarea value={curLine} onKeyDown={this.onKeyDown} onChange={this.onChange} className="input"></textarea>
+                        <textarea id="main-cmd-input" value={curLine} onKeyDown={this.onKeyDown} onChange={this.onChange} className="input"></textarea>
                     </div>
                     <div className="control cmd-exec">
                         <div onClick={this.doSubmitCmd} className="button">
