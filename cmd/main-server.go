@@ -16,7 +16,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 
-	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/cmdtail"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/sh2-server/pkg/remote"
@@ -254,18 +253,21 @@ func sendCmdInput(pk *packet.InputPacketType) error {
 	if err != nil {
 		return err
 	}
-	if len(pk.InputData) > MaxInputDataSize {
-		return fmt.Errorf("input data size too large, len=%d (max=%d)", len(pk.InputData), MaxInputDataSize)
+	if pk.RemoteId == "" {
+		return fmt.Errorf("input must set remoteid")
 	}
-	fileNames, err := base.GetCommandFileNames(pk.CK)
-	if err != nil {
-		return err
+	if len(pk.InputData64) == 0 && pk.SigNum == 0 {
+		return fmt.Errorf("empty input packet")
 	}
-	err = writeToFifo(fileNames.StdinFifo, []byte(pk.InputData))
-	if err != nil {
-		return err
+	inputLen := packet.B64DecodedLen(pk.InputData64)
+	if inputLen > MaxInputDataSize {
+		return fmt.Errorf("input data size too large, len=%d (max=%d)", inputLen, MaxInputDataSize)
 	}
-	return nil
+	msh := remote.GetRemoteById(pk.RemoteId)
+	if msh == nil {
+		return fmt.Errorf("cannot connect to remote")
+	}
+	return msh.SendInput(pk)
 }
 
 // params: name

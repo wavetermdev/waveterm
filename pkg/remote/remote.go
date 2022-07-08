@@ -168,6 +168,31 @@ func (msh *MShellProc) IsConnected() bool {
 	return msh.Status == StatusConnected
 }
 
+func (msh *MShellProc) IsCmdRunning(ck base.CommandKey) bool {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	for _, runningCk := range msh.RunningCmds {
+		if runningCk == ck {
+			return true
+		}
+	}
+	return false
+}
+
+func (msh *MShellProc) SendInput(pk *packet.InputPacketType) error {
+	if !msh.IsConnected() {
+		return fmt.Errorf("remote is not connected, cannot send input")
+	}
+	if !msh.IsCmdRunning(pk.CK) {
+		return fmt.Errorf("cannot send input, cmd is not running")
+	}
+	dataPk := packet.MakeDataPacket()
+	dataPk.CK = pk.CK
+	dataPk.FdNum = 0 // stdin
+	dataPk.Data64 = pk.InputData64
+	return msh.ServerProc.Input.SendPacket(dataPk)
+}
+
 func convertRemoteState(rs scpacket.RemoteState) sstore.RemoteState {
 	return sstore.RemoteState{Cwd: rs.Cwd}
 }
