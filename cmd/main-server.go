@@ -270,24 +270,87 @@ func sendCmdInput(pk *packet.InputPacketType) error {
 	return msh.SendInput(pk)
 }
 
-// params: name
+// params: sessionid
 func HandleGetSession(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Vary", "Origin")
 	w.Header().Set("Cache-Control", "no-cache")
 	qvals := r.URL.Query()
-	name := qvals.Get("name")
-	if name == "" {
-		WriteJsonError(w, fmt.Errorf("must specify a name"))
+	sessionId := qvals.Get("sessionid")
+	if sessionId == "" {
+		WriteJsonError(w, fmt.Errorf("must specify a sessionid"))
 		return
 	}
-	session, err := sstore.GetSessionByName(r.Context(), name)
+	session, err := sstore.GetSessionById(r.Context(), sessionId)
 	if err != nil {
 		WriteJsonError(w, err)
 		return
 	}
 	WriteJsonSuccess(w, session)
+	return
+}
+
+func HandleGetAllSessions(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Vary", "Origin")
+	w.Header().Set("Cache-Control", "no-cache")
+	list, err := sstore.GetAllSessions(r.Context())
+	if err != nil {
+		WriteJsonError(w, fmt.Errorf("cannot get all sessions: %w", err))
+		return
+	}
+	WriteJsonSuccess(w, list)
+	return
+}
+
+// params: name
+func HandleCreateSession(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Vary", "Origin")
+	w.Header().Set("Cache-Control", "no-cache")
+	qvals := r.URL.Query()
+	name := qvals.Get("name")
+	sessionId, err := sstore.InsertSessionWithName(r.Context(), name)
+	if err != nil {
+		WriteJsonError(w, fmt.Errorf("inserting session: %w", err))
+		return
+	}
+	session, err := sstore.GetSessionById(r.Context(), sessionId)
+	if err != nil {
+		WriteJsonError(w, fmt.Errorf("getting new session: %w", err))
+		return
+	}
+	WriteJsonSuccess(w, session)
+	return
+}
+
+// params: sessionid, name
+func HandleCreateWindow(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Vary", "Origin")
+	w.Header().Set("Cache-Control", "no-cache")
+	qvals := r.URL.Query()
+	sessionId := qvals.Get("sessionid")
+	if _, err := uuid.Parse(sessionId); err != nil {
+		WriteJsonError(w, fmt.Errorf("invalid sessionid: %w", err))
+		return
+	}
+	name := qvals.Get("name")
+	windowId, err := sstore.InsertWindow(r.Context(), sessionId, name)
+	if err != nil {
+		WriteJsonError(w, fmt.Errorf("inserting new window: %w", err))
+		return
+	}
+	window, err := sstore.GetWindowById(r.Context(), sessionId, windowId)
+	if err != nil {
+		WriteJsonError(w, fmt.Errorf("getting new window: %w", err))
+		return
+	}
+	WriteJsonSuccess(w, window)
 	return
 }
 
@@ -303,7 +366,7 @@ func HandleGetRemotes(w http.ResponseWriter, r *http.Request) {
 }
 
 // params: sessionid, windowid
-func HandleGetWindowLines(w http.ResponseWriter, r *http.Request) {
+func HandleGetWindow(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Vary", "Origin")
@@ -319,12 +382,12 @@ func HandleGetWindowLines(w http.ResponseWriter, r *http.Request) {
 		WriteJsonError(w, fmt.Errorf("invalid windowid: %w", err))
 		return
 	}
-	lines, err := sstore.GetWindowLines(r.Context(), sessionId, windowId)
+	window, err := sstore.GetWindowById(r.Context(), sessionId, windowId)
 	if err != nil {
 		WriteJsonError(w, err)
 		return
 	}
-	WriteJsonSuccess(w, lines)
+	WriteJsonSuccess(w, window)
 	return
 }
 
@@ -623,9 +686,12 @@ func main() {
 	go runWebSocketServer()
 	gr := mux.NewRouter()
 	gr.HandleFunc("/api/ptyout", HandleGetPtyOut)
+	gr.HandleFunc("/api/get-all-sessions", HandleGetAllSessions)
+	gr.HandleFunc("/api/create-session", HandleCreateSession)
 	gr.HandleFunc("/api/get-session", HandleGetSession)
-	gr.HandleFunc("/api/get-window-lines", HandleGetWindowLines)
+	gr.HandleFunc("/api/get-window", HandleGetWindow)
 	gr.HandleFunc("/api/get-remotes", HandleGetRemotes)
+	gr.HandleFunc("/api/create-window", HandleCreateWindow)
 	gr.HandleFunc("/api/run-command", HandleRunCommand).Methods("GET", "POST", "OPTIONS")
 	server := &http.Server{
 		Addr:           MainServerAddr,

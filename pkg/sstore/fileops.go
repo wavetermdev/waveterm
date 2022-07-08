@@ -16,6 +16,7 @@ func AppendToCmdPtyBlob(ctx context.Context, sessionId string, cmdId string, dat
 	if err != nil {
 		return err
 	}
+	defer fd.Close()
 	if len(data) == 0 {
 		return nil
 	}

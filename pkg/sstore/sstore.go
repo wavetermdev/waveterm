@@ -327,7 +327,7 @@ func EnsureDefaultSession(ctx context.Context) (*SessionType, error) {
 	if session != nil {
 		return session, nil
 	}
-	err = InsertSessionWithName(ctx, DefaultSessionName)
+	_, err = InsertSessionWithName(ctx, DefaultSessionName)
 	if err != nil {
 		return nil, err
 	}

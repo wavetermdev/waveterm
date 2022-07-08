@@ -84,6 +84,20 @@ func InsertRemote(ctx context.Context, remote *RemoteType) error {
 	return nil
 }
 
+func GetAllSessions(ctx context.Context) ([]*SessionType, error) {
+	db, err := GetDB()
+	if err != nil {
+		return nil, err
+	}
+	var rtn []*SessionType
+	query := `SELECT * FROM session`
+	err = db.SelectContext(ctx, &rtn, query)
+	if err != nil {
+		return nil, err
+	}
+	return rtn, nil
+}
+
 func GetSessionById(ctx context.Context, id string) (*SessionType, error) {
 	var rtnSession *SessionType
 	err := WithTx(ctx, func(tx *TxWrap) error {
@@ -128,35 +142,56 @@ func GetSessionByName(ctx context.Context, name string) (*SessionType, error) {
 	return GetSessionById(ctx, sessionId)
 }
 
-func GetWindowLines(ctx context.Context, sessionId string, windowId string) ([]*LineType, error) {
-	var lines []*LineType
-	db, err := GetDB()
-	if err != nil {
-		return nil, err
-	}
-	query := `SELECT * FROM line WHERE sessionid = ? AND windowid = ?`
-	err = db.SelectContext(ctx, &lines, query, sessionId, windowId)
-	if err != nil {
-		return nil, err
-	}
-	return lines, nil
+func GetWindowById(ctx context.Context, sessionId string, windowId string) (*WindowType, error) {
+	var rtnWindow *WindowType
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		var window WindowType
+		query := `SELECT * FROM window WHERE sessionid = ? AND windowid = ?`
+		found := tx.GetWrap(&window, query, sessionId, windowId)
+		if !found {
+			return nil
+		}
+		rtnWindow = &window
+		query = `SELECT * FROM line WHERE sessionid = ? AND windowid = ?`
+		tx.SelectWrap(&window.Lines, query, sessionId, windowId)
+		return nil
+	})
+	return rtnWindow, txErr
 }
 
-// also creates window
-func InsertSessionWithName(ctx context.Context, sessionName string) error {
-	if sessionName == "" {
-		return fmt.Errorf("invalid session name '%s'", sessionName)
-	}
-	session := &SessionType{
-		SessionId: uuid.New().String(),
-		Name:      sessionName,
-	}
-	return WithTx(ctx, func(tx *TxWrap) error {
+// also creates default window, returns sessionId
+// if sessionName == "", it will be generated
+func InsertSessionWithName(ctx context.Context, sessionName string) (string, error) {
+	newSessionId := uuid.New().String()
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		if sessionName == "" {
+			var names []string
+			query := `SELECT name FROM session`
+			tx.GetWrap(&names, query)
+			snum := len(names) + 1
+			for {
+				sessionName = fmt.Sprintf("session-%d", snum)
+				if !containsStr(names, sessionName) {
+					break
+				}
+				snum++
+			}
+		} else {
+			var dupSessionId string
+			query := `SELECT sessionid FROM session WHERE name = ?`
+			tx.GetWrap(&dupSessionId, query, sessionName)
+			if dupSessionId != "" {
+				return fmt.Errorf("cannot create session with duplicate name")
+			}
+		}
+		newSession := &SessionType{
+			SessionId: newSessionId,
+			Name:      sessionName,
+		}
 		query := `INSERT INTO session (sessionid, name) VALUES (:sessionid, :name)`
-		tx.NamedExecWrap(query, session)
-
+		tx.NamedExecWrap(query, newSession)
 		window := &WindowType{
-			SessionId: session.SessionId,
+			SessionId: newSessionId,
 			WindowId:  uuid.New().String(),
 			Name:      DefaultWindowName,
 			CurRemote: LocalRemoteName,
@@ -165,6 +200,61 @@ func InsertSessionWithName(ctx context.Context, sessionName string) error {
 		tx.NamedExecWrap(query, window)
 		return nil
 	})
+	return newSessionId, txErr
+}
+
+func containsStr(strs []string, testStr string) bool {
+	for _, s := range strs {
+		if s == testStr {
+			return true
+		}
+	}
+	return false
+}
+
+// if windowName == "", it will be generated
+// returns (windowid, err)
+func InsertWindow(ctx context.Context, sessionId string, windowName string) (string, error) {
+	var newWindowId string
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		var testSessionId string
+		query := `SELECT sesssionid FROM session WHERE sessionid = ?`
+		sessionExists := tx.GetWrap(&testSessionId, query, sessionId)
+		if !sessionExists {
+			return fmt.Errorf("cannot insert window, session does not exist")
+		}
+		if windowName == "" {
+			var names []string
+			query = `SELECT name FROM window WHERE sessionid = ?`
+			tx.GetWrap(&names, query, sessionId)
+			wnum := len(names) + 1
+			for {
+				windowName = fmt.Sprintf("w%d", wnum)
+				if !containsStr(names, windowName) {
+					break
+				}
+				wnum++
+			}
+		} else {
+			var testWindowId string
+			query = `SELECT windowid FROM window WHERE sessionid = ? AND name = ?`
+			windowExists := tx.GetWrap(&testWindowId, query, sessionId, windowName)
+			if windowExists {
+				return fmt.Errorf("cannot insert window, name already exists in session")
+			}
+		}
+		newWindowId = uuid.New().String()
+		window := &WindowType{
+			SessionId: sessionId,
+			WindowId:  newWindowId,
+			Name:      windowName,
+			CurRemote: LocalRemoteName,
+		}
+		query = `INSERT INTO window (sessionid, windowid, name, curremote, version) VALUES (:sessionid, :windowid, :name, :curremote, :version)`
+		tx.NamedExecWrap(query, window)
+		return nil
+	})
+	return newWindowId, txErr
 }
 
 func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
