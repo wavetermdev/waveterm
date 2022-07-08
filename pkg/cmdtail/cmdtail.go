@@ -37,6 +37,7 @@ type CmdWatchEntry struct {
 	FilePtyLen int64
 	FileRunLen int64
 	Tails      []TailPos
+	Done       bool
 }
 
 type FileNameGenerator interface {
@@ -107,11 +108,13 @@ func (t *Tailer) removeTailPos_nolock(cmdKey base.CommandKey, reqId string) {
 		return
 	}
 	entry.removeTailPos(reqId)
-	if len(entry.Tails) > 0 {
-		t.WatchList[cmdKey] = entry
-		return
+	t.WatchList[cmdKey] = entry
+	if len(entry.Tails) == 0 {
+		t.removeWatch_nolock(cmdKey)
 	}
+}
 
+func (t *Tailer) removeWatch_nolock(cmdKey base.CommandKey) {
 	// delete from watchlist, remove watches
 	delete(t.WatchList, cmdKey)
 	t.Watcher.Remove(t.Gen.PtyOutFile(cmdKey))
@@ -211,7 +214,7 @@ func (t *Tailer) runSingleDataTransfer(key base.CommandKey, reqId string) (*pack
 	}
 	pos.TailPtyPos += int64(dataPacket.PtyDataLen)
 	pos.TailRunPos += int64(dataPacket.RunDataLen)
-	if pos.TailPtyPos >= entry.FilePtyLen && pos.TailRunPos >= entry.FileRunLen {
+	if pos.IsCurrent(entry) {
 		// we caught up, tail position equals file length
 		pos.Running = false
 	}
@@ -220,14 +223,17 @@ func (t *Tailer) runSingleDataTransfer(key base.CommandKey, reqId string) (*pack
 }
 
 // returns (removed)
-func (t *Tailer) checkRemoveNoFollow(cmdKey base.CommandKey, reqId string) bool {
+func (t *Tailer) checkRemove(cmdKey base.CommandKey, reqId string) bool {
 	t.Lock.Lock()
 	defer t.Lock.Unlock()
-	_, pos, foundPos := t.getEntryAndPos_nolock(cmdKey, reqId)
+	entry, pos, foundPos := t.getEntryAndPos_nolock(cmdKey, reqId)
 	if !foundPos {
 		return false
 	}
-	if !pos.Follow {
+	if !pos.IsCurrent(entry) {
+		return false
+	}
+	if !pos.Follow || entry.Done {
 		t.removeTailPos_nolock(cmdKey, reqId)
 		return true
 	}
@@ -246,7 +252,7 @@ func (t *Tailer) RunDataTransfer(key base.CommandKey, reqId string) {
 			break
 		}
 		if !keepRunning {
-			removed := t.checkRemoveNoFollow(key, reqId)
+			removed := t.checkRemove(key, reqId)
 			if removed {
 				t.Sender.SendResponse(reqId, true)
 			}
@@ -341,6 +347,29 @@ func (entry *CmdWatchEntry) fillFilePos(gen FileNameGenerator) {
 	if runoutInfo != nil {
 		entry.FileRunLen = runoutInfo.Size()
 	}
+}
+
+func (t *Tailer) KeyDone(key base.CommandKey) {
+	t.Lock.Lock()
+	defer t.Lock.Unlock()
+	entry, foundEntry := t.WatchList[key]
+	if !foundEntry {
+		return
+	}
+	entry.Done = true
+	var newTails []TailPos
+	for _, pos := range entry.Tails {
+		if pos.IsCurrent(entry) {
+			continue
+		}
+		newTails = append(newTails, pos)
+	}
+	entry.Tails = newTails
+	t.WatchList[key] = entry
+	if len(entry.Tails) == 0 {
+		t.removeWatch_nolock(key)
+	}
+	t.WatchList[key] = entry
 }
 
 func (t *Tailer) RemoveWatch(pk *packet.UntailCmdPacketType) {

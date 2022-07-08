@@ -10,6 +10,8 @@ import (
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 )
 
+// TODO - track buffer sizes for sending input
+
 type ClientProc struct {
 	Cmd          *exec.Cmd
 	InitPk       *packet.InitPacketType

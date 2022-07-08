@@ -238,7 +238,8 @@ func MakeDataAckPacket() *DataAckPacketType {
 type InputPacketType struct {
 	Type        string          `json:"type"`
 	CK          base.CommandKey `json:"ck"`
-	InputData   string          `json:"inputdata"`
+	RemoteId    string          `json:"remoteid"`
+	InputData64 string          `json:"inputdata"`
 	SigNum      int             `json:"signum,omitempty"`
 	WinSizeRows int             `json:"winsizerows"`
 	WinSizeCols int             `json:"winsizecols"`
