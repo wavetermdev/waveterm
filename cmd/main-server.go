@@ -435,6 +435,7 @@ func HandleGetPtyOut(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("cannot open file '%s': %v", pathStr, err)))
 		return
 	}
+	defer fd.Close()
 	w.WriteHeader(http.StatusOK)
 	io.Copy(w, fd)
 }
