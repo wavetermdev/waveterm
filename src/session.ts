@@ -4,56 +4,9 @@ import {boundMethod} from "autobind-decorator";
 import {handleJsonFetchResponse} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
+import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, CmdDataType, FeCmdPacketType} from "./types";
 
 var GlobalUser = "sawka";
-
-function makeTermKey(sessionId : string, cmdId : string, windowId : string, lineid : number) : string {
-    return sprintf("%s/%s/%s/%s", sessionId, cmdId, windowId, lineid);
-}
-
-type SessionType = {
-    sessionid : string,
-    name : string,
-};
-
-type LineType = {
-    sessionid : string,
-    windowid : string,
-    lineid : number,
-    ts : number,
-    userid : string,
-    linetype : string,
-    text : string,
-    cmdid : string,
-    isnew : boolean,
-};
-
-function getLineId(line : LineType) : string {
-    return sprintf("%s-%s-%s", line.sessionid, line.windowid, line.lineid);
-}
-
-type RemoteType = {
-    remotetype : string,
-    remoteid : string,
-    remotename : string,
-    remotevars : Record<string, string>,
-    status : string,
-    defaultstate : RemoteStateType,
-};
-
-type RemoteStateType = {
-    cwd : string,
-};
-
-type RemoteInstanceType = {
-    riid : string,
-    name : string,
-    sessionid : string,
-    windowid : string,
-    remoteid : string,
-    sessionscope : boolean,
-    state : RemoteStateType,
-}
 
 type WindowType = {
     sessionid : string,
@@ -65,76 +18,13 @@ type WindowType = {
     version : number,
 };
 
-type WindowDataType = {
-    sessionid : string,
-    windowid : string,
-    name : string,
-    curremote : string,
-    lines : LineType[],
-    version : number,
-};
-
-type HistoryItem = {
-    cmdtext : string,
-};
-
-type SessionDataType = {
-    sessionid : string,
-    name : string,
-    windows : WindowDataType[],
-    cmds : CmdDataType[],
-};
-
-type CmdRemoteStateType = {
-    remoteid : string
-    remotename : string,
-    cwd : string,
-};
-
-type FeCmdPacketType = {
-    type : string,
-    sessionid : string,
-    windowid : string,
-    userid : string,
-    cmdstr : string,
-    remotestate : CmdRemoteStateType,
+function makeTermKey(sessionId : string, cmdId : string, windowId : string, lineid : number) : string {
+    return sprintf("%s/%s/%s/%s", sessionId, cmdId, windowId, lineid);
 }
 
-type TermOptsType = {
-    rows : number,
-    cols : number,
-    flexrows : boolean,
-};
-
-type CmdStartPacketType = {
-    type : string,
-    respid : string,
-    ts : number,
-    ck : string,
-    pid : number,
-    mshellpid : number,
-};
-
-type CmdDonePacketType = {
-    type : string,
-    ts : number,
-    ck : string,
-    exitcode : number,
-    durationms : number,
-};
-
-type CmdDataType = {
-    sessionid : string,
-    cmdid : string,
-    remoteid : string,
-    cmdstr : string,
-    remotestate : RemoteStateType,
-    termopts : TermOptsType,
-    status : string,
-    startpk : CmdStartPacketType,
-    donepk : CmdDonePacketType,
-    runout : any[],
-};
+function getLineId(line : LineType) : string {
+    return sprintf("%s-%s-%s", line.sessionid, line.windowid, line.lineid);
+}
 
 class Session {
     sessionId : string;
@@ -392,7 +282,7 @@ class Session {
     }
 }
 
-var SessionList : mobx.IObservableArray<SessionType> = mobx.observable.array([]);
+var SessionList : mobx.IObservableArray<SessionDataType> = mobx.observable.array([]);
 var CurrentSession : Session = new Session();
 var CurrentSessionId : mobx.IObservableValue<string> = mobx.observable.box(null);
 
@@ -479,7 +369,7 @@ function loadSessionList(init : boolean) {
     });
 }
 
-function getAllSessions() : mobx.IObservableArray<SessionType> {
+function getAllSessions() : mobx.IObservableArray<SessionDataType> {
     return SessionList;
 }
 
@@ -498,4 +388,3 @@ function getCurrentSessionId() : string {
 }
 
 export {Session, getCurrentSession, getLineId, newSession, loadSessionList, getAllSessions, getCurrentSessionId};
-export type {LineType, WindowType, CmdDataType, RemoteType, SessionType};

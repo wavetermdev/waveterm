@@ -8,7 +8,7 @@ import {If, For, When, Otherwise, Choose} from "tsx-control-statements/component
 import cn from "classnames"
 import {TermWrap} from "./term";
 import {getCurrentSession, getLineId, Session, newSession, getAllSessions, getCurrentSessionId} from "./session";
-import type {SessionType, LineType, CmdDataType, RemoteType} from "./session";
+import type {SessionDataType, LineType, CmdDataType, RemoteType} from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 
 dayjs.extend(localizedFormat)
@@ -426,11 +426,16 @@ class MainSideBar extends React.Component<{}, {}> {
     handleSessionClick(sessionId : string) {
         console.log("click session", sessionId);
     }
+
+    handleReload() {
+        console.log("reload");
+        window.api.relaunch();
+    }
     
     render() {
         let curSessionId = getCurrentSessionId();
         let sessions = getAllSessions();
-        let session : SessionType = null;
+        let session : SessionDataType = null;
         return (
             <div className={cn("main-sidebar", {"collapsed": this.collapsed.get()})}>
                 <div className="collapse-container">
@@ -494,6 +499,9 @@ class MainSideBar extends React.Component<{}, {}> {
                         <li><a><i className="status fa fa-circle"/>mike@test01.ec2</a></li>
                         <li><a><i className="status offline fa fa-circle"/>root@app01.ec2</a></li>
                     </ul>
+                    <p className="menu-label relaunch" onClick={this.handleReload} style={{cursor: "pointer"}}>
+                        Relaunch
+                    </p>
                     <div className="bottom-spacer"></div>
                 </div>
             </div>
