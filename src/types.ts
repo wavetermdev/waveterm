@@ -104,6 +104,7 @@ type CmdDataType = {
     startpk : CmdStartPacketType,
     donepk : CmdDonePacketType,
     runout : any[],
+    usedrows : number,
 };
 
 export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDonePacketType, CmdDataType};

@@ -2,17 +2,18 @@ import * as mobx from "mobx";
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 
-declare var window : any;
-
 class WSControl {
     wsConn : any;
     open : mobx.IObservableValue<boolean>;
     opening : boolean = false;
     reconnectTimes : number = 0;
     msgQueue : any[] = [];
-    reqMap : Record<string, (dataPacket : any) => void> = {};
+    clientId : string;
+    messageCallback : (any) => void = null;
     
-    constructor() {
+    constructor(clientId : string, messageCallback : (any) => void) {
+        this.messageCallback = messageCallback;
+        this.clientId = clientId;
         this.open = mobx.observable.box(false, {name: "WSOpen"});
         setInterval(this.sendPing, 5000);
     }
@@ -22,20 +23,9 @@ class WSControl {
         this.open.set(val);
     }
 
-    registerAndSendGetCmd(pk : any, callback : (dataPacket : any) => void) {
-        if (pk.reqid) {
-            this.reqMap[pk.reqid] = callback;
-        }
-        this.pushMessage(pk)
-    }
-
-    unregisterReq(reqid : string) {
-        delete this.reqMap[reqid];
-    }
-
     reconnect() {
         if (this.open.get()) {
-            this.wsConn.close();
+            this.wsConn.close(); // this will force a reconnect
             return;
         }
         this.reconnectTimes++;
@@ -54,7 +44,7 @@ class WSControl {
         setTimeout(() => {
             console.log(sprintf("websocket reconnect(%d)", this.reconnectTimes));
             this.opening = true;
-            this.wsConn = new WebSocket("ws://localhost:8081/ws?clientid=" + window.ScriptHausClientId);
+            this.wsConn = new WebSocket("ws://localhost:8081/ws?clientid=" + this.clientId);
             this.wsConn.onopen = this.onopen;
             this.wsConn.onmessage = this.onmessage;
             this.wsConn.onerror = this.onerror;
@@ -126,16 +116,9 @@ class WSControl {
             this.reconnectTimes = 0;
             return;
         }
-        if (eventData.type == "cmddata") {
-            let cb = this.reqMap[eventData.respid];
-            if (!cb) {
-                console.log(sprintf("websocket cmddata req=%s -- no callback", eventData.respid));
-                return;
-            }
-            cb(eventData);
-            return;
+        if (this.messageCallback) {
+            this.messageCallback(eventData);
         }
-        console.log("websocket message", eventData);
     }
 
     @boundMethod
@@ -162,10 +145,4 @@ class WSControl {
     }
 }
 
-var GlobalWS : WSControl;
-if (window.GlobalWS == null) {
-    GlobalWS = new WSControl();
-    window.GlobalWS = GlobalWS;
-}
-
-export {GlobalWS};
+export {WSControl};

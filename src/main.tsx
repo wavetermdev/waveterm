@@ -7,9 +7,9 @@ import dayjs from 'dayjs'
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import cn from "classnames"
 import {TermWrap} from "./term";
-import {getCurrentSession, getLineId, Session, newSession, getAllSessions, getCurrentSessionId} from "./session";
 import type {SessionDataType, LineType, CmdDataType, RemoteType} from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
+import {GlobalMode, Cmd, Window} from "./model";
 
 dayjs.extend(localizedFormat)
 
@@ -47,7 +47,7 @@ function getLineDateStr(ts : number) : string {
 }
 
 @mobxReact.observer
-class LineText extends React.Component<{line : LineType, session : Session}, {}> {
+class LineText extends React.Component<{line : LineType}, {}> {
     render() {
         let line = this.props.line;
         let formattedTime = getLineDateStr(line.ts);
@@ -71,13 +71,14 @@ class LineText extends React.Component<{line : LineType, session : Session}, {}>
 }
 
 @mobxReact.observer
-class LineCmd extends React.Component<{line : LineType, session : Session, changeSizeCallback? : (term : TermWrap) => void}, {}> {
+class LineCmd extends React.Component<{line : LineType}, {}> {
     constructor(props) {
         super(props);
     }
     
     componentDidMount() {
-        let {session, line} = this.props;
+        let {line} = this.props;
+        let model = GlobalModel;
         let termElem = document.getElementById("term-" + getLineId(line));
         let termWrap = session.getTermWrapByLine(line);
         termWrap.changeSizeCallback = this.props.changeSizeCallback;
@@ -100,22 +101,6 @@ class LineCmd extends React.Component<{line : LineType, session : Session, chang
         termWrap.reloadTerminal(true, 500);
     }
 
-    @boundMethod
-    singleLineCmdText(cmdText : string) {
-        if (cmdText == null) {
-            return "(none)";
-        }
-        cmdText = cmdText.trim();
-        let nlIdx = cmdText.indexOf("\n");
-        if (nlIdx != -1) {
-            cmdText = cmdText.substr(0, nlIdx) + "...";
-        }
-        if (cmdText.length > 80) {
-            cmdText = cmdText.substr(0, 77) + "...";
-        }
-        return cmdText;
-    }
-
     replaceHomePath(path : string, homeDir : string) : string {
         if (path == homeDir) {
             return "~";
@@ -126,7 +111,7 @@ class LineCmd extends React.Component<{line : LineType, session : Session, chang
         return path;
     }
 
-    renderCmdText(cmd : CmdDataType, remote : RemoteType) : any {
+    renderCmdText(cmd : Cmd, remote : RemoteType) : any {
         if (cmd == null) {
             return (
                 <div className="metapart-mono cmdtext">
@@ -230,33 +215,15 @@ class Line extends React.Component<{line : LineType, session : Session, changeSi
 }
 
 @mobxReact.observer
-class CmdInput extends React.Component<{session : Session, windowid : string}, {}> {
+class CmdInput extends React.Component<{windowid : string}, {}> {
     historyIndex : mobx.IObservableValue<number> = mobx.observable.box(0, {name: "history-index"});
     modHistory : mobx.IObservableArray<string> = mobx.observable.array([""], {name: "mod-history"});
-    elistener : any;
-
-    componentDidMount() {
-        this.elistener = this.handleKeyPress.bind(this);
-        document.addEventListener("keypress", this.elistener);
-    }
-
-    componentWillUnmount() {
-        document.removeEventListener("keypress", this.elistener);
-    }
-
-    handleKeyPress(event : any) {
-        if (event.code == "KeyI" && event.metaKey) {
-            let elem = document.getElementById("main-cmd-input");
-            if (elem != null) {
-                elem.focus();
-            }
-        }
-    }
 
     @mobx.action @boundMethod
     onKeyDown(e : any) {
         mobx.action(() => {
-            let {session} = this.props;
+            let model = GlobalModel;
+            let win = getActiveWindow();
             let ctrlMod = e.getModifierState("Control") || e.getModifierState("Meta") || e.getModifierState("Shift");
             if (e.code == "Enter" && !ctrlMod) {
                 e.preventDefault();
@@ -267,8 +234,8 @@ class CmdInput extends React.Component<{session : Session, windowid : string}, {
                 e.preventDefault();
                 let hidx = this.historyIndex.get();
                 hidx += 1;
-                if (hidx > session.getNumHistoryItems()) {
-                    hidx = session.getNumHistoryItems();
+                if (hidx > win.getNumHistoryItems()) {
+                    hidx = win.getNumHistoryItems();
                 }
                 this.historyIndex.set(hidx);
                 return;
@@ -298,12 +265,12 @@ class CmdInput extends React.Component<{session : Session, windowid : string}, {
 
     @boundMethod
     getCurLine() : string {
-        let {session} = this.props;
+        let model = GlobalModel;
         let hidx = this.historyIndex.get();
         if (hidx < this.modHistory.length && this.modHistory[hidx] != null) {
             return this.modHistory[hidx];
         }
-        let hitem = session.getHistoryItem(-hidx);
+        let hitem = win.getHistoryItem(-hidx);
         if (hitem == null) {
             return "";
         }
@@ -325,12 +292,12 @@ class CmdInput extends React.Component<{session : Session, windowid : string}, {
 
     @boundMethod
     doSubmitCmd() {
-        let {session, windowid} = this.props;
+        let {windowid} = this.props;
+        let model = GlobalModel;
         let commandStr = this.getCurLine();
         let hitem = {cmdtext: commandStr};
-        session.addToHistory(hitem);
         this.clearCurLine();
-        session.submitCommand(windowid, commandStr);
+        model.submitCommand(windowid, commandStr);
     }
     
     render() {
@@ -363,7 +330,7 @@ class CmdInput extends React.Component<{session : Session, windowid : string}, {
 }
 
 @mobxReact.observer
-class SessionView extends React.Component<{session : Session}, {}> {
+class SessionView extends React.Component<{}, {}> {
     shouldFollow : mobx.IObservableValue<boolean> = mobx.observable.box(true);
 
     @boundMethod
@@ -389,12 +356,12 @@ class SessionView extends React.Component<{session : Session}, {}> {
     }
     
     render() {
-        let session = this.props.session;
-        let window = session.getActiveWindow();
-        if (window == null) {
+        let model = GlobalModel;
+        let win = model.getActiveWindow();
+        if (win == null) {
             return <div className="session-view">(no active window {session.activeWindowId.get()})</div>;
         }
-        if (session.loading.get() || window.linesLoading.get()) {
+        if (!win.linesLoaded.get()) {
             return <div className="session-view">(loading)</div>;
         }
         let idx = 0;
@@ -402,11 +369,11 @@ class SessionView extends React.Component<{session : Session}, {}> {
         return (
             <div className="session-view">
                 <div className="lines" onScroll={this.scrollHandler}>
-                    <For each="line" of={window.lines} index="idx">
-                        <Line key={line.lineid} line={line} session={session} changeSizeCallback={this.changeSizeCallback}/>
+                    <For each="line" of={win.lines} index="idx">
+                        <Line key={line.lineid} line={line} changeSizeCallback={this.changeSizeCallback}/>
                     </For>
                 </div>
-                <CmdInput session={session} windowid={window.windowid}/>
+                <CmdInput windowid={win.windowid}/>
             </div>
         );
     }
@@ -427,15 +394,9 @@ class MainSideBar extends React.Component<{}, {}> {
         console.log("click session", sessionId);
     }
 
-    handleReload() {
-        console.log("reload");
-        window.api.relaunch();
-    }
-    
     render() {
-        let curSessionId = getCurrentSessionId();
-        let sessions = getAllSessions();
-        let session : SessionDataType = null;
+        let model = GlobalModel;
+        let curSessionId = model.curSessionId.get();
         return (
             <div className={cn("main-sidebar", {"collapsed": this.collapsed.get()})}>
                 <div className="collapse-container">
@@ -449,10 +410,15 @@ class MainSideBar extends React.Component<{}, {}> {
                         Private Sessions
                     </p>
                     <ul className="menu-list">
-                        <For each="session" of={sessions}>
-                            <li key={session.sessionid}><a className={cn({"is-active": curSessionId == session.sessionid})} onClick={() => this.handleSessionClick(session.sessionid)}>#{session.name}</a></li>
-                        </For>
-                        <li className="new-session"><a className="new-session"><i className="fa fa-plus"/> New Session</a></li>
+                        <If condition={!model.sessionListLoaded()}>
+                            <li><a>(loading)</a></li>
+                        </If>
+                        <If condition={model.sessionListLoaded()}>
+                            <For each="session" of={model.sessionList}>
+                                <li key={session.sessionid}><a className={cn({"is-active": curSessionId == session.sessionid})} onClick={() => this.handleSessionClick(session.sessionid)}>#{session.name}</a></li>
+                            </For>
+                            <li className="new-session"><a className="new-session"><i className="fa fa-plus"/> New Session</a></li>
+                        </If>
                     </ul>
                     <p className="menu-label">
                         Shared Sessions
@@ -499,9 +465,6 @@ class MainSideBar extends React.Component<{}, {}> {
                         <li><a><i className="status fa fa-circle"/>mike@test01.ec2</a></li>
                         <li><a><i className="status offline fa fa-circle"/>root@app01.ec2</a></li>
                     </ul>
-                    <p className="menu-label relaunch" onClick={this.handleReload} style={{cursor: "pointer"}}>
-                        Relaunch
-                    </p>
                     <div className="bottom-spacer"></div>
                 </div>
             </div>
@@ -516,7 +479,6 @@ class Main extends React.Component<{}, {}> {
     }
 
     render() {
-        let session = getCurrentSession();
         return (
             <div id="main">
                 <h1 className="title scripthaus-logo-small">
@@ -525,7 +487,7 @@ class Main extends React.Component<{}, {}> {
                 </h1>
                 <div className="main-content">
                     <MainSideBar/>
-                    <SessionView session={session}/>
+                    <SessionView/>
                 </div>
             </div>
         );

@@ -2,8 +2,8 @@ import * as mobx from "mobx";
 import {Terminal} from 'xterm';
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
-import {GlobalWS} from "./ws";
 import {v4 as uuidv4} from "uuid";
+import {GlobalModel} from "./model";
 
 function loadPtyOut(term : Terminal, sessionId : string, cmdId : string, delayMs : number, callback?: (number) => void) {
     term.clear()
@@ -49,17 +49,6 @@ class TermWrap {
     }
 
     destroy() {
-        this.stopPtyTail();
-    }
-
-    setCmdStatus(status : string) {
-        if (this.cmdStatus == status) {
-            return;
-        }
-        this.cmdStatus = status;
-        if (!this.isRunning() && this.tailReqId) {
-            this.stopPtyTail();
-        }
     }
 
     isRunning() : boolean {
@@ -68,49 +57,17 @@ class TermWrap {
 
     @boundMethod
     onKeyHandler(event : any) {
+        console.log("onkey", event);
+        if (!this.isRunning()) {
+            return;
+        }
         let inputPacket = {
             type: "input",
             ck: this.sessionId + "/" + this.cmdId,
             inputdata: btoa(event.key),
             remoteid: this.remoteId,
         };
-        GlobalWS.pushMessage(inputPacket);
-    }
-
-    stopPtyTail() {
-        if (this.tailReqId == null) {
-            return;
-        }
-        let untailCmdPacket = {
-            type: "untailcmd",
-            reqid: uuidv4(),
-            ck: this.sessionId + "/" + this.cmdId,
-        };
-        GlobalWS.sendMessage(untailCmdPacket);
-        GlobalWS.unregisterReq(this.tailReqId);
-        this.tailReqId = null;
-    }
-
-    startPtyTail() {
-        if (this.tailReqId != null) {
-            return;
-        }
-        if (!this.isRunning()) {
-            return;
-        }
-        this.tailReqId = uuidv4();
-        let getCmdPacket = {
-            type: "getcmd",
-            reqid: this.tailReqId,
-            ck: this.sessionId + "/" + this.cmdId,
-            ptypos: this.ptyPos,
-            tail: true,
-            ptyonly: true,
-        };
-        GlobalWS.registerAndSendGetCmd(getCmdPacket, (dataPacket) => {
-            let realData = atob(dataPacket.ptydata64);
-            this.updatePtyData(this.ptyPos, realData, dataPacket.ptydatalen);
-        });
+        GlobalModel.sendInputPacket(inputPacket);
     }
 
     // datalen is passed because data could be utf-8 and data.length is not the actual *byte* length
@@ -189,18 +146,6 @@ class TermWrap {
         mobx.action(() => this.renderVersion.set(this.renderVersion.get() + 1))();
     }
 
-    reloadTerminal(startTail : boolean, delayMs : number) {
-        loadPtyOut(this.terminal, this.sessionId, this.cmdId, delayMs, (ptyoutLen) => {
-            mobx.action(() => {
-                this.incRenderVersion();
-                this.ptyPos = ptyoutLen;
-            })();
-            if (startTail) {
-                this.startPtyTail();
-            }
-        });
-    }
-
     connectToElem(elem : Element) {
         this.terminal.open(elem);
         if (this.isRunning()) {
@@ -210,6 +155,9 @@ class TermWrap {
             this.terminal.textarea.addEventListener("blur", () => {
                 this.setFocus(false);
             });
+            this.terminal.onKey(this.onKeyHandler);
+        }
+        else {
             this.terminal.onKey(this.onKeyHandler);
         }
     }

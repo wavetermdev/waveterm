@@ -4,7 +4,7 @@ import * as path from "path";
 import * as fs from "fs";
 
 let app = electron.app;
-app.setAppLogsPath(__dirname, "../logs");
+app.setName("ScriptHaus");
 
 let lock : File;
 try {
@@ -14,7 +14,29 @@ catch (e) {
     app.exit(0);
 }
 
-console.log("ACQUIRED LOCK");
+let menuTemplate = [
+    {
+        role: "appMenu",
+    },
+    {
+        role: "fileMenu",
+    },
+    {
+        role: "editMenu",
+    },
+    {
+        role: "viewMenu",
+    },
+    {
+        role: "windowMenu",
+    },
+    {
+        role: "help",
+    },
+];
+
+let menu = electron.Menu.buildFromTemplate(menuTemplate);
+electron.Menu.setApplicationMenu(menu);
 
 let MainWindow = null;
 
@@ -27,12 +49,19 @@ function createWindow() {
         },
     });
     win.loadFile("../static/index.html");
+    win.webContents.on("before-input-event", (e, input) => {
+        if (input.type != "keyDown") {
+            return;
+        }
+        if (input.code == "KeyT" && input.meta) {
+            win.webContents.send("cmt-t");
+        }
+    });
     return win;
 }
 
 app.whenReady().then(() => {
     MainWindow = createWindow();
-    MainWindow.webContents.openDevTools();
 
     app.on('activate', () => {
         if (electron.BrowserWindow.getAllWindows().length === 0) {
@@ -45,10 +74,8 @@ app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit()
 });
 
-electron.ipcMain.on("relaunch", (event) => {
-    console.log("RELAUNCH!");
-    app.relaunch();
-    app.exit(0);
-    console.log("test", event);
+electron.ipcMain.on("get-id", (event) => {
+    return event.processId;
 });
+
 
