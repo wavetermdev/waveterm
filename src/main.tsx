@@ -86,11 +86,20 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
         let cmd = model.getCmd(line);
         if (cmd != null) {
             let termElem = document.getElementById("term-" + getLineId(line));
-            cmd.connectToElem(termElem);
+            cmd.connectElem(termElem);
         }
         if (line.isnew) {
             setTimeout(() => this.scrollIntoView(), 100);
             line.isnew = false;
+        }
+    }
+
+    componentWillUnmount() {
+        let {line} = this.props;
+        let model = GlobalModel;
+        let cmd = model.getCmd(line);
+        if (cmd != null) {
+            cmd.disconnectElem();
         }
     }
 
@@ -104,7 +113,7 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
         let model = GlobalModel;
         let cmd = model.getCmd(this.props.line);
         if (cmd != null) {
-            cmd.reloadTerminal(true, 500);
+            cmd.reloadTerminal(500);
         }
     }
 
@@ -203,7 +212,7 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
 }
 
 @mobxReact.observer
-class Line extends React.Component<{line : LineType, changeSizeCallback? : (term : TermWrap) => void}, {}> {
+class Line extends React.Component<{line : LineType}, {}> {
     render() {
         let line = this.props.line;
         if (line.linetype == "text") {
@@ -335,48 +344,119 @@ class CmdInput extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
-class SessionView extends React.Component<{}, {}> {
-    shouldFollow : mobx.IObservableValue<boolean> = mobx.observable.box(true);
+class WindowView extends React.Component<{windowId : string}, {}> {
+    mutObs : any;
 
+    scrollToBottom() {
+        let elem = document.getElementById(this.getLinesId());
+        let oldST = elem.scrollTop;
+        elem.scrollTop = elem.scrollHeight;
+        // console.log("scroll-elem", oldST, elem.scrollHeight, elem.scrollTop, elem.scrollLeft, elem);
+    }
+    
     @boundMethod
     scrollHandler(event : any) {
         let target = event.target;
         let atBottom = (target.scrollTop + 30 > (target.scrollHeight - target.offsetHeight));
-        mobx.action(() => this.shouldFollow.set(atBottom))();
+        let win = this.getWindow();
+        if (win.shouldFollow.get() != atBottom) {
+            mobx.action(() => win.shouldFollow.set(atBottom));
+        }
+        // console.log("scroll-handler>", atBottom, target.scrollTop, target.scrollHeight);
+    }
+
+    componentDidMount() {
+        let elem = document.getElementById(this.getLinesId());
+        if (elem == null) {
+            return;
+        }
+        this.mutObs = new MutationObserver(this.handleDomMutation.bind(this));
+        this.mutObs.observe(elem, {childList: true});
+        elem.addEventListener("termresize", this.handleTermResize)
+    }
+
+    componentWillUnmount() {
+        this.mutObs.disconnect();
+    }
+
+    handleDomMutation(mutations, mutObs) {
+        let win = this.getWindow();
+        if (win && win.shouldFollow.get()) {
+            setTimeout(() => this.scrollToBottom(), 0);
+        }
+    }
+
+    getWindow() : Window {
+        let {windowId} = this.props;
+        if (windowId == null) {
+            return null;
+        }
+        let model = GlobalModel;
+        let session = model.getActiveSession();
+        if (session == null) {
+            return null;
+        }
+        let win = session.getWindowById(windowId);
+        return win;
+    }
+
+    getLinesId() {
+        let {windowId} = this.props;
+        return "window-lines-" + windowId;
     }
 
     @boundMethod
-    changeSizeCallback(term : TermWrap) {
-        if (this.shouldFollow.get()) {
-            let window = GlobalModel.getActiveWindow();
-            let lines = window.lines;
-            if (lines == null || lines.length == 0) {
-                return;
-            }
-            let lastLine = lines[lines.length-1];
-            let lineElem = document.getElementById("line-" + getLineId(lastLine));
-            setTimeout(() => lineElem.scrollIntoView({block: "end"}), 0);
+    handleTermResize(e : any) {
+        let win = this.getWindow();
+        if (win && win.shouldFollow.get()) {
+            setTimeout(() => this.scrollToBottom(), 0);
         }
+    }
+
+    renderError(message : string) {
+        return (
+            <div className="window-view">
+                <div className="lines" onScroll={this.scrollHandler} id={this.getLinesId()}>
+                    {message}
+                </div>
+            </div>
+        );
     }
     
     render() {
-        let model = GlobalModel;
-        let win = model.getActiveWindow();
+        let win = this.getWindow();
         if (win == null) {
-            return <div className="session-view">(no active window)</div>;
+            return this.renderError("(no window)");
         }
         if (!win.linesLoaded.get()) {
-            return <div className="session-view">(loading)</div>;
+            return this.renderError("(loading)");
         }
         let idx = 0;
         let line : LineType = null;
         return (
-            <div className="session-view">
-                <div className="lines" onScroll={this.scrollHandler}>
+            <div className="window-view">
+                <div className="lines" onScroll={this.scrollHandler} id={this.getLinesId()}>
                     <For each="line" of={win.lines} index="idx">
-                        <Line key={line.lineid} line={line} changeSizeCallback={this.changeSizeCallback}/>
+                        <Line key={line.lineid} line={line}/>
                     </For>
                 </div>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
+class SessionView extends React.Component<{}, {}> {
+    render() {
+        let model = GlobalModel;
+        let session = model.getActiveSession();
+        if (session == null) {
+            return <div className="session-view">(no active session)</div>;
+        }
+        let curWindowId = session.curWindowId.get();
+        return (
+            <div className="session-view">
+                <WindowView windowId={curWindowId}/>
                 <CmdInput/>
             </div>
         );

@@ -44,7 +44,7 @@ class TermWrap {
         let termBuf = term._core.buffer;
         let termNumLines = termBuf.lines.length;
         let termYPos = termBuf.y;
-        if (termNumLines >= term.rows) {
+        if (termNumLines > term.rows) {
             return term.rows;
         }
         let usedRows = 2;

@@ -28,6 +28,7 @@ class Cmd {
     watching : boolean = false;
     isFocused : OV<boolean> = mobx.observable.box(false, {name: "focus"});
     usedRows : OV<number>;
+    connectedElem : Element;
 
     constructor(cmd : CmdDataType, windowId : string) {
         this.sessionId = cmd.sessionid;
@@ -45,14 +46,26 @@ class Cmd {
         }
     }
 
-    connectToElem(elem : Element) {
+    disconnectElem() {
+        this.connectedElem = null;
+    }
+
+    connectElem(elem : Element) {
+        if (this.connectedElem != null) {
+            console.log("WARNING element already connected to cmd", this.cmdId, this.connectedElem);
+        }
+        this.connectedElem = elem;
+        if (this.termWrap == null) {
+            this.termWrap = new TermWrap(this.getTermOpts());
+            this.reloadTerminal(0);
+        }
         this.termWrap.connectToElem(elem, {
             setFocus: this.setFocus.bind(this),
             handleKey: this.handleKey.bind(this),
         });
     }
 
-    reloadTerminal(startTail : boolean, delayMs : number) {
+    reloadTerminal(delayMs : number) {
         if (this.termWrap == null) {
             return;
         }
@@ -106,7 +119,17 @@ class Cmd {
                 let data = this.data.get();
                 let oldUsedRows = this.usedRows.get();
                 this.usedRows.set(tur);
-                GlobalModel.termChangeSize(this.sessionId, this.windowId, this.cmdId, oldUsedRows, tur);
+                if (this.connectedElem) {
+                    let resizeEvent = new CustomEvent("termresize", {
+                        bubbles: true,
+                        detail: {
+                            cmdId: this.cmdId,
+                            oldUsedRows: oldUsedRows,
+                            newUsedRows: tur,
+                        },
+                    });
+                    this.connectedElem.dispatchEvent(resizeEvent);
+                }
             })();
         }
     }
@@ -174,6 +197,7 @@ class Window {
     linesLoaded : OV<boolean> = mobx.observable.box(false);
     history : any[] = [];
     cmds : Record<string, Cmd> = {};
+    shouldFollow : OV<boolean> = mobx.observable.box(true);
 
     constructor(wdata : WindowDataType) {
         this.sessionId = wdata.sessionid;
@@ -286,7 +310,7 @@ class Model {
         this.clientId = uuidv4();
         this.loadRemotes();
         this.loadSessionList();
-        this.ws = new WSControl(this.clientId, this.onMessage.bind(this))
+        this.ws = new WSControl(this.clientId, this.onWSMessage.bind(this))
         this.ws.reconnect();
     }
 
@@ -294,7 +318,8 @@ class Model {
         return this.ws.open.get();
     }
 
-    onMessage(message : any) {
+    onWSMessage(message : any) {
+        console.log("ws-message", message);
     }
 
     getActiveSession() : Session {
@@ -322,6 +347,7 @@ class Model {
     }
 
     submitCommand(cmdStr : string) {
+        console.log("submit-command>", cmdStr);
     }
 
     updateWindow(win : WindowDataType) {
@@ -407,10 +433,6 @@ class Model {
             return null;
         }
         return window.getCmd(line.cmdid);
-    }
-
-    termChangeSize(sessionId : string, windowId : string, cmdId : string, oldUsedRows : number, newUsedRows : number) {
-        console.log("change-size", sessionId + "/" + windowId + "/" + cmdId, oldUsedRows, "=>", newUsedRows);
     }
 
     errorHandler(str : string, err : any) {
