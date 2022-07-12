@@ -16,6 +16,15 @@ function isBlank(s : string) {
     return (s == null || s == "");
 }
 
+type ElectronApi = {
+    getId : () => string,
+    onCmdT : (callback : () => void) => void,
+};
+
+function getApi() : ElectronApi {
+    return (window as any).api;
+}
+
 class Cmd {
     sessionId : string;
     windowId : string;
@@ -391,7 +400,7 @@ class Model {
     remotesLoaded : OV<boolean> = mobx.observable.box(false);
     
     constructor() {
-        this.clientId = uuidv4();
+        this.clientId = getApi().getId();
         this.loadRemotes();
         this.loadSessionList();
         this.ws = new WSControl(this.clientId, this.onWSMessage.bind(this))
@@ -574,39 +583,4 @@ GlobalModel = (window as any).GlobalModel;
 
 export {Model, Session, Window, GlobalModel, Cmd};
 
-
-// GlobalWS.registerAndSendGetCmd(getCmdPacket, (dataPacket) => {
-//             let realData = atob(dataPacket.ptydata64);
-//             this.updatePtyData(this.ptyPos, realData, dataPacket.ptydatalen);
-// });
-
-
-/*
-reloadTerminal(startTail : boolean, delayMs : number) {
-        loadPtyOut(this.terminal, this.sessionId, this.cmdId, delayMs, (ptyoutLen) => {
-            mobx.action(() => {
-                this.incRenderVersion();
-                this.ptyPos = ptyoutLen;
-            })();
-            if (startTail) {
-                this.startPtyTail();
-            }
-        });
-}
-
-    setCmdStatus(status : string) {
-        if (this.cmdStatus == status) {
-            return;
-        }
-        this.cmdStatus = status;
-        if (!this.isRunning() && this.tailReqId) {
-            this.stopPtyTail();
-        }
-    }
-}
-
-    isRunning() : boolean {
-        return this.cmdStatus == "running" || this.cmdStatus == "detached";
-    }
-*/
 

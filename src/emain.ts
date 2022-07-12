@@ -75,7 +75,8 @@ app.on('window-all-closed', () => {
 });
 
 electron.ipcMain.on("get-id", (event) => {
-    return event.processId;
+    event.returnValue = event.processId;
+    return;
 });
 
 
