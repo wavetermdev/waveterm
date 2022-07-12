@@ -4,6 +4,7 @@ import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 import {v4 as uuidv4} from "uuid";
 import {GlobalModel} from "./model";
+import type {TermOptsType} from "./types";
 
 function loadPtyOut(term : Terminal, sessionId : string, cmdId : string, delayMs : number, callback?: (number) => void) {
     term.clear()
@@ -18,86 +19,35 @@ function loadPtyOut(term : Terminal, sessionId : string, cmdId : string, delayMs
     });
 }
 
+type TermEventHandler = {
+    setFocus : (focus : boolean) => void,
+    handleKey : (event : any) => void,
+};
+
 class TermWrap {
     terminal : any;
-    termId : string;
-    sessionId : string;
-    cmdId : string;
-    ptyPos : number = 0;
-    runPos : number = 0;
-    runData : string = "";
-    renderVersion : mobx.IObservableValue<number> = mobx.observable.box(1, {name: "renderVersion"});
-    isFocused : mobx.IObservableValue<boolean> = mobx.observable.box(false, {name: "focus"});
-    flexRows : boolean = true;
-    maxRows : number = 25;
-    atRowMax : boolean = false;
-    initialized : boolean = false;
-    changeSizeCallback : (TermWrap) => void = null;
     usedRows : number;
+    flexRows : boolean;
+    
     tailReqId : string;
     cmdStatus : string;
     remoteId : string;
 
-    constructor(sessionId : string, cmdId : string, remoteId : string, status : string) {
-        this.termId = uuidv4();
-        this.sessionId = sessionId;
-        this.cmdId = cmdId;
-        this.remoteId = remoteId;
-        this.cmdStatus = status;
-        this.terminal = new Terminal({rows: 25, cols: 80, theme: {foreground: "#d3d7cf"}});
+    constructor(termOpts : TermOptsType) {
+        this.terminal = new Terminal({rows: termOpts.rows, cols: termOpts.cols, theme: {foreground: "#d3d7cf"}});
+        this.flexRows = termOpts.flexrows;
         this.usedRows = 2;
     }
 
-    destroy() {
-    }
-
-    isRunning() : boolean {
-        return this.cmdStatus == "running" || this.cmdStatus == "detached";
-    }
-
-    @boundMethod
-    onKeyHandler(event : any) {
-        console.log("onkey", event);
-        if (!this.isRunning()) {
-            return;
-        }
-        let inputPacket = {
-            type: "input",
-            ck: this.sessionId + "/" + this.cmdId,
-            inputdata: btoa(event.key),
-            remoteid: this.remoteId,
-        };
-        GlobalModel.sendInputPacket(inputPacket);
-    }
-
-    // datalen is passed because data could be utf-8 and data.length is not the actual *byte* length
-    updatePtyData(pos : number, data : string, datalen : number) {
-        if (pos != this.ptyPos) {
-            throw new Error(sprintf("invalid pty-update, data-pos[%d] does not match term-pos[%d]", pos, this.ptyPos));
-        }
-        this.ptyPos += datalen;
-        this.terminal.write(data, () => {
-            mobx.action(() => {
-                this.resizeToContent();
-                this.incRenderVersion();
-            })();
-        });
-    }
-
-    resizeToContent() {
-        if (this.atRowMax) {
-            return;
-        }
+    getTermUsedRows() : number {
         let term = this.terminal;
         let termBuf = term._core.buffer;
         let termNumLines = termBuf.lines.length;
         let termYPos = termBuf.y;
-        let usedRows = 2;
-        if (termNumLines > term.rows) {
-            this.usedRows = term.rows;
-            this.atRowMax = true;
-            return;
+        if (termNumLines >= term.rows) {
+            return term.rows;
         }
+        let usedRows = 2;
         if (termYPos >= usedRows) {
             usedRows = termYPos + 1;
         }
@@ -107,58 +57,19 @@ class TermWrap {
                 usedRows = i+1;
             }
         }
-        if (this.usedRows != usedRows) {
-            this.usedRows = usedRows;
-            if (this.changeSizeCallback != null) {
-                let cb = this.changeSizeCallback;
-                setTimeout(() => cb(this), 0);
-            }
-        }
-        return;
+        return usedRows;
     }
 
-    setSize(rows : number, cols : number, flexRows : boolean) {
-        this.flexRows = true;
-        this.maxRows = rows;
-        if (!flexRows) {
-            this.terminal.resize(rows, cols);
-            setTimeout(() => this.incRenderVersion(), 10);
-            return;
-        }
-        this.resizeToContent();
-    }
-
-    getSize() : {rows : number, cols : number} {
-        return {rows: this.terminal.rows, cols: this.terminal.cols};
-    }
-
-    @boundMethod
-    setFocus(val : boolean) {
-        mobx.action(() => this.isFocused.set(val))();
-    }
-
-    getRenderVersion() : number {
-        return this.renderVersion.get();
-    }
-
-    @boundMethod
-    incRenderVersion() {
-        mobx.action(() => this.renderVersion.set(this.renderVersion.get() + 1))();
-    }
-
-    connectToElem(elem : Element) {
+    connectToElem(elem : Element, eventHandler : TermEventHandler) {
         this.terminal.open(elem);
-        if (this.isRunning()) {
+        if (eventHandler != null) {
             this.terminal.textarea.addEventListener("focus", () => {
-                this.setFocus(true);
+                eventHandler.setFocus(true);
             });
             this.terminal.textarea.addEventListener("blur", () => {
-                this.setFocus(false);
+                eventHandler.setFocus(false);
             });
-            this.terminal.onKey(this.onKeyHandler);
-        }
-        else {
-            this.terminal.onKey(this.onKeyHandler);
+            this.terminal.onKey(eventHandler.handleKey);
         }
     }
 }

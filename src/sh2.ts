@@ -1,3 +1,4 @@
+import * as mobx from "mobx";
 import * as React from "react";
 import {createRoot} from 'react-dom/client';
 import {sprintf} from "sprintf-js";
@@ -16,5 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let root = createRoot(elem);
     root.render(reactElem);
 });
+
+(window as any).mobx = mobx;
 
 console.log("SCRIPTHAUS", VERSION)

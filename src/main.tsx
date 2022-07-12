@@ -9,9 +9,13 @@ import cn from "classnames"
 import {TermWrap} from "./term";
 import type {SessionDataType, LineType, CmdDataType, RemoteType} from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
-import {GlobalMode, Cmd, Window} from "./model";
+import {GlobalModel, Session, Cmd, Window} from "./model";
 
 dayjs.extend(localizedFormat)
+
+function getLineId(line : LineType) : string {
+    return sprintf("%s-%s-%s", line.sessionid, line.windowid, line.lineid);
+}
 
 @mobxReact.observer
 class LineMeta extends React.Component<{line : LineType}, {}> {
@@ -79,10 +83,11 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
     componentDidMount() {
         let {line} = this.props;
         let model = GlobalModel;
-        let termElem = document.getElementById("term-" + getLineId(line));
-        let termWrap = session.getTermWrapByLine(line);
-        termWrap.changeSizeCallback = this.props.changeSizeCallback;
-        termWrap.connectToElem(termElem);
+        let cmd = model.getCmd(line);
+        if (cmd != null) {
+            let termElem = document.getElementById("term-" + getLineId(line));
+            cmd.connectToElem(termElem);
+        }
         if (line.isnew) {
             setTimeout(() => this.scrollIntoView(), 100);
             line.isnew = false;
@@ -96,9 +101,11 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
 
     @boundMethod
     doRefresh() {
-        let {session, line} = this.props;
-        let termWrap = session.getTermWrapByLine(line);
-        termWrap.reloadTerminal(true, 500);
+        let model = GlobalModel;
+        let cmd = model.getCmd(this.props.line);
+        if (cmd != null) {
+            cmd.reloadTerminal(true, 500);
+        }
     }
 
     replaceHomePath(path : string, homeDir : string) : string {
@@ -136,40 +143,36 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
             }
         }
         let cwd = "(unknown)";
-        if (cmd.remotestate && cmd.remotestate.cwd) {
-            cwd = cmd.remotestate.cwd;
+        let remoteState = cmd.getRemoteState();
+        if (remoteState && remoteState.cwd) {
+            cwd = remoteState.cwd;
         }
         if (remote.remotevars.home) {
             cwd = this.replaceHomePath(cwd, remote.remotevars.home)
         }
         return (
             <div className="metapart-mono cmdtext">
-                <span className="term-bright-green">[{promptStr} {cwd}]</span> {this.singleLineCmdText(cmd.cmdstr)}
+                <span className="term-bright-green">[{promptStr} {cwd}]</span> {cmd.getSingleLineCmdText()}
             </div>
         );
     }
     
     render() {
-        let {session, line} = this.props;
+        let {line} = this.props;
+        let model = GlobalModel;
         let lineid = line.lineid.toString();
-        let running = false;
-        let detached = false;
-        let rows = 0;
-        let cols = 0;
-        let termWrap = session.getTermWrapByLine(line);
-        let renderVersion = termWrap.getRenderVersion();
-        termWrap.resizeToContent();
-        let termSize = termWrap.getSize();
         let formattedTime = getLineDateStr(line.ts);
-        let cellHeightPx = 17;
-        let totalHeight = cellHeightPx * termWrap.usedRows;
-        let cmd : CmdDataType = session.getCmd(line.cmdid);
-        let remote : RemoteType = null;
-        if (cmd != null) {
-            remote = session.getRemote(cmd.remoteid);
-            running = (cmd.status == "running");
-            detached = (cmd.status == "detached");
+        let cmd = model.getCmd(line);
+        if (cmd == null) {
+            return <div className="line line-invalid">[cmd not found '{line.cmdid}']</div>;
         }
+        let cellHeightPx = 17;
+        let totalHeight = cellHeightPx * cmd.usedRows.get();
+        let remote = model.getRemote(cmd.remoteId);
+        let status = cmd.getStatus();
+        let running = (status == "running");
+        let detached = (status == "detached");
+        let termOpts = cmd.getTermOpts();
         return (
             <div className="line line-cmd" id={"line-" + getLineId(line)}>
                 <div className={cn("avatar",{"num4": lineid.length == 4}, {"num5": lineid.length >= 5}, {"running": running}, {"detached": detached})}>
@@ -183,12 +186,11 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
                     <div className="meta">
                         <div className="metapart-mono" style={{display: "none"}}>
                             {line.cmdid}
-                            <If condition={termSize.rows > 0}>({termSize.rows}x{termSize.cols})</If>
-                            {termWrap.ptyPos} bytes, v{renderVersion}
+                            ({termOpts.rows}x{termOpts.cols})
                         </div>
                         {this.renderCmdText(cmd, remote)}
                     </div>
-                    <div className={cn("terminal-wrapper", {"focus": termWrap.isFocused.get()})} style={{overflowY: "hidden"}}>
+                    <div className={cn("terminal-wrapper", {"focus": cmd.isFocused.get()})} style={{overflowY: "hidden"}}>
                         <div className="terminal" id={"term-" + getLineId(line)} data-cmdid={line.cmdid} style={{height: totalHeight}}></div>
                     </div>
                 </div>
@@ -201,7 +203,7 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
 }
 
 @mobxReact.observer
-class Line extends React.Component<{line : LineType, session : Session, changeSizeCallback? : (term : TermWrap) => void}, {}> {
+class Line extends React.Component<{line : LineType, changeSizeCallback? : (term : TermWrap) => void}, {}> {
     render() {
         let line = this.props.line;
         if (line.linetype == "text") {
@@ -215,7 +217,7 @@ class Line extends React.Component<{line : LineType, session : Session, changeSi
 }
 
 @mobxReact.observer
-class CmdInput extends React.Component<{windowid : string}, {}> {
+class CmdInput extends React.Component<{}, {}> {
     historyIndex : mobx.IObservableValue<number> = mobx.observable.box(0, {name: "history-index"});
     modHistory : mobx.IObservableArray<string> = mobx.observable.array([""], {name: "mod-history"});
 
@@ -223,7 +225,7 @@ class CmdInput extends React.Component<{windowid : string}, {}> {
     onKeyDown(e : any) {
         mobx.action(() => {
             let model = GlobalModel;
-            let win = getActiveWindow();
+            let win = model.getActiveWindow();
             let ctrlMod = e.getModifierState("Control") || e.getModifierState("Meta") || e.getModifierState("Shift");
             if (e.code == "Enter" && !ctrlMod) {
                 e.preventDefault();
@@ -270,6 +272,10 @@ class CmdInput extends React.Component<{windowid : string}, {}> {
         if (hidx < this.modHistory.length && this.modHistory[hidx] != null) {
             return this.modHistory[hidx];
         }
+        let win = model.getActiveWindow();
+        if (win == null) {
+            return "";
+        }
         let hitem = win.getHistoryItem(-hidx);
         if (hitem == null) {
             return "";
@@ -292,12 +298,11 @@ class CmdInput extends React.Component<{windowid : string}, {}> {
 
     @boundMethod
     doSubmitCmd() {
-        let {windowid} = this.props;
         let model = GlobalModel;
         let commandStr = this.getCurLine();
         let hitem = {cmdtext: commandStr};
         this.clearCurLine();
-        model.submitCommand(windowid, commandStr);
+        model.submitCommand(commandStr);
     }
     
     render() {
@@ -343,10 +348,9 @@ class SessionView extends React.Component<{}, {}> {
     @boundMethod
     changeSizeCallback(term : TermWrap) {
         if (this.shouldFollow.get()) {
-            let session = this.props.session;
-            let window = session.getActiveWindow();
+            let window = GlobalModel.getActiveWindow();
             let lines = window.lines;
-            if (lines == null) {
+            if (lines == null || lines.length == 0) {
                 return;
             }
             let lastLine = lines[lines.length-1];
@@ -359,7 +363,7 @@ class SessionView extends React.Component<{}, {}> {
         let model = GlobalModel;
         let win = model.getActiveWindow();
         if (win == null) {
-            return <div className="session-view">(no active window {session.activeWindowId.get()})</div>;
+            return <div className="session-view">(no active window)</div>;
         }
         if (!win.linesLoaded.get()) {
             return <div className="session-view">(loading)</div>;
@@ -373,7 +377,7 @@ class SessionView extends React.Component<{}, {}> {
                         <Line key={line.lineid} line={line} changeSizeCallback={this.changeSizeCallback}/>
                     </For>
                 </div>
-                <CmdInput windowid={win.windowid}/>
+                <CmdInput/>
             </div>
         );
     }
@@ -397,6 +401,7 @@ class MainSideBar extends React.Component<{}, {}> {
     render() {
         let model = GlobalModel;
         let curSessionId = model.curSessionId.get();
+        let session : Session = null;
         return (
             <div className={cn("main-sidebar", {"collapsed": this.collapsed.get()})}>
                 <div className="collapse-container">
@@ -410,12 +415,12 @@ class MainSideBar extends React.Component<{}, {}> {
                         Private Sessions
                     </p>
                     <ul className="menu-list">
-                        <If condition={!model.sessionListLoaded()}>
+                        <If condition={!model.sessionListLoaded.get()}>
                             <li><a>(loading)</a></li>
                         </If>
-                        <If condition={model.sessionListLoaded()}>
+                        <If condition={model.sessionListLoaded.get()}>
                             <For each="session" of={model.sessionList}>
-                                <li key={session.sessionid}><a className={cn({"is-active": curSessionId == session.sessionid})} onClick={() => this.handleSessionClick(session.sessionid)}>#{session.name}</a></li>
+                                <li key={session.sessionId}><a className={cn({"is-active": curSessionId == session.sessionId})} onClick={() => this.handleSessionClick(session.sessionId)}>#{session.name.get()}</a></li>
                             </For>
                             <li className="new-session"><a className="new-session"><i className="fa fa-plus"/> New Session</a></li>
                         </If>

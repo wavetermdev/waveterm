@@ -5,6 +5,7 @@ type SessionDataType = {
     name : string,
     windows : WindowDataType[],
     cmds : CmdDataType[],
+    remove : boolean,
 };
 
 type LineType = {
@@ -40,6 +41,7 @@ type RemoteInstanceType = {
     remoteid : string,
     sessionscope : boolean,
     state : RemoteStateType,
+    version : number,
 }
 
 type WindowDataType = {
@@ -48,11 +50,15 @@ type WindowDataType = {
     name : string,
     curremote : string,
     lines : LineType[],
+    history : HistoryItem[],
+    cmds : CmdDataType[],
+    remotes : RemoteInstanceType[],
     version : number,
+    remove : boolean,
 };
 
 type HistoryItem = {
-    cmdtext : string,
+    cmdstr : string,
 };
 
 type CmdRemoteStateType = {

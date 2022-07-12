@@ -156,7 +156,7 @@ class Session {
         this.loadWindowLines(windowid);
     }
 
-    submitCommand(windowid : string, commandStr : string) {
+    submitCommand(windowId : string, commandStr : string) {
         let url = sprintf("http://localhost:8080/api/run-command");
         let data : FeCmdPacketType = {type: "fecmd", sessionid: this.sessionId, windowid: windowid, cmdstr: commandStr, userid: GlobalUser, remotestate: null};
         let curWindow = this.getCurWindow();
