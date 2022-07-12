@@ -19,9 +19,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var NextLineId = 10
-var NextLineLock = &sync.Mutex{}
-
 const LineTypeCmd = "cmd"
 const LineTypeText = "text"
 const DBFileName = "sh2.db"
@@ -51,7 +48,7 @@ func GetDB() (*sqlx.DB, error) {
 	globalDBLock.Lock()
 	defer globalDBLock.Unlock()
 	if globalDB == nil && globalDBErr == nil {
-		globalDB, globalDBErr = sqlx.Open("sqlite3", GetSessionDBName())
+		globalDB, globalDBErr = sqlx.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000", GetSessionDBName()))
 	}
 	return globalDB, globalDBErr
 }
@@ -59,18 +56,25 @@ func GetDB() (*sqlx.DB, error) {
 type SessionType struct {
 	SessionId string            `json:"sessionid"`
 	Name      string            `json:"name"`
+	NotifyNum int64             `json:"notifynum"`
 	Windows   []*WindowType     `json:"windows"`
 	Cmds      []*CmdType        `json:"cmds"`
 	Remotes   []*RemoteInstance `json:"remotes"`
 }
 
 type WindowType struct {
-	SessionId string      `json:"sessionid"`
-	WindowId  string      `json:"windowid"`
-	Name      string      `json:"name"`
-	CurRemote string      `json:"curremote"`
-	Lines     []*LineType `json:"lines"`
-	Version   int         `json:"version"`
+	SessionId string             `json:"sessionid"`
+	WindowId  string             `json:"windowid"`
+	Name      string             `json:"name"`
+	CurRemote string             `json:"curremote"`
+	Lines     []*LineType        `json:"lines"`
+	Cmds      []*CmdType         `json:"cmds"`
+	History   []*HistoryItemType `json:"history"`
+	Remotes   []*RemoteInstance  `json:"remotes"`
+}
+
+type HistoryItemType struct {
+	CmdStr string `json:"cmdstr"`
 }
 
 type RemoteState struct {
@@ -96,9 +100,9 @@ func (s *RemoteState) Value() (driver.Value, error) {
 }
 
 type TermOpts struct {
-	Rows     int  `json:"rows"`
-	Cols     int  `json:"cols"`
-	FlexRows bool `json:"flexrows,omitempty"`
+	Rows     int64 `json:"rows"`
+	Cols     int64 `json:"cols"`
+	FlexRows bool  `json:"flexrows,omitempty"`
 }
 
 func (opts *TermOpts) Scan(val interface{}) error {
@@ -132,7 +136,7 @@ type RemoteInstance struct {
 type LineType struct {
 	SessionId string `json:"sessionid"`
 	WindowId  string `json:"windowid"`
-	LineId    int    `json:"lineid"`
+	LineId    int64  `json:"lineid"`
 	Ts        int64  `json:"ts"`
 	UserId    string `json:"userid"`
 	LineType  string `json:"linetype"`
@@ -181,6 +185,7 @@ type CmdType struct {
 	Status      string                     `json:"status"`
 	StartPk     *packet.CmdStartPacketType `json:"startpk"`
 	DonePk      *packet.CmdDonePacketType  `json:"donepk"`
+	UsedRows    int64                      `json:"usedrows"`
 	RunOut      []packet.PacketType        `json:"runout"`
 }
 
@@ -223,6 +228,7 @@ func (cmd *CmdType) ToMap() map[string]interface{} {
 	rtn["startpk"] = quickJson(cmd.StartPk)
 	rtn["donepk"] = quickJson(cmd.DonePk)
 	rtn["runout"] = quickJson(cmd.RunOut)
+	rtn["usedrows"] = cmd.UsedRows
 	return rtn
 }
 
@@ -241,6 +247,7 @@ func CmdFromMap(m map[string]interface{}) *CmdType {
 	quickSetJson(&cmd.StartPk, m, "startpk")
 	quickSetJson(&cmd.DonePk, m, "donepk")
 	quickSetJson(&cmd.RunOut, m, "runout")
+	quickSetInt64(&cmd.UsedRows, m, "usedrows")
 	return &cmd
 }
 
@@ -282,14 +289,6 @@ func AddCmdLine(ctx context.Context, sessionId string, windowId string, userId s
 		return nil, err
 	}
 	return rtnLine, nil
-}
-
-func GetNextLine() int {
-	NextLineLock.Lock()
-	defer NextLineLock.Unlock()
-	rtn := NextLineId
-	NextLineId++
-	return rtn
 }
 
 func EnsureLocalRemote(ctx context.Context) error {
