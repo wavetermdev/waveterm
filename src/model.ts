@@ -19,6 +19,7 @@ function isBlank(s : string) {
 type ElectronApi = {
     getId : () => string,
     onCmdT : (callback : () => void) => void,
+    onSwitchScreen : (callback : (event : any, arg : {relative? : number, absolute? : number}) => void) => void,
 };
 
 function getApi() : ElectronApi {
@@ -405,6 +406,16 @@ class Model {
         this.loadSessionList();
         this.ws = new WSControl(this.clientId, this.onWSMessage.bind(this))
         this.ws.reconnect();
+        getApi().onCmdT(this.onCmdT.bind(this));
+        getApi().onSwitchScreen(this.onSwitchScreen.bind(this));
+    }
+
+    onCmdT() {
+        console.log("got cmd-t");
+    }
+
+    onSwitchScreen(e : any, arg : {relative? : number, absolute? : number}) {
+        console.log("switch screen", arg);
     }
 
     isConnected() : boolean {

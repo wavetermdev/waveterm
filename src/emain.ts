@@ -53,8 +53,23 @@ function createWindow() {
         if (input.type != "keyDown") {
             return;
         }
+        if (input.meta) {
+            console.log("before-input", input.code, input.modifiers);
+        }
         if (input.code == "KeyT" && input.meta) {
-            win.webContents.send("cmt-t");
+            win.webContents.send("cmd-t");
+            e.preventDefault();
+            return;
+        }
+        if (input.code == "BracketRight" && input.meta) {
+            win.webContents.send("switch-screen", {relative: 1});
+            e.preventDefault();
+            return;
+        }
+        if (input.code == "BracketLeft" && input.meta) {
+            win.webContents.send("switch-screen", {relative: -1});
+            e.preventDefault();
+            return;
         }
     });
     return win;
