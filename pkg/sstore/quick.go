@@ -1,6 +1,10 @@
 package sstore
 
-import "encoding/json"
+import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
+)
 
 func quickSetStr(strVal *string, m map[string]interface{}, name string) {
 	v, ok := m[name]
@@ -65,4 +69,22 @@ func quickJson(v interface{}) string {
 	}
 	barr, _ := json.Marshal(v)
 	return string(barr)
+}
+
+func quickScanJson(ptr interface{}, val interface{}) error {
+	strVal, ok := val.(string)
+	if !ok {
+		return fmt.Errorf("cannot scan '%T' into '%T'", val, ptr)
+	}
+	if strVal == "" {
+		return nil
+	}
+	return json.Unmarshal([]byte(strVal), ptr)
+}
+
+func quickValueJson(v interface{}) (driver.Value, error) {
+	if v == nil {
+		return "", nil
+	}
+	return json.Marshal(v)
 }

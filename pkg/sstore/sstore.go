@@ -3,7 +3,6 @@ package sstore
 import (
 	"context"
 	"database/sql/driver"
-	"encoding/json"
 	"fmt"
 	"log"
 	"path"
@@ -54,12 +53,24 @@ func GetDB() (*sqlx.DB, error) {
 }
 
 type SessionType struct {
-	SessionId string            `json:"sessionid"`
-	Name      string            `json:"name"`
-	NotifyNum int64             `json:"notifynum"`
-	Windows   []*WindowType     `json:"windows"`
-	Cmds      []*CmdType        `json:"cmds"`
-	Remotes   []*RemoteInstance `json:"remotes"`
+	SessionId  string            `json:"sessionid"`
+	Name       string            `json:"name"`
+	SessionIdx int64             `json:"sessionidx"`
+	NotifyNum  int64             `json:"notifynum"`
+	Windows    []*WindowType     `json:"windows"`
+	Cmds       []*CmdType        `json:"cmds"`
+	Remotes    []*RemoteInstance `json:"remotes"`
+}
+
+type WindowOptsType struct {
+}
+
+func (opts *WindowOptsType) Scan(val interface{}) error {
+	return quickScanJson(opts, val)
+}
+
+func (opts *WindowOptsType) Value() (driver.Value, error) {
+	return quickValueJson(opts)
 }
 
 type WindowType struct {
@@ -71,6 +82,40 @@ type WindowType struct {
 	Cmds      []*CmdType         `json:"cmds"`
 	History   []*HistoryItemType `json:"history"`
 	Remotes   []*RemoteInstance  `json:"remotes"`
+	WinOpts   WindowOptsType     `json:"winopts"`
+}
+
+type ScreenType struct {
+	SessionId string `json:"sessionid"`
+	ScreenId  string `json:"screenid"`
+	ScreenIdx int64  `json:"screenidx"`
+	Name      string `json:"name"`
+}
+
+type LayoutType struct {
+	ZIndex int64  `json:"zindex"`
+	Float  bool   `json:"float"`
+	Top    string `json:"top"`
+	Bottom string `json:"bottom"`
+	Left   string `json:"left"`
+	Right  string `json:"right"`
+	Width  string `json:"width"`
+	Height string `json:"height"`
+}
+
+func (l *LayoutType) Scan(val interface{}) error {
+	return quickScanJson(l, val)
+}
+
+func (l *LayoutType) Value() (driver.Value, error) {
+	return quickValueJson(l)
+}
+
+type ScreenWindowType struct {
+	SessionId string     `json:"sessionid"`
+	ScreenId  string     `json:"screenid"`
+	WindowId  string     `json:"windowid"`
+	Layout    LayoutType `json:"layout"`
 }
 
 type HistoryItemType struct {
@@ -82,21 +127,11 @@ type RemoteState struct {
 }
 
 func (s *RemoteState) Scan(val interface{}) error {
-	if strVal, ok := val.(string); ok {
-		if strVal == "" {
-			return nil
-		}
-		err := json.Unmarshal([]byte(strVal), s)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	return fmt.Errorf("cannot scan '%T' into RemoteState", val)
+	return quickScanJson(s, val)
 }
 
 func (s *RemoteState) Value() (driver.Value, error) {
-	return json.Marshal(s)
+	return quickValueJson(s)
 }
 
 type TermOpts struct {
@@ -106,21 +141,11 @@ type TermOpts struct {
 }
 
 func (opts *TermOpts) Scan(val interface{}) error {
-	if strVal, ok := val.(string); ok {
-		if strVal == "" {
-			return nil
-		}
-		err := json.Unmarshal([]byte(strVal), opts)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	return fmt.Errorf("cannot scan '%T' into TermOpts", val)
+	return quickScanJson(opts, val)
 }
 
 func (opts *TermOpts) Value() (driver.Value, error) {
-	return json.Marshal(opts)
+	return quickValueJson(opts)
 }
 
 type RemoteInstance struct {

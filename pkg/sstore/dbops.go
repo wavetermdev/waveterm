@@ -138,7 +138,7 @@ func GetSessionById(ctx context.Context, id string) (*SessionType, error) {
 			return nil
 		}
 		rtnSession = &session
-		query = `SELECT sessionid, windowid, name, curremote FROM window WHERE sessionid = ?`
+		query = `SELECT * FROM window WHERE sessionid = ?`
 		tx.SelectWrap(&session.Windows, query, session.SessionId)
 		query = `SELECT * FROM remote_instance WHERE sessionid = ?`
 		tx.SelectWrap(&session.Remotes, query, session.SessionId)
@@ -197,11 +197,15 @@ func InsertSessionWithName(ctx context.Context, sessionName string) (string, err
 				return fmt.Errorf("cannot create session with duplicate name")
 			}
 		}
+		var maxSessionIdx int64
+		query := `SELECT COALESCE(max(sessionidx), 0) FROM session`
+		tx.GetWrap(&maxSessionIdx, query)
 		newSession := &SessionType{
-			SessionId: newSessionId,
-			Name:      sessionName,
+			SessionId:  newSessionId,
+			Name:       sessionName,
+			SessionIdx: maxSessionIdx + 1,
 		}
-		query := `INSERT INTO session (sessionid, name, notifynum) VALUES (:sessionid, :name, :notifynum)`
+		query = `INSERT INTO session (sessionid, name, sessionidx, notifynum) VALUES (:sessionid, :name, :sessionidx, :notifynum)`
 		tx.NamedExecWrap(query, newSession)
 		window := &WindowType{
 			SessionId: newSessionId,
@@ -269,7 +273,7 @@ func InsertWindow(ctx context.Context, sessionId string, windowName string) (str
 }
 
 func txInsertWindow(tx *TxWrap, window *WindowType) {
-	query := `INSERT INTO window (sessionid, windowid, name, curremote) VALUES (:sessionid, :windowid, :name, :curremote)`
+	query := `INSERT INTO window (sessionid, windowid, name, curremote, winopts) VALUES (:sessionid, :windowid, :name, :curremote, :winopts)`
 	tx.NamedExecWrap(query, window)
 }
 

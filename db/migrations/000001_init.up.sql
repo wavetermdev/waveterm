@@ -1,6 +1,8 @@
 CREATE TABLE session (
     sessionid varchar(36) PRIMARY KEY,
-    name varchar(50) NOT NULL
+    name varchar(50) NOT NULL,
+    sessionidx int NOT NULL,
+    notifynum int NOT NULL
 );
 CREATE UNIQUE INDEX session_name_unique ON session(name);
 
@@ -9,10 +11,26 @@ CREATE TABLE window (
     windowid varchar(36) NOT NULL,
     name varchar(50) NOT NULL,
     curremote varchar(50) NOT NULL,
-    version int NOT NULL,
+    winopts json NOT NULL,
     PRIMARY KEY (sessionid, windowid)
 );
 CREATE UNIQUE INDEX window_name_unique ON window(sessionid, name);
+
+CREATE TABLE screen (
+    sessionid varchar(36) NOT NULL,
+    screenid varchar(36) NOT NULL,
+    name varchar(50) NOT NULL,
+    screenidx int NOT NULL,
+    PRIMARY KEY (sessionid, screenid)
+);
+
+CREATE TABLE screen_window (
+    sessionid varchar(36) NOT NULL,
+    screenid varchar(36) NOT NULL,
+    windowid varchar(36) NOT NULL,
+    layout json NOT NULL,
+    PRIMARY KEY (sessionid, screenid, windowid)
+);
 
 CREATE TABLE remote_instance (
     riid varchar(36) PRIMARY KEY,
@@ -57,6 +75,7 @@ CREATE TABLE cmd (
     startpk json NOT NULL,
     donepk json NOT NULL,
     runout json NOT NULL,
+    usedrows int NOT NULL,
     PRIMARY KEY (sessionid, cmdid)
 );
 
