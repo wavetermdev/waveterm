@@ -72,19 +72,27 @@ func quickJson(v interface{}) string {
 }
 
 func quickScanJson(ptr interface{}, val interface{}) error {
-	strVal, ok := val.(string)
+	barrVal, ok := val.([]byte)
 	if !ok {
-		return fmt.Errorf("cannot scan '%T' into '%T'", val, ptr)
+		strVal, ok := val.(string)
+		if !ok {
+			return fmt.Errorf("cannot scan '%T' into '%T'", val, ptr)
+		}
+		barrVal = []byte(strVal)
 	}
-	if strVal == "" {
+	if len(barrVal) == 0 {
 		return nil
 	}
-	return json.Unmarshal([]byte(strVal), ptr)
+	return json.Unmarshal(barrVal, ptr)
 }
 
 func quickValueJson(v interface{}) (driver.Value, error) {
 	if v == nil {
 		return "", nil
 	}
-	return json.Marshal(v)
+	barr, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	return string(barr), nil
 }

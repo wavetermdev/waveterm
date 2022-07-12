@@ -43,7 +43,10 @@ func GetSessionDBName() string {
 	return path.Join(scHome, DBFileName)
 }
 
-func GetDB() (*sqlx.DB, error) {
+func GetDB(ctx context.Context) (*sqlx.DB, error) {
+	if IsTxWrapContext(ctx) {
+		return nil, fmt.Errorf("cannot call GetDB from within a running transaction")
+	}
 	globalDBLock.Lock()
 	defer globalDBLock.Unlock()
 	if globalDB == nil && globalDBErr == nil {
@@ -69,7 +72,7 @@ func (opts *WindowOptsType) Scan(val interface{}) error {
 	return quickScanJson(opts, val)
 }
 
-func (opts *WindowOptsType) Value() (driver.Value, error) {
+func (opts WindowOptsType) Value() (driver.Value, error) {
 	return quickValueJson(opts)
 }
 
@@ -107,7 +110,7 @@ func (l *LayoutType) Scan(val interface{}) error {
 	return quickScanJson(l, val)
 }
 
-func (l *LayoutType) Value() (driver.Value, error) {
+func (l LayoutType) Value() (driver.Value, error) {
 	return quickValueJson(l)
 }
 
@@ -130,7 +133,7 @@ func (s *RemoteState) Scan(val interface{}) error {
 	return quickScanJson(s, val)
 }
 
-func (s *RemoteState) Value() (driver.Value, error) {
+func (s RemoteState) Value() (driver.Value, error) {
 	return quickValueJson(s)
 }
 
@@ -144,7 +147,7 @@ func (opts *TermOpts) Scan(val interface{}) error {
 	return quickScanJson(opts, val)
 }
 
-func (opts *TermOpts) Value() (driver.Value, error) {
+func (opts TermOpts) Value() (driver.Value, error) {
 	return quickValueJson(opts)
 }
 

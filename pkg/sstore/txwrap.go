@@ -10,37 +10,56 @@ import (
 type TxWrap struct {
 	Txx *sqlx.Tx
 	Err error
+	Ctx context.Context
+}
+
+type txWrapKey struct{}
+
+func IsTxWrapContext(ctx context.Context) bool {
+	ctxVal := ctx.Value(txWrapKey{})
+	return ctxVal != nil
 }
 
 func WithTx(ctx context.Context, fn func(tx *TxWrap) error) (rtnErr error) {
-	db, err := GetDB()
-	if err != nil {
-		return err
+	var txWrap *TxWrap
+	ctxVal := ctx.Value(txWrapKey{})
+	if ctxVal != nil {
+		txWrap = ctxVal.(*TxWrap)
 	}
-	tx, beginErr := db.BeginTxx(ctx, nil)
-	if beginErr != nil {
-		return beginErr
+	if txWrap == nil {
+		db, err := GetDB(ctx)
+		if err != nil {
+			return err
+		}
+		tx, beginErr := db.BeginTxx(ctx, nil)
+		if beginErr != nil {
+			return beginErr
+		}
+		txWrap = &TxWrap{Txx: tx, Ctx: ctx}
+		defer func() {
+			if p := recover(); p != nil {
+				txWrap.Txx.Rollback()
+				panic(p)
+			}
+			if rtnErr != nil {
+				txWrap.Txx.Rollback()
+			} else {
+				rtnErr = txWrap.Txx.Commit()
+			}
+		}()
 	}
-	txWrap := &TxWrap{Txx: tx}
-	defer func() {
-		if p := recover(); p != nil {
-			tx.Rollback()
-			panic(p)
-		}
-		if rtnErr != nil {
-			tx.Rollback()
-		} else {
-			rtnErr = tx.Commit()
-		}
-	}()
 	fnErr := fn(txWrap)
-	if fnErr != nil {
-		return fnErr
+	if txWrap.Err == nil && fnErr != nil {
+		txWrap.Err = fnErr
 	}
 	if txWrap.Err != nil {
 		return txWrap.Err
 	}
 	return nil
+}
+
+func (tx *TxWrap) Context() context.Context {
+	return context.WithValue(tx.Ctx, txWrapKey{}, tx)
 }
 
 func (tx *TxWrap) NamedExecWrap(query string, arg interface{}) sql.Result {

@@ -10,7 +10,7 @@ import (
 )
 
 func NumSessions(ctx context.Context) (int, error) {
-	db, err := GetDB()
+	db, err := GetDB(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -71,7 +71,7 @@ func InsertRemote(ctx context.Context, remote *RemoteType) error {
 	if remote == nil {
 		return fmt.Errorf("cannot insert nil remote")
 	}
-	db, err := GetDB()
+	db, err := GetDB(ctx)
 	if err != nil {
 		return err
 	}
@@ -156,7 +156,7 @@ func GetSessionById(ctx context.Context, id string) (*SessionType, error) {
 }
 
 func GetSessionByName(ctx context.Context, name string) (*SessionType, error) {
-	db, err := GetDB()
+	db, err := GetDB(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -226,6 +226,14 @@ func containsStr(strs []string, testStr string) bool {
 		}
 	}
 	return false
+}
+
+func InsertScreen(ctx context.Context, sessionId string, screenName string) (string, error) {
+	var newScreenId string
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		return nil
+	})
+	return newScreenId, txErr
 }
 
 // if windowName == "", it will be generated
