@@ -17,7 +17,6 @@ type LineType = {
     linetype : string,
     text : string,
     cmdid : string,
-    isnew : boolean,
 };
 
 type RemoteType = {

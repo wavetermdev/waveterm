@@ -7,6 +7,8 @@ import {v4 as uuidv4} from "uuid";
 import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType} from "./types";
 import {WSControl} from "./ws";
 
+var GlobalUser = "sawka";
+
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
 
@@ -198,6 +200,7 @@ class Window {
     history : any[] = [];
     cmds : Record<string, Cmd> = {};
     shouldFollow : OV<boolean> = mobx.observable.box(true);
+    remoteInstances : OArr<RemoteInstanceType> = mobx.observable.array([]);
 
     constructor(wdata : WindowDataType) {
         this.sessionId = wdata.sessionid;
@@ -238,6 +241,64 @@ class Window {
     getCmd(cmdId : string) {
         return this.cmds[cmdId];
     }
+
+    getCurRemoteInstance() : RemoteInstanceType {
+        let rname = this.curRemote.get();
+        let sessionScope = false;
+        if (rname.startsWith("^")) {
+            rname = rname.substr(1);
+            sessionScope = true;
+        }
+        if (sessionScope) {
+            let session = GlobalModel.getSessionById(this.sessionId);
+            let rdata = session.getRemoteInstance(rname);
+            return rdata;
+        }
+        return this.getRemoteInstance(rname);
+    }
+
+    getRemoteInstance(rname : string) : RemoteInstanceType {
+        for (let i=0; i<this.remoteInstances.length; i++) {
+            let rdata = this.remoteInstances[i];
+            if (rdata.name == rname) {
+                return rdata;
+            }
+        }
+        let remote = GlobalModel.getRemoteByName(rname);
+        if (remote != null) {
+            return {riid: "", sessionid: this.sessionId, windowid: this.windowId, remoteid: remote.remoteid,
+                    name: rname, state: remote.defaultstate, sessionscope: false, version: 0};
+        }
+        return null;
+    }
+
+    addLineCmd(line : LineType, cmd : CmdDataType, interactive : boolean) {
+        if (!this.linesLoaded.get()) {
+            return;
+        }
+        mobx.action(() => {
+            if (cmd != null) {
+                this.cmds[cmd.cmdid] = new Cmd(cmd, this.windowId);
+            }
+            let lines = this.lines;
+            let lineIdx = 0;
+            for (lineIdx=0; lineIdx<lines.length; lineIdx++) {
+                let lineId = lines[lineIdx].lineid;
+                if (lineId == line.lineid) {
+                    this.lines[lineIdx] = line;
+                    return;
+                }
+                if (lineId > line.lineid) {
+                    break;
+                }
+            }
+            if (lineIdx == lines.length) {
+                this.lines.push(line);
+                return;
+            }
+            this.lines.splice(lineIdx, 0, line);
+        })();
+    }
 };
 
 class Session {
@@ -246,6 +307,7 @@ class Session {
     curWindowId : OV<string>;
     windows : OArr<Window>;
     notifyNum : OV<number> = mobx.observable.box(0);
+    remoteInstances : OArr<RemoteInstanceType> = mobx.observable.array([]);
 
     constructor(sdata : SessionDataType) {
         this.sessionId = sdata.sessionid;
@@ -294,6 +356,28 @@ class Session {
 
     getActiveWindow() : Window {
         return this.getWindowById(this.curWindowId.get());
+    }
+
+    getRemoteInstance(rname : string) : RemoteInstanceType {
+        for (let i=0; i<this.remoteInstances.length; i++) {
+            let rdata = this.remoteInstances[i];
+            if (rdata.name == rname) {
+                return rdata;
+            }
+        }
+        let remote = GlobalModel.getRemoteByName(rname);
+        if (remote != null) {
+            return {riid: "", sessionid: this.sessionId, windowid: null, remoteid: remote.remoteid,
+                    name: rname, state: remote.defaultstate, sessionscope: true, version: 0};
+        }
+        return null;
+    }
+
+    addLineCmd(line : LineType, cmd : CmdDataType, interactive : boolean) {
+        let win = this.getWindowById(line.windowid);
+        if (win != null) {
+            win.addLineCmd(line, cmd, interactive);
+        }
     }
 }
 
@@ -346,8 +430,37 @@ class Model {
         return session.getActiveWindow();
     }
 
+    addLineCmd(line : LineType, cmd : CmdDataType, interactive : boolean) {
+        let session = this.getSessionById(line.sessionid);
+        if (session != null) {
+            session.addLineCmd(line, cmd, interactive);
+        }
+    }
+
     submitCommand(cmdStr : string) {
         console.log("submit-command>", cmdStr);
+        let win = this.getActiveWindow();
+        if (win == null) {
+            this.errorHandler("cannot submit command, no active window", null)
+            return;
+        }
+        let data : FeCmdPacketType = {type: "fecmd", sessionid: win.sessionId, windowid: win.windowId, cmdstr: cmdStr, userid: GlobalUser, remotestate: null};
+        let rstate = win.getCurRemoteInstance();
+        if (rstate == null) {
+            this.errorHandler("cannot submit command, no remote state found", null);
+            return;
+        }
+        data.remotestate = {remoteid: rstate.remoteid, remotename: rstate.name, ...rstate.state};
+        let url = sprintf("http://localhost:8080/api/run-command");
+        fetch(url, {method: "post", body: JSON.stringify(data)}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
+            mobx.action(() => {
+                if (data.data != null && data.data.line != null) {
+                    this.addLineCmd(data.data.line, data.data.cmd, true);
+                }
+            })();
+        }).catch((err) => {
+            this.errorHandler("calling run-command", err);
+        });
     }
 
     updateWindow(win : WindowDataType) {
@@ -417,6 +530,15 @@ class Model {
     getRemote(remoteId : string) : RemoteType {
         for (let i=0; i<this.remotes.length; i++) {
             if (this.remotes[i].remoteid == remoteId) {
+                return this.remotes[i];
+            }
+        }
+        return null;
+    }
+
+    getRemoteByName(name : string) : RemoteType {
+        for (let i=0; i<this.remotes.length; i++) {
+            if (this.remotes[i].remotename == name) {
                 return this.remotes[i];
             }
         }

@@ -88,10 +88,6 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
             let termElem = document.getElementById("term-" + getLineId(line));
             cmd.connectElem(termElem);
         }
-        if (line.isnew) {
-            setTimeout(() => this.scrollIntoView(), 100);
-            line.isnew = false;
-        }
     }
 
     componentWillUnmount() {
