@@ -340,17 +340,7 @@ func HandleCreateWindow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	name := qvals.Get("name")
-	windowId, err := sstore.InsertWindow(r.Context(), sessionId, name)
-	if err != nil {
-		WriteJsonError(w, fmt.Errorf("inserting new window: %w", err))
-		return
-	}
-	window, err := sstore.GetWindowById(r.Context(), sessionId, windowId)
-	if err != nil {
-		WriteJsonError(w, fmt.Errorf("getting new window: %w", err))
-		return
-	}
-	WriteJsonSuccess(w, window)
+	fmt.Printf("insert-window %s\n", name)
 	return
 }
 

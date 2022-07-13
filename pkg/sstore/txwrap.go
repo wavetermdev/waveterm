@@ -25,6 +25,9 @@ func WithTx(ctx context.Context, fn func(tx *TxWrap) error) (rtnErr error) {
 	ctxVal := ctx.Value(txWrapKey{})
 	if ctxVal != nil {
 		txWrap = ctxVal.(*TxWrap)
+		if txWrap.Err != nil {
+			return txWrap.Err
+		}
 	}
 	if txWrap == nil {
 		db, err := GetDB(ctx)
@@ -82,6 +85,29 @@ func (tx *TxWrap) ExecWrap(query string, args ...interface{}) sql.Result {
 		tx.Err = err
 	}
 	return result
+}
+
+func (tx *TxWrap) Exists(query string, args ...interface{}) bool {
+	var dest interface{}
+	return tx.GetWrap(&dest, query, args...)
+}
+
+func (tx *TxWrap) GetString(query string, args ...interface{}) string {
+	var rtnStr string
+	tx.GetWrap(&rtnStr, query, args...)
+	return rtnStr
+}
+
+func (tx *TxWrap) SelectStrings(query string, args ...interface{}) []string {
+	var rtnArr []string
+	tx.SelectWrap(&rtnArr, query, args...)
+	return rtnArr
+}
+
+func (tx *TxWrap) GetInt(query string, args ...interface{}) int {
+	var rtnInt int
+	tx.GetWrap(&rtnInt, query, args...)
+	return rtnInt
 }
 
 func (tx *TxWrap) GetWrap(dest interface{}, query string, args ...interface{}) bool {

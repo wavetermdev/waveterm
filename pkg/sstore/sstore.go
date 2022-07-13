@@ -25,6 +25,7 @@ const DBFileName = "sh2.db"
 const DefaultSessionName = "default"
 const DefaultWindowName = "default"
 const LocalRemoteName = "local"
+const DefaultScreenWindowName = "w1"
 
 const DefaultCwd = "~"
 
@@ -56,13 +57,15 @@ func GetDB(ctx context.Context) (*sqlx.DB, error) {
 }
 
 type SessionType struct {
-	SessionId  string            `json:"sessionid"`
-	Name       string            `json:"name"`
-	SessionIdx int64             `json:"sessionidx"`
-	NotifyNum  int64             `json:"notifynum"`
-	Windows    []*WindowType     `json:"windows"`
-	Cmds       []*CmdType        `json:"cmds"`
-	Remotes    []*RemoteInstance `json:"remotes"`
+	SessionId      string            `json:"sessionid"`
+	Name           string            `json:"name"`
+	SessionIdx     int64             `json:"sessionidx"`
+	ActiveScreenId string            `json:"activescreenid"`
+	NotifyNum      int64             `json:"notifynum"`
+	Screens        []*ScreenType     `json:"screens"`
+	Windows        []*WindowType     `json:"windows"`
+	Cmds           []*CmdType        `json:"cmds"`
+	Remotes        []*RemoteInstance `json:"remotes"`
 }
 
 type WindowOptsType struct {
@@ -79,31 +82,51 @@ func (opts WindowOptsType) Value() (driver.Value, error) {
 type WindowType struct {
 	SessionId string             `json:"sessionid"`
 	WindowId  string             `json:"windowid"`
-	Name      string             `json:"name"`
 	CurRemote string             `json:"curremote"`
+	WinOpts   WindowOptsType     `json:"winopts"`
 	Lines     []*LineType        `json:"lines"`
 	Cmds      []*CmdType         `json:"cmds"`
 	History   []*HistoryItemType `json:"history"`
 	Remotes   []*RemoteInstance  `json:"remotes"`
-	WinOpts   WindowOptsType     `json:"winopts"`
+}
+
+type ScreenOptsType struct {
+	TabColor string `json:"tabcolor"`
+}
+
+func (opts *ScreenOptsType) Scan(val interface{}) error {
+	return quickScanJson(opts, val)
+}
+
+func (opts ScreenOptsType) Value() (driver.Value, error) {
+	return quickValueJson(opts)
 }
 
 type ScreenType struct {
-	SessionId string `json:"sessionid"`
-	ScreenId  string `json:"screenid"`
-	ScreenIdx int64  `json:"screenidx"`
-	Name      string `json:"name"`
+	SessionId      string              `json:"sessionid"`
+	ScreenId       string              `json:"screenid"`
+	ScreenIdx      int64               `json:"screenidx"`
+	Name           string              `json:"name"`
+	ActiveWindowId string              `json:"activewindowid"`
+	ScreenOpts     ScreenOptsType      `json:"screenopts"`
+	Windows        []*ScreenWindowType `json:"windows"`
 }
 
+const (
+	LayoutFull = "full"
+)
+
 type LayoutType struct {
-	ZIndex int64  `json:"zindex"`
-	Float  bool   `json:"float"`
-	Top    string `json:"top"`
-	Bottom string `json:"bottom"`
-	Left   string `json:"left"`
-	Right  string `json:"right"`
-	Width  string `json:"width"`
-	Height string `json:"height"`
+	Type   string `json:"type"`
+	Parent string `json:"parent,omitempty"`
+	ZIndex int64  `json:"zindex,omitempty"`
+	Float  bool   `json:"float,omitempty"`
+	Top    string `json:"top,omitempty"`
+	Bottom string `json:"bottom,omitempty"`
+	Left   string `json:"left,omitempty"`
+	Right  string `json:"right,omitempty"`
+	Width  string `json:"width,omitempty"`
+	Height string `json:"height,omitempty"`
 }
 
 func (l *LayoutType) Scan(val interface{}) error {
@@ -118,6 +141,7 @@ type ScreenWindowType struct {
 	SessionId string     `json:"sessionid"`
 	ScreenId  string     `json:"screenid"`
 	WindowId  string     `json:"windowid"`
+	Name      string     `json:"name"`
 	Layout    LayoutType `json:"layout"`
 }
 

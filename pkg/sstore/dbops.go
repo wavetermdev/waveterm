@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
@@ -101,6 +102,32 @@ func GetAllSessions(ctx context.Context) ([]*SessionType, error) {
 		for _, session := range rtn {
 			session.Windows = winMap[session.SessionId]
 		}
+		var screens []*ScreenType
+		query = `SELECT * FROM screen ORDER BY screenidx`
+		tx.SelectWrap(&screens, query)
+		screenMap := make(map[string][]*ScreenType)
+		for _, screen := range screens {
+			screenArr := screenMap[screen.SessionId]
+			screenArr = append(screenArr, screen)
+			screenMap[screen.SessionId] = screenArr
+		}
+		for _, session := range rtn {
+			session.Screens = screenMap[session.SessionId]
+		}
+		var sws []*ScreenWindowType
+		query = `SELECT * FROM screen_window`
+		tx.SelectWrap(&sws, query)
+		screenIdMap := make(map[string]*ScreenType)
+		for _, screen := range screens {
+			screenIdMap[screen.SessionId+screen.ScreenId] = screen
+		}
+		for _, sw := range sws {
+			screen := screenIdMap[sw.SessionId+sw.ScreenId]
+			if screen == nil {
+				continue
+			}
+			screen.Windows = append(screen.Windows, sw)
+		}
 		return nil
 	})
 	return rtn, err
@@ -177,43 +204,17 @@ func GetSessionByName(ctx context.Context, name string) (*SessionType, error) {
 func InsertSessionWithName(ctx context.Context, sessionName string) (string, error) {
 	newSessionId := uuid.New().String()
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		if sessionName == "" {
-			var names []string
-			query := `SELECT name FROM session`
-			tx.GetWrap(&names, query)
-			snum := len(names) + 1
-			for {
-				sessionName = fmt.Sprintf("session-%d", snum)
-				if !containsStr(names, sessionName) {
-					break
-				}
-				snum++
-			}
-		} else {
-			var dupSessionId string
-			query := `SELECT sessionid FROM session WHERE name = ?`
-			tx.GetWrap(&dupSessionId, query, sessionName)
-			if dupSessionId != "" {
-				return fmt.Errorf("cannot create session with duplicate name")
-			}
+		names := tx.SelectStrings(`SELECT name FROM session`)
+		sessionName = fmtUniqueName(sessionName, "session-%d", len(names)+1, names)
+		maxSessionIdx := tx.GetInt(`SELECT COALESCE(max(sessionidx), 0) FROM session`)
+		query := `INSERT INTO session (sessionid, name, activescreenid, sessionidx, notifynum) VALUES (?, ?, '', ?, ?)`
+		tx.ExecWrap(query, newSessionId, sessionName, maxSessionIdx+1, 0)
+		screenId, err := InsertScreen(tx.Context(), newSessionId, "")
+		if err != nil {
+			return err
 		}
-		var maxSessionIdx int64
-		query := `SELECT COALESCE(max(sessionidx), 0) FROM session`
-		tx.GetWrap(&maxSessionIdx, query)
-		newSession := &SessionType{
-			SessionId:  newSessionId,
-			Name:       sessionName,
-			SessionIdx: maxSessionIdx + 1,
-		}
-		query = `INSERT INTO session (sessionid, name, sessionidx, notifynum) VALUES (:sessionid, :name, :sessionidx, :notifynum)`
-		tx.NamedExecWrap(query, newSession)
-		window := &WindowType{
-			SessionId: newSessionId,
-			WindowId:  uuid.New().String(),
-			Name:      DefaultWindowName,
-			CurRemote: LocalRemoteName,
-		}
-		txInsertWindow(tx, window)
+		query = `UPDATE session SET activescreenid = ? WHERE sessionid = ?`
+		tx.ExecWrap(query, screenId, newSessionId)
 		return nil
 	})
 	return newSessionId, txErr
@@ -228,61 +229,57 @@ func containsStr(strs []string, testStr string) bool {
 	return false
 }
 
+func fmtUniqueName(name string, defaultFmtStr string, startIdx int, strs []string) string {
+	var fmtStr string
+	if name != "" {
+		if !containsStr(strs, name) {
+			return name
+		}
+		fmtStr = name + "-%d"
+		startIdx = 2
+	} else {
+		fmtStr = defaultFmtStr
+	}
+	if strings.Index(fmtStr, "%d") == -1 {
+		panic("invalid fmtStr: " + fmtStr)
+	}
+	for {
+		testName := fmt.Sprintf(fmtStr, startIdx)
+		if containsStr(strs, testName) {
+			startIdx++
+			continue
+		}
+		return testName
+	}
+}
+
 func InsertScreen(ctx context.Context, sessionId string, screenName string) (string, error) {
 	var newScreenId string
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT sessionid FROM session WHERE sessionid = ?`
+		if !tx.Exists(query, sessionId) {
+			return fmt.Errorf("cannot create screen, no session found")
+		}
+		newWindowId := txCreateWindow(tx, sessionId)
+		maxScreenIdx := tx.GetInt(`SELECT COALESCE(max(screenidx), 0) FROM screen WHERE sessionid = ?`, sessionId)
+		screenNames := tx.SelectStrings(`SELECT name FROM screen WHERE sessionid = ?`, sessionId)
+		screenName = fmtUniqueName(screenName, "s%d", maxScreenIdx+1, screenNames)
+		newScreenId = uuid.New().String()
+		query = `INSERT INTO screen (sessionid, screenid, name, activewindowid, screenidx, screenopts) VALUES (?, ?, ?, ?, ?, ?)`
+		tx.ExecWrap(query, sessionId, newScreenId, screenName, newWindowId, maxScreenIdx+1, ScreenOptsType{})
+		layout := LayoutType{Type: LayoutFull}
+		query = `INSERT INTO screen_window (sessionid, screenid, windowid, name, layout) VALUES (?, ?, ?, ?, ?)`
+		tx.ExecWrap(query, sessionId, newScreenId, newWindowId, DefaultScreenWindowName, layout)
 		return nil
 	})
 	return newScreenId, txErr
 }
 
-// if windowName == "", it will be generated
-// returns (windowid, err)
-func InsertWindow(ctx context.Context, sessionId string, windowName string) (string, error) {
-	var newWindowId string
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		var testSessionId string
-		query := `SELECT sesssionid FROM session WHERE sessionid = ?`
-		sessionExists := tx.GetWrap(&testSessionId, query, sessionId)
-		if !sessionExists {
-			return fmt.Errorf("cannot insert window, session does not exist")
-		}
-		if windowName == "" {
-			var names []string
-			query = `SELECT name FROM window WHERE sessionid = ?`
-			tx.GetWrap(&names, query, sessionId)
-			wnum := len(names) + 1
-			for {
-				windowName = fmt.Sprintf("w%d", wnum)
-				if !containsStr(names, windowName) {
-					break
-				}
-				wnum++
-			}
-		} else {
-			var testWindowId string
-			query = `SELECT windowid FROM window WHERE sessionid = ? AND name = ?`
-			windowExists := tx.GetWrap(&testWindowId, query, sessionId, windowName)
-			if windowExists {
-				return fmt.Errorf("cannot insert window, name already exists in session")
-			}
-		}
-		newWindowId = uuid.New().String()
-		window := &WindowType{
-			SessionId: sessionId,
-			WindowId:  newWindowId,
-			Name:      windowName,
-			CurRemote: LocalRemoteName,
-		}
-		txInsertWindow(tx, window)
-		return nil
-	})
-	return newWindowId, txErr
-}
-
-func txInsertWindow(tx *TxWrap, window *WindowType) {
-	query := `INSERT INTO window (sessionid, windowid, name, curremote, winopts) VALUES (:sessionid, :windowid, :name, :curremote, :winopts)`
-	tx.NamedExecWrap(query, window)
+func txCreateWindow(tx *TxWrap, sessionId string) string {
+	windowId := uuid.New().String()
+	query := `INSERT INTO window (sessionid, windowid, curremote, winopts) VALUES (?, ?, ?, ?)`
+	tx.ExecWrap(query, sessionId, windowId, LocalRemoteName, WindowOptsType{})
+	return windowId
 }
 
 func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {

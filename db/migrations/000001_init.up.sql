@@ -2,25 +2,25 @@ CREATE TABLE session (
     sessionid varchar(36) PRIMARY KEY,
     name varchar(50) NOT NULL,
     sessionidx int NOT NULL,
+    activescreenid varchar(36) NOT NULL,
     notifynum int NOT NULL
 );
-CREATE UNIQUE INDEX session_name_unique ON session(name);
 
 CREATE TABLE window (
     sessionid varchar(36) NOT NULL,
     windowid varchar(36) NOT NULL,
-    name varchar(50) NOT NULL,
     curremote varchar(50) NOT NULL,
     winopts json NOT NULL,
     PRIMARY KEY (sessionid, windowid)
 );
-CREATE UNIQUE INDEX window_name_unique ON window(sessionid, name);
 
 CREATE TABLE screen (
     sessionid varchar(36) NOT NULL,
     screenid varchar(36) NOT NULL,
     name varchar(50) NOT NULL,
+    activewindowid varchar(36) NOT NULL,
     screenidx int NOT NULL,
+    screenopts json NOT NULL,
     PRIMARY KEY (sessionid, screenid)
 );
 
@@ -28,6 +28,7 @@ CREATE TABLE screen_window (
     sessionid varchar(36) NOT NULL,
     screenid varchar(36) NOT NULL,
     windowid varchar(36) NOT NULL,
+    name varchar(50) NOT NULL,
     layout json NOT NULL,
     PRIMARY KEY (sessionid, screenid, windowid)
 );
