@@ -55,7 +55,7 @@ class Cmd {
             console.log("term-wrap already exists for", screenId, windowId);
             return;
         }
-        termWrap = new TermWrap(elem, this.sessionId, this.cmdId, 0, this.getTermOpts(), this.handleKey);
+        termWrap = new TermWrap(elem, this.sessionId, this.cmdId, 0, this.getTermOpts(), this.handleKey.bind(this));
         this.instances[screenId + "/" + windowId] = termWrap;
         return;
     }

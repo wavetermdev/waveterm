@@ -52,7 +52,7 @@ class TermWrap {
             this.atRowMax = true;
             this.usedRows = mobx.observable.box(termOpts.rows);
         }
-        this.terminal = new Terminal({rows: termOpts.rows, cols: termOpts.cols, theme: {foreground: "#d3d7cf"}});
+        this.terminal = new Terminal({rows: termOpts.rows, cols: termOpts.cols, fontSize: 14, theme: {foreground: "#d3d7cf"}});
         this.terminal.open(elem);
         if (keyHandler != null) {
             this.terminal.onKey(keyHandler);
@@ -64,6 +64,10 @@ class TermWrap {
             this.setFocus(false);
         });
         this.reloadTerminal(0);
+    }
+
+    getFontHeight() : number {
+        return this.terminal._core.viewport._currentRowHeight;
     }
 
     dispose() {

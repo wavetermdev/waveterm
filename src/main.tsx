@@ -179,7 +179,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType}, {}> 
             return <div className="line line-invalid">[cmd not found '{line.cmdid}']</div>;
         }
         let termLoaded = this.termLoaded.get();
-        let cellHeightPx = 17;
+        let cellHeightPx = 16;
         let usedRows = cmd.getUsedRows(sw.screenId, sw.windowId);
         let totalHeight = cellHeightPx * usedRows;
         let remote = model.getRemote(cmd.remoteId);
