@@ -251,7 +251,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, cmdId str
 		DonePk:      nil,
 		RunOut:      nil,
 	}
-	err = sstore.AppendToCmdPtyBlob(ctx, cmd.SessionId, cmd.CmdId, nil)
+	err = sstore.AppendToCmdPtyBlob(ctx, cmd.SessionId, cmd.CmdId, nil, sstore.PosAppend)
 	if err != nil {
 		return nil, err
 	}
@@ -358,7 +358,7 @@ func (runner *MShellProc) ProcessPackets() {
 			}
 			var ack *packet.DataAckPacketType
 			if len(realData) > 0 {
-				err = sstore.AppendToCmdPtyBlob(context.Background(), dataPk.CK.GetSessionId(), dataPk.CK.GetCmdId(), realData)
+				err = sstore.AppendToCmdPtyBlob(context.Background(), dataPk.CK.GetSessionId(), dataPk.CK.GetCmdId(), realData, sstore.PosAppend)
 				if err != nil {
 					ack = makeDataAckPacket(dataPk.CK, dataPk.FdNum, 0, err)
 				} else {

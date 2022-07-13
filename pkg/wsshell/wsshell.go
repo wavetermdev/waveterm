@@ -2,6 +2,7 @@ package wsshell
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -65,6 +66,9 @@ func (ws *WSShell) WritePing() error {
 }
 
 func (ws *WSShell) WriteJson(val interface{}) error {
+	if ws.IsClosed() {
+		return fmt.Errorf("cannot write packet, empty or closed wsshell")
+	}
 	barr, err := json.Marshal(val)
 	if err != nil {
 		return err

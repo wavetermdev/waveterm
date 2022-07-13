@@ -147,6 +147,7 @@ type ScreenWindowType struct {
 
 type HistoryItemType struct {
 	CmdStr string `json:"cmdstr"`
+	Remove bool   `json:"remove"`
 }
 
 type RemoteState struct {
@@ -194,6 +195,7 @@ type LineType struct {
 	LineType  string `json:"linetype"`
 	Text      string `json:"text,omitempty"`
 	CmdId     string `json:"cmdid,omitempty"`
+	Remove    bool   `json:"remove,omitempty"`
 }
 
 type SSHOpts struct {
@@ -239,6 +241,7 @@ type CmdType struct {
 	DonePk      *packet.CmdDonePacketType  `json:"donepk"`
 	UsedRows    int64                      `json:"usedrows"`
 	RunOut      []packet.PacketType        `json:"runout"`
+	Remove      bool                       `json:"remove"`
 }
 
 func (r *RemoteType) ToMap() map[string]interface{} {

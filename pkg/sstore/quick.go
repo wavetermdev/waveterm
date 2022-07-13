@@ -58,14 +58,14 @@ func quickSetJson(ptr interface{}, m map[string]interface{}, name string) {
 		return
 	}
 	if str == "" {
-		return
+		str = "{}"
 	}
 	json.Unmarshal([]byte(str), ptr)
 }
 
 func quickJson(v interface{}) string {
 	if v == nil {
-		return ""
+		return "{}"
 	}
 	barr, _ := json.Marshal(v)
 	return string(barr)
@@ -81,14 +81,14 @@ func quickScanJson(ptr interface{}, val interface{}) error {
 		barrVal = []byte(strVal)
 	}
 	if len(barrVal) == 0 {
-		return nil
+		barrVal = []byte("{}")
 	}
 	return json.Unmarshal(barrVal, ptr)
 }
 
 func quickValueJson(v interface{}) (driver.Value, error) {
 	if v == nil {
-		return "", nil
+		return "{}", nil
 	}
 	barr, err := json.Marshal(v)
 	if err != nil {

@@ -16,11 +16,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 
-	"github.com/scripthaus-dev/mshell/pkg/cmdtail"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/sh2-server/pkg/remote"
 	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
+	"github.com/scripthaus-dev/sh2-server/pkg/scws"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
 	"github.com/scripthaus-dev/sh2-server/pkg/wsshell"
 )
@@ -35,18 +35,16 @@ const MainServerAddr = "localhost:8080"
 const WSStateReconnectTime = 30 * time.Second
 const WSStatePacketChSize = 20
 
-const MaxInputDataSize = 1000
-
 var GlobalLock = &sync.Mutex{}
-var WSStateMap = make(map[string]*WSState) // clientid -> WsState
+var WSStateMap = make(map[string]*scws.WSState) // clientid -> WsState
 
-func setWSState(state *WSState) {
+func setWSState(state *scws.WSState) {
 	GlobalLock.Lock()
 	defer GlobalLock.Unlock()
 	WSStateMap[state.ClientId] = state
 }
 
-func getWSState(clientId string) *WSState {
+func getWSState(clientId string) *scws.WSState {
 	GlobalLock.Lock()
 	defer GlobalLock.Unlock()
 	return WSStateMap[clientId]
@@ -62,101 +60,8 @@ func removeWSStateAfterTimeout(clientId string, connectTime time.Time, waitDurat
 			return
 		}
 		delete(WSStateMap, clientId)
-		err := state.CloseTailer()
-		if err != nil {
-			fmt.Printf("[error] closing tailer on ws %v\n", err)
-		}
+		state.UnWatchScreen()
 	}()
-}
-
-type WSState struct {
-	Lock        *sync.Mutex
-	ClientId    string
-	ConnectTime time.Time
-	Shell       *wsshell.WSShell
-	Tailer      *cmdtail.Tailer
-	PacketCh    chan packet.PacketType
-}
-
-func MakeWSState(clientId string) (*WSState, error) {
-	var err error
-	rtn := &WSState{}
-	rtn.Lock = &sync.Mutex{}
-	rtn.ClientId = clientId
-	rtn.ConnectTime = time.Now()
-	rtn.PacketCh = make(chan packet.PacketType, WSStatePacketChSize)
-	chSender := packet.MakeChannelPacketSender(rtn.PacketCh)
-	gen := scbase.ScFileNameGenerator{ScHome: scbase.GetScHomeDir()}
-	rtn.Tailer, err = cmdtail.MakeTailer(chSender, gen)
-	if err != nil {
-		return nil, err
-	}
-	go func() {
-		defer close(rtn.PacketCh)
-		rtn.Tailer.Run()
-	}()
-	go rtn.runTailerToWS()
-	return rtn, nil
-}
-
-func (ws *WSState) CloseTailer() error {
-	return ws.Tailer.Close()
-}
-
-func (ws *WSState) getShell() *wsshell.WSShell {
-	ws.Lock.Lock()
-	defer ws.Lock.Unlock()
-	return ws.Shell
-}
-
-func (ws *WSState) runTailerToWS() {
-	for pk := range ws.PacketCh {
-		if pk.GetType() == "cmddata" {
-			dataPacket := pk.(*packet.CmdDataPacketType)
-			err := ws.writePacket(dataPacket)
-			if err != nil {
-				fmt.Printf("[error] writing packet to ws: %v\n", err)
-			}
-			continue
-		}
-		fmt.Printf("tailer-to-ws, bad packet %v\n", pk.GetType())
-	}
-}
-
-func (ws *WSState) writePacket(pk packet.PacketType) error {
-	shell := ws.getShell()
-	if shell == nil || shell.IsClosed() {
-		return fmt.Errorf("cannot write packet, empty or closed wsshell")
-	}
-	err := shell.WriteJson(pk)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (ws *WSState) getConnectTime() time.Time {
-	ws.Lock.Lock()
-	defer ws.Lock.Unlock()
-	return ws.ConnectTime
-}
-
-func (ws *WSState) updateConnectTime() {
-	ws.Lock.Lock()
-	defer ws.Lock.Unlock()
-	ws.ConnectTime = time.Now()
-}
-
-func (ws *WSState) replaceExistingShell(shell *wsshell.WSShell) {
-	ws.Lock.Lock()
-	defer ws.Lock.Unlock()
-	if ws.Shell == nil {
-		ws.Shell = shell
-		return
-	}
-	ws.Shell.Conn.Close()
-	ws.Shell = shell
-	return
 }
 
 func HandleWs(w http.ResponseWriter, r *http.Request) {
@@ -173,57 +78,20 @@ func HandleWs(w http.ResponseWriter, r *http.Request) {
 	}
 	state := getWSState(clientId)
 	if state == nil {
-		state, err = MakeWSState(clientId)
-		if err != nil {
-			fmt.Printf("cannot make wsstate: %v\n", err)
-			close(shell.WriteChan)
-			return
-		}
-		state.replaceExistingShell(shell)
+		state = scws.MakeWSState(clientId)
+		state.ReplaceShell(shell)
 		setWSState(state)
 	} else {
-		state.updateConnectTime()
-		state.replaceExistingShell(shell)
+		state.UpdateConnectTime()
+		state.ReplaceShell(shell)
 	}
-	stateConnectTime := state.getConnectTime()
+	stateConnectTime := state.GetConnectTime()
 	defer func() {
 		removeWSStateAfterTimeout(clientId, stateConnectTime, WSStateReconnectTime)
 	}()
 	shell.WriteJson(map[string]interface{}{"type": "hello"}) // let client know we accepted this connection, ignore error
-	fmt.Printf("WebSocket opened %s %s\n", shell.RemoteAddr, state.ClientId)
-	for msgBytes := range shell.ReadChan {
-		pk, err := packet.ParseJsonPacket(msgBytes)
-		if err != nil {
-			fmt.Printf("error unmarshalling ws message: %v\n", err)
-			continue
-		}
-		if pk.GetType() == "getcmd" {
-			getPk := pk.(*packet.GetCmdPacketType)
-			done, err := state.Tailer.AddWatch(getPk)
-			if err != nil {
-				// TODO: send responseerror
-				respPk := packet.MakeErrorResponsePacket(getPk.ReqId, err)
-				fmt.Printf("[error] adding watch to tailer: %v\n", err)
-				fmt.Printf("%v\n", respPk)
-			}
-			if done {
-				respPk := packet.MakeResponsePacket(getPk.ReqId, true)
-				fmt.Printf("%v\n", respPk)
-				// TODO: send response
-			}
-			continue
-		}
-		if pk.GetType() == "input" {
-			go func() {
-				err = sendCmdInput(pk.(*packet.InputPacketType))
-				if err != nil {
-					fmt.Printf("[error] sending command input: %v\n", err)
-				}
-			}()
-			continue
-		}
-		fmt.Printf("got ws bad message: %v\n", pk.GetType())
-	}
+	fmt.Printf("WebSocket opened %s %s\n", state.ClientId, shell.RemoteAddr)
+	state.RunWSRead()
 }
 
 // todo: sync multiple writes to the same fifoName into a single go-routine and do liveness checking on fifo
@@ -246,28 +114,6 @@ func writeToFifo(fifoName string, data []byte) error {
 		return err
 	}
 	return nil
-}
-
-func sendCmdInput(pk *packet.InputPacketType) error {
-	err := pk.CK.Validate("input packet")
-	if err != nil {
-		return err
-	}
-	if pk.RemoteId == "" {
-		return fmt.Errorf("input must set remoteid")
-	}
-	if len(pk.InputData64) == 0 && pk.SigNum == 0 {
-		return fmt.Errorf("empty input packet")
-	}
-	inputLen := packet.B64DecodedLen(pk.InputData64)
-	if inputLen > MaxInputDataSize {
-		return fmt.Errorf("input data size too large, len=%d (max=%d)", inputLen, MaxInputDataSize)
-	}
-	msh := remote.GetRemoteById(pk.RemoteId)
-	if msh == nil {
-		return fmt.Errorf("cannot connect to remote")
-	}
-	return msh.SendInput(pk)
 }
 
 // params: sessionid
