@@ -519,7 +519,7 @@ class MainSideBar extends React.Component<{}, {}> {
 
     render() {
         let model = GlobalModel;
-        let curSessionId = model.curSessionId.get();
+        let activeSessionId = model.activeSessionId.get();
         let session : Session = null;
         return (
             <div className={cn("main-sidebar", {"collapsed": this.collapsed.get()})}>
@@ -539,7 +539,7 @@ class MainSideBar extends React.Component<{}, {}> {
                         </If>
                         <If condition={model.sessionListLoaded.get()}>
                             <For each="session" of={model.sessionList}>
-                                <li key={session.sessionId}><a className={cn({"is-active": curSessionId == session.sessionId})} onClick={() => this.handleSessionClick(session.sessionId)}>#{session.name.get()}</a></li>
+                                <li key={session.sessionId}><a className={cn({"is-active": activeSessionId == session.sessionId})} onClick={() => this.handleSessionClick(session.sessionId)}>#{session.name.get()}</a></li>
                             </For>
                             <li className="new-session"><a className="new-session"><i className="fa fa-plus"/> New Session</a></li>
                         </If>

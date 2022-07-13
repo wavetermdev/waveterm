@@ -108,7 +108,13 @@ type FeCmdPacketType = {
     userid : string,
     cmdstr : string,
     remotestate : CmdRemoteStateType,
-}
+};
+
+type WatchScreenPacketType = {
+    type : string,
+    sessionid : string,
+    screenid : string,
+};
 
 type TermOptsType = {
     rows : number,
@@ -147,4 +153,12 @@ type CmdDataType = {
     usedrows : number,
 };
 
-export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDonePacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType};
+type PtyDataUpdateType = {
+    sessionid : string,
+    cmdid : string,
+    ptypos : number,
+    ptydata64 : string,
+    ptydatalen : number,
+};
+
+export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDonePacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType, PtyDataUpdateType};

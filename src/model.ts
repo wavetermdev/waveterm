@@ -1,10 +1,10 @@
 import * as mobx from "mobx";
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
-import {handleJsonFetchResponse} from "./util";
+import {handleJsonFetchResponse, base64ToArray} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType} from "./types";
+import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType} from "./types";
 import {WSControl} from "./ws";
 
 var GlobalUser = "sawka";
@@ -66,6 +66,14 @@ class Cmd {
         if (termWrap != null) {
             termWrap.dispose();
             delete this.instances[key];
+        }
+    }
+
+    updatePtyData(ptyMsg : PtyDataUpdateType) {
+        for (let key in this.instances) {
+            let tw = this.instances[key];
+            let data = base64ToArray(ptyMsg.ptydata64);
+            tw.updatePtyData(ptyMsg.ptypos, data);
         }
     }
 
@@ -183,6 +191,16 @@ class Screen {
         return session.getWindowById(this.activeWindowId.get());
     }
 
+    updatePtyData(ptyMsg : PtyDataUpdateType) {
+        for (let i=0; i<this.windows.length; i++) {
+            let sw = this.windows[i];
+            let win = sw.getWindow();
+            if (win != null) {
+                win.updatePtyData(ptyMsg);
+            }
+        }
+    }
+
     getActiveSW() : ScreenWindow {
         return this.getSW(this.activeWindowId.get());
     }
@@ -197,6 +215,23 @@ class Screen {
             }
         }
         return null;
+    }
+
+    loadWindows(force : boolean) {
+        let loadedMap : Record<string, boolean> = {};
+        let activeWindowId = this.activeWindowId.get();
+        if (activeWindowId != null) {
+            GlobalModel.loadWindow(this.sessionId, activeWindowId, false);
+            loadedMap[activeWindowId] = true;
+        }
+        for (let i=0; i<this.windows.length; i++) {
+            let win = this.windows[i];
+            if (loadedMap[win.windowId]) {
+                continue;
+            }
+            loadedMap[win.windowId] = true;
+            GlobalModel.loadWindow(this.sessionId, win.windowId, false);
+        }
     }
 }
 
@@ -245,6 +280,14 @@ class Window {
 
     getHistoryItem(hnum : number) : any {
         return null
+    }
+
+    updatePtyData(ptyMsg : PtyDataUpdateType) {
+        let cmd = this.cmds[ptyMsg.cmdid];
+        if (cmd == null) {
+            return;
+        }
+        cmd.updatePtyData(ptyMsg);
     }
 
     updateWindow(win : WindowDataType, isActive : boolean) {
@@ -430,7 +473,7 @@ class Session {
 
 class Model {
     clientId : string;
-    curSessionId : OV<string> = mobx.observable.box(null);
+    activeSessionId : OV<string> = mobx.observable.box(null);
     sessionListLoaded : OV<boolean> = mobx.observable.box(false);
     sessionList : OArr<Session> = mobx.observable.array([], {name: "SessionList", deep: false});
     ws : WSControl;
@@ -460,11 +503,20 @@ class Model {
     }
 
     onWSMessage(message : any) {
+        if ("ptydata64" in message) {
+            let ptyMsg : PtyDataUpdateType = message;
+            let activeScreen = this.getActiveScreen();
+            if (!activeScreen || activeScreen.sessionId != ptyMsg.sessionid) {
+                return;
+            }
+            activeScreen.updatePtyData(ptyMsg);
+            return;
+        }
         console.log("ws-message", message);
     }
 
     getActiveSession() : Session {
-        return this.getSessionById(this.curSessionId.get());
+        return this.getSessionById(this.activeSessionId.get());
     }
 
     getSessionById(sessionId : string) : Session {
@@ -541,7 +593,7 @@ class Model {
         if (session == null) {
             return;
         }
-        let isActive = (win.sessionid == this.curSessionId.get());
+        let isActive = (win.sessionid == this.activeSessionId.get());
         session.updateWindow(win, isActive);
     }
 
@@ -562,10 +614,11 @@ class Model {
                 }
                 this.sessionList.replace(slist);
                 this.sessionListLoaded.set(true)
-                this.curSessionId.set(defaultSessionId);
-                let win = this.getActiveWindow();
-                if (win != null) {
-                    this.loadWindow(win.sessionId, win.windowId);
+                this.activeSessionId.set(defaultSessionId);
+                let screen = this.getActiveScreen();
+                if (screen != null) {
+                    this.ws.pushMessage({type: "watchscreen", sessionid: screen.sessionId, screenid: screen.screenId});
+                    screen.loadWindows(false);
                 }
             })();
         }).catch((err) => {
@@ -573,7 +626,7 @@ class Model {
         });
     }
 
-    loadWindow(sessionId : string, windowId : string) {
+    loadWindow(sessionId : string, windowId : string, force : boolean) {
         let usp = new URLSearchParams({sessionid: sessionId, windowid: windowId});
         let url = new URL(sprintf("http://localhost:8080/api/get-window?") + usp.toString());
         fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {

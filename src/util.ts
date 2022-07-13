@@ -33,4 +33,13 @@ function handleJsonFetchResponse(url : URL, resp : any) : Promise<any> {
     return rtnData;
 }
 
-export {handleJsonFetchResponse};
+function base64ToArray(b64 : string) : Uint8Array {
+    let rawStr = atob(b64);
+    let rtnArr = new Uint8Array(new ArrayBuffer(rawStr.length));
+    for (let i=0; i<rawStr.length; i++) {
+        rtnArr[i] = rawStr.charCodeAt(i);
+    }
+    return rtnArr;
+}
+
+export {handleJsonFetchResponse, base64ToArray};
