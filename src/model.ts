@@ -4,7 +4,7 @@ import {boundMethod} from "autobind-decorator";
 import {handleJsonFetchResponse} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType} from "./types";
+import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType} from "./types";
 import {WSControl} from "./ws";
 
 var GlobalUser = "sawka";
@@ -24,6 +24,14 @@ type ElectronApi = {
 
 function getApi() : ElectronApi {
     return (window as any).api;
+}
+
+// clean empty string
+function ces(s : string) {
+    if (s == "") {
+        return null;
+    }
+    return s;
 }
 
 class Cmd {
@@ -199,23 +207,90 @@ class Cmd {
     }
 };
 
+class Screen {
+    sessionId : string;
+    screenId : string;
+    opts : OV<ScreenOptsType>;
+    name : OV<string>;
+    activeWindowId : OV<string>;
+    windows : OArr<ScreenWindow>;
+
+    constructor(sdata : ScreenDataType) {
+        this.sessionId = sdata.sessionid;
+        this.screenId = sdata.screenid;
+        this.name = mobx.observable.box(sdata.name);
+        this.opts = mobx.observable.box(sdata.screenopts);
+        this.activeWindowId = mobx.observable.box(ces(sdata.activewindowid));
+        let swArr : ScreenWindow[] = [];
+        let wins = sdata.windows || [];
+        for (let i=0; i<wins.length; i++) {
+            let sw = new ScreenWindow(wins[i]);
+            swArr.push(sw);
+        }
+        this.windows = mobx.observable.array(swArr, {deep: false})
+    }
+
+    getActiveWindow() : Window {
+        let session = GlobalModel.getSessionById(this.sessionId);
+        if (session == null) {
+            return null;
+        }
+        return session.getWindowById(this.activeWindowId.get());
+    }
+
+    getActiveSW() : ScreenWindow {
+        return this.getSW(this.activeWindowId.get());
+    }
+
+    getSW(windowId : string) : ScreenWindow {
+        if (windowId == null) {
+            return null;
+        }
+        for (let i=0; i<this.windows.length; i++) {
+            if (this.windows[i].windowId == windowId) {
+                return this.windows[i];
+            }
+        }
+        return null;
+    }
+}
+
+class ScreenWindow {
+    sessionId : string;
+    screenId : string;
+    windowId : string;
+    name : OV<string>;
+    layout : OV<LayoutType>;
+    shouldFollow : OV<boolean> = mobx.observable.box(true);
+
+    constructor(swdata : ScreenWindowType) {
+        this.sessionId = swdata.sessionid;
+        this.screenId = swdata.screenid;
+        this.windowId = swdata.windowid;
+        this.name = mobx.observable.box(swdata.name);
+        this.layout = mobx.observable.box(swdata.layout);
+    }
+
+    getWindow() : Window {
+        return GlobalModel.getWindowById(this.sessionId, this.windowId);
+    }
+}
+
+
 class Window {
     sessionId : string;
     windowId : string;
-    name : OV<string>;
     curRemote : OV<string>;
     loaded : OV<boolean> = mobx.observable.box(false);
-    lines : OArr<LineType> = mobx.observable.array([]);
+    lines : OArr<LineType> = mobx.observable.array([], {deep: false});
     linesLoaded : OV<boolean> = mobx.observable.box(false);
     history : any[] = [];
     cmds : Record<string, Cmd> = {};
-    shouldFollow : OV<boolean> = mobx.observable.box(true);
     remoteInstances : OArr<RemoteInstanceType> = mobx.observable.array([]);
 
     constructor(wdata : WindowDataType) {
         this.sessionId = wdata.sessionid;
         this.windowId = wdata.windowid;
-        this.name = mobx.observable.box(wdata.name);
         this.curRemote = mobx.observable.box(wdata.curremote);
     }
 
@@ -229,9 +304,6 @@ class Window {
 
     updateWindow(win : WindowDataType, isActive : boolean) {
         mobx.action(() => {
-            if (!isBlank(win.name)) {
-                this.name.set(win.name)
-            }
             if (!isBlank(win.curremote)) {
                 this.curRemote.set(win.curremote);
             }
@@ -277,7 +349,7 @@ class Window {
         let remote = GlobalModel.getRemoteByName(rname);
         if (remote != null) {
             return {riid: "", sessionid: this.sessionId, windowid: this.windowId, remoteid: remote.remoteid,
-                    name: rname, state: remote.defaultstate, sessionscope: false, version: 0};
+                    name: rname, state: remote.defaultstate, sessionscope: false};
         }
         return null;
     }
@@ -314,7 +386,8 @@ class Window {
 class Session {
     sessionId : string;
     name : OV<string>;
-    curWindowId : OV<string>;
+    activeScreenId : OV<string>;
+    screens : OArr<Screen>;
     windows : OArr<Window>;
     notifyNum : OV<number> = mobx.observable.box(0);
     remoteInstances : OArr<RemoteInstanceType> = mobx.observable.array([]);
@@ -328,8 +401,15 @@ class Session {
             let win = new Window(winData[i]);
             wins.push(win);
         }
-        this.windows = mobx.observable.array(wins);
-        this.curWindowId = mobx.observable.box((wins.length == 0 ? null : wins[0].windowId));
+        this.windows = mobx.observable.array(wins, {deep: false});
+        let screenData = sdata.screens || [];
+        let screens : Screen[] = [];
+        for (let i=0; i<screenData.length; i++) {
+            let screen = new Screen(screenData[i]);
+            screens.push(screen);
+        }
+        this.screens = mobx.observable.array(screens, {deep: false});
+        this.activeScreenId = mobx.observable.box(ces(sdata.activescreenid));
     }
 
     updateWindow(win : WindowDataType, isActive : boolean) {
@@ -364,8 +444,20 @@ class Session {
         return null;
     }
 
-    getActiveWindow() : Window {
-        return this.getWindowById(this.curWindowId.get());
+    getActiveScreen() : Screen {
+        return this.getScreenById(this.activeScreenId.get());
+    }
+
+    getScreenById(screenId : string) : Screen {
+        if (screenId == null) {
+            return null;
+        }
+        for (let i=0; i<this.screens.length; i++) {
+            if (this.screens[i].screenId == screenId) {
+                return this.screens[i];
+            }
+        }
+        return null;
     }
 
     getRemoteInstance(rname : string) : RemoteInstanceType {
@@ -378,7 +470,7 @@ class Session {
         let remote = GlobalModel.getRemoteByName(rname);
         if (remote != null) {
             return {riid: "", sessionid: this.sessionId, windowid: null, remoteid: remote.remoteid,
-                    name: rname, state: remote.defaultstate, sessionscope: true, version: 0};
+                    name: rname, state: remote.defaultstate, sessionscope: true};
         }
         return null;
     }
@@ -395,7 +487,7 @@ class Model {
     clientId : string;
     curSessionId : OV<string> = mobx.observable.box(null);
     sessionListLoaded : OV<boolean> = mobx.observable.box(false);
-    sessionList : OArr<Session> = mobx.observable.array([], {name: "SessionList"});
+    sessionList : OArr<Session> = mobx.observable.array([], {name: "SessionList", deep: false});
     ws : WSControl;
     remotes : OArr<RemoteType> = mobx.observable.array([], {deep: false});
     remotesLoaded : OV<boolean> = mobx.observable.box(false);
@@ -442,12 +534,28 @@ class Model {
         return null;
     }
 
+    getWindowById(sessionId : string, windowId : string) : Window {
+        let session = this.getSessionById(sessionId);
+        if (session == null) {
+            return null;
+        }
+        return session.getWindowById(windowId);
+    }
+
     getActiveWindow() : Window {
+        let screen = this.getActiveScreen();
+        if (screen == null) {
+            return null;
+        }
+        return screen.getActiveWindow();
+    }
+
+    getActiveScreen() : Screen {
         let session = this.getActiveSession();
         if (session == null) {
             return null;
         }
-        return session.getActiveWindow();
+        return session.getActiveScreen();
     }
 
     addLineCmd(line : LineType, cmd : CmdDataType, interactive : boolean) {
@@ -592,6 +700,6 @@ if ((window as any).GlobalModal == null) {
 }
 GlobalModel = (window as any).GlobalModel;
 
-export {Model, Session, Window, GlobalModel, Cmd};
+export {Model, Session, Window, GlobalModel, Cmd, Screen, ScreenWindow};
 
 

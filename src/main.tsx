@@ -9,7 +9,7 @@ import cn from "classnames"
 import {TermWrap} from "./term";
 import type {SessionDataType, LineType, CmdDataType, RemoteType} from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
-import {GlobalModel, Session, Cmd, Window} from "./model";
+import {GlobalModel, Session, Cmd, Window, Screen, ScreenWindow} from "./model";
 
 dayjs.extend(localizedFormat)
 
@@ -340,7 +340,7 @@ class CmdInput extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
-class WindowView extends React.Component<{windowId : string}, {}> {
+class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
     mutObs : any;
 
     scrollToBottom() {
@@ -352,11 +352,11 @@ class WindowView extends React.Component<{windowId : string}, {}> {
     
     @boundMethod
     scrollHandler(event : any) {
+        let {sw} = this.props;
         let target = event.target;
         let atBottom = (target.scrollTop + 30 > (target.scrollHeight - target.offsetHeight));
-        let win = this.getWindow();
-        if (win.shouldFollow.get() != atBottom) {
-            mobx.action(() => win.shouldFollow.set(atBottom));
+        if (sw && sw.shouldFollow.get() != atBottom) {
+            mobx.action(() => sw.shouldFollow.set(atBottom));
         }
         // console.log("scroll-handler>", atBottom, target.scrollTop, target.scrollHeight);
     }
@@ -376,42 +376,37 @@ class WindowView extends React.Component<{windowId : string}, {}> {
     }
 
     handleDomMutation(mutations, mutObs) {
-        let win = this.getWindow();
-        if (win && win.shouldFollow.get()) {
+        let {sw} = this.props;
+        if (sw && sw.shouldFollow.get()) {
             setTimeout(() => this.scrollToBottom(), 0);
         }
     }
 
     getWindow() : Window {
-        let {windowId} = this.props;
-        if (windowId == null) {
-            return null;
-        }
-        let model = GlobalModel;
-        let session = model.getActiveSession();
-        if (session == null) {
-            return null;
-        }
-        let win = session.getWindowById(windowId);
-        return win;
+        let {sw} = this.props;
+        return GlobalModel.getWindowById(sw.sessionId, sw.windowId);
     }
 
     getLinesId() {
-        let {windowId} = this.props;
-        return "window-lines-" + windowId;
+        let {sw} = this.props;
+        return "window-lines-" + sw.windowId;
     }
 
     @boundMethod
     handleTermResize(e : any) {
-        let win = this.getWindow();
-        if (win && win.shouldFollow.get()) {
+        let {sw} = this.props;
+        if (sw && sw.shouldFollow.get()) {
             setTimeout(() => this.scrollToBottom(), 0);
         }
     }
 
+    getWindowViewStyle() : any {
+        return {width: "100%", height: "100%"};
+    }
+
     renderError(message : string) {
         return (
-            <div className="window-view">
+            <div className="window-view" style={this.getWindowViewStyle()}>
                 <div className="lines" onScroll={this.scrollHandler} id={this.getLinesId()}>
                     {message}
                 </div>
@@ -420,22 +415,59 @@ class WindowView extends React.Component<{windowId : string}, {}> {
     }
     
     render() {
-        let win = this.getWindow();
-        if (win == null) {
-            return this.renderError("(no window)");
+        let {sw} = this.props;
+        if (sw == null) {
+            return this.renderError("(no screen window)");
         }
+        let win = this.getWindow();
         if (!win.linesLoaded.get()) {
             return this.renderError("(loading)");
         }
         let idx = 0;
         let line : LineType = null;
         return (
-            <div className="window-view">
+            <div className="window-view" style={this.getWindowViewStyle()}>
                 <div className="lines" onScroll={this.scrollHandler} id={this.getLinesId()}>
                     <For each="line" of={win.lines} index="idx">
                         <Line key={line.lineid} line={line}/>
                     </For>
                 </div>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
+class ScreenView extends React.Component<{screen : Screen}, {}> {
+    render() {
+        let {screen} = this.props;
+        if (screen == null) {
+            return (
+                <div className="screen-view">
+                    (no screen)
+                </div>
+            );
+        }
+        let sw = screen.getActiveSW();
+        return (
+            <div className="screen-view">
+                <ScreenWindowView sw={sw}/>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
+class ScreenTabs extends React.Component<{}, {}> {
+    render() {
+        let model = GlobalModel;
+        let session = model.getActiveSession();
+        if (session == null) {
+            return null;
+        }
+        return (
+            <div className="screen-tabs">
+                tabs!
             </div>
         );
     }
@@ -449,10 +481,11 @@ class SessionView extends React.Component<{}, {}> {
         if (session == null) {
             return <div className="session-view">(no active session)</div>;
         }
-        let curWindowId = session.curWindowId.get();
+        let activeScreen = session.getActiveScreen();
         return (
             <div className="session-view">
-                <WindowView windowId={curWindowId}/>
+                <ScreenView screen={activeScreen}/>
+                <ScreenTabs/>
                 <CmdInput/>
             </div>
         );

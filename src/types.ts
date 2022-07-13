@@ -3,7 +3,10 @@ import * as mobx from "mobx";
 type SessionDataType = {
     sessionid : string,
     name : string,
+    activescreenid : string,
     windows : WindowDataType[],
+    screens : ScreenDataType[],
+    screenwindows : ScreenWindowType[],
     cmds : CmdDataType[],
     remove : boolean,
 };
@@ -17,6 +20,41 @@ type LineType = {
     linetype : string,
     text : string,
     cmdid : string,
+};
+
+type ScreenOptsType = {
+    tabcolor? : string,
+}
+
+type ScreenDataType = {
+    sessionid : string,
+    screenid : string,
+    screenidx : number,
+    activewindowid : string,
+    name : string,
+    windows : ScreenWindowType[],
+    screenopts : ScreenOptsType,
+};
+
+type LayoutType = {
+    type : string,
+    parent? : string,
+    zindex? : number,
+    float? : boolean,
+    top? : string,
+    bottom? : string,
+    left? : string,
+    right? : string,
+    width? : string,
+    height? : string,
+};
+
+type ScreenWindowType = {
+    sessionid : string,
+    screenid : string,
+    windowid : string,
+    name : string,
+    layout : LayoutType,
 };
 
 type RemoteType = {
@@ -40,19 +78,16 @@ type RemoteInstanceType = {
     remoteid : string,
     sessionscope : boolean,
     state : RemoteStateType,
-    version : number,
 }
 
 type WindowDataType = {
     sessionid : string,
     windowid : string,
-    name : string,
     curremote : string,
     lines : LineType[],
     history : HistoryItem[],
     cmds : CmdDataType[],
     remotes : RemoteInstanceType[],
-    version : number,
     remove : boolean,
 };
 
@@ -78,7 +113,7 @@ type FeCmdPacketType = {
 type TermOptsType = {
     rows : number,
     cols : number,
-    flexrows : boolean,
+    flexrows? : boolean,
 };
 
 type CmdStartPacketType = {
@@ -112,4 +147,4 @@ type CmdDataType = {
     usedrows : number,
 };
 
-export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDonePacketType, CmdDataType};
+export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDonePacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType};
