@@ -51,7 +51,7 @@ function getLineDateStr(ts : number) : string {
 }
 
 @mobxReact.observer
-class LineText extends React.Component<{line : LineType}, {}> {
+class LineText extends React.Component<{sw : ScreenWindow, line : LineType}, {}> {
     render() {
         let line = this.props.line;
         let formattedTime = getLineDateStr(line.ts);
@@ -75,27 +75,30 @@ class LineText extends React.Component<{line : LineType}, {}> {
 }
 
 @mobxReact.observer
-class LineCmd extends React.Component<{line : LineType}, {}> {
+class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType}, {}> {
+    termLoaded : mobx.IObservableValue<boolean> = mobx.observable.box(false);
+    
     constructor(props) {
         super(props);
     }
     
     componentDidMount() {
-        let {line} = this.props;
+        let {sw, line} = this.props;
         let model = GlobalModel;
         let cmd = model.getCmd(line);
         if (cmd != null) {
             let termElem = document.getElementById("term-" + getLineId(line));
-            cmd.connectElem(termElem);
+            cmd.connectElem(termElem, sw.screenId, sw.windowId);
+            mobx.action(() => this.termLoaded.set(true))();
         }
     }
 
     componentWillUnmount() {
-        let {line} = this.props;
+        let {sw, line} = this.props;
         let model = GlobalModel;
         let cmd = model.getCmd(line);
         if (cmd != null) {
-            cmd.disconnectElem();
+            cmd.disconnectElem(sw.screenId, sw.windowId);
         }
     }
 
@@ -106,10 +109,14 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
 
     @boundMethod
     doRefresh() {
+        let {sw, line} = this.props;
         let model = GlobalModel;
-        let cmd = model.getCmd(this.props.line);
+        let cmd = model.getCmd(line);
         if (cmd != null) {
-            cmd.reloadTerminal(500);
+            let termWrap = cmd.getTermWrap(sw.screenId, sw.windowId);
+            if (termWrap != null) {
+                termWrap.reloadTerminal(500);
+            }
         }
     }
 
@@ -163,7 +170,7 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
     }
     
     render() {
-        let {line} = this.props;
+        let {sw, line} = this.props;
         let model = GlobalModel;
         let lineid = line.lineid.toString();
         let formattedTime = getLineDateStr(line.ts);
@@ -171,13 +178,16 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
         if (cmd == null) {
             return <div className="line line-invalid">[cmd not found '{line.cmdid}']</div>;
         }
+        let termLoaded = this.termLoaded.get();
         let cellHeightPx = 17;
-        let totalHeight = cellHeightPx * cmd.usedRows.get();
+        let usedRows = cmd.getUsedRows(sw.screenId, sw.windowId);
+        let totalHeight = cellHeightPx * usedRows;
         let remote = model.getRemote(cmd.remoteId);
         let status = cmd.getStatus();
         let running = (status == "running");
         let detached = (status == "detached");
         let termOpts = cmd.getTermOpts();
+        let isFocused = cmd.getIsFocused(sw.screenId, sw.windowId);
         return (
             <div className="line line-cmd" id={"line-" + getLineId(line)}>
                 <div className={cn("avatar",{"num4": lineid.length == 4}, {"num5": lineid.length >= 5}, {"running": running}, {"detached": detached})}>
@@ -195,7 +205,7 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
                         </div>
                         {this.renderCmdText(cmd, remote)}
                     </div>
-                    <div className={cn("terminal-wrapper", {"focus": cmd.isFocused.get()})} style={{overflowY: "hidden"}}>
+                    <div className={cn("terminal-wrapper", {"focus": isFocused})} style={{overflowY: "hidden"}}>
                         <div className="terminal" id={"term-" + getLineId(line)} data-cmdid={line.cmdid} style={{height: totalHeight}}></div>
                     </div>
                 </div>
@@ -208,7 +218,7 @@ class LineCmd extends React.Component<{line : LineType}, {}> {
 }
 
 @mobxReact.observer
-class Line extends React.Component<{line : LineType}, {}> {
+class Line extends React.Component<{sw : ScreenWindow, line : LineType}, {}> {
     render() {
         let line = this.props.line;
         if (line.linetype == "text") {
@@ -429,7 +439,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
             <div className="window-view" style={this.getWindowViewStyle()}>
                 <div className="lines" onScroll={this.scrollHandler} id={this.getLinesId()}>
                     <For each="line" of={win.lines} index="idx">
-                        <Line key={line.lineid} line={line}/>
+                        <Line key={line.lineid} line={line} sw={sw}/>
                     </For>
                 </div>
             </div>

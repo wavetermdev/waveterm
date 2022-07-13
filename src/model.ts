@@ -36,72 +36,61 @@ function ces(s : string) {
 
 class Cmd {
     sessionId : string;
-    windowId : string;
     remoteId : string;
     cmdId : string;
     data : OV<CmdDataType>;
-
-    termWrap : TermWrap;
-    ptyPos : number = 0;
-    atRowMax : boolean = false;
-    usedRowsUpdated : () => void = null;
     watching : boolean = false;
-    isFocused : OV<boolean> = mobx.observable.box(false, {name: "focus"});
-    usedRows : OV<number>;
-    connectedElem : Element;
+    instances : Record<string, TermWrap> = {};
 
-    constructor(cmd : CmdDataType, windowId : string) {
+    constructor(cmd : CmdDataType) {
         this.sessionId = cmd.sessionid;
-        this.windowId = windowId;
         this.cmdId = cmd.cmdid;
         this.remoteId = cmd.remoteid;
         this.data = mobx.observable.box(cmd, {deep: false});
-        if (cmd.termopts.flexrows) {
-            this.atRowMax = false;
-            this.usedRows = mobx.observable.box(2, {name: "usedRows"});
-        }
-        else {
-            this.atRowMax = true;
-            this.usedRows = mobx.observable.box(cmd.termopts.rows, {name: "usedRows"});
-        }
     }
 
-    disconnectElem() {
-        this.connectedElem = null;
-    }
-
-    connectElem(elem : Element) {
-        if (this.connectedElem != null) {
-            console.log("WARNING element already connected to cmd", this.cmdId, this.connectedElem);
-        }
-        this.connectedElem = elem;
-        if (this.termWrap == null) {
-            this.termWrap = new TermWrap(this.getTermOpts());
-            this.reloadTerminal(0);
-        }
-        this.termWrap.connectToElem(elem, {
-            setFocus: this.setFocus.bind(this),
-            handleKey: this.handleKey.bind(this),
-        });
-    }
-
-    reloadTerminal(delayMs : number) {
-        if (this.termWrap == null) {
+    connectElem(elem : Element, screenId : string, windowId : string) {
+        let termWrap = this.getTermWrap(screenId, windowId);
+        if (termWrap != null) {
+            console.log("term-wrap already exists for", screenId, windowId);
             return;
         }
-        this.termWrap.terminal.clear();
-        let url = sprintf("http://localhost:8080/api/ptyout?sessionid=%s&cmdid=%s", this.sessionId, this.cmdId);
-        fetch(url).then((resp) => {
-            if (!resp.ok) {
-                throw new Error(sprintf("Bad fetch response for /api/ptyout: %d %s", resp.status, resp.statusText));
-            }
-            return resp.arrayBuffer()
-        }).then((buf) => {
-            setTimeout(() => {
-                this.ptyPos = 0;
-                this.updatePtyData(0, new Uint8Array(buf), buf.byteLength);
-            }, delayMs);
-        });
+        termWrap = new TermWrap(elem, this.sessionId, this.cmdId, 0, this.getTermOpts(), this.handleKey);
+        this.instances[screenId + "/" + windowId] = termWrap;
+        return;
+    }
+
+    disconnectElem(screenId : string, windowId : string) {
+        let key = screenId + "/" + windowId;
+        let termWrap = this.instances[key];
+        if (termWrap != null) {
+            termWrap.dispose();
+            delete this.instances[key];
+        }
+    }
+
+    getTermWrap(screenId : string, windowId : string) : TermWrap {
+        return this.instances[screenId + "/" + windowId];
+    }
+
+    getUsedRows(screenId : string, windowId : string) : number {
+        let termOpts = this.getTermOpts();
+        if (!termOpts.flexrows) {
+            return termOpts.rows;
+        }
+        let termWrap = this.getTermWrap(screenId, windowId);
+        if (termWrap == null) {
+            return 2;
+        }
+        return termWrap.usedRows.get();
+    }
+
+    getIsFocused(screenId : string, windowId : string) : boolean {
+        let termWrap = this.getTermWrap(screenId, windowId);
+        if (termWrap == null) {
+            return false;
+        }
+        return termWrap.isFocused.get();
     }
 
     setCmd(cmd : CmdDataType) {
@@ -126,34 +115,6 @@ class Cmd {
         return this.data.get().remotestate;
     }
 
-    updateUsedRows() {
-        if (this.atRowMax) {
-            return;
-        }
-        let tur = this.termWrap.getTermUsedRows();
-        if (tur >= this.termWrap.terminal.rows) {
-            this.atRowMax = true;
-        }
-        if (tur > this.usedRows.get()) {
-            mobx.action(() => {
-                let data = this.data.get();
-                let oldUsedRows = this.usedRows.get();
-                this.usedRows.set(tur);
-                if (this.connectedElem) {
-                    let resizeEvent = new CustomEvent("termresize", {
-                        bubbles: true,
-                        detail: {
-                            cmdId: this.cmdId,
-                            oldUsedRows: oldUsedRows,
-                            newUsedRows: tur,
-                        },
-                    });
-                    this.connectedElem.dispatchEvent(resizeEvent);
-                }
-            })();
-        }
-    }
-
     getSingleLineCmdText() {
         let cmdText = this.data.get().cmdstr;
         if (cmdText == null) {
@@ -173,22 +134,6 @@ class Cmd {
     isRunning() : boolean {
         let data = this.data.get();
         return data.status == "running" || data.status == "detached";
-    }
-
-    updatePtyData(pos : number, data : string | Uint8Array, datalen : number) {
-        if (pos != this.ptyPos) {
-            throw new Error(sprintf("invalid pty-update, data-pos[%d] does not match term-pos[%d]", pos, this.ptyPos));
-        }
-        this.ptyPos += datalen;
-        this.termWrap.terminal.write(data, () => {
-            this.updateUsedRows();
-        });
-    }
-
-    setFocus(focus : boolean) {
-        mobx.action(() => {
-            this.isFocused.set(focus);
-        })();
     }
 
     handleKey(event : any) {
@@ -315,7 +260,7 @@ class Window {
             this.history = win.history || [];
             let cmds = win.cmds || [];
             for (let i=0; i<cmds.length; i++) {
-                this.cmds[cmds[i].cmdid] = new Cmd(cmds[i], this.windowId);
+                this.cmds[cmds[i].cmdid] = new Cmd(cmds[i]);
             }
         })();
     }
@@ -360,7 +305,7 @@ class Window {
         }
         mobx.action(() => {
             if (cmd != null) {
-                this.cmds[cmd.cmdid] = new Cmd(cmd, this.windowId);
+                this.cmds[cmd.cmdid] = new Cmd(cmd);
             }
             let lines = this.lines;
             let lineIdx = 0;
