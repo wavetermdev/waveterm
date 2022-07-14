@@ -18,20 +18,6 @@ function getLineId(line : LineType) : string {
     return sprintf("%s-%s-%s", line.sessionid, line.windowid, line.lineid);
 }
 
-@mobxReact.observer
-class LineMeta extends React.Component<{line : LineType}, {}> {
-    render() {
-        let line = this.props.line;
-        return (
-            <div className="meta">
-                <div className="lineid">{line.lineid}</div>
-                <div className="user">{line.userid}</div>
-                <div className="ts">{dayjs(line.ts).format("hh:mm:ss a")}</div>
-            </div>
-        );
-    }
-}
-
 function getLineDateStr(ts : number) : string {
     let lineDate = new Date(ts);
     let nowDate = new Date();
@@ -76,7 +62,7 @@ class LineText extends React.Component<{sw : ScreenWindow, line : LineType}, {}>
 }
 
 @mobxReact.observer
-class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType}, {}> {
+class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width: number}, {}> {
     termLoaded : mobx.IObservableValue<boolean> = mobx.observable.box(false);
     
     constructor(props) {
@@ -89,7 +75,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType}, {}> 
         let cmd = model.getCmd(line);
         if (cmd != null) {
             let termElem = document.getElementById("term-" + getLineId(line));
-            cmd.connectElem(termElem, sw.screenId, sw.windowId);
+            cmd.connectElem(termElem, sw.screenId, sw.windowId, this.props.width);
             mobx.action(() => this.termLoaded.set(true))();
         }
     }
@@ -181,6 +167,8 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType}, {}> 
         }
         let termLoaded = this.termLoaded.get();
         let cellHeightPx = 16;
+        let cellWidthPx = 8;
+        let termWidth = Math.max(Math.trunc((this.props.width - 20)/cellWidthPx), 10);
         let usedRows = cmd.getUsedRows(sw.screenId, sw.windowId);
         let totalHeight = cellHeightPx * usedRows;
         let remote = model.getRemote(cmd.remoteId);
@@ -190,25 +178,28 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType}, {}> 
         let termOpts = cmd.getTermOpts();
         let isFocused = cmd.getIsFocused(sw.screenId, sw.windowId);
         return (
-            <div className="line line-cmd" id={"line-" + getLineId(line)}>
-                <div className={cn("avatar",{"num4": lineid.length == 4}, {"num5": lineid.length >= 5}, {"running": running}, {"detached": detached})} onClick={this.doRefresh}>
-                    {lineid}
-                </div>
-                <div className="line-content">
-                    <div className="meta">
-                        <div className="user" style={{display: "none"}}>{line.userid}</div>
-                        <div className="ts">{formattedTime}</div>
+            <div className={cn("line", "line-cmd", {"focus": isFocused})} id={"line-" + getLineId(line)}>
+                <div className="line-header">
+                    <div className={cn("avatar",{"num4": lineid.length == 4}, {"num5": lineid.length >= 5}, {"running": running}, {"detached": detached})} onClick={this.doRefresh}>
+                        {lineid}
                     </div>
-                    <div className="meta">
-                        <div className="metapart-mono" style={{display: "none"}}>
-                            {line.cmdid}
-                            ({termOpts.rows}x{termOpts.cols})
+                    <div className="meta-wrap">
+                        <div className="meta">
+                            <div className="user" style={{display: "none"}}>{line.userid}</div>
+                            <div className="ts">{formattedTime}</div>
+                            width={this.props.width}, cellwidth={termWidth}
                         </div>
-                        {this.renderCmdText(cmd, remote)}
+                        <div className="meta">
+                            <div className="metapart-mono" style={{display: "none"}}>
+                                {line.cmdid}
+                                ({termOpts.rows}x{termOpts.cols})
+                            </div>
+                            {this.renderCmdText(cmd, remote)}
+                        </div>
                     </div>
-                    <div className={cn("terminal-wrapper", {"focus": isFocused})} style={{overflowY: "hidden"}}>
-                        <div className="terminal" id={"term-" + getLineId(line)} data-cmdid={line.cmdid} style={{height: totalHeight}}></div>
-                    </div>
+                </div>
+                <div className={cn("terminal-wrapper", {"focus": isFocused})} style={{overflowY: "hidden"}}>
+                    <div className="terminal" id={"term-" + getLineId(line)} data-cmdid={line.cmdid} style={{height: totalHeight}}></div>
                 </div>
             </div>
         );
@@ -216,7 +207,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType}, {}> 
 }
 
 @mobxReact.observer
-class Line extends React.Component<{sw : ScreenWindow, line : LineType}, {}> {
+class Line extends React.Component<{sw : ScreenWindow, line : LineType, width : number}, {}> {
     render() {
         let line = this.props.line;
         if (line.linetype == "text") {
@@ -350,10 +341,12 @@ class CmdInput extends React.Component<{}, {}> {
 @mobxReact.observer
 class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
     mutObs : any;
+    rszObs : any
     randomId : string;
+    width : mobx.IObservableValue<number> = mobx.observable.box(0);
 
     scrollToBottom(reason : string) {
-        let elem = document.getElementById(this.getLinesId());
+        let elem = document.getElementById(this.getLinesDOMId());
         if (elem == null) {
             return;
         }
@@ -374,23 +367,45 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
     }
 
     componentDidMount() {
-        let elem = document.getElementById(this.getLinesId());
-        if (elem == null) {
-            return;
+        let elem = document.getElementById(this.getLinesDOMId());
+        if (elem != null) {
+            this.mutObs = new MutationObserver(this.handleDomMutation.bind(this));
+            this.mutObs.observe(elem, {childList: true});
+            elem.addEventListener("termresize", this.handleTermResize);
+            let {sw} = this.props;
+            if (sw && sw.shouldFollow.get()) {
+                setTimeout(() => this.scrollToBottom("mount"), 0);
+            }
         }
-        this.mutObs = new MutationObserver(this.handleDomMutation.bind(this));
-        this.mutObs.observe(elem, {childList: true});
-        elem.addEventListener("termresize", this.handleTermResize);
-        let {sw} = this.props;
-        if (sw && sw.shouldFollow.get()) {
-            setTimeout(() => this.scrollToBottom("mount"), 0);
+        let wvElem = document.getElementById(this.getWindowViewDOMId());
+        if (wvElem != null) {
+            this.rszObs = new ResizeObserver(this.handleResize.bind(this));
+            this.rszObs.observe(wvElem);
         }
+    }
+
+    updateWidth(width : number) {
+        mobx.action(() => {
+            this.width.set(width);
+        })();
     }
 
     componentWillUnmount() {
         if (this.mutObs) {
             this.mutObs.disconnect();
         }
+        if (this.rszObs) {
+            this.rszObs.disconnect();
+        }
+    }
+
+    handleResize(entries : any) {
+        if (entries.length == 0) {
+            return;
+        }
+        let entry = entries[0];
+        let width = entry.target.offsetWidth;
+        this.updateWidth(width);
     }
 
     handleDomMutation(mutations, mutObs) {
@@ -405,15 +420,8 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         return GlobalModel.getWindowById(sw.sessionId, sw.windowId);
     }
 
-    getLinesId() {
-        let {sw} = this.props;
-        if (sw == null) {
-            if (!this.randomId) {
-                this.randomId = uuidv4();
-            }
-            return "window-lines-" + this.randomId;
-        }
-        return "window-lines-" + sw.windowId;
+    getLinesDOMId() {
+        return "window-lines-" + this.getWindowId();
     }
 
     @boundMethod
@@ -425,19 +433,35 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
     }
 
     getWindowViewStyle() : any {
-        return {width: "100%", height: "100%"};
+        // return {width: "100%", height: "100%"};
+        return {position: "absolute", width: "100%", height: "100%", overflowX: "hidden"};
+    }
+
+    getWindowId() : string {
+        let {sw} = this.props;
+        if (sw == null) {
+            if (!this.randomId) {
+                this.randomId = uuidv4();
+            }
+            return this.randomId;
+        }
+        return sw.windowId;
+    }
+
+    getWindowViewDOMId() {
+        return sprintf("window-view-%s", this.getWindowId());
     }
 
     renderError(message : string) {
         let {sw} = this.props;
         return (
-            <div className="window-view" style={this.getWindowViewStyle()}>
+            <div className="window-view" style={this.getWindowViewStyle()} id={this.getWindowViewDOMId()}>
                 <div key="window-tag" className="window-tag">
                     <If condition={sw != null}>
                         <span>{sw.name.get()}{sw.shouldFollow.get() ? "*" : ""}</span>
                     </If>
                 </div>
-                <div key="lines" className="lines" id={this.getLinesId()}></div>
+                <div key="lines" className="lines" id={this.getLinesDOMId()}></div>
                 <div key="window-empty" className="window-empty">
                     <div>{message}</div>
                 </div>
@@ -457,6 +481,9 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         if (!win.linesLoaded.get()) {
             return this.renderError("(loading)");
         }
+        if (this.width.get() == 0) {
+            return this.renderError("");
+        }
         let idx = 0;
         let line : LineType = null;
         let screen = GlobalModel.getScreenById(sw.sessionId, sw.screenId);
@@ -466,13 +493,13 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
             linesStyle.display = "none";
         }
         return (
-            <div className="window-view" style={this.getWindowViewStyle()}>
+            <div className="window-view" style={this.getWindowViewStyle()} id={this.getWindowViewDOMId()}>
                 <div key="window-tag" className="window-tag">
                     <span>{sw.name.get()}{sw.shouldFollow.get() ? "*" : ""}</span>
                 </div>
-                <div key="lines" className="lines" onScroll={this.scrollHandler} id={this.getLinesId()} style={linesStyle}>
+                <div key="lines" className="lines" onScroll={this.scrollHandler} id={this.getLinesDOMId()} style={linesStyle}>
                     <For each="line" of={win.lines} index="idx">
-                        <Line key={line.lineid} line={line} sw={sw}/>
+                        <Line key={line.lineid} line={line} sw={sw} width={this.width.get()}/>
                     </For>
                 </div>
                 <If condition={win.lines.length == 0}>

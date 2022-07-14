@@ -49,13 +49,13 @@ class Cmd {
         this.data = mobx.observable.box(cmd, {deep: false});
     }
 
-    connectElem(elem : Element, screenId : string, windowId : string) {
+    connectElem(elem : Element, screenId : string, windowId : string, width : number) {
         let termWrap = this.getTermWrap(screenId, windowId);
         if (termWrap != null) {
             console.log("term-wrap already exists for", screenId, windowId);
             return;
         }
-        termWrap = new TermWrap(elem, this.sessionId, this.cmdId, 0, this.getTermOpts(), this.handleKey.bind(this));
+        termWrap = new TermWrap(elem, this.sessionId, this.cmdId, 0, this.getTermOpts(), {height: 0, width: width}, this.handleKey.bind(this));
         this.instances[screenId + "/" + windowId] = termWrap;
         return;
     }

@@ -24,6 +24,14 @@ type DataUpdate = {
     pos : number,
 }
 
+type WindowSize = {
+    height : number,
+    width: number,
+};
+
+const DefaultCellWidth = 8;
+const DefaultCellHeight = 16;
+
 // cmd-instance
 class TermWrap {
     terminal : any;
@@ -39,7 +47,7 @@ class TermWrap {
     dataUpdates : DataUpdate[] = [];
     loadError : mobx.IObservableValue<boolean> = mobx.observable.box(false);
 
-    constructor(elem : Element, sessionId : string, cmdId : string, usedRows : number, termOpts : TermOptsType, keyHandler : (event : any) => void) {
+    constructor(elem : Element, sessionId : string, cmdId : string, usedRows : number, termOpts : TermOptsType, winSize : WindowSize, keyHandler : (event : any) => void) {
         this.sessionId = sessionId;
         this.cmdId = cmdId;
         this.connectedElem = elem;
@@ -52,7 +60,12 @@ class TermWrap {
             this.atRowMax = true;
             this.usedRows = mobx.observable.box(termOpts.rows);
         }
-        this.terminal = new Terminal({rows: termOpts.rows, cols: termOpts.cols, fontSize: 14, theme: {foreground: "#d3d7cf"}});
+        let cols = termOpts.cols;
+        let maxCols = Math.trunc((winSize.width - 25) / DefaultCellWidth);
+        if (maxCols > cols) {
+            cols = maxCols;
+        }
+        this.terminal = new Terminal({rows: termOpts.rows, cols: maxCols, fontSize: 14, theme: {foreground: "#d3d7cf"}});
         this.terminal.open(elem);
         if (keyHandler != null) {
             this.terminal.onKey(keyHandler);

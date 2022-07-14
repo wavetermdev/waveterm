@@ -17,6 +17,7 @@ html, body, #main {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
+            min-width: 300px;
         }
 
         .screen-tabs {
@@ -25,6 +26,7 @@ html, body, #main {
             flex-direction: row;
             border-top: 1px solid #eee;
             border-right: 1px solid #eee;
+            overflow: scroll;
 
             .screen-tab {
                 height: 30px;
@@ -71,6 +73,7 @@ html, body, #main {
         .screen-view {
             flex-grow: 1;
             border-right: 1px solid #ccc;
+            position: relative;
         }
 
         .window-view {
@@ -143,6 +146,7 @@ html, body, #main {
     color: #ddd;
     position: relative;
     background-color: darken(rgb(0, 177, 10), 30%);
+    flex-shrink: 0;
 
     .menu {
         padding-top: 10px;
@@ -274,9 +278,57 @@ html, body, #main {
 
 .line.line-text {
     flex-direction: row;
+
+    .line-content {
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+
+        .text {
+            font-size: 1rem;
+            color: #ddd;
+        }
+    }
 }
 
 .line.line-cmd {
+    flex-direction: column;
+    
+    .avatar {
+        cursor: pointer;
+    }
+
+    .line-header {
+        display: flex;
+        flex-direction: row;
+        
+        .meta-wrap {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+    }
+
+    &.focus {
+        background-color: #000;
+    }
+
+    .terminal-wrapper {
+        background-color: #000;
+        padding: 2px 10px 5px 4px;
+        margin-left: -4px;
+        margin-right: 8px;
+        margin-top: 4px;
+        align-self: flex-start;
+
+        &.focus {
+            /* box-shadow: -8px 0 12px -5px #aaa; */
+            /* box-shadow: 0 0 0 4px hsl(0, 0%, 20%);*/
+            /* filter:drop-shadow(3px 3px 10px #555); */
+            box-shadow: 0 0 4px 4px rgba(255, 255, 255, 0.3);
+        }
+    }
 }
 
 .line {
@@ -285,6 +337,8 @@ html, body, #main {
     display: flex;
     line-height: 1.25;
     border-top: 1px solid #777;
+    overflow: hidden;
+    flex-shrink: 0;
 
     &:first-child {
         margin: 0px 5px 5px 5px;
@@ -302,7 +356,7 @@ html, body, #main {
         font-weight: bold;
         color: white;
         font-size: 1rem;
-        margin-right: 15px;
+        margin-right: 10px;
         border-radius: 5px;
 
         &.num4 {
@@ -323,67 +377,40 @@ html, body, #main {
         }
     }
 
-    &.line-cmd .avatar {
-        cursor: pointer;
-    }
-
-    .line-content {
+    .meta {
         display: flex;
-        flex-direction: column;
-        flex-grow: 1;
-
-        .meta {
-            display: flex;
-            flex-direction: row;
-            font-size: 1rem;
-            margin-top: -4px;
-
-            .user {
-                color: lighten(#729fcf, 10%);
-                font-weight: bold;
-                margin-top: 1px;
-                margin-right: 10px;
-            }
-
-            .ts {
-                color: #ddd;
-                margin-top: 5px;
-                font-size: 12px;
-            }
-
-            .metapart-mono {
-                color: #ddd;
-                margin-left: 8px;
-                font-size: 14px;
-                margin-top: 4px;
-                font-family: 'JetBrains Mono', monospace;
-                font-weight: 400;
-            }
-
-            .cmdtext {
-                color: #fff;
-                font-size: 16px;
-                font-weight: bold;
-                overflow: hidden;
-                margin-left: 0;
-            }
+        flex-direction: row;
+        font-size: 1rem;
+        margin-top: -4px;
+        
+        .user {
+            color: lighten(#729fcf, 10%);
+            font-weight: bold;
+            margin-top: 1px;
+            margin-right: 10px;
         }
-
-        .text {
-            font-size: 1rem;
+        
+        .ts {
             color: #ddd;
+            margin-top: 5px;
+            font-size: 12px;
         }
-    }
-
-    .terminal-wrapper {
-        background-color: #000;
-        padding: 5px 15px 5px 5px;
-        margin-right: 8px;
-        margin-top: 2px;
-        align-self: flex-start;
-
-        &.focus {
-            box-shadow: -8px 0 12px -5px #aaa;
+        
+        .metapart-mono {
+            color: #ddd;
+            margin-left: 8px;
+            font-size: 14px;
+            margin-top: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 400;
+        }
+        
+        .cmdtext {
+            color: #fff;
+            font-size: 16px;
+            font-weight: bold;
+            overflow: hidden;
+            margin-left: 0;
         }
     }
 }
@@ -399,22 +426,6 @@ body .xterm .xterm-viewport {
 
 .xterm-viewport::-webkit-scrollbar-thumb {
     background: white;
-}
-
-.line.line-cmd {
-    .refresh-button {
-        cursor: pointer;
-        border-color: #777;
-        color: #777;
-        margin-right: 10px;
-
-        &:hover {
-            border-color: #fff;
-            .icon i {
-                color: #fff;
-            }
-        }
-    }
 }
 
 .line.line-invalid {
