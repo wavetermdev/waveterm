@@ -217,6 +217,17 @@ class Screen {
         return null;
     }
 
+    deactivate() {
+        for (let i=0; i<this.windows.length; i++) {
+            let sw = this.windows[i];
+            sw.reset();
+            let win = sw.getWindow();
+            if (win != null) {
+                win.deactivate();
+            }
+        }
+    }
+
     loadWindows(force : boolean) {
         let loadedMap : Record<string, boolean> = {};
         let activeWindowId = this.activeWindowId.get();
@@ -249,6 +260,12 @@ class ScreenWindow {
         this.windowId = swdata.windowid;
         this.name = mobx.observable.box(swdata.name);
         this.layout = mobx.observable.box(swdata.layout);
+    }
+
+    reset() {
+        mobx.action(() => {
+            this.shouldFollow.set(true);
+        })();
     }
 
     getWindow() : Window {
@@ -305,6 +322,15 @@ class Window {
             for (let i=0; i<cmds.length; i++) {
                 this.cmds[cmds[i].cmdid] = new Cmd(cmds[i]);
             }
+        })();
+    }
+
+    deactivate() {
+        mobx.action(() => {
+            this.linesLoaded.set(false);
+            this.lines.replace([]);
+            this.history = [];
+            this.cmds = {};
         })();
     }
 
@@ -436,6 +462,10 @@ class Session {
         return this.getScreenById(this.activeScreenId.get());
     }
 
+    setActiveScreenId(screenId : string) {
+        this.activeScreenId.set(screenId);
+    }
+
     getScreenById(screenId : string) : Screen {
         if (screenId == null) {
             return null;
@@ -539,6 +569,14 @@ class Model {
         return session.getWindowById(windowId);
     }
 
+    getScreenById(sessionId : string, screenId : string) : Screen {
+        let session = this.getSessionById(sessionId);
+        if (session == null) {
+            return null;
+        }
+        return session.getScreenById(screenId);
+    }
+
     getActiveWindow() : Window {
         let screen = this.getActiveScreen();
         if (screen == null) {
@@ -603,26 +641,62 @@ class Model {
             mobx.action(() => {
                 let sdatalist : SessionDataType[] = data.data || [];
                 let slist : Session[] = [];
-                let defaultSessionId = null;
+                let activeSessionId = null;
+                let activeScreenId = null;
                 for (let i=0; i<sdatalist.length; i++) {
                     let sdata = sdatalist[i];
-                    if (sdata.name == "default") {
-                        defaultSessionId = sdata.sessionid;
-                    }
                     let s = new Session(sdata);
+                    if (s.name.get() == "default") {
+                        activeSessionId = s.sessionId;
+                        activeScreenId = s.activeScreenId.get();
+                    }
                     slist.push(s);
                 }
                 this.sessionList.replace(slist);
                 this.sessionListLoaded.set(true)
-                this.activeSessionId.set(defaultSessionId);
-                let screen = this.getActiveScreen();
-                if (screen != null) {
-                    this.ws.pushMessage({type: "watchscreen", sessionid: screen.sessionId, screenid: screen.screenId});
-                    screen.loadWindows(false);
+                if (activeScreenId != null) {
+                    this.activateScreen(activeSessionId, activeScreenId);
                 }
             })();
         }).catch((err) => {
             this.errorHandler("getting session list", err);
+        });
+    }
+
+    activateScreen(sessionId : string, screenId : string) {
+        let oldActiveScreen = this.getActiveScreen();
+        if (oldActiveScreen && oldActiveScreen.sessionId == sessionId && oldActiveScreen.screenId == screenId) {
+            return;
+        }
+        mobx.action(() => {
+            if (oldActiveScreen != null) {
+                oldActiveScreen.deactivate();
+            }
+            this.activeSessionId.set(sessionId);
+            this.getActiveSession().activeScreenId.set(screenId);
+        })();
+        let curScreen = this.getActiveScreen();
+        if (curScreen == null) {
+            return;
+        }
+        this.ws.pushMessage({type: "watchscreen", sessionid: curScreen.sessionId, screenid: curScreen.screenId});
+        curScreen.loadWindows(false);
+    }
+
+    createNewScreen(session : Session, name : string, activate : boolean) {
+        let params : Record<string, string> = {sessionid: session.sessionId};
+        if (name != null) {
+            params.name = name;
+        }
+        if (activate) {
+            params.activate = "1";
+        }
+        let usp = new URLSearchParams(params);
+        let url = new URL("http://localhost:8080/api/create-screen?" + usp.toString());
+        fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
+            console.log("created screen", data.data);
+        }).catch((err) => {
+            this.errorHandler(sprintf("creating screen session=%s", session.sessionId), err);
         });
     }
 

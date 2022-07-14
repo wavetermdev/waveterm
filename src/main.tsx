@@ -3,6 +3,7 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
+import {v4 as uuidv4} from "uuid";
 import dayjs from 'dayjs'
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import cn from "classnames"
@@ -190,7 +191,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType}, {}> 
         let isFocused = cmd.getIsFocused(sw.screenId, sw.windowId);
         return (
             <div className="line line-cmd" id={"line-" + getLineId(line)}>
-                <div className={cn("avatar",{"num4": lineid.length == 4}, {"num5": lineid.length >= 5}, {"running": running}, {"detached": detached})}>
+                <div className={cn("avatar",{"num4": lineid.length == 4}, {"num5": lineid.length >= 5}, {"running": running}, {"detached": detached})} onClick={this.doRefresh}>
                     {lineid}
                 </div>
                 <div className="line-content">
@@ -208,9 +209,6 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType}, {}> 
                     <div className={cn("terminal-wrapper", {"focus": isFocused})} style={{overflowY: "hidden"}}>
                         <div className="terminal" id={"term-" + getLineId(line)} data-cmdid={line.cmdid} style={{height: totalHeight}}></div>
                     </div>
-                </div>
-                <div onClick={this.doRefresh} className="button refresh-button has-background-black is-small">
-                    <span className="icon"><i className="fa fa-refresh"/></span>
                 </div>
             </div>
         );
@@ -352,9 +350,13 @@ class CmdInput extends React.Component<{}, {}> {
 @mobxReact.observer
 class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
     mutObs : any;
+    randomId : string;
 
-    scrollToBottom() {
+    scrollToBottom(reason : string) {
         let elem = document.getElementById(this.getLinesId());
+        if (elem == null) {
+            return;
+        }
         let oldST = elem.scrollTop;
         elem.scrollTop = elem.scrollHeight;
         // console.log("scroll-elem", oldST, elem.scrollHeight, elem.scrollTop, elem.scrollLeft, elem);
@@ -378,17 +380,23 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         }
         this.mutObs = new MutationObserver(this.handleDomMutation.bind(this));
         this.mutObs.observe(elem, {childList: true});
-        elem.addEventListener("termresize", this.handleTermResize)
+        elem.addEventListener("termresize", this.handleTermResize);
+        let {sw} = this.props;
+        if (sw && sw.shouldFollow.get()) {
+            setTimeout(() => this.scrollToBottom("mount"), 0);
+        }
     }
 
     componentWillUnmount() {
-        this.mutObs.disconnect();
+        if (this.mutObs) {
+            this.mutObs.disconnect();
+        }
     }
 
     handleDomMutation(mutations, mutObs) {
         let {sw} = this.props;
         if (sw && sw.shouldFollow.get()) {
-            setTimeout(() => this.scrollToBottom(), 0);
+            setTimeout(() => this.scrollToBottom("mut"), 0);
         }
     }
 
@@ -399,6 +407,12 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
 
     getLinesId() {
         let {sw} = this.props;
+        if (sw == null) {
+            if (!this.randomId) {
+                this.randomId = uuidv4();
+            }
+            return "window-lines-" + this.randomId;
+        }
         return "window-lines-" + sw.windowId;
     }
 
@@ -406,7 +420,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
     handleTermResize(e : any) {
         let {sw} = this.props;
         if (sw && sw.shouldFollow.get()) {
-            setTimeout(() => this.scrollToBottom(), 0);
+            setTimeout(() => this.scrollToBottom("termresize"), 0);
         }
     }
 
@@ -415,10 +429,17 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
     }
 
     renderError(message : string) {
+        let {sw} = this.props;
         return (
             <div className="window-view" style={this.getWindowViewStyle()}>
-                <div className="lines" onScroll={this.scrollHandler} id={this.getLinesId()}>
-                    {message}
+                <div key="window-tag" className="window-tag">
+                    <If condition={sw != null}>
+                        <span>{sw.name.get()}{sw.shouldFollow.get() ? "*" : ""}</span>
+                    </If>
+                </div>
+                <div key="lines" className="lines" id={this.getLinesId()}></div>
+                <div key="window-empty" className="window-empty">
+                    <div>{message}</div>
                 </div>
             </div>
         );
@@ -430,18 +451,35 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
             return this.renderError("(no screen window)");
         }
         let win = this.getWindow();
+        if (win == null) {
+            return this.renderError("(no window)");
+        }
         if (!win.linesLoaded.get()) {
             return this.renderError("(loading)");
         }
         let idx = 0;
         let line : LineType = null;
+        let screen = GlobalModel.getScreenById(sw.sessionId, sw.screenId);
+        let session = GlobalModel.getSessionById(sw.sessionId);
+        let linesStyle : any = {};
+        if (win.lines.length == 0) {
+            linesStyle.display = "none";
+        }
         return (
             <div className="window-view" style={this.getWindowViewStyle()}>
-                <div className="lines" onScroll={this.scrollHandler} id={this.getLinesId()}>
+                <div key="window-tag" className="window-tag">
+                    <span>{sw.name.get()}{sw.shouldFollow.get() ? "*" : ""}</span>
+                </div>
+                <div key="lines" className="lines" onScroll={this.scrollHandler} id={this.getLinesId()} style={linesStyle}>
                     <For each="line" of={win.lines} index="idx">
                         <Line key={line.lineid} line={line} sw={sw}/>
                     </For>
                 </div>
+                <If condition={win.lines.length == 0}>
+                    <div key="window-empty" className="window-empty">
+                        <div><code>[session="{session.name.get()}" screen="{screen.name.get()}" window="{sw.name.get()}"]</code></div>
+                    </div>
+                </If>
             </div>
         );
     }
@@ -461,23 +499,52 @@ class ScreenView extends React.Component<{screen : Screen}, {}> {
         let sw = screen.getActiveSW();
         return (
             <div className="screen-view">
-                <ScreenWindowView sw={sw}/>
+                <ScreenWindowView key={sw.windowId} sw={sw}/>
             </div>
         );
     }
 }
 
 @mobxReact.observer
-class ScreenTabs extends React.Component<{}, {}> {
+class ScreenTabs extends React.Component<{session : Session}, {}> {
+    @boundMethod
+    handleNewScreen() {
+        let {session} = this.props;
+        GlobalModel.createNewScreen(session, null, true);
+    }
+
+    @boundMethod
+    handleSwitchScreen(screenId : string) {
+        let {session} = this.props;
+        if (session == null) {
+            return;
+        }
+        if (session.activeScreenId.get() == screenId) {
+            return;
+        }
+        let screen = session.getScreenById(screenId);
+        if (screen == null) {
+            return;
+        }
+        GlobalModel.activateScreen(screen.sessionId, screen.screenId);
+    }
+    
     render() {
-        let model = GlobalModel;
-        let session = model.getActiveSession();
+        let {session} = this.props;
         if (session == null) {
             return null;
         }
+        let screen : Screen = null;
         return (
             <div className="screen-tabs">
-                tabs!
+                <For each="screen" of={session.screens}>
+                    <div key={screen.screenId} className={cn("screen-tab", {"is-active": session.activeScreenId.get() == screen.screenId})} onClick={() => this.handleSwitchScreen(screen.screenId)}>
+                        {screen.name.get()}
+                    </div>
+                </For>
+                <div key="new-screen" className="screen-tab new-screen" onClick={this.handleNewScreen}>
+                    +
+                </div>
             </div>
         );
     }
@@ -495,7 +562,7 @@ class SessionView extends React.Component<{}, {}> {
         return (
             <div className="session-view">
                 <ScreenView screen={activeScreen}/>
-                <ScreenTabs/>
+                <ScreenTabs session={session}/>
                 <CmdInput/>
             </div>
         );

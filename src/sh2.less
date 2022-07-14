@@ -20,17 +20,91 @@ html, body, #main {
         }
 
         .screen-tabs {
-            height: 50px;
-            background-color: red;
+            height: 30px;
+            display: flex;
+            flex-direction: row;
+            border-top: 1px solid #eee;
+            border-right: 1px solid #eee;
+
+            .screen-tab {
+                height: 30px;
+                min-width: 80px;
+                width: 150px;
+                flex-shrink: 1;
+                background-color: darken(#4e9a06, 15%);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                font-size: 12px;
+                font-weight: bold;
+                color: black;
+                padding-left: 10px;
+                padding-right: 10px;
+                cursor: pointer;
+
+                &:hover {
+                    background-color: #4e9a06;
+                }
+
+                &.is-active {
+                    background-color: #4e9a06;
+                }
+
+                border-right: 1px solid #ccc;
+            }
+
+            .screen-tab.new-screen {
+                width: 30px;
+                min-width: 30px;
+                background-color: black;
+                border-right: none;
+                color: #ccc;
+                cursor: pointer;
+
+                &:hover {
+                    background-color: #666;
+                    border-right: 1px solid #ccc;
+                }
+            }
         }
 
         .screen-view {
             flex-grow: 1;
+            border-right: 1px solid #ccc;
         }
 
         .window-view {
             display: flex;
             flex-direction: column;
+            position: relative;
+
+            .window-tag {
+                position: absolute;
+                top: 0;
+                right: 0;
+                background-color: rgba(78, 154, 6, 0.5);
+                /* background-color: rgba(0, 255, 0, 0.5); */
+                color: white;
+                padding: 2px 4px 2px 4px;
+                border-bottom-left-radius: 5px;
+                z-index: 10;
+                font-size: 12px;
+            }
+
+            .window-empty {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100%;
+                padding: 10px;
+                height: 100%;
+                color: #ccc;
+
+                code {
+                    background-color: black;
+                    color: #4e9a06;
+                }
+            }
         }
     }
 }
@@ -198,12 +272,17 @@ html, body, #main {
     }
 }
 
+.line.line-text {
+    flex-direction: row;
+}
+
+.line.line-cmd {
+}
+
 .line {
     padding: 10px 5px 5px 5px;
     margin: 0px 5px 5px 5px;
-    border-radius: 5px;
     display: flex;
-    flex-direction: row;
     line-height: 1.25;
     border-top: 1px solid #777;
 
@@ -242,6 +321,10 @@ html, body, #main {
             background-color: #729fcf;
             outline: 2px solid white;
         }
+    }
+
+    &.line-cmd .avatar {
+        cursor: pointer;
     }
 
     .line-content {
@@ -319,9 +402,11 @@ body .xterm .xterm-viewport {
 }
 
 .line.line-cmd {
-    .button.refresh-button {
+    .refresh-button {
+        cursor: pointer;
         border-color: #777;
         color: #777;
+        margin-right: 10px;
 
         &:hover {
             border-color: #fff;
@@ -345,13 +430,16 @@ body .xterm .xterm-viewport {
     overflow-y: scroll;
     padding-bottom: 10px;
     padding-top: 10px;
-    padding-right: 15px;
+    padding-right: 0px;
     flex-grow: 1;
 }
 
 .cmd-input {
     border-radius: 0;
-    border-top: 2px solid white;
+    border-top: 2px solid #ccc;
+    border-right: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;
+    border-bottom-right-radius: 10px;
 
     .cmd-input-context {
         color: #fff;

@@ -137,6 +137,7 @@ class TermWrap {
                         newUsedRows: tur,
                     },
                 });
+                // console.log("resize-event", resizeEvent);
                 this.connectedElem.dispatchEvent(resizeEvent);
             }
         })();
