@@ -534,7 +534,7 @@ class Model {
         if (newScreenId == null) {
             return;
         }
-        this.activateScreen(activeSession.sessionId, newScreenId);
+        this.submitCommand(sprintf("/s %s", newScreenId));
     }
 
     onDigitCmd(e : any, arg : {digit: number}, mods : KeyModsType) {
@@ -558,13 +558,17 @@ class Model {
         }
         if ("sessions" in message) {
             let sessionUpdateMsg : SessionUpdateType = message;
-            console.log("update-sessions", sessionUpdateMsg.sessions);
             mobx.action(() => {
                 let oldActiveScreen = this.getActiveScreen();
                 genMergeData(this.sessionList, sessionUpdateMsg.sessions, (s : Session) => s.sessionId, (sdata : SessionDataType) => sdata.sessionid, (sdata : SessionDataType) => new Session(sdata), (s : Session) => s.sessionIdx.get());
                 let newActiveScreen = this.getActiveScreen();
                 if (oldActiveScreen != newActiveScreen) {
-                    this.activateScreen(newActiveScreen.sessionId, newActiveScreen.screenId, oldActiveScreen);
+                    if (newActiveScreen == null) {
+                        this.activateScreen(this.activeSessionId.get(), null, oldActiveScreen);
+                    }
+                    else {
+                        this.activateScreen(newActiveScreen.sessionId, newActiveScreen.screenId, oldActiveScreen);
+                    }
                 }
             })();
             
@@ -741,6 +745,7 @@ class Model {
         })();
         let curScreen = this.getActiveScreen();
         if (curScreen == null) {
+            this.ws.pushMessage({type: "watchscreen", sessionid: sessionId});
             return;
         }
         this.ws.pushMessage({type: "watchscreen", sessionid: curScreen.sessionId, screenid: curScreen.screenId});

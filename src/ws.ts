@@ -117,7 +117,12 @@ class WSControl {
             return;
         }
         if (this.messageCallback) {
-            this.messageCallback(eventData);
+            try {
+                this.messageCallback(eventData);
+            }
+            catch (e) {
+                console.log("[error] messageCallback", e);
+            }
         }
     }
 

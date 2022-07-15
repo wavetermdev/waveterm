@@ -559,7 +559,7 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
         if (screen == null) {
             return;
         }
-        GlobalModel.activateScreen(screen.sessionId, screen.screenId);
+        GlobalModel.submitCommand(sprintf("/s %s", screenId));
     }
     
     render() {
@@ -572,7 +572,7 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
         return (
             <div className="screen-tabs">
                 <For each="screen" index="index" of={session.screens}>
-                    <div key={screen.screenId} className={cn("screen-tab", {"is-active": session.activeScreenId.get() == screen.screenId})} onClick={() => this.handleSwitchScreen(screen.screenId)}>
+                    <div key={screen.screenId} className={cn("screen-tab", {"is-active": session.activeScreenId.get() == screen.screenId})} onClick={() => this.handleSwitchScreen(screen.screenId, index+1)}>
                         {screen.name.get()}
                         <If condition={index+1 <= 9}>
                             <div className="tab-index">&#x2318;{index+1}</div>
