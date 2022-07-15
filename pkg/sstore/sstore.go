@@ -63,9 +63,11 @@ type SessionType struct {
 	ActiveScreenId string            `json:"activescreenid"`
 	NotifyNum      int64             `json:"notifynum"`
 	Screens        []*ScreenType     `json:"screens"`
-	Windows        []*WindowType     `json:"windows"`
-	Cmds           []*CmdType        `json:"cmds"`
 	Remotes        []*RemoteInstance `json:"remotes"`
+
+	// only for updates
+	Remove bool `json:"remove,omitempty"`
+	Full   bool `json:"full,omitempty"`
 }
 
 type WindowOptsType struct {
@@ -88,6 +90,9 @@ type WindowType struct {
 	Cmds      []*CmdType         `json:"cmds"`
 	History   []*HistoryItemType `json:"history"`
 	Remotes   []*RemoteInstance  `json:"remotes"`
+
+	// only for updates
+	Remove bool `json:"remove,omitempty"`
 }
 
 type ScreenOptsType struct {
@@ -110,6 +115,10 @@ type ScreenType struct {
 	ActiveWindowId string              `json:"activewindowid"`
 	ScreenOpts     ScreenOptsType      `json:"screenopts"`
 	Windows        []*ScreenWindowType `json:"windows"`
+
+	// only for updates
+	Remove bool `json:"remove,omitempty"`
+	Full   bool `json:"full,omitempty"`
 }
 
 const (
@@ -143,6 +152,9 @@ type ScreenWindowType struct {
 	WindowId  string     `json:"windowid"`
 	Name      string     `json:"name"`
 	Layout    LayoutType `json:"layout"`
+
+	// only for updates
+	Remove bool `json:"remove,omitempty"`
 }
 
 type HistoryItemType struct {

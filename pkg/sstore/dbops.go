@@ -90,18 +90,6 @@ func GetAllSessions(ctx context.Context) ([]*SessionType, error) {
 	err := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * FROM session`
 		tx.SelectWrap(&rtn, query)
-		var windows []*WindowType
-		query = `SELECT * FROM window`
-		tx.SelectWrap(&windows, query)
-		winMap := make(map[string][]*WindowType)
-		for _, win := range windows {
-			winArr := winMap[win.SessionId]
-			winArr = append(winArr, win)
-			winMap[win.SessionId] = winArr
-		}
-		for _, session := range rtn {
-			session.Windows = winMap[session.SessionId]
-		}
 		var screens []*ScreenType
 		query = `SELECT * FROM screen ORDER BY screenidx`
 		tx.SelectWrap(&screens, query)
@@ -155,6 +143,16 @@ func GetWindowById(ctx context.Context, sessionId string, windowId string) (*Win
 	return rtnWindow, err
 }
 
+func GetSessionScreens(ctx context.Context, sessionId string) ([]*ScreenType, error) {
+	var rtn []*ScreenType
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT * FROM screen WHERE sessionid = ? ORDER BY screenidx`
+		tx.SelectWrap(&rtn, query, sessionId)
+		return nil
+	})
+	return rtn, txErr
+}
+
 func GetSessionById(ctx context.Context, id string) (*SessionType, error) {
 	var rtnSession *SessionType
 	err := WithTx(ctx, func(tx *TxWrap) error {
@@ -165,15 +163,10 @@ func GetSessionById(ctx context.Context, id string) (*SessionType, error) {
 			return nil
 		}
 		rtnSession = &session
-		query = `SELECT * FROM window WHERE sessionid = ?`
-		tx.SelectWrap(&session.Windows, query, session.SessionId)
+		query = `SELECT * FROM screen WHERE sessionid = ? ORDER BY screenidx`
+		tx.SelectWrap(&session.Screens, query, session.SessionId)
 		query = `SELECT * FROM remote_instance WHERE sessionid = ?`
 		tx.SelectWrap(&session.Remotes, query, session.SessionId)
-		query = `SELECT * FROM cmd WHERE sessionid = ?`
-		marr := tx.SelectMaps(query, session.SessionId)
-		for _, m := range marr {
-			session.Cmds = append(session.Cmds, CmdFromMap(m))
-		}
 		return nil
 	})
 	if err != nil {
@@ -209,15 +202,16 @@ func InsertSessionWithName(ctx context.Context, sessionName string) (string, err
 		maxSessionIdx := tx.GetInt(`SELECT COALESCE(max(sessionidx), 0) FROM session`)
 		query := `INSERT INTO session (sessionid, name, activescreenid, sessionidx, notifynum) VALUES (?, ?, '', ?, ?)`
 		tx.ExecWrap(query, newSessionId, sessionName, maxSessionIdx+1, 0)
-		screenId, err := InsertScreen(tx.Context(), newSessionId, "")
+		_, err := InsertScreen(tx.Context(), newSessionId, "", true)
 		if err != nil {
 			return err
 		}
-		query = `UPDATE session SET activescreenid = ? WHERE sessionid = ?`
-		tx.ExecWrap(query, screenId, newSessionId)
 		return nil
 	})
-	return newSessionId, txErr
+	if txErr != nil {
+		return "", txErr
+	}
+	return newSessionId, nil
 }
 
 func containsStr(strs []string, testStr string) bool {
@@ -253,7 +247,7 @@ func fmtUniqueName(name string, defaultFmtStr string, startIdx int, strs []strin
 	}
 }
 
-func InsertScreen(ctx context.Context, sessionId string, screenName string) (string, error) {
+func InsertScreen(ctx context.Context, sessionId string, screenName string, activate bool) (string, error) {
 	var newScreenId string
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT sessionid FROM session WHERE sessionid = ?`
@@ -270,9 +264,33 @@ func InsertScreen(ctx context.Context, sessionId string, screenName string) (str
 		layout := LayoutType{Type: LayoutFull}
 		query = `INSERT INTO screen_window (sessionid, screenid, windowid, name, layout) VALUES (?, ?, ?, ?, ?)`
 		tx.ExecWrap(query, sessionId, newScreenId, newWindowId, DefaultScreenWindowName, layout)
+		if activate {
+			query = `UPDATE session SET activescreenid = ? WHERE sessionid = ?`
+			tx.ExecWrap(query, newScreenId, sessionId)
+		}
 		return nil
 	})
 	return newScreenId, txErr
+}
+
+func GetScreenById(ctx context.Context, sessionId string, screenId string) (*ScreenType, error) {
+	var rtnScreen *ScreenType
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT * FROM screen WHERE sessionid = ? AND screenid = ?`
+		var screen ScreenType
+		found := tx.GetWrap(&screen, query, sessionId, screenId)
+		if !found {
+			return nil
+		}
+		rtnScreen = &screen
+		query = `SELECT * FROM screen_window WHERE sessionid = ? AND screenid = ?`
+		tx.SelectWrap(&screen.Windows, query, sessionId, screenId)
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	return rtnScreen, nil
 }
 
 func txCreateWindow(tx *TxWrap, sessionId string) string {
@@ -365,4 +383,26 @@ func HangupRunningCmdsByRemoteId(ctx context.Context, remoteId string) error {
 		tx.ExecWrap(query, CmdStatusHangup, CmdStatusRunning, remoteId)
 		return nil
 	})
+}
+
+func SwitchScreenById(ctx context.Context, sessionId string, screenId string) error {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT screenid FROM screen WHERE sessionid = ? AND screenid = ?`
+		if !tx.Exists(query, sessionId, screenId) {
+			return fmt.Errorf("cannot switch to screen, screen=%s does not exist in session=%s", screenId, sessionId)
+		}
+		query = `UPDATE session SET activescreenid = ? WHERE sessionid = ?`
+		tx.ExecWrap(query, screenId, sessionId)
+		return nil
+	})
+	sessionUpdate := SessionType{
+		SessionId:      sessionId,
+		ActiveScreenId: screenId,
+		NotifyNum:      -1,
+	}
+	update := &SessionUpdate{
+		Sessions: []SessionType{sessionUpdate},
+	}
+	MainBus.SendUpdate("", update)
+	return txErr
 }

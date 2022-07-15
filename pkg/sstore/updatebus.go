@@ -23,17 +23,11 @@ type WindowUpdate struct {
 }
 
 type SessionUpdate struct {
-	Session SessionType `json:"session"`
-	Remove  bool        `json:"remove,omitempty"`
+	Sessions []SessionType `json:"sessions"`
 }
 
 type CmdUpdate struct {
 	Cmd    CmdType `json:"cmd"`
-	Remove bool    `json:"remove,omitempty"`
-}
-
-type ScreenUpdate struct {
-	Screen CmdType `json:"screen"`
 	Remove bool    `json:"remove,omitempty"`
 }
 
