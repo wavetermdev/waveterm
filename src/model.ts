@@ -1,25 +1,35 @@
 import * as mobx from "mobx";
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
-import {handleJsonFetchResponse, base64ToArray} from "./util";
+import {handleJsonFetchResponse, base64ToArray, genMergeData} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType} from "./types";
+import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, SessionUpdateType, WindowUpdateType} from "./types";
 import {WSControl} from "./ws";
 
 var GlobalUser = "sawka";
 
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
+type OMap<K,V> = mobx.ObservableMap<K,V>;
 
 function isBlank(s : string) {
     return (s == null || s == "");
 }
 
+type KeyModsType = {
+    meta? : boolean,
+    ctrl? : boolean,
+    alt? : boolean,
+    shift? : boolean,
+};
+
 type ElectronApi = {
     getId : () => string,
-    onCmdT : (callback : () => void) => void,
-    onSwitchScreen : (callback : (event : any, arg : {relative? : number, absolute? : number}) => void) => void,
+    onTCmd : (callback : (mods : KeyModsType) => void) => void,
+    onICmd : (callback : (mods : KeyModsType) => void) => void,
+    onBracketCmd : (callback : (event : any, arg : {relative : number}, mods : KeyModsType) => void) => void,
+    onDigitCmd : (callback : (event : any, arg : {digit : number}, mods : KeyModsType) => void) => void,
 };
 
 function getApi() : ElectronApi {
@@ -163,6 +173,7 @@ class Cmd {
 class Screen {
     sessionId : string;
     screenId : string;
+    screenIdx : OV<number>;
     opts : OV<ScreenOptsType>;
     name : OV<string>;
     activeWindowId : OV<string>;
@@ -172,6 +183,7 @@ class Screen {
         this.sessionId = sdata.sessionid;
         this.screenId = sdata.screenid;
         this.name = mobx.observable.box(sdata.name);
+        this.screenIdx = mobx.observable.box(sdata.screenidx);
         this.opts = mobx.observable.box(sdata.screenopts);
         this.activeWindowId = mobx.observable.box(ces(sdata.activewindowid));
         let swArr : ScreenWindow[] = [];
@@ -183,12 +195,10 @@ class Screen {
         this.windows = mobx.observable.array(swArr, {deep: false})
     }
 
-    getActiveWindow() : Window {
-        let session = GlobalModel.getSessionById(this.sessionId);
-        if (session == null) {
-            return null;
-        }
-        return session.getWindowById(this.activeWindowId.get());
+    dispose() {
+    }
+
+    mergeData(data : ScreenDataType) {
     }
 
     updatePtyData(ptyMsg : PtyDataUpdateType) {
@@ -215,34 +225,6 @@ class Screen {
             }
         }
         return null;
-    }
-
-    deactivate() {
-        for (let i=0; i<this.windows.length; i++) {
-            let sw = this.windows[i];
-            sw.reset();
-            let win = sw.getWindow();
-            if (win != null) {
-                win.deactivate();
-            }
-        }
-    }
-
-    loadWindows(force : boolean) {
-        let loadedMap : Record<string, boolean> = {};
-        let activeWindowId = this.activeWindowId.get();
-        if (activeWindowId != null) {
-            GlobalModel.loadWindow(this.sessionId, activeWindowId, false);
-            loadedMap[activeWindowId] = true;
-        }
-        for (let i=0; i<this.windows.length; i++) {
-            let win = this.windows[i];
-            if (loadedMap[win.windowId]) {
-                continue;
-            }
-            loadedMap[win.windowId] = true;
-            GlobalModel.loadWindow(this.sessionId, win.windowId, false);
-        }
     }
 }
 
@@ -273,22 +255,20 @@ class ScreenWindow {
     }
 }
 
-
 class Window {
     sessionId : string;
     windowId : string;
-    curRemote : OV<string>;
+    curRemote : OV<string> = mobx.observable.box(null);
     loaded : OV<boolean> = mobx.observable.box(false);
+    loadError : OV<string> = mobx.observable.box(null);
     lines : OArr<LineType> = mobx.observable.array([], {deep: false});
-    linesLoaded : OV<boolean> = mobx.observable.box(false);
     history : any[] = [];
     cmds : Record<string, Cmd> = {};
     remoteInstances : OArr<RemoteInstanceType> = mobx.observable.array([]);
 
-    constructor(wdata : WindowDataType) {
-        this.sessionId = wdata.sessionid;
-        this.windowId = wdata.windowid;
-        this.curRemote = mobx.observable.box(wdata.curremote);
+    constructor(sessionId : string, windowId : string) {
+        this.sessionId = sessionId;
+        this.windowId = windowId;
     }
 
     getNumHistoryItems() : number {
@@ -307,15 +287,14 @@ class Window {
         cmd.updatePtyData(ptyMsg);
     }
 
-    updateWindow(win : WindowDataType, isActive : boolean) {
+    updateWindow(win : WindowDataType, load : boolean) {
         mobx.action(() => {
             if (!isBlank(win.curremote)) {
                 this.curRemote.set(win.curremote);
             }
-            if (!isActive) {
-                return;
+            if (load) {
+                this.loaded.set(true);
             }
-            this.linesLoaded.set(true);
             this.lines.replace(win.lines || []);
             this.history = win.history || [];
             let cmds = win.cmds || [];
@@ -325,13 +304,14 @@ class Window {
         })();
     }
 
-    deactivate() {
+    setWindowLoadError(errStr : string) {
         mobx.action(() => {
-            this.linesLoaded.set(false);
-            this.lines.replace([]);
-            this.history = [];
-            this.cmds = {};
+            this.loaded.set(true);
+            this.loadError.set(errStr);
         })();
+    }
+
+    dispose() {
     }
 
     getCmd(cmdId : string) {
@@ -369,7 +349,7 @@ class Window {
     }
 
     addLineCmd(line : LineType, cmd : CmdDataType, interactive : boolean) {
-        if (!this.linesLoaded.get()) {
+        if (!this.loaded.get()) {
             return;
         }
         mobx.action(() => {
@@ -401,21 +381,15 @@ class Session {
     sessionId : string;
     name : OV<string>;
     activeScreenId : OV<string>;
+    sessionIdx : OV<number>;
     screens : OArr<Screen>;
-    windows : OArr<Window>;
     notifyNum : OV<number> = mobx.observable.box(0);
     remoteInstances : OArr<RemoteInstanceType> = mobx.observable.array([]);
 
     constructor(sdata : SessionDataType) {
         this.sessionId = sdata.sessionid;
         this.name = mobx.observable.box(sdata.name);
-        let winData = sdata.windows || [];
-        let wins : Window[] = [];
-        for (let i=0; i<winData.length; i++) {
-            let win = new Window(winData[i]);
-            wins.push(win);
-        }
-        this.windows = mobx.observable.array(wins, {deep: false});
+        this.sessionIdx = mobx.observable.box(sdata.sessionidx);
         let screenData = sdata.screens || [];
         let screens : Screen[] = [];
         for (let i=0; i<screenData.length; i++) {
@@ -426,36 +400,35 @@ class Session {
         this.activeScreenId = mobx.observable.box(ces(sdata.activescreenid));
     }
 
-    updateWindow(win : WindowDataType, isActive : boolean) {
-        mobx.action(() => {
-            for (let i=0; i<this.windows.length; i++) {
-                let foundWin = this.windows[i];
-                if (foundWin.windowId != win.windowid) {
-                    continue;
-                }
-                if (win.remove) {
-                    this.windows.splice(i, 1);
-                    return;
-                }
-                foundWin.updateWindow(win, isActive);
-                return;
-            }
-            let newWindow = new Window(win);
-            newWindow.updateWindow(win, isActive);
-            this.windows.push(newWindow);
-        })();
+    dispose() : void {
     }
 
-    getWindowById(windowId : string) : Window {
-        if (windowId == null) {
-            return null;
+    // session updates only contain screens (no windows)
+    mergeData(sdata : SessionDataType) {
+        if (sdata.sessionid != this.sessionId) {
+            throw new Error(sprintf("cannot merge session data, sessionids don't match sid=%s, data-sid=%s", this.sessionId, sdata.sessionid));
         }
-        for (let i=0; i<this.windows.length; i++) {
-            if (this.windows[i].windowId == windowId) {
-                return this.windows[i];
+        mobx.action(() => {
+            if (!isBlank(sdata.name)) {
+                this.name.set(sdata.name);
             }
-        }
-        return null;
+            if (sdata.sessionidx > 0) {
+                this.sessionIdx.set(sdata.sessionidx);
+            }
+            if (sdata.notifynum >= 0) {
+                this.notifyNum.set(sdata.notifynum);
+            }
+            genMergeData(this.screens, sdata.screens, (s : Screen) => s.screenId, (s : ScreenDataType) => s.screenid, (data : ScreenDataType) => new Screen(data), (s : Screen) => s.screenIdx.get());
+            if (!isBlank(sdata.activescreenid)) {
+                let screen = this.getScreenById(sdata.activescreenid);
+                if (screen == null) {
+                    console.log(sprintf("got session update, activescreenid=%s, screen not found", sdata.activescreenid));
+                }
+                else {
+                    this.activeScreenId.set(sdata.activescreenid);
+                }
+            }
+        })();
     }
 
     getActiveScreen() : Screen {
@@ -492,13 +465,6 @@ class Session {
         }
         return null;
     }
-
-    addLineCmd(line : LineType, cmd : CmdDataType, interactive : boolean) {
-        let win = this.getWindowById(line.windowid);
-        if (win != null) {
-            win.addLineCmd(line, cmd, interactive);
-        }
-    }
 }
 
 class Model {
@@ -509,6 +475,7 @@ class Model {
     ws : WSControl;
     remotes : OArr<RemoteType> = mobx.observable.array([], {deep: false});
     remotesLoaded : OV<boolean> = mobx.observable.box(false);
+    windows : OMap<string, Window> = mobx.observable.map({}, {deep: false});
     
     constructor() {
         this.clientId = getApi().getId();
@@ -516,16 +483,29 @@ class Model {
         this.loadSessionList();
         this.ws = new WSControl(this.clientId, this.onWSMessage.bind(this))
         this.ws.reconnect();
-        getApi().onCmdT(this.onCmdT.bind(this));
-        getApi().onSwitchScreen(this.onSwitchScreen.bind(this));
+        getApi().onTCmd(this.onTCmd.bind(this));
+        getApi().onICmd(this.onICmd.bind(this));
+        getApi().onBracketCmd(this.onBracketCmd.bind(this));
+        getApi().onDigitCmd(this.onDigitCmd.bind(this));
     }
 
-    onCmdT() {
-        console.log("got cmd-t");
+    onTCmd(mods : KeyModsType) {
+        console.log("got cmd-t", mods);
     }
 
-    onSwitchScreen(e : any, arg : {relative? : number, absolute? : number}) {
-        console.log("switch screen", arg);
+    onICmd(mods : KeyModsType) {
+        let elem = document.getElementById("main-cmd-input");
+        if (elem != null) {
+            elem.focus();
+        }
+    }
+
+    onBracketCmd(e : any, arg : {relative: number}, mods : KeyModsType) {
+        console.log("switch screen (bracket)", arg, mods);
+    }
+
+    onDigitCmd(e : any, arg : {digit: number}, mods : KeyModsType) {
+        console.log("switch screen (digit)", arg, mods);
     }
 
     isConnected() : boolean {
@@ -542,7 +522,24 @@ class Model {
             activeScreen.updatePtyData(ptyMsg);
             return;
         }
+        if ("sessions" in message) {
+            let sessionUpdateMsg : SessionUpdateType = message;
+            console.log("update-sessions", sessionUpdateMsg.sessions);
+            mobx.action(() => {
+                let oldActiveScreen = this.getActiveScreen();
+                genMergeData(this.sessionList, sessionUpdateMsg.sessions, (s : Session) => s.sessionId, (sdata : SessionDataType) => sdata.sessionid, (sdata : SessionDataType) => new Session(sdata), (s : Session) => s.sessionIdx.get());
+                let newActiveScreen = this.getActiveScreen();
+                if (oldActiveScreen != newActiveScreen) {
+                    this.activateScreen(newActiveScreen.sessionId, newActiveScreen.screenId, oldActiveScreen);
+                }
+            })();
+            
+        }
         console.log("ws-message", message);
+    }
+
+    removeSession(sessionId : string) {
+        console.log("removeSession not implemented");
     }
 
     getActiveSession() : Session {
@@ -561,12 +558,39 @@ class Model {
         return null;
     }
 
+    deactivateWindows() {
+        mobx.action(() => {
+            this.windows.clear();
+        })();
+    }
+
     getWindowById(sessionId : string, windowId : string) : Window {
-        let session = this.getSessionById(sessionId);
-        if (session == null) {
-            return null;
-        }
-        return session.getWindowById(windowId);
+        return this.windows.get(sessionId + "/" + windowId);
+    }
+
+    updateWindow(win : WindowDataType, load : boolean) {
+        mobx.action(() => {
+            let winKey = win.sessionid + "/" + win.windowid;
+            if (win.remove) {
+                this.windows.delete(winKey);
+                return;
+            }
+            let existingWin = this.windows.get(winKey);
+            if (existingWin == null) {
+                if (!load) {
+                    console.log("cannot update window that does not exist");
+                    return;
+                }
+                let newWindow = new Window(win.sessionid, win.windowid);
+                this.windows.set(winKey, newWindow);
+                newWindow.updateWindow(win, load);
+                return;
+            }
+            else {
+                existingWin.updateWindow(win, load);
+                existingWin.loaded.set(true);
+            }
+        })();
     }
 
     getScreenById(sessionId : string, screenId : string) : Screen {
@@ -582,7 +606,8 @@ class Model {
         if (screen == null) {
             return null;
         }
-        return screen.getActiveWindow();
+        let activeWindowId = screen.activeWindowId.get();
+        return this.windows.get(screen.sessionId + "/" + activeWindowId);
     }
 
     getActiveScreen() : Screen {
@@ -594,10 +619,11 @@ class Model {
     }
 
     addLineCmd(line : LineType, cmd : CmdDataType, interactive : boolean) {
-        let session = this.getSessionById(line.sessionid);
-        if (session != null) {
-            session.addLineCmd(line, cmd, interactive);
+        let win = this.getWindowById(line.sessionid, line.windowid);
+        if (win == null) {
+            return;
         }
+        win.addLineCmd(line, cmd, interactive);
     }
 
     submitCommand(cmdStr : string) {
@@ -607,7 +633,20 @@ class Model {
             this.errorHandler("cannot submit command, no active window", null)
             return;
         }
-        let data : FeCmdPacketType = {type: "fecmd", sessionid: win.sessionId, windowid: win.windowId, cmdstr: cmdStr, userid: GlobalUser, remotestate: null};
+        let screen = this.getActiveScreen();
+        if (screen == null) {
+            this.errorHandler("cannot submit command, no active screen", null)
+            return;
+        }
+        let data : FeCmdPacketType = {
+            type: "fecmd",
+            sessionid: win.sessionId,
+            screenid: screen.screenId,
+            windowid: win.windowId,
+            cmdstr: cmdStr,
+            userid: GlobalUser,
+            remotestate: null
+        };
         let rstate = win.getCurRemoteInstance();
         if (rstate == null) {
             this.errorHandler("cannot submit command, no remote state found", null);
@@ -624,15 +663,6 @@ class Model {
         }).catch((err) => {
             this.errorHandler("calling run-command", err);
         });
-    }
-
-    updateWindow(win : WindowDataType) {
-        let session = this.getSessionById(win.sessionid);
-        if (session == null) {
-            return;
-        }
-        let isActive = (win.sessionid == this.activeSessionId.get());
-        session.updateWindow(win, isActive);
     }
 
     loadSessionList() {
@@ -663,15 +693,15 @@ class Model {
         });
     }
 
-    activateScreen(sessionId : string, screenId : string) {
-        let oldActiveScreen = this.getActiveScreen();
+    activateScreen(sessionId : string, screenId : string, oldActiveScreen? : Screen) {
+        if (!oldActiveScreen) {
+            oldActiveScreen = this.getActiveScreen();
+        }
         if (oldActiveScreen && oldActiveScreen.sessionId == sessionId && oldActiveScreen.screenId == screenId) {
             return;
         }
         mobx.action(() => {
-            if (oldActiveScreen != null) {
-                oldActiveScreen.deactivate();
-            }
+            this.deactivateWindows();
             this.activeSessionId.set(sessionId);
             this.getActiveSession().activeScreenId.set(screenId);
         })();
@@ -680,7 +710,6 @@ class Model {
             return;
         }
         this.ws.pushMessage({type: "watchscreen", sessionid: curScreen.sessionId, screenid: curScreen.screenId});
-        curScreen.loadWindows(false);
     }
 
     createNewScreen(session : Session, name : string, activate : boolean) {
@@ -700,7 +729,9 @@ class Model {
         });
     }
 
-    loadWindow(sessionId : string, windowId : string, force : boolean) {
+    loadWindow(sessionId : string, windowId : string) : Window {
+        let newWin = new Window(sessionId, windowId);
+        this.windows.set(sessionId + "/" + windowId, newWin);
         let usp = new URLSearchParams({sessionid: sessionId, windowid: windowId});
         let url = new URL(sprintf("http://localhost:8080/api/get-window?") + usp.toString());
         fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
@@ -708,11 +739,12 @@ class Model {
                 console.log("null window returned from get-window");
                 return;
             }
-            this.updateWindow(data.data);
+            this.updateWindow(data.data, true);
             return;
         }).catch((err) => {
             this.errorHandler(sprintf("getting window=%s", windowId), err);
         });
+        return newWin;
     }
 
     loadRemotes() {
@@ -750,7 +782,7 @@ class Model {
         if (session == null) {
             return null;
         }
-        let window = session.getWindowById(line.windowid);
+        let window = this.getWindowById(line.sessionid, line.windowid);
         if (window == null) {
             return null;
         }

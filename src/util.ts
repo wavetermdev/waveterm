@@ -1,3 +1,4 @@
+import * as mobx from "mobx";
 import {sprintf} from "sprintf-js";
 
 function fetchJsonData(resp : any, ctErr : boolean) : Promise<any> {
@@ -42,4 +43,62 @@ function base64ToArray(b64 : string) : Uint8Array {
     return rtnArr;
 }
 
-export {handleJsonFetchResponse, base64ToArray};
+interface IDataType {
+    remove? : boolean;
+    full? : boolean;
+}
+
+interface IObjType<DataType> {
+    dispose : () => void;
+    mergeData : (data : DataType) => void,
+}
+
+function genMergeData<ObjType extends IObjType<DataType>, DataType extends IDataType>(
+    objs : mobx.IObservableArray<ObjType>,
+    dataArr : DataType[],
+    objIdFn : (obj : ObjType) => string,
+    dataIdFn : (data : DataType) => string,
+    ctorFn : (data : DataType) => ObjType,
+    sortIdxFn : (obj : ObjType) => number,
+) {
+    if (dataArr == null || dataArr.length == 0) {
+        return;
+    }
+    let objMap : Record<string, ObjType> = {};
+    for (let i=0; i<objs.length; i++) {
+        let obj = objs[i];
+        let id = objIdFn(obj);
+        objMap[id] = obj;
+    }
+    for (let i=0; i<dataArr.length; i++) {
+        let dataItem = dataArr[i];
+        let id = dataIdFn(dataItem);
+        let obj = objMap[id];
+        if (dataItem.remove) {
+            if (obj != null) {
+                obj.dispose();
+                delete objMap[id];
+            }
+            continue;
+        }
+        if (obj == null) {
+            if (!dataItem.full) {
+                console.log("cannot create object, dataitem is not full", objs, dataItem);
+                continue
+            }
+            obj = ctorFn(dataItem);
+            objMap[id] = obj;
+            continue;
+        }
+        obj.mergeData(dataItem);
+    }
+    let newObjs = Object.values(objMap);
+    if (sortIdxFn) {
+        newObjs.sort((a, b) => {
+            return sortIdxFn(a) - sortIdxFn(b);
+        });
+    }
+    objs.replace(newObjs);
+}
+
+export {handleJsonFetchResponse, base64ToArray, genMergeData};

@@ -33,7 +33,7 @@ html, body, #main {
                 min-width: 80px;
                 width: 150px;
                 flex-shrink: 1;
-                background-color: darken(#4e9a06, 15%);
+                background-color: darken(#4e9a06, 10%);
                 display: flex;
                 justify-content: center;
                 align-items: center;
@@ -43,16 +43,28 @@ html, body, #main {
                 padding-left: 10px;
                 padding-right: 10px;
                 cursor: pointer;
+                position: relative;
 
                 &:hover {
                     background-color: #4e9a06;
                 }
 
                 &.is-active {
-                    background-color: #4e9a06;
+                    background-color: lighten(#4e9a06, 10%);
                 }
 
                 border-right: 1px solid #ccc;
+
+                .tab-index {
+                    position: absolute;
+                    right: 5px;
+                    font-weight: normal;
+                    display: none;
+                }
+            }
+
+            &:hover .screen-tab .tab-index {
+                display: block;
             }
 
             .screen-tab.new-screen {

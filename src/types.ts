@@ -3,12 +3,14 @@ import * as mobx from "mobx";
 type SessionDataType = {
     sessionid : string,
     name : string,
+    notifynum : number,
     activescreenid : string,
-    windows : WindowDataType[],
+    sessionidx : number,
     screens : ScreenDataType[],
-    screenwindows : ScreenWindowType[],
-    cmds : CmdDataType[],
-    remove : boolean,
+
+    // for updates
+    remove? : boolean,
+    full? : boolean,
 };
 
 type LineType = {
@@ -34,6 +36,10 @@ type ScreenDataType = {
     name : string,
     windows : ScreenWindowType[],
     screenopts : ScreenOptsType,
+
+    // for updates
+    remove? : boolean,
+    full? : boolean,
 };
 
 type LayoutType = {
@@ -55,6 +61,9 @@ type ScreenWindowType = {
     windowid : string,
     name : string,
     layout : LayoutType,
+
+    // for updates
+    remove? : boolean,
 };
 
 type RemoteType = {
@@ -88,7 +97,9 @@ type WindowDataType = {
     history : HistoryItem[],
     cmds : CmdDataType[],
     remotes : RemoteInstanceType[],
-    remove : boolean,
+
+    // for updates
+    remove? : boolean,
 };
 
 type HistoryItem = {
@@ -104,6 +115,7 @@ type CmdRemoteStateType = {
 type FeCmdPacketType = {
     type : string,
     sessionid : string,
+    screenid : string,
     windowid : string,
     userid : string,
     cmdstr : string,
@@ -161,4 +173,13 @@ type PtyDataUpdateType = {
     ptydatalen : number,
 };
 
-export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDonePacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType, PtyDataUpdateType};
+type SessionUpdateType = {
+    sessions: SessionDataType[],
+};
+
+type WindowUpdateType = {
+    window: WindowDataType,
+    remove: boolean,
+}
+
+export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDonePacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType, PtyDataUpdateType, SessionUpdateType, WindowUpdateType};

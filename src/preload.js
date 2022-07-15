@@ -2,6 +2,8 @@ let {contextBridge, ipcRenderer} = require("electron");
 
 contextBridge.exposeInMainWorld("api", {
     getId: () => ipcRenderer.sendSync("get-id"),
-    onCmdT: (callback) => ipcRenderer.on("cmd-t", callback),
-    onSwitchScreen: (callback) => ipcRenderer.on("switch-screen", callback),
+    onTCmd: (callback) => ipcRenderer.on("t-cmd", callback),
+    onICmd: (callback) => ipcRenderer.on("i-cmd", callback),
+    onBracketCmd: (callback) => ipcRenderer.on("bracket-cmd", callback),
+    onDigitCmd: (callback) => ipcRenderer.on("digit-cmd", callback),
 });

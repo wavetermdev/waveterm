@@ -40,6 +40,10 @@ electron.Menu.setApplicationMenu(menu);
 
 let MainWindow = null;
 
+function getMods(input : any) {
+    return {meta: input.meta, shift: input.shift, ctrl: input.ctrl, alt: input.alt};
+}
+
 function createWindow() {
     let win = new electron.BrowserWindow({
         width: 1800,
@@ -53,21 +57,33 @@ function createWindow() {
         if (input.type != "keyDown") {
             return;
         }
+        let mods = getMods(input);
         if (input.meta) {
             console.log("before-input", input.code, input.modifiers);
         }
         if (input.code == "KeyT" && input.meta) {
-            win.webContents.send("cmd-t");
+            win.webContents.send("t-cmd", mods);
             e.preventDefault();
             return;
         }
-        if (input.code == "BracketRight" && input.meta) {
-            win.webContents.send("switch-screen", {relative: 1});
-            e.preventDefault();
+        if (input.code == "KeyI" && input.meta) {
+            if (!input.alt) {
+                win.webContents.send("i-cmd", mods);
+                e.preventDefault();
+            }
             return;
         }
-        if (input.code == "BracketLeft" && input.meta) {
-            win.webContents.send("switch-screen", {relative: -1});
+        if (input.code.startsWith("Digit") && input.meta) {
+            let digitNum = parseInt(input.code.substr(5));
+            if (isNaN(digitNum) || digitNum < 1 || digitNum > 9) {
+                return;
+            }
+            e.preventDefault();
+            win.webContents.send("digit-cmd", {digit: digitNum}, mods);
+        }
+        if ((input.code == "BracketRight" || input.code == "BracketLeft") && input.meta) {
+            let rel = (input.code == "BracketRight" ? 1 : -1);
+            win.webContents.send("bracket-cmd", {relative: rel}, mods);
             e.preventDefault();
             return;
         }

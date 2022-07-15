@@ -187,7 +187,6 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                         <div className="meta">
                             <div className="user" style={{display: "none"}}>{line.userid}</div>
                             <div className="ts">{formattedTime}</div>
-                            width={this.props.width}, cellwidth={termWidth}
                         </div>
                         <div className="meta">
                             <div className="metapart-mono" style={{display: "none"}}>
@@ -417,7 +416,14 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
 
     getWindow() : Window {
         let {sw} = this.props;
-        return GlobalModel.getWindowById(sw.sessionId, sw.windowId);
+        if (sw == null) {
+            return null;
+        }
+        let win = GlobalModel.getWindowById(sw.sessionId, sw.windowId);
+        if (win == null) {
+            win = GlobalModel.loadWindow(sw.sessionId, sw.windowId);
+        }
+        return win;
     }
 
     getLinesDOMId() {
@@ -475,11 +481,11 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
             return this.renderError("(no screen window)");
         }
         let win = this.getWindow();
-        if (win == null) {
-            return this.renderError("(no window)");
-        }
-        if (!win.linesLoaded.get()) {
+        if (win == null || !win.loaded.get()) {
             return this.renderError("(loading)");
+        }
+        if (win.loadError.get() != null) {
+            return this.renderError(sprintf("(%s)", win.loadError.get()));
         }
         if (this.width.get() == 0) {
             return this.renderError("");
@@ -562,11 +568,15 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
             return null;
         }
         let screen : Screen = null;
+        let index = 0;
         return (
             <div className="screen-tabs">
-                <For each="screen" of={session.screens}>
+                <For each="screen" index="index" of={session.screens}>
                     <div key={screen.screenId} className={cn("screen-tab", {"is-active": session.activeScreenId.get() == screen.screenId})} onClick={() => this.handleSwitchScreen(screen.screenId)}>
                         {screen.name.get()}
+                        <If condition={index+1 <= 9}>
+                            <div className="tab-index">&#x2318;{index+1}</div>
+                        </If>
                     </div>
                 </For>
                 <div key="new-screen" className="screen-tab new-screen" onClick={this.handleNewScreen}>
