@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -334,6 +335,15 @@ type runCommandResponse struct {
 }
 
 func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+		fmt.Printf("[error] in run-command: %v\n", r)
+		debug.PrintStack()
+		return
+	}()
 	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
@@ -385,8 +395,7 @@ func ProcessFeCommandPacket(ctx context.Context, pk *scpacket.FeCommandPacketTyp
 		}
 		colonIdx := strings.Index(metaCmd, ":")
 		if colonIdx != -1 {
-			metaCmd = metaCmd[0:colonIdx]
-			metaSubCmd = metaCmd[colonIdx+1:]
+			metaCmd, metaSubCmd = metaCmd[0:colonIdx], metaCmd[colonIdx+1:]
 		}
 		if metaCmd == "" {
 			return nil, fmt.Errorf("invalid command, got bare '/', with no command")
@@ -440,6 +449,13 @@ func ProcessFeCommandPacket(ctx context.Context, pk *scpacket.FeCommandPacketTyp
 }
 
 func RunScreenCmd(ctx context.Context, sessionId string, screenId string, subCmd string, commandStr string) error {
+	if subCmd == "close" {
+		err := sstore.DeleteScreen(ctx, sessionId, screenId)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
 	if subCmd != "" {
 		return fmt.Errorf("invalid /screen subcommand '%s'", subCmd)
 	}
@@ -458,11 +474,11 @@ func RunScreenCmd(ctx context.Context, sessionId string, screenId string, subCmd
 		return sstore.SwitchScreenById(ctx, sessionId, screens[screenNum-1].ScreenId)
 	}
 	for _, screen := range screens {
-		if screen.Name == commandStr {
+		if screen.ScreenId == commandStr || screen.Name == commandStr {
 			return sstore.SwitchScreenById(ctx, sessionId, screen.ScreenId)
 		}
 	}
-	return fmt.Errorf("could not switch to screen '%s' (name not found)", commandStr)
+	return fmt.Errorf("could not switch to screen '%s' (name/id not found)", commandStr)
 }
 
 // /api/start-session

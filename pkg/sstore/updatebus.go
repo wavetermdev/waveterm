@@ -23,7 +23,18 @@ type WindowUpdate struct {
 }
 
 type SessionUpdate struct {
-	Sessions []SessionType `json:"sessions"`
+	Sessions []*SessionType `json:"sessions"`
+}
+
+func MakeSingleSessionUpdate(sessionId string) (*SessionUpdate, *SessionType) {
+	session := &SessionType{
+		SessionId: sessionId,
+		NotifyNum: -1,
+	}
+	update := &SessionUpdate{
+		Sessions: []*SessionType{session},
+	}
+	return update, session
 }
 
 type CmdUpdate struct {

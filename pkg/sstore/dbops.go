@@ -167,6 +167,7 @@ func GetSessionById(ctx context.Context, id string) (*SessionType, error) {
 		tx.SelectWrap(&session.Screens, query, session.SessionId)
 		query = `SELECT * FROM remote_instance WHERE sessionid = ?`
 		tx.SelectWrap(&session.Remotes, query, session.SessionId)
+		session.Full = true
 		return nil
 	})
 	if err != nil {
@@ -270,6 +271,16 @@ func InsertScreen(ctx context.Context, sessionId string, screenName string, acti
 		}
 		return nil
 	})
+	newScreen, err := GetScreenById(ctx, sessionId, newScreenId)
+	if err != nil {
+		return "", err
+	}
+	update, session := MakeSingleSessionUpdate(sessionId)
+	if activate {
+		session.ActiveScreenId = newScreenId
+	}
+	session.Screens = append(session.Screens, newScreen)
+	MainBus.SendUpdate("", update)
 	return newScreenId, txErr
 }
 
@@ -285,6 +296,7 @@ func GetScreenById(ctx context.Context, sessionId string, screenId string) (*Scr
 		rtnScreen = &screen
 		query = `SELECT * FROM screen_window WHERE sessionid = ? AND screenid = ?`
 		tx.SelectWrap(&screen.Windows, query, sessionId, screenId)
+		screen.Full = true
 		return nil
 	})
 	if txErr != nil {
@@ -385,6 +397,31 @@ func HangupRunningCmdsByRemoteId(ctx context.Context, remoteId string) error {
 	})
 }
 
+func getNextId(ids []string, delId string) string {
+	fmt.Printf("getnextid %v | %v\n", ids, delId)
+	if len(ids) == 0 {
+		return ""
+	}
+	if len(ids) == 1 {
+		if ids[0] == delId {
+			return ""
+		}
+		return ids[0]
+	}
+	for idx := 0; idx < len(ids); idx++ {
+		if ids[idx] == delId {
+			var rtnIdx int
+			if idx == len(ids)-1 {
+				rtnIdx = idx - 1
+			} else {
+				rtnIdx = idx + 1
+			}
+			return ids[rtnIdx]
+		}
+	}
+	return ids[0]
+}
+
 func SwitchScreenById(ctx context.Context, sessionId string, screenId string) error {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT screenid FROM screen WHERE sessionid = ? AND screenid = ?`
@@ -395,14 +432,39 @@ func SwitchScreenById(ctx context.Context, sessionId string, screenId string) er
 		tx.ExecWrap(query, screenId, sessionId)
 		return nil
 	})
-	sessionUpdate := SessionType{
-		SessionId:      sessionId,
-		ActiveScreenId: screenId,
-		NotifyNum:      -1,
-	}
-	update := &SessionUpdate{
-		Sessions: []SessionType{sessionUpdate},
-	}
+	update, session := MakeSingleSessionUpdate(sessionId)
+	session.ActiveScreenId = screenId
 	MainBus.SendUpdate("", update)
 	return txErr
+}
+
+func CleanWindows() {
+}
+
+func DeleteScreen(ctx context.Context, sessionId string, screenId string) error {
+	var newActiveScreenId string
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		isActive := tx.Exists(`SELECT sessionid FROM session WHERE sessionid = ? AND activescreenid = ?`, sessionId, screenId)
+		fmt.Printf("delete-screen %s %s | %v\n", sessionId, screenId, isActive)
+		if isActive {
+			screenIds := tx.SelectStrings(`SELECT screenid FROM screen WHERE sessionid = ? ORDER BY screenidx`, sessionId)
+			nextId := getNextId(screenIds, screenId)
+			tx.ExecWrap(`UPDATE session SET activescreenid = ? WHERE sessionid = ?`, nextId, sessionId)
+			newActiveScreenId = nextId
+		}
+		query := `DELETE FROM screen_window WHERE sessionid = ? AND screenid = ?`
+		tx.ExecWrap(query, sessionId, screenId)
+		query = `DELETE FROM screen WHERE sessionid = ? AND screenid = ?`
+		tx.ExecWrap(query, sessionId, screenId)
+		return nil
+	})
+	if txErr != nil {
+		return txErr
+	}
+	go CleanWindows()
+	update, session := MakeSingleSessionUpdate(sessionId)
+	session.ActiveScreenId = newActiveScreenId
+	session.Screens = append(session.Screens, &ScreenType{SessionId: sessionId, ScreenId: screenId, Remove: true})
+	MainBus.SendUpdate("", update)
+	return nil
 }

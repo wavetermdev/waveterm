@@ -143,6 +143,10 @@ func (ws *WSState) RunWSRead() {
 				fmt.Printf("[error] invalid watchscreen sessionid: %v\n", err)
 				continue
 			}
+			if wsPk.ScreenId == "" {
+				ws.UnWatchScreen()
+				continue
+			}
 			if _, err := uuid.Parse(wsPk.ScreenId); err != nil {
 				fmt.Printf("[error] invalid watchscreen screenid: %v\n", err)
 				continue
