@@ -403,6 +403,30 @@ class Session {
     dispose() : void {
     }
 
+    getRelativeScreenId(rel : number) : string {
+        if (!rel) {
+            return this.activeScreenId.get();
+        }
+        if (this.screens.length == 0) {
+            return null;
+        }
+        if (this.screens.length == 1) {
+            return this.screens[0].screenId;
+        }
+        let foundIdx = 0;
+        for (let i=0; i<this.screens.length; i++) {
+            if (this.screens[i].screenId == this.activeScreenId.get()) {
+                foundIdx = i;
+                break;
+            }
+        }
+        let relIdx = (foundIdx + rel) % this.screens.length;
+        if (relIdx < 0) {
+            relIdx += this.screens.length;
+        }
+        return this.screens[relIdx].screenId;
+    }
+
     // session updates only contain screens (no windows)
     mergeData(sdata : SessionDataType) {
         if (sdata.sessionid != this.sessionId) {
@@ -502,10 +526,20 @@ class Model {
 
     onBracketCmd(e : any, arg : {relative: number}, mods : KeyModsType) {
         console.log("switch screen (bracket)", arg, mods);
+        let activeSession = this.getActiveSession();
+        if (activeSession == null) {
+            return;
+        }
+        let newScreenId = activeSession.getRelativeScreenId(arg.relative);
+        if (newScreenId == null) {
+            return;
+        }
+        this.activateScreen(activeSession.sessionId, newScreenId);
     }
 
     onDigitCmd(e : any, arg : {digit: number}, mods : KeyModsType) {
         console.log("switch screen (digit)", arg, mods);
+        this.submitCommand(sprintf("/s %d", arg.digit));
     }
 
     isConnected() : boolean {
