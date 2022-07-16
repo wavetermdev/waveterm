@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"runtime/debug"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -18,7 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 
-	"github.com/scripthaus-dev/mshell/pkg/packet"
+	"github.com/scripthaus-dev/sh2-server/pkg/cmdrunner"
 	"github.com/scripthaus-dev/sh2-server/pkg/remote"
 	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
@@ -153,69 +152,6 @@ func HandleGetAllSessions(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// params: name
-func HandleCreateSession(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Vary", "Origin")
-	w.Header().Set("Cache-Control", "no-cache")
-	qvals := r.URL.Query()
-	name := qvals.Get("name")
-	sessionId, err := sstore.InsertSessionWithName(r.Context(), name)
-	if err != nil {
-		WriteJsonError(w, fmt.Errorf("inserting session: %w", err))
-		return
-	}
-	session, err := sstore.GetSessionById(r.Context(), sessionId)
-	if err != nil {
-		WriteJsonError(w, fmt.Errorf("getting new session: %w", err))
-		return
-	}
-	WriteJsonSuccess(w, session)
-	return
-}
-
-// params: sessionid, name
-func HandleCreateWindow(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Vary", "Origin")
-	w.Header().Set("Cache-Control", "no-cache")
-	qvals := r.URL.Query()
-	sessionId := qvals.Get("sessionid")
-	if _, err := uuid.Parse(sessionId); err != nil {
-		WriteJsonError(w, fmt.Errorf("invalid sessionid: %w", err))
-		return
-	}
-	name := qvals.Get("name")
-	fmt.Printf("insert-window %s\n", name)
-	return
-}
-
-// params: sessionid, name, activate
-func HandleCreateScreen(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Vary", "Origin")
-	w.Header().Set("Cache-Control", "no-cache")
-	qvals := r.URL.Query()
-	sessionId := qvals.Get("sessionid")
-	if _, err := uuid.Parse(sessionId); err != nil {
-		WriteJsonError(w, fmt.Errorf("invalid sessionid: %w", err))
-		return
-	}
-	name := qvals.Get("name")
-	activateStr := qvals.Get("activate")
-	activate := activateStr != ""
-	screenId, err := sstore.InsertScreen(r.Context(), sessionId, name, activate)
-	if err != nil {
-		WriteJsonError(w, fmt.Errorf("inserting screen: %w", err))
-		return
-	}
-	WriteJsonSuccess(w, screenId)
-	return
-}
-
 // params: [none]
 func HandleGetRemotes(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
@@ -304,7 +240,7 @@ func HandleGetPtyOut(w http.ResponseWriter, r *http.Request) {
 
 func WriteJsonError(w http.ResponseWriter, errVal error) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
+	w.WriteHeader(200)
 	errMap := make(map[string]interface{})
 	errMap["error"] = errVal.Error()
 	barr, _ := json.Marshal(errMap)
@@ -327,11 +263,6 @@ func WriteJsonSuccess(w http.ResponseWriter, data interface{}) {
 	w.WriteHeader(200)
 	w.Write(barr)
 	return
-}
-
-type runCommandResponse struct {
-	Line *sstore.LineType `json:"line"`
-	Cmd  *sstore.CmdType  `json:"cmd"`
 }
 
 func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
@@ -360,125 +291,13 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 		WriteJsonError(w, fmt.Errorf("error decoding json: %w", err))
 		return
 	}
-	if _, err = uuid.Parse(commandPk.SessionId); err != nil {
-		WriteJsonError(w, fmt.Errorf("invalid sessionid '%s': %w", commandPk.SessionId, err))
-		return
-	}
-	resp, err := ProcessFeCommandPacket(r.Context(), &commandPk)
+	update, err := cmdrunner.HandleCommand(r.Context(), &commandPk)
 	if err != nil {
 		WriteJsonError(w, err)
 		return
 	}
-	WriteJsonSuccess(w, resp)
+	WriteJsonSuccess(w, update)
 	return
-}
-
-func ProcessFeCommandPacket(ctx context.Context, pk *scpacket.FeCommandPacketType) (*runCommandResponse, error) {
-	// parse metacmd
-	commandStr := strings.TrimSpace(pk.CmdStr)
-	if commandStr == "" {
-		return nil, fmt.Errorf("invalid emtpty command")
-	}
-	metaCmd := ""
-	metaSubCmd := ""
-	if commandStr == "cd" || strings.HasPrefix(commandStr, "cd ") {
-		metaCmd = "cd"
-		commandStr = strings.TrimSpace(commandStr[2:])
-	} else if commandStr[0] == '/' {
-		spaceIdx := strings.Index(commandStr, " ")
-		if spaceIdx == -1 {
-			metaCmd = commandStr[1:]
-			commandStr = ""
-		} else {
-			metaCmd = commandStr[1:spaceIdx]
-			commandStr = strings.TrimSpace(commandStr[spaceIdx+1:])
-		}
-		colonIdx := strings.Index(metaCmd, ":")
-		if colonIdx != -1 {
-			metaCmd, metaSubCmd = metaCmd[0:colonIdx], metaCmd[colonIdx+1:]
-		}
-		if metaCmd == "" {
-			return nil, fmt.Errorf("invalid command, got bare '/', with no command")
-		}
-	}
-
-	// execute metacmd
-	if metaCmd == "comment" {
-		text := commandStr
-		rtnLine, err := sstore.AddCommentLine(ctx, pk.SessionId, pk.WindowId, pk.UserId, text)
-		if err != nil {
-			return nil, err
-		}
-		return &runCommandResponse{Line: rtnLine}, nil
-	} else if metaCmd == "cd" {
-		newDir := commandStr
-		cdPacket := packet.MakeCdPacket()
-		cdPacket.ReqId = uuid.New().String()
-		cdPacket.Dir = newDir
-		localRemote := remote.GetRemoteById(pk.RemoteState.RemoteId)
-		if localRemote == nil {
-			return nil, fmt.Errorf("invalid remote, cannot execute command")
-		}
-		resp, err := localRemote.PacketRpc(ctx, cdPacket)
-		if err != nil {
-			return nil, err
-		}
-		fmt.Printf("GOT cd RESP: %v\n", resp)
-		return nil, nil
-	} else if metaCmd == "s" || metaCmd == "screen" {
-		err := RunScreenCmd(ctx, pk.SessionId, pk.ScreenId, metaSubCmd, commandStr)
-		if err != nil {
-			return nil, err
-		}
-		return nil, nil
-	} else if metaCmd == "" {
-		cmdId := uuid.New().String()
-		cmd, err := remote.RunCommand(ctx, pk, cmdId)
-		if err != nil {
-			return nil, err
-		}
-		rtnLine, err := sstore.AddCmdLine(ctx, pk.SessionId, pk.WindowId, pk.UserId, cmd)
-		if err != nil {
-			return nil, err
-		}
-		return &runCommandResponse{Line: rtnLine, Cmd: cmd}, nil
-	} else {
-		fmt.Printf("INVALID metacmd '%s'\n", metaCmd)
-		return nil, fmt.Errorf("Invalid command type /%s", metaCmd)
-	}
-}
-
-func RunScreenCmd(ctx context.Context, sessionId string, screenId string, subCmd string, commandStr string) error {
-	if subCmd == "close" {
-		err := sstore.DeleteScreen(ctx, sessionId, screenId)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	if subCmd != "" {
-		return fmt.Errorf("invalid /screen subcommand '%s'", subCmd)
-	}
-	if commandStr == "" {
-		return fmt.Errorf("usage /screen [screen-name|screen-index|screen-id], no param specified")
-	}
-	screens, err := sstore.GetSessionScreens(ctx, sessionId)
-	if err != nil {
-		return fmt.Errorf("could not retreive screens for session=%s", sessionId)
-	}
-	screenNum, err := strconv.Atoi(commandStr)
-	if err == nil {
-		if screenNum < 1 || screenNum > len(screens) {
-			return fmt.Errorf("could not switch to screen #%d (out of range), valid screens 1-%d", screenNum, len(screens))
-		}
-		return sstore.SwitchScreenById(ctx, sessionId, screens[screenNum-1].ScreenId)
-	}
-	for _, screen := range screens {
-		if screen.ScreenId == commandStr || screen.Name == commandStr {
-			return sstore.SwitchScreenById(ctx, sessionId, screen.ScreenId)
-		}
-	}
-	return fmt.Errorf("could not switch to screen '%s' (name/id not found)", commandStr)
 }
 
 // /api/start-session
@@ -620,11 +439,8 @@ func main() {
 	gr := mux.NewRouter()
 	gr.HandleFunc("/api/ptyout", HandleGetPtyOut)
 	gr.HandleFunc("/api/get-all-sessions", HandleGetAllSessions)
-	gr.HandleFunc("/api/create-session", HandleCreateSession)
 	gr.HandleFunc("/api/get-window", HandleGetWindow)
 	gr.HandleFunc("/api/get-remotes", HandleGetRemotes)
-	gr.HandleFunc("/api/create-window", HandleCreateWindow)
-	gr.HandleFunc("/api/create-screen", HandleCreateScreen)
 	gr.HandleFunc("/api/run-command", HandleRunCommand).Methods("GET", "POST", "OPTIONS")
 	server := &http.Server{
 		Addr:           MainServerAddr,

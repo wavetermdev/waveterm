@@ -468,3 +468,25 @@ func DeleteScreen(ctx context.Context, sessionId string, screenId string) error 
 	MainBus.SendUpdate("", update)
 	return nil
 }
+
+func GetRemoteState(ctx context.Context, rname string, sessionId string, windowId string) (string, *RemoteState, error) {
+	var remoteId string
+	var remoteState *RemoteState
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		var ri RemoteInstance
+		query := `SELECT * FROM remote_instance WHERE sessionid = ? AND windowid = ? AND name = ?`
+		found := tx.GetWrap(&ri, query, sessionId, windowId, rname)
+		if found {
+			remoteId = ri.RemoteId
+			remoteState = &ri.State
+			return nil
+		}
+		query = `SELECT remoteid FROM remote WHERE remotename = ?`
+		remoteId = tx.GetString(query, rname)
+		if remoteId == "" {
+			return fmt.Errorf("remote not found", rname)
+		}
+		return nil
+	})
+	return remoteId, remoteState, txErr
+}

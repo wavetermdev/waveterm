@@ -16,13 +16,11 @@ type RemoteState struct {
 }
 
 type FeCommandPacketType struct {
-	Type        string      `json:"type"`
-	SessionId   string      `json:"sessionid"`
-	ScreenId    string      `json:"screenid"`
-	WindowId    string      `json:"windowid"`
-	UserId      string      `json:"userid"`
-	CmdStr      string      `json:"cmdstr"`
-	RemoteState RemoteState `json:"remotestate"`
+	Type       string            `json:"type"`
+	MetaCmd    string            `json:"metacmd"`
+	MetaSubCmd string            `json:"metasubcmd,omitempty"`
+	Args       []string          `json:"args,omitempty"`
+	Kwargs     map[string]string `json:"kwargs,omitempty"`
 }
 
 func init() {

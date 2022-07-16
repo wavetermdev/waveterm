@@ -4,6 +4,16 @@ import "sync"
 
 var MainBus *UpdateBus = MakeUpdateBus()
 
+const PtyDataUpdateStr = "pty"
+const SessionUpdateStr = "session"
+const WindowUpdateStr = "window"
+const CmdUpdateStr = "cmd"
+const LineCmdUpdateStr = "line+cmd"
+
+type UpdatePacket interface {
+	UpdateType() string
+}
+
 type UpdateCmd struct {
 	CmdId  string
 	Status string
@@ -17,13 +27,25 @@ type PtyDataUpdate struct {
 	PtyDataLen int64  `json:"ptydatalen"`
 }
 
+func (PtyDataUpdate) UpdateType() string {
+	return PtyDataUpdateStr
+}
+
 type WindowUpdate struct {
 	Window WindowType `json:"window"`
 	Remove bool       `json:"remove,omitempty"`
 }
 
+func (WindowUpdate) WindowUpdate() string {
+	return WindowUpdateStr
+}
+
 type SessionUpdate struct {
 	Sessions []*SessionType `json:"sessions"`
+}
+
+func (SessionUpdate) UpdateType() string {
+	return SessionUpdateStr
 }
 
 func MakeSingleSessionUpdate(sessionId string) (*SessionUpdate, *SessionType) {
@@ -37,9 +59,14 @@ func MakeSingleSessionUpdate(sessionId string) (*SessionUpdate, *SessionType) {
 	return update, session
 }
 
-type CmdUpdate struct {
-	Cmd    CmdType `json:"cmd"`
-	Remove bool    `json:"remove,omitempty"`
+type LineUpdate struct {
+	Line   *LineType `json:"line"`
+	Cmd    *CmdType  `json:"cmd,omitempty"`
+	Remove bool      `json:"remove,omitempty"`
+}
+
+func (LineUpdate) UpdateType() string {
+	return LineCmdUpdateStr
 }
 
 type UpdateChannel struct {

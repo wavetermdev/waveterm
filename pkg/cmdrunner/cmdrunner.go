@@ -1,0 +1,367 @@
+package cmdrunner
+
+import (
+	"context"
+	"fmt"
+	"strconv"
+	"strings"
+
+	"github.com/google/uuid"
+	"github.com/scripthaus-dev/mshell/pkg/base"
+	"github.com/scripthaus-dev/mshell/pkg/packet"
+	"github.com/scripthaus-dev/sh2-server/pkg/remote"
+	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
+	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
+)
+
+const DefaultUserId = "sawka"
+
+const (
+	R_Session    = 1
+	R_Screen     = 2
+	R_Window     = 4
+	R_Remote     = 8
+	R_SessionOpt = 16
+	R_ScreenOpt  = 32
+	R_WindowOpt  = 64
+	R_RemoteOpt  = 128
+)
+
+type resolvedIds struct {
+	SessionId   string
+	ScreenId    string
+	WindowId    string
+	RemoteId    string
+	RemoteState *sstore.RemoteState
+}
+
+func SubMetaCmd(cmd string) string {
+	switch cmd {
+	case "s":
+		return "screen"
+	case "w":
+		return "window"
+	case "r":
+		return "run"
+	case "c":
+		return "comment"
+	case "e":
+		return "eval"
+	default:
+		return cmd
+	}
+}
+
+func firstArg(pk *scpacket.FeCommandPacketType) string {
+	if len(pk.Args) == 0 {
+		return ""
+	}
+	return pk.Args[0]
+}
+
+func resolveBool(arg string, def bool) bool {
+	if arg == "" {
+		return def
+	}
+	if arg == "0" || arg == "false" {
+		return false
+	}
+	return true
+}
+
+func resolveSessionScreen(ctx context.Context, sessionId string, screenArg string) (string, error) {
+	screens, err := sstore.GetSessionScreens(ctx, sessionId)
+	if err != nil {
+		return "", fmt.Errorf("could not retreive screens for session=%s", sessionId)
+	}
+	screenNum, err := strconv.Atoi(screenArg)
+	if err == nil {
+		if screenNum < 1 || screenNum > len(screens) {
+			return "", fmt.Errorf("could not resolve screen #%d (out of range), valid screens 1-%d", screenNum, len(screens))
+		}
+		return screens[screenNum-1].ScreenId, nil
+	}
+	for _, screen := range screens {
+		if screen.ScreenId == screenArg || screen.Name == screenArg {
+			return screen.ScreenId, nil
+		}
+	}
+	return "", fmt.Errorf("could not resolve screen '%s' (name/id not found)", screenArg)
+}
+
+func resolveSessionId(pk *scpacket.FeCommandPacketType) (string, error) {
+	sessionId := pk.Kwargs["session"]
+	if sessionId == "" {
+		return "", nil
+	}
+	if _, err := uuid.Parse(sessionId); err != nil {
+		return "", fmt.Errorf("invalid sessionid '%s'", sessionId)
+	}
+	return sessionId, nil
+}
+
+func resolveWindowId(pk *scpacket.FeCommandPacketType, sessionId string) (string, error) {
+	windowId := pk.Kwargs["window"]
+	if windowId == "" {
+		return "", nil
+	}
+	if _, err := uuid.Parse(windowId); err != nil {
+		return "", fmt.Errorf("invalid windowid '%s'", windowId)
+	}
+	return windowId, nil
+}
+
+func resolveScreenId(ctx context.Context, pk *scpacket.FeCommandPacketType, sessionId string) (string, error) {
+	screenArg := pk.Kwargs["screen"]
+	if screenArg == "" {
+		return "", nil
+	}
+	if _, err := uuid.Parse(screenArg); err == nil {
+		return screenArg, nil
+	}
+	if sessionId == "" {
+		return "", fmt.Errorf("cannot resolve screen without session")
+	}
+	return resolveSessionScreen(ctx, sessionId, screenArg)
+}
+
+func resolveRemote(ctx context.Context, pk *scpacket.FeCommandPacketType, sessionId string, windowId string) (string, *sstore.RemoteState, error) {
+	remoteArg := pk.Kwargs["remote"]
+	if remoteArg == "" {
+		return "", nil, nil
+	}
+	remoteId, state, err := sstore.GetRemoteState(ctx, remoteArg, sessionId, windowId)
+	if err != nil {
+		return "", nil, fmt.Errorf("cannot resolve remote '%s': %w", remoteArg, err)
+	}
+	if state == nil {
+		state, err = remote.GetDefaultRemoteStateById(remoteId)
+		if err != nil {
+			return "", nil, fmt.Errorf("cannot resolve remote '%s': %w", remoteArg, err)
+		}
+	}
+	return remoteId, state, nil
+}
+
+func resolveIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype int) (resolvedIds, error) {
+	rtn := resolvedIds{}
+	if rtype == 0 {
+		return rtn, nil
+	}
+	var err error
+	if (rtype&R_Session)+(rtype&R_SessionOpt) > 0 {
+		rtn.SessionId, err = resolveSessionId(pk)
+		if err != nil {
+			return rtn, err
+		}
+		if rtn.SessionId == "" && (rtype&R_Session) > 0 {
+			return rtn, fmt.Errorf("no session")
+		}
+	}
+	if (rtype&R_Window)+(rtype&R_WindowOpt) > 0 {
+		rtn.WindowId, err = resolveWindowId(pk, rtn.SessionId)
+		if err != nil {
+			return rtn, err
+		}
+		if rtn.WindowId == "" && (rtype&R_Window) > 0 {
+			return rtn, fmt.Errorf("no window")
+		}
+
+	}
+	if (rtype&R_Screen)+(rtype&R_ScreenOpt) > 0 {
+		rtn.ScreenId, err = resolveScreenId(ctx, pk, rtn.SessionId)
+		if err != nil {
+			return rtn, err
+		}
+		if rtn.ScreenId == "" && (rtype&R_Screen) > 0 {
+			return rtn, fmt.Errorf("no screen")
+		}
+	}
+	if (rtype&R_Remote)+(rtype&R_RemoteOpt) > 0 {
+		rtn.RemoteId, rtn.RemoteState, err = resolveRemote(ctx, pk, rtn.SessionId, rtn.WindowId)
+		if err != nil {
+			return rtn, err
+		}
+		if rtn.RemoteId == "" && (rtype&R_Remote) > 0 {
+			return rtn, fmt.Errorf("no remote")
+		}
+	}
+	return rtn, nil
+}
+
+func HandleCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	switch SubMetaCmd(pk.MetaCmd) {
+	case "run":
+		return RunCommand(ctx, pk)
+
+	case "eval":
+		return EvalCommand(ctx, pk)
+
+	case "screen":
+		return ScreenCommand(ctx, pk)
+
+	case "comment":
+		return CommentCommand(ctx, pk)
+
+	case "cd":
+		return CdCommand(ctx, pk)
+
+	default:
+		return nil, fmt.Errorf("invalid command '/%s', no handler", pk.MetaCmd)
+	}
+}
+
+func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveIds(ctx, pk, R_Session|R_Window|R_Remote)
+	if err != nil {
+		return nil, fmt.Errorf("/run error: %w", err)
+	}
+	cmdId := uuid.New().String()
+	cmdStr := firstArg(pk)
+	runPacket := packet.MakeRunPacket()
+	runPacket.ReqId = uuid.New().String()
+	runPacket.CK = base.MakeCommandKey(ids.SessionId, cmdId)
+	runPacket.Cwd = ids.RemoteState.Cwd
+	runPacket.Env = nil
+	runPacket.UsePty = true
+	runPacket.TermOpts = &packet.TermOpts{Rows: remote.DefaultTermRows, Cols: remote.DefaultTermCols, Term: remote.DefaultTerm}
+	runPacket.Command = strings.TrimSpace(cmdStr)
+	cmd, err := remote.RunCommand(ctx, cmdId, ids.RemoteId, ids.RemoteState, runPacket)
+	if err != nil {
+		return nil, err
+	}
+	rtnLine, err := sstore.AddCmdLine(ctx, ids.SessionId, ids.WindowId, DefaultUserId, cmd)
+	if err != nil {
+		return nil, err
+	}
+	return sstore.LineUpdate{Line: rtnLine, Cmd: cmd}, nil
+}
+
+func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	if len(pk.Args) == 0 {
+		return nil, fmt.Errorf("usage: /eval [command], no command passed to eval")
+	}
+	// parse metacmd
+	commandStr := strings.TrimSpace(pk.Args[0])
+	if commandStr == "" {
+		return nil, fmt.Errorf("/eval, invalid emtpty command")
+	}
+	metaCmd := ""
+	metaSubCmd := ""
+	if commandStr == "cd" || strings.HasPrefix(commandStr, "cd ") {
+		metaCmd = "cd"
+		commandStr = strings.TrimSpace(commandStr[2:])
+	} else if commandStr[0] == '/' {
+		spaceIdx := strings.Index(commandStr, " ")
+		if spaceIdx == -1 {
+			metaCmd = commandStr[1:]
+			commandStr = ""
+		} else {
+			metaCmd = commandStr[1:spaceIdx]
+			commandStr = strings.TrimSpace(commandStr[spaceIdx+1:])
+		}
+		colonIdx := strings.Index(metaCmd, ":")
+		if colonIdx != -1 {
+			metaCmd, metaSubCmd = metaCmd[0:colonIdx], metaCmd[colonIdx+1:]
+		}
+		if metaCmd == "" {
+			return nil, fmt.Errorf("invalid command, got bare '/', with no command")
+		}
+	}
+	if metaCmd == "" {
+		metaCmd = "run"
+	}
+	var args []string
+	if metaCmd == "run" || metaCmd == "comment" {
+		args = []string{commandStr}
+	} else {
+		args = strings.Fields(commandStr)
+	}
+	newPk := &scpacket.FeCommandPacketType{
+		MetaCmd:    metaCmd,
+		MetaSubCmd: metaSubCmd,
+		Args:       args,
+		Kwargs:     pk.Kwargs,
+	}
+	return HandleCommand(ctx, newPk)
+}
+
+func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	if pk.MetaSubCmd == "close" {
+		ids, err := resolveIds(ctx, pk, R_Session|R_Screen)
+		if err != nil {
+			return nil, fmt.Errorf("/screen:close cannot close screen: %w", err)
+		}
+		err = sstore.DeleteScreen(ctx, ids.SessionId, ids.ScreenId)
+		if err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+	if pk.MetaSubCmd == "open" || pk.MetaSubCmd == "new" {
+		ids, err := resolveIds(ctx, pk, R_Session)
+		if err != nil {
+			return nil, fmt.Errorf("/screen:open cannot open screen: %w", err)
+		}
+		activate := resolveBool(pk.Kwargs["activate"], true)
+		_, err = sstore.InsertScreen(ctx, ids.SessionId, pk.Kwargs["name"], activate)
+		if err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+	if pk.MetaSubCmd != "" {
+		return nil, fmt.Errorf("invalid /screen subcommand '%s'", pk.MetaSubCmd)
+	}
+	ids, err := resolveIds(ctx, pk, R_Session)
+	if err != nil {
+		return nil, fmt.Errorf("/screen cannot switch to screen: %w", err)
+	}
+	firstArg := firstArg(pk)
+	if firstArg == "" {
+		return nil, fmt.Errorf("usage /screen [screen-name|screen-index|screen-id], no param specified")
+	}
+	screenIdArg, err := resolveSessionScreen(ctx, ids.SessionId, firstArg)
+	if err != nil {
+		return nil, err
+	}
+	sstore.SwitchScreenById(ctx, ids.SessionId, screenIdArg)
+	return nil, nil
+}
+
+func CdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveIds(ctx, pk, R_Session|R_Window|R_Remote)
+	if err != nil {
+		return nil, fmt.Errorf("/cd error: %w", err)
+	}
+	newDir := firstArg(pk)
+	cdPacket := packet.MakeCdPacket()
+	cdPacket.ReqId = uuid.New().String()
+	cdPacket.Dir = newDir
+	localRemote := remote.GetRemoteById(ids.RemoteId)
+	if localRemote == nil {
+		return nil, fmt.Errorf("invalid remote, cannot execute command")
+	}
+	resp, err := localRemote.PacketRpc(ctx, cdPacket)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("GOT cd RESP: %v\n", resp)
+	return nil, nil
+}
+
+func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveIds(ctx, pk, R_Session|R_Window)
+	if err != nil {
+		return nil, fmt.Errorf("/comment error: %w", err)
+	}
+	text := firstArg(pk)
+	if strings.TrimSpace(text) == "" {
+		return nil, fmt.Errorf("cannot post empty comment")
+	}
+	rtnLine, err := sstore.AddCommentLine(ctx, ids.SessionId, ids.WindowId, DefaultUserId, text)
+	if err != nil {
+		return nil, err
+	}
+	return sstore.LineUpdate{Line: rtnLine}, nil
+}

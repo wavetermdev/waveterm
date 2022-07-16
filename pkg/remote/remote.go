@@ -6,14 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
-	"strings"
 	"sync"
 
-	"github.com/google/uuid"
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
-	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
 )
 
@@ -123,6 +120,21 @@ func GetAllRemoteState() []RemoteState {
 	return rtn
 }
 
+func GetDefaultRemoteStateById(remoteId string) (*sstore.RemoteState, error) {
+	remote := GetRemoteById(remoteId)
+	if remote == nil {
+		return nil, fmt.Errorf("remote not found")
+	}
+	if !remote.IsConnected() {
+		return nil, fmt.Errorf("remote not connected")
+	}
+	state := remote.GetDefaultState()
+	if state == nil {
+		return nil, fmt.Errorf("could not get default remote state")
+	}
+	return state, nil
+}
+
 func MakeMShell(r *sstore.RemoteType) *MShellProc {
 	rtn := &MShellProc{Lock: &sync.Mutex{}, Remote: r, Status: StatusInit}
 	return rtn
@@ -168,6 +180,15 @@ func (msh *MShellProc) IsConnected() bool {
 	return msh.Status == StatusConnected
 }
 
+func (msh *MShellProc) GetDefaultState() *sstore.RemoteState {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	if msh.ServerProc == nil || msh.ServerProc.InitPk == nil {
+		return nil
+	}
+	return &sstore.RemoteState{Cwd: msh.ServerProc.InitPk.HomeDir}
+}
+
 func (msh *MShellProc) IsCmdRunning(ck base.CommandKey) bool {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
@@ -193,30 +214,21 @@ func (msh *MShellProc) SendInput(pk *packet.InputPacketType) error {
 	return msh.ServerProc.Input.SendPacket(dataPk)
 }
 
-func convertRemoteState(rs scpacket.RemoteState) sstore.RemoteState {
-	return sstore.RemoteState{Cwd: rs.Cwd}
-}
-
 func makeTermOpts() sstore.TermOpts {
 	return sstore.TermOpts{Rows: DefaultTermRows, Cols: DefaultTermCols, FlexRows: true}
 }
 
-func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, cmdId string) (*sstore.CmdType, error) {
-	msh := GetRemoteById(pk.RemoteState.RemoteId)
+func RunCommand(ctx context.Context, cmdId string, remoteId string, remoteState *sstore.RemoteState, runPacket *packet.RunPacketType) (*sstore.CmdType, error) {
+	msh := GetRemoteById(remoteId)
 	if msh == nil {
-		return nil, fmt.Errorf("no remote id=%s found", pk.RemoteState.RemoteId)
+		return nil, fmt.Errorf("no remote id=%s found", remoteId)
 	}
 	if !msh.IsConnected() {
-		return nil, fmt.Errorf("remote '%s' is not connected", msh.Remote.RemoteName)
+		return nil, fmt.Errorf("remote '%s' is not connected", remoteId)
 	}
-	runPacket := packet.MakeRunPacket()
-	runPacket.ReqId = uuid.New().String()
-	runPacket.CK = base.MakeCommandKey(pk.SessionId, cmdId)
-	runPacket.Cwd = pk.RemoteState.Cwd
-	runPacket.Env = nil
-	runPacket.UsePty = true
-	runPacket.TermOpts = &packet.TermOpts{Rows: DefaultTermRows, Cols: DefaultTermCols, Term: DefaultTerm}
-	runPacket.Command = strings.TrimSpace(pk.CmdStr)
+	if remoteState == nil {
+		return nil, fmt.Errorf("no remote state passed to RunCommand")
+	}
 	fmt.Printf("RUN-CMD> %s reqid=%s (msh=%v)\n", runPacket.CK, runPacket.ReqId, msh.Remote)
 	msh.ServerProc.Output.RegisterRpc(runPacket.ReqId)
 	err := shexec.SendRunPacketAndRunData(ctx, msh.ServerProc.Input, runPacket)
@@ -240,11 +252,11 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, cmdId str
 		status = sstore.CmdStatusDetached
 	}
 	cmd := &sstore.CmdType{
-		SessionId:   pk.SessionId,
+		SessionId:   runPacket.CK.GetSessionId(),
 		CmdId:       startPk.CK.GetCmdId(),
 		CmdStr:      runPacket.Command,
 		RemoteId:    msh.Remote.RemoteId,
-		RemoteState: convertRemoteState(pk.RemoteState),
+		RemoteState: *remoteState,
 		TermOpts:    makeTermOpts(),
 		Status:      status,
 		StartPk:     startPk,
