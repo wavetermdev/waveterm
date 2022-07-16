@@ -4,7 +4,7 @@ import {boundMethod} from "autobind-decorator";
 import {handleJsonFetchResponse, base64ToArray, genMergeData} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, SessionUpdateType, WindowUpdateType} from "./types";
+import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, SessionUpdateType, WindowUpdateType, UpdateMessage} from "./types";
 import {WSControl} from "./ws";
 
 var GlobalUser = "sawka";
@@ -505,7 +505,7 @@ class Model {
         this.clientId = getApi().getId();
         this.loadRemotes();
         this.loadSessionList();
-        this.ws = new WSControl(this.clientId, this.onWSMessage.bind(this))
+        this.ws = new WSControl(this.clientId, this.runUpdate.bind(this))
         this.ws.reconnect();
         getApi().onTCmd(this.onTCmd.bind(this));
         getApi().onICmd(this.onICmd.bind(this));
@@ -515,6 +515,7 @@ class Model {
 
     onTCmd(mods : KeyModsType) {
         console.log("got cmd-t", mods);
+        GlobalInput.createNewScreen();
     }
 
     onICmd(mods : KeyModsType) {
@@ -534,21 +535,21 @@ class Model {
         if (newScreenId == null) {
             return;
         }
-        this.submitCommand(sprintf("/s %s", newScreenId));
+        GlobalInput.switchScreen(newScreenId);
     }
 
     onDigitCmd(e : any, arg : {digit: number}, mods : KeyModsType) {
         console.log("switch screen (digit)", arg, mods);
-        this.submitCommand(sprintf("/s %d", arg.digit));
+        GlobalInput.switchScreen(String(arg.digit));
     }
 
     isConnected() : boolean {
         return this.ws.open.get();
     }
 
-    onWSMessage(message : any) {
-        if ("ptydata64" in message) {
-            let ptyMsg : PtyDataUpdateType = message;
+    runUpdate(update : UpdateMessage) {
+        if ("ptydata64" in update) {
+            let ptyMsg : PtyDataUpdateType = update;
             let activeScreen = this.getActiveScreen();
             if (!activeScreen || activeScreen.sessionId != ptyMsg.sessionid) {
                 return;
@@ -556,8 +557,8 @@ class Model {
             activeScreen.updatePtyData(ptyMsg);
             return;
         }
-        if ("sessions" in message) {
-            let sessionUpdateMsg : SessionUpdateType = message;
+        if ("sessions" in update) {
+            let sessionUpdateMsg : SessionUpdateType = update;
             mobx.action(() => {
                 let oldActiveScreen = this.getActiveScreen();
                 genMergeData(this.sessionList, sessionUpdateMsg.sessions, (s : Session) => s.sessionId, (sdata : SessionDataType) => sdata.sessionid, (sdata : SessionDataType) => new Session(sdata), (s : Session) => s.sessionIdx.get());
@@ -573,7 +574,7 @@ class Model {
             })();
             
         }
-        console.log("ws-message", message);
+        console.log("run-update>", update);
     }
 
     removeSession(sessionId : string) {
@@ -664,35 +665,27 @@ class Model {
         win.addLineCmd(line, cmd, interactive);
     }
 
-    submitCommand(cmdStr : string) {
-        console.log("submit-command>", cmdStr);
+    getClientKwargs() : Record<string, string> {
+        let session = this.getActiveSession();
         let win = this.getActiveWindow();
-        if (win == null) {
-            this.errorHandler("cannot submit command, no active window", null)
-            return;
-        }
         let screen = this.getActiveScreen();
-        if (screen == null) {
-            this.errorHandler("cannot submit command, no active screen", null)
-            return;
+        let rtn : Record<string, string> = {};
+        if (session != null) {
+            rtn.session = session.sessionId;
         }
-        let data : FeCmdPacketType = {
-            type: "fecmd",
-            sessionid: win.sessionId,
-            screenid: screen.screenId,
-            windowid: win.windowId,
-            cmdstr: cmdStr,
-            userid: GlobalUser,
-            remotestate: null
-        };
-        let rstate = win.getCurRemoteInstance();
-        if (rstate == null) {
-            this.errorHandler("cannot submit command, no remote state found", null);
-            return;
+        if (screen != null) {
+            rtn.screen = screen.screenId;
         }
-        data.remotestate = {remoteid: rstate.remoteid, remotename: rstate.name, ...rstate.state};
+        if (win != null) {
+            rtn.window = win.windowId;
+            rtn.remote = win.curRemote.get();
+        }
+        return rtn;
+    }
+
+    submitCommandPacket(cmdPk : FeCmdPacketType) {
         let url = sprintf("http://localhost:8080/api/run-command");
-        fetch(url, {method: "post", body: JSON.stringify(data)}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
+        fetch(url, {method: "post", body: JSON.stringify(cmdPk)}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
             mobx.action(() => {
                 if (data.data != null && data.data.line != null) {
                     this.addLineCmd(data.data.line, data.data.cmd, true);
@@ -701,6 +694,27 @@ class Model {
         }).catch((err) => {
             this.errorHandler("calling run-command", err);
         });
+    }
+
+    submitCommand(metaCmd : string, metaSubCmd : string, args : string[], kwargs : Record<string, string>) {
+        let pk : FeCmdPacketType = {
+            type: "fecmd",
+            metacmd: metaCmd,
+            metasubcmd: metaSubCmd,
+            args: args,
+            kwargs: Object.assign({}, this.getClientKwargs(), kwargs),
+        };
+        this.submitCommandPacket(pk);
+    }
+
+    submitRawCommand(cmdStr : string) {
+        let pk : FeCmdPacketType = {
+            type: "fecmd",
+            metacmd: "eval",
+            args: [cmdStr],
+            kwargs: this.getClientKwargs(),
+        };
+        this.submitCommandPacket(pk)
     }
 
     loadSessionList() {
@@ -749,23 +763,6 @@ class Model {
             return;
         }
         this.ws.pushMessage({type: "watchscreen", sessionid: curScreen.sessionId, screenid: curScreen.screenId});
-    }
-
-    createNewScreen(session : Session, name : string, activate : boolean) {
-        let params : Record<string, string> = {sessionid: session.sessionId};
-        if (name != null) {
-            params.name = name;
-        }
-        if (activate) {
-            params.activate = "1";
-        }
-        let usp = new URLSearchParams(params);
-        let url = new URL("http://localhost:8080/api/create-screen?" + usp.toString());
-        fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
-            console.log("created screen", data.data);
-        }).catch((err) => {
-            this.errorHandler(sprintf("creating screen session=%s", session.sessionId), err);
-        });
     }
 
     loadWindow(sessionId : string, windowId : string) : Window {
@@ -837,12 +834,32 @@ class Model {
     }
 }
 
+class InputClass {
+    constructor() {
+    }
+
+    switchScreen(screen : string) {
+        GlobalModel.submitCommand("screen", null, [screen], null);
+    }
+
+    createNewScreen() {
+        GlobalModel.submitCommand("screen", "open", null, null);
+    }
+
+    closeScreen(screen : string) {
+        GlobalModel.submitCommand("screen", "close", [screen], null);
+    }
+};
+
 let GlobalModel : Model = null;
+let GlobalInput : InputClass = null;
 if ((window as any).GlobalModal == null) {
     (window as any).GlobalModel = new Model();
+    (window as any).GlobalInput = new InputClass();
 }
 GlobalModel = (window as any).GlobalModel;
+GlobalInput = (window as any).GlobalInput;
 
-export {Model, Session, Window, GlobalModel, Cmd, Screen, ScreenWindow};
+export {Model, Session, Window, GlobalModel, GlobalInput, Cmd, Screen, ScreenWindow};
 
 

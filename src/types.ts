@@ -114,12 +114,10 @@ type CmdRemoteStateType = {
 
 type FeCmdPacketType = {
     type : string,
-    sessionid : string,
-    screenid : string,
-    windowid : string,
-    userid : string,
-    cmdstr : string,
-    remotestate : CmdRemoteStateType,
+    metacmd : string,
+    metasubcmd? : string,
+    args : string[],
+    kwargs : Record<string, string>;
 };
 
 type WatchScreenPacketType = {
@@ -177,9 +175,11 @@ type SessionUpdateType = {
     sessions: SessionDataType[],
 };
 
+type UpdateMessage = PtyDataUpdateType | SessionUpdateType;
+
 type WindowUpdateType = {
     window: WindowDataType,
     remove: boolean,
 }
 
-export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDonePacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType, PtyDataUpdateType, SessionUpdateType, WindowUpdateType};
+export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDonePacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType, PtyDataUpdateType, SessionUpdateType, WindowUpdateType, UpdateMessage};

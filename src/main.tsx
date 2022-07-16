@@ -10,7 +10,7 @@ import cn from "classnames"
 import {TermWrap} from "./term";
 import type {SessionDataType, LineType, CmdDataType, RemoteType} from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
-import {GlobalModel, Session, Cmd, Window, Screen, ScreenWindow} from "./model";
+import {GlobalModel, GlobalInput, Session, Cmd, Window, Screen, ScreenWindow} from "./model";
 
 dayjs.extend(localizedFormat)
 
@@ -305,7 +305,7 @@ class CmdInput extends React.Component<{}, {}> {
         let commandStr = this.getCurLine();
         let hitem = {cmdtext: commandStr};
         this.clearCurLine();
-        model.submitCommand(commandStr);
+        model.submitRawCommand(commandStr);
     }
     
     render() {
@@ -543,7 +543,7 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
     @boundMethod
     handleNewScreen() {
         let {session} = this.props;
-        GlobalModel.createNewScreen(session, null, true);
+        GlobalInput.createNewScreen();
     }
 
     @boundMethod
@@ -559,7 +559,7 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
         if (screen == null) {
             return;
         }
-        GlobalModel.submitCommand(sprintf("/s %s", screenId));
+        GlobalInput.switchScreen(screenId);
     }
     
     render() {
@@ -572,7 +572,7 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
         return (
             <div className="screen-tabs">
                 <For each="screen" index="index" of={session.screens}>
-                    <div key={screen.screenId} className={cn("screen-tab", {"is-active": session.activeScreenId.get() == screen.screenId})} onClick={() => this.handleSwitchScreen(screen.screenId, index+1)}>
+                    <div key={screen.screenId} className={cn("screen-tab", {"is-active": session.activeScreenId.get() == screen.screenId})} onClick={() => this.handleSwitchScreen(screen.screenId)}>
                         {screen.name.get()}
                         <If condition={index+1 <= 9}>
                             <div className="tab-index">&#x2318;{index+1}</div>

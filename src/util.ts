@@ -5,14 +5,19 @@ function fetchJsonData(resp : any, ctErr : boolean) : Promise<any> {
     let contentType = resp.headers.get("Content-Type");
     if (contentType != null && contentType.startsWith("application/json")) {
         return resp.text().then((textData) => {
+            let rtnData : any = null;
             try {
-                return JSON.parse(textData);
+                rtnData = JSON.parse(textData);
             }
             catch (err) {
                 let errMsg = sprintf("Unparseable JSON: " + err.message);
                 let rtnErr = new Error(errMsg);
                 throw rtnErr;
             }
+            if (rtnData != null && rtnData.error) {
+                throw new Error(rtnData.error);
+            }
+            return rtnData;
         });
     }
     if (ctErr) {
