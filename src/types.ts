@@ -172,14 +172,20 @@ type PtyDataUpdateType = {
 };
 
 type SessionUpdateType = {
-    sessions: SessionDataType[],
+    sessions : SessionDataType[],
 };
 
-type UpdateMessage = PtyDataUpdateType | SessionUpdateType;
+type LineCmdUpdateType = {
+    line : LineType,
+    cmd : CmdDataType,
+    remove : boolean,
+}
+
+type UpdateMessage = PtyDataUpdateType | SessionUpdateType | LineCmdUpdateType;
 
 type WindowUpdateType = {
     window: WindowDataType,
     remove: boolean,
 }
 
-export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDonePacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType, PtyDataUpdateType, SessionUpdateType, WindowUpdateType, UpdateMessage};
+export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDonePacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType, PtyDataUpdateType, SessionUpdateType, WindowUpdateType, UpdateMessage, LineCmdUpdateType};

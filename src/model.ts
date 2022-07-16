@@ -4,7 +4,7 @@ import {boundMethod} from "autobind-decorator";
 import {handleJsonFetchResponse, base64ToArray, genMergeData} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, SessionUpdateType, WindowUpdateType, UpdateMessage} from "./types";
+import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, SessionUpdateType, WindowUpdateType, UpdateMessage, LineCmdUpdateType} from "./types";
 import {WSControl} from "./ws";
 
 var GlobalUser = "sawka";
@@ -505,7 +505,7 @@ class Model {
         this.clientId = getApi().getId();
         this.loadRemotes();
         this.loadSessionList();
-        this.ws = new WSControl(this.clientId, this.runUpdate.bind(this))
+        this.ws = new WSControl(this.clientId, (message : any) => this.runUpdate(message, false));
         this.ws.reconnect();
         getApi().onTCmd(this.onTCmd.bind(this));
         getApi().onICmd(this.onICmd.bind(this));
@@ -547,7 +547,7 @@ class Model {
         return this.ws.open.get();
     }
 
-    runUpdate(update : UpdateMessage) {
+    runUpdate(update : UpdateMessage, interactive : boolean) {
         if ("ptydata64" in update) {
             let ptyMsg : PtyDataUpdateType = update;
             let activeScreen = this.getActiveScreen();
@@ -572,7 +572,10 @@ class Model {
                     }
                 }
             })();
-            
+        }
+        if ("line" in update) {
+            let lineMsg : LineCmdUpdateType = update;
+            this.addLineCmd(lineMsg.line, lineMsg.cmd, interactive);
         }
         console.log("run-update>", update);
     }
@@ -687,8 +690,9 @@ class Model {
         let url = sprintf("http://localhost:8080/api/run-command");
         fetch(url, {method: "post", body: JSON.stringify(cmdPk)}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
             mobx.action(() => {
-                if (data.data != null && data.data.line != null) {
-                    this.addLineCmd(data.data.line, data.data.cmd, true);
+                let update = data.data;
+                if (update != null) {
+                    this.runUpdate(update, true);
                 }
             })();
         }).catch((err) => {
