@@ -248,7 +248,7 @@ func fmtUniqueName(name string, defaultFmtStr string, startIdx int, strs []strin
 	}
 }
 
-func InsertScreen(ctx context.Context, sessionId string, screenName string, activate bool) (string, error) {
+func InsertScreen(ctx context.Context, sessionId string, screenName string, activate bool) (UpdatePacket, error) {
 	var newScreenId string
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT sessionid FROM session WHERE sessionid = ?`
@@ -273,15 +273,14 @@ func InsertScreen(ctx context.Context, sessionId string, screenName string, acti
 	})
 	newScreen, err := GetScreenById(ctx, sessionId, newScreenId)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	update, session := MakeSingleSessionUpdate(sessionId)
 	if activate {
 		session.ActiveScreenId = newScreenId
 	}
 	session.Screens = append(session.Screens, newScreen)
-	MainBus.SendUpdate("", update)
-	return newScreenId, txErr
+	return update, txErr
 }
 
 func GetScreenById(ctx context.Context, sessionId string, screenId string) (*ScreenType, error) {
@@ -422,7 +421,7 @@ func getNextId(ids []string, delId string) string {
 	return ids[0]
 }
 
-func SwitchScreenById(ctx context.Context, sessionId string, screenId string) error {
+func SwitchScreenById(ctx context.Context, sessionId string, screenId string) (UpdatePacket, error) {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT screenid FROM screen WHERE sessionid = ? AND screenid = ?`
 		if !tx.Exists(query, sessionId, screenId) {
@@ -434,14 +433,13 @@ func SwitchScreenById(ctx context.Context, sessionId string, screenId string) er
 	})
 	update, session := MakeSingleSessionUpdate(sessionId)
 	session.ActiveScreenId = screenId
-	MainBus.SendUpdate("", update)
-	return txErr
+	return update, txErr
 }
 
 func CleanWindows() {
 }
 
-func DeleteScreen(ctx context.Context, sessionId string, screenId string) error {
+func DeleteScreen(ctx context.Context, sessionId string, screenId string) (UpdatePacket, error) {
 	var newActiveScreenId string
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		isActive := tx.Exists(`SELECT sessionid FROM session WHERE sessionid = ? AND activescreenid = ?`, sessionId, screenId)
@@ -459,14 +457,13 @@ func DeleteScreen(ctx context.Context, sessionId string, screenId string) error 
 		return nil
 	})
 	if txErr != nil {
-		return txErr
+		return nil, txErr
 	}
 	go CleanWindows()
 	update, session := MakeSingleSessionUpdate(sessionId)
 	session.ActiveScreenId = newActiveScreenId
 	session.Screens = append(session.Screens, &ScreenType{SessionId: sessionId, ScreenId: screenId, Remove: true})
-	MainBus.SendUpdate("", update)
-	return nil
+	return update, nil
 }
 
 func GetRemoteState(ctx context.Context, rname string, sessionId string, windowId string) (string, *RemoteState, error) {

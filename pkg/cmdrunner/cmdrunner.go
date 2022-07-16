@@ -200,6 +200,9 @@ func HandleCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	case "screen":
 		return ScreenCommand(ctx, pk)
 
+	case "session":
+		return SessionCommand(ctx, pk)
+
 	case "comment":
 		return CommentCommand(ctx, pk)
 
@@ -292,11 +295,11 @@ func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		if err != nil {
 			return nil, fmt.Errorf("/screen:close cannot close screen: %w", err)
 		}
-		err = sstore.DeleteScreen(ctx, ids.SessionId, ids.ScreenId)
+		update, err := sstore.DeleteScreen(ctx, ids.SessionId, ids.ScreenId)
 		if err != nil {
 			return nil, err
 		}
-		return nil, nil
+		return update, nil
 	}
 	if pk.MetaSubCmd == "open" || pk.MetaSubCmd == "new" {
 		ids, err := resolveIds(ctx, pk, R_Session)
@@ -304,11 +307,11 @@ func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 			return nil, fmt.Errorf("/screen:open cannot open screen: %w", err)
 		}
 		activate := resolveBool(pk.Kwargs["activate"], true)
-		_, err = sstore.InsertScreen(ctx, ids.SessionId, pk.Kwargs["name"], activate)
+		update, err := sstore.InsertScreen(ctx, ids.SessionId, pk.Kwargs["name"], activate)
 		if err != nil {
 			return nil, err
 		}
-		return nil, nil
+		return update, nil
 	}
 	if pk.MetaSubCmd != "" {
 		return nil, fmt.Errorf("invalid /screen subcommand '%s'", pk.MetaSubCmd)
@@ -325,8 +328,11 @@ func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	if err != nil {
 		return nil, err
 	}
-	sstore.SwitchScreenById(ctx, ids.SessionId, screenIdArg)
-	return nil, nil
+	update, err := sstore.SwitchScreenById(ctx, ids.SessionId, screenIdArg)
+	if err != nil {
+		return nil, err
+	}
+	return update, nil
 }
 
 func CdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -364,4 +370,8 @@ func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		return nil, err
 	}
 	return sstore.LineUpdate{Line: rtnLine}, nil
+}
+
+func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	return nil, nil
 }
