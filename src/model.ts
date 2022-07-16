@@ -577,7 +577,7 @@ class Model {
             let lineMsg : LineCmdUpdateType = update;
             this.addLineCmd(lineMsg.line, lineMsg.cmd, interactive);
         }
-        console.log("run-update>", update);
+        console.log("run-update>", interactive, update);
     }
 
     removeSession(sessionId : string) {
