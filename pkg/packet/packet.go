@@ -461,9 +461,10 @@ func MakeCmdStartPacket(reqId string) *CmdStartPacketType {
 }
 
 type TermOpts struct {
-	Rows int    `json:"rows"`
-	Cols int    `json:"cols"`
-	Term string `json:"term"`
+	Rows    int    `json:"rows"`
+	Cols    int    `json:"cols"`
+	Term    string `json:"term"`
+	CmdSize int64  `json:"cmdsize,omitempty"`
 }
 
 type RemoteFd struct {

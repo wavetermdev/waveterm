@@ -16,6 +16,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/google/uuid"
 )
@@ -29,6 +30,9 @@ const SSHCommandVarName = "SSH_COMMAND"
 const SessionsDirBaseName = "sessions"
 const MShellVersion = "0.1.0"
 const RemoteIdFile = "remoteid"
+
+var sessionDirCache = make(map[string]string)
+var baseLock = &sync.Mutex{}
 
 type CommandFileNames struct {
 	PtyOutFile    string
@@ -114,6 +118,22 @@ func GetMShellHomeDir() string {
 	return ExpandHomeDir(DefaultMShellHome)
 }
 
+func GetPtyOutFile(ck CommandKey, seqNum int) (string, error) {
+	if err := ck.Validate("ck"); err != nil {
+		return "", fmt.Errorf("cannot get command files: %w", err)
+	}
+	if seqNum < 0 {
+		return "", fmt.Errorf("invalid seqnum, cannot be negative")
+	}
+	sessionId, cmdId := ck.Split()
+	sdir, err := EnsureSessionDir(sessionId)
+	if err != nil {
+		return "", err
+	}
+	base := path.Join(sdir, cmdId)
+	return fmt.Sprintf("%s.%d.ptyout", base, seqNum), nil
+}
+
 func GetCommandFileNames(ck CommandKey) (*CommandFileNames, error) {
 	if err := ck.Validate("ck"); err != nil {
 		return nil, fmt.Errorf("cannot get command files: %w", err)
@@ -166,8 +186,14 @@ func EnsureSessionDir(sessionId string) (string, error) {
 	if sessionId == "" {
 		return "", fmt.Errorf("Bad sessionid, cannot be empty")
 	}
+	baseLock.Lock()
+	sdir, ok := sessionDirCache[sessionId]
+	baseLock.Unlock()
+	if ok {
+		return sdir, nil
+	}
 	mhome := GetMShellHomeDir()
-	sdir := path.Join(mhome, SessionsDirBaseName, sessionId)
+	sdir = path.Join(mhome, SessionsDirBaseName, sessionId)
 	info, err := os.Stat(sdir)
 	if errors.Is(err, fs.ErrNotExist) {
 		err = os.MkdirAll(sdir, 0777)
@@ -182,6 +208,9 @@ func EnsureSessionDir(sessionId string) (string, error) {
 	if !info.IsDir() {
 		return "", fmt.Errorf("session dir '%s' must be a directory", sdir)
 	}
+	baseLock.Lock()
+	sessionDirCache[sessionId] = sdir
+	baseLock.Unlock()
 	return sdir, nil
 }
 
