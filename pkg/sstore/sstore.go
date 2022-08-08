@@ -178,6 +178,7 @@ type TermOpts struct {
 	Rows     int64 `json:"rows"`
 	Cols     int64 `json:"cols"`
 	FlexRows bool  `json:"flexrows,omitempty"`
+	CmdSize  int64 `json:"cmdsize,omitempty"`
 }
 
 func (opts *TermOpts) Scan(val interface{}) error {
@@ -393,7 +394,7 @@ func EnsureDefaultSession(ctx context.Context) (*SessionType, error) {
 	if session != nil {
 		return session, nil
 	}
-	_, err = InsertSessionWithName(ctx, DefaultSessionName)
+	_, err = InsertSessionWithName(ctx, DefaultSessionName, true)
 	if err != nil {
 		return nil, err
 	}

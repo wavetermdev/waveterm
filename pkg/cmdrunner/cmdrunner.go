@@ -89,6 +89,19 @@ func resolveSessionScreen(ctx context.Context, sessionId string, screenArg strin
 	return "", fmt.Errorf("could not resolve screen '%s' (name/id not found)", screenArg)
 }
 
+func resolveSession(ctx context.Context, sessionArg string) (string, error) {
+	sessions, err := sstore.GetBareSessions(ctx)
+	if err != nil {
+		return "", fmt.Errorf("could not retrive bare sessions")
+	}
+	for _, session := range sessions {
+		if session.SessionId == sessionArg || session.Name == sessionArg {
+			return session.SessionId, nil
+		}
+	}
+	return "", fmt.Errorf("could not resolve sesssion '%s' (name/id not found)", sessionArg)
+}
+
 func resolveSessionId(pk *scpacket.FeCommandPacketType) (string, error) {
 	sessionId := pk.Kwargs["session"]
 	if sessionId == "" {
@@ -373,5 +386,24 @@ func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 }
 
 func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	return nil, nil
+	if pk.MetaSubCmd == "open" || pk.MetaSubCmd == "new" {
+		activate := resolveBool(pk.Kwargs["activate"], true)
+		update, err := sstore.InsertSessionWithName(ctx, pk.Kwargs["name"], activate)
+		if err != nil {
+			return nil, err
+		}
+		return update, nil
+	}
+	if pk.MetaSubCmd != "" {
+		return nil, fmt.Errorf("invalid /session subcommand '%s'", pk.MetaSubCmd)
+	}
+	firstArg := firstArg(pk)
+	if firstArg == "" {
+		return nil, fmt.Errorf("usage /session [session-name|session-id], no param specified")
+	}
+	sessionId, err := resolveSession(ctx, firstArg)
+	if err != nil {
+		return nil, err
+	}
+	return sstore.SessionUpdate{ActiveSessionId: sessionId}, nil
 }

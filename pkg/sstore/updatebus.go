@@ -41,7 +41,8 @@ func (WindowUpdate) WindowUpdate() string {
 }
 
 type SessionUpdate struct {
-	Sessions []*SessionType `json:"sessions"`
+	Sessions        []*SessionType `json:"sessions"`
+	ActiveSessionId string         `json:"activesessionid,omitempty"`
 }
 
 func (SessionUpdate) UpdateType() string {

@@ -85,11 +85,27 @@ func InsertRemote(ctx context.Context, remote *RemoteType) error {
 	return nil
 }
 
+func GetBareSessions(ctx context.Context) ([]*SessionType, error) {
+	var rtn []*SessionType
+	err := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT * FROM session`
+		tx.SelectWrap(&rtn, query)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return rtn, nil
+}
+
 func GetAllSessions(ctx context.Context) ([]*SessionType, error) {
 	var rtn []*SessionType
 	err := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * FROM session`
 		tx.SelectWrap(&rtn, query)
+		for _, session := range rtn {
+			session.Full = true
+		}
 		var screens []*ScreenType
 		query = `SELECT * FROM screen ORDER BY screenidx`
 		tx.SelectWrap(&screens, query)
@@ -154,26 +170,16 @@ func GetSessionScreens(ctx context.Context, sessionId string) ([]*ScreenType, er
 }
 
 func GetSessionById(ctx context.Context, id string) (*SessionType, error) {
-	var rtnSession *SessionType
-	err := WithTx(ctx, func(tx *TxWrap) error {
-		var session SessionType
-		query := `SELECT * FROM session WHERE sessionid = ?`
-		found := tx.GetWrap(&session, query, id)
-		if !found {
-			return nil
-		}
-		rtnSession = &session
-		query = `SELECT * FROM screen WHERE sessionid = ? ORDER BY screenidx`
-		tx.SelectWrap(&session.Screens, query, session.SessionId)
-		query = `SELECT * FROM remote_instance WHERE sessionid = ?`
-		tx.SelectWrap(&session.Remotes, query, session.SessionId)
-		session.Full = true
-		return nil
-	})
+	allSessions, err := GetAllSessions(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return rtnSession, nil
+	for _, session := range allSessions {
+		if session.SessionId == id {
+			return session, nil
+		}
+	}
+	return nil, nil
 }
 
 func GetSessionByName(ctx context.Context, name string) (*SessionType, error) {
@@ -195,7 +201,7 @@ func GetSessionByName(ctx context.Context, name string) (*SessionType, error) {
 
 // also creates default window, returns sessionId
 // if sessionName == "", it will be generated
-func InsertSessionWithName(ctx context.Context, sessionName string) (string, error) {
+func InsertSessionWithName(ctx context.Context, sessionName string, activate bool) (*SessionUpdate, error) {
 	newSessionId := uuid.New().String()
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		names := tx.SelectStrings(`SELECT name FROM session`)
@@ -210,9 +216,19 @@ func InsertSessionWithName(ctx context.Context, sessionName string) (string, err
 		return nil
 	})
 	if txErr != nil {
-		return "", txErr
+		return nil, txErr
 	}
-	return newSessionId, nil
+	session, err := GetSessionById(ctx, newSessionId)
+	if err != nil {
+		return nil, err
+	}
+	update := &SessionUpdate{
+		Sessions: []*SessionType{session},
+	}
+	if activate {
+		update.ActiveSessionId = newSessionId
+	}
+	return update, nil
 }
 
 func containsStr(strs []string, testStr string) bool {
