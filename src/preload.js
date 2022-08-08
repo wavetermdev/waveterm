@@ -6,4 +6,5 @@ contextBridge.exposeInMainWorld("api", {
     onICmd: (callback) => ipcRenderer.on("i-cmd", callback),
     onBracketCmd: (callback) => ipcRenderer.on("bracket-cmd", callback),
     onDigitCmd: (callback) => ipcRenderer.on("digit-cmd", callback),
+    contextScreen: (screenOpts, position) => ipcRenderer.send("context-screen", screenOpts, position),
 });

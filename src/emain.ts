@@ -110,4 +110,18 @@ electron.ipcMain.on("get-id", (event) => {
     return;
 });
 
+function getContextMenu() : any {
+    let menu = new electron.Menu();
+    let menuItem = new electron.MenuItem({label: "Testing", click: () => console.log("click testing!")});
+    menu.append(menuItem);
+    return menu;
+}
+
+electron.ipcMain.on("context-screen", (event, {screenId}, {x, y}) => {
+    console.log("context-screen", screenId);
+    let menu = getContextMenu();
+    menu.popup({x, y});
+});
+
+
 

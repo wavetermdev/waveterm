@@ -30,6 +30,7 @@ type ElectronApi = {
     onICmd : (callback : (mods : KeyModsType) => void) => void,
     onBracketCmd : (callback : (event : any, arg : {relative : number}, mods : KeyModsType) => void) => void,
     onDigitCmd : (callback : (event : any, arg : {digit : number}, mods : KeyModsType) => void) => void,
+    contextScreen : (screenId : string) => void,
 };
 
 function getApi() : ElectronApi {
@@ -513,6 +514,11 @@ class Model {
         getApi().onDigitCmd(this.onDigitCmd.bind(this));
     }
 
+    contextScreen(e : any, screenId : string) {
+        console.log("model", screenId);
+        getApi().contextScreen({screenId: screenId}, {x: e.x, y: e.y});
+    }
+
     onTCmd(mods : KeyModsType) {
         console.log("got cmd-t", mods);
         GlobalInput.createNewScreen();
@@ -562,13 +568,18 @@ class Model {
             mobx.action(() => {
                 let oldActiveScreen = this.getActiveScreen();
                 genMergeData(this.sessionList, sessionUpdateMsg.sessions, (s : Session) => s.sessionId, (sdata : SessionDataType) => sdata.sessionid, (sdata : SessionDataType) => new Session(sdata), (s : Session) => s.sessionIdx.get());
-                let newActiveScreen = this.getActiveScreen();
-                if (oldActiveScreen != newActiveScreen) {
-                    if (newActiveScreen == null) {
-                        this.activateScreen(this.activeSessionId.get(), null, oldActiveScreen);
-                    }
-                    else {
-                        this.activateScreen(newActiveScreen.sessionId, newActiveScreen.screenId, oldActiveScreen);
+                if (update.activesessionid) {
+                    this.activateSession(update.activesessionid);
+                }
+                else {
+                    let newActiveScreen = this.getActiveScreen();
+                    if (oldActiveScreen != newActiveScreen) {
+                        if (newActiveScreen == null) {
+                            this.activateScreen(this.activeSessionId.get(), null, oldActiveScreen);
+                        }
+                        else {
+                            this.activateScreen(newActiveScreen.sessionId, newActiveScreen.screenId, oldActiveScreen);
+                        }
                     }
                 }
             })();
@@ -749,6 +760,18 @@ class Model {
         });
     }
 
+    activateSession(sessionId : string) {
+        let oldActiveSession = this.getActiveSession();
+        if (oldActiveSession.sessionId == sessionId) {
+            return;
+        }
+        let newSession = this.getSessionById(sessionId);
+        if (newSession == null) {
+            return;
+        }
+        this.activateScreen(sessionId, newSession.activeScreenId.get());
+    }
+
     activateScreen(sessionId : string, screenId : string, oldActiveScreen? : Screen) {
         if (!oldActiveScreen) {
             oldActiveScreen = this.getActiveScreen();
@@ -842,8 +865,16 @@ class InputClass {
     constructor() {
     }
 
+    switchSession(session : string) {
+        GlobalModel.submitCommand("session", null, [session], null);
+    }
+
     switchScreen(screen : string) {
         GlobalModel.submitCommand("screen", null, [screen], null);
+    }
+
+    createNewSession() {
+        GlobalModel.submitCommand("session", "open", null, null);
     }
 
     createNewScreen() {

@@ -235,6 +235,11 @@ class CmdInput extends React.Component<{}, {}> {
                 setTimeout(() => this.doSubmitCmd(), 0);
                 return;
             }
+            if (e.code == "Tab") {
+                e.preventDefault();
+                this.setCurLine(this.getCurLine() + "[tab]");
+                return;
+            }
             if (e.code == "ArrowUp") {
                 e.preventDefault();
                 let hidx = this.historyIndex.get();
@@ -561,6 +566,13 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
         }
         GlobalInput.switchScreen(screenId);
     }
+
+    handleContextMenu(e : any, screenId : string) : void {
+        e.preventDefault();
+        console.log("handle context menu!", screenId);
+        let model = GlobalModel;
+        model.contextScreen(screenId);
+    }
     
     render() {
         let {session} = this.props;
@@ -572,7 +584,7 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
         return (
             <div className="screen-tabs">
                 <For each="screen" index="index" of={session.screens}>
-                    <div key={screen.screenId} className={cn("screen-tab", {"is-active": session.activeScreenId.get() == screen.screenId})} onClick={() => this.handleSwitchScreen(screen.screenId)}>
+                    <div key={screen.screenId} className={cn("screen-tab", {"is-active": session.activeScreenId.get() == screen.screenId})} onClick={() => this.handleSwitchScreen(screen.screenId)} onContextMenu={(event) => this.handleContextMenu(event, screen.screenId)}>
                         {screen.name.get()}
                         <If condition={index+1 <= 9}>
                             <div className="tab-index">&#x2318;{index+1}</div>
@@ -618,7 +630,11 @@ class MainSideBar extends React.Component<{}, {}> {
     }
 
     handleSessionClick(sessionId : string) {
-        console.log("click session", sessionId);
+        GlobalInput.switchSession(sessionId);
+    }
+
+    handleNewSession() {
+        GlobalInput.createNewSession();
     }
 
     render() {
@@ -645,7 +661,7 @@ class MainSideBar extends React.Component<{}, {}> {
                             <For each="session" of={model.sessionList}>
                                 <li key={session.sessionId}><a className={cn({"is-active": activeSessionId == session.sessionId})} onClick={() => this.handleSessionClick(session.sessionId)}>#{session.name.get()}</a></li>
                             </For>
-                            <li className="new-session"><a className="new-session"><i className="fa fa-plus"/> New Session</a></li>
+                            <li className="new-session"><a className="new-session" onClick={() => this.handleNewSession()}><i className="fa fa-plus"/> New Session</a></li>
                         </If>
                     </ul>
                     <p className="menu-label">
