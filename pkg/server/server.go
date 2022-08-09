@@ -10,8 +10,11 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
+	"strings"
 	"sync"
 
+	"github.com/alessio/shellescape"
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
@@ -45,6 +48,47 @@ func (m *MServer) ProcessCommandPacket(pk packet.CommandPacketType) {
 		return
 	}
 	cproc.Input.SendPacket(pk)
+	return
+}
+
+func (m *MServer) runCompGen(compPk *packet.CompGenPacketType) {
+	reqId := compPk.GetReqId()
+	if !packet.IsValidCompGenType(compPk.CompType) {
+		m.Sender.SendErrorResponse(reqId, fmt.Errorf("invalid compgen type '%s'", compPk.CompType))
+		return
+	}
+	compGenCmdStr := fmt.Sprintf("cd %s; compgen -A %s -- %s | head -n %d", shellescape.Quote(compPk.Cwd), shellescape.Quote(compPk.CompType), shellescape.Quote(compPk.Prefix), packet.MaxCompGenValues)
+	ecmd := exec.Command("bash", "-c", compGenCmdStr)
+	outputBytes, err := ecmd.Output()
+	if err != nil {
+		m.Sender.SendErrorResponse(reqId, fmt.Errorf("compgen error: %w", err))
+		return
+	}
+	outputStr := string(outputBytes)
+	parts := strings.Split(outputStr, "\n")
+	if len(parts) > 0 && parts[len(parts)-1] == "" {
+		parts = parts[0 : len(parts)-1]
+	}
+	m.Sender.SendResponse(reqId, map[string]interface{}{"comps": parts})
+	return
+}
+
+func (m *MServer) ProcessRpcPacket(pk packet.RpcPacketType) {
+	reqId := pk.GetReqId()
+	if cdPk, ok := pk.(*packet.CdPacketType); ok {
+		err := os.Chdir(cdPk.Dir)
+		if err != nil {
+			m.Sender.SendErrorResponse(reqId, fmt.Errorf("cannot change directory: %w", err))
+			return
+		}
+		m.Sender.SendResponse(reqId, true)
+		return
+	}
+	if compPk, ok := pk.(*packet.CompGenPacketType); ok {
+		go m.runCompGen(compPk)
+		return
+	}
+	m.Sender.SendErrorResponse(reqId, fmt.Errorf("invalid rpc type '%s'", pk.GetType()))
 	return
 }
 
@@ -115,6 +159,10 @@ func RunServer() (int, error) {
 		}
 		if cmdPk, ok := pk.(packet.CommandPacketType); ok {
 			server.ProcessCommandPacket(cmdPk)
+			continue
+		}
+		if rpcPk, ok := pk.(packet.RpcPacketType); ok {
+			server.ProcessRpcPacket(rpcPk)
 			continue
 		}
 		server.Sender.SendMessage(fmt.Sprintf("invalid packet '%s' sent to mshell server", packet.AsString(pk)))

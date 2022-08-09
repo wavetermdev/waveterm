@@ -26,6 +26,8 @@ import (
 //                   >cd, >getcmd, >untailcmd, >input, <resp
 // all             : <>error, <>message, <>ping, <raw
 
+const MaxCompGenValues = 100
+
 var GlobalDebug = false
 
 const (
@@ -46,7 +48,8 @@ const (
 	CdPacketStr        = "cd"        // rpc
 	CmdDataPacketStr   = "cmddata"   // rpc-response
 	RawPacketStr       = "raw"
-	InputPacketStr     = "input" // command
+	InputPacketStr     = "input"   // command
+	CompGenPacketStr   = "compgen" // rpc
 )
 
 const PacketSenderQueueSize = 20
@@ -73,11 +76,13 @@ func init() {
 	TypeStrToFactory[DataPacketStr] = reflect.TypeOf(DataPacketType{})
 	TypeStrToFactory[DataAckPacketStr] = reflect.TypeOf(DataAckPacketType{})
 	TypeStrToFactory[DataEndPacketStr] = reflect.TypeOf(DataEndPacketType{})
+	TypeStrToFactory[CompGenPacketStr] = reflect.TypeOf(CompGenPacketType{})
 
 	var _ RpcPacketType = (*RunPacketType)(nil)
 	var _ RpcPacketType = (*GetCmdPacketType)(nil)
 	var _ RpcPacketType = (*UntailCmdPacketType)(nil)
 	var _ RpcPacketType = (*CdPacketType)(nil)
+	var _ RpcPacketType = (*CompGenPacketType)(nil)
 
 	var _ RpcResponsePacketType = (*CmdStartPacketType)(nil)
 	var _ RpcResponsePacketType = (*ResponsePacketType)(nil)
@@ -313,6 +318,30 @@ func (p *CdPacketType) GetReqId() string {
 
 func MakeCdPacket() *CdPacketType {
 	return &CdPacketType{Type: CdPacketStr}
+}
+
+type CompGenPacketType struct {
+	Type     string `json:"type"`
+	ReqId    string `json:"reqid"`
+	Prefix   string `json:"prefix"`
+	CompType string `json:"comptype"`
+	Cwd      string `json:"cwd"`
+}
+
+func IsValidCompGenType(t string) bool {
+	return (t == "file" || t == "command" || t == "directory")
+}
+
+func (*CompGenPacketType) GetType() string {
+	return CompGenPacketStr
+}
+
+func (p *CompGenPacketType) GetReqId() string {
+	return p.ReqId
+}
+
+func MakeCompGenPacket() *CompGenPacketType {
+	return &CompGenPacketType{Type: CompGenPacketStr}
 }
 
 type ResponsePacketType struct {
