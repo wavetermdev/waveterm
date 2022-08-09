@@ -503,3 +503,34 @@ func GetRemoteState(ctx context.Context, rname string, sessionId string, windowI
 	})
 	return remoteId, remoteState, txErr
 }
+
+func UpdateRemoteCwd(ctx context.Context, rname string, sessionId string, windowId string, remoteId string, cwd string) (*RemoteInstance, error) {
+	var ri RemoteInstance
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT windowid FROM window WHERE sessionid = ? AND windowid = ?`
+		if !tx.Exists(query, sessionId, windowId) {
+			return fmt.Errorf("cannot update remote instance cwd, no window found")
+		}
+		query = `SELECT * FROM remote_instance WHERE sessionid = ? AND windowid = ? AND name = ?`
+		found := tx.GetWrap(&ri, query, sessionId, windowId, rname)
+		if !found {
+			ri = RemoteInstance{
+				RIId:         uuid.New().String(),
+				Name:         rname,
+				SessionId:    sessionId,
+				WindowId:     windowId,
+				RemoteId:     remoteId,
+				SessionScope: (windowId == ""),
+				State:        RemoteState{Cwd: cwd},
+			}
+			query = `INSERT INTO remote_instance (riid, name, sessionid, windowid, remoteid, sessionscope, state) VALUES (:riid, :name, :sessionid, :windowid, :remoteid, :sessionscope, :state)`
+			tx.NamedExecWrap(query, ri)
+			return nil
+		}
+		ri.State.Cwd = cwd
+		query = `UPDATE remote_instance SET state = ? WHERE sessionid = ? AND windowid = ? AND name = ?`
+		tx.ExecWrap(query, ri.State, ri.SessionId, ri.WindowId, ri.Name)
+		return nil
+	})
+	return &ri, txErr
+}

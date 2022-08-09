@@ -3,6 +3,8 @@ package cmdrunner
 import (
 	"context"
 	"fmt"
+	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -32,6 +34,7 @@ type resolvedIds struct {
 	ScreenId    string
 	WindowId    string
 	RemoteId    string
+	RemoteName  string
 	RemoteState *sstore.RemoteState
 }
 
@@ -57,6 +60,13 @@ func firstArg(pk *scpacket.FeCommandPacketType) string {
 		return ""
 	}
 	return pk.Args[0]
+}
+
+func argN(pk *scpacket.FeCommandPacketType, n int) string {
+	if len(pk.Args) <= n {
+		return ""
+	}
+	return pk.Args[n]
 }
 
 func resolveBool(arg string, def bool) bool {
@@ -138,22 +148,22 @@ func resolveScreenId(ctx context.Context, pk *scpacket.FeCommandPacketType, sess
 	return resolveSessionScreen(ctx, sessionId, screenArg)
 }
 
-func resolveRemote(ctx context.Context, pk *scpacket.FeCommandPacketType, sessionId string, windowId string) (string, *sstore.RemoteState, error) {
-	remoteArg := pk.Kwargs["remote"]
-	if remoteArg == "" {
-		return "", nil, nil
+func resolveRemote(ctx context.Context, pk *scpacket.FeCommandPacketType, sessionId string, windowId string) (string, string, *sstore.RemoteState, error) {
+	remoteName := pk.Kwargs["remote"]
+	if remoteName == "" {
+		return "", "", nil, nil
 	}
-	remoteId, state, err := sstore.GetRemoteState(ctx, remoteArg, sessionId, windowId)
+	remoteId, state, err := sstore.GetRemoteState(ctx, remoteName, sessionId, windowId)
 	if err != nil {
-		return "", nil, fmt.Errorf("cannot resolve remote '%s': %w", remoteArg, err)
+		return "", "", nil, fmt.Errorf("cannot resolve remote '%s': %w", remoteName, err)
 	}
 	if state == nil {
 		state, err = remote.GetDefaultRemoteStateById(remoteId)
 		if err != nil {
-			return "", nil, fmt.Errorf("cannot resolve remote '%s': %w", remoteArg, err)
+			return "", "", nil, fmt.Errorf("cannot resolve remote '%s': %w", remoteName, err)
 		}
 	}
-	return remoteId, state, nil
+	return remoteName, remoteId, state, nil
 }
 
 func resolveIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype int) (resolvedIds, error) {
@@ -191,7 +201,7 @@ func resolveIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype int
 		}
 	}
 	if (rtype&R_Remote)+(rtype&R_RemoteOpt) > 0 {
-		rtn.RemoteId, rtn.RemoteState, err = resolveRemote(ctx, pk, rtn.SessionId, rtn.WindowId)
+		rtn.RemoteName, rtn.RemoteId, rtn.RemoteState, err = resolveRemote(ctx, pk, rtn.SessionId, rtn.WindowId)
 		if err != nil {
 			return rtn, err
 		}
@@ -221,6 +231,9 @@ func HandleCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 
 	case "cd":
 		return CdCommand(ctx, pk)
+
+	case "compgen":
+		return CompGenCommand(ctx, pk)
 
 	default:
 		return nil, fmt.Errorf("invalid command '/%s', no handler", pk.MetaCmd)
@@ -354,19 +367,102 @@ func CdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 		return nil, fmt.Errorf("/cd error: %w", err)
 	}
 	newDir := firstArg(pk)
+	if newDir == "" {
+		return nil, nil
+	}
+	if !strings.HasPrefix(newDir, "/") {
+		if ids.RemoteState == nil {
+			return nil, fmt.Errorf("/cd error: cannot get current remote directory (can only cd with absolute path)")
+		}
+		newDir = path.Join(ids.RemoteState.Cwd, newDir)
+		newDir, err = filepath.Abs(newDir)
+		if err != nil {
+			return nil, fmt.Errorf("/cd error: error canonicalizing new directory: %w", err)
+		}
+	}
+	fmt.Printf("cd [%s] => [%s]\n", firstArg(pk), newDir)
 	cdPacket := packet.MakeCdPacket()
 	cdPacket.ReqId = uuid.New().String()
 	cdPacket.Dir = newDir
-	localRemote := remote.GetRemoteById(ids.RemoteId)
-	if localRemote == nil {
+	curRemote := remote.GetRemoteById(ids.RemoteId)
+	if curRemote == nil {
 		return nil, fmt.Errorf("invalid remote, cannot execute command")
 	}
-	resp, err := localRemote.PacketRpc(ctx, cdPacket)
+	_, err = curRemote.PacketRpc(ctx, cdPacket)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("GOT cd RESP: %v\n", resp)
-	return nil, nil
+	remote, err := sstore.UpdateRemoteCwd(ctx, ids.RemoteName, ids.SessionId, ids.WindowId, ids.RemoteId, newDir)
+	if err != nil {
+		return nil, err
+	}
+	update := sstore.WindowUpdate{
+		Window: sstore.WindowType{
+			SessionId: ids.SessionId,
+			WindowId:  ids.WindowId,
+			Remotes:   []*sstore.RemoteInstance{remote},
+		},
+	}
+	return update, nil
+}
+
+func getStrArr(v interface{}, field string) []string {
+	if v == nil {
+		return nil
+	}
+	m, ok := v.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	fieldVal := m[field]
+	if fieldVal == nil {
+		return nil
+	}
+	iarr, ok := fieldVal.([]interface{})
+	if !ok {
+		return nil
+	}
+	var sarr []string
+	for _, iv := range iarr {
+		if sv, ok := iv.(string); ok {
+			sarr = append(sarr, sv)
+		}
+	}
+	return sarr
+}
+
+func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveIds(ctx, pk, R_Session|R_Window|R_Remote)
+	if err != nil {
+		return nil, fmt.Errorf("/compgen error: %w", err)
+	}
+	compType := argN(pk, 0)
+	prefix := argN(pk, 1)
+	if !packet.IsValidCompGenType(compType) {
+		return nil, fmt.Errorf("/compgen invalid type '%s'", compType)
+	}
+	cgPacket := packet.MakeCompGenPacket()
+	cgPacket.ReqId = uuid.New().String()
+	cgPacket.CompType = compType
+	cgPacket.Prefix = prefix
+	if ids.RemoteState == nil {
+		return nil, fmt.Errorf("/compgen invalid remote state")
+	}
+	cgPacket.Cwd = ids.RemoteState.Cwd
+	curRemote := remote.GetRemoteById(ids.RemoteId)
+	if curRemote == nil {
+		return nil, fmt.Errorf("invalid remote, cannot execute command")
+	}
+	resp, err := curRemote.PacketRpc(ctx, cgPacket)
+	if err != nil {
+		return nil, err
+	}
+	comps := getStrArr(resp.Data, "comps")
+	update := sstore.InfoUpdate{
+		InfoTitle:   fmt.Sprintf("%s completions", compType),
+		InfoStrings: comps,
+	}
+	return update, nil
 }
 
 func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {

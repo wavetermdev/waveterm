@@ -9,6 +9,7 @@ const SessionUpdateStr = "session"
 const WindowUpdateStr = "window"
 const CmdUpdateStr = "cmd"
 const LineCmdUpdateStr = "line+cmd"
+const InfoUpdateStr = "info"
 
 type UpdatePacket interface {
 	UpdateType() string
@@ -36,7 +37,7 @@ type WindowUpdate struct {
 	Remove bool       `json:"remove,omitempty"`
 }
 
-func (WindowUpdate) WindowUpdate() string {
+func (WindowUpdate) UpdateType() string {
 	return WindowUpdateStr
 }
 
@@ -68,6 +69,15 @@ type LineUpdate struct {
 
 func (LineUpdate) UpdateType() string {
 	return LineCmdUpdateStr
+}
+
+type InfoUpdate struct {
+	InfoTitle   string   `json:"infotitle"`
+	InfoStrings []string `json:"infostrings"`
+}
+
+func (InfoUpdate) UpdateType() string {
+	return InfoUpdateStr
 }
 
 type UpdateChannel struct {
