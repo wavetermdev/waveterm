@@ -57,7 +57,7 @@ func (m *MServer) runCompGen(compPk *packet.CompGenPacketType) {
 		m.Sender.SendErrorResponse(reqId, fmt.Errorf("invalid compgen type '%s'", compPk.CompType))
 		return
 	}
-	compGenCmdStr := fmt.Sprintf("cd %s; compgen -A %s -- %s | head -n %d", shellescape.Quote(compPk.Cwd), shellescape.Quote(compPk.CompType), shellescape.Quote(compPk.Prefix), packet.MaxCompGenValues)
+	compGenCmdStr := fmt.Sprintf("cd %s; compgen -A %s -- %s | head -n %d", shellescape.Quote(compPk.Cwd), shellescape.Quote(compPk.CompType), shellescape.Quote(compPk.Prefix), packet.MaxCompGenValues+1)
 	ecmd := exec.Command("bash", "-c", compGenCmdStr)
 	outputBytes, err := ecmd.Output()
 	if err != nil {
@@ -69,7 +69,12 @@ func (m *MServer) runCompGen(compPk *packet.CompGenPacketType) {
 	if len(parts) > 0 && parts[len(parts)-1] == "" {
 		parts = parts[0 : len(parts)-1]
 	}
-	m.Sender.SendResponse(reqId, map[string]interface{}{"comps": parts})
+	hasMore := false
+	if len(parts) > packet.MaxCompGenValues {
+		hasMore = true
+		parts = parts[0:packet.MaxCompGenValues]
+	}
+	m.Sender.SendResponse(reqId, map[string]interface{}{"comps": parts, "hasmore": hasMore})
 	return
 }
 

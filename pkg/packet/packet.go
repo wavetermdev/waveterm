@@ -11,6 +11,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -362,6 +363,19 @@ func (p *ResponsePacketType) GetResponseId() string {
 
 func (*ResponsePacketType) GetResponseDone() bool {
 	return true
+}
+
+func (p *ResponsePacketType) Err() error {
+	if p == nil {
+		return fmt.Errorf("no response received")
+	}
+	if !p.Success {
+		if p.Error != "" {
+			return errors.New(p.Error)
+		}
+		return fmt.Errorf("rpc failed")
+	}
+	return nil
 }
 
 func MakeErrorResponsePacket(reqId string, err error) *ResponsePacketType {
