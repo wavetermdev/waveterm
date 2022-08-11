@@ -405,6 +405,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
     rszObs : any
     randomId : string;
     width : mobx.IObservableValue<number> = mobx.observable.box(0);
+    lastHeight : number = null;
 
     scrollToBottom(reason : string) {
         let elem = document.getElementById(this.getLinesDOMId());
@@ -467,12 +468,24 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         let entry = entries[0];
         let width = entry.target.offsetWidth;
         this.updateWidth(width);
+        if (this.lastHeight == null) {
+            this.lastHeight = entry.target.offsetHeight;
+            return;
+        }
+        if (this.lastHeight != entry.target.offsetHeight) {
+            this.lastHeight = entry.target.offsetHeight;
+            this.doConditionalScrollToBottom("resize-height");
+        }
     }
 
     handleDomMutation(mutations, mutObs) {
+        this.doConditionalScrollToBottom("mut");
+    }
+
+    doConditionalScrollToBottom(reason : string) {
         let {sw} = this.props;
         if (sw && sw.shouldFollow.get()) {
-            setTimeout(() => this.scrollToBottom("mut"), 0);
+            setTimeout(() => this.scrollToBottom(reason), 0);
         }
     }
 
