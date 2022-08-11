@@ -8,7 +8,7 @@ import dayjs from 'dayjs'
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import cn from "classnames"
 import {TermWrap} from "./term";
-import type {SessionDataType, LineType, CmdDataType, RemoteType} from "./types";
+import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType} from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {GlobalModel, GlobalInput, Session, Cmd, Window, Screen, ScreenWindow} from "./model";
 
@@ -641,7 +641,7 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
         e.preventDefault();
         console.log("handle context menu!", screenId);
         let model = GlobalModel;
-        model.contextScreen(screenId);
+        model.contextScreen(e, screenId);
     }
     
     render() {

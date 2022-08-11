@@ -62,7 +62,7 @@ interface ISimpleDataType {
     remove? : boolean;
 }
 
-function genMergeSimpleData<T extends ISimpleDataType>(objs : mobx.IObservableArray<T>, dataArr : T, idFn : (obj : T) => string, sortIdxFn : (obj : T) => number) {
+function genMergeSimpleData<T extends ISimpleDataType>(objs : mobx.IObservableArray<T>, dataArr : T[], idFn : (obj : T) => string, sortIdxFn : (obj : T) => number) {
     if (dataArr == null || dataArr.length == 0) {
         return;
     }

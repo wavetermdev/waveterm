@@ -4,7 +4,7 @@ import {boundMethod} from "autobind-decorator";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, SessionUpdateType, WindowUpdateType, UpdateMessage, LineCmdUpdateType} from "./types";
+import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, SessionUpdateType, WindowUpdateType, UpdateMessage, LineCmdUpdateType, InfoType, CmdLineUpdateType} from "./types";
 import {WSControl} from "./ws";
 
 var GlobalUser = "sawka";
@@ -30,7 +30,7 @@ type ElectronApi = {
     onICmd : (callback : (mods : KeyModsType) => void) => void,
     onBracketCmd : (callback : (event : any, arg : {relative : number}, mods : KeyModsType) => void) => void,
     onDigitCmd : (callback : (event : any, arg : {digit : number}, mods : KeyModsType) => void) => void,
-    contextScreen : (screenId : string) => void,
+    contextScreen : (screenOpts : {screenId : string}, position : {x : number, y : number}) => void,
 };
 
 function getApi() : ElectronApi {
@@ -296,7 +296,7 @@ class Window {
             if (load) {
                 this.loaded.set(true);
             }
-            genMergeSimpleData(this.lines, win.lines, (l) => String(l.lineid), (l) => l.lineid);
+            genMergeSimpleData(this.lines, win.lines, (l : LineType) => String(l.lineid), (l : LineType) => l.lineid);
             this.history = win.history || [];
             let cmds = win.cmds || [];
             for (let i=0; i<cmds.length; i++) {
@@ -497,19 +497,6 @@ class Session {
         return null;
     }
 }
-
-type InfoType = {
-    infotitle : string,
-    infomsg : string,
-    infoerror : string,
-    infocomps : string[],
-    infocompsmore : boolean,
-};
-
-type CmdLineUpdateType = {
-    insertchars : string,
-    insertpos : number,
-};
 
 class InputModel {
     historyIndex : mobx.IObservableValue<number> = mobx.observable.box(0, {name: "history-index"});
@@ -730,11 +717,12 @@ class Model {
             this.updateWindow(winMsg.window, false);
         }
         if ("info" in update) {
-            let info = update.info;
+            let info : InfoType = update.info;
             this.flashInfoMsg(info, info.timeoutms);
         }
         if ("cmdline" in update) {
-            this.inputModel.updateCmdLine(update.cmdline);
+            let cmdline : CmdLineUpdateType = update.cmdline;
+            this.inputModel.updateCmdLine(cmdline);
         }
         console.log("run-update>", interactive, update);
     }
