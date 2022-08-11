@@ -87,6 +87,8 @@ type RemoteInstanceType = {
     remoteid : string,
     sessionscope : boolean,
     state : RemoteStateType,
+
+    remove? : boolean,
 }
 
 type WindowDataType = {
@@ -185,7 +187,6 @@ type UpdateMessage = PtyDataUpdateType | SessionUpdateType | LineCmdUpdateType;
 
 type WindowUpdateType = {
     window: WindowDataType,
-    remove: boolean,
 }
 
 export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDonePacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType, PtyDataUpdateType, SessionUpdateType, WindowUpdateType, UpdateMessage, LineCmdUpdateType};

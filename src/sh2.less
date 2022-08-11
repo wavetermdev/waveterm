@@ -464,6 +464,10 @@ body .xterm .xterm-viewport {
     border-bottom: 1px solid #ccc;
     border-bottom-right-radius: 10px;
 
+    &.has-info {
+        padding-top: 5px;
+    }
+
     .cmd-input-context {
         color: #fff;
         font-family: 'JetBrains Mono', monospace;
@@ -489,6 +493,44 @@ body .xterm .xterm-viewport {
         .cmd-exec .button {
             background-color: #000 !important;
             color: #d3d7cf;
+        }
+    }
+
+    .cmd-input-info {
+        .info-msg {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 400;
+            font-size: 14px;
+            color: #729fcf;
+            padding-bottom: 2px;
+        }
+
+        .info-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            font-size: 14px;
+            color: #729fcf;
+            padding-bottom: 2px;
+        }
+
+        .info-strings {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            padding-bottom: 5px;
+            
+            .info-string {
+                min-width: 200px;
+                color: #d3d7cf;
+            }
+        }
+
+        .info-error {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            font-size: 14px;
+            color: #cc0000;
+            padding-bottom: 2px;
         }
     }
 }

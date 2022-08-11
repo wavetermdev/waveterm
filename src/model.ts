@@ -1,7 +1,7 @@
 import * as mobx from "mobx";
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
-import {handleJsonFetchResponse, base64ToArray, genMergeData} from "./util";
+import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
 import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, SessionUpdateType, WindowUpdateType, UpdateMessage, LineCmdUpdateType} from "./types";
@@ -296,12 +296,13 @@ class Window {
             if (load) {
                 this.loaded.set(true);
             }
-            this.lines.replace(win.lines || []);
+            genMergeSimpleData(this.lines, win.lines, (l) => String(l.lineid), (l) => l.lineid);
             this.history = win.history || [];
             let cmds = win.cmds || [];
             for (let i=0; i<cmds.length; i++) {
                 this.cmds[cmds[i].cmdid] = new Cmd(cmds[i]);
             }
+            genMergeSimpleData(this.remoteInstances, win.remotes, (r) => r.riid, null);
         })();
     }
 
@@ -321,6 +322,9 @@ class Window {
 
     getCurRemoteInstance() : RemoteInstanceType {
         let rname = this.curRemote.get();
+        if (rname == null) {
+            return null;
+        }
         let sessionScope = false;
         if (rname.startsWith("^")) {
             rname = rname.substr(1);
@@ -385,7 +389,7 @@ class Session {
     sessionIdx : OV<number>;
     screens : OArr<Screen>;
     notifyNum : OV<number> = mobx.observable.box(0);
-    remoteInstances : OArr<RemoteInstanceType> = mobx.observable.array([]);
+    remoteInstances : OArr<RemoteInstanceType>;
 
     constructor(sdata : SessionDataType) {
         this.sessionId = sdata.sessionid;
@@ -399,6 +403,8 @@ class Session {
         }
         this.screens = mobx.observable.array(screens, {deep: false});
         this.activeScreenId = mobx.observable.box(ces(sdata.activescreenid));
+        let remotes = sdata.remotes || [];
+        this.remoteInstances = mobx.observable.array(remotes);
     }
 
     dispose() : void {
@@ -492,6 +498,91 @@ class Session {
     }
 }
 
+type InfoType = {
+    infotitle : string;
+    infomsg : string;
+    infoerror : string;
+    infostrings : string[];
+};
+
+type CmdLineUpdateType = {
+    insertchars : string,
+    insertpos : number,
+};
+
+class InputModel {
+    historyIndex : mobx.IObservableValue<number> = mobx.observable.box(0, {name: "history-index"});
+    modHistory : mobx.IObservableArray<string> = mobx.observable.array([""], {name: "mod-history"});
+
+    updateCmdLine(cmdLine : CmdLineUpdateType) {
+        mobx.action(() => {
+            let curLine = this.getCurLine();
+            if (curLine.length < cmdLine.insertpos) {
+                return;
+            }
+            let pos = cmdLine.insertpos;
+            curLine = curLine.substr(0, pos) + cmdLine.insertchars + curLine.substr(pos);
+            this.setCurLine(curLine);
+        })();
+    }
+
+    setCurLine(val : string) {
+        let hidx = this.historyIndex.get();
+        this.modHistory[hidx] = val;
+    }
+
+    clearCurLine() {
+        mobx.action(() => {
+            this.historyIndex.set(0);
+            this.modHistory.clear();
+            this.modHistory[0] = "";
+        })();
+    }
+
+    getCurLine() : string {
+        let model = GlobalModel;
+        let hidx = this.historyIndex.get();
+        if (hidx < this.modHistory.length && this.modHistory[hidx] != null) {
+            return this.modHistory[hidx];
+        }
+        let win = model.getActiveWindow();
+        if (win == null) {
+            return "";
+        }
+        let hitem = win.getHistoryItem(-hidx);
+        if (hitem == null) {
+            return "";
+        }
+        return hitem.cmdtext;
+    }
+
+    prevHistoryItem() : void {
+        let model = GlobalModel;
+        let win = model.getActiveWindow();
+        let hidx = this.historyIndex.get();
+        hidx += 1;
+        if (hidx > win.getNumHistoryItems()) {
+            hidx = win.getNumHistoryItems();
+        }
+        mobx.action(() => {
+            this.historyIndex.set(hidx);
+        })();
+        return;
+    }
+
+    nextHistoryItem() : void {
+        let hidx = this.historyIndex.get();
+        hidx -= 1;
+        if (hidx < 0) {
+            hidx = 0;
+        }
+        mobx.action(() => {
+            this.historyIndex.set(hidx);
+        })();
+        return;
+    }
+};
+
 class Model {
     clientId : string;
     activeSessionId : OV<string> = mobx.observable.box(null);
@@ -501,6 +592,10 @@ class Model {
     remotes : OArr<RemoteType> = mobx.observable.array([], {deep: false});
     remotesLoaded : OV<boolean> = mobx.observable.box(false);
     windows : OMap<string, Window> = mobx.observable.map({}, {deep: false});
+    infoShow : OV<boolean> = mobx.observable.box(false);
+    infoMsg : OV<InfoType> = mobx.observable.box(null);
+    infoTimeoutId : any = null;
+    inputModel : InputModel;
     
     constructor() {
         this.clientId = getApi().getId();
@@ -508,6 +603,7 @@ class Model {
         this.loadSessionList();
         this.ws = new WSControl(this.clientId, (message : any) => this.runUpdate(message, false));
         this.ws.reconnect();
+        this.inputModel = new InputModel();
         getApi().onTCmd(this.onTCmd.bind(this));
         getApi().onICmd(this.onICmd.bind(this));
         getApi().onBracketCmd(this.onBracketCmd.bind(this));
@@ -517,6 +613,47 @@ class Model {
     contextScreen(e : any, screenId : string) {
         console.log("model", screenId);
         getApi().contextScreen({screenId: screenId}, {x: e.x, y: e.y});
+    }
+
+    flashInfoMsg(info : InfoType, timeoutMs : number) {
+        if (this.infoTimeoutId != null) {
+            clearTimeout(this.infoTimeoutId);
+            this.infoTimeoutId = null;
+        }
+        mobx.action(() => {
+            this.infoMsg.set(info);
+            this.infoShow.set(info != null);
+        })();
+        if (info != null && timeoutMs) {
+            this.infoTimeoutId = setTimeout(() => {
+                this.clearInfoMsg(false);
+            }, timeoutMs);
+        }
+    }
+
+    clearInfoMsg(setNull : boolean) {
+        this.infoTimeoutId = null;
+        mobx.action(() => {
+            this.infoShow.set(false);
+            if (setNull) {
+                this.infoMsg.set(null);
+            }
+        })();
+    }
+
+    toggleInfoMsg() {
+        this.infoTimeoutId = null;
+        mobx.action(() => {
+            let isShowing = this.infoShow.get();
+            if (isShowing) {
+                this.infoShow.set(false);
+            }
+            else {
+                if (this.infoMsg.get() != null) {
+                    this.infoShow.set(true);
+                }
+            }
+        })();
     }
 
     onTCmd(mods : KeyModsType) {
@@ -561,7 +698,6 @@ class Model {
                 return;
             }
             activeScreen.updatePtyData(ptyMsg);
-            return;
         }
         if ("sessions" in update) {
             let sessionUpdateMsg : SessionUpdateType = update;
@@ -588,11 +724,18 @@ class Model {
             let lineMsg : LineCmdUpdateType = update;
             this.addLineCmd(lineMsg.line, lineMsg.cmd, interactive);
         }
+        if ("window" in update) {
+            let winMsg : WindowUpdateType = update;
+            this.updateWindow(winMsg.window, false);
+        }
+        if ("info" in update) {
+            let info = update.info;
+            this.flashInfoMsg(info, info.timeoutms);
+        }
+        if ("cmdline" in update) {
+            this.inputModel.updateCmdLine(update.cmdline);
+        }
         console.log("run-update>", interactive, update);
-    }
-
-    removeSession(sessionId : string) {
-        console.log("removeSession not implemented");
     }
 
     getActiveSession() : Session {
@@ -631,7 +774,7 @@ class Model {
             let existingWin = this.windows.get(winKey);
             if (existingWin == null) {
                 if (!load) {
-                    console.log("cannot update window that does not exist");
+                    console.log("cannot update window that does not exist", winKey);
                     return;
                 }
                 let newWindow = new Window(win.sessionid, win.windowid);
@@ -707,7 +850,7 @@ class Model {
                 }
             })();
         }).catch((err) => {
-            this.errorHandler("calling run-command", err);
+            this.errorHandler("calling run-command", err, true);
         });
     }
 
@@ -756,7 +899,7 @@ class Model {
                 }
             })();
         }).catch((err) => {
-            this.errorHandler("getting session list", err);
+            this.errorHandler("getting session list", err, false);
         });
     }
 
@@ -805,7 +948,7 @@ class Model {
             this.updateWindow(data.data, true);
             return;
         }).catch((err) => {
-            this.errorHandler(sprintf("getting window=%s", windowId), err);
+            this.errorHandler(sprintf("getting window=%s", windowId), err, false);
         });
         return newWin;
     }
@@ -818,7 +961,7 @@ class Model {
                 this.remotesLoaded.set(true);
             })();
         }).catch((err) => {
-            this.errorHandler("calling get-remotes", err)
+            this.errorHandler("calling get-remotes", err, false)
         });
     }
 
@@ -852,8 +995,15 @@ class Model {
         return window.getCmd(line.cmdid);
     }
 
-    errorHandler(str : string, err : any) {
+    errorHandler(str : string, err : any, interactive : boolean) {
         console.log("[error]", str, err);
+        if (interactive) {
+            let errMsg = "error running command";
+            if (err != null && err.message) {
+                errMsg = err.message;
+            }
+            this.flashInfoMsg({infoerror: errMsg}, null);
+        }
     }
 
     sendInputPacket(inputPacket : any) {

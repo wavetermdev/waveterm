@@ -18,6 +18,51 @@ function getLineId(line : LineType) : string {
     return sprintf("%s-%s-%s", line.sessionid, line.windowid, line.lineid);
 }
 
+function getRemoteStr(remote : RemoteType) : string {
+    if (remote == null) {
+        return "(no remote)";
+    }
+    if (remote.remotevars.local) {
+        return sprintf("%s@%s", remote.remotevars.remoteuser, "local")
+    }
+    else if (remote.remotevars.remotehost) {
+        return sprintf("%s@%s", remote.remotevars.remoteuser, remote.remotevars.remotehost);
+    }
+    else {
+        let host = remote.remotevars.host || "unknown";
+        if (remote.remotevars.user) {
+            return sprintf("%s@%s", remote.remotevars.user, host)
+        }
+        else {
+            return host;
+        }
+    }
+}
+
+function replaceHomePath(path : string, homeDir : string) : string {
+    if (path == homeDir) {
+        return "~";
+    }
+    if (path.startsWith(homeDir + "/")) {
+        return "~" + path.substr(homeDir.length);
+    }
+    return path;
+}
+
+function getCwdStr(remote : RemoteType, state : RemoteStateType) : string {
+    if ((state == null || state.cwd == null) && remote != null) {
+        return "~";
+    }
+    let cwd = "(unknown)";
+    if (state && state.cwd) {
+        cwd = state.cwd;
+    }
+    if (remote && remote.remotevars.home) {
+        cwd = replaceHomePath(cwd, remote.remotevars.home)
+    }
+    return cwd;
+}
+
 function getLineDateStr(ts : number) : string {
     let lineDate = new Date(ts);
     let nowDate = new Date();
@@ -107,16 +152,6 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         }
     }
 
-    replaceHomePath(path : string, homeDir : string) : string {
-        if (path == homeDir) {
-            return "~";
-        }
-        if (path.startsWith(homeDir + "/")) {
-            return "~" + path.substr(homeDir.length);
-        }
-        return path;
-    }
-
     renderCmdText(cmd : Cmd, remote : RemoteType) : any {
         if (cmd == null) {
             return (
@@ -125,30 +160,8 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                 </div>
             );
         }
-        let promptStr = "";
-        if (remote.remotevars.local) {
-            promptStr = sprintf("%s@%s", remote.remotevars.remoteuser, "local")
-        }
-        else if (remote.remotevars.remotehost) {
-            promptStr = sprintf("%s@%s", remote.remotevars.remoteuser, remote.remotevars.remotehost)
-        }
-        else {
-            let host = remote.remotevars.host || "unknown";
-            if (remote.remotevars.user) {
-                promptStr = sprintf("%s@%s", remote.remotevars.user, host)
-            }
-            else {
-                promptStr = host;
-            }
-        }
-        let cwd = "(unknown)";
-        let remoteState = cmd.getRemoteState();
-        if (remoteState && remoteState.cwd) {
-            cwd = remoteState.cwd;
-        }
-        if (remote.remotevars.home) {
-            cwd = this.replaceHomePath(cwd, remote.remotevars.home)
-        }
+        let promptStr = getRemoteStr(remote);
+        let cwd = getCwdStr(remote, cmd.getRemoteState());
         return (
             <div className="metapart-mono cmdtext">
                 <span className="term-bright-green">[{promptStr} {cwd}]</span> {cmd.getSingleLineCmdText()}
@@ -221,43 +234,57 @@ class Line extends React.Component<{sw : ScreenWindow, line : LineType, width : 
 
 @mobxReact.observer
 class CmdInput extends React.Component<{}, {}> {
-    historyIndex : mobx.IObservableValue<number> = mobx.observable.box(0, {name: "history-index"});
-    modHistory : mobx.IObservableArray<string> = mobx.observable.array([""], {name: "mod-history"});
+    lastTabCurLine : mobx.IObservableValue<string> = mobx.observable.box(null);
 
     @mobx.action @boundMethod
     onKeyDown(e : any) {
         mobx.action(() => {
             let model = GlobalModel;
+            let inputModel = model.inputModel;
             let win = model.getActiveWindow();
             let ctrlMod = e.getModifierState("Control") || e.getModifierState("Meta") || e.getModifierState("Shift");
+            let curLine = inputModel.getCurLine();
+            let ltCurLine = this.lastTabCurLine.get();
+            if (e.code == "Tab") {
+                e.preventDefault();
+                let lastTab = (ltCurLine != null && curLine == ltCurLine);
+                if (lastTab) {
+                    GlobalModel.submitCommand("compgen", null, [curLine], {"comppos": String(curLine.length), "compshow": "1"});
+                    return;
+                }
+                else {
+                    this.lastTabCurLine.set(curLine);
+                    GlobalModel.submitCommand("compgen", null, [curLine], {"comppos": String(curLine.length)});
+                    GlobalModel.clearInfoMsg(true);
+                    return;
+                }
+            }
+            if (ltCurLine != null && curLine != ltCurLine) {
+                this.lastTabCurLine.set(null);
+            }
             if (e.code == "Enter" && !ctrlMod) {
                 e.preventDefault();
                 setTimeout(() => this.doSubmitCmd(), 0);
                 return;
             }
-            if (e.code == "Tab") {
+            if (e.code == "Escape") {
                 e.preventDefault();
-                this.setCurLine(this.getCurLine() + "[tab]");
+                GlobalModel.toggleInfoMsg();
+                return;
+            }
+            if (e.code == "KeyC" && e.getModifierState("Control")) {
+                e.preventDefault();
+                inputModel.clearCurLine();
                 return;
             }
             if (e.code == "ArrowUp") {
                 e.preventDefault();
-                let hidx = this.historyIndex.get();
-                hidx += 1;
-                if (hidx > win.getNumHistoryItems()) {
-                    hidx = win.getNumHistoryItems();
-                }
-                this.historyIndex.set(hidx);
+                inputModel.prevHistoryItem();
                 return;
             }
             if (e.code == "ArrowDown") {
                 e.preventDefault();
-                let hidx = this.historyIndex.get();
-                hidx -= 1;
-                if (hidx < 0) {
-                    hidx = 0;
-                }
-                this.historyIndex.set(hidx);
+                inputModel.nextHistoryItem();
                 return;
             }
             // console.log(e.code, e.keyCode, e.key, event.which, ctrlMod, e);
@@ -265,66 +292,85 @@ class CmdInput extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    clearCurLine() {
-        mobx.action(() => {
-            this.historyIndex.set(0);
-            this.modHistory.clear();
-            this.modHistory[0] = "";
-        })();
-    }
-
-    @boundMethod
-    getCurLine() : string {
-        let model = GlobalModel;
-        let hidx = this.historyIndex.get();
-        if (hidx < this.modHistory.length && this.modHistory[hidx] != null) {
-            return this.modHistory[hidx];
-        }
-        let win = model.getActiveWindow();
-        if (win == null) {
-            return "";
-        }
-        let hitem = win.getHistoryItem(-hidx);
-        if (hitem == null) {
-            return "";
-        }
-        return hitem.cmdtext;
-    }
-
-    @boundMethod
-    setCurLine(val : string) {
-        let hidx = this.historyIndex.get();
-        this.modHistory[hidx] = val;
-    }
-
-    @boundMethod
     onChange(e : any) {
         mobx.action(() => {
-            this.setCurLine(e.target.value);
+            GlobalModel.inputModel.setCurLine(e.target.value);
         })();
     }
 
     @boundMethod
     doSubmitCmd() {
         let model = GlobalModel;
-        let commandStr = this.getCurLine();
+        let inputModel = model.inputModel;
+        let commandStr = inputModel.getCurLine();
         let hitem = {cmdtext: commandStr};
-        this.clearCurLine();
+        inputModel.clearCurLine();
+        GlobalModel.clearInfoMsg(true);
         model.submitRawCommand(commandStr);
     }
     
     render() {
-        let curLine = this.getCurLine();
+        let model = GlobalModel;
+        let inputModel = model.inputModel;
+        let curLine = inputModel.getCurLine();
+        let win = GlobalModel.getActiveWindow();
+        let ri : RemoteInstanceType = null;
+        if (win != null) {
+            ri = win.getCurRemoteInstance();
+        }
+        let remote : RemoteType = null;
+        let remoteState : RemoteStateType = null;
+        if (ri != null) {
+            remote = GlobalModel.getRemote(ri.remoteid);
+            remoteState = ri.state;
+        }
+        let promptStr = getRemoteStr(remote);
+        let cwdStr = getCwdStr(remote, remoteState);
+        let infoMsg = GlobalModel.infoMsg.get();
+        let infoShow = GlobalModel.infoShow.get();
+        let istr : string = null;
+        let istrIdx : number = 0;
         return (
-            <div className="box cmd-input has-background-black">
+            <div className={cn("box cmd-input has-background-black", {"has-info": infoShow})}>
+                <div className="cmd-input-info" style={{display: (infoShow ? "block" : "none")}}>
+                    <If condition={infoMsg && infoMsg.infotitle != null}>
+                        <div className="info-title">
+                            {infoMsg.infotitle}
+                        </div>
+                    </If>
+                    <If condition={infoMsg && infoMsg.infomsg != null}>
+                        <div className="info-msg">
+                            {infoMsg.infomsg}
+                        </div>
+                    </If>
+                    <If condition={infoMsg && infoMsg.infostrings != null && infoMsg.infostrings.length > 0}>
+                        <div className="info-strings">
+                            <For each="istr" index="istrIdx" of={infoMsg.infostrings}>
+                                <div key={istrIdx} className="info-string">
+                                    {istr}
+                                </div>
+                            </For>
+                            <If condition={infoMsg.infostringsmore}>
+                                <div key="more" className="info-string">
+                                    ...
+                                </div>
+                            </If>
+                        </div>
+                    </If>
+                    <If condition={infoMsg && infoMsg.infoerror != null}>
+                        <div className="info-error">
+                            {infoMsg.infoerror}
+                        </div>
+                    </If>
+                </div>
                 <div className="cmd-input-context">
                     <div className="has-text-white">
-                        <span className="bold term-bright-green">[mike@local ~]</span>
+                        <span className="bold term-bright-green">[{promptStr} {cwdStr}]</span>
                     </div>
                 </div>
                 <div className="cmd-input-field field has-addons">
                     <div className="control cmd-quick-context">
-                        <div className="button is-static">mike@local</div>
+                        <div className="button is-static">{promptStr}</div>
                     </div>
                     <div className="control cmd-input-control is-expanded">
                         <textarea id="main-cmd-input" value={curLine} onKeyDown={this.onKeyDown} onChange={this.onChange} className="input"></textarea>

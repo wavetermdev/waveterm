@@ -58,6 +58,40 @@ interface IObjType<DataType> {
     mergeData : (data : DataType) => void,
 }
 
+interface ISimpleDataType {
+    remove? : boolean;
+}
+
+function genMergeSimpleData<T extends ISimpleDataType>(objs : mobx.IObservableArray<T>, dataArr : T, idFn : (obj : T) => string, sortIdxFn : (obj : T) => number) {
+    if (dataArr == null || dataArr.length == 0) {
+        return;
+    }
+    let objMap : Record<string, T> = {};
+    for (let i=0; i<objs.length; i++) {
+        let obj = objs[i];
+        let id = idFn(obj);
+        objMap[id] = obj;
+    }
+    for (let i=0; i<dataArr.length; i++) {
+        let dataItem = dataArr[i];
+        let id = idFn(dataItem);
+        if (dataItem.remove) {
+            delete objMap[id];
+            continue;
+        }
+        else {
+            objMap[id] = dataItem;
+        }
+    }
+    let newObjs = Object.values(objMap);
+    if (sortIdxFn) {
+        newObjs.sort((a, b) => {
+            return sortIdxFn(a) - sortIdxFn(b);
+        });
+    }
+    objs.replace(newObjs);
+}
+
 function genMergeData<ObjType extends IObjType<DataType>, DataType extends IDataType>(
     objs : mobx.IObservableArray<ObjType>,
     dataArr : DataType[],
@@ -106,4 +140,4 @@ function genMergeData<ObjType extends IObjType<DataType>, DataType extends IData
     objs.replace(newObjs);
 }
 
-export {handleJsonFetchResponse, base64ToArray, genMergeData};
+export {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData};
