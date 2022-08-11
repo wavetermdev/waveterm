@@ -499,10 +499,11 @@ class Session {
 }
 
 type InfoType = {
-    infotitle : string;
-    infomsg : string;
-    infoerror : string;
-    infostrings : string[];
+    infotitle : string,
+    infomsg : string,
+    infoerror : string,
+    infocomps : string[],
+    infocompsmore : boolean,
 };
 
 type CmdLineUpdateType = {

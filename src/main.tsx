@@ -308,6 +308,17 @@ class CmdInput extends React.Component<{}, {}> {
         GlobalModel.clearInfoMsg(true);
         model.submitRawCommand(commandStr);
     }
+
+    getAfterSlash(s : string) : string {
+        let slashIdx = s.lastIndexOf("/");
+        if (slashIdx == s.length-1) {
+            slashIdx = s.lastIndexOf("/", slashIdx-1);
+        }
+        if (slashIdx == -1) {
+            return s;
+        }
+        return s.substr(slashIdx+1);
+    }
     
     render() {
         let model = GlobalModel;
@@ -343,15 +354,15 @@ class CmdInput extends React.Component<{}, {}> {
                             {infoMsg.infomsg}
                         </div>
                     </If>
-                    <If condition={infoMsg && infoMsg.infostrings != null && infoMsg.infostrings.length > 0}>
-                        <div className="info-strings">
-                            <For each="istr" index="istrIdx" of={infoMsg.infostrings}>
-                                <div key={istrIdx} className="info-string">
-                                    {istr}
+                    <If condition={infoMsg && infoMsg.infocomps != null && infoMsg.infocomps.length > 0}>
+                        <div className="info-comps">
+                            <For each="istr" index="istrIdx" of={infoMsg.infocomps}>
+                                <div key={istrIdx} className="info-comp">
+                                    {this.getAfterSlash(istr)}
                                 </div>
                             </For>
-                            <If condition={infoMsg.infostringsmore}>
-                                <div key="more" className="info-string">
+                            <If condition={infoMsg.infocompsmore}>
+                                <div key="more" className="info-comp">
                                     ...
                                 </div>
                             </If>
