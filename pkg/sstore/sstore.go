@@ -194,9 +194,12 @@ type RemoteInstance struct {
 	Name         string      `json:"name"`
 	SessionId    string      `json:"sessionid"`
 	WindowId     string      `json:"windowid"`
-	RemoteId     string      `json"remoteid"`
+	RemoteId     string      `json:"remoteid"`
 	SessionScope bool        `json:"sessionscope"`
 	State        RemoteState `json:"state"`
+
+	// only for updates
+	Remove bool `json:"remove,omitempty"`
 }
 
 type LineType struct {

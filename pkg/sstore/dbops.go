@@ -103,7 +103,9 @@ func GetAllSessions(ctx context.Context) ([]*SessionType, error) {
 	err := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * FROM session`
 		tx.SelectWrap(&rtn, query)
+		sessionMap := make(map[string]*SessionType)
 		for _, session := range rtn {
+			sessionMap[session.SessionId] = session
 			session.Full = true
 		}
 		var screens []*ScreenType
@@ -132,6 +134,15 @@ func GetAllSessions(ctx context.Context) ([]*SessionType, error) {
 			}
 			screen.Windows = append(screen.Windows, sw)
 		}
+		query = `SELECT * FROM remote_instance WHERE sessionscope`
+		var ris []*RemoteInstance
+		tx.SelectWrap(&ris, query)
+		for _, ri := range ris {
+			s := sessionMap[ri.SessionId]
+			if s != nil {
+				s.Remotes = append(s.Remotes, ri)
+			}
+		}
 		return nil
 	})
 	return rtn, err
@@ -154,6 +165,8 @@ func GetWindowById(ctx context.Context, sessionId string, windowId string) (*Win
 		for _, m := range cmdMaps {
 			window.Cmds = append(window.Cmds, CmdFromMap(m))
 		}
+		query = `SELECT * FROM remote_instance WHERE sessionid = ? AND windowid = ? AND NOT sessionscope`
+		tx.SelectWrap(&window.Remotes, query, sessionId, windowId)
 		return nil
 	})
 	return rtnWindow, err

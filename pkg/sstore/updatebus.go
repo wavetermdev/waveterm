@@ -10,6 +10,7 @@ const WindowUpdateStr = "window"
 const CmdUpdateStr = "cmd"
 const LineCmdUpdateStr = "line+cmd"
 const InfoUpdateStr = "info"
+const CompGenUpdateStr = "compgen"
 
 type UpdatePacket interface {
 	UpdateType() string
@@ -33,8 +34,8 @@ func (PtyDataUpdate) UpdateType() string {
 }
 
 type WindowUpdate struct {
-	Window WindowType `json:"window"`
-	Remove bool       `json:"remove,omitempty"`
+	Window WindowType   `json:"window"`
+	Info   *InfoMsgType `json:"info,omitempty"`
 }
 
 func (WindowUpdate) UpdateType() string {
@@ -44,6 +45,7 @@ func (WindowUpdate) UpdateType() string {
 type SessionUpdate struct {
 	Sessions        []*SessionType `json:"sessions"`
 	ActiveSessionId string         `json:"activesessionid,omitempty"`
+	Info            *InfoMsgType   `json:"info,omitempty"`
 }
 
 func (SessionUpdate) UpdateType() string {
@@ -62,18 +64,33 @@ func MakeSingleSessionUpdate(sessionId string) (*SessionUpdate, *SessionType) {
 }
 
 type LineUpdate struct {
-	Line   *LineType `json:"line"`
-	Cmd    *CmdType  `json:"cmd,omitempty"`
-	Remove bool      `json:"remove,omitempty"`
+	Line   *LineType    `json:"line"`
+	Cmd    *CmdType     `json:"cmd,omitempty"`
+	Remove bool         `json:"remove,omitempty"`
+	Info   *InfoMsgType `json:"info,omitempty"`
 }
 
 func (LineUpdate) UpdateType() string {
 	return LineCmdUpdateStr
 }
 
+type InfoMsgType struct {
+	InfoTitle       string   `json:"infotitle"`
+	InfoError       string   `json:"infoerror,omitempty"`
+	InfoMsg         string   `json:"infomsg,omitempty"`
+	InfoStrings     []string `json:"infostrings"`
+	InfoStringsMore bool     `json:"infostringsmore"`
+	TimeoutMs       int64    `json:"timeoutms,omitempty"`
+}
+
+type CmdLineType struct {
+	InsertChars string `json:"insertchars"`
+	InsertPos   int64  `json:"insertpos"`
+}
+
 type InfoUpdate struct {
-	InfoTitle   string   `json:"infotitle"`
-	InfoStrings []string `json:"infostrings"`
+	Info    *InfoMsgType `json:"info,omitempty"`
+	CmdLine *CmdLineType `json:"cmdline,omitempty"`
 }
 
 func (InfoUpdate) UpdateType() string {

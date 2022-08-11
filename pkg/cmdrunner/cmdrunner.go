@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -52,6 +54,44 @@ func SubMetaCmd(cmd string) string {
 		return "eval"
 	default:
 		return cmd
+	}
+}
+
+var ValidCommands = []string{
+	"/run",
+	"/eval",
+	"/screen", "/screen:open", "/screen:close",
+	"/session", "/session:open", "/session:close",
+	"/comment",
+	"/cd",
+	"/compgen",
+}
+
+func HandleCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	switch SubMetaCmd(pk.MetaCmd) {
+	case "run":
+		return RunCommand(ctx, pk)
+
+	case "eval":
+		return EvalCommand(ctx, pk)
+
+	case "screen":
+		return ScreenCommand(ctx, pk)
+
+	case "session":
+		return SessionCommand(ctx, pk)
+
+	case "comment":
+		return CommentCommand(ctx, pk)
+
+	case "cd":
+		return CdCommand(ctx, pk)
+
+	case "compgen":
+		return CompGenCommand(ctx, pk)
+
+	default:
+		return nil, fmt.Errorf("invalid command '/%s', no handler", pk.MetaCmd)
 	}
 }
 
@@ -212,34 +252,6 @@ func resolveIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype int
 	return rtn, nil
 }
 
-func HandleCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	switch SubMetaCmd(pk.MetaCmd) {
-	case "run":
-		return RunCommand(ctx, pk)
-
-	case "eval":
-		return EvalCommand(ctx, pk)
-
-	case "screen":
-		return ScreenCommand(ctx, pk)
-
-	case "session":
-		return SessionCommand(ctx, pk)
-
-	case "comment":
-		return CommentCommand(ctx, pk)
-
-	case "cd":
-		return CdCommand(ctx, pk)
-
-	case "compgen":
-		return CompGenCommand(ctx, pk)
-
-	default:
-		return nil, fmt.Errorf("invalid command '/%s', no handler", pk.MetaCmd)
-	}
-}
-
 func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveIds(ctx, pk, R_Session|R_Window|R_Remote)
 	if err != nil {
@@ -300,17 +312,23 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 	if metaCmd == "" {
 		metaCmd = "run"
 	}
-	var args []string
-	if metaCmd == "run" || metaCmd == "comment" {
-		args = []string{commandStr}
-	} else {
-		args = strings.Fields(commandStr)
-	}
 	newPk := &scpacket.FeCommandPacketType{
 		MetaCmd:    metaCmd,
 		MetaSubCmd: metaSubCmd,
-		Args:       args,
 		Kwargs:     pk.Kwargs,
+	}
+	if metaCmd == "run" || metaCmd == "comment" {
+		newPk.Args = []string{commandStr}
+	} else {
+		allArgs := strings.Fields(commandStr)
+		for _, arg := range allArgs {
+			if strings.Index(arg, "=") == -1 {
+				newPk.Args = append(newPk.Args, arg)
+				continue
+			}
+			fields := strings.SplitN(arg, "=", 2)
+			newPk.Kwargs[fields[0]] = fields[1]
+		}
 	}
 	return HandleCommand(ctx, newPk)
 }
@@ -388,10 +406,14 @@ func CdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 	if curRemote == nil {
 		return nil, fmt.Errorf("invalid remote, cannot execute command")
 	}
-	_, err = curRemote.PacketRpc(ctx, cdPacket)
+	resp, err := curRemote.PacketRpc(ctx, cdPacket)
 	if err != nil {
 		return nil, err
 	}
+	if err = resp.Err(); err != nil {
+		return nil, err
+	}
+	fmt.Printf("cd-resp %#v\n", resp)
 	remote, err := sstore.UpdateRemoteCwd(ctx, ids.RemoteName, ids.SessionId, ids.WindowId, ids.RemoteId, newDir)
 	if err != nil {
 		return nil, err
@@ -401,6 +423,10 @@ func CdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 			SessionId: ids.SessionId,
 			WindowId:  ids.WindowId,
 			Remotes:   []*sstore.RemoteInstance{remote},
+		},
+		Info: &sstore.InfoMsgType{
+			InfoMsg:   fmt.Sprintf("[%s] current directory = %s", ids.RemoteName, newDir),
+			TimeoutMs: 2000,
 		},
 	}
 	return update, nil
@@ -431,38 +457,162 @@ func getStrArr(v interface{}, field string) []string {
 	return sarr
 }
 
-func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveIds(ctx, pk, R_Session|R_Window|R_Remote)
-	if err != nil {
-		return nil, fmt.Errorf("/compgen error: %w", err)
+func getBool(v interface{}, field string) bool {
+	if v == nil {
+		return false
 	}
-	compType := argN(pk, 0)
-	prefix := argN(pk, 1)
+	m, ok := v.(map[string]interface{})
+	if !ok {
+		return false
+	}
+	fieldVal := m[field]
+	if fieldVal == nil {
+		return false
+	}
+	bval, ok := fieldVal.(bool)
+	if !ok {
+		return false
+	}
+	return bval
+}
+
+func makeInfoFromComps(compType string, comps []string, hasMore bool) sstore.UpdatePacket {
+	sort.Strings(comps)
+	update := sstore.InfoUpdate{
+		Info: &sstore.InfoMsgType{
+			InfoTitle:       fmt.Sprintf("%s completions", compType),
+			InfoStrings:     comps,
+			InfoStringsMore: hasMore,
+		},
+	}
+	return update
+}
+
+func makeInsertUpdateFromComps(pos int64, prefix string, comps []string, hasMore bool) sstore.UpdatePacket {
+	if hasMore {
+		return nil
+	}
+	lcp := longestPrefix(prefix, comps)
+	if lcp == prefix || len(lcp) < len(prefix) || !strings.HasPrefix(lcp, prefix) {
+		return nil
+	}
+	insertChars := lcp[len(prefix):]
+	clu := &sstore.CmdLineType{InsertChars: insertChars, InsertPos: pos}
+	return sstore.InfoUpdate{CmdLine: clu}
+}
+
+func longestPrefix(root string, comps []string) string {
+	if len(comps) == 0 {
+		return root
+	}
+	if len(comps) == 1 {
+		comp := comps[0]
+		if len(comp) >= len(root) && strings.HasPrefix(comp, root) {
+			return comps[0] + " "
+		}
+	}
+	lcp := comps[0]
+	for i := 1; i < len(comps); i++ {
+		s := comps[i]
+		for j := 0; j < len(lcp); j++ {
+			if j >= len(s) || lcp[j] != s[j] {
+				lcp = lcp[0:j]
+				break
+			}
+		}
+	}
+	if len(lcp) < len(root) || !strings.HasPrefix(lcp, root) {
+		return root
+	}
+	return lcp
+}
+
+var wsRe = regexp.MustCompile("\\s+")
+
+func doMetaCompGen(ctx context.Context, ids resolvedIds, prefix string) ([]string, bool, error) {
+	var comps []string
+	for _, cmd := range ValidCommands {
+		if strings.HasPrefix(cmd, prefix) {
+			comps = append(comps, cmd)
+		}
+	}
+	return comps, false, nil
+}
+
+func doCompGen(ctx context.Context, ids resolvedIds, prefix string, compType string) ([]string, bool, error) {
+	if compType == "metacommand" {
+		return doMetaCompGen(ctx, ids, prefix)
+	}
 	if !packet.IsValidCompGenType(compType) {
-		return nil, fmt.Errorf("/compgen invalid type '%s'", compType)
+		return nil, false, fmt.Errorf("/compgen invalid type '%s'", compType)
 	}
 	cgPacket := packet.MakeCompGenPacket()
 	cgPacket.ReqId = uuid.New().String()
 	cgPacket.CompType = compType
 	cgPacket.Prefix = prefix
 	if ids.RemoteState == nil {
-		return nil, fmt.Errorf("/compgen invalid remote state")
+		return nil, false, fmt.Errorf("/compgen invalid remote state")
 	}
 	cgPacket.Cwd = ids.RemoteState.Cwd
 	curRemote := remote.GetRemoteById(ids.RemoteId)
 	if curRemote == nil {
-		return nil, fmt.Errorf("invalid remote, cannot execute command")
+		return nil, false, fmt.Errorf("invalid remote, cannot execute command")
 	}
 	resp, err := curRemote.PacketRpc(ctx, cgPacket)
 	if err != nil {
-		return nil, err
+		return nil, false, err
+	}
+	if err = resp.Err(); err != nil {
+		return nil, false, err
 	}
 	comps := getStrArr(resp.Data, "comps")
-	update := sstore.InfoUpdate{
-		InfoTitle:   fmt.Sprintf("%s completions", compType),
-		InfoStrings: comps,
+	hasMore := getBool(resp.Data, "hasmore")
+	return comps, hasMore, nil
+}
+
+func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveIds(ctx, pk, R_Session|R_Window|R_Remote)
+	if err != nil {
+		return nil, fmt.Errorf("/compgen error: %w", err)
 	}
-	return update, nil
+	cmdLine := firstArg(pk)
+	pos := len(cmdLine)
+	if pk.Kwargs["comppos"] != "" {
+		posArg, err := strconv.Atoi(pk.Kwargs["comppos"])
+		if err != nil {
+			return nil, fmt.Errorf("/compgen invalid comppos '%s': %w", pk.Kwargs["comppos"], err)
+		}
+		pos = posArg
+	}
+	if pos < 0 {
+		pos = 0
+	}
+	if pos > len(cmdLine) {
+		pos = len(cmdLine)
+	}
+	showComps := resolveBool(pk.Kwargs["compshow"], false)
+	prefix := cmdLine[:pos]
+	parts := strings.Split(prefix, " ")
+	compType := "file"
+	if len(parts) > 0 && strings.HasPrefix(parts[0], "/") {
+		compType = "metacommand"
+	} else if len(parts) == 2 && (parts[0] == "cd" || parts[0] == "/cd") {
+		compType = "directory"
+	} else if len(parts) <= 1 {
+		compType = "command"
+	}
+	lastPart := ""
+	if len(parts) > 0 {
+		lastPart = parts[len(parts)-1]
+	}
+	comps, hasMore, err := doCompGen(ctx, ids, lastPart, compType)
+	if err != nil {
+		return nil, err
+	}
+	if showComps {
+		return makeInfoFromComps(compType, comps, hasMore), nil
+	}
+	return makeInsertUpdateFromComps(int64(pos), lastPart, comps, hasMore), nil
 }
 
 func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
