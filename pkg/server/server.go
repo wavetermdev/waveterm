@@ -57,7 +57,7 @@ func (m *MServer) runCompGen(compPk *packet.CompGenPacketType) {
 		m.Sender.SendErrorResponse(reqId, fmt.Errorf("invalid compgen type '%s'", compPk.CompType))
 		return
 	}
-	compGenCmdStr := fmt.Sprintf("cd %s; compgen -A %s -- %s | head -n %d", shellescape.Quote(compPk.Cwd), shellescape.Quote(compPk.CompType), shellescape.Quote(compPk.Prefix), packet.MaxCompGenValues+1)
+	compGenCmdStr := fmt.Sprintf("cd %s; compgen -A %s -- %s | sort | uniq | head -n %d", shellescape.Quote(compPk.Cwd), shellescape.Quote(compPk.CompType), shellescape.Quote(compPk.Prefix), packet.MaxCompGenValues+1)
 	ecmd := exec.Command("bash", "-c", compGenCmdStr)
 	outputBytes, err := ecmd.Output()
 	if err != nil {
