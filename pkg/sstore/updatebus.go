@@ -75,12 +75,12 @@ func (LineUpdate) UpdateType() string {
 }
 
 type InfoMsgType struct {
-	InfoTitle       string   `json:"infotitle"`
-	InfoError       string   `json:"infoerror,omitempty"`
-	InfoMsg         string   `json:"infomsg,omitempty"`
-	InfoStrings     []string `json:"infostrings"`
-	InfoStringsMore bool     `json:"infostringsmore"`
-	TimeoutMs       int64    `json:"timeoutms,omitempty"`
+	InfoTitle     string   `json:"infotitle"`
+	InfoError     string   `json:"infoerror,omitempty"`
+	InfoMsg       string   `json:"infomsg,omitempty"`
+	InfoComps     []string `json:"infocomps"`
+	InfoCompsMore bool     `json:"infocompssmore"`
+	TimeoutMs     int64    `json:"timeoutms,omitempty"`
 }
 
 type CmdLineType struct {

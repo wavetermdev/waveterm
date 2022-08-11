@@ -480,9 +480,9 @@ func makeInfoFromComps(compType string, comps []string, hasMore bool) sstore.Upd
 	sort.Strings(comps)
 	update := sstore.InfoUpdate{
 		Info: &sstore.InfoMsgType{
-			InfoTitle:       fmt.Sprintf("%s completions", compType),
-			InfoStrings:     comps,
-			InfoStringsMore: hasMore,
+			InfoTitle:     fmt.Sprintf("%s completions", compType),
+			InfoComps:     comps,
+			InfoCompsMore: hasMore,
 		},
 	}
 	return update
@@ -508,6 +508,9 @@ func longestPrefix(root string, comps []string) string {
 	if len(comps) == 1 {
 		comp := comps[0]
 		if len(comp) >= len(root) && strings.HasPrefix(comp, root) {
+			if strings.HasSuffix(comp, "/") {
+				return comps[0]
+			}
 			return comps[0] + " "
 		}
 	}
