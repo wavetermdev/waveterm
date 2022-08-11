@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"sync"
 
@@ -51,18 +52,15 @@ func (m *MServer) ProcessCommandPacket(pk packet.CommandPacketType) {
 	return
 }
 
-func (m *MServer) runCompGen(compPk *packet.CompGenPacketType) {
-	reqId := compPk.GetReqId()
-	if !packet.IsValidCompGenType(compPk.CompType) {
-		m.Sender.SendErrorResponse(reqId, fmt.Errorf("invalid compgen type '%s'", compPk.CompType))
-		return
+func runSingleCompGen(cwd string, compType string, prefix string) ([]string, bool, error) {
+	if !packet.IsValidCompGenType(compType) {
+		return nil, false, fmt.Errorf("invalid compgen type '%s'", compType)
 	}
-	compGenCmdStr := fmt.Sprintf("cd %s; compgen -A %s -- %s | sort | uniq | head -n %d", shellescape.Quote(compPk.Cwd), shellescape.Quote(compPk.CompType), shellescape.Quote(compPk.Prefix), packet.MaxCompGenValues+1)
+	compGenCmdStr := fmt.Sprintf("cd %s; compgen -A %s -- %s | sort | uniq | head -n %d", shellescape.Quote(cwd), shellescape.Quote(compType), shellescape.Quote(prefix), packet.MaxCompGenValues+1)
 	ecmd := exec.Command("bash", "-c", compGenCmdStr)
 	outputBytes, err := ecmd.Output()
 	if err != nil {
-		m.Sender.SendErrorResponse(reqId, fmt.Errorf("compgen error: %w", err))
-		return
+		return nil, false, fmt.Errorf("compgen error: %w", err)
 	}
 	outputStr := string(outputBytes)
 	parts := strings.Split(outputStr, "\n")
@@ -74,7 +72,68 @@ func (m *MServer) runCompGen(compPk *packet.CompGenPacketType) {
 		hasMore = true
 		parts = parts[0:packet.MaxCompGenValues]
 	}
-	m.Sender.SendResponse(reqId, map[string]interface{}{"comps": parts, "hasmore": hasMore})
+	return parts, hasMore, nil
+}
+
+func appendSlashes(comps []string) {
+	for idx, comp := range comps {
+		comps[idx] = comp + "/"
+	}
+}
+
+func strArrToMap(strs []string) map[string]bool {
+	rtn := make(map[string]bool)
+	for _, s := range strs {
+		rtn[s] = true
+	}
+	return rtn
+}
+
+func (m *MServer) runFileCompGen(compPk *packet.CompGenPacketType) {
+	// get directories and files, unique them and put slashes on directories for completion
+	reqId := compPk.GetReqId()
+	compDirs, hasMoreDirs, err := runSingleCompGen(compPk.Cwd, "directory", compPk.Prefix)
+	if err != nil {
+		m.Sender.SendErrorResponse(reqId, err)
+		return
+	}
+	compFiles, hasMoreFiles, err := runSingleCompGen(compPk.Cwd, "file", compPk.Prefix)
+	if err != nil {
+		m.Sender.SendErrorResponse(reqId, err)
+		return
+	}
+
+	dirMap := strArrToMap(compDirs)
+	// seed comps with dirs (but append slashes)
+	comps := compDirs
+	appendSlashes(comps)
+	// add files that are not directories (look up in dirMap)
+	for _, file := range compFiles {
+		if dirMap[file] {
+			continue
+		}
+		comps = append(comps, file)
+	}
+	sort.Strings(comps) // resort
+	m.Sender.SendResponse(reqId, map[string]interface{}{"comps": comps, "hasmore": (hasMoreFiles || hasMoreDirs)})
+	return
+}
+
+func (m *MServer) runCompGen(compPk *packet.CompGenPacketType) {
+	reqId := compPk.GetReqId()
+	if compPk.CompType == "file" {
+		m.runFileCompGen(compPk)
+		return
+	}
+	comps, hasMore, err := runSingleCompGen(compPk.Cwd, compPk.CompType, compPk.Prefix)
+	if err != nil {
+		m.Sender.SendErrorResponse(reqId, err)
+		return
+	}
+	if compPk.CompType == "directory" {
+		appendSlashes(comps)
+	}
+	m.Sender.SendResponse(reqId, map[string]interface{}{"comps": comps, "hasmore": hasMore})
 	return
 }
 
