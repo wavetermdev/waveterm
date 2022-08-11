@@ -75,10 +75,13 @@ CREATE TABLE cmd (
     PRIMARY KEY (sessionid, cmdid)
 );
 CREATE TABLE history (
-    sessionid varchar(36) NOT NULL,
-    windowid varchar(36) NOT NULL,
-    userid varchar(36) NOT NULL,
+    historyid varchar(36) PRIMARY KEY,
     ts bigint NOT NULL,
-    lineid varchar(36) NOT NULL,
-    PRIMARY KEY (sessionid, windowid, lineid)
+    userid varchar(36) NOT NULL,
+    sessionid varchar(36) NOT NULL,
+    screenid varchar(36) NOT NULL,
+    windowid varchar(36) NOT NULL,
+    lineid int NOT NULL,
+    cmdid varchar(36) NOT NULL,
+    cmdstr text NOT NULL
 );

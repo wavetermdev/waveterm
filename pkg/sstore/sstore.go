@@ -82,14 +82,13 @@ func (opts WindowOptsType) Value() (driver.Value, error) {
 }
 
 type WindowType struct {
-	SessionId string             `json:"sessionid"`
-	WindowId  string             `json:"windowid"`
-	CurRemote string             `json:"curremote"`
-	WinOpts   WindowOptsType     `json:"winopts"`
-	Lines     []*LineType        `json:"lines"`
-	Cmds      []*CmdType         `json:"cmds"`
-	History   []*HistoryItemType `json:"history"`
-	Remotes   []*RemoteInstance  `json:"remotes"`
+	SessionId string            `json:"sessionid"`
+	WindowId  string            `json:"windowid"`
+	CurRemote string            `json:"curremote"`
+	WinOpts   WindowOptsType    `json:"winopts"`
+	Lines     []*LineType       `json:"lines"`
+	Cmds      []*CmdType        `json:"cmds"`
+	Remotes   []*RemoteInstance `json:"remotes"`
 
 	// only for updates
 	Remove bool `json:"remove,omitempty"`
@@ -158,8 +157,18 @@ type ScreenWindowType struct {
 }
 
 type HistoryItemType struct {
-	CmdStr string `json:"cmdstr"`
-	Remove bool   `json:"remove"`
+	HistoryId string `json:"historyid"`
+	Ts        int64  `json:"ts"`
+	UserId    string `json:"userid"`
+	SessionId string `json:"sessionid"`
+	ScreenId  string `json:"screenid"`
+	WindowId  string `json:"windowid"`
+	LineId    int64  `json:"lineid"`
+	CmdId     string `json:"cmdid"`
+	CmdStr    string `json:"cmdstr"`
+
+	// only for updates
+	Remove bool `json:"remove"`
 }
 
 type RemoteState struct {

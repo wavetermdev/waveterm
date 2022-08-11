@@ -278,6 +278,10 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	return sstore.LineUpdate{Line: rtnLine, Cmd: cmd}, nil
 }
 
+func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, cmdStr string) error {
+	return nil
+}
+
 func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	if len(pk.Args) == 0 {
 		return nil, fmt.Errorf("usage: /eval [command], no command passed to eval")
@@ -286,6 +290,9 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 	commandStr := strings.TrimSpace(pk.Args[0])
 	if commandStr == "" {
 		return nil, fmt.Errorf("/eval, invalid emtpty command")
+	}
+	if !resolveBool(pk.Kwargs["nohist"], false) {
+		addToHistory(ctx, pk, pk.Args[0])
 	}
 	metaCmd := ""
 	metaSubCmd := ""
@@ -330,6 +337,7 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 			newPk.Kwargs[fields[0]] = fields[1]
 		}
 	}
+
 	return HandleCommand(ctx, newPk)
 }
 

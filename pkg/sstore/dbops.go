@@ -85,6 +85,23 @@ func InsertRemote(ctx context.Context, remote *RemoteType) error {
 	return nil
 }
 
+func InsertHistoryItem(ctx context.Context, hitem *HistoryItemType) error {
+	if hitem == nil {
+		return fmt.Errorf("cannot insert nil history item")
+	}
+	db, err := GetDB(ctx)
+	if err != nil {
+		return err
+	}
+	query := `INSERT INTO history ( historyid, ts, userid, sessionid, screenid, windowid, lineid, cmdid, cmdstr) VALUES
+                                  (:historyid,:ts,:userid,:sessionid,:screenid,:windowid,:lineid,:cmdid,:cmdstr)`
+	_, err = db.NamedExec(query, hitem)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func GetBareSessions(ctx context.Context) ([]*SessionType, error) {
 	var rtn []*SessionType
 	err := WithTx(ctx, func(tx *TxWrap) error {
