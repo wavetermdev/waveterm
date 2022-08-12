@@ -234,37 +234,58 @@ class Line extends React.Component<{sw : ScreenWindow, line : LineType, width : 
 
 @mobxReact.observer
 class CmdInput extends React.Component<{}, {}> {
+    lastTab : boolean = false;
+    lastHistoryUpDown : boolean = false;
     lastTabCurLine : mobx.IObservableValue<string> = mobx.observable.box(null);
+    textareaRef : React.RefObject<any> = React.createRef();
+
+    isModKeyPress(e : any) {
+        return e.code.match(/^(Control|Meta|Alt|Shift)(Left|Right)$/);
+    }
+
+    getLinePos(elem : any) : {numLines : number, linePos : number} {
+        let numLines = elem.value.split("\n").length;
+        let linePos = elem.value.substr(0, elem.selectionStart).split("\n").length;
+        return {numLines, linePos};
+    }
 
     @mobx.action @boundMethod
     onKeyDown(e : any) {
         mobx.action(() => {
+            if (this.isModKeyPress(e)) {
+                return;
+            }
             let model = GlobalModel;
             let inputModel = model.inputModel;
             let win = model.getActiveWindow();
             let ctrlMod = e.getModifierState("Control") || e.getModifierState("Meta") || e.getModifierState("Shift");
             let curLine = inputModel.getCurLine();
-            let ltCurLine = this.lastTabCurLine.get();
+            
+            let lastTab = this.lastTab;
+            this.lastTab = (e.code == "Tab");
+            let lastHist = this.lastHistoryUpDown;
+            this.lastHistoryUpDown = false;
+            
             if (e.code == "Tab") {
                 e.preventDefault();
-                let lastTab = (ltCurLine != null && curLine == ltCurLine);
                 if (lastTab) {
                     GlobalModel.submitCommand("compgen", null, [curLine], {"comppos": String(curLine.length), "compshow": "1", "nohist": "1"});
                     return;
                 }
                 else {
-                    this.lastTabCurLine.set(curLine);
                     GlobalModel.submitCommand("compgen", null, [curLine], {"comppos": String(curLine.length), "nohist": "1"});
                     GlobalModel.clearInfoMsg(true);
                     return;
                 }
             }
-            if (ltCurLine != null && curLine != ltCurLine) {
-                this.lastTabCurLine.set(null);
-            }
-            if (e.code == "Enter" && !ctrlMod) {
+            if (e.code == "Enter") {
                 e.preventDefault();
-                setTimeout(() => this.doSubmitCmd(), 0);
+                if (!ctrlMod) {
+                    setTimeout(() => this.doSubmitCmd(), 0);
+                    return;
+                }
+                e.target.setRangeText("\n", e.target.selectionStart, e.target.selectionEnd, "end");
+                GlobalModel.inputModel.setCurLine(e.target.value);
                 return;
             }
             if (e.code == "Escape") {
@@ -277,15 +298,28 @@ class CmdInput extends React.Component<{}, {}> {
                 inputModel.clearCurLine();
                 return;
             }
-            if (e.code == "ArrowUp") {
-                e.preventDefault();
-                inputModel.prevHistoryItem();
-                return;
-            }
-            if (e.code == "ArrowDown") {
-                e.preventDefault();
-                inputModel.nextHistoryItem();
-                return;
+            if (e.code == "ArrowUp" || e.code == "ArrowDown") {
+                let linePos = this.getLinePos(e.target);
+                if (e.code == "ArrowUp") {
+                    if (!lastHist && linePos.linePos > 1) {
+                        // regular arrow
+                        return;
+                    }
+                    e.preventDefault();
+                    inputModel.prevHistoryItem();
+                    this.lastHistoryUpDown = true;
+                    return;
+                }
+                if (e.code == "ArrowDown") {
+                    if (!lastHist && linePos.linePos < linePos.numLines) {
+                        // regular arrow
+                        return;
+                    }
+                    e.preventDefault();
+                    inputModel.nextHistoryItem();
+                    this.lastHistoryUpDown = true;
+                    return;
+                }
             }
             // console.log(e.code, e.keyCode, e.key, event.which, ctrlMod, e);
         })();
@@ -324,6 +358,11 @@ class CmdInput extends React.Component<{}, {}> {
         let model = GlobalModel;
         let inputModel = model.inputModel;
         let curLine = inputModel.getCurLine();
+        let numLines = curLine.split("\n").length;
+        let displayLines = numLines;
+        if (displayLines > 5) {
+            displayLines = 5;
+        }
         let win = GlobalModel.getActiveWindow();
         let ri : RemoteInstanceType = null;
         if (win != null) {
@@ -384,7 +423,7 @@ class CmdInput extends React.Component<{}, {}> {
                         <div className="button is-static">{promptStr}</div>
                     </div>
                     <div className="control cmd-input-control is-expanded">
-                        <textarea id="main-cmd-input" value={curLine} onKeyDown={this.onKeyDown} onChange={this.onChange} className="input"></textarea>
+                        <textarea id="main-cmd-input" ref={this.textareaRef} rows={displayLines} value={curLine} onKeyDown={this.onKeyDown} onChange={this.onChange} className="textarea"></textarea>
                     </div>
                     <div className="control cmd-exec">
                         <div onClick={this.doSubmitCmd} className="button">
