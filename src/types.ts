@@ -98,7 +98,6 @@ type WindowDataType = {
     windowid : string,
     curremote : string,
     lines : LineType[],
-    history : HistoryItem[],
     cmds : CmdDataType[],
     remotes : RemoteInstanceType[],
 
@@ -107,7 +106,17 @@ type WindowDataType = {
 };
 
 type HistoryItem = {
+    historyid : string,
+    ts : number,
+    userid : string,
+    sessionid : string,
+    screenid : string,
+    windowid : string,
+    lineid : number,
+    haderror : boolean,
+    cmdid : string,
     cmdstr : string,
+    remove : boolean,
 };
 
 type CmdRemoteStateType = {

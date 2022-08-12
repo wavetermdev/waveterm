@@ -249,12 +249,12 @@ class CmdInput extends React.Component<{}, {}> {
                 e.preventDefault();
                 let lastTab = (ltCurLine != null && curLine == ltCurLine);
                 if (lastTab) {
-                    GlobalModel.submitCommand("compgen", null, [curLine], {"comppos": String(curLine.length), "compshow": "1"});
+                    GlobalModel.submitCommand("compgen", null, [curLine], {"comppos": String(curLine.length), "compshow": "1", "nohist": "1"});
                     return;
                 }
                 else {
                     this.lastTabCurLine.set(curLine);
-                    GlobalModel.submitCommand("compgen", null, [curLine], {"comppos": String(curLine.length)});
+                    GlobalModel.submitCommand("compgen", null, [curLine], {"comppos": String(curLine.length), "nohist": "1"});
                     GlobalModel.clearInfoMsg(true);
                     return;
                 }
@@ -306,7 +306,7 @@ class CmdInput extends React.Component<{}, {}> {
         let hitem = {cmdtext: commandStr};
         inputModel.clearCurLine();
         GlobalModel.clearInfoMsg(true);
-        model.submitRawCommand(commandStr);
+        model.submitRawCommand(commandStr, true);
     }
 
     getAfterSlash(s : string) : string {

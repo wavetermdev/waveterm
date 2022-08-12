@@ -263,21 +263,12 @@ class Window {
     loaded : OV<boolean> = mobx.observable.box(false);
     loadError : OV<string> = mobx.observable.box(null);
     lines : OArr<LineType> = mobx.observable.array([], {deep: false});
-    history : any[] = [];
     cmds : Record<string, Cmd> = {};
     remoteInstances : OArr<RemoteInstanceType> = mobx.observable.array([]);
 
     constructor(sessionId : string, windowId : string) {
         this.sessionId = sessionId;
         this.windowId = windowId;
-    }
-
-    getNumHistoryItems() : number {
-        return 0;
-    }
-
-    getHistoryItem(hnum : number) : any {
-        return null
     }
 
     updatePtyData(ptyMsg : PtyDataUpdateType) {
@@ -297,7 +288,6 @@ class Window {
                 this.loaded.set(true);
             }
             genMergeSimpleData(this.lines, win.lines, (l : LineType) => String(l.lineid), (l : LineType) => l.lineid);
-            this.history = win.history || [];
             let cmds = win.cmds || [];
             for (let i=0; i<cmds.length; i++) {
                 this.cmds[cmds[i].cmdid] = new Cmd(cmds[i]);
@@ -499,8 +489,12 @@ class Session {
 }
 
 class InputModel {
-    historyIndex : mobx.IObservableValue<number> = mobx.observable.box(0, {name: "history-index"});
+    historyLoading : mobx.IObservableValue<boolean> = mobx.observable.box(false);
+    historySessionId : string = null;
+    historyItems : mobx.IObservableValue<HistoryItem[]> = mobx.observable.box(null, {name: "history-items", deep: false});
+    historyIndex : mobx.IObservableValue<number> = mobx.observable.box(0, {name: "history-index"});  // 1-indexed (because 0 is current)
     modHistory : mobx.IObservableArray<string> = mobx.observable.array([""], {name: "mod-history"});
+    setHIdx : number = 0;
 
     updateCmdLine(cmdLine : CmdLineUpdateType) {
         mobx.action(() => {
@@ -516,14 +510,66 @@ class InputModel {
 
     setCurLine(val : string) {
         let hidx = this.historyIndex.get();
-        this.modHistory[hidx] = val;
+        mobx.action(() => {
+            if (this.modHistory.length <= hidx) {
+                this.modHistory.length = hidx + 1;
+            }
+            this.modHistory[hidx] = val;
+        })();
+    }
+
+    loadHistory() {
+        if (this.historyLoading.get()) {
+            return;
+        }
+        let sessionId = GlobalModel.activeSessionId.get();
+        if (sessionId == null) {
+            this.setHIdx = 0;
+            return;
+        }
+        mobx.action(() => {
+            this.historySessionId = sessionId;
+            this.historyItems.set(null);
+            this.historyLoading.set(true);
+        })();
+        let usp = new URLSearchParams({sessionid: sessionId});
+        let url = new URL("http://localhost:8080/api/get-history?" + usp.toString());
+        fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
+            mobx.action(() => {
+                if (!this.historyLoading.get()) {
+                    return;
+                }
+                if (sessionId != GlobalModel.activeSessionId.get()) {
+                    this.resetHistory();
+                    return;
+                }
+                if (data.data && data.data.history) {
+                    let hitems : HistoryItem[] = data.data.history || [];
+                    this.historySessionId = sessionId;
+                    this.historyItems.set(hitems);
+                    this.historyLoading.set(false);
+                    let hlen = hitems.length;
+                    let setHIdx = this.setHIdx;
+                    if (setHIdx > hlen) {
+                        setHIdx = hlen;
+                    }
+                    this.historyIndex.set(setHIdx);
+                    this.setHIdx = 0;
+                }
+            })();
+        }).catch((err) => {
+            GlobalModel.errorHandler("getting history items", err, false);
+            mobx.action(() => {
+                this.historyLoading.set(false);
+                this.historyIndex.set(0);
+            })();
+        });
     }
 
     clearCurLine() {
         mobx.action(() => {
-            this.historyIndex.set(0);
-            this.modHistory.clear();
-            this.modHistory[0] = "";
+            this.resetHistory();
+            this.modHistory.replace([""]);
         })();
     }
 
@@ -533,24 +579,43 @@ class InputModel {
         if (hidx < this.modHistory.length && this.modHistory[hidx] != null) {
             return this.modHistory[hidx];
         }
-        let win = model.getActiveWindow();
-        if (win == null) {
+        let hitems = this.historyItems.get();
+        if (hidx == 0 || hitems == null || hidx > hitems.length) {
             return "";
         }
-        let hitem = win.getHistoryItem(-hidx);
+        let hitem = hitems[hidx-1];
         if (hitem == null) {
             return "";
         }
-        return hitem.cmdtext;
+        return hitem.cmdstr;
+    }
+
+    resetHistory() : void {
+        mobx.action(() => {
+            this.historyLoading.set(false);
+            this.historyItems.set(null);
+            this.historyIndex.set(0);
+            if (this.modHistory.length > 1) {
+                this.modHistory.splice(1, this.modHistory.length-1);
+            }
+            this.setHIdx = 0;
+        })();
     }
 
     prevHistoryItem() : void {
-        let model = GlobalModel;
-        let win = model.getActiveWindow();
+        let loading = this.historyLoading.get();
+        let hitems = this.historyItems.get();
+        if (loading || hitems == null) {
+            this.setHIdx += 1;
+            if (!loading) {
+                this.loadHistory();
+            }
+            return;
+        }
         let hidx = this.historyIndex.get();
         hidx += 1;
-        if (hidx > win.getNumHistoryItems()) {
-            hidx = win.getNumHistoryItems();
+        if (hidx > hitems.length) {
+            hidx = hitems.length;
         }
         mobx.action(() => {
             this.historyIndex.set(hidx);
@@ -560,6 +625,9 @@ class InputModel {
 
     nextHistoryItem() : void {
         let hidx = this.historyIndex.get();
+        if (hidx == 0) {
+            return;
+        }
         hidx -= 1;
         if (hidx < 0) {
             hidx = 0;
@@ -854,13 +922,16 @@ class Model {
         this.submitCommandPacket(pk);
     }
 
-    submitRawCommand(cmdStr : string) {
+    submitRawCommand(cmdStr : string, addToHistory : boolean) {
         let pk : FeCmdPacketType = {
             type: "fecmd",
             metacmd: "eval",
             args: [cmdStr],
             kwargs: this.getClientKwargs(),
         };
+        if (!addToHistory) {
+            pk.kwargs["nohist"] = "1";
+        }
         this.submitCommandPacket(pk)
     }
 
@@ -913,7 +984,11 @@ class Model {
         }
         mobx.action(() => {
             this.deactivateWindows();
-            this.activeSessionId.set(sessionId);
+            let curSessionId = this.activeSessionId.get();
+            if (curSessionId != sessionId) {
+                this.activeSessionId.set(sessionId);
+                this.inputModel.resetHistory();
+            }
             this.getActiveSession().activeScreenId.set(screenId);
         })();
         let curScreen = this.getActiveScreen();
@@ -1005,23 +1080,23 @@ class InputClass {
     }
 
     switchSession(session : string) {
-        GlobalModel.submitCommand("session", null, [session], null);
+        GlobalModel.submitCommand("session", null, [session], {"nohist": "1"});
     }
 
     switchScreen(screen : string) {
-        GlobalModel.submitCommand("screen", null, [screen], null);
+        GlobalModel.submitCommand("screen", null, [screen], {"nohist": "1"});
     }
 
     createNewSession() {
-        GlobalModel.submitCommand("session", "open", null, null);
+        GlobalModel.submitCommand("session", "open", null, {"nohist": "1"});
     }
 
     createNewScreen() {
-        GlobalModel.submitCommand("screen", "open", null, null);
+        GlobalModel.submitCommand("screen", "open", null, {"nohist": "1"});
     }
 
     closeScreen(screen : string) {
-        GlobalModel.submitCommand("screen", "close", [screen], null);
+        GlobalModel.submitCommand("screen", "close", [screen], {"nohist": "1"});
     }
 };
 
