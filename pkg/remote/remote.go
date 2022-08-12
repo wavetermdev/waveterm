@@ -263,7 +263,7 @@ func RunCommand(ctx context.Context, cmdId string, remoteId string, remoteState 
 		DonePk:      nil,
 		RunOut:      nil,
 	}
-	err = sstore.AppendToCmdPtyBlob(ctx, cmd.SessionId, cmd.CmdId, nil, sstore.PosAppend)
+	err = sstore.AppendToCmdPtyBlob(ctx, cmd.SessionId, cmd.CmdId, nil, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -359,6 +359,7 @@ func (runner *MShellProc) ProcessPackets() {
 		}
 		runner.notifyHangups_nolock()
 	})
+	var dataPos int64
 	for pk := range runner.ServerProc.Output.MainCh {
 		if pk.GetType() == packet.DataPacketStr {
 			dataPk := pk.(*packet.DataPacketType)
@@ -370,12 +371,13 @@ func (runner *MShellProc) ProcessPackets() {
 			}
 			var ack *packet.DataAckPacketType
 			if len(realData) > 0 {
-				err = sstore.AppendToCmdPtyBlob(context.Background(), dataPk.CK.GetSessionId(), dataPk.CK.GetCmdId(), realData, sstore.PosAppend)
+				err = sstore.AppendToCmdPtyBlob(context.Background(), dataPk.CK.GetSessionId(), dataPk.CK.GetCmdId(), realData, dataPos)
 				if err != nil {
 					ack = makeDataAckPacket(dataPk.CK, dataPk.FdNum, 0, err)
 				} else {
 					ack = makeDataAckPacket(dataPk.CK, dataPk.FdNum, len(realData), nil)
 				}
+				dataPos += int64(len(realData))
 			}
 			if ack != nil {
 				runner.ServerProc.Input.SendPacket(ack)
