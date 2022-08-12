@@ -82,6 +82,7 @@ CREATE TABLE history (
     screenid varchar(36) NOT NULL,
     windowid varchar(36) NOT NULL,
     lineid int NOT NULL,
+    haderror boolean NOT NULL,
     cmdid varchar(36) NOT NULL,
     cmdstr text NOT NULL
 );

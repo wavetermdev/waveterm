@@ -74,6 +74,17 @@ func (LineUpdate) UpdateType() string {
 	return LineCmdUpdateStr
 }
 
+func ReadLineCmdIdFromUpdate(update UpdatePacket) (int64, string) {
+	lineUpdate, ok := update.(LineUpdate)
+	if !ok {
+		return 0, ""
+	}
+	if lineUpdate.Line == nil {
+		return 0, ""
+	}
+	return lineUpdate.Line.LineId, lineUpdate.Line.CmdId
+}
+
 type InfoMsgType struct {
 	InfoTitle     string   `json:"infotitle"`
 	InfoError     string   `json:"infoerror,omitempty"`

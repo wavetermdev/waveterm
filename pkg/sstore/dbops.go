@@ -93,13 +93,26 @@ func InsertHistoryItem(ctx context.Context, hitem *HistoryItemType) error {
 	if err != nil {
 		return err
 	}
-	query := `INSERT INTO history ( historyid, ts, userid, sessionid, screenid, windowid, lineid, cmdid, cmdstr) VALUES
-                                  (:historyid,:ts,:userid,:sessionid,:screenid,:windowid,:lineid,:cmdid,:cmdstr)`
+	query := `INSERT INTO history ( historyid, ts, userid, sessionid, screenid, windowid, lineid, cmdid, haderror, cmdstr) VALUES
+                                  (:historyid,:ts,:userid,:sessionid,:screenid,:windowid,:lineid,:cmdid,:haderror,:cmdstr)`
 	_, err = db.NamedExec(query, hitem)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func GetSessionHistoryItems(ctx context.Context, sessionId string, maxItems int) ([]*HistoryItemType, error) {
+	var rtn []*HistoryItemType
+	err := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT * FROM history WHERE sessionid = ? ORDER BY ts DESC LIMIT ?`
+		tx.SelectWrap(&rtn, query, sessionId, maxItems)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return rtn, nil
 }
 
 func GetBareSessions(ctx context.Context) ([]*SessionType, error) {

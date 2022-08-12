@@ -164,6 +164,7 @@ type HistoryItemType struct {
 	ScreenId  string `json:"screenid"`
 	WindowId  string `json:"windowid"`
 	LineId    int64  `json:"lineid"`
+	HadError  bool   `json:"haderror"`
 	CmdId     string `json:"cmdid"`
 	CmdStr    string `json:"cmdstr"`
 

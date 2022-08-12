@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/scripthaus-dev/mshell/pkg/base"
@@ -278,7 +279,29 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	return sstore.LineUpdate{Line: rtnLine, Cmd: cmd}, nil
 }
 
-func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, cmdStr string) error {
+func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, update sstore.UpdatePacket, hadError bool) error {
+	cmdStr := firstArg(pk)
+	ids, err := resolveIds(ctx, pk, R_Session|R_Screen|R_Window)
+	if err != nil {
+		return err
+	}
+	lineId, cmdId := sstore.ReadLineCmdIdFromUpdate(update)
+	hitem := &sstore.HistoryItemType{
+		HistoryId: uuid.New().String(),
+		Ts:        time.Now().UnixMilli(),
+		UserId:    DefaultUserId,
+		SessionId: ids.SessionId,
+		ScreenId:  ids.ScreenId,
+		WindowId:  ids.WindowId,
+		LineId:    lineId,
+		HadError:  hadError,
+		CmdId:     cmdId,
+		CmdStr:    cmdStr,
+	}
+	err = sstore.InsertHistoryItem(ctx, hitem)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -291,9 +314,19 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 	if commandStr == "" {
 		return nil, fmt.Errorf("/eval, invalid emtpty command")
 	}
+	update, err := evalCommandInternal(ctx, pk)
 	if !resolveBool(pk.Kwargs["nohist"], false) {
-		addToHistory(ctx, pk, pk.Args[0])
+		err := addToHistory(ctx, pk, update, (err != nil))
+		if err != nil {
+			fmt.Printf("[error] adding to history: %w\n", err)
+			// continue...
+		}
 	}
+	return update, err
+}
+
+func evalCommandInternal(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	commandStr := strings.TrimSpace(pk.Args[0])
 	metaCmd := ""
 	metaSubCmd := ""
 	if commandStr == "cd" || strings.HasPrefix(commandStr, "cd ") {
@@ -337,7 +370,6 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 			newPk.Kwargs[fields[0]] = fields[1]
 		}
 	}
-
 	return HandleCommand(ctx, newPk)
 }
 
