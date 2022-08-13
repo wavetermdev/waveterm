@@ -14,6 +14,38 @@ import {GlobalModel, GlobalInput, Session, Cmd, Window, Screen, ScreenWindow} fr
 
 dayjs.extend(localizedFormat)
 
+type InterObsValue = {
+    sessionid : string,
+    windowid : string,
+    lineid : string,
+    cmdid : string,
+    visible : mobx.IObservableValue<boolean>,
+    timeoutid? : any,
+};
+
+let globalLineWeakMap = new WeakMap<any, InterObsValue>();
+
+function interObsCallback(entries) {
+    let now = Date.now();
+    entries.forEach((entry) => {
+        let line = globalLineWeakMap.get(entry.target);
+        if ((line.timeoutid != null) && (line.visible.get() == entry.isIntersecting)) {
+            clearTimeout(line.timeoutid);
+            line.timeoutid = null;
+            return;
+        }
+        if (line.visible.get() != entry.isIntersecting && line.timeoutid == null) {
+            line.timeoutid = setTimeout(() => {
+                line.timeoutid = null;
+                mobx.action(() => {
+                    line.visible.set(entry.isIntersecting);
+                })();
+            }, 250);
+            return;
+        }
+    });
+}
+
 function getLineId(line : LineType) : string {
     return sprintf("%s-%s-%s", line.sessionid, line.windowid, line.lineid);
 }
@@ -107,30 +139,78 @@ class LineText extends React.Component<{sw : ScreenWindow, line : LineType}, {}>
 }
 
 @mobxReact.observer
-class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width: number}, {}> {
+class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width : number, interObs : IntersectionObserver, initVis : boolean}, {}> {
     termLoaded : mobx.IObservableValue<boolean> = mobx.observable.box(false);
+    lineRef : React.RefObject<any> = React.createRef();
+    iobsVal : InterObsValue = null;
+    autorunDisposer : () => void = null;
     
     constructor(props) {
         super(props);
+        
+        let line = props.line;
+        let ival : InterObsValue = {
+            sessionid: line.sessionid,
+            windowid: line.windowid,
+            lineid: line.lineid,
+            cmdid: line.cmdid,
+            visible: mobx.observable.box(this.props.initVis),
+        };
+        this.iobsVal = ival;
     }
-    
-    componentDidMount() {
+
+    visibilityChanged(vis : boolean) : void {
+        if (vis && !this.termLoaded.get()) {
+            this.loadTerminal();
+        }
+        else if (!vis && this.termLoaded.get()) {
+            let {line} = this.props;
+        }
+    }
+
+    loadTerminal() : void {
         let {sw, line} = this.props;
         let model = GlobalModel;
         let cmd = model.getCmd(line);
-        if (cmd != null) {
-            let termElem = document.getElementById("term-" + getLineId(line));
-            cmd.connectElem(termElem, sw.screenId, sw.windowId, this.props.width);
-            mobx.action(() => this.termLoaded.set(true))();
+        if (cmd == null) {
+            return;
+        }
+        let termId = "term-" + getLineId(line);
+        let termElem = document.getElementById(termId);
+        if (termElem == null) {
+            console.log("cannot load terminal, no term elem found", termId);
+            return;
+        }
+        sw.connectElem(termElem, cmd, this.props.width);
+        mobx.action(() => this.termLoaded.set(true))();
+    }
+    
+    componentDidMount() {
+        let {line} = this.props;
+        if (this.lineRef.current == null || this.props.interObs == null) {
+            console.log("LineCmd lineRef current is null or interObs is null", line, this.lineRef.current, this.props.interObs);
+        }
+        else {
+            globalLineWeakMap.set(this.lineRef.current, this.iobsVal);
+            this.props.interObs.observe(this.lineRef.current);
+            this.autorunDisposer = mobx.autorun(() => {
+                let vis = this.iobsVal.visible.get();
+                this.visibilityChanged(vis);
+            });
         }
     }
 
     componentWillUnmount() {
         let {sw, line} = this.props;
         let model = GlobalModel;
-        let cmd = model.getCmd(line);
-        if (cmd != null) {
-            cmd.disconnectElem(sw.screenId, sw.windowId);
+        if (this.termLoaded.get()) {
+            sw.disconnectElem(line.cmdid);
+        }
+        if (this.lineRef.current != null && this.props.interObs != null) {
+            this.props.interObs.unobserve(this.lineRef.current);
+        }
+        if (this.autorunDisposer != null) {
+            this.autorunDisposer();
         }
     }
 
@@ -143,12 +223,9 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
     doRefresh() {
         let {sw, line} = this.props;
         let model = GlobalModel;
-        let cmd = model.getCmd(line);
-        if (cmd != null) {
-            let termWrap = cmd.getTermWrap(sw.screenId, sw.windowId);
-            if (termWrap != null) {
-                termWrap.reloadTerminal(500);
-            }
+        let termWrap = sw.getTermWrap(line.cmdid);
+        if (termWrap != null) {
+            termWrap.reloadTerminal(500);
         }
     }
 
@@ -170,28 +247,32 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
     }
     
     render() {
-        let {sw, line} = this.props;
+        let {sw, line, width} = this.props;
         let model = GlobalModel;
         let lineid = line.lineid.toString();
         let formattedTime = getLineDateStr(line.ts);
         let cmd = model.getCmd(line);
         if (cmd == null) {
-            return <div className="line line-invalid">[cmd not found '{line.cmdid}']</div>;
+            return (
+                <div className="line line-invalid" id={"line-" + getLineId(line)} ref={this.lineRef}>
+                    [cmd not found '{line.cmdid}']
+                </div>
+            );
         }
         let termLoaded = this.termLoaded.get();
         let cellHeightPx = 16;
         let cellWidthPx = 8;
-        let termWidth = Math.max(Math.trunc((this.props.width - 20)/cellWidthPx), 10);
-        let usedRows = cmd.getUsedRows(sw.screenId, sw.windowId);
+        let termWidth = Math.max(Math.trunc((width - 20)/cellWidthPx), 10);
+        let usedRows = sw.getUsedRows(cmd, width);
         let totalHeight = cellHeightPx * usedRows;
         let remote = model.getRemote(cmd.remoteId);
         let status = cmd.getStatus();
         let running = (status == "running");
         let detached = (status == "detached");
         let termOpts = cmd.getTermOpts();
-        let isFocused = cmd.getIsFocused(sw.screenId, sw.windowId);
+        let isFocused = sw.getIsFocused(line.cmdid);
         return (
-            <div className={cn("line", "line-cmd", {"focus": isFocused})} id={"line-" + getLineId(line)}>
+            <div className={cn("line", "line-cmd", {"focus": isFocused})} id={"line-" + getLineId(line)} ref={this.lineRef} style={{position: "relative"}}>
                 <div className="line-header">
                     <div className={cn("avatar",{"num4": lineid.length == 4}, {"num5": lineid.length >= 5}, {"running": running}, {"detached": detached})} onClick={this.doRefresh}>
                         {lineid}
@@ -212,6 +293,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                 </div>
                 <div className={cn("terminal-wrapper", {"focus": isFocused})} style={{overflowY: "hidden"}}>
                     <div className="terminal" id={"term-" + getLineId(line)} data-cmdid={line.cmdid} style={{height: totalHeight}}></div>
+                    <If condition={!termLoaded}><div style={{position: "absolute", top: 60, left: 30}}>(loading)</div></If>
                 </div>
             </div>
         );
@@ -219,7 +301,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
 }
 
 @mobxReact.observer
-class Line extends React.Component<{sw : ScreenWindow, line : LineType, width : number}, {}> {
+class Line extends React.Component<{sw : ScreenWindow, line : LineType, width : number, interObs : IntersectionObserver, initVis : boolean}, {}> {
     render() {
         let line = this.props.line;
         if (line.linetype == "text") {
@@ -237,7 +319,6 @@ class CmdInput extends React.Component<{}, {}> {
     lastTab : boolean = false;
     lastHistoryUpDown : boolean = false;
     lastTabCurLine : mobx.IObservableValue<string> = mobx.observable.box(null);
-    textareaRef : React.RefObject<any> = React.createRef();
 
     isModKeyPress(e : any) {
         return e.code.match(/^(Control|Meta|Alt|Shift)(Left|Right)$/);
@@ -423,7 +504,7 @@ class CmdInput extends React.Component<{}, {}> {
                         <div className="button is-static">{promptStr}</div>
                     </div>
                     <div className="control cmd-input-control is-expanded">
-                        <textarea id="main-cmd-input" ref={this.textareaRef} rows={displayLines} value={curLine} onKeyDown={this.onKeyDown} onChange={this.onChange} className="textarea"></textarea>
+                        <textarea id="main-cmd-input" rows={displayLines} value={curLine} onKeyDown={this.onKeyDown} onChange={this.onChange} className="textarea"></textarea>
                     </div>
                     <div className="control cmd-exec">
                         <div onClick={this.doSubmitCmd} className="button">
@@ -441,7 +522,8 @@ class CmdInput extends React.Component<{}, {}> {
 @mobxReact.observer
 class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
     mutObs : any;
-    rszObs : any
+    rszObs : any;
+    interObs : IntersectionObserver;
     randomId : string;
     width : mobx.IObservableValue<number> = mobx.observable.box(0);
     lastHeight : number = null;
@@ -462,7 +544,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         let target = event.target;
         let atBottom = (target.scrollTop + 30 > (target.scrollHeight - target.offsetHeight));
         if (sw && sw.shouldFollow.get() != atBottom) {
-            mobx.action(() => sw.shouldFollow.set(atBottom));
+            mobx.action(() => sw.shouldFollow.set(atBottom))();
         }
         // console.log("scroll-handler>", atBottom, target.scrollTop, target.scrollHeight);
     }
@@ -477,6 +559,11 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
             if (sw && sw.shouldFollow.get()) {
                 setTimeout(() => this.scrollToBottom("mount"), 0);
             }
+            this.interObs = new IntersectionObserver(interObsCallback, {
+                root: elem,
+                rootMargin: "800px",
+                threshold: 0.0,
+            });
         }
         let wvElem = document.getElementById(this.getWindowViewDOMId());
         if (wvElem != null) {
@@ -497,6 +584,9 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         }
         if (this.rszObs) {
             this.rszObs.disconnect();
+        }
+        if (this.interObs) {
+            this.interObs.disconnect();
         }
     }
 
@@ -619,7 +709,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
                 </div>
                 <div key="lines" className="lines" onScroll={this.scrollHandler} id={this.getLinesDOMId()} style={linesStyle}>
                     <For each="line" of={win.lines} index="idx">
-                        <Line key={line.lineid} line={line} sw={sw} width={this.width.get()}/>
+                        <Line key={line.lineid} line={line} sw={sw} width={this.width.get()} interObs={this.interObs} initVis={idx > win.lines.length-1-7}/>
                     </For>
                 </div>
                 <If condition={win.lines.length == 0}>

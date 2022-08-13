@@ -51,65 +51,12 @@ class Cmd {
     cmdId : string;
     data : OV<CmdDataType>;
     watching : boolean = false;
-    instances : Record<string, TermWrap> = {};
 
     constructor(cmd : CmdDataType) {
         this.sessionId = cmd.sessionid;
         this.cmdId = cmd.cmdid;
         this.remoteId = cmd.remoteid;
         this.data = mobx.observable.box(cmd, {deep: false});
-    }
-
-    connectElem(elem : Element, screenId : string, windowId : string, width : number) {
-        let termWrap = this.getTermWrap(screenId, windowId);
-        if (termWrap != null) {
-            console.log("term-wrap already exists for", screenId, windowId);
-            return;
-        }
-        termWrap = new TermWrap(elem, this.sessionId, this.cmdId, 0, this.getTermOpts(), {height: 0, width: width}, this.handleKey.bind(this));
-        this.instances[screenId + "/" + windowId] = termWrap;
-        return;
-    }
-
-    disconnectElem(screenId : string, windowId : string) {
-        let key = screenId + "/" + windowId;
-        let termWrap = this.instances[key];
-        if (termWrap != null) {
-            termWrap.dispose();
-            delete this.instances[key];
-        }
-    }
-
-    updatePtyData(ptyMsg : PtyDataUpdateType) {
-        for (let key in this.instances) {
-            let tw = this.instances[key];
-            let data = base64ToArray(ptyMsg.ptydata64);
-            tw.updatePtyData(ptyMsg.ptypos, data);
-        }
-    }
-
-    getTermWrap(screenId : string, windowId : string) : TermWrap {
-        return this.instances[screenId + "/" + windowId];
-    }
-
-    getUsedRows(screenId : string, windowId : string) : number {
-        let termOpts = this.getTermOpts();
-        if (!termOpts.flexrows) {
-            return termOpts.rows;
-        }
-        let termWrap = this.getTermWrap(screenId, windowId);
-        if (termWrap == null) {
-            return 2;
-        }
-        return termWrap.usedRows.get();
-    }
-
-    getIsFocused(screenId : string, windowId : string) : boolean {
-        let termWrap = this.getTermWrap(screenId, windowId);
-        if (termWrap == null) {
-            return false;
-        }
-        return termWrap.isFocused.get();
     }
 
     setCmd(cmd : CmdDataType) {
@@ -205,10 +152,7 @@ class Screen {
     updatePtyData(ptyMsg : PtyDataUpdateType) {
         for (let i=0; i<this.windows.length; i++) {
             let sw = this.windows[i];
-            let win = sw.getWindow();
-            if (win != null) {
-                win.updatePtyData(ptyMsg);
-            }
+            sw.updatePtyData(ptyMsg);
         }
     }
 
@@ -237,12 +181,74 @@ class ScreenWindow {
     layout : OV<LayoutType>;
     shouldFollow : OV<boolean> = mobx.observable.box(true);
 
+    // cmdid => TermWrap
+    terms : Record<string, TermWrap> = {};
+
     constructor(swdata : ScreenWindowType) {
         this.sessionId = swdata.sessionid;
         this.screenId = swdata.screenid;
         this.windowId = swdata.windowid;
         this.name = mobx.observable.box(swdata.name);
         this.layout = mobx.observable.box(swdata.layout);
+    }
+
+    updatePtyData(ptyMsg : PtyDataUpdateType) {
+        let cmdId = ptyMsg.cmdid;
+        let term = this.terms[cmdId];
+        if (term == null) {
+            return;
+        }
+        let data = base64ToArray(ptyMsg.ptydata64);
+        term.updatePtyData(ptyMsg.ptypos, data);
+    }
+
+    getTermWrap(cmdId : string) : TermWrap {
+        return this.terms[cmdId];
+    }
+
+    connectElem(elem : Element, cmd : Cmd, width : number) {
+        let cmdId = cmd.cmdId;
+        let termWrap = this.getTermWrap(cmdId);
+        if (termWrap != null) {
+            console.log("term-wrap already exists for", this.screenId, this.windowId, cmdId);
+            return;
+        }
+        let usedRows = GlobalModel.getTUR(this.sessionId, cmdId, width);
+        termWrap = new TermWrap(elem, this.sessionId, cmdId, usedRows, cmd.getTermOpts(), {height: 0, width: width}, cmd.handleKey.bind(cmd));
+        this.terms[cmdId] = termWrap;
+        return;
+    }
+
+    disconnectElem(cmdId : string) {
+        let termWrap = this.terms[cmdId];
+        if (cmdId != null) {
+            termWrap.dispose();
+            delete this.terms[cmdId];
+        }
+    }
+
+    getUsedRows(cmd : Cmd, width : number) : number {
+        let termOpts = cmd.getTermOpts();
+        if (!termOpts.flexrows) {
+            return termOpts.rows;
+        }
+        let termWrap = this.getTermWrap(cmd.cmdId);
+        if (termWrap == null) {
+            let usedRows = GlobalModel.getTUR(this.sessionId, cmd.cmdId, width);
+            if (usedRows != null) {
+                return usedRows;
+            }
+            return 2;
+        }
+        return termWrap.usedRows.get();
+    }
+
+    getIsFocused(cmdId : string) : boolean {
+        let termWrap = this.getTermWrap(cmdId);
+        if (termWrap == null) {
+            return false;
+        }
+        return termWrap.isFocused.get();
     }
 
     reset() {
@@ -269,14 +275,6 @@ class Window {
     constructor(sessionId : string, windowId : string) {
         this.sessionId = sessionId;
         this.windowId = windowId;
-    }
-
-    updatePtyData(ptyMsg : PtyDataUpdateType) {
-        let cmd = this.cmds[ptyMsg.cmdid];
-        if (cmd == null) {
-            return;
-        }
-        cmd.updatePtyData(ptyMsg);
     }
 
     updateWindow(win : WindowDataType, load : boolean) {
@@ -652,6 +650,7 @@ class Model {
     infoMsg : OV<InfoType> = mobx.observable.box(null);
     infoTimeoutId : any = null;
     inputModel : InputModel;
+    termUsedRowsCache : Record<string, number> = {};
     
     constructor() {
         this.clientId = getApi().getId();
@@ -664,6 +663,16 @@ class Model {
         getApi().onICmd(this.onICmd.bind(this));
         getApi().onBracketCmd(this.onBracketCmd.bind(this));
         getApi().onDigitCmd(this.onDigitCmd.bind(this));
+    }
+
+    getTUR(sessionId : string, cmdId : string, width : number) : number {
+        let key = sessionId + "/" + cmdId + "/" + width;
+        return this.termUsedRowsCache[key];
+    }
+
+    setTUR(sessionId : string, cmdId : string, width : number, usedRows : number) : void {
+        let key = sessionId + "/" + cmdId + "/" + width;
+        this.termUsedRowsCache[key] = usedRows;
     }
 
     contextScreen(e : any, screenId : string) {

@@ -46,15 +46,17 @@ class TermWrap {
     reloading : boolean = false;
     dataUpdates : DataUpdate[] = [];
     loadError : mobx.IObservableValue<boolean> = mobx.observable.box(false);
+    winSize : WindowSize;
 
     constructor(elem : Element, sessionId : string, cmdId : string, usedRows : number, termOpts : TermOptsType, winSize : WindowSize, keyHandler : (event : any) => void) {
         this.sessionId = sessionId;
         this.cmdId = cmdId;
         this.connectedElem = elem;
         this.flexRows = termOpts.flexrows ?? false;
+        this.winSize = winSize;
         if (this.flexRows) {
             this.atRowMax = false;
-            this.usedRows = mobx.observable.box(usedRows || 2);
+            this.usedRows = mobx.observable.box(usedRows ?? 2);
         }
         else {
             this.atRowMax = true;
@@ -141,6 +143,7 @@ class TermWrap {
         mobx.action(() => {
             let oldUsedRows = this.usedRows.get();
             this.usedRows.set(tur);
+            GlobalModel.setTUR(this.sessionId, this.cmdId, this.winSize.width, tur);
             if (this.connectedElem) {
                 let resizeEvent = new CustomEvent("termresize", {
                     bubbles: true,
