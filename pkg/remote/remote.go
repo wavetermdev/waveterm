@@ -359,7 +359,7 @@ func (runner *MShellProc) ProcessPackets() {
 		}
 		runner.notifyHangups_nolock()
 	})
-	var dataPos int64
+	dataPosMap := make(map[base.CommandKey]int64)
 	for pk := range runner.ServerProc.Output.MainCh {
 		if pk.GetType() == packet.DataPacketStr {
 			dataPk := pk.(*packet.DataPacketType)
@@ -371,13 +371,14 @@ func (runner *MShellProc) ProcessPackets() {
 			}
 			var ack *packet.DataAckPacketType
 			if len(realData) > 0 {
+				dataPos := dataPosMap[dataPk.CK]
 				err = sstore.AppendToCmdPtyBlob(context.Background(), dataPk.CK.GetSessionId(), dataPk.CK.GetCmdId(), realData, dataPos)
 				if err != nil {
 					ack = makeDataAckPacket(dataPk.CK, dataPk.FdNum, 0, err)
 				} else {
 					ack = makeDataAckPacket(dataPk.CK, dataPk.FdNum, len(realData), nil)
 				}
-				dataPos += int64(len(realData))
+				dataPosMap[dataPk.CK] += int64(len(realData))
 			}
 			if ack != nil {
 				runner.ServerProc.Input.SendPacket(ack)
