@@ -39,6 +39,10 @@ function getApi() : ElectronApi {
     return (window as any).api;
 }
 
+function getLineId(line : LineType) : string {
+    return sprintf("%s-%s-%s", line.sessionid, line.windowid, line.lineid);
+}
+
 // clean empty string
 function ces(s : string) {
     if (s == "") {
@@ -833,6 +837,10 @@ class Model {
             return;
         }
         termWrap.terminal.focus();
+        let lineElem = document.getElementById("line-" + getLineId(switchLine));
+        if (lineElem != null) {
+            lineElem.scrollIntoView({block: "nearest"});
+        }
         console.log("arrow-up", this.getFocusedLine(), "=>", switchLine);
     }
 
@@ -871,6 +879,10 @@ class Model {
             return;
         }
         termWrap.terminal.focus();
+        let lineElem = document.getElementById("line-" + getLineId(switchLine));
+        if (lineElem != null) {
+            lineElem.scrollIntoView({block: "nearest"});
+        }
         console.log("arrow-down", this.getFocusedLine());
     }
 
