@@ -73,6 +73,15 @@ function createWindow() {
             }
             return;
         }
+        if (input.meta && (input.code == "ArrowUp" || input.code == "ArrowDown")) {
+            if (input.code == "ArrowUp") {
+                win.webContents.send("meta-arrowup");
+            } else {
+                win.webContents.send("meta-arrowdown");
+            }
+            e.preventDefault();
+            return;
+        }
         if (input.code.startsWith("Digit") && input.meta) {
             let digitNum = parseInt(input.code.substr(5));
             if (isNaN(digitNum) || digitNum < 1 || digitNum > 9) {

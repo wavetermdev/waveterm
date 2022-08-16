@@ -194,8 +194,9 @@ class TermWrap {
             this.dataUpdates.push({data: data, pos: pos});
             return;
         }
+        console.log("pty-update", this.cmdId, this.ptyPos, data.length);
         if (pos > this.ptyPos) {
-            throw new Error(sprintf("invalid pty-update, data-pos[%d] does not match term-pos[%d]", pos, this.ptyPos));
+            throw new Error(sprintf("invalid pty-update, data-pos[%d] does not match term-pos[%d] cmdid[%s]", pos, this.ptyPos, this.cmdId));
         }
         if (pos < this.ptyPos) {
             let diff = this.ptyPos - pos;

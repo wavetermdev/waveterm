@@ -19,5 +19,6 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 (window as any).mobx = mobx;
+(window as any).sprintf = sprintf;
 
 console.log("SCRIPTHAUS", VERSION)

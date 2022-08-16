@@ -62,7 +62,7 @@ interface ISimpleDataType {
     remove? : boolean;
 }
 
-function genMergeSimpleData<T extends ISimpleDataType>(objs : mobx.IObservableArray<T>, dataArr : T[], idFn : (obj : T) => string, sortIdxFn : (obj : T) => number) {
+function genMergeSimpleData<T extends ISimpleDataType>(objs : mobx.IObservableArray<T>, dataArr : T[], idFn : (obj : T) => string, sortIdxFn : (obj : T) => string) {
     if (dataArr == null || dataArr.length == 0) {
         return;
     }
@@ -86,7 +86,9 @@ function genMergeSimpleData<T extends ISimpleDataType>(objs : mobx.IObservableAr
     let newObjs = Object.values(objMap);
     if (sortIdxFn) {
         newObjs.sort((a, b) => {
-            return sortIdxFn(a) - sortIdxFn(b);
+            let astr = sortIdxFn(a);
+            let bstr = sortIdxFn(b);
+            return astr.localeCompare(bstr);
         });
     }
     objs.replace(newObjs);

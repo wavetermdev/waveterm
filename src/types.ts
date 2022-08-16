@@ -17,7 +17,7 @@ type SessionDataType = {
 type LineType = {
     sessionid : string,
     windowid : string,
-    lineid : number,
+    lineid : string,
     ts : number,
     userid : string,
     linetype : string,
@@ -71,7 +71,9 @@ type ScreenWindowType = {
 type RemoteType = {
     remotetype : string,
     remoteid : string,
-    remotename : string,
+    physicalid : string,
+    remotealias : string,
+    remotecanonicalname : string,
     remotevars : Record<string, string>,
     status : string,
     defaultstate : RemoteStateType,
@@ -112,7 +114,7 @@ type HistoryItem = {
     sessionid : string,
     screenid : string,
     windowid : string,
-    lineid : number,
+    lineid : string,
     haderror : boolean,
     cmdid : string,
     cmdstr : string,

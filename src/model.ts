@@ -28,6 +28,8 @@ type ElectronApi = {
     getId : () => string,
     onTCmd : (callback : (mods : KeyModsType) => void) => void,
     onICmd : (callback : (mods : KeyModsType) => void) => void,
+    onMetaArrowUp : (callback : () => void) => void,
+    onMetaArrowDown : (callback : () => void) => void,
     onBracketCmd : (callback : (event : any, arg : {relative : number}, mods : KeyModsType) => void) => void,
     onDigitCmd : (callback : (event : any, arg : {digit : number}, mods : KeyModsType) => void) => void,
     contextScreen : (screenOpts : {screenId : string}, position : {x : number, y : number}) => void,
@@ -285,7 +287,8 @@ class Window {
             if (load) {
                 this.loaded.set(true);
             }
-            genMergeSimpleData(this.lines, win.lines, (l : LineType) => String(l.lineid), (l : LineType) => l.lineid);
+            genMergeSimpleData(this.lines, win.lines, (l : LineType) => String(l.lineid), (l : LineType) => sprintf("%013d:%s", l.ts, l.lineid));
+            
             let cmds = win.cmds || [];
             for (let i=0; i<cmds.length; i++) {
                 this.cmds[cmds[i].cmdid] = new Cmd(cmds[i]);
@@ -306,6 +309,25 @@ class Window {
 
     getCmd(cmdId : string) {
         return this.cmds[cmdId];
+    }
+
+    getRunningCmdLines() : LineType[] {
+        let rtn : LineType[] = [];
+        for (let i=0; i<this.lines.length; i++) {
+            let line = this.lines[i];
+            if (line.cmdid == null) {
+                continue;
+            }
+            let cmd = this.getCmd(line.cmdid);
+            if (cmd == null) {
+                continue;
+            }
+            let status = cmd.getStatus();
+            if (status == "running" || status == "detached") {
+                rtn.push(line);
+            }
+        }
+        return rtn;
     }
 
     getCurRemoteInstance() : RemoteInstanceType {
@@ -353,11 +375,12 @@ class Window {
             let lineIdx = 0;
             for (lineIdx=0; lineIdx<lines.length; lineIdx++) {
                 let lineId = lines[lineIdx].lineid;
+                let curTs = lines[lineIdx].ts;
                 if (lineId == line.lineid) {
                     this.lines[lineIdx] = line;
                     return;
                 }
-                if (lineId > line.lineid) {
+                if (curTs > line.ts || (curTs == line.ts && lineId > line.lineid)) {
                     break;
                 }
             }
@@ -637,6 +660,13 @@ class InputModel {
     }
 };
 
+type LineFocusType = {
+    cmdInputFocus : boolean,
+    lineid? : string,
+    windowid? : string,
+    cmdid? : string,
+};
+
 class Model {
     clientId : string;
     activeSessionId : OV<string> = mobx.observable.box(null);
@@ -661,6 +691,8 @@ class Model {
         this.inputModel = new InputModel();
         getApi().onTCmd(this.onTCmd.bind(this));
         getApi().onICmd(this.onICmd.bind(this));
+        getApi().onMetaArrowUp(this.onMetaArrowUp.bind(this));
+        getApi().onMetaArrowDown(this.onMetaArrowDown.bind(this));
         getApi().onBracketCmd(this.onBracketCmd.bind(this));
         getApi().onDigitCmd(this.onDigitCmd.bind(this));
     }
@@ -726,11 +758,120 @@ class Model {
         GlobalInput.createNewScreen();
     }
 
-    onICmd(mods : KeyModsType) {
+    focusCmdInput() : void {
         let elem = document.getElementById("main-cmd-input");
         if (elem != null) {
             elem.focus();
         }
+    }
+
+    onICmd(mods : KeyModsType) {
+        this.focusCmdInput();
+    }
+
+    getFocusedLine() : LineFocusType {
+        let elem = document.getElementById("main-cmd-input");
+        if (document.activeElement == elem) {
+            return {cmdInputFocus: true};
+        }
+        let lineElem : any = document.activeElement.closest(".line[data-lineid]");
+        if (lineElem == null) {
+            return null;
+        }
+        return {
+            cmdInputFocus: false,
+            lineid: lineElem.dataset.lineid,
+            windowid: lineElem.dataset.windowid,
+            cmdid: lineElem.dataset.cmdid,
+        };
+    }
+
+    onMetaArrowUp() : void {
+        let focus = this.getFocusedLine();
+        if (focus == null) {
+            return;
+        }
+        let sw : ScreenWindow = null;
+        if (focus.cmdInputFocus) {
+            sw = this.getActiveSW();
+        }
+        else {
+            sw = this.getSWByWindowId(focus.windowid);
+        }
+        if (sw == null) {
+            return;
+        }
+        let win = sw.getWindow();
+        if (win == null) {
+            return;
+        }
+        let runningLines = win.getRunningCmdLines();
+        if (runningLines.length == 0) {
+            return;
+        }
+        let switchLine : LineType = null;
+        if (focus.cmdInputFocus) {
+            switchLine = runningLines[runningLines.length-1];
+        }
+        else {
+            let foundIdx = -1;
+            for (let i=0; i<runningLines.length; i++) {
+                if (runningLines[i].lineid == focus.lineid) {
+                    foundIdx = i;
+                    break;
+                }
+            }
+            if (foundIdx > 0) {
+                switchLine = runningLines[foundIdx-1];
+            }
+        }
+        if (switchLine == null || switchLine.cmdid == null) {
+            return;
+        }
+        let termWrap = sw.getTermWrap(switchLine.cmdid);
+        if (termWrap == null || termWrap.terminal == null) {
+            return;
+        }
+        termWrap.terminal.focus();
+        console.log("arrow-up", this.getFocusedLine(), "=>", switchLine);
+    }
+
+    onMetaArrowDown() : void {
+        let focus = this.getFocusedLine();
+        if (focus == null || focus.cmdInputFocus) {
+            return;
+        }
+        let sw = this.getSWByWindowId(focus.windowid);
+        if (sw == null) {
+            return;
+        }
+        let win = sw.getWindow();
+        if (win == null) {
+            return;
+        }
+        let runningLines = win.getRunningCmdLines();
+        if (runningLines.length == 0) {
+            this.focusCmdInput();
+            return;
+        }
+        let foundIdx = -1;
+        for (let i=0; i<runningLines.length; i++) {
+            if (runningLines[i].lineid == focus.lineid) {
+                foundIdx = i;
+                break;
+            }
+        }
+        if (foundIdx == -1 || foundIdx == runningLines.length - 1) {
+            this.focusCmdInput();
+            return;
+        }
+        let switchLine = runningLines[foundIdx+1];
+        let termWrap = sw.getTermWrap(switchLine.cmdid);
+        if (termWrap == null || termWrap.terminal == null) {
+            return;
+        }
+        termWrap.terminal.focus();
+        console.log("arrow-down", this.getFocusedLine());
     }
 
     onBracketCmd(e : any, arg : {relative: number}, mods : KeyModsType) {
@@ -801,7 +942,7 @@ class Model {
             let cmdline : CmdLineUpdateType = update.cmdline;
             this.inputModel.updateCmdLine(cmdline);
         }
-        console.log("run-update>", interactive, update);
+        // console.log("run-update>", interactive, update);
     }
 
     getActiveSession() : Session {
@@ -870,6 +1011,22 @@ class Model {
         }
         let activeWindowId = screen.activeWindowId.get();
         return this.windows.get(screen.sessionId + "/" + activeWindowId);
+    }
+
+    getActiveSW() : ScreenWindow {
+        let screen = this.getActiveScreen();
+        if (screen == null) {
+            return null;
+        }
+        return screen.getActiveSW();
+    }
+
+    getSWByWindowId(windowId : string) : ScreenWindow {
+        let screen = this.getActiveScreen();
+        if (screen == null) {
+            return null;
+        }
+        return screen.getSW(windowId);
     }
 
     getActiveScreen() : Screen {
@@ -1049,7 +1206,7 @@ class Model {
 
     getRemoteByName(name : string) : RemoteType {
         for (let i=0; i<this.remotes.length; i++) {
-            if (this.remotes[i].remotename == name) {
+            if (this.remotes[i].remotecanonicalname == name || this.remotes[i].remotealias == name) {
                 return this.remotes[i];
             }
         }

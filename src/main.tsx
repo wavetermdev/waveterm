@@ -120,7 +120,7 @@ class LineText extends React.Component<{sw : ScreenWindow, line : LineType}, {}>
         let line = this.props.line;
         let formattedTime = getLineDateStr(line.ts);
         return (
-            <div className="line line-text">
+            <div className="line line-text" data-lineid={line.lineid} data-windowid={line.windowid}>
                 <div className="avatar">
                     S
                 </div>
@@ -139,7 +139,7 @@ class LineText extends React.Component<{sw : ScreenWindow, line : LineType}, {}>
 }
 
 @mobxReact.observer
-class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width : number, interObs : IntersectionObserver, initVis : boolean}, {}> {
+class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width : number, interObs : IntersectionObserver, initVis : boolean, cmdRefNum : number}, {}> {
     termLoaded : mobx.IObservableValue<boolean> = mobx.observable.box(false);
     lineRef : React.RefObject<any> = React.createRef();
     iobsVal : InterObsValue = null;
@@ -249,7 +249,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
     render() {
         let {sw, line, width} = this.props;
         let model = GlobalModel;
-        let lineid = line.lineid.toString();
+        let lineid = line.lineid;
         let formattedTime = getLineDateStr(line.ts);
         let cmd = model.getCmd(line);
         if (cmd == null) {
@@ -271,11 +271,12 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         let detached = (status == "detached");
         let termOpts = cmd.getTermOpts();
         let isFocused = sw.getIsFocused(line.cmdid);
+        let cmdRefNumStr = (this.props.cmdRefNum == null ? "?" : this.props.cmdRefNum.toString());
         return (
-            <div className={cn("line", "line-cmd", {"focus": isFocused})} id={"line-" + getLineId(line)} ref={this.lineRef} style={{position: "relative"}}>
+            <div className={cn("line", "line-cmd", {"focus": isFocused})} id={"line-" + getLineId(line)} ref={this.lineRef} style={{position: "relative"}} data-lineid={line.lineid} data-windowid={line.windowid} data-cmdid={line.cmdid}>
                 <div className="line-header">
-                    <div className={cn("avatar",{"num4": lineid.length == 4}, {"num5": lineid.length >= 5}, {"running": running}, {"detached": detached})} onClick={this.doRefresh}>
-                        {lineid}
+                    <div className={cn("avatar",{"num4": cmdRefNumStr.length == 4}, {"num5": cmdRefNumStr.length >= 5}, {"running": running}, {"detached": detached})} onClick={this.doRefresh}>
+                        {cmdRefNumStr}
                     </div>
                     <div className="meta-wrap">
                         <div className="meta">
@@ -301,7 +302,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
 }
 
 @mobxReact.observer
-class Line extends React.Component<{sw : ScreenWindow, line : LineType, width : number, interObs : IntersectionObserver, initVis : boolean}, {}> {
+class Line extends React.Component<{sw : ScreenWindow, line : LineType, width : number, interObs : IntersectionObserver, initVis : boolean, cmdRefNum : number}, {}> {
     render() {
         let line = this.props.line;
         if (line.linetype == "text") {
@@ -702,6 +703,15 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         if (win.lines.length == 0) {
             linesStyle.display = "none";
         }
+        let cmdRefMap : Record<string, number> = {};
+        let cmdNum = 1;
+        for (let i=0; i<win.lines.length; i++) {
+            let line = win.lines[i];
+            if (line.cmdid != null) {
+                cmdRefMap[line.lineid] = cmdNum;
+                cmdNum++;
+            }
+        }
         return (
             <div className="window-view" style={this.getWindowViewStyle()} id={this.getWindowViewDOMId()}>
                 <div key="window-tag" className="window-tag">
@@ -709,7 +719,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
                 </div>
                 <div key="lines" className="lines" onScroll={this.scrollHandler} id={this.getLinesDOMId()} style={linesStyle}>
                     <For each="line" of={win.lines} index="idx">
-                        <Line key={line.lineid} line={line} sw={sw} width={this.width.get()} interObs={this.interObs} initVis={idx > win.lines.length-1-7}/>
+                        <Line key={line.lineid} line={line} sw={sw} width={this.width.get()} interObs={this.interObs} initVis={idx > win.lines.length-1-7} cmdRefNum={cmdRefMap[line.lineid] ?? 0}/>
                     </For>
                 </div>
                 <If condition={win.lines.length == 0}>
