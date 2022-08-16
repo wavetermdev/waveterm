@@ -1,3 +1,9 @@
+CREATE TABLE client (
+    userid varchar(36) NOT NULL,
+    userpublickeybytes blob NOT NULL,
+    userprivatekeybytes blob NOT NULL
+);
+
 CREATE TABLE session (
     sessionid varchar(36) PRIMARY KEY,
     name varchar(50) NOT NULL,

@@ -456,6 +456,12 @@ func main() {
 		fmt.Printf("[error] ensuring default session: %v\n", err)
 		return
 	}
+	userData, err := sstore.EnsureUserData(context.Background())
+	if err != nil {
+		fmt.Printf("[error] ensuring user data: %v\n", err)
+		return
+	}
+	fmt.Printf("userid = %s\n", userData.UserId)
 	err = remote.LoadRemotes(context.Background())
 	if err != nil {
 		fmt.Printf("[error] loading remotes: %v\n", err)

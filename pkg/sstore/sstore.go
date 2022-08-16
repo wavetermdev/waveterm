@@ -2,6 +2,10 @@ package sstore
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
 	"database/sql/driver"
 	"fmt"
 	"log"
@@ -10,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
@@ -29,11 +34,21 @@ const DefaultScreenWindowName = "w1"
 
 const DefaultCwd = "~"
 
-const CmdStatusRunning = "running"
-const CmdStatusDetached = "detached"
-const CmdStatusError = "error"
-const CmdStatusDone = "done"
-const CmdStatusHangup = "hangup"
+const (
+	CmdStatusRunning  = "running"
+	CmdStatusDetached = "detached"
+	CmdStatusError    = "error"
+	CmdStatusDone     = "done"
+	CmdStatusHangup   = "hangup"
+)
+
+const (
+	ShareModeLocal      = "local"
+	ShareModePrivate    = "private"
+	ShareModeView       = "view"
+	ShareModeShared     = "shared"
+	ShareModeSharedView = "shared-view"
+)
 
 var globalDBLock = &sync.Mutex{}
 var globalDB *sqlx.DB
@@ -54,6 +69,14 @@ func GetDB(ctx context.Context) (*sqlx.DB, error) {
 		globalDB, globalDBErr = sqlx.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000", GetSessionDBName()))
 	}
 	return globalDB, globalDBErr
+}
+
+type UserData struct {
+	UserId              string `json:"userid"`
+	UserPrivateKeyBytes []byte `json:"-"`
+	UserPublicKeyBytes  []byte `json:"-"`
+	UserPrivateKey      *ecdsa.PrivateKey
+	UserPublicKey       *ecdsa.PublicKey
 }
 
 type SessionType struct {
@@ -412,4 +435,70 @@ func EnsureDefaultSession(ctx context.Context) (*SessionType, error) {
 		return nil, err
 	}
 	return GetSessionByName(ctx, DefaultSessionName)
+}
+
+func createUserData(tx *TxWrap) error {
+	userId := uuid.New().String()
+	curve := elliptic.P384()
+	pkey, err := ecdsa.GenerateKey(curve, rand.Reader)
+	if err != nil {
+		return fmt.Errorf("generating P-834 key: %w", err)
+	}
+	pkBytes, err := x509.MarshalECPrivateKey(pkey)
+	if err != nil {
+		return fmt.Errorf("marshaling (pkcs8) private key bytes: %w", err)
+	}
+	pubBytes, err := x509.MarshalPKIXPublicKey(&pkey.PublicKey)
+	if err != nil {
+		return fmt.Errorf("marshaling (pkix) public key bytes: %w", err)
+	}
+	query := `INSERT INTO client (userid, userpublickeybytes, userprivatekeybytes) VALUES (?, ?, ?)`
+	tx.ExecWrap(query, userId, pubBytes, pkBytes)
+	fmt.Printf("create new userid[%s] with public/private keypair\n", userId)
+	return nil
+}
+
+func EnsureUserData(ctx context.Context) (*UserData, error) {
+	var rtn UserData
+	err := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT count(*) FROM client`
+		count := tx.GetInt(query)
+		if count > 1 {
+			return fmt.Errorf("invalid client database, multiple (%d) rows in client table", count)
+		}
+		if count == 0 {
+			createErr := createUserData(tx)
+			if createErr != nil {
+				return createErr
+			}
+		}
+		found := tx.GetWrap(&rtn, "SELECT * FROM client")
+		if !found {
+			return fmt.Errorf("invalid client data")
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if rtn.UserId == "" {
+		return nil, fmt.Errorf("invalid client data (no userid)")
+	}
+	if len(rtn.UserPrivateKeyBytes) == 0 || len(rtn.UserPublicKeyBytes) == 0 {
+		return nil, fmt.Errorf("invalid client data (no public/private keypair)")
+	}
+	rtn.UserPrivateKey, err = x509.ParseECPrivateKey(rtn.UserPrivateKeyBytes)
+	if err != nil {
+		return nil, fmt.Errorf("invalid client data, cannot parse private key: %w", err)
+	}
+	pubKey, err := x509.ParsePKIXPublicKey(rtn.UserPublicKeyBytes)
+	if err != nil {
+		return nil, fmt.Errorf("invalid client data, cannot parse public key: %w", err)
+	}
+	var ok bool
+	rtn.UserPublicKey, ok = pubKey.(*ecdsa.PublicKey)
+	if !ok {
+		return nil, fmt.Errorf("invalid client data, wrong public key type: %T", pubKey)
+	}
+	return &rtn, nil
 }
