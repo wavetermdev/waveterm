@@ -71,8 +71,13 @@ CREATE TABLE line (
 
 CREATE TABLE remote (
     remoteid varchar(36) PRIMARY KEY,
+    physicalid varchar(36) NOT NULL,
     remotetype varchar(10) NOT NULL,
-    remotename varchar(50) NOT NULL,
+    remotealias varchar(50) NOT NULL,
+    remotecanonicalname varchar(200) NOT NULL,
+    remotesudo boolean NOT NULL,
+    remoteuser varchar(50) NOT NULL,
+    remotehost varchar(200) NOT NULL,
     autoconnect boolean NOT NULL,
     initpk json NOT NULL,
     sshopts json NOT NULL,

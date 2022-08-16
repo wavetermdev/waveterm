@@ -40,11 +40,11 @@ func GetAllRemotes(ctx context.Context) ([]*RemoteType, error) {
 	return rtn, nil
 }
 
-func GetRemoteByName(ctx context.Context, remoteName string) (*RemoteType, error) {
+func GetRemoteById(ctx context.Context, remoteId string) (*RemoteType, error) {
 	var remote *RemoteType
 	err := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT * FROM remote WHERE remotename = ?`
-		m := tx.GetMap(query, remoteName)
+		query := `SELECT * FROM remote WHERE remoteid = ?`
+		m := tx.GetMap(query, remoteId)
 		remote = RemoteFromMap(m)
 		return nil
 	})
@@ -54,11 +54,11 @@ func GetRemoteByName(ctx context.Context, remoteName string) (*RemoteType, error
 	return remote, nil
 }
 
-func GetRemoteById(ctx context.Context, remoteId string) (*RemoteType, error) {
+func GetRemoteByPhysicalId(ctx context.Context, physicalId string) (*RemoteType, error) {
 	var remote *RemoteType
 	err := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT * FROM remote WHERE remoteid = ?`
-		m := tx.GetMap(query, remoteId)
+		query := `SELECT * FROM remote WHERE physicalid = ?`
+		m := tx.GetMap(query, physicalId)
 		remote = RemoteFromMap(m)
 		return nil
 	})
@@ -76,8 +76,8 @@ func InsertRemote(ctx context.Context, remote *RemoteType) error {
 	if err != nil {
 		return err
 	}
-	query := `INSERT INTO remote ( remoteid, remotetype, remotename, autoconnect, initpk, sshopts, lastconnectts) VALUES 
-                                 (:remoteid,:remotetype,:remotename,:autoconnect,:initpk,:sshopts,:lastconnectts)`
+	query := `INSERT INTO remote ( remoteid, physicalid, remotetype, remotealias, remotecanonicalname, remotesudo, remoteuser, remotehost, autoconnect, initpk, sshopts, lastconnectts) VALUES 
+                                 (:remoteid,:physicalid,:remotetype,:remotealias,:remotecanonicalname,:remotesudo,:remoteuser,:remotehost,:autoconnect,:initpk,:sshopts,:lastconnectts)`
 	_, err = db.NamedExec(query, remote.ToMap())
 	if err != nil {
 		return err
@@ -533,8 +533,8 @@ func GetRemoteState(ctx context.Context, rname string, sessionId string, windowI
 			remoteState = &ri.State
 			return nil
 		}
-		query = `SELECT remoteid FROM remote WHERE remotename = ?`
-		remoteId = tx.GetString(query, rname)
+		query = `SELECT remoteid FROM remote WHERE remotealias = ? OR remotecanonicalname = ?`
+		remoteId = tx.GetString(query, rname, rname)
 		if remoteId == "" {
 			return fmt.Errorf("remote not found", rname)
 		}

@@ -35,12 +35,14 @@ type Store struct {
 }
 
 type RemoteState struct {
-	RemoteType   string              `json:"remotetype"`
-	RemoteId     string              `json:"remoteid"`
-	RemoteName   string              `json:"remotename"`
-	RemoteVars   map[string]string   `json:"remotevars"`
-	Status       string              `json:"status"`
-	DefaultState *sstore.RemoteState `json:"defaultstate"`
+	RemoteType          string              `json:"remotetype"`
+	RemoteId            string              `json:"remoteid"`
+	PhysicalId          string              `json:"physicalremoteid"`
+	RemoteAlias         string              `json:"remotealias"`
+	RemoteCanonicalName string              `json:"remotecanonicalname"`
+	RemoteVars          map[string]string   `json:"remotevars"`
+	Status              string              `json:"status"`
+	DefaultState        *sstore.RemoteState `json:"defaultstate"`
 }
 
 type MShellProc struct {
@@ -78,7 +80,7 @@ func GetRemoteByName(name string) *MShellProc {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
 	for _, msh := range GlobalStore.Map {
-		if msh.Remote.RemoteName == name {
+		if msh.Remote.RemoteAlias == name || msh.Remote.GetName() == name {
 			return msh
 		}
 	}
@@ -98,13 +100,25 @@ func GetAllRemoteState() []RemoteState {
 	var rtn []RemoteState
 	for _, proc := range GlobalStore.Map {
 		state := RemoteState{
-			RemoteType: proc.Remote.RemoteType,
-			RemoteId:   proc.Remote.RemoteId,
-			RemoteName: proc.Remote.RemoteName,
-			Status:     proc.Status,
+			RemoteType:          proc.Remote.RemoteType,
+			RemoteId:            proc.Remote.RemoteId,
+			RemoteAlias:         proc.Remote.RemoteAlias,
+			RemoteCanonicalName: proc.Remote.RemoteCanonicalName,
+			PhysicalId:          proc.Remote.PhysicalId,
+			Status:              proc.Status,
 		}
 		vars := make(map[string]string)
-		vars["user"], vars["host"] = proc.Remote.GetUserHost()
+		vars["user"] = proc.Remote.RemoteUser
+		vars["host"] = proc.Remote.RemoteHost
+		if proc.Remote.RemoteSudo {
+			vars["sudo"] = "1"
+		}
+		vars["alias"] = proc.Remote.RemoteAlias
+		vars["cname"] = proc.Remote.RemoteCanonicalName
+		vars["physicalid"] = proc.Remote.PhysicalId
+		vars["remoteid"] = proc.Remote.RemoteId
+		vars["status"] = proc.Status
+		vars["type"] = proc.Remote.RemoteType
 		if proc.ServerProc != nil && proc.ServerProc.InitPk != nil {
 			state.DefaultState = &sstore.RemoteState{Cwd: proc.ServerProc.InitPk.HomeDir}
 			vars["home"] = proc.ServerProc.InitPk.HomeDir

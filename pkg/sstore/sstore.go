@@ -9,8 +9,9 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"log"
+	"os"
+	"os/user"
 	"path"
-	"strings"
 	"sync"
 	"time"
 
@@ -277,27 +278,28 @@ type SSHOpts struct {
 }
 
 type RemoteType struct {
-	RemoteId      string                 `json:"remoteid"`
-	RemoteType    string                 `json:"remotetype"`
-	RemoteName    string                 `json:"remotename"`
-	AutoConnect   bool                   `json:"autoconnect"`
-	InitPk        *packet.InitPacketType `json:"inipk"`
-	SSHOpts       *SSHOpts               `json:"sshopts"`
-	LastConnectTs int64                  `json:"lastconnectts"`
+	RemoteId            string                 `json:"remoteid"`
+	PhysicalId          string                 `json:"physicalid"`
+	RemoteType          string                 `json:"remotetype"`
+	RemoteAlias         string                 `json:"remotealias"`
+	RemoteCanonicalName string                 `json:"remotecanonicalname"`
+	RemoteSudo          bool                   `json:"remotesudo"`
+	RemoteUser          string                 `json:"remoteuser"`
+	RemoteHost          string                 `json:"remotehost"`
+	AutoConnect         bool                   `json:"autoconnect"`
+	InitPk              *packet.InitPacketType `json:"inipk"`
+	SSHOpts             *SSHOpts               `json:"sshopts"`
+	LastConnectTs       int64                  `json:"lastconnectts"`
 }
 
-func (r *RemoteType) GetUserHost() (string, string) {
-	if r.SSHOpts == nil {
-		return "", ""
+func (r *RemoteType) GetName() string {
+	if r.RemoteAlias != "" {
+		return r.RemoteAlias
 	}
-	if r.SSHOpts.SSHUser != "" {
-		return r.SSHOpts.SSHUser, r.SSHOpts.SSHHost
+	if r.RemoteUser == "" {
+		return r.RemoteHost
 	}
-	atIdx := strings.Index(r.SSHOpts.SSHHost, "@")
-	if atIdx == -1 {
-		return "", r.SSHOpts.SSHHost
-	}
-	return r.SSHOpts.SSHHost[0:atIdx], r.SSHOpts.SSHHost[atIdx+1:]
+	return fmt.Sprintf("%s@%s", r.RemoteUser, r.RemoteHost)
 }
 
 type CmdType struct {
@@ -318,8 +320,13 @@ type CmdType struct {
 func (r *RemoteType) ToMap() map[string]interface{} {
 	rtn := make(map[string]interface{})
 	rtn["remoteid"] = r.RemoteId
+	rtn["physicalid"] = r.PhysicalId
 	rtn["remotetype"] = r.RemoteType
-	rtn["remotename"] = r.RemoteName
+	rtn["remotealias"] = r.RemoteAlias
+	rtn["remotecanonicalname"] = r.RemoteCanonicalName
+	rtn["remotesudo"] = r.RemoteSudo
+	rtn["remoteuser"] = r.RemoteUser
+	rtn["remotehost"] = r.RemoteHost
 	rtn["autoconnect"] = r.AutoConnect
 	rtn["initpk"] = quickJson(r.InitPk)
 	rtn["sshopts"] = quickJson(r.SSHOpts)
@@ -333,8 +340,13 @@ func RemoteFromMap(m map[string]interface{}) *RemoteType {
 	}
 	var r RemoteType
 	quickSetStr(&r.RemoteId, m, "remoteid")
+	quickSetStr(&r.PhysicalId, m, "physicalid")
 	quickSetStr(&r.RemoteType, m, "remotetype")
-	quickSetStr(&r.RemoteName, m, "remotename")
+	quickSetStr(&r.RemoteAlias, m, "remotealias")
+	quickSetStr(&r.RemoteCanonicalName, m, "remotecanonicalname")
+	quickSetBool(&r.RemoteSudo, m, "remotesudo")
+	quickSetStr(&r.RemoteUser, m, "remoteuser")
+	quickSetStr(&r.RemoteHost, m, "remotehost")
 	quickSetBool(&r.AutoConnect, m, "autoconnect")
 	quickSetJson(&r.InitPk, m, "initpk")
 	quickSetJson(&r.SSHOpts, m, "sshopts")
@@ -431,18 +443,30 @@ func EnsureLocalRemote(ctx context.Context) error {
 	if remote != nil {
 		return nil
 	}
+	hostName, err := os.Hostname()
+	if err != nil {
+		return fmt.Errorf("getting hostname: %w", err)
+	}
+	user, err := user.Current()
+	if err != nil {
+		return fmt.Errorf("getting user: %w", err)
+	}
 	// create the local remote
 	localRemote := &RemoteType{
-		RemoteId:    remoteId,
-		RemoteType:  "ssh",
-		RemoteName:  LocalRemoteName,
-		AutoConnect: true,
+		RemoteId:            remoteId,
+		RemoteType:          "ssh",
+		RemoteAlias:         LocalRemoteName,
+		RemoteCanonicalName: fmt.Sprintf("%s@%s", user.Username, hostName),
+		RemoteSudo:          false,
+		RemoteUser:          user.Username,
+		RemoteHost:          hostName,
+		AutoConnect:         true,
 	}
 	err = InsertRemote(ctx, localRemote)
 	if err != nil {
 		return err
 	}
-	log.Printf("[db] added remote '%s', id=%s\n", localRemote.RemoteName, localRemote.RemoteId)
+	log.Printf("[db] added remote '%s', id=%s\n", localRemote.GetName(), localRemote.RemoteId)
 	return nil
 }
 
