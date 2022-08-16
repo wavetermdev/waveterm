@@ -43,11 +43,10 @@ const (
 )
 
 const (
-	ShareModeLocal      = "local"
-	ShareModePrivate    = "private"
-	ShareModeView       = "view"
-	ShareModeShared     = "shared"
-	ShareModeSharedView = "shared-view"
+	ShareModeLocal   = "local"
+	ShareModePrivate = "private"
+	ShareModeView    = "view"
+	ShareModeShared  = "shared"
 )
 
 var globalDBLock = &sync.Mutex{}
@@ -66,7 +65,11 @@ func GetDB(ctx context.Context) (*sqlx.DB, error) {
 	globalDBLock.Lock()
 	defer globalDBLock.Unlock()
 	if globalDB == nil && globalDBErr == nil {
-		globalDB, globalDBErr = sqlx.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000", GetSessionDBName()))
+		dbName := GetSessionDBName()
+		globalDB, globalDBErr = sqlx.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000", dbName))
+		if globalDBErr != nil {
+			globalDBErr = fmt.Errorf("opening db[%s]: %w", dbName, globalDBErr)
+		}
 	}
 	return globalDB, globalDBErr
 }
@@ -84,6 +87,9 @@ type SessionType struct {
 	Name           string            `json:"name"`
 	SessionIdx     int64             `json:"sessionidx"`
 	ActiveScreenId string            `json:"activescreenid"`
+	OwnerUserId    string            `json:"owneruserid"`
+	ShareMode      string            `json:"sharemode"`
+	AccessKey      string            `json:"-"`
 	NotifyNum      int64             `json:"notifynum"`
 	Screens        []*ScreenType     `json:"screens"`
 	Remotes        []*RemoteInstance `json:"remotes"`
@@ -104,14 +110,28 @@ func (opts WindowOptsType) Value() (driver.Value, error) {
 	return quickValueJson(opts)
 }
 
+type WindowShareOptsType struct {
+}
+
+func (opts *WindowShareOptsType) Scan(val interface{}) error {
+	return quickScanJson(opts, val)
+}
+
+func (opts WindowShareOptsType) Value() (driver.Value, error) {
+	return quickValueJson(opts)
+}
+
 type WindowType struct {
-	SessionId string            `json:"sessionid"`
-	WindowId  string            `json:"windowid"`
-	CurRemote string            `json:"curremote"`
-	WinOpts   WindowOptsType    `json:"winopts"`
-	Lines     []*LineType       `json:"lines"`
-	Cmds      []*CmdType        `json:"cmds"`
-	Remotes   []*RemoteInstance `json:"remotes"`
+	SessionId   string              `json:"sessionid"`
+	WindowId    string              `json:"windowid"`
+	CurRemote   string              `json:"curremote"`
+	WinOpts     WindowOptsType      `json:"winopts"`
+	OwnerUserId string              `json:"owneruserid"`
+	ShareMode   string              `json:"sharemode"`
+	ShareOpts   WindowShareOptsType `json:"shareopts"`
+	Lines       []*LineType         `json:"lines"`
+	Cmds        []*CmdType          `json:"cmds"`
+	Remotes     []*RemoteInstance   `json:"remotes"`
 
 	// only for updates
 	Remove bool `json:"remove,omitempty"`
@@ -136,6 +156,8 @@ type ScreenType struct {
 	Name           string              `json:"name"`
 	ActiveWindowId string              `json:"activewindowid"`
 	ScreenOpts     ScreenOptsType      `json:"screenopts"`
+	OwnerUserId    string              `json:"owneruserid"`
+	ShareMode      string              `json:"sharemode"`
 	Windows        []*ScreenWindowType `json:"windows"`
 
 	// only for updates
@@ -186,7 +208,7 @@ type HistoryItemType struct {
 	SessionId string `json:"sessionid"`
 	ScreenId  string `json:"screenid"`
 	WindowId  string `json:"windowid"`
-	LineId    int64  `json:"lineid"`
+	LineId    string `json:"lineid"`
 	HadError  bool   `json:"haderror"`
 	CmdId     string `json:"cmdid"`
 	CmdStr    string `json:"cmdstr"`
@@ -238,7 +260,7 @@ type RemoteInstance struct {
 type LineType struct {
 	SessionId string `json:"sessionid"`
 	WindowId  string `json:"windowid"`
-	LineId    int64  `json:"lineid"`
+	LineId    string `json:"lineid"`
 	Ts        int64  `json:"ts"`
 	UserId    string `json:"userid"`
 	LineType  string `json:"linetype"`
@@ -359,6 +381,7 @@ func makeNewLineCmd(sessionId string, windowId string, userId string, cmdId stri
 	rtn := &LineType{}
 	rtn.SessionId = sessionId
 	rtn.WindowId = windowId
+	rtn.LineId = uuid.New().String()
 	rtn.Ts = time.Now().UnixMilli()
 	rtn.UserId = userId
 	rtn.LineType = LineTypeCmd
@@ -370,6 +393,7 @@ func makeNewLineText(sessionId string, windowId string, userId string, text stri
 	rtn := &LineType{}
 	rtn.SessionId = sessionId
 	rtn.WindowId = windowId
+	rtn.LineId = uuid.New().String()
 	rtn.Ts = time.Now().UnixMilli()
 	rtn.UserId = userId
 	rtn.LineType = LineTypeText
@@ -398,11 +422,11 @@ func AddCmdLine(ctx context.Context, sessionId string, windowId string, userId s
 func EnsureLocalRemote(ctx context.Context) error {
 	remoteId, err := base.GetRemoteId()
 	if err != nil {
-		return err
+		return fmt.Errorf("getting local remoteid: %w", err)
 	}
 	remote, err := GetRemoteById(ctx, remoteId)
 	if err != nil {
-		return err
+		return fmt.Errorf("getting remote[%s] from db: %w", remoteId, err)
 	}
 	if remote != nil {
 		return nil

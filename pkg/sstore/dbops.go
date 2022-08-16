@@ -250,7 +250,7 @@ func InsertSessionWithName(ctx context.Context, sessionName string, activate boo
 		names := tx.SelectStrings(`SELECT name FROM session`)
 		sessionName = fmtUniqueName(sessionName, "session-%d", len(names)+1, names)
 		maxSessionIdx := tx.GetInt(`SELECT COALESCE(max(sessionidx), 0) FROM session`)
-		query := `INSERT INTO session (sessionid, name, activescreenid, sessionidx, notifynum) VALUES (?, ?, '', ?, ?)`
+		query := `INSERT INTO session (sessionid, name, activescreenid, sessionidx, notifynum, owneruserid, sharemode, accesskey) VALUES (?, ?, '', ?, ?, '', 'local', '')`
 		tx.ExecWrap(query, newSessionId, sessionName, maxSessionIdx+1, 0)
 		_, err := InsertScreen(tx.Context(), newSessionId, "", true)
 		if err != nil {
@@ -319,7 +319,7 @@ func InsertScreen(ctx context.Context, sessionId string, screenName string, acti
 		screenNames := tx.SelectStrings(`SELECT name FROM screen WHERE sessionid = ?`, sessionId)
 		screenName = fmtUniqueName(screenName, "s%d", maxScreenIdx+1, screenNames)
 		newScreenId = uuid.New().String()
-		query = `INSERT INTO screen (sessionid, screenid, name, activewindowid, screenidx, screenopts) VALUES (?, ?, ?, ?, ?, ?)`
+		query = `INSERT INTO screen (sessionid, screenid, name, activewindowid, screenidx, screenopts, owneruserid, sharemode) VALUES (?, ?, ?, ?, ?, ?, '', 'local')`
 		tx.ExecWrap(query, sessionId, newScreenId, screenName, newWindowId, maxScreenIdx+1, ScreenOptsType{})
 		layout := LayoutType{Type: LayoutFull}
 		query = `INSERT INTO screen_window (sessionid, screenid, windowid, name, layout) VALUES (?, ?, ?, ?, ?)`
@@ -365,8 +365,8 @@ func GetScreenById(ctx context.Context, sessionId string, screenId string) (*Scr
 
 func txCreateWindow(tx *TxWrap, sessionId string) string {
 	windowId := uuid.New().String()
-	query := `INSERT INTO window (sessionid, windowid, curremote, winopts) VALUES (?, ?, ?, ?)`
-	tx.ExecWrap(query, sessionId, windowId, LocalRemoteName, WindowOptsType{})
+	query := `INSERT INTO window (sessionid, windowid, curremote, winopts, shareopts, owneruserid, sharemode) VALUES (?, ?, ?, ?, ?, '', 'local')`
+	tx.ExecWrap(query, sessionId, windowId, LocalRemoteName, WindowOptsType{}, WindowShareOptsType{})
 	return windowId
 }
 
@@ -374,8 +374,8 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 	if line == nil {
 		return fmt.Errorf("line cannot be nil")
 	}
-	if line.LineId != 0 {
-		return fmt.Errorf("new line cannot have LineId set")
+	if line.LineId == "" {
+		return fmt.Errorf("line must have lineid set")
 	}
 	return WithTx(ctx, func(tx *TxWrap) error {
 		var windowId string
@@ -384,10 +384,6 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 		if !hasWindow {
 			return fmt.Errorf("window not found, cannot insert line[%s/%s]", line.SessionId, line.WindowId)
 		}
-		var maxLineId int64
-		query = `SELECT COALESCE(max(lineid), 0) FROM line WHERE sessionid = ? AND windowid = ?`
-		tx.GetWrap(&maxLineId, query, line.SessionId, line.WindowId)
-		line.LineId = maxLineId + 1
 		query = `INSERT INTO line  ( sessionid, windowid, lineid, ts, userid, linetype, text, cmdid)
                             VALUES (:sessionid,:windowid,:lineid,:ts,:userid,:linetype,:text,:cmdid)`
 		tx.NamedExecWrap(query, line)

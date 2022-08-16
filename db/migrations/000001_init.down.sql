@@ -1,3 +1,4 @@
+DROP TABLE client;
 DROP TABLE session;
 DROP TABLE window;
 DROP TABLE screen;

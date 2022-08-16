@@ -437,13 +437,13 @@ func main() {
 	if len(os.Args) >= 2 && strings.HasPrefix(os.Args[1], "--migrate") {
 		err := sstore.MigrateCommandOpts(os.Args[1:])
 		if err != nil {
-			fmt.Printf("[error] %v\n", err)
+			fmt.Printf("[error] migrate cmd: %v\n", err)
 		}
 		return
 	}
 	err = sstore.TryMigrateUp()
 	if err != nil {
-		fmt.Printf("[error] %v\n", err)
+		fmt.Printf("[error] migrate up: %v\n", err)
 		return
 	}
 	err = sstore.EnsureLocalRemote(context.Background())

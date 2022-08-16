@@ -74,13 +74,13 @@ func (LineUpdate) UpdateType() string {
 	return LineCmdUpdateStr
 }
 
-func ReadLineCmdIdFromUpdate(update UpdatePacket) (int64, string) {
+func ReadLineCmdIdFromUpdate(update UpdatePacket) (string, string) {
 	lineUpdate, ok := update.(LineUpdate)
 	if !ok {
-		return 0, ""
+		return "", ""
 	}
 	if lineUpdate.Line == nil {
-		return 0, ""
+		return "", ""
 	}
 	return lineUpdate.Line.LineId, lineUpdate.Line.CmdId
 }

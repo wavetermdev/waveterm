@@ -22,7 +22,7 @@ func MakeMigrate() (*migrate.Migrate, error) {
 	dbUrl := fmt.Sprintf("sqlite3://%s", GetSessionDBName())
 	m, err := migrate.New(migrationPathUrl, dbUrl)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("making migration [%s] db[%s]: %w", migrationPathUrl, GetSessionDBName(), err)
 	}
 	return m, nil
 }
