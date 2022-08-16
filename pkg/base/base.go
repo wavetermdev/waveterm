@@ -198,7 +198,7 @@ func EnsureSessionDir(sessionId string) (string, error) {
 	if errors.Is(err, fs.ErrNotExist) {
 		err = os.MkdirAll(sdir, 0777)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("cannot make mshell session directory[%s]: %w", sdir, err)
 		}
 		info, err = os.Stat(sdir)
 	}
@@ -254,6 +254,20 @@ func GoArchOptFile(goos string, goarch string) string {
 
 func GetRemoteId() (string, error) {
 	mhome := GetMShellHomeDir()
+	homeInfo, err := os.Stat(mhome)
+	if errors.Is(err, fs.ErrNotExist) {
+		err = os.MkdirAll(mhome, 0777)
+		if err != nil {
+			return "", fmt.Errorf("cannot make mshell home directory[%s]: %w", mhome, err)
+		}
+		homeInfo, err = os.Stat(mhome)
+	}
+	if err != nil {
+		return "", fmt.Errorf("cannot stat mshell home directory[%s]: %w", mhome, err)
+	}
+	if !homeInfo.IsDir() {
+		return "", fmt.Errorf("mshell home directory[%s] is not a directory", mhome)
+	}
 	remoteIdFile := path.Join(mhome, RemoteIdFile)
 	fd, err := os.Open(remoteIdFile)
 	if errors.Is(err, fs.ErrNotExist) {
