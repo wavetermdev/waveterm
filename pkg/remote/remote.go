@@ -64,6 +64,7 @@ type MShellProc struct {
 	// runtime
 	Status     string
 	ServerProc *shexec.ClientProc
+	UName      string
 	Err        error
 
 	RunningCmds []base.CommandKey
@@ -183,12 +184,15 @@ func (msh *MShellProc) Launch() {
 	defer msh.Lock.Unlock()
 
 	ecmd := convertSSHOpts(msh.Remote.SSHOpts).MakeSSHExecCmd(MShellServerCommand)
-	cproc, err := shexec.MakeClientProc(ecmd)
+	cproc, uname, err := shexec.MakeClientProc(ecmd)
+	msh.UName = uname
 	if err != nil {
 		msh.Status = StatusError
 		msh.Err = err
+		fmt.Printf("[error] connecting remote %s (%s): %w\n", msh.Remote.GetName(), msh.UName, err)
 		return
 	}
+	fmt.Printf("connected remote %s\n", msh.Remote.GetName())
 	msh.ServerProc = cproc
 	msh.Status = StatusConnected
 	go func() {
