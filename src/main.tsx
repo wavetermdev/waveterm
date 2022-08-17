@@ -912,7 +912,7 @@ class MainSideBar extends React.Component<{}, {}> {
                     </ul>
                     <div className="spacer"></div>
                     <p className="menu-label">
-                        Remotes
+                        <a href="/remotes.html">Remotes</a>
                     </p>
                     <ul className="menu-list">
                         <For each="remote" of={remotes}>

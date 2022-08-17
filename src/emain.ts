@@ -45,14 +45,18 @@ function getMods(input : any) {
     return {meta: input.meta, shift: input.shift, ctrl: input.ctrl, alt: input.alt};
 }
 
-function cancelNav(event : any, url : any) {
-    console.log("cancel navigation", url);
+function shNavHandler(event : any, url : any) {
+    console.log("navigation", url);
     event.preventDefault();
+    if (url == "file:///remotes.html") {
+        createRemotesWindow();
+    }
 }
 
 function createRemotesWindow() {
     if (RemotesWindow != null) {
         console.log("remotes exists");
+        RemotesWindow.focus();
         return;
     }
     console.log("create remotes window");
@@ -68,10 +72,10 @@ function createRemotesWindow() {
     win.on("close", () => {
         RemotesWindow = null;
     });
-    win.webContents.on("will-navigate", cancelNav);
+    win.webContents.on("will-navigate", shNavHandler);
 }
 
-function createWindow() {
+        function createWindow() {
     let win = new electron.BrowserWindow({
         width: 1800,
         height: 1200,
@@ -129,7 +133,7 @@ function createWindow() {
             return;
         }
     });
-    win.webContents.on("will-navigate", cancelNav);
+    win.webContents.on("will-navigate", shNavHandler);
     return win;
 }
 
