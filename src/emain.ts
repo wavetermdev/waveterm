@@ -39,9 +39,36 @@ let menu = electron.Menu.buildFromTemplate(menuTemplate);
 electron.Menu.setApplicationMenu(menu);
 
 let MainWindow = null;
+let RemotesWindow = null;
 
 function getMods(input : any) {
     return {meta: input.meta, shift: input.shift, ctrl: input.ctrl, alt: input.alt};
+}
+
+function cancelNav(event : any, url : any) {
+    console.log("cancel navigation", url);
+    event.preventDefault();
+}
+
+function createRemotesWindow() {
+    if (RemotesWindow != null) {
+        console.log("remotes exists");
+        return;
+    }
+    console.log("create remotes window");
+    let win = new electron.BrowserWindow({
+        width: 800,
+        height: 600,
+        webPreferences: {
+            preload: path.join(__dirname, "../src/preload.js"),
+        },
+    });
+    RemotesWindow = win;
+    win.loadFile("../static/remotes.html");
+    win.on("close", () => {
+        RemotesWindow = null;
+    });
+    win.webContents.on("will-navigate", cancelNav);
 }
 
 function createWindow() {
@@ -73,6 +100,11 @@ function createWindow() {
             }
             return;
         }
+        if (input.code == "KeyR" && input.meta && input.alt) {
+            createRemotesWindow();
+            e.preventDefault();
+            return;
+        }
         if (input.meta && (input.code == "ArrowUp" || input.code == "ArrowDown")) {
             if (input.code == "ArrowUp") {
                 win.webContents.send("meta-arrowup");
@@ -97,6 +129,7 @@ function createWindow() {
             return;
         }
     });
+    win.webContents.on("will-navigate", cancelNav);
     return win;
 }
 
