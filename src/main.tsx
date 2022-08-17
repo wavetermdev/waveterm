@@ -55,20 +55,19 @@ function getRemoteStr(remote : RemoteType) : string {
         return "(no remote)";
     }
     if (remote.remotevars.local) {
-        return sprintf("%s@%s", remote.remotevars.remoteuser, "local")
+        return sprintf("%s@%s", remote.remotevars.user, "local");
     }
-    else if (remote.remotevars.remotehost) {
-        return sprintf("%s@%s", remote.remotevars.remoteuser, remote.remotevars.remotehost);
+    let hoststr = "";
+    if (remote.remotevars.sudo) {
+        hoststr = sprintf("sudo@%s@%s", remote.remotevars.user, remote.remotevars.host)
     }
     else {
-        let host = remote.remotevars.host || "unknown";
-        if (remote.remotevars.user) {
-            return sprintf("%s@%s", remote.remotevars.user, host)
-        }
-        else {
-            return host;
-        }
+        hoststr = sprintf("%s@%s", remote.remotevars.user, remote.remotevars.host)
     }
+    if (remote.remotevars.alias) {
+        return sprintf("(%s) %s", remote.remotevars.alias, hoststr)
+    }
+    return hoststr;
 }
 
 function replaceHomePath(path : string, homeDir : string) : string {
@@ -450,12 +449,14 @@ class CmdInput extends React.Component<{}, {}> {
         if (win != null) {
             ri = win.getCurRemoteInstance();
         }
+        console.log("cmd-input remote", ri);
         let remote : RemoteType = null;
         let remoteState : RemoteStateType = null;
         if (ri != null) {
             remote = GlobalModel.getRemote(ri.remoteid);
             remoteState = ri.state;
         }
+        console.log("lookup remote", remote);
         let promptStr = getRemoteStr(remote);
         let cwdStr = getCwdStr(remote, remoteState);
         let infoMsg = GlobalModel.infoMsg.get();
@@ -850,6 +851,8 @@ class MainSideBar extends React.Component<{}, {}> {
         let model = GlobalModel;
         let activeSessionId = model.activeSessionId.get();
         let session : Session = null;
+        let remotes = model.remotes;
+        let remote : RemoteType = null;
         return (
             <div className={cn("main-sidebar", {"collapsed": this.collapsed.get()})}>
                 <div className="collapse-container">
@@ -912,11 +915,9 @@ class MainSideBar extends React.Component<{}, {}> {
                         Remotes
                     </p>
                     <ul className="menu-list">
-                        <li><a><i className="status fa fa-circle"/>local</a></li>
-                        <li><a><i className="status fa fa-circle"/>local-sudo</a></li>
-                        <li><a><i className="status offline fa fa-circle"/>mike@app01.ec2</a></li>
-                        <li><a><i className="status fa fa-circle"/>mike@test01.ec2</a></li>
-                        <li><a><i className="status offline fa fa-circle"/>root@app01.ec2</a></li>
+                        <For each="remote" of={remotes}>
+                            <li><a><i className={cn("remote-status fa fa-circle", "status-" + remote.status)}/>{remote.remotealias ?? remote.remotecanonicalname}</a></li>
+                        </For>
                     </ul>
                     <div className="bottom-spacer"></div>
                 </div>

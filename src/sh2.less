@@ -246,6 +246,22 @@ html, body, #main {
             color: #ddd;
         }
 
+        .remote-status {
+            font-size: 8px;
+            margin-right: 5px;
+            position: relative;
+            top: -3px;
+            color: #c4a000;
+
+            &.status-connected {
+                color: #4e9a06;
+            }
+
+            &.status-error, &.status-disconnected {
+                color: #cc0000;
+            }
+        }
+
         .status {
             font-size: 8px;
             margin-right: 5px;

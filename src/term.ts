@@ -117,10 +117,11 @@ class TermWrap {
         if (termYPos >= usedRows) {
             usedRows = termYPos + 1;
         }
-        for (let i=usedRows; i<term.rows; i++) {
+        for (let i=term.rows-1; i>=usedRows; i--) {
             let line = termBuf.translateBufferLineToString(i, true);
             if (line != null && line.trim() != "") {
                 usedRows = i+1;
+                break;
             }
         }
         return usedRows;

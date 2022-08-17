@@ -176,6 +176,7 @@ type CmdDataType = {
     donepk : CmdDonePacketType,
     runout : any[],
     usedrows : number,
+    remove? : boolean,
 };
 
 type PtyDataUpdateType = {

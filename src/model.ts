@@ -367,32 +367,68 @@ class Window {
         return null;
     }
 
+    updateCmd(cmd : CmdDataType) : void {
+        if (cmd.remove) {
+            throw new Error("cannot remove cmd with updateCmd call [" + cmd.cmdid + "]");
+        }
+        let origCmd = this.cmds[cmd.cmdid];
+        if (origCmd != null) {
+            origCmd.setCmd(cmd);
+        }
+        return;
+    }
+
+    mergeCmd(cmd : CmdDataType) : void {
+        if (cmd.remove) {
+            delete this.cmds[cmd.cmdid];
+            return;
+        }
+        let origCmd = this.cmds[cmd.cmdid];
+        if (origCmd == null) {
+            this.cmds[cmd.cmdid] = new Cmd(cmd);
+            return;
+        }
+        origCmd.setCmd(cmd);
+        return;
+    }
+
     addLineCmd(line : LineType, cmd : CmdDataType, interactive : boolean) {
         if (!this.loaded.get()) {
             return;
         }
         mobx.action(() => {
             if (cmd != null) {
-                this.cmds[cmd.cmdid] = new Cmd(cmd);
+                this.mergeCmd(cmd);
             }
-            let lines = this.lines;
-            let lineIdx = 0;
-            for (lineIdx=0; lineIdx<lines.length; lineIdx++) {
-                let lineId = lines[lineIdx].lineid;
-                let curTs = lines[lineIdx].ts;
-                if (lineId == line.lineid) {
-                    this.lines[lineIdx] = line;
+            if (line != null) {
+                let lines = this.lines;
+                if (line.remove) {
+                    for (let i=0; i<lines.length; i++) {
+                        if (lines[i].lineid == line.lineid) {
+                            this.lines.splice(i, 1);
+                            break;
+                        }
+                    }
                     return;
                 }
-                if (curTs > line.ts || (curTs == line.ts && lineId > line.lineid)) {
-                    break;
+                let lineIdx = 0;
+                for (lineIdx=0; lineIdx<lines.length; lineIdx++) {
+                    let lineId = lines[lineIdx].lineid;
+                    let curTs = lines[lineIdx].ts;
+                    if (lineId == line.lineid) {
+                        this.lines[lineIdx] = line;
+                        return;
+                    }
+                    if (curTs > line.ts || (curTs == line.ts && lineId > line.lineid)) {
+                        break;
+                    }
                 }
+                if (lineIdx == lines.length) {
+                    this.lines.push(line);
+                    return;
+                }
+                this.lines.splice(lineIdx, 0, line);
             }
-            if (lineIdx == lines.length) {
-                this.lines.push(line);
-                return;
-            }
-            this.lines.splice(lineIdx, 0, line);
         })();
     }
 };
@@ -679,7 +715,7 @@ class Model {
     ws : WSControl;
     remotes : OArr<RemoteType> = mobx.observable.array([], {deep: false});
     remotesLoaded : OV<boolean> = mobx.observable.box(false);
-    windows : OMap<string, Window> = mobx.observable.map({}, {deep: false});
+    windows : OMap<string, Window> = mobx.observable.map({}, {deep: false});  // key = "sessionid/windowid"
     infoShow : OV<boolean> = mobx.observable.box(false);
     infoMsg : OV<InfoType> = mobx.observable.box(null);
     infoTimeoutId : any = null;
@@ -940,7 +976,12 @@ class Model {
         }
         if ("line" in update) {
             let lineMsg : LineCmdUpdateType = update;
-            this.addLineCmd(lineMsg.line, lineMsg.cmd, interactive);
+            if (lineMsg.line != null) {
+                this.addLineCmd(lineMsg.line, lineMsg.cmd, interactive);
+            }
+            if (lineMsg.line == null && lineMsg.cmd != null) {
+                this.updateCmd(lineMsg.cmd);
+            }
         }
         if ("window" in update) {
             let winMsg : WindowUpdateType = update;
@@ -1055,6 +1096,12 @@ class Model {
             return;
         }
         win.addLineCmd(line, cmd, interactive);
+    }
+
+    updateCmd(cmd : CmdDataType) {
+        this.windows.forEach((win : Window) => {
+            win.updateCmd(cmd);
+        });
     }
 
     getClientKwargs() : Record<string, string> {
