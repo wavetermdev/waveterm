@@ -23,23 +23,24 @@ type ClientProc struct {
 	Output       *packet.PacketParser
 }
 
-func MakeClientProc(ecmd *exec.Cmd) (*ClientProc, error) {
+// returns (clientproc, uname, error)
+func MakeClientProc(ecmd *exec.Cmd) (*ClientProc, string, error) {
 	inputWriter, err := ecmd.StdinPipe()
 	if err != nil {
-		return nil, fmt.Errorf("creating stdin pipe: %v", err)
+		return nil, "", fmt.Errorf("creating stdin pipe: %v", err)
 	}
 	stdoutReader, err := ecmd.StdoutPipe()
 	if err != nil {
-		return nil, fmt.Errorf("creating stdout pipe: %v", err)
+		return nil, "", fmt.Errorf("creating stdout pipe: %v", err)
 	}
 	stderrReader, err := ecmd.StderrPipe()
 	if err != nil {
-		return nil, fmt.Errorf("creating stderr pipe: %v", err)
+		return nil, "", fmt.Errorf("creating stderr pipe: %v", err)
 	}
 	startTs := time.Now()
 	err = ecmd.Start()
 	if err != nil {
-		return nil, fmt.Errorf("running local client: %w", err)
+		return nil, "", fmt.Errorf("running local client: %w", err)
 	}
 	sender := packet.MakePacketSender(inputWriter)
 	stdoutPacketParser := packet.MakePacketParser(stdoutReader)
@@ -57,25 +58,25 @@ func MakeClientProc(ecmd *exec.Cmd) (*ClientProc, error) {
 	for pk := range packetParser.MainCh {
 		if pk.GetType() != packet.InitPacketStr {
 			cproc.Close()
-			return nil, fmt.Errorf("invalid packet received from mshell client: %s", packet.AsString(pk))
+			return nil, "", fmt.Errorf("invalid packet received from mshell client: %s", packet.AsString(pk))
 		}
 		initPk := pk.(*packet.InitPacketType)
 		if initPk.NotFound {
 			cproc.Close()
-			return nil, fmt.Errorf("mshell command not found on local server")
+			return nil, initPk.UName, fmt.Errorf("mshell command not found on local server")
 		}
 		if initPk.Version != base.MShellVersion {
 			cproc.Close()
-			return nil, fmt.Errorf("invalid remote mshell version 'v%s', must be v%s", initPk.Version, base.MShellVersion)
+			return nil, initPk.UName, fmt.Errorf("invalid remote mshell version 'v%s', must be v%s", initPk.Version, base.MShellVersion)
 		}
 		cproc.InitPk = initPk
 		break
 	}
 	if cproc.InitPk == nil {
 		cproc.Close()
-		return nil, fmt.Errorf("no init packet received from mshell client")
+		return nil, "", fmt.Errorf("no init packet received from mshell client")
 	}
-	return cproc, nil
+	return cproc, cproc.InitPk.UName, nil
 }
 
 func (cproc *ClientProc) Close() {
