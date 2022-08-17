@@ -432,13 +432,13 @@ func AddCmdLine(ctx context.Context, sessionId string, windowId string, userId s
 }
 
 func EnsureLocalRemote(ctx context.Context) error {
-	remoteId, err := base.GetRemoteId()
+	physicalId, err := base.GetRemoteId()
 	if err != nil {
-		return fmt.Errorf("getting local remoteid: %w", err)
+		return fmt.Errorf("getting local physical remoteid: %w", err)
 	}
-	remote, err := GetRemoteById(ctx, remoteId)
+	remote, err := GetRemoteByPhysicalId(ctx, physicalId)
 	if err != nil {
-		return fmt.Errorf("getting remote[%s] from db: %w", remoteId, err)
+		return fmt.Errorf("getting remote[%s] from db: %w", physicalId, err)
 	}
 	if remote != nil {
 		return nil
@@ -453,7 +453,8 @@ func EnsureLocalRemote(ctx context.Context) error {
 	}
 	// create the local remote
 	localRemote := &RemoteType{
-		RemoteId:            remoteId,
+		RemoteId:            uuid.New().String(),
+		PhysicalId:          physicalId,
 		RemoteType:          "ssh",
 		RemoteAlias:         LocalRemoteName,
 		RemoteCanonicalName: fmt.Sprintf("%s@%s", user.Username, hostName),
@@ -467,6 +468,37 @@ func EnsureLocalRemote(ctx context.Context) error {
 		return err
 	}
 	log.Printf("[db] added remote '%s', id=%s\n", localRemote.GetName(), localRemote.RemoteId)
+	return nil
+}
+
+func AddTest01Remote(ctx context.Context) error {
+	remote, err := GetRemoteByAlias(ctx, "test01")
+	if err != nil {
+		return fmt.Errorf("getting remote[test01] from db: %w", err)
+	}
+	if remote != nil {
+		return nil
+	}
+	testRemote := &RemoteType{
+		RemoteId:            uuid.New().String(),
+		RemoteType:          "ssh",
+		RemoteAlias:         "test01",
+		RemoteCanonicalName: "ubuntu@test01.ec2",
+		RemoteSudo:          false,
+		RemoteUser:          "ubuntu",
+		RemoteHost:          "test01.ec2",
+		SSHOpts: &SSHOpts{
+			SSHHost:     "test01.ec2",
+			SSHUser:     "ubuntu",
+			SSHIdentity: "/Users/mike/aws/mfmt.pem",
+		},
+		AutoConnect: true,
+	}
+	err = InsertRemote(ctx, testRemote)
+	if err != nil {
+		return err
+	}
+	log.Printf("[db] added remote '%s', id=%s\n", testRemote.GetName(), testRemote.RemoteId)
 	return nil
 }
 

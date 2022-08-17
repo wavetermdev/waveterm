@@ -40,6 +40,20 @@ func GetAllRemotes(ctx context.Context) ([]*RemoteType, error) {
 	return rtn, nil
 }
 
+func GetRemoteByAlias(ctx context.Context, alias string) (*RemoteType, error) {
+	var remote *RemoteType
+	err := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT * FROM remote WHERE remotealias = ?`
+		m := tx.GetMap(query, alias)
+		remote = RemoteFromMap(m)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return remote, nil
+}
+
 func GetRemoteById(ctx context.Context, remoteId string) (*RemoteType, error) {
 	var remote *RemoteType
 	err := WithTx(ctx, func(tx *TxWrap) error {
@@ -572,4 +586,17 @@ func UpdateRemoteCwd(ctx context.Context, rname string, sessionId string, window
 		return nil
 	})
 	return &ri, txErr
+}
+
+func UpdateCurRemote(ctx context.Context, sessionId string, windowId string, remoteName string) error {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT windowid FROM window WHERE sessionid = ? AND windowid = ?`
+		if !tx.Exists(query, sessionId, windowId) {
+			return fmt.Errorf("cannot update curremote, no window found")
+		}
+		query = `UPDATE window SET curremote = ? WHERE sessionid = ? AND windowid = ?`
+		tx.ExecWrap(query, remoteName, sessionId, windowId)
+		return nil
+	})
+	return txErr
 }

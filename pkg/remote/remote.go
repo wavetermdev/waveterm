@@ -5,7 +5,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"os/exec"
+	"path"
+	"strings"
 	"sync"
 
 	"github.com/scripthaus-dev/mshell/pkg/base"
@@ -18,6 +19,17 @@ const RemoteTypeMShell = "mshell"
 const DefaultTermRows = 25
 const DefaultTermCols = 80
 const DefaultTerm = "xterm-256color"
+
+const MShellServerCommand = `
+PATH=$PATH:~/.mshell;
+which mshell > /dev/null;
+if [[ "$?" -ne 0 ]]
+then
+  printf "\n##N{\"type\": \"init\", \"notfound\": true, \"uname\": \"%s | %s\"}\n" "$(uname -s)" "$(uname -m)"
+else
+  mshell --server
+fi
+`
 
 const (
 	StatusInit         = "init"
@@ -154,17 +166,23 @@ func MakeMShell(r *sstore.RemoteType) *MShellProc {
 	return rtn
 }
 
+func convertSSHOpts(opts *sstore.SSHOpts) shexec.SSHOpts {
+	if opts == nil {
+		return shexec.SSHOpts{}
+	}
+	return shexec.SSHOpts{
+		SSHHost:     opts.SSHHost,
+		SSHOptsStr:  opts.SSHOptsStr,
+		SSHIdentity: opts.SSHIdentity,
+		SSHUser:     opts.SSHUser,
+	}
+}
+
 func (msh *MShellProc) Launch() {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
 
-	msPath, err := base.GetMShellPath()
-	if err != nil {
-		msh.Status = StatusError
-		msh.Err = err
-		return
-	}
-	ecmd := exec.Command(msPath, "--server")
+	ecmd := convertSSHOpts(msh.Remote.SSHOpts).MakeSSHExecCmd(MShellServerCommand)
 	cproc, err := shexec.MakeClientProc(ecmd)
 	if err != nil {
 		msh.Status = StatusError
@@ -201,6 +219,25 @@ func (msh *MShellProc) GetDefaultState() *sstore.RemoteState {
 		return nil
 	}
 	return &sstore.RemoteState{Cwd: msh.ServerProc.InitPk.HomeDir}
+}
+
+func (msh *MShellProc) ExpandHomeDir(pathStr string) (string, error) {
+	if pathStr != "~" && !strings.HasPrefix(pathStr, "~/") {
+		return pathStr, nil
+	}
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	if msh.ServerProc.InitPk == nil {
+		return "", fmt.Errorf("remote not connected, does not have home directory set for ~ expansion")
+	}
+	homeDir := msh.ServerProc.InitPk.HomeDir
+	if homeDir == "" {
+		return "", fmt.Errorf("remote does not have HOME set, cannot do ~ expansion")
+	}
+	if pathStr == "~" {
+		return homeDir, nil
+	}
+	return path.Join(homeDir, pathStr[2:]), nil
 }
 
 func (msh *MShellProc) IsCmdRunning(ck base.CommandKey) bool {

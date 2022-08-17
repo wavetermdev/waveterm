@@ -1,17 +1,28 @@
 CREATE TABLE schema_migrations (version uint64,dirty bool);
 CREATE UNIQUE INDEX version_unique ON schema_migrations (version);
+CREATE TABLE client (
+    userid varchar(36) NOT NULL,
+    userpublickeybytes blob NOT NULL,
+    userprivatekeybytes blob NOT NULL
+);
 CREATE TABLE session (
     sessionid varchar(36) PRIMARY KEY,
     name varchar(50) NOT NULL,
     sessionidx int NOT NULL,
     activescreenid varchar(36) NOT NULL,
-    notifynum int NOT NULL
+    notifynum int NOT NULL,
+    owneruserid varchar(36) NOT NULL,
+    sharemode varchar(12) NOT NULL,
+    accesskey varchar(36) NOT NULL
 );
 CREATE TABLE window (
     sessionid varchar(36) NOT NULL,
     windowid varchar(36) NOT NULL,
     curremote varchar(50) NOT NULL,
     winopts json NOT NULL,
+    owneruserid varchar(36) NOT NULL,
+    sharemode varchar(12) NOT NULL,
+    shareopts json NOT NULL,
     PRIMARY KEY (sessionid, windowid)
 );
 CREATE TABLE screen (
@@ -21,6 +32,8 @@ CREATE TABLE screen (
     activewindowid varchar(36) NOT NULL,
     screenidx int NOT NULL,
     screenopts json NOT NULL,
+    owneruserid varchar(36) NOT NULL,
+    sharemode varchar(12) NOT NULL,
     PRIMARY KEY (sessionid, screenid)
 );
 CREATE TABLE screen_window (
@@ -43,7 +56,7 @@ CREATE TABLE remote_instance (
 CREATE TABLE line (
     sessionid varchar(36) NOT NULL,
     windowid varchar(36) NOT NULL,
-    lineid int NOT NULL,
+    lineid varchar(36) NOT NULL,
     userid varchar(36) NOT NULL,
     ts bigint NOT NULL,
     linetype varchar(10) NOT NULL,
@@ -53,8 +66,13 @@ CREATE TABLE line (
 );
 CREATE TABLE remote (
     remoteid varchar(36) PRIMARY KEY,
+    physicalid varchar(36) NOT NULL,
     remotetype varchar(10) NOT NULL,
-    remotename varchar(50) NOT NULL,
+    remotealias varchar(50) NOT NULL,
+    remotecanonicalname varchar(200) NOT NULL,
+    remotesudo boolean NOT NULL,
+    remoteuser varchar(50) NOT NULL,
+    remotehost varchar(200) NOT NULL,
     autoconnect boolean NOT NULL,
     initpk json NOT NULL,
     sshopts json NOT NULL,

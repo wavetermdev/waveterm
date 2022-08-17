@@ -16,11 +16,6 @@ type UpdatePacket interface {
 	UpdateType() string
 }
 
-type UpdateCmd struct {
-	CmdId  string
-	Status string
-}
-
 type PtyDataUpdate struct {
 	SessionId  string `json:"sessionid"`
 	CmdId      string `json:"cmdid"`

@@ -88,6 +88,9 @@ func HandleCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	case "cd":
 		return CdCommand(ctx, pk)
 
+	case "cr":
+		return CrCommand(ctx, pk)
+
 	case "compgen":
 		return CompGenCommand(ctx, pk)
 
@@ -189,8 +192,8 @@ func resolveScreenId(ctx context.Context, pk *scpacket.FeCommandPacketType, sess
 	return resolveSessionScreen(ctx, sessionId, screenArg)
 }
 
-func resolveRemote(ctx context.Context, pk *scpacket.FeCommandPacketType, sessionId string, windowId string) (string, string, *sstore.RemoteState, error) {
-	remoteName := pk.Kwargs["remote"]
+// returns (remoteName, remoteId, state, err)
+func resolveRemote(ctx context.Context, remoteName string, sessionId string, windowId string) (string, string, *sstore.RemoteState, error) {
 	if remoteName == "" {
 		return "", "", nil, nil
 	}
@@ -242,7 +245,7 @@ func resolveIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype int
 		}
 	}
 	if (rtype&R_Remote)+(rtype&R_RemoteOpt) > 0 {
-		rtn.RemoteName, rtn.RemoteId, rtn.RemoteState, err = resolveRemote(ctx, pk, rtn.SessionId, rtn.WindowId)
+		rtn.RemoteName, rtn.RemoteId, rtn.RemoteState, err = resolveRemote(ctx, pk.Kwargs["remote"], rtn.SessionId, rtn.WindowId)
 		if err != nil {
 			return rtn, err
 		}
@@ -332,6 +335,9 @@ func evalCommandInternal(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	if commandStr == "cd" || strings.HasPrefix(commandStr, "cd ") {
 		metaCmd = "cd"
 		commandStr = strings.TrimSpace(commandStr[2:])
+	} else if commandStr == "cr" || strings.HasPrefix(commandStr, "cr ") {
+		metaCmd = "cr"
+		commandStr = strings.TrimSpace(commandStr[2:])
 	} else if commandStr[0] == '/' {
 		spaceIdx := strings.Index(commandStr, " ")
 		if spaceIdx == -1 {
@@ -419,14 +425,67 @@ func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	return update, nil
 }
 
+func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveIds(ctx, pk, R_Session|R_Window)
+	if err != nil {
+		return nil, fmt.Errorf("/cr error: %w", err)
+	}
+	newRemote := firstArg(pk)
+	if newRemote == "" {
+		return nil, nil
+	}
+	remoteName, remoteId, _, err := resolveRemote(ctx, newRemote, ids.SessionId, ids.WindowId)
+	fmt.Printf("found: name[%s] id[%s] err[%v]\n", remoteName, remoteId, err)
+	if err != nil {
+		return nil, err
+	}
+	if remoteId == "" {
+		return nil, fmt.Errorf("/cr error: remote not found")
+	}
+	err = sstore.UpdateCurRemote(ctx, ids.SessionId, ids.WindowId, remoteName)
+	if err != nil {
+		return nil, fmt.Errorf("/cr error: cannot update curremote: %w", err)
+	}
+	update := sstore.WindowUpdate{
+		Window: sstore.WindowType{
+			SessionId: ids.SessionId,
+			WindowId:  ids.WindowId,
+			CurRemote: remoteName,
+		},
+		Info: &sstore.InfoMsgType{
+			InfoMsg:   fmt.Sprintf("current remote = %s", remoteName),
+			TimeoutMs: 2000,
+		},
+	}
+	return update, nil
+}
+
 func CdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveIds(ctx, pk, R_Session|R_Window|R_Remote)
 	if err != nil {
 		return nil, fmt.Errorf("/cd error: %w", err)
 	}
 	newDir := firstArg(pk)
+	curRemote := remote.GetRemoteById(ids.RemoteId)
+	if curRemote == nil {
+		return nil, fmt.Errorf("invalid remote, cannot change directory")
+	}
+	if !curRemote.IsConnected() {
+		return nil, fmt.Errorf("remote is not connected, cannot change directory")
+	}
 	if newDir == "" {
-		return nil, nil
+		if ids.RemoteState == nil {
+			return nil, fmt.Errorf("remote state is not available")
+		}
+		return sstore.InfoUpdate{
+			Info: &sstore.InfoMsgType{
+				InfoMsg: fmt.Sprintf("[%s] current directory = %s", ids.RemoteName, ids.RemoteState.Cwd),
+			},
+		}, nil
+	}
+	newDir, err = curRemote.ExpandHomeDir(newDir)
+	if err != nil {
+		return nil, err
 	}
 	if !strings.HasPrefix(newDir, "/") {
 		if ids.RemoteState == nil {
@@ -442,10 +501,6 @@ func CdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 	cdPacket := packet.MakeCdPacket()
 	cdPacket.ReqId = uuid.New().String()
 	cdPacket.Dir = newDir
-	curRemote := remote.GetRemoteById(ids.RemoteId)
-	if curRemote == nil {
-		return nil, fmt.Errorf("invalid remote, cannot execute command")
-	}
 	resp, err := curRemote.PacketRpc(ctx, cdPacket)
 	if err != nil {
 		return nil, err
