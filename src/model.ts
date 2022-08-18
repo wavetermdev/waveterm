@@ -721,6 +721,7 @@ class Model {
     infoTimeoutId : any = null;
     inputModel : InputModel;
     termUsedRowsCache : Record<string, number> = {};
+    remotesModalOpen : OV<boolean> = mobx.observable.box(false);
     
     constructor() {
         this.clientId = getApi().getId();

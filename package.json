@@ -5,7 +5,6 @@
   "license": "Proprietary",
   "dependencies": {
     "autobind-decorator": "^2.4.0",
-    "better-sqlite3": "^7.6.0",
     "classnames": "^2.3.1",
     "dayjs": "^1.11.3",
     "fs-ext": "^2.0.0",
@@ -37,7 +36,7 @@
     "babel-plugin-jsx-control-statements": "^4.1.2",
     "copy-webpack-plugin": "^11.0.0",
     "css-loader": "^6.7.1",
-    "electron": "^19.0.8",
+    "electron": "19.0.13",
     "electron-rebuild": "^3.2.8",
     "http-server": "^14.1.1",
     "less": "^4.1.2",

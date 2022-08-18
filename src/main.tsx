@@ -25,6 +25,10 @@ type InterObsValue = {
 
 let globalLineWeakMap = new WeakMap<any, InterObsValue>();
 
+function isBlank(s : string) : boolean {
+    return (s == null || s == "");
+}
+
 function interObsCallback(entries) {
     let now = Date.now();
     entries.forEach((entry) => {
@@ -847,6 +851,12 @@ class MainSideBar extends React.Component<{}, {}> {
         GlobalInput.createNewSession();
     }
 
+    clickRemotes() {
+        mobx.action(() => {
+            GlobalModel.remotesModalOpen.set(true);
+        })();
+    }
+
     render() {
         let model = GlobalModel;
         let activeSessionId = model.activeSessionId.get();
@@ -912,15 +922,94 @@ class MainSideBar extends React.Component<{}, {}> {
                     </ul>
                     <div className="spacer"></div>
                     <p className="menu-label">
-                        <a href="/remotes.html">Remotes</a>
+                        <a onClick={() => this.clickRemotes()}>Remotes</a>
                     </p>
                     <ul className="menu-list">
                         <For each="remote" of={remotes}>
-                            <li><a><i className={cn("remote-status fa fa-circle", "status-" + remote.status)}/>{remote.remotealias ?? remote.remotecanonicalname}</a></li>
+                            <li key={remote.remoteid}><a><i className={cn("remote-status fa fa-circle", "status-" + remote.status)}/>{remote.remotealias ?? remote.remotecanonicalname}</a></li>
                         </For>
                     </ul>
                     <div className="bottom-spacer"></div>
                 </div>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
+class RemoteModal extends React.Component<{}, {}> {
+
+    @boundMethod
+    handleModalClose() : void {
+        mobx.action(() => {
+            GlobalModel.remotesModalOpen.set(false);
+        })();
+    }
+
+    @boundMethod
+    handleAddRemote() : void {
+        console.log("add-remote");
+    }
+    
+    render() {
+        let model = GlobalModel;
+        let remotes = model.remotes;
+        let remote : RemoteType = null;
+        return (
+            <div className="remote-modal modal is-active">
+                <div onClick={this.handleModalClose} className="modal-background"></div>
+                <div className="modal-content message">
+                    <div className="message-header">
+                        <p>Remotes</p>
+                    </div>
+                    <div className="remotes-content">
+                        <table className="table">
+                            <thead>
+                                <tr>
+                                    <th className="status-header">Status</th>
+                                    <th>Alias</th>
+                                    <th>User@Host</th>
+                                    <th>AutoConnect</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <For each="remote" of={remotes}>
+                                    <tr>
+                                        <td className="status-cell">
+                                            <div><i className={cn("remote-status fa fa-circle", "status-" + remote.status)}/></div>
+                                        </td>
+                                        <td>
+                                            {remote.remotealias}
+                                            <If condition={isBlank(remote.remotealias)}>
+                                                -
+                                            </If>
+                                        </td>
+                                        <td>
+                                            {remote.remotecanonicalname}
+                                        </td>
+                                        <td>
+                                            <div className="field">
+                                                <input id="switchRoundedDefault" type="checkbox" name="switchRoundedDefault" className="switch is-rounded" checked={remote.autoconnect}/>
+                                                <label for="switchRoundedDefault"></label>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </For>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div className="remotes-footer">
+                        <button onClick={this.handleAddRemote} className="button is-primary">
+                            <span className="icon">
+                                <i className="fa fa-plus"/>
+                            </span>
+                            <span>Add Remote</span>
+                        </button>
+                        <div className="spacer"></div>
+                        <button onClick={this.handleModalClose} className="button">Close</button>
+                    </div>
+                </div>
+                <button onClick={this.handleModalClose} className="modal-close is-large" aria-label="close"></button>
             </div>
         );
     }
@@ -943,6 +1032,9 @@ class Main extends React.Component<{}, {}> {
                     <MainSideBar/>
                     <SessionView/>
                 </div>
+                <If condition={GlobalModel.remotesModalOpen.get()}>
+                    <RemoteModal/>
+                </If>
             </div>
         );
     }

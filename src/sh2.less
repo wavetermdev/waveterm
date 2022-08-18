@@ -254,22 +254,6 @@ html, body, #main {
             color: #ddd;
         }
 
-        .remote-status {
-            font-size: 8px;
-            margin-right: 5px;
-            position: relative;
-            top: -3px;
-            color: #c4a000;
-
-            &.status-connected {
-                color: #4e9a06;
-            }
-
-            &.status-error, &.status-disconnected {
-                color: #cc0000;
-            }
-        }
-
         .status {
             font-size: 8px;
             margin-right: 5px;
@@ -620,4 +604,76 @@ body .xterm .xterm-viewport {
     font-weight: 600;
 }
 
+.remote-modal {
+    .modal-content {
+        padding: 10px;
 
+        .message-header {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .remotes-content {
+            flex-grow: 1;
+            max-height: 80%;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+
+            .table {
+                th.status-header {
+                    width: 40px;
+                }
+
+                tbody td {
+                    vertical-align: middle;
+                }
+                
+                .status-cell {
+                    .remote-status {
+                        font-size: 16px;
+                        top: 0;
+                        margin-right: 0;
+                    }
+                    
+                    .status-text {
+                        font-size: 12px;
+                    }
+                }
+            }
+        }
+
+        .remote-item {
+            display: flex;
+            flex-direction: row;
+        }
+
+        .remotes-footer {
+            border-top: 1px solid #666;
+            padding-top: 15px;
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+
+            .spacer {
+                flex-grow: 1;
+            }
+        }
+    }
+}
+
+.remote-status {
+    font-size: 8px;
+    margin-right: 5px;
+    position: relative;
+    top: -3px;
+    color: #c4a000;
+    
+    &.status-connected {
+        color: #4e9a06;
+    }
+    
+    &.status-error, &.status-disconnected {
+        color: #cc0000;
+    }
+}
