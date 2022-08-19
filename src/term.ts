@@ -170,7 +170,7 @@ class TermWrap {
             return;
         }
         this.reloading = true;
-        this.terminal.clear();
+        this.terminal.reset();
         let url = sprintf("http://localhost:8080/api/ptyout?sessionid=%s&cmdid=%s", this.sessionId, this.cmdId);
         fetch(url).then((resp) => {
             if (!resp.ok) {
