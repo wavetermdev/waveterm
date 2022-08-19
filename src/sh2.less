@@ -378,6 +378,14 @@ html, body, #main {
         font-size: 1rem;
         margin-right: 10px;
         border-radius: 5px;
+        position: relative;
+        
+        .status-icon {
+            font-size: 8px;
+            position: absolute;
+            top: 2px;
+            right: 2px;
+        }
 
         &.num4 {
             font-size: 0.8rem;
@@ -387,13 +395,33 @@ html, body, #main {
             font-size: 0.7rem;
         }
 
-        &.running {
+        &.status-done {
+            background-color: #555;
+        }
+
+        &.status-error {
+            .status-icon {
+                color: #cc0000;
+            }
+        }
+
+        &.status-hangup {
+            .status-icon {
+                color: #c4a000;
+            }
+        }
+
+        &.status-running {
             background-color: #729fcf;
         }
 
-        &.detached {
+        &.status-detached {
             background-color: #729fcf;
-            outline: 2px solid white;
+            .status-icon {
+                top: 3px;
+                right: 3px;
+                color: white;
+            }
         }
     }
 

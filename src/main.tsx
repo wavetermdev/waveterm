@@ -270,16 +270,20 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         let totalHeight = cellHeightPx * usedRows;
         let remote = model.getRemote(cmd.remoteId);
         let status = cmd.getStatus();
-        let running = (status == "running");
-        let detached = (status == "detached");
         let termOpts = cmd.getTermOpts();
         let isFocused = sw.getIsFocused(line.cmdid);
         let cmdRefNumStr = (this.props.cmdRefNum == null ? "?" : this.props.cmdRefNum.toString());
         return (
             <div className={cn("line", "line-cmd", {"focus": isFocused})} id={"line-" + getLineId(line)} ref={this.lineRef} style={{position: "relative"}} data-lineid={line.lineid} data-windowid={line.windowid} data-cmdid={line.cmdid}>
                 <div className="line-header">
-                    <div className={cn("avatar",{"num4": cmdRefNumStr.length == 4}, {"num5": cmdRefNumStr.length >= 5}, {"running": running}, {"detached": detached})} onClick={this.doRefresh}>
+                    <div className={cn("avatar",{"num4": cmdRefNumStr.length == 4}, {"num5": cmdRefNumStr.length >= 5}, "status-" + status)} onClick={this.doRefresh}>
                         {cmdRefNumStr}
+                        <If condition={status == "hangup" || status == "error"}>
+                            <i className="fa fa-exclamation-triangle status-icon"/>
+                        </If>
+                        <If condition={status == "detached"}>
+                            <i className="fa fa-refresh status-icon"/>
+                        </If>
                     </div>
                     <div className="meta-wrap">
                         <div className="meta">
