@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -28,7 +29,9 @@ func validateMeta(t *testing.T, desc string, f *File, startPos int64, endPos int
 
 func dumpFile(name string) {
 	barr, _ := os.ReadFile(name)
-	fmt.Printf("<<<\n%s\n>>>", string(barr))
+	str := string(barr)
+	str = strings.ReplaceAll(str, "\x00", ".")
+	fmt.Printf("%s<<<\n%s\n>>>\n", name, str)
 }
 
 func makeData(size int) string {
@@ -215,4 +218,65 @@ func TestFlock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("append error (should work fd2 was closed): %v", err)
 	}
+}
+
+func TestWriteAt(t *testing.T) {
+	tempDir := t.TempDir()
+	f1Name := path.Join(tempDir, "f1.cf")
+	f, err := CreateCirFile(f1Name, 100)
+	if err != nil {
+		t.Fatalf("cannot create cirfile: %v", err)
+	}
+	err = f.WriteAt(nil, []byte("hello\nmike"), 4)
+	if err != nil {
+		t.Fatalf("writeat error: %v", err)
+	}
+	err = f.WriteAt(nil, []byte("t"), 2)
+	if err != nil {
+		t.Fatalf("writeat error: %v", err)
+	}
+	err = f.WriteAt(nil, []byte("more"), 30)
+	if err != nil {
+		t.Fatalf("writeat error: %v", err)
+	}
+	err = f.WriteAt(nil, []byte("\n"), 19)
+	if err != nil {
+		t.Fatalf("writeat error: %v", err)
+	}
+	dumpFile(f1Name)
+	err = f.WriteAt(nil, []byte("hello"), 200)
+	if err != nil {
+		t.Fatalf("writeat error: %v", err)
+	}
+	buf := make([]byte, 10)
+	realOffset, nr, err := f.ReadNext(context.Background(), buf, 200)
+	if err != nil || realOffset != 200 || nr != 5 || string(buf[0:nr]) != "hello" {
+		t.Fatalf("invalid readnext: err[%v] realoffset[%d] nr[%d] buf[%s]", err, realOffset, nr, string(buf[0:nr]))
+	}
+	err = f.WriteAt(nil, []byte("0123456789\n"), 100)
+	if err != nil {
+		t.Fatalf("writeat error: %v", err)
+	}
+	dumpFile(f1Name)
+	dataStr := makeData(200)
+	err = f.WriteAt(nil, []byte(dataStr), 50)
+	if err != nil {
+		t.Fatalf("writeat error: %v", err)
+	}
+	dumpFile(f1Name)
+
+	dataStr = makeData(1000)
+	err = f.WriteAt(nil, []byte(dataStr), 1002)
+	if err != nil {
+		t.Fatalf("writeat error: %v", err)
+	}
+	err = f.WriteAt(nil, []byte("hello\n"), 2010)
+	if err != nil {
+		t.Fatalf("writeat error: %v", err)
+	}
+	err = f.AppendData(nil, []byte("foo\n"))
+	if err != nil {
+		t.Fatalf("appenddata error: %v", err)
+	}
+	dumpFile(f1Name)
 }

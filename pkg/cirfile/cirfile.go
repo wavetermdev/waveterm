@@ -307,18 +307,24 @@ func (f *File) getFreeChunks() []fileChunk {
 	return rtn
 }
 
-// returns (realOffset, data, error)
-// will only return io.EOF when len(data) == 0, otherwise will just do a short read
-func (f *File) ReadNext(ctx context.Context, buf []byte, offset int64) (int64, int, error) {
+func (f *File) ReadAll(ctx context.Context) (int64, []byte, error) {
 	err := f.flock(ctx, syscall.LOCK_SH)
 	if err != nil {
-		return 0, 0, err
+		return 0, nil, err
 	}
 	defer f.unflock()
 	err = f.readMeta()
 	if err != nil {
-		return 0, 0, err
+		return 0, nil, err
 	}
+	chunks := f.getFileChunks()
+	curSize := totalChunksSize(chunks)
+	buf := make([]byte, curSize)
+	realOffset, nr, err := f.internalReadNext(buf, 0)
+	return realOffset, buf[0:nr], err
+}
+
+func (f *File) internalReadNext(buf []byte, offset int64) (int64, int, error) {
 	if offset < f.FileOffset {
 		offset = f.FileOffset
 	}
@@ -345,6 +351,21 @@ func (f *File) ReadNext(ctx context.Context, buf []byte, offset int64) (int64, i
 		numRead += nr
 	}
 	return offset, numRead, nil
+}
+
+// returns (realOffset, numread, error)
+// will only return io.EOF when len(data) == 0, otherwise will just do a short read
+func (f *File) ReadNext(ctx context.Context, buf []byte, offset int64) (int64, int, error) {
+	err := f.flock(ctx, syscall.LOCK_SH)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer f.unflock()
+	err = f.readMeta()
+	if err != nil {
+		return 0, 0, err
+	}
+	return f.internalReadNext(buf, offset)
 }
 
 func (f *File) ensureFreeSpace(requiredSpace int64) error {
