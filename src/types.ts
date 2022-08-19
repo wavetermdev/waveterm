@@ -145,6 +145,7 @@ type TermOptsType = {
     rows : number,
     cols : number,
     flexrows? : boolean,
+    maxptysize? : number,
 };
 
 type CmdStartPacketType = {

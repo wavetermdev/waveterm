@@ -47,6 +47,7 @@ class TermWrap {
     dataUpdates : DataUpdate[] = [];
     loadError : mobx.IObservableValue<boolean> = mobx.observable.box(false);
     winSize : WindowSize;
+    numParseErrors : number = 0;
 
     constructor(elem : Element, sessionId : string, cmdId : string, usedRows : number, termOpts : TermOptsType, winSize : WindowSize, keyHandler : (event : any) => void) {
         this.sessionId = sessionId;
@@ -68,6 +69,10 @@ class TermWrap {
             cols = maxCols;
         }
         this.terminal = new Terminal({rows: termOpts.rows, cols: maxCols, fontSize: 14, theme: {foreground: "#d3d7cf"}});
+        this.terminal._core._inputHandler._parser.setErrorHandler((state) => {
+            this.numParseErrors++;
+            return state;
+        });
         this.terminal.open(elem);
         if (keyHandler != null) {
             this.terminal.onKey(keyHandler);
