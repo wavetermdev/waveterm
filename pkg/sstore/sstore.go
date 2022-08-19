@@ -231,10 +231,10 @@ func (s RemoteState) Value() (driver.Value, error) {
 }
 
 type TermOpts struct {
-	Rows     int64 `json:"rows"`
-	Cols     int64 `json:"cols"`
-	FlexRows bool  `json:"flexrows,omitempty"`
-	CmdSize  int64 `json:"cmdsize,omitempty"`
+	Rows       int64 `json:"rows"`
+	Cols       int64 `json:"cols"`
+	FlexRows   bool  `json:"flexrows,omitempty"`
+	MaxPtySize int64 `json:"maxptysize,omitempty"`
 }
 
 func (opts *TermOpts) Scan(val interface{}) error {
@@ -277,6 +277,18 @@ type SSHOpts struct {
 	SSHUser     string `json:"sshuser"`
 }
 
+type RemoteOptsType struct {
+	Color string `json:"color"`
+}
+
+func (opts *RemoteOptsType) Scan(val interface{}) error {
+	return quickScanJson(opts, val)
+}
+
+func (opts RemoteOptsType) Value() (driver.Value, error) {
+	return quickValueJson(opts)
+}
+
 type RemoteType struct {
 	RemoteId            string                 `json:"remoteid"`
 	PhysicalId          string                 `json:"physicalid"`
@@ -289,6 +301,7 @@ type RemoteType struct {
 	AutoConnect         bool                   `json:"autoconnect"`
 	InitPk              *packet.InitPacketType `json:"inipk"`
 	SSHOpts             *SSHOpts               `json:"sshopts"`
+	RemoteOpts          *RemoteOptsType        `json:"remoteopts"`
 	LastConnectTs       int64                  `json:"lastconnectts"`
 }
 
@@ -330,6 +343,7 @@ func (r *RemoteType) ToMap() map[string]interface{} {
 	rtn["autoconnect"] = r.AutoConnect
 	rtn["initpk"] = quickJson(r.InitPk)
 	rtn["sshopts"] = quickJson(r.SSHOpts)
+	rtn["remoteopts"] = quickJson(r.RemoteOpts)
 	rtn["lastconnectts"] = r.LastConnectTs
 	return rtn
 }
@@ -350,6 +364,7 @@ func RemoteFromMap(m map[string]interface{}) *RemoteType {
 	quickSetBool(&r.AutoConnect, m, "autoconnect")
 	quickSetJson(&r.InitPk, m, "initpk")
 	quickSetJson(&r.SSHOpts, m, "sshopts")
+	quickSetJson(&r.RemoteOpts, m, "remoteopts")
 	quickSetInt64(&r.LastConnectTs, m, "lastconnectts")
 	return &r
 }
@@ -491,6 +506,36 @@ func AddTest01Remote(ctx context.Context) error {
 			SSHHost:     "test01.ec2",
 			SSHUser:     "ubuntu",
 			SSHIdentity: "/Users/mike/aws/mfmt.pem",
+		},
+		AutoConnect: true,
+	}
+	err = InsertRemote(ctx, testRemote)
+	if err != nil {
+		return err
+	}
+	log.Printf("[db] added remote '%s', id=%s\n", testRemote.GetName(), testRemote.RemoteId)
+	return nil
+}
+
+func AddTest02Remote(ctx context.Context) error {
+	remote, err := GetRemoteByAlias(ctx, "test2")
+	if err != nil {
+		return fmt.Errorf("getting remote[test01] from db: %w", err)
+	}
+	if remote != nil {
+		return nil
+	}
+	testRemote := &RemoteType{
+		RemoteId:            uuid.New().String(),
+		RemoteType:          "ssh",
+		RemoteAlias:         "test2",
+		RemoteCanonicalName: "test2@test01.ec2",
+		RemoteSudo:          false,
+		RemoteUser:          "test2",
+		RemoteHost:          "test01.ec2",
+		SSHOpts: &SSHOpts{
+			SSHHost: "test01.ec2",
+			SSHUser: "test2",
 		},
 		AutoConnect: true,
 	}

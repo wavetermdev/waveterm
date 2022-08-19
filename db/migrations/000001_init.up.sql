@@ -81,6 +81,7 @@ CREATE TABLE remote (
     autoconnect boolean NOT NULL,
     initpk json NOT NULL,
     sshopts json NOT NULL,
+    remoteopts json NOT NULL,
     lastconnectts bigint NOT NULL
 );
 

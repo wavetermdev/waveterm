@@ -5,10 +5,16 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"os/exec"
 	"path"
 	"strings"
 	"sync"
+	"syscall"
+	"time"
 
+	"github.com/creack/pty"
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
@@ -19,6 +25,7 @@ const RemoteTypeMShell = "mshell"
 const DefaultTermRows = 25
 const DefaultTermCols = 80
 const DefaultTerm = "xterm-256color"
+const DefaultMaxPtySize = 1024 * 1024
 
 const MShellServerCommand = `
 PATH=$PATH:~/.mshell;
@@ -50,11 +57,13 @@ type RemoteState struct {
 	RemoteType          string              `json:"remotetype"`
 	RemoteId            string              `json:"remoteid"`
 	PhysicalId          string              `json:"physicalremoteid"`
-	RemoteAlias         string              `json:"remotealias"`
+	RemoteAlias         string              `json:"remotealias,omitempty"`
 	RemoteCanonicalName string              `json:"remotecanonicalname"`
 	RemoteVars          map[string]string   `json:"remotevars"`
 	Status              string              `json:"status"`
+	ErrorStr            string              `json:"errorstr,omitempty"`
 	DefaultState        *sstore.RemoteState `json:"defaultstate"`
+	AutoConnect         bool                `json:"autoconnect"`
 }
 
 type MShellProc struct {
@@ -62,10 +71,11 @@ type MShellProc struct {
 	Remote *sstore.RemoteType
 
 	// runtime
-	Status     string
-	ServerProc *shexec.ClientProc
-	UName      string
-	Err        error
+	Status         string
+	ServerProc     *shexec.ClientProc
+	UName          string
+	Err            error
+	ControllingPty *os.File
 
 	RunningCmds []base.CommandKey
 }
@@ -119,6 +129,10 @@ func GetAllRemoteState() []RemoteState {
 			RemoteCanonicalName: proc.Remote.RemoteCanonicalName,
 			PhysicalId:          proc.Remote.PhysicalId,
 			Status:              proc.Status,
+			AutoConnect:         proc.Remote.AutoConnect,
+		}
+		if proc.Err != nil {
+			state.ErrorStr = proc.Err.Error()
 		}
 		vars := make(map[string]string)
 		vars["user"] = proc.Remote.RemoteUser
@@ -179,17 +193,70 @@ func convertSSHOpts(opts *sstore.SSHOpts) shexec.SSHOpts {
 	}
 }
 
+func (msh *MShellProc) addControllingTty(ecmd *exec.Cmd) error {
+	cmdPty, cmdTty, err := pty.Open()
+	if err != nil {
+		return err
+	}
+	msh.ControllingPty = cmdPty
+	ecmd.ExtraFiles = append(ecmd.ExtraFiles, cmdTty)
+	if ecmd.SysProcAttr == nil {
+		ecmd.SysProcAttr = &syscall.SysProcAttr{}
+	}
+	ecmd.SysProcAttr.Setsid = true
+	ecmd.SysProcAttr.Setctty = true
+	ecmd.SysProcAttr.Ctty = len(ecmd.ExtraFiles) + 3 - 1
+	return nil
+}
+
 func (msh *MShellProc) Launch() {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
 
 	ecmd := convertSSHOpts(msh.Remote.SSHOpts).MakeSSHExecCmd(MShellServerCommand)
+	err := msh.addControllingTty(ecmd)
+	if err != nil {
+		msh.Status = StatusError
+		msh.Err = fmt.Errorf("cannot attach controlling tty to mshell command: %w", err)
+		return
+	}
+	defer func() {
+		if len(ecmd.ExtraFiles) > 0 {
+			ecmd.ExtraFiles[len(ecmd.ExtraFiles)-1].Close()
+		}
+	}()
+	remoteName := msh.Remote.GetName()
+	go func() {
+		fmt.Printf("[c-pty %s] starting...\n", msh.Remote.GetName())
+		buf := make([]byte, 100)
+		for {
+			n, readErr := msh.ControllingPty.Read(buf)
+			if readErr == io.EOF {
+				break
+			}
+			if readErr != nil {
+				fmt.Printf("[error] read from controlling-pty [%s]: %v\n", remoteName, readErr)
+				break
+			}
+			readStr := string(buf[0:n])
+			readStr = strings.ReplaceAll(readStr, "\r", "")
+			readStr = strings.ReplaceAll(readStr, "\n", "\\n")
+			fmt.Printf("[c-pty %s] %d '%s'\n", remoteName, n, readStr)
+		}
+	}()
+	if remoteName == "test2" {
+		go func() {
+			time.Sleep(2 * time.Second)
+			msh.ControllingPty.Write([]byte(Test2Pw))
+			fmt.Printf("[c-pty %s] wrote password!\n", remoteName)
+		}()
+	}
 	cproc, uname, err := shexec.MakeClientProc(ecmd)
 	msh.UName = uname
 	if err != nil {
 		msh.Status = StatusError
 		msh.Err = err
-		fmt.Printf("[error] connecting remote %s (%s): %w\n", msh.Remote.GetName(), msh.UName, err)
+		fmt.Printf("[error] connecting remote %s (%s): %v\n", msh.Remote.GetName(), msh.UName, err)
 		return
 	}
 	fmt.Printf("connected remote %s\n", msh.Remote.GetName())
@@ -203,7 +270,6 @@ func (msh *MShellProc) Launch() {
 				msh.Status = StatusDisconnected
 			}
 		})
-
 		fmt.Printf("[error] RUNNER PROC EXITED code[%d]\n", exitCode)
 	}()
 	go msh.ProcessPackets()
@@ -270,7 +336,7 @@ func (msh *MShellProc) SendInput(pk *packet.InputPacketType) error {
 }
 
 func makeTermOpts() sstore.TermOpts {
-	return sstore.TermOpts{Rows: DefaultTermRows, Cols: DefaultTermCols, FlexRows: true}
+	return sstore.TermOpts{Rows: DefaultTermRows, Cols: DefaultTermCols, FlexRows: true, MaxPtySize: DefaultMaxPtySize}
 }
 
 func RunCommand(ctx context.Context, cmdId string, remoteId string, remoteState *sstore.RemoteState, runPacket *packet.RunPacketType) (*sstore.CmdType, error) {
@@ -318,7 +384,7 @@ func RunCommand(ctx context.Context, cmdId string, remoteId string, remoteState 
 		DonePk:      nil,
 		RunOut:      nil,
 	}
-	err = sstore.AppendToCmdPtyBlob(ctx, cmd.SessionId, cmd.CmdId, nil, 0)
+	err = sstore.CreateCmdPtyFile(ctx, cmd.SessionId, cmd.CmdId, cmd.TermOpts.MaxPtySize)
 	if err != nil {
 		return nil, err
 	}

@@ -4,10 +4,22 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"os"
 
+	"github.com/scripthaus-dev/mshell/pkg/cirfile"
 	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 )
+
+func CreateCmdPtyFile(ctx context.Context, sessionId string, cmdId string, maxSize int64) error {
+	ptyOutFileName, err := scbase.PtyOutFile(sessionId, cmdId)
+	if err != nil {
+		return err
+	}
+	f, err := cirfile.CreateCirFile(ptyOutFileName, maxSize)
+	if err != nil {
+		return err
+	}
+	return f.Close()
+}
 
 func AppendToCmdPtyBlob(ctx context.Context, sessionId string, cmdId string, data []byte, pos int64) error {
 	if pos < 0 {
@@ -17,22 +29,12 @@ func AppendToCmdPtyBlob(ctx context.Context, sessionId string, cmdId string, dat
 	if err != nil {
 		return err
 	}
-	fd, err := os.OpenFile(ptyOutFileName, os.O_WRONLY|os.O_CREATE, 0600)
+	f, err := cirfile.OpenCirFile(ptyOutFileName)
 	if err != nil {
 		return err
 	}
-	realPos, err := fd.Seek(pos, 0)
-	if err != nil {
-		return err
-	}
-	if realPos != pos {
-		return fmt.Errorf("could not seek to pos:%d (realpos=%d)", pos, realPos)
-	}
-	defer fd.Close()
-	if len(data) == 0 {
-		return nil
-	}
-	_, err = fd.Write(data)
+	defer f.Close()
+	err = f.WriteAt(ctx, data, pos)
 	if err != nil {
 		return err
 	}
@@ -40,10 +42,23 @@ func AppendToCmdPtyBlob(ctx context.Context, sessionId string, cmdId string, dat
 	update := &PtyDataUpdate{
 		SessionId:  sessionId,
 		CmdId:      cmdId,
-		PtyPos:     realPos,
+		PtyPos:     pos,
 		PtyData64:  data64,
 		PtyDataLen: int64(len(data)),
 	}
 	MainBus.SendUpdate(sessionId, update)
 	return nil
+}
+
+func ReadFullPtyOutFile(ctx context.Context, sessionId string, cmdId string) (int64, []byte, error) {
+	ptyOutFileName, err := scbase.PtyOutFile(sessionId, cmdId)
+	if err != nil {
+		return 0, nil, err
+	}
+	f, err := cirfile.OpenCirFile(ptyOutFileName)
+	if err != nil {
+		return 0, nil, err
+	}
+	defer f.Close()
+	return f.ReadAll(ctx)
 }

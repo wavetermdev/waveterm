@@ -90,7 +90,7 @@ func PtyOutFile(sessionId string, cmdId string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s/%s.ptyout", sdir, cmdId), nil
+	return fmt.Sprintf("%s/%s.ptyout.cf", sdir, cmdId), nil
 }
 
 func RunOutFile(sessionId string, cmdId string) (string, error) {
@@ -108,7 +108,7 @@ func RemotePtyOut(remoteId string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s/%s.ptyout", rdir, remoteId), nil
+	return fmt.Sprintf("%s/%s.ptyout.cf", rdir, remoteId), nil
 }
 
 type ScFileNameGenerator struct {

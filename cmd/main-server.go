@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"net/http"
 	"os"
@@ -221,11 +220,6 @@ func HandleGetWindow(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func GetPtyOutFile(sessionId string, cmdId string) string {
-	pathStr := fmt.Sprintf("/Users/mike/scripthaus/.sessions/%s/%s.ptyout", sessionId, cmdId)
-	return pathStr
-}
-
 func HandleGetPtyOut(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -249,25 +243,18 @@ func HandleGetPtyOut(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("invalid cmdid: %v", err)))
 		return
 	}
-	pathStr, err := scbase.PtyOutFile(sessionId, cmdId)
-	if err != nil {
-		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("cannot get ptyout file name: %v", err)))
-		return
-	}
-	fd, err := os.Open(pathStr)
+	_, data, err := sstore.ReadFullPtyOutFile(r.Context(), sessionId, cmdId)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("cannot open file '%s': %v", pathStr, err)))
+		w.Write([]byte(fmt.Sprintf("error reading ptyout file: %v", err)))
 		return
 	}
-	defer fd.Close()
 	w.WriteHeader(http.StatusOK)
-	io.Copy(w, fd)
+	w.Write(data)
 }
 
 func WriteJsonError(w http.ResponseWriter, errVal error) {
@@ -398,17 +385,6 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 //   cmd-type = comment
 //   cmd-type = command, commandid=ABC
 
-// how to know if command is still executing?  is command done?
-
-// local -- .ptyout, .stdin
-// remote -- transfer controller program
-//   controller-startcmd -- start command (with options) => returns cmdid
-//   controller-watchsession [sessionid]
-//     transfer [cmdid:pos] pairs.  streams back anything new written to ptyout on stdout
-//     stdin-packet [cmdid:user:data]
-//       startcmd will figure out the correct
-//
-
 func runWebSocketServer() {
 	gr := mux.NewRouter()
 	gr.HandleFunc("/ws", HandleWs)
@@ -454,6 +430,11 @@ func main() {
 	err = sstore.AddTest01Remote(context.Background())
 	if err != nil {
 		fmt.Printf("[error] ensuring test01 remote: %v\n", err)
+		return
+	}
+	err = sstore.AddTest02Remote(context.Background())
+	if err != nil {
+		fmt.Printf("[error] ensuring test02 remote: %v\n", err)
 		return
 	}
 	_, err = sstore.EnsureDefaultSession(context.Background())
