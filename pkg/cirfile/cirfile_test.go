@@ -96,17 +96,13 @@ func TestFile(t *testing.T) {
 		t.Fatalf("cannot append data: %v", err)
 	}
 	validateFileSize(t, f1Name, HeaderLen)
-	if f.StartPos != FilePosEmpty || f.EndPos != 0 || f.FileDataSize != 0 {
-		t.Fatalf("metadata error (1): %#v", f)
-	}
+	validateMeta(t, "1", f, FilePosEmpty, 0, 0, 0)
 	err = f.AppendData(context.Background(), []byte("hello"))
 	if err != nil {
 		t.Fatalf("cannot append data: %v", err)
 	}
 	validateFileSize(t, f1Name, HeaderLen+5)
-	if f.StartPos != 0 || f.EndPos != 4 || f.FileDataSize != 5 {
-		t.Fatalf("metadata error (2): %#v", f)
-	}
+	validateMeta(t, "2", f, 0, 4, 5, 0)
 	err = f.AppendData(context.Background(), []byte(" foo"))
 	if err != nil {
 		t.Fatalf("cannot append data: %v", err)
