@@ -23,6 +23,7 @@ import (
 	"github.com/alessio/shellescape"
 	"github.com/creack/pty"
 	"github.com/scripthaus-dev/mshell/pkg/base"
+	"github.com/scripthaus-dev/mshell/pkg/cirfile"
 	"github.com/scripthaus-dev/mshell/pkg/mpio"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"golang.org/x/sys/unix"
@@ -35,6 +36,7 @@ const MaxCols = 1024
 const MaxFdNum = 1023
 const FirstExtraFilesFdNum = 3
 const DefaultTermType = "xterm-256color"
+const DefaultMaxPtySize = 1024 * 1024
 
 const ClientCommand = `
 PATH=$PATH:~/.mshell;
@@ -67,6 +69,7 @@ type ShExecType struct {
 	FileNames      *base.CommandFileNames
 	Cmd            *exec.Cmd
 	CmdPty         *os.File
+	MaxPtySize     int64
 	Multiplexer    *mpio.Multiplexer
 	Detached       bool
 	DetachedOutput *packet.PacketSender
@@ -933,6 +936,26 @@ func SetupSignalsForDetach() {
 	}()
 }
 
+func copyToCirFile(dest *cirfile.File, src io.Reader) error {
+	buf := make([]byte, 64*1024)
+	for {
+		var appendErr error
+		nr, readErr := src.Read(buf)
+		if nr > 0 {
+			appendErr = dest.AppendData(context.Background(), buf[0:nr])
+		}
+		if readErr != nil && readErr != io.EOF {
+			return readErr
+		}
+		if appendErr != nil {
+			return appendErr
+		}
+		if readErr == io.EOF {
+			return nil
+		}
+	}
+}
+
 func (cmd *ShExecType) DetachedWait(startPacket *packet.CmdStartPacketType) {
 	// after Start(), any output/errors must go to DetachedOutput
 	// close stdin, redirect stdout/stderr to /dev/null, but wait for cmdstart packet to get sent
@@ -949,7 +972,7 @@ func (cmd *ShExecType) DetachedWait(startPacket *packet.CmdStartPacketType) {
 	if err != nil {
 		cmd.DetachedOutput.SendCmdError(cmd.CK, fmt.Errorf("cannot dup2 stdin to runout: %w", err))
 	}
-	ptyOutFd, err := os.OpenFile(cmd.FileNames.PtyOutFile, os.O_TRUNC|os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+	ptyOutFile, err := cirfile.CreateCirFile(cmd.FileNames.PtyOutFile, cmd.MaxPtySize)
 	if err != nil {
 		cmd.DetachedOutput.SendCmdError(cmd.CK, fmt.Errorf("cannot open ptyout file '%s': %w", cmd.FileNames.PtyOutFile, err))
 		// don't return (command is already running)
@@ -958,8 +981,8 @@ func (cmd *ShExecType) DetachedWait(startPacket *packet.CmdStartPacketType) {
 	go func() {
 		// copy pty output to .ptyout file
 		defer close(ptyCopyDone)
-		defer ptyOutFd.Close()
-		_, copyErr := io.Copy(ptyOutFd, cmd.CmdPty)
+		defer ptyOutFile.Close()
+		copyErr := copyToCirFile(ptyOutFile, cmd.CmdPty)
 		if copyErr != nil {
 			cmd.DetachedOutput.SendCmdError(cmd.CK, fmt.Errorf("copying pty output to ptyout file: %w", copyErr))
 		}
@@ -1002,6 +1025,11 @@ func RunCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) (
 	cmd.FileNames = fileNames
 	cmd.CmdPty = cmdPty
 	cmd.Detached = true
+	if pk.TermOpts != nil && pk.TermOpts.MaxPtySize != 0 {
+		cmd.MaxPtySize = pk.TermOpts.MaxPtySize
+	} else {
+		cmd.MaxPtySize = DefaultMaxPtySize
+	}
 	cmd.RunnerOutFd, err = os.OpenFile(fileNames.RunnerOutFile, os.O_TRUNC|os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot open runout file '%s': %w", fileNames.RunnerOutFile, err)

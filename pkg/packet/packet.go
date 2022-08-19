@@ -378,6 +378,13 @@ func (p *ResponsePacketType) Err() error {
 	return nil
 }
 
+func (p *ResponsePacketType) String() string {
+	if p.Success {
+		return "response[success]"
+	}
+	return fmt.Sprintf("response[error:%s]", p.Error)
+}
+
 func MakeErrorResponsePacket(reqId string, err error) *ResponsePacketType {
 	return &ResponsePacketType{Type: ResponsePacketStr, RespId: reqId, Error: err.Error()}
 }
@@ -504,10 +511,10 @@ func MakeCmdStartPacket(reqId string) *CmdStartPacketType {
 }
 
 type TermOpts struct {
-	Rows    int    `json:"rows"`
-	Cols    int    `json:"cols"`
-	Term    string `json:"term"`
-	CmdSize int64  `json:"cmdsize,omitempty"`
+	Rows       int    `json:"rows"`
+	Cols       int    `json:"cols"`
+	Term       string `json:"term"`
+	MaxPtySize int64  `json:"maxptysize,omitempty"`
 }
 
 type RemoteFd struct {

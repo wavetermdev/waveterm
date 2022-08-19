@@ -377,6 +377,9 @@ func handleClient() (int, error) {
 	if err != nil {
 		return 1, err
 	}
+	if runPacket.Detached {
+		return 1, fmt.Errorf("cannot run detached command from command line client")
+	}
 	donePacket, err := shexec.RunClientSSHCommandAndWait(runPacket, shexec.StdContext{}, opts.SSHOpts, nil, opts.Debug)
 	if err != nil {
 		return 1, err

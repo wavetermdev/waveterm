@@ -118,22 +118,6 @@ func GetMShellHomeDir() string {
 	return ExpandHomeDir(DefaultMShellHome)
 }
 
-func GetPtyOutFile(ck CommandKey, seqNum int) (string, error) {
-	if err := ck.Validate("ck"); err != nil {
-		return "", fmt.Errorf("cannot get command files: %w", err)
-	}
-	if seqNum < 0 {
-		return "", fmt.Errorf("invalid seqnum, cannot be negative")
-	}
-	sessionId, cmdId := ck.Split()
-	sdir, err := EnsureSessionDir(sessionId)
-	if err != nil {
-		return "", err
-	}
-	base := path.Join(sdir, cmdId)
-	return fmt.Sprintf("%s.%d.ptyout", base, seqNum), nil
-}
-
 func GetCommandFileNames(ck CommandKey) (*CommandFileNames, error) {
 	if err := ck.Validate("ck"); err != nil {
 		return nil, fmt.Errorf("cannot get command files: %w", err)
@@ -149,15 +133,6 @@ func GetCommandFileNames(ck CommandKey) (*CommandFileNames, error) {
 		StdinFifo:     base + ".stdin",
 		RunnerOutFile: base + ".runout",
 	}, nil
-}
-
-func MakeCommandFileNamesWithHome(mhome string, ck CommandKey) *CommandFileNames {
-	base := path.Join(mhome, SessionsDirBaseName, ck.GetSessionId(), ck.GetCmdId())
-	return &CommandFileNames{
-		PtyOutFile:    base + ".ptyout",
-		StdinFifo:     base + ".stdin",
-		RunnerOutFile: base + ".runout",
-	}
 }
 
 func CleanUpCmdFiles(sessionId string, cmdId string) error {
