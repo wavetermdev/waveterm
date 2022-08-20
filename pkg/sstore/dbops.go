@@ -427,15 +427,28 @@ func GetCmdById(ctx context.Context, sessionId string, cmdId string) (*CmdType, 
 	return cmd, nil
 }
 
-func UpdateCmdDonePk(ctx context.Context, donePk *packet.CmdDonePacketType) error {
+func UpdateCmdDonePk(ctx context.Context, donePk *packet.CmdDonePacketType) (UpdatePacket, error) {
 	if donePk == nil || donePk.CK.IsEmpty() {
-		return fmt.Errorf("invalid cmddone packet (no ck)")
+		return nil, fmt.Errorf("invalid cmddone packet (no ck)")
 	}
-	return WithTx(ctx, func(tx *TxWrap) error {
+	var rtnCmd *CmdType
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `UPDATE cmd SET status = ?, donepk = ? WHERE sessionid = ? AND cmdid = ?`
 		tx.ExecWrap(query, CmdStatusDone, quickJson(donePk), donePk.CK.GetSessionId(), donePk.CK.GetCmdId())
+		var err error
+		rtnCmd, err = GetCmdById(tx.Context(), donePk.CK.GetSessionId(), donePk.CK.GetCmdId())
+		if err != nil {
+			return err
+		}
 		return nil
 	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	if rtnCmd == nil {
+		return nil, fmt.Errorf("cmd data not found for ck[%s]", donePk.CK)
+	}
+	return LineUpdate{Cmd: rtnCmd}, nil
 }
 
 func AppendCmdErrorPk(ctx context.Context, errPk *packet.CmdErrorPacketType) error {

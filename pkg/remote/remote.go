@@ -48,9 +48,8 @@ const (
 var GlobalStore *Store
 
 type Store struct {
-	Lock              *sync.Mutex
-	Map               map[string]*MShellProc // key=remoteid
-	CmdStatusCallback func(ck base.CommandKey, status string)
+	Lock *sync.Mutex
+	Map  map[string]*MShellProc // key=remoteid
 }
 
 type RemoteState struct {
@@ -440,13 +439,17 @@ func makeDataAckPacket(ck base.CommandKey, fdNum int, ackLen int, err error) *pa
 }
 
 func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
-	err := sstore.UpdateCmdDonePk(context.Background(), donePk)
+	update, err := sstore.UpdateCmdDonePk(context.Background(), donePk)
 	if err != nil {
 		fmt.Printf("[error] updating cmddone: %v\n", err)
 		return
 	}
-	if GlobalStore.CmdStatusCallback != nil {
-		GlobalStore.CmdStatusCallback(donePk.CK, sstore.CmdStatusDone)
+	if update != nil {
+		// TODO fix timing issue (this update gets to the FE before run-command returns for short lived commands)
+		go func() {
+			time.Sleep(10 * time.Millisecond)
+			sstore.MainBus.SendUpdate(donePk.CK.GetSessionId(), update)
+		}()
 	}
 	return
 }
@@ -461,10 +464,13 @@ func (msh *MShellProc) handleCmdErrorPacket(errPk *packet.CmdErrorPacketType) {
 }
 
 func (msh *MShellProc) notifyHangups_nolock() {
-	if GlobalStore.CmdStatusCallback != nil {
-		for _, ck := range msh.RunningCmds {
-			GlobalStore.CmdStatusCallback(ck, sstore.CmdStatusHangup)
+	for _, ck := range msh.RunningCmds {
+		cmd, err := sstore.GetCmdById(context.Background(), ck.GetSessionId(), ck.GetCmdId())
+		if err != nil {
+			continue
 		}
+		update := sstore.LineUpdate{Cmd: cmd}
+		sstore.MainBus.SendUpdate(ck.GetSessionId(), update)
 	}
 	msh.RunningCmds = nil
 }
