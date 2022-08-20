@@ -68,7 +68,7 @@ class Cmd {
     setCmd(cmd : CmdDataType) {
         mobx.action(() => {
             this.data.set(cmd);
-        });
+        })();
     }
 
     getStatus() : string {
@@ -980,7 +980,7 @@ class Model {
             if (lineMsg.line != null) {
                 this.addLineCmd(lineMsg.line, lineMsg.cmd, interactive);
             }
-            if (lineMsg.line == null && lineMsg.cmd != null) {
+            else if (lineMsg.line == null && lineMsg.cmd != null) {
                 this.updateCmd(lineMsg.cmd);
             }
         }
@@ -996,7 +996,7 @@ class Model {
             let cmdline : CmdLineUpdateType = update.cmdline;
             this.inputModel.updateCmdLine(cmdline);
         }
-        // console.log("run-update>", interactive, update);
+        // console.log("run-update>", Date.now(), interactive, update);
     }
 
     getActiveSession() : Session {
