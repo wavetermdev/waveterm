@@ -62,7 +62,7 @@ type RemoteState struct {
 	Status              string              `json:"status"`
 	ErrorStr            string              `json:"errorstr,omitempty"`
 	DefaultState        *sstore.RemoteState `json:"defaultstate"`
-	AutoConnect         bool                `json:"autoconnect"`
+	ConnectMode         string              `json:"connectmode"`
 }
 
 type MShellProc struct {
@@ -91,7 +91,7 @@ func LoadRemotes(ctx context.Context) error {
 	for _, remote := range allRemotes {
 		msh := MakeMShell(remote)
 		GlobalStore.Map[remote.RemoteId] = msh
-		if remote.AutoConnect {
+		if remote.ConnectMode == sstore.ConnectModeStartup {
 			go msh.Launch()
 		}
 	}
@@ -128,7 +128,7 @@ func GetAllRemoteState() []RemoteState {
 			RemoteCanonicalName: proc.Remote.RemoteCanonicalName,
 			PhysicalId:          proc.Remote.PhysicalId,
 			Status:              proc.Status,
-			AutoConnect:         proc.Remote.AutoConnect,
+			ConnectMode:         proc.Remote.ConnectMode,
 		}
 		if proc.Err != nil {
 			state.ErrorStr = proc.Err.Error()

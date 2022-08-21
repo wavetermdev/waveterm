@@ -78,7 +78,7 @@ CREATE TABLE remote (
     remotesudo boolean NOT NULL,
     remoteuser varchar(50) NOT NULL,
     remotehost varchar(200) NOT NULL,
-    autoconnect boolean NOT NULL,
+    connectmode varchar(20) NOT NULL,
     initpk json NOT NULL,
     sshopts json NOT NULL,
     remoteopts json NOT NULL,

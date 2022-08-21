@@ -53,6 +53,8 @@ func SubMetaCmd(cmd string) string {
 		return "comment"
 	case "e":
 		return "eval"
+	case "export":
+		return "setenv"
 	default:
 		return cmd
 	}
@@ -66,6 +68,7 @@ var ValidCommands = []string{
 	"/comment",
 	"/cd",
 	"/compgen",
+	"/setenv",
 }
 
 func HandleCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -93,6 +96,9 @@ func HandleCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 
 	case "compgen":
 		return CompGenCommand(ctx, pk)
+
+	case "setenv":
+		return SetEnvCommand(ctx, pk)
 
 	default:
 		return nil, fmt.Errorf("invalid command '/%s', no handler", pk.MetaCmd)
@@ -338,6 +344,12 @@ func evalCommandInternal(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	} else if commandStr == "cr" || strings.HasPrefix(commandStr, "cr ") {
 		metaCmd = "cr"
 		commandStr = strings.TrimSpace(commandStr[2:])
+	} else if commandStr == "export" || strings.HasPrefix(commandStr, "export ") {
+		metaCmd = "setenv"
+		commandStr = strings.TrimSpace(commandStr[6:])
+	} else if commandStr == "setenv" || strings.HasPrefix(commandStr, "setenv ") {
+		metaCmd = "setenv"
+		commandStr = strings.TrimSpace(commandStr[6:])
 	} else if commandStr[0] == '/' {
 		spaceIdx := strings.Index(commandStr, " ")
 		if spaceIdx == -1 {
@@ -423,6 +435,10 @@ func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		return nil, err
 	}
 	return update, nil
+}
+
+func SetEnvCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	return nil, nil
 }
 
 func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {

@@ -90,8 +90,8 @@ func InsertRemote(ctx context.Context, remote *RemoteType) error {
 	if err != nil {
 		return err
 	}
-	query := `INSERT INTO remote ( remoteid, physicalid, remotetype, remotealias, remotecanonicalname, remotesudo, remoteuser, remotehost, autoconnect, initpk, sshopts, remoteopts, lastconnectts) VALUES 
-                                 (:remoteid,:physicalid,:remotetype,:remotealias,:remotecanonicalname,:remotesudo,:remoteuser,:remotehost,:autoconnect,:initpk,:sshopts,:remoteopts,:lastconnectts)`
+	query := `INSERT INTO remote ( remoteid, physicalid, remotetype, remotealias, remotecanonicalname, remotesudo, remoteuser, remotehost, connectmode, initpk, sshopts, remoteopts, lastconnectts) VALUES 
+                                 (:remoteid,:physicalid,:remotetype,:remotealias,:remotecanonicalname,:remotesudo,:remoteuser,:remotehost,:connectmode,:initpk,:sshopts,:remoteopts,:lastconnectts)`
 	_, err = db.NamedExec(query, remote.ToMap())
 	if err != nil {
 		return err

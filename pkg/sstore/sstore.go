@@ -50,6 +50,16 @@ const (
 	ShareModeShared  = "shared"
 )
 
+const (
+	ConnectModeStartup = "startup"
+	ConnectModeAuto    = "auto"
+	ConnectModeManual  = "manual"
+)
+
+const (
+	RemoteTypeSsh = "ssh"
+)
+
 var globalDBLock = &sync.Mutex{}
 var globalDB *sqlx.DB
 var globalDBErr error
@@ -298,7 +308,7 @@ type RemoteType struct {
 	RemoteSudo          bool                   `json:"remotesudo"`
 	RemoteUser          string                 `json:"remoteuser"`
 	RemoteHost          string                 `json:"remotehost"`
-	AutoConnect         bool                   `json:"autoconnect"`
+	ConnectMode         string                 `json:"connectmode"`
 	InitPk              *packet.InitPacketType `json:"inipk"`
 	SSHOpts             *SSHOpts               `json:"sshopts"`
 	RemoteOpts          *RemoteOptsType        `json:"remoteopts"`
@@ -340,7 +350,7 @@ func (r *RemoteType) ToMap() map[string]interface{} {
 	rtn["remotesudo"] = r.RemoteSudo
 	rtn["remoteuser"] = r.RemoteUser
 	rtn["remotehost"] = r.RemoteHost
-	rtn["autoconnect"] = r.AutoConnect
+	rtn["connectmode"] = r.ConnectMode
 	rtn["initpk"] = quickJson(r.InitPk)
 	rtn["sshopts"] = quickJson(r.SSHOpts)
 	rtn["remoteopts"] = quickJson(r.RemoteOpts)
@@ -361,7 +371,7 @@ func RemoteFromMap(m map[string]interface{}) *RemoteType {
 	quickSetBool(&r.RemoteSudo, m, "remotesudo")
 	quickSetStr(&r.RemoteUser, m, "remoteuser")
 	quickSetStr(&r.RemoteHost, m, "remotehost")
-	quickSetBool(&r.AutoConnect, m, "autoconnect")
+	quickSetStr(&r.ConnectMode, m, "connectmode")
 	quickSetJson(&r.InitPk, m, "initpk")
 	quickSetJson(&r.SSHOpts, m, "sshopts")
 	quickSetJson(&r.RemoteOpts, m, "remoteopts")
@@ -470,13 +480,13 @@ func EnsureLocalRemote(ctx context.Context) error {
 	localRemote := &RemoteType{
 		RemoteId:            uuid.New().String(),
 		PhysicalId:          physicalId,
-		RemoteType:          "ssh",
+		RemoteType:          RemoteTypeSsh,
 		RemoteAlias:         LocalRemoteName,
 		RemoteCanonicalName: fmt.Sprintf("%s@%s", user.Username, hostName),
 		RemoteSudo:          false,
 		RemoteUser:          user.Username,
 		RemoteHost:          hostName,
-		AutoConnect:         true,
+		ConnectMode:         ConnectModeStartup,
 	}
 	err = InsertRemote(ctx, localRemote)
 	if err != nil {
@@ -496,7 +506,7 @@ func AddTest01Remote(ctx context.Context) error {
 	}
 	testRemote := &RemoteType{
 		RemoteId:            uuid.New().String(),
-		RemoteType:          "ssh",
+		RemoteType:          RemoteTypeSsh,
 		RemoteAlias:         "test01",
 		RemoteCanonicalName: "ubuntu@test01.ec2",
 		RemoteSudo:          false,
@@ -507,7 +517,7 @@ func AddTest01Remote(ctx context.Context) error {
 			SSHUser:     "ubuntu",
 			SSHIdentity: "/Users/mike/aws/mfmt.pem",
 		},
-		AutoConnect: true,
+		ConnectMode: ConnectModeStartup,
 	}
 	err = InsertRemote(ctx, testRemote)
 	if err != nil {
@@ -527,7 +537,7 @@ func AddTest02Remote(ctx context.Context) error {
 	}
 	testRemote := &RemoteType{
 		RemoteId:            uuid.New().String(),
-		RemoteType:          "ssh",
+		RemoteType:          RemoteTypeSsh,
 		RemoteAlias:         "test2",
 		RemoteCanonicalName: "test2@test01.ec2",
 		RemoteSudo:          false,
@@ -537,7 +547,7 @@ func AddTest02Remote(ctx context.Context) error {
 			SSHHost: "test01.ec2",
 			SSHUser: "test2",
 		},
-		AutoConnect: true,
+		ConnectMode: ConnectModeStartup,
 	}
 	err = InsertRemote(ctx, testRemote)
 	if err != nil {
