@@ -67,7 +67,11 @@ class Cmd {
 
     setCmd(cmd : CmdDataType) {
         mobx.action(() => {
+            let origData = this.data.get();
             this.data.set(cmd);
+            if (origData != null && cmd != null && origData.status != cmd.status) {
+                GlobalModel.cmdStatusUpdate(this.sessionId, this.cmdId, origData.status, cmd.status);
+            }
         })();
     }
 
@@ -825,6 +829,10 @@ class Model {
             windowid: lineElem.dataset.windowid,
             cmdid: lineElem.dataset.cmdid,
         };
+    }
+
+    cmdStatusUpdate(sessionId : string, cmdId : string, origStatus : string, newStatus : string) {
+        console.log("cmd status", sessionId, cmdId, origStatus, "=>", newStatus);
     }
 
     onMetaArrowUp() : void {

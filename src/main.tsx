@@ -973,7 +973,7 @@ class RemoteModal extends React.Component<{}, {}> {
                                     <th className="status-header">Status</th>
                                     <th>Alias</th>
                                     <th>User@Host</th>
-                                    <th>AutoConnect</th>
+                                    <th>Connect</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -992,10 +992,7 @@ class RemoteModal extends React.Component<{}, {}> {
                                             {remote.remotecanonicalname}
                                         </td>
                                         <td>
-                                            <div className="field">
-                                                <input id="switchRoundedDefault" type="checkbox" name="switchRoundedDefault" className="switch is-rounded" checked={remote.autoconnect}/>
-                                                <label for="switchRoundedDefault"></label>
-                                            </div>
+                                            {remote.connectmode}
                                         </td>
                                     </tr>
                                 </For>

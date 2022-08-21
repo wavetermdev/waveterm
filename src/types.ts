@@ -77,6 +77,7 @@ type RemoteType = {
     remotevars : Record<string, string>,
     status : string,
     defaultstate : RemoteStateType,
+    connectmode : string,
 };
 
 type RemoteStateType = {
