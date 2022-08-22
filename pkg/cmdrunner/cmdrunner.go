@@ -276,7 +276,8 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	runPacket.ReqId = uuid.New().String()
 	runPacket.CK = base.MakeCommandKey(ids.SessionId, cmdId)
 	runPacket.Cwd = ids.RemoteState.Cwd
-	runPacket.Env = nil
+	runPacket.Env0 = ids.RemoteState.Env0
+	runPacket.EnvComplete = true
 	runPacket.UsePty = true
 	runPacket.TermOpts = &packet.TermOpts{Rows: remote.DefaultTermRows, Cols: remote.DefaultTermCols, Term: remote.DefaultTerm}
 	runPacket.Command = strings.TrimSpace(cmdStr)

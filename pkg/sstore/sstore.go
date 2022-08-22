@@ -229,8 +229,8 @@ type HistoryItemType struct {
 }
 
 type RemoteState struct {
-	Cwd string `json:"cwd"`
-	Env []byte `json:"env"`
+	Cwd  string `json:"cwd"`
+	Env0 []byte `json:"env0"` // "env -0" format
 }
 
 func (s *RemoteState) Scan(val interface{}) error {

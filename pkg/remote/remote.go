@@ -183,8 +183,8 @@ func GetAllRemoteState() []RemoteState {
 		vars["type"] = proc.Remote.RemoteType
 		if proc.ServerProc != nil && proc.ServerProc.InitPk != nil {
 			state.DefaultState = &sstore.RemoteState{
-				Cwd: proc.ServerProc.InitPk.Cwd,
-				Env: proc.ServerProc.InitPk.Env,
+				Cwd:  proc.ServerProc.InitPk.Cwd,
+				Env0: proc.ServerProc.InitPk.Env0,
 			}
 			vars["home"] = proc.ServerProc.InitPk.HomeDir
 			vars["remoteuser"] = proc.ServerProc.InitPk.User
@@ -326,7 +326,7 @@ func (msh *MShellProc) GetDefaultState() *sstore.RemoteState {
 	if msh.ServerProc == nil || msh.ServerProc.InitPk == nil {
 		return nil
 	}
-	return &sstore.RemoteState{Cwd: msh.ServerProc.InitPk.HomeDir}
+	return &sstore.RemoteState{Cwd: msh.ServerProc.InitPk.HomeDir, Env0: msh.ServerProc.InitPk.Env0}
 }
 
 func (msh *MShellProc) ExpandHomeDir(pathStr string) (string, error) {
