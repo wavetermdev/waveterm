@@ -159,9 +159,6 @@ func UpdateCmdEnv(cmd *exec.Cmd, envVars map[string]string) {
 	if len(envVars) == 0 {
 		return
 	}
-	if cmd.Env == nil {
-		cmd.Env = os.Environ()
-	}
 	found := make(map[string]bool)
 	var newEnv []string
 	for _, envStr := range cmd.Env {
@@ -201,7 +198,10 @@ func MakeSimpleStaticWriterPipe(data []byte) (*os.File, error) {
 
 func MakeDetachedExecCmd(pk *packet.RunPacketType, cmdTty *os.File) (*exec.Cmd, error) {
 	ecmd := exec.Command("bash", "-c", pk.Command)
-	UpdateCmdEnv(ecmd, pk.Env)
+	if !pk.EnvComplete {
+		ecmd.Env = os.Environ()
+	}
+	UpdateCmdEnv(ecmd, parseEnv0(pk.Env0))
 	UpdateCmdEnv(ecmd, map[string]string{"TERM": getTermType(pk)})
 	if pk.Cwd != "" {
 		ecmd.Dir = base.ExpandHomeDir(pk.Cwd)
@@ -828,7 +828,10 @@ func getTermType(pk *packet.RunPacketType) string {
 func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecType, error) {
 	cmd := MakeShExec(pk.CK, nil)
 	cmd.Cmd = exec.Command("bash", "-c", pk.Command)
-	UpdateCmdEnv(cmd.Cmd, pk.Env)
+	if !pk.EnvComplete {
+		cmd.Cmd.Env = os.Environ()
+	}
+	UpdateCmdEnv(cmd.Cmd, parseEnv0(pk.Env0))
 	if pk.Cwd != "" {
 		cmd.Cmd.Dir = base.ExpandHomeDir(pk.Cwd)
 	}
@@ -1104,7 +1107,7 @@ func MakeServerInitPacket() (*packet.InitPacketType, error) {
 		return nil, err
 	}
 	initPacket.Cwd = cwd
-	initPacket.Env = env
+	initPacket.Env0 = env
 	initPacket.RemoteId, err = base.GetRemoteId()
 	if err != nil {
 		return nil, err
@@ -1112,7 +1115,7 @@ func MakeServerInitPacket() (*packet.InitPacketType, error) {
 	return initPacket, nil
 }
 
-func parseEnv(env []byte) map[string]string {
+func parseEnv0(env []byte) map[string]string {
 	envLines := bytes.Split(env, []byte{0})
 	rtn := make(map[string]string)
 	for _, envLine := range envLines {

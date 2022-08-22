@@ -438,7 +438,7 @@ type InitPacketType struct {
 	MShellHomeDir string `json:"mshellhomedir,omitempty"`
 	HomeDir       string `json:"homedir,omitempty"`
 	Cwd           string `json:"cwd,omitempty"`
-	Env           []byte `json:"env,omitempty"` // "env -0" format
+	Env0          []byte `json:"env0,omitempty"` // "env -0" format
 	User          string `json:"user,omitempty"`
 	HostName      string `json:"hostname,omitempty"`
 	NotFound      bool   `json:"notfound,omitempty"`
@@ -532,17 +532,18 @@ type RunDataType struct {
 }
 
 type RunPacketType struct {
-	Type     string            `json:"type"`
-	ReqId    string            `json:"reqid"`
-	CK       base.CommandKey   `json:"ck"`
-	Command  string            `json:"command"`
-	Cwd      string            `json:"cwd,omitempty"`
-	Env      map[string]string `json:"env,omitempty"`
-	UsePty   bool              `json:"usepty,omitempty"`
-	TermOpts *TermOpts         `json:"termopts,omitempty"`
-	Fds      []RemoteFd        `json:"fds,omitempty"`
-	RunData  []RunDataType     `json:"rundata,omitempty"`
-	Detached bool              `json:"detached,omitempty"`
+	Type        string          `json:"type"`
+	ReqId       string          `json:"reqid"`
+	CK          base.CommandKey `json:"ck"`
+	Command     string          `json:"command"`
+	Cwd         string          `json:"cwd,omitempty"`
+	Env0        []byte          `json:"env0,omitempty"`        // in "env -0" format
+	EnvComplete bool            `json:"envcomplete,omitempty"` // set to true if env0 is complete (the default env should not be set)
+	UsePty      bool            `json:"usepty,omitempty"`
+	TermOpts    *TermOpts       `json:"termopts,omitempty"`
+	Fds         []RemoteFd      `json:"fds,omitempty"`
+	RunData     []RunDataType   `json:"rundata,omitempty"`
+	Detached    bool            `json:"detached,omitempty"`
 }
 
 func (*RunPacketType) GetType() string {
