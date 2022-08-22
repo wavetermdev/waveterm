@@ -7,8 +7,10 @@
 package shexec
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -37,6 +39,8 @@ const MaxFdNum = 1023
 const FirstExtraFilesFdNum = 3
 const DefaultTermType = "xterm-256color"
 const DefaultMaxPtySize = 1024 * 1024
+
+const GetStateTimeout = 5 * time.Second
 
 const ClientCommand = `
 PATH=$PATH:~/.mshell;
@@ -1095,10 +1099,70 @@ func MakeInitPacket() *packet.InitPacketType {
 func MakeServerInitPacket() (*packet.InitPacketType, error) {
 	var err error
 	initPacket := MakeInitPacket()
-	initPacket.Env = os.Environ()
+	cwd, env, err := GetCurrentState()
+	if err != nil {
+		return nil, err
+	}
+	initPacket.Cwd = cwd
+	initPacket.Env = env
 	initPacket.RemoteId, err = base.GetRemoteId()
 	if err != nil {
 		return nil, err
 	}
 	return initPacket, nil
+}
+
+func parseEnv(env []byte) map[string]string {
+	envLines := bytes.Split(env, []byte{0})
+	rtn := make(map[string]string)
+	for _, envLine := range envLines {
+		if len(envLine) == 0 {
+			continue
+		}
+		eqIdx := bytes.Index(envLine, []byte{'='})
+		if eqIdx == -1 {
+			continue
+		}
+		varName := string(envLine[0:eqIdx])
+		varVal := string(envLine[eqIdx+1:])
+		rtn[varName] = varVal
+	}
+	return rtn
+}
+
+func getStderr(err error) string {
+	exitErr, ok := err.(*exec.ExitError)
+	if !ok {
+		return ""
+	}
+	if len(exitErr.Stderr) == 0 {
+		return ""
+	}
+	lines := strings.SplitN(string(exitErr.Stderr), "\n", 2)
+	if len(lines[0]) > 100 {
+		return lines[0][0:100]
+	}
+	return lines[0]
+}
+
+func GetCurrentState() (string, []byte, error) {
+	execFile, err := os.Executable()
+	if err != nil {
+		return "", nil, fmt.Errorf("cannot find local mshell executable: %w", err)
+	}
+	ctx, _ := context.WithTimeout(context.Background(), GetStateTimeout)
+	ecmd := exec.CommandContext(ctx, "bash", "-l", "-c", fmt.Sprintf("%s --env", shellescape.Quote(execFile)))
+	outputBytes, err := ecmd.Output()
+	if err != nil {
+		errMsg := getStderr(err)
+		if errMsg != "" {
+			return "", nil, errors.New(errMsg)
+		}
+		return "", nil, err
+	}
+	idx := bytes.Index(outputBytes, []byte{0})
+	if idx == -1 {
+		return "", nil, fmt.Errorf("invalid current state output no NUL byte separator")
+	}
+	return string(outputBytes[0:idx]), outputBytes[idx+1:], nil
 }

@@ -425,6 +425,19 @@ func handleInstall() (int, error) {
 	return 0, nil
 }
 
+func handleEnv() (int, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return 1, err
+	}
+	fmt.Printf("%s\x00", cwd)
+	fullEnv := os.Environ()
+	for _, envLine := range fullEnv {
+		fmt.Printf("%s\x00", envLine)
+	}
+	return 0, nil
+}
+
 func handleUsage() {
 	usage := `
 Client Usage: mshell [opts] --ssh user@host -- [command]
@@ -482,6 +495,14 @@ func main() {
 	} else if firstArg == "--version" {
 		fmt.Printf("mshell v%s\n", base.MShellVersion)
 		return
+	} else if firstArg == "--env" {
+		rtnCode, err := handleEnv()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "[error] %v\n", err)
+		}
+		if rtnCode != 0 {
+			os.Exit(rtnCode)
+		}
 	} else if firstArg == "--single" {
 		handleSingle()
 		return

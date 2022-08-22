@@ -433,16 +433,17 @@ func FmtMessagePacket(fmtStr string, args ...interface{}) *MessagePacketType {
 }
 
 type InitPacketType struct {
-	Type          string   `json:"type"`
-	Version       string   `json:"version"`
-	MShellHomeDir string   `json:"mshellhomedir,omitempty"`
-	HomeDir       string   `json:"homedir,omitempty"`
-	Env           []string `json:"env,omitempty"`
-	User          string   `json:"user,omitempty"`
-	HostName      string   `json:"hostname,omitempty"`
-	NotFound      bool     `json:"notfound,omitempty"`
-	UName         string   `json:"uname,omitempty"`
-	RemoteId      string   `json:"remoteid,omitempty"`
+	Type          string `json:"type"`
+	Version       string `json:"version"`
+	MShellHomeDir string `json:"mshellhomedir,omitempty"`
+	HomeDir       string `json:"homedir,omitempty"`
+	Cwd           string `json:"cwd,omitempty"`
+	Env           []byte `json:"env,omitempty"` // "env -0" format
+	User          string `json:"user,omitempty"`
+	HostName      string `json:"hostname,omitempty"`
+	NotFound      bool   `json:"notfound,omitempty"`
+	UName         string `json:"uname,omitempty"`
+	RemoteId      string `json:"remoteid,omitempty"`
 }
 
 func (*InitPacketType) GetType() string {
