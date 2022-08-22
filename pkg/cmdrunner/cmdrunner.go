@@ -68,7 +68,7 @@ var ValidCommands = []string{
 	"/comment",
 	"/cd",
 	"/compgen",
-	"/setenv",
+	"/setenv", "/unset",
 }
 
 func HandleCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -99,6 +99,9 @@ func HandleCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 
 	case "setenv":
 		return SetEnvCommand(ctx, pk)
+
+	case "unset":
+		return UnSetCommand(ctx, pk)
 
 	default:
 		return nil, fmt.Errorf("invalid command '/%s', no handler", pk.MetaCmd)
@@ -350,6 +353,9 @@ func evalCommandInternal(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	} else if commandStr == "setenv" || strings.HasPrefix(commandStr, "setenv ") {
 		metaCmd = "setenv"
 		commandStr = strings.TrimSpace(commandStr[6:])
+	} else if commandStr == "unset" || strings.HasPrefix(commandStr, "unset ") {
+		metaCmd = "unset"
+		commandStr = strings.TrimSpace(commandStr[5:])
 	} else if commandStr[0] == '/' {
 		spaceIdx := strings.Index(commandStr, " ")
 		if spaceIdx == -1 {
@@ -435,6 +441,10 @@ func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		return nil, err
 	}
 	return update, nil
+}
+
+func UnSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	return nil, nil
 }
 
 func SetEnvCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {

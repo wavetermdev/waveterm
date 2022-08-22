@@ -115,6 +115,42 @@ func GetRemoteById(remoteId string) *MShellProc {
 	return GlobalStore.Map[remoteId]
 }
 
+func unquoteDQBashString(str string) (string, bool) {
+	if len(str) < 2 {
+		return str, false
+	}
+	if str[0] != '"' || str[len(str)-1] != '"' {
+		return str, false
+	}
+	rtn := make([]byte, 0, len(str)-2)
+	for idx := 1; idx < len(str)-1; idx++ {
+		ch := str[idx]
+		if ch == '"' {
+			return str, false
+		}
+		if ch == '\\' {
+			if idx == len(str)-2 {
+				return str, false
+			}
+			nextCh := str[idx+1]
+			if nextCh == '\n' {
+				idx++
+				continue
+			}
+			if nextCh == '$' || nextCh == '"' || nextCh == '\\' || nextCh == '`' {
+				idx++
+				rtn = append(rtn, nextCh)
+				continue
+			}
+			rtn = append(rtn, '\\')
+			continue
+		} else {
+			rtn = append(rtn, ch)
+		}
+	}
+	return string(rtn), true
+}
+
 func GetAllRemoteState() []RemoteState {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
@@ -146,7 +182,10 @@ func GetAllRemoteState() []RemoteState {
 		vars["status"] = proc.Status
 		vars["type"] = proc.Remote.RemoteType
 		if proc.ServerProc != nil && proc.ServerProc.InitPk != nil {
-			state.DefaultState = &sstore.RemoteState{Cwd: proc.ServerProc.InitPk.HomeDir}
+			state.DefaultState = &sstore.RemoteState{
+				Cwd: proc.ServerProc.InitPk.Cwd,
+				Env: proc.ServerProc.InitPk.Env,
+			}
 			vars["home"] = proc.ServerProc.InitPk.HomeDir
 			vars["remoteuser"] = proc.ServerProc.InitPk.User
 			vars["remotehost"] = proc.ServerProc.InitPk.HostName
