@@ -82,6 +82,7 @@ type RemoteType = {
 
 type RemoteStateType = {
     cwd : string,
+    env0 : string, // in base64 "env -0" form
 };
 
 type RemoteInstanceType = {

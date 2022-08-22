@@ -142,4 +142,24 @@ function genMergeData<ObjType extends IObjType<DataType>, DataType extends IData
     objs.replace(newObjs);
 }
 
-export {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData};
+function parseEnv0(envStr64 : string) : Map<string, string> {
+    let envStr = atob(envStr64);
+    let parts = envStr.split("\x00");
+    let rtn : Map<string, string> = new Map();
+    for (let i=0; i<parts.length; i++) {
+        let part = parts[i];
+        if (part == "") {
+            continue;
+        }
+        let eqIdx = part.indexOf("=");
+        if (eqIdx == -1) {
+            continue;
+        }
+        let varName = part.substr(0, eqIdx);
+        let varVal = part.substr(eqIdx+1)
+        rtn.set(varName, varVal)
+    }
+    return rtn;
+}
+
+export {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData, parseEnv0};
