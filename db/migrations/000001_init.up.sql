@@ -66,6 +66,7 @@ CREATE TABLE line (
     linetype varchar(10) NOT NULL,
     text text NOT NULL,
     cmdid varchar(36) NOT NULL,
+    ephemeral boolean NOT NULL,
     PRIMARY KEY (sessionid, windowid, lineid)
 );
 

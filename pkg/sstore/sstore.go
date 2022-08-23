@@ -278,6 +278,7 @@ type LineType struct {
 	LineType  string `json:"linetype"`
 	Text      string `json:"text,omitempty"`
 	CmdId     string `json:"cmdid,omitempty"`
+	Ephemeral bool   `json:"ephemeral,omitempty"`
 	Remove    bool   `json:"remove,omitempty"`
 }
 

@@ -398,8 +398,8 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 		if !hasWindow {
 			return fmt.Errorf("window not found, cannot insert line[%s/%s]", line.SessionId, line.WindowId)
 		}
-		query = `INSERT INTO line  ( sessionid, windowid, lineid, ts, userid, linetype, text, cmdid)
-                            VALUES (:sessionid,:windowid,:lineid,:ts,:userid,:linetype,:text,:cmdid)`
+		query = `INSERT INTO line  ( sessionid, windowid, lineid, ts, userid, linetype, text, cmdid, ephemeral)
+                            VALUES (:sessionid,:windowid,:lineid,:ts,:userid,:linetype,:text,:cmdid,:ephemeral)`
 		tx.NamedExecWrap(query, line)
 		if cmd != nil {
 			cmdMap := cmd.ToMap()

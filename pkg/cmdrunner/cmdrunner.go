@@ -386,6 +386,10 @@ func evalCommandInternal(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 		MetaSubCmd: metaSubCmd,
 		Kwargs:     pk.Kwargs,
 	}
+	if strings.HasSuffix(commandStr, " ?") {
+		newPk.Kwargs["ephemeral"] = "1"
+		commandStr = commandStr[0 : len(commandStr)-2]
+	}
 	if metaCmd == "run" || metaCmd == "comment" {
 		newPk.Args = []string{commandStr}
 	} else if (metaCmd == "setenv" || metaCmd == "unset") && metaSubCmd == "" {
