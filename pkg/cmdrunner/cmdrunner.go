@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alessio/shellescape"
 	"github.com/google/uuid"
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
@@ -524,6 +525,20 @@ func SetEnvCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		return nil, fmt.Errorf("remote state is not available")
 	}
 	envMap := shexec.ParseEnv0(ids.RemoteState.Env0)
+	if len(pk.Args) == 0 {
+		var infoLines []string
+		for varName, varVal := range envMap {
+			line := fmt.Sprintf("%s=%s", varName, shellescape.Quote(varVal))
+			infoLines = append(infoLines, line)
+		}
+		update := sstore.InfoUpdate{
+			Info: &sstore.InfoMsgType{
+				InfoTitle: fmt.Sprintf("[%s] environment", ids.RemoteName),
+				InfoLines: infoLines,
+			},
+		}
+		return update, nil
+	}
 	setVars := make(map[string]bool)
 	for _, argStr := range pk.Args {
 		eqIdx := strings.Index(argStr, "=")

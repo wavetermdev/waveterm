@@ -84,8 +84,9 @@ type InfoMsgType struct {
 	InfoTitle     string   `json:"infotitle"`
 	InfoError     string   `json:"infoerror,omitempty"`
 	InfoMsg       string   `json:"infomsg,omitempty"`
-	InfoComps     []string `json:"infocomps"`
-	InfoCompsMore bool     `json:"infocompssmore"`
+	InfoComps     []string `json:"infocomps,omitempty"`
+	InfoCompsMore bool     `json:"infocompssmore,omitempty"`
+	InfoLines     []string `json:"infolines,omitempty"`
 	TimeoutMs     int64    `json:"timeoutms,omitempty"`
 }
 
