@@ -201,7 +201,7 @@ func MakeDetachedExecCmd(pk *packet.RunPacketType, cmdTty *os.File) (*exec.Cmd, 
 	if !pk.EnvComplete {
 		ecmd.Env = os.Environ()
 	}
-	UpdateCmdEnv(ecmd, parseEnv0(pk.Env0))
+	UpdateCmdEnv(ecmd, ParseEnv0(pk.Env0))
 	UpdateCmdEnv(ecmd, map[string]string{"TERM": getTermType(pk)})
 	if pk.Cwd != "" {
 		ecmd.Dir = base.ExpandHomeDir(pk.Cwd)
@@ -831,7 +831,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender) (*S
 	if !pk.EnvComplete {
 		cmd.Cmd.Env = os.Environ()
 	}
-	UpdateCmdEnv(cmd.Cmd, parseEnv0(pk.Env0))
+	UpdateCmdEnv(cmd.Cmd, ParseEnv0(pk.Env0))
 	if pk.Cwd != "" {
 		cmd.Cmd.Dir = base.ExpandHomeDir(pk.Cwd)
 	}
@@ -1115,7 +1115,7 @@ func MakeServerInitPacket() (*packet.InitPacketType, error) {
 	return initPacket, nil
 }
 
-func parseEnv0(env []byte) map[string]string {
+func ParseEnv0(env []byte) map[string]string {
 	envLines := bytes.Split(env, []byte{0})
 	rtn := make(map[string]string)
 	for _, envLine := range envLines {
@@ -1131,6 +1131,17 @@ func parseEnv0(env []byte) map[string]string {
 		rtn[varName] = varVal
 	}
 	return rtn
+}
+
+func MakeEnv0(envMap map[string]string) []byte {
+	var buf bytes.Buffer
+	for envName, envVal := range envMap {
+		buf.WriteString(envName)
+		buf.WriteByte('=')
+		buf.WriteString(envVal)
+		buf.WriteByte(0)
+	}
+	return buf.Bytes()
 }
 
 func getStderr(err error) string {
