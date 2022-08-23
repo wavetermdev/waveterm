@@ -471,6 +471,7 @@ class CmdInput extends React.Component<{}, {}> {
         let infoShow = GlobalModel.infoShow.get();
         let istr : string = null;
         let istrIdx : number = 0;
+        let line : string = null;
         return (
             <div className={cn("box cmd-input has-background-black", {"has-info": infoShow})}>
                 <div className="cmd-input-info" style={{display: (infoShow ? "block" : "none")}}>
@@ -482,6 +483,13 @@ class CmdInput extends React.Component<{}, {}> {
                     <If condition={infoMsg && infoMsg.infomsg != null}>
                         <div className="info-msg">
                             {infoMsg.infomsg}
+                        </div>
+                    </If>
+                    <If condition={infoMsg && infoMsg.infolines != null}>
+                        <div className="info-lines">
+                            <For each="line" of={infoMsg.infolines}>
+                                <div>{line}</div>
+                            </For>
                         </div>
                     </If>
                     <If condition={infoMsg && infoMsg.infocomps != null && infoMsg.infocomps.length > 0}>

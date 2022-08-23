@@ -221,6 +221,7 @@ type InfoType = {
     infotitle? : string,
     infomsg? : string,
     infoerror? : string,
+    infolines? : string[],
     infocomps? : string[],
     infocompsmore? : boolean,
     timeoutms? : number,
