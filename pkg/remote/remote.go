@@ -151,49 +151,56 @@ func unquoteDQBashString(str string) (string, bool) {
 	return string(rtn), true
 }
 
+func (proc *MShellProc) GetRemoteState() RemoteState {
+	proc.Lock.Lock()
+	defer proc.Lock.Unlock()
+	state := RemoteState{
+		RemoteType:          proc.Remote.RemoteType,
+		RemoteId:            proc.Remote.RemoteId,
+		RemoteAlias:         proc.Remote.RemoteAlias,
+		RemoteCanonicalName: proc.Remote.RemoteCanonicalName,
+		PhysicalId:          proc.Remote.PhysicalId,
+		Status:              proc.Status,
+		ConnectMode:         proc.Remote.ConnectMode,
+	}
+	if proc.Err != nil {
+		state.ErrorStr = proc.Err.Error()
+	}
+	vars := make(map[string]string)
+	vars["user"] = proc.Remote.RemoteUser
+	vars["host"] = proc.Remote.RemoteHost
+	if proc.Remote.RemoteSudo {
+		vars["sudo"] = "1"
+	}
+	vars["alias"] = proc.Remote.RemoteAlias
+	vars["cname"] = proc.Remote.RemoteCanonicalName
+	vars["physicalid"] = proc.Remote.PhysicalId
+	vars["remoteid"] = proc.Remote.RemoteId
+	vars["status"] = proc.Status
+	vars["type"] = proc.Remote.RemoteType
+	if proc.ServerProc != nil && proc.ServerProc.InitPk != nil {
+		state.DefaultState = &sstore.RemoteState{
+			Cwd:  proc.ServerProc.InitPk.Cwd,
+			Env0: proc.ServerProc.InitPk.Env0,
+		}
+		vars["home"] = proc.ServerProc.InitPk.HomeDir
+		vars["remoteuser"] = proc.ServerProc.InitPk.User
+		vars["remotehost"] = proc.ServerProc.InitPk.HostName
+		if proc.Remote.SSHOpts == nil || proc.Remote.SSHOpts.SSHHost == "" {
+			vars["local"] = "1"
+		}
+	}
+	state.RemoteVars = vars
+	return state
+}
+
 func GetAllRemoteState() []RemoteState {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
 
 	var rtn []RemoteState
 	for _, proc := range GlobalStore.Map {
-		state := RemoteState{
-			RemoteType:          proc.Remote.RemoteType,
-			RemoteId:            proc.Remote.RemoteId,
-			RemoteAlias:         proc.Remote.RemoteAlias,
-			RemoteCanonicalName: proc.Remote.RemoteCanonicalName,
-			PhysicalId:          proc.Remote.PhysicalId,
-			Status:              proc.Status,
-			ConnectMode:         proc.Remote.ConnectMode,
-		}
-		if proc.Err != nil {
-			state.ErrorStr = proc.Err.Error()
-		}
-		vars := make(map[string]string)
-		vars["user"] = proc.Remote.RemoteUser
-		vars["host"] = proc.Remote.RemoteHost
-		if proc.Remote.RemoteSudo {
-			vars["sudo"] = "1"
-		}
-		vars["alias"] = proc.Remote.RemoteAlias
-		vars["cname"] = proc.Remote.RemoteCanonicalName
-		vars["physicalid"] = proc.Remote.PhysicalId
-		vars["remoteid"] = proc.Remote.RemoteId
-		vars["status"] = proc.Status
-		vars["type"] = proc.Remote.RemoteType
-		if proc.ServerProc != nil && proc.ServerProc.InitPk != nil {
-			state.DefaultState = &sstore.RemoteState{
-				Cwd:  proc.ServerProc.InitPk.Cwd,
-				Env0: proc.ServerProc.InitPk.Env0,
-			}
-			vars["home"] = proc.ServerProc.InitPk.HomeDir
-			vars["remoteuser"] = proc.ServerProc.InitPk.User
-			vars["remotehost"] = proc.ServerProc.InitPk.HostName
-			if proc.Remote.SSHOpts == nil || proc.Remote.SSHOpts.SSHHost == "" {
-				vars["local"] = "1"
-			}
-		}
-		state.RemoteVars = vars
+		state := proc.GetRemoteState()
 		rtn = append(rtn, state)
 	}
 	return rtn

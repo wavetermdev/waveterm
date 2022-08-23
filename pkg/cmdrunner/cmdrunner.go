@@ -1,6 +1,7 @@
 package cmdrunner
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"path"
@@ -71,6 +72,7 @@ var ValidCommands = []string{
 	"@cd",
 	"@compgen",
 	"@setenv", "@unset",
+	"@remote:show",
 }
 
 func HandleCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -104,6 +106,9 @@ func HandleCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 
 	case "unset":
 		return UnSetCommand(ctx, pk)
+
+	case "remote":
+		return RemoteCommand(ctx, pk)
 
 	default:
 		return nil, fmt.Errorf("invalid command '@%s', no handler", pk.MetaCmd)
@@ -502,6 +507,45 @@ func UnSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 	return update, nil
 }
 
+func RemoteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	if pk.MetaSubCmd == "show" {
+		ids, err := resolveIds(ctx, pk, R_Session|R_Window|R_Remote)
+		if err != nil {
+			return nil, err
+		}
+		curRemote := remote.GetRemoteById(ids.RemoteId)
+		if curRemote == nil {
+			return nil, fmt.Errorf("invalid remote [%s] (not found)", ids.RemoteName)
+		}
+		state := curRemote.GetRemoteState()
+		var buf bytes.Buffer
+		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "type", state.RemoteType))
+		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "remoteid", state.RemoteId))
+		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "physicalid", state.PhysicalId))
+		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "alias", state.RemoteAlias))
+		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "canonicalname", state.RemoteCanonicalName))
+		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "status", state.Status))
+		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "connectmode", state.ConnectMode))
+		if ids.RemoteState != nil {
+			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "cwd", ids.RemoteState.Cwd))
+		}
+		output := buf.String()
+		if strings.HasSuffix(output, "\n") {
+			output = output[0 : len(output)-1]
+		}
+		return sstore.InfoUpdate{
+			Info: &sstore.InfoMsgType{
+				InfoTitle: fmt.Sprintf("show remote '%s' info", ids.RemoteName),
+				InfoLines: strings.Split(output, "\n"),
+			},
+		}, nil
+	}
+	if pk.MetaSubCmd != "" {
+		return nil, fmt.Errorf("invalid @remote subcommand: '%s'", pk.MetaSubCmd)
+	}
+	return nil, fmt.Errorf("@remote requires a subcommand: 'show'")
+}
+
 func makeSetVarsStr(setVars map[string]bool) string {
 	varArr := make([]string, 0, len(setVars))
 	for varName, _ := range setVars {
@@ -537,7 +581,7 @@ func SetEnvCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		}
 		update := sstore.InfoUpdate{
 			Info: &sstore.InfoMsgType{
-				InfoTitle: fmt.Sprintf("[%s] environment", ids.RemoteName),
+				InfoTitle: fmt.Sprintf("environment for [%s] remote", ids.RemoteName),
 				InfoLines: infoLines,
 			},
 		}
