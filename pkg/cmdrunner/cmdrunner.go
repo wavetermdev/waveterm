@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
+	"github.com/scripthaus-dev/mshell/pkg/shexec"
 	"github.com/scripthaus-dev/sh2-server/pkg/remote"
 	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
@@ -277,6 +278,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	runPacket.CK = base.MakeCommandKey(ids.SessionId, cmdId)
 	runPacket.Cwd = ids.RemoteState.Cwd
 	runPacket.Env0 = ids.RemoteState.Env0
+	fmt.Printf("run-command FOO [%s]\n", shexec.ParseEnv0(ids.RemoteState.Env0)["FOO"])
 	runPacket.EnvComplete = true
 	runPacket.UsePty = true
 	runPacket.TermOpts = &packet.TermOpts{Rows: remote.DefaultTermRows, Cols: remote.DefaultTermCols, Term: remote.DefaultTerm}
@@ -331,7 +333,7 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 	if !resolveBool(pk.Kwargs["nohist"], false) {
 		err := addToHistory(ctx, pk, update, (err != nil))
 		if err != nil {
-			fmt.Printf("[error] adding to history: %w\n", err)
+			fmt.Printf("[error] adding to history: %v\n", err)
 			// continue...
 		}
 	}
@@ -377,6 +379,7 @@ func evalCommandInternal(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	if metaCmd == "" {
 		metaCmd = "run"
 	}
+	metaCmd = SubMetaCmd(metaCmd)
 	newPk := &scpacket.FeCommandPacketType{
 		MetaCmd:    metaCmd,
 		MetaSubCmd: metaSubCmd,
@@ -384,6 +387,8 @@ func evalCommandInternal(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	}
 	if metaCmd == "run" || metaCmd == "comment" {
 		newPk.Args = []string{commandStr}
+	} else if (metaCmd == "setenv" || metaCmd == "unset") && metaSubCmd == "" {
+		newPk.Args = strings.Fields(commandStr)
 	} else {
 		allArgs := strings.Fields(commandStr)
 		for _, arg := range allArgs {
@@ -445,11 +450,109 @@ func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 }
 
 func UnSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	return nil, nil
+	if pk.MetaSubCmd != "" {
+		return nil, fmt.Errorf("invalid /unset subcommand '%s'", pk.MetaSubCmd)
+	}
+	ids, err := resolveIds(ctx, pk, R_Session|R_Window|R_Remote)
+	if err != nil {
+		return nil, err
+	}
+	curRemote := remote.GetRemoteById(ids.RemoteId)
+	if curRemote == nil {
+		return nil, fmt.Errorf("invalid remote, cannot unset")
+	}
+	if !curRemote.IsConnected() {
+		return nil, fmt.Errorf("remote is not connected, cannot unset")
+	}
+	if ids.RemoteState == nil {
+		return nil, fmt.Errorf("remote state is not available")
+	}
+	envMap := shexec.ParseEnv0(ids.RemoteState.Env0)
+	unsetVars := make(map[string]bool)
+	for _, argStr := range pk.Args {
+		eqIdx := strings.Index(argStr, "=")
+		if eqIdx != -1 {
+			return nil, fmt.Errorf("invalid argument to setenv, '%s' (cannot contain equal sign)", argStr)
+		}
+		delete(envMap, argStr)
+		unsetVars[argStr] = true
+	}
+	state := *ids.RemoteState
+	state.Env0 = shexec.MakeEnv0(envMap)
+	remote, err := sstore.UpdateRemoteState(ctx, ids.RemoteName, ids.SessionId, ids.WindowId, ids.RemoteId, state)
+	if err != nil {
+		return nil, err
+	}
+	update := sstore.WindowUpdate{
+		Window: sstore.WindowType{
+			SessionId: ids.SessionId,
+			WindowId:  ids.WindowId,
+			Remotes:   []*sstore.RemoteInstance{remote},
+		},
+		Info: &sstore.InfoMsgType{
+			InfoMsg:   fmt.Sprintf("[%s] unset vars: %s", ids.RemoteName, makeSetVarsStr(unsetVars)),
+			TimeoutMs: 2000,
+		},
+	}
+	return update, nil
+}
+
+func makeSetVarsStr(setVars map[string]bool) string {
+	varArr := make([]string, 0, len(setVars))
+	for varName, _ := range setVars {
+		varArr = append(varArr, varName)
+	}
+	return strings.Join(varArr, ", ")
 }
 
 func SetEnvCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	return nil, nil
+	if pk.MetaSubCmd != "" {
+		return nil, fmt.Errorf("invalid /setenv subcommand '%s'", pk.MetaSubCmd)
+	}
+	ids, err := resolveIds(ctx, pk, R_Session|R_Window|R_Remote)
+	if err != nil {
+		return nil, err
+	}
+	curRemote := remote.GetRemoteById(ids.RemoteId)
+	if curRemote == nil {
+		return nil, fmt.Errorf("invalid remote, cannot setenv")
+	}
+	if !curRemote.IsConnected() {
+		return nil, fmt.Errorf("remote is not connected, cannot setenv")
+	}
+	if ids.RemoteState == nil {
+		return nil, fmt.Errorf("remote state is not available")
+	}
+	envMap := shexec.ParseEnv0(ids.RemoteState.Env0)
+	setVars := make(map[string]bool)
+	for _, argStr := range pk.Args {
+		eqIdx := strings.Index(argStr, "=")
+		if eqIdx == -1 {
+			return nil, fmt.Errorf("invalid argument to setenv, '%s' (no equal sign)", argStr)
+		}
+		envName := argStr[:eqIdx]
+		envVal := argStr[eqIdx+1:]
+		envMap[envName] = envVal
+		setVars[envName] = true
+	}
+	state := *ids.RemoteState
+	state.Env0 = shexec.MakeEnv0(envMap)
+	remote, err := sstore.UpdateRemoteState(ctx, ids.RemoteName, ids.SessionId, ids.WindowId, ids.RemoteId, state)
+	if err != nil {
+		return nil, err
+	}
+	update := sstore.WindowUpdate{
+		Window: sstore.WindowType{
+			SessionId: ids.SessionId,
+			WindowId:  ids.WindowId,
+			Remotes:   []*sstore.RemoteInstance{remote},
+		},
+		Info: &sstore.InfoMsgType{
+			InfoMsg:   fmt.Sprintf("[%s] set vars: %s", ids.RemoteName, makeSetVarsStr(setVars)),
+			TimeoutMs: 2000,
+		},
+	}
+	return update, nil
 }
 
 func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -500,10 +603,10 @@ func CdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 	if !curRemote.IsConnected() {
 		return nil, fmt.Errorf("remote is not connected, cannot change directory")
 	}
+	if ids.RemoteState == nil {
+		return nil, fmt.Errorf("remote state is not available")
+	}
 	if newDir == "" {
-		if ids.RemoteState == nil {
-			return nil, fmt.Errorf("remote state is not available")
-		}
 		return sstore.InfoUpdate{
 			Info: &sstore.InfoMsgType{
 				InfoMsg: fmt.Sprintf("[%s] current directory = %s", ids.RemoteName, ids.RemoteState.Cwd),
@@ -524,7 +627,6 @@ func CdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 			return nil, fmt.Errorf("/cd error: error canonicalizing new directory: %w", err)
 		}
 	}
-	fmt.Printf("cd [%s] => [%s]\n", firstArg(pk), newDir)
 	cdPacket := packet.MakeCdPacket()
 	cdPacket.ReqId = uuid.New().String()
 	cdPacket.Dir = newDir
@@ -535,8 +637,9 @@ func CdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 	if err = resp.Err(); err != nil {
 		return nil, err
 	}
-	fmt.Printf("cd-resp %#v\n", resp)
-	remote, err := sstore.UpdateRemoteCwd(ctx, ids.RemoteName, ids.SessionId, ids.WindowId, ids.RemoteId, newDir)
+	state := *ids.RemoteState
+	state.Cwd = newDir
+	remote, err := sstore.UpdateRemoteState(ctx, ids.RemoteName, ids.SessionId, ids.WindowId, ids.RemoteId, state)
 	if err != nil {
 		return nil, err
 	}
