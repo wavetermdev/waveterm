@@ -276,7 +276,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         return (
             <div className={cn("line", "line-cmd", {"focus": isFocused})} id={"line-" + getLineId(line)} ref={this.lineRef} style={{position: "relative"}} data-lineid={line.lineid} data-windowid={line.windowid} data-cmdid={line.cmdid}>
                 <div className="line-header">
-                    <div className={cn("avatar",{"num4": cmdRefNumStr.length == 4}, {"num5": cmdRefNumStr.length >= 5}, "status-" + status)} onClick={this.doRefresh}>
+                    <div className={cn("avatar",{"num4": cmdRefNumStr.length == 4}, {"num5": cmdRefNumStr.length >= 5}, "status-" + status, {"ephemeral": line.ephemeral})} onClick={this.doRefresh}>
                         {cmdRefNumStr}
                         <If condition={status == "hangup" || status == "error"}>
                             <i className="fa fa-exclamation-triangle status-icon"/>
@@ -472,6 +472,7 @@ class CmdInput extends React.Component<{}, {}> {
         let istr : string = null;
         let istrIdx : number = 0;
         let line : string = null;
+        let idx : number = 0;
         return (
             <div className={cn("box cmd-input has-background-black", {"has-info": infoShow})}>
                 <div className="cmd-input-info" style={{display: (infoShow ? "block" : "none")}}>
@@ -487,8 +488,8 @@ class CmdInput extends React.Component<{}, {}> {
                     </If>
                     <If condition={infoMsg && infoMsg.infolines != null}>
                         <div className="info-lines">
-                            <For each="line" of={infoMsg.infolines}>
-                                <div>{line}</div>
+                            <For index="idx" each="line" of={infoMsg.infolines}>
+                                <div key={idx}>{line}</div>
                             </For>
                         </div>
                     </If>

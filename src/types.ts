@@ -23,6 +23,7 @@ type LineType = {
     linetype : string,
     text : string,
     cmdid : string,
+    ephemeral? : boolean,
     remove? : boolean,
 };
 
