@@ -64,15 +64,15 @@ func SubMetaCmd(cmd string) string {
 }
 
 var ValidCommands = []string{
-	"@run",
-	"@eval",
-	"@screen", "@screen:open", "@screen:close",
-	"@session", "@session:open", "@session:close",
-	"@comment",
-	"@cd",
-	"@compgen",
-	"@setenv", "@unset",
-	"@remote:show",
+	"/run",
+	"/eval",
+	"/screen", "/screen:open", "/screen:close",
+	"/session", "/session:open", "/session:close",
+	"/comment",
+	"/cd",
+	"/compgen",
+	"/setenv", "/unset",
+	"/remote:show",
 }
 
 func HandleCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -111,7 +111,7 @@ func HandleCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		return RemoteCommand(ctx, pk)
 
 	default:
-		return nil, fmt.Errorf("invalid command '@%s', no handler", pk.MetaCmd)
+		return nil, fmt.Errorf("invalid command '/%s', no handler", pk.MetaCmd)
 	}
 }
 
@@ -275,7 +275,7 @@ func resolveIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype int
 func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveIds(ctx, pk, R_Session|R_Window|R_Remote)
 	if err != nil {
-		return nil, fmt.Errorf("@run error: %w", err)
+		return nil, fmt.Errorf("/run error: %w", err)
 	}
 	cmdId := uuid.New().String()
 	cmdStr := firstArg(pk)
@@ -328,12 +328,12 @@ func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, update 
 
 func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	if len(pk.Args) == 0 {
-		return nil, fmt.Errorf("usage: @eval [command], no command passed to eval")
+		return nil, fmt.Errorf("usage: /eval [command], no command passed to eval")
 	}
 	// parse metacmd
 	commandStr := strings.TrimSpace(pk.Args[0])
 	if commandStr == "" {
-		return nil, fmt.Errorf("@eval, invalid emtpty command")
+		return nil, fmt.Errorf("/eval, invalid emtpty command")
 	}
 	update, err := evalCommandInternal(ctx, pk)
 	if !resolveBool(pk.Kwargs["nohist"], false) {
@@ -365,7 +365,7 @@ func evalCommandInternal(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	} else if commandStr == "unset" || strings.HasPrefix(commandStr, "unset ") {
 		metaCmd = "unset"
 		commandStr = strings.TrimSpace(commandStr[5:])
-	} else if commandStr[0] == '@' {
+	} else if commandStr[0] == '/' {
 		spaceIdx := strings.Index(commandStr, " ")
 		if spaceIdx == -1 {
 			metaCmd = commandStr[1:]
@@ -379,7 +379,7 @@ func evalCommandInternal(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 			metaCmd, metaSubCmd = metaCmd[0:colonIdx], metaCmd[colonIdx+1:]
 		}
 		if metaCmd == "" {
-			return nil, fmt.Errorf("invalid command, got bare '@', with no command")
+			return nil, fmt.Errorf("invalid command, got bare '/', with no command")
 		}
 	}
 	if metaCmd == "" {
@@ -417,7 +417,7 @@ func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	if pk.MetaSubCmd == "close" {
 		ids, err := resolveIds(ctx, pk, R_Session|R_Screen)
 		if err != nil {
-			return nil, fmt.Errorf("@screen:close cannot close screen: %w", err)
+			return nil, fmt.Errorf("/screen:close cannot close screen: %w", err)
 		}
 		update, err := sstore.DeleteScreen(ctx, ids.SessionId, ids.ScreenId)
 		if err != nil {
@@ -428,7 +428,7 @@ func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	if pk.MetaSubCmd == "open" || pk.MetaSubCmd == "new" {
 		ids, err := resolveIds(ctx, pk, R_Session)
 		if err != nil {
-			return nil, fmt.Errorf("@screen:open cannot open screen: %w", err)
+			return nil, fmt.Errorf("/screen:open cannot open screen: %w", err)
 		}
 		activate := resolveBool(pk.Kwargs["activate"], true)
 		update, err := sstore.InsertScreen(ctx, ids.SessionId, pk.Kwargs["name"], activate)
@@ -438,15 +438,15 @@ func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		return update, nil
 	}
 	if pk.MetaSubCmd != "" {
-		return nil, fmt.Errorf("invalid @screen subcommand '%s'", pk.MetaSubCmd)
+		return nil, fmt.Errorf("invalid /screen subcommand '%s'", pk.MetaSubCmd)
 	}
 	ids, err := resolveIds(ctx, pk, R_Session)
 	if err != nil {
-		return nil, fmt.Errorf("@screen cannot switch to screen: %w", err)
+		return nil, fmt.Errorf("/screen cannot switch to screen: %w", err)
 	}
 	firstArg := firstArg(pk)
 	if firstArg == "" {
-		return nil, fmt.Errorf("usage @screen [screen-name|screen-index|screen-id], no param specified")
+		return nil, fmt.Errorf("usage /screen [screen-name|screen-index|screen-id], no param specified")
 	}
 	screenIdArg, err := resolveSessionScreen(ctx, ids.SessionId, firstArg)
 	if err != nil {
@@ -461,7 +461,7 @@ func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 
 func UnSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	if pk.MetaSubCmd != "" {
-		return nil, fmt.Errorf("invalid @unset subcommand '%s'", pk.MetaSubCmd)
+		return nil, fmt.Errorf("invalid /unset subcommand '%s'", pk.MetaSubCmd)
 	}
 	ids, err := resolveIds(ctx, pk, R_Session|R_Window|R_Remote)
 	if err != nil {
@@ -530,20 +530,17 @@ func RemoteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "cwd", ids.RemoteState.Cwd))
 		}
 		output := buf.String()
-		if strings.HasSuffix(output, "\n") {
-			output = output[0 : len(output)-1]
-		}
 		return sstore.InfoUpdate{
 			Info: &sstore.InfoMsgType{
 				InfoTitle: fmt.Sprintf("show remote '%s' info", ids.RemoteName),
-				InfoLines: strings.Split(output, "\n"),
+				InfoLines: splitLinesForInfo(output),
 			},
 		}, nil
 	}
 	if pk.MetaSubCmd != "" {
-		return nil, fmt.Errorf("invalid @remote subcommand: '%s'", pk.MetaSubCmd)
+		return nil, fmt.Errorf("invalid /remote subcommand: '%s'", pk.MetaSubCmd)
 	}
-	return nil, fmt.Errorf("@remote requires a subcommand: 'show'")
+	return nil, fmt.Errorf("/remote requires a subcommand: 'show'")
 }
 
 func makeSetVarsStr(setVars map[string]bool) string {
@@ -556,7 +553,7 @@ func makeSetVarsStr(setVars map[string]bool) string {
 
 func SetEnvCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	if pk.MetaSubCmd != "" {
-		return nil, fmt.Errorf("invalid @setenv subcommand '%s'", pk.MetaSubCmd)
+		return nil, fmt.Errorf("invalid /setenv subcommand '%s'", pk.MetaSubCmd)
 	}
 	ids, err := resolveIds(ctx, pk, R_Session|R_Window|R_Remote)
 	if err != nil {
@@ -621,7 +618,7 @@ func SetEnvCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveIds(ctx, pk, R_Session|R_Window)
 	if err != nil {
-		return nil, fmt.Errorf("@cr error: %w", err)
+		return nil, fmt.Errorf("/cr error: %w", err)
 	}
 	newRemote := firstArg(pk)
 	if newRemote == "" {
@@ -633,11 +630,11 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 		return nil, err
 	}
 	if remoteId == "" {
-		return nil, fmt.Errorf("@cr error: remote not found")
+		return nil, fmt.Errorf("/cr error: remote not found")
 	}
 	err = sstore.UpdateCurRemote(ctx, ids.SessionId, ids.WindowId, remoteName)
 	if err != nil {
-		return nil, fmt.Errorf("@cr error: cannot update curremote: %w", err)
+		return nil, fmt.Errorf("/cr error: cannot update curremote: %w", err)
 	}
 	update := sstore.WindowUpdate{
 		Window: sstore.WindowType{
@@ -656,7 +653,7 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 func CdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveIds(ctx, pk, R_Session|R_Window|R_Remote)
 	if err != nil {
-		return nil, fmt.Errorf("@cd error: %w", err)
+		return nil, fmt.Errorf("/cd error: %w", err)
 	}
 	newDir := firstArg(pk)
 	curRemote := remote.GetRemoteById(ids.RemoteId)
@@ -682,12 +679,12 @@ func CdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 	}
 	if !strings.HasPrefix(newDir, "/") {
 		if ids.RemoteState == nil {
-			return nil, fmt.Errorf("@cd error: cannot get current remote directory (can only cd with absolute path)")
+			return nil, fmt.Errorf("/cd error: cannot get current remote directory (can only cd with absolute path)")
 		}
 		newDir = path.Join(ids.RemoteState.Cwd, newDir)
 		newDir, err = filepath.Abs(newDir)
 		if err != nil {
-			return nil, fmt.Errorf("@cd error: error canonicalizing new directory: %w", err)
+			return nil, fmt.Errorf("/cd error: error canonicalizing new directory: %w", err)
 		}
 	}
 	cdPacket := packet.MakeCdPacket()
@@ -765,7 +762,19 @@ func getBool(v interface{}, field string) bool {
 }
 
 func makeInfoFromComps(compType string, comps []string, hasMore bool) sstore.UpdatePacket {
-	sort.Strings(comps)
+	sort.Slice(comps, func(i int, j int) bool {
+		c1 := comps[i]
+		c2 := comps[j]
+		c1mc := strings.HasPrefix(c1, "^")
+		c2mc := strings.HasPrefix(c2, "^")
+		if c1mc && !c2mc {
+			return true
+		}
+		if !c1mc && c2mc {
+			return false
+		}
+		return c1 < c2
+	})
 	if len(comps) == 0 {
 		comps = []string{"(no completions)"}
 	}
@@ -823,32 +832,36 @@ func longestPrefix(root string, comps []string) string {
 
 var wsRe = regexp.MustCompile("\\s+")
 
-func doMetaCompGen(ctx context.Context, ids resolvedIds, prefix string) ([]string, bool, error) {
-	comps, hasMore, err := doCompGen(ctx, ids, prefix, "file")
+func doMetaCompGen(ctx context.Context, ids resolvedIds, prefix string, forDisplay bool) ([]string, bool, error) {
+	comps, hasMore, err := doCompGen(ctx, ids, prefix, "file", forDisplay)
 	if err != nil {
 		return nil, false, err
 	}
 	for _, cmd := range ValidCommands {
 		if strings.HasPrefix(cmd, prefix) {
-			comps = append(comps, cmd)
+			if forDisplay {
+				comps = append(comps, "^"+cmd)
+			} else {
+				comps = append(comps, cmd)
+			}
 		}
 	}
 	return comps, hasMore, nil
 }
 
-func doCompGen(ctx context.Context, ids resolvedIds, prefix string, compType string) ([]string, bool, error) {
+func doCompGen(ctx context.Context, ids resolvedIds, prefix string, compType string, forDisplay bool) ([]string, bool, error) {
 	if compType == "metacommand" {
-		return doMetaCompGen(ctx, ids, prefix)
+		return doMetaCompGen(ctx, ids, prefix, forDisplay)
 	}
 	if !packet.IsValidCompGenType(compType) {
-		return nil, false, fmt.Errorf("@compgen invalid type '%s'", compType)
+		return nil, false, fmt.Errorf("/compgen invalid type '%s'", compType)
 	}
 	cgPacket := packet.MakeCompGenPacket()
 	cgPacket.ReqId = uuid.New().String()
 	cgPacket.CompType = compType
 	cgPacket.Prefix = prefix
 	if ids.RemoteState == nil {
-		return nil, false, fmt.Errorf("@compgen invalid remote state")
+		return nil, false, fmt.Errorf("/compgen invalid remote state")
 	}
 	cgPacket.Cwd = ids.RemoteState.Cwd
 	curRemote := remote.GetRemoteById(ids.RemoteId)
@@ -870,14 +883,14 @@ func doCompGen(ctx context.Context, ids resolvedIds, prefix string, compType str
 func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveIds(ctx, pk, R_Session|R_Window|R_Remote)
 	if err != nil {
-		return nil, fmt.Errorf("@compgen error: %w", err)
+		return nil, fmt.Errorf("/compgen error: %w", err)
 	}
 	cmdLine := firstArg(pk)
 	pos := len(cmdLine)
 	if pk.Kwargs["comppos"] != "" {
 		posArg, err := strconv.Atoi(pk.Kwargs["comppos"])
 		if err != nil {
-			return nil, fmt.Errorf("@compgen invalid comppos '%s': %w", pk.Kwargs["comppos"], err)
+			return nil, fmt.Errorf("/compgen invalid comppos '%s': %w", pk.Kwargs["comppos"], err)
 		}
 		pos = posArg
 	}
@@ -891,9 +904,9 @@ func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	prefix := cmdLine[:pos]
 	parts := strings.Split(prefix, " ")
 	compType := "file"
-	if len(parts) > 0 && len(parts) < 2 && strings.HasPrefix(parts[0], "@") {
+	if len(parts) > 0 && len(parts) < 2 && strings.HasPrefix(parts[0], "/") {
 		compType = "metacommand"
-	} else if len(parts) == 2 && (parts[0] == "cd" || parts[0] == "@cd") {
+	} else if len(parts) == 2 && (parts[0] == "cd" || parts[0] == "/cd") {
 		compType = "directory"
 	} else if len(parts) <= 1 {
 		compType = "command"
@@ -902,7 +915,7 @@ func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if len(parts) > 0 {
 		lastPart = parts[len(parts)-1]
 	}
-	comps, hasMore, err := doCompGen(ctx, ids, lastPart, compType)
+	comps, hasMore, err := doCompGen(ctx, ids, lastPart, compType, showComps)
 	if err != nil {
 		return nil, err
 	}
@@ -915,7 +928,7 @@ func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveIds(ctx, pk, R_Session|R_Window)
 	if err != nil {
-		return nil, fmt.Errorf("@comment error: %w", err)
+		return nil, fmt.Errorf("/comment error: %w", err)
 	}
 	text := firstArg(pk)
 	if strings.TrimSpace(text) == "" {
@@ -938,15 +951,23 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		return update, nil
 	}
 	if pk.MetaSubCmd != "" {
-		return nil, fmt.Errorf("invalid @session subcommand '%s'", pk.MetaSubCmd)
+		return nil, fmt.Errorf("invalid /session subcommand '%s'", pk.MetaSubCmd)
 	}
 	firstArg := firstArg(pk)
 	if firstArg == "" {
-		return nil, fmt.Errorf("usage @session [session-name|session-id], no param specified")
+		return nil, fmt.Errorf("usage /session [session-name|session-id], no param specified")
 	}
 	sessionId, err := resolveSession(ctx, firstArg)
 	if err != nil {
 		return nil, err
 	}
 	return sstore.SessionUpdate{ActiveSessionId: sessionId}, nil
+}
+
+func splitLinesForInfo(str string) []string {
+	rtn := strings.Split(str, "\n")
+	if rtn[len(rtn)-1] == "" {
+		return rtn[:len(rtn)-1]
+	}
+	return rtn
 }
