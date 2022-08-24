@@ -5,12 +5,7 @@ import "sync"
 var MainBus *UpdateBus = MakeUpdateBus()
 
 const PtyDataUpdateStr = "pty"
-const SessionUpdateStr = "session"
-const WindowUpdateStr = "window"
-const CmdUpdateStr = "cmd"
-const LineCmdUpdateStr = "line+cmd"
-const InfoUpdateStr = "info"
-const CompGenUpdateStr = "compgen"
+const ModelUpdateStr = "model"
 
 type UpdatePacket interface {
 	UpdateType() string
@@ -28,56 +23,40 @@ func (PtyDataUpdate) UpdateType() string {
 	return PtyDataUpdateStr
 }
 
-type WindowUpdate struct {
-	Window WindowType   `json:"window"`
-	Info   *InfoMsgType `json:"info,omitempty"`
-}
-
-func (WindowUpdate) UpdateType() string {
-	return WindowUpdateStr
-}
-
-type SessionUpdate struct {
+type ModelUpdate struct {
 	Sessions        []*SessionType `json:"sessions"`
 	ActiveSessionId string         `json:"activesessionid,omitempty"`
+	Window          WindowType     `json:"window"`
+	Line            *LineType      `json:"line"`
+	Cmd             *CmdType       `json:"cmd,omitempty"`
+	CmdLine         *CmdLineType   `json:"cmdline,omitempty"`
 	Info            *InfoMsgType   `json:"info,omitempty"`
 }
 
-func (SessionUpdate) UpdateType() string {
-	return SessionUpdateStr
+func (ModelUpdate) UpdateType() string {
+	return ModelUpdateStr
 }
 
-func MakeSingleSessionUpdate(sessionId string) (*SessionUpdate, *SessionType) {
+func MakeSingleSessionUpdate(sessionId string) (ModelUpdate, *SessionType) {
 	session := &SessionType{
 		SessionId: sessionId,
 		NotifyNum: -1,
 	}
-	update := &SessionUpdate{
+	update := ModelUpdate{
 		Sessions: []*SessionType{session},
 	}
 	return update, session
 }
 
-type LineUpdate struct {
-	Line   *LineType    `json:"line"`
-	Cmd    *CmdType     `json:"cmd,omitempty"`
-	Remove bool         `json:"remove,omitempty"`
-	Info   *InfoMsgType `json:"info,omitempty"`
-}
-
-func (LineUpdate) UpdateType() string {
-	return LineCmdUpdateStr
-}
-
 func ReadLineCmdIdFromUpdate(update UpdatePacket) (string, string) {
-	lineUpdate, ok := update.(LineUpdate)
+	modelUpdate, ok := update.(ModelUpdate)
 	if !ok {
 		return "", ""
 	}
-	if lineUpdate.Line == nil {
+	if modelUpdate.Line == nil {
 		return "", ""
 	}
-	return lineUpdate.Line.LineId, lineUpdate.Line.CmdId
+	return modelUpdate.Line.LineId, modelUpdate.Line.CmdId
 }
 
 type InfoMsgType struct {
@@ -93,15 +72,6 @@ type InfoMsgType struct {
 type CmdLineType struct {
 	InsertChars string `json:"insertchars"`
 	InsertPos   int64  `json:"insertpos"`
-}
-
-type InfoUpdate struct {
-	Info    *InfoMsgType `json:"info,omitempty"`
-	CmdLine *CmdLineType `json:"cmdline,omitempty"`
-}
-
-func (InfoUpdate) UpdateType() string {
-	return InfoUpdateStr
 }
 
 type UpdateChannel struct {
@@ -165,5 +135,14 @@ func (bus *UpdateBus) SendUpdate(sessionId string, update interface{}) {
 		if uch.Match(sessionId) {
 			uch.Ch <- update
 		}
+	}
+}
+
+func MakeSessionsUpdateForRemote(sessionId string, ri *RemoteInstance) []*SessionType {
+	return []*SessionType{
+		&SessionType{
+			SessionId: sessionId,
+			Remotes:   []*RemoteInstance{ri},
+		},
 	}
 }

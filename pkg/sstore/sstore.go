@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/user"
 	"path"
+	"strings"
 	"sync"
 	"time"
 
@@ -30,7 +31,7 @@ const DBFileName = "sh2.db"
 
 const DefaultSessionName = "default"
 const DefaultWindowName = "default"
-const LocalRemoteName = "local"
+const LocalRemoteAlias = "local"
 const DefaultScreenWindowName = "w1"
 
 const DefaultCwd = "~"
@@ -132,20 +133,76 @@ func (opts WindowShareOptsType) Value() (driver.Value, error) {
 	return quickValueJson(opts)
 }
 
+type RemotePtrType struct {
+	OwnerUserId string `json:"owneruserid"`
+	RemoteId    string `json:"remoteid"`
+	Name        string `json:"name"`
+}
+
+func (r RemotePtrType) IsSessionScope() bool {
+	return strings.HasPrefix(r.Name, "*")
+}
+
+func (r RemotePtrType) MakeFullRemoteRef() string {
+	if r.RemoteId == "" {
+		return ""
+	}
+	if r.OwnerUserId == "" && r.Name == "" {
+		return r.RemoteId
+	}
+	if r.OwnerUserId != "" && r.Name == "" {
+		return fmt.Sprintf("@%s:%s", r.OwnerUserId, r.RemoteId)
+	}
+	if r.OwnerUserId == "" && r.Name != "" {
+		return fmt.Sprintf("%s:%s", r.RemoteId, r.Name)
+	}
+	return fmt.Sprintf("@%s:%s:%s", r.OwnerUserId, r.RemoteId, r.Name)
+}
+
 type WindowType struct {
 	SessionId   string              `json:"sessionid"`
 	WindowId    string              `json:"windowid"`
-	CurRemote   string              `json:"curremote"`
+	CurRemote   RemotePtrType       `json:"curremote"`
 	WinOpts     WindowOptsType      `json:"winopts"`
 	OwnerUserId string              `json:"owneruserid"`
 	ShareMode   string              `json:"sharemode"`
 	ShareOpts   WindowShareOptsType `json:"shareopts"`
 	Lines       []*LineType         `json:"lines"`
 	Cmds        []*CmdType          `json:"cmds"`
-	Remotes     []*RemoteInstance   `json:"remotes"`
 
 	// only for updates
 	Remove bool `json:"remove,omitempty"`
+}
+
+func (w *WindowType) ToMap() map[string]interface{} {
+	rtn := make(map[string]interface{})
+	rtn["sessionid"] = w.SessionId
+	rtn["windowid"] = w.WindowId
+	rtn["curremoteowneruserid"] = w.CurRemote.OwnerUserId
+	rtn["curremoteid"] = w.CurRemote.RemoteId
+	rtn["curremotename"] = w.CurRemote.Name
+	rtn["winopts"] = quickJson(w.WinOpts)
+	rtn["owneruserid"] = w.OwnerUserId
+	rtn["sharemode"] = w.ShareMode
+	rtn["shareopts"] = quickJson(w.ShareOpts)
+	return rtn
+}
+
+func WindowFromMap(m map[string]interface{}) *WindowType {
+	if len(m) == 0 {
+		return nil
+	}
+	var w WindowType
+	quickSetStr(&w.SessionId, m, "sessionid")
+	quickSetStr(&w.WindowId, m, "windowid")
+	quickSetStr(&w.CurRemote.OwnerUserId, m, "curremoteowneruserid")
+	quickSetStr(&w.CurRemote.RemoteId, m, "curremoteid")
+	quickSetStr(&w.CurRemote.Name, m, "curremotename")
+	quickSetJson(&w.WinOpts, m, "winopts")
+	quickSetStr(&w.OwnerUserId, m, "owneruserid")
+	quickSetStr(&w.ShareMode, m, "sharemode")
+	quickSetJson(&w.ShareOpts, m, "shareopts")
+	return &w
 }
 
 type ScreenOptsType struct {
@@ -257,13 +314,13 @@ func (opts TermOpts) Value() (driver.Value, error) {
 }
 
 type RemoteInstance struct {
-	RIId         string      `json:"riid"`
-	Name         string      `json:"name"`
-	SessionId    string      `json:"sessionid"`
-	WindowId     string      `json:"windowid"`
-	RemoteId     string      `json:"remoteid"`
-	SessionScope bool        `json:"sessionscope"`
-	State        RemoteState `json:"state"`
+	RIId              string      `json:"riid"`
+	Name              string      `json:"name"`
+	SessionId         string      `json:"sessionid"`
+	WindowId          string      `json:"windowid"`
+	RemoteOwnerUserId string      `json:"remoteowneruserid"`
+	RemoteId          string      `json:"remoteid"`
+	State             RemoteState `json:"state"`
 
 	// only for updates
 	Remove bool `json:"remove,omitempty"`
@@ -291,8 +348,7 @@ type SSHOpts struct {
 }
 
 type RemoteOptsType struct {
-	Color  string `json:"color"`
-	Prompt string `json:"prompt"`
+	Color string `json:"color"`
 }
 
 func (opts *RemoteOptsType) Scan(val interface{}) error {
@@ -341,7 +397,6 @@ type CmdType struct {
 	DonePk      *packet.CmdDonePacketType  `json:"donepk"`
 	UsedRows    int64                      `json:"usedrows"`
 	RunOut      []packet.PacketType        `json:"runout"`
-	Prompt      string                     `json:"prompt"`
 	Remove      bool                       `json:"remove"`
 }
 
@@ -397,7 +452,6 @@ func (cmd *CmdType) ToMap() map[string]interface{} {
 	rtn["donepk"] = quickJson(cmd.DonePk)
 	rtn["runout"] = quickJson(cmd.RunOut)
 	rtn["usedrows"] = cmd.UsedRows
-	rtn["prompt"] = cmd.Prompt
 	return rtn
 }
 
@@ -417,7 +471,6 @@ func CmdFromMap(m map[string]interface{}) *CmdType {
 	quickSetJson(&cmd.DonePk, m, "donepk")
 	quickSetJson(&cmd.RunOut, m, "runout")
 	quickSetInt64(&cmd.UsedRows, m, "usedrows")
-	quickSetStr(&cmd.Prompt, m, "prompt")
 	return &cmd
 }
 
@@ -488,7 +541,7 @@ func EnsureLocalRemote(ctx context.Context) error {
 		RemoteId:            uuid.New().String(),
 		PhysicalId:          physicalId,
 		RemoteType:          RemoteTypeSsh,
-		RemoteAlias:         LocalRemoteName,
+		RemoteAlias:         LocalRemoteAlias,
 		RemoteCanonicalName: fmt.Sprintf("%s@%s", user.Username, hostName),
 		RemoteSudo:          false,
 		RemoteUser:          user.Username,
@@ -521,6 +574,7 @@ func AddTest01Remote(ctx context.Context) error {
 		RemoteUser:          "ubuntu",
 		RemoteHost:          "test01.ec2",
 		SSHOpts: &SSHOpts{
+			Local:       false,
 			SSHHost:     "test01.ec2",
 			SSHUser:     "ubuntu",
 			SSHIdentity: "/Users/mike/aws/mfmt.pem",
@@ -552,6 +606,7 @@ func AddTest02Remote(ctx context.Context) error {
 		RemoteUser:          "test2",
 		RemoteHost:          "test01.ec2",
 		SSHOpts: &SSHOpts{
+			Local:   false,
 			SSHHost: "test01.ec2",
 			SSHUser: "test2",
 		},

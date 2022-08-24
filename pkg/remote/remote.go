@@ -1,6 +1,7 @@
 package remote
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	"github.com/creack/pty"
+	"github.com/google/uuid"
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
@@ -116,6 +118,28 @@ func GetRemoteById(remoteId string) *MShellProc {
 	return GlobalStore.Map[remoteId]
 }
 
+func ResolveRemoteRef(remoteRef string) *RemoteState {
+	GlobalStore.Lock.Lock()
+	defer GlobalStore.Lock.Unlock()
+
+	_, err := uuid.Parse(remoteRef)
+	if err == nil {
+		msh := GlobalStore.Map[remoteRef]
+		if msh != nil {
+			state := msh.GetRemoteState()
+			return &state
+		}
+		return nil
+	}
+	for _, msh := range GlobalStore.Map {
+		if msh.Remote.RemoteAlias == remoteRef || msh.Remote.RemoteCanonicalName == remoteRef {
+			state := msh.GetRemoteState()
+			return &state
+		}
+	}
+	return nil
+}
+
 func unquoteDQBashString(str string) (string, bool) {
 	if len(str) < 2 {
 		return str, false
@@ -175,19 +199,24 @@ func (proc *MShellProc) GetRemoteState() RemoteState {
 	if proc.Err != nil {
 		state.ErrorStr = proc.Err.Error()
 	}
+	local := (proc.Remote.SSHOpts == nil || proc.Remote.SSHOpts.Local)
 	vars := make(map[string]string)
 	vars["user"] = proc.Remote.RemoteUser
+	vars["bestuser"] = vars["user"]
 	vars["host"] = proc.Remote.RemoteHost
 	vars["shorthost"] = makeShortHost(proc.Remote.RemoteHost)
-	if proc.Remote.RemoteSudo {
-		vars["sudo"] = "1"
-	}
 	vars["alias"] = proc.Remote.RemoteAlias
 	vars["cname"] = proc.Remote.RemoteCanonicalName
 	vars["physicalid"] = proc.Remote.PhysicalId
 	vars["remoteid"] = proc.Remote.RemoteId
 	vars["status"] = proc.Status
 	vars["type"] = proc.Remote.RemoteType
+	if proc.Remote.RemoteSudo {
+		vars["sudo"] = "1"
+	}
+	if local {
+		vars["local"] = "1"
+	}
 	if proc.ServerProc != nil && proc.ServerProc.InitPk != nil {
 		state.DefaultState = &sstore.RemoteState{
 			Cwd:  proc.ServerProc.InitPk.Cwd,
@@ -195,11 +224,23 @@ func (proc *MShellProc) GetRemoteState() RemoteState {
 		}
 		vars["home"] = proc.ServerProc.InitPk.HomeDir
 		vars["remoteuser"] = proc.ServerProc.InitPk.User
+		vars["bestuser"] = vars["remoteuser"]
 		vars["remotehost"] = proc.ServerProc.InitPk.HostName
 		vars["remoteshorthost"] = makeShortHost(proc.ServerProc.InitPk.HostName)
-		if proc.Remote.SSHOpts == nil || proc.Remote.SSHOpts.SSHHost == "" {
-			vars["local"] = "1"
-		}
+		vars["besthost"] = vars["remotehost"]
+		vars["bestshorthost"] = vars["remoteshorthost"]
+	}
+	if local && proc.Remote.RemoteSudo {
+		vars["bestuser"] = "sudo"
+	} else if proc.Remote.RemoteSudo {
+		vars["bestuser"] = "sudo@" + vars["bestuser"]
+	}
+	if local {
+		vars["bestname"] = vars["bestuser"] + "@local"
+		vars["bestshortname"] = vars["bestuser"] + "@local"
+	} else {
+		vars["bestname"] = vars["bestuser"] + "@" + vars["besthost"]
+		vars["bestshortname"] = vars["bestuser"] + "@" + vars["bestshorthost"]
 	}
 	state.RemoteVars = vars
 	return state
@@ -238,8 +279,8 @@ func MakeMShell(r *sstore.RemoteType) *MShellProc {
 }
 
 func convertSSHOpts(opts *sstore.SSHOpts) shexec.SSHOpts {
-	if opts == nil {
-		return shexec.SSHOpts{}
+	if opts == nil || opts.Local {
+		opts = &sstore.SSHOpts{}
 	}
 	return shexec.SSHOpts{
 		SSHHost:     opts.SSHHost,
@@ -345,6 +386,19 @@ func (msh *MShellProc) GetDefaultState() *sstore.RemoteState {
 		return nil
 	}
 	return &sstore.RemoteState{Cwd: msh.ServerProc.InitPk.HomeDir, Env0: msh.ServerProc.InitPk.Env0}
+}
+
+func replaceHomePath(pathStr string, homeDir string) string {
+	if homeDir == "" {
+		return pathStr
+	}
+	if pathStr == homeDir {
+		return "~"
+	}
+	if strings.HasPrefix(pathStr, homeDir+"/") {
+		return "~" + pathStr[len(homeDir):]
+	}
+	return pathStr
 }
 
 func (msh *MShellProc) ExpandHomeDir(pathStr string) (string, error) {
@@ -526,7 +580,7 @@ func (msh *MShellProc) notifyHangups_nolock() {
 		if err != nil {
 			continue
 		}
-		update := sstore.LineUpdate{Cmd: cmd}
+		update := sstore.ModelUpdate{Cmd: cmd}
 		sstore.MainBus.SendUpdate(ck.GetSessionId(), update)
 	}
 	msh.RunningCmds = nil
@@ -602,16 +656,79 @@ func (runner *MShellProc) ProcessPackets() {
 	}
 }
 
-func EvalPromptEsc(escCode string, vars map[string]string, state sstore.RemoteState) string {
-	if escCode == "d" {
-		now := time.Now()
-		return now.Format("Mon Jan 02")
+// returns number of chars (including braces) for brace-expr
+func getBracedStr(runeStr []rune) int {
+	if len(runeStr) < 3 {
+		return 0
 	}
+	if runeStr[0] != '{' {
+		return 0
+	}
+	for i := 1; i < len(runeStr); i++ {
+		if runeStr[i] == '}' {
+			if i == 1 { // cannot have {}
+				return 0
+			}
+			return i + 1
+		}
+	}
+	return 0
+}
+
+func isDigit(r rune) bool {
+	return r >= '0' && r <= '9' // just check ascii digits (not unicode)
+}
+
+func EvalPrompt(promptFmt string, vars map[string]string, state *sstore.RemoteState) string {
+	var buf bytes.Buffer
+	promptRunes := []rune(promptFmt)
+	for i := 0; i < len(promptRunes); i++ {
+		ch := promptRunes[i]
+		if ch == '\\' && i != len(promptRunes)-1 {
+			nextCh := promptRunes[i+1]
+			if nextCh == 'x' || nextCh == 'y' {
+				nr := getBracedStr(promptRunes[i+2:])
+				if nr > 0 {
+					escCode := string(promptRunes[i+1 : i+1+nr+1]) // start at "x" or "y", extend nr+1 runes
+					escStr := evalPromptEsc(escCode, vars, state)
+					buf.WriteString(escStr)
+					i += nr + 1
+					continue
+				} else {
+					buf.WriteRune(ch) // invalid escape, so just write ch and move on
+					continue
+				}
+			} else if isDigit(nextCh) {
+				if len(promptRunes) >= i+4 && isDigit(promptRunes[i+2]) && isDigit(promptRunes[i+3]) {
+					i += 3
+					escStr := evalPromptEsc(string(promptRunes[i+1:i+4]), vars, state)
+					buf.WriteString(escStr)
+					continue
+				} else {
+					buf.WriteRune(ch) // invalid escape, so just write ch and move on
+					continue
+				}
+			} else {
+				i += 1
+				escStr := evalPromptEsc(string(nextCh), vars, state)
+				buf.WriteString(escStr)
+				continue
+			}
+		}
+		buf.WriteRune(ch)
+	}
+	return buf.String()
+}
+
+func evalPromptEsc(escCode string, vars map[string]string, state *sstore.RemoteState) string {
 	if strings.HasPrefix(escCode, "x{") && strings.HasSuffix(escCode, "}") {
 		varName := escCode[2 : len(escCode)-1]
 		return vars[varName]
 	}
 	if strings.HasPrefix(escCode, "y{") && strings.HasSuffix(escCode, "}") {
+		if state == nil {
+			return ""
+		}
 		varName := escCode[2 : len(escCode)-1]
 		varMap := shexec.ParseEnv0(state.Env0)
 		return varMap[varName]
@@ -622,50 +739,26 @@ func EvalPromptEsc(escCode string, vars map[string]string, state sstore.RemoteSt
 	if escCode == "H" {
 		return vars["remotehost"]
 	}
-	if escCode == "j" {
-		return "0"
-	}
-	if escCode == "l" {
-		return "(l)"
-	}
 	if escCode == "s" {
 		return "mshell"
-	}
-	if escCode == "t" {
-		now := time.Now()
-		return now.Format("15:04:05")
-	}
-	if escCode == "T" {
-		now := time.Now()
-		return now.Format("03:04:05")
-	}
-	if escCode == "@" {
-		now := time.Now()
-		return now.Format("03:04:05PM")
 	}
 	if escCode == "u" {
 		return vars["remoteuser"]
 	}
-	if escCode == "v" {
-		return "0.1"
-	}
-	if escCode == "V" {
-		return "0"
-	}
 	if escCode == "w" {
-		return state.Cwd
+		if state == nil {
+			return "?"
+		}
+		return replaceHomePath(state.Cwd, vars["home"])
 	}
 	if escCode == "W" {
-		return path.Base(state.Cwd)
-	}
-	if escCode == "!" {
-		return "(!)"
-	}
-	if escCode == "#" {
-		return "(#)"
+		if state == nil {
+			return "?"
+		}
+		return path.Base(replaceHomePath(state.Cwd, vars["home"]))
 	}
 	if escCode == "$" {
-		if vars["remoteuser"] == "root" {
+		if vars["remoteuser"] == "root" || vars["sudo"] == "1" {
 			return "#"
 		} else {
 			return "$"
@@ -700,5 +793,7 @@ func EvalPromptEsc(escCode string, vars map[string]string, state sstore.RemoteSt
 	if escCode == "]" {
 		return ""
 	}
+
+	// we don't support date/time escapes (d, t, T, @), version escapes (v, V), cmd number (#, !), terminal device (l), jobs (j)
 	return "(" + escCode + ")"
 }

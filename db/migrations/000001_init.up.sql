@@ -18,7 +18,9 @@ CREATE TABLE session (
 CREATE TABLE window (
     sessionid varchar(36) NOT NULL,
     windowid varchar(36) NOT NULL,
-    curremote varchar(50) NOT NULL,
+    curremoteowneruserid varchar(36) NOT NULL,
+    curremoteid varchar(36) NOT NULL,
+    curremotename varchar(50) NOT NULL,
     winopts json NOT NULL,
     owneruserid varchar(36) NOT NULL,
     sharemode varchar(12) NOT NULL,
@@ -52,8 +54,8 @@ CREATE TABLE remote_instance (
     name varchar(50) NOT NULL,
     sessionid varchar(36) NOT NULL,
     windowid varchar(36) NOT NULL,
+    remoteowneruserid varchar(36) NOT NULL,
     remoteid varchar(36) NOT NULL,
-    sessionscope boolean NOT NULL,
     state json NOT NULL
 );
 
@@ -98,7 +100,6 @@ CREATE TABLE cmd (
     donepk json NOT NULL,
     runout json NOT NULL,
     usedrows int NOT NULL,
-    prompt text NOT NULL,
     PRIMARY KEY (sessionid, cmdid)
 );
 

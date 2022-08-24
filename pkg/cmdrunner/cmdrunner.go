@@ -36,12 +36,12 @@ const (
 )
 
 type resolvedIds struct {
-	SessionId   string
-	ScreenId    string
-	WindowId    string
-	RemoteId    string
-	RemoteName  string
-	RemoteState *sstore.RemoteState
+	SessionId         string
+	ScreenId          string
+	WindowId          string
+	RemotePtr         sstore.RemotePtrType
+	RemoteState       *sstore.RemoteState
+	RemoteDisplayName string
 }
 
 func SubMetaCmd(cmd string) string {
@@ -208,22 +208,59 @@ func resolveScreenId(ctx context.Context, pk *scpacket.FeCommandPacketType, sess
 	return resolveSessionScreen(ctx, sessionId, screenArg)
 }
 
-// returns (remoteName, remoteId, state, err)
-func resolveRemote(ctx context.Context, remoteName string, sessionId string, windowId string) (string, string, *sstore.RemoteState, error) {
-	if remoteName == "" {
-		return "", "", nil, nil
+// returns (remoteuserref, remoteref, name, error)
+func parseFullRemoteRef(fullRemoteRef string) (string, string, string, error) {
+	if strings.HasPrefix(fullRemoteRef, "[") && strings.HasSuffix(fullRemoteRef, "]") {
+		fullRemoteRef = fullRemoteRef[1 : len(fullRemoteRef)-1]
 	}
-	remoteId, state, err := sstore.GetRemoteState(ctx, remoteName, sessionId, windowId)
+	fields := strings.Split(fullRemoteRef, ":")
+	if len(fields) > 3 {
+		return "", "", "", fmt.Errorf("invalid remote format '%s'", fullRemoteRef)
+	}
+	if len(fields) == 1 {
+		return "", fields[0], "", nil
+	}
+	if len(fields) == 2 {
+		if strings.HasPrefix(fields[0], "@") {
+			return fields[0], fields[1], "", nil
+		}
+		return "", fields[0], fields[1], nil
+	}
+	return fields[0], fields[1], fields[2], nil
+}
+
+// returns (remoteDisplayName, remoteptr, state, err)
+func resolveRemote(ctx context.Context, fullRemoteRef string, sessionId string, windowId string) (string, *sstore.RemotePtrType, *sstore.RemoteState, error) {
+	if fullRemoteRef == "" {
+		return "", nil, nil, nil
+	}
+	userRef, remoteRef, remoteName, err := parseFullRemoteRef(fullRemoteRef)
 	if err != nil {
-		return "", "", nil, fmt.Errorf("cannot resolve remote '%s': %w", remoteName, err)
+		return "", nil, nil, err
+	}
+	if userRef != "" {
+		return "", nil, nil, fmt.Errorf("invalid remote '%s', cannot resolve remote userid '%s'", fullRemoteRef, userRef)
+	}
+	rstate := remote.ResolveRemoteRef(remoteRef)
+	if rstate == nil {
+		return "", nil, nil, fmt.Errorf("cannot resolve remote '%s': not found", fullRemoteRef)
+	}
+	rptr := sstore.RemotePtrType{RemoteId: rstate.RemoteId, Name: remoteName}
+	state, err := sstore.GetRemoteState(ctx, sessionId, windowId, rptr)
+	if err != nil {
+		return "", nil, nil, fmt.Errorf("cannot resolve remote state '%s': %w", fullRemoteRef, err)
+	}
+	rname := rstate.RemoteCanonicalName
+	if rstate.RemoteAlias != "" {
+		rname = rstate.RemoteAlias
+	}
+	if rptr.Name != "" {
+		rname = fmt.Sprintf("%s:%s", rname, rptr.Name)
 	}
 	if state == nil {
-		state, err = remote.GetDefaultRemoteStateById(remoteId)
-		if err != nil {
-			return "", "", nil, fmt.Errorf("cannot resolve remote '%s': %w", remoteName, err)
-		}
+		return rname, &rptr, rstate.DefaultState, nil
 	}
-	return remoteName, remoteId, state, nil
+	return rname, &rptr, state, nil
 }
 
 func resolveIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype int) (resolvedIds, error) {
@@ -261,13 +298,16 @@ func resolveIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype int
 		}
 	}
 	if (rtype&R_Remote)+(rtype&R_RemoteOpt) > 0 {
-		rtn.RemoteName, rtn.RemoteId, rtn.RemoteState, err = resolveRemote(ctx, pk.Kwargs["remote"], rtn.SessionId, rtn.WindowId)
+		rname, rptr, rstate, err := resolveRemote(ctx, pk.Kwargs["remote"], rtn.SessionId, rtn.WindowId)
 		if err != nil {
 			return rtn, err
 		}
-		if rtn.RemoteId == "" && (rtype&R_Remote) > 0 {
+		if rptr == nil && (rtype&R_Remote) > 0 {
 			return rtn, fmt.Errorf("no remote")
 		}
+		rtn.RemoteDisplayName = rname
+		rtn.RemotePtr = *rptr
+		rtn.RemoteState = rstate
 	}
 	return rtn, nil
 }
@@ -289,7 +329,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	runPacket.UsePty = true
 	runPacket.TermOpts = &packet.TermOpts{Rows: remote.DefaultTermRows, Cols: remote.DefaultTermCols, Term: remote.DefaultTerm}
 	runPacket.Command = strings.TrimSpace(cmdStr)
-	cmd, err := remote.RunCommand(ctx, cmdId, ids.RemoteId, ids.RemoteState, runPacket)
+	cmd, err := remote.RunCommand(ctx, cmdId, ids.RemotePtr.RemoteId, ids.RemoteState, runPacket)
 	if err != nil {
 		return nil, err
 	}
@@ -297,7 +337,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	if err != nil {
 		return nil, err
 	}
-	return sstore.LineUpdate{Line: rtnLine, Cmd: cmd}, nil
+	return sstore.ModelUpdate{Line: rtnLine, Cmd: cmd}, nil
 }
 
 func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, update sstore.UpdatePacket, hadError bool) error {
@@ -467,7 +507,7 @@ func UnSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 	if err != nil {
 		return nil, err
 	}
-	curRemote := remote.GetRemoteById(ids.RemoteId)
+	curRemote := remote.GetRemoteById(ids.RemotePtr.RemoteId)
 	if curRemote == nil {
 		return nil, fmt.Errorf("invalid remote, cannot unset")
 	}
@@ -489,18 +529,14 @@ func UnSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 	}
 	state := *ids.RemoteState
 	state.Env0 = shexec.MakeEnv0(envMap)
-	remote, err := sstore.UpdateRemoteState(ctx, ids.RemoteName, ids.SessionId, ids.WindowId, ids.RemoteId, state)
+	remote, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.WindowId, ids.RemotePtr, state)
 	if err != nil {
 		return nil, err
 	}
-	update := sstore.WindowUpdate{
-		Window: sstore.WindowType{
-			SessionId: ids.SessionId,
-			WindowId:  ids.WindowId,
-			Remotes:   []*sstore.RemoteInstance{remote},
-		},
+	update := sstore.ModelUpdate{
+		Sessions: sstore.MakeSessionsUpdateForRemote(ids.SessionId, remote),
 		Info: &sstore.InfoMsgType{
-			InfoMsg:   fmt.Sprintf("[%s] unset vars: %s", ids.RemoteName, makeSetVarsStr(unsetVars)),
+			InfoMsg:   fmt.Sprintf("[%s] unset vars: %s", ids.RemoteDisplayName, makeSetVarsStr(unsetVars)),
 			TimeoutMs: 2000,
 		},
 	}
@@ -513,9 +549,9 @@ func RemoteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		if err != nil {
 			return nil, err
 		}
-		curRemote := remote.GetRemoteById(ids.RemoteId)
+		curRemote := remote.GetRemoteById(ids.RemotePtr.RemoteId)
 		if curRemote == nil {
-			return nil, fmt.Errorf("invalid remote [%s] (not found)", ids.RemoteName)
+			return nil, fmt.Errorf("invalid remote '%s' (not found)", ids.RemoteDisplayName)
 		}
 		state := curRemote.GetRemoteState()
 		var buf bytes.Buffer
@@ -530,9 +566,9 @@ func RemoteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "cwd", ids.RemoteState.Cwd))
 		}
 		output := buf.String()
-		return sstore.InfoUpdate{
+		return sstore.ModelUpdate{
 			Info: &sstore.InfoMsgType{
-				InfoTitle: fmt.Sprintf("show remote '%s' info", ids.RemoteName),
+				InfoTitle: fmt.Sprintf("show remote '%s' info", ids.RemoteDisplayName),
 				InfoLines: splitLinesForInfo(output),
 			},
 		}, nil
@@ -559,7 +595,7 @@ func SetEnvCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	if err != nil {
 		return nil, err
 	}
-	curRemote := remote.GetRemoteById(ids.RemoteId)
+	curRemote := remote.GetRemoteById(ids.RemotePtr.RemoteId)
 	if curRemote == nil {
 		return nil, fmt.Errorf("invalid remote, cannot setenv")
 	}
@@ -576,9 +612,9 @@ func SetEnvCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 			line := fmt.Sprintf("%s=%s", varName, shellescape.Quote(varVal))
 			infoLines = append(infoLines, line)
 		}
-		update := sstore.InfoUpdate{
+		update := sstore.ModelUpdate{
 			Info: &sstore.InfoMsgType{
-				InfoTitle: fmt.Sprintf("environment for [%s] remote", ids.RemoteName),
+				InfoTitle: fmt.Sprintf("environment for [%s] remote", ids.RemoteDisplayName),
 				InfoLines: infoLines,
 			},
 		}
@@ -597,18 +633,14 @@ func SetEnvCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	}
 	state := *ids.RemoteState
 	state.Env0 = shexec.MakeEnv0(envMap)
-	remote, err := sstore.UpdateRemoteState(ctx, ids.RemoteName, ids.SessionId, ids.WindowId, ids.RemoteId, state)
+	remote, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.WindowId, ids.RemotePtr, state)
 	if err != nil {
 		return nil, err
 	}
-	update := sstore.WindowUpdate{
-		Window: sstore.WindowType{
-			SessionId: ids.SessionId,
-			WindowId:  ids.WindowId,
-			Remotes:   []*sstore.RemoteInstance{remote},
-		},
+	update := sstore.ModelUpdate{
+		Sessions: sstore.MakeSessionsUpdateForRemote(ids.SessionId, remote),
 		Info: &sstore.InfoMsgType{
-			InfoMsg:   fmt.Sprintf("[%s] set vars: %s", ids.RemoteName, makeSetVarsStr(setVars)),
+			InfoMsg:   fmt.Sprintf("[%s] set vars: %s", ids.RemoteDisplayName, makeSetVarsStr(setVars)),
 			TimeoutMs: 2000,
 		},
 	}
@@ -624,23 +656,22 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 	if newRemote == "" {
 		return nil, nil
 	}
-	remoteName, remoteId, _, err := resolveRemote(ctx, newRemote, ids.SessionId, ids.WindowId)
-	fmt.Printf("found: name[%s] id[%s] err[%v]\n", remoteName, remoteId, err)
+	remoteName, rptr, _, err := resolveRemote(ctx, newRemote, ids.SessionId, ids.WindowId)
 	if err != nil {
 		return nil, err
 	}
-	if remoteId == "" {
-		return nil, fmt.Errorf("/cr error: remote not found")
+	if rptr == nil {
+		return nil, fmt.Errorf("/cr error: remote '%s' not found", newRemote)
 	}
-	err = sstore.UpdateCurRemote(ctx, ids.SessionId, ids.WindowId, remoteName)
+	err = sstore.UpdateCurRemote(ctx, ids.SessionId, ids.WindowId, *rptr)
 	if err != nil {
 		return nil, fmt.Errorf("/cr error: cannot update curremote: %w", err)
 	}
-	update := sstore.WindowUpdate{
+	update := sstore.ModelUpdate{
 		Window: sstore.WindowType{
 			SessionId: ids.SessionId,
 			WindowId:  ids.WindowId,
-			CurRemote: remoteName,
+			CurRemote: *rptr,
 		},
 		Info: &sstore.InfoMsgType{
 			InfoMsg:   fmt.Sprintf("current remote = %s", remoteName),
@@ -656,7 +687,7 @@ func CdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 		return nil, fmt.Errorf("/cd error: %w", err)
 	}
 	newDir := firstArg(pk)
-	curRemote := remote.GetRemoteById(ids.RemoteId)
+	curRemote := remote.GetRemoteById(ids.RemotePtr.RemoteId)
 	if curRemote == nil {
 		return nil, fmt.Errorf("invalid remote, cannot change directory")
 	}
@@ -667,9 +698,9 @@ func CdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 		return nil, fmt.Errorf("remote state is not available")
 	}
 	if newDir == "" {
-		return sstore.InfoUpdate{
+		return sstore.ModelUpdate{
 			Info: &sstore.InfoMsgType{
-				InfoMsg: fmt.Sprintf("[%s] current directory = %s", ids.RemoteName, ids.RemoteState.Cwd),
+				InfoMsg: fmt.Sprintf("[%s] current directory = %s", ids.RemoteDisplayName, ids.RemoteState.Cwd),
 			},
 		}, nil
 	}
@@ -699,18 +730,14 @@ func CdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 	}
 	state := *ids.RemoteState
 	state.Cwd = newDir
-	remote, err := sstore.UpdateRemoteState(ctx, ids.RemoteName, ids.SessionId, ids.WindowId, ids.RemoteId, state)
+	remote, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.WindowId, ids.RemotePtr, state)
 	if err != nil {
 		return nil, err
 	}
-	update := sstore.WindowUpdate{
-		Window: sstore.WindowType{
-			SessionId: ids.SessionId,
-			WindowId:  ids.WindowId,
-			Remotes:   []*sstore.RemoteInstance{remote},
-		},
+	update := sstore.ModelUpdate{
+		Sessions: sstore.MakeSessionsUpdateForRemote(ids.SessionId, remote),
 		Info: &sstore.InfoMsgType{
-			InfoMsg:   fmt.Sprintf("[%s] current directory = %s", ids.RemoteName, newDir),
+			InfoMsg:   fmt.Sprintf("[%s] current directory = %s", ids.RemoteDisplayName, newDir),
 			TimeoutMs: 2000,
 		},
 	}
@@ -778,7 +805,7 @@ func makeInfoFromComps(compType string, comps []string, hasMore bool) sstore.Upd
 	if len(comps) == 0 {
 		comps = []string{"(no completions)"}
 	}
-	update := sstore.InfoUpdate{
+	update := sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			InfoTitle:     fmt.Sprintf("%s completions", compType),
 			InfoComps:     comps,
@@ -798,7 +825,7 @@ func makeInsertUpdateFromComps(pos int64, prefix string, comps []string, hasMore
 	}
 	insertChars := lcp[len(prefix):]
 	clu := &sstore.CmdLineType{InsertChars: insertChars, InsertPos: pos}
-	return sstore.InfoUpdate{CmdLine: clu}
+	return sstore.ModelUpdate{CmdLine: clu}
 }
 
 func longestPrefix(root string, comps []string) string {
@@ -864,7 +891,7 @@ func doCompGen(ctx context.Context, ids resolvedIds, prefix string, compType str
 		return nil, false, fmt.Errorf("/compgen invalid remote state")
 	}
 	cgPacket.Cwd = ids.RemoteState.Cwd
-	curRemote := remote.GetRemoteById(ids.RemoteId)
+	curRemote := remote.GetRemoteById(ids.RemotePtr.RemoteId)
 	if curRemote == nil {
 		return nil, false, fmt.Errorf("invalid remote, cannot execute command")
 	}
@@ -938,7 +965,7 @@ func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if err != nil {
 		return nil, err
 	}
-	return sstore.LineUpdate{Line: rtnLine}, nil
+	return sstore.ModelUpdate{Line: rtnLine}, nil
 }
 
 func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -961,7 +988,7 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if err != nil {
 		return nil, err
 	}
-	return sstore.SessionUpdate{ActiveSessionId: sessionId}, nil
+	return sstore.ModelUpdate{ActiveSessionId: sessionId}, nil
 }
 
 func splitLinesForInfo(str string) []string {
