@@ -91,7 +91,7 @@ type RemoteInstanceType = {
     name : string,
     sessionid : string,
     windowid : string,
-    remoteowneruserid : string,
+    remoteownerid : string,
     remoteid : string,
     state : RemoteStateType,
 
@@ -99,7 +99,7 @@ type RemoteInstanceType = {
 }
 
 type RemotePtrType = {
-    owneruserid : string,
+    ownerid : string,
     remoteid : string,
     name : string,
 };
@@ -176,7 +176,7 @@ type CmdDonePacketType = {
 type CmdDataType = {
     sessionid : string,
     cmdid : string,
-    remoteid : string,
+    remote : RemotePtrType,
     cmdstr : string,
     remotestate : RemoteStateType,
     termopts : TermOptsType,

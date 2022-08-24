@@ -21,16 +21,23 @@ function remotePtrToString(rptr : RemotePtrType) : string {
     if (rptr == null || isBlank(rptr.remoteid)) {
         return null;
     }
-    if (isBlank(rptr.owneruserid) && isBlank(rptr.name)) {
+    if (isBlank(rptr.ownerid) && isBlank(rptr.name)) {
         return rptr.remoteid;
     }
-    if (!isBlank(rptr.owneruserid) && isBlank(rptr.name)) {
-        return sprintf("@%s:%s", rptr.owneruserid, rptr.remoteid)
+    if (!isBlank(rptr.ownerid) && isBlank(rptr.name)) {
+        return sprintf("@%s:%s", rptr.ownerid, rptr.remoteid)
     }
-    if (isBlank(rptr.owneruserid) && !isBlank(rptr.name)) {
+    if (isBlank(rptr.ownerid) && !isBlank(rptr.name)) {
         return sprintf("%s:%s", rptr.remoteid, rptr.name)
     }
-    return sprintf("@%s:%s:%s", rptr.owneruserid, rptr.remoteid, rptr.name)
+    return sprintf("@%s:%s:%s", rptr.ownerid, rptr.remoteid, rptr.name)
+}
+
+function riToRPtr(ri : RemoteInstanceType) : RemotePtrType {
+    if (ri == null) {
+        return null;
+    }
+    return {ownerid: ri.ownerid, remoteid: ri.remoteid, name: ri.name};
 }
 
 type KeyModsType = {
@@ -69,6 +76,7 @@ function ces(s : string) {
 
 class Cmd {
     sessionId : string;
+    remote : RemotePtrType;
     remoteId : string;
     cmdId : string;
     data : OV<CmdDataType>;
@@ -77,7 +85,7 @@ class Cmd {
     constructor(cmd : CmdDataType) {
         this.sessionId = cmd.sessionid;
         this.cmdId = cmd.cmdid;
-        this.remoteId = cmd.remoteid;
+        this.remote = cmd.remote;
         this.data = mobx.observable.box(cmd, {deep: false});
     }
 
@@ -135,10 +143,10 @@ class Cmd {
         }
         let data = this.data.get();
         let inputPacket = {
-            type: "input",
+            type: "feinput",
             ck: this.sessionId + "/" + this.cmdId,
             inputdata: btoa(event.key),
-            remoteid: this.remoteId,
+            remote: this.remote,
         };
         GlobalModel.sendInputPacket(inputPacket);
     }
@@ -534,14 +542,14 @@ class Session {
         }
         for (let i=0; i<this.remoteInstances.length; i++) {
             let rdata = this.remoteInstances[i];
-            if (rdata.windowid == windowId && rdata.remoteid == rptr.remoteid && rdata.remoteowneruserid == rptr.owneruserid && rdata.name == rptr.name) {
+            if (rdata.windowid == windowId && rdata.remoteid == rptr.remoteid && rdata.remoteownerid == rptr.ownerid && rdata.name == rptr.name) {
                 return rdata;
             }
         }
         let remote = GlobalModel.getRemote(rptr.remoteid);
         if (remote != null) {
             return {riid: "", sessionid: this.sessionId, windowid: windowId,
-                    remoteowneruserid: rptr.owneruserid, remoteid: rptr.remoteid, name: rptr.name,
+                    remoteownerid: rptr.ownerid, remoteid: rptr.remoteid, name: rptr.name,
                     state: remote.defaultstate};
         }
         return null;
@@ -1302,6 +1310,21 @@ class Model {
     sendInputPacket(inputPacket : any) {
         this.ws.pushMessage(inputPacket);
     }
+
+    resolveUserIdToName(userid : string) : string {
+        return "@[unknown]"
+    }
+
+    resolveRemoteIdToRef(remoteId : string) {
+        let remote = this.getRemote(remoteId)
+        if (remote == null) {
+            return "[unknown]";
+        }
+        if (!isBlank(remote.remotealias)) {
+            return remote.remotealias;
+        }
+        return remote.remotecanonicalname;
+    }
 }
 
 class InputClass {
@@ -1338,6 +1361,6 @@ if ((window as any).GlobalModal == null) {
 GlobalModel = (window as any).GlobalModel;
 GlobalInput = (window as any).GlobalInput;
 
-export {Model, Session, Window, GlobalModel, GlobalInput, Cmd, Screen, ScreenWindow};
+export {Model, Session, Window, GlobalModel, GlobalInput, Cmd, Screen, ScreenWindow, riToRPtr};
 
 

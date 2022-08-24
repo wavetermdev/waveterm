@@ -10,7 +10,7 @@ import cn from "classnames"
 import {TermWrap} from "./term";
 import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType} from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
-import {GlobalModel, GlobalInput, Session, Cmd, Window, Screen, ScreenWindow} from "./model";
+import {GlobalModel, GlobalInput, Session, Cmd, Window, Screen, ScreenWindow, riToRPtr} from "./model";
 
 dayjs.extend(localizedFormat)
 
@@ -54,24 +54,27 @@ function getLineId(line : LineType) : string {
     return sprintf("%s-%s-%s", line.sessionid, line.windowid, line.lineid);
 }
 
-function getRemoteStr(remote : RemoteType) : string {
-    if (remote == null) {
-        return "(no remote)";
+function makeFullRemoteRef(ownerName : string, remoteRef : string, name : string) : string {
+    if (isBlank(ownerName) && isBlank(name)) {
+        return remoteRef;
     }
-    if (remote.remotevars.local) {
-        return sprintf("%s@%s", remote.remotevars.user, "local");
+    if (!isBlank(ownerName) && isBlank(name)) {
+        return ownerName + ":" + remoteRef;
     }
-    let hoststr = "";
-    if (remote.remotevars.sudo) {
-        hoststr = sprintf("sudo@%s@%s", remote.remotevars.user, remote.remotevars.host)
+    if (isBlank(ownerName) && !isBlank(name)) {
+        return remoteRef + ":" + name;
     }
-    else {
-        hoststr = sprintf("%s@%s", remote.remotevars.user, remote.remotevars.host)
+    return ownerName + ":" + remoteRef + ":" + name;
+}
+
+function getRemoteStr(rptr : RemotePtrType) : string {
+    if (rptr == null || isBlank(rptr.remoteid)) {
+        return "(invalid remote)";
     }
-    if (remote.remotevars.alias) {
-        return sprintf("(%s) %s", remote.remotevars.alias, hoststr)
-    }
-    return hoststr;
+    let username = (isBlank(rptr.ownerid) ? null : GlobalModel.resolveUserIdToName(rptr.ownerid));
+    let remoteRef = GlobalModel.resolveRemoteIdToRef(rptr.remoteid);
+    let fullRef = makeFullRemoteRef(username, remoteRef, rptr.name);
+    return fullRef;
 }
 
 function replaceHomePath(path : string, homeDir : string) : string {
@@ -137,6 +140,28 @@ class LineText extends React.Component<{sw : ScreenWindow, line : LineType}, {}>
                     </div>
                 </div>
             </div>
+        );
+    }
+}
+
+@mobxReact.observer
+class Prompt extends React.Component<{rptr : RemotePtrType, rstate : RemoteStateType}, {}> {
+    render() {
+        let remote : RemoteType = null;
+        if (this.props.rptr && !isBlank(this.props.rptr.remoteid)) {
+            remote = GlobalModel.getRemote(this.props.rptr.remoteid);
+        }
+        let remoteStr = getRemoteStr(this.props.rptr);
+        let cwd = getCwdStr(remote, this.props.rstate);
+        let isRoot = false;
+        if (remote && remote.remotevars) {
+            if (remote.remotevars["sudo"] || remote.remotevars["bestuser"] == "root") {
+                isRoot = true;
+            }
+        }
+        let className = (isRoot ? "term-bright-red" : "term-bright-green");
+        return (
+            <span className="term-bright-green">[{remoteStr}] {cwd} {isRoot ? "#" : "$"}</span>
         );
     }
 }
@@ -240,11 +265,11 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                 </div>
             );
         }
-        let promptStr = getRemoteStr(remote);
+        let remoteStr = getRemoteStr(cmd.remote);
         let cwd = getCwdStr(remote, cmd.getRemoteState());
         return (
             <div className="metapart-mono cmdtext">
-                <span className="term-bright-green">[{promptStr} {cwd}]</span> {cmd.getSingleLineCmdText()}
+                <Prompt rptr={cmd.remote} rstate={cmd.getRemoteState()}/> {cmd.getSingleLineCmdText()}
             </div>
         );
     }
@@ -464,8 +489,10 @@ class CmdInput extends React.Component<{}, {}> {
         }
         let win = GlobalModel.getActiveWindow();
         let ri : RemoteInstanceType = null;
+        let rptr : RemotePtrType = null;
         if (win != null) {
             ri = win.getCurRemoteInstance();
+            rptr = win.curRemote.get();
         }
         console.log("cmd-input remote", ri);
         let remote : RemoteType = null;
@@ -474,8 +501,7 @@ class CmdInput extends React.Component<{}, {}> {
             remote = GlobalModel.getRemote(ri.remoteid);
             remoteState = ri.state;
         }
-        console.log("lookup remote", remote);
-        let promptStr = getRemoteStr(remote);
+        let remoteStr = getRemoteStr(rptr);
         let cwdStr = getCwdStr(remote, remoteState);
         let infoMsg = GlobalModel.infoMsg.get();
         let infoShow = GlobalModel.infoShow.get();
@@ -525,12 +551,12 @@ class CmdInput extends React.Component<{}, {}> {
                 </div>
                 <div className="cmd-input-context">
                     <div className="has-text-white">
-                        <span className="bold term-bright-green">[{promptStr} {cwdStr}]</span>
+                        <Prompt rptr={rptr} rstate={remoteState}/>
                     </div>
                 </div>
                 <div className="cmd-input-field field has-addons">
                     <div className="control cmd-quick-context">
-                        <div className="button is-static">{promptStr}</div>
+                        <div className="button is-static">{remoteStr}</div>
                     </div>
                     <div className="control cmd-input-control is-expanded">
                         <textarea id="main-cmd-input" rows={displayLines} value={curLine} onKeyDown={this.onKeyDown} onChange={this.onChange} className="textarea"></textarea>
