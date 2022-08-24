@@ -4,7 +4,7 @@ import {boundMethod} from "autobind-decorator";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, SessionUpdateType, WindowUpdateType, UpdateMessage, LineCmdUpdateType, InfoType, CmdLineUpdateType} from "./types";
+import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, SessionUpdateType, WindowUpdateType, UpdateMessage, LineCmdUpdateType, InfoType, CmdLineUpdateType} from "./types";
 import {WSControl} from "./ws";
 
 var GlobalUser = "sawka";
@@ -15,6 +15,22 @@ type OMap<K,V> = mobx.ObservableMap<K,V>;
 
 function isBlank(s : string) {
     return (s == null || s == "");
+}
+
+function remotePtrToString(rptr : RemotePtrType) : string {
+    if (rptr == null || isBlank(rptr.remoteid)) {
+        return null;
+    }
+    if (isBlank(rptr.owneruserid) && isBlank(rptr.name)) {
+        return rptr.remoteid;
+    }
+    if (!isBlank(rptr.owneruserid) && isBlank(rptr.name)) {
+        return sprintf("@%s:%s", rptr.owneruserid, rptr.remoteid)
+    }
+    if (isBlank(rptr.owneruserid) && !isBlank(rptr.name)) {
+        return sprintf("%s:%s", rptr.remoteid, rptr.name)
+    }
+    return sprintf("@%s:%s:%s", rptr.owneruserid, rptr.remoteid, rptr.name)
 }
 
 type KeyModsType = {
@@ -275,12 +291,11 @@ class ScreenWindow {
 class Window {
     sessionId : string;
     windowId : string;
-    curRemote : OV<string> = mobx.observable.box(null);
+    curRemote : OV<RemotePtrType> = mobx.observable.box(null);
     loaded : OV<boolean> = mobx.observable.box(false);
     loadError : OV<string> = mobx.observable.box(null);
     lines : OArr<LineType> = mobx.observable.array([], {deep: false});
     cmds : Record<string, Cmd> = {};
-    remoteInstances : OArr<RemoteInstanceType> = mobx.observable.array([]);
 
     constructor(sessionId : string, windowId : string) {
         this.sessionId = sessionId;
@@ -289,7 +304,7 @@ class Window {
 
     updateWindow(win : WindowDataType, load : boolean) {
         mobx.action(() => {
-            if (!isBlank(win.curremote)) {
+            if (win.curremote != null && win.curremote.remoteid != "") {
                 this.curRemote.set(win.curremote);
             }
             if (load) {
@@ -301,7 +316,6 @@ class Window {
             for (let i=0; i<cmds.length; i++) {
                 this.cmds[cmds[i].cmdid] = new Cmd(cmds[i]);
             }
-            genMergeSimpleData(this.remoteInstances, win.remotes, (r) => r.riid, null);
         })();
     }
 
@@ -339,36 +353,12 @@ class Window {
     }
 
     getCurRemoteInstance() : RemoteInstanceType {
-        let rname = this.curRemote.get();
-        if (rname == null) {
+        let session = GlobalModel.getSessionById(this.sessionId);
+        let rptr = this.curRemote.get();
+        if (rptr == null) {
             return null;
         }
-        let sessionScope = false;
-        if (rname.startsWith("^")) {
-            rname = rname.substr(1);
-            sessionScope = true;
-        }
-        if (sessionScope) {
-            let session = GlobalModel.getSessionById(this.sessionId);
-            let rdata = session.getRemoteInstance(rname);
-            return rdata;
-        }
-        return this.getRemoteInstance(rname);
-    }
-
-    getRemoteInstance(rname : string) : RemoteInstanceType {
-        for (let i=0; i<this.remoteInstances.length; i++) {
-            let rdata = this.remoteInstances[i];
-            if (rdata.name == rname) {
-                return rdata;
-            }
-        }
-        let remote = GlobalModel.getRemoteByName(rname);
-        if (remote != null) {
-            return {riid: "", sessionid: this.sessionId, windowid: this.windowId, remoteid: remote.remoteid,
-                    name: rname, state: remote.defaultstate, sessionscope: false};
-        }
-        return null;
+        return session.getRemoteInstance(this.windowId, this.curRemote.get());
     }
 
     updateCmd(cmd : CmdDataType) : void {
@@ -514,6 +504,7 @@ class Session {
                     this.activeScreenId.set(sdata.activescreenid);
                 }
             }
+            genMergeSimpleData(this.remoteInstances, sdata.remotes, (r) => r.riid, null);
         })();
     }
 
@@ -537,17 +528,21 @@ class Session {
         return null;
     }
 
-    getRemoteInstance(rname : string) : RemoteInstanceType {
+    getRemoteInstance(windowId : string, rptr : RemotePtrType) : RemoteInstanceType {
+        if (rptr.name.startsWith("*")) {
+            windowId = "";
+        }
         for (let i=0; i<this.remoteInstances.length; i++) {
             let rdata = this.remoteInstances[i];
-            if (rdata.name == rname) {
+            if (rdata.windowid == windowId && rdata.remoteid == rptr.remoteid && rdata.remoteowneruserid == rptr.owneruserid && rdata.name == rptr.name) {
                 return rdata;
             }
         }
-        let remote = GlobalModel.getRemoteByName(rname);
+        let remote = GlobalModel.getRemote(rptr.remoteid);
         if (remote != null) {
-            return {riid: "", sessionid: this.sessionId, windowid: null, remoteid: remote.remoteid,
-                    name: rname, state: remote.defaultstate, sessionscope: true};
+            return {riid: "", sessionid: this.sessionId, windowid: windowId,
+                    remoteowneruserid: rptr.owneruserid, remoteid: rptr.remoteid, name: rptr.name,
+                    state: remote.defaultstate};
         }
         return null;
     }
@@ -1126,7 +1121,7 @@ class Model {
         }
         if (win != null) {
             rtn.window = win.windowId;
-            rtn.remote = win.curRemote.get();
+            rtn.remote = remotePtrToString(win.curRemote.get());
         }
         return rtn;
     }

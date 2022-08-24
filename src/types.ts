@@ -91,20 +91,25 @@ type RemoteInstanceType = {
     name : string,
     sessionid : string,
     windowid : string,
+    remoteowneruserid : string,
     remoteid : string,
-    sessionscope : boolean,
     state : RemoteStateType,
 
     remove? : boolean,
 }
 
+type RemotePtrType = {
+    owneruserid : string,
+    remoteid : string,
+    name : string,
+};
+
 type WindowDataType = {
     sessionid : string,
     windowid : string,
-    curremote : string,
+    curremote : RemotePtrType,
     lines : LineType[],
     cmds : CmdDataType[],
-    remotes : RemoteInstanceType[],
 
     // for updates
     remove? : boolean,
@@ -228,4 +233,4 @@ type InfoType = {
     timeoutms? : number,
 };
 
-export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDonePacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType, PtyDataUpdateType, SessionUpdateType, WindowUpdateType, UpdateMessage, LineCmdUpdateType, InfoType, CmdLineUpdateType};
+export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDonePacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType, PtyDataUpdateType, SessionUpdateType, WindowUpdateType, UpdateMessage, LineCmdUpdateType, InfoType, CmdLineUpdateType, RemotePtrType};
