@@ -62,6 +62,7 @@ CREATE TABLE line (
     linetype varchar(10) NOT NULL,
     text text NOT NULL,
     cmdid varchar(36) NOT NULL,
+    ephemeral boolean NOT NULL,
     PRIMARY KEY (sessionid, windowid, lineid)
 );
 CREATE TABLE remote (
@@ -91,6 +92,7 @@ CREATE TABLE cmd (
     donepk json NOT NULL,
     runout json NOT NULL,
     usedrows int NOT NULL,
+    prompt text NOT NULL,
     PRIMARY KEY (sessionid, cmdid)
 );
 CREATE TABLE history (

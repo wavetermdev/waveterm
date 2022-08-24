@@ -283,6 +283,7 @@ type LineType struct {
 }
 
 type SSHOpts struct {
+	Local       bool   `json:"local"`
 	SSHHost     string `json:"sshhost"`
 	SSHOptsStr  string `json:"sshopts"`
 	SSHIdentity string `json:"sshidentity"`
@@ -290,7 +291,8 @@ type SSHOpts struct {
 }
 
 type RemoteOptsType struct {
-	Color string `json:"color"`
+	Color  string `json:"color"`
+	Prompt string `json:"prompt"`
 }
 
 func (opts *RemoteOptsType) Scan(val interface{}) error {
@@ -339,6 +341,7 @@ type CmdType struct {
 	DonePk      *packet.CmdDonePacketType  `json:"donepk"`
 	UsedRows    int64                      `json:"usedrows"`
 	RunOut      []packet.PacketType        `json:"runout"`
+	Prompt      string                     `json:"prompt"`
 	Remove      bool                       `json:"remove"`
 }
 
@@ -394,6 +397,7 @@ func (cmd *CmdType) ToMap() map[string]interface{} {
 	rtn["donepk"] = quickJson(cmd.DonePk)
 	rtn["runout"] = quickJson(cmd.RunOut)
 	rtn["usedrows"] = cmd.UsedRows
+	rtn["prompt"] = cmd.Prompt
 	return rtn
 }
 
@@ -413,6 +417,7 @@ func CmdFromMap(m map[string]interface{}) *CmdType {
 	quickSetJson(&cmd.DonePk, m, "donepk")
 	quickSetJson(&cmd.RunOut, m, "runout")
 	quickSetInt64(&cmd.UsedRows, m, "usedrows")
+	quickSetStr(&cmd.Prompt, m, "prompt")
 	return &cmd
 }
 
@@ -489,6 +494,7 @@ func EnsureLocalRemote(ctx context.Context) error {
 		RemoteUser:          user.Username,
 		RemoteHost:          hostName,
 		ConnectMode:         ConnectModeStartup,
+		SSHOpts:             &SSHOpts{Local: true},
 	}
 	err = InsertRemote(ctx, localRemote)
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -151,6 +152,14 @@ func unquoteDQBashString(str string) (string, bool) {
 	return string(rtn), true
 }
 
+func makeShortHost(host string) string {
+	dotIdx := strings.Index(host, ".")
+	if dotIdx == -1 {
+		return host
+	}
+	return host[0:dotIdx]
+}
+
 func (proc *MShellProc) GetRemoteState() RemoteState {
 	proc.Lock.Lock()
 	defer proc.Lock.Unlock()
@@ -169,6 +178,7 @@ func (proc *MShellProc) GetRemoteState() RemoteState {
 	vars := make(map[string]string)
 	vars["user"] = proc.Remote.RemoteUser
 	vars["host"] = proc.Remote.RemoteHost
+	vars["shorthost"] = makeShortHost(proc.Remote.RemoteHost)
 	if proc.Remote.RemoteSudo {
 		vars["sudo"] = "1"
 	}
@@ -186,6 +196,7 @@ func (proc *MShellProc) GetRemoteState() RemoteState {
 		vars["home"] = proc.ServerProc.InitPk.HomeDir
 		vars["remoteuser"] = proc.ServerProc.InitPk.User
 		vars["remotehost"] = proc.ServerProc.InitPk.HostName
+		vars["remoteshorthost"] = makeShortHost(proc.ServerProc.InitPk.HostName)
 		if proc.Remote.SSHOpts == nil || proc.Remote.SSHOpts.SSHHost == "" {
 			vars["local"] = "1"
 		}
@@ -589,4 +600,105 @@ func (runner *MShellProc) ProcessPackets() {
 		}
 		fmt.Printf("MSH> %s\n", packet.AsString(pk))
 	}
+}
+
+func EvalPromptEsc(escCode string, vars map[string]string, state sstore.RemoteState) string {
+	if escCode == "d" {
+		now := time.Now()
+		return now.Format("Mon Jan 02")
+	}
+	if strings.HasPrefix(escCode, "x{") && strings.HasSuffix(escCode, "}") {
+		varName := escCode[2 : len(escCode)-1]
+		return vars[varName]
+	}
+	if strings.HasPrefix(escCode, "y{") && strings.HasSuffix(escCode, "}") {
+		varName := escCode[2 : len(escCode)-1]
+		varMap := shexec.ParseEnv0(state.Env0)
+		return varMap[varName]
+	}
+	if escCode == "h" {
+		return vars["remoteshorthost"]
+	}
+	if escCode == "H" {
+		return vars["remotehost"]
+	}
+	if escCode == "j" {
+		return "0"
+	}
+	if escCode == "l" {
+		return "(l)"
+	}
+	if escCode == "s" {
+		return "mshell"
+	}
+	if escCode == "t" {
+		now := time.Now()
+		return now.Format("15:04:05")
+	}
+	if escCode == "T" {
+		now := time.Now()
+		return now.Format("03:04:05")
+	}
+	if escCode == "@" {
+		now := time.Now()
+		return now.Format("03:04:05PM")
+	}
+	if escCode == "u" {
+		return vars["remoteuser"]
+	}
+	if escCode == "v" {
+		return "0.1"
+	}
+	if escCode == "V" {
+		return "0"
+	}
+	if escCode == "w" {
+		return state.Cwd
+	}
+	if escCode == "W" {
+		return path.Base(state.Cwd)
+	}
+	if escCode == "!" {
+		return "(!)"
+	}
+	if escCode == "#" {
+		return "(#)"
+	}
+	if escCode == "$" {
+		if vars["remoteuser"] == "root" {
+			return "#"
+		} else {
+			return "$"
+		}
+	}
+	if len(escCode) == 3 {
+		// \nnn escape
+		ival, err := strconv.ParseInt(escCode, 8, 32)
+		if err != nil {
+			return escCode
+		}
+		return string([]byte{byte(ival)})
+	}
+	if escCode == "e" {
+		return "\033"
+	}
+	if escCode == "n" {
+		return "\n"
+	}
+	if escCode == "r" {
+		return "\r"
+	}
+	if escCode == "a" {
+		return "\007"
+	}
+	if escCode == "\\" {
+		return "\\"
+	}
+	if escCode == "[" {
+		return ""
+	}
+	if escCode == "]" {
+		return ""
+	}
+	return "(" + escCode + ")"
 }

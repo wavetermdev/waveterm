@@ -98,6 +98,7 @@ CREATE TABLE cmd (
     donepk json NOT NULL,
     runout json NOT NULL,
     usedrows int NOT NULL,
+    prompt text NOT NULL,
     PRIMARY KEY (sessionid, cmdid)
 );
 
