@@ -49,6 +49,9 @@ func AcquireSCLock() (*os.File, error) {
 }
 
 func EnsureSessionDir(sessionId string) (string, error) {
+	if sessionId == "" {
+		return "", fmt.Errorf("cannot get session dir for blank sessionid")
+	}
 	BaseLock.Lock()
 	sdir, ok := SessionDirCache[sessionId]
 	BaseLock.Unlock()
@@ -90,6 +93,12 @@ func PtyOutFile(sessionId string, cmdId string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if sessionId == "" {
+		return "", fmt.Errorf("cannot get ptyout file for blank sessionid")
+	}
+	if cmdId == "" {
+		return "", fmt.Errorf("cannot get ptyout file for blank cmdid")
+	}
 	return fmt.Sprintf("%s/%s.ptyout.cf", sdir, cmdId), nil
 }
 
@@ -98,10 +107,19 @@ func RunOutFile(sessionId string, cmdId string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if sessionId == "" {
+		return "", fmt.Errorf("cannot get runout file for blank sessionid")
+	}
+	if cmdId == "" {
+		return "", fmt.Errorf("cannot get runout file for blank cmdid")
+	}
 	return fmt.Sprintf("%s/%s.runout", sdir, cmdId), nil
 }
 
 func RemotePtyOut(remoteId string) (string, error) {
+	if remoteId == "" {
+		return "", fmt.Errorf("cannot get remote ptyout file for blank remoteid")
+	}
 	scHome := GetScHomeDir()
 	rdir := path.Join(scHome, RemotesDirBaseName)
 	err := ensureDir(rdir)

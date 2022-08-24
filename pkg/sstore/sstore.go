@@ -99,7 +99,7 @@ type SessionType struct {
 	Name           string            `json:"name"`
 	SessionIdx     int64             `json:"sessionidx"`
 	ActiveScreenId string            `json:"activescreenid"`
-	OwnerUserId    string            `json:"owneruserid"`
+	OwnerId        string            `json:"ownerid"`
 	ShareMode      string            `json:"sharemode"`
 	AccessKey      string            `json:"-"`
 	NotifyNum      int64             `json:"notifynum"`
@@ -134,9 +134,9 @@ func (opts WindowShareOptsType) Value() (driver.Value, error) {
 }
 
 type RemotePtrType struct {
-	OwnerUserId string `json:"owneruserid"`
-	RemoteId    string `json:"remoteid"`
-	Name        string `json:"name"`
+	OwnerId  string `json:"ownerid"`
+	RemoteId string `json:"remoteid"`
+	Name     string `json:"name"`
 }
 
 func (r RemotePtrType) IsSessionScope() bool {
@@ -147,28 +147,28 @@ func (r RemotePtrType) MakeFullRemoteRef() string {
 	if r.RemoteId == "" {
 		return ""
 	}
-	if r.OwnerUserId == "" && r.Name == "" {
+	if r.OwnerId == "" && r.Name == "" {
 		return r.RemoteId
 	}
-	if r.OwnerUserId != "" && r.Name == "" {
-		return fmt.Sprintf("@%s:%s", r.OwnerUserId, r.RemoteId)
+	if r.OwnerId != "" && r.Name == "" {
+		return fmt.Sprintf("@%s:%s", r.OwnerId, r.RemoteId)
 	}
-	if r.OwnerUserId == "" && r.Name != "" {
+	if r.OwnerId == "" && r.Name != "" {
 		return fmt.Sprintf("%s:%s", r.RemoteId, r.Name)
 	}
-	return fmt.Sprintf("@%s:%s:%s", r.OwnerUserId, r.RemoteId, r.Name)
+	return fmt.Sprintf("@%s:%s:%s", r.OwnerId, r.RemoteId, r.Name)
 }
 
 type WindowType struct {
-	SessionId   string              `json:"sessionid"`
-	WindowId    string              `json:"windowid"`
-	CurRemote   RemotePtrType       `json:"curremote"`
-	WinOpts     WindowOptsType      `json:"winopts"`
-	OwnerUserId string              `json:"owneruserid"`
-	ShareMode   string              `json:"sharemode"`
-	ShareOpts   WindowShareOptsType `json:"shareopts"`
-	Lines       []*LineType         `json:"lines"`
-	Cmds        []*CmdType          `json:"cmds"`
+	SessionId string              `json:"sessionid"`
+	WindowId  string              `json:"windowid"`
+	CurRemote RemotePtrType       `json:"curremote"`
+	WinOpts   WindowOptsType      `json:"winopts"`
+	OwnerId   string              `json:"ownerid"`
+	ShareMode string              `json:"sharemode"`
+	ShareOpts WindowShareOptsType `json:"shareopts"`
+	Lines     []*LineType         `json:"lines"`
+	Cmds      []*CmdType          `json:"cmds"`
 
 	// only for updates
 	Remove bool `json:"remove,omitempty"`
@@ -178,11 +178,11 @@ func (w *WindowType) ToMap() map[string]interface{} {
 	rtn := make(map[string]interface{})
 	rtn["sessionid"] = w.SessionId
 	rtn["windowid"] = w.WindowId
-	rtn["curremoteowneruserid"] = w.CurRemote.OwnerUserId
+	rtn["curremoteownerid"] = w.CurRemote.OwnerId
 	rtn["curremoteid"] = w.CurRemote.RemoteId
 	rtn["curremotename"] = w.CurRemote.Name
 	rtn["winopts"] = quickJson(w.WinOpts)
-	rtn["owneruserid"] = w.OwnerUserId
+	rtn["ownerid"] = w.OwnerId
 	rtn["sharemode"] = w.ShareMode
 	rtn["shareopts"] = quickJson(w.ShareOpts)
 	return rtn
@@ -195,11 +195,11 @@ func WindowFromMap(m map[string]interface{}) *WindowType {
 	var w WindowType
 	quickSetStr(&w.SessionId, m, "sessionid")
 	quickSetStr(&w.WindowId, m, "windowid")
-	quickSetStr(&w.CurRemote.OwnerUserId, m, "curremoteowneruserid")
+	quickSetStr(&w.CurRemote.OwnerId, m, "curremoteownerid")
 	quickSetStr(&w.CurRemote.RemoteId, m, "curremoteid")
 	quickSetStr(&w.CurRemote.Name, m, "curremotename")
 	quickSetJson(&w.WinOpts, m, "winopts")
-	quickSetStr(&w.OwnerUserId, m, "owneruserid")
+	quickSetStr(&w.OwnerId, m, "ownerid")
 	quickSetStr(&w.ShareMode, m, "sharemode")
 	quickSetJson(&w.ShareOpts, m, "shareopts")
 	return &w
@@ -224,7 +224,7 @@ type ScreenType struct {
 	Name           string              `json:"name"`
 	ActiveWindowId string              `json:"activewindowid"`
 	ScreenOpts     ScreenOptsType      `json:"screenopts"`
-	OwnerUserId    string              `json:"owneruserid"`
+	OwnerId        string              `json:"ownerid"`
 	ShareMode      string              `json:"sharemode"`
 	Windows        []*ScreenWindowType `json:"windows"`
 
@@ -314,13 +314,13 @@ func (opts TermOpts) Value() (driver.Value, error) {
 }
 
 type RemoteInstance struct {
-	RIId              string      `json:"riid"`
-	Name              string      `json:"name"`
-	SessionId         string      `json:"sessionid"`
-	WindowId          string      `json:"windowid"`
-	RemoteOwnerUserId string      `json:"remoteowneruserid"`
-	RemoteId          string      `json:"remoteid"`
-	State             RemoteState `json:"state"`
+	RIId          string      `json:"riid"`
+	Name          string      `json:"name"`
+	SessionId     string      `json:"sessionid"`
+	WindowId      string      `json:"windowid"`
+	RemoteOwnerId string      `json:"remoteownerid"`
+	RemoteId      string      `json:"remoteid"`
+	State         RemoteState `json:"state"`
 
 	// only for updates
 	Remove bool `json:"remove,omitempty"`
@@ -388,7 +388,7 @@ func (r *RemoteType) GetName() string {
 type CmdType struct {
 	SessionId   string                     `json:"sessionid"`
 	CmdId       string                     `json:"cmdid"`
-	RemoteId    string                     `json:"remoteid"`
+	Remote      RemotePtrType              `json:"remote"`
 	CmdStr      string                     `json:"cmdstr"`
 	RemoteState RemoteState                `json:"remotestate"`
 	TermOpts    TermOpts                   `json:"termopts"`
@@ -443,7 +443,9 @@ func (cmd *CmdType) ToMap() map[string]interface{} {
 	rtn := make(map[string]interface{})
 	rtn["sessionid"] = cmd.SessionId
 	rtn["cmdid"] = cmd.CmdId
-	rtn["remoteid"] = cmd.RemoteId
+	rtn["remoteownerid"] = cmd.Remote.OwnerId
+	rtn["remoteid"] = cmd.Remote.RemoteId
+	rtn["remotename"] = cmd.Remote.Name
 	rtn["cmdstr"] = cmd.CmdStr
 	rtn["remotestate"] = quickJson(cmd.RemoteState)
 	rtn["termopts"] = quickJson(cmd.TermOpts)
@@ -462,7 +464,9 @@ func CmdFromMap(m map[string]interface{}) *CmdType {
 	var cmd CmdType
 	quickSetStr(&cmd.SessionId, m, "sessionid")
 	quickSetStr(&cmd.CmdId, m, "cmdid")
-	quickSetStr(&cmd.RemoteId, m, "remoteid")
+	quickSetStr(&cmd.Remote.OwnerId, m, "remoteownerid")
+	quickSetStr(&cmd.Remote.RemoteId, m, "remoteid")
+	quickSetStr(&cmd.Remote.Name, m, "remotename")
 	quickSetStr(&cmd.CmdStr, m, "cmdstr")
 	quickSetJson(&cmd.RemoteState, m, "remotestate")
 	quickSetJson(&cmd.TermOpts, m, "termopts")

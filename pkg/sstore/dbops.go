@@ -261,7 +261,7 @@ func InsertSessionWithName(ctx context.Context, sessionName string, activate boo
 		names := tx.SelectStrings(`SELECT name FROM session`)
 		sessionName = fmtUniqueName(sessionName, "session-%d", len(names)+1, names)
 		maxSessionIdx := tx.GetInt(`SELECT COALESCE(max(sessionidx), 0) FROM session`)
-		query := `INSERT INTO session (sessionid, name, activescreenid, sessionidx, notifynum, owneruserid, sharemode, accesskey) VALUES (?, ?, '', ?, ?, '', 'local', '')`
+		query := `INSERT INTO session (sessionid, name, activescreenid, sessionidx, notifynum, ownerid, sharemode, accesskey) VALUES (?, ?, '', ?, ?, '', 'local', '')`
 		tx.ExecWrap(query, newSessionId, sessionName, maxSessionIdx+1, 0)
 		_, err := InsertScreen(tx.Context(), newSessionId, "", true)
 		if err != nil {
@@ -334,7 +334,7 @@ func InsertScreen(ctx context.Context, sessionId string, screenName string, acti
 		screenNames := tx.SelectStrings(`SELECT name FROM screen WHERE sessionid = ?`, sessionId)
 		screenName = fmtUniqueName(screenName, "s%d", maxScreenIdx+1, screenNames)
 		newScreenId = uuid.New().String()
-		query = `INSERT INTO screen (sessionid, screenid, name, activewindowid, screenidx, screenopts, owneruserid, sharemode) VALUES (?, ?, ?, ?, ?, ?, '', 'local')`
+		query = `INSERT INTO screen (sessionid, screenid, name, activewindowid, screenidx, screenopts, ownerid, sharemode) VALUES (?, ?, ?, ?, ?, ?, '', 'local')`
 		tx.ExecWrap(query, sessionId, newScreenId, screenName, newWindowId, maxScreenIdx+1, ScreenOptsType{})
 		layout := LayoutType{Type: LayoutFull}
 		query = `INSERT INTO screen_window (sessionid, screenid, windowid, name, layout) VALUES (?, ?, ?, ?, ?)`
@@ -388,8 +388,8 @@ func txCreateWindow(tx *TxWrap, sessionId string, curRemote RemotePtrType) strin
 		ShareOpts: WindowShareOptsType{},
 	}
 	wmap := w.ToMap()
-	query := `INSERT INTO window ( sessionid, windowid, curremoteowneruserid, curremoteid, curremotename, winopts, owneruserid, sharemode, shareopts) 
-                          VALUES (:sessionid,:windowid,:curremoteowneruserid,:curremoteid,:curremotename,:winopts,:owneruserid,:sharemode,:shareopts)`
+	query := `INSERT INTO window ( sessionid, windowid, curremoteownerid, curremoteid, curremotename, winopts, ownerid, sharemode, shareopts) 
+                          VALUES (:sessionid,:windowid,:curremoteownerid,:curremoteid,:curremotename,:winopts,:ownerid,:sharemode,:shareopts)`
 	tx.NamedExecWrap(query, wmap)
 	return w.WindowId
 }
@@ -414,8 +414,8 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 		if cmd != nil {
 			cmdMap := cmd.ToMap()
 			query = `
-INSERT INTO cmd  ( sessionid, cmdid, remoteid, cmdstr, remotestate, termopts, status, startpk, donepk, runout, usedrows)
-          VALUES (:sessionid,:cmdid,:remoteid,:cmdstr,:remotestate,:termopts,:status,:startpk,:donepk,:runout,:usedrows)
+INSERT INTO cmd  ( sessionid, cmdid, remoteownerid, remoteid, remotename, cmdstr, remotestate, termopts, status, startpk, donepk, runout, usedrows)
+          VALUES (:sessionid,:cmdid,:remoteownerid,:remoteid,:remotename,:cmdstr,:remotestate,:termopts,:status,:startpk,:donepk,:runout,:usedrows)
 `
 			tx.NamedExecWrap(query, cmdMap)
 		}
@@ -562,8 +562,8 @@ func GetRemoteState(ctx context.Context, sessionId string, windowId string, remo
 	var remoteState *RemoteState
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		var ri RemoteInstance
-		query := `SELECT * FROM remote_instance WHERE sessionid = ? AND windowid = ? AND remoteowneruserid = ? AND remoteid = ? AND name = ?`
-		found := tx.GetWrap(&ri, query, sessionId, windowId, remotePtr.OwnerUserId, remotePtr.RemoteId, remotePtr.Name)
+		query := `SELECT * FROM remote_instance WHERE sessionid = ? AND windowid = ? AND remoteownerid = ? AND remoteid = ? AND name = ?`
+		found := tx.GetWrap(&ri, query, sessionId, windowId, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name)
 		if found {
 			remoteState = &ri.State
 			return nil
@@ -599,26 +599,26 @@ func UpdateRemoteState(ctx context.Context, sessionId string, windowId string, r
 		if err != nil {
 			return fmt.Errorf("cannot update remote instance cwd: %w", err)
 		}
-		query := `SELECT * FROM remote_instance WHERE sessionid = ? AND windowid = ? AND remoteowneruserid = ? AND remoteid = ? AND name = ?`
-		found := tx.GetWrap(&ri, query, sessionId, windowId, remotePtr.OwnerUserId, remotePtr.RemoteId, remotePtr.Name)
+		query := `SELECT * FROM remote_instance WHERE sessionid = ? AND windowid = ? AND remoteownerid = ? AND remoteid = ? AND name = ?`
+		found := tx.GetWrap(&ri, query, sessionId, windowId, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name)
 		if !found {
 			ri = RemoteInstance{
-				RIId:              uuid.New().String(),
-				Name:              remotePtr.Name,
-				SessionId:         sessionId,
-				WindowId:          windowId,
-				RemoteOwnerUserId: remotePtr.OwnerUserId,
-				RemoteId:          remotePtr.RemoteId,
-				State:             state,
+				RIId:          uuid.New().String(),
+				Name:          remotePtr.Name,
+				SessionId:     sessionId,
+				WindowId:      windowId,
+				RemoteOwnerId: remotePtr.OwnerId,
+				RemoteId:      remotePtr.RemoteId,
+				State:         state,
 			}
-			query = `INSERT INTO remote_instance ( riid, name, sessionid, windowid, remoteowneruserid, remoteid, state) 
-                                          VALUES (:riid,:name,:sessionid,:windowid,:remoteowneruserid,:remoteid,:state)`
+			query = `INSERT INTO remote_instance ( riid, name, sessionid, windowid, remoteownerid, remoteid, state) 
+                                          VALUES (:riid,:name,:sessionid,:windowid,:remoteownerid,:remoteid,:state)`
 			tx.NamedExecWrap(query, ri)
 			return nil
 		}
-		query = `UPDATE remote_instance SET state = ? WHERE sessionid = ? AND windowid = ? AND remoteowneruserid = ? AND remoteid = ? AND name = ?`
+		query = `UPDATE remote_instance SET state = ? WHERE sessionid = ? AND windowid = ? AND remoteownerid = ? AND remoteid = ? AND name = ?`
 		ri.State = state
-		tx.ExecWrap(query, ri.State, ri.SessionId, ri.WindowId, remotePtr.OwnerUserId, remotePtr.RemoteId, remotePtr.Name)
+		tx.ExecWrap(query, ri.State, ri.SessionId, ri.WindowId, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name)
 		return nil
 	})
 	return &ri, txErr
@@ -630,8 +630,8 @@ func UpdateCurRemote(ctx context.Context, sessionId string, windowId string, rem
 		if !tx.Exists(query, sessionId, windowId) {
 			return fmt.Errorf("cannot update curremote: no window found")
 		}
-		query = `UPDATE window SET curremoteowneruserid = ?, curremoteid = ?, curremotename = ? WHERE sessionid = ? AND windowid = ?`
-		tx.ExecWrap(query, remotePtr.OwnerUserId, remotePtr.RemoteId, remotePtr.Name, sessionId, windowId)
+		query = `UPDATE window SET curremoteownerid = ?, curremoteid = ?, curremotename = ? WHERE sessionid = ? AND windowid = ?`
+		tx.ExecWrap(query, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name, sessionId, windowId)
 		return nil
 	})
 	return txErr

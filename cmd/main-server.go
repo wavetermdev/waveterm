@@ -292,6 +292,7 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 		}
 		fmt.Printf("[error] in run-command: %v\n", r)
 		debug.PrintStack()
+		WriteJsonError(w, fmt.Errorf("panic: %v", r))
 		return
 	}()
 	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))

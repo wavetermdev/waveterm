@@ -3,17 +3,14 @@ package scpacket
 import (
 	"reflect"
 
+	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
+	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
 )
 
 const FeCommandPacketStr = "fecmd"
 const WatchScreenPacketStr = "watchscreen"
-
-type RemoteState struct {
-	RemoteId   string `json:"remoteid"`
-	RemoteName string `json:"remotename"`
-	Cwd        string `json:"cwd"`
-}
+const FeInputPacketStr = "feinput"
 
 type FeCommandPacketType struct {
 	Type       string            `json:"type"`
@@ -23,9 +20,20 @@ type FeCommandPacketType struct {
 	Kwargs     map[string]string `json:"kwargs,omitempty"`
 }
 
+type FeInputPacketType struct {
+	Type        string               `json:"type"`
+	CK          base.CommandKey      `json:"ck"`
+	Remote      sstore.RemotePtrType `json:"remote"`
+	InputData64 string               `json:"inputdata"`
+	SigNum      int                  `json:"signum,omitempty"`
+	WinSizeRows int                  `json:"winsizerows"`
+	WinSizeCols int                  `json:"winsizecols"`
+}
+
 func init() {
 	packet.RegisterPacketType(FeCommandPacketStr, reflect.TypeOf(FeCommandPacketType{}))
 	packet.RegisterPacketType(WatchScreenPacketStr, reflect.TypeOf(WatchScreenPacketType{}))
+	packet.RegisterPacketType(FeInputPacketStr, reflect.TypeOf(FeInputPacketType{}))
 }
 
 func (*FeCommandPacketType) GetType() string {
@@ -34,6 +42,25 @@ func (*FeCommandPacketType) GetType() string {
 
 func MakeFeCommandPacket() *FeCommandPacketType {
 	return &FeCommandPacketType{Type: FeCommandPacketStr}
+}
+
+func (*FeInputPacketType) GetType() string {
+	return FeInputPacketStr
+}
+
+func MakeFeInputPacket() *FeInputPacketType {
+	return &FeInputPacketType{Type: FeInputPacketStr}
+}
+
+func (p *FeInputPacketType) ConvertToInputPacket() *packet.InputPacketType {
+	rtn := packet.MakeInputPacket()
+	rtn.CK = p.CK
+	rtn.RemoteId = p.Remote.RemoteId
+	rtn.InputData64 = p.InputData64
+	rtn.SigNum = p.SigNum
+	rtn.WinSizeRows = p.WinSizeRows
+	rtn.WinSizeCols = p.WinSizeCols
+	return rtn
 }
 
 type WatchScreenPacketType struct {

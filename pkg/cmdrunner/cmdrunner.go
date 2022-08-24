@@ -42,6 +42,7 @@ type resolvedIds struct {
 	RemotePtr         sstore.RemotePtrType
 	RemoteState       *sstore.RemoteState
 	RemoteDisplayName string
+	RState            remote.RemoteState
 }
 
 func SubMetaCmd(cmd string) string {
@@ -229,26 +230,26 @@ func parseFullRemoteRef(fullRemoteRef string) (string, string, string, error) {
 	return fields[0], fields[1], fields[2], nil
 }
 
-// returns (remoteDisplayName, remoteptr, state, err)
-func resolveRemote(ctx context.Context, fullRemoteRef string, sessionId string, windowId string) (string, *sstore.RemotePtrType, *sstore.RemoteState, error) {
+// returns (remoteDisplayName, remoteptr, state, rstate, err)
+func resolveRemote(ctx context.Context, fullRemoteRef string, sessionId string, windowId string) (string, *sstore.RemotePtrType, *sstore.RemoteState, *remote.RemoteState, error) {
 	if fullRemoteRef == "" {
-		return "", nil, nil, nil
+		return "", nil, nil, nil, nil
 	}
 	userRef, remoteRef, remoteName, err := parseFullRemoteRef(fullRemoteRef)
 	if err != nil {
-		return "", nil, nil, err
+		return "", nil, nil, nil, err
 	}
 	if userRef != "" {
-		return "", nil, nil, fmt.Errorf("invalid remote '%s', cannot resolve remote userid '%s'", fullRemoteRef, userRef)
+		return "", nil, nil, nil, fmt.Errorf("invalid remote '%s', cannot resolve remote userid '%s'", fullRemoteRef, userRef)
 	}
 	rstate := remote.ResolveRemoteRef(remoteRef)
 	if rstate == nil {
-		return "", nil, nil, fmt.Errorf("cannot resolve remote '%s': not found", fullRemoteRef)
+		return "", nil, nil, nil, fmt.Errorf("cannot resolve remote '%s': not found", fullRemoteRef)
 	}
 	rptr := sstore.RemotePtrType{RemoteId: rstate.RemoteId, Name: remoteName}
 	state, err := sstore.GetRemoteState(ctx, sessionId, windowId, rptr)
 	if err != nil {
-		return "", nil, nil, fmt.Errorf("cannot resolve remote state '%s': %w", fullRemoteRef, err)
+		return "", nil, nil, nil, fmt.Errorf("cannot resolve remote state '%s': %w", fullRemoteRef, err)
 	}
 	rname := rstate.RemoteCanonicalName
 	if rstate.RemoteAlias != "" {
@@ -258,9 +259,9 @@ func resolveRemote(ctx context.Context, fullRemoteRef string, sessionId string, 
 		rname = fmt.Sprintf("%s:%s", rname, rptr.Name)
 	}
 	if state == nil {
-		return rname, &rptr, rstate.DefaultState, nil
+		return rname, &rptr, rstate.DefaultState, rstate, nil
 	}
-	return rname, &rptr, state, nil
+	return rname, &rptr, state, rstate, nil
 }
 
 func resolveIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype int) (resolvedIds, error) {
@@ -298,7 +299,7 @@ func resolveIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype int
 		}
 	}
 	if (rtype&R_Remote)+(rtype&R_RemoteOpt) > 0 {
-		rname, rptr, rstate, err := resolveRemote(ctx, pk.Kwargs["remote"], rtn.SessionId, rtn.WindowId)
+		rname, rptr, state, rstate, err := resolveRemote(ctx, pk.Kwargs["remote"], rtn.SessionId, rtn.WindowId)
 		if err != nil {
 			return rtn, err
 		}
@@ -307,7 +308,8 @@ func resolveIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype int
 		}
 		rtn.RemoteDisplayName = rname
 		rtn.RemotePtr = *rptr
-		rtn.RemoteState = rstate
+		rtn.RemoteState = state
+		rtn.RState = *rstate
 	}
 	return rtn, nil
 }
@@ -316,6 +318,12 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	ids, err := resolveIds(ctx, pk, R_Session|R_Window|R_Remote)
 	if err != nil {
 		return nil, fmt.Errorf("/run error: %w", err)
+	}
+	if !ids.RState.IsConnected() {
+		return nil, fmt.Errorf("cannot run command, remote '%s' not connected", ids.RemoteDisplayName)
+	}
+	if ids.RemoteState == nil {
+		return nil, fmt.Errorf("cannot run command, remote '%s' has no state", ids.RemoteDisplayName)
 	}
 	cmdId := uuid.New().String()
 	cmdStr := firstArg(pk)
@@ -329,7 +337,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	runPacket.UsePty = true
 	runPacket.TermOpts = &packet.TermOpts{Rows: remote.DefaultTermRows, Cols: remote.DefaultTermCols, Term: remote.DefaultTerm}
 	runPacket.Command = strings.TrimSpace(cmdStr)
-	cmd, err := remote.RunCommand(ctx, cmdId, ids.RemotePtr.RemoteId, ids.RemoteState, runPacket)
+	cmd, err := remote.RunCommand(ctx, cmdId, ids.RemotePtr, ids.RemoteState, runPacket)
 	if err != nil {
 		return nil, err
 	}
@@ -507,15 +515,11 @@ func UnSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 	if err != nil {
 		return nil, err
 	}
-	curRemote := remote.GetRemoteById(ids.RemotePtr.RemoteId)
-	if curRemote == nil {
-		return nil, fmt.Errorf("invalid remote, cannot unset")
-	}
-	if !curRemote.IsConnected() {
-		return nil, fmt.Errorf("remote is not connected, cannot unset")
+	if !ids.RState.IsConnected() {
+		return nil, fmt.Errorf("remote '%s' is not connected, cannot unset", ids.RemoteDisplayName)
 	}
 	if ids.RemoteState == nil {
-		return nil, fmt.Errorf("remote state is not available")
+		return nil, fmt.Errorf("remote '%s' state is not available, cannot unset", ids.RemoteDisplayName)
 	}
 	envMap := shexec.ParseEnv0(ids.RemoteState.Env0)
 	unsetVars := make(map[string]bool)
@@ -595,15 +599,11 @@ func SetEnvCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	if err != nil {
 		return nil, err
 	}
-	curRemote := remote.GetRemoteById(ids.RemotePtr.RemoteId)
-	if curRemote == nil {
-		return nil, fmt.Errorf("invalid remote, cannot setenv")
-	}
-	if !curRemote.IsConnected() {
-		return nil, fmt.Errorf("remote is not connected, cannot setenv")
+	if !ids.RState.IsConnected() {
+		return nil, fmt.Errorf("remote '%s' is not connected, cannot setenv", ids.RemoteDisplayName)
 	}
 	if ids.RemoteState == nil {
-		return nil, fmt.Errorf("remote state is not available")
+		return nil, fmt.Errorf("remote '%s' state is not available, cannot setenv", ids.RemoteDisplayName)
 	}
 	envMap := shexec.ParseEnv0(ids.RemoteState.Env0)
 	if len(pk.Args) == 0 {
@@ -656,7 +656,7 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 	if newRemote == "" {
 		return nil, nil
 	}
-	remoteName, rptr, _, err := resolveRemote(ctx, newRemote, ids.SessionId, ids.WindowId)
+	remoteName, rptr, _, _, err := resolveRemote(ctx, newRemote, ids.SessionId, ids.WindowId)
 	if err != nil {
 		return nil, err
 	}
@@ -689,13 +689,13 @@ func CdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 	newDir := firstArg(pk)
 	curRemote := remote.GetRemoteById(ids.RemotePtr.RemoteId)
 	if curRemote == nil {
-		return nil, fmt.Errorf("invalid remote, cannot change directory")
+		return nil, fmt.Errorf("remote '%s' not found, cannot change directory", ids.RemoteDisplayName)
 	}
-	if !curRemote.IsConnected() {
-		return nil, fmt.Errorf("remote is not connected, cannot change directory")
+	if !ids.RState.IsConnected() {
+		return nil, fmt.Errorf("remote '%s' is not connected, cannot change directory", ids.RemoteDisplayName)
 	}
 	if ids.RemoteState == nil {
-		return nil, fmt.Errorf("remote state is not available")
+		return nil, fmt.Errorf("remote '%s' state is not available, cannot change directory", ids.RemoteDisplayName)
 	}
 	if newDir == "" {
 		return sstore.ModelUpdate{
@@ -704,7 +704,7 @@ func CdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 			},
 		}, nil
 	}
-	newDir, err = curRemote.ExpandHomeDir(newDir)
+	newDir, err = ids.RState.ExpandHomeDir(newDir)
 	if err != nil {
 		return nil, err
 	}

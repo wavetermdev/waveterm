@@ -128,9 +128,19 @@ func (ws *WSState) RunWSRead() {
 			fmt.Printf("error unmarshalling ws message: %v\n", err)
 			continue
 		}
-		if pk.GetType() == "input" {
+		if pk.GetType() == "feinput" {
+			feInputPk := pk.(*scpacket.FeInputPacketType)
+			if feInputPk.Remote.OwnerId != "" {
+				fmt.Printf("[error] cannot send input to remote with ownerid\n")
+				continue
+			}
+			if feInputPk.Remote.RemoteId == "" {
+				fmt.Printf("[error] invalid input packet, remoteid is not set\n")
+				continue
+			}
+			inputPk := feInputPk.ConvertToInputPacket()
 			go func() {
-				err = sendCmdInput(pk.(*packet.InputPacketType))
+				err = sendCmdInput(inputPk)
 				if err != nil {
 					fmt.Printf("[error] sending command input: %v\n", err)
 				}

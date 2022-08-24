@@ -68,6 +68,10 @@ type RemoteState struct {
 	ConnectMode         string              `json:"connectmode"`
 }
 
+func (state RemoteState) IsConnected() bool {
+	return state.Status == StatusConnected
+}
+
 type MShellProc struct {
 	Lock   *sync.Mutex
 	Remote *sstore.RemoteType
@@ -401,16 +405,11 @@ func replaceHomePath(pathStr string, homeDir string) string {
 	return pathStr
 }
 
-func (msh *MShellProc) ExpandHomeDir(pathStr string) (string, error) {
+func (state RemoteState) ExpandHomeDir(pathStr string) (string, error) {
 	if pathStr != "~" && !strings.HasPrefix(pathStr, "~/") {
 		return pathStr, nil
 	}
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	if msh.ServerProc.InitPk == nil {
-		return "", fmt.Errorf("remote not connected, does not have home directory set for ~ expansion")
-	}
-	homeDir := msh.ServerProc.InitPk.HomeDir
+	homeDir := state.RemoteVars["home"]
 	if homeDir == "" {
 		return "", fmt.Errorf("remote does not have HOME set, cannot do ~ expansion")
 	}
@@ -449,13 +448,16 @@ func makeTermOpts() sstore.TermOpts {
 	return sstore.TermOpts{Rows: DefaultTermRows, Cols: DefaultTermCols, FlexRows: true, MaxPtySize: DefaultMaxPtySize}
 }
 
-func RunCommand(ctx context.Context, cmdId string, remoteId string, remoteState *sstore.RemoteState, runPacket *packet.RunPacketType) (*sstore.CmdType, error) {
-	msh := GetRemoteById(remoteId)
+func RunCommand(ctx context.Context, cmdId string, remotePtr sstore.RemotePtrType, remoteState *sstore.RemoteState, runPacket *packet.RunPacketType) (*sstore.CmdType, error) {
+	if remotePtr.OwnerId != "" {
+		return nil, fmt.Errorf("cannot run command against another user's remote '%s'", remotePtr.MakeFullRemoteRef())
+	}
+	msh := GetRemoteById(remotePtr.RemoteId)
 	if msh == nil {
-		return nil, fmt.Errorf("no remote id=%s found", remoteId)
+		return nil, fmt.Errorf("no remote id=%s found", remotePtr.RemoteId)
 	}
 	if !msh.IsConnected() {
-		return nil, fmt.Errorf("remote '%s' is not connected", remoteId)
+		return nil, fmt.Errorf("remote '%s' is not connected", remotePtr.RemoteId)
 	}
 	if remoteState == nil {
 		return nil, fmt.Errorf("no remote state passed to RunCommand")
@@ -486,7 +488,7 @@ func RunCommand(ctx context.Context, cmdId string, remoteId string, remoteState 
 		SessionId:   runPacket.CK.GetSessionId(),
 		CmdId:       startPk.CK.GetCmdId(),
 		CmdStr:      runPacket.Command,
-		RemoteId:    msh.Remote.RemoteId,
+		Remote:      remotePtr,
 		RemoteState: *remoteState,
 		TermOpts:    makeTermOpts(),
 		Status:      status,

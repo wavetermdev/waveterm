@@ -10,7 +10,7 @@ CREATE TABLE session (
     sessionidx int NOT NULL,
     activescreenid varchar(36) NOT NULL,
     notifynum int NOT NULL,
-    owneruserid varchar(36) NOT NULL,
+    ownerid varchar(36) NOT NULL,
     sharemode varchar(12) NOT NULL,
     accesskey varchar(36) NOT NULL
 );
@@ -18,11 +18,11 @@ CREATE TABLE session (
 CREATE TABLE window (
     sessionid varchar(36) NOT NULL,
     windowid varchar(36) NOT NULL,
-    curremoteowneruserid varchar(36) NOT NULL,
+    curremoteownerid varchar(36) NOT NULL,
     curremoteid varchar(36) NOT NULL,
     curremotename varchar(50) NOT NULL,
     winopts json NOT NULL,
-    owneruserid varchar(36) NOT NULL,
+    ownerid varchar(36) NOT NULL,
     sharemode varchar(12) NOT NULL,
     shareopts json NOT NULL,
     PRIMARY KEY (sessionid, windowid)
@@ -35,7 +35,7 @@ CREATE TABLE screen (
     activewindowid varchar(36) NOT NULL,
     screenidx int NOT NULL,
     screenopts json NOT NULL,
-    owneruserid varchar(36) NOT NULL,
+    ownerid varchar(36) NOT NULL,
     sharemode varchar(12) NOT NULL,
     PRIMARY KEY (sessionid, screenid)
 );
@@ -54,7 +54,7 @@ CREATE TABLE remote_instance (
     name varchar(50) NOT NULL,
     sessionid varchar(36) NOT NULL,
     windowid varchar(36) NOT NULL,
-    remoteowneruserid varchar(36) NOT NULL,
+    remoteownerid varchar(36) NOT NULL,
     remoteid varchar(36) NOT NULL,
     state json NOT NULL
 );
@@ -91,7 +91,9 @@ CREATE TABLE remote (
 CREATE TABLE cmd (
     sessionid varchar(36) NOT NULL,
     cmdid varchar(36) NOT NULL,
+    remoteownerid varchar(36) NOT NULL,
     remoteid varchar(36) NOT NULL,
+    remotename varchar(50) NOT NULL,
     cmdstr text NOT NULL,
     remotestate json NOT NULL,
     termopts json NOT NULL,
