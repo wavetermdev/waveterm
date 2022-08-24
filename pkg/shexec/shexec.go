@@ -391,7 +391,12 @@ func (opts SSHOpts) MakeMShellSingleCmd() (*exec.Cmd, error) {
 func (opts SSHOpts) MakeSSHExecCmd(remoteCommand string) *exec.Cmd {
 	remoteCommand = strings.TrimSpace(remoteCommand)
 	if opts.SSHHost == "" {
+		homeDir, _ := os.UserHomeDir() // ignore error
+		if homeDir == "" {
+			homeDir = "/"
+		}
 		ecmd := exec.Command("bash", "-c", remoteCommand)
+		ecmd.Dir = homeDir
 		return ecmd
 	} else {
 		var moreSSHOpts []string
