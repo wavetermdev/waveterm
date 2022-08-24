@@ -328,6 +328,13 @@ class CmdInput extends React.Component<{}, {}> {
     lastHistoryUpDown : boolean = false;
     lastTabCurLine : mobx.IObservableValue<string> = mobx.observable.box(null);
 
+    componentDidMount() {
+        let input = document.getElementById("main-cmd-input");
+        if (input != null) {
+            input.focus();
+        }
+    }
+
     isModKeyPress(e : any) {
         return e.code.match(/^(Control|Meta|Alt|Shift)(Left|Right)$/);
     }
@@ -433,6 +440,9 @@ class CmdInput extends React.Component<{}, {}> {
     }
 
     getAfterSlash(s : string) : string {
+        if (s.startsWith("^/")) {
+            return s.substr(1);
+        }
         let slashIdx = s.lastIndexOf("/");
         if (slashIdx == s.length-1) {
             slashIdx = s.lastIndexOf("/", slashIdx-1);
@@ -489,14 +499,14 @@ class CmdInput extends React.Component<{}, {}> {
                     <If condition={infoMsg && infoMsg.infolines != null}>
                         <div className="info-lines">
                             <For index="idx" each="line" of={infoMsg.infolines}>
-                                <div key={idx}>{line}</div>
+                                <div key={idx}>{line == "" ? " " : line}</div>
                             </For>
                         </div>
                     </If>
                     <If condition={infoMsg && infoMsg.infocomps != null && infoMsg.infocomps.length > 0}>
                         <div className="info-comps">
                             <For each="istr" index="istrIdx" of={infoMsg.infocomps}>
-                                <div key={istrIdx} className="info-comp">
+                                <div key={istrIdx} className={cn("info-comp", {"metacmd-comp": istr.startsWith("^")})}>
                                     {this.getAfterSlash(istr)}
                                 </div>
                             </For>
