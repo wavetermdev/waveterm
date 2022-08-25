@@ -885,10 +885,6 @@ class Model {
             return;
         }
         termWrap.terminal.focus();
-        let lineElem = document.getElementById("line-" + getLineId(switchLine));
-        if (lineElem != null) {
-            lineElem.scrollIntoView({block: "nearest"});
-        }
         console.log("arrow-up", this.getFocusedLine(), "=>", switchLine);
     }
 
@@ -994,6 +990,9 @@ class Model {
             else if (lineMsg.line == null && lineMsg.cmd != null) {
                 this.updateCmd(lineMsg.cmd);
             }
+        }
+        else if ("cmd" in update) {
+            this.updateCmd(update.cmd);
         }
         if ("window" in update) {
             let winMsg : WindowUpdateType = update;

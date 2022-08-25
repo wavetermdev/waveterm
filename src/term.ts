@@ -64,7 +64,7 @@ class TermWrap {
             this.usedRows = mobx.observable.box(termOpts.rows);
         }
         let cols = termOpts.cols;
-        let maxCols = Math.trunc((winSize.width - 25) / DefaultCellWidth);
+        let maxCols = Math.trunc((winSize.width - 25) / DefaultCellWidth) - 1;
         if (maxCols > cols) {
             cols = maxCols;
         }
@@ -105,6 +105,12 @@ class TermWrap {
         mobx.action(() => {
             this.isFocused.set(focus);
         })();
+        if (this.connectedElem != null) {
+            let lineElem = this.connectedElem.closest(".line");
+            if (lineElem != null) {
+                lineElem.scrollIntoView({behavior: "smooth", block: "nearest"});
+            }
+        }
     }
 
     getTermUsedRows() : number {
@@ -200,7 +206,6 @@ class TermWrap {
             this.dataUpdates.push({data: data, pos: pos});
             return;
         }
-        console.log("pty-update", this.cmdId, this.ptyPos, data.length);
         if (pos > this.ptyPos) {
             throw new Error(sprintf("invalid pty-update, data-pos[%d] does not match term-pos[%d] cmdid[%s]", pos, this.ptyPos, this.cmdId));
         }

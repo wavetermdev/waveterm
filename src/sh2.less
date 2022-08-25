@@ -313,6 +313,7 @@ html, body, #main {
 
 .line.line-cmd {
     flex-direction: column;
+    scroll-margin-bottom: 20px;
     
     .avatar {
         cursor: pointer;
@@ -343,10 +344,7 @@ html, body, #main {
         align-self: flex-start;
 
         &.focus {
-            /* box-shadow: -8px 0 12px -5px #aaa; */
-            /* box-shadow: 0 0 0 4px hsl(0, 0%, 20%);*/
-            /* filter:drop-shadow(3px 3px 10px #555); */
-            box-shadow: 0 0 4px 4px rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 3px 3px rgba(255, 255, 255, 0.3);
         }
     }
 }
@@ -470,6 +468,33 @@ html, body, #main {
 
 body .xterm .xterm-viewport {
     overflow-y: auto;
+    width: calc(100% + 5px);
+}
+
+.terminal-wrapper {
+    position: relative;
+    
+    .term-block {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: transparent;
+        z-index: 10;
+        /* background-color: rgba(50, 50, 240, 0.05); */
+    }
+}
+
+.terminal-wrapper.focus .xterm {
+    .xterm-screen {
+        overflow-y: scroll;
+        overscroll-behavior: contain;
+    }
+
+    .xterm-viewport {
+        overscroll-behavior: contain;
+    }
 }
 
 .cmd-input-info, .xterm-viewport {
@@ -489,7 +514,7 @@ body .xterm .xterm-viewport {
 }
 
 .lines {
-    background-color: black;
+    /* background-color: rgba(50, 50, 240, 0.05); */
     display: flex;
     flex-direction: column;
     height: 80vh;

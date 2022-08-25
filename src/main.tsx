@@ -273,6 +273,16 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
             </div>
         );
     }
+
+    @boundMethod
+    clickTermBlock(e : any, handler : string) {
+        let {sw, line} = this.props;
+        let model = GlobalModel;
+        let termWrap = sw.getTermWrap(line.cmdid);
+        if (termWrap != null) {
+            termWrap.terminal.focus();
+        }
+    }
     
     render() {
         let {sw, line, width} = this.props;
@@ -325,6 +335,9 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                     </div>
                 </div>
                 <div className={cn("terminal-wrapper", {"focus": isFocused})} style={{overflowY: "hidden"}}>
+                    <If condition={!isFocused}>
+                        <div className="term-block" onClick={this.clickTermBlock}></div>
+                    </If>
                     <div className="terminal" id={"term-" + getLineId(line)} data-cmdid={line.cmdid} style={{height: totalHeight}}></div>
                     <If condition={!termLoaded}><div style={{position: "absolute", top: 60, left: 30}}>(loading)</div></If>
                 </div>
@@ -348,11 +361,11 @@ class Line extends React.Component<{sw : ScreenWindow, line : LineType, width : 
 }
 
 @mobxReact.observer
-class CmdInput extends React.Component<{}, {}> {
+class TextAreaInput extends React.Component<{}, {}> {
     lastTab : boolean = false;
     lastHistoryUpDown : boolean = false;
     lastTabCurLine : mobx.IObservableValue<string> = mobx.observable.box(null);
-
+    
     componentDidMount() {
         let input = document.getElementById("main-cmd-input");
         if (input != null) {
@@ -464,6 +477,23 @@ class CmdInput extends React.Component<{}, {}> {
         model.submitRawCommand(commandStr, true);
     }
 
+    render() {
+        let model = GlobalModel;
+        let inputModel = model.inputModel;
+        let curLine = inputModel.getCurLine();
+        let numLines = curLine.split("\n").length;
+        let displayLines = numLines;
+        if (displayLines > 5) {
+            displayLines = 5;
+        }
+        return (
+            <textarea id="main-cmd-input" rows={displayLines} value={curLine} onKeyDown={this.onKeyDown} onChange={this.onChange} className="textarea"></textarea>
+        );
+    }
+}
+
+@mobxReact.observer
+class CmdInput extends React.Component<{}, {}> {
     getAfterSlash(s : string) : string {
         if (s.startsWith("^/")) {
             return s.substr(1);
@@ -479,14 +509,8 @@ class CmdInput extends React.Component<{}, {}> {
     }
     
     render() {
+        console.log("render CmdInput");
         let model = GlobalModel;
-        let inputModel = model.inputModel;
-        let curLine = inputModel.getCurLine();
-        let numLines = curLine.split("\n").length;
-        let displayLines = numLines;
-        if (displayLines > 5) {
-            displayLines = 5;
-        }
         let win = GlobalModel.getActiveWindow();
         let ri : RemoteInstanceType = null;
         let rptr : RemotePtrType = null;
@@ -494,7 +518,6 @@ class CmdInput extends React.Component<{}, {}> {
             ri = win.getCurRemoteInstance();
             rptr = win.curRemote.get();
         }
-        console.log("cmd-input remote", ri);
         let remote : RemoteType = null;
         let remoteState : RemoteStateType = null;
         if (ri != null) {
@@ -559,7 +582,7 @@ class CmdInput extends React.Component<{}, {}> {
                         <div className="button is-static">{remoteStr}</div>
                     </div>
                     <div className="control cmd-input-control is-expanded">
-                        <textarea id="main-cmd-input" rows={displayLines} value={curLine} onKeyDown={this.onKeyDown} onChange={this.onChange} className="textarea"></textarea>
+                        <TextAreaInput/>
                     </div>
                     <div className="control cmd-exec">
                         <div onClick={this.doSubmitCmd} className="button">
@@ -601,7 +624,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         if (sw && sw.shouldFollow.get() != atBottom) {
             mobx.action(() => sw.shouldFollow.set(atBottom))();
         }
-        // console.log("scroll-handler>", atBottom, target.scrollTop, target.scrollHeight);
+        // console.log("scroll-handler (sw)>", atBottom, target.scrollTop, target.scrollHeight, event);
     }
 
     componentDidMount() {
