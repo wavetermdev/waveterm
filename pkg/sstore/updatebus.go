@@ -24,10 +24,10 @@ func (PtyDataUpdate) UpdateType() string {
 }
 
 type ModelUpdate struct {
-	Sessions        []*SessionType `json:"sessions"`
+	Sessions        []*SessionType `json:"sessions,omitempty"`
 	ActiveSessionId string         `json:"activesessionid,omitempty"`
-	Window          WindowType     `json:"window"`
-	Line            *LineType      `json:"line"`
+	Window          *WindowType    `json:"window,omitempty"`
+	Line            *LineType      `json:"line,omitempty"`
 	Cmd             *CmdType       `json:"cmd,omitempty"`
 	CmdLine         *CmdLineType   `json:"cmdline,omitempty"`
 	Info            *InfoMsgType   `json:"info,omitempty"`

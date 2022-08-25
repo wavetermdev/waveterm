@@ -332,7 +332,6 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	runPacket.CK = base.MakeCommandKey(ids.SessionId, cmdId)
 	runPacket.Cwd = ids.RemoteState.Cwd
 	runPacket.Env0 = ids.RemoteState.Env0
-	fmt.Printf("run-command FOO [%s]\n", shexec.ParseEnv0(ids.RemoteState.Env0)["FOO"])
 	runPacket.EnvComplete = true
 	runPacket.UsePty = true
 	runPacket.TermOpts = &packet.TermOpts{Rows: remote.DefaultTermRows, Cols: remote.DefaultTermCols, Term: remote.DefaultTerm}
@@ -668,7 +667,7 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 		return nil, fmt.Errorf("/cr error: cannot update curremote: %w", err)
 	}
 	update := sstore.ModelUpdate{
-		Window: sstore.WindowType{
+		Window: &sstore.WindowType{
 			SessionId: ids.SessionId,
 			WindowId:  ids.WindowId,
 			CurRemote: *rptr,
