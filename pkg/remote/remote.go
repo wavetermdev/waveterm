@@ -294,10 +294,13 @@ func convertSSHOpts(opts *sstore.SSHOpts) shexec.SSHOpts {
 	}
 }
 
-func (msh *MShellProc) addControllingTty(ecmd *exec.Cmd) error {
+func (msh *MShellProc) addControllingTty(ecmd *exec.Cmd) (*os.File, error) {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+
 	cmdPty, cmdTty, err := pty.Open()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	msh.ControllingPty = cmdPty
 	ecmd.ExtraFiles = append(ecmd.ExtraFiles, cmdTty)
@@ -307,18 +310,28 @@ func (msh *MShellProc) addControllingTty(ecmd *exec.Cmd) error {
 	ecmd.SysProcAttr.Setsid = true
 	ecmd.SysProcAttr.Setctty = true
 	ecmd.SysProcAttr.Ctty = len(ecmd.ExtraFiles) + 3 - 1
-	return nil
+	return cmdPty, nil
+}
+
+func (msh *MShellProc) setErrorStatus(err error) {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	msh.Status = StatusError
+	msh.Err = err
+}
+
+func (msh *MShellProc) getRemoteCopy() sstore.RemoteType {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	return *msh.Remote
 }
 
 func (msh *MShellProc) Launch() {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-
-	ecmd := convertSSHOpts(msh.Remote.SSHOpts).MakeSSHExecCmd(MShellServerCommand)
-	err := msh.addControllingTty(ecmd)
+	remote := msh.getRemoteCopy()
+	ecmd := convertSSHOpts(remote.SSHOpts).MakeSSHExecCmd(MShellServerCommand)
+	cmdPty, err := msh.addControllingTty(ecmd)
 	if err != nil {
-		msh.Status = StatusError
-		msh.Err = fmt.Errorf("cannot attach controlling tty to mshell command: %w", err)
+		msh.setErrorStatus(fmt.Errorf("cannot attach controlling tty to mshell command: %w", err))
 		return
 	}
 	defer func() {
@@ -326,12 +339,12 @@ func (msh *MShellProc) Launch() {
 			ecmd.ExtraFiles[len(ecmd.ExtraFiles)-1].Close()
 		}
 	}()
-	remoteName := msh.Remote.GetName()
+	remoteName := remote.GetName()
 	go func() {
-		fmt.Printf("[c-pty %s] starting...\n", msh.Remote.GetName())
+		fmt.Printf("[c-pty %s] starting...\n", remote.GetName())
 		buf := make([]byte, 100)
 		for {
-			n, readErr := msh.ControllingPty.Read(buf)
+			n, readErr := cmdPty.Read(buf)
 			if readErr == io.EOF {
 				break
 			}
@@ -348,21 +361,24 @@ func (msh *MShellProc) Launch() {
 	if remoteName == "test2" {
 		go func() {
 			time.Sleep(2 * time.Second)
-			msh.ControllingPty.Write([]byte(Test2Pw))
+			cmdPty.Write([]byte(Test2Pw))
 			fmt.Printf("[c-pty %s] wrote password!\n", remoteName)
 		}()
 	}
 	cproc, uname, err := shexec.MakeClientProc(ecmd)
-	msh.UName = uname
+	msh.WithLock(func() {
+		msh.UName = uname
+	})
 	if err != nil {
-		msh.Status = StatusError
-		msh.Err = err
+		msh.setErrorStatus(err)
 		fmt.Printf("[error] connecting remote %s (%s): %v\n", msh.Remote.GetName(), msh.UName, err)
 		return
 	}
 	fmt.Printf("connected remote %s\n", msh.Remote.GetName())
-	msh.ServerProc = cproc
-	msh.Status = StatusConnected
+	msh.WithLock(func() {
+		msh.ServerProc = cproc
+		msh.Status = StatusConnected
+	})
 	go func() {
 		exitErr := cproc.Cmd.Wait()
 		exitCode := shexec.GetExitCode(exitErr)
