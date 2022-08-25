@@ -1170,7 +1170,7 @@ func GetCurrentState() (string, []byte, error) {
 		return "", nil, fmt.Errorf("cannot find local mshell executable: %w", err)
 	}
 	ctx, _ := context.WithTimeout(context.Background(), GetStateTimeout)
-	ecmd := exec.CommandContext(ctx, "bash", "-l", "-c", fmt.Sprintf("%s --env", shellescape.Quote(execFile)))
+	ecmd := exec.CommandContext(ctx, "bash", "-l", "-i", "-c", fmt.Sprintf("%s --env", shellescape.Quote(execFile)))
 	outputBytes, err := ecmd.Output()
 	if err != nil {
 		errMsg := getStderr(err)
