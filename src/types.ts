@@ -196,32 +196,21 @@ type PtyDataUpdateType = {
     ptydatalen : number,
 };
 
-type SessionUpdateType = {
-    sessions : SessionDataType[],
+type ModelUpdateType = {
+    sessions? : SessionDataType[],
     activesessionid? : string,
-};
-
-type LineCmdUpdateType = {
-    line : LineType,
-    cmd : CmdDataType,
-    remove : boolean,
+    window? : WindowDataType,
+    line? : LineType,
+    cmd? : CmdDataType,
+    info? : InfoType,
+    cmdline? : CmdLineUpdateType,
+    remote? : RemoteType,
 };
 
 type CmdLineUpdateType = {
     insertchars : string,
     insertpos : number,
 };
-
-type InfoUpdateType = {
-    cmdline : CmdLineUpdateType,
-    info : InfoType,
-};
-
-type UpdateMessage = PtyDataUpdateType | SessionUpdateType | LineCmdUpdateType | InfoUpdateType;
-
-type WindowUpdateType = {
-    window: WindowDataType,
-}
 
 type InfoType = {
     infotitle? : string,
@@ -233,4 +222,6 @@ type InfoType = {
     timeoutms? : number,
 };
 
-export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDonePacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType, PtyDataUpdateType, SessionUpdateType, WindowUpdateType, UpdateMessage, LineCmdUpdateType, InfoType, CmdLineUpdateType, RemotePtrType};
+type UpdateMessage = PtyDataUpdateType | ModelUpdateType;
+
+export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDonePacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType};

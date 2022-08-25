@@ -4,7 +4,7 @@ import {boundMethod} from "autobind-decorator";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, SessionUpdateType, WindowUpdateType, UpdateMessage, LineCmdUpdateType, InfoType, CmdLineUpdateType} from "./types";
+import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType} from "./types";
 import {WSControl} from "./ws";
 
 var GlobalUser = "sawka";
@@ -37,7 +37,7 @@ function riToRPtr(ri : RemoteInstanceType) : RemotePtrType {
     if (ri == null) {
         return null;
     }
-    return {ownerid: ri.ownerid, remoteid: ri.remoteid, name: ri.name};
+    return {ownerid: ri.remoteownerid, remoteid: ri.remoteid, name: ri.name};
 }
 
 type KeyModsType = {
@@ -576,6 +576,16 @@ class InputModel {
         })();
     }
 
+    @boundMethod
+    uiSubmitCommand() : void {
+        mobx.action(() => {
+            let commandStr = this.getCurLine();
+            this.clearCurLine();
+            GlobalModel.clearInfoMsg(true);
+            GlobalModel.submitRawCommand(commandStr, true);
+        })();
+    }
+
     setCurLine(val : string) {
         let hidx = this.historyIndex.get();
         mobx.action(() => {
@@ -952,20 +962,21 @@ class Model {
         return this.ws.open.get();
     }
 
-    runUpdate(update : UpdateMessage, interactive : boolean) {
-        if ("ptydata64" in update) {
-            let ptyMsg : PtyDataUpdateType = update;
+    runUpdate(genUpdate : UpdateMessage, interactive : boolean) {
+        if ("ptydata64" in genUpdate) {
+            let ptyMsg : PtyDataUpdateType = genUpdate;
             let activeScreen = this.getActiveScreen();
             if (!activeScreen || activeScreen.sessionId != ptyMsg.sessionid) {
                 return;
             }
             activeScreen.updatePtyData(ptyMsg);
+            return;
         }
+        let update : ModelUpdateType = genUpdate;
         if ("sessions" in update) {
-            let sessionUpdateMsg : SessionUpdateType = update;
             mobx.action(() => {
                 let oldActiveScreen = this.getActiveScreen();
-                genMergeData(this.sessionList, sessionUpdateMsg.sessions, (s : Session) => s.sessionId, (sdata : SessionDataType) => sdata.sessionid, (sdata : SessionDataType) => new Session(sdata), (s : Session) => s.sessionIdx.get());
+                genMergeData(this.sessionList, update.sessions, (s : Session) => s.sessionId, (sdata : SessionDataType) => sdata.sessionid, (sdata : SessionDataType) => new Session(sdata), (s : Session) => s.sessionIdx.get());
                 if (update.activesessionid) {
                     this.activateSession(update.activesessionid);
                 }
@@ -983,28 +994,25 @@ class Model {
             })();
         }
         if ("line" in update) {
-            let lineMsg : LineCmdUpdateType = update;
-            if (lineMsg.line != null) {
-                this.addLineCmd(lineMsg.line, lineMsg.cmd, interactive);
+            if (update.line != null) {
+                this.addLineCmd(update.line, update.cmd, interactive);
             }
-            else if (lineMsg.line == null && lineMsg.cmd != null) {
-                this.updateCmd(lineMsg.cmd);
+            else if (update.line == null && update.cmd != null) {
+                this.updateCmd(update.cmd);
             }
         }
         else if ("cmd" in update) {
             this.updateCmd(update.cmd);
         }
         if ("window" in update) {
-            let winMsg : WindowUpdateType = update;
-            this.updateWindow(winMsg.window, false);
+            this.updateWindow(update.window, false);
         }
         if ("info" in update) {
             let info : InfoType = update.info;
             this.flashInfoMsg(info, info.timeoutms);
         }
         if ("cmdline" in update) {
-            let cmdline : CmdLineUpdateType = update.cmdline;
-            this.inputModel.updateCmdLine(cmdline);
+            this.inputModel.updateCmdLine(update.cmdline);
         }
         // console.log("run-update>", Date.now(), interactive, update);
     }

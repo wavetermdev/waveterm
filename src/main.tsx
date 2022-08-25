@@ -8,7 +8,7 @@ import dayjs from 'dayjs'
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import cn from "classnames"
 import {TermWrap} from "./term";
-import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType} from "./types";
+import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType} from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {GlobalModel, GlobalInput, Session, Cmd, Window, Screen, ScreenWindow, riToRPtr} from "./model";
 
@@ -275,7 +275,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
     }
 
     @boundMethod
-    clickTermBlock(e : any, handler : string) {
+    clickTermBlock(e : any) {
         let {sw, line} = this.props;
         let model = GlobalModel;
         let termWrap = sw.getTermWrap(line.cmdid);
@@ -415,7 +415,7 @@ class TextAreaInput extends React.Component<{}, {}> {
             if (e.code == "Enter") {
                 e.preventDefault();
                 if (!ctrlMod) {
-                    setTimeout(() => this.doSubmitCmd(), 0);
+                    setTimeout(() => GlobalModel.inputModel.uiSubmitCommand(), 0);
                     return;
                 }
                 e.target.setRangeText("\n", e.target.selectionStart, e.target.selectionEnd, "end");
@@ -464,17 +464,6 @@ class TextAreaInput extends React.Component<{}, {}> {
         mobx.action(() => {
             GlobalModel.inputModel.setCurLine(e.target.value);
         })();
-    }
-
-    @boundMethod
-    doSubmitCmd() {
-        let model = GlobalModel;
-        let inputModel = model.inputModel;
-        let commandStr = inputModel.getCurLine();
-        let hitem = {cmdtext: commandStr};
-        inputModel.clearCurLine();
-        GlobalModel.clearInfoMsg(true);
-        model.submitRawCommand(commandStr, true);
     }
 
     render() {
@@ -585,7 +574,7 @@ class CmdInput extends React.Component<{}, {}> {
                         <TextAreaInput/>
                     </div>
                     <div className="control cmd-exec">
-                        <div onClick={this.doSubmitCmd} className="button">
+                        <div onClick={GlobalModel.inputModel.uiSubmitCommand} className="button">
                             <span className="icon">
                                 <i className="fa fa-rocket"/>
                             </span>
