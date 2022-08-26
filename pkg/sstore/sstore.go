@@ -86,12 +86,13 @@ func GetDB(ctx context.Context) (*sqlx.DB, error) {
 	return globalDB, globalDBErr
 }
 
-type UserData struct {
+type ClientData struct {
 	UserId              string `json:"userid"`
 	UserPrivateKeyBytes []byte `json:"-"`
 	UserPublicKeyBytes  []byte `json:"-"`
 	UserPrivateKey      *ecdsa.PrivateKey
 	UserPublicKey       *ecdsa.PublicKey
+	ActiveSessionId     string `json:"activesessionid"`
 }
 
 type SessionType struct {
@@ -639,7 +640,7 @@ func EnsureDefaultSession(ctx context.Context) (*SessionType, error) {
 	return GetSessionByName(ctx, DefaultSessionName)
 }
 
-func createUserData(tx *TxWrap) error {
+func createClientData(tx *TxWrap) error {
 	userId := uuid.New().String()
 	curve := elliptic.P384()
 	pkey, err := ecdsa.GenerateKey(curve, rand.Reader)
@@ -654,14 +655,14 @@ func createUserData(tx *TxWrap) error {
 	if err != nil {
 		return fmt.Errorf("marshaling (pkix) public key bytes: %w", err)
 	}
-	query := `INSERT INTO client (userid, userpublickeybytes, userprivatekeybytes) VALUES (?, ?, ?)`
+	query := `INSERT INTO client (userid, activesessionid, userpublickeybytes, userprivatekeybytes) VALUES (?, '', ?, ?)`
 	tx.ExecWrap(query, userId, pubBytes, pkBytes)
 	fmt.Printf("create new userid[%s] with public/private keypair\n", userId)
 	return nil
 }
 
-func EnsureUserData(ctx context.Context) (*UserData, error) {
-	var rtn UserData
+func EnsureClientData(ctx context.Context) (*ClientData, error) {
+	var rtn ClientData
 	err := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT count(*) FROM client`
 		count := tx.GetInt(query)
@@ -669,7 +670,7 @@ func EnsureUserData(ctx context.Context) (*UserData, error) {
 			return fmt.Errorf("invalid client database, multiple (%d) rows in client table", count)
 		}
 		if count == 0 {
-			createErr := createUserData(tx)
+			createErr := createClientData(tx)
 			if createErr != nil {
 				return createErr
 			}

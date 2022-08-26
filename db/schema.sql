@@ -2,6 +2,7 @@ CREATE TABLE schema_migrations (version uint64,dirty bool);
 CREATE UNIQUE INDEX version_unique ON schema_migrations (version);
 CREATE TABLE client (
     userid varchar(36) NOT NULL,
+    activesessionid varchar(36) NOT NULL,
     userpublickeybytes blob NOT NULL,
     userprivatekeybytes blob NOT NULL
 );

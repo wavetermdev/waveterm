@@ -132,12 +132,25 @@ func GetSessionHistoryItems(ctx context.Context, sessionId string, maxItems int)
 func GetBareSessions(ctx context.Context) ([]*SessionType, error) {
 	var rtn []*SessionType
 	err := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT * FROM session`
+		query := `SELECT * FROM session ORDER BY sessionidx`
 		tx.SelectWrap(&rtn, query)
 		return nil
 	})
 	if err != nil {
 		return nil, err
+	}
+	return rtn, nil
+}
+
+func GetAllSessionIds(ctx context.Context) ([]string, error) {
+	var rtn []string
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT sessionid from session ORDER by sessionidx`
+		rtn = tx.SelectStrings(query)
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
 	}
 	return rtn, nil
 }
@@ -158,9 +171,10 @@ func GetBareSessionById(ctx context.Context, sessionId string) (*SessionType, er
 	return &rtn, nil
 }
 
-func GetAllSessions(ctx context.Context) ([]*SessionType, error) {
+func GetAllSessions(ctx context.Context) (*ModelUpdate, error) {
 	var rtn []*SessionType
-	err := WithTx(ctx, func(tx *TxWrap) error {
+	var activeSessionId string
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * FROM session`
 		tx.SelectWrap(&rtn, query)
 		sessionMap := make(map[string]*SessionType)
@@ -203,9 +217,14 @@ func GetAllSessions(ctx context.Context) ([]*SessionType, error) {
 				s.Remotes = append(s.Remotes, ri)
 			}
 		}
+		query = `SELECT activesessionid FROM client`
+		activeSessionId = tx.GetString(query)
 		return nil
 	})
-	return rtn, err
+	if txErr != nil {
+		return nil, txErr
+	}
+	return &ModelUpdate{Sessions: rtn, ActiveSessionId: activeSessionId}, nil
 }
 
 func GetWindowById(ctx context.Context, sessionId string, windowId string) (*WindowType, error) {
@@ -240,10 +259,11 @@ func GetSessionScreens(ctx context.Context, sessionId string) ([]*ScreenType, er
 }
 
 func GetSessionById(ctx context.Context, id string) (*SessionType, error) {
-	allSessions, err := GetAllSessions(ctx)
+	allSessionsUpdate, err := GetAllSessions(ctx)
 	if err != nil {
 		return nil, err
 	}
+	allSessions := allSessionsUpdate.Sessions
 	for _, session := range allSessions {
 		if session.SessionId == id {
 			return session, nil
@@ -282,6 +302,10 @@ func InsertSessionWithName(ctx context.Context, sessionName string, activate boo
 		_, err := InsertScreen(tx.Context(), newSessionId, "", true)
 		if err != nil {
 			return err
+		}
+		if activate {
+			query = `UPDATE client SET activesessionid = ?`
+			tx.ExecWrap(query, newSessionId)
 		}
 		return nil
 	})
@@ -677,12 +701,12 @@ func reorderStrings(strs []string, toMove string, newIndex int) []string {
 
 func ReIndexSessions(ctx context.Context, sessionId string, newIndex int) error {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT sessionid FROM sessions ORDER BY sessionidx, name, sessionid`
+		query := `SELECT sessionid FROM session ORDER BY sessionidx, name, sessionid`
 		ids := tx.SelectStrings(query)
 		if sessionId != "" {
 			ids = reorderStrings(ids, sessionId, newIndex)
 		}
-		query = `UPDATE sessions SET sessionid = ? WHERE sessionid = ?`
+		query = `UPDATE session SET sessionid = ? WHERE sessionid = ?`
 		for idx, id := range ids {
 			tx.ExecWrap(query, id, idx+1)
 		}
@@ -693,11 +717,11 @@ func ReIndexSessions(ctx context.Context, sessionId string, newIndex int) error 
 
 func SetSessionName(ctx context.Context, sessionId string, name string) error {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT sessionid FROM sessions WHERE sessionid = ?`
+		query := `SELECT sessionid FROM session WHERE sessionid = ?`
 		if !tx.Exists(query, sessionId) {
 			return fmt.Errorf("session does not exist")
 		}
-		query = `UPDATE sessions SET name = ? WHERE sessionid = ?`
+		query = `UPDATE session SET name = ? WHERE sessionid = ?`
 		tx.ExecWrap(query, name, sessionId)
 		return nil
 	})

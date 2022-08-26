@@ -423,6 +423,12 @@ func main() {
 		fmt.Printf("[error] migrate up: %v\n", err)
 		return
 	}
+	userData, err := sstore.EnsureClientData(context.Background())
+	if err != nil {
+		fmt.Printf("[error] ensuring user data: %v\n", err)
+		return
+	}
+	fmt.Printf("userid = %s\n", userData.UserId)
 	err = sstore.EnsureLocalRemote(context.Background())
 	if err != nil {
 		fmt.Printf("[error] ensuring local remote: %v\n", err)
@@ -443,12 +449,6 @@ func main() {
 		fmt.Printf("[error] ensuring default session: %v\n", err)
 		return
 	}
-	userData, err := sstore.EnsureUserData(context.Background())
-	if err != nil {
-		fmt.Printf("[error] ensuring user data: %v\n", err)
-		return
-	}
-	fmt.Printf("userid = %s\n", userData.UserId)
 	err = remote.LoadRemotes(context.Background())
 	if err != nil {
 		fmt.Printf("[error] loading remotes: %v\n", err)

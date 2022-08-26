@@ -35,6 +35,10 @@ const (
 	R_RemoteOpt  = 128
 )
 
+const MaxNameLen = 50
+
+var genericNameRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_ .()<>,/\"'\\[\\]{}=+$@!*-]*$")
+
 type resolvedIds struct {
 	SessionId         string
 	ScreenId          string
@@ -55,6 +59,52 @@ var ValidCommands = []string{
 	"/compgen",
 	"/setenv", "/unset",
 	"/remote:show",
+}
+
+var positionRe = regexp.MustCompile("^((\\+|-)?[0-9]+|(\\+|-))$")
+
+func resolveByPosition(ids []string, curId string, posStr string) string {
+	if len(ids) == 0 {
+		return ""
+	}
+	if !positionRe.MatchString(posStr) {
+		return ""
+	}
+	curIdx := 1 // if no match, curIdx will be first item
+	for idx, id := range ids {
+		if id == curId {
+			curIdx = idx + 1
+			break
+		}
+	}
+	isRelative := strings.HasPrefix(posStr, "+") || strings.HasPrefix(posStr, "-")
+	isWrap := posStr == "+" || posStr == "-"
+	var pos int
+	if isWrap && posStr == "+" {
+		pos = 1
+	} else if isWrap && posStr == "-" {
+		pos = -1
+	} else {
+		pos, _ = strconv.Atoi(posStr)
+	}
+	if isRelative {
+		pos = curIdx + pos
+	}
+	if pos < 1 {
+		if isWrap {
+			pos = len(ids)
+		} else {
+			pos = 1
+		}
+	}
+	if pos > len(ids) {
+		if isWrap {
+			pos = 1
+		} else {
+			pos = len(ids)
+		}
+	}
+	return ids[pos-1]
 }
 
 func HandleCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -137,21 +187,61 @@ func resolveSessionScreen(ctx context.Context, sessionId string, screenArg strin
 		if screen.ScreenId == screenArg || screen.Name == screenArg {
 			return screen.ScreenId, nil
 		}
+
 	}
 	return "", fmt.Errorf("could not resolve screen '%s' (name/id not found)", screenArg)
 }
 
-func resolveSession(ctx context.Context, sessionArg string) (string, error) {
-	sessions, err := sstore.GetBareSessions(ctx)
-	if err != nil {
-		return "", fmt.Errorf("could not retrive bare sessions")
+func getSessionIds(sarr []*sstore.SessionType) []string {
+	rtn := make([]string, len(sarr))
+	for idx, s := range sarr {
+		rtn[idx] = s.SessionId
 	}
-	for _, session := range sessions {
-		if session.SessionId == sessionArg || session.Name == sessionArg {
-			return session.SessionId, nil
+	return rtn
+}
+
+var partialUUIDRe = regexp.MustCompile("^[0-9a-f]{8}$")
+
+func isPartialUUID(s string) bool {
+	return partialUUIDRe.MatchString(s)
+}
+
+func resolveSession(ctx context.Context, sessionArg string, curSession string, bareSessions []*sstore.SessionType) (string, error) {
+	if bareSessions == nil {
+		var err error
+		bareSessions, err = sstore.GetBareSessions(ctx)
+		if err != nil {
+			return "", fmt.Errorf("could not retrive bare sessions")
 		}
 	}
-	return "", fmt.Errorf("could not resolve sesssion '%s' (name/id not found)", sessionArg)
+	var curSessionId string
+	if curSession != "" {
+		curSessionId, _ = resolveSession(ctx, curSession, "", bareSessions)
+	}
+	sids := getSessionIds(bareSessions)
+	rtnId := resolveByPosition(sids, curSessionId, sessionArg)
+	if rtnId != "" {
+		return rtnId, nil
+	}
+	tryPuid := isPartialUUID(sessionArg)
+	var prefixMatches []string
+	var lastPrefixMatchId string
+	for _, session := range bareSessions {
+		if session.SessionId == sessionArg || session.Name == sessionArg || (tryPuid && strings.HasPrefix(session.SessionId, sessionArg)) {
+			return session.SessionId, nil
+		}
+		if strings.HasPrefix(session.Name, sessionArg) {
+			prefixMatches = append(prefixMatches, session.Name)
+			lastPrefixMatchId = session.SessionId
+		}
+	}
+	if len(prefixMatches) == 1 {
+		return lastPrefixMatchId, nil
+	}
+	if len(prefixMatches) > 1 {
+		return "", fmt.Errorf("could not resolve session '%s', ambiguious prefix matched multiple sessions: %s", sessionArg, formatStrs(prefixMatches, "and", true))
+	}
+	return "", fmt.Errorf("could not resolve sesssion '%s' (name/id/pos not found)", sessionArg)
 }
 
 func resolveSessionId(pk *scpacket.FeCommandPacketType) (string, error) {
@@ -880,10 +970,55 @@ func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	return sstore.ModelUpdate{Line: rtnLine}, nil
 }
 
+func maybeQuote(s string, quote bool) string {
+	if quote {
+		return fmt.Sprintf("%q", s)
+	}
+	return s
+}
+
+func formatStrs(strs []string, conj string, quote bool) string {
+	if len(strs) == 0 {
+		return "(none)"
+	}
+	if len(strs) == 1 {
+		return maybeQuote(strs[0], quote)
+	}
+	if len(strs) == 2 {
+		return fmt.Sprintf("%s %s %s", maybeQuote(strs[0], quote), conj, maybeQuote(strs[1], quote))
+	}
+	var buf bytes.Buffer
+	for idx := 0; idx < len(strs)-1; idx++ {
+		buf.WriteString(maybeQuote(strs[idx], quote))
+		buf.WriteString(", ")
+	}
+	buf.WriteString(conj)
+	buf.WriteString(" ")
+	buf.WriteString(maybeQuote(strs[len(strs)-1], quote))
+	return buf.String()
+}
+
+func validateName(name string, typeStr string) error {
+	if len(name) > MaxNameLen {
+		return fmt.Errorf("%s name too long, max length is %d", typeStr, MaxNameLen)
+	}
+	if !genericNameRe.MatchString(name) {
+		return fmt.Errorf("invalid %s name", typeStr)
+	}
+	return nil
+}
+
 func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	if pk.MetaSubCmd == "open" || pk.MetaSubCmd == "new" {
 		activate := resolveBool(pk.Kwargs["activate"], true)
-		update, err := sstore.InsertSessionWithName(ctx, pk.Kwargs["name"], activate)
+		newName := pk.Kwargs["name"]
+		if newName != "" {
+			err := validateName(newName, "session")
+			if err != nil {
+				return nil, err
+			}
+		}
+		update, err := sstore.InsertSessionWithName(ctx, newName, activate)
 		if err != nil {
 			return nil, err
 		}
@@ -901,10 +1036,30 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		if bareSession == nil {
 			return nil, fmt.Errorf("session '%s' not found", ids.SessionId)
 		}
+		var varsUpdated []string
+		if pk.Kwargs["name"] != "" {
+			newName := pk.Kwargs["name"]
+			err = validateName(newName, "session")
+			if err != nil {
+				return nil, err
+			}
+			err = sstore.SetSessionName(ctx, ids.SessionId, newName)
+			if err != nil {
+				return nil, fmt.Errorf("setting session name: %v", err)
+			}
+			varsUpdated = append(varsUpdated, "name")
+		}
+		if pk.Kwargs["pos"] != "" {
+
+		}
+		if len(varsUpdated) == 0 {
+			return nil, fmt.Errorf("/session:set no updates, can set %s", formatStrs([]string{"name", "pos"}, "or", false))
+		}
+		bareSession, err = sstore.GetBareSessionById(ctx, ids.SessionId)
 		update := sstore.ModelUpdate{
-			Sessions: nil,
+			Sessions: []*sstore.SessionType{bareSession},
 			Info: &sstore.InfoMsgType{
-				InfoMsg:   fmt.Sprintf("[%s]: update", bareSession.Name),
+				InfoMsg:   fmt.Sprintf("[%s]: updated %s", bareSession.Name, formatStrs(varsUpdated, "and", false)),
 				TimeoutMs: 2000,
 			},
 		}
@@ -915,13 +1070,24 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	}
 	firstArg := firstArg(pk)
 	if firstArg == "" {
-		return nil, fmt.Errorf("usage /session [session-name|session-id], no param specified")
+		return nil, fmt.Errorf("usage /session [name|id|pos], no param specified")
 	}
-	sessionId, err := resolveSession(ctx, firstArg)
+	sessionId, err := resolveSession(ctx, firstArg, pk.Kwargs["session"], nil)
 	if err != nil {
 		return nil, err
 	}
-	return sstore.ModelUpdate{ActiveSessionId: sessionId}, nil
+	bareSession, err := sstore.GetSessionById(ctx, sessionId)
+	if err != nil {
+		return nil, fmt.Errorf("could not find session '%s': %v", sessionId, err)
+	}
+	update := sstore.ModelUpdate{
+		ActiveSessionId: sessionId,
+		Info: &sstore.InfoMsgType{
+			InfoMsg:   fmt.Sprintf("switched to session %q", bareSession.Name),
+			TimeoutMs: 2000,
+		},
+	}
+	return update, nil
 }
 
 func splitLinesForInfo(str string) []string {
