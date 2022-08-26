@@ -83,7 +83,7 @@ func getSourceStr(source string, w *syntax.Word) string {
 	return source[offset:end]
 }
 
-var ValidMetaCmdRe = regexp.MustCompile("^/([a-z][a-z0-9_-]*)(:[a-z][a-z0-9_-]*)?$")
+var ValidMetaCmdRe = regexp.MustCompile("^/([a-z][a-z0-9_-]*)(?::([a-z][a-z0-9_-]*))?$")
 
 type BareMetaCmdDecl struct {
 	CmdStr  string
@@ -205,6 +205,9 @@ func EvalMetaCommand(ctx context.Context, origPk *scpacket.FeCommandPacketType) 
 			continue
 		}
 		rtnPk.Args = append(rtnPk.Args, literalVal)
+	}
+	if resolveBool(rtnPk.Kwargs["dump"], false) {
+		DumpPacket(rtnPk)
 	}
 	return rtnPk, nil
 }
