@@ -250,6 +250,12 @@ func (proc *MShellProc) GetRemoteState() RemoteState {
 	return state
 }
 
+func (msh *MShellProc) NotifyUpdate() {
+	rstate := msh.GetRemoteState()
+	update := &sstore.ModelUpdate{Remote: rstate}
+	sstore.MainBus.SendUpdate("", update)
+}
+
 func GetAllRemoteState() []RemoteState {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()

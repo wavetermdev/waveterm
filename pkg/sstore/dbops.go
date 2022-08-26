@@ -142,6 +142,22 @@ func GetBareSessions(ctx context.Context) ([]*SessionType, error) {
 	return rtn, nil
 }
 
+func GetBareSessionById(ctx context.Context, sessionId string) (*SessionType, error) {
+	var rtn SessionType
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT * FROM session WHERE sessionid = ?`
+		tx.GetWrap(&rtn, query, sessionId)
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	if rtn.SessionId == "" {
+		return nil, nil
+	}
+	return &rtn, nil
+}
+
 func GetAllSessions(ctx context.Context) ([]*SessionType, error) {
 	var rtn []*SessionType
 	err := WithTx(ctx, func(tx *TxWrap) error {
@@ -632,6 +648,57 @@ func UpdateCurRemote(ctx context.Context, sessionId string, windowId string, rem
 		}
 		query = `UPDATE window SET curremoteownerid = ?, curremoteid = ?, curremotename = ? WHERE sessionid = ? AND windowid = ?`
 		tx.ExecWrap(query, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name, sessionId, windowId)
+		return nil
+	})
+	return txErr
+}
+
+func reorderStrings(strs []string, toMove string, newIndex int) []string {
+	if toMove == "" {
+		return strs
+	}
+	var newStrs []string
+	if newIndex < 0 {
+		newStrs = append(newStrs, toMove)
+	}
+	for _, sval := range strs {
+		if len(newStrs) == newIndex {
+			newStrs = append(newStrs, toMove)
+		}
+		if sval != toMove {
+			newStrs = append(newStrs, sval)
+		}
+	}
+	if newIndex >= len(newStrs) {
+		newStrs = append(newStrs, toMove)
+	}
+	return newStrs
+}
+
+func ReIndexSessions(ctx context.Context, sessionId string, newIndex int) error {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT sessionid FROM sessions ORDER BY sessionidx, name, sessionid`
+		ids := tx.SelectStrings(query)
+		if sessionId != "" {
+			ids = reorderStrings(ids, sessionId, newIndex)
+		}
+		query = `UPDATE sessions SET sessionid = ? WHERE sessionid = ?`
+		for idx, id := range ids {
+			tx.ExecWrap(query, id, idx+1)
+		}
+		return nil
+	})
+	return txErr
+}
+
+func SetSessionName(ctx context.Context, sessionId string, name string) error {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT sessionid FROM sessions WHERE sessionid = ?`
+		if !tx.Exists(query, sessionId) {
+			return fmt.Errorf("session does not exist")
+		}
+		query = `UPDATE sessions SET name = ? WHERE sessionid = ?`
+		tx.ExecWrap(query, name, sessionId)
 		return nil
 	})
 	return txErr

@@ -31,6 +31,7 @@ type ModelUpdate struct {
 	Cmd             *CmdType       `json:"cmd,omitempty"`
 	CmdLine         *CmdLineType   `json:"cmdline,omitempty"`
 	Info            *InfoMsgType   `json:"info,omitempty"`
+	Remote          interface{}    `json:"remote,omitempty"` // *remote.RemoteState
 }
 
 func (ModelUpdate) UpdateType() string {

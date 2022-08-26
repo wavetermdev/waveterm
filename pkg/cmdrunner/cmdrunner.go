@@ -45,25 +45,6 @@ type resolvedIds struct {
 	RState            remote.RemoteState
 }
 
-func SubMetaCmd(cmd string) string {
-	switch cmd {
-	case "s":
-		return "screen"
-	case "w":
-		return "window"
-	case "r":
-		return "run"
-	case "c":
-		return "comment"
-	case "e":
-		return "eval"
-	case "export":
-		return "setenv"
-	default:
-		return cmd
-	}
-}
-
 var ValidCommands = []string{
 	"/run",
 	"/eval",
@@ -377,12 +358,11 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 	if len(pk.Args) == 0 {
 		return nil, fmt.Errorf("usage: /eval [command], no command passed to eval")
 	}
-	// parse metacmd
-	commandStr := strings.TrimSpace(pk.Args[0])
-	if commandStr == "" {
-		return nil, fmt.Errorf("/eval, invalid emtpty command")
+	newPk, err := EvalMetaCommand(ctx, pk)
+	if err != nil {
+		return nil, err
 	}
-	update, err := evalCommandInternal(ctx, pk)
+	update, err := HandleCommand(ctx, newPk)
 	if !resolveBool(pk.Kwargs["nohist"], false) {
 		err := addToHistory(ctx, pk, update, (err != nil))
 		if err != nil {
@@ -391,73 +371,6 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 		}
 	}
 	return update, err
-}
-
-func evalCommandInternal(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	commandStr := strings.TrimSpace(pk.Args[0])
-	metaCmd := ""
-	metaSubCmd := ""
-	if commandStr == "cd" || strings.HasPrefix(commandStr, "cd ") {
-		metaCmd = "cd"
-		commandStr = strings.TrimSpace(commandStr[2:])
-	} else if commandStr == "cr" || strings.HasPrefix(commandStr, "cr ") {
-		metaCmd = "cr"
-		commandStr = strings.TrimSpace(commandStr[2:])
-	} else if commandStr == "export" || strings.HasPrefix(commandStr, "export ") {
-		metaCmd = "setenv"
-		commandStr = strings.TrimSpace(commandStr[6:])
-	} else if commandStr == "setenv" || strings.HasPrefix(commandStr, "setenv ") {
-		metaCmd = "setenv"
-		commandStr = strings.TrimSpace(commandStr[6:])
-	} else if commandStr == "unset" || strings.HasPrefix(commandStr, "unset ") {
-		metaCmd = "unset"
-		commandStr = strings.TrimSpace(commandStr[5:])
-	} else if commandStr[0] == '/' {
-		spaceIdx := strings.Index(commandStr, " ")
-		if spaceIdx == -1 {
-			metaCmd = commandStr[1:]
-			commandStr = ""
-		} else {
-			metaCmd = commandStr[1:spaceIdx]
-			commandStr = strings.TrimSpace(commandStr[spaceIdx+1:])
-		}
-		colonIdx := strings.Index(metaCmd, ":")
-		if colonIdx != -1 {
-			metaCmd, metaSubCmd = metaCmd[0:colonIdx], metaCmd[colonIdx+1:]
-		}
-		if metaCmd == "" {
-			return nil, fmt.Errorf("invalid command, got bare '/', with no command")
-		}
-	}
-	if metaCmd == "" {
-		metaCmd = "run"
-	}
-	metaCmd = SubMetaCmd(metaCmd)
-	newPk := &scpacket.FeCommandPacketType{
-		MetaCmd:    metaCmd,
-		MetaSubCmd: metaSubCmd,
-		Kwargs:     pk.Kwargs,
-	}
-	if strings.HasSuffix(commandStr, " ?") {
-		newPk.Kwargs["ephemeral"] = "1"
-		commandStr = commandStr[0 : len(commandStr)-2]
-	}
-	if metaCmd == "run" || metaCmd == "comment" {
-		newPk.Args = []string{commandStr}
-	} else if (metaCmd == "setenv" || metaCmd == "unset") && metaSubCmd == "" {
-		newPk.Args = strings.Fields(commandStr)
-	} else {
-		allArgs := strings.Fields(commandStr)
-		for _, arg := range allArgs {
-			if strings.Index(arg, "=") == -1 {
-				newPk.Args = append(newPk.Args, arg)
-				continue
-			}
-			fields := strings.SplitN(arg, "=", 2)
-			newPk.Kwargs[fields[0]] = fields[1]
-		}
-	}
-	return HandleCommand(ctx, newPk)
 }
 
 func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -973,6 +886,27 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		update, err := sstore.InsertSessionWithName(ctx, pk.Kwargs["name"], activate)
 		if err != nil {
 			return nil, err
+		}
+		return update, nil
+	}
+	if pk.MetaSubCmd == "set" {
+		ids, err := resolveIds(ctx, pk, R_Session)
+		if err != nil {
+			return nil, err
+		}
+		bareSession, err := sstore.GetBareSessionById(ctx, ids.SessionId)
+		if err != nil {
+			return nil, err
+		}
+		if bareSession == nil {
+			return nil, fmt.Errorf("session '%s' not found", ids.SessionId)
+		}
+		update := sstore.ModelUpdate{
+			Sessions: nil,
+			Info: &sstore.InfoMsgType{
+				InfoMsg:   fmt.Sprintf("[%s]: update", bareSession.Name),
+				TimeoutMs: 2000,
+			},
 		}
 		return update, nil
 	}

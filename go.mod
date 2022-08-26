@@ -21,6 +21,7 @@ require (
 	github.com/mattn/go-shellwords v1.0.12 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad // indirect
+	mvdan.cc/sh/v3 v3.5.1 // indirect
 )
 
 replace github.com/scripthaus-dev/mshell v0.0.0 => /Users/mike/work/gopath/src/github.com/scripthaus-dev/mshell/
