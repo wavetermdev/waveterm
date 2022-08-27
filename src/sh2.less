@@ -396,7 +396,7 @@ html, body, #main {
     overflow: hidden;
     flex-shrink: 0;
 
-    &:first-child {
+    &:nth-child(2) {
         margin: 0px 5px 5px 5px;
         padding: 0px 5px 5px 5px;
         border-top: none;
@@ -560,8 +560,12 @@ body .xterm .xterm-viewport {
     padding-right: 0px;
     flex-grow: 1;
 
-    .line:first-child {
+    .line:nth-child(2) {
         padding-top: 1px;
+    }
+
+    .lines-spacer {
+        flex-grow: 1;
     }
 }
 

@@ -556,7 +556,7 @@ class CmdInput extends React.Component<{}, {}> {
                     </If>
                     <If condition={infoMsg && infoMsg.infoerror != null}>
                         <div className="info-error">
-                            {infoMsg.infoerror}
+                            [error] {infoMsg.infoerror}
                         </div>
                     </If>
                 </div>
@@ -783,6 +783,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
                     <span>{sw.name.get()}{sw.shouldFollow.get() ? "*" : ""}</span>
                 </div>
                 <div key="lines" className="lines" onScroll={this.scrollHandler} id={this.getLinesDOMId()} style={linesStyle}>
+                    <div className="lines-spacer"></div>
                     <For each="line" of={win.lines} index="idx">
                         <Line key={line.lineid} line={line} sw={sw} width={this.width.get()} interObs={this.interObs} initVis={idx > win.lines.length-1-7} cmdRefNum={cmdRefMap[line.lineid] ?? 0}/>
                     </For>
