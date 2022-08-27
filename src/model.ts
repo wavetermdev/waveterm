@@ -181,6 +181,24 @@ class Screen {
     }
 
     mergeData(data : ScreenDataType) {
+        if (data.sessionid != this.sessionId || data.screenid != this.screenId) {
+            throw new Error("invalid screen update, ids don't match")
+        }
+        mobx.action(() => {
+            if (data.screenidx != 0) {
+                this.screenIdx.set(data.screenidx);
+            }
+            if (data.screenopts != null) {
+                this.opts.set(data.screenopts);
+            }
+            if (!isBlank(data.name)) {
+                this.name.set(data.name);
+            }
+            if (!isBlank(data.activewindowid)) {
+                this.activeWindowId.set(data.activewindowid);
+            }
+            // TODO merge windows
+        })();
     }
 
     updatePtyData(ptyMsg : PtyDataUpdateType) {
