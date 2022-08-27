@@ -34,16 +34,43 @@ type resolvedIds struct {
 	RState            remote.RemoteState
 }
 
-func resolveByPosition(ids []string, curId string, posStr string) string {
-	if len(ids) == 0 {
-		return ""
+type ResolveItem struct {
+	Name string
+	Id   string
+}
+
+func itemNames(items []ResolveItem) []string {
+	if len(items) == 0 {
+		return nil
+	}
+	rtn := make([]string, len(items))
+	for idx, item := range items {
+		rtn[idx] = item.Name
+	}
+	return rtn
+}
+
+func sessionsToResolveItems(sessions []*sstore.SessionType) []ResolveItem {
+	if len(sessions) == 0 {
+		return nil
+	}
+	rtn := make([]ResolveItem, len(sessions))
+	for idx, session := range sessions {
+		rtn[idx] = ResolveItem{Name: session.Name, Id: session.SessionId}
+	}
+	return rtn
+}
+
+func resolveByPosition(items []ResolveItem, curId string, posStr string) *ResolveItem {
+	if len(items) == 0 {
+		return nil
 	}
 	if !positionRe.MatchString(posStr) {
-		return ""
+		return nil
 	}
 	curIdx := 1 // if no match, curIdx will be first item
-	for idx, id := range ids {
-		if id == curId {
+	for idx, item := range items {
+		if item.Id == curId {
 			curIdx = idx + 1
 			break
 		}
@@ -63,19 +90,19 @@ func resolveByPosition(ids []string, curId string, posStr string) string {
 	}
 	if pos < 1 {
 		if isWrap {
-			pos = len(ids)
+			pos = len(items)
 		} else {
 			pos = 1
 		}
 	}
-	if pos > len(ids) {
+	if pos > len(items) {
 		if isWrap {
 			pos = 1
 		} else {
-			pos = len(ids)
+			pos = len(items)
 		}
 	}
-	return ids[pos-1]
+	return &items[pos-1]
 }
 
 func resolveIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype int) (resolvedIds, error) {
@@ -163,42 +190,35 @@ func isPartialUUID(s string) bool {
 	return partialUUIDRe.MatchString(s)
 }
 
-func resolveSession(ctx context.Context, sessionArg string, curSession string, bareSessions []*sstore.SessionType) (string, error) {
-	if bareSessions == nil {
-		var err error
-		bareSessions, err = sstore.GetBareSessions(ctx)
-		if err != nil {
-			return "", fmt.Errorf("could not retrive bare sessions")
+func genericResolve(arg string, curArg string, items []ResolveItem, typeStr string) (*ResolveItem, error) {
+	var curId string
+	if curArg != "" {
+		curItem, _ := genericResolve(curArg, "", items, typeStr)
+		if curItem != nil {
+			curId = curItem.Id
 		}
 	}
-	var curSessionId string
-	if curSession != "" {
-		curSessionId, _ = resolveSession(ctx, curSession, "", bareSessions)
+	rtnItem := resolveByPosition(items, curId, arg)
+	if rtnItem != nil {
+		return rtnItem, nil
 	}
-	sids := getSessionIds(bareSessions)
-	rtnId := resolveByPosition(sids, curSessionId, sessionArg)
-	if rtnId != "" {
-		return rtnId, nil
-	}
-	tryPuid := isPartialUUID(sessionArg)
-	var prefixMatches []string
-	var lastPrefixMatchId string
-	for _, session := range bareSessions {
-		if session.SessionId == sessionArg || session.Name == sessionArg || (tryPuid && strings.HasPrefix(session.SessionId, sessionArg)) {
-			return session.SessionId, nil
+	tryPuid := isPartialUUID(arg)
+	var prefixMatches []ResolveItem
+	for _, item := range items {
+		if item.Id == arg || item.Name == arg || (tryPuid && strings.HasPrefix(item.Id, arg)) {
+			return &item, nil
 		}
-		if strings.HasPrefix(session.Name, sessionArg) {
-			prefixMatches = append(prefixMatches, session.Name)
-			lastPrefixMatchId = session.SessionId
+		if strings.HasPrefix(item.Name, arg) {
+			prefixMatches = append(prefixMatches, item)
 		}
 	}
 	if len(prefixMatches) == 1 {
-		return lastPrefixMatchId, nil
+		return &prefixMatches[0], nil
 	}
 	if len(prefixMatches) > 1 {
-		return "", fmt.Errorf("could not resolve session '%s', ambiguious prefix matched multiple sessions: %s", sessionArg, formatStrs(prefixMatches, "and", true))
+		return nil, fmt.Errorf("could not resolve %s '%s', ambiguious prefix matched multiple %ss: %s", typeStr, arg, typeStr, formatStrs(itemNames(prefixMatches), "and", true))
 	}
-	return "", fmt.Errorf("could not resolve sesssion '%s' (name/id/pos not found)", sessionArg)
+	return nil, fmt.Errorf("could not resolve %s '%s' (name/id/pos not found)", typeStr, arg)
 }
 
 func resolveSessionId(pk *scpacket.FeCommandPacketType) (string, error) {

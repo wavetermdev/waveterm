@@ -25,59 +25,77 @@ import (
 const DefaultUserId = "sawka"
 const MaxNameLen = 50
 
-var ValidCommands = []string{
-	"/run",
-	"/eval",
-	"/screen", "/screen:open", "/screen:close",
-	"/session", "/session:open", "/session:close",
-	"/comment",
-	"/cd",
-	"/compgen",
-	"/setenv", "/unset",
-	"/remote:show",
-}
 var genericNameRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_ .()<>,/\"'\\[\\]{}=+$@!*-]*$")
 var positionRe = regexp.MustCompile("^((\\+|-)?[0-9]+|(\\+|-))$")
 var wsRe = regexp.MustCompile("\\s+")
 
-func HandleCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	switch SubMetaCmd(pk.MetaCmd) {
-	case "run":
-		return RunCommand(ctx, pk)
+type MetaCmdFnType = func(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error)
+type MetaCmdEntryType struct {
+	IsAlias bool
+	Fn      MetaCmdFnType
+}
 
-	case "eval":
-		return EvalCommand(ctx, pk)
+var MetaCmdFnMap = make(map[string]MetaCmdEntryType)
 
-	case "screen":
-		return ScreenCommand(ctx, pk)
+func init() {
+	registerCmdFn("run", RunCommand)
+	registerCmdFn("eval", EvalCommand)
+	registerCmdFn("comment", CommentCommand)
+	registerCmdFn("cd", CdCommand)
+	registerCmdFn("cr", CrCommand)
+	registerCmdFn("compgen", CompGenCommand)
+	registerCmdFn("setenv", SetEnvCommand)
+	registerCmdFn("unset", UnSetCommand)
 
-	case "session":
-		return SessionCommand(ctx, pk)
+	registerCmdFn("session", SessionCommand)
+	registerCmdFn("session:open", SessionOpenCommand)
+	registerCmdAlias("session:new", SessionOpenCommand)
+	registerCmdFn("session:set", SessionSetCommand)
 
-	case "comment":
-		return CommentCommand(ctx, pk)
+	registerCmdFn("screen", ScreenCommand)
+	registerCmdFn("screen:close", ScreenCloseCommand)
+	registerCmdFn("screen:open", ScreenOpenCommand)
+	registerCmdAlias("screen:new", ScreenOpenCommand)
 
-	case "cd":
-		return CdCommand(ctx, pk)
+	registerCmdAlias("remote", RemoteCommand)
+	registerCmdFn("remote:show", RemoteShowCommand)
+}
 
-	case "cr":
-		return CrCommand(ctx, pk)
-
-	case "compgen":
-		return CompGenCommand(ctx, pk)
-
-	case "setenv":
-		return SetEnvCommand(ctx, pk)
-
-	case "unset":
-		return UnSetCommand(ctx, pk)
-
-	case "remote":
-		return RemoteCommand(ctx, pk)
-
-	default:
-		return nil, fmt.Errorf("invalid command '/%s', no handler", pk.MetaCmd)
+func getValidCommands() []string {
+	var rtn []string
+	for key, val := range MetaCmdFnMap {
+		if val.IsAlias {
+			continue
+		}
+		rtn = append(rtn, key)
 	}
+	return rtn
+}
+
+func registerCmdFn(cmdName string, fn MetaCmdFnType) {
+	MetaCmdFnMap[cmdName] = MetaCmdEntryType{Fn: fn}
+}
+
+func registerCmdAlias(cmdName string, fn MetaCmdFnType) {
+	MetaCmdFnMap[cmdName] = MetaCmdEntryType{IsAlias: true, Fn: fn}
+}
+
+func HandleCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	metaCmd := SubMetaCmd(pk.MetaCmd)
+	var cmdName string
+	if pk.MetaSubCmd == "" {
+		cmdName = metaCmd
+	} else {
+		cmdName = fmt.Sprintf("%s:%s", pk.MetaCmd, pk.MetaSubCmd)
+	}
+	entry := MetaCmdFnMap[cmdName]
+	if entry.Fn == nil {
+		if MetaCmdFnMap[metaCmd].Fn != nil {
+			return nil, fmt.Errorf("invalid /%s subcommand '%s'", metaCmd, pk.MetaSubCmd)
+		}
+		return nil, fmt.Errorf("invalid command '/%s', no handler", cmdName)
+	}
+	return entry.Fn(ctx, pk)
 }
 
 func firstArg(pk *scpacket.FeCommandPacketType) string {
@@ -182,33 +200,39 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 	return update, err
 }
 
+func ScreenCloseCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveIds(ctx, pk, R_Session|R_Screen)
+	if err != nil {
+		return nil, fmt.Errorf("/screen:close cannot close screen: %w", err)
+	}
+	update, err := sstore.DeleteScreen(ctx, ids.SessionId, ids.ScreenId)
+	if err != nil {
+		return nil, err
+	}
+	return update, nil
+}
+
+func ScreenOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveIds(ctx, pk, R_Session)
+	if err != nil {
+		return nil, fmt.Errorf("/screen:open cannot open screen: %w", err)
+	}
+	activate := resolveBool(pk.Kwargs["activate"], true)
+	newName := pk.Kwargs["name"]
+	if newName != "" {
+		err := validateName(newName, "screen")
+		if err != nil {
+			return nil, err
+		}
+	}
+	update, err := sstore.InsertScreen(ctx, ids.SessionId, newName, activate)
+	if err != nil {
+		return nil, err
+	}
+	return update, nil
+}
+
 func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	if pk.MetaSubCmd == "close" {
-		ids, err := resolveIds(ctx, pk, R_Session|R_Screen)
-		if err != nil {
-			return nil, fmt.Errorf("/screen:close cannot close screen: %w", err)
-		}
-		update, err := sstore.DeleteScreen(ctx, ids.SessionId, ids.ScreenId)
-		if err != nil {
-			return nil, err
-		}
-		return update, nil
-	}
-	if pk.MetaSubCmd == "open" || pk.MetaSubCmd == "new" {
-		ids, err := resolveIds(ctx, pk, R_Session)
-		if err != nil {
-			return nil, fmt.Errorf("/screen:open cannot open screen: %w", err)
-		}
-		activate := resolveBool(pk.Kwargs["activate"], true)
-		update, err := sstore.InsertScreen(ctx, ids.SessionId, pk.Kwargs["name"], activate)
-		if err != nil {
-			return nil, err
-		}
-		return update, nil
-	}
-	if pk.MetaSubCmd != "" {
-		return nil, fmt.Errorf("invalid /screen subcommand '%s'", pk.MetaSubCmd)
-	}
 	ids, err := resolveIds(ctx, pk, R_Session)
 	if err != nil {
 		return nil, fmt.Errorf("/screen cannot switch to screen: %w", err)
@@ -229,9 +253,6 @@ func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 }
 
 func UnSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	if pk.MetaSubCmd != "" {
-		return nil, fmt.Errorf("invalid /unset subcommand '%s'", pk.MetaSubCmd)
-	}
 	ids, err := resolveIds(ctx, pk, R_Session|R_Window|R_Remote)
 	if err != nil {
 		return nil, err
@@ -261,61 +282,48 @@ func UnSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 	update := sstore.ModelUpdate{
 		Sessions: sstore.MakeSessionsUpdateForRemote(ids.SessionId, remote),
 		Info: &sstore.InfoMsgType{
-			InfoMsg:   fmt.Sprintf("[%s] unset vars: %s", ids.RemoteDisplayName, makeSetVarsStr(unsetVars)),
+			InfoMsg:   fmt.Sprintf("[%s] unset vars: %s", ids.RemoteDisplayName, formatStrs(mapToStrs(unsetVars), "and", false)),
 			TimeoutMs: 2000,
 		},
 	}
 	return update, nil
 }
 
-func RemoteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	if pk.MetaSubCmd == "show" {
-		ids, err := resolveIds(ctx, pk, R_Session|R_Window|R_Remote)
-		if err != nil {
-			return nil, err
-		}
-		curRemote := remote.GetRemoteById(ids.RemotePtr.RemoteId)
-		if curRemote == nil {
-			return nil, fmt.Errorf("invalid remote '%s' (not found)", ids.RemoteDisplayName)
-		}
-		state := curRemote.GetRemoteState()
-		var buf bytes.Buffer
-		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "type", state.RemoteType))
-		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "remoteid", state.RemoteId))
-		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "physicalid", state.PhysicalId))
-		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "alias", state.RemoteAlias))
-		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "canonicalname", state.RemoteCanonicalName))
-		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "status", state.Status))
-		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "connectmode", state.ConnectMode))
-		if ids.RemoteState != nil {
-			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "cwd", ids.RemoteState.Cwd))
-		}
-		output := buf.String()
-		return sstore.ModelUpdate{
-			Info: &sstore.InfoMsgType{
-				InfoTitle: fmt.Sprintf("show remote '%s' info", ids.RemoteDisplayName),
-				InfoLines: splitLinesForInfo(output),
-			},
-		}, nil
+func RemoteShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveIds(ctx, pk, R_Session|R_Window|R_Remote)
+	if err != nil {
+		return nil, err
 	}
-	if pk.MetaSubCmd != "" {
-		return nil, fmt.Errorf("invalid /remote subcommand: '%s'", pk.MetaSubCmd)
+	curRemote := remote.GetRemoteById(ids.RemotePtr.RemoteId)
+	if curRemote == nil {
+		return nil, fmt.Errorf("invalid remote '%s' (not found)", ids.RemoteDisplayName)
 	}
-	return nil, fmt.Errorf("/remote requires a subcommand: 'show'")
+	state := curRemote.GetRemoteState()
+	var buf bytes.Buffer
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "type", state.RemoteType))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "remoteid", state.RemoteId))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "physicalid", state.PhysicalId))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "alias", state.RemoteAlias))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "canonicalname", state.RemoteCanonicalName))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "status", state.Status))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "connectmode", state.ConnectMode))
+	if ids.RemoteState != nil {
+		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "cwd", ids.RemoteState.Cwd))
+	}
+	output := buf.String()
+	return sstore.ModelUpdate{
+		Info: &sstore.InfoMsgType{
+			InfoTitle: fmt.Sprintf("show remote '%s' info", ids.RemoteDisplayName),
+			InfoLines: splitLinesForInfo(output),
+		},
+	}, nil
 }
 
-func makeSetVarsStr(setVars map[string]bool) string {
-	varArr := make([]string, 0, len(setVars))
-	for varName, _ := range setVars {
-		varArr = append(varArr, varName)
-	}
-	return strings.Join(varArr, ", ")
+func RemoteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	return nil, fmt.Errorf("/remote requires a subcommand: %s", formatStrs([]string{"show"}, "or", false))
 }
 
 func SetEnvCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	if pk.MetaSubCmd != "" {
-		return nil, fmt.Errorf("invalid /setenv subcommand '%s'", pk.MetaSubCmd)
-	}
 	ids, err := resolveIds(ctx, pk, R_Session|R_Window|R_Remote)
 	if err != nil {
 		return nil, err
@@ -361,7 +369,7 @@ func SetEnvCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	update := sstore.ModelUpdate{
 		Sessions: sstore.MakeSessionsUpdateForRemote(ids.SessionId, remote),
 		Info: &sstore.InfoMsgType{
-			InfoMsg:   fmt.Sprintf("[%s] set vars: %s", ids.RemoteDisplayName, makeSetVarsStr(setVars)),
+			InfoMsg:   fmt.Sprintf("[%s] set vars: %s", ids.RemoteDisplayName, formatStrs(mapToStrs(setVars), "and", false)),
 			TimeoutMs: 2000,
 		},
 	}
@@ -583,7 +591,8 @@ func doMetaCompGen(ctx context.Context, ids resolvedIds, prefix string, forDispl
 	if err != nil {
 		return nil, false, err
 	}
-	for _, cmd := range ValidCommands {
+	validCommands := getValidCommands()
+	for _, cmd := range validCommands {
 		if strings.HasPrefix(cmd, prefix) {
 			if forDisplay {
 				comps = append(comps, "^"+cmd)
@@ -694,6 +703,16 @@ func maybeQuote(s string, quote bool) string {
 	return s
 }
 
+func mapToStrs(m map[string]bool) []string {
+	var rtn []string
+	for key, val := range m {
+		if val {
+			rtn = append(rtn, key)
+		}
+	}
+	return rtn
+}
+
 func formatStrs(strs []string, conj string, quote bool) string {
 	if len(strs) == 0 {
 		return "(none)"
@@ -725,82 +744,82 @@ func validateName(name string, typeStr string) error {
 	return nil
 }
 
-func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	if pk.MetaSubCmd == "open" || pk.MetaSubCmd == "new" {
-		activate := resolveBool(pk.Kwargs["activate"], true)
-		newName := pk.Kwargs["name"]
-		if newName != "" {
-			err := validateName(newName, "session")
-			if err != nil {
-				return nil, err
-			}
-		}
-		update, err := sstore.InsertSessionWithName(ctx, newName, activate)
+func SessionOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	activate := resolveBool(pk.Kwargs["activate"], true)
+	newName := pk.Kwargs["name"]
+	if newName != "" {
+		err := validateName(newName, "session")
 		if err != nil {
 			return nil, err
 		}
-		return update, nil
 	}
-	if pk.MetaSubCmd == "set" {
-		ids, err := resolveIds(ctx, pk, R_Session)
-		if err != nil {
-			return nil, err
-		}
-		bareSession, err := sstore.GetBareSessionById(ctx, ids.SessionId)
-		if err != nil {
-			return nil, err
-		}
-		if bareSession == nil {
-			return nil, fmt.Errorf("session '%s' not found", ids.SessionId)
-		}
-		var varsUpdated []string
-		if pk.Kwargs["name"] != "" {
-			newName := pk.Kwargs["name"]
-			err = validateName(newName, "session")
-			if err != nil {
-				return nil, err
-			}
-			err = sstore.SetSessionName(ctx, ids.SessionId, newName)
-			if err != nil {
-				return nil, fmt.Errorf("setting session name: %v", err)
-			}
-			varsUpdated = append(varsUpdated, "name")
-		}
-		if pk.Kwargs["pos"] != "" {
+	update, err := sstore.InsertSessionWithName(ctx, newName, activate)
+	if err != nil {
+		return nil, err
+	}
+	return update, nil
+}
 
-		}
-		if len(varsUpdated) == 0 {
-			return nil, fmt.Errorf("/session:set no updates, can set %s", formatStrs([]string{"name", "pos"}, "or", false))
-		}
-		bareSession, err = sstore.GetBareSessionById(ctx, ids.SessionId)
-		update := sstore.ModelUpdate{
-			Sessions: []*sstore.SessionType{bareSession},
-			Info: &sstore.InfoMsgType{
-				InfoMsg:   fmt.Sprintf("[%s]: updated %s", bareSession.Name, formatStrs(varsUpdated, "and", false)),
-				TimeoutMs: 2000,
-			},
-		}
-		return update, nil
+func SessionSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveIds(ctx, pk, R_Session)
+	if err != nil {
+		return nil, err
 	}
-	if pk.MetaSubCmd != "" {
-		return nil, fmt.Errorf("invalid /session subcommand '%s'", pk.MetaSubCmd)
+	bareSession, err := sstore.GetBareSessionById(ctx, ids.SessionId)
+	if err != nil {
+		return nil, err
 	}
+	if bareSession == nil {
+		return nil, fmt.Errorf("session '%s' not found", ids.SessionId)
+	}
+	var varsUpdated []string
+	if pk.Kwargs["name"] != "" {
+		newName := pk.Kwargs["name"]
+		err = validateName(newName, "session")
+		if err != nil {
+			return nil, err
+		}
+		err = sstore.SetSessionName(ctx, ids.SessionId, newName)
+		if err != nil {
+			return nil, fmt.Errorf("setting session name: %v", err)
+		}
+		varsUpdated = append(varsUpdated, "name")
+	}
+	if pk.Kwargs["pos"] != "" {
+
+	}
+	if len(varsUpdated) == 0 {
+		return nil, fmt.Errorf("/session:set no updates, can set %s", formatStrs([]string{"name", "pos"}, "or", false))
+	}
+	bareSession, err = sstore.GetBareSessionById(ctx, ids.SessionId)
+	update := sstore.ModelUpdate{
+		Sessions: []*sstore.SessionType{bareSession},
+		Info: &sstore.InfoMsgType{
+			InfoMsg:   fmt.Sprintf("[%s]: session updated %s", bareSession.Name, formatStrs(varsUpdated, "and", false)),
+			TimeoutMs: 2000,
+		},
+	}
+	return update, nil
+}
+
+func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	firstArg := firstArg(pk)
 	if firstArg == "" {
 		return nil, fmt.Errorf("usage /session [name|id|pos], no param specified")
 	}
-	sessionId, err := resolveSession(ctx, firstArg, pk.Kwargs["session"], nil)
+	bareSessions, err := sstore.GetBareSessions(ctx)
 	if err != nil {
 		return nil, err
 	}
-	bareSession, err := sstore.GetSessionById(ctx, sessionId)
+	ritems := sessionsToResolveItems(bareSessions)
+	ritem, err := genericResolve(firstArg, pk.Kwargs["session"], ritems, "session")
 	if err != nil {
-		return nil, fmt.Errorf("could not find session '%s': %v", sessionId, err)
+		return nil, err
 	}
 	update := sstore.ModelUpdate{
-		ActiveSessionId: sessionId,
+		ActiveSessionId: ritem.Id,
 		Info: &sstore.InfoMsgType{
-			InfoMsg:   fmt.Sprintf("switched to session %q", bareSession.Name),
+			InfoMsg:   fmt.Sprintf("switched to session %q", ritem.Name),
 			TimeoutMs: 2000,
 		},
 	}

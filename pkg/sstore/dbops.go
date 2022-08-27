@@ -358,7 +358,7 @@ func fmtUniqueName(name string, defaultFmtStr string, startIdx int, strs []strin
 	}
 }
 
-func InsertScreen(ctx context.Context, sessionId string, screenName string, activate bool) (UpdatePacket, error) {
+func InsertScreen(ctx context.Context, sessionId string, origScreenName string, activate bool) (UpdatePacket, error) {
 	var newScreenId string
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT sessionid FROM session WHERE sessionid = ?`
@@ -372,7 +372,7 @@ func InsertScreen(ctx context.Context, sessionId string, screenName string, acti
 		newWindowId := txCreateWindow(tx, sessionId, RemotePtrType{RemoteId: remoteId})
 		maxScreenIdx := tx.GetInt(`SELECT COALESCE(max(screenidx), 0) FROM screen WHERE sessionid = ?`, sessionId)
 		screenNames := tx.SelectStrings(`SELECT name FROM screen WHERE sessionid = ?`, sessionId)
-		screenName = fmtUniqueName(screenName, "s%d", maxScreenIdx+1, screenNames)
+		screenName := fmtUniqueName(origScreenName, "s%d", maxScreenIdx+1, screenNames)
 		newScreenId = uuid.New().String()
 		query = `INSERT INTO screen (sessionid, screenid, name, activewindowid, screenidx, screenopts, ownerid, sharemode) VALUES (?, ?, ?, ?, ?, ?, '', 'local')`
 		tx.ExecWrap(query, sessionId, newScreenId, screenName, newWindowId, maxScreenIdx+1, ScreenOptsType{})
@@ -720,6 +720,14 @@ func SetSessionName(ctx context.Context, sessionId string, name string) error {
 		query := `SELECT sessionid FROM session WHERE sessionid = ?`
 		if !tx.Exists(query, sessionId) {
 			return fmt.Errorf("session does not exist")
+		}
+		query = `SELECT sessionid FROM session WHERE name = ?`
+		dupSessionId := tx.GetString(query, name)
+		if dupSessionId == sessionId {
+			return nil
+		}
+		if tx.Exists(query, name) {
+			return fmt.Errorf("invalid duplicate session name '%s'", name)
 		}
 		query = `UPDATE session SET name = ? WHERE sessionid = ?`
 		tx.ExecWrap(query, name, sessionId)
