@@ -61,6 +61,17 @@ func sessionsToResolveItems(sessions []*sstore.SessionType) []ResolveItem {
 	return rtn
 }
 
+func screensToResolveItems(screens []*sstore.ScreenType) []ResolveItem {
+	if len(screens) == 0 {
+		return nil
+	}
+	rtn := make([]ResolveItem, len(screens))
+	for idx, screen := range screens {
+		rtn[idx] = ResolveItem{Name: screen.Name, Id: screen.ScreenId}
+	}
+	return rtn
+}
+
 func resolveByPosition(items []ResolveItem, curId string, posStr string) *ResolveItem {
 	if len(items) == 0 {
 		return nil
@@ -155,25 +166,13 @@ func resolveIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype int
 	return rtn, nil
 }
 
-func resolveSessionScreen(ctx context.Context, sessionId string, screenArg string) (string, error) {
+func resolveSessionScreen(ctx context.Context, sessionId string, screenArg string, curScreenArg string) (*ResolveItem, error) {
 	screens, err := sstore.GetSessionScreens(ctx, sessionId)
 	if err != nil {
-		return "", fmt.Errorf("could not retreive screens for session=%s", sessionId)
+		return nil, fmt.Errorf("could not retreive screens for session=%s", sessionId)
 	}
-	screenNum, err := strconv.Atoi(screenArg)
-	if err == nil {
-		if screenNum < 1 || screenNum > len(screens) {
-			return "", fmt.Errorf("could not resolve screen #%d (out of range), valid screens 1-%d", screenNum, len(screens))
-		}
-		return screens[screenNum-1].ScreenId, nil
-	}
-	for _, screen := range screens {
-		if screen.ScreenId == screenArg || screen.Name == screenArg {
-			return screen.ScreenId, nil
-		}
-
-	}
-	return "", fmt.Errorf("could not resolve screen '%s' (name/id not found)", screenArg)
+	ritems := screensToResolveItems(screens)
+	return genericResolve(screenArg, curScreenArg, ritems, "screen")
 }
 
 func getSessionIds(sarr []*sstore.SessionType) []string {
@@ -254,7 +253,11 @@ func resolveScreenId(ctx context.Context, pk *scpacket.FeCommandPacketType, sess
 	if sessionId == "" {
 		return "", fmt.Errorf("cannot resolve screen without session")
 	}
-	return resolveSessionScreen(ctx, sessionId, screenArg)
+	ritem, err := resolveSessionScreen(ctx, sessionId, screenArg, "")
+	if err != nil {
+		return "", err
+	}
+	return ritem.Id, nil
 }
 
 // returns (remoteuserref, remoteref, name, error)

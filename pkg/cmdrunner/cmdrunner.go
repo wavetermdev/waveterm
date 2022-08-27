@@ -241,11 +241,11 @@ func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	if firstArg == "" {
 		return nil, fmt.Errorf("usage /screen [screen-name|screen-index|screen-id], no param specified")
 	}
-	screenIdArg, err := resolveSessionScreen(ctx, ids.SessionId, firstArg)
+	ritem, err := resolveSessionScreen(ctx, ids.SessionId, firstArg, pk.Kwargs["screen"])
 	if err != nil {
 		return nil, err
 	}
-	update, err := sstore.SwitchScreenById(ctx, ids.SessionId, screenIdArg)
+	update, err := sstore.SwitchScreenById(ctx, ids.SessionId, ritem.Id)
 	if err != nil {
 		return nil, err
 	}
