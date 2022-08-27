@@ -1,3 +1,35 @@
+@term-black: #000000;
+@term-red: #cc0000;
+@term-green: #4e9a06;
+@term-yellow: #c4a000;
+@term-blue: #3465a4;
+@term-magenta: #75507b;
+@term-cyan: #06989a;
+@term-white: #d3d7cf;
+@term-bright-black: #555753;
+@term-bright-red: #ef2929;
+@term-bright-green: #8ae234;
+@term-bright-yellow: #fce94f;
+@term-bright-blue: #32afff;
+@term-bright-magenta: #ad7fa8;
+@term-bright-cyan: #34e2e2;
+@term-bright-white: #ffffff;
+
+@tab-black: rgb(0, 0, 0);
+@tab-red: rgb(205, 49, 49);
+@tab-green: rgb(0, 177, 10);
+@tab-orange: rgb(255, 199, 6);
+@tab-yellow: rgb(229, 229, 16);
+@tab-blue: rgb(36, 114, 200);
+@tab-magenta: rgb(188, 63, 188);
+@tab-cyan: rgb(17, 168, 205);
+@tab-white: rgb(249, 249, 249);
+
+@tab-black-text: #333;
+@tab-white-text: #d7d7d7;
+                       
+
+
 html, body, #main {
     background-color: #000;
 }
@@ -20,68 +52,6 @@ html, body, #main {
             min-width: 300px;
         }
 
-        .screen-tabs {
-            height: 30px;
-            display: flex;
-            flex-direction: row;
-            border-top: 1px solid #eee;
-            border-right: 1px solid #eee;
-            overflow: scroll;
-
-            .screen-tab {
-                height: 30px;
-                min-width: 80px;
-                width: 150px;
-                flex-shrink: 1;
-                background-color: darken(#4e9a06, 10%);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                font-size: 12px;
-                font-weight: bold;
-                color: black;
-                padding-left: 10px;
-                padding-right: 10px;
-                cursor: pointer;
-                position: relative;
-
-                &:hover {
-                    background-color: #4e9a06;
-                }
-
-                &.is-active {
-                    background-color: lighten(#4e9a06, 10%);
-                }
-
-                border-right: 1px solid #ccc;
-
-                .tab-index {
-                    position: absolute;
-                    right: 5px;
-                    font-weight: normal;
-                    display: none;
-                }
-            }
-
-            &:hover .screen-tab .tab-index {
-                display: block;
-            }
-
-            .screen-tab.new-screen {
-                width: 30px;
-                min-width: 30px;
-                background-color: black;
-                border-right: none;
-                color: #ccc;
-                cursor: pointer;
-
-                &:hover {
-                    background-color: #666;
-                    border-right: 1px solid #ccc;
-                }
-            }
-        }
-
         .screen-view {
             flex-grow: 1;
             border-right: 1px solid #ccc;
@@ -98,7 +68,6 @@ html, body, #main {
                 top: 0;
                 right: 0;
                 background-color: rgba(78, 154, 6, 0.5);
-                /* background-color: rgba(0, 255, 0, 0.5); */
                 color: white;
                 padding: 2px 4px 2px 4px;
                 border-bottom-left-radius: 5px;
@@ -120,6 +89,65 @@ html, body, #main {
                     color: #4e9a06;
                 }
             }
+        }
+    }
+}
+
+.screen-tabs {
+    height: 30px;
+    display: flex;
+    flex-direction: row;
+    border-top: 1px solid #666;
+    border-right: 1px solid #eee;
+    overflow-x: scroll;
+    align-items: center;
+
+    .screen-tab {
+        height: 30px;
+        min-width: 80px;
+        width: 150px;
+        flex-shrink: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 12px;
+        font-weight: bold;
+        padding-left: 10px;
+        padding-right: 10px;
+        cursor: pointer;
+        position: relative;
+        border-right: 1px solid #777;
+        opacity: 0.8;
+
+        &.is-active {
+            box-shadow: 0 3px 0 #fff inset;
+            border-top: none;
+            opacity: 1.0;
+        }
+
+        .tab-index {
+            position: absolute;
+            right: 5px;
+            font-weight: normal;
+            display: none;
+        }
+    }
+
+    &:hover .screen-tab .tab-index {
+        display: block;
+    }
+
+    .screen-tab.new-screen {
+        width: 30px;
+        min-width: 30px;
+        background-color: black;
+        border-right: none;
+        color: #ccc;
+        cursor: pointer;
+
+        &:hover {
+            background-color: #666;
+            border-right: 1px solid #ccc;
         }
     }
 }
@@ -492,7 +520,6 @@ body .xterm .xterm-viewport {
         bottom: 0;
         background: transparent;
         z-index: 10;
-        /* background-color: rgba(50, 50, 240, 0.05); */
     }
 }
 
@@ -524,7 +551,6 @@ body .xterm .xterm-viewport {
 }
 
 .lines {
-    /* background-color: rgba(50, 50, 240, 0.05); */
     display: flex;
     flex-direction: column;
     height: 80vh;
@@ -642,47 +668,163 @@ body .xterm .xterm-viewport {
 }
 
 .term-black {
-    color: #000;
+    color: @term-black;
 }
 
 .term-red {
-    color: #cc0000;
+    color: @term-red;
 }
 
 .term-green {
-    color: #4e9a06;
+    color: @term-green;
 }
 
 .term-yellow {
-    color: #c4a000;
+    color: @term-yellow;
 }
 
 .term-blue {
-    color: #729fcf;
+    color: @term-blue;
 }
 
 .term-magenta {
-    color: #75507b;
+    color: @term-magenta;
 }
 
 .term-cyan {
-    color: #06989a;
+    color: @term-cyan;
 }
 
 .term-white {
-    color: #d3d7cf;
+    color: @term-white;
 }
 
 .term-bright-white {
-    color: #fff;
+    color: @term-bright-white;
 }
 
 .term-bright-green {
-    color: #8ae234;
+    color: @term-bright-green;
 }
 
 .term-bright-red {
-    color: #ef2929;
+    color: @term-bright-red;
+}
+
+#main .screen-tabs .screen-tab {
+    &.color-green {
+        color: @tab-black-text;
+        background-color: desaturate(@tab-green, 30%);
+        &:hover {
+            background-color: @tab-green;
+        }
+        &.is-active {
+            color: black;
+            background-color: @tab-green;
+        }
+    }
+
+    &.color-orange {
+        color: @tab-black-text;
+        background-color: desaturate(@tab-orange, 30%);
+        &:hover {
+            background-color: @tab-orange;
+        }
+        &.is-active {
+            color: black;
+            background-color: @tab-orange;
+        }
+    }
+
+    &.color-red {
+        color: @tab-black-text;
+        background-color: desaturate(@tab-red, 20%);
+        &:hover {
+            background-color: @tab-red;
+        }
+        &.is-active {
+            color: black;
+            background-color: @tab-red;
+        }
+    }
+
+    &.color-yellow {
+        color: @tab-black-text;
+        background-color: desaturate(@tab-yellow, 30%);
+        &:hover {
+            background-color: @tab-yellow;
+        }
+        &.is-active {
+            background-color: @tab-yellow;
+            color: black;
+            box-shadow:
+                0 3px 0 #fff inset,
+                0 4px 0 #000 inset;
+        }
+    }
+
+    &.color-blue {
+        color: @tab-black-text;
+        background-color: desaturate(@tab-blue, 20%);
+        &:hover {
+            background-color: @tab-blue;
+        }
+        &.is-active {
+            color: black;
+            background-color: @tab-blue;
+        }
+    }
+
+    &.color-magenta {
+        color: @tab-black-text;
+        background-color: desaturate(@tab-magenta, 20%);
+        &:hover {
+            background-color: @tab-magenta;
+        }
+        &.is-active {
+            color: black;
+            background-color: @tab-magenta;
+        }
+    }
+
+    &.color-cyan {
+        color: @tab-black-text;
+        background-color: desaturate(@tab-cyan, 20%);
+        &:hover {
+            background-color: @tab-cyan;
+        }
+        &.is-active {
+            color: black;
+            background-color: @tab-cyan;
+        }
+    }
+
+    &.color-white {
+        color: @tab-black-text;
+        background-color: @term-white;
+        &:hover {
+            background-color: @tab-white;
+        }
+        &.is-active {
+            color: black;
+            background-color: @tab-white;
+            box-shadow:
+                0 3px 0 #fff inset,
+                0 4px 0 #000 inset;
+        }
+    }
+
+    &.color-black {
+        color: @tab-white-text;
+        background-color: lighten(@tab-black, 20%);
+        &:hover {
+            background-color: @tab-black;
+        }
+        &.is-active {
+            color: white;
+            background-color: @tab-black;
+        }
+    }
 }
 
 .monofont-thin {

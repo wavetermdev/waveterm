@@ -847,7 +847,7 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
         let model = GlobalModel;
         model.contextScreen(e, screenId);
     }
-    
+
     render() {
         let {session} = this.props;
         if (session == null) {
@@ -858,7 +858,7 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
         return (
             <div className="screen-tabs">
                 <For each="screen" index="index" of={session.screens}>
-                    <div key={screen.screenId} className={cn("screen-tab", {"is-active": session.activeScreenId.get() == screen.screenId})} onClick={() => this.handleSwitchScreen(screen.screenId)} onContextMenu={(event) => this.handleContextMenu(event, screen.screenId)}>
+                    <div key={screen.screenId} className={cn("screen-tab", {"is-active": session.activeScreenId.get() == screen.screenId}, "color-" + screen.getTabColor())} onClick={() => this.handleSwitchScreen(screen.screenId)} onContextMenu={(event) => this.handleContextMenu(event, screen.screenId)}>
                         {screen.name.get()}
                         <If condition={index+1 <= 9}>
                             <div className="tab-index">&#x2318;{index+1}</div>

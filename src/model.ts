@@ -212,6 +212,15 @@ class Screen {
         return this.getSW(this.activeWindowId.get());
     }
 
+    getTabColor() : string {
+        let tabColor = "green";
+        let screenOpts = this.opts.get();
+        if (screenOpts != null && !isBlank(screenOpts.tabcolor)) {
+            tabColor = screenOpts.tabcolor;
+        }
+        return tabColor;
+    }
+
     getSW(windowId : string) : ScreenWindow {
         if (windowId == null) {
             return null;
