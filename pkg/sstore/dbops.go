@@ -726,11 +726,32 @@ func SetSessionName(ctx context.Context, sessionId string, name string) error {
 		if dupSessionId == sessionId {
 			return nil
 		}
-		if tx.Exists(query, name) {
+		if dupSessionId != "" {
 			return fmt.Errorf("invalid duplicate session name '%s'", name)
 		}
 		query = `UPDATE session SET name = ? WHERE sessionid = ?`
 		tx.ExecWrap(query, name, sessionId)
+		return nil
+	})
+	return txErr
+}
+
+func SetScreenName(ctx context.Context, sessionId string, screenId string, name string) error {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT screenid FROM screen WHERE sessionid = ? AND screenid = ?`
+		if !tx.Exists(query, sessionId, screenId) {
+			return fmt.Errorf("screen does not exist")
+		}
+		query = `SELECT screenid FROM screen WHERE sessionid = ? AND name = ?`
+		dupScreenId := tx.GetString(query, sessionId, name)
+		if dupScreenId == screenId {
+			return nil
+		}
+		if dupScreenId != "" {
+			return fmt.Errorf("invalid duplicate screen name '%s'", name)
+		}
+		query = `UPDATE screen SET name = ? WHERE sessionid = ? AND screenid = ?`
+		tx.ExecWrap(query, name, sessionId, screenId)
 		return nil
 	})
 	return txErr

@@ -56,6 +56,7 @@ func init() {
 	registerCmdFn("screen:close", ScreenCloseCommand)
 	registerCmdFn("screen:open", ScreenOpenCommand)
 	registerCmdAlias("screen:new", ScreenOpenCommand)
+	registerCmdFn("screen:set", ScreenSetCommand)
 
 	registerCmdAlias("remote", RemoteCommand)
 	registerCmdFn("remote:show", RemoteShowCommand)
@@ -228,6 +229,40 @@ func ScreenOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	update, err := sstore.InsertScreen(ctx, ids.SessionId, newName, activate)
 	if err != nil {
 		return nil, err
+	}
+	return update, nil
+}
+
+func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveIds(ctx, pk, R_Session|R_Screen)
+	if err != nil {
+		return nil, err
+	}
+	var varsUpdated []string
+	if pk.Kwargs["name"] != "" {
+		newName := pk.Kwargs["name"]
+		err = validateName(newName, "screen")
+		if err != nil {
+			return nil, err
+		}
+		err = sstore.SetScreenName(ctx, ids.SessionId, ids.ScreenId, newName)
+		if err != nil {
+			return nil, fmt.Errorf("setting screen name: %v", err)
+		}
+		varsUpdated = append(varsUpdated, "name")
+	}
+	if len(varsUpdated) == 0 {
+		return nil, fmt.Errorf("/screen:set no updates, can set %s", formatStrs([]string{"name", "pos"}, "or", false))
+	}
+	screenObj, err := sstore.GetScreenById(ctx, ids.SessionId, ids.ScreenId)
+	if err != nil {
+		return nil, err
+	}
+	update, session := sstore.MakeSingleSessionUpdate(ids.SessionId)
+	session.Screens = append(session.Screens, screenObj)
+	update.Info = &sstore.InfoMsgType{
+		InfoMsg:   fmt.Sprintf("screen updated %s", formatStrs(varsUpdated, "and", false)),
+		TimeoutMs: 2000,
 	}
 	return update, nil
 }
@@ -765,13 +800,6 @@ func SessionSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	if err != nil {
 		return nil, err
 	}
-	bareSession, err := sstore.GetBareSessionById(ctx, ids.SessionId)
-	if err != nil {
-		return nil, err
-	}
-	if bareSession == nil {
-		return nil, fmt.Errorf("session '%s' not found", ids.SessionId)
-	}
 	var varsUpdated []string
 	if pk.Kwargs["name"] != "" {
 		newName := pk.Kwargs["name"]
@@ -791,11 +819,11 @@ func SessionSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	if len(varsUpdated) == 0 {
 		return nil, fmt.Errorf("/session:set no updates, can set %s", formatStrs([]string{"name", "pos"}, "or", false))
 	}
-	bareSession, err = sstore.GetBareSessionById(ctx, ids.SessionId)
+	bareSession, err := sstore.GetBareSessionById(ctx, ids.SessionId)
 	update := sstore.ModelUpdate{
 		Sessions: []*sstore.SessionType{bareSession},
 		Info: &sstore.InfoMsgType{
-			InfoMsg:   fmt.Sprintf("[%s]: session updated %s", bareSession.Name, formatStrs(varsUpdated, "and", false)),
+			InfoMsg:   fmt.Sprintf("session updated %s", formatStrs(varsUpdated, "and", false)),
 			TimeoutMs: 2000,
 		},
 	}

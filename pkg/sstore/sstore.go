@@ -224,7 +224,7 @@ type ScreenType struct {
 	ScreenIdx      int64               `json:"screenidx"`
 	Name           string              `json:"name"`
 	ActiveWindowId string              `json:"activewindowid"`
-	ScreenOpts     ScreenOptsType      `json:"screenopts"`
+	ScreenOpts     *ScreenOptsType     `json:"screenopts"`
 	OwnerId        string              `json:"ownerid"`
 	ShareMode      string              `json:"sharemode"`
 	Windows        []*ScreenWindowType `json:"windows"`
