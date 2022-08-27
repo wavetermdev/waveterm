@@ -498,7 +498,6 @@ class CmdInput extends React.Component<{}, {}> {
     }
     
     render() {
-        console.log("render CmdInput");
         let model = GlobalModel;
         let win = GlobalModel.getActiveWindow();
         let ri : RemoteInstanceType = null;
@@ -924,6 +923,7 @@ class MainSideBar extends React.Component<{}, {}> {
         let session : Session = null;
         let remotes = model.remotes;
         let remote : RemoteType = null;
+        let idx : number = 0;
         return (
             <div className={cn("main-sidebar", {"collapsed": this.collapsed.get()})}>
                 <div className="collapse-container">
@@ -941,8 +941,11 @@ class MainSideBar extends React.Component<{}, {}> {
                             <li><a>(loading)</a></li>
                         </If>
                         <If condition={model.sessionListLoaded.get()}>
-                            <For each="session" of={model.sessionList}>
-                                <li key={session.sessionId}><a className={cn({"is-active": activeSessionId == session.sessionId})} onClick={() => this.handleSessionClick(session.sessionId)}>#{session.name.get()}</a></li>
+                            <For each="session" index="idx" of={model.sessionList}>
+                                <li key={session.sessionId}><a className={cn({"is-active": activeSessionId == session.sessionId})} onClick={() => this.handleSessionClick(session.sessionId)}>
+                                    <span className="session-num">{idx+1}&nbsp;</span>
+                                    {session.name.get()}
+                                </a></li>
                             </For>
                             <li className="new-session"><a className="new-session" onClick={() => this.handleNewSession()}><i className="fa fa-plus"/> New Session</a></li>
                         </If>
@@ -951,9 +954,9 @@ class MainSideBar extends React.Component<{}, {}> {
                         Shared Sessions
                     </p>
                     <ul className="menu-list">
-                        <li><a>#server-status</a></li>
-                        <li><a className="activity">#bug-3458 <div className="tag is-link">3</div></a></li>
-                        <li><a>#dev-build</a></li>
+                        <li><a>server-status</a></li>
+                        <li><a className="activity">bug-3458 <div className="tag is-link">3</div></a></li>
+                        <li><a>dev-build</a></li>
                         <li className="new-session"><a className="new-session"><i className="fa fa-plus"/> New Session</a></li>
                     </ul>
                     <p className="menu-label">

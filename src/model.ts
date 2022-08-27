@@ -963,6 +963,12 @@ class Model {
     }
 
     runUpdate(genUpdate : UpdateMessage, interactive : boolean) {
+        mobx.action(() => {
+            this.runUpdate_internal(genUpdate, interactive);
+        })();
+    }
+
+    runUpdate_internal(genUpdate : UpdateMessage, interactive : boolean) {
         if ("ptydata64" in genUpdate) {
             let ptyMsg : PtyDataUpdateType = genUpdate;
             let activeScreen = this.getActiveScreen();
@@ -974,24 +980,22 @@ class Model {
         }
         let update : ModelUpdateType = genUpdate;
         if ("sessions" in update) {
-            mobx.action(() => {
-                let oldActiveScreen = this.getActiveScreen();
-                genMergeData(this.sessionList, update.sessions, (s : Session) => s.sessionId, (sdata : SessionDataType) => sdata.sessionid, (sdata : SessionDataType) => new Session(sdata), (s : Session) => s.sessionIdx.get());
-                if (update.activesessionid) {
-                    this.activateSession(update.activesessionid);
-                }
-                else {
-                    let newActiveScreen = this.getActiveScreen();
-                    if (oldActiveScreen != newActiveScreen) {
-                        if (newActiveScreen == null) {
-                            this.activateScreen(this.activeSessionId.get(), null, oldActiveScreen);
-                        }
-                        else {
-                            this.activateScreen(newActiveScreen.sessionId, newActiveScreen.screenId, oldActiveScreen);
-                        }
+            let oldActiveScreen = this.getActiveScreen();
+            genMergeData(this.sessionList, update.sessions, (s : Session) => s.sessionId, (sdata : SessionDataType) => sdata.sessionid, (sdata : SessionDataType) => new Session(sdata), (s : Session) => s.sessionIdx.get());
+            if (!("activatesessionid" in update)) {
+                let newActiveScreen = this.getActiveScreen();
+                if (oldActiveScreen != newActiveScreen) {
+                    if (newActiveScreen == null) {
+                        this.activateScreen(this.activeSessionId.get(), null, oldActiveScreen);
+                    }
+                    else {
+                        this.activateScreen(newActiveScreen.sessionId, newActiveScreen.screenId, oldActiveScreen);
                     }
                 }
-            })();
+            }
+        }
+        if ("activesessionid" in update) {
+            this.activateSession(update.activesessionid);
         }
         if ("line" in update) {
             if (update.line != null) {
@@ -1182,26 +1186,9 @@ class Model {
     loadSessionList() {
         let url = new URL("http://localhost:8080/api/get-all-sessions");
         fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
-            mobx.action(() => {
-                let sdatalist : SessionDataType[] = data.data || [];
-                let slist : Session[] = [];
-                let activeSessionId = null;
-                let activeScreenId = null;
-                for (let i=0; i<sdatalist.length; i++) {
-                    let sdata = sdatalist[i];
-                    let s = new Session(sdata);
-                    if (s.name.get() == "default") {
-                        activeSessionId = s.sessionId;
-                        activeScreenId = s.activeScreenId.get();
-                    }
-                    slist.push(s);
-                }
-                this.sessionList.replace(slist);
-                this.sessionListLoaded.set(true)
-                if (activeScreenId != null) {
-                    this.activateScreen(activeSessionId, activeScreenId);
-                }
-            })();
+            this.runUpdate(data.data, false);
+            this.sessionListLoaded.set(true);
+            return;
         }).catch((err) => {
             this.errorHandler("getting session list", err, false);
         });
@@ -1209,7 +1196,7 @@ class Model {
 
     activateSession(sessionId : string) {
         let oldActiveSession = this.getActiveSession();
-        if (oldActiveSession.sessionId == sessionId) {
+        if (oldActiveSession != null && oldActiveSession.sessionId == sessionId) {
             return;
         }
         let newSession = this.getSessionById(sessionId);

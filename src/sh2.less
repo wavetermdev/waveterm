@@ -223,9 +223,19 @@ html, body, #main {
             vertical-align: middle;
         }
 
+        .session-num {
+            color: #777;
+            font-size: 10px;
+        }
+
         &.is-active {
             color: #ddd;
             font-weight: bold;
+
+            .session-num {
+                color: #aaa;
+                font-weight: normal;
+            }
         }
 
         .sub-label {
@@ -754,12 +764,16 @@ body .xterm .xterm-viewport {
     position: relative;
     top: -3px;
     color: #c4a000;
+
+    &.status-init, &.status-disconnected {
+        color: #c4a000;
+    }
     
     &.status-connected {
         color: #4e9a06;
     }
     
-    &.status-error, &.status-disconnected {
+    &.status-error {
         color: #cc0000;
     }
 }
