@@ -207,7 +207,7 @@ func WindowFromMap(m map[string]interface{}) *WindowType {
 }
 
 type ScreenOptsType struct {
-	TabColor string `json:"tabcolor"`
+	TabColor string `json:"tabcolor,omitempty"`
 }
 
 func (opts *ScreenOptsType) Scan(val interface{}) error {

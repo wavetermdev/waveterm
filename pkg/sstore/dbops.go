@@ -756,3 +756,19 @@ func SetScreenName(ctx context.Context, sessionId string, screenId string, name 
 	})
 	return txErr
 }
+
+func SetScreenOpts(ctx context.Context, sessionId string, screenId string, opts *ScreenOptsType) error {
+	if opts == nil {
+		return fmt.Errorf("invalid screen opts cannot be nil")
+	}
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT screenid FROM screen WHERE sessionid = ? AND screenid = ?`
+		if !tx.Exists(query, sessionId, screenId) {
+			return fmt.Errorf("screen does not exist")
+		}
+		query = `UPDATE screen SET screenopts = ? WHERE sessionid = ? AND screenid = ?`
+		tx.ExecWrap(query, opts, sessionId, screenId)
+		return nil
+	})
+	return txErr
+}

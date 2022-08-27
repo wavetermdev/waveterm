@@ -25,6 +25,8 @@ import (
 const DefaultUserId = "sawka"
 const MaxNameLen = 50
 
+var ColorNames = []string{"black", "red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
+
 var genericNameRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_ .()<>,/\"'\\[\\]{}=+$@!*-]*$")
 var positionRe = regexp.MustCompile("^((\\+|-)?[0-9]+|(\\+|-))$")
 var wsRe = regexp.MustCompile("\\s+")
@@ -251,8 +253,29 @@ func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		}
 		varsUpdated = append(varsUpdated, "name")
 	}
+	if pk.Kwargs["tabcolor"] != "" {
+		color := pk.Kwargs["tabcolor"]
+		err = validateColor(color, "screen tabcolor")
+		if err != nil {
+			return nil, err
+		}
+		screenObj, err := sstore.GetScreenById(ctx, ids.SessionId, ids.ScreenId)
+		if err != nil {
+			return nil, err
+		}
+		opts := screenObj.ScreenOpts
+		if opts == nil {
+			opts = &sstore.ScreenOptsType{}
+		}
+		opts.TabColor = color
+		err = sstore.SetScreenOpts(ctx, ids.SessionId, ids.ScreenId, opts)
+		if err != nil {
+			return nil, fmt.Errorf("setting screen opts: %v", err)
+		}
+		varsUpdated = append(varsUpdated, "tabcolor")
+	}
 	if len(varsUpdated) == 0 {
-		return nil, fmt.Errorf("/screen:set no updates, can set %s", formatStrs([]string{"name", "pos"}, "or", false))
+		return nil, fmt.Errorf("/screen:set no updates, can set %s", formatStrs([]string{"name", "pos", "tabcolor"}, "or", false))
 	}
 	screenObj, err := sstore.GetScreenById(ctx, ids.SessionId, ids.ScreenId)
 	if err != nil {
@@ -777,6 +800,15 @@ func validateName(name string, typeStr string) error {
 		return fmt.Errorf("invalid %s name", typeStr)
 	}
 	return nil
+}
+
+func validateColor(color string, typeStr string) error {
+	for _, c := range ColorNames {
+		if color == c {
+			return nil
+		}
+	}
+	return fmt.Errorf("invalid %s, valid colors are: %s", typeStr, formatStrs(ColorNames, "or", false))
 }
 
 func SessionOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
