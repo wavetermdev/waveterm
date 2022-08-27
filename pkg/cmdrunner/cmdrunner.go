@@ -48,6 +48,7 @@ func init() {
 	registerCmdFn("compgen", CompGenCommand)
 	registerCmdFn("setenv", SetEnvCommand)
 	registerCmdFn("unset", UnSetCommand)
+	registerCmdFn("clear", ClearCommand)
 
 	registerCmdFn("session", SessionCommand)
 	registerCmdFn("session:open", SessionOpenCommand)
@@ -882,6 +883,22 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 			InfoMsg:   fmt.Sprintf("switched to session %q", ritem.Name),
 			TimeoutMs: 2000,
 		},
+	}
+	return update, nil
+}
+
+func ClearCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveIds(ctx, pk, R_Session|R_Screen|R_Window)
+	if err != nil {
+		return nil, err
+	}
+	update, err := sstore.ClearWindow(ctx, ids.SessionId, ids.WindowId)
+	if err != nil {
+		return nil, fmt.Errorf("clearing window: %v", err)
+	}
+	update.Info = &sstore.InfoMsgType{
+		InfoMsg:   fmt.Sprintf("window cleared"),
+		TimeoutMs: 2000,
 	}
 	return update, nil
 }

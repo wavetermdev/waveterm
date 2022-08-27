@@ -772,3 +772,35 @@ func SetScreenOpts(ctx context.Context, sessionId string, screenId string, opts 
 	})
 	return txErr
 }
+
+func ClearWindow(ctx context.Context, sessionId string, windowId string) (*ModelUpdate, error) {
+	var lineIds []string
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT windowid FROM window WHERE sessionid = ? AND windowid = ?`
+		if !tx.Exists(query, sessionId, windowId) {
+			return fmt.Errorf("window does not exist")
+		}
+		query = `SELECT lineid FROM line WHERE sessionid = ? AND windowid = ?`
+		lineIds = tx.SelectStrings(query, sessionId, windowId)
+		query = `DELETE FROM line WHERE sessionid = ? AND windowid = ?`
+		tx.ExecWrap(query, sessionId, windowId)
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	win, err := GetWindowById(ctx, sessionId, windowId)
+	if err != nil {
+		return nil, err
+	}
+	for _, lineId := range lineIds {
+		line := &LineType{
+			SessionId: sessionId,
+			WindowId:  windowId,
+			LineId:    lineId,
+			Remove:    true,
+		}
+		win.Lines = append(win.Lines, line)
+	}
+	return &ModelUpdate{Window: win}, nil
+}
