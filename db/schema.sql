@@ -107,7 +107,11 @@ CREATE TABLE history (
     screenid varchar(36) NOT NULL,
     windowid varchar(36) NOT NULL,
     lineid int NOT NULL,
+    remoteownerid varchar(36) NOT NULL,
+    remoteid varchar(36) NOT NULL,
+    remotename varchar(50) NOT NULL,
     haderror boolean NOT NULL,
     cmdid varchar(36) NOT NULL,
-    cmdstr text NOT NULL
+    cmdstr text NOT NULL,
+    ismetacmd boolean
 );

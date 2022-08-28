@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -107,9 +108,9 @@ func InsertHistoryItem(ctx context.Context, hitem *HistoryItemType) error {
 	if err != nil {
 		return err
 	}
-	query := `INSERT INTO history ( historyid, ts, userid, sessionid, screenid, windowid, lineid, cmdid, haderror, cmdstr) VALUES
-                                  (:historyid,:ts,:userid,:sessionid,:screenid,:windowid,:lineid,:cmdid,:haderror,:cmdstr)`
-	_, err = db.NamedExec(query, hitem)
+	query := `INSERT INTO history ( historyid, ts, userid, sessionid, screenid, windowid, lineid, cmdid, haderror, cmdstr, remoteownerid, remoteid, remotename, ismetacmd) VALUES
+                                  (:historyid,:ts,:userid,:sessionid,:screenid,:windowid,:lineid,:cmdid,:haderror,:cmdstr,:remoteownerid,:remoteid,:remotename,:ismetacmd)`
+	_, err = db.NamedExec(query, hitem.ToMap())
 	if err != nil {
 		return err
 	}
@@ -119,8 +120,16 @@ func InsertHistoryItem(ctx context.Context, hitem *HistoryItemType) error {
 func GetSessionHistoryItems(ctx context.Context, sessionId string, maxItems int) ([]*HistoryItemType, error) {
 	var rtn []*HistoryItemType
 	err := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT * FROM history WHERE sessionid = ? ORDER BY ts DESC LIMIT ?`
-		tx.SelectWrap(&rtn, query, sessionId, maxItems)
+		query := `SELECT count(*) FROM history WHERE sessionid = ?`
+		totalNum := tx.GetInt(query, sessionId)
+		query = `SELECT * FROM history WHERE sessionid = ? ORDER BY ts DESC, historyid LIMIT ?`
+		marr := tx.SelectMaps(query, sessionId, maxItems)
+		for idx, m := range marr {
+			hnum := totalNum - idx
+			hitem := HistoryItemFromMap(m)
+			hitem.HistoryNum = strconv.Itoa(hnum)
+			rtn = append(rtn, hitem)
+		}
 		return nil
 	})
 	if err != nil {

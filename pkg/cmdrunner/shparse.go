@@ -155,6 +155,9 @@ func EvalMetaCommand(ctx context.Context, origPk *scpacket.FeCommandPacketType) 
 	if len(origPk.Args) == 0 {
 		return nil, fmt.Errorf("empty command (no fields)")
 	}
+	if strings.TrimSpace(origPk.Args[0]) == "" {
+		return nil, fmt.Errorf("empty command")
+	}
 	metaCmd, metaSubCmd, commandArgs := parseMetaCmd(origPk.Args[0])
 	rtnPk := scpacket.MakeFeCommandPacket()
 	rtnPk.MetaCmd = metaCmd

@@ -49,15 +49,19 @@ func MakeSingleSessionUpdate(sessionId string) (ModelUpdate, *SessionType) {
 	return update, session
 }
 
-func ReadLineCmdIdFromUpdate(update UpdatePacket) (string, string) {
+func ReadHistoryDataFromUpdate(update UpdatePacket) (string, string, *RemotePtrType) {
 	modelUpdate, ok := update.(ModelUpdate)
 	if !ok {
-		return "", ""
+		return "", "", nil
 	}
 	if modelUpdate.Line == nil {
-		return "", ""
+		return "", "", nil
 	}
-	return modelUpdate.Line.LineId, modelUpdate.Line.CmdId
+	var rptr *RemotePtrType
+	if modelUpdate.Cmd != nil {
+		rptr = &modelUpdate.Cmd.Remote
+	}
+	return modelUpdate.Line.LineId, modelUpdate.Line.CmdId, rptr
 }
 
 type InfoMsgType struct {

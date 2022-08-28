@@ -63,6 +63,9 @@ func init() {
 
 	registerCmdAlias("remote", RemoteCommand)
 	registerCmdFn("remote:show", RemoteShowCommand)
+	registerCmdFn("remote:showall", RemoteShowAllCommand)
+
+	registerCmdFn("history", HistoryCommand)
 }
 
 func getValidCommands() []string {
@@ -126,6 +129,17 @@ func resolveBool(arg string, def bool) bool {
 	return true
 }
 
+func resolveInt(arg string, def int) (int, error) {
+	if arg == "" {
+		return def, nil
+	}
+	ival, err := strconv.Atoi(arg)
+	if err != nil {
+		return 0, err
+	}
+	return ival, nil
+}
+
 func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveIds(ctx, pk, R_Session|R_Window|R_Remote)
 	if err != nil {
@@ -159,13 +173,13 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	return sstore.ModelUpdate{Line: rtnLine, Cmd: cmd}, nil
 }
 
-func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, update sstore.UpdatePacket, hadError bool) error {
+func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, update sstore.UpdatePacket, isMetaCmd bool, hadError bool) error {
 	cmdStr := firstArg(pk)
 	ids, err := resolveIds(ctx, pk, R_Session|R_Screen|R_Window)
 	if err != nil {
 		return err
 	}
-	lineId, cmdId := sstore.ReadLineCmdIdFromUpdate(update)
+	lineId, cmdId, rptr := sstore.ReadHistoryDataFromUpdate(update)
 	hitem := &sstore.HistoryItemType{
 		HistoryId: uuid.New().String(),
 		Ts:        time.Now().UnixMilli(),
@@ -177,6 +191,10 @@ func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, update 
 		HadError:  hadError,
 		CmdId:     cmdId,
 		CmdStr:    cmdStr,
+		IsMetaCmd: isMetaCmd,
+	}
+	if !isMetaCmd && rptr != nil {
+		hitem.Remote = *rptr
 	}
 	err = sstore.InsertHistoryItem(ctx, hitem)
 	if err != nil {
@@ -195,7 +213,7 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 	}
 	update, err := HandleCommand(ctx, newPk)
 	if !resolveBool(pk.Kwargs["nohist"], false) {
-		err := addToHistory(ctx, pk, update, (err != nil))
+		err := addToHistory(ctx, pk, update, (newPk.MetaCmd != "run"), (err != nil))
 		if err != nil {
 			fmt.Printf("[error] adding to history: %v\n", err)
 			// continue...
@@ -369,11 +387,30 @@ func RemoteShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	if ids.RemoteState != nil {
 		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "cwd", ids.RemoteState.Cwd))
 	}
-	output := buf.String()
 	return sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			InfoTitle: fmt.Sprintf("show remote '%s' info", ids.RemoteDisplayName),
-			InfoLines: splitLinesForInfo(output),
+			InfoLines: splitLinesForInfo(buf.String()),
+		},
+	}, nil
+}
+
+func RemoteShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	stateArr := remote.GetAllRemoteState()
+	var buf bytes.Buffer
+	for _, rstate := range stateArr {
+		var name string
+		if rstate.RemoteAlias == "" {
+			name = rstate.RemoteCanonicalName
+		} else {
+			name = fmt.Sprintf("%s (%s)", rstate.RemoteCanonicalName, rstate.RemoteAlias)
+		}
+		buf.WriteString(fmt.Sprintf("%-12s %-5s %8s  %s\n", rstate.Status, rstate.RemoteType, rstate.RemoteId[0:8], name))
+	}
+	return sstore.ModelUpdate{
+		Info: &sstore.InfoMsgType{
+			InfoTitle: fmt.Sprintf("show all remote info"),
+			InfoLines: splitLinesForInfo(buf.String()),
 		},
 	}, nil
 }
@@ -899,6 +936,55 @@ func ClearCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 	update.Info = &sstore.InfoMsgType{
 		InfoMsg:   fmt.Sprintf("window cleared"),
 		TimeoutMs: 2000,
+	}
+	return update, nil
+}
+
+const DefaultMaxHistoryItems = 10000
+
+func HistoryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveIds(ctx, pk, R_Session|R_Screen|R_Window|R_Remote)
+	if err != nil {
+		return nil, err
+	}
+	maxItems, err := resolveInt(pk.Kwargs["maxitems"], DefaultMaxHistoryItems)
+	if err != nil {
+		return nil, fmt.Errorf("invalid maxitems value '%s' (must be a number): %v", pk.Kwargs["maxitems"], err)
+	}
+	if maxItems < 0 {
+		return nil, fmt.Errorf("invalid maxitems value '%s' (cannot be negative)", maxItems)
+	}
+	if maxItems == 0 {
+		maxItems = DefaultMaxHistoryItems
+	}
+	hitems, err := sstore.GetSessionHistoryItems(ctx, ids.SessionId, maxItems)
+	if err != nil {
+		return nil, err
+	}
+	var filteredItems []*sstore.HistoryItemType
+	for _, hitem := range hitems {
+		if hitem.ScreenId == ids.ScreenId && hitem.WindowId == ids.WindowId && (hitem.Remote == ids.RemotePtr || hitem.IsMetaCmd) {
+			filteredItems = append(filteredItems, hitem)
+		}
+	}
+	var buf bytes.Buffer
+	if len(filteredItems) == 0 {
+		buf.WriteString("(no history)")
+	} else {
+		for idx := len(filteredItems) - 1; idx >= 0; idx-- {
+			hitem := filteredItems[idx]
+			hnumStr := hitem.HistoryNum
+			if hitem.IsMetaCmd {
+				hnumStr = "*" + hnumStr
+			}
+			hstr := fmt.Sprintf("%6s  %s\n", hnumStr, hitem.CmdStr)
+			buf.WriteString(hstr)
+		}
+	}
+	update := &sstore.ModelUpdate{}
+	update.Info = &sstore.InfoMsgType{
+		InfoMsg:   fmt.Sprintf("history, limited to current session, screen, window, and remote (maxitems=%d)", maxItems),
+		InfoLines: splitLinesForInfo(buf.String()),
 	}
 	return update, nil
 }

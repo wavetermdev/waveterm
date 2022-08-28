@@ -206,6 +206,47 @@ func WindowFromMap(m map[string]interface{}) *WindowType {
 	return &w
 }
 
+func (h *HistoryItemType) ToMap() map[string]interface{} {
+	rtn := make(map[string]interface{})
+	rtn["historyid"] = h.HistoryId
+	rtn["ts"] = h.Ts
+	rtn["userid"] = h.UserId
+	rtn["sessionid"] = h.SessionId
+	rtn["screenid"] = h.ScreenId
+	rtn["windowid"] = h.WindowId
+	rtn["lineid"] = h.LineId
+	rtn["haderror"] = h.HadError
+	rtn["cmdid"] = h.CmdId
+	rtn["cmdstr"] = h.CmdStr
+	rtn["remoteownerid"] = h.Remote.OwnerId
+	rtn["remoteid"] = h.Remote.RemoteId
+	rtn["remotename"] = h.Remote.Name
+	rtn["ismetacmd"] = h.IsMetaCmd
+	return rtn
+}
+
+func HistoryItemFromMap(m map[string]interface{}) *HistoryItemType {
+	if len(m) == 0 {
+		return nil
+	}
+	var h HistoryItemType
+	quickSetStr(&h.HistoryId, m, "historyid")
+	quickSetInt64(&h.Ts, m, "ts")
+	quickSetStr(&h.UserId, m, "userid")
+	quickSetStr(&h.SessionId, m, "sessionid")
+	quickSetStr(&h.ScreenId, m, "screenid")
+	quickSetStr(&h.WindowId, m, "windowid")
+	quickSetStr(&h.LineId, m, "lineid")
+	quickSetBool(&h.HadError, m, "haderror")
+	quickSetStr(&h.CmdId, m, "cmdid")
+	quickSetStr(&h.CmdStr, m, "cmdstr")
+	quickSetStr(&h.Remote.OwnerId, m, "remoteownerid")
+	quickSetStr(&h.Remote.RemoteId, m, "remoteid")
+	quickSetStr(&h.Remote.Name, m, "remotename")
+	quickSetBool(&h.IsMetaCmd, m, "ismetacmd")
+	return &h
+}
+
 type ScreenOptsType struct {
 	TabColor string `json:"tabcolor,omitempty"`
 }
@@ -271,19 +312,24 @@ type ScreenWindowType struct {
 }
 
 type HistoryItemType struct {
-	HistoryId string `json:"historyid"`
-	Ts        int64  `json:"ts"`
-	UserId    string `json:"userid"`
-	SessionId string `json:"sessionid"`
-	ScreenId  string `json:"screenid"`
-	WindowId  string `json:"windowid"`
-	LineId    string `json:"lineid"`
-	HadError  bool   `json:"haderror"`
-	CmdId     string `json:"cmdid"`
-	CmdStr    string `json:"cmdstr"`
+	HistoryId string        `json:"historyid"`
+	Ts        int64         `json:"ts"`
+	UserId    string        `json:"userid"`
+	SessionId string        `json:"sessionid"`
+	ScreenId  string        `json:"screenid"`
+	WindowId  string        `json:"windowid"`
+	LineId    string        `json:"lineid"`
+	HadError  bool          `json:"haderror"`
+	CmdId     string        `json:"cmdid"`
+	CmdStr    string        `json:"cmdstr"`
+	Remote    RemotePtrType `json:"remote"`
+	IsMetaCmd bool          `json:"ismetacmd"`
 
 	// only for updates
 	Remove bool `json:"remove"`
+
+	// transient (string because of different history orderings)
+	HistoryNum string `json:"historynum"`
 }
 
 type RemoteState struct {
