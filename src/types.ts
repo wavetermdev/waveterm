@@ -127,6 +127,8 @@ type HistoryItem = {
     cmdid : string,
     cmdstr : string,
     remove : boolean,
+    remote : RemotePtrType,
+    ismetacmd : boolean,
 };
 
 type CmdRemoteStateType = {

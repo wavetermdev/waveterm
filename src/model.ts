@@ -583,6 +583,9 @@ class InputModel {
     uiSubmitCommand() : void {
         mobx.action(() => {
             let commandStr = this.getCurLine();
+            if (commandStr.trim() == "") {
+                return;
+            }
             this.clearCurLine();
             GlobalModel.clearInfoMsg(true);
             GlobalModel.submitRawCommand(commandStr, true);
