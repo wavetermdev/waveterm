@@ -587,8 +587,7 @@ class InputModel {
                 return;
             }
             this.clearCurLine();
-            GlobalModel.clearInfoMsg(true);
-            GlobalModel.submitRawCommand(commandStr, true);
+            GlobalModel.submitRawCommand(commandStr, true, true);
         })();
     }
 
@@ -1012,7 +1011,7 @@ class Model {
         if ("window" in update) {
             this.updateWindow(update.window, false);
         }
-        if ("info" in update) {
+        if (interactive && "info" in update) {
             let info : InfoType = update.info;
             this.flashInfoMsg(info, info.timeoutms);
         }
@@ -1146,13 +1145,16 @@ class Model {
         return rtn;
     }
 
-    submitCommandPacket(cmdPk : FeCmdPacketType) {
+    submitCommandPacket(cmdPk : FeCmdPacketType, interactive : boolean) {
         let url = sprintf("http://localhost:8080/api/run-command");
         fetch(url, {method: "post", body: JSON.stringify(cmdPk)}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
             mobx.action(() => {
                 let update = data.data;
                 if (update != null) {
-                    this.runUpdate(update, true);
+                    this.runUpdate(update, interactive);
+                }
+                if (interactive && (update == null || update.info == null)) {
+                    GlobalModel.clearInfoMsg(true);
                 }
             })();
         }).catch((err) => {
@@ -1160,7 +1162,7 @@ class Model {
         });
     }
 
-    submitCommand(metaCmd : string, metaSubCmd : string, args : string[], kwargs : Record<string, string>) {
+    submitCommand(metaCmd : string, metaSubCmd : string, args : string[], kwargs : Record<string, string>, interactive : boolean) {
         let pk : FeCmdPacketType = {
             type: "fecmd",
             metacmd: metaCmd,
@@ -1168,10 +1170,10 @@ class Model {
             args: args,
             kwargs: Object.assign({}, this.getClientKwargs(), kwargs),
         };
-        this.submitCommandPacket(pk);
+        this.submitCommandPacket(pk, interactive);
     }
 
-    submitRawCommand(cmdStr : string, addToHistory : boolean) {
+    submitRawCommand(cmdStr : string, addToHistory : boolean, interactive : boolean) : void {
         let pk : FeCmdPacketType = {
             type: "fecmd",
             metacmd: "eval",
@@ -1181,7 +1183,7 @@ class Model {
         if (!addToHistory) {
             pk.kwargs["nohist"] = "1";
         }
-        this.submitCommandPacket(pk)
+        this.submitCommandPacket(pk, interactive)
     }
 
     loadSessionList() {
@@ -1326,24 +1328,36 @@ class InputClass {
     constructor() {
     }
 
+    clearCmdInput() : void {
+        mobx.action(() => {
+            GlobalModel.clearInfoMsg(true);
+            GlobalModel.clearCurLine();
+        })();
+    }
+
     switchSession(session : string) {
-        GlobalModel.submitCommand("session", null, [session], {"nohist": "1"});
+        GlobalModel.submitCommand("session", null, [session], {"nohist": "1"}, false);
+        this.clearCmdInput();
     }
 
     switchScreen(screen : string) {
-        GlobalModel.submitCommand("screen", null, [screen], {"nohist": "1"});
+        GlobalModel.submitCommand("screen", null, [screen], {"nohist": "1"}, false);
+        this.clearCmdInput();
     }
 
     createNewSession() {
-        GlobalModel.submitCommand("session", "open", null, {"nohist": "1"});
+        GlobalModel.submitCommand("session", "open", null, {"nohist": "1"}, false);
+        this.clearCmdInput();
     }
 
     createNewScreen() {
-        GlobalModel.submitCommand("screen", "open", null, {"nohist": "1"});
+        GlobalModel.submitCommand("screen", "open", null, {"nohist": "1"}, false);
+        this.clearCmdInput();
     }
 
     closeScreen(screen : string) {
-        GlobalModel.submitCommand("screen", "close", [screen], {"nohist": "1"});
+        GlobalModel.submitCommand("screen", "close", [screen], {"nohist": "1"}, false);
+        this.clearCmdInput();
     }
 };
 

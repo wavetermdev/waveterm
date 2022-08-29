@@ -403,12 +403,11 @@ class TextAreaInput extends React.Component<{}, {}> {
             if (e.code == "Tab") {
                 e.preventDefault();
                 if (lastTab) {
-                    GlobalModel.submitCommand("compgen", null, [curLine], {"comppos": String(curLine.length), "compshow": "1", "nohist": "1"});
+                    GlobalModel.submitCommand("compgen", null, [curLine], {"comppos": String(curLine.length), "compshow": "1", "nohist": "1"}, true);
                     return;
                 }
                 else {
-                    GlobalModel.submitCommand("compgen", null, [curLine], {"comppos": String(curLine.length), "nohist": "1"});
-                    GlobalModel.clearInfoMsg(true);
+                    GlobalModel.submitCommand("compgen", null, [curLine], {"comppos": String(curLine.length), "nohist": "1"}, true);
                     return;
                 }
             }
