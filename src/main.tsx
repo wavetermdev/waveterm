@@ -44,6 +44,19 @@ function scrollDiv(div : any, amt : number) {
     div.scrollTo({top: newScrollTop, behavior: "smooth"});
 }
 
+function pageSize(div : any) : number {
+    if (div == null) {
+        return 300;
+    }
+    let size = div.clientHeight;
+    if (size > 500) {
+        size = size - 100;
+    } else if (size > 200) {
+        size = size - 30;
+    }
+    return size;
+}
+
 function interObsCallback(entries) {
     let now = Date.now();
     entries.forEach((entry) => {
@@ -473,8 +486,9 @@ class TextAreaInput extends React.Component<{}, {}> {
                 e.preventDefault();
                 let infoScroll = GlobalModel.hasScrollingInfoMsg();
                 if (infoScroll) {
-                    let div = document.querySelector(".cmd-iinput-info");
-                    scrollDiv(div, (e.code == "PageUp" ? -500 : 500));
+                    let div = document.querySelector(".cmd-input-info");
+                    let amt = pageSize(div);
+                    scrollDiv(div, (e.code == "PageUp" ? -amt : amt));
                 }
                 else {
                     let win = GlobalModel.getActiveWindow();
@@ -483,7 +497,8 @@ class TextAreaInput extends React.Component<{}, {}> {
                     }
                     let id = windowLinesDOMId(win.windowId);
                     let div = document.getElementById(id);
-                    scrollDiv(div, (e.code == "PageUp" ? -500 : 500));
+                    let amt = pageSize(div);
+                    scrollDiv(div, (e.code == "PageUp" ? -amt : amt));
                 }
             }
             // console.log(e.code, e.keyCode, e.key, event.which, ctrlMod, e);
