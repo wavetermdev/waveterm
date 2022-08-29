@@ -29,6 +29,21 @@ function isBlank(s : string) : boolean {
     return (s == null || s == "");
 }
 
+function windowLinesDOMId(windowid : string) {
+    return "window-lines-" + windowid;
+}
+
+function scrollDiv(div : any, amt : number) {
+    if (div == null) {
+        return;
+    }
+    let newScrollTop = div.scrollTop + amt;
+    if (newScrollTop < 0) {
+        newScrollTop = 0;
+    }
+    div.scrollTo({top: newScrollTop, behavior: "smooth"});
+}
+
 function interObsCallback(entries) {
     let now = Date.now();
     entries.forEach((entry) => {
@@ -454,6 +469,23 @@ class TextAreaInput extends React.Component<{}, {}> {
                     return;
                 }
             }
+            if (e.code == "PageUp" || e.code == "PageDown") {
+                e.preventDefault();
+                let infoScroll = GlobalModel.hasScrollingInfoMsg();
+                if (infoScroll) {
+                    let div = document.querySelector(".cmd-iinput-info");
+                    scrollDiv(div, (e.code == "PageUp" ? -500 : 500));
+                }
+                else {
+                    let win = GlobalModel.getActiveWindow();
+                    if (win == null) {
+                        return;
+                    }
+                    let id = windowLinesDOMId(win.windowId);
+                    let div = document.getElementById(id);
+                    scrollDiv(div, (e.code == "PageUp" ? -500 : 500));
+                }
+            }
             // console.log(e.code, e.keyCode, e.key, event.which, ctrlMod, e);
         })();
     }
@@ -696,7 +728,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
     }
 
     getLinesDOMId() {
-        return "window-lines-" + this.getWindowId();
+        return windowLinesDOMId(this.getWindowId());
     }
 
     @boundMethod

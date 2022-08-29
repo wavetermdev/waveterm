@@ -4,7 +4,7 @@ import {boundMethod} from "autobind-decorator";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType} from "./types";
+import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType} from "./types";
 import {WSControl} from "./ws";
 
 var GlobalUser = "sawka";
@@ -769,7 +769,7 @@ class Model {
         let key = sessionId + "/" + cmdId + "/" + width;
         this.termUsedRowsCache[key] = usedRows;
     }
-
+    
     contextScreen(e : any, screenId : string) {
         console.log("model", screenId);
         getApi().contextScreen({screenId: screenId}, {x: e.x, y: e.y});
@@ -789,6 +789,44 @@ class Model {
                 this.clearInfoMsg(false);
             }, timeoutMs);
         }
+    }
+
+    getUIContext() : UIContextType {
+        let rtn : UIContextType = {
+            sessionid : null,
+            screenid : null,
+            windowid : null,
+            remote : null,
+        };
+        let session = this.getActiveSession();
+        if (session != null) {
+            rtn.sessionid = session.sessionId;
+            let screen = session.getActiveScreen();
+            if (screen != null) {
+                rtn.screenid = screen.screenId;
+                let win = this.getActiveWindow();
+                if (win != null) {
+                    rtn.windowid = win.windowId;
+                    rtn.remote = win.curRemote.get();
+                }
+            }
+        }
+        return rtn;
+    }
+
+    hasScrollingInfoMsg() : boolean {
+        if (!this.infoShow.get()) {
+            return false;
+        }
+        let info = this.infoMsg.get();
+        if (info == null) {
+            return false;
+        }
+        let div = document.querySelector(".cmd-input-info");
+        if (div == null) {
+            return false;
+        }
+        return div.scrollHeight > div.clientHeight;
     }
 
     clearInfoMsg(setNull : boolean) {
@@ -1162,13 +1200,14 @@ class Model {
         });
     }
 
-    submitCommand(metaCmd : string, metaSubCmd : string, args : string[], kwargs : Record<string, string>, interactive : boolean) {
+    submitCommand(metaCmd : string, metaSubCmd : string, args : string[], kwargs : Record<string, string>, interactive : boolean) : void {
         let pk : FeCmdPacketType = {
             type: "fecmd",
             metacmd: metaCmd,
             metasubcmd: metaSubCmd,
             args: args,
             kwargs: Object.assign({}, this.getClientKwargs(), kwargs),
+            uicontext : this.getUIContext(),
         };
         this.submitCommandPacket(pk, interactive);
     }
@@ -1179,6 +1218,7 @@ class Model {
             metacmd: "eval",
             args: [cmdStr],
             kwargs: this.getClientKwargs(),
+            uicontext : this.getUIContext(),
         };
         if (!addToHistory) {
             pk.kwargs["nohist"] = "1";
@@ -1186,7 +1226,7 @@ class Model {
         this.submitCommandPacket(pk, interactive)
     }
 
-    loadSessionList() {
+    loadSessionList() : void {
         let url = new URL("http://localhost:8080/api/get-all-sessions");
         fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
             this.runUpdate(data.data, false);
@@ -1331,7 +1371,7 @@ class InputClass {
     clearCmdInput() : void {
         mobx.action(() => {
             GlobalModel.clearInfoMsg(true);
-            GlobalModel.clearCurLine();
+            GlobalModel.inputModel.clearCurLine();
         })();
     }
 

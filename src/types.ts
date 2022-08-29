@@ -137,12 +137,20 @@ type CmdRemoteStateType = {
     cwd : string,
 };
 
+type UIContextType = {
+    sessionid : string,
+    screenid : string,
+    windowid : string,
+    remote : RemotePtrType,
+};
+
 type FeCmdPacketType = {
     type : string,
     metacmd : string,
     metasubcmd? : string,
     args : string[],
     kwargs : Record<string, string>;
+    uicontext : UIContextType,
 };
 
 type WatchScreenPacketType = {
@@ -207,6 +215,11 @@ type ModelUpdateType = {
     info? : InfoType,
     cmdline? : CmdLineUpdateType,
     remote? : RemoteType,
+    history? : HistoryInfoType,
+};
+
+type HistoryInfoType = {
+    items : HistoryItemType[],
 };
 
 type CmdLineUpdateType = {
@@ -226,4 +239,4 @@ type InfoType = {
 
 type UpdateMessage = PtyDataUpdateType | ModelUpdateType;
 
-export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDonePacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType};
+export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDonePacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType, UIContextType};
