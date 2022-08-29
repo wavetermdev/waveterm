@@ -163,6 +163,7 @@ func EvalMetaCommand(ctx context.Context, origPk *scpacket.FeCommandPacketType) 
 	rtnPk.MetaCmd = metaCmd
 	rtnPk.MetaSubCmd = metaSubCmd
 	rtnPk.Kwargs = make(map[string]string)
+	rtnPk.UIContext = origPk.UIContext
 	for key, val := range origPk.Kwargs {
 		rtnPk.Kwargs[key] = val
 	}

@@ -14,24 +14,26 @@ import (
 )
 
 const (
-	R_Session    = 1
-	R_Screen     = 2
-	R_Window     = 4
-	R_Remote     = 8
-	R_SessionOpt = 16
-	R_ScreenOpt  = 32
-	R_WindowOpt  = 64
-	R_RemoteOpt  = 128
+	R_Session         = 1
+	R_Screen          = 2
+	R_Window          = 4
+	R_Remote          = 8
+	R_RemoteConnected = 8 + 16
 )
 
 type resolvedIds struct {
-	SessionId         string
-	ScreenId          string
-	WindowId          string
-	RemotePtr         sstore.RemotePtrType
-	RemoteState       *sstore.RemoteState
-	RemoteDisplayName string
-	RState            remote.RemoteState
+	SessionId string
+	ScreenId  string
+	WindowId  string
+	Remote    *ResolvedRemote
+}
+
+type ResolvedRemote struct {
+	DisplayName string
+	RemotePtr   sstore.RemotePtrType
+	RemoteState *sstore.RemoteState
+	RState      remote.RemoteRuntimeState
+	MShell      *remote.MShellProc
 }
 
 type ResolveItem struct {
@@ -116,52 +118,45 @@ func resolveByPosition(items []ResolveItem, curId string, posStr string) *Resolv
 	return &items[pos-1]
 }
 
-func resolveIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype int) (resolvedIds, error) {
+func resolveUiIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype int) (resolvedIds, error) {
+	fmt.Printf("resolve-ui-ids: %#v\n", pk)
 	rtn := resolvedIds{}
-	if rtype == 0 {
-		return rtn, nil
-	}
-	var err error
-	if (rtype&R_Session)+(rtype&R_SessionOpt) > 0 {
-		rtn.SessionId, err = resolveSessionId(pk)
-		if err != nil {
-			return rtn, err
-		}
-		if rtn.SessionId == "" && (rtype&R_Session) > 0 {
-			return rtn, fmt.Errorf("no session")
-		}
-	}
-	if (rtype&R_Window)+(rtype&R_WindowOpt) > 0 {
-		rtn.WindowId, err = resolveWindowId(pk, rtn.SessionId)
-		if err != nil {
-			return rtn, err
-		}
-		if rtn.WindowId == "" && (rtype&R_Window) > 0 {
-			return rtn, fmt.Errorf("no window")
-		}
-
-	}
-	if (rtype&R_Screen)+(rtype&R_ScreenOpt) > 0 {
-		rtn.ScreenId, err = resolveScreenId(ctx, pk, rtn.SessionId)
-		if err != nil {
-			return rtn, err
-		}
-		if rtn.ScreenId == "" && (rtype&R_Screen) > 0 {
-			return rtn, fmt.Errorf("no screen")
+	uictx := pk.UIContext
+	if uictx != nil {
+		rtn.SessionId = uictx.SessionId
+		rtn.ScreenId = uictx.ScreenId
+		rtn.WindowId = uictx.WindowId
+		if uictx.Remote != nil && rtn.SessionId != "" && rtn.WindowId != "" {
+			rr, err := resolveRemoteFromPtr(ctx, uictx.Remote, rtn.SessionId, rtn.WindowId)
+			if err != nil {
+				if rtype&R_Remote > 0 {
+					return rtn, err
+				}
+				// otherwise just don't set uictx.Remote
+			} else {
+				rtn.Remote = rr
+			}
 		}
 	}
-	if (rtype&R_Remote)+(rtype&R_RemoteOpt) > 0 {
-		rname, rptr, state, rstate, err := resolveRemote(ctx, pk.Kwargs["remote"], rtn.SessionId, rtn.WindowId)
-		if err != nil {
-			return rtn, err
+	if rtype&R_Session > 0 && rtn.SessionId == "" {
+		return rtn, fmt.Errorf("no session")
+	}
+	if rtype&R_Screen > 0 && rtn.ScreenId == "" {
+		return rtn, fmt.Errorf("no screen")
+	}
+	if rtype&R_Window > 0 && rtn.WindowId == "" {
+		return rtn, fmt.Errorf("no window")
+	}
+	if rtype&R_Remote > 0 && rtn.Remote == nil {
+		return rtn, fmt.Errorf("no remote")
+	}
+	if rtype&R_RemoteConnected > 0 {
+		if !rtn.Remote.RState.IsConnected() {
+			return rtn, fmt.Errorf("remote '%s' is not connected", rtn.Remote.DisplayName)
 		}
-		if rptr == nil && (rtype&R_Remote) > 0 {
-			return rtn, fmt.Errorf("no remote")
+		if rtn.Remote.RemoteState == nil {
+			return rtn, fmt.Errorf("remote '%s' state is not available", rtn.Remote.DisplayName)
 		}
-		rtn.RemoteDisplayName = rname
-		rtn.RemotePtr = *rptr
-		rtn.RemoteState = state
-		rtn.RState = *rstate
 	}
 	return rtn, nil
 }
@@ -281,8 +276,34 @@ func parseFullRemoteRef(fullRemoteRef string) (string, string, string, error) {
 	return fields[0], fields[1], fields[2], nil
 }
 
+func resolveRemoteFromPtr(ctx context.Context, rptr *sstore.RemotePtrType, sessionId string, windowId string) (*ResolvedRemote, error) {
+	if rptr == nil || rptr.RemoteId == "" {
+		return nil, fmt.Errorf("no remote to resolve")
+	}
+	msh := remote.GetRemoteById(rptr.RemoteId)
+	if msh == nil {
+		return nil, fmt.Errorf("invalid remote '%s', not found", rptr.RemoteId)
+	}
+	rstate := msh.GetRemoteRuntimeState()
+	displayName := rstate.GetDisplayName(rptr)
+	state, err := sstore.GetRemoteState(ctx, sessionId, windowId, *rptr)
+	if err != nil {
+		return nil, fmt.Errorf("cannot resolve remote state '%s': %w", displayName, err)
+	}
+	if state == nil {
+		state = rstate.DefaultState
+	}
+	return &ResolvedRemote{
+		DisplayName: displayName,
+		RemotePtr:   *rptr,
+		RemoteState: state,
+		RState:      rstate,
+		MShell:      msh,
+	}, nil
+}
+
 // returns (remoteDisplayName, remoteptr, state, rstate, err)
-func resolveRemote(ctx context.Context, fullRemoteRef string, sessionId string, windowId string) (string, *sstore.RemotePtrType, *sstore.RemoteState, *remote.RemoteState, error) {
+func resolveRemote(ctx context.Context, fullRemoteRef string, sessionId string, windowId string) (string, *sstore.RemotePtrType, *sstore.RemoteState, *remote.RemoteRuntimeState, error) {
 	if fullRemoteRef == "" {
 		return "", nil, nil, nil, nil
 	}

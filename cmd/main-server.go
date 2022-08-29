@@ -158,7 +158,7 @@ func HandleGetRemotes(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Vary", "Origin")
 	w.Header().Set("Cache-Control", "no-cache")
-	remotes := remote.GetAllRemoteState()
+	remotes := remote.GetAllRemoteRuntimeState()
 	WriteJsonSuccess(w, remotes)
 	return
 }

@@ -334,6 +334,19 @@ func InsertSessionWithName(ctx context.Context, sessionName string, activate boo
 	return update, nil
 }
 
+func SetActiveSessionId(ctx context.Context, sessionId string) error {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT sessionid FROM session WHERE sessionid = ?`
+		if !tx.Exists(query, sessionId) {
+			return fmt.Errorf("cannot switch to session, not found")
+		}
+		query = `UPDATE client SET activesessionid = ?`
+		tx.ExecWrap(query, sessionId)
+		return nil
+	})
+	return txErr
+}
+
 func containsStr(strs []string, testStr string) bool {
 	for _, s := range strs {
 		if s == testStr {

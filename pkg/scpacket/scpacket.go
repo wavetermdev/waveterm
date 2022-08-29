@@ -18,6 +18,14 @@ type FeCommandPacketType struct {
 	MetaSubCmd string            `json:"metasubcmd,omitempty"`
 	Args       []string          `json:"args,omitempty"`
 	Kwargs     map[string]string `json:"kwargs,omitempty"`
+	UIContext  *UIContextType    `json:"uicontext,omitempty"`
+}
+
+type UIContextType struct {
+	SessionId string                `json:"sessionid"`
+	ScreenId  string                `json:"screenid"`
+	WindowId  string                `json:"windowid"`
+	Remote    *sstore.RemotePtrType `json:"remote,omitempty"`
 }
 
 type FeInputPacketType struct {

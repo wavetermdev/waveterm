@@ -55,7 +55,7 @@ type Store struct {
 	Map  map[string]*MShellProc // key=remoteid
 }
 
-type RemoteState struct {
+type RemoteRuntimeState struct {
 	RemoteType          string              `json:"remotetype"`
 	RemoteId            string              `json:"remoteid"`
 	PhysicalId          string              `json:"physicalremoteid"`
@@ -68,8 +68,29 @@ type RemoteState struct {
 	ConnectMode         string              `json:"connectmode"`
 }
 
-func (state RemoteState) IsConnected() bool {
+func (state RemoteRuntimeState) IsConnected() bool {
 	return state.Status == StatusConnected
+}
+
+func (state RemoteRuntimeState) GetBaseDisplayName() string {
+	if state.RemoteAlias != "" {
+		return state.RemoteAlias
+	}
+	return state.RemoteCanonicalName
+}
+
+func (state RemoteRuntimeState) GetDisplayName(rptr *sstore.RemotePtrType) string {
+	name := state.GetBaseDisplayName()
+	if rptr == nil {
+		return name
+	}
+	if rptr.Name != "" {
+		name = name + ":" + rptr.Name
+	}
+	if rptr.OwnerId != "" {
+		name = "@" + rptr.OwnerId + ":" + name
+	}
+	return name
 }
 
 type MShellProc struct {
@@ -122,7 +143,7 @@ func GetRemoteById(remoteId string) *MShellProc {
 	return GlobalStore.Map[remoteId]
 }
 
-func ResolveRemoteRef(remoteRef string) *RemoteState {
+func ResolveRemoteRef(remoteRef string) *RemoteRuntimeState {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
 
@@ -130,14 +151,14 @@ func ResolveRemoteRef(remoteRef string) *RemoteState {
 	if err == nil {
 		msh := GlobalStore.Map[remoteRef]
 		if msh != nil {
-			state := msh.GetRemoteState()
+			state := msh.GetRemoteRuntimeState()
 			return &state
 		}
 		return nil
 	}
 	for _, msh := range GlobalStore.Map {
 		if msh.Remote.RemoteAlias == remoteRef || msh.Remote.RemoteCanonicalName == remoteRef {
-			state := msh.GetRemoteState()
+			state := msh.GetRemoteRuntimeState()
 			return &state
 		}
 	}
@@ -188,10 +209,10 @@ func makeShortHost(host string) string {
 	return host[0:dotIdx]
 }
 
-func (proc *MShellProc) GetRemoteState() RemoteState {
+func (proc *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 	proc.Lock.Lock()
 	defer proc.Lock.Unlock()
-	state := RemoteState{
+	state := RemoteRuntimeState{
 		RemoteType:          proc.Remote.RemoteType,
 		RemoteId:            proc.Remote.RemoteId,
 		RemoteAlias:         proc.Remote.RemoteAlias,
@@ -251,18 +272,18 @@ func (proc *MShellProc) GetRemoteState() RemoteState {
 }
 
 func (msh *MShellProc) NotifyUpdate() {
-	rstate := msh.GetRemoteState()
+	rstate := msh.GetRemoteRuntimeState()
 	update := &sstore.ModelUpdate{Remote: rstate}
 	sstore.MainBus.SendUpdate("", update)
 }
 
-func GetAllRemoteState() []RemoteState {
+func GetAllRemoteRuntimeState() []RemoteRuntimeState {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
 
-	var rtn []RemoteState
+	var rtn []RemoteRuntimeState
 	for _, proc := range GlobalStore.Map {
-		state := proc.GetRemoteState()
+		state := proc.GetRemoteRuntimeState()
 		rtn = append(rtn, state)
 	}
 	return rtn
@@ -427,7 +448,7 @@ func replaceHomePath(pathStr string, homeDir string) string {
 	return pathStr
 }
 
-func (state RemoteState) ExpandHomeDir(pathStr string) (string, error) {
+func (state RemoteRuntimeState) ExpandHomeDir(pathStr string) (string, error) {
 	if pathStr != "~" && !strings.HasPrefix(pathStr, "~/") {
 		return pathStr, nil
 	}
@@ -484,7 +505,6 @@ func RunCommand(ctx context.Context, cmdId string, remotePtr sstore.RemotePtrTyp
 	if remoteState == nil {
 		return nil, fmt.Errorf("no remote state passed to RunCommand")
 	}
-	fmt.Printf("RUN-CMD> %s reqid=%s (msh=%v)\n", runPacket.CK, runPacket.ReqId, msh.Remote)
 	msh.ServerProc.Output.RegisterRpc(runPacket.ReqId)
 	err := shexec.SendRunPacketAndRunData(ctx, msh.ServerProc.Input, runPacket)
 	if err != nil {

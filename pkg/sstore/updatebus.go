@@ -24,14 +24,15 @@ func (PtyDataUpdate) UpdateType() string {
 }
 
 type ModelUpdate struct {
-	Sessions        []*SessionType `json:"sessions,omitempty"`
-	ActiveSessionId string         `json:"activesessionid,omitempty"`
-	Window          *WindowType    `json:"window,omitempty"`
-	Line            *LineType      `json:"line,omitempty"`
-	Cmd             *CmdType       `json:"cmd,omitempty"`
-	CmdLine         *CmdLineType   `json:"cmdline,omitempty"`
-	Info            *InfoMsgType   `json:"info,omitempty"`
-	Remote          interface{}    `json:"remote,omitempty"` // *remote.RemoteState
+	Sessions        []*SessionType   `json:"sessions,omitempty"`
+	ActiveSessionId string           `json:"activesessionid,omitempty"`
+	Window          *WindowType      `json:"window,omitempty"`
+	Line            *LineType        `json:"line,omitempty"`
+	Cmd             *CmdType         `json:"cmd,omitempty"`
+	CmdLine         *CmdLineType     `json:"cmdline,omitempty"`
+	Info            *InfoMsgType     `json:"info,omitempty"`
+	Remote          interface{}      `json:"remote,omitempty"` // *remote.RemoteState
+	History         *HistoryInfoType `json:"history,omitempty"`
 }
 
 func (ModelUpdate) UpdateType() string {
@@ -72,6 +73,10 @@ type InfoMsgType struct {
 	InfoCompsMore bool     `json:"infocompssmore,omitempty"`
 	InfoLines     []string `json:"infolines,omitempty"`
 	TimeoutMs     int64    `json:"timeoutms,omitempty"`
+}
+
+type HistoryInfoType struct {
+	Items []*HistoryItemType `json:"items"`
 }
 
 type CmdLineType struct {
