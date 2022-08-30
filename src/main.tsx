@@ -568,10 +568,31 @@ class CmdInput extends React.Component<{}, {}> {
         let istrIdx : number = 0;
         let line : string = null;
         let idx : number = 0;
+        let hitems : HistoryItem[] = inputModel.historyItems.get() ?? [];
         return (
-            <div className={cn("box cmd-input has-background-black", {"has-info": infoShow})}>
+            <div className={cn("box cmd-input has-background-black", {"has-info": infoShow || historyShow})}>
                 <div className="cmd-history" style={{display: (historyShow ? "block" : "none")}}>
-                    history!
+                    <div className="history-title">
+                        showing history for
+                        {" "}
+                        <span className="term-bright-white">[this session &#x2318;S]</span>
+                        {" "}
+                        <span className="term-bright-white">[this window &#x2318;W]</span>
+                        {" "}
+                        <span className="term-bright-white">[this remote &#x2318;R]</span>
+                        {" "}
+                        <span className="term-bright-white">[including metacmds &#x2318;M]</span>
+                    </div>
+                    <div className="history-items">
+                        <If condition={hitems.length == 0}>
+                            [no history]
+                        </If>
+                        <If condition={hitems.length > 0}>
+                            <For each="hitem" index="idx" of={hitems}>
+                                <div>{idx+1} item</div>
+                            </For>
+                        </If>
+                    </div>
                 </div>
                 <div className="cmd-input-info" style={{display: (infoShow ? "block" : "none")}}>
                     <If condition={infoMsg && infoMsg.infotitle != null}>

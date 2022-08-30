@@ -43,7 +43,7 @@ html, body, #main {
         display: flex;
         flex-direction: row;
         background-color: black;
-        flex-grow: 1;
+        height: calc(100% - 45px);
 
         .session-view {
             flex-grow: 1;
@@ -534,7 +534,7 @@ body .xterm .xterm-viewport {
     }
 }
 
-.cmd-input-info, .xterm-viewport {
+.cmd-input-info, .xterm-viewport, .cmd-history {
     &::-webkit-scrollbar {
         background-color: #777;
         width: 5px;
@@ -578,6 +578,7 @@ body .xterm .xterm-viewport {
     max-height: max(300px, 40%);
     display: flex;
     flex-direction: column;
+    position: relative;
 
     &.has-info {
         padding-top: 5px;
@@ -610,6 +611,34 @@ body .xterm .xterm-viewport {
         .cmd-exec .button {
             background-color: #000 !important;
             color: #d3d7cf;
+        }
+    }
+
+    .cmd-history {
+        color: @term-white;
+        margin-bottom: 5px;
+        overflow-y: auto;
+        flex-shrink: 1;
+
+        .history-title {
+            position: absolute;
+            top: 5px;
+            left: 20px;
+            background-color: black;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            font-size: 14px;
+            color: #729fcf;
+            padding-bottom: 4px;
+        }
+
+        .history-items {
+            margin-top: 24px;
+            color: #d3d7cf;
+            font-size: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            white-space: pre;
+            padding-bottom: 6px;
         }
     }
 

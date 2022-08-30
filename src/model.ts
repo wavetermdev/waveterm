@@ -604,7 +604,7 @@ class InputModel {
             }
             this.historyShow.set(true);
             this.historyItems.set(hinfo.items);
-        });
+        })();
     }
 
     flashInfoMsg(info : InfoType, timeoutMs : number) : void {
@@ -1294,8 +1294,10 @@ class Model {
     loadSessionList() : void {
         let url = new URL("http://localhost:8080/api/get-all-sessions");
         fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
-            this.runUpdate(data.data, false);
-            this.sessionListLoaded.set(true);
+            mobx.action(() => {
+                this.runUpdate(data.data, false);
+                this.sessionListLoaded.set(true);
+            })();
             return;
         }).catch((err) => {
             this.errorHandler("getting session list", err, false);
