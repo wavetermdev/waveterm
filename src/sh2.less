@@ -634,11 +634,29 @@ body .xterm .xterm-viewport {
 
         .history-items {
             margin-top: 24px;
-            color: #d3d7cf;
+            color: @term-white;
             font-size: 12px;
             font-family: 'JetBrains Mono', monospace;
-            white-space: pre;
             padding-bottom: 6px;
+
+            .history-line {
+                white-space: pre;
+                margin-left: 58px;
+            }
+
+            .history-line:first-child {
+                margin-left: 0;
+            }
+
+            .history-item {
+                padding-left: 5px;
+            }
+
+            .history-item.is-selected {
+                font-weight: bold;
+                color: @term-bright-white;
+                background-color: #444;
+            }
         }
     }
 

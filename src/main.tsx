@@ -528,6 +528,69 @@ class TextAreaInput extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
+class HistoryInfo extends React.Component<{}, {}> {
+    componentDidMount() {
+        let inputModel = GlobalModel.inputModel;
+        let selNum = inputModel.historySelectedNum.get();
+        if (selNum != null) {
+            let elem = document.querySelector(".cmd-history .hnum-" + selNum);
+            if (elem != null) {
+                elem.scrollIntoView({block: "nearest"});
+            }
+        }
+    }
+
+    renderHItem(hitem : HistoryItem, selNum : number) : any {
+        let lines = hitem.cmdstr.split("\n");
+        let line : string = "";
+        let idx = 0;
+        return (
+            <div key={hitem.historynum} className={cn("history-item", {"is-selected": selNum == hitem.historynum}, "hnum-" + hitem.historynum)}>
+                <div className="history-line">{(selNum == hitem.historynum ? "*" : " ")}{sprintf("%5s", hitem.historynum)}  {lines[0]}</div>
+                <For each="line" index="index" of={lines.slice(1)}>
+                    <div key={idx} className="history-line">{line}</div>
+                </For>
+            </div>
+        );
+    }
+    
+    render() {
+        let inputModel = GlobalModel.inputModel;
+        let idx : number = 0;
+        let hitems : HistoryItem[] = inputModel.historyItems.get() ?? [];
+        let selNum = inputModel.historySelectedNum.get();
+        hitems = hitems.slice().reverse();
+        return (
+            <div className="cmd-history">
+                <div className="history-title">
+                    showing history for
+                    {" "}
+                    <span className="term-bright-white">[containing '']</span>
+                    {" "}
+                    <span className="term-bright-white">[this session &#x2318;S]</span>
+                    {" "}
+                    <span className="term-bright-white">[this window &#x2318;W]</span>
+                    {" "}
+                    <span className="term-bright-white">[this remote &#x2318;R]</span>
+                    {" "}
+                    <span className="term-bright-white">[including metacmds &#x2318;M]</span>
+                </div>
+                <div className="history-items">
+                    <If condition={hitems.length == 0}>
+                        [no history]
+                    </If>
+                    <If condition={hitems.length > 0}>
+                        <For each="hitem" index="idx" of={hitems}>
+                            {this.renderHItem(hitem, selNum)}
+                        </For>
+                    </If>
+                </div>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
 class CmdInput extends React.Component<{}, {}> {
     getAfterSlash(s : string) : string {
         if (s.startsWith("^/")) {
@@ -568,32 +631,11 @@ class CmdInput extends React.Component<{}, {}> {
         let istrIdx : number = 0;
         let line : string = null;
         let idx : number = 0;
-        let hitems : HistoryItem[] = inputModel.historyItems.get() ?? [];
         return (
             <div className={cn("box cmd-input has-background-black", {"has-info": infoShow || historyShow})}>
-                <div className="cmd-history" style={{display: (historyShow ? "block" : "none")}}>
-                    <div className="history-title">
-                        showing history for
-                        {" "}
-                        <span className="term-bright-white">[this session &#x2318;S]</span>
-                        {" "}
-                        <span className="term-bright-white">[this window &#x2318;W]</span>
-                        {" "}
-                        <span className="term-bright-white">[this remote &#x2318;R]</span>
-                        {" "}
-                        <span className="term-bright-white">[including metacmds &#x2318;M]</span>
-                    </div>
-                    <div className="history-items">
-                        <If condition={hitems.length == 0}>
-                            [no history]
-                        </If>
-                        <If condition={hitems.length > 0}>
-                            <For each="hitem" index="idx" of={hitems}>
-                                <div>{idx+1} item</div>
-                            </For>
-                        </If>
-                    </div>
-                </div>
+                <If condition={historyShow}>
+                    <HistoryInfo/>
+                </If>
                 <div className="cmd-input-info" style={{display: (infoShow ? "block" : "none")}}>
                     <If condition={infoMsg && infoMsg.infotitle != null}>
                         <div className="info-title">

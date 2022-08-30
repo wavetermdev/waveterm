@@ -584,6 +584,7 @@ class InputModel {
     queryOpts : OV<HistoryQueryOpts> = mobx.observable.box(null);
     infoMsg : OV<InfoType> = mobx.observable.box(null);
     infoTimeoutId : any = null;
+    historySelectedNum : OV<string> = mobx.observable.box(null);
 
     updateCmdLine(cmdLine : CmdLineUpdateType) : void {
         mobx.action(() => {
@@ -603,7 +604,14 @@ class InputModel {
                 this.infoShow.set(false);
             }
             this.historyShow.set(true);
-            this.historyItems.set(hinfo.items);
+            let items = hinfo.items ?? [];
+            this.historyItems.set(items);
+            if (items.length == 0) {
+                this.historySelectedNum.set(null);
+            }
+            else {
+                this.historySelectedNum.set(items[0].historynum);
+            }
         })();
     }
 
