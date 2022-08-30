@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -832,7 +831,11 @@ func getTermType(pk *packet.RunPacketType) string {
 
 func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecType, error) {
 	cmd := MakeShExec(pk.CK, nil)
-	cmd.Cmd = exec.Command("bash", "-c", pk.Command)
+	if pk.UsePty {
+		cmd.Cmd = exec.Command("bash", "-i", "-c", pk.Command)
+	} else {
+		cmd.Cmd = exec.Command("bash", "-c", pk.Command)
+	}
 	if !pk.EnvComplete {
 		cmd.Cmd.Env = os.Environ()
 	}
@@ -1164,6 +1167,43 @@ func getStderr(err error) string {
 	return lines[0]
 }
 
+func runSimpleCmdInPty(ecmd *exec.Cmd) ([]byte, error) {
+	ecmd.Env = os.Environ()
+	UpdateCmdEnv(ecmd, map[string]string{"TERM": DefaultTermType})
+	cmdPty, cmdTty, err := pty.Open()
+	if err != nil {
+		return nil, fmt.Errorf("opening new pty: %w", err)
+	}
+	pty.Setsize(cmdPty, &pty.Winsize{Rows: DefaultRows, Cols: DefaultCols})
+	ecmd.Stdin = cmdTty
+	ecmd.Stdout = cmdTty
+	ecmd.Stderr = cmdTty
+	ecmd.SysProcAttr = &syscall.SysProcAttr{}
+	ecmd.SysProcAttr.Setsid = true
+	ecmd.SysProcAttr.Setctty = true
+	err = ecmd.Start()
+	if err != nil {
+		cmdTty.Close()
+		cmdPty.Close()
+		return nil, err
+	}
+	cmdTty.Close()
+	defer cmdPty.Close()
+	ioDone := make(chan bool)
+	var outputBuf bytes.Buffer
+	go func() {
+		// ignore error (/dev/ptmx has read error when process is done)
+		io.Copy(&outputBuf, cmdPty)
+		close(ioDone)
+	}()
+	exitErr := ecmd.Wait()
+	if exitErr != nil {
+		return nil, exitErr
+	}
+	<-ioDone
+	return outputBuf.Bytes(), nil
+}
+
 func GetCurrentState() (string, []byte, error) {
 	execFile, err := os.Executable()
 	if err != nil {
@@ -1171,12 +1211,8 @@ func GetCurrentState() (string, []byte, error) {
 	}
 	ctx, _ := context.WithTimeout(context.Background(), GetStateTimeout)
 	ecmd := exec.CommandContext(ctx, "bash", "-l", "-i", "-c", fmt.Sprintf("%s --env", shellescape.Quote(execFile)))
-	outputBytes, err := ecmd.Output()
+	outputBytes, err := runSimpleCmdInPty(ecmd)
 	if err != nil {
-		errMsg := getStderr(err)
-		if errMsg != "" {
-			return "", nil, errors.New(errMsg)
-		}
 		return "", nil, err
 	}
 	idx := bytes.Index(outputBytes, []byte{0})
