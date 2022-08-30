@@ -559,6 +559,23 @@ class Session {
     }
 }
 
+type HistoryQueryOpts = {
+    queryType : "global" | "session" | "window";
+    limitRemote : boolean,
+    limitRemoteInstance : boolean,
+    limitUser : boolean,
+    queryStr : string,
+    maxItems : number,
+    includeMeta : boolean,
+    fromTs : number,
+};
+
+class HistoryModel {
+    historyShow : OV<boolean> = mobx.observable.box(false);
+    items : OV<HistoryItem[]> = mobx.observable.box(null, {deep: false});
+    queryOpts : OV<HistoryQueryOpts> = mobx.observable.box(null);
+}
+
 class InputModel {
     historyLoading : mobx.IObservableValue<boolean> = mobx.observable.box(false);
     historySessionId : string = null;
@@ -610,12 +627,17 @@ class InputModel {
             this.setHIdx = 0;
             return;
         }
+        let win = GlobalModel.getActiveWindow();
+        if (win == null) {
+            this.setHIdx = 0;
+            return;
+        }
         mobx.action(() => {
             this.historySessionId = sessionId;
             this.historyItems.set(null);
             this.historyLoading.set(true);
         })();
-        let usp = new URLSearchParams({sessionid: sessionId});
+        let usp = new URLSearchParams({sessionid: sessionId, windowid: win.windowId});
         let url = new URL("http://localhost:8080/api/get-history?" + usp.toString());
         fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
             mobx.action(() => {
@@ -742,6 +764,7 @@ class Model {
     infoMsg : OV<InfoType> = mobx.observable.box(null);
     infoTimeoutId : any = null;
     inputModel : InputModel;
+    historyModel : HistoryModel;
     termUsedRowsCache : Record<string, number> = {};
     remotesModalOpen : OV<boolean> = mobx.observable.box(false);
     
@@ -752,6 +775,7 @@ class Model {
         this.ws = new WSControl(this.clientId, (message : any) => this.runUpdate(message, false));
         this.ws.reconnect();
         this.inputModel = new InputModel();
+        this.historyModel = new HistoryModel();
         getApi().onTCmd(this.onTCmd.bind(this));
         getApi().onICmd(this.onICmd.bind(this));
         getApi().onMetaArrowUp(this.onMetaArrowUp.bind(this));
@@ -1194,6 +1218,7 @@ class Model {
                 if (interactive && (update == null || update.info == null)) {
                     GlobalModel.clearInfoMsg(true);
                 }
+                
             })();
         }).catch((err) => {
             this.errorHandler("calling run-command", err, true);
