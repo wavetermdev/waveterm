@@ -244,6 +244,7 @@ func HistoryItemFromMap(m map[string]interface{}) *HistoryItemType {
 	quickSetStr(&h.Remote.RemoteId, m, "remoteid")
 	quickSetStr(&h.Remote.Name, m, "remotename")
 	quickSetBool(&h.IsMetaCmd, m, "ismetacmd")
+	quickSetStr(&h.HistoryNum, m, "historynum")
 	return &h
 }
 
@@ -330,6 +331,11 @@ type HistoryItemType struct {
 
 	// transient (string because of different history orderings)
 	HistoryNum string `json:"historynum"`
+}
+
+type HistoryQueryOpts struct {
+	MaxItems int
+	FromTs   int64
 }
 
 type RemoteState struct {

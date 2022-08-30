@@ -4,11 +4,17 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"strconv"
 )
 
 func quickSetStr(strVal *string, m map[string]interface{}, name string) {
 	v, ok := m[name]
 	if !ok {
+		return
+	}
+	ival, ok := v.(int64)
+	if ok {
+		*strVal = strconv.FormatInt(ival, 10)
 		return
 	}
 	str, ok := v.(string)

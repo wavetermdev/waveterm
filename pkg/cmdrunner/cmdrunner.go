@@ -927,13 +927,13 @@ func HistoryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if maxItems == 0 {
 		maxItems = DefaultMaxHistoryItems
 	}
-	hitems, err := sstore.GetSessionHistoryItems(ctx, ids.SessionId, maxItems)
+	hitems, err := sstore.GetHistoryItems(ctx, ids.SessionId, ids.WindowId, sstore.HistoryQueryOpts{MaxItems: maxItems})
 	if err != nil {
 		return nil, err
 	}
 	var filteredItems []*sstore.HistoryItemType
 	for _, hitem := range hitems {
-		if hitem.ScreenId == ids.ScreenId && hitem.WindowId == ids.WindowId && (hitem.Remote == ids.Remote.RemotePtr || hitem.IsMetaCmd) {
+		if hitem.Remote == ids.Remote.RemotePtr || hitem.IsMetaCmd {
 			filteredItems = append(filteredItems, hitem)
 		}
 	}
@@ -952,10 +952,6 @@ func HistoryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		}
 	}
 	update := &sstore.ModelUpdate{}
-	update.Info = &sstore.InfoMsgType{
-		InfoMsg:   fmt.Sprintf("history, limited to current session, screen, window, and remote (maxitems=%d)", maxItems),
-		InfoLines: splitLinesForInfo(buf.String()),
-	}
 	update.History = &sstore.HistoryInfoType{
 		Items: filteredItems,
 	}

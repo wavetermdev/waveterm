@@ -119,7 +119,6 @@ func resolveByPosition(items []ResolveItem, curId string, posStr string) *Resolv
 }
 
 func resolveUiIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype int) (resolvedIds, error) {
-	fmt.Printf("resolve-ui-ids: %#v\n", pk)
 	rtn := resolvedIds{}
 	uictx := pk.UIContext
 	if uictx != nil {

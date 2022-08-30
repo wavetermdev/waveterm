@@ -183,7 +183,7 @@ func HandleGetHistory(w http.ResponseWriter, r *http.Request) {
 			numItems = parsedNum
 		}
 	}
-	hitems, err := sstore.GetSessionHistoryItems(r.Context(), sessionId, numItems)
+	hitems, err := sstore.GetHistoryItems(r.Context(), sessionId, "", sstore.HistoryQueryOpts{MaxItems: numItems})
 	if err != nil {
 		WriteJsonError(w, err)
 		return

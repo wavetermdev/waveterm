@@ -4,12 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 )
+
+const HistoryCols = "historyid, ts, userid, sessionid, screenid, windowid, lineid, cmdid, haderror, cmdstr, remoteownerid, remoteid, remotename, ismetacmd"
+const DefaultMaxHistoryItems = 1000
 
 func NumSessions(ctx context.Context) (int, error) {
 	db, err := GetDB(ctx)
@@ -117,23 +119,60 @@ func InsertHistoryItem(ctx context.Context, hitem *HistoryItemType) error {
 	return nil
 }
 
-func GetSessionHistoryItems(ctx context.Context, sessionId string, maxItems int) ([]*HistoryItemType, error) {
+func runHistoryQuery(tx *TxWrap, sessionId string, windowId string, opts HistoryQueryOpts) ([]*HistoryItemType, error) {
+	// check sessionid/windowid format because we are directly inserting them into the SQL
+	if sessionId != "" {
+		_, err := uuid.Parse(sessionId)
+		if err != nil {
+			return nil, fmt.Errorf("malformed sessionid")
+		}
+	}
+	if windowId != "" {
+		_, err := uuid.Parse(windowId)
+		if err != nil {
+			return nil, fmt.Errorf("malformed windowid")
+		}
+	}
+	hnumStr := ""
+	whereClause := ""
+	if sessionId != "" && windowId != "" {
+		whereClause = fmt.Sprintf("WHERE sessionid = '%s' AND windowid = '%s'", sessionId, windowId)
+		hnumStr = "w"
+	} else if sessionId != "" {
+		whereClause = fmt.Sprintf("WHERE sessionid = '%s'", sessionId)
+		hnumStr = "s"
+	} else {
+		hnumStr = "g"
+	}
+	maxItems := opts.MaxItems
+	if maxItems == 0 {
+		maxItems = DefaultMaxHistoryItems
+	}
+	query := fmt.Sprintf("SELECT %s, '%s' || row_number() OVER win AS historynum FROM history %s WINDOW win AS (ORDER BY ts, historyid) ORDER BY ts DESC, historyid DESC LIMIT %d", HistoryCols, hnumStr, whereClause, maxItems)
+	if opts.FromTs > 0 {
+		query = fmt.Sprintf("SELECT * FROM (%s) WHERE ts >= %d", query, opts.FromTs)
+	}
+	marr := tx.SelectMaps(query)
+	rtn := make([]*HistoryItemType, len(marr))
+	for idx, m := range marr {
+		hitem := HistoryItemFromMap(m)
+		rtn[idx] = hitem
+	}
+	return rtn, nil
+}
+
+func GetHistoryItems(ctx context.Context, sessionId string, windowId string, opts HistoryQueryOpts) ([]*HistoryItemType, error) {
 	var rtn []*HistoryItemType
-	err := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT count(*) FROM history WHERE sessionid = ?`
-		totalNum := tx.GetInt(query, sessionId)
-		query = `SELECT * FROM history WHERE sessionid = ? ORDER BY ts DESC, historyid LIMIT ?`
-		marr := tx.SelectMaps(query, sessionId, maxItems)
-		for idx, m := range marr {
-			hnum := totalNum - idx
-			hitem := HistoryItemFromMap(m)
-			hitem.HistoryNum = strconv.Itoa(hnum)
-			rtn = append(rtn, hitem)
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		var err error
+		rtn, err = runHistoryQuery(tx, sessionId, windowId, opts)
+		if err != nil {
+			return err
 		}
 		return nil
 	})
-	if err != nil {
-		return nil, err
+	if txErr != nil {
+		return nil, txErr
 	}
 	return rtn, nil
 }
