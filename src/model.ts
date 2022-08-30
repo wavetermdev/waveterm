@@ -4,7 +4,7 @@ import {boundMethod} from "autobind-decorator";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType} from "./types";
+import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType} from "./types";
 import {WSControl} from "./ws";
 
 var GlobalUser = "sawka";
@@ -570,13 +570,10 @@ type HistoryQueryOpts = {
     fromTs : number,
 };
 
-class HistoryModel {
-    historyShow : OV<boolean> = mobx.observable.box(false);
-    items : OV<HistoryItem[]> = mobx.observable.box(null, {deep: false});
-    queryOpts : OV<HistoryQueryOpts> = mobx.observable.box(null);
-}
-
 class InputModel {
+    historyShow : OV<boolean> = mobx.observable.box(false);
+    infoShow : OV<boolean> = mobx.observable.box(false);
+    
     historyLoading : mobx.IObservableValue<boolean> = mobx.observable.box(false);
     historySessionId : string = null;
     historyItems : mobx.IObservableValue<HistoryItem[]> = mobx.observable.box(null, {name: "history-items", deep: false});
@@ -584,7 +581,11 @@ class InputModel {
     modHistory : mobx.IObservableArray<string> = mobx.observable.array([""], {name: "mod-history"});
     setHIdx : number = 0;
 
-    updateCmdLine(cmdLine : CmdLineUpdateType) {
+    queryOpts : OV<HistoryQueryOpts> = mobx.observable.box(null);
+    infoMsg : OV<InfoType> = mobx.observable.box(null);
+    infoTimeoutId : any = null;
+
+    updateCmdLine(cmdLine : CmdLineUpdateType) : void {
         mobx.action(() => {
             let curLine = this.getCurLine();
             if (curLine.length < cmdLine.insertpos) {
@@ -593,6 +594,97 @@ class InputModel {
             let pos = cmdLine.insertpos;
             curLine = curLine.substr(0, pos) + cmdLine.insertchars + curLine.substr(pos);
             this.setCurLine(curLine);
+        })();
+    }
+
+    showHistory(hinfo : HistoryInfoType) : void {
+        mobx.action(() => {
+            if (this.infoShow.get()) {
+                this.infoShow.set(false);
+            }
+            this.historyShow.set(true);
+            this.historyItems.set(hinfo.items);
+        });
+    }
+
+    flashInfoMsg(info : InfoType, timeoutMs : number) : void {
+        if (this.infoTimeoutId != null) {
+            clearTimeout(this.infoTimeoutId);
+            this.infoTimeoutId = null;
+        }
+        mobx.action(() => {
+            this.infoMsg.set(info);
+            if (info == null) {
+                this.infoShow.set(false);
+            }
+            else {
+                this.infoShow.set(true);
+                this.historyShow.set(false);
+            }
+        })();
+        if (info != null && timeoutMs) {
+            this.infoTimeoutId = setTimeout(() => {
+                if (this.historyShow.get()) {
+                    return;
+                }
+                this.clearInfoMsg(false);
+            }, timeoutMs);
+        }
+    }
+
+    hasScrollingInfoMsg() : boolean {
+        if (!this.infoShow.get()) {
+            return false;
+        }
+        let info = this.infoMsg.get();
+        if (info == null) {
+            return false;
+        }
+        let div = document.querySelector(".cmd-input-info");
+        if (div == null) {
+            return false;
+        }
+        return div.scrollHeight > div.clientHeight;
+    }
+
+    hasScrollingHistory() : boolean {
+        if (!this.historyShow.get()) {
+            return false;
+        }
+        let div = document.querySelector(".cmd-history");
+        if (div == null) {
+            return false;
+        }
+        return div.scrollHeight > div.clientHeight;
+    }
+
+    clearInfoMsg(setNull : boolean) : void {
+        this.infoTimeoutId = null;
+        mobx.action(() => {
+            this.historyShow.set(false);
+            this.infoShow.set(false);
+            if (setNull) {
+                this.infoMsg.set(null);
+            }
+        })();
+    }
+
+    toggleInfoMsg() : void {
+        this.infoTimeoutId = null;
+        mobx.action(() => {
+            if (this.historyShow.get()) {
+                this.historyShow.set(false);
+                return;
+            }
+            let isShowing = this.infoShow.get();
+            if (isShowing) {
+                this.infoShow.set(false);
+            }
+            else {
+                if (this.infoMsg.get() != null) {
+                    this.infoShow.set(true);
+                }
+            }
         })();
     }
 
@@ -608,7 +700,7 @@ class InputModel {
         })();
     }
 
-    setCurLine(val : string) {
+    setCurLine(val : string) : void {
         let hidx = this.historyIndex.get();
         mobx.action(() => {
             if (this.modHistory.length <= hidx) {
@@ -618,7 +710,7 @@ class InputModel {
         })();
     }
 
-    loadHistory() {
+    loadHistory() : void {
         if (this.historyLoading.get()) {
             return;
         }
@@ -671,7 +763,7 @@ class InputModel {
         });
     }
 
-    clearCurLine() {
+    clearCurLine() : void {
         mobx.action(() => {
             this.resetHistory();
             this.modHistory.replace([""]);
@@ -760,11 +852,7 @@ class Model {
     remotes : OArr<RemoteType> = mobx.observable.array([], {deep: false});
     remotesLoaded : OV<boolean> = mobx.observable.box(false);
     windows : OMap<string, Window> = mobx.observable.map({}, {deep: false});  // key = "sessionid/windowid"
-    infoShow : OV<boolean> = mobx.observable.box(false);
-    infoMsg : OV<InfoType> = mobx.observable.box(null);
-    infoTimeoutId : any = null;
     inputModel : InputModel;
-    historyModel : HistoryModel;
     termUsedRowsCache : Record<string, number> = {};
     remotesModalOpen : OV<boolean> = mobx.observable.box(false);
     
@@ -775,7 +863,6 @@ class Model {
         this.ws = new WSControl(this.clientId, (message : any) => this.runUpdate(message, false));
         this.ws.reconnect();
         this.inputModel = new InputModel();
-        this.historyModel = new HistoryModel();
         getApi().onTCmd(this.onTCmd.bind(this));
         getApi().onICmd(this.onICmd.bind(this));
         getApi().onMetaArrowUp(this.onMetaArrowUp.bind(this));
@@ -799,22 +886,6 @@ class Model {
         getApi().contextScreen({screenId: screenId}, {x: e.x, y: e.y});
     }
 
-    flashInfoMsg(info : InfoType, timeoutMs : number) {
-        if (this.infoTimeoutId != null) {
-            clearTimeout(this.infoTimeoutId);
-            this.infoTimeoutId = null;
-        }
-        mobx.action(() => {
-            this.infoMsg.set(info);
-            this.infoShow.set(info != null);
-        })();
-        if (info != null && timeoutMs) {
-            this.infoTimeoutId = setTimeout(() => {
-                this.clearInfoMsg(false);
-            }, timeoutMs);
-        }
-    }
-
     getUIContext() : UIContextType {
         let rtn : UIContextType = {
             sessionid : null,
@@ -836,46 +907,6 @@ class Model {
             }
         }
         return rtn;
-    }
-
-    hasScrollingInfoMsg() : boolean {
-        if (!this.infoShow.get()) {
-            return false;
-        }
-        let info = this.infoMsg.get();
-        if (info == null) {
-            return false;
-        }
-        let div = document.querySelector(".cmd-input-info");
-        if (div == null) {
-            return false;
-        }
-        return div.scrollHeight > div.clientHeight;
-    }
-
-    clearInfoMsg(setNull : boolean) {
-        this.infoTimeoutId = null;
-        mobx.action(() => {
-            this.infoShow.set(false);
-            if (setNull) {
-                this.infoMsg.set(null);
-            }
-        })();
-    }
-
-    toggleInfoMsg() {
-        this.infoTimeoutId = null;
-        mobx.action(() => {
-            let isShowing = this.infoShow.get();
-            if (isShowing) {
-                this.infoShow.set(false);
-            }
-            else {
-                if (this.infoMsg.get() != null) {
-                    this.infoShow.set(true);
-                }
-            }
-        })();
     }
 
     onTCmd(mods : KeyModsType) {
@@ -1075,7 +1106,10 @@ class Model {
         }
         if (interactive && "info" in update) {
             let info : InfoType = update.info;
-            this.flashInfoMsg(info, info.timeoutms);
+            this.inputModel.flashInfoMsg(info, info.timeoutms);
+        }
+        if (interactive && "history" in update) {
+            this.inputModel.showHistory(update.history);
         }
         if ("cmdline" in update) {
             this.inputModel.updateCmdLine(update.cmdline);
@@ -1207,6 +1241,13 @@ class Model {
         return rtn;
     }
 
+    isInfoUpdate(update : UpdateMessage) : boolean {
+        if (update == null || "ptydata64" in update) {
+            return false;
+        }
+        return (update.info != null || update.history != null);
+    }
+
     submitCommandPacket(cmdPk : FeCmdPacketType, interactive : boolean) {
         let url = sprintf("http://localhost:8080/api/run-command");
         fetch(url, {method: "post", body: JSON.stringify(cmdPk)}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
@@ -1215,10 +1256,9 @@ class Model {
                 if (update != null) {
                     this.runUpdate(update, interactive);
                 }
-                if (interactive && (update == null || update.info == null)) {
-                    GlobalModel.clearInfoMsg(true);
+                if (interactive && !this.isInfoUpdate(update)) {
+                    GlobalModel.inputModel.clearInfoMsg(true);
                 }
-                
             })();
         }).catch((err) => {
             this.errorHandler("calling run-command", err, true);
@@ -1365,7 +1405,7 @@ class Model {
             if (err != null && err.message) {
                 errMsg = err.message;
             }
-            this.flashInfoMsg({infoerror: errMsg}, null);
+            this.inputModel.flashInfoMsg({infoerror: errMsg}, null);
         }
     }
 
@@ -1395,7 +1435,7 @@ class InputClass {
 
     clearCmdInput() : void {
         mobx.action(() => {
-            GlobalModel.clearInfoMsg(true);
+            GlobalModel.inputModel.clearInfoMsg(true);
             GlobalModel.inputModel.clearCurLine();
         })();
     }

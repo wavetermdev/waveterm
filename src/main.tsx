@@ -451,7 +451,7 @@ class TextAreaInput extends React.Component<{}, {}> {
             }
             if (e.code == "Escape") {
                 e.preventDefault();
-                GlobalModel.toggleInfoMsg();
+                GlobalModel.inputModel.toggleInfoMsg();
                 return;
             }
             if (e.code == "KeyC" && e.getModifierState("Control")) {
@@ -484,7 +484,7 @@ class TextAreaInput extends React.Component<{}, {}> {
             }
             if (e.code == "PageUp" || e.code == "PageDown") {
                 e.preventDefault();
-                let infoScroll = GlobalModel.hasScrollingInfoMsg();
+                let infoScroll = GlobalModel.inputModel.hasScrollingInfoMsg();
                 if (infoScroll) {
                     let div = document.querySelector(".cmd-input-info");
                     let amt = pageSize(div);
@@ -545,6 +545,7 @@ class CmdInput extends React.Component<{}, {}> {
     
     render() {
         let model = GlobalModel;
+        let inputModel = model.inputModel;
         let win = GlobalModel.getActiveWindow();
         let ri : RemoteInstanceType = null;
         let rptr : RemotePtrType = null;
@@ -560,14 +561,18 @@ class CmdInput extends React.Component<{}, {}> {
         }
         let remoteStr = getRemoteStr(rptr);
         let cwdStr = getCwdStr(remote, remoteState);
-        let infoMsg = GlobalModel.infoMsg.get();
-        let infoShow = GlobalModel.infoShow.get();
+        let infoMsg = inputModel.infoMsg.get();
+        let infoShow = inputModel.infoShow.get();
+        let historyShow = !infoShow && inputModel.historyShow.get();
         let istr : string = null;
         let istrIdx : number = 0;
         let line : string = null;
         let idx : number = 0;
         return (
             <div className={cn("box cmd-input has-background-black", {"has-info": infoShow})}>
+                <div className="cmd-history" style={{display: (historyShow ? "block" : "none")}}>
+                    history!
+                </div>
                 <div className="cmd-input-info" style={{display: (infoShow ? "block" : "none")}}>
                     <If condition={infoMsg && infoMsg.infotitle != null}>
                         <div className="info-title">
