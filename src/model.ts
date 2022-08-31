@@ -577,6 +577,7 @@ class InputModel {
     historyShow : OV<boolean> = mobx.observable.box(false);
     infoShow : OV<boolean> = mobx.observable.box(false);
 
+    historyType : mobx.IObservableValue<string> = mobx.observable.box("window");
     historyLoading : mobx.IObservableValue<boolean> = mobx.observable.box(false);
     historyAfterLoadIndex : number = 0;
     historyItems : mobx.IObservableValue<HistoryItem[]> = mobx.observable.box(null, {name: "history-items", deep: false}); // sorted in reverse (most recent is index 0)
@@ -629,33 +630,43 @@ class InputModel {
         return false;
     }
 
+    setHistoryType(htype : string) : void {
+        if (this.historyQueryOpts.get().queryType == htype) {
+            return;
+        }
+        this.loadHistory(true, -1, htype);
+    }
+
+    findBestNewIndex(oldItem : HistoryItem) : number {
+        if (oldItem == null) {
+            return 0;
+        }
+        let newItems = this.getFilteredHistoryItems();
+        if (newItems.length == 0) {
+            return 0;
+        }
+        let bestIdx = 0;
+        for (let i=0; i<newItems.length; i++) {  // still start at i=0 to catch the historynum equality case
+            let item = newItems[i];
+            if (item.historynum == oldItem.historynum) {
+                bestIdx = i;
+                break;
+            }
+            let bestTsDiff = Math.abs(item.ts - newItems[bestIdx].ts);
+            let curTsDiff = Math.abs(item.ts - oldItem.ts);
+            if (curTsDiff < bestTsDiff) {
+                bestIdx = i;
+            }
+        }
+        return bestIdx + 1;
+    }
+
     setHistoryQueryOpts(opts : HistoryQueryOpts) : void {
         mobx.action(() => {
             let oldItem = this.getHistorySelectedItem();
             this.historyQueryOpts.set(opts);
-            if (oldItem == null) {
-                setTimeout(() => this.setHistoryIndex(0, true), 10);
-                return;
-            }
-            let newItems = this.getFilteredHistoryItems();
-            if (newItems.length == 0) {
-                setTimeout(() => this.setHistoryIndex(0, true), 10);
-                return;
-            }
-            let bestIdx = 0;
-            for (let i=0; i<newItems.length; i++) {  // still start at i=0 to catch the historynum equality case
-                let item = newItems[i];
-                if (item.historynum == oldItem.historynum) {
-                    bestIdx = i;
-                    break;
-                }
-                let bestTsDiff = Math.abs(item.ts - newItems[bestIdx].ts);
-                let curTsDiff = Math.abs(item.ts - oldItem.ts);
-                if (curTsDiff < bestTsDiff) {
-                    bestIdx = i;
-                }
-            }
-            setTimeout(() => this.setHistoryIndex(bestIdx+1, true), 10);
+            let bestIndex = this.findBestNewIndex(oldItem);
+            setTimeout(() => this.setHistoryIndex(bestIndex, true), 10);
             return;
         })();
     }
@@ -680,18 +691,20 @@ class InputModel {
         return (hitems != null);
     }
 
-    loadHistory(show : boolean, afterLoadIndex : number) {
+    loadHistory(show : boolean, afterLoadIndex : number, htype : string) {
         if (this.historyLoading.get()) {
             return;
         }
         if (this.isHistoryLoaded()) {
-            return;
+            if (this.historyQueryOpts.get().queryType == htype) {
+                return;
+            }
         }
         this.historyAfterLoadIndex = afterLoadIndex;
         mobx.action(() => {
             this.historyLoading.set(true);
         })();
-        GlobalCommandRunner.loadHistory(show);
+        GlobalCommandRunner.loadHistory(show, htype);
     }
 
     openHistory() : void {
@@ -699,7 +712,7 @@ class InputModel {
             return;
         }
         if (!this.isHistoryLoaded()) {
-            this.loadHistory(true, 0);
+            this.loadHistory(true, 0, "window");
             return;
         }
         if (!this.historyShow.get()) {
@@ -756,15 +769,25 @@ class InputModel {
 
     setHistoryInfo(hinfo : HistoryInfoType) : void {
         mobx.action(() => {
+            let oldItem = this.getHistorySelectedItem();
             let hitems : HistoryItem[] = hinfo.items ?? [];
             this.historyItems.set(hitems);
             this.historyLoading.set(false);
-            if (this.historyAfterLoadIndex) {
+            this.historyQueryOpts.get().queryType = hinfo.historytype;
+            if (hinfo.historytype == "session" || hinfo.historytype == "global") {
+                this.historyQueryOpts.get().limitRemote = false;
+                this.historyQueryOpts.get().limitRemoteInstance = false;
+            }
+            if (this.historyAfterLoadIndex == -1) {
+                let bestIndex = this.findBestNewIndex(oldItem);
+                setTimeout(() => this.setHistoryIndex(bestIndex, true), 100);
+            }
+            else if (this.historyAfterLoadIndex) {
                 if (hitems.length >= this.historyAfterLoadIndex) {
                     this.setHistoryIndex(this.historyAfterLoadIndex);
                 }
-                this.historyAfterLoadIndex = 0;
             }
+            this.historyAfterLoadIndex = 0;
             if (hinfo.show) {
                 this.openHistory();
             }
@@ -780,9 +803,9 @@ class InputModel {
         let rtn : HistoryItem[] = [];
         let opts = mobx.toJS(this.historyQueryOpts.get());
         let ctx = GlobalModel.getUIContext();
-        let curRemote = ctx.remote;
+        let curRemote : RemotePtrType = ctx.remote;
         if (curRemote == null) {
-            curRemote : RemotePtrType = {ownerid: "", name: "", remoteid: ""};
+            curRemote = {ownerid: "", name: "", remoteid: ""};
         }
         curRemote = mobx.toJS(curRemote);
         for (let i=0; i<hitems.length; i++) {
@@ -797,7 +820,7 @@ class InputModel {
                     if (hitem.remote == null || isBlank(hitem.remote.remoteid)) {
                         continue;
                     }
-                    if (((curRemote.ownerid ?? "") != (hitem.remote.owerid ?? ""))
+                    if (((curRemote.ownerid ?? "") != (hitem.remote.ownerid ?? ""))
                         || ((curRemote.remoteid ?? "") != (hitem.remote.remoteid ?? ""))
                         || ((curRemote.name ?? "" ) != (hitem.remote.name ?? ""))) {
                         continue;
@@ -807,7 +830,7 @@ class InputModel {
                     if (hitem.remote == null || isBlank(hitem.remote.remoteid)) {
                         continue;
                     }
-                    if (((curRemote.ownerid ?? "") != (hitem.remote.owerid ?? ""))
+                    if (((curRemote.ownerid ?? "") != (hitem.remote.ownerid ?? ""))
                         || ((curRemote.remoteid ?? "") != (hitem.remote.remoteid ?? ""))) {
                         continue;
                     }
@@ -839,7 +862,7 @@ class InputModel {
         }
         let buffer = 15;
         let titleHeight = 24;
-        let titleDiv = document.querySelector(".cmd-history .history-title");
+        let titleDiv : HTMLElement = document.querySelector(".cmd-history .history-title");
         if (titleDiv != null) {
             titleHeight = titleDiv.offsetHeight + 2;
         }
@@ -1058,6 +1081,7 @@ class InputModel {
         mobx.action(() => {
             this.setHistoryShow(false);
             this.historyLoading.set(false);
+            this.historyType.set("window");
             this.historyItems.set(null);
             this.historyIndex.set(0);
             this.historyQueryOpts.set(getDefaultHistoryQueryOpts());
@@ -1659,10 +1683,13 @@ class CommandRunner {
     constructor() {
     }
 
-    loadHistory(show : boolean) {
+    loadHistory(show : boolean, htype : string) {
         let kwargs = {"nohist": "1"};
         if (!show) {
             kwargs["noshow"] = "1";
+        }
+        if (htype != null && htype != "window") {
+            kwargs["type"] = htype;
         }
         GlobalModel.submitCommand("history", null, null, kwargs, true);
     }

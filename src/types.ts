@@ -220,6 +220,7 @@ type ModelUpdateType = {
 };
 
 type HistoryInfoType = {
+    historytype : "global" | "session" | "window",
     sessionid : string,
     windowid : string,
     items : HistoryItem[],

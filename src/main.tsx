@@ -467,7 +467,8 @@ class TextAreaInput extends React.Component<{}, {}> {
             if (e.code == "ArrowUp" || e.code == "ArrowDown") {
                 if (!inputModel.isHistoryLoaded()) {
                     if (e.code == "ArrowUp") {
-                        inputModel.loadHistory(false, 1);
+                        this.lastHistoryUpDown = true;
+                        inputModel.loadHistory(false, 1, "window");
                     }
                     return;
                 }
@@ -542,14 +543,14 @@ class TextAreaInput extends React.Component<{}, {}> {
             inputModel.resetInput();
             return;
         }
-        if (e.code == "KeyM" && e.getModifierState("Meta")) {
+        if (e.code == "KeyM" && (e.getModifierState("Meta") || e.getModifierState("Control"))) {
             e.preventDefault();
             let opts = mobx.toJS(inputModel.historyQueryOpts.get());
             opts.includeMeta = !opts.includeMeta;
             inputModel.setHistoryQueryOpts(opts);
             return;
         }
-        if (e.code == "KeyR" && (e.getModifierState("Meta") && !e.getModifierState("Shift"))) {
+        if (e.code == "KeyR" && ((e.getModifierState("Meta") || e.getModifierState("Control")) && !e.getModifierState("Shift"))) {
             console.log("meta-r");
             e.preventDefault();
             let opts = mobx.toJS(inputModel.historyQueryOpts.get());
@@ -562,6 +563,22 @@ class TextAreaInput extends React.Component<{}, {}> {
                 opts.limitRemoteInstance = true;
             }
             inputModel.setHistoryQueryOpts(opts);
+            return;
+        }
+        if (e.code == "KeyS" && (e.getModifierState("Meta") || e.getModifierState("Control"))) {
+            e.preventDefault();
+            let opts = mobx.toJS(inputModel.historyQueryOpts.get());
+            let htype = opts.queryType;
+            if (htype == "window") {
+                htype = "session";
+            }
+            else if (htype == "session") {
+                htype = "global";
+            }
+            else {
+                htype = "window";
+            }
+            inputModel.setHistoryType(htype);
             return;
         }
         if (e.code == "Tab") {
@@ -695,10 +712,23 @@ class HistoryInfo extends React.Component<{}, {}> {
         let line : string = "";
         let idx = 0;
         let limitRemote = opts.limitRemote;
+        let sessionStr = "";
+        if (opts.queryType == "global") {
+            if (!isBlank(hitem.sessionid)) {
+                let s = GlobalModel.getSessionById(hitem.sessionid);
+                if (s != null) {
+                    sessionStr = s.name.get();
+                    if (sessionStr.indexOf(" ") != -1) {
+                        sessionStr = "[" + sessionStr + "]";
+                    }
+                    sessionStr = sprintf("#%-15s ", sessionStr);
+                }
+            }
+        }
         return (
             <div key={hitem.historynum} className={cn("history-item", {"is-selected": isSelected}, {"history-haderror": hitem.haderror}, "hnum-" + hitem.historynum)} onClick={() => this.handleItemClick(hitem)}>
-                <div className="history-line">{(isSelected ? "*" : " ")}{sprintf("%5s", hitem.historynum)}  {!limitRemote ? this.renderRemote(hitem) : ""}{lines[0]}</div>
-                <For each="line" index="index" of={lines.slice(1)}>
+                <div className="history-line">{(isSelected ? "*" : " ")}{sprintf("%5s", hitem.historynum)} {opts.queryType == "global" ? sessionStr : ""}{!limitRemote ? this.renderRemote(hitem) : ""} {lines[0]}</div>
+                <For each="line" index="idx" of={lines.slice(1)}>
                     <div key={idx} className="history-line">{line}</div>
                 </For>
             </div>
@@ -723,7 +753,7 @@ class HistoryInfo extends React.Component<{}, {}> {
                 <div className="history-title">
                     <div>history</div>
                     <div className="spacer"></div>
-                    <div className="history-opt">[for window &#x2318;W]</div>
+                    <div className="history-opt">[for {opts.queryType} &#x2318;S]</div>
                     <div className="spacer"></div>
                     <div className="history-opt">[containing '{opts.queryStr}']</div>
                     <div className="spacer"></div>
@@ -734,7 +764,7 @@ class HistoryInfo extends React.Component<{}, {}> {
                     <div className="history-clickable-opt" onClick={this.handleClose}>(ESC)</div>
                     <div className="spacer"></div>
                 </div>
-                <div className={cn("history-items", {"show-remotes": !opts.limitRemote})}>
+                <div className={cn("history-items", {"show-remotes": !opts.limitRemote}, {"show-sessions": opts.queryType == "global"})}>
                     <If condition={hitems.length == 0}>
                         [no history]
                     </If>
