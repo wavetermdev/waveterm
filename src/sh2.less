@@ -667,6 +667,10 @@ body .xterm .xterm-viewport {
                 margin-left: 58px;
             }
 
+            .history-item.history-haderror {
+                color: mix(@term-red, @term-white, 50%);
+            }
+
             .history-line:first-child {
                 margin-left: 0;
             }
@@ -684,6 +688,10 @@ body .xterm .xterm-viewport {
                 font-weight: bold;
                 color: @term-bright-white;
                 background-color: #444;
+            }
+
+            .history-item.is-selected.history-haderror {
+                color: mix(@term-bright-red, @term-bright-white, 50%);
             }
         }
     }

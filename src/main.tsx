@@ -542,6 +542,12 @@ class TextAreaInput extends React.Component<{}, {}> {
             inputModel.resetInput();
             return;
         }
+        if (e.code == "KeyM" && e.getModifierState("Meta")) {
+            e.preventDefault();
+            let opts = mobx.toJS(inputModel.historyQueryOpts.get());
+            opts.includeMeta = !opts.includeMeta;
+            inputModel.setHistoryQueryOpts(opts);
+        }
         if (e.code == "Tab") {
             e.preventDefault();
             return;
@@ -562,7 +568,9 @@ class TextAreaInput extends React.Component<{}, {}> {
     handleHistoryInput(e : any) {
         let inputModel = GlobalModel.inputModel;
         mobx.action(() => {
-            inputModel.historyQueryOpts.get().queryStr = e.target.value;
+            let opts = mobx.toJS(inputModel.historyQueryOpts.get());
+            opts.queryStr = e.target.value;
+            inputModel.setHistoryQueryOpts(opts);
         })();
     }
 
@@ -646,7 +654,7 @@ class HistoryInfo extends React.Component<{}, {}> {
         let line : string = "";
         let idx = 0;
         return (
-            <div key={hitem.historynum} className={cn("history-item", {"is-selected": isSelected}, "hnum-" + hitem.historynum)} onClick={() => this.handleItemClick(hitem)}>
+            <div key={hitem.historynum} className={cn("history-item", {"is-selected": isSelected}, {"history-haderror": hitem.haderror}, "hnum-" + hitem.historynum)} onClick={() => this.handleItemClick(hitem)}>
                 <div className="history-line">{(isSelected ? "*" : " ")}{sprintf("%5s", hitem.historynum)}  {lines[0]}</div>
                 <For each="line" index="index" of={lines.slice(1)}>
                     <div key={idx} className="history-line">{line}</div>
@@ -667,12 +675,13 @@ class HistoryInfo extends React.Component<{}, {}> {
         let hitems = inputModel.getFilteredHistoryItems();
         hitems = hitems.slice().reverse();
         let hitem : HistoryItem = null;
+        let opts = inputModel.historyQueryOpts.get();
         return (
             <div className="cmd-history">
                 <div className="history-title">
                     history
                     {" "}
-                    <span className="history-opt">[containing '']</span>
+                    <span className="history-opt">[containing '{opts.queryStr}']</span>
                     {" "}
                     <span className="history-opt">[this session &#x2318;S]</span>
                     {" "}
@@ -680,7 +689,7 @@ class HistoryInfo extends React.Component<{}, {}> {
                     {" "}
                     <span className="history-opt">[this remote &#x2318;R]</span>
                     {" "}
-                    <span className="history-opt">[including metacmds &#x2318;M]</span>
+                    <span className="history-opt">[{opts.includeMeta ? "including" : "excluding"} metacmds &#x2318;M]</span>
                     {" "} <span className="history-clickable-opt" onClick={this.handleClose}>(close ESC)</span>
                 </div>
                 <div className="history-items">

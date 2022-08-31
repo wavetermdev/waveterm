@@ -633,6 +633,37 @@ class InputModel {
         return false;
     }
 
+    setHistoryQueryOpts(opts : HistoryQueryOpts) : void {
+        mobx.action(() => {
+            let oldItem = this.getHistorySelectedItem();
+            this.historyQueryOpts.set(opts);
+            if (oldItem == null) {
+                setTimeout(() => this.setHistoryIndex(0, true), 10);
+                return;
+            }
+            let newItems = this.getFilteredHistoryItems();
+            if (newItems.length == 0) {
+                setTimeout(() => this.setHistoryIndex(0, true), 10);
+                return;
+            }
+            let bestIdx = 0;
+            for (let i=0; i<newItems.length; i++) {  // still start at i=0 to catch the historynum equality case
+                let item = newItems[i];
+                if (item.historynum == oldItem.historynum) {
+                    bestIdx = i;
+                    break;
+                }
+                let bestTsDiff = Math.abs(item.ts - newItems[bestIdx].ts);
+                let curTsDiff = Math.abs(item.ts - oldItem.ts);
+                if (curTsDiff < bestTsDiff) {
+                    bestIdx = i;
+                }
+            }
+            setTimeout(() => this.setHistoryIndex(bestIdx+1, true), 10);
+            return;
+        })();
+    }
+
     setHistoryShow(show : boolean) : void {
         if (this.historyShow.get() == show) {
             return;
@@ -746,7 +777,54 @@ class InputModel {
 
     getFilteredHistoryItems() : HistoryItem[] {
         let hitems : HistoryItem[] = this.historyItems.get() ?? [];
-        return hitems;
+        let rtn : HistoryItem[] = [];
+        let opts = mobx.toJS(this.historyQueryOpts.get());
+        let ctx = GlobalModel.getUIContext();
+        let curRemote = ctx.remote;
+        if (curRemote == null) {
+            curRemote : RemotePtrType = {ownerid: "", name: "", remoteid: ""};
+        }
+        for (let i=0; i<hitems.length; i++) {
+            let hitem = hitems[i];
+            if (hitem.ismetacmd) {
+                if (!opts.includeMeta) {
+                    continue;
+                }
+            }
+            else {
+                if (opts.limitRemoteInstance) {
+                    if (hitem.remote == null || isBlank(hitem.remote.remoteid)) {
+                        continue;
+                    }
+                    if (((curRemote.ownerid ?? "") != (hitem.remote.owerid ?? ""))
+                        || ((curRemote.remoteid ?? "") != (hitem.remote.remoteid ?? ""))
+                        || ((curRemote.name ?? "" ) != (hitem.remote.name ?? ""))) {
+                        continue;
+                    }
+                }
+                else if (opts.limitRemote) {
+                    if (hitem.remote == null || isBlank(hitem.remote.remoteid)) {
+                        continue;
+                    }
+                    if (((curRemote.ownerid ?? "") != (hitem.remote.owerid ?? ""))
+                        || ((curRemote.remoteid ?? "") != (hitem.remote.remoteid ?? ""))) {
+                        continue;
+                    }
+                }
+            }
+            if (!isBlank(opts.queryStr)) {
+                if (isBlank(hitem.cmdstr)) {
+                    continue;
+                }
+                let idx = hitem.cmdstr.indexOf(opts.queryStr);
+                if (idx == -1) {
+                    continue;
+                }
+            }
+            
+            rtn.push(hitem);
+        }
+        return rtn;
     }
 
     scrollHistoryItemIntoView(hnum : string) : void {
@@ -794,11 +872,11 @@ class InputModel {
         })();
     }
 
-    setHistoryIndex(hidx : number) : void {
+    setHistoryIndex(hidx : number, force? : boolean) : void {
         if (hidx < 0) {
             return;
         }
-        if (this.historyIndex.get() == hidx) {
+        if (!force && this.historyIndex.get() == hidx) {
             return;
         }
         mobx.action(() => {
