@@ -220,7 +220,10 @@ type ModelUpdateType = {
 };
 
 type HistoryInfoType = {
+    sessionid : string,
+    windowid : string,
     items : HistoryItem[],
+    show : boolean,
 };
 
 type CmdLineUpdateType = {

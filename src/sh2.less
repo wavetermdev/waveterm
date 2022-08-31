@@ -538,6 +538,7 @@ body .xterm .xterm-viewport {
     &::-webkit-scrollbar {
         background-color: #777;
         width: 5px;
+        height: 5px;
     }
 
     &::-webkit-scrollbar-thumb {
@@ -591,6 +592,10 @@ body .xterm .xterm-viewport {
     }
 
     .cmd-input-field {
+        .cmd-input-control {
+            line-height: 0;
+        }
+        
         textarea {
             color: white;
             background-color: black;
@@ -601,6 +606,16 @@ body .xterm .xterm-viewport {
             &:active, &:focus {
                 border-color: white !important;
             }
+
+            &.display-disabled {
+                background-color: #444;
+            }
+        }
+
+        input.history-input {
+            border: 0;
+            padding: 0;
+            height: 0;
         }
 
         .cmd-quick-context .button {
@@ -632,6 +647,9 @@ body .xterm .xterm-viewport {
             color: #729fcf;
             padding-bottom: 4px;
 
+            .history-opt {
+            }
+
             .history-clickable-opt {
                 cursor: pointer;
             }
@@ -655,6 +673,11 @@ body .xterm .xterm-viewport {
 
             .history-item {
                 padding-left: 5px;
+                cursor: pointer;
+
+                &:hover {
+                    background-color: #222;
+                }
             }
 
             .history-item.is-selected {
