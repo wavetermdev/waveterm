@@ -589,6 +589,9 @@ type PacketType interface {
 }
 
 func AsString(pk PacketType) string {
+	if pk == nil {
+		return "nil"
+	}
 	if s, ok := pk.(fmt.Stringer); ok {
 		return s.String()
 	}
