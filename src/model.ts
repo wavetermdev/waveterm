@@ -51,6 +51,7 @@ type ElectronApi = {
     getId : () => string,
     onTCmd : (callback : (mods : KeyModsType) => void) => void,
     onICmd : (callback : (mods : KeyModsType) => void) => void,
+    onHCmd : (callback : (mods : KeyModsType) => void) => void,
     onMetaArrowUp : (callback : () => void) => void,
     onMetaArrowDown : (callback : () => void) => void,
     onBracketCmd : (callback : (event : any, arg : {relative : number}, mods : KeyModsType) => void) => void,
@@ -573,10 +574,10 @@ type HistoryQueryOpts = {
 class InputModel {
     historyShow : OV<boolean> = mobx.observable.box(false);
     infoShow : OV<boolean> = mobx.observable.box(false);
-    
+
+    loadId : string = null;
     historyLoading : mobx.IObservableValue<boolean> = mobx.observable.box(false);
-    historySessionId : string = null;
-    historyItems : mobx.IObservableValue<HistoryItem[]> = mobx.observable.box(null, {name: "history-items", deep: false});
+    historyItems : mobx.IObservableValue<HistoryItem[]> = mobx.observable.box(null, {name: "history-items", deep: false}); // sorted in reverse (most recent is index 0)
     historyIndex : mobx.IObservableValue<number> = mobx.observable.box(0, {name: "history-index"});  // 1-indexed (because 0 is current)
     modHistory : mobx.IObservableArray<string> = mobx.observable.array([""], {name: "mod-history"});
     setHIdx : number = 0;
@@ -585,6 +586,13 @@ class InputModel {
     infoMsg : OV<InfoType> = mobx.observable.box(null);
     infoTimeoutId : any = null;
     historySelectedNum : OV<string> = mobx.observable.box(null);
+
+    focusCmdInput() : void {
+        let elem = document.getElementById("main-cmd-input");
+        if (elem != null) {
+            elem.focus();
+        }
+    }
 
     updateCmdLine(cmdLine : CmdLineUpdateType) : void {
         mobx.action(() => {
@@ -613,6 +621,103 @@ class InputModel {
                 this.historySelectedNum.set(items[0].historynum);
             }
         })();
+    }
+
+    getFilteredHistoryItems() : HistoryItem[] {
+        let hitems : HistoryItem[] = this.historyItems.get() ?? [];
+        return hitems;
+    }
+
+    findCurrentHistoryIndex() : number {
+        let hitems = this.historyItems.get();
+        let selNum = this.historySelectedNum.get();
+        for (let i=0; i<hitems.length; i++) {
+            if (hitems[i].historynum == selNum) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    scrollHistoryItemIntoView(hnum : string) : void {
+        let elem : HTMLElement = document.querySelector(".cmd-history .hnum-" + hnum);
+        if (elem == null) {
+            return;
+        }
+        let historyDiv = elem.closest(".cmd-history");
+        if (historyDiv == null) {
+            return;
+        }
+        let buffer = 15;
+        let titleHeight = 24;
+        let elemOffset = elem.offsetTop;
+        let elemHeight = elem.clientHeight;
+        let topPos = historyDiv.scrollTop;
+        let endPos = topPos + historyDiv.clientHeight;
+        if (elemOffset + elemHeight + buffer > endPos) {
+            if (elemHeight + buffer > historyDiv.clientHeight - titleHeight) {
+                historyDiv.scrollTop = elemOffset - titleHeight;
+                return;
+            }
+            historyDiv.scrollTop = elemOffset - historyDiv.clientHeight + elemHeight + buffer;
+            return;
+        }
+        if (elemOffset < topPos + titleHeight) {
+            if (elemHeight + buffer > historyDiv.clientHeight - titleHeight) {
+                historyDiv.scrollTop = elemOffset - titleHeight;
+                return;
+            }
+            historyDiv.scrollTop = elemOffset - titleHeight - buffer;
+            return;
+        }
+    }
+
+    setHistorySelectionNum(hnum : string) : void {
+        mobx.action(() => {
+            this.historySelectedNum.set(hnum);
+            this.scrollHistoryItemIntoView(hnum);
+        })();
+    }
+
+    grabSelectedHistoryItem() : void {
+        let idx = this.findCurrentHistoryIndex();
+        if (idx == -1) {
+            return;
+        }
+        let hitem = this.historyItems.get()[idx];
+        mobx.action(() => {
+            this.clearCurLine();
+            this.setCurLine(hitem.cmdstr);
+            this.historyShow.set(false);
+        })();
+    }
+
+    moveHistorySelection(amt : number) : void {
+        let hitems : HistoryItem[] = this.historyItems.get() ?? [];
+        if (hitems.length == 0 || amt == 0) {
+            return;
+        }
+        let idx = this.findCurrentHistoryIndex();
+        if (idx == -1) {
+            if (amt < 0) {
+                let hitem = hitems[hitems.length-1];
+                this.setHistorySelectionNum(hitem.historynum);
+            }
+            else {
+                let hitem = hitems[0];
+                this.setHistorySelectionNum(hitem.historynum);
+            }
+            return;
+        }
+        idx += -amt; // negate because history array is sorted in reverse
+        if (idx < 0) {
+            idx = 0;
+        }
+        if (idx >= hitems.length) {
+            idx = hitems.length-1;
+        }
+        let hitem = hitems[idx];
+        this.setHistorySelectionNum(hitem.historynum);
     }
 
     flashInfoMsg(info : InfoType, timeoutMs : number) : void {
@@ -649,17 +754,6 @@ class InputModel {
             return false;
         }
         let div = document.querySelector(".cmd-input-info");
-        if (div == null) {
-            return false;
-        }
-        return div.scrollHeight > div.clientHeight;
-    }
-
-    hasScrollingHistory() : boolean {
-        if (!this.historyShow.get()) {
-            return false;
-        }
-        let div = document.querySelector(".cmd-history");
         if (div == null) {
             return false;
         }
@@ -732,14 +826,18 @@ class InputModel {
             this.setHIdx = 0;
             return;
         }
+        let loadId = uuidv4();
         mobx.action(() => {
-            this.historySessionId = sessionId;
+            this.loadId = loadId;
             this.historyItems.set(null);
             this.historyLoading.set(true);
         })();
         let usp = new URLSearchParams({sessionid: sessionId, windowid: win.windowId});
         let url = new URL("http://localhost:8080/api/get-history?" + usp.toString());
         fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
+            if (loadId != this.loadId) {
+                return; // stale load
+            }
             mobx.action(() => {
                 if (!this.historyLoading.get()) {
                     return;
@@ -750,7 +848,6 @@ class InputModel {
                 }
                 if (data.data && data.data.history) {
                     let hitems : HistoryItem[] = data.data.history || [];
-                    this.historySessionId = sessionId;
                     this.historyItems.set(hitems);
                     this.historyLoading.set(false);
                     let hlen = hitems.length;
@@ -763,6 +860,10 @@ class InputModel {
                 }
             })();
         }).catch((err) => {
+            let isStale = (loadId != this.loadId);
+            if (isStale) {
+                return;
+            }
             GlobalModel.errorHandler("getting history items", err, false);
             mobx.action(() => {
                 this.historyLoading.set(false);
@@ -873,6 +974,7 @@ class Model {
         this.inputModel = new InputModel();
         getApi().onTCmd(this.onTCmd.bind(this));
         getApi().onICmd(this.onICmd.bind(this));
+        getApi().onHCmd(this.onHCmd.bind(this));
         getApi().onMetaArrowUp(this.onMetaArrowUp.bind(this));
         getApi().onMetaArrowDown(this.onMetaArrowDown.bind(this));
         getApi().onBracketCmd(this.onBracketCmd.bind(this));
@@ -917,20 +1019,20 @@ class Model {
         return rtn;
     }
 
-    onTCmd(mods : KeyModsType) {
+    onTCmd(e : any, mods : KeyModsType) {
         console.log("got cmd-t", mods);
-        GlobalInput.createNewScreen();
+        GlobalCommandRunner.createNewScreen();
     }
 
-    focusCmdInput() : void {
-        let elem = document.getElementById("main-cmd-input");
-        if (elem != null) {
-            elem.focus();
+    onICmd(e : any, mods : KeyModsType) {
+        this.inputModel.focusCmdInput();
+    }
+
+    onHCmd(e : any, mods : KeyModsType) {
+        let focusedLine = this.getFocusedLine();
+        if (focusedLine != null && focusedLine.cmdInputFocus) {
+            GlobalCommandRunner.openHistory();
         }
-    }
-
-    onICmd(mods : KeyModsType) {
-        this.focusCmdInput();
     }
 
     getFocusedLine() : LineFocusType {
@@ -1019,7 +1121,7 @@ class Model {
         }
         let runningLines = win.getRunningCmdLines();
         if (runningLines.length == 0) {
-            this.focusCmdInput();
+            this.inputModel.focusCmdInput();
             return;
         }
         let foundIdx = -1;
@@ -1030,7 +1132,7 @@ class Model {
             }
         }
         if (foundIdx == -1 || foundIdx == runningLines.length - 1) {
-            this.focusCmdInput();
+            this.inputModel.focusCmdInput();
             return;
         }
         let switchLine = runningLines[foundIdx+1];
@@ -1048,15 +1150,15 @@ class Model {
 
     onBracketCmd(e : any, arg : {relative: number}, mods : KeyModsType) {
         if (arg.relative == 1) {
-            GlobalInput.switchScreen("+");
+            GlobalCommandRunner.switchScreen("+");
         }
         else if (arg.relative == -1) {
-            GlobalInput.switchScreen("-");
+            GlobalCommandRunner.switchScreen("-");
         }
     }
 
     onDigitCmd(e : any, arg : {digit: number}, mods : KeyModsType) {
-        GlobalInput.switchScreen(String(arg.digit));
+        GlobalCommandRunner.switchScreen(String(arg.digit));
     }
 
     isConnected() : boolean {
@@ -1439,7 +1541,7 @@ class Model {
     }
 }
 
-class InputClass {
+class CommandRunner {
     constructor() {
     }
 
@@ -1448,6 +1550,10 @@ class InputClass {
             GlobalModel.inputModel.clearInfoMsg(true);
             GlobalModel.inputModel.clearCurLine();
         })();
+    }
+
+    openHistory() {
+        GlobalModel.submitCommand("history", null, null, {"nohist": "1"}, true);
     }
 
     switchSession(session : string) {
@@ -1477,14 +1583,14 @@ class InputClass {
 };
 
 let GlobalModel : Model = null;
-let GlobalInput : InputClass = null;
+let GlobalCommandRunner : CommandRunner = null;
 if ((window as any).GlobalModal == null) {
     (window as any).GlobalModel = new Model();
-    (window as any).GlobalInput = new InputClass();
+    (window as any).GlobalCommandRunner = new CommandRunner();
 }
 GlobalModel = (window as any).GlobalModel;
-GlobalInput = (window as any).GlobalInput;
+GlobalCommandRunner = (window as any).GlobalCommandRunner;
 
-export {Model, Session, Window, GlobalModel, GlobalInput, Cmd, Screen, ScreenWindow, riToRPtr};
+export {Model, Session, Window, GlobalModel, GlobalCommandRunner, Cmd, Screen, ScreenWindow, riToRPtr};
 
 

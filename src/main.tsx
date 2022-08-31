@@ -8,9 +8,9 @@ import dayjs from 'dayjs'
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import cn from "classnames"
 import {TermWrap} from "./term";
-import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType} from "./types";
+import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem} from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
-import {GlobalModel, GlobalInput, Session, Cmd, Window, Screen, ScreenWindow, riToRPtr} from "./model";
+import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, ScreenWindow, riToRPtr} from "./model";
 
 dayjs.extend(localizedFormat)
 
@@ -441,6 +441,10 @@ class TextAreaInput extends React.Component<{}, {}> {
             }
             if (e.code == "Enter") {
                 e.preventDefault();
+                if (inputModel.historyShow.get()) {
+                    inputModel.grabSelectedHistoryItem();
+                    return;
+                }
                 if (!ctrlMod) {
                     setTimeout(() => GlobalModel.inputModel.uiSubmitCommand(), 0);
                     return;
@@ -459,7 +463,16 @@ class TextAreaInput extends React.Component<{}, {}> {
                 inputModel.clearCurLine();
                 return;
             }
+            if (e.code == "KeyR" && e.getModifierState("Control")) {
+                e.preventDefault();
+                GlobalCommandRunner.openHistory();
+                return;
+            }
             if (e.code == "ArrowUp" || e.code == "ArrowDown") {
+                if (inputModel.historyShow.get()) {
+                    inputModel.moveHistorySelection(e.code == "ArrowUp" ? -1 : 1);
+                    return;
+                }
                 let linePos = this.getLinePos(e.target);
                 if (e.code == "ArrowUp") {
                     if (!lastHist && linePos.linePos > 1) {
@@ -484,7 +497,11 @@ class TextAreaInput extends React.Component<{}, {}> {
             }
             if (e.code == "PageUp" || e.code == "PageDown") {
                 e.preventDefault();
-                let infoScroll = GlobalModel.inputModel.hasScrollingInfoMsg();
+                if (inputModel.historyShow.get()) {
+                    inputModel.moveHistorySelection(e.code == "PageUp" ? -10 : 10);
+                    return;
+                }
+                let infoScroll = inputModel.hasScrollingInfoMsg();
                 if (infoScroll) {
                     let div = document.querySelector(".cmd-input-info");
                     let amt = pageSize(div);
@@ -529,23 +546,44 @@ class TextAreaInput extends React.Component<{}, {}> {
 
 @mobxReact.observer
 class HistoryInfo extends React.Component<{}, {}> {
+    lastClickHNum : string = null;
+    lastClickTs : number = 0;
+    
     componentDidMount() {
         let inputModel = GlobalModel.inputModel;
         let selNum = inputModel.historySelectedNum.get();
         if (selNum != null) {
-            let elem = document.querySelector(".cmd-history .hnum-" + selNum);
-            if (elem != null) {
-                elem.scrollIntoView({block: "nearest"});
-            }
+            inputModel.scrollHistoryItemIntoView(selNum);
         }
     }
 
-    renderHItem(hitem : HistoryItem, selNum : number) : any {
+    @boundMethod
+    handleItemClick(hitem : HistoryItem) {
+        let inputModel = GlobalModel.inputModel;
+        let selNum = inputModel.historySelectedNum.get();
+        if (this.lastClickHNum == hitem.historynum && selNum == hitem.historynum) {
+            inputModel.grabSelectedHistoryItem();
+            return;
+        }
+        inputModel.focusCmdInput();
+        inputModel.setHistorySelectionNum(hitem.historynum);
+        let now = Date.now();
+        this.lastClickHNum = hitem.historynum;
+        this.lastClickTs = now;
+        setTimeout(() => {
+            if (this.lastClickTs == now) {
+                this.lastClickHNum = null;
+                this.lastClickTs = 0;
+            }
+        }, 3000);
+    }
+
+    renderHItem(hitem : HistoryItem, selNum : string) : any {
         let lines = hitem.cmdstr.split("\n");
         let line : string = "";
         let idx = 0;
         return (
-            <div key={hitem.historynum} className={cn("history-item", {"is-selected": selNum == hitem.historynum}, "hnum-" + hitem.historynum)}>
+            <div key={hitem.historynum} className={cn("history-item", {"is-selected": selNum == hitem.historynum}, "hnum-" + hitem.historynum)} onClick={() => this.handleItemClick(hitem)}>
                 <div className="history-line">{(selNum == hitem.historynum ? "*" : " ")}{sprintf("%5s", hitem.historynum)}  {lines[0]}</div>
                 <For each="line" index="index" of={lines.slice(1)}>
                     <div key={idx} className="history-line">{line}</div>
@@ -553,17 +591,23 @@ class HistoryInfo extends React.Component<{}, {}> {
             </div>
         );
     }
+
+    @boundMethod
+    handleClose() {
+        GlobalModel.inputModel.toggleInfoMsg();
+    }
     
     render() {
         let inputModel = GlobalModel.inputModel;
         let idx : number = 0;
-        let hitems : HistoryItem[] = inputModel.historyItems.get() ?? [];
         let selNum = inputModel.historySelectedNum.get();
+        let hitems = inputModel.getFilteredHistoryItems();
         hitems = hitems.slice().reverse();
+        let hitem : HistoryItem = null;
         return (
             <div className="cmd-history">
                 <div className="history-title">
-                    showing history for
+                    history
                     {" "}
                     <span className="term-bright-white">[containing '']</span>
                     {" "}
@@ -574,6 +618,7 @@ class HistoryInfo extends React.Component<{}, {}> {
                     <span className="term-bright-white">[this remote &#x2318;R]</span>
                     {" "}
                     <span className="term-bright-white">[including metacmds &#x2318;M]</span>
+                    {" "} <span className="history-clickable-opt" onClick={this.handleClose}>(close ESC)</span>
                 </div>
                 <div className="history-items">
                     <If condition={hitems.length == 0}>
@@ -937,7 +982,7 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
     @boundMethod
     handleNewScreen() {
         let {session} = this.props;
-        GlobalInput.createNewScreen();
+        GlobalCommandRunner.createNewScreen();
     }
 
     @boundMethod
@@ -953,7 +998,7 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
         if (screen == null) {
             return;
         }
-        GlobalInput.switchScreen(screenId);
+        GlobalCommandRunner.switchScreen(screenId);
     }
 
     handleContextMenu(e : any, screenId : string) : void {
@@ -1019,11 +1064,11 @@ class MainSideBar extends React.Component<{}, {}> {
     }
 
     handleSessionClick(sessionId : string) {
-        GlobalInput.switchSession(sessionId);
+        GlobalCommandRunner.switchSession(sessionId);
     }
 
     handleNewSession() {
-        GlobalInput.createNewSession();
+        GlobalCommandRunner.createNewSession();
     }
 
     clickRemotes() {

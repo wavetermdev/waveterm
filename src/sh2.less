@@ -617,11 +617,12 @@ body .xterm .xterm-viewport {
     .cmd-history {
         color: @term-white;
         margin-bottom: 5px;
-        overflow-y: auto;
+        overflow: auto;
         flex-shrink: 1;
 
         .history-title {
             position: absolute;
+            z-index: 2;
             top: 5px;
             left: 20px;
             background-color: black;
@@ -630,6 +631,10 @@ body .xterm .xterm-viewport {
             font-size: 14px;
             color: #729fcf;
             padding-bottom: 4px;
+
+            .history-clickable-opt {
+                cursor: pointer;
+            }
         }
 
         .history-items {

@@ -104,8 +104,13 @@ function createWindow(size : {width : number, height : number}) {
             }
             return;
         }
-        if (input.code == "KeyR" && input.meta && input.alt) {
-            createRemotesWindow();
+        //if (input.code == "KeyR" && input.meta && input.alt) {
+        //    createRemotesWindow();
+        //    e.preventDefault();
+        //    return;
+        //}
+        if (input.code == "KeyH" && input.meta) {
+            win.webContents.send("h-cmd", mods);
             e.preventDefault();
             return;
         }
