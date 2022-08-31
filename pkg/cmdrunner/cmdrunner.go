@@ -931,32 +931,12 @@ func HistoryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if err != nil {
 		return nil, err
 	}
-	var filteredItems []*sstore.HistoryItemType
-	for _, hitem := range hitems {
-		if hitem.Remote == ids.Remote.RemotePtr || hitem.IsMetaCmd {
-			filteredItems = append(filteredItems, hitem)
-		}
-	}
-	var buf bytes.Buffer
-	if len(filteredItems) == 0 {
-		buf.WriteString("(no history)")
-	} else {
-		for idx := len(filteredItems) - 1; idx >= 0; idx-- {
-			hitem := filteredItems[idx]
-			hnumStr := hitem.HistoryNum
-			if hitem.IsMetaCmd {
-				hnumStr = "*" + hnumStr
-			}
-			hstr := fmt.Sprintf("%6s  %s\n", hnumStr, hitem.CmdStr)
-			buf.WriteString(hstr)
-		}
-	}
 	show := !resolveBool(pk.Kwargs["noshow"], false)
 	update := &sstore.ModelUpdate{}
 	update.History = &sstore.HistoryInfoType{
 		SessionId: ids.SessionId,
 		WindowId:  ids.WindowId,
-		Items:     filteredItems,
+		Items:     hitems,
 		Show:      show,
 	}
 	return update, nil

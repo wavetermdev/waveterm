@@ -511,6 +511,9 @@ func RunCommand(ctx context.Context, cmdId string, remotePtr sstore.RemotePtrTyp
 		return nil, fmt.Errorf("sending run packet to remote: %w", err)
 	}
 	rtnPk := msh.ServerProc.Output.WaitForResponse(ctx, runPacket.ReqId)
+	if rtnPk == nil {
+		return nil, ctx.Err()
+	}
 	startPk, ok := rtnPk.(*packet.CmdStartPacketType)
 	if !ok {
 		respPk, ok := rtnPk.(*packet.ResponsePacketType)
