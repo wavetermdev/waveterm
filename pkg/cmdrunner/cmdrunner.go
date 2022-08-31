@@ -22,6 +22,12 @@ import (
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
 )
 
+const (
+	HistoryTypeWindow  = "window"
+	HistoryTypeSession = "session"
+	HistoryTypeGlobal  = "global"
+)
+
 const DefaultUserId = "sawka"
 const MaxNameLen = 50
 
@@ -927,17 +933,33 @@ func HistoryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if maxItems == 0 {
 		maxItems = DefaultMaxHistoryItems
 	}
-	hitems, err := sstore.GetHistoryItems(ctx, ids.SessionId, ids.WindowId, sstore.HistoryQueryOpts{MaxItems: maxItems})
+	htype := HistoryTypeWindow
+	hSessionId := ids.SessionId
+	hWindowId := ids.WindowId
+	if pk.Kwargs["type"] != "" {
+		htype = pk.Kwargs["type"]
+		if htype != HistoryTypeWindow && htype != HistoryTypeSession && htype != HistoryTypeGlobal {
+			return nil, fmt.Errorf("invalid history type '%s', valid types: %s", htype, formatStrs([]string{HistoryTypeWindow, HistoryTypeSession, HistoryTypeGlobal}, "or", false))
+		}
+	}
+	if htype == HistoryTypeGlobal {
+		hSessionId = ""
+		hWindowId = ""
+	} else if htype == HistoryTypeSession {
+		hWindowId = ""
+	}
+	hitems, err := sstore.GetHistoryItems(ctx, hSessionId, hWindowId, sstore.HistoryQueryOpts{MaxItems: maxItems})
 	if err != nil {
 		return nil, err
 	}
 	show := !resolveBool(pk.Kwargs["noshow"], false)
 	update := &sstore.ModelUpdate{}
 	update.History = &sstore.HistoryInfoType{
-		SessionId: ids.SessionId,
-		WindowId:  ids.WindowId,
-		Items:     hitems,
-		Show:      show,
+		HistoryType: htype,
+		SessionId:   ids.SessionId,
+		WindowId:    ids.WindowId,
+		Items:       hitems,
+		Show:        show,
 	}
 	return update, nil
 }
