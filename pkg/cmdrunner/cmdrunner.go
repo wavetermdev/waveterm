@@ -201,19 +201,19 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 	if len(pk.Args) == 0 {
 		return nil, fmt.Errorf("usage: /eval [command], no command passed to eval")
 	}
-	newPk, err := EvalMetaCommand(ctx, pk)
-	if err != nil {
-		return nil, err
+	var update sstore.UpdatePacket
+	newPk, rtnErr := EvalMetaCommand(ctx, pk)
+	if rtnErr == nil {
+		update, rtnErr = HandleCommand(ctx, newPk)
 	}
-	update, err := HandleCommand(ctx, newPk)
 	if !resolveBool(pk.Kwargs["nohist"], false) {
-		err := addToHistory(ctx, pk, update, (newPk.MetaCmd != "run"), (err != nil))
+		err := addToHistory(ctx, pk, update, (newPk.MetaCmd != "run"), (rtnErr != nil))
 		if err != nil {
 			fmt.Printf("[error] adding to history: %v\n", err)
 			// continue...
 		}
 	}
-	return update, err
+	return update, rtnErr
 }
 
 func ScreenCloseCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
