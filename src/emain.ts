@@ -104,6 +104,11 @@ function createMainWindow(size : {width : number, height : number}) {
             }
             return;
         }
+        if (input.code == "KeyW" && input.meta) {
+            e.preventDefault();
+            win.webContents.send("w-cmd", mods);
+            return;
+        }
         //if (input.code == "KeyR" && input.meta && input.alt) {
         //    createRemotesWindow();
         //    e.preventDefault();
