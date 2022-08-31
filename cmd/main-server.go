@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"runtime/debug"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -160,37 +159,6 @@ func HandleGetRemotes(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	remotes := remote.GetAllRemoteRuntimeState()
 	WriteJsonSuccess(w, remotes)
-	return
-}
-
-// params: sessionid
-func HandleGetHistory(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Vary", "Origin")
-	w.Header().Set("Cache-Control", "no-cache")
-	qvals := r.URL.Query()
-	sessionId := qvals.Get("sessionid")
-	if _, err := uuid.Parse(sessionId); err != nil {
-		WriteJsonError(w, fmt.Errorf("invalid sessionid: %w", err))
-		return
-	}
-	numItems := 1000
-	numStr := qvals.Get("num")
-	if numStr != "" {
-		parsedNum, err := strconv.Atoi(numStr)
-		if err == nil {
-			numItems = parsedNum
-		}
-	}
-	hitems, err := sstore.GetHistoryItems(r.Context(), sessionId, "", sstore.HistoryQueryOpts{MaxItems: numItems})
-	if err != nil {
-		WriteJsonError(w, err)
-		return
-	}
-	rtnMap := make(map[string]interface{})
-	rtnMap["history"] = hitems
-	WriteJsonSuccess(w, rtnMap)
 	return
 }
 
@@ -466,7 +434,6 @@ func main() {
 	gr.HandleFunc("/api/get-all-sessions", HandleGetAllSessions)
 	gr.HandleFunc("/api/get-window", HandleGetWindow)
 	gr.HandleFunc("/api/get-remotes", HandleGetRemotes)
-	gr.HandleFunc("/api/get-history", HandleGetHistory)
 	gr.HandleFunc("/api/run-command", HandleRunCommand).Methods("GET", "POST", "OPTIONS")
 	server := &http.Server{
 		Addr:           MainServerAddr,

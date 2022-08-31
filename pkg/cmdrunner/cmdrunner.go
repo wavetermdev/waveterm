@@ -951,9 +951,13 @@ func HistoryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 			buf.WriteString(hstr)
 		}
 	}
+	show := !resolveBool(pk.Kwargs["noshow"], false)
 	update := &sstore.ModelUpdate{}
 	update.History = &sstore.HistoryInfoType{
-		Items: filteredItems,
+		SessionId: ids.SessionId,
+		WindowId:  ids.WindowId,
+		Items:     filteredItems,
+		Show:      show,
 	}
 	return update, nil
 }

@@ -76,7 +76,10 @@ type InfoMsgType struct {
 }
 
 type HistoryInfoType struct {
-	Items []*HistoryItemType `json:"items"`
+	SessionId string             `json:"sessionid,omitempty"`
+	WindowId  string             `json:"windowid,omitempty"`
+	Items     []*HistoryItemType `json:"items"`
+	Show      bool               `json:"show"`
 }
 
 type CmdLineType struct {
