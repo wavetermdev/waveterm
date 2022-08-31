@@ -585,6 +585,15 @@ body .xterm .xterm-viewport {
         padding-top: 5px;
     }
 
+    &.has-history {
+        padding-top: 5px;
+        height: max(300px, 40%);
+    }
+
+    .cmd-input-grow-spacer {
+        flex-grow: 1;
+    }
+
     .cmd-input-context {
         color: #fff;
         font-family: 'JetBrains Mono', monospace;
@@ -643,15 +652,29 @@ body .xterm .xterm-viewport {
             background-color: black;
             font-family: 'JetBrains Mono', monospace;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 12px;
             color: #729fcf;
             padding-bottom: 4px;
+            display: flex;
+            flex-direction: row;
+            width: calc(100% - 40px);
+            overflow-x: auto;
 
             .history-opt {
+                white-space: nowrap;
             }
 
             .history-clickable-opt {
+                white-space: nowrap;
                 cursor: pointer;
+            }
+
+            .grow-spacer {
+                flex: 1 0 10px;
+            }
+
+            .spacer {
+                flex: 0 0 10px;
             }
         }
 
@@ -664,7 +687,11 @@ body .xterm .xterm-viewport {
 
             .history-line {
                 white-space: pre;
-                margin-left: 58px;
+                margin-left: 58px; // 8px per char
+            }
+
+            &.show-remotes .history-line {
+                margin-left: 174px;
             }
 
             .history-item.history-haderror {
@@ -672,7 +699,7 @@ body .xterm .xterm-viewport {
             }
 
             .history-line:first-child {
-                margin-left: 0;
+                margin-left: 0 !important;
             }
 
             .history-item {

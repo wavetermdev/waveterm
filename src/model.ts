@@ -4,7 +4,7 @@ import {boundMethod} from "autobind-decorator";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType} from "./types";
+import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts} from "./types";
 import {WSControl} from "./ws";
 
 var GlobalUser = "sawka";
@@ -560,17 +560,6 @@ class Session {
     }
 }
 
-type HistoryQueryOpts = {
-    queryType : "global" | "session" | "window";
-    limitRemote : boolean,
-    limitRemoteInstance : boolean,
-    limitUser : boolean,
-    queryStr : string,
-    maxItems : number,
-    includeMeta : boolean,
-    fromTs : number,
-};
-
 function getDefaultHistoryQueryOpts() : HistoryQueryOpts {
     return {
         queryType: "window",
@@ -591,12 +580,19 @@ class InputModel {
     historyLoading : mobx.IObservableValue<boolean> = mobx.observable.box(false);
     historyAfterLoadIndex : number = 0;
     historyItems : mobx.IObservableValue<HistoryItem[]> = mobx.observable.box(null, {name: "history-items", deep: false}); // sorted in reverse (most recent is index 0)
+    filteredHistoryItems : mobx.IComputedValue<HistoryItem[]> = null;
     historyIndex : mobx.IObservableValue<number> = mobx.observable.box(0, {name: "history-index"});  // 1-indexed (because 0 is current)
     modHistory : mobx.IObservableArray<string> = mobx.observable.array([""], {name: "mod-history"});
     historyQueryOpts : OV<HistoryQueryOpts> = mobx.observable.box(getDefaultHistoryQueryOpts());
     
     infoMsg : OV<InfoType> = mobx.observable.box(null);
     infoTimeoutId : any = null;
+
+    constructor() {
+        this.filteredHistoryItems = mobx.computed(() => {
+            return this._getFilteredHistoryItems();
+        });
+    }
 
     _focusCmdInput() : void {
         let elem = document.getElementById("main-cmd-input");
@@ -776,6 +772,10 @@ class InputModel {
     }
 
     getFilteredHistoryItems() : HistoryItem[] {
+        return this.filteredHistoryItems.get();
+    }
+
+    _getFilteredHistoryItems() : HistoryItem[] {
         let hitems : HistoryItem[] = this.historyItems.get() ?? [];
         let rtn : HistoryItem[] = [];
         let opts = mobx.toJS(this.historyQueryOpts.get());
@@ -784,6 +784,7 @@ class InputModel {
         if (curRemote == null) {
             curRemote : RemotePtrType = {ownerid: "", name: "", remoteid: ""};
         }
+        curRemote = mobx.toJS(curRemote);
         for (let i=0; i<hitems.length; i++) {
             let hitem = hitems[i];
             if (hitem.ismetacmd) {
@@ -838,6 +839,10 @@ class InputModel {
         }
         let buffer = 15;
         let titleHeight = 24;
+        let titleDiv = document.querySelector(".cmd-history .history-title");
+        if (titleDiv != null) {
+            titleHeight = titleDiv.offsetHeight + 2;
+        }
         let elemOffset = elem.offsetTop;
         let elemHeight = elem.clientHeight;
         let topPos = historyDiv.scrollTop;

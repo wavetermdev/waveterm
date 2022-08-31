@@ -8,7 +8,7 @@ import dayjs from 'dayjs'
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import cn from "classnames"
 import {TermWrap} from "./term";
-import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem} from "./types";
+import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts} from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, ScreenWindow, riToRPtr} from "./model";
 
@@ -547,6 +547,22 @@ class TextAreaInput extends React.Component<{}, {}> {
             let opts = mobx.toJS(inputModel.historyQueryOpts.get());
             opts.includeMeta = !opts.includeMeta;
             inputModel.setHistoryQueryOpts(opts);
+            return;
+        }
+        if (e.code == "KeyR" && (e.getModifierState("Meta") && !e.getModifierState("Shift"))) {
+            console.log("meta-r");
+            e.preventDefault();
+            let opts = mobx.toJS(inputModel.historyQueryOpts.get());
+            if (opts.limitRemote) {
+                opts.limitRemote = false;
+                opts.limitRemoteInstance = false;
+            }
+            else {
+                opts.limitRemote = true;
+                opts.limitRemoteInstance = true;
+            }
+            inputModel.setHistoryQueryOpts(opts);
+            return;
         }
         if (e.code == "Tab") {
             e.preventDefault();
@@ -602,6 +618,9 @@ class TextAreaInput extends React.Component<{}, {}> {
             displayLines = 5;
         }
         let disabled = inputModel.historyShow.get();
+        if (disabled) {
+            displayLines = 1;
+        }
         return (
             <div className="control cmd-input-control is-expanded">
                 <textarea spellCheck="false" id="main-cmd-input" onFocus={this.handleMainFocus} rows={displayLines} value={curLine} onKeyDown={this.onKeyDown} onChange={this.onChange} className={cn("textarea", {"display-disabled": disabled})}></textarea>
@@ -649,13 +668,36 @@ class HistoryInfo extends React.Component<{}, {}> {
         }, 3000);
     }
 
-    renderHItem(hitem : HistoryItem, isSelected : boolean) : any {
+    renderRemote(hitem : HistoryItem) : any {
+        if (hitem.remote == null || isBlank(hitem.remote.remoteid)) {
+            return sprintf("%-15s ", "")
+        }
+        let r = GlobalModel.getRemote(hitem.remote.remoteid);
+        if (r == null) {
+            return sprintf("%-15s ", "???")
+        }
+        let rname = "";
+        if (!isBlank(r.remotealias)) {
+            rname = r.remotealias;
+        }
+        else {
+            rname = r.remotecanonicalname;
+        }
+        if (!isBlank(hitem.remote.name)) {
+            rname = rname + ":" + hitem.remote.name;
+        }
+        let rtn = sprintf("%-15s ", "[" + rname + "]")
+        return rtn;
+    }
+
+    renderHItem(hitem : HistoryItem, opts : HistoryQueryOpts, isSelected : boolean) : any {
         let lines = hitem.cmdstr.split("\n");
         let line : string = "";
         let idx = 0;
+        let limitRemote = opts.limitRemote;
         return (
             <div key={hitem.historynum} className={cn("history-item", {"is-selected": isSelected}, {"history-haderror": hitem.haderror}, "hnum-" + hitem.historynum)} onClick={() => this.handleItemClick(hitem)}>
-                <div className="history-line">{(isSelected ? "*" : " ")}{sprintf("%5s", hitem.historynum)}  {lines[0]}</div>
+                <div className="history-line">{(isSelected ? "*" : " ")}{sprintf("%5s", hitem.historynum)}  {!limitRemote ? this.renderRemote(hitem) : ""}{lines[0]}</div>
                 <For each="line" index="index" of={lines.slice(1)}>
                     <div key={idx} className="history-line">{line}</div>
                 </For>
@@ -679,26 +721,26 @@ class HistoryInfo extends React.Component<{}, {}> {
         return (
             <div className="cmd-history">
                 <div className="history-title">
-                    history
-                    {" "}
-                    <span className="history-opt">[containing '{opts.queryStr}']</span>
-                    {" "}
-                    <span className="history-opt">[this session &#x2318;S]</span>
-                    {" "}
-                    <span className="history-opt">[this window &#x2318;W]</span>
-                    {" "}
-                    <span className="history-opt">[this remote &#x2318;R]</span>
-                    {" "}
-                    <span className="history-opt">[{opts.includeMeta ? "including" : "excluding"} metacmds &#x2318;M]</span>
-                    {" "} <span className="history-clickable-opt" onClick={this.handleClose}>(close ESC)</span>
+                    <div>history</div>
+                    <div className="spacer"></div>
+                    <div className="history-opt">[for window &#x2318;W]</div>
+                    <div className="spacer"></div>
+                    <div className="history-opt">[containing '{opts.queryStr}']</div>
+                    <div className="spacer"></div>
+                    <div className="history-opt">[{opts.limitRemote ? "this" : "any"} remote &#x2318;R]</div>
+                    <div className="spacer"></div>
+                    <div className="history-opt">[{opts.includeMeta ? "" : "no "}metacmds &#x2318;M]</div>
+                    <div className="grow-spacer"></div>
+                    <div className="history-clickable-opt" onClick={this.handleClose}>(ESC)</div>
+                    <div className="spacer"></div>
                 </div>
-                <div className="history-items">
+                <div className={cn("history-items", {"show-remotes": !opts.limitRemote})}>
                     <If condition={hitems.length == 0}>
                         [no history]
                     </If>
                     <If condition={hitems.length > 0}>
                         <For each="hitem" index="idx" of={hitems}>
-                            {this.renderHItem(hitem, (hitem == selItem))}
+                            {this.renderHItem(hitem, opts, (hitem == selItem))}
                         </For>
                     </If>
                 </div>
@@ -749,8 +791,9 @@ class CmdInput extends React.Component<{}, {}> {
         let line : string = null;
         let idx : number = 0;
         return (
-            <div className={cn("box cmd-input has-background-black", {"has-info": infoShow || historyShow})}>
+            <div className={cn("box cmd-input has-background-black", {"has-info": infoShow}, {"has-history": historyShow})}>
                 <If condition={historyShow}>
+                    <div className="cmd-input-grow-spacer"></div>
                     <HistoryInfo/>
                 </If>
                 <div className="cmd-input-info" style={{display: (infoShow ? "block" : "none")}}>
