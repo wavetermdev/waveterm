@@ -75,7 +75,7 @@ function createRemotesWindow() {
     win.webContents.on("will-navigate", shNavHandler);
 }
 
-function createWindow(size : {width : number, height : number}) {
+function createMainWindow(size : {width : number, height : number}) {
     let win = new electron.BrowserWindow({
         width: size.width,
         height: size.height,
@@ -142,8 +142,7 @@ function createWindow(size : {width : number, height : number}) {
     return win;
 }
 
-// primary display { width: 1680, height: 1050 }
-app.whenReady().then(() => {
+function calcSize() {
     let primaryDisplay = electron.screen.getPrimaryDisplay();
     let size = {width: 1800, height: 1200};
     if (primaryDisplay.size.width - 100 < size.width) {
@@ -152,11 +151,18 @@ app.whenReady().then(() => {
     if (primaryDisplay.size.height - 100 < size.height) {
         size.height = primaryDisplay.size.height - 100;
     }
-    MainWindow = createWindow(size);
+    return size;
+}
+
+// primary display { width: 1680, height: 1050 }
+app.whenReady().then(() => {
+    let size = calcSize();
+    MainWindow = createMainWindow(size);
 
     app.on('activate', () => {
         if (electron.BrowserWindow.getAllWindows().length === 0) {
-            createWindow();
+            let size = calcSize();
+            createMainWindow(size);
         }
     })
 });
