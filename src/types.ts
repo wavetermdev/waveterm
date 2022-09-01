@@ -79,6 +79,7 @@ type RemoteType = {
     status : string,
     defaultstate : RemoteStateType,
     connectmode : string,
+    remove? : boolean,
 };
 
 type RemoteStateType = {
@@ -215,7 +216,7 @@ type ModelUpdateType = {
     cmd? : CmdDataType,
     info? : InfoType,
     cmdline? : CmdLineUpdateType,
-    remote? : RemoteType,
+    remotes? : RemoteType[],
     history? : HistoryInfoType,
 };
 

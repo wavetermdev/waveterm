@@ -1369,6 +1369,9 @@ class Model {
         if ("window" in update) {
             this.updateWindow(update.window, false);
         }
+        if ("remotes" in update) {
+            this.updateRemote(update.remotes);
+        }
         if (interactive && "info" in update) {
             let info : InfoType = update.info;
             this.inputModel.flashInfoMsg(info, info.timeoutms);
@@ -1382,6 +1385,10 @@ class Model {
             }
         }
         // console.log("run-update>", Date.now(), interactive, update);
+    }
+
+    updateRemote(remotes : RemoteType[]) : void {
+        genMergeSimpleData(this.remotes, remotes, (r) => r.remoteid, null);
     }
 
     getActiveSession() : Session {
@@ -1610,7 +1617,7 @@ class Model {
         let url = new URL("http://localhost:8080/api/get-remotes");
         fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
             mobx.action(() => {
-                this.remotes.replace(data.data || [])
+                this.runUpdate(data.data, false);
                 this.remotesLoaded.set(true);
             })();
         }).catch((err) => {
