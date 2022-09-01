@@ -273,7 +273,7 @@ func (proc *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 
 func (msh *MShellProc) NotifyUpdate() {
 	rstate := msh.GetRemoteRuntimeState()
-	update := &sstore.ModelUpdate{Remote: rstate}
+	update := &sstore.ModelUpdate{Remotes: []interface{}{rstate}}
 	sstore.MainBus.SendUpdate("", update)
 }
 

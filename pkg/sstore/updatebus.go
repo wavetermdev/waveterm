@@ -31,7 +31,7 @@ type ModelUpdate struct {
 	Cmd             *CmdType         `json:"cmd,omitempty"`
 	CmdLine         *CmdLineType     `json:"cmdline,omitempty"`
 	Info            *InfoMsgType     `json:"info,omitempty"`
-	Remote          interface{}      `json:"remote,omitempty"` // *remote.RemoteState
+	Remotes         []interface{}    `json:"remotes,omitempty"` // []*remote.RemoteState
 	History         *HistoryInfoType `json:"history,omitempty"`
 }
 
@@ -76,10 +76,11 @@ type InfoMsgType struct {
 }
 
 type HistoryInfoType struct {
-	SessionId string             `json:"sessionid,omitempty"`
-	WindowId  string             `json:"windowid,omitempty"`
-	Items     []*HistoryItemType `json:"items"`
-	Show      bool               `json:"show"`
+	HistoryType string             `json:"historytype"`
+	SessionId   string             `json:"sessionid,omitempty"`
+	WindowId    string             `json:"windowid,omitempty"`
+	Items       []*HistoryItemType `json:"items"`
+	Show        bool               `json:"show"`
 }
 
 type CmdLineType struct {

@@ -70,6 +70,7 @@ func init() {
 	registerCmdAlias("remote", RemoteCommand)
 	registerCmdFn("remote:show", RemoteShowCommand)
 	registerCmdFn("remote:showall", RemoteShowAllCommand)
+	registerCmdFn("remote:new", RemoteNewCommand)
 
 	registerCmdFn("history", HistoryCommand)
 }
@@ -358,6 +359,10 @@ func UnSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 		},
 	}
 	return update, nil
+}
+
+func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	return nil, nil
 }
 
 func RemoteShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {

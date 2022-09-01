@@ -158,7 +158,12 @@ func HandleGetRemotes(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Vary", "Origin")
 	w.Header().Set("Cache-Control", "no-cache")
 	remotes := remote.GetAllRemoteRuntimeState()
-	WriteJsonSuccess(w, remotes)
+	ifarr := make([]interface{}, len(remotes))
+	for idx, r := range remotes {
+		ifarr[idx] = r
+	}
+	update := sstore.ModelUpdate{Remotes: ifarr}
+	WriteJsonSuccess(w, update)
 	return
 }
 
