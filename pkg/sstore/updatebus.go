@@ -1,6 +1,9 @@
 package sstore
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+)
 
 var MainBus *UpdateBus = MakeUpdateBus()
 
@@ -63,6 +66,13 @@ func ReadHistoryDataFromUpdate(update UpdatePacket) (string, string, *RemotePtrT
 		rptr = &modelUpdate.Cmd.Remote
 	}
 	return modelUpdate.Line.LineId, modelUpdate.Line.CmdId, rptr
+}
+
+func InfoMsgUpdate(infoMsgFmt string, args ...interface{}) *ModelUpdate {
+	msg := fmt.Sprintf(infoMsgFmt, args...)
+	return &ModelUpdate{
+		Info: &InfoMsgType{InfoMsg: msg},
+	}
 }
 
 type InfoMsgType struct {

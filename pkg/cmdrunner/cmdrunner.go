@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -30,9 +31,14 @@ const (
 
 const DefaultUserId = "sawka"
 const MaxNameLen = 50
+const MaxRemoteAliasLen = 50
 
 var ColorNames = []string{"black", "red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
+var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
 
+var hostNameRe = regexp.MustCompile("^[a-z][a-z0-9.-]*$")
+var userHostRe = regexp.MustCompile("^(sudo@)?([a-z][a-z0-9-]*)@([a-z][a-z0-9.-]*)$")
+var remoteAliasRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_-]*$")
 var genericNameRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_ .()<>,/\"'\\[\\]{}=+$@!*-]*$")
 var positionRe = regexp.MustCompile("^((\\+|-)?[0-9]+|(\\+|-))$")
 var wsRe = regexp.MustCompile("\\s+")
@@ -71,6 +77,8 @@ func init() {
 	registerCmdFn("remote:show", RemoteShowCommand)
 	registerCmdFn("remote:showall", RemoteShowAllCommand)
 	registerCmdFn("remote:new", RemoteNewCommand)
+	registerCmdFn("remote:disconnect", RemoteDisconnectCommand)
+	registerCmdFn("remote:connect", RemoteConnectCommand)
 
 	registerCmdFn("history", HistoryCommand)
 }
@@ -361,8 +369,124 @@ func UnSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 	return update, nil
 }
 
+func RemoteConnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window|R_Remote)
+	if err != nil {
+		return nil, err
+	}
+	if ids.Remote.RState.IsConnected() {
+		return sstore.InfoMsgUpdate("remote %q already connected (no action taken)", ids.Remote.DisplayName), nil
+	}
+	go ids.Remote.MShell.Launch()
+	return sstore.InfoMsgUpdate("remote %q reconnecting", ids.Remote.DisplayName), nil
+}
+
+func RemoteDisconnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window|R_Remote)
+	if err != nil {
+		return nil, err
+	}
+	force := resolveBool(pk.Kwargs["force"], false)
+	if !ids.Remote.RState.IsConnected() && !force {
+		return sstore.InfoMsgUpdate("remote %q already disconnected (no action taken)", ids.Remote.DisplayName), nil
+	}
+	numCommands := ids.Remote.MShell.GetNumRunningCommands()
+	if numCommands > 0 && !force {
+		return nil, fmt.Errorf("remote not disconnected, %q has %d running commands. use 'force=1' to force disconnection", ids.Remote.DisplayName)
+	}
+	ids.Remote.MShell.Disconnect()
+	return sstore.InfoMsgUpdate("remote %q disconnected", ids.Remote.DisplayName), nil
+}
+
 func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	return nil, nil
+	if len(pk.Args) == 0 || pk.Args[0] == "" {
+		return nil, fmt.Errorf("/remote:new requires one positional argument of 'user@host'")
+	}
+	userHost := pk.Args[0]
+	m := userHostRe.FindStringSubmatch(userHost)
+	if m == nil {
+		return nil, fmt.Errorf("/remote:new invalid format of user@host argument")
+	}
+	sudoStr, remoteUser, remoteHost := m[1], m[2], m[3]
+	alias := pk.Kwargs["alias"]
+	if alias != "" {
+		if len(alias) > MaxRemoteAliasLen {
+			return nil, fmt.Errorf("alias too long, max length = %d", MaxRemoteAliasLen)
+		}
+		if !remoteAliasRe.MatchString(alias) {
+			return nil, fmt.Errorf("invalid alias format")
+		}
+	}
+	connectMode := sstore.ConnectModeStartup
+	if pk.Kwargs["connectmode"] != "" {
+		connectMode = pk.Kwargs["connectmode"]
+	}
+	if !sstore.IsValidConnectMode(connectMode) {
+		return nil, fmt.Errorf("/remote:new invalid connectmode %q: valid modes are %s", connectMode, formatStrs([]string{sstore.ConnectModeStartup, sstore.ConnectModeAuto, sstore.ConnectModeManual}, "or", false))
+	}
+	var isSudo bool
+	if sudoStr != "" {
+		isSudo = true
+	}
+	if pk.Kwargs["sudo"] != "" {
+		sudoArg := resolveBool(pk.Kwargs["sudo"], false)
+		if isSudo && !sudoArg {
+			return nil, fmt.Errorf("/remote:new invalid 'sudo@' argument, with sudo kw arg set to false")
+		}
+		if !isSudo && sudoArg {
+			isSudo = true
+			userHost = "sudo@" + userHost
+		}
+	}
+	sshOpts := &sstore.SSHOpts{
+		Local:   false,
+		SSHHost: remoteHost,
+		SSHUser: remoteUser,
+	}
+	if pk.Kwargs["key"] != "" {
+		keyFile := pk.Kwargs["key"]
+		fd, err := os.Open(keyFile)
+		if fd != nil {
+			fd.Close()
+		}
+		if err != nil {
+			return nil, fmt.Errorf("/remote:new invalid key %q (cannot read): %v", keyFile, err)
+		}
+		sshOpts.SSHIdentity = keyFile
+	}
+	remoteOpts := &sstore.RemoteOptsType{}
+	if pk.Kwargs["color"] != "" {
+		color := pk.Kwargs["color"]
+		err := validateRemoteColor(color, "remote color")
+		if err != nil {
+			return nil, err
+		}
+		remoteOpts.Color = color
+	}
+	r := &sstore.RemoteType{
+		RemoteId:            uuid.New().String(),
+		PhysicalId:          "",
+		RemoteType:          sstore.RemoteTypeSsh,
+		RemoteAlias:         alias,
+		RemoteCanonicalName: userHost,
+		RemoteSudo:          isSudo,
+		RemoteUser:          remoteUser,
+		RemoteHost:          remoteHost,
+		ConnectMode:         connectMode,
+		SSHOpts:             sshOpts,
+		RemoteOpts:          remoteOpts,
+	}
+	err := sstore.InsertRemote(ctx, r)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create remote %q: %v", r.RemoteCanonicalName, err)
+	}
+	update := &sstore.ModelUpdate{
+		Info: &sstore.InfoMsgType{
+			InfoMsg:   fmt.Sprintf("remote %q created", r.RemoteCanonicalName),
+			TimeoutMs: 2000,
+		},
+	}
+	return update, nil
 }
 
 func RemoteShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -824,6 +948,15 @@ func validateColor(color string, typeStr string) error {
 		}
 	}
 	return fmt.Errorf("invalid %s, valid colors are: %s", typeStr, formatStrs(ColorNames, "or", false))
+}
+
+func validateRemoteColor(color string, typeStr string) error {
+	for _, c := range RemoteColorNames {
+		if color == c {
+			return nil
+		}
+	}
+	return fmt.Errorf("invalid %s, valid colors are: %s", typeStr, formatStrs(RemoteColorNames, "or", false))
 }
 
 func SessionOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {

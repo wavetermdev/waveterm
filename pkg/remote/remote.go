@@ -55,6 +55,20 @@ type Store struct {
 	Map  map[string]*MShellProc // key=remoteid
 }
 
+type MShellProc struct {
+	Lock   *sync.Mutex
+	Remote *sstore.RemoteType
+
+	// runtime
+	Status         string
+	ServerProc     *shexec.ClientProc
+	UName          string
+	Err            error
+	ControllingPty *os.File
+
+	RunningCmds []base.CommandKey
+}
+
 type RemoteRuntimeState struct {
 	RemoteType          string              `json:"remotetype"`
 	RemoteId            string              `json:"remoteid"`
@@ -93,20 +107,6 @@ func (state RemoteRuntimeState) GetDisplayName(rptr *sstore.RemotePtrType) strin
 	return name
 }
 
-type MShellProc struct {
-	Lock   *sync.Mutex
-	Remote *sstore.RemoteType
-
-	// runtime
-	Status         string
-	ServerProc     *shexec.ClientProc
-	UName          string
-	Err            error
-	ControllingPty *os.File
-
-	RunningCmds []base.CommandKey
-}
-
 func LoadRemotes(ctx context.Context) error {
 	GlobalStore = &Store{
 		Lock: &sync.Mutex{},
@@ -122,6 +122,28 @@ func LoadRemotes(ctx context.Context) error {
 		if remote.ConnectMode == sstore.ConnectModeStartup {
 			go msh.Launch()
 		}
+	}
+	return nil
+}
+
+func LoadRemoteById(ctx context.Context, remoteId string) error {
+	r, err := sstore.GetRemoteById(ctx, remoteId)
+	if err != nil {
+		return err
+	}
+	if r == nil {
+		return fmt.Errorf("remote %s not found", remoteId)
+	}
+	msh := MakeMShell(r)
+	GlobalStore.Lock.Lock()
+	defer GlobalStore.Lock.Unlock()
+	existingRemote := GlobalStore.Map[remoteId]
+	if existingRemote != nil {
+		return fmt.Errorf("cannot add remote %d, already in global map", remoteId)
+	}
+	GlobalStore.Map[r.RemoteId] = msh
+	if r.ConnectMode == sstore.ConnectModeStartup {
+		go msh.Launch()
 	}
 	return nil
 }
@@ -353,9 +375,21 @@ func (msh *MShellProc) getRemoteCopy() sstore.RemoteType {
 	return *msh.Remote
 }
 
+func (msh *MShellProc) GetNumRunningCommands() int {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	return len(msh.RunningCmds)
+}
+
+func (msh *MShellProc) Disconnect() {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	msh.ServerProc.Close()
+}
+
 func (msh *MShellProc) Launch() {
-	remote := msh.getRemoteCopy()
-	ecmd := convertSSHOpts(remote.SSHOpts).MakeSSHExecCmd(MShellServerCommand)
+	remoteCopy := msh.getRemoteCopy()
+	ecmd := convertSSHOpts(remoteCopy.SSHOpts).MakeSSHExecCmd(MShellServerCommand)
 	cmdPty, err := msh.addControllingTty(ecmd)
 	if err != nil {
 		msh.setErrorStatus(fmt.Errorf("cannot attach controlling tty to mshell command: %w", err))
@@ -366,9 +400,9 @@ func (msh *MShellProc) Launch() {
 			ecmd.ExtraFiles[len(ecmd.ExtraFiles)-1].Close()
 		}
 	}()
-	remoteName := remote.GetName()
+	remoteName := remoteCopy.GetName()
 	go func() {
-		fmt.Printf("[c-pty %s] starting...\n", remote.GetName())
+		fmt.Printf("[c-pty %s] starting...\n", remoteCopy.GetName())
 		buf := make([]byte, 100)
 		for {
 			n, readErr := cmdPty.Read(buf)
@@ -398,10 +432,10 @@ func (msh *MShellProc) Launch() {
 	})
 	if err != nil {
 		msh.setErrorStatus(err)
-		fmt.Printf("[error] connecting remote %s (%s): %v\n", msh.Remote.GetName(), msh.UName, err)
+		fmt.Printf("[error] connecting remote %s (%s): %v\n", remoteCopy.GetName(), msh.UName, err)
 		return
 	}
-	fmt.Printf("connected remote %s\n", msh.Remote.GetName())
+	fmt.Printf("connected remote %s\n", remoteCopy.GetName())
 	msh.WithLock(func() {
 		msh.ServerProc = cproc
 		msh.Status = StatusConnected
@@ -643,6 +677,7 @@ func (runner *MShellProc) ProcessPackets() {
 			fmt.Printf("[error] calling HUP on remoteid=%d cmds\n", runner.Remote.RemoteId)
 		}
 		runner.notifyHangups_nolock()
+		go runner.NotifyUpdate()
 	})
 	dataPosMap := make(map[base.CommandKey]int64)
 	for pk := range runner.ServerProc.Output.MainCh {

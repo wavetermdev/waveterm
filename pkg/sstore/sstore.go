@@ -70,6 +70,10 @@ func GetSessionDBName() string {
 	return path.Join(scHome, DBFileName)
 }
 
+func IsValidConnectMode(mode string) bool {
+	return mode == ConnectModeStartup || mode == ConnectModeAuto || mode == ConnectModeManual
+}
+
 func GetDB(ctx context.Context) (*sqlx.DB, error) {
 	if IsTxWrapContext(ctx) {
 		return nil, fmt.Errorf("cannot call GetDB from within a running transaction")

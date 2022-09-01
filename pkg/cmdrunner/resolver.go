@@ -18,7 +18,7 @@ const (
 	R_Screen          = 2
 	R_Window          = 4
 	R_Remote          = 8
-	R_RemoteConnected = 8 + 16
+	R_RemoteConnected = 16
 )
 
 type resolvedIds struct {
@@ -128,7 +128,7 @@ func resolveUiIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype i
 		if uictx.Remote != nil && rtn.SessionId != "" && rtn.WindowId != "" {
 			rr, err := resolveRemoteFromPtr(ctx, uictx.Remote, rtn.SessionId, rtn.WindowId)
 			if err != nil {
-				if rtype&R_Remote > 0 {
+				if rtype&R_Remote > 0 || rtype&R_RemoteConnected > 0 {
 					return rtn, err
 				}
 				// otherwise just don't set uictx.Remote
@@ -146,7 +146,7 @@ func resolveUiIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype i
 	if rtype&R_Window > 0 && rtn.WindowId == "" {
 		return rtn, fmt.Errorf("no window")
 	}
-	if rtype&R_Remote > 0 && rtn.Remote == nil {
+	if (rtype&R_Remote > 0 || rtype&R_RemoteConnected > 0) && rtn.Remote == nil {
 		return rtn, fmt.Errorf("no remote")
 	}
 	if rtype&R_RemoteConnected > 0 {

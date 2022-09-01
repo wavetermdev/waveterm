@@ -89,17 +89,37 @@ func InsertRemote(ctx context.Context, remote *RemoteType) error {
 	if remote == nil {
 		return fmt.Errorf("cannot insert nil remote")
 	}
-	db, err := GetDB(ctx)
-	if err != nil {
-		return err
+	if remote.RemoteId == "" {
+		return fmt.Errorf("cannot insert remote without id")
 	}
-	query := `INSERT INTO remote ( remoteid, physicalid, remotetype, remotealias, remotecanonicalname, remotesudo, remoteuser, remotehost, connectmode, initpk, sshopts, remoteopts, lastconnectts) VALUES 
-                                 (:remoteid,:physicalid,:remotetype,:remotealias,:remotecanonicalname,:remotesudo,:remoteuser,:remotehost,:connectmode,:initpk,:sshopts,:remoteopts,:lastconnectts)`
-	_, err = db.NamedExec(query, remote.ToMap())
-	if err != nil {
-		return err
+	if remote.RemoteCanonicalName == "" {
+		return fmt.Errorf("cannot insert remote with canonicalname")
 	}
-	return nil
+	if remote.RemoteType == "" {
+		return fmt.Errorf("cannot insert remote without type")
+	}
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT remoteid FROM remote WHERE remoteid = ?`
+		if tx.Exists(query, remote.RemoteId) {
+			return fmt.Errorf("duplicate remoteid, cannot create")
+		}
+		if remote.RemoteAlias != "" {
+			query = `SELECT remoteid FROM remote WHERE alias = ?`
+			if tx.Exists(query, remote.RemoteAlias) {
+				return fmt.Errorf("remote has duplicate alias '%s', cannot create", remote.RemoteAlias)
+			}
+		}
+		query = `SELECT remoteid FROM remote WHERE remotecanonicaname = ?`
+		if tx.Exists(query, remote.RemoteCanonicalName) {
+			return fmt.Errorf("remote has duplicate canonicalname '%s', cannot create", remote.RemoteCanonicalName)
+		}
+		query = `INSERT INTO remote
+            ( remoteid, physicalid, remotetype, remotealias, remotecanonicalname, remotesudo, remoteuser, remotehost, connectmode, initpk, sshopts, remoteopts, lastconnectts) VALUES 
+            (:remoteid,:physicalid,:remotetype,:remotealias,:remotecanonicalname,:remotesudo,:remoteuser,:remotehost,:connectmode,:initpk,:sshopts,:remoteopts,:lastconnectts)`
+		tx.NamedExecWrap(query, remote.ToMap())
+		return nil
+	})
+	return txErr
 }
 
 func InsertHistoryItem(ctx context.Context, hitem *HistoryItemType) error {
