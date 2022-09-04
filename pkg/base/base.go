@@ -279,3 +279,13 @@ func BoundInt(ival int, minVal int, maxVal int) int {
 	}
 	return ival
 }
+
+func BoundInt64(ival int64, minVal int64, maxVal int64) int64 {
+	if ival < minVal {
+		return minVal
+	}
+	if ival > maxVal {
+		return maxVal
+	}
+	return ival
+}

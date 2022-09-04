@@ -40,6 +40,8 @@ const MaxFdNum = 1023
 const FirstExtraFilesFdNum = 3
 const DefaultTermType = "xterm-256color"
 const DefaultMaxPtySize = 1024 * 1024
+const MinMaxPtySize = 16 * 1024
+const MaxMaxPtySize = 100 * 1024 * 1024
 
 const GetStateTimeout = 5 * time.Second
 
@@ -1038,10 +1040,9 @@ func RunCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) (
 	cmd.FileNames = fileNames
 	cmd.CmdPty = cmdPty
 	cmd.Detached = true
-	if pk.TermOpts != nil && pk.TermOpts.MaxPtySize != 0 {
-		cmd.MaxPtySize = pk.TermOpts.MaxPtySize
-	} else {
-		cmd.MaxPtySize = DefaultMaxPtySize
+	cmd.MaxPtySize = DefaultMaxPtySize
+	if pk.TermOpts != nil && pk.TermOpts.MaxPtySize > 0 {
+		cmd.MaxPtySize = base.BoundInt64(pk.TermOpts.MaxPtySize, MinMaxPtySize, MaxMaxPtySize)
 	}
 	cmd.RunnerOutFd, err = os.OpenFile(fileNames.RunnerOutFile, os.O_TRUNC|os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
