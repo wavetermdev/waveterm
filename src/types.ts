@@ -139,11 +139,19 @@ type CmdRemoteStateType = {
     cwd : string,
 };
 
+type UIContextTermOptsType = {
+    rows? : number,
+    cols? : number,
+    term? : string,
+    maxptysize? : number,
+};
+
 type UIContextType = {
     sessionid : string,
     screenid : string,
     windowid : string,
     remote : RemotePtrType,
+    termopts : UIContextTermOptsType,
 };
 
 type FeCmdPacketType = {

@@ -48,6 +48,7 @@ class TermWrap {
     loadError : mobx.IObservableValue<boolean> = mobx.observable.box(false);
     winSize : WindowSize;
     numParseErrors : number = 0;
+    termCols : number;
 
     constructor(elem : Element, sessionId : string, cmdId : string, usedRows : number, termOpts : TermOptsType, winSize : WindowSize, keyHandler : (event : any) => void) {
         this.sessionId = sessionId;
@@ -68,6 +69,7 @@ class TermWrap {
         if (maxCols > cols) {
             cols = maxCols;
         }
+        this.termCols = maxCols;
         this.terminal = new Terminal({rows: termOpts.rows, cols: maxCols, fontSize: 14, theme: {foreground: "#d3d7cf"}});
         this.terminal._core._inputHandler._parser.setErrorHandler((state) => {
             this.numParseErrors++;
@@ -155,7 +157,7 @@ class TermWrap {
         mobx.action(() => {
             let oldUsedRows = this.usedRows.get();
             this.usedRows.set(tur);
-            GlobalModel.setTUR(this.sessionId, this.cmdId, this.winSize.width, tur);
+            GlobalModel.setTUR(this.sessionId, this.cmdId, this.termCols, tur);
             if (this.connectedElem) {
                 let resizeEvent = new CustomEvent("termresize", {
                     bubbles: true,

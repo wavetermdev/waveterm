@@ -8,6 +8,16 @@ import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem,
 import {WSControl} from "./ws";
 
 var GlobalUser = "sawka";
+const DefaultCellWidth = 8;
+const DefaultCellHeight = 16;
+
+function widthToCols(width : number) : number {
+    let cols = Math.trunc((width - 25) / DefaultCellWidth) - 1;
+    if (cols < 0) {
+        return 0;
+    }
+    return cols;
+}
 
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
@@ -242,6 +252,7 @@ class ScreenWindow {
     name : OV<string>;
     layout : OV<LayoutType>;
     shouldFollow : OV<boolean> = mobx.observable.box(true);
+    width : OV<number> = mobx.observable.box(0);
 
     // cmdid => TermWrap
     terms : Record<string, TermWrap> = {};
@@ -264,6 +275,12 @@ class ScreenWindow {
         term.updatePtyData(ptyMsg.ptypos, data);
     }
 
+    setWidth(width : number) : void {
+        mobx.action(() => {
+            this.width.set(width);
+        })();
+    }
+
     getTermWrap(cmdId : string) : TermWrap {
         return this.terms[cmdId];
     }
@@ -275,7 +292,8 @@ class ScreenWindow {
             console.log("term-wrap already exists for", this.screenId, this.windowId, cmdId);
             return;
         }
-        let usedRows = GlobalModel.getTUR(this.sessionId, cmdId, width);
+        let cols = widthToCols(width);
+        let usedRows = GlobalModel.getTUR(this.sessionId, cmdId, cols);
         termWrap = new TermWrap(elem, this.sessionId, cmdId, usedRows, cmd.getTermOpts(), {height: 0, width: width}, cmd.handleKey.bind(cmd));
         this.terms[cmdId] = termWrap;
         return;
@@ -296,7 +314,8 @@ class ScreenWindow {
         }
         let termWrap = this.getTermWrap(cmd.cmdId);
         if (termWrap == null) {
-            let usedRows = GlobalModel.getTUR(this.sessionId, cmd.cmdId, width);
+            let cols = widthToCols(width);
+            let usedRows = GlobalModel.getTUR(this.sessionId, cmd.cmdId, cols);
             if (usedRows != null) {
                 return usedRows;
             }
@@ -1127,13 +1146,13 @@ class Model {
         getApi().onDigitCmd(this.onDigitCmd.bind(this));
     }
 
-    getTUR(sessionId : string, cmdId : string, width : number) : number {
-        let key = sessionId + "/" + cmdId + "/" + width;
+    getTUR(sessionId : string, cmdId : string, cols : number) : number {
+        let key = sessionId + "/" + cmdId + "/" + cols;
         return this.termUsedRowsCache[key];
     }
 
-    setTUR(sessionId : string, cmdId : string, width : number, usedRows : number) : void {
-        let key = sessionId + "/" + cmdId + "/" + width;
+    setTUR(sessionId : string, cmdId : string, cols : number, usedRows : number) : void {
+        let key = sessionId + "/" + cmdId + "/" + cols;
         this.termUsedRowsCache[key] = usedRows;
     }
     
@@ -1148,6 +1167,7 @@ class Model {
             screenid : null,
             windowid : null,
             remote : null,
+            termopts : {},
         };
         let session = this.getActiveSession();
         if (session != null) {
@@ -1159,6 +1179,10 @@ class Model {
                 if (win != null) {
                     rtn.windowid = win.windowId;
                     rtn.remote = win.curRemote.get();
+                }
+                let sw = screen.getActiveSW();
+                if (sw != null) {
+                    rtn.termopts.cols = widthToCols(sw.width.get());
                 }
             }
         }
@@ -1731,6 +1755,6 @@ if ((window as any).GlobalModal == null) {
 GlobalModel = (window as any).GlobalModel;
 GlobalCommandRunner = (window as any).GlobalCommandRunner;
 
-export {Model, Session, Window, GlobalModel, GlobalCommandRunner, Cmd, Screen, ScreenWindow, riToRPtr};
+export {Model, Session, Window, GlobalModel, GlobalCommandRunner, Cmd, Screen, ScreenWindow, riToRPtr, widthToCols};
 
 

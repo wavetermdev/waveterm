@@ -887,14 +887,18 @@ class CmdInput extends React.Component<{}, {}> {
     }
 }
 
+// sw is not null
 @mobxReact.observer
 class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
     mutObs : any;
     rszObs : any;
     interObs : IntersectionObserver;
     randomId : string;
-    width : mobx.IObservableValue<number> = mobx.observable.box(0);
     lastHeight : number = null;
+
+    constructor(props : any) {
+        super(props);
+    }
 
     scrollToBottom(reason : string) {
         let elem = document.getElementById(this.getLinesDOMId());
@@ -911,7 +915,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         let {sw} = this.props;
         let target = event.target;
         let atBottom = (target.scrollTop + 30 > (target.scrollHeight - target.offsetHeight));
-        if (sw && sw.shouldFollow.get() != atBottom) {
+        if (sw.shouldFollow.get() != atBottom) {
             mobx.action(() => sw.shouldFollow.set(atBottom))();
         }
         // console.log("scroll-handler (sw)>", atBottom, target.scrollTop, target.scrollHeight, event);
@@ -924,7 +928,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
             this.mutObs.observe(elem, {childList: true});
             elem.addEventListener("termresize", this.handleTermResize);
             let {sw} = this.props;
-            if (sw && sw.shouldFollow.get()) {
+            if (sw.shouldFollow.get()) {
                 setTimeout(() => this.scrollToBottom("mount"), 0);
             }
             this.interObs = new IntersectionObserver(interObsCallback, {
@@ -940,12 +944,6 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         }
     }
 
-    updateWidth(width : number) {
-        mobx.action(() => {
-            this.width.set(width);
-        })();
-    }
-
     componentWillUnmount() {
         if (this.mutObs) {
             this.mutObs.disconnect();
@@ -956,6 +954,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         if (this.interObs) {
             this.interObs.disconnect();
         }
+        this.props.sw.setWidth(0);
     }
 
     handleResize(entries : any) {
@@ -964,7 +963,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         }
         let entry = entries[0];
         let width = entry.target.offsetWidth;
-        this.updateWidth(width);
+        this.props.sw.setWidth(width);
         if (this.lastHeight == null) {
             this.lastHeight = entry.target.offsetHeight;
             return;
@@ -981,16 +980,13 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
 
     doConditionalScrollToBottom(reason : string) {
         let {sw} = this.props;
-        if (sw && sw.shouldFollow.get()) {
+        if (sw.shouldFollow.get()) {
             setTimeout(() => this.scrollToBottom(reason), 0);
         }
     }
 
     getWindow() : Window {
         let {sw} = this.props;
-        if (sw == null) {
-            return null;
-        }
         let win = GlobalModel.getWindowById(sw.sessionId, sw.windowId);
         if (win == null) {
             win = GlobalModel.loadWindow(sw.sessionId, sw.windowId);
@@ -1005,7 +1001,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
     @boundMethod
     handleTermResize(e : any) {
         let {sw} = this.props;
-        if (sw && sw.shouldFollow.get()) {
+        if (sw.shouldFollow.get()) {
             setTimeout(() => this.scrollToBottom("termresize"), 0);
         }
     }
@@ -1017,12 +1013,6 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
 
     getWindowId() : string {
         let {sw} = this.props;
-        if (sw == null) {
-            if (!this.randomId) {
-                this.randomId = uuidv4();
-            }
-            return this.randomId;
-        }
         return sw.windowId;
     }
 
@@ -1035,9 +1025,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         return (
             <div className="window-view" style={this.getWindowViewStyle()} id={this.getWindowViewDOMId()}>
                 <div key="window-tag" className="window-tag">
-                    <If condition={sw != null}>
-                        <span>{sw.name.get()}{sw.shouldFollow.get() ? "*" : ""}</span>
-                    </If>
+                    <span>{sw.name.get()}{sw.shouldFollow.get() ? "*" : ""}</span>
                 </div>
                 <div key="lines" className="lines" id={this.getLinesDOMId()}></div>
                 <div key="window-empty" className="window-empty">
@@ -1049,9 +1037,6 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
     
     render() {
         let {sw} = this.props;
-        if (sw == null) {
-            return this.renderError("(no screen window)");
-        }
         let win = this.getWindow();
         if (win == null || !win.loaded.get()) {
             return this.renderError("(loading)");
@@ -1059,7 +1044,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         if (win.loadError.get() != null) {
             return this.renderError(sprintf("(%s)", win.loadError.get()));
         }
-        if (this.width.get() == 0) {
+        if (sw.width.get() == 0) {
             return this.renderError("");
         }
         let idx = 0;
@@ -1087,7 +1072,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
                 <div key="lines" className="lines" onScroll={this.scrollHandler} id={this.getLinesDOMId()} style={linesStyle}>
                     <div className="lines-spacer"></div>
                     <For each="line" of={win.lines} index="idx">
-                        <Line key={line.lineid} line={line} sw={sw} width={this.width.get()} interObs={this.interObs} initVis={idx > win.lines.length-1-7} cmdRefNum={cmdRefMap[line.lineid] ?? 0}/>
+                        <Line key={line.lineid} line={line} sw={sw} width={sw.width.get()} interObs={this.interObs} initVis={idx > win.lines.length-1-7} cmdRefNum={cmdRefMap[line.lineid] ?? 0}/>
                     </For>
                 </div>
                 <If condition={win.lines.length == 0}>
@@ -1104,14 +1089,17 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
 class ScreenView extends React.Component<{screen : Screen}, {}> {
     render() {
         let {screen} = this.props;
-        if (screen == null) {
+        let sw : ScreenWindow = null;
+        if (screen != null) {
+            sw = screen.getActiveSW();
+        }
+        if (screen == null || sw == null) {
             return (
                 <div className="screen-view">
-                    (no screen)
+                    (no screen or window)
                 </div>
             );
         }
-        let sw = screen.getActiveSW();
         return (
             <div className="screen-view">
                 <ScreenWindowView key={sw.windowId} sw={sw}/>
