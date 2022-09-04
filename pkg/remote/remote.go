@@ -246,55 +246,55 @@ func makeShortHost(host string) string {
 	return host[0:dotIdx]
 }
 
-func (proc *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
-	proc.Lock.Lock()
-	defer proc.Lock.Unlock()
+func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
 	state := RemoteRuntimeState{
-		RemoteType:          proc.Remote.RemoteType,
-		RemoteId:            proc.Remote.RemoteId,
-		RemoteAlias:         proc.Remote.RemoteAlias,
-		RemoteCanonicalName: proc.Remote.RemoteCanonicalName,
-		PhysicalId:          proc.Remote.PhysicalId,
-		Status:              proc.Status,
-		ConnectMode:         proc.Remote.ConnectMode,
+		RemoteType:          msh.Remote.RemoteType,
+		RemoteId:            msh.Remote.RemoteId,
+		RemoteAlias:         msh.Remote.RemoteAlias,
+		RemoteCanonicalName: msh.Remote.RemoteCanonicalName,
+		PhysicalId:          msh.Remote.PhysicalId,
+		Status:              msh.Status,
+		ConnectMode:         msh.Remote.ConnectMode,
 	}
-	if proc.Err != nil {
-		state.ErrorStr = proc.Err.Error()
+	if msh.Err != nil {
+		state.ErrorStr = msh.Err.Error()
 	}
-	local := (proc.Remote.SSHOpts == nil || proc.Remote.SSHOpts.Local)
+	local := (msh.Remote.SSHOpts == nil || msh.Remote.SSHOpts.Local)
 	vars := make(map[string]string)
-	vars["user"] = proc.Remote.RemoteUser
+	vars["user"] = msh.Remote.RemoteUser
 	vars["bestuser"] = vars["user"]
-	vars["host"] = proc.Remote.RemoteHost
-	vars["shorthost"] = makeShortHost(proc.Remote.RemoteHost)
-	vars["alias"] = proc.Remote.RemoteAlias
-	vars["cname"] = proc.Remote.RemoteCanonicalName
-	vars["physicalid"] = proc.Remote.PhysicalId
-	vars["remoteid"] = proc.Remote.RemoteId
-	vars["status"] = proc.Status
-	vars["type"] = proc.Remote.RemoteType
-	if proc.Remote.RemoteSudo {
+	vars["host"] = msh.Remote.RemoteHost
+	vars["shorthost"] = makeShortHost(msh.Remote.RemoteHost)
+	vars["alias"] = msh.Remote.RemoteAlias
+	vars["cname"] = msh.Remote.RemoteCanonicalName
+	vars["physicalid"] = msh.Remote.PhysicalId
+	vars["remoteid"] = msh.Remote.RemoteId
+	vars["status"] = msh.Status
+	vars["type"] = msh.Remote.RemoteType
+	if msh.Remote.RemoteSudo {
 		vars["sudo"] = "1"
 	}
 	if local {
 		vars["local"] = "1"
 	}
-	if proc.ServerProc != nil && proc.ServerProc.InitPk != nil {
+	if msh.ServerProc != nil && msh.ServerProc.InitPk != nil {
 		state.DefaultState = &sstore.RemoteState{
-			Cwd:  proc.ServerProc.InitPk.Cwd,
-			Env0: proc.ServerProc.InitPk.Env0,
+			Cwd:  msh.ServerProc.InitPk.Cwd,
+			Env0: msh.ServerProc.InitPk.Env0,
 		}
-		vars["home"] = proc.ServerProc.InitPk.HomeDir
-		vars["remoteuser"] = proc.ServerProc.InitPk.User
+		vars["home"] = msh.ServerProc.InitPk.HomeDir
+		vars["remoteuser"] = msh.ServerProc.InitPk.User
 		vars["bestuser"] = vars["remoteuser"]
-		vars["remotehost"] = proc.ServerProc.InitPk.HostName
-		vars["remoteshorthost"] = makeShortHost(proc.ServerProc.InitPk.HostName)
+		vars["remotehost"] = msh.ServerProc.InitPk.HostName
+		vars["remoteshorthost"] = makeShortHost(msh.ServerProc.InitPk.HostName)
 		vars["besthost"] = vars["remotehost"]
 		vars["bestshorthost"] = vars["remoteshorthost"]
 	}
-	if local && proc.Remote.RemoteSudo {
+	if local && msh.Remote.RemoteSudo {
 		vars["bestuser"] = "sudo"
-	} else if proc.Remote.RemoteSudo {
+	} else if msh.Remote.RemoteSudo {
 		vars["bestuser"] = "sudo@" + vars["bestuser"]
 	}
 	if local {
@@ -382,6 +382,7 @@ func (msh *MShellProc) setErrorStatus(err error) {
 	defer msh.Lock.Unlock()
 	msh.Status = StatusError
 	msh.Err = err
+	go msh.NotifyUpdate()
 }
 
 func (msh *MShellProc) getRemoteCopy() sstore.RemoteType {
@@ -446,6 +447,7 @@ func (msh *MShellProc) Launch() {
 	cproc, uname, err := shexec.MakeClientProc(ecmd)
 	msh.WithLock(func() {
 		msh.UName = uname
+		// no notify here, because we'll call notify in either case below
 	})
 	if err != nil {
 		msh.setErrorStatus(err)
@@ -456,6 +458,7 @@ func (msh *MShellProc) Launch() {
 	msh.WithLock(func() {
 		msh.ServerProc = cproc
 		msh.Status = StatusConnected
+		go msh.NotifyUpdate()
 	})
 	go func() {
 		exitErr := cproc.Cmd.Wait()
@@ -463,10 +466,10 @@ func (msh *MShellProc) Launch() {
 		msh.WithLock(func() {
 			if msh.Status == StatusConnected {
 				msh.Status = StatusDisconnected
+				go msh.NotifyUpdate()
 			}
 		})
 		logf(&remoteCopy, "remote disconnected exitcode=%d", exitCode)
-		fmt.Printf("[error] RUNNER PROC EXITED code[%d]\n", exitCode)
 	}()
 	go msh.ProcessPackets()
 	return
@@ -631,9 +634,9 @@ func (msh *MShellProc) PacketRpc(ctx context.Context, pk packet.RpcPacketType) (
 	return nil, fmt.Errorf("invalid response packet received: %s", packet.AsString(rtnPk))
 }
 
-func (runner *MShellProc) WithLock(fn func()) {
-	runner.Lock.Lock()
-	defer runner.Lock.Unlock()
+func (msh *MShellProc) WithLock(fn func()) {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
 	fn()
 }
 
@@ -685,26 +688,26 @@ func (msh *MShellProc) notifyHangups_nolock() {
 	msh.RunningCmds = nil
 }
 
-func (runner *MShellProc) ProcessPackets() {
-	defer runner.WithLock(func() {
-		if runner.Status == StatusConnected {
-			runner.Status = StatusDisconnected
+func (msh *MShellProc) ProcessPackets() {
+	defer msh.WithLock(func() {
+		if msh.Status == StatusConnected {
+			msh.Status = StatusDisconnected
 		}
-		err := sstore.HangupRunningCmdsByRemoteId(context.Background(), runner.Remote.RemoteId)
+		err := sstore.HangupRunningCmdsByRemoteId(context.Background(), msh.Remote.RemoteId)
 		if err != nil {
-			fmt.Printf("[error] calling HUP on remoteid=%d cmds\n", runner.Remote.RemoteId)
+			logf(msh.Remote, "calling HUP on cmds %v", err)
 		}
-		runner.notifyHangups_nolock()
-		go runner.NotifyUpdate()
+		msh.notifyHangups_nolock()
+		go msh.NotifyUpdate()
 	})
 	dataPosMap := make(map[base.CommandKey]int64)
-	for pk := range runner.ServerProc.Output.MainCh {
+	for pk := range msh.ServerProc.Output.MainCh {
 		if pk.GetType() == packet.DataPacketStr {
 			dataPk := pk.(*packet.DataPacketType)
 			realData, err := base64.StdEncoding.DecodeString(dataPk.Data64)
 			if err != nil {
 				ack := makeDataAckPacket(dataPk.CK, dataPk.FdNum, 0, err)
-				runner.ServerProc.Input.SendPacket(ack)
+				msh.ServerProc.Input.SendPacket(ack)
 				continue
 			}
 			var ack *packet.DataAckPacketType
@@ -719,9 +722,14 @@ func (runner *MShellProc) ProcessPackets() {
 				dataPosMap[dataPk.CK] += int64(len(realData))
 			}
 			if ack != nil {
-				runner.ServerProc.Input.SendPacket(ack)
+				msh.ServerProc.Input.SendPacket(ack)
 			}
 			// fmt.Printf("data %s fd=%d len=%d eof=%v err=%v\n", dataPk.CK, dataPk.FdNum, len(realData), dataPk.Eof, dataPk.Error)
+			continue
+		}
+		if pk.GetType() == packet.DataAckPacketStr {
+			// TODO process ack (need to keep track of buffer size for sending)
+			// this is low priority though since most input is coming from keyboard and won't overflow this buffer
 			continue
 		}
 		if pk.GetType() == packet.CmdDataPacketStr {
@@ -730,11 +738,11 @@ func (runner *MShellProc) ProcessPackets() {
 			continue
 		}
 		if pk.GetType() == packet.CmdDonePacketStr {
-			runner.handleCmdDonePacket(pk.(*packet.CmdDonePacketType))
+			msh.handleCmdDonePacket(pk.(*packet.CmdDonePacketType))
 			continue
 		}
 		if pk.GetType() == packet.CmdErrorPacketStr {
-			runner.handleCmdErrorPacket(pk.(*packet.CmdErrorPacketType))
+			msh.handleCmdErrorPacket(pk.(*packet.CmdErrorPacketType))
 			continue
 		}
 		if pk.GetType() == packet.MessagePacketStr {
@@ -749,10 +757,10 @@ func (runner *MShellProc) ProcessPackets() {
 		}
 		if pk.GetType() == packet.CmdStartPacketStr {
 			startPk := pk.(*packet.CmdStartPacketType)
-			fmt.Printf("start> reqid=%s (%p)\n", startPk.RespId, runner.ServerProc.Output)
+			fmt.Printf("start> reqid=%s (%p)\n", startPk.RespId, msh.ServerProc.Output)
 			continue
 		}
-		fmt.Printf("MSH> %s\n", packet.AsString(pk))
+		fmt.Printf("MSH> unhandled packet %s\n", packet.AsString(pk))
 	}
 }
 
