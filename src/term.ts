@@ -6,19 +6,6 @@ import {v4 as uuidv4} from "uuid";
 import {GlobalModel} from "./model";
 import type {TermOptsType} from "./types";
 
-function loadPtyOut(term : Terminal, sessionId : string, cmdId : string, delayMs : number, callback?: (number) => void) {
-    term.clear()
-    let url = sprintf("http://localhost:8080/api/ptyout?sessionid=%s&cmdid=%s", sessionId, cmdId);
-    fetch(url).then((resp) => {
-        if (!resp.ok) {
-            throw new Error(sprintf("Bad fetch response for /api/ptyout: %d %s", resp.status, resp.statusText));
-        }
-        return resp.text()
-    }).then((resptext) => {
-        setTimeout(() => term.write(resptext, () => { callback(resptext.length) }), delayMs);
-    });
-}
-
 type DataUpdate = {
     data : Uint8Array,
     pos : number,
@@ -180,18 +167,24 @@ class TermWrap {
         this.reloading = true;
         this.terminal.reset();
         let url = sprintf("http://localhost:8080/api/ptyout?sessionid=%s&cmdid=%s", this.sessionId, this.cmdId);
+        let ptyOffset = 0;
         fetch(url).then((resp) => {
             if (!resp.ok) {
                 mobx.action(() => { this.loadError.set(true); })();
                 this.dataUpdates = [];
                 throw new Error(sprintf("Bad fetch response for /api/ptyout: %d %s", resp.status, resp.statusText));
             }
+            let ptyOffsetStr = resp.headers.get("X-PtyDataOffset");
+            if (ptyOffsetStr != null && !isNaN(parseInt(ptyOffsetStr))) {
+                ptyOffset = parseInt(ptyOffsetStr);
+            }
+            console.log("set ptyoffset", ptyOffset);
             return resp.arrayBuffer()
         }).then((buf) => {
             setTimeout(() => {
                 this.reloading = false;
-                this.ptyPos = 0;
-                this.updatePtyData(0, new Uint8Array(buf));
+                this.ptyPos = ptyOffset;
+                this.updatePtyData(ptyOffset, new Uint8Array(buf));
                 for (let i=0; i<this.dataUpdates.length; i++) {
                     this.updatePtyData(this.dataUpdates[i].pos, this.dataUpdates[i].data);
                 }
