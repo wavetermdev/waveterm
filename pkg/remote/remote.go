@@ -25,8 +25,6 @@ import (
 )
 
 const RemoteTypeMShell = "mshell"
-const DefaultTermRows = 25
-const DefaultTermCols = 80
 const DefaultTerm = "xterm-256color"
 const DefaultMaxPtySize = 1024 * 1024
 
@@ -53,6 +51,7 @@ var GlobalStore *Store
 type Store struct {
 	Lock *sync.Mutex
 	Map  map[string]*MShellProc // key=remoteid
+	Log  *CircleLog
 }
 
 type MShellProc struct {
@@ -80,6 +79,21 @@ type RemoteRuntimeState struct {
 	ErrorStr            string              `json:"errorstr,omitempty"`
 	DefaultState        *sstore.RemoteState `json:"defaultstate"`
 	ConnectMode         string              `json:"connectmode"`
+}
+
+func logf(rem *sstore.RemoteType, fmtStr string, args ...interface{}) {
+	rname := rem.GetName()
+	str := fmt.Sprintf(fmtStr, args...)
+	fullStr := fmt.Sprintf("[remote %s] %s", rname, str)
+	fmt.Printf("%s\n", fullStr)
+	GlobalStore.Log.Add(fullStr)
+}
+
+func logError(rem *sstore.RemoteType, err error) {
+	rname := rem.GetName()
+	fullStr := fmt.Sprintf("[remote %s] error: %v", rname, err)
+	fmt.Printf("%s\n", fullStr)
+	GlobalStore.Log.Add(fullStr)
 }
 
 func (state RemoteRuntimeState) IsConnected() bool {
@@ -111,6 +125,7 @@ func LoadRemotes(ctx context.Context) error {
 	GlobalStore = &Store{
 		Lock: &sync.Mutex{},
 		Map:  make(map[string]*MShellProc),
+		Log:  MakeCircleLog(100),
 	}
 	allRemotes, err := sstore.GetAllRemotes(ctx)
 	if err != nil {
@@ -389,10 +404,13 @@ func (msh *MShellProc) Disconnect() {
 
 func (msh *MShellProc) Launch() {
 	remoteCopy := msh.getRemoteCopy()
+	logf(&remoteCopy, "starting launch")
 	ecmd := convertSSHOpts(remoteCopy.SSHOpts).MakeSSHExecCmd(MShellServerCommand)
 	cmdPty, err := msh.addControllingTty(ecmd)
 	if err != nil {
-		msh.setErrorStatus(fmt.Errorf("cannot attach controlling tty to mshell command: %w", err))
+		statusErr := fmt.Errorf("cannot attach controlling tty to mshell command: %w", err)
+		logError(&remoteCopy, statusErr)
+		msh.setErrorStatus(statusErr)
 		return
 	}
 	defer func() {
@@ -402,7 +420,6 @@ func (msh *MShellProc) Launch() {
 	}()
 	remoteName := remoteCopy.GetName()
 	go func() {
-		fmt.Printf("[c-pty %s] starting...\n", remoteCopy.GetName())
 		buf := make([]byte, 100)
 		for {
 			n, readErr := cmdPty.Read(buf)
@@ -410,7 +427,7 @@ func (msh *MShellProc) Launch() {
 				break
 			}
 			if readErr != nil {
-				fmt.Printf("[error] read from controlling-pty [%s]: %v\n", remoteName, readErr)
+				logf(&remoteCopy, "error: reading from controlling-pty: %v", readErr)
 				break
 			}
 			readStr := string(buf[0:n])
@@ -432,7 +449,7 @@ func (msh *MShellProc) Launch() {
 	})
 	if err != nil {
 		msh.setErrorStatus(err)
-		fmt.Printf("[error] connecting remote %s (%s): %v\n", remoteCopy.GetName(), msh.UName, err)
+		logf(&remoteCopy, "error connecting remote (%s): %v", msh.UName, err)
 		return
 	}
 	fmt.Printf("connected remote %s\n", remoteCopy.GetName())
@@ -448,6 +465,7 @@ func (msh *MShellProc) Launch() {
 				msh.Status = StatusDisconnected
 			}
 		})
+		logf(&remoteCopy, "remote disconnected exitcode=%d", exitCode)
 		fmt.Printf("[error] RUNNER PROC EXITED code[%d]\n", exitCode)
 	}()
 	go msh.ProcessPackets()
@@ -521,8 +539,8 @@ func (msh *MShellProc) SendInput(pk *packet.InputPacketType) error {
 	return msh.ServerProc.Input.SendPacket(dataPk)
 }
 
-func makeTermOpts() sstore.TermOpts {
-	return sstore.TermOpts{Rows: DefaultTermRows, Cols: DefaultTermCols, FlexRows: true, MaxPtySize: DefaultMaxPtySize}
+func makeTermOpts(runPk *packet.RunPacketType) sstore.TermOpts {
+	return sstore.TermOpts{Rows: int64(runPk.TermOpts.Rows), Cols: int64(runPk.TermOpts.Cols), FlexRows: true, MaxPtySize: DefaultMaxPtySize}
 }
 
 func RunCommand(ctx context.Context, cmdId string, remotePtr sstore.RemotePtrType, remoteState *sstore.RemoteState, runPacket *packet.RunPacketType) (*sstore.CmdType, error) {
@@ -569,7 +587,7 @@ func RunCommand(ctx context.Context, cmdId string, remotePtr sstore.RemotePtrTyp
 		CmdStr:      runPacket.Command,
 		Remote:      remotePtr,
 		RemoteState: *remoteState,
-		TermOpts:    makeTermOpts(),
+		TermOpts:    makeTermOpts(runPacket),
 		Status:      status,
 		StartPk:     startPk,
 		DonePk:      nil,

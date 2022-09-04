@@ -26,6 +26,7 @@ type UIContextType struct {
 	ScreenId  string                `json:"screenid"`
 	WindowId  string                `json:"windowid"`
 	Remote    *sstore.RemotePtrType `json:"remote,omitempty"`
+	TermOpts  *packet.TermOpts      `json:"termopts,omitempty"`
 }
 
 type FeInputPacketType struct {

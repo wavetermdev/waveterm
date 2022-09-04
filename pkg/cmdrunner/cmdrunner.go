@@ -169,7 +169,16 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	runPacket.Env0 = ids.Remote.RemoteState.Env0
 	runPacket.EnvComplete = true
 	runPacket.UsePty = true
-	runPacket.TermOpts = &packet.TermOpts{Rows: remote.DefaultTermRows, Cols: remote.DefaultTermCols, Term: remote.DefaultTerm}
+	runPacket.TermOpts = &packet.TermOpts{Rows: shexec.DefaultTermRows, Cols: shexec.DefaultTermCols, Term: remote.DefaultTerm, MaxPtySize: shexec.DefaultMaxPtySize}
+	if pk.UIContext != nil && pk.UIContext.TermOpts != nil {
+		pkOpts := pk.UIContext.TermOpts
+		if pkOpts.Cols > 0 {
+			runPacket.TermOpts.Cols = base.BoundInt(pkOpts.Cols, shexec.MinTermCols, shexec.MaxTermCols)
+		}
+		if pkOpts.MaxPtySize > 0 {
+			runPacket.TermOpts.MaxPtySize = base.BoundInt64(pkOpts.MaxPtySize, shexec.MinMaxPtySize, shexec.MaxMaxPtySize)
+		}
+	}
 	runPacket.Command = strings.TrimSpace(cmdStr)
 	cmd, err := remote.RunCommand(ctx, cmdId, ids.Remote.RemotePtr, ids.Remote.RemoteState, runPacket)
 	if err != nil {
