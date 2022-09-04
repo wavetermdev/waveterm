@@ -50,6 +50,7 @@ func AppendToCmdPtyBlob(ctx context.Context, sessionId string, cmdId string, dat
 	return nil
 }
 
+// returns (offset, data, err)
 func ReadFullPtyOutFile(ctx context.Context, sessionId string, cmdId string) (int64, []byte, error) {
 	ptyOutFileName, err := scbase.PtyOutFile(sessionId, cmdId)
 	if err != nil {

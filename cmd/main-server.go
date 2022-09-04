@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -216,7 +217,7 @@ func HandleGetPtyOut(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("invalid cmdid: %v", err)))
 		return
 	}
-	_, data, err := sstore.ReadFullPtyOutFile(r.Context(), sessionId, cmdId)
+	realOffset, data, err := sstore.ReadFullPtyOutFile(r.Context(), sessionId, cmdId)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			w.WriteHeader(http.StatusOK)
@@ -226,6 +227,7 @@ func HandleGetPtyOut(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("error reading ptyout file: %v", err)))
 		return
 	}
+	w.Header().Set("X-PtyDataOffset", strconv.FormatInt(realOffset, 10))
 	w.WriteHeader(http.StatusOK)
 	w.Write(data)
 }
