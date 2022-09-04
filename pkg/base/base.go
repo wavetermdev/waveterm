@@ -269,3 +269,13 @@ func GetRemoteId() (string, error) {
 		return uuidStr, nil
 	}
 }
+
+func BoundInt(ival int, minVal int, maxVal int) int {
+	if ival < minVal {
+		return minVal
+	}
+	if ival > maxVal {
+		return maxVal
+	}
+	return ival
+}

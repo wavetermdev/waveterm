@@ -30,10 +30,12 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const DefaultRows = 25
-const DefaultCols = 80
-const MaxRows = 1024
-const MaxCols = 1024
+const DefaultTermRows = 24
+const DefaultTermCols = 80
+const MinTermRows = 2
+const MinTermCols = 10
+const MaxTermRows = 1024
+const MaxTermCols = 1024
 const MaxFdNum = 1023
 const FirstExtraFilesFdNum = 3
 const DefaultTermType = "xterm-256color"
@@ -319,15 +321,11 @@ func ValidateRunPacket(pk *packet.RunPacketType) error {
 }
 
 func GetWinsize(p *packet.RunPacketType) *pty.Winsize {
-	rows := DefaultRows
-	cols := DefaultCols
+	rows := DefaultTermRows
+	cols := DefaultTermCols
 	if p.TermOpts != nil {
-		if p.TermOpts.Rows > 0 && p.TermOpts.Rows <= MaxRows {
-			rows = p.TermOpts.Rows
-		}
-		if p.TermOpts.Cols > 0 && p.TermOpts.Cols <= MaxCols {
-			cols = p.TermOpts.Cols
-		}
+		rows = base.BoundInt(p.TermOpts.Rows, MinTermRows, MaxTermRows)
+		cols = base.BoundInt(p.TermOpts.Cols, MinTermCols, MaxTermCols)
 	}
 	return &pty.Winsize{Rows: uint16(rows), Cols: uint16(cols)}
 }
@@ -1174,7 +1172,7 @@ func runSimpleCmdInPty(ecmd *exec.Cmd) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("opening new pty: %w", err)
 	}
-	pty.Setsize(cmdPty, &pty.Winsize{Rows: DefaultRows, Cols: DefaultCols})
+	pty.Setsize(cmdPty, &pty.Winsize{Rows: DefaultTermRows, Cols: DefaultTermCols})
 	ecmd.Stdin = cmdTty
 	ecmd.Stdout = cmdTty
 	ecmd.Stderr = cmdTty
