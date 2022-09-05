@@ -1,6 +1,7 @@
 import * as mobx from "mobx";
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
+import {WatchScreenPacketType} from "./types";
 
 class WSControl {
     wsConn : any;
@@ -10,6 +11,8 @@ class WSControl {
     msgQueue : any[] = [];
     clientId : string;
     messageCallback : (any) => void = null;
+    watchSessionId : string = null;
+    watchScreenId : string = null;
     
     constructor(clientId : string, messageCallback : (any) => void) {
         this.messageCallback = messageCallback;
@@ -78,6 +81,7 @@ class WSControl {
         this.setOpen(true);
         this.opening = false;
         this.runMsgQueue();
+        this.sendWatchScreenPacket(true);
         // reconnectTimes is reset in onmessage:hello
     }
 
@@ -147,6 +151,24 @@ class WSControl {
             return;
         }
         this.sendMessage(data);
+    }
+
+    sendWatchScreenPacket(connect : boolean) {
+        let pk : WatchScreenPacketType = {"type": "watchscreen", connect: connect, sessionid: null, screenid: null};
+        if (this.watchSessionId != null) {
+            pk.sessionid = this.watchSessionId;
+        }
+        if (this.watchScreenId != null) {
+            pk.screenid = this.watchScreenId;
+        }
+        this.pushMessage(pk);
+    }
+
+    // these params can be null.  (null, null) means stop watching
+    watchScreen(sessionId : string, screenId : string) {
+        this.watchSessionId = sessionId;
+        this.watchScreenId = screenId;
+        this.sendWatchScreenPacket(false);
     }
 }
 

@@ -161,12 +161,14 @@ type FeCmdPacketType = {
     args : string[],
     kwargs : Record<string, string>;
     uicontext : UIContextType,
+    interactive : boolean,
 };
 
 type WatchScreenPacketType = {
     type : string,
     sessionid : string,
     screenid : string,
+    connect : boolean,
 };
 
 type TermOptsType = {
@@ -226,6 +228,8 @@ type ModelUpdateType = {
     cmdline? : CmdLineUpdateType,
     remotes? : RemoteType[],
     history? : HistoryInfoType,
+    interactive : boolean,
+    connect? : boolean,
 };
 
 type HistoryInfoType = {
@@ -264,4 +268,4 @@ type HistoryQueryOpts = {
 
 type UpdateMessage = PtyDataUpdateType | ModelUpdateType;
 
-export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDonePacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType, UIContextType, HistoryInfoType, HistoryQueryOpts};
+export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDonePacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType, UIContextType, HistoryInfoType, HistoryQueryOpts, WatchScreenPacketType};

@@ -1132,8 +1132,6 @@ class Model {
     
     constructor() {
         this.clientId = getApi().getId();
-        this.loadRemotes();
-        this.loadSessionList();
         this.ws = new WSControl(this.clientId, (message : any) => this.runUpdate(message, false));
         this.ws.reconnect();
         this.inputModel = new InputModel();
@@ -1408,6 +1406,10 @@ class Model {
                 this.inputModel.setHistoryInfo(update.history);
             }
         }
+        if ("connect" in update) {
+            this.sessionListLoaded.set(true);
+            this.remotesLoaded.set(true);
+        }
         // console.log("run-update>", Date.now(), interactive, update);
     }
 
@@ -1553,6 +1555,7 @@ class Model {
             args: args,
             kwargs: Object.assign({}, kwargs),
             uicontext : this.getUIContext(),
+            interactive : interactive,
         };
         this.submitCommandPacket(pk, interactive);
     }
@@ -1564,24 +1567,12 @@ class Model {
             args: [cmdStr],
             kwargs: null,
             uicontext : this.getUIContext(),
+            interactive : interactive,
         };
         if (!addToHistory) {
             pk.kwargs["nohist"] = "1";
         }
         this.submitCommandPacket(pk, interactive)
-    }
-
-    loadSessionList() : void {
-        let url = new URL("http://localhost:8080/api/get-all-sessions");
-        fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
-            mobx.action(() => {
-                this.runUpdate(data.data, false);
-                this.sessionListLoaded.set(true);
-            })();
-            return;
-        }).catch((err) => {
-            this.errorHandler("getting session list", err, false);
-        });
     }
 
     _activateSession(sessionId : string) {
@@ -1613,10 +1604,10 @@ class Model {
         })();
         let curScreen = this.getActiveScreen();
         if (curScreen == null) {
-            this.ws.pushMessage({type: "watchscreen", sessionid: sessionId});
+            this.ws.watchScreen(sessionId, null);
             return;
         }
-        this.ws.pushMessage({type: "watchscreen", sessionid: curScreen.sessionId, screenid: curScreen.screenId});
+        this.ws.watchScreen(curScreen.sessionId, curScreen.screenId);
     }
 
     loadWindow(sessionId : string, windowId : string) : Window {
@@ -1635,18 +1626,6 @@ class Model {
             this.errorHandler(sprintf("getting window=%s", windowId), err, false);
         });
         return newWin;
-    }
-
-    loadRemotes() {
-        let url = new URL("http://localhost:8080/api/get-remotes");
-        fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
-            mobx.action(() => {
-                this.runUpdate(data.data, false);
-                this.remotesLoaded.set(true);
-            })();
-        }).catch((err) => {
-            this.errorHandler("calling get-remotes", err, false)
-        });
     }
 
     getRemote(remoteId : string) : RemoteType {
