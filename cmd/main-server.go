@@ -90,7 +90,6 @@ func HandleWs(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		removeWSStateAfterTimeout(clientId, stateConnectTime, WSStateReconnectTime)
 	}()
-	shell.WriteJson(map[string]interface{}{"type": "hello"}) // let client know we accepted this connection, ignore error
 	fmt.Printf("WebSocket opened %s %s\n", state.ClientId, shell.RemoteAddr)
 	state.RunWSRead()
 }
@@ -115,57 +114,6 @@ func writeToFifo(fifoName string, data []byte) error {
 		return err
 	}
 	return nil
-}
-
-// params: sessionid
-func HandleGetSession(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Vary", "Origin")
-	w.Header().Set("Cache-Control", "no-cache")
-	qvals := r.URL.Query()
-	sessionId := qvals.Get("sessionid")
-	if sessionId == "" {
-		WriteJsonError(w, fmt.Errorf("must specify a sessionid"))
-		return
-	}
-	session, err := sstore.GetSessionById(r.Context(), sessionId)
-	if err != nil {
-		WriteJsonError(w, err)
-		return
-	}
-	WriteJsonSuccess(w, session)
-	return
-}
-
-func HandleGetAllSessions(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Vary", "Origin")
-	w.Header().Set("Cache-Control", "no-cache")
-	list, err := sstore.GetAllSessions(r.Context())
-	if err != nil {
-		WriteJsonError(w, fmt.Errorf("cannot get all sessions: %w", err))
-		return
-	}
-	WriteJsonSuccess(w, list)
-	return
-}
-
-// params: [none]
-func HandleGetRemotes(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Vary", "Origin")
-	w.Header().Set("Cache-Control", "no-cache")
-	remotes := remote.GetAllRemoteRuntimeState()
-	ifarr := make([]interface{}, len(remotes))
-	for idx, r := range remotes {
-		ifarr[idx] = r
-	}
-	update := sstore.ModelUpdate{Remotes: ifarr}
-	WriteJsonSuccess(w, update)
-	return
 }
 
 // params: sessionid, windowid
@@ -295,72 +243,6 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// /api/start-session
-//   returns:
-//     * userid
-//     * sessionid
-//
-// /api/ptyout (pos=[position]) - returns contents of ptyout file
-//   params:
-//     * sessionid
-//     * cmdid
-//     * pos
-//   returns:
-//     * stream of ptyout file (text, utf-8)
-//
-// POST /api/run-command
-//   params
-//     * userid
-//     * sessionid
-//   returns
-//     * cmdid
-//
-// /api/refresh-session
-//   params
-//     * sessionid
-//     * start  -- can be negative
-//     * numlines
-//   returns
-//     * permissions (readonly, comment, command)
-//     * lines
-//       * lineid
-//       * ts
-//       * userid
-//       * linetype
-//       * text
-//       * cmdid
-
-// /ws
-//   ->watch-session:
-//     * sessionid
-//   ->watch:
-//     * sessionid
-//     * cmdid
-//   ->focus:
-//     * sessionid
-//     * cmdid
-//   ->input:
-//     * sessionid
-//     * cmdid
-//     * data
-//   ->signal:
-//     * sessionid
-//     * cmdid
-//     * data
-//   <-data:
-//     * sessionid
-//     * cmdid
-//     * pos
-//     * data
-//   <-session-data:
-//     * sessionid
-//     * line
-
-// session-doc
-//   timestamp | user | cmd-type | data
-//   cmd-type = comment
-//   cmd-type = command, commandid=ABC
-
 func runWebSocketServer() {
 	gr := mux.NewRouter()
 	gr.HandleFunc("/ws", HandleWs)
@@ -438,9 +320,7 @@ func main() {
 	go runWebSocketServer()
 	gr := mux.NewRouter()
 	gr.HandleFunc("/api/ptyout", HandleGetPtyOut)
-	gr.HandleFunc("/api/get-all-sessions", HandleGetAllSessions)
 	gr.HandleFunc("/api/get-window", HandleGetWindow)
-	gr.HandleFunc("/api/get-remotes", HandleGetRemotes)
 	gr.HandleFunc("/api/run-command", HandleRunCommand).Methods("GET", "POST", "OPTIONS")
 	server := &http.Server{
 		Addr:           MainServerAddr,

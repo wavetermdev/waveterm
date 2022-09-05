@@ -20,7 +20,7 @@ const initialPingTime = 1 * time.Second
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:   4 * 1024,
-	WriteBufferSize:  4 * 1024,
+	WriteBufferSize:  32 * 1024,
 	HandshakeTimeout: 1 * time.Second,
 	CheckOrigin:      func(r *http.Request) bool { return true },
 }

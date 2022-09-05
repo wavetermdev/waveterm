@@ -36,6 +36,8 @@ type ModelUpdate struct {
 	Info            *InfoMsgType     `json:"info,omitempty"`
 	Remotes         []interface{}    `json:"remotes,omitempty"` // []*remote.RemoteState
 	History         *HistoryInfoType `json:"history,omitempty"`
+	Interactive     bool             `json:"interactive"`
+	Connect         bool             `json:"connect,omitempty"`
 }
 
 func (ModelUpdate) UpdateType() string {
@@ -123,6 +125,7 @@ func MakeUpdateBus() *UpdateBus {
 	}
 }
 
+// always returns a new channel
 func (bus *UpdateBus) RegisterChannel(clientId string, sessionId string) chan interface{} {
 	bus.Lock.Lock()
 	defer bus.Lock.Unlock()

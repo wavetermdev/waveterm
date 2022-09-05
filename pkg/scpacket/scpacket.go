@@ -13,12 +13,13 @@ const WatchScreenPacketStr = "watchscreen"
 const FeInputPacketStr = "feinput"
 
 type FeCommandPacketType struct {
-	Type       string            `json:"type"`
-	MetaCmd    string            `json:"metacmd"`
-	MetaSubCmd string            `json:"metasubcmd,omitempty"`
-	Args       []string          `json:"args,omitempty"`
-	Kwargs     map[string]string `json:"kwargs,omitempty"`
-	UIContext  *UIContextType    `json:"uicontext,omitempty"`
+	Type        string            `json:"type"`
+	MetaCmd     string            `json:"metacmd"`
+	MetaSubCmd  string            `json:"metasubcmd,omitempty"`
+	Args        []string          `json:"args,omitempty"`
+	Kwargs      map[string]string `json:"kwargs,omitempty"`
+	UIContext   *UIContextType    `json:"uicontext,omitempty"`
+	Interactive bool              `json:"interactive"`
 }
 
 type UIContextType struct {
@@ -37,6 +38,13 @@ type FeInputPacketType struct {
 	SigNum      int                  `json:"signum,omitempty"`
 	WinSizeRows int                  `json:"winsizerows"`
 	WinSizeCols int                  `json:"winsizecols"`
+}
+
+type WatchScreenPacketType struct {
+	Type      string `json:"type"`
+	SessionId string `json:"sessionid"`
+	ScreenId  string `json:"screenid"`
+	Connect   bool   `json:"connect"`
 }
 
 func init() {
@@ -70,12 +78,6 @@ func (p *FeInputPacketType) ConvertToInputPacket() *packet.InputPacketType {
 	rtn.WinSizeRows = p.WinSizeRows
 	rtn.WinSizeCols = p.WinSizeCols
 	return rtn
-}
-
-type WatchScreenPacketType struct {
-	Type      string `json:"type"`
-	SessionId string `json:"sessionid"`
-	ScreenId  string `json:"screenid"`
 }
 
 func (*WatchScreenPacketType) GetType() string {
