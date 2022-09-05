@@ -191,7 +191,9 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	if err != nil {
 		return nil, err
 	}
-	return sstore.ModelUpdate{Line: rtnLine, Cmd: cmd}, nil
+	update := sstore.ModelUpdate{Line: rtnLine, Cmd: cmd, Interactive: pk.Interactive}
+	sstore.MainBus.SendUpdate(ids.SessionId, update)
+	return nil, nil
 }
 
 func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, update sstore.UpdatePacket, isMetaCmd bool, hadError bool) error {
