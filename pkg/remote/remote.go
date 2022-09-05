@@ -52,7 +52,7 @@ type Store struct {
 	Lock       *sync.Mutex
 	Map        map[string]*MShellProc // key=remoteid
 	Log        *CircleLog
-	CmdWaitMap map[base.CommandKey][]sstore.UpdatePacket
+	CmdWaitMap map[base.CommandKey][]func()
 }
 
 type MShellProc struct {
@@ -127,7 +127,7 @@ func LoadRemotes(ctx context.Context) error {
 		Lock:       &sync.Mutex{},
 		Map:        make(map[string]*MShellProc),
 		Log:        MakeCircleLog(100),
-		CmdWaitMap: make(map[base.CommandKey][]sstore.UpdatePacket),
+		CmdWaitMap: make(map[base.CommandKey][]func()),
 	}
 	allRemotes, err := sstore.GetAllRemotes(ctx)
 	if err != nil {
@@ -530,17 +530,13 @@ func (msh *MShellProc) IsCmdRunning(ck base.CommandKey) bool {
 	return false
 }
 
-func (msh *MShellProc) SendInput(pk *packet.InputPacketType) error {
+func (msh *MShellProc) SendInput(dataPk *packet.DataPacketType) error {
 	if !msh.IsConnected() {
 		return fmt.Errorf("remote is not connected, cannot send input")
 	}
-	if !msh.IsCmdRunning(pk.CK) {
+	if !msh.IsCmdRunning(dataPk.CK) {
 		return fmt.Errorf("cannot send input, cmd is not running")
 	}
-	dataPk := packet.MakeDataPacket()
-	dataPk.CK = pk.CK
-	dataPk.FdNum = 0 // stdin
-	dataPk.Data64 = pk.InputData64
 	return msh.ServerProc.Input.SendPacket(dataPk)
 }
 
@@ -674,11 +670,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 		return
 	}
 	if update != nil {
-		// TODO fix timing issue (this update gets to the FE before run-command returns for short lived commands)
-		go func() {
-			time.Sleep(10 * time.Millisecond)
-			sendCmdUpdate(donePk.CK, update)
-		}()
+		sstore.MainBus.SendUpdate(donePk.CK.GetSessionId(), update)
 	}
 	return
 }
@@ -711,13 +703,25 @@ func (msh *MShellProc) handleDataPacket(dataPk *packet.DataPacketType, dataPosMa
 		}
 		dataPosMap[dataPk.CK] += int64(len(realData))
 		if update != nil {
-			sendCmdUpdate(dataPk.CK, update)
+			sstore.MainBus.SendUpdate(dataPk.CK.GetSessionId(), update)
 		}
 	}
 	if ack != nil {
 		msh.ServerProc.Input.SendPacket(ack)
 	}
 	// fmt.Printf("data %s fd=%d len=%d eof=%v err=%v\n", dataPk.CK, dataPk.FdNum, len(realData), dataPk.Eof, dataPk.Error)
+}
+
+func (msh *MShellProc) makeHandleDataPacketClosure(dataPk *packet.DataPacketType, dataPosMap map[base.CommandKey]int64) func() {
+	return func() {
+		msh.handleDataPacket(dataPk, dataPosMap)
+	}
+}
+
+func (msh *MShellProc) makeHandleCmdDonePacketClosure(donePk *packet.CmdDonePacketType) func() {
+	return func() {
+		msh.handleCmdDonePacket(donePk)
+	}
 }
 
 func (msh *MShellProc) ProcessPackets() {
@@ -736,7 +740,7 @@ func (msh *MShellProc) ProcessPackets() {
 	for pk := range msh.ServerProc.Output.MainCh {
 		if pk.GetType() == packet.DataPacketStr {
 			dataPk := pk.(*packet.DataPacketType)
-			msh.handleDataPacket(dataPk, dataPosMap)
+			runCmdUpdateFn(dataPk.CK, msh.makeHandleDataPacketClosure(dataPk, dataPosMap))
 			continue
 		}
 		if pk.GetType() == packet.DataAckPacketStr {
@@ -750,7 +754,8 @@ func (msh *MShellProc) ProcessPackets() {
 			continue
 		}
 		if pk.GetType() == packet.CmdDonePacketStr {
-			msh.handleCmdDonePacket(pk.(*packet.CmdDonePacketType))
+			donePk := pk.(*packet.CmdDonePacketType)
+			runCmdUpdateFn(donePk.CK, msh.makeHandleCmdDonePacketClosure(donePk))
 			continue
 		}
 		if pk.GetType() == packet.CmdErrorPacketStr {

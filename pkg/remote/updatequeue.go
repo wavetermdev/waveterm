@@ -2,65 +2,64 @@ package remote
 
 import (
 	"github.com/scripthaus-dev/mshell/pkg/base"
-	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
 )
 
-func pushCmdWaitIfRequired(ck base.CommandKey, update sstore.UpdatePacket) bool {
+func pushCmdWaitIfRequired(ck base.CommandKey, fn func()) bool {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
-	updates, ok := GlobalStore.CmdWaitMap[ck]
+	fns, ok := GlobalStore.CmdWaitMap[ck]
 	if !ok {
 		return false
 	}
-	updates = append(updates, update)
-	GlobalStore.CmdWaitMap[ck] = updates
+	fns = append(fns, fn)
+	GlobalStore.CmdWaitMap[ck] = fns
 	return true
 }
 
-func sendCmdUpdate(ck base.CommandKey, update sstore.UpdatePacket) {
-	pushed := pushCmdWaitIfRequired(ck, update)
+func runCmdUpdateFn(ck base.CommandKey, fn func()) {
+	pushed := pushCmdWaitIfRequired(ck, fn)
 	if pushed {
 		return
 	}
-	sstore.MainBus.SendUpdate(ck.GetSessionId(), update)
+	fn()
 }
 
-func runCmdWaitUpdates(ck base.CommandKey) {
+func runCmdWaitFns(ck base.CommandKey) {
 	for {
-		update := removeFirstCmdWaitUpdate(ck)
-		if update == nil {
+		fn := removeFirstCmdWaitFn(ck)
+		if fn == nil {
 			break
 		}
-		sstore.MainBus.SendUpdate(ck.GetSessionId(), update)
+		fn()
 	}
 }
 
-func removeFirstCmdWaitUpdate(ck base.CommandKey) sstore.UpdatePacket {
+func removeFirstCmdWaitFn(ck base.CommandKey) func() {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
 
-	updates := GlobalStore.CmdWaitMap[ck]
-	if len(updates) == 0 {
+	fns := GlobalStore.CmdWaitMap[ck]
+	if len(fns) == 0 {
 		delete(GlobalStore.CmdWaitMap, ck)
 		return nil
 	}
-	if len(updates) == 1 {
+	if len(fns) == 1 {
 		delete(GlobalStore.CmdWaitMap, ck)
-		return updates[0]
+		return fns[0]
 	}
-	update := updates[0]
-	GlobalStore.CmdWaitMap[ck] = updates[1:]
-	return update
+	fn := fns[0]
+	GlobalStore.CmdWaitMap[ck] = fns[1:]
+	return fn
 }
 
 func removeCmdWait(ck base.CommandKey) {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
 
-	updates := GlobalStore.CmdWaitMap[ck]
-	if len(updates) == 0 {
+	fns := GlobalStore.CmdWaitMap[ck]
+	if len(fns) == 0 {
 		delete(GlobalStore.CmdWaitMap, ck)
 		return
 	}
-	go runCmdWaitUpdates(ck)
+	go runCmdWaitFns(ck)
 }

@@ -188,9 +188,8 @@ func (ws *WSState) RunWSRead() {
 				fmt.Printf("[error] invalid input packet, remoteid is not set\n")
 				continue
 			}
-			inputPk := feInputPk.ConvertToInputPacket()
 			go func() {
-				err = sendCmdInput(inputPk)
+				err = sendCmdInput(feInputPk)
 				if err != nil {
 					fmt.Printf("[error] sending command input: %v\n", err)
 				}
@@ -210,24 +209,31 @@ func (ws *WSState) RunWSRead() {
 	}
 }
 
-func sendCmdInput(pk *packet.InputPacketType) error {
+func sendCmdInput(pk *scpacket.FeInputPacketType) error {
 	err := pk.CK.Validate("input packet")
 	if err != nil {
 		return err
 	}
-	if pk.RemoteId == "" {
+	if pk.Remote.RemoteId == "" {
 		return fmt.Errorf("input must set remoteid")
 	}
-	if len(pk.InputData64) == 0 && pk.SigNum == 0 {
-		return fmt.Errorf("empty input packet")
+	if len(pk.InputData64) > 0 {
+		inputLen := packet.B64DecodedLen(pk.InputData64)
+		if inputLen > MaxInputDataSize {
+			return fmt.Errorf("input data size too large, len=%d (max=%d)", inputLen, MaxInputDataSize)
+		}
+		msh := remote.GetRemoteById(pk.Remote.RemoteId)
+		if msh == nil {
+			return fmt.Errorf("remote %d not found", pk.Remote.RemoteId)
+		}
+		dataPk := packet.MakeDataPacket()
+		dataPk.CK = pk.CK
+		dataPk.FdNum = 0 // stdin
+		dataPk.Data64 = pk.InputData64
+		return msh.SendInput(dataPk)
 	}
-	inputLen := packet.B64DecodedLen(pk.InputData64)
-	if inputLen > MaxInputDataSize {
-		return fmt.Errorf("input data size too large, len=%d (max=%d)", inputLen, MaxInputDataSize)
+	if pk.SigNum != 0 || pk.WinSize != nil {
+		return fmt.Errorf("signum / winsize not supported")
 	}
-	msh := remote.GetRemoteById(pk.RemoteId)
-	if msh == nil {
-		return fmt.Errorf("cannot connect to remote")
-	}
-	return msh.SendInput(pk)
+	return nil
 }

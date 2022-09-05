@@ -36,8 +36,7 @@ type FeInputPacketType struct {
 	Remote      sstore.RemotePtrType `json:"remote"`
 	InputData64 string               `json:"inputdata"`
 	SigNum      int                  `json:"signum,omitempty"`
-	WinSizeRows int                  `json:"winsizerows"`
-	WinSizeCols int                  `json:"winsizecols"`
+	WinSize     *packet.WinSize      `json:"winsize,omitempty"`
 }
 
 type WatchScreenPacketType struct {
@@ -67,17 +66,6 @@ func (*FeInputPacketType) GetType() string {
 
 func MakeFeInputPacket() *FeInputPacketType {
 	return &FeInputPacketType{Type: FeInputPacketStr}
-}
-
-func (p *FeInputPacketType) ConvertToInputPacket() *packet.InputPacketType {
-	rtn := packet.MakeInputPacket()
-	rtn.CK = p.CK
-	rtn.RemoteId = p.Remote.RemoteId
-	rtn.InputData64 = p.InputData64
-	rtn.SigNum = p.SigNum
-	rtn.WinSizeRows = p.WinSizeRows
-	rtn.WinSizeCols = p.WinSizeCols
-	return rtn
 }
 
 func (*WatchScreenPacketType) GetType() string {

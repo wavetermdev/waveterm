@@ -261,7 +261,20 @@ func runWebSocketServer() {
 	}
 }
 
+func test() error {
+	return nil
+}
+
 func main() {
+	if len(os.Args) >= 2 && os.Args[1] == "--test" {
+		fmt.Printf("running test fn\n")
+		err := test()
+		if err != nil {
+			fmt.Printf("[error] %v\n", err)
+		}
+		return
+	}
+
 	scLock, err := scbase.AcquireSCLock()
 	if err != nil || scLock == nil {
 		fmt.Printf("[error] cannot acquire sh2 lock: %v\n", err)
