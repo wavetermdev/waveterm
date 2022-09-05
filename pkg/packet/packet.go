@@ -32,25 +32,25 @@ const MaxCompGenValues = 100
 var GlobalDebug = false
 
 const (
-	RunPacketStr       = "run" // rpc
-	PingPacketStr      = "ping"
-	InitPacketStr      = "init"
-	DataPacketStr      = "data"     // command
-	DataAckPacketStr   = "dataack"  // command
-	CmdStartPacketStr  = "cmdstart" // rpc-response
-	CmdDonePacketStr   = "cmddone"  // command
-	DataEndPacketStr   = "dataend"
-	ResponsePacketStr  = "resp" // rpc-response
-	DonePacketStr      = "done"
-	CmdErrorPacketStr  = "cmderror" // command
-	MessagePacketStr   = "message"
-	GetCmdPacketStr    = "getcmd"    // rpc
-	UntailCmdPacketStr = "untailcmd" // rpc
-	CdPacketStr        = "cd"        // rpc
-	CmdDataPacketStr   = "cmddata"   // rpc-response
-	RawPacketStr       = "raw"
-	InputPacketStr     = "input"   // command
-	CompGenPacketStr   = "compgen" // rpc
+	RunPacketStr          = "run" // rpc
+	PingPacketStr         = "ping"
+	InitPacketStr         = "init"
+	DataPacketStr         = "data"     // command
+	DataAckPacketStr      = "dataack"  // command
+	CmdStartPacketStr     = "cmdstart" // rpc-response
+	CmdDonePacketStr      = "cmddone"  // command
+	DataEndPacketStr      = "dataend"
+	ResponsePacketStr     = "resp" // rpc-response
+	DonePacketStr         = "done"
+	CmdErrorPacketStr     = "cmderror" // command
+	MessagePacketStr      = "message"
+	GetCmdPacketStr       = "getcmd"    // rpc
+	UntailCmdPacketStr    = "untailcmd" // rpc
+	CdPacketStr           = "cd"        // rpc
+	CmdDataPacketStr      = "cmddata"   // rpc-response
+	RawPacketStr          = "raw"
+	SpecialInputPacketStr = "sinput"  // command
+	CompGenPacketStr      = "compgen" // rpc
 )
 
 const PacketSenderQueueSize = 20
@@ -73,7 +73,7 @@ func init() {
 	TypeStrToFactory[CdPacketStr] = reflect.TypeOf(CdPacketType{})
 	TypeStrToFactory[CmdDataPacketStr] = reflect.TypeOf(CmdDataPacketType{})
 	TypeStrToFactory[RawPacketStr] = reflect.TypeOf(RawPacketType{})
-	TypeStrToFactory[InputPacketStr] = reflect.TypeOf(InputPacketType{})
+	TypeStrToFactory[SpecialInputPacketStr] = reflect.TypeOf(SpecialInputPacketType{})
 	TypeStrToFactory[DataPacketStr] = reflect.TypeOf(DataPacketType{})
 	TypeStrToFactory[DataAckPacketStr] = reflect.TypeOf(DataAckPacketType{})
 	TypeStrToFactory[DataEndPacketStr] = reflect.TypeOf(DataEndPacketType{})
@@ -92,7 +92,7 @@ func init() {
 	var _ CommandPacketType = (*DataPacketType)(nil)
 	var _ CommandPacketType = (*DataAckPacketType)(nil)
 	var _ CommandPacketType = (*CmdDonePacketType)(nil)
-	var _ CommandPacketType = (*InputPacketType)(nil)
+	var _ CommandPacketType = (*SpecialInputPacketType)(nil)
 }
 
 func RegisterPacketType(typeStr string, rtype reflect.Type) {
@@ -238,29 +238,30 @@ func MakeDataAckPacket() *DataAckPacketType {
 	return &DataAckPacketType{Type: DataAckPacketStr}
 }
 
-// InputData gets written to PTY directly
+type WinSize struct {
+	Rows int `json:"rows"`
+	Cols int `json:"cols"`
+}
+
 // SigNum gets sent to process via a signal
 // WinSize, if set, will run TIOCSWINSZ to set size, and then send SIGWINCH
-type InputPacketType struct {
-	Type        string          `json:"type"`
-	CK          base.CommandKey `json:"ck"`
-	RemoteId    string          `json:"remoteid"`
-	InputData64 string          `json:"inputdata"`
-	SigNum      int             `json:"signum,omitempty"`
-	WinSizeRows int             `json:"winsizerows"`
-	WinSizeCols int             `json:"winsizecols"`
+type SpecialInputPacketType struct {
+	Type    string          `json:"type"`
+	CK      base.CommandKey `json:"ck"`
+	SigNum  int             `json:"signum,omitempty"`
+	WinSize *WinSize        `json:"winsize,omitempty"`
 }
 
-func (*InputPacketType) GetType() string {
-	return InputPacketStr
+func (*SpecialInputPacketType) GetType() string {
+	return SpecialInputPacketStr
 }
 
-func (p *InputPacketType) GetCK() base.CommandKey {
+func (p *SpecialInputPacketType) GetCK() base.CommandKey {
 	return p.CK
 }
 
-func MakeInputPacket() *InputPacketType {
-	return &InputPacketType{Type: InputPacketStr}
+func MakeSpecialInputPacket() *SpecialInputPacketType {
+	return &SpecialInputPacketType{Type: SpecialInputPacketStr}
 }
 
 type UntailCmdPacketType struct {

@@ -307,6 +307,7 @@ func (f *File) getFreeChunks() []fileChunk {
 	return rtn
 }
 
+// returns (offset, data, err)
 func (f *File) ReadAll(ctx context.Context) (int64, []byte, error) {
 	err := f.flock(ctx, syscall.LOCK_SH)
 	if err != nil {
