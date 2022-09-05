@@ -180,7 +180,10 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 		}
 	}
 	runPacket.Command = strings.TrimSpace(cmdStr)
-	cmd, err := remote.RunCommand(ctx, cmdId, ids.Remote.RemotePtr, ids.Remote.RemoteState, runPacket)
+	cmd, callback, err := remote.RunCommand(ctx, cmdId, ids.Remote.RemotePtr, ids.Remote.RemoteState, runPacket)
+	if callback != nil {
+		defer callback()
+	}
 	if err != nil {
 		return nil, err
 	}

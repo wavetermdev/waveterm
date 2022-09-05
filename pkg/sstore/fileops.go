@@ -21,22 +21,22 @@ func CreateCmdPtyFile(ctx context.Context, sessionId string, cmdId string, maxSi
 	return f.Close()
 }
 
-func AppendToCmdPtyBlob(ctx context.Context, sessionId string, cmdId string, data []byte, pos int64) error {
+func AppendToCmdPtyBlob(ctx context.Context, sessionId string, cmdId string, data []byte, pos int64) (*PtyDataUpdate, error) {
 	if pos < 0 {
-		return fmt.Errorf("invalid seek pos '%d' in AppendToCmdPtyBlob", pos)
+		return nil, fmt.Errorf("invalid seek pos '%d' in AppendToCmdPtyBlob", pos)
 	}
 	ptyOutFileName, err := scbase.PtyOutFile(sessionId, cmdId)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	f, err := cirfile.OpenCirFile(ptyOutFileName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer f.Close()
 	err = f.WriteAt(ctx, data, pos)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	data64 := base64.StdEncoding.EncodeToString(data)
 	update := &PtyDataUpdate{
@@ -46,8 +46,7 @@ func AppendToCmdPtyBlob(ctx context.Context, sessionId string, cmdId string, dat
 		PtyData64:  data64,
 		PtyDataLen: int64(len(data)),
 	}
-	MainBus.SendUpdate(sessionId, update)
-	return nil
+	return update, nil
 }
 
 // returns (offset, data, err)
