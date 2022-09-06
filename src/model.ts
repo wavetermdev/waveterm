@@ -280,11 +280,23 @@ class ScreenWindow {
         term.updatePtyData(ptyMsg.ptypos, data);
     }
 
+    isActive() : boolean {
+        let activeScreen = GlobalModel.getActiveScreen();
+        if (activeScreen == null) {
+            return false;
+        }
+        return (this.sessionId = activeScreen.sessionId) && (this.screenId == activeScreen.screenId);
+    }
+
     colsCallback(cols : number) : void {
+        if (!this.isActive()) {
+            return;
+        }
         console.log("cols set", cols);
         for (let cmdid in this.terms) {
             this.terms[cmdid].resizeCols(cols);
         }
+        GlobalCommandRunner.resizeWindow(this.windowId, cols);
     }
 
     setWidth(width : number) : void {
@@ -1739,6 +1751,10 @@ class CommandRunner {
 
     closeScreen(screen : string) {
         GlobalModel.submitCommand("screen", "close", [screen], {"nohist": "1"}, false);
+    }
+
+    resizeWindow(windowId : string, cols : number) {
+        GlobalModel.submitCommand("window", "resize", null, {"nohist": "1", "window": windowId, "cols": String(cols)}, false);
     }
 };
 
