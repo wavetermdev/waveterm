@@ -12,9 +12,7 @@ import (
 	"io"
 	"os"
 	"sync"
-	"syscall"
 
-	"github.com/creack/pty"
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 )
@@ -31,8 +29,6 @@ type Multiplexer struct {
 	FdWriters       map[int]*FdWriter // synchronized
 	RunData         map[int]*FdReader // synchronized
 	CloseAfterStart []*os.File        // synchronized
-	PtyFd           *os.File
-	CmdProc         *os.Process
 
 	Sender  *packet.PacketSender
 	Input   *packet.PacketParser
@@ -53,12 +49,6 @@ func MakeMultiplexer(ck base.CommandKey, upr packet.UnknownPacketReporter) *Mult
 		FdWriters: make(map[int]*FdWriter),
 		UPR:       upr,
 	}
-}
-
-func (m *Multiplexer) SetPtyFd(ptyFd *os.File) {
-	m.Lock.Lock()
-	defer m.Lock.Unlock()
-	m.PtyFd = ptyFd
 }
 
 func (m *Multiplexer) Close() {
@@ -230,34 +220,9 @@ func (m *Multiplexer) runPacketInputLoop() *packet.CmdDonePacketType {
 			donePacket := pk.(*packet.CmdDonePacketType)
 			return donePacket
 		}
-		if pk.GetType() == packet.SpecialInputPacketStr {
-			inputPacket := pk.(*packet.SpecialInputPacketType)
-			m.processSpecialInputPacket(inputPacket)
-		}
 		m.UPR.UnknownPacket(pk)
 	}
 	return nil
-}
-
-func (m *Multiplexer) processSpecialInputPacket(pk *packet.SpecialInputPacketType) {
-	m.Lock.Lock()
-	ptyFd := m.PtyFd
-	cmdProc := m.CmdProc
-	m.Lock.Unlock()
-	if ptyFd == nil {
-		// no pty, maybe send a message back to server, but the server always starts with a pty, so this shouldn't be an issue
-		return
-	}
-	if pk.WinSize != nil {
-		winSize := &pty.Winsize{
-			//Rows: base.BoundInt(pk.WinSize.Rows, shexec.MinTermRows, shexec.MaxTermRows),
-			//Cols: base.BoundInt(pk.Winsize.Cols, shexec.MinTermCols, shexec.MaxTermCols),
-		}
-		pty.Setsize(ptyFd, winSize)
-		if cmdProc != nil {
-			cmdProc.Signal(syscall.SIGWINCH)
-		}
-	}
 }
 
 func (m *Multiplexer) processDataPacket(dataPacket *packet.DataPacketType) error {

@@ -17,7 +17,6 @@ import (
 	"os/signal"
 	"os/user"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
@@ -70,7 +69,6 @@ const RunSudoCommandFmt = `sudo -n -C %d bash /dev/fd/%d`
 const RunSudoPasswordCommandFmt = `cat /dev/fd/%d | sudo -k -S -C %d bash -c "echo '[from-mshell]'; exec %d>&-; bash /dev/fd/%d < /dev/fd/%d"`
 
 type ShExecType struct {
-	Lock           *sync.Mutex
 	StartTs        time.Time
 	CK             base.CommandKey
 	FileNames      *base.CommandFileNames
@@ -81,6 +79,7 @@ type ShExecType struct {
 	Detached       bool
 	DetachedOutput *packet.PacketSender
 	RunnerOutFd    *os.File
+	MsgSender      *packet.PacketSender // where to send out-of-band messages back to calling proceess
 }
 
 type StdContext struct{}
@@ -118,9 +117,50 @@ type FdContext interface {
 	GetReader(fdNum int) io.ReadCloser
 }
 
+type ShExecUPR struct {
+	ShExec *ShExecType
+	UPR    packet.UnknownPacketReporter
+}
+
+func (s *ShExecType) processSpecialInputPacket(pk *packet.SpecialInputPacketType) error {
+	if pk.WinSize != nil {
+		if s.CmdPty == nil {
+			return fmt.Errorf("cannot change winsize, cmd was not started with a pty")
+		}
+		winSize := &pty.Winsize{
+			Rows: uint16(base.BoundInt(pk.WinSize.Rows, MinTermRows, MaxTermRows)),
+			Cols: uint16(base.BoundInt(pk.WinSize.Cols, MinTermCols, MaxTermCols)),
+		}
+		pty.Setsize(s.CmdPty, winSize)
+		s.Cmd.Process.Signal(syscall.SIGWINCH)
+	}
+	if pk.SigName != "" {
+		sigNum := unix.SignalNum(pk.SigName)
+		if sigNum == 0 {
+			return fmt.Errorf("error signal %q not found, cannot send", pk.SigName)
+		}
+	}
+	return nil
+}
+
+func (s ShExecUPR) UnknownPacket(pk packet.PacketType) {
+	if pk.GetType() == packet.SpecialInputPacketStr {
+		inputPacket := pk.(*packet.SpecialInputPacketType)
+		err := s.ShExec.processSpecialInputPacket(inputPacket)
+		if err != nil && s.ShExec.MsgSender != nil {
+			msg := packet.MakeMessagePacket(err.Error())
+			msg.CK = s.ShExec.CK
+			s.ShExec.MsgSender.SendPacket(msg)
+		}
+		return
+	}
+	if s.UPR != nil {
+		s.UPR.UnknownPacket(pk)
+	}
+}
+
 func MakeShExec(ck base.CommandKey, upr packet.UnknownPacketReporter) *ShExecType {
 	return &ShExecType{
-		Lock:        &sync.Mutex{},
 		StartTs:     time.Now(),
 		CK:          ck,
 		Multiplexer: mpio.MakeMultiplexer(ck, upr),
@@ -835,11 +875,13 @@ func getTermType(pk *packet.RunPacketType) string {
 }
 
 func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fromServer bool) (*ShExecType, error) {
-	var upr packet.UnknownPacketReporter
+	cmd := MakeShExec(pk.CK, nil)
 	if fromServer {
-		upr = packet.MessageUPR{CK: pk.CK, Sender: sender}
+		msgUpr := packet.MessageUPR{CK: pk.CK, Sender: sender}
+		upr := ShExecUPR{ShExec: cmd, UPR: msgUpr}
+		cmd.Multiplexer.UPR = upr
+		cmd.MsgSender = sender
 	}
-	cmd := MakeShExec(pk.CK, upr)
 	if pk.UsePty {
 		cmd.Cmd = exec.Command("bash", "-i", "-c", pk.Command)
 	} else {
@@ -869,7 +911,6 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 			cmdTty.Close()
 		}()
 		cmd.CmdPty = cmdPty
-		cmd.Multiplexer.SetPtyFd(cmdPty)
 		UpdateCmdEnv(cmd.Cmd, map[string]string{"TERM": getTermType(pk)})
 	}
 	if cmdTty != nil {
@@ -1051,7 +1092,6 @@ func RunCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) (
 	cmd.CmdPty = cmdPty
 	cmd.Detached = true
 	cmd.MaxPtySize = DefaultMaxPtySize
-	cmd.Multiplexer.SetPtyFd(cmdPty)
 	if pk.TermOpts != nil && pk.TermOpts.MaxPtySize > 0 {
 		cmd.MaxPtySize = base.BoundInt64(pk.TermOpts.MaxPtySize, MinMaxPtySize, MaxMaxPtySize)
 	}
