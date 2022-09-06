@@ -136,9 +136,12 @@ class TermWrap {
         return usedRows;
     }
 
-    updateUsedRows() {
+    updateUsedRows(forceFull : boolean) {
         if (this.terminal == null) {
             return;
+        }
+        if (forceFull) {
+            this.atRowMax = false;
         }
         if (this.atRowMax) {
             return;
@@ -147,11 +150,11 @@ class TermWrap {
         if (tur >= this.terminal.rows) {
             this.atRowMax = true;
         }
-        if (tur <= this.usedRows.get()) {
-            return;
-        }
         mobx.action(() => {
             let oldUsedRows = this.usedRows.get();
+            if (!forceFull && tur <= oldUsedRows) {
+                return;
+            }
             this.usedRows.set(tur);
             GlobalModel.setTUR(this.sessionId, this.cmdId, this.termSize, tur);
             if (this.connectedElem) {
@@ -184,6 +187,7 @@ class TermWrap {
         }
         this.termSize = newSize;
         this.terminal.resize(newSize.cols, newSize.rows);
+        this.updateUsedRows(true);
     }
 
     reloadTerminal(delayMs : number) {
@@ -240,7 +244,7 @@ class TermWrap {
         }
         this.ptyPos += data.length;
         this.terminal.write(data, () => {
-            this.updateUsedRows();
+            this.updateUsedRows(false);
         });
     }
 }

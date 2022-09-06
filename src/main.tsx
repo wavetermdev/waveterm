@@ -1064,10 +1064,16 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
                 cmdNum++;
             }
         }
+        let isActive = sw.isActive();
         return (
             <div className="window-view" style={this.getWindowViewStyle()} id={this.getWindowViewDOMId()}>
-                <div key="window-tag" className="window-tag">
-                    <span>{sw.name.get()}{sw.shouldFollow.get() ? "*" : ""}</span>
+                <div key="window-tag" className={cn("window-tag", {"is-active": isActive})}>
+                    <span>
+                        {sw.name.get()}
+                        <If condition={sw.shouldFollow.get()}>
+                            &nbsp;<i className="fa fa-caret-down"/>
+                        </If>
+                    </span>
                 </div>
                 <div key="lines" className="lines" onScroll={this.scrollHandler} id={this.getLinesDOMId()} style={linesStyle}>
                     <div className="lines-spacer"></div>
