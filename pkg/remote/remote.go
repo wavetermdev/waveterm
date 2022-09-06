@@ -695,7 +695,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 func (msh *MShellProc) handleCmdErrorPacket(errPk *packet.CmdErrorPacketType) {
 	err := sstore.AppendCmdErrorPk(context.Background(), errPk)
 	if err != nil {
-		fmt.Printf("[error] adding cmderr: %v\n", err)
+		fmt.Printf("cmderr> [remote %s] [error] adding cmderr: %v\n", msh.GetRemoteName(), err)
 		return
 	}
 	return
@@ -766,7 +766,7 @@ func (msh *MShellProc) ProcessPackets() {
 		}
 		if pk.GetType() == packet.CmdDataPacketStr {
 			dataPacket := pk.(*packet.CmdDataPacketType)
-			fmt.Printf("cmd-data %s pty=%d run=%d\n", dataPacket.CK, dataPacket.PtyDataLen, dataPacket.RunDataLen)
+			fmt.Printf("cmd-data> [remote %s] [%s] pty=%d run=%d\n", msh.GetRemoteName(), dataPacket.CK, dataPacket.PtyDataLen, dataPacket.RunDataLen)
 			continue
 		}
 		if pk.GetType() == packet.CmdDonePacketStr {
@@ -785,15 +785,15 @@ func (msh *MShellProc) ProcessPackets() {
 		}
 		if pk.GetType() == packet.RawPacketStr {
 			rawPacket := pk.(*packet.RawPacketType)
-			fmt.Printf("stderr> %s\n", rawPacket.Data)
+			fmt.Printf("stderr> [remote %s] %s\n", msh.GetRemoteName(), rawPacket.Data)
 			continue
 		}
 		if pk.GetType() == packet.CmdStartPacketStr {
 			startPk := pk.(*packet.CmdStartPacketType)
-			fmt.Printf("start> reqid=%s (%p)\n", startPk.RespId, msh.ServerProc.Output)
+			fmt.Printf("start> [remote %s] reqid=%s (%p)\n", msh.GetRemoteName(), startPk.RespId, msh.ServerProc.Output)
 			continue
 		}
-		fmt.Printf("MSH> unhandled packet %s\n", packet.AsString(pk))
+		fmt.Printf("MSH> [remote %s] unhandled packet %s\n", msh.GetRemoteName(), packet.AsString(pk))
 	}
 }
 
