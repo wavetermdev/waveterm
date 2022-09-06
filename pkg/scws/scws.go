@@ -235,10 +235,10 @@ func sendCmdInput(pk *scpacket.FeInputPacketType) error {
 			return err
 		}
 	}
-	if pk.SigNum != 0 || pk.WinSize != nil {
+	if pk.SigName != "" || pk.WinSize != nil {
 		siPk := packet.MakeSpecialInputPacket()
 		siPk.CK = pk.CK
-		siPk.SigNum = pk.SigNum
+		siPk.SigName = pk.SigName
 		siPk.WinSize = pk.WinSize
 		err = msh.SendSpecialInput(siPk)
 		if err != nil {

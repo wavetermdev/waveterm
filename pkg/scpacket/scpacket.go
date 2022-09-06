@@ -35,7 +35,7 @@ type FeInputPacketType struct {
 	CK          base.CommandKey      `json:"ck"`
 	Remote      sstore.RemotePtrType `json:"remote"`
 	InputData64 string               `json:"inputdata64"`
-	SigNum      int                  `json:"signum,omitempty"`
+	SigName     string               `json:"signame,omitempty"`
 	WinSize     *packet.WinSize      `json:"winsize,omitempty"`
 }
 
