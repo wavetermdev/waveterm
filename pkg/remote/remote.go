@@ -405,6 +405,12 @@ func (msh *MShellProc) Disconnect() {
 	msh.ServerProc.Close()
 }
 
+func (msh *MShellProc) GetRemoteName() string {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	return msh.Remote.GetName()
+}
+
 func (msh *MShellProc) Launch() {
 	remoteCopy := msh.getRemoteCopy()
 	logf(&remoteCopy, "starting launch")
@@ -774,7 +780,7 @@ func (msh *MShellProc) ProcessPackets() {
 		}
 		if pk.GetType() == packet.MessagePacketStr {
 			msgPacket := pk.(*packet.MessagePacketType)
-			fmt.Printf("# %s\n", msgPacket.Message)
+			fmt.Printf("# [remote %s] [%s] %s\n", msh.GetRemoteName(), msgPacket.CK, msgPacket.Message)
 			continue
 		}
 		if pk.GetType() == packet.RawPacketStr {
