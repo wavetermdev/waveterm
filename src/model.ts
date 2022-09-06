@@ -1,10 +1,11 @@
 import * as mobx from "mobx";
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
+import {debounce} from "throttle-debounce";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts} from "./types";
+import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize} from "./types";
 import {WSControl} from "./ws";
 
 var GlobalUser = "sawka";
@@ -153,11 +154,11 @@ class Cmd {
             return;
         }
         let data = this.data.get();
-        let inputPacket = {
+        let inputPacket : FeInputPacketType = {
             type: "feinput",
             ck: this.sessionId + "/" + this.cmdId,
-            inputdata: btoa(event.key),
             remote: this.remote,
+            inputdata64: btoa(event.key),
         };
         GlobalModel.sendInputPacket(inputPacket);
     }
@@ -253,6 +254,8 @@ class ScreenWindow {
     layout : OV<LayoutType>;
     shouldFollow : OV<boolean> = mobx.observable.box(true);
     width : OV<number> = mobx.observable.box(0);
+    widthInCols : number;
+    colsCallback_debounced : (cols : number) => void;
 
     // cmdid => TermWrap
     terms : Record<string, TermWrap> = {};
@@ -263,6 +266,8 @@ class ScreenWindow {
         this.windowId = swdata.windowid;
         this.name = mobx.observable.box(swdata.name);
         this.layout = mobx.observable.box(swdata.layout);
+        this.colsCallback_debounced = debounce(1000, this.colsCallback.bind(this));
+        this.widthInCols = 0;
     }
 
     updatePtyData(ptyMsg : PtyDataUpdateType) {
@@ -275,9 +280,21 @@ class ScreenWindow {
         term.updatePtyData(ptyMsg.ptypos, data);
     }
 
+    colsCallback(cols : number) : void {
+        console.log("cols set", cols);
+        for (let cmdid in this.terms) {
+            this.terms[cmdid].resizeCols(cols);
+        }
+    }
+
     setWidth(width : number) : void {
         mobx.action(() => {
+            let oldCols = this.widthInCols;
             this.width.set(width);
+            this.widthInCols = widthToCols(width);
+            if (this.widthInCols > 0 && this.widthInCols != oldCols) {
+                this.colsCallback_debounced(this.widthInCols);
+            }
         })();
     }
 
@@ -1149,8 +1166,8 @@ class Model {
         return this.termUsedRowsCache[key];
     }
 
-    setTUR(sessionId : string, cmdId : string, cols : number, usedRows : number) : void {
-        let key = sessionId + "/" + cmdId + "/" + cols;
+    setTUR(sessionId : string, cmdId : string, size : TermWinSize, usedRows : number) : void {
+        let key = sessionId + "/" + cmdId + "/" + size.cols;
         this.termUsedRowsCache[key] = usedRows;
     }
     

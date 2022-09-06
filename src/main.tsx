@@ -4,9 +4,9 @@ import * as mobx from "mobx";
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 import {v4 as uuidv4} from "uuid";
-import dayjs from 'dayjs'
+import dayjs from "dayjs";
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
-import cn from "classnames"
+import cn from "classnames";
 import {TermWrap} from "./term";
 import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts} from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';

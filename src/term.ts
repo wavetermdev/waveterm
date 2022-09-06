@@ -4,7 +4,7 @@ import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 import {v4 as uuidv4} from "uuid";
 import {GlobalModel} from "./model";
-import type {TermOptsType} from "./types";
+import type {TermOptsType, TermWinSize} from "./types";
 
 type DataUpdate = {
     data : Uint8Array,
@@ -18,6 +18,18 @@ type WindowSize = {
 
 const DefaultCellWidth = 8;
 const DefaultCellHeight = 16;
+const MinTermCols = 10;
+const MaxTermCols = 1024;
+
+function boundInt(ival : number, minVal : number, maxVal : number) : number {
+    if (ival < minVal) {
+        return minVal;
+    }
+    if (ival > maxVal) {
+        return maxVal;
+    }
+    return ival;
+}
 
 // cmd-instance
 class TermWrap {
@@ -35,7 +47,7 @@ class TermWrap {
     loadError : mobx.IObservableValue<boolean> = mobx.observable.box(false);
     winSize : WindowSize;
     numParseErrors : number = 0;
-    termCols : number;
+    termSize : TermWinSize;
 
     constructor(elem : Element, sessionId : string, cmdId : string, usedRows : number, termOpts : TermOptsType, winSize : WindowSize, keyHandler : (event : any) => void) {
         this.sessionId = sessionId;
@@ -51,13 +63,10 @@ class TermWrap {
             this.atRowMax = true;
             this.usedRows = mobx.observable.box(termOpts.rows);
         }
-        let cols = termOpts.cols;
-        let maxCols = Math.trunc((winSize.width - 25) / DefaultCellWidth) - 1;
-        if (maxCols > cols) {
-            cols = maxCols;
-        }
-        this.termCols = maxCols;
-        this.terminal = new Terminal({rows: termOpts.rows, cols: maxCols, fontSize: 14, theme: {foreground: "#d3d7cf"}});
+        let cols = Math.trunc((winSize.width - 25) / DefaultCellWidth) - 1;
+        cols = boundInt(cols, MinTermCols, MaxTermCols);
+        this.termSize = {rows: termOpts.rows, cols: cols};
+        this.terminal = new Terminal({rows: this.termSize.rows, cols: this.termSize.cols, fontSize: 14, theme: {foreground: "#d3d7cf"}});
         this.terminal._core._inputHandler._parser.setErrorHandler((state) => {
             this.numParseErrors++;
             return state;
@@ -144,7 +153,7 @@ class TermWrap {
         mobx.action(() => {
             let oldUsedRows = this.usedRows.get();
             this.usedRows.set(tur);
-            GlobalModel.setTUR(this.sessionId, this.cmdId, this.termCols, tur);
+            GlobalModel.setTUR(this.sessionId, this.cmdId, this.termSize, tur);
             if (this.connectedElem) {
                 let resizeEvent = new CustomEvent("termresize", {
                     bubbles: true,
@@ -158,6 +167,23 @@ class TermWrap {
                 this.connectedElem.dispatchEvent(resizeEvent);
             }
         })();
+    }
+
+    resizeCols(cols : number) {
+        this.resize({rows: this.termSize.rows, cols: cols});
+    }
+
+    resize(size : TermWinSize) {
+        if (this.terminal == null) {
+            return;
+        }
+        let newSize = {rows: size.rows, cols: size.cols};
+        newSize.cols = boundInt(newSize.cols, MinTermCols, MaxTermCols);
+        if (newSize.rows == this.termSize.rows && newSize.cols == this.termSize.cols) {
+            return;
+        }
+        this.termSize = newSize;
+        this.terminal.resize(newSize.cols, newSize.rows);
     }
 
     reloadTerminal(delayMs : number) {
