@@ -375,13 +375,18 @@ func (opts SSHOpts) MakeMShellServerCmd() (*exec.Cmd, error) {
 	return ecmd, nil
 }
 
-func (opts SSHOpts) MakeMShellSingleCmd() (*exec.Cmd, error) {
+func (opts SSHOpts) MakeMShellSingleCmd(fromServer bool) (*exec.Cmd, error) {
 	if opts.SSHHost == "" {
 		execFile, err := os.Executable()
 		if err != nil {
 			return nil, fmt.Errorf("cannot find local mshell executable: %w", err)
 		}
-		ecmd := exec.Command(execFile, "--single")
+		var ecmd *exec.Cmd
+		if fromServer {
+			ecmd = exec.Command(execFile, "--single-from-server")
+		} else {
+			ecmd = exec.Command(execFile, "--single")
+		}
 		return ecmd, nil
 	}
 	return opts.MakeSSHExecCmd(ClientCommand), nil
@@ -657,7 +662,7 @@ func HasDupStdin(fds []packet.RemoteFd) bool {
 
 func RunClientSSHCommandAndWait(runPacket *packet.RunPacketType, fdContext FdContext, sshOpts SSHOpts, upr packet.UnknownPacketReporter, debug bool) (*packet.CmdDonePacketType, error) {
 	cmd := MakeShExec(runPacket.CK, upr)
-	ecmd, err := sshOpts.MakeMShellSingleCmd()
+	ecmd, err := sshOpts.MakeMShellSingleCmd(false)
 	if err != nil {
 		return nil, err
 	}
@@ -829,8 +834,12 @@ func getTermType(pk *packet.RunPacketType) string {
 	return termType
 }
 
-func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecType, error) {
-	cmd := MakeShExec(pk.CK, nil)
+func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fromServer bool) (*ShExecType, error) {
+	var upr packet.UnknownPacketReporter
+	if fromServer {
+		upr = packet.MessageUPR{CK: pk.CK, Sender: sender}
+	}
+	cmd := MakeShExec(pk.CK, upr)
 	if pk.UsePty {
 		cmd.Cmd = exec.Command("bash", "-i", "-c", pk.Command)
 	} else {

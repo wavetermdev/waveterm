@@ -153,7 +153,7 @@ func readFullRunPacket(packetParser *packet.PacketParser) (*packet.RunPacketType
 	return nil, fmt.Errorf("no run packet received")
 }
 
-func handleSingle() {
+func handleSingle(fromServer bool) {
 	packetParser := packet.MakePacketParser(os.Stdin)
 	sender := packet.MakePacketSender(os.Stdout)
 	defer func() {
@@ -175,6 +175,12 @@ func handleSingle() {
 		sender.SendErrorResponse(runPacket.ReqId, err)
 		return
 	}
+	if fromServer {
+		err = runPacket.CK.Validate("run packet")
+		if err != nil {
+			sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("run packets from server must have a CK: %v", err))
+		}
+	}
 	if runPacket.Detached {
 		cmd, startPk, err := shexec.RunCommandDetached(runPacket, sender)
 		if err != nil {
@@ -187,7 +193,7 @@ func handleSingle() {
 		cmd.DetachedWait(startPk)
 		return
 	} else {
-		cmd, err := shexec.RunCommandSimple(runPacket, sender)
+		cmd, err := shexec.RunCommandSimple(runPacket, sender, true)
 		if err != nil {
 			sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("error running command: %w", err))
 			return
@@ -504,7 +510,10 @@ func main() {
 			os.Exit(rtnCode)
 		}
 	} else if firstArg == "--single" {
-		handleSingle()
+		handleSingle(false)
+		return
+	} else if firstArg == "--single-from-server" {
+		handleSingle(true)
 		return
 	} else if firstArg == "--server" {
 		rtnCode, err := server.RunServer()

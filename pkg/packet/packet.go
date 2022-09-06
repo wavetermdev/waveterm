@@ -412,8 +412,9 @@ func MakeRawPacket(val string) *RawPacketType {
 }
 
 type MessagePacketType struct {
-	Type    string `json:"type"`
-	Message string `json:"message"`
+	Type    string          `json:"type"`
+	CK      base.CommandKey `json:"ck,omitempty"`
+	Message string          `json:"message"`
 }
 
 func (*MessagePacketType) GetType() string {
@@ -813,7 +814,17 @@ func (DefaultUPR) UnknownPacket(pk PacketType) {
 	} else {
 		fmt.Fprintf(os.Stderr, "[error] invalid packet received '%s'", AsExtType(pk))
 	}
+}
 
+type MessageUPR struct {
+	CK     base.CommandKey
+	Sender *PacketSender
+}
+
+func (upr MessageUPR) UnknownPacket(pk PacketType) {
+	msg := FmtMessagePacket("[error] invalid packet received %s", AsString(pk))
+	msg.CK = upr.CK
+	upr.Sender.SendPacket(msg)
 }
 
 // todo: clean hanging entries in RunMap when in server mode
