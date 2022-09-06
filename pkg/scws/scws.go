@@ -217,23 +217,33 @@ func sendCmdInput(pk *scpacket.FeInputPacketType) error {
 	if pk.Remote.RemoteId == "" {
 		return fmt.Errorf("input must set remoteid")
 	}
+	msh := remote.GetRemoteById(pk.Remote.RemoteId)
+	if msh == nil {
+		return fmt.Errorf("remote %d not found", pk.Remote.RemoteId)
+	}
 	if len(pk.InputData64) > 0 {
 		inputLen := packet.B64DecodedLen(pk.InputData64)
 		if inputLen > MaxInputDataSize {
 			return fmt.Errorf("input data size too large, len=%d (max=%d)", inputLen, MaxInputDataSize)
 		}
-		msh := remote.GetRemoteById(pk.Remote.RemoteId)
-		if msh == nil {
-			return fmt.Errorf("remote %d not found", pk.Remote.RemoteId)
-		}
 		dataPk := packet.MakeDataPacket()
 		dataPk.CK = pk.CK
 		dataPk.FdNum = 0 // stdin
 		dataPk.Data64 = pk.InputData64
-		return msh.SendInput(dataPk)
+		err = msh.SendInput(dataPk)
+		if err != nil {
+			return err
+		}
 	}
 	if pk.SigNum != 0 || pk.WinSize != nil {
-		return fmt.Errorf("signum / winsize not supported")
+		siPk := packet.MakeSpecialInputPacket()
+		siPk.CK = pk.CK
+		siPk.SigNum = pk.SigNum
+		siPk.WinSize = pk.WinSize
+		err = msh.SendSpecialInput(siPk)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

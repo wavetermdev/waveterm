@@ -885,3 +885,28 @@ func ClearWindow(ctx context.Context, sessionId string, windowId string) (*Model
 	}
 	return &ModelUpdate{Window: win}, nil
 }
+
+func GetRunningWindowCmds(ctx context.Context, sessionId string, windowId string) ([]*CmdType, error) {
+	var rtn []*CmdType
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT * from cmd WHERE cmdid IN (SELECT cmdid FROM line WHERE sessionid = ? AND windowid = ?) AND status = ?`
+		cmdMaps := tx.SelectMaps(query, sessionId, windowId, CmdStatusRunning)
+		for _, m := range cmdMaps {
+			rtn = append(rtn, CmdFromMap(m))
+		}
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	return rtn, nil
+}
+
+func UpdateCmdTermOpts(ctx context.Context, sessionId string, cmdId string, termOpts TermOpts) error {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `UPDATE cmd SET termopts = ? WHERE sessionid = ? AND cmdid = ?`
+		tx.ExecWrap(query, termOpts, sessionId, cmdId)
+		return nil
+	})
+	return txErr
+}

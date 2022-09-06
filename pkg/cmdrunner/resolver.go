@@ -137,6 +137,15 @@ func resolveUiIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype i
 			}
 		}
 	}
+	if pk.Kwargs["window"] != "" {
+		windowId, err := resolveWindowArg(rtn.SessionId, rtn.ScreenId, pk.Kwargs["window"])
+		if err != nil {
+			return rtn, err
+		}
+		if windowId != "" {
+			rtn.WindowId = windowId
+		}
+	}
 	if rtype&R_Session > 0 && rtn.SessionId == "" {
 		return rtn, fmt.Errorf("no session")
 	}
@@ -225,15 +234,14 @@ func resolveSessionId(pk *scpacket.FeCommandPacketType) (string, error) {
 	return sessionId, nil
 }
 
-func resolveWindowId(pk *scpacket.FeCommandPacketType, sessionId string) (string, error) {
-	windowId := pk.Kwargs["window"]
-	if windowId == "" {
+func resolveWindowArg(sessionId string, screenId string, windowArg string) (string, error) {
+	if windowArg == "" {
 		return "", nil
 	}
-	if _, err := uuid.Parse(windowId); err != nil {
-		return "", fmt.Errorf("invalid windowid '%s'", windowId)
+	if _, err := uuid.Parse(windowArg); err != nil {
+		return "", fmt.Errorf("invalid window arg specified (must be windowid) '%s'", windowArg)
 	}
-	return windowId, nil
+	return windowArg, nil
 }
 
 func resolveScreenId(ctx context.Context, pk *scpacket.FeCommandPacketType, sessionId string) (string, error) {

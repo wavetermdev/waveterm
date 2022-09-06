@@ -80,6 +80,8 @@ func init() {
 	registerCmdFn("remote:disconnect", RemoteDisconnectCommand)
 	registerCmdFn("remote:connect", RemoteConnectCommand)
 
+	registerCmdFn("window:resize", WindowResizeCommand)
+
 	registerCmdFn("history", HistoryCommand)
 }
 
@@ -1122,4 +1124,58 @@ func splitLinesForInfo(str string) []string {
 		return rtn[:len(rtn)-1]
 	}
 	return rtn
+}
+
+func resizeRunningCommand(ctx context.Context, cmd *sstore.CmdType, newCols int) error {
+	fmt.Printf("resize running cmd %s/%s %d => %d\n", cmd.SessionId, cmd.CmdId, cmd.TermOpts.Cols, newCols)
+	siPk := packet.MakeSpecialInputPacket()
+	siPk.CK = base.MakeCommandKey(cmd.SessionId, cmd.CmdId)
+	siPk.WinSize = &packet.WinSize{Rows: int(cmd.TermOpts.Rows), Cols: newCols}
+	msh := remote.GetRemoteById(cmd.Remote.RemoteId)
+	if msh == nil {
+		return fmt.Errorf("cannot resize, cmd remote not found")
+	}
+	err := msh.SendSpecialInput(siPk)
+	if err != nil {
+		return err
+	}
+	newTermOpts := cmd.TermOpts
+	newTermOpts.Cols = int64(newCols)
+	err = sstore.UpdateCmdTermOpts(ctx, cmd.SessionId, cmd.CmdId, newTermOpts)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func WindowResizeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
+	if err != nil {
+		return nil, err
+	}
+	colsStr := pk.Kwargs["cols"]
+	if colsStr == "" {
+		return nil, fmt.Errorf("/window:resize requires a numeric 'cols' argument")
+	}
+	cols, err := strconv.Atoi(colsStr)
+	if err != nil {
+		return nil, fmt.Errorf("/window:resize requires a numeric 'cols' argument: %v", err)
+	}
+	if cols <= 0 {
+		return nil, fmt.Errorf("/window:resize invalid zero/negative 'cols' argument")
+	}
+	cols = base.BoundInt(cols, shexec.MinTermCols, shexec.MaxTermCols)
+	runningCmds, err := sstore.GetRunningWindowCmds(ctx, ids.SessionId, ids.WindowId)
+	if err != nil {
+		return nil, fmt.Errorf("/window:resize cannot get running commands: %v", err)
+	}
+	if len(runningCmds) == 0 {
+		return nil, nil
+	}
+	for _, cmd := range runningCmds {
+		if int(cmd.TermOpts.Cols) != cols {
+			resizeRunningCommand(ctx, cmd, cols)
+		}
+	}
+	return nil, nil
 }
