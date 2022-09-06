@@ -149,7 +149,6 @@ class Cmd {
     }
 
     handleKey(event : any) {
-        console.log("onkey", event);
         if (!this.isRunning()) {
             return;
         }
@@ -1249,6 +1248,7 @@ class Model {
     }
 
     cmdStatusUpdate(sessionId : string, cmdId : string, origStatus : string, newStatus : string) {
+        // TODO force recompute usedrows in terminal when status changes to done
         console.log("cmd status", sessionId, cmdId, origStatus, "=>", newStatus);
     }
 

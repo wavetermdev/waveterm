@@ -169,7 +169,7 @@ type FeInputPacketType = {
     ck : string,
     remote : RemotePtrType,
     inputdata64? : string,
-    signum? : number,
+    signame? : string,
     winsize? : TermWinSize,
 };
 
