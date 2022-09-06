@@ -869,6 +869,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 			cmdTty.Close()
 		}()
 		cmd.CmdPty = cmdPty
+		cmd.Multiplexer.SetPtyFd(cmdPty)
 		UpdateCmdEnv(cmd.Cmd, map[string]string{"TERM": getTermType(pk)})
 	}
 	if cmdTty != nil {
@@ -1050,6 +1051,7 @@ func RunCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) (
 	cmd.CmdPty = cmdPty
 	cmd.Detached = true
 	cmd.MaxPtySize = DefaultMaxPtySize
+	cmd.Multiplexer.SetPtyFd(cmdPty)
 	if pk.TermOpts != nil && pk.TermOpts.MaxPtySize > 0 {
 		cmd.MaxPtySize = base.BoundInt64(pk.TermOpts.MaxPtySize, MinMaxPtySize, MaxMaxPtySize)
 	}
