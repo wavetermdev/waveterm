@@ -329,7 +329,7 @@ class ScreenWindow {
 
     disconnectElem(cmdId : string) {
         let termWrap = this.terms[cmdId];
-        if (cmdId != null) {
+        if (termWrap != null) {
             termWrap.dispose();
             delete this.terms[cmdId];
         }

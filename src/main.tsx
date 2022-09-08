@@ -216,11 +216,12 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
     }
 
     visibilityChanged(vis : boolean) : void {
-        if (vis && !this.termLoaded.get()) {
+        let curVis = this.termLoaded.get();
+        if (vis && !curVis) {
             this.loadTerminal();
         }
-        else if (!vis && this.termLoaded.get()) {
-            let {line} = this.props;
+        else if (!vis && curVis) {
+            this.unloadTerminal();
         }
     }
 
@@ -239,6 +240,22 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         }
         sw.connectElem(termElem, cmd, this.props.width);
         mobx.action(() => this.termLoaded.set(true))();
+    }
+
+    unloadTerminal() : void {
+        let {sw, line} = this.props;
+        let model = GlobalModel;
+        let cmd = model.getCmd(line);
+        if (cmd == null) {
+            return;
+        }
+        let termId = "term-" + getLineId(line);
+        sw.disconnectElem(line.cmdid);
+        mobx.action(() => this.termLoaded.set(false))();
+        let termElem = document.getElementById(termId);
+        if (termElem != null) {
+            termElem.replaceChildren();
+        }
     }
     
     componentDidMount() {

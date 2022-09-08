@@ -219,10 +219,15 @@ class TermWrap {
                 }
                 this.dataUpdates = [];
             }, delayMs);
+        }).catch((e) => {
+            console.log("error reloading terminal", e);
         });
     }
 
     updatePtyData(pos : number, data : Uint8Array) {
+        if (this.terminal == null) {
+            return;
+        }
         if (this.loadError.get()) {
             return;
         }
