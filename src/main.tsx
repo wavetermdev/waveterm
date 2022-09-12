@@ -1040,7 +1040,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
     renderError(message : string) {
         let {sw} = this.props;
         return (
-            <div className="window-view" style={this.getWindowViewStyle()} id={this.getWindowViewDOMId()}>
+            <div className="window-view" style={this.getWindowViewStyle()} id={this.getWindowViewDOMId()} data-windowid={sw.windowId}>
                 <div key="window-tag" className="window-tag">
                     <span>{sw.name.get()}{sw.shouldFollow.get() ? "*" : ""}</span>
                 </div>
@@ -1124,7 +1124,7 @@ class ScreenView extends React.Component<{screen : Screen}, {}> {
             );
         }
         return (
-            <div className="screen-view">
+            <div className="screen-view" data-screenid={sw.screenId}>
                 <ScreenWindowView key={sw.windowId} sw={sw}/>
             </div>
         );
@@ -1197,7 +1197,7 @@ class SessionView extends React.Component<{}, {}> {
         }
         let activeScreen = session.getActiveScreen();
         return (
-            <div className="session-view">
+            <div className="session-view" data-sessionid={session.sessionId}>
                 <ScreenView screen={activeScreen}/>
                 <ScreenTabs session={session}/>
                 <CmdInput/>

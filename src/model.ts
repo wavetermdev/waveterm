@@ -284,7 +284,7 @@ class ScreenWindow {
         if (activeScreen == null) {
             return false;
         }
-        return (this.sessionId = activeScreen.sessionId) && (this.screenId == activeScreen.screenId);
+        return (this.sessionId == activeScreen.sessionId) && (this.screenId == activeScreen.screenId);
     }
 
     colsCallback(cols : number) : void {
@@ -1170,6 +1170,21 @@ class Model {
         getApi().onMetaArrowDown(this.onMetaArrowDown.bind(this));
         getApi().onBracketCmd(this.onBracketCmd.bind(this));
         getApi().onDigitCmd(this.onDigitCmd.bind(this));
+    }
+
+    dumpStructure() : void {
+        for (let i=0; i<this.sessionList.length; i++) {
+            let session = this.sessionList[i];
+            console.log("SESSION", session.sessionId);
+            for (let j=0; j<session.screens.length; j++) {
+                let screen = session.screens[j];
+                console.log("  SCREEN", screen.sessionId, screen.screenId);
+                for (let k=0; k<screen.windows.length; k++) {
+                    let win = screen.windows[k];
+                    console.log("    WINDOW", win.sessionId, win.screenId, win.windowId);
+                }
+            }
+        }
     }
 
     getTUR(sessionId : string, cmdId : string, cols : number) : number {
