@@ -413,6 +413,10 @@ func (msh *MShellProc) GetRemoteName() string {
 
 func (msh *MShellProc) Launch() {
 	remoteCopy := msh.getRemoteCopy()
+	if remoteCopy.ConnectMode == sstore.ConnectModeArchive {
+		logf(&remoteCopy, "cannot launch archived remote")
+		return
+	}
 	logf(&remoteCopy, "starting launch")
 	ecmd := convertSSHOpts(remoteCopy.SSHOpts).MakeSSHExecCmd(MShellServerCommand)
 	cmdPty, err := msh.addControllingTty(ecmd)

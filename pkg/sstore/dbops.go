@@ -122,6 +122,19 @@ func InsertRemote(ctx context.Context, remote *RemoteType) error {
 	return txErr
 }
 
+func ArchiveRemote(ctx context.Context, remoteId string) error {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT remoteid FROM remote WHERE remoteid = ?`
+		if !tx.Exists(query, remoteId) {
+			return fmt.Errorf("cannot archive, remote does not exist")
+		}
+		query = `UPDATE remote SET connectmode = ?, physicalid = '', remotetype = '', remotealias = '', initpk = '', sshopts = '', remoteopts = '', lastconnectts = 0 WHERE remoteid = ?`
+		tx.ExecWrap(query, ConnectModeArchive, remoteId)
+		return nil
+	})
+	return txErr
+}
+
 func InsertHistoryItem(ctx context.Context, hitem *HistoryItemType) error {
 	if hitem == nil {
 		return fmt.Errorf("cannot insert nil history item")
@@ -909,4 +922,8 @@ func UpdateCmdTermOpts(ctx context.Context, sessionId string, cmdId string, term
 		return nil
 	})
 	return txErr
+}
+
+func DeleteSession(ctx context.Context, sessionId string) error {
+	return nil
 }

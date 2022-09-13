@@ -55,6 +55,7 @@ const (
 	ConnectModeStartup = "startup"
 	ConnectModeAuto    = "auto"
 	ConnectModeManual  = "manual"
+	ConnectModeArchive = "archive"
 )
 
 const (
@@ -71,7 +72,7 @@ func GetSessionDBName() string {
 }
 
 func IsValidConnectMode(mode string) bool {
-	return mode == ConnectModeStartup || mode == ConnectModeAuto || mode == ConnectModeManual
+	return mode == ConnectModeStartup || mode == ConnectModeAuto || mode == ConnectModeManual || mode == ConnectModeArchive
 }
 
 func GetDB(ctx context.Context) (*sqlx.DB, error) {

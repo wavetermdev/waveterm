@@ -43,6 +43,16 @@ var genericNameRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_ .()<>,/\"'\\[\\]{}=
 var positionRe = regexp.MustCompile("^((\\+|-)?[0-9]+|(\\+|-))$")
 var wsRe = regexp.MustCompile("\\s+")
 
+type contextType string
+
+var historyContextKey = contextType("history")
+
+type historyContextType struct {
+	LineId    string
+	CmdId     string
+	RemotePtr *sstore.RemotePtrType
+}
+
 type MetaCmdFnType = func(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error)
 type MetaCmdEntryType struct {
 	IsAlias bool
@@ -66,6 +76,7 @@ func init() {
 	registerCmdFn("session:open", SessionOpenCommand)
 	registerCmdAlias("session:new", SessionOpenCommand)
 	registerCmdFn("session:set", SessionSetCommand)
+	registerCmdFn("session:delete", SessionDeleteCommand)
 
 	registerCmdFn("screen", ScreenCommand)
 	registerCmdFn("screen:close", ScreenCloseCommand)
@@ -77,10 +88,15 @@ func init() {
 	registerCmdFn("remote:show", RemoteShowCommand)
 	registerCmdFn("remote:showall", RemoteShowAllCommand)
 	registerCmdFn("remote:new", RemoteNewCommand)
+	registerCmdFn("remote:archive", RemoteArchiveCommand)
+	registerCmdFn("remote:set", RemoteSetCommand)
 	registerCmdFn("remote:disconnect", RemoteDisconnectCommand)
 	registerCmdFn("remote:connect", RemoteConnectCommand)
 
 	registerCmdFn("window:resize", WindowResizeCommand)
+
+	registerCmdFn("line", LineCommand)
+	registerCmdFn("line:show", LineShowCommand)
 
 	registerCmdFn("history", HistoryCommand)
 }
@@ -195,16 +211,26 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	}
 	update := sstore.ModelUpdate{Line: rtnLine, Cmd: cmd, Interactive: pk.Interactive}
 	sstore.MainBus.SendUpdate(ids.SessionId, update)
+	ctxVal := ctx.Value(historyContextKey)
+	if ctxVal != nil {
+		hctx := ctxVal.(*historyContextType)
+		if rtnLine != nil {
+			hctx.LineId = rtnLine.LineId
+		}
+		if cmd != nil {
+			hctx.CmdId = cmd.CmdId
+			hctx.RemotePtr = &cmd.Remote
+		}
+	}
 	return nil, nil
 }
 
-func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, update sstore.UpdatePacket, isMetaCmd bool, hadError bool) error {
+func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, historyContext historyContextType, isMetaCmd bool, hadError bool) error {
 	cmdStr := firstArg(pk)
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
 	if err != nil {
 		return err
 	}
-	lineId, cmdId, rptr := sstore.ReadHistoryDataFromUpdate(update)
 	hitem := &sstore.HistoryItemType{
 		HistoryId: uuid.New().String(),
 		Ts:        time.Now().UnixMilli(),
@@ -212,14 +238,14 @@ func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, update 
 		SessionId: ids.SessionId,
 		ScreenId:  ids.ScreenId,
 		WindowId:  ids.WindowId,
-		LineId:    lineId,
+		LineId:    historyContext.LineId,
 		HadError:  hadError,
-		CmdId:     cmdId,
+		CmdId:     historyContext.CmdId,
 		CmdStr:    cmdStr,
 		IsMetaCmd: isMetaCmd,
 	}
-	if !isMetaCmd && rptr != nil {
-		hitem.Remote = ids.Remote.RemotePtr
+	if !isMetaCmd && historyContext.RemotePtr != nil {
+		hitem.Remote = *historyContext.RemotePtr
 	}
 	err = sstore.InsertHistoryItem(ctx, hitem)
 	if err != nil {
@@ -232,13 +258,15 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 	if len(pk.Args) == 0 {
 		return nil, fmt.Errorf("usage: /eval [command], no command passed to eval")
 	}
+	var historyContext historyContextType
+	ctxWithHistory := context.WithValue(ctx, historyContextKey, &historyContext)
 	var update sstore.UpdatePacket
-	newPk, rtnErr := EvalMetaCommand(ctx, pk)
+	newPk, rtnErr := EvalMetaCommand(ctxWithHistory, pk)
 	if rtnErr == nil {
-		update, rtnErr = HandleCommand(ctx, newPk)
+		update, rtnErr = HandleCommand(ctxWithHistory, newPk)
 	}
 	if !resolveBool(pk.Kwargs["nohist"], false) {
-		err := addToHistory(ctx, pk, update, (newPk.MetaCmd != "run"), (rtnErr != nil))
+		err := addToHistory(ctx, pk, historyContext, (newPk.MetaCmd != "run"), (rtnErr != nil))
 		if err != nil {
 			fmt.Printf("[error] adding to history: %v\n", err)
 			// continue...
@@ -343,7 +371,7 @@ func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	if firstArg == "" {
 		return nil, fmt.Errorf("usage /screen [screen-name|screen-index|screen-id], no param specified")
 	}
-	ritem, err := resolveSessionScreen(ctx, ids.SessionId, firstArg, pk.Kwargs["screen"])
+	ritem, err := resolveSessionScreen(ctx, ids.SessionId, firstArg, ids.ScreenId)
 	if err != nil {
 		return nil, err
 	}
@@ -505,6 +533,15 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	return update, nil
 }
 
+func RemoteSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_Remote)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("ids: %v\n", ids)
+	return nil, nil
+}
+
 func RemoteShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window|R_Remote)
 	if err != nil {
@@ -524,7 +561,7 @@ func RemoteShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	}
 	return sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
-			InfoTitle: fmt.Sprintf("show remote '%s' info", ids.Remote.DisplayName),
+			InfoTitle: fmt.Sprintf("show remote [%s] info", ids.Remote.DisplayName),
 			InfoLines: splitLinesForInfo(buf.String()),
 		},
 	}, nil
@@ -550,6 +587,15 @@ func RemoteShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	}, nil
 }
 
+func RemoteArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window|R_Remote)
+	if err != nil {
+		return nil, err
+	}
+	update := sstore.InfoMsgUpdate("remote [%s] archived", ids.Remote.DisplayName)
+	return update, nil
+}
+
 func RemoteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	return nil, fmt.Errorf("/remote requires a subcommand: %s", formatStrs([]string{"show"}, "or", false))
 }
@@ -568,7 +614,7 @@ func SetEnvCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		}
 		update := sstore.ModelUpdate{
 			Info: &sstore.InfoMsgType{
-				InfoTitle: fmt.Sprintf("environment for [%s] remote", ids.Remote.DisplayName),
+				InfoTitle: fmt.Sprintf("environment for remote [%s]", ids.Remote.DisplayName),
 				InfoLines: infoLines,
 			},
 		}
@@ -615,7 +661,7 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 		return nil, err
 	}
 	if rptr == nil {
-		return nil, fmt.Errorf("/cr error: remote '%s' not found", newRemote)
+		return nil, fmt.Errorf("/cr error: remote [%s] not found", newRemote)
 	}
 	err = sstore.UpdateCurRemote(ctx, ids.SessionId, ids.WindowId, *rptr)
 	if err != nil {
@@ -991,6 +1037,26 @@ func SessionOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	return update, nil
 }
 
+func SessionDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session)
+	if err != nil {
+		return nil, err
+	}
+	err = sstore.DeleteSession(ctx, ids.SessionId)
+	if err != nil {
+		return nil, fmt.Errorf("cannot delete session: %v", err)
+	}
+	sessionIds, _ := sstore.GetAllSessionIds(ctx) // ignore error, session is already deleted so that's the main return value
+	delSession := &sstore.SessionType{SessionId: ids.SessionId, Remove: true}
+	update := sstore.ModelUpdate{
+		Sessions: []*sstore.SessionType{delSession},
+	}
+	if len(sessionIds) > 0 {
+		update.ActiveSessionId = sessionIds[0]
+	}
+	return update, nil
+}
+
 func SessionSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session)
 	if err != nil {
@@ -1027,6 +1093,10 @@ func SessionSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 }
 
 func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, 0)
+	if err != nil {
+		return nil, err
+	}
 	firstArg := firstArg(pk)
 	if firstArg == "" {
 		return nil, fmt.Errorf("usage /session [name|id|pos], no param specified")
@@ -1036,7 +1106,7 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		return nil, err
 	}
 	ritems := sessionsToResolveItems(bareSessions)
-	ritem, err := genericResolve(firstArg, pk.Kwargs["session"], ritems, "session")
+	ritem, err := genericResolve(firstArg, ids.SessionId, ritems, "session")
 	if err != nil {
 		return nil, err
 	}
@@ -1177,5 +1247,18 @@ func WindowResizeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 			resizeRunningCommand(ctx, cmd, cols)
 		}
 	}
+	return nil, nil
+}
+
+func LineCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	return nil, fmt.Errorf("/line requires a subcommand: %s", formatStrs([]string{"show"}, "or", false))
+}
+
+func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("/line:show ids %v\n", ids)
 	return nil, nil
 }

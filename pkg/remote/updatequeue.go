@@ -43,10 +43,6 @@ func removeFirstCmdWaitFn(ck base.CommandKey) func() {
 		delete(GlobalStore.CmdWaitMap, ck)
 		return nil
 	}
-	if len(fns) == 1 {
-		delete(GlobalStore.CmdWaitMap, ck)
-		return fns[0]
-	}
 	fn := fns[0]
 	GlobalStore.CmdWaitMap[ck] = fns[1:]
 	return fn
