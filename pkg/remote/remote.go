@@ -80,6 +80,7 @@ type RemoteRuntimeState struct {
 	ErrorStr            string              `json:"errorstr,omitempty"`
 	DefaultState        *sstore.RemoteState `json:"defaultstate"`
 	ConnectMode         string              `json:"connectmode"`
+	Archived            bool                `json:"archived"`
 }
 
 func logf(rem *sstore.RemoteType, fmtStr string, args ...interface{}) {
@@ -165,11 +166,74 @@ func LoadRemoteById(ctx context.Context, remoteId string) error {
 	return nil
 }
 
+func AddRemote(ctx context.Context, r *sstore.RemoteType) error {
+	GlobalStore.Lock.Lock()
+	defer GlobalStore.Lock.Unlock()
+
+	existingRemote := getRemoteByCanonicalName_nolock(r.RemoteCanonicalName)
+	if existingRemote != nil {
+		erCopy := existingRemote.getRemoteCopy()
+		if !erCopy.Archived {
+			return fmt.Errorf("duplicate canonical name %q: cannot create new remote", r.RemoteCanonicalName)
+		}
+		r.RemoteId = erCopy.RemoteId
+	}
+	err := sstore.UpsertRemote(ctx, r)
+	if err != nil {
+		return fmt.Errorf("cannot create remote %q: %v", r.RemoteCanonicalName, err)
+	}
+	newMsh := MakeMShell(r)
+	GlobalStore.Map[r.RemoteId] = newMsh
+	go newMsh.NotifyRemoteUpdate()
+	if r.ConnectMode == sstore.ConnectModeStartup {
+		go newMsh.Launch()
+	}
+	return nil
+}
+
+func ArchiveRemote(ctx context.Context, remoteId string) error {
+	GlobalStore.Lock.Lock()
+	defer GlobalStore.Lock.Unlock()
+	msh := GlobalStore.Map[remoteId]
+	if msh == nil {
+		return fmt.Errorf("remote not found, cannot archive")
+	}
+	if msh.Status == StatusConnected {
+		return fmt.Errorf("cannot archive connected remote")
+	}
+	rcopy := msh.getRemoteCopy()
+	archivedRemote := &sstore.RemoteType{
+		RemoteId:            rcopy.RemoteId,
+		RemoteType:          rcopy.RemoteType,
+		RemoteCanonicalName: rcopy.RemoteCanonicalName,
+		ConnectMode:         sstore.ConnectModeManual,
+		Archived:            true,
+	}
+	err := sstore.UpsertRemote(ctx, archivedRemote)
+	if err != nil {
+		return err
+	}
+	newMsh := MakeMShell(archivedRemote)
+	GlobalStore.Map[remoteId] = newMsh
+	go newMsh.NotifyRemoteUpdate()
+	return nil
+}
+
 func GetRemoteByName(name string) *MShellProc {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
 	for _, msh := range GlobalStore.Map {
 		if msh.Remote.RemoteAlias == name || msh.Remote.GetName() == name {
+			return msh
+		}
+	}
+	return nil
+}
+
+func getRemoteByCanonicalName_nolock(name string) *MShellProc {
+	for _, msh := range GlobalStore.Map {
+		rcopy := msh.getRemoteCopy()
+		if rcopy.RemoteCanonicalName == name {
 			return msh
 		}
 	}
@@ -259,6 +323,7 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		PhysicalId:          msh.Remote.PhysicalId,
 		Status:              msh.Status,
 		ConnectMode:         msh.Remote.ConnectMode,
+		Archived:            msh.Remote.Archived,
 	}
 	if msh.Err != nil {
 		state.ErrorStr = msh.Err.Error()
@@ -402,7 +467,9 @@ func (msh *MShellProc) GetNumRunningCommands() int {
 func (msh *MShellProc) Disconnect() {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
-	msh.ServerProc.Close()
+	if msh.ServerProc != nil {
+		msh.ServerProc.Close()
+	}
 }
 
 func (msh *MShellProc) GetRemoteName() string {
@@ -413,12 +480,15 @@ func (msh *MShellProc) GetRemoteName() string {
 
 func (msh *MShellProc) Launch() {
 	remoteCopy := msh.getRemoteCopy()
-	if remoteCopy.ConnectMode == sstore.ConnectModeArchive {
+	remoteName := remoteCopy.GetName()
+	if remoteCopy.Archived {
 		logf(&remoteCopy, "cannot launch archived remote")
 		return
 	}
 	logf(&remoteCopy, "starting launch")
-	ecmd := convertSSHOpts(remoteCopy.SSHOpts).MakeSSHExecCmd(MShellServerCommand)
+	sshOpts := convertSSHOpts(remoteCopy.SSHOpts)
+	sshOpts.SSHErrorsToTty = true
+	ecmd := sshOpts.MakeSSHExecCmd(MShellServerCommand)
 	cmdPty, err := msh.addControllingTty(ecmd)
 	if err != nil {
 		statusErr := fmt.Errorf("cannot attach controlling tty to mshell command: %w", err)
@@ -431,7 +501,6 @@ func (msh *MShellProc) Launch() {
 			ecmd.ExtraFiles[len(ecmd.ExtraFiles)-1].Close()
 		}
 	}()
-	remoteName := remoteCopy.GetName()
 	go func() {
 		buf := make([]byte, 100)
 		for {
@@ -444,9 +513,7 @@ func (msh *MShellProc) Launch() {
 				break
 			}
 			readStr := string(buf[0:n])
-			readStr = strings.ReplaceAll(readStr, "\r", "")
-			readStr = strings.ReplaceAll(readStr, "\n", "\\n")
-			fmt.Printf("[c-pty %s] %d '%s'\n", remoteName, n, readStr)
+			fmt.Printf("[c-pty %s] %d %q\n", remoteName, n, readStr)
 		}
 	}()
 	if remoteName == "test2" {

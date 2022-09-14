@@ -71,6 +71,20 @@ func GetRemoteById(ctx context.Context, remoteId string) (*RemoteType, error) {
 	return remote, nil
 }
 
+func GetRemoteByCanonicalName(ctx context.Context, cname string) (*RemoteType, error) {
+	var remote *RemoteType
+	err := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT * FROM remote WHERE remotecanonicalname = ?`
+		m := tx.GetMap(query, cname)
+		remote = RemoteFromMap(m)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return remote, nil
+}
+
 func GetRemoteByPhysicalId(ctx context.Context, physicalId string) (*RemoteType, error) {
 	var remote *RemoteType
 	err := WithTx(ctx, func(tx *TxWrap) error {
@@ -85,51 +99,32 @@ func GetRemoteByPhysicalId(ctx context.Context, physicalId string) (*RemoteType,
 	return remote, nil
 }
 
-func InsertRemote(ctx context.Context, remote *RemoteType) error {
-	if remote == nil {
+func UpsertRemote(ctx context.Context, r *RemoteType) error {
+	if r == nil {
 		return fmt.Errorf("cannot insert nil remote")
 	}
-	if remote.RemoteId == "" {
+	if r.RemoteId == "" {
 		return fmt.Errorf("cannot insert remote without id")
 	}
-	if remote.RemoteCanonicalName == "" {
+	if r.RemoteCanonicalName == "" {
 		return fmt.Errorf("cannot insert remote with canonicalname")
 	}
-	if remote.RemoteType == "" {
+	if r.RemoteType == "" {
 		return fmt.Errorf("cannot insert remote without type")
 	}
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT remoteid FROM remote WHERE remoteid = ?`
-		if tx.Exists(query, remote.RemoteId) {
-			return fmt.Errorf("duplicate remoteid, cannot create")
+		if tx.Exists(query, r.RemoteId) {
+			tx.ExecWrap(`DELETE FROM remote WHERE remoteid = ?`, r.RemoteId)
 		}
-		if remote.RemoteAlias != "" {
-			query = `SELECT remoteid FROM remote WHERE alias = ?`
-			if tx.Exists(query, remote.RemoteAlias) {
-				return fmt.Errorf("remote has duplicate alias '%s', cannot create", remote.RemoteAlias)
-			}
-		}
-		query = `SELECT remoteid FROM remote WHERE remotecanonicaname = ?`
-		if tx.Exists(query, remote.RemoteCanonicalName) {
-			return fmt.Errorf("remote has duplicate canonicalname '%s', cannot create", remote.RemoteCanonicalName)
+		query = `SELECT remoteid FROM remote WHERE remotecanonicalname = ?`
+		if tx.Exists(query, r.RemoteCanonicalName) {
+			return fmt.Errorf("remote has duplicate canonicalname '%s', cannot create", r.RemoteCanonicalName)
 		}
 		query = `INSERT INTO remote
-            ( remoteid, physicalid, remotetype, remotealias, remotecanonicalname, remotesudo, remoteuser, remotehost, connectmode, initpk, sshopts, remoteopts, lastconnectts) VALUES 
-            (:remoteid,:physicalid,:remotetype,:remotealias,:remotecanonicalname,:remotesudo,:remoteuser,:remotehost,:connectmode,:initpk,:sshopts,:remoteopts,:lastconnectts)`
-		tx.NamedExecWrap(query, remote.ToMap())
-		return nil
-	})
-	return txErr
-}
-
-func ArchiveRemote(ctx context.Context, remoteId string) error {
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT remoteid FROM remote WHERE remoteid = ?`
-		if !tx.Exists(query, remoteId) {
-			return fmt.Errorf("cannot archive, remote does not exist")
-		}
-		query = `UPDATE remote SET connectmode = ?, physicalid = '', remotetype = '', remotealias = '', initpk = '', sshopts = '', remoteopts = '', lastconnectts = 0 WHERE remoteid = ?`
-		tx.ExecWrap(query, ConnectModeArchive, remoteId)
+            ( remoteid, physicalid, remotetype, remotealias, remotecanonicalname, remotesudo, remoteuser, remotehost, connectmode, initpk, sshopts, remoteopts, lastconnectts, archived) VALUES 
+            (:remoteid,:physicalid,:remotetype,:remotealias,:remotecanonicalname,:remotesudo,:remoteuser,:remotehost,:connectmode,:initpk,:sshopts,:remoteopts,:lastconnectts,:archived)`
+		tx.NamedExecWrap(query, r.ToMap())
 		return nil
 	})
 	return txErr

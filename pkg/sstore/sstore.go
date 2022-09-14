@@ -55,7 +55,6 @@ const (
 	ConnectModeStartup = "startup"
 	ConnectModeAuto    = "auto"
 	ConnectModeManual  = "manual"
-	ConnectModeArchive = "archive"
 )
 
 const (
@@ -72,7 +71,7 @@ func GetSessionDBName() string {
 }
 
 func IsValidConnectMode(mode string) bool {
-	return mode == ConnectModeStartup || mode == ConnectModeAuto || mode == ConnectModeManual || mode == ConnectModeArchive
+	return mode == ConnectModeStartup || mode == ConnectModeAuto || mode == ConnectModeManual
 }
 
 func GetDB(ctx context.Context) (*sqlx.DB, error) {
@@ -431,16 +430,14 @@ type RemoteType struct {
 	SSHOpts             *SSHOpts               `json:"sshopts"`
 	RemoteOpts          *RemoteOptsType        `json:"remoteopts"`
 	LastConnectTs       int64                  `json:"lastconnectts"`
+	Archived            bool                   `json:"archived"`
 }
 
 func (r *RemoteType) GetName() string {
 	if r.RemoteAlias != "" {
 		return r.RemoteAlias
 	}
-	if r.RemoteUser == "" {
-		return r.RemoteHost
-	}
-	return fmt.Sprintf("%s@%s", r.RemoteUser, r.RemoteHost)
+	return r.RemoteCanonicalName
 }
 
 type CmdType struct {
@@ -473,6 +470,7 @@ func (r *RemoteType) ToMap() map[string]interface{} {
 	rtn["sshopts"] = quickJson(r.SSHOpts)
 	rtn["remoteopts"] = quickJson(r.RemoteOpts)
 	rtn["lastconnectts"] = r.LastConnectTs
+	rtn["archived"] = r.Archived
 	return rtn
 }
 
@@ -494,6 +492,7 @@ func RemoteFromMap(m map[string]interface{}) *RemoteType {
 	quickSetJson(&r.SSHOpts, m, "sshopts")
 	quickSetJson(&r.RemoteOpts, m, "remoteopts")
 	quickSetInt64(&r.LastConnectTs, m, "lastconnectts")
+	quickSetBool(&r.Archived, m, "archived")
 	return &r
 }
 
@@ -611,7 +610,7 @@ func EnsureLocalRemote(ctx context.Context) error {
 		ConnectMode:         ConnectModeStartup,
 		SSHOpts:             &SSHOpts{Local: true},
 	}
-	err = InsertRemote(ctx, localRemote)
+	err = UpsertRemote(ctx, localRemote)
 	if err != nil {
 		return err
 	}
@@ -643,7 +642,7 @@ func AddTest01Remote(ctx context.Context) error {
 		},
 		ConnectMode: ConnectModeStartup,
 	}
-	err = InsertRemote(ctx, testRemote)
+	err = UpsertRemote(ctx, testRemote)
 	if err != nil {
 		return err
 	}
@@ -674,7 +673,7 @@ func AddTest02Remote(ctx context.Context) error {
 		},
 		ConnectMode: ConnectModeStartup,
 	}
-	err = InsertRemote(ctx, testRemote)
+	err = UpsertRemote(ctx, testRemote)
 	if err != nil {
 		return err
 	}

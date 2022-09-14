@@ -81,7 +81,8 @@ CREATE TABLE remote (
     initpk json NOT NULL,
     sshopts json NOT NULL,
     remoteopts json NOT NULL,
-    lastconnectts bigint NOT NULL
+    lastconnectts bigint NOT NULL,
+    archived boolean NOT NULL
 );
 CREATE TABLE cmd (
     sessionid varchar(36) NOT NULL,

@@ -461,7 +461,7 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 			return nil, fmt.Errorf("invalid alias format")
 		}
 	}
-	connectMode := sstore.ConnectModeStartup
+	connectMode := sstore.ConnectModeAuto
 	if pk.Kwargs["connectmode"] != "" {
 		connectMode = pk.Kwargs["connectmode"]
 	}
@@ -520,7 +520,7 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		SSHOpts:             sshOpts,
 		RemoteOpts:          remoteOpts,
 	}
-	err := sstore.InsertRemote(ctx, r)
+	err := remote.AddRemote(ctx, r)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create remote %q: %v", r.RemoteCanonicalName, err)
 	}
@@ -554,10 +554,13 @@ func RemoteShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "physicalid", state.PhysicalId))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "alias", state.RemoteAlias))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "canonicalname", state.RemoteCanonicalName))
-	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "status", state.Status))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "connectmode", state.ConnectMode))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "status", state.Status))
 	if ids.Remote.RemoteState != nil {
 		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "cwd", ids.Remote.RemoteState.Cwd))
+	}
+	if state.ErrorStr != "" {
+		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "error", state.ErrorStr))
 	}
 	return sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
@@ -591,6 +594,10 @@ func RemoteArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window|R_Remote)
 	if err != nil {
 		return nil, err
+	}
+	err = remote.ArchiveRemote(ctx, ids.Remote.RemotePtr.RemoteId)
+	if err != nil {
+		return nil, fmt.Errorf("archiving remote: %v", err)
 	}
 	update := sstore.InfoMsgUpdate("remote [%s] archived", ids.Remote.DisplayName)
 	return update, nil
