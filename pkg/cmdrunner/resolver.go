@@ -31,9 +31,9 @@ type resolvedIds struct {
 type ResolvedRemote struct {
 	DisplayName string
 	RemotePtr   sstore.RemotePtrType
-	RemoteState *sstore.RemoteState
-	RState      remote.RemoteRuntimeState
 	MShell      *remote.MShellProc
+	RState      remote.RemoteRuntimeState
+	RemoteState *sstore.RemoteState
 }
 
 type ResolveItem struct {
@@ -118,6 +118,22 @@ func resolveByPosition(items []ResolveItem, curId string, posStr string) *Resolv
 	return &items[pos-1]
 }
 
+func resolveRemoteArg(remoteArg string) (*sstore.RemotePtrType, error) {
+	rrUser, rrRemote, rrName, err := parseFullRemoteRef(remoteArg)
+	if err != nil {
+		return nil, err
+	}
+	if rrUser != "" {
+		return nil, fmt.Errorf("remoteusers not supported")
+	}
+	msh := remote.GetRemoteByName(rrRemote)
+	if msh == nil {
+		return nil, nil
+	}
+	rcopy := msh.GetRemoteCopy()
+	return &sstore.RemotePtrType{RemoteId: rcopy.RemoteId, Name: rrName}, nil
+}
+
 func resolveUiIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype int) (resolvedIds, error) {
 	rtn := resolvedIds{}
 	uictx := pk.UIContext
@@ -125,17 +141,6 @@ func resolveUiIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype i
 		rtn.SessionId = uictx.SessionId
 		rtn.ScreenId = uictx.ScreenId
 		rtn.WindowId = uictx.WindowId
-		if uictx.Remote != nil && rtn.SessionId != "" && rtn.WindowId != "" {
-			rr, err := resolveRemoteFromPtr(ctx, uictx.Remote, rtn.SessionId, rtn.WindowId)
-			if err != nil {
-				if rtype&R_Remote > 0 || rtype&R_RemoteConnected > 0 {
-					return rtn, err
-				}
-				// otherwise just don't set uictx.Remote
-			} else {
-				rtn.Remote = rr
-			}
-		}
 	}
 	if pk.Kwargs["window"] != "" {
 		windowId, err := resolveWindowArg(rtn.SessionId, rtn.ScreenId, pk.Kwargs["window"])
@@ -145,6 +150,30 @@ func resolveUiIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype i
 		if windowId != "" {
 			rtn.WindowId = windowId
 		}
+	}
+	var rptr *sstore.RemotePtrType
+	var err error
+	if pk.Kwargs["remote"] != "" {
+		rptr, err = resolveRemoteArg(pk.Kwargs["remote"])
+		if err != nil {
+			return rtn, err
+		}
+		if rptr == nil {
+			return rtn, fmt.Errorf("invalid remote argument %q passed, remote not found", pk.Kwargs["remote"])
+		}
+	} else if uictx.Remote != nil {
+		rptr = uictx.Remote
+	}
+	if rptr != nil {
+		err = rptr.Validate()
+		if err != nil {
+			return rtn, fmt.Errorf("invalid resolved remote: %v", err)
+		}
+		rr, err := resolveRemoteFromPtr(ctx, rptr, rtn.SessionId, rtn.WindowId)
+		if err != nil {
+			return rtn, err
+		}
+		rtn.Remote = rr
 	}
 	if rtype&R_Session > 0 && rtn.SessionId == "" {
 		return rtn, fmt.Errorf("no session")
@@ -285,7 +314,7 @@ func parseFullRemoteRef(fullRemoteRef string) (string, string, string, error) {
 
 func resolveRemoteFromPtr(ctx context.Context, rptr *sstore.RemotePtrType, sessionId string, windowId string) (*ResolvedRemote, error) {
 	if rptr == nil || rptr.RemoteId == "" {
-		return nil, fmt.Errorf("no remote to resolve")
+		return nil, nil
 	}
 	msh := remote.GetRemoteById(rptr.RemoteId)
 	if msh == nil {
@@ -293,20 +322,24 @@ func resolveRemoteFromPtr(ctx context.Context, rptr *sstore.RemotePtrType, sessi
 	}
 	rstate := msh.GetRemoteRuntimeState()
 	displayName := rstate.GetDisplayName(rptr)
-	state, err := sstore.GetRemoteState(ctx, sessionId, windowId, *rptr)
-	if err != nil {
-		return nil, fmt.Errorf("cannot resolve remote state '%s': %w", displayName, err)
-	}
-	if state == nil {
-		state = rstate.DefaultState
-	}
-	return &ResolvedRemote{
+	rtn := &ResolvedRemote{
 		DisplayName: displayName,
 		RemotePtr:   *rptr,
-		RemoteState: state,
+		RemoteState: nil,
 		RState:      rstate,
 		MShell:      msh,
-	}, nil
+	}
+	if sessionId != "" && windowId != "" {
+		state, err := sstore.GetRemoteState(ctx, sessionId, windowId, *rptr)
+		if err != nil {
+			return nil, fmt.Errorf("cannot resolve remote state '%s': %w", displayName, err)
+		}
+		if state == nil {
+			state = rstate.DefaultState
+		}
+		rtn.RemoteState = state
+	}
+	return rtn, nil
 }
 
 // returns (remoteDisplayName, remoteptr, state, rstate, err)

@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/user"
 	"path"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -138,6 +139,8 @@ func (opts WindowShareOptsType) Value() (driver.Value, error) {
 	return quickValueJson(opts)
 }
 
+var RemoteNameRe = regexp.MustCompile("^\\*?[a-zA-Z0-9_-]+$")
+
 type RemotePtrType struct {
 	OwnerId  string `json:"ownerid"`
 	RemoteId string `json:"remoteid"`
@@ -146,6 +149,26 @@ type RemotePtrType struct {
 
 func (r RemotePtrType) IsSessionScope() bool {
 	return strings.HasPrefix(r.Name, "*")
+}
+
+func (r RemotePtrType) Validate() error {
+	if r.OwnerId != "" {
+		if _, err := uuid.Parse(r.OwnerId); err != nil {
+			return fmt.Errorf("invalid ownerid format: %v", err)
+		}
+	}
+	if r.RemoteId != "" {
+		if _, err := uuid.Parse(r.RemoteId); err != nil {
+			return fmt.Errorf("invalid remoteid format: %v", err)
+		}
+	}
+	if r.Name != "" {
+		ok := RemoteNameRe.MatchString(r.Name)
+		if !ok {
+			return fmt.Errorf("invalid remote name")
+		}
+	}
+	return nil
 }
 
 func (r RemotePtrType) MakeFullRemoteRef() string {

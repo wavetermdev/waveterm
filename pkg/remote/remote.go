@@ -173,7 +173,7 @@ func AddRemote(ctx context.Context, r *sstore.RemoteType) error {
 
 	existingRemote := getRemoteByCanonicalName_nolock(r.RemoteCanonicalName)
 	if existingRemote != nil {
-		erCopy := existingRemote.getRemoteCopy()
+		erCopy := existingRemote.GetRemoteCopy()
 		if !erCopy.Archived {
 			return fmt.Errorf("duplicate canonical name %q: cannot create new remote", r.RemoteCanonicalName)
 		}
@@ -202,7 +202,7 @@ func ArchiveRemote(ctx context.Context, remoteId string) error {
 	if msh.Status == StatusConnected {
 		return fmt.Errorf("cannot archive connected remote")
 	}
-	rcopy := msh.getRemoteCopy()
+	rcopy := msh.GetRemoteCopy()
 	archivedRemote := &sstore.RemoteType{
 		RemoteId:            rcopy.RemoteId,
 		RemoteType:          rcopy.RemoteType,
@@ -224,7 +224,8 @@ func GetRemoteByName(name string) *MShellProc {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
 	for _, msh := range GlobalStore.Map {
-		if msh.Remote.RemoteAlias == name || msh.Remote.GetName() == name {
+		rcopy := msh.GetRemoteCopy()
+		if rcopy.RemoteAlias == name || rcopy.RemoteCanonicalName == name {
 			return msh
 		}
 	}
@@ -233,7 +234,7 @@ func GetRemoteByName(name string) *MShellProc {
 
 func getRemoteByCanonicalName_nolock(name string) *MShellProc {
 	for _, msh := range GlobalStore.Map {
-		rcopy := msh.getRemoteCopy()
+		rcopy := msh.GetRemoteCopy()
 		if rcopy.RemoteCanonicalName == name {
 			return msh
 		}
@@ -454,7 +455,7 @@ func (msh *MShellProc) setErrorStatus(err error) {
 	go msh.NotifyRemoteUpdate()
 }
 
-func (msh *MShellProc) getRemoteCopy() sstore.RemoteType {
+func (msh *MShellProc) GetRemoteCopy() sstore.RemoteType {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
 	return *msh.Remote
@@ -481,7 +482,7 @@ func (msh *MShellProc) GetRemoteName() string {
 }
 
 func (msh *MShellProc) Launch() {
-	remoteCopy := msh.getRemoteCopy()
+	remoteCopy := msh.GetRemoteCopy()
 	remoteName := remoteCopy.GetName()
 	if remoteCopy.Archived {
 		logf(&remoteCopy, "cannot launch archived remote")
