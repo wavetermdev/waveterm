@@ -1206,6 +1206,19 @@ class SessionView extends React.Component<{}, {}> {
     }
 }
 
+function getConnVal(r : RemoteType) : number {
+    if (r.status == "connected") {
+        return 1;
+    }
+    if (r.status == "init" || r.status == "disconnected") {
+        return 2;
+    }
+    if (r.status == "error") {
+        return 3;
+    }
+    return 4;
+}
+
 @mobxReact.observer
 class MainSideBar extends React.Component<{}, {}> {
     collapsed : mobx.IObservableValue<boolean> = mobx.observable.box(false);
@@ -1251,6 +1264,14 @@ class MainSideBar extends React.Component<{}, {}> {
         let remote : RemoteType = null;
         let idx : number = 0;
         remotes = remotes.filter((r) => !r.archived);
+        remotes.sort((a, b) => {
+            let connValA = getConnVal(a);
+            let connValB = getConnVal(b);
+            if (connValA != connValB) {
+                return connValA - connValB;
+            }
+            return a.remoteidx - b.remoteidx;
+        });
         return (
             <div className={cn("main-sidebar", {"collapsed": this.collapsed.get()})}>
                 <div className="collapse-container">
@@ -1315,7 +1336,7 @@ class MainSideBar extends React.Component<{}, {}> {
                     <p className="menu-label">
                         <a onClick={() => this.clickRemotes()}>Remotes</a>
                     </p>
-                    <ul className="menu-list">
+                    <ul className="menu-list remotes-menu-list">
                         <For each="remote" of={remotes}>
                             <li key={remote.remoteid} className="remote-menu-item"><a>
                                 <i className={cn("remote-status fa fa-circle", "status-" + remote.status)}/>

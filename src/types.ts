@@ -79,6 +79,7 @@ type RemoteType = {
     status : string,
     defaultstate : RemoteStateType,
     connectmode : string,
+    remoteidx : number,
     remove? : boolean,
 };
 
