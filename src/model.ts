@@ -1780,6 +1780,10 @@ class CommandRunner {
     resizeWindow(windowId : string, cols : number) {
         GlobalModel.submitCommand("window", "resize", null, {"nohist": "1", "window": windowId, "cols": String(cols)}, false);
     }
+
+    showRemote(remoteid : string) {
+        GlobalModel.submitCommand("remote", "show", null, {"nohist": "1", "remote": remoteid}, true);
+    }
 };
 
 let GlobalModel : Model = null;

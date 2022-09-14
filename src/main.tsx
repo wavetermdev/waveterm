@@ -1256,6 +1256,10 @@ class MainSideBar extends React.Component<{}, {}> {
         return (<span>{remote.remotecanonicalname}</span>);
     }
 
+    clickRemote(remote : RemoteType) {
+        GlobalCommandRunner.showRemote(remote.remoteid);
+    }
+
     render() {
         let model = GlobalModel;
         let activeSessionId = model.activeSessionId.get();
@@ -1338,7 +1342,7 @@ class MainSideBar extends React.Component<{}, {}> {
                     </p>
                     <ul className="menu-list remotes-menu-list">
                         <For each="remote" of={remotes}>
-                            <li key={remote.remoteid} className="remote-menu-item"><a>
+                            <li key={remote.remoteid} className="remote-menu-item"><a onClick={() => this.clickRemote(remote)}>
                                 <i className={cn("remote-status fa fa-circle", "status-" + remote.status)}/>
                                 {this.remoteDisplayName(remote)}
                             </a></li>
