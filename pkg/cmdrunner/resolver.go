@@ -126,7 +126,7 @@ func resolveRemoteArg(remoteArg string) (*sstore.RemotePtrType, error) {
 	if rrUser != "" {
 		return nil, fmt.Errorf("remoteusers not supported")
 	}
-	msh := remote.GetRemoteByName(rrRemote)
+	msh := remote.GetRemoteByArg(rrRemote)
 	if msh == nil {
 		return nil, nil
 	}

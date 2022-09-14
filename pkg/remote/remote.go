@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -220,12 +221,22 @@ func ArchiveRemote(ctx context.Context, remoteId string) error {
 	return nil
 }
 
-func GetRemoteByName(name string) *MShellProc {
+var partialUUIDRe = regexp.MustCompile("^[0-9a-f]{8}$")
+
+func isPartialUUID(s string) bool {
+	return partialUUIDRe.MatchString(s)
+}
+
+func GetRemoteByArg(arg string) *MShellProc {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
+	isPuid := isPartialUUID(arg)
 	for _, msh := range GlobalStore.Map {
 		rcopy := msh.GetRemoteCopy()
-		if rcopy.RemoteAlias == name || rcopy.RemoteCanonicalName == name {
+		if rcopy.RemoteAlias == arg || rcopy.RemoteCanonicalName == arg || rcopy.RemoteId == arg {
+			return msh
+		}
+		if isPuid && strings.HasPrefix(rcopy.RemoteId, arg) {
 			return msh
 		}
 	}
