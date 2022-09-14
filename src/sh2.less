@@ -184,7 +184,7 @@ html, body, #main {
     border-right: 1px solid #aaa;
     padding: 0 5px 5px 5px;
     width: 200px;
-    overflow-x: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
     color: #ddd;
@@ -234,6 +234,14 @@ html, body, #main {
         }
     }
 
+    .menu-list li.remote-menu-item {
+        a {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    }
+
     .menu-list li a {
         color: #bbb;
         white-space: nowrap;
@@ -256,6 +264,11 @@ html, body, #main {
         }
 
         .session-num {
+            color: #777;
+            font-size: 10px;
+        }
+
+        .small-text {
             color: #777;
             font-size: 10px;
         }

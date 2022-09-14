@@ -1231,13 +1231,26 @@ class MainSideBar extends React.Component<{}, {}> {
         })();
     }
 
+    remoteDisplayName(remote : RemoteType) : any {
+        if (!isBlank(remote.remotealias)) {
+            return (
+                <>
+                    <span>{remote.remotealias}</span>
+                    <span className="small-text"> {remote.remotecanonicalname}</span>
+                </>
+            );
+        }
+        return (<span>{remote.remotecanonicalname}</span>);
+    }
+
     render() {
         let model = GlobalModel;
         let activeSessionId = model.activeSessionId.get();
         let session : Session = null;
-        let remotes = model.remotes;
+        let remotes = model.remotes ?? [];
         let remote : RemoteType = null;
         let idx : number = 0;
+        remotes = remotes.filter((r) => !r.archived);
         return (
             <div className={cn("main-sidebar", {"collapsed": this.collapsed.get()})}>
                 <div className="collapse-container">
@@ -1304,7 +1317,10 @@ class MainSideBar extends React.Component<{}, {}> {
                     </p>
                     <ul className="menu-list">
                         <For each="remote" of={remotes}>
-                            <li key={remote.remoteid}><a><i className={cn("remote-status fa fa-circle", "status-" + remote.status)}/>{remote.remotealias ?? remote.remotecanonicalname}</a></li>
+                            <li key={remote.remoteid} className="remote-menu-item"><a>
+                                <i className={cn("remote-status fa fa-circle", "status-" + remote.status)}/>
+                                {this.remoteDisplayName(remote)}
+                            </a></li>
                         </For>
                     </ul>
                     <div className="bottom-spacer"></div>
