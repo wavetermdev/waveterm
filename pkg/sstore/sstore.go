@@ -431,6 +431,7 @@ type RemoteType struct {
 	RemoteOpts          *RemoteOptsType        `json:"remoteopts"`
 	LastConnectTs       int64                  `json:"lastconnectts"`
 	Archived            bool                   `json:"archived"`
+	RemoteIdx           int64                  `json:"remoteidx"`
 }
 
 func (r *RemoteType) GetName() string {
@@ -471,6 +472,7 @@ func (r *RemoteType) ToMap() map[string]interface{} {
 	rtn["remoteopts"] = quickJson(r.RemoteOpts)
 	rtn["lastconnectts"] = r.LastConnectTs
 	rtn["archived"] = r.Archived
+	rtn["remoteidx"] = r.RemoteIdx
 	return rtn
 }
 
@@ -493,6 +495,7 @@ func RemoteFromMap(m map[string]interface{}) *RemoteType {
 	quickSetJson(&r.RemoteOpts, m, "remoteopts")
 	quickSetInt64(&r.LastConnectTs, m, "lastconnectts")
 	quickSetBool(&r.Archived, m, "archived")
+	quickSetInt64(&r.RemoteIdx, m, "remoteidx")
 	return &r
 }
 

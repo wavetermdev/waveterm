@@ -30,7 +30,7 @@ func NumSessions(ctx context.Context) (int, error) {
 func GetAllRemotes(ctx context.Context) ([]*RemoteType, error) {
 	var rtn []*RemoteType
 	err := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT * FROM remote`
+		query := `SELECT * FROM remote ORDER BY remoteidx`
 		marr := tx.SelectMaps(query)
 		for _, m := range marr {
 			rtn = append(rtn, RemoteFromMap(m))
@@ -121,6 +121,9 @@ func UpsertRemote(ctx context.Context, r *RemoteType) error {
 		if tx.Exists(query, r.RemoteCanonicalName) {
 			return fmt.Errorf("remote has duplicate canonicalname '%s', cannot create", r.RemoteCanonicalName)
 		}
+		query = `SELECT max(remoteidx) FROM remote`
+		maxRemoteIdx := tx.GetInt(query)
+		r.RemoteIdx = int64(maxRemoteIdx + 1)
 		query = `INSERT INTO remote
             ( remoteid, physicalid, remotetype, remotealias, remotecanonicalname, remotesudo, remoteuser, remotehost, connectmode, initpk, sshopts, remoteopts, lastconnectts, archived) VALUES 
             (:remoteid,:physicalid,:remotetype,:remotealias,:remotecanonicalname,:remotesudo,:remoteuser,:remotehost,:connectmode,:initpk,:sshopts,:remoteopts,:lastconnectts,:archived)`

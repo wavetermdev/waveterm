@@ -81,6 +81,7 @@ type RemoteRuntimeState struct {
 	DefaultState        *sstore.RemoteState `json:"defaultstate"`
 	ConnectMode         string              `json:"connectmode"`
 	Archived            bool                `json:"archived"`
+	RemoteIdx           int64               `json:"remoteidx"`
 }
 
 func logf(rem *sstore.RemoteType, fmtStr string, args ...interface{}) {
@@ -324,6 +325,7 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		Status:              msh.Status,
 		ConnectMode:         msh.Remote.ConnectMode,
 		Archived:            msh.Remote.Archived,
+		RemoteIdx:           msh.Remote.RemoteIdx,
 	}
 	if msh.Err != nil {
 		state.ErrorStr = msh.Err.Error()
