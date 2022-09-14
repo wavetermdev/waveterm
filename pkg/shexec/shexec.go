@@ -373,10 +373,11 @@ func GetWinsize(p *packet.RunPacketType) *pty.Winsize {
 }
 
 type SSHOpts struct {
-	SSHHost     string
-	SSHOptsStr  string
-	SSHIdentity string
-	SSHUser     string
+	SSHHost        string
+	SSHOptsStr     string
+	SSHIdentity    string
+	SSHUser        string
+	SSHErrorsToTty bool
 }
 
 type InstallOpts struct {
@@ -453,7 +454,11 @@ func (opts SSHOpts) MakeSSHExecCmd(remoteCommand string) *exec.Cmd {
 			moreSSHOpts = append(moreSSHOpts, userOpt)
 		}
 		// note that SSHOptsStr is *not* escaped
-		sshCmd := fmt.Sprintf("ssh %s %s %s %s", strings.Join(moreSSHOpts, " "), opts.SSHOptsStr, shellescape.Quote(opts.SSHHost), shellescape.Quote(remoteCommand))
+		var errFdStr string
+		if opts.SSHErrorsToTty {
+			errFdStr = "-E /dev/tty"
+		}
+		sshCmd := fmt.Sprintf("ssh %s %s %s %s %s", errFdStr, strings.Join(moreSSHOpts, " "), opts.SSHOptsStr, shellescape.Quote(opts.SSHHost), shellescape.Quote(remoteCommand))
 		ecmd := exec.Command("bash", "-c", sshCmd)
 		return ecmd
 	}
