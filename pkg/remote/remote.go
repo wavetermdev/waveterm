@@ -520,7 +520,11 @@ func (msh *MShellProc) writeToPtyBuffer_nolock(strFmt string, args ...interface{
 		if !strings.HasSuffix(realStr, "\r\n") {
 			realStr = realStr + "\r\n"
 		}
-		realStr = "\033[0m\033[32m[scripthaus]\033[0m " + realStr
+		if strings.HasPrefix(realStr, "*") {
+			realStr = "\033[0m\033[31m[scripthaus]\033[0m " + realStr[1:]
+		} else {
+			realStr = "\033[0m\033[32m[scripthaus]\033[0m " + realStr
+		}
 		barr := msh.PtyBuffer.Bytes()
 		if len(barr) > 0 && barr[len(barr)-1] != '\n' {
 			realStr = "\r\n" + realStr
@@ -552,14 +556,14 @@ func (msh *MShellProc) Launch() {
 		msh.WriteToPtyBuffer("cannot launch archived remote\n")
 		return
 	}
-	msh.WriteToPtyBuffer("connecting to %s...\n", remoteCopy.GetName())
+	msh.WriteToPtyBuffer("connecting to %s...\n", remoteCopy.RemoteCanonicalName)
 	sshOpts := convertSSHOpts(remoteCopy.SSHOpts)
 	sshOpts.SSHErrorsToTty = true
 	ecmd := sshOpts.MakeSSHExecCmd(MShellServerCommand)
 	cmdPty, err := msh.addControllingTty(ecmd)
 	if err != nil {
 		statusErr := fmt.Errorf("cannot attach controlling tty to mshell command: %w", err)
-		msh.WriteToPtyBuffer("error, %s\n", statusErr.Error())
+		msh.WriteToPtyBuffer("*error, %s\n", statusErr.Error())
 		msh.setErrorStatus(statusErr)
 		return
 	}
@@ -576,7 +580,7 @@ func (msh *MShellProc) Launch() {
 				break
 			}
 			if readErr != nil {
-				msh.WriteToPtyBuffer("error reading from controlling-pty: %v\n", readErr)
+				msh.WriteToPtyBuffer("*error reading from controlling-pty: %v\n", readErr)
 				break
 			}
 			msh.WithLock(func() {
@@ -600,7 +604,7 @@ func (msh *MShellProc) Launch() {
 	})
 	if err != nil {
 		msh.setErrorStatus(err)
-		msh.WriteToPtyBuffer("error connecting to remote (uname=%q): %v\n", msh.UName, err)
+		msh.WriteToPtyBuffer("*error connecting to remote (uname=%q): %v\n", msh.UName, err)
 		return
 	}
 	msh.WriteToPtyBuffer("connected\n")
@@ -618,7 +622,7 @@ func (msh *MShellProc) Launch() {
 				go msh.NotifyRemoteUpdate()
 			}
 		})
-		msh.WriteToPtyBuffer("disconnected exitcode=%d\n", exitCode)
+		msh.WriteToPtyBuffer("*disconnected exitcode=%d\n", exitCode)
 	}()
 	go msh.ProcessPackets()
 	return
