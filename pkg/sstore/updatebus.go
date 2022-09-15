@@ -9,6 +9,7 @@ var MainBus *UpdateBus = MakeUpdateBus()
 
 const PtyDataUpdateStr = "pty"
 const ModelUpdateStr = "model"
+const UpdateChSize = 100
 
 type UpdatePacket interface {
 	UpdateType() string
@@ -86,6 +87,7 @@ type InfoMsgType struct {
 	InfoCompsMore bool     `json:"infocompssmore,omitempty"`
 	InfoLines     []string `json:"infolines,omitempty"`
 	TimeoutMs     int64    `json:"timeoutms,omitempty"`
+	PtyRemoteId   string   `json:"ptyremoteid,omitempty"`
 }
 
 type HistoryInfoType struct {
@@ -134,12 +136,12 @@ func (bus *UpdateBus) RegisterChannel(clientId string, sessionId string) chan in
 	if found {
 		close(uch.Ch)
 		uch.SessionId = sessionId
-		uch.Ch = make(chan interface{})
+		uch.Ch = make(chan interface{}, UpdateChSize)
 	} else {
 		uch = UpdateChannel{
 			ClientId:  clientId,
 			SessionId: sessionId,
-			Ch:        make(chan interface{}),
+			Ch:        make(chan interface{}, UpdateChSize),
 		}
 	}
 	bus.Channels[clientId] = uch
@@ -161,7 +163,12 @@ func (bus *UpdateBus) SendUpdate(sessionId string, update interface{}) {
 	defer bus.Lock.Unlock()
 	for _, uch := range bus.Channels {
 		if uch.Match(sessionId) {
-			uch.Ch <- update
+			select {
+			case uch.Ch <- update:
+
+			default:
+				fmt.Printf("[error] dropped update on updatebus uch clientid=%s\n", uch.ClientId)
+			}
 		}
 	}
 }

@@ -30,6 +30,9 @@ const RemoteTypeMShell = "mshell"
 const DefaultTerm = "xterm-256color"
 const DefaultMaxPtySize = 1024 * 1024
 const CircBufSize = 64 * 1024
+const RemoteTermRows = 10
+const RemoteTermCols = 80
+const PtyReadBufSize = 100
 
 const MShellServerCommand = `
 PATH=$PATH:~/.mshell;
@@ -457,6 +460,7 @@ func (msh *MShellProc) addControllingTty(ecmd *exec.Cmd) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
+	pty.Setsize(cmdPty, &pty.Winsize{Rows: RemoteTermRows, Cols: RemoteTermCols})
 	msh.ControllingPty = cmdPty
 	ecmd.ExtraFiles = append(ecmd.ExtraFiles, cmdTty)
 	if ecmd.SysProcAttr == nil {
@@ -524,7 +528,21 @@ func (msh *MShellProc) writeToPtyBuffer_nolock(strFmt string, args ...interface{
 	} else {
 		realStr = realStr[1:]
 	}
-	msh.PtyBuffer.Write([]byte(realStr))
+	curOffset := msh.PtyBuffer.TotalWritten()
+	data := []byte(realStr)
+	msh.PtyBuffer.Write(data)
+	sendRemotePtyUpdate(msh.Remote.RemoteId, curOffset, data)
+}
+
+func sendRemotePtyUpdate(remoteId string, dataOffset int64, data []byte) {
+	data64 := base64.StdEncoding.EncodeToString(data)
+	update := &sstore.PtyDataUpdate{
+		RemoteId:   remoteId,
+		PtyPos:     dataOffset,
+		PtyData64:  data64,
+		PtyDataLen: int64(len(data)),
+	}
+	sstore.MainBus.SendUpdate("", update)
 }
 
 func (msh *MShellProc) Launch() {
@@ -534,7 +552,7 @@ func (msh *MShellProc) Launch() {
 		msh.WriteToPtyBuffer("cannot launch archived remote\n")
 		return
 	}
-	msh.WriteToPtyBuffer("connecting to %s\n", remoteCopy.GetName())
+	msh.WriteToPtyBuffer("connecting to %s...\n", remoteCopy.GetName())
 	sshOpts := convertSSHOpts(remoteCopy.SSHOpts)
 	sshOpts.SSHErrorsToTty = true
 	ecmd := sshOpts.MakeSSHExecCmd(MShellServerCommand)
@@ -551,7 +569,7 @@ func (msh *MShellProc) Launch() {
 		}
 	}()
 	go func() {
-		buf := make([]byte, 100)
+		buf := make([]byte, PtyReadBufSize)
 		for {
 			n, readErr := cmdPty.Read(buf)
 			if readErr == io.EOF {
@@ -562,7 +580,9 @@ func (msh *MShellProc) Launch() {
 				break
 			}
 			msh.WithLock(func() {
+				curOffset := msh.PtyBuffer.TotalWritten()
 				msh.PtyBuffer.Write(buf[0:n])
+				sendRemotePtyUpdate(remoteCopy.RemoteId, curOffset, buf[0:n])
 			})
 		}
 	}()
