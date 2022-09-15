@@ -31,11 +31,12 @@ function boundInt(ival : number, minVal : number, maxVal : number) : number {
     return ival;
 }
 
+type TermContext = {sessionId? : string, cmdId? : string, remoteId? : string};
+
 // cmd-instance
 class TermWrap {
     terminal : any;
-    sessionId : string;
-    cmdId : string;
+    termContext : TermContext;
     atRowMax : boolean;
     usedRows : mobx.IObservableValue<number>;
     isFocused : mobx.IObservableValue<boolean> = mobx.observable.box(false, {name: "focus"});
@@ -49,9 +50,8 @@ class TermWrap {
     numParseErrors : number = 0;
     termSize : TermWinSize;
 
-    constructor(elem : Element, sessionId : string, cmdId : string, usedRows : number, termOpts : TermOptsType, winSize : WindowSize, keyHandler : (event : any) => void) {
-        this.sessionId = sessionId;
-        this.cmdId = cmdId;
+    constructor(elem : Element, termContext : TermContext, usedRows : number, termOpts : TermOptsType, winSize : WindowSize, keyHandler : (event : any) => void) {
+        this.termContext = termContext;
         this.connectedElem = elem;
         this.flexRows = termOpts.flexrows ?? false;
         this.winSize = winSize;
@@ -140,6 +140,12 @@ class TermWrap {
         if (this.terminal == null) {
             return;
         }
+        if (!this.flexRows) {
+            return;
+        }
+        if (this.termContext.remoteId != null) {
+            return;
+        }
         if (forceFull) {
             this.atRowMax = false;
         }
@@ -156,12 +162,12 @@ class TermWrap {
                 return;
             }
             this.usedRows.set(tur);
-            GlobalModel.setTUR(this.sessionId, this.cmdId, this.termSize, tur);
+            GlobalModel.setTUR(this.termContext.sessionId, this.termContext.cmdId, this.termSize, tur);
             if (this.connectedElem) {
                 let resizeEvent = new CustomEvent("termresize", {
                     bubbles: true,
                     detail: {
-                        cmdId: this.cmdId,
+                        cmdId: this.termContext.cmdId,
                         oldUsedRows: oldUsedRows,
                         newUsedRows: tur,
                     },
@@ -190,13 +196,22 @@ class TermWrap {
         this.updateUsedRows(true);
     }
 
+    _getReloadUrl() : string {
+        if (this.termContext.remoteId != null) {
+            return sprintf("http://localhost:8080/api/remote-pty?remoteid=%s", this.termContext.remoteId);
+        }
+        else {
+            return sprintf("http://localhost:8080/api/ptyout?sessionid=%s&cmdid=%s", this.termContext.sessionId, this.termContext.cmdId);
+        }
+    }
+
     reloadTerminal(delayMs : number) {
         if (this.terminal == null) {
             return;
         }
         this.reloading = true;
         this.terminal.reset();
-        let url = sprintf("http://localhost:8080/api/ptyout?sessionid=%s&cmdid=%s", this.sessionId, this.cmdId);
+        let url = this._getReloadUrl();
         let ptyOffset = 0;
         fetch(url).then((resp) => {
             if (!resp.ok) {
@@ -236,7 +251,7 @@ class TermWrap {
             return;
         }
         if (pos > this.ptyPos) {
-            throw new Error(sprintf("invalid pty-update, data-pos[%d] does not match term-pos[%d] cmdid[%s]", pos, this.ptyPos, this.cmdId));
+            throw new Error(sprintf("invalid pty-update, data-pos[%d] does not match term-pos[%d] cmdid[%s]", pos, this.ptyPos, JSON.stringify(this.termContext)));
         }
         if (pos < this.ptyPos) {
             let diff = this.ptyPos - pos;

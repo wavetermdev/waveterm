@@ -229,6 +229,7 @@ type CmdDataType = {
 type PtyDataUpdateType = {
     sessionid : string,
     cmdid : string,
+    remoteid : string,
     ptypos : number,
     ptydata64 : string,
     ptydatalen : number,

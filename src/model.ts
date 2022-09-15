@@ -322,7 +322,7 @@ class ScreenWindow {
         }
         let cols = widthToCols(width);
         let usedRows = GlobalModel.getTUR(this.sessionId, cmdId, cols);
-        termWrap = new TermWrap(elem, this.sessionId, cmdId, usedRows, cmd.getTermOpts(), {height: 0, width: width}, cmd.handleKey.bind(cmd));
+        termWrap = new TermWrap(elem, {sessionId: this.sessionId, cmdId: cmdId}, usedRows, cmd.getTermOpts(), {height: 0, width: width}, cmd.handleKey.bind(cmd));
         this.terms[cmdId] = termWrap;
         return;
     }
@@ -635,6 +635,9 @@ class InputModel {
     
     infoMsg : OV<InfoType> = mobx.observable.box(null);
     infoTimeoutId : any = null;
+
+    ptyRemoteId : OV<string> = mobx.observable.box(null);
+    remoteTermWrap : TermWrap;
 
     constructor() {
         this.filteredHistoryItems = mobx.computed(() => {
@@ -1404,12 +1407,25 @@ class Model {
     runUpdate_internal(genUpdate : UpdateMessage, uiContext : UIContextType, interactive : boolean) {
         if ("ptydata64" in genUpdate) {
             let ptyMsg : PtyDataUpdateType = genUpdate;
-            let activeScreen = this.getActiveScreen();
-            if (!activeScreen || activeScreen.sessionId != ptyMsg.sessionid) {
+            if (isBlank(ptyMsg.remoteid)) {
+                // regular update
+                let activeScreen = this.getActiveScreen();
+                if (!activeScreen || activeScreen.sessionId != ptyMsg.sessionid) {
+                    return;
+                }
+                activeScreen.updatePtyData(ptyMsg);
                 return;
             }
-            activeScreen.updatePtyData(ptyMsg);
-            return;
+            else {
+                // remote update
+                let activeRemoteId = this.inputModel.ptyRemoteId.get();
+                if (activeRemoteId != ptyMsg.remoteid || this.inputModel.remoteTermWrap == null) {
+                    return;
+                }
+                let ptyData = base64ToArray(ptyMsg.ptydata64);
+                this.inputModel.remoteTermWrap.updatePtyData(ptyMsg.ptypos, ptyData);
+                return;
+            }
         }
         let update : ModelUpdateType = genUpdate;
         if ("sessions" in update) {
