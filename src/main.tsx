@@ -690,6 +690,16 @@ class InfoMsg extends React.Component<{}, {}> {
             inputModel.remoteTermWrap.terminal.focus();
         }
     }
+
+    @boundMethod
+    connectRemote(remoteId : string) {
+        GlobalCommandRunner.connectRemote(remoteId);
+    }
+
+    @boundMethod
+    disconnectRemote(remoteId : string) {
+        GlobalCommandRunner.disconnectRemote(remoteId);
+    }
     
     render() {
         let model = GlobalModel;
@@ -701,7 +711,10 @@ class InfoMsg extends React.Component<{}, {}> {
         let idx : number = 0;
         let ptyRemoteId = (infoMsg == null ? null : infoMsg.ptyremoteid);
         let isTermFocused = (inputModel.remoteTermWrap == null ? false : inputModel.remoteTermWrap.isFocused.get());
-        console.log("ptyremoteid", ptyRemoteId);
+        let remote : RemoteType;
+        if (ptyRemoteId != null) {
+            remote = GlobalModel.getRemote(ptyRemoteId);
+        }
         return (
             <div className="cmd-input-info" style={{display: (infoShow ? "block" : "none")}}>
                 <If condition={infoMsg && infoMsg.infotitle != null}>
@@ -721,7 +734,17 @@ class InfoMsg extends React.Component<{}, {}> {
                         </For>
                     </div>
                 </If>
-                <div className={cn("terminal-wrapper", {"focus": isTermFocused})} style={{overflowY: "hidden", display: (ptyRemoteId == null ? "none" : "block"), width: CellWidthPx*RemotePtyCols}}>
+                <If condition={ptyRemoteId != null && remote != null}>
+                    <div>
+                        <If condition={remote.status != "connected"}>
+                            <div onClick={() => this.connectRemote(ptyRemoteId)} className="button is-small is-success">Connect</div>
+                        </If>
+                        <If condition={remote.status == "connected"}>
+                            <div onClick={() => this.disconnectRemote(ptyRemoteId)} className="button is-small is-danger">Disconnect</div>
+                        </If>
+                    </div>
+                </If>
+                <div className={cn("terminal-wrapper", {"focus": isTermFocused})} style={{overflowY: "hidden", display: (ptyRemoteId == null ? "none" : "block"), width: CellWidthPx*RemotePtyCols+15}}>
                     <If condition={!isTermFocused}>
                         <div className="term-block" onClick={this.clickTermBlock}></div>
                     </If>

@@ -1840,6 +1840,14 @@ class CommandRunner {
     showRemote(remoteid : string) {
         GlobalModel.submitCommand("remote", "show", null, {"nohist": "1", "remote": remoteid}, true);
     }
+
+    connectRemote(remoteid : string) {
+        GlobalModel.submitCommand("remote", "connect", null, {"nohist": "1", "remote": remoteid}, false);
+    }
+
+    disconnectRemote(remoteid : string) {
+        GlobalModel.submitCommand("remote", "disconnect", null, {"nohist": "1", "remote": remoteid}, false);
+    }
 };
 
 let GlobalModel : Model = null;
