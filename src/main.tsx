@@ -14,6 +14,11 @@ import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, ScreenWi
 
 dayjs.extend(localizedFormat)
 
+const CellHeightPx = 16;
+const CellWidthPx = 8;
+const RemotePtyRows = 10;
+const RemotePtyCols = 80;
+
 type InterObsValue = {
     sessionid : string,
     windowid : string,
@@ -343,11 +348,9 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
             );
         }
         let termLoaded = this.termLoaded.get();
-        let cellHeightPx = 16;
-        let cellWidthPx = 8;
-        let termWidth = Math.max(Math.trunc((width - 20)/cellWidthPx), 10);
+        let termWidth = Math.max(Math.trunc((width - 20)/CellWidthPx), 10);
         let usedRows = sw.getUsedRows(cmd, width);
-        let totalHeight = cellHeightPx * usedRows;
+        let totalHeight = CellHeightPx * usedRows;
         let remote = model.getRemote(cmd.remoteId);
         let status = cmd.getStatus();
         let termOpts = cmd.getTermOpts();
@@ -679,6 +682,14 @@ class InfoMsg extends React.Component<{}, {}> {
         }
         return s.substr(slashIdx+1);
     }
+
+    @boundMethod
+    clickTermBlock(e : any) {
+        let inputModel = GlobalModel.inputModel;
+        if (inputModel.remoteTermWrap != null) {
+            inputModel.remoteTermWrap.terminal.focus();
+        }
+    }
     
     render() {
         let model = GlobalModel;
@@ -688,6 +699,9 @@ class InfoMsg extends React.Component<{}, {}> {
         let line : string = null;
         let istr : string = null;
         let idx : number = 0;
+        let ptyRemoteId = (infoMsg == null ? null : infoMsg.ptyremoteid);
+        let isTermFocused = (inputModel.remoteTermWrap == null ? false : inputModel.remoteTermWrap.isFocused.get());
+        console.log("ptyremoteid", ptyRemoteId);
         return (
             <div className="cmd-input-info" style={{display: (infoShow ? "block" : "none")}}>
                 <If condition={infoMsg && infoMsg.infotitle != null}>
@@ -707,6 +721,12 @@ class InfoMsg extends React.Component<{}, {}> {
                         </For>
                     </div>
                 </If>
+                <div className={cn("terminal-wrapper", {"focus": isTermFocused})} style={{overflowY: "hidden", display: (ptyRemoteId == null ? "none" : "block"), width: CellWidthPx*RemotePtyCols}}>
+                    <If condition={!isTermFocused}>
+                        <div className="term-block" onClick={this.clickTermBlock}></div>
+                    </If>
+                    <div className="terminal" id="term-remote" data-remoteid={ptyRemoteId} style={{height: CellHeightPx*RemotePtyRows}}></div>
+                </div>
                 <If condition={infoMsg && infoMsg.infocomps != null && infoMsg.infocomps.length > 0}>
                     <div className="info-comps">
                         <For each="istr" index="idx" of={infoMsg.infocomps}>

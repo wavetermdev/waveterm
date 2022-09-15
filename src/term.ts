@@ -63,9 +63,14 @@ class TermWrap {
             this.atRowMax = true;
             this.usedRows = mobx.observable.box(termOpts.rows);
         }
-        let cols = Math.trunc((winSize.width - 25) / DefaultCellWidth) - 1;
-        cols = boundInt(cols, MinTermCols, MaxTermCols);
-        this.termSize = {rows: termOpts.rows, cols: cols};
+        if (winSize == null) {
+            this.termSize = {rows: termOpts.rows, cols: termOpts.cols};
+        }
+        else {
+            let cols = Math.trunc((winSize.width - 25) / DefaultCellWidth) - 1;
+            cols = boundInt(cols, MinTermCols, MaxTermCols);
+            this.termSize = {rows: termOpts.rows, cols: cols};
+        }
         this.terminal = new Terminal({rows: this.termSize.rows, cols: this.termSize.cols, fontSize: 14, theme: {foreground: "#d3d7cf"}});
         this.terminal._core._inputHandler._parser.setErrorHandler((state) => {
             this.numParseErrors++;

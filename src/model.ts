@@ -11,6 +11,8 @@ import {WSControl} from "./ws";
 var GlobalUser = "sawka";
 const DefaultCellWidth = 8;
 const DefaultCellHeight = 16;
+const RemotePtyRows = 10; // also in main.tsx
+const RemotePtyCols = 80;
 
 function widthToCols(width : number) : number {
     let cols = Math.trunc((width - 25) / DefaultCellWidth) - 1;
@@ -635,8 +637,6 @@ class InputModel {
     
     infoMsg : OV<InfoType> = mobx.observable.box(null);
     infoTimeoutId : any = null;
-
-    ptyRemoteId : OV<string> = mobx.observable.box(null);
     remoteTermWrap : TermWrap;
 
     constructor() {
@@ -666,6 +666,14 @@ class InputModel {
         else {
             this._focusCmdInput();
         }
+    }
+
+    getPtyRemoteId() : string {
+        let info = this.infoMsg.get();
+        if (info == null || isBlank(info.ptyremoteid)) {
+            return null;
+        }
+        return info.ptyremoteid;
     }
 
     hasFocus() : boolean {
@@ -994,6 +1002,7 @@ class InputModel {
         this._clearInfoTimeout();
         mobx.action(() => {
             this.infoMsg.set(info);
+            this.syncTermWrap();
             if (info == null) {
                 this.infoShow.set(false);
             }
@@ -1041,6 +1050,7 @@ class InputModel {
             this.infoShow.set(false);
             if (setNull) {
                 this.infoMsg.set(null);
+                this.syncTermWrap();
             }
         })();
     }
@@ -1093,8 +1103,38 @@ class InputModel {
             this.resetHistory();
             this.dropModHistory(false);
             this.infoMsg.set(null);
+            this.syncTermWrap();
             this._clearInfoTimeout();
         })();
+    }
+
+    termKeyHandler(e : any) : void {
+        console.log("term-remote key", e);
+    }
+
+    syncTermWrap() : void {
+        let infoMsg = this.infoMsg.get();
+        let remoteId = (infoMsg == null ? null : infoMsg.ptyremoteid);
+        let curTermRemoteId = (this.remoteTermWrap == null ? null : this.remoteTermWrap.termContext.remoteId);
+        if (remoteId == curTermRemoteId) {
+            return;
+        }
+        if (this.remoteTermWrap != null) {
+            this.remoteTermWrap.dispose();
+            this.remoteTermWrap = null;
+            console.log("dispose termwrap");
+        }
+        if (remoteId != null) {
+            let elem = document.getElementById("term-remote");
+            if (elem == null) {
+                console.log("ERROR null term-remote element");
+            }
+            else {
+                let termOpts = {rows: RemotePtyRows, cols: RemotePtyCols, flexrows: false, maxptysize: 64*1024};
+                this.remoteTermWrap = new TermWrap(elem, {remoteId: remoteId}, RemotePtyRows, termOpts, null, this.termKeyHandler.bind(this));
+                console.log("make termwrap", this.remoteTermWrap);
+            }
+        }
     }
 
     getCurLine() : string {
@@ -1418,7 +1458,7 @@ class Model {
             }
             else {
                 // remote update
-                let activeRemoteId = this.inputModel.ptyRemoteId.get();
+                let activeRemoteId = this.inputModel.getPtyRemoteId();
                 if (activeRemoteId != ptyMsg.remoteid || this.inputModel.remoteTermWrap == null) {
                     return;
                 }

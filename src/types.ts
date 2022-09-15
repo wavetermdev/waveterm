@@ -270,6 +270,7 @@ type InfoType = {
     infocomps? : string[],
     infocompsmore? : boolean,
     timeoutms? : number,
+    ptyremoteid? : string,
 };
 
 type HistoryQueryOpts = {
