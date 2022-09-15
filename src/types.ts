@@ -80,6 +80,7 @@ type RemoteType = {
     defaultstate : RemoteStateType,
     connectmode : string,
     remoteidx : number,
+    archived : boolean,
     remove? : boolean,
 };
 

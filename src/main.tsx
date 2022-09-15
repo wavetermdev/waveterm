@@ -665,6 +665,73 @@ class TextAreaInput extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
+class InfoMsg extends React.Component<{}, {}> {
+    getAfterSlash(s : string) : string {
+        if (s.startsWith("^/")) {
+            return s.substr(1);
+        }
+        let slashIdx = s.lastIndexOf("/");
+        if (slashIdx == s.length-1) {
+            slashIdx = s.lastIndexOf("/", slashIdx-1);
+        }
+        if (slashIdx == -1) {
+            return s;
+        }
+        return s.substr(slashIdx+1);
+    }
+    
+    render() {
+        let model = GlobalModel;
+        let inputModel = model.inputModel;
+        let infoMsg = inputModel.infoMsg.get();
+        let infoShow = inputModel.infoShow.get();
+        let line : string = null;
+        let istr : string = null;
+        let idx : number = 0;
+        return (
+            <div className="cmd-input-info" style={{display: (infoShow ? "block" : "none")}}>
+                <If condition={infoMsg && infoMsg.infotitle != null}>
+                    <div className="info-title">
+                        {infoMsg.infotitle}
+                    </div>
+                </If>
+                <If condition={infoMsg && infoMsg.infomsg != null}>
+                    <div className="info-msg">
+                        {infoMsg.infomsg}
+                    </div>
+                </If>
+                <If condition={infoMsg && infoMsg.infolines != null}>
+                    <div className="info-lines">
+                        <For index="idx" each="line" of={infoMsg.infolines}>
+                            <div key={idx}>{line == "" ? " " : line}</div>
+                        </For>
+                    </div>
+                </If>
+                <If condition={infoMsg && infoMsg.infocomps != null && infoMsg.infocomps.length > 0}>
+                    <div className="info-comps">
+                        <For each="istr" index="idx" of={infoMsg.infocomps}>
+                            <div key={idx} className={cn("info-comp", {"metacmd-comp": istr.startsWith("^")})}>
+                                {this.getAfterSlash(istr)}
+                            </div>
+                        </For>
+                        <If condition={infoMsg.infocompsmore}>
+                            <div key="more" className="info-comp">
+                                ...
+                            </div>
+                        </If>
+                    </div>
+                </If>
+                <If condition={infoMsg && infoMsg.infoerror != null}>
+                    <div className="info-error">
+                        [error] {infoMsg.infoerror}
+                    </div>
+                </If>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
 class HistoryInfo extends React.Component<{}, {}> {
     lastClickHNum : string = null;
     lastClickTs : number = 0;
@@ -798,20 +865,6 @@ class HistoryInfo extends React.Component<{}, {}> {
 
 @mobxReact.observer
 class CmdInput extends React.Component<{}, {}> {
-    getAfterSlash(s : string) : string {
-        if (s.startsWith("^/")) {
-            return s.substr(1);
-        }
-        let slashIdx = s.lastIndexOf("/");
-        if (slashIdx == s.length-1) {
-            slashIdx = s.lastIndexOf("/", slashIdx-1);
-        }
-        if (slashIdx == -1) {
-            return s;
-        }
-        return s.substr(slashIdx+1);
-    }
-    
     render() {
         let model = GlobalModel;
         let inputModel = model.inputModel;
@@ -830,57 +883,15 @@ class CmdInput extends React.Component<{}, {}> {
         }
         let remoteStr = getRemoteStr(rptr);
         let cwdStr = getCwdStr(remote, remoteState);
-        let infoMsg = inputModel.infoMsg.get();
         let infoShow = inputModel.infoShow.get();
         let historyShow = !infoShow && inputModel.historyShow.get();
-        let istr : string = null;
-        let istrIdx : number = 0;
-        let line : string = null;
-        let idx : number = 0;
         return (
             <div className={cn("box cmd-input has-background-black", {"has-info": infoShow}, {"has-history": historyShow})}>
                 <If condition={historyShow}>
                     <div className="cmd-input-grow-spacer"></div>
                     <HistoryInfo/>
                 </If>
-                <div className="cmd-input-info" style={{display: (infoShow ? "block" : "none")}}>
-                    <If condition={infoMsg && infoMsg.infotitle != null}>
-                        <div className="info-title">
-                            {infoMsg.infotitle}
-                        </div>
-                    </If>
-                    <If condition={infoMsg && infoMsg.infomsg != null}>
-                        <div className="info-msg">
-                            {infoMsg.infomsg}
-                        </div>
-                    </If>
-                    <If condition={infoMsg && infoMsg.infolines != null}>
-                        <div className="info-lines">
-                            <For index="idx" each="line" of={infoMsg.infolines}>
-                                <div key={idx}>{line == "" ? " " : line}</div>
-                            </For>
-                        </div>
-                    </If>
-                    <If condition={infoMsg && infoMsg.infocomps != null && infoMsg.infocomps.length > 0}>
-                        <div className="info-comps">
-                            <For each="istr" index="istrIdx" of={infoMsg.infocomps}>
-                                <div key={istrIdx} className={cn("info-comp", {"metacmd-comp": istr.startsWith("^")})}>
-                                    {this.getAfterSlash(istr)}
-                                </div>
-                            </For>
-                            <If condition={infoMsg.infocompsmore}>
-                                <div key="more" className="info-comp">
-                                    ...
-                                </div>
-                            </If>
-                        </div>
-                    </If>
-                    <If condition={infoMsg && infoMsg.infoerror != null}>
-                        <div className="info-error">
-                            [error] {infoMsg.infoerror}
-                        </div>
-                    </If>
-                </div>
+                <InfoMsg/>
                 <div className="cmd-input-context">
                     <div className="has-text-white">
                         <Prompt rptr={rptr} rstate={remoteState}/>
