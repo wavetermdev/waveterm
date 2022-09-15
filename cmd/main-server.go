@@ -142,6 +142,35 @@ func HandleGetWindow(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+func HandleRemotePty(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Vary", "Origin")
+	w.Header().Set("Cache-Control", "no-cache")
+	qvals := r.URL.Query()
+	remoteId := qvals.Get("remoteid")
+	if remoteId == "" {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("must specify remoteid")))
+		return
+	}
+	if _, err := uuid.Parse(remoteId); err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("invalid remoteid: %v", err)))
+		return
+	}
+	realOffset, data, err := remote.ReadRemotePty(r.Context(), remoteId)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("error reading ptyout file: %v", err)))
+		return
+	}
+	w.Header().Set("X-PtyDataOffset", strconv.FormatInt(realOffset, 10))
+	w.WriteHeader(http.StatusOK)
+	w.Write(data)
+	return
+}
+
 func HandleGetPtyOut(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -333,6 +362,7 @@ func main() {
 	go runWebSocketServer()
 	gr := mux.NewRouter()
 	gr.HandleFunc("/api/ptyout", HandleGetPtyOut)
+	gr.HandleFunc("/api/remote-pty", HandleRemotePty)
 	gr.HandleFunc("/api/get-window", HandleGetWindow)
 	gr.HandleFunc("/api/run-command", HandleRunCommand).Methods("GET", "POST", "OPTIONS")
 	server := &http.Server{

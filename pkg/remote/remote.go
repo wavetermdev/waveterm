@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/armon/circbuf"
 	"github.com/creack/pty"
 	"github.com/google/uuid"
 	"github.com/scripthaus-dev/mshell/pkg/base"
@@ -28,6 +29,7 @@ import (
 const RemoteTypeMShell = "mshell"
 const DefaultTerm = "xterm-256color"
 const DefaultMaxPtySize = 1024 * 1024
+const CircBufSize = 64 * 1024
 
 const MShellServerCommand = `
 PATH=$PATH:~/.mshell;
@@ -52,7 +54,6 @@ var GlobalStore *Store
 type Store struct {
 	Lock       *sync.Mutex
 	Map        map[string]*MShellProc // key=remoteid
-	Log        *CircleLog
 	CmdWaitMap map[base.CommandKey][]func()
 }
 
@@ -66,6 +67,7 @@ type MShellProc struct {
 	UName          string
 	Err            error
 	ControllingPty *os.File
+	PtyBuffer      *circbuf.Buffer
 
 	RunningCmds []base.CommandKey
 }
@@ -83,21 +85,6 @@ type RemoteRuntimeState struct {
 	ConnectMode         string              `json:"connectmode"`
 	Archived            bool                `json:"archived"`
 	RemoteIdx           int64               `json:"remoteidx"`
-}
-
-func logf(rem *sstore.RemoteType, fmtStr string, args ...interface{}) {
-	rname := rem.GetName()
-	str := fmt.Sprintf(fmtStr, args...)
-	fullStr := fmt.Sprintf("[remote %s] %s", rname, str)
-	fmt.Printf("%s\n", fullStr)
-	GlobalStore.Log.Add(fullStr)
-}
-
-func logError(rem *sstore.RemoteType, err error) {
-	rname := rem.GetName()
-	fullStr := fmt.Sprintf("[remote %s] error: %v", rname, err)
-	fmt.Printf("%s\n", fullStr)
-	GlobalStore.Log.Add(fullStr)
 }
 
 func (state RemoteRuntimeState) IsConnected() bool {
@@ -129,7 +116,6 @@ func LoadRemotes(ctx context.Context) error {
 	GlobalStore = &Store{
 		Lock:       &sync.Mutex{},
 		Map:        make(map[string]*MShellProc),
-		Log:        MakeCircleLog(100),
 		CmdWaitMap: make(map[base.CommandKey][]func()),
 	}
 	allRemotes, err := sstore.GetAllRemotes(ctx)
@@ -166,6 +152,20 @@ func LoadRemoteById(ctx context.Context, remoteId string) error {
 		go msh.Launch()
 	}
 	return nil
+}
+
+func ReadRemotePty(ctx context.Context, remoteId string) (int64, []byte, error) {
+	GlobalStore.Lock.Lock()
+	defer GlobalStore.Lock.Unlock()
+	msh := GlobalStore.Map[remoteId]
+	if msh == nil {
+		return 0, nil, nil
+	}
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	barr := msh.PtyBuffer.Bytes()
+	offset := msh.PtyBuffer.TotalWritten() - int64(len(barr))
+	return offset, barr, nil
 }
 
 func AddRemote(ctx context.Context, r *sstore.RemoteType) error {
@@ -423,7 +423,17 @@ func GetDefaultRemoteStateById(remoteId string) (*sstore.RemoteState, error) {
 }
 
 func MakeMShell(r *sstore.RemoteType) *MShellProc {
-	rtn := &MShellProc{Lock: &sync.Mutex{}, Remote: r, Status: StatusInit}
+	buf, err := circbuf.NewBuffer(CircBufSize)
+	if err != nil {
+		panic(err) // this should never happen (NewBuffer only returns an error if CirBufSize <= 0)
+	}
+	rtn := &MShellProc{
+		Lock:      &sync.Mutex{},
+		Remote:    r,
+		Status:    StatusInit,
+		PtyBuffer: buf,
+	}
+	rtn.WriteToPtyBuffer("console for remote [%s]\n", r.GetName())
 	return rtn
 }
 
@@ -492,21 +502,46 @@ func (msh *MShellProc) GetRemoteName() string {
 	return msh.Remote.GetName()
 }
 
+func (msh *MShellProc) WriteToPtyBuffer(strFmt string, args ...interface{}) {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	msh.writeToPtyBuffer_nolock(strFmt, args...)
+}
+
+func (msh *MShellProc) writeToPtyBuffer_nolock(strFmt string, args ...interface{}) {
+	// inefficient string manipulation here and read of PtyBuffer, but these messages are rare, nbd
+	realStr := fmt.Sprintf(strFmt, args...)
+	if !strings.HasPrefix(realStr, "~") {
+		realStr = strings.ReplaceAll(realStr, "\n", "\r\n")
+		if !strings.HasSuffix(realStr, "\r\n") {
+			realStr = realStr + "\r\n"
+		}
+		realStr = "\033[0m\033[32m[scripthaus]\033[0m " + realStr
+		barr := msh.PtyBuffer.Bytes()
+		if len(barr) > 0 && barr[len(barr)-1] != '\n' {
+			realStr = "\r\n" + realStr
+		}
+	} else {
+		realStr = realStr[1:]
+	}
+	msh.PtyBuffer.Write([]byte(realStr))
+}
+
 func (msh *MShellProc) Launch() {
 	remoteCopy := msh.GetRemoteCopy()
 	remoteName := remoteCopy.GetName()
 	if remoteCopy.Archived {
-		logf(&remoteCopy, "cannot launch archived remote")
+		msh.WriteToPtyBuffer("cannot launch archived remote\n")
 		return
 	}
-	logf(&remoteCopy, "starting launch")
+	msh.WriteToPtyBuffer("connecting to %s\n", remoteCopy.GetName())
 	sshOpts := convertSSHOpts(remoteCopy.SSHOpts)
 	sshOpts.SSHErrorsToTty = true
 	ecmd := sshOpts.MakeSSHExecCmd(MShellServerCommand)
 	cmdPty, err := msh.addControllingTty(ecmd)
 	if err != nil {
 		statusErr := fmt.Errorf("cannot attach controlling tty to mshell command: %w", err)
-		logError(&remoteCopy, statusErr)
+		msh.WriteToPtyBuffer("error, %s\n", statusErr.Error())
 		msh.setErrorStatus(statusErr)
 		return
 	}
@@ -523,18 +558,19 @@ func (msh *MShellProc) Launch() {
 				break
 			}
 			if readErr != nil {
-				logf(&remoteCopy, "error: reading from controlling-pty: %v", readErr)
+				msh.WriteToPtyBuffer("error reading from controlling-pty: %v\n", readErr)
 				break
 			}
-			readStr := string(buf[0:n])
-			fmt.Printf("[c-pty %s] %d %q\n", remoteName, n, readStr)
+			msh.WithLock(func() {
+				msh.PtyBuffer.Write(buf[0:n])
+			})
 		}
 	}()
 	if remoteName == "test2" {
 		go func() {
 			time.Sleep(2 * time.Second)
 			cmdPty.Write([]byte(Test2Pw))
-			fmt.Printf("[c-pty %s] wrote password!\n", remoteName)
+			msh.WriteToPtyBuffer("~[password sent]\r\n")
 		}()
 	}
 	cproc, uname, err := shexec.MakeClientProc(ecmd)
@@ -544,10 +580,10 @@ func (msh *MShellProc) Launch() {
 	})
 	if err != nil {
 		msh.setErrorStatus(err)
-		logf(&remoteCopy, "error connecting remote (%s): %v", msh.UName, err)
+		msh.WriteToPtyBuffer("error connecting to remote (uname=%q): %v\n", msh.UName, err)
 		return
 	}
-	fmt.Printf("connected remote %s\n", remoteCopy.GetName())
+	msh.WriteToPtyBuffer("connected\n")
 	msh.WithLock(func() {
 		msh.ServerProc = cproc
 		msh.Status = StatusConnected
@@ -562,7 +598,7 @@ func (msh *MShellProc) Launch() {
 				go msh.NotifyRemoteUpdate()
 			}
 		})
-		logf(&remoteCopy, "remote disconnected exitcode=%d", exitCode)
+		msh.WriteToPtyBuffer("disconnected exitcode=%d\n", exitCode)
 	}()
 	go msh.ProcessPackets()
 	return
@@ -767,7 +803,7 @@ func (msh *MShellProc) notifyHangups_nolock() {
 func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 	update, err := sstore.UpdateCmdDonePk(context.Background(), donePk)
 	if err != nil {
-		fmt.Printf("[error] updating cmddone: %v\n", err)
+		msh.WriteToPtyBuffer("[error] updating cmddone: %v\n", err)
 		return
 	}
 	if update != nil {
@@ -780,7 +816,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 func (msh *MShellProc) handleCmdErrorPacket(errPk *packet.CmdErrorPacketType) {
 	err := sstore.AppendCmdErrorPk(context.Background(), errPk)
 	if err != nil {
-		fmt.Printf("cmderr> [remote %s] [error] adding cmderr: %v\n", msh.GetRemoteName(), err)
+		msh.WriteToPtyBuffer("cmderr> [remote %s] [error] adding cmderr: %v\n", msh.GetRemoteName(), err)
 		return
 	}
 	return
@@ -832,7 +868,7 @@ func (msh *MShellProc) ProcessPackets() {
 		}
 		err := sstore.HangupRunningCmdsByRemoteId(context.Background(), msh.Remote.RemoteId)
 		if err != nil {
-			logf(msh.Remote, "calling HUP on cmds %v", err)
+			msh.writeToPtyBuffer_nolock("error calling HUP on cmds %v\n", err)
 		}
 		msh.notifyHangups_nolock()
 		go msh.NotifyRemoteUpdate()
@@ -851,7 +887,7 @@ func (msh *MShellProc) ProcessPackets() {
 		}
 		if pk.GetType() == packet.CmdDataPacketStr {
 			dataPacket := pk.(*packet.CmdDataPacketType)
-			fmt.Printf("cmd-data> [remote %s] [%s] pty=%d run=%d\n", msh.GetRemoteName(), dataPacket.CK, dataPacket.PtyDataLen, dataPacket.RunDataLen)
+			msh.WriteToPtyBuffer("cmd-data> [remote %s] [%s] pty=%d run=%d\n", msh.GetRemoteName(), dataPacket.CK, dataPacket.PtyDataLen, dataPacket.RunDataLen)
 			continue
 		}
 		if pk.GetType() == packet.CmdDonePacketStr {
@@ -865,20 +901,20 @@ func (msh *MShellProc) ProcessPackets() {
 		}
 		if pk.GetType() == packet.MessagePacketStr {
 			msgPacket := pk.(*packet.MessagePacketType)
-			fmt.Printf("# [remote %s] [%s] %s\n", msh.GetRemoteName(), msgPacket.CK, msgPacket.Message)
+			msh.WriteToPtyBuffer("msg> [remote %s] [%s] %s\n", msh.GetRemoteName(), msgPacket.CK, msgPacket.Message)
 			continue
 		}
 		if pk.GetType() == packet.RawPacketStr {
 			rawPacket := pk.(*packet.RawPacketType)
-			fmt.Printf("stderr> [remote %s] %s\n", msh.GetRemoteName(), rawPacket.Data)
+			msh.WriteToPtyBuffer("stderr> [remote %s] %s\n", msh.GetRemoteName(), rawPacket.Data)
 			continue
 		}
 		if pk.GetType() == packet.CmdStartPacketStr {
 			startPk := pk.(*packet.CmdStartPacketType)
-			fmt.Printf("start> [remote %s] reqid=%s (%p)\n", msh.GetRemoteName(), startPk.RespId, msh.ServerProc.Output)
+			msh.WriteToPtyBuffer("start> [remote %s] reqid=%s (%p)\n", msh.GetRemoteName(), startPk.RespId, msh.ServerProc.Output)
 			continue
 		}
-		fmt.Printf("MSH> [remote %s] unhandled packet %s\n", msh.GetRemoteName(), packet.AsString(pk))
+		msh.WriteToPtyBuffer("MSH> [remote %s] unhandled packet %s\n", msh.GetRemoteName(), packet.AsString(pk))
 	}
 }
 

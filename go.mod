@@ -14,6 +14,7 @@ require (
 
 require (
 	github.com/alessio/shellescape v1.4.1 // indirect
+	github.com/armon/circbuf v0.0.0-20190214190532-5111143e8da2 // indirect
 	github.com/creack/pty v1.1.18 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
