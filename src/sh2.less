@@ -411,12 +411,25 @@ html, body, #main {
 
 .cmd-input-info {
     .terminal-wrapper {
+        position: relative;
         background-color: #000;
         padding: 2px 10px 5px 4px;
         margin: 5px 5px 10px 5px;
         box-shadow: 0 0 1px 1px rgba(255, 255, 255, 0.3);
         &.focus {
             box-shadow: 0 0 3px 3px rgba(255, 255, 255, 0.3);
+        }
+
+        .term-tag {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background-color: @term-red;
+            color: white;
+            z-index: 10;
+            font-size: 10px;
+            padding: 4px;
+            font-family: 'JetBrains Mono', monospace;
         }
     }
 }

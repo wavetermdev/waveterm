@@ -777,9 +777,12 @@ class InfoMsg extends React.Component<{}, {}> {
                         </If>
                     </div>
                 </If>
-                <div className={cn("terminal-wrapper", {"focus": isTermFocused})} style={{overflowY: "hidden", display: (ptyRemoteId == null ? "none" : "block"), width: CellWidthPx*RemotePtyCols+15}}>
+                <div className={cn("terminal-wrapper", {"focus": isTermFocused}, (remote != null ? "status-" + remote.status : null))} style={{overflowY: "hidden", display: (ptyRemoteId == null ? "none" : "block"), width: CellWidthPx*RemotePtyCols+15}}>
                     <If condition={!isTermFocused}>
                         <div className="term-block" onClick={this.clickTermBlock}></div>
+                    </If>
+                    <If condition={inputModel.showNoInputMsg.get()}>
+                        <div className="term-tag">input is only allowed while status is 'connecting'</div>
                     </If>
                     <div className="terminal" id="term-remote" data-remoteid={ptyRemoteId} style={{height: CellHeightPx*RemotePtyRows}}></div>
                 </div>

@@ -637,11 +637,29 @@ class InputModel {
     infoMsg : OV<InfoType> = mobx.observable.box(null);
     infoTimeoutId : any = null;
     remoteTermWrap : TermWrap;
+    showNoInputMsg : OV<boolean> = mobx.observable.box(false);
+    showNoInputTimeoutId : any = null;
 
     constructor() {
         this.filteredHistoryItems = mobx.computed(() => {
             return this._getFilteredHistoryItems();
         });
+    }
+
+    setShowNoInputMsg(val : boolean) {
+        mobx.action(() => {
+            if (this.showNoInputTimeoutId != null) {
+                clearTimeout(this.showNoInputTimeoutId);
+                this.showNoInputTimeoutId = null;
+            }
+            if (val) {
+                this.showNoInputMsg.set(true);
+                this.showNoInputTimeoutId = setTimeout(() => this.setShowNoInputMsg(false), 2000);
+            }
+            else {
+                this.showNoInputMsg.set(false);
+            }
+        })();
     }
 
     _focusCmdInput() : void {
@@ -1108,6 +1126,14 @@ class InputModel {
     }
 
     termKeyHandler(remoteId : string, event : any) : void {
+        let remote = GlobalModel.getRemote(remoteId);
+        if (remote == null) {
+            return;
+        }
+        if (remote.status != "connecting") {
+            this.setShowNoInputMsg(true);
+            return;
+        }
         let inputPacket : RemoteInputPacketType = {
             type: "remoteinput",
             remoteid: remoteId,
