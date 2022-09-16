@@ -944,6 +944,12 @@ class HistoryInfo extends React.Component<{}, {}> {
 
 @mobxReact.observer
 class CmdInput extends React.Component<{}, {}> {
+    @boundMethod
+    onInfoToggle() : void {
+        GlobalModel.inputModel.toggleInfoMsg();
+        return;
+    }
+    
     render() {
         let model = GlobalModel;
         let inputModel = model.inputModel;
@@ -964,8 +970,17 @@ class CmdInput extends React.Component<{}, {}> {
         let cwdStr = getCwdStr(remote, remoteState);
         let infoShow = inputModel.infoShow.get();
         let historyShow = !infoShow && inputModel.historyShow.get();
+        let hasInfo = (inputModel.infoMsg.get() != null);
         return (
             <div className={cn("box cmd-input has-background-black", {"has-info": infoShow}, {"has-history": historyShow})}>
+                <div onClick={this.onInfoToggle} className="input-minmax-control">
+                    <If condition={infoShow || historyShow}>
+                        <i className="fa fa-chevron-down"/>
+                    </If>
+                    <If condition={!(infoShow || historyShow) && hasInfo}>
+                        <i className="fa fa-chevron-up"/>
+                    </If>
+                </div>
                 <If condition={historyShow}>
                     <div className="cmd-input-grow-spacer"></div>
                     <HistoryInfo/>
