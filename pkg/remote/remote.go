@@ -15,7 +15,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/armon/circbuf"
 	"github.com/creack/pty"
@@ -49,6 +48,7 @@ fi
 const (
 	StatusInit         = "init"
 	StatusConnected    = "connected"
+	StatusConnecting   = "connecting"
 	StatusDisconnected = "disconnected"
 	StatusError        = "error"
 )
@@ -573,9 +573,27 @@ func sendRemotePtyUpdate(remoteId string, dataOffset int64, data []byte) {
 	sstore.MainBus.SendUpdate("", update)
 }
 
+func (msh *MShellProc) RunPtyReadLoop(cmdPty *os.File) {
+	buf := make([]byte, PtyReadBufSize)
+	for {
+		n, readErr := cmdPty.Read(buf)
+		if readErr == io.EOF {
+			break
+		}
+		if readErr != nil {
+			msh.WriteToPtyBuffer("*error reading from controlling-pty: %v\n", readErr)
+			break
+		}
+		msh.WithLock(func() {
+			curOffset := msh.PtyBuffer.TotalWritten()
+			msh.PtyBuffer.Write(buf[0:n])
+			sendRemotePtyUpdate(msh.Remote.RemoteId, curOffset, buf[0:n])
+		})
+	}
+}
+
 func (msh *MShellProc) Launch() {
 	remoteCopy := msh.GetRemoteCopy()
-	remoteName := remoteCopy.GetName()
 	if remoteCopy.Archived {
 		msh.WriteToPtyBuffer("cannot launch archived remote\n")
 		return
@@ -596,33 +614,11 @@ func (msh *MShellProc) Launch() {
 			ecmd.ExtraFiles[len(ecmd.ExtraFiles)-1].Close()
 		}
 	}()
-	go func() {
-		buf := make([]byte, PtyReadBufSize)
-		for {
-			n, readErr := cmdPty.Read(buf)
-			if readErr == io.EOF {
-				break
-			}
-			if readErr != nil {
-				msh.WriteToPtyBuffer("*error reading from controlling-pty: %v\n", readErr)
-				break
-			}
-			msh.WithLock(func() {
-				curOffset := msh.PtyBuffer.TotalWritten()
-				msh.PtyBuffer.Write(buf[0:n])
-				sendRemotePtyUpdate(remoteCopy.RemoteId, curOffset, buf[0:n])
-			})
-		}
-	}()
-	if remoteName == "test2" {
-		go func() {
-			return
-
-			time.Sleep(2 * time.Second)
-			cmdPty.Write([]byte(Test2Pw))
-			msh.WriteToPtyBuffer("~[password sent]\r\n")
-		}()
-	}
+	go msh.RunPtyReadLoop(cmdPty)
+	msh.WithLock(func() {
+		msh.Status = StatusConnecting
+		go msh.NotifyRemoteUpdate()
+	})
 	cproc, uname, err := shexec.MakeClientProc(ecmd)
 	msh.WithLock(func() {
 		msh.UName = uname
@@ -643,7 +639,7 @@ func (msh *MShellProc) Launch() {
 		exitErr := cproc.Cmd.Wait()
 		exitCode := shexec.GetExitCode(exitErr)
 		msh.WithLock(func() {
-			if msh.Status == StatusConnected {
+			if msh.Status == StatusConnected || msh.Status == StatusConnecting {
 				msh.Status = StatusDisconnected
 				go msh.NotifyRemoteUpdate()
 			}
