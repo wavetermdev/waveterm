@@ -1,6 +1,7 @@
 package shexec
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os/exec"
@@ -24,7 +25,7 @@ type ClientProc struct {
 }
 
 // returns (clientproc, uname, error)
-func MakeClientProc(ecmd *exec.Cmd) (*ClientProc, string, error) {
+func MakeClientProc(ctx context.Context, ecmd *exec.Cmd) (*ClientProc, string, error) {
 	inputWriter, err := ecmd.StdinPipe()
 	if err != nil {
 		return nil, "", fmt.Errorf("creating stdin pipe: %v", err)
@@ -55,7 +56,15 @@ func MakeClientProc(ecmd *exec.Cmd) (*ClientProc, string, error) {
 		Input:        sender,
 		Output:       packetParser,
 	}
-	for pk := range packetParser.MainCh {
+
+	var pk packet.PacketType
+	select {
+	case pk = <-packetParser.MainCh:
+	case <-ctx.Done():
+		cproc.Close()
+		return nil, "", ctx.Err()
+	}
+	if pk != nil {
 		if pk.GetType() != packet.InitPacketStr {
 			cproc.Close()
 			return nil, "", fmt.Errorf("invalid packet received from mshell client: %s", packet.AsString(pk))
@@ -70,7 +79,6 @@ func MakeClientProc(ecmd *exec.Cmd) (*ClientProc, string, error) {
 			return nil, initPk.UName, fmt.Errorf("invalid remote mshell version 'v%s', must be v%s", initPk.Version, base.MShellVersion)
 		}
 		cproc.InitPk = initPk
-		break
 	}
 	if cproc.InitPk == nil {
 		cproc.Close()
