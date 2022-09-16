@@ -16,7 +16,7 @@ dayjs.extend(localizedFormat)
 
 const CellHeightPx = 16;
 const CellWidthPx = 8;
-const RemotePtyRows = 10;
+const RemotePtyRows = 8;
 const RemotePtyCols = 80;
 
 type InterObsValue = {
@@ -700,7 +700,16 @@ class InfoMsg extends React.Component<{}, {}> {
     disconnectRemote(remoteId : string) {
         GlobalCommandRunner.disconnectRemote(remoteId);
     }
-    
+
+    renderConnectButton(remote : RemoteType) : any {
+        if (remote.status == "connected") {
+            return <div onClick={() => this.disconnectRemote(remote.remoteid)} className="text-button disconnect-button">[disconnect remote]</div>
+        }
+        else {
+            return <div onClick={() => this.connectRemote(remote.remoteid)} className="text-button connect-button">[connect remote]</div>
+        }
+    }
+
     render() {
         let model = GlobalModel;
         let inputModel = model.inputModel;
@@ -735,12 +744,36 @@ class InfoMsg extends React.Component<{}, {}> {
                     </div>
                 </If>
                 <If condition={ptyRemoteId != null && remote != null}>
-                    <div>
-                        <If condition={remote.status != "connected"}>
-                            <div onClick={() => this.connectRemote(ptyRemoteId)} className="button is-small is-success">Connect</div>
-                        </If>
-                        <If condition={remote.status == "connected"}>
-                            <div onClick={() => this.disconnectRemote(ptyRemoteId)} className="button is-small is-danger">Disconnect</div>
+                    <div className="info-remote">
+                        <div className="remote-field">
+                            <div className="remote-field-def"> remoteid</div>
+                            <div className="remote-field-val">{remote.remoteid}</div>
+                        </div>
+                        <div className="remote-field">
+                            <div className="remote-field-def"> type</div>
+                            <div className="remote-field-val">{remote.remotetype}</div>
+                        </div>
+                        <div className="remote-field">
+                            <div className="remote-field-def"> alias</div>
+                            <div className="remote-field-val">{isBlank(remote.alias) ? "-" : remote.alias}</div>
+                        </div>
+                        <div className="remote-field">
+                            <div className="remote-field-def"> canonicalname</div>
+                            <div className="remote-field-val">{remote.remotecanonicalname}</div>
+                        </div>
+                        <div className="remote-field">
+                            <div className="remote-field-def"> connectmode</div>
+                            <div className="remote-field-val">{remote.connectmode}</div>
+                        </div>
+                        <div className="remote-field">
+                            <div className="remote-field-def"> status</div>
+                            <div className="remote-field-val">{remote.status} | {this.renderConnectButton(remote)}</div>
+                        </div>
+                        <If condition={!isBlank(remote.errorstr)}>
+                            <div className="remote-field">
+                                <div className="remote-field-def"> error</div>
+                                <div className="remote-field-val">{remote.errorstr}</div>
+                            </div>
                         </If>
                     </div>
                 </If>

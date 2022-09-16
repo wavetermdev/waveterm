@@ -77,6 +77,7 @@ type RemoteType = {
     remotecanonicalname : string,
     remotevars : Record<string, string>,
     status : string,
+    errorstr : string,
     defaultstate : RemoteStateType,
     connectmode : string,
     remoteidx : number,
@@ -173,6 +174,12 @@ type FeInputPacketType = {
     inputdata64? : string,
     signame? : string,
     winsize? : TermWinSize,
+};
+
+type RemoteInputPacketType = {
+    type : string,
+    remoteid : string,
+    inputdata64 : string,
 };
 
 type WatchScreenPacketType = {

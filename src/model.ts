@@ -11,7 +11,7 @@ import {WSControl} from "./ws";
 var GlobalUser = "sawka";
 const DefaultCellWidth = 8;
 const DefaultCellHeight = 16;
-const RemotePtyRows = 10; // also in main.tsx
+const RemotePtyRows = 8; // also in main.tsx
 const RemotePtyCols = 80;
 
 function widthToCols(width : number) : number {
@@ -154,7 +154,6 @@ class Cmd {
         if (!this.isRunning()) {
             return;
         }
-        let data = this.data.get();
         let inputPacket : FeInputPacketType = {
             type: "feinput",
             ck: this.sessionId + "/" + this.cmdId,
@@ -1108,8 +1107,13 @@ class InputModel {
         })();
     }
 
-    termKeyHandler(e : any) : void {
-        console.log("term-remote key", e);
+    termKeyHandler(remoteId : string, event : any) : void {
+        let inputPacket : RemoteInputPacketType = {
+            type: "remoteinput",
+            remoteid: remoteId,
+            inputdata64: btoa(event.key),
+        };
+        GlobalModel.sendInputPacket(inputPacket);
     }
 
     syncTermWrap() : void {
@@ -1131,7 +1135,7 @@ class InputModel {
             }
             else {
                 let termOpts = {rows: RemotePtyRows, cols: RemotePtyCols, flexrows: false, maxptysize: 64*1024};
-                this.remoteTermWrap = new TermWrap(elem, {remoteId: remoteId}, RemotePtyRows, termOpts, null, this.termKeyHandler.bind(this));
+                this.remoteTermWrap = new TermWrap(elem, {remoteId: remoteId}, RemotePtyRows, termOpts, null, (e) => { this.termKeyHandler(remoteId, e)});
                 console.log("make termwrap", this.remoteTermWrap);
             }
         }

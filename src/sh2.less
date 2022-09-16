@@ -813,6 +813,44 @@ body .xterm .xterm-viewport {
             color: #cc0000;
             padding-bottom: 2px;
         }
+
+        .info-remote {
+            color: #d3d7cf;
+            font-size: 12px;
+            font-family: 'JetBrains Mono', monospace;
+
+            .remote-field {
+                display: flex;
+                flex-direction: row;
+
+                .remote-field-def {
+                    white-space: pre;
+                    width: 120px;
+                }
+                
+                .remote-field-val {
+                    white-space: pre;
+                    display: flex;
+                    flex-direction: row;
+                }
+            }
+        }
+
+        .text-button {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            font-size: 12px;
+            color: @term-white;
+            cursor: pointer;
+
+            &.connect-button {
+                color: @term-green;
+            }
+
+            &.disconnect-button {
+                color: @term-red;
+            }
+        }
     }
 }
 
