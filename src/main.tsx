@@ -702,7 +702,7 @@ class InfoMsg extends React.Component<{}, {}> {
     }
 
     renderConnectButton(remote : RemoteType) : any {
-        if (remote.status == "connected") {
+        if (remote.status == "connected" || remote.status == "connecting") {
             return <div onClick={() => this.disconnectRemote(remote.remoteid)} className="text-button disconnect-button">[disconnect remote]</div>
         }
         else {
@@ -1430,7 +1430,7 @@ class MainSideBar extends React.Component<{}, {}> {
                     <ul className="menu-list remotes-menu-list">
                         <For each="remote" of={remotes}>
                             <li key={remote.remoteid} className="remote-menu-item"><a onClick={() => this.clickRemote(remote)}>
-                                <i className={cn("remote-status fa fa-circle", "status-" + remote.status)}/>
+                                <i className={cn("remote-status fa", "status-" + remote.status, (remote.status == "connecting" ? "fa-refresh" : "fa-circle"))}/>
                                 {this.remoteDisplayName(remote)}
                             </a></li>
                         </For>
