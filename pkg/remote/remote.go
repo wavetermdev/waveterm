@@ -23,6 +23,7 @@ import (
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
+	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
 )
 
@@ -30,7 +31,7 @@ const RemoteTypeMShell = "mshell"
 const DefaultTerm = "xterm-256color"
 const DefaultMaxPtySize = 1024 * 1024
 const CircBufSize = 64 * 1024
-const RemoteTermRows = 10
+const RemoteTermRows = 8
 const RemoteTermCols = 80
 const PtyReadBufSize = 100
 
@@ -440,6 +441,29 @@ func MakeMShell(r *sstore.RemoteType) *MShellProc {
 	return rtn
 }
 
+func SendRemoteInput(pk *scpacket.RemoteInputPacketType) error {
+	data, err := base64.StdEncoding.DecodeString(pk.InputData64)
+	if err != nil {
+		return fmt.Errorf("cannot decode base64: %v\n", err)
+	}
+	msh := GetRemoteById(pk.RemoteId)
+	if msh == nil {
+		return fmt.Errorf("remote not found")
+	}
+	var cmdPty *os.File
+	msh.WithLock(func() {
+		cmdPty = msh.ControllingPty
+	})
+	if cmdPty == nil {
+		return fmt.Errorf("remote has no attached pty")
+	}
+	_, err = cmdPty.Write(data)
+	if err != nil {
+		return fmt.Errorf("writing to pty: %v", err)
+	}
+	return nil
+}
+
 func convertSSHOpts(opts *sstore.SSHOpts) shexec.SSHOpts {
 	if opts == nil || opts.Local {
 		opts = &sstore.SSHOpts{}
@@ -521,9 +545,9 @@ func (msh *MShellProc) writeToPtyBuffer_nolock(strFmt string, args ...interface{
 			realStr = realStr + "\r\n"
 		}
 		if strings.HasPrefix(realStr, "*") {
-			realStr = "\033[0m\033[31m[scripthaus]\033[0m " + realStr[1:]
+			realStr = "\033[0m\033[31mscripthaus>\033[0m " + realStr[1:]
 		} else {
-			realStr = "\033[0m\033[32m[scripthaus]\033[0m " + realStr
+			realStr = "\033[0m\033[32mscripthaus>\033[0m " + realStr
 		}
 		barr := msh.PtyBuffer.Bytes()
 		if len(barr) > 0 && barr[len(barr)-1] != '\n' {
@@ -592,6 +616,8 @@ func (msh *MShellProc) Launch() {
 	}()
 	if remoteName == "test2" {
 		go func() {
+			return
+
 			time.Sleep(2 * time.Second)
 			cmdPty.Write([]byte(Test2Pw))
 			msh.WriteToPtyBuffer("~[password sent]\r\n")

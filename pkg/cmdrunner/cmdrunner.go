@@ -565,7 +565,6 @@ func RemoteShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	return sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			InfoTitle:   fmt.Sprintf("show remote [%s] info", ids.Remote.DisplayName),
-			InfoLines:   splitLinesForInfo(buf.String()),
 			PtyRemoteId: state.RemoteId,
 		},
 	}, nil

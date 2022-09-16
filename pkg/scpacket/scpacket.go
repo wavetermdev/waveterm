@@ -11,6 +11,7 @@ import (
 const FeCommandPacketStr = "fecmd"
 const WatchScreenPacketStr = "watchscreen"
 const FeInputPacketStr = "feinput"
+const RemoteInputPacketStr = "remoteinput"
 
 type FeCommandPacketType struct {
 	Type        string            `json:"type"`
@@ -39,6 +40,12 @@ type FeInputPacketType struct {
 	WinSize     *packet.WinSize      `json:"winsize,omitempty"`
 }
 
+type RemoteInputPacketType struct {
+	Type        string `json:"type"`
+	RemoteId    string `json:"remoteid"`
+	InputData64 string `json:"inputdata64"`
+}
+
 type WatchScreenPacketType struct {
 	Type      string `json:"type"`
 	SessionId string `json:"sessionid"`
@@ -50,6 +57,7 @@ func init() {
 	packet.RegisterPacketType(FeCommandPacketStr, reflect.TypeOf(FeCommandPacketType{}))
 	packet.RegisterPacketType(WatchScreenPacketStr, reflect.TypeOf(WatchScreenPacketType{}))
 	packet.RegisterPacketType(FeInputPacketStr, reflect.TypeOf(FeInputPacketType{}))
+	packet.RegisterPacketType(RemoteInputPacketStr, reflect.TypeOf(RemoteInputPacketType{}))
 }
 
 func (*FeCommandPacketType) GetType() string {
@@ -74,4 +82,12 @@ func (*WatchScreenPacketType) GetType() string {
 
 func MakeWatchScreenPacket() *WatchScreenPacketType {
 	return &WatchScreenPacketType{Type: WatchScreenPacketStr}
+}
+
+func MakeRemoteInputPacket() *RemoteInputPacketType {
+	return &RemoteInputPacketType{Type: RemoteInputPacketStr}
+}
+
+func (*RemoteInputPacketType) GetType() string {
+	return RemoteInputPacketStr
 }
