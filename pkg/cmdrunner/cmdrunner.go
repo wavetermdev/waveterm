@@ -421,6 +421,9 @@ func RemoteConnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	if ids.Remote.RState.IsConnected() {
 		return sstore.InfoMsgUpdate("remote %q already connected (no action taken)", ids.Remote.DisplayName), nil
 	}
+	if ids.Remote.RState.Status == remote.StatusConnecting {
+		return sstore.InfoMsgUpdate("remote %q is already trying to connect (no action taken)", ids.Remote.DisplayName), nil
+	}
 	go ids.Remote.MShell.Launch()
 	return sstore.InfoMsgUpdate("remote %q reconnecting", ids.Remote.DisplayName), nil
 }
@@ -431,7 +434,8 @@ func RemoteDisconnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketTy
 		return nil, err
 	}
 	force := resolveBool(pk.Kwargs["force"], false)
-	if !ids.Remote.RState.IsConnected() && !force {
+	status := ids.Remote.MShell.GetStatus()
+	if status != remote.StatusConnected && status != remote.StatusConnecting {
 		return sstore.InfoMsgUpdate("remote %q already disconnected (no action taken)", ids.Remote.DisplayName), nil
 	}
 	numCommands := ids.Remote.MShell.GetNumRunningCommands()

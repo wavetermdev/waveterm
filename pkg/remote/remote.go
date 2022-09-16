@@ -66,12 +66,13 @@ type MShellProc struct {
 	Remote *sstore.RemoteType
 
 	// runtime
-	Status         string
-	ServerProc     *shexec.ClientProc
-	UName          string
-	Err            error
-	ControllingPty *os.File
-	PtyBuffer      *circbuf.Buffer
+	Status             string
+	ServerProc         *shexec.ClientProc
+	UName              string
+	Err                error
+	ControllingPty     *os.File
+	PtyBuffer          *circbuf.Buffer
+	MakeClientCancelFn context.CancelFunc
 
 	RunningCmds []base.CommandKey
 }
@@ -93,6 +94,12 @@ type RemoteRuntimeState struct {
 
 func (state RemoteRuntimeState) IsConnected() bool {
 	return state.Status == StatusConnected
+}
+
+func (msh *MShellProc) GetStatus() string {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	return msh.Status
 }
 
 func (state RemoteRuntimeState) GetBaseDisplayName() string {
@@ -522,6 +529,10 @@ func (msh *MShellProc) Disconnect() {
 	if msh.ServerProc != nil {
 		msh.ServerProc.Close()
 	}
+	if msh.MakeClientCancelFn != nil {
+		msh.MakeClientCancelFn()
+		msh.MakeClientCancelFn = nil
+	}
 }
 
 func (msh *MShellProc) GetRemoteName() string {
@@ -598,6 +609,11 @@ func (msh *MShellProc) Launch() {
 		msh.WriteToPtyBuffer("cannot launch archived remote\n")
 		return
 	}
+	curStatus := msh.GetStatus()
+	if curStatus == StatusConnecting {
+		msh.WriteToPtyBuffer("remote is already connecting, disconnect before trying to connect again\n")
+		return
+	}
 	msh.WriteToPtyBuffer("connecting to %s...\n", remoteCopy.RemoteCanonicalName)
 	sshOpts := convertSSHOpts(remoteCopy.SSHOpts)
 	sshOpts.SSHErrorsToTty = true
@@ -615,15 +631,22 @@ func (msh *MShellProc) Launch() {
 		}
 	}()
 	go msh.RunPtyReadLoop(cmdPty)
+	makeClientCtx, makeClientCancelFn := context.WithCancel(context.Background())
+	defer makeClientCancelFn()
 	msh.WithLock(func() {
 		msh.Status = StatusConnecting
+		msh.MakeClientCancelFn = makeClientCancelFn
 		go msh.NotifyRemoteUpdate()
 	})
-	cproc, uname, err := shexec.MakeClientProc(ecmd)
+	cproc, uname, err := shexec.MakeClientProc(makeClientCtx, ecmd)
 	msh.WithLock(func() {
 		msh.UName = uname
+		msh.MakeClientCancelFn = nil
 		// no notify here, because we'll call notify in either case below
 	})
+	if err == context.Canceled {
+		err = fmt.Errorf("forced disconnection")
+	}
 	if err != nil {
 		msh.setErrorStatus(err)
 		msh.WriteToPtyBuffer("*error connecting to remote (uname=%q): %v\n", msh.UName, err)
