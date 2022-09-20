@@ -27,8 +27,11 @@
 
 @tab-black-text: #333;
 @tab-white-text: #d7d7d7;
-                       
 
+.mono-font(@size: inherit) {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: @size;
+}
 
 html, body, #main {
     background-color: #000;
@@ -241,6 +244,7 @@ html, body, #main {
 
     .menu-list li.remote-menu-item {
         a {
+            .mono-font(11px);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -685,6 +689,7 @@ body .xterm .xterm-viewport {
         }
 
         .cmd-quick-context .button {
+            .mono-font();
             background-color: #000 !important;
             color: white;
         }
