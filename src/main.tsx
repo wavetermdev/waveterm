@@ -200,7 +200,7 @@ class Prompt extends React.Component<{rptr : RemotePtrType, rstate : RemoteState
 }
 
 @mobxReact.observer
-class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width : number, interObs : IntersectionObserver, initVis : boolean, cmdRefNum : number}, {}> {
+class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width : number, interObs : IntersectionObserver, initVis : boolean}, {}> {
     termLoaded : mobx.IObservableValue<boolean> = mobx.observable.box(false);
     lineRef : React.RefObject<any> = React.createRef();
     iobsVal : InterObsValue = null;
@@ -355,12 +355,12 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         let status = cmd.getStatus();
         let termOpts = cmd.getTermOpts();
         let isFocused = sw.getIsFocused(line.cmdid);
-        let cmdRefNumStr = (this.props.cmdRefNum == null ? "?" : this.props.cmdRefNum.toString());
+        let lineNumStr = (line.linenumtemp ? "~" : "") + String(line.linenum);
         return (
             <div className={cn("line", "line-cmd", {"focus": isFocused})} id={"line-" + getLineId(line)} ref={this.lineRef} style={{position: "relative"}} data-lineid={line.lineid} data-windowid={line.windowid} data-cmdid={line.cmdid}>
                 <div className="line-header">
-                    <div className={cn("avatar",{"num4": cmdRefNumStr.length == 4}, {"num5": cmdRefNumStr.length >= 5}, "status-" + status, {"ephemeral": line.ephemeral})} onClick={this.doRefresh}>
-                        {cmdRefNumStr}
+                    <div className={cn("avatar", "num-"+lineNumStr.length, "status-" + status, {"ephemeral": line.ephemeral})} onClick={this.doRefresh}>
+                        {lineNumStr}
                         <If condition={status == "hangup" || status == "error"}>
                             <i className="fa fa-exclamation-triangle status-icon"/>
                         </If>
@@ -395,7 +395,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
 }
 
 @mobxReact.observer
-class Line extends React.Component<{sw : ScreenWindow, line : LineType, width : number, interObs : IntersectionObserver, initVis : boolean, cmdRefNum : number}, {}> {
+class Line extends React.Component<{sw : ScreenWindow, line : LineType, width : number, interObs : IntersectionObserver, initVis : boolean}, {}> {
     render() {
         let line = this.props.line;
         if (line.linetype == "text") {
@@ -1177,15 +1177,6 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         if (win.lines.length == 0) {
             linesStyle.display = "none";
         }
-        let cmdRefMap : Record<string, number> = {};
-        let cmdNum = 1;
-        for (let i=0; i<win.lines.length; i++) {
-            let line = win.lines[i];
-            if (line.cmdid != null) {
-                cmdRefMap[line.lineid] = cmdNum;
-                cmdNum++;
-            }
-        }
         let isActive = sw.isActive();
         return (
             <div className="window-view" style={this.getWindowViewStyle()} id={this.getWindowViewDOMId()}>
@@ -1200,7 +1191,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
                 <div key="lines" className="lines" onScroll={this.scrollHandler} id={this.getLinesDOMId()} style={linesStyle}>
                     <div className="lines-spacer"></div>
                     <For each="line" of={win.lines} index="idx">
-                        <Line key={line.lineid} line={line} sw={sw} width={sw.width.get()} interObs={this.interObs} initVis={idx > win.lines.length-1-7} cmdRefNum={cmdRefMap[line.lineid] ?? 0}/>
+                        <Line key={line.lineid} line={line} sw={sw} width={sw.width.get()} interObs={this.interObs} initVis={idx > win.lines.length-1-7}/>
                     </For>
                 </div>
                 <If condition={win.lines.length == 0}>
