@@ -157,6 +157,12 @@ func CleanUpCmdFiles(sessionId string, cmdId string) error {
 	return err
 }
 
+func GetSessionsDir() string {
+	mhome := GetMShellHomeDir()
+	sdir := path.Join(mhome, SessionsDirBaseName)
+	return sdir
+}
+
 func EnsureSessionDir(sessionId string) (string, error) {
 	if sessionId == "" {
 		return "", fmt.Errorf("Bad sessionid, cannot be empty")
