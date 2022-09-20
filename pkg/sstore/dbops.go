@@ -121,12 +121,12 @@ func UpsertRemote(ctx context.Context, r *RemoteType) error {
 		if tx.Exists(query, r.RemoteCanonicalName) {
 			return fmt.Errorf("remote has duplicate canonicalname '%s', cannot create", r.RemoteCanonicalName)
 		}
-		query = `SELECT max(remoteidx) FROM remote`
+		query = `SELECT COALESCE(max(remoteidx), 0) FROM remote`
 		maxRemoteIdx := tx.GetInt(query)
 		r.RemoteIdx = int64(maxRemoteIdx + 1)
 		query = `INSERT INTO remote
-            ( remoteid, physicalid, remotetype, remotealias, remotecanonicalname, remotesudo, remoteuser, remotehost, connectmode, initpk, sshopts, remoteopts, lastconnectts, archived) VALUES 
-            (:remoteid,:physicalid,:remotetype,:remotealias,:remotecanonicalname,:remotesudo,:remoteuser,:remotehost,:connectmode,:initpk,:sshopts,:remoteopts,:lastconnectts,:archived)`
+            ( remoteid, physicalid, remotetype, remotealias, remotecanonicalname, remotesudo, remoteuser, remotehost, connectmode, initpk, sshopts, remoteopts, lastconnectts, archived, remoteidx) VALUES 
+            (:remoteid,:physicalid,:remotetype,:remotealias,:remotecanonicalname,:remotesudo,:remoteuser,:remotehost,:connectmode,:initpk,:sshopts,:remoteopts,:lastconnectts,:archived,:remoteidx)`
 		tx.NamedExecWrap(query, r.ToMap())
 		return nil
 	})
