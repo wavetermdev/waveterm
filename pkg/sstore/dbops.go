@@ -925,3 +925,31 @@ func UpdateCmdTermOpts(ctx context.Context, sessionId string, cmdId string, term
 func DeleteSession(ctx context.Context, sessionId string) error {
 	return nil
 }
+
+func GetSessionStats(ctx context.Context, sessionId string) (*SessionStatsType, error) {
+	rtn := &SessionStatsType{SessionId: sessionId}
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT sessionid FROM session WHERE sessionid = ?`
+		if !tx.Exists(query, sessionId) {
+			return fmt.Errorf("not found")
+		}
+		query = `SELECT count(*) FROM screen WHERE sessionid = ?`
+		rtn.NumScreens = tx.GetInt(query, sessionId)
+		query = `SELECT count(*) FROM window WHERE sessionid = ?`
+		rtn.NumWindows = tx.GetInt(query, sessionId)
+		query = `SELECT count(*) FROM line WHERE sessionid = ?`
+		rtn.NumLines = tx.GetInt(query, sessionId)
+		query = `SELECT count(*) FROM cmd WHERE sessionid = ?`
+		rtn.NumCmds = tx.GetInt(query, sessionId)
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	diskSize, err := SessionDiskSize(sessionId)
+	if err != nil {
+		return nil, err
+	}
+	rtn.DiskStats = diskSize
+	return rtn, nil
+}

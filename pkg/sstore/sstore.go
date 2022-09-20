@@ -117,6 +117,15 @@ type SessionType struct {
 	Full   bool `json:"full,omitempty"`
 }
 
+type SessionStatsType struct {
+	SessionId  string              `json:"sessionid"`
+	NumScreens int                 `json:"numscreens"`
+	NumWindows int                 `json:"numwindows"`
+	NumLines   int                 `json:"numlines"`
+	NumCmds    int                 `json:"numcmds"`
+	DiskStats  SessionDiskSizeType `json:"diskstats"`
+}
+
 type WindowOptsType struct {
 }
 
