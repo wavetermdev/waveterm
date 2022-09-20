@@ -755,7 +755,7 @@ class InfoMsg extends React.Component<{}, {}> {
                         </div>
                         <div className="remote-field">
                             <div className="remote-field-def"> alias</div>
-                            <div className="remote-field-val">{isBlank(remote.alias) ? "-" : remote.alias}</div>
+                            <div className="remote-field-val">{isBlank(remote.remotealias) ? "-" : remote.remotealias}</div>
                         </div>
                         <div className="remote-field">
                             <div className="remote-field-def"> canonicalname</div>

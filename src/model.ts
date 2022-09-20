@@ -5,7 +5,7 @@ import {debounce} from "throttle-debounce";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize} from "./types";
+import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType} from "./types";
 import {WSControl} from "./ws";
 
 var GlobalUser = "sawka";
@@ -1499,6 +1499,9 @@ class Model {
         }
         let update : ModelUpdateType = genUpdate;
         if ("sessions" in update) {
+            if (update.connect) {
+                this.sessionList.clear();
+            }
             let oldActiveScreen = this.getActiveScreen();
             genMergeData(this.sessionList, update.sessions, (s : Session) => s.sessionId, (sdata : SessionDataType) => sdata.sessionid, (sdata : SessionDataType) => new Session(sdata), (s : Session) => s.sessionIdx.get());
             if (!("activesessionid" in update)) {
@@ -1531,7 +1534,10 @@ class Model {
             this.updateWindow(update.window, false);
         }
         if ("remotes" in update) {
-            this.updateRemote(update.remotes);
+            if (update.connect) {
+                this.remotes.clear();
+            }
+            this.updateRemotes(update.remotes);
         }
         if (interactive && "info" in update) {
             let info : InfoType = update.info;
@@ -1552,7 +1558,7 @@ class Model {
         // console.log("run-update>", Date.now(), interactive, update);
     }
 
-    updateRemote(remotes : RemoteType[]) : void {
+    updateRemotes(remotes : RemoteType[]) : void {
         genMergeSimpleData(this.remotes, remotes, (r) => r.remoteid, null);
     }
 
