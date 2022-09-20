@@ -28,9 +28,10 @@
 @tab-black-text: #333;
 @tab-white-text: #d7d7d7;
 
-.mono-font(@size: inherit) {
+.mono-font(@size: inherit, @weight: inherit) {
     font-family: 'JetBrains Mono', monospace;
     font-size: @size;
+    font-weight: @weight;
 }
 
 html, body, #main {
@@ -164,12 +165,10 @@ html, body, #main {
     padding-top: 8px;
     padding-bottom: 8px;
     margin-bottom: 0;
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 400;
+    .mono-font(1.5rem);
     background-color: darken(rgb(0, 177, 10), 30%);
     color: rgb(0, 177, 10);
     position: relative;
-    font-size: 1.5rem;
     border-bottom: 2px solid #ddd;
 
     .title-cursor {
@@ -177,9 +176,7 @@ html, body, #main {
         left: 157px;
         bottom: 12px;
         color: rgb(0, 177, 10);
-        font-family: 'JetBrains Mono', monospace;
-        font-weight: 400;
-        font-size: 1rem;
+        .mono-font(1rem);
     }
 }
 
@@ -431,9 +428,8 @@ html, body, #main {
             background-color: @term-red;
             color: white;
             z-index: 10;
-            font-size: 10px;
             padding: 4px;
-            font-family: 'JetBrains Mono', monospace;
+            .mono-font(10px);
         }
     }
 }
@@ -539,10 +535,8 @@ html, body, #main {
         .metapart-mono {
             color: #ddd;
             margin-left: 8px;
-            font-size: 14px;
             margin-top: 4px;
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 400;
+            .mono-font(14px);
         }
         
         .cmdtext {
@@ -657,8 +651,7 @@ body .xterm .xterm-viewport {
 
     .cmd-input-context {
         color: #fff;
-        font-family: 'JetBrains Mono', monospace;
-        font-weight: 400;
+        .mono-font();
     }
 
     .cmd-input-field {
@@ -669,7 +662,7 @@ body .xterm .xterm-viewport {
         textarea {
             color: white;
             background-color: black;
-            font-family: 'JetBrains Mono', monospace;
+            .mono-font();
             padding-bottom: calc(0.5em - 1px);
             padding-top: calc(0.5em - 1px);
 
@@ -712,9 +705,7 @@ body .xterm .xterm-viewport {
             top: 5px;
             left: 20px;
             background-color: black;
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 600;
-            font-size: 12px;
+            .mono-font(12px, 600);
             color: #729fcf;
             padding-bottom: 4px;
             display: flex;
@@ -743,8 +734,7 @@ body .xterm .xterm-viewport {
         .history-items {
             margin-top: 24px;
             color: @term-white;
-            font-size: 12px;
-            font-family: 'JetBrains Mono', monospace;
+            .mono-font(12px);
             padding-bottom: 6px;
 
             .history-line {
@@ -795,25 +785,20 @@ body .xterm .xterm-viewport {
         margin-bottom: 5px;
         
         .info-msg {
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 400;
-            font-size: 14px;
+            .mono-font(14px, 400);
             color: #729fcf;
             padding-bottom: 2px;
         }
 
         .info-title {
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 600;
-            font-size: 14px;
+            .mono-font(14px, 600);
             color: #729fcf;
             padding-bottom: 2px;
         }
 
         .info-lines {
+            .mono-font(12px);
             color: #d3d7cf;
-            font-size: 12px;
-            font-family: 'JetBrains Mono', monospace;
             white-space: pre;
             padding-bottom: 6px;
         }
@@ -835,17 +820,14 @@ body .xterm .xterm-viewport {
         }
 
         .info-error {
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 600;
-            font-size: 14px;
+            .mono-font(14px, 600);
             color: #cc0000;
             padding-bottom: 2px;
         }
 
         .info-remote {
             color: #d3d7cf;
-            font-size: 12px;
-            font-family: 'JetBrains Mono', monospace;
+            .mono-font(12px);
 
             .remote-field {
                 display: flex;
@@ -865,9 +847,7 @@ body .xterm .xterm-viewport {
         }
 
         .text-button {
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 600;
-            font-size: 12px;
+            .mono-font(12px, 600);
             color: @term-white;
             cursor: pointer;
 
@@ -1047,18 +1027,15 @@ body .xterm .xterm-viewport {
 }
 
 .monofont-thin {
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 200;
+    .mono-font(inherit, 200);
 }
 
 .monofont-normal {
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 400;
+    .mono-font(inherit, 400);
 }
 
 .monofont-bold {
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 600;
+    .mono-font(inherit, 600);
 }
 
 .remote-modal {
