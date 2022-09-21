@@ -115,6 +115,7 @@ type WindowDataType = {
     sessionid : string,
     windowid : string,
     curremote : RemotePtrType,
+    nextlinenum : number,
     lines : LineType[],
     cmds : CmdDataType[],
 
