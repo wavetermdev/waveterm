@@ -153,3 +153,66 @@ func GenSCUUID() string {
 		return rtn
 	}
 }
+
+func NumFormatDec(num int64) string {
+	var signStr string
+	absNum := num
+	if absNum < 0 {
+		absNum = -absNum
+		signStr = "-"
+	}
+	if absNum < 1000 {
+		// raw num
+		return signStr + strconv.FormatInt(absNum, 10)
+	}
+	if absNum < 1000000 {
+		// k num
+		kVal := float64(absNum) / 1000
+		return signStr + strconv.FormatFloat(kVal, 'f', 2, 64) + "k"
+	}
+	if absNum < 1000000000 {
+		// M num
+		mVal := float64(absNum) / 1000000
+		return signStr + strconv.FormatFloat(mVal, 'f', 2, 64) + "m"
+	} else {
+		// G num
+		gVal := float64(absNum) / 1000000000
+		return signStr + strconv.FormatFloat(gVal, 'f', 2, 64) + "g"
+	}
+}
+
+func NumFormatB2(num int64) string {
+	var signStr string
+	absNum := num
+	if absNum < 0 {
+		absNum = -absNum
+		signStr = "-"
+	}
+	if absNum < 1024 {
+		// raw num
+		return signStr + strconv.FormatInt(absNum, 10)
+	}
+	if absNum < 1000000 {
+		// k num
+		if absNum%1024 == 0 {
+			return signStr + strconv.FormatInt(absNum/1024, 10) + "K"
+		}
+		kVal := float64(absNum) / 1024
+		return signStr + strconv.FormatFloat(kVal, 'f', 2, 64) + "K"
+	}
+	if absNum < 1000000000 {
+		// M num
+		if absNum%(1024*1024) == 0 {
+			return signStr + strconv.FormatInt(absNum/(1024*1024), 10) + "M"
+		}
+		mVal := float64(absNum) / (1024 * 1024)
+		return signStr + strconv.FormatFloat(mVal, 'f', 2, 64) + "M"
+	} else {
+		// G num
+		if absNum%(1024*1024*1024) == 0 {
+			return signStr + strconv.FormatInt(absNum/(1024*1024*1024), 10) + "G"
+		}
+		gVal := float64(absNum) / (1024 * 1024 * 1024)
+		return signStr + strconv.FormatFloat(gVal, 'f', 2, 64) + "G"
+	}
+}

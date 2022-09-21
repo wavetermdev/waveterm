@@ -3,7 +3,6 @@ package cmdrunner
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -1310,8 +1309,7 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		if cmd.RemoteState.Cwd != "" {
 			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "cwd", cmd.RemoteState.Cwd))
 		}
-		termOptsOut, _ := json.Marshal(cmd.TermOpts)
-		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "termopts", string(termOptsOut)))
+		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "termopts", formatTermOpts(cmd.TermOpts)))
 	}
 	update := sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
@@ -1320,4 +1318,18 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		},
 	}
 	return update, nil
+}
+
+func formatTermOpts(termOpts sstore.TermOpts) string {
+	if termOpts.Cols == 0 {
+		return "???"
+	}
+	rtnStr := fmt.Sprintf("%dx%d", termOpts.Rows, termOpts.Cols)
+	if termOpts.FlexRows {
+		rtnStr += " flexrows"
+	}
+	if termOpts.MaxPtySize > 0 {
+		rtnStr += " maxbuf=" + scbase.NumFormatB2(termOpts.MaxPtySize)
+	}
+	return rtnStr
 }
