@@ -3,6 +3,7 @@ package cmdrunner
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -1271,6 +1272,52 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("/line:show ids %v\n", ids)
-	return nil, nil
+	if len(pk.Args) == 0 {
+		return nil, fmt.Errorf("/line:show requires an argument (line number or id)")
+	}
+	lineArg := pk.Args[0]
+	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.WindowId, lineArg)
+	if err != nil {
+		return nil, fmt.Errorf("error looking up lineid: %v", err)
+	}
+	if lineId == "" {
+		return nil, fmt.Errorf("line %q not found", lineArg)
+	}
+	line, cmd, err := sstore.GetLineCmd(ctx, ids.SessionId, ids.WindowId, lineId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting line: %v", err)
+	}
+	if line == nil {
+		return nil, fmt.Errorf("line %q not found", lineArg)
+	}
+	var buf bytes.Buffer
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "lineid", line.LineId))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "type", line.LineType))
+	lineNumStr := strconv.FormatInt(line.LineNum, 10)
+	if line.LineNumTemp {
+		lineNumStr = "~" + lineNumStr
+	}
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "linenum", lineNumStr))
+	ts := time.UnixMilli(line.Ts)
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "ts", ts.Format("2006-01-02 15:04:05")))
+	if line.Ephemeral {
+		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "ephemeral", true))
+	}
+	if cmd != nil {
+		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "cmdid", cmd.CmdId))
+		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "remote", cmd.Remote.MakeFullRemoteRef()))
+		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "status", cmd.Status))
+		if cmd.RemoteState.Cwd != "" {
+			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "cwd", cmd.RemoteState.Cwd))
+		}
+		termOptsOut, _ := json.Marshal(cmd.TermOpts)
+		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "termopts", string(termOptsOut)))
+	}
+	update := sstore.ModelUpdate{
+		Info: &sstore.InfoMsgType{
+			InfoTitle: fmt.Sprintf("line %d info", line.LineNum),
+			InfoLines: splitLinesForInfo(buf.String()),
+		},
+	}
+	return update, nil
 }
