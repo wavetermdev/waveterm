@@ -581,7 +581,7 @@ func makeNewLineCmd(sessionId string, windowId string, userId string, cmdId stri
 	rtn.SessionId = sessionId
 	rtn.WindowId = windowId
 	rtn.UserId = userId
-	rtn.LineId = uuid.New().String()
+	rtn.LineId = scbase.GenSCUUID()
 	rtn.Ts = time.Now().UnixMilli()
 	rtn.LineLocal = true
 	rtn.LineType = LineTypeCmd
@@ -594,7 +594,7 @@ func makeNewLineText(sessionId string, windowId string, userId string, text stri
 	rtn.SessionId = sessionId
 	rtn.WindowId = windowId
 	rtn.UserId = userId
-	rtn.LineId = uuid.New().String()
+	rtn.LineId = scbase.GenSCUUID()
 	rtn.Ts = time.Now().UnixMilli()
 	rtn.LineLocal = true
 	rtn.LineType = LineTypeText
@@ -642,7 +642,7 @@ func EnsureLocalRemote(ctx context.Context) error {
 	}
 	// create the local remote
 	localRemote := &RemoteType{
-		RemoteId:            uuid.New().String(),
+		RemoteId:            scbase.GenSCUUID(),
 		PhysicalId:          physicalId,
 		RemoteType:          RemoteTypeSsh,
 		RemoteAlias:         LocalRemoteAlias,
@@ -670,7 +670,7 @@ func AddTest01Remote(ctx context.Context) error {
 		return nil
 	}
 	testRemote := &RemoteType{
-		RemoteId:            uuid.New().String(),
+		RemoteId:            scbase.GenSCUUID(),
 		RemoteType:          RemoteTypeSsh,
 		RemoteAlias:         "test01",
 		RemoteCanonicalName: "ubuntu@test01.ec2",
@@ -702,7 +702,7 @@ func AddTest02Remote(ctx context.Context) error {
 		return nil
 	}
 	testRemote := &RemoteType{
-		RemoteId:            uuid.New().String(),
+		RemoteId:            scbase.GenSCUUID(),
 		RemoteType:          RemoteTypeSsh,
 		RemoteAlias:         "test2",
 		RemoteCanonicalName: "test2@test01.ec2",
@@ -740,7 +740,7 @@ func EnsureDefaultSession(ctx context.Context) (*SessionType, error) {
 }
 
 func createClientData(tx *TxWrap) error {
-	userId := uuid.New().String()
+	userId := scbase.GenSCUUID()
 	curve := elliptic.P384()
 	pkey, err := ecdsa.GenerateKey(curve, rand.Reader)
 	if err != nil {

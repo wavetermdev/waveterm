@@ -4,10 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
+	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 )
 
 const HistoryCols = "historyid, ts, userid, sessionid, screenid, windowid, lineid, cmdid, haderror, cmdstr, remoteownerid, remoteid, remotename, ismetacmd"
@@ -371,7 +373,7 @@ func GetSessionByName(ctx context.Context, name string) (*SessionType, error) {
 // also creates default window, returns sessionId
 // if sessionName == "", it will be generated
 func InsertSessionWithName(ctx context.Context, sessionName string, activate bool) (UpdatePacket, error) {
-	newSessionId := uuid.New().String()
+	newSessionId := scbase.GenSCUUID()
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		names := tx.SelectStrings(`SELECT name FROM session`)
 		sessionName = fmtUniqueName(sessionName, "session-%d", len(names)+1, names)
@@ -465,7 +467,7 @@ func InsertScreen(ctx context.Context, sessionId string, origScreenName string, 
 		maxScreenIdx := tx.GetInt(`SELECT COALESCE(max(screenidx), 0) FROM screen WHERE sessionid = ?`, sessionId)
 		screenNames := tx.SelectStrings(`SELECT name FROM screen WHERE sessionid = ?`, sessionId)
 		screenName := fmtUniqueName(origScreenName, "s%d", maxScreenIdx+1, screenNames)
-		newScreenId = uuid.New().String()
+		newScreenId = scbase.GenSCUUID()
 		query = `INSERT INTO screen (sessionid, screenid, name, activewindowid, screenidx, screenopts, ownerid, sharemode) VALUES (?, ?, ?, ?, ?, ?, '', 'local')`
 		tx.ExecWrap(query, sessionId, newScreenId, screenName, newWindowId, maxScreenIdx+1, ScreenOptsType{})
 		layout := LayoutType{Type: LayoutFull}
@@ -513,7 +515,7 @@ func GetScreenById(ctx context.Context, sessionId string, screenId string) (*Scr
 func txCreateWindow(tx *TxWrap, sessionId string, curRemote RemotePtrType) string {
 	w := &WindowType{
 		SessionId:   sessionId,
-		WindowId:    uuid.New().String(),
+		WindowId:    scbase.GenSCUUID(),
 		CurRemote:   curRemote,
 		NextLineNum: 1,
 		WinOpts:     WindowOptsType{},
@@ -527,6 +529,59 @@ func txCreateWindow(tx *TxWrap, sessionId string, curRemote RemotePtrType) strin
 	return w.WindowId
 }
 
+func FindLineIdByArg(ctx context.Context, sessionId string, windowId string, lineArg string) (string, error) {
+	var lineId string
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		lineNum, err := strconv.Atoi(lineArg)
+		if err == nil {
+			// valid linenum
+			query := `SELECT lineid FROM line WHERE sessionid = ? AND windowid = ? AND linenum = ?`
+			lineId = tx.GetString(query, sessionId, windowId, lineNum)
+		} else if len(lineArg) == 8 {
+			// prefix id string match
+			query := `SELECT lineid FROM line WHERE sessionid = ? AND windowid = ? AND substr(lineid, 1, 8) = ?`
+			lineId = tx.GetString(query, sessionId, windowId, lineArg)
+		} else {
+			// id match
+			query := `SELECT * FROM line WHERE sessionid = ? AND windowid = ? AND lineid = ?`
+			lineId = tx.GetString(query, sessionId, windowId, lineArg)
+		}
+		return nil
+	})
+	if txErr != nil {
+		return "", txErr
+	}
+	return lineId, nil
+}
+
+func GetLineCmd(ctx context.Context, sessionId string, windowId string, lineId string) (*LineType, *CmdType, error) {
+	var lineRtn *LineType
+	var cmdRtn *CmdType
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT windowid FROM window WHERE sessionid = ? AND windowid = ?`
+		if !tx.Exists(query, sessionId, windowId) {
+			return fmt.Errorf("window not found")
+		}
+		var lineVal LineType
+		query = `SELECT * FROM line WHERE sessionid = ? AND windowid = ? AND lineid = ?`
+		found := tx.GetWrap(&lineVal, query, sessionId, windowId, lineId)
+		if !found {
+			return nil
+		}
+		lineRtn = &lineVal
+		if lineVal.CmdId != "" {
+			query = `SELECT * FROM cmd WHERE sessionid = ? AND cmdid = ?`
+			m := tx.GetMap(query, sessionId, lineVal.CmdId)
+			cmdRtn = CmdFromMap(m)
+		}
+		return nil
+	})
+	if txErr != nil {
+		return nil, nil, txErr
+	}
+	return lineRtn, cmdRtn, nil
+}
+
 func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 	if line == nil {
 		return fmt.Errorf("line cannot be nil")
@@ -538,10 +593,8 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 		return fmt.Errorf("line should not hage linenum set")
 	}
 	return WithTx(ctx, func(tx *TxWrap) error {
-		var windowId string
 		query := `SELECT windowid FROM window WHERE sessionid = ? AND windowid = ?`
-		hasWindow := tx.GetWrap(&windowId, query, line.SessionId, line.WindowId)
-		if !hasWindow {
+		if !tx.Exists(query, line.SessionId, line.WindowId) {
 			return fmt.Errorf("window not found, cannot insert line[%s/%s]", line.SessionId, line.WindowId)
 		}
 		query = `SELECT nextlinenum FROM window WHERE sessionid = ? AND windowid = ?`
@@ -744,7 +797,7 @@ func UpdateRemoteState(ctx context.Context, sessionId string, windowId string, r
 		found := tx.GetWrap(&ri, query, sessionId, windowId, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name)
 		if !found {
 			ri = RemoteInstance{
-				RIId:          uuid.New().String(),
+				RIId:          scbase.GenSCUUID(),
 				Name:          remotePtr.Name,
 				SessionId:     sessionId,
 				WindowId:      windowId,

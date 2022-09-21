@@ -6,8 +6,10 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"strconv"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"golang.org/x/sys/unix"
 )
@@ -139,4 +141,15 @@ func (g ScFileNameGenerator) PtyOutFile(ck base.CommandKey) string {
 
 func (g ScFileNameGenerator) RunOutFile(ck base.CommandKey) string {
 	return path.Join(g.ScHome, SessionsDirBaseName, ck.GetSessionId(), ck.GetCmdId()+".runout")
+}
+
+func GenSCUUID() string {
+	for {
+		rtn := uuid.New().String()
+		_, err := strconv.Atoi(rtn[0:8])
+		if err == nil { // do not allow UUIDs where the initial 8 bytes parse to an integer
+			continue
+		}
+		return rtn
+	}
 }

@@ -19,6 +19,7 @@ import (
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
 	"github.com/scripthaus-dev/sh2-server/pkg/remote"
+	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
 )
@@ -178,7 +179,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	if err != nil {
 		return nil, fmt.Errorf("/run error: %w", err)
 	}
-	cmdId := uuid.New().String()
+	cmdId := scbase.GenSCUUID()
 	cmdStr := firstArg(pk)
 	runPacket := packet.MakeRunPacket()
 	runPacket.ReqId = uuid.New().String()
@@ -232,7 +233,7 @@ func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, history
 		return err
 	}
 	hitem := &sstore.HistoryItemType{
-		HistoryId: uuid.New().String(),
+		HistoryId: scbase.GenSCUUID(),
 		Ts:        time.Now().UnixMilli(),
 		UserId:    DefaultUserId,
 		SessionId: ids.SessionId,
@@ -512,7 +513,7 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		remoteOpts.Color = color
 	}
 	r := &sstore.RemoteType{
-		RemoteId:            uuid.New().String(),
+		RemoteId:            scbase.GenSCUUID(),
 		PhysicalId:          "",
 		RemoteType:          sstore.RemoteTypeSsh,
 		RemoteAlias:         alias,
