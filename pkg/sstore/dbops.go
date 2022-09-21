@@ -512,16 +512,17 @@ func GetScreenById(ctx context.Context, sessionId string, screenId string) (*Scr
 
 func txCreateWindow(tx *TxWrap, sessionId string, curRemote RemotePtrType) string {
 	w := &WindowType{
-		SessionId: sessionId,
-		WindowId:  uuid.New().String(),
-		CurRemote: curRemote,
-		WinOpts:   WindowOptsType{},
-		ShareMode: ShareModeLocal,
-		ShareOpts: WindowShareOptsType{},
+		SessionId:   sessionId,
+		WindowId:    uuid.New().String(),
+		CurRemote:   curRemote,
+		NextLineNum: 1,
+		WinOpts:     WindowOptsType{},
+		ShareMode:   ShareModeLocal,
+		ShareOpts:   WindowShareOptsType{},
 	}
 	wmap := w.ToMap()
-	query := `INSERT INTO window ( sessionid, windowid, curremoteownerid, curremoteid, curremotename, winopts, ownerid, sharemode, shareopts) 
-                          VALUES (:sessionid,:windowid,:curremoteownerid,:curremoteid,:curremotename,:winopts,:ownerid,:sharemode,:shareopts)`
+	query := `INSERT INTO window ( sessionid, windowid, curremoteownerid, curremoteid, curremotename, nextlinenum, winopts, ownerid, sharemode, shareopts) 
+                          VALUES (:sessionid,:windowid,:curremoteownerid,:curremoteid,:curremotename,:nextlinenum,:winopts,:ownerid,:sharemode,:shareopts)`
 	tx.NamedExecWrap(query, wmap)
 	return w.WindowId
 }
@@ -533,6 +534,9 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 	if line.LineId == "" {
 		return fmt.Errorf("line must have lineid set")
 	}
+	if line.LineNum != 0 {
+		return fmt.Errorf("line should not hage linenum set")
+	}
 	return WithTx(ctx, func(tx *TxWrap) error {
 		var windowId string
 		query := `SELECT windowid FROM window WHERE sessionid = ? AND windowid = ?`
@@ -540,9 +544,14 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 		if !hasWindow {
 			return fmt.Errorf("window not found, cannot insert line[%s/%s]", line.SessionId, line.WindowId)
 		}
-		query = `INSERT INTO line  ( sessionid, windowid, lineid, ts, userid, linetype, text, cmdid, ephemeral)
-                            VALUES (:sessionid,:windowid,:lineid,:ts,:userid,:linetype,:text,:cmdid,:ephemeral)`
+		query = `SELECT nextlinenum FROM window WHERE sessionid = ? AND windowid = ?`
+		nextLineNum := tx.GetInt(query, line.SessionId, line.WindowId)
+		line.LineNum = int64(nextLineNum)
+		query = `INSERT INTO line  ( sessionid, windowid, userid, lineid, ts, linenum, linenumtemp, linelocal, linetype, text, cmdid, ephemeral)
+                            VALUES (:sessionid,:windowid,:userid,:lineid,:ts,:linenum,:linenumtemp,:linelocal,:linetype,:text,:cmdid,:ephemeral)`
 		tx.NamedExecWrap(query, line)
+		query = `UPDATE window SET nextlinenum = ? WHERE sessionid = ? AND windowid = ?`
+		tx.ExecWrap(query, nextLineNum+1, line.SessionId, line.WindowId)
 		if cmd != nil {
 			cmdMap := cmd.ToMap()
 			query = `
@@ -875,6 +884,8 @@ func ClearWindow(ctx context.Context, sessionId string, windowId string) (*Model
 		query = `SELECT lineid FROM line WHERE sessionid = ? AND windowid = ?`
 		lineIds = tx.SelectStrings(query, sessionId, windowId)
 		query = `DELETE FROM line WHERE sessionid = ? AND windowid = ?`
+		tx.ExecWrap(query, sessionId, windowId)
+		query = `UPDATE window SET nextlinenum = 1 WHERE sessionid = ? AND windowid = ?`
 		tx.ExecWrap(query, sessionId, windowId)
 		return nil
 	})

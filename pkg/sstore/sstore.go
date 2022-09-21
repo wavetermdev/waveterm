@@ -197,15 +197,16 @@ func (r RemotePtrType) MakeFullRemoteRef() string {
 }
 
 type WindowType struct {
-	SessionId string              `json:"sessionid"`
-	WindowId  string              `json:"windowid"`
-	CurRemote RemotePtrType       `json:"curremote"`
-	WinOpts   WindowOptsType      `json:"winopts"`
-	OwnerId   string              `json:"ownerid"`
-	ShareMode string              `json:"sharemode"`
-	ShareOpts WindowShareOptsType `json:"shareopts"`
-	Lines     []*LineType         `json:"lines"`
-	Cmds      []*CmdType          `json:"cmds"`
+	SessionId   string              `json:"sessionid"`
+	WindowId    string              `json:"windowid"`
+	CurRemote   RemotePtrType       `json:"curremote"`
+	WinOpts     WindowOptsType      `json:"winopts"`
+	OwnerId     string              `json:"ownerid"`
+	NextLineNum int64               `json:"nextlinenum"`
+	ShareMode   string              `json:"sharemode"`
+	ShareOpts   WindowShareOptsType `json:"shareopts"`
+	Lines       []*LineType         `json:"lines"`
+	Cmds        []*CmdType          `json:"cmds"`
 
 	// only for updates
 	Remove bool `json:"remove,omitempty"`
@@ -218,6 +219,7 @@ func (w *WindowType) ToMap() map[string]interface{} {
 	rtn["curremoteownerid"] = w.CurRemote.OwnerId
 	rtn["curremoteid"] = w.CurRemote.RemoteId
 	rtn["curremotename"] = w.CurRemote.Name
+	rtn["nextlinenum"] = w.NextLineNum
 	rtn["winopts"] = quickJson(w.WinOpts)
 	rtn["ownerid"] = w.OwnerId
 	rtn["sharemode"] = w.ShareMode
@@ -235,6 +237,7 @@ func WindowFromMap(m map[string]interface{}) *WindowType {
 	quickSetStr(&w.CurRemote.OwnerId, m, "curremoteownerid")
 	quickSetStr(&w.CurRemote.RemoteId, m, "curremoteid")
 	quickSetStr(&w.CurRemote.Name, m, "curremotename")
+	quickSetInt64(&w.NextLineNum, m, "nextlinenum")
 	quickSetJson(&w.WinOpts, m, "winopts")
 	quickSetStr(&w.OwnerId, m, "ownerid")
 	quickSetStr(&w.ShareMode, m, "sharemode")
@@ -416,16 +419,19 @@ type RemoteInstance struct {
 }
 
 type LineType struct {
-	SessionId string `json:"sessionid"`
-	WindowId  string `json:"windowid"`
-	LineId    string `json:"lineid"`
-	Ts        int64  `json:"ts"`
-	UserId    string `json:"userid"`
-	LineType  string `json:"linetype"`
-	Text      string `json:"text,omitempty"`
-	CmdId     string `json:"cmdid,omitempty"`
-	Ephemeral bool   `json:"ephemeral,omitempty"`
-	Remove    bool   `json:"remove,omitempty"`
+	SessionId   string `json:"sessionid"`
+	WindowId    string `json:"windowid"`
+	UserId      string `json:"userid"`
+	LineId      string `json:"lineid"`
+	Ts          int64  `json:"ts"`
+	LineNum     int64  `json:"linenum"`
+	LineNumTemp bool   `json:"linenumtemp,omitempty"`
+	LineLocal   bool   `json:"linelocal"`
+	LineType    string `json:"linetype"`
+	Text        string `json:"text,omitempty"`
+	CmdId       string `json:"cmdid,omitempty"`
+	Ephemeral   bool   `json:"ephemeral,omitempty"`
+	Remove      bool   `json:"remove,omitempty"`
 }
 
 type SSHOpts struct {
@@ -574,9 +580,10 @@ func makeNewLineCmd(sessionId string, windowId string, userId string, cmdId stri
 	rtn := &LineType{}
 	rtn.SessionId = sessionId
 	rtn.WindowId = windowId
+	rtn.UserId = userId
 	rtn.LineId = uuid.New().String()
 	rtn.Ts = time.Now().UnixMilli()
-	rtn.UserId = userId
+	rtn.LineLocal = true
 	rtn.LineType = LineTypeCmd
 	rtn.CmdId = cmdId
 	return rtn
@@ -586,9 +593,10 @@ func makeNewLineText(sessionId string, windowId string, userId string, text stri
 	rtn := &LineType{}
 	rtn.SessionId = sessionId
 	rtn.WindowId = windowId
+	rtn.UserId = userId
 	rtn.LineId = uuid.New().String()
 	rtn.Ts = time.Now().UnixMilli()
-	rtn.UserId = userId
+	rtn.LineLocal = true
 	rtn.LineType = LineTypeText
 	rtn.Text = text
 	return rtn
