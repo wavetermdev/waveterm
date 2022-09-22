@@ -90,6 +90,8 @@ type RemoteRuntimeState struct {
 	ConnectMode         string              `json:"connectmode"`
 	Archived            bool                `json:"archived"`
 	RemoteIdx           int64               `json:"remoteidx"`
+	UName               string              `json:"uname"`
+	MShellVersion       string              `json:"mshellversion"`
 }
 
 func (state RemoteRuntimeState) IsConnected() bool {
@@ -349,6 +351,7 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		ConnectMode:         msh.Remote.ConnectMode,
 		Archived:            msh.Remote.Archived,
 		RemoteIdx:           msh.Remote.RemoteIdx,
+		UName:               msh.UName,
 	}
 	if msh.Err != nil {
 		state.ErrorStr = msh.Err.Error()
@@ -376,6 +379,7 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 			Cwd:  msh.ServerProc.InitPk.Cwd,
 			Env0: msh.ServerProc.InitPk.Env0,
 		}
+		state.MShellVersion = msh.ServerProc.InitPk.Version
 		vars["home"] = msh.ServerProc.InitPk.HomeDir
 		vars["remoteuser"] = msh.ServerProc.InitPk.User
 		vars["bestuser"] = vars["remoteuser"]
@@ -517,6 +521,12 @@ func (msh *MShellProc) GetRemoteCopy() sstore.RemoteType {
 	return *msh.Remote
 }
 
+func (msh *MShellProc) GetUName() string {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	return msh.UName
+}
+
 func (msh *MShellProc) GetNumRunningCommands() int {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
@@ -642,6 +652,9 @@ func (msh *MShellProc) Launch() {
 	msh.WithLock(func() {
 		msh.UName = uname
 		msh.MakeClientCancelFn = nil
+		if cproc != nil && cproc.InitPk != nil {
+			msh.Remote.InitPk = cproc.InitPk
+		}
 		// no notify here, because we'll call notify in either case below
 	})
 	if err == context.Canceled {

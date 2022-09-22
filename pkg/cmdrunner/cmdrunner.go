@@ -553,20 +553,6 @@ func RemoteShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 		return nil, err
 	}
 	state := ids.Remote.RState
-	var buf bytes.Buffer
-	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "type", state.RemoteType))
-	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "remoteid", state.RemoteId))
-	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "physicalid", state.PhysicalId))
-	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "alias", state.RemoteAlias))
-	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "canonicalname", state.RemoteCanonicalName))
-	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "connectmode", state.ConnectMode))
-	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "status", state.Status))
-	if ids.Remote.RemoteState != nil {
-		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "cwd", ids.Remote.RemoteState.Cwd))
-	}
-	if state.ErrorStr != "" {
-		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "error", state.ErrorStr))
-	}
 	return sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			InfoTitle:   fmt.Sprintf("show remote [%s] info", ids.Remote.DisplayName),
