@@ -223,14 +223,16 @@ html, body, #main {
         margin-bottom: 0px;
     }
 
-    .menu-list li.new-session {
-        a.new-session {
-            color: #666;
-            font-size: 13px;
-        }
-        
-        .fa {
-            font-size: 10px;
+    .menu-list {
+        li.new-session, li.add-remote {
+            a {
+                color: #666;
+                font-size: 13px;
+            }
+            
+            .fa {
+                font-size: 10px;
+            }
         }
     }
 
@@ -1042,7 +1044,7 @@ body .xterm .xterm-viewport {
     .mono-font(inherit, 600);
 }
 
-.remote-modal {
+.sc-modal {
     .modal-content {
         padding: 10px;
 
@@ -1050,43 +1052,16 @@ body .xterm .xterm-viewport {
             font-size: 20px;
             margin-bottom: 10px;
         }
-        
-        .remotes-content {
+
+        .message-content {
             flex-grow: 1;
             max-height: 80%;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-
-            .table {
-                th.status-header {
-                    width: 40px;
-                }
-
-                tbody td {
-                    vertical-align: middle;
-                }
-                
-                .status-cell {
-                    .remote-status {
-                        font-size: 16px;
-                        top: 0;
-                        margin-right: 0;
-                    }
-                    
-                    .status-text {
-                        font-size: 12px;
-                    }
-                }
-            }
         }
 
-        .remote-item {
-            display: flex;
-            flex-direction: row;
-        }
-
-        .remotes-footer {
+        .message-footer {
             border-top: 1px solid #666;
             padding-top: 15px;
             display: flex;
@@ -1095,6 +1070,32 @@ body .xterm .xterm-viewport {
 
             .spacer {
                 flex-grow: 1;
+            }
+        }
+    }
+}
+
+.remote-modal {
+    .message-content {
+        .table {
+            th.status-header {
+                width: 40px;
+            }
+            
+            tbody td {
+                vertical-align: middle;
+            }
+            
+            .status-cell {
+                .remote-status {
+                    font-size: 16px;
+                    top: 0;
+                    margin-right: 0;
+                }
+                
+                .status-text {
+                    font-size: 12px;
+                }
             }
         }
     }

@@ -1384,6 +1384,13 @@ class MainSideBar extends React.Component<{}, {}> {
         GlobalCommandRunner.showRemote(remote.remoteid);
     }
 
+    @boundMethod
+    handleAddRemote() : void {
+        mobx.action(() => {
+            GlobalModel.addRemoteModalOpen.set(true);
+        })();
+    }
+
     render() {
         let model = GlobalModel;
         let activeSessionId = model.activeSessionId.get();
@@ -1415,7 +1422,7 @@ class MainSideBar extends React.Component<{}, {}> {
                                     {session.name.get()}
                                 </a></li>
                             </For>
-                            <li className="new-session"><a className="new-session" onClick={() => this.handleNewSession()}><i className="fa fa-plus"/> New Session</a></li>
+                            <li className="new-session"><a onClick={() => this.handleNewSession()}><i className="fa fa-plus"/> New Session</a></li>
                         </If>
                     </ul>
                     <p className="menu-label">
@@ -1425,7 +1432,7 @@ class MainSideBar extends React.Component<{}, {}> {
                         <li><a>server-status</a></li>
                         <li><a className="activity">bug-3458 <div className="tag is-link">3</div></a></li>
                         <li><a>dev-build</a></li>
-                        <li className="new-session"><a className="new-session"><i className="fa fa-plus"/> New Session</a></li>
+                        <li className="new-session"><a><i className="fa fa-plus"/> New Session</a></li>
                     </ul>
                     <p className="menu-label">
                         Direct Messages
@@ -1463,6 +1470,9 @@ class MainSideBar extends React.Component<{}, {}> {
                                 {this.remoteDisplayName(remote)}
                             </a></li>
                         </For>
+                        <li key="add-remote" className="add-remote">
+                            <a onClick={() => this.handleAddRemote()}><i className="fa fa-plus"/> Add Remote</a>
+                        </li>
                     </ul>
                     <div className="bottom-spacer"></div>
                 </div>
@@ -1485,18 +1495,48 @@ function sortAndFilterRemotes(origRemotes : RemoteType[]) : RemoteType[] {
 }
 
 @mobxReact.observer
-class RemoteModal extends React.Component<{}, {}> {
+class AddRemoteModal extends React.Component<{}, {}> {
+    @boundMethod
+    handleModalClose() : void {
+        mobx.action(() => {
+            GlobalModel.addRemoteModalOpen.set(false);
+        })();
+    }
+    
+    render() {
+        return (
+            <div className="sc-modal add-remote-modal modal is-active">
+                <div onClick={this.handleModalClose} className="modal-background"></div>
+                <div className="modal-content message">
+                    <div className="message-header">
+                        <p>Add Remote</p>
+                    </div>
+                    <div className="message-content">
+                        hello
+                    </div>
+                    <div className="message-footer">
+                        <button onClick={this.handleModalClose} className="button">Cancel</button>
+                        <div className="spacer"></div>
+                        <button onClick={this.handleAddRemote} className="button is-primary">
+                            <span className="icon">
+                                <i className="fa fa-plus"/>
+                            </span>
+                            <span>Add Remote</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+}
 
+@mobxReact.observer
+class RemoteModal extends React.Component<{}, {}> {
     @boundMethod
     handleModalClose() : void {
         mobx.action(() => {
             GlobalModel.remotesModalOpen.set(false);
         })();
-    }
-
-    @boundMethod
-    handleAddRemote() : void {
-        console.log("add-remote");
     }
     
     render() {
@@ -1504,13 +1544,13 @@ class RemoteModal extends React.Component<{}, {}> {
         let remotes = sortAndFilterRemotes(model.remotes);
         let remote : RemoteType = null;
         return (
-            <div className="remote-modal modal is-active">
+            <div className="sc-modal remote-modal modal is-active">
                 <div onClick={this.handleModalClose} className="modal-background"></div>
                 <div className="modal-content message">
                     <div className="message-header">
                         <p>Remotes</p>
                     </div>
-                    <div className="remotes-content">
+                    <div className="message-content">
                         <table className="table">
                             <thead>
                                 <tr>
@@ -1543,7 +1583,7 @@ class RemoteModal extends React.Component<{}, {}> {
                             </tbody>
                         </table>
                     </div>
-                    <div className="remotes-footer">
+                    <div className="message-footer">
                         <button onClick={this.handleAddRemote} className="button is-primary">
                             <span className="icon">
                                 <i className="fa fa-plus"/>
@@ -1579,6 +1619,9 @@ class Main extends React.Component<{}, {}> {
                 </div>
                 <If condition={GlobalModel.remotesModalOpen.get()}>
                     <RemoteModal/>
+                </If>
+                <If condition={GlobalModel.addRemoteModalOpen.get()}>
+                    <AddRemoteModal/>
                 </If>
             </div>
         );
