@@ -229,6 +229,7 @@ type CmdDataType = {
     cmdstr : string,
     remotestate : RemoteStateType,
     termopts : TermOptsType,
+    origtermopts : TermOptsType,
     status : string,
     startpk : CmdStartPacketType,
     donepk : CmdDonePacketType,

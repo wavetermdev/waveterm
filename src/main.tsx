@@ -1334,6 +1334,16 @@ function getConnVal(r : RemoteType) : number {
 }
 
 @mobxReact.observer
+class RemoteStatusLight extends React.Component<{status : string}, {}> {
+    render() {
+        let status = this.props.status;
+        return (
+            <i className={cn("remote-status fa", "status-" + status, (status == "connecting" ? "fa-refresh" : "fa-circle"))}/>
+        );
+    }
+}
+
+@mobxReact.observer
 class MainSideBar extends React.Component<{}, {}> {
     collapsed : mobx.IObservableValue<boolean> = mobx.observable.box(false);
 
@@ -1381,15 +1391,7 @@ class MainSideBar extends React.Component<{}, {}> {
         let remotes = model.remotes ?? [];
         let remote : RemoteType = null;
         let idx : number = 0;
-        remotes = remotes.filter((r) => !r.archived);
-        remotes.sort((a, b) => {
-            let connValA = getConnVal(a);
-            let connValB = getConnVal(b);
-            if (connValA != connValB) {
-                return connValA - connValB;
-            }
-            return a.remoteidx - b.remoteidx;
-        });
+        remotes = sortAndFilterRemotes(remotes);
         return (
             <div className={cn("main-sidebar", {"collapsed": this.collapsed.get()})}>
                 <div className="collapse-container">
@@ -1457,7 +1459,7 @@ class MainSideBar extends React.Component<{}, {}> {
                     <ul className="menu-list remotes-menu-list">
                         <For each="remote" of={remotes}>
                             <li key={remote.remoteid} className="remote-menu-item"><a onClick={() => this.clickRemote(remote)}>
-                                <i className={cn("remote-status fa", "status-" + remote.status, (remote.status == "connecting" ? "fa-refresh" : "fa-circle"))}/>
+                                <RemoteStatusLight status={remote.status}/>
                                 {this.remoteDisplayName(remote)}
                             </a></li>
                         </For>
@@ -1467,6 +1469,19 @@ class MainSideBar extends React.Component<{}, {}> {
             </div>
         );
     }
+}
+
+function sortAndFilterRemotes(origRemotes : RemoteType[]) : RemoteType[] {
+    let remotes = origRemotes.filter((r) => !r.archived);
+    remotes.sort((a, b) => {
+        let connValA = getConnVal(a);
+        let connValB = getConnVal(b);
+        if (connValA != connValB) {
+            return connValA - connValB;
+        }
+        return a.remoteidx - b.remoteidx;
+    });
+    return remotes;
 }
 
 @mobxReact.observer
@@ -1486,7 +1501,7 @@ class RemoteModal extends React.Component<{}, {}> {
     
     render() {
         let model = GlobalModel;
-        let remotes = model.remotes;
+        let remotes = sortAndFilterRemotes(model.remotes);
         let remote : RemoteType = null;
         return (
             <div className="remote-modal modal is-active">
@@ -1509,7 +1524,7 @@ class RemoteModal extends React.Component<{}, {}> {
                                 <For each="remote" of={remotes}>
                                     <tr>
                                         <td className="status-cell">
-                                            <div><i className={cn("remote-status fa fa-circle", "status-" + remote.status)}/></div>
+                                            <div><RemoteStatusLight status={remote.status}/></div>
                                         </td>
                                         <td>
                                             {remote.remotealias}
