@@ -711,6 +711,23 @@ class InfoMsg extends React.Component<{}, {}> {
         }
     }
 
+    getRemoteTypeStr(remote : RemoteType) : string {
+        let mshellStr = "";
+        if (!isBlank(remote.mshellversion)) {
+            mshellStr = "mshell=" + remote.mshellversion;
+        }
+        if (!isBlank(remote.uname)) {
+            if (mshellStr != "") {
+                mshellStr += " ";
+            }
+            mshellStr += "uname=\"" + remote.uname + "\"";
+        }
+        if (mshellStr == "") {
+            return remote.remotetype;
+        }
+        return remote.remotetype + " (" + mshellStr + ")";
+    }
+
     render() {
         let model = GlobalModel;
         let inputModel = model.inputModel;
@@ -752,7 +769,7 @@ class InfoMsg extends React.Component<{}, {}> {
                         </div>
                         <div className="remote-field">
                             <div className="remote-field-def"> type</div>
-                            <div className="remote-field-val">{remote.remotetype}</div>
+                            <div className="remote-field-val">{this.getRemoteTypeStr(remote)}</div>
                         </div>
                         <div className="remote-field">
                             <div className="remote-field-def"> alias</div>
@@ -1517,7 +1534,7 @@ class AddRemoteModal extends React.Component<{}, {}> {
                     <div className="message-footer">
                         <button onClick={this.handleModalClose} className="button">Cancel</button>
                         <div className="spacer"></div>
-                        <button onClick={this.handleAddRemote} className="button is-primary">
+                        <button className="button is-primary">
                             <span className="icon">
                                 <i className="fa fa-plus"/>
                             </span>
@@ -1536,6 +1553,13 @@ class RemoteModal extends React.Component<{}, {}> {
     handleModalClose() : void {
         mobx.action(() => {
             GlobalModel.remotesModalOpen.set(false);
+        })();
+    }
+
+    @boundMethod
+    handleAddRemote() : void {
+        mobx.action(() => {
+            GlobalModel.addRemoteModalOpen.set(true);
         })();
     }
     
@@ -1562,7 +1586,7 @@ class RemoteModal extends React.Component<{}, {}> {
                             </thead>
                             <tbody>
                                 <For each="remote" of={remotes}>
-                                    <tr>
+                                    <tr key={remote.remoteid}>
                                         <td className="status-cell">
                                             <div><RemoteStatusLight status={remote.status}/></div>
                                         </td>
@@ -1617,11 +1641,11 @@ class Main extends React.Component<{}, {}> {
                     <MainSideBar/>
                     <SessionView/>
                 </div>
-                <If condition={GlobalModel.remotesModalOpen.get()}>
-                    <RemoteModal/>
-                </If>
                 <If condition={GlobalModel.addRemoteModalOpen.get()}>
                     <AddRemoteModal/>
+                </If>
+                <If condition={GlobalModel.remotesModalOpen.get() && !GlobalModel.addRemoteModalOpen.get()}>
+                    <RemoteModal/>
                 </If>
             </div>
         );

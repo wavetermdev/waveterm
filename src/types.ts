@@ -85,6 +85,8 @@ type RemoteType = {
     connectmode : string,
     remoteidx : number,
     archived : boolean,
+    uname : string,
+    mshellversion : string,
     remove? : boolean,
 };
 

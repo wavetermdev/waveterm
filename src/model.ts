@@ -1140,7 +1140,6 @@ class InputModel {
         if (this.remoteTermWrap != null) {
             this.remoteTermWrap.dispose();
             this.remoteTermWrap = null;
-            console.log("dispose termwrap");
         }
         if (remoteId != null) {
             let elem = document.getElementById("term-remote");
@@ -1150,7 +1149,6 @@ class InputModel {
             else {
                 let termOpts = {rows: RemotePtyRows, cols: RemotePtyCols, flexrows: false, maxptysize: 64*1024};
                 this.remoteTermWrap = new TermWrap(elem, {remoteId: remoteId}, RemotePtyRows, termOpts, null, (e) => { this.termKeyHandler(remoteId, e)});
-                console.log("make termwrap", this.remoteTermWrap);
             }
         }
     }
