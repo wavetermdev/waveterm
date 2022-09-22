@@ -59,10 +59,13 @@ fi
 const InstallCommand = `
 printf "\n##N{\"type\": \"init\", \"notfound\": true, \"uname\": \"%s|%s\"}\n" "$(uname -s)" "$(uname -m)";
 mkdir -p ~/.mshell/;
-cat > ~/.mshell/mshell.temp; 
-mv ~/.mshell/mshell.temp ~/.mshell/mshell;
-chmod a+x ~/.mshell/mshell;
-~/.mshell/mshell --single --version
+cat > ~/.mshell/mshell.temp;
+if [[ -s ~/.mshell/mshell.temp ]]
+then
+  mv ~/.mshell/mshell.temp ~/.mshell/mshell;
+  chmod a+x ~/.mshell/mshell;
+  ~/.mshell/mshell --single --version
+fi
 `
 
 const RunCommandFmt = `%s`
