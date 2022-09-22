@@ -54,6 +54,17 @@ func quickSetBool(bval *bool, m map[string]interface{}, name string) {
 	}
 }
 
+func quickSetBytes(bval *[]byte, m map[string]interface{}, name string) {
+	v, ok := m[name]
+	if !ok {
+		return
+	}
+	sqlBytes, ok := v.([]byte)
+	if ok {
+		*bval = sqlBytes
+	}
+}
+
 func quickSetJson(ptr interface{}, m map[string]interface{}, name string) {
 	v, ok := m[name]
 	if !ok {

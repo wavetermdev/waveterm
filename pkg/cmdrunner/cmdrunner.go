@@ -1310,6 +1310,9 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "cwd", cmd.RemoteState.Cwd))
 		}
 		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "termopts", formatTermOpts(cmd.TermOpts)))
+		if cmd.TermOpts != cmd.OrigTermOpts {
+			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "orig-termopts", formatTermOpts(cmd.OrigTermOpts)))
+		}
 	}
 	update := sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{

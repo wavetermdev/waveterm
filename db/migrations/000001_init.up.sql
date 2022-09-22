@@ -1,4 +1,5 @@
 CREATE TABLE client (
+    clientid varchar(36) NOT NULL,
     userid varchar(36) NOT NULL,
     activesessionid varchar(36) NOT NULL,
     userpublickeybytes blob NOT NULL,
@@ -104,6 +105,7 @@ CREATE TABLE cmd (
     cmdstr text NOT NULL,
     remotestate json NOT NULL,
     termopts json NOT NULL,
+    origtermopts json NOT NULL,
     status varchar(10) NOT NULL,
     startpk json NOT NULL,
     donepk json NOT NULL,

@@ -1,6 +1,7 @@
 CREATE TABLE schema_migrations (version uint64,dirty bool);
 CREATE UNIQUE INDEX version_unique ON schema_migrations (version);
 CREATE TABLE client (
+    clientid varchar(36) NOT NULL,
     userid varchar(36) NOT NULL,
     activesessionid varchar(36) NOT NULL,
     userpublickeybytes blob NOT NULL,
@@ -22,6 +23,7 @@ CREATE TABLE window (
     curremoteownerid varchar(36) NOT NULL,
     curremoteid varchar(36) NOT NULL,
     curremotename varchar(50) NOT NULL,
+    nextlinenum int NOT NULL,
     winopts json NOT NULL,
     ownerid varchar(36) NOT NULL,
     sharemode varchar(12) NOT NULL,
@@ -97,6 +99,7 @@ CREATE TABLE cmd (
     cmdstr text NOT NULL,
     remotestate json NOT NULL,
     termopts json NOT NULL,
+    origtermopts json NOT NULL,
     status varchar(10) NOT NULL,
     startpk json NOT NULL,
     donepk json NOT NULL,

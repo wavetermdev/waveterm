@@ -92,12 +92,36 @@ func GetDB(ctx context.Context) (*sqlx.DB, error) {
 }
 
 type ClientData struct {
+	ClientId            string `json:"clientid"`
 	UserId              string `json:"userid"`
 	UserPrivateKeyBytes []byte `json:"-"`
 	UserPublicKeyBytes  []byte `json:"-"`
 	UserPrivateKey      *ecdsa.PrivateKey
 	UserPublicKey       *ecdsa.PublicKey
 	ActiveSessionId     string `json:"activesessionid"`
+}
+
+func (c *ClientData) ToMap() map[string]interface{} {
+	rtn := make(map[string]interface{})
+	rtn["clientid"] = c.ClientId
+	rtn["userid"] = c.UserId
+	rtn["userprivatekeybytes"] = c.UserPrivateKeyBytes
+	rtn["userpublickeybytes"] = c.UserPublicKeyBytes
+	rtn["activesessionid"] = c.ActiveSessionId
+	return rtn
+}
+
+func ClientDataFromMap(m map[string]interface{}) *ClientData {
+	if len(m) == 0 {
+		return nil
+	}
+	var c ClientData
+	quickSetStr(&c.ClientId, m, "clientid")
+	quickSetStr(&c.UserId, m, "userid")
+	quickSetBytes(&c.UserPrivateKeyBytes, m, "userprivatekeybytes")
+	quickSetBytes(&c.UserPublicKeyBytes, m, "userpublickeybytes")
+	quickSetStr(&c.ActiveSessionId, m, "activesessionid")
+	return &c
 }
 
 type SessionType struct {
@@ -480,18 +504,19 @@ func (r *RemoteType) GetName() string {
 }
 
 type CmdType struct {
-	SessionId   string                     `json:"sessionid"`
-	CmdId       string                     `json:"cmdid"`
-	Remote      RemotePtrType              `json:"remote"`
-	CmdStr      string                     `json:"cmdstr"`
-	RemoteState RemoteState                `json:"remotestate"`
-	TermOpts    TermOpts                   `json:"termopts"`
-	Status      string                     `json:"status"`
-	StartPk     *packet.CmdStartPacketType `json:"startpk"`
-	DonePk      *packet.CmdDonePacketType  `json:"donepk"`
-	UsedRows    int64                      `json:"usedrows"`
-	RunOut      []packet.PacketType        `json:"runout"`
-	Remove      bool                       `json:"remove"`
+	SessionId    string                     `json:"sessionid"`
+	CmdId        string                     `json:"cmdid"`
+	Remote       RemotePtrType              `json:"remote"`
+	CmdStr       string                     `json:"cmdstr"`
+	RemoteState  RemoteState                `json:"remotestate"`
+	TermOpts     TermOpts                   `json:"termopts"`
+	OrigTermOpts TermOpts                   `json:"origtermopts"`
+	Status       string                     `json:"status"`
+	StartPk      *packet.CmdStartPacketType `json:"startpk"`
+	DonePk       *packet.CmdDonePacketType  `json:"donepk"`
+	UsedRows     int64                      `json:"usedrows"`
+	RunOut       []packet.PacketType        `json:"runout"`
+	Remove       bool                       `json:"remove"`
 }
 
 func (r *RemoteType) ToMap() map[string]interface{} {
@@ -547,6 +572,7 @@ func (cmd *CmdType) ToMap() map[string]interface{} {
 	rtn["cmdstr"] = cmd.CmdStr
 	rtn["remotestate"] = quickJson(cmd.RemoteState)
 	rtn["termopts"] = quickJson(cmd.TermOpts)
+	rtn["origtermopts"] = quickJson(cmd.OrigTermOpts)
 	rtn["status"] = cmd.Status
 	rtn["startpk"] = quickJson(cmd.StartPk)
 	rtn["donepk"] = quickJson(cmd.DonePk)
@@ -568,6 +594,7 @@ func CmdFromMap(m map[string]interface{}) *CmdType {
 	quickSetStr(&cmd.CmdStr, m, "cmdstr")
 	quickSetJson(&cmd.RemoteState, m, "remotestate")
 	quickSetJson(&cmd.TermOpts, m, "termopts")
+	quickSetJson(&cmd.OrigTermOpts, m, "origtermopts")
 	quickSetStr(&cmd.Status, m, "status")
 	quickSetJson(&cmd.StartPk, m, "startpk")
 	quickSetJson(&cmd.DonePk, m, "donepk")
@@ -740,7 +767,6 @@ func EnsureDefaultSession(ctx context.Context) (*SessionType, error) {
 }
 
 func createClientData(tx *TxWrap) error {
-	userId := scbase.GenSCUUID()
 	curve := elliptic.P384()
 	pkey, err := ecdsa.GenerateKey(curve, rand.Reader)
 	if err != nil {
@@ -754,9 +780,17 @@ func createClientData(tx *TxWrap) error {
 	if err != nil {
 		return fmt.Errorf("marshaling (pkix) public key bytes: %w", err)
 	}
-	query := `INSERT INTO client (userid, activesessionid, userpublickeybytes, userprivatekeybytes) VALUES (?, '', ?, ?)`
-	tx.ExecWrap(query, userId, pubBytes, pkBytes)
-	fmt.Printf("create new userid[%s] with public/private keypair\n", userId)
+	c := ClientData{
+		ClientId:            uuid.New().String(),
+		UserId:              uuid.New().String(),
+		UserPrivateKeyBytes: pkBytes,
+		UserPublicKeyBytes:  pubBytes,
+		ActiveSessionId:     "",
+	}
+	query := `INSERT INTO client ( clientid, userid, activesessionid, userpublickeybytes, userprivatekeybytes) 
+                          VALUES (:clientid,:userid,:activesessionid,:userpublickeybytes,:userprivatekeybytes)`
+	tx.NamedExecWrap(query, c.ToMap())
+	fmt.Printf("create new clientid[%s] userid[%s] with public/private keypair\n", c.ClientId, c.UserId)
 	return nil
 }
 
@@ -774,10 +808,12 @@ func EnsureClientData(ctx context.Context) (*ClientData, error) {
 				return createErr
 			}
 		}
-		found := tx.GetWrap(&rtn, "SELECT * FROM client")
-		if !found {
+		m := tx.GetMap("SELECT * FROM client")
+		cdata := ClientDataFromMap(m)
+		if cdata == nil {
 			return fmt.Errorf("invalid client data")
 		}
+		rtn = *cdata
 		return nil
 	})
 	if err != nil {

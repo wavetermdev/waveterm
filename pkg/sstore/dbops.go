@@ -592,6 +592,7 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 	if line.LineNum != 0 {
 		return fmt.Errorf("line should not hage linenum set")
 	}
+	cmd.OrigTermOpts = cmd.TermOpts
 	return WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT windowid FROM window WHERE sessionid = ? AND windowid = ?`
 		if !tx.Exists(query, line.SessionId, line.WindowId) {
@@ -608,8 +609,8 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 		if cmd != nil {
 			cmdMap := cmd.ToMap()
 			query = `
-INSERT INTO cmd  ( sessionid, cmdid, remoteownerid, remoteid, remotename, cmdstr, remotestate, termopts, status, startpk, donepk, runout, usedrows)
-          VALUES (:sessionid,:cmdid,:remoteownerid,:remoteid,:remotename,:cmdstr,:remotestate,:termopts,:status,:startpk,:donepk,:runout,:usedrows)
+INSERT INTO cmd  ( sessionid, cmdid, remoteownerid, remoteid, remotename, cmdstr, remotestate, termopts, origtermopts, status, startpk, donepk, runout, usedrows)
+          VALUES (:sessionid,:cmdid,:remoteownerid,:remoteid,:remotename,:cmdstr,:remotestate,:termopts,:origtermopts,:status,:startpk,:donepk,:runout,:usedrows)
 `
 			tx.NamedExecWrap(query, cmdMap)
 		}
