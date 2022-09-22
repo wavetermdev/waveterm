@@ -3,6 +3,7 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
+import {debounce} from "throttle-debounce";
 import {v4 as uuidv4} from "uuid";
 import dayjs from "dayjs";
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
@@ -10,7 +11,7 @@ import cn from "classnames";
 import {TermWrap} from "./term";
 import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts} from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
-import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, ScreenWindow, riToRPtr} from "./model";
+import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, ScreenWindow, riToRPtr, widthToCols} from "./model";
 
 dayjs.extend(localizedFormat)
 
@@ -1018,8 +1019,24 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
     randomId : string;
     lastHeight : number = null;
 
+    width : mobx.IObservableValue<number> = mobx.observable.box(0);
+    setWidth_debounced : (width : number) => void;
+
     constructor(props : any) {
         super(props);
+        this.setWidth_debounced = debounce(1000, this.setWidth.bind(this));
+    }
+
+    setWidth(width : number) : void {
+        mobx.action(() => {
+            this.width.set(width);
+            let {sw} = this.props;
+            let cols = widthToCols(width);
+            if (sw == null || cols == 0) {
+                return;
+            }
+            sw.colsCallback(cols);
+        })();
     }
 
     scrollToBottom(reason : string) {
@@ -1061,6 +1078,8 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         }
         let wvElem = document.getElementById(this.getWindowViewDOMId());
         if (wvElem != null) {
+            let width = wvElem.offsetWidth;
+            this.setWidth(width);
             this.rszObs = new ResizeObserver(this.handleResize.bind(this));
             this.rszObs.observe(wvElem);
         }
@@ -1076,7 +1095,6 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         if (this.interObs) {
             this.interObs.disconnect();
         }
-        this.props.sw.setWidth(0);
     }
 
     handleResize(entries : any) {
@@ -1085,7 +1103,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         }
         let entry = entries[0];
         let width = entry.target.offsetWidth;
-        this.props.sw.setWidth(width);
+        this.setWidth_debounced(width);
         if (this.lastHeight == null) {
             this.lastHeight = entry.target.offsetHeight;
             return;
@@ -1166,7 +1184,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         if (win.loadError.get() != null) {
             return this.renderError(sprintf("(%s)", win.loadError.get()));
         }
-        if (sw.width.get() == 0) {
+        if (this.width.get() == 0) {
             return this.renderError("");
         }
         let idx = 0;
@@ -1191,7 +1209,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
                 <div key="lines" className="lines" onScroll={this.scrollHandler} id={this.getLinesDOMId()} style={linesStyle}>
                     <div className="lines-spacer"></div>
                     <For each="line" of={win.lines} index="idx">
-                        <Line key={line.lineid} line={line} sw={sw} width={sw.width.get()} interObs={this.interObs} initVis={idx > win.lines.length-1-7}/>
+                        <Line key={line.lineid} line={line} sw={sw} width={this.width.get()} interObs={this.interObs} initVis={idx > win.lines.length-1-7}/>
                     </For>
                 </div>
                 <If condition={win.lines.length == 0}>

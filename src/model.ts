@@ -253,9 +253,7 @@ class ScreenWindow {
     name : OV<string>;
     layout : OV<LayoutType>;
     shouldFollow : OV<boolean> = mobx.observable.box(true);
-    width : OV<number> = mobx.observable.box(0);
-    widthInCols : number;
-    colsCallback_debounced : (cols : number) => void;
+    lastCols : number;
 
     // cmdid => TermWrap
     terms : Record<string, TermWrap> = {};
@@ -266,8 +264,6 @@ class ScreenWindow {
         this.windowId = swdata.windowid;
         this.name = mobx.observable.box(swdata.name);
         this.layout = mobx.observable.box(swdata.layout);
-        this.colsCallback_debounced = debounce(1000, this.colsCallback.bind(this));
-        this.widthInCols = 0;
     }
 
     updatePtyData(ptyMsg : PtyDataUpdateType) {
@@ -289,25 +285,17 @@ class ScreenWindow {
     }
 
     colsCallback(cols : number) : void {
-        if (!this.isActive()) {
+        if (!this.isActive() || cols == 0) {
             return;
         }
-        console.log("cols set", cols);
+        if (cols == this.lastCols) {
+            return;
+        }
+        this.lastCols = cols;
         for (let cmdid in this.terms) {
             this.terms[cmdid].resizeCols(cols);
         }
         GlobalCommandRunner.resizeWindow(this.windowId, cols);
-    }
-
-    setWidth(width : number) : void {
-        mobx.action(() => {
-            let oldCols = this.widthInCols;
-            this.width.set(width);
-            this.widthInCols = widthToCols(width);
-            if (this.widthInCols > 0 && this.widthInCols != oldCols) {
-                this.colsCallback_debounced(this.widthInCols);
-            }
-        })();
     }
 
     getTermWrap(cmdId : string) : TermWrap {
@@ -1296,7 +1284,7 @@ class Model {
                 }
                 let sw = screen.getActiveSW();
                 if (sw != null) {
-                    rtn.termopts.cols = widthToCols(sw.width.get());
+                    rtn.termopts.cols = sw.lastCols;
                 }
             }
         }
