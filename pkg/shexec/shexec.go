@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"os/user"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -49,14 +50,14 @@ PATH=$PATH:~/.mshell;
 which mshell > /dev/null;
 if [[ "$?" -ne 0 ]]
 then
-  printf "\n##N{\"type\": \"init\", \"notfound\": true, \"uname\": \"%s | %s\"}\n" "$(uname -s)" "$(uname -m)"
+  printf "\n##N{\"type\": \"init\", \"notfound\": true, \"uname\": \"%s|%s\"}\n" "$(uname -s)" "$(uname -m)"
 else
   mshell --single
 fi
 `
 
 const InstallCommand = `
-printf "\n##N{\"type\": \"init\", \"notfound\": true, \"uname\": \"%s | %s\"}\n" "$(uname -s)" "$(uname -m)";
+printf "\n##N{\"type\": \"init\", \"notfound\": true, \"uname\": \"%s|%s\"}\n" "$(uname -s)" "$(uname -m)";
 mkdir -p ~/.mshell/;
 cat > ~/.mshell/mshell.temp; 
 mv ~/.mshell/mshell.temp ~/.mshell/mshell;
@@ -852,7 +853,7 @@ func DetectGoArch(uname string) (string, string, error) {
 	goarch := ""
 	if archVal == "x86_64" || archVal == "i686" || archVal == "amd64" {
 		goarch = "amd64"
-	} else if archVal == "aarch64" || archVal == "amd64" {
+	} else if archVal == "aarch64" || archVal == "arm64" {
 		goarch = "arm64"
 	}
 	if goarch == "" {
@@ -1159,6 +1160,7 @@ func MakeInitPacket() *packet.InitPacketType {
 		initPacket.User = user.Username
 	}
 	initPacket.HostName, _ = os.Hostname()
+	initPacket.UName = fmt.Sprintf("%s|%s", runtime.GOOS, runtime.GOARCH)
 	return initPacket
 }
 
