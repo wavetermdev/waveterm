@@ -669,27 +669,22 @@ class TextAreaInput extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
-class InfoMsg extends React.Component<{}, {}> {
-    getAfterSlash(s : string) : string {
-        if (s.startsWith("^/")) {
-            return s.substr(1);
+class InfoShowRemote extends React.Component<{}, {}> {
+    getRemoteTypeStr(remote : RemoteType) : string {
+        let mshellStr = "";
+        if (!isBlank(remote.mshellversion)) {
+            mshellStr = "mshell=" + remote.mshellversion;
         }
-        let slashIdx = s.lastIndexOf("/");
-        if (slashIdx == s.length-1) {
-            slashIdx = s.lastIndexOf("/", slashIdx-1);
+        if (!isBlank(remote.uname)) {
+            if (mshellStr != "") {
+                mshellStr += " ";
+            }
+            mshellStr += "uname=\"" + remote.uname + "\"";
         }
-        if (slashIdx == -1) {
-            return s;
+        if (mshellStr == "") {
+            return remote.remotetype;
         }
-        return s.substr(slashIdx+1);
-    }
-
-    @boundMethod
-    clickTermBlock(e : any) {
-        let inputModel = GlobalModel.inputModel;
-        if (inputModel.remoteTermWrap != null) {
-            inputModel.remoteTermWrap.terminal.focus();
-        }
+        return remote.remotetype + " (" + mshellStr + ")";
     }
 
     @boundMethod
@@ -711,21 +706,94 @@ class InfoMsg extends React.Component<{}, {}> {
         }
     }
 
-    getRemoteTypeStr(remote : RemoteType) : string {
-        let mshellStr = "";
-        if (!isBlank(remote.mshellversion)) {
-            mshellStr = "mshell=" + remote.mshellversion;
+    @boundMethod
+    clickTermBlock(e : any) {
+        let inputModel = GlobalModel.inputModel;
+        if (inputModel.remoteTermWrap != null) {
+            inputModel.remoteTermWrap.terminal.focus();
         }
-        if (!isBlank(remote.uname)) {
-            if (mshellStr != "") {
-                mshellStr += " ";
-            }
-            mshellStr += "uname=\"" + remote.uname + "\"";
+    }
+    
+    render() {
+        let inputModel = GlobalModel.inputModel;
+        let infoMsg = inputModel.infoMsg.get();
+        let ptyRemoteId = (infoMsg == null ? null : infoMsg.ptyremoteid);
+        let isTermFocused = (inputModel.remoteTermWrap == null ? false : inputModel.remoteTermWrap.isFocused.get());
+        let remote : RemoteType;
+        if (ptyRemoteId != null) {
+            remote = GlobalModel.getRemote(ptyRemoteId);
         }
-        if (mshellStr == "") {
-            return remote.remotetype;
+        if (ptyRemoteId == null || remote == null) {
+            return (
+                <>
+                    <div key="term" className="terminal-wrapper" style={{display: "none"}}>
+                        <div key="terminal" className="terminal" id="term-remote"></div>
+                    </div>
+                </>
+            );
         }
-        return remote.remotetype + " (" + mshellStr + ")";
+        return (
+            <>
+                <div className="info-remote">
+                    <div className="remote-field">
+                        <div className="remote-field-def"> remoteid</div>
+                        <div className="remote-field-val">{remote.remoteid}</div>
+                    </div>
+                    <div className="remote-field">
+                        <div className="remote-field-def"> type</div>
+                        <div className="remote-field-val">{this.getRemoteTypeStr(remote)}</div>
+                    </div>
+                    <div className="remote-field">
+                        <div className="remote-field-def"> alias</div>
+                        <div className="remote-field-val">{isBlank(remote.remotealias) ? "-" : remote.remotealias}</div>
+                    </div>
+                    <div className="remote-field">
+                        <div className="remote-field-def"> canonicalname</div>
+                        <div className="remote-field-val">{remote.remotecanonicalname}</div>
+                    </div>
+                    <div className="remote-field">
+                        <div className="remote-field-def"> connectmode</div>
+                        <div className="remote-field-val">{remote.connectmode}</div>
+                    </div>
+                    <div className="remote-field">
+                        <div className="remote-field-def"> status</div>
+                        <div className="remote-field-val">{remote.status} | {this.renderConnectButton(remote)}</div>
+                    </div>
+                    <If condition={!isBlank(remote.errorstr)}>
+                        <div className="remote-field">
+                            <div className="remote-field-def"> error</div>
+                            <div className="remote-field-val">{remote.errorstr}</div>
+                        </div>
+                    </If>
+                </div>
+                <div key="term" className={cn("terminal-wrapper", {"focus": isTermFocused}, (remote != null ? "status-" + remote.status : null))} style={{overflowY: "hidden", display: (ptyRemoteId == null ? "none" : "block"), width: CellWidthPx*RemotePtyCols+15}}>
+                    <If condition={!isTermFocused}>
+                        <div key="termblock" className="term-block" onClick={this.clickTermBlock}></div>
+                    </If>
+                    <If condition={inputModel.showNoInputMsg.get()}>
+                        <div key="termtag" className="term-tag">input is only allowed while status is 'connecting'</div>
+                    </If>
+                    <div key="terminal" className="terminal" id="term-remote" data-remoteid={ptyRemoteId} style={{height: CellHeightPx*RemotePtyRows}}></div>
+                </div>
+            </>
+        );
+    }
+}
+
+@mobxReact.observer
+class InfoMsg extends React.Component<{}, {}> {
+    getAfterSlash(s : string) : string {
+        if (s.startsWith("^/")) {
+            return s.substr(1);
+        }
+        let slashIdx = s.lastIndexOf("/");
+        if (slashIdx == s.length-1) {
+            slashIdx = s.lastIndexOf("/", slashIdx-1);
+        }
+        if (slashIdx == -1) {
+            return s;
+        }
+        return s.substr(slashIdx+1);
     }
 
     render() {
@@ -736,76 +804,28 @@ class InfoMsg extends React.Component<{}, {}> {
         let line : string = null;
         let istr : string = null;
         let idx : number = 0;
-        let ptyRemoteId = (infoMsg == null ? null : infoMsg.ptyremoteid);
-        let isTermFocused = (inputModel.remoteTermWrap == null ? false : inputModel.remoteTermWrap.isFocused.get());
-        let remote : RemoteType;
-        if (ptyRemoteId != null) {
-            remote = GlobalModel.getRemote(ptyRemoteId);
-        }
         return (
             <div className="cmd-input-info" style={{display: (infoShow ? "block" : "none")}}>
                 <If condition={infoMsg && infoMsg.infotitle != null}>
-                    <div className="info-title">
+                    <div key="infotitle" className="info-title">
                         {infoMsg.infotitle}
                     </div>
                 </If>
                 <If condition={infoMsg && infoMsg.infomsg != null}>
-                    <div className="info-msg">
+                    <div key="infomsg" className="info-msg">
                         {infoMsg.infomsg}
                     </div>
                 </If>
                 <If condition={infoMsg && infoMsg.infolines != null}>
-                    <div className="info-lines">
+                    <div key="infolines" className="info-lines">
                         <For index="idx" each="line" of={infoMsg.infolines}>
                             <div key={idx}>{line == "" ? " " : line}</div>
                         </For>
                     </div>
                 </If>
-                <If condition={ptyRemoteId != null && remote != null}>
-                    <div className="info-remote">
-                        <div className="remote-field">
-                            <div className="remote-field-def"> remoteid</div>
-                            <div className="remote-field-val">{remote.remoteid}</div>
-                        </div>
-                        <div className="remote-field">
-                            <div className="remote-field-def"> type</div>
-                            <div className="remote-field-val">{this.getRemoteTypeStr(remote)}</div>
-                        </div>
-                        <div className="remote-field">
-                            <div className="remote-field-def"> alias</div>
-                            <div className="remote-field-val">{isBlank(remote.remotealias) ? "-" : remote.remotealias}</div>
-                        </div>
-                        <div className="remote-field">
-                            <div className="remote-field-def"> canonicalname</div>
-                            <div className="remote-field-val">{remote.remotecanonicalname}</div>
-                        </div>
-                        <div className="remote-field">
-                            <div className="remote-field-def"> connectmode</div>
-                            <div className="remote-field-val">{remote.connectmode}</div>
-                        </div>
-                        <div className="remote-field">
-                            <div className="remote-field-def"> status</div>
-                            <div className="remote-field-val">{remote.status} | {this.renderConnectButton(remote)}</div>
-                        </div>
-                        <If condition={!isBlank(remote.errorstr)}>
-                            <div className="remote-field">
-                                <div className="remote-field-def"> error</div>
-                                <div className="remote-field-val">{remote.errorstr}</div>
-                            </div>
-                        </If>
-                    </div>
-                </If>
-                <div className={cn("terminal-wrapper", {"focus": isTermFocused}, (remote != null ? "status-" + remote.status : null))} style={{overflowY: "hidden", display: (ptyRemoteId == null ? "none" : "block"), width: CellWidthPx*RemotePtyCols+15}}>
-                    <If condition={!isTermFocused}>
-                        <div className="term-block" onClick={this.clickTermBlock}></div>
-                    </If>
-                    <If condition={inputModel.showNoInputMsg.get()}>
-                        <div className="term-tag">input is only allowed while status is 'connecting'</div>
-                    </If>
-                    <div className="terminal" id="term-remote" data-remoteid={ptyRemoteId} style={{height: CellHeightPx*RemotePtyRows}}></div>
-                </div>
+                <InfoShowRemote key="infoshow"/>
                 <If condition={infoMsg && infoMsg.infocomps != null && infoMsg.infocomps.length > 0}>
-                    <div className="info-comps">
+                    <div key="infocomps" className="info-comps">
                         <For each="istr" index="idx" of={infoMsg.infocomps}>
                             <div key={idx} className={cn("info-comp", {"metacmd-comp": istr.startsWith("^")})}>
                                 {this.getAfterSlash(istr)}
@@ -819,7 +839,7 @@ class InfoMsg extends React.Component<{}, {}> {
                     </div>
                 </If>
                 <If condition={infoMsg && infoMsg.infoerror != null}>
-                    <div className="info-error">
+                    <div key="infoerror" className="info-error">
                         [error] {infoMsg.infoerror}
                     </div>
                 </If>
@@ -988,9 +1008,11 @@ class CmdInput extends React.Component<{}, {}> {
         let cwdStr = getCwdStr(remote, remoteState);
         let infoShow = inputModel.infoShow.get();
         let historyShow = !infoShow && inputModel.historyShow.get();
-        let hasInfo = (inputModel.infoMsg.get() != null);
+        let infoMsg = inputModel.infoMsg.get();
+        let hasInfo = (infoMsg != null);
+        let remoteShow = (infoMsg != null && !isBlank(infoMsg.ptyremoteid));
         return (
-            <div className={cn("box cmd-input has-background-black", {"has-info": infoShow}, {"has-history": historyShow})}>
+            <div className={cn("box cmd-input has-background-black", {"has-info": infoShow}, {"has-history": historyShow}, {"has-remote": remoteShow})}>
                 <div onClick={this.onInfoToggle} className="input-minmax-control">
                     <If condition={infoShow || historyShow}>
                         <i className="fa fa-chevron-down"/>

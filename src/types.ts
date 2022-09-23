@@ -285,6 +285,7 @@ type InfoType = {
     infocompsmore? : boolean,
     timeoutms? : number,
     ptyremoteid? : string,
+    remoteshowall? : boolean,
 };
 
 type HistoryQueryOpts = {
