@@ -28,7 +28,7 @@ const MShellPathVarName = "MSHELL_PATH"
 const MShellHomeVarName = "MSHELL_HOME"
 const SSHCommandVarName = "SSH_COMMAND"
 const SessionsDirBaseName = "sessions"
-const MShellVersion = "0.1.0"
+const MShellVersion = "v0.1.0"
 const RemoteIdFile = "remoteid"
 
 var sessionDirCache = make(map[string]string)

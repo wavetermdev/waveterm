@@ -779,7 +779,7 @@ func RunClientSSHCommandAndWait(runPacket *packet.RunPacketType, fdContext FdCon
 				return nil, fmt.Errorf("mshell command not found on remote server, can install with 'mshell --install %s %s.%s'", sshOptsStr, goos, goarch)
 			}
 			if initPk.Version != base.MShellVersion {
-				return nil, fmt.Errorf("invalid remote mshell version 'v%s', must be v%s", initPk.Version, base.MShellVersion)
+				return nil, fmt.Errorf("invalid remote mshell version '%s', must be %s", initPk.Version, base.MShellVersion)
 			}
 			versionOk = true
 			if debug {

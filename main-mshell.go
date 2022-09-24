@@ -499,7 +499,7 @@ func main() {
 		handleUsage()
 		return
 	} else if firstArg == "--version" {
-		fmt.Printf("mshell v%s\n", base.MShellVersion)
+		fmt.Printf("mshell %s\n", base.MShellVersion)
 		return
 	} else if firstArg == "--env" {
 		rtnCode, err := handleEnv()

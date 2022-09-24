@@ -76,7 +76,7 @@ func MakeClientProc(ctx context.Context, ecmd *exec.Cmd) (*ClientProc, string, e
 		}
 		if initPk.Version != base.MShellVersion {
 			cproc.Close()
-			return nil, initPk.UName, fmt.Errorf("invalid remote mshell version 'v%s', must be v%s", initPk.Version, base.MShellVersion)
+			return nil, initPk.UName, fmt.Errorf("invalid remote mshell version '%s', must be %s", initPk.Version, base.MShellVersion)
 		}
 		cproc.InitPk = initPk
 	}
