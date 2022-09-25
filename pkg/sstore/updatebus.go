@@ -88,6 +88,7 @@ type InfoMsgType struct {
 	InfoLines     []string `json:"infolines,omitempty"`
 	TimeoutMs     int64    `json:"timeoutms,omitempty"`
 	PtyRemoteId   string   `json:"ptyremoteid,omitempty"`
+	RemoteShowAll bool     `json:"remoteshowall,omitempty"`
 }
 
 type HistoryInfoType struct {

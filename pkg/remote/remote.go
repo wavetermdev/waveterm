@@ -24,6 +24,7 @@ import (
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
 	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
+	"golang.org/x/mod/semver"
 )
 
 const RemoteTypeMShell = "mshell"
@@ -33,6 +34,9 @@ const CircBufSize = 64 * 1024
 const RemoteTermRows = 8
 const RemoteTermCols = 80
 const PtyReadBufSize = 100
+
+const MShellVersion = "v0.1.0"
+const MShellVersionConstraint = "^0.1"
 
 const MShellServerCommand = `
 PATH=$PATH:~/.mshell;
@@ -52,6 +56,12 @@ const (
 	StatusDisconnected = "disconnected"
 	StatusError        = "error"
 )
+
+func init() {
+	if MShellVersion != base.MShellVersion {
+		panic(fmt.Sprintf("sh2-server mshell version must match '%s' vs '%s'", MShellVersion, base.MShellVersion))
+	}
+}
 
 var GlobalStore *Store
 
@@ -73,6 +83,7 @@ type MShellProc struct {
 	ControllingPty     *os.File
 	PtyBuffer          *circbuf.Buffer
 	MakeClientCancelFn context.CancelFunc
+	NeedsMShellUpgrade bool
 
 	RunningCmds []base.CommandKey
 }
@@ -88,6 +99,7 @@ type RemoteRuntimeState struct {
 	ErrorStr            string              `json:"errorstr,omitempty"`
 	DefaultState        *sstore.RemoteState `json:"defaultstate"`
 	ConnectMode         string              `json:"connectmode"`
+	AutoInstall         bool                `json:"autoinstall"`
 	Archived            bool                `json:"archived"`
 	RemoteIdx           int64               `json:"remoteidx"`
 	UName               string              `json:"uname"`
@@ -349,6 +361,7 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		PhysicalId:          msh.Remote.PhysicalId,
 		Status:              msh.Status,
 		ConnectMode:         msh.Remote.ConnectMode,
+		AutoInstall:         msh.Remote.AutoInstall,
 		Archived:            msh.Remote.Archived,
 		RemoteIdx:           msh.Remote.RemoteIdx,
 		UName:               msh.UName,
@@ -649,16 +662,24 @@ func (msh *MShellProc) Launch() {
 		go msh.NotifyRemoteUpdate()
 	})
 	cproc, uname, err := shexec.MakeClientProc(makeClientCtx, ecmd)
+	var mshellVersion string
 	msh.WithLock(func() {
 		msh.UName = uname
 		msh.MakeClientCancelFn = nil
 		if cproc != nil && cproc.InitPk != nil {
 			msh.Remote.InitPk = cproc.InitPk
+			mshellVersion = cproc.InitPk.Version
+		}
+		if semver.Compare(mshellVersion, MShellVersion) < 0 {
+			msh.NeedsMShellUpgrade = true
 		}
 		// no notify here, because we'll call notify in either case below
 	})
 	if err == context.Canceled {
 		err = fmt.Errorf("forced disconnection")
+	}
+	if semver.MajorMinor(mshellVersion) != semver.MajorMinor(MShellVersion) {
+		err = fmt.Errorf("mshell version is not compatible current=%s remote=%s", MShellVersion, mshellVersion)
 	}
 	if err != nil {
 		msh.setErrorStatus(err)

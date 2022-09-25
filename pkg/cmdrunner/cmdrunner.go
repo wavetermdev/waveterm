@@ -575,8 +575,8 @@ func RemoteShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	}
 	return sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
-			InfoTitle: fmt.Sprintf("show all remote info"),
-			InfoLines: splitLinesForInfo(buf.String()),
+			InfoTitle:     fmt.Sprintf("show all remote info"),
+			RemoteShowAll: true,
 		},
 	}, nil
 }
@@ -1321,4 +1321,47 @@ func formatTermOpts(termOpts sstore.TermOpts) string {
 		rtnStr += " maxbuf=" + scbase.NumFormatB2(termOpts.MaxPtySize)
 	}
 	return rtnStr
+}
+
+type ColMeta struct {
+	Title   string
+	MinCols int
+	MaxCols int
+}
+
+func toInterfaceArr(sarr []string) []interface{} {
+	rtn := make([]interface{}, len(sarr))
+	for idx, s := range sarr {
+		rtn[idx] = s
+	}
+	return rtn
+}
+
+func formatTextTable(totalCols int, data [][]string, colMeta []ColMeta) []string {
+	numCols := len(colMeta)
+	maxColLen := make([]int, len(colMeta))
+	for i, cm := range colMeta {
+		maxColLen[i] = cm.MinCols
+	}
+	for _, row := range data {
+		for i := 0; i < numCols && i < len(row); i++ {
+			dlen := len(row[i])
+			if dlen > maxColLen[i] {
+				maxColLen[i] = dlen
+			}
+		}
+	}
+	fmtStr := ""
+	for idx, clen := range maxColLen {
+		if idx != 0 {
+			fmtStr += " "
+		}
+		fmtStr += fmt.Sprintf("%%%ds", clen)
+	}
+	var rtn []string
+	for _, row := range data {
+		sval := fmt.Sprintf(fmtStr, toInterfaceArr(row)...)
+		rtn = append(rtn, sval)
+	}
+	return rtn
 }

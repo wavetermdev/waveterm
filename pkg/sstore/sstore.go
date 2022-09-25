@@ -488,6 +488,7 @@ type RemoteType struct {
 	RemoteUser          string                 `json:"remoteuser"`
 	RemoteHost          string                 `json:"remotehost"`
 	ConnectMode         string                 `json:"connectmode"`
+	AutoInstall         bool                   `json:"autoinstall"`
 	InitPk              *packet.InitPacketType `json:"inipk"`
 	SSHOpts             *SSHOpts               `json:"sshopts"`
 	RemoteOpts          *RemoteOptsType        `json:"remoteopts"`
@@ -530,6 +531,7 @@ func (r *RemoteType) ToMap() map[string]interface{} {
 	rtn["remoteuser"] = r.RemoteUser
 	rtn["remotehost"] = r.RemoteHost
 	rtn["connectmode"] = r.ConnectMode
+	rtn["autoinstall"] = r.AutoInstall
 	rtn["initpk"] = quickJson(r.InitPk)
 	rtn["sshopts"] = quickJson(r.SSHOpts)
 	rtn["remoteopts"] = quickJson(r.RemoteOpts)
@@ -553,6 +555,7 @@ func RemoteFromMap(m map[string]interface{}) *RemoteType {
 	quickSetStr(&r.RemoteUser, m, "remoteuser")
 	quickSetStr(&r.RemoteHost, m, "remotehost")
 	quickSetStr(&r.ConnectMode, m, "connectmode")
+	quickSetBool(&r.AutoInstall, m, "autoinstall")
 	quickSetJson(&r.InitPk, m, "initpk")
 	quickSetJson(&r.SSHOpts, m, "sshopts")
 	quickSetJson(&r.RemoteOpts, m, "remoteopts")
