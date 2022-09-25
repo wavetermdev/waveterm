@@ -419,6 +419,15 @@ func SetActiveSessionId(ctx context.Context, sessionId string) error {
 	return txErr
 }
 
+func SetWinSize(ctx context.Context, winSize ClientWinSizeType) error {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `UPDATE client SET winsize = ?`
+		tx.ExecWrap(query, quickJson(winSize))
+		return nil
+	})
+	return txErr
+}
+
 func containsStr(strs []string, testStr string) bool {
 	for _, s := range strs {
 		if s == testStr {

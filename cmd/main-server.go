@@ -116,6 +116,46 @@ func writeToFifo(fifoName string, data []byte) error {
 	return nil
 }
 
+func HandleGetClientData(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Vary", "Origin")
+	w.Header().Set("Cache-Control", "no-cache")
+	cdata, err := sstore.EnsureClientData(r.Context())
+	if err != nil {
+		WriteJsonError(w, err)
+		return
+	}
+	WriteJsonSuccess(w, cdata)
+	return
+}
+
+func HandleSetWinSize(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Vary", "Origin")
+	w.Header().Set("Cache-Control", "no-cache")
+	if r.Method == "GET" || r.Method == "OPTIONS" {
+		w.WriteHeader(200)
+		return
+	}
+	decoder := json.NewDecoder(r.Body)
+	var winSize sstore.ClientWinSizeType
+	err := decoder.Decode(&winSize)
+	if err != nil {
+		WriteJsonError(w, fmt.Errorf("error decoding json: %w", err))
+		return
+	}
+	err = sstore.SetWinSize(r.Context(), winSize)
+	if err != nil {
+		WriteJsonError(w, fmt.Errorf("error setting winsize: %w", err))
+		return
+	}
+	WriteJsonSuccess(w, true)
+	return
+}
+
 // params: sessionid, windowid
 func HandleGetWindow(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
@@ -322,12 +362,12 @@ func main() {
 		fmt.Printf("[error] migrate up: %v\n", err)
 		return
 	}
-	userData, err := sstore.EnsureClientData(context.Background())
+	clientData, err := sstore.EnsureClientData(context.Background())
 	if err != nil {
-		fmt.Printf("[error] ensuring user data: %v\n", err)
+		fmt.Printf("[error] ensuring client data: %v\n", err)
 		return
 	}
-	fmt.Printf("userid = %s\n", userData.UserId)
+	fmt.Printf("userid = %s\n", clientData.UserId)
 	err = sstore.EnsureLocalRemote(context.Background())
 	if err != nil {
 		fmt.Printf("[error] ensuring local remote: %v\n", err)
@@ -365,6 +405,8 @@ func main() {
 	gr.HandleFunc("/api/remote-pty", HandleRemotePty)
 	gr.HandleFunc("/api/get-window", HandleGetWindow)
 	gr.HandleFunc("/api/run-command", HandleRunCommand).Methods("GET", "POST", "OPTIONS")
+	gr.HandleFunc("/api/get-client-data", HandleGetClientData)
+	gr.HandleFunc("/api/set-winsize", HandleSetWinSize)
 	server := &http.Server{
 		Addr:           MainServerAddr,
 		ReadTimeout:    HttpReadTimeout,

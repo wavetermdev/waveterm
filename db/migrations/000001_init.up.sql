@@ -3,7 +3,8 @@ CREATE TABLE client (
     userid varchar(36) NOT NULL,
     activesessionid varchar(36) NOT NULL,
     userpublickeybytes blob NOT NULL,
-    userprivatekeybytes blob NOT NULL
+    userprivatekeybytes blob NOT NULL,
+    winsize json NOT NULL
 );
 
 CREATE TABLE session (

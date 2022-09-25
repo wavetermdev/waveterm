@@ -91,14 +91,23 @@ func GetDB(ctx context.Context) (*sqlx.DB, error) {
 	return globalDB, globalDBErr
 }
 
+type ClientWinSizeType struct {
+	Width      int  `json:"width"`
+	Height     int  `json:"height"`
+	Top        int  `json:"top"`
+	Left       int  `json:"left"`
+	FullScreen bool `json:"fullscreen,omitempty"`
+}
+
 type ClientData struct {
-	ClientId            string `json:"clientid"`
-	UserId              string `json:"userid"`
-	UserPrivateKeyBytes []byte `json:"-"`
-	UserPublicKeyBytes  []byte `json:"-"`
-	UserPrivateKey      *ecdsa.PrivateKey
-	UserPublicKey       *ecdsa.PublicKey
-	ActiveSessionId     string `json:"activesessionid"`
+	ClientId            string            `json:"clientid"`
+	UserId              string            `json:"userid"`
+	UserPrivateKeyBytes []byte            `json:"-"`
+	UserPublicKeyBytes  []byte            `json:"-"`
+	UserPrivateKey      *ecdsa.PrivateKey `json:"-"`
+	UserPublicKey       *ecdsa.PublicKey  `json:"-"`
+	ActiveSessionId     string            `json:"activesessionid"`
+	WinSize             ClientWinSizeType `json:"winsize"`
 }
 
 func (c *ClientData) ToMap() map[string]interface{} {
@@ -108,6 +117,7 @@ func (c *ClientData) ToMap() map[string]interface{} {
 	rtn["userprivatekeybytes"] = c.UserPrivateKeyBytes
 	rtn["userpublickeybytes"] = c.UserPublicKeyBytes
 	rtn["activesessionid"] = c.ActiveSessionId
+	rtn["winsize"] = quickJson(c.WinSize)
 	return rtn
 }
 
@@ -121,6 +131,7 @@ func ClientDataFromMap(m map[string]interface{}) *ClientData {
 	quickSetBytes(&c.UserPrivateKeyBytes, m, "userprivatekeybytes")
 	quickSetBytes(&c.UserPublicKeyBytes, m, "userpublickeybytes")
 	quickSetStr(&c.ActiveSessionId, m, "activesessionid")
+	quickSetJson(&c.WinSize, m, "winsize")
 	return &c
 }
 
@@ -792,9 +803,10 @@ func createClientData(tx *TxWrap) error {
 		UserPrivateKeyBytes: pkBytes,
 		UserPublicKeyBytes:  pubBytes,
 		ActiveSessionId:     "",
+		WinSize:             ClientWinSizeType{},
 	}
-	query := `INSERT INTO client ( clientid, userid, activesessionid, userpublickeybytes, userprivatekeybytes) 
-                          VALUES (:clientid,:userid,:activesessionid,:userpublickeybytes,:userprivatekeybytes)`
+	query := `INSERT INTO client ( clientid, userid, activesessionid, userpublickeybytes, userprivatekeybytes, winsize) 
+                          VALUES (:clientid,:userid,:activesessionid,:userpublickeybytes,:userprivatekeybytes,:winsize)`
 	tx.NamedExecWrap(query, c.ToMap())
 	fmt.Printf("create new clientid[%s] userid[%s] with public/private keypair\n", c.ClientId, c.UserId)
 	return nil
@@ -814,10 +826,10 @@ func EnsureClientData(ctx context.Context) (*ClientData, error) {
 				return createErr
 			}
 		}
-		m := tx.GetMap("SELECT * FROM client")
+		m := tx.GetMap(`SELECT * FROM client`)
 		cdata := ClientDataFromMap(m)
 		if cdata == nil {
-			return fmt.Errorf("invalid client data")
+			return fmt.Errorf("no client data found")
 		}
 		rtn = *cdata
 		return nil
