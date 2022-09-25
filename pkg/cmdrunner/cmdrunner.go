@@ -473,6 +473,7 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	if !sstore.IsValidConnectMode(connectMode) {
 		return nil, fmt.Errorf("/remote:new invalid connectmode %q: valid modes are %s", connectMode, formatStrs([]string{sstore.ConnectModeStartup, sstore.ConnectModeAuto, sstore.ConnectModeManual}, "or", false))
 	}
+	autoInstall := resolveBool(pk.Kwargs["autoinstall"], true)
 	var isSudo bool
 	if sudoStr != "" {
 		isSudo = true
@@ -522,6 +523,7 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		RemoteUser:          remoteUser,
 		RemoteHost:          remoteHost,
 		ConnectMode:         connectMode,
+		AutoInstall:         autoInstall,
 		SSHOpts:             sshOpts,
 		RemoteOpts:          remoteOpts,
 	}

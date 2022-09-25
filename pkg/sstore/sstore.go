@@ -681,6 +681,7 @@ func EnsureLocalRemote(ctx context.Context) error {
 		RemoteUser:          user.Username,
 		RemoteHost:          hostName,
 		ConnectMode:         ConnectModeStartup,
+		AutoInstall:         true,
 		SSHOpts:             &SSHOpts{Local: true},
 	}
 	err = UpsertRemote(ctx, localRemote)
@@ -714,6 +715,7 @@ func AddTest01Remote(ctx context.Context) error {
 			SSHIdentity: "/Users/mike/aws/mfmt.pem",
 		},
 		ConnectMode: ConnectModeStartup,
+		AutoInstall: true,
 	}
 	err = UpsertRemote(ctx, testRemote)
 	if err != nil {
@@ -745,6 +747,7 @@ func AddTest02Remote(ctx context.Context) error {
 			SSHUser: "test2",
 		},
 		ConnectMode: ConnectModeStartup,
+		AutoInstall: true,
 	}
 	err = UpsertRemote(ctx, testRemote)
 	if err != nil {

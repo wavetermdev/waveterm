@@ -678,7 +678,7 @@ func (msh *MShellProc) Launch() {
 	if err == context.Canceled {
 		err = fmt.Errorf("forced disconnection")
 	}
-	if semver.MajorMinor(mshellVersion) != semver.MajorMinor(MShellVersion) {
+	if err == nil && semver.MajorMinor(mshellVersion) != semver.MajorMinor(MShellVersion) {
 		err = fmt.Errorf("mshell version is not compatible current=%s remote=%s", MShellVersion, mshellVersion)
 	}
 	if err != nil {
