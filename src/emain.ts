@@ -1,7 +1,10 @@
 import * as electron from "electron";
-import {acquireSCElectronLock} from "./base";
 import * as path from "path";
 import * as fs from "fs";
+import fetch from "node-fetch";
+import {debounce} from "throttle-debounce";
+import {acquireSCElectronLock} from "./base";
+import {handleJsonFetchResponse} from "./util";
 
 let app = electron.app;
 app.setName("ScriptHaus");
@@ -75,10 +78,13 @@ function createRemotesWindow() {
     win.webContents.on("will-navigate", shNavHandler);
 }
 
-function createMainWindow(size : {width : number, height : number}) {
+function createMainWindow(clientData) {
+    let bounds = calcBounds(clientData);
     let win = new electron.BrowserWindow({
-        width: size.width,
-        height: size.height,
+        x: bounds.x,
+        y: bounds.y,
+        width: bounds.width,
+        height: bounds.height,
         webPreferences: {
             preload: path.join(__dirname, "../src/preload.js"),
         },
@@ -144,33 +150,63 @@ function createMainWindow(size : {width : number, height : number}) {
         }
     });
     win.webContents.on("will-navigate", shNavHandler);
+    win.on("resized", debounce(400, mainResizeHandler));
+    win.on("moved", debounce(400, mainResizeHandler));
     return win;
 }
 
-function calcSize() {
-    let primaryDisplay = electron.screen.getPrimaryDisplay();
-    let size = {width: 1800, height: 1200};
-    if (primaryDisplay.size.width - 100 < size.width) {
-        size.width = primaryDisplay.size.width - 100;
+function mainResizeHandler(e) {
+    let win = e.sender;
+    if (win == null || win.isDestroyed() || win.fullScreen) {
+        return;
     }
-    if (primaryDisplay.size.height - 100 < size.height) {
-        size.height = primaryDisplay.size.height - 100;
+    let bounds = win.getBounds();
+    console.log("resize/move", win.getBounds());
+    let winSize = {width: bounds.width, height: bounds.height, top: bounds.y, left: bounds.x};
+    let url = "http://localhost:8080/api/set-winsize";
+    fetch(url, {method: "post", body: JSON.stringify(winSize)}).then((resp) => handleJsonFetchResponse(url, resp)).catch((err) => {
+        console.log("error setting winsize", err)
+    });
+}
+
+function calcBounds(clientData) {
+    let primaryDisplay = electron.screen.getPrimaryDisplay();
+    let size = {x: 50, y: 50, width: primaryDisplay.width-150, height: primaryDisplay.height-150};
+    if (clientData != null && clientData.winsize != null && clientData.winsize.width > 0) {
+        let cwinSize = clientData.winsize;
+        if (cwinSize.width > 0) {
+            size.width = cwinSize.width;
+        }
+        if (cwinSize.height > 0) {
+            size.height = cwinSize.height;
+        }
+        if (cwinSize.top >= 0) {
+            size.y = cwinSize.top;
+        }
+        if (cwinSize.left >= 0) {
+            size.x = cwinSize.left;
+        }
+    }
+    if (size.width < 300) {
+        size.width = 300;
+    }
+    if (size.height < 300) {
+        size.height = 300;
+    }
+    if (primaryDisplay.size.width < size.width) {
+        size.width = primaryDisplay.size.width;
+    }
+    if (primaryDisplay.size.height < size.height) {
+        size.height = primaryDisplay.size.height;
+    }
+    if (primaryDisplay.size.width < size.x + size.width) {
+        size.x = primaryDisplay.size.width - size.width;
+    }
+    if (primaryDisplay.size.hgiehg < size.y + size.height) {
+        size.y = primaryDisplay.size.height - size.height;
     }
     return size;
 }
-
-// primary display { width: 1680, height: 1050 }
-app.whenReady().then(() => {
-    let size = calcSize();
-    MainWindow = createMainWindow(size);
-
-    app.on('activate', () => {
-        if (electron.BrowserWindow.getAllWindows().length === 0) {
-            let size = calcSize();
-            createMainWindow(size);
-        }
-    })
-});
 
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit()
@@ -188,11 +224,43 @@ function getContextMenu() : any {
     return menu;
 }
 
+function getClientData() {
+    let url = "http://localhost:8080/api/get-client-data";
+    return fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
+        if (data == null) {
+            return null;
+        }
+        return data.data;
+    }).catch((err) => {
+        console.log("error getting client-data", err);
+        return null;
+    });
+}
+
 electron.ipcMain.on("context-screen", (event, {screenId}, {x, y}) => {
     console.log("context-screen", screenId);
     let menu = getContextMenu();
     menu.popup({x, y});
 });
 
+async function createMainWindowWrap() {
+    let clientData = await getClientData();
+    MainWindow = createMainWindow(clientData);
+    if (clientData && clientData.winsize.fullscreen) {
+        MainWindow.setFullScreen(true);
+    }
+}
 
+
+// ====== MAIN ====== //
+
+(async () => {
+    await app.whenReady();
+    await createMainWindowWrap();
+    app.on('activate', () => {
+        if (electron.BrowserWindow.getAllWindows().length === 0) {
+            createMainWindowWrap().then();
+        }
+    })
+})();
 
