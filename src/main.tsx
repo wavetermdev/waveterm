@@ -669,7 +669,23 @@ class TextAreaInput extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
-class InfoShowRemote extends React.Component<{}, {}> {
+class InfoRemoteShowAll extends React.Component<{}, {}> {
+    render() {
+        let inputModel = GlobalModel.inputModel;
+        let infoMsg = inputModel.infoMsg.get();
+        if (infoMsg == null || !infoMsg.remoteshowall) {
+            return null;
+        }
+        return (
+            <div className="info-remote-showall">
+                showall
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
+class InfoRemoteShow extends React.Component<{}, {}> {
     getRemoteTypeStr(remote : RemoteType) : string {
         let mshellStr = "";
         if (!isBlank(remote.mshellversion)) {
@@ -823,7 +839,8 @@ class InfoMsg extends React.Component<{}, {}> {
                         </For>
                     </div>
                 </If>
-                <InfoShowRemote key="infoshow"/>
+                <InfoRemoteShow key="inforemoteshow"/>
+                <InfoRemoteShowAll key="inforemoteshowall"/>
                 <If condition={infoMsg && infoMsg.infocomps != null && infoMsg.infocomps.length > 0}>
                     <div key="infocomps" className="info-comps">
                         <For each="istr" index="idx" of={infoMsg.infocomps}>

@@ -83,6 +83,7 @@ type RemoteType = {
     errorstr : string,
     defaultstate : RemoteStateType,
     connectmode : string,
+    autoinstall : boolean,
     remoteidx : number,
     archived : boolean,
     uname : string,
