@@ -27,6 +27,7 @@ import (
 	"github.com/scripthaus-dev/mshell/pkg/cirfile"
 	"github.com/scripthaus-dev/mshell/pkg/mpio"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
+	"golang.org/x/mod/semver"
 	"golang.org/x/sys/unix"
 )
 
@@ -45,28 +46,36 @@ const MaxMaxPtySize = 100 * 1024 * 1024
 
 const GetStateTimeout = 5 * time.Second
 
-const ClientCommand = `
+const ClientCommandFmt = `
 PATH=$PATH:~/.mshell;
 which mshell > /dev/null;
 if [[ "$?" -ne 0 ]]
 then
   printf "\n##N{\"type\": \"init\", \"notfound\": true, \"uname\": \"%s|%s\"}\n" "$(uname -s)" "$(uname -m)"
 else
-  mshell --single
+  mshell-[%VERSION%] --single
 fi
 `
 
-const InstallCommand = `
+func MakeClientCommandStr() string {
+	return strings.ReplaceAll(ClientCommandFmt, "[%VERSION%]", semver.MajorMinor(base.MShellVersion))
+}
+
+const InstallCommandFmt = `
 printf "\n##N{\"type\": \"init\", \"notfound\": true, \"uname\": \"%s|%s\"}\n" "$(uname -s)" "$(uname -m)";
 mkdir -p ~/.mshell/;
 cat > ~/.mshell/mshell.temp;
 if [[ -s ~/.mshell/mshell.temp ]]
 then
-  mv ~/.mshell/mshell.temp ~/.mshell/mshell;
-  chmod a+x ~/.mshell/mshell;
-  ~/.mshell/mshell --single --version
+  mv ~/.mshell/mshell.temp ~/.mshell/mshell-[%VERSION%];
+  chmod a+x ~/.mshell/mshell-[%VERSION%];
+  ~/.mshell/mshell-[%VERSION%] --single --version
 fi
 `
+
+func MakeInstallCommandStr() string {
+	return strings.ReplaceAll(InstallCommandFmt, "[%VERSION%]", semver.MajorMinor(base.MShellVersion))
+}
 
 const RunCommandFmt = `%s`
 const RunSudoCommandFmt = `sudo -n -C %d bash /dev/fd/%d`
@@ -389,6 +398,7 @@ type InstallOpts struct {
 	ArchStr string
 	OptName string
 	Detect  bool
+	CmdPty  *os.File
 }
 
 type ClientOpts struct {
@@ -408,7 +418,8 @@ func (opts SSHOpts) MakeSSHInstallCmd() (*exec.Cmd, error) {
 	if opts.SSHHost == "" {
 		return nil, fmt.Errorf("no ssh host provided, can only install to a remote host")
 	}
-	return opts.MakeSSHExecCmd(InstallCommand), nil
+	cmdStr := MakeInstallCommandStr()
+	return opts.MakeSSHExecCmd(cmdStr), nil
 }
 
 func (opts SSHOpts) MakeMShellServerCmd() (*exec.Cmd, error) {
@@ -434,7 +445,8 @@ func (opts SSHOpts) MakeMShellSingleCmd(fromServer bool) (*exec.Cmd, error) {
 		}
 		return ecmd, nil
 	}
-	return opts.MakeSSHExecCmd(ClientCommand), nil
+	cmdStr := MakeClientCommandStr()
+	return opts.MakeSSHExecCmd(cmdStr), nil
 }
 
 func (opts SSHOpts) MakeSSHExecCmd(remoteCommand string) *exec.Cmd {
@@ -632,12 +644,7 @@ func sendOptFile(input io.WriteCloser, optName string) error {
 	return nil
 }
 
-func RunInstallSSHCommand(opts *InstallOpts) error {
-	tryDetect := opts.Detect
-	ecmd, err := opts.SSHOpts.MakeSSHInstallCmd()
-	if err != nil {
-		return err
-	}
+func RunInstallFromCmd(ecmd *exec.Cmd, tryDetect bool, optName string, msgFn func(string)) error {
 	inputWriter, err := ecmd.StdinPipe()
 	if err != nil {
 		return fmt.Errorf("creating stdin pipe: %v", err)
@@ -653,8 +660,11 @@ func RunInstallSSHCommand(opts *InstallOpts) error {
 	go func() {
 		io.Copy(os.Stderr, stderrReader)
 	}()
-	if opts.OptName != "" {
-		sendOptFile(inputWriter, opts.OptName)
+	if optName != "" {
+		err = sendOptFile(inputWriter, optName)
+		if err != nil {
+			return fmt.Errorf("cannot send mshell binary: %v", err)
+		}
 	}
 	packetParser := packet.MakePacketParser(stdoutReader)
 	err = ecmd.Start()
@@ -677,15 +687,19 @@ func RunInstallSSHCommand(opts *InstallOpts) error {
 			if err != nil {
 				return fmt.Errorf("arch cannot be detected (might be incompatible with mshell): %w", err)
 			}
-			fmt.Printf("mshell detected remote architecture as '%s.%s'\n", goos, goarch)
-			optName := base.GoArchOptFile(goos, goarch)
-			sendOptFile(inputWriter, optName)
+			msgStr := fmt.Sprintf("mshell detected remote architecture as '%s.%s'\n", goos, goarch)
+			msgFn(msgStr)
+			optName := base.GoArchOptFile(base.MShellVersion, goos, goarch)
+			fmt.Printf("optname %s\n", optName)
+			err = sendOptFile(inputWriter, optName)
+			if err != nil {
+				return fmt.Errorf("cannot send mshell binary: %v", err)
+			}
 			continue
 		}
 		if pk.GetType() == packet.InitPacketStr && !firstInit {
 			initPacket := pk.(*packet.InitPacketType)
 			if initPacket.Version == base.MShellVersion {
-				fmt.Printf("mshell %s, installed successfully at %s:~/.mshell/mshell\n", initPacket.Version, opts.SSHOpts.SSHHost)
 				return nil
 			}
 			return fmt.Errorf("invalid version '%s' received from client, expecting '%s'", initPacket.Version, base.MShellVersion)
@@ -698,6 +712,23 @@ func RunInstallSSHCommand(opts *InstallOpts) error {
 		return fmt.Errorf("invalid response packet '%s' received from client", pk.GetType())
 	}
 	return fmt.Errorf("did not receive version string from client, install not successful")
+}
+
+func RunInstallFromOpts(opts *InstallOpts) error {
+	ecmd, err := opts.SSHOpts.MakeSSHInstallCmd()
+	if err != nil {
+		return err
+	}
+	msgFn := func(str string) {
+		fmt.Printf("%s", str)
+	}
+	err = RunInstallFromCmd(ecmd, opts.Detect, opts.OptName, msgFn)
+	if err != nil {
+		return err
+	}
+	mmVersion := semver.MajorMinor(base.MShellVersion)
+	fmt.Printf("mshell installed successfully at %s:~/.mshell/mshell%s\n", opts.SSHOpts.SSHHost, mmVersion)
+	return nil
 }
 
 func HasDupStdin(fds []packet.RemoteFd) bool {
@@ -764,22 +795,23 @@ func RunClientSSHCommandAndWait(runPacket *packet.RunPacketType, fdContext FdCon
 		}
 		if pk.GetType() == packet.InitPacketStr {
 			initPk := pk.(*packet.InitPacketType)
+			mmVersion := semver.MajorMinor(base.MShellVersion)
 			if initPk.NotFound {
 				if sshOpts.SSHHost == "" {
-					return nil, fmt.Errorf("mshell command not found on local server")
+					return nil, fmt.Errorf("mshell-%s command not found on local server", mmVersion)
 				}
 				if initPk.UName == "" {
-					return nil, fmt.Errorf("mshell command not found on remote server, no uname detected")
+					return nil, fmt.Errorf("mshell-%s command not found on remote server, no uname detected", mmVersion)
 				}
 				goos, goarch, err := DetectGoArch(initPk.UName)
 				if err != nil {
-					return nil, fmt.Errorf("mshell command not found on remote server, architecture cannot be detected (might be incompatible with mshell): %w", err)
+					return nil, fmt.Errorf("mshell-%s command not found on remote server, architecture cannot be detected (might be incompatible with mshell): %w", mmVersion, err)
 				}
 				sshOptsStr := sshOpts.MakeMShellSSHOpts()
-				return nil, fmt.Errorf("mshell command not found on remote server, can install with 'mshell --install %s %s.%s'", sshOptsStr, goos, goarch)
+				return nil, fmt.Errorf("mshell-%s command not found on remote server, can install with 'mshell --install %s %s.%s'", mmVersion, sshOptsStr, goos, goarch)
 			}
-			if initPk.Version != base.MShellVersion {
-				return nil, fmt.Errorf("invalid remote mshell version '%s', must be %s", initPk.Version, base.MShellVersion)
+			if semver.MajorMinor(initPk.Version) != semver.MajorMinor(base.MShellVersion) {
+				return nil, fmt.Errorf("invalid remote mshell version '%s', must be '=%s'", initPk.Version, semver.MajorMinor(base.MShellVersion))
 			}
 			versionOk = true
 			if debug {

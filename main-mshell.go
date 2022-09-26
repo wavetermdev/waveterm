@@ -417,14 +417,14 @@ func handleInstall() (int, error) {
 		if !base.ValidGoArch(goos, goarch) {
 			return 1, fmt.Errorf("invalid arch '%s' passed to mshell --install", fullArch)
 		}
-		optName := base.GoArchOptFile(goos, goarch)
+		optName := base.GoArchOptFile(base.MShellVersion, goos, goarch)
 		_, err = os.Stat(optName)
 		if err != nil {
 			return 1, fmt.Errorf("cannot install mshell to remote host, cannot read '%s': %w", optName, err)
 		}
 		opts.OptName = optName
 	}
-	err = shexec.RunInstallSSHCommand(opts)
+	err = shexec.RunInstallFromOpts(opts)
 	if err != nil {
 		return 1, err
 	}

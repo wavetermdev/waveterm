@@ -9,6 +9,7 @@ import (
 
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
+	"golang.org/x/mod/semver"
 )
 
 // TODO - track buffer sizes for sending input
@@ -72,11 +73,11 @@ func MakeClientProc(ctx context.Context, ecmd *exec.Cmd) (*ClientProc, string, e
 		initPk := pk.(*packet.InitPacketType)
 		if initPk.NotFound {
 			cproc.Close()
-			return nil, initPk.UName, fmt.Errorf("mshell command not found on local server")
+			return nil, initPk.UName, fmt.Errorf("mshell-%s command not found on local server", semver.MajorMinor(base.MShellVersion))
 		}
-		if initPk.Version != base.MShellVersion {
+		if semver.MajorMinor(initPk.Version) != semver.MajorMinor(base.MShellVersion) {
 			cproc.Close()
-			return nil, initPk.UName, fmt.Errorf("invalid remote mshell version '%s', must be %s", initPk.Version, base.MShellVersion)
+			return nil, initPk.UName, fmt.Errorf("invalid remote mshell version '%s', must be '=%s'", initPk.Version, semver.MajorMinor(base.MShellVersion))
 		}
 		cproc.InitPk = initPk
 	}

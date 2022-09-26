@@ -19,6 +19,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"golang.org/x/mod/semver"
 )
 
 const HomeVarName = "HOME"
@@ -26,10 +27,12 @@ const DefaultMShellHome = "~/.mshell"
 const DefaultMShellName = "mshell"
 const MShellPathVarName = "MSHELL_PATH"
 const MShellHomeVarName = "MSHELL_HOME"
+const MShellInstallBinVarName = "MSHELL_INSTALLBIN_PATH"
 const SSHCommandVarName = "SSH_COMMAND"
 const SessionsDirBaseName = "sessions"
 const MShellVersion = "v0.1.0"
 const RemoteIdFile = "remoteid"
+const DefaultMShellInstallBinDir = "/opt/mshell/bin"
 
 var sessionDirCache = make(map[string]string)
 var baseLock = &sync.Mutex{}
@@ -229,8 +232,17 @@ func ValidGoArch(goos string, goarch string) bool {
 	return (goos == "darwin" || goos == "linux") && (goarch == "amd64" || goarch == "arm64")
 }
 
-func GoArchOptFile(goos string, goarch string) string {
-	return fmt.Sprintf("/opt/mshell/bin/mshell.%s.%s", goos, goarch)
+func GoArchOptFile(version string, goos string, goarch string) string {
+	installBinDir := os.Getenv(MShellInstallBinVarName)
+	if installBinDir == "" {
+		installBinDir = DefaultMShellInstallBinDir
+	}
+	versionStr := semver.MajorMinor(version)
+	if versionStr == "" {
+		versionStr = "unknown"
+	}
+	binBaseName := fmt.Sprintf("mshell-%s-%s.%s", versionStr, goos, goarch)
+	return fmt.Sprintf(path.Join(installBinDir, binBaseName))
 }
 
 func GetRemoteId() (string, error) {
