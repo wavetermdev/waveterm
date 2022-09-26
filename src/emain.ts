@@ -171,7 +171,8 @@ function mainResizeHandler(e) {
 
 function calcBounds(clientData) {
     let primaryDisplay = electron.screen.getPrimaryDisplay();
-    let size = {x: 50, y: 50, width: primaryDisplay.width-150, height: primaryDisplay.height-150};
+    let pdBounds = primaryDisplay.bounds;
+    let size = {x: 50, y: 50, width: pdBounds.width-150, height: pdBounds.height-150};
     if (clientData != null && clientData.winsize != null && clientData.winsize.width > 0) {
         let cwinSize = clientData.winsize;
         if (cwinSize.width > 0) {
@@ -193,17 +194,17 @@ function calcBounds(clientData) {
     if (size.height < 300) {
         size.height = 300;
     }
-    if (primaryDisplay.size.width < size.width) {
-        size.width = primaryDisplay.size.width;
+    if (pdBounds.width < size.width) {
+        size.width = pdBounds.width;
     }
-    if (primaryDisplay.size.height < size.height) {
-        size.height = primaryDisplay.size.height;
+    if (pdBounds.height < size.height) {
+        size.height = pdBounds.height;
     }
-    if (primaryDisplay.size.width < size.x + size.width) {
-        size.x = primaryDisplay.size.width - size.width;
+    if (pdBounds.width < size.x + size.width) {
+        size.x = pdBounds.width - size.width;
     }
-    if (primaryDisplay.size.hgiehg < size.y + size.height) {
-        size.y = primaryDisplay.size.height - size.height;
+    if (pdBounds.height < size.y + size.height) {
+        size.y = pdBounds.height - size.height;
     }
     return size;
 }
