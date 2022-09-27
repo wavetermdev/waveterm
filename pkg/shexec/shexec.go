@@ -644,7 +644,7 @@ func sendOptFile(input io.WriteCloser, optName string) error {
 	return nil
 }
 
-func RunInstallFromCmd(ecmd *exec.Cmd, tryDetect bool, optName string, msgFn func(string)) error {
+func RunInstallFromCmd(ctx context.Context, ecmd *exec.Cmd, tryDetect bool, optName string, msgFn func(string)) error {
 	inputWriter, err := ecmd.StdinPipe()
 	if err != nil {
 		return fmt.Errorf("creating stdin pipe: %v", err)
@@ -722,7 +722,7 @@ func RunInstallFromOpts(opts *InstallOpts) error {
 	msgFn := func(str string) {
 		fmt.Printf("%s", str)
 	}
-	err = RunInstallFromCmd(ecmd, opts.Detect, opts.OptName, msgFn)
+	err = RunInstallFromCmd(context.Background(), ecmd, opts.Detect, opts.OptName, msgFn)
 	if err != nil {
 		return err
 	}
