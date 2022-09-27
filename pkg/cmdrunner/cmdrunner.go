@@ -94,6 +94,7 @@ func init() {
 	registerCmdFn("remote:disconnect", RemoteDisconnectCommand)
 	registerCmdFn("remote:connect", RemoteConnectCommand)
 	registerCmdFn("remote:install", RemoteInstallCommand)
+	registerCmdFn("remote:installcancel", RemoteInstallCancelCommand)
 
 	registerCmdFn("window:resize", WindowResizeCommand)
 
@@ -109,7 +110,7 @@ func getValidCommands() []string {
 		if val.IsAlias {
 			continue
 		}
-		rtn = append(rtn, key)
+		rtn = append(rtn, "/"+key)
 	}
 	return rtn
 }
@@ -416,7 +417,33 @@ func UnSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 }
 
 func RemoteInstallCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	return nil, nil
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window|R_Remote)
+	if err != nil {
+		return nil, err
+	}
+	mshell := ids.Remote.MShell
+	go mshell.RunInstall()
+	return sstore.ModelUpdate{
+		Info: &sstore.InfoMsgType{
+			InfoTitle:   fmt.Sprintf("show remote [%s] info", ids.Remote.DisplayName),
+			PtyRemoteId: ids.Remote.RemotePtr.RemoteId,
+		},
+	}, nil
+}
+
+func RemoteInstallCancelCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window|R_Remote)
+	if err != nil {
+		return nil, err
+	}
+	mshell := ids.Remote.MShell
+	go mshell.CancelInstall()
+	return sstore.ModelUpdate{
+		Info: &sstore.InfoMsgType{
+			InfoTitle:   fmt.Sprintf("show remote [%s] info", ids.Remote.DisplayName),
+			PtyRemoteId: ids.Remote.RemotePtr.RemoteId,
+		},
+	}, nil
 }
 
 func RemoteConnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -424,14 +451,13 @@ func RemoteConnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	if err != nil {
 		return nil, err
 	}
-	if ids.Remote.RState.IsConnected() {
-		return sstore.InfoMsgUpdate("remote %q already connected (no action taken)", ids.Remote.DisplayName), nil
-	}
-	if ids.Remote.RState.Status == remote.StatusConnecting {
-		return sstore.InfoMsgUpdate("remote %q is already trying to connect (no action taken)", ids.Remote.DisplayName), nil
-	}
 	go ids.Remote.MShell.Launch()
-	return sstore.InfoMsgUpdate("remote %q reconnecting", ids.Remote.DisplayName), nil
+	return sstore.ModelUpdate{
+		Info: &sstore.InfoMsgType{
+			InfoTitle:   fmt.Sprintf("show remote [%s] info", ids.Remote.DisplayName),
+			PtyRemoteId: ids.Remote.RemotePtr.RemoteId,
+		},
+	}, nil
 }
 
 func RemoteDisconnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -440,16 +466,13 @@ func RemoteDisconnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketTy
 		return nil, err
 	}
 	force := resolveBool(pk.Kwargs["force"], false)
-	status := ids.Remote.MShell.GetStatus()
-	if status != remote.StatusConnected && status != remote.StatusConnecting {
-		return sstore.InfoMsgUpdate("remote %q already disconnected (no action taken)", ids.Remote.DisplayName), nil
-	}
-	numCommands := ids.Remote.MShell.GetNumRunningCommands()
-	if numCommands > 0 && !force {
-		return nil, fmt.Errorf("remote not disconnected, %q has %d running commands. use 'force=1' to force disconnection", ids.Remote.DisplayName)
-	}
-	ids.Remote.MShell.Disconnect()
-	return sstore.InfoMsgUpdate("remote %q disconnected", ids.Remote.DisplayName), nil
+	go ids.Remote.MShell.Disconnect(force)
+	return sstore.ModelUpdate{
+		Info: &sstore.InfoMsgType{
+			InfoTitle:   fmt.Sprintf("show remote [%s] info", ids.Remote.DisplayName),
+			PtyRemoteId: ids.Remote.RemotePtr.RemoteId,
+		},
+	}, nil
 }
 
 func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {

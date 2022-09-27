@@ -54,7 +54,6 @@ func MakeServerCommandStr() string {
 }
 
 const (
-	StatusInit         = "init"
 	StatusConnected    = "connected"
 	StatusConnecting   = "connecting"
 	StatusDisconnected = "disconnected"
@@ -94,7 +93,7 @@ type MShellProc struct {
 	InstallCancelFn    context.CancelFunc
 	InstallErr         error
 
-	RunningCmds []base.CommandKey
+	RunningCmds map[base.CommandKey]bool
 }
 
 type RemoteRuntimeState struct {
@@ -106,6 +105,9 @@ type RemoteRuntimeState struct {
 	RemoteVars          map[string]string   `json:"remotevars"`
 	Status              string              `json:"status"`
 	ErrorStr            string              `json:"errorstr,omitempty"`
+	InstallStatus       string              `json:"installstatus"`
+	InstallErrorStr     string              `json:"installerrorstr,omitempty"`
+	NeedsMShellUpgrade  bool                `json:"needsmshellupgrade,omitempty"`
 	DefaultState        *sstore.RemoteState `json:"defaultstate"`
 	ConnectMode         string              `json:"connectmode"`
 	AutoInstall         bool                `json:"autoinstall"`
@@ -380,9 +382,14 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		Archived:            msh.Remote.Archived,
 		RemoteIdx:           msh.Remote.RemoteIdx,
 		UName:               msh.UName,
+		InstallStatus:       msh.InstallStatus,
+		NeedsMShellUpgrade:  msh.NeedsMShellUpgrade,
 	}
 	if msh.Err != nil {
 		state.ErrorStr = msh.Err.Error()
+	}
+	if msh.InstallErr != nil {
+		state.InstallErrorStr = msh.InstallErr.Error()
 	}
 	local := (msh.Remote.SSHOpts == nil || msh.Remote.SSHOpts.Local)
 	vars := make(map[string]string)
@@ -471,10 +478,12 @@ func MakeMShell(r *sstore.RemoteType) *MShellProc {
 		panic(err) // this should never happen (NewBuffer only returns an error if CirBufSize <= 0)
 	}
 	rtn := &MShellProc{
-		Lock:      &sync.Mutex{},
-		Remote:    r,
-		Status:    StatusInit,
-		PtyBuffer: buf,
+		Lock:          &sync.Mutex{},
+		Remote:        r,
+		Status:        StatusDisconnected,
+		PtyBuffer:     buf,
+		InstallStatus: StatusDisconnected,
+		RunningCmds:   make(map[base.CommandKey]bool),
 	}
 	rtn.WriteToPtyBuffer("console for remote [%s]\n", r.GetName())
 	return rtn
@@ -544,6 +553,7 @@ func (msh *MShellProc) setErrorStatus(err error) {
 }
 
 func (msh *MShellProc) setInstallErrorStatus(err error) {
+	msh.WriteToPtyBuffer("*error, %s\n", err.Error())
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
 	msh.InstallStatus = StatusError
@@ -569,7 +579,17 @@ func (msh *MShellProc) GetNumRunningCommands() int {
 	return len(msh.RunningCmds)
 }
 
-func (msh *MShellProc) Disconnect() {
+func (msh *MShellProc) Disconnect(force bool) {
+	status := msh.GetStatus()
+	if status != StatusConnected && status != StatusConnecting {
+		msh.WriteToPtyBuffer("remote already disconnected (no action taken)\n")
+		return
+	}
+	numCommands := msh.GetNumRunningCommands()
+	if numCommands > 0 && !force {
+		msh.WriteToPtyBuffer("remote not disconnected, has %d running commands.  use force=1 to force disconnection\n", numCommands)
+		return
+	}
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
 	if msh.ServerProc != nil {
@@ -578,6 +598,15 @@ func (msh *MShellProc) Disconnect() {
 	if msh.MakeClientCancelFn != nil {
 		msh.MakeClientCancelFn()
 		msh.MakeClientCancelFn = nil
+	}
+}
+
+func (msh *MShellProc) CancelInstall() {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	if msh.InstallCancelFn != nil {
+		msh.InstallCancelFn()
+		msh.InstallCancelFn = nil
 	}
 }
 
@@ -652,12 +681,17 @@ func (msh *MShellProc) RunPtyReadLoop(cmdPty *os.File) {
 func (msh *MShellProc) RunInstall() {
 	remoteCopy := msh.GetRemoteCopy()
 	if remoteCopy.Archived {
-		msh.WriteToPtyBuffer("cannot install on archived remote\n")
+		msh.WriteToPtyBuffer("*error: cannot install on archived remote\n")
+		return
+	}
+	baseStatus := msh.GetStatus()
+	if baseStatus == StatusConnecting || baseStatus == StatusConnected {
+		msh.WriteToPtyBuffer("*error: cannot install on remote that is connected/connecting, disconnect to install\n")
 		return
 	}
 	curStatus := msh.GetInstallStatus()
 	if curStatus == StatusConnecting {
-		msh.WriteToPtyBuffer("cannot install on remote that is already trying to install, cancel current install to try again")
+		msh.WriteToPtyBuffer("*error: cannot install on remote that is already trying to install, cancel current install to try again\n")
 		return
 	}
 	msh.WriteToPtyBuffer("installing mshell %s to %s...\n", MShellVersion, remoteCopy.RemoteCanonicalName)
@@ -668,7 +702,6 @@ func (msh *MShellProc) RunInstall() {
 	cmdPty, err := msh.addControllingTty(ecmd)
 	if err != nil {
 		statusErr := fmt.Errorf("cannot attach controlling tty to mshell install command: %w", err)
-		msh.WriteToPtyBuffer("*error, %s\n", statusErr.Error())
 		msh.setInstallErrorStatus(statusErr)
 		return
 	}
@@ -676,11 +709,13 @@ func (msh *MShellProc) RunInstall() {
 		if len(ecmd.ExtraFiles) > 0 {
 			ecmd.ExtraFiles[len(ecmd.ExtraFiles)-1].Close()
 		}
+		cmdPty.Close()
 	}()
 	go msh.RunPtyReadLoop(cmdPty)
 	clientCtx, clientCancelFn := context.WithCancel(context.Background())
 	defer clientCancelFn()
 	msh.WithLock(func() {
+		msh.InstallErr = nil
 		msh.InstallStatus = StatusConnecting
 		msh.InstallCancelFn = clientCancelFn
 		go msh.NotifyRemoteUpdate()
@@ -689,13 +724,26 @@ func (msh *MShellProc) RunInstall() {
 		msh.WriteToPtyBuffer("%s", msg)
 	}
 	err = shexec.RunInstallFromCmd(clientCtx, ecmd, true, "", msgFn)
+	if err == context.Canceled {
+		msh.WriteToPtyBuffer("*install canceled\n")
+		msh.WithLock(func() {
+			msh.InstallStatus = StatusDisconnected
+			go msh.NotifyRemoteUpdate()
+		})
+		return
+	}
 	if err != nil {
 		statusErr := fmt.Errorf("install failed: %w", err)
-		msh.WriteToPtyBuffer("*error, %s\n", statusErr.Error())
 		msh.setInstallErrorStatus(statusErr)
 		return
 	}
+	msh.WithLock(func() {
+		msh.InstallStatus = StatusDisconnected
+		msh.InstallCancelFn = nil
+		msh.NeedsMShellUpgrade = false
+	})
 	msh.WriteToPtyBuffer("successfully installed mshell %s\n", MShellVersion)
+	go msh.NotifyRemoteUpdate()
 	return
 }
 
@@ -706,8 +754,17 @@ func (msh *MShellProc) Launch() {
 		return
 	}
 	curStatus := msh.GetStatus()
+	if curStatus == StatusConnected {
+		msh.WriteToPtyBuffer("remote is already connected (no action taken)\n")
+		return
+	}
 	if curStatus == StatusConnecting {
 		msh.WriteToPtyBuffer("remote is already connecting, disconnect before trying to connect again\n")
+		return
+	}
+	istatus := msh.GetInstallStatus()
+	if istatus == StatusConnecting {
+		msh.WriteToPtyBuffer("remote is trying to install, cancel install before trying to connect again\n")
 		return
 	}
 	msh.WriteToPtyBuffer("connecting to %s...\n", remoteCopy.RemoteCanonicalName)
@@ -731,6 +788,7 @@ func (msh *MShellProc) Launch() {
 	makeClientCtx, makeClientCancelFn := context.WithCancel(context.Background())
 	defer makeClientCancelFn()
 	msh.WithLock(func() {
+		msh.Err = nil
 		msh.Status = StatusConnecting
 		msh.MakeClientCancelFn = makeClientCancelFn
 		go msh.NotifyRemoteUpdate()
@@ -750,7 +808,12 @@ func (msh *MShellProc) Launch() {
 		// no notify here, because we'll call notify in either case below
 	})
 	if err == context.Canceled {
-		err = fmt.Errorf("forced disconnection")
+		msh.WriteToPtyBuffer("*forced disconnection\n")
+		msh.WithLock(func() {
+			msh.Status = StatusDisconnected
+			go msh.NotifyRemoteUpdate()
+		})
+		return
 	}
 	if err == nil && semver.MajorMinor(mshellVersion) != semver.MajorMinor(MShellVersion) {
 		err = fmt.Errorf("mshell version is not compatible current=%s remote=%s", MShellVersion, mshellVersion)
@@ -826,7 +889,7 @@ func (state RemoteRuntimeState) ExpandHomeDir(pathStr string) (string, error) {
 func (msh *MShellProc) IsCmdRunning(ck base.CommandKey) bool {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
-	for _, runningCk := range msh.RunningCmds {
+	for runningCk, _ := range msh.RunningCmds {
 		if runningCk == ck {
 			return true
 		}
@@ -921,7 +984,13 @@ func RunCommand(ctx context.Context, cmdId string, remotePtr sstore.RemotePtrTyp
 func (msh *MShellProc) AddRunningCmd(ck base.CommandKey) {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
-	msh.RunningCmds = append(msh.RunningCmds, ck)
+	msh.RunningCmds[ck] = true
+}
+
+func (msh *MShellProc) RemoveRunningCmd(ck base.CommandKey) {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	delete(msh.RunningCmds, ck)
 }
 
 func (msh *MShellProc) PacketRpc(ctx context.Context, pk packet.RpcPacketType) (*packet.ResponsePacketType, error) {
@@ -966,7 +1035,7 @@ func makeDataAckPacket(ck base.CommandKey, fdNum int, ackLen int, err error) *pa
 }
 
 func (msh *MShellProc) notifyHangups_nolock() {
-	for _, ck := range msh.RunningCmds {
+	for ck, _ := range msh.RunningCmds {
 		cmd, err := sstore.GetCmdById(context.Background(), ck.GetSessionId(), ck.GetCmdId())
 		if err != nil {
 			continue
@@ -974,10 +1043,11 @@ func (msh *MShellProc) notifyHangups_nolock() {
 		update := sstore.ModelUpdate{Cmd: cmd}
 		sstore.MainBus.SendUpdate(ck.GetSessionId(), update)
 	}
-	msh.RunningCmds = nil
+	msh.RunningCmds = make(map[base.CommandKey]bool)
 }
 
 func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
+	msh.RemoveRunningCmd(donePk.CK)
 	update, err := sstore.UpdateCmdDonePk(context.Background(), donePk)
 	if err != nil {
 		msh.WriteToPtyBuffer("[error] updating cmddone: %v\n", err)
