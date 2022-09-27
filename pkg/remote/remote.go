@@ -38,16 +38,20 @@ const PtyReadBufSize = 100
 const MShellVersion = "v0.1.0"
 const MShellVersionConstraint = "^0.1"
 
-const MShellServerCommand = `
+const MShellServerCommandFmt = `
 PATH=$PATH:~/.mshell;
-which mshell > /dev/null;
+which mshell-[%VERSION%] > /dev/null;
 if [[ "$?" -ne 0 ]]
 then
   printf "\n##N{\"type\": \"init\", \"notfound\": true, \"uname\": \"%s | %s\"}\n" "$(uname -s)" "$(uname -m)"
 else
-  mshell --server
+  mshell-[%VERSION%] --server
 fi
 `
+
+func MakeServerCommandStr() string {
+	return strings.ReplaceAll(MShellServerCommandFmt, "[%VERSION%]", semver.MajorMinor(base.MShellVersion))
+}
 
 const (
 	StatusInit         = "init"
@@ -83,7 +87,12 @@ type MShellProc struct {
 	ControllingPty     *os.File
 	PtyBuffer          *circbuf.Buffer
 	MakeClientCancelFn context.CancelFunc
+
+	// install
+	InstallStatus      string
 	NeedsMShellUpgrade bool
+	InstallCancelFn    context.CancelFunc
+	InstallErr         error
 
 	RunningCmds []base.CommandKey
 }
@@ -114,6 +123,12 @@ func (msh *MShellProc) GetStatus() string {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
 	return msh.Status
+}
+
+func (msh *MShellProc) GetInstallStatus() string {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	return msh.InstallStatus
 }
 
 func (state RemoteRuntimeState) GetBaseDisplayName() string {
@@ -528,6 +543,14 @@ func (msh *MShellProc) setErrorStatus(err error) {
 	go msh.NotifyRemoteUpdate()
 }
 
+func (msh *MShellProc) setInstallErrorStatus(err error) {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	msh.InstallStatus = StatusError
+	msh.InstallErr = err
+	go msh.NotifyRemoteUpdate()
+}
+
 func (msh *MShellProc) GetRemoteCopy() sstore.RemoteType {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
@@ -626,6 +649,56 @@ func (msh *MShellProc) RunPtyReadLoop(cmdPty *os.File) {
 	}
 }
 
+func (msh *MShellProc) RunInstall() {
+	remoteCopy := msh.GetRemoteCopy()
+	if remoteCopy.Archived {
+		msh.WriteToPtyBuffer("cannot install on archived remote\n")
+		return
+	}
+	curStatus := msh.GetInstallStatus()
+	if curStatus == StatusConnecting {
+		msh.WriteToPtyBuffer("cannot install on remote that is already trying to install, cancel current install to try again")
+		return
+	}
+	msh.WriteToPtyBuffer("installing mshell %s to %s...\n", MShellVersion, remoteCopy.RemoteCanonicalName)
+	sshOpts := convertSSHOpts(remoteCopy.SSHOpts)
+	sshOpts.SSHErrorsToTty = true
+	cmdStr := shexec.MakeInstallCommandStr()
+	ecmd := sshOpts.MakeSSHExecCmd(cmdStr)
+	cmdPty, err := msh.addControllingTty(ecmd)
+	if err != nil {
+		statusErr := fmt.Errorf("cannot attach controlling tty to mshell install command: %w", err)
+		msh.WriteToPtyBuffer("*error, %s\n", statusErr.Error())
+		msh.setInstallErrorStatus(statusErr)
+		return
+	}
+	defer func() {
+		if len(ecmd.ExtraFiles) > 0 {
+			ecmd.ExtraFiles[len(ecmd.ExtraFiles)-1].Close()
+		}
+	}()
+	go msh.RunPtyReadLoop(cmdPty)
+	clientCtx, clientCancelFn := context.WithCancel(context.Background())
+	defer clientCancelFn()
+	msh.WithLock(func() {
+		msh.InstallStatus = StatusConnecting
+		msh.InstallCancelFn = clientCancelFn
+		go msh.NotifyRemoteUpdate()
+	})
+	msgFn := func(msg string) {
+		msh.WriteToPtyBuffer("%s", msg)
+	}
+	err = shexec.RunInstallFromCmd(clientCtx, ecmd, true, "", msgFn)
+	if err != nil {
+		statusErr := fmt.Errorf("install failed: %w", err)
+		msh.WriteToPtyBuffer("*error, %s\n", statusErr.Error())
+		msh.setInstallErrorStatus(statusErr)
+		return
+	}
+	msh.WriteToPtyBuffer("successfully installed mshell %s\n", MShellVersion)
+	return
+}
+
 func (msh *MShellProc) Launch() {
 	remoteCopy := msh.GetRemoteCopy()
 	if remoteCopy.Archived {
@@ -640,7 +713,8 @@ func (msh *MShellProc) Launch() {
 	msh.WriteToPtyBuffer("connecting to %s...\n", remoteCopy.RemoteCanonicalName)
 	sshOpts := convertSSHOpts(remoteCopy.SSHOpts)
 	sshOpts.SSHErrorsToTty = true
-	ecmd := sshOpts.MakeSSHExecCmd(MShellServerCommand)
+	cmdStr := MakeServerCommandStr()
+	ecmd := sshOpts.MakeSSHExecCmd(cmdStr)
 	cmdPty, err := msh.addControllingTty(ecmd)
 	if err != nil {
 		statusErr := fmt.Errorf("cannot attach controlling tty to mshell command: %w", err)

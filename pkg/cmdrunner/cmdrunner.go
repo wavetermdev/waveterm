@@ -93,6 +93,7 @@ func init() {
 	registerCmdFn("remote:set", RemoteSetCommand)
 	registerCmdFn("remote:disconnect", RemoteDisconnectCommand)
 	registerCmdFn("remote:connect", RemoteConnectCommand)
+	registerCmdFn("remote:install", RemoteInstallCommand)
 
 	registerCmdFn("window:resize", WindowResizeCommand)
 
@@ -412,6 +413,10 @@ func UnSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 		},
 	}
 	return update, nil
+}
+
+func RemoteInstallCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	return nil, nil
 }
 
 func RemoteConnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
