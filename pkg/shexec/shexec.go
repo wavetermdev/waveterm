@@ -672,7 +672,13 @@ func RunInstallFromCmd(ctx context.Context, ecmd *exec.Cmd, tryDetect bool, optN
 		return fmt.Errorf("running ssh command: %w", err)
 	}
 	firstInit := true
-	for pk := range packetParser.MainCh {
+	for {
+		var pk packet.PacketType
+		select {
+		case pk = <-packetParser.MainCh:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 		if pk.GetType() == packet.InitPacketStr && firstInit {
 			firstInit = false
 			initPacket := pk.(*packet.InitPacketType)
@@ -690,7 +696,6 @@ func RunInstallFromCmd(ctx context.Context, ecmd *exec.Cmd, tryDetect bool, optN
 			msgStr := fmt.Sprintf("mshell detected remote architecture as '%s.%s'\n", goos, goarch)
 			msgFn(msgStr)
 			optName := base.GoArchOptFile(base.MShellVersion, goos, goarch)
-			fmt.Printf("optname %s\n", optName)
 			err = sendOptFile(inputWriter, optName)
 			if err != nil {
 				return fmt.Errorf("cannot send mshell binary: %v", err)
@@ -706,7 +711,7 @@ func RunInstallFromCmd(ctx context.Context, ecmd *exec.Cmd, tryDetect bool, optN
 		}
 		if pk.GetType() == packet.RawPacketStr {
 			rawPk := pk.(*packet.RawPacketType)
-			fmt.Printf("%s\n", rawPk.Data)
+			msgFn(fmt.Sprintf("%s\n", rawPk.Data))
 			continue
 		}
 		return fmt.Errorf("invalid response packet '%s' received from client", pk.GetType())
