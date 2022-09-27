@@ -1118,7 +1118,7 @@ class InputModel {
         if (remote == null) {
             return;
         }
-        if (remote.status != "connecting") {
+        if (remote.status != "connecting" && remote.installstatus != "connecting") {
             this.setShowNoInputMsg(true);
             return;
         }
@@ -1865,11 +1865,19 @@ class CommandRunner {
     }
 
     connectRemote(remoteid : string) {
-        GlobalModel.submitCommand("remote", "connect", null, {"nohist": "1", "remote": remoteid}, false);
+        GlobalModel.submitCommand("remote", "connect", null, {"nohist": "1", "remote": remoteid}, true);
     }
 
     disconnectRemote(remoteid : string) {
-        GlobalModel.submitCommand("remote", "disconnect", null, {"nohist": "1", "remote": remoteid}, false);
+        GlobalModel.submitCommand("remote", "disconnect", null, {"nohist": "1", "remote": remoteid}, true);
+    }
+
+    installRemote(remoteid : string) {
+        GlobalModel.submitCommand("remote", "install", null, {"nohist": "1", "remote": remoteid}, true);
+    }
+
+    installCancelRemote(remoteid : string) {
+        GlobalModel.submitCommand("remote", "installcancel", null, {"nohist": "1", "remote": remoteid}, true);
     }
 };
 

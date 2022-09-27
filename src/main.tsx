@@ -713,6 +713,16 @@ class InfoRemoteShow extends React.Component<{}, {}> {
         GlobalCommandRunner.disconnectRemote(remoteId);
     }
 
+    @boundMethod
+    installRemote(remoteId : string) {
+        GlobalCommandRunner.installRemote(remoteId);
+    }
+
+    @boundMethod
+    cancelInstall(remoteId : string) {
+        GlobalCommandRunner.installCancelRemote(remoteId);
+    }
+
     renderConnectButton(remote : RemoteType) : any {
         if (remote.status == "connected" || remote.status == "connecting") {
             return <div onClick={() => this.disconnectRemote(remote.remoteid)} className="text-button disconnect-button">[disconnect remote]</div>
@@ -720,6 +730,43 @@ class InfoRemoteShow extends React.Component<{}, {}> {
         else {
             return <div onClick={() => this.connectRemote(remote.remoteid)} className="text-button connect-button">[connect remote]</div>
         }
+    }
+
+    renderInstallButton(remote : RemoteType) : any {
+        if (remote.status == "connected" || remote.status == "connecting") {
+            return "(must disconnect to install)";
+        }
+        if (remote.installstatus == "disconnected" || remote.installstatus == "error") {
+            return <div onClick={() => this.installRemote(remote.remoteid)} className="text-button connect-button">[run install]</div>
+        }
+        if (remote.installstatus == "connecting") {
+            return <div onClick={() => this.cancelInstall(remote.remoteid)} className="text-button disconnect-button">[cancel install]</div>
+        }
+        return null;
+    }
+
+    renderInstallStatus(remote : RemoteType) : any {
+        let statusStr : string = null;
+        if (remote.installstatus == "disconnected") {
+            if (remote.needsmshellupgrade) {
+                statusStr = "needs upgrade"
+            }
+        }
+        else {
+            statusStr = remote.installstatus;
+        }
+        if (statusStr == null) {
+            return null;
+        }
+        let installButton = this.renderInstallButton(remote);
+        return (
+            <div className="remote-field">
+                <div className="remote-field-def"> install-status</div>
+                <div className="remote-field-val">
+                    {statusStr}<If condition={installButton != null}> | {this.renderInstallButton(remote)}</If>
+                </div>
+            </div>
+        );
     }
 
     @boundMethod
@@ -750,47 +797,54 @@ class InfoRemoteShow extends React.Component<{}, {}> {
         }
         return (
             <>
-                <div className="info-remote">
-                    <div className="remote-field">
-                        <div className="remote-field-def"> remoteid</div>
-                        <div className="remote-field-val">{remote.remoteid}</div>
-                    </div>
-                    <div className="remote-field">
-                        <div className="remote-field-def"> type</div>
-                        <div className="remote-field-val">{this.getRemoteTypeStr(remote)}</div>
-                    </div>
-                    <div className="remote-field">
-                        <div className="remote-field-def"> alias</div>
-                        <div className="remote-field-val">{isBlank(remote.remotealias) ? "-" : remote.remotealias}</div>
-                    </div>
-                    <div className="remote-field">
-                        <div className="remote-field-def"> canonicalname</div>
-                        <div className="remote-field-val">{remote.remotecanonicalname}</div>
-                    </div>
-                    <div className="remote-field">
-                        <div className="remote-field-def"> connectmode</div>
-                        <div className="remote-field-val">{remote.connectmode}</div>
-                    </div>
-                    <div className="remote-field">
-                        <div className="remote-field-def"> status</div>
-                        <div className="remote-field-val">{remote.status} | {this.renderConnectButton(remote)}</div>
-                    </div>
-                    <If condition={!isBlank(remote.errorstr)}>
-                        <div className="remote-field">
-                            <div className="remote-field-def"> error</div>
-                            <div className="remote-field-val">{remote.errorstr}</div>
-                        </div>
-                    </If>
+            <div className="info-remote">
+                <div className="remote-field">
+                    <div className="remote-field-def"> remoteid</div>
+                    <div className="remote-field-val">{remote.remoteid}</div>
                 </div>
-                <div key="term" className={cn("terminal-wrapper", {"focus": isTermFocused}, (remote != null ? "status-" + remote.status : null))} style={{overflowY: "hidden", display: (ptyRemoteId == null ? "none" : "block"), width: CellWidthPx*RemotePtyCols+15}}>
-                    <If condition={!isTermFocused}>
-                        <div key="termblock" className="term-block" onClick={this.clickTermBlock}></div>
-                    </If>
-                    <If condition={inputModel.showNoInputMsg.get()}>
-                        <div key="termtag" className="term-tag">input is only allowed while status is 'connecting'</div>
-                    </If>
-                    <div key="terminal" className="terminal" id="term-remote" data-remoteid={ptyRemoteId} style={{height: CellHeightPx*RemotePtyRows}}></div>
+                <div className="remote-field">
+                    <div className="remote-field-def"> type</div>
+                    <div className="remote-field-val">{this.getRemoteTypeStr(remote)}</div>
                 </div>
+                <div className="remote-field">
+                    <div className="remote-field-def"> alias</div>
+                    <div className="remote-field-val">{isBlank(remote.remotealias) ? "-" : remote.remotealias}</div>
+                </div>
+                <div className="remote-field">
+                    <div className="remote-field-def"> canonicalname</div>
+                    <div className="remote-field-val">{remote.remotecanonicalname}</div>
+                </div>
+                <div className="remote-field">
+                    <div className="remote-field-def"> connectmode</div>
+                    <div className="remote-field-val">{remote.connectmode}</div>
+                </div>
+                <div className="remote-field">
+                    <div className="remote-field-def"> status</div>
+                    <div className="remote-field-val"><RemoteStatusLight status={remote.status}/>{remote.status} | {this.renderConnectButton(remote)}</div>
+                </div>
+                <If condition={!isBlank(remote.errorstr)}>
+                    <div className="remote-field">
+                        <div className="remote-field-def"> error</div>
+                        <div className="remote-field-val">{remote.errorstr}</div>
+                    </div>
+                </If>
+                {this.renderInstallStatus(remote)}
+                <If condition={!isBlank(remote.installerrorstr)}>
+                    <div className="remote-field">
+                        <div className="remote-field-def"> install error</div>
+                        <div className="remote-field-val">{remote.installerrorstr}</div>
+                    </div>
+                </If>
+            </div>
+            <div key="term" className={cn("terminal-wrapper", {"focus": isTermFocused}, (remote != null ? "status-" + remote.status : null))} style={{overflowY: "hidden", display: (ptyRemoteId == null ? "none" : "block"), width: CellWidthPx*RemotePtyCols+15}}>
+                <If condition={!isTermFocused}>
+                    <div key="termblock" className="term-block" onClick={this.clickTermBlock}></div>
+                </If>
+                <If condition={inputModel.showNoInputMsg.get()}>
+                    <div key="termtag" className="term-tag">input is only allowed while status is 'connecting'</div>
+                </If>
+                <div key="terminal" className="terminal" id="term-remote" data-remoteid={ptyRemoteId} style={{height: CellHeightPx*RemotePtyRows}}></div>
+            </div>
             </>
         );
     }

@@ -81,6 +81,8 @@ type RemoteType = {
     remotevars : Record<string, string>,
     status : string,
     errorstr : string,
+    installstatus : string,
+    installerrorstr : string,
     defaultstate : RemoteStateType,
     connectmode : string,
     autoinstall : boolean,
