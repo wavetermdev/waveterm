@@ -770,6 +770,9 @@ func (msh *MShellProc) Launch() {
 	msh.WriteToPtyBuffer("connecting to %s...\n", remoteCopy.RemoteCanonicalName)
 	sshOpts := convertSSHOpts(remoteCopy.SSHOpts)
 	sshOpts.SSHErrorsToTty = true
+	if remoteCopy.ConnectMode != sstore.ConnectModeManual {
+		sshOpts.BatchMode = true
+	}
 	cmdStr := MakeServerCommandStr()
 	ecmd := sshOpts.MakeSSHExecCmd(cmdStr)
 	cmdPty, err := msh.addControllingTty(ecmd)
@@ -820,7 +823,7 @@ func (msh *MShellProc) Launch() {
 	}
 	if err != nil {
 		msh.setErrorStatus(err)
-		msh.WriteToPtyBuffer("*error connecting to remote (uname=%q): %v\n", msh.UName, err)
+		msh.WriteToPtyBuffer("*error connecting to remote: %v\n", err)
 		return
 	}
 	msh.WriteToPtyBuffer("connected\n")

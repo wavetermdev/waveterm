@@ -83,6 +83,7 @@ type RemoteEditType struct {
 	RemoteEdit bool   `json:"remoteedit"`
 	RemoteId   string `json:"remoteid,omitempty"`
 	ErrorStr   string `json:"errorstr,omitempty"`
+	InfoStr    string `json:"infostr,omitempty"`
 }
 
 type InfoMsgType struct {

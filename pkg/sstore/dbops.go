@@ -123,6 +123,10 @@ func UpsertRemote(ctx context.Context, r *RemoteType) error {
 		if tx.Exists(query, r.RemoteCanonicalName) {
 			return fmt.Errorf("remote has duplicate canonicalname '%s', cannot create", r.RemoteCanonicalName)
 		}
+		query = `SELECT remoteid FROM remote WHERE alias = ?`
+		if r.RemoteAlias != "" && tx.Exists(query, r.RemoteAlias) {
+			return fmt.Errorf("remote has duplicate alias '%s', cannot create", r.RemoteAlias)
+		}
 		query = `SELECT COALESCE(max(remoteidx), 0) FROM remote`
 		maxRemoteIdx := tx.GetInt(query)
 		r.RemoteIdx = int64(maxRemoteIdx + 1)
