@@ -28,6 +28,8 @@
 @tab-black-text: #333;
 @tab-white-text: #d7d7d7;
 
+@soft-blue: #729fcf;
+
 .mono-font(@size: inherit, @weight: inherit) {
     font-family: 'JetBrains Mono', monospace;
     font-size: @size;
@@ -510,11 +512,11 @@ html, body, #main {
         }
 
         &.status-running {
-            background-color: #729fcf;
+            background-color: @soft-blue;
         }
 
         &.status-detached {
-            background-color: #729fcf;
+            background-color: @soft-blue;
             .status-icon {
                 top: 3px;
                 right: 3px;
@@ -530,7 +532,7 @@ html, body, #main {
         margin-top: -4px;
         
         .user {
-            color: lighten(#729fcf, 10%);
+            color: lighten(@soft-blue, 10%);
             font-weight: bold;
             margin-top: 1px;
             margin-right: 10px;
@@ -720,7 +722,7 @@ body .xterm .xterm-viewport {
             left: 20px;
             background-color: black;
             .mono-font(12px, 600);
-            color: #729fcf;
+            color: @soft-blue;
             padding-bottom: 4px;
             display: flex;
             flex-direction: row;
@@ -800,19 +802,19 @@ body .xterm .xterm-viewport {
         
         .info-msg {
             .mono-font(14px, 400);
-            color: #729fcf;
+            color: @soft-blue;
             padding-bottom: 2px;
         }
 
         .info-title {
             .mono-font(14px, 600);
-            color: #729fcf;
+            color: @soft-blue;
             padding-bottom: 2px;
         }
 
         .info-lines {
             .mono-font(12px);
-            color: #d3d7cf;
+            color: @term-white;
             white-space: pre;
             padding-bottom: 6px;
         }
@@ -825,18 +827,43 @@ body .xterm .xterm-viewport {
             
             .info-comp {
                 min-width: 200px;
-                color: #d3d7cf;
+                color: @term-white;
             }
 
             .metacmd-comp {
-                color: #8ae234;
+                color: @term-bright-green;
             }
         }
 
         .info-error {
             .mono-font(14px, 600);
-            color: #cc0000;
+            color: @term-red;
             padding-bottom: 2px;
+        }
+
+        .info-remote-showall {
+            table.remotes-table {
+                th {
+                    color: white;
+                    font-weight: bold;
+                }
+                
+                th, td {
+                    padding: 3px 8px 3px 8px;
+                }
+
+                td {
+                    cursor: pointer;
+                }
+
+                td.status-cell {
+                    text-align: center;
+                }
+
+                tr:hover td {
+                    background-color: #333;
+                }
+            }
         }
 
         .info-remote {
@@ -846,6 +873,11 @@ body .xterm .xterm-viewport {
             .info-remote-title {
                 font-weight: bold;
                 color: @term-cyan;
+            }
+
+            .info-error, .info-msg {
+                margin-top: 5px;
+                padding: 5px;
             }
 
             .remote-field {

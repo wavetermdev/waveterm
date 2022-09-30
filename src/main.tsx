@@ -672,15 +672,54 @@ class TextAreaInput extends React.Component<{}, {}> {
 
 @mobxReact.observer
 class InfoRemoteShowAll extends React.Component<{}, {}> {
+    clickRow(remoteId : string) : void {
+        GlobalCommandRunner.showRemote(remoteId);
+    }
+    
     render() {
         let inputModel = GlobalModel.inputModel;
         let infoMsg = inputModel.infoMsg.get();
         if (infoMsg == null || !infoMsg.remoteshowall) {
             return null;
         }
+        let remotes = GlobalModel.remotes ?? [];
+        let remote : RemoteType = null;
+        let idx : number = 0;
+        remotes = sortAndFilterRemotes(remotes);
         return (
             <div className="info-remote-showall">
-                showall
+                <table className="remotes-table">
+                    <thead>
+                        <tr>
+                            <th>status</th>
+                            <th>id</th>
+                            <th>alias</th>
+                            <th>user@host</th>
+                            <th>connectmode</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <For each="remote" of={remotes}>
+                            <tr key={remote.remoteid} onClick={() => this.clickRow(remote.remoteid)}>
+                                <td className="status-cell">
+                                    <div><RemoteStatusLight status={remote.status}/></div>
+                                </td>
+                                <td>
+                                    {remote.remoteid.substr(0, 8)}
+                                </td>
+                                <td>
+                                    {isBlank(remote.remotealias) ? "-" : remote.remotealias}
+                                </td>
+                                <td>
+                                    {remote.remotecanonicalname}
+                                </td>
+                                <td>
+                                    {remote.connectmode}
+                                </td>
+                            </tr>
+                        </For>
+                    </tbody>
+                </table>
             </div>
         );
     }
@@ -856,7 +895,7 @@ class InfoRemoteShow extends React.Component<{}, {}> {
 class InfoRemoteEdit extends React.Component<{}, {}> {
     alias : mobx.IObservableValue<string>;
     hostName : mobx.IObservableValue<string>;
-    userName : mobx.IObservableValue<string>;
+    keyStr : mobx.IObservableValue<string>;
     portStr : mobx.IObservableValue<string>;
     colorStr : mobx.IObservableValue<string>;
     connectMode : mobx.IObservableValue<string>;
@@ -871,7 +910,7 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
     resetForm() {
         this.alias = mobx.observable.box("");
         this.hostName = mobx.observable.box("");
-        this.userName = mobx.observable.box("");
+        this.keyStr = mobx.observable.box("");
         this.portStr = mobx.observable.box("22");
         this.colorStr = mobx.observable.box("");
         this.connectMode = mobx.observable.box("startup");
@@ -881,7 +920,7 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
 
     @boundMethod
     doCreateRemote() {
-        let cname = this.userName.get() + "@" + this.hostName.get();
+        let cname = this.hostName.get();
         let kwargs : Record<string, string> = {};
         if (this.alias.get() != "") {
             kwargs["alias"] = this.alias.get();
@@ -895,6 +934,9 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
         if (this.colorStr.get() != "") {
             kwargs["color"] = this.colorStr.get();
         }
+        if (this.keyStr.get() != "") {
+            kwargs["key"] = this.keyStr.get();
+        }
         kwargs["connectmode"] = this.connectMode.get();
         if (!this.autoInstallBool.get()) {
             kwargs["autoinstall"] = "0";
@@ -904,7 +946,6 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
         console.log("create remote", cname, kwargs);
         mobx.action(() => {
             GlobalCommandRunner.createRemote(cname, kwargs);
-            this.resetForm();
         })();
     }
 
@@ -945,9 +986,9 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    onChangeUserName(e : any) {
+    onChangeKeyStr(e : any) {
         mobx.action(() => {
-            this.userName.set(e.target.value);
+            this.keyStr.set(e.target.value);
         })();
     }
 
@@ -991,6 +1032,13 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
         })();
     }
 
+    remoteCName() : string {
+        if (this.hostName.get() == "") {
+            return "[no host]";
+        }
+        return this.hostName.get();
+    }
+
     render() {
         let inputModel = GlobalModel.inputModel;
         let infoMsg = inputModel.infoMsg.get();
@@ -1013,7 +1061,7 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
             <form className="info-remote">
                 <div className="info-title">
                     <If condition={isBlank(redit.remoteid)}>
-                        add new remote
+                        add new remote '{this.remoteCName()}'
                     </If>
                     <If condition={!isBlank(redit.remoteid)}>
                         edit remote
@@ -1032,15 +1080,15 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
                     </div>
                 </div>
                 <div className="remote-input-field">
-                    <div className="remote-field-label">hostname</div>
+                    <div className="remote-field-label">user@host</div>
                     <div className="remote-field-control text-input">
                         <input type="text" onChange={this.onChangeHostName} value={this.hostName.get()}/>
                     </div>
                 </div>
                 <div className="remote-input-field">
-                    <div className="remote-field-label">username</div>
+                    <div className="remote-field-label">ssh keyfile</div>
                     <div className="remote-field-control text-input">
-                        <input type="text" onChange={this.onChangeUserName} value={this.userName.get()}/>
+                        <input type="text" onChange={this.onChangeKeyStr} value={this.keyStr.get()}/>
                     </div>
                 </div>
                 <div className="remote-input-field">
@@ -1049,7 +1097,7 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
                         <input type="number" placeholder="22" onChange={this.onChangePortStr} value={this.portStr.get()}/>
                     </div>
                 </div>
-                <div className="remote-input-field">
+                <div className="remote-input-field" style={{display: "none"}}>
                     <div className="remote-field-label">sudo</div>
                     <div className="remote-field-control checkbox-input">
                         <input type="checkbox" onChange={this.onChangeSudo} checked={this.sudoBool.get()}/>
@@ -1082,6 +1130,16 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
                         </select>
                     </div>
                 </div>
+                <If condition={!isBlank(redit.errorstr)}>
+                    <div className="info-error">
+                        {redit.errorstr}
+                    </div>
+                </If>
+                <If condition={!isBlank(redit.infostr)}>
+                    <div className="info-msg">
+                        {redit.infostr}
+                    </div>
+                </If>
                 <div style={{marginTop: 15, marginBottom: 10}} className="remote-input-field">
                     <a tabIndex={0} style={{marginRight: 20}} onClick={this.doCreateRemote} onKeyDown={this.keyDownCreateRemote} className="text-button success-button">[create remote]</a>
                     {"|"}
@@ -1139,7 +1197,9 @@ class InfoMsg extends React.Component<{}, {}> {
                         </For>
                     </div>
                 </If>
-                <InfoRemoteEdit key="inforemoteedit"/>
+                <If condition={infoMsg && infoMsg.remoteedit}>
+                    <InfoRemoteEdit key="inforemoteedit"/>
+                </If>
                 <InfoRemoteShow key="inforemoteshow"/>
                 <InfoRemoteShowAll key="inforemoteshowall"/>
                 <If condition={infoMsg && infoMsg.infocomps != null && infoMsg.infocomps.length > 0}>
@@ -1720,9 +1780,7 @@ class MainSideBar extends React.Component<{}, {}> {
     }
 
     clickRemotes() {
-        mobx.action(() => {
-            GlobalModel.remotesModalOpen.set(true);
-        })();
+        GlobalCommandRunner.showAllRemotes();
     }
 
     remoteDisplayName(remote : RemoteType) : any {

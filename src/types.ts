@@ -284,6 +284,7 @@ type RemoteEditType = {
     remoteedit : boolean,
     remoteid? : string,
     errorstr? : string,
+    infostr? : string,
 };
 
 type InfoType = {

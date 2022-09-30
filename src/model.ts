@@ -1868,6 +1868,10 @@ class CommandRunner {
         GlobalModel.submitCommand("remote", "show", null, {"nohist": "1", "remote": remoteid}, true);
     }
 
+    showAllRemotes() {
+        GlobalModel.submitCommand("remote", "showall", null, {"nohist": "1"}, true);
+    }
+
     connectRemote(remoteid : string) {
         GlobalModel.submitCommand("remote", "connect", null, {"nohist": "1", "remote": remoteid}, true);
     }
