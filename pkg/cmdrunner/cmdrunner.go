@@ -95,6 +95,7 @@ func init() {
 	registerCmdFn("remote:connect", RemoteConnectCommand)
 	registerCmdFn("remote:install", RemoteInstallCommand)
 	registerCmdFn("remote:installcancel", RemoteInstallCancelCommand)
+	registerCmdFn("remote:edit", RemoteEditCommand)
 
 	registerCmdFn("window:resize", WindowResizeCommand)
 
@@ -475,23 +476,61 @@ func RemoteDisconnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketTy
 	}, nil
 }
 
+func RemoteEditCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window|R_Remote)
+	if err != nil {
+		return nil, err
+	}
+	update := sstore.ModelUpdate{
+		Info: &sstore.InfoMsgType{
+			RemoteEdit: &sstore.RemoteEditType{
+				RemoteEdit: true,
+				RemoteId:   ids.Remote.RemotePtr.RemoteId,
+			},
+		},
+	}
+	return update, nil
+}
+
+func makeRemoteEditErrorReturn(visual bool, err error) (sstore.UpdatePacket, error) {
+	if visual {
+		return sstore.ModelUpdate{
+			Info: &sstore.InfoMsgType{
+				RemoteEdit: &sstore.RemoteEditType{
+					RemoteEdit: true,
+					ErrorStr:   err.Error(),
+				},
+			},
+		}, nil
+	}
+	return nil, err
+}
+
 func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	if len(pk.Args) == 0 || pk.Args[0] == "" {
-		return nil, fmt.Errorf("/remote:new requires one positional argument of 'user@host'")
+	visualEdit := resolveBool(pk.Kwargs["visual"], false)
+	isSubmitted := resolveBool(pk.Kwargs["submit"], false)
+	if (len(pk.Args) == 0 || pk.Args[0] == "") && !isSubmitted {
+		return sstore.ModelUpdate{
+			Info: &sstore.InfoMsgType{
+				RemoteEdit: &sstore.RemoteEditType{
+					RemoteEdit: true,
+				},
+			},
+		}, nil
 	}
 	userHost := pk.Args[0]
 	m := userHostRe.FindStringSubmatch(userHost)
 	if m == nil {
-		return nil, fmt.Errorf("/remote:new invalid format of user@host argument")
+		return makeRemoteEditErrorReturn(visualEdit, fmt.Errorf("/remote:new invalid format of user@host argument"))
 	}
 	sudoStr, remoteUser, remoteHost := m[1], m[2], m[3]
 	alias := pk.Kwargs["alias"]
 	if alias != "" {
 		if len(alias) > MaxRemoteAliasLen {
-			return nil, fmt.Errorf("alias too long, max length = %d", MaxRemoteAliasLen)
+			return makeRemoteEditErrorReturn(visualEdit, fmt.Errorf("alias too long, max length = %d", MaxRemoteAliasLen))
 		}
 		if !remoteAliasRe.MatchString(alias) {
-			return nil, fmt.Errorf("invalid alias format")
+			return makeRemoteEditErrorReturn(visualEdit, fmt.Errorf("invalid alias format"))
 		}
 	}
 	connectMode := sstore.ConnectModeAuto
@@ -499,7 +538,8 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		connectMode = pk.Kwargs["connectmode"]
 	}
 	if !sstore.IsValidConnectMode(connectMode) {
-		return nil, fmt.Errorf("/remote:new invalid connectmode %q: valid modes are %s", connectMode, formatStrs([]string{sstore.ConnectModeStartup, sstore.ConnectModeAuto, sstore.ConnectModeManual}, "or", false))
+		err := fmt.Errorf("/remote:new invalid connectmode %q: valid modes are %s", connectMode, formatStrs([]string{sstore.ConnectModeStartup, sstore.ConnectModeAuto, sstore.ConnectModeManual}, "or", false))
+		return makeRemoteEditErrorReturn(visualEdit, err)
 	}
 	autoInstall := resolveBool(pk.Kwargs["autoinstall"], true)
 	var isSudo bool
@@ -509,7 +549,7 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	if pk.Kwargs["sudo"] != "" {
 		sudoArg := resolveBool(pk.Kwargs["sudo"], false)
 		if isSudo && !sudoArg {
-			return nil, fmt.Errorf("/remote:new invalid 'sudo@' argument, with sudo kw arg set to false")
+			return makeRemoteEditErrorReturn(visualEdit, fmt.Errorf("/remote:new invalid 'sudo@' argument, with sudo kw arg set to false"))
 		}
 		if !isSudo && sudoArg {
 			isSudo = true
@@ -528,7 +568,7 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 			fd.Close()
 		}
 		if err != nil {
-			return nil, fmt.Errorf("/remote:new invalid key %q (cannot read): %v", keyFile, err)
+			return makeRemoteEditErrorReturn(visualEdit, fmt.Errorf("/remote:new invalid key %q (cannot read): %v", keyFile, err))
 		}
 		sshOpts.SSHIdentity = keyFile
 	}
@@ -537,7 +577,7 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		color := pk.Kwargs["color"]
 		err := validateRemoteColor(color, "remote color")
 		if err != nil {
-			return nil, err
+			return makeRemoteEditErrorReturn(visualEdit, err)
 		}
 		remoteOpts.Color = color
 	}
@@ -557,9 +597,10 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	}
 	err := remote.AddRemote(ctx, r)
 	if err != nil {
-		return nil, fmt.Errorf("cannot create remote %q: %v", r.RemoteCanonicalName, err)
+		return makeRemoteEditErrorReturn(visualEdit, fmt.Errorf("cannot create remote %q: %v", r.RemoteCanonicalName, err))
 	}
-	update := &sstore.ModelUpdate{
+	// SUCCESS
+	update := sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			InfoMsg:   fmt.Sprintf("remote %q created", r.RemoteCanonicalName),
 			TimeoutMs: 2000,
@@ -1205,7 +1246,7 @@ func HistoryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		return nil, err
 	}
 	show := !resolveBool(pk.Kwargs["noshow"], false)
-	update := &sstore.ModelUpdate{}
+	update := sstore.ModelUpdate{}
 	update.History = &sstore.HistoryInfoType{
 		HistoryType: htype,
 		SessionId:   ids.SessionId,

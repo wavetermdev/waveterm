@@ -79,16 +79,23 @@ func InfoMsgUpdate(infoMsgFmt string, args ...interface{}) *ModelUpdate {
 	}
 }
 
+type RemoteEditType struct {
+	RemoteEdit bool   `json:"remoteedit"`
+	RemoteId   string `json:"remoteid,omitempty"`
+	ErrorStr   string `json:"errorstr,omitempty"`
+}
+
 type InfoMsgType struct {
-	InfoTitle     string   `json:"infotitle"`
-	InfoError     string   `json:"infoerror,omitempty"`
-	InfoMsg       string   `json:"infomsg,omitempty"`
-	InfoComps     []string `json:"infocomps,omitempty"`
-	InfoCompsMore bool     `json:"infocompssmore,omitempty"`
-	InfoLines     []string `json:"infolines,omitempty"`
-	TimeoutMs     int64    `json:"timeoutms,omitempty"`
-	PtyRemoteId   string   `json:"ptyremoteid,omitempty"`
-	RemoteShowAll bool     `json:"remoteshowall,omitempty"`
+	InfoTitle     string          `json:"infotitle"`
+	InfoError     string          `json:"infoerror,omitempty"`
+	InfoMsg       string          `json:"infomsg,omitempty"`
+	InfoComps     []string        `json:"infocomps,omitempty"`
+	InfoCompsMore bool            `json:"infocompssmore,omitempty"`
+	InfoLines     []string        `json:"infolines,omitempty"`
+	TimeoutMs     int64           `json:"timeoutms,omitempty"`
+	PtyRemoteId   string          `json:"ptyremoteid,omitempty"`
+	RemoteShowAll bool            `json:"remoteshowall,omitempty"`
+	RemoteEdit    *RemoteEditType `json:"remoteedit,omitempty"`
 }
 
 type HistoryInfoType struct {
