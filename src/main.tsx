@@ -20,6 +20,8 @@ const CellWidthPx = 8;
 const RemotePtyRows = 8;
 const RemotePtyCols = 80;
 
+const RemoteColors = ["red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"];
+
 type InterObsValue = {
     sessionid : string,
     windowid : string,
@@ -851,6 +853,246 @@ class InfoRemoteShow extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
+class InfoRemoteEdit extends React.Component<{}, {}> {
+    alias : mobx.IObservableValue<string>;
+    hostName : mobx.IObservableValue<string>;
+    userName : mobx.IObservableValue<string>;
+    portStr : mobx.IObservableValue<string>;
+    colorStr : mobx.IObservableValue<string>;
+    connectMode : mobx.IObservableValue<string>;
+    sudoBool : mobx.IObservableValue<boolean>;
+    autoInstallBool : mobx.IObservableValue<boolean>;
+
+    constructor(props) {
+        super(props);
+        this.resetForm();
+    }
+
+    resetForm() {
+        this.alias = mobx.observable.box("");
+        this.hostName = mobx.observable.box("");
+        this.userName = mobx.observable.box("");
+        this.portStr = mobx.observable.box("22");
+        this.colorStr = mobx.observable.box("");
+        this.connectMode = mobx.observable.box("startup");
+        this.sudoBool = mobx.observable.box(false);
+        this.autoInstallBool = mobx.observable.box(true);
+    }
+
+    @boundMethod
+    doCreateRemote() {
+        let cname = this.userName.get() + "@" + this.hostName.get();
+        let kwargs : Record<string, string> = {};
+        if (this.alias.get() != "") {
+            kwargs["alias"] = this.alias.get();
+        }
+        if (this.sudoBool.get()) {
+            kwargs["sudo"] = "1";
+        }
+        if (this.portStr.get() != "22") {
+            kwargs["port"] = this.portStr.get();
+        }
+        if (this.colorStr.get() != "") {
+            kwargs["color"] = this.colorStr.get();
+        }
+        kwargs["connectmode"] = this.connectMode.get();
+        if (!this.autoInstallBool.get()) {
+            kwargs["autoinstall"] = "0";
+        }
+        kwargs["visual"] = "1";
+        kwargs["submit"] = "1";
+        console.log("create remote", cname, kwargs);
+        mobx.action(() => {
+            GlobalCommandRunner.createRemote(cname, kwargs);
+            this.resetForm();
+        })();
+    }
+
+    @boundMethod
+    doCancel() {
+        mobx.action(() => {
+            this.resetForm();
+            GlobalModel.inputModel.clearInfoMsg(true);
+        })();
+    }
+
+    @boundMethod
+    keyDownCreateRemote(e : any) {
+        if (e.code == "Enter") {
+            this.doCreateRemote();
+        }
+    }
+
+    @boundMethod
+    keyDownCancel(e : any) {
+        if (e.code == "Enter") {
+            this.doCancel();
+        }
+    }
+
+    @boundMethod
+    onChangeAlias(e : any) {
+        mobx.action(() => {
+            this.alias.set(e.target.value);
+        })();
+    }
+
+    @boundMethod
+    onChangeHostName(e : any) {
+        mobx.action(() => {
+            this.hostName.set(e.target.value);
+        })();
+    }
+
+    @boundMethod
+    onChangeUserName(e : any) {
+        mobx.action(() => {
+            this.userName.set(e.target.value);
+        })();
+    }
+
+    @boundMethod
+    onChangePortStr(e : any) {
+        let strVal = e.target.value;
+        let iVal = parseInt(strVal);
+        if (isNaN(iVal) || iVal < 0) {
+            iVal = 0;
+        }
+        mobx.action(() => {
+            this.portStr.set(String(iVal));
+        })();
+    }
+
+    @boundMethod
+    onChangeColorStr(e : any) {
+        mobx.action(() => {
+            this.colorStr.set(e.target.value);
+        })();
+    }
+
+    @boundMethod
+    onChangeConnectMode(e : any) {
+        mobx.action(() => {
+            this.connectMode.set(e.target.value);
+        })();
+    }
+
+    @boundMethod
+    onChangeSudo(e : any) {
+        mobx.action(() => {
+            this.sudoBool.set(e.target.checked);
+        })();
+    }
+
+    @boundMethod
+    onChangeAutoInstall(e : any) {
+        mobx.action(() => {
+            this.autoInstallBool.set(e.target.checked);
+        })();
+    }
+
+    render() {
+        let inputModel = GlobalModel.inputModel;
+        let infoMsg = inputModel.infoMsg.get();
+        if (infoMsg == null || !infoMsg.remoteedit) {
+            return null;
+        }
+        let redit = infoMsg.remoteedit;
+        if (!redit.remoteedit) {
+            return null;
+        }
+        if (!isBlank(redit.remoteid)) {
+            return (
+                <div className="info-remote">
+                    visual editing of remotes not currently supported
+                </div>
+            );
+        }
+        let colorStr : string = null;
+        return (
+            <form className="info-remote">
+                <div className="info-title">
+                    <If condition={isBlank(redit.remoteid)}>
+                        add new remote
+                    </If>
+                    <If condition={!isBlank(redit.remoteid)}>
+                        edit remote
+                    </If>
+                </div>
+                <div className="remote-input-field">
+                    <div className="remote-field-label">type</div>
+                    <div className="remote-field-control text-control">
+                        ssh
+                    </div>
+                </div>
+                <div className="remote-input-field">
+                    <div className="remote-field-label">alias</div>
+                    <div className="remote-field-control text-input">
+                        <input type="text" onChange={this.onChangeAlias} value={this.alias.get()}/>
+                    </div>
+                </div>
+                <div className="remote-input-field">
+                    <div className="remote-field-label">hostname</div>
+                    <div className="remote-field-control text-input">
+                        <input type="text" onChange={this.onChangeHostName} value={this.hostName.get()}/>
+                    </div>
+                </div>
+                <div className="remote-input-field">
+                    <div className="remote-field-label">username</div>
+                    <div className="remote-field-control text-input">
+                        <input type="text" onChange={this.onChangeUserName} value={this.userName.get()}/>
+                    </div>
+                </div>
+                <div className="remote-input-field">
+                    <div className="remote-field-label">port</div>
+                    <div className="remote-field-control text-input">
+                        <input type="number" placeholder="22" onChange={this.onChangePortStr} value={this.portStr.get()}/>
+                    </div>
+                </div>
+                <div className="remote-input-field">
+                    <div className="remote-field-label">sudo</div>
+                    <div className="remote-field-control checkbox-input">
+                        <input type="checkbox" onChange={this.onChangeSudo} checked={this.sudoBool.get()}/>
+                    </div>
+                </div>
+                <div className="remote-input-field">
+                    <div className="remote-field-label">connectmode</div>
+                    <div className="remote-field-control select-input">
+                        <select onChange={this.onChangeConnectMode} value={this.connectMode.get()}>
+                            <option>startup</option>
+                            <option>auto</option>
+                            <option>manual</option>
+                        </select>
+                    </div>
+                </div>
+                <div className="remote-input-field">
+                    <div className="remote-field-label">autoinstall</div>
+                    <div className="remote-field-control checkbox-input">
+                        <input type="checkbox" onChange={this.onChangeAutoInstall} checked={this.autoInstallBool.get()}/>
+                    </div>
+                </div>
+                <div className="remote-input-field">
+                    <div className="remote-field-label">color</div>
+                    <div className="remote-field-control select-input">
+                        <select onChange={this.onChangeColorStr} value={this.colorStr.get()}>
+                            <option value="">(default)</option>
+                            <For each="colorStr" of={RemoteColors}>
+                                <option key={colorStr} value={colorStr}>{colorStr}</option>
+                            </For>
+                        </select>
+                    </div>
+                </div>
+                <div style={{marginTop: 15, marginBottom: 10}} className="remote-input-field">
+                    <a tabIndex={0} style={{marginRight: 20}} onClick={this.doCreateRemote} onKeyDown={this.keyDownCreateRemote} className="text-button success-button">[create remote]</a>
+                    {"|"}
+                    <a tabIndex={0} style={{marginLeft: 20}} onClick={this.doCancel} onKeyDown={this.keyDownCancel} className="text-button grey-button">[cancel (ESC)]</a>
+                </div>
+            </form>
+        );
+    }
+}
+
+@mobxReact.observer
 class InfoMsg extends React.Component<{}, {}> {
     getAfterSlash(s : string) : string {
         if (s.startsWith("^/")) {
@@ -874,11 +1116,15 @@ class InfoMsg extends React.Component<{}, {}> {
         let line : string = null;
         let istr : string = null;
         let idx : number = 0;
+        let titleStr = null;
+        if (infoMsg != null) {
+            titleStr = infoMsg.infotitle;
+        }
         return (
             <div className="cmd-input-info" style={{display: (infoShow ? "block" : "none")}}>
                 <If condition={infoMsg && infoMsg.infotitle != null}>
                     <div key="infotitle" className="info-title">
-                        {infoMsg.infotitle}
+                        {titleStr}
                     </div>
                 </If>
                 <If condition={infoMsg && infoMsg.infomsg != null}>
@@ -893,6 +1139,7 @@ class InfoMsg extends React.Component<{}, {}> {
                         </For>
                     </div>
                 </If>
+                <InfoRemoteEdit key="inforemoteedit"/>
                 <InfoRemoteShow key="inforemoteshow"/>
                 <InfoRemoteShowAll key="inforemoteshowall"/>
                 <If condition={infoMsg && infoMsg.infocomps != null && infoMsg.infocomps.length > 0}>
@@ -1496,14 +1743,20 @@ class MainSideBar extends React.Component<{}, {}> {
 
     @boundMethod
     handleAddRemote() : void {
-        mobx.action(() => {
-            GlobalModel.addRemoteModalOpen.set(true);
-        })();
+        GlobalCommandRunner.openCreateRemote();
     }
 
     render() {
         let model = GlobalModel;
         let activeSessionId = model.activeSessionId.get();
+        let activeWindow = model.getActiveWindow();
+        let activeRemoteId : string = null;
+        if (activeWindow != null) {
+            let rptr = activeWindow.curRemote.get();
+            if (rptr != null && !isBlank(rptr.remoteid)) {
+                activeRemoteId = rptr.remoteid;
+            }
+        }
         let session : Session = null;
         let remotes = model.remotes ?? [];
         let remote : RemoteType = null;
@@ -1575,7 +1828,7 @@ class MainSideBar extends React.Component<{}, {}> {
                     </p>
                     <ul className="menu-list remotes-menu-list">
                         <For each="remote" of={remotes}>
-                            <li key={remote.remoteid} className="remote-menu-item"><a onClick={() => this.clickRemote(remote)}>
+                            <li key={remote.remoteid} className={cn("remote-menu-item")}><a className={cn({"is-active": (remote.remoteid == activeRemoteId)})} onClick={() => this.clickRemote(remote)}>
                                 <RemoteStatusLight status={remote.status}/>
                                 {this.remoteDisplayName(remote)}
                             </a></li>

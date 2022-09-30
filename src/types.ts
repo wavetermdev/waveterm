@@ -90,6 +90,7 @@ type RemoteType = {
     archived : boolean,
     uname : string,
     mshellversion : string,
+    needsmshellupgrade : boolean,
     remove? : boolean,
 };
 
@@ -279,6 +280,12 @@ type CmdLineUpdateType = {
     insertpos : number,
 };
 
+type RemoteEditType = {
+    remoteedit : boolean,
+    remoteid? : string,
+    errorstr? : string,
+};
+
 type InfoType = {
     infotitle? : string,
     infomsg? : string,
@@ -288,6 +295,7 @@ type InfoType = {
     infocompsmore? : boolean,
     timeoutms? : number,
     ptyremoteid? : string,
+    remoteedit? : RemoteEditType,
     remoteshowall? : boolean,
 };
 

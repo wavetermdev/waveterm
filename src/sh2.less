@@ -276,6 +276,10 @@ html, body, #main {
             font-size: 10px;
         }
 
+        &.is-active .small-text {
+            color: white;
+        }
+
         .small-text {
             color: #777;
             font-size: 10px;
@@ -839,6 +843,11 @@ body .xterm .xterm-viewport {
             color: #d3d7cf;
             .mono-font(12px);
 
+            .info-remote-title {
+                font-weight: bold;
+                color: @term-cyan;
+            }
+
             .remote-field {
                 display: flex;
                 flex-direction: row;
@@ -854,26 +863,87 @@ body .xterm .xterm-viewport {
                     flex-direction: row;
                 }
             }
+
+            .remote-input-field {
+                display: flex;
+                flex-direction: row;
+                height: 25px;
+                align-items: center;
+
+                .remote-field-label {
+                    white-space: pre;
+                    width: 140px;
+                    font-weight: bold;
+                    color: @term-bright-white;
+                }
+
+                .remote-field-control {
+                    &.text-control {
+                    }
+
+                    &.text-input {
+                        input[type=text], input[type=number] {
+                            background-color: black;
+                            color: white;
+                            width: 200px;
+                        }
+                    }
+
+                    &.checkbox-input {
+                        input[type=checkbox] {
+                            position: relative;
+                            top: 3px;
+                        }
+                    }
+
+                    &.select-input {
+                        select {
+                            width: 200px;
+                            background-color: black;
+                            color: white;
+                        }
+                    }
+                }
+            }
         }
 
         .info-remote-showall {
             color: #d3d7cf;
             .mono-font(12px);
         }
+    }
+}
 
-        .text-button {
-            .mono-font(12px, 600);
-            color: @term-white;
-            cursor: pointer;
+.text-button {
+    .mono-font(12px, 600);
+    color: @term-white;
+    cursor: pointer;
+    background-color: #171717;
+    outline: 2px solid #171717;
 
-            &.connect-button {
-                color: @term-green;
-            }
+    &:hover, &:focus {
+        background-color: #333;
+        outline: 2px solid #333;
+    }
+    
+    &.connect-button {
+        color: @term-green;
+    }
+    
+    &.disconnect-button {
+        color: @term-red;
+    }
 
-            &.disconnect-button {
-                color: @term-red;
-            }
-        }
+    &.success-button {
+        color: @term-green;
+    }
+
+    &.error-button {
+        color: @term-red;
+    }
+
+    &.grey-button {
+        color: #666;
     }
 }
 
@@ -1138,7 +1208,7 @@ body .xterm .xterm-viewport {
     top: 4px;
 }
 
-.menu-list .remote-status .status-connecting {
+.menu-list .remote-status.status-connecting {
     position: relative;
     top: 0px;
     font-size: 12px;

@@ -1742,10 +1742,9 @@ class Model {
         this.ws.watchScreen(curScreen.sessionId, curScreen.screenId);
     }
 
-    loadWindow(sessionId : string, windowId : string) : Window {
-        let newWin = new Window(sessionId, windowId);
-        this.windows.set(sessionId + "/" + windowId, newWin);
-        let usp = new URLSearchParams({sessionid: sessionId, windowid: windowId});
+    _loadWindowAsync(newWin : Window) {
+        this.windows.set(newWin.sessionId + "/" + newWin.windowId, newWin);
+        let usp = new URLSearchParams({sessionid: newWin.sessionId, windowid: newWin.windowId});
         let url = new URL(sprintf("http://localhost:8080/api/get-window?") + usp.toString());
         fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
             if (data.data == null) {
@@ -1755,8 +1754,13 @@ class Model {
             this.updateWindow(data.data, true);
             return;
         }).catch((err) => {
-            this.errorHandler(sprintf("getting window=%s", windowId), err, false);
+            this.errorHandler(sprintf("getting window=%s", newWin.windowId), err, false);
         });
+    }
+
+    loadWindow(sessionId : string, windowId : string) : Window {
+        let newWin = new Window(sessionId, windowId);
+        setTimeout(() => this._loadWindowAsync(newWin), 0);
         return newWin;
     }
 
@@ -1878,6 +1882,16 @@ class CommandRunner {
 
     installCancelRemote(remoteid : string) {
         GlobalModel.submitCommand("remote", "installcancel", null, {"nohist": "1", "remote": remoteid}, true);
+    }
+
+    createRemote(cname : string, kwargsArg : Record<string, string>) {
+        let kwargs = Object.assign({}, kwargsArg);
+        kwargs["nohist"] = "1";
+        GlobalModel.submitCommand("remote", "new", [cname], kwargs, true);
+    }
+
+    openCreateRemote() : void {
+        GlobalModel.submitCommand("remote", "new", null, {"nohist": "1"}, true);
     }
 };
 
