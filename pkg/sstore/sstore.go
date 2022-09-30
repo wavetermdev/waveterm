@@ -470,11 +470,12 @@ type LineType struct {
 }
 
 type SSHOpts struct {
-	Local       bool   `json:"local"`
+	Local       bool   `json:"local,omitempty"`
 	SSHHost     string `json:"sshhost"`
-	SSHOptsStr  string `json:"sshopts"`
-	SSHIdentity string `json:"sshidentity"`
 	SSHUser     string `json:"sshuser"`
+	SSHOptsStr  string `json:"sshopts,omitempty"`
+	SSHIdentity string `json:"sshidentity,omitempty"`
+	SSHPort     int    `json:"sshport,omitempty"`
 }
 
 type RemoteOptsType struct {

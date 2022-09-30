@@ -563,6 +563,7 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	}
 	if pk.Kwargs["key"] != "" {
 		keyFile := pk.Kwargs["key"]
+		keyFile = base.ExpandHomeDir(keyFile)
 		fd, err := os.Open(keyFile)
 		if fd != nil {
 			fd.Close()
@@ -571,6 +572,17 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 			return makeRemoteEditErrorReturn(visualEdit, fmt.Errorf("/remote:new invalid key %q (cannot read): %v", keyFile, err))
 		}
 		sshOpts.SSHIdentity = keyFile
+	}
+	if pk.Kwargs["port"] != "" {
+		portStr := pk.Kwargs["port"]
+		portVal, err := strconv.Atoi(portStr)
+		if err != nil {
+			return makeRemoteEditErrorReturn(visualEdit, fmt.Errorf("/remote:new invalid port %q: %v", portStr, err))
+		}
+		if portVal <= 0 {
+			return makeRemoteEditErrorReturn(visualEdit, fmt.Errorf("/remote:new invalid port %d (must be positive)", portVal))
+		}
+		sshOpts.SSHPort = portVal
 	}
 	remoteOpts := &sstore.RemoteOptsType{}
 	if pk.Kwargs["color"] != "" {
