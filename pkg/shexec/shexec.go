@@ -390,7 +390,9 @@ type SSHOpts struct {
 	SSHOptsStr     string
 	SSHIdentity    string
 	SSHUser        string
+	SSHPort        int
 	SSHErrorsToTty bool
+	BatchMode      bool
 }
 
 type InstallOpts struct {
@@ -469,12 +471,20 @@ func (opts SSHOpts) MakeSSHExecCmd(remoteCommand string) *exec.Cmd {
 			userOpt := fmt.Sprintf("-l %s", shellescape.Quote(opts.SSHUser))
 			moreSSHOpts = append(moreSSHOpts, userOpt)
 		}
-		// note that SSHOptsStr is *not* escaped
-		var errFdStr string
-		if opts.SSHErrorsToTty {
-			errFdStr = "-E /dev/tty"
+		if opts.SSHPort != 0 {
+			portOpt := fmt.Sprintf("-p %d", opts.SSHPort)
+			moreSSHOpts = append(moreSSHOpts, portOpt)
 		}
-		sshCmd := fmt.Sprintf("ssh %s %s %s %s %s", errFdStr, strings.Join(moreSSHOpts, " "), opts.SSHOptsStr, shellescape.Quote(opts.SSHHost), shellescape.Quote(remoteCommand))
+		if opts.SSHErrorsToTty {
+			errFdStr := "-E /dev/tty"
+			moreSSHOpts = append(moreSSHOpts, errFdStr)
+		}
+		if opts.BatchMode {
+			batchOpt := "-o 'BatchMode=yes'"
+			moreSSHOpts = append(moreSSHOpts, batchOpt)
+		}
+		// note that SSHOptsStr is *not* escaped
+		sshCmd := fmt.Sprintf("ssh %s %s %s %s", strings.Join(moreSSHOpts, " "), opts.SSHOptsStr, shellescape.Quote(opts.SSHHost), shellescape.Quote(remoteCommand))
 		ecmd := exec.Command("bash", "-c", sshCmd)
 		return ecmd
 	}
@@ -489,6 +499,10 @@ func (opts SSHOpts) MakeMShellSSHOpts() string {
 	if opts.SSHUser != "" {
 		userOpt := fmt.Sprintf("-l %s", shellescape.Quote(opts.SSHUser))
 		moreSSHOpts = append(moreSSHOpts, userOpt)
+	}
+	if opts.SSHPort != 0 {
+		portOpt := fmt.Sprintf("-p %d", opts.SSHPort)
+		moreSSHOpts = append(moreSSHOpts, portOpt)
 	}
 	if opts.SSHOptsStr != "" {
 		optsOpt := fmt.Sprintf("--ssh-opts %s", shellescape.Quote(opts.SSHOptsStr))

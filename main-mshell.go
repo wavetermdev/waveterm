@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/scripthaus-dev/mshell/pkg/base"
@@ -281,6 +282,21 @@ func tryParseSSHOpt(iter *base.OptsIter, sshOpts *shexec.SSHOpts) (bool, error) 
 			return false, fmt.Errorf("-l [user]' missing user")
 		}
 		sshOpts.SSHUser = iter.Next()
+		return true, nil
+	}
+	if argStr == "-p" {
+		if !iter.IsNextPlain() {
+			return false, fmt.Errorf("-p [port]' missing port")
+		}
+		nextArgStr := iter.Next()
+		portVal, err := strconv.Atoi(nextArgStr)
+		if err != nil {
+			return false, fmt.Errorf("-p [port]' invalid port: %v", err)
+		}
+		if portVal <= 0 {
+			return false, fmt.Errorf("-p [port]' invalid port: %d", portVal)
+		}
+		sshOpts.SSHPort = portVal
 		return true, nil
 	}
 	return false, nil
