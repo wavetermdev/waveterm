@@ -702,7 +702,7 @@ class InfoRemoteShowAll extends React.Component<{}, {}> {
                         <For each="remote" of={remotes}>
                             <tr key={remote.remoteid} onClick={() => this.clickRow(remote.remoteid)}>
                                 <td className="status-cell">
-                                    <div><RemoteStatusLight status={remote.status}/></div>
+                                    <div><RemoteStatusLight remote={remote}/>{remote.status}</div>
                                 </td>
                                 <td>
                                     {remote.remoteid.substr(0, 8)}
@@ -861,7 +861,7 @@ class InfoRemoteShow extends React.Component<{}, {}> {
                 </div>
                 <div className="remote-field">
                     <div className="remote-field-def"> status</div>
-                    <div className="remote-field-val"><RemoteStatusLight status={remote.status}/>{remote.status} | {this.renderConnectButton(remote)}</div>
+                    <div className="remote-field-val"><RemoteStatusLight remote={remote}/>{remote.status} | {this.renderConnectButton(remote)}</div>
                 </div>
                 <If condition={!isBlank(remote.errorstr)}>
                     <div className="remote-field">
@@ -896,6 +896,7 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
     alias : mobx.IObservableValue<string>;
     hostName : mobx.IObservableValue<string>;
     keyStr : mobx.IObservableValue<string>;
+    passwordStr : mobx.IObservableValue<string>;
     portStr : mobx.IObservableValue<string>;
     colorStr : mobx.IObservableValue<string>;
     connectMode : mobx.IObservableValue<string>;
@@ -911,6 +912,7 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
         this.alias = mobx.observable.box("");
         this.hostName = mobx.observable.box("");
         this.keyStr = mobx.observable.box("");
+        this.passwordStr = mobx.observable.box("");
         this.portStr = mobx.observable.box("22");
         this.colorStr = mobx.observable.box("");
         this.connectMode = mobx.observable.box("startup");
@@ -936,6 +938,9 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
         }
         if (this.keyStr.get() != "") {
             kwargs["key"] = this.keyStr.get();
+        }
+        if (this.passwordStr.get() != "") {
+            kwargs["password"] = this.passwordStr.get();
         }
         kwargs["connectmode"] = this.connectMode.get();
         if (!this.autoInstallBool.get()) {
@@ -989,6 +994,13 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
     onChangeKeyStr(e : any) {
         mobx.action(() => {
             this.keyStr.set(e.target.value);
+        })();
+    }
+
+    @boundMethod
+    onChangePasswordStr(e : any) {
+        mobx.action(() => {
+            this.passwordStr.set(e.target.value);
         })();
     }
 
@@ -1076,7 +1088,7 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
                 <div className="remote-input-field">
                     <div className="remote-field-label">alias</div>
                     <div className="remote-field-control text-input">
-                        <input type="text" onChange={this.onChangeAlias} value={this.alias.get()}/>
+                        <input type="text" autoFocus onChange={this.onChangeAlias} value={this.alias.get()}/>
                     </div>
                 </div>
                 <div className="remote-input-field">
@@ -1089,6 +1101,12 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
                     <div className="remote-field-label">ssh keyfile</div>
                     <div className="remote-field-control text-input">
                         <input type="text" onChange={this.onChangeKeyStr} value={this.keyStr.get()}/>
+                    </div>
+                </div>
+                <div className="remote-input-field">
+                    <div className="remote-field-label">ssh password</div>
+                    <div className="remote-field-control text-input">
+                        <input type="password" onChange={this.onChangePasswordStr} value={this.passwordStr.get()}/>
                     </div>
                 </div>
                 <div className="remote-input-field">
@@ -1751,11 +1769,21 @@ function getConnVal(r : RemoteType) : number {
 }
 
 @mobxReact.observer
-class RemoteStatusLight extends React.Component<{status : string}, {}> {
+class RemoteStatusLight extends React.Component<{remote : RemoteType}, {}> {
     render() {
-        let status = this.props.status;
+        let remote = this.props.remote;
+        let status = "error";
+        let wfp = false;
+        if (remote != null) {
+            status = remote.status;
+            wfp = remote.waitingforpassword;
+        }
+        let icon = "fa-circle"
+        if (status == "connecting") {
+            icon = (wfp ? "fa-key" : "fa-refresh");
+        }
         return (
-            <i className={cn("remote-status fa", "status-" + status, (status == "connecting" ? "fa-refresh" : "fa-circle"))}/>
+            <i className={cn("remote-status fa", icon, "status-" + status)}/>
         );
     }
 }
@@ -1887,7 +1915,7 @@ class MainSideBar extends React.Component<{}, {}> {
                     <ul className="menu-list remotes-menu-list">
                         <For each="remote" of={remotes}>
                             <li key={remote.remoteid} className={cn("remote-menu-item")}><a className={cn({"is-active": (remote.remoteid == activeRemoteId)})} onClick={() => this.clickRemote(remote)}>
-                                <RemoteStatusLight status={remote.status}/>
+                                <RemoteStatusLight remote={remote}/>
                                 {this.remoteDisplayName(remote)}
                             </a></li>
                         </For>
@@ -1992,7 +2020,7 @@ class RemoteModal extends React.Component<{}, {}> {
                                 <For each="remote" of={remotes}>
                                     <tr key={remote.remoteid}>
                                         <td className="status-cell">
-                                            <div><RemoteStatusLight status={remote.status}/></div>
+                                            <div><RemoteStatusLight remote={remote}/></div>
                                         </td>
                                         <td>
                                             {remote.remotealias}
