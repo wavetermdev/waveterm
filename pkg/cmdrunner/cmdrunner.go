@@ -593,6 +593,9 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		}
 		remoteOpts.Color = color
 	}
+	if pk.Kwargs["password"] != "" {
+		sshOpts.SSHPassword = pk.Kwargs["password"]
+	}
 	r := &sstore.RemoteType{
 		RemoteId:            scbase.GenSCUUID(),
 		PhysicalId:          "",
@@ -737,12 +740,15 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 	if newRemote == "" {
 		return nil, nil
 	}
-	remoteName, rptr, _, _, err := resolveRemote(ctx, newRemote, ids.SessionId, ids.WindowId)
+	remoteName, rptr, _, rstate, err := resolveRemote(ctx, newRemote, ids.SessionId, ids.WindowId)
 	if err != nil {
 		return nil, err
 	}
 	if rptr == nil {
-		return nil, fmt.Errorf("/cr error: remote [%s] not found", newRemote)
+		return nil, fmt.Errorf("/cr error: remote %q not found", newRemote)
+	}
+	if rstate.Archived {
+		return nil, fmt.Errorf("/cr error: remote %q cannot switch to archived remote", newRemote)
 	}
 	err = sstore.UpdateCurRemote(ctx, ids.SessionId, ids.WindowId, *rptr)
 	if err != nil {
@@ -755,7 +761,7 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 			CurRemote: *rptr,
 		},
 		Info: &sstore.InfoMsgType{
-			InfoMsg:   fmt.Sprintf("current remote = %s", remoteName),
+			InfoMsg:   fmt.Sprintf("current remote = %q", remoteName),
 			TimeoutMs: 2000,
 		},
 	}

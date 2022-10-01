@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/armon/circbuf"
 	"github.com/creack/pty"
@@ -111,10 +112,11 @@ type RemoteRuntimeState struct {
 	DefaultState        *sstore.RemoteState `json:"defaultstate"`
 	ConnectMode         string              `json:"connectmode"`
 	AutoInstall         bool                `json:"autoinstall"`
-	Archived            bool                `json:"archived"`
+	Archived            bool                `json:"archived,omitempty"`
 	RemoteIdx           int64               `json:"remoteidx"`
 	UName               string              `json:"uname"`
 	MShellVersion       string              `json:"mshellversion"`
+	WaitingForPassword  bool                `json:"waitingforpassword,omitempty"`
 }
 
 func (state RemoteRuntimeState) IsConnected() bool {
@@ -391,6 +393,9 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 	if msh.InstallErr != nil {
 		state.InstallErrorStr = msh.InstallErr.Error()
 	}
+	if msh.Status == StatusConnecting {
+		state.WaitingForPassword = msh.isWaitingForPassword_nolock()
+	}
 	local := (msh.Remote.SSHOpts == nil || msh.Remote.SSHOpts.Local)
 	vars := make(map[string]string)
 	vars["user"] = msh.Remote.RemoteUser
@@ -659,8 +664,25 @@ func sendRemotePtyUpdate(remoteId string, dataOffset int64, data []byte) {
 	sstore.MainBus.SendUpdate("", update)
 }
 
+func (msh *MShellProc) isWaitingForPassword_nolock() bool {
+	barr := msh.PtyBuffer.Bytes()
+	if len(barr) == 0 {
+		return false
+	}
+	nlIdx := bytes.LastIndex(barr, []byte{'\n'})
+	var lastLine string
+	if nlIdx == -1 {
+		lastLine = string(barr)
+	} else {
+		lastLine = string(barr[nlIdx+1:])
+	}
+	pwIdx := strings.Index(lastLine, "assword")
+	return pwIdx != -1
+}
+
 func (msh *MShellProc) RunPtyReadLoop(cmdPty *os.File) {
 	buf := make([]byte, PtyReadBufSize)
+	var isWaiting bool
 	for {
 		n, readErr := cmdPty.Read(buf)
 		if readErr == io.EOF {
@@ -670,11 +692,55 @@ func (msh *MShellProc) RunPtyReadLoop(cmdPty *os.File) {
 			msh.WriteToPtyBuffer("*error reading from controlling-pty: %v\n", readErr)
 			break
 		}
+		var newIsWaiting bool
 		msh.WithLock(func() {
 			curOffset := msh.PtyBuffer.TotalWritten()
 			msh.PtyBuffer.Write(buf[0:n])
 			sendRemotePtyUpdate(msh.Remote.RemoteId, curOffset, buf[0:n])
+			newIsWaiting = msh.isWaitingForPassword_nolock()
 		})
+		if newIsWaiting != isWaiting {
+			isWaiting = newIsWaiting
+			go msh.NotifyRemoteUpdate()
+		}
+	}
+}
+
+func (msh *MShellProc) WaitAndSendPassword(pw string) {
+	var numWaits int
+	for {
+		var isWaiting bool
+		var isConnecting bool
+		msh.WithLock(func() {
+			isWaiting = msh.isWaitingForPassword_nolock()
+			isConnecting = msh.Status == StatusConnecting
+		})
+		if !isConnecting {
+			break
+		}
+		if !isWaiting {
+			numWaits = 0
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
+		numWaits++
+		if numWaits < 10 {
+			time.Sleep(100 * time.Millisecond)
+		} else {
+			// send password
+			msh.WithLock(func() {
+				if msh.ControllingPty == nil {
+					return
+				}
+				pwBytes := []byte(pw + "\r")
+				msh.writeToPtyBuffer_nolock("~[sent password]\r\n")
+				_, err := msh.ControllingPty.Write(pwBytes)
+				if err != nil {
+					msh.writeToPtyBuffer_nolock("*cannot write password to controlling pty: %v\n", err)
+				}
+			})
+			break
+		}
 	}
 }
 
@@ -770,7 +836,7 @@ func (msh *MShellProc) Launch() {
 	msh.WriteToPtyBuffer("connecting to %s...\n", remoteCopy.RemoteCanonicalName)
 	sshOpts := convertSSHOpts(remoteCopy.SSHOpts)
 	sshOpts.SSHErrorsToTty = true
-	if remoteCopy.ConnectMode != sstore.ConnectModeManual {
+	if remoteCopy.ConnectMode != sstore.ConnectModeManual && remoteCopy.SSHOpts.SSHPassword == "" {
 		sshOpts.BatchMode = true
 	}
 	cmdStr := MakeServerCommandStr()
@@ -788,6 +854,9 @@ func (msh *MShellProc) Launch() {
 		}
 	}()
 	go msh.RunPtyReadLoop(cmdPty)
+	if remoteCopy.SSHOpts.SSHPassword != "" {
+		go msh.WaitAndSendPassword(remoteCopy.SSHOpts.SSHPassword)
+	}
 	makeClientCtx, makeClientCancelFn := context.WithCancel(context.Background())
 	defer makeClientCancelFn()
 	msh.WithLock(func() {

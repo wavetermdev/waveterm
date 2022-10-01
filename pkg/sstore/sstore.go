@@ -476,6 +476,7 @@ type SSHOpts struct {
 	SSHOptsStr  string `json:"sshopts,omitempty"`
 	SSHIdentity string `json:"sshidentity,omitempty"`
 	SSHPort     int    `json:"sshport,omitempty"`
+	SSHPassword string `json:"sshpassword,omitempty"`
 }
 
 type RemoteOptsType struct {
