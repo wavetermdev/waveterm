@@ -166,13 +166,34 @@ func resolveBool(arg string, def bool) bool {
 	return true
 }
 
-func resolveInt(arg string, def int) (int, error) {
+func resolveFile(arg string) (string, error) {
+	if arg == "" {
+		return "", nil
+	}
+	fileName := base.ExpandHomeDir(arg)
+	if !strings.HasPrefix(fileName, "/") {
+		return "", fmt.Errorf("must be absolute, cannot be a relative path")
+	}
+	fd, err := os.Open(fileName)
+	if fd != nil {
+		fd.Close()
+	}
+	if err != nil {
+		return "", fmt.Errorf("cannot open file: %v", err)
+	}
+	return fileName, nil
+}
+
+func resolvePosInt(arg string, def int) (int, error) {
 	if arg == "" {
 		return def, nil
 	}
 	ival, err := strconv.Atoi(arg)
 	if err != nil {
 		return 0, err
+	}
+	if ival <= 0 {
+		return 0, fmt.Errorf("must be greater than 0")
 	}
 	return ival, nil
 }
@@ -506,6 +527,108 @@ func makeRemoteEditErrorReturn(visual bool, err error) (sstore.UpdatePacket, err
 	return nil, err
 }
 
+type RemoteEditArgs struct {
+	SSHOpts     *sstore.SSHOpts
+	Sudo        bool
+	ConnectMode string
+	Alias       string
+	AutoInstall bool
+	UserHost    string
+	SSHPassword string
+	SSHKeyFile  string
+	Color       string
+}
+
+func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType) (*RemoteEditArgs, error) {
+	var userHost string
+	var sshOpts *sstore.SSHOpts
+	var isSudo bool
+
+	if isNew {
+		userHost = pk.Args[0]
+		m := userHostRe.FindStringSubmatch(userHost)
+		if m == nil {
+			return nil, fmt.Errorf("invalid format of user@host argument")
+		}
+		sudoStr, remoteUser, remoteHost := m[1], m[2], m[3]
+		if sudoStr != "" {
+			isSudo = true
+		}
+		if pk.Kwargs["sudo"] != "" {
+			sudoArg := resolveBool(pk.Kwargs["sudo"], false)
+			if isSudo && !sudoArg {
+				return nil, fmt.Errorf("invalid 'sudo@' argument, with sudo kw arg set to false")
+			}
+			if !isSudo && sudoArg {
+				isSudo = true
+				userHost = "sudo@" + userHost
+			}
+		}
+		sshOpts = &sstore.SSHOpts{
+			Local:   false,
+			SSHHost: remoteHost,
+			SSHUser: remoteUser,
+		}
+		portVal, err := resolvePosInt(pk.Kwargs["port"], 0)
+		if err != nil {
+			return nil, fmt.Errorf("invalid port %q: %v", pk.Kwargs["port"], err)
+		}
+		sshOpts.SSHPort = portVal
+	} else {
+		if pk.Kwargs["sudo"] != "" {
+			return nil, fmt.Errorf("cannot update 'sudo' value")
+		}
+		if pk.Kwargs["port"] != "" {
+			return nil, fmt.Errorf("cannot update 'port' value")
+		}
+	}
+	alias := pk.Kwargs["alias"]
+	if alias != "" {
+		if len(alias) > MaxRemoteAliasLen {
+			return nil, fmt.Errorf("alias too long, max length = %d", MaxRemoteAliasLen)
+		}
+		if !remoteAliasRe.MatchString(alias) {
+			return nil, fmt.Errorf("invalid alias format")
+		}
+	}
+	connectMode := sstore.ConnectModeAuto
+	if pk.Kwargs["connectmode"] != "" {
+		connectMode = pk.Kwargs["connectmode"]
+	}
+	if !sstore.IsValidConnectMode(connectMode) {
+		err := fmt.Errorf("invalid connectmode %q: valid modes are %s", connectMode, formatStrs([]string{sstore.ConnectModeStartup, sstore.ConnectModeAuto, sstore.ConnectModeManual}, "or", false))
+		return nil, err
+	}
+	autoInstall := resolveBool(pk.Kwargs["autoinstall"], true)
+	keyFile, err := resolveFile(pk.Kwargs["key"])
+	if err != nil {
+		return nil, fmt.Errorf("invalid ssh keyfile %q: %v", pk.Kwargs["key"], err)
+	}
+	color := pk.Kwargs["color"]
+	if color != "" {
+		err := validateRemoteColor(color, "remote color")
+		if err != nil {
+			return nil, err
+		}
+	}
+	sshPassword := pk.Kwargs["password"]
+	if sshOpts != nil {
+		sshOpts.SSHIdentity = keyFile
+		sshOpts.SSHPassword = sshPassword
+	}
+	return &RemoteEditArgs{
+		SSHOpts:     sshOpts,
+		Sudo:        isSudo,
+		ConnectMode: connectMode,
+		Alias:       alias,
+		AutoInstall: autoInstall,
+		UserHost:    userHost,
+		SSHKeyFile:  keyFile,
+		SSHPassword: sshPassword,
+		Color:       color,
+	}, nil
+}
+
 func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	visualEdit := resolveBool(pk.Kwargs["visual"], false)
 	isSubmitted := resolveBool(pk.Kwargs["submit"], false)
@@ -518,99 +641,27 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 			},
 		}, nil
 	}
-	userHost := pk.Args[0]
-	m := userHostRe.FindStringSubmatch(userHost)
-	if m == nil {
-		return makeRemoteEditErrorReturn(visualEdit, fmt.Errorf("/remote:new invalid format of user@host argument"))
-	}
-	sudoStr, remoteUser, remoteHost := m[1], m[2], m[3]
-	alias := pk.Kwargs["alias"]
-	if alias != "" {
-		if len(alias) > MaxRemoteAliasLen {
-			return makeRemoteEditErrorReturn(visualEdit, fmt.Errorf("alias too long, max length = %d", MaxRemoteAliasLen))
-		}
-		if !remoteAliasRe.MatchString(alias) {
-			return makeRemoteEditErrorReturn(visualEdit, fmt.Errorf("invalid alias format"))
-		}
-	}
-	connectMode := sstore.ConnectModeAuto
-	if pk.Kwargs["connectmode"] != "" {
-		connectMode = pk.Kwargs["connectmode"]
-	}
-	if !sstore.IsValidConnectMode(connectMode) {
-		err := fmt.Errorf("/remote:new invalid connectmode %q: valid modes are %s", connectMode, formatStrs([]string{sstore.ConnectModeStartup, sstore.ConnectModeAuto, sstore.ConnectModeManual}, "or", false))
-		return makeRemoteEditErrorReturn(visualEdit, err)
-	}
-	autoInstall := resolveBool(pk.Kwargs["autoinstall"], true)
-	var isSudo bool
-	if sudoStr != "" {
-		isSudo = true
-	}
-	if pk.Kwargs["sudo"] != "" {
-		sudoArg := resolveBool(pk.Kwargs["sudo"], false)
-		if isSudo && !sudoArg {
-			return makeRemoteEditErrorReturn(visualEdit, fmt.Errorf("/remote:new invalid 'sudo@' argument, with sudo kw arg set to false"))
-		}
-		if !isSudo && sudoArg {
-			isSudo = true
-			userHost = "sudo@" + userHost
-		}
-	}
-	sshOpts := &sstore.SSHOpts{
-		Local:   false,
-		SSHHost: remoteHost,
-		SSHUser: remoteUser,
-	}
-	if pk.Kwargs["key"] != "" {
-		keyFile := pk.Kwargs["key"]
-		keyFile = base.ExpandHomeDir(keyFile)
-		fd, err := os.Open(keyFile)
-		if fd != nil {
-			fd.Close()
-		}
-		if err != nil {
-			return makeRemoteEditErrorReturn(visualEdit, fmt.Errorf("/remote:new invalid key %q (cannot read): %v", keyFile, err))
-		}
-		sshOpts.SSHIdentity = keyFile
-	}
-	if pk.Kwargs["port"] != "" {
-		portStr := pk.Kwargs["port"]
-		portVal, err := strconv.Atoi(portStr)
-		if err != nil {
-			return makeRemoteEditErrorReturn(visualEdit, fmt.Errorf("/remote:new invalid port %q: %v", portStr, err))
-		}
-		if portVal <= 0 {
-			return makeRemoteEditErrorReturn(visualEdit, fmt.Errorf("/remote:new invalid port %d (must be positive)", portVal))
-		}
-		sshOpts.SSHPort = portVal
-	}
-	remoteOpts := &sstore.RemoteOptsType{}
-	if pk.Kwargs["color"] != "" {
-		color := pk.Kwargs["color"]
-		err := validateRemoteColor(color, "remote color")
-		if err != nil {
-			return makeRemoteEditErrorReturn(visualEdit, err)
-		}
-		remoteOpts.Color = color
-	}
-	if pk.Kwargs["password"] != "" {
-		sshOpts.SSHPassword = pk.Kwargs["password"]
+	editArgs, err := parseRemoteEditArgs(true, pk)
+	if err != nil {
+		return makeRemoteEditErrorReturn(visualEdit, fmt.Errorf("/remote:new %v", err))
 	}
 	r := &sstore.RemoteType{
 		RemoteId:            scbase.GenSCUUID(),
 		PhysicalId:          "",
 		RemoteType:          sstore.RemoteTypeSsh,
-		RemoteAlias:         alias,
-		RemoteCanonicalName: userHost,
-		RemoteSudo:          isSudo,
-		RemoteUser:          remoteUser,
-		RemoteHost:          remoteHost,
-		ConnectMode:         connectMode,
-		AutoInstall:         autoInstall,
-		SSHOpts:             sshOpts,
-		RemoteOpts:          remoteOpts,
+		RemoteAlias:         editArgs.Alias,
+		RemoteCanonicalName: editArgs.UserHost,
+		RemoteSudo:          editArgs.Sudo,
+		RemoteUser:          editArgs.SSHOpts.SSHUser,
+		RemoteHost:          editArgs.SSHOpts.SSHHost,
+		ConnectMode:         editArgs.ConnectMode,
+		AutoInstall:         editArgs.AutoInstall,
+		SSHOpts:             editArgs.SSHOpts,
 	}
-	err := remote.AddRemote(ctx, r)
+	if editArgs.Color != "" {
+		r.RemoteOpts = &sstore.RemoteOptsType{Color: editArgs.Color}
+	}
+	err = remote.AddRemote(ctx, r)
 	if err != nil {
 		return makeRemoteEditErrorReturn(visualEdit, fmt.Errorf("cannot create remote %q: %v", r.RemoteCanonicalName, err))
 	}
@@ -1234,7 +1285,7 @@ func HistoryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if err != nil {
 		return nil, err
 	}
-	maxItems, err := resolveInt(pk.Kwargs["maxitems"], DefaultMaxHistoryItems)
+	maxItems, err := resolvePosInt(pk.Kwargs["maxitems"], DefaultMaxHistoryItems)
 	if err != nil {
 		return nil, fmt.Errorf("invalid maxitems value '%s' (must be a number): %v", pk.Kwargs["maxitems"], err)
 	}
