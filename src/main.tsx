@@ -9,7 +9,7 @@ import dayjs from "dayjs";
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import cn from "classnames";
 import {TermWrap} from "./term";
-import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts} from "./types";
+import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts, RemoteEditType} from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, ScreenWindow, riToRPtr, widthToCols} from "./model";
 
@@ -688,6 +688,9 @@ class InfoRemoteShowAll extends React.Component<{}, {}> {
         remotes = sortAndFilterRemotes(remotes);
         return (
             <div className="info-remote-showall">
+                <div className="info-title">
+                    show all remotes
+                </div>
                 <table className="remotes-table">
                     <thead>
                         <tr>
@@ -778,10 +781,10 @@ class InfoRemoteShow extends React.Component<{}, {}> {
             return "(must disconnect to install)";
         }
         if (remote.installstatus == "disconnected" || remote.installstatus == "error") {
-            return <div onClick={() => this.installRemote(remote.remoteid)} className="text-button connect-button">[run install]</div>
+            return <div key="run-install" onClick={() => this.installRemote(remote.remoteid)} className="text-button connect-button">[run install]</div>
         }
         if (remote.installstatus == "connecting") {
-            return <div onClick={() => this.cancelInstall(remote.remoteid)} className="text-button disconnect-button">[cancel install]</div>
+            return <div key="cancel-install" onClick={() => this.cancelInstall(remote.remoteid)} className="text-button disconnect-button">[cancel install]</div>
         }
         return null;
     }
@@ -801,7 +804,7 @@ class InfoRemoteShow extends React.Component<{}, {}> {
         }
         let installButton = this.renderInstallButton(remote);
         return (
-            <div className="remote-field">
+            <div key="install-status" className="remote-field">
                 <div className="remote-field-def"> install-status</div>
                 <div className="remote-field-val">
                     {statusStr}<If condition={installButton != null}> | {this.renderInstallButton(remote)}</If>
@@ -816,6 +819,13 @@ class InfoRemoteShow extends React.Component<{}, {}> {
         if (inputModel.remoteTermWrap != null) {
             inputModel.remoteTermWrap.terminal.focus();
         }
+    }
+
+    getCanonicalNameDisplayWithPort(remote : RemoteType) {
+        if (isBlank(remote.remotevars.port) || remote.remotevars.port == "22") {
+            return remote.remotecanonicalname;
+        }
+        return remote.remotecanonicalname + " (port " + remote.remotevars.port + ")";
     }
     
     render() {
@@ -838,54 +848,58 @@ class InfoRemoteShow extends React.Component<{}, {}> {
         }
         return (
             <>
-            <div className="info-remote">
-                <div className="remote-field">
-                    <div className="remote-field-def"> remoteid</div>
-                    <div className="remote-field-val">{remote.remoteid}</div>
-                </div>
-                <div className="remote-field">
-                    <div className="remote-field-def"> type</div>
-                    <div className="remote-field-val">{this.getRemoteTypeStr(remote)}</div>
-                </div>
-                <div className="remote-field">
-                    <div className="remote-field-def"> alias</div>
-                    <div className="remote-field-val">{isBlank(remote.remotealias) ? "-" : remote.remotealias}</div>
-                </div>
-                <div className="remote-field">
-                    <div className="remote-field-def"> canonicalname</div>
-                    <div className="remote-field-val">{remote.remotecanonicalname}</div>
-                </div>
-                <div className="remote-field">
-                    <div className="remote-field-def"> connectmode</div>
-                    <div className="remote-field-val">{remote.connectmode}</div>
-                </div>
-                <div className="remote-field">
-                    <div className="remote-field-def"> status</div>
-                    <div className="remote-field-val"><RemoteStatusLight remote={remote}/>{remote.status} | {this.renderConnectButton(remote)}</div>
-                </div>
-                <If condition={!isBlank(remote.errorstr)}>
-                    <div className="remote-field">
-                        <div className="remote-field-def"> error</div>
-                        <div className="remote-field-val">{remote.errorstr}</div>
+                <div key="info" className="info-remote">
+                    <div key="title" className="info-title">
+                        show remote [{remote.remotecanonicalname}]
                     </div>
-                </If>
-                {this.renderInstallStatus(remote)}
-                <If condition={!isBlank(remote.installerrorstr)}>
-                    <div className="remote-field">
-                        <div className="remote-field-def"> install error</div>
-                        <div className="remote-field-val">{remote.installerrorstr}</div>
+                    <div key="remoteid" className="remote-field">
+                        <div className="remote-field-def"> remoteid</div>
+                        <div className="remote-field-val">{remote.remoteid}</div>
                     </div>
-                </If>
-            </div>
-            <div key="term" className={cn("terminal-wrapper", {"focus": isTermFocused}, (remote != null ? "status-" + remote.status : null))} style={{overflowY: "hidden", display: (ptyRemoteId == null ? "none" : "block"), width: CellWidthPx*RemotePtyCols+15}}>
-                <If condition={!isTermFocused}>
-                    <div key="termblock" className="term-block" onClick={this.clickTermBlock}></div>
-                </If>
-                <If condition={inputModel.showNoInputMsg.get()}>
-                    <div key="termtag" className="term-tag">input is only allowed while status is 'connecting'</div>
-                </If>
-                <div key="terminal" className="terminal" id="term-remote" data-remoteid={ptyRemoteId} style={{height: CellHeightPx*RemotePtyRows}}></div>
-            </div>
+                    <div key="type" className="remote-field">
+                        <div className="remote-field-def"> type</div>
+                        <div className="remote-field-val">{this.getRemoteTypeStr(remote)}</div>
+                    </div>
+                    
+                    <div key="cname" className="remote-field">
+                        <div className="remote-field-def"> canonicalname</div>
+                        <div className="remote-field-val">{this.getCanonicalNameDisplayWithPort(remote)}</div>
+                    </div>
+                    <div key="alias" className="remote-field">
+                        <div className="remote-field-def"> alias</div>
+                        <div className="remote-field-val">{isBlank(remote.remotealias) ? "-" : remote.remotealias}</div>
+                    </div>
+                    <div key="cm" className="remote-field">
+                        <div className="remote-field-def"> connectmode</div>
+                        <div className="remote-field-val">{remote.connectmode}</div>
+                    </div>
+                    <div key="status" className="remote-field">
+                        <div className="remote-field-def"> status</div>
+                        <div className="remote-field-val"><RemoteStatusLight remote={remote}/>{remote.status} | {this.renderConnectButton(remote)}</div>
+                    </div>
+                    <If condition={!isBlank(remote.errorstr)}>
+                        <div key="error" className="remote-field">
+                            <div className="remote-field-def"> error</div>
+                            <div className="remote-field-val">{remote.errorstr}</div>
+                        </div>
+                    </If>
+                    {this.renderInstallStatus(remote)}
+                    <If condition={!isBlank(remote.installerrorstr)}>
+                        <div key="ierror" className="remote-field">
+                            <div className="remote-field-def"> install error</div>
+                            <div className="remote-field-val">{remote.installerrorstr}</div>
+                        </div>
+                    </If>
+                </div>
+                <div key="term" className={cn("terminal-wrapper", {"focus": isTermFocused}, (remote != null ? "status-" + remote.status : null))} style={{overflowY: "hidden", display: (ptyRemoteId == null ? "none" : "block"), width: CellWidthPx*RemotePtyCols+15}}>
+                    <If condition={!isTermFocused}>
+                        <div key="termblock" className="term-block" onClick={this.clickTermBlock}></div>
+                    </If>
+                    <If condition={inputModel.showNoInputMsg.get()}>
+                        <div key="termtag" className="term-tag">input is only allowed while status is 'connecting'</div>
+                    </If>
+                    <div key="terminal" className="terminal" id="term-remote" data-remoteid={ptyRemoteId} style={{height: CellHeightPx*RemotePtyRows}}></div>
+                </div>
             </>
         );
     }
@@ -896,8 +910,8 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
     alias : mobx.IObservableValue<string>;
     hostName : mobx.IObservableValue<string>;
     keyStr : mobx.IObservableValue<string>;
-    passwordStr : mobx.IObservableValue<string>;
     portStr : mobx.IObservableValue<string>;
+    passwordStr : mobx.IObservableValue<string>;
     colorStr : mobx.IObservableValue<string>;
     connectMode : mobx.IObservableValue<string>;
     sudoBool : mobx.IObservableValue<boolean>;
@@ -912,8 +926,8 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
         this.alias = mobx.observable.box("");
         this.hostName = mobx.observable.box("");
         this.keyStr = mobx.observable.box("");
+        this.portStr = mobx.observable.box("");
         this.passwordStr = mobx.observable.box("");
-        this.portStr = mobx.observable.box("22");
         this.colorStr = mobx.observable.box("");
         this.connectMode = mobx.observable.box("startup");
         this.sudoBool = mobx.observable.box(false);
@@ -929,9 +943,6 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
         }
         if (this.sudoBool.get()) {
             kwargs["sudo"] = "1";
-        }
-        if (this.portStr.get() != "22") {
-            kwargs["port"] = this.portStr.get();
         }
         if (this.colorStr.get() != "") {
             kwargs["color"] = this.colorStr.get();
@@ -998,21 +1009,16 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    onChangePasswordStr(e : any) {
+    onChangePortStr(e : any) {
         mobx.action(() => {
-            this.passwordStr.set(e.target.value);
+            this.portStr.set(e.target.value);
         })();
     }
 
     @boundMethod
-    onChangePortStr(e : any) {
-        let strVal = e.target.value;
-        let iVal = parseInt(strVal);
-        if (isNaN(iVal) || iVal < 0) {
-            iVal = 0;
-        }
+    onChangePasswordStr(e : any) {
         mobx.action(() => {
-            this.portStr.set(String(iVal));
+            this.passwordStr.set(e.target.value);
         })();
     }
 
@@ -1044,11 +1050,52 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
         })();
     }
 
-    remoteCName() : string {
-        if (this.hostName.get() == "") {
-            return "[no host]";
+    getRemoteEdit() : RemoteEditType {
+        let inputModel = GlobalModel.inputModel;
+        let infoMsg = inputModel.infoMsg.get();
+        if (infoMsg == null) {
+            return null;
         }
-        return this.hostName.get();
+        return infoMsg.remoteedit;
+    }
+
+    getEditingRemote() : RemoteType {
+        let inputModel = GlobalModel.inputModel;
+        let infoMsg = inputModel.infoMsg.get();
+        if (infoMsg == null) {
+            return null;
+        }
+        let redit = infoMsg.remoteedit;
+        if (redit == null || isBlank(redit.remoteid)) {
+            return null;
+        }
+        let remote = GlobalModel.getRemote(redit.remoteid);
+        return remote;
+    }
+
+    remoteCName() : string {
+        let redit = this.getRemoteEdit();
+        if (isBlank(redit.remoteid)) {
+            // new-mode
+            let hostName = this.hostName.get();
+            if (hostName == "") {
+                return "[no host]";
+            }
+            if (hostName.indexOf("@") == -1) {
+                hostName = "[no user]@" + hostName;
+            }
+            if (!hostName.startsWith("sudo@") && this.sudoBool.get()) {
+                return "sudo@" + hostName;
+            }
+            return hostName;
+        }
+        else {
+            let remote = this.getEditingRemote();
+            if (remote == null) {
+                return "[no remote]";
+            }
+            return remote.remotecanonicalname;
+        }
     }
 
     render() {
@@ -1061,22 +1108,22 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
         if (!redit.remoteedit) {
             return null;
         }
-        if (!isBlank(redit.remoteid)) {
+        let isEditMode = !isBlank(redit.remoteid);
+        let remote = this.getEditingRemote();
+        let colorStr : string = null;
+        if (isEditMode && remote == null) {
             return (
-                <div className="info-remote">
-                    visual editing of remotes not currently supported
-                </div>
+                <div className="info-title">cannot edit, remote {redit.remoteid} not found</div>
             );
         }
-        let colorStr : string = null;
         return (
             <form className="info-remote">
                 <div className="info-title">
-                    <If condition={isBlank(redit.remoteid)}>
+                    <If condition={!isEditMode}>
                         add new remote '{this.remoteCName()}'
                     </If>
-                    <If condition={!isBlank(redit.remoteid)}>
-                        edit remote
+                    <If condition={isEditMode}>
+                        edit remote '{this.remoteCName()}'
                     </If>
                 </div>
                 <div className="remote-input-field">
@@ -1085,16 +1132,36 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
                         ssh
                     </div>
                 </div>
+                <If condition={!isEditMode}>
+                    <div className="remote-input-field">
+                        
+                        <div className="remote-field-label">user@host</div>
+                        <div className="remote-field-control text-input">
+                            <input type="text" onChange={this.onChangeHostName} value={this.hostName.get()}/>
+                        </div>
+                    </div>
+                    <div className="remote-input-field">
+                        <div className="remote-field-label">port</div>
+                        <div className="remote-field-control text-input">
+                            <input type="number" placeholder="22" onChange={this.onChangePortStr} value={this.portStr.get()}/>
+                        </div>
+                    </div>
+                </If>
+                <If condition={isEditMode}>
+                    <div className="remote-input-field">
+                        <div className="remote-field-label">user@host</div>
+                        <div className="remote-field-control text-control">
+                            {remote.remotecanonicalname}
+                            <If condition={remote.remotevars.port != "22"}>
+                                &nbsp;(port {remote.remotevars.port})
+                            </If>
+                        </div>
+                    </div>
+                </If>
                 <div className="remote-input-field">
                     <div className="remote-field-label">alias</div>
                     <div className="remote-field-control text-input">
                         <input type="text" autoFocus onChange={this.onChangeAlias} value={this.alias.get()}/>
-                    </div>
-                </div>
-                <div className="remote-input-field">
-                    <div className="remote-field-label">user@host</div>
-                    <div className="remote-field-control text-input">
-                        <input type="text" onChange={this.onChangeHostName} value={this.hostName.get()}/>
                     </div>
                 </div>
                 <div className="remote-input-field">
@@ -1107,12 +1174,6 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
                     <div className="remote-field-label">ssh password</div>
                     <div className="remote-field-control text-input">
                         <input type="password" onChange={this.onChangePasswordStr} value={this.passwordStr.get()}/>
-                    </div>
-                </div>
-                <div className="remote-input-field">
-                    <div className="remote-field-label">port</div>
-                    <div className="remote-field-control text-input">
-                        <input type="number" placeholder="22" onChange={this.onChangePortStr} value={this.portStr.get()}/>
                     </div>
                 </div>
                 <div className="remote-input-field" style={{display: "none"}}>
