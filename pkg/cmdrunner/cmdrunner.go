@@ -38,7 +38,7 @@ var ColorNames = []string{"black", "red", "green", "yellow", "blue", "magenta", 
 var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
 
 var hostNameRe = regexp.MustCompile("^[a-z][a-z0-9.-]*$")
-var userHostRe = regexp.MustCompile("^(sudo@)?([a-z][a-z0-9-]*)@([a-z][a-z0-9.-]*)$")
+var userHostRe = regexp.MustCompile("^(sudo@)?([a-z][a-z0-9-]*)@([a-z][a-z0-9.-]*)(?::([0-9]+))?$")
 var remoteAliasRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_-]*$")
 var genericNameRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_ .()<>,/\"'\\[\\]{}=+$@!*-]*$")
 var positionRe = regexp.MustCompile("^((\\+|-)?[0-9]+|(\\+|-))$")
@@ -448,7 +448,6 @@ func RemoteInstallCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	go mshell.RunInstall()
 	return sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
-			InfoTitle:   fmt.Sprintf("show remote [%s] info", ids.Remote.DisplayName),
 			PtyRemoteId: ids.Remote.RemotePtr.RemoteId,
 		},
 	}, nil
@@ -463,7 +462,6 @@ func RemoteInstallCancelCommand(ctx context.Context, pk *scpacket.FeCommandPacke
 	go mshell.CancelInstall()
 	return sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
-			InfoTitle:   fmt.Sprintf("show remote [%s] info", ids.Remote.DisplayName),
 			PtyRemoteId: ids.Remote.RemotePtr.RemoteId,
 		},
 	}, nil
@@ -477,7 +475,6 @@ func RemoteConnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	go ids.Remote.MShell.Launch()
 	return sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
-			InfoTitle:   fmt.Sprintf("show remote [%s] info", ids.Remote.DisplayName),
 			PtyRemoteId: ids.Remote.RemotePtr.RemoteId,
 		},
 	}, nil
@@ -492,7 +489,6 @@ func RemoteDisconnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketTy
 	go ids.Remote.MShell.Disconnect(force)
 	return sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
-			InfoTitle:   fmt.Sprintf("show remote [%s] info", ids.Remote.DisplayName),
 			PtyRemoteId: ids.Remote.RemotePtr.RemoteId,
 		},
 	}, nil
@@ -529,41 +525,48 @@ func makeRemoteEditErrorReturn(visual bool, err error) (sstore.UpdatePacket, err
 }
 
 type RemoteEditArgs struct {
-	SSHOpts     *sstore.SSHOpts
-	Sudo        bool
-	ConnectMode string
-	Alias       string
-	AutoInstall bool
-	UserHost    string
-	SSHPassword string
-	SSHKeyFile  string
-	Color       string
-	EditMap     map[string]interface{}
+	CanonicalName string
+	SSHOpts       *sstore.SSHOpts
+	Sudo          bool
+	ConnectMode   string
+	Alias         string
+	AutoInstall   bool
+	SSHPassword   string
+	SSHKeyFile    string
+	Color         string
+	EditMap       map[string]interface{}
 }
 
 func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType) (*RemoteEditArgs, error) {
-	var userHost string
+	var canonicalName string
 	var sshOpts *sstore.SSHOpts
 	var isSudo bool
 
 	if isNew {
-		userHost = pk.Args[0]
+		userHost := pk.Args[0]
 		m := userHostRe.FindStringSubmatch(userHost)
 		if m == nil {
 			return nil, fmt.Errorf("invalid format of user@host argument")
 		}
-		sudoStr, remoteUser, remoteHost := m[1], m[2], m[3]
+		sudoStr, remoteUser, remoteHost, remotePortStr := m[1], m[2], m[3], m[4]
+		var uhPort int
+		if remotePortStr != "" {
+			var err error
+			uhPort, err = strconv.Atoi(remotePortStr)
+			if err != nil {
+				return nil, fmt.Errorf("invalid port specified on user@host argument")
+			}
+		}
 		if sudoStr != "" {
 			isSudo = true
 		}
 		if pk.Kwargs["sudo"] != "" {
 			sudoArg := resolveBool(pk.Kwargs["sudo"], false)
 			if isSudo && !sudoArg {
-				return nil, fmt.Errorf("invalid 'sudo@' argument, with sudo kw arg set to false")
+				return nil, fmt.Errorf("invalid 'sudo' argument, with sudo kw arg set to false")
 			}
 			if !isSudo && sudoArg {
 				isSudo = true
-				userHost = "sudo@" + userHost
 			}
 		}
 		sshOpts = &sstore.SSHOpts{
@@ -575,7 +578,17 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType) (*RemoteE
 		if err != nil {
 			return nil, fmt.Errorf("invalid port %q: %v", pk.Kwargs["port"], err)
 		}
+		if portVal != 0 && uhPort != 0 && portVal != uhPort {
+			return nil, fmt.Errorf("invalid port argument, does not match port specified in 'user@host:port' argument")
+		}
+		if portVal == 0 && uhPort != 0 {
+			portVal = uhPort
+		}
 		sshOpts.SSHPort = portVal
+		canonicalName = remoteUser + "@" + remoteHost
+		if isSudo {
+			canonicalName = "sudo@" + canonicalName
+		}
 	} else {
 		if pk.Kwargs["sudo"] != "" {
 			return nil, fmt.Errorf("cannot update 'sudo' value")
@@ -644,16 +657,16 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType) (*RemoteE
 	}
 
 	return &RemoteEditArgs{
-		SSHOpts:     sshOpts,
-		Sudo:        isSudo,
-		ConnectMode: connectMode,
-		Alias:       alias,
-		AutoInstall: autoInstall,
-		UserHost:    userHost,
-		SSHKeyFile:  keyFile,
-		SSHPassword: sshPassword,
-		Color:       color,
-		EditMap:     editMap,
+		SSHOpts:       sshOpts,
+		Sudo:          isSudo,
+		ConnectMode:   connectMode,
+		Alias:         alias,
+		AutoInstall:   autoInstall,
+		CanonicalName: canonicalName,
+		SSHKeyFile:    keyFile,
+		SSHPassword:   sshPassword,
+		Color:         color,
+		EditMap:       editMap,
 	}, nil
 }
 
@@ -678,7 +691,7 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		PhysicalId:          "",
 		RemoteType:          sstore.RemoteTypeSsh,
 		RemoteAlias:         editArgs.Alias,
-		RemoteCanonicalName: editArgs.UserHost,
+		RemoteCanonicalName: editArgs.CanonicalName,
 		RemoteSudo:          editArgs.Sudo,
 		RemoteUser:          editArgs.SSHOpts.SSHUser,
 		RemoteHost:          editArgs.SSHOpts.SSHHost,
@@ -745,7 +758,6 @@ func RemoteShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	state := ids.Remote.RState
 	return sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
-			InfoTitle:   fmt.Sprintf("show remote [%s] info", ids.Remote.DisplayName),
 			PtyRemoteId: state.RemoteId,
 		},
 	}, nil
@@ -765,7 +777,6 @@ func RemoteShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	}
 	return sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
-			InfoTitle:     fmt.Sprintf("show all remote info"),
 			RemoteShowAll: true,
 		},
 	}, nil

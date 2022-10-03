@@ -414,6 +414,10 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 	if local {
 		vars["local"] = "1"
 	}
+	vars["port"] = "22"
+	if msh.Remote.SSHOpts != nil && msh.Remote.SSHOpts.SSHPort != 0 {
+		vars["port"] = strconv.Itoa(msh.Remote.SSHOpts.SSHPort)
+	}
 	if msh.ServerProc != nil && msh.ServerProc.InitPk != nil {
 		state.DefaultState = &sstore.RemoteState{
 			Cwd:  msh.ServerProc.InitPk.Cwd,
