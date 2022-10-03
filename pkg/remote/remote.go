@@ -584,6 +584,21 @@ func (msh *MShellProc) GetNumRunningCommands() int {
 	return len(msh.RunningCmds)
 }
 
+func (msh *MShellProc) UpdateRemote(ctx context.Context, editMap map[string]interface{}) error {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	updatedRemote, err := sstore.UpdateRemote(ctx, msh.Remote.RemoteId, editMap)
+	if err != nil {
+		return err
+	}
+	if updatedRemote == nil {
+		return fmt.Errorf("no remote returned from UpdateRemote")
+	}
+	msh.Remote = updatedRemote
+	go msh.NotifyRemoteUpdate()
+	return nil
+}
+
 func (msh *MShellProc) Disconnect(force bool) {
 	status := msh.GetStatus()
 	if status != StatusConnected && status != StatusConnecting {

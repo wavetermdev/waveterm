@@ -1031,3 +1031,61 @@ func GetSessionStats(ctx context.Context, sessionId string) (*SessionStatsType, 
 	rtn.DiskStats = diskSize
 	return rtn, nil
 }
+
+const (
+	RemoteField_Alias       = "alias"       // string
+	RemoteField_ConnectMode = "connectmode" // string
+	RemoteField_AutoInstall = "autoinstall" // bool
+	RemoteField_SSHKey      = "sshkey"      // string
+	RemoteField_SSHPassword = "sshpassword" // string
+	RemoteField_Color       = "color"       // string
+)
+
+// editMap: alias, connectmode, autoinstall, sshkey, color, sshpassword (from constants)
+func UpdateRemote(ctx context.Context, remoteId string, editMap map[string]interface{}) (*RemoteType, error) {
+	var rtn *RemoteType
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT remoteid FROM remote WHERE remoteid = ?`
+		if !tx.Exists(query, remoteId) {
+			return fmt.Errorf("remote not found")
+		}
+		if alias, found := editMap[RemoteField_Alias]; found {
+			query = `SELECT remoteid FROM remote WHERE remotealias = ? AND remoteid <> ?`
+			if tx.Exists(query, alias, remoteId) {
+				return fmt.Errorf("remote has duplicate alias, cannot update")
+			}
+			query = `UPDATE remote SET remotealias = ? WHERE remoteid = ?`
+			tx.ExecWrap(query, alias, remoteId)
+		}
+		if mode, found := editMap[RemoteField_ConnectMode]; found {
+			query = `UPDATE remote SET connectmode = ? WHERE remoteid = ?`
+			tx.ExecWrap(query, mode, remoteId)
+		}
+		if autoInstall, found := editMap[RemoteField_AutoInstall]; found {
+			query = `UPDATE remote SET autoinstall = ? WHERE remoteid = ?`
+			tx.ExecWrap(query, autoInstall, remoteId)
+		}
+		if sshKey, found := editMap[RemoteField_SSHKey]; found {
+			query = `UPDATE remote SET sshopts = json_set(sshopts, '$.sshidentity', ?) WHERE remoteid = ?`
+			tx.ExecWrap(query, sshKey, remoteId)
+		}
+		if sshPassword, found := editMap[RemoteField_SSHPassword]; found {
+			query = `UPDATE remote SET sshopts = json_set(sshopts, '$.sshpassword', ?) WHERE remoteid = ?`
+			tx.ExecWrap(query, sshPassword, remoteId)
+		}
+		if color, found := editMap[RemoteField_Color]; found {
+			query = `UPDATE remote SET remoteopts = json_set(remoteopts, '$.color', ?) WHERE remoteid = ?`
+			tx.ExecWrap(query, color, remoteId)
+		}
+		var err error
+		rtn, err = GetRemoteById(tx.Context(), remoteId)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	return rtn, nil
+}

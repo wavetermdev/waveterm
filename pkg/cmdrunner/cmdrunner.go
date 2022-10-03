@@ -91,6 +91,7 @@ func init() {
 	registerCmdFn("remote:new", RemoteNewCommand)
 	registerCmdFn("remote:archive", RemoteArchiveCommand)
 	registerCmdFn("remote:set", RemoteSetCommand)
+	registerCmdAlias("remote:edit", RemoteSetCommand)
 	registerCmdFn("remote:disconnect", RemoteDisconnectCommand)
 	registerCmdFn("remote:connect", RemoteConnectCommand)
 	registerCmdFn("remote:install", RemoteInstallCommand)
@@ -537,6 +538,7 @@ type RemoteEditArgs struct {
 	SSHPassword string
 	SSHKeyFile  string
 	Color       string
+	EditMap     map[string]interface{}
 }
 
 func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType) (*RemoteEditArgs, error) {
@@ -591,11 +593,14 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType) (*RemoteE
 			return nil, fmt.Errorf("invalid alias format")
 		}
 	}
-	connectMode := sstore.ConnectModeAuto
+	var connectMode string
+	if isNew {
+		connectMode = sstore.ConnectModeAuto
+	}
 	if pk.Kwargs["connectmode"] != "" {
 		connectMode = pk.Kwargs["connectmode"]
 	}
-	if !sstore.IsValidConnectMode(connectMode) {
+	if connectMode != "" && !sstore.IsValidConnectMode(connectMode) {
 		err := fmt.Errorf("invalid connectmode %q: valid modes are %s", connectMode, formatStrs([]string{sstore.ConnectModeStartup, sstore.ConnectModeAuto, sstore.ConnectModeManual}, "or", false))
 		return nil, err
 	}
@@ -616,6 +621,28 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType) (*RemoteE
 		sshOpts.SSHIdentity = keyFile
 		sshOpts.SSHPassword = sshPassword
 	}
+
+	// set up editmap
+	editMap := make(map[string]interface{})
+	if _, found := pk.Kwargs[sstore.RemoteField_Alias]; found {
+		editMap[sstore.RemoteField_Alias] = alias
+	}
+	if connectMode != "" {
+		editMap[sstore.RemoteField_ConnectMode] = connectMode
+	}
+	if _, found := pk.Kwargs[sstore.RemoteField_AutoInstall]; found {
+		editMap[sstore.RemoteField_AutoInstall] = autoInstall
+	}
+	if _, found := pk.Kwargs["key"]; found {
+		editMap[sstore.RemoteField_SSHKey] = keyFile
+	}
+	if _, found := pk.Kwargs[sstore.RemoteField_Color]; found {
+		editMap[sstore.RemoteField_Color] = color
+	}
+	if _, found := pk.Kwargs["password"]; found {
+		editMap[sstore.RemoteField_SSHPassword] = sshPassword
+	}
+
 	return &RemoteEditArgs{
 		SSHOpts:     sshOpts,
 		Sudo:        isSudo,
@@ -626,6 +653,7 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType) (*RemoteE
 		SSHKeyFile:  keyFile,
 		SSHPassword: sshPassword,
 		Color:       color,
+		EditMap:     editMap,
 	}, nil
 }
 
@@ -676,12 +704,37 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 }
 
 func RemoteSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_Remote)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window|R_Remote)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("ids: %v\n", ids)
-	return nil, nil
+	visualEdit := resolveBool(pk.Kwargs["visual"], false)
+	isSubmitted := resolveBool(pk.Kwargs["submit"], false)
+	editArgs, err := parseRemoteEditArgs(false, pk)
+	if err != nil {
+		return makeRemoteEditErrorReturn(visualEdit, fmt.Errorf("/remote:new %v", err))
+	}
+	if visualEdit && !isSubmitted && len(editArgs.EditMap) == 0 {
+		return sstore.ModelUpdate{
+			Info: &sstore.InfoMsgType{
+				RemoteEdit: &sstore.RemoteEditType{
+					RemoteEdit: true,
+					RemoteId:   ids.Remote.RemotePtr.RemoteId,
+				},
+			},
+		}, nil
+	}
+	err = ids.Remote.MShell.UpdateRemote(ctx, editArgs.EditMap)
+	if err != nil {
+		return makeRemoteEditErrorReturn(visualEdit, fmt.Errorf("/remote:new error updating remote: %v", err))
+	}
+	update := sstore.ModelUpdate{
+		Info: &sstore.InfoMsgType{
+			InfoMsg:   fmt.Sprintf("remote %q updated", ids.Remote.DisplayName),
+			TimeoutMs: 2000,
+		},
+	}
+	return update, nil
 }
 
 func RemoteShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
