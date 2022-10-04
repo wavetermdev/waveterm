@@ -19,6 +19,7 @@ const CellHeightPx = 16;
 const CellWidthPx = 8;
 const RemotePtyRows = 8;
 const RemotePtyCols = 80;
+const PasswordUnchangedSentinel = "--unchanged--";
 
 const RemoteColors = ["red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"];
 
@@ -916,52 +917,103 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
     connectMode : mobx.IObservableValue<string>;
     sudoBool : mobx.IObservableValue<boolean>;
     autoInstallBool : mobx.IObservableValue<boolean>;
+    authMode : mobx.IObservableValue<string>;
 
     constructor(props) {
         super(props);
         this.resetForm();
     }
 
+    getEditAuthMode(redit : RemoteEditType) : string {
+        if (!isBlank(redit.keystr) && redit.haspassword) {
+            return "key+pw";
+        }
+        else if (!isBlank(redit.keystr)) {
+            return "key";
+        }
+        else if (redit.haspassword) {
+            return "pw";
+        }
+        else {
+            return "none";
+        }
+    }
+
     resetForm() {
-        this.alias = mobx.observable.box("");
+        let redit = this.getRemoteEdit();
+        let remote = this.getEditingRemote();
+        if (redit == null) {
+            return;
+        }
+        let isEditMode = !isBlank(redit.remoteid);
+        if (isEditMode && remote == null) {
+            return;
+        }
+
+        // not editable
         this.hostName = mobx.observable.box("");
-        this.keyStr = mobx.observable.box("");
         this.portStr = mobx.observable.box("");
-        this.passwordStr = mobx.observable.box("");
-        this.colorStr = mobx.observable.box("");
-        this.connectMode = mobx.observable.box("startup");
         this.sudoBool = mobx.observable.box(false);
-        this.autoInstallBool = mobx.observable.box(true);
+
+        // editable
+        if (isEditMode) {
+            this.authMode = mobx.observable.box(this.getEditAuthMode(redit));
+            this.alias = mobx.observable.box(remote.remotealias ?? "");
+            this.passwordStr = mobx.observable.box(redit.haspassword ? PasswordUnchangedSentinel : "");
+            this.keyStr = mobx.observable.box(redit.keystr ?? "");
+            this.colorStr = mobx.observable.box(remote.remotevars["color"] ?? "");
+            this.connectMode = mobx.observable.box(remote.connectmode);
+            this.autoInstallBool = mobx.observable.box(remote.autoinstall);
+        }
+        else {
+            this.authMode = mobx.observable.box("none");
+            this.alias = mobx.observable.box("");
+            this.passwordStr = mobx.observable.box("");
+            this.keyStr = mobx.observable.box("");
+            this.colorStr = mobx.observable.box("");
+            this.connectMode = mobx.observable.box("startup");
+            this.autoInstallBool = mobx.observable.box(true);
+        }
     }
 
     @boundMethod
-    doCreateRemote() {
+    doSubmitRemote() {
+        let redit = this.getRemoteEdit();
+        let isEditing = !isBlank(redit.remoteid);
         let cname = this.hostName.get();
         let kwargs : Record<string, string> = {};
-        if (this.alias.get() != "") {
-            kwargs["alias"] = this.alias.get();
+        let authMode = this.authMode.get();
+        if (!isEditing) {
+            if (this.sudoBool.get()) {
+                kwargs["sudo"] = "1";
+            }
         }
-        if (this.sudoBool.get()) {
-            kwargs["sudo"] = "1";
-        }
-        if (this.colorStr.get() != "") {
-            kwargs["color"] = this.colorStr.get();
-        }
-        if (this.keyStr.get() != "") {
+        kwargs["alias"] = this.alias.get();
+        kwargs["color"] = this.colorStr.get();
+        if (authMode == "key" || authMode == "key+pw") {
             kwargs["key"] = this.keyStr.get();
         }
-        if (this.passwordStr.get() != "") {
+        else {
+            kwargs["key"] = "";
+        }
+        if (authMode == "pw" || authMode == "key+pw") {
             kwargs["password"] = this.passwordStr.get();
         }
-        kwargs["connectmode"] = this.connectMode.get();
-        if (!this.autoInstallBool.get()) {
-            kwargs["autoinstall"] = "0";
+        else {
+            kwargs["password"] = ""
         }
+        kwargs["connectmode"] = this.connectMode.get();
+        kwargs["autoinstall"] = (this.autoInstallBool.get() ? "1" : "0");
         kwargs["visual"] = "1";
         kwargs["submit"] = "1";
-        console.log("create remote", cname, kwargs);
+        console.log("submit remote", (isEditing ? redit.remoteid : cname), kwargs);
         mobx.action(() => {
-            GlobalCommandRunner.createRemote(cname, kwargs);
+            if (isEditing) {
+                GlobalCommandRunner.editRemote(redit.remoteid, kwargs);
+            }
+            else {
+                GlobalCommandRunner.createRemote(cname, kwargs);
+            }
         })();
     }
 
@@ -976,7 +1028,7 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
     @boundMethod
     keyDownCreateRemote(e : any) {
         if (e.code == "Enter") {
-            this.doCreateRemote();
+            this.doSubmitRemote();
         }
     }
 
@@ -1023,6 +1075,13 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
     }
 
     @boundMethod
+    onFocusPasswordStr(e : any) {
+        if (this.passwordStr.get() == PasswordUnchangedSentinel) {
+            e.target.select();
+        }
+    }
+
+    @boundMethod
     onChangeColorStr(e : any) {
         mobx.action(() => {
             this.colorStr.set(e.target.value);
@@ -1033,6 +1092,13 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
     onChangeConnectMode(e : any) {
         mobx.action(() => {
             this.connectMode.set(e.target.value);
+        })();
+    }
+
+    @boundMethod
+    onChangeAuthMode(e : any) {
+        mobx.action(() => {
+            this.authMode.set(e.target.value);
         })();
     }
 
@@ -1110,15 +1176,15 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
         }
         let isEditMode = !isBlank(redit.remoteid);
         let remote = this.getEditingRemote();
-        let colorStr : string = null;
         if (isEditMode && remote == null) {
             return (
                 <div className="info-title">cannot edit, remote {redit.remoteid} not found</div>
             );
         }
+        let colorStr : string = null;
         return (
             <form className="info-remote">
-                <div className="info-title">
+                <div key="title" className="info-title">
                     <If condition={!isEditMode}>
                         add new remote '{this.remoteCName()}'
                     </If>
@@ -1126,21 +1192,20 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
                         edit remote '{this.remoteCName()}'
                     </If>
                 </div>
-                <div className="remote-input-field">
+                <div key="type" className="remote-input-field">
                     <div className="remote-field-label">type</div>
                     <div className="remote-field-control text-control">
                         ssh
                     </div>
                 </div>
                 <If condition={!isEditMode}>
-                    <div className="remote-input-field">
-                        
+                    <div key="hostname" className="remote-input-field">
                         <div className="remote-field-label">user@host</div>
                         <div className="remote-field-control text-input">
-                            <input type="text" onChange={this.onChangeHostName} value={this.hostName.get()}/>
+                            <input type="text" autoFocus={!isEditMode ? true : null} onChange={this.onChangeHostName} value={this.hostName.get()}/>
                         </div>
                     </div>
-                    <div className="remote-input-field">
+                    <div key="port" className="remote-input-field">
                         <div className="remote-field-label">port</div>
                         <div className="remote-field-control text-input">
                             <input type="number" placeholder="22" onChange={this.onChangePortStr} value={this.portStr.get()}/>
@@ -1148,41 +1213,56 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
                     </div>
                 </If>
                 <If condition={isEditMode}>
-                    <div className="remote-input-field">
+                    <div key="hostname" className="remote-input-field">
                         <div className="remote-field-label">user@host</div>
                         <div className="remote-field-control text-control">
                             {remote.remotecanonicalname}
                             <If condition={remote.remotevars.port != "22"}>
-                                &nbsp;(port {remote.remotevars.port})
+            &nbsp;(port {remote.remotevars.port})
                             </If>
                         </div>
                     </div>
                 </If>
-                <div className="remote-input-field">
+                <div key="alias" className="remote-input-field">
                     <div className="remote-field-label">alias</div>
                     <div className="remote-field-control text-input">
-                        <input type="text" autoFocus onChange={this.onChangeAlias} value={this.alias.get()}/>
+                        <input type="text" autoFocus={isEditMode ? true : null} onChange={this.onChangeAlias} value={this.alias.get()}/>
                     </div>
                 </div>
-                <div className="remote-input-field">
-                    <div className="remote-field-label">ssh keyfile</div>
-                    <div className="remote-field-control text-input">
-                        <input type="text" onChange={this.onChangeKeyStr} value={this.keyStr.get()}/>
+                <div key="auth" className="remote-input-field">
+                    <div className="remote-field-label">authmode</div>
+                    <div className="remote-field-control select-input">
+                        <select onChange={this.onChangeAuthMode} value={this.authMode.get()}>
+                            <option value="none">none</option>
+                            <option value="key">keyfile</option>
+                            <option value="pw">password</option>
+                            <option value="key+pw">keyfile and password</option>
+                        </select>
                     </div>
                 </div>
-                <div className="remote-input-field">
-                    <div className="remote-field-label">ssh password</div>
-                    <div className="remote-field-control text-input">
-                        <input type="password" onChange={this.onChangePasswordStr} value={this.passwordStr.get()}/>
+                <If condition={this.authMode.get() == "key" || this.authMode.get() == "key+pw"}>
+                    <div key="keyfile" className="remote-input-field">
+                        <div className="remote-field-label">ssh keyfile</div>
+                        <div className="remote-field-control text-input">
+                            <input type="text" onChange={this.onChangeKeyStr} value={this.keyStr.get()}/>
+                        </div>
                     </div>
-                </div>
-                <div className="remote-input-field" style={{display: "none"}}>
+                </If>
+                <If condition={this.authMode.get() == "pw" || this.authMode.get() == "key+pw"}>
+                    <div key="pw" className="remote-input-field">
+                        <div className="remote-field-label">ssh password</div>
+                        <div className="remote-field-control text-input">
+                            <input type="password" onFocus={this.onFocusPasswordStr} onChange={this.onChangePasswordStr} value={this.passwordStr.get()}/>
+                        </div>
+                    </div>
+                </If>
+                <div key="sudo" className="remote-input-field" style={{display: "none"}}>
                     <div className="remote-field-label">sudo</div>
                     <div className="remote-field-control checkbox-input">
                         <input type="checkbox" onChange={this.onChangeSudo} checked={this.sudoBool.get()}/>
                     </div>
                 </div>
-                <div className="remote-input-field">
+                <div key="cm" className="remote-input-field">
                     <div className="remote-field-label">connectmode</div>
                     <div className="remote-field-control select-input">
                         <select onChange={this.onChangeConnectMode} value={this.connectMode.get()}>
@@ -1192,13 +1272,13 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
                         </select>
                     </div>
                 </div>
-                <div className="remote-input-field">
+                <div key="ai" className="remote-input-field">
                     <div className="remote-field-label">autoinstall</div>
                     <div className="remote-field-control checkbox-input">
                         <input type="checkbox" onChange={this.onChangeAutoInstall} checked={this.autoInstallBool.get()}/>
                     </div>
                 </div>
-                <div className="remote-input-field">
+                <div key="color" className="remote-input-field">
                     <div className="remote-field-label">color</div>
                     <div className="remote-field-control select-input">
                         <select onChange={this.onChangeColorStr} value={this.colorStr.get()}>
@@ -1210,17 +1290,17 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
                     </div>
                 </div>
                 <If condition={!isBlank(redit.errorstr)}>
-                    <div className="info-error">
+                    <div key="error" className="info-error">
                         {redit.errorstr}
                     </div>
                 </If>
                 <If condition={!isBlank(redit.infostr)}>
-                    <div className="info-msg">
+                    <div key="msg" className="info-msg">
                         {redit.infostr}
                     </div>
                 </If>
-                <div style={{marginTop: 15, marginBottom: 10}} className="remote-input-field">
-                    <a tabIndex={0} style={{marginRight: 20}} onClick={this.doCreateRemote} onKeyDown={this.keyDownCreateRemote} className="text-button success-button">[create remote]</a>
+                <div key="controls" style={{marginTop: 15, marginBottom: 10}} className="remote-input-field">
+                    <a tabIndex={0} style={{marginRight: 20}} onClick={this.doSubmitRemote} onKeyDown={this.keyDownCreateRemote} className="text-button success-button">[{isEditMode ? "update" : "create"} remote]</a>
                     {"|"}
                     <a tabIndex={0} style={{marginLeft: 20}} onClick={this.doCancel} onKeyDown={this.keyDownCancel} className="text-button grey-button">[cancel (ESC)]</a>
                 </div>
@@ -1254,8 +1334,12 @@ class InfoMsg extends React.Component<{}, {}> {
         let istr : string = null;
         let idx : number = 0;
         let titleStr = null;
+        let remoteEditKey = "inforemoteedit";
         if (infoMsg != null) {
             titleStr = infoMsg.infotitle;
+            if (infoMsg.remoteedit != null) {
+                remoteEditKey += (infoMsg.remoteedit.remoteid == null ? "-new" : "-" + infoMsg.remoteedit.remoteid);
+            }
         }
         return (
             <div className="cmd-input-info" style={{display: (infoShow ? "block" : "none")}}>
@@ -1277,7 +1361,7 @@ class InfoMsg extends React.Component<{}, {}> {
                     </div>
                 </If>
                 <If condition={infoMsg && infoMsg.remoteedit}>
-                    <InfoRemoteEdit key="inforemoteedit"/>
+                    <InfoRemoteEdit key={"inforemoteedit"} />
                 </If>
                 <InfoRemoteShow key="inforemoteshow"/>
                 <InfoRemoteShowAll key="inforemoteshowall"/>

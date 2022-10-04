@@ -1895,11 +1895,18 @@ class CommandRunner {
     }
 
     openCreateRemote() : void {
-        GlobalModel.submitCommand("remote", "new", null, {"nohist": "1"}, true);
+        GlobalModel.submitCommand("remote", "new", null, {"nohist": "1", "visual": "1"}, true);
     }
 
-    editRemote(remoteid : string) : void {
-        GlobalModel.submitCommand("remote", "edit", null, {"nohist": "1", "remote": remoteid}, true);
+    editRemote(remoteid : string, kwargsArg : Record<string, string>) : void {
+        let kwargs = Object.assign({}, kwargsArg);
+        kwargs["nohist"] = "1";
+        kwargs["remote"] = remoteid;
+        GlobalModel.submitCommand("remote", "edit", null, kwargs, true);
+    }
+
+    openEditRemote(remoteid : string) : void {
+        GlobalModel.submitCommand("remote", "edit", null, {"remote": remoteid, "nohist": "1", "visual": "1"}, true);
     }
 };
 
