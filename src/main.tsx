@@ -768,6 +768,11 @@ class InfoRemoteShow extends React.Component<{}, {}> {
         GlobalCommandRunner.installCancelRemote(remoteId);
     }
 
+    @boundMethod
+    editRemote(remoteId : string) {
+        GlobalCommandRunner.openEditRemote(remoteId);
+    }
+
     renderConnectButton(remote : RemoteType) : any {
         if (remote.status == "connected" || remote.status == "connecting") {
             return <div onClick={() => this.disconnectRemote(remote.remoteid)} className="text-button disconnect-button">[disconnect remote]</div>
@@ -775,6 +780,10 @@ class InfoRemoteShow extends React.Component<{}, {}> {
         else {
             return <div onClick={() => this.connectRemote(remote.remoteid)} className="text-button connect-button">[connect remote]</div>
         }
+    }
+
+    renderEditButton(remote : RemoteType) : any {
+        return <div onClick={() => this.editRemote(remote.remoteid)} className="text-button">[edit remote]</div>
     }
 
     renderInstallButton(remote : RemoteType) : any {
@@ -855,7 +864,7 @@ class InfoRemoteShow extends React.Component<{}, {}> {
                     </div>
                     <div key="remoteid" className="remote-field">
                         <div className="remote-field-def"> remoteid</div>
-                        <div className="remote-field-val">{remote.remoteid}</div>
+                        <div className="remote-field-val">{remote.remoteid} | {this.renderEditButton(remote)}</div>
                     </div>
                     <div key="type" className="remote-field">
                         <div className="remote-field-def"> type</div>
@@ -918,6 +927,7 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
     sudoBool : mobx.IObservableValue<boolean>;
     autoInstallBool : mobx.IObservableValue<boolean>;
     authMode : mobx.IObservableValue<string>;
+    archiveConfirm : mobx.IObservableValue<boolean> = mobx.observable.box(false);
 
     constructor(props) {
         super(props);
@@ -989,6 +999,26 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
         mobx.action(() => {
             this.passwordStr.set(PasswordUnchangedSentinel);
         })();
+    }
+
+    @boundMethod
+    updateArchiveConfirm(e : any) : void {
+        mobx.action(() => {
+            this.archiveConfirm.set(e.target.checked);
+        })();
+    }
+
+    @boundMethod
+    doArchiveRemote(e : any) {
+        e.preventDefault();
+        if (!this.archiveConfirm.get()) {
+            return;
+        }
+        let redit = this.getRemoteEdit();
+        if (redit == null || isBlank(redit.remoteid)) {
+            return;
+        }
+        GlobalCommandRunner.archiveRemote(redit.remoteid);
     }
 
     @boundMethod
@@ -1319,6 +1349,9 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
                 </If>
                 <div key="controls" style={{marginTop: 15, marginBottom: 10}} className="remote-input-field">
                     <a tabIndex={0} style={{marginRight: 20}} onClick={this.doSubmitRemote} onKeyDown={this.keyDownCreateRemote} className="text-button success-button">[{isEditMode ? "update" : "create"} remote]</a>
+                    {"|"}
+                    <a tabIndex={0} style={{marginLeft: 20, marginRight: 5}} onClick={this.doArchiveRemote} onKeyDown={this.keyDownCreateRemote} className={cn("text-button", (this.archiveConfirm.get() ? "error-button" : "disabled-button"))}>[archive remote]</a>
+                    <input onChange={this.updateArchiveConfirm} checked={this.archiveConfirm.get()} style={{marginRight: 20}} type="checkbox"/>
                     {"|"}
                     <a tabIndex={0} style={{marginLeft: 20}} onClick={this.doCancel} onKeyDown={this.keyDownCancel} className="text-button grey-button">[cancel (ESC)]</a>
                 </div>

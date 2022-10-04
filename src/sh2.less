@@ -948,6 +948,10 @@ body .xterm .xterm-viewport {
     }
 }
 
+input[type=checkbox] {
+    cursor: pointer;
+}
+
 .text-button {
     .mono-font(12px, 600);
     color: @term-white;
@@ -956,28 +960,52 @@ body .xterm .xterm-viewport {
     outline: 2px solid #171717;
 
     &:hover, &:focus {
+        color: @term-white;
         background-color: #333;
         outline: 2px solid #333;
     }
     
     &.connect-button {
         color: @term-green;
+        &:hover {
+            color: @term-green;
+        }
     }
     
     &.disconnect-button {
         color: @term-red;
+        &:hover {
+            color: @term-red;
+        }
     }
 
     &.success-button {
         color: @term-green;
+        &:hover {
+            color: @term-green;
+        }
     }
 
     &.error-button {
         color: @term-red;
+        &:hover {
+            color: @term-red;
+        }
     }
 
     &.grey-button {
         color: #666;
+        &:hover {
+            color: #666;
+        }
+    }
+
+    &.disabled-button {
+        &:hover, &:focus {
+            outline: none;
+            background-color: #171717;
+        }
+        cursor: default;
     }
 }
 

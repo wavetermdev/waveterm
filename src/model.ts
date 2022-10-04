@@ -1908,6 +1908,10 @@ class CommandRunner {
     openEditRemote(remoteid : string) : void {
         GlobalModel.submitCommand("remote", "edit", null, {"remote": remoteid, "nohist": "1", "visual": "1"}, true);
     }
+
+    archiveRemote(remoteid : string) {
+        GlobalModel.submitCommand("remote", "archive", null, {"remote": remoteid, "nohist": "1"}, true);
+    }
 };
 
 let GlobalModel : Model = null;
