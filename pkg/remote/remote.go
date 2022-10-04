@@ -117,6 +117,7 @@ type RemoteRuntimeState struct {
 	UName               string              `json:"uname"`
 	MShellVersion       string              `json:"mshellversion"`
 	WaitingForPassword  bool                `json:"waitingforpassword,omitempty"`
+	Local               bool                `json:"local,omitempty"`
 }
 
 func (state RemoteRuntimeState) IsConnected() bool {
@@ -127,6 +128,12 @@ func (msh *MShellProc) GetStatus() string {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
 	return msh.Status
+}
+
+func (msh *MShellProc) GetRemoteId() string {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	return msh.Remote.RemoteId
 }
 
 func (msh *MShellProc) GetInstallStatus() string {
@@ -166,12 +173,22 @@ func LoadRemotes(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	var numLocal int
 	for _, remote := range allRemotes {
 		msh := MakeMShell(remote)
 		GlobalStore.Map[remote.RemoteId] = msh
 		if remote.ConnectMode == sstore.ConnectModeStartup {
 			go msh.Launch()
 		}
+		if remote.Local {
+			numLocal++
+		}
+	}
+	if numLocal == 0 {
+		return fmt.Errorf("no local remote found")
+	}
+	if numLocal > 1 {
+		return fmt.Errorf("multiple local remotes found")
 	}
 	return nil
 }
@@ -224,6 +241,10 @@ func AddRemote(ctx context.Context, r *sstore.RemoteType) error {
 		}
 		r.RemoteId = erCopy.RemoteId
 	}
+	if r.Local {
+		return fmt.Errorf("cannot create another local remote (there can be only one)")
+	}
+
 	err := sstore.UpsertRemote(ctx, r)
 	if err != nil {
 		return fmt.Errorf("cannot create remote %q: %v", r.RemoteCanonicalName, err)
@@ -246,6 +267,9 @@ func ArchiveRemote(ctx context.Context, remoteId string) error {
 	}
 	if msh.Status == StatusConnected {
 		return fmt.Errorf("cannot archive connected remote")
+	}
+	if msh.Remote.Local {
+		return fmt.Errorf("cannot archive local remote")
 	}
 	rcopy := msh.GetRemoteCopy()
 	archivedRemote := &sstore.RemoteType{
@@ -301,6 +325,17 @@ func GetRemoteById(remoteId string) *MShellProc {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
 	return GlobalStore.Map[remoteId]
+}
+
+func GetLocalRemote() *MShellProc {
+	GlobalStore.Lock.Lock()
+	defer GlobalStore.Lock.Unlock()
+	for _, msh := range GlobalStore.Map {
+		if msh.IsLocal() {
+			return msh
+		}
+	}
+	return nil
 }
 
 func ResolveRemoteRef(remoteRef string) *RemoteRuntimeState {
@@ -369,6 +404,12 @@ func makeShortHost(host string) string {
 	return host[0:dotIdx]
 }
 
+func (msh *MShellProc) IsLocal() bool {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	return msh.Remote.Local
+}
+
 func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
@@ -386,6 +427,7 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		UName:               msh.UName,
 		InstallStatus:       msh.InstallStatus,
 		NeedsMShellUpgrade:  msh.NeedsMShellUpgrade,
+		Local:               msh.Remote.Local,
 	}
 	if msh.Err != nil {
 		state.ErrorStr = msh.Err.Error()
@@ -396,7 +438,6 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 	if msh.Status == StatusConnecting {
 		state.WaitingForPassword = msh.isWaitingForPassword_nolock()
 	}
-	local := (msh.Remote.SSHOpts == nil || msh.Remote.SSHOpts.Local)
 	vars := make(map[string]string)
 	vars["user"] = msh.Remote.RemoteUser
 	vars["bestuser"] = vars["user"]
@@ -411,7 +452,7 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 	if msh.Remote.RemoteSudo {
 		vars["sudo"] = "1"
 	}
-	if local {
+	if msh.Remote.Local {
 		vars["local"] = "1"
 	}
 	vars["port"] = "22"
@@ -437,12 +478,12 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		vars["besthost"] = vars["remotehost"]
 		vars["bestshorthost"] = vars["remoteshorthost"]
 	}
-	if local && msh.Remote.RemoteSudo {
+	if msh.Remote.Local && msh.Remote.RemoteSudo {
 		vars["bestuser"] = "sudo"
 	} else if msh.Remote.RemoteSudo {
 		vars["bestuser"] = "sudo@" + vars["bestuser"]
 	}
-	if local {
+	if msh.Remote.Local {
 		vars["bestname"] = vars["bestuser"] + "@local"
 		vars["bestshortname"] = vars["bestuser"] + "@local"
 	} else {

@@ -5,7 +5,8 @@ CREATE TABLE client (
     userid varchar(36) NOT NULL,
     activesessionid varchar(36) NOT NULL,
     userpublickeybytes blob NOT NULL,
-    userprivatekeybytes blob NOT NULL
+    userprivatekeybytes blob NOT NULL,
+    winsize json NOT NULL
 );
 CREATE TABLE session (
     sessionid varchar(36) PRIMARY KEY,
@@ -83,10 +84,12 @@ CREATE TABLE remote (
     remoteuser varchar(50) NOT NULL,
     remotehost varchar(200) NOT NULL,
     connectmode varchar(20) NOT NULL,
+    autoinstall boolean NOT NULL,
     initpk json NOT NULL,
     sshopts json NOT NULL,
     remoteopts json NOT NULL,
     lastconnectts bigint NOT NULL,
+    local boolean NOT NULL,
     archived boolean NOT NULL,
     remoteidx int NOT NULL
 );

@@ -94,6 +94,7 @@ CREATE TABLE remote (
     sshopts json NOT NULL,
     remoteopts json NOT NULL,
     lastconnectts bigint NOT NULL,
+    local boolean NOT NULL,
     archived boolean NOT NULL,
     remoteidx int NOT NULL
 );

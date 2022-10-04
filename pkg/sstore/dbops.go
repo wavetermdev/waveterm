@@ -73,6 +73,20 @@ func GetRemoteById(ctx context.Context, remoteId string) (*RemoteType, error) {
 	return remote, nil
 }
 
+func GetLocalRemote(ctx context.Context) (*RemoteType, error) {
+	var remote *RemoteType
+	err := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT * FROM remote WHERE local`
+		m := tx.GetMap(query)
+		remote = RemoteFromMap(m)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return remote, nil
+}
+
 func GetRemoteByCanonicalName(ctx context.Context, cname string) (*RemoteType, error) {
 	var remote *RemoteType
 	err := WithTx(ctx, func(tx *TxWrap) error {
@@ -131,8 +145,8 @@ func UpsertRemote(ctx context.Context, r *RemoteType) error {
 		maxRemoteIdx := tx.GetInt(query)
 		r.RemoteIdx = int64(maxRemoteIdx + 1)
 		query = `INSERT INTO remote
-            ( remoteid, physicalid, remotetype, remotealias, remotecanonicalname, remotesudo, remoteuser, remotehost, connectmode, autoinstall, initpk, sshopts, remoteopts, lastconnectts, archived, remoteidx) VALUES 
-            (:remoteid,:physicalid,:remotetype,:remotealias,:remotecanonicalname,:remotesudo,:remoteuser,:remotehost,:connectmode,:autoinstall,:initpk,:sshopts,:remoteopts,:lastconnectts,:archived,:remoteidx)`
+            ( remoteid, physicalid, remotetype, remotealias, remotecanonicalname, remotesudo, remoteuser, remotehost, connectmode, autoinstall, initpk, sshopts, remoteopts, lastconnectts, archived, remoteidx, local) VALUES
+            (:remoteid,:physicalid,:remotetype,:remotealias,:remotecanonicalname,:remotesudo,:remoteuser,:remotehost,:connectmode,:autoinstall,:initpk,:sshopts,:remoteopts,:lastconnectts,:archived,:remoteidx,:local)`
 		tx.NamedExecWrap(query, r.ToMap())
 		return nil
 	})

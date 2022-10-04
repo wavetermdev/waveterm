@@ -508,6 +508,7 @@ type RemoteType struct {
 	LastConnectTs       int64                  `json:"lastconnectts"`
 	Archived            bool                   `json:"archived"`
 	RemoteIdx           int64                  `json:"remoteidx"`
+	Local               bool                   `json:"local"`
 }
 
 func (r *RemoteType) GetName() string {
@@ -551,6 +552,7 @@ func (r *RemoteType) ToMap() map[string]interface{} {
 	rtn["lastconnectts"] = r.LastConnectTs
 	rtn["archived"] = r.Archived
 	rtn["remoteidx"] = r.RemoteIdx
+	rtn["local"] = r.Local
 	return rtn
 }
 
@@ -575,6 +577,7 @@ func RemoteFromMap(m map[string]interface{}) *RemoteType {
 	quickSetInt64(&r.LastConnectTs, m, "lastconnectts")
 	quickSetBool(&r.Archived, m, "archived")
 	quickSetInt64(&r.RemoteIdx, m, "remoteidx")
+	quickSetBool(&r.Local, m, "local")
 	return &r
 }
 
@@ -668,9 +671,9 @@ func EnsureLocalRemote(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("getting local physical remoteid: %w", err)
 	}
-	remote, err := GetRemoteByPhysicalId(ctx, physicalId)
+	remote, err := GetLocalRemote(ctx)
 	if err != nil {
-		return fmt.Errorf("getting remote[%s] from db: %w", physicalId, err)
+		return fmt.Errorf("getting local remote from db: %w", err)
 	}
 	if remote != nil {
 		return nil
@@ -696,77 +699,13 @@ func EnsureLocalRemote(ctx context.Context) error {
 		ConnectMode:         ConnectModeStartup,
 		AutoInstall:         true,
 		SSHOpts:             &SSHOpts{Local: true},
+		Local:               true,
 	}
 	err = UpsertRemote(ctx, localRemote)
 	if err != nil {
 		return err
 	}
-	log.Printf("[db] added remote '%s', id=%s\n", localRemote.GetName(), localRemote.RemoteId)
-	return nil
-}
-
-func AddTest01Remote(ctx context.Context) error {
-	remote, err := GetRemoteByAlias(ctx, "test01")
-	if err != nil {
-		return fmt.Errorf("getting remote[test01] from db: %w", err)
-	}
-	if remote != nil {
-		return nil
-	}
-	testRemote := &RemoteType{
-		RemoteId:            scbase.GenSCUUID(),
-		RemoteType:          RemoteTypeSsh,
-		RemoteAlias:         "test01",
-		RemoteCanonicalName: "ubuntu@test01.ec2",
-		RemoteSudo:          false,
-		RemoteUser:          "ubuntu",
-		RemoteHost:          "test01.ec2",
-		SSHOpts: &SSHOpts{
-			Local:       false,
-			SSHHost:     "test01.ec2",
-			SSHUser:     "ubuntu",
-			SSHIdentity: "/Users/mike/aws/mfmt.pem",
-		},
-		ConnectMode: ConnectModeStartup,
-		AutoInstall: true,
-	}
-	err = UpsertRemote(ctx, testRemote)
-	if err != nil {
-		return err
-	}
-	log.Printf("[db] added remote '%s', id=%s\n", testRemote.GetName(), testRemote.RemoteId)
-	return nil
-}
-
-func AddTest02Remote(ctx context.Context) error {
-	remote, err := GetRemoteByAlias(ctx, "test2")
-	if err != nil {
-		return fmt.Errorf("getting remote[test01] from db: %w", err)
-	}
-	if remote != nil {
-		return nil
-	}
-	testRemote := &RemoteType{
-		RemoteId:            scbase.GenSCUUID(),
-		RemoteType:          RemoteTypeSsh,
-		RemoteAlias:         "test2",
-		RemoteCanonicalName: "test2@test01.ec2",
-		RemoteSudo:          false,
-		RemoteUser:          "test2",
-		RemoteHost:          "test01.ec2",
-		SSHOpts: &SSHOpts{
-			Local:   false,
-			SSHHost: "test01.ec2",
-			SSHUser: "test2",
-		},
-		ConnectMode: ConnectModeStartup,
-		AutoInstall: true,
-	}
-	err = UpsertRemote(ctx, testRemote)
-	if err != nil {
-		return err
-	}
-	log.Printf("[db] added remote '%s', id=%s\n", testRemote.GetName(), testRemote.RemoteId)
+	log.Printf("[db] added local remote '%s', id=%s\n", localRemote.RemoteCanonicalName, localRemote.RemoteId)
 	return nil
 }
 

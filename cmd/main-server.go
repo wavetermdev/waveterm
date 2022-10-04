@@ -373,16 +373,6 @@ func main() {
 		fmt.Printf("[error] ensuring local remote: %v\n", err)
 		return
 	}
-	err = sstore.AddTest01Remote(context.Background())
-	if err != nil {
-		fmt.Printf("[error] ensuring test01 remote: %v\n", err)
-		return
-	}
-	//err = sstore.AddTest02Remote(context.Background())
-	//if err != nil {
-	//	fmt.Printf("[error] ensuring test02 remote: %v\n", err)
-	//	return
-	//}
 	_, err = sstore.EnsureDefaultSession(context.Background())
 	if err != nil {
 		fmt.Printf("[error] ensuring default session: %v\n", err)

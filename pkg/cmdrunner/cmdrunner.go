@@ -805,6 +805,14 @@ func RemoteArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		return nil, fmt.Errorf("archiving remote: %v", err)
 	}
 	update := sstore.InfoMsgUpdate("remote [%s] archived", ids.Remote.DisplayName)
+	localRemote := remote.GetLocalRemote()
+	if localRemote != nil {
+		update.Window = &sstore.WindowType{
+			SessionId: ids.SessionId,
+			WindowId:  ids.WindowId,
+			CurRemote: sstore.RemotePtrType{RemoteId: localRemote.GetRemoteId()},
+		}
+	}
 	return update, nil
 }
 
