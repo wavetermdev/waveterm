@@ -897,9 +897,10 @@ func (msh *MShellProc) Launch() {
 		if cproc != nil && cproc.InitPk != nil {
 			msh.Remote.InitPk = cproc.InitPk
 			mshellVersion = cproc.InitPk.Version
-		}
-		if semver.Compare(mshellVersion, MShellVersion) < 0 {
-			msh.NeedsMShellUpgrade = true
+			if semver.Compare(mshellVersion, MShellVersion) < 0 {
+				// only set NeedsMShellUpgrade if we got an InitPk
+				msh.NeedsMShellUpgrade = true
+			}
 		}
 		// no notify here, because we'll call notify in either case below
 	})
