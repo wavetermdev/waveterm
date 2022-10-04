@@ -976,6 +976,21 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
         }
     }
 
+    canResetPw() : boolean {
+        let redit = this.getRemoteEdit();
+        if (redit == null) {
+            return false;
+        }
+        return redit.haspassword && this.passwordStr.get() != PasswordUnchangedSentinel;
+    }
+
+    @boundMethod
+    resetPw() : void {
+        mobx.action(() => {
+            this.passwordStr.set(PasswordUnchangedSentinel);
+        })();
+    }
+
     @boundMethod
     doSubmitRemote() {
         let redit = this.getRemoteEdit();
@@ -1253,6 +1268,9 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
                         <div className="remote-field-label">ssh password</div>
                         <div className="remote-field-control text-input">
                             <input type="password" onFocus={this.onFocusPasswordStr} onChange={this.onChangePasswordStr} value={this.passwordStr.get()}/>
+                            <If condition={this.canResetPw()}>
+                                <i onClick={this.resetPw} title="restore to original password" className="icon fa fa-undo undo-icon"/>
+                            </If>
                         </div>
                     </div>
                 </If>
