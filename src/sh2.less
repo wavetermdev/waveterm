@@ -380,6 +380,12 @@ html, body, #main {
     }
 }
 
+.line.line-selected {
+    &.line-focused {
+        outline-left: 3px solid blue;
+    }
+}
+
 .line.line-cmd {
     flex-direction: column;
     scroll-margin-bottom: 20px;
@@ -637,9 +643,24 @@ body .xterm .xterm-viewport {
     display: flex;
     flex-direction: column;
     position: relative;
+    padding: 20px 20px 20px 20px;
 
     &.has-info {
         padding-top: 5px;
+    }
+
+    .focus-indicator {
+        position: absolute;
+        background-color: #666;
+        width: 5px;
+        border-radius: 3px;
+        height: 90%;
+        top: 5%;
+        left: 4px;
+
+        &.active {
+            background-color: @tab-blue;
+        }
     }
 
     &.has-history {

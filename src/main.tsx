@@ -1603,9 +1603,11 @@ class CmdInput extends React.Component<{}, {}> {
         let infoMsg = inputModel.infoMsg.get();
         let hasInfo = (infoMsg != null);
         let remoteShow = (infoMsg != null && !isBlank(infoMsg.ptyremoteid));
+        let focusVal = model.getFocusedLine();
         return (
-            <div className={cn("box cmd-input has-background-black", {"has-info": infoShow}, {"has-history": historyShow}, {"has-remote": remoteShow})}>
-                <div onClick={this.onInfoToggle} className="input-minmax-control">
+            <div className={cn("cmd-input has-background-black", {"has-info": infoShow}, {"has-history": historyShow}, {"has-remote": remoteShow})}>
+                <div key="focus" className={cn("focus-indicator", {"active": focusVal && focusVal.cmdInputFocus})}/>
+                <div key="minmax" onClick={this.onInfoToggle} className="input-minmax-control">
                     <If condition={infoShow || historyShow}>
                         <i className="fa fa-chevron-down"/>
                     </If>
@@ -1617,13 +1619,13 @@ class CmdInput extends React.Component<{}, {}> {
                     <div className="cmd-input-grow-spacer"></div>
                     <HistoryInfo/>
                 </If>
-                <InfoMsg/>
-                <div className="cmd-input-context">
+                <InfoMsg key="infomsg"/>
+                <div key="prompt" className="cmd-input-context">
                     <div className="has-text-white">
                         <Prompt rptr={rptr} rstate={remoteState}/>
                     </div>
                 </div>
-                <div className="cmd-input-field field has-addons">
+                <div key="input" className="cmd-input-field field has-addons">
                     <div className="control cmd-quick-context">
                         <div className="button is-static">{remoteStr}</div>
                     </div>

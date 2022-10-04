@@ -92,6 +92,7 @@ type RemoteType = {
     mshellversion : string,
     needsmshellupgrade : boolean,
     waitingforpassword : boolean,
+    local : boolean,
     remove? : boolean,
 };
 
