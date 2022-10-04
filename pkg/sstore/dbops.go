@@ -1051,7 +1051,7 @@ func UpdateRemote(ctx context.Context, remoteId string, editMap map[string]inter
 		}
 		if alias, found := editMap[RemoteField_Alias]; found {
 			query = `SELECT remoteid FROM remote WHERE remotealias = ? AND remoteid <> ?`
-			if tx.Exists(query, alias, remoteId) {
+			if alias != "" && tx.Exists(query, alias, remoteId) {
 				return fmt.Errorf("remote has duplicate alias, cannot update")
 			}
 			query = `UPDATE remote SET remotealias = ? WHERE remoteid = ?`

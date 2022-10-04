@@ -415,8 +415,13 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		vars["local"] = "1"
 	}
 	vars["port"] = "22"
-	if msh.Remote.SSHOpts != nil && msh.Remote.SSHOpts.SSHPort != 0 {
-		vars["port"] = strconv.Itoa(msh.Remote.SSHOpts.SSHPort)
+	if msh.Remote.SSHOpts != nil {
+		if msh.Remote.SSHOpts.SSHPort != 0 {
+			vars["port"] = strconv.Itoa(msh.Remote.SSHOpts.SSHPort)
+		}
+	}
+	if msh.Remote.RemoteOpts != nil && msh.Remote.RemoteOpts.Color != "" {
+		vars["color"] = msh.Remote.RemoteOpts.Color
 	}
 	if msh.ServerProc != nil && msh.ServerProc.InitPk != nil {
 		state.DefaultState = &sstore.RemoteState{

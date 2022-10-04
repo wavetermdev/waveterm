@@ -33,9 +33,11 @@ const (
 const DefaultUserId = "sawka"
 const MaxNameLen = 50
 const MaxRemoteAliasLen = 50
+const PasswordUnchangedSentinel = "--unchanged--"
 
 var ColorNames = []string{"black", "red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
 var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
+var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}
 
 var hostNameRe = regexp.MustCompile("^[a-z][a-z0-9.-]*$")
 var userHostRe = regexp.MustCompile("^(sudo@)?([a-z][a-z0-9-]*)@([a-z][a-z0-9.-]*)(?::([0-9]+))?$")
@@ -96,7 +98,6 @@ func init() {
 	registerCmdFn("remote:connect", RemoteConnectCommand)
 	registerCmdFn("remote:install", RemoteInstallCommand)
 	registerCmdFn("remote:installcancel", RemoteInstallCancelCommand)
-	registerCmdFn("remote:edit", RemoteEditCommand)
 
 	registerCmdFn("window:resize", WindowResizeCommand)
 
@@ -494,32 +495,51 @@ func RemoteDisconnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketTy
 	}, nil
 }
 
-func RemoteEditCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window|R_Remote)
+func makeRemoteEditUpdate_new(err error) sstore.UpdatePacket {
+	redit := &sstore.RemoteEditType{
+		RemoteEdit: true,
+	}
 	if err != nil {
-		return nil, err
+		redit.ErrorStr = err.Error()
 	}
 	update := sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
-			RemoteEdit: &sstore.RemoteEditType{
-				RemoteEdit: true,
-				RemoteId:   ids.Remote.RemotePtr.RemoteId,
-			},
+			RemoteEdit: redit,
 		},
 	}
-	return update, nil
+	return update
 }
 
-func makeRemoteEditErrorReturn(visual bool, err error) (sstore.UpdatePacket, error) {
+func makeRemoteEditErrorReturn_new(visual bool, err error) (sstore.UpdatePacket, error) {
 	if visual {
-		return sstore.ModelUpdate{
-			Info: &sstore.InfoMsgType{
-				RemoteEdit: &sstore.RemoteEditType{
-					RemoteEdit: true,
-					ErrorStr:   err.Error(),
-				},
-			},
-		}, nil
+		return makeRemoteEditUpdate_new(err), nil
+	}
+	return nil, err
+}
+
+func makeRemoteEditUpdate_edit(ids resolvedIds, err error) sstore.UpdatePacket {
+	redit := &sstore.RemoteEditType{
+		RemoteEdit: true,
+	}
+	redit.RemoteId = ids.Remote.RemotePtr.RemoteId
+	if ids.Remote.RemoteCopy.SSHOpts != nil {
+		redit.KeyStr = ids.Remote.RemoteCopy.SSHOpts.SSHIdentity
+		redit.HasPassword = (ids.Remote.RemoteCopy.SSHOpts.SSHPassword != "")
+	}
+	if err != nil {
+		redit.ErrorStr = err.Error()
+	}
+	update := sstore.ModelUpdate{
+		Info: &sstore.InfoMsgType{
+			RemoteEdit: redit,
+		},
+	}
+	return update
+}
+
+func makeRemoteEditErrorReturn_edit(ids resolvedIds, visual bool, err error) (sstore.UpdatePacket, error) {
+	if visual {
+		return makeRemoteEditUpdate_edit(ids, err), nil
 	}
 	return nil, err
 }
@@ -543,6 +563,9 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType) (*RemoteE
 	var isSudo bool
 
 	if isNew {
+		if len(pk.Args) == 0 {
+			return nil, fmt.Errorf("/remote:new must specify user@host argument (set visual=1 to edit in UI)")
+		}
 		userHost := pk.Args[0]
 		m := userHostRe.FindStringSubmatch(userHost)
 		if m == nil {
@@ -652,7 +675,7 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType) (*RemoteE
 	if _, found := pk.Kwargs[sstore.RemoteField_Color]; found {
 		editMap[sstore.RemoteField_Color] = color
 	}
-	if _, found := pk.Kwargs["password"]; found {
+	if _, found := pk.Kwargs["password"]; found && pk.Kwargs["password"] != PasswordUnchangedSentinel {
 		editMap[sstore.RemoteField_SSHPassword] = sshPassword
 	}
 
@@ -673,18 +696,12 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType) (*RemoteE
 func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	visualEdit := resolveBool(pk.Kwargs["visual"], false)
 	isSubmitted := resolveBool(pk.Kwargs["submit"], false)
-	if (len(pk.Args) == 0 || pk.Args[0] == "") && !isSubmitted {
-		return sstore.ModelUpdate{
-			Info: &sstore.InfoMsgType{
-				RemoteEdit: &sstore.RemoteEditType{
-					RemoteEdit: true,
-				},
-			},
-		}, nil
+	if visualEdit && !isSubmitted && len(pk.Args) == 0 {
+		return makeRemoteEditUpdate_new(nil), nil
 	}
 	editArgs, err := parseRemoteEditArgs(true, pk)
 	if err != nil {
-		return makeRemoteEditErrorReturn(visualEdit, fmt.Errorf("/remote:new %v", err))
+		return makeRemoteEditErrorReturn_new(visualEdit, fmt.Errorf("/remote:new %v", err))
 	}
 	r := &sstore.RemoteType{
 		RemoteId:            scbase.GenSCUUID(),
@@ -704,7 +721,7 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	}
 	err = remote.AddRemote(ctx, r)
 	if err != nil {
-		return makeRemoteEditErrorReturn(visualEdit, fmt.Errorf("cannot create remote %q: %v", r.RemoteCanonicalName, err))
+		return makeRemoteEditErrorReturn_new(visualEdit, fmt.Errorf("cannot create remote %q: %v", r.RemoteCanonicalName, err))
 	}
 	// SUCCESS
 	update := sstore.ModelUpdate{
@@ -725,21 +742,17 @@ func RemoteSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	isSubmitted := resolveBool(pk.Kwargs["submit"], false)
 	editArgs, err := parseRemoteEditArgs(false, pk)
 	if err != nil {
-		return makeRemoteEditErrorReturn(visualEdit, fmt.Errorf("/remote:new %v", err))
+		return makeRemoteEditErrorReturn_edit(ids, visualEdit, fmt.Errorf("/remote:new %v", err))
 	}
 	if visualEdit && !isSubmitted && len(editArgs.EditMap) == 0 {
-		return sstore.ModelUpdate{
-			Info: &sstore.InfoMsgType{
-				RemoteEdit: &sstore.RemoteEditType{
-					RemoteEdit: true,
-					RemoteId:   ids.Remote.RemotePtr.RemoteId,
-				},
-			},
-		}, nil
+		return makeRemoteEditUpdate_edit(ids, nil), nil
+	}
+	if !visualEdit && len(editArgs.EditMap) == 0 {
+		return nil, fmt.Errorf("/remote:set no updates, can set %s.  (set visual=1 to edit in UI)", formatStrs(RemoteSetArgs, "or", false))
 	}
 	err = ids.Remote.MShell.UpdateRemote(ctx, editArgs.EditMap)
 	if err != nil {
-		return makeRemoteEditErrorReturn(visualEdit, fmt.Errorf("/remote:new error updating remote: %v", err))
+		return makeRemoteEditErrorReturn_edit(ids, visualEdit, fmt.Errorf("/remote:new error updating remote: %v", err))
 	}
 	update := sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{

@@ -34,6 +34,7 @@ type ResolvedRemote struct {
 	MShell      *remote.MShellProc
 	RState      remote.RemoteRuntimeState
 	RemoteState *sstore.RemoteState
+	RemoteCopy  *sstore.RemoteType
 }
 
 type ResolveItem struct {
@@ -321,6 +322,7 @@ func resolveRemoteFromPtr(ctx context.Context, rptr *sstore.RemotePtrType, sessi
 		return nil, fmt.Errorf("invalid remote '%s', not found", rptr.RemoteId)
 	}
 	rstate := msh.GetRemoteRuntimeState()
+	rcopy := msh.GetRemoteCopy()
 	displayName := rstate.GetDisplayName(rptr)
 	rtn := &ResolvedRemote{
 		DisplayName: displayName,
@@ -328,6 +330,7 @@ func resolveRemoteFromPtr(ctx context.Context, rptr *sstore.RemotePtrType, sessi
 		RemoteState: nil,
 		RState:      rstate,
 		MShell:      msh,
+		RemoteCopy:  &rcopy,
 	}
 	if sessionId != "" && windowId != "" {
 		state, err := sstore.GetRemoteState(ctx, sessionId, windowId, *rptr)

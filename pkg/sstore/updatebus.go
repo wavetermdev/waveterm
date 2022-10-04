@@ -80,10 +80,12 @@ func InfoMsgUpdate(infoMsgFmt string, args ...interface{}) *ModelUpdate {
 }
 
 type RemoteEditType struct {
-	RemoteEdit bool   `json:"remoteedit"`
-	RemoteId   string `json:"remoteid,omitempty"`
-	ErrorStr   string `json:"errorstr,omitempty"`
-	InfoStr    string `json:"infostr,omitempty"`
+	RemoteEdit  bool   `json:"remoteedit"`
+	RemoteId    string `json:"remoteid,omitempty"`
+	ErrorStr    string `json:"errorstr,omitempty"`
+	InfoStr     string `json:"infostr,omitempty"`
+	KeyStr      string `json:"keystr,omitempty"`
+	HasPassword bool   `json:"haspassword,omitempty"`
 }
 
 type InfoMsgType struct {
