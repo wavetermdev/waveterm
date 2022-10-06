@@ -3,7 +3,8 @@ import {Terminal} from 'xterm';
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 import {v4 as uuidv4} from "uuid";
-import {GlobalModel} from "./model";
+import {GlobalModel, widthToCols} from "./model";
+import {boundInt} from "./util";
 import type {TermOptsType, TermWinSize} from "./types";
 
 type DataUpdate = {
@@ -16,20 +17,8 @@ type WindowSize = {
     width: number,
 };
 
-const DefaultCellWidth = 8;
-const DefaultCellHeight = 16;
 const MinTermCols = 10;
 const MaxTermCols = 1024;
-
-function boundInt(ival : number, minVal : number, maxVal : number) : number {
-    if (ival < minVal) {
-        return minVal;
-    }
-    if (ival > maxVal) {
-        return maxVal;
-    }
-    return ival;
-}
 
 type TermContext = {sessionId? : string, cmdId? : string, remoteId? : string};
 
@@ -67,11 +56,10 @@ class TermWrap {
             this.termSize = {rows: termOpts.rows, cols: termOpts.cols};
         }
         else {
-            let cols = Math.trunc((winSize.width - 25) / DefaultCellWidth) - 1;
-            cols = boundInt(cols, MinTermCols, MaxTermCols);
+            let cols = widthToCols(winSize.width);
             this.termSize = {rows: termOpts.rows, cols: cols};
         }
-        this.terminal = new Terminal({rows: this.termSize.rows, cols: this.termSize.cols, fontSize: 14, theme: {foreground: "#d3d7cf"}});
+        this.terminal = new Terminal({rows: this.termSize.rows, cols: this.termSize.cols, fontSize: 12, fontFamily: "JetBrains Mono", theme: {foreground: "#d3d7cf"}});
         this.terminal._core._inputHandler._parser.setErrorHandler((state) => {
             this.numParseErrors++;
             return state;

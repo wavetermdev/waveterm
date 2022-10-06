@@ -162,4 +162,14 @@ function parseEnv0(envStr64 : string) : Map<string, string> {
     return rtn;
 }
 
-export {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData, parseEnv0};
+function boundInt(ival : number, minVal : number, maxVal : number) : number {
+    if (ival < minVal) {
+        return minVal;
+    }
+    if (ival > maxVal) {
+        return maxVal;
+    }
+    return ival;
+}
+
+export {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData, parseEnv0, boundInt};

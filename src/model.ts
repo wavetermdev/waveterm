@@ -2,24 +2,32 @@ import * as mobx from "mobx";
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 import {debounce} from "throttle-debounce";
-import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData} from "./util";
+import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData, boundInt} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
 import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType} from "./types";
 import {WSControl} from "./ws";
 
 var GlobalUser = "sawka";
-const DefaultCellWidth = 8;
+const DefaultCellWidth = 7.203125;
 const DefaultCellHeight = 16;
 const RemotePtyRows = 8; // also in main.tsx
 const RemotePtyCols = 80;
+const MinTermCols = 10;
+const MaxTermCols = 1024;
 
 function widthToCols(width : number) : number {
     let cols = Math.trunc((width - 25) / DefaultCellWidth) - 1;
-    if (cols < 0) {
-        return 0;
-    }
+    cols = boundInt(cols, MinTermCols, MaxTermCols);
     return cols;
+}
+
+function termWidthFromCols(cols : number) : number {
+    return Math.ceil(DefaultCellWidth*cols) + 15;
+}
+
+function termHeightFromRows(rows : number) : number {
+    return Math.ceil(DefaultCellHeight*rows);
 }
 
 type OV<V> = mobx.IObservableValue<V>;
@@ -1963,6 +1971,6 @@ if ((window as any).GlobalModal == null) {
 GlobalModel = (window as any).GlobalModel;
 GlobalCommandRunner = (window as any).GlobalCommandRunner;
 
-export {Model, Session, Window, GlobalModel, GlobalCommandRunner, Cmd, Screen, ScreenWindow, riToRPtr, widthToCols};
+export {Model, Session, Window, GlobalModel, GlobalCommandRunner, Cmd, Screen, ScreenWindow, riToRPtr, widthToCols, termWidthFromCols, termHeightFromRows};
 
 

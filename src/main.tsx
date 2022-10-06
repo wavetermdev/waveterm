@@ -11,12 +11,10 @@ import cn from "classnames";
 import {TermWrap} from "./term";
 import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts, RemoteEditType} from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
-import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, ScreenWindow, riToRPtr, widthToCols} from "./model";
+import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, ScreenWindow, riToRPtr, widthToCols, termWidthFromCols, termHeightFromRows} from "./model";
 
 dayjs.extend(localizedFormat)
 
-const CellHeightPx = 16;
-const CellWidthPx = 8;
 const RemotePtyRows = 8;
 const RemotePtyCols = 80;
 const PasswordUnchangedSentinel = "--unchanged--";
@@ -352,9 +350,8 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
             );
         }
         let termLoaded = this.termLoaded.get();
-        let termWidth = Math.max(Math.trunc((width - 20)/CellWidthPx), 10);
         let usedRows = sw.getUsedRows(cmd, width);
-        let totalHeight = CellHeightPx * usedRows;
+        let termHeight = termHeightFromRows(usedRows);
         let remote = model.getRemote(cmd.remoteId);
         let status = cmd.getStatus();
         let termOpts = cmd.getTermOpts();
@@ -390,7 +387,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                     <If condition={!isFocused}>
                         <div className="term-block" onClick={this.clickTermBlock}></div>
                     </If>
-                    <div className="terminal" id={"term-" + getLineId(line)} data-cmdid={line.cmdid} style={{height: totalHeight}}></div>
+                    <div className="terminal" id={"term-" + getLineId(line)} data-cmdid={line.cmdid} style={{height: termHeight}}></div>
                     <If condition={!termLoaded}><div style={{position: "absolute", top: 60, left: 30}}>(loading)</div></If>
                 </div>
             </div>
@@ -917,14 +914,14 @@ class InfoRemoteShow extends React.Component<{}, {}> {
                         </div>
                     </If>
                 </div>
-                <div key="term" className={cn("terminal-wrapper", {"focus": isTermFocused}, (remote != null ? "status-" + remote.status : null))} style={{overflowY: "hidden", display: (ptyRemoteId == null ? "none" : "block"), width: CellWidthPx*RemotePtyCols+15}}>
+                <div key="term" className={cn("terminal-wrapper", {"focus": isTermFocused}, (remote != null ? "status-" + remote.status : null))} style={{overflowY: "hidden", display: (ptyRemoteId == null ? "none" : "block"), width: termWidthFromCols(RemotePtyCols)}}>
                     <If condition={!isTermFocused}>
                         <div key="termblock" className="term-block" onClick={this.clickTermBlock}></div>
                     </If>
                     <If condition={inputModel.showNoInputMsg.get()}>
                         <div key="termtag" className="term-tag">input is only allowed while status is 'connecting'</div>
                     </If>
-                    <div key="terminal" className="terminal" id="term-remote" data-remoteid={ptyRemoteId} style={{height: CellHeightPx*RemotePtyRows}}></div>
+                    <div key="terminal" className="terminal" id="term-remote" data-remoteid={ptyRemoteId} style={{height: termHeightFromRows(RemotePtyRows)}}></div>
                 </div>
             </>
         );
@@ -1619,10 +1616,10 @@ class CmdInput extends React.Component<{}, {}> {
         let infoMsg = inputModel.infoMsg.get();
         let hasInfo = (infoMsg != null);
         let remoteShow = (infoMsg != null && !isBlank(infoMsg.ptyremoteid));
-        let focusVal = model.getFocusedLine();
+        let focusVal = inputModel.physicalInputFocused.get();
         return (
             <div className={cn("cmd-input has-background-black", {"has-info": infoShow}, {"has-history": historyShow}, {"has-remote": remoteShow})}>
-                <div key="focus" className={cn("focus-indicator", {"active": focusVal && focusVal.cmdInputFocus})}/>
+                <div key="focus" className={cn("focus-indicator", {"active": focusVal})}/>
                 <div key="minmax" onClick={this.onInfoToggle} className="input-minmax-control">
                     <If condition={infoShow || historyShow}>
                         <i className="fa fa-chevron-down"/>
