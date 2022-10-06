@@ -359,6 +359,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         let lineNumStr = (line.linenumtemp ? "~" : "") + String(line.linenum);
         return (
             <div className={cn("line", "line-cmd", {"focus": isFocused})} id={"line-" + getLineId(line)} ref={this.lineRef} style={{position: "relative"}} data-lineid={line.lineid} data-windowid={line.windowid} data-cmdid={line.cmdid}>
+                <div className="focus-indicator"/>
                 <div className="line-header">
                     <div className={cn("avatar", "num-"+lineNumStr.length, "status-" + status, {"ephemeral": line.ephemeral})} onClick={this.doRefresh}>
                         {lineNumStr}

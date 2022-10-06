@@ -17,7 +17,7 @@ const MinTermCols = 10;
 const MaxTermCols = 1024;
 
 function widthToCols(width : number) : number {
-    let cols = Math.trunc((width - 25) / DefaultCellWidth) - 1;
+    let cols = Math.trunc((width - 32) / DefaultCellWidth) - 1;
     cols = boundInt(cols, MinTermCols, MaxTermCols);
     return cols;
 }
