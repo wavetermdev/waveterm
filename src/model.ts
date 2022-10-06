@@ -254,6 +254,7 @@ class ScreenWindow {
     layout : OV<LayoutType>;
     shouldFollow : OV<boolean> = mobx.observable.box(true);
     lastCols : number;
+    selectedLine : OV<number> = mobx.observable.box(null);
 
     // cmdid => TermWrap
     terms : Record<string, TermWrap> = {};
@@ -628,6 +629,11 @@ class InputModel {
     showNoInputMsg : OV<boolean> = mobx.observable.box(false);
     showNoInputTimeoutId : any = null;
 
+    // focus
+    inputFocused : OV<boolean> = mobx.observable.box(false);
+    lineFocused : OV<boolean> = mobx.observable.box(false);
+    physicalInputFocused : OV<boolean> = mobx.observable.box(false);
+
     constructor() {
         this.filteredHistoryItems = mobx.computed(() => {
             return this._getFilteredHistoryItems();
@@ -646,6 +652,34 @@ class InputModel {
             }
             else {
                 this.showNoInputMsg.set(false);
+            }
+        })();
+    }
+
+    onInputFocus(isFocused : boolean) : void {
+        mobx.action(() => {
+            if (isFocused) {
+                this.inputFocused.set(true);
+                this.lineFocused.set(false);
+            }
+            else {
+                if (this.inputFocused.get()) {
+                    this.inputFocused.set(false);
+                }
+            }
+        })();
+    }
+
+    onLineFocus(isFocused : boolean) : void {
+        mobx.action(() => {
+            if (isFocused) {
+                this.inputFocused.set(false);
+                this.lineFocused.set(true);
+            }
+            else {
+                if (this.lineFocused.get()) {
+                    this.lineFocused.set(false);
+                }
             }
         })();
     }
@@ -671,6 +705,12 @@ class InputModel {
         else {
             this._focusCmdInput();
         }
+    }
+
+    setPhysicalInputFocused(isFocused : boolean) : void {
+        mobx.action(() => {
+            this.physicalInputFocused.set(isFocused);
+        })();
     }
 
     getPtyRemoteId() : string {

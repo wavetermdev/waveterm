@@ -638,6 +638,14 @@ class TextAreaInput extends React.Component<{}, {}> {
             e.preventDefault();
             inputModel.giveFocus();
         }
+        else {
+            inputModel.setPhysicalInputFocused(true);
+        }
+    }
+
+    @boundMethod
+    handleMainBlur(e : any) {
+        GlobalModel.inputModel.setPhysicalInputFocused(false);
     }
 
     @boundMethod
@@ -647,6 +655,14 @@ class TextAreaInput extends React.Component<{}, {}> {
             e.preventDefault();
             inputModel.giveFocus();
         }
+        else {
+            inputModel.setPhysicalInputFocused(true);
+        }
+    }
+
+    @boundMethod
+    handleHistoryBlur(e : any) {
+        GlobalModel.inputModel.setPhysicalInputFocused(false);
     }
 
     render() {
@@ -664,7 +680,7 @@ class TextAreaInput extends React.Component<{}, {}> {
         }
         return (
             <div className="control cmd-input-control is-expanded">
-                <textarea spellCheck="false" id="main-cmd-input" onFocus={this.handleMainFocus} rows={displayLines} value={curLine} onKeyDown={this.onKeyDown} onChange={this.onChange} className={cn("textarea", {"display-disabled": disabled})}></textarea>
+                <textarea spellCheck="false" id="main-cmd-input" onFocus={this.handleMainFocus} onBlur={this.handleMainBlur} rows={displayLines} value={curLine} onKeyDown={this.onKeyDown} onChange={this.onChange} className={cn("textarea", {"display-disabled": disabled})}></textarea>
                 <input spellCheck="false" className="history-input" type="text" onFocus={this.handleHistoryFocus} onKeyDown={this.onHistoryKeyDown} onChange={this.handleHistoryInput} value={inputModel.historyQueryOpts.get().queryStr}/>
             </div>
         );
