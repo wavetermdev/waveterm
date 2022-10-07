@@ -110,6 +110,11 @@ function createMainWindow(clientData) {
             }
             return;
         }
+        if (input.code == "KeyL" && input.meta) {
+            win.webContents.send("l-cmd", mods);
+            e.preventDefault();
+            return;
+        }
         if (input.code == "KeyW" && input.meta) {
             e.preventDefault();
             win.webContents.send("w-cmd", mods);
