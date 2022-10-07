@@ -72,6 +72,7 @@ type ElectronApi = {
     getId : () => string,
     onTCmd : (callback : (mods : KeyModsType) => void) => void,
     onICmd : (callback : (mods : KeyModsType) => void) => void,
+    onLCmd : (callback : (mods : KeyModsType) => void) => void,
     onHCmd : (callback : (mods : KeyModsType) => void) => void,
     onMetaArrowUp : (callback : () => void) => void,
     onMetaArrowDown : (callback : () => void) => void,
@@ -264,6 +265,7 @@ class ScreenWindow {
     selectedLine : OV<number>;
     scrollTop : OV<number>;
     shouldFollow : OV<boolean> = mobx.observable.box(true);
+    focusType : OV<"input"|"lines"> = mobx.observable.box("input");
 
     // cmdid => TermWrap
     terms : Record<string, TermWrap> = {};
@@ -287,6 +289,12 @@ class ScreenWindow {
             this.layout.set(swdata.layout);
             this.selectedLine.set(swdata.selectedline);
             // do not set scrolltop!
+        })();
+    }
+
+    setFocusType(ftype : "input" | "lines") : void {
+        mobx.action(() => {
+            this.focusType.set(ftype);
         })();
     }
 
@@ -1341,6 +1349,7 @@ class Model {
         this.inputModel = new InputModel();
         getApi().onTCmd(this.onTCmd.bind(this));
         getApi().onICmd(this.onICmd.bind(this));
+        getApi().onLCmd(this.onLCmd.bind(this));
         getApi().onHCmd(this.onHCmd.bind(this));
         getApi().onMetaArrowUp(this.onMetaArrowUp.bind(this));
         getApi().onMetaArrowDown(this.onMetaArrowDown.bind(this));
@@ -1412,6 +1421,10 @@ class Model {
     }
 
     onICmd(e : any, mods : KeyModsType) {
+        this.inputModel.giveFocus();
+    }
+
+    onLCmd(e : any, mods : KeyModsType) {
         this.inputModel.giveFocus();
     }
 
