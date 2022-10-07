@@ -29,17 +29,18 @@ func (PtyDataUpdate) UpdateType() string {
 }
 
 type ModelUpdate struct {
-	Sessions        []*SessionType   `json:"sessions,omitempty"`
-	ActiveSessionId string           `json:"activesessionid,omitempty"`
-	Window          *WindowType      `json:"window,omitempty"`
-	Line            *LineType        `json:"line,omitempty"`
-	Cmd             *CmdType         `json:"cmd,omitempty"`
-	CmdLine         *CmdLineType     `json:"cmdline,omitempty"`
-	Info            *InfoMsgType     `json:"info,omitempty"`
-	Remotes         []interface{}    `json:"remotes,omitempty"` // []*remote.RemoteState
-	History         *HistoryInfoType `json:"history,omitempty"`
-	Interactive     bool             `json:"interactive"`
-	Connect         bool             `json:"connect,omitempty"`
+	Sessions        []*SessionType    `json:"sessions,omitempty"`
+	ActiveSessionId string            `json:"activesessionid,omitempty"`
+	Window          *WindowType       `json:"window,omitempty"`
+	ScreenWindow    *ScreenWindowType `json:"screenwindow,omitempty"`
+	Line            *LineType         `json:"line,omitempty"`
+	Cmd             *CmdType          `json:"cmd,omitempty"`
+	CmdLine         *CmdLineType      `json:"cmdline,omitempty"`
+	Info            *InfoMsgType      `json:"info,omitempty"`
+	Remotes         []interface{}     `json:"remotes,omitempty"` // []*remote.RemoteState
+	History         *HistoryInfoType  `json:"history,omitempty"`
+	Interactive     bool              `json:"interactive"`
+	Connect         bool              `json:"connect,omitempty"`
 }
 
 func (ModelUpdate) UpdateType() string {

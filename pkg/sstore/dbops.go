@@ -498,8 +498,8 @@ func InsertScreen(ctx context.Context, sessionId string, origScreenName string, 
 		query = `INSERT INTO screen (sessionid, screenid, name, activewindowid, screenidx, screenopts, ownerid, sharemode) VALUES (?, ?, ?, ?, ?, ?, '', 'local')`
 		tx.ExecWrap(query, sessionId, newScreenId, screenName, newWindowId, maxScreenIdx+1, ScreenOptsType{})
 		layout := LayoutType{Type: LayoutFull}
-		query = `INSERT INTO screen_window (sessionid, screenid, windowid, name, layout) VALUES (?, ?, ?, ?, ?)`
-		tx.ExecWrap(query, sessionId, newScreenId, newWindowId, DefaultScreenWindowName, layout)
+		query = `INSERT INTO screen_window (sessionid, screenid, windowid, name, layout, selectedline, scrolltop) VALUES (?, ?, ?, ?, ?, ?, ?)`
+		tx.ExecWrap(query, sessionId, newScreenId, newWindowId, DefaultScreenWindowName, layout, 0, 0)
 		if activate {
 			query = `UPDATE session SET activescreenid = ? WHERE sessionid = ?`
 			tx.ExecWrap(query, newScreenId, sessionId)
@@ -619,7 +619,6 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 	if line.LineNum != 0 {
 		return fmt.Errorf("line should not hage linenum set")
 	}
-	cmd.OrigTermOpts = cmd.TermOpts
 	return WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT windowid FROM window WHERE sessionid = ? AND windowid = ?`
 		if !tx.Exists(query, line.SessionId, line.WindowId) {
@@ -634,6 +633,7 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 		query = `UPDATE window SET nextlinenum = ? WHERE sessionid = ? AND windowid = ?`
 		tx.ExecWrap(query, nextLineNum+1, line.SessionId, line.WindowId)
 		if cmd != nil {
+			cmd.OrigTermOpts = cmd.TermOpts
 			cmdMap := cmd.ToMap()
 			query = `
 INSERT INTO cmd  ( sessionid, cmdid, remoteownerid, remoteid, remotename, cmdstr, remotestate, termopts, origtermopts, status, startpk, donepk, runout, usedrows)
@@ -1095,6 +1095,35 @@ func UpdateRemote(ctx context.Context, remoteId string, editMap map[string]inter
 		rtn, err = GetRemoteById(tx.Context(), remoteId)
 		if err != nil {
 			return err
+		}
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	return rtn, nil
+}
+
+const (
+	SWField_ScrollTop = "scrolltop" // int
+)
+
+func UpdateScreenWindow(ctx context.Context, sessionId string, screenId string, windowId string, editMap map[string]interface{}) (*ScreenWindowType, error) {
+	var rtn *ScreenWindowType
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT sessionid FROM screen_window WHERE sessionid = ? AND screenid = ? AND windowid = ?`
+		if !tx.Exists(query, sessionId, screenId, windowId) {
+			return fmt.Errorf("screen-window not found")
+		}
+		if stVal, found := editMap[SWField_ScrollTop]; found {
+			query = `UPDATE screen_window SET scrolltop = ? WHERE sessionid = ? AND screenid = ? AND windowid = ?`
+			tx.ExecWrap(query, stVal, sessionId, screenId, windowId)
+		}
+		var sw ScreenWindowType
+		query = `SELECT * FROM screen_window WHERE sessionid = ? AND screenid = ? AND windowid = ?`
+		found := tx.GetWrap(&sw, query, sessionId, screenId, windowId)
+		if found {
+			rtn = &sw
 		}
 		return nil
 	})

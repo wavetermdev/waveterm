@@ -143,6 +143,24 @@ func resolveUiIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype i
 		rtn.ScreenId = uictx.ScreenId
 		rtn.WindowId = uictx.WindowId
 	}
+	if pk.Kwargs["session"] != "" {
+		sessionId, err := resolveSessionArg(pk.Kwargs["session"])
+		if err != nil {
+			return rtn, err
+		}
+		if sessionId != "" {
+			rtn.SessionId = sessionId
+		}
+	}
+	if pk.Kwargs["screen"] != "" {
+		screenId, err := resolveScreenArg(rtn.SessionId, pk.Kwargs["screen"])
+		if err != nil {
+			return rtn, err
+		}
+		if screenId != "" {
+			rtn.ScreenId = screenId
+		}
+	}
 	if pk.Kwargs["window"] != "" {
 		windowId, err := resolveWindowArg(rtn.SessionId, rtn.ScreenId, pk.Kwargs["window"])
 		if err != nil {
@@ -272,6 +290,26 @@ func resolveWindowArg(sessionId string, screenId string, windowArg string) (stri
 		return "", fmt.Errorf("invalid window arg specified (must be windowid) '%s'", windowArg)
 	}
 	return windowArg, nil
+}
+
+func resolveSessionArg(sessionArg string) (string, error) {
+	if sessionArg == "" {
+		return "", nil
+	}
+	if _, err := uuid.Parse(sessionArg); err != nil {
+		return "", fmt.Errorf("invalid session arg specified (must be sessionid) '%s'", sessionArg)
+	}
+	return sessionArg, nil
+}
+
+func resolveScreenArg(sessionId string, screenArg string) (string, error) {
+	if screenArg == "" {
+		return "", nil
+	}
+	if _, err := uuid.Parse(screenArg); err != nil {
+		return "", fmt.Errorf("invalid screen arg specified (must be sessionid) '%s'", screenArg)
+	}
+	return screenArg, nil
 }
 
 func resolveScreenId(ctx context.Context, pk *scpacket.FeCommandPacketType, sessionId string) (string, error) {

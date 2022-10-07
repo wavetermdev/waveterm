@@ -99,6 +99,8 @@ func init() {
 	registerCmdFn("remote:install", RemoteInstallCommand)
 	registerCmdFn("remote:installcancel", RemoteInstallCancelCommand)
 
+	registerCmdFn("sw:set", SwSetCommand)
+
 	registerCmdFn("window:resize", WindowResizeCommand)
 
 	registerCmdFn("line", LineCommand)
@@ -196,6 +198,20 @@ func resolvePosInt(arg string, def int) (int, error) {
 	}
 	if ival <= 0 {
 		return 0, fmt.Errorf("must be greater than 0")
+	}
+	return ival, nil
+}
+
+func resolveNonNegInt(arg string, def int) (int, error) {
+	if arg == "" {
+		return def, nil
+	}
+	ival, err := strconv.Atoi(arg)
+	if err != nil {
+		return 0, err
+	}
+	if ival < 0 {
+		return 0, fmt.Errorf("cannot be negative")
 	}
 	return ival, nil
 }
@@ -407,6 +423,33 @@ func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		return nil, err
 	}
 	return update, nil
+}
+
+func SwSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
+	if err != nil {
+		return nil, fmt.Errorf("/sw:set cannot resolve current screen-window: %w", err)
+	}
+	var setNonST bool // scrolltop does not receive an update
+	updateMap := make(map[string]interface{})
+	if pk.Kwargs["scrolltop"] != "" {
+		stVal, err := resolveNonNegInt(pk.Kwargs["scrolltop"], 0)
+		if err != nil {
+			return nil, fmt.Errorf("/sw:set invalid scrolltop argument: %v", err)
+		}
+		updateMap[sstore.SWField_ScrollTop] = stVal
+	}
+	if len(updateMap) == 0 {
+		return nil, fmt.Errorf("/sw:set no updates, can set %s", formatStrs([]string{"line", "scrolltop"}, "or", false))
+	}
+	sw, err := sstore.UpdateScreenWindow(ctx, ids.SessionId, ids.ScreenId, ids.WindowId, updateMap)
+	if err != nil {
+		return nil, fmt.Errorf("/sw:set failed to update: %v", err)
+	}
+	if !setNonST {
+		return nil, nil
+	}
+	return sstore.ModelUpdate{ScreenWindow: sw}, nil
 }
 
 func UnSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {

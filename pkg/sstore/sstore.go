@@ -376,11 +376,13 @@ func (l LayoutType) Value() (driver.Value, error) {
 }
 
 type ScreenWindowType struct {
-	SessionId string     `json:"sessionid"`
-	ScreenId  string     `json:"screenid"`
-	WindowId  string     `json:"windowid"`
-	Name      string     `json:"name"`
-	Layout    LayoutType `json:"layout"`
+	SessionId    string     `json:"sessionid"`
+	ScreenId     string     `json:"screenid"`
+	WindowId     string     `json:"windowid"`
+	Name         string     `json:"name"`
+	Layout       LayoutType `json:"layout"`
+	SelectedLine int        `json:"selectedline"`
+	ScrollTop    int        `json:"scrolltop"`
 
 	// only for updates
 	Remove bool `json:"remove,omitempty"`
