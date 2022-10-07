@@ -281,6 +281,15 @@ class ScreenWindow {
         this.setScrollTop_debounced = debounce(1000, this.setScrollTop.bind(this));
     }
 
+    updateSelf(swdata : ScreenWindowType) {
+        mobx.action(() => {
+            this.name.set(swdata.name);
+            this.layout.set(swdata.layout);
+            this.selectedLine.set(swdata.selectedline);
+            // do not set scrolltop!
+        })();
+    }
+
     setScrollTop(scrollTop : number) : void {
         GlobalCommandRunner.swSetScrollTop(this.sessionId, this.screenId, this.windowId, scrollTop);
     }
@@ -1444,11 +1453,11 @@ class Model {
     }
 
     onMetaArrowUp() : void {
-        GlobalCommandRunner.swSelectLine("-");
+        GlobalCommandRunner.swSelectLine("-1");
     }
 
     onMetaArrowDown() : void {
-        GlobalCommandRunner.swSelectLine("+");
+        GlobalCommandRunner.swSelectLine("+1");
     }
 
     onMetaArrowUpOld() : void {
@@ -1635,6 +1644,9 @@ class Model {
         if ("window" in update) {
             this.updateWindow(update.window, false);
         }
+        if ("screenwindow" in update) {
+            this.updateSW(update.screenwindow);
+        }
         if ("remotes" in update) {
             if (update.connect) {
                 this.remotes.clear();
@@ -1715,6 +1727,14 @@ class Model {
         })();
     }
 
+    updateSW(swdata : ScreenWindowType) {
+        let sw = this.getSWByIds(swdata.sessionid, swdata.screenid, swdata.windowid);
+        if (sw == null) {
+            return;
+        }
+        sw.updateSelf(swdata);
+    }
+
     getScreenById(sessionId : string, screenId : string) : Screen {
         let session = this.getSessionById(sessionId);
         if (session == null) {
@@ -1742,6 +1762,14 @@ class Model {
 
     getSWByWindowId(windowId : string) : ScreenWindow {
         let screen = this.getActiveScreen();
+        if (screen == null) {
+            return null;
+        }
+        return screen.getSW(windowId);
+    }
+
+    getSWByIds(sessionId : string, screenId : string, windowId : string) : ScreenWindow {
+        let screen = this.getScreenById(sessionId, screenId);
         if (screen == null) {
             return null;
         }

@@ -261,6 +261,7 @@ type ModelUpdateType = {
     sessions? : SessionDataType[],
     activesessionid? : string,
     window? : WindowDataType,
+    screenwindow? : ScreenWindowType,
     line? : LineType,
     cmd? : CmdDataType,
     info? : InfoType,
