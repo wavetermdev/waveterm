@@ -260,12 +260,15 @@ class ScreenWindow {
     windowId : string;
     name : OV<string>;
     layout : OV<LayoutType>;
-    shouldFollow : OV<boolean> = mobx.observable.box(true);
     lastCols : number;
-    selectedLine : OV<number> = mobx.observable.box(null);
+    selectedLine : OV<number>;
+    scrollTop : OV<number>;
+    shouldFollow : OV<boolean> = mobx.observable.box(true);
 
     // cmdid => TermWrap
     terms : Record<string, TermWrap> = {};
+
+    setScrollTop_debounced : (scrollTop : number) => void;
 
     constructor(swdata : ScreenWindowType) {
         this.sessionId = swdata.sessionid;
@@ -273,6 +276,62 @@ class ScreenWindow {
         this.windowId = swdata.windowid;
         this.name = mobx.observable.box(swdata.name);
         this.layout = mobx.observable.box(swdata.layout);
+        this.selectedLine = mobx.observable.box(swdata.selectedline == 0 ? null : swdata.selectedline);
+        this.scrollTop = mobx.observable.box(swdata.scrolltop);
+        this.setScrollTop_debounced = debounce(1000, this.setScrollTop.bind(this));
+    }
+
+    setScrollTop(scrollTop : number) : void {
+        GlobalCommandRunner.swSetScrollTop(this.sessionId, this.screenId, this.windowId, scrollTop);
+    }
+
+    getMaxLineNum() : number {
+        let win = this.getWindow();
+        if (win == null) {
+            return null;
+        }
+        let lines = win.lines;
+        if (lines == null || lines.length == 0) {
+            return null;
+        }
+        return lines[lines.length-1].linenum;
+    }
+
+    getPresentLineNum(lineNum : number) : number {
+        let win = this.getWindow();
+        if (win == null || !win.loaded.get()) {
+            return lineNum;
+        }
+        let lines = win.lines;
+        if (lines == null || lines.length == 0) {
+            return null;
+        }
+        for (let i=0; i<lines.length; i++) {
+            let line = lines[i];
+            if (line.linenum == lineNum) {
+                return lineNum;
+            }
+            if (line.linenum > lineNum) {
+                return line.linenum;
+            }
+        }
+        return lines[lines.length-1].linenum;
+    }
+
+    setSelectedLine(lineNum : number) : void {
+        mobx.action(() => {
+            let pln = this.getPresentLineNum(lineNum);
+            if (pln != this.selectedLine.get()) {
+                this.selectedLine.set(pln);
+            }
+        })();
+    }
+
+    checkSelectedLine() : void {
+        let pln = this.getPresentLineNum(this.selectedLine.get());
+        if (pln != this.selectedLine.get()) {
+            this.setSelectedLine(pln);
+        }
     }
 
     updatePtyData(ptyMsg : PtyDataUpdateType) {
@@ -372,10 +431,10 @@ class ScreenWindow {
 class Window {
     sessionId : string;
     windowId : string;
-    curRemote : OV<RemotePtrType> = mobx.observable.box(null);
-    loaded : OV<boolean> = mobx.observable.box(false);
+    curRemote : OV<RemotePtrType> = mobx.observable.box(null, {name: "window-curRemote"});
+    loaded : OV<boolean> = mobx.observable.box(false, {name: "window-loaded"});
     loadError : OV<string> = mobx.observable.box(null);
-    lines : OArr<LineType> = mobx.observable.array([], {deep: false});
+    lines : OArr<LineType> = mobx.observable.array([], {name: "window-lines", deep: false});
     cmds : Record<string, Cmd> = {};
 
     constructor(sessionId : string, windowId : string) {
@@ -1254,13 +1313,13 @@ type LineFocusType = {
 
 class Model {
     clientId : string;
-    activeSessionId : OV<string> = mobx.observable.box(null);
-    sessionListLoaded : OV<boolean> = mobx.observable.box(false);
+    activeSessionId : OV<string> = mobx.observable.box(null, {name: "activeSessionId"});
+    sessionListLoaded : OV<boolean> = mobx.observable.box(false, {name: "sessionListLoaded"});
     sessionList : OArr<Session> = mobx.observable.array([], {name: "SessionList", deep: false});
     ws : WSControl;
-    remotes : OArr<RemoteType> = mobx.observable.array([], {deep: false});
-    remotesLoaded : OV<boolean> = mobx.observable.box(false);
-    windows : OMap<string, Window> = mobx.observable.map({}, {deep: false});  // key = "sessionid/windowid"
+    remotes : OArr<RemoteType> = mobx.observable.array([], {name: "remotes", deep: false});
+    remotesLoaded : OV<boolean> = mobx.observable.box(false, {name: "remotesLoaded"});
+    windows : OMap<string, Window> = mobx.observable.map({}, {name: "windows", deep: false});  // key = "sessionid/windowid"
     inputModel : InputModel;
     termUsedRowsCache : Record<string, number> = {};
     remotesModalOpen : OV<boolean> = mobx.observable.box(false);
@@ -1385,6 +1444,14 @@ class Model {
     }
 
     onMetaArrowUp() : void {
+        GlobalCommandRunner.swSelectLine("-");
+    }
+
+    onMetaArrowDown() : void {
+        GlobalCommandRunner.swSelectLine("+");
+    }
+
+    onMetaArrowUpOld() : void {
         let focus = this.getFocusedLine();
         if (focus == null) {
             return;
@@ -1434,7 +1501,7 @@ class Model {
         console.log("arrow-up", this.getFocusedLine(), "=>", switchLine);
     }
 
-    onMetaArrowDown() : void {
+    onMetaArrowDownOld() : void {
         let focus = this.getFocusedLine();
         if (focus == null || focus.cmdInputFocus) {
             return;
@@ -1959,6 +2026,21 @@ class CommandRunner {
 
     archiveRemote(remoteid : string) {
         GlobalModel.submitCommand("remote", "archive", null, {"remote": remoteid, "nohist": "1"}, true);
+    }
+
+    swSelectLine(lineArg : string) {
+        GlobalModel.submitCommand("sw", "set", null, {"nohist": "1", "line": lineArg}, true);
+    }
+
+    swSetScrollTop(sessionId : string, screenId : string, windowId : string, scrollTopVal : number) {
+        let kwargs = {
+            "nohist": "1",
+            "scrolltop": String(scrollTopVal),
+            "session": sessionId,
+            "screen": screenId,
+            "window": windowId,
+        };
+        GlobalModel.submitCommand("sw", "set", null, kwargs, true);
     }
 };
 

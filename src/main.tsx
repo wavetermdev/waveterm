@@ -357,9 +357,10 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         let termOpts = cmd.getTermOpts();
         let isFocused = sw.getIsFocused(line.cmdid);
         let lineNumStr = (line.linenumtemp ? "~" : "") + String(line.linenum);
+        let isSelected = (sw.selectedLine.get() == line.linenum);
         return (
             <div className={cn("line", "line-cmd", {"focus": isFocused})} id={"line-" + getLineId(line)} ref={this.lineRef} style={{position: "relative"}} data-lineid={line.lineid} data-windowid={line.windowid} data-cmdid={line.cmdid}>
-                <div className="focus-indicator"/>
+                <div className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused})}/>
                 <div className="line-header">
                     <div className={cn("avatar", "num-"+lineNumStr.length, "status-" + status, {"ephemeral": line.ephemeral})} onClick={this.doRefresh}>
                         {lineNumStr}
@@ -1699,11 +1700,15 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
     @boundMethod
     scrollHandler(event : any) {
         let {sw} = this.props;
+        if (sw == null) {
+            return;
+        }
         let target = event.target;
         let atBottom = (target.scrollTop + 30 > (target.scrollHeight - target.offsetHeight));
         if (sw.shouldFollow.get() != atBottom) {
             mobx.action(() => sw.shouldFollow.set(atBottom))();
         }
+        sw.setScrollTop_debounced(target.scrollTop);
         // console.log("scroll-handler (sw)>", atBottom, target.scrollTop, target.scrollHeight, event);
     }
 

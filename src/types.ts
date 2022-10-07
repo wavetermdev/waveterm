@@ -67,6 +67,8 @@ type ScreenWindowType = {
     windowid : string,
     name : string,
     layout : LayoutType,
+    selectedline : number,
+    scrolltop : number,
 
     // for updates
     remove? : boolean,
