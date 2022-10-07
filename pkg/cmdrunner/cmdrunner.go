@@ -43,7 +43,7 @@ var hostNameRe = regexp.MustCompile("^[a-z][a-z0-9.-]*$")
 var userHostRe = regexp.MustCompile("^(sudo@)?([a-z][a-z0-9-]*)@([a-z][a-z0-9.-]*)(?::([0-9]+))?$")
 var remoteAliasRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_-]*$")
 var genericNameRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_ .()<>,/\"'\\[\\]{}=+$@!*-]*$")
-var positionRe = regexp.MustCompile("^((\\+|-)?[0-9]+|(\\+|-))$")
+var positionRe = regexp.MustCompile("^((S?\\+|E?-)?[0-9]+|(\\+|-|S|E))$")
 var wsRe = regexp.MustCompile("\\s+")
 
 type contextType string
@@ -438,6 +438,25 @@ func SwSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 			return nil, fmt.Errorf("/sw:set invalid scrolltop argument: %v", err)
 		}
 		updateMap[sstore.SWField_ScrollTop] = stVal
+	}
+	if pk.Kwargs["line"] != "" {
+		sw, err := sstore.GetScreenWindowByIds(ctx, ids.SessionId, ids.ScreenId, ids.WindowId)
+		if err != nil {
+			return nil, fmt.Errorf("/sw:set cannot get screen-window: %v", err)
+		}
+		var selectedLineStr string
+		if sw.SelectedLine > 0 {
+			selectedLineStr = strconv.Itoa(sw.SelectedLine)
+		}
+		ritem, err := resolveLine(ctx, ids.SessionId, ids.WindowId, pk.Kwargs["line"], selectedLineStr)
+		if err != nil {
+			return nil, fmt.Errorf("/sw:set error resolving line: %v", err)
+		}
+		if ritem == nil {
+			return nil, fmt.Errorf("/sw:set could not resolve line %q", pk.Kwargs["line"])
+		}
+		setNonST = true
+		updateMap[sstore.SWField_SelectedLine] = ritem.Num
 	}
 	if len(updateMap) == 0 {
 		return nil, fmt.Errorf("/sw:set no updates, can set %s", formatStrs([]string{"line", "scrolltop"}, "or", false))

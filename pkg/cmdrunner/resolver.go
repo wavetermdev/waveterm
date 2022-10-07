@@ -95,26 +95,40 @@ func boundInt(ival int, maxVal int, wrap bool) int {
 }
 
 type posArgType struct {
-	Pos        int
-	IsWrap     bool
-	IsRelative bool
+	Pos         int
+	IsWrap      bool
+	IsRelative  bool
+	StartAnchor bool
+	EndAnchor   bool
 }
 
 func parsePosArg(posStr string) *posArgType {
 	if !positionRe.MatchString(posStr) {
 		return nil
 	}
-	rtn := &posArgType{}
-	rtn.IsRelative = strings.HasPrefix(posStr, "+") || strings.HasPrefix(posStr, "-")
-	rtn.IsWrap = posStr == "+" || posStr == "-"
-	if rtn.IsWrap && posStr == "+" {
-		rtn.Pos = 1
-	} else if rtn.IsWrap && posStr == "-" {
-		rtn.Pos = -1
-	} else {
-		rtn.Pos, _ = strconv.Atoi(posStr) // don't need to check error because of positionRe.Match
+	if posStr == "+" {
+		return &posArgType{Pos: 1, IsWrap: true, IsRelative: true}
+	} else if posStr == "-" {
+		return &posArgType{Pos: -1, IsWrap: true, IsRelative: true}
+	} else if posStr == "S" {
+		return &posArgType{Pos: 0, IsRelative: true, StartAnchor: true}
+	} else if posStr == "E" {
+		return &posArgType{Pos: 0, IsRelative: true, EndAnchor: true}
 	}
-	return rtn
+	if strings.HasPrefix(posStr, "S+") {
+		pos, _ := strconv.Atoi(posStr[2:])
+		return &posArgType{Pos: pos, IsRelative: true, StartAnchor: true}
+	}
+	if strings.HasPrefix(posStr, "E-") {
+		pos, _ := strconv.Atoi(posStr[1:])
+		return &posArgType{Pos: pos, IsRelative: true, EndAnchor: true}
+	}
+	if strings.HasPrefix(posStr, "+") || strings.HasPrefix(posStr, "-") {
+		pos, _ := strconv.Atoi(posStr)
+		return &posArgType{Pos: pos, IsRelative: true}
+	}
+	pos, _ := strconv.Atoi(posStr)
+	return &posArgType{Pos: pos}
 }
 
 func resolveByPosition(isNumeric bool, items []ResolveItem, curId string, posStr string) *ResolveItem {
@@ -127,15 +141,31 @@ func resolveByPosition(isNumeric bool, items []ResolveItem, curId string, posStr
 	}
 	var finalPos int
 	if posArg.IsRelative {
-		curIdx := 1 // if no match, curIdx will be first item
-		for idx, item := range items {
-			if item.Id == curId {
-				curIdx = idx + 1
-				break
+		var curIdx int
+		if posArg.StartAnchor {
+			curIdx = 1
+		} else if posArg.EndAnchor {
+			curIdx = len(items)
+		} else {
+			curIdx = 1 // if no match, curIdx will be first item
+			for idx, item := range items {
+				if item.Id == curId {
+					curIdx = idx + 1
+					break
+				}
 			}
 		}
 		finalPos = curIdx + posArg.Pos
+	} else if isNumeric {
+		// these resolve items have a "Num" set that should be used to look up non-relative positions
+		for _, item := range items {
+			if item.Num == posArg.Pos {
+				return &item
+			}
+		}
+		return nil
 	} else {
+		// non-numeric means position is just the index
 		finalPos = posArg.Pos
 	}
 	finalPos = boundInt(finalPos, len(items), posArg.IsWrap)
@@ -243,10 +273,18 @@ func resolveUiIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype i
 func resolveSessionScreen(ctx context.Context, sessionId string, screenArg string, curScreenArg string) (*ResolveItem, error) {
 	screens, err := sstore.GetSessionScreens(ctx, sessionId)
 	if err != nil {
-		return nil, fmt.Errorf("could not retreive screens for session=%s", sessionId)
+		return nil, fmt.Errorf("could not retreive screens for session=%s: %v", sessionId, err)
 	}
 	ritems := screensToResolveItems(screens)
 	return genericResolve(screenArg, curScreenArg, ritems, false, "screen")
+}
+
+func resolveLine(ctx context.Context, sessionId string, windowId string, lineArg string, curLineArg string) (*ResolveItem, error) {
+	lines, err := sstore.GetLineResolveItems(ctx, sessionId, windowId)
+	if err != nil {
+		return nil, fmt.Errorf("could not get lines: %v", err)
+	}
+	return genericResolve(lineArg, curLineArg, lines, true, "line")
 }
 
 func getSessionIds(sarr []*sstore.SessionType) []string {
@@ -261,6 +299,11 @@ var partialUUIDRe = regexp.MustCompile("^[0-9a-f]{8}$")
 
 func isPartialUUID(s string) bool {
 	return partialUUIDRe.MatchString(s)
+}
+
+func isUUID(s string) bool {
+	_, err := uuid.Parse(s)
+	return err == nil
 }
 
 func getResolveItemById(id string, items []ResolveItem) *ResolveItem {
@@ -290,10 +333,11 @@ func genericResolve(arg string, curArg string, items []ResolveItem, isNumeric bo
 	if rtnItem != nil {
 		return rtnItem, nil
 	}
+	isUuid := isUUID(arg)
 	tryPuid := isPartialUUID(arg)
 	var prefixMatches []ResolveItem
 	for _, item := range items {
-		if item.Id == arg || (tryPuid && strings.HasPrefix(item.Id, arg)) {
+		if (isUuid && item.Id == arg) || (tryPuid && strings.HasPrefix(item.Id, arg)) {
 			return &item, nil
 		}
 		if item.Name != "" {

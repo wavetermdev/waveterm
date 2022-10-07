@@ -1105,7 +1105,8 @@ func UpdateRemote(ctx context.Context, remoteId string, editMap map[string]inter
 }
 
 const (
-	SWField_ScrollTop = "scrolltop" // int
+	SWField_ScrollTop    = "scrolltop"    // int
+	SWField_SelectedLine = "selectedline" // int
 )
 
 func UpdateScreenWindow(ctx context.Context, sessionId string, screenId string, windowId string, editMap map[string]interface{}) (*ScreenWindowType, error) {
@@ -1119,8 +1120,29 @@ func UpdateScreenWindow(ctx context.Context, sessionId string, screenId string, 
 			query = `UPDATE screen_window SET scrolltop = ? WHERE sessionid = ? AND screenid = ? AND windowid = ?`
 			tx.ExecWrap(query, stVal, sessionId, screenId, windowId)
 		}
+		if sline, found := editMap[SWField_SelectedLine]; found {
+			query = `UPDATE screen_window SET selectedline = ? WHERE sessionid = ? AND screenid = ? AND windowid = ?`
+			tx.ExecWrap(query, sline, sessionId, screenId, windowId)
+		}
 		var sw ScreenWindowType
 		query = `SELECT * FROM screen_window WHERE sessionid = ? AND screenid = ? AND windowid = ?`
+		found := tx.GetWrap(&sw, query, sessionId, screenId, windowId)
+		if found {
+			rtn = &sw
+		}
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	return rtn, nil
+}
+
+func GetScreenWindowByIds(ctx context.Context, sessionId string, screenId string, windowId string) (*ScreenWindowType, error) {
+	var rtn *ScreenWindowType
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		var sw ScreenWindowType
+		query := `SELECT * FROM screen_window WHERE sessionid = ? AND screenid = ? AND windowid = ?`
 		found := tx.GetWrap(&sw, query, sessionId, screenId, windowId)
 		if found {
 			rtn = &sw
