@@ -471,6 +471,12 @@ type LineType struct {
 	Remove      bool   `json:"remove,omitempty"`
 }
 
+type ResolveItem struct {
+	Name string
+	Num  int
+	Id   string
+}
+
 type SSHOpts struct {
 	Local       bool   `json:"local,omitempty"`
 	SSHHost     string `json:"sshhost"`

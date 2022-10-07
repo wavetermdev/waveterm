@@ -335,7 +335,7 @@ func GetWindowById(ctx context.Context, sessionId string, windowId string) (*Win
 			return nil
 		}
 		rtnWindow = WindowFromMap(m)
-		query = `SELECT * FROM line WHERE sessionid = ? AND windowid = ?`
+		query = `SELECT * FROM line WHERE sessionid = ? AND windowid = ? ORDER BY linenum`
 		tx.SelectWrap(&rtnWindow.Lines, query, sessionId, windowId)
 		query = `SELECT * FROM cmd WHERE cmdid IN (SELECT cmdid FROM line WHERE sessionid = ? AND windowid = ?)`
 		cmdMaps := tx.SelectMaps(query, sessionId, windowId)
@@ -1125,6 +1125,19 @@ func UpdateScreenWindow(ctx context.Context, sessionId string, screenId string, 
 		if found {
 			rtn = &sw
 		}
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	return rtn, nil
+}
+
+func GetLineResolveItems(ctx context.Context, sessionId string, windowId string) ([]ResolveItem, error) {
+	var rtn []ResolveItem
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT lineid as id, linenum as num FROM line WHERE sessionid = ? AND windowid = ? ORDER BY linenum`
+		tx.SelectWrap(&rtn, query, sessionId, windowId)
 		return nil
 	})
 	if txErr != nil {

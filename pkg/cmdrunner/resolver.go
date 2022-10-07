@@ -37,10 +37,7 @@ type ResolvedRemote struct {
 	RemoteCopy  *sstore.RemoteType
 }
 
-type ResolveItem struct {
-	Name string
-	Id   string
-}
+type ResolveItem = sstore.ResolveItem
 
 func itemNames(items []ResolveItem) []string {
 	if len(items) == 0 {
@@ -75,48 +72,74 @@ func screensToResolveItems(screens []*sstore.ScreenType) []ResolveItem {
 	return rtn
 }
 
-func resolveByPosition(items []ResolveItem, curId string, posStr string) *ResolveItem {
-	if len(items) == 0 {
-		return nil
+// 1-indexed
+func boundInt(ival int, maxVal int, wrap bool) int {
+	if maxVal == 0 {
+		return 0
 	}
+	if ival < 1 {
+		if wrap {
+			return maxVal
+		} else {
+			return 1
+		}
+	}
+	if ival > maxVal {
+		if wrap {
+			return 1
+		} else {
+			return maxVal
+		}
+	}
+	return ival
+}
+
+type posArgType struct {
+	Pos        int
+	IsWrap     bool
+	IsRelative bool
+}
+
+func parsePosArg(posStr string) *posArgType {
 	if !positionRe.MatchString(posStr) {
 		return nil
 	}
-	curIdx := 1 // if no match, curIdx will be first item
-	for idx, item := range items {
-		if item.Id == curId {
-			curIdx = idx + 1
-			break
-		}
-	}
-	isRelative := strings.HasPrefix(posStr, "+") || strings.HasPrefix(posStr, "-")
-	isWrap := posStr == "+" || posStr == "-"
-	var pos int
-	if isWrap && posStr == "+" {
-		pos = 1
-	} else if isWrap && posStr == "-" {
-		pos = -1
+	rtn := &posArgType{}
+	rtn.IsRelative = strings.HasPrefix(posStr, "+") || strings.HasPrefix(posStr, "-")
+	rtn.IsWrap = posStr == "+" || posStr == "-"
+	if rtn.IsWrap && posStr == "+" {
+		rtn.Pos = 1
+	} else if rtn.IsWrap && posStr == "-" {
+		rtn.Pos = -1
 	} else {
-		pos, _ = strconv.Atoi(posStr)
+		rtn.Pos, _ = strconv.Atoi(posStr) // don't need to check error because of positionRe.Match
 	}
-	if isRelative {
-		pos = curIdx + pos
+	return rtn
+}
+
+func resolveByPosition(isNumeric bool, items []ResolveItem, curId string, posStr string) *ResolveItem {
+	if len(items) == 0 {
+		return nil
 	}
-	if pos < 1 {
-		if isWrap {
-			pos = len(items)
-		} else {
-			pos = 1
+	posArg := parsePosArg(posStr)
+	if posArg == nil {
+		return nil
+	}
+	var finalPos int
+	if posArg.IsRelative {
+		curIdx := 1 // if no match, curIdx will be first item
+		for idx, item := range items {
+			if item.Id == curId {
+				curIdx = idx + 1
+				break
+			}
 		}
+		finalPos = curIdx + posArg.Pos
+	} else {
+		finalPos = posArg.Pos
 	}
-	if pos > len(items) {
-		if isWrap {
-			pos = 1
-		} else {
-			pos = len(items)
-		}
-	}
-	return &items[pos-1]
+	finalPos = boundInt(finalPos, len(items), posArg.IsWrap)
+	return &items[finalPos-1]
 }
 
 func resolveRemoteArg(remoteArg string) (*sstore.RemotePtrType, error) {
@@ -223,7 +246,7 @@ func resolveSessionScreen(ctx context.Context, sessionId string, screenArg strin
 		return nil, fmt.Errorf("could not retreive screens for session=%s", sessionId)
 	}
 	ritems := screensToResolveItems(screens)
-	return genericResolve(screenArg, curScreenArg, ritems, "screen")
+	return genericResolve(screenArg, curScreenArg, ritems, false, "screen")
 }
 
 func getSessionIds(sarr []*sstore.SessionType) []string {
@@ -240,26 +263,46 @@ func isPartialUUID(s string) bool {
 	return partialUUIDRe.MatchString(s)
 }
 
-func genericResolve(arg string, curArg string, items []ResolveItem, typeStr string) (*ResolveItem, error) {
+func getResolveItemById(id string, items []ResolveItem) *ResolveItem {
+	if id == "" {
+		return nil
+	}
+	for _, item := range items {
+		if item.Id == id {
+			return &item
+		}
+	}
+	return nil
+}
+
+func genericResolve(arg string, curArg string, items []ResolveItem, isNumeric bool, typeStr string) (*ResolveItem, error) {
+	if len(items) == 0 || arg == "" {
+		return nil, nil
+	}
 	var curId string
 	if curArg != "" {
-		curItem, _ := genericResolve(curArg, "", items, typeStr)
+		curItem, _ := genericResolve(curArg, "", items, isNumeric, typeStr)
 		if curItem != nil {
 			curId = curItem.Id
 		}
 	}
-	rtnItem := resolveByPosition(items, curId, arg)
+	rtnItem := resolveByPosition(isNumeric, items, curId, arg)
 	if rtnItem != nil {
 		return rtnItem, nil
 	}
 	tryPuid := isPartialUUID(arg)
 	var prefixMatches []ResolveItem
 	for _, item := range items {
-		if item.Id == arg || item.Name == arg || (tryPuid && strings.HasPrefix(item.Id, arg)) {
+		if item.Id == arg || (tryPuid && strings.HasPrefix(item.Id, arg)) {
 			return &item, nil
 		}
-		if strings.HasPrefix(item.Name, arg) {
-			prefixMatches = append(prefixMatches, item)
+		if item.Name != "" {
+			if item.Name == arg {
+				return &item, nil
+			}
+			if strings.HasPrefix(item.Name, arg) {
+				prefixMatches = append(prefixMatches, item)
+			}
 		}
 	}
 	if len(prefixMatches) == 1 {

@@ -1372,7 +1372,7 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		return nil, err
 	}
 	ritems := sessionsToResolveItems(bareSessions)
-	ritem, err := genericResolve(firstArg, ids.SessionId, ritems, "session")
+	ritem, err := genericResolve(firstArg, ids.SessionId, ritems, false, "session")
 	if err != nil {
 		return nil, err
 	}
