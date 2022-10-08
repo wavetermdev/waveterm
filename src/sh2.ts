@@ -15,7 +15,9 @@ document.addEventListener("DOMContentLoaded", () => {
     let reactElem = React.createElement(Main, null, null);
     let elem = document.getElementById("app");
     let root = createRoot(elem);
-    root.render(reactElem);
+    setTimeout(() => {
+        root.render(reactElem);
+    }, 500);
 });
 
 (window as any).mobx = mobx;
