@@ -1756,7 +1756,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
         if (curAnchorOffset != sw.anchorOffset) {
             let offsetDiff = curAnchorOffset - sw.anchorOffset;
             let newScrollTop = scrollTop - offsetDiff;
-            // console.log("update scrolltop", reason, -offsetDiff, linesElem.scrollTop, "=>", newScrollTop);
+            // console.log("update scrolltop", reason, "line=" + sw.anchorLine, -offsetDiff, linesElem.scrollTop, "=>", newScrollTop);
             linesElem.scrollTop = newScrollTop;
             this.ignoreNextScroll = true;
         }
@@ -1795,7 +1795,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
         return elem;
     }
 
-    getLineViewInfo(lineNum : number) : {height: number, topOffset: number, botOffset: number} {
+    getLineViewInfo(lineNum : number) : {height: number, topOffset: number, botOffset: number, anchorOffset: number} {
         let linesElem = this.linesRef.current;
         if (linesElem == null) {
             return null;
@@ -1808,6 +1808,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
             height: lineElem.offsetHeight,
             topOffset: 0,
             botOffset: 0,
+            containerOffset: 0,
         };
         let containerTop = linesElem.scrollTop;
         let containerBot = linesElem.scrollTop + linesElem.clientHeight;
@@ -1825,6 +1826,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
         else if (lineBot > containerBot) {
             rtn.botOffset = lineBot - containerBot;
         }
+        rtn.containerOffset = containerBot - lineBot;
         return rtn;
     }
 
@@ -1842,14 +1844,35 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
         if (viewInfo == null) {
             return;
         }
+        sw.anchorLine = newLine;
+        sw.anchorOffset = viewInfo.anchorOffset;
         let isFirst = (newLine == lines[0].linenum);
         let isLast = (newLine == lines[lines.length-1].linenum);
         if (viewInfo.botOffset > 0) {
             linesElem.scrollTop = linesElem.scrollTop + viewInfo.botOffset + (isLast ? 10 : 0);
+            this.ignoreNextScroll = true;
+            sw.anchorOffset = (isLast ? 10 : 0);
         }
         else if (viewInfo.topOffset < 0) {
             linesElem.scrollTop = linesElem.scrollTop + viewInfo.topOffset + (isFirst ? -10 : 0);
+            this.ignoreNextScroll = true;
+            sw.anchorOffset = linesElem.clientHeight - viewInfo.height;
         }
+        this.setLineVisible(newLine, true);
+    }
+
+    setLineVisible(lineNum : number, vis : boolean) : void {
+        mobx.action(() => {
+            let key = String(lineNum);
+            let visObj = this.visibleMap.get(key);
+            if (visObj == null) {
+                visObj = mobx.observable.box(true);
+                this.visibleMap.set(key, visObj);
+            }
+            else {
+                visObj.set(true);
+            }
+        })();
     }
 
     componentDidUpdate(prevProps, prevState, snapshot) : void {
@@ -1886,6 +1909,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
 
     @boundMethod
     onHeightChange(lineNum : number, newHeight : number, oldHeight : number) : void {
+        // console.log("height-change", lineNum, oldHeight, "=>", newHeight);
         this.restoreAnchorOffset("height-change");
         this.computeVisibleMap_debounced();
     }
