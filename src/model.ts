@@ -266,6 +266,8 @@ class ScreenWindow {
     scrollTop : OV<number>;
     shouldFollow : OV<boolean> = mobx.observable.box(true);
     focusType : OV<"input"|"lines"> = mobx.observable.box("input");
+    anchorLine : number = null;
+    anchorOffset : number = 0;
 
     // cmdid => TermWrap
     terms : Record<string, TermWrap> = {};
@@ -281,6 +283,10 @@ class ScreenWindow {
         this.selectedLine = mobx.observable.box(swdata.selectedline == 0 ? null : swdata.selectedline);
         this.scrollTop = mobx.observable.box(swdata.scrolltop);
         this.setScrollTop_debounced = debounce(1000, this.setScrollTop.bind(this));
+        if (swdata.selectedline != 0) {
+            this.anchorLine = swdata.selectedline;
+            this.anchorOffset = 0;
+        }
     }
 
     updateSelf(swdata : ScreenWindowType) {

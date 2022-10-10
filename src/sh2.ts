@@ -15,10 +15,11 @@ let jbmFontNormal = new FontFace("JetBrains Mono", "url('static/fonts/jetbrains-
 let jbmFont200 = new FontFace("JetBrains Mono", "url('static/fonts/jetbrains-mono-v13-latin-200.woff2')", {style: "normal", weight: "200"});
 let jbmFont700 = new FontFace("JetBrains Mono", "url('static/fonts/jetbrains-mono-v13-latin-700.woff2')", {style: "normal", weight: "700"});
 let faFont = new FontFace("FontAwesome", "url(static/fonts/fontawesome-webfont-4.7.woff2)", {style: "normal", weight: "normal"});
-document.fonts.add(jbmFontNormal);
-document.fonts.add(jbmFont200);
-document.fonts.add(jbmFont700);
-document.fonts.add(faFont);
+let docFonts : any = document.fonts; // work around ts typing issue
+docFonts.add(jbmFontNormal);
+docFonts.add(jbmFont200);
+docFonts.add(jbmFont700);
+docFonts.add(faFont);
 jbmFontNormal.load();
 jbmFont200.load();
 jbmFont700.load();

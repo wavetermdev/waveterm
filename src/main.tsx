@@ -1636,12 +1636,11 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
     rszObs : any;
     linesRef : React.RefObject<any>;
     staticRender : OV<boolean> = mobx.observable.box(true);
-    anchorLine : number = 0;
-    anchorOffset : number = 0;
     lastOffsetHeight : number = 0;
     lastOffsetWidth : number = 0;
     ignoreNextScroll : boolean = false;
     visibleMap : Map<string, OV<boolean>>;  // lineid => OV<vis>
+    lastSelectedLine : number = 0;
 
     computeAnchorLine_throttled : () => void;
     computeVisibleMap_debounced : () => void;
@@ -1649,8 +1648,6 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
     constructor(props) {
         super(props);
         this.linesRef = React.createRef();
-        this.anchorLine = props.lines[props.lines.length-1].linenum;
-        this.anchorOffset = 0;
         this.computeAnchorLine_throttled = throttle(100, this.computeAnchorLine.bind(this), {noLeading: true, noTrailing: false});
         this.visibleMap = new Map();
         this.computeVisibleMap_debounced = debounce(1000, this.computeVisibleMap.bind(this));
@@ -1668,16 +1665,17 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
     }
 
     computeAnchorLine() : void {
+        let {sw} = this.props;
         let linesElem = this.linesRef.current;
         if (linesElem == null) {
-            this.anchorLine = null;
-            this.anchorOffset = 0;
+            sw.anchorLine = null;
+            sw.anchorOffset = 0;
             return;
         }
         let lineElemArr = linesElem.querySelectorAll(".line");
         if (lineElemArr == null) {
-            this.anchorLine = null;
-            this.anchorOffset = 0;
+            sw.anchorLine = null;
+            sw.anchorOffset = 0;
             return;
         }
         let scrollTop = linesElem.scrollTop;
@@ -1694,8 +1692,8 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
         if (anchorElem == null) {
             anchorElem = lineElemArr[0];
         }
-        this.anchorLine = parseInt(anchorElem.dataset.linenum);
-        this.anchorOffset = containerBottom - (anchorElem.offsetTop + anchorElem.offsetHeight);
+        sw.anchorLine = parseInt(anchorElem.dataset.linenum);
+        sw.anchorOffset = containerBottom - (anchorElem.offsetTop + anchorElem.offsetHeight);
         // console.log("anchor", this.anchorLine, this.anchorOffset);
     }
 
@@ -1710,7 +1708,6 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
         }
         let containerTop = linesElem.scrollTop - LinesVisiblePadding;
         let containerBot = linesElem.scrollTop + linesElem.clientHeight + LinesVisiblePadding;
-        console.log("container", containerTop, containerBot);
         let newMap = new Map<string, boolean>();
         for (let i=0; i<lineElemArr.length; i++) {
             let lineElem = lineElemArr[i];
@@ -1740,14 +1737,15 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
     }
 
     restoreAnchorOffset(reason : string) : void {
+        let {sw} = this.props;
         let linesElem = this.linesRef.current;
         if (linesElem == null) {
             return;
         }
-        if (this.anchorLine == null || this.anchorLine == 0) {
+        if (sw.anchorLine == null || sw.anchorLine == 0) {
             return;
         }
-        let anchorElem = linesElem.querySelector(sprintf(".line[data-linenum=\"%d\"]", this.anchorLine));
+        let anchorElem = linesElem.querySelector(sprintf(".line[data-linenum=\"%d\"]", sw.anchorLine));
         if (anchorElem == null) {
             return;
         }
@@ -1755,8 +1753,8 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
         let height = linesElem.clientHeight;
         let containerBottom = scrollTop + height;
         let curAnchorOffset = containerBottom - (anchorElem.offsetTop + anchorElem.offsetHeight);
-        if (curAnchorOffset != this.anchorOffset) {
-            let offsetDiff = curAnchorOffset - this.anchorOffset;
+        if (curAnchorOffset != sw.anchorOffset) {
+            let offsetDiff = curAnchorOffset - sw.anchorOffset;
             let newScrollTop = scrollTop - offsetDiff;
             // console.log("update scrolltop", reason, -offsetDiff, linesElem.scrollTop, "=>", newScrollTop);
             linesElem.scrollTop = newScrollTop;
@@ -1765,7 +1763,14 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
     }
 
     componentDidMount() : void {
-        this.computeAnchorLine();
+        let {sw} = this.props;
+        if (sw.anchorLine == null) {
+            this.computeAnchorLine();
+        }
+        else {
+            this.restoreAnchorOffset("re-mount");
+        }
+        this.lastSelectedLine = sw.selectedLine.get();
 
         let linesElem = this.linesRef.current;
         if (linesElem != null) {
@@ -1779,6 +1784,80 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
             this.staticRender.set(false)
             this.computeVisibleMap();
         })();
+    }
+
+    getLineElem(lineNum : number) : HTMLElement {
+        let linesElem = this.linesRef.current;
+        if (linesElem == null) {
+            return null;
+        }
+        let elem = linesElem.querySelector(sprintf(".line[data-linenum=\"%d\"]", lineNum));
+        return elem;
+    }
+
+    getLineViewInfo(lineNum : number) : {height: number, topOffset: number, botOffset: number} {
+        let linesElem = this.linesRef.current;
+        if (linesElem == null) {
+            return null;
+        }
+        let lineElem = this.getLineElem(lineNum);
+        if (lineElem == null) {
+            return null;
+        }
+        let rtn = {
+            height: lineElem.offsetHeight,
+            topOffset: 0,
+            botOffset: 0,
+        };
+        let containerTop = linesElem.scrollTop;
+        let containerBot = linesElem.scrollTop + linesElem.clientHeight;
+        let lineTop = lineElem.offsetTop;
+        let lineBot = lineElem.offsetTop + lineElem.offsetHeight;
+        if (lineTop < containerTop) {
+            rtn.topOffset = lineTop - containerTop;
+        }
+        else if (lineTop > containerBot) {
+            rtn.topOffset = lineTop - containerBot;
+        }
+        if (lineBot < containerTop) {
+            rtn.botOffset = lineBot - containerTop;
+        }
+        else if (lineBot > containerBot) {
+            rtn.botOffset = lineBot - containerBot;
+        }
+        return rtn;
+    }
+
+    updateSelectedLine() : void {
+        let {sw, lines} = this.props;
+        let linesElem = this.linesRef.current;
+        if (linesElem == null) {
+            return null;
+        }
+        let newLine = sw.selectedLine.get();
+        if (newLine == sw.anchorLine) {
+            return;
+        }
+        let viewInfo = this.getLineViewInfo(newLine);
+        if (viewInfo == null) {
+            return;
+        }
+        let isFirst = (newLine == lines[0].linenum);
+        let isLast = (newLine == lines[lines.length-1].linenum);
+        if (viewInfo.botOffset > 0) {
+            linesElem.scrollTop = linesElem.scrollTop + viewInfo.botOffset + (isLast ? 10 : 0);
+        }
+        else if (viewInfo.topOffset < 0) {
+            linesElem.scrollTop = linesElem.scrollTop + viewInfo.topOffset + (isFirst ? -10 : 0);
+        }
+    }
+
+    componentDidUpdate(prevProps, prevState, snapshot) : void {
+        let {sw} = this.props;
+        if (sw.selectedLine.get() != this.lastSelectedLine) {
+            this.updateSelectedLine();
+            this.lastSelectedLine = sw.selectedLine.get();
+        }
     }
 
     componentWillUnmount() : void {
@@ -1813,6 +1892,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
     
     render() {
         let {sw, width, lines} = this.props;
+        let selectedLine = sw.selectedLine.get();  // for re-rendering
         let line : LineType = null;
         let idx : number = 0;
         for (let i=0; i<lines.length; i++) {
