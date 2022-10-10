@@ -14,12 +14,15 @@ let VERSION = __SHVERSION__;
 let jbmFontNormal = new FontFace("JetBrains Mono", "url('static/fonts/jetbrains-mono-v13-latin-regular.woff2')", {style: "normal", weight: "400"});
 let jbmFont200 = new FontFace("JetBrains Mono", "url('static/fonts/jetbrains-mono-v13-latin-200.woff2')", {style: "normal", weight: "200"});
 let jbmFont700 = new FontFace("JetBrains Mono", "url('static/fonts/jetbrains-mono-v13-latin-700.woff2')", {style: "normal", weight: "700"});
-let loadPromise = document.fonts.add(jbmFontNormal);
+let faFont = new FontFace("FontAwesome", "url(static/fonts/fontawesome-webfont-4.7.woff2)", {style: "normal", weight: "normal"});
+document.fonts.add(jbmFontNormal);
 document.fonts.add(jbmFont200);
 document.fonts.add(jbmFont700);
+document.fonts.add(faFont);
 jbmFontNormal.load();
 jbmFont200.load();
 jbmFont700.load();
+faFont.load();
 
 document.addEventListener("DOMContentLoaded", () => {
     let reactElem = React.createElement(Main, null, null);
