@@ -28,7 +28,6 @@ class TermWrap {
     termContext : TermContext;
     atRowMax : boolean;
     usedRows : mobx.IObservableValue<number>;
-    isFocused : mobx.IObservableValue<boolean> = mobx.observable.box(false, {name: "focus"});
     flexRows : boolean;
     connectedElem : Element;
     ptyPos : number = 0;
@@ -38,12 +37,14 @@ class TermWrap {
     winSize : WindowSize;
     numParseErrors : number = 0;
     termSize : TermWinSize;
+    focusHandler : (focus : boolean) => void;
 
-    constructor(elem : Element, termContext : TermContext, usedRows : number, termOpts : TermOptsType, winSize : WindowSize, keyHandler : (event : any) => void) {
+    constructor(elem : Element, termContext : TermContext, usedRows : number, termOpts : TermOptsType, winSize : WindowSize, keyHandler : (event : any) => void, focusHandler : (focus : boolean) => void) {
         this.termContext = termContext;
         this.connectedElem = elem;
         this.flexRows = termOpts.flexrows ?? false;
         this.winSize = winSize;
+        this.focusHandler = focusHandler;
         if (this.flexRows) {
             this.atRowMax = false;
             this.usedRows = mobx.observable.box(usedRows ?? 2);
@@ -69,13 +70,17 @@ class TermWrap {
             this.terminal.onKey(keyHandler);
         }
         this.terminal.textarea.addEventListener("focus", () => {
-            this.setFocus(true);
+            if (this.focusHandler != null) {
+                this.focusHandler(true);
+            }
         });
         this.terminal.textarea.addEventListener("blur", (e : any) => {
             if (document.activeElement == this.terminal.textarea) {
                 return;
             }
-            this.setFocus(false);
+            if (this.focusHandler != null) {
+                this.focusHandler(false);
+            }
         });
         this.reloadTerminal(0);
     }
@@ -91,23 +96,12 @@ class TermWrap {
         }
     }
 
-    disconnectElem() {
-        this.connectedElem = null;
+    focusTerminal() {
+        this.terminal.focus();
     }
 
-    setFocus(focus : boolean) {
-        mobx.action(() => {
-            this.isFocused.set(focus);
-        })();
-        if (this.connectedElem != null && focus) {
-            let lineElem : HTMLElement = this.connectedElem.closest(".line");
-            if (lineElem != null) {
-                let lineNum = parseInt(lineElem.dataset.linenum);
-                if (!isNaN(lineNum) && lineNum > 0) {
-                    GlobalCommandRunner.swSelectLine(String(lineNum), "cmd");
-                }
-            }
-        }
+    disconnectElem() {
+        this.connectedElem = null;
     }
 
     getTermUsedRows() : number {

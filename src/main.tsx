@@ -287,7 +287,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         let model = GlobalModel;
         let termWrap = sw.getTermWrap(line.cmdid);
         if (termWrap != null) {
-            termWrap.terminal.focus();
+            termWrap.focusTerminal();
         }
     }
 
@@ -334,7 +334,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         let termOpts = cmd.getTermOpts();
         let lineNumStr = (line.linenumtemp ? "~" : "") + String(line.linenum);
         let isSelected = (sw.selectedLine.get() == line.linenum);
-        let isPhysicalFocused = sw.getIsFocused(line.cmdid);
+        let isPhysicalFocused = sw.getIsFocused(line.linenum);
         let swFocusType = sw.focusType.get();
         let isFocused = isPhysicalFocused && (swFocusType == "cmd" || swFocusType == "cmd-fg");
         let isStatic = staticRender;
@@ -578,7 +578,6 @@ class TextAreaInput extends React.Component<{}, {}> {
             return;
         }
         if (e.code == "KeyR" && ((e.getModifierState("Meta") || e.getModifierState("Control")) && !e.getModifierState("Shift"))) {
-            console.log("meta-r");
             e.preventDefault();
             let opts = mobx.toJS(inputModel.historyQueryOpts.get());
             if (opts.limitRemote) {
@@ -639,7 +638,9 @@ class TextAreaInput extends React.Component<{}, {}> {
         let inputModel = GlobalModel.inputModel;
         if (inputModel.historyShow.get()) {
             e.preventDefault();
-            inputModel.giveFocus();
+            if (this.historyInputRef.current != null) {
+                this.historyInputRef.current.focus();
+            }
             return;
         }
         inputModel.setPhysicalInputFocused(true);
@@ -658,7 +659,9 @@ class TextAreaInput extends React.Component<{}, {}> {
         let inputModel = GlobalModel.inputModel;
         if (!inputModel.historyShow.get()) {
             e.preventDefault();
-            inputModel.giveFocus();
+            if (this.mainInputRef.current != null) {
+                this.mainInputRef.current.focus();
+            }
             return;
         }
         inputModel.setPhysicalInputFocused(true);
@@ -854,7 +857,7 @@ class InfoRemoteShow extends React.Component<{}, {}> {
     clickTermBlock(e : any) {
         let inputModel = GlobalModel.inputModel;
         if (inputModel.remoteTermWrap != null) {
-            inputModel.remoteTermWrap.terminal.focus();
+            inputModel.remoteTermWrap.focusTerminal();
         }
     }
 
@@ -869,7 +872,7 @@ class InfoRemoteShow extends React.Component<{}, {}> {
         let inputModel = GlobalModel.inputModel;
         let infoMsg = inputModel.infoMsg.get();
         let ptyRemoteId = (infoMsg == null ? null : infoMsg.ptyremoteid);
-        let isTermFocused = (inputModel.remoteTermWrap == null ? false : inputModel.remoteTermWrap.isFocused.get());
+        let isTermFocused = (inputModel.remoteTermWrap == null ? false : inputModel.remoteTermWrapFocus.get());
         let remote : RemoteType;
         if (ptyRemoteId != null) {
             remote = GlobalModel.getRemote(ptyRemoteId);
@@ -1695,13 +1698,13 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
     
     @boundMethod
     scrollHandler() {
+        // console.log("scroll", this.linesRef.current.scrollTop);
+        this.computeVisibleMap_debounced(); // always do this
         if (this.ignoreNextScroll) {
             this.ignoreNextScroll = false;
             return;
         }
-        // console.log("scroll", this.linesRef.current.scrollTop);
-        this.computeAnchorLine_throttled();
-        this.computeVisibleMap_debounced();
+        this.computeAnchorLine_throttled(); // only do this when we're not ignoring the scroll
     }
 
     computeAnchorLine() : void {
@@ -1734,7 +1737,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
         }
         sw.anchorLine = parseInt(anchorElem.dataset.linenum);
         sw.anchorOffset = containerBottom - (anchorElem.offsetTop + anchorElem.offsetHeight);
-        // console.log("anchor", this.anchorLine, this.anchorOffset);
+        // console.log("anchor", sw.anchorLine, sw.anchorOffset);
     }
 
     computeVisibleMap() : void {
@@ -1878,9 +1881,8 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
             return null;
         }
         let newLine = sw.selectedLine.get();
-        if (newLine == sw.anchorLine) {
-            return;
-        }
+        this.setLineVisible(newLine, true);
+        // console.log("update selected line", this.lastSelectedLine, "=>", newLine, sprintf("anchor=%d:%d", sw.anchorLine, sw.anchorOffset));
         let viewInfo = this.getLineViewInfo(newLine);
         if (viewInfo == null) {
             return;
@@ -1899,7 +1901,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
             this.ignoreNextScroll = true;
             sw.anchorOffset = linesElem.clientHeight - viewInfo.height;
         }
-        this.setLineVisible(newLine, true);
+        // console.log("new anchor", sw.getAnchorStr());
     }
 
     setLineVisible(lineNum : number, vis : boolean) : void {

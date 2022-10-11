@@ -268,6 +268,7 @@ class ScreenWindow {
     focusType : OV<"input"|"cmd"|"cmd-fg">;
     anchorLine : number = null;
     anchorOffset : number = 0;
+    termLineNumFocus : OV<number>;
 
     // cmdid => TermWrap
     terms : Record<string, TermWrap> = {};
@@ -287,6 +288,14 @@ class ScreenWindow {
             this.anchorLine = swdata.selectedline;
             this.anchorOffset = 0;
         }
+        this.termLineNumFocus = mobx.observable.box(0, {name: "termLineNumFocus"});
+    }
+
+    getAnchorStr() : string {
+        if (this.anchorLine == null || this.anchorLine == 0) {
+            return "0";
+        }
+        return sprintf("%d:%d", this.anchorLine, this.anchorOffset);
     }
 
     updateSelf(swdata : ScreenWindowType) {
@@ -319,7 +328,7 @@ class ScreenWindow {
         if (sline != null && sline.cmdid != null) {
             let termWrap = this.getTermWrap(sline.cmdid);
             if (termWrap != null && termWrap.terminal != null) {
-                termWrap.terminal.focus();
+                termWrap.focusTerminal();
             }
         }
     }
@@ -437,6 +446,13 @@ class ScreenWindow {
         return this.terms[cmdId];
     }
 
+    setTermFocus(lineNum : number, focus : boolean) : void {
+        mobx.action(() => this.termLineNumFocus.set(focus ? lineNum : 0))();
+        if (focus && this.selectedLine.get() != lineNum) {
+            GlobalCommandRunner.swSelectLine(String(lineNum), "cmd");
+        }
+    }
+
     connectElem(elem : Element, line : LineType, cmd : Cmd, width : number) {
         let cmdId = cmd.cmdId;
         let termWrap = this.getTermWrap(cmdId);
@@ -446,10 +462,12 @@ class ScreenWindow {
         }
         let cols = widthToCols(width);
         let usedRows = GlobalModel.getTUR(this.sessionId, cmdId, cols);
-        termWrap = new TermWrap(elem, {sessionId: this.sessionId, cmdId: cmdId}, usedRows, cmd.getTermOpts(), {height: 0, width: width}, cmd.handleKey.bind(cmd));
+        termWrap = new TermWrap(
+            elem, {sessionId: this.sessionId, cmdId: cmdId}, usedRows, cmd.getTermOpts(), {height: 0, width: width},
+            cmd.handleKey.bind(cmd), (focus : boolean) => this.setTermFocus(line.linenum, focus));
         this.terms[cmdId] = termWrap;
         if ((this.focusType.get() == "cmd" || this.focusType.get() == "cmd-fg") && this.selectedLine.get() == line.linenum) {
-            termWrap.setFocus(true);
+            termWrap.focusTerminal();
         }
         return;
     }
@@ -479,12 +497,8 @@ class ScreenWindow {
         return termWrap.usedRows.get();
     }
 
-    getIsFocused(cmdId : string) : boolean {
-        let termWrap = this.getTermWrap(cmdId);
-        if (termWrap == null) {
-            return false;
-        }
-        return termWrap.isFocused.get();
+    getIsFocused(lineNum : number) : boolean {
+        return (this.termLineNumFocus.get() == lineNum);
     }
 
     getWindow() : Window {
@@ -757,6 +771,7 @@ class InputModel {
     infoMsg : OV<InfoType> = mobx.observable.box(null);
     infoTimeoutId : any = null;
     remoteTermWrap : TermWrap;
+    remoteTermWrapFocus : OV<boolean> = mobx.observable.box(false, {name: "remoteTermWrapFocus"});
     showNoInputMsg : OV<boolean> = mobx.observable.box(false);
     showNoInputTimeoutId : any = null;
 
@@ -769,6 +784,12 @@ class InputModel {
         this.filteredHistoryItems = mobx.computed(() => {
             return this._getFilteredHistoryItems();
         });
+    }
+
+    setRemoteTermWrapFocus(focus : boolean) : void {
+        mobx.action(() => {
+            this.remoteTermWrapFocus.set(focus);
+        })();
     }
 
     setShowNoInputMsg(val : boolean) {
@@ -842,6 +863,12 @@ class InputModel {
         mobx.action(() => {
             this.physicalInputFocused.set(isFocused);
         })();
+        let sw = GlobalModel.getActiveSW();
+        if (sw != null) {
+            if (sw.focusType.get() != "input") {
+                GlobalCommandRunner.swSetFocus("input");
+            }
+        }
     }
 
     getPtyRemoteId() : string {
@@ -1319,7 +1346,10 @@ class InputModel {
             }
             else {
                 let termOpts = {rows: RemotePtyRows, cols: RemotePtyCols, flexrows: false, maxptysize: 64*1024};
-                this.remoteTermWrap = new TermWrap(elem, {remoteId: remoteId}, RemotePtyRows, termOpts, null, (e) => { this.termKeyHandler(remoteId, e)});
+                this.remoteTermWrap = new TermWrap(
+                    elem, {remoteId: remoteId}, RemotePtyRows, termOpts, null,
+                    (e) => { this.termKeyHandler(remoteId, e)},
+                    this.setRemoteTermWrapFocus.bind(this));
             }
         }
     }
@@ -1389,6 +1419,7 @@ class Model {
     termUsedRowsCache : Record<string, number> = {};
     remotesModalOpen : OV<boolean> = mobx.observable.box(false);
     addRemoteModalOpen : OV<boolean> = mobx.observable.box(false);
+    debugCmds : boolean = false;
     
     constructor() {
         this.clientId = getApi().getId();
@@ -1473,12 +1504,8 @@ class Model {
     onICmd(e : any, mods : KeyModsType) {
         let sw = this.getActiveSW();
         if (sw != null) {
-            let curLineFocus = this.getFocusedLine();
-            if (curLineFocus.cmdInputFocus) {
+            if (sw.focusType.get() == "input") {
                 GlobalCommandRunner.swSelectLine("E");
-            }
-            else {
-                GlobalCommandRunner.swSetFocus("input");
             }
         }
         this.inputModel.giveFocus();
@@ -1544,56 +1571,6 @@ class Model {
 
     onMetaArrowDown() : void {
         GlobalCommandRunner.swSelectLine("+1");
-    }
-
-    onMetaArrowUpOld() : void {
-        let focus = this.getFocusedLine();
-        if (focus == null) {
-            return;
-        }
-        let sw : ScreenWindow = null;
-        if (focus.cmdInputFocus) {
-            sw = this.getActiveSW();
-        }
-        else {
-            sw = this.getSWByWindowId(focus.windowid);
-        }
-        if (sw == null) {
-            return;
-        }
-        let win = sw.getWindow();
-        if (win == null) {
-            return;
-        }
-        let runningLines = win.getRunningCmdLines();
-        if (runningLines.length == 0) {
-            return;
-        }
-        let switchLine : LineType = null;
-        if (focus.cmdInputFocus) {
-            switchLine = runningLines[runningLines.length-1];
-        }
-        else {
-            let foundIdx = -1;
-            for (let i=0; i<runningLines.length; i++) {
-                if (runningLines[i].lineid == focus.lineid) {
-                    foundIdx = i;
-                    break;
-                }
-            }
-            if (foundIdx > 0) {
-                switchLine = runningLines[foundIdx-1];
-            }
-        }
-        if (switchLine == null || switchLine.cmdid == null) {
-            return;
-        }
-        let termWrap = sw.getTermWrap(switchLine.cmdid);
-        if (termWrap == null || termWrap.terminal == null) {
-            return;
-        }
-        termWrap.terminal.focus();
-        console.log("arrow-up", this.getFocusedLine(), "=>", switchLine);
     }
 
     onBracketCmd(e : any, arg : {relative: number}, mods : KeyModsType) {
@@ -1852,6 +1829,9 @@ class Model {
     }
 
     submitCommandPacket(cmdPk : FeCmdPacketType, interactive : boolean) {
+        if (this.debugCmds) {
+            console.log("[cmd]", cmdPacketString(cmdPk));
+        }
         let url = sprintf("http://localhost:8080/api/run-command");
         fetch(url, {method: "post", body: JSON.stringify(cmdPk)}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
             mobx.action(() => {
@@ -2128,6 +2108,23 @@ class CommandRunner {
         GlobalModel.submitCommand("sw", "set", null, {"focus": focusVal, "nohist": "1"}, true);
     }
 };
+
+function cmdPacketString(pk : FeCmdPacketType) : string {
+    let cmd = pk.metacmd;
+    if (pk.metasubcmd != null) {
+        cmd += ":" + pk.metasubcmd;
+    }
+    let parts = [cmd];
+    if (pk.kwargs != null) {
+        for (let key in pk.kwargs) {
+            parts.push(sprintf("%s=%s", key, pk.kwargs[key]));
+        }
+    }
+    if (pk.args != null) {
+        parts.push(...pk.args);
+    }
+    return parts.join(" ");
+}
 
 let GlobalModel : Model = null;
 let GlobalCommandRunner : CommandRunner = null;
