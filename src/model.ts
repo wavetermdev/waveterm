@@ -265,15 +265,14 @@ class ScreenWindow {
     layout : OV<LayoutType>;
     lastCols : number;
     selectedLine : OV<number>;
-    scrollTop : OV<number>;
-    focusType : OV<"input"|"lines"> = mobx.observable.box("input");
+    focusType : OV<"input"|"cmd"|"cmd-fg">;
     anchorLine : number = null;
     anchorOffset : number = 0;
 
     // cmdid => TermWrap
     terms : Record<string, TermWrap> = {};
 
-    setScrollTop_debounced : (scrollTop : number) => void;
+    setAnchor_debounced : (anchorLine : number, anchorOffset : number) => void;
 
     constructor(swdata : ScreenWindowType) {
         this.sessionId = swdata.sessionid;
@@ -281,9 +280,9 @@ class ScreenWindow {
         this.windowId = swdata.windowid;
         this.name = mobx.observable.box(swdata.name);
         this.layout = mobx.observable.box(swdata.layout);
+        this.focusType = mobx.observable.box(swdata.focustype);
         this.selectedLine = mobx.observable.box(swdata.selectedline == 0 ? null : swdata.selectedline);
-        this.scrollTop = mobx.observable.box(swdata.scrolltop);
-        this.setScrollTop_debounced = debounce(1000, this.setScrollTop.bind(this));
+        this.setAnchor_debounced = debounce(1000, this.setAnchor.bind(this));
         if (swdata.selectedline != 0) {
             this.anchorLine = swdata.selectedline;
             this.anchorOffset = 0;
@@ -295,18 +294,20 @@ class ScreenWindow {
             this.name.set(swdata.name);
             this.layout.set(swdata.layout);
             this.selectedLine.set(swdata.selectedline);
-            // do not set scrolltop!
+            this.focusType.set(swdata.focustype);
+            // do not update anchorLine/anchorOffset (only stored)
         })();
     }
 
-    setFocusType(ftype : "input" | "lines") : void {
+    setFocusType(ftype : "input" | "cmd" | "cmd-fg") : void {
         mobx.action(() => {
             this.focusType.set(ftype);
         })();
     }
 
-    setScrollTop(scrollTop : number) : void {
-        GlobalCommandRunner.swSetScrollTop(this.sessionId, this.screenId, this.windowId, scrollTop);
+    setAnchor(anchorLine : number, anchorOffset : number) : void {
+        let setVal = ((anchorLine == null || anchorLine == 0) ? "0" : sprintf("%d:%d", anchorLine, anchorOffset));
+        GlobalCommandRunner.swSetAnchor(this.sessionId, this.screenId, this.windowId, setVal);
     }
 
     getMaxLineNum() : number {
@@ -784,6 +785,8 @@ class InputModel {
     }
 
     giveFocus() : void {
+        return;
+        
         if (this.historyShow.get()) {
             this._focusHistoryInput();
         }
@@ -1434,7 +1437,7 @@ class Model {
     onLCmd(e : any, mods : KeyModsType) {
         let sw = this.getActiveSW();
         if (sw != null) {
-            sw.setFocusType("lines");
+            sw.setFocusType("cmd");
         }
         // this.inputModel.giveCmdFocus();
     }
@@ -2088,19 +2091,30 @@ class CommandRunner {
         GlobalModel.submitCommand("remote", "archive", null, {"remote": remoteid, "nohist": "1"}, true);
     }
 
-    swSelectLine(lineArg : string) {
-        GlobalModel.submitCommand("sw", "set", null, {"nohist": "1", "line": lineArg}, true);
+    swSelectLine(lineArg : string, focusVal? : string) {
+        let kwargs : Record<string, string> = {
+            "nohist": "1",
+            "line": lineArg,
+        };
+        if (focusVal != null) {
+            kwargs["focus"] = focusVal;
+        }
+        GlobalModel.submitCommand("sw", "set", null, kwargs, true);
     }
 
-    swSetScrollTop(sessionId : string, screenId : string, windowId : string, scrollTopVal : number) {
+    swSetAnchor(sessionId : string, screenId : string, windowId : string, anchorVal : string) : void {
         let kwargs = {
             "nohist": "1",
-            "scrolltop": String(scrollTopVal),
+            "anchor": anchorVal,
             "session": sessionId,
             "screen": screenId,
             "window": windowId,
         };
         GlobalModel.submitCommand("sw", "set", null, kwargs, true);
+    }
+
+    swSetFocus(focusVal : string) : void {
+        GlobalModel.submitCommand("sw", "set", null, {"focus": focusVal, "nohist": "1"}, true);
     }
 };
 

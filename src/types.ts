@@ -68,7 +68,8 @@ type ScreenWindowType = {
     name : string,
     layout : LayoutType,
     selectedline : number,
-    scrolltop : number,
+    focustype : "input"|"cmd"|"cmd-fg",
+    anchor : {anchorline : number, anchoroffset : number},
 
     // for updates
     remove? : boolean,

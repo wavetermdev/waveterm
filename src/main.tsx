@@ -141,7 +141,7 @@ class LineText extends React.Component<{sw : ScreenWindow, line : LineType}, {}>
         let {sw, line} = this.props;
         let formattedTime = getLineDateStr(line.ts);
         let isSelected = (sw.selectedLine.get() == line.linenum);
-        let isFocused = (sw.focusType.get() == "lines");
+        let isFocused = (sw.focusType.get() == "cmd");
         return (
             <div className="line line-text" data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid}>
                 <div className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused})}/>
@@ -393,11 +393,45 @@ class TextAreaInput extends React.Component<{}, {}> {
     lastTab : boolean = false;
     lastHistoryUpDown : boolean = false;
     lastTabCurLine : mobx.IObservableValue<string> = mobx.observable.box(null);
-    
+    lastFocusType : string = null;
+    mainInputRef : React.RefObject<any>;
+    historyInputRef : React.RefObject<any>;
+
+    constructor(props) {
+        super(props);
+        this.mainInputRef = React.createRef();
+        this.historyInputRef = React.createRef();
+    }
+
+    setFocus() : void {
+        let inputModel = GlobalModel.inputModel;
+        if (inputModel.historyShow.get()) {
+            this.historyInputRef.current.focus();
+        }
+        else {
+            this.mainInputRef.current.focus();
+        }
+    }
+
     componentDidMount() {
-        let input = document.getElementById("main-cmd-input");
-        if (input != null) {
-            input.focus();
+        let activeSW = GlobalModel.getActiveSW();
+        if (activeSW != null) {
+            let focusType = activeSW.focusType.get();
+            if (focusType == "input") {
+                this.setFocus();
+            }
+            this.lastFocusType = focusType;
+        }
+    }
+
+    componentDidUpdate() {
+        let activeSW = GlobalModel.getActiveSW();
+        if (activeSW != null) {
+            let focusType = activeSW.focusType.get();
+            if (this.lastFocusType != focusType && focusType == "input") {
+                this.setFocus();
+            }
+            this.lastFocusType = focusType;
         }
     }
 
@@ -603,14 +637,16 @@ class TextAreaInput extends React.Component<{}, {}> {
         if (inputModel.historyShow.get()) {
             e.preventDefault();
             inputModel.giveFocus();
+            return;
         }
-        else {
-            inputModel.setPhysicalInputFocused(true);
-        }
+        inputModel.setPhysicalInputFocused(true);
     }
 
     @boundMethod
     handleMainBlur(e : any) {
+        if (document.activeElement == this.mainInputRef.current) {
+            return;
+        }
         GlobalModel.inputModel.setPhysicalInputFocused(false);
     }
 
@@ -620,14 +656,16 @@ class TextAreaInput extends React.Component<{}, {}> {
         if (!inputModel.historyShow.get()) {
             e.preventDefault();
             inputModel.giveFocus();
+            return;
         }
-        else {
-            inputModel.setPhysicalInputFocused(true);
-        }
+        inputModel.setPhysicalInputFocused(true);
     }
 
     @boundMethod
     handleHistoryBlur(e : any) {
+        if (document.activeElement == this.historyInputRef.current) {
+            return;
+        }
         GlobalModel.inputModel.setPhysicalInputFocused(false);
     }
 
@@ -644,10 +682,14 @@ class TextAreaInput extends React.Component<{}, {}> {
         if (disabled) {
             displayLines = 1;
         }
+        let activeSW = GlobalModel.getActiveSW();
+        if (activeSW != null) {
+            activeSW.focusType.get(); // for reaction
+        }
         return (
             <div className="control cmd-input-control is-expanded">
-                <textarea spellCheck="false" id="main-cmd-input" onFocus={this.handleMainFocus} onBlur={this.handleMainBlur} rows={displayLines} value={curLine} onKeyDown={this.onKeyDown} onChange={this.onChange} className={cn("textarea", {"display-disabled": disabled})}></textarea>
-                <input spellCheck="false" className="history-input" type="text" onFocus={this.handleHistoryFocus} onKeyDown={this.onHistoryKeyDown} onChange={this.handleHistoryInput} value={inputModel.historyQueryOpts.get().queryStr}/>
+                <textarea ref={this.mainInputRef} spellCheck="false" id="main-cmd-input" onFocus={this.handleMainFocus} onBlur={this.handleMainBlur} rows={displayLines} value={curLine} onKeyDown={this.onKeyDown} onChange={this.onChange} className={cn("textarea", {"display-disabled": disabled})}></textarea>
+                <input ref={this.historyInputRef} spellCheck="false" className="history-input" type="text" onFocus={this.handleHistoryFocus} onKeyDown={this.onHistoryKeyDown} onChange={this.handleHistoryInput} value={inputModel.historyQueryOpts.get().queryStr}/>
             </div>
         );
     }

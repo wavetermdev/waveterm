@@ -3,7 +3,7 @@ import {Terminal} from 'xterm';
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 import {v4 as uuidv4} from "uuid";
-import {GlobalModel, widthToCols} from "./model";
+import {GlobalModel, widthToCols, GlobalCommandRunner} from "./model";
 import {boundInt} from "./util";
 import type {TermOptsType, TermWinSize} from "./types";
 
@@ -71,7 +71,10 @@ class TermWrap {
         this.terminal.textarea.addEventListener("focus", () => {
             this.setFocus(true);
         });
-        this.terminal.textarea.addEventListener("blur", () => {
+        this.terminal.textarea.addEventListener("blur", (e : any) => {
+            if (document.activeElement == this.terminal.textarea) {
+                return;
+            }
             this.setFocus(false);
         });
         this.reloadTerminal(0);
@@ -96,10 +99,13 @@ class TermWrap {
         mobx.action(() => {
             this.isFocused.set(focus);
         })();
-        if (this.connectedElem != null) {
-            let lineElem = this.connectedElem.closest(".line");
+        if (this.connectedElem != null && focus) {
+            let lineElem : HTMLElement = this.connectedElem.closest(".line");
             if (lineElem != null) {
-                lineElem.scrollIntoView({behavior: "smooth", block: "nearest"});
+                let lineNum = parseInt(lineElem.dataset.linenum);
+                if (!isNaN(lineNum) && lineNum > 0) {
+                    GlobalCommandRunner.swSelectLine(String(lineNum), "cmd");
+                }
             }
         }
     }
