@@ -3,6 +3,7 @@ package sstore
 import (
 	"context"
 	"database/sql"
+	"sync"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -14,6 +15,9 @@ type TxWrap struct {
 }
 
 type txWrapKey struct{}
+
+// single-threaded access to DB
+var globalNestingLock = &sync.Mutex{}
 
 func IsTxWrapContext(ctx context.Context) bool {
 	ctxVal := ctx.Value(txWrapKey{})
@@ -30,6 +34,9 @@ func WithTx(ctx context.Context, fn func(tx *TxWrap) error) (rtnErr error) {
 		}
 	}
 	if txWrap == nil {
+		globalNestingLock.Lock()
+		defer globalNestingLock.Unlock()
+
 		db, err := GetDB(ctx)
 		if err != nil {
 			return err

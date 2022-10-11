@@ -217,7 +217,7 @@ func resolveNonNegInt(arg string, def int) (int, error) {
 }
 
 func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window|R_RemoteConnected)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_RemoteConnected)
 	if err != nil {
 		return nil, fmt.Errorf("/run error: %w", err)
 	}
@@ -252,7 +252,26 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	if err != nil {
 		return nil, err
 	}
-	update := sstore.ModelUpdate{Line: rtnLine, Cmd: cmd, Interactive: pk.Interactive}
+	sw, err := sstore.GetScreenWindowByIds(ctx, ids.SessionId, ids.ScreenId, ids.WindowId)
+	if err != nil {
+		// ignore error here, because the command has already run (nothing to do)
+		fmt.Printf("/run error getting screen-window: %v\n", err)
+	}
+	if sw != nil {
+		updateMap := make(map[string]interface{})
+		updateMap[sstore.SWField_SelectedLine] = rtnLine.LineNum
+		sw, err = sstore.UpdateScreenWindow(ctx, ids.SessionId, ids.ScreenId, ids.WindowId, updateMap)
+		if err != nil {
+			// ignore error again (nothing to do)
+			fmt.Printf("/run error updating screen-window selected line: %v\n", err)
+		}
+	}
+	update := sstore.ModelUpdate{
+		Line:         rtnLine,
+		Cmd:          cmd,
+		ScreenWindow: sw,
+		Interactive:  pk.Interactive,
+	}
 	sstore.MainBus.SendUpdate(ids.SessionId, update)
 	ctxVal := ctx.Value(historyContextKey)
 	if ctxVal != nil {
@@ -1237,7 +1256,15 @@ func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if err != nil {
 		return nil, err
 	}
-	return sstore.ModelUpdate{Line: rtnLine}, nil
+	updateMap := make(map[string]interface{})
+	updateMap[sstore.SWField_SelectedLine] = rtnLine.LineNum
+	sw, err := sstore.UpdateScreenWindow(ctx, ids.SessionId, ids.ScreenId, ids.WindowId, updateMap)
+	if err != nil {
+		// ignore error again (nothing to do)
+		fmt.Printf("/comment error updating screen-window selected line: %v\n", err)
+	}
+	update := sstore.ModelUpdate{Line: rtnLine, ScreenWindow: sw}
+	return update, nil
 }
 
 func maybeQuote(s string, quote bool) string {

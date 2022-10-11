@@ -2,7 +2,6 @@ package sstore
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"strconv"
 	"strings"
@@ -16,17 +15,13 @@ const HistoryCols = "historyid, ts, userid, sessionid, screenid, windowid, linei
 const DefaultMaxHistoryItems = 1000
 
 func NumSessions(ctx context.Context) (int, error) {
-	db, err := GetDB(ctx)
-	if err != nil {
-		return 0, err
-	}
-	query := "SELECT count(*) FROM session"
-	var count int
-	err = db.GetContext(ctx, &count, query)
-	if err != nil {
-		return 0, err
-	}
-	return count, nil
+	var numSessions int
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := "SELECT count(*) FROM session"
+		numSessions = tx.GetInt(query)
+		return nil
+	})
+	return numSessions, txErr
 }
 
 func GetAllRemotes(ctx context.Context) ([]*RemoteType, error) {
@@ -157,17 +152,14 @@ func InsertHistoryItem(ctx context.Context, hitem *HistoryItemType) error {
 	if hitem == nil {
 		return fmt.Errorf("cannot insert nil history item")
 	}
-	db, err := GetDB(ctx)
-	if err != nil {
-		return err
-	}
-	query := `INSERT INTO history ( historyid, ts, userid, sessionid, screenid, windowid, lineid, cmdid, haderror, cmdstr, remoteownerid, remoteid, remotename, ismetacmd) VALUES
-                                  (:historyid,:ts,:userid,:sessionid,:screenid,:windowid,:lineid,:cmdid,:haderror,:cmdstr,:remoteownerid,:remoteid,:remotename,:ismetacmd)`
-	_, err = db.NamedExec(query, hitem.ToMap())
-	if err != nil {
-		return err
-	}
-	return nil
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `INSERT INTO history 
+                  ( historyid, ts, userid, sessionid, screenid, windowid, lineid, cmdid, haderror, cmdstr, remoteownerid, remoteid, remotename, ismetacmd) VALUES
+                  (:historyid,:ts,:userid,:sessionid,:screenid,:windowid,:lineid,:cmdid,:haderror,:cmdstr,:remoteownerid,:remoteid,:remotename,:ismetacmd)`
+		tx.NamedExecWrap(query, hitem.ToMap())
+		return nil
+	})
+	return txErr
 }
 
 func runHistoryQuery(tx *TxWrap, sessionId string, windowId string, opts HistoryQueryOpts) ([]*HistoryItemType, error) {
@@ -372,20 +364,24 @@ func GetSessionById(ctx context.Context, id string) (*SessionType, error) {
 }
 
 func GetSessionByName(ctx context.Context, name string) (*SessionType, error) {
-	db, err := GetDB(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var sessionId string
-	query := `SELECT sessionid FROM session WHERE name = ?`
-	err = db.GetContext(ctx, &sessionId, query, name)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
+	var session *SessionType
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT sessionid FROM session WHERE name = ?`
+		sessionId := tx.GetString(query, name)
+		if sessionId == "" {
+			return nil
 		}
-		return nil, err
+		var err error
+		session, err = GetSessionById(tx.Context(), sessionId)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
 	}
-	return GetSessionById(ctx, sessionId)
+	return session, nil
 }
 
 // also creates default window, returns sessionId
