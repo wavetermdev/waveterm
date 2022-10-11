@@ -260,6 +260,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	if sw != nil {
 		updateMap := make(map[string]interface{})
 		updateMap[sstore.SWField_SelectedLine] = rtnLine.LineNum
+		updateMap[sstore.SWField_Focus] = sstore.SWFocusCmd
 		sw, err = sstore.UpdateScreenWindow(ctx, ids.SessionId, ids.ScreenId, ids.WindowId, updateMap)
 		if err != nil {
 			// ignore error again (nothing to do)
@@ -267,10 +268,10 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 		}
 	}
 	update := sstore.ModelUpdate{
-		Line:         rtnLine,
-		Cmd:          cmd,
-		ScreenWindow: sw,
-		Interactive:  pk.Interactive,
+		Line:          rtnLine,
+		Cmd:           cmd,
+		ScreenWindows: []*sstore.ScreenWindowType{sw},
+		Interactive:   pk.Interactive,
 	}
 	sstore.MainBus.SendUpdate(ids.SessionId, update)
 	ctxVal := ctx.Value(historyContextKey)
@@ -444,6 +445,8 @@ func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	return update, nil
 }
 
+var swAnchorRe = regexp.MustCompile("^(\\d+)(?::(\\d+))?$")
+
 func SwSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
 	if err != nil {
@@ -451,12 +454,25 @@ func SwSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 	}
 	var setNonST bool // scrolltop does not receive an update
 	updateMap := make(map[string]interface{})
-	if pk.Kwargs["scrolltop"] != "" {
-		stVal, err := resolveNonNegInt(pk.Kwargs["scrolltop"], 0)
-		if err != nil {
-			return nil, fmt.Errorf("/sw:set invalid scrolltop argument: %v", err)
+	if pk.Kwargs["anchor"] != "" {
+		m := swAnchorRe.FindStringSubmatch(pk.Kwargs["anchor"])
+		if m == nil {
+			return nil, fmt.Errorf("/sw:set invalid anchor argument (must be [line] or [line]:[offset])")
 		}
-		updateMap[sstore.SWField_ScrollTop] = stVal
+		anchorLine, _ := strconv.Atoi(m[1])
+		updateMap[sstore.SWField_AnchorLine] = anchorLine
+		if m[2] != "" {
+			anchorOffset, _ := strconv.Atoi(m[2])
+			updateMap[sstore.SWField_AnchorOffset] = anchorOffset
+		}
+	}
+	if pk.Kwargs["focus"] != "" {
+		focusVal := pk.Kwargs["focus"]
+		if focusVal != sstore.SWFocusInput && focusVal != sstore.SWFocusCmd && focusVal != sstore.SWFocusCmdFg {
+			return nil, fmt.Errorf("/sw:set invalid focus argument %q, must be %s", focusVal, formatStrs([]string{sstore.SWFocusInput, sstore.SWFocusCmd, sstore.SWFocusCmdFg}, "or", false))
+		}
+		updateMap[sstore.SWField_Focus] = focusVal
+		setNonST = true
 	}
 	if pk.Kwargs["line"] != "" {
 		sw, err := sstore.GetScreenWindowByIds(ctx, ids.SessionId, ids.ScreenId, ids.WindowId)
@@ -478,7 +494,7 @@ func SwSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 		updateMap[sstore.SWField_SelectedLine] = ritem.Num
 	}
 	if len(updateMap) == 0 {
-		return nil, fmt.Errorf("/sw:set no updates, can set %s", formatStrs([]string{"line", "scrolltop"}, "or", false))
+		return nil, fmt.Errorf("/sw:set no updates, can set %s", formatStrs([]string{"line", "scrolltop", "focus"}, "or", false))
 	}
 	sw, err := sstore.UpdateScreenWindow(ctx, ids.SessionId, ids.ScreenId, ids.WindowId, updateMap)
 	if err != nil {
@@ -487,7 +503,7 @@ func SwSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 	if !setNonST {
 		return nil, nil
 	}
-	return sstore.ModelUpdate{ScreenWindow: sw}, nil
+	return sstore.ModelUpdate{ScreenWindows: []*sstore.ScreenWindowType{sw}}, nil
 }
 
 func UnSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -1258,12 +1274,13 @@ func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	}
 	updateMap := make(map[string]interface{})
 	updateMap[sstore.SWField_SelectedLine] = rtnLine.LineNum
+	updateMap[sstore.SWField_Focus] = sstore.SWFocusInput
 	sw, err := sstore.UpdateScreenWindow(ctx, ids.SessionId, ids.ScreenId, ids.WindowId, updateMap)
 	if err != nil {
 		// ignore error again (nothing to do)
 		fmt.Printf("/comment error updating screen-window selected line: %v\n", err)
 	}
-	update := sstore.ModelUpdate{Line: rtnLine, ScreenWindow: sw}
+	update := sstore.ModelUpdate{Line: rtnLine, ScreenWindows: []*sstore.ScreenWindowType{sw}}
 	return update, nil
 }
 

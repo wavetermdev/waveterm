@@ -62,6 +62,12 @@ const (
 	RemoteTypeSsh = "ssh"
 )
 
+const (
+	SWFocusInput = "input"
+	SWFocusCmd   = "cmd"
+	SWFocusCmdFg = "cmd-fg"
+)
+
 var globalDBLock = &sync.Mutex{}
 var globalDB *sqlx.DB
 var globalDBErr error
@@ -375,14 +381,28 @@ func (l LayoutType) Value() (driver.Value, error) {
 	return quickValueJson(l)
 }
 
+type SWAnchorType struct {
+	AnchorLine   int `json:"anchorline,omitempty"`
+	AnchorOffset int `json:"anchoroffset,omitempty"`
+}
+
+func (a *SWAnchorType) Scan(val interface{}) error {
+	return quickScanJson(a, val)
+}
+
+func (a SWAnchorType) Value() (driver.Value, error) {
+	return quickValueJson(a)
+}
+
 type ScreenWindowType struct {
-	SessionId    string     `json:"sessionid"`
-	ScreenId     string     `json:"screenid"`
-	WindowId     string     `json:"windowid"`
-	Name         string     `json:"name"`
-	Layout       LayoutType `json:"layout"`
-	SelectedLine int        `json:"selectedline"`
-	ScrollTop    int        `json:"scrolltop"`
+	SessionId    string       `json:"sessionid"`
+	ScreenId     string       `json:"screenid"`
+	WindowId     string       `json:"windowid"`
+	Name         string       `json:"name"`
+	Layout       LayoutType   `json:"layout"`
+	SelectedLine int          `json:"selectedline"`
+	Anchor       SWAnchorType `json:"anchor"`
+	FocusType    string       `json:"focustype"`
 
 	// only for updates
 	Remove bool `json:"remove,omitempty"`

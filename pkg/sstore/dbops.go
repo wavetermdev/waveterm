@@ -494,8 +494,8 @@ func InsertScreen(ctx context.Context, sessionId string, origScreenName string, 
 		query = `INSERT INTO screen (sessionid, screenid, name, activewindowid, screenidx, screenopts, ownerid, sharemode) VALUES (?, ?, ?, ?, ?, ?, '', 'local')`
 		tx.ExecWrap(query, sessionId, newScreenId, screenName, newWindowId, maxScreenIdx+1, ScreenOptsType{})
 		layout := LayoutType{Type: LayoutFull}
-		query = `INSERT INTO screen_window (sessionid, screenid, windowid, name, layout, selectedline, scrolltop) VALUES (?, ?, ?, ?, ?, ?, ?)`
-		tx.ExecWrap(query, sessionId, newScreenId, newWindowId, DefaultScreenWindowName, layout, 0, 0)
+		query = `INSERT INTO screen_window (sessionid, screenid, windowid, name, layout, selectedline, anchor, focustype) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+		tx.ExecWrap(query, sessionId, newScreenId, newWindowId, DefaultScreenWindowName, layout, 0, "", "input")
 		if activate {
 			query = `UPDATE session SET activescreenid = ? WHERE sessionid = ?`
 			tx.ExecWrap(query, newScreenId, sessionId)
@@ -688,6 +688,12 @@ func AppendCmdErrorPk(ctx context.Context, errPk *packet.CmdErrorPacketType) err
 		tx.ExecWrap(query, quickJson(errPk), errPk.CK.GetSessionId(), errPk.CK.GetCmdId())
 		return nil
 	})
+}
+
+type SWKey struct {
+	SessionId string
+	ScreenId  string
+	WindowId  string
 }
 
 func HangupAllRunningCmds(ctx context.Context) error {
@@ -1101,8 +1107,10 @@ func UpdateRemote(ctx context.Context, remoteId string, editMap map[string]inter
 }
 
 const (
-	SWField_ScrollTop    = "scrolltop"    // int
+	SWField_AnchorLine   = "anchorline"   // int
+	SWField_AnchorOffset = "anchoroffset" // int
 	SWField_SelectedLine = "selectedline" // int
+	SWField_Focus        = "focustype"    // string
 )
 
 func UpdateScreenWindow(ctx context.Context, sessionId string, screenId string, windowId string, editMap map[string]interface{}) (*ScreenWindowType, error) {
@@ -1112,13 +1120,21 @@ func UpdateScreenWindow(ctx context.Context, sessionId string, screenId string, 
 		if !tx.Exists(query, sessionId, screenId, windowId) {
 			return fmt.Errorf("screen-window not found")
 		}
-		if stVal, found := editMap[SWField_ScrollTop]; found {
-			query = `UPDATE screen_window SET scrolltop = ? WHERE sessionid = ? AND screenid = ? AND windowid = ?`
-			tx.ExecWrap(query, stVal, sessionId, screenId, windowId)
+		if anchorLine, found := editMap[SWField_AnchorLine]; found {
+			query = `UPDATE screen_window SET anchor = json_set(anchor, '$.anchorline', ?) WHERE sessionid = ? AND screenid = ? AND windowid = ?`
+			tx.ExecWrap(query, anchorLine, sessionId, screenId, windowId)
+		}
+		if anchorOffset, found := editMap[SWField_AnchorOffset]; found {
+			query = `UPDATE screen_window SET anchor = json_set(anchor, '$.anchoroffset', ?) WHERE sessionid = ? AND screenid = ? AND windowid = ?`
+			tx.ExecWrap(query, anchorOffset, sessionId, screenId, windowId)
 		}
 		if sline, found := editMap[SWField_SelectedLine]; found {
 			query = `UPDATE screen_window SET selectedline = ? WHERE sessionid = ? AND screenid = ? AND windowid = ?`
 			tx.ExecWrap(query, sline, sessionId, screenId, windowId)
+		}
+		if focusType, found := editMap[SWField_Focus]; found {
+			query = `UPDATE screen_window SET focustype = ? WHERE sessionid = ? AND screenid = ? AND windowid = ?`
+			tx.ExecWrap(query, focusType, sessionId, screenId, windowId)
 		}
 		var sw ScreenWindowType
 		query = `SELECT * FROM screen_window WHERE sessionid = ? AND screenid = ? AND windowid = ?`

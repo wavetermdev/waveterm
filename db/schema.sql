@@ -48,6 +48,9 @@ CREATE TABLE screen_window (
     windowid varchar(36) NOT NULL,
     name varchar(50) NOT NULL,
     layout json NOT NULL,
+    selectedline int NOT NULL,
+    anchor json NOT NULL,
+    focustype varchar(12) NOT NULL,
     PRIMARY KEY (sessionid, screenid, windowid)
 );
 CREATE TABLE remote_instance (
