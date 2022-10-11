@@ -16,6 +16,12 @@ const RemotePtyCols = 80;
 const MinTermCols = 10;
 const MaxTermCols = 1024;
 
+type SWLinePtr = {
+    line : LineType,
+    win : Window,
+    sw : ScreenWindow,
+};
+
 function widthToCols(width : number) : number {
     let cols = Math.trunc((width - 32) / DefaultCellWidth) - 1;
     cols = boundInt(cols, MinTermCols, MaxTermCols);
@@ -222,13 +228,6 @@ class Screen {
             }
             // TODO merge windows
         })();
-    }
-
-    updatePtyData(ptyMsg : PtyDataUpdateType) {
-        for (let i=0; i<this.windows.length; i++) {
-            let sw = this.windows[i];
-            sw.updatePtyData(ptyMsg);
-        }
     }
 
     getActiveSW() : ScreenWindow {
@@ -447,9 +446,13 @@ class ScreenWindow {
     }
 
     setTermFocus(lineNum : number, focus : boolean) : void {
+        // console.log("SW setTermFocus", lineNum, focus);
         mobx.action(() => this.termLineNumFocus.set(focus ? lineNum : 0))();
         if (focus && this.selectedLine.get() != lineNum) {
             GlobalCommandRunner.swSelectLine(String(lineNum), "cmd");
+        }
+        else if (focus && this.focusType.get() == "input") {
+            GlobalCommandRunner.swSetFocus("cmd");
         }
     }
 
@@ -740,6 +743,17 @@ class Session {
         }
         return null;
     }
+
+    getSWs(windowId : string) : ScreenWindow[] {
+        let rtn : ScreenWindow[] = [];
+        for (let screen of this.screens) {
+            let sw = screen.getSW(windowId);
+            if (sw != null) {
+                rtn.push(sw);
+            }
+        }
+        return rtn;
+    }
 }
 
 function getDefaultHistoryQueryOpts() : HistoryQueryOpts {
@@ -863,10 +877,12 @@ class InputModel {
         mobx.action(() => {
             this.physicalInputFocused.set(isFocused);
         })();
-        let sw = GlobalModel.getActiveSW();
-        if (sw != null) {
-            if (sw.focusType.get() != "input") {
-                GlobalCommandRunner.swSetFocus("input");
+        if (isFocused) {
+            let sw = GlobalModel.getActiveSW();
+            if (sw != null) {
+                if (sw.focusType.get() != "input") {
+                    GlobalCommandRunner.swSetFocus("input");
+                }
             }
         }
     }
@@ -1419,7 +1435,8 @@ class Model {
     termUsedRowsCache : Record<string, number> = {};
     remotesModalOpen : OV<boolean> = mobx.observable.box(false);
     addRemoteModalOpen : OV<boolean> = mobx.observable.box(false);
-    debugCmds : boolean = false;
+    debugCmds : number = 0;
+    debugSW : OV<boolean> = mobx.observable.box(false);
     
     constructor() {
         this.clientId = getApi().getId();
@@ -1611,11 +1628,7 @@ class Model {
             let ptyMsg : PtyDataUpdateType = genUpdate;
             if (isBlank(ptyMsg.remoteid)) {
                 // regular update
-                let activeScreen = this.getActiveScreen();
-                if (!activeScreen || activeScreen.sessionId != ptyMsg.sessionid) {
-                    return;
-                }
-                activeScreen.updatePtyData(ptyMsg);
+                this.updatePtyData(ptyMsg);
                 return;
             }
             else {
@@ -1829,8 +1842,11 @@ class Model {
     }
 
     submitCommandPacket(cmdPk : FeCmdPacketType, interactive : boolean) {
-        if (this.debugCmds) {
+        if (this.debugCmds > 0) {
             console.log("[cmd]", cmdPacketString(cmdPk));
+            if (this.debugCmds > 1) {
+                console.trace();
+            }
         }
         let url = sprintf("http://localhost:8080/api/run-command");
         fetch(url, {method: "post", body: JSON.stringify(cmdPk)}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
@@ -1961,6 +1977,47 @@ class Model {
             return null;
         }
         return window.getCmd(line.cmdid);
+    }
+
+    getActiveLinesByCmdId(sessionid : string, cmdid : string) : SWLinePtr[] {
+        let rtn : SWLinePtr[] = [];
+        let session = this.getSessionById(sessionid);
+        if (session == null) {
+            return [];
+        }
+        for (let win of this.windows.values()) {
+            if (win.sessionId != sessionid) {
+                continue;
+            }
+            if (!win.loaded.get()) {
+                continue;
+            }
+            let cmd = win.getCmd(cmdid);
+            if (cmd == null) {
+                continue;
+            }
+            let winLine : LineType = null;
+            for (let i=0; i<win.lines.length; i++) {
+                if (win.lines[i].cmdid == cmdid) {
+                    winLine = win.lines[i];
+                    break;
+                }
+            }
+            if (winLine != null) {
+                let sws = session.getSWs(win.windowId);
+                for (let sw of sws) {
+                    rtn.push({line : winLine, win: win, sw: sw});
+                }
+            }
+        }
+        return rtn;
+    }
+
+    updatePtyData(ptyMsg : PtyDataUpdateType) : void {
+        let activeLinePtrs = this.getActiveLinesByCmdId(ptyMsg.sessionid, ptyMsg.cmdid);
+        for (let lineptr of activeLinePtrs) {
+            lineptr.sw.updatePtyData(ptyMsg);
+        }
     }
 
     errorHandler(str : string, err : any, interactive : boolean) {

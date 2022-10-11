@@ -2284,6 +2284,10 @@ class MainSideBar extends React.Component<{}, {}> {
                 activeRemoteId = rptr.remoteid;
             }
         }
+        let sw : ScreenWindow = null;
+        if (GlobalModel.debugSW.get()) {
+            sw = GlobalModel.getActiveSW();
+        }
         let session : Session = null;
         let remotes = model.remotes ?? [];
         let remote : RemoteType = null;
@@ -2350,6 +2354,13 @@ class MainSideBar extends React.Component<{}, {}> {
                         </a></li>
                     </ul>
                     <div className="spacer"></div>
+                    <If condition={GlobalModel.debugSW.get() && sw != null}>
+                        <div>
+                            focus={sw.focusType.get()}<br/>
+                            sline={sw.selectedLine.get()}<br/>
+                            termfocus={sw.termLineNumFocus.get()}<br/>
+                        </div>
+                    </If>
                     <p className="menu-label">
                         <a onClick={() => this.clickRemotes()}>Remotes</a>
                     </p>
