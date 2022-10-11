@@ -278,10 +278,10 @@ class ScreenWindow {
         this.sessionId = swdata.sessionid;
         this.screenId = swdata.screenid;
         this.windowId = swdata.windowid;
-        this.name = mobx.observable.box(swdata.name);
-        this.layout = mobx.observable.box(swdata.layout);
-        this.focusType = mobx.observable.box(swdata.focustype);
-        this.selectedLine = mobx.observable.box(swdata.selectedline == 0 ? null : swdata.selectedline);
+        this.name = mobx.observable.box(swdata.name, {name: "name"});
+        this.layout = mobx.observable.box(swdata.layout, {name: "layout"});
+        this.focusType = mobx.observable.box(swdata.focustype, {name: "focusType"});
+        this.selectedLine = mobx.observable.box(swdata.selectedline == 0 ? null : swdata.selectedline, {name: "selectedLine"});
         this.setAnchor_debounced = debounce(1000, this.setAnchor.bind(this));
         if (swdata.selectedline != 0) {
             this.anchorLine = swdata.selectedline;
@@ -293,10 +293,35 @@ class ScreenWindow {
         mobx.action(() => {
             this.name.set(swdata.name);
             this.layout.set(swdata.layout);
+            let oldSelectedLine = this.selectedLine.get();
+            let oldFocusType = this.focusType.get();
             this.selectedLine.set(swdata.selectedline);
             this.focusType.set(swdata.focustype);
+            this.refocusLine(swdata, oldFocusType, oldSelectedLine);
             // do not update anchorLine/anchorOffset (only stored)
         })();
+    }
+
+    refocusLine(swdata : ScreenWindowType, oldFocusType : string, oldSelectedLine : number) : void {
+        let isCmdFocus = (swdata.focustype == "cmd" || swdata.focustype == "cmd-fg");
+        if (!isCmdFocus) {
+            return;
+        }
+        let curLineFocus = GlobalModel.getFocusedLine();
+        let sline : LineType = null;
+        if (swdata.selectedline != 0) {
+            sline = this.getLineByNum(swdata.selectedline);
+        }
+        // console.log("refocus", curLineFocus.linenum, "=>", swdata.selectedline, sline.cmdid);
+        if (curLineFocus.cmdInputFocus || (curLineFocus.linenum != null && curLineFocus.linenum != swdata.selectedline)) {
+            (document.activeElement as HTMLElement).blur();
+        }
+        if (sline != null && sline.cmdid != null) {
+            let termWrap = this.getTermWrap(sline.cmdid);
+            if (termWrap != null && termWrap.terminal != null) {
+                termWrap.terminal.focus();
+            }
+        }
     }
 
     setFocusType(ftype : "input" | "cmd" | "cmd-fg") : void {
@@ -320,6 +345,23 @@ class ScreenWindow {
             return null;
         }
         return lines[lines.length-1].linenum;
+    }
+
+    getLineByNum(lineNum : number) : LineType {
+        let win = this.getWindow();
+        if (win == null) {
+            return null;
+        }
+        let lines = win.lines;
+        if (lines == null || lines.length == 0) {
+            return null;
+        }
+        for (let i=0; i<lines.length; i++) {
+            if (lines[i].linenum == lineNum) {
+                return lines[i];
+            }
+        }
+        return null;
     }
 
     getPresentLineNum(lineNum : number) : number {
@@ -395,7 +437,7 @@ class ScreenWindow {
         return this.terms[cmdId];
     }
 
-    connectElem(elem : Element, cmd : Cmd, width : number) {
+    connectElem(elem : Element, line : LineType, cmd : Cmd, width : number) {
         let cmdId = cmd.cmdId;
         let termWrap = this.getTermWrap(cmdId);
         if (termWrap != null) {
@@ -406,6 +448,9 @@ class ScreenWindow {
         let usedRows = GlobalModel.getTUR(this.sessionId, cmdId, cols);
         termWrap = new TermWrap(elem, {sessionId: this.sessionId, cmdId: cmdId}, usedRows, cmd.getTermOpts(), {height: 0, width: width}, cmd.handleKey.bind(cmd));
         this.terms[cmdId] = termWrap;
+        if ((this.focusType.get() == "cmd" || this.focusType.get() == "cmd-fg") && this.selectedLine.get() == line.linenum) {
+            termWrap.setFocus(true);
+        }
         return;
     }
 
@@ -785,8 +830,6 @@ class InputModel {
     }
 
     giveFocus() : void {
-        return;
-        
         if (this.historyShow.get()) {
             this._focusHistoryInput();
         }
@@ -1328,6 +1371,7 @@ class InputModel {
 type LineFocusType = {
     cmdInputFocus : boolean,
     lineid? : string,
+    linenum? : number,
     windowid? : string,
     cmdid? : string,
 };
@@ -1429,7 +1473,13 @@ class Model {
     onICmd(e : any, mods : KeyModsType) {
         let sw = this.getActiveSW();
         if (sw != null) {
-            sw.setFocusType("input");
+            let curLineFocus = this.getFocusedLine();
+            if (curLineFocus.cmdInputFocus) {
+                GlobalCommandRunner.swSelectLine("E");
+            }
+            else {
+                GlobalCommandRunner.swSetFocus("input");
+            }
         }
         this.inputModel.giveFocus();
     }
@@ -1437,9 +1487,8 @@ class Model {
     onLCmd(e : any, mods : KeyModsType) {
         let sw = this.getActiveSW();
         if (sw != null) {
-            sw.setFocusType("cmd");
+            GlobalCommandRunner.swSetFocus("cmd");
         }
-        // this.inputModel.giveCmdFocus();
     }
 
     onHCmd(e : any, mods : KeyModsType) {
@@ -1455,11 +1504,13 @@ class Model {
         }
         let lineElem : any = document.activeElement.closest(".line[data-lineid]");
         if (lineElem == null) {
-            return null;
+            return {cmdInputFocus: false};
         }
+        let lineNum = parseInt(lineElem.dataset.linenum);
         return {
             cmdInputFocus: false,
             lineid: lineElem.dataset.lineid,
+            linenum: (isNaN(lineNum) ? null : lineNum),
             windowid: lineElem.dataset.windowid,
             cmdid: lineElem.dataset.cmdid,
         };
@@ -1543,48 +1594,6 @@ class Model {
         }
         termWrap.terminal.focus();
         console.log("arrow-up", this.getFocusedLine(), "=>", switchLine);
-    }
-
-    onMetaArrowDownOld() : void {
-        let focus = this.getFocusedLine();
-        if (focus == null || focus.cmdInputFocus) {
-            return;
-        }
-        let sw = this.getSWByWindowId(focus.windowid);
-        if (sw == null) {
-            return;
-        }
-        let win = sw.getWindow();
-        if (win == null) {
-            return;
-        }
-        let runningLines = win.getRunningCmdLines();
-        if (runningLines.length == 0) {
-            this.inputModel.giveFocus();
-            return;
-        }
-        let foundIdx = -1;
-        for (let i=0; i<runningLines.length; i++) {
-            if (runningLines[i].lineid == focus.lineid) {
-                foundIdx = i;
-                break;
-            }
-        }
-        if (foundIdx == -1 || foundIdx == runningLines.length - 1) {
-            this.inputModel.giveFocus();
-            return;
-        }
-        let switchLine = runningLines[foundIdx+1];
-        let termWrap = sw.getTermWrap(switchLine.cmdid);
-        if (termWrap == null || termWrap.terminal == null) {
-            return;
-        }
-        termWrap.terminal.focus();
-        let lineElem = document.getElementById("line-" + getLineId(switchLine));
-        if (lineElem != null) {
-            lineElem.scrollIntoView({block: "nearest"});
-        }
-        console.log("arrow-down", this.getFocusedLine());
     }
 
     onBracketCmd(e : any, arg : {relative: number}, mods : KeyModsType) {
@@ -1679,8 +1688,10 @@ class Model {
         if ("window" in update) {
             this.updateWindow(update.window, false);
         }
-        if ("screenwindow" in update) {
-            this.updateSW(update.screenwindow);
+        if ("screenwindows" in update) {
+            for (let i=0; i<update.screenwindows.length; i++) {
+                this.updateSW(update.screenwindows[i]);
+            }
         }
         if ("remotes" in update) {
             if (update.connect) {

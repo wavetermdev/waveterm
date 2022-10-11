@@ -189,6 +189,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
     termLoaded : mobx.IObservableValue<boolean> = mobx.observable.box(false);
     lineRef : React.RefObject<any> = React.createRef();
     
+    
     constructor(props) {
         super(props);
     }
@@ -221,7 +222,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
             console.log("cannot load terminal, no term elem found", termId);
             return;
         }
-        sw.connectElem(termElem, cmd, this.props.width);
+        sw.connectElem(termElem, line, cmd, this.props.width);
         mobx.action(() => this.termLoaded.set(true))();
     }
 
@@ -315,6 +316,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         let {sw, line, width, staticRender, visible} = this.props;
         let model = GlobalModel;
         let lineid = line.lineid;
+        let isVisible = visible.get();
         let formattedTime = getLineDateStr(line.ts);
         let cmd = model.getCmd(line);
         if (cmd == null) {
@@ -330,11 +332,12 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         let remote = model.getRemote(cmd.remoteId);
         let status = cmd.getStatus();
         let termOpts = cmd.getTermOpts();
-        let isFocused = sw.getIsFocused(line.cmdid);
         let lineNumStr = (line.linenumtemp ? "~" : "") + String(line.linenum);
         let isSelected = (sw.selectedLine.get() == line.linenum);
+        let isPhysicalFocused = sw.getIsFocused(line.cmdid);
+        let swFocusType = sw.focusType.get();
+        let isFocused = isPhysicalFocused && (swFocusType == "cmd" || swFocusType == "cmd-fg");
         let isStatic = staticRender;
-        let isVisible = visible.get();
         return (
             <div className={cn("line", "line-cmd", {"focus": isFocused})} id={"line-" + getLineId(line)} ref={this.lineRef} style={{position: "relative"}} data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} data-cmdid={line.cmdid}>
                 <div className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused})}/>
