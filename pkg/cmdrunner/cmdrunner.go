@@ -445,7 +445,7 @@ func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	return update, nil
 }
 
-var swAnchorRe = regexp.MustCompile("^(\\d+)(?::(\\d+))?$")
+var swAnchorRe = regexp.MustCompile("^(\\d+)(?::(-?\\d+))?$")
 
 func SwSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
