@@ -138,10 +138,13 @@ function getLineDateStr(ts : number) : string {
 @mobxReact.observer
 class LineText extends React.Component<{sw : ScreenWindow, line : LineType}, {}> {
     render() {
-        let line = this.props.line;
+        let {sw, line} = this.props;
         let formattedTime = getLineDateStr(line.ts);
+        let isSelected = (sw.selectedLine.get() == line.linenum);
+        let isFocused = (sw.focusType.get() == "lines");
         return (
             <div className="line line-text" data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid}>
+                <div className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused})}/>
                 <div className="avatar">
                     S
                 </div>

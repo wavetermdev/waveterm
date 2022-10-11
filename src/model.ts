@@ -1424,10 +1424,18 @@ class Model {
     }
 
     onICmd(e : any, mods : KeyModsType) {
+        let sw = this.getActiveSW();
+        if (sw != null) {
+            sw.setFocusType("input");
+        }
         this.inputModel.giveFocus();
     }
 
     onLCmd(e : any, mods : KeyModsType) {
+        let sw = this.getActiveSW();
+        if (sw != null) {
+            sw.setFocusType("lines");
+        }
         // this.inputModel.giveCmdFocus();
     }
 
