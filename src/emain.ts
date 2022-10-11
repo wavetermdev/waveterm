@@ -139,6 +139,15 @@ function createMainWindow(clientData) {
             e.preventDefault();
             return;
         }
+        if (input.meta && (input.code == "PageUp" || input.code == "PageDown")) {
+            if (input.code == "PageUp") {
+                win.webContents.send("meta-pageup");
+            } else {
+                win.webContents.send("meta-pagedown");
+            }
+            e.preventDefault();
+            return;
+        }
         if (input.code.startsWith("Digit") && input.meta) {
             let digitNum = parseInt(input.code.substr(5));
             if (isNaN(digitNum) || digitNum < 1 || digitNum > 9) {

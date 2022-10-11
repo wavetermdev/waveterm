@@ -76,6 +76,8 @@ type ElectronApi = {
     onHCmd : (callback : (mods : KeyModsType) => void) => void,
     onMetaArrowUp : (callback : () => void) => void,
     onMetaArrowDown : (callback : () => void) => void,
+    onMetaPageUp : (callback : () => void) => void,
+    onMetaPageDown : (callback : () => void) => void,
     onBracketCmd : (callback : (event : any, arg : {relative : number}, mods : KeyModsType) => void) => void,
     onDigitCmd : (callback : (event : any, arg : {digit : number}, mods : KeyModsType) => void) => void,
     contextScreen : (screenOpts : {screenId : string}, position : {x : number, y : number}) => void,
@@ -264,7 +266,6 @@ class ScreenWindow {
     lastCols : number;
     selectedLine : OV<number>;
     scrollTop : OV<number>;
-    shouldFollow : OV<boolean> = mobx.observable.box(true);
     focusType : OV<"input"|"lines"> = mobx.observable.box("input");
     anchorLine : number = null;
     anchorOffset : number = 0;
@@ -438,12 +439,6 @@ class ScreenWindow {
             return false;
         }
         return termWrap.isFocused.get();
-    }
-
-    reset() {
-        mobx.action(() => {
-            this.shouldFollow.set(true);
-        })();
     }
 
     getWindow() : Window {
@@ -1359,6 +1354,8 @@ class Model {
         getApi().onHCmd(this.onHCmd.bind(this));
         getApi().onMetaArrowUp(this.onMetaArrowUp.bind(this));
         getApi().onMetaArrowDown(this.onMetaArrowDown.bind(this));
+        getApi().onMetaPageUp(this.onMetaPageUp.bind(this));
+        getApi().onMetaPageDown(this.onMetaPageDown.bind(this));
         getApi().onBracketCmd(this.onBracketCmd.bind(this));
         getApi().onDigitCmd(this.onDigitCmd.bind(this));
     }
@@ -1431,7 +1428,7 @@ class Model {
     }
 
     onLCmd(e : any, mods : KeyModsType) {
-        this.inputModel.giveFocus();
+        // this.inputModel.giveCmdFocus();
     }
 
     onHCmd(e : any, mods : KeyModsType) {
@@ -1469,6 +1466,14 @@ class Model {
             return;
         }
         setTimeout(() => term.updateUsedRows(true), 500);
+    }
+
+    onMetaPageUp() : void {
+        GlobalCommandRunner.swSelectLine("-1");
+    }
+
+    onMetaPageDown() : void {
+        GlobalCommandRunner.swSelectLine("+1");
     }
 
     onMetaArrowUp() : void {

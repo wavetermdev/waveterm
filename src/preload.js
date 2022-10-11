@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld("api", {
     onWCmd: (callback) => ipcRenderer.on("w-cmd", callback),
     onMetaArrowUp: (callback) => ipcRenderer.on("meta-arrowup", callback),
     onMetaArrowDown: (callback) => ipcRenderer.on("meta-arrowdown", callback),
+    onMetaPageUp: (callback) => ipcRenderer.on("meta-pageup", callback),
+    onMetaPageDown: (callback) => ipcRenderer.on("meta-pagedown", callback),
     onBracketCmd: (callback) => ipcRenderer.on("bracket-cmd", callback),
     onDigitCmd: (callback) => ipcRenderer.on("digit-cmd", callback),
     contextScreen: (screenOpts, position) => ipcRenderer.send("context-screen", screenOpts, position),

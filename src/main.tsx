@@ -500,14 +500,6 @@ class TextAreaInput extends React.Component<{}, {}> {
                     let amt = pageSize(div);
                     scrollDiv(div, (e.code == "PageUp" ? -amt : amt));
                 }
-                else {
-                    let win = GlobalModel.getActiveWindow();
-                    if (win == null) {
-                        return;
-                    }
-                    GlobalCommandRunner.swSelectLine((e.code == "PageUp" ? "-1" : "+1"));
-                    return;
-                }
             }
             // console.log(e.code, e.keyCode, e.key, event.which, ctrlMod, e);
         })();
@@ -1632,7 +1624,6 @@ class CmdInput extends React.Component<{}, {}> {
 
 @mobxReact.observer
 class LinesView extends React.Component<{sw : ScreenWindow, width : number, lines : LineType[]}, {}> {
-    mutObs : any;
     rszObs : any;
     linesRef : React.RefObject<any>;
     staticRender : OV<boolean> = mobx.observable.box(true);
@@ -1641,6 +1632,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
     ignoreNextScroll : boolean = false;
     visibleMap : Map<string, OV<boolean>>;  // lineid => OV<vis>
     lastSelectedLine : number = 0;
+    lastLinesLength : number = 0;
 
     computeAnchorLine_throttled : () => void;
     computeVisibleMap_debounced : () => void;
@@ -1763,7 +1755,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
     }
 
     componentDidMount() : void {
-        let {sw} = this.props;
+        let {sw, lines} = this.props;
         if (sw.anchorLine == null) {
             this.computeAnchorLine();
         }
@@ -1771,6 +1763,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
             this.restoreAnchorOffset("re-mount");
         }
         this.lastSelectedLine = sw.selectedLine.get();
+        this.lastLinesLength = lines.length;
 
         let linesElem = this.linesRef.current;
         if (linesElem != null) {
@@ -1808,7 +1801,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
             height: lineElem.offsetHeight,
             topOffset: 0,
             botOffset: 0,
-            containerOffset: 0,
+            anchorOffset: 0,
         };
         let containerTop = linesElem.scrollTop;
         let containerBot = linesElem.scrollTop + linesElem.clientHeight;
@@ -1826,7 +1819,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
         else if (lineBot > containerBot) {
             rtn.botOffset = lineBot - containerBot;
         }
-        rtn.containerOffset = containerBot - lineBot;
+        rtn.anchorOffset = containerBot - lineBot;
         return rtn;
     }
 
@@ -1876,10 +1869,12 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
     }
 
     componentDidUpdate(prevProps, prevState, snapshot) : void {
-        let {sw} = this.props;
+        let {sw, lines} = this.props;
         if (sw.selectedLine.get() != this.lastSelectedLine) {
             this.updateSelectedLine();
             this.lastSelectedLine = sw.selectedLine.get();
+        } else if (lines.length != this.lastLinesLength) {
+            this.restoreAnchorOffset("line-length-change");
         }
     }
 
@@ -1964,21 +1959,6 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         })();
     }
 
-    @boundMethod
-    scrollHandler(event : any) {
-        let {sw} = this.props;
-        if (sw == null) {
-            return;
-        }
-        let target = event.target;
-        let atBottom = (target.scrollTop + 30 > (target.scrollHeight - target.offsetHeight));
-        if (sw.shouldFollow.get() != atBottom) {
-            mobx.action(() => sw.shouldFollow.set(atBottom))();
-        }
-        sw.setScrollTop_debounced(target.scrollTop);
-        // console.log("scroll-handler (sw)>", atBottom, target.scrollTop, target.scrollHeight, event);
-    }
-
     componentDidMount() {
         let wvElem = this.windowViewRef.current;
         if (wvElem != null) {
@@ -2022,7 +2002,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         return (
             <div className="window-view" style={this.getWindowViewStyle()} ref={this.windowViewRef} data-windowid={sw.windowId}>
                 <div key="window-tag" className="window-tag">
-                    <span>{sw.name.get()}{sw.shouldFollow.get() ? "*" : ""}</span>
+                    <span>{sw.name.get()}</span>
                 </div>
                 <div key="lines" className="lines"></div>
                 <div key="window-empty" className="window-empty">
@@ -2048,21 +2028,12 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         let line : LineType = null;
         let screen = GlobalModel.getScreenById(sw.sessionId, sw.screenId);
         let session = GlobalModel.getSessionById(sw.sessionId);
-        let linesStyle : any = {};
-        if (win.lines.length == 0) {
-            linesStyle.display = "none";
-        }
         let isActive = sw.isActive();
         let selectedLine = sw.selectedLine.get();
         return (
             <div className="window-view" style={this.getWindowViewStyle()} ref={this.windowViewRef}>
                 <div key="window-tag" className={cn("window-tag", {"is-active": isActive})}>
-                    <span>
-                        {sw.name.get()}
-                        <If condition={sw.shouldFollow.get()}>
-                            &nbsp;<i className="fa fa-caret-down"/>
-                        </If>
-                    </span>
+                    <span>{sw.name.get()}</span>
                 </div>
                 <If condition={win.lines.length > 0}>
                     <LinesView sw={sw} width={this.width.get()} lines={win.lines}/>
