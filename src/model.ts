@@ -36,6 +36,10 @@ function termHeightFromRows(rows : number) : number {
     return Math.ceil(DefaultCellHeight*rows);
 }
 
+function cmdStatusIsRunning(status : string) : boolean {
+    return status == "running" || status == "detached";
+}
+
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
 type OMap<K,V> = mobx.ObservableMap<K,V>;
@@ -164,7 +168,7 @@ class Cmd {
 
     isRunning() : boolean {
         let data = this.data.get();
-        return data.status == "running" || data.status == "detached";
+        return cmdStatusIsRunning(data.status);
     }
 
     handleKey(event : any) {
@@ -467,7 +471,7 @@ class ScreenWindow {
         let usedRows = GlobalModel.getTUR(this.sessionId, cmdId, cols);
         termWrap = new TermWrap(
             elem, {sessionId: this.sessionId, cmdId: cmdId}, usedRows, cmd.getTermOpts(), {height: 0, width: width},
-            cmd.handleKey.bind(cmd), (focus : boolean) => this.setTermFocus(line.linenum, focus));
+            cmd.handleKey.bind(cmd), (focus : boolean) => this.setTermFocus(line.linenum, focus), cmd.isRunning());
         this.terms[cmdId] = termWrap;
         if ((this.focusType.get() == "cmd" || this.focusType.get() == "cmd-fg") && this.selectedLine.get() == line.linenum) {
             termWrap.focusTerminal();
@@ -566,7 +570,7 @@ class Window {
                 continue;
             }
             let status = cmd.getStatus();
-            if (status == "running" || status == "detached") {
+            if (cmdStatusIsRunning(status)) {
                 rtn.push(line);
             }
         }
@@ -1365,7 +1369,7 @@ class InputModel {
                 this.remoteTermWrap = new TermWrap(
                     elem, {remoteId: remoteId}, RemotePtyRows, termOpts, null,
                     (e) => { this.termKeyHandler(remoteId, e)},
-                    this.setRemoteTermWrapFocus.bind(this));
+                    this.setRemoteTermWrapFocus.bind(this), true);
             }
         }
     }
@@ -1567,6 +1571,7 @@ class Model {
             let sw = ptr.sw;
             let term = sw.getTermWrap(cmdId);
             if (term != null) {
+                term.setIsRunning(cmdStatusIsRunning(newStatus));
                 setTimeout(() => term.updateUsedRows(true), 500);
             }
         }
@@ -1975,6 +1980,19 @@ class Model {
             return null;
         }
         return window.getCmd(line.cmdid);
+    }
+
+    getCmdByIds(sessionid : string, cmdid : string) : Cmd {
+        for (let win of this.windows.values()) {
+            if (win.sessionId != sessionid) {
+                continue;
+            }
+            let cmd = win.getCmd(cmdid);
+            if (cmd != null) {
+                return cmd;
+            }
+        }
+        return null;
     }
 
     getActiveLinesByCmdId(sessionid : string, cmdid : string) : SWLinePtr[] {

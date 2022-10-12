@@ -38,16 +38,18 @@ class TermWrap {
     numParseErrors : number = 0;
     termSize : TermWinSize;
     focusHandler : (focus : boolean) => void;
+    isRunning : boolean;
 
-    constructor(elem : Element, termContext : TermContext, usedRows : number, termOpts : TermOptsType, winSize : WindowSize, keyHandler : (event : any) => void, focusHandler : (focus : boolean) => void) {
+    constructor(elem : Element, termContext : TermContext, usedRows : number, termOpts : TermOptsType, winSize : WindowSize, keyHandler : (event : any) => void, focusHandler : (focus : boolean) => void, isRunning : boolean) {
         this.termContext = termContext;
         this.connectedElem = elem;
         this.flexRows = termOpts.flexrows ?? false;
         this.winSize = winSize;
         this.focusHandler = focusHandler;
+        this.isRunning = isRunning;
         if (this.flexRows) {
             this.atRowMax = false;
-            this.usedRows = mobx.observable.box(usedRows ?? 2);
+            this.usedRows = mobx.observable.box(usedRows ?? (isRunning ? 2 : 0));
         }
         else {
             this.atRowMax = true;
@@ -115,8 +117,8 @@ class TermWrap {
         if (termNumLines > term.rows) {
             return term.rows;
         }
-        let usedRows = 2;
-        if (termYPos >= usedRows) {
+        let usedRows = (this.isRunning ? 2 : 0);
+        if (this.isRunning && termYPos >= usedRows) {
             usedRows = termYPos + 1;
         }
         for (let i=term.rows-1; i>=usedRows; i--) {
@@ -259,6 +261,10 @@ class TermWrap {
         this.terminal.write(data, () => {
             this.updateUsedRows(false);
         });
+    }
+
+    setIsRunning(isRunning : boolean) {
+        this.isRunning = isRunning;
     }
 }
 

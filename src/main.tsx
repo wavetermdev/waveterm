@@ -366,7 +366,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                         </div>
                     </div>
                 </div>
-                <div className={cn("terminal-wrapper", {"focus": isFocused})} style={{overflowY: "hidden"}}>
+                <div className={cn("terminal-wrapper", {"focus": isFocused})}>
                     <If condition={!isFocused}>
                         <div className="term-block" onClick={this.clickTermBlock}></div>
                     </If>
@@ -932,7 +932,7 @@ class InfoRemoteShow extends React.Component<{}, {}> {
                         </div>
                     </If>
                 </div>
-                <div key="term" className={cn("terminal-wrapper", {"focus": isTermFocused}, (remote != null ? "status-" + remote.status : null))} style={{overflowY: "hidden", display: (ptyRemoteId == null ? "none" : "block"), width: termWidthFromCols(RemotePtyCols)}}>
+                <div key="term" className={cn("terminal-wrapper", {"focus": isTermFocused}, (remote != null ? "status-" + remote.status : null))} style={{display: (ptyRemoteId == null ? "none" : "block"), width: termWidthFromCols(RemotePtyCols)}}>
                     <If condition={!isTermFocused}>
                         <div key="termblock" className="term-block" onClick={this.clickTermBlock}></div>
                     </If>
