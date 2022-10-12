@@ -655,7 +655,7 @@ func GetCmdById(ctx context.Context, sessionId string, cmdId string) (*CmdType, 
 	return cmd, nil
 }
 
-func UpdateCmdDonePk(ctx context.Context, donePk *packet.CmdDonePacketType) (UpdatePacket, error) {
+func UpdateCmdDonePk(ctx context.Context, donePk *packet.CmdDonePacketType) (*ModelUpdate, error) {
 	if donePk == nil || donePk.CK.IsEmpty() {
 		return nil, fmt.Errorf("invalid cmddone packet (no ck)")
 	}
@@ -676,7 +676,7 @@ func UpdateCmdDonePk(ctx context.Context, donePk *packet.CmdDonePacketType) (Upd
 	if rtnCmd == nil {
 		return nil, fmt.Errorf("cmd data not found for ck[%s]", donePk.CK)
 	}
-	return ModelUpdate{Cmd: rtnCmd}, nil
+	return &ModelUpdate{Cmd: rtnCmd}, nil
 }
 
 func AppendCmdErrorPk(ctx context.Context, errPk *packet.CmdErrorPacketType) error {
@@ -688,12 +688,6 @@ func AppendCmdErrorPk(ctx context.Context, errPk *packet.CmdErrorPacketType) err
 		tx.ExecWrap(query, quickJson(errPk), errPk.CK.GetSessionId(), errPk.CK.GetCmdId())
 		return nil
 	})
-}
-
-type SWKey struct {
-	SessionId string
-	ScreenId  string
-	WindowId  string
 }
 
 func HangupAllRunningCmds(ctx context.Context) error {
@@ -1172,6 +1166,42 @@ func GetLineResolveItems(ctx context.Context, sessionId string, windowId string)
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT lineid as id, linenum as num FROM line WHERE sessionid = ? AND windowid = ? ORDER BY linenum`
 		tx.SelectWrap(&rtn, query, sessionId, windowId)
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	return rtn, nil
+}
+
+func UpdateSWsWithCmdFg(ctx context.Context, sessionId string, cmdId string) ([]*ScreenWindowType, error) {
+	var rtn []*ScreenWindowType
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT sessionid, screenid, windowid 
+                  FROM screen_window sw 
+                  WHERE 
+                    sessionid = ?
+                    AND focustype = 'cmd-fg' 
+                    AND selectedline IN (SELECT linenum 
+                                         FROM line l 
+                                         WHERE l.sessionid = sw.sessionid 
+                                           AND l.windowid = sw.windowid 
+                                           AND l.cmdid = ?
+                                        )`
+		var swKeys []SWKey
+		tx.SelectWrap(&swKeys, query, sessionId, cmdId)
+		if len(swKeys) == 0 {
+			return nil
+		}
+		for _, key := range swKeys {
+			editMap := make(map[string]interface{})
+			editMap[SWField_Focus] = SWFocusInput
+			sw, err := UpdateScreenWindow(tx.Context(), key.SessionId, key.ScreenId, key.WindowId, editMap)
+			if err != nil {
+				return err
+			}
+			rtn = append(rtn, sw)
+		}
 		return nil
 	})
 	if txErr != nil {

@@ -260,7 +260,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	if sw != nil {
 		updateMap := make(map[string]interface{})
 		updateMap[sstore.SWField_SelectedLine] = rtnLine.LineNum
-		updateMap[sstore.SWField_Focus] = sstore.SWFocusCmd
+		updateMap[sstore.SWField_Focus] = sstore.SWFocusCmdFg
 		sw, err = sstore.UpdateScreenWindow(ctx, ids.SessionId, ids.ScreenId, ids.WindowId, updateMap)
 		if err != nil {
 			// ignore error again (nothing to do)

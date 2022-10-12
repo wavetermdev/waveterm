@@ -1191,6 +1191,12 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 		msh.WriteToPtyBuffer("[error] updating cmddone: %v\n", err)
 		return
 	}
+	sws, err := sstore.UpdateSWsWithCmdFg(context.Background(), donePk.CK.GetSessionId(), donePk.CK.GetCmdId())
+	if err != nil {
+		fmt.Printf("[error] trying to update cmd-fg screen windows: %v\n", err)
+		// fall-through (nothing to do)
+	}
+	update.ScreenWindows = sws
 	if update != nil {
 		sstore.MainBus.SendUpdate(donePk.CK.GetSessionId(), update)
 	}

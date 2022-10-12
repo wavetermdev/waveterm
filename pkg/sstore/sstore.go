@@ -394,6 +394,12 @@ func (a SWAnchorType) Value() (driver.Value, error) {
 	return quickValueJson(a)
 }
 
+type SWKey struct {
+	SessionId string
+	ScreenId  string
+	WindowId  string
+}
+
 type ScreenWindowType struct {
 	SessionId    string       `json:"sessionid"`
 	ScreenId     string       `json:"screenid"`
