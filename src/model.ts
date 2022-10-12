@@ -1561,17 +1561,15 @@ class Model {
     }
 
     cmdStatusUpdate(sessionId : string, cmdId : string, origStatus : string, newStatus : string) {
-        // TODO force recompute usedrows in terminal when status changes to done
         console.log("cmd status", sessionId, cmdId, origStatus, "=>", newStatus);
-        let sw = this.getActiveSW();
-        if (sw == null || sw.sessionId != sessionId) {
-            return;
+        let lines = this.getActiveLinesByCmdId(sessionId, cmdId);
+        for (let ptr of lines) {
+            let sw = ptr.sw;
+            let term = sw.getTermWrap(cmdId);
+            if (term != null) {
+                setTimeout(() => term.updateUsedRows(true), 500);
+            }
         }
-        let term = sw.terms[cmdId];
-        if (term == null) {
-            return;
-        }
-        setTimeout(() => term.updateUsedRows(true), 500);
     }
 
     onMetaPageUp() : void {

@@ -337,10 +337,11 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         let isPhysicalFocused = sw.getIsFocused(line.linenum);
         let swFocusType = sw.focusType.get();
         let isFocused = isPhysicalFocused && (swFocusType == "cmd" || swFocusType == "cmd-fg");
+        let isFgFocused = isPhysicalFocused && swFocusType == "cmd-fg";
         let isStatic = staticRender;
         return (
             <div className={cn("line", "line-cmd", {"focus": isFocused})} id={"line-" + getLineId(line)} ref={this.lineRef} style={{position: "relative"}} data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} data-cmdid={line.cmdid}>
-                <div className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused})}/>
+                <div className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused}, {"fg-focus": isFgFocused})}/>
                 <div className="line-header">
                     <div className={cn("avatar", "num-"+lineNumStr.length, "status-" + status, {"ephemeral": line.ephemeral})} onClick={this.doRefresh}>
                         {lineNumStr}
