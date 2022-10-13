@@ -417,14 +417,18 @@ html, body, #main {
         margin-right: 8px;
         margin-top: 4px;
         align-self: flex-start;
-        overflow-y: hidden;
 
         &.focus {
             /* box-shadow: 0 0 3px 3px rgba(255, 255, 255, 0.3); */
         }
 
-        .terminal {
+        .terminal-connectelem {
             overflow-y: hidden;
+            overflow-x: hidden;
+        }
+
+        .terminal {
+            margin-right: 8px; /* needed to show scrollbar */
         }
     }
 }
@@ -629,7 +633,7 @@ body .xterm .xterm-viewport {
     }
 }
 
-.cmd-input-info, .xterm-viewport, .cmd-history {
+.cmd-input-info, .cmd-history {
     &::-webkit-scrollbar {
         background-color: #777;
         width: 5px;
@@ -638,6 +642,30 @@ body .xterm .xterm-viewport {
 
     &::-webkit-scrollbar-thumb {
         background: white;
+    }
+}
+
+.terminal-wrapper.focus .xterm-viewport {
+    &::-webkit-scrollbar {
+        background-color: #777;
+        width: 5px;
+        height: 5px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: white;
+    }
+}
+
+.terminal-wrapper .xterm-viewport {
+    &::-webkit-scrollbar {
+        background-color: #222;
+        width: 5px;
+        height: 5px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: #555;
     }
 }
 

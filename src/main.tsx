@@ -370,7 +370,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                     <If condition={!isFocused}>
                         <div className="term-block" onClick={this.clickTermBlock}></div>
                     </If>
-                    <div className="terminal" id={"term-" + getLineId(line)} data-cmdid={line.cmdid} style={{height: termHeight}}></div>
+                    <div className="terminal-connectelem" id={"term-" + getLineId(line)} data-cmdid={line.cmdid} style={{height: termHeight}}></div>
                     <If condition={!termLoaded}><div style={{position: "absolute", top: 60, left: 30}}>(loading)</div></If>
                 </div>
             </div>
@@ -882,7 +882,7 @@ class InfoRemoteShow extends React.Component<{}, {}> {
             return (
                 <>
                     <div key="term" className="terminal-wrapper" style={{display: "none"}}>
-                        <div key="terminal" className="terminal" id="term-remote"></div>
+                        <div key="terminal" className="terminal-connectelem" id="term-remote"></div>
                     </div>
                 </>
             );
@@ -939,7 +939,7 @@ class InfoRemoteShow extends React.Component<{}, {}> {
                     <If condition={inputModel.showNoInputMsg.get()}>
                         <div key="termtag" className="term-tag">input is only allowed while status is 'connecting'</div>
                     </If>
-                    <div key="terminal" className="terminal" id="term-remote" data-remoteid={ptyRemoteId} style={{height: termHeightFromRows(RemotePtyRows)}}></div>
+                    <div key="terminal" className="terminal-connectelem" id="term-remote" data-remoteid={ptyRemoteId} style={{height: termHeightFromRows(RemotePtyRows)}}></div>
                 </div>
             </>
         );

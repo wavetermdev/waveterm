@@ -62,7 +62,10 @@ class TermWrap {
             let cols = widthToCols(winSize.width);
             this.termSize = {rows: termOpts.rows, cols: cols};
         }
-        this.terminal = new Terminal({rows: this.termSize.rows, cols: this.termSize.cols, fontSize: 12, fontFamily: "JetBrains Mono", theme: {foreground: "#d3d7cf"}});
+        let theme = {
+            foreground: "#d3d7cf",
+        };
+        this.terminal = new Terminal({rows: this.termSize.rows, cols: this.termSize.cols, fontSize: 12, fontFamily: "JetBrains Mono", theme: theme});
         this.terminal._core._inputHandler._parser.setErrorHandler((state) => {
             this.numParseErrors++;
             return state;
@@ -84,7 +87,20 @@ class TermWrap {
                 this.focusHandler(false);
             }
         });
+        elem.addEventListener("scroll", this.elemScrollHandler);
         this.reloadTerminal(0);
+    }
+
+    @boundMethod
+    elemScrollHandler(e : any) {
+        // this stops a weird behavior in the terminal
+        // xterm.js renders a textarea that handles focus.  when it focuses and a space is typed the browser
+        //   will scroll to make it visible (even though our terminal element has overflow hidden)
+        // this will undo that scroll.
+        if (e.target.scrollTop == 0) {
+            return;
+        }
+        e.target.scrollTop = 0;
     }
 
     getFontHeight() : number {
