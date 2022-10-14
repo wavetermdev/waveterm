@@ -12,6 +12,7 @@ import {TermWrap} from "./term";
 import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts, RemoteEditType} from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, ScreenWindow, riToRPtr, widthToCols, termWidthFromCols, termHeightFromRows} from "./model";
+import {isModKeyPress} from "./util";
 
 dayjs.extend(localizedFormat)
 
@@ -439,10 +440,6 @@ class TextAreaInput extends React.Component<{}, {}> {
         }
     }
 
-    isModKeyPress(e : any) {
-        return e.code.match(/^(Control|Meta|Alt|Shift)(Left|Right)$/);
-    }
-
     getLinePos(elem : any) : {numLines : number, linePos : number} {
         let numLines = elem.value.split("\n").length;
         let linePos = elem.value.substr(0, elem.selectionStart).split("\n").length;
@@ -452,7 +449,7 @@ class TextAreaInput extends React.Component<{}, {}> {
     @mobx.action @boundMethod
     onKeyDown(e : any) {
         mobx.action(() => {
-            if (this.isModKeyPress(e)) {
+            if (isModKeyPress(e)) {
                 return;
             }
             let model = GlobalModel;

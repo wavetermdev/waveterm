@@ -172,4 +172,8 @@ function boundInt(ival : number, minVal : number, maxVal : number) : number {
     return ival;
 }
 
-export {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData, parseEnv0, boundInt};
+function isModKeyPress(e : any) {
+    return e.code.match(/^(Control|Meta|Alt|Shift)(Left|Right)$/);
+}
+
+export {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData, parseEnv0, boundInt, isModKeyPress};

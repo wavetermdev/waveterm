@@ -2,7 +2,7 @@ import * as mobx from "mobx";
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 import {debounce} from "throttle-debounce";
-import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData, boundInt} from "./util";
+import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData, boundInt, isModKeyPress} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
 import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType} from "./types";
@@ -171,7 +171,8 @@ class Cmd {
         return cmdStatusIsRunning(data.status);
     }
 
-    handleKey(event : any) {
+    handleData(data : string, termWrap : TermWrap) : void {
+        console.log("handle data", {data: data});
         if (!this.isRunning()) {
             return;
         }
@@ -179,7 +180,7 @@ class Cmd {
             type: "feinput",
             ck: this.sessionId + "/" + this.cmdId,
             remote: this.remote,
-            inputdata64: btoa(event.key),
+            inputdata64: btoa(data),
         };
         GlobalModel.sendInputPacket(inputPacket);
     }
@@ -460,6 +461,33 @@ class ScreenWindow {
         }
     }
 
+    termCustomKeyHandlerInternal(e : any, termWrap : TermWrap) : void {
+        if (e.code == "ArrowUp") {
+            termWrap.terminal.scrollLines(-1);
+            return;
+        }
+        if (e.code == "ArrowDown") {
+            termWrap.terminal.scrollLines(1);
+            return;
+        }
+        if (e.code == "PageUp") {
+            termWrap.terminal.scrollPages(-1);
+            return;
+        }
+        if (e.code == "PageDown") {
+            termWrap.terminal.scrollPages(1);
+            return;
+        }
+    }
+
+    termCustomKeyHandler(e : any, termWrap : TermWrap) : boolean {
+        if (e.type != "keydown" || isModKeyPress(e)) {
+            return termWrap.isRunning;
+        }
+        this.termCustomKeyHandlerInternal(e, termWrap);
+        return termWrap.isRunning;
+    }
+
     connectElem(elem : Element, line : LineType, cmd : Cmd, width : number) {
         let cmdId = cmd.cmdId;
         let termWrap = this.getTermWrap(cmdId);
@@ -469,9 +497,16 @@ class ScreenWindow {
         }
         let cols = widthToCols(width);
         let usedRows = GlobalModel.getTUR(this.sessionId, cmdId, cols);
-        termWrap = new TermWrap(
-            elem, {sessionId: this.sessionId, cmdId: cmdId}, usedRows, cmd.getTermOpts(), {height: 0, width: width},
-            cmd.handleKey.bind(cmd), (focus : boolean) => this.setTermFocus(line.linenum, focus), cmd.isRunning());
+        termWrap = new TermWrap(elem, {
+            termContext: {sessionId: this.sessionId, cmdId: cmdId},
+            usedRows: usedRows,
+            termOpts: cmd.getTermOpts(),
+            winSize: {height: 0, width: width},
+            dataHandler: cmd.handleData.bind(cmd),
+            focusHandler: (focus : boolean) => this.setTermFocus(line.linenum, focus),
+            isRunning: cmd.isRunning(),
+            customKeyHandler: this.termCustomKeyHandler.bind(this),
+        });
         this.terms[cmdId] = termWrap;
         if ((this.focusType.get() == "cmd" || this.focusType.get() == "cmd-fg") && this.selectedLine.get() == line.linenum) {
             termWrap.focusTerminal();
@@ -1331,7 +1366,7 @@ class InputModel {
         })();
     }
 
-    termKeyHandler(remoteId : string, event : any) : void {
+    termKeyHandler(remoteId : string, event : any, termWrap : TermWrap) : void {
         let remote = GlobalModel.getRemote(remoteId);
         if (remote == null) {
             return;
@@ -1366,10 +1401,15 @@ class InputModel {
             }
             else {
                 let termOpts = {rows: RemotePtyRows, cols: RemotePtyCols, flexrows: false, maxptysize: 64*1024};
-                this.remoteTermWrap = new TermWrap(
-                    elem, {remoteId: remoteId}, RemotePtyRows, termOpts, null,
-                    (e) => { this.termKeyHandler(remoteId, e)},
-                    this.setRemoteTermWrapFocus.bind(this), true);
+                this.remoteTermWrap = new TermWrap(elem, {
+                    termContext: {remoteId: remoteId},
+                    usedRows: RemotePtyRows,
+                    termOpts: termOpts,
+                    winSize: null,
+                    keyHandler: (e, termWrap) => { this.termKeyHandler(remoteId, e, termWrap)},
+                    focusHandler: this.setRemoteTermWrapFocus.bind(this),
+                    isRunning: true,
+                });
             }
         }
     }

@@ -22,6 +22,18 @@ const MaxTermCols = 1024;
 
 type TermContext = {sessionId? : string, cmdId? : string, remoteId? : string};
 
+type TermWrapOpts = {
+    termContext : TermContext,
+    usedRows? : number,
+    termOpts : TermOptsType,
+    winSize : WindowSize,
+    keyHandler? : (event : any, termWrap : TermWrap) => void,
+    focusHandler? : (focus : boolean) => void,
+    dataHandler? : (data : string, termWrap : TermWrap) => void,
+    isRunning : boolean,
+    customKeyHandler? : (event : any, termWrap : TermWrap) => boolean,
+};
+
 // cmd-instance
 class TermWrap {
     terminal : any;
@@ -40,27 +52,28 @@ class TermWrap {
     focusHandler : (focus : boolean) => void;
     isRunning : boolean;
 
-    constructor(elem : Element, termContext : TermContext, usedRows : number, termOpts : TermOptsType, winSize : WindowSize, keyHandler : (event : any) => void, focusHandler : (focus : boolean) => void, isRunning : boolean) {
-        this.termContext = termContext;
+    constructor(elem : Element, opts : TermWrapOpts) {
+        opts = opts ?? ({} as any);
+        this.termContext = opts.termContext;
         this.connectedElem = elem;
-        this.flexRows = termOpts.flexrows ?? false;
-        this.winSize = winSize;
-        this.focusHandler = focusHandler;
-        this.isRunning = isRunning;
+        this.flexRows = opts.termOpts.flexrows ?? false;
+        this.winSize = opts.winSize;
+        this.focusHandler = opts.focusHandler;
+        this.isRunning = opts.isRunning;
         if (this.flexRows) {
             this.atRowMax = false;
-            this.usedRows = mobx.observable.box(usedRows ?? (isRunning ? 2 : 0));
+            this.usedRows = mobx.observable.box(opts.usedRows ?? (opts.isRunning ? 2 : 0));
         }
         else {
             this.atRowMax = true;
-            this.usedRows = mobx.observable.box(termOpts.rows);
+            this.usedRows = mobx.observable.box(opts.termOpts.rows);
         }
-        if (winSize == null) {
-            this.termSize = {rows: termOpts.rows, cols: termOpts.cols};
+        if (opts.winSize == null) {
+            this.termSize = {rows: opts.termOpts.rows, cols: opts.termOpts.cols};
         }
         else {
-            let cols = widthToCols(winSize.width);
-            this.termSize = {rows: termOpts.rows, cols: cols};
+            let cols = widthToCols(opts.winSize.width);
+            this.termSize = {rows: opts.termOpts.rows, cols: cols};
         }
         let theme = {
             foreground: "#d3d7cf",
@@ -71,8 +84,11 @@ class TermWrap {
             return state;
         });
         this.terminal.open(elem);
-        if (keyHandler != null) {
-            this.terminal.onKey(keyHandler);
+        if (opts.keyHandler != null) {
+            this.terminal.onKey((e) => opts.keyHandler(e, this));
+        }
+        if (opts.dataHandler != null) {
+            this.terminal.onData((e) => opts.dataHandler(e, this));
         }
         this.terminal.textarea.addEventListener("focus", () => {
             if (this.focusHandler != null) {
@@ -88,6 +104,9 @@ class TermWrap {
             }
         });
         elem.addEventListener("scroll", this.elemScrollHandler);
+        if (opts.customKeyHandler != null) {
+            this.terminal.attachCustomKeyEventHandler((e) => opts.customKeyHandler(e, this));
+        }
         this.reloadTerminal(0);
     }
 
@@ -97,7 +116,8 @@ class TermWrap {
         // xterm.js renders a textarea that handles focus.  when it focuses and a space is typed the browser
         //   will scroll to make it visible (even though our terminal element has overflow hidden)
         // this will undo that scroll.
-        if (e.target.scrollTop == 0) {
+        console.log("scroll", this.atRowMax, e.target.scrollTop);
+        if (this.atRowMax || e.target.scrollTop == 0) {
             return;
         }
         e.target.scrollTop = 0;
