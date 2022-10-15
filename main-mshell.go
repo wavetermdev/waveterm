@@ -452,10 +452,19 @@ func handleEnv() (int, error) {
 	if err != nil {
 		return 1, err
 	}
-	fmt.Printf("%s\x00", cwd)
+	fmt.Printf("%s\x00\x00", cwd)
 	fullEnv := os.Environ()
+	var linePrinted bool
 	for _, envLine := range fullEnv {
-		fmt.Printf("%s\x00", envLine)
+		if envLine != "" {
+			fmt.Printf("%s\x00", envLine)
+			linePrinted = true
+		}
+	}
+	if linePrinted {
+		fmt.Printf("\x00")
+	} else {
+		fmt.Printf("\x00\x00")
 	}
 	return 0, nil
 }

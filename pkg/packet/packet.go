@@ -441,6 +441,7 @@ type InitPacketType struct {
 	HomeDir       string `json:"homedir,omitempty"`
 	Cwd           string `json:"cwd,omitempty"`
 	Env0          []byte `json:"env0,omitempty"` // "env -0" format
+	Aliases       string `json:"aliases,omitempty"`
 	User          string `json:"user,omitempty"`
 	HostName      string `json:"hostname,omitempty"`
 	NotFound      bool   `json:"notfound,omitempty"`

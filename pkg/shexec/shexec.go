@@ -81,6 +81,12 @@ const RunCommandFmt = `%s`
 const RunSudoCommandFmt = `sudo -n -C %d bash /dev/fd/%d`
 const RunSudoPasswordCommandFmt = `cat /dev/fd/%d | sudo -k -S -C %d bash -c "echo '[from-mshell]'; exec %d>&-; bash /dev/fd/%d < /dev/fd/%d"`
 
+type CurrentState struct {
+	Cwd     string
+	Env0    []byte
+	Aliases string
+}
+
 type ShExecType struct {
 	StartTs        time.Time
 	CK             base.CommandKey
@@ -1221,12 +1227,13 @@ func MakeInitPacket() *packet.InitPacketType {
 func MakeServerInitPacket() (*packet.InitPacketType, error) {
 	var err error
 	initPacket := MakeInitPacket()
-	cwd, env, err := GetCurrentState()
+	cstate, err := GetCurrentState()
 	if err != nil {
 		return nil, err
 	}
-	initPacket.Cwd = cwd
-	initPacket.Env0 = env
+	initPacket.Cwd = cstate.Cwd
+	initPacket.Env0 = cstate.Env0
+	initPacket.Aliases = cstate.Aliases
 	initPacket.RemoteId, err = base.GetRemoteId()
 	if err != nil {
 		return nil, err
@@ -1315,20 +1322,28 @@ func runSimpleCmdInPty(ecmd *exec.Cmd) ([]byte, error) {
 	return outputBuf.Bytes(), nil
 }
 
-func GetCurrentState() (string, []byte, error) {
+func GetCurrentState() (*CurrentState, error) {
 	execFile, err := os.Executable()
 	if err != nil {
-		return "", nil, fmt.Errorf("cannot find local mshell executable: %w", err)
+		return nil, fmt.Errorf("cannot find local mshell executable: %w", err)
 	}
 	ctx, _ := context.WithTimeout(context.Background(), GetStateTimeout)
-	ecmd := exec.CommandContext(ctx, "bash", "-l", "-i", "-c", fmt.Sprintf("%s --env", shellescape.Quote(execFile)))
+	ecmd := exec.CommandContext(ctx, "bash", "-l", "-i", "-c", fmt.Sprintf("%s --env; alias -p", shellescape.Quote(execFile)))
 	outputBytes, err := runSimpleCmdInPty(ecmd)
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
-	idx := bytes.Index(outputBytes, []byte{0})
-	if idx == -1 {
-		return "", nil, fmt.Errorf("invalid current state output no NUL byte separator")
+	firstSep := bytes.Index(outputBytes, []byte{0, 0})
+	if firstSep == -1 {
+		return nil, fmt.Errorf("invalid current state output no NUL separator")
 	}
-	return string(outputBytes[0:idx]), outputBytes[idx+1:], nil
+	cwd := string(outputBytes[0:firstSep])
+	secondSep := bytes.Index(outputBytes[firstSep+2:], []byte{0, 0})
+	if secondSep == -1 {
+		return nil, fmt.Errorf("invalid current state output, no second NUL separator")
+	}
+	secondSep += firstSep + 2
+	env0 := outputBytes[firstSep+2 : secondSep+1] // grab one of the NUL bytes (end of env0)
+	aliases := string(outputBytes[secondSep+2:])
+	return &CurrentState{Cwd: cwd, Env0: env0, Aliases: aliases}, nil
 }
