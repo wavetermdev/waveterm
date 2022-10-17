@@ -81,12 +81,6 @@ const RunCommandFmt = `%s`
 const RunSudoCommandFmt = `sudo -n -C %d bash /dev/fd/%d`
 const RunSudoPasswordCommandFmt = `cat /dev/fd/%d | sudo -k -S -C %d bash -c "echo '[from-mshell]'; exec %d>&-; bash /dev/fd/%d < /dev/fd/%d"`
 
-type CurrentState struct {
-	Cwd     string
-	Env0    []byte
-	Aliases string
-}
-
 type ShExecType struct {
 	StartTs        time.Time
 	CK             base.CommandKey
@@ -259,14 +253,18 @@ func MakeSimpleStaticWriterPipe(data []byte) (*os.File, error) {
 }
 
 func MakeDetachedExecCmd(pk *packet.RunPacketType, cmdTty *os.File) (*exec.Cmd, error) {
+	state := pk.State
+	if state == nil {
+		state = &packet.ShellState{}
+	}
 	ecmd := exec.Command("bash", "-c", pk.Command)
-	if !pk.EnvComplete {
+	if !pk.StateComplete {
 		ecmd.Env = os.Environ()
 	}
-	UpdateCmdEnv(ecmd, ParseEnv0(pk.Env0))
+	UpdateCmdEnv(ecmd, ParseEnv0(state.Env0))
 	UpdateCmdEnv(ecmd, map[string]string{"TERM": getTermType(pk)})
-	if pk.Cwd != "" {
-		ecmd.Dir = base.ExpandHomeDir(pk.Cwd)
+	if state.Cwd != "" {
+		ecmd.Dir = base.ExpandHomeDir(state.Cwd)
 	}
 	if HasDupStdin(pk.Fds) {
 		return nil, fmt.Errorf("cannot detach command with dup stdin")
@@ -360,8 +358,8 @@ func ValidateRunPacket(pk *packet.RunPacketType) error {
 			return fmt.Errorf("cannot detach command, constant rundata input too large len=%d, max=%d", totalRunData, mpio.MaxTotalRunDataSize)
 		}
 	}
-	if pk.Cwd != "" {
-		realCwd := base.ExpandHomeDir(pk.Cwd)
+	if pk.State != nil && pk.State.Cwd != "" {
+		realCwd := base.ExpandHomeDir(pk.State.Cwd)
 		dirInfo, err := os.Stat(realCwd)
 		if err != nil {
 			return fmt.Errorf("invalid cwd '%s' for command: %v", realCwd, err)
@@ -533,7 +531,8 @@ func GetTerminalSize() (int, int, error) {
 func (opts *ClientOpts) MakeRunPacket() (*packet.RunPacketType, error) {
 	runPacket := packet.MakeRunPacket()
 	runPacket.Detached = opts.Detach
-	runPacket.Cwd = opts.Cwd
+	runPacket.State = &packet.ShellState{}
+	runPacket.State.Cwd = opts.Cwd
 	runPacket.Fds = opts.Fds
 	if opts.UsePty {
 		runPacket.UsePty = true
@@ -940,7 +939,26 @@ func getTermType(pk *packet.RunPacketType) string {
 	return termType
 }
 
+func makeEnvCommandStr(pk *packet.RunPacketType) string {
+	fmtStr := `
+shopt -q -s expand_aliases
+set +m
+%s
+%s
+%s
+`
+	state := pk.State
+	if state == nil {
+		state = &packet.ShellState{}
+	}
+	return fmt.Sprintf(fmtStr, state.Aliases, state.Funcs, pk.Command)
+}
+
 func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fromServer bool) (*ShExecType, error) {
+	state := pk.State
+	if state == nil {
+		state = &packet.ShellState{}
+	}
 	cmd := MakeShExec(pk.CK, nil)
 	if fromServer {
 		msgUpr := packet.MessageUPR{CK: pk.CK, Sender: sender}
@@ -948,19 +966,24 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		cmd.Multiplexer.UPR = upr
 		cmd.MsgSender = sender
 	}
-	if pk.UsePty {
-		cmd.Cmd = exec.Command("bash", "-i", "-c", pk.Command)
-	} else {
-		cmd.Cmd = exec.Command("bash", "-c", pk.Command)
+	commandStr := makeEnvCommandStr(pk)
+	commandFdNum, err := AddRunData(pk, commandStr, "command")
+	if err != nil {
+		return nil, err
 	}
-	if !pk.EnvComplete {
+	if pk.UsePty {
+		cmd.Cmd = exec.Command("bash", "-i", fmt.Sprintf("/dev/fd/%d", commandFdNum))
+	} else {
+		cmd.Cmd = exec.Command("bash", fmt.Sprintf("/dev/fd/%d", commandFdNum))
+	}
+	if !pk.StateComplete {
 		cmd.Cmd.Env = os.Environ()
 	}
-	UpdateCmdEnv(cmd.Cmd, ParseEnv0(pk.Env0))
-	if pk.Cwd != "" {
-		cmd.Cmd.Dir = base.ExpandHomeDir(pk.Cwd)
+	UpdateCmdEnv(cmd.Cmd, ParseEnv0(state.Env0))
+	if state.Cwd != "" {
+		cmd.Cmd.Dir = base.ExpandHomeDir(state.Cwd)
 	}
-	err := ValidateRemoteFds(pk.Fds)
+	err = ValidateRemoteFds(pk.Fds)
 	if err != nil {
 		cmd.Close()
 		return nil, err
@@ -1227,13 +1250,11 @@ func MakeInitPacket() *packet.InitPacketType {
 func MakeServerInitPacket() (*packet.InitPacketType, error) {
 	var err error
 	initPacket := MakeInitPacket()
-	cstate, err := GetCurrentState()
+	shellState, err := GetShellState()
 	if err != nil {
 		return nil, err
 	}
-	initPacket.Cwd = cstate.Cwd
-	initPacket.Env0 = cstate.Env0
-	initPacket.Aliases = cstate.Aliases
+	initPacket.State = shellState
 	initPacket.RemoteId, err = base.GetRemoteId()
 	if err != nil {
 		return nil, err
@@ -1322,28 +1343,27 @@ func runSimpleCmdInPty(ecmd *exec.Cmd) ([]byte, error) {
 	return outputBuf.Bytes(), nil
 }
 
-func GetCurrentState() (*CurrentState, error) {
+func GetShellState() (*packet.ShellState, error) {
 	execFile, err := os.Executable()
 	if err != nil {
 		return nil, fmt.Errorf("cannot find local mshell executable: %w", err)
 	}
 	ctx, _ := context.WithTimeout(context.Background(), GetStateTimeout)
-	ecmd := exec.CommandContext(ctx, "bash", "-l", "-i", "-c", fmt.Sprintf("%s --env; alias -p", shellescape.Quote(execFile)))
+	ecmd := exec.CommandContext(ctx, "bash", "-l", "-i", "-c", fmt.Sprintf("%s --env; alias -p; printf \"\\x00\\x00\"; declare -f", shellescape.Quote(execFile)))
 	outputBytes, err := runSimpleCmdInPty(ecmd)
 	if err != nil {
 		return nil, err
 	}
-	firstSep := bytes.Index(outputBytes, []byte{0, 0})
-	if firstSep == -1 {
-		return nil, fmt.Errorf("invalid current state output no NUL separator")
+	fields := bytes.Split(outputBytes, []byte{0, 0})
+	if len(fields) != 4 {
+		return nil, fmt.Errorf("invalid shell state output, wrong number of fields, fields=%d", len(fields))
 	}
-	cwd := string(outputBytes[0:firstSep])
-	secondSep := bytes.Index(outputBytes[firstSep+2:], []byte{0, 0})
-	if secondSep == -1 {
-		return nil, fmt.Errorf("invalid current state output, no second NUL separator")
+	rtn := &packet.ShellState{}
+	rtn.Cwd = string(fields[0])
+	if len(fields[1]) > 0 {
+		rtn.Env0 = append(fields[1], '\x00')
 	}
-	secondSep += firstSep + 2
-	env0 := outputBytes[firstSep+2 : secondSep+1] // grab one of the NUL bytes (end of env0)
-	aliases := string(outputBytes[secondSep+2:])
-	return &CurrentState{Cwd: cwd, Env0: env0, Aliases: aliases}, nil
+	rtn.Aliases = strings.ReplaceAll(string(fields[2]), "\r\n", "\n")
+	rtn.Funcs = strings.ReplaceAll(string(fields[3]), "\r\n", "\n")
+	return rtn, nil
 }

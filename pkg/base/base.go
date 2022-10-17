@@ -30,7 +30,7 @@ const MShellHomeVarName = "MSHELL_HOME"
 const MShellInstallBinVarName = "MSHELL_INSTALLBIN_PATH"
 const SSHCommandVarName = "SSH_COMMAND"
 const SessionsDirBaseName = "sessions"
-const MShellVersion = "v0.1.0"
+const MShellVersion = "v0.2.0"
 const RemoteIdFile = "remoteid"
 const DefaultMShellInstallBinDir = "/opt/mshell/bin"
 

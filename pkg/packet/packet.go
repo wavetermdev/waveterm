@@ -108,6 +108,13 @@ func MakePacket(packetType string) (PacketType, error) {
 	return rtn.Interface().(PacketType), nil
 }
 
+type ShellState struct {
+	Cwd     string `json:"cwd,omitempty"`
+	Env0    []byte `json:"env0,omitempty"`
+	Aliases string `json:"aliases,omitempty"`
+	Funcs   string `json:"funcs,omitempty"`
+}
+
 type CmdDataPacketType struct {
 	Type       string          `json:"type"`
 	RespId     string          `json:"respid"`
@@ -435,18 +442,16 @@ func FmtMessagePacket(fmtStr string, args ...interface{}) *MessagePacketType {
 }
 
 type InitPacketType struct {
-	Type          string `json:"type"`
-	Version       string `json:"version"`
-	MShellHomeDir string `json:"mshellhomedir,omitempty"`
-	HomeDir       string `json:"homedir,omitempty"`
-	Cwd           string `json:"cwd,omitempty"`
-	Env0          []byte `json:"env0,omitempty"` // "env -0" format
-	Aliases       string `json:"aliases,omitempty"`
-	User          string `json:"user,omitempty"`
-	HostName      string `json:"hostname,omitempty"`
-	NotFound      bool   `json:"notfound,omitempty"`
-	UName         string `json:"uname,omitempty"`
-	RemoteId      string `json:"remoteid,omitempty"`
+	Type          string      `json:"type"`
+	Version       string      `json:"version"`
+	MShellHomeDir string      `json:"mshellhomedir,omitempty"`
+	HomeDir       string      `json:"homedir,omitempty"`
+	State         *ShellState `json:"state,omitempty"`
+	User          string      `json:"user,omitempty"`
+	HostName      string      `json:"hostname,omitempty"`
+	NotFound      bool        `json:"notfound,omitempty"`
+	UName         string      `json:"uname,omitempty"`
+	RemoteId      string      `json:"remoteid,omitempty"`
 }
 
 func (*InitPacketType) GetType() string {
@@ -535,18 +540,17 @@ type RunDataType struct {
 }
 
 type RunPacketType struct {
-	Type        string          `json:"type"`
-	ReqId       string          `json:"reqid"`
-	CK          base.CommandKey `json:"ck"`
-	Command     string          `json:"command"`
-	Cwd         string          `json:"cwd,omitempty"`
-	Env0        []byte          `json:"env0,omitempty"`        // in "env -0" format
-	EnvComplete bool            `json:"envcomplete,omitempty"` // set to true if env0 is complete (the default env should not be set)
-	UsePty      bool            `json:"usepty,omitempty"`
-	TermOpts    *TermOpts       `json:"termopts,omitempty"`
-	Fds         []RemoteFd      `json:"fds,omitempty"`
-	RunData     []RunDataType   `json:"rundata,omitempty"`
-	Detached    bool            `json:"detached,omitempty"`
+	Type          string          `json:"type"`
+	ReqId         string          `json:"reqid"`
+	CK            base.CommandKey `json:"ck"`
+	Command       string          `json:"command"`
+	State         *ShellState     `json:"state"`
+	StateComplete bool            `json:"statecomplete,omitempty"` // set to true if state is complete (the default env should not be set)
+	UsePty        bool            `json:"usepty,omitempty"`
+	TermOpts      *TermOpts       `json:"termopts,omitempty"`
+	Fds           []RemoteFd      `json:"fds,omitempty"`
+	RunData       []RunDataType   `json:"rundata,omitempty"`
+	Detached      bool            `json:"detached,omitempty"`
 }
 
 func (*RunPacketType) GetType() string {
