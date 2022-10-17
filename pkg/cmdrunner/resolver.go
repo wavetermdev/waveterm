@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/sh2-server/pkg/remote"
 	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
@@ -33,7 +34,7 @@ type ResolvedRemote struct {
 	RemotePtr   sstore.RemotePtrType
 	MShell      *remote.MShellProc
 	RState      remote.RemoteRuntimeState
-	RemoteState *sstore.RemoteState
+	RemoteState *packet.ShellState
 	RemoteCopy  *sstore.RemoteType
 }
 
@@ -471,7 +472,7 @@ func resolveRemoteFromPtr(ctx context.Context, rptr *sstore.RemotePtrType, sessi
 }
 
 // returns (remoteDisplayName, remoteptr, state, rstate, err)
-func resolveRemote(ctx context.Context, fullRemoteRef string, sessionId string, windowId string) (string, *sstore.RemotePtrType, *sstore.RemoteState, *remote.RemoteRuntimeState, error) {
+func resolveRemote(ctx context.Context, fullRemoteRef string, sessionId string, windowId string) (string, *sstore.RemotePtrType, *packet.ShellState, *remote.RemoteRuntimeState, error) {
 	if fullRemoteRef == "" {
 		return "", nil, nil, nil, nil
 	}

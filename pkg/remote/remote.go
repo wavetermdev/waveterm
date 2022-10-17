@@ -36,8 +36,8 @@ const RemoteTermRows = 8
 const RemoteTermCols = 80
 const PtyReadBufSize = 100
 
-const MShellVersion = "v0.1.0"
-const MShellVersionConstraint = "^0.1"
+const MShellVersion = "v0.2.0"
+const MShellVersionConstraint = "^0.2"
 
 const MShellServerCommandFmt = `
 PATH=$PATH:~/.mshell;
@@ -98,26 +98,26 @@ type MShellProc struct {
 }
 
 type RemoteRuntimeState struct {
-	RemoteType          string              `json:"remotetype"`
-	RemoteId            string              `json:"remoteid"`
-	PhysicalId          string              `json:"physicalremoteid"`
-	RemoteAlias         string              `json:"remotealias,omitempty"`
-	RemoteCanonicalName string              `json:"remotecanonicalname"`
-	RemoteVars          map[string]string   `json:"remotevars"`
-	Status              string              `json:"status"`
-	ErrorStr            string              `json:"errorstr,omitempty"`
-	InstallStatus       string              `json:"installstatus"`
-	InstallErrorStr     string              `json:"installerrorstr,omitempty"`
-	NeedsMShellUpgrade  bool                `json:"needsmshellupgrade,omitempty"`
-	DefaultState        *sstore.RemoteState `json:"defaultstate"`
-	ConnectMode         string              `json:"connectmode"`
-	AutoInstall         bool                `json:"autoinstall"`
-	Archived            bool                `json:"archived,omitempty"`
-	RemoteIdx           int64               `json:"remoteidx"`
-	UName               string              `json:"uname"`
-	MShellVersion       string              `json:"mshellversion"`
-	WaitingForPassword  bool                `json:"waitingforpassword,omitempty"`
-	Local               bool                `json:"local,omitempty"`
+	RemoteType          string             `json:"remotetype"`
+	RemoteId            string             `json:"remoteid"`
+	PhysicalId          string             `json:"physicalremoteid"`
+	RemoteAlias         string             `json:"remotealias,omitempty"`
+	RemoteCanonicalName string             `json:"remotecanonicalname"`
+	RemoteVars          map[string]string  `json:"remotevars"`
+	Status              string             `json:"status"`
+	ErrorStr            string             `json:"errorstr,omitempty"`
+	InstallStatus       string             `json:"installstatus"`
+	InstallErrorStr     string             `json:"installerrorstr,omitempty"`
+	NeedsMShellUpgrade  bool               `json:"needsmshellupgrade,omitempty"`
+	DefaultState        *packet.ShellState `json:"defaultstate"`
+	ConnectMode         string             `json:"connectmode"`
+	AutoInstall         bool               `json:"autoinstall"`
+	Archived            bool               `json:"archived,omitempty"`
+	RemoteIdx           int64              `json:"remoteidx"`
+	UName               string             `json:"uname"`
+	MShellVersion       string             `json:"mshellversion"`
+	WaitingForPassword  bool               `json:"waitingforpassword,omitempty"`
+	Local               bool               `json:"local,omitempty"`
 }
 
 func (state RemoteRuntimeState) IsConnected() bool {
@@ -465,10 +465,7 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		vars["color"] = msh.Remote.RemoteOpts.Color
 	}
 	if msh.ServerProc != nil && msh.ServerProc.InitPk != nil {
-		state.DefaultState = &sstore.RemoteState{
-			Cwd:  msh.ServerProc.InitPk.Cwd,
-			Env0: msh.ServerProc.InitPk.Env0,
-		}
+		state.DefaultState = msh.ServerProc.InitPk.State
 		state.MShellVersion = msh.ServerProc.InitPk.Version
 		vars["home"] = msh.ServerProc.InitPk.HomeDir
 		vars["remoteuser"] = msh.ServerProc.InitPk.User
@@ -512,7 +509,7 @@ func GetAllRemoteRuntimeState() []RemoteRuntimeState {
 	return rtn
 }
 
-func GetDefaultRemoteStateById(remoteId string) (*sstore.RemoteState, error) {
+func GetDefaultRemoteStateById(remoteId string) (*packet.ShellState, error) {
 	remote := GetRemoteById(remoteId)
 	if remote == nil {
 		return nil, fmt.Errorf("remote not found")
@@ -988,13 +985,13 @@ func (msh *MShellProc) IsConnected() bool {
 	return msh.Status == StatusConnected
 }
 
-func (msh *MShellProc) GetDefaultState() *sstore.RemoteState {
+func (msh *MShellProc) GetDefaultState() *packet.ShellState {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
 	if msh.ServerProc == nil || msh.ServerProc.InitPk == nil {
 		return nil
 	}
-	return &sstore.RemoteState{Cwd: msh.ServerProc.InitPk.HomeDir, Env0: msh.ServerProc.InitPk.Env0}
+	return msh.ServerProc.InitPk.State
 }
 
 func replaceHomePath(pathStr string, homeDir string) string {
@@ -1060,7 +1057,7 @@ func makeTermOpts(runPk *packet.RunPacketType) sstore.TermOpts {
 }
 
 // returns (cmdtype, allow-updates-callback, err)
-func RunCommand(ctx context.Context, cmdId string, remotePtr sstore.RemotePtrType, remoteState *sstore.RemoteState, runPacket *packet.RunPacketType) (*sstore.CmdType, func(), error) {
+func RunCommand(ctx context.Context, cmdId string, remotePtr sstore.RemotePtrType, remoteState *packet.ShellState, runPacket *packet.RunPacketType) (*sstore.CmdType, func(), error) {
 	if remotePtr.OwnerId != "" {
 		return nil, nil, fmt.Errorf("cannot run command against another user's remote '%s'", remotePtr.MakeFullRemoteRef())
 	}
@@ -1332,7 +1329,7 @@ func isDigit(r rune) bool {
 	return r >= '0' && r <= '9' // just check ascii digits (not unicode)
 }
 
-func EvalPrompt(promptFmt string, vars map[string]string, state *sstore.RemoteState) string {
+func EvalPrompt(promptFmt string, vars map[string]string, state *packet.ShellState) string {
 	var buf bytes.Buffer
 	promptRunes := []rune(promptFmt)
 	for i := 0; i < len(promptRunes); i++ {
@@ -1373,7 +1370,7 @@ func EvalPrompt(promptFmt string, vars map[string]string, state *sstore.RemoteSt
 	return buf.String()
 }
 
-func evalPromptEsc(escCode string, vars map[string]string, state *sstore.RemoteState) string {
+func evalPromptEsc(escCode string, vars map[string]string, state *packet.ShellState) string {
 	if strings.HasPrefix(escCode, "x{") && strings.HasSuffix(escCode, "}") {
 		varName := escCode[2 : len(escCode)-1]
 		return vars[varName]

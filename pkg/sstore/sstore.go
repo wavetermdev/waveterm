@@ -440,19 +440,6 @@ type HistoryQueryOpts struct {
 	FromTs   int64
 }
 
-type RemoteState struct {
-	Cwd  string `json:"cwd"`
-	Env0 []byte `json:"env0"` // "env -0" format
-}
-
-func (s *RemoteState) Scan(val interface{}) error {
-	return quickScanJson(s, val)
-}
-
-func (s RemoteState) Value() (driver.Value, error) {
-	return quickValueJson(s)
-}
-
 type TermOpts struct {
 	Rows       int64 `json:"rows"`
 	Cols       int64 `json:"cols"`
@@ -469,16 +456,43 @@ func (opts TermOpts) Value() (driver.Value, error) {
 }
 
 type RemoteInstance struct {
-	RIId          string      `json:"riid"`
-	Name          string      `json:"name"`
-	SessionId     string      `json:"sessionid"`
-	WindowId      string      `json:"windowid"`
-	RemoteOwnerId string      `json:"remoteownerid"`
-	RemoteId      string      `json:"remoteid"`
-	State         RemoteState `json:"state"`
+	RIId          string            `json:"riid"`
+	Name          string            `json:"name"`
+	SessionId     string            `json:"sessionid"`
+	WindowId      string            `json:"windowid"`
+	RemoteOwnerId string            `json:"remoteownerid"`
+	RemoteId      string            `json:"remoteid"`
+	State         packet.ShellState `json:"state"`
 
 	// only for updates
 	Remove bool `json:"remove,omitempty"`
+}
+
+func (ri *RemoteInstance) ToMap() map[string]interface{} {
+	rtn := make(map[string]interface{})
+	rtn["riid"] = ri.RIId
+	rtn["name"] = ri.Name
+	rtn["sessionid"] = ri.SessionId
+	rtn["windowid"] = ri.WindowId
+	rtn["remoteownerid"] = ri.RemoteOwnerId
+	rtn["remoteid"] = ri.RemoteId
+	rtn["state"] = quickJson(ri.State)
+	return rtn
+}
+
+func RIFromMap(m map[string]interface{}) *RemoteInstance {
+	if len(m) == 0 {
+		return nil
+	}
+	var ri RemoteInstance
+	quickSetStr(&ri.RIId, m, "riid")
+	quickSetStr(&ri.Name, m, "name")
+	quickSetStr(&ri.SessionId, m, "sessionid")
+	quickSetStr(&ri.WindowId, m, "windowid")
+	quickSetStr(&ri.RemoteOwnerId, m, "remoteownerid")
+	quickSetStr(&ri.RemoteId, m, "remoteid")
+	quickSetJson(&ri.State, m, "state")
+	return &ri
 }
 
 type LineType struct {
@@ -557,7 +571,7 @@ type CmdType struct {
 	CmdId        string                     `json:"cmdid"`
 	Remote       RemotePtrType              `json:"remote"`
 	CmdStr       string                     `json:"cmdstr"`
-	RemoteState  RemoteState                `json:"remotestate"`
+	RemoteState  packet.ShellState          `json:"remotestate"`
 	TermOpts     TermOpts                   `json:"termopts"`
 	OrigTermOpts TermOpts                   `json:"origtermopts"`
 	Status       string                     `json:"status"`

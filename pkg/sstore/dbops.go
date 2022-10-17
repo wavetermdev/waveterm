@@ -300,9 +300,9 @@ func GetAllSessions(ctx context.Context) (*ModelUpdate, error) {
 			screen.Windows = append(screen.Windows, sw)
 		}
 		query = `SELECT * FROM remote_instance`
-		var ris []*RemoteInstance
-		tx.SelectWrap(&ris, query)
-		for _, ri := range ris {
+		riMaps := tx.SelectMaps(query)
+		for _, m := range riMaps {
+			ri := RIFromMap(m)
 			s := sessionMap[ri.SessionId]
 			if s != nil {
 				s.Remotes = append(s.Remotes, ri)
@@ -776,13 +776,13 @@ func DeleteScreen(ctx context.Context, sessionId string, screenId string) (Updat
 	return update, nil
 }
 
-func GetRemoteState(ctx context.Context, sessionId string, windowId string, remotePtr RemotePtrType) (*RemoteState, error) {
-	var remoteState *RemoteState
+func GetRemoteState(ctx context.Context, sessionId string, windowId string, remotePtr RemotePtrType) (*packet.ShellState, error) {
+	var remoteState *packet.ShellState
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		var ri RemoteInstance
 		query := `SELECT * FROM remote_instance WHERE sessionid = ? AND windowid = ? AND remoteownerid = ? AND remoteid = ? AND name = ?`
-		found := tx.GetWrap(&ri, query, sessionId, windowId, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name)
-		if found {
+		m := tx.GetMap(query, sessionId, windowId, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name)
+		ri := RIFromMap(m)
+		if ri != nil {
 			remoteState = &ri.State
 			return nil
 		}
@@ -807,20 +807,21 @@ func validateSessionWindow(tx *TxWrap, sessionId string, windowId string) error 
 	}
 }
 
-func UpdateRemoteState(ctx context.Context, sessionId string, windowId string, remotePtr RemotePtrType, state RemoteState) (*RemoteInstance, error) {
+func UpdateRemoteState(ctx context.Context, sessionId string, windowId string, remotePtr RemotePtrType, state packet.ShellState) (*RemoteInstance, error) {
 	if remotePtr.IsSessionScope() {
 		windowId = ""
 	}
-	var ri RemoteInstance
+	var ri *RemoteInstance
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		err := validateSessionWindow(tx, sessionId, windowId)
 		if err != nil {
 			return fmt.Errorf("cannot update remote instance cwd: %w", err)
 		}
 		query := `SELECT * FROM remote_instance WHERE sessionid = ? AND windowid = ? AND remoteownerid = ? AND remoteid = ? AND name = ?`
-		found := tx.GetWrap(&ri, query, sessionId, windowId, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name)
-		if !found {
-			ri = RemoteInstance{
+		m := tx.GetMap(query, sessionId, windowId, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name)
+		ri = RIFromMap(m)
+		if ri == nil {
+			ri = &RemoteInstance{
 				RIId:          scbase.GenSCUUID(),
 				Name:          remotePtr.Name,
 				SessionId:     sessionId,
@@ -831,15 +832,15 @@ func UpdateRemoteState(ctx context.Context, sessionId string, windowId string, r
 			}
 			query = `INSERT INTO remote_instance ( riid, name, sessionid, windowid, remoteownerid, remoteid, state) 
                                           VALUES (:riid,:name,:sessionid,:windowid,:remoteownerid,:remoteid,:state)`
-			tx.NamedExecWrap(query, ri)
+			tx.NamedExecWrap(query, ri.ToMap())
 			return nil
 		}
-		query = `UPDATE remote_instance SET state = ? WHERE sessionid = ? AND windowid = ? AND remoteownerid = ? AND remoteid = ? AND name = ?`
+		query = `UPDATE remote_instance SET state = ? WHERE riid = ?`
 		ri.State = state
-		tx.ExecWrap(query, ri.State, ri.SessionId, ri.WindowId, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name)
+		tx.ExecWrap(query, quickJson(ri.State), ri.RIId)
 		return nil
 	})
-	return &ri, txErr
+	return ri, txErr
 }
 
 func UpdateCurRemote(ctx context.Context, sessionId string, windowId string, remotePtr RemotePtrType) error {
