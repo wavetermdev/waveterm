@@ -247,43 +247,12 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	if err != nil {
 		return nil, err
 	}
-	rtnLine, err := sstore.AddCmdLine(ctx, ids.SessionId, ids.WindowId, DefaultUserId, cmd)
+	update, err := addLineForCmd(ctx, "/run", true, ids, cmd)
 	if err != nil {
 		return nil, err
 	}
-	sw, err := sstore.GetScreenWindowByIds(ctx, ids.SessionId, ids.ScreenId, ids.WindowId)
-	if err != nil {
-		// ignore error here, because the command has already run (nothing to do)
-		fmt.Printf("/run error getting screen-window: %v\n", err)
-	}
-	if sw != nil {
-		updateMap := make(map[string]interface{})
-		updateMap[sstore.SWField_SelectedLine] = rtnLine.LineNum
-		updateMap[sstore.SWField_Focus] = sstore.SWFocusCmdFg
-		sw, err = sstore.UpdateScreenWindow(ctx, ids.SessionId, ids.ScreenId, ids.WindowId, updateMap)
-		if err != nil {
-			// ignore error again (nothing to do)
-			fmt.Printf("/run error updating screen-window selected line: %v\n", err)
-		}
-	}
-	update := sstore.ModelUpdate{
-		Line:          rtnLine,
-		Cmd:           cmd,
-		ScreenWindows: []*sstore.ScreenWindowType{sw},
-		Interactive:   pk.Interactive,
-	}
+	update.Interactive = pk.Interactive
 	sstore.MainBus.SendUpdate(ids.SessionId, update)
-	ctxVal := ctx.Value(historyContextKey)
-	if ctxVal != nil {
-		hctx := ctxVal.(*historyContextType)
-		if rtnLine != nil {
-			hctx.LineId = rtnLine.LineId
-		}
-		if cmd != nil {
-			hctx.CmdId = cmd.CmdId
-			hctx.RemotePtr = &cmd.Remote
-		}
-	}
 	return nil, nil
 }
 
@@ -520,19 +489,27 @@ func UnSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 		delete(envMap, argStr)
 		unsetVars[argStr] = true
 	}
+	if len(unsetVars) == 0 {
+		return nil, fmt.Errorf("no variables provided to unset")
+	}
 	state := *ids.Remote.RemoteState
 	state.Env0 = shexec.MakeEnv0(envMap)
-	remote, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.WindowId, ids.Remote.RemotePtr, state)
+	remoteInst, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.WindowId, ids.Remote.RemotePtr, state)
 	if err != nil {
 		return nil, err
 	}
-	update := sstore.ModelUpdate{
-		Sessions: sstore.MakeSessionsUpdateForRemote(ids.SessionId, remote),
-		Info: &sstore.InfoMsgType{
-			InfoMsg:   fmt.Sprintf("[%s] unset vars: %s", ids.Remote.DisplayName, formatStrs(mapToStrs(unsetVars), "and", false)),
-			TimeoutMs: 2000,
-		},
+	var cmdOutput bytes.Buffer
+	for varName, _ := range unsetVars {
+		cmdOutput.WriteString(fmt.Sprintf("unset %s\r\n", shellescape.Quote(varName)))
 	}
+	cmd, err := makeStaticCmd(ctx, "unset", ids, pk.GetRawStr(), cmdOutput.Bytes())
+	update, err := addLineForCmd(ctx, "/unset", false, ids, cmd)
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, err
+	}
+	update.Interactive = pk.Interactive
+	update.Sessions = sstore.MakeSessionsUpdateForRemote(ids.SessionId, remoteInst)
 	return update, nil
 }
 
@@ -1043,14 +1020,99 @@ func CdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 	if err != nil {
 		return nil, err
 	}
-	update := sstore.ModelUpdate{
-		Sessions: sstore.MakeSessionsUpdateForRemote(ids.SessionId, remoteInst),
-		Info: &sstore.InfoMsgType{
-			InfoMsg:   fmt.Sprintf("[%s] current directory = %s", ids.Remote.DisplayName, newDir),
-			TimeoutMs: 2000,
-		},
+	cmdOutput := fmt.Sprintf("cwd = %s", shellescape.Quote(newDir))
+	cmd, err := makeStaticCmd(ctx, "cd", ids, pk.GetRawStr(), []byte(cmdOutput))
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, err
 	}
+	update, err := addLineForCmd(ctx, "/cd", false, ids, cmd)
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, err
+	}
+	update.Interactive = pk.Interactive
+	update.Sessions = sstore.MakeSessionsUpdateForRemote(ids.SessionId, remoteInst)
+	//update.Info = &sstore.InfoMsgType{
+	//	InfoMsg:   fmt.Sprintf("[%s] current directory = %s", ids.Remote.DisplayName, newDir),
+	//	TimeoutMs: 2000,
+	//}
 	return update, nil
+}
+
+func makeStaticCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr string, cmdOutput []byte) (*sstore.CmdType, error) {
+	cmd := &sstore.CmdType{
+		SessionId: ids.SessionId,
+		CmdId:     scbase.GenSCUUID(),
+		CmdStr:    cmdStr,
+		Remote:    ids.Remote.RemotePtr,
+		TermOpts:  sstore.TermOpts{Rows: shexec.DefaultTermRows, Cols: shexec.DefaultTermCols, FlexRows: true, MaxPtySize: remote.DefaultMaxPtySize},
+		Status:    sstore.CmdStatusDone,
+		StartPk:   nil,
+		DonePk:    nil,
+		RunOut:    nil,
+	}
+	if ids.Remote.RemoteState != nil {
+		cmd.RemoteState = *ids.Remote.RemoteState
+	}
+	err := sstore.CreateCmdPtyFile(ctx, cmd.SessionId, cmd.CmdId, cmd.TermOpts.MaxPtySize)
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, fmt.Errorf("cannot create local ptyout file for %s command: %w", metaCmd, err)
+	}
+	// can ignore ptyupdate
+	_, err = sstore.AppendToCmdPtyBlob(ctx, cmd.SessionId, cmd.CmdId, cmdOutput, 0)
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, fmt.Errorf("cannot append to local ptyout file for %s command: %v", metaCmd, err)
+	}
+	return cmd, nil
+}
+
+func addLineForCmd(ctx context.Context, metaCmd string, shouldFocus bool, ids resolvedIds, cmd *sstore.CmdType) (*sstore.ModelUpdate, error) {
+	rtnLine, err := sstore.AddCmdLine(ctx, ids.SessionId, ids.WindowId, DefaultUserId, cmd)
+	if err != nil {
+		return nil, err
+	}
+	sw, err := sstore.GetScreenWindowByIds(ctx, ids.SessionId, ids.ScreenId, ids.WindowId)
+	if err != nil {
+		// ignore error here, because the command has already run (nothing to do)
+		fmt.Printf("%s error getting screen-window: %v\n", metaCmd, err)
+	}
+	if sw != nil {
+		updateMap := make(map[string]interface{})
+		updateMap[sstore.SWField_SelectedLine] = rtnLine.LineNum
+		if shouldFocus {
+			updateMap[sstore.SWField_Focus] = sstore.SWFocusCmdFg
+		}
+		sw, err = sstore.UpdateScreenWindow(ctx, ids.SessionId, ids.ScreenId, ids.WindowId, updateMap)
+		if err != nil {
+			// ignore error again (nothing to do)
+			fmt.Printf("%s error updating screen-window selected line: %v\n", metaCmd, err)
+		}
+	}
+	update := &sstore.ModelUpdate{
+		Line:          rtnLine,
+		Cmd:           cmd,
+		ScreenWindows: []*sstore.ScreenWindowType{sw},
+	}
+	updateHistoryContext(ctx, rtnLine, cmd)
+	return update, nil
+}
+
+func updateHistoryContext(ctx context.Context, line *sstore.LineType, cmd *sstore.CmdType) {
+	ctxVal := ctx.Value(historyContextKey)
+	if ctxVal == nil {
+		return
+	}
+	hctx := ctxVal.(*historyContextType)
+	if line != nil {
+		hctx.LineId = line.LineId
+	}
+	if cmd != nil {
+		hctx.CmdId = cmd.CmdId
+		hctx.RemotePtr = &cmd.Remote
+	}
 }
 
 func getStrArr(v interface{}, field string) []string {

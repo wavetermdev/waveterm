@@ -927,14 +927,14 @@ func (msh *MShellProc) Launch() {
 		msh.MakeClientCancelFn = makeClientCancelFn
 		go msh.NotifyRemoteUpdate()
 	})
-	cproc, uname, err := shexec.MakeClientProc(makeClientCtx, ecmd)
+	cproc, initPk, err := shexec.MakeClientProc(makeClientCtx, ecmd)
 	var mshellVersion string
 	msh.WithLock(func() {
-		msh.UName = uname
 		msh.MakeClientCancelFn = nil
-		if cproc != nil && cproc.InitPk != nil {
-			msh.Remote.InitPk = cproc.InitPk
-			mshellVersion = cproc.InitPk.Version
+		if initPk != nil {
+			msh.Remote.InitPk = initPk
+			msh.UName = initPk.UName
+			mshellVersion = initPk.Version
 			if semver.Compare(mshellVersion, MShellVersion) < 0 {
 				// only set NeedsMShellUpgrade if we got an InitPk
 				msh.NeedsMShellUpgrade = true

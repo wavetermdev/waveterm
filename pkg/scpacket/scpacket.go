@@ -1,8 +1,11 @@
 package scpacket
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 
+	"github.com/alessio/shellescape"
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
@@ -19,8 +22,31 @@ type FeCommandPacketType struct {
 	MetaSubCmd  string            `json:"metasubcmd,omitempty"`
 	Args        []string          `json:"args,omitempty"`
 	Kwargs      map[string]string `json:"kwargs,omitempty"`
+	RawStr      string            `json:"rawstr,omitempty"`
 	UIContext   *UIContextType    `json:"uicontext,omitempty"`
 	Interactive bool              `json:"interactive"`
+}
+
+func (pk *FeCommandPacketType) GetRawStr() string {
+	if pk.RawStr != "" {
+		return pk.RawStr
+	}
+	cmd := "/" + pk.MetaCmd
+	if pk.MetaSubCmd != "" {
+		cmd = cmd + ":" + pk.MetaSubCmd
+	}
+	var args []string
+	for k, v := range pk.Kwargs {
+		argStr := fmt.Sprintf("%s=%s", shellescape.Quote(k), shellescape.Quote(v))
+		args = append(args, argStr)
+	}
+	for _, arg := range pk.Args {
+		args = append(args, shellescape.Quote(arg))
+	}
+	if len(args) == 0 {
+		return cmd
+	}
+	return cmd + " " + strings.Join(args, " ")
 }
 
 type UIContextType struct {
