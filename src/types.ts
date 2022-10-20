@@ -178,6 +178,7 @@ type FeCmdPacketType = {
     metasubcmd? : string,
     args : string[],
     kwargs : Record<string, string>;
+    rawstr? : string,
     uicontext : UIContextType,
     interactive : boolean,
 };

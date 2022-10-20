@@ -186,10 +186,9 @@ class Prompt extends React.Component<{rptr : RemotePtrType, rstate : RemoteState
 }
 
 @mobxReact.observer
-class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender: boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType}, {}> {
+class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType}, {}> {
     termLoaded : mobx.IObservableValue<boolean> = mobx.observable.box(false);
     lineRef : React.RefObject<any> = React.createRef();
-    
     
     constructor(props) {
         super(props);
@@ -367,7 +366,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                         </div>
                     </div>
                 </div>
-                <div className={cn("terminal-wrapper", {"focus": isFocused})}>
+                <div className={cn("terminal-wrapper", {"focus": isFocused}, {"cmd-done": !cmd.isRunning()})}>
                     <If condition={!isFocused}>
                         <div className="term-block" onClick={this.clickTermBlock}></div>
                     </If>

@@ -40,6 +40,10 @@ function cmdStatusIsRunning(status : string) : boolean {
     return status == "running" || status == "detached";
 }
 
+function keyHasNoMods(e : any) {
+    return !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey;
+}
+
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
 type OMap<K,V> = mobx.ObservableMap<K,V>;
@@ -480,12 +484,29 @@ class ScreenWindow {
         }
     }
 
-    termCustomKeyHandler(e : any, termWrap : TermWrap) : boolean {
-        if (e.type != "keydown" || isModKeyPress(e)) {
-            return termWrap.isRunning;
+    isTermCapturedKey(e : any) : boolean {
+        let keys = ["ArrowUp", "ArrowDown", "PageUp", "PageDown"];
+        if (keys.includes(e.code) && keyHasNoMods(e)) {
+            return true;
         }
+        return false;
+    }
+
+    termCustomKeyHandler(e : any, termWrap : TermWrap) : boolean {
+        if (termWrap.isRunning) {
+            return true;
+        }
+        let isCaptured = this.isTermCapturedKey(e);
+        if (!isCaptured) {
+            return true;
+        }
+        if (e.type != "keydown" || isModKeyPress(e)) {
+            return false;
+        }
+        e.stopPropagation();
+        e.preventDefault();
         this.termCustomKeyHandlerInternal(e, termWrap);
-        return termWrap.isRunning;
+        return false;
     }
 
     connectElem(elem : Element, line : LineType, cmd : Cmd, width : number) {
@@ -1926,8 +1947,9 @@ class Model {
             metacmd: "eval",
             args: [cmdStr],
             kwargs: null,
-            uicontext : this.getUIContext(),
-            interactive : interactive,
+            uicontext: this.getUIContext(),
+            interactive: interactive,
+            rawstr: cmdStr,
         };
         if (!addToHistory) {
             pk.kwargs["nohist"] = "1";
