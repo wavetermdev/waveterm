@@ -499,9 +499,7 @@ func UnSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 		return nil, err
 	}
 	var cmdOutput bytes.Buffer
-	for varName, _ := range unsetVars {
-		cmdOutput.WriteString(fmt.Sprintf("unset %s\r\n", shellescape.Quote(varName)))
-	}
+	displayStateUpdate(&cmdOutput, *ids.Remote.RemoteState, remoteInst.State)
 	cmd, err := makeStaticCmd(ctx, "unset", ids, pk.GetRawStr(), cmdOutput.Bytes())
 	update, err := addLineForCmd(ctx, "/unset", false, ids, cmd)
 	if err != nil {
@@ -926,17 +924,20 @@ func SetEnvCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	}
 	state := *ids.Remote.RemoteState
 	state.Env0 = shexec.MakeEnv0(envMap)
-	remote, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.WindowId, ids.Remote.RemotePtr, state)
+	remoteInst, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.WindowId, ids.Remote.RemotePtr, state)
 	if err != nil {
 		return nil, err
 	}
-	update := sstore.ModelUpdate{
-		Sessions: sstore.MakeSessionsUpdateForRemote(ids.SessionId, remote),
-		Info: &sstore.InfoMsgType{
-			InfoMsg:   fmt.Sprintf("[%s] set vars: %s", ids.Remote.DisplayName, formatStrs(mapToStrs(setVars), "and", false)),
-			TimeoutMs: 2000,
-		},
+	var cmdOutput bytes.Buffer
+	displayStateUpdate(&cmdOutput, *ids.Remote.RemoteState, remoteInst.State)
+	cmd, err := makeStaticCmd(ctx, "setenv", ids, pk.GetRawStr(), cmdOutput.Bytes())
+	update, err := addLineForCmd(ctx, "/setenv", false, ids, cmd)
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, err
 	}
+	update.Interactive = pk.Interactive
+	update.Sessions = sstore.MakeSessionsUpdateForRemote(ids.SessionId, remoteInst)
 	return update, nil
 }
 
@@ -1020,8 +1021,9 @@ func CdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 	if err != nil {
 		return nil, err
 	}
-	cmdOutput := fmt.Sprintf("cwd = %s", shellescape.Quote(newDir))
-	cmd, err := makeStaticCmd(ctx, "cd", ids, pk.GetRawStr(), []byte(cmdOutput))
+	var cmdOutput bytes.Buffer
+	displayStateUpdate(&cmdOutput, *ids.Remote.RemoteState, remoteInst.State)
+	cmd, err := makeStaticCmd(ctx, "cd", ids, pk.GetRawStr(), cmdOutput.Bytes())
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
@@ -1542,7 +1544,7 @@ func HistoryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		return nil, fmt.Errorf("invalid maxitems value '%s' (must be a number): %v", pk.Kwargs["maxitems"], err)
 	}
 	if maxItems < 0 {
-		return nil, fmt.Errorf("invalid maxitems value '%s' (cannot be negative)", maxItems)
+		return nil, fmt.Errorf("invalid maxitems value '%d' (cannot be negative)", maxItems)
 	}
 	if maxItems == 0 {
 		maxItems = DefaultMaxHistoryItems
@@ -1678,7 +1680,7 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	ts := time.UnixMilli(line.Ts)
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "ts", ts.Format("2006-01-02 15:04:05")))
 	if line.Ephemeral {
-		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "ephemeral", true))
+		buf.WriteString(fmt.Sprintf("  %-15s %v\n", "ephemeral", true))
 	}
 	if cmd != nil {
 		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "cmdid", cmd.CmdId))
@@ -1756,4 +1758,58 @@ func formatTextTable(totalCols int, data [][]string, colMeta []ColMeta) []string
 		rtn = append(rtn, sval)
 	}
 	return rtn
+}
+
+func displayStateUpdate(buf *bytes.Buffer, oldState packet.ShellState, newState packet.ShellState) {
+	if newState.Cwd != oldState.Cwd {
+		buf.WriteString(fmt.Sprintf("cwd %s\r\n", newState.Cwd))
+	}
+	if !bytes.Equal(newState.Env0, oldState.Env0) {
+		newEnvMap := shexec.ParseEnv0(newState.Env0)
+		oldEnvMap := shexec.ParseEnv0(oldState.Env0)
+		for key, newVal := range newEnvMap {
+			oldVal, found := oldEnvMap[key]
+			if !found || oldVal != newVal {
+				buf.WriteString(fmt.Sprintf("%s=%s\r\n", shellescape.Quote(key), shellescape.Quote(newVal)))
+			}
+		}
+		for key, _ := range oldEnvMap {
+			_, found := newEnvMap[key]
+			if !found {
+				buf.WriteString(fmt.Sprintf("unset %s\r\n", shellescape.Quote(key)))
+			}
+		}
+	}
+	if newState.Aliases != oldState.Aliases {
+		newAliasMap, _ := ParseAliases(newState.Aliases)
+		oldAliasMap, _ := ParseAliases(oldState.Aliases)
+		for aliasName, newAliasVal := range newAliasMap {
+			oldAliasVal, found := oldAliasMap[aliasName]
+			if !found || newAliasVal != oldAliasVal {
+				buf.WriteString(fmt.Sprintf("alias %s\n", shellescape.Quote(aliasName)))
+			}
+		}
+		for aliasName, _ := range oldAliasMap {
+			_, found := newAliasMap[aliasName]
+			if !found {
+				buf.WriteString(fmt.Sprintf("unalias %s\r\n", shellescape.Quote(aliasName)))
+			}
+		}
+	}
+	if newState.Funcs != oldState.Funcs {
+		newFuncMap, _ := ParseFuncs(newState.Funcs)
+		oldFuncMap, _ := ParseFuncs(oldState.Funcs)
+		for funcName, newFuncVal := range newFuncMap {
+			oldFuncVal, found := oldFuncMap[funcName]
+			if !found || newFuncVal != oldFuncVal {
+				buf.WriteString(fmt.Sprintf("function %s\n", shellescape.Quote(funcName)))
+			}
+		}
+		for funcName, _ := range oldFuncMap {
+			_, found := newFuncMap[funcName]
+			if !found {
+				buf.WriteString(fmt.Sprintf("unset -f %s\r\n", shellescape.Quote(funcName)))
+			}
+		}
+	}
 }
