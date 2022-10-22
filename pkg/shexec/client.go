@@ -14,6 +14,8 @@ import (
 
 // TODO - track buffer sizes for sending input
 
+const NotFoundVersion = "v0.0"
+
 type ClientProc struct {
 	Cmd          *exec.Cmd
 	InitPk       *packet.InitPacketType
@@ -25,24 +27,24 @@ type ClientProc struct {
 	Output       *packet.PacketParser
 }
 
-// returns (clientproc, uname, error)
-func MakeClientProc(ctx context.Context, ecmd *exec.Cmd) (*ClientProc, string, error) {
+// returns (clientproc, initpk, error)
+func MakeClientProc(ctx context.Context, ecmd *exec.Cmd) (*ClientProc, *packet.InitPacketType, error) {
 	inputWriter, err := ecmd.StdinPipe()
 	if err != nil {
-		return nil, "", fmt.Errorf("creating stdin pipe: %v", err)
+		return nil, nil, fmt.Errorf("creating stdin pipe: %v", err)
 	}
 	stdoutReader, err := ecmd.StdoutPipe()
 	if err != nil {
-		return nil, "", fmt.Errorf("creating stdout pipe: %v", err)
+		return nil, nil, fmt.Errorf("creating stdout pipe: %v", err)
 	}
 	stderrReader, err := ecmd.StderrPipe()
 	if err != nil {
-		return nil, "", fmt.Errorf("creating stderr pipe: %v", err)
+		return nil, nil, fmt.Errorf("creating stderr pipe: %v", err)
 	}
 	startTs := time.Now()
 	err = ecmd.Start()
 	if err != nil {
-		return nil, "", fmt.Errorf("running local client: %w", err)
+		return nil, nil, fmt.Errorf("running local client: %w", err)
 	}
 	sender := packet.MakePacketSender(inputWriter)
 	stdoutPacketParser := packet.MakePacketParser(stdoutReader)
@@ -63,29 +65,29 @@ func MakeClientProc(ctx context.Context, ecmd *exec.Cmd) (*ClientProc, string, e
 	case pk = <-packetParser.MainCh:
 	case <-ctx.Done():
 		cproc.Close()
-		return nil, "", ctx.Err()
+		return nil, nil, ctx.Err()
 	}
 	if pk != nil {
 		if pk.GetType() != packet.InitPacketStr {
 			cproc.Close()
-			return nil, "", fmt.Errorf("invalid packet received from mshell client: %s", packet.AsString(pk))
+			return nil, nil, fmt.Errorf("invalid packet received from mshell client: %s", packet.AsString(pk))
 		}
 		initPk := pk.(*packet.InitPacketType)
 		if initPk.NotFound {
 			cproc.Close()
-			return nil, initPk.UName, fmt.Errorf("mshell-%s command not found on local server", semver.MajorMinor(base.MShellVersion))
+			return nil, initPk, fmt.Errorf("mshell-%s command not found on local server", semver.MajorMinor(base.MShellVersion))
 		}
 		if semver.MajorMinor(initPk.Version) != semver.MajorMinor(base.MShellVersion) {
 			cproc.Close()
-			return nil, initPk.UName, fmt.Errorf("invalid remote mshell version '%s', must be '=%s'", initPk.Version, semver.MajorMinor(base.MShellVersion))
+			return nil, initPk, fmt.Errorf("invalid remote mshell version '%s', must be '=%s'", initPk.Version, semver.MajorMinor(base.MShellVersion))
 		}
 		cproc.InitPk = initPk
 	}
 	if cproc.InitPk == nil {
 		cproc.Close()
-		return nil, "", fmt.Errorf("no init packet received from mshell client")
+		return nil, nil, fmt.Errorf("no init packet received from mshell client")
 	}
-	return cproc, cproc.InitPk.UName, nil
+	return cproc, cproc.InitPk, nil
 }
 
 func (cproc *ClientProc) Close() {

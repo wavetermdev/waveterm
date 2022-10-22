@@ -480,6 +480,7 @@ type CmdDonePacketType struct {
 	CK         base.CommandKey `json:"ck"`
 	ExitCode   int             `json:"exitcode"`
 	DurationMs int64           `json:"durationms"`
+	FinalState *ShellState     `json:"state,omitempty"`
 }
 
 func (*CmdDonePacketType) GetType() string {
@@ -551,6 +552,7 @@ type RunPacketType struct {
 	Fds           []RemoteFd      `json:"fds,omitempty"`
 	RunData       []RunDataType   `json:"rundata,omitempty"`
 	Detached      bool            `json:"detached,omitempty"`
+	ReturnState   bool            `json:"returnstate,omitempty"`
 }
 
 func (*RunPacketType) GetType() string {
