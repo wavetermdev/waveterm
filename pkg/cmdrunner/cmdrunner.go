@@ -39,6 +39,10 @@ var ColorNames = []string{"black", "red", "green", "yellow", "blue", "magenta", 
 var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
 var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}
 
+var WindowCmds = []string{"run", "comment", "cd", "cr", "setenv", "unset", "clear", "sw", "alias", "unalias", "function", "source"}
+var NoHistCmds = []string{"compgen", "line", "history"}
+var GlobalCmds = []string{"session", "screen", "remote"}
+
 var hostNameRe = regexp.MustCompile("^[a-z][a-z0-9.-]*$")
 var userHostRe = regexp.MustCompile("^(sudo@)?([a-z][a-z0-9-]*)@([a-z][a-z0-9.-]*)(?::([0-9]+))?$")
 var remoteAliasRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_-]*$")
@@ -100,13 +104,17 @@ func init() {
 	registerCmdFn("remote:installcancel", RemoteInstallCancelCommand)
 
 	registerCmdFn("sw:set", SwSetCommand)
+	registerCmdFn("sw:resize", SwResizeCommand)
 
-	registerCmdFn("window:resize", WindowResizeCommand)
+	// sw:resize
+	registerCmdFn("window:resize", SwResizeCommand)
 
 	registerCmdFn("line", LineCommand)
 	registerCmdFn("line:show", LineShowCommand)
 
 	registerCmdFn("history", HistoryCommand)
+
+	registerCmdFn("source", SourceCommand)
 }
 
 func getValidCommands() []string {
@@ -216,6 +224,54 @@ func resolveNonNegInt(arg string, def int) (int, error) {
 	return ival, nil
 }
 
+func getUITermOpts(uiContext *scpacket.UIContextType) *packet.TermOpts {
+	termOpts := &packet.TermOpts{Rows: shexec.DefaultTermRows, Cols: shexec.DefaultTermCols, Term: remote.DefaultTerm, MaxPtySize: shexec.DefaultMaxPtySize}
+	if uiContext != nil && uiContext.TermOpts != nil {
+		pkOpts := uiContext.TermOpts
+		if pkOpts.Cols > 0 {
+			termOpts.Cols = base.BoundInt(pkOpts.Cols, shexec.MinTermCols, shexec.MaxTermCols)
+		}
+		if pkOpts.MaxPtySize > 0 {
+			termOpts.MaxPtySize = base.BoundInt64(pkOpts.MaxPtySize, shexec.MinMaxPtySize, shexec.MaxMaxPtySize)
+		}
+	}
+	return termOpts
+}
+
+func SourceCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_RemoteConnected)
+	if err != nil {
+		return nil, fmt.Errorf("/source error: %w", err)
+	}
+	if len(pk.Args) != 1 {
+		return nil, fmt.Errorf("/source takes one argument (the file to source)")
+	}
+	cmdId := scbase.GenSCUUID()
+	runPacket := packet.MakeRunPacket()
+	runPacket.ReqId = uuid.New().String()
+	runPacket.CK = base.MakeCommandKey(ids.SessionId, cmdId)
+	runPacket.State = ids.Remote.RemoteState
+	runPacket.StateComplete = true
+	runPacket.UsePty = true
+	runPacket.TermOpts = getUITermOpts(pk.UIContext)
+	runPacket.Command = strings.TrimSpace(fmt.Sprintf("source %s", shellescape.Quote(pk.Args[0])))
+	runPacket.ReturnState = true
+	cmd, callback, err := remote.RunCommand(ctx, cmdId, ids.Remote.RemotePtr, ids.Remote.RemoteState, runPacket)
+	if callback != nil {
+		defer callback()
+	}
+	if err != nil {
+		return nil, err
+	}
+	update, err := addLineForCmd(ctx, "/source", true, ids, cmd)
+	if err != nil {
+		return nil, err
+	}
+	update.Interactive = pk.Interactive
+	sstore.MainBus.SendUpdate(ids.SessionId, update)
+	return nil, nil
+}
+
 func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_RemoteConnected)
 	if err != nil {
@@ -229,16 +285,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	runPacket.State = ids.Remote.RemoteState
 	runPacket.StateComplete = true
 	runPacket.UsePty = true
-	runPacket.TermOpts = &packet.TermOpts{Rows: shexec.DefaultTermRows, Cols: shexec.DefaultTermCols, Term: remote.DefaultTerm, MaxPtySize: shexec.DefaultMaxPtySize}
-	if pk.UIContext != nil && pk.UIContext.TermOpts != nil {
-		pkOpts := pk.UIContext.TermOpts
-		if pkOpts.Cols > 0 {
-			runPacket.TermOpts.Cols = base.BoundInt(pkOpts.Cols, shexec.MinTermCols, shexec.MaxTermCols)
-		}
-		if pkOpts.MaxPtySize > 0 {
-			runPacket.TermOpts.MaxPtySize = base.BoundInt64(pkOpts.MaxPtySize, shexec.MinMaxPtySize, shexec.MaxMaxPtySize)
-		}
-	}
+	runPacket.TermOpts = getUITermOpts(pk.UIContext)
 	runPacket.Command = strings.TrimSpace(cmdStr)
 	cmd, callback, err := remote.RunCommand(ctx, cmdId, ids.Remote.RemotePtr, ids.Remote.RemoteState, runPacket)
 	if callback != nil {
@@ -1610,26 +1657,26 @@ func resizeRunningCommand(ctx context.Context, cmd *sstore.CmdType, newCols int)
 	return nil
 }
 
-func WindowResizeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+func SwResizeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
 	if err != nil {
 		return nil, err
 	}
 	colsStr := pk.Kwargs["cols"]
 	if colsStr == "" {
-		return nil, fmt.Errorf("/window:resize requires a numeric 'cols' argument")
+		return nil, fmt.Errorf("/sw:resize requires a numeric 'cols' argument")
 	}
 	cols, err := strconv.Atoi(colsStr)
 	if err != nil {
-		return nil, fmt.Errorf("/window:resize requires a numeric 'cols' argument: %v", err)
+		return nil, fmt.Errorf("/sw:resize requires a numeric 'cols' argument: %v", err)
 	}
 	if cols <= 0 {
-		return nil, fmt.Errorf("/window:resize invalid zero/negative 'cols' argument")
+		return nil, fmt.Errorf("/sw:resize invalid zero/negative 'cols' argument")
 	}
 	cols = base.BoundInt(cols, shexec.MinTermCols, shexec.MaxTermCols)
 	runningCmds, err := sstore.GetRunningWindowCmds(ctx, ids.SessionId, ids.WindowId)
 	if err != nil {
-		return nil, fmt.Errorf("/window:resize cannot get running commands: %v", err)
+		return nil, fmt.Errorf("/sw:resize cannot get running commands: %v", err)
 	}
 	if len(runningCmds) == 0 {
 		return nil, nil

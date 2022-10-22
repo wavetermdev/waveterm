@@ -1197,6 +1197,9 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 	if update != nil {
 		sstore.MainBus.SendUpdate(donePk.CK.GetSessionId(), update)
 	}
+	if donePk.FinalState != nil {
+
+	}
 	return
 }
 

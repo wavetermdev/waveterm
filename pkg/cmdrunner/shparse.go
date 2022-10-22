@@ -97,6 +97,8 @@ var BareMetaCmds = []BareMetaCmdDecl{
 	BareMetaCmdDecl{"export", "setenv"},
 	BareMetaCmdDecl{"unset", "unset"},
 	BareMetaCmdDecl{"clear", "clear"},
+	BareMetaCmdDecl{".", "source"},
+	BareMetaCmdDecl{"source", "source"},
 }
 
 func SubMetaCmd(cmd string) string {
