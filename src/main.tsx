@@ -485,7 +485,11 @@ class TextAreaInput extends React.Component<{}, {}> {
             }
             if (e.code == "Escape") {
                 e.preventDefault();
-                GlobalModel.inputModel.toggleInfoMsg();
+                let inputModel = GlobalModel.inputModel;
+                inputModel.toggleInfoMsg();
+                if (inputModel.inputMode.get() != null) {
+                    inputModel.resetInputMode();
+                }
                 return;
             }
             if (e.code == "KeyC" && e.getModifierState("Control")) {
@@ -560,6 +564,11 @@ class TextAreaInput extends React.Component<{}, {}> {
         if (e.code == "Enter") {
             e.preventDefault();
             inputModel.grabSelectedHistoryItem();
+            return;
+        }
+        if (e.code == "KeyG" && e.getModifierState("Control")) {
+            e.preventDefault();
+            inputModel.resetInput();
             return;
         }
         if (e.code == "KeyC" && e.getModifierState("Control")) {
@@ -1631,6 +1640,7 @@ class CmdInput extends React.Component<{}, {}> {
         let hasInfo = (infoMsg != null);
         let remoteShow = (infoMsg != null && !isBlank(infoMsg.ptyremoteid));
         let focusVal = inputModel.physicalInputFocused.get();
+        let inputMode : string = inputModel.inputMode.get();
         return (
             <div className={cn("cmd-input has-background-black", {"has-info": infoShow}, {"has-history": historyShow}, {"has-remote": remoteShow})}>
                 <div key="focus" className={cn("focus-indicator", {"active": focusVal})}/>
@@ -1652,10 +1662,12 @@ class CmdInput extends React.Component<{}, {}> {
                         <Prompt rptr={rptr} rstate={remoteState}/>
                     </div>
                 </div>
-                <div key="input" className="cmd-input-field field has-addons">
-                    <div className="control cmd-quick-context">
-                        <div className="button is-static">{remoteStr}</div>
-                    </div>
+                <div key="input" className={cn("cmd-input-field field has-addons", (inputMode != null ? "inputmode-" + inputMode : null))}>
+                    <If condition={inputMode != null}>
+                        <div className="control cmd-quick-context">
+                            <div className="button is-static">{inputMode}</div>
+                        </div>
+                    </If>
                     <TextAreaInput/>
                     <div className="control cmd-exec">
                         <div onClick={GlobalModel.inputModel.uiSubmitCommand} className="button">

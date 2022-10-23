@@ -176,7 +176,7 @@ class Cmd {
     }
 
     handleData(data : string, termWrap : TermWrap) : void {
-        console.log("handle data", {data: data});
+        // console.log("handle data", {data: data});
         if (!this.isRunning()) {
             return;
         }
@@ -848,6 +848,7 @@ class InputModel {
     remoteTermWrapFocus : OV<boolean> = mobx.observable.box(false, {name: "remoteTermWrapFocus"});
     showNoInputMsg : OV<boolean> = mobx.observable.box(false);
     showNoInputTimeoutId : any = null;
+    inputMode : OV<null | "comment" | "global"> = mobx.observable.box(null);
 
     // focus
     inputFocused : OV<boolean> = mobx.observable.box(false);
@@ -863,6 +864,12 @@ class InputModel {
     setRemoteTermWrapFocus(focus : boolean) : void {
         mobx.action(() => {
             this.remoteTermWrapFocus.set(focus);
+        })();
+    }
+
+    setInputMode(inputMode : null | "comment" | "global") : void {
+        mobx.action(() => {
+            this.inputMode.set(inputMode);
         })();
     }
 
@@ -1365,9 +1372,24 @@ class InputModel {
         })();
     }
 
+    resetInputMode() : void {
+        mobx.action(() => {
+            inputModel.setInputMode(null);
+            inputModel.setCurLine("");
+        })();
+    }
+
     setCurLine(val : string) : void {
         let hidx = this.historyIndex.get();
         mobx.action(() => {
+            if (val == "\" ") {
+                this.setInputMode("comment");
+                val = "";
+            }
+            if (val == "//") {
+                this.setInputMode("global");
+                val = "";
+            }
             if (this.modHistory.length <= hidx) {
                 this.modHistory.length = hidx + 1;
             }
@@ -1379,6 +1401,7 @@ class InputModel {
         mobx.action(() => {
             this.setHistoryShow(false);
             this.infoShow.set(false);
+            this.inputMode.set(null);
             this.resetHistory();
             this.dropModHistory(false);
             this.infoMsg.set(null);
@@ -2165,7 +2188,7 @@ class CommandRunner {
     }
 
     resizeWindow(windowId : string, cols : number) {
-        GlobalModel.submitCommand("window", "resize", null, {"nohist": "1", "window": windowId, "cols": String(cols)}, false);
+        GlobalModel.submitCommand("sw", "resize", null, {"nohist": "1", "window": windowId, "cols": String(cols)}, false);
     }
 
     showRemote(remoteid : string) {
