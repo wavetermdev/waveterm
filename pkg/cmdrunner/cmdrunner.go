@@ -39,7 +39,7 @@ var ColorNames = []string{"black", "red", "green", "yellow", "blue", "magenta", 
 var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
 var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}
 
-var WindowCmds = []string{"run", "comment", "cd", "cr", "setenv", "unset", "clear", "sw", "alias", "unalias", "function", "source"}
+var WindowCmds = []string{"run", "comment", "cd", "cr", "setenv", "unset", "clear", "sw", "alias", "unalias", "function", "source", "reset"}
 var NoHistCmds = []string{"compgen", "line", "history"}
 var GlobalCmds = []string{"session", "screen", "remote"}
 
@@ -78,6 +78,7 @@ func init() {
 	registerCmdFn("setenv", SetEnvCommand)
 	registerCmdFn("unset", UnSetCommand)
 	registerCmdFn("clear", ClearCommand)
+	registerCmdFn("reset", ResetCommand)
 
 	registerCmdFn("session", SessionCommand)
 	registerCmdFn("session:open", SessionOpenCommand)
@@ -947,7 +948,7 @@ func SetEnvCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	if len(pk.Args) == 0 {
 		var infoLines []string
 		for varName, varVal := range envMap {
-			line := fmt.Sprintf("%s=%s", varName, shellescape.Quote(varVal))
+			line := fmt.Sprintf("%s=%s", shellescape.Quote(varName), shellescape.Quote(varVal))
 			infoLines = append(infoLines, line)
 		}
 		update := sstore.ModelUpdate{
@@ -1561,6 +1562,10 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		},
 	}
 	return update, nil
+}
+
+func ResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	return nil, nil
 }
 
 func ClearCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {

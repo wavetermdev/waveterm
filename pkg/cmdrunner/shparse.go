@@ -3,39 +3,14 @@ package cmdrunner
 import (
 	"context"
 	"fmt"
-	"io"
 	"regexp"
 	"strings"
 
+	"github.com/scripthaus-dev/mshell/pkg/shexec"
 	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
 	"mvdan.cc/sh/v3/expand"
 	"mvdan.cc/sh/v3/syntax"
 )
-
-type parseEnviron struct {
-	Env map[string]string
-}
-
-func (e *parseEnviron) Get(name string) expand.Variable {
-	val, ok := e.Env[name]
-	if !ok {
-		return expand.Variable{}
-	}
-	return expand.Variable{
-		Exported: true,
-		Kind:     expand.String,
-		Str:      val,
-	}
-}
-
-func (e *parseEnviron) Each(fn func(name string, vr expand.Variable) bool) {
-	for key, _ := range e.Env {
-		rtn := fn(key, e.Get(key))
-		if !rtn {
-			break
-		}
-	}
-}
 
 func DumpPacket(pk *scpacket.FeCommandPacketType) {
 	if pk == nil || pk.MetaCmd == "" {
@@ -53,14 +28,6 @@ func DumpPacket(pk *scpacket.FeCommandPacketType) {
 	for key, val := range pk.Kwargs {
 		fmt.Printf("  [%s]=%q\n", key, val)
 	}
-}
-
-func doCmdSubst(commandStr string, w io.Writer, word *syntax.CmdSubst) error {
-	return nil
-}
-
-func doProcSubst(w *syntax.ProcSubst) (string, error) {
-	return "", nil
 }
 
 func isQuoted(source string, w *syntax.Word) bool {
@@ -99,6 +66,7 @@ var BareMetaCmds = []BareMetaCmdDecl{
 	BareMetaCmdDecl{"clear", "clear"},
 	BareMetaCmdDecl{".", "source"},
 	BareMetaCmdDecl{"source", "source"},
+	BareMetaCmdDecl{"reset", "reset"},
 }
 
 func SubMetaCmd(cmd string) string {
@@ -186,15 +154,7 @@ func EvalMetaCommand(ctx context.Context, origPk *scpacket.FeCommandPacketType) 
 		return nil, fmt.Errorf("parsing metacmd, position %v", err)
 	}
 	envMap := make(map[string]string) // later we can add vars like session, window, screen, remote, and user
-	cfg := &expand.Config{
-		Env:       &parseEnviron{Env: envMap},
-		GlobStar:  false,
-		NullGlob:  false,
-		NoUnset:   false,
-		CmdSubst:  func(w io.Writer, word *syntax.CmdSubst) error { return doCmdSubst(commandArgs, w, word) },
-		ProcSubst: doProcSubst,
-		ReadDir:   nil,
-	}
+	cfg := shexec.GetParserConfig(envMap)
 	// process arguments
 	for idx, w := range words {
 		literalVal, err := expand.Literal(cfg, w)
@@ -234,7 +194,7 @@ func parseAliasStmt(stmt *syntax.Stmt) (string, string, error) {
 		return "", "", fmt.Errorf("invalid alias cmd word (not 'alias')")
 	}
 	secondWord := callExpr.Args[1]
-	val, err := quotedLitToStr(secondWord)
+	val, err := shexec.QuotedLitToStr(secondWord)
 	if err != nil {
 		return "", "", err
 	}
@@ -243,19 +203,6 @@ func parseAliasStmt(stmt *syntax.Stmt) (string, string, error) {
 		return "", "", fmt.Errorf("no '=' in alias definition")
 	}
 	return val[0:eqIdx], val[eqIdx+1:], nil
-}
-
-func quotedLitToStr(word *syntax.Word) (string, error) {
-	cfg := &expand.Config{
-		Env:       &parseEnviron{Env: make(map[string]string)},
-		GlobStar:  false,
-		NullGlob:  false,
-		NoUnset:   false,
-		CmdSubst:  func(w io.Writer, word *syntax.CmdSubst) error { return doCmdSubst("", w, word) },
-		ProcSubst: doProcSubst,
-		ReadDir:   nil,
-	}
-	return expand.Literal(cfg, word)
 }
 
 func ParseAliases(aliases string) (map[string]string, error) {
