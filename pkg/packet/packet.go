@@ -51,6 +51,7 @@ const (
 	RawPacketStr          = "raw"
 	SpecialInputPacketStr = "sinput"  // command
 	CompGenPacketStr      = "compgen" // rpc
+	ReInitPacketStr       = "reinit"  // rpc
 )
 
 const PacketSenderQueueSize = 20
@@ -111,10 +112,10 @@ func MakePacket(packetType string) (PacketType, error) {
 type ShellState struct {
 	Version   string `json:"version,omitempty"`
 	Cwd       string `json:"cwd,omitempty"`
-	ShellVars string `json:"shellvars,omitempty"`
-	Env0      []byte `json:"env0,omitempty"`
+	ShellVars []byte `json:"shellvars,omitempty"`
 	Aliases   string `json:"aliases,omitempty"`
 	Funcs     string `json:"funcs,omitempty"`
+	Error     string `json:"error,omitempty"`
 }
 
 type CmdDataPacketType struct {
@@ -445,6 +446,7 @@ func FmtMessagePacket(fmtStr string, args ...interface{}) *MessagePacketType {
 
 type InitPacketType struct {
 	Type          string      `json:"type"`
+	RespId        string      `json:"respid,omitempty"`
 	Version       string      `json:"version"`
 	MShellHomeDir string      `json:"mshellhomedir,omitempty"`
 	HomeDir       string      `json:"homedir,omitempty"`
@@ -458,6 +460,14 @@ type InitPacketType struct {
 
 func (*InitPacketType) GetType() string {
 	return InitPacketStr
+}
+
+func (pk *InitPacketType) GetResponseId() string {
+	return pk.RespId
+}
+
+func (pk *InitPacketType) GetResponseDone() bool {
+	return true
 }
 
 func MakeInitPacket() *InitPacketType {

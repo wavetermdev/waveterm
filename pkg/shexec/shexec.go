@@ -282,7 +282,7 @@ func MakeDetachedExecCmd(pk *packet.RunPacketType, cmdTty *os.File) (*exec.Cmd, 
 	if !pk.StateComplete {
 		ecmd.Env = os.Environ()
 	}
-	UpdateCmdEnv(ecmd, ParseEnv0(state.Env0))
+	UpdateCmdEnv(ecmd, EnvMapFromState(state))
 	UpdateCmdEnv(ecmd, map[string]string{"TERM": getTermType(pk)})
 	if state.Cwd != "" {
 		ecmd.Dir = base.ExpandHomeDir(state.Cwd)
@@ -964,26 +964,38 @@ func getTermType(pk *packet.RunPacketType) string {
 }
 
 func makeRcFileStr(pk *packet.RunPacketType) string {
-	rcFileStr := `
+	var rcBuf bytes.Buffer
+	rcBuf.WriteString(`
 set +m
 set +H
 shopt -s extglob
-`
+`)
+
+	varDecls := VarDeclsFromState(pk.State)
+	for _, varDecl := range varDecls {
+		if varDecl.IsExport() || varDecl.IsReadOnly() {
+			continue
+		}
+		rcBuf.WriteString(varDecl.DeclareStmt())
+		rcBuf.WriteString("\n")
+	}
 	if pk.State != nil && pk.State.Funcs != "" {
-		rcFileStr += pk.State.Funcs + "\n"
+		rcBuf.WriteString(pk.State.Funcs)
+		rcBuf.WriteString("\n")
 	}
 	if pk.State != nil && pk.State.Aliases != "" {
-		rcFileStr += pk.State.Aliases + "\n"
+		rcBuf.WriteString(pk.State.Aliases)
+		rcBuf.WriteString("\n")
 	}
 	if pk.ReturnState {
-		rcFileStr += `
+		rcBuf.WriteString(`
 _scripthaus_exittrap () {
 ` + GetShellStateCmd + `
 }
 trap _scripthaus_exittrap EXIT
-`
+`)
 	}
-	return rcFileStr
+	return rcBuf.String()
 }
 
 func makeExitTrap(fdNum int) string {
@@ -1042,7 +1054,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 	if !pk.StateComplete {
 		cmd.Cmd.Env = os.Environ()
 	}
-	UpdateCmdEnv(cmd.Cmd, ParseEnv0(state.Env0))
+	UpdateCmdEnv(cmd.Cmd, EnvMapFromState(state))
 	if state.Cwd != "" {
 		cmd.Cmd.Dir = base.ExpandHomeDir(state.Cwd)
 	}
