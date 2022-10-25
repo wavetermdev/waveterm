@@ -526,13 +526,14 @@ func main() {
 	} else if firstArg == "--version" {
 		fmt.Printf("mshell %s\n", base.MShellVersion)
 		return
-	} else if firstArg == "--env" {
-		rtnCode, err := handleEnv()
+	} else if firstArg == "--test-env" {
+		state, err := shexec.GetShellState()
+		if state != nil {
+
+		}
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[error] %v\n", err)
-		}
-		if rtnCode != 0 {
-			os.Exit(rtnCode)
+			os.Exit(1)
 		}
 	} else if firstArg == "--single" {
 		handleSingle(false)

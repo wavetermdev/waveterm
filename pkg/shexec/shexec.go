@@ -47,6 +47,8 @@ const MaxMaxPtySize = 100 * 1024 * 1024
 
 const GetStateTimeout = 5 * time.Second
 
+const GetShellStateCmd = `echo bash v${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}.${BASH_VERSINFO[2]}; printf "\x00\x00"; pwd; printf "\x00\x00"; declare -p $(compgen -A variable); printf "\x00\x00"; alias -p; printf "\x00\x00"; declare -f;`
+
 const ClientCommandFmt = `
 PATH=$PATH:~/.mshell;
 which mshell > /dev/null;
@@ -976,7 +978,7 @@ shopt -s extglob
 	if pk.ReturnState {
 		rcFileStr += `
 _scripthaus_exittrap () {
-    %s --env; alias -p; printf \"\\x00\\x00\"; declare -f;
+` + GetShellStateCmd + `
 }
 trap _scripthaus_exittrap EXIT
 `
@@ -984,18 +986,15 @@ trap _scripthaus_exittrap EXIT
 	return rcFileStr
 }
 
-func makeExitTrap(fdNum int) (string, error) {
-	stateCmd, err := GetShellStateRedirectCommandStr(fdNum)
-	if err != nil {
-		return "", err
-	}
+func makeExitTrap(fdNum int) string {
+	stateCmd := GetShellStateRedirectCommandStr(fdNum)
 	fmtStr := `
 _scripthaus_exittrap () {
     %s
 }
 trap _scripthaus_exittrap EXIT
 `
-	return fmt.Sprintf(fmtStr, stateCmd), nil
+	return fmt.Sprintf(fmtStr, stateCmd)
 }
 
 func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fromServer bool) (rtnShExec *ShExecType, rtnErr error) {
@@ -1028,10 +1027,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		cmd.ReturnState.FdNum = 20
 		rtnStateWriter = pw
 		defer pw.Close()
-		trapCmdStr, err := makeExitTrap(cmd.ReturnState.FdNum)
-		if err != nil {
-			return nil, err
-		}
+		trapCmdStr := makeExitTrap(cmd.ReturnState.FdNum)
 		rcFileStr += trapCmdStr
 	}
 	rcFileFdNum, err := AddRunData(pk, rcFileStr, "rcfile")
@@ -1438,44 +1434,13 @@ func runSimpleCmdInPty(ecmd *exec.Cmd) ([]byte, error) {
 	return outputBuf.Bytes(), nil
 }
 
-func GetShellStateCommandStr() (string, error) {
-	execFile, err := os.Executable()
-	if err != nil {
-		return "", fmt.Errorf("cannot find local mshell executable: %w", err)
-	}
-	return fmt.Sprintf(`%s --env; alias -p; printf \"\\x00\\x00\"; declare -f`, shellescape.Quote(execFile)), nil
-}
-
-func GetShellStateRedirectCommandStr(outputFdNum int) (string, error) {
-	cmdStr, err := GetShellStateCommandStr()
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("cat <(%s) > /dev/fd/%d", cmdStr, outputFdNum), nil
-}
-
-func ParseShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
-	fields := bytes.Split(outputBytes, []byte{0, 0})
-	if len(fields) != 4 {
-		return nil, fmt.Errorf("invalid shell state output, wrong number of fields, fields=%d", len(fields))
-	}
-	rtn := &packet.ShellState{}
-	rtn.Cwd = string(fields[0])
-	if len(fields[1]) > 0 {
-		rtn.Env0 = append(fields[1], '\x00')
-	}
-	rtn.Aliases = strings.ReplaceAll(string(fields[2]), "\r\n", "\n")
-	rtn.Funcs = strings.ReplaceAll(string(fields[3]), "\r\n", "\n")
-	return rtn, nil
+func GetShellStateRedirectCommandStr(outputFdNum int) string {
+	return fmt.Sprintf("cat <(%s) > /dev/fd/%d", GetShellStateCmd, outputFdNum)
 }
 
 func GetShellState() (*packet.ShellState, error) {
 	ctx, _ := context.WithTimeout(context.Background(), GetStateTimeout)
-	cmdStr, err := GetShellStateCommandStr()
-	if err != nil {
-		return nil, err
-	}
-	ecmd := exec.CommandContext(ctx, "bash", "-l", "-i", "-c", cmdStr)
+	ecmd := exec.CommandContext(ctx, "bash", "-l", "-i", "-c", GetShellStateCmd)
 	outputBytes, err := runSimpleCmdInPty(ecmd)
 	if err != nil {
 		return nil, err

@@ -109,10 +109,12 @@ func MakePacket(packetType string) (PacketType, error) {
 }
 
 type ShellState struct {
-	Cwd     string `json:"cwd,omitempty"`
-	Env0    []byte `json:"env0,omitempty"`
-	Aliases string `json:"aliases,omitempty"`
-	Funcs   string `json:"funcs,omitempty"`
+	Version   string `json:"version,omitempty"`
+	Cwd       string `json:"cwd,omitempty"`
+	ShellVars string `json:"shellvars,omitempty"`
+	Env0      []byte `json:"env0,omitempty"`
+	Aliases   string `json:"aliases,omitempty"`
+	Funcs     string `json:"funcs,omitempty"`
 }
 
 type CmdDataPacketType struct {
