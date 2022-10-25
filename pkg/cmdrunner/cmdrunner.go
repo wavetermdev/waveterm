@@ -527,21 +527,21 @@ func UnSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 	if err != nil {
 		return nil, fmt.Errorf("cannot unset: %v", err)
 	}
-	envMap := shexec.ParseEnv0(ids.Remote.RemoteState.Env0)
+	declMap := shexec.DeclMapFromState(ids.Remote.RemoteState)
 	unsetVars := make(map[string]bool)
 	for _, argStr := range pk.Args {
 		eqIdx := strings.Index(argStr, "=")
 		if eqIdx != -1 {
 			return nil, fmt.Errorf("invalid argument to setenv, '%s' (cannot contain equal sign)", argStr)
 		}
-		delete(envMap, argStr)
+		delete(declMap, argStr)
 		unsetVars[argStr] = true
 	}
 	if len(unsetVars) == 0 {
 		return nil, fmt.Errorf("no variables provided to unset")
 	}
 	state := *ids.Remote.RemoteState
-	state.Env0 = shexec.MakeEnv0(envMap)
+	state.ShellVars = shexec.SerializeDeclMap(declMap)
 	remoteInst, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.WindowId, ids.Remote.RemotePtr, state)
 	if err != nil {
 		return nil, err
@@ -944,11 +944,11 @@ func SetEnvCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	if err != nil {
 		return nil, fmt.Errorf("cannot setenv: %v", err)
 	}
-	envMap := shexec.ParseEnv0(ids.Remote.RemoteState.Env0)
+	declMap := shexec.DeclMapFromState(ids.Remote.RemoteState)
 	if len(pk.Args) == 0 {
 		var infoLines []string
-		for varName, varVal := range envMap {
-			line := fmt.Sprintf("%s=%s", shellescape.Quote(varName), shellescape.Quote(varVal))
+		for _, decl := range declMap {
+			line := fmt.Sprintf("%s=%s", decl.Name, shellescape.Quote(decl.Value))
 			infoLines = append(infoLines, line)
 		}
 		update := sstore.ModelUpdate{
@@ -967,11 +967,11 @@ func SetEnvCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		}
 		envName := argStr[:eqIdx]
 		envVal := argStr[eqIdx+1:]
-		envMap[envName] = envVal
+		declMap[envName] = &shexec.DeclareDeclType{Args: "x", Name: envName, Value: envVal}
 		setVars[envName] = true
 	}
 	state := *ids.Remote.RemoteState
-	state.Env0 = shexec.MakeEnv0(envMap)
+	state.ShellVars = shexec.SerializeDeclMap(declMap)
 	remoteInst, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.WindowId, ids.Remote.RemotePtr, state)
 	if err != nil {
 		return nil, err
@@ -1816,19 +1816,19 @@ func displayStateUpdate(buf *bytes.Buffer, oldState packet.ShellState, newState 
 	if newState.Cwd != oldState.Cwd {
 		buf.WriteString(fmt.Sprintf("cwd %s\r\n", newState.Cwd))
 	}
-	if !bytes.Equal(newState.Env0, oldState.Env0) {
-		newEnvMap := shexec.ParseEnv0(newState.Env0)
-		oldEnvMap := shexec.ParseEnv0(oldState.Env0)
+	if !bytes.Equal(newState.ShellVars, oldState.ShellVars) {
+		newEnvMap := shexec.DeclMapFromState(&newState)
+		oldEnvMap := shexec.DeclMapFromState(&oldState)
 		for key, newVal := range newEnvMap {
 			oldVal, found := oldEnvMap[key]
-			if !found || oldVal != newVal {
-				buf.WriteString(fmt.Sprintf("%s=%s\r\n", shellescape.Quote(key), shellescape.Quote(newVal)))
+			if !found || oldVal.Value != newVal.Value {
+				buf.WriteString(fmt.Sprintf("%s=%s\r\n", key, shellescape.Quote(newVal.Value)))
 			}
 		}
 		for key, _ := range oldEnvMap {
 			_, found := newEnvMap[key]
 			if !found {
-				buf.WriteString(fmt.Sprintf("unset %s\r\n", shellescape.Quote(key)))
+				buf.WriteString(fmt.Sprintf("unset %s\r\n", key))
 			}
 		}
 	}

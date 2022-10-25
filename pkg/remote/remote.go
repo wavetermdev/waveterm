@@ -1383,7 +1383,7 @@ func evalPromptEsc(escCode string, vars map[string]string, state *packet.ShellSt
 			return ""
 		}
 		varName := escCode[2 : len(escCode)-1]
-		varMap := shexec.ParseEnv0(state.Env0)
+		varMap := shexec.ShellVarMapFromState(state)
 		return varMap[varName]
 	}
 	if escCode == "h" {
