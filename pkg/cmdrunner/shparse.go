@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/alessio/shellescape"
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
 	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
 	"mvdan.cc/sh/v3/expand"
@@ -119,6 +120,87 @@ func onlyPositionalArgs(metaCmd string, metaSubCmd string) bool {
 
 func onlyRawArgs(metaCmd string, metaSubCmd string) bool {
 	return metaCmd == "run" || metaCmd == "comment"
+}
+
+// minimum maxlen=6
+func ForceQuote(val string, maxLen int) string {
+	if maxLen < 6 {
+		maxLen = 6
+	}
+	rtn := shellescape.Quote(val)
+	if strings.HasPrefix(rtn, "\"") || strings.HasPrefix(rtn, "'") {
+		if len(rtn) > maxLen {
+			return rtn[0:maxLen-4] + "..." + rtn[0:1]
+		}
+		return rtn
+	}
+	if len(rtn) > maxLen-2 {
+		return "\"" + rtn[0:maxLen-5] + "...\""
+	}
+	return "\"" + rtn + "\""
+}
+
+func setBracketArgs(argMap map[string]string, bracketStr string) error {
+	bracketStr = strings.TrimSpace(bracketStr)
+	if bracketStr == "" {
+		return nil
+	}
+	strReader := strings.NewReader(bracketStr)
+	parser := syntax.NewParser(syntax.Variant(syntax.LangBash))
+	var wordErr error
+	err := parser.Words(strReader, func(w *syntax.Word) bool {
+		litStr, err := shexec.QuotedLitToStr(w)
+		if err != nil {
+			wordErr = fmt.Errorf("invalid expr in bracket args: %v", err)
+			return false
+		}
+		eqIdx := strings.Index(litStr, "=")
+		var varName, varVal string
+		if eqIdx == -1 {
+			varName = litStr
+		} else {
+			varName = litStr[0:eqIdx]
+			varVal = litStr[eqIdx+1:]
+		}
+		if !shexec.IsValidBashIdentifier(varName) {
+			wordErr = fmt.Errorf("invalid identifier %s in bracket args", ForceQuote(varName, 20))
+			return false
+		}
+		if varVal == "" {
+			varVal = "1"
+		}
+		argMap[varName] = varVal
+		return true
+	})
+	if err != nil {
+		return err
+	}
+	if wordErr != nil {
+		return wordErr
+	}
+	return nil
+}
+
+func EvalBracketArgs(origCmdStr string) (map[string]string, string, error) {
+	rtn := make(map[string]string)
+	if strings.HasPrefix(origCmdStr, " ") {
+		rtn["nohist"] = "1"
+	}
+	cmdStr := strings.TrimSpace(origCmdStr)
+	if !strings.HasPrefix(cmdStr, "[") {
+		return rtn, origCmdStr, nil
+	}
+	rbIdx := strings.Index(cmdStr, "]")
+	if rbIdx == -1 {
+		return nil, "", fmt.Errorf("unmatched '[' found in command")
+	}
+	bracketStr := cmdStr[1:rbIdx]
+	restStr := strings.TrimSpace(cmdStr[rbIdx+1:])
+	err := setBracketArgs(rtn, bracketStr)
+	if err != nil {
+		return nil, "", err
+	}
+	return rtn, restStr, nil
 }
 
 func EvalMetaCommand(ctx context.Context, origPk *scpacket.FeCommandPacketType) (*scpacket.FeCommandPacketType, error) {
