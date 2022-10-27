@@ -1106,6 +1106,7 @@ func RunCommand(ctx context.Context, cmdId string, remotePtr sstore.RemotePtrTyp
 		StartPk:     startPk,
 		DonePk:      nil,
 		RunOut:      nil,
+		RtnState:    runPacket.ReturnState,
 	}
 	err = sstore.CreateCmdPtyFile(ctx, cmd.SessionId, cmd.CmdId, cmd.TermOpts.MaxPtySize)
 	if err != nil {

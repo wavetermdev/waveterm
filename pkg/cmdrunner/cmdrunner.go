@@ -39,7 +39,7 @@ var ColorNames = []string{"black", "red", "green", "yellow", "blue", "magenta", 
 var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
 var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}
 
-var WindowCmds = []string{"run", "comment", "cd", "cr", "setenv", "unset", "clear", "sw", "alias", "unalias", "function", "source", "reset"}
+var WindowCmds = []string{"run", "comment", "cd", "cr", "clear", "sw", "alias", "unalias", "function", "reset"}
 var NoHistCmds = []string{"compgen", "line", "history"}
 var GlobalCmds = []string{"session", "screen", "remote"}
 
@@ -72,11 +72,9 @@ func init() {
 	registerCmdFn("run", RunCommand)
 	registerCmdFn("eval", EvalCommand)
 	registerCmdFn("comment", CommentCommand)
-	registerCmdFn("cd", CdCommand)
+	// registerCmdFn("cd", CdCommand)
 	registerCmdFn("cr", CrCommand)
 	registerCmdFn("compgen", CompGenCommand)
-	registerCmdFn("setenv", SetEnvCommand)
-	registerCmdFn("unset", UnSetCommand)
 	registerCmdFn("clear", ClearCommand)
 	registerCmdFn("reset", ResetCommand)
 
@@ -114,8 +112,6 @@ func init() {
 	registerCmdFn("line:show", LineShowCommand)
 
 	registerCmdFn("history", HistoryCommand)
-
-	registerCmdFn("source", SourceCommand)
 }
 
 func getValidCommands() []string {
@@ -239,40 +235,6 @@ func getUITermOpts(uiContext *scpacket.UIContextType) *packet.TermOpts {
 	return termOpts
 }
 
-func SourceCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_RemoteConnected)
-	if err != nil {
-		return nil, fmt.Errorf("/source error: %w", err)
-	}
-	if len(pk.Args) != 1 {
-		return nil, fmt.Errorf("/source takes one argument (the file to source)")
-	}
-	cmdId := scbase.GenSCUUID()
-	runPacket := packet.MakeRunPacket()
-	runPacket.ReqId = uuid.New().String()
-	runPacket.CK = base.MakeCommandKey(ids.SessionId, cmdId)
-	runPacket.State = ids.Remote.RemoteState
-	runPacket.StateComplete = true
-	runPacket.UsePty = true
-	runPacket.TermOpts = getUITermOpts(pk.UIContext)
-	runPacket.Command = strings.TrimSpace(fmt.Sprintf("source %s", shellescape.Quote(pk.Args[0])))
-	runPacket.ReturnState = true
-	cmd, callback, err := remote.RunCommand(ctx, cmdId, ids.Remote.RemotePtr, ids.Remote.RemoteState, runPacket)
-	if callback != nil {
-		defer callback()
-	}
-	if err != nil {
-		return nil, err
-	}
-	update, err := addLineForCmd(ctx, "/source", true, ids, cmd)
-	if err != nil {
-		return nil, err
-	}
-	update.Interactive = pk.Interactive
-	sstore.MainBus.SendUpdate(ids.SessionId, update)
-	return nil, nil
-}
-
 func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_RemoteConnected)
 	if err != nil {
@@ -280,6 +242,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	}
 	cmdId := scbase.GenSCUUID()
 	cmdStr := firstArg(pk)
+	isRtnStateCmd := IsReturnStateCommand(cmdStr)
 	runPacket := packet.MakeRunPacket()
 	runPacket.ReqId = uuid.New().String()
 	runPacket.CK = base.MakeCommandKey(ids.SessionId, cmdId)
@@ -288,6 +251,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	runPacket.UsePty = true
 	runPacket.TermOpts = getUITermOpts(pk.UIContext)
 	runPacket.Command = strings.TrimSpace(cmdStr)
+	runPacket.ReturnState = resolveBool(pk.Kwargs["rtnstate"], isRtnStateCmd)
 	cmd, callback, err := remote.RunCommand(ctx, cmdId, ids.Remote.RemotePtr, ids.Remote.RemoteState, runPacket)
 	if callback != nil {
 		defer callback()
@@ -520,43 +484,6 @@ func SwSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 		return nil, nil
 	}
 	return sstore.ModelUpdate{ScreenWindows: []*sstore.ScreenWindowType{sw}}, nil
-}
-
-func UnSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window|R_RemoteConnected)
-	if err != nil {
-		return nil, fmt.Errorf("cannot unset: %v", err)
-	}
-	declMap := shexec.DeclMapFromState(ids.Remote.RemoteState)
-	unsetVars := make(map[string]bool)
-	for _, argStr := range pk.Args {
-		eqIdx := strings.Index(argStr, "=")
-		if eqIdx != -1 {
-			return nil, fmt.Errorf("invalid argument to setenv, '%s' (cannot contain equal sign)", argStr)
-		}
-		delete(declMap, argStr)
-		unsetVars[argStr] = true
-	}
-	if len(unsetVars) == 0 {
-		return nil, fmt.Errorf("no variables provided to unset")
-	}
-	state := *ids.Remote.RemoteState
-	state.ShellVars = shexec.SerializeDeclMap(declMap)
-	remoteInst, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.WindowId, ids.Remote.RemotePtr, state)
-	if err != nil {
-		return nil, err
-	}
-	var cmdOutput bytes.Buffer
-	displayStateUpdate(&cmdOutput, *ids.Remote.RemoteState, remoteInst.State)
-	cmd, err := makeStaticCmd(ctx, "unset", ids, pk.GetRawStr(), cmdOutput.Bytes())
-	update, err := addLineForCmd(ctx, "/unset", false, ids, cmd)
-	if err != nil {
-		// TODO tricky error since the command was a success, but we can't show the output
-		return nil, err
-	}
-	update.Interactive = pk.Interactive
-	update.Sessions = sstore.MakeSessionsUpdateForRemote(ids.SessionId, remoteInst)
-	return update, nil
 }
 
 func RemoteInstallCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -937,56 +864,6 @@ func RemoteArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 
 func RemoteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	return nil, fmt.Errorf("/remote requires a subcommand: %s", formatStrs([]string{"show"}, "or", false))
-}
-
-func SetEnvCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window|R_RemoteConnected)
-	if err != nil {
-		return nil, fmt.Errorf("cannot setenv: %v", err)
-	}
-	declMap := shexec.DeclMapFromState(ids.Remote.RemoteState)
-	if len(pk.Args) == 0 {
-		var infoLines []string
-		for _, decl := range declMap {
-			line := fmt.Sprintf("%s=%s", decl.Name, shellescape.Quote(decl.Value))
-			infoLines = append(infoLines, line)
-		}
-		update := sstore.ModelUpdate{
-			Info: &sstore.InfoMsgType{
-				InfoTitle: fmt.Sprintf("environment for remote [%s]", ids.Remote.DisplayName),
-				InfoLines: infoLines,
-			},
-		}
-		return update, nil
-	}
-	setVars := make(map[string]bool)
-	for _, argStr := range pk.Args {
-		eqIdx := strings.Index(argStr, "=")
-		if eqIdx == -1 {
-			return nil, fmt.Errorf("invalid argument to setenv, '%s' (no equal sign)", argStr)
-		}
-		envName := argStr[:eqIdx]
-		envVal := argStr[eqIdx+1:]
-		declMap[envName] = &shexec.DeclareDeclType{Args: "x", Name: envName, Value: envVal}
-		setVars[envName] = true
-	}
-	state := *ids.Remote.RemoteState
-	state.ShellVars = shexec.SerializeDeclMap(declMap)
-	remoteInst, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.WindowId, ids.Remote.RemotePtr, state)
-	if err != nil {
-		return nil, err
-	}
-	var cmdOutput bytes.Buffer
-	displayStateUpdate(&cmdOutput, *ids.Remote.RemoteState, remoteInst.State)
-	cmd, err := makeStaticCmd(ctx, "setenv", ids, pk.GetRawStr(), cmdOutput.Bytes())
-	update, err := addLineForCmd(ctx, "/setenv", false, ids, cmd)
-	if err != nil {
-		// TODO tricky error since the command was a success, but we can't show the output
-		return nil, err
-	}
-	update.Interactive = pk.Interactive
-	update.Sessions = sstore.MakeSessionsUpdateForRemote(ids.SessionId, remoteInst)
-	return update, nil
 }
 
 func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -1814,21 +1691,25 @@ func formatTextTable(totalCols int, data [][]string, colMeta []ColMeta) []string
 
 func displayStateUpdate(buf *bytes.Buffer, oldState packet.ShellState, newState packet.ShellState) {
 	if newState.Cwd != oldState.Cwd {
-		buf.WriteString(fmt.Sprintf("cwd %s\r\n", newState.Cwd))
+		buf.WriteString(fmt.Sprintf("cwd %s\n", newState.Cwd))
 	}
 	if !bytes.Equal(newState.ShellVars, oldState.ShellVars) {
 		newEnvMap := shexec.DeclMapFromState(&newState)
 		oldEnvMap := shexec.DeclMapFromState(&oldState)
 		for key, newVal := range newEnvMap {
 			oldVal, found := oldEnvMap[key]
-			if !found || oldVal.Value != newVal.Value {
-				buf.WriteString(fmt.Sprintf("%s=%s\r\n", key, shellescape.Quote(newVal.Value)))
+			if !found || ((oldVal.Value != newVal.Value) || (oldVal.IsExport() != newVal.IsExport())) {
+				var exportStr string
+				if newVal.IsExport() {
+					exportStr = "export "
+				}
+				buf.WriteString(fmt.Sprintf("%s%s=%s\n", exportStr, key, ShellQuote(newVal.Value, false, 50)))
 			}
 		}
 		for key, _ := range oldEnvMap {
 			_, found := newEnvMap[key]
 			if !found {
-				buf.WriteString(fmt.Sprintf("unset %s\r\n", key))
+				buf.WriteString(fmt.Sprintf("unset %s\n", key))
 			}
 		}
 	}
@@ -1844,7 +1725,7 @@ func displayStateUpdate(buf *bytes.Buffer, oldState packet.ShellState, newState 
 		for aliasName, _ := range oldAliasMap {
 			_, found := newAliasMap[aliasName]
 			if !found {
-				buf.WriteString(fmt.Sprintf("unalias %s\r\n", shellescape.Quote(aliasName)))
+				buf.WriteString(fmt.Sprintf("unalias %s\n", shellescape.Quote(aliasName)))
 			}
 		}
 	}
@@ -1860,8 +1741,27 @@ func displayStateUpdate(buf *bytes.Buffer, oldState packet.ShellState, newState 
 		for funcName, _ := range oldFuncMap {
 			_, found := newFuncMap[funcName]
 			if !found {
-				buf.WriteString(fmt.Sprintf("unset -f %s\r\n", shellescape.Quote(funcName)))
+				buf.WriteString(fmt.Sprintf("unset -f %s\n", shellescape.Quote(funcName)))
 			}
 		}
 	}
+}
+
+func GetRtnStateDiff(ctx context.Context, sessionId string, cmdId string) ([]byte, error) {
+	cmd, err := sstore.GetCmdById(ctx, sessionId, cmdId)
+	if err != nil {
+		return nil, err
+	}
+	if cmd == nil {
+		return nil, nil
+	}
+	if !cmd.RtnState {
+		return nil, nil
+	}
+	if cmd.DonePk == nil || cmd.DonePk.FinalState == nil {
+		return nil, nil
+	}
+	var outputBytes bytes.Buffer
+	displayStateUpdate(&outputBytes, cmd.RemoteState, *cmd.DonePk.FinalState)
+	return outputBytes.Bytes(), nil
 }

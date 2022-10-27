@@ -182,6 +182,36 @@ func HandleGetWindow(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+func HandleRtnState(w http.ResponseWriter, r *http.Request) {
+	qvals := r.URL.Query()
+	sessionId := qvals.Get("sessionid")
+	cmdId := qvals.Get("cmdid")
+	if sessionId == "" || cmdId == "" {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("must specify sessionid and cmdid")))
+		return
+	}
+	if _, err := uuid.Parse(sessionId); err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("invalid sessionid: %v", err)))
+		return
+	}
+	if _, err := uuid.Parse(cmdId); err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("invalid cmdid: %v", err)))
+		return
+	}
+	data, err := cmdrunner.GetRtnStateDiff(r.Context(), sessionId, cmdId)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("cannot get rtnstate diff: %v", err)))
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write(data)
+	return
+}
+
 func HandleRemotePty(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -393,6 +423,7 @@ func main() {
 	gr := mux.NewRouter()
 	gr.HandleFunc("/api/ptyout", HandleGetPtyOut)
 	gr.HandleFunc("/api/remote-pty", HandleRemotePty)
+	gr.HandleFunc("/api/rtnstate", HandleRtnState)
 	gr.HandleFunc("/api/get-window", HandleGetWindow)
 	gr.HandleFunc("/api/run-command", HandleRunCommand).Methods("GET", "POST", "OPTIONS")
 	gr.HandleFunc("/api/get-client-data", HandleGetClientData)

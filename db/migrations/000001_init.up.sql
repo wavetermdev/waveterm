@@ -79,6 +79,7 @@ CREATE TABLE line (
     text text NOT NULL,
     cmdid varchar(36) NOT NULL,
     ephemeral boolean NOT NULL,
+    contentheight int NOT NULL,
     PRIMARY KEY (sessionid, windowid, lineid)
 );
 
@@ -116,7 +117,7 @@ CREATE TABLE cmd (
     startpk json NOT NULL,
     donepk json NOT NULL,
     runout json NOT NULL,
-    usedrows int NOT NULL,
+    rtnstate bool NOT NULL,
     PRIMARY KEY (sessionid, cmdid)
 );
 

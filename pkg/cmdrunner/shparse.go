@@ -59,14 +59,8 @@ type BareMetaCmdDecl struct {
 }
 
 var BareMetaCmds = []BareMetaCmdDecl{
-	BareMetaCmdDecl{"cd", "cd"},
 	BareMetaCmdDecl{"cr", "cr"},
-	BareMetaCmdDecl{"setenv", "setenv"},
-	BareMetaCmdDecl{"export", "setenv"},
-	BareMetaCmdDecl{"unset", "unset"},
 	BareMetaCmdDecl{"clear", "clear"},
-	BareMetaCmdDecl{".", "source"},
-	BareMetaCmdDecl{"source", "source"},
 	BareMetaCmdDecl{"reset", "reset"},
 }
 
@@ -123,7 +117,7 @@ func onlyRawArgs(metaCmd string, metaSubCmd string) bool {
 }
 
 // minimum maxlen=6
-func ForceQuote(val string, maxLen int) string {
+func ShellQuote(val string, forceQuote bool, maxLen int) string {
 	if maxLen < 6 {
 		maxLen = 6
 	}
@@ -134,10 +128,17 @@ func ForceQuote(val string, maxLen int) string {
 		}
 		return rtn
 	}
-	if len(rtn) > maxLen-2 {
-		return "\"" + rtn[0:maxLen-5] + "...\""
+	if forceQuote {
+		if len(rtn) > maxLen-2 {
+			return "\"" + rtn[0:maxLen-5] + "...\""
+		}
+		return "\"" + rtn + "\""
+	} else {
+		if len(rtn) > maxLen {
+			return rtn[0:maxLen-3] + "..."
+		}
+		return rtn
 	}
-	return "\"" + rtn + "\""
 }
 
 func setBracketArgs(argMap map[string]string, bracketStr string) error {
@@ -163,7 +164,7 @@ func setBracketArgs(argMap map[string]string, bracketStr string) error {
 			varVal = litStr[eqIdx+1:]
 		}
 		if !shexec.IsValidBashIdentifier(varName) {
-			wordErr = fmt.Errorf("invalid identifier %s in bracket args", ForceQuote(varName, 20))
+			wordErr = fmt.Errorf("invalid identifier %s in bracket args", ShellQuote(varName, true, 20))
 			return false
 		}
 		if varVal == "" {
@@ -179,6 +180,35 @@ func setBracketArgs(argMap map[string]string, bracketStr string) error {
 		return wordErr
 	}
 	return nil
+}
+
+// detects: export, declare, ., source, X=1, unset
+func IsReturnStateCommand(cmdStr string) bool {
+	cmdReader := strings.NewReader(cmdStr)
+	parser := syntax.NewParser(syntax.Variant(syntax.LangBash))
+	file, err := parser.Parse(cmdReader, "cmd")
+	if err != nil {
+		return false
+	}
+	for _, stmt := range file.Stmts {
+		if callExpr, ok := stmt.Cmd.(*syntax.CallExpr); ok {
+			if len(callExpr.Assigns) > 0 && len(callExpr.Args) == 0 {
+				return true
+			}
+			if len(callExpr.Args) > 0 && len(callExpr.Args[0].Parts) > 0 {
+				lit, ok := callExpr.Args[0].Parts[0].(*syntax.Lit)
+				if ok {
+					if lit.Value == "." || lit.Value == "source" || lit.Value == "unset" || lit.Value == "cd" {
+						return true
+					}
+				}
+
+			}
+		} else if _, ok := stmt.Cmd.(*syntax.DeclClause); ok {
+			return true
+		}
+	}
+	return false
 }
 
 func EvalBracketArgs(origCmdStr string) (map[string]string, string, error) {
@@ -210,7 +240,11 @@ func EvalMetaCommand(ctx context.Context, origPk *scpacket.FeCommandPacketType) 
 	if strings.TrimSpace(origPk.Args[0]) == "" {
 		return nil, fmt.Errorf("empty command")
 	}
-	metaCmd, metaSubCmd, commandArgs := parseMetaCmd(origPk.Args[0])
+	bracketArgs, cmdStr, err := EvalBracketArgs(origPk.Args[0])
+	if err != nil {
+		return nil, err
+	}
+	metaCmd, metaSubCmd, commandArgs := parseMetaCmd(cmdStr)
 	rtnPk := scpacket.MakeFeCommandPacket()
 	rtnPk.MetaCmd = metaCmd
 	rtnPk.MetaSubCmd = metaSubCmd
@@ -218,6 +252,9 @@ func EvalMetaCommand(ctx context.Context, origPk *scpacket.FeCommandPacketType) 
 	rtnPk.UIContext = origPk.UIContext
 	rtnPk.RawStr = origPk.RawStr
 	for key, val := range origPk.Kwargs {
+		rtnPk.Kwargs[key] = val
+	}
+	for key, val := range bracketArgs {
 		rtnPk.Kwargs[key] = val
 	}
 	if onlyRawArgs(metaCmd, metaSubCmd) {
@@ -228,7 +265,7 @@ func EvalMetaCommand(ctx context.Context, origPk *scpacket.FeCommandPacketType) 
 	commandReader := strings.NewReader(commandArgs)
 	parser := syntax.NewParser(syntax.Variant(syntax.LangBash))
 	var words []*syntax.Word
-	err := parser.Words(commandReader, func(w *syntax.Word) bool {
+	err = parser.Words(commandReader, func(w *syntax.Word) bool {
 		words = append(words, w)
 		return true
 	})
@@ -336,6 +373,9 @@ func ParseFuncs(funcs string) (map[string]string, error) {
 		funcName, funcVal, err := parseFuncStmt(stmt, funcs)
 		if err != nil {
 			fmt.Printf("stmt-err: %v\n", err)
+			continue
+		}
+		if strings.HasPrefix(funcName, "_scripthaus_") {
 			continue
 		}
 		if funcName != "" {

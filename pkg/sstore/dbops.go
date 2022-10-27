@@ -623,8 +623,8 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 		query = `SELECT nextlinenum FROM window WHERE sessionid = ? AND windowid = ?`
 		nextLineNum := tx.GetInt(query, line.SessionId, line.WindowId)
 		line.LineNum = int64(nextLineNum)
-		query = `INSERT INTO line  ( sessionid, windowid, userid, lineid, ts, linenum, linenumtemp, linelocal, linetype, text, cmdid, ephemeral)
-                            VALUES (:sessionid,:windowid,:userid,:lineid,:ts,:linenum,:linenumtemp,:linelocal,:linetype,:text,:cmdid,:ephemeral)`
+		query = `INSERT INTO line  ( sessionid, windowid, userid, lineid, ts, linenum, linenumtemp, linelocal, linetype, text, cmdid, ephemeral, contentheight)
+                            VALUES (:sessionid,:windowid,:userid,:lineid,:ts,:linenum,:linenumtemp,:linelocal,:linetype,:text,:cmdid,:ephemeral,:contentheight)`
 		tx.NamedExecWrap(query, line)
 		query = `UPDATE window SET nextlinenum = ? WHERE sessionid = ? AND windowid = ?`
 		tx.ExecWrap(query, nextLineNum+1, line.SessionId, line.WindowId)
@@ -632,8 +632,8 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 			cmd.OrigTermOpts = cmd.TermOpts
 			cmdMap := cmd.ToMap()
 			query = `
-INSERT INTO cmd  ( sessionid, cmdid, remoteownerid, remoteid, remotename, cmdstr, remotestate, termopts, origtermopts, status, startpk, donepk, runout, usedrows)
-          VALUES (:sessionid,:cmdid,:remoteownerid,:remoteid,:remotename,:cmdstr,:remotestate,:termopts,:origtermopts,:status,:startpk,:donepk,:runout,:usedrows)
+INSERT INTO cmd  ( sessionid, cmdid, remoteownerid, remoteid, remotename, cmdstr, remotestate, termopts, origtermopts, status, startpk, donepk, rtnstate, runout)
+          VALUES (:sessionid,:cmdid,:remoteownerid,:remoteid,:remotename,:cmdstr,:remotestate,:termopts,:origtermopts,:status,:startpk,:donepk,:rtnstate,:runout)
 `
 			tx.NamedExecWrap(query, cmdMap)
 		}

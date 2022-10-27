@@ -28,6 +28,7 @@ import (
 
 const LineTypeCmd = "cmd"
 const LineTypeText = "text"
+const LineNoHeight = -1
 const DBFileName = "sh2.db"
 
 const DefaultSessionName = "default"
@@ -496,19 +497,20 @@ func RIFromMap(m map[string]interface{}) *RemoteInstance {
 }
 
 type LineType struct {
-	SessionId   string `json:"sessionid"`
-	WindowId    string `json:"windowid"`
-	UserId      string `json:"userid"`
-	LineId      string `json:"lineid"`
-	Ts          int64  `json:"ts"`
-	LineNum     int64  `json:"linenum"`
-	LineNumTemp bool   `json:"linenumtemp,omitempty"`
-	LineLocal   bool   `json:"linelocal"`
-	LineType    string `json:"linetype"`
-	Text        string `json:"text,omitempty"`
-	CmdId       string `json:"cmdid,omitempty"`
-	Ephemeral   bool   `json:"ephemeral,omitempty"`
-	Remove      bool   `json:"remove,omitempty"`
+	SessionId     string `json:"sessionid"`
+	WindowId      string `json:"windowid"`
+	UserId        string `json:"userid"`
+	LineId        string `json:"lineid"`
+	Ts            int64  `json:"ts"`
+	LineNum       int64  `json:"linenum"`
+	LineNumTemp   bool   `json:"linenumtemp,omitempty"`
+	LineLocal     bool   `json:"linelocal"`
+	LineType      string `json:"linetype"`
+	Text          string `json:"text,omitempty"`
+	CmdId         string `json:"cmdid,omitempty"`
+	Ephemeral     bool   `json:"ephemeral,omitempty"`
+	Remove        bool   `json:"remove,omitempty"`
+	ContentHeight int64  `json:"contentheight,omitempty"`
 }
 
 type ResolveItem struct {
@@ -575,11 +577,11 @@ type CmdType struct {
 	TermOpts     TermOpts                   `json:"termopts"`
 	OrigTermOpts TermOpts                   `json:"origtermopts"`
 	Status       string                     `json:"status"`
-	StartPk      *packet.CmdStartPacketType `json:"startpk"`
-	DonePk       *packet.CmdDonePacketType  `json:"donepk"`
-	UsedRows     int64                      `json:"usedrows"`
-	RunOut       []packet.PacketType        `json:"runout"`
-	Remove       bool                       `json:"remove"`
+	StartPk      *packet.CmdStartPacketType `json:"startpk,omitempty"`
+	DonePk       *packet.CmdDonePacketType  `json:"donepk,omitempty"`
+	RunOut       []packet.PacketType        `json:"runout,omitempty"`
+	RtnState     bool                       `json:"rtnstate,omitempty"`
+	Remove       bool                       `json:"remove,omitempty"`
 }
 
 func (r *RemoteType) ToMap() map[string]interface{} {
@@ -644,7 +646,7 @@ func (cmd *CmdType) ToMap() map[string]interface{} {
 	rtn["startpk"] = quickJson(cmd.StartPk)
 	rtn["donepk"] = quickJson(cmd.DonePk)
 	rtn["runout"] = quickJson(cmd.RunOut)
-	rtn["usedrows"] = cmd.UsedRows
+	rtn["rtnstate"] = cmd.RtnState
 	return rtn
 }
 
@@ -666,7 +668,7 @@ func CmdFromMap(m map[string]interface{}) *CmdType {
 	quickSetJson(&cmd.StartPk, m, "startpk")
 	quickSetJson(&cmd.DonePk, m, "donepk")
 	quickSetJson(&cmd.RunOut, m, "runout")
-	quickSetInt64(&cmd.UsedRows, m, "usedrows")
+	quickSetBool(&cmd.RtnState, m, "rtnstate")
 	return &cmd
 }
 
@@ -680,6 +682,7 @@ func makeNewLineCmd(sessionId string, windowId string, userId string, cmdId stri
 	rtn.LineLocal = true
 	rtn.LineType = LineTypeCmd
 	rtn.CmdId = cmdId
+	rtn.ContentHeight = LineNoHeight
 	return rtn
 }
 
@@ -693,6 +696,7 @@ func makeNewLineText(sessionId string, windowId string, userId string, text stri
 	rtn.LineLocal = true
 	rtn.LineType = LineTypeText
 	rtn.Text = text
+	rtn.ContentHeight = LineNoHeight
 	return rtn
 }
 
