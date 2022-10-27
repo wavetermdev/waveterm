@@ -138,6 +138,10 @@ class Cmd {
         })();
     }
 
+    getRtnState() : boolean {
+        return this.data.get().rtnstate;
+    }
+
     getStatus() : string {
         return this.data.get().status;
     }
@@ -1374,8 +1378,8 @@ class InputModel {
 
     resetInputMode() : void {
         mobx.action(() => {
-            inputModel.setInputMode(null);
-            inputModel.setCurLine("");
+            this.setInputMode(null);
+            this.setCurLine("");
         })();
     }
 
@@ -2018,7 +2022,7 @@ class Model {
     _loadWindowAsync(newWin : Window) {
         this.windows.set(newWin.sessionId + "/" + newWin.windowId, newWin);
         let usp = new URLSearchParams({sessionid: newWin.sessionId, windowid: newWin.windowId});
-        let url = new URL(sprintf("http://localhost:8080/api/get-window?") + usp.toString());
+        let url = new URL("http://localhost:8080/api/get-window?" + usp.toString());
         fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
             if (data.data == null) {
                 console.log("null window returned from get-window");

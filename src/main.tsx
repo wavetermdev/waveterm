@@ -189,6 +189,8 @@ class Prompt extends React.Component<{rptr : RemotePtrType, rstate : RemoteState
 class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType}, {}> {
     termLoaded : mobx.IObservableValue<boolean> = mobx.observable.box(false);
     lineRef : React.RefObject<any> = React.createRef();
+    rtnStateDiff : mobx.IObservableValue<string> = mobx.observable.box(null);
+    rtnStateDiffFetched : boolean = false;
     
     constructor(props) {
         super(props);
@@ -207,6 +209,28 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         else if (!vis && curVis) {
             this.unloadTerminal(false);
         }
+    }
+
+    checkStateDiffLoad() : void {
+        let {line, staticRender, visible} = this.props;
+        if (staticRender) {
+            return;
+        }
+        if (!visible) {
+            if (this.rtnStateDiffFetched) {
+                this.rtnStateDiffFetched = false;
+                this.setRtnStateDiff(null);
+            }
+            return;
+        }
+        let cmd = GlobalModel.getCmd(line);
+        if (cmd == null || !cmd.getRtnState() || this.rtnStateDiffFetched) {
+            return;
+        }
+        if (cmd.getStatus() != "done") {
+            return;
+        }
+        this.fetchRtnStateDiff();
     }
 
     loadTerminal() : void {
@@ -237,6 +261,32 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                 termElem.replaceChildren();
             }
         }
+    }
+
+    fetchRtnStateDiff() : void {
+        if (this.rtnStateDiffFetched) {
+            return;
+        }
+        let {line} = this.props;
+        this.rtnStateDiffFetched = true;
+        let usp = new URLSearchParams({sessionid: line.sessionid, cmdid: line.cmdid});
+        let url = "http://localhost:8080/api/rtnstate?" + usp.toString();
+        fetch(url).then((resp) => {
+            if (!resp.ok) {
+                throw new Error(sprintf("Bad fetch response for /api/rtnstate: %d %s", resp.status, resp.statusText));
+            }
+            return resp.text();
+        }).then((text) => {
+            this.setRtnStateDiff(text ?? "");
+        }).catch((err) => {
+            this.setRtnStateDiff("ERROR " + err.toString())
+        });
+    }
+
+    setRtnStateDiff(val : string) : void {
+        mobx.action(() => {
+            this.rtnStateDiff.set(val);
+        })();
     }
 
     componentDidMount() {
@@ -310,6 +360,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
             this.props.onHeightChange(line.linenum, curHeight, snapshot.height);
         }
         this.checkLoad();
+        this.checkStateDiffLoad();
     }
     
     render() {
@@ -340,7 +391,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         let isFgFocused = isPhysicalFocused && swFocusType == "cmd-fg";
         let isStatic = staticRender;
         return (
-            <div className={cn("line", "line-cmd", {"focus": isFocused})} id={"line-" + getLineId(line)} ref={this.lineRef} style={{position: "relative"}} data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} data-cmdid={line.cmdid}>
+            <div className={cn("line", "line-cmd", {"focus": isFocused}, {"has-rtnstate": cmd.getRtnState()})} id={"line-" + getLineId(line)} ref={this.lineRef} style={{position: "relative"}} data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} data-cmdid={line.cmdid}>
                 <div className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused}, {"fg-focus": isFgFocused})}/>
                 <div className="line-header">
                     <div className={cn("avatar", "num-"+lineNumStr.length, "status-" + status, {"ephemeral": line.ephemeral})} onClick={this.doRefresh}>
@@ -366,13 +417,26 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                         </div>
                     </div>
                 </div>
-                <div className={cn("terminal-wrapper", {"focus": isFocused}, {"cmd-done": !cmd.isRunning()})}>
+                <div className={cn("terminal-wrapper", {"focus": isFocused}, {"cmd-done": !cmd.isRunning()}, {"zero-height": (termHeight == 0)})}>
                     <If condition={!isFocused}>
                         <div className="term-block" onClick={this.clickTermBlock}></div>
                     </If>
                     <div className="terminal-connectelem" id={"term-" + getLineId(line)} data-cmdid={line.cmdid} style={{height: termHeight}}></div>
                     <If condition={!termLoaded}><div style={{position: "absolute", top: 60, left: 30}}>(loading)</div></If>
                 </div>
+                <If condition={cmd.getRtnState() && cmd.getStatus() == "done"}>
+                    <div className="cmd-rtnstate">
+                        <If condition={this.rtnStateDiff.get() == ""}>
+                            <div className="cmd-rtnstate-label">state unchanged</div>
+                            <div className="cmd-rtnstate-sep"></div>
+                        </If>
+                        <If condition={this.rtnStateDiff.get() != null && this.rtnStateDiff.get() != ""}>
+                            <div className="cmd-rtnstate-label">new state</div>
+                            <div className="cmd-rtnstate-sep"></div>
+                            <div className="cmd-rtnstate-diff">{this.rtnStateDiff.get()}</div>
+                        </If>
+                    </div>
+                </If>
             </div>
         );
     }

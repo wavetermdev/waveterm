@@ -26,6 +26,7 @@ type LineType = {
     linetype : string,
     text : string,
     cmdid : string,
+    contentheight : number,
     ephemeral? : boolean,
     remove? : boolean,
 };
@@ -246,7 +247,7 @@ type CmdDataType = {
     startpk : CmdStartPacketType,
     donepk : CmdDonePacketType,
     runout : any[],
-    usedrows : number,
+    rtnstate : boolean,
     remove? : boolean,
 };
 

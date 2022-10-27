@@ -410,6 +410,11 @@ html, body, #main {
         background-color: #000;
     }
 
+    &.has-rtnstate .terminal-wrapper {
+        padding-bottom: 0;
+        margin-bottom: -5px;
+    }
+
     .terminal-wrapper {
         background-color: #000;
         padding: 2px 10px 5px 4px;
@@ -417,6 +422,10 @@ html, body, #main {
         margin-right: 8px;
         margin-top: 4px;
         align-self: flex-start;
+
+        &.zero-height {
+            display: none;
+        }
 
         &.focus {
             /* box-shadow: 0 0 3px 3px rgba(255, 255, 255, 0.3); */
@@ -433,6 +442,37 @@ html, body, #main {
 
         &.cmd-done .terminal .xterm-cursor {
             display: none;
+        }
+    }
+
+    .cmd-rtnstate {
+        position: relative;
+
+        .cmd-rtnstate-label {
+            position: relative;
+            z-index: 2;
+            .mono-font(9px);
+            margin-left: 10px;
+            padding: 2px 5px 2px 5px;
+            color: #666;
+            background-color: black;
+            display: inline-block;
+        }
+
+        .cmd-rtnstate-sep {
+            height: 1px;
+            border-bottom: 1px solid #222;
+            position: relative;
+            top: -8px;
+            width: min(300px, 50%);
+            margin-bottom: -3px;
+        }
+
+        .cmd-rtnstate-diff {
+            color: @term-white;
+            .mono-font(12px);
+            white-space: pre;
+            margin-left: 15px;
         }
     }
 }

@@ -254,7 +254,7 @@ class TermWrap {
             if (ptyOffsetStr != null && !isNaN(parseInt(ptyOffsetStr))) {
                 ptyOffset = parseInt(ptyOffsetStr);
             }
-            return resp.arrayBuffer()
+            return resp.arrayBuffer();
         }).then((buf) => {
             setTimeout(() => {
                 this.reloading = false;
