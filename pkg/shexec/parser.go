@@ -76,6 +76,7 @@ var NoStoreVarNames = map[string]bool{
 	"BASH_CMDS":             true,
 	"BASH_COMMAND":          true,
 	"BASH_EXECUTION_STRING": true,
+	"LINENO":                true,
 	"BASH_LINENO":           true,
 	"BASH_REMATCH":          true,
 	"BASH_SOURCE":           true,
@@ -330,13 +331,15 @@ func ParseShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
 		return nil, fmt.Errorf("invalid shell state output, wrong number of fields, fields=%d", len(fields))
 	}
 	rtn := &packet.ShellState{}
-	rtn.Version = string(fields[0])
+	rtn.Version = strings.TrimSpace(string(fields[0]))
 	if strings.Index(rtn.Version, "bash") == -1 {
 		return nil, fmt.Errorf("invalid shell state output, only bash is supported")
 	}
 	cwdStr := string(fields[1])
 	if strings.HasSuffix(cwdStr, "\r\n") {
 		cwdStr = cwdStr[0 : len(cwdStr)-2]
+	} else if strings.HasSuffix(cwdStr, "\n") {
+		cwdStr = cwdStr[0 : len(cwdStr)-1]
 	}
 	rtn.Cwd = string(cwdStr)
 	err := parseDeclareOutput(rtn, fields[2])

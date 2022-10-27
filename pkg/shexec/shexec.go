@@ -47,6 +47,7 @@ const MaxMaxPtySize = 100 * 1024 * 1024
 
 const GetStateTimeout = 5 * time.Second
 
+const BaseBashOpts = `set +m; set +H; shopt -s extglob`
 const GetShellStateCmd = `echo bash v${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}.${BASH_VERSINFO[2]}; printf "\x00\x00"; pwd; printf "\x00\x00"; declare -p $(compgen -A variable); printf "\x00\x00"; alias -p; printf "\x00\x00"; declare -f;`
 
 const ClientCommandFmt = `
@@ -965,12 +966,7 @@ func getTermType(pk *packet.RunPacketType) string {
 
 func makeRcFileStr(pk *packet.RunPacketType) string {
 	var rcBuf bytes.Buffer
-	rcBuf.WriteString(`
-set +m
-set +H
-shopt -s extglob
-`)
-
+	rcBuf.WriteString(BaseBashOpts + "\n")
 	varDecls := VarDeclsFromState(pk.State)
 	for _, varDecl := range varDecls {
 		if varDecl.IsExport() || varDecl.IsReadOnly() {
@@ -1452,7 +1448,8 @@ func GetShellStateRedirectCommandStr(outputFdNum int) string {
 
 func GetShellState() (*packet.ShellState, error) {
 	ctx, _ := context.WithTimeout(context.Background(), GetStateTimeout)
-	ecmd := exec.CommandContext(ctx, "bash", "-l", "-i", "-c", GetShellStateCmd)
+	cmdStr := BaseBashOpts + "; " + GetShellStateCmd
+	ecmd := exec.CommandContext(ctx, "bash", "-l", "-i", "-c", cmdStr)
 	outputBytes, err := runSimpleCmdInPty(ecmd)
 	if err != nil {
 		return nil, err
