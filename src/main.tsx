@@ -137,6 +137,27 @@ function getLineDateStr(ts : number) : string {
 }
 
 @mobxReact.observer
+class LineAvatar extends React.Component<{line : LineType, cmd : Cmd}, {}> {
+    render() {
+        let {line, cmd} = this.props;
+        let lineNumStr = (line.linenumtemp ? "~" : "") + String(line.linenum);
+        let status = (cmd != null ? cmd.getStatus() : "done");
+        let rtnstate = (cmd != null ? cmd.getRtnState() : false);
+        return (
+            <div className={cn("avatar", "num-"+lineNumStr.length, "status-" + status, {"ephemeral": line.ephemeral}, {"rtnstate": rtnstate})}>
+                {lineNumStr}
+                <If condition={status == "hangup" || status == "error"}>
+                    <i className="fa fa-exclamation-triangle status-icon"/>
+                </If>
+                <If condition={status == "detached"}>
+                    <i className="fa fa-refresh status-icon"/>
+                </If>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
 class LineText extends React.Component<{sw : ScreenWindow, line : LineType}, {}> {
     render() {
         let {sw, line} = this.props;
@@ -362,6 +383,12 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         this.checkLoad();
         this.checkStateDiffLoad();
     }
+
+    @boundMethod
+    handleClick() {
+        let {line} = this.props;
+        GlobalCommandRunner.swSelectLine(String(line.linenum), "cmd");
+    }
     
     render() {
         let {sw, line, width, staticRender, visible} = this.props;
@@ -391,18 +418,10 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         let isFgFocused = isPhysicalFocused && swFocusType == "cmd-fg";
         let isStatic = staticRender;
         return (
-            <div className={cn("line", "line-cmd", {"focus": isFocused}, {"has-rtnstate": cmd.getRtnState()})} id={"line-" + getLineId(line)} ref={this.lineRef} style={{position: "relative"}} data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} data-cmdid={line.cmdid}>
+            <div onClick={this.handleClick} className={cn("line", "line-cmd", {"focus": isFocused}, {"has-rtnstate": cmd.getRtnState()})} id={"line-" + getLineId(line)} ref={this.lineRef} style={{position: "relative"}} data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} data-cmdid={line.cmdid}>
                 <div className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused}, {"fg-focus": isFgFocused})}/>
                 <div className="line-header">
-                    <div className={cn("avatar", "num-"+lineNumStr.length, "status-" + status, {"ephemeral": line.ephemeral})} onClick={this.doRefresh}>
-                        {lineNumStr}
-                        <If condition={status == "hangup" || status == "error"}>
-                            <i className="fa fa-exclamation-triangle status-icon"/>
-                        </If>
-                        <If condition={status == "detached"}>
-                            <i className="fa fa-refresh status-icon"/>
-                        </If>
-                    </div>
+                    <LineAvatar line={line} cmd={cmd}/>
                     <div className="meta-wrap">
                         <div className="meta">
                             <div className="user" style={{display: "none"}}>{line.userid}</div>

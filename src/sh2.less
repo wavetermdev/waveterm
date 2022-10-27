@@ -469,7 +469,7 @@ html, body, #main {
         }
 
         .cmd-rtnstate-diff {
-            color: @term-white;
+            color: @term-cyan;
             .mono-font(12px);
             white-space: pre;
             margin-left: 15px;
@@ -556,6 +556,10 @@ html, body, #main {
         margin-right: 10px;
         border-radius: 5px;
         position: relative;
+
+        &.rtnstate {
+            border: 1px solid white;
+        }
         
         .status-icon {
             font-size: 8px;
