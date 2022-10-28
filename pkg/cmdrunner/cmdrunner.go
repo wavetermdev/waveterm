@@ -245,8 +245,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	runPacket := packet.MakeRunPacket()
 	runPacket.ReqId = uuid.New().String()
 	runPacket.CK = base.MakeCommandKey(ids.SessionId, scbase.GenSCUUID())
-	runPacket.State = ids.Remote.RemoteState
-	runPacket.StateComplete = true
+	// runPacket.State is set in remote.RunCommand()
 	runPacket.UsePty = true
 	runPacket.TermOpts = getUITermOpts(pk.UIContext)
 	runPacket.Command = strings.TrimSpace(cmdStr)

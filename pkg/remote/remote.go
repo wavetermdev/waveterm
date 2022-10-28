@@ -901,6 +901,9 @@ func (msh *MShellProc) ReInit(ctx context.Context) (*packet.InitPacketType, erro
 	if !ok {
 		return nil, fmt.Errorf("invalid reinit response (not an initpacket): %T", resp)
 	}
+	if initPk.State == nil {
+		return nil, fmt.Errorf("invalid reinit response initpk does not contain remote state")
+	}
 	msh.WithLock(func() {
 		msh.Remote.InitPk = initPk
 	})
@@ -960,6 +963,7 @@ func (msh *MShellProc) Launch() {
 		go msh.NotifyRemoteUpdate()
 	})
 	cproc, initPk, err := shexec.MakeClientProc(makeClientCtx, ecmd)
+	// TODO check if initPk.State is not nil
 	var mshellVersion string
 	msh.WithLock(func() {
 		msh.MakeClientCancelFn = nil
@@ -1135,8 +1139,8 @@ func RunCommand(ctx context.Context, sessionId string, windowId string, remotePt
 	if !msh.IsConnected() {
 		return nil, nil, fmt.Errorf("remote '%s' is not connected", remotePtr.RemoteId)
 	}
-	if runPacket.State == nil {
-		return nil, nil, fmt.Errorf("no remote state passed to RunCommand")
+	if runPacket.State != nil {
+		return nil, nil, fmt.Errorf("runPacket.State should not be set, it is set in RunCommand")
 	}
 	var newPSC *base.CommandKey
 	if runPacket.ReturnState {
@@ -1162,8 +1166,21 @@ func RunCommand(ctx context.Context, sessionId string, windowId string, remotePt
 			}
 		}
 	}()
+	// get current remote-instance state
+	currentState, err := sstore.GetRemoteState(ctx, sessionId, windowId, remotePtr)
+	if err != nil {
+		return nil, nil, fmt.Errorf("cannot get current remote state: %w", err)
+	}
+	if currentState == nil {
+		currentState = msh.ServerProc.InitPk.State
+	}
+	if currentState == nil {
+		return nil, nil, fmt.Errorf("cannot run command, no valid remote state")
+	}
+	runPacket.State = currentState
+	runPacket.StateComplete = true
 	msh.ServerProc.Output.RegisterRpc(runPacket.ReqId)
-	err := shexec.SendRunPacketAndRunData(ctx, msh.ServerProc.Input, runPacket)
+	err = shexec.SendRunPacketAndRunData(ctx, msh.ServerProc.Input, runPacket)
 	if err != nil {
 		return nil, nil, fmt.Errorf("sending run packet to remote: %w", err)
 	}
@@ -1206,6 +1223,37 @@ func RunCommand(ctx context.Context, sessionId string, windowId string, remotePt
 	}
 	msh.AddRunningCmd(rct)
 	return cmd, func() { removeCmdWait(runPacket.CK) }, nil
+}
+
+func (msh *MShellProc) AddWaitingCmd(rct RunCmdType) {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	msh.WaitingCmds = append(msh.WaitingCmds, rct)
+}
+
+func (msh *MShellProc) reExecSingle(rct RunCmdType) {
+	// TODO fixme
+	ctx, cancelFn := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancelFn()
+	_, callback, _ := RunCommand(ctx, rct.SessionId, rct.WindowId, rct.RemotePtr, rct.RunPacket)
+	if callback != nil {
+		defer callback()
+	}
+}
+
+func (msh *MShellProc) ReExecWaitingCmds() {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	for len(msh.WaitingCmds) > 0 {
+		rct := msh.WaitingCmds[0]
+		go msh.reExecSingle(rct)
+		if rct.RunPacket.ReturnState {
+			break
+		}
+	}
+	if len(msh.WaitingCmds) == 0 {
+		msh.WaitingCmds = nil
+	}
 }
 
 func (msh *MShellProc) AddRunningCmd(rct RunCmdType) {
