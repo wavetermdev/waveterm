@@ -4,6 +4,12 @@ import (
 	"github.com/scripthaus-dev/mshell/pkg/base"
 )
 
+func startCmdWait(ck base.CommandKey) {
+	GlobalStore.Lock.Lock()
+	defer GlobalStore.Lock.Unlock()
+	GlobalStore.CmdWaitMap[ck] = nil
+}
+
 func pushCmdWaitIfRequired(ck base.CommandKey, fn func()) bool {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()

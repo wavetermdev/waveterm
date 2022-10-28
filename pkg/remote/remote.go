@@ -875,6 +875,26 @@ func (msh *MShellProc) RunInstall() {
 	return
 }
 
+func (msh *MShellProc) ReInit(ctx context.Context) (*packet.InitPacketType, error) {
+	reinitPk := packet.MakeReInitPacket()
+	reinitPk.ReqId = uuid.New().String()
+	resp, err := msh.PacketRpcRaw(ctx, reinitPk)
+	if err != nil {
+		return nil, err
+	}
+	if resp == nil {
+		return nil, fmt.Errorf("no response")
+	}
+	initPk, ok := resp.(*packet.InitPacketType)
+	if !ok {
+		return nil, fmt.Errorf("invalid reinit response (not an initpacket): %T", resp)
+	}
+	msh.WithLock(func() {
+		msh.Remote.InitPk = initPk
+	})
+	return initPk, nil
+}
+
 func (msh *MShellProc) Launch() {
 	remoteCopy := msh.GetRemoteCopy()
 	if remoteCopy.Archived {
@@ -1057,7 +1077,7 @@ func makeTermOpts(runPk *packet.RunPacketType) sstore.TermOpts {
 }
 
 // returns (cmdtype, allow-updates-callback, err)
-func RunCommand(ctx context.Context, cmdId string, remotePtr sstore.RemotePtrType, remoteState *packet.ShellState, runPacket *packet.RunPacketType) (*sstore.CmdType, func(), error) {
+func RunCommand(ctx context.Context, cmdId string, remotePtr sstore.RemotePtrType, remoteState *packet.ShellState, runPacket *packet.RunPacketType) (rtnCmd *sstore.CmdType, rtnCallback func(), rtnErr error) {
 	if remotePtr.OwnerId != "" {
 		return nil, nil, fmt.Errorf("cannot run command against another user's remote '%s'", remotePtr.MakeFullRemoteRef())
 	}
@@ -1071,6 +1091,15 @@ func RunCommand(ctx context.Context, cmdId string, remotePtr sstore.RemotePtrTyp
 	if remoteState == nil {
 		return nil, nil, fmt.Errorf("no remote state passed to RunCommand")
 	}
+	callbackFn := func() {
+		removeCmdWait(runPacket.CK)
+	}
+	startCmdWait(runPacket.CK)
+	defer func() {
+		if rtnErr != nil {
+			callbackFn()
+		}
+	}()
 	msh.ServerProc.Output.RegisterRpc(runPacket.ReqId)
 	err := shexec.SendRunPacketAndRunData(ctx, msh.ServerProc.Input, runPacket)
 	if err != nil {
@@ -1114,7 +1143,7 @@ func RunCommand(ctx context.Context, cmdId string, remotePtr sstore.RemotePtrTyp
 		return nil, nil, fmt.Errorf("cannot create local ptyout file for running command: %v", err)
 	}
 	msh.AddRunningCmd(startPk.CK)
-	return cmd, func() { removeCmdWait(startPk.CK) }, nil
+	return cmd, callbackFn, nil
 }
 
 func (msh *MShellProc) AddRunningCmd(ck base.CommandKey) {
@@ -1129,7 +1158,7 @@ func (msh *MShellProc) RemoveRunningCmd(ck base.CommandKey) {
 	delete(msh.RunningCmds, ck)
 }
 
-func (msh *MShellProc) PacketRpc(ctx context.Context, pk packet.RpcPacketType) (*packet.ResponsePacketType, error) {
+func (msh *MShellProc) PacketRpcRaw(ctx context.Context, pk packet.RpcPacketType) (packet.RpcResponsePacketType, error) {
 	if !msh.IsConnected() {
 		return nil, fmt.Errorf("runner is not connected")
 	}
@@ -1146,6 +1175,14 @@ func (msh *MShellProc) PacketRpc(ctx context.Context, pk packet.RpcPacketType) (
 	rtnPk := msh.ServerProc.Output.WaitForResponse(ctx, reqId)
 	if rtnPk == nil {
 		return nil, ctx.Err()
+	}
+	return rtnPk, nil
+}
+
+func (msh *MShellProc) PacketRpc(ctx context.Context, pk packet.RpcPacketType) (*packet.ResponsePacketType, error) {
+	rtnPk, err := msh.PacketRpcRaw(ctx, pk)
+	if err != nil {
+		return nil, err
 	}
 	if respPk, ok := rtnPk.(*packet.ResponsePacketType); ok {
 		return respPk, nil
@@ -1195,9 +1232,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 		// fall-through (nothing to do)
 	}
 	update.ScreenWindows = sws
-	if update != nil {
-		sstore.MainBus.SendUpdate(donePk.CK.GetSessionId(), update)
-	}
+	sstore.MainBus.SendUpdate(donePk.CK.GetSessionId(), update)
 	if donePk.FinalState != nil {
 
 	}

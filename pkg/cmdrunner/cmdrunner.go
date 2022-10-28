@@ -1442,7 +1442,35 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 }
 
 func ResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	return nil, nil
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
+	if err != nil {
+		return nil, err
+	}
+	initPk, err := ids.Remote.MShell.ReInit(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if initPk == nil || initPk.State == nil {
+		return nil, fmt.Errorf("invalid initpk received from remote (no remote state)")
+	}
+	remoteInst, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.WindowId, ids.Remote.RemotePtr, *initPk.State)
+	if err != nil {
+		return nil, err
+	}
+	outputStr := "reset remote state"
+	cmd, err := makeStaticCmd(ctx, "reset", ids, pk.GetRawStr(), []byte(outputStr))
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, err
+	}
+	update, err := addLineForCmd(ctx, "/cd", false, ids, cmd)
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, err
+	}
+	update.Interactive = pk.Interactive
+	update.Sessions = sstore.MakeSessionsUpdateForRemote(ids.SessionId, remoteInst)
+	return update, nil
 }
 
 func ClearCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -1621,6 +1649,9 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "termopts", formatTermOpts(cmd.TermOpts)))
 		if cmd.TermOpts != cmd.OrigTermOpts {
 			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "orig-termopts", formatTermOpts(cmd.OrigTermOpts)))
+		}
+		if cmd.RtnState {
+			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "rtnstate", "true"))
 		}
 	}
 	update := sstore.ModelUpdate{

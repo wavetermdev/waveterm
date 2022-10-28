@@ -13,6 +13,19 @@ import (
 	"mvdan.cc/sh/v3/syntax"
 )
 
+var ValidMetaCmdRe = regexp.MustCompile("^/([a-z][a-z0-9_-]*)(?::([a-z][a-z0-9_-]*))?$")
+
+type BareMetaCmdDecl struct {
+	CmdStr  string
+	MetaCmd string
+}
+
+var BareMetaCmds = []BareMetaCmdDecl{
+	BareMetaCmdDecl{"cr", "cr"},
+	BareMetaCmdDecl{"clear", "clear"},
+	BareMetaCmdDecl{"reset", "reset"},
+}
+
 func DumpPacket(pk *scpacket.FeCommandPacketType) {
 	if pk == nil || pk.MetaCmd == "" {
 		fmt.Printf("[no metacmd]\n")
@@ -49,19 +62,6 @@ func getSourceStr(source string, w *syntax.Word) string {
 	offset := w.Pos().Offset()
 	end := w.End().Offset()
 	return source[offset:end]
-}
-
-var ValidMetaCmdRe = regexp.MustCompile("^/([a-z][a-z0-9_-]*)(?::([a-z][a-z0-9_-]*))?$")
-
-type BareMetaCmdDecl struct {
-	CmdStr  string
-	MetaCmd string
-}
-
-var BareMetaCmds = []BareMetaCmdDecl{
-	BareMetaCmdDecl{"cr", "cr"},
-	BareMetaCmdDecl{"clear", "clear"},
-	BareMetaCmdDecl{"reset", "reset"},
 }
 
 func SubMetaCmd(cmd string) string {
