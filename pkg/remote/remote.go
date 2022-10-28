@@ -80,6 +80,7 @@ type MShellProc struct {
 	Remote *sstore.RemoteType
 
 	// runtime
+	RemoteId           string // can be read without a lock
 	Status             string
 	ServerProc         *shexec.ClientProc
 	UName              string
@@ -94,12 +95,14 @@ type MShellProc struct {
 	InstallCancelFn    context.CancelFunc
 	InstallErr         error
 
-	RunningCmds      map[base.CommandKey]bool
+	RunningCmds      map[base.CommandKey]RunCmdType
 	WaitingCmds      []RunCmdType
 	PendingStateCmds map[string]base.CommandKey // key=[remoteinstance name]
 }
 
 type RunCmdType struct {
+	SessionId string
+	WindowId  string
 	RemotePtr sstore.RemotePtrType
 	RunPacket *packet.RunPacketType
 }
@@ -539,10 +542,11 @@ func MakeMShell(r *sstore.RemoteType) *MShellProc {
 	rtn := &MShellProc{
 		Lock:             &sync.Mutex{},
 		Remote:           r,
+		RemoteId:         r.RemoteId,
 		Status:           StatusDisconnected,
 		PtyBuffer:        buf,
 		InstallStatus:    StatusDisconnected,
-		RunningCmds:      make(map[base.CommandKey]bool),
+		RunningCmds:      make(map[base.CommandKey]RunCmdType),
 		PendingStateCmds: make(map[string]base.CommandKey),
 	}
 	rtn.WriteToPtyBuffer("console for remote [%s]\n", r.GetName())
@@ -1085,33 +1089,39 @@ func makeTermOpts(runPk *packet.RunPacketType) sstore.TermOpts {
 }
 
 // returns (ok, currentPSC)
-func (msh *MShellProc) testAndSetPendingStateCmd(name string, newCK *base.CommandKey) (bool, *base.CommandKey) {
+func (msh *MShellProc) testAndSetPendingStateCmd(riName string, newCK *base.CommandKey) (bool, *base.CommandKey) {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
-	ck, found := msh.PendingStateCmds[name]
+	ck, found := msh.PendingStateCmds[riName]
 	if found {
 		return false, &ck
 	}
 	if newCK != nil {
-		msh.PendingStateCmds[name] = *newCK
+		msh.PendingStateCmds[riName] = *newCK
 	}
 	return true, nil
 }
 
-func (msh *MShellProc) removePendingStateCmd(name string, ck base.CommandKey) {
+func (msh *MShellProc) removePendingStateCmd(riName string, ck base.CommandKey) {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
-	existingCK, found := msh.PendingStateCmds[name]
+	existingCK, found := msh.PendingStateCmds[riName]
 	if !found {
 		return
 	}
 	if existingCK == ck {
-		delete(msh.PendingStateCmds, name)
+		delete(msh.PendingStateCmds, riName)
 	}
 }
 
 // returns (cmdtype, allow-updates-callback, err)
 func RunCommand(ctx context.Context, sessionId string, windowId string, remotePtr sstore.RemotePtrType, runPacket *packet.RunPacketType) (rtnCmd *sstore.CmdType, rtnCallback func(), rtnErr error) {
+	rct := RunCmdType{
+		SessionId: sessionId,
+		WindowId:  windowId,
+		RemotePtr: remotePtr,
+		RunPacket: runPacket,
+	}
 	if remotePtr.OwnerId != "" {
 		return nil, nil, fmt.Errorf("cannot run command against another user's remote '%s'", remotePtr.MakeFullRemoteRef())
 	}
@@ -1143,13 +1153,10 @@ func RunCommand(ctx context.Context, sessionId string, windowId string, remotePt
 		}
 		return nil, nil, fmt.Errorf("cannot run command while a stateful command (linenum=%d) is still running", line.LineNum)
 	}
-	callbackFn := func() {
-		removeCmdWait(runPacket.CK)
-	}
 	startCmdWait(runPacket.CK)
 	defer func() {
 		if rtnErr != nil {
-			callbackFn()
+			removeCmdWait(runPacket.CK)
 			if newPSC != nil {
 				msh.removePendingStateCmd(remotePtr.Name, *newPSC)
 			}
@@ -1197,14 +1204,24 @@ func RunCommand(ctx context.Context, sessionId string, windowId string, remotePt
 		// TODO the cmd is running, so this is a tricky error to handle
 		return nil, nil, fmt.Errorf("cannot create local ptyout file for running command: %v", err)
 	}
-	msh.AddRunningCmd(startPk.CK)
-	return cmd, callbackFn, nil
+	msh.AddRunningCmd(rct)
+	return cmd, func() { removeCmdWait(runPacket.CK) }, nil
 }
 
-func (msh *MShellProc) AddRunningCmd(ck base.CommandKey) {
+func (msh *MShellProc) AddRunningCmd(rct RunCmdType) {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
-	msh.RunningCmds[ck] = true
+	msh.RunningCmds[rct.RunPacket.CK] = rct
+}
+
+func (msh *MShellProc) GetRunningCmd(ck base.CommandKey) *RunCmdType {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	rct, found := msh.RunningCmds[ck]
+	if !found {
+		return nil
+	}
+	return &rct
 }
 
 func (msh *MShellProc) RemoveRunningCmd(ck base.CommandKey) {
@@ -1276,26 +1293,38 @@ func (msh *MShellProc) notifyHangups_nolock() {
 		update := sstore.ModelUpdate{Cmd: cmd}
 		sstore.MainBus.SendUpdate(ck.GetSessionId(), update)
 	}
-	msh.RunningCmds = make(map[base.CommandKey]bool)
+	msh.RunningCmds = make(map[base.CommandKey]RunCmdType)
 }
 
 func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
-	msh.RemoveRunningCmd(donePk.CK)
+	// this will remove from RunningCmds and from PendingStateCmds
+	defer msh.RemoveRunningCmd(donePk.CK)
+
 	update, err := sstore.UpdateCmdDonePk(context.Background(), donePk)
 	if err != nil {
-		msh.WriteToPtyBuffer("[error] updating cmddone: %v\n", err)
+		msh.WriteToPtyBuffer("*error updating cmddone: %v\n", err)
 		return
 	}
 	sws, err := sstore.UpdateSWsWithCmdFg(context.Background(), donePk.CK.GetSessionId(), donePk.CK.GetCmdId())
 	if err != nil {
-		fmt.Printf("[error] trying to update cmd-fg screen windows: %v\n", err)
+		msh.WriteToPtyBuffer("*error trying to update cmd-fg screen windows: %v\n", err)
 		// fall-through (nothing to do)
 	}
 	update.ScreenWindows = sws
-	sstore.MainBus.SendUpdate(donePk.CK.GetSessionId(), update)
 	if donePk.FinalState != nil {
-
+		rct := msh.GetRunningCmd(donePk.CK)
+		if rct != nil {
+			remoteInst, err := sstore.UpdateRemoteState(context.Background(), rct.SessionId, rct.WindowId, rct.RemotePtr, *donePk.FinalState)
+			if err != nil {
+				msh.WriteToPtyBuffer("*error trying to update remotestate: %v\n", err)
+				// fall-through (nothing to do)
+			}
+			if remoteInst != nil {
+				update.Sessions = sstore.MakeSessionsUpdateForRemote(rct.SessionId, remoteInst)
+			}
+		}
 	}
+	sstore.MainBus.SendUpdate(donePk.CK.GetSessionId(), update)
 	return
 }
 
