@@ -44,6 +44,7 @@ const (
 	CmdStatusError    = "error"
 	CmdStatusDone     = "done"
 	CmdStatusHangup   = "hangup"
+	CmdStatusWaiting  = "waiting"
 )
 
 const (

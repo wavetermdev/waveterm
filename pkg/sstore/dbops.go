@@ -577,7 +577,7 @@ func FindLineIdByArg(ctx context.Context, sessionId string, windowId string, lin
 	return lineId, nil
 }
 
-func GetLineCmd(ctx context.Context, sessionId string, windowId string, lineId string) (*LineType, *CmdType, error) {
+func GetLineCmdByLineId(ctx context.Context, sessionId string, windowId string, lineId string) (*LineType, *CmdType, error) {
 	var lineRtn *LineType
 	var cmdRtn *CmdType
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
@@ -597,6 +597,32 @@ func GetLineCmd(ctx context.Context, sessionId string, windowId string, lineId s
 			m := tx.GetMap(query, sessionId, lineVal.CmdId)
 			cmdRtn = CmdFromMap(m)
 		}
+		return nil
+	})
+	if txErr != nil {
+		return nil, nil, txErr
+	}
+	return lineRtn, cmdRtn, nil
+}
+
+func GetLineCmdByCmdId(ctx context.Context, sessionId string, windowId string, cmdId string) (*LineType, *CmdType, error) {
+	var lineRtn *LineType
+	var cmdRtn *CmdType
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT windowid FROM window WHERE sessionid = ? AND windowid = ?`
+		if !tx.Exists(query, sessionId, windowId) {
+			return fmt.Errorf("window not found")
+		}
+		var lineVal LineType
+		query = `SELECT * FROM line WHERE sessionid = ? AND windowid = ? AND cmdid = ?`
+		found := tx.GetWrap(&lineVal, query, sessionId, windowId, cmdId)
+		if !found {
+			return nil
+		}
+		lineRtn = &lineVal
+		query = `SELECT * FROM cmd WHERE sessionid = ? AND cmdid = ?`
+		m := tx.GetMap(query, sessionId, cmdId)
+		cmdRtn = CmdFromMap(m)
 		return nil
 	})
 	if txErr != nil {

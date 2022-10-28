@@ -240,19 +240,18 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	if err != nil {
 		return nil, fmt.Errorf("/run error: %w", err)
 	}
-	cmdId := scbase.GenSCUUID()
 	cmdStr := firstArg(pk)
 	isRtnStateCmd := IsReturnStateCommand(cmdStr)
 	runPacket := packet.MakeRunPacket()
 	runPacket.ReqId = uuid.New().String()
-	runPacket.CK = base.MakeCommandKey(ids.SessionId, cmdId)
+	runPacket.CK = base.MakeCommandKey(ids.SessionId, scbase.GenSCUUID())
 	runPacket.State = ids.Remote.RemoteState
 	runPacket.StateComplete = true
 	runPacket.UsePty = true
 	runPacket.TermOpts = getUITermOpts(pk.UIContext)
 	runPacket.Command = strings.TrimSpace(cmdStr)
 	runPacket.ReturnState = resolveBool(pk.Kwargs["rtnstate"], isRtnStateCmd)
-	cmd, callback, err := remote.RunCommand(ctx, cmdId, ids.Remote.RemotePtr, ids.Remote.RemoteState, runPacket)
+	cmd, callback, err := remote.RunCommand(ctx, ids.SessionId, ids.WindowId, ids.Remote.RemotePtr, runPacket)
 	if callback != nil {
 		defer callback()
 	}
@@ -1619,7 +1618,7 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	if lineId == "" {
 		return nil, fmt.Errorf("line %q not found", lineArg)
 	}
-	line, cmd, err := sstore.GetLineCmd(ctx, ids.SessionId, ids.WindowId, lineId)
+	line, cmd, err := sstore.GetLineCmdByLineId(ctx, ids.SessionId, ids.WindowId, lineId)
 	if err != nil {
 		return nil, fmt.Errorf("error getting line: %v", err)
 	}
