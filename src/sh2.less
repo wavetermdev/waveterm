@@ -469,7 +469,7 @@ html, body, #main {
         }
 
         .cmd-rtnstate-diff {
-            color: @term-cyan;
+            color: @term-white;
             .mono-font(12px);
             white-space: pre;
             margin-left: 15px;
@@ -597,12 +597,16 @@ html, body, #main {
 
         &.status-hangup {
             .status-icon {
-                color: #c4a000;
+                color: @term-yellow;
             }
         }
 
         &.status-running {
             background-color: @soft-blue;
+        }
+
+        &.status-waiting {
+            background-color: @term-yellow;
         }
 
         &.status-detached {
