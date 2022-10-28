@@ -1330,9 +1330,11 @@ input[type=checkbox] {
 .sc-modal {
     .modal-content {
         padding: 10px;
+        background-color: #666;
 
         .message-header {
-            font-size: 20px;
+            .mono-font();
+            font-size: 16px;
             margin-bottom: 10px;
         }
 
@@ -1342,43 +1344,44 @@ input[type=checkbox] {
             overflow-y: auto;
             display: flex;
             flex-direction: column;
+            margin-bottom: 10px;
         }
 
         .message-footer {
             border-top: 1px solid #666;
-            padding-top: 15px;
             display: flex;
             flex-direction: row;
             justify-content: center;
+            align-items: center;
 
             .spacer {
                 flex-grow: 1;
             }
+
+            .footer-text-link {
+                .mono-font(12px);
+                color: @term-white;
+                cursor: pointer;
+            }
+        }
+
+        .button {
+            .mono-font();
         }
     }
 }
 
-.remote-modal {
+.disconnected-modal {
     .message-content {
-        .table {
-            th.status-header {
-                width: 40px;
-            }
+        .ws-log {
+            padding: 5px;
+            background-color: black;
+            height: 250px;
+            overflow: auto;
             
-            tbody td {
-                vertical-align: middle;
-            }
-            
-            .status-cell {
-                .remote-status {
-                    font-size: 16px;
-                    top: 0;
-                    margin-right: 0;
-                }
-                
-                .status-text {
-                    font-size: 12px;
-                }
+            .ws-logline {
+                .mono-font(12px);
+                color: @term-white;
             }
         }
     }

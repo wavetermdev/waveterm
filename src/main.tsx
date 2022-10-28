@@ -2488,113 +2488,82 @@ function sortAndFilterRemotes(origRemotes : RemoteType[]) : RemoteType[] {
 }
 
 @mobxReact.observer
-class AddRemoteModal extends React.Component<{}, {}> {
-    @boundMethod
-    handleModalClose() : void {
-        mobx.action(() => {
-            GlobalModel.addRemoteModalOpen.set(false);
-        })();
-    }
+class DisconnectedModal extends React.Component<{}, {}> {
+    logRef : any = React.createRef();
+    showLog : mobx.IObservableValue<boolean> = mobx.observable.box(false)
     
-    render() {
-        return (
-            <div className="sc-modal add-remote-modal modal is-active">
-                <div onClick={this.handleModalClose} className="modal-background"></div>
-                <div className="modal-content message">
-                    <div className="message-header">
-                        <p>Add Remote</p>
-                    </div>
-                    <div className="message-content">
-                        hello
-                    </div>
-                    <div className="message-footer">
-                        <button onClick={this.handleModalClose} className="button">Cancel</button>
-                        <div className="spacer"></div>
-                        <button className="button is-primary">
-                            <span className="icon">
-                                <i className="fa fa-plus"/>
-                            </span>
-                            <span>Add Remote</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-}
-
-@mobxReact.observer
-class RemoteModal extends React.Component<{}, {}> {
     @boundMethod
-    handleModalClose() : void {
-        mobx.action(() => {
-            GlobalModel.remotesModalOpen.set(false);
-        })();
+    restartServer() {
     }
 
     @boundMethod
-    handleAddRemote() : void {
+    tryReconnect() {
+        GlobalModel.ws.connectNow("manual");
+    }
+
+    componentDidMount() {
+        if (this.logRef.current != null) {
+            this.logRef.current.scrollTop = this.logRef.current.scrollHeight;
+        }
+    }
+
+    componentDidUpdate() {
+        if (this.logRef.current != null) {
+            this.logRef.current.scrollTop = this.logRef.current.scrollHeight;
+        }
+    }
+
+    @boundMethod
+    handleShowLog() : void {
         mobx.action(() => {
-            GlobalModel.addRemoteModalOpen.set(true);
+            this.showLog.set(!this.showLog.get());
         })();
     }
     
     render() {
         let model = GlobalModel;
-        let remotes = sortAndFilterRemotes(model.remotes);
-        let remote : RemoteType = null;
+        let logLine : string = null;
+        let idx : number = 0;
         return (
-            <div className="sc-modal remote-modal modal is-active">
-                <div onClick={this.handleModalClose} className="modal-background"></div>
+            <div className="sc-modal disconnected-modal modal is-active">
+                <div className="modal-background"></div>
                 <div className="modal-content message">
                     <div className="message-header">
-                        <p>Remotes</p>
+                        <p>ScriptHaus Client Disconnected</p>
                     </div>
-                    <div className="message-content">
-                        <table className="table">
-                            <thead>
-                                <tr>
-                                    <th className="status-header">Status</th>
-                                    <th>Alias</th>
-                                    <th>User@Host</th>
-                                    <th>Connect</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <For each="remote" of={remotes}>
-                                    <tr key={remote.remoteid}>
-                                        <td className="status-cell">
-                                            <div><RemoteStatusLight remote={remote}/></div>
-                                        </td>
-                                        <td>
-                                            {remote.remotealias}
-                                            <If condition={isBlank(remote.remotealias)}>
-                                                -
-                                            </If>
-                                        </td>
-                                        <td>
-                                            {remote.remotecanonicalname}
-                                        </td>
-                                        <td>
-                                            {remote.connectmode}
-                                        </td>
-                                    </tr>
+                    <If condition={this.showLog.get()}>
+                        <div className="message-content">
+                            <div className="ws-log" ref={this.logRef}>
+                                <For each="logLine" index="idx" of={GlobalModel.ws.wsLog}>
+                                    <div key={idx} className="ws-logline">{logLine}</div>
                                 </For>
-                            </tbody>
-                        </table>
-                    </div>
+                            </div>
+                        </div>
+                    </If>
                     <div className="message-footer">
-                        <button onClick={this.handleAddRemote} className="button is-primary">
+                        <div className="footer-text-link" style={{marginLeft: 10}} onClick={this.handleShowLog}>
+                            <If condition={!this.showLog.get()}>
+                                <i className="fa fa-plus"/> Show Log
+                            </If>
+                            <If condition={this.showLog.get()}>
+                                <i className="fa fa-minus"/> Hide Log
+                            </If>
+                        </div>
+                        <div className="spacer"/>
+                        <button onClick={this.tryReconnect} className="button">
                             <span className="icon">
-                                <i className="fa fa-plus"/>
+                                <i className="fa fa-refresh"/>
                             </span>
-                            <span>Add Remote</span>
+                            <span>Try Reconnect</span>
                         </button>
-                        <div className="spacer"></div>
-                        <button onClick={this.handleModalClose} className="button">Close</button>
+                        <button onClick={this.restartServer} className="button is-danger" style={{marginLeft: 10}}>
+                            <span className="icon">
+                                <i className="fa fa-exclamation-triangle"/>
+                            </span>
+                            <span>Restart Server</span>
+                        </button>
                     </div>
                 </div>
-                <button onClick={this.handleModalClose} className="modal-close is-large" aria-label="close"></button>
             </div>
         );
     }
@@ -2617,11 +2586,8 @@ class Main extends React.Component<{}, {}> {
                     <MainSideBar/>
                     <SessionView/>
                 </div>
-                <If condition={GlobalModel.addRemoteModalOpen.get()}>
-                    <AddRemoteModal/>
-                </If>
-                <If condition={GlobalModel.remotesModalOpen.get() && !GlobalModel.addRemoteModalOpen.get()}>
-                    <RemoteModal/>
+                <If condition={!GlobalModel.ws.open.get()}>
+                    <DisconnectedModal/>
                 </If>
             </div>
         );

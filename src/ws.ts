@@ -2,6 +2,7 @@ import * as mobx from "mobx";
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 import {WatchScreenPacketType} from "./types";
+import dayjs from "dayjs";
 
 class WSControl {
     wsConn : any;
@@ -13,6 +14,7 @@ class WSControl {
     messageCallback : (any) => void = null;
     watchSessionId : string = null;
     watchScreenId : string = null;
+    wsLog : mobx.IObservableArray<string> = mobx.observable.array([], {name: "wsLog"})
     
     constructor(clientId : string, messageCallback : (any) => void) {
         this.messageCallback = messageCallback;
@@ -21,19 +23,47 @@ class WSControl {
         setInterval(this.sendPing, 5000);
     }
 
-    @mobx.action
-    setOpen(val : boolean) {
-        this.open.set(val);
+    log(str : string) {
+        mobx.action(() => {
+            let ts = dayjs().format("YYYY-MM-DD HH:mm:ss");
+            this.wsLog.push("[" + ts + "] " + str);
+            if (this.wsLog.length > 50) {
+                this.wsLog.splice(0, this.wsLog.length-50);
+            }
+        })();
     }
 
-    reconnect() {
+    @mobx.action
+    setOpen(val : boolean) {
+        mobx.action(() => {
+            this.open.set(val);
+        })();
+    }
+
+    connectNow(desc : string) {
         if (this.open.get()) {
-            this.wsConn.close(); // this will force a reconnect
+            return;
+        }
+        this.log(sprintf("try reconnect (%s)", desc));
+        this.opening = true;
+        this.wsConn = new WebSocket("ws://localhost:8081/ws?clientid=" + this.clientId);
+        this.wsConn.onopen = this.onopen;
+        this.wsConn.onmessage = this.onmessage;
+        this.wsConn.onclose = this.onclose;
+        // turns out onerror is not necessary (onclose always follows onerror)
+        // this.wsConn.onerror = this.onerror;
+    }
+
+    reconnect(forceClose? : boolean) {
+        if (this.open.get()) {
+            if (forceClose) {
+                this.wsConn.close(); // this will force a reconnect
+            }
             return;
         }
         this.reconnectTimes++;
         if (this.reconnectTimes > 20) {
-            console.log("websocket cannot connect, giving up");
+            this.log("cannot connect, giving up");
             return;
         }
         let timeoutArr = [0, 0, 2, 5, 10, 10, 30, 60];
@@ -42,32 +72,22 @@ class WSControl {
             timeout = timeoutArr[this.reconnectTimes];
         }
         if (timeout > 0) {
-            console.log(sprintf("websocket reconnect(%d), sleep %ds", this.reconnectTimes, timeout));
+            this.log(sprintf("sleeping %ds", timeout));
         }
         setTimeout(() => {
-            console.log(sprintf("websocket reconnect(%d)", this.reconnectTimes));
-            this.opening = true;
-            this.wsConn = new WebSocket("ws://localhost:8081/ws?clientid=" + this.clientId);
-            this.wsConn.onopen = this.onopen;
-            this.wsConn.onmessage = this.onmessage;
-            this.wsConn.onerror = this.onerror;
-            this.wsConn.onclose = this.onclose;
+            this.connectNow(String(this.reconnectTimes));
         }, timeout*1000);
     }
 
     @boundMethod
-    onerror(event : any) {
-        console.log("websocket error", event);
-        if (this.open.get() || this.opening) {
-            this.setOpen(false);
-            this.opening = false;
-            this.reconnect();
-        }
-    }
-
-    @boundMethod
     onclose(event : any) {
-        console.log("websocket closed", event);
+        console.log("close", event);
+        if (event.wasClean) {
+            this.log("connection closed");
+        }
+        else {
+            this.log("connection error/disconnected");
+        }
         if (this.open.get() || this.opening) {
             this.setOpen(false);
             this.opening = false;
@@ -77,7 +97,7 @@ class WSControl {
 
     @boundMethod
     onopen() {
-        console.log("websocket open");
+        this.log("connection open");
         this.setOpen(true);
         this.opening = false;
         this.runMsgQueue();

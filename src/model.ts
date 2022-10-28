@@ -1525,8 +1525,6 @@ class Model {
     windows : OMap<string, Window> = mobx.observable.map({}, {name: "windows", deep: false});  // key = "sessionid/windowid"
     inputModel : InputModel;
     termUsedRowsCache : Record<string, number> = {};
-    remotesModalOpen : OV<boolean> = mobx.observable.box(false);
-    addRemoteModalOpen : OV<boolean> = mobx.observable.box(false);
     debugCmds : number = 0;
     debugSW : OV<boolean> = mobx.observable.box(false);
     
@@ -1653,7 +1651,7 @@ class Model {
     }
 
     cmdStatusUpdate(sessionId : string, cmdId : string, origStatus : string, newStatus : string) {
-        console.log("cmd status", sessionId, cmdId, origStatus, "=>", newStatus);
+        // console.log("cmd status", sessionId, cmdId, origStatus, "=>", newStatus);
         let lines = this.getActiveLinesByCmdId(sessionId, cmdId);
         for (let ptr of lines) {
             let sw = ptr.sw;
@@ -2290,7 +2288,7 @@ function cmdPacketString(pk : FeCmdPacketType) : string {
 
 let GlobalModel : Model = null;
 let GlobalCommandRunner : CommandRunner = null;
-if ((window as any).GlobalModal == null) {
+if ((window as any).GlobalModel == null) {
     (window as any).GlobalModel = new Model();
     (window as any).GlobalCommandRunner = new CommandRunner();
 }
