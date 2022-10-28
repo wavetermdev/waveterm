@@ -137,6 +137,16 @@ func (m *MServer) runCompGen(compPk *packet.CompGenPacketType) {
 	return
 }
 
+func (m *MServer) reinit(reqId string) {
+	initPk, err := shexec.MakeServerInitPacket()
+	if err != nil {
+		m.Sender.SendErrorResponse(reqId, fmt.Errorf("error creating init packet: %w", err))
+		return
+	}
+	initPk.RespId = reqId
+	m.Sender.SendPacket(initPk)
+}
+
 func (m *MServer) ProcessRpcPacket(pk packet.RpcPacketType) {
 	reqId := pk.GetReqId()
 	if cdPk, ok := pk.(*packet.CdPacketType); ok {
@@ -150,6 +160,10 @@ func (m *MServer) ProcessRpcPacket(pk packet.RpcPacketType) {
 	}
 	if compPk, ok := pk.(*packet.CompGenPacketType); ok {
 		go m.runCompGen(compPk)
+		return
+	}
+	if _, ok := pk.(*packet.ReInitPacketType); ok {
+		go m.reinit(reqId)
 		return
 	}
 	m.Sender.SendErrorResponse(reqId, fmt.Errorf("invalid rpc type '%s'", pk.GetType()))

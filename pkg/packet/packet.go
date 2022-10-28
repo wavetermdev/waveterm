@@ -79,12 +79,14 @@ func init() {
 	TypeStrToFactory[DataAckPacketStr] = reflect.TypeOf(DataAckPacketType{})
 	TypeStrToFactory[DataEndPacketStr] = reflect.TypeOf(DataEndPacketType{})
 	TypeStrToFactory[CompGenPacketStr] = reflect.TypeOf(CompGenPacketType{})
+	TypeStrToFactory[ReInitPacketStr] = reflect.TypeOf(ReInitPacketType{})
 
 	var _ RpcPacketType = (*RunPacketType)(nil)
 	var _ RpcPacketType = (*GetCmdPacketType)(nil)
 	var _ RpcPacketType = (*UntailCmdPacketType)(nil)
 	var _ RpcPacketType = (*CdPacketType)(nil)
 	var _ RpcPacketType = (*CompGenPacketType)(nil)
+	var _ RpcPacketType = (*ReInitPacketType)(nil)
 
 	var _ RpcResponsePacketType = (*CmdStartPacketType)(nil)
 	var _ RpcResponsePacketType = (*ResponsePacketType)(nil)
@@ -330,6 +332,23 @@ func (p *CdPacketType) GetReqId() string {
 
 func MakeCdPacket() *CdPacketType {
 	return &CdPacketType{Type: CdPacketStr}
+}
+
+type ReInitPacketType struct {
+	Type  string `json:"type"`
+	ReqId string `json:"reqid"`
+}
+
+func (*ReInitPacketType) GetType() string {
+	return ReInitPacketStr
+}
+
+func (p *ReInitPacketType) GetReqId() string {
+	return p.ReqId
+}
+
+func MakeReInitPacket() *ReInitPacketType {
+	return &ReInitPacketType{Type: ReInitPacketStr}
 }
 
 type CompGenPacketType struct {

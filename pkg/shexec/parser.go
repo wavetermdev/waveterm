@@ -101,6 +101,7 @@ var NoStoreVarNames = map[string]bool{
 	"HISTSIZE":              true,
 	"HISTTIMEFORMAT":        true,
 	"SRANDOM":               true,
+	"COLUMNS":               true,
 
 	// we want these in our remote state object
 	// "EUID":                  true,

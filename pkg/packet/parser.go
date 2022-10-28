@@ -169,6 +169,7 @@ func MakePacketParser(input io.Reader) *PacketParser {
 			}
 			// ##[len][json]\n
 			// ##14{"hello":true}\n
+			// ##N{...}
 			bracePos := strings.Index(line, "{")
 			if !strings.HasPrefix(line, "##") || bracePos == -1 {
 				parser.MainCh <- MakeRawPacket(line[:len(line)-1])
