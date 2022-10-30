@@ -2587,7 +2587,7 @@ class Main extends React.Component<{}, {}> {
                     <MainSideBar/>
                     <SessionView/>
                 </div>
-                <If condition={!GlobalModel.ws.open.get()}>
+                <If condition={!GlobalModel.ws.open.get() || !GlobalModel.localServerRunning.get()}>
                     <DisconnectedModal/>
                 </If>
             </div>

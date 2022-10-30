@@ -1529,13 +1529,15 @@ class Model {
     termUsedRowsCache : Record<string, number> = {};
     debugCmds : number = 0;
     debugSW : OV<boolean> = mobx.observable.box(false);
-    localServerRunning : OV<boolean> = mobx.observable.box(false);
+    localServerRunning : OV<boolean>;
     
     constructor() {
         this.clientId = getApi().getId();
         this.ws = new WSControl(this.clientId, (message : any) => this.runUpdate(message, false));
         this.ws.reconnect();
         this.inputModel = new InputModel();
+        let isLocalServerRunning = getApi().getLocalServerStatus();
+        this.localServerRunning = mobx.observable.box(isLocalServerRunning);
         getApi().onTCmd(this.onTCmd.bind(this));
         getApi().onICmd(this.onICmd.bind(this));
         getApi().onLCmd(this.onLCmd.bind(this));

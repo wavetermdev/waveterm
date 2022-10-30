@@ -2,6 +2,7 @@ let {contextBridge, ipcRenderer} = require("electron");
 
 contextBridge.exposeInMainWorld("api", {
     getId: () => ipcRenderer.sendSync("get-id"),
+    getLocalServerStatus: () => ipcRenderer.sendSync("local-server-status"),
     restartLocalServer: () => ipcRenderer.sendSync("restart-server"),
     onTCmd: (callback) => ipcRenderer.on("t-cmd", callback),
     onICmd: (callback) => ipcRenderer.on("i-cmd", callback),

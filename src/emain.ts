@@ -245,6 +245,11 @@ electron.ipcMain.on("get-id", (event) => {
     return;
 });
 
+electron.ipcMain.on("local-server-status", (event) => {
+    event.returnValue = (localServerProc != null);
+    return;
+});
+
 electron.ipcMain.on("restart-server", (event) => {
     if (localServerProc != null) {
         localServerProc.kill();
