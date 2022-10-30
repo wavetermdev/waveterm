@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/google/uuid"
@@ -364,6 +365,19 @@ func test() error {
 	return nil
 }
 
+// watch stdin, kill server if stdin is closed
+func stdinReadWatch() {
+	buf := make([]byte, 1024)
+	for {
+		_, err := os.Stdin.Read(buf)
+		if err != nil {
+			fmt.Printf("stdin closed/error, shutting down: %v\n", err)
+			time.Sleep(1 * time.Second)
+			syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+		}
+	}
+}
+
 func main() {
 	if len(os.Args) >= 2 && os.Args[1] == "--test" {
 		fmt.Printf("running test fn\n")
@@ -419,6 +433,7 @@ func main() {
 		fmt.Printf("[error] calling HUP on all running commands\n")
 	}
 
+	go stdinReadWatch()
 	go runWebSocketServer()
 	gr := mux.NewRouter()
 	gr.HandleFunc("/api/ptyout", HandleGetPtyOut)
