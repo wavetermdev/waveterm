@@ -120,6 +120,10 @@ type ShellState struct {
 	Error     string `json:"error,omitempty"`
 }
 
+func (state ShellState) IsEmpty() bool {
+	return state.Version == "" && state.Cwd == "" && len(state.ShellVars) == 0 && state.Aliases == "" && state.Funcs == "" && state.Error == ""
+}
+
 type CmdDataPacketType struct {
 	Type       string          `json:"type"`
 	RespId     string          `json:"respid"`
