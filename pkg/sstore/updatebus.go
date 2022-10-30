@@ -37,6 +37,7 @@ type ModelUpdate struct {
 	Cmd             *CmdType            `json:"cmd,omitempty"`
 	CmdLine         *CmdLineType        `json:"cmdline,omitempty"`
 	Info            *InfoMsgType        `json:"info,omitempty"`
+	ClearInfo       bool                `json:"clearinfo,omitempty"`
 	Remotes         []interface{}       `json:"remotes,omitempty"` // []*remote.RemoteState
 	History         *HistoryInfoType    `json:"history,omitempty"`
 	Interactive     bool                `json:"interactive"`

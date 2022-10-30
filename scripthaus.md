@@ -12,5 +12,5 @@ sqlite3 /Users/mike/scripthaus/sh2.db
 
 ```bash
 # @scripthaus command build
-go build -o server cmd/main-server.go
+go build -o ~/scripthaus/local-server cmd/main-server.go
 ```

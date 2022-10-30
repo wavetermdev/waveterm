@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/alessio/shellescape"
@@ -41,7 +42,7 @@ var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoins
 
 var WindowCmds = []string{"run", "comment", "cd", "cr", "clear", "sw", "alias", "unalias", "function", "reset"}
 var NoHistCmds = []string{"compgen", "line", "history"}
-var GlobalCmds = []string{"session", "screen", "remote"}
+var GlobalCmds = []string{"session", "screen", "remote", "killserver"}
 
 var hostNameRe = regexp.MustCompile("^[a-z][a-z0-9.-]*$")
 var userHostRe = regexp.MustCompile("^(sudo@)?([a-z][a-z0-9-]*)@([a-z][a-z0-9.-]*)(?::([0-9]+))?$")
@@ -112,6 +113,8 @@ func init() {
 	registerCmdFn("line:show", LineShowCommand)
 
 	registerCmdFn("history", HistoryCommand)
+
+	registerCmdFn("killserver", KillServerCommand)
 }
 
 func getValidCommands() []string {
@@ -1659,6 +1662,15 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		},
 	}
 	return update, nil
+}
+
+func KillServerCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	go func() {
+		fmt.Printf("received /killserver, shutting down\n")
+		time.Sleep(1 * time.Second)
+		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+	}()
+	return nil, nil
 }
 
 func formatTermOpts(termOpts sstore.TermOpts) string {
