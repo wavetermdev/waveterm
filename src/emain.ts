@@ -2,9 +2,19 @@ import * as electron from "electron";
 import * as path from "path";
 import * as fs from "fs";
 import fetch from "node-fetch";
+import * as child_process from "node:child_process";
 import {debounce} from "throttle-debounce";
 import {acquireSCElectronLock} from "./base";
 import {handleJsonFetchResponse} from "./util";
+
+// TODO fix these paths
+const LocalServerPath = "/Users/mike/scripthaus/local-server";
+const LocalServerCmd = `${LocalServerPath} > ~/scripthaus/local-server.log 2>&1`;
+// const LocalServerCwd = "/Users/mike/scripthaus/";
+const LocalServerCwd = "/Users/mike/work/gopath/src/github.com/scripthaus-dev/sh2-server";
+
+let localServerProc = null;
+let localServerShouldRestart = false;
 
 let app = electron.app;
 app.setName("ScriptHaus");
@@ -166,6 +176,9 @@ function createMainWindow(clientData) {
     win.webContents.on("will-navigate", shNavHandler);
     win.on("resized", debounce(400, mainResizeHandler));
     win.on("moved", debounce(400, mainResizeHandler));
+    win.on("close", () => {
+        MainWindow = null;
+    });
     return win;
 }
 
@@ -232,6 +245,19 @@ electron.ipcMain.on("get-id", (event) => {
     return;
 });
 
+electron.ipcMain.on("restart-server", (event) => {
+    if (localServerProc != null) {
+        localServerProc.kill();
+        localServerShouldRestart = true;
+        return;
+    }
+    else {
+        runLocalServer();
+    }
+    event.returnValue = true;
+    return;
+});
+
 function getContextMenu() : any {
     let menu = new electron.Menu();
     let menuItem = new electron.MenuItem({label: "Testing", click: () => console.log("click testing!")});
@@ -249,6 +275,48 @@ function getClientData() {
     }).catch((err) => {
         console.log("error getting client-data", err);
         return null;
+    });
+}
+
+function sendLSSC() {
+    if (MainWindow != null) {
+        if (localServerProc == null) {
+            MainWindow.webContents.send("local-server-status-change", false);
+            return;
+        }
+        MainWindow.webContents.send("local-server-status-change", true, localServerProc.pid);
+    }
+}
+
+function runLocalServer() {
+    console.log("trying to run local server");
+    let proc = child_process.spawn("/bin/bash", ["-c", LocalServerCmd], {
+        cwd: LocalServerCwd,
+    });
+    proc.on("exit", (e) => {
+        console.log("local-server exit", e);
+        localServerProc = null;
+        sendLSSC();
+        if (localServerShouldRestart) {
+            localServerShouldRestart = false;
+            this.runLocalServer();
+        }
+    });
+    proc.on("spawn", (e) => {
+        console.log("spawnned local-server");
+        localServerProc = proc;
+        setTimeout(() => {
+            sendLSSC();
+        }, 100);
+    });
+    proc.on("error", (e) => {
+        console.log("error running local-server", e);
+    })
+    proc.stdout.on("data", output => {
+        return;
+    });
+    proc.stderr.on("data", output => {
+        return;
     });
 }
 
@@ -270,6 +338,7 @@ async function createMainWindowWrap() {
 // ====== MAIN ====== //
 
 (async () => {
+    runLocalServer();
     await app.whenReady();
     await createMainWindowWrap();
     app.on('activate', () => {

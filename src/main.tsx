@@ -2494,6 +2494,7 @@ class DisconnectedModal extends React.Component<{}, {}> {
     
     @boundMethod
     restartServer() {
+        GlobalModel.restartLocalServer();
     }
 
     @boundMethod

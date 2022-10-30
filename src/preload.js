@@ -2,6 +2,7 @@ let {contextBridge, ipcRenderer} = require("electron");
 
 contextBridge.exposeInMainWorld("api", {
     getId: () => ipcRenderer.sendSync("get-id"),
+    restartLocalServer: () => ipcRenderer.sendSync("restart-server"),
     onTCmd: (callback) => ipcRenderer.on("t-cmd", callback),
     onICmd: (callback) => ipcRenderer.on("i-cmd", callback),
     onLCmd: (callback) => ipcRenderer.on("l-cmd", callback),
@@ -14,4 +15,5 @@ contextBridge.exposeInMainWorld("api", {
     onBracketCmd: (callback) => ipcRenderer.on("bracket-cmd", callback),
     onDigitCmd: (callback) => ipcRenderer.on("digit-cmd", callback),
     contextScreen: (screenOpts, position) => ipcRenderer.send("context-screen", screenOpts, position),
+    onLocalServerStatusChange: (callback) => ipcRenderer.on("local-server-status-change", callback),
 });

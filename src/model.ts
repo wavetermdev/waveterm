@@ -84,6 +84,7 @@ type KeyModsType = {
 
 type ElectronApi = {
     getId : () => string,
+    restartLocalServer : () => boolean,
     onTCmd : (callback : (mods : KeyModsType) => void) => void,
     onICmd : (callback : (mods : KeyModsType) => void) => void,
     onLCmd : (callback : (mods : KeyModsType) => void) => void,
@@ -95,6 +96,7 @@ type ElectronApi = {
     onBracketCmd : (callback : (event : any, arg : {relative : number}, mods : KeyModsType) => void) => void,
     onDigitCmd : (callback : (event : any, arg : {digit : number}, mods : KeyModsType) => void) => void,
     contextScreen : (screenOpts : {screenId : string}, position : {x : number, y : number}) => void,
+    onLocalServerStatusChange : (callback : (status : boolean, pid : number) => void) => void,
 };
 
 function getApi() : ElectronApi {
@@ -1527,6 +1529,7 @@ class Model {
     termUsedRowsCache : Record<string, number> = {};
     debugCmds : number = 0;
     debugSW : OV<boolean> = mobx.observable.box(false);
+    localServerRunning : OV<boolean> = mobx.observable.box(false);
     
     constructor() {
         this.clientId = getApi().getId();
@@ -1543,6 +1546,17 @@ class Model {
         getApi().onMetaPageDown(this.onMetaPageDown.bind(this));
         getApi().onBracketCmd(this.onBracketCmd.bind(this));
         getApi().onDigitCmd(this.onDigitCmd.bind(this));
+        getApi().onLocalServerStatusChange(this.onLocalServerStatusChange.bind(this));
+    }
+
+    restartLocalServer() : void {
+        getApi().restartLocalServer();
+    }
+
+    onLocalServerStatusChange(status : boolean) : void {
+        mobx.action(() => {
+            this.localServerRunning.set(status);
+        })();
     }
 
     dumpStructure() : void {
