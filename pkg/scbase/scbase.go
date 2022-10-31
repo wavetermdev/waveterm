@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"path"
 	"strconv"
@@ -17,8 +18,8 @@ import (
 const HomeVarName = "HOME"
 const ScHomeVarName = "SCRIPTHAUS_HOME"
 const SessionsDirBaseName = "sessions"
-const RemotesDirBaseName = "remotes"
 const SCLockFile = "sh2.lock"
+const ScriptHausDirName = "scripthaus"
 
 var SessionDirCache = make(map[string]string)
 var BaseLock = &sync.Mutex{}
@@ -30,13 +31,17 @@ func GetScHomeDir() string {
 		if homeVar == "" {
 			homeVar = "/"
 		}
-		scHome = path.Join(homeVar, "scripthaus")
+		scHome = path.Join(homeVar, ScriptHausDirName)
 	}
 	return scHome
 }
 
 func AcquireSCLock() (*os.File, error) {
 	homeDir := GetScHomeDir()
+	err := ensureDir(homeDir)
+	if err != nil {
+		return nil, fmt.Errorf("cannot find/create SCRIPTHAUS_HOME directory %q", homeDir)
+	}
 	lockFileName := path.Join(homeDir, SCLockFile)
 	fd, err := os.Create(lockFileName)
 	if err != nil {
@@ -79,6 +84,7 @@ func ensureDir(dirName string) error {
 		if err != nil {
 			return err
 		}
+		log.Printf("[scripthaus] created directory %q\n", dirName)
 		info, err = os.Stat(dirName)
 	}
 	if err != nil {
@@ -116,19 +122,6 @@ func RunOutFile(sessionId string, cmdId string) (string, error) {
 		return "", fmt.Errorf("cannot get runout file for blank cmdid")
 	}
 	return fmt.Sprintf("%s/%s.runout", sdir, cmdId), nil
-}
-
-func RemotePtyOut(remoteId string) (string, error) {
-	if remoteId == "" {
-		return "", fmt.Errorf("cannot get remote ptyout file for blank remoteid")
-	}
-	scHome := GetScHomeDir()
-	rdir := path.Join(scHome, RemotesDirBaseName)
-	err := ensureDir(rdir)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%s/%s.ptyout.cf", rdir, remoteId), nil
 }
 
 type ScFileNameGenerator struct {

@@ -802,7 +802,7 @@ func createClientData(tx *TxWrap) error {
 	query := `INSERT INTO client ( clientid, userid, activesessionid, userpublickeybytes, userprivatekeybytes, winsize) 
                           VALUES (:clientid,:userid,:activesessionid,:userpublickeybytes,:userprivatekeybytes,:winsize)`
 	tx.NamedExecWrap(query, c.ToMap())
-	fmt.Printf("create new clientid[%s] userid[%s] with public/private keypair\n", c.ClientId, c.UserId)
+	log.Printf("create new clientid[%s] userid[%s] with public/private keypair\n", c.ClientId, c.UserId)
 	return nil
 }
 

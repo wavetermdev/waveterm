@@ -2,6 +2,7 @@ package sstore
 
 import (
 	"fmt"
+	"log"
 	"strconv"
 
 	_ "github.com/golang-migrate/migrate/v4/database/sqlite3"
@@ -91,7 +92,7 @@ func MigratePrintVersion() error {
 	if dirty {
 		return fmt.Errorf("error db is dirty, version=%d", version)
 	}
-	fmt.Printf("[db] version=%d\n", version)
+	log.Printf("[db] version=%d\n", version)
 	return nil
 }
 

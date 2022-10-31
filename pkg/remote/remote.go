@@ -1410,7 +1410,7 @@ func (msh *MShellProc) handleDataPacket(dataPk *packet.DataPacketType, dataPosMa
 	if ack != nil {
 		msh.ServerProc.Input.SendPacket(ack)
 	}
-	// fmt.Printf("data %s fd=%d len=%d eof=%v err=%v\n", dataPk.CK, dataPk.FdNum, len(realData), dataPk.Eof, dataPk.Error)
+	// log.Printf("data %s fd=%d len=%d eof=%v err=%v\n", dataPk.CK, dataPk.FdNum, len(realData), dataPk.Eof, dataPk.Error)
 }
 
 func (msh *MShellProc) makeHandleDataPacketClosure(dataPk *packet.DataPacketType, dataPosMap map[base.CommandKey]int64) func() {

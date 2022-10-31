@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -312,7 +313,7 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 	if !resolveBool(pk.Kwargs["nohist"], false) {
 		err := addToHistory(ctx, pk, historyContext, (newPk.MetaCmd != "run"), (rtnErr != nil))
 		if err != nil {
-			fmt.Printf("[error] adding to history: %v\n", err)
+			log.Printf("[error] adding to history: %v\n", err)
 			// continue...
 		}
 	}
@@ -1005,7 +1006,7 @@ func addLineForCmd(ctx context.Context, metaCmd string, shouldFocus bool, ids re
 	sw, err := sstore.GetScreenWindowByIds(ctx, ids.SessionId, ids.ScreenId, ids.WindowId)
 	if err != nil {
 		// ignore error here, because the command has already run (nothing to do)
-		fmt.Printf("%s error getting screen-window: %v\n", metaCmd, err)
+		log.Printf("%s error getting screen-window: %v\n", metaCmd, err)
 	}
 	if sw != nil {
 		updateMap := make(map[string]interface{})
@@ -1016,7 +1017,7 @@ func addLineForCmd(ctx context.Context, metaCmd string, shouldFocus bool, ids re
 		sw, err = sstore.UpdateScreenWindow(ctx, ids.SessionId, ids.ScreenId, ids.WindowId, updateMap)
 		if err != nil {
 			// ignore error again (nothing to do)
-			fmt.Printf("%s error updating screen-window selected line: %v\n", metaCmd, err)
+			log.Printf("%s error updating screen-window selected line: %v\n", metaCmd, err)
 		}
 	}
 	update := &sstore.ModelUpdate{
@@ -1267,7 +1268,7 @@ func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	sw, err := sstore.UpdateScreenWindow(ctx, ids.SessionId, ids.ScreenId, ids.WindowId, updateMap)
 	if err != nil {
 		// ignore error again (nothing to do)
-		fmt.Printf("/comment error updating screen-window selected line: %v\n", err)
+		log.Printf("/comment error updating screen-window selected line: %v\n", err)
 	}
 	update := sstore.ModelUpdate{Line: rtnLine, ScreenWindows: []*sstore.ScreenWindowType{sw}}
 	return update, nil
@@ -1547,7 +1548,6 @@ func splitLinesForInfo(str string) []string {
 }
 
 func resizeRunningCommand(ctx context.Context, cmd *sstore.CmdType, newCols int) error {
-	fmt.Printf("resize running cmd %s/%s %d => %d\n", cmd.SessionId, cmd.CmdId, cmd.TermOpts.Cols, newCols)
 	siPk := packet.MakeSpecialInputPacket()
 	siPk.CK = base.MakeCommandKey(cmd.SessionId, cmd.CmdId)
 	siPk.WinSize = &packet.WinSize{Rows: int(cmd.TermOpts.Rows), Cols: newCols}
@@ -1666,7 +1666,7 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 
 func KillServerCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	go func() {
-		fmt.Printf("received /killserver, shutting down\n")
+		log.Printf("received /killserver, shutting down\n")
 		time.Sleep(1 * time.Second)
 		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 	}()

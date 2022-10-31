@@ -372,7 +372,7 @@ func ParseFuncs(funcs string) (map[string]string, error) {
 	for _, stmt := range file.Stmts {
 		funcName, funcVal, err := parseFuncStmt(stmt, funcs)
 		if err != nil {
-			fmt.Printf("stmt-err: %v\n", err)
+			// TODO where to put parse errors
 			continue
 		}
 		if strings.HasPrefix(funcName, "_scripthaus_") {

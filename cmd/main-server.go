@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log"
 	"net/http"
 	"os"
 	"runtime/debug"
@@ -69,7 +70,7 @@ func removeWSStateAfterTimeout(clientId string, connectTime time.Time, waitDurat
 func HandleWs(w http.ResponseWriter, r *http.Request) {
 	shell, err := wsshell.StartWS(w, r)
 	if err != nil {
-		fmt.Printf("WebSocket Upgrade Failed %T: %v\n", w, err)
+		log.Printf("WebSocket Upgrade Failed %T: %v\n", w, err)
 		return
 	}
 	defer shell.Conn.Close()
@@ -91,7 +92,7 @@ func HandleWs(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		removeWSStateAfterTimeout(clientId, stateConnectTime, WSStateReconnectTime)
 	}()
-	fmt.Printf("WebSocket opened %s %s\n", state.ClientId, shell.RemoteAddr)
+	log.Printf("WebSocket opened %s %s\n", state.ClientId, shell.RemoteAddr)
 	state.RunWSRead()
 }
 
@@ -313,7 +314,7 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 		if r == nil {
 			return
 		}
-		fmt.Printf("[error] in run-command: %v\n", r)
+		log.Printf("[error] in run-command: %v\n", r)
 		debug.PrintStack()
 		WriteJsonError(w, fmt.Errorf("panic: %v", r))
 		return
@@ -354,10 +355,10 @@ func runWebSocketServer() {
 		Handler:        gr,
 	}
 	server.SetKeepAlivesEnabled(false)
-	fmt.Printf("Running websocket server on %s\n", WebSocketServerAddr)
+	log.Printf("Running websocket server on %s\n", WebSocketServerAddr)
 	err := server.ListenAndServe()
 	if err != nil {
-		fmt.Printf("[error] trying to run websocket server: %v\n", err)
+		log.Printf("[error] trying to run websocket server: %v\n", err)
 	}
 }
 
@@ -371,7 +372,7 @@ func stdinReadWatch() {
 	for {
 		_, err := os.Stdin.Read(buf)
 		if err != nil {
-			fmt.Printf("stdin closed/error, shutting down: %v\n", err)
+			log.Printf("stdin closed/error, shutting down: %v\n", err)
 			time.Sleep(1 * time.Second)
 			syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 		}
@@ -380,57 +381,60 @@ func stdinReadWatch() {
 
 func main() {
 	if len(os.Args) >= 2 && os.Args[1] == "--test" {
-		fmt.Printf("running test fn\n")
+		log.Printf("running test fn\n")
 		err := test()
 		if err != nil {
-			fmt.Printf("[error] %v\n", err)
+			log.Printf("[error] %v\n", err)
 		}
 		return
 	}
 
+	scHomeDir := scbase.GetScHomeDir()
+	log.Printf("[scripthaus] homedir = %q\n", scHomeDir)
+
 	scLock, err := scbase.AcquireSCLock()
 	if err != nil || scLock == nil {
-		fmt.Printf("[error] cannot acquire sh2 lock: %v\n", err)
+		log.Printf("[error] cannot acquire sh2 lock: %v\n", err)
 		return
 	}
 
 	if len(os.Args) >= 2 && strings.HasPrefix(os.Args[1], "--migrate") {
 		err := sstore.MigrateCommandOpts(os.Args[1:])
 		if err != nil {
-			fmt.Printf("[error] migrate cmd: %v\n", err)
+			log.Printf("[error] migrate cmd: %v\n", err)
 		}
 		return
 	}
 	err = sstore.TryMigrateUp()
 	if err != nil {
-		fmt.Printf("[error] migrate up: %v\n", err)
+		log.Printf("[error] migrate up: %v\n", err)
 		return
 	}
 	clientData, err := sstore.EnsureClientData(context.Background())
 	if err != nil {
-		fmt.Printf("[error] ensuring client data: %v\n", err)
+		log.Printf("[error] ensuring client data: %v\n", err)
 		return
 	}
-	fmt.Printf("userid = %s\n", clientData.UserId)
+	log.Printf("userid = %s\n", clientData.UserId)
 	err = sstore.EnsureLocalRemote(context.Background())
 	if err != nil {
-		fmt.Printf("[error] ensuring local remote: %v\n", err)
+		log.Printf("[error] ensuring local remote: %v\n", err)
 		return
 	}
 	_, err = sstore.EnsureDefaultSession(context.Background())
 	if err != nil {
-		fmt.Printf("[error] ensuring default session: %v\n", err)
+		log.Printf("[error] ensuring default session: %v\n", err)
 		return
 	}
 	err = remote.LoadRemotes(context.Background())
 	if err != nil {
-		fmt.Printf("[error] loading remotes: %v\n", err)
+		log.Printf("[error] loading remotes: %v\n", err)
 		return
 	}
 
 	err = sstore.HangupAllRunningCmds(context.Background())
 	if err != nil {
-		fmt.Printf("[error] calling HUP on all running commands\n")
+		log.Printf("[error] calling HUP on all running commands\n")
 	}
 
 	go stdinReadWatch()
@@ -451,9 +455,9 @@ func main() {
 		Handler:        http.TimeoutHandler(gr, HttpTimeoutDuration, "Timeout"),
 	}
 	server.SetKeepAlivesEnabled(false)
-	fmt.Printf("Running main server on %s\n", MainServerAddr)
+	log.Printf("Running main server on %s\n", MainServerAddr)
 	err = server.ListenAndServe()
 	if err != nil {
-		fmt.Printf("ERROR: %v\n", err)
+		log.Printf("ERROR: %v\n", err)
 	}
 }

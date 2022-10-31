@@ -733,7 +733,6 @@ func HangupRunningCmdsByRemoteId(ctx context.Context, remoteId string) error {
 }
 
 func getNextId(ids []string, delId string) string {
-	fmt.Printf("getnextid %v | %v\n", ids, delId)
 	if len(ids) == 0 {
 		return ""
 	}
@@ -779,7 +778,6 @@ func DeleteScreen(ctx context.Context, sessionId string, screenId string) (Updat
 	var newActiveScreenId string
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		isActive := tx.Exists(`SELECT sessionid FROM session WHERE sessionid = ? AND activescreenid = ?`, sessionId, screenId)
-		fmt.Printf("delete-screen %s %s | %v\n", sessionId, screenId, isActive)
 		if isActive {
 			screenIds := tx.SelectStrings(`SELECT screenid FROM screen WHERE sessionid = ? ORDER BY screenidx`, sessionId)
 			nextId := getNextId(screenIds, screenId)

@@ -2,6 +2,7 @@ package sstore
 
 import (
 	"fmt"
+	"log"
 	"sync"
 )
 
@@ -180,7 +181,7 @@ func (bus *UpdateBus) SendUpdate(sessionId string, update interface{}) {
 			case uch.Ch <- update:
 
 			default:
-				fmt.Printf("[error] dropped update on updatebus uch clientid=%s\n", uch.ClientId)
+				log.Printf("[error] dropped update on updatebus uch clientid=%s\n", uch.ClientId)
 			}
 		}
 	}

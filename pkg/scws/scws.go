@@ -3,6 +3,7 @@ package scws
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -85,7 +86,7 @@ func (ws *WSState) UnWatchScreen() {
 	sstore.MainBus.UnregisterChannel(ws.ClientId)
 	ws.SessionId = ""
 	ws.ScreenId = ""
-	fmt.Printf("[ws] unwatch screen clientid=%s\n", ws.ClientId)
+	log.Printf("[ws] unwatch screen clientid=%s\n", ws.ClientId)
 }
 
 func (ws *WSState) getUpdateCh() chan interface{} {
@@ -154,10 +155,10 @@ func (ws *WSState) handleWatchScreen(wsPk *scpacket.WatchScreenPacketType) error
 		ws.UnWatchScreen()
 	} else {
 		ws.WatchScreen(wsPk.SessionId, wsPk.ScreenId)
-		fmt.Printf("[ws %s] watchscreen %s/%s\n", ws.ClientId, wsPk.SessionId, wsPk.ScreenId)
+		log.Printf("[ws %s] watchscreen %s/%s\n", ws.ClientId, wsPk.SessionId, wsPk.ScreenId)
 	}
 	if wsPk.Connect {
-		fmt.Printf("[ws %s] watchscreen connect\n", ws.ClientId)
+		log.Printf("[ws %s] watchscreen connect\n", ws.ClientId)
 		err := ws.handleConnection()
 		if err != nil {
 			return fmt.Errorf("connect: %w", err)
@@ -175,24 +176,24 @@ func (ws *WSState) RunWSRead() {
 	for msgBytes := range shell.ReadChan {
 		pk, err := packet.ParseJsonPacket(msgBytes)
 		if err != nil {
-			fmt.Printf("error unmarshalling ws message: %v\n", err)
+			log.Printf("error unmarshalling ws message: %v\n", err)
 			continue
 		}
 		if pk.GetType() == scpacket.FeInputPacketStr {
 			feInputPk := pk.(*scpacket.FeInputPacketType)
 			if feInputPk.Remote.OwnerId != "" {
-				fmt.Printf("[error] cannot send input to remote with ownerid\n")
+				log.Printf("[error] cannot send input to remote with ownerid\n")
 				continue
 			}
 			if feInputPk.Remote.RemoteId == "" {
-				fmt.Printf("[error] invalid input packet, remoteid is not set\n")
+				log.Printf("[error] invalid input packet, remoteid is not set\n")
 				continue
 			}
 			go func() {
 				// TODO enforce a strong ordering (channel with list)
 				err = sendCmdInput(feInputPk)
 				if err != nil {
-					fmt.Printf("[error] sending command input: %v\n", err)
+					log.Printf("[error] sending command input: %v\n", err)
 				}
 			}()
 			continue
@@ -202,25 +203,25 @@ func (ws *WSState) RunWSRead() {
 			err := ws.handleWatchScreen(wsPk)
 			if err != nil {
 				// TODO send errors back to client, likely unrecoverable
-				fmt.Printf("[ws %s] error %v\n", err)
+				log.Printf("[ws %s] error %v\n", err)
 			}
 			continue
 		}
 		if pk.GetType() == scpacket.RemoteInputPacketStr {
 			inputPk := pk.(*scpacket.RemoteInputPacketType)
 			if inputPk.RemoteId == "" {
-				fmt.Printf("[error] invalid remoteinput packet, remoteid is not set\n")
+				log.Printf("[error] invalid remoteinput packet, remoteid is not set\n")
 				continue
 			}
 			go func() {
 				err = remote.SendRemoteInput(inputPk)
 				if err != nil {
-					fmt.Printf("[error] processing remote input: %v\n", err)
+					log.Printf("[error] processing remote input: %v\n", err)
 				}
 			}()
 			continue
 		}
-		fmt.Printf("got ws bad message: %v\n", pk.GetType())
+		log.Printf("got ws bad message: %v\n", pk.GetType())
 	}
 }
 
