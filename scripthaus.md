@@ -35,3 +35,10 @@ node_modules/.bin/webpack-dev-server --config webpack.dev.js --host 0.0.0.0
 # @scripthaus cd :playbook
 node_modules/.bin/tsc --jsx preserve --noEmit --esModuleInterop --target ES5 --experimentalDecorators --downlevelIteration src/sh2.ts
 ```
+
+```bash
+# @scripthaus command build-js
+# @scripthaus cd :playbook
+node_modules/.bin/webpack --config webpack.dev.js
+node_modules/.bin/webpack --config webpack.electron.js
+```
