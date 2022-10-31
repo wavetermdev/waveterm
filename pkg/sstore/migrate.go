@@ -2,27 +2,28 @@ package sstore
 
 import (
 	"fmt"
-	"os"
-	"path"
 	"strconv"
 
 	_ "github.com/golang-migrate/migrate/v4/database/sqlite3"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	_ "github.com/mattn/go-sqlite3"
+	sh2db "github.com/scripthaus-dev/sh2-server/db"
 
 	"github.com/golang-migrate/migrate/v4"
 )
 
 func MakeMigrate() (*migrate.Migrate, error) {
-	wd, err := os.Getwd()
+	fsVar, err := iofs.New(sh2db.MigrationFS, "migrations")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("opening iofs: %w", err)
 	}
-	migrationPathUrl := fmt.Sprintf("file://%s", path.Join(wd, "db", "migrations"))
+	// migrationPathUrl := fmt.Sprintf("file://%s", path.Join(wd, "db", "migrations"))
 	dbUrl := fmt.Sprintf("sqlite3://%s", GetSessionDBName())
-	m, err := migrate.New(migrationPathUrl, dbUrl)
+	m, err := migrate.NewWithSourceInstance("iofs", fsVar, dbUrl)
+	// m, err := migrate.New(migrationPathUrl, dbUrl)
 	if err != nil {
-		return nil, fmt.Errorf("making migration [%s] db[%s]: %w", migrationPathUrl, GetSessionDBName(), err)
+		return nil, fmt.Errorf("making migration db[%s]: %w", GetSessionDBName(), err)
 	}
 	return m, nil
 }
