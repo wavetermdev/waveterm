@@ -1,12 +1,13 @@
 {
   "name": "sh2",
   "version": "1.0.0",
-  "main": "emain.js",
+  "main": "dist/emain-dev.js",
   "license": "Proprietary",
   "dependencies": {
     "autobind-decorator": "^2.4.0",
     "classnames": "^2.3.1",
     "dayjs": "^1.11.3",
+    "electron-squirrel-startup": "^1.0.0",
     "fs-ext": "^2.0.0",
     "mobx": "^6.6.0",
     "mobx-react": "^7.5.0",
@@ -17,6 +18,7 @@
     "throttle-debounce": "^5.0.0",
     "tsx-control-statements": "^4.1.1",
     "uuid": "^9.0.0",
+    "winston": "^3.8.2",
     "xterm": "^5.0.0"
   },
   "devDependencies": {
@@ -28,7 +30,11 @@
     "@babel/preset-env": "^7.18.2",
     "@babel/preset-react": "^7.17.12",
     "@babel/preset-typescript": "^7.17.12",
-    "@electron-forge/cli": "^6.0.0-beta.64",
+    "@electron-forge/cli": "^6.0.0-beta.70",
+    "@electron-forge/maker-deb": "^6.0.0-beta.70",
+    "@electron-forge/maker-rpm": "^6.0.0-beta.70",
+    "@electron-forge/maker-squirrel": "^6.0.0-beta.70",
+    "@electron-forge/maker-zip": "^6.0.0-beta.70",
     "@types/classnames": "^2.3.1",
     "@types/electron": "^1.6.10",
     "@types/node": "^18.0.3",
@@ -52,5 +58,10 @@
     "webpack-cli": "^4.9.2",
     "webpack-dev-server": "^4.9.1",
     "webpack-merge": "^5.8.0"
+  },
+  "scripts": {
+    "start": "electron-forge start",
+    "package": "electron-forge package",
+    "make": "electron-forge make"
   }
 }

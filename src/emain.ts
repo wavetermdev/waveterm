@@ -6,6 +6,34 @@ import * as child_process from "node:child_process";
 import {debounce} from "throttle-debounce";
 import {acquireSCElectronLock} from "./base";
 import {handleJsonFetchResponse} from "./util";
+import * as winston from "winston";
+import * as util from "util";
+import {sprintf} from "sprintf-js";
+
+let isDev = (process.env.SH_DEV != null);
+let scHome = getScHomeDir();
+ensureDir(scHome);
+
+let logger;
+let loggerConfig = {
+    level: "info",
+    format: winston.format.combine(
+        winston.format.timestamp({format: "YYYY-MM-DD HH:mm:ss"}),
+        winston.format.printf(info => `${info.timestamp} ${info.message}`),
+    ),
+    transports: [
+        new winston.transports.File({filename: path.join(scHome, "scripthaus-app.log"), level: "info"}),
+    ],
+};
+if (isDev) {
+    loggerConfig.transports.push(new winston.transports.Console());
+}
+logger = winston.createLogger(loggerConfig);
+function log(...msg) {
+    logger.info(util.format(...msg));
+}
+console.log = log;
+console.log(sprintf("scripthaus-app starting, SCRIPTHAUS_HOME=%s, dirname=%s", scHome, __dirname));
 
 // TODO fix these paths
 const LocalServerPath = "/Users/mike/scripthaus/local-server";
@@ -15,6 +43,23 @@ const LocalServerCwd = "/Users/mike/work/gopath/src/github.com/scripthaus-dev/sh
 
 let localServerProc = null;
 let localServerShouldRestart = false;
+
+// must match golang
+function getScHomeDir() {
+    let scHome = process.env.SCRIPTHAUS_HOME;
+    if (scHome == null) {
+        let homeDir = process.env.HOME;
+        if (homeDir == null) {
+            homeDir = "/";
+        }
+        scHome = path.join(homeDir, "scripthaus");
+    }
+    return scHome;
+}
+
+function ensureDir(dir) {
+    fs.mkdirSync(dir, {recursive: true, mode: 0o700});
+}
 
 let app = electron.app;
 app.setName("ScriptHaus");
@@ -52,7 +97,6 @@ let menu = electron.Menu.buildFromTemplate(menuTemplate);
 electron.Menu.setApplicationMenu(menu);
 
 let MainWindow = null;
-let RemotesWindow = null;
 
 function getMods(input : any) {
     return {meta: input.meta, shift: input.shift, ctrl: input.ctrl, alt: input.alt};
@@ -61,31 +105,6 @@ function getMods(input : any) {
 function shNavHandler(event : any, url : any) {
     console.log("navigation", url);
     event.preventDefault();
-    if (url == "file:///remotes.html") {
-        createRemotesWindow();
-    }
-}
-
-function createRemotesWindow() {
-    if (RemotesWindow != null) {
-        console.log("remotes exists");
-        RemotesWindow.focus();
-        return;
-    }
-    console.log("create remotes window");
-    let win = new electron.BrowserWindow({
-        width: 800,
-        height: 600,
-        webPreferences: {
-            preload: path.join(__dirname, "../src/preload.js"),
-        },
-    });
-    RemotesWindow = win;
-    win.loadFile("../static/remotes.html");
-    win.on("close", () => {
-        RemotesWindow = null;
-    });
-    win.webContents.on("will-navigate", shNavHandler);
 }
 
 function createMainWindow(clientData) {
@@ -99,7 +118,7 @@ function createMainWindow(clientData) {
             preload: path.join(__dirname, "../src/preload.js"),
         },
     });
-    win.loadFile("../static/index.html");
+    win.loadFile(path.join(__dirname, "../static/index.html"));
     win.webContents.on("before-input-event", (e, input) => {
         if (input.type != "keyDown") {
             return;
@@ -130,11 +149,6 @@ function createMainWindow(clientData) {
             win.webContents.send("w-cmd", mods);
             return;
         }
-        //if (input.code == "KeyR" && input.meta && input.alt) {
-        //    createRemotesWindow();
-        //    e.preventDefault();
-        //    return;
-        //}
         if (input.code == "KeyH" && input.meta) {
             win.webContents.send("h-cmd", mods);
             e.preventDefault();

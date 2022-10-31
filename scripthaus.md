@@ -21,7 +21,7 @@ node_modules/.bin/electron-rebuild
 ```bash
 # @scripthaus command electron
 # @scripthaus cd :playbook
-node_modules/.bin/electron dist/emain-dev.js
+SH_DEV=1 node_modules/.bin/electron dist/emain-dev.js
 ```
 
 ```bash
