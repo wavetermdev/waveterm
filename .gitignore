@@ -4,3 +4,4 @@ node_modules/
 *.log
 out/
 .DS_Store
+bin

@@ -115,7 +115,7 @@ function createMainWindow(clientData) {
         width: bounds.width,
         height: bounds.height,
         webPreferences: {
-            preload: path.join(__dirname, "../src/preload.js"),
+            preload: path.join(__dirname, "../dist/preload.js"),
         },
     });
     win.loadFile(path.join(__dirname, "../static/index.html"));

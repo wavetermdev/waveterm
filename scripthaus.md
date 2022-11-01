@@ -7,9 +7,22 @@ node_modules/.bin/webpack --watch --config webpack.dev.js
 ```
 
 ```bash
+# @scripthaus command webpack-build
+# @scripthaus cd :playbook
+node_modules/.bin/webpack --config webpack.dev.js
+```
+
+
+```bash
 # @scripthaus command webpack-electron-watch
 # @scripthaus cd :playbook
 node_modules/.bin/webpack --watch --config webpack.electron.js
+```
+
+```bash
+# @scripthaus command webpack-electron-build
+# @scripthaus cd :playbook
+node_modules/.bin/webpack --config webpack.electron.js
 ```
 
 ```bash
@@ -37,8 +50,9 @@ node_modules/.bin/tsc --jsx preserve --noEmit --esModuleInterop --target ES5 --e
 ```
 
 ```bash
-# @scripthaus command build-js
+# @scripthaus command build-package
 # @scripthaus cd :playbook
 node_modules/.bin/webpack --config webpack.dev.js
 node_modules/.bin/webpack --config webpack.electron.js
+node_modules/.bin/electron-forge make
 ```

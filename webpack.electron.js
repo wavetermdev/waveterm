@@ -1,4 +1,5 @@
 const path = require("path");
+const CopyPlugin = require("copy-webpack-plugin");
 
 module.exports = {
     mode: "development",
@@ -45,6 +46,11 @@ module.exports = {
             },
         ]
     },
+    plugins: [
+        new CopyPlugin({
+            patterns: [{from: "src/preload.js", to: "preload.js"}],
+        }),
+    ],
     resolve: {
         extensions: ['.ts', '.tsx', '.js']
     },

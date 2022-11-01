@@ -1,5 +1,54 @@
+var AllowedFirstParts = {
+    "package.json": true,
+    "dist": true,
+    "static": true,
+    "node_modules": true,
+};
+
+var AllowedNodeModules = {
+    "lzma-native": true,
+    "fs-ext": true,
+    "fsevents": true,
+};
+
+var modCache = {};
+
+function ignoreFn(path) {
+    let parts = path.split("/");
+    if (parts.length <= 1) {
+        return false;
+    }
+    let firstPart = parts[1];
+    if (!AllowedFirstParts[firstPart]) {
+        return true;
+    }
+    if (firstPart == "node_modules") {
+        if (parts.length <= 2) {
+            return false;
+        }
+        let nodeModule = parts[2];
+        if (!modCache[nodeModule]) {
+            modCache[nodeModule] = true;
+        }
+        if (!AllowedNodeModules[nodeModule]) {
+            return true;
+        }
+    }
+    return false;
+}
+
 module.exports = {
-  packagerConfig: {},
+    packagerConfig: {
+        ignore: ignoreFn,
+        files: [
+            "package.json",
+            "dist/*",
+            "static/*",
+            "node_modules/lzma-native/**",
+            "node_modules/fs-ext/**",
+            "node_modules/fsevents/**",
+        ],
+    },
   rebuildConfig: {},
   makers: [
     {

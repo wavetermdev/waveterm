@@ -57,7 +57,7 @@ module.exports = {
         ]
     },
     plugins: [
-        new MiniCssExtractPlugin({filename: "[name].css", ignoreOrder: true})
+        new MiniCssExtractPlugin({filename: "[name].css", ignoreOrder: true}),
     ],
     resolve: {
         extensions: ['.ts', '.tsx', '.js', '.mjs', '.cjs', '.wasm', '.json', '.less', '.css']
