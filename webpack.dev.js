@@ -7,6 +7,10 @@ const VERSION = "v0.1.0";
 
 var merged = merge.merge(common, {
     mode: "development",
+    output: {
+        path: path.resolve(__dirname, "dist-dev"),
+        filename: "[name].js",
+    },
     devtool: "source-map",
     devServer: {
         static: {
@@ -23,6 +27,7 @@ var merged = merge.merge(common, {
 });
 
 var definePlugin = new webpack.DefinePlugin({
+    __SHDEV__: "true",
     __SHVERSION__: JSON.stringify(VERSION),
     __SHBUILD__: JSON.stringify("devbuild"),
 });

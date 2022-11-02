@@ -1,7 +1,7 @@
 {
   "name": "ScriptHaus",
   "version": "1.0.0",
-  "main": "dist/emain-dev.js",
+  "main": "dist/emain.js",
   "license": "Proprietary",
   "dependencies": {
     "autobind-decorator": "^2.4.0",

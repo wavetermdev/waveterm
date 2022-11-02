@@ -3,6 +3,7 @@ var AllowedFirstParts = {
     "dist": true,
     "static": true,
     "node_modules": true,
+    "bin": true,
 };
 
 var AllowedNodeModules = {

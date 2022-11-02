@@ -10,9 +10,18 @@ import * as winston from "winston";
 import * as util from "util";
 import {sprintf} from "sprintf-js";
 
+const ScriptHausAppPathVarName = "SCRIPTHAUS_APP_PATH";
 let isDev = (process.env.SH_DEV != null);
 let scHome = getScHomeDir();
 ensureDir(scHome);
+
+// these are either "darwin/amd64" or "darwin/arm64"
+// normalize darwin/x64 to darwin/amd64 for GOARCH compatibility
+let unamePlatform = process.platform;
+let unameArch = process.arch;
+if (unameArch == "x64") {
+    unameArch = "amd64"
+}
 
 let logger;
 let loggerConfig = {
@@ -33,14 +42,9 @@ function log(...msg) {
     logger.info(util.format(...msg));
 }
 console.log = log;
-console.log(sprintf("scripthaus-app starting, SCRIPTHAUS_HOME=%s, dirname=%s", scHome, __dirname));
+console.log(sprintf("scripthaus-app starting, SCRIPTHAUS_HOME=%s, apppath=%s arch=%s/%s", scHome, getAppBasePath(), unamePlatform, unameArch));
 
-// TODO fix these paths
-const LocalServerPath = "/Users/mike/scripthaus/local-server";
-const LocalServerCmd = `${LocalServerPath} > ~/scripthaus/local-server.log 2>&1`;
-// const LocalServerCwd = "/Users/mike/scripthaus/";
-const LocalServerCwd = "/Users/mike/work/gopath/src/github.com/scripthaus-dev/sh2-server";
-
+const DevLocalServerPath = "/Users/mike/scripthaus/local-server";
 let localServerProc = null;
 let localServerShouldRestart = false;
 
@@ -54,6 +58,31 @@ function getScHomeDir() {
         }
         scHome = path.join(homeDir, "scripthaus");
     }
+    return scHome;
+}
+
+// for dev, this is just the github.com/scripthaus-dev/sh2 directory
+// for prod, this is .../ScriptHaus.app/Contents/Resources/app
+function getAppBasePath() {
+    return path.dirname(__dirname);
+}
+
+function getLocalServerPath() {
+    if (isDev) {
+        return DevLocalServerPath
+    }
+    return path.join(getAppBasePath(), "bin", "scripthaus-local-server");
+}
+
+function getLocalServerCmd() {
+    let localServerPath = getLocalServerPath();
+    let scHome = getScHomeDir();
+    let logFile = path.join(scHome, "local-server.log");
+    return `${localServerPath} > ${logFile} 2>&1`;
+}
+
+function getLocalServerCwd() {
+    let scHome = getScHomeDir();
     return scHome;
 }
 
@@ -115,10 +144,10 @@ function createMainWindow(clientData) {
         width: bounds.width,
         height: bounds.height,
         webPreferences: {
-            preload: path.join(__dirname, "../dist/preload.js"),
+            preload: path.join(getAppBasePath(), "dist", "preload.js"),
         },
     });
-    win.loadFile(path.join(__dirname, "../static/index.html"));
+    win.loadFile(path.join(getAppBasePath(), "static", "index.html"));
     win.webContents.on("before-input-event", (e, input) => {
         if (input.type != "keyDown") {
             return;
@@ -308,14 +337,24 @@ function sendLSSC() {
 }
 
 function runLocalServer() {
-    console.log("trying to run local server");
-    let proc = child_process.spawn("/bin/bash", ["-c", LocalServerCmd], {
-        cwd: LocalServerCwd,
+    let pResolve = null;
+    let pReject = null;
+    let rtnPromise = new Promise((argResolve, argReject) => {
+        pResolve = argResolve;
+        pReject = argReject;
+    });
+    let envCopy = Object.assign({}, process.env);
+    envCopy[ScriptHausAppPathVarName] = getAppBasePath();
+    console.log("trying to run local server", getLocalServerPath());
+    let proc = child_process.spawn("/bin/bash", ["-c", getLocalServerCmd()], {
+        cwd: getLocalServerCwd(),
+        env: envCopy,
     });
     proc.on("exit", (e) => {
         console.log("local-server exit", e);
         localServerProc = null;
         sendLSSC();
+        pReject(new Error(sprintf("failed to start local server (%s)", getLocalServerPath())));
         if (localServerShouldRestart) {
             localServerShouldRestart = false;
             this.runLocalServer();
@@ -324,6 +363,7 @@ function runLocalServer() {
     proc.on("spawn", (e) => {
         console.log("spawnned local-server");
         localServerProc = proc;
+        pResolve(true);
         setTimeout(() => {
             sendLSSC();
         }, 100);
@@ -337,6 +377,7 @@ function runLocalServer() {
     proc.stderr.on("data", output => {
         return;
     });
+    return rtnPromise;
 }
 
 electron.ipcMain.on("context-screen", (event, {screenId}, {x, y}) => {
@@ -346,18 +387,34 @@ electron.ipcMain.on("context-screen", (event, {screenId}, {x, y}) => {
 });
 
 async function createMainWindowWrap() {
-    let clientData = await getClientData();
+    let clientData = null;
+    try {
+        clientData = await getClientData();
+    }
+    catch (e) {
+        console.log("error getting local-server clientdata", e.toString());
+    }
     MainWindow = createMainWindow(clientData);
     if (clientData && clientData.winsize.fullscreen) {
         MainWindow.setFullScreen(true);
     }
 }
 
+async function sleep(ms) {
+    return new Promise((resolve, reject) => setTimeout(resolve, ms));
+}
+
 
 // ====== MAIN ====== //
 
 (async () => {
-    runLocalServer();
+    try {
+        await runLocalServer();
+    }
+    catch (e) {
+        console.log(e.toString());
+    }
+    await sleep(500);  // TODO remove this sleep, poll getClientData() in createMainWindow
     await app.whenReady();
     await createMainWindowWrap();
     app.on('activate', () => {

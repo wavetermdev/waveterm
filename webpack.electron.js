@@ -8,8 +8,8 @@ module.exports = {
     },
     target: "electron-main",
     output: {
-        path: path.resolve(__dirname, "dist"),
-        filename: "[name]-dev.js"
+        path: path.resolve(__dirname, "dist-dev"),
+        filename: "[name].js"
     },
     externals: {
         "fs": "require('fs')",

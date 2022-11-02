@@ -1,4 +1,5 @@
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const LodashModuleReplacementPlugin = require('lodash-webpack-plugin');
 const path = require("path");
 
 module.exports = {
@@ -8,7 +9,7 @@ module.exports = {
     },
     output: {
         path: path.resolve(__dirname, "dist"),
-        filename: "[name]-dev.js"
+        filename: "[name].js",
     },
     module: {
         rules: [
@@ -58,6 +59,7 @@ module.exports = {
     },
     plugins: [
         new MiniCssExtractPlugin({filename: "[name].css", ignoreOrder: true}),
+        new LodashModuleReplacementPlugin(),
     ],
     resolve: {
         extensions: ['.ts', '.tsx', '.js', '.mjs', '.cjs', '.wasm', '.json', '.less', '.css']
