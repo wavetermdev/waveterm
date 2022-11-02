@@ -85,6 +85,8 @@ const RunCommandFmt = `%s`
 const RunSudoCommandFmt = `sudo -n -C %d bash /dev/fd/%d`
 const RunSudoPasswordCommandFmt = `cat /dev/fd/%d | sudo -k -S -C %d bash -c "echo '[from-mshell]'; exec %d>&-; bash /dev/fd/%d < /dev/fd/%d"`
 
+type MShellBinaryReaderFn func(version string, goos string, goarch string) (io.ReadCloser, error)
+
 type ReturnStateBuf struct {
 	Lock   *sync.Mutex
 	Buf    []byte
@@ -284,7 +286,7 @@ func MakeDetachedExecCmd(pk *packet.RunPacketType, cmdTty *os.File) (*exec.Cmd, 
 		ecmd.Env = os.Environ()
 	}
 	UpdateCmdEnv(ecmd, EnvMapFromState(state))
-	UpdateCmdEnv(ecmd, map[string]string{"TERM": getTermType(pk)})
+	UpdateCmdEnv(ecmd, MShellEnvVars(getTermType(pk)))
 	if state.Cwd != "" {
 		ecmd.Dir = base.ExpandHomeDir(state.Cwd)
 	}
@@ -673,19 +675,14 @@ func ValidateRemoteFds(rfds []packet.RemoteFd) error {
 	return nil
 }
 
-func sendOptFile(input io.WriteCloser, optName string) error {
-	fd, err := os.Open(optName)
-	if err != nil {
-		return fmt.Errorf("cannot open '%s': %w", optName, err)
-	}
+func sendMShellBinary(input io.WriteCloser, mshellStream io.Reader) {
 	go func() {
 		defer input.Close()
-		io.Copy(input, fd)
+		io.Copy(input, mshellStream)
 	}()
-	return nil
 }
 
-func RunInstallFromCmd(ctx context.Context, ecmd *exec.Cmd, tryDetect bool, optName string, msgFn func(string)) error {
+func RunInstallFromCmd(ctx context.Context, ecmd *exec.Cmd, tryDetect bool, mshellStream io.Reader, mshellReaderFn MShellBinaryReaderFn, msgFn func(string)) error {
 	inputWriter, err := ecmd.StdinPipe()
 	if err != nil {
 		return fmt.Errorf("creating stdin pipe: %v", err)
@@ -701,11 +698,8 @@ func RunInstallFromCmd(ctx context.Context, ecmd *exec.Cmd, tryDetect bool, optN
 	go func() {
 		io.Copy(os.Stderr, stderrReader)
 	}()
-	if optName != "" {
-		err = sendOptFile(inputWriter, optName)
-		if err != nil {
-			return fmt.Errorf("cannot send mshell binary: %v", err)
-		}
+	if mshellStream != nil {
+		sendMShellBinary(inputWriter, mshellStream)
 	}
 	packetParser := packet.MakePacketParser(stdoutReader)
 	err = ecmd.Start()
@@ -736,11 +730,12 @@ func RunInstallFromCmd(ctx context.Context, ecmd *exec.Cmd, tryDetect bool, optN
 			}
 			msgStr := fmt.Sprintf("mshell detected remote architecture as '%s.%s'\n", goos, goarch)
 			msgFn(msgStr)
-			optName := base.GoArchOptFile(base.MShellVersion, goos, goarch)
-			err = sendOptFile(inputWriter, optName)
+			detectedMSS, err := mshellReaderFn(base.MShellVersion, goos, goarch)
 			if err != nil {
-				return fmt.Errorf("cannot send mshell binary: %v", err)
+				return err
 			}
+			defer detectedMSS.Close()
+			sendMShellBinary(inputWriter, detectedMSS)
 			continue
 		}
 		if pk.GetType() == packet.InitPacketStr && !firstInit {
@@ -768,7 +763,15 @@ func RunInstallFromOpts(opts *InstallOpts) error {
 	msgFn := func(str string) {
 		fmt.Printf("%s", str)
 	}
-	err = RunInstallFromCmd(context.Background(), ecmd, opts.Detect, opts.OptName, msgFn)
+	var mshellStream *os.File
+	if opts.OptName != "" {
+		mshellStream, err = os.Open(opts.OptName)
+		if err != nil {
+			return fmt.Errorf("cannot open mshell binary %q: %v", opts.OptName, err)
+		}
+		defer mshellStream.Close()
+	}
+	err = RunInstallFromCmd(context.Background(), ecmd, opts.Detect, mshellStream, base.MShellBinaryFromOptDir, msgFn)
 	if err != nil {
 		return err
 	}
@@ -1070,7 +1073,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 			cmdTty.Close()
 		}()
 		cmd.CmdPty = cmdPty
-		UpdateCmdEnv(cmd.Cmd, map[string]string{"TERM": getTermType(pk)})
+		UpdateCmdEnv(cmd.Cmd, MShellEnvVars(getTermType(pk)))
 	}
 	if cmdTty != nil {
 		cmd.Cmd.Stdin = cmdTty
@@ -1407,7 +1410,7 @@ func getStderr(err error) string {
 
 func runSimpleCmdInPty(ecmd *exec.Cmd) ([]byte, error) {
 	ecmd.Env = os.Environ()
-	UpdateCmdEnv(ecmd, map[string]string{"TERM": DefaultTermType})
+	UpdateCmdEnv(ecmd, MShellEnvVars(DefaultTermType))
 	cmdPty, cmdTty, err := pty.Open()
 	if err != nil {
 		return nil, fmt.Errorf("opening new pty: %w", err)
@@ -1455,4 +1458,14 @@ func GetShellState() (*packet.ShellState, error) {
 		return nil, err
 	}
 	return ParseShellStateOutput(outputBytes)
+}
+
+func MShellEnvVars(termType string) map[string]string {
+	rtn := make(map[string]string)
+	if termType != "" {
+		rtn["TERM"] = termType
+	}
+	rtn["MSHELL"], _ = os.Executable()
+	rtn["MSHELL_VERSION"] = base.MShellVersion
+	return rtn
 }

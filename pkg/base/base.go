@@ -245,6 +245,22 @@ func GoArchOptFile(version string, goos string, goarch string) string {
 	return fmt.Sprintf(path.Join(installBinDir, binBaseName))
 }
 
+func MShellBinaryFromOptDir(version string, goos string, goarch string) (io.ReadCloser, error) {
+	if !ValidGoArch(goos, goarch) {
+		return nil, fmt.Errorf("invalid goos/goarch combination: %s/%s", goos, goarch)
+	}
+	versionStr := semver.MajorMinor(version)
+	if versionStr == "" {
+		return nil, fmt.Errorf("invalid mshell version: %q", version)
+	}
+	fileName := GoArchOptFile(version, goos, goarch)
+	fd, err := os.Open(fileName)
+	if err != nil {
+		return nil, fmt.Errorf("cannot open mshell binary %q: %v", fileName, err)
+	}
+	return fd, nil
+}
+
 func GetRemoteId() (string, error) {
 	mhome := GetMShellHomeDir()
 	homeInfo, err := os.Stat(mhome)
