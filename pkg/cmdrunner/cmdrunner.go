@@ -98,7 +98,6 @@ func init() {
 	registerCmdFn("remote:new", RemoteNewCommand)
 	registerCmdFn("remote:archive", RemoteArchiveCommand)
 	registerCmdFn("remote:set", RemoteSetCommand)
-	registerCmdAlias("remote:edit", RemoteSetCommand)
 	registerCmdFn("remote:disconnect", RemoteDisconnectCommand)
 	registerCmdFn("remote:connect", RemoteConnectCommand)
 	registerCmdFn("remote:install", RemoteInstallCommand)

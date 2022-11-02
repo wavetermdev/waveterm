@@ -23,6 +23,7 @@ import (
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
+	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
 	"golang.org/x/mod/semver"
@@ -88,6 +89,7 @@ type MShellProc struct {
 	ControllingPty     *os.File
 	PtyBuffer          *circbuf.Buffer
 	MakeClientCancelFn context.CancelFunc
+	DefaultState       *packet.ShellState
 
 	// install
 	InstallStatus      string
@@ -138,6 +140,12 @@ func (msh *MShellProc) GetStatus() string {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
 	return msh.Status
+}
+
+func (msh *MShellProc) GetDefaultState() *packet.ShellState {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	return msh.DefaultState
 }
 
 func (msh *MShellProc) GetRemoteId() string {
@@ -475,7 +483,7 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		vars["color"] = msh.Remote.RemoteOpts.Color
 	}
 	if msh.ServerProc != nil && msh.ServerProc.InitPk != nil {
-		state.DefaultState = msh.ServerProc.InitPk.State
+		state.DefaultState = msh.DefaultState
 		state.MShellVersion = msh.ServerProc.InitPk.Version
 		vars["home"] = msh.ServerProc.InitPk.HomeDir
 		vars["remoteuser"] = msh.ServerProc.InitPk.User
@@ -863,7 +871,7 @@ func (msh *MShellProc) RunInstall() {
 	msgFn := func(msg string) {
 		msh.WriteToPtyBuffer("%s", msg)
 	}
-	err = shexec.RunInstallFromCmd(clientCtx, ecmd, true, "", msgFn)
+	err = shexec.RunInstallFromCmd(clientCtx, ecmd, true, nil, scbase.MShellBinaryFromPackage, msgFn)
 	if err == context.Canceled {
 		msh.WriteToPtyBuffer("*install canceled\n")
 		msh.WithLock(func() {
@@ -906,8 +914,33 @@ func (msh *MShellProc) ReInit(ctx context.Context) (*packet.InitPacketType, erro
 	}
 	msh.WithLock(func() {
 		msh.Remote.InitPk = initPk
+		msh.DefaultState = initPk.State
 	})
 	return initPk, nil
+}
+
+func addScVarsToState(state *packet.ShellState) *packet.ShellState {
+	if state == nil {
+		return nil
+	}
+	rtn := *state
+	envMap := shexec.DeclMapFromState(&rtn)
+	envMap["SCRIPTHAUS"] = &shexec.DeclareDeclType{Name: "SCRIPTHAUS", Value: "1"}
+	envMap["SCRIPTHAUS_VERSION"] = &shexec.DeclareDeclType{Name: "SCRIPTHAUS_VERSION", Value: scbase.ScriptHausVersion}
+	rtn.ShellVars = shexec.SerializeDeclMap(envMap)
+	return &rtn
+}
+
+func stripScVarsFromState(state *packet.ShellState) *packet.ShellState {
+	if state == nil {
+		return nil
+	}
+	rtn := *state
+	envMap := shexec.DeclMapFromState(&rtn)
+	delete(envMap, "SCRIPTHAUS")
+	delete(envMap, "SCRIPTHAUS_VERSION")
+	rtn.ShellVars = shexec.SerializeDeclMap(envMap)
+	return &rtn
 }
 
 func (msh *MShellProc) Launch() {
@@ -968,6 +1001,7 @@ func (msh *MShellProc) Launch() {
 	msh.WithLock(func() {
 		msh.MakeClientCancelFn = nil
 		if initPk != nil {
+			msh.DefaultState = initPk.State
 			msh.Remote.InitPk = initPk
 			msh.UName = initPk.UName
 			mshellVersion = initPk.Version
@@ -1019,15 +1053,6 @@ func (msh *MShellProc) IsConnected() bool {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
 	return msh.Status == StatusConnected
-}
-
-func (msh *MShellProc) GetDefaultState() *packet.ShellState {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	if msh.ServerProc == nil || msh.ServerProc.InitPk == nil {
-		return nil
-	}
-	return msh.ServerProc.InitPk.State
 }
 
 func replaceHomePath(pathStr string, homeDir string) string {
@@ -1172,12 +1197,12 @@ func RunCommand(ctx context.Context, sessionId string, windowId string, remotePt
 		return nil, nil, fmt.Errorf("cannot get current remote state: %w", err)
 	}
 	if currentState == nil {
-		currentState = msh.ServerProc.InitPk.State
+		currentState = msh.GetDefaultState()
 	}
 	if currentState == nil {
 		return nil, nil, fmt.Errorf("cannot run command, no valid remote state")
 	}
-	runPacket.State = currentState
+	runPacket.State = addScVarsToState(currentState)
 	runPacket.StateComplete = true
 	msh.ServerProc.Output.RegisterRpc(runPacket.ReqId)
 	err = shexec.SendRunPacketAndRunData(ctx, msh.ServerProc.Input, runPacket)
@@ -1203,12 +1228,13 @@ func RunCommand(ctx context.Context, sessionId string, windowId string, remotePt
 	if runPacket.Detached {
 		status = sstore.CmdStatusDetached
 	}
+	cmdState := stripScVarsFromState(runPacket.State)
 	cmd := &sstore.CmdType{
 		SessionId:   runPacket.CK.GetSessionId(),
 		CmdId:       runPacket.CK.GetCmdId(),
 		CmdStr:      runPacket.Command,
 		Remote:      remotePtr,
-		RemoteState: *runPacket.State,
+		RemoteState: *cmdState,
 		TermOpts:    makeTermOpts(runPacket),
 		Status:      status,
 		StartPk:     startPk,
@@ -1347,6 +1373,9 @@ func (msh *MShellProc) notifyHangups_nolock() {
 func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 	// this will remove from RunningCmds and from PendingStateCmds
 	defer msh.RemoveRunningCmd(donePk.CK)
+	if donePk.FinalState != nil {
+		donePk.FinalState = stripScVarsFromState(donePk.FinalState)
+	}
 
 	update, err := sstore.UpdateCmdDonePk(context.Background(), donePk)
 	if err != nil {

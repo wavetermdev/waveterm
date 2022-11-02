@@ -3,6 +3,7 @@ package scbase
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"os"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/scripthaus-dev/mshell/pkg/base"
+	"golang.org/x/mod/semver"
 	"golang.org/x/sys/unix"
 )
 
@@ -20,10 +22,13 @@ const ScHomeVarName = "SCRIPTHAUS_HOME"
 const SessionsDirBaseName = "sessions"
 const SCLockFile = "sh2.lock"
 const ScriptHausDirName = "scripthaus"
+const ScriptHausAppPathVarName = "SCRIPTHAUS_APP_PATH"
+const ScriptHausVersion = "v0.1.0"
 
 var SessionDirCache = make(map[string]string)
 var BaseLock = &sync.Mutex{}
 
+// must match js
 func GetScHomeDir() string {
 	scHome := os.Getenv(ScHomeVarName)
 	if scHome == "" {
@@ -34,6 +39,28 @@ func GetScHomeDir() string {
 		scHome = path.Join(homeVar, ScriptHausDirName)
 	}
 	return scHome
+}
+
+func MShellBinaryFromPackage(version string, goos string, goarch string) (io.ReadCloser, error) {
+	appPath := os.Getenv(ScriptHausAppPathVarName)
+	if appPath == "" {
+		return base.MShellBinaryFromOptDir(version, goos, goarch)
+	}
+	if !base.ValidGoArch(goos, goarch) {
+		return nil, fmt.Errorf("invalid goos/goarch combination: %s/%s", goos, goarch)
+	}
+	versionStr := semver.MajorMinor(version)
+	if versionStr == "" {
+		return nil, fmt.Errorf("invalid mshell version: %q", version)
+	}
+	fileName := fmt.Sprintf("mshell-%s-%s.%s", versionStr, goos, goarch)
+	fullFileName := path.Join(appPath, "bin", "mshell", fileName)
+	log.Printf("mshell-binary %q\n", fullFileName)
+	fd, err := os.Open(fullFileName)
+	if err != nil {
+		return nil, fmt.Errorf("cannot open mshell binary %q: %v", fullFileName, err)
+	}
+	return fd, nil
 }
 
 func AcquireSCLock() (*os.File, error) {
