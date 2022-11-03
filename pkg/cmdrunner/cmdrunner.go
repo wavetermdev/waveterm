@@ -948,7 +948,7 @@ func CdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 		return nil, err
 	}
 	var cmdOutput bytes.Buffer
-	displayStateUpdate(&cmdOutput, *ids.Remote.RemoteState, remoteInst.State)
+	displayStateUpdateDiff(&cmdOutput, *ids.Remote.RemoteState, remoteInst.State)
 	cmd, err := makeStaticCmd(ctx, "cd", ids, pk.GetRawStr(), cmdOutput.Bytes())
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
@@ -1729,7 +1729,7 @@ func formatTextTable(totalCols int, data [][]string, colMeta []ColMeta) []string
 	return rtn
 }
 
-func displayStateUpdate(buf *bytes.Buffer, oldState packet.ShellState, newState packet.ShellState) {
+func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newState packet.ShellState) {
 	if newState.Cwd != oldState.Cwd {
 		buf.WriteString(fmt.Sprintf("cwd %s\n", newState.Cwd))
 	}
@@ -1738,7 +1738,7 @@ func displayStateUpdate(buf *bytes.Buffer, oldState packet.ShellState, newState 
 		oldEnvMap := shexec.DeclMapFromState(&oldState)
 		for key, newVal := range newEnvMap {
 			oldVal, found := oldEnvMap[key]
-			if !found || ((oldVal.Value != newVal.Value) || (oldVal.IsExport() != newVal.IsExport())) {
+			if !found || !shexec.DeclsEqual(oldVal, newVal) {
 				var exportStr string
 				if newVal.IsExport() {
 					exportStr = "export "
@@ -1802,6 +1802,6 @@ func GetRtnStateDiff(ctx context.Context, sessionId string, cmdId string) ([]byt
 		return nil, nil
 	}
 	var outputBytes bytes.Buffer
-	displayStateUpdate(&outputBytes, cmd.RemoteState, *cmd.DonePk.FinalState)
+	displayStateUpdateDiff(&outputBytes, cmd.RemoteState, *cmd.DonePk.FinalState)
 	return outputBytes.Bytes(), nil
 }
