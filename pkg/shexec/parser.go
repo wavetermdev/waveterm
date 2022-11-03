@@ -13,6 +13,13 @@ import (
 	"mvdan.cc/sh/v3/syntax"
 )
 
+const (
+	DeclTypeArray      = "array"
+	DeclTypeAssocArray = "assoc"
+	DeclTypeInt        = "int"
+	DeclTypeNormal     = "normal"
+)
+
 type ParseEnviron struct {
 	Env map[string]string
 }
@@ -250,6 +257,19 @@ func (d *DeclareDeclType) IsReadOnly() bool {
 	return strings.Index(d.Args, "r") >= 0
 }
 
+func (d *DeclareDeclType) DataType() string {
+	if strings.Index(d.Args, "a") >= 0 {
+		return DeclTypeArray
+	}
+	if strings.Index(d.Args, "A") >= 0 {
+		return DeclTypeAssocArray
+	}
+	if strings.Index(d.Args, "i") >= 0 {
+		return DeclTypeInt
+	}
+	return DeclTypeNormal
+}
+
 func parseDeclareStmt(stmt *syntax.Stmt, src []byte) (*DeclareDeclType, error) {
 	cmd := stmt.Cmd
 	decl, ok := cmd.(*syntax.DeclClause)
@@ -350,4 +370,75 @@ func ParseShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
 	rtn.Aliases = strings.ReplaceAll(string(fields[3]), "\r\n", "\n")
 	rtn.Funcs = strings.ReplaceAll(string(fields[4]), "\r\n", "\n")
 	return rtn, nil
+}
+
+func assocArrayVarToMap(d *DeclareDeclType) (map[string]string, error) {
+	if d.DataType() != DeclTypeAssocArray {
+		return nil, fmt.Errorf("decl is not an assoc-array")
+	}
+	refStr := "X=" + d.Value
+	r := strings.NewReader(refStr)
+	parser := syntax.NewParser(syntax.Variant(syntax.LangBash))
+	file, err := parser.Parse(r, "assocdecl")
+	if err != nil {
+		return nil, err
+	}
+	if len(file.Stmts) != 1 {
+		return nil, fmt.Errorf("invalid assoc-array parse (multiple stmts)")
+	}
+	stmt := file.Stmts[0]
+	callExpr, ok := stmt.Cmd.(*syntax.CallExpr)
+	if !ok || len(callExpr.Args) != 0 || len(callExpr.Assigns) != 1 {
+		return nil, fmt.Errorf("invalid assoc-array parse (bad expr)")
+	}
+	assign := callExpr.Assigns[0]
+	arrayExpr := assign.Array
+	if arrayExpr == nil {
+		return nil, fmt.Errorf("invalid assoc-array parse (no array expr)")
+	}
+	rtn := make(map[string]string)
+	for _, elem := range arrayExpr.Elems {
+		indexStr := refStr[elem.Index.Pos().Offset():elem.Index.End().Offset()]
+		valStr := refStr[elem.Value.Pos().Offset():elem.Value.End().Offset()]
+		rtn[indexStr] = valStr
+	}
+	return rtn, nil
+}
+
+func strMapsEqual(m1 map[string]string, m2 map[string]string) bool {
+	if len(m1) != len(m2) {
+		return false
+	}
+	for key, val1 := range m1 {
+		val2, found := m2[key]
+		if !found || val1 != val2 {
+			return false
+		}
+	}
+	for key, _ := range m2 {
+		_, found := m1[key]
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
+func DeclsEqual(d1 *DeclareDeclType, d2 *DeclareDeclType) bool {
+	if d1.IsExport() != d2.IsExport() {
+		return false
+	}
+	if d1.DataType() != d2.DataType() {
+		return false
+	}
+	// comparing value will work for all data types *except* for associative arrays (bash does not output them in a consistent order)
+	if d1.DataType() == DeclTypeAssocArray {
+		m1, err1 := assocArrayVarToMap(d1)
+		m2, err2 := assocArrayVarToMap(d2)
+		if err1 != nil || err2 != nil {
+			return d1.Value == d2.Value
+		}
+		return strMapsEqual(m1, m2)
+	}
+	return d1.Value == d2.Value
 }
