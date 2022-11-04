@@ -66,9 +66,131 @@ func GetParserConfig(envMap map[string]string) *expand.Config {
 	return cfg
 }
 
-func QuotedLitToStr(word *syntax.Word) (string, error) {
-	cfg := GetParserConfig(nil)
-	return expand.Literal(cfg, word)
+func writeIndent(buf *bytes.Buffer, num int) {
+	for i := 0; i < num; i++ {
+		buf.WriteByte(' ')
+	}
+}
+
+func makeSpaceStr(num int) string {
+	barr := make([]byte, num)
+	for i := 0; i < num; i++ {
+		barr[i] = ' '
+	}
+	return string(barr)
+}
+
+type SimpleExpandContext struct {
+	HomeDir string
+}
+
+func expandLiteral(buf *bytes.Buffer, litVal string) {
+	var lastBackSlash bool
+	for _, ch := range litVal {
+		if ch == 0 {
+			break
+		}
+		if lastBackSlash {
+			lastBackSlash = false
+			if ch == '\n' {
+				// special case, backslash *and* newline are ignored
+				continue
+			}
+			buf.WriteRune(ch)
+			continue
+		}
+		if ch == '\\' {
+			lastBackSlash = true
+			continue
+		}
+		buf.WriteRune(ch)
+	}
+	if lastBackSlash {
+		buf.WriteByte('\\')
+	}
+}
+
+func expandDQLiteral(buf *bytes.Buffer, litVal string) {
+	var lastBackSlash bool
+	for _, ch := range litVal {
+		if ch == 0 {
+			break
+		}
+		if lastBackSlash {
+			lastBackSlash = false
+			if ch == '"' || ch == '\\' || ch == '$' || ch == '`' {
+				buf.WriteRune(ch)
+				continue
+			}
+			buf.WriteRune('\\')
+			buf.WriteRune(ch)
+			continue
+		}
+		if ch == '\\' {
+			lastBackSlash = true
+			continue
+		}
+		buf.WriteRune(ch)
+	}
+	// in a valid parsed DQ string, you cannot have a trailing backslash (because \" would not end the string)
+	// still putting the case here though in case we ever deal with incomplete strings (e.g. completion)
+	if lastBackSlash {
+		buf.WriteByte('\\')
+	}
+}
+
+func simpleExpandWordInternal(buf *bytes.Buffer, ectx SimpleExpandContext, parts []syntax.WordPart, sourceStr string, inDoubleQuote bool, level int) error {
+	for partIdx, untypedPart := range parts {
+		switch part := untypedPart.(type) {
+		case *syntax.Lit:
+			if !inDoubleQuote && part.Value == "~" && partIdx == 0 && len(parts) == 1 && level == 1 && ectx.HomeDir != "" {
+				buf.WriteString(ectx.HomeDir)
+				continue
+			}
+			if !inDoubleQuote && strings.HasPrefix(part.Value, "~/") && partIdx == 0 && level == 1 && ectx.HomeDir != "" {
+				buf.WriteString(ectx.HomeDir)
+				buf.WriteString(part.Value[1:])
+				continue
+			}
+			if inDoubleQuote {
+				expandDQLiteral(buf, part.Value)
+			} else {
+				expandLiteral(buf, part.Value)
+			}
+
+		case *syntax.SglQuoted:
+			if part.Dollar {
+				str, _, _ := expand.Format(nil, part.Value, nil)
+				buf.WriteString(str)
+			} else {
+				buf.WriteString(part.Value)
+			}
+
+		case *syntax.DblQuoted:
+			simpleExpandWordInternal(buf, ectx, part.Parts, sourceStr, true, level+1)
+
+		default:
+			rawStr := sourceStr[part.Pos().Offset():part.End().Offset()]
+			buf.WriteString(rawStr)
+		}
+	}
+	return nil
+}
+
+// simple word expansion
+// expands: literals, single-quoted strings, double-quoted strings (recursively)
+// does *not* expand: params (variables), command substitution, arithmetic expressions, process substituions, globs
+// for the not expands, they will show up as the literal string
+// this is different than expand.Literal which will replace variables as empty string if they aren't defined.
+// so "a"'foo'${bar}$x => "afoo${bar}$x", but expand.Literal would produce => "afoo"
+// note will do ~ expansion (will not do ~user expansion)
+func SimpleExpandWord(ectx SimpleExpandContext, word *syntax.Word, sourceStr string) (string, error) {
+	var buf bytes.Buffer
+	err := simpleExpandWordInternal(&buf, ectx, word.Parts, sourceStr, false, 1)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }
 
 // https://wiki.bash-hackers.org/syntax/shellvars
@@ -270,7 +392,7 @@ func (d *DeclareDeclType) DataType() string {
 	return DeclTypeNormal
 }
 
-func parseDeclareStmt(stmt *syntax.Stmt, src []byte) (*DeclareDeclType, error) {
+func parseDeclareStmt(stmt *syntax.Stmt, src string) (*DeclareDeclType, error) {
 	cmd := stmt.Cmd
 	decl, ok := cmd.(*syntax.DeclClause)
 	if !ok || decl.Variant.Value != "declare" || len(decl.Args) != 2 {
@@ -302,7 +424,7 @@ func parseDeclareStmt(stmt *syntax.Stmt, src []byte) (*DeclareDeclType, error) {
 		return nil, fmt.Errorf("invalid decl format")
 	}
 	if declAssign.Value != nil {
-		varValueStr, err := QuotedLitToStr(declAssign.Value)
+		varValueStr, err := SimpleExpandWord(SimpleExpandContext{}, declAssign.Value, src)
 		if err != nil {
 			return nil, fmt.Errorf("parsing declare value: %w", err)
 		}
@@ -319,6 +441,7 @@ func parseDeclareStmt(stmt *syntax.Stmt, src []byte) (*DeclareDeclType, error) {
 }
 
 func parseDeclareOutput(state *packet.ShellState, declareBytes []byte) error {
+	declareStr := string(declareBytes)
 	r := bytes.NewReader(declareBytes)
 	parser := syntax.NewParser(syntax.Variant(syntax.LangBash))
 	file, err := parser.Parse(r, "aliases")
@@ -328,7 +451,7 @@ func parseDeclareOutput(state *packet.ShellState, declareBytes []byte) error {
 	var varsBuffer bytes.Buffer
 	var firstParseErr error
 	for _, stmt := range file.Stmts {
-		decl, err := parseDeclareStmt(stmt, declareBytes)
+		decl, err := parseDeclareStmt(stmt, declareStr)
 		if err != nil {
 			if firstParseErr == nil {
 				firstParseErr = err
