@@ -84,6 +84,19 @@ type SimpleExpandContext struct {
 	HomeDir string
 }
 
+func expandHomeDir(litVal string, multiPart bool, homeDir string) string {
+	if homeDir == "" {
+		return litVal
+	}
+	if litVal == "~" && !multiPart {
+		return homeDir
+	}
+	if strings.HasPrefix(litVal, "~/") {
+		return homeDir + litVal[1:]
+	}
+	return litVal
+}
+
 func expandLiteral(buf *bytes.Buffer, litVal string) {
 	var lastBackSlash bool
 	for _, ch := range litVal {
@@ -110,6 +123,22 @@ func expandLiteral(buf *bytes.Buffer, litVal string) {
 	}
 }
 
+// also expands ~
+func expandLiteralPlus(buf *bytes.Buffer, litVal string, multiPart bool, ectx SimpleExpandContext) {
+	litVal = expandHomeDir(litVal, multiPart, ectx.HomeDir)
+	expandLiteral(buf, litVal)
+}
+
+func expandSQANSILiteral(buf *bytes.Buffer, litVal string) {
+	str, _, _ := expand.Format(nil, litVal, nil)
+	buf.WriteString(str)
+}
+
+func expandSQLiteral(buf *bytes.Buffer, litVal string) {
+	buf.WriteString(litVal)
+}
+
+// will also work for partial double quoted strings
 func expandDQLiteral(buf *bytes.Buffer, litVal string) {
 	var lastBackSlash bool
 	for _, ch := range litVal {
@@ -139,20 +168,13 @@ func expandDQLiteral(buf *bytes.Buffer, litVal string) {
 	}
 }
 
-func simpleExpandWordInternal(buf *bytes.Buffer, ectx SimpleExpandContext, parts []syntax.WordPart, sourceStr string, inDoubleQuote bool, level int) error {
+func simpleExpandWordInternal(buf *bytes.Buffer, ectx SimpleExpandContext, parts []syntax.WordPart, sourceStr string, inDoubleQuote bool, level int) {
 	for partIdx, untypedPart := range parts {
 		switch part := untypedPart.(type) {
 		case *syntax.Lit:
-			if !inDoubleQuote && part.Value == "~" && partIdx == 0 && len(parts) == 1 && level == 1 && ectx.HomeDir != "" {
-				buf.WriteString(ectx.HomeDir)
-				continue
-			}
-			if !inDoubleQuote && strings.HasPrefix(part.Value, "~/") && partIdx == 0 && level == 1 && ectx.HomeDir != "" {
-				buf.WriteString(ectx.HomeDir)
-				buf.WriteString(part.Value[1:])
-				continue
-			}
-			if inDoubleQuote {
+			if !inDoubleQuote && partIdx == 0 && level == 1 && ectx.HomeDir != "" {
+				expandLiteralPlus(buf, part.Value, len(parts) > 1, ectx)
+			} else if inDoubleQuote {
 				expandDQLiteral(buf, part.Value)
 			} else {
 				expandLiteral(buf, part.Value)
@@ -160,10 +182,9 @@ func simpleExpandWordInternal(buf *bytes.Buffer, ectx SimpleExpandContext, parts
 
 		case *syntax.SglQuoted:
 			if part.Dollar {
-				str, _, _ := expand.Format(nil, part.Value, nil)
-				buf.WriteString(str)
+				expandSQANSILiteral(buf, part.Value)
 			} else {
-				buf.WriteString(part.Value)
+				expandSQLiteral(buf, part.Value)
 			}
 
 		case *syntax.DblQuoted:
@@ -174,7 +195,6 @@ func simpleExpandWordInternal(buf *bytes.Buffer, ectx SimpleExpandContext, parts
 			buf.WriteString(rawStr)
 		}
 	}
-	return nil
 }
 
 // simple word expansion
@@ -184,13 +204,29 @@ func simpleExpandWordInternal(buf *bytes.Buffer, ectx SimpleExpandContext, parts
 // this is different than expand.Literal which will replace variables as empty string if they aren't defined.
 // so "a"'foo'${bar}$x => "afoo${bar}$x", but expand.Literal would produce => "afoo"
 // note will do ~ expansion (will not do ~user expansion)
-func SimpleExpandWord(ectx SimpleExpandContext, word *syntax.Word, sourceStr string) (string, error) {
+func SimpleExpandWord(ectx SimpleExpandContext, word *syntax.Word, sourceStr string) string {
 	var buf bytes.Buffer
-	err := simpleExpandWordInternal(&buf, ectx, word.Parts, sourceStr, false, 1)
-	if err != nil {
-		return "", err
+	simpleExpandWordInternal(&buf, ectx, word.Parts, sourceStr, false, 1)
+	return buf.String()
+}
+
+func SimpleExpandPartialWord(ectx SimpleExpandContext, partialWord string, multiPart bool) string {
+	var buf bytes.Buffer
+	if partialWord == "" {
+		return ""
 	}
-	return buf.String(), nil
+	if strings.HasPrefix(partialWord, "\"") {
+		expandDQLiteral(&buf, partialWord[1:])
+	} else if strings.HasPrefix(partialWord, "$\"") {
+		expandDQLiteral(&buf, partialWord[2:])
+	} else if strings.HasPrefix(partialWord, "'") {
+		expandSQLiteral(&buf, partialWord[1:])
+	} else if strings.HasPrefix(partialWord, "$'") {
+		expandSQANSILiteral(&buf, partialWord[2:])
+	} else {
+		expandLiteralPlus(&buf, partialWord, multiPart, ectx)
+	}
+	return buf.String()
 }
 
 // https://wiki.bash-hackers.org/syntax/shellvars
@@ -424,11 +460,7 @@ func parseDeclareStmt(stmt *syntax.Stmt, src string) (*DeclareDeclType, error) {
 		return nil, fmt.Errorf("invalid decl format")
 	}
 	if declAssign.Value != nil {
-		varValueStr, err := SimpleExpandWord(SimpleExpandContext{}, declAssign.Value, src)
-		if err != nil {
-			return nil, fmt.Errorf("parsing declare value: %w", err)
-		}
-		rtn.Value = varValueStr
+		rtn.Value = SimpleExpandWord(SimpleExpandContext{}, declAssign.Value, src)
 	} else if declAssign.Array != nil {
 		rtn.Value = string(src[declAssign.Array.Pos().Offset():declAssign.Array.End().Offset()])
 	} else {
