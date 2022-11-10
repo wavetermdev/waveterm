@@ -6,9 +6,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/alessio/shellescape"
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
 	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
+	"github.com/scripthaus-dev/sh2-server/pkg/utilfn"
 	"mvdan.cc/sh/v3/expand"
 	"mvdan.cc/sh/v3/syntax"
 )
@@ -116,31 +116,6 @@ func onlyRawArgs(metaCmd string, metaSubCmd string) bool {
 	return metaCmd == "run" || metaCmd == "comment"
 }
 
-// minimum maxlen=6
-func ShellQuote(val string, forceQuote bool, maxLen int) string {
-	if maxLen < 6 {
-		maxLen = 6
-	}
-	rtn := shellescape.Quote(val)
-	if strings.HasPrefix(rtn, "\"") || strings.HasPrefix(rtn, "'") {
-		if len(rtn) > maxLen {
-			return rtn[0:maxLen-4] + "..." + rtn[0:1]
-		}
-		return rtn
-	}
-	if forceQuote {
-		if len(rtn) > maxLen-2 {
-			return "\"" + rtn[0:maxLen-5] + "...\""
-		}
-		return "\"" + rtn + "\""
-	} else {
-		if len(rtn) > maxLen {
-			return rtn[0:maxLen-3] + "..."
-		}
-		return rtn
-	}
-}
-
 func setBracketArgs(argMap map[string]string, bracketStr string) error {
 	bracketStr = strings.TrimSpace(bracketStr)
 	if bracketStr == "" {
@@ -161,7 +136,7 @@ func setBracketArgs(argMap map[string]string, bracketStr string) error {
 			varVal = litStr[eqIdx+1:]
 		}
 		if !shexec.IsValidBashIdentifier(varName) {
-			wordErr = fmt.Errorf("invalid identifier %s in bracket args", ShellQuote(varName, true, 20))
+			wordErr = fmt.Errorf("invalid identifier %s in bracket args", utilfn.ShellQuote(varName, true, 20))
 			return false
 		}
 		if varVal == "" {

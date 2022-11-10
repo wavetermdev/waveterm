@@ -2,16 +2,22 @@
 package comp
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
 	"unicode"
 
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
+	"github.com/scripthaus-dev/sh2-server/pkg/utilfn"
 	"mvdan.cc/sh/v3/syntax"
 )
+
+const MaxCompQuoteLen = 5000
 
 const (
 	SimpleCompGenTypeFile           = "file"
@@ -24,17 +30,29 @@ const (
 	SimpleCompGenTypeVariable       = "variable"
 )
 
+const (
+	QuoteTypeLiteral = ""
+	QuoteTypeDQ      = "\""
+	QuoteTypeANSI    = "$'"
+	QuoteTypeSQ      = "'"
+)
+
 type CompContext struct {
 	RemotePtr  sstore.RemotePtrType
 	State      *packet.ShellState
 	ForDisplay bool
 }
 
-type SimpleCompGenFnType = func(ctx context.Context, point SimpleCompPoint, compCtx CompContext, args []interface{}) (*CompReturn, error)
-
 type SimpleCompPoint struct {
 	Word string
 	Pos  int
+}
+
+type fullCompPrefix struct {
+	RawStr        string
+	RawPos        int
+	CompPrefix    string
+	QuoteTypePref string
 }
 
 type ParsedWord struct {
@@ -53,6 +71,75 @@ type CompPoint struct {
 	Suffix      string
 }
 
+// directories will have a trailing "/"
+type CompEntry struct {
+	Word      string
+	IsMetaCmd bool
+}
+
+type CompReturn struct {
+	Entries []CompEntry
+	HasMore bool
+}
+
+func compQuoteDQString(s string, close bool) string {
+	var buf bytes.Buffer
+	buf.WriteByte('"')
+	for _, ch := range s {
+		if ch == '"' || ch == '\\' || ch == '$' || ch == '`' {
+			buf.WriteByte('\\')
+			buf.WriteRune(ch)
+			continue
+		}
+		buf.WriteRune(ch)
+	}
+	if close {
+		buf.WriteByte('"')
+	}
+	return buf.String()
+}
+
+func compQuoteString(s string, quoteType string, close bool) string {
+	if quoteType != QuoteTypeANSI {
+		for _, ch := range s {
+			if ch > unicode.MaxASCII || !unicode.IsPrint(ch) || ch == '!' {
+				quoteType = QuoteTypeANSI
+				break
+			}
+			if ch == '\'' {
+				if quoteType == QuoteTypeSQ || quoteType == QuoteTypeLiteral {
+					quoteType = QuoteTypeANSI
+					break
+				}
+			}
+		}
+	}
+	if quoteType == QuoteTypeANSI {
+		rtn := strconv.QuoteToASCII(s)
+		rtn = "$'" + strings.ReplaceAll(rtn[1:len(rtn)-1], "'", "\\'")
+		if close {
+			rtn = rtn + "'"
+		}
+		return rtn
+	}
+	if quoteType == QuoteTypeLiteral {
+		rtn := utilfn.ShellQuote(s, false, MaxCompQuoteLen)
+		if len(rtn) > 0 && rtn[0] == '\'' && !close {
+			rtn = rtn[0 : len(rtn)-1]
+		}
+		return rtn
+	}
+	if quoteType == QuoteTypeSQ {
+		rtn := utilfn.ShellQuote(s, true, MaxCompQuoteLen)
+		if !close {
+			rtn = rtn[0 : len(rtn)-1]
+		}
+		return rtn
+	}
+	// QuoteTypeDQ
+	return compQuoteDQString(s, close)
+}
+
 func (p *CompPoint) wordAsStr(w ParsedWord) string {
 	if w.Word != nil {
 		return p.StmtStr[w.Word.Pos().Offset():w.Word.End().Offset()]
@@ -63,16 +150,29 @@ func (p *CompPoint) wordAsStr(w ParsedWord) string {
 func (p *CompPoint) simpleExpandWord(w ParsedWord) string {
 	ectx := shexec.SimpleExpandContext{}
 	if w.Word != nil {
-		return SimpleExpandWord(ectx, w.Word, p.StmtStr)
+		return shexec.SimpleExpandWord(ectx, w.Word, p.StmtStr)
 	}
-	return SimpleExpandPartialWord(ectx, p.PartialWord, false)
+	return shexec.SimpleExpandPartialWord(ectx, w.PartialWord, false)
 }
 
-func (p *CompPoint) compPrefix() string {
-	pword := p.Words[p.CompWord]
+func getQuoteTypePref(str string) string {
+	if strings.HasPrefix(str, QuoteTypeANSI) {
+		return QuoteTypeANSI
+	}
+	if strings.HasPrefix(str, QuoteTypeDQ) {
+		return QuoteTypeDQ
+	}
+	if strings.HasPrefix(str, QuoteTypeSQ) {
+		return QuoteTypeSQ
+	}
+	return QuoteTypeLiteral
+}
+
+func (p *CompPoint) getCompPrefix() string {
 	if p.CompWordPos == 0 {
 		return ""
 	}
+	pword := p.Words[p.CompWord]
 	wordStr := p.wordAsStr(pword)
 	if p.CompWordPos == len(wordStr) {
 		return p.simpleExpandWord(pword)
@@ -82,7 +182,21 @@ func (p *CompPoint) compPrefix() string {
 	//      and a partial on just the current part.  this is an uncommon case though
 	//      and has very little upside (even bash does not expand multipart words correctly)
 	partialWordStr := wordStr[:p.CompWordPos]
-	return SimpleExpandPartialWord(shexec.SimpleExpandContext{}, partialWordStr, false)
+	return shexec.SimpleExpandPartialWord(shexec.SimpleExpandContext{}, partialWordStr, false)
+}
+
+func (p *CompPoint) extendWord(newWord string, newWordComplete bool) (string, int) {
+	pword := p.Words[p.CompWord]
+	wordStr := p.wordAsStr(pword)
+	quotePref := getQuoteTypePref(wordStr)
+	needsClose := newWordComplete && (len(wordStr) == p.CompWordPos)
+	wordSuffix := wordStr[p.CompWordPos:]
+	newQuotedStr := compQuoteString(newWord, quotePref, needsClose)
+	if needsClose && wordSuffix == "" {
+		newQuotedStr = newQuotedStr + " "
+	}
+	newPos := len(newQuotedStr)
+	return newQuotedStr + wordSuffix, newPos
 }
 
 func (p *CompPoint) dump() {
@@ -105,17 +219,6 @@ func (p *CompPoint) dump() {
 		fmt.Printf("suffix: %s\n", p.Suffix)
 	}
 	fmt.Printf("\n")
-}
-
-// directories will have a trailing "/"
-type CompEntry struct {
-	Word      string
-	IsMetaCmd bool
-}
-
-type CompReturn struct {
-	Entries []CompEntry
-	HasMore bool
 }
 
 var SimpleCompGenFns map[string]SimpleCompGenFnType
@@ -229,7 +332,6 @@ func ParseCompPoint(fullCmdStr string, pos int) (*CompPoint, error) {
 			}
 		}
 	}
-	rtnPoint.dump()
 	return &rtnPoint, nil
 }
 
@@ -252,4 +354,33 @@ func splitCompWord(p *CompPoint) {
 
 func DoCompGen(ctx context.Context, point CompPoint, rptr sstore.RemotePtrType, state *packet.ShellState) (*CompReturn, error) {
 	return nil, nil
+}
+
+func SortCompReturnEntries(c *CompReturn) {
+	sort.Slice(c.Entries, func(i int, j int) bool {
+		e1 := c.Entries[i]
+		e2 := c.Entries[j]
+		if e1.Word < e2.Word {
+			return true
+		}
+		if e1.Word == e2.Word && e1.IsMetaCmd && !e2.IsMetaCmd {
+			return true
+		}
+		return false
+	})
+}
+
+func CombineCompReturn(c1 *CompReturn, c2 *CompReturn) *CompReturn {
+	if c1 == nil {
+		return c2
+	}
+	if c2 == nil {
+		return c1
+	}
+	var rtn CompReturn
+	rtn.HasMore = c1.HasMore || c2.HasMore
+	rtn.Entries = append([]CompEntry{}, c1.Entries...)
+	rtn.Entries = append(rtn.Entries, c2.Entries...)
+	SortCompReturnEntries(&rtn)
+	return &rtn
 }

@@ -20,10 +20,12 @@ import (
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
+	"github.com/scripthaus-dev/sh2-server/pkg/comp"
 	"github.com/scripthaus-dev/sh2-server/pkg/remote"
 	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
+	"github.com/scripthaus-dev/sh2-server/pkg/utilfn"
 )
 
 const (
@@ -31,6 +33,11 @@ const (
 	HistoryTypeSession = "session"
 	HistoryTypeGlobal  = "global"
 )
+
+func init() {
+	comp.RegisterSimpleCompFn("meta", simpleCompMeta)
+	comp.RegisterSimpleCompFn("command+meta", simpleCompCommandMeta)
+}
 
 const DefaultUserId = "sawka"
 const MaxNameLen = 50
@@ -1043,50 +1050,6 @@ func updateHistoryContext(ctx context.Context, line *sstore.LineType, cmd *sstor
 	}
 }
 
-func getStrArr(v interface{}, field string) []string {
-	if v == nil {
-		return nil
-	}
-	m, ok := v.(map[string]interface{})
-	if !ok {
-		return nil
-	}
-	fieldVal := m[field]
-	if fieldVal == nil {
-		return nil
-	}
-	iarr, ok := fieldVal.([]interface{})
-	if !ok {
-		return nil
-	}
-	var sarr []string
-	for _, iv := range iarr {
-		if sv, ok := iv.(string); ok {
-			sarr = append(sarr, sv)
-		}
-	}
-	return sarr
-}
-
-func getBool(v interface{}, field string) bool {
-	if v == nil {
-		return false
-	}
-	m, ok := v.(map[string]interface{})
-	if !ok {
-		return false
-	}
-	fieldVal := m[field]
-	if fieldVal == nil {
-		return false
-	}
-	bval, ok := fieldVal.(bool)
-	if !ok {
-		return false
-	}
-	return bval
-}
-
 func makeInfoFromComps(compType string, comps []string, hasMore bool) sstore.UpdatePacket {
 	sort.Slice(comps, func(i int, j int) bool {
 		c1 := comps[i]
@@ -1156,6 +1119,23 @@ func longestPrefix(root string, comps []string) string {
 	return lcp
 }
 
+func simpleCompMeta(ctx context.Context, prefix string, compCtx comp.CompContext, args []interface{}) (*comp.CompReturn, error) {
+	compsCmd, _ := comp.DoSimpleComp(ctx, "command", prefix, compCtx, nil)
+	compsMeta, _ := simpleCompCommandMeta(ctx, prefix, compCtx, nil)
+	return comp.CombineCompReturn(compsCmd, compsMeta), nil
+}
+
+func simpleCompCommandMeta(ctx context.Context, prefix string, compCtx comp.CompContext, args []interface{}) (*comp.CompReturn, error) {
+	rtn := comp.CompReturn{}
+	validCommands := getValidCommands()
+	for _, cmd := range validCommands {
+		if strings.HasPrefix(cmd, prefix) {
+			rtn.Entries = append(rtn.Entries, comp.CompEntry{Word: cmd, IsMetaCmd: true})
+		}
+	}
+	return &rtn, nil
+}
+
 func doMetaCompGen(ctx context.Context, pk *scpacket.FeCommandPacketType, prefix string, forDisplay bool) ([]string, bool, error) {
 	ids, err := resolveUiIds(ctx, pk, 0) // best effort
 	var comps []string
@@ -1202,8 +1182,8 @@ func doCompGen(ctx context.Context, pk *scpacket.FeCommandPacketType, prefix str
 	if err = resp.Err(); err != nil {
 		return nil, false, err
 	}
-	comps := getStrArr(resp.Data, "comps")
-	hasMore := getBool(resp.Data, "hasmore")
+	comps := utilfn.GetStrArr(resp.Data, "comps")
+	hasMore := utilfn.GetBool(resp.Data, "hasmore")
 	return comps, hasMore, nil
 }
 
@@ -1743,7 +1723,7 @@ func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newSt
 				if newVal.IsExport() {
 					exportStr = "export "
 				}
-				buf.WriteString(fmt.Sprintf("%s%s=%s\n", exportStr, key, ShellQuote(newVal.Value, false, 50)))
+				buf.WriteString(fmt.Sprintf("%s%s=%s\n", exportStr, key, utilfn.ShellQuote(newVal.Value, false, 50)))
 			}
 		}
 		for key, _ := range oldEnvMap {
