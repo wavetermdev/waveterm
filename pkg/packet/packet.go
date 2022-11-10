@@ -364,7 +364,7 @@ type CompGenPacketType struct {
 }
 
 func IsValidCompGenType(t string) bool {
-	return (t == "file" || t == "command" || t == "directory")
+	return (t == "file" || t == "command" || t == "directory" || t == "variable")
 }
 
 func (*CompGenPacketType) GetType() string {
