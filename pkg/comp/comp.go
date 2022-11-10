@@ -43,9 +43,9 @@ type CompContext struct {
 	ForDisplay bool
 }
 
-type SimpleCompPoint struct {
-	Word string
-	Pos  int
+type StrWithPos struct {
+	Str string
+	Pos int
 }
 
 type fullCompPrefix struct {
@@ -130,7 +130,10 @@ func compQuoteString(s string, quoteType string, close bool) string {
 		return rtn
 	}
 	if quoteType == QuoteTypeSQ {
-		rtn := utilfn.ShellQuote(s, true, MaxCompQuoteLen)
+		rtn := utilfn.ShellQuote(s, false, MaxCompQuoteLen)
+		if len(rtn) > 0 && rtn[0] != '\'' {
+			rtn = "'" + rtn + "'"
+		}
 		if !close {
 			rtn = rtn[0 : len(rtn)-1]
 		}
@@ -185,18 +188,46 @@ func (p *CompPoint) getCompPrefix() string {
 	return shexec.SimpleExpandPartialWord(shexec.SimpleExpandContext{}, partialWordStr, false)
 }
 
-func (p *CompPoint) extendWord(newWord string, newWordComplete bool) (string, int) {
+func (p *CompPoint) extendWord(newWord string, newWordComplete bool) StrWithPos {
 	pword := p.Words[p.CompWord]
 	wordStr := p.wordAsStr(pword)
 	quotePref := getQuoteTypePref(wordStr)
 	needsClose := newWordComplete && (len(wordStr) == p.CompWordPos)
 	wordSuffix := wordStr[p.CompWordPos:]
 	newQuotedStr := compQuoteString(newWord, quotePref, needsClose)
-	if needsClose && wordSuffix == "" {
+	if needsClose && wordSuffix == "" && !strings.HasSuffix(newWord, "/") {
 		newQuotedStr = newQuotedStr + " "
 	}
 	newPos := len(newQuotedStr)
-	return newQuotedStr + wordSuffix, newPos
+	return StrWithPos{Str: newQuotedStr + wordSuffix, Pos: newPos}
+}
+
+func (p *CompPoint) FullyExtend(crtn *CompReturn) StrWithPos {
+	if crtn == nil || crtn.HasMore {
+		return StrWithPos{Str: p.getOrigStr(), Pos: p.getOrigPos()}
+	}
+	compStrs := crtn.getCompStrs()
+	compPrefix := p.getCompPrefix()
+	lcp := utilfn.LongestPrefix(compPrefix, compStrs)
+	if lcp == compPrefix || len(lcp) < len(compPrefix) || !strings.HasPrefix(lcp, compPrefix) {
+		return StrWithPos{Str: p.getOrigStr(), Pos: p.getOrigPos()}
+	}
+	newStr := p.extendWord(lcp, utilfn.ContainsStr(compStrs, lcp))
+	var buf bytes.Buffer
+	buf.WriteString(p.Prefix)
+	for idx, w := range p.Words {
+		if idx == p.CompWord {
+			buf.WriteString(w.Prefix)
+			buf.WriteString(newStr.Str)
+		} else {
+			buf.WriteString(w.Prefix)
+			buf.WriteString(p.wordAsStr(w))
+		}
+	}
+	buf.WriteString(p.Suffix)
+	compWord := p.Words[p.CompWord]
+	newPos := len(p.Prefix) + compWord.Offset + len(compWord.Prefix) + newStr.Pos
+	return StrWithPos{Str: buf.String(), Pos: newPos}
 }
 
 func (p *CompPoint) dump() {
@@ -222,6 +253,10 @@ func (p *CompPoint) dump() {
 }
 
 var SimpleCompGenFns map[string]SimpleCompGenFnType
+
+func (sp StrWithPos) String() string {
+	return strWithCursor(sp.Str, sp.Pos)
+}
 
 func strWithCursor(str string, pos int) string {
 	if pos < 0 {
@@ -383,4 +418,21 @@ func CombineCompReturn(c1 *CompReturn, c2 *CompReturn) *CompReturn {
 	rtn.Entries = append(rtn.Entries, c2.Entries...)
 	SortCompReturnEntries(&rtn)
 	return &rtn
+}
+
+func (c *CompReturn) getCompStrs() []string {
+	rtn := make([]string, len(c.Entries))
+	for idx, entry := range c.Entries {
+		rtn[idx] = entry.Word
+	}
+	return rtn
+}
+
+func (p CompPoint) getOrigPos() int {
+	pword := p.Words[p.CompWord]
+	return len(p.Prefix) + pword.Offset + len(pword.Prefix) + p.CompWordPos
+}
+
+func (p CompPoint) getOrigStr() string {
+	return p.Prefix + p.StmtStr + p.Suffix
 }

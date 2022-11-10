@@ -1081,42 +1081,13 @@ func makeInsertUpdateFromComps(pos int64, prefix string, comps []string, hasMore
 	if hasMore {
 		return nil
 	}
-	lcp := longestPrefix(prefix, comps)
+	lcp := utilfn.LongestPrefix(prefix, comps)
 	if lcp == prefix || len(lcp) < len(prefix) || !strings.HasPrefix(lcp, prefix) {
 		return nil
 	}
 	insertChars := lcp[len(prefix):]
 	clu := &sstore.CmdLineType{InsertChars: insertChars, InsertPos: pos}
 	return sstore.ModelUpdate{CmdLine: clu}
-}
-
-func longestPrefix(root string, comps []string) string {
-	if len(comps) == 0 {
-		return root
-	}
-	if len(comps) == 1 {
-		comp := comps[0]
-		if len(comp) >= len(root) && strings.HasPrefix(comp, root) {
-			if strings.HasSuffix(comp, "/") {
-				return comps[0]
-			}
-			return comps[0] + " "
-		}
-	}
-	lcp := comps[0]
-	for i := 1; i < len(comps); i++ {
-		s := comps[i]
-		for j := 0; j < len(lcp); j++ {
-			if j >= len(s) || lcp[j] != s[j] {
-				lcp = lcp[0:j]
-				break
-			}
-		}
-	}
-	if len(lcp) < len(root) || !strings.HasPrefix(lcp, root) {
-		return root
-	}
-	return lcp
 }
 
 func simpleCompMeta(ctx context.Context, prefix string, compCtx comp.CompContext, args []interface{}) (*comp.CompReturn, error) {

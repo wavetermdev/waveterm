@@ -74,3 +74,41 @@ func ShellQuote(val string, forceQuote bool, maxLen int) string {
 		return rtn
 	}
 }
+
+func LongestPrefix(root string, strs []string) string {
+	if len(strs) == 0 {
+		return root
+	}
+	if len(strs) == 1 {
+		comp := strs[0]
+		if len(comp) >= len(root) && strings.HasPrefix(comp, root) {
+			if strings.HasSuffix(comp, "/") {
+				return strs[0]
+			}
+			return strs[0]
+		}
+	}
+	lcp := strs[0]
+	for i := 1; i < len(strs); i++ {
+		s := strs[i]
+		for j := 0; j < len(lcp); j++ {
+			if j >= len(s) || lcp[j] != s[j] {
+				lcp = lcp[0:j]
+				break
+			}
+		}
+	}
+	if len(lcp) < len(root) || !strings.HasPrefix(lcp, root) {
+		return root
+	}
+	return lcp
+}
+
+func ContainsStr(strs []string, test string) bool {
+	for _, s := range strs {
+		if s == test {
+			return true
+		}
+	}
+	return false
+}
