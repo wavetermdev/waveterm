@@ -8,6 +8,7 @@ import (
 	"unicode"
 
 	"github.com/scripthaus-dev/mshell/pkg/packet"
+	"github.com/scripthaus-dev/mshell/pkg/shexec"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
 	"mvdan.cc/sh/v3/syntax"
 )
@@ -23,7 +24,13 @@ const (
 	SimpleCompGenTypeVariable       = "variable"
 )
 
-type SimpleCompGenFnType = func(ctx context.Context, point SimpleCompPoint, rptr sstore.RemotePtrType, state *packet.ShellState, args []interface{})
+type CompContext struct {
+	RemotePtr  sstore.RemotePtrType
+	State      *packet.ShellState
+	ForDisplay bool
+}
+
+type SimpleCompGenFnType = func(ctx context.Context, point SimpleCompPoint, compCtx CompContext, args []interface{}) (*CompReturn, error)
 
 type SimpleCompPoint struct {
 	Word string
@@ -31,17 +38,51 @@ type SimpleCompPoint struct {
 }
 
 type ParsedWord struct {
-	Offset int
-	Word   string
-	Prefix string
+	Offset      int
+	Word        *syntax.Word
+	PartialWord string
+	Prefix      string
 }
 
 type CompPoint struct {
+	StmtStr     string
 	Words       []ParsedWord
 	CompWord    int
 	CompWordPos int
 	Prefix      string
 	Suffix      string
+}
+
+func (p *CompPoint) wordAsStr(w ParsedWord) string {
+	if w.Word != nil {
+		return p.StmtStr[w.Word.Pos().Offset():w.Word.End().Offset()]
+	}
+	return w.PartialWord
+}
+
+func (p *CompPoint) simpleExpandWord(w ParsedWord) string {
+	ectx := shexec.SimpleExpandContext{}
+	if w.Word != nil {
+		return SimpleExpandWord(ectx, w.Word, p.StmtStr)
+	}
+	return SimpleExpandPartialWord(ectx, p.PartialWord, false)
+}
+
+func (p *CompPoint) compPrefix() string {
+	pword := p.Words[p.CompWord]
+	if p.CompWordPos == 0 {
+		return ""
+	}
+	wordStr := p.wordAsStr(pword)
+	if p.CompWordPos == len(wordStr) {
+		return p.simpleExpandWord(pword)
+	}
+	// TODO we can do better, if p.Word is not nil, we can look for which WordPart
+	//      our pos is in.  we can then do a normal word expand on the previous parts
+	//      and a partial on just the current part.  this is an uncommon case though
+	//      and has very little upside (even bash does not expand multipart words correctly)
+	partialWordStr := wordStr[:p.CompWordPos]
+	return SimpleExpandPartialWord(shexec.SimpleExpandContext{}, partialWordStr, false)
 }
 
 func (p *CompPoint) dump() {
@@ -55,9 +96,9 @@ func (p *CompPoint) dump() {
 			fmt.Printf("{%s}", w.Prefix)
 		}
 		if idx == p.CompWord {
-			fmt.Printf("%s\n", strWithCursor(w.Word, p.CompWordPos))
+			fmt.Printf("%s\n", strWithCursor(p.wordAsStr(w), p.CompWordPos))
 		} else {
-			fmt.Printf("%s\n", w.Word)
+			fmt.Printf("%s\n", p.wordAsStr(w))
 		}
 	}
 	if p.Suffix != "" {
@@ -66,8 +107,10 @@ func (p *CompPoint) dump() {
 	fmt.Printf("\n")
 }
 
+// directories will have a trailing "/"
 type CompEntry struct {
-	Word string
+	Word      string
+	IsMetaCmd bool
 }
 
 type CompReturn struct {
@@ -154,6 +197,7 @@ func ParseCompPoint(fullCmdStr string, pos int) (*CompPoint, error) {
 	// fmt.Printf("found: ((%s))%s((%s))\n", rtnPoint.Prefix, strWithCursor(stmtStr, stmtPos), rtnPoint.Suffix)
 
 	// now, find the word that the pos appears in within the stmt above
+	rtnPoint.StmtStr = stmtStr
 	stmtReader := strings.NewReader(stmtStr)
 	lastWordPos := 0
 	parser.Words(stmtReader, func(w *syntax.Word) bool {
@@ -162,21 +206,22 @@ func ParseCompPoint(fullCmdStr string, pos int) (*CompPoint, error) {
 		if int(w.Pos().Offset()) > lastWordPos {
 			pword.Prefix = stmtStr[lastWordPos:w.Pos().Offset()]
 		}
-		pword.Word = stmtStr[w.Pos().Offset():w.End().Offset()]
+		pword.Word = w
 		rtnPoint.Words = append(rtnPoint.Words, pword)
 		lastWordPos = int(w.End().Offset())
 		return true
 	})
 	if lastWordPos < len(stmtStr) {
 		pword := ParsedWord{Offset: lastWordPos}
-		pword.Prefix, pword.Word = splitInitialWhitespace(stmtStr[lastWordPos:])
+		pword.Prefix, pword.PartialWord = splitInitialWhitespace(stmtStr[lastWordPos:])
 		rtnPoint.Words = append(rtnPoint.Words, pword)
 	}
 	if len(rtnPoint.Words) == 0 {
 		rtnPoint.Words = append(rtnPoint.Words, ParsedWord{})
 	}
 	for idx, w := range rtnPoint.Words {
-		if stmtPos > w.Offset && stmtPos <= w.Offset+len(w.Prefix)+len(w.Word) {
+		wordLen := len(rtnPoint.wordAsStr(w))
+		if stmtPos > w.Offset && stmtPos <= w.Offset+len(w.Prefix)+wordLen {
 			rtnPoint.CompWord = idx
 			rtnPoint.CompWordPos = stmtPos - w.Offset - len(w.Prefix)
 			if rtnPoint.CompWordPos < 0 {
@@ -184,7 +229,7 @@ func ParseCompPoint(fullCmdStr string, pos int) (*CompPoint, error) {
 			}
 		}
 	}
-	// rtnPoint.dump()
+	rtnPoint.dump()
 	return &rtnPoint, nil
 }
 
@@ -192,8 +237,8 @@ func splitCompWord(p *CompPoint) {
 	w := p.Words[p.CompWord]
 	prefixPos := p.CompWordPos + len(w.Prefix)
 
-	w1 := ParsedWord{Offset: w.Offset, Prefix: w.Prefix[:prefixPos], Word: ""}
-	w2 := ParsedWord{Offset: w.Offset + prefixPos, Prefix: w.Prefix[prefixPos:], Word: w.Word}
+	w1 := ParsedWord{Offset: w.Offset, Prefix: w.Prefix[:prefixPos]}
+	w2 := ParsedWord{Offset: w.Offset + prefixPos, Prefix: w.Prefix[prefixPos:], Word: w.Word, PartialWord: w.PartialWord}
 	p.CompWord = p.CompWord // the same (w1)
 	p.CompWordPos = 0       // will be at 0 since w1 has a word length of 0
 	var newWords []ParsedWord

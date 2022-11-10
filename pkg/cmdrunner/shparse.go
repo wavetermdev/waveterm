@@ -149,12 +149,9 @@ func setBracketArgs(argMap map[string]string, bracketStr string) error {
 	strReader := strings.NewReader(bracketStr)
 	parser := syntax.NewParser(syntax.Variant(syntax.LangBash))
 	var wordErr error
+	var ectx shexec.SimpleExpandContext // do not set HomeDir (we don't expand ~ in bracket args)
 	err := parser.Words(strReader, func(w *syntax.Word) bool {
-		litStr, err := shexec.QuotedLitToStr(w)
-		if err != nil {
-			wordErr = fmt.Errorf("invalid expr in bracket args: %v", err)
-			return false
-		}
+		litStr := shexec.SimpleExpandWord(ectx, w, bracketStr)
 		eqIdx := strings.Index(litStr, "=")
 		var varName, varVal string
 		if eqIdx == -1 {
@@ -299,7 +296,7 @@ func EvalMetaCommand(ctx context.Context, origPk *scpacket.FeCommandPacketType) 
 	return rtnPk, nil
 }
 
-func parseAliasStmt(stmt *syntax.Stmt) (string, string, error) {
+func parseAliasStmt(stmt *syntax.Stmt, sourceStr string) (string, string, error) {
 	cmd := stmt.Cmd
 	callExpr, ok := cmd.(*syntax.CallExpr)
 	if !ok {
@@ -313,10 +310,8 @@ func parseAliasStmt(stmt *syntax.Stmt) (string, string, error) {
 		return "", "", fmt.Errorf("invalid alias cmd word (not 'alias')")
 	}
 	secondWord := callExpr.Args[1]
-	val, err := shexec.QuotedLitToStr(secondWord)
-	if err != nil {
-		return "", "", err
-	}
+	var ectx shexec.SimpleExpandContext // no homedir, do not want ~ expansion
+	val := shexec.SimpleExpandWord(ectx, secondWord, sourceStr)
 	eqIdx := strings.Index(val, "=")
 	if eqIdx == -1 {
 		return "", "", fmt.Errorf("no '=' in alias definition")
@@ -333,7 +328,7 @@ func ParseAliases(aliases string) (map[string]string, error) {
 	}
 	rtn := make(map[string]string)
 	for _, stmt := range file.Stmts {
-		aliasName, aliasVal, err := parseAliasStmt(stmt)
+		aliasName, aliasVal, err := parseAliasStmt(stmt, aliases)
 		if err != nil {
 			// fmt.Printf("stmt-err: %v\n", err)
 			continue
