@@ -284,8 +284,8 @@ type HistoryInfoType = {
 };
 
 type CmdLineUpdateType = {
-    insertchars : string,
-    insertpos : number,
+    cmdline : string,
+    cursorpos : number,
 };
 
 type RemoteEditType = {

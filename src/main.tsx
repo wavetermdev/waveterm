@@ -520,6 +520,14 @@ class TextAreaInput extends React.Component<{}, {}> {
             }
             this.lastFocusType = focusType;
         }
+        let inputModel = GlobalModel.inputModel;
+        if (inputModel.forceCursorPos.get() != null) {
+            if (this.mainInputRef.current != null) {
+                this.mainInputRef.current.selectionStart = inputModel.forceCursorPos.get();
+                this.mainInputRef.current.selectionEnd = inputModel.forceCursorPos.get();
+            }
+            mobx.action(() => inputModel.forceCursorPos.set(null))();
+        }
     }
 
     getLinePos(elem : any) : {numLines : number, linePos : number} {
@@ -768,6 +776,7 @@ class TextAreaInput extends React.Component<{}, {}> {
         let model = GlobalModel;
         let inputModel = model.inputModel;
         let curLine = inputModel.getCurLine();
+        let fcp = inputModel.forceCursorPos.get(); // for reaction
         let numLines = curLine.split("\n").length;
         let displayLines = numLines;
         if (displayLines > 5) {

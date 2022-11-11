@@ -856,6 +856,9 @@ class InputModel {
     showNoInputTimeoutId : any = null;
     inputMode : OV<null | "comment" | "global"> = mobx.observable.box(null);
 
+    // cursor
+    forceCursorPos : OV<number> = mobx.observable.box(null);
+
     // focus
     inputFocused : OV<boolean> = mobx.observable.box(false);
     lineFocused : OV<boolean> = mobx.observable.box(false);
@@ -1077,13 +1080,8 @@ class InputModel {
 
     updateCmdLine(cmdLine : CmdLineUpdateType) : void {
         mobx.action(() => {
-            let curLine = this.getCurLine();
-            if (curLine.length < cmdLine.insertpos) {
-                return;
-            }
-            let pos = cmdLine.insertpos;
-            curLine = curLine.substr(0, pos) + cmdLine.insertchars + curLine.substr(pos);
-            this.setCurLine(curLine);
+            this.setCurLine(cmdLine.cmdline);
+            this.forceCursorPos.set(cmdLine.cursorpos);
         })();
     }
 
