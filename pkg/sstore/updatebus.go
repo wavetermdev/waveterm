@@ -113,8 +113,8 @@ type HistoryInfoType struct {
 }
 
 type CmdLineType struct {
-	InsertChars string `json:"insertchars"`
-	InsertPos   int64  `json:"insertpos"`
+	CmdLine   string `json:"cmdline"`
+	CursorPos int    `json:"cursorpos"`
 }
 
 type UpdateChannel struct {

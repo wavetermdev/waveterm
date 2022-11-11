@@ -41,7 +41,12 @@ func DoSimpleComp(ctx context.Context, compType string, prefix string, compCtx C
 	if compFn == nil {
 		return nil, fmt.Errorf("no simple comp fn for %q", compType)
 	}
-	return compFn(ctx, prefix, compCtx, args)
+	crtn, err := compFn(ctx, prefix, compCtx, args)
+	if err != nil {
+		return nil, err
+	}
+	crtn.CompType = compType
+	return crtn, nil
 }
 
 func compsToCompReturn(comps []string, hasMore bool) *CompReturn {

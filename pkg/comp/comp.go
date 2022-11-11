@@ -43,7 +43,7 @@ const (
 )
 
 type CompContext struct {
-	RemotePtr  sstore.RemotePtrType
+	RemotePtr  *sstore.RemotePtrType
 	State      *packet.ShellState
 	ForDisplay bool
 }
@@ -76,8 +76,9 @@ type CompEntry struct {
 }
 
 type CompReturn struct {
-	Entries []CompEntry
-	HasMore bool
+	CompType string
+	Entries  []CompEntry
+	HasMore  bool
 }
 
 func compQuoteDQString(s string, close bool) string {
@@ -204,7 +205,7 @@ func (p *CompPoint) FullyExtend(crtn *CompReturn) StrWithPos {
 	if crtn == nil || crtn.HasMore {
 		return StrWithPos{Str: p.getOrigStr(), Pos: p.getOrigPos()}
 	}
-	compStrs := crtn.getCompStrs()
+	compStrs := crtn.GetCompStrs()
 	compPrefix := p.getCompPrefix()
 	lcp := utilfn.LongestPrefix(compPrefix, compStrs)
 	if lcp == compPrefix || len(lcp) < len(compPrefix) || !strings.HasPrefix(lcp, compPrefix) {
@@ -420,7 +421,7 @@ func SortCompReturnEntries(c *CompReturn) {
 	})
 }
 
-func CombineCompReturn(c1 *CompReturn, c2 *CompReturn) *CompReturn {
+func CombineCompReturn(compType string, c1 *CompReturn, c2 *CompReturn) *CompReturn {
 	if c1 == nil {
 		return c2
 	}
@@ -428,6 +429,7 @@ func CombineCompReturn(c1 *CompReturn, c2 *CompReturn) *CompReturn {
 		return c1
 	}
 	var rtn CompReturn
+	rtn.CompType = compType
 	rtn.HasMore = c1.HasMore || c2.HasMore
 	rtn.Entries = append([]CompEntry{}, c1.Entries...)
 	rtn.Entries = append(rtn.Entries, c2.Entries...)
@@ -435,10 +437,22 @@ func CombineCompReturn(c1 *CompReturn, c2 *CompReturn) *CompReturn {
 	return &rtn
 }
 
-func (c *CompReturn) getCompStrs() []string {
+func (c *CompReturn) GetCompStrs() []string {
 	rtn := make([]string, len(c.Entries))
 	for idx, entry := range c.Entries {
 		rtn[idx] = entry.Word
+	}
+	return rtn
+}
+
+func (c *CompReturn) GetCompDisplayStrs() []string {
+	rtn := make([]string, len(c.Entries))
+	for idx, entry := range c.Entries {
+		if entry.IsMetaCmd {
+			rtn[idx] = "^" + entry.Word
+		} else {
+			rtn[idx] = entry.Word
+		}
 	}
 	return rtn
 }

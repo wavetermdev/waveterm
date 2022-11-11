@@ -1077,23 +1077,14 @@ func makeInfoFromComps(compType string, comps []string, hasMore bool) sstore.Upd
 	return update
 }
 
-func makeInsertUpdateFromComps(pos int64, prefix string, comps []string, hasMore bool) sstore.UpdatePacket {
-	if hasMore {
-		return nil
-	}
-	lcp := utilfn.LongestPrefix(prefix, comps)
-	if lcp == prefix || len(lcp) < len(prefix) || !strings.HasPrefix(lcp, prefix) {
-		return nil
-	}
-	insertChars := lcp[len(prefix):]
-	clu := &sstore.CmdLineType{InsertChars: insertChars, InsertPos: pos}
-	return sstore.ModelUpdate{CmdLine: clu}
-}
-
 func simpleCompMeta(ctx context.Context, prefix string, compCtx comp.CompContext, args []interface{}) (*comp.CompReturn, error) {
-	compsCmd, _ := comp.DoSimpleComp(ctx, "command", prefix, compCtx, nil)
-	compsMeta, _ := simpleCompCommandMeta(ctx, prefix, compCtx, nil)
-	return comp.CombineCompReturn(compsCmd, compsMeta), nil
+	if strings.HasPrefix(prefix, "/") {
+		compsCmd, _ := comp.DoSimpleComp(ctx, comp.CGTypeCommand, prefix, compCtx, nil)
+		compsMeta, _ := simpleCompCommandMeta(ctx, prefix, compCtx, nil)
+		return comp.CombineCompReturn(comp.CGTypeCommandMeta, compsCmd, compsMeta), nil
+	} else {
+		return comp.DoSimpleComp(ctx, comp.CGTypeCommand, prefix, compCtx, nil)
+	}
 }
 
 func simpleCompCommandMeta(ctx context.Context, prefix string, compCtx comp.CompContext, args []interface{}) (*comp.CompReturn, error) {
@@ -1158,7 +1149,13 @@ func doCompGen(ctx context.Context, pk *scpacket.FeCommandPacketType, prefix str
 	return comps, hasMore, nil
 }
 
+// func DoCompGen(ctx context.Context, sp StrWithPos, compCtx CompContext) (*CompReturn, *StrWithPos, error)
+
 func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, 0) // best-effort
+	if err != nil {
+		return nil, fmt.Errorf("/compgen error: %w", err)
+	}
 	cmdLine := firstArg(pk)
 	pos := len(cmdLine)
 	if pk.Kwargs["comppos"] != "" {
@@ -1175,28 +1172,52 @@ func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		pos = len(cmdLine)
 	}
 	showComps := resolveBool(pk.Kwargs["compshow"], false)
-	prefix := cmdLine[:pos]
-	parts := strings.Split(prefix, " ")
-	compType := "file"
-	if len(parts) > 0 && len(parts) < 2 && strings.HasPrefix(parts[0], "/") {
-		compType = "metacommand"
-	} else if len(parts) == 2 && (parts[0] == "cd" || parts[0] == "/cd") {
-		compType = "directory"
-	} else if len(parts) <= 1 {
-		compType = "command"
+	cmdSP := comp.StrWithPos{Str: cmdLine, Pos: pos}
+	compCtx := comp.CompContext{}
+	if ids.Remote != nil {
+		rptr := ids.Remote.RemotePtr
+		compCtx.RemotePtr = &rptr
+		compCtx.State = ids.Remote.RemoteState
 	}
-	lastPart := ""
-	if len(parts) > 0 {
-		lastPart = parts[len(parts)-1]
-	}
-	comps, hasMore, err := doCompGen(ctx, pk, lastPart, compType, showComps)
+	compCtx.ForDisplay = showComps
+	crtn, newSP, err := comp.DoCompGen(ctx, cmdSP, compCtx)
 	if err != nil {
 		return nil, err
 	}
-	if showComps {
-		return makeInfoFromComps(compType, comps, hasMore), nil
+	if crtn == nil {
+		return nil, fmt.Errorf("no return value from DoCompGen")
 	}
-	return makeInsertUpdateFromComps(int64(pos), lastPart, comps, hasMore), nil
+	if showComps || newSP == nil {
+		compStrs := crtn.GetCompDisplayStrs()
+		return makeInfoFromComps(crtn.CompType, compStrs, crtn.HasMore), nil
+	}
+	update := sstore.ModelUpdate{
+		CmdLine: &sstore.CmdLineType{CmdLine: newSP.Str, CursorPos: newSP.Pos},
+	}
+	return update, nil
+
+	// prefix := cmdLine[:pos]
+	// parts := strings.Split(prefix, " ")
+	// compType := "file"
+	// if len(parts) > 0 && len(parts) < 2 && strings.HasPrefix(parts[0], "/") {
+	// 	compType = "metacommand"
+	// } else if len(parts) == 2 && (parts[0] == "cd" || parts[0] == "/cd") {
+	// 	compType = "directory"
+	// } else if len(parts) <= 1 {
+	// 	compType = "command"
+	// }
+	// lastPart := ""
+	// if len(parts) > 0 {
+	// 	lastPart = parts[len(parts)-1]
+	// }
+	// comps, hasMore, err := doCompGen(ctx, pk, lastPart, compType, showComps)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// if showComps {
+	// 	return makeInfoFromComps(compType, comps, hasMore), nil
+	// }
+	// return makeInsertUpdateFromComps(int64(pos), lastPart, comps, hasMore), nil
 }
 
 func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
