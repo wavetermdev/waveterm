@@ -20,14 +20,19 @@ import (
 const MaxCompQuoteLen = 5000
 
 const (
-	SimpleCompGenTypeFile           = "file"
-	SimpleCompGenTypeDir            = "dir"
-	SimpleCompGenTypeCommand        = "command"
-	SimpleCompGenTypeRemote         = "remote"
-	SimpleCompGenTypeRemoteInstance = "remoteinstance"
-	SimpleCompGenTypeMetaCmd        = "metacmd"
-	SimpleCompGenTypeGlobalCmd      = "globalcmd"
-	SimpleCompGenTypeVariable       = "variable"
+	// local to simplecomp
+	CGTypeCommand  = "command"
+	CGTypeFile     = "file"
+	CGTypeDir      = "directory"
+	CGTypeVariable = "variable"
+
+	// implemented in cmdrunner
+	CGTypeMeta        = "metacmd"
+	CGTypeCommandMeta = "command+meta"
+
+	CGTypeRemote         = "remote"
+	CGTypeRemoteInstance = "remoteinstance"
+	CGTypeGlobalCmd      = "globalcmd"
 )
 
 const (
@@ -46,13 +51,6 @@ type CompContext struct {
 type StrWithPos struct {
 	Str string
 	Pos int
-}
-
-type fullCompPrefix struct {
-	RawStr        string
-	RawPos        int
-	CompPrefix    string
-	QuoteTypePref string
 }
 
 type ParsedWord struct {
@@ -285,7 +283,9 @@ func splitInitialWhitespace(str string) (string, string) {
 	return str, ""
 }
 
-func ParseCompPoint(fullCmdStr string, pos int) (*CompPoint, error) {
+func ParseCompPoint(cmdStr StrWithPos) *CompPoint {
+	fullCmdStr := cmdStr.Str
+	pos := cmdStr.Pos
 	// fmt.Printf("---\n")
 	// fmt.Printf("cmd: %s\n", strWithCursor(fullCmdStr, pos))
 
@@ -367,7 +367,7 @@ func ParseCompPoint(fullCmdStr string, pos int) (*CompPoint, error) {
 			}
 		}
 	}
-	return &rtnPoint, nil
+	return &rtnPoint
 }
 
 func splitCompWord(p *CompPoint) {
@@ -387,8 +387,23 @@ func splitCompWord(p *CompPoint) {
 	p.Words = newWords
 }
 
-func DoCompGen(ctx context.Context, point CompPoint, rptr sstore.RemotePtrType, state *packet.ShellState) (*CompReturn, error) {
-	return nil, nil
+func DoCompGen(ctx context.Context, sp StrWithPos, compCtx CompContext) (*CompReturn, *StrWithPos, error) {
+	compPoint := ParseCompPoint(sp)
+	compType := CGTypeFile
+	if compPoint.CompWord == 0 {
+		compType = CGTypeCommandMeta
+	}
+	// TODO lookup special types
+	compPrefix := compPoint.getCompPrefix()
+	crtn, err := DoSimpleComp(ctx, compType, compPrefix, compCtx, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	if compCtx.ForDisplay {
+		return crtn, nil, nil
+	}
+	rtnSP := compPoint.FullyExtend(crtn)
+	return crtn, &rtnSP, nil
 }
 
 func SortCompReturnEntries(c *CompReturn) {

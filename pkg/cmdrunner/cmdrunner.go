@@ -35,8 +35,8 @@ const (
 )
 
 func init() {
-	comp.RegisterSimpleCompFn("meta", simpleCompMeta)
-	comp.RegisterSimpleCompFn("command+meta", simpleCompCommandMeta)
+	comp.RegisterSimpleCompFn(comp.CGTypeMeta, simpleCompMeta)
+	comp.RegisterSimpleCompFn(comp.CGTypeCommandMeta, simpleCompCommandMeta)
 }
 
 const DefaultUserId = "sawka"

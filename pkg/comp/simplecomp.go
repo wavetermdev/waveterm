@@ -13,10 +13,10 @@ import (
 
 var globalLock = &sync.Mutex{}
 var simpleCompMap = map[string]SimpleCompGenFnType{
-	"file":      simpleCompFile,
-	"directory": simpleCompDir,
-	"variable":  simpleCompVar,
-	"command":   simpleCompCommand,
+	CGTypeCommand:  simpleCompCommand,
+	CGTypeFile:     simpleCompFile,
+	CGTypeDir:      simpleCompDir,
+	CGTypeVariable: simpleCompVar,
 }
 
 type SimpleCompGenFnType = func(ctx context.Context, prefix string, compCtx CompContext, args []interface{}) (*CompReturn, error)
@@ -79,17 +79,17 @@ func doCompGen(ctx context.Context, prefix string, compType string, compCtx Comp
 }
 
 func simpleCompFile(ctx context.Context, prefix string, compCtx CompContext, args []interface{}) (*CompReturn, error) {
-	return doCompGen(ctx, prefix, "file", compCtx)
+	return doCompGen(ctx, prefix, CGTypeFile, compCtx)
 }
 
 func simpleCompDir(ctx context.Context, prefix string, compCtx CompContext, args []interface{}) (*CompReturn, error) {
-	return doCompGen(ctx, prefix, "directory", compCtx)
+	return doCompGen(ctx, prefix, CGTypeDir, compCtx)
 }
 
 func simpleCompVar(ctx context.Context, prefix string, compCtx CompContext, args []interface{}) (*CompReturn, error) {
-	return doCompGen(ctx, prefix, "variable", compCtx)
+	return doCompGen(ctx, prefix, CGTypeVariable, compCtx)
 }
 
 func simpleCompCommand(ctx context.Context, prefix string, compCtx CompContext, args []interface{}) (*CompReturn, error) {
-	return doCompGen(ctx, prefix, "command", compCtx)
+	return doCompGen(ctx, prefix, CGTypeCommand, compCtx)
 }

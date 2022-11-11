@@ -16,11 +16,7 @@ func parseToSP(s string) StrWithPos {
 
 func testParse(cmdStr string, pos int) {
 	fmt.Printf("cmd: %s\n", strWithCursor(cmdStr, pos))
-	p, err := ParseCompPoint(cmdStr, pos)
-	if err != nil {
-		fmt.Printf("err: %v\n", err)
-		return
-	}
+	p := ParseCompPoint(StrWithPos{Str: cmdStr, Pos: pos})
 	p.dump()
 }
 
@@ -52,19 +48,13 @@ func testMiniExtend(t *testing.T, p *CompPoint, newWord string, complete bool, e
 }
 
 func Test2(t *testing.T) {
-	p, err := ParseCompPoint("ls f", 4)
-	if err != nil {
-		t.Fatalf("error: %v", err)
-	}
+	p := ParseCompPoint(parseToSP("ls f[*]"))
 	testMiniExtend(t, p, "foo", false, "foo[*]")
 	testMiniExtend(t, p, "foo", true, "foo [*]")
 	testMiniExtend(t, p, "foo bar", true, "'foo bar' [*]")
 	testMiniExtend(t, p, "foo'bar", true, `$'foo\'bar' [*]`)
 
-	p, err = ParseCompPoint("ls fmore", 4)
-	if err != nil {
-		t.Fatalf("error: %v", err)
-	}
+	p = ParseCompPoint(parseToSP("ls f[*]more"))
 	testMiniExtend(t, p, "foo", false, "foo[*]more")
 	testMiniExtend(t, p, "foo bar", false, `'foo bar[*]more`)
 	testMiniExtend(t, p, "foo bar", true, `'foo bar[*]more`)
@@ -72,10 +62,7 @@ func Test2(t *testing.T) {
 }
 
 func testParseRT(t *testing.T, origSP StrWithPos) {
-	p, err := ParseCompPoint(origSP.Str, origSP.Pos)
-	if err != nil {
-		t.Fatalf("error: %v", err)
-	}
+	p := ParseCompPoint(origSP)
 	newSP := StrWithPos{Str: p.getOrigStr(), Pos: p.getOrigPos()}
 	if origSP != newSP {
 		t.Fatalf("not equal: [%s] != [%s]", origSP, newSP)
@@ -92,10 +79,7 @@ func Test3(t *testing.T) {
 func testExtend(t *testing.T, origStr string, compStrs []string, expectedStr string) {
 	origSP := parseToSP(origStr)
 	expectedSP := parseToSP(expectedStr)
-	p, err := ParseCompPoint(origSP.Str, origSP.Pos)
-	if err != nil {
-		t.Fatalf("error: %v", err)
-	}
+	p := ParseCompPoint(origSP)
 	crtn := compsToCompReturn(compStrs, false)
 	newSP := p.FullyExtend(crtn)
 	if newSP != expectedSP {
