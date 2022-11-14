@@ -1,9 +1,8 @@
 package utilfn
 
 import (
+	"regexp"
 	"strings"
-
-	"github.com/alessio/shellescape"
 )
 
 func GetStrArr(v interface{}, field string) []string {
@@ -50,12 +49,17 @@ func GetBool(v interface{}, field string) bool {
 	return bval
 }
 
+var needsQuoteRe = regexp.MustCompile(`[^\w@%:,./=+-]`)
+
 // minimum maxlen=6
 func ShellQuote(val string, forceQuote bool, maxLen int) string {
 	if maxLen < 6 {
 		maxLen = 6
 	}
-	rtn := shellescape.Quote(val)
+	rtn := val
+	if needsQuoteRe.MatchString(val) {
+		rtn = "'" + strings.ReplaceAll(val, "'", `'"'"'`) + "'"
+	}
 	if strings.HasPrefix(rtn, "\"") || strings.HasPrefix(rtn, "'") {
 		if len(rtn) > maxLen {
 			return rtn[0:maxLen-4] + "..." + rtn[0:1]
