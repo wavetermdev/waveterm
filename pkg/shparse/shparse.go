@@ -2,7 +2,6 @@ package shparse
 
 import (
 	"fmt"
-	"strings"
 	"unicode"
 )
 
@@ -77,27 +76,46 @@ import (
 // tokenization https://pubs.opengroup.org/onlinepubs/7908799/xcu/chap2.html#tag_001_003
 
 const (
-	WordTypeRaw      = "raw"
-	WordTypeLit      = "lit"
-	WordTypeOp       = "op"       // single: & ; | ( ) < > \n  multi(2): && || ;; << >> <& >& <> >| ((  multi(3): <<-    ('((' requires special processing)
-	WordTypeKey      = "key"      // if then else elif fi do done case esac while until for in { } ! (( [[
-	WordTypeDQ       = "dq"       // "
-	WordTypeSQ       = "sq"       // '
-	WordTypeBQ       = "bq"       // `
-	WordTypeDSQ      = "dsq"      // $'
-	WordTypeDDQ      = "ddq"      // $"
-	WordTypeVar      = "var"      // $
-	WordTypeVarBrace = "varbrace" // ${
-	WordTypeDP       = "dp"       // $(
-	WordTypeDPP      = "dpp"      // $((
-	WordTypeP        = "p"        // (
-	WordTypeDB       = "db"       // $[
-	WordTypeDBB      = "dbb"      // $[[
+	WordTypeRaw       = "raw"
+	WordTypeLit       = "lit"
+	WordTypeOp        = "op"   // single: & ; | ( ) < > \n  multi(2): && || ;; << >> <& >& <> >| ((  multi(3): <<-    ('((' requires special processing)
+	WordTypeKey       = "key"  // if then else elif fi do done case esac while until for in { } ! (( [[
+	WordTypeSimpleVar = "svar" // simplevar $
+
+	// each of these can also be used as an entry in quoteContext
+	WordTypeDQ       = "dq"   // "
+	WordTypeSQ       = "sq"   // '
+	WordTypeBQ       = "bq"   // `
+	WordTypeDSQ      = "dsq"  // $'
+	WordTypeDDQ      = "ddq"  // $"
+	WordTypeVarBrace = "varb" // ${
+	WordTypeDP       = "dp"   // $(
+	WordTypeDPP      = "dpp"  // $((
+	WordTypeP        = "p"    // (
+	WordTypePP       = "pp"   // ((
+	WordTypeDB       = "db"   // $[
 )
+
+type quoteContext []string
+
+func (qc quoteContext) push(q string) quoteContext {
+	rtn := make([]string, 0, len(qc)+1)
+	rtn = append(rtn, qc...)
+	rtn = append(rtn, q)
+	return rtn
+}
+
+func (qc quoteContext) cur() string {
+	if len(qc) == 0 {
+		return ""
+	}
+	return qc[len(qc)-1]
+}
 
 type parseContext struct {
 	Input []rune
 	Pos   int
+	QC    quoteContext
 }
 
 type wordType struct {
@@ -108,6 +126,15 @@ type wordType struct {
 	Val      string // only for Op and Key (does *not* store string values of quoted expressions or expansions)
 	Prefix   []rune
 	Subs     []*wordType
+}
+
+func (c *parseContext) clone(pos int, newQuote string) *parseContext {
+	rtn := *c
+	if newQuote != "" {
+		rtn.QC = append(rtn.QC, newQuote)
+	}
+	rtn.Input = rtn.Input[pos:]
+	return &rtn
 }
 
 func (c *parseContext) at(offset int) rune {
@@ -149,9 +176,11 @@ func (c *parseContext) newOp(length int) *wordType {
 }
 
 // returns (found, newOffset)
+// shell_meta_chars "()<>;&|"
+// possible to maybe add ;;& &>> &> |& ;&
 func (c *parseContext) parseOp(offset int) (bool, int) {
 	ch := c.at(offset)
-	if ch == '&' || ch == ';' || ch == '|' || ch == '\n' || ch == '<' || ch == '>' || ch == '!' || ch == '(' {
+	if ch == '(' || ch == ')' || ch == '<' || ch == '>' || ch == ';' || ch == '&' || ch == '|' {
 		ch2 := c.at(offset + 1)
 		if ch2 == 0 {
 			return true, offset + 1
@@ -159,16 +188,16 @@ func (c *parseContext) parseOp(offset int) (bool, int) {
 		r2 := string([]rune{ch, ch2})
 		if r2 == "<<" {
 			ch3 := c.at(offset + 2)
-			if ch3 == '-' {
-				return true, offset + 3 // "<<-"
+			if ch3 == '-' || ch3 == '<' {
+				return true, offset + 3 // "<<-" or "<<<"
 			}
 			return true, offset + 2 // "<<"
 		}
-		if r2 == "&&" || r2 == "||" || r2 == ";;" || r2 == "<<" || r2 == ">>" || r2 == "<&" || r2 == ">&" || r2 == "<>" || r2 == ">|" {
+		if r2 == ">>" || r2 == "&&" || r2 == "||" || r2 == ";;" || r2 == "<<" || r2 == "<&" || r2 == ">&" || r2 == "<>" || r2 == ">|" {
 			// we don't return '((' here (requires special processing)
-			return c.newOp(2)
+			return true, offset + 2
 		}
-		return c.newOp(1)
+		return true, offset + 1
 	}
 	return false, 0
 }
@@ -298,7 +327,7 @@ func (c *parseContext) parseExpansion() *wordType {
 	if newOffset > 1 {
 		// simple variable name
 		rtn := &wordType{
-			Type:     WordTypeVar,
+			Type:     WordTypeSimpleVar,
 			Offset:   c.Pos,
 			Raw:      c.Input[c.Pos : c.Pos+newOffset],
 			Complete: true,
@@ -308,7 +337,7 @@ func (c *parseContext) parseExpansion() *wordType {
 	}
 	// single character variable name, e.g. $@, $_, $1, etc.
 	rtn := &wordType{
-		Type:     WordTypeVar,
+		Type:     WordTypeSimpleVar,
 		Offset:   c.Pos,
 		Raw:      c.Input[c.Pos : c.Pos+2],
 		Complete: true,
@@ -398,7 +427,7 @@ func parseInput(inputStr string) []*wordType {
 	}
 
 	// now we want to expand ops
-	rtn := expandAllOps(rtn)
+	rtn = expandAllOps(rtn)
 
 	return rtn
 }
@@ -409,7 +438,7 @@ func expandOps(word *wordType) []*wordType {
 	}
 	var lastBackSlash bool
 	var rtn []*wordType
-	for idx, ch := range word.Raw {
+	for _, ch := range word.Raw {
 		if ch == 0 {
 			break
 		}
@@ -421,8 +450,9 @@ func expandOps(word *wordType) []*wordType {
 			lastBackSlash = false
 			continue
 		}
-
 	}
+	rtn = append(rtn, word)
+	return rtn
 }
 
 func expandAllOps(words []*wordType) []*wordType {
@@ -438,19 +468,33 @@ func expandAllOps(words []*wordType) []*wordType {
 	return rtn
 }
 
+func makeSpaceStr(slen int) string {
+	if slen == 0 {
+		return ""
+	}
+	if slen == 1 {
+		return " "
+	}
+	rtn := make([]byte, slen)
+	for i := 0; i < slen; i++ {
+		rtn[i] = ' '
+	}
+	return string(rtn)
+}
+
 func (w *wordType) String() string {
-	var notCompleteFlag string
+	notCompleteFlag := " "
 	if !w.Complete {
 		notCompleteFlag = "*"
 	}
-	return fmt.Sprintf("%s[%d:%q]%s", w.Type, w.Offset, string(w.Raw), notCompleteFlag)
+	return fmt.Sprintf("%4s[%3d]%s %s%q", w.Type, w.Offset, notCompleteFlag, makeSpaceStr(len(w.Prefix)), string(w.Raw))
 }
 
-func dumpWords(words []*wordType) {
-	var strs []string
+func dumpWords(words []*wordType, indentStr string) {
 	for _, word := range words {
-		strs = append(strs, word.String())
+		fmt.Printf("%s%s\n", indentStr, word.String())
+		if len(word.Subs) > 0 {
+			dumpWords(word.Subs, indentStr+"  ")
+		}
 	}
-	output := strings.Join(strs, " ")
-	fmt.Printf("%s\n", output)
 }

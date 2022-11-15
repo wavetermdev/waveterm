@@ -13,10 +13,10 @@ import (
 // > echo $foo{x,y}
 
 func testParse(t *testing.T, s string) {
-	words := parseInput(s)
+	words := Tokenize(s)
 
 	fmt.Printf("%s\n", s)
-	dumpWords(words)
+	dumpWords(words, "  ")
 	fmt.Printf("\n")
 }
 
