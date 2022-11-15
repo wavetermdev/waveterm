@@ -1,6 +1,7 @@
 package shparse
 
 import (
+	"bytes"
 	"unicode"
 )
 
@@ -107,4 +108,15 @@ func Tokenize(cmd string) []*wordType {
 	}
 	state.finish(c)
 	return state.Rtn
+}
+
+func wordsToStr(words []*wordType) string {
+	var buf bytes.Buffer
+	for _, word := range words {
+		if len(word.Prefix) > 0 {
+			buf.WriteString(string(word.Prefix))
+		}
+		buf.WriteString(string(word.Raw))
+	}
+	return buf.String()
 }

@@ -18,6 +18,11 @@ func testParse(t *testing.T, s string) {
 	fmt.Printf("%s\n", s)
 	dumpWords(words, "  ")
 	fmt.Printf("\n")
+
+	outStr := wordsToStr(words)
+	if outStr != s {
+		t.Errorf("tokenization output does not match input: %q => %q", s, outStr)
+	}
 }
 
 func Test1(t *testing.T) {
