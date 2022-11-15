@@ -3,6 +3,7 @@ package shparse
 import (
 	"fmt"
 	"strings"
+	"unicode"
 )
 
 //
@@ -73,10 +74,12 @@ import (
 // ambiguity between $((...)) and $((ls); ls)
 // ambiguity between foo=([0]=hell) and foo=([abc)
 
+// tokenization https://pubs.opengroup.org/onlinepubs/7908799/xcu/chap2.html#tag_001_003
+
 const (
 	WordTypeRaw      = "raw"
 	WordTypeLit      = "lit"
-	WordTypeOp       = "op"       // single: & ; | ( ) < > \n  multi(2): && || ;; << >> <& >& <> >| ((  multi(3): <<-
+	WordTypeOp       = "op"       // single: & ; | ( ) < > \n  multi(2): && || ;; << >> <& >& <> >| ((  multi(3): <<-    ('((' requires special processing)
 	WordTypeKey      = "key"      // if then else elif fi do done case esac while until for in { } ! (( [[
 	WordTypeDQ       = "dq"       // "
 	WordTypeSQ       = "sq"       // '
@@ -98,9 +101,9 @@ type parseContext struct {
 }
 
 type wordType struct {
-	Offset   int
-	End      int
 	Type     string
+	Offset   int
+	Raw      []rune
 	Complete bool
 	Val      string // only for Op and Key (does *not* store string values of quoted expressions or expansions)
 	Prefix   []rune
@@ -131,37 +134,43 @@ func (c *parseContext) match2(ch rune, ch2 rune) bool {
 	return c.at(0) == ch && c.at(1) == ch2
 }
 
+func (c *parseContext) match3(ch rune, ch2 rune, ch3 rune) bool {
+	return c.at(0) == ch && c.at(1) == ch2 && c.at(2) == ch3
+}
+
 func (c *parseContext) newOp(length int) *wordType {
-	rtn := &wordType{Offset: c.Pos}
-	rtn.Type = WordTypeOp
+	rtn := &wordType{Type: WordTypeOp}
+	rtn.Offset = c.Pos
+	rtn.Raw = c.Input[c.Pos : c.Pos+length]
+	rtn.Val = string(rtn.Raw)
 	rtn.Complete = true
-	rtn.Val = string(c.Input[c.Pos : c.Pos+length])
 	c.Pos += length
-	rtn.End = c.Pos
 	return rtn
 }
 
-func (c *parseContext) parseOp() *wordType {
-	ch := c.cur()
+// returns (found, newOffset)
+func (c *parseContext) parseOp(offset int) (bool, int) {
+	ch := c.at(offset)
 	if ch == '&' || ch == ';' || ch == '|' || ch == '\n' || ch == '<' || ch == '>' || ch == '!' || ch == '(' {
-		ch2 := c.at(1)
+		ch2 := c.at(offset + 1)
 		if ch2 == 0 {
-			return c.newOp(1)
+			return true, offset + 1
 		}
 		r2 := string([]rune{ch, ch2})
 		if r2 == "<<" {
-			ch3 := c.at(2)
+			ch3 := c.at(offset + 2)
 			if ch3 == '-' {
-				return c.newOp(3) // "<<-"
+				return true, offset + 3 // "<<-"
 			}
-			return c.newOp(2) // "<<"
+			return true, offset + 2 // "<<"
 		}
 		if r2 == "&&" || r2 == "||" || r2 == ";;" || r2 == "<<" || r2 == ">>" || r2 == "<&" || r2 == ">&" || r2 == "<>" || r2 == ">|" {
+			// we don't return '((' here (requires special processing)
 			return c.newOp(2)
 		}
 		return c.newOp(1)
 	}
-	return nil
+	return false, 0
 }
 
 // returns (new-offset, complete)
@@ -189,12 +198,14 @@ func (c *parseContext) parseStrSQ() *wordType {
 	if !c.match('\'') {
 		return nil
 	}
+	newOffset, complete := c.skipToChar(1, '\'', false)
 	w := &wordType{
-		Offset: c.Pos,
-		Type:   WordTypeDQ,
+		Type:     WordTypeDQ,
+		Offset:   c.Pos,
+		Raw:      c.Input[c.Pos : c.Pos+newOffset],
+		Complete: complete,
 	}
-	w.End, w.Complete = c.skipToChar(1, '\'', false)
-	c.Pos = w.End
+	c.Pos = c.Pos + newOffset
 	return w
 }
 
@@ -202,12 +213,14 @@ func (c *parseContext) parseStrDQ() *wordType {
 	if !c.match('"') {
 		return nil
 	}
+	newOffset, complete := c.skipToChar(1, '"', false)
 	w := &wordType{
-		Offset: c.Pos,
-		Type:   WordTypeDQ,
+		Type:     WordTypeDQ,
+		Offset:   c.Pos,
+		Raw:      c.Input[c.Pos : c.Pos+newOffset],
+		Complete: complete,
 	}
-	w.End, w.Complete = c.skipToChar(1, '"', true)
-	c.Pos = w.End
+	c.Pos = c.Pos + newOffset
 	return w
 }
 
@@ -215,12 +228,14 @@ func (c *parseContext) parseStrBQ() *wordType {
 	if c.match('`') {
 		return nil
 	}
+	newOffset, complete := c.skipToChar(1, '`', true)
 	w := &wordType{
-		Offset: c.Pos,
-		Type:   WordTypeBQ,
+		Type:     WordTypeBQ,
+		Offset:   c.Pos,
+		Raw:      c.Input[c.Pos : c.Pos+newOffset],
+		Complete: complete,
 	}
-	w.End, w.Complete = c.skipToChar(1, '`', true)
-	c.Pos = w.End
+	c.Pos = c.Pos + newOffset
 	return w
 }
 
@@ -228,12 +243,14 @@ func (c *parseContext) parseStrANSI() *wordType {
 	if !c.match2('$', '\'') {
 		return nil
 	}
+	newOffset, complete := c.skipToChar(2, '\'', true)
 	w := &wordType{
-		Offset: c.Pos,
-		Type:   WordTypeDSQ,
+		Type:     WordTypeDSQ,
+		Offset:   c.Pos,
+		Raw:      c.Input[c.Pos : c.Pos+newOffset],
+		Complete: complete,
 	}
-	w.End, w.Complete = c.skipToChar(1, '\'', true)
-	c.Pos = w.End
+	c.Pos = c.Pos + newOffset
 	return w
 }
 
@@ -241,30 +258,103 @@ func (c *parseContext) parseStrDDQ() *wordType {
 	if !c.match2('$', '"') {
 		return nil
 	}
+	newOffset, complete := c.skipToChar(2, '"', true)
 	w := &wordType{
-		Offset: c.Pos,
-		Type:   WordTypeDDQ,
+		Type:     WordTypeDDQ,
+		Offset:   c.Pos,
+		Raw:      c.Input[c.Pos : c.Pos+newOffset],
+		Complete: complete,
 	}
-	w.End, w.Complete = c.skipToChar(1, '"', true)
-	c.Pos = w.End
+	c.Pos = c.Pos + newOffset
 	return w
 }
 
-func (c *parseContext) parseVar() *wordType {
+func (c *parseContext) parseExpansion() *wordType {
 	if !c.match('$') {
+		return nil
+	}
+	if c.match3('$', '(', '(') {
+		// arith expansion
+		return nil
+	}
+	if c.match2('$', '(') {
+		// subshell
+		return nil
+	}
+	if c.match2('$', '[') {
+		// deprecated arith expansion
+		return nil
+	}
+	if c.match2('$', '{') {
+		// variable expansion
+		return nil
+	}
+	ch2 := c.at(1)
+	if ch2 == 0 || unicode.IsSpace(ch2) {
+		// no expansion
+		return nil
+	}
+	newOffset := c.parseSimpleVarName(1)
+	if newOffset > 1 {
+		// simple variable name
+		rtn := &wordType{
+			Type:     WordTypeVar,
+			Offset:   c.Pos,
+			Raw:      c.Input[c.Pos : c.Pos+newOffset],
+			Complete: true,
+		}
+		c.Pos = c.Pos + newOffset
+		return rtn
+	}
+	// single character variable name, e.g. $@, $_, $1, etc.
+	rtn := &wordType{
+		Type:     WordTypeVar,
+		Offset:   c.Pos,
+		Raw:      c.Input[c.Pos : c.Pos+2],
+		Complete: true,
+	}
+	c.Pos += 2
+	return rtn
+}
+
+func (c *parseContext) parseShellTest() *wordType {
+	if !c.match2('[', '[') {
 		return nil
 	}
 	return nil
 }
 
-func (c *parseContext) parseQuotes() []*wordType {
+func (c *parseContext) parseProcessSubstitution() *wordType {
+	if !c.match2('<', '(') && !c.match2('>', '(') {
+		return nil
+	}
+	return nil
+}
+
+// returns newOffset
+func (c *parseContext) parseSimpleVarName(offset int) int {
+	first := true
+	for {
+		ch := c.at(offset)
+		if ch == 0 {
+			return offset
+		}
+		if (ch == '_' || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) || (!first && ch >= '0' && ch <= '9') {
+			first = false
+			offset++
+			continue
+		}
+		return offset
+	}
+}
+
+func parseInput(inputStr string) []*wordType {
+	c := &parseContext{Input: []rune(inputStr)}
 	var rtn []*wordType
 	var litWord *wordType
 	for {
 		var quoteWord *wordType
 		ch := c.cur()
-		fmt.Printf("ch: %d %q\n", c.Pos, string([]rune{ch}))
-		startPos := c.Pos
 		if ch == 0 {
 			break
 		}
@@ -280,10 +370,12 @@ func (c *parseContext) parseQuotes() []*wordType {
 			if quoteWord == nil {
 				quoteWord = c.parseStrDDQ()
 			}
+			if quoteWord == nil {
+				quoteWord = c.parseExpansion()
+			}
 		}
 		if quoteWord != nil {
 			if litWord != nil {
-				litWord.End = startPos
 				rtn = append(rtn, litWord)
 				litWord = nil
 			}
@@ -291,29 +383,73 @@ func (c *parseContext) parseQuotes() []*wordType {
 			continue
 		}
 		if litWord == nil {
-			litWord = &wordType{Offset: c.Pos, Type: WordTypeLit, Complete: true}
+			litWord = &wordType{Type: WordTypeLit, Offset: c.Pos, Complete: true}
 		}
 		if ch == '\\' && c.at(1) != 0 {
+			litWord.Raw = append(litWord.Raw, ch, c.at(1))
 			c.Pos += 2
 			continue
 		}
+		litWord.Raw = append(litWord.Raw, ch)
 		c.Pos++
 	}
 	if litWord != nil {
-		litWord.End = c.Pos
 		rtn = append(rtn, litWord)
+	}
+
+	// now we want to expand ops
+	rtn := expandAllOps(rtn)
+
+	return rtn
+}
+
+func expandOps(word *wordType) []*wordType {
+	if word.Type != WordTypeLit {
+		return nil
+	}
+	var lastBackSlash bool
+	var rtn []*wordType
+	for idx, ch := range word.Raw {
+		if ch == 0 {
+			break
+		}
+		if ch == '\\' {
+			lastBackSlash = true
+			continue
+		}
+		if lastBackSlash {
+			lastBackSlash = false
+			continue
+		}
+
+	}
+}
+
+func expandAllOps(words []*wordType) []*wordType {
+	var rtn []*wordType
+	for _, word := range words {
+		exWords := expandOps(word)
+		if len(exWords) == 0 {
+			rtn = append(rtn, word)
+		} else {
+			rtn = append(rtn, exWords...)
+		}
 	}
 	return rtn
 }
 
-func (c *parseContext) RawString(w *wordType) string {
-	return fmt.Sprintf("%s[%q]", w.Type, string(c.Input[w.Offset:w.End]))
+func (w *wordType) String() string {
+	var notCompleteFlag string
+	if !w.Complete {
+		notCompleteFlag = "*"
+	}
+	return fmt.Sprintf("%s[%d:%q]%s", w.Type, w.Offset, string(w.Raw), notCompleteFlag)
 }
 
-func (c *parseContext) dumpWords(words []*wordType) {
+func dumpWords(words []*wordType) {
 	var strs []string
 	for _, word := range words {
-		strs = append(strs, c.RawString(word))
+		strs = append(strs, word.String())
 	}
 	output := strings.Join(strs, " ")
 	fmt.Printf("%s\n", output)
