@@ -223,6 +223,28 @@ func (c *parseContext) skipToChar(offset int, endCh rune, allowEsc bool) (int, b
 	}
 }
 
+// returns (new-offset, complete)
+func (c *parseContext) skipToChar2(offset int, endCh rune, endCh2 rune, allowEsc bool) (int, bool) {
+	for {
+		ch := c.at(offset)
+		ch2 := c.at(offset + 1)
+		if ch == 0 {
+			return offset, false
+		}
+		if ch2 == 0 {
+			return offset + 1, false
+		}
+		if allowEsc && ch == '\\' {
+			offset += 2
+			continue
+		}
+		if ch == endCh && ch2 == endCh2 {
+			return offset + 2, true
+		}
+		offset++
+	}
+}
+
 func (c *parseContext) parseStrSQ() *wordType {
 	if !c.match('\'') {
 		return nil
@@ -303,20 +325,31 @@ func (c *parseContext) parseExpansion() *wordType {
 		return nil
 	}
 	if c.match3('$', '(', '(') {
-		// arith expansion
-		return nil
+		newOffset, complete := c.skipToChar2(3, ')', ')', false)
+		w := &wordType{Type: WordTypeDPP, Offset: c.Pos, Raw: c.Input[c.Pos : c.Pos+newOffset], Complete: complete}
+		c.Pos = c.Pos + newOffset
+		return w
 	}
 	if c.match2('$', '(') {
 		// subshell
-		return nil
+		newOffset, complete := c.skipToChar(2, ')', false)
+		w := &wordType{Type: WordTypeDP, Offset: c.Pos, Raw: c.Input[c.Pos : c.Pos+newOffset], Complete: complete}
+		c.Pos = c.Pos + newOffset
+		return w
 	}
 	if c.match2('$', '[') {
 		// deprecated arith expansion
-		return nil
+		newOffset, complete := c.skipToChar(2, ']', false)
+		w := &wordType{Type: WordTypeDB, Offset: c.Pos, Raw: c.Input[c.Pos : c.Pos+newOffset], Complete: complete}
+		c.Pos = c.Pos + newOffset
+		return w
 	}
 	if c.match2('$', '{') {
 		// variable expansion
-		return nil
+		newOffset, complete := c.skipToChar(2, '}', false)
+		w := &wordType{Type: WordTypeVarBrace, Offset: c.Pos, Raw: c.Input[c.Pos : c.Pos+newOffset], Complete: complete}
+		c.Pos = c.Pos + newOffset
+		return w
 	}
 	ch2 := c.at(1)
 	if ch2 == 0 || unicode.IsSpace(ch2) {

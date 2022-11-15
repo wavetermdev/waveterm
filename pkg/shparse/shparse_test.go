@@ -31,4 +31,8 @@ func Test1(t *testing.T) {
 	testParse(t, `ls "hello" $'\''`)
 	testParse(t, `ls "foo`)
 	testParse(t, `echo $11 $xyz $ `)
+	testParse(t, `echo $(ls ${x:"hello"} foo`)
+	testParse(t, `ls ${x:"hello"} $[2+2] $((5 * 10)) $(ls; ls&)`)
+	testParse(t, `ls;ls&./foo > out 2> "out2"`)
+	testParse(t, `(( x = 5)); ls& cd ~/work/"hello again"`)
 }
