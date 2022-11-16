@@ -51,6 +51,7 @@ func (state *tokenizeOutputState) ensureGroupWord() {
 	groupWord := &wordType{
 		Type:     WordTypeGroup,
 		Offset:   state.CurWord.Offset,
+		QC:       state.CurWord.QC,
 		Complete: true,
 		Prefix:   state.CurWord.Prefix,
 	}
@@ -74,7 +75,8 @@ func ungroupWord(w *wordType) []*wordType {
 
 func (state *tokenizeOutputState) ensureLitCurWord(pc *parseContext) {
 	if state.CurWord == nil {
-		state.CurWord = &wordType{Type: WordTypeLit, Offset: pc.Pos, Complete: true, Prefix: state.SavedPrefix}
+		state.CurWord = pc.makeWord(WordTypeLit, 0, true)
+		state.CurWord.Prefix = state.SavedPrefix
 		state.SavedPrefix = nil
 		return
 	}
@@ -85,12 +87,9 @@ func (state *tokenizeOutputState) ensureLitCurWord(pc *parseContext) {
 	lastWord := state.CurWord.Subs[len(state.CurWord.Subs)-1]
 	if lastWord.Type != WordTypeLit {
 		if len(state.SavedPrefix) > 0 {
-			dumpWords(state.Rtn, "**")
-			dumpWords([]*wordType{state.CurWord}, ">>")
-			fmt.Printf("sp: %q\n", state.SavedPrefix)
 			panic("invalid state, there can be no saved prefix")
 		}
-		litWord := &wordType{Type: WordTypeLit, Offset: pc.Pos, Complete: true}
+		litWord := pc.makeWord(WordTypeLit, 0, true)
 		state.CurWord.Subs = append(state.CurWord.Subs, litWord)
 	}
 }
@@ -240,10 +239,8 @@ func (c *parseContext) tokenizeRaw() ([]*wordType, bool) {
 		// fmt.Printf("ch %d %q\n", c.Pos, string([]rune{ch}))
 		foundOp, newOffset := c.parseOp(0)
 		if foundOp {
-			rawOp := c.Input[c.Pos : c.Pos+newOffset]
-			opVal := string(rawOp)
-			opWord := &wordType{Type: WordTypeOp, Offset: c.Pos, Raw: rawOp, Val: opVal, Complete: true}
-			if opWord.Val == "(" {
+			opVal := string(c.Input[c.Pos : c.Pos+newOffset])
+			if opVal == "(" {
 				arithWord := c.parseArith(true)
 				if arithWord != nil {
 					state.appendStandaloneWord(arithWord)
@@ -252,10 +249,11 @@ func (c *parseContext) tokenizeRaw() ([]*wordType, bool) {
 					parenLevel++
 				}
 			}
-			if opWord.Val == ")" {
+			if opVal == ")" {
 				parenLevel--
 			}
-			c.Pos = c.Pos + newOffset
+			opWord := c.makeWord(WordTypeOp, newOffset, true)
+			opWord.Val = opVal
 			state.appendStandaloneWord(opWord)
 			continue
 		}

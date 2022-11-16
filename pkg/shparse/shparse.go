@@ -123,6 +123,7 @@ type parseContext struct {
 type wordType struct {
 	Type     string
 	Offset   int
+	QC       quoteContext
 	Raw      []rune
 	Complete bool
 	Val      string // only for Op and Key (does *not* store string values of quoted expressions or expansions)
@@ -166,12 +167,12 @@ func (c *parseContext) match3(ch rune, ch2 rune, ch3 rune) bool {
 	return c.at(0) == ch && c.at(1) == ch2 && c.at(2) == ch3
 }
 
-func (c *parseContext) newOp(length int) *wordType {
-	rtn := &wordType{Type: WordTypeOp}
+func (c *parseContext) makeWord(t string, length int, complete bool) *wordType {
+	rtn := &wordType{Type: t}
 	rtn.Offset = c.Pos
+	rtn.QC = c.QC
 	rtn.Raw = c.Input[c.Pos : c.Pos+length]
-	rtn.Val = string(rtn.Raw)
-	rtn.Complete = true
+	rtn.Complete = complete
 	c.Pos += length
 	return rtn
 }
@@ -251,13 +252,7 @@ func (c *parseContext) parseStrSQ() *wordType {
 		return nil
 	}
 	newOffset, complete := c.skipToChar(1, '\'', false)
-	w := &wordType{
-		Type:     WordTypeDQ,
-		Offset:   c.Pos,
-		Raw:      c.Input[c.Pos : c.Pos+newOffset],
-		Complete: complete,
-	}
-	c.Pos = c.Pos + newOffset
+	w := c.makeWord(WordTypeSQ, newOffset, complete)
 	return w
 }
 
@@ -268,14 +263,8 @@ func (c *parseContext) parseStrDQ() *wordType {
 	newContext := c.clone(c.Pos+1, WordTypeDQ)
 	subWords, eofExit := newContext.tokenizeDQ()
 	newOffset := newContext.Pos + 1
-	w := &wordType{
-		Type:     WordTypeDQ,
-		Offset:   c.Pos,
-		Raw:      c.Input[c.Pos : c.Pos+newOffset],
-		Complete: !eofExit,
-		Subs:     subWords,
-	}
-	c.Pos = c.Pos + newOffset
+	w := c.makeWord(WordTypeDQ, newOffset, !eofExit)
+	w.Subs = subWords
 	return w
 }
 
@@ -284,13 +273,7 @@ func (c *parseContext) parseStrBQ() *wordType {
 		return nil
 	}
 	newOffset, complete := c.skipToChar(1, '`', true)
-	w := &wordType{
-		Type:     WordTypeBQ,
-		Offset:   c.Pos,
-		Raw:      c.Input[c.Pos : c.Pos+newOffset],
-		Complete: complete,
-	}
-	c.Pos = c.Pos + newOffset
+	w := c.makeWord(WordTypeBQ, newOffset, complete)
 	return w
 }
 
@@ -299,13 +282,7 @@ func (c *parseContext) parseStrANSI() *wordType {
 		return nil
 	}
 	newOffset, complete := c.skipToChar(2, '\'', true)
-	w := &wordType{
-		Type:     WordTypeDSQ,
-		Offset:   c.Pos,
-		Raw:      c.Input[c.Pos : c.Pos+newOffset],
-		Complete: complete,
-	}
-	c.Pos = c.Pos + newOffset
+	w := c.makeWord(WordTypeDSQ, newOffset, complete)
 	return w
 }
 
@@ -314,13 +291,7 @@ func (c *parseContext) parseStrDDQ() *wordType {
 		return nil
 	}
 	newOffset, complete := c.skipToChar(2, '"', true)
-	w := &wordType{
-		Type:     WordTypeDDQ,
-		Offset:   c.Pos,
-		Raw:      c.Input[c.Pos : c.Pos+newOffset],
-		Complete: complete,
-	}
-	c.Pos = c.Pos + newOffset
+	w := c.makeWord(WordTypeDDQ, newOffset, complete)
 	return w
 }
 
@@ -332,8 +303,7 @@ func (c *parseContext) parseArith(mustComplete bool) *wordType {
 	if mustComplete && !complete {
 		return nil
 	}
-	w := &wordType{Type: WordTypeArith, Offset: c.Pos, Raw: c.Input[c.Pos : c.Pos+newOffset], Complete: complete}
-	c.Pos = c.Pos + newOffset
+	w := c.makeWord(WordTypeArith, newOffset, complete)
 	return w
 }
 
@@ -343,8 +313,7 @@ func (c *parseContext) parseExpansion() *wordType {
 	}
 	if c.match3('$', '(', '(') {
 		newOffset, complete := c.skipToChar2(3, ')', ')', false)
-		w := &wordType{Type: WordTypeDPP, Offset: c.Pos, Raw: c.Input[c.Pos : c.Pos+newOffset], Complete: complete}
-		c.Pos = c.Pos + newOffset
+		w := c.makeWord(WordTypeDPP, newOffset, complete)
 		return w
 	}
 	if c.match2('$', '(') {
@@ -352,17 +321,14 @@ func (c *parseContext) parseExpansion() *wordType {
 		newContext := c.clone(c.Pos+2, WordTypeDP)
 		subWords, eofExit := newContext.tokenizeRaw()
 		newOffset := newContext.Pos + 2
-		// newOffset, complete := c.skipToChar(2, ')', false)
-		w := &wordType{Type: WordTypeDP, Offset: c.Pos, Raw: c.Input[c.Pos : c.Pos+newOffset], Complete: !eofExit}
+		w := c.makeWord(WordTypeDP, newOffset, !eofExit)
 		w.Subs = subWords
-		c.Pos = c.Pos + newOffset
 		return w
 	}
 	if c.match2('$', '[') {
 		// deprecated arith expansion
 		newOffset, complete := c.skipToChar(2, ']', false)
-		w := &wordType{Type: WordTypeDB, Offset: c.Pos, Raw: c.Input[c.Pos : c.Pos+newOffset], Complete: complete}
-		c.Pos = c.Pos + newOffset
+		w := c.makeWord(WordTypeDB, newOffset, complete)
 		return w
 	}
 	if c.match2('$', '{') {
@@ -370,8 +336,7 @@ func (c *parseContext) parseExpansion() *wordType {
 		newContext := c.clone(c.Pos+2, WordTypeVarBrace)
 		_, eofExit := newContext.tokenizeVarBrace()
 		newOffset := newContext.Pos + 2
-		w := &wordType{Type: WordTypeVarBrace, Offset: c.Pos, Raw: c.Input[c.Pos : c.Pos+newOffset], Complete: !eofExit}
-		c.Pos = c.Pos + newOffset
+		w := c.makeWord(WordTypeVarBrace, newOffset, !eofExit)
 		return w
 	}
 	ch2 := c.at(1)
@@ -382,24 +347,15 @@ func (c *parseContext) parseExpansion() *wordType {
 	newOffset := c.parseSimpleVarName(1)
 	if newOffset > 1 {
 		// simple variable name
-		rtn := &wordType{
-			Type:     WordTypeSimpleVar,
-			Offset:   c.Pos,
-			Raw:      c.Input[c.Pos : c.Pos+newOffset],
-			Complete: true,
-		}
-		c.Pos = c.Pos + newOffset
-		return rtn
+		w := c.makeWord(WordTypeSimpleVar, newOffset, true)
+		return w
 	}
-	// single character variable name, e.g. $@, $_, $1, etc.
-	rtn := &wordType{
-		Type:     WordTypeSimpleVar,
-		Offset:   c.Pos,
-		Raw:      c.Input[c.Pos : c.Pos+2],
-		Complete: true,
+	if ch2 == '*' || ch2 == '@' || ch2 == '#' || ch2 == '?' || ch2 == '-' || ch2 == '$' || ch2 == '!' || (ch2 >= '0' && ch2 <= '9') {
+		// single character variable name, e.g. $@, $_, $1, etc.
+		w := c.makeWord(WordTypeSimpleVar, 2, true)
+		return w
 	}
-	c.Pos += 2
-	return rtn
+	return nil
 }
 
 func (c *parseContext) parseShellTest() *wordType {
@@ -431,97 +387,6 @@ func (c *parseContext) parseSimpleVarName(offset int) int {
 		}
 		return offset
 	}
-}
-
-func parseInput(inputStr string) []*wordType {
-	c := &parseContext{Input: []rune(inputStr)}
-	var rtn []*wordType
-	var litWord *wordType
-	for {
-		var quoteWord *wordType
-		ch := c.cur()
-		if ch == 0 {
-			break
-		}
-		switch ch {
-		case '\'':
-			quoteWord = c.parseStrSQ()
-
-		case '"':
-			quoteWord = c.parseStrDQ()
-
-		case '$':
-			quoteWord = c.parseStrANSI()
-			if quoteWord == nil {
-				quoteWord = c.parseStrDDQ()
-			}
-			if quoteWord == nil {
-				quoteWord = c.parseExpansion()
-			}
-		}
-		if quoteWord != nil {
-			if litWord != nil {
-				rtn = append(rtn, litWord)
-				litWord = nil
-			}
-			rtn = append(rtn, quoteWord)
-			continue
-		}
-		if litWord == nil {
-			litWord = &wordType{Type: WordTypeLit, Offset: c.Pos, Complete: true}
-		}
-		if ch == '\\' && c.at(1) != 0 {
-			litWord.Raw = append(litWord.Raw, ch, c.at(1))
-			c.Pos += 2
-			continue
-		}
-		litWord.Raw = append(litWord.Raw, ch)
-		c.Pos++
-	}
-	if litWord != nil {
-		rtn = append(rtn, litWord)
-	}
-
-	// now we want to expand ops
-	rtn = expandAllOps(rtn)
-
-	return rtn
-}
-
-func expandOps(word *wordType) []*wordType {
-	if word.Type != WordTypeLit {
-		return nil
-	}
-	var lastBackSlash bool
-	var rtn []*wordType
-	for _, ch := range word.Raw {
-		if ch == 0 {
-			break
-		}
-		if ch == '\\' {
-			lastBackSlash = true
-			continue
-		}
-		if lastBackSlash {
-			lastBackSlash = false
-			continue
-		}
-	}
-	rtn = append(rtn, word)
-	return rtn
-}
-
-func expandAllOps(words []*wordType) []*wordType {
-	var rtn []*wordType
-	for _, word := range words {
-		exWords := expandOps(word)
-		if len(exWords) == 0 {
-			rtn = append(rtn, word)
-		} else {
-			rtn = append(rtn, exWords...)
-		}
-	}
-	return rtn
 }
 
 func makeSpaceStr(slen int) string {
