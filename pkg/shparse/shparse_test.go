@@ -43,4 +43,6 @@ func Test1(t *testing.T) {
 	testParse(t, `echo $(ls $)`)
 	testParse(t, `echo ${x:-hello\}"}"} 2nd`)
 	testParse(t, `echo "$(ls "foo") more $x"`)
+	testParse(t, "echo `ls $x \"hello $x\" \\`ls\\`; ./foo`")
+	testParse(t, `echo $"hello $x $(ls)"`)
 }

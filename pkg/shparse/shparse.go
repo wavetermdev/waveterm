@@ -82,20 +82,18 @@ const (
 	WordTypeKey       = "key"  // if then else elif fi do done case esac while until for in { } ! (( [[
 	WordTypeSimpleVar = "svar" // simplevar $
 	WordTypeGroup     = "grp"  // contains other words e.g. "hello"foo'bar'$x
-	WordTypeArith     = "ath"
 
-	// each of these can also be used as an entry in quoteContext
-	WordTypeDQ       = "dq"   // "
-	WordTypeSQ       = "sq"   // '
-	WordTypeBQ       = "bq"   // `
-	WordTypeDSQ      = "dsq"  // $'
-	WordTypeDDQ      = "ddq"  // $"
-	WordTypeVarBrace = "varb" // ${
-	WordTypeDP       = "dp"   // $(
-	WordTypeDPP      = "dpp"  // $((
-	WordTypeP        = "p"    // (
-	WordTypePP       = "pp"   // ((
-	WordTypeDB       = "db"   // $[
+	WordTypeDQ       = "dq"   // "    (quote-context)
+	WordTypeDDQ      = "ddq"  // $"   (quote-context)
+	WordTypeVarBrace = "varb" // ${   (quote-context)
+	WordTypeDP       = "dp"   // $(   (quote-context)
+	WordTypeBQ       = "bq"   // `    (quote-context)
+
+	WordTypeSQ  = "sq"  // '
+	WordTypeDSQ = "dsq" // $'
+	WordTypeDPP = "dpp" // $((   (internals not parsed)
+	WordTypePP  = "pp"  // ((    (internals not parsed)
+	WordTypeDB  = "db"  // $[    (internals not parsed)
 )
 
 type quoteContext []string
@@ -268,12 +266,27 @@ func (c *parseContext) parseStrDQ() *wordType {
 	return w
 }
 
-func (c *parseContext) parseStrBQ() *wordType {
-	if c.match('`') {
+func (c *parseContext) parseStrDDQ() *wordType {
+	if !c.match2('$', '"') {
 		return nil
 	}
-	newOffset, complete := c.skipToChar(1, '`', true)
-	w := c.makeWord(WordTypeBQ, newOffset, complete)
+	newContext := c.clone(c.Pos+2, WordTypeDDQ)
+	subWords, eofExit := newContext.tokenizeDQ()
+	newOffset := newContext.Pos + 2
+	w := c.makeWord(WordTypeDDQ, newOffset, !eofExit)
+	w.Subs = subWords
+	return w
+}
+
+func (c *parseContext) parseStrBQ() *wordType {
+	if !c.match('`') {
+		return nil
+	}
+	newContext := c.clone(c.Pos+1, WordTypeBQ)
+	subWords, eofExit := newContext.tokenizeRaw()
+	newOffset := newContext.Pos + 1
+	w := c.makeWord(WordTypeBQ, newOffset, !eofExit)
+	w.Subs = subWords
 	return w
 }
 
@@ -286,15 +299,6 @@ func (c *parseContext) parseStrANSI() *wordType {
 	return w
 }
 
-func (c *parseContext) parseStrDDQ() *wordType {
-	if !c.match2('$', '"') {
-		return nil
-	}
-	newOffset, complete := c.skipToChar(2, '"', true)
-	w := c.makeWord(WordTypeDDQ, newOffset, complete)
-	return w
-}
-
 func (c *parseContext) parseArith(mustComplete bool) *wordType {
 	if !c.match2('(', '(') {
 		return nil
@@ -303,7 +307,7 @@ func (c *parseContext) parseArith(mustComplete bool) *wordType {
 	if mustComplete && !complete {
 		return nil
 	}
-	w := c.makeWord(WordTypeArith, newOffset, complete)
+	w := c.makeWord(WordTypePP, newOffset, complete)
 	return w
 }
 
@@ -354,20 +358,6 @@ func (c *parseContext) parseExpansion() *wordType {
 		// single character variable name, e.g. $@, $_, $1, etc.
 		w := c.makeWord(WordTypeSimpleVar, 2, true)
 		return w
-	}
-	return nil
-}
-
-func (c *parseContext) parseShellTest() *wordType {
-	if !c.match2('[', '[') {
-		return nil
-	}
-	return nil
-}
-
-func (c *parseContext) parseProcessSubstitution() *wordType {
-	if !c.match2('<', '(') && !c.match2('>', '(') {
-		return nil
 	}
 	return nil
 }
