@@ -81,6 +81,8 @@ const (
 	WordTypeOp        = "op"   // single: & ; | ( ) < > \n  multi(2): && || ;; << >> <& >& <> >| ((  multi(3): <<-    ('((' requires special processing)
 	WordTypeKey       = "key"  // if then else elif fi do done case esac while until for in { } ! (( [[
 	WordTypeSimpleVar = "svar" // simplevar $
+	WordTypeGroup     = "grp"  // contains other words e.g. "hello"foo'bar'$x
+	WordTypeArith     = "ath"
 
 	// each of these can also be used as an entry in quoteContext
 	WordTypeDQ       = "dq"   // "
@@ -129,11 +131,10 @@ type wordType struct {
 }
 
 func (c *parseContext) clone(pos int, newQuote string) *parseContext {
-	rtn := *c
+	rtn := parseContext{Input: c.Input[pos:], QC: c.QC}
 	if newQuote != "" {
-		rtn.QC = append(rtn.QC, newQuote)
+		rtn.QC = rtn.QC.push(newQuote)
 	}
-	rtn.Input = rtn.Input[pos:]
 	return &rtn
 }
 
@@ -264,12 +265,15 @@ func (c *parseContext) parseStrDQ() *wordType {
 	if !c.match('"') {
 		return nil
 	}
-	newOffset, complete := c.skipToChar(1, '"', false)
+	newContext := c.clone(c.Pos+1, WordTypeDQ)
+	subWords, eofExit := newContext.tokenizeDQ()
+	newOffset := newContext.Pos + 1
 	w := &wordType{
 		Type:     WordTypeDQ,
 		Offset:   c.Pos,
 		Raw:      c.Input[c.Pos : c.Pos+newOffset],
-		Complete: complete,
+		Complete: !eofExit,
+		Subs:     subWords,
 	}
 	c.Pos = c.Pos + newOffset
 	return w
@@ -320,6 +324,19 @@ func (c *parseContext) parseStrDDQ() *wordType {
 	return w
 }
 
+func (c *parseContext) parseArith(mustComplete bool) *wordType {
+	if !c.match2('(', '(') {
+		return nil
+	}
+	newOffset, complete := c.skipToChar2(2, ')', ')', false)
+	if mustComplete && !complete {
+		return nil
+	}
+	w := &wordType{Type: WordTypeArith, Offset: c.Pos, Raw: c.Input[c.Pos : c.Pos+newOffset], Complete: complete}
+	c.Pos = c.Pos + newOffset
+	return w
+}
+
 func (c *parseContext) parseExpansion() *wordType {
 	if !c.match('$') {
 		return nil
@@ -332,8 +349,12 @@ func (c *parseContext) parseExpansion() *wordType {
 	}
 	if c.match2('$', '(') {
 		// subshell
-		newOffset, complete := c.skipToChar(2, ')', false)
-		w := &wordType{Type: WordTypeDP, Offset: c.Pos, Raw: c.Input[c.Pos : c.Pos+newOffset], Complete: complete}
+		newContext := c.clone(c.Pos+2, WordTypeDP)
+		subWords, eofExit := newContext.tokenizeRaw()
+		newOffset := newContext.Pos + 2
+		// newOffset, complete := c.skipToChar(2, ')', false)
+		w := &wordType{Type: WordTypeDP, Offset: c.Pos, Raw: c.Input[c.Pos : c.Pos+newOffset], Complete: !eofExit}
+		w.Subs = subWords
 		c.Pos = c.Pos + newOffset
 		return w
 	}
@@ -346,8 +367,10 @@ func (c *parseContext) parseExpansion() *wordType {
 	}
 	if c.match2('$', '{') {
 		// variable expansion
-		newOffset, complete := c.skipToChar(2, '}', false)
-		w := &wordType{Type: WordTypeVarBrace, Offset: c.Pos, Raw: c.Input[c.Pos : c.Pos+newOffset], Complete: complete}
+		newContext := c.clone(c.Pos+2, WordTypeVarBrace)
+		_, eofExit := newContext.tokenizeVarBrace()
+		newOffset := newContext.Pos + 2
+		w := &wordType{Type: WordTypeVarBrace, Offset: c.Pos, Raw: c.Input[c.Pos : c.Pos+newOffset], Complete: !eofExit}
 		c.Pos = c.Pos + newOffset
 		return w
 	}
@@ -520,7 +543,7 @@ func (w *wordType) String() string {
 	if !w.Complete {
 		notCompleteFlag = "*"
 	}
-	return fmt.Sprintf("%4s[%3d]%s %s%q", w.Type, w.Offset, notCompleteFlag, makeSpaceStr(len(w.Prefix)), string(w.Raw))
+	return fmt.Sprintf("%4s[%3d]%s %s%q", w.Type, w.Offset, notCompleteFlag, makeSpaceStr(len(w.Prefix)), string(w.FullRawString()))
 }
 
 func dumpWords(words []*wordType, indentStr string) {

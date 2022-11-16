@@ -35,4 +35,12 @@ func Test1(t *testing.T) {
 	testParse(t, `ls ${x:"hello"} $[2+2] $((5 * 10)) $(ls; ls&)`)
 	testParse(t, `ls;ls&./foo > out 2> "out2"`)
 	testParse(t, `(( x = 5)); ls& cd ~/work/"hello again"`)
+	testParse(t, `echo "hello"abc$(ls)$x${y:foo}`)
+	testParse(t, `echo $(ls; ./x "foo")`)
+	testParse(t, `echo $(ls; (cd foo; ls); (cd bar; ls))xyz`)
+	testParse(t, `echo "$x ${y:-foo}"`)
+	testParse(t, `command="$(echo "$input" | sed -e "s/^[ \t]*\([^ \t]*\)[ \t]*.*$/\1/g")"`)
+	testParse(t, `echo $(ls $)`)
+	testParse(t, `echo ${x:-hello\}"}"} 2nd`)
+	testParse(t, `echo "$(ls "foo") more $x"`)
 }
