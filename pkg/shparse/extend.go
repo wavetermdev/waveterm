@@ -2,7 +2,6 @@ package shparse
 
 import (
 	"bytes"
-	"fmt"
 	"unicode"
 	"unicode/utf8"
 
@@ -51,15 +50,18 @@ func (w *wordType) writeString(s string) {
 }
 
 func (w *wordType) writeRune(ch rune) {
-	if w.Type == WordTypeLit {
-		w.Raw = append(w.Raw, ch)
-		return
-	}
-	if w.Type == WordTypeDQ || w.Type == WordTypeDDQ || w.Type == WordTypeSimpleVar || w.Type == WordTypeVarBrace || w.Type == WordTypeSQ || w.Type == WordTypeDSQ {
+	wmeta := wordMetaMap[w.Type]
+	if w.Complete && wmeta.SuffixLen == 1 {
 		w.Raw = append(w.Raw[0:len(w.Raw)-1], ch, w.Raw[len(w.Raw)-1])
 		return
 	}
-	panic(fmt.Sprintf("cannot extend type %q", w.Type))
+	if w.Complete && wmeta.SuffixLen == 2 {
+		w.Raw = append(w.Raw[0:len(w.Raw)-2], ch, w.Raw[len(w.Raw)-2], w.Raw[len(w.Raw)-1])
+		return
+	}
+	// not complete or SuffixLen == 0 (2+ is not supported)
+	w.Raw = append(w.Raw, ch)
+	return
 }
 
 func (w *wordType) cloneRaw() {
@@ -77,12 +79,13 @@ type extendContext struct {
 	Intention string
 }
 
-func makeExtendContext(qc quoteContext, w *wordType, intention string) *extendContext {
-	rtn := &extendContext{QC: qc, Intention: intention}
+func makeExtendContext(qc quoteContext, w *wordType) *extendContext {
+	rtn := &extendContext{QC: qc, Intention: WordTypeLit}
 	if w != nil {
 		w.cloneRaw()
 		rtn.Rtn = []*wordType{w}
 		rtn.CurWord = w
+		rtn.Intention = w.Type
 	}
 	return rtn
 }
@@ -92,30 +95,36 @@ func (ec *extendContext) appendWord(w *wordType) {
 	ec.CurWord = w
 }
 
+func (ec *extendContext) ensureCurWord() {
+	if ec.CurWord == nil || ec.CurWord.Type != ec.Intention {
+		ec.CurWord = makeEmptyWord(ec.Intention, ec.QC, 0)
+		ec.Rtn = append(ec.Rtn, ec.CurWord)
+	}
+}
+
 func (ec *extendContext) extend(ch rune) {
 	if ch == 0 {
 		return
 	}
-	if ec.CurWord == nil {
-		ec.CurWord = &wordType{Type: WordTypeLit, QC: ec.QC}
-		ec.Rtn = append(ec.Rtn, ec.CurWord)
-	}
-	switch ec.CurWord.Type {
-	case WordTypeSimpleVar:
+	switch ec.Intention {
+
+	case WordTypeSimpleVar, WordTypeVarBrace:
+		ec.extendVar(ch)
 
 	case WordTypeDQ, WordTypeDDQ:
-
-	case WordTypeVarBrace:
+		ec.extendDQ(ch)
 
 	case WordTypeSQ:
 		ec.extendSQ(ch)
 
 	case WordTypeDSQ:
+		ec.extendDSQ(ch)
 
 	case WordTypeLit:
+		ec.extendLit(ch)
 
 	default:
-
+		return
 	}
 }
 
@@ -126,18 +135,27 @@ func getSpecialEscape(ch rune) string {
 	return specialEsc[byte(ch)]
 }
 
-func (ec *extendContext) extendSQ(ch rune) {
+func isVarNameChar(ch rune) bool {
+	return ch == '_' || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9')
+}
+
+func (ec *extendContext) extendVar(ch rune) {
 	if ch == 0 {
 		return
 	}
-	if ch == '\'' {
-		litWord := &wordType{Type: WordTypeLit, QC: ec.QC}
-		litWord.Raw = []rune{'\\', '\''}
-		ec.appendWord(litWord)
+	if !isVarNameChar(ch) {
+		return
+	}
+	ec.ensureCurWord()
+	ec.CurWord.writeRune(ch)
+}
+
+func (ec *extendContext) extendLit(ch rune) {
+	if ch == 0 {
+		return
 	}
 	if ch > unicode.MaxASCII || !unicode.IsPrint(ch) {
-		dsqWord := &wordType{Type: WordTypeDSQ, QC: ec.QC}
-		dsqWord.Raw = []rune{'$', '\'', '\''}
+		dsqWord := makeEmptyWord(WordTypeDSQ, ec.QC, 0)
 		ec.appendWord(dsqWord)
 		sesc := getSpecialEscape(ch)
 		if sesc != "" {
@@ -147,6 +165,92 @@ func (ec *extendContext) extendSQ(ch rune) {
 			utf8Lit := getUtf8Literal(ch)
 			dsqWord.writeString(utf8Lit)
 		}
+		return
+	}
+	var bch = byte(ch)
+	ec.ensureCurWord()
+	if noEscChars[bch] {
+		ec.CurWord.writeRune(ch)
+		return
+	}
+	ec.CurWord.writeRune('\\')
+	ec.CurWord.writeRune(ch)
+	return
+}
+
+func (ec *extendContext) extendDSQ(ch rune) {
+	if ch == 0 {
+		return
+	}
+	ec.ensureCurWord()
+	if ch == '\'' {
+		ec.CurWord.writeRune('\\')
+		ec.CurWord.writeRune(ch)
+		return
+	}
+	if ch > unicode.MaxASCII || !unicode.IsPrint(ch) {
+		sesc := getSpecialEscape(ch)
+		if sesc != "" {
+			ec.CurWord.writeString(sesc)
+		} else {
+			utf8Lit := getUtf8Literal(ch)
+			ec.CurWord.writeString(utf8Lit)
+		}
+		return
 	}
 	ec.CurWord.writeRune(ch)
+	return
+}
+
+func (ec *extendContext) extendSQ(ch rune) {
+	if ch == 0 {
+		return
+	}
+	if ch == '\'' {
+		litWord := &wordType{Type: WordTypeLit, QC: ec.QC}
+		litWord.Raw = []rune{'\\', '\''}
+		ec.appendWord(litWord)
+		return
+	}
+	if ch > unicode.MaxASCII || !unicode.IsPrint(ch) {
+		dsqWord := makeEmptyWord(WordTypeDSQ, ec.QC, 0)
+		ec.appendWord(dsqWord)
+		sesc := getSpecialEscape(ch)
+		if sesc != "" {
+			dsqWord.writeString(sesc)
+		} else {
+			utf8Lit := getUtf8Literal(ch)
+			dsqWord.writeString(utf8Lit)
+		}
+		return
+	}
+	ec.ensureCurWord()
+	ec.CurWord.writeRune(ch)
+	return
+}
+
+func (ec *extendContext) extendDQ(ch rune) {
+	if ch == 0 {
+		return
+	}
+	if ch == '"' || ch == '\\' || ch == '$' || ch == '`' {
+		ec.ensureCurWord()
+		ec.CurWord.writeRune('\\')
+		ec.CurWord.writeRune(ch)
+		return
+	}
+	if ch > unicode.MaxASCII || !unicode.IsPrint(ch) {
+		dsqWord := makeEmptyWord(WordTypeDSQ, ec.QC, 0)
+		ec.appendWord(dsqWord)
+		sesc := getSpecialEscape(ch)
+		if sesc != "" {
+			dsqWord.writeString(sesc)
+		} else {
+			utf8Lit := getUtf8Literal(ch)
+			dsqWord.writeString(utf8Lit)
+		}
+		return
+	}
+	ec.CurWord.writeRune(ch)
+	return
 }

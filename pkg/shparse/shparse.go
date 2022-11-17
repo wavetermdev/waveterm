@@ -75,6 +75,8 @@ import (
 
 // tokenization https://pubs.opengroup.org/onlinepubs/7908799/xcu/chap2.html#tag_001_003
 
+// can-extend: WordTypeLit, WordTypeSimpleVar, WordTypeVarBrace, WordTypeDQ, WordTypeDDQ, WordTypeSQ, WordTypeDSQ
+
 const (
 	WordTypeRaw       = "raw"
 	WordTypeLit       = "lit"  // (can-extend)
@@ -95,6 +97,52 @@ const (
 	WordTypePP  = "pp"  // ((    (internals not parsed)
 	WordTypeDB  = "db"  // $[    (internals not parsed)
 )
+
+var wordMetaMap map[string]wordMeta
+
+type wordMeta struct {
+	Type         string
+	EmptyWord    []rune
+	SuffixLen    int
+	CanExtend    bool
+	QuoteContext bool
+}
+
+func makeWordMeta(wtype string, emptyWord string, suffixLen int, canExtend bool, quoteContext bool) {
+	wordMetaMap[wtype] = wordMeta{wtype, []rune(emptyWord), suffixLen, canExtend, quoteContext}
+}
+
+func init() {
+	wordMetaMap = make(map[string]wordMeta)
+	makeWordMeta(WordTypeRaw, "", 0, false, false)
+	makeWordMeta(WordTypeLit, "", 0, true, false)
+	makeWordMeta(WordTypeOp, "", 0, false, false)
+	makeWordMeta(WordTypeKey, "", 0, false, false)
+	makeWordMeta(WordTypeGroup, "", 0, false, false)
+	makeWordMeta(WordTypeSimpleVar, "$", 0, true, false)
+	makeWordMeta(WordTypeVarBrace, "${}", 1, true, true)
+	makeWordMeta(WordTypeDQ, `""`, 1, true, true)
+	makeWordMeta(WordTypeDDQ, `$""`, 1, true, true)
+	makeWordMeta(WordTypeDP, "$()", 1, false, false)
+	makeWordMeta(WordTypeBQ, "``", 1, false, false)
+	makeWordMeta(WordTypeSQ, "''", 1, true, false)
+	makeWordMeta(WordTypeDSQ, "$''", 1, true, false)
+	makeWordMeta(WordTypeDPP, "$(())", 2, false, false)
+	makeWordMeta(WordTypePP, "(())", 2, false, false)
+	makeWordMeta(WordTypeDB, "$[]", 1, false, false)
+}
+
+func makeEmptyWord(wtype string, qc quoteContext, offset int) *wordType {
+	meta := wordMetaMap[wtype]
+	if meta.Type == "" {
+		meta = wordMetaMap[WordTypeRaw]
+	}
+	rtn := &wordType{Type: meta.Type, QC: qc, Offset: offset, Complete: true}
+	if len(meta.EmptyWord) > 0 {
+		rtn.Raw = append([]rune(nil), meta.EmptyWord...)
+	}
+	return rtn
+}
 
 type quoteContext []string
 

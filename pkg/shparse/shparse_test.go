@@ -46,3 +46,39 @@ func Test1(t *testing.T) {
 	testParse(t, "echo `ls $x \"hello $x\" \\`ls\\`; ./foo`")
 	testParse(t, `echo $"hello $x $(ls)"`)
 }
+
+func lastWord(words []*wordType) *wordType {
+	if len(words) == 0 {
+		return nil
+	}
+	return words[len(words)-1]
+}
+
+func testExtend(t *testing.T, startStr string, extendStr string, expectedStr string) {
+	words := Tokenize(startStr)
+	ec := makeExtendContext(nil, lastWord(words))
+	for _, ch := range extendStr {
+		ec.extend(ch)
+	}
+	ec.ensureCurWord()
+	output := wordsToStr(ec.Rtn)
+	fmt.Printf("[%s] + [%s] => [%s]\n", startStr, extendStr, output)
+	if output != expectedStr {
+		t.Errorf("extension does not match: [%s] + [%s] => [%s] expected [%s]\n", startStr, extendStr, output, expectedStr)
+	}
+}
+
+func Test2(t *testing.T) {
+	testExtend(t, `'he'`, "llo", `'hello'`)
+	testExtend(t, `'he'`, "'", `'he'\'''`)
+	testExtend(t, `'he'`, "'\x01", `'he'\'$'\x01'''`)
+	testExtend(t, `he`, "llo", `hello`)
+	testExtend(t, `he`, "l*l'\x01\x07o", `hel\*l\'$'\x01'$'\a'o`)
+	testExtend(t, `$x`, "fo|o", `$xfoo`)
+	testExtend(t, `${x`, "fo|o", `${xfoo`)
+	testExtend(t, `$'f`, "oo", `$'foo`)
+	testExtend(t, `$'f`, "'\x01\x07o", `$'f\'\x01\ao`)
+	testExtend(t, `"f"`, "oo", `"foo"`)
+	testExtend(t, `"mi"`, "ke's \"hello\"", `"mike's \"hello\""`)
+	testExtend(t, `"t"`, "t\x01\x07", `"tt"$'\x01'$'\x07'""`)
+}
