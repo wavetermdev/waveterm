@@ -77,20 +77,20 @@ import (
 
 const (
 	WordTypeRaw       = "raw"
-	WordTypeLit       = "lit"
+	WordTypeLit       = "lit"  // (can-extend)
 	WordTypeOp        = "op"   // single: & ; | ( ) < > \n  multi(2): && || ;; << >> <& >& <> >| ((  multi(3): <<-    ('((' requires special processing)
 	WordTypeKey       = "key"  // if then else elif fi do done case esac while until for in { } ! (( [[
-	WordTypeSimpleVar = "svar" // simplevar $
 	WordTypeGroup     = "grp"  // contains other words e.g. "hello"foo'bar'$x
+	WordTypeSimpleVar = "svar" // simplevar $ (can-extend)
 
-	WordTypeDQ       = "dq"   // "    (quote-context)
-	WordTypeDDQ      = "ddq"  // $"   (quote-context)
-	WordTypeVarBrace = "varb" // ${   (quote-context)
+	WordTypeDQ       = "dq"   // "    (quote-context) (can-extend)
+	WordTypeDDQ      = "ddq"  // $"   (quote-context) (can-extend)
+	WordTypeVarBrace = "varb" // ${   (quote-context) (can-extend)
 	WordTypeDP       = "dp"   // $(   (quote-context)
 	WordTypeBQ       = "bq"   // `    (quote-context)
 
-	WordTypeSQ  = "sq"  // '
-	WordTypeDSQ = "dsq" // $'
+	WordTypeSQ  = "sq"  // '     (can-extend)
+	WordTypeDSQ = "dsq" // $'    (can-extend)
 	WordTypeDPP = "dpp" // $((   (internals not parsed)
 	WordTypePP  = "pp"  // ((    (internals not parsed)
 	WordTypeDB  = "db"  // $[    (internals not parsed)
