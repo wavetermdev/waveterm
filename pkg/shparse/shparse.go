@@ -3,6 +3,8 @@ package shparse
 import (
 	"bytes"
 	"fmt"
+
+	"github.com/scripthaus-dev/sh2-server/pkg/utilfn"
 )
 
 //
@@ -103,33 +105,37 @@ var bashNoneRW = []string{
 type wordMeta struct {
 	Type         string
 	EmptyWord    []rune
+	PrefixLen    int
 	SuffixLen    int
 	CanExtend    bool
 	QuoteContext bool
 }
 
-func makeWordMeta(wtype string, emptyWord string, suffixLen int, canExtend bool, quoteContext bool) {
-	wordMetaMap[wtype] = wordMeta{wtype, []rune(emptyWord), suffixLen, canExtend, quoteContext}
+func makeWordMeta(wtype string, emptyWord string, prefixLen int, suffixLen int, canExtend bool, quoteContext bool) {
+	if len(emptyWord) != prefixLen+suffixLen {
+		panic(fmt.Sprintf("invalid empty word %s %d %d", emptyWord, prefixLen, suffixLen))
+	}
+	wordMetaMap[wtype] = wordMeta{wtype, []rune(emptyWord), prefixLen, suffixLen, canExtend, quoteContext}
 }
 
 func init() {
 	wordMetaMap = make(map[string]wordMeta)
-	makeWordMeta(WordTypeRaw, "", 0, false, false)
-	makeWordMeta(WordTypeLit, "", 0, true, false)
-	makeWordMeta(WordTypeOp, "", 0, false, false)
-	makeWordMeta(WordTypeKey, "", 0, false, false)
-	makeWordMeta(WordTypeGroup, "", 0, false, false)
-	makeWordMeta(WordTypeSimpleVar, "$", 0, true, false)
-	makeWordMeta(WordTypeVarBrace, "${}", 1, true, true)
-	makeWordMeta(WordTypeDQ, `""`, 1, true, true)
-	makeWordMeta(WordTypeDDQ, `$""`, 1, true, true)
-	makeWordMeta(WordTypeDP, "$()", 1, false, false)
-	makeWordMeta(WordTypeBQ, "``", 1, false, false)
-	makeWordMeta(WordTypeSQ, "''", 1, true, false)
-	makeWordMeta(WordTypeDSQ, "$''", 1, true, false)
-	makeWordMeta(WordTypeDPP, "$(())", 2, false, false)
-	makeWordMeta(WordTypePP, "(())", 2, false, false)
-	makeWordMeta(WordTypeDB, "$[]", 1, false, false)
+	makeWordMeta(WordTypeRaw, "", 0, 0, false, false)
+	makeWordMeta(WordTypeLit, "", 0, 0, true, false)
+	makeWordMeta(WordTypeOp, "", 0, 0, false, false)
+	makeWordMeta(WordTypeKey, "", 0, 0, false, false)
+	makeWordMeta(WordTypeGroup, "", 0, 0, false, false)
+	makeWordMeta(WordTypeSimpleVar, "$", 1, 0, true, false)
+	makeWordMeta(WordTypeVarBrace, "${}", 2, 1, true, true)
+	makeWordMeta(WordTypeDQ, `""`, 1, 1, true, true)
+	makeWordMeta(WordTypeDDQ, `$""`, 2, 1, true, true)
+	makeWordMeta(WordTypeDP, "$()", 2, 1, false, false)
+	makeWordMeta(WordTypeBQ, "``", 1, 1, false, false)
+	makeWordMeta(WordTypeSQ, "''", 1, 1, true, false)
+	makeWordMeta(WordTypeDSQ, "$''", 2, 1, true, false)
+	makeWordMeta(WordTypeDPP, "$(())", 3, 2, false, false)
+	makeWordMeta(WordTypePP, "(())", 2, 2, false, false)
+	makeWordMeta(WordTypeDB, "$[]", 2, 1, false, false)
 }
 
 func MakeEmptyWord(wtype string, qc QuoteContext, offset int) *WordType {
@@ -169,39 +175,63 @@ func makeRepeatStr(ch byte, slen int) string {
 	return string(rtn)
 }
 
+func (w *WordType) isBlank() bool {
+	return w.Type == WordTypeLit && len(w.Raw) == 0
+}
+
+func (w *WordType) stringWithPos(pos int) string {
+	notCompleteFlag := " "
+	if !w.Complete {
+		notCompleteFlag = "*"
+	}
+	str := string(w.Raw)
+	if pos != -1 {
+		str = utilfn.StrWithPos{Str: str, Pos: pos}.String()
+	}
+	return fmt.Sprintf("%-4s[%3d]%s %s%q", w.Type, w.Offset, notCompleteFlag, makeRepeatStr('_', len(w.Prefix)), str)
+}
+
 func (w *WordType) String() string {
 	notCompleteFlag := " "
 	if !w.Complete {
 		notCompleteFlag = "*"
 	}
-	return fmt.Sprintf("%4s[%3d]%s %s%q", w.Type, w.Offset, notCompleteFlag, makeRepeatStr('_', len(w.Prefix)), string(w.FullRawString()))
+	return fmt.Sprintf("%-4s[%3d]%s %s%q", w.Type, w.Offset, notCompleteFlag, makeRepeatStr('_', len(w.Prefix)), string(w.Raw))
 }
 
-func dumpWords(words []*WordType, indentStr string) {
+// offset = -1 for don't show
+func dumpWords(words []*WordType, indentStr string, offset int) {
+	wrotePos := false
 	for _, word := range words {
-		fmt.Printf("%s%s\n", indentStr, word.String())
+		posInWord := false
+		if !wrotePos && offset != -1 && offset <= word.Offset {
+			fmt.Printf("%s*   [%3d] [*]\n", indentStr, offset)
+			wrotePos = true
+		}
+		if !wrotePos && offset != -1 && offset < word.Offset+len(word.Raw) {
+			fmt.Printf("%s%s\n", indentStr, word.stringWithPos(offset-word.Offset))
+			wrotePos = true
+			posInWord = true
+		} else {
+			fmt.Printf("%s%s\n", indentStr, word.String())
+		}
 		if len(word.Subs) > 0 {
-			dumpWords(word.Subs, indentStr+"  ")
+			if posInWord {
+				wmeta := wordMetaMap[word.Type]
+				dumpWords(word.Subs, indentStr+"  ", offset-word.Offset-wmeta.PrefixLen)
+			} else {
+				dumpWords(word.Subs, indentStr+"  ", -1)
+			}
 		}
 	}
 }
 
-func dumpCommands(cmds []*CmdType, indentStr string) {
+func dumpCommands(cmds []*CmdType, indentStr string, pos *CmdPos) {
 	for _, cmd := range cmds {
 		fmt.Printf("%sCMD: %s [%d]\n", indentStr, cmd.Type, len(cmd.Words))
-		dumpWords(cmd.Words, indentStr+"  ")
+		dumpWords(cmd.AssignmentWords, indentStr+" *", -1)
+		dumpWords(cmd.Words, indentStr+"  ", -1)
 	}
-}
-
-func (w *WordType) FullRawString() []rune {
-	if w.Type == WordTypeGroup {
-		var rtn []rune
-		for _, sw := range w.Subs {
-			rtn = append(rtn, sw.FullRawString()...)
-		}
-		return rtn
-	}
-	return w.Raw
 }
 
 func wordsToStr(words []*WordType) string {
@@ -210,7 +240,7 @@ func wordsToStr(words []*WordType) string {
 		if len(word.Prefix) > 0 {
 			buf.WriteString(string(word.Prefix))
 		}
-		buf.WriteString(string(word.FullRawString()))
+		buf.WriteString(string(word.Raw))
 	}
 	return buf.String()
 }
@@ -442,6 +472,132 @@ func identifyReservedWords(words []*WordType) {
 	}
 }
 
+type CmdPos struct {
+	CmdPos    int
+	CmdOffset int
+
+	CurWord       *WordType // nil if between words
+	CurWordOffset int
+
+	CmdWordPos   int
+	OffsetInWord int // if BetweenWords is set, this offset can be negative (position is inside of prefix)
+	BetweenWords bool
+}
+
+// func FindCmdPos(cmds []*CmdType, offset int) CmdPos {
+// 	if len(words) == 0 {
+// 		return WordsPos{[]int{0}, 0, true}
+// 	}
+// 	pos := 0
+// 	for idx, word := range words {
+// 		if offset <= word.Offset+len(word.Raw) {
+// 			if offset <= word.Offset {
+// 				// in the prefix, so we are between-words with a possibly negative offset
+// 				return WordPos{WordPos: idx, OffsetInWord: offset - word.Offset, BetweenWords: true}
+// 			}
+// 			if offset == pos+fullWordLen {
+// 				return WordPos{WordPos: idx + 1, OffsetInWord: 0, BetweenWords: true}
+// 			}
+// 			return WordPos{WordPos: idx, OffsetInWord: offset - word.Offset, BetweenWords: false}
+// 		}
+// 		pos += fullWordLen
+// 	}
+// 	return WordPos{WordPos: []int{len(words)}, OffsetInWord: 0, BetweenWords: true}
+// }
+
+func ResetWordOffsets(words []*WordType) {
+	pos := 0
+	for _, word := range words {
+		pos += len(word.Prefix)
+		word.Offset = pos
+		if len(word.Subs) > 0 {
+			ResetWordOffsets(word.Subs)
+		}
+		pos += len(word.Raw)
+	}
+}
+
+func CommandsToWords(cmds []*CmdType) []*WordType {
+	var rtn []*WordType
+	for _, cmd := range cmds {
+		rtn = append(rtn, cmd.Words...)
+	}
+	return rtn
+}
+
+func (c *CmdType) stripPrefix() []rune {
+	if len(c.AssignmentWords) > 0 {
+		w := c.AssignmentWords[0]
+		prefix := w.Prefix
+		w.Prefix = nil
+		return prefix
+	}
+	if len(c.Words) > 0 {
+		w := c.Words[0]
+		prefix := w.Prefix
+		w.Prefix = nil
+		return prefix
+	}
+	return nil
+}
+
+func (c *CmdType) isEmpty() bool {
+	return len(c.AssignmentWords) == 0 && len(c.Words) == 0
+}
+
+func (c *CmdType) lastWord() *WordType {
+	if len(c.Words) > 0 {
+		return c.Words[len(c.Words)-1]
+	}
+	if len(c.AssignmentWords) > 0 {
+		return c.AssignmentWords[len(c.AssignmentWords)-1]
+	}
+	return nil
+}
+
+func (c *CmdType) endOffset() int {
+	lastWord := c.lastWord()
+	if lastWord == nil {
+		return 0
+	}
+	return lastWord.Offset + len(lastWord.Raw)
+}
+
+func indexInRunes(arr []rune, ch rune) int {
+	for idx, r := range arr {
+		if r == ch {
+			return idx
+		}
+	}
+	return -1
+}
+
+func isAssignmentWord(w *WordType) bool {
+	if w.Type == WordTypeLit || w.Type == WordTypeGroup {
+		eqIdx := indexInRunes(w.Raw, '=')
+		if eqIdx == -1 {
+			return false
+		}
+		prefix := w.Raw[0:eqIdx]
+		return isSimpleVarName(prefix)
+	}
+	return false
+}
+
+// simple commands steal whitespace from subsequent commands
+func cmdWhitespaceFixup(cmds []*CmdType) {
+	for idx := 0; idx < len(cmds)-1; idx++ {
+		cmd := cmds[idx]
+		if cmd.Type != CmdTypeSimple || cmd.isEmpty() {
+			continue
+		}
+		nextCmd := cmds[idx+1]
+		nextPrefix := nextCmd.stripPrefix()
+		blankWord := &WordType{Type: WordTypeLit, QC: cmd.lastWord().QC, Offset: cmd.endOffset(), Prefix: nextPrefix, Complete: true}
+		cmd.Words = append(cmd.Words, blankWord)
+	}
+}
+
 func ParseCommands(words []*WordType) []*CmdType {
 	identifyReservedWords(words)
 	state := parseCmdState{Input: words}
@@ -466,8 +622,13 @@ func ParseCommands(words []*WordType) []*CmdType {
 			state.Cur = &CmdType{Type: CmdTypeSimple}
 			state.Rtn = append(state.Rtn, state.Cur)
 		}
-		state.Cur.Words = append(state.Cur.Words, word)
+		if len(state.Cur.Words) == 0 && isAssignmentWord(word) {
+			state.Cur.AssignmentWords = append(state.Cur.AssignmentWords, word)
+		} else {
+			state.Cur.Words = append(state.Cur.Words, word)
+		}
 		state.InputPos++
 	}
+	cmdWhitespaceFixup(state.Rtn)
 	return state.Rtn
 }

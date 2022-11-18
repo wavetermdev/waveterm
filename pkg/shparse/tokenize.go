@@ -16,6 +16,13 @@ type tokenizeOutputState struct {
 	SavedPrefix []rune
 }
 
+func copyRunes(rarr []rune) []rune {
+	if len(rarr) == 0 {
+		return nil
+	}
+	return append([]rune(nil), rarr...)
+}
+
 // does not set CurWord
 func (state *tokenizeOutputState) appendStandaloneWord(word *WordType) {
 	state.delimitCurWord()
@@ -36,7 +43,9 @@ func (state *tokenizeOutputState) appendWord(word *WordType) {
 		return
 	}
 	state.ensureGroupWord()
+	word.Offset = word.Offset - state.CurWord.Offset
 	state.CurWord.Subs = append(state.CurWord.Subs, word)
+	state.CurWord.Raw = append(state.CurWord.Raw, word.Raw...)
 }
 
 func (state *tokenizeOutputState) ensureGroupWord() {
@@ -46,28 +55,33 @@ func (state *tokenizeOutputState) ensureGroupWord() {
 	if state.CurWord.Type == WordTypeGroup {
 		return
 	}
-	// moves the prefix from CurWord to the new group word
+	// moves the prefix from CurWord to the new group word, resets offsets
 	groupWord := &WordType{
 		Type:     WordTypeGroup,
 		Offset:   state.CurWord.Offset,
 		QC:       state.CurWord.QC,
+		Raw:      copyRunes(state.CurWord.Raw),
 		Complete: true,
 		Prefix:   state.CurWord.Prefix,
 	}
 	state.CurWord.Prefix = nil
+	state.CurWord.Offset = 0
 	groupWord.Subs = []*WordType{state.CurWord}
 	state.CurWord = groupWord
 }
 
-func ungroupWord(w *WordType) []*WordType {
-	if w.Type != WordTypeGroup {
-		return []*WordType{w}
+func ungroupWord(groupWord *WordType) []*WordType {
+	if groupWord.Type != WordTypeGroup {
+		return []*WordType{groupWord}
 	}
-	rtn := w.Subs
-	if len(w.Prefix) > 0 && len(rtn) > 0 {
-		newPrefix := append([]rune{}, w.Prefix...)
+	rtn := groupWord.Subs
+	if len(groupWord.Prefix) > 0 && len(rtn) > 0 {
+		newPrefix := append([]rune{}, groupWord.Prefix...)
 		newPrefix = append(newPrefix, rtn[0].Prefix...)
 		rtn[0].Prefix = newPrefix
+	}
+	for _, word := range rtn {
+		word.Offset = word.Offset + groupWord.Offset
 	}
 	return rtn
 }
@@ -89,6 +103,7 @@ func (state *tokenizeOutputState) ensureLitCurWord(pc *parseContext) {
 			panic("invalid state, there can be no saved prefix")
 		}
 		litWord := pc.makeWord(WordTypeLit, 0, true)
+		litWord.Offset = litWord.Offset - state.CurWord.Offset
 		state.CurWord.Subs = append(state.CurWord.Subs, litWord)
 	}
 }
@@ -115,6 +130,7 @@ func (state *tokenizeOutputState) appendLiteral(pc *parseContext, ch rune) {
 			panic(fmt.Sprintf("invalid curword type (group) %q", state.CurWord.Type))
 		}
 		lastWord.Raw = append(lastWord.Raw, ch)
+		state.CurWord.Raw = append(state.CurWord.Raw, ch)
 	} else {
 		panic(fmt.Sprintf("invalid curword type %q", state.CurWord.Type))
 	}
@@ -355,7 +371,7 @@ func (c *parseContext) makeWord(t string, length int, complete bool) *WordType {
 	rtn := &WordType{Type: t}
 	rtn.Offset = c.Pos
 	rtn.QC = c.QC
-	rtn.Raw = c.Input[c.Pos : c.Pos+length]
+	rtn.Raw = copyRunes(c.Input[c.Pos : c.Pos+length])
 	rtn.Complete = complete
 	c.Pos += length
 	return rtn
@@ -563,6 +579,19 @@ func (c *parseContext) parseSimpleVarName(offset int) int {
 		}
 		return offset
 	}
+}
+
+func isSimpleVarName(rstr []rune) bool {
+	if len(rstr) == 0 {
+		return false
+	}
+	for idx, ch := range rstr {
+		if (ch == '_' || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) || ((idx != 0) && ch >= '0' && ch <= '9') {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func Tokenize(cmd string) []*WordType {

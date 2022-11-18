@@ -118,3 +118,26 @@ func ContainsStr(strs []string, test string) bool {
 	}
 	return false
 }
+
+type StrWithPos struct {
+	Str string
+	Pos int
+}
+
+func (sp StrWithPos) String() string {
+	return strWithCursor(sp.Str, sp.Pos)
+}
+
+func strWithCursor(str string, pos int) string {
+	if pos < 0 {
+		return "[*]_" + str
+	}
+	if pos >= len(str) {
+		if pos > len(str) {
+			return str + "_[*]"
+		}
+		return str + "[*]"
+	} else {
+		return str[:pos] + "[*]" + str[pos:]
+	}
+}

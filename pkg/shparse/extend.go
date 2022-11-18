@@ -64,30 +64,26 @@ func (w *WordType) writeRune(ch rune) {
 	return
 }
 
-func (w *WordType) cloneRaw() {
-	if len(w.Raw) == 0 {
-		return
-	}
-	buf := make([]rune, 0, len(w.Raw))
-	w.Raw = append(buf, w.Raw...)
-}
-
 type extendContext struct {
+	Input     []*WordType
+	InputPos  int
 	QC        QuoteContext
 	Rtn       []*WordType
 	CurWord   *WordType
 	Intention string
 }
 
-func makeExtendContext(qc QuoteContext, w *WordType) *extendContext {
-	rtn := &extendContext{QC: qc, Intention: WordTypeLit}
-	if w != nil {
-		w.cloneRaw()
-		rtn.Rtn = []*WordType{w}
-		rtn.CurWord = w
-		rtn.Intention = w.Type
+func makeExtendContext(qc QuoteContext, word *WordType) *extendContext {
+	rtn := &extendContext{QC: qc}
+	if word == nil {
+		rtn.Intention = WordTypeLit
+		return rtn
+	} else {
+		rtn.Intention = word.Type
+		rtn.Rtn = []*WordType{word}
+		rtn.CurWord = word
+		return rtn
 	}
-	return rtn
 }
 
 func (ec *extendContext) appendWord(w *WordType) {

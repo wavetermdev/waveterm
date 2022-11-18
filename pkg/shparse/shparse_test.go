@@ -15,14 +15,13 @@ import (
 func testParse(t *testing.T, s string) {
 	words := Tokenize(s)
 
-	fmt.Printf("%s\n", s)
-	dumpWords(words, "  ")
-	fmt.Printf("\n")
-
+	fmt.Printf("parse <<\n%s\n>>\n", s)
+	dumpWords(words, "  ", 8)
 	outStr := wordsToStr(words)
 	if outStr != s {
 		t.Errorf("tokenization output does not match input: %q => %q", s, outStr)
 	}
+	fmt.Printf("------\n\n")
 }
 
 func Test1(t *testing.T) {
@@ -46,6 +45,7 @@ func Test1(t *testing.T) {
 	testParse(t, "echo `ls $x \"hello $x\" \\`ls\\`; ./foo`")
 	testParse(t, `echo $"hello $x $(ls)"`)
 	testParse(t, "echo 'hello'\nls\n")
+	testParse(t, "echo 'hello'abc$'\a'")
 }
 
 func lastWord(words []*WordType) *WordType {
@@ -88,15 +88,17 @@ func testParseCommands(t *testing.T, str string) {
 	fmt.Printf("parse: %q\n", str)
 	words := Tokenize(str)
 	cmds := ParseCommands(words)
-	dumpCommands(cmds, "  ")
+	dumpCommands(cmds, "  ", nil)
 	fmt.Printf("\n")
 }
 
 func TestCmd(t *testing.T) {
 	testParseCommands(t, "ls foo")
+	testParseCommands(t, "function foo () { echo hello; }")
 	testParseCommands(t, "ls foo && ls bar; ./run $x hello | xargs foo; ")
 	testParseCommands(t, "if [[ 2 > 1 ]]; then echo hello\nelse echo world; echo next; done")
 	testParseCommands(t, "case lots of stuff; i don\\'t know how to parse; esac; ls foo")
-	testParseCommands(t, "(ls & ./x); for x in $vars 3; do { echo $x; ls foo; } done")
-	testParseCommands(t, "function foo () { echo hello; }")
+	testParseCommands(t, "(ls & ./x \n\n); for x in $vars 3; do { echo $x; ls foo; } done")
+	testParseCommands(t, `ls f"oo" "${x:"hello$y"}"`)
+	testParseCommands(t, `x="foo $y" z=10 ls`)
 }
