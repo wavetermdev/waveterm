@@ -43,13 +43,13 @@ func getUtf8Literal(ch rune) string {
 	return buf.String()
 }
 
-func (w *wordType) writeString(s string) {
+func (w *WordType) writeString(s string) {
 	for _, ch := range s {
 		w.writeRune(ch)
 	}
 }
 
-func (w *wordType) writeRune(ch rune) {
+func (w *WordType) writeRune(ch rune) {
 	wmeta := wordMetaMap[w.Type]
 	if w.Complete && wmeta.SuffixLen == 1 {
 		w.Raw = append(w.Raw[0:len(w.Raw)-1], ch, w.Raw[len(w.Raw)-1])
@@ -64,7 +64,7 @@ func (w *wordType) writeRune(ch rune) {
 	return
 }
 
-func (w *wordType) cloneRaw() {
+func (w *WordType) cloneRaw() {
 	if len(w.Raw) == 0 {
 		return
 	}
@@ -73,31 +73,31 @@ func (w *wordType) cloneRaw() {
 }
 
 type extendContext struct {
-	QC        quoteContext
-	Rtn       []*wordType
-	CurWord   *wordType
+	QC        QuoteContext
+	Rtn       []*WordType
+	CurWord   *WordType
 	Intention string
 }
 
-func makeExtendContext(qc quoteContext, w *wordType) *extendContext {
+func makeExtendContext(qc QuoteContext, w *WordType) *extendContext {
 	rtn := &extendContext{QC: qc, Intention: WordTypeLit}
 	if w != nil {
 		w.cloneRaw()
-		rtn.Rtn = []*wordType{w}
+		rtn.Rtn = []*WordType{w}
 		rtn.CurWord = w
 		rtn.Intention = w.Type
 	}
 	return rtn
 }
 
-func (ec *extendContext) appendWord(w *wordType) {
+func (ec *extendContext) appendWord(w *WordType) {
 	ec.Rtn = append(ec.Rtn, w)
 	ec.CurWord = w
 }
 
 func (ec *extendContext) ensureCurWord() {
 	if ec.CurWord == nil || ec.CurWord.Type != ec.Intention {
-		ec.CurWord = makeEmptyWord(ec.Intention, ec.QC, 0)
+		ec.CurWord = MakeEmptyWord(ec.Intention, ec.QC, 0)
 		ec.Rtn = append(ec.Rtn, ec.CurWord)
 	}
 }
@@ -155,7 +155,7 @@ func (ec *extendContext) extendLit(ch rune) {
 		return
 	}
 	if ch > unicode.MaxASCII || !unicode.IsPrint(ch) {
-		dsqWord := makeEmptyWord(WordTypeDSQ, ec.QC, 0)
+		dsqWord := MakeEmptyWord(WordTypeDSQ, ec.QC, 0)
 		ec.appendWord(dsqWord)
 		sesc := getSpecialEscape(ch)
 		if sesc != "" {
@@ -207,13 +207,13 @@ func (ec *extendContext) extendSQ(ch rune) {
 		return
 	}
 	if ch == '\'' {
-		litWord := &wordType{Type: WordTypeLit, QC: ec.QC}
+		litWord := &WordType{Type: WordTypeLit, QC: ec.QC}
 		litWord.Raw = []rune{'\\', '\''}
 		ec.appendWord(litWord)
 		return
 	}
 	if ch > unicode.MaxASCII || !unicode.IsPrint(ch) {
-		dsqWord := makeEmptyWord(WordTypeDSQ, ec.QC, 0)
+		dsqWord := MakeEmptyWord(WordTypeDSQ, ec.QC, 0)
 		ec.appendWord(dsqWord)
 		sesc := getSpecialEscape(ch)
 		if sesc != "" {
@@ -240,7 +240,7 @@ func (ec *extendContext) extendDQ(ch rune) {
 		return
 	}
 	if ch > unicode.MaxASCII || !unicode.IsPrint(ch) {
-		dsqWord := makeEmptyWord(WordTypeDSQ, ec.QC, 0)
+		dsqWord := MakeEmptyWord(WordTypeDSQ, ec.QC, 0)
 		ec.appendWord(dsqWord)
 		sesc := getSpecialEscape(ch)
 		if sesc != "" {

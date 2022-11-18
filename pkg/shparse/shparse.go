@@ -1,8 +1,8 @@
 package shparse
 
 import (
+	"bytes"
 	"fmt"
-	"unicode"
 )
 
 //
@@ -29,54 +29,14 @@ import (
 //
 //
 //
-// $var
-// ${var}
-// ${var op word?}
-// op := '-' | '=' | '?' | '+' | ':-' | ':=' | ':?' | ':+' | '%' | '%%' | '#' | '##'
-// ${ '#' var }
-//
-// $(command)
-// `command`
-// $(( arith ))
-//
-// " ... "
-// ' ... '
-// $' ... '
-// $" ... '
-
-// "  => $, ", `, \
-// '  => '
-// (process quotes)
-// mark as escaped
-// split into commands (use ';' as separator)
-// parse special operators
-// perform expansions (vars, globs, commands)
-// split command into name and arguments
-
 // A correctly-formed brace expansion must contain unquoted opening and closing braces, and at least one unquoted comma or a valid sequence expression
 // Any incorrectly formed brace expansion is left unchanged.
-
-// word: char *word; flags
-// bash aliases are lexical
-
-// [[, ((, $(( <- DQ
-
-// $ -> expansion
-// $(...)
-// (...)
-// $((...))
-// ((...))
-// ${...}
-// {...}
-// X=(...)
-
+//
 // ambiguity between $((...)) and $((ls); ls)
 // ambiguity between foo=([0]=hell) and foo=([abc)
-
 // tokenization https://pubs.opengroup.org/onlinepubs/7908799/xcu/chap2.html#tag_001_003
 
 // can-extend: WordTypeLit, WordTypeSimpleVar, WordTypeVarBrace, WordTypeDQ, WordTypeDDQ, WordTypeSQ, WordTypeDSQ
-
 const (
 	WordTypeRaw       = "raw"
 	WordTypeLit       = "lit"  // (can-extend)
@@ -98,7 +58,47 @@ const (
 	WordTypeDB  = "db"  // $[    (internals not parsed)
 )
 
+const (
+	CmdTypeNone   = "none"   // holds control structures: '(' ')' 'for' 'while' etc.
+	CmdTypeSimple = "simple" // holds real commands
+)
+
+type WordType struct {
+	Type     string
+	Offset   int
+	QC       QuoteContext
+	Raw      []rune
+	Complete bool
+	Prefix   []rune
+	Subs     []*WordType
+}
+
+type CmdType struct {
+	Type            string
+	AssignmentWords []*WordType
+	Words           []*WordType
+}
+
+type QuoteContext []string
+
 var wordMetaMap map[string]wordMeta
+
+// same order as https://www.gnu.org/software/bash/manual/html_node/Reserved-Words.html
+var bashReservedWords = []string{
+	"if", "then", "elif", "else", "fi", "time",
+	"for", "in", "until", "while", "do", "done",
+	"case", "esac", "coproc", "select", "function",
+	"{", "}", "[[", "]]", "!",
+}
+
+// special reserved words: "for", "in", "case", "select", "function", "[[", and "]]"
+
+var bashNoneRW = []string{
+	"if", "then", "elif", "else", "fi", "time",
+	"until", "while", "do", "done",
+	"esac", "coproc",
+	"{", "}", "!",
+}
 
 type wordMeta struct {
 	Type         string
@@ -132,328 +132,342 @@ func init() {
 	makeWordMeta(WordTypeDB, "$[]", 1, false, false)
 }
 
-func makeEmptyWord(wtype string, qc quoteContext, offset int) *wordType {
+func MakeEmptyWord(wtype string, qc QuoteContext, offset int) *WordType {
 	meta := wordMetaMap[wtype]
 	if meta.Type == "" {
 		meta = wordMetaMap[WordTypeRaw]
 	}
-	rtn := &wordType{Type: meta.Type, QC: qc, Offset: offset, Complete: true}
+	rtn := &WordType{Type: meta.Type, QC: qc, Offset: offset, Complete: true}
 	if len(meta.EmptyWord) > 0 {
 		rtn.Raw = append([]rune(nil), meta.EmptyWord...)
 	}
 	return rtn
 }
 
-type quoteContext []string
-
-func (qc quoteContext) push(q string) quoteContext {
+func (qc QuoteContext) push(q string) QuoteContext {
 	rtn := make([]string, 0, len(qc)+1)
 	rtn = append(rtn, qc...)
 	rtn = append(rtn, q)
 	return rtn
 }
 
-func (qc quoteContext) cur() string {
+func (qc QuoteContext) cur() string {
 	if len(qc) == 0 {
 		return ""
 	}
 	return qc[len(qc)-1]
 }
 
-type parseContext struct {
-	Input []rune
-	Pos   int
-	QC    quoteContext
-}
-
-type wordType struct {
-	Type     string
-	Offset   int
-	QC       quoteContext
-	Raw      []rune
-	Complete bool
-	Val      string // only for Op and Key (does *not* store string values of quoted expressions or expansions)
-	Prefix   []rune
-	Subs     []*wordType
-}
-
-func (c *parseContext) clone(pos int, newQuote string) *parseContext {
-	rtn := parseContext{Input: c.Input[pos:], QC: c.QC}
-	if newQuote != "" {
-		rtn.QC = rtn.QC.push(newQuote)
-	}
-	return &rtn
-}
-
-func (c *parseContext) at(offset int) rune {
-	pos := c.Pos + offset
-	if pos < 0 || pos >= len(c.Input) {
-		return 0
-	}
-	return c.Input[pos]
-}
-
-func (c *parseContext) eof() bool {
-	return c.Pos >= len(c.Input)
-}
-
-func (c *parseContext) cur() rune {
-	return c.at(0)
-}
-
-func (c *parseContext) match(ch rune) bool {
-	return c.at(0) == ch
-}
-
-func (c *parseContext) match2(ch rune, ch2 rune) bool {
-	return c.at(0) == ch && c.at(1) == ch2
-}
-
-func (c *parseContext) match3(ch rune, ch2 rune, ch3 rune) bool {
-	return c.at(0) == ch && c.at(1) == ch2 && c.at(2) == ch3
-}
-
-func (c *parseContext) makeWord(t string, length int, complete bool) *wordType {
-	rtn := &wordType{Type: t}
-	rtn.Offset = c.Pos
-	rtn.QC = c.QC
-	rtn.Raw = c.Input[c.Pos : c.Pos+length]
-	rtn.Complete = complete
-	c.Pos += length
-	return rtn
-}
-
-// returns (found, newOffset)
-// shell_meta_chars "()<>;&|"
-// possible to maybe add ;;& &>> &> |& ;&
-func (c *parseContext) parseOp(offset int) (bool, int) {
-	ch := c.at(offset)
-	if ch == '(' || ch == ')' || ch == '<' || ch == '>' || ch == ';' || ch == '&' || ch == '|' {
-		ch2 := c.at(offset + 1)
-		if ch2 == 0 {
-			return true, offset + 1
-		}
-		r2 := string([]rune{ch, ch2})
-		if r2 == "<<" {
-			ch3 := c.at(offset + 2)
-			if ch3 == '-' || ch3 == '<' {
-				return true, offset + 3 // "<<-" or "<<<"
-			}
-			return true, offset + 2 // "<<"
-		}
-		if r2 == ">>" || r2 == "&&" || r2 == "||" || r2 == ";;" || r2 == "<<" || r2 == "<&" || r2 == ">&" || r2 == "<>" || r2 == ">|" {
-			// we don't return '((' here (requires special processing)
-			return true, offset + 2
-		}
-		return true, offset + 1
-	}
-	return false, 0
-}
-
-// returns (new-offset, complete)
-func (c *parseContext) skipToChar(offset int, endCh rune, allowEsc bool) (int, bool) {
-	for {
-		ch := c.at(offset)
-		if ch == 0 {
-			return offset, false
-		}
-		if allowEsc && ch == '\\' {
-			if c.at(offset+1) == 0 {
-				return offset + 1, false
-			}
-			offset += 2
-			continue
-		}
-		if ch == endCh {
-			return offset + 1, true
-		}
-		offset++
-	}
-}
-
-// returns (new-offset, complete)
-func (c *parseContext) skipToChar2(offset int, endCh rune, endCh2 rune, allowEsc bool) (int, bool) {
-	for {
-		ch := c.at(offset)
-		ch2 := c.at(offset + 1)
-		if ch == 0 {
-			return offset, false
-		}
-		if ch2 == 0 {
-			return offset + 1, false
-		}
-		if allowEsc && ch == '\\' {
-			offset += 2
-			continue
-		}
-		if ch == endCh && ch2 == endCh2 {
-			return offset + 2, true
-		}
-		offset++
-	}
-}
-
-func (c *parseContext) parseStrSQ() *wordType {
-	if !c.match('\'') {
-		return nil
-	}
-	newOffset, complete := c.skipToChar(1, '\'', false)
-	w := c.makeWord(WordTypeSQ, newOffset, complete)
-	return w
-}
-
-func (c *parseContext) parseStrDQ() *wordType {
-	if !c.match('"') {
-		return nil
-	}
-	newContext := c.clone(c.Pos+1, WordTypeDQ)
-	subWords, eofExit := newContext.tokenizeDQ()
-	newOffset := newContext.Pos + 1
-	w := c.makeWord(WordTypeDQ, newOffset, !eofExit)
-	w.Subs = subWords
-	return w
-}
-
-func (c *parseContext) parseStrDDQ() *wordType {
-	if !c.match2('$', '"') {
-		return nil
-	}
-	newContext := c.clone(c.Pos+2, WordTypeDDQ)
-	subWords, eofExit := newContext.tokenizeDQ()
-	newOffset := newContext.Pos + 2
-	w := c.makeWord(WordTypeDDQ, newOffset, !eofExit)
-	w.Subs = subWords
-	return w
-}
-
-func (c *parseContext) parseStrBQ() *wordType {
-	if !c.match('`') {
-		return nil
-	}
-	newContext := c.clone(c.Pos+1, WordTypeBQ)
-	subWords, eofExit := newContext.tokenizeRaw()
-	newOffset := newContext.Pos + 1
-	w := c.makeWord(WordTypeBQ, newOffset, !eofExit)
-	w.Subs = subWords
-	return w
-}
-
-func (c *parseContext) parseStrANSI() *wordType {
-	if !c.match2('$', '\'') {
-		return nil
-	}
-	newOffset, complete := c.skipToChar(2, '\'', true)
-	w := c.makeWord(WordTypeDSQ, newOffset, complete)
-	return w
-}
-
-func (c *parseContext) parseArith(mustComplete bool) *wordType {
-	if !c.match2('(', '(') {
-		return nil
-	}
-	newOffset, complete := c.skipToChar2(2, ')', ')', false)
-	if mustComplete && !complete {
-		return nil
-	}
-	w := c.makeWord(WordTypePP, newOffset, complete)
-	return w
-}
-
-func (c *parseContext) parseExpansion() *wordType {
-	if !c.match('$') {
-		return nil
-	}
-	if c.match3('$', '(', '(') {
-		newOffset, complete := c.skipToChar2(3, ')', ')', false)
-		w := c.makeWord(WordTypeDPP, newOffset, complete)
-		return w
-	}
-	if c.match2('$', '(') {
-		// subshell
-		newContext := c.clone(c.Pos+2, WordTypeDP)
-		subWords, eofExit := newContext.tokenizeRaw()
-		newOffset := newContext.Pos + 2
-		w := c.makeWord(WordTypeDP, newOffset, !eofExit)
-		w.Subs = subWords
-		return w
-	}
-	if c.match2('$', '[') {
-		// deprecated arith expansion
-		newOffset, complete := c.skipToChar(2, ']', false)
-		w := c.makeWord(WordTypeDB, newOffset, complete)
-		return w
-	}
-	if c.match2('$', '{') {
-		// variable expansion
-		newContext := c.clone(c.Pos+2, WordTypeVarBrace)
-		_, eofExit := newContext.tokenizeVarBrace()
-		newOffset := newContext.Pos + 2
-		w := c.makeWord(WordTypeVarBrace, newOffset, !eofExit)
-		return w
-	}
-	ch2 := c.at(1)
-	if ch2 == 0 || unicode.IsSpace(ch2) {
-		// no expansion
-		return nil
-	}
-	newOffset := c.parseSimpleVarName(1)
-	if newOffset > 1 {
-		// simple variable name
-		w := c.makeWord(WordTypeSimpleVar, newOffset, true)
-		return w
-	}
-	if ch2 == '*' || ch2 == '@' || ch2 == '#' || ch2 == '?' || ch2 == '-' || ch2 == '$' || ch2 == '!' || (ch2 >= '0' && ch2 <= '9') {
-		// single character variable name, e.g. $@, $_, $1, etc.
-		w := c.makeWord(WordTypeSimpleVar, 2, true)
-		return w
-	}
-	return nil
-}
-
-// returns newOffset
-func (c *parseContext) parseSimpleVarName(offset int) int {
-	first := true
-	for {
-		ch := c.at(offset)
-		if ch == 0 {
-			return offset
-		}
-		if (ch == '_' || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) || (!first && ch >= '0' && ch <= '9') {
-			first = false
-			offset++
-			continue
-		}
-		return offset
-	}
-}
-
-func makeSpaceStr(slen int) string {
+func makeRepeatStr(ch byte, slen int) string {
 	if slen == 0 {
 		return ""
 	}
-	if slen == 1 {
-		return " "
-	}
 	rtn := make([]byte, slen)
 	for i := 0; i < slen; i++ {
-		rtn[i] = ' '
+		rtn[i] = ch
 	}
 	return string(rtn)
 }
 
-func (w *wordType) String() string {
+func (w *WordType) String() string {
 	notCompleteFlag := " "
 	if !w.Complete {
 		notCompleteFlag = "*"
 	}
-	return fmt.Sprintf("%4s[%3d]%s %s%q", w.Type, w.Offset, notCompleteFlag, makeSpaceStr(len(w.Prefix)), string(w.FullRawString()))
+	return fmt.Sprintf("%4s[%3d]%s %s%q", w.Type, w.Offset, notCompleteFlag, makeRepeatStr('_', len(w.Prefix)), string(w.FullRawString()))
 }
 
-func dumpWords(words []*wordType, indentStr string) {
+func dumpWords(words []*WordType, indentStr string) {
 	for _, word := range words {
 		fmt.Printf("%s%s\n", indentStr, word.String())
 		if len(word.Subs) > 0 {
 			dumpWords(word.Subs, indentStr+"  ")
 		}
 	}
+}
+
+func dumpCommands(cmds []*CmdType, indentStr string) {
+	for _, cmd := range cmds {
+		fmt.Printf("%sCMD: %s [%d]\n", indentStr, cmd.Type, len(cmd.Words))
+		dumpWords(cmd.Words, indentStr+"  ")
+	}
+}
+
+func (w *WordType) FullRawString() []rune {
+	if w.Type == WordTypeGroup {
+		var rtn []rune
+		for _, sw := range w.Subs {
+			rtn = append(rtn, sw.FullRawString()...)
+		}
+		return rtn
+	}
+	return w.Raw
+}
+
+func wordsToStr(words []*WordType) string {
+	var buf bytes.Buffer
+	for _, word := range words {
+		if len(word.Prefix) > 0 {
+			buf.WriteString(string(word.Prefix))
+		}
+		buf.WriteString(string(word.FullRawString()))
+	}
+	return buf.String()
+}
+
+// recognizes reserved words in first position
+func convertToAnyReservedWord(w *WordType) bool {
+	if w == nil || w.Type != WordTypeLit {
+		return false
+	}
+	rawVal := string(w.Raw)
+	for _, rw := range bashReservedWords {
+		if rawVal == rw {
+			w.Type = WordTypeKey
+			return true
+		}
+	}
+	return false
+}
+
+// recognizes the specific reserved-word given only ('in' and 'do' in 'for', 'case', and 'select' commands)
+func convertToReservedWord(w *WordType, reservedWord string) {
+	if w == nil || w.Type != WordTypeLit {
+		return
+	}
+	if string(w.Raw) == reservedWord {
+		w.Type = WordTypeKey
+	}
+}
+
+func isNoneReservedWord(w *WordType) bool {
+	if w.Type != WordTypeKey {
+		return false
+	}
+	rawVal := string(w.Raw)
+	for _, rw := range bashNoneRW {
+		if rawVal == rw {
+			return true
+		}
+	}
+	return false
+}
+
+type parseCmdState struct {
+	Input    []*WordType
+	InputPos int
+
+	Rtn []*CmdType
+	Cur *CmdType
+}
+
+func (state *parseCmdState) isEof() bool {
+	return state.InputPos >= len(state.Input)
+}
+
+func (state *parseCmdState) curWord() *WordType {
+	if state.isEof() {
+		return nil
+	}
+	return state.Input[state.InputPos]
+}
+
+func (state *parseCmdState) lastCmd() *CmdType {
+	if len(state.Rtn) == 0 {
+		return nil
+	}
+	return state.Rtn[len(state.Rtn)-1]
+}
+
+func (state *parseCmdState) makeNoneCmd() {
+	lastCmd := state.lastCmd()
+	if lastCmd == nil || lastCmd.Type != CmdTypeNone {
+		lastCmd = &CmdType{Type: CmdTypeNone}
+		state.Rtn = append(state.Rtn, lastCmd)
+	}
+	lastCmd.Words = append(lastCmd.Words, state.curWord())
+	state.Cur = nil
+	state.InputPos++
+}
+
+func (state *parseCmdState) handleKeyword(word *WordType) bool {
+	if word.Type != WordTypeKey {
+		return false
+	}
+	if isNoneReservedWord(word) {
+		state.makeNoneCmd()
+		return true
+	}
+	rw := string(word.Raw)
+	if rw == "[[" {
+		// just ignore everything between [[ and ]]
+		for !state.isEof() {
+			curWord := state.curWord()
+			if curWord.Type == WordTypeLit && string(curWord.Raw) == "]]" {
+				convertToReservedWord(curWord, "]]")
+				state.makeNoneCmd()
+				break
+			}
+			state.makeNoneCmd()
+		}
+		return true
+	}
+	if rw == "case" {
+		// ignore everything between "case" and "esac"
+		for !state.isEof() {
+			curWord := state.curWord()
+			if curWord.Type == WordTypeKey && string(curWord.Raw) == "esac" {
+				state.makeNoneCmd()
+				break
+			}
+			state.makeNoneCmd()
+		}
+		return true
+	}
+	if rw == "for" || rw == "select" {
+		// ignore until a "do"
+		for !state.isEof() {
+			curWord := state.curWord()
+			if curWord.Type == WordTypeKey && string(curWord.Raw) == "do" {
+				state.makeNoneCmd()
+				break
+			}
+			state.makeNoneCmd()
+		}
+		return true
+	}
+	if rw == "in" {
+		// the "for" and "case" clauses should skip "in".  so encountering an "in" here is a syntax error.
+		// just treat it as a none and allow a new command after.
+		state.makeNoneCmd()
+		return true
+	}
+	if rw == "function" {
+		// ignore until '{'
+		for !state.isEof() {
+			curWord := state.curWord()
+			if curWord.Type == WordTypeKey && string(curWord.Raw) == "{" {
+				state.makeNoneCmd()
+				break
+			}
+			state.makeNoneCmd()
+		}
+		return true
+	}
+	state.makeNoneCmd()
+	return true
+}
+
+func isCmdSeparatorOp(word *WordType) bool {
+	if word.Type != WordTypeOp {
+		return false
+	}
+	opVal := string(word.Raw)
+	return opVal == ";" || opVal == "\n" || opVal == "&" || opVal == "|" || opVal == "|&" || opVal == "&&" || opVal == "||" || opVal == "(" || opVal == ")"
+}
+
+func (state *parseCmdState) handleOp(word *WordType) bool {
+	opVal := string(word.Raw)
+	// sequential separators
+	if opVal == ";" || opVal == "\n" {
+		state.makeNoneCmd()
+		return true
+	}
+	// separator
+	if opVal == "&" {
+		state.makeNoneCmd()
+		return true
+	}
+	// pipelines
+	if opVal == "|" || opVal == "|&" {
+		state.makeNoneCmd()
+		return true
+	}
+	// lists
+	if opVal == "&&" || opVal == "||" {
+		state.makeNoneCmd()
+		return true
+	}
+	// subshell
+	if opVal == "(" || opVal == ")" {
+		state.makeNoneCmd()
+		return true
+	}
+	return false
+}
+
+func wordSliceBoundedIdx(words []*WordType, idx int) *WordType {
+	if idx >= len(words) {
+		return nil
+	}
+	return words[idx]
+}
+
+// note that a newline "op" can appear in the third position of "for" or "case".  the "in" keyword is still converted because of wordNum == 0
+func identifyReservedWords(words []*WordType) {
+	wordNum := 0
+	lastReserved := false
+	for idx, word := range words {
+		if wordNum == 0 || lastReserved {
+			convertToAnyReservedWord(word)
+		}
+		if word.Type == WordTypeKey {
+			rwVal := string(word.Raw)
+			switch rwVal {
+			case "for":
+				lastReserved = false
+				third := wordSliceBoundedIdx(words, idx+2)
+				convertToReservedWord(third, "in")
+				convertToReservedWord(third, "do")
+
+			case "case":
+				lastReserved = false
+				third := wordSliceBoundedIdx(words, idx+2)
+				convertToReservedWord(third, "in")
+
+			case "in":
+				lastReserved = false
+
+			default:
+				lastReserved = true
+			}
+			continue
+		}
+		lastReserved = false
+		if isCmdSeparatorOp(word) {
+			wordNum = 0
+			continue
+		}
+		wordNum++
+	}
+}
+
+func ParseCommands(words []*WordType) []*CmdType {
+	identifyReservedWords(words)
+	state := parseCmdState{Input: words}
+	for {
+		if state.isEof() {
+			break
+		}
+		word := state.curWord()
+		if word.Type == WordTypeKey {
+			done := state.handleKeyword(word)
+			if done {
+				continue
+			}
+		}
+		if word.Type == WordTypeOp {
+			done := state.handleOp(word)
+			if done {
+				continue
+			}
+		}
+		if state.Cur == nil {
+			state.Cur = &CmdType{Type: CmdTypeSimple}
+			state.Rtn = append(state.Rtn, state.Cur)
+		}
+		state.Cur.Words = append(state.Cur.Words, word)
+		state.InputPos++
+	}
+	return state.Rtn
 }

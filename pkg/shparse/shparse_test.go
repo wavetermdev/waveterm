@@ -45,9 +45,10 @@ func Test1(t *testing.T) {
 	testParse(t, `echo "$(ls "foo") more $x"`)
 	testParse(t, "echo `ls $x \"hello $x\" \\`ls\\`; ./foo`")
 	testParse(t, `echo $"hello $x $(ls)"`)
+	testParse(t, "echo 'hello'\nls\n")
 }
 
-func lastWord(words []*wordType) *wordType {
+func lastWord(words []*WordType) *WordType {
 	if len(words) == 0 {
 		return nil
 	}
@@ -80,5 +81,22 @@ func Test2(t *testing.T) {
 	testExtend(t, `$'f`, "'\x01\x07o", `$'f\'\x01\ao`)
 	testExtend(t, `"f"`, "oo", `"foo"`)
 	testExtend(t, `"mi"`, "ke's \"hello\"", `"mike's \"hello\""`)
-	testExtend(t, `"t"`, "t\x01\x07", `"tt"$'\x01'$'\x07'""`)
+	testExtend(t, `"t"`, "t\x01\x07", `"tt"$'\x01'$'\a'""`)
+}
+
+func testParseCommands(t *testing.T, str string) {
+	fmt.Printf("parse: %q\n", str)
+	words := Tokenize(str)
+	cmds := ParseCommands(words)
+	dumpCommands(cmds, "  ")
+	fmt.Printf("\n")
+}
+
+func TestCmd(t *testing.T) {
+	testParseCommands(t, "ls foo")
+	testParseCommands(t, "ls foo && ls bar; ./run $x hello | xargs foo; ")
+	testParseCommands(t, "if [[ 2 > 1 ]]; then echo hello\nelse echo world; echo next; done")
+	testParseCommands(t, "case lots of stuff; i don\\'t know how to parse; esac; ls foo")
+	testParseCommands(t, "(ls & ./x); for x in $vars 3; do { echo $x; ls foo; } done")
+	testParseCommands(t, "function foo () { echo hello; }")
 }
