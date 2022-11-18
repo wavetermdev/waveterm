@@ -96,7 +96,8 @@ var bashReservedWords = []string{
 // special reserved words: "for", "in", "case", "select", "function", "[[", and "]]"
 
 var bashNoneRW = []string{
-	"if", "then", "elif", "else", "fi", "time",
+	"if", "then",
+	"elif", "else", "fi", "time",
 	"until", "while", "do", "done",
 	"esac", "coproc",
 	"{", "}", "!",
@@ -309,14 +310,15 @@ func (state *parseCmdState) lastCmd() *CmdType {
 	return state.Rtn[len(state.Rtn)-1]
 }
 
-func (state *parseCmdState) makeNoneCmd() {
-	lastCmd := state.lastCmd()
-	if lastCmd == nil || lastCmd.Type != CmdTypeNone {
-		lastCmd = &CmdType{Type: CmdTypeNone}
-		state.Rtn = append(state.Rtn, lastCmd)
+func (state *parseCmdState) makeNoneCmd(sep bool) {
+	if state.Cur == nil || state.Cur.Type != CmdTypeNone {
+		state.Cur = &CmdType{Type: CmdTypeNone}
+		state.Rtn = append(state.Rtn, state.Cur)
 	}
-	lastCmd.Words = append(lastCmd.Words, state.curWord())
-	state.Cur = nil
+	state.Cur.Words = append(state.Cur.Words, state.curWord())
+	if sep {
+		state.Cur = nil
+	}
 	state.InputPos++
 }
 
@@ -325,7 +327,7 @@ func (state *parseCmdState) handleKeyword(word *WordType) bool {
 		return false
 	}
 	if isNoneReservedWord(word) {
-		state.makeNoneCmd()
+		state.makeNoneCmd(true)
 		return true
 	}
 	rw := string(word.Raw)
@@ -335,10 +337,10 @@ func (state *parseCmdState) handleKeyword(word *WordType) bool {
 			curWord := state.curWord()
 			if curWord.Type == WordTypeLit && string(curWord.Raw) == "]]" {
 				convertToReservedWord(curWord, "]]")
-				state.makeNoneCmd()
+				state.makeNoneCmd(false)
 				break
 			}
-			state.makeNoneCmd()
+			state.makeNoneCmd(false)
 		}
 		return true
 	}
@@ -347,10 +349,10 @@ func (state *parseCmdState) handleKeyword(word *WordType) bool {
 		for !state.isEof() {
 			curWord := state.curWord()
 			if curWord.Type == WordTypeKey && string(curWord.Raw) == "esac" {
-				state.makeNoneCmd()
+				state.makeNoneCmd(false)
 				break
 			}
-			state.makeNoneCmd()
+			state.makeNoneCmd(false)
 		}
 		return true
 	}
@@ -359,17 +361,17 @@ func (state *parseCmdState) handleKeyword(word *WordType) bool {
 		for !state.isEof() {
 			curWord := state.curWord()
 			if curWord.Type == WordTypeKey && string(curWord.Raw) == "do" {
-				state.makeNoneCmd()
+				state.makeNoneCmd(true)
 				break
 			}
-			state.makeNoneCmd()
+			state.makeNoneCmd(false)
 		}
 		return true
 	}
 	if rw == "in" {
 		// the "for" and "case" clauses should skip "in".  so encountering an "in" here is a syntax error.
 		// just treat it as a none and allow a new command after.
-		state.makeNoneCmd()
+		state.makeNoneCmd(false)
 		return true
 	}
 	if rw == "function" {
@@ -377,14 +379,14 @@ func (state *parseCmdState) handleKeyword(word *WordType) bool {
 		for !state.isEof() {
 			curWord := state.curWord()
 			if curWord.Type == WordTypeKey && string(curWord.Raw) == "{" {
-				state.makeNoneCmd()
+				state.makeNoneCmd(true)
 				break
 			}
-			state.makeNoneCmd()
+			state.makeNoneCmd(false)
 		}
 		return true
 	}
-	state.makeNoneCmd()
+	state.makeNoneCmd(true)
 	return true
 }
 
@@ -400,27 +402,27 @@ func (state *parseCmdState) handleOp(word *WordType) bool {
 	opVal := string(word.Raw)
 	// sequential separators
 	if opVal == ";" || opVal == "\n" {
-		state.makeNoneCmd()
+		state.makeNoneCmd(true)
 		return true
 	}
 	// separator
 	if opVal == "&" {
-		state.makeNoneCmd()
+		state.makeNoneCmd(true)
 		return true
 	}
 	// pipelines
 	if opVal == "|" || opVal == "|&" {
-		state.makeNoneCmd()
+		state.makeNoneCmd(true)
 		return true
 	}
 	// lists
 	if opVal == "&&" || opVal == "||" {
-		state.makeNoneCmd()
+		state.makeNoneCmd(true)
 		return true
 	}
 	// subshell
 	if opVal == "(" || opVal == ")" {
-		state.makeNoneCmd()
+		state.makeNoneCmd(true)
 		return true
 	}
 	return false
@@ -473,37 +475,18 @@ func identifyReservedWords(words []*WordType) {
 }
 
 type CmdPos struct {
-	CmdPos    int
-	CmdOffset int
+	CmdPos    int      // index into cmd array
+	Cmd       *CmdType // nil if between commands (only if CmdPos == 0 || CmdPos == len(cmds), otherwise should be a valid entry into a command)
+	CmdOffset int      // offset within the command
 
-	CurWord       *WordType // nil if between words
-	CurWordOffset int
-
-	CmdWordPos   int
-	OffsetInWord int // if BetweenWords is set, this offset can be negative (position is inside of prefix)
-	BetweenWords bool
+	CmdWordPos    int       // (index into cmd) 0 = command-word, negative numbers are assignment-words.  can be past the end of Words (means start new word)
+	CmdWord       *WordType // nil if between words
+	CmdWordOffset int       // offset into the word.  when cmdword is nil, positive offset would mean in the prefix of next word
 }
 
-// func FindCmdPos(cmds []*CmdType, offset int) CmdPos {
-// 	if len(words) == 0 {
-// 		return WordsPos{[]int{0}, 0, true}
-// 	}
-// 	pos := 0
-// 	for idx, word := range words {
-// 		if offset <= word.Offset+len(word.Raw) {
-// 			if offset <= word.Offset {
-// 				// in the prefix, so we are between-words with a possibly negative offset
-// 				return WordPos{WordPos: idx, OffsetInWord: offset - word.Offset, BetweenWords: true}
-// 			}
-// 			if offset == pos+fullWordLen {
-// 				return WordPos{WordPos: idx + 1, OffsetInWord: 0, BetweenWords: true}
-// 			}
-// 			return WordPos{WordPos: idx, OffsetInWord: offset - word.Offset, BetweenWords: false}
-// 		}
-// 		pos += fullWordLen
-// 	}
-// 	return WordPos{WordPos: []int{len(words)}, OffsetInWord: 0, BetweenWords: true}
-// }
+func FindCmdPos(cmds []*CmdType, offset int) CmdPos {
+	return CmdPos{}
+}
 
 func ResetWordOffsets(words []*WordType) {
 	pos := 0
@@ -593,8 +576,10 @@ func cmdWhitespaceFixup(cmds []*CmdType) {
 		}
 		nextCmd := cmds[idx+1]
 		nextPrefix := nextCmd.stripPrefix()
-		blankWord := &WordType{Type: WordTypeLit, QC: cmd.lastWord().QC, Offset: cmd.endOffset(), Prefix: nextPrefix, Complete: true}
-		cmd.Words = append(cmd.Words, blankWord)
+		if len(nextPrefix) > 0 {
+			blankWord := &WordType{Type: WordTypeLit, QC: cmd.lastWord().QC, Offset: cmd.endOffset(), Prefix: nextPrefix, Complete: true}
+			cmd.Words = append(cmd.Words, blankWord)
+		}
 	}
 }
 
@@ -618,7 +603,7 @@ func ParseCommands(words []*WordType) []*CmdType {
 				continue
 			}
 		}
-		if state.Cur == nil {
+		if state.Cur == nil || state.Cur.Type != CmdTypeSimple {
 			state.Cur = &CmdType{Type: CmdTypeSimple}
 			state.Rtn = append(state.Rtn, state.Cur)
 		}

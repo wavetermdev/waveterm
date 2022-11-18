@@ -98,7 +98,7 @@ func TestCmd(t *testing.T) {
 	testParseCommands(t, "ls foo && ls bar; ./run $x hello | xargs foo; ")
 	testParseCommands(t, "if [[ 2 > 1 ]]; then echo hello\nelse echo world; echo next; done")
 	testParseCommands(t, "case lots of stuff; i don\\'t know how to parse; esac; ls foo")
-	testParseCommands(t, "(ls & ./x \n\n); for x in $vars 3; do { echo $x; ls foo; } done")
+	testParseCommands(t, "(ls & ./x \n   \n); for x in $vars 3; do { echo $x; ls foo ; } done")
 	testParseCommands(t, `ls f"oo" "${x:"hello$y"}"`)
 	testParseCommands(t, `x="foo $y" z=10 ls`)
 }
