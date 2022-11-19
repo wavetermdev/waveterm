@@ -188,9 +188,22 @@ func (w *WordType) isBlank() bool {
 	return w.Type == WordTypeLit && len(w.Raw) == 0
 }
 
+func (w *WordType) contentEndPos() int {
+	if !w.Complete {
+		return len(w.Raw)
+	}
+	wmeta := wordMetaMap[w.Type]
+	return len(w.Raw) - wmeta.SuffixLen
+}
+
+func (w *WordType) contentStartPos() int {
+	wmeta := wordMetaMap[w.Type]
+	return wmeta.PrefixLen
+}
+
 func (w *WordType) uncompletable() bool {
 	switch w.Type {
-	case WordTypeRaw, WordTypeOp, WordTypeKey, WordTypeDPP, WordTypePP, WordTypeDB:
+	case WordTypeRaw, WordTypeOp, WordTypeKey, WordTypeDPP, WordTypePP, WordTypeDB, WordTypeBQ, WordTypeDP:
 		return true
 
 	default:

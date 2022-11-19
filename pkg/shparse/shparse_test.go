@@ -157,3 +157,34 @@ func TestCompPos(t *testing.T) {
 
 	testCompPos(t, `ls abc"$(ls $"echo $(ls ./[*]x) foo)" `, true, 1, true, false, false)
 }
+
+func testExpand(t *testing.T, str string, pos int, expStr string, expInfo *ExpandInfo) {
+	ectx := ExpandContext{HomeDir: "/Users/mike"}
+	words := Tokenize(str)
+	if len(words) == 0 {
+		t.Errorf("could not tokenize any words from %q", str)
+		return
+	}
+	word := words[0]
+	output, info := SimpleExpandPrefix(ectx, word, pos)
+	if output != expStr {
+		t.Errorf("error expanding %q, output:%q exp:%q", str, output, expStr)
+	} else {
+		fmt.Printf("expand: %q (%d) => %q\n", str, pos, output)
+	}
+	if expInfo != nil {
+		if info != *expInfo {
+			t.Errorf("error expanding %q, info:%v exp:%v", str, info, expInfo)
+		}
+	}
+}
+
+func TestExpand(t *testing.T) {
+	testExpand(t, "hello", 3, "hel", nil)
+	testExpand(t, "he\\$xabc", 6, "he$xa", nil)
+	testExpand(t, "he${x}abc", 6, "he$xa", nil)
+	testExpand(t, "'hello\"mike'", 8, "hello\"m", nil)
+	testExpand(t, `$'abc\x01def`, 10, "abc\x01d", nil)
+	testExpand(t, `$((2 + 2))`, 6, "$((2 +", &ExpandInfo{HasSpecial: true})
+	testExpand(t, `abc"def"`, 6, "abcde", nil)
+}
