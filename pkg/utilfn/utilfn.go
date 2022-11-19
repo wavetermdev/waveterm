@@ -128,6 +128,14 @@ func (sp StrWithPos) String() string {
 	return strWithCursor(sp.Str, sp.Pos)
 }
 
+func ParseToSP(s string) StrWithPos {
+	idx := strings.Index(s, "[*]")
+	if idx == -1 {
+		return StrWithPos{Str: s}
+	}
+	return StrWithPos{Str: s[0:idx] + s[idx+3:], Pos: idx}
+}
+
 func strWithCursor(str string, pos int) string {
 	if pos < 0 {
 		return "[*]_" + str

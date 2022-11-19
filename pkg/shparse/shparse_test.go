@@ -3,6 +3,8 @@ package shparse
 import (
 	"fmt"
 	"testing"
+
+	"github.com/scripthaus-dev/sh2-server/pkg/utilfn"
 )
 
 // $(ls f[*]); ./x
@@ -101,4 +103,57 @@ func TestCmd(t *testing.T) {
 	testParseCommands(t, "(ls & ./x \n   \n); for x in $vars 3; do { echo $x; ls foo ; } done")
 	testParseCommands(t, `ls f"oo" "${x:"hello$y"}"`)
 	testParseCommands(t, `x="foo $y" z=10 ls`)
+}
+
+func testCompPos(t *testing.T, cmdStr string, hasCommand bool, cmdWordPos int, hasWord bool, compInvalid bool, compCommand bool) {
+	cmdSP := utilfn.ParseToSP(cmdStr)
+	words := Tokenize(cmdSP.Str)
+	cmds := ParseCommands(words)
+	cpos := FindCompletionPos(cmds, cmdSP.Pos, 0)
+	fmt.Printf("testCompPos [%d] %q => %v\n", cmdSP.Pos, cmdStr, cpos)
+	if cpos.CmdWord != nil {
+		fmt.Printf("  found-word: %d %s\n", cpos.CmdWordOffset, cpos.CmdWord.stringWithPos(cpos.CmdWordOffset))
+	}
+	if cpos.Cmd != nil {
+		fmt.Printf("  found-cmd: ")
+		dumpCommands([]*CmdType{cpos.Cmd}, "  ", cpos.RawPos)
+	}
+	dumpCommands(cmds, "  ", cmdSP.Pos)
+	fmt.Printf("\n")
+	if cpos.RawPos+cpos.SuperOffset != cmdSP.Pos {
+		t.Errorf("testCompPos %q => bad rawpos:%d superoffset:%d expected:%d", cmdStr, cpos.RawPos, cpos.SuperOffset, cmdSP.Pos)
+	}
+	if (cpos.Cmd != nil) != hasCommand {
+		t.Errorf("testCompPos %q => bad has-command exp:%v", cmdStr, hasCommand)
+	}
+	if (cpos.CmdWord != nil) != hasWord {
+		t.Errorf("testCompPos %q => bad has-word exp:%v", cmdStr, hasWord)
+	}
+	if cpos.CmdWordPos != cmdWordPos {
+		t.Errorf("testCompPos %q => bad cmd-word-pos got:%d exp:%d", cmdStr, cpos.CmdWordPos, cmdWordPos)
+	}
+	if cpos.CompInvalid != compInvalid {
+		t.Errorf("testCompPos %q => bad comp-invalid exp:%v", cmdStr, compInvalid)
+	}
+	if cpos.CompCommand != compCommand {
+		t.Errorf("testCompPos %q => bad comp-command exp:%v", cmdStr, compCommand)
+	}
+}
+
+func TestCompPos(t *testing.T) {
+	testCompPos(t, "ls [*]foo", true, 1, false, false, false)
+	testCompPos(t, "ls foo  [*];", true, 2, false, false, false)
+	testCompPos(t, "ls foo  ;[*]", false, 0, false, false, true)
+	testCompPos(t, "ls foo >[*]> ./bar", true, 2, true, true, false)
+	testCompPos(t, "l[*]s", true, 0, true, false, false)
+	testCompPos(t, "ls[*]", true, 0, true, false, false)
+	testCompPos(t, "x=10 { (ls ./f[*] more); ls }", true, 1, true, false, false)
+	testCompPos(t, "for x in 1[*] 2 3; do ", false, 0, true, false, false)
+	testCompPos(t, "for[*] x in 1 2 3;", false, 0, true, true, false)
+
+	testCompPos(t, "ls \"abc $(ls -l t[*])\" && foo", true, 2, true, false, false)
+
+	testCompPos(t, "ls ${abc:$(ls -l [*])}", true, 1, true, false, false)
+
+	testCompPos(t, `ls abc"$(ls $"echo $(ls ./[*]x) foo)" `, true, 1, true, false, false)
 }

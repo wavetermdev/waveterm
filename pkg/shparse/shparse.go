@@ -166,6 +166,13 @@ func (qc QuoteContext) cur() string {
 	return qc[len(qc)-1]
 }
 
+func (qc QuoteContext) clone() QuoteContext {
+	if len(qc) == 0 {
+		return nil
+	}
+	return append([]string(nil), qc...)
+}
+
 func makeRepeatStr(ch byte, slen int) string {
 	if slen == 0 {
 		return ""
@@ -184,10 +191,10 @@ func (w *WordType) isBlank() bool {
 func (w *WordType) uncompletable() bool {
 	switch w.Type {
 	case WordTypeRaw, WordTypeOp, WordTypeKey, WordTypeDPP, WordTypePP, WordTypeDB:
-		return false
+		return true
 
 	default:
-		return true
+		return false
 	}
 }
 
@@ -240,9 +247,9 @@ func dumpWords(words []*WordType, indentStr string, offset int) {
 
 func dumpCommands(cmds []*CmdType, indentStr string, pos int) {
 	for _, cmd := range cmds {
-		fmt.Printf("%sCMD: %s [%d]\n", indentStr, cmd.Type, len(cmd.Words))
-		dumpWords(cmd.AssignmentWords, indentStr+" *", -1)
-		dumpWords(cmd.Words, indentStr+"  ", -1)
+		fmt.Printf("%sCMD: %s [%d] pos:%d\n", indentStr, cmd.Type, len(cmd.Words), pos)
+		dumpWords(cmd.AssignmentWords, indentStr+" *", pos)
+		dumpWords(cmd.Words, indentStr+"  ", pos)
 	}
 }
 
@@ -487,8 +494,9 @@ func identifyReservedWords(words []*WordType) {
 }
 
 type CompletionPos struct {
-	RawPos int      // the raw position of cursor
-	Cmd    *CmdType // nil if between commands (otherwise will be a SimpleCommand)
+	RawPos      int      // the raw position of cursor
+	SuperOffset int      // adjust all offsets in Cmd and CmdWord by SuperOffset
+	Cmd         *CmdType // nil if between commands (otherwise will be a SimpleCommand)
 
 	// index into cmd.Words (only useful when Cmd is not nil, otherwise we look at CompCommand)
 	//   0 means command-word
@@ -502,7 +510,7 @@ type CompletionPos struct {
 	CompCommand   bool      // set when we think we are the first word of an existing or new command.  otherwise we default to file completion
 }
 
-func (cmd *CmdType) findCompletionPos_simple(pos int) CompletionPos {
+func (cmd *CmdType) findCompletionPos_simple(pos int, superOffset int) CompletionPos {
 	if cmd.Type != CmdTypeSimple {
 		panic("findCompletetionPos_simple only works for CmdTypeSimple")
 	}
@@ -511,11 +519,11 @@ func (cmd *CmdType) findCompletionPos_simple(pos int) CompletionPos {
 		endOffset := word.Offset + len(word.Raw)
 		if pos <= startOffset {
 			// starting a new word at this position (before the current assignment word)
-			return CompletionPos{RawPos: pos, Cmd: cmd, CmdWordPos: idx - len(cmd.AssignmentWords) - 1}
+			return CompletionPos{RawPos: pos, SuperOffset: superOffset, Cmd: cmd, CmdWordPos: idx - len(cmd.AssignmentWords) - 1}
 		}
 		if pos <= endOffset {
 			// completing an assignment word
-			return CompletionPos{RawPos: pos, Cmd: cmd, CmdWordPos: idx - len(cmd.AssignmentWords), CmdWord: word, CmdWordOffset: pos - word.Offset}
+			return CompletionPos{RawPos: pos, SuperOffset: superOffset, Cmd: cmd, CmdWordPos: idx - len(cmd.AssignmentWords), CmdWord: word, CmdWordOffset: pos - word.Offset}
 		}
 	}
 	var foundWord *WordType
@@ -525,9 +533,10 @@ func (cmd *CmdType) findCompletionPos_simple(pos int) CompletionPos {
 		endOffset := word.Offset + len(word.Raw)
 		if pos <= startOffset {
 			// starting a new word at this position
-			return CompletionPos{RawPos: pos, Cmd: cmd, CmdWordPos: idx}
+			return CompletionPos{RawPos: pos, SuperOffset: superOffset, Cmd: cmd, CmdWordPos: idx}
 		}
-		if pos == endOffset && word.uncompletable() {
+		if pos == endOffset && word.Type == WordTypeOp {
+			// operators are special, they can allow a full-word completion at endpos
 			continue
 		}
 		if pos <= endOffset {
@@ -539,12 +548,12 @@ func (cmd *CmdType) findCompletionPos_simple(pos int) CompletionPos {
 	if foundWord != nil {
 		if foundWord.uncompletable() {
 			// invalid completion point
-			return CompletionPos{RawPos: pos, Cmd: cmd, CmdWordPos: foundWordIdx, CmdWord: foundWord, CmdWordOffset: pos - foundWord.Offset, CompInvalid: true}
+			return CompletionPos{RawPos: pos, SuperOffset: superOffset, Cmd: cmd, CmdWordPos: foundWordIdx, CmdWord: foundWord, CmdWordOffset: pos - foundWord.Offset, CompInvalid: true}
 		}
-		return CompletionPos{RawPos: pos, Cmd: cmd, CmdWordPos: foundWordIdx, CmdWord: foundWord, CmdWordOffset: pos - foundWord.Offset}
+		return CompletionPos{RawPos: pos, SuperOffset: superOffset, Cmd: cmd, CmdWordPos: foundWordIdx, CmdWord: foundWord, CmdWordOffset: pos - foundWord.Offset}
 	}
 	// past the end, so we're starting a new word in Cmd
-	return CompletionPos{RawPos: pos, Cmd: cmd, CmdWordPos: len(cmd.Words)}
+	return CompletionPos{RawPos: pos, SuperOffset: superOffset, Cmd: cmd, CmdWordPos: len(cmd.Words)}
 }
 
 func (cmd *CmdType) findWordAtPos_none(pos int) *WordType {
@@ -558,15 +567,59 @@ func (cmd *CmdType) findWordAtPos_none(pos int) *WordType {
 			return nil
 		}
 		if pos <= endOffset {
-			if word.uncompletable() {
-				// only return an uncompletable word if we are really in the middle of it
-				if pos == endOffset {
-					continue
-				}
-				return word
+			if pos == endOffset && word.Type == WordTypeOp {
+				// operators are special, they can allow a full-word completion at endpos
+				continue
 			}
 			return word
 		}
+	}
+	return nil
+}
+
+func findWordAtPos(words []*WordType, pos int) *WordType {
+	for _, word := range words {
+		if pos > word.Offset && pos < word.Offset+len(word.Raw) {
+			return word
+		}
+	}
+	return nil
+}
+
+// recursively descend down the word, parse commands and find a sub completion point if any.
+// return nil if there is no sub completion point in this word
+func findCompletionPosInWord(word *WordType, pos int, superOffset int) *CompletionPos {
+	if word.Type == WordTypeGroup || word.Type == WordTypeDQ || word.Type == WordTypeDDQ {
+		// need to descend further
+		wmeta := wordMetaMap[word.Type]
+		if pos <= wmeta.PrefixLen {
+			return nil
+		}
+		endPos := len(word.Raw)
+		if word.Complete {
+			endPos = endPos - wmeta.SuffixLen
+		}
+		if pos >= endPos {
+			return nil
+		}
+		subWord := findWordAtPos(word.Subs, pos-wmeta.PrefixLen)
+		if subWord == nil {
+			return nil
+		}
+		fullOffset := subWord.Offset + wmeta.PrefixLen
+		return findCompletionPosInWord(subWord, pos-fullOffset, superOffset+fullOffset)
+	}
+	if word.Type == WordTypeDP || word.Type == WordTypeBQ {
+		wmeta := wordMetaMap[word.Type]
+		if pos < wmeta.PrefixLen {
+			return nil
+		}
+		if word.Complete && pos > len(word.Raw)-wmeta.SuffixLen {
+			return nil
+		}
+		subCmds := ParseCommands(word.Subs)
+		newPos := FindCompletionPos(subCmds, pos-wmeta.PrefixLen, superOffset+wmeta.PrefixLen)
+		return &newPos
 	}
 	return nil
 }
@@ -575,10 +628,10 @@ func (cmd *CmdType) findWordAtPos_none(pos int) *WordType {
 // if we are completing in a simple-command, the returns the Cmd.  the Cmd can be used for specialized completion (command name, arg position, etc.)
 // if we are completing in a word, returns the Word.  Word might be a group-word or DQ word, so it may need additional resolution (done in extend)
 // otherwise we are going to create a new word to insert at offset (so the context does not matter)
-func FindCompletionPos(cmds []*CmdType, pos int) CompletionPos {
+func findCompletionPosCmds(cmds []*CmdType, pos int, superOffset int) CompletionPos {
 	if len(cmds) == 0 {
 		// set CompCommand because we're starting a new command
-		return CompletionPos{RawPos: pos, CompCommand: true}
+		return CompletionPos{RawPos: pos, SuperOffset: superOffset, CompCommand: true}
 	}
 	for _, cmd := range cmds {
 		endOffset := cmd.endOffset()
@@ -588,45 +641,58 @@ func FindCompletionPos(cmds []*CmdType, pos int) CompletionPos {
 		startOffset := cmd.offset()
 		if cmd.Type == CmdTypeSimple {
 			if pos <= startOffset {
-				return CompletionPos{RawPos: pos, CompCommand: true}
+				return CompletionPos{RawPos: pos, SuperOffset: superOffset, CompCommand: true}
 			}
-			return cmd.findCompletionPos_simple(pos)
+			return cmd.findCompletionPos_simple(pos, superOffset)
 		} else {
 			// not in a simple-command
 			// if we're before the none-command, just start a new command
 			if pos <= startOffset {
-				return CompletionPos{RawPos: pos, CompCommand: true}
+				return CompletionPos{RawPos: pos, SuperOffset: superOffset, CompCommand: true}
 			}
 			word := cmd.findWordAtPos_none(pos)
 			if word == nil {
 				// just revert to a file completion
-				return CompletionPos{RawPos: pos, CompCommand: false}
+				return CompletionPos{RawPos: pos, SuperOffset: superOffset, CompCommand: false}
 			}
 			if word.uncompletable() {
 				// ok, we're inside of a word in CmdTypeNone.  if we're in an uncompletable word, return CompInvalid
-				return CompletionPos{RawPos: pos, CompInvalid: true}
+				return CompletionPos{RawPos: pos, SuperOffset: superOffset, CmdWord: word, CmdWordOffset: pos - word.Offset, CompInvalid: true}
 			}
 			// revert to file completion
-			return CompletionPos{RawPos: pos, CmdWord: word, CmdWordOffset: pos - word.Offset}
+			return CompletionPos{RawPos: pos, SuperOffset: superOffset, CmdWord: word, CmdWordOffset: pos - word.Offset}
 		}
 	}
 	// past the end
 	lastCmd := cmds[len(cmds)-1]
 	if lastCmd.Type == CmdTypeSimple {
 		// just extend last command
-		return CompletionPos{RawPos: pos, Cmd: lastCmd, CmdWordPos: len(lastCmd.Words)}
+		return CompletionPos{RawPos: pos, SuperOffset: superOffset, Cmd: lastCmd, CmdWordPos: len(lastCmd.Words)}
 	}
 	// use lastCmd.NoneComplete to see if last command ended on a "separator".  use that to set CompCommand
-	return CompletionPos{RawPos: pos, CompCommand: lastCmd.NoneComplete}
+	return CompletionPos{RawPos: pos, SuperOffset: superOffset, CompCommand: lastCmd.NoneComplete}
 }
 
-func ResetWordOffsets(words []*WordType) {
-	pos := 0
+func FindCompletionPos(cmds []*CmdType, pos int, superOffset int) CompletionPos {
+	cpos := findCompletionPosCmds(cmds, pos, superOffset)
+	if cpos.CmdWord == nil {
+		return cpos
+	}
+	subPos := findCompletionPosInWord(cpos.CmdWord, cpos.CmdWordOffset, superOffset+cpos.CmdWord.Offset)
+	if subPos == nil {
+		return cpos
+	} else {
+		return *subPos
+	}
+}
+
+func ResetWordOffsets(words []*WordType, startIdx int) {
+	pos := startIdx
 	for _, word := range words {
 		pos += len(word.Prefix)
 		word.Offset = pos
 		if len(word.Subs) > 0 {
-			ResetWordOffsets(word.Subs)
+			ResetWordOffsets(word.Subs, 0)
 		}
 		pos += len(word.Raw)
 	}
@@ -644,13 +710,23 @@ func (c *CmdType) stripPrefix() []rune {
 	if len(c.AssignmentWords) > 0 {
 		w := c.AssignmentWords[0]
 		prefix := w.Prefix
-		w.Prefix = nil
+		if len(prefix) == 0 {
+			return nil
+		}
+		newWord := *w
+		newWord.Prefix = nil
+		c.AssignmentWords[0] = &newWord
 		return prefix
 	}
 	if len(c.Words) > 0 {
 		w := c.Words[0]
 		prefix := w.Prefix
-		w.Prefix = nil
+		if len(prefix) == 0 {
+			return nil
+		}
+		newWord := *w
+		newWord.Prefix = nil
+		c.Words[0] = &newWord
 		return prefix
 	}
 	return nil
@@ -727,7 +803,7 @@ func cmdWhitespaceFixup(cmds []*CmdType) {
 		nextCmd := cmds[idx+1]
 		nextPrefix := nextCmd.stripPrefix()
 		if len(nextPrefix) > 0 {
-			blankWord := &WordType{Type: WordTypeLit, QC: cmd.lastWord().QC, Offset: cmd.endOffset(), Prefix: nextPrefix, Complete: true}
+			blankWord := &WordType{Type: WordTypeLit, QC: cmd.lastWord().QC, Offset: cmd.endOffset() + len(nextPrefix), Prefix: nextPrefix, Complete: true}
 			cmd.Words = append(cmd.Words, blankWord)
 		}
 	}
