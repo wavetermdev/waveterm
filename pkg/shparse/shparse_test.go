@@ -88,7 +88,7 @@ func testParseCommands(t *testing.T, str string) {
 	fmt.Printf("parse: %q\n", str)
 	words := Tokenize(str)
 	cmds := ParseCommands(words)
-	dumpCommands(cmds, "  ", nil)
+	dumpCommands(cmds, "  ", -1)
 	fmt.Printf("\n")
 }
 
