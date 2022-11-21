@@ -148,8 +148,9 @@ func TestCompPos(t *testing.T) {
 	testCompPos(t, "for x in 1[*] 2 3; do ", CompTypeBasic, false, 0, true)
 	testCompPos(t, "for[*] x in 1 2 3;", CompTypeInvalid, false, 0, true)
 	testCompPos(t, "ls \"abc $(ls -l t[*])\" && foo", CompTypeArg, true, 2, true)
-	testCompPos(t, "ls ${abc:$(ls -l [*])}", CompTypeArg, true, 1, true) // we don't sub-parse inside of ${}
+	testCompPos(t, "ls ${abc:$(ls -l [*])}", CompTypeVar, false, 0, true) // we don't sub-parse inside of ${} (so this returns "var" right now)
 	testCompPos(t, `ls abc"$(ls $"echo $(ls ./[*]x) foo)" `, CompTypeArg, true, 1, true)
+	testCompPos(t, `ls "abc$d[*]"`, CompTypeVar, false, 0, true)
 }
 
 func testExpand(t *testing.T, str string, pos int, expStr string, expInfo *ExpandInfo) {
