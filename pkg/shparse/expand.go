@@ -145,12 +145,26 @@ func simpleExpandSubs(buf *bytes.Buffer, info *ExpandInfo, ectx ExpandContext, w
 	}
 }
 
+func canExpand(ectx ExpandContext, wtype string) bool {
+	return wtype == WordTypeLit || wtype == WordTypeSQ || wtype == WordTypeDSQ ||
+		wtype == WordTypeDQ || wtype == WordTypeDDQ || wtype == WordTypeGroup
+}
+
 func simpleExpandWord(buf *bytes.Buffer, info *ExpandInfo, ectx ExpandContext, word *WordType, pos int) {
-	if pos >= word.contentEndPos() {
-		pos = len(word.Raw)
-	}
-	if pos <= word.contentStartPos() {
-		return
+	if canExpand(ectx, word.Type) {
+		if pos >= word.contentEndPos() {
+			pos = word.contentEndPos()
+		}
+		if pos <= word.contentStartPos() {
+			return
+		}
+	} else {
+		if pos >= len(word.Raw) {
+			pos = len(word.Raw)
+		}
+		if pos <= 0 {
+			return
+		}
 	}
 
 	switch word.Type {
@@ -177,16 +191,19 @@ func simpleExpandWord(buf *bytes.Buffer, info *ExpandInfo, ectx ExpandContext, w
 		simpleExpandSubs(buf, info, ectx, word, pos)
 		return
 
+	// not expanded
 	case WordTypeSimpleVar:
+		info.HasVar = true
+		buf.WriteString(string(word.Raw[:pos]))
 		return
 
+	// not expanded
 	case WordTypeVarBrace:
+		info.HasVar = true
+		buf.WriteString(string(word.Raw[:pos]))
 		return
 
 	default:
-		if pos > len(word.Raw) {
-			pos = len(word.Raw)
-		}
 		info.HasSpecial = true
 		buf.WriteString(string(word.Raw[:pos]))
 		return
@@ -202,4 +219,40 @@ func SimpleExpandPrefix(ectx ExpandContext, word *WordType, pos int) (string, Ex
 
 func SimpleExpand(ectx ExpandContext, word *WordType) (string, ExpandInfo) {
 	return SimpleExpandPrefix(ectx, word, len(word.Raw))
+}
+
+// returns varname (no '$') and ok (whether this is a valid varname expansion)
+func SimpleVarNamePrefix(ectx ExpandContext, word *WordType, pos int) (string, bool) {
+	if word.Type != WordTypeSimpleVar && word.Type != WordTypeVarBrace {
+		return "", false
+	}
+	if word.Type == WordTypeSimpleVar {
+		if pos == 0 {
+			return "", false
+		}
+		if pos == 1 {
+			return "", true
+		}
+		if pos > len(word.Raw) {
+			pos = len(word.Raw)
+		}
+		return string(word.Raw[1:pos]), true
+	}
+
+	// word.Type == WordTypeVarBrace
+	// knock '${' off the front, then see if the rest is a valid var name.
+	if pos == 0 || pos == 1 {
+		return "", false
+	}
+	if pos == 2 {
+		return "", true
+	}
+	if pos > word.contentEndPos() {
+		pos = word.contentEndPos()
+	}
+	rawVarName := word.Raw[2:pos]
+	if isSimpleVarName(rawVarName) {
+		return string(rawVarName), true
+	}
+	return "", false
 }

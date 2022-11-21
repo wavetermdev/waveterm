@@ -105,14 +105,17 @@ func TestCmd(t *testing.T) {
 	testParseCommands(t, `x="foo $y" z=10 ls`)
 }
 
-func testCompPos(t *testing.T, cmdStr string, hasCommand bool, cmdWordPos int, hasWord bool, compInvalid bool, compCommand bool) {
+func testCompPos(t *testing.T, cmdStr string, compType string, hasCommand bool, cmdWordPos int, hasWord bool) {
 	cmdSP := utilfn.ParseToSP(cmdStr)
 	words := Tokenize(cmdSP.Str)
 	cmds := ParseCommands(words)
 	cpos := FindCompletionPos(cmds, cmdSP.Pos, 0)
-	fmt.Printf("testCompPos [%d] %q => %v\n", cmdSP.Pos, cmdStr, cpos)
-	if cpos.CmdWord != nil {
-		fmt.Printf("  found-word: %d %s\n", cpos.CmdWordOffset, cpos.CmdWord.stringWithPos(cpos.CmdWordOffset))
+	fmt.Printf("testCompPos [%d] %q => [%s] %v\n", cmdSP.Pos, cmdStr, cpos.CompType, cpos)
+	if cpos.CompType != compType {
+		t.Errorf("testCompPos %q => invalid comp-type %q, expected %q", cmdStr, cpos.CompType, compType)
+	}
+	if cpos.CompWord != nil {
+		fmt.Printf("  found-word: %d %s\n", cpos.CompWordOffset, cpos.CompWord.stringWithPos(cpos.CompWordOffset))
 	}
 	if cpos.Cmd != nil {
 		fmt.Printf("  found-cmd: ")
@@ -126,36 +129,27 @@ func testCompPos(t *testing.T, cmdStr string, hasCommand bool, cmdWordPos int, h
 	if (cpos.Cmd != nil) != hasCommand {
 		t.Errorf("testCompPos %q => bad has-command exp:%v", cmdStr, hasCommand)
 	}
-	if (cpos.CmdWord != nil) != hasWord {
+	if (cpos.CompWord != nil) != hasWord {
 		t.Errorf("testCompPos %q => bad has-word exp:%v", cmdStr, hasWord)
 	}
 	if cpos.CmdWordPos != cmdWordPos {
 		t.Errorf("testCompPos %q => bad cmd-word-pos got:%d exp:%d", cmdStr, cpos.CmdWordPos, cmdWordPos)
 	}
-	if cpos.CompInvalid != compInvalid {
-		t.Errorf("testCompPos %q => bad comp-invalid exp:%v", cmdStr, compInvalid)
-	}
-	if cpos.CompCommand != compCommand {
-		t.Errorf("testCompPos %q => bad comp-command exp:%v", cmdStr, compCommand)
-	}
 }
 
 func TestCompPos(t *testing.T) {
-	testCompPos(t, "ls [*]foo", true, 1, false, false, false)
-	testCompPos(t, "ls foo  [*];", true, 2, false, false, false)
-	testCompPos(t, "ls foo  ;[*]", false, 0, false, false, true)
-	testCompPos(t, "ls foo >[*]> ./bar", true, 2, true, true, false)
-	testCompPos(t, "l[*]s", true, 0, true, false, false)
-	testCompPos(t, "ls[*]", true, 0, true, false, false)
-	testCompPos(t, "x=10 { (ls ./f[*] more); ls }", true, 1, true, false, false)
-	testCompPos(t, "for x in 1[*] 2 3; do ", false, 0, true, false, false)
-	testCompPos(t, "for[*] x in 1 2 3;", false, 0, true, true, false)
-
-	testCompPos(t, "ls \"abc $(ls -l t[*])\" && foo", true, 2, true, false, false)
-
-	testCompPos(t, "ls ${abc:$(ls -l [*])}", true, 1, true, false, false)
-
-	testCompPos(t, `ls abc"$(ls $"echo $(ls ./[*]x) foo)" `, true, 1, true, false, false)
+	testCompPos(t, "ls [*]foo", CompTypeArg, true, 1, false)
+	testCompPos(t, "ls foo  [*];", CompTypeArg, true, 2, false)
+	testCompPos(t, "ls foo  ;[*]", CompTypeCommand, false, 0, false)
+	testCompPos(t, "ls foo >[*]> ./bar", CompTypeInvalid, true, 2, true)
+	testCompPos(t, "l[*]s", CompTypeCommand, true, 0, true)
+	testCompPos(t, "ls[*]", CompTypeCommand, true, 0, true)
+	testCompPos(t, "x=10 { (ls ./f[*] more); ls }", CompTypeArg, true, 1, true)
+	testCompPos(t, "for x in 1[*] 2 3; do ", CompTypeBasic, false, 0, true)
+	testCompPos(t, "for[*] x in 1 2 3;", CompTypeInvalid, false, 0, true)
+	testCompPos(t, "ls \"abc $(ls -l t[*])\" && foo", CompTypeArg, true, 2, true)
+	testCompPos(t, "ls ${abc:$(ls -l [*])}", CompTypeArg, true, 1, true) // we don't sub-parse inside of ${}
+	testCompPos(t, `ls abc"$(ls $"echo $(ls ./[*]x) foo)" `, CompTypeArg, true, 1, true)
 }
 
 func testExpand(t *testing.T, str string, pos int, expStr string, expInfo *ExpandInfo) {
@@ -182,9 +176,11 @@ func testExpand(t *testing.T, str string, pos int, expStr string, expInfo *Expan
 func TestExpand(t *testing.T) {
 	testExpand(t, "hello", 3, "hel", nil)
 	testExpand(t, "he\\$xabc", 6, "he$xa", nil)
-	testExpand(t, "he${x}abc", 6, "he$xa", nil)
+	testExpand(t, "he${x}abc", 6, "he${x}", nil)
 	testExpand(t, "'hello\"mike'", 8, "hello\"m", nil)
 	testExpand(t, `$'abc\x01def`, 10, "abc\x01d", nil)
 	testExpand(t, `$((2 + 2))`, 6, "$((2 +", &ExpandInfo{HasSpecial: true})
 	testExpand(t, `abc"def"`, 6, "abcde", nil)
+	testExpand(t, `"abc$x$'"'""`, 12, "abc$x\"", nil)
+	testExpand(t, `'he'\''s'`, 9, "he's", nil)
 }
