@@ -210,6 +210,16 @@ func (w *WordType) contentStartPos() int {
 	return wmeta.PrefixLen
 }
 
+func (w *WordType) canHaveSubs() bool {
+	switch w.Type {
+	case WordTypeGroup, WordTypeDQ, WordTypeDDQ, WordTypeDP, WordTypeBQ:
+		return true
+
+	default:
+		return false
+	}
+}
+
 func (w *WordType) uncompletable() bool {
 	switch w.Type {
 	case WordTypeRaw, WordTypeOp, WordTypeKey, WordTypeDPP, WordTypePP, WordTypeDB, WordTypeBQ, WordTypeDP:
@@ -603,25 +613,42 @@ func (cmd *CmdType) findCompletionPos_simple(pos int, superOffset int) Completio
 	return rtn
 }
 
-func (cmd *CmdType) findWordAtPos_none(pos int) *WordType {
+func (cmd *CmdType) findCompletionWordAtPos_none(pos int, superOffset int) CompletionPos {
+	rtn := CompletionPos{RawPos: pos, SuperOffset: superOffset}
 	if cmd.Type != CmdTypeNone {
 		panic("findWordAtPos_none only works for CmdTypeNone")
 	}
+	var foundWord *WordType
 	for _, word := range cmd.Words {
 		startOffset := word.Offset
 		endOffset := word.Offset + len(word.Raw)
 		if pos <= startOffset {
-			return nil
+			break
 		}
 		if pos <= endOffset {
 			if pos == endOffset && word.Type == WordTypeOp {
 				// operators are special, they can allow a full-word completion at endpos
 				continue
 			}
-			return word
+			foundWord = word
+			break
 		}
 	}
-	return nil
+	if foundWord == nil {
+		// just revert to a file completion
+		rtn.CompType = CompTypeBasic
+		return rtn
+	}
+	rtn.CompWord = foundWord
+	rtn.CompWordOffset = pos - foundWord.Offset
+	if foundWord.uncompletable() {
+		// ok, we're inside of a word in CmdTypeNone.  if we're in an uncompletable word, return CompInvalid
+		rtn.CompType = CompTypeInvalid
+		return rtn
+	}
+	// revert to file completion
+	rtn.CompType = CompTypeBasic
+	return rtn
 }
 
 func findWordAtPos(words []*WordType, pos int) *WordType {
@@ -701,22 +728,7 @@ func findCompletionPosCmds(cmds []*CmdType, pos int, superOffset int) Completion
 				rtn.CompType = CompTypeCommand
 				return rtn
 			}
-			word := cmd.findWordAtPos_none(pos)
-			if word == nil {
-				// just revert to a file completion
-				rtn.CompType = CompTypeBasic
-				return rtn
-			}
-			rtn.CompWord = word
-			rtn.CompWordOffset = pos - word.Offset
-			if word.uncompletable() {
-				// ok, we're inside of a word in CmdTypeNone.  if we're in an uncompletable word, return CompInvalid
-				rtn.CompType = CompTypeInvalid
-				return rtn
-			}
-			// revert to file completion
-			rtn.CompType = CompTypeBasic
-			return rtn
+			return cmd.findCompletionWordAtPos_none(pos, superOffset)
 		}
 	}
 	// past the end
