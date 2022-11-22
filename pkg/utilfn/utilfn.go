@@ -3,6 +3,7 @@ package utilfn
 import (
 	"regexp"
 	"strings"
+	"unicode/utf8"
 )
 
 var HexDigits = []byte{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'}
@@ -121,7 +122,7 @@ func ContainsStr(strs []string, test string) bool {
 
 type StrWithPos struct {
 	Str string
-	Pos int
+	Pos int // this is a 'rune' position (not a byte position)
 }
 
 func (sp StrWithPos) String() string {
@@ -133,7 +134,7 @@ func ParseToSP(s string) StrWithPos {
 	if idx == -1 {
 		return StrWithPos{Str: s}
 	}
-	return StrWithPos{Str: s[0:idx] + s[idx+3:], Pos: idx}
+	return StrWithPos{Str: s[0:idx] + s[idx+3:], Pos: utf8.RuneCountInString(s[0:idx])}
 }
 
 func strWithCursor(str string, pos int) string {
@@ -145,7 +146,14 @@ func strWithCursor(str string, pos int) string {
 			return str + "_[*]"
 		}
 		return str + "[*]"
-	} else {
-		return str[:pos] + "[*]" + str[pos:]
 	}
+
+	var rtn []rune
+	for _, ch := range str {
+		if len(rtn) == pos {
+			rtn = append(rtn, '[', '*', ']')
+		}
+		rtn = append(rtn, ch)
+	}
+	return string(rtn)
 }
