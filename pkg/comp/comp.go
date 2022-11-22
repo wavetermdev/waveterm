@@ -319,7 +319,7 @@ func computeCompExtension(compPrefix string, crtn *CompReturn) (string, bool) {
 	if lcp == compPrefix || len(lcp) < len(compPrefix) || !strings.HasPrefix(lcp, compPrefix) {
 		return "", false
 	}
-	return lcp[len(compPrefix):], utilfn.ContainsStr(compStrs, lcp)
+	return lcp[len(compPrefix):], (utilfn.ContainsStr(compStrs, lcp) && !utilfn.IsPrefix(compStrs, lcp))
 }
 
 func (p *CompPoint) FullyExtend(crtn *CompReturn) utilfn.StrWithPos {

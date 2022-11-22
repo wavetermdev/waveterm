@@ -120,6 +120,15 @@ func ContainsStr(strs []string, test string) bool {
 	return false
 }
 
+func IsPrefix(strs []string, test string) bool {
+	for _, s := range strs {
+		if len(s) > len(test) && strings.HasPrefix(s, test) {
+			return true
+		}
+	}
+	return false
+}
+
 type StrWithPos struct {
 	Str string
 	Pos int // this is a 'rune' position (not a byte position)
