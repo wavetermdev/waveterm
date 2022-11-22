@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
+	"github.com/scripthaus-dev/mshell/pkg/simpleexpand"
 	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
 	"github.com/scripthaus-dev/sh2-server/pkg/utilfn"
 	"mvdan.cc/sh/v3/expand"
@@ -124,9 +125,9 @@ func setBracketArgs(argMap map[string]string, bracketStr string) error {
 	strReader := strings.NewReader(bracketStr)
 	parser := syntax.NewParser(syntax.Variant(syntax.LangBash))
 	var wordErr error
-	var ectx shexec.SimpleExpandContext // do not set HomeDir (we don't expand ~ in bracket args)
+	var ectx simpleexpand.SimpleExpandContext // do not set HomeDir (we don't expand ~ in bracket args)
 	err := parser.Words(strReader, func(w *syntax.Word) bool {
-		litStr := shexec.SimpleExpandWord(ectx, w, bracketStr)
+		litStr, _ := simpleexpand.SimpleExpandWord(ectx, w, bracketStr)
 		eqIdx := strings.Index(litStr, "=")
 		var varName, varVal string
 		if eqIdx == -1 {
@@ -285,8 +286,8 @@ func parseAliasStmt(stmt *syntax.Stmt, sourceStr string) (string, string, error)
 		return "", "", fmt.Errorf("invalid alias cmd word (not 'alias')")
 	}
 	secondWord := callExpr.Args[1]
-	var ectx shexec.SimpleExpandContext // no homedir, do not want ~ expansion
-	val := shexec.SimpleExpandWord(ectx, secondWord, sourceStr)
+	var ectx simpleexpand.SimpleExpandContext // no homedir, do not want ~ expansion
+	val, _ := simpleexpand.SimpleExpandWord(ectx, secondWord, sourceStr)
 	eqIdx := strings.Index(val, "=")
 	if eqIdx == -1 {
 		return "", "", fmt.Errorf("no '=' in alias definition")

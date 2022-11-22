@@ -131,7 +131,7 @@ func TestCmd(t *testing.T) {
 	testParseCommands(t, `x="foo $y" z=10 ls`)
 }
 
-func testCompPos(t *testing.T, cmdStr string, compType string, hasCommand bool, cmdWordPos int, hasWord bool) {
+func testCompPos(t *testing.T, cmdStr string, compType string, hasCommand bool, cmdWordPos int, hasWord bool, superOffset int) {
 	cmdSP := utilfn.ParseToSP(cmdStr)
 	words := Tokenize(cmdSP.Str)
 	cmds := ParseCommands(words)
@@ -161,24 +161,28 @@ func testCompPos(t *testing.T, cmdStr string, compType string, hasCommand bool, 
 	if cpos.CmdWordPos != cmdWordPos {
 		t.Errorf("testCompPos %q => bad cmd-word-pos got:%d exp:%d", cmdStr, cpos.CmdWordPos, cmdWordPos)
 	}
+	if cpos.SuperOffset != superOffset {
+		t.Errorf("testCompPos %q => bad super-offset got:%d exp:%d", cmdStr, cpos.SuperOffset, superOffset)
+	}
 }
 
 func TestCompPos(t *testing.T) {
-	testCompPos(t, "ls [*]foo", CompTypeArg, true, 1, false)
-	testCompPos(t, "ls foo  [*];", CompTypeArg, true, 2, false)
-	testCompPos(t, "ls foo  ;[*]", CompTypeCommand, false, 0, false)
-	testCompPos(t, "ls foo >[*]> ./bar", CompTypeInvalid, true, 2, true)
-	testCompPos(t, "l[*]s", CompTypeCommand, true, 0, true)
-	testCompPos(t, "ls[*]", CompTypeCommand, true, 0, true)
-	testCompPos(t, "x=10 { (ls ./f[*] more); ls }", CompTypeArg, true, 1, true)
-	testCompPos(t, "for x in 1[*] 2 3; do ", CompTypeBasic, false, 0, true)
-	testCompPos(t, "for[*] x in 1 2 3;", CompTypeInvalid, false, 0, true)
-	testCompPos(t, "ls \"abc $(ls -l t[*])\" && foo", CompTypeArg, true, 2, true)
-	testCompPos(t, "ls ${abc:$(ls -l [*])}", CompTypeVar, false, 0, true) // we don't sub-parse inside of ${} (so this returns "var" right now)
-	testCompPos(t, `ls abc"$(ls $"echo $(ls ./[*]x) foo)" `, CompTypeArg, true, 1, true)
-	testCompPos(t, `ls "abc$d[*]"`, CompTypeVar, false, 0, true)
-	testCompPos(t, `ls "abc$d$'a[*]`, CompTypeArg, true, 1, true)
-	testCompPos(t, `ls $[*]'foo`, CompTypeInvalid, false, 0, false)
+	testCompPos(t, "ls [*]foo", CompTypeArg, true, 1, false, 0)
+	testCompPos(t, "ls foo  [*];", CompTypeArg, true, 2, false, 0)
+	testCompPos(t, "ls foo  ;[*]", CompTypeCommand, false, 0, false, 0)
+	testCompPos(t, "ls foo >[*]> ./bar", CompTypeInvalid, true, 2, true, 0)
+	testCompPos(t, "l[*]s", CompTypeCommand, true, 0, true, 0)
+	testCompPos(t, "ls[*]", CompTypeCommand, true, 0, true, 0)
+	testCompPos(t, "x=10 { (ls ./f[*] more); ls }", CompTypeArg, true, 1, true, 0)
+	testCompPos(t, "for x in 1[*] 2 3; do ", CompTypeBasic, false, 0, true, 0)
+	testCompPos(t, "for[*] x in 1 2 3;", CompTypeInvalid, false, 0, true, 0)
+	testCompPos(t, `ls "abc $(ls -l t[*])" && foo`, CompTypeArg, true, 2, true, 10)
+	testCompPos(t, "ls ${abc:$(ls -l [*])}", CompTypeVar, false, 0, true, 0) // we don't sub-parse inside of ${} (so this returns "var" right now)
+	testCompPos(t, `ls abc"$(ls $"echo $(ls ./[*]x) foo)" `, CompTypeArg, true, 1, true, 21)
+	testCompPos(t, `ls "abc$d[*]"`, CompTypeVar, false, 0, true, 4)
+	testCompPos(t, `ls "abc$d$'a[*]`, CompTypeArg, true, 1, true, 0)
+	testCompPos(t, `ls $[*]'foo`, CompTypeArg, true, 1, true, 0)
+	testCompPos(t, `echo $TE[*]`, CompTypeVar, false, 0, true, 0)
 }
 
 func testExpand(t *testing.T, str string, pos int, expStr string, expInfo *ExpandInfo) {

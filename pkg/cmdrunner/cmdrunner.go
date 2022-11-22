@@ -1172,7 +1172,7 @@ func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		pos = len(cmdLine)
 	}
 	showComps := resolveBool(pk.Kwargs["compshow"], false)
-	cmdSP := comp.StrWithPos{Str: cmdLine, Pos: pos}
+	cmdSP := utilfn.StrWithPos{Str: cmdLine, Pos: pos}
 	compCtx := comp.CompContext{}
 	if ids.Remote != nil {
 		rptr := ids.Remote.RemotePtr
@@ -1185,39 +1185,19 @@ func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		return nil, err
 	}
 	if crtn == nil {
-		return nil, fmt.Errorf("no return value from DoCompGen")
+		return nil, nil
 	}
-	if showComps || newSP == nil {
+	if showComps {
 		compStrs := crtn.GetCompDisplayStrs()
 		return makeInfoFromComps(crtn.CompType, compStrs, crtn.HasMore), nil
+	}
+	if newSP == nil || cmdSP == *newSP {
+		return nil, nil
 	}
 	update := sstore.ModelUpdate{
 		CmdLine: &sstore.CmdLineType{CmdLine: newSP.Str, CursorPos: newSP.Pos},
 	}
 	return update, nil
-
-	// prefix := cmdLine[:pos]
-	// parts := strings.Split(prefix, " ")
-	// compType := "file"
-	// if len(parts) > 0 && len(parts) < 2 && strings.HasPrefix(parts[0], "/") {
-	// 	compType = "metacommand"
-	// } else if len(parts) == 2 && (parts[0] == "cd" || parts[0] == "/cd") {
-	// 	compType = "directory"
-	// } else if len(parts) <= 1 {
-	// 	compType = "command"
-	// }
-	// lastPart := ""
-	// if len(parts) > 0 {
-	// 	lastPart = parts[len(parts)-1]
-	// }
-	// comps, hasMore, err := doCompGen(ctx, pk, lastPart, compType, showComps)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// if showComps {
-	// 	return makeInfoFromComps(compType, comps, hasMore), nil
-	// }
-	// return makeInsertUpdateFromComps(int64(pos), lastPart, comps, hasMore), nil
 }
 
 func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {

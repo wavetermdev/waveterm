@@ -1,5 +1,12 @@
 package shparse
 
+import (
+	"fmt"
+	"strings"
+
+	"github.com/scripthaus-dev/sh2-server/pkg/utilfn"
+)
+
 const (
 	CompTypeCommandMeta = "command-meta"
 	CompTypeCommand     = "command"
@@ -156,38 +163,38 @@ func findCompletionWordAtPos(words []*WordType, pos int, allowEndMatch bool) *Wo
 
 // recursively descend down the word, parse commands and find a sub completion point if any.
 // return nil if there is no sub completion point in this word
-func findCompletionPosInWord(word *WordType, pos int, superOffset int) *CompletionPos {
+func findCompletionPosInWord(word *WordType, posInWord int, superOffset int) *CompletionPos {
+	rawPos := word.Offset + posInWord
 	if word.Type == WordTypeGroup || word.Type == WordTypeDQ || word.Type == WordTypeDDQ {
 		// need to descend further
-		if pos <= word.contentStartPos() {
+		if posInWord <= word.contentStartPos() {
 			return nil
 		}
-		if pos > word.contentEndPos() {
+		if posInWord > word.contentEndPos() {
 			return nil
 		}
-		subWord := findCompletionWordAtPos(word.Subs, pos-word.contentStartPos(), false)
+		subWord := findCompletionWordAtPos(word.Subs, posInWord-word.contentStartPos(), false)
 		if subWord == nil {
 			return nil
 		}
-		fullOffset := subWord.Offset + word.contentStartPos()
-		return findCompletionPosInWord(subWord, pos-fullOffset, superOffset+fullOffset)
+		return findCompletionPosInWord(subWord, posInWord-(subWord.Offset+word.contentStartPos()), superOffset+(word.Offset+word.contentStartPos()))
 	}
 	if word.Type == WordTypeDP || word.Type == WordTypeBQ {
-		if pos < word.contentStartPos() {
+		if posInWord < word.contentStartPos() {
 			return nil
 		}
-		if pos > word.contentEndPos() {
+		if posInWord > word.contentEndPos() {
 			return nil
 		}
 		subCmds := ParseCommands(word.Subs)
-		newPos := FindCompletionPos(subCmds, pos-word.contentStartPos(), superOffset+word.contentStartPos())
+		newPos := FindCompletionPos(subCmds, posInWord-word.contentStartPos(), superOffset+(word.Offset+word.contentStartPos()))
 		return &newPos
 	}
 	if word.Type == WordTypeSimpleVar || word.Type == WordTypeVarBrace {
 		// special "var" completion
-		rtn := &CompletionPos{RawPos: pos, SuperOffset: superOffset}
+		rtn := &CompletionPos{RawPos: rawPos, SuperOffset: superOffset}
 		rtn.CompType = CompTypeVar
-		rtn.CompWordOffset = pos
+		rtn.CompWordOffset = posInWord
 		rtn.CompWord = word
 		return rtn
 	}
@@ -250,10 +257,27 @@ func FindCompletionPos(cmds []*CmdType, pos int, superOffset int) CompletionPos 
 	if cpos.CompWord == nil {
 		return cpos
 	}
-	subPos := findCompletionPosInWord(cpos.CompWord, cpos.CompWordOffset, superOffset+cpos.CompWord.Offset)
+	subPos := findCompletionPosInWord(cpos.CompWord, cpos.CompWordOffset, superOffset)
 	if subPos == nil {
 		return cpos
 	} else {
 		return *subPos
 	}
+}
+
+func (cpos CompletionPos) Extend(origStr utilfn.StrWithPos, extensionStr string, extensionComplete bool) utilfn.StrWithPos {
+	compWord := cpos.CompWord
+	if compWord == nil {
+		compWord = MakeEmptyWord(WordTypeLit, nil, cpos.RawPos, true)
+	}
+	realOffset := compWord.Offset + cpos.SuperOffset
+	fmt.Printf("cpos-extend: %d[%s] ext[%s] cword[%v] off:%d super:%d real:%d\n", len([]rune(origStr.Str)), origStr, extensionStr, compWord, compWord.Offset, cpos.SuperOffset, realOffset)
+	if strings.HasSuffix(extensionStr, "/") {
+		extensionComplete = false
+	}
+	rtnSP := Extend(compWord, cpos.CompWordOffset, extensionStr, extensionComplete)
+	origRunes := []rune(origStr.Str)
+	rtnSP = rtnSP.Prepend(string(origRunes[0:realOffset]))
+	rtnSP = rtnSP.Append(string(origRunes[realOffset+len(compWord.Raw):]))
+	return rtnSP
 }

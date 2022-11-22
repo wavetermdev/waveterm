@@ -9,9 +9,11 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/scripthaus-dev/mshell/pkg/packet"
-	"github.com/scripthaus-dev/mshell/pkg/shexec"
+	"github.com/scripthaus-dev/mshell/pkg/simpleexpand"
+	"github.com/scripthaus-dev/sh2-server/pkg/shparse"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
 	"github.com/scripthaus-dev/sh2-server/pkg/utilfn"
 	"mvdan.cc/sh/v3/syntax"
@@ -48,11 +50,6 @@ type CompContext struct {
 	ForDisplay bool
 }
 
-type StrWithPos struct {
-	Str string
-	Pos int
-}
-
 type ParsedWord struct {
 	Offset      int
 	Word        *syntax.Word
@@ -81,6 +78,28 @@ type CompReturn struct {
 	HasMore  bool
 }
 
+var noEscChars []bool
+var specialEsc []string
+
+func init() {
+	noEscChars = make([]bool, 256)
+	for ch := 0; ch < 256; ch++ {
+		if (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
+			ch == '-' || ch == '.' || ch == '/' || ch == ':' || ch == '=' {
+			noEscChars[byte(ch)] = true
+		}
+	}
+	specialEsc = make([]string, 256)
+	specialEsc[0x7] = "\\a"
+	specialEsc[0x8] = "\\b"
+	specialEsc[0x9] = "\\t"
+	specialEsc[0xa] = "\\n"
+	specialEsc[0xb] = "\\v"
+	specialEsc[0xc] = "\\f"
+	specialEsc[0xd] = "\\r"
+	specialEsc[0x1b] = "\\E"
+}
+
 func compQuoteDQString(s string, close bool) string {
 	var buf bytes.Buffer
 	buf.WriteByte('"')
@@ -98,15 +117,108 @@ func compQuoteDQString(s string, close bool) string {
 	return buf.String()
 }
 
+func hasGlob(s string) bool {
+	var lastExtGlob bool
+	for _, ch := range s {
+		if ch == '*' || ch == '?' || ch == '[' || ch == '{' {
+			return true
+		}
+		if ch == '+' || ch == '@' || ch == '!' {
+			lastExtGlob = true
+			continue
+		}
+		if lastExtGlob && ch == '(' {
+			return true
+		}
+		lastExtGlob = false
+	}
+	return false
+}
+
+func writeUtf8Literal(buf *bytes.Buffer, ch rune) {
+	var runeArr [utf8.UTFMax]byte
+	buf.WriteString("$'")
+	barr := runeArr[:]
+	byteLen := utf8.EncodeRune(barr, ch)
+	for i := 0; i < byteLen; i++ {
+		buf.WriteString("\\x")
+		buf.WriteByte(utilfn.HexDigits[barr[i]/16])
+		buf.WriteByte(utilfn.HexDigits[barr[i]%16])
+	}
+	buf.WriteByte('\'')
+}
+
+func compQuoteLiteralString(s string) string {
+	var buf bytes.Buffer
+	for idx, ch := range s {
+		if ch == 0 {
+			break
+		}
+		if idx == 0 && ch == '~' {
+			buf.WriteRune(ch)
+			continue
+		}
+		if ch > unicode.MaxASCII {
+			writeUtf8Literal(&buf, ch)
+			continue
+		}
+		var bch = byte(ch)
+		if noEscChars[bch] {
+			buf.WriteRune(ch)
+			continue
+		}
+		if specialEsc[bch] != "" {
+			buf.WriteString(specialEsc[bch])
+			continue
+		}
+		if !unicode.IsPrint(ch) {
+			writeUtf8Literal(&buf, ch)
+			continue
+		}
+		buf.WriteByte('\\')
+		buf.WriteByte(bch)
+	}
+	return buf.String()
+}
+
+func compQuoteSQString(s string) string {
+	var buf bytes.Buffer
+	for _, ch := range s {
+		if ch == 0 {
+			break
+		}
+		if ch == '\'' {
+			buf.WriteString("'\\''")
+			continue
+		}
+		var bch byte
+		if ch <= unicode.MaxASCII {
+			bch = byte(ch)
+		}
+		if ch > unicode.MaxASCII || !unicode.IsPrint(ch) {
+			buf.WriteByte('\'')
+			if bch != 0 && specialEsc[bch] != "" {
+				buf.WriteString(specialEsc[bch])
+			} else {
+				writeUtf8Literal(&buf, ch)
+			}
+			buf.WriteByte('\'')
+			continue
+		}
+		buf.WriteByte(bch)
+	}
+	return buf.String()
+}
+
 func compQuoteString(s string, quoteType string, close bool) string {
-	if quoteType != QuoteTypeANSI {
+	if quoteType != QuoteTypeANSI && quoteType != QuoteTypeLiteral {
 		for _, ch := range s {
 			if ch > unicode.MaxASCII || !unicode.IsPrint(ch) || ch == '!' {
 				quoteType = QuoteTypeANSI
 				break
 			}
 			if ch == '\'' {
-				if quoteType == QuoteTypeSQ || quoteType == QuoteTypeLiteral {
+				if quoteType == QuoteTypeSQ {
 					quoteType = QuoteTypeANSI
 					break
 				}
@@ -122,11 +234,7 @@ func compQuoteString(s string, quoteType string, close bool) string {
 		return rtn
 	}
 	if quoteType == QuoteTypeLiteral {
-		rtn := utilfn.ShellQuote(s, false, MaxCompQuoteLen)
-		if len(rtn) > 0 && rtn[0] == '\'' && !close {
-			rtn = rtn[0 : len(rtn)-1]
-		}
-		return rtn
+		return compQuoteLiteralString(s)
 	}
 	if quoteType == QuoteTypeSQ {
 		rtn := utilfn.ShellQuote(s, false, MaxCompQuoteLen)
@@ -149,12 +257,12 @@ func (p *CompPoint) wordAsStr(w ParsedWord) string {
 	return w.PartialWord
 }
 
-func (p *CompPoint) simpleExpandWord(w ParsedWord) string {
-	ectx := shexec.SimpleExpandContext{}
+func (p *CompPoint) simpleExpandWord(w ParsedWord) (string, simpleexpand.SimpleExpandInfo) {
+	ectx := simpleexpand.SimpleExpandContext{}
 	if w.Word != nil {
-		return shexec.SimpleExpandWord(ectx, w.Word, p.StmtStr)
+		return simpleexpand.SimpleExpandWord(ectx, w.Word, p.StmtStr)
 	}
-	return shexec.SimpleExpandPartialWord(ectx, w.PartialWord, false)
+	return simpleexpand.SimpleExpandPartialWord(ectx, w.PartialWord, false)
 }
 
 func getQuoteTypePref(str string) string {
@@ -170,9 +278,9 @@ func getQuoteTypePref(str string) string {
 	return QuoteTypeLiteral
 }
 
-func (p *CompPoint) getCompPrefix() string {
+func (p *CompPoint) getCompPrefix() (string, simpleexpand.SimpleExpandInfo) {
 	if p.CompWordPos == 0 {
-		return ""
+		return "", simpleexpand.SimpleExpandInfo{}
 	}
 	pword := p.Words[p.CompWord]
 	wordStr := p.wordAsStr(pword)
@@ -184,10 +292,10 @@ func (p *CompPoint) getCompPrefix() string {
 	//      and a partial on just the current part.  this is an uncommon case though
 	//      and has very little upside (even bash does not expand multipart words correctly)
 	partialWordStr := wordStr[:p.CompWordPos]
-	return shexec.SimpleExpandPartialWord(shexec.SimpleExpandContext{}, partialWordStr, false)
+	return simpleexpand.SimpleExpandPartialWord(simpleexpand.SimpleExpandContext{}, partialWordStr, false)
 }
 
-func (p *CompPoint) extendWord(newWord string, newWordComplete bool) StrWithPos {
+func (p *CompPoint) extendWord(newWord string, newWordComplete bool) utilfn.StrWithPos {
 	pword := p.Words[p.CompWord]
 	wordStr := p.wordAsStr(pword)
 	quotePref := getQuoteTypePref(wordStr)
@@ -198,18 +306,31 @@ func (p *CompPoint) extendWord(newWord string, newWordComplete bool) StrWithPos 
 		newQuotedStr = newQuotedStr + " "
 	}
 	newPos := len(newQuotedStr)
-	return StrWithPos{Str: newQuotedStr + wordSuffix, Pos: newPos}
+	return utilfn.StrWithPos{Str: newQuotedStr + wordSuffix, Pos: newPos}
 }
 
-func (p *CompPoint) FullyExtend(crtn *CompReturn) StrWithPos {
+// returns (extension, complete)
+func computeCompExtension(compPrefix string, crtn *CompReturn) (string, bool) {
 	if crtn == nil || crtn.HasMore {
-		return StrWithPos{Str: p.getOrigStr(), Pos: p.getOrigPos()}
+		return "", false
 	}
 	compStrs := crtn.GetCompStrs()
-	compPrefix := p.getCompPrefix()
 	lcp := utilfn.LongestPrefix(compPrefix, compStrs)
 	if lcp == compPrefix || len(lcp) < len(compPrefix) || !strings.HasPrefix(lcp, compPrefix) {
-		return StrWithPos{Str: p.getOrigStr(), Pos: p.getOrigPos()}
+		return "", false
+	}
+	return lcp[len(compPrefix):], utilfn.ContainsStr(compStrs, lcp)
+}
+
+func (p *CompPoint) FullyExtend(crtn *CompReturn) utilfn.StrWithPos {
+	if crtn == nil || crtn.HasMore {
+		return utilfn.StrWithPos{Str: p.getOrigStr(), Pos: p.getOrigPos()}
+	}
+	compStrs := crtn.GetCompStrs()
+	compPrefix, _ := p.getCompPrefix()
+	lcp := utilfn.LongestPrefix(compPrefix, compStrs)
+	if lcp == compPrefix || len(lcp) < len(compPrefix) || !strings.HasPrefix(lcp, compPrefix) {
+		return utilfn.StrWithPos{Str: p.getOrigStr(), Pos: p.getOrigPos()}
 	}
 	newStr := p.extendWord(lcp, utilfn.ContainsStr(compStrs, lcp))
 	var buf bytes.Buffer
@@ -226,7 +347,7 @@ func (p *CompPoint) FullyExtend(crtn *CompReturn) StrWithPos {
 	buf.WriteString(p.Suffix)
 	compWord := p.Words[p.CompWord]
 	newPos := len(p.Prefix) + compWord.Offset + len(compWord.Prefix) + newStr.Pos
-	return StrWithPos{Str: buf.String(), Pos: newPos}
+	return utilfn.StrWithPos{Str: buf.String(), Pos: newPos}
 }
 
 func (p *CompPoint) dump() {
@@ -240,7 +361,7 @@ func (p *CompPoint) dump() {
 			fmt.Printf("{%s}", w.Prefix)
 		}
 		if idx == p.CompWord {
-			fmt.Printf("%s\n", strWithCursor(p.wordAsStr(w), p.CompWordPos))
+			fmt.Printf("%s\n", utilfn.StrWithPos{Str: p.wordAsStr(w), Pos: p.CompWordPos})
 		} else {
 			fmt.Printf("%s\n", p.wordAsStr(w))
 		}
@@ -252,24 +373,6 @@ func (p *CompPoint) dump() {
 }
 
 var SimpleCompGenFns map[string]SimpleCompGenFnType
-
-func (sp StrWithPos) String() string {
-	return strWithCursor(sp.Str, sp.Pos)
-}
-
-func strWithCursor(str string, pos int) string {
-	if pos < 0 {
-		return "[*]_" + str
-	}
-	if pos >= len(str) {
-		if pos > len(str) {
-			return str + "_[*]"
-		}
-		return str + "[*]"
-	} else {
-		return str[:pos] + "[*]" + str[pos:]
-	}
-}
 
 func isWhitespace(str string) bool {
 	return strings.TrimSpace(str) == ""
@@ -284,7 +387,7 @@ func splitInitialWhitespace(str string) (string, string) {
 	return str, ""
 }
 
-func ParseCompPoint(cmdStr StrWithPos) *CompPoint {
+func ParseCompPoint(cmdStr utilfn.StrWithPos) *CompPoint {
 	fullCmdStr := cmdStr.Str
 	pos := cmdStr.Pos
 	// fmt.Printf("---\n")
@@ -388,14 +491,86 @@ func splitCompWord(p *CompPoint) {
 	p.Words = newWords
 }
 
-func DoCompGen(ctx context.Context, sp StrWithPos, compCtx CompContext) (*CompReturn, *StrWithPos, error) {
+func getCompType(compPos shparse.CompletionPos) string {
+	switch compPos.CompType {
+	case shparse.CompTypeCommandMeta:
+		return CGTypeCommandMeta
+
+	case shparse.CompTypeCommand:
+		return CGTypeCommand
+
+	case shparse.CompTypeVar:
+		return CGTypeVariable
+
+	case shparse.CompTypeArg, shparse.CompTypeBasic, shparse.CompTypeAssignment:
+		return CGTypeFile
+
+	default:
+		return CGTypeFile
+	}
+}
+
+func fixupVarPrefix(varPrefix string) string {
+	if strings.HasPrefix(varPrefix, "${") {
+		varPrefix = varPrefix[2:]
+		if strings.HasSuffix(varPrefix, "}") {
+			varPrefix = varPrefix[:len(varPrefix)-1]
+		}
+	} else if strings.HasPrefix(varPrefix, "$") {
+		varPrefix = varPrefix[1:]
+	}
+	return varPrefix
+}
+
+func DoCompGen(ctx context.Context, cmdStr utilfn.StrWithPos, compCtx CompContext) (*CompReturn, *utilfn.StrWithPos, error) {
+	words := shparse.Tokenize(cmdStr.Str)
+	cmds := shparse.ParseCommands(words)
+	compPos := shparse.FindCompletionPos(cmds, cmdStr.Pos, 0)
+	fmt.Printf("comppos: %v\n", compPos)
+	if compPos.CompType == shparse.CompTypeInvalid {
+		return nil, nil, nil
+	}
+	var compPrefix string
+	if compPos.CompWord != nil {
+		var info shparse.ExpandInfo
+		compPrefix, info = shparse.SimpleExpandPrefix(shparse.ExpandContext{}, compPos.CompWord, compPos.CompWordOffset)
+		if info.HasGlob || info.HasExtGlob || info.HasHistory || info.HasSpecial {
+			return nil, nil, nil
+		}
+		if compPos.CompType != shparse.CompTypeVar && info.HasVar {
+			return nil, nil, nil
+		}
+		if compPos.CompType == shparse.CompTypeVar {
+			compPrefix = fixupVarPrefix(compPrefix)
+		}
+	}
+	scType := getCompType(compPos)
+	crtn, err := DoSimpleComp(ctx, scType, compPrefix, compCtx, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	if compCtx.ForDisplay {
+		return crtn, nil, nil
+	}
+	extensionStr, extensionComplete := computeCompExtension(compPrefix, crtn)
+	if extensionStr == "" {
+		return crtn, nil, nil
+	}
+	rtnSP := compPos.Extend(cmdStr, extensionStr, extensionComplete)
+	return crtn, &rtnSP, nil
+}
+
+func DoCompGenOld(ctx context.Context, sp utilfn.StrWithPos, compCtx CompContext) (*CompReturn, *utilfn.StrWithPos, error) {
 	compPoint := ParseCompPoint(sp)
 	compType := CGTypeFile
 	if compPoint.CompWord == 0 {
 		compType = CGTypeCommandMeta
 	}
 	// TODO lookup special types
-	compPrefix := compPoint.getCompPrefix()
+	compPrefix, info := compPoint.getCompPrefix()
+	if info.HasVar || info.HasGlob || info.HasExtGlob || info.HasHistory || info.HasSpecial {
+		return nil, nil, nil
+	}
 	crtn, err := DoSimpleComp(ctx, compType, compPrefix, compCtx, nil)
 	if err != nil {
 		return nil, nil, err
