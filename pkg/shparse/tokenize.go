@@ -472,7 +472,7 @@ func (c *parseContext) parseStrDDQ() *WordType {
 	if !c.match2('$', '"') {
 		return nil
 	}
-	newContext := c.clone(c.Pos+2, WordTypeDDQ)
+	newContext := c.clone(c.Pos+2, WordTypeDQ) // use WordTypeDQ (not DDQ)
 	subWords, eofExit := newContext.tokenizeDQ()
 	newOffset := newContext.Pos + 2
 	w := c.makeWord(WordTypeDDQ, newOffset, !eofExit)

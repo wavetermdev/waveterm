@@ -48,7 +48,7 @@ const (
 	WordTypeSimpleVar = "svar" // simplevar $ (can-extend)
 
 	WordTypeDQ       = "dq"   // "    (quote-context) (can-extend) (has-subs)
-	WordTypeDDQ      = "ddq"  // $"   (quote-context) (can-extend) (has-subs)
+	WordTypeDDQ      = "ddq"  // $"   (can-extend) (has-subs) (for quotecontext, uses WordTypeDQ)
 	WordTypeVarBrace = "varb" // ${   (quote-context) (can-extend) (internals not parsed)
 	WordTypeDP       = "dp"   // $(   (quote-context) (has-subs)
 	WordTypeBQ       = "bq"   // `    (quote-context) (has-subs)

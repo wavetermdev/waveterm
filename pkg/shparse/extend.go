@@ -99,8 +99,74 @@ func (ec *extendContext) ensureCurWord() {
 }
 
 // grp, dq, ddq
-func extendWithSubs(buf *bytes.Buffer, word *WordType, wordPos int, extStr string) {
-
+func extendWithSubs(word *WordType, wordPos int, extStr string, complete bool) utilfn.StrWithPos {
+	wmeta := wordMetaMap[word.Type]
+	if word.Type == WordTypeGroup {
+		atEnd := (wordPos == len(word.Raw))
+		subWord := findCompletionWordAtPos(word.Subs, wordPos, true)
+		if subWord == nil {
+			strPos := Extend(MakeEmptyWord(WordTypeLit, word.QC, 0, true), 0, extStr, atEnd)
+			strPos = strPos.Prepend(string(word.Raw[0:wordPos]))
+			strPos = strPos.Append(string(word.Raw[wordPos:]))
+			return strPos
+		} else {
+			subComplete := complete && atEnd
+			strPos := Extend(subWord, wordPos-subWord.Offset, extStr, subComplete)
+			strPos = strPos.Prepend(string(word.Raw[0:subWord.Offset]))
+			strPos = strPos.Append(string(word.Raw[subWord.Offset+len(subWord.Raw):]))
+			return strPos
+		}
+	} else if word.Type == WordTypeDQ || word.Type == WordTypeDDQ {
+		if wordPos < word.contentStartPos() {
+			wordPos = word.contentStartPos()
+		}
+		atEnd := (wordPos >= len(word.Raw)-wmeta.SuffixLen)
+		subWord := findCompletionWordAtPos(word.Subs, wordPos-wmeta.PrefixLen, true)
+		quoteBalance := !atEnd
+		if subWord == nil {
+			realOffset := wordPos
+			strPos, wordOpen := extendInternal(MakeEmptyWord(WordTypeLit, word.QC.push(WordTypeDQ), 0, true), 0, extStr, false, quoteBalance)
+			strPos = strPos.Prepend(string(word.Raw[0:realOffset]))
+			var requiredSuffix string
+			if wordOpen {
+				requiredSuffix = wmeta.getSuffix()
+			}
+			if atEnd {
+				if complete {
+					return utilfn.StrWithPos{Str: strPos.Str + requiredSuffix + " ", Pos: strPos.Pos + len(requiredSuffix) + 1}
+				} else {
+					if word.Complete && requiredSuffix != "" {
+						return strPos.Append(requiredSuffix)
+					}
+					return strPos
+				}
+			}
+			strPos = strPos.Append(string(word.Raw[wordPos:]))
+			return strPos
+		} else {
+			realOffset := subWord.Offset + wmeta.PrefixLen
+			strPos, wordOpen := extendInternal(subWord, wordPos-realOffset, extStr, false, quoteBalance)
+			strPos = strPos.Prepend(string(word.Raw[0:realOffset]))
+			var requiredSuffix string
+			if wordOpen {
+				requiredSuffix = wmeta.getSuffix()
+			}
+			if atEnd {
+				if complete {
+					return utilfn.StrWithPos{Str: strPos.Str + requiredSuffix + " ", Pos: strPos.Pos + len(requiredSuffix) + 1}
+				} else {
+					if word.Complete && requiredSuffix != "" {
+						return strPos.Append(requiredSuffix)
+					}
+					return strPos
+				}
+			}
+			strPos = strPos.Append(string(word.Raw[realOffset+len(subWord.Raw):]))
+			return strPos
+		}
+	} else {
+		return utilfn.StrWithPos{Str: string(word.Raw), Pos: wordPos}
+	}
 }
 
 // lit, svar, varb, sq, dsq
@@ -127,6 +193,18 @@ func extendLeafCh(buf *bytes.Buffer, wordOpen *bool, wtype string, qc QuoteConte
 	}
 }
 
+func getWordOpenStr(wtype string, qc QuoteContext) string {
+	if wtype == WordTypeLit {
+		if qc.cur() == WordTypeDQ {
+			return "\""
+		} else {
+			return ""
+		}
+	}
+	wmeta := wordMetaMap[wtype]
+	return wmeta.getPrefix()
+}
+
 // lit, svar, varb sq, dsq
 func extendLeaf(buf *bytes.Buffer, wordOpen *bool, word *WordType, wordPos int, extStr string) {
 	for _, ch := range extStr {
@@ -135,45 +213,61 @@ func extendLeaf(buf *bytes.Buffer, wordOpen *bool, word *WordType, wordPos int, 
 }
 
 // lit, grp, svar, dq, ddq, varb, sq, dsq
-func Extend(word *WordType, wordPos int, extStr string, complete bool) utilfn.StrWithPos {
+// returns (strwithpos, dq-closed)
+func extendInternal(word *WordType, wordPos int, extStr string, complete bool, requiresQuoteBalance bool) (utilfn.StrWithPos, bool) {
 	if extStr == "" {
-		return utilfn.StrWithPos{Str: string(word.Raw), Pos: wordPos}
+		return utilfn.StrWithPos{Str: string(word.Raw), Pos: wordPos}, true
+	}
+	if word.canHaveSubs() {
+		return extendWithSubs(word, wordPos, extStr, complete), true
 	}
 	var buf bytes.Buffer
 	isEOW := wordPos >= word.contentEndPos()
 	if isEOW {
 		wordPos = word.contentEndPos()
 	}
-	if wordPos > 0 && wordPos < word.contentStartPos() {
+	if wordPos < word.contentStartPos() {
 		wordPos = word.contentStartPos()
 	}
-	wordOpen := false
-	if wordPos >= word.contentStartPos() {
-		wordOpen = true
+	if wordPos > 0 {
+		buf.WriteString(string(word.Raw[0:word.contentStartPos()])) // write the prefix
 	}
-	buf.WriteString(string(word.Raw[0:wordPos])) // write the prefix
-	if word.canHaveSubs() {
-		extendWithSubs(&buf, word, wordPos, extStr)
-	} else {
-		extendLeaf(&buf, &wordOpen, word, wordPos, extStr)
+	if wordPos > word.contentStartPos() {
+		buf.WriteString(string(word.Raw[word.contentStartPos():wordPos]))
 	}
+	wordOpen := true
+	extendLeaf(&buf, &wordOpen, word, wordPos, extStr)
 	if isEOW {
 		// end-of-word, write the suffix (and optional ' ').  return the end of the string
 		wmeta := wordMetaMap[word.Type]
+		rtnPos := utf8.RuneCount(buf.Bytes())
 		buf.WriteString(wmeta.getSuffix())
-		var rtnPos int
+		if !wordOpen && requiresQuoteBalance {
+			buf.WriteString(getWordOpenStr(word.Type, word.QC))
+			wordOpen = true
+		}
 		if complete {
 			buf.WriteRune(' ')
-			rtnPos = utf8.RuneCount(buf.Bytes())
+			return utilfn.StrWithPos{Str: buf.String(), Pos: utf8.RuneCount(buf.Bytes())}, wordOpen
 		} else {
-			rtnPos = utf8.RuneCount(buf.Bytes()) - wmeta.SuffixLen
+			return utilfn.StrWithPos{Str: buf.String(), Pos: rtnPos}, wordOpen
 		}
-		return utilfn.StrWithPos{Str: buf.String(), Pos: rtnPos}
 	}
 	// completion in the middle of a word (no ' ')
 	rtnPos := utf8.RuneCount(buf.Bytes())
+	if !wordOpen {
+		// always required since there is a suffix
+		buf.WriteString(getWordOpenStr(word.Type, word.QC))
+		wordOpen = true
+	}
 	buf.WriteString(string(word.Raw[wordPos:])) // write the suffix
-	return utilfn.StrWithPos{Str: buf.String(), Pos: rtnPos}
+	return utilfn.StrWithPos{Str: buf.String(), Pos: rtnPos}, wordOpen
+}
+
+// lit, grp, svar, dq, ddq, varb, sq, dsq
+func Extend(word *WordType, wordPos int, extStr string, complete bool) utilfn.StrWithPos {
+	rtn, _ := extendInternal(word, wordPos, extStr, complete, false)
+	return rtn
 }
 
 func (ec *extendContext) extend(ch rune) {
@@ -204,13 +298,20 @@ func getSpecialEscape(ch rune) string {
 	return specialEsc[byte(ch)]
 }
 
-func writeSpecial(buf *bytes.Buffer, ch rune) {
+func writeSpecial(buf *bytes.Buffer, ch rune, wrap bool) {
+	if wrap {
+		buf.WriteRune('$')
+		buf.WriteRune('\'')
+	}
 	sesc := getSpecialEscape(ch)
 	if sesc != "" {
 		buf.WriteString(sesc)
 	} else {
 		utf8Lit := getUtf8Literal(ch)
 		buf.WriteString(utf8Lit)
+	}
+	if wrap {
+		buf.WriteRune('\'')
 	}
 }
 
@@ -219,7 +320,7 @@ func extendLit(buf *bytes.Buffer, ch rune) {
 		return
 	}
 	if ch > unicode.MaxASCII || !unicode.IsPrint(ch) {
-		writeSpecial(buf, ch)
+		writeSpecial(buf, ch, true)
 		return
 	}
 	var bch = byte(ch)
@@ -236,18 +337,14 @@ func extendDSQ(buf *bytes.Buffer, wordOpen *bool, ch rune) {
 	if ch == 0 {
 		return
 	}
-	if ch > unicode.MaxASCII || !unicode.IsPrint(ch) {
-		if *wordOpen {
-			buf.WriteRune('\'')
-			*wordOpen = false
-		}
-		writeSpecial(buf, ch)
-		return
-	}
-	if *wordOpen {
+	if !*wordOpen {
 		buf.WriteRune('$')
 		buf.WriteRune('\'')
 		*wordOpen = true
+	}
+	if ch > unicode.MaxASCII || !unicode.IsPrint(ch) {
+		writeSpecial(buf, ch, false)
+		return
 	}
 	if ch == '\'' {
 		buf.WriteRune('\\')
@@ -276,7 +373,7 @@ func extendSQ(buf *bytes.Buffer, wordOpen *bool, ch rune) {
 			buf.WriteRune('\'')
 			*wordOpen = false
 		}
-		writeSpecial(buf, ch)
+		writeSpecial(buf, ch, true)
 		return
 	}
 	if !*wordOpen {
@@ -296,7 +393,7 @@ func extendDQLit(buf *bytes.Buffer, wordOpen *bool, ch rune) {
 			buf.WriteRune('"')
 			*wordOpen = false
 		}
-		writeSpecial(buf, ch)
+		writeSpecial(buf, ch, true)
 		return
 	}
 	if !*wordOpen {

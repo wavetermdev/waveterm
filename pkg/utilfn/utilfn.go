@@ -157,3 +157,11 @@ func strWithCursor(str string, pos int) string {
 	}
 	return string(rtn)
 }
+
+func (sp StrWithPos) Prepend(str string) StrWithPos {
+	return StrWithPos{Str: str + sp.Str, Pos: utf8.RuneCountInString(str) + sp.Pos}
+}
+
+func (sp StrWithPos) Append(str string) StrWithPos {
+	return StrWithPos{Str: sp.Str + str, Pos: sp.Pos}
+}

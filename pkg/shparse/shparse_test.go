@@ -66,9 +66,9 @@ func testExtend(t *testing.T, startStr string, extendStr string, complete bool, 
 	}
 	outSP := Extend(word, startSP.Pos-word.Offset, extendStr, complete)
 	expSP := utilfn.ParseToSP(expStr)
-	fmt.Printf("extend: [%s] + [%s] => [%s]\n", startStr, extendStr, outSP)
+	fmt.Printf("extend: [%s] + %q => [%s]\n", startStr, extendStr, outSP)
 	if outSP != expSP {
-		t.Errorf("extension does not match: [%s] + [%s] => [%s] expected [%s]\n", startStr, extendStr, outSP, expSP)
+		t.Errorf("extension does not match: [%s] + %q => [%s] expected [%s]\n", startStr, extendStr, outSP, expSP)
 	}
 }
 
@@ -84,6 +84,19 @@ func Test2(t *testing.T) {
 	testExtend(t, `$f[*]`, "oo", false, "$foo[*]")
 	testExtend(t, `${f}[*]`, "oo", false, "${foo[*]}")
 	testExtend(t, `${f[*]}`, "oo", true, "${foo} [*]")
+	testExtend(t, `[*]`, "more stuff", false, `more\ stuff[*]`)
+	testExtend(t, `[*]`, "hello\amike", false, `hello$'\a'mike[*]`)
+	testExtend(t, `$'he[*]'`, "\x01\x02\x0a", true, `$'he\x01\x02\n' [*]`)
+	testExtend(t, `${x}\ [*]ll$y`, "e", false, `${x}\ e[*]ll$y`)
+	testExtend(t, `"he[*]"`, "$$o", true, `"he\$\$o" [*]`)
+	testExtend(t, `"h[*]llo"`, "e", false, `"he[*]llo"`)
+	testExtend(t, `"h[*]llo"`, "e", true, `"he[*]llo"`)
+	testExtend(t, `"[*]${h}llo"`, "e\x01", true, `"e"$'\x01'[*]"${h}llo"`)
+	testExtend(t, `"${h}llo[*]"`, "e\x01", true, `"${h}lloe"$'\x01' [*]`)
+	testExtend(t, `"${h}llo[*]"`, "e\x01", false, `"${h}lloe"$'\x01'[*]`)
+	testExtend(t, `"${h}ll[*]o"`, "e\x01", false, `"${h}lle"$'\x01'[*]"o"`)
+	testExtend(t, `"ab[*]c${x}def"`, "\x01", false, `"ab"$'\x01'[*]"c${x}def"`)
+	testExtend(t, `'ab[*]ef'`, "\x01", false, `'ab'$'\x01'[*]'ef'`)
 
 	// testExtend(t, `'he'`, "llo", `'hello'`)
 	// testExtend(t, `'he'`, "'", `'he'\'''`)
