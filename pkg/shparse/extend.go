@@ -93,35 +93,108 @@ func (ec *extendContext) appendWord(w *WordType) {
 
 func (ec *extendContext) ensureCurWord() {
 	if ec.CurWord == nil || ec.CurWord.Type != ec.Intention {
-		ec.CurWord = MakeEmptyWord(ec.Intention, ec.QC, 0)
+		ec.CurWord = MakeEmptyWord(ec.Intention, ec.QC, 0, true)
 		ec.Rtn = append(ec.Rtn, ec.CurWord)
 	}
+}
+
+// grp, dq, ddq
+func extendWithSubs(buf *bytes.Buffer, word *WordType, wordPos int, extStr string) {
+
+}
+
+// lit, svar, varb, sq, dsq
+func extendLeafCh(buf *bytes.Buffer, wordOpen *bool, wtype string, qc QuoteContext, ch rune) {
+	switch wtype {
+	case WordTypeSimpleVar, WordTypeVarBrace:
+		extendVar(buf, ch)
+
+	case WordTypeLit:
+		if qc.cur() == WordTypeDQ {
+			extendDQLit(buf, wordOpen, ch)
+		} else {
+			extendLit(buf, ch)
+		}
+
+	case WordTypeSQ:
+		extendSQ(buf, wordOpen, ch)
+
+	case WordTypeDSQ:
+		extendDSQ(buf, wordOpen, ch)
+
+	default:
+		return
+	}
+}
+
+// lit, svar, varb sq, dsq
+func extendLeaf(buf *bytes.Buffer, wordOpen *bool, word *WordType, wordPos int, extStr string) {
+	for _, ch := range extStr {
+		extendLeafCh(buf, wordOpen, word.Type, word.QC, ch)
+	}
+}
+
+// lit, grp, svar, dq, ddq, varb, sq, dsq
+func Extend(word *WordType, wordPos int, extStr string, complete bool) utilfn.StrWithPos {
+	if extStr == "" {
+		return utilfn.StrWithPos{Str: string(word.Raw), Pos: wordPos}
+	}
+	var buf bytes.Buffer
+	isEOW := wordPos >= word.contentEndPos()
+	if isEOW {
+		wordPos = word.contentEndPos()
+	}
+	if wordPos > 0 && wordPos < word.contentStartPos() {
+		wordPos = word.contentStartPos()
+	}
+	wordOpen := false
+	if wordPos >= word.contentStartPos() {
+		wordOpen = true
+	}
+	buf.WriteString(string(word.Raw[0:wordPos])) // write the prefix
+	if word.canHaveSubs() {
+		extendWithSubs(&buf, word, wordPos, extStr)
+	} else {
+		extendLeaf(&buf, &wordOpen, word, wordPos, extStr)
+	}
+	if isEOW {
+		// end-of-word, write the suffix (and optional ' ').  return the end of the string
+		wmeta := wordMetaMap[word.Type]
+		buf.WriteString(wmeta.getSuffix())
+		var rtnPos int
+		if complete {
+			buf.WriteRune(' ')
+			rtnPos = utf8.RuneCount(buf.Bytes())
+		} else {
+			rtnPos = utf8.RuneCount(buf.Bytes()) - wmeta.SuffixLen
+		}
+		return utilfn.StrWithPos{Str: buf.String(), Pos: rtnPos}
+	}
+	// completion in the middle of a word (no ' ')
+	rtnPos := utf8.RuneCount(buf.Bytes())
+	buf.WriteString(string(word.Raw[wordPos:])) // write the suffix
+	return utilfn.StrWithPos{Str: buf.String(), Pos: rtnPos}
 }
 
 func (ec *extendContext) extend(ch rune) {
 	if ch == 0 {
 		return
 	}
-	switch ec.Intention {
+	return
+}
 
-	case WordTypeSimpleVar, WordTypeVarBrace:
-		ec.extendVar(ch)
+func isVarNameChar(ch rune) bool {
+	return ch == '_' || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9')
+}
 
-	case WordTypeDQ, WordTypeDDQ:
-		ec.extendDQ(ch)
-
-	case WordTypeSQ:
-		ec.extendSQ(ch)
-
-	case WordTypeDSQ:
-		ec.extendDSQ(ch)
-
-	case WordTypeLit:
-		ec.extendLit(ch)
-
-	default:
+func extendVar(buf *bytes.Buffer, ch rune) {
+	if ch == 0 {
 		return
 	}
+	if !isVarNameChar(ch) {
+		return
+	}
+	buf.WriteRune(ch)
 }
 
 func getSpecialEscape(ch rune) string {
@@ -131,122 +204,110 @@ func getSpecialEscape(ch rune) string {
 	return specialEsc[byte(ch)]
 }
 
-func isVarNameChar(ch rune) bool {
-	return ch == '_' || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9')
+func writeSpecial(buf *bytes.Buffer, ch rune) {
+	sesc := getSpecialEscape(ch)
+	if sesc != "" {
+		buf.WriteString(sesc)
+	} else {
+		utf8Lit := getUtf8Literal(ch)
+		buf.WriteString(utf8Lit)
+	}
 }
 
-func (ec *extendContext) extendVar(ch rune) {
-	if ch == 0 {
-		return
-	}
-	if !isVarNameChar(ch) {
-		return
-	}
-	ec.ensureCurWord()
-	ec.CurWord.writeRune(ch)
-}
-
-func (ec *extendContext) extendLit(ch rune) {
+func extendLit(buf *bytes.Buffer, ch rune) {
 	if ch == 0 {
 		return
 	}
 	if ch > unicode.MaxASCII || !unicode.IsPrint(ch) {
-		dsqWord := MakeEmptyWord(WordTypeDSQ, ec.QC, 0)
-		ec.appendWord(dsqWord)
-		sesc := getSpecialEscape(ch)
-		if sesc != "" {
-			dsqWord.writeString(sesc)
-			return
-		} else {
-			utf8Lit := getUtf8Literal(ch)
-			dsqWord.writeString(utf8Lit)
-		}
+		writeSpecial(buf, ch)
 		return
 	}
 	var bch = byte(ch)
-	ec.ensureCurWord()
 	if noEscChars[bch] {
-		ec.CurWord.writeRune(ch)
+		buf.WriteRune(ch)
 		return
 	}
-	ec.CurWord.writeRune('\\')
-	ec.CurWord.writeRune(ch)
+	buf.WriteRune('\\')
+	buf.WriteRune(ch)
 	return
 }
 
-func (ec *extendContext) extendDSQ(ch rune) {
+func extendDSQ(buf *bytes.Buffer, wordOpen *bool, ch rune) {
 	if ch == 0 {
-		return
-	}
-	ec.ensureCurWord()
-	if ch == '\'' {
-		ec.CurWord.writeRune('\\')
-		ec.CurWord.writeRune(ch)
 		return
 	}
 	if ch > unicode.MaxASCII || !unicode.IsPrint(ch) {
-		sesc := getSpecialEscape(ch)
-		if sesc != "" {
-			ec.CurWord.writeString(sesc)
-		} else {
-			utf8Lit := getUtf8Literal(ch)
-			ec.CurWord.writeString(utf8Lit)
+		if *wordOpen {
+			buf.WriteRune('\'')
+			*wordOpen = false
 		}
+		writeSpecial(buf, ch)
 		return
 	}
-	ec.CurWord.writeRune(ch)
+	if *wordOpen {
+		buf.WriteRune('$')
+		buf.WriteRune('\'')
+		*wordOpen = true
+	}
+	if ch == '\'' {
+		buf.WriteRune('\\')
+		buf.WriteRune(ch)
+		return
+	}
+	buf.WriteRune(ch)
 	return
 }
 
-func (ec *extendContext) extendSQ(ch rune) {
+func extendSQ(buf *bytes.Buffer, wordOpen *bool, ch rune) {
 	if ch == 0 {
 		return
 	}
 	if ch == '\'' {
-		litWord := &WordType{Type: WordTypeLit, QC: ec.QC}
-		litWord.Raw = []rune{'\\', '\''}
-		ec.appendWord(litWord)
+		if *wordOpen {
+			buf.WriteRune('\'')
+			*wordOpen = false
+		}
+		buf.WriteRune('\\')
+		buf.WriteRune('\'')
 		return
 	}
 	if ch > unicode.MaxASCII || !unicode.IsPrint(ch) {
-		dsqWord := MakeEmptyWord(WordTypeDSQ, ec.QC, 0)
-		ec.appendWord(dsqWord)
-		sesc := getSpecialEscape(ch)
-		if sesc != "" {
-			dsqWord.writeString(sesc)
-		} else {
-			utf8Lit := getUtf8Literal(ch)
-			dsqWord.writeString(utf8Lit)
+		if *wordOpen {
+			buf.WriteRune('\'')
+			*wordOpen = false
 		}
+		writeSpecial(buf, ch)
 		return
 	}
-	ec.ensureCurWord()
-	ec.CurWord.writeRune(ch)
+	if !*wordOpen {
+		buf.WriteRune('\'')
+		*wordOpen = true
+	}
+	buf.WriteRune(ch)
 	return
 }
 
-func (ec *extendContext) extendDQ(ch rune) {
+func extendDQLit(buf *bytes.Buffer, wordOpen *bool, ch rune) {
 	if ch == 0 {
 		return
+	}
+	if ch > unicode.MaxASCII || !unicode.IsPrint(ch) {
+		if *wordOpen {
+			buf.WriteRune('"')
+			*wordOpen = false
+		}
+		writeSpecial(buf, ch)
+		return
+	}
+	if !*wordOpen {
+		buf.WriteRune('"')
+		*wordOpen = true
 	}
 	if ch == '"' || ch == '\\' || ch == '$' || ch == '`' {
-		ec.ensureCurWord()
-		ec.CurWord.writeRune('\\')
-		ec.CurWord.writeRune(ch)
+		buf.WriteRune('\\')
+		buf.WriteRune(ch)
 		return
 	}
-	if ch > unicode.MaxASCII || !unicode.IsPrint(ch) {
-		dsqWord := MakeEmptyWord(WordTypeDSQ, ec.QC, 0)
-		ec.appendWord(dsqWord)
-		sesc := getSpecialEscape(ch)
-		if sesc != "" {
-			dsqWord.writeString(sesc)
-		} else {
-			utf8Lit := getUtf8Literal(ch)
-			dsqWord.writeString(utf8Lit)
-		}
-		return
-	}
-	ec.CurWord.writeRune(ch)
+	buf.WriteRune(ch)
 	return
 }

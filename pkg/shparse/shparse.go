@@ -44,7 +44,7 @@ const (
 	WordTypeLit       = "lit"  // (can-extend)
 	WordTypeOp        = "op"   // single: & ; | ( ) < > \n  multi(2): && || ;; << >> <& >& <> >| ((  multi(3): <<-    ('((' requires special processing)
 	WordTypeKey       = "key"  // if then else elif fi do done case esac while until for in { } ! (( [[
-	WordTypeGroup     = "grp"  // contains other words e.g. "hello"foo'bar'$x (has-subs)
+	WordTypeGroup     = "grp"  // contains other words e.g. "hello"foo'bar'$x (has-subs) (can-extend)
 	WordTypeSimpleVar = "svar" // simplevar $ (can-extend)
 
 	WordTypeDQ       = "dq"   // "    (quote-context) (can-extend) (has-subs)
@@ -113,6 +113,20 @@ type wordMeta struct {
 	QuoteContext bool
 }
 
+func (m wordMeta) getSuffix() string {
+	if m.SuffixLen == 0 {
+		return ""
+	}
+	return string(m.EmptyWord[len(m.EmptyWord)-m.SuffixLen:])
+}
+
+func (m wordMeta) getPrefix() string {
+	if m.PrefixLen == 0 {
+		return ""
+	}
+	return string(m.EmptyWord[:m.PrefixLen])
+}
+
 func makeWordMeta(wtype string, emptyWord string, prefixLen int, suffixLen int, canExtend bool, quoteContext bool) {
 	if len(emptyWord) != prefixLen+suffixLen {
 		panic(fmt.Sprintf("invalid empty word %s %d %d", emptyWord, prefixLen, suffixLen))
@@ -140,14 +154,18 @@ func init() {
 	makeWordMeta(WordTypeDB, "$[]", 2, 1, false, false)
 }
 
-func MakeEmptyWord(wtype string, qc QuoteContext, offset int) *WordType {
+func MakeEmptyWord(wtype string, qc QuoteContext, offset int, complete bool) *WordType {
 	meta := wordMetaMap[wtype]
 	if meta.Type == "" {
 		meta = wordMetaMap[WordTypeRaw]
 	}
-	rtn := &WordType{Type: meta.Type, QC: qc, Offset: offset, Complete: true}
+	rtn := &WordType{Type: meta.Type, QC: qc, Offset: offset, Complete: complete}
 	if len(meta.EmptyWord) > 0 {
-		rtn.Raw = append([]rune(nil), meta.EmptyWord...)
+		if complete {
+			rtn.Raw = append([]rune(nil), meta.EmptyWord...)
+		} else {
+			rtn.Raw = append([]rune(nil), []rune(meta.getPrefix())...)
+		}
 	}
 	return rtn
 }

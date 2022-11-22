@@ -57,33 +57,46 @@ func lastWord(words []*WordType) *WordType {
 	return words[len(words)-1]
 }
 
-func testExtend(t *testing.T, startStr string, extendStr string, expectedStr string) {
-	words := Tokenize(startStr)
-	ec := makeExtendContext(nil, lastWord(words))
-	for _, ch := range extendStr {
-		ec.extend(ch)
+func testExtend(t *testing.T, startStr string, extendStr string, complete bool, expStr string) {
+	startSP := utilfn.ParseToSP(startStr)
+	words := Tokenize(startSP.Str)
+	word := findCompletionWordAtPos(words, startSP.Pos, true)
+	if word == nil {
+		word = MakeEmptyWord(WordTypeLit, nil, startSP.Pos, true)
 	}
-	ec.ensureCurWord()
-	output := wordsToStr(ec.Rtn)
-	fmt.Printf("[%s] + [%s] => [%s]\n", startStr, extendStr, output)
-	if output != expectedStr {
-		t.Errorf("extension does not match: [%s] + [%s] => [%s] expected [%s]\n", startStr, extendStr, output, expectedStr)
+	outSP := Extend(word, startSP.Pos-word.Offset, extendStr, complete)
+	expSP := utilfn.ParseToSP(expStr)
+	fmt.Printf("extend: [%s] + [%s] => [%s]\n", startStr, extendStr, outSP)
+	if outSP != expSP {
+		t.Errorf("extension does not match: [%s] + [%s] => [%s] expected [%s]\n", startStr, extendStr, outSP, expSP)
 	}
 }
 
 func Test2(t *testing.T) {
-	testExtend(t, `'he'`, "llo", `'hello'`)
-	testExtend(t, `'he'`, "'", `'he'\'''`)
-	testExtend(t, `'he'`, "'\x01", `'he'\'$'\x01'''`)
-	testExtend(t, `he`, "llo", `hello`)
-	testExtend(t, `he`, "l*l'\x01\x07o", `hel\*l\'$'\x01'$'\a'o`)
-	testExtend(t, `$x`, "fo|o", `$xfoo`)
-	testExtend(t, `${x`, "fo|o", `${xfoo`)
-	testExtend(t, `$'f`, "oo", `$'foo`)
-	testExtend(t, `$'f`, "'\x01\x07o", `$'f\'\x01\ao`)
-	testExtend(t, `"f"`, "oo", `"foo"`)
-	testExtend(t, `"mi"`, "ke's \"hello\"", `"mike's \"hello\""`)
-	testExtend(t, `"t"`, "t\x01\x07", `"tt"$'\x01'$'\a'""`)
+	testExtend(t, `he[*]`, "llo", false, "hello[*]")
+	testExtend(t, `he[*]`, "llo", true, "hello [*]")
+	testExtend(t, `'mi[*]e`, "k", false, "'mik[*]e")
+	testExtend(t, `'mi[*]e`, "k", true, "'mik[*]e")
+	testExtend(t, `'mi[*]'`, "ke", true, "'mike' [*]")
+	testExtend(t, `'mi'[*]`, "ke", true, "'mike' [*]")
+	testExtend(t, `'mi[*]'`, "ke", false, "'mike[*]'")
+	testExtend(t, `'mi'[*]`, "ke", false, "'mike[*]'")
+	testExtend(t, `$f[*]`, "oo", false, "$foo[*]")
+	testExtend(t, `${f}[*]`, "oo", false, "${foo[*]}")
+	testExtend(t, `${f[*]}`, "oo", true, "${foo} [*]")
+
+	// testExtend(t, `'he'`, "llo", `'hello'`)
+	// testExtend(t, `'he'`, "'", `'he'\'''`)
+	// testExtend(t, `'he'`, "'\x01", `'he'\'$'\x01'''`)
+	// testExtend(t, `he`, "llo", `hello`)
+	// testExtend(t, `he`, "l*l'\x01\x07o", `hel\*l\'$'\x01'$'\a'o`)
+	// testExtend(t, `$x`, "fo|o", `$xfoo`)
+	// testExtend(t, `${x`, "fo|o", `${xfoo`)
+	// testExtend(t, `$'f`, "oo", `$'foo`)
+	// testExtend(t, `$'f`, "'\x01\x07o", `$'f\'\x01\ao`)
+	// testExtend(t, `"f"`, "oo", `"foo"`)
+	// testExtend(t, `"mi"`, "ke's \"hello\"", `"mike's \"hello\""`)
+	// testExtend(t, `"t"`, "t\x01\x07", `"tt"$'\x01'$'\a'""`)
 }
 
 func testParseCommands(t *testing.T, str string) {
@@ -151,6 +164,8 @@ func TestCompPos(t *testing.T) {
 	testCompPos(t, "ls ${abc:$(ls -l [*])}", CompTypeVar, false, 0, true) // we don't sub-parse inside of ${} (so this returns "var" right now)
 	testCompPos(t, `ls abc"$(ls $"echo $(ls ./[*]x) foo)" `, CompTypeArg, true, 1, true)
 	testCompPos(t, `ls "abc$d[*]"`, CompTypeVar, false, 0, true)
+	testCompPos(t, `ls "abc$d$'a[*]`, CompTypeArg, true, 1, true)
+	testCompPos(t, `ls $[*]'foo`, CompTypeInvalid, false, 0, false)
 }
 
 func testExpand(t *testing.T, str string, pos int, expStr string, expInfo *ExpandInfo) {

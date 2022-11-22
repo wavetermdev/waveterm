@@ -1,12 +1,13 @@
 package shparse
 
 const (
-	CompTypeCommand    = "command"
-	CompTypeArg        = "command-arg"
-	CompTypeInvalid    = "invalid"
-	CompTypeVar        = "var"
-	CompTypeAssignment = "assignment"
-	CompTypeBasic      = "basic"
+	CompTypeCommandMeta = "command-meta"
+	CompTypeCommand     = "command"
+	CompTypeArg         = "command-arg"
+	CompTypeInvalid     = "invalid"
+	CompTypeVar         = "var"
+	CompTypeAssignment  = "assignment"
+	CompTypeBasic       = "basic"
 )
 
 type CompletionPos struct {
@@ -22,7 +23,6 @@ type CompletionPos struct {
 	CmdWordPos     int
 	CompWord       *WordType // set to the word we are completing (nil if we are starting a new word)
 	CompWordOffset int       // offset into compword (only if CmdWord is not nil)
-
 }
 
 func compTypeFromPos(cmdWordPos int) string {
@@ -97,10 +97,10 @@ func (cmd *CmdType) findCompletionPos_simple(pos int, superOffset int) Completio
 	return rtn
 }
 
-func (cmd *CmdType) findCompletionWordAtPos_none(pos int, superOffset int) CompletionPos {
+func (cmd *CmdType) findCompletionPos_none(pos int, superOffset int) CompletionPos {
 	rtn := CompletionPos{RawPos: pos, SuperOffset: superOffset}
 	if cmd.Type != CmdTypeNone {
-		panic("findCompletionWordAtPos_none only works for CmdTypeNone")
+		panic("findCompletionPos_none only works for CmdTypeNone")
 	}
 	var foundWord *WordType
 	for _, word := range cmd.Words {
@@ -123,10 +123,16 @@ func (cmd *CmdType) findCompletionWordAtPos_none(pos int, superOffset int) Compl
 		rtn.CompType = CompTypeBasic
 		return rtn
 	}
+	foundWordOffset := pos - foundWord.Offset
 	rtn.CompWord = foundWord
-	rtn.CompWordOffset = pos - foundWord.Offset
+	rtn.CompWordOffset = foundWordOffset
 	if foundWord.uncompletable() {
 		// ok, we're inside of a word in CmdTypeNone.  if we're in an uncompletable word, return CompInvalid
+		rtn.CompType = CompTypeInvalid
+		return rtn
+	}
+	if foundWordOffset > 0 && foundWordOffset < foundWord.contentStartPos() {
+		// cursor is in a weird position, between characters of a multi-char prefix (e.g. "$[*]{hello}" or $[*]'hello').  cannot complete.
 		rtn.CompType = CompTypeInvalid
 		return rtn
 	}
@@ -135,13 +141,13 @@ func (cmd *CmdType) findCompletionWordAtPos_none(pos int, superOffset int) Compl
 	return rtn
 }
 
-func findCompletionWordAtPos(words []*WordType, pos int) *WordType {
-	// WordTypeSimpleVar is special, if cursor is at the end of SimpleVar it is returned
+func findCompletionWordAtPos(words []*WordType, pos int, allowEndMatch bool) *WordType {
+	// WordTypeSimpleVar is special (always allowEndMatch), if cursor is at the end of SimpleVar it is returned
 	for _, word := range words {
 		if pos > word.Offset && pos < word.Offset+len(word.Raw) {
 			return word
 		}
-		if word.Type == WordTypeSimpleVar && pos == word.Offset+len(word.Raw) {
+		if (allowEndMatch || word.Type == WordTypeSimpleVar) && pos == word.Offset+len(word.Raw) {
 			return word
 		}
 	}
@@ -159,7 +165,7 @@ func findCompletionPosInWord(word *WordType, pos int, superOffset int) *Completi
 		if pos > word.contentEndPos() {
 			return nil
 		}
-		subWord := findCompletionWordAtPos(word.Subs, pos-word.contentStartPos())
+		subWord := findCompletionWordAtPos(word.Subs, pos-word.contentStartPos(), false)
 		if subWord == nil {
 			return nil
 		}
@@ -218,7 +224,7 @@ func findCompletionPosCmds(cmds []*CmdType, pos int, superOffset int) Completion
 				rtn.CompType = CompTypeCommand
 				return rtn
 			}
-			return cmd.findCompletionWordAtPos_none(pos, superOffset)
+			return cmd.findCompletionPos_none(pos, superOffset)
 		}
 	}
 	// past the end
