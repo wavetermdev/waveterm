@@ -457,10 +457,11 @@ class ScreenWindow {
         return (this.sessionId == activeScreen.sessionId) && (this.screenId == activeScreen.screenId);
     }
 
-    colsCallback(cols : number) : void {
-        if (!this.isActive() || cols == 0) {
+    termSizeCallback(rows : number, cols : number) : void {
+        if (!this.isActive() || cols == 0 || rows == 0) {
             return;
         }
+        this.lastRows = rows;
         if (cols == this.lastCols) {
             return;
         }
@@ -469,16 +470,6 @@ class ScreenWindow {
             this.terms[cmdid].resizeCols(cols);
         }
         GlobalCommandRunner.resizeWindow(this.windowId, cols);
-    }
-
-    rowsCallback(rows : number) : void {
-        if (!this.isActive() || rows == 0) {
-            return;
-        }
-        if (rows == this.lastCols) {
-            return;
-        }
-        this.lastRows = rows;
     }
 
     getTermWrap(cmdId : string) : TermWrap {
@@ -1621,6 +1612,7 @@ class Model {
             windowid : null,
             remote : null,
             termopts : {},
+            winsize: null,
         };
         let session = this.getActiveSession();
         if (session != null) {

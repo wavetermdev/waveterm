@@ -2096,23 +2096,26 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
     windowViewRef : React.RefObject<any>;
 
     width : mobx.IObservableValue<number> = mobx.observable.box(0, {name: "sw-view-width"});
-    setWidth_debounced : (width : number) => void;
+    height : mobx.IObservableValue<number> = mobx.observable.box(0, {name: "sw-view-height"});
+    setSize_debounced : (width : number, height : number) => void;
 
     constructor(props : any) {
         super(props);
-        this.setWidth_debounced = debounce(1000, this.setWidth.bind(this));
+        this.setSize_debounced = debounce(1000, this.setSize.bind(this));
         this.windowViewRef = React.createRef();
     }
 
-    setWidth(width : number) : void {
+    setSize(width : number, height : number) : void {
         mobx.action(() => {
             this.width.set(width);
+            this.height.set(height);
             let {sw} = this.props;
             let cols = widthToCols(width);
-            if (sw == null || cols == 0) {
+            let rows = termRowsFromHeight(height);
+            if (sw == null || cols == 0 || rows == 0) {
                 return;
             }
-            sw.colsCallback(cols);
+            sw.termSizeCallback(rows, cols);
         })();
     }
 
@@ -2120,7 +2123,8 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         let wvElem = this.windowViewRef.current;
         if (wvElem != null) {
             let width = wvElem.offsetWidth;
-            this.setWidth(width);
+            let height = wvElem.offsetHeight;
+            this.setSize(width, height);
             this.rszObs = new ResizeObserver(this.handleResize.bind(this));
             this.rszObs.observe(wvElem);
         }
@@ -2138,7 +2142,8 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         }
         let entry = entries[0];
         let width = entry.target.offsetWidth;
-        this.setWidth_debounced(width);
+        let height = entry.target.offsetHeight;
+        this.setSize_debounced(width, height);
     }
 
     getWindow() : Window {
