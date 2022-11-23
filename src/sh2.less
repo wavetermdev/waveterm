@@ -56,6 +56,7 @@ html, body, #main {
             display: flex;
             flex-direction: column;
             min-width: 300px;
+            position: relative;
         }
 
         .screen-view {
@@ -495,7 +496,7 @@ html, body, #main {
             right: 0;
             background-color: @term-red;
             color: white;
-            z-index: 10;
+            z-index: 110;
             padding: 4px;
             .mono-font(10px);
         }
@@ -526,7 +527,7 @@ html, body, #main {
         height: calc(100% - 20px);
         top: 10px;
         left: 0;
-        z-index: 10;
+        z-index: 8;
 
         &.selected {
             display: block;
@@ -549,6 +550,7 @@ html, body, #main {
         width: 38px;
         background-color: #555;
         display: flex;
+        flex-shrink: 0;
         align-items: center;
         justify-content: center;
         font-weight: bold;
@@ -643,6 +645,7 @@ html, body, #main {
             color: #ddd;
             margin-left: 8px;
             margin-top: 4px;
+            white-space: nowrap;
             .mono-font(14px);
         }
         
@@ -747,15 +750,18 @@ body .xterm .xterm-viewport {
 
 .cmd-input {
     border-radius: 0;
-    border-top: 2px solid #ccc;
+    border-top: 4px solid #ccc;
     border-right: 1px solid #ccc;
     border-bottom: 1px solid #ccc;
     border-bottom-right-radius: 10px;
     max-height: max(300px, 40%);
     display: flex;
     flex-direction: column;
-    position: relative;
-    padding: 20px 20px 20px 20px;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    padding: 20px 25px 20px 20px;
+    z-index: 100;
 
     &.has-info {
         padding-top: 5px;
@@ -799,8 +805,9 @@ body .xterm .xterm-viewport {
     }
 
     .cmd-input-context {
-        color: #fff;
         .mono-font();
+        color: #fff;
+        white-space: nowrap;
     }
 
     .cmd-input-field {
@@ -860,7 +867,7 @@ body .xterm .xterm-viewport {
 
         .history-title {
             position: absolute;
-            z-index: 2;
+            z-index: 102;
             top: 5px;
             left: 20px;
             background-color: black;

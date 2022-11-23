@@ -11,7 +11,7 @@ import cn from "classnames";
 import {TermWrap} from "./term";
 import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts, RemoteEditType} from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
-import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, ScreenWindow, riToRPtr, widthToCols, termWidthFromCols, termHeightFromRows} from "./model";
+import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, ScreenWindow, riToRPtr, widthToCols, termWidthFromCols, termHeightFromRows, termRowsFromHeight} from "./model";
 import {isModKeyPress} from "./util";
 
 dayjs.extend(localizedFormat)
@@ -567,11 +567,11 @@ class TextAreaInput extends React.Component<{}, {}> {
             if (e.code == "Tab") {
                 e.preventDefault();
                 if (lastTab) {
-                    GlobalModel.submitCommand("compgen", null, [curLine], {"comppos": String(curLine.length), "compshow": "1", "nohist": "1"}, true);
+                    GlobalModel.submitCommand("_compgen", null, [curLine], {"comppos": String(curLine.length), "compshow": "1", "nohist": "1"}, true);
                     return;
                 }
                 else {
-                    GlobalModel.submitCommand("compgen", null, [curLine], {"comppos": String(curLine.length), "nohist": "1"}, true);
+                    GlobalModel.submitCommand("_compgen", null, [curLine], {"comppos": String(curLine.length), "nohist": "1"}, true);
                     return;
                 }
             }
@@ -2297,6 +2297,7 @@ class SessionView extends React.Component<{}, {}> {
             <div className="session-view" data-sessionid={session.sessionId}>
                 <ScreenView screen={activeScreen}/>
                 <ScreenTabs session={session}/>
+                <div style={{height: 110}}></div>
                 <CmdInput/>
             </div>
         );

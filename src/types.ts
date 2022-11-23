@@ -171,6 +171,7 @@ type UIContextType = {
     windowid : string,
     remote : RemotePtrType,
     termopts : UIContextTermOptsType,
+    winsize : TermWinSize,
 };
 
 type FeCmdPacketType = {

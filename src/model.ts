@@ -36,6 +36,14 @@ function termHeightFromRows(rows : number) : number {
     return Math.ceil(DefaultCellHeight*rows);
 }
 
+function termRowsFromHeight(height : number) : number {
+    let rows = Math.floor((height - 80)/DefaultCellHeight);
+    if (rows <= 0) {
+        rows = 1;
+    }
+    return rows;
+}
+
 function cmdStatusIsRunning(status : string) : boolean {
     return status == "running" || status == "detached";
 }
@@ -279,6 +287,7 @@ class ScreenWindow {
     name : OV<string>;
     layout : OV<LayoutType>;
     lastCols : number;
+    lastRows : number;
     selectedLine : OV<number>;
     focusType : OV<"input"|"cmd"|"cmd-fg">;
     anchorLine : number = null;
@@ -460,6 +469,16 @@ class ScreenWindow {
             this.terms[cmdid].resizeCols(cols);
         }
         GlobalCommandRunner.resizeWindow(this.windowId, cols);
+    }
+
+    rowsCallback(rows : number) : void {
+        if (!this.isActive() || rows == 0) {
+            return;
+        }
+        if (rows == this.lastCols) {
+            return;
+        }
+        this.lastRows = rows;
     }
 
     getTermWrap(cmdId : string) : TermWrap {
@@ -1617,6 +1636,7 @@ class Model {
                 let sw = screen.getActiveSW();
                 if (sw != null) {
                     rtn.termopts.cols = sw.lastCols;
+                    rtn.winsize = {rows: sw.lastRows, cols: sw.lastCols};
                 }
             }
         }
@@ -2316,6 +2336,6 @@ if ((window as any).GlobalModel == null) {
 GlobalModel = (window as any).GlobalModel;
 GlobalCommandRunner = (window as any).GlobalCommandRunner;
 
-export {Model, Session, Window, GlobalModel, GlobalCommandRunner, Cmd, Screen, ScreenWindow, riToRPtr, widthToCols, termWidthFromCols, termHeightFromRows};
+export {Model, Session, Window, GlobalModel, GlobalCommandRunner, Cmd, Screen, ScreenWindow, riToRPtr, widthToCols, termWidthFromCols, termHeightFromRows, termRowsFromHeight};
 
 
