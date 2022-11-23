@@ -84,6 +84,7 @@ type KeyModsType = {
 
 type ElectronApi = {
     getId : () => string,
+    getLocalServerStatus : () => boolean,
     restartLocalServer : () => boolean,
     onTCmd : (callback : (mods : KeyModsType) => void) => void,
     onICmd : (callback : (mods : KeyModsType) => void) => void,
@@ -127,7 +128,7 @@ class Cmd {
         this.sessionId = cmd.sessionid;
         this.cmdId = cmd.cmdid;
         this.remote = cmd.remote;
-        this.data = mobx.observable.box(cmd, {deep: false});
+        this.data = mobx.observable.box(cmd, {deep: false, name: "cmd-data"});
     }
 
     setCmd(cmd : CmdDataType) {
@@ -208,10 +209,10 @@ class Screen {
     constructor(sdata : ScreenDataType) {
         this.sessionId = sdata.sessionid;
         this.screenId = sdata.screenid;
-        this.name = mobx.observable.box(sdata.name);
-        this.screenIdx = mobx.observable.box(sdata.screenidx);
-        this.opts = mobx.observable.box(sdata.screenopts);
-        this.activeWindowId = mobx.observable.box(ces(sdata.activewindowid));
+        this.name = mobx.observable.box(sdata.name, {name: "screen-name"});
+        this.screenIdx = mobx.observable.box(sdata.screenidx, {name: "screen-screenidx"});
+        this.opts = mobx.observable.box(sdata.screenopts, {name: "screen-opts"});
+        this.activeWindowId = mobx.observable.box(ces(sdata.activewindowid), {name: "screen-activewindowid"});
         let swArr : ScreenWindow[] = [];
         let wins = sdata.windows || [];
         for (let i=0; i<wins.length; i++) {
@@ -299,8 +300,7 @@ class ScreenWindow {
         this.selectedLine = mobx.observable.box(swdata.selectedline == 0 ? null : swdata.selectedline, {name: "selectedLine"});
         this.setAnchor_debounced = debounce(1000, this.setAnchor.bind(this));
         if (swdata.selectedline != 0) {
-            this.anchorLine = swdata.selectedline;
-            this.anchorOffset = 0;
+            this.setAnchorFields(swdata.selectedline, 0, "init");
         }
         this.termLineNumFocus = mobx.observable.box(0, {name: "termLineNumFocus"});
     }
@@ -310,6 +310,12 @@ class ScreenWindow {
             return "0";
         }
         return sprintf("%d:%d", this.anchorLine, this.anchorOffset);
+    }
+
+    setAnchorFields(anchorLine : number, anchorOffset : number, reason : string) {
+        this.anchorLine = anchorLine;
+        this.anchorOffset = anchorOffset;
+        // console.log("set-anchor-fields", anchorLine, anchorOffset, reason);
     }
 
     updateSelf(swdata : ScreenWindowType) {
@@ -431,7 +437,7 @@ class ScreenWindow {
             return;
         }
         let data = base64ToArray(ptyMsg.ptydata64);
-        term.updatePtyData(ptyMsg.ptypos, data);
+        term.updatePtyData(ptyMsg.ptypos, data, "from-sw");
     }
 
     isActive() : boolean {
@@ -561,7 +567,7 @@ class ScreenWindow {
             if (usedRows != null) {
                 return usedRows;
             }
-            return 2;
+            return (cmd.isRunning() ? 1 : 0);
         }
         return termWrap.usedRows.get();
     }
@@ -1535,7 +1541,7 @@ class Model {
         this.ws.reconnect();
         this.inputModel = new InputModel();
         let isLocalServerRunning = getApi().getLocalServerStatus();
-        this.localServerRunning = mobx.observable.box(isLocalServerRunning);
+        this.localServerRunning = mobx.observable.box(isLocalServerRunning, {name: "model-local-server-running"});
         getApi().onTCmd(this.onTCmd.bind(this));
         getApi().onICmd(this.onICmd.bind(this));
         getApi().onLCmd(this.onLCmd.bind(this));
@@ -1672,7 +1678,8 @@ class Model {
             let term = sw.getTermWrap(cmdId);
             if (term != null) {
                 term.setIsRunning(cmdStatusIsRunning(newStatus));
-                setTimeout(() => term.updateUsedRows(true), 500);
+                term.updateUsedRows(true);
+                // setTimeout(() => term.updateUsedRows(true), 500);
             }
         }
     }

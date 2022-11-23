@@ -208,9 +208,9 @@ class Prompt extends React.Component<{rptr : RemotePtrType, rstate : RemoteState
 
 @mobxReact.observer
 class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType}, {}> {
-    termLoaded : mobx.IObservableValue<boolean> = mobx.observable.box(false);
+    termLoaded : mobx.IObservableValue<boolean> = mobx.observable.box(false, {name: "linecmd-term-loaded"});
     lineRef : React.RefObject<any> = React.createRef();
-    rtnStateDiff : mobx.IObservableValue<string> = mobx.observable.box(null);
+    rtnStateDiff : mobx.IObservableValue<string> = mobx.observable.box(null, {name: "linecmd-rtn-state-diff"});
     rtnStateDiffFetched : boolean = false;
     
     constructor(props) {
@@ -417,8 +417,19 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         let isFocused = isPhysicalFocused && (swFocusType == "cmd" || swFocusType == "cmd-fg");
         let isFgFocused = isPhysicalFocused && swFocusType == "cmd-fg";
         let isStatic = staticRender;
+        let rsdiff = this.rtnStateDiff.get();
+        // console.log("render", "#" + line.linenum, termHeight, usedRows, cmd.getStatus(), (this.rtnStateDiff.get() != null), (!cmd.isRunning() ? "cmd-done" : "running"));
+        let mainDivCn = cn(
+            "line",
+            "line-cmd",
+            {"focus": isFocused},
+            {"cmd-done": !cmd.isRunning()},
+            {"has-rtnstate": cmd.getRtnState()},
+        );
         return (
-            <div onClick={this.handleClick} className={cn("line", "line-cmd", {"focus": isFocused}, {"has-rtnstate": cmd.getRtnState()})} id={"line-" + getLineId(line)} ref={this.lineRef} style={{position: "relative"}} data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} data-cmdid={line.cmdid}>
+            <div className={mainDivCn} id={"line-" + getLineId(line)}
+                 ref={this.lineRef} onClick={this.handleClick}
+                 data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} data-cmdid={line.cmdid}>
                 <div className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused}, {"fg-focus": isFgFocused})}/>
                 <div className="line-header">
                     <LineAvatar line={line} cmd={cmd}/>
@@ -443,13 +454,13 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                     <div className="terminal-connectelem" id={"term-" + getLineId(line)} data-cmdid={line.cmdid} style={{height: termHeight}}></div>
                     <If condition={!termLoaded}><div style={{position: "absolute", top: 60, left: 30}}>(loading)</div></If>
                 </div>
-                <If condition={cmd.getRtnState() && cmd.getStatus() == "done"}>
-                    <div className="cmd-rtnstate">
-                        <If condition={this.rtnStateDiff.get() == ""}>
+                <If condition={cmd.getRtnState()}>
+                    <div className="cmd-rtnstate" style={{visibility: ((cmd.getStatus() == "done") ? "visible" : "hidden")}}>
+                        <If condition={rsdiff == null || rsdiff == ""}>
                             <div className="cmd-rtnstate-label">state unchanged</div>
                             <div className="cmd-rtnstate-sep"></div>
                         </If>
-                        <If condition={this.rtnStateDiff.get() != null && this.rtnStateDiff.get() != ""}>
+                        <If condition={rsdiff != null && rsdiff != ""}>
                             <div className="cmd-rtnstate-label">new state</div>
                             <div className="cmd-rtnstate-sep"></div>
                             <div className="cmd-rtnstate-diff">{this.rtnStateDiff.get()}</div>
@@ -1778,7 +1789,7 @@ class CmdInput extends React.Component<{}, {}> {
 class LinesView extends React.Component<{sw : ScreenWindow, width : number, lines : LineType[]}, {}> {
     rszObs : any;
     linesRef : React.RefObject<any>;
-    staticRender : OV<boolean> = mobx.observable.box(true);
+    staticRender : OV<boolean> = mobx.observable.box(true, {name: "static-render"});
     lastOffsetHeight : number = 0;
     lastOffsetWidth : number = 0;
     ignoreNextScroll : boolean = false;
@@ -1812,14 +1823,12 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
         let {sw} = this.props;
         let linesElem = this.linesRef.current;
         if (linesElem == null) {
-            sw.anchorLine = null;
-            sw.anchorOffset = 0;
+            sw.setAnchorFields(null, 0, "no-lines");
             return;
         }
         let lineElemArr = linesElem.querySelectorAll(".line");
         if (lineElemArr == null) {
-            sw.anchorLine = null;
-            sw.anchorOffset = 0;
+            sw.setAnchorFields(null, 0, "no-line");
             return;
         }
         let scrollTop = linesElem.scrollTop;
@@ -1836,9 +1845,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
         if (anchorElem == null) {
             anchorElem = lineElemArr[0];
         }
-        sw.anchorLine = parseInt(anchorElem.dataset.linenum);
-        sw.anchorOffset = containerBottom - (anchorElem.offsetTop + anchorElem.offsetHeight);
-        // console.log("anchor", sw.anchorLine, sw.anchorOffset);
+        sw.setAnchorFields(parseInt(anchorElem.dataset.linenum), containerBottom - (anchorElem.offsetTop + anchorElem.offsetHeight), "computeAnchorLine");
     }
 
     computeVisibleMap() : void {
@@ -1865,7 +1872,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
             for (let [k, v] of newMap) {
                 let oldVal = this.visibleMap.get(k);
                 if (oldVal == null) {
-                    oldVal = mobx.observable.box(v);
+                    oldVal = mobx.observable.box(v, {name: "lines-vis-map"});
                     this.visibleMap.set(k, oldVal);
                 }
                 if (oldVal.get() != v) {
@@ -1988,8 +1995,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
         if (viewInfo == null) {
             return;
         }
-        sw.anchorLine = newLine;
-        sw.anchorOffset = viewInfo.anchorOffset;
+        sw.setAnchorFields(newLine, viewInfo.anchorOffset, "updateSelectedLine");
         let isFirst = (newLine == lines[0].linenum);
         let isLast = (newLine == lines[lines.length-1].linenum);
         if (viewInfo.botOffset > 0) {
@@ -2010,7 +2016,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
             let key = String(lineNum);
             let visObj = this.visibleMap.get(key);
             if (visObj == null) {
-                visObj = mobx.observable.box(true);
+                visObj = mobx.observable.box(true, {name: "lines-vis-map"});
                 this.visibleMap.set(key, visObj);
             }
             else {
@@ -2069,7 +2075,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
             let key = String(lines[i].linenum);
             let visObs = this.visibleMap.get(key);
             if (visObs == null) {
-                this.visibleMap.set(key, mobx.observable.box(false));
+                this.visibleMap.set(key, mobx.observable.box(false, {name: "lines-vis-map"}));
             }
         }
         return (
@@ -2089,7 +2095,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
     rszObs : any;
     windowViewRef : React.RefObject<any>;
 
-    width : mobx.IObservableValue<number> = mobx.observable.box(0);
+    width : mobx.IObservableValue<number> = mobx.observable.box(0, {name: "sw-view-width"});
     setWidth_debounced : (width : number) => void;
 
     constructor(props : any) {
@@ -2590,7 +2596,7 @@ class Main extends React.Component<{}, {}> {
             <div id="main">
                 <h1 className="title scripthaus-logo-small">
                     <div className="title-cursor">&#9608;</div>
-                    ScriptHaus
+                    prompt&gt;
                 </h1>
                 <div className="main-content">
                     <MainSideBar/>

@@ -45,7 +45,7 @@ class TermWrap {
     ptyPos : number = 0;
     reloading : boolean = false;
     dataUpdates : DataUpdate[] = [];
-    loadError : mobx.IObservableValue<boolean> = mobx.observable.box(false);
+    loadError : mobx.IObservableValue<boolean> = mobx.observable.box(false, {name: "term-loaderror"});
     winSize : WindowSize;
     numParseErrors : number = 0;
     termSize : TermWinSize;
@@ -62,11 +62,11 @@ class TermWrap {
         this.isRunning = opts.isRunning;
         if (this.flexRows) {
             this.atRowMax = false;
-            this.usedRows = mobx.observable.box(opts.usedRows ?? (opts.isRunning ? 2 : 0));
+            this.usedRows = mobx.observable.box(opts.usedRows ?? (opts.isRunning ? 1 : 0), {name: "term-usedrows"});
         }
         else {
             this.atRowMax = true;
-            this.usedRows = mobx.observable.box(opts.termOpts.rows);
+            this.usedRows = mobx.observable.box(opts.termOpts.rows, {name: "term-usedrows"});
         }
         if (opts.winSize == null) {
             this.termSize = {rows: opts.termOpts.rows, cols: opts.termOpts.cols};
@@ -153,7 +153,7 @@ class TermWrap {
         if (termNumLines > term.rows) {
             return term.rows;
         }
-        let usedRows = (this.isRunning ? 2 : 0);
+        let usedRows = (this.isRunning ? 1 : 0);
         if (this.isRunning && termYPos >= usedRows) {
             usedRows = termYPos + 1;
         }
@@ -259,9 +259,9 @@ class TermWrap {
             setTimeout(() => {
                 this.reloading = false;
                 this.ptyPos = ptyOffset;
-                this.updatePtyData(ptyOffset, new Uint8Array(buf));
+                this.updatePtyData(ptyOffset, new Uint8Array(buf), "reload-main");
                 for (let i=0; i<this.dataUpdates.length; i++) {
-                    this.updatePtyData(this.dataUpdates[i].pos, this.dataUpdates[i].data);
+                    this.updatePtyData(this.dataUpdates[i].pos, this.dataUpdates[i].data, "reload-update-" + i);
                 }
                 this.dataUpdates = [];
             }, delayMs);
@@ -270,7 +270,8 @@ class TermWrap {
         });
     }
 
-    updatePtyData(pos : number, data : Uint8Array) {
+    updatePtyData(pos : number, data : Uint8Array, reason? : string) {
+        // console.log("update-pty-data", pos, data.length, reason);
         if (this.terminal == null) {
             return;
         }

@@ -414,7 +414,7 @@ async function sleep(ms) {
     catch (e) {
         console.log(e.toString());
     }
-    await sleep(500);  // TODO remove this sleep, poll getClientData() in createMainWindow
+    await sleep(1000);  // TODO remove this sleep, poll getClientData() in createMainWindow
     await app.whenReady();
     await createMainWindowWrap();
     app.on('activate', () => {
