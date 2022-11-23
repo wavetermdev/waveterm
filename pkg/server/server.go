@@ -89,7 +89,7 @@ func strArrToMap(strs []string) map[string]bool {
 	return rtn
 }
 
-func (m *MServer) runFileCompGen(compPk *packet.CompGenPacketType) {
+func (m *MServer) runMixedCompGen(compPk *packet.CompGenPacketType) {
 	// get directories and files, unique them and put slashes on directories for completion
 	reqId := compPk.GetReqId()
 	compDirs, hasMoreDirs, err := runSingleCompGen(compPk.Cwd, "directory", compPk.Prefix)
@@ -97,7 +97,7 @@ func (m *MServer) runFileCompGen(compPk *packet.CompGenPacketType) {
 		m.Sender.SendErrorResponse(reqId, err)
 		return
 	}
-	compFiles, hasMoreFiles, err := runSingleCompGen(compPk.Cwd, "file", compPk.Prefix)
+	compFiles, hasMoreFiles, err := runSingleCompGen(compPk.Cwd, compPk.CompType, compPk.Prefix)
 	if err != nil {
 		m.Sender.SendErrorResponse(reqId, err)
 		return
@@ -121,8 +121,8 @@ func (m *MServer) runFileCompGen(compPk *packet.CompGenPacketType) {
 
 func (m *MServer) runCompGen(compPk *packet.CompGenPacketType) {
 	reqId := compPk.GetReqId()
-	if compPk.CompType == "file" {
-		m.runFileCompGen(compPk)
+	if compPk.CompType == "file" || compPk.CompType == "command" {
+		m.runMixedCompGen(compPk)
 		return
 	}
 	comps, hasMore, err := runSingleCompGen(compPk.Cwd, compPk.CompType, compPk.Prefix)
