@@ -135,7 +135,7 @@ func testCompPos(t *testing.T, cmdStr string, compType string, hasCommand bool, 
 	cmdSP := utilfn.ParseToSP(cmdStr)
 	words := Tokenize(cmdSP.Str)
 	cmds := ParseCommands(words)
-	cpos := FindCompletionPos(cmds, cmdSP.Pos, 0)
+	cpos := FindCompletionPos(cmds, cmdSP.Pos)
 	fmt.Printf("testCompPos [%d] %q => [%s] %v\n", cmdSP.Pos, cmdStr, cpos.CompType, cpos)
 	if cpos.CompType != compType {
 		t.Errorf("testCompPos %q => invalid comp-type %q, expected %q", cmdStr, cpos.CompType, compType)

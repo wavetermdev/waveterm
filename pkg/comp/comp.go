@@ -525,7 +525,7 @@ func fixupVarPrefix(varPrefix string) string {
 func DoCompGen(ctx context.Context, cmdStr utilfn.StrWithPos, compCtx CompContext) (*CompReturn, *utilfn.StrWithPos, error) {
 	words := shparse.Tokenize(cmdStr.Str)
 	cmds := shparse.ParseCommands(words)
-	compPos := shparse.FindCompletionPos(cmds, cmdStr.Pos, 0)
+	compPos := shparse.FindCompletionPos(cmds, cmdStr.Pos)
 	fmt.Printf("comppos: %v\n", compPos)
 	if compPos.CompType == shparse.CompTypeInvalid {
 		return nil, nil, nil
