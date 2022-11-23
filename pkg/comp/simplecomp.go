@@ -60,7 +60,7 @@ func compsToCompReturn(comps []string, hasMore bool) *CompReturn {
 
 func doCompGen(ctx context.Context, prefix string, compType string, compCtx CompContext) (*CompReturn, error) {
 	if !packet.IsValidCompGenType(compType) {
-		return nil, fmt.Errorf("/compgen invalid type '%s'", compType)
+		return nil, fmt.Errorf("/_compgen invalid type '%s'", compType)
 	}
 	msh := remote.GetRemoteById(compCtx.RemotePtr.RemoteId)
 	if msh == nil {

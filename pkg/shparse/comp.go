@@ -187,7 +187,7 @@ func findCompletionPosInWord(word *WordType, posInWord int, superOffset int) *Co
 			return nil
 		}
 		subCmds := ParseCommands(word.Subs)
-		newPos := FindCompletionPos(subCmds, posInWord-word.contentStartPos(), superOffset+(word.Offset+word.contentStartPos()))
+		newPos := findCompletionPosInternal(subCmds, posInWord-word.contentStartPos(), superOffset+(word.Offset+word.contentStartPos()))
 		return &newPos
 	}
 	if word.Type == WordTypeSimpleVar || word.Type == WordTypeVarBrace {
@@ -252,17 +252,24 @@ func findCompletionPosCmds(cmds []*CmdType, pos int, superOffset int) Completion
 	return rtn
 }
 
-func FindCompletionPos(cmds []*CmdType, pos int, superOffset int) CompletionPos {
+func findCompletionPosInternal(cmds []*CmdType, pos int, superOffset int) CompletionPos {
 	cpos := findCompletionPosCmds(cmds, pos, superOffset)
 	if cpos.CompWord == nil {
 		return cpos
 	}
 	subPos := findCompletionPosInWord(cpos.CompWord, cpos.CompWordOffset, superOffset)
-	if subPos == nil {
-		return cpos
-	} else {
+	if subPos != nil {
 		return *subPos
 	}
+	return cpos
+}
+
+func FindCompletionPos(cmds []*CmdType, pos int) CompletionPos {
+	cpos := findCompletionPosInternal(cmds, pos, 0)
+	if cpos.CompType == CompTypeCommand && cpos.SuperOffset == 0 && cpos.CompWord != nil && cpos.CompWord.Offset == 0 && strings.HasPrefix(string(cpos.CompWord.Raw), "/") {
+		cpos.CompType = CompTypeCommandMeta
+	}
+	return cpos
 }
 
 func (cpos CompletionPos) Extend(origStr utilfn.StrWithPos, extensionStr string, extensionComplete bool) utilfn.StrWithPos {

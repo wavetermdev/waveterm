@@ -49,7 +49,7 @@ var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cy
 var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}
 
 var WindowCmds = []string{"run", "comment", "cd", "cr", "clear", "sw", "alias", "unalias", "function", "reset"}
-var NoHistCmds = []string{"compgen", "line", "history"}
+var NoHistCmds = []string{"_compgen", "line", "history"}
 var GlobalCmds = []string{"session", "screen", "remote", "killserver"}
 
 var hostNameRe = regexp.MustCompile("^[a-z][a-z0-9.-]*$")
@@ -83,7 +83,7 @@ func init() {
 	registerCmdFn("comment", CommentCommand)
 	// registerCmdFn("cd", CdCommand)
 	registerCmdFn("cr", CrCommand)
-	registerCmdFn("compgen", CompGenCommand)
+	registerCmdFn("_compgen", CompGenCommand)
 	registerCmdFn("clear", ClearCommand)
 	registerCmdFn("reset", ResetCommand)
 
@@ -1077,20 +1077,23 @@ func makeInfoFromComps(compType string, comps []string, hasMore bool) sstore.Upd
 	return update
 }
 
-func simpleCompMeta(ctx context.Context, prefix string, compCtx comp.CompContext, args []interface{}) (*comp.CompReturn, error) {
+func simpleCompCommandMeta(ctx context.Context, prefix string, compCtx comp.CompContext, args []interface{}) (*comp.CompReturn, error) {
 	if strings.HasPrefix(prefix, "/") {
 		compsCmd, _ := comp.DoSimpleComp(ctx, comp.CGTypeCommand, prefix, compCtx, nil)
-		compsMeta, _ := simpleCompCommandMeta(ctx, prefix, compCtx, nil)
+		compsMeta, _ := simpleCompMeta(ctx, prefix, compCtx, nil)
 		return comp.CombineCompReturn(comp.CGTypeCommandMeta, compsCmd, compsMeta), nil
 	} else {
 		return comp.DoSimpleComp(ctx, comp.CGTypeCommand, prefix, compCtx, nil)
 	}
 }
 
-func simpleCompCommandMeta(ctx context.Context, prefix string, compCtx comp.CompContext, args []interface{}) (*comp.CompReturn, error) {
+func simpleCompMeta(ctx context.Context, prefix string, compCtx comp.CompContext, args []interface{}) (*comp.CompReturn, error) {
 	rtn := comp.CompReturn{}
 	validCommands := getValidCommands()
 	for _, cmd := range validCommands {
+		if strings.HasPrefix(cmd, "/_") && !strings.HasPrefix(prefix, "/_") {
+			continue
+		}
 		if strings.HasPrefix(cmd, prefix) {
 			rtn.Entries = append(rtn.Entries, comp.CompEntry{Word: cmd, IsMetaCmd: true})
 		}
@@ -1126,11 +1129,11 @@ func doCompGen(ctx context.Context, pk *scpacket.FeCommandPacketType, prefix str
 		return doMetaCompGen(ctx, pk, prefix, forDisplay)
 	}
 	if !packet.IsValidCompGenType(compType) {
-		return nil, false, fmt.Errorf("/compgen invalid type '%s'", compType)
+		return nil, false, fmt.Errorf("/_compgen invalid type '%s'", compType)
 	}
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window|R_RemoteConnected)
 	if err != nil {
-		return nil, false, fmt.Errorf("compgen error: %w", err)
+		return nil, false, fmt.Errorf("/_compgen error: %w", err)
 	}
 	cgPacket := packet.MakeCompGenPacket()
 	cgPacket.ReqId = uuid.New().String()
@@ -1154,14 +1157,14 @@ func doCompGen(ctx context.Context, pk *scpacket.FeCommandPacketType, prefix str
 func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, 0) // best-effort
 	if err != nil {
-		return nil, fmt.Errorf("/compgen error: %w", err)
+		return nil, fmt.Errorf("/_compgen error: %w", err)
 	}
 	cmdLine := firstArg(pk)
 	pos := len(cmdLine)
 	if pk.Kwargs["comppos"] != "" {
 		posArg, err := strconv.Atoi(pk.Kwargs["comppos"])
 		if err != nil {
-			return nil, fmt.Errorf("/compgen invalid comppos '%s': %w", pk.Kwargs["comppos"], err)
+			return nil, fmt.Errorf("/_compgen invalid comppos '%s': %w", pk.Kwargs["comppos"], err)
 		}
 		pos = posArg
 	}

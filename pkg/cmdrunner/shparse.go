@@ -14,7 +14,7 @@ import (
 	"mvdan.cc/sh/v3/syntax"
 )
 
-var ValidMetaCmdRe = regexp.MustCompile("^/([a-z][a-z0-9_-]*)(?::([a-z][a-z0-9_-]*))?$")
+var ValidMetaCmdRe = regexp.MustCompile("^/([a-z_][a-z0-9_-]*)(?::([a-z][a-z0-9_-]*))?$")
 
 type BareMetaCmdDecl struct {
 	CmdStr  string
