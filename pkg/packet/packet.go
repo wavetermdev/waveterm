@@ -683,7 +683,7 @@ func ParseJsonPacket(jsonBuf []byte) (PacketType, error) {
 	}
 	err = json.Unmarshal(jsonBuf, pk)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshaling %q packet: %v", bareCmd.Type, err)
 	}
 	return pk, nil
 }
