@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/alessio/shellescape"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
-	"github.com/scripthaus-dev/mshell/pkg/simpleexpand"
 	"mvdan.cc/sh/v3/expand"
 	"mvdan.cc/sh/v3/syntax"
 )
@@ -129,8 +129,10 @@ var NoStoreVarNames = map[string]bool{
 }
 
 type DeclareDeclType struct {
-	Args  string
-	Name  string
+	Args string
+	Name string
+
+	// this holds the raw quoted value suitable for bash. this is *not* the real expanded variable value
 	Value string
 }
 
@@ -165,7 +167,7 @@ func (d *DeclareDeclType) DeclareStmt() string {
 	} else {
 		argsStr = "-" + d.Args
 	}
-	return fmt.Sprintf("declare %s %s=%s", argsStr, d.Name, shellescape.Quote(d.Value))
+	return fmt.Sprintf("declare %s %s=%s", argsStr, d.Name, d.Value)
 }
 
 // envline should be valid
@@ -312,13 +314,17 @@ func parseDeclareStmt(stmt *syntax.Stmt, src string) (*DeclareDeclType, error) {
 		return nil, fmt.Errorf("invalid decl format")
 	}
 	if declAssign.Value != nil {
-		rtn.Value, _ = simpleexpand.SimpleExpandWord(simpleexpand.SimpleExpandContext{}, declAssign.Value, src)
+		rtn.Value = string(src[declAssign.Value.Pos().Offset():declAssign.Value.End().Offset()])
 	} else if declAssign.Array != nil {
 		rtn.Value = string(src[declAssign.Array.Pos().Offset():declAssign.Array.End().Offset()])
 	} else {
 		return nil, fmt.Errorf("invalid decl, not plain value or array")
 	}
-	if err := rtn.Validate(); err != nil {
+	err := rtn.normalize()
+	if err != nil {
+		return nil, err
+	}
+	if err = rtn.Validate(); err != nil {
 		return nil, err
 	}
 	return rtn, nil
@@ -379,6 +385,42 @@ func ParseShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
 	return rtn, nil
 }
 
+func (d *DeclareDeclType) normalize() error {
+	if d.DataType() == DeclTypeAssocArray {
+		return d.normalizeAssocArrayDecl()
+	}
+	return nil
+}
+
+// normalizes order of assoc array keys so value is stable
+func (d *DeclareDeclType) normalizeAssocArrayDecl() error {
+	if d.DataType() != DeclTypeAssocArray {
+		return fmt.Errorf("invalid decltype passed to assocArrayDeclToStr: %s", d.DataType())
+	}
+	varMap, err := assocArrayVarToMap(d)
+	if err != nil {
+		return err
+	}
+	keys := make([]string, 0, len(varMap))
+	for key, _ := range varMap {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	var buf bytes.Buffer
+	buf.WriteByte('(')
+	for _, key := range keys {
+		buf.WriteByte('[')
+		buf.WriteString(key)
+		buf.WriteByte(']')
+		buf.WriteByte('=')
+		buf.WriteString(varMap[key])
+		buf.WriteByte(' ')
+	}
+	buf.WriteByte(')')
+	d.Value = buf.String()
+	return nil
+}
+
 func assocArrayVarToMap(d *DeclareDeclType) (map[string]string, error) {
 	if d.DataType() != DeclTypeAssocArray {
 		return nil, fmt.Errorf("decl is not an assoc-array")
@@ -431,21 +473,15 @@ func strMapsEqual(m1 map[string]string, m2 map[string]string) bool {
 	return true
 }
 
-func DeclsEqual(d1 *DeclareDeclType, d2 *DeclareDeclType) bool {
+func DeclsEqual(compareName bool, d1 *DeclareDeclType, d2 *DeclareDeclType) bool {
 	if d1.IsExport() != d2.IsExport() {
 		return false
 	}
 	if d1.DataType() != d2.DataType() {
 		return false
 	}
-	// comparing value will work for all data types *except* for associative arrays (bash does not output them in a consistent order)
-	if d1.DataType() == DeclTypeAssocArray {
-		m1, err1 := assocArrayVarToMap(d1)
-		m2, err2 := assocArrayVarToMap(d2)
-		if err1 != nil || err2 != nil {
-			return d1.Value == d2.Value
-		}
-		return strMapsEqual(m1, m2)
+	if compareName && d1.Name != d2.Name {
+		return false
 	}
-	return d1.Value == d2.Value
+	return d1.Value == d2.Value // this works even for assoc arrays because we normalize them when parsing
 }
