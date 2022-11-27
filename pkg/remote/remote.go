@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"path"
@@ -1401,8 +1402,36 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 			}
 		}
 	}
+	if donePk.FinalStateDiff != nil {
+		fmt.Printf("** final state diff! %v\n", donePk.FinalStateDiff)
+	}
 	sstore.MainBus.SendUpdate(donePk.CK.GetSessionId(), update)
 	return
+}
+
+func (msh *MShellProc) handleCmdFinalPacket(finalPk *packet.CmdFinalPacketType) {
+	defer msh.RemoveRunningCmd(finalPk.CK)
+	rtnCmd, err := sstore.GetCmdById(context.Background(), finalPk.CK.GetSessionId(), finalPk.CK.GetCmdId())
+	if err != nil {
+		log.Printf("error calling GetCmdById in handleCmdFinalPacket: %v\n", err)
+		return
+	}
+	if rtnCmd == nil || rtnCmd.DonePk != nil {
+		return
+	}
+	log.Printf("finalpk %s (hangup): %s\n", finalPk.CK, finalPk.Error)
+	sstore.HangupCmd(context.Background(), finalPk.CK)
+	rtnCmd, err = sstore.GetCmdById(context.Background(), finalPk.CK.GetSessionId(), finalPk.CK.GetCmdId())
+	if err != nil {
+		log.Printf("error getting cmd(2) in handleCmdFinalPacket: %v\n", err)
+		return
+	}
+	if rtnCmd == nil {
+		log.Printf("error getting cmd(2) in handleCmdFinalPacket (not found)\n")
+		return
+	}
+	update := &sstore.ModelUpdate{Cmd: rtnCmd}
+	sstore.MainBus.SendUpdate(finalPk.CK.GetSessionId(), update)
 }
 
 // TODO notify FE about cmd errors
@@ -1454,6 +1483,12 @@ func (msh *MShellProc) makeHandleCmdDonePacketClosure(donePk *packet.CmdDonePack
 	}
 }
 
+func (msh *MShellProc) makeHandleCmdFinalPacketClosure(finalPk *packet.CmdFinalPacketType) func() {
+	return func() {
+		msh.handleCmdFinalPacket(finalPk)
+	}
+}
+
 func (msh *MShellProc) ProcessPackets() {
 	defer msh.WithLock(func() {
 		if msh.Status == StatusConnected {
@@ -1486,6 +1521,11 @@ func (msh *MShellProc) ProcessPackets() {
 		if pk.GetType() == packet.CmdDonePacketStr {
 			donePk := pk.(*packet.CmdDonePacketType)
 			runCmdUpdateFn(donePk.CK, msh.makeHandleCmdDonePacketClosure(donePk))
+			continue
+		}
+		if pk.GetType() == packet.CmdFinalPacketStr {
+			finalPk := pk.(*packet.CmdFinalPacketType)
+			runCmdUpdateFn(finalPk.CK, msh.makeHandleCmdFinalPacketClosure(finalPk))
 			continue
 		}
 		if pk.GetType() == packet.CmdErrorPacketStr {

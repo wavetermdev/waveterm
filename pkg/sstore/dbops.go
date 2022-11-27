@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 )
@@ -681,6 +682,18 @@ func GetCmdById(ctx context.Context, sessionId string, cmdId string) (*CmdType, 
 	return cmd, nil
 }
 
+func HasDonePk(ctx context.Context, ck base.CommandKey) (bool, error) {
+	var found bool
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		found = tx.Exists(`SELECT sessionid FROM cmd WHERE sessionid = ? AND cmdid = ? AND donepk is NOT NULL`, ck.GetSessionId(), ck.GetCmdId())
+		return nil
+	})
+	if txErr != nil {
+		return false, txErr
+	}
+	return found, nil
+}
+
 func UpdateCmdDonePk(ctx context.Context, donePk *packet.CmdDonePacketType) (*ModelUpdate, error) {
 	if donePk == nil || donePk.CK.IsEmpty() {
 		return nil, fmt.Errorf("invalid cmddone packet (no ck)")
@@ -728,6 +741,14 @@ func HangupRunningCmdsByRemoteId(ctx context.Context, remoteId string) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		query := `UPDATE cmd SET status = ? WHERE status = ? AND remoteid = ?`
 		tx.ExecWrap(query, CmdStatusHangup, CmdStatusRunning, remoteId)
+		return nil
+	})
+}
+
+func HangupCmd(ctx context.Context, ck base.CommandKey) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		query := `UPDATE cmd SET status = ? WHERE sessionid = ? AND cmdid = ?`
+		tx.ExecWrap(query, CmdStatusHangup, ck.GetSessionId(), ck.GetCmdId())
 		return nil
 	})
 }
