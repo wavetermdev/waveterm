@@ -46,7 +46,7 @@ func MakeClientProc(ctx context.Context, ecmd *exec.Cmd) (*ClientProc, *packet.I
 	if err != nil {
 		return nil, nil, fmt.Errorf("running local client: %w", err)
 	}
-	sender := packet.MakePacketSender(inputWriter)
+	sender := packet.MakePacketSender(inputWriter, nil)
 	stdoutPacketParser := packet.MakePacketParser(stdoutReader)
 	stderrPacketParser := packet.MakePacketParser(stderrReader)
 	packetParser := packet.CombinePacketParsers(stdoutPacketParser, stderrPacketParser)
@@ -108,9 +108,12 @@ func (cproc *ClientProc) Close() {
 	}
 }
 
-func (cproc *ClientProc) ProxySingleOutput(ck base.CommandKey, sender *packet.PacketSender) {
+func (cproc *ClientProc) ProxySingleOutput(ck base.CommandKey, sender *packet.PacketSender, packetCallback func(packet.PacketType)) {
 	sentDonePk := false
 	for pk := range cproc.Output.MainCh {
+		if packetCallback != nil {
+			packetCallback(pk)
+		}
 		if pk.GetType() == packet.CmdDonePacketStr {
 			sentDonePk = true
 		}

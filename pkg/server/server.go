@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/alessio/shellescape"
 	"github.com/scripthaus-dev/mshell/pkg/base"
@@ -23,11 +24,13 @@ import (
 
 // TODO create unblockable packet-sender (backed by an array) for clientproc
 type MServer struct {
-	Lock      *sync.Mutex
-	MainInput *packet.PacketParser
-	Sender    *packet.PacketSender
-	ClientMap map[base.CommandKey]*shexec.ClientProc
-	Debug     bool
+	Lock         *sync.Mutex
+	MainInput    *packet.PacketParser
+	Sender       *packet.PacketSender
+	ClientMap    map[base.CommandKey]*shexec.ClientProc
+	Debug        bool
+	StateMap     map[string]*packet.ShellState // sha1->state
+	CurrentState string                        // sha1
 }
 
 func (m *MServer) Close() {
@@ -38,7 +41,7 @@ func (m *MServer) Close() {
 func (m *MServer) ProcessCommandPacket(pk packet.CommandPacketType) {
 	ck := pk.GetCK()
 	if ck == "" {
-		m.Sender.SendMessage(fmt.Sprintf("received '%s' packet without ck", pk.GetType()))
+		m.Sender.SendMessageFmt("received '%s' packet without ck", pk.GetType())
 		return
 	}
 	m.Lock.Lock()
@@ -137,12 +140,24 @@ func (m *MServer) runCompGen(compPk *packet.CompGenPacketType) {
 	return
 }
 
+func (m *MServer) setCurrentState(state *packet.ShellState) {
+	if state == nil {
+		return
+	}
+	hval, _ := state.EncodeAndHash()
+	m.Lock.Lock()
+	defer m.Lock.Unlock()
+	m.StateMap[hval] = state
+	m.CurrentState = hval
+}
+
 func (m *MServer) reinit(reqId string) {
 	initPk, err := shexec.MakeServerInitPacket()
 	if err != nil {
 		m.Sender.SendErrorResponse(reqId, fmt.Errorf("error creating init packet: %w", err))
 		return
 	}
+	m.setCurrentState(initPk.State)
 	initPk.RespId = reqId
 	m.Sender.SendPacket(initPk)
 }
@@ -170,6 +185,32 @@ func (m *MServer) ProcessRpcPacket(pk packet.RpcPacketType) {
 	return
 }
 
+func (m *MServer) getCurrentState() (string, *packet.ShellState) {
+	m.Lock.Lock()
+	defer m.Lock.Unlock()
+	return m.CurrentState, m.StateMap[m.CurrentState]
+}
+
+func (m *MServer) clientPacketCallback(pk packet.PacketType) {
+	if pk.GetType() != packet.CmdDonePacketStr {
+		return
+	}
+	donePk := pk.(*packet.CmdDonePacketType)
+	if donePk.FinalState == nil {
+		return
+	}
+	stateHash, curState := m.getCurrentState()
+	if curState == nil {
+		return
+	}
+	diff, err := shexec.MakeShellStateDiff(*curState, stateHash, *donePk.FinalState)
+	if err != nil {
+		return
+	}
+	donePk.FinalState = nil
+	donePk.FinalStateDiff = &diff
+}
+
 func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
 	if err := runPacket.CK.Validate("packet"); err != nil {
 		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("server run packets require valid ck: %s", err))
@@ -190,14 +231,32 @@ func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
 	m.Lock.Unlock()
 	go func() {
 		defer func() {
+			r := recover()
+			finalPk := packet.MakeCmdFinalPacket(runPacket.CK)
+			finalPk.Ts = time.Now().UnixMilli()
+			if r != nil {
+				finalPk.Error = fmt.Sprintf("%s", r)
+			}
+			m.Sender.SendPacket(finalPk)
 			m.Lock.Lock()
 			delete(m.ClientMap, runPacket.CK)
 			m.Lock.Unlock()
 			cproc.Close()
 		}()
 		shexec.SendRunPacketAndRunData(context.Background(), cproc.Input, runPacket)
-		cproc.ProxySingleOutput(runPacket.CK, m.Sender)
+		cproc.ProxySingleOutput(runPacket.CK, m.Sender, m.clientPacketCallback)
 	}()
+}
+
+func (m *MServer) packetSenderErrorHandler(sender *packet.PacketSender, pk packet.PacketType, err error) {
+	if serr, ok := err.(*packet.SendError); ok && serr.IsMarshalError {
+		msg := packet.MakeMessagePacket(err.Error())
+		if cpk, ok := pk.(packet.CommandPacketType); ok {
+			msg.CK = cpk.GetCK()
+		}
+		sender.SendPacket(msg)
+	}
+	// otherwise ignore (we can't output anything for a I/O error)
 }
 
 func RunServer() (int, error) {
@@ -208,19 +267,21 @@ func RunServer() (int, error) {
 	server := &MServer{
 		Lock:      &sync.Mutex{},
 		ClientMap: make(map[base.CommandKey]*shexec.ClientProc),
+		StateMap:  make(map[string]*packet.ShellState),
 		Debug:     debug,
 	}
 	if debug {
 		packet.GlobalDebug = true
 	}
 	server.MainInput = packet.MakePacketParser(os.Stdin)
-	server.Sender = packet.MakePacketSender(os.Stdout)
+	server.Sender = packet.MakePacketSender(os.Stdout, server.packetSenderErrorHandler)
 	defer server.Close()
 	var err error
 	initPacket, err := shexec.MakeServerInitPacket()
 	if err != nil {
 		return 1, err
 	}
+	server.setCurrentState(initPacket.State)
 	server.Sender.SendPacket(initPacket)
 	builder := packet.MakeRunPacketBuilder()
 	for pk := range server.MainInput.MainCh {
@@ -243,7 +304,7 @@ func RunServer() (int, error) {
 			server.ProcessRpcPacket(rpcPk)
 			continue
 		}
-		server.Sender.SendMessage(fmt.Sprintf("invalid packet '%s' sent to mshell server", packet.AsString(pk)))
+		server.Sender.SendMessageFmt("invalid packet '%s' sent to mshell server", packet.AsString(pk))
 		continue
 	}
 	return 0, nil

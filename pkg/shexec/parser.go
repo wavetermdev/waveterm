@@ -10,6 +10,7 @@ import (
 
 	"github.com/alessio/shellescape"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
+	"github.com/scripthaus-dev/mshell/pkg/statediff"
 	"mvdan.cc/sh/v3/expand"
 	"mvdan.cc/sh/v3/syntax"
 )
@@ -187,6 +188,32 @@ func ParseDeclLine(envLine string) *DeclareDeclType {
 		Name:  namePart[pipeIdx+1:],
 		Value: valPart,
 	}
+}
+
+func parseDeclLineToKV(envLine string) (string, string) {
+	eqIdx := strings.Index(envLine, "=")
+	if eqIdx == -1 {
+		return "", ""
+	}
+	namePart := envLine[0:eqIdx]
+	valPart := envLine[eqIdx+1:]
+	return namePart, valPart
+}
+
+func shellStateVarsToMap(shellVars []byte) map[string]string {
+	if len(shellVars) == 0 {
+		return nil
+	}
+	rtn := make(map[string]string)
+	vars := bytes.Split(shellVars, []byte{0})
+	for _, varLine := range vars {
+		name, val := parseDeclLineToKV(string(varLine))
+		if name == "" {
+			continue
+		}
+		rtn[name] = val
+	}
+	return rtn
 }
 
 func DeclMapFromState(state *packet.ShellState) map[string]*DeclareDeclType {
@@ -484,4 +511,25 @@ func DeclsEqual(compareName bool, d1 *DeclareDeclType, d2 *DeclareDeclType) bool
 		return false
 	}
 	return d1.Value == d2.Value // this works even for assoc arrays because we normalize them when parsing
+}
+
+func MakeShellStateDiff(oldState packet.ShellState, oldStateHash string, newState packet.ShellState) (packet.ShellStateDiff, error) {
+	var rtn packet.ShellStateDiff
+	rtn.BaseHash = oldStateHash
+	if oldState.Version != newState.Version {
+		return rtn, fmt.Errorf("cannot diff, states have different versions")
+	}
+	rtn.Version = newState.Version
+	if oldState.Cwd != newState.Cwd {
+		rtn.Cwd = newState.Cwd
+	}
+	if oldState.Error != newState.Error {
+		rtn.Error = newState.Error
+	}
+	oldVars := shellStateVarsToMap(oldState.ShellVars)
+	newVars := shellStateVarsToMap(newState.ShellVars)
+	rtn.VarsDiff = statediff.MakeMapDiff(oldVars, newVars)
+	rtn.AliasesDiff = statediff.MakeLineDiff(oldState.Aliases, newState.Aliases)
+	rtn.FuncsDiff = statediff.MakeLineDiff(oldState.Funcs, newState.Funcs)
+	return rtn, nil
 }

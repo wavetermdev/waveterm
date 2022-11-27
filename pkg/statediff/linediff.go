@@ -19,7 +19,7 @@ type LineDiffType struct {
 	NewData []string
 }
 
-func (diff LineDiffType) dump() {
+func (diff LineDiffType) Dump() {
 	fmt.Printf("DIFF:\n")
 	pos := 1
 	for _, entry := range diff.Lines {
@@ -68,7 +68,7 @@ func putUVarint(buf *bytes.Buffer, viBuf []byte, ival int) {
 // simple encoding
 // write varints.  first version, then len, then len-number-of-varints, then fill the rest with newdata
 // [version] [len-varint] [varint]xlen... newdata (bytes)
-func (diff LineDiffType) encode() []byte {
+func (diff LineDiffType) Encode() []byte {
 	var buf bytes.Buffer
 	viBuf := make([]byte, binary.MaxVarintLen64)
 	putUVarint(&buf, viBuf, LineDiffVersion)
@@ -86,7 +86,7 @@ func (diff LineDiffType) encode() []byte {
 	return buf.Bytes()
 }
 
-func (rtn *LineDiffType) decode(diffBytes []byte) error {
+func (rtn *LineDiffType) Decode(diffBytes []byte) error {
 	r := bytes.NewBuffer(diffBytes)
 	version, err := binary.ReadUvarint(r)
 	if err != nil {
@@ -164,12 +164,12 @@ func MakeLineDiff(str1 string, str2 string) []byte {
 	str1Arr := strings.Split(str1, "\n")
 	str2Arr := strings.Split(str2, "\n")
 	diff := makeLineDiff(str1Arr, str2Arr)
-	return diff.encode()
+	return diff.Encode()
 }
 
 func ApplyLineDiff(str1 string, diffBytes []byte) (string, error) {
 	var diff LineDiffType
-	err := diff.decode(diffBytes)
+	err := diff.Decode(diffBytes)
 	if err != nil {
 		return "", err
 	}

@@ -834,7 +834,7 @@ func RunClientSSHCommandAndWait(runPacket *packet.RunPacketType, fdContext FdCon
 	stdoutPacketParser := packet.MakePacketParser(stdoutReader)
 	stderrPacketParser := packet.MakePacketParser(stderrReader)
 	packetParser := packet.CombinePacketParsers(stdoutPacketParser, stderrPacketParser)
-	sender := packet.MakePacketSender(inputWriter)
+	sender := packet.MakePacketSender(inputWriter, nil)
 	versionOk := false
 	for pk := range packetParser.MainCh {
 		if pk.GetType() == packet.RawPacketStr {
@@ -985,14 +985,6 @@ func makeRcFileStr(pk *packet.RunPacketType) string {
 	if pk.State != nil && pk.State.Aliases != "" {
 		rcBuf.WriteString(pk.State.Aliases)
 		rcBuf.WriteString("\n")
-	}
-	if pk.ReturnState {
-		rcBuf.WriteString(`
-_scripthaus_exittrap () {
-` + GetShellStateCmd + `
-}
-trap _scripthaus_exittrap EXIT
-`)
 	}
 	return rcBuf.String()
 }
@@ -1285,7 +1277,7 @@ func RunCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) (
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot open runout file '%s': %w", fileNames.RunnerOutFile, err)
 	}
-	cmd.DetachedOutput = packet.MakePacketSender(cmd.RunnerOutFd)
+	cmd.DetachedOutput = packet.MakePacketSender(cmd.RunnerOutFd, nil)
 	ecmd, err := MakeDetachedExecCmd(pk, cmdTty)
 	if err != nil {
 		return nil, nil, err

@@ -47,7 +47,7 @@ func testLineDiff(t *testing.T, str1 string, str2 string) {
 		t.Errorf("bad diff output")
 	}
 	var dt LineDiffType
-	err = dt.decode(diffBytes)
+	err = dt.Decode(diffBytes)
 	if err != nil {
 		t.Errorf("error decoding diff: %v\n", err)
 	}
@@ -86,8 +86,8 @@ func TestMapDiff(t *testing.T) {
 	diffBytes := MakeMapDiff(m1, m2)
 	fmt.Printf("mapdifflen: %d\n", len(diffBytes))
 	var diff MapDiffType
-	diff.decode(diffBytes)
-	diff.dump()
+	diff.Decode(diffBytes)
+	diff.Dump()
 	mcheck, err := ApplyMapDiff(m1, diffBytes)
 	if err != nil {
 		t.Fatalf("error applying map diff: %v", err)

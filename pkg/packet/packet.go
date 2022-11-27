@@ -49,9 +49,10 @@ const (
 	CdPacketStr           = "cd"        // rpc
 	CmdDataPacketStr      = "cmddata"   // rpc-response
 	RawPacketStr          = "raw"
-	SpecialInputPacketStr = "sinput"  // command
-	CompGenPacketStr      = "compgen" // rpc
-	ReInitPacketStr       = "reinit"  // rpc
+	SpecialInputPacketStr = "sinput"   // command
+	CompGenPacketStr      = "compgen"  // rpc
+	ReInitPacketStr       = "reinit"   // rpc
+	CmdFinalPacketStr     = "cmdfinal" // command, pushed at the "end" of a command (fail-safe for no cmddone)
 )
 
 const PacketSenderQueueSize = 20
@@ -80,6 +81,7 @@ func init() {
 	TypeStrToFactory[DataEndPacketStr] = reflect.TypeOf(DataEndPacketType{})
 	TypeStrToFactory[CompGenPacketStr] = reflect.TypeOf(CompGenPacketType{})
 	TypeStrToFactory[ReInitPacketStr] = reflect.TypeOf(ReInitPacketType{})
+	TypeStrToFactory[CmdFinalPacketStr] = reflect.TypeOf(CmdFinalPacketType{})
 
 	var _ RpcPacketType = (*RunPacketType)(nil)
 	var _ RpcPacketType = (*GetCmdPacketType)(nil)
@@ -96,6 +98,7 @@ func init() {
 	var _ CommandPacketType = (*DataAckPacketType)(nil)
 	var _ CommandPacketType = (*CmdDonePacketType)(nil)
 	var _ CommandPacketType = (*SpecialInputPacketType)(nil)
+	var _ CommandPacketType = (*CmdFinalPacketType)(nil)
 }
 
 func RegisterPacketType(typeStr string, rtype reflect.Type) {
@@ -109,19 +112,6 @@ func MakePacket(packetType string) (PacketType, error) {
 	}
 	rtn := reflect.New(rtype)
 	return rtn.Interface().(PacketType), nil
-}
-
-type ShellState struct {
-	Version   string `json:"version,omitempty"`
-	Cwd       string `json:"cwd,omitempty"`
-	ShellVars []byte `json:"shellvars,omitempty"`
-	Aliases   string `json:"aliases,omitempty"`
-	Funcs     string `json:"funcs,omitempty"`
-	Error     string `json:"error,omitempty"`
-}
-
-func (state ShellState) IsEmpty() bool {
-	return state.Version == "" && state.Cwd == "" && len(state.ShellVars) == 0 && state.Aliases == "" && state.Funcs == "" && state.Error == ""
 }
 
 type CmdDataPacketType struct {
@@ -509,13 +499,33 @@ func MakeDonePacket() *DonePacketType {
 	return &DonePacketType{Type: DonePacketStr}
 }
 
+type CmdFinalPacketType struct {
+	Type  string          `json:"type"`
+	Ts    int64           `json:"ts"`
+	CK    base.CommandKey `json:"ck"`
+	Error string          `json:"error"`
+}
+
+func (*CmdFinalPacketType) GetType() string {
+	return CmdFinalPacketStr
+}
+
+func (pk *CmdFinalPacketType) GetCK() base.CommandKey {
+	return pk.CK
+}
+
+func MakeCmdFinalPacket(ck base.CommandKey) *CmdFinalPacketType {
+	return &CmdFinalPacketType{Type: CmdFinalPacketStr, CK: ck}
+}
+
 type CmdDonePacketType struct {
-	Type       string          `json:"type"`
-	Ts         int64           `json:"ts"`
-	CK         base.CommandKey `json:"ck"`
-	ExitCode   int             `json:"exitcode"`
-	DurationMs int64           `json:"durationms"`
-	FinalState *ShellState     `json:"state,omitempty"`
+	Type           string          `json:"type"`
+	Ts             int64           `json:"ts"`
+	CK             base.CommandKey `json:"ck"`
+	ExitCode       int             `json:"exitcode"`
+	DurationMs     int64           `json:"durationms"`
+	FinalState     *ShellState     `json:"finalstate,omitempty"`
+	FinalStateDiff *ShellStateDiff `json:"finalstatediff,omitempty"`
 }
 
 func (*CmdDonePacketType) GetType() string {
@@ -580,7 +590,8 @@ type RunPacketType struct {
 	ReqId         string          `json:"reqid"`
 	CK            base.CommandKey `json:"ck"`
 	Command       string          `json:"command"`
-	State         *ShellState     `json:"state"`
+	State         *ShellState     `json:"state,omitempty"`
+	StateDiff     *ShellStateDiff `json:"statediff,omitempty"`
 	StateComplete bool            `json:"statecomplete,omitempty"` // set to true if state is complete (the default env should not be set)
 	UsePty        bool            `json:"usepty,omitempty"`
 	TermOpts      *TermOpts       `json:"termopts,omitempty"`
@@ -696,13 +707,34 @@ func sanitizeBytes(buf []byte) {
 	}
 }
 
+type SendError struct {
+	IsWriteError   bool // fatal
+	IsMarshalError bool // not fatal
+	PacketType     string
+	Err            error
+}
+
+func (e *SendError) Unwrap() error {
+	return e.Err
+}
+
+func (e *SendError) Error() string {
+	if e.IsMarshalError {
+		return fmt.Sprintf("SendPacket marshal-error '%s' packet: %v", e.PacketType, e.Err)
+	} else if e.IsWriteError {
+		return fmt.Sprintf("SendPacket write-error: %v", e.Err)
+	} else {
+		return e.Err.Error()
+	}
+}
+
 func SendPacket(w io.Writer, packet PacketType) error {
 	if packet == nil {
 		return nil
 	}
 	jsonBytes, err := json.Marshal(packet)
 	if err != nil {
-		return fmt.Errorf("marshaling '%s' packet: %w", packet.GetType(), err)
+		return &SendError{IsMarshalError: true, PacketType: packet.GetType(), Err: err}
 	}
 	var outBuf bytes.Buffer
 	outBuf.WriteByte('\n')
@@ -716,7 +748,7 @@ func SendPacket(w io.Writer, packet PacketType) error {
 	sanitizeBytes(outBytes)
 	_, err = w.Write(outBytes)
 	if err != nil {
-		return err
+		return &SendError{IsWriteError: true, PacketType: packet.GetType(), Err: err}
 	}
 	return nil
 }
@@ -726,18 +758,19 @@ func SendCmdError(w io.Writer, ck base.CommandKey, err error) error {
 }
 
 type PacketSender struct {
-	Lock   *sync.Mutex
-	SendCh chan PacketType
-	Err    error
-	Done   bool
-	DoneCh chan bool
+	Lock       *sync.Mutex
+	SendCh     chan PacketType
+	Done       bool
+	DoneCh     chan bool
+	ErrHandler func(*PacketSender, PacketType, error)
 }
 
-func MakePacketSender(output io.Writer) *PacketSender {
+func MakePacketSender(output io.Writer, errHandler func(*PacketSender, PacketType, error)) *PacketSender {
 	sender := &PacketSender{
-		Lock:   &sync.Mutex{},
-		SendCh: make(chan PacketType, PacketSenderQueueSize),
-		DoneCh: make(chan bool),
+		Lock:       &sync.Mutex{},
+		SendCh:     make(chan PacketType, PacketSenderQueueSize),
+		DoneCh:     make(chan bool),
+		ErrHandler: errHandler,
 	}
 	go func() {
 		defer close(sender.DoneCh)
@@ -745,14 +778,25 @@ func MakePacketSender(output io.Writer) *PacketSender {
 		for pk := range sender.SendCh {
 			err := SendPacket(output, pk)
 			if err != nil {
-				sender.Lock.Lock()
-				sender.Err = err
-				sender.Lock.Unlock()
+				sender.goHandleError(pk, err)
+				if serr, ok := err.(*SendError); ok && serr.IsMarshalError {
+					// marshaler errors are recoverable
+					continue
+				}
+				// write errors are not recoverable
 				return
 			}
 		}
 	}()
 	return sender
+}
+
+func (sender *PacketSender) goHandleError(pk PacketType, err error) {
+	sender.Lock.Lock()
+	defer sender.Lock.Unlock()
+	if sender.ErrHandler != nil {
+		go sender.ErrHandler(sender, pk, err)
+	}
 }
 
 func MakeChannelPacketSender(packetCh chan PacketType) *PacketSender {
@@ -790,9 +834,6 @@ func (sender *PacketSender) checkStatus() error {
 	defer sender.Lock.Unlock()
 	if sender.Done {
 		return fmt.Errorf("cannot send packet, sender write loop is closed")
-	}
-	if sender.Err != nil {
-		return fmt.Errorf("cannot send packet, sender had error: %w", sender.Err)
 	}
 	return nil
 }
@@ -833,7 +874,7 @@ func (sender *PacketSender) SendResponse(reqId string, data interface{}) error {
 	return sender.SendPacket(pk)
 }
 
-func (sender *PacketSender) SendMessage(fmtStr string, args ...interface{}) error {
+func (sender *PacketSender) SendMessageFmt(fmtStr string, args ...interface{}) error {
 	return sender.SendPacket(MakeMessagePacket(fmt.Sprintf(fmtStr, args...)))
 }
 

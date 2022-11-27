@@ -15,7 +15,7 @@ type MapDiffType struct {
 	ToRemove []string
 }
 
-func (diff MapDiffType) dump() {
+func (diff MapDiffType) Dump() {
 	fmt.Printf("VAR-DIFF\n")
 	for name, val := range diff.ToAdd {
 		fmt.Printf("  add: %s=%s\n", name, val)
@@ -58,7 +58,7 @@ func (diff MapDiffType) apply(oldMap map[string]string) map[string]string {
 	return rtn
 }
 
-func (diff MapDiffType) encode() []byte {
+func (diff MapDiffType) Encode() []byte {
 	var buf bytes.Buffer
 	viBuf := make([]byte, binary.MaxVarintLen64)
 	putUVarint(&buf, viBuf, MapDiffVersion)
@@ -76,7 +76,7 @@ func (diff MapDiffType) encode() []byte {
 	return buf.Bytes()
 }
 
-func (diff *MapDiffType) decode(diffBytes []byte) error {
+func (diff *MapDiffType) Decode(diffBytes []byte) error {
 	r := bytes.NewBuffer(diffBytes)
 	version, err := binary.ReadUvarint(r)
 	if err != nil {
@@ -111,12 +111,12 @@ func (diff *MapDiffType) decode(diffBytes []byte) error {
 
 func MakeMapDiff(m1 map[string]string, m2 map[string]string) []byte {
 	diff := makeMapDiff(m1, m2)
-	return diff.encode()
+	return diff.Encode()
 }
 
 func ApplyMapDiff(oldMap map[string]string, diffBytes []byte) (map[string]string, error) {
 	var diff MapDiffType
-	err := diff.decode(diffBytes)
+	err := diff.Decode(diffBytes)
 	if err != nil {
 		return nil, err
 	}
