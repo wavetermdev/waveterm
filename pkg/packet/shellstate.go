@@ -88,7 +88,7 @@ func (sdiff ShellStateDiff) MarshalJSON() ([]byte, error) {
 	binpack.PackValue(&buf, sdiff.AliasesDiff)
 	binpack.PackValue(&buf, sdiff.FuncsDiff)
 	binpack.PackValue(&buf, []byte(sdiff.Error))
-	return buf.Bytes(), nil
+	return json.Marshal(buf.Bytes())
 }
 
 func (sdiff *ShellStateDiff) UnmarshalJSON(jsonBytes []byte) error {
