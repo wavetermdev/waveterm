@@ -190,14 +190,13 @@ func ParseDeclLine(envLine string) *DeclareDeclType {
 	}
 }
 
+// returns name => full-line
 func parseDeclLineToKV(envLine string) (string, string) {
-	eqIdx := strings.Index(envLine, "=")
-	if eqIdx == -1 {
+	decl := ParseDeclLine(envLine)
+	if decl == nil {
 		return "", ""
 	}
-	namePart := envLine[0:eqIdx]
-	valPart := envLine[eqIdx+1:]
-	return namePart, valPart
+	return decl.Name, envLine
 }
 
 func shellStateVarsToMap(shellVars []byte) map[string]string {
@@ -214,6 +213,35 @@ func shellStateVarsToMap(shellVars []byte) map[string]string {
 		rtn[name] = val
 	}
 	return rtn
+}
+
+func strMapToShellStateVars(varMap map[string]string) []byte {
+	var buf bytes.Buffer
+	orderedKeys := getOrderedKeysStrMap(varMap)
+	for _, key := range orderedKeys {
+		val := varMap[key]
+		buf.WriteString(val)
+		buf.WriteByte(0)
+	}
+	return buf.Bytes()
+}
+
+func getOrderedKeysStrMap(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for key, _ := range m {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func getOrderedKeysDeclMap(m map[string]*DeclareDeclType) []string {
+	keys := make([]string, 0, len(m))
+	for key, _ := range m {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 func DeclMapFromState(state *packet.ShellState) map[string]*DeclareDeclType {
@@ -233,7 +261,9 @@ func DeclMapFromState(state *packet.ShellState) map[string]*DeclareDeclType {
 
 func SerializeDeclMap(declMap map[string]*DeclareDeclType) []byte {
 	var rtn bytes.Buffer
-	for _, decl := range declMap {
+	orderedKeys := getOrderedKeysDeclMap(declMap)
+	for _, key := range orderedKeys {
+		decl := declMap[key]
 		rtn.WriteString(decl.Serialize())
 	}
 	return rtn.Bytes()
@@ -267,6 +297,18 @@ func ShellVarMapFromState(state *packet.ShellState) map[string]string {
 		}
 	}
 	return rtn
+}
+
+func DumpVarMapFromState(state *packet.ShellState) {
+	fmt.Printf("DUMP-STATE-VARS:\n")
+	if state == nil {
+		fmt.Printf("  nil\n")
+		return
+	}
+	vars := bytes.Split(state.ShellVars, []byte{0})
+	for _, varLine := range vars {
+		fmt.Printf("  %s\n", varLine)
+	}
 }
 
 func VarDeclsFromState(state *packet.ShellState) []*DeclareDeclType {
@@ -365,8 +407,8 @@ func parseDeclareOutput(state *packet.ShellState, declareBytes []byte) error {
 	if err != nil {
 		return err
 	}
-	var varsBuffer bytes.Buffer
 	var firstParseErr error
+	declMap := make(map[string]*DeclareDeclType)
 	for _, stmt := range file.Stmts {
 		decl, err := parseDeclareStmt(stmt, declareStr)
 		if err != nil {
@@ -375,10 +417,10 @@ func parseDeclareOutput(state *packet.ShellState, declareBytes []byte) error {
 			}
 		}
 		if decl != nil && !NoStoreVarNames[decl.Name] {
-			varsBuffer.WriteString(decl.Serialize())
+			declMap[decl.Name] = decl
 		}
 	}
-	state.ShellVars = varsBuffer.Bytes()
+	state.ShellVars = SerializeDeclMap(declMap) // this writes out the decls in a canonical order
 	if firstParseErr != nil {
 		state.Error = firstParseErr.Error()
 	}
@@ -532,4 +574,27 @@ func MakeShellStateDiff(oldState packet.ShellState, oldStateHash string, newStat
 	rtn.AliasesDiff = statediff.MakeLineDiff(oldState.Aliases, newState.Aliases)
 	rtn.FuncsDiff = statediff.MakeLineDiff(oldState.Funcs, newState.Funcs)
 	return rtn, nil
+}
+
+func ApplyShellStateDiff(oldState packet.ShellState, diff packet.ShellStateDiff) (packet.ShellState, error) {
+	var rtnState packet.ShellState
+	var err error
+	rtnState.Version = oldState.Version
+	rtnState.Cwd = diff.Cwd
+	rtnState.Error = diff.Error
+	oldVars := shellStateVarsToMap(oldState.ShellVars)
+	newVars, err := statediff.ApplyMapDiff(oldVars, diff.VarsDiff)
+	if err != nil {
+		return rtnState, fmt.Errorf("applying mapdiff 'vars': %v", err)
+	}
+	rtnState.ShellVars = strMapToShellStateVars(newVars)
+	rtnState.Aliases, err = statediff.ApplyLineDiff(oldState.Aliases, diff.AliasesDiff)
+	if err != nil {
+		return rtnState, fmt.Errorf("applying diff 'aliases': %v", err)
+	}
+	rtnState.Funcs, err = statediff.ApplyLineDiff(oldState.Funcs, diff.FuncsDiff)
+	if err != nil {
+		return rtnState, fmt.Errorf("applying diff 'funcs': %v", err)
+	}
+	return rtnState, nil
 }

@@ -2,6 +2,7 @@ package binpack
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"io"
 )
@@ -32,6 +33,14 @@ func PackValue(w io.Writer, barr []byte) error {
 	return nil
 }
 
+func PackStrArr(w io.Writer, strs []string) error {
+	barr, err := json.Marshal(strs)
+	if err != nil {
+		return err
+	}
+	return PackValue(w, barr)
+}
+
 func PackInt(w io.Writer, ival int) error {
 	viBuf := make([]byte, binary.MaxVarintLen64)
 	l := binary.PutUvarint(viBuf, uint64(ival))
@@ -53,6 +62,19 @@ func UnpackValue(r FullByteReader) ([]byte, error) {
 		return nil, err
 	}
 	return rtnBuf, nil
+}
+
+func UnpackStrArr(r FullByteReader) ([]string, error) {
+	barr, err := UnpackValue(r)
+	if err != nil {
+		return nil, err
+	}
+	var strs []string
+	err = json.Unmarshal(barr, &strs)
+	if err != nil {
+		return nil, err
+	}
+	return strs, nil
 }
 
 func UnpackInt(r io.ByteReader) (int, error) {
@@ -79,6 +101,17 @@ func (u *Unpacker) UnpackInt(name string) int {
 		return 0
 	}
 	rtn, err := UnpackInt(u.R)
+	if err != nil {
+		u.Err = fmt.Errorf("cannot unpack %s: %v", name, err)
+	}
+	return rtn
+}
+
+func (u *Unpacker) UnpackStrArr(name string) []string {
+	if u.Err != nil {
+		return nil
+	}
+	rtn, err := UnpackStrArr(u.R)
 	if err != nil {
 		u.Err = fmt.Errorf("cannot unpack %s: %v", name, err)
 	}

@@ -21,20 +21,30 @@ type ShellState struct {
 	Aliases   string `json:"aliases,omitempty"`
 	Funcs     string `json:"funcs,omitempty"`
 	Error     string `json:"error,omitempty"`
+	HashVal   string `json:"-"`
 }
 
 type ShellStateDiff struct {
-	Version     string `json:"version"` // [type] [semver]
-	BaseHash    string `json:"basehash"`
-	Cwd         string `json:"cwd,omitempty"`
-	VarsDiff    []byte `json:"shellvarsdiff,omitempty"` // vardiff
-	AliasesDiff []byte `json:"aliasesdiff,omitempty"`   // linediff
-	FuncsDiff   []byte `json:"funcsdiff,omitempty"`     // linediff
-	Error       string `json:"error,omitempty"`
+	Version     string   `json:"version"` // [type] [semver]
+	BaseHash    string   `json:"basehash"`
+	DiffHashArr []string `json:"diffhasharr,omitempty"`
+	Cwd         string   `json:"cwd,omitempty"`
+	VarsDiff    []byte   `json:"shellvarsdiff,omitempty"` // vardiff
+	AliasesDiff []byte   `json:"aliasesdiff,omitempty"`   // linediff
+	FuncsDiff   []byte   `json:"funcsdiff,omitempty"`     // linediff
+	Error       string   `json:"error,omitempty"`
+	HashVal     string   `json:"-"`
 }
 
 func (state ShellState) IsEmpty() bool {
 	return state.Version == "" && state.Cwd == "" && len(state.ShellVars) == 0 && state.Aliases == "" && state.Funcs == "" && state.Error == ""
+}
+
+// returns base64 hash of data
+func sha1Hash(data []byte) string {
+	hvalRaw := sha1.Sum(data)
+	hval := base64.StdEncoding.EncodeToString(hvalRaw[:])
+	return hval
 }
 
 // returns (SHA1, encoded-state)
@@ -47,22 +57,24 @@ func (state ShellState) EncodeAndHash() (string, []byte) {
 	binpack.PackValue(&buf, []byte(state.Aliases))
 	binpack.PackValue(&buf, []byte(state.Funcs))
 	binpack.PackValue(&buf, []byte(state.Error))
-	hvalRaw := sha1.Sum(buf.Bytes())
-	hval := base64.StdEncoding.EncodeToString(hvalRaw[:])
-	return hval, buf.Bytes()
+	return sha1Hash(buf.Bytes()), buf.Bytes()
 }
 
 func (state ShellState) MarshalJSON() ([]byte, error) {
-	_, encodedState := state.EncodeAndHash()
-	return json.Marshal(encodedState)
+	_, encodedBytes := state.EncodeAndHash()
+	return json.Marshal(encodedBytes)
 }
 
-func (state *ShellState) UnmarshalJSON(jsonBytes []byte) error {
-	var barr []byte
-	err := json.Unmarshal(jsonBytes, &barr)
-	if err != nil {
-		return err
+// caches HashVal in struct
+func (state *ShellState) GetHashVal(force bool) string {
+	if state.HashVal == "" || force {
+		state.HashVal, _ = state.EncodeAndHash()
 	}
+	return state.HashVal
+}
+
+func (state *ShellState) DecodeShellState(barr []byte) error {
+	state.HashVal = sha1Hash(barr)
 	buf := bytes.NewBuffer(barr)
 	u := binpack.MakeUnpacker(buf)
 	version := u.UnpackInt("ShellState pack version")
@@ -78,25 +90,36 @@ func (state *ShellState) UnmarshalJSON(jsonBytes []byte) error {
 	return u.Error()
 }
 
-func (sdiff ShellStateDiff) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	binpack.PackInt(&buf, ShellStateDiffPackVersion)
-	binpack.PackValue(&buf, []byte(sdiff.Version))
-	binpack.PackValue(&buf, []byte(sdiff.BaseHash))
-	binpack.PackValue(&buf, []byte(sdiff.Cwd))
-	binpack.PackValue(&buf, sdiff.VarsDiff)
-	binpack.PackValue(&buf, sdiff.AliasesDiff)
-	binpack.PackValue(&buf, sdiff.FuncsDiff)
-	binpack.PackValue(&buf, []byte(sdiff.Error))
-	return json.Marshal(buf.Bytes())
-}
-
-func (sdiff *ShellStateDiff) UnmarshalJSON(jsonBytes []byte) error {
+func (state *ShellState) UnmarshalJSON(jsonBytes []byte) error {
 	var barr []byte
 	err := json.Unmarshal(jsonBytes, &barr)
 	if err != nil {
 		return err
 	}
+	return state.DecodeShellState(barr)
+}
+
+func (sdiff ShellStateDiff) EncodeAndHash() (string, []byte) {
+	var buf bytes.Buffer
+	binpack.PackInt(&buf, ShellStateDiffPackVersion)
+	binpack.PackValue(&buf, []byte(sdiff.Version))
+	binpack.PackValue(&buf, []byte(sdiff.BaseHash))
+	binpack.PackStrArr(&buf, sdiff.DiffHashArr)
+	binpack.PackValue(&buf, []byte(sdiff.Cwd))
+	binpack.PackValue(&buf, sdiff.VarsDiff)
+	binpack.PackValue(&buf, sdiff.AliasesDiff)
+	binpack.PackValue(&buf, sdiff.FuncsDiff)
+	binpack.PackValue(&buf, []byte(sdiff.Error))
+	return sha1Hash(buf.Bytes()), buf.Bytes()
+}
+
+func (sdiff ShellStateDiff) MarshalJSON() ([]byte, error) {
+	_, encodedBytes := sdiff.EncodeAndHash()
+	return json.Marshal(encodedBytes)
+}
+
+func (sdiff *ShellStateDiff) DecodeShellStateDiff(barr []byte) error {
+	sdiff.HashVal = sha1Hash(barr)
 	buf := bytes.NewBuffer(barr)
 	u := binpack.MakeUnpacker(buf)
 	version := u.UnpackInt("ShellState pack version")
@@ -105,12 +128,30 @@ func (sdiff *ShellStateDiff) UnmarshalJSON(jsonBytes []byte) error {
 	}
 	sdiff.Version = string(u.UnpackValue("ShellStateDiff.Version"))
 	sdiff.BaseHash = string(u.UnpackValue("ShellStateDiff.BaseHash"))
+	sdiff.DiffHashArr = u.UnpackStrArr("ShellStateDiff.DiffHashArr")
 	sdiff.Cwd = string(u.UnpackValue("ShellStateDiff.Cwd"))
 	sdiff.VarsDiff = u.UnpackValue("ShellStateDiff.VarsDiff")
 	sdiff.AliasesDiff = u.UnpackValue("ShellStateDiff.AliasesDiff")
 	sdiff.FuncsDiff = u.UnpackValue("ShellStateDiff.FuncsDiff")
 	sdiff.Error = string(u.UnpackValue("ShellStateDiff.Error"))
 	return u.Error()
+}
+
+func (sdiff *ShellStateDiff) UnmarshalJSON(jsonBytes []byte) error {
+	var barr []byte
+	err := json.Unmarshal(jsonBytes, &barr)
+	if err != nil {
+		return err
+	}
+	return sdiff.DecodeShellStateDiff(barr)
+}
+
+// caches HashVal in struct
+func (sdiff *ShellStateDiff) GetHashVal(force bool) string {
+	if sdiff.HashVal == "" || force {
+		sdiff.HashVal, _ = sdiff.EncodeAndHash()
+	}
+	return sdiff.HashVal
 }
 
 func (sdiff ShellStateDiff) Dump() {

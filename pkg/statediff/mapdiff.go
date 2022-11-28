@@ -111,10 +111,16 @@ func (diff *MapDiffType) Decode(diffBytes []byte) error {
 
 func MakeMapDiff(m1 map[string]string, m2 map[string]string) []byte {
 	diff := makeMapDiff(m1, m2)
+	if len(diff.ToAdd) == 0 && len(diff.ToRemove) == 0 {
+		return nil
+	}
 	return diff.Encode()
 }
 
 func ApplyMapDiff(oldMap map[string]string, diffBytes []byte) (map[string]string, error) {
+	if len(diffBytes) == 0 {
+		return oldMap, nil
+	}
 	var diff MapDiffType
 	err := diff.Decode(diffBytes)
 	if err != nil {

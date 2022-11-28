@@ -161,6 +161,9 @@ func makeLineDiff(oldData []string, newData []string) LineDiffType {
 }
 
 func MakeLineDiff(str1 string, str2 string) []byte {
+	if str1 == str2 {
+		return nil
+	}
 	str1Arr := strings.Split(str1, "\n")
 	str2Arr := strings.Split(str2, "\n")
 	diff := makeLineDiff(str1Arr, str2Arr)
@@ -168,6 +171,9 @@ func MakeLineDiff(str1 string, str2 string) []byte {
 }
 
 func ApplyLineDiff(str1 string, diffBytes []byte) (string, error) {
+	if len(diffBytes) == 0 {
+		return str1, nil
+	}
 	var diff LineDiffType
 	err := diff.Decode(diffBytes)
 	if err != nil {
