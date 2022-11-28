@@ -464,7 +464,7 @@ func resolveRemoteFromPtr(ctx context.Context, rptr *sstore.RemotePtrType, sessi
 			return nil, fmt.Errorf("cannot resolve remote state '%s': %w", displayName, err)
 		}
 		if state == nil {
-			state = rstate.DefaultState
+			state = msh.GetDefaultState()
 		}
 		rtn.RemoteState = state
 	}
@@ -472,26 +472,22 @@ func resolveRemoteFromPtr(ctx context.Context, rptr *sstore.RemotePtrType, sessi
 }
 
 // returns (remoteDisplayName, remoteptr, state, rstate, err)
-func resolveRemote(ctx context.Context, fullRemoteRef string, sessionId string, windowId string) (string, *sstore.RemotePtrType, *packet.ShellState, *remote.RemoteRuntimeState, error) {
+func resolveRemote(ctx context.Context, fullRemoteRef string, sessionId string, windowId string) (string, *sstore.RemotePtrType, *remote.RemoteRuntimeState, error) {
 	if fullRemoteRef == "" {
-		return "", nil, nil, nil, nil
+		return "", nil, nil, nil
 	}
 	userRef, remoteRef, remoteName, err := parseFullRemoteRef(fullRemoteRef)
 	if err != nil {
-		return "", nil, nil, nil, err
+		return "", nil, nil, err
 	}
 	if userRef != "" {
-		return "", nil, nil, nil, fmt.Errorf("invalid remote '%s', cannot resolve remote userid '%s'", fullRemoteRef, userRef)
+		return "", nil, nil, fmt.Errorf("invalid remote '%s', cannot resolve remote userid '%s'", fullRemoteRef, userRef)
 	}
 	rstate := remote.ResolveRemoteRef(remoteRef)
 	if rstate == nil {
-		return "", nil, nil, nil, fmt.Errorf("cannot resolve remote '%s': not found", fullRemoteRef)
+		return "", nil, nil, fmt.Errorf("cannot resolve remote '%s': not found", fullRemoteRef)
 	}
 	rptr := sstore.RemotePtrType{RemoteId: rstate.RemoteId, Name: remoteName}
-	state, err := sstore.GetRemoteState(ctx, sessionId, windowId, rptr)
-	if err != nil {
-		return "", nil, nil, nil, fmt.Errorf("cannot resolve remote state '%s': %w", fullRemoteRef, err)
-	}
 	rname := rstate.RemoteCanonicalName
 	if rstate.RemoteAlias != "" {
 		rname = rstate.RemoteAlias
@@ -499,8 +495,5 @@ func resolveRemote(ctx context.Context, fullRemoteRef string, sessionId string, 
 	if rptr.Name != "" {
 		rname = fmt.Sprintf("%s:%s", rname, rptr.Name)
 	}
-	if state == nil {
-		return rname, &rptr, rstate.DefaultState, rstate, nil
-	}
-	return rname, &rptr, state, rstate, nil
+	return rname, &rptr, rstate, nil
 }

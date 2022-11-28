@@ -90,7 +90,8 @@ type MShellProc struct {
 	ControllingPty     *os.File
 	PtyBuffer          *circbuf.Buffer
 	MakeClientCancelFn context.CancelFunc
-	DefaultState       *packet.ShellState
+	StateMap           map[string]*packet.ShellState // sha1->state
+	CurrentState       string                        // sha1
 
 	// install
 	InstallStatus      string
@@ -111,26 +112,26 @@ type RunCmdType struct {
 }
 
 type RemoteRuntimeState struct {
-	RemoteType          string             `json:"remotetype"`
-	RemoteId            string             `json:"remoteid"`
-	PhysicalId          string             `json:"physicalremoteid"`
-	RemoteAlias         string             `json:"remotealias,omitempty"`
-	RemoteCanonicalName string             `json:"remotecanonicalname"`
-	RemoteVars          map[string]string  `json:"remotevars"`
-	Status              string             `json:"status"`
-	ErrorStr            string             `json:"errorstr,omitempty"`
-	InstallStatus       string             `json:"installstatus"`
-	InstallErrorStr     string             `json:"installerrorstr,omitempty"`
-	NeedsMShellUpgrade  bool               `json:"needsmshellupgrade,omitempty"`
-	DefaultState        *packet.ShellState `json:"defaultstate"`
-	ConnectMode         string             `json:"connectmode"`
-	AutoInstall         bool               `json:"autoinstall"`
-	Archived            bool               `json:"archived,omitempty"`
-	RemoteIdx           int64              `json:"remoteidx"`
-	UName               string             `json:"uname"`
-	MShellVersion       string             `json:"mshellversion"`
-	WaitingForPassword  bool               `json:"waitingforpassword,omitempty"`
-	Local               bool               `json:"local,omitempty"`
+	RemoteType          string              `json:"remotetype"`
+	RemoteId            string              `json:"remoteid"`
+	PhysicalId          string              `json:"physicalremoteid"`
+	RemoteAlias         string              `json:"remotealias,omitempty"`
+	RemoteCanonicalName string              `json:"remotecanonicalname"`
+	RemoteVars          map[string]string   `json:"remotevars"`
+	DefaultFeState      *sstore.FeStateType `json:"defaultfestate"`
+	Status              string              `json:"status"`
+	ErrorStr            string              `json:"errorstr,omitempty"`
+	InstallStatus       string              `json:"installstatus"`
+	InstallErrorStr     string              `json:"installerrorstr,omitempty"`
+	NeedsMShellUpgrade  bool                `json:"needsmshellupgrade,omitempty"`
+	ConnectMode         string              `json:"connectmode"`
+	AutoInstall         bool                `json:"autoinstall"`
+	Archived            bool                `json:"archived,omitempty"`
+	RemoteIdx           int64               `json:"remoteidx"`
+	UName               string              `json:"uname"`
+	MShellVersion       string              `json:"mshellversion"`
+	WaitingForPassword  bool                `json:"waitingforpassword,omitempty"`
+	Local               bool                `json:"local,omitempty"`
 }
 
 func (state RemoteRuntimeState) IsConnected() bool {
@@ -146,7 +147,13 @@ func (msh *MShellProc) GetStatus() string {
 func (msh *MShellProc) GetDefaultState() *packet.ShellState {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
-	return msh.DefaultState
+	return msh.StateMap[msh.CurrentState]
+}
+
+func (msh *MShellProc) GetStateByHash(hval string) *packet.ShellState {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	return msh.StateMap[hval]
 }
 
 func (msh *MShellProc) GetRemoteId() string {
@@ -484,7 +491,6 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		vars["color"] = msh.Remote.RemoteOpts.Color
 	}
 	if msh.ServerProc != nil && msh.ServerProc.InitPk != nil {
-		state.DefaultState = msh.DefaultState
 		state.MShellVersion = msh.ServerProc.InitPk.Version
 		vars["home"] = msh.ServerProc.InitPk.HomeDir
 		vars["remoteuser"] = msh.ServerProc.InitPk.User
@@ -493,6 +499,11 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		vars["remoteshorthost"] = makeShortHost(msh.ServerProc.InitPk.HostName)
 		vars["besthost"] = vars["remotehost"]
 		vars["bestshorthost"] = vars["remoteshorthost"]
+	}
+	curState := msh.StateMap[msh.CurrentState]
+	if curState != nil {
+		state.DefaultFeState = sstore.FeStateFromShellState(curState)
+		vars["cwd"] = curState.Cwd
 	}
 	if msh.Remote.Local && msh.Remote.RemoteSudo {
 		vars["bestuser"] = "sudo"
@@ -557,6 +568,7 @@ func MakeMShell(r *sstore.RemoteType) *MShellProc {
 		InstallStatus:    StatusDisconnected,
 		RunningCmds:      make(map[base.CommandKey]RunCmdType),
 		PendingStateCmds: make(map[string]base.CommandKey),
+		StateMap:         make(map[string]*packet.ShellState),
 	}
 	rtn.WriteToPtyBuffer("console for remote [%s]\n", r.GetName())
 	return rtn
@@ -913,9 +925,10 @@ func (msh *MShellProc) ReInit(ctx context.Context) (*packet.InitPacketType, erro
 	if initPk.State == nil {
 		return nil, fmt.Errorf("invalid reinit response initpk does not contain remote state")
 	}
+	hval := initPk.State.GetHashVal(false)
 	msh.WithLock(func() {
-		msh.Remote.InitPk = initPk
-		msh.DefaultState = initPk.State
+		msh.CurrentState = hval
+		msh.StateMap[hval] = initPk.State
 	})
 	return initPk, nil
 }
@@ -999,17 +1012,25 @@ func (msh *MShellProc) Launch() {
 	cproc, initPk, err := shexec.MakeClientProc(makeClientCtx, ecmd)
 	// TODO check if initPk.State is not nil
 	var mshellVersion string
+	var stateBaseHash string
 	msh.WithLock(func() {
 		msh.MakeClientCancelFn = nil
 		if initPk != nil {
-			msh.DefaultState = initPk.State
-			msh.Remote.InitPk = initPk
 			msh.UName = initPk.UName
 			mshellVersion = initPk.Version
 			if semver.Compare(mshellVersion, MShellVersion) < 0 {
 				// only set NeedsMShellUpgrade if we got an InitPk
 				msh.NeedsMShellUpgrade = true
 			}
+		}
+		if initPk != nil && initPk.State != nil {
+			hval := initPk.State.GetHashVal(false)
+			msh.CurrentState = hval
+			msh.StateMap[hval] = initPk.State
+			sstore.StoreStateBase(context.Background(), initPk.State)
+			stateBaseHash = hval
+		} else {
+			msh.CurrentState = ""
 		}
 		// no notify here, because we'll call notify in either case below
 	})
@@ -1029,7 +1050,7 @@ func (msh *MShellProc) Launch() {
 		msh.WriteToPtyBuffer("*error connecting to remote: %v\n", err)
 		return
 	}
-	msh.WriteToPtyBuffer("connected\n")
+	msh.WriteToPtyBuffer("connected state:%s\n", stateBaseHash)
 	msh.WithLock(func() {
 		msh.ServerProc = cproc
 		msh.Status = StatusConnected
@@ -1389,10 +1410,33 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 		// fall-through (nothing to do)
 	}
 	update.ScreenWindows = sws
-	if donePk.FinalState != nil {
-		rct := msh.GetRunningCmd(donePk.CK)
-		if rct != nil {
-			remoteInst, err := sstore.UpdateRemoteState(context.Background(), rct.SessionId, rct.WindowId, rct.RemotePtr, *donePk.FinalState)
+	rct := msh.GetRunningCmd(donePk.CK)
+	if donePk.FinalState != nil && rct != nil {
+		fmt.Printf("** FINALSTATE!\n")
+		feState := sstore.FeStateFromShellState(donePk.FinalState)
+		remoteInst, err := sstore.UpdateRemoteState(context.Background(), rct.SessionId, rct.WindowId, rct.RemotePtr, *feState, donePk.FinalState, nil)
+		if err != nil {
+			msh.WriteToPtyBuffer("*error trying to update remotestate: %v\n", err)
+			// fall-through (nothing to do)
+		}
+		if remoteInst != nil {
+			update.Sessions = sstore.MakeSessionsUpdateForRemote(rct.SessionId, remoteInst)
+		}
+	} else if donePk.FinalStateDiff != nil && rct != nil {
+		fmt.Printf("** STATEDIFF! %#v\n", donePk.FinalStateDiff)
+		fullState, err := msh.getFullState(donePk.FinalStateDiff)
+		if err != nil {
+			fmt.Printf("**ERR: %v\n", err)
+		}
+		donePk.FinalStateDiff.Dump()
+		shexec.DumpVarMapFromState(fullState)
+		feState, err := msh.getFeStateFromDiff(donePk.FinalStateDiff)
+		if err != nil {
+			msh.WriteToPtyBuffer("*error trying to update remotestate: %v\n", err)
+			// fall-through (nothing to do)
+		} else {
+			fmt.Printf("** festate = %#v\n", feState)
+			remoteInst, err := sstore.UpdateRemoteState(context.Background(), rct.SessionId, rct.WindowId, rct.RemotePtr, *feState, nil, donePk.FinalStateDiff)
 			if err != nil {
 				msh.WriteToPtyBuffer("*error trying to update remotestate: %v\n", err)
 				// fall-through (nothing to do)
@@ -1401,9 +1445,6 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 				update.Sessions = sstore.MakeSessionsUpdateForRemote(rct.SessionId, remoteInst)
 			}
 		}
-	}
-	if donePk.FinalStateDiff != nil {
-		fmt.Printf("** final state diff! %v\n", donePk.FinalStateDiff)
 	}
 	sstore.MainBus.SendUpdate(donePk.CK.GetSessionId(), update)
 	return
@@ -1691,4 +1732,44 @@ func evalPromptEsc(escCode string, vars map[string]string, state *packet.ShellSt
 
 	// we don't support date/time escapes (d, t, T, @), version escapes (v, V), cmd number (#, !), terminal device (l), jobs (j)
 	return "(" + escCode + ")"
+}
+
+func (msh *MShellProc) getFullState(stateDiff *packet.ShellStateDiff) (*packet.ShellState, error) {
+	baseState := msh.GetStateByHash(stateDiff.BaseHash)
+	if baseState != nil && len(stateDiff.DiffHashArr) == 0 {
+		newState, err := shexec.ApplyShellStateDiff(*baseState, *stateDiff)
+		if err != nil {
+			return nil, err
+		}
+		return &newState, nil
+	} else {
+		fullState, err := sstore.GetFullState(context.Background(), stateDiff.BaseHash, stateDiff.DiffHashArr)
+		if err != nil {
+			return nil, err
+		}
+		newState, err := shexec.ApplyShellStateDiff(*fullState, *stateDiff)
+		return &newState, nil
+	}
+}
+
+// internal func, first tries the StateMap, otherwise will fallback on sstore.GetFullState
+func (msh *MShellProc) getFeStateFromDiff(stateDiff *packet.ShellStateDiff) (*sstore.FeStateType, error) {
+	baseState := msh.GetStateByHash(stateDiff.BaseHash)
+	if baseState != nil && len(stateDiff.DiffHashArr) == 0 {
+		newState, err := shexec.ApplyShellStateDiff(*baseState, *stateDiff)
+		if err != nil {
+			return nil, err
+		}
+		return sstore.FeStateFromShellState(&newState), nil
+	} else {
+		fullState, err := sstore.GetFullState(context.Background(), stateDiff.BaseHash, stateDiff.DiffHashArr)
+		if err != nil {
+			return nil, err
+		}
+		newState, err := shexec.ApplyShellStateDiff(*fullState, *stateDiff)
+		if err != nil {
+			return nil, err
+		}
+		return sstore.FeStateFromShellState(&newState), nil
+	}
 }

@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -43,6 +41,7 @@ const DefaultUserId = "sawka"
 const MaxNameLen = 50
 const MaxRemoteAliasLen = 50
 const PasswordUnchangedSentinel = "--unchanged--"
+const DefaultPTERM = "MxM"
 
 var ColorNames = []string{"black", "red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
 var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
@@ -50,7 +49,27 @@ var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoins
 
 var WindowCmds = []string{"run", "comment", "cd", "cr", "clear", "sw", "alias", "unalias", "function", "reset"}
 var NoHistCmds = []string{"_compgen", "line", "history"}
-var GlobalCmds = []string{"session", "screen", "remote", "killserver"}
+var GlobalCmds = []string{"session", "screen", "remote", "killserver", "set"}
+
+var SetVarNameMap map[string]string = map[string]string{
+	"tabcolor": "screen.tabcolor",
+	"pterm":    "window.pterm",
+	"anchor":   "sw.anchor",
+	"focus":    "sw.focus",
+	"line":     "sw.line",
+}
+
+var SetVarScopes = []SetVarScope{
+	SetVarScope{ScopeName: "global", VarNames: []string{}},
+	SetVarScope{ScopeName: "session", VarNames: []string{"name", "pos"}},
+	SetVarScope{ScopeName: "screen", VarNames: []string{"name", "tabcolor", "pos"}},
+	SetVarScope{ScopeName: "window", VarNames: []string{"pterm"}},
+	SetVarScope{ScopeName: "sw", VarNames: []string{"anchor", "focus", "line"}},
+	SetVarScope{ScopeName: "line", VarNames: []string{}},
+	// connection = remote, remote = remoteinstance
+	SetVarScope{ScopeName: "connection", VarNames: []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}},
+	SetVarScope{ScopeName: "remote", VarNames: []string{}},
+}
 
 var hostNameRe = regexp.MustCompile("^[a-z][a-z0-9.-]*$")
 var userHostRe = regexp.MustCompile("^(sudo@)?([a-z][a-z0-9-]*)@([a-z][a-z0-9.-]*)(?::([0-9]+))?$")
@@ -62,6 +81,11 @@ var wsRe = regexp.MustCompile("\\s+")
 type contextType string
 
 var historyContextKey = contextType("history")
+
+type SetVarScope struct {
+	ScopeName string
+	VarNames  []string
+}
 
 type historyContextType struct {
 	LineId    string
@@ -81,7 +105,6 @@ func init() {
 	registerCmdFn("run", RunCommand)
 	registerCmdFn("eval", EvalCommand)
 	registerCmdFn("comment", CommentCommand)
-	// registerCmdFn("cd", CdCommand)
 	registerCmdFn("cr", CrCommand)
 	registerCmdFn("_compgen", CompGenCommand)
 	registerCmdFn("clear", ClearCommand)
@@ -122,6 +145,8 @@ func init() {
 	registerCmdFn("history", HistoryCommand)
 
 	registerCmdFn("killserver", KillServerCommand)
+
+	registerCmdFn("set", SetCommand)
 }
 
 func getValidCommands() []string {
@@ -185,6 +210,13 @@ func resolveBool(arg string, def bool) bool {
 	return true
 }
 
+func defaultStr(arg string, def string) string {
+	if arg == "" {
+		return def
+	}
+	return arg
+}
+
 func resolveFile(arg string) (string, error) {
 	if arg == "" {
 		return "", nil
@@ -231,20 +263,6 @@ func resolveNonNegInt(arg string, def int) (int, error) {
 	return ival, nil
 }
 
-func getUITermOpts(uiContext *scpacket.UIContextType) *packet.TermOpts {
-	termOpts := &packet.TermOpts{Rows: shexec.DefaultTermRows, Cols: shexec.DefaultTermCols, Term: remote.DefaultTerm, MaxPtySize: shexec.DefaultMaxPtySize}
-	if uiContext != nil && uiContext.TermOpts != nil {
-		pkOpts := uiContext.TermOpts
-		if pkOpts.Cols > 0 {
-			termOpts.Cols = base.BoundInt(pkOpts.Cols, shexec.MinTermCols, shexec.MaxTermCols)
-		}
-		if pkOpts.MaxPtySize > 0 {
-			termOpts.MaxPtySize = base.BoundInt64(pkOpts.MaxPtySize, shexec.MinMaxPtySize, shexec.MaxMaxPtySize)
-		}
-	}
-	return termOpts
-}
-
 func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_RemoteConnected)
 	if err != nil {
@@ -252,12 +270,16 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	}
 	cmdStr := firstArg(pk)
 	isRtnStateCmd := IsReturnStateCommand(cmdStr)
+	// runPacket.State is set in remote.RunCommand()
 	runPacket := packet.MakeRunPacket()
 	runPacket.ReqId = uuid.New().String()
 	runPacket.CK = base.MakeCommandKey(ids.SessionId, scbase.GenSCUUID())
-	// runPacket.State is set in remote.RunCommand()
 	runPacket.UsePty = true
-	runPacket.TermOpts = getUITermOpts(pk.UIContext)
+	ptermVal := defaultStr(pk.Kwargs["pterm"], DefaultPTERM)
+	runPacket.TermOpts, err = GetUITermOpts(pk.UIContext.WinSize, ptermVal)
+	if err != nil {
+		return nil, fmt.Errorf("/run error, invalid 'pterm' value %q: %v", ptermVal, err)
+	}
 	runPacket.Command = strings.TrimSpace(cmdStr)
 	runPacket.ReturnState = resolveBool(pk.Kwargs["rtnstate"], isRtnStateCmd)
 	cmd, callback, err := remote.RunCommand(ctx, ids.SessionId, ids.WindowId, ids.Remote.RemotePtr, runPacket)
@@ -883,7 +905,7 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 	if newRemote == "" {
 		return nil, nil
 	}
-	remoteName, rptr, _, rstate, err := resolveRemote(ctx, newRemote, ids.SessionId, ids.WindowId)
+	remoteName, rptr, rstate, err := resolveRemote(ctx, newRemote, ids.SessionId, ids.WindowId)
 	if err != nil {
 		return nil, err
 	}
@@ -908,70 +930,6 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 			TimeoutMs: 2000,
 		},
 	}
-	return update, nil
-}
-
-func CdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window|R_RemoteConnected)
-	if err != nil {
-		return nil, fmt.Errorf("/cd error: %w", err)
-	}
-	newDir := firstArg(pk)
-	if newDir == "" {
-		return sstore.ModelUpdate{
-			Info: &sstore.InfoMsgType{
-				InfoMsg: fmt.Sprintf("[%s] current directory = %s", ids.Remote.DisplayName, ids.Remote.RemoteState.Cwd),
-			},
-		}, nil
-	}
-	newDir, err = ids.Remote.RState.ExpandHomeDir(newDir)
-	if err != nil {
-		return nil, err
-	}
-	if !strings.HasPrefix(newDir, "/") {
-		if ids.Remote.RemoteState == nil {
-			return nil, fmt.Errorf("/cd error: cannot get current remote directory (can only cd with absolute path)")
-		}
-		newDir = path.Join(ids.Remote.RemoteState.Cwd, newDir)
-		newDir, err = filepath.Abs(newDir)
-		if err != nil {
-			return nil, fmt.Errorf("/cd error: error canonicalizing new directory: %w", err)
-		}
-	}
-	cdPacket := packet.MakeCdPacket()
-	cdPacket.ReqId = uuid.New().String()
-	cdPacket.Dir = newDir
-	resp, err := ids.Remote.MShell.PacketRpc(ctx, cdPacket)
-	if err != nil {
-		return nil, err
-	}
-	if err = resp.Err(); err != nil {
-		return nil, err
-	}
-	state := *ids.Remote.RemoteState
-	state.Cwd = newDir
-	remoteInst, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.WindowId, ids.Remote.RemotePtr, state)
-	if err != nil {
-		return nil, err
-	}
-	var cmdOutput bytes.Buffer
-	displayStateUpdateDiff(&cmdOutput, *ids.Remote.RemoteState, remoteInst.State)
-	cmd, err := makeStaticCmd(ctx, "cd", ids, pk.GetRawStr(), cmdOutput.Bytes())
-	if err != nil {
-		// TODO tricky error since the command was a success, but we can't show the output
-		return nil, err
-	}
-	update, err := addLineForCmd(ctx, "/cd", false, ids, cmd)
-	if err != nil {
-		// TODO tricky error since the command was a success, but we can't show the output
-		return nil, err
-	}
-	update.Interactive = pk.Interactive
-	update.Sessions = sstore.MakeSessionsUpdateForRemote(ids.SessionId, remoteInst)
-	//update.Info = &sstore.InfoMsgType{
-	//	InfoMsg:   fmt.Sprintf("[%s] current directory = %s", ids.Remote.DisplayName, newDir),
-	//	TimeoutMs: 2000,
-	//}
 	return update, nil
 }
 
@@ -1409,7 +1367,8 @@ func ResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 	if initPk == nil || initPk.State == nil {
 		return nil, fmt.Errorf("invalid initpk received from remote (no remote state)")
 	}
-	remoteInst, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.WindowId, ids.Remote.RemotePtr, *initPk.State)
+	feState := sstore.FeStateFromShellState(initPk.State)
+	remoteInst, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.WindowId, ids.Remote.RemotePtr, *feState, initPk.State, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1618,6 +1577,33 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	return update, nil
 }
 
+func SetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	var setMap map[string]map[string]string
+	setMap = make(map[string]map[string]string)
+	_, err := resolveUiIds(ctx, pk, 0) // best effort
+	if err != nil {
+		return nil, err
+	}
+	for argIdx, rawArgVal := range pk.Args {
+		eqIdx := strings.Index(rawArgVal, "=")
+		if eqIdx == -1 {
+			return nil, fmt.Errorf("/set invalid argument %d, does not contain an '='", argIdx)
+		}
+		argName := rawArgVal[:eqIdx]
+		argVal := rawArgVal[eqIdx+1:]
+		ok, scopeName, varName := resolveSetArg(argName)
+		if !ok {
+			return nil, fmt.Errorf("/set invalid setvar %q", argName)
+		}
+		if _, ok := setMap[scopeName]; !ok {
+			setMap[scopeName] = make(map[string]string)
+		}
+		setMap[scopeName][varName] = argVal
+	}
+	fmt.Printf("setmap: %#v\n", setMap)
+	return nil, nil
+}
+
 func KillServerCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	go func() {
 		log.Printf("received /killserver, shutting down\n")
@@ -1693,7 +1679,7 @@ func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newSt
 		oldEnvMap := shexec.DeclMapFromState(&oldState)
 		for key, newVal := range newEnvMap {
 			oldVal, found := oldEnvMap[key]
-			if !found || !shexec.DeclsEqual(oldVal, newVal) {
+			if !found || !shexec.DeclsEqual(false, oldVal, newVal) {
 				var exportStr string
 				if newVal.IsExport() {
 					exportStr = "export "
@@ -1759,4 +1745,32 @@ func GetRtnStateDiff(ctx context.Context, sessionId string, cmdId string) ([]byt
 	var outputBytes bytes.Buffer
 	displayStateUpdateDiff(&outputBytes, cmd.RemoteState, *cmd.DonePk.FinalState)
 	return outputBytes.Bytes(), nil
+}
+
+func isValidInScope(scopeName string, varName string) bool {
+	for _, varScope := range SetVarScopes {
+		if varScope.ScopeName == scopeName {
+			return utilfn.ContainsStr(varScope.VarNames, varName)
+		}
+	}
+	return false
+}
+
+// returns (is-valid, scope, name)
+// TODO write a full resolver to allow for indexed arguments.  e.g. session[1].screen[1].window.pterm="25x80"
+func resolveSetArg(argName string) (bool, string, string) {
+	dotIdx := strings.Index(argName, ".")
+	if dotIdx == -1 {
+		argName = SetVarNameMap[argName]
+		dotIdx = strings.Index(argName, ".")
+	}
+	if argName == "" {
+		return false, "", ""
+	}
+	scopeName := argName[0:dotIdx]
+	varName := argName[dotIdx+1:]
+	if !isValidInScope(scopeName, varName) {
+		return false, "", ""
+	}
+	return true, scopeName, varName
 }

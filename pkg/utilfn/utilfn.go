@@ -1,6 +1,8 @@
 package utilfn
 
 import (
+	"crypto/sha1"
+	"encoding/base64"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -173,4 +175,11 @@ func (sp StrWithPos) Prepend(str string) StrWithPos {
 
 func (sp StrWithPos) Append(str string) StrWithPos {
 	return StrWithPos{Str: sp.Str + str, Pos: sp.Pos}
+}
+
+// returns base64 hash of data
+func Sha1Hash(data []byte) string {
+	hvalRaw := sha1.Sum(data)
+	hval := base64.StdEncoding.EncodeToString(hvalRaw[:])
+	return hval
 }

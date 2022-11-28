@@ -110,7 +110,7 @@ func parseMetaCmd(origCommandStr string) (string, string, string) {
 }
 
 func onlyPositionalArgs(metaCmd string, metaSubCmd string) bool {
-	return (metaCmd == "setenv" || metaCmd == "unset") && metaSubCmd == ""
+	return (metaCmd == "setenv" || metaCmd == "unset" || metaCmd == "set") && metaSubCmd == ""
 }
 
 func onlyRawArgs(metaCmd string, metaSubCmd string) bool {

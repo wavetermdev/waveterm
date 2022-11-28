@@ -63,7 +63,24 @@ CREATE TABLE remote_instance (
     windowid varchar(36) NOT NULL,
     remoteownerid varchar(36) NOT NULL,
     remoteid varchar(36) NOT NULL,
-    state json NOT NULL
+    festate json NOT NULL,
+    statebasehash varchar(36) NOT NULL,
+    statediffhasharr json NOT NULL
+);
+
+CREATE TABLE state_base (
+    basehash varchar(36) PRIMARY KEY,
+    ts bigint NOT NULL,
+    version varchar(200) NOT NULL,
+    data blob NOT NULL
+);
+
+CREATE TABLE state_diff (
+    diffhash varchar(36) PRIMARY KEY,
+    ts bigint NOT NULL,
+    basehash varchar(36) NOT NULL,
+    diffhasharr json NOT NULL,    
+    data blob NOT NULL
 );
 
 CREATE TABLE line (
@@ -94,7 +111,6 @@ CREATE TABLE remote (
     remotehost varchar(200) NOT NULL,
     connectmode varchar(20) NOT NULL,
     autoinstall boolean NOT NULL,
-    initpk json NOT NULL,
     sshopts json NOT NULL,
     remoteopts json NOT NULL,
     lastconnectts bigint NOT NULL,

@@ -80,9 +80,32 @@ func quickSetJson(ptr interface{}, m map[string]interface{}, name string) {
 	json.Unmarshal([]byte(str), ptr)
 }
 
+func quickSetJsonArr(ptr interface{}, m map[string]interface{}, name string) {
+	v, ok := m[name]
+	if !ok {
+		return
+	}
+	str, ok := v.(string)
+	if !ok {
+		return
+	}
+	if str == "" {
+		str = "[]"
+	}
+	json.Unmarshal([]byte(str), ptr)
+}
+
 func quickJson(v interface{}) string {
 	if v == nil {
 		return "{}"
+	}
+	barr, _ := json.Marshal(v)
+	return string(barr)
+}
+
+func quickJsonArr(v interface{}) string {
+	if v == nil {
+		return "[]"
 	}
 	barr, _ := json.Marshal(v)
 	return string(barr)

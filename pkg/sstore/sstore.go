@@ -170,6 +170,7 @@ type SessionStatsType struct {
 }
 
 type WindowOptsType struct {
+	PTerm string `json:"pterm,omitempty"`
 }
 
 func (opts *WindowOptsType) Scan(val interface{}) error {
@@ -458,28 +459,68 @@ func (opts TermOpts) Value() (driver.Value, error) {
 }
 
 type RemoteInstance struct {
-	RIId          string            `json:"riid"`
-	Name          string            `json:"name"`
-	SessionId     string            `json:"sessionid"`
-	WindowId      string            `json:"windowid"`
-	RemoteOwnerId string            `json:"remoteownerid"`
-	RemoteId      string            `json:"remoteid"`
-	State         packet.ShellState `json:"state"`
+	RIId             string      `json:"riid"`
+	Name             string      `json:"name"`
+	SessionId        string      `json:"sessionid"`
+	WindowId         string      `json:"windowid"`
+	RemoteOwnerId    string      `json:"remoteownerid"`
+	RemoteId         string      `json:"remoteid"`
+	FeState          FeStateType `json:"festate"`
+	StateBaseHash    string      `json:"-"`
+	StateDiffHashArr []string    `json:"-"`
 
 	// only for updates
 	Remove bool `json:"remove,omitempty"`
 }
 
-func (ri *RemoteInstance) ToMap() map[string]interface{} {
+type StateBase struct {
+	BaseHash string
+	Version  string
+	Ts       int64
+	Data     []byte
+}
+
+type StateDiff struct {
+	DiffHash    string
+	Ts          int64
+	BaseHash    string
+	DiffHashArr []string
+	Data        []byte
+}
+
+func StateDiffFromMap(m map[string]interface{}) *StateDiff {
+	if len(m) == 0 {
+		return nil
+	}
+	var sd StateDiff
+	quickSetStr(&sd.DiffHash, m, "diffhash")
+	quickSetInt64(&sd.Ts, m, "ts")
+	quickSetStr(&sd.BaseHash, m, "basehash")
+	quickSetJsonArr(&sd.DiffHashArr, m, "diffhasharr")
+	quickSetBytes(&sd.Data, m, "data")
+	return &sd
+}
+
+func (sd *StateDiff) ToMap() map[string]interface{} {
 	rtn := make(map[string]interface{})
-	rtn["riid"] = ri.RIId
-	rtn["name"] = ri.Name
-	rtn["sessionid"] = ri.SessionId
-	rtn["windowid"] = ri.WindowId
-	rtn["remoteownerid"] = ri.RemoteOwnerId
-	rtn["remoteid"] = ri.RemoteId
-	rtn["state"] = quickJson(ri.State)
+	rtn["diffhash"] = sd.DiffHash
+	rtn["ts"] = sd.Ts
+	rtn["basehash"] = sd.BaseHash
+	rtn["diffhasharr"] = quickJsonArr(sd.DiffHashArr)
+	rtn["data"] = sd.Data
 	return rtn
+}
+
+type FeStateType struct {
+	Cwd string `json:"cwd"`
+	// maybe later we can add some vars
+}
+
+func FeStateFromShellState(state *packet.ShellState) *FeStateType {
+	if state == nil {
+		return nil
+	}
+	return &FeStateType{Cwd: state.Cwd}
 }
 
 func RIFromMap(m map[string]interface{}) *RemoteInstance {
@@ -493,8 +534,24 @@ func RIFromMap(m map[string]interface{}) *RemoteInstance {
 	quickSetStr(&ri.WindowId, m, "windowid")
 	quickSetStr(&ri.RemoteOwnerId, m, "remoteownerid")
 	quickSetStr(&ri.RemoteId, m, "remoteid")
-	quickSetJson(&ri.State, m, "state")
+	quickSetJson(&ri.FeState, m, "festate")
+	quickSetStr(&ri.StateBaseHash, m, "statebasehash")
+	quickSetJsonArr(&ri.StateDiffHashArr, m, "statediffhasharr")
 	return &ri
+}
+
+func (ri *RemoteInstance) ToMap() map[string]interface{} {
+	rtn := make(map[string]interface{})
+	rtn["riid"] = ri.RIId
+	rtn["name"] = ri.Name
+	rtn["sessionid"] = ri.SessionId
+	rtn["windowid"] = ri.WindowId
+	rtn["remoteownerid"] = ri.RemoteOwnerId
+	rtn["remoteid"] = ri.RemoteId
+	rtn["festate"] = quickJson(ri.FeState)
+	rtn["statebasehash"] = ri.StateBaseHash
+	rtn["statediffhasharr"] = quickJsonArr(ri.StateDiffHashArr)
+	return rtn
 }
 
 type LineType struct {
@@ -543,23 +600,22 @@ func (opts RemoteOptsType) Value() (driver.Value, error) {
 }
 
 type RemoteType struct {
-	RemoteId            string                 `json:"remoteid"`
-	PhysicalId          string                 `json:"physicalid"`
-	RemoteType          string                 `json:"remotetype"`
-	RemoteAlias         string                 `json:"remotealias"`
-	RemoteCanonicalName string                 `json:"remotecanonicalname"`
-	RemoteSudo          bool                   `json:"remotesudo"`
-	RemoteUser          string                 `json:"remoteuser"`
-	RemoteHost          string                 `json:"remotehost"`
-	ConnectMode         string                 `json:"connectmode"`
-	AutoInstall         bool                   `json:"autoinstall"`
-	InitPk              *packet.InitPacketType `json:"inipk"`
-	SSHOpts             *SSHOpts               `json:"sshopts"`
-	RemoteOpts          *RemoteOptsType        `json:"remoteopts"`
-	LastConnectTs       int64                  `json:"lastconnectts"`
-	Archived            bool                   `json:"archived"`
-	RemoteIdx           int64                  `json:"remoteidx"`
-	Local               bool                   `json:"local"`
+	RemoteId            string          `json:"remoteid"`
+	PhysicalId          string          `json:"physicalid"`
+	RemoteType          string          `json:"remotetype"`
+	RemoteAlias         string          `json:"remotealias"`
+	RemoteCanonicalName string          `json:"remotecanonicalname"`
+	RemoteSudo          bool            `json:"remotesudo"`
+	RemoteUser          string          `json:"remoteuser"`
+	RemoteHost          string          `json:"remotehost"`
+	ConnectMode         string          `json:"connectmode"`
+	AutoInstall         bool            `json:"autoinstall"`
+	SSHOpts             *SSHOpts        `json:"sshopts"`
+	RemoteOpts          *RemoteOptsType `json:"remoteopts"`
+	LastConnectTs       int64           `json:"lastconnectts"`
+	Archived            bool            `json:"archived"`
+	RemoteIdx           int64           `json:"remoteidx"`
+	Local               bool            `json:"local"`
 }
 
 func (r *RemoteType) GetName() string {
@@ -597,7 +653,6 @@ func (r *RemoteType) ToMap() map[string]interface{} {
 	rtn["remotehost"] = r.RemoteHost
 	rtn["connectmode"] = r.ConnectMode
 	rtn["autoinstall"] = r.AutoInstall
-	rtn["initpk"] = quickJson(r.InitPk)
 	rtn["sshopts"] = quickJson(r.SSHOpts)
 	rtn["remoteopts"] = quickJson(r.RemoteOpts)
 	rtn["lastconnectts"] = r.LastConnectTs
@@ -622,7 +677,6 @@ func RemoteFromMap(m map[string]interface{}) *RemoteType {
 	quickSetStr(&r.RemoteHost, m, "remotehost")
 	quickSetStr(&r.ConnectMode, m, "connectmode")
 	quickSetBool(&r.AutoInstall, m, "autoinstall")
-	quickSetJson(&r.InitPk, m, "initpk")
 	quickSetJson(&r.SSHOpts, m, "sshopts")
 	quickSetJson(&r.RemoteOpts, m, "remoteopts")
 	quickSetInt64(&r.LastConnectTs, m, "lastconnectts")

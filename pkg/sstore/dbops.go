@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
+	"github.com/scripthaus-dev/mshell/pkg/shexec"
 	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 )
 
@@ -141,8 +143,8 @@ func UpsertRemote(ctx context.Context, r *RemoteType) error {
 		maxRemoteIdx := tx.GetInt(query)
 		r.RemoteIdx = int64(maxRemoteIdx + 1)
 		query = `INSERT INTO remote
-            ( remoteid, physicalid, remotetype, remotealias, remotecanonicalname, remotesudo, remoteuser, remotehost, connectmode, autoinstall, initpk, sshopts, remoteopts, lastconnectts, archived, remoteidx, local) VALUES
-            (:remoteid,:physicalid,:remotetype,:remotealias,:remotecanonicalname,:remotesudo,:remoteuser,:remotehost,:connectmode,:autoinstall,:initpk,:sshopts,:remoteopts,:lastconnectts,:archived,:remoteidx,:local)`
+            ( remoteid, physicalid, remotetype, remotealias, remotecanonicalname, remotesudo, remoteuser, remotehost, connectmode, autoinstall, sshopts, remoteopts, lastconnectts, archived, remoteidx, local) VALUES
+            (:remoteid,:physicalid,:remotetype,:remotealias,:remotecanonicalname,:remotesudo,:remoteuser,:remotehost,:connectmode,:autoinstall,:sshopts,:remoteopts,:lastconnectts,:archived,:remoteidx,:local)`
 		tx.NamedExecWrap(query, r.ToMap())
 		return nil
 	})
@@ -822,18 +824,25 @@ func DeleteScreen(ctx context.Context, sessionId string, screenId string) (Updat
 }
 
 func GetRemoteState(ctx context.Context, sessionId string, windowId string, remotePtr RemotePtrType) (*packet.ShellState, error) {
-	var remoteState *packet.ShellState
+	var state *packet.ShellState
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT * FROM remote_instance WHERE sessionid = ? AND windowid = ? AND remoteownerid = ? AND remoteid = ? AND name = ?`
-		m := tx.GetMap(query, sessionId, windowId, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name)
-		ri := RIFromMap(m)
-		if ri != nil {
-			remoteState = &ri.State
+		ri, err := GetRemoteInstance(tx.Context(), sessionId, windowId, remotePtr)
+		if err != nil {
+			return err
+		}
+		if ri == nil {
 			return nil
+		}
+		state, err = GetFullState(tx.Context(), ri.StateBaseHash, ri.StateDiffHashArr)
+		if err != nil {
+			return err
 		}
 		return nil
 	})
-	return remoteState, txErr
+	if txErr != nil {
+		return nil, txErr
+	}
+	return state, nil
 }
 
 func validateSessionWindow(tx *TxWrap, sessionId string, windowId string) error {
@@ -852,7 +861,50 @@ func validateSessionWindow(tx *TxWrap, sessionId string, windowId string) error 
 	}
 }
 
-func UpdateRemoteState(ctx context.Context, sessionId string, windowId string, remotePtr RemotePtrType, state packet.ShellState) (*RemoteInstance, error) {
+func GetRemoteInstance(ctx context.Context, sessionId string, windowId string, remotePtr RemotePtrType) (*RemoteInstance, error) {
+	if remotePtr.IsSessionScope() {
+		windowId = ""
+	}
+	var ri *RemoteInstance
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT * FROM remote_instance WHERE sessionid = ? AND windowid = ? AND remoteownerid = ? AND remoteid = ? AND name = ?`
+		m := tx.GetMap(query, sessionId, windowId, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name)
+		ri = RIFromMap(m)
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	return ri, nil
+}
+
+// internal function for UpdateRemoteState
+func updateRIWithState(ctx context.Context, ri *RemoteInstance, stateBase *packet.ShellState, stateDiff *packet.ShellStateDiff) error {
+	if stateBase != nil {
+		ri.StateBaseHash = stateBase.GetHashVal(false)
+		err := StoreStateBase(ctx, stateBase)
+		if err != nil {
+			return err
+		}
+	} else if stateDiff != nil {
+		ri.StateBaseHash = stateDiff.BaseHash
+		ri.StateDiffHashArr = append(stateDiff.DiffHashArr, stateDiff.GetHashVal(false))
+		err := StoreStateDiff(ctx, stateDiff)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// TODO - statediff
+func UpdateRemoteState(ctx context.Context, sessionId string, windowId string, remotePtr RemotePtrType, feState FeStateType, stateBase *packet.ShellState, stateDiff *packet.ShellStateDiff) (*RemoteInstance, error) {
+	if stateBase == nil && stateDiff == nil {
+		return nil, fmt.Errorf("UpdateRemoteState, must set state or diff")
+	}
+	if stateBase != nil && stateDiff != nil {
+		return nil, fmt.Errorf("UpdateRemoteState, cannot set state and diff")
+	}
 	if remotePtr.IsSessionScope() {
 		windowId = ""
 	}
@@ -860,7 +912,7 @@ func UpdateRemoteState(ctx context.Context, sessionId string, windowId string, r
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		err := validateSessionWindow(tx, sessionId, windowId)
 		if err != nil {
-			return fmt.Errorf("cannot update remote instance cwd: %w", err)
+			return fmt.Errorf("cannot update remote instance state: %w", err)
 		}
 		query := `SELECT * FROM remote_instance WHERE sessionid = ? AND windowid = ? AND remoteownerid = ? AND remoteid = ? AND name = ?`
 		m := tx.GetMap(query, sessionId, windowId, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name)
@@ -873,17 +925,26 @@ func UpdateRemoteState(ctx context.Context, sessionId string, windowId string, r
 				WindowId:      windowId,
 				RemoteOwnerId: remotePtr.OwnerId,
 				RemoteId:      remotePtr.RemoteId,
-				State:         state,
+				FeState:       feState,
 			}
-			query = `INSERT INTO remote_instance ( riid, name, sessionid, windowid, remoteownerid, remoteid, state) 
-                                          VALUES (:riid,:name,:sessionid,:windowid,:remoteownerid,:remoteid,:state)`
+			err = updateRIWithState(tx.Context(), ri, stateBase, stateDiff)
+			if err != nil {
+				return err
+			}
+			query = `INSERT INTO remote_instance ( riid, name, sessionid, windowid, remoteownerid, remoteid, festate, statebasehash, statediffhasharr)
+                                          VALUES (:riid,:name,:sessionid,:windowid,:remoteownerid,:remoteid,:festate,:statebasehash,:statediffhasharr)`
 			tx.NamedExecWrap(query, ri.ToMap())
 			return nil
+		} else {
+			query = `UPDATE remote_instance SET festate = ? WHERE riid = ?`
+			ri.FeState = feState
+			err = updateRIWithState(tx.Context(), ri, stateBase, stateDiff)
+			if err != nil {
+				return err
+			}
+			tx.ExecWrap(query, quickJson(ri.FeState), ri.RIId)
+			return nil
 		}
-		query = `UPDATE remote_instance SET state = ? WHERE riid = ?`
-		ri.State = state
-		tx.ExecWrap(query, quickJson(ri.State), ri.RIId)
-		return nil
 	})
 	return ri, txErr
 }
@@ -1254,4 +1315,103 @@ func UpdateSWsWithCmdFg(ctx context.Context, sessionId string, cmdId string) ([]
 		return nil, txErr
 	}
 	return rtn, nil
+}
+
+func StoreStateBase(ctx context.Context, state *packet.ShellState) error {
+	stateBase := &StateBase{
+		Version: state.Version,
+		Ts:      time.Now().UnixMilli(),
+	}
+	stateBase.BaseHash, stateBase.Data = state.EncodeAndHash()
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT basehash FROM state_base WHERE basehash = ?`
+		if tx.Exists(query, stateBase.BaseHash) {
+			return nil
+		}
+		query = `INSERT INTO state_base (basehash, ts, version, data) VALUES (:basehash,:ts,:version,:data)`
+		tx.NamedExecWrap(query, stateBase)
+		return nil
+	})
+	if txErr != nil {
+		return txErr
+	}
+	return nil
+}
+
+func StoreStateDiff(ctx context.Context, diff *packet.ShellStateDiff) error {
+	stateDiff := &StateDiff{
+		BaseHash:    diff.BaseHash,
+		Ts:          time.Now().UnixMilli(),
+		DiffHashArr: diff.DiffHashArr,
+	}
+	stateDiff.DiffHash, stateDiff.Data = diff.EncodeAndHash()
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT basehash FROM state_base WHERE basehash = ?`
+		if stateDiff.BaseHash == "" || !tx.Exists(query, stateDiff.BaseHash) {
+			return fmt.Errorf("cannot store statediff, basehash:%s does not exist", stateDiff.BaseHash)
+		}
+		query = `SELECT diffhash FROM state_diff WHERE diffhash = ?`
+		for idx, diffHash := range stateDiff.DiffHashArr {
+			if !tx.Exists(query, diffHash) {
+				return fmt.Errorf("cannot store statediff, diffhash[%d]:%s does not exist", idx, diffHash)
+			}
+		}
+		if tx.Exists(query, stateDiff.DiffHash) {
+			return nil
+		}
+		query = `INSERT INTO state_diff (diffhash, ts, basehash, diffhasharr, data) VALUES (:diffhash,:ts,:basehash,:diffhasharr,:data)`
+		tx.NamedExecWrap(query, stateDiff.ToMap())
+		return nil
+	})
+	if txErr != nil {
+		return txErr
+	}
+	return nil
+}
+
+// returns error when not found
+func GetFullState(ctx context.Context, baseHash string, diffHashArr []string) (*packet.ShellState, error) {
+	var state *packet.ShellState
+	if baseHash == "" {
+		return nil, fmt.Errorf("invalid empty basehash")
+	}
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		var stateBase StateBase
+		query := `SELECT * FROM state_base WHERE basehash = ?`
+		found := tx.GetWrap(&stateBase, query, baseHash)
+		if !found {
+			return fmt.Errorf("ShellState %s not found", baseHash)
+		}
+		state = &packet.ShellState{}
+		err := state.DecodeShellState(stateBase.Data)
+		if err != nil {
+			return err
+		}
+		for idx, diffHash := range diffHashArr {
+			query = `SELECT * FROM state_diff WHERE diffhash = ?`
+			m := tx.GetMap(query, diffHash)
+			stateDiff := StateDiffFromMap(m)
+			if stateDiff == nil {
+				return fmt.Errorf("ShellStateDiff %s not found", diffHash)
+			}
+			var ssDiff packet.ShellStateDiff
+			err = ssDiff.DecodeShellStateDiff(stateDiff.Data)
+			if err != nil {
+				return err
+			}
+			newState, err := shexec.ApplyShellStateDiff(*state, ssDiff)
+			if err != nil {
+				return fmt.Errorf("GetFullState, diff[%d]:%s: %v", idx, diffHash, err)
+			}
+			state = &newState
+		}
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	if state == nil {
+		return nil, fmt.Errorf("ShellState not found")
+	}
+	return state, nil
 }
