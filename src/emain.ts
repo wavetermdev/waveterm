@@ -14,6 +14,7 @@ const ScriptHausAppPathVarName = "SCRIPTHAUS_APP_PATH";
 let isDev = (process.env.SH_DEV != null);
 let scHome = getScHomeDir();
 ensureDir(scHome);
+let DistDir = (isDev ? "dist-dev" : "dist");
 
 // these are either "darwin/amd64" or "darwin/arm64"
 // normalize darwin/x64 to darwin/amd64 for GOARCH compatibility
@@ -91,7 +92,7 @@ function ensureDir(dir) {
 }
 
 let app = electron.app;
-app.setName("ScriptHaus");
+app.setName("Prompt");
 
 let lock : File;
 try {
@@ -144,10 +145,11 @@ function createMainWindow(clientData) {
         width: bounds.width,
         height: bounds.height,
         webPreferences: {
-            preload: path.join(getAppBasePath(), "dist", "preload.js"),
+            preload: path.join(getAppBasePath(), DistDir, "preload.js"),
         },
     });
-    win.loadFile(path.join(getAppBasePath(), "static", "index.html"));
+    let indexHtml = (isDev ? "index-dev.html" : "index.html");
+    win.loadFile(path.join(getAppBasePath(), "static", indexHtml));
     win.webContents.on("before-input-event", (e, input) => {
         if (input.type != "keyDown") {
             return;
