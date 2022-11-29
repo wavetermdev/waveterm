@@ -78,15 +78,12 @@ func (ws *WSShell) WriteJson(val interface{}) error {
 }
 
 func (ws *WSShell) WritePump() {
-	ticker := time.NewTicker(pingPeriodTickTime)
+	ticker := time.NewTicker(initialPingTime)
 	defer func() {
 		ticker.Stop()
 		ws.Conn.Close()
 	}()
-	go func() {
-		time.Sleep(initialPingTime)
-		ws.WritePing()
-	}()
+	initialPing := true
 	for {
 		select {
 		case <-ticker.C:
@@ -94,6 +91,10 @@ func (ws *WSShell) WritePump() {
 			if err != nil {
 				log.Printf("WritePump %s err: %v\n", ws.RemoteAddr, err)
 				return
+			}
+			if initialPing {
+				initialPing = false
+				ticker.Reset(pingPeriodTickTime)
 			}
 
 		case msgBytes, ok := <-ws.WriteChan:
