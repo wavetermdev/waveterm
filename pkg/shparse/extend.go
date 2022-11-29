@@ -15,7 +15,7 @@ func init() {
 	noEscChars = make([]bool, 256)
 	for ch := 0; ch < 256; ch++ {
 		if (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
-			ch == '-' || ch == '.' || ch == '/' || ch == ':' || ch == '=' {
+			ch == '-' || ch == '.' || ch == '/' || ch == ':' || ch == '=' || ch == '_' {
 			noEscChars[byte(ch)] = true
 		}
 	}

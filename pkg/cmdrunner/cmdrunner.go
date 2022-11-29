@@ -942,11 +942,14 @@ func makeStaticCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr 
 		TermOpts:  sstore.TermOpts{Rows: shexec.DefaultTermRows, Cols: shexec.DefaultTermCols, FlexRows: true, MaxPtySize: remote.DefaultMaxPtySize},
 		Status:    sstore.CmdStatusDone,
 		StartPk:   nil,
-		DonePk:    nil,
+		DoneInfo:  nil,
 		RunOut:    nil,
 	}
-	if ids.Remote.RemoteState != nil {
-		cmd.RemoteState = *ids.Remote.RemoteState
+	if ids.Remote.StatePtr != nil {
+		cmd.StatePtr = *ids.Remote.StatePtr
+	}
+	if ids.Remote.FeState != nil {
+		cmd.FeState = *ids.Remote.FeState
 	}
 	err := sstore.CreateCmdPtyFile(ctx, cmd.SessionId, cmd.CmdId, cmd.TermOpts.MaxPtySize)
 	if err != nil {
@@ -1097,7 +1100,7 @@ func doCompGen(ctx context.Context, pk *scpacket.FeCommandPacketType, prefix str
 	cgPacket.ReqId = uuid.New().String()
 	cgPacket.CompType = compType
 	cgPacket.Prefix = prefix
-	cgPacket.Cwd = ids.Remote.RemoteState.Cwd
+	cgPacket.Cwd = ids.Remote.FeState.Cwd
 	resp, err := ids.Remote.MShell.PacketRpc(ctx, cgPacket)
 	if err != nil {
 		return nil, false, err
@@ -1109,8 +1112,6 @@ func doCompGen(ctx context.Context, pk *scpacket.FeCommandPacketType, prefix str
 	hasMore := utilfn.GetBool(resp.Data, "hasmore")
 	return comps, hasMore, nil
 }
-
-// func DoCompGen(ctx context.Context, sp StrWithPos, compCtx CompContext) (*CompReturn, *StrWithPos, error)
 
 func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, 0) // best-effort
@@ -1138,7 +1139,9 @@ func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if ids.Remote != nil {
 		rptr := ids.Remote.RemotePtr
 		compCtx.RemotePtr = &rptr
-		compCtx.State = ids.Remote.RemoteState
+		if ids.Remote.FeState != nil {
+			compCtx.Cwd = ids.Remote.FeState.Cwd
+		}
 	}
 	compCtx.ForDisplay = showComps
 	crtn, newSP, err := comp.DoCompGen(ctx, cmdSP, compCtx)
@@ -1378,7 +1381,7 @@ func ResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	update, err := addLineForCmd(ctx, "/cd", false, ids, cmd)
+	update, err := addLineForCmd(ctx, "/reset", false, ids, cmd)
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
@@ -1557,8 +1560,8 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "cmdid", cmd.CmdId))
 		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "remote", cmd.Remote.MakeFullRemoteRef()))
 		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "status", cmd.Status))
-		if cmd.RemoteState.Cwd != "" {
-			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "cwd", cmd.RemoteState.Cwd))
+		if cmd.FeState.Cwd != "" {
+			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "cwd", cmd.FeState.Cwd))
 		}
 		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "termopts", formatTermOpts(cmd.TermOpts)))
 		if cmd.TermOpts != cmd.OrigTermOpts {
@@ -1670,6 +1673,9 @@ func formatTextTable(totalCols int, data [][]string, colMeta []ColMeta) []string
 	return rtn
 }
 
+const MaxDiffKeyLen = 40
+const MaxDiffValLen = 50
+
 func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newState packet.ShellState) {
 	if newState.Cwd != oldState.Cwd {
 		buf.WriteString(fmt.Sprintf("cwd %s\n", newState.Cwd))
@@ -1684,13 +1690,13 @@ func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newSt
 				if newVal.IsExport() {
 					exportStr = "export "
 				}
-				buf.WriteString(fmt.Sprintf("%s%s=%s\n", exportStr, key, utilfn.ShellQuote(newVal.Value, false, 50)))
+				buf.WriteString(fmt.Sprintf("%s%s=%s\n", exportStr, utilfn.EllipsisStr(key, MaxDiffKeyLen), utilfn.EllipsisStr(newVal.Value, MaxDiffValLen)))
 			}
 		}
 		for key, _ := range oldEnvMap {
 			_, found := newEnvMap[key]
 			if !found {
-				buf.WriteString(fmt.Sprintf("unset %s\n", key))
+				buf.WriteString(fmt.Sprintf("unset %s\n", utilfn.EllipsisStr(key, MaxDiffKeyLen)))
 			}
 		}
 	}
@@ -1700,13 +1706,13 @@ func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newSt
 		for aliasName, newAliasVal := range newAliasMap {
 			oldAliasVal, found := oldAliasMap[aliasName]
 			if !found || newAliasVal != oldAliasVal {
-				buf.WriteString(fmt.Sprintf("alias %s\n", shellescape.Quote(aliasName)))
+				buf.WriteString(fmt.Sprintf("alias %s\n", utilfn.EllipsisStr(shellescape.Quote(aliasName), MaxDiffKeyLen)))
 			}
 		}
 		for aliasName, _ := range oldAliasMap {
 			_, found := newAliasMap[aliasName]
 			if !found {
-				buf.WriteString(fmt.Sprintf("unalias %s\n", shellescape.Quote(aliasName)))
+				buf.WriteString(fmt.Sprintf("unalias %s\n", utilfn.EllipsisStr(shellescape.Quote(aliasName), MaxDiffKeyLen)))
 			}
 		}
 	}
@@ -1716,13 +1722,13 @@ func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newSt
 		for funcName, newFuncVal := range newFuncMap {
 			oldFuncVal, found := oldFuncMap[funcName]
 			if !found || newFuncVal != oldFuncVal {
-				buf.WriteString(fmt.Sprintf("function %s\n", shellescape.Quote(funcName)))
+				buf.WriteString(fmt.Sprintf("function %s\n", utilfn.EllipsisStr(shellescape.Quote(funcName), MaxDiffKeyLen)))
 			}
 		}
 		for funcName, _ := range oldFuncMap {
 			_, found := newFuncMap[funcName]
 			if !found {
-				buf.WriteString(fmt.Sprintf("unset -f %s\n", shellescape.Quote(funcName)))
+				buf.WriteString(fmt.Sprintf("unset -f %s\n", utilfn.EllipsisStr(shellescape.Quote(funcName), MaxDiffKeyLen)))
 			}
 		}
 	}
@@ -1739,11 +1745,19 @@ func GetRtnStateDiff(ctx context.Context, sessionId string, cmdId string) ([]byt
 	if !cmd.RtnState {
 		return nil, nil
 	}
-	if cmd.DonePk == nil || cmd.DonePk.FinalState == nil {
+	if cmd.RtnStatePtr.IsEmpty() {
 		return nil, nil
 	}
 	var outputBytes bytes.Buffer
-	displayStateUpdateDiff(&outputBytes, cmd.RemoteState, *cmd.DonePk.FinalState)
+	initialState, err := sstore.GetFullState(ctx, cmd.StatePtr)
+	if err != nil {
+		return nil, fmt.Errorf("getting initial full state: %v", err)
+	}
+	rtnState, err := sstore.GetFullState(ctx, cmd.RtnStatePtr)
+	if err != nil {
+		return nil, fmt.Errorf("getting rtn full state: %v", err)
+	}
+	displayStateUpdateDiff(&outputBytes, *initialState, *rtnState)
 	return outputBytes.Bytes(), nil
 }
 

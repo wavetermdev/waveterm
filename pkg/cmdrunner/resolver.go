@@ -3,12 +3,12 @@ package cmdrunner
 import (
 	"context"
 	"fmt"
+	"log"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/sh2-server/pkg/remote"
 	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
@@ -34,8 +34,9 @@ type ResolvedRemote struct {
 	RemotePtr   sstore.RemotePtrType
 	MShell      *remote.MShellProc
 	RState      remote.RemoteRuntimeState
-	RemoteState *packet.ShellState
 	RemoteCopy  *sstore.RemoteType
+	StatePtr    *sstore.ShellStatePtr
+	FeState     *sstore.FeStateType
 }
 
 type ResolveItem = sstore.ResolveItem
@@ -264,7 +265,7 @@ func resolveUiIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype i
 		if !rtn.Remote.RState.IsConnected() {
 			return rtn, fmt.Errorf("remote '%s' is not connected", rtn.Remote.DisplayName)
 		}
-		if rtn.Remote.RemoteState == nil {
+		if rtn.Remote.StatePtr == nil || rtn.Remote.FeState == nil {
 			return rtn, fmt.Errorf("remote '%s' state is not available", rtn.Remote.DisplayName)
 		}
 	}
@@ -453,20 +454,26 @@ func resolveRemoteFromPtr(ctx context.Context, rptr *sstore.RemotePtrType, sessi
 	rtn := &ResolvedRemote{
 		DisplayName: displayName,
 		RemotePtr:   *rptr,
-		RemoteState: nil,
 		RState:      rstate,
 		MShell:      msh,
 		RemoteCopy:  &rcopy,
+		StatePtr:    nil,
+		FeState:     nil,
 	}
 	if sessionId != "" && windowId != "" {
-		state, err := sstore.GetRemoteState(ctx, sessionId, windowId, *rptr)
+		ri, err := sstore.GetRemoteInstance(ctx, sessionId, windowId, *rptr)
 		if err != nil {
-			return nil, fmt.Errorf("cannot resolve remote state '%s': %w", displayName, err)
+			log.Printf("ERROR resolving remote state '%s': %v\n", displayName, err)
+			// continue with state set to nil
+		} else {
+			if ri == nil {
+				rtn.StatePtr = msh.GetDefaultStatePtr()
+				rtn.FeState = msh.GetDefaultFeState()
+			} else {
+				rtn.StatePtr = &sstore.ShellStatePtr{BaseHash: ri.StateBaseHash, DiffHashArr: ri.StateDiffHashArr}
+				rtn.FeState = &ri.FeState
+			}
 		}
-		if state == nil {
-			state = msh.GetDefaultState()
-		}
-		rtn.RemoteState = state
 	}
 	return rtn, nil
 }

@@ -54,8 +54,7 @@ type UIContextType struct {
 	ScreenId  string                `json:"screenid"`
 	WindowId  string                `json:"windowid"`
 	Remote    *sstore.RemotePtrType `json:"remote,omitempty"`
-	TermOpts  *packet.TermOpts      `json:"termopts,omitempty"`
-	WinSize   *WinSize              `json:"winsize,omitempty"`
+	WinSize   *packet.WinSize       `json:"winsize,omitempty"`
 }
 
 type FeInputPacketType struct {

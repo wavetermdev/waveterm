@@ -84,6 +84,16 @@ func ShellQuote(val string, forceQuote bool, maxLen int) string {
 	}
 }
 
+func EllipsisStr(s string, maxLen int) string {
+	if maxLen < 4 {
+		maxLen = 4
+	}
+	if len(s) > maxLen {
+		return s[0:maxLen-3] + "..."
+	}
+	return s
+}
+
 func LongestPrefix(root string, strs []string) string {
 	if len(strs) == 0 {
 		return root

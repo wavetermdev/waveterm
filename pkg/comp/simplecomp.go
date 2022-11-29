@@ -70,7 +70,7 @@ func doCompGen(ctx context.Context, prefix string, compType string, compCtx Comp
 	cgPacket.ReqId = uuid.New().String()
 	cgPacket.CompType = compType
 	cgPacket.Prefix = prefix
-	cgPacket.Cwd = compCtx.State.Cwd
+	cgPacket.Cwd = compCtx.Cwd
 	resp, err := msh.PacketRpc(ctx, cgPacket)
 	if err != nil {
 		return nil, err

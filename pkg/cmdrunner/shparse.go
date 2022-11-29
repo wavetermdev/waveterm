@@ -171,7 +171,7 @@ func IsReturnStateCommand(cmdStr string) bool {
 			if len(callExpr.Args) > 0 && len(callExpr.Args[0].Parts) > 0 {
 				lit, ok := callExpr.Args[0].Parts[0].(*syntax.Lit)
 				if ok {
-					if lit.Value == "." || lit.Value == "source" || lit.Value == "unset" || lit.Value == "cd" {
+					if lit.Value == "." || lit.Value == "source" || lit.Value == "unset" || lit.Value == "cd" || lit.Value == "alias" || lit.Value == "unalias" {
 						return true
 					}
 				}

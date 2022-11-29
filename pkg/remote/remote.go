@@ -24,6 +24,7 @@ import (
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
+	"github.com/scripthaus-dev/mshell/pkg/statediff"
 	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
@@ -148,6 +149,20 @@ func (msh *MShellProc) GetDefaultState() *packet.ShellState {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
 	return msh.StateMap[msh.CurrentState]
+}
+
+func (msh *MShellProc) GetDefaultStatePtr() *sstore.ShellStatePtr {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	if msh.CurrentState == "" {
+		return nil
+	}
+	return &sstore.ShellStatePtr{BaseHash: msh.CurrentState}
+}
+
+func (msh *MShellProc) GetDefaultFeState() *sstore.FeStateType {
+	state := msh.GetDefaultState()
+	return sstore.FeStateFromShellState(state)
 }
 
 func (msh *MShellProc) GetStateByHash(hval string) *packet.ShellState {
@@ -926,6 +941,7 @@ func (msh *MShellProc) ReInit(ctx context.Context) (*packet.InitPacketType, erro
 		return nil, fmt.Errorf("invalid reinit response initpk does not contain remote state")
 	}
 	hval := initPk.State.GetHashVal(false)
+	sstore.StoreStateBase(ctx, initPk.State)
 	msh.WithLock(func() {
 		msh.CurrentState = hval
 		msh.StateMap[hval] = initPk.State
@@ -950,10 +966,28 @@ func stripScVarsFromState(state *packet.ShellState) *packet.ShellState {
 		return nil
 	}
 	rtn := *state
+	rtn.HashVal = ""
 	envMap := shexec.DeclMapFromState(&rtn)
 	delete(envMap, "SCRIPTHAUS")
 	delete(envMap, "SCRIPTHAUS_VERSION")
 	rtn.ShellVars = shexec.SerializeDeclMap(envMap)
+	return &rtn
+}
+
+func stripScVarsFromStateDiff(stateDiff *packet.ShellStateDiff) *packet.ShellStateDiff {
+	if stateDiff == nil || len(stateDiff.VarsDiff) == 0 {
+		return stateDiff
+	}
+	rtn := *stateDiff
+	rtn.HashVal = ""
+	var mapDiff statediff.MapDiffType
+	err := mapDiff.Decode(stateDiff.VarsDiff)
+	if err != nil {
+		return stateDiff
+	}
+	delete(mapDiff.ToAdd, "SCRIPTHAUS")
+	delete(mapDiff.ToAdd, "SCRIPTHAUS_VERSION")
+	rtn.VarsDiff = mapDiff.Encode()
 	return &rtn
 }
 
@@ -1214,15 +1248,19 @@ func RunCommand(ctx context.Context, sessionId string, windowId string, remotePt
 		}
 	}()
 	// get current remote-instance state
-	currentState, err := sstore.GetRemoteState(ctx, sessionId, windowId, remotePtr)
+	statePtr, err := sstore.GetRemoteStatePtr(ctx, sessionId, windowId, remotePtr)
 	if err != nil {
+		return nil, nil, fmt.Errorf("cannot get current remote stateptr: %w", err)
+	}
+	if statePtr == nil {
+		statePtr = msh.GetDefaultStatePtr()
+	}
+	if statePtr == nil {
+		return nil, nil, fmt.Errorf("cannot run command, no valid remote stateptr")
+	}
+	currentState, err := sstore.GetFullState(ctx, *statePtr)
+	if err != nil || currentState == nil {
 		return nil, nil, fmt.Errorf("cannot get current remote state: %w", err)
-	}
-	if currentState == nil {
-		currentState = msh.GetDefaultState()
-	}
-	if currentState == nil {
-		return nil, nil, fmt.Errorf("cannot run command, no valid remote state")
 	}
 	runPacket.State = addScVarsToState(currentState)
 	runPacket.StateComplete = true
@@ -1250,19 +1288,19 @@ func RunCommand(ctx context.Context, sessionId string, windowId string, remotePt
 	if runPacket.Detached {
 		status = sstore.CmdStatusDetached
 	}
-	cmdState := stripScVarsFromState(runPacket.State)
 	cmd := &sstore.CmdType{
-		SessionId:   runPacket.CK.GetSessionId(),
-		CmdId:       runPacket.CK.GetCmdId(),
-		CmdStr:      runPacket.Command,
-		Remote:      remotePtr,
-		RemoteState: *cmdState,
-		TermOpts:    makeTermOpts(runPacket),
-		Status:      status,
-		StartPk:     startPk,
-		DonePk:      nil,
-		RunOut:      nil,
-		RtnState:    runPacket.ReturnState,
+		SessionId: runPacket.CK.GetSessionId(),
+		CmdId:     runPacket.CK.GetCmdId(),
+		CmdStr:    runPacket.Command,
+		Remote:    remotePtr,
+		FeState:   *sstore.FeStateFromShellState(currentState),
+		StatePtr:  *statePtr,
+		TermOpts:  makeTermOpts(runPacket),
+		Status:    status,
+		StartPk:   startPk,
+		DoneInfo:  nil,
+		RunOut:    nil,
+		RtnState:  runPacket.ReturnState,
 	}
 	err = sstore.CreateCmdPtyFile(ctx, cmd.SessionId, cmd.CmdId, cmd.TermOpts.MaxPtySize)
 	if err != nil {
@@ -1398,8 +1436,15 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 	if donePk.FinalState != nil {
 		donePk.FinalState = stripScVarsFromState(donePk.FinalState)
 	}
-
-	update, err := sstore.UpdateCmdDonePk(context.Background(), donePk)
+	if donePk.FinalStateDiff != nil {
+		donePk.FinalStateDiff = stripScVarsFromStateDiff(donePk.FinalStateDiff)
+	}
+	doneInfo := &sstore.CmdDoneInfo{
+		Ts:         donePk.Ts,
+		ExitCode:   int64(donePk.ExitCode),
+		DurationMs: donePk.DurationMs,
+	}
+	update, err := sstore.UpdateCmdDoneInfo(context.Background(), donePk.CK, doneInfo)
 	if err != nil {
 		msh.WriteToPtyBuffer("*error updating cmddone: %v\n", err)
 		return
@@ -1411,8 +1456,8 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 	}
 	update.ScreenWindows = sws
 	rct := msh.GetRunningCmd(donePk.CK)
+	var statePtr *sstore.ShellStatePtr
 	if donePk.FinalState != nil && rct != nil {
-		fmt.Printf("** FINALSTATE!\n")
 		feState := sstore.FeStateFromShellState(donePk.FinalState)
 		remoteInst, err := sstore.UpdateRemoteState(context.Background(), rct.SessionId, rct.WindowId, rct.RemotePtr, *feState, donePk.FinalState, nil)
 		if err != nil {
@@ -1422,20 +1467,13 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 		if remoteInst != nil {
 			update.Sessions = sstore.MakeSessionsUpdateForRemote(rct.SessionId, remoteInst)
 		}
+		statePtr = &sstore.ShellStatePtr{BaseHash: donePk.FinalState.GetHashVal(false)}
 	} else if donePk.FinalStateDiff != nil && rct != nil {
-		fmt.Printf("** STATEDIFF! %#v\n", donePk.FinalStateDiff)
-		fullState, err := msh.getFullState(donePk.FinalStateDiff)
-		if err != nil {
-			fmt.Printf("**ERR: %v\n", err)
-		}
-		donePk.FinalStateDiff.Dump()
-		shexec.DumpVarMapFromState(fullState)
 		feState, err := msh.getFeStateFromDiff(donePk.FinalStateDiff)
 		if err != nil {
 			msh.WriteToPtyBuffer("*error trying to update remotestate: %v\n", err)
 			// fall-through (nothing to do)
 		} else {
-			fmt.Printf("** festate = %#v\n", feState)
 			remoteInst, err := sstore.UpdateRemoteState(context.Background(), rct.SessionId, rct.WindowId, rct.RemotePtr, *feState, nil, donePk.FinalStateDiff)
 			if err != nil {
 				msh.WriteToPtyBuffer("*error trying to update remotestate: %v\n", err)
@@ -1444,6 +1482,16 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 			if remoteInst != nil {
 				update.Sessions = sstore.MakeSessionsUpdateForRemote(rct.SessionId, remoteInst)
 			}
+			diffHashArr := append(([]string)(nil), donePk.FinalStateDiff.DiffHashArr...)
+			diffHashArr = append(diffHashArr, donePk.FinalStateDiff.GetHashVal(false))
+			statePtr = &sstore.ShellStatePtr{BaseHash: donePk.FinalStateDiff.BaseHash, DiffHashArr: diffHashArr}
+		}
+	}
+	if statePtr != nil {
+		err = sstore.UpdateCmdRtnState(context.Background(), donePk.CK, *statePtr)
+		if err != nil {
+			msh.WriteToPtyBuffer("*error trying to update cmd rtnstate: %v\n", err)
+			// fall-through (nothing to do)
 		}
 	}
 	sstore.MainBus.SendUpdate(donePk.CK.GetSessionId(), update)
@@ -1457,7 +1505,7 @@ func (msh *MShellProc) handleCmdFinalPacket(finalPk *packet.CmdFinalPacketType) 
 		log.Printf("error calling GetCmdById in handleCmdFinalPacket: %v\n", err)
 		return
 	}
-	if rtnCmd == nil || rtnCmd.DonePk != nil {
+	if rtnCmd == nil || rtnCmd.DoneInfo != nil {
 		return
 	}
 	log.Printf("finalpk %s (hangup): %s\n", finalPk.CK, finalPk.Error)
@@ -1743,7 +1791,7 @@ func (msh *MShellProc) getFullState(stateDiff *packet.ShellStateDiff) (*packet.S
 		}
 		return &newState, nil
 	} else {
-		fullState, err := sstore.GetFullState(context.Background(), stateDiff.BaseHash, stateDiff.DiffHashArr)
+		fullState, err := sstore.GetFullState(context.Background(), sstore.ShellStatePtr{stateDiff.BaseHash, stateDiff.DiffHashArr})
 		if err != nil {
 			return nil, err
 		}
@@ -1762,7 +1810,7 @@ func (msh *MShellProc) getFeStateFromDiff(stateDiff *packet.ShellStateDiff) (*ss
 		}
 		return sstore.FeStateFromShellState(&newState), nil
 	} else {
-		fullState, err := sstore.GetFullState(context.Background(), stateDiff.BaseHash, stateDiff.DiffHashArr)
+		fullState, err := sstore.GetFullState(context.Background(), sstore.ShellStatePtr{stateDiff.BaseHash, stateDiff.DiffHashArr})
 		if err != nil {
 			return nil, err
 		}

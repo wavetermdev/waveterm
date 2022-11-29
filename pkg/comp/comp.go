@@ -11,7 +11,6 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/mshell/pkg/simpleexpand"
 	"github.com/scripthaus-dev/sh2-server/pkg/shparse"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
@@ -46,7 +45,7 @@ const (
 
 type CompContext struct {
 	RemotePtr  *sstore.RemotePtrType
-	State      *packet.ShellState
+	Cwd        string
 	ForDisplay bool
 }
 

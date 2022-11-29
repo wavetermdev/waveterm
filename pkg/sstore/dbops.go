@@ -661,8 +661,8 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 			cmd.OrigTermOpts = cmd.TermOpts
 			cmdMap := cmd.ToMap()
 			query = `
-INSERT INTO cmd  ( sessionid, cmdid, remoteownerid, remoteid, remotename, cmdstr, remotestate, termopts, origtermopts, status, startpk, donepk, rtnstate, runout)
-          VALUES (:sessionid,:cmdid,:remoteownerid,:remoteid,:remotename,:cmdstr,:remotestate,:termopts,:origtermopts,:status,:startpk,:donepk,:rtnstate,:runout)
+INSERT INTO cmd  ( sessionid, cmdid, remoteownerid, remoteid, remotename, cmdstr, festate, statebasehash, statediffhasharr, termopts, origtermopts, status, startpk, doneinfo, rtnstate, runout, rtnbasehash, rtndiffhasharr)
+          VALUES (:sessionid,:cmdid,:remoteownerid,:remoteid,:remotename,:cmdstr,:festate,:statebasehash,:statediffhasharr,:termopts,:origtermopts,:status,:startpk,:doneinfo,:rtnstate,:runout,:rtnbasehash,:rtndiffhasharr)
 `
 			tx.NamedExecWrap(query, cmdMap)
 		}
@@ -684,10 +684,10 @@ func GetCmdById(ctx context.Context, sessionId string, cmdId string) (*CmdType, 
 	return cmd, nil
 }
 
-func HasDonePk(ctx context.Context, ck base.CommandKey) (bool, error) {
+func HasDoneInfo(ctx context.Context, ck base.CommandKey) (bool, error) {
 	var found bool
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		found = tx.Exists(`SELECT sessionid FROM cmd WHERE sessionid = ? AND cmdid = ? AND donepk is NOT NULL`, ck.GetSessionId(), ck.GetCmdId())
+		found = tx.Exists(`SELECT sessionid FROM cmd WHERE sessionid = ? AND cmdid = ? AND doneinfo is NOT NULL`, ck.GetSessionId(), ck.GetCmdId())
 		return nil
 	})
 	if txErr != nil {
@@ -696,16 +696,19 @@ func HasDonePk(ctx context.Context, ck base.CommandKey) (bool, error) {
 	return found, nil
 }
 
-func UpdateCmdDonePk(ctx context.Context, donePk *packet.CmdDonePacketType) (*ModelUpdate, error) {
-	if donePk == nil || donePk.CK.IsEmpty() {
-		return nil, fmt.Errorf("invalid cmddone packet (no ck)")
+func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, doneInfo *CmdDoneInfo) (*ModelUpdate, error) {
+	if doneInfo == nil {
+		return nil, fmt.Errorf("invalid cmddone packet")
+	}
+	if ck.IsEmpty() {
+		return nil, fmt.Errorf("cannot update cmddoneinfo, empty ck")
 	}
 	var rtnCmd *CmdType
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `UPDATE cmd SET status = ?, donepk = ? WHERE sessionid = ? AND cmdid = ?`
-		tx.ExecWrap(query, CmdStatusDone, quickJson(donePk), donePk.CK.GetSessionId(), donePk.CK.GetCmdId())
+		query := `UPDATE cmd SET status = ?, doneinfo = ? WHERE sessionid = ? AND cmdid = ?`
+		tx.ExecWrap(query, CmdStatusDone, quickJson(doneInfo), ck.GetSessionId(), ck.GetCmdId())
 		var err error
-		rtnCmd, err = GetCmdById(tx.Context(), donePk.CK.GetSessionId(), donePk.CK.GetCmdId())
+		rtnCmd, err = GetCmdById(tx.Context(), ck.GetSessionId(), ck.GetCmdId())
 		if err != nil {
 			return err
 		}
@@ -715,9 +718,24 @@ func UpdateCmdDonePk(ctx context.Context, donePk *packet.CmdDonePacketType) (*Mo
 		return nil, txErr
 	}
 	if rtnCmd == nil {
-		return nil, fmt.Errorf("cmd data not found for ck[%s]", donePk.CK)
+		return nil, fmt.Errorf("cmd data not found for ck[%s]", ck)
 	}
 	return &ModelUpdate{Cmd: rtnCmd}, nil
+}
+
+func UpdateCmdRtnState(ctx context.Context, ck base.CommandKey, statePtr ShellStatePtr) error {
+	if ck.IsEmpty() {
+		return fmt.Errorf("cannot update cmdrtnstate, empty ck")
+	}
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `UPDATE cmd SET rtnbasehash = ?, rtndiffhasharr = ? WHERE sessionid = ? AND cmdid = ?`
+		tx.ExecWrap(query, statePtr.BaseHash, quickJsonArr(statePtr.DiffHashArr), ck.GetSessionId(), ck.GetCmdId())
+		return nil
+	})
+	if txErr != nil {
+		return txErr
+	}
+	return nil
 }
 
 func AppendCmdErrorPk(ctx context.Context, errPk *packet.CmdErrorPacketType) error {
@@ -823,8 +841,23 @@ func DeleteScreen(ctx context.Context, sessionId string, screenId string) (Updat
 	return update, nil
 }
 
-func GetRemoteState(ctx context.Context, sessionId string, windowId string, remotePtr RemotePtrType) (*packet.ShellState, error) {
-	var state *packet.ShellState
+func GetRemoteState(ctx context.Context, sessionId string, windowId string, remotePtr RemotePtrType) (*packet.ShellState, *ShellStatePtr, error) {
+	ssptr, err := GetRemoteStatePtr(ctx, sessionId, windowId, remotePtr)
+	if err != nil {
+		return nil, nil, err
+	}
+	if ssptr == nil {
+		return nil, nil, nil
+	}
+	state, err := GetFullState(ctx, *ssptr)
+	if err != nil {
+		return nil, nil, err
+	}
+	return state, ssptr, err
+}
+
+func GetRemoteStatePtr(ctx context.Context, sessionId string, windowId string, remotePtr RemotePtrType) (*ShellStatePtr, error) {
+	var ssptr *ShellStatePtr
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		ri, err := GetRemoteInstance(tx.Context(), sessionId, windowId, remotePtr)
 		if err != nil {
@@ -833,16 +866,13 @@ func GetRemoteState(ctx context.Context, sessionId string, windowId string, remo
 		if ri == nil {
 			return nil
 		}
-		state, err = GetFullState(tx.Context(), ri.StateBaseHash, ri.StateDiffHashArr)
-		if err != nil {
-			return err
-		}
+		ssptr = &ShellStatePtr{ri.StateBaseHash, ri.StateDiffHashArr}
 		return nil
 	})
 	if txErr != nil {
 		return nil, txErr
 	}
-	return state, nil
+	return ssptr, nil
 }
 
 func validateSessionWindow(tx *TxWrap, sessionId string, windowId string) error {
@@ -882,6 +912,7 @@ func GetRemoteInstance(ctx context.Context, sessionId string, windowId string, r
 func updateRIWithState(ctx context.Context, ri *RemoteInstance, stateBase *packet.ShellState, stateDiff *packet.ShellStateDiff) error {
 	if stateBase != nil {
 		ri.StateBaseHash = stateBase.GetHashVal(false)
+		ri.StateDiffHashArr = nil
 		err := StoreStateBase(ctx, stateBase)
 		if err != nil {
 			return err
@@ -897,7 +928,6 @@ func updateRIWithState(ctx context.Context, ri *RemoteInstance, stateBase *packe
 	return nil
 }
 
-// TODO - statediff
 func UpdateRemoteState(ctx context.Context, sessionId string, windowId string, remotePtr RemotePtrType, feState FeStateType, stateBase *packet.ShellState, stateDiff *packet.ShellStateDiff) (*RemoteInstance, error) {
 	if stateBase == nil && stateDiff == nil {
 		return nil, fmt.Errorf("UpdateRemoteState, must set state or diff")
@@ -936,13 +966,13 @@ func UpdateRemoteState(ctx context.Context, sessionId string, windowId string, r
 			tx.NamedExecWrap(query, ri.ToMap())
 			return nil
 		} else {
-			query = `UPDATE remote_instance SET festate = ? WHERE riid = ?`
+			query = `UPDATE remote_instance SET festate = ?, statebasehash = ?, statediffhasharr = ? WHERE riid = ?`
 			ri.FeState = feState
 			err = updateRIWithState(tx.Context(), ri, stateBase, stateDiff)
 			if err != nil {
 				return err
 			}
-			tx.ExecWrap(query, quickJson(ri.FeState), ri.RIId)
+			tx.ExecWrap(query, quickJson(ri.FeState), ri.StateBaseHash, quickJsonArr(ri.StateDiffHashArr), ri.RIId)
 			return nil
 		}
 	})
@@ -1370,24 +1400,24 @@ func StoreStateDiff(ctx context.Context, diff *packet.ShellStateDiff) error {
 }
 
 // returns error when not found
-func GetFullState(ctx context.Context, baseHash string, diffHashArr []string) (*packet.ShellState, error) {
+func GetFullState(ctx context.Context, ssPtr ShellStatePtr) (*packet.ShellState, error) {
 	var state *packet.ShellState
-	if baseHash == "" {
+	if ssPtr.BaseHash == "" {
 		return nil, fmt.Errorf("invalid empty basehash")
 	}
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		var stateBase StateBase
 		query := `SELECT * FROM state_base WHERE basehash = ?`
-		found := tx.GetWrap(&stateBase, query, baseHash)
+		found := tx.GetWrap(&stateBase, query, ssPtr.BaseHash)
 		if !found {
-			return fmt.Errorf("ShellState %s not found", baseHash)
+			return fmt.Errorf("ShellState %s not found", ssPtr.BaseHash)
 		}
 		state = &packet.ShellState{}
 		err := state.DecodeShellState(stateBase.Data)
 		if err != nil {
 			return err
 		}
-		for idx, diffHash := range diffHashArr {
+		for idx, diffHash := range ssPtr.DiffHashArr {
 			query = `SELECT * FROM state_diff WHERE diffhash = ?`
 			m := tx.GetMap(query, diffHash)
 			stateDiff := StateDiffFromMap(m)

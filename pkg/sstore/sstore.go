@@ -458,6 +458,18 @@ func (opts TermOpts) Value() (driver.Value, error) {
 	return quickValueJson(opts)
 }
 
+type ShellStatePtr struct {
+	BaseHash    string
+	DiffHashArr []string
+}
+
+func (ssptr *ShellStatePtr) IsEmpty() bool {
+	if ssptr == nil || ssptr.BaseHash == "" {
+		return true
+	}
+	return false
+}
+
 type RemoteInstance struct {
 	RIId             string      `json:"riid"`
 	Name             string      `json:"name"`
@@ -625,19 +637,27 @@ func (r *RemoteType) GetName() string {
 	return r.RemoteCanonicalName
 }
 
+type CmdDoneInfo struct {
+	Ts         int64 `json:"ts"`
+	ExitCode   int64 `json:"exitcode"`
+	DurationMs int64 `json:"durationms"`
+}
+
 type CmdType struct {
 	SessionId    string                     `json:"sessionid"`
 	CmdId        string                     `json:"cmdid"`
 	Remote       RemotePtrType              `json:"remote"`
 	CmdStr       string                     `json:"cmdstr"`
-	RemoteState  packet.ShellState          `json:"remotestate"`
+	FeState      FeStateType                `json:"festate"`
+	StatePtr     ShellStatePtr              `json:"state"`
 	TermOpts     TermOpts                   `json:"termopts"`
 	OrigTermOpts TermOpts                   `json:"origtermopts"`
 	Status       string                     `json:"status"`
 	StartPk      *packet.CmdStartPacketType `json:"startpk,omitempty"`
-	DonePk       *packet.CmdDonePacketType  `json:"donepk,omitempty"`
+	DoneInfo     *CmdDoneInfo               `json:"doneinfo,omitempty"`
 	RunOut       []packet.PacketType        `json:"runout,omitempty"`
 	RtnState     bool                       `json:"rtnstate,omitempty"`
+	RtnStatePtr  ShellStatePtr              `json:"rtnstateptr,omitempty"`
 	Remove       bool                       `json:"remove,omitempty"`
 }
 
@@ -694,14 +714,18 @@ func (cmd *CmdType) ToMap() map[string]interface{} {
 	rtn["remoteid"] = cmd.Remote.RemoteId
 	rtn["remotename"] = cmd.Remote.Name
 	rtn["cmdstr"] = cmd.CmdStr
-	rtn["remotestate"] = quickJson(cmd.RemoteState)
+	rtn["festate"] = quickJson(cmd.FeState)
+	rtn["statebasehash"] = cmd.StatePtr.BaseHash
+	rtn["statediffhasharr"] = quickJsonArr(cmd.StatePtr.DiffHashArr)
 	rtn["termopts"] = quickJson(cmd.TermOpts)
 	rtn["origtermopts"] = quickJson(cmd.OrigTermOpts)
 	rtn["status"] = cmd.Status
 	rtn["startpk"] = quickJson(cmd.StartPk)
-	rtn["donepk"] = quickJson(cmd.DonePk)
+	rtn["doneinfo"] = quickJson(cmd.DoneInfo)
 	rtn["runout"] = quickJson(cmd.RunOut)
 	rtn["rtnstate"] = cmd.RtnState
+	rtn["rtnbasehash"] = cmd.RtnStatePtr.BaseHash
+	rtn["rtndiffhasharr"] = quickJsonArr(cmd.RtnStatePtr.DiffHashArr)
 	return rtn
 }
 
@@ -716,14 +740,18 @@ func CmdFromMap(m map[string]interface{}) *CmdType {
 	quickSetStr(&cmd.Remote.RemoteId, m, "remoteid")
 	quickSetStr(&cmd.Remote.Name, m, "remotename")
 	quickSetStr(&cmd.CmdStr, m, "cmdstr")
-	quickSetJson(&cmd.RemoteState, m, "remotestate")
+	quickSetJson(&cmd.FeState, m, "festate")
+	quickSetStr(&cmd.StatePtr.BaseHash, m, "statebasehash")
+	quickSetJsonArr(&cmd.StatePtr.DiffHashArr, m, "statediffhasharr")
 	quickSetJson(&cmd.TermOpts, m, "termopts")
 	quickSetJson(&cmd.OrigTermOpts, m, "origtermopts")
 	quickSetStr(&cmd.Status, m, "status")
 	quickSetJson(&cmd.StartPk, m, "startpk")
-	quickSetJson(&cmd.DonePk, m, "donepk")
+	quickSetJson(&cmd.DoneInfo, m, "doneinfo")
 	quickSetJson(&cmd.RunOut, m, "runout")
 	quickSetBool(&cmd.RtnState, m, "rtnstate")
+	quickSetStr(&cmd.RtnStatePtr.BaseHash, m, "rtnbasehash")
+	quickSetJsonArr(&cmd.RtnStatePtr.DiffHashArr, m, "rtndiffhasharr")
 	return &cmd
 }
 

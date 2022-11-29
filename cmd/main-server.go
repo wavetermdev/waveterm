@@ -185,6 +185,17 @@ func HandleGetWindow(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleRtnState(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+		log.Printf("[error] in handlertnstate: %v\n", r)
+		debug.PrintStack()
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("panic: %v", r)))
+		return
+	}()
 	qvals := r.URL.Query()
 	sessionId := qvals.Get("sessionid")
 	cmdId := qvals.Get("cmdid")
