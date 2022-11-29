@@ -5,7 +5,7 @@ import {debounce} from "throttle-debounce";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData, boundInt, isModKeyPress} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType} from "./types";
+import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType} from "./types";
 import {WSControl} from "./ws";
 
 var GlobalUser = "sawka";
@@ -165,8 +165,8 @@ class Cmd {
         return this.data.get().cmdstr;
     }
 
-    getRemoteState() : RemoteStateType {
-        return this.data.get().remotestate;
+    getRemoteFeState() : FeStateType {
+        return this.data.get().festate;
     }
 
     getSingleLineCmdText() {
@@ -820,8 +820,7 @@ class Session {
         let remote = GlobalModel.getRemote(rptr.remoteid);
         if (remote != null) {
             return {riid: "", sessionid: this.sessionId, windowid: windowId,
-                    remoteownerid: rptr.ownerid, remoteid: rptr.remoteid, name: rptr.name,
-                    state: remote.defaultstate};
+                    remoteownerid: rptr.ownerid, remoteid: rptr.remoteid, name: rptr.name, festate: remote.defaultfestate};
         }
         return null;
     }
@@ -1611,8 +1610,8 @@ class Model {
             screenid : null,
             windowid : null,
             remote : null,
-            termopts : {},
             winsize: null,
+            linenum: null,
         };
         let session = this.getActiveSession();
         if (session != null) {
@@ -1627,8 +1626,8 @@ class Model {
                 }
                 let sw = screen.getActiveSW();
                 if (sw != null) {
-                    rtn.termopts.cols = sw.lastCols;
                     rtn.winsize = {rows: sw.lastRows, cols: sw.lastCols};
+                    rtn.linenum = sw.selectedLine.get();
                 }
             }
         }

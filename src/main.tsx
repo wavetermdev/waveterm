@@ -9,7 +9,7 @@ import dayjs from "dayjs";
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import cn from "classnames";
 import {TermWrap} from "./term";
-import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts, RemoteEditType} from "./types";
+import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts, RemoteEditType, FeStateType} from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, ScreenWindow, riToRPtr, widthToCols, termWidthFromCols, termHeightFromRows, termRowsFromHeight} from "./model";
 import {isModKeyPress} from "./util";
@@ -103,7 +103,7 @@ function replaceHomePath(path : string, homeDir : string) : string {
     return path;
 }
 
-function getCwdStr(remote : RemoteType, state : RemoteStateType) : string {
+function getCwdStr(remote : RemoteType, state : FeStateType) : string {
     if ((state == null || state.cwd == null) && remote != null) {
         return "~";
     }
@@ -112,7 +112,7 @@ function getCwdStr(remote : RemoteType, state : RemoteStateType) : string {
         cwd = state.cwd;
     }
     if (remote && remote.remotevars.home) {
-        cwd = replaceHomePath(cwd, remote.remotevars.home)
+        cwd = replaceHomePath(cwd, remote.remotevars.cwd)
     }
     return cwd;
 }
@@ -185,14 +185,14 @@ class LineText extends React.Component<{sw : ScreenWindow, line : LineType}, {}>
 }
 
 @mobxReact.observer
-class Prompt extends React.Component<{rptr : RemotePtrType, rstate : RemoteStateType}, {}> {
+class Prompt extends React.Component<{rptr : RemotePtrType, festate : FeStateType}, {}> {
     render() {
         let remote : RemoteType = null;
         if (this.props.rptr && !isBlank(this.props.rptr.remoteid)) {
             remote = GlobalModel.getRemote(this.props.rptr.remoteid);
         }
         let remoteStr = getRemoteStr(this.props.rptr);
-        let cwd = getCwdStr(remote, this.props.rstate);
+        let cwd = getCwdStr(remote, this.props.festate);
         let isRoot = false;
         if (remote && remote.remotevars) {
             if (remote.remotevars["sudo"] || remote.remotevars["bestuser"] == "root") {
@@ -344,10 +344,10 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
             );
         }
         let remoteStr = getRemoteStr(cmd.remote);
-        let cwd = getCwdStr(remote, cmd.getRemoteState());
+        let cwd = getCwdStr(remote, cmd.getRemoteFeState());
         return (
             <div className="metapart-mono cmdtext">
-                <Prompt rptr={cmd.remote} rstate={cmd.getRemoteState()}/> {cmd.getSingleLineCmdText()}
+                <Prompt rptr={cmd.remote} festate={cmd.getRemoteFeState()}/> {cmd.getSingleLineCmdText()}
             </div>
         );
     }
@@ -1730,10 +1730,10 @@ class CmdInput extends React.Component<{}, {}> {
             rptr = win.curRemote.get();
         }
         let remote : RemoteType = null;
-        let remoteState : RemoteStateType = null;
+        let remoteState : FeStateType = null;
         if (ri != null) {
             remote = GlobalModel.getRemote(ri.remoteid);
-            remoteState = ri.state;
+            remoteState = ri.festate;
         }
         let remoteStr = getRemoteStr(rptr);
         let cwdStr = getCwdStr(remote, remoteState);
@@ -1762,7 +1762,7 @@ class CmdInput extends React.Component<{}, {}> {
                 <InfoMsg key="infomsg"/>
                 <div key="prompt" className="cmd-input-context">
                     <div className="has-text-white">
-                        <Prompt rptr={rptr} rstate={remoteState}/>
+                        <Prompt rptr={rptr} festate={remoteState}/>
                     </div>
                 </div>
                 <div key="input" className={cn("cmd-input-field field has-addons", (inputMode != null ? "inputmode-" + inputMode : null))}>
@@ -2475,7 +2475,7 @@ class MainSideBar extends React.Component<{}, {}> {
                         </div>
                     </If>
                     <p className="menu-label">
-                        <a onClick={() => this.clickRemotes()}>Remotes</a>
+                        <a onClick={() => this.clickRemotes()}>Connections</a>
                     </p>
                     <ul className="menu-list remotes-menu-list">
                         <For each="remote" of={remotes}>
@@ -2485,7 +2485,7 @@ class MainSideBar extends React.Component<{}, {}> {
                             </a></li>
                         </For>
                         <li key="add-remote" className="add-remote">
-                            <a onClick={() => this.handleAddRemote()}><i className="fa fa-plus"/> Add Remote</a>
+                            <a onClick={() => this.handleAddRemote()}><i className="fa fa-plus"/> Add Connection</a>
                         </li>
                     </ul>
                     <div className="bottom-spacer"></div>
@@ -2551,7 +2551,7 @@ class DisconnectedModal extends React.Component<{}, {}> {
                 <div className="modal-background"></div>
                 <div className="modal-content message">
                     <div className="message-header">
-                        <p>ScriptHaus Client Disconnected</p>
+                        <p>Prompt Client Disconnected</p>
                     </div>
                     <If condition={this.showLog.get()}>
                         <div className="message-content">
@@ -2600,7 +2600,7 @@ class Main extends React.Component<{}, {}> {
     render() {
         return (
             <div id="main">
-                <h1 className="title scripthaus-logo-small">
+                <h1 className="title prompt-logo-small">
                     <div className="title-cursor">&#9608;</div>
                     prompt&gt;
                 </h1>

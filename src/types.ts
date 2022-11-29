@@ -87,7 +87,7 @@ type RemoteType = {
     errorstr : string,
     installstatus : string,
     installerrorstr : string,
-    defaultstate : RemoteStateType,
+    defaultfestate : FeStateType,
     connectmode : string,
     autoinstall : boolean,
     remoteidx : number,
@@ -112,10 +112,14 @@ type RemoteInstanceType = {
     windowid : string,
     remoteownerid : string,
     remoteid : string,
-    state : RemoteStateType,
+    festate : FeStateType,
 
     remove? : boolean,
 }
+
+type FeStateType = {
+    cwd : string,
+};
 
 type RemotePtrType = {
     ownerid : string,
@@ -158,20 +162,13 @@ type CmdRemoteStateType = {
     cwd : string,
 };
 
-type UIContextTermOptsType = {
-    rows? : number,
-    cols? : number,
-    term? : string,
-    maxptysize? : number,
-};
-
 type UIContextType = {
     sessionid : string,
     screenid : string,
     windowid : string,
     remote : RemotePtrType,
-    termopts : UIContextTermOptsType,
     winsize : TermWinSize,
+    linenum : number,
 };
 
 type FeCmdPacketType = {
@@ -228,10 +225,8 @@ type CmdStartPacketType = {
     mshellpid : number,
 };
 
-type CmdDonePacketType = {
-    type : string,
+type CmdDoneInfoType = {
     ts : number,
-    ck : string,
     exitcode : number,
     durationms : number,
 };
@@ -241,12 +236,12 @@ type CmdDataType = {
     cmdid : string,
     remote : RemotePtrType,
     cmdstr : string,
-    remotestate : RemoteStateType,
+    festate : FeStateType,
     termopts : TermOptsType,
     origtermopts : TermOptsType,
     status : string,
     startpk : CmdStartPacketType,
-    donepk : CmdDonePacketType,
+    doneinfo : CmdDoneInfoType,
     runout : any[],
     rtnstate : boolean,
     remove? : boolean,
@@ -324,4 +319,4 @@ type HistoryQueryOpts = {
 
 type UpdateMessage = PtyDataUpdateType | ModelUpdateType;
 
-export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDonePacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType, UIContextType, HistoryInfoType, HistoryQueryOpts, WatchScreenPacketType, TermWinSize, FeInputPacketType, RemoteInputPacketType, RemoteEditType};
+export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType, UIContextType, HistoryInfoType, HistoryQueryOpts, WatchScreenPacketType, TermWinSize, FeInputPacketType, RemoteInputPacketType, RemoteEditType, FeStateType};
