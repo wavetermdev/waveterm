@@ -154,19 +154,39 @@ func (sdiff *ShellStateDiff) GetHashVal(force bool) string {
 	return sdiff.HashVal
 }
 
-func (sdiff ShellStateDiff) Dump() {
+func (sdiff ShellStateDiff) Dump(vars bool, aliases bool, funcs bool) {
 	fmt.Printf("ShellStateDiff:\n")
 	fmt.Printf("  version: %s\n", sdiff.Version)
 	fmt.Printf("  base: %s\n", sdiff.BaseHash)
-	var mdiff statediff.MapDiffType
-	err := mdiff.Decode(sdiff.VarsDiff)
-	if err != nil {
-		fmt.Printf("  vars: error[%s]\n", err.Error())
-	} else {
-		mdiff.Dump()
-	}
-	fmt.Printf("  aliases: %d, funcs: %d\n", len(sdiff.AliasesDiff), len(sdiff.FuncsDiff))
+	fmt.Printf("  vars: %d, aliases: %d, funcs: %d\n", len(sdiff.VarsDiff), len(sdiff.AliasesDiff), len(sdiff.FuncsDiff))
 	if sdiff.Error != "" {
 		fmt.Printf("  error: %s\n", sdiff.Error)
+	}
+	if vars {
+		var mdiff statediff.MapDiffType
+		err := mdiff.Decode(sdiff.VarsDiff)
+		if err != nil {
+			fmt.Printf("  vars: error[%s]\n", err.Error())
+		} else {
+			mdiff.Dump()
+		}
+	}
+	if aliases && len(sdiff.AliasesDiff) > 0 {
+		var ldiff statediff.LineDiffType
+		err := ldiff.Decode(sdiff.AliasesDiff)
+		if err != nil {
+			fmt.Printf("  aliases: error[%s]\n", err.Error())
+		} else {
+			ldiff.Dump()
+		}
+	}
+	if funcs && len(sdiff.FuncsDiff) > 0 {
+		var ldiff statediff.LineDiffType
+		err := ldiff.Decode(sdiff.FuncsDiff)
+		if err != nil {
+			fmt.Printf("  funcs: error[%s]\n", err.Error())
+		} else {
+			ldiff.Dump()
+		}
 	}
 }

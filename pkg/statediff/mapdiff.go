@@ -18,10 +18,10 @@ type MapDiffType struct {
 func (diff MapDiffType) Dump() {
 	fmt.Printf("VAR-DIFF\n")
 	for name, val := range diff.ToAdd {
-		fmt.Printf("  add: %s=%s\n", name, val)
+		fmt.Printf("  add[%s] %s\n", name, val)
 	}
 	for _, name := range diff.ToRemove {
-		fmt.Printf("  rem: %s\n", name)
+		fmt.Printf("  rem[%s]\n", name)
 	}
 }
 

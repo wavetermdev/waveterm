@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log"
 	"os"
 	"os/exec"
 	"path"
@@ -33,9 +34,13 @@ const SessionsDirBaseName = "sessions"
 const MShellVersion = "v0.2.0"
 const RemoteIdFile = "remoteid"
 const DefaultMShellInstallBinDir = "/opt/mshell/bin"
+const LogFileName = "mshell.log"
+const ForceDebugLog = false
 
 var sessionDirCache = make(map[string]string)
 var baseLock = &sync.Mutex{}
+var DebugLogEnabled = false
+var DebugLogger *log.Logger
 
 type CommandFileNames struct {
 	PtyOutFile    string
@@ -54,6 +59,31 @@ func MakeCommandKey(sessionId string, cmdId string) CommandKey {
 
 func (ckey CommandKey) IsEmpty() bool {
 	return string(ckey) == ""
+}
+
+func Logf(fmtStr string, args ...interface{}) {
+	if (!DebugLogEnabled && !ForceDebugLog) || DebugLogger == nil {
+		return
+	}
+	DebugLogger.Printf(fmtStr, args...)
+}
+
+func InitDebugLog(prefix string) {
+	homeDir := GetMShellHomeDir()
+	err := os.MkdirAll(homeDir, 0777)
+	if err != nil {
+		return
+	}
+	logFile := path.Join(homeDir, LogFileName)
+	fd, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return
+	}
+	DebugLogger = log.New(fd, prefix+" ", log.LstdFlags)
+}
+
+func SetEnableDebugLog(enable bool) {
+	DebugLogEnabled = enable
 }
 
 func (ckey CommandKey) GetSessionId() string {

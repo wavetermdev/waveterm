@@ -536,12 +536,15 @@ func main() {
 			os.Exit(1)
 		}
 	} else if firstArg == "--single" {
+		base.InitDebugLog("single")
 		handleSingle(false)
 		return
 	} else if firstArg == "--single-from-server" {
+		base.InitDebugLog("single")
 		handleSingle(true)
 		return
 	} else if firstArg == "--server" {
+		base.InitDebugLog("server")
 		rtnCode, err := server.RunServer()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[error] %v\n", err)

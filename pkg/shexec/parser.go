@@ -9,7 +9,9 @@ import (
 	"strings"
 
 	"github.com/alessio/shellescape"
+	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
+	"github.com/scripthaus-dev/mshell/pkg/simpleexpand"
 	"github.com/scripthaus-dev/mshell/pkg/statediff"
 	"mvdan.cc/sh/v3/expand"
 	"mvdan.cc/sh/v3/syntax"
@@ -157,10 +159,6 @@ func (d *DeclareDeclType) Serialize() string {
 	return fmt.Sprintf("%s|%s=%s\x00", d.Args, d.Name, d.Value)
 }
 
-func (d *DeclareDeclType) EnvString() string {
-	return d.Name + "=" + d.Value
-}
-
 func (d *DeclareDeclType) DeclareStmt() string {
 	var argsStr string
 	if d.Args == "" {
@@ -274,11 +272,12 @@ func EnvMapFromState(state *packet.ShellState) map[string]string {
 		return nil
 	}
 	rtn := make(map[string]string)
+	ectx := simpleexpand.SimpleExpandContext{}
 	vars := bytes.Split(state.ShellVars, []byte{0})
 	for _, varLine := range vars {
 		decl := ParseDeclLine(string(varLine))
 		if decl != nil && decl.IsExport() {
-			rtn[decl.Name] = decl.Value
+			rtn[decl.Name], _ = simpleexpand.SimpleExpandPartialWord(ectx, decl.Value, false)
 		}
 	}
 	return rtn
@@ -289,11 +288,12 @@ func ShellVarMapFromState(state *packet.ShellState) map[string]string {
 		return nil
 	}
 	rtn := make(map[string]string)
+	ectx := simpleexpand.SimpleExpandContext{}
 	vars := bytes.Split(state.ShellVars, []byte{0})
 	for _, varLine := range vars {
 		decl := ParseDeclLine(string(varLine))
 		if decl != nil {
-			rtn[decl.Name] = decl.Value
+			rtn[decl.Name], _ = simpleexpand.SimpleExpandPartialWord(ectx, decl.Value, false)
 		}
 	}
 	return rtn
@@ -438,6 +438,7 @@ func ParseShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
 	if strings.Index(rtn.Version, "bash") == -1 {
 		return nil, fmt.Errorf("invalid shell state output, only bash is supported")
 	}
+	rtn.Version = rtn.Version
 	cwdStr := string(fields[1])
 	if strings.HasSuffix(cwdStr, "\r\n") {
 		cwdStr = cwdStr[0 : len(cwdStr)-2]
@@ -451,7 +452,33 @@ func ParseShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
 	}
 	rtn.Aliases = strings.ReplaceAll(string(fields[3]), "\r\n", "\n")
 	rtn.Funcs = strings.ReplaceAll(string(fields[4]), "\r\n", "\n")
+	rtn.Funcs = removeFunc(rtn.Funcs, "_scripthaus_exittrap")
+	lines := strings.Split(rtn.Funcs, "\n")
+	for _, line := range lines {
+		base.Logf("func-line: [%s]\n", line)
+	}
 	return rtn, nil
+}
+
+func removeFunc(funcs string, toRemove string) string {
+	lines := strings.Split(funcs, "\n")
+	var newLines []string
+	removeLine := fmt.Sprintf("%s ()", toRemove)
+	doingRemove := false
+	for _, line := range lines {
+		if line == removeLine {
+			doingRemove = true
+			continue
+		}
+		if doingRemove {
+			if line == "}" {
+				doingRemove = false
+			}
+			continue
+		}
+		newLines = append(newLines, line)
+	}
+	return strings.Join(newLines, "\n")
 }
 
 func (d *DeclareDeclType) normalize() error {
@@ -565,9 +592,7 @@ func MakeShellStateDiff(oldState packet.ShellState, oldStateHash string, newStat
 	if oldState.Cwd != newState.Cwd {
 		rtn.Cwd = newState.Cwd
 	}
-	if oldState.Error != newState.Error {
-		rtn.Error = newState.Error
-	}
+	rtn.Error = newState.Error
 	oldVars := shellStateVarsToMap(oldState.ShellVars)
 	newVars := shellStateVarsToMap(newState.ShellVars)
 	rtn.VarsDiff = statediff.MakeMapDiff(oldVars, newVars)
@@ -580,7 +605,10 @@ func ApplyShellStateDiff(oldState packet.ShellState, diff packet.ShellStateDiff)
 	var rtnState packet.ShellState
 	var err error
 	rtnState.Version = oldState.Version
-	rtnState.Cwd = diff.Cwd
+	rtnState.Cwd = oldState.Cwd
+	if diff.Cwd != "" {
+		rtnState.Cwd = diff.Cwd
+	}
 	rtnState.Error = diff.Error
 	oldVars := shellStateVarsToMap(oldState.ShellVars)
 	newVars, err := statediff.ApplyMapDiff(oldVars, diff.VarsDiff)

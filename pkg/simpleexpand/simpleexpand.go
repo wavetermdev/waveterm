@@ -93,12 +93,18 @@ func expandLiteralPlus(buf *bytes.Buffer, info *SimpleExpandInfo, litVal string,
 
 func expandSQANSILiteral(buf *bytes.Buffer, litVal string) {
 	// no info specials
+	if strings.HasSuffix(litVal, "'") {
+		litVal = litVal[0 : len(litVal)-1]
+	}
 	str, _, _ := expand.Format(nil, litVal, nil)
 	buf.WriteString(str)
 }
 
 func expandSQLiteral(buf *bytes.Buffer, litVal string) {
 	// no info specials
+	if strings.HasSuffix(litVal, "'") {
+		litVal = litVal[0 : len(litVal)-1]
+	}
 	buf.WriteString(litVal)
 }
 
@@ -124,6 +130,9 @@ func expandDQLiteral(buf *bytes.Buffer, info *SimpleExpandInfo, litVal string) {
 			lastBackSlash = true
 			lastDollar = false
 			continue
+		}
+		if ch == '"' {
+			break
 		}
 
 		// similar to expandLiteral, but no globbing
