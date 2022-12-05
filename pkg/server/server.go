@@ -327,18 +327,10 @@ func RunServer() (int, error) {
 	}()
 	defer ticker.Stop()
 	readLoopDoneCh := make(chan bool)
-
 	go func() {
 		defer close(readLoopDoneCh)
 		server.runReadLoop()
 	}()
-
-	go func() {
-		time.Sleep(5 * time.Second)
-		respPk := packet.MakeResponsePacket("NA", make(chan bool))
-		server.Sender.SendPacket(respPk)
-	}()
-
 	select {
 	case <-readLoopDoneCh:
 		break
