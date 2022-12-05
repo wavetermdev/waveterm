@@ -136,6 +136,7 @@ class TermWrap {
 
     focusTerminal() {
         this.terminal.focus();
+        setTimeout(() => this.terminal._core.viewport.syncScrollArea(true), 0)
     }
 
     disconnectElem() {
@@ -283,7 +284,8 @@ class TermWrap {
             return;
         }
         if (pos > this.ptyPos) {
-            throw new Error(sprintf("invalid pty-update, data-pos[%d] does not match term-pos[%d] cmdid[%s]", pos, this.ptyPos, JSON.stringify(this.termContext)));
+            console.log(sprintf("pty-jump term[%s] %d => %d", JSON.stringify(this.termContext), this.ptyPos, pos));
+            this.ptyPos = pos;
         }
         if (pos < this.ptyPos) {
             let diff = this.ptyPos - pos;

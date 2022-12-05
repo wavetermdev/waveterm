@@ -49,6 +49,7 @@ module.exports = {
             "node_modules/fs-ext/**",
             "node_modules/fsevents/**",
         ],
+        icon: "static/PromptIcon.icns",
     },
   rebuildConfig: {},
   makers: [
