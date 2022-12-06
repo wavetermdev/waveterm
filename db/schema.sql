@@ -91,6 +91,7 @@ CREATE TABLE line (
     cmdid varchar(36) NOT NULL,
     ephemeral boolean NOT NULL,
     contentheight int NOT NULL,
+    star int NOT NULL,
     PRIMARY KEY (sessionid, windowid, lineid)
 );
 CREATE TABLE remote (
@@ -118,14 +119,18 @@ CREATE TABLE cmd (
     remoteid varchar(36) NOT NULL,
     remotename varchar(50) NOT NULL,
     cmdstr text NOT NULL,
-    remotestate json NOT NULL,
+    festate json NOT NULL,
+    statebasehash varchar(36) NOT NULL,
+    statediffhasharr json NOT NULL,
     termopts json NOT NULL,
     origtermopts json NOT NULL,
     status varchar(10) NOT NULL,
     startpk json NOT NULL,
-    donepk json NOT NULL,
+    doneinfo json NOT NULL,
     runout json NOT NULL,
     rtnstate bool NOT NULL,
+    rtnbasehash varchar(36) NOT NULL,
+    rtndiffhasharr json NOT NULL,
     PRIMARY KEY (sessionid, cmdid)
 );
 CREATE TABLE history (

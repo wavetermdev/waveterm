@@ -97,6 +97,7 @@ CREATE TABLE line (
     cmdid varchar(36) NOT NULL,
     ephemeral boolean NOT NULL,
     contentheight int NOT NULL,
+    star int NOT NULL,
     PRIMARY KEY (sessionid, windowid, lineid)
 );
 

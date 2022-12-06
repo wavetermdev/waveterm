@@ -141,6 +141,7 @@ func init() {
 
 	registerCmdFn("line", LineCommand)
 	registerCmdFn("line:show", LineShowCommand)
+	registerCmdFn("line:star", LineStarCommand)
 
 	registerCmdFn("history", HistoryCommand)
 
@@ -1518,6 +1519,47 @@ func SwResizeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 
 func LineCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	return nil, fmt.Errorf("/line requires a subcommand: %s", formatStrs([]string{"show"}, "or", false))
+}
+
+func LineStarCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
+	if err != nil {
+		return nil, err
+	}
+	if len(pk.Args) == 0 {
+		return nil, fmt.Errorf("/line:star requires an argument (line number or id)")
+	}
+	if len(pk.Args) > 2 {
+		return nil, fmt.Errorf("/line:star only takes up to 2 arguments (line-number and star-value)")
+	}
+	lineArg := pk.Args[0]
+	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.WindowId, lineArg)
+	if err != nil {
+		return nil, fmt.Errorf("error looking up lineid: %v", err)
+	}
+	if lineId == "" {
+		return nil, fmt.Errorf("line %q not found", lineArg)
+	}
+	starVal, err := resolveNonNegInt(pk.Args[1], 1)
+	if err != nil {
+		return nil, fmt.Errorf("/line:star invalid star-value (not integer): %v", err)
+	}
+	if starVal > 5 {
+		return nil, fmt.Errorf("/line:star invalid star-value must be in the range of 0-5")
+	}
+	err = sstore.UpdateLineStar(ctx, lineId, starVal)
+	if err != nil {
+		return nil, fmt.Errorf("/line:star error updating star value: %v", err)
+	}
+	lineObj, err := sstore.GetLineById(ctx, lineId)
+	if err != nil {
+		return nil, fmt.Errorf("/line:star error getting line: %v", err)
+	}
+	if lineObj == nil {
+		// no line (which is strange given we checked for it above).  just return a nop.
+		return nil, nil
+	}
+	return sstore.ModelUpdate{Line: lineObj}, nil
 }
 
 func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {

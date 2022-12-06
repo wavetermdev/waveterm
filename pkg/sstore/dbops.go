@@ -569,7 +569,7 @@ func FindLineIdByArg(ctx context.Context, sessionId string, windowId string, lin
 			lineId = tx.GetString(query, sessionId, windowId, lineArg)
 		} else {
 			// id match
-			query := `SELECT * FROM line WHERE sessionid = ? AND windowid = ? AND lineid = ?`
+			query := `SELECT lineid FROM line WHERE sessionid = ? AND windowid = ? AND lineid = ?`
 			lineId = tx.GetString(query, sessionId, windowId, lineArg)
 		}
 		return nil
@@ -652,8 +652,8 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 		query = `SELECT nextlinenum FROM window WHERE sessionid = ? AND windowid = ?`
 		nextLineNum := tx.GetInt(query, line.SessionId, line.WindowId)
 		line.LineNum = int64(nextLineNum)
-		query = `INSERT INTO line  ( sessionid, windowid, userid, lineid, ts, linenum, linenumtemp, linelocal, linetype, text, cmdid, ephemeral, contentheight)
-                            VALUES (:sessionid,:windowid,:userid,:lineid,:ts,:linenum,:linenumtemp,:linelocal,:linetype,:text,:cmdid,:ephemeral,:contentheight)`
+		query = `INSERT INTO line  ( sessionid, windowid, userid, lineid, ts, linenum, linenumtemp, linelocal, linetype, text, cmdid, ephemeral, contentheight, star)
+                            VALUES (:sessionid,:windowid,:userid,:lineid,:ts,:linenum,:linenumtemp,:linelocal,:linetype,:text,:cmdid,:ephemeral,:contentheight,:star)`
 		tx.NamedExecWrap(query, line)
 		query = `UPDATE window SET nextlinenum = ? WHERE sessionid = ? AND windowid = ?`
 		tx.ExecWrap(query, nextLineNum+1, line.SessionId, line.WindowId)
@@ -1444,4 +1444,34 @@ func GetFullState(ctx context.Context, ssPtr ShellStatePtr) (*packet.ShellState,
 		return nil, fmt.Errorf("ShellState not found")
 	}
 	return state, nil
+}
+
+func UpdateLineStar(ctx context.Context, lineId string, starVal int) error {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `UPDATE line SET star = ? WHERE lineid = ?`
+		tx.ExecWrap(query, starVal, lineId)
+		return nil
+	})
+	if txErr != nil {
+		return txErr
+	}
+	return nil
+}
+
+// can return nil, nil if line is not found
+func GetLineById(ctx context.Context, lineId string) (*LineType, error) {
+	var rtn *LineType
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		var line LineType
+		query := `SELECT * FROM line WHERE lineid = ?`
+		found := tx.GetWrap(&line, query, lineId)
+		if found {
+			rtn = &line
+		}
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	return rtn, nil
 }
