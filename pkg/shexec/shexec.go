@@ -102,6 +102,7 @@ func MakeReturnStateBuf() *ReturnStateBuf {
 }
 
 type ShExecType struct {
+	Lock           *sync.Mutex // only locks "Exited" field
 	StartTs        time.Time
 	CK             base.CommandKey
 	FileNames      *base.CommandFileNames
@@ -114,6 +115,7 @@ type ShExecType struct {
 	RunnerOutFd    *os.File
 	MsgSender      *packet.PacketSender // where to send out-of-band messages back to calling proceess
 	ReturnState    *ReturnStateBuf
+	Exited         bool // locked via Lock
 }
 
 type StdContext struct{}
@@ -195,6 +197,7 @@ func (s ShExecUPR) UnknownPacket(pk packet.PacketType) {
 
 func MakeShExec(ck base.CommandKey, upr packet.UnknownPacketReporter) *ShExecType {
 	return &ShExecType{
+		Lock:        &sync.Mutex{},
 		StartTs:     time.Now(),
 		CK:          ck,
 		Multiplexer: mpio.MakeMultiplexer(ck, upr),
@@ -1000,6 +1003,25 @@ trap _scripthaus_exittrap EXIT
 	return fmt.Sprintf(fmtStr, stateCmd)
 }
 
+func (s *ShExecType) SendHup() {
+	base.Logf("sendhup start\n")
+	if s.Cmd == nil || s.Cmd.Process == nil || s.IsExited() {
+		return
+	}
+	pgroup := false
+	if s.Cmd.SysProcAttr != nil && (s.Cmd.SysProcAttr.Setsid || s.Cmd.SysProcAttr.Setpgid) {
+		pgroup = true
+	}
+	pid := s.Cmd.Process.Pid
+	if pgroup {
+		base.Logf("sendhup %d (pgroup)\n", -pid)
+		syscall.Kill(-pid, syscall.SIGHUP)
+	} else {
+		base.Logf("sendhup %d (normal)\n", pid)
+		syscall.Kill(pid, syscall.SIGHUP)
+	}
+}
+
 func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fromServer bool) (rtnShExec *ShExecType, rtnErr error) {
 	state := pk.State
 	if state == nil {
@@ -1172,10 +1194,22 @@ func (rs *ReturnStateBuf) Run() {
 // since we want mshell to persist even if the mshell --server is terminated
 func SetupSignalsForDetach() {
 	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGPIPE)
 	go func() {
 		for range sigCh {
 			// do nothing
+		}
+	}()
+}
+
+// in detached run mode, we don't want mshell to die from signals
+// since we want mshell to persist even if the mshell --server is terminated
+func IgnoreSigPipe() {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGPIPE)
+	go func() {
+		for sig := range sigCh {
+			base.Logf("ignoring signal %v\n", sig)
 		}
 	}()
 }
@@ -1308,9 +1342,23 @@ func GetExitCode(err error) int {
 	}
 }
 
+func (c *ShExecType) ProcWait() error {
+	exitErr := c.Cmd.Wait()
+	c.Lock.Lock()
+	c.Exited = true
+	c.Lock.Unlock()
+	return exitErr
+}
+
+func (c *ShExecType) IsExited() bool {
+	c.Lock.Lock()
+	defer c.Lock.Unlock()
+	return c.Exited
+}
+
 func (c *ShExecType) WaitForCommand() *packet.CmdDonePacketType {
 	donePacket := packet.MakeCmdDonePacket(c.CK)
-	exitErr := c.Cmd.Wait()
+	exitErr := c.ProcWait()
 	if c.ReturnState != nil {
 		<-c.ReturnState.DoneCh
 		state, _ := ParseShellStateOutput(c.ReturnState.Buf) // TODO what to do with error?
@@ -1318,9 +1366,8 @@ func (c *ShExecType) WaitForCommand() *packet.CmdDonePacketType {
 	}
 	endTs := time.Now()
 	cmdDuration := endTs.Sub(c.StartTs)
-	exitCode := GetExitCode(exitErr)
 	donePacket.Ts = endTs.UnixMilli()
-	donePacket.ExitCode = exitCode
+	donePacket.ExitCode = GetExitCode(exitErr)
 	donePacket.DurationMs = int64(cmdDuration / time.Millisecond)
 	if c.FileNames != nil {
 		os.Remove(c.FileNames.StdinFifo) // best effort (no need to check error)

@@ -12,6 +12,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
@@ -194,6 +195,16 @@ func handleSingle(fromServer bool) {
 		cmd.DetachedWait(startPk)
 		return
 	} else {
+		shexec.IgnoreSigPipe()
+		ticker := time.NewTicker(1 * time.Minute)
+		go func() {
+			for range ticker.C {
+				// this will let the command detect when the server has gone away
+				// that will then trigger cmd.SendHup() to send SIGHUP to the exec'ed process
+				sender.SendPacket(packet.MakePingPacket())
+			}
+		}()
+		defer ticker.Stop()
 		cmd, err := shexec.RunCommandSimple(runPacket, sender, true)
 		if err != nil {
 			sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("error running command: %w", err))
@@ -202,6 +213,13 @@ func handleSingle(fromServer bool) {
 		defer cmd.Close()
 		startPacket := cmd.MakeCmdStartPacket(runPacket.ReqId)
 		sender.SendPacket(startPacket)
+		go func() {
+			exitErr := sender.WaitForDone()
+			if exitErr != nil {
+				base.Logf("I/O error talking to server, sending SIGHUP to children\n")
+				cmd.SendHup()
+			}
+		}()
 		cmd.RunRemoteIOAndWait(packetParser, sender)
 		return
 	}

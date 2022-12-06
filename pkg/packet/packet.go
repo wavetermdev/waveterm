@@ -722,7 +722,7 @@ func (e *SendError) Error() string {
 	if e.IsMarshalError {
 		return fmt.Sprintf("SendPacket marshal-error '%s' packet: %v", e.PacketType, e.Err)
 	} else if e.IsWriteError {
-		return fmt.Sprintf("SendPacket write-error: %v", e.Err)
+		return fmt.Sprintf("SendPacket write-error packet[%s]: %v", e.PacketType, e.Err)
 	} else {
 		return e.Err.Error()
 	}
@@ -742,7 +742,7 @@ func SendPacket(w io.Writer, packet PacketType) error {
 	outBuf.Write(jsonBytes)
 	outBuf.WriteByte('\n')
 	if GlobalDebug {
-		fmt.Printf("SEND> %s\n", AsString(packet))
+		base.Logf("SEND> %s\n", AsString(packet))
 	}
 	outBytes := outBuf.Bytes()
 	sanitizeBytes(outBytes)
@@ -763,6 +763,7 @@ type PacketSender struct {
 	Done       bool
 	DoneCh     chan bool
 	ErrHandler func(*PacketSender, PacketType, error)
+	ExitErr    error
 }
 
 func MakePacketSender(output io.Writer, errHandler func(*PacketSender, PacketType, error)) *PacketSender {
@@ -784,6 +785,9 @@ func MakePacketSender(output io.Writer, errHandler func(*PacketSender, PacketTyp
 					continue
 				}
 				// write errors are not recoverable
+				sender.Lock.Lock()
+				sender.ExitErr = err
+				sender.Lock.Unlock()
 				return
 			}
 		}
@@ -825,10 +829,18 @@ func (sender *PacketSender) Close() {
 	close(sender.SendCh)
 }
 
-func (sender *PacketSender) WaitForDone() {
+// returns ExitErr if set
+func (sender *PacketSender) WaitForDone() error {
 	<-sender.DoneCh
+	sender.Lock.Lock()
+	defer sender.Lock.Unlock()
+	return sender.ExitErr
 }
 
+// this is "advisory", as there is a race condition between the loop closing and setting Done.
+// that's okay because that's an impossible race condition anyway (you could enqueue the packet
+// and then the connection dies, or it dies half way, etc.).  this just stops blindly adding
+// packets forever when the loop is done.
 func (sender *PacketSender) checkStatus() error {
 	sender.Lock.Lock()
 	defer sender.Lock.Unlock()

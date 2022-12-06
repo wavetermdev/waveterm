@@ -80,6 +80,7 @@ func InitDebugLog(prefix string) {
 		return
 	}
 	DebugLogger = log.New(fd, prefix+" ", log.LstdFlags)
+	Logf("logger initialized\n")
 }
 
 func SetEnableDebugLog(enable bool) {

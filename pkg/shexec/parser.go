@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/alessio/shellescape"
-	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/mshell/pkg/simpleexpand"
 	"github.com/scripthaus-dev/mshell/pkg/statediff"
@@ -453,10 +452,6 @@ func ParseShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
 	rtn.Aliases = strings.ReplaceAll(string(fields[3]), "\r\n", "\n")
 	rtn.Funcs = strings.ReplaceAll(string(fields[4]), "\r\n", "\n")
 	rtn.Funcs = removeFunc(rtn.Funcs, "_scripthaus_exittrap")
-	lines := strings.Split(rtn.Funcs, "\n")
-	for _, line := range lines {
-		base.Logf("func-line: [%s]\n", line)
-	}
 	return rtn, nil
 }
 
