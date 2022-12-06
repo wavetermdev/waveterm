@@ -2601,8 +2601,8 @@ class Main extends React.Component<{}, {}> {
         return (
             <div id="main">
                 <h1 className="title prompt-logo-small">
-                    <div className="title-cursor">&#9608;</div>
-                    prompt&gt;
+                    [prompt]
+                    <span className="title-cursor">&#9608;</span>
                 </h1>
                 <div className="main-content">
                     <MainSideBar/>
