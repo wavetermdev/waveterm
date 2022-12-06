@@ -27,6 +27,7 @@ type LineType = {
     text : string,
     cmdid : string,
     contentheight : number,
+    star : number,
     ephemeral? : boolean,
     remove? : boolean,
 };

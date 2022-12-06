@@ -2299,6 +2299,10 @@ class CommandRunner {
     swSetFocus(focusVal : string) : void {
         GlobalModel.submitCommand("sw", "set", null, {"focus": focusVal, "nohist": "1"}, true);
     }
+
+    lineStar(lineId : string, starVal : number) {
+        GlobalModel.submitCommand("line", "star", [lineId, String(starVal)], {"nohist": "1"}, true);
+    }
 };
 
 function cmdPacketString(pk : FeCmdPacketType) : string {

@@ -407,6 +407,22 @@ html, body, #main {
         }
     }
 
+    .line-star {
+        display: none;
+        cursor: pointer;
+        padding: 3px;
+        font-size: 1.5rem;
+    }
+
+    .line-star.active {
+        display: block;
+        color: @term-bright-yellow;
+    }
+
+    &:hover .line-star {
+        display: block;
+    }
+
     &.has-rtnstate .terminal-wrapper {
         padding-bottom: 0;
         margin-bottom: -5px;
@@ -1419,4 +1435,8 @@ input[type=checkbox] {
     top: 0px;
     font-size: 12px;
     margin-left: -3px;
+}
+
+.flex-spacer {
+    flex-grow: 1;
 }

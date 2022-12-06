@@ -389,6 +389,17 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         let {line} = this.props;
         GlobalCommandRunner.swSelectLine(String(line.linenum), "cmd");
     }
+
+    @boundMethod
+    clickStar() {
+        let {line} = this.props;
+        if (!line.star || line.star == 0) {
+            GlobalCommandRunner.lineStar(line.lineid, 1);
+        }
+        else {
+            GlobalCommandRunner.lineStar(line.lineid, 0);
+        }
+    }
     
     render() {
         let {sw, line, width, staticRender, visible} = this.props;
@@ -445,6 +456,15 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                             </div>
                             {this.renderCmdText(cmd, remote)}
                         </div>
+                    </div>
+                    <div className="flex-spacer"/>
+                    <div className={cn("line-star", {"active": line.star > 0})} onClick={this.clickStar}>
+                        <If condition={!line.star || line.star == 0}>
+                            <i className="fa fa-star-o"/>
+                        </If>
+                        <If condition={line.star > 0}>
+                            <i className="fa fa-star"/>
+                        </If>
                     </div>
                 </div>
                 <div className={cn("terminal-wrapper", {"focus": isFocused}, {"cmd-done": !cmd.isRunning()}, {"zero-height": (termHeight == 0)})}>
