@@ -159,13 +159,19 @@ class LineAvatar extends React.Component<{line : LineType, cmd : Cmd}, {}> {
 
 @mobxReact.observer
 class LineText extends React.Component<{sw : ScreenWindow, line : LineType}, {}> {
+    @boundMethod
+    clickHandler() {
+        let {line} = this.props;
+        GlobalCommandRunner.swSelectLine(String(line.linenum));
+    }
+
     render() {
         let {sw, line} = this.props;
         let formattedTime = getLineDateStr(line.ts);
         let isSelected = (sw.selectedLine.get() == line.linenum);
         let isFocused = (sw.focusType.get() == "cmd");
         return (
-            <div className="line line-text" data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid}>
+            <div className="line line-text" data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} onClick={this.clickHandler}>
                 <div className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused})}/>
                 <div className="avatar">
                     S
