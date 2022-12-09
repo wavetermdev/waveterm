@@ -92,7 +92,7 @@ function ensureDir(dir) {
 }
 
 let app = electron.app;
-app.setName("prompt");
+app.setName("Prompt");
 
 let lock : File;
 try {
