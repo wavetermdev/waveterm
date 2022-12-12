@@ -224,6 +224,15 @@ function createMainWindow(clientData) {
     win.on("close", () => {
         MainWindow = null;
     });
+    win.webContents.on("new-window", (e, url) => {
+        e.preventDefault();
+        if (url.startsWith("https://docs.getprompt.dev/")) {
+            electron.shell.openExternal(url);
+        }
+        if (url.startsWith("https://discord.gg/")) {
+            electron.shell.openExternal(url);
+        }
+    });
     return win;
 }
 

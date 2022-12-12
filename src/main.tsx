@@ -1396,7 +1396,7 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
             <form className="info-remote">
                 <div key="title" className="info-title">
                     <If condition={!isEditMode}>
-                        add new remote '{this.remoteCName()}'
+                        add new remote <If condition={this.hostName.get() != ""}>'{this.remoteCName()}'</If>
                     </If>
                     <If condition={isEditMode}>
                         edit remote '{this.remoteCName()}'
@@ -2458,40 +2458,6 @@ class MainSideBar extends React.Component<{}, {}> {
                             <li className="new-session"><a onClick={() => this.handleNewSession()}><i className="fa fa-plus"/> New Session</a></li>
                         </If>
                     </ul>
-                    <p className="menu-label">
-                        Shared Sessions
-                    </p>
-                    <ul className="menu-list">
-                        <li><a>server-status</a></li>
-                        <li><a className="activity">bug-3458 <div className="tag is-link">3</div></a></li>
-                        <li><a>dev-build</a></li>
-                        <li className="new-session"><a><i className="fa fa-plus"/> New Session</a></li>
-                    </ul>
-                    <p className="menu-label">
-                        Direct Messages
-                    </p>
-                    <ul className="menu-list">
-                        <li><a>
-                            <i className="user-status status fa fa-circle"/>
-                            <img className="avatar" src="https://i.pravatar.cc/48?img=4"/>
-                            Mike S <span className="sub-label">you</span>
-                        </a></li>
-                        <li><a>
-                            <i className="user-status status offline fa fa-circle"/>
-                            <img className="avatar" src="https://i.pravatar.cc/48?img=8"/>                            
-                            Matt P
-                        </a></li>
-                        <li><a>
-                            <i className="user-status status offline fa fa-circle"/>
-                            <img className="avatar" src="https://i.pravatar.cc/48?img=12"/>
-                            Adam B
-                        </a></li>
-                        <li><a className="activity">
-                            <i className="user-status status fa fa-circle"/>
-                            <img className="avatar" src="https://i.pravatar.cc/48?img=5"/>
-                            Michelle T <div className="tag is-link">2</div>
-                        </a></li>
-                    </ul>
                     <div className="spacer"></div>
                     <If condition={GlobalModel.debugSW.get() && sw != null}>
                         <div>
@@ -2500,6 +2466,17 @@ class MainSideBar extends React.Component<{}, {}> {
                             termfocus={sw.termLineNumFocus.get()}<br/>
                         </div>
                     </If>
+                    <p className="menu-label">
+                        <a onClick={() => this.clickRemotes()}>Links</a>
+                    </p>
+                    <ul className="menu-list">
+                        <li>
+                            <a target="_blank" href="https://docs.getprompt.dev/"><i className="fa fa-book"/> documentation</a>
+                        </li>
+                        <li>
+                            <a target="_blank" href="https://discord.gg/XfvZ334gwU"><i className="fa fa-comments"/> discord</a>
+                        </li>
+                    </ul>
                     <p className="menu-label">
                         <a onClick={() => this.clickRemotes()}>Connections</a>
                     </p>
@@ -2641,7 +2618,6 @@ class Main extends React.Component<{}, {}> {
         );
     }
 }
-
 
 export {Main};
 
