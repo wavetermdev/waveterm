@@ -1562,6 +1562,22 @@ class Model {
         getApi().onBracketCmd(this.onBracketCmd.bind(this));
         getApi().onDigitCmd(this.onDigitCmd.bind(this));
         getApi().onLocalServerStatusChange(this.onLocalServerStatusChange.bind(this));
+        document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
+    }
+
+    docKeyDownHandler(e : any) {
+        if (isModKeyPress(e)) {
+            return;
+        }
+        if (e.code == "Escape") {
+            e.preventDefault();
+            let inputModel = this.inputModel;
+            inputModel.toggleInfoMsg();
+            if (inputModel.inputMode.get() != null) {
+                inputModel.resetInputMode();
+            }
+            return;
+        }
     }
 
     restartLocalServer() : void {
@@ -2263,11 +2279,11 @@ class CommandRunner {
         let kwargs = Object.assign({}, kwargsArg);
         kwargs["nohist"] = "1";
         kwargs["remote"] = remoteid;
-        GlobalModel.submitCommand("remote", "edit", null, kwargs, true);
+        GlobalModel.submitCommand("remote", "set", null, kwargs, true);
     }
 
     openEditRemote(remoteid : string) : void {
-        GlobalModel.submitCommand("remote", "edit", null, {"remote": remoteid, "nohist": "1", "visual": "1"}, true);
+        GlobalModel.submitCommand("remote", "set", null, {"remote": remoteid, "nohist": "1", "visual": "1"}, true);
     }
 
     archiveRemote(remoteid : string) {

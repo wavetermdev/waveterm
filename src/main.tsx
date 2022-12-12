@@ -1491,7 +1491,7 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
                         <input type="checkbox" onChange={this.onChangeAutoInstall} checked={this.autoInstallBool.get()}/>
                     </div>
                 </div>
-                <div key="color" className="remote-input-field">
+                <div key="color" className="remote-input-field" style={{display: "none"}}>
                     <div className="remote-field-label">color</div>
                     <div className="remote-field-control select-input">
                         <select onChange={this.onChangeColorStr} value={this.colorStr.get()}>
@@ -1515,9 +1515,11 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
                 <div key="controls" style={{marginTop: 15, marginBottom: 10}} className="remote-input-field">
                     <a tabIndex={0} style={{marginRight: 20}} onClick={this.doSubmitRemote} onKeyDown={this.keyDownCreateRemote} className="text-button success-button">[{isEditMode ? "update" : "create"} remote]</a>
                     {"|"}
-                    <a tabIndex={0} style={{marginLeft: 20, marginRight: 5}} onClick={this.doArchiveRemote} onKeyDown={this.keyDownCreateRemote} className={cn("text-button", (this.archiveConfirm.get() ? "error-button" : "disabled-button"))}>[archive remote]</a>
-                    <input onChange={this.updateArchiveConfirm} checked={this.archiveConfirm.get()} style={{marginRight: 20}} type="checkbox"/>
-                    {"|"}
+                    <If condition={isEditMode}>
+                        <a tabIndex={0} style={{marginLeft: 20, marginRight: 5}} onClick={this.doArchiveRemote} onKeyDown={this.keyDownCreateRemote} className={cn("text-button", (this.archiveConfirm.get() ? "error-button" : "disabled-button"))}>[archive remote]</a>
+                        <input onChange={this.updateArchiveConfirm} checked={this.archiveConfirm.get()} style={{marginRight: 20}} type="checkbox"/>
+                        {"|"}
+                    </If>
                     <a tabIndex={0} style={{marginLeft: 20}} onClick={this.doCancel} onKeyDown={this.keyDownCancel} className="text-button grey-button">[cancel (ESC)]</a>
                 </div>
             </form>
