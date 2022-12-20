@@ -1651,17 +1651,10 @@ class Model {
     }
 
     onTCmd(e : any, mods : KeyModsType) {
-        console.log("got cmd-t", mods);
         GlobalCommandRunner.createNewScreen();
     }
 
     onICmd(e : any, mods : KeyModsType) {
-        let sw = this.getActiveSW();
-        if (sw != null) {
-            if (sw.focusType.get() == "input") {
-                GlobalCommandRunner.swSelectLine("E");
-            }
-        }
         this.inputModel.giveFocus();
     }
 
@@ -2214,7 +2207,7 @@ class CommandRunner {
         if (htype != null && htype != "window") {
             kwargs["type"] = htype;
         }
-        GlobalModel.submitCommand("history", null, null, kwargs, true);
+        GlobalModel.submitCommand("_history", null, null, kwargs, true);
     }
 
     switchSession(session : string) {
