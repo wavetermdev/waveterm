@@ -10,9 +10,9 @@ import * as winston from "winston";
 import * as util from "util";
 import {sprintf} from "sprintf-js";
 
-const ScriptHausAppPathVarName = "SCRIPTHAUS_APP_PATH";
-let isDev = (process.env.SH_DEV != null);
-let scHome = getScHomeDir();
+const PromptAppPathVarName = "PROMPT_APP_PATH";
+let isDev = (process.env.PROMPT_DEV != null);
+let scHome = getPromptHomeDir();
 ensureDir(scHome);
 let DistDir = (isDev ? "dist-dev" : "dist");
 
@@ -32,7 +32,7 @@ let loggerConfig = {
         winston.format.printf(info => `${info.timestamp} ${info.message}`),
     ),
     transports: [
-        new winston.transports.File({filename: path.join(scHome, "scripthaus-app.log"), level: "info"}),
+        new winston.transports.File({filename: path.join(scHome, "prompt-app.log"), level: "info"}),
     ],
 };
 if (isDev) {
@@ -43,27 +43,27 @@ function log(...msg) {
     logger.info(util.format(...msg));
 }
 console.log = log;
-console.log(sprintf("scripthaus-app starting, SCRIPTHAUS_HOME=%s, apppath=%s arch=%s/%s", scHome, getAppBasePath(), unamePlatform, unameArch));
+console.log(sprintf("prompt-app starting, PROMPT_HOME=%s, apppath=%s arch=%s/%s", scHome, getAppBasePath(), unamePlatform, unameArch));
 
-const DevLocalServerPath = "/Users/mike/scripthaus/local-server";
+const DevLocalServerPath = "/Users/mike/prompt/local-server";
 let localServerProc = null;
 let localServerShouldRestart = false;
 
 // must match golang
-function getScHomeDir() {
-    let scHome = process.env.SCRIPTHAUS_HOME;
+function getPromptHomeDir() {
+    let scHome = process.env.PROMPT_HOME;
     if (scHome == null) {
         let homeDir = process.env.HOME;
         if (homeDir == null) {
             homeDir = "/";
         }
-        scHome = path.join(homeDir, "scripthaus");
+        scHome = path.join(homeDir, "prompt");
     }
     return scHome;
 }
 
 // for dev, this is just the github.com/scripthaus-dev/sh2 directory
-// for prod, this is .../ScriptHaus.app/Contents/Resources/app
+// for prod, this is .../Prompt.app/Contents/Resources/app
 function getAppBasePath() {
     return path.dirname(__dirname);
 }
@@ -72,18 +72,18 @@ function getLocalServerPath() {
     if (isDev) {
         return DevLocalServerPath
     }
-    return path.join(getAppBasePath(), "bin", "scripthaus-local-server");
+    return path.join(getAppBasePath(), "bin", "prompt-local-server");
 }
 
 function getLocalServerCmd() {
     let localServerPath = getLocalServerPath();
-    let scHome = getScHomeDir();
+    let scHome = getPromptHomeDir();
     let logFile = path.join(scHome, "local-server.log");
     return `${localServerPath} > ${logFile} 2>&1`;
 }
 
 function getLocalServerCwd() {
-    let scHome = getScHomeDir();
+    let scHome = getPromptHomeDir();
     return scHome;
 }
 
@@ -355,7 +355,7 @@ function runLocalServer() {
         pReject = argReject;
     });
     let envCopy = Object.assign({}, process.env);
-    envCopy[ScriptHausAppPathVarName] = getAppBasePath();
+    envCopy[PromptAppPathVarName] = getAppBasePath();
     console.log("trying to run local server", getLocalServerPath());
     let proc = child_process.spawn("/bin/bash", ["-c", getLocalServerCmd()], {
         cwd: getLocalServerCwd(),

@@ -1,4 +1,4 @@
-# SH2 Commands
+# Prompt Commands
 
 ```bash
 # @scripthaus command webpack-watch
@@ -34,7 +34,7 @@ node_modules/.bin/electron-rebuild
 ```bash
 # @scripthaus command electron
 # @scripthaus cd :playbook
-SH_DEV=1 node_modules/.bin/electron dist-dev/emain.js
+PROMPT_DEV=1 node_modules/.bin/electron dist-dev/emain.js
 ```
 
 ```bash
@@ -67,5 +67,5 @@ node_modules/.bin/electron-forge make
 ```bash
 # @scripthaus command open-electron-package
 # @scripthaus cd :playbook
-open out/ScriptHaus-darwin-x64/ScriptHaus.app
+open out/Prompt-darwin-x64/Prompt.app
 ```
