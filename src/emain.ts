@@ -4,7 +4,7 @@ import * as fs from "fs";
 import fetch from "node-fetch";
 import * as child_process from "node:child_process";
 import {debounce} from "throttle-debounce";
-import {acquireSCElectronLock} from "./base";
+import {acquirePromptElectronLock} from "./base";
 import {handleJsonFetchResponse} from "./util";
 import * as winston from "winston";
 import * as util from "util";
@@ -44,6 +44,9 @@ function log(...msg) {
 }
 console.log = log;
 console.log(sprintf("prompt-app starting, PROMPT_HOME=%s, apppath=%s arch=%s/%s", scHome, getAppBasePath(), unamePlatform, unameArch));
+if (isDev) {
+    console.log("prompt-app PROMPT_DEV set");
+}
 
 const DevLocalServerPath = "/Users/mike/prompt/local-server";
 let localServerProc = null;
@@ -96,7 +99,7 @@ app.setName("Prompt");
 
 let lock : File;
 try {
-    lock = acquireSCElectronLock();
+    lock = acquirePromptElectronLock();
 }
 catch (e) {
     app.exit(0);

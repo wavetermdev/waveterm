@@ -3,35 +3,35 @@ import * as fs from "fs";
 import {flockSync} from "fs-ext";
 
 const HomeVarName = "HOME";
-const ScHomeVarName = "SCRIPTHAUS_HOME";
-const SCLockFile = "sh2-electron.lock";
-const DBFileName = "sh2.db";
+const PromptHomeVarName = "PROMPT_HOME";
+const PromptLockFile = "prompt-electron.lock";
+const DBFileName = "prompt.db";
 const SessionsDirBaseName = "sessions";
 const RemotesDirBaseName = "remotes";
-const ScDirName = "scripthaus";
+const PromptDirName = "prompt";
 
-function getScHomeDir() : string {
-    if (process.env[ScHomeVarName]) {
-        return process.env[ScHomeVarName];
+function getPromptHomeDir() : string {
+    if (process.env[PromptHomeVarName]) {
+        return process.env[PromptHomeVarName];
     }
     let homeDir = process.env[HomeVarName];
     if (!homeDir) {
         homeDir = "/";
     }
-    return path.join(homeDir, ScDirName);
+    return path.join(homeDir, PromptDirName);
 }
 
 function getDBName() : string {
-    let scHome = getScHomeDir();
-    return path.join(scHome, DBFileName);
+    let promptHome = getPromptHomeDir();
+    return path.join(promptHome, DBFileName);
 }
 
-function acquireSCElectronLock() : File {
-    let scHome = getScHomeDir();
-    let lockFileName = path.join(scHome, SCLockFile);
+function acquirePromptElectronLock() : File {
+    let promptHome = getPromptHomeDir();
+    let lockFileName = path.join(promptHome, PromptLockFile);
     let fd = fs.openSync(lockFileName, "w", 0o600);
     flockSync(fd, "exnb");
     return fd;
 }
 
-export {getScHomeDir, getDBName, acquireSCElectronLock};
+export {getPromptHomeDir, getDBName, acquirePromptElectronLock};
