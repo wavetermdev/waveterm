@@ -346,7 +346,7 @@ func ParseFuncs(funcs string) (map[string]string, error) {
 			// TODO where to put parse errors
 			continue
 		}
-		if strings.HasPrefix(funcName, "_scripthaus_") {
+		if strings.HasPrefix(funcName, "_mshell_") {
 			continue
 		}
 		if funcName != "" {
