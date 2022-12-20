@@ -400,8 +400,8 @@ func main() {
 		return
 	}
 
-	scHomeDir := scbase.GetScHomeDir()
-	log.Printf("[scripthaus] homedir = %q\n", scHomeDir)
+	scHomeDir := scbase.GetPromptHomeDir()
+	log.Printf("[prompt] homedir = %q\n", scHomeDir)
 
 	scLock, err := scbase.AcquireSCLock()
 	if err != nil || scLock == nil {

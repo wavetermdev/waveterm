@@ -42,14 +42,15 @@ const MaxNameLen = 50
 const MaxRemoteAliasLen = 50
 const PasswordUnchangedSentinel = "--unchanged--"
 const DefaultPTERM = "MxM"
+const MaxCommandLen = 4096
 
 var ColorNames = []string{"black", "red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
 var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
 var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}
 
-var WindowCmds = []string{"run", "comment", "cd", "cr", "clear", "sw", "alias", "unalias", "function", "reset"}
-var NoHistCmds = []string{"_compgen", "line", "history"}
-var GlobalCmds = []string{"session", "screen", "remote", "killserver", "set"}
+var WindowCmds = []string{"run", "comment", "cd", "cr", "clear", "sw", "reset"}
+var NoHistCmds = []string{"_compgen", "line", "_history", "_killserver"}
+var GlobalCmds = []string{"session", "screen", "remote", "set"}
 
 var SetVarNameMap map[string]string = map[string]string{
 	"tabcolor": "screen.tabcolor",
@@ -108,7 +109,7 @@ func init() {
 	registerCmdFn("cr", CrCommand)
 	registerCmdFn("_compgen", CompGenCommand)
 	registerCmdFn("clear", ClearCommand)
-	registerCmdFn("reset", ResetCommand)
+	registerCmdFn("reset", RemoteResetCommand)
 
 	registerCmdFn("session", SessionCommand)
 	registerCmdFn("session:open", SessionOpenCommand)
@@ -143,9 +144,9 @@ func init() {
 	registerCmdFn("line:show", LineShowCommand)
 	registerCmdFn("line:star", LineStarCommand)
 
-	registerCmdFn("history", HistoryCommand)
+	registerCmdFn("_history", HistoryCommand)
 
-	registerCmdFn("killserver", KillServerCommand)
+	registerCmdFn("_killserver", KillServerCommand)
 
 	registerCmdFn("set", SetCommand)
 }
@@ -331,6 +332,9 @@ func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, history
 func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	if len(pk.Args) == 0 {
 		return nil, fmt.Errorf("usage: /eval [command], no command passed to eval")
+	}
+	if len(pk.Args[0]) > MaxCommandLen {
+		return nil, fmt.Errorf("command length too long len:%d, max:%d", len(pk.Args[0]), MaxCommandLen)
 	}
 	var historyContext historyContextType
 	ctxWithHistory := context.WithValue(ctx, historyContextKey, &historyContext)
@@ -1359,7 +1363,7 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	return update, nil
 }
 
-func ResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
 	if err != nil {
 		return nil, err

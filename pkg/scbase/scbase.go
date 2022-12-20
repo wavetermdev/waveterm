@@ -18,31 +18,31 @@ import (
 )
 
 const HomeVarName = "HOME"
-const ScHomeVarName = "SCRIPTHAUS_HOME"
+const PromptHomeVarName = "PROMPT_HOME"
 const SessionsDirBaseName = "sessions"
-const SCLockFile = "sh2.lock"
-const ScriptHausDirName = "scripthaus"
-const ScriptHausAppPathVarName = "SCRIPTHAUS_APP_PATH"
-const ScriptHausVersion = "v0.1.0"
+const SCLockFile = "prompt.lock"
+const PromptDirName = "prompt"
+const PromptAppPathVarName = "PROMPT_APP_PATH"
+const PromptVersion = "v0.1.0"
 
 var SessionDirCache = make(map[string]string)
 var BaseLock = &sync.Mutex{}
 
 // must match js
-func GetScHomeDir() string {
-	scHome := os.Getenv(ScHomeVarName)
+func GetPromptHomeDir() string {
+	scHome := os.Getenv(PromptHomeVarName)
 	if scHome == "" {
 		homeVar := os.Getenv(HomeVarName)
 		if homeVar == "" {
 			homeVar = "/"
 		}
-		scHome = path.Join(homeVar, ScriptHausDirName)
+		scHome = path.Join(homeVar, PromptDirName)
 	}
 	return scHome
 }
 
 func MShellBinaryFromPackage(version string, goos string, goarch string) (io.ReadCloser, error) {
-	appPath := os.Getenv(ScriptHausAppPathVarName)
+	appPath := os.Getenv(PromptAppPathVarName)
 	if appPath == "" {
 		return base.MShellBinaryFromOptDir(version, goos, goarch)
 	}
@@ -64,10 +64,10 @@ func MShellBinaryFromPackage(version string, goos string, goarch string) (io.Rea
 }
 
 func AcquireSCLock() (*os.File, error) {
-	homeDir := GetScHomeDir()
+	homeDir := GetPromptHomeDir()
 	err := ensureDir(homeDir)
 	if err != nil {
-		return nil, fmt.Errorf("cannot find/create SCRIPTHAUS_HOME directory %q", homeDir)
+		return nil, fmt.Errorf("cannot find/create PROMPT_HOME directory %q", homeDir)
 	}
 	lockFileName := path.Join(homeDir, SCLockFile)
 	fd, err := os.Create(lockFileName)
@@ -92,7 +92,7 @@ func EnsureSessionDir(sessionId string) (string, error) {
 	if ok {
 		return sdir, nil
 	}
-	scHome := GetScHomeDir()
+	scHome := GetPromptHomeDir()
 	sdir = path.Join(scHome, SessionsDirBaseName, sessionId)
 	err := ensureDir(sdir)
 	if err != nil {
@@ -111,7 +111,7 @@ func ensureDir(dirName string) error {
 		if err != nil {
 			return err
 		}
-		log.Printf("[scripthaus] created directory %q\n", dirName)
+		log.Printf("[prompt] created directory %q\n", dirName)
 		info, err = os.Stat(dirName)
 	}
 	if err != nil {

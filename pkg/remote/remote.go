@@ -746,9 +746,9 @@ func (msh *MShellProc) writeToPtyBuffer_nolock(strFmt string, args ...interface{
 			realStr = realStr + "\r\n"
 		}
 		if strings.HasPrefix(realStr, "*") {
-			realStr = "\033[0m\033[31mscripthaus>\033[0m " + realStr[1:]
+			realStr = "\033[0m\033[31mprompt>\033[0m " + realStr[1:]
 		} else {
-			realStr = "\033[0m\033[32mscripthaus>\033[0m " + realStr
+			realStr = "\033[0m\033[32mprompt>\033[0m " + realStr
 		}
 		barr := msh.PtyBuffer.Bytes()
 		if len(barr) > 0 && barr[len(barr)-1] != '\n' {
@@ -955,8 +955,8 @@ func addScVarsToState(state *packet.ShellState) *packet.ShellState {
 	}
 	rtn := *state
 	envMap := shexec.DeclMapFromState(&rtn)
-	envMap["SCRIPTHAUS"] = &shexec.DeclareDeclType{Name: "SCRIPTHAUS", Value: "1"}
-	envMap["SCRIPTHAUS_VERSION"] = &shexec.DeclareDeclType{Name: "SCRIPTHAUS_VERSION", Value: scbase.ScriptHausVersion}
+	envMap["PROMPT"] = &shexec.DeclareDeclType{Name: "PROMPT", Value: "1"}
+	envMap["PROMPT_VERSION"] = &shexec.DeclareDeclType{Name: "PROMPT_VERSION", Value: scbase.PromptVersion}
 	rtn.ShellVars = shexec.SerializeDeclMap(envMap)
 	return &rtn
 }
@@ -968,8 +968,8 @@ func stripScVarsFromState(state *packet.ShellState) *packet.ShellState {
 	rtn := *state
 	rtn.HashVal = ""
 	envMap := shexec.DeclMapFromState(&rtn)
-	delete(envMap, "SCRIPTHAUS")
-	delete(envMap, "SCRIPTHAUS_VERSION")
+	delete(envMap, "PROMPT")
+	delete(envMap, "PROMPT_VERSION")
 	rtn.ShellVars = shexec.SerializeDeclMap(envMap)
 	return &rtn
 }
@@ -985,8 +985,8 @@ func stripScVarsFromStateDiff(stateDiff *packet.ShellStateDiff) *packet.ShellSta
 	if err != nil {
 		return stateDiff
 	}
-	delete(mapDiff.ToAdd, "SCRIPTHAUS")
-	delete(mapDiff.ToAdd, "SCRIPTHAUS_VERSION")
+	delete(mapDiff.ToAdd, "PROMPT")
+	delete(mapDiff.ToAdd, "PROMPT_VERSION")
 	rtn.VarsDiff = mapDiff.Encode()
 	return &rtn
 }

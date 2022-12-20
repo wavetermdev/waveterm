@@ -29,7 +29,7 @@ import (
 const LineTypeCmd = "cmd"
 const LineTypeText = "text"
 const LineNoHeight = -1
-const DBFileName = "sh2.db"
+const DBFileName = "prompt.db"
 
 const DefaultSessionName = "default"
 const DefaultWindowName = "default"
@@ -75,7 +75,7 @@ var globalDB *sqlx.DB
 var globalDBErr error
 
 func GetSessionDBName() string {
-	scHome := scbase.GetScHomeDir()
+	scHome := scbase.GetPromptHomeDir()
 	return path.Join(scHome, DBFileName)
 }
 
