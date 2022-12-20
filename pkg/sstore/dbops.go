@@ -14,7 +14,7 @@ import (
 	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 )
 
-const HistoryCols = "historyid, ts, userid, sessionid, screenid, windowid, lineid, cmdid, haderror, cmdstr, remoteownerid, remoteid, remotename, ismetacmd"
+const HistoryCols = "historyid, ts, userid, sessionid, screenid, windowid, lineid, cmdid, haderror, cmdstr, remoteownerid, remoteid, remotename, ismetacmd, incognito"
 const DefaultMaxHistoryItems = 1000
 
 func NumSessions(ctx context.Context) (int, error) {
@@ -157,12 +157,22 @@ func InsertHistoryItem(ctx context.Context, hitem *HistoryItemType) error {
 	}
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `INSERT INTO history 
-                  ( historyid, ts, userid, sessionid, screenid, windowid, lineid, cmdid, haderror, cmdstr, remoteownerid, remoteid, remotename, ismetacmd) VALUES
-                  (:historyid,:ts,:userid,:sessionid,:screenid,:windowid,:lineid,:cmdid,:haderror,:cmdstr,:remoteownerid,:remoteid,:remotename,:ismetacmd)`
+                  ( historyid, ts, userid, sessionid, screenid, windowid, lineid, cmdid, haderror, cmdstr, remoteownerid, remoteid, remotename, ismetacmd, incognito) VALUES
+                  (:historyid,:ts,:userid,:sessionid,:screenid,:windowid,:lineid,:cmdid,:haderror,:cmdstr,:remoteownerid,:remoteid,:remotename,:ismetacmd,:incognito)`
 		tx.NamedExecWrap(query, hitem.ToMap())
 		return nil
 	})
 	return txErr
+}
+
+func IsIncognitoScreen(ctx context.Context, sessionId string, screenId string) (bool, error) {
+	var rtn bool
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT incognito FROM screen WHERE sessionid = ? AND screenid = ?`
+		tx.GetWrap(&rtn, query, sessionId, screenId)
+		return nil
+	})
+	return rtn, txErr
 }
 
 func runHistoryQuery(tx *TxWrap, sessionId string, windowId string, opts HistoryQueryOpts) ([]*HistoryItemType, error) {
@@ -390,12 +400,13 @@ func GetSessionByName(ctx context.Context, name string) (*SessionType, error) {
 // also creates default window, returns sessionId
 // if sessionName == "", it will be generated
 func InsertSessionWithName(ctx context.Context, sessionName string, activate bool) (UpdatePacket, error) {
-	newSessionId := scbase.GenSCUUID()
+	newSessionId := scbase.GenPromptUUID()
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		names := tx.SelectStrings(`SELECT name FROM session`)
 		sessionName = fmtUniqueName(sessionName, "session-%d", len(names)+1, names)
 		maxSessionIdx := tx.GetInt(`SELECT COALESCE(max(sessionidx), 0) FROM session`)
-		query := `INSERT INTO session (sessionid, name, activescreenid, sessionidx, notifynum, ownerid, sharemode, accesskey) VALUES (?, ?, '', ?, ?, '', 'local', '')`
+		query := `INSERT INTO session (sessionid, name, activescreenid, sessionidx, notifynum, closed, ownerid, sharemode, accesskey)
+                               VALUES (?,         ?,    '',             ?,          ?,         0,      '',      'local',   '')`
 		tx.ExecWrap(query, newSessionId, sessionName, maxSessionIdx+1, 0)
 		_, err := InsertScreen(tx.Context(), newSessionId, "", true)
 		if err != nil {
@@ -493,8 +504,8 @@ func InsertScreen(ctx context.Context, sessionId string, origScreenName string, 
 		maxScreenIdx := tx.GetInt(`SELECT COALESCE(max(screenidx), 0) FROM screen WHERE sessionid = ?`, sessionId)
 		screenNames := tx.SelectStrings(`SELECT name FROM screen WHERE sessionid = ?`, sessionId)
 		screenName := fmtUniqueName(origScreenName, "s%d", maxScreenIdx+1, screenNames)
-		newScreenId = scbase.GenSCUUID()
-		query = `INSERT INTO screen (sessionid, screenid, name, activewindowid, screenidx, screenopts, ownerid, sharemode) VALUES (?, ?, ?, ?, ?, ?, '', 'local')`
+		newScreenId = scbase.GenPromptUUID()
+		query = `INSERT INTO screen (sessionid, screenid, name, activewindowid, screenidx, screenopts, ownerid, sharemode, incognito, closed) VALUES (?, ?, ?, ?, ?, ?, '', 'local', 0, 0)`
 		tx.ExecWrap(query, sessionId, newScreenId, screenName, newWindowId, maxScreenIdx+1, ScreenOptsType{})
 		layout := LayoutType{Type: LayoutFull}
 		query = `INSERT INTO screen_window (sessionid, screenid, windowid, name, layout, selectedline, anchor, focustype) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
@@ -541,7 +552,7 @@ func GetScreenById(ctx context.Context, sessionId string, screenId string) (*Scr
 func txCreateWindow(tx *TxWrap, sessionId string, curRemote RemotePtrType) string {
 	w := &WindowType{
 		SessionId:   sessionId,
-		WindowId:    scbase.GenSCUUID(),
+		WindowId:    scbase.GenPromptUUID(),
 		CurRemote:   curRemote,
 		NextLineNum: 1,
 		WinOpts:     WindowOptsType{},
@@ -949,7 +960,7 @@ func UpdateRemoteState(ctx context.Context, sessionId string, windowId string, r
 		ri = RIFromMap(m)
 		if ri == nil {
 			ri = &RemoteInstance{
-				RIId:          scbase.GenSCUUID(),
+				RIId:          scbase.GenPromptUUID(),
 				Name:          remotePtr.Name,
 				SessionId:     sessionId,
 				WindowId:      windowId,

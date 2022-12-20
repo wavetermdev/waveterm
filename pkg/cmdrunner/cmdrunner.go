@@ -275,7 +275,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	// runPacket.State is set in remote.RunCommand()
 	runPacket := packet.MakeRunPacket()
 	runPacket.ReqId = uuid.New().String()
-	runPacket.CK = base.MakeCommandKey(ids.SessionId, scbase.GenSCUUID())
+	runPacket.CK = base.MakeCommandKey(ids.SessionId, scbase.GenPromptUUID())
 	runPacket.UsePty = true
 	ptermVal := defaultStr(pk.Kwargs["pterm"], DefaultPTERM)
 	runPacket.TermOpts, err = GetUITermOpts(pk.UIContext.WinSize, ptermVal)
@@ -306,8 +306,12 @@ func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, history
 	if err != nil {
 		return err
 	}
+	isIncognito, err := sstore.IsIncognitoScreen(ctx, ids.SessionId, ids.ScreenId)
+	if err != nil {
+		return fmt.Errorf("cannot add to history, error looking up incognito status of screen: %v", err)
+	}
 	hitem := &sstore.HistoryItemType{
-		HistoryId: scbase.GenSCUUID(),
+		HistoryId: scbase.GenPromptUUID(),
 		Ts:        time.Now().UnixMilli(),
 		UserId:    DefaultUserId,
 		SessionId: ids.SessionId,
@@ -318,6 +322,7 @@ func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, history
 		CmdId:     historyContext.CmdId,
 		CmdStr:    cmdStr,
 		IsMetaCmd: isMetaCmd,
+		Incognito: isIncognito,
 	}
 	if !isMetaCmd && historyContext.RemotePtr != nil {
 		hitem.Remote = *historyContext.RemotePtr
@@ -785,7 +790,7 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		return makeRemoteEditErrorReturn_new(visualEdit, fmt.Errorf("/remote:new %v", err))
 	}
 	r := &sstore.RemoteType{
-		RemoteId:            scbase.GenSCUUID(),
+		RemoteId:            scbase.GenPromptUUID(),
 		PhysicalId:          "",
 		RemoteType:          sstore.RemoteTypeSsh,
 		RemoteAlias:         editArgs.Alias,
@@ -941,7 +946,7 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 func makeStaticCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr string, cmdOutput []byte) (*sstore.CmdType, error) {
 	cmd := &sstore.CmdType{
 		SessionId: ids.SessionId,
-		CmdId:     scbase.GenSCUUID(),
+		CmdId:     scbase.GenPromptUUID(),
 		CmdStr:    cmdStr,
 		Remote:    ids.Remote.RemotePtr,
 		TermOpts:  sstore.TermOpts{Rows: shexec.DefaultTermRows, Cols: shexec.DefaultTermCols, FlexRows: true, MaxPtySize: remote.DefaultMaxPtySize},

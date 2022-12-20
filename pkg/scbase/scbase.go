@@ -20,10 +20,11 @@ import (
 const HomeVarName = "HOME"
 const PromptHomeVarName = "PROMPT_HOME"
 const SessionsDirBaseName = "sessions"
-const SCLockFile = "prompt.lock"
+const PromptLockFile = "prompt.lock"
 const PromptDirName = "prompt"
 const PromptAppPathVarName = "PROMPT_APP_PATH"
 const PromptVersion = "v0.1.0"
+const PromptAuthKeyFileName = "prompt.authkey"
 
 var SessionDirCache = make(map[string]string)
 var BaseLock = &sync.Mutex{}
@@ -63,13 +64,54 @@ func MShellBinaryFromPackage(version string, goos string, goarch string) (io.Rea
 	return fd, nil
 }
 
-func AcquireSCLock() (*os.File, error) {
+func createPromptAuthKeyFile(fileName string) (string, error) {
+	fd, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return "", err
+	}
+	defer fd.Close()
+	keyStr := GenPromptUUID()
+	_, err = fd.Write([]byte(keyStr))
+	if err != nil {
+		return "", err
+	}
+	return keyStr, nil
+}
+
+func ReadPromptAuthKey() (string, error) {
+	homeDir := GetPromptHomeDir()
+	err := ensureDir(homeDir)
+	if err != nil {
+		return "", fmt.Errorf("cannot find/create PROMPT_HOME directory %q", homeDir)
+	}
+	fileName := path.Join(homeDir, PromptAuthKeyFileName)
+	fd, err := os.Open(fileName)
+	if err != nil && errors.Is(err, fs.ErrNotExist) {
+		return createPromptAuthKeyFile(fileName)
+	}
+	if err != nil {
+		return "", fmt.Errorf("error opening prompt authkey:%s: %v", fileName, err)
+	}
+	defer fd.Close()
+	buf, err := io.ReadAll(fd)
+	if err != nil {
+		return "", fmt.Errorf("error reading prompt authkey:%s: %v", fileName, err)
+	}
+	keyStr := string(buf)
+	_, err = uuid.Parse(keyStr)
+	if err != nil {
+		return "", fmt.Errorf("invalid authkey:%s format: %v", fileName, err)
+	}
+	return keyStr, nil
+}
+
+func AcquirePromptLock() (*os.File, error) {
 	homeDir := GetPromptHomeDir()
 	err := ensureDir(homeDir)
 	if err != nil {
 		return nil, fmt.Errorf("cannot find/create PROMPT_HOME directory %q", homeDir)
 	}
-	lockFileName := path.Join(homeDir, SCLockFile)
+	lockFileName := path.Join(homeDir, PromptLockFile)
 	fd, err := os.Create(lockFileName)
 	if err != nil {
 		return nil, err
@@ -151,19 +193,19 @@ func RunOutFile(sessionId string, cmdId string) (string, error) {
 	return fmt.Sprintf("%s/%s.runout", sdir, cmdId), nil
 }
 
-type ScFileNameGenerator struct {
-	ScHome string
+type PromptFileNameGenerator struct {
+	PromptHome string
 }
 
-func (g ScFileNameGenerator) PtyOutFile(ck base.CommandKey) string {
-	return path.Join(g.ScHome, SessionsDirBaseName, ck.GetSessionId(), ck.GetCmdId()+".ptyout")
+func (g PromptFileNameGenerator) PtyOutFile(ck base.CommandKey) string {
+	return path.Join(g.PromptHome, SessionsDirBaseName, ck.GetSessionId(), ck.GetCmdId()+".ptyout")
 }
 
-func (g ScFileNameGenerator) RunOutFile(ck base.CommandKey) string {
-	return path.Join(g.ScHome, SessionsDirBaseName, ck.GetSessionId(), ck.GetCmdId()+".runout")
+func (g PromptFileNameGenerator) RunOutFile(ck base.CommandKey) string {
+	return path.Join(g.PromptHome, SessionsDirBaseName, ck.GetSessionId(), ck.GetCmdId()+".runout")
 }
 
-func GenSCUUID() string {
+func GenPromptUUID() string {
 	for {
 		rtn := uuid.New().String()
 		_, err := strconv.Atoi(rtn[0:8])

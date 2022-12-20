@@ -13,6 +13,7 @@ CREATE TABLE session (
     sessionidx int NOT NULL,
     activescreenid varchar(36) NOT NULL,
     notifynum int NOT NULL,
+    closed boolean NOT NULL,
     ownerid varchar(36) NOT NULL,
     sharemode varchar(12) NOT NULL,
     accesskey varchar(36) NOT NULL
@@ -41,6 +42,8 @@ CREATE TABLE screen (
     screenopts json NOT NULL,
     ownerid varchar(36) NOT NULL,
     sharemode varchar(12) NOT NULL,
+    incognito boolean NOT NULL,
+    closed boolean NOT NULL,
     PRIMARY KEY (sessionid, screenid)
 );
 
@@ -136,7 +139,7 @@ CREATE TABLE cmd (
     startpk json NOT NULL,
     doneinfo json NOT NULL,
     runout json NOT NULL,
-    rtnstate bool NOT NULL,
+    rtnstate boolean NOT NULL,
     rtnbasehash varchar(36) NOT NULL,
     rtndiffhasharr json NOT NULL,
     PRIMARY KEY (sessionid, cmdid)
@@ -156,5 +159,6 @@ CREATE TABLE history (
     haderror boolean NOT NULL,
     cmdid varchar(36) NOT NULL,
     cmdstr text NOT NULL,
-    ismetacmd boolean
+    ismetacmd boolean,
+    incognito boolean
 );

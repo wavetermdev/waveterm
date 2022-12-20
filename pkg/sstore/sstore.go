@@ -152,6 +152,7 @@ type SessionType struct {
 	ShareMode      string            `json:"sharemode"`
 	AccessKey      string            `json:"-"`
 	NotifyNum      int64             `json:"notifynum"`
+	Closed         bool              `json:"closed,omitempty"`
 	Screens        []*ScreenType     `json:"screens"`
 	Remotes        []*RemoteInstance `json:"remotes"`
 
@@ -305,6 +306,7 @@ func (h *HistoryItemType) ToMap() map[string]interface{} {
 	rtn["remoteid"] = h.Remote.RemoteId
 	rtn["remotename"] = h.Remote.Name
 	rtn["ismetacmd"] = h.IsMetaCmd
+	rtn["incognito"] = h.Incognito
 	return rtn
 }
 
@@ -328,6 +330,7 @@ func HistoryItemFromMap(m map[string]interface{}) *HistoryItemType {
 	quickSetStr(&h.Remote.Name, m, "remotename")
 	quickSetBool(&h.IsMetaCmd, m, "ismetacmd")
 	quickSetStr(&h.HistoryNum, m, "historynum")
+	quickSetBool(&h.Incognito, m, "incognito")
 	return &h
 }
 
@@ -352,6 +355,8 @@ type ScreenType struct {
 	ScreenOpts     *ScreenOptsType     `json:"screenopts"`
 	OwnerId        string              `json:"ownerid"`
 	ShareMode      string              `json:"sharemode"`
+	Incognito      bool                `json:"incognito,omitempty"`
+	Closed         bool                `json:"closed,omitempty"`
 	Windows        []*ScreenWindowType `json:"windows"`
 
 	// only for updates
@@ -430,6 +435,7 @@ type HistoryItemType struct {
 	CmdStr    string        `json:"cmdstr"`
 	Remote    RemotePtrType `json:"remote"`
 	IsMetaCmd bool          `json:"ismetacmd"`
+	Incognito bool          `json:"incognito,omitempty"`
 
 	// only for updates
 	Remove bool `json:"remove"`
@@ -761,7 +767,7 @@ func makeNewLineCmd(sessionId string, windowId string, userId string, cmdId stri
 	rtn.SessionId = sessionId
 	rtn.WindowId = windowId
 	rtn.UserId = userId
-	rtn.LineId = scbase.GenSCUUID()
+	rtn.LineId = scbase.GenPromptUUID()
 	rtn.Ts = time.Now().UnixMilli()
 	rtn.LineLocal = true
 	rtn.LineType = LineTypeCmd
@@ -775,7 +781,7 @@ func makeNewLineText(sessionId string, windowId string, userId string, text stri
 	rtn.SessionId = sessionId
 	rtn.WindowId = windowId
 	rtn.UserId = userId
-	rtn.LineId = scbase.GenSCUUID()
+	rtn.LineId = scbase.GenPromptUUID()
 	rtn.Ts = time.Now().UnixMilli()
 	rtn.LineLocal = true
 	rtn.LineType = LineTypeText
@@ -824,7 +830,7 @@ func EnsureLocalRemote(ctx context.Context) error {
 	}
 	// create the local remote
 	localRemote := &RemoteType{
-		RemoteId:            scbase.GenSCUUID(),
+		RemoteId:            scbase.GenPromptUUID(),
 		PhysicalId:          physicalId,
 		RemoteType:          RemoteTypeSsh,
 		RemoteAlias:         LocalRemoteAlias,

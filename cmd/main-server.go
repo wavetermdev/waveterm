@@ -403,7 +403,7 @@ func main() {
 	scHomeDir := scbase.GetPromptHomeDir()
 	log.Printf("[prompt] homedir = %q\n", scHomeDir)
 
-	scLock, err := scbase.AcquireSCLock()
+	scLock, err := scbase.AcquirePromptLock()
 	if err != nil || scLock == nil {
 		log.Printf("[error] cannot acquire sh2 lock: %v\n", err)
 		return
