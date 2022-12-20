@@ -451,7 +451,7 @@ func ParseShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
 	}
 	rtn.Aliases = strings.ReplaceAll(string(fields[3]), "\r\n", "\n")
 	rtn.Funcs = strings.ReplaceAll(string(fields[4]), "\r\n", "\n")
-	rtn.Funcs = removeFunc(rtn.Funcs, "_scripthaus_exittrap")
+	rtn.Funcs = removeFunc(rtn.Funcs, "_mshell_exittrap")
 	return rtn, nil
 }
 

@@ -995,10 +995,10 @@ func makeRcFileStr(pk *packet.RunPacketType) string {
 func makeExitTrap(fdNum int) string {
 	stateCmd := GetShellStateRedirectCommandStr(fdNum)
 	fmtStr := `
-_scripthaus_exittrap () {
+_mshell_exittrap () {
     %s
 }
-trap _scripthaus_exittrap EXIT
+trap _mshell_exittrap EXIT
 `
 	return fmt.Sprintf(fmtStr, stateCmd)
 }
