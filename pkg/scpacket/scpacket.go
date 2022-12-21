@@ -77,6 +77,7 @@ type WatchScreenPacketType struct {
 	SessionId string `json:"sessionid"`
 	ScreenId  string `json:"screenid"`
 	Connect   bool   `json:"connect"`
+	AuthKey   string `json:"authkey"`
 }
 
 func init() {

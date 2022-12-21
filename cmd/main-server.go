@@ -28,6 +28,8 @@ import (
 	"github.com/scripthaus-dev/sh2-server/pkg/wsshell"
 )
 
+type WebFnType = func(http.ResponseWriter, *http.Request)
+
 const HttpReadTimeout = 5 * time.Second
 const HttpWriteTimeout = 21 * time.Second
 const HttpMaxHeaderBytes = 60000
@@ -40,6 +42,7 @@ const WSStatePacketChSize = 20
 
 var GlobalLock = &sync.Mutex{}
 var WSStateMap = make(map[string]*scws.WSState) // clientid -> WsState
+var GlobalAuthKey string
 
 func setWSState(state *scws.WSState) {
 	GlobalLock.Lock()
@@ -81,7 +84,7 @@ func HandleWs(w http.ResponseWriter, r *http.Request) {
 	}
 	state := getWSState(clientId)
 	if state == nil {
-		state = scws.MakeWSState(clientId)
+		state = scws.MakeWSState(clientId, GlobalAuthKey)
 		state.ReplaceShell(shell)
 		setWSState(state)
 	} else {
@@ -119,10 +122,6 @@ func writeToFifo(fifoName string, data []byte) error {
 }
 
 func HandleGetClientData(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Vary", "Origin")
-	w.Header().Set("Cache-Control", "no-cache")
 	cdata, err := sstore.EnsureClientData(r.Context())
 	if err != nil {
 		WriteJsonError(w, err)
@@ -133,15 +132,6 @@ func HandleGetClientData(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleSetWinSize(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-	w.Header().Set("Vary", "Origin")
-	w.Header().Set("Cache-Control", "no-cache")
-	if r.Method == "GET" || r.Method == "OPTIONS" {
-		w.WriteHeader(200)
-		return
-	}
 	decoder := json.NewDecoder(r.Body)
 	var winSize sstore.ClientWinSizeType
 	err := decoder.Decode(&winSize)
@@ -160,10 +150,6 @@ func HandleSetWinSize(w http.ResponseWriter, r *http.Request) {
 
 // params: sessionid, windowid
 func HandleGetWindow(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Vary", "Origin")
-	w.Header().Set("Cache-Control", "no-cache")
 	qvals := r.URL.Query()
 	sessionId := qvals.Get("sessionid")
 	windowId := qvals.Get("windowid")
@@ -226,10 +212,6 @@ func HandleRtnState(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleRemotePty(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Vary", "Origin")
-	w.Header().Set("Cache-Control", "no-cache")
 	qvals := r.URL.Query()
 	remoteId := qvals.Get("remoteid")
 	if remoteId == "" {
@@ -255,10 +237,6 @@ func HandleRemotePty(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleGetPtyOut(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Vary", "Origin")
-	w.Header().Set("Cache-Control", "no-cache")
 	qvals := r.URL.Query()
 	sessionId := qvals.Get("sessionid")
 	cmdId := qvals.Get("cmdid")
@@ -330,15 +308,7 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 		WriteJsonError(w, fmt.Errorf("panic: %v", r))
 		return
 	}()
-	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-	w.Header().Set("Vary", "Origin")
 	w.Header().Set("Cache-Control", "no-cache")
-	if r.Method == "GET" || r.Method == "OPTIONS" {
-		w.WriteHeader(200)
-		return
-	}
 	decoder := json.NewDecoder(r.Body)
 	var commandPk scpacket.FeCommandPacketType
 	err := decoder.Decode(&commandPk)
@@ -353,6 +323,24 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJsonSuccess(w, update)
 	return
+}
+
+func AuthKeyWrap(fn WebFnType) WebFnType {
+	return func(w http.ResponseWriter, r *http.Request) {
+		reqAuthKey := r.Header.Get("X-AuthKey")
+		if reqAuthKey == "" {
+			w.WriteHeader(500)
+			w.Write([]byte("no x-authkey header"))
+			return
+		}
+		if reqAuthKey != GlobalAuthKey {
+			w.WriteHeader(500)
+			w.Write([]byte("x-authkey header is invalid"))
+			return
+		}
+		w.Header().Set("Cache-Control", "no-cache")
+		fn(w, r)
+	}
 }
 
 func runWebSocketServer() {
@@ -405,10 +393,9 @@ func main() {
 
 	scLock, err := scbase.AcquirePromptLock()
 	if err != nil || scLock == nil {
-		log.Printf("[error] cannot acquire sh2 lock: %v\n", err)
+		log.Printf("[error] cannot acquire prompt lock: %v\n", err)
 		return
 	}
-
 	if len(os.Args) >= 2 && strings.HasPrefix(os.Args[1], "--migrate") {
 		err := sstore.MigrateCommandOpts(os.Args[1:])
 		if err != nil {
@@ -416,6 +403,12 @@ func main() {
 		}
 		return
 	}
+	authKey, err := scbase.ReadPromptAuthKey()
+	if err != nil {
+		log.Printf("[error] %v\n", err)
+		return
+	}
+	GlobalAuthKey = authKey
 	err = sstore.TryMigrateUp()
 	if err != nil {
 		log.Printf("[error] migrate up: %v\n", err)
@@ -451,13 +444,13 @@ func main() {
 	go stdinReadWatch()
 	go runWebSocketServer()
 	gr := mux.NewRouter()
-	gr.HandleFunc("/api/ptyout", HandleGetPtyOut)
-	gr.HandleFunc("/api/remote-pty", HandleRemotePty)
-	gr.HandleFunc("/api/rtnstate", HandleRtnState)
-	gr.HandleFunc("/api/get-window", HandleGetWindow)
-	gr.HandleFunc("/api/run-command", HandleRunCommand).Methods("GET", "POST", "OPTIONS")
-	gr.HandleFunc("/api/get-client-data", HandleGetClientData)
-	gr.HandleFunc("/api/set-winsize", HandleSetWinSize)
+	gr.HandleFunc("/api/ptyout", AuthKeyWrap(HandleGetPtyOut))
+	gr.HandleFunc("/api/remote-pty", AuthKeyWrap(HandleRemotePty))
+	gr.HandleFunc("/api/rtnstate", AuthKeyWrap(HandleRtnState))
+	gr.HandleFunc("/api/get-window", AuthKeyWrap(HandleGetWindow))
+	gr.HandleFunc("/api/run-command", AuthKeyWrap(HandleRunCommand)).Methods("POST")
+	gr.HandleFunc("/api/get-client-data", AuthKeyWrap(HandleGetClientData))
+	gr.HandleFunc("/api/set-winsize", AuthKeyWrap(HandleSetWinSize))
 	server := &http.Server{
 		Addr:           MainServerAddr,
 		ReadTimeout:    HttpReadTimeout,

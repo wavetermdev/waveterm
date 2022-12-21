@@ -19,23 +19,38 @@ const WSStatePacketChSize = 20
 const MaxInputDataSize = 1000
 
 type WSState struct {
-	Lock        *sync.Mutex
-	ClientId    string
-	ConnectTime time.Time
-	Shell       *wsshell.WSShell
-	UpdateCh    chan interface{}
-	UpdateQueue []interface{}
+	Lock          *sync.Mutex
+	ClientId      string
+	ConnectTime   time.Time
+	Shell         *wsshell.WSShell
+	UpdateCh      chan interface{}
+	UpdateQueue   []interface{}
+	Authenticated bool
+	AuthKey       string
 
 	SessionId string
 	ScreenId  string
 }
 
-func MakeWSState(clientId string) *WSState {
+func MakeWSState(clientId string, authKey string) *WSState {
 	rtn := &WSState{}
 	rtn.Lock = &sync.Mutex{}
 	rtn.ClientId = clientId
 	rtn.ConnectTime = time.Now()
+	rtn.AuthKey = authKey
 	return rtn
+}
+
+func (ws *WSState) SetAuthenticated(authVal bool) {
+	ws.Lock.Lock()
+	defer ws.Lock.Unlock()
+	ws.Authenticated = authVal
+}
+
+func (ws *WSState) IsAuthenticated() bool {
+	ws.Lock.Lock()
+	defer ws.Lock.Unlock()
+	return ws.Authenticated
 }
 
 func (ws *WSState) GetShell() *wsshell.WSShell {
@@ -151,6 +166,15 @@ func (ws *WSState) handleWatchScreen(wsPk *scpacket.WatchScreenPacketType) error
 			return fmt.Errorf("invalid watchscreen screenid: %w", err)
 		}
 	}
+	if wsPk.AuthKey == "" {
+		ws.SetAuthenticated(false)
+		return fmt.Errorf("invalid watchscreen, no authkey")
+	}
+	if wsPk.AuthKey != ws.AuthKey {
+		ws.SetAuthenticated(false)
+		return fmt.Errorf("invalid watchscreen, invalid authkey")
+	}
+	ws.SetAuthenticated(true)
 	if wsPk.SessionId == "" || wsPk.ScreenId == "" {
 		ws.UnWatchScreen()
 	} else {
@@ -179,6 +203,20 @@ func (ws *WSState) RunWSRead() {
 			log.Printf("error unmarshalling ws message: %v\n", err)
 			continue
 		}
+		if pk.GetType() == scpacket.WatchScreenPacketStr {
+			wsPk := pk.(*scpacket.WatchScreenPacketType)
+			err := ws.handleWatchScreen(wsPk)
+			if err != nil {
+				// TODO send errors back to client, likely unrecoverable
+				log.Printf("[ws %s] error %v\n", err)
+			}
+			continue
+		}
+		isAuth := ws.IsAuthenticated()
+		if !isAuth {
+			log.Printf("[error] cannot process ws-packet[%s], not authenticated\n", pk.GetType())
+			continue
+		}
 		if pk.GetType() == scpacket.FeInputPacketStr {
 			feInputPk := pk.(*scpacket.FeInputPacketType)
 			if feInputPk.Remote.OwnerId != "" {
@@ -196,15 +234,6 @@ func (ws *WSState) RunWSRead() {
 					log.Printf("[error] sending command input: %v\n", err)
 				}
 			}()
-			continue
-		}
-		if pk.GetType() == scpacket.WatchScreenPacketStr {
-			wsPk := pk.(*scpacket.WatchScreenPacketType)
-			err := ws.handleWatchScreen(wsPk)
-			if err != nil {
-				// TODO send errors back to client, likely unrecoverable
-				log.Printf("[ws %s] error %v\n", err)
-			}
 			continue
 		}
 		if pk.GetType() == scpacket.RemoteInputPacketStr {
