@@ -12,6 +12,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/scripthaus-dev/mshell/pkg/base"
@@ -217,7 +218,7 @@ func handleSingle(fromServer bool) {
 			exitErr := sender.WaitForDone()
 			if exitErr != nil {
 				base.Logf("I/O error talking to server, sending SIGHUP to children\n")
-				cmd.SendHup()
+				cmd.SendSignal(syscall.SIGHUP)
 			}
 		}()
 		cmd.RunRemoteIOAndWait(packetParser, sender)

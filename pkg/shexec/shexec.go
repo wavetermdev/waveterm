@@ -17,6 +17,7 @@ import (
 	"os/signal"
 	"os/user"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -159,6 +160,7 @@ type ShExecUPR struct {
 }
 
 func (s *ShExecType) processSpecialInputPacket(pk *packet.SpecialInputPacketType) error {
+	base.Logf("processSpecialInputPacket: %#v\n", pk)
 	if pk.WinSize != nil {
 		if s.CmdPty == nil {
 			return fmt.Errorf("cannot change winsize, cmd was not started with a pty")
@@ -171,10 +173,17 @@ func (s *ShExecType) processSpecialInputPacket(pk *packet.SpecialInputPacketType
 		s.Cmd.Process.Signal(syscall.SIGWINCH)
 	}
 	if pk.SigName != "" {
-		sigNum := unix.SignalNum(pk.SigName)
-		if sigNum == 0 {
+		var signal syscall.Signal
+		sigNumInt, err := strconv.Atoi(pk.SigName)
+		if err == nil {
+			signal = syscall.Signal(sigNumInt)
+		} else {
+			signal = unix.SignalNum(pk.SigName)
+		}
+		if signal == 0 {
 			return fmt.Errorf("error signal %q not found, cannot send", pk.SigName)
 		}
+		s.SendSignal(syscall.Signal(signal))
 	}
 	return nil
 }
@@ -1003,8 +1012,8 @@ trap _mshell_exittrap EXIT
 	return fmt.Sprintf(fmtStr, stateCmd)
 }
 
-func (s *ShExecType) SendHup() {
-	base.Logf("sendhup start\n")
+func (s *ShExecType) SendSignal(sig syscall.Signal) {
+	base.Logf("signal start\n")
 	if s.Cmd == nil || s.Cmd.Process == nil || s.IsExited() {
 		return
 	}
@@ -1014,11 +1023,11 @@ func (s *ShExecType) SendHup() {
 	}
 	pid := s.Cmd.Process.Pid
 	if pgroup {
-		base.Logf("sendhup %d (pgroup)\n", -pid)
-		syscall.Kill(-pid, syscall.SIGHUP)
+		base.Logf("send signal %s to %d (pgroup)\n", sig, -pid)
+		syscall.Kill(-pid, sig)
 	} else {
-		base.Logf("sendhup %d (normal)\n", pid)
-		syscall.Kill(pid, syscall.SIGHUP)
+		base.Logf("send signal %s to %d (normal)\n", sig, pid)
+		syscall.Kill(pid, sig)
 	}
 }
 
@@ -1344,6 +1353,7 @@ func GetExitCode(err error) int {
 
 func (c *ShExecType) ProcWait() error {
 	exitErr := c.Cmd.Wait()
+	base.Logf("procwait: %v\n", exitErr)
 	c.Lock.Lock()
 	c.Exited = true
 	c.Lock.Unlock()

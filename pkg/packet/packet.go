@@ -254,7 +254,7 @@ type WinSize struct {
 type SpecialInputPacketType struct {
 	Type    string          `json:"type"`
 	CK      base.CommandKey `json:"ck"`
-	SigName string          `json:"signame,omitempty"` // passed to unix.SignalNum (needs 'SIG' prefix, e.g. "SIGTERM")
+	SigName string          `json:"signame,omitempty"` // passed to unix.SignalNum (needs 'SIG' prefix, e.g. "SIGTERM"), also accepts a number (e.g. "9")
 	WinSize *WinSize        `json:"winsize,omitempty"`
 }
 
