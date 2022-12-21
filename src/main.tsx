@@ -298,7 +298,8 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         this.rtnStateDiffFetched = true;
         let usp = new URLSearchParams({sessionid: line.sessionid, cmdid: line.cmdid});
         let url = "http://localhost:8080/api/rtnstate?" + usp.toString();
-        fetch(url).then((resp) => {
+        let fetchHeaders = GlobalModel.getFetchHeaders();
+        fetch(url, {headers: fetchHeaders}).then((resp) => {
             if (!resp.ok) {
                 throw new Error(sprintf("Bad fetch response for /api/rtnstate: %d %s", resp.status, resp.statusText));
             }

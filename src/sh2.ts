@@ -4,7 +4,6 @@ import {createRoot} from 'react-dom/client';
 import {sprintf} from "sprintf-js";
 import {Terminal} from 'xterm';
 import {Main} from "./main";
-import {WSControl} from "./ws";
 import {GlobalModel} from "./model";
 import {v4 as uuidv4} from "uuid";
 
@@ -43,4 +42,4 @@ document.addEventListener("DOMContentLoaded", () => {
 (window as any).mobx = mobx;
 (window as any).sprintf = sprintf;
 
-console.log("SCRIPTHAUS", VERSION)
+console.log("PROMPT", VERSION)

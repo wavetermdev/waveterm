@@ -203,6 +203,7 @@ type WatchScreenPacketType = {
     sessionid : string,
     screenid : string,
     connect : boolean,
+    authkey : string,
 };
 
 type TermWinSize = {

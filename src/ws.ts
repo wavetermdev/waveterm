@@ -15,10 +15,12 @@ class WSControl {
     watchSessionId : string = null;
     watchScreenId : string = null;
     wsLog : mobx.IObservableArray<string> = mobx.observable.array([], {name: "wsLog"})
+    authKey : string;
     
-    constructor(clientId : string, messageCallback : (any) => void) {
+    constructor(clientId : string, authKey : string, messageCallback : (any) => void) {
         this.messageCallback = messageCallback;
         this.clientId = clientId;
+        this.authKey = authKey;
         this.open = mobx.observable.box(false, {name: "WSOpen"});
         setInterval(this.sendPing, 5000);
     }
@@ -174,7 +176,7 @@ class WSControl {
     }
 
     sendWatchScreenPacket(connect : boolean) {
-        let pk : WatchScreenPacketType = {"type": "watchscreen", connect: connect, sessionid: null, screenid: null};
+        let pk : WatchScreenPacketType = {"type": "watchscreen", connect: connect, sessionid: null, screenid: null, authkey: this.authKey};
         if (this.watchSessionId != null) {
             pk.sessionid = this.watchSessionId;
         }

@@ -245,7 +245,8 @@ class TermWrap {
         this.terminal.reset();
         let url = this._getReloadUrl();
         let ptyOffset = 0;
-        fetch(url).then((resp) => {
+        let fetchHeaders = GlobalModel.getFetchHeaders();
+        fetch(url, {headers: fetchHeaders}).then((resp) => {
             if (!resp.ok) {
                 mobx.action(() => { this.loadError.set(true); })();
                 this.dataUpdates = [];

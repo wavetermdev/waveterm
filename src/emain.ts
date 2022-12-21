@@ -9,12 +9,15 @@ import {handleJsonFetchResponse} from "./util";
 import * as winston from "winston";
 import * as util from "util";
 import {sprintf} from "sprintf-js";
+import {v4 as uuidv4} from "uuid";
 
 const PromptAppPathVarName = "PROMPT_APP_PATH";
+const AuthKeyFile = "prompt.authkey";
 let isDev = (process.env.PROMPT_DEV != null);
 let scHome = getPromptHomeDir();
 ensureDir(scHome);
 let DistDir = (isDev ? "dist-dev" : "dist");
+let GlobalAuthKey = "";
 
 // these are either "darwin/amd64" or "darwin/arm64"
 // normalize darwin/x64 to darwin/amd64 for GOARCH compatibility
@@ -92,6 +95,22 @@ function getLocalServerCwd() {
 
 function ensureDir(dir) {
     fs.mkdirSync(dir, {recursive: true, mode: 0o700});
+}
+
+function readAuthKey() {
+    let homeDir = getPromptHomeDir();
+    let authKeyFileName = path.join(homeDir, AuthKeyFile);
+    if (!fs.existsSync(authKeyFileName)) {
+        let authKeyStr = String(uuidv4());
+        fs.writeFileSync(authKeyFileName, authKeyStr, 0o600);
+        return authKeyStr;
+    }
+    let authKeyData = fs.readFileSync(authKeyFileName);
+    let authKeyStr = String(authKeyData);
+    if (authKeyStr == null || authKeyStr == "") {
+        throw new Error("cannot read authkey");
+    }
+    return authKeyStr.trim();
 }
 
 let app = electron.app;
@@ -248,7 +267,8 @@ function mainResizeHandler(e) {
     console.log("resize/move", win.getBounds());
     let winSize = {width: bounds.width, height: bounds.height, top: bounds.y, left: bounds.x};
     let url = "http://localhost:8080/api/set-winsize";
-    fetch(url, {method: "post", body: JSON.stringify(winSize)}).then((resp) => handleJsonFetchResponse(url, resp)).catch((err) => {
+    let fetchHeaders = getFetchHeaders();
+    fetch(url, {method: "post", body: JSON.stringify(winSize), headers: fetchHeaders}).then((resp) => handleJsonFetchResponse(url, resp)).catch((err) => {
         console.log("error setting winsize", err)
     });
 }
@@ -302,6 +322,11 @@ electron.ipcMain.on("get-id", (event) => {
     return;
 });
 
+electron.ipcMain.on("get-authkey", (event) => {
+    event.returnValue = GlobalAuthKey;
+    return;
+});
+
 electron.ipcMain.on("local-server-status", (event) => {
     event.returnValue = (localServerProc != null);
     return;
@@ -327,9 +352,16 @@ function getContextMenu() : any {
     return menu;
 }
 
+function getFetchHeaders() {
+    return {
+        "x-authkey": GlobalAuthKey,
+    };
+}
+
 function getClientData() {
     let url = "http://localhost:8080/api/get-client-data";
-    return fetch(url).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
+    let fetchHeaders = getFetchHeaders();
+    return fetch(url, {headers: fetchHeaders}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
         if (data == null) {
             return null;
         }
@@ -422,6 +454,7 @@ async function sleep(ms) {
 // ====== MAIN ====== //
 
 (async () => {
+    GlobalAuthKey = readAuthKey();
     try {
         await runLocalServer();
     }
