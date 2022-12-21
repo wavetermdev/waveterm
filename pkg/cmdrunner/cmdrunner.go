@@ -43,12 +43,14 @@ const MaxRemoteAliasLen = 50
 const PasswordUnchangedSentinel = "--unchanged--"
 const DefaultPTERM = "MxM"
 const MaxCommandLen = 4096
+const MaxSignalLen = 12
+const MaxSignalNum = 64
 
 var ColorNames = []string{"black", "red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
 var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
 var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}
 
-var WindowCmds = []string{"run", "comment", "cd", "cr", "clear", "sw", "reset"}
+var WindowCmds = []string{"run", "comment", "cd", "cr", "clear", "sw", "reset", "signal"}
 var NoHistCmds = []string{"_compgen", "line", "_history", "_killserver"}
 var GlobalCmds = []string{"session", "screen", "remote", "set"}
 
@@ -78,6 +80,7 @@ var remoteAliasRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_-]*$")
 var genericNameRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_ .()<>,/\"'\\[\\]{}=+$@!*-]*$")
 var positionRe = regexp.MustCompile("^((S?\\+|E?-)?[0-9]+|(\\+|-|S|E))$")
 var wsRe = regexp.MustCompile("\\s+")
+var sigNameRe = regexp.MustCompile("^((SIG[A-Z0-9]+)|(\\d+))$")
 
 type contextType string
 
@@ -110,6 +113,7 @@ func init() {
 	registerCmdFn("_compgen", CompGenCommand)
 	registerCmdFn("clear", ClearCommand)
 	registerCmdFn("reset", RemoteResetCommand)
+	registerCmdFn("signal", SignalCommand)
 
 	registerCmdFn("session", SessionCommand)
 	registerCmdFn("session:open", SessionOpenCommand)
@@ -249,6 +253,19 @@ func resolvePosInt(arg string, def int) (int, error) {
 		return 0, fmt.Errorf("must be greater than 0")
 	}
 	return ival, nil
+}
+
+func isAllDigits(arg string) bool {
+	if len(arg) == 0 {
+		return false
+	}
+	for i := 0; i < len(arg); i++ {
+		if arg[i] >= '0' && arg[i] <= '9' {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func resolveNonNegInt(arg string, def int) (int, error) {
@@ -1656,6 +1673,73 @@ func SetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	}
 	fmt.Printf("setmap: %#v\n", setMap)
 	return nil, nil
+}
+
+func SignalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
+	if err != nil {
+		return nil, err
+	}
+	if len(pk.Args) == 0 {
+		return nil, fmt.Errorf("/signal requires a first argument (line number or id)")
+	}
+	if len(pk.Args) == 1 {
+		return nil, fmt.Errorf("/signal requires a second argument (signal name)")
+	}
+	lineArg := pk.Args[0]
+	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.WindowId, lineArg)
+	if err != nil {
+		return nil, fmt.Errorf("error looking up lineid: %v", err)
+	}
+	line, cmd, err := sstore.GetLineCmdByLineId(ctx, ids.SessionId, ids.WindowId, lineId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting line: %v", err)
+	}
+	if line == nil {
+		return nil, fmt.Errorf("line %q not found", lineArg)
+	}
+	if cmd == nil {
+		return nil, fmt.Errorf("line %q does not have a command", lineArg)
+	}
+	if cmd.Status != sstore.CmdStatusRunning {
+		return nil, fmt.Errorf("line %q command is not running, cannot send signal", lineArg)
+	}
+	sigArg := pk.Args[1]
+	if isAllDigits(sigArg) {
+		val, _ := strconv.Atoi(sigArg)
+		if val <= 0 || val > MaxSignalNum {
+			return nil, fmt.Errorf("signal number is out of bounds: %q", sigArg)
+		}
+	} else if !strings.HasPrefix(sigArg, "SIG") {
+		sigArg = "SIG" + sigArg
+	}
+	sigArg = strings.ToUpper(sigArg)
+	if len(sigArg) > 12 {
+		return nil, fmt.Errorf("invalid signal (too long): %q", sigArg)
+	}
+	if !sigNameRe.MatchString(sigArg) {
+		return nil, fmt.Errorf("invalid signal name/number: %q", sigArg)
+	}
+	msh := remote.GetRemoteById(cmd.Remote.RemoteId)
+	if msh == nil {
+		return nil, fmt.Errorf("cannot send signal, no remote found for command")
+	}
+	if !msh.IsConnected() {
+		return nil, fmt.Errorf("cannot send signal, remote is not connected")
+	}
+	siPk := packet.MakeSpecialInputPacket()
+	siPk.CK = base.MakeCommandKey(cmd.SessionId, cmd.CmdId)
+	siPk.SigName = sigArg
+	err = msh.SendSpecialInput(siPk)
+	if err != nil {
+		return nil, fmt.Errorf("cannot send signal: %v", err)
+	}
+	update := sstore.ModelUpdate{
+		Info: &sstore.InfoMsgType{
+			InfoMsg: fmt.Sprintf("sent line %s signal %s", lineArg, sigArg),
+		},
+	}
+	return update, nil
 }
 
 func KillServerCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
