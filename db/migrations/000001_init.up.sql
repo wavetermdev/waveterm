@@ -101,6 +101,7 @@ CREATE TABLE line (
     ephemeral boolean NOT NULL,
     contentheight int NOT NULL,
     star int NOT NULL,
+    hidden boolean NOT NULL,
     PRIMARY KEY (sessionid, windowid, lineid)
 );
 

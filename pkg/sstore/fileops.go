@@ -127,3 +127,11 @@ func FullSessionDiskSize() (map[string]SessionDiskSizeType, error) {
 	}
 	return rtn, nil
 }
+
+func DeletePtyOutFile(ctx context.Context, sessionId string, cmdId string) error {
+	ptyOutFileName, err := scbase.PtyOutFile(sessionId, cmdId)
+	if err != nil {
+		return err
+	}
+	return os.Remove(ptyOutFileName)
+}

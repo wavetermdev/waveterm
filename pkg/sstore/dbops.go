@@ -663,8 +663,8 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 		query = `SELECT nextlinenum FROM window WHERE sessionid = ? AND windowid = ?`
 		nextLineNum := tx.GetInt(query, line.SessionId, line.WindowId)
 		line.LineNum = int64(nextLineNum)
-		query = `INSERT INTO line  ( sessionid, windowid, userid, lineid, ts, linenum, linenumtemp, linelocal, linetype, text, cmdid, ephemeral, contentheight, star)
-                            VALUES (:sessionid,:windowid,:userid,:lineid,:ts,:linenum,:linenumtemp,:linelocal,:linetype,:text,:cmdid,:ephemeral,:contentheight,:star)`
+		query = `INSERT INTO line  ( sessionid, windowid, userid, lineid, ts, linenum, linenumtemp, linelocal, linetype, text, cmdid, ephemeral, contentheight, star, hidden)
+                            VALUES (:sessionid,:windowid,:userid,:lineid,:ts,:linenum,:linenumtemp,:linelocal,:linetype,:text,:cmdid,:ephemeral,:contentheight,:star,:hidden)`
 		tx.NamedExecWrap(query, line)
 		query = `UPDATE window SET nextlinenum = ? WHERE sessionid = ? AND windowid = ?`
 		tx.ExecWrap(query, nextLineNum+1, line.SessionId, line.WindowId)
@@ -1485,4 +1485,43 @@ func GetLineById(ctx context.Context, lineId string) (*LineType, error) {
 		return nil, txErr
 	}
 	return rtn, nil
+}
+
+func SetLineHiddenById(ctx context.Context, lineId string, hidden bool) error {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `UPDATE line SET hidden = ? WHERE lineid = ?`
+		tx.ExecWrap(query, hidden, lineId)
+		return nil
+	})
+	return txErr
+}
+
+func purgeCmdById(ctx context.Context, sessionId string, cmdId string) error {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `DELETE FROM cmd WHERE sessionid = ? AND cmdid = ?`
+		tx.ExecWrap(query, sessionId, cmdId)
+		return DeletePtyOutFile(tx.Context(), sessionId, cmdId)
+	})
+	return txErr
+}
+
+func PurgeLineById(ctx context.Context, sessionId string, lineId string) error {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT cmdid FROM line WHERE sessionid = ? AND lineid = ?`
+		cmdId := tx.GetString(query, sessionId, lineId)
+		query = `DELETE FROM line WHERE sessionid = ? AND lineid = ?`
+		tx.ExecWrap(query, sessionId, lineId)
+		if cmdId != "" {
+			query = `SELECT count(*) FROM line WHERE sessionid = ? AND cmdid = ?`
+			cmdRefCount := tx.GetInt(query, sessionId, cmdId)
+			if cmdRefCount == 0 {
+				err := purgeCmdById(tx.Context(), sessionId, cmdId)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+	return txErr
 }

@@ -147,6 +147,8 @@ func init() {
 	registerCmdFn("line", LineCommand)
 	registerCmdFn("line:show", LineShowCommand)
 	registerCmdFn("line:star", LineStarCommand)
+	registerCmdFn("line:hide", LineHideCommand)
+	registerCmdFn("line:purge", LinePurgeCommand)
 
 	registerCmdFn("_history", HistoryCommand)
 
@@ -1544,7 +1546,7 @@ func SwResizeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 }
 
 func LineCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	return nil, fmt.Errorf("/line requires a subcommand: %s", formatStrs([]string{"show"}, "or", false))
+	return nil, fmt.Errorf("/line requires a subcommand: %s", formatStrs([]string{"show", "star", "hide", "purge"}, "or", false))
 }
 
 func LineStarCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -1584,6 +1586,70 @@ func LineStarCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	if lineObj == nil {
 		// no line (which is strange given we checked for it above).  just return a nop.
 		return nil, nil
+	}
+	return sstore.ModelUpdate{Line: lineObj}, nil
+}
+
+func LineHideCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
+	if err != nil {
+		return nil, err
+	}
+	if len(pk.Args) == 0 {
+		return nil, fmt.Errorf("/line:hide requires an argument (line number or id)")
+	}
+	lineArg := pk.Args[0]
+	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.WindowId, lineArg)
+	if err != nil {
+		return nil, fmt.Errorf("error looking up lineid: %v", err)
+	}
+	if lineId == "" {
+		return nil, fmt.Errorf("line %q not found", lineArg)
+	}
+	shouldHide := true
+	if len(pk.Args) >= 2 {
+		shouldHide = resolveBool(pk.Args[1], true)
+	}
+	err = sstore.SetLineHiddenById(ctx, lineId, shouldHide)
+	if err != nil {
+		return nil, fmt.Errorf("/line:hide error updating hidden status: %v", err)
+	}
+	lineObj, err := sstore.GetLineById(ctx, lineId)
+	if err != nil {
+		return nil, fmt.Errorf("/line:star error getting line: %v", err)
+	}
+	if lineObj == nil {
+		// no line (which is strange given we checked for it above).  just return a nop.
+		return nil, nil
+	}
+	return sstore.ModelUpdate{Line: lineObj}, nil
+}
+
+func LinePurgeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
+	if err != nil {
+		return nil, err
+	}
+	if len(pk.Args) == 0 {
+		return nil, fmt.Errorf("/line:purge requires an argument (line number or id)")
+	}
+	lineArg := pk.Args[0]
+	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.WindowId, lineArg)
+	if err != nil {
+		return nil, fmt.Errorf("error looking up lineid: %v", err)
+	}
+	if lineId == "" {
+		return nil, fmt.Errorf("line %q not found", lineArg)
+	}
+	err = sstore.PurgeLineById(ctx, ids.SessionId, lineId)
+	if err != nil {
+		return nil, fmt.Errorf("/line:purge error purging line: %v", err)
+	}
+	lineObj := &sstore.LineType{
+		SessionId: ids.SessionId,
+		WindowId:  ids.WindowId,
+		LineId:    lineId,
+		Remove:    true,
 	}
 	return sstore.ModelUpdate{Line: lineObj}, nil
 }

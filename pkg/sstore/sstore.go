@@ -585,9 +585,10 @@ type LineType struct {
 	Text          string `json:"text,omitempty"`
 	CmdId         string `json:"cmdid,omitempty"`
 	Ephemeral     bool   `json:"ephemeral,omitempty"`
-	Star          bool   `json:"star,omitempty"`
-	Remove        bool   `json:"remove,omitempty"`
 	ContentHeight int64  `json:"contentheight,omitempty"`
+	Star          bool   `json:"star,omitempty"`
+	Hidden        bool   `json:"hidden,omitempty"`
+	Remove        bool   `json:"remove,omitempty"`
 }
 
 type ResolveItem struct {
