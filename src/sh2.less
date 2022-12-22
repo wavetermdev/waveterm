@@ -94,6 +94,7 @@ html, body, #main {
                 padding: 10px;
                 height: 100%;
                 color: #ccc;
+                .mono-font();
 
                 code {
                     background-color: black;
@@ -238,6 +239,10 @@ html, body, #main {
         }
 
         li {
+            .mono-font();
+        }
+
+        li.menu-loading-message {
             .mono-font();
         }
     }
@@ -455,6 +460,13 @@ html, body, #main {
 
         &.cmd-done .terminal .xterm-cursor {
             display: none;
+        }
+
+        .terminal-loading-message {
+            position: absolute;
+            top: 60px;
+            left: 30px;
+            .mono-font();
         }
     }
 

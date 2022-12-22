@@ -25,9 +25,10 @@ type LineType = {
     linelocal : boolean,
     linetype : string,
     text : string,
-    cmdid : string,
-    contentheight : number,
-    star : number,
+    cmdid? : string,
+    contentheight? : number,
+    star? : number,
+    hidden? : boolean,
     ephemeral? : boolean,
     remove? : boolean,
 };

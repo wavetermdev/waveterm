@@ -318,6 +318,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
     }
 
     componentDidMount() {
+        this.componentDidUpdate();
     }
 
     componentWillUnmount() {
@@ -383,6 +384,9 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         let elem = this.lineRef.current;
         if (elem != null) {
             curHeight = elem.offsetHeight;
+        }
+        if (snapshot == null) {
+            snapshot = {height: 0};
         }
         if (snapshot.height != curHeight && this.props.onHeightChange != null) {
             this.props.onHeightChange(line.linenum, curHeight, snapshot.height);
@@ -479,7 +483,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                         <div className="term-block" onClick={this.clickTermBlock}></div>
                     </If>
                     <div className="terminal-connectelem" id={"term-" + getLineId(line)} data-cmdid={line.cmdid} style={{height: termHeight}}></div>
-                    <If condition={!termLoaded}><div style={{position: "absolute", top: 60, left: 30}}>(loading)</div></If>
+                    <If condition={!termLoaded}><div className="terminal-loading-message">(loading)</div></If>
                 </div>
                 <If condition={cmd.getRtnState()}>
                     <div className="cmd-rtnstate" style={{visibility: ((cmd.getStatus() == "done") ? "visible" : "hidden")}}>
@@ -503,6 +507,9 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
 class Line extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType}, {}> {
     render() {
         let line = this.props.line;
+        if (line.hidden) {
+            return null;
+        }
         if (line.linetype == "text") {
             return <LineText {...this.props}/>;
         }
@@ -2449,7 +2456,7 @@ class MainSideBar extends React.Component<{}, {}> {
                     </p>
                     <ul className="menu-list">
                         <If condition={!model.sessionListLoaded.get()}>
-                            <li><a>(loading)</a></li>
+                            <li className="menu-loading-message"><a>(loading)</a></li>
                         </If>
                         <If condition={model.sessionListLoaded.get()}>
                             <For each="session" index="idx" of={model.sessionList}>
