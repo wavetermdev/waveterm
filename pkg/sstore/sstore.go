@@ -162,12 +162,13 @@ type SessionType struct {
 }
 
 type SessionStatsType struct {
-	SessionId  string              `json:"sessionid"`
-	NumScreens int                 `json:"numscreens"`
-	NumWindows int                 `json:"numwindows"`
-	NumLines   int                 `json:"numlines"`
-	NumCmds    int                 `json:"numcmds"`
-	DiskStats  SessionDiskSizeType `json:"diskstats"`
+	SessionId        string              `json:"sessionid"`
+	NumScreens       int                 `json:"numscreens"`
+	NumClosedScreens int                 `json:"numclosedscreens"`
+	NumWindows       int                 `json:"numwindows"`
+	NumLines         int                 `json:"numlines"`
+	NumCmds          int                 `json:"numcmds"`
+	DiskStats        SessionDiskSizeType `json:"diskstats"`
 }
 
 type WindowOptsType struct {
@@ -592,9 +593,10 @@ type LineType struct {
 }
 
 type ResolveItem struct {
-	Name string
-	Num  int
-	Id   string
+	Name   string
+	Num    int
+	Id     string
+	Hidden bool
 }
 
 type SSHOpts struct {

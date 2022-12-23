@@ -123,9 +123,11 @@ func init() {
 
 	registerCmdFn("screen", ScreenCommand)
 	registerCmdFn("screen:close", ScreenCloseCommand)
+	registerCmdFn("screen:purge", ScreenPurgeCommand)
 	registerCmdFn("screen:open", ScreenOpenCommand)
 	registerCmdAlias("screen:new", ScreenOpenCommand)
 	registerCmdFn("screen:set", ScreenSetCommand)
+	registerCmdFn("screen:showall", ScreenShowAllCommand)
 
 	registerCmdAlias("remote", RemoteCommand)
 	registerCmdFn("remote:show", RemoteShowCommand)
@@ -378,9 +380,52 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 }
 
 func ScreenCloseCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
+	ids, err := resolveUiIds(ctx, pk, R_Session) // don't force R_Screen
 	if err != nil {
 		return nil, fmt.Errorf("/screen:close cannot close screen: %w", err)
+	}
+	screenId := ids.ScreenId
+	if len(pk.Args) > 0 {
+		ri, err := resolveSessionScreen(ctx, ids.SessionId, pk.Args[0], ids.ScreenId)
+		if err != nil {
+			return nil, fmt.Errorf("/screen:close cannot resolve screen arg: %v", err)
+		}
+		screenId = ri.Id
+	}
+	if screenId == "" {
+		return nil, fmt.Errorf("/screen:close no active screen or screen arg passed")
+	}
+	closeVal := true
+	if len(pk.Args) > 1 {
+		closeVal = resolveBool(pk.Args[1], true)
+	}
+	var update sstore.UpdatePacket
+	if closeVal {
+		update, err = sstore.CloseScreen(ctx, ids.SessionId, screenId)
+		if err != nil {
+			return nil, err
+		}
+		return update, nil
+	} else {
+		fmt.Printf("unclose screen %s\n", screenId)
+		err = sstore.UnCloseScreen(ctx, ids.SessionId, screenId)
+		if err != nil {
+			return nil, fmt.Errorf("/screen:close cannot re-open screen: %v", err)
+		}
+		screen, err := sstore.GetScreenById(ctx, ids.SessionId, screenId)
+		if err != nil {
+			return nil, fmt.Errorf("/screen:close cannot get updated screen obj: %v", err)
+		}
+		update, session := sstore.MakeSingleSessionUpdate(ids.SessionId)
+		session.Screens = append(session.Screens, screen)
+		return update, nil
+	}
+}
+
+func ScreenPurgeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
+	if err != nil {
+		return nil, fmt.Errorf("/screen:purge cannot close screen: %w", err)
 	}
 	update, err := sstore.DeleteScreen(ctx, ids.SessionId, ids.ScreenId)
 	if err != nil {
@@ -900,6 +945,33 @@ func RemoteShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	}, nil
 }
 
+func ScreenShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session)
+	screenArr, err := sstore.GetAllSessionScreens(ctx, ids.SessionId)
+	if err != nil {
+		return nil, fmt.Errorf("/screen:showall error getting screen list: %v", err)
+	}
+	var buf bytes.Buffer
+	for _, screen := range screenArr {
+		var closedStr string
+		if screen.Closed {
+			closedStr = " (closed)"
+		}
+		screenIdxStr := "-"
+		if screen.ScreenIdx != 0 {
+			screenIdxStr = strconv.Itoa(int(screen.ScreenIdx))
+		}
+		outStr := fmt.Sprintf("%s %-30s %s\n", screen.ScreenId, screen.Name+closedStr, screenIdxStr)
+		buf.WriteString(outStr)
+	}
+	return sstore.ModelUpdate{
+		Info: &sstore.InfoMsgType{
+			InfoTitle: fmt.Sprintf("all screens for session"),
+			InfoLines: splitLinesForInfo(buf.String()),
+		},
+	}, nil
+}
+
 func RemoteArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window|R_Remote)
 	if err != nil {
@@ -1309,13 +1381,19 @@ func SessionDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	if err != nil {
 		return nil, fmt.Errorf("cannot delete session: %v", err)
 	}
-	sessionIds, _ := sstore.GetAllSessionIds(ctx) // ignore error, session is already deleted so that's the main return value
 	delSession := &sstore.SessionType{SessionId: ids.SessionId, Remove: true}
 	update := sstore.ModelUpdate{
 		Sessions: []*sstore.SessionType{delSession},
 	}
-	if len(sessionIds) > 0 {
-		update.ActiveSessionId = sessionIds[0]
+	activeSessionId, _ := sstore.GetActiveSessionId(ctx) // ignore error
+	if activeSessionId == "" {
+		sessionIds, _ := sstore.GetAllSessionIds(ctx) // ignore error, session is already deleted so that's the main return value
+		if len(sessionIds) > 0 {
+			err = sstore.SetActiveSessionId(ctx, sessionIds[0])
+			if err != nil {
+				update.ActiveSessionId = sessionIds[0]
+			}
+		}
 	}
 	return update, nil
 }

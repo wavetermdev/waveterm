@@ -58,7 +58,7 @@ func sessionsToResolveItems(sessions []*sstore.SessionType) []ResolveItem {
 	}
 	rtn := make([]ResolveItem, len(sessions))
 	for idx, session := range sessions {
-		rtn[idx] = ResolveItem{Name: session.Name, Id: session.SessionId}
+		rtn[idx] = ResolveItem{Name: session.Name, Id: session.SessionId, Hidden: session.Closed}
 	}
 	return rtn
 }
@@ -69,7 +69,7 @@ func screensToResolveItems(screens []*sstore.ScreenType) []ResolveItem {
 	}
 	rtn := make([]ResolveItem, len(screens))
 	for idx, screen := range screens {
-		rtn[idx] = ResolveItem{Name: screen.Name, Id: screen.ScreenId}
+		rtn[idx] = ResolveItem{Name: screen.Name, Id: screen.ScreenId, Hidden: screen.Closed}
 	}
 	return rtn
 }
@@ -133,7 +133,13 @@ func parsePosArg(posStr string) *posArgType {
 	return &posArgType{Pos: pos}
 }
 
-func resolveByPosition(isNumeric bool, items []ResolveItem, curId string, posStr string) *ResolveItem {
+func resolveByPosition(isNumeric bool, allItems []ResolveItem, curId string, posStr string) *ResolveItem {
+	items := make([]ResolveItem, 0, len(allItems))
+	for _, item := range allItems {
+		if !item.Hidden {
+			items = append(items, item)
+		}
+	}
 	if len(items) == 0 {
 		return nil
 	}
@@ -160,7 +166,8 @@ func resolveByPosition(isNumeric bool, items []ResolveItem, curId string, posStr
 		finalPos = curIdx + posArg.Pos
 	} else if isNumeric {
 		// these resolve items have a "Num" set that should be used to look up non-relative positions
-		for _, item := range items {
+		// use allItems for numeric resolve
+		for _, item := range allItems {
 			if item.Num == posArg.Pos {
 				return &item
 			}
@@ -342,7 +349,7 @@ func genericResolve(arg string, curArg string, items []ResolveItem, isNumeric bo
 		if (isUuid && item.Id == arg) || (tryPuid && strings.HasPrefix(item.Id, arg)) {
 			return &item, nil
 		}
-		if item.Name != "" {
+		if !item.Hidden && item.Name != "" {
 			if item.Name == arg {
 				return &item, nil
 			}
@@ -396,7 +403,7 @@ func resolveScreenArg(sessionId string, screenArg string) (string, error) {
 		return "", nil
 	}
 	if _, err := uuid.Parse(screenArg); err != nil {
-		return "", fmt.Errorf("invalid screen arg specified (must be sessionid) '%s'", screenArg)
+		return "", fmt.Errorf("invalid screen arg specified (must be screenid) '%s'", screenArg)
 	}
 	return screenArg, nil
 }

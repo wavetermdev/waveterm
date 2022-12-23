@@ -105,6 +105,12 @@ func (tx *TxWrap) GetString(query string, args ...interface{}) string {
 	return rtnStr
 }
 
+func (tx *TxWrap) GetBool(query string, args ...interface{}) bool {
+	var rtnBool bool
+	tx.GetWrap(&rtnBool, query, args...)
+	return rtnBool
+}
+
 func (tx *TxWrap) SelectStrings(query string, args ...interface{}) []string {
 	var rtnArr []string
 	tx.SelectWrap(&rtnArr, query, args...)
