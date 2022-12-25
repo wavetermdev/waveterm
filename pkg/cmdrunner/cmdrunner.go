@@ -120,6 +120,8 @@ func init() {
 	registerCmdAlias("session:new", SessionOpenCommand)
 	registerCmdFn("session:set", SessionSetCommand)
 	registerCmdFn("session:delete", SessionDeleteCommand)
+	registerCmdFn("session:archive", SessionArchiveCommand)
+	registerCmdFn("session:showall", SessionShowAllCommand)
 
 	registerCmdFn("screen", ScreenCommand)
 	registerCmdFn("screen:close", ScreenCloseCommand)
@@ -954,14 +956,14 @@ func ScreenShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	var buf bytes.Buffer
 	for _, screen := range screenArr {
 		var closedStr string
-		if screen.Closed {
+		if screen.Archived {
 			closedStr = " (closed)"
 		}
 		screenIdxStr := "-"
 		if screen.ScreenIdx != 0 {
 			screenIdxStr = strconv.Itoa(int(screen.ScreenIdx))
 		}
-		outStr := fmt.Sprintf("%s %-30s %s\n", screen.ScreenId, screen.Name+closedStr, screenIdxStr)
+		outStr := fmt.Sprintf("%-30s %s %s\n", screen.Name+closedStr, screen.ScreenId, screenIdxStr)
 		buf.WriteString(outStr)
 	}
 	return sstore.ModelUpdate{
@@ -2066,4 +2068,12 @@ func resolveSetArg(argName string) (bool, string, string) {
 		return false, "", ""
 	}
 	return true, scopeName, varName
+}
+
+func SessionShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	return nil, nil
+}
+
+func SessionArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	return nil, nil
 }

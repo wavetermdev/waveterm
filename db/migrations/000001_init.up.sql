@@ -13,7 +13,7 @@ CREATE TABLE session (
     sessionidx int NOT NULL,
     activescreenid varchar(36) NOT NULL,
     notifynum int NOT NULL,
-    closed boolean NOT NULL,
+    archived boolean NOT NULL,
     ownerid varchar(36) NOT NULL,
     sharemode varchar(12) NOT NULL,
     accesskey varchar(36) NOT NULL
@@ -43,7 +43,7 @@ CREATE TABLE screen (
     ownerid varchar(36) NOT NULL,
     sharemode varchar(12) NOT NULL,
     incognito boolean NOT NULL,
-    closed boolean NOT NULL,
+    archived boolean NOT NULL,
     PRIMARY KEY (sessionid, screenid)
 );
 

@@ -58,7 +58,7 @@ func sessionsToResolveItems(sessions []*sstore.SessionType) []ResolveItem {
 	}
 	rtn := make([]ResolveItem, len(sessions))
 	for idx, session := range sessions {
-		rtn[idx] = ResolveItem{Name: session.Name, Id: session.SessionId, Hidden: session.Closed}
+		rtn[idx] = ResolveItem{Name: session.Name, Id: session.SessionId, Hidden: session.Archived}
 	}
 	return rtn
 }
@@ -69,7 +69,7 @@ func screensToResolveItems(screens []*sstore.ScreenType) []ResolveItem {
 	}
 	rtn := make([]ResolveItem, len(screens))
 	for idx, screen := range screens {
-		rtn[idx] = ResolveItem{Name: screen.Name, Id: screen.ScreenId, Hidden: screen.Closed}
+		rtn[idx] = ResolveItem{Name: screen.Name, Id: screen.ScreenId, Hidden: screen.Archived}
 	}
 	return rtn
 }

@@ -14,7 +14,7 @@ CREATE TABLE session (
     sessionidx int NOT NULL,
     activescreenid varchar(36) NOT NULL,
     notifynum int NOT NULL,
-    closed boolean NOT NULL,
+    archived boolean NOT NULL,
     ownerid varchar(36) NOT NULL,
     sharemode varchar(12) NOT NULL,
     accesskey varchar(36) NOT NULL
@@ -42,7 +42,7 @@ CREATE TABLE screen (
     ownerid varchar(36) NOT NULL,
     sharemode varchar(12) NOT NULL,
     incognito boolean NOT NULL,
-    closed boolean NOT NULL,
+    archived boolean NOT NULL,
     PRIMARY KEY (sessionid, screenid)
 );
 CREATE TABLE screen_window (
@@ -95,6 +95,7 @@ CREATE TABLE line (
     ephemeral boolean NOT NULL,
     contentheight int NOT NULL,
     star int NOT NULL,
+    hidden boolean NOT NULL,
     PRIMARY KEY (sessionid, windowid, lineid)
 );
 CREATE TABLE remote (

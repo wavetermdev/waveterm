@@ -233,7 +233,7 @@ func GetHistoryItems(ctx context.Context, sessionId string, windowId string, opt
 	return rtn, nil
 }
 
-// includes closed sessions
+// includes archived sessions
 func GetBareSessions(ctx context.Context) ([]*SessionType, error) {
 	var rtn []*SessionType
 	err := WithTx(ctx, func(tx *TxWrap) error {
@@ -247,10 +247,11 @@ func GetBareSessions(ctx context.Context) ([]*SessionType, error) {
 	return rtn, nil
 }
 
+// does not include archived
 func GetAllSessionIds(ctx context.Context) ([]string, error) {
 	var rtn []string
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT sessionid from session WHERE NOT closed ORDER by sessionidx`
+		query := `SELECT sessionid from session WHERE NOT archived ORDER by sessionidx`
 		rtn = tx.SelectStrings(query)
 		return nil
 	})
@@ -288,7 +289,7 @@ func GetAllSessions(ctx context.Context) (*ModelUpdate, error) {
 			session.Full = true
 		}
 		var screens []*ScreenType
-		query = `SELECT * FROM screen WHERE NOT closed ORDER BY screenidx`
+		query = `SELECT * FROM screen WHERE NOT archived ORDER BY screenidx`
 		tx.SelectWrap(&screens, query)
 		screenMap := make(map[string][]*ScreenType)
 		for _, screen := range screens {
@@ -353,7 +354,7 @@ func GetWindowById(ctx context.Context, sessionId string, windowId string) (*Win
 	return rtnWindow, err
 }
 
-// includes closed screens
+// includes archived screens
 func GetSessionScreens(ctx context.Context, sessionId string) ([]*ScreenType, error) {
 	var rtn []*ScreenType
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
@@ -367,7 +368,7 @@ func GetSessionScreens(ctx context.Context, sessionId string) ([]*ScreenType, er
 func GetAllSessionScreens(ctx context.Context, sessionId string) ([]*ScreenType, error) {
 	var rtn []*ScreenType
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT * FROM screen WHERE sessionid = ? ORDER BY closed, screenidx`
+		query := `SELECT * FROM screen WHERE sessionid = ? ORDER BY archived, screenidx`
 		tx.SelectWrap(&rtn, query, sessionId)
 		return nil
 	})
@@ -417,8 +418,8 @@ func InsertSessionWithName(ctx context.Context, sessionName string, activate boo
 		names := tx.SelectStrings(`SELECT name FROM session`)
 		sessionName = fmtUniqueName(sessionName, "session-%d", len(names)+1, names)
 		maxSessionIdx := tx.GetInt(`SELECT COALESCE(max(sessionidx), 0) FROM session`)
-		query := `INSERT INTO session (sessionid, name, activescreenid, sessionidx, notifynum, closed, ownerid, sharemode, accesskey)
-                               VALUES (?,         ?,    '',             ?,          ?,         0,      '',      'local',   '')`
+		query := `INSERT INTO session (sessionid, name, activescreenid, sessionidx, notifynum, archived, ownerid, sharemode, accesskey)
+                               VALUES (?,         ?,    '',             ?,          ?,         0,        '',      'local',   '')`
 		tx.ExecWrap(query, newSessionId, sessionName, maxSessionIdx+1, 0)
 		_, err := InsertScreen(tx.Context(), newSessionId, "", true)
 		if err != nil {
@@ -448,7 +449,7 @@ func InsertSessionWithName(ctx context.Context, sessionName string, activate boo
 
 func SetActiveSessionId(ctx context.Context, sessionId string) error {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT sessionid FROM session WHERE sessionid = ? AND NOT closed`
+		query := `SELECT sessionid FROM session WHERE sessionid = ? AND NOT archived`
 		if !tx.Exists(query, sessionId) {
 			return fmt.Errorf("cannot switch to session, not found")
 		}
@@ -514,7 +515,7 @@ func fmtUniqueName(name string, defaultFmtStr string, startIdx int, strs []strin
 func InsertScreen(ctx context.Context, sessionId string, origScreenName string, activate bool) (UpdatePacket, error) {
 	var newScreenId string
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT sessionid FROM session WHERE sessionid = ? AND NOT closed`
+		query := `SELECT sessionid FROM session WHERE sessionid = ? AND NOT archived`
 		if !tx.Exists(query, sessionId) {
 			return fmt.Errorf("cannot create screen, no session found")
 		}
@@ -523,11 +524,11 @@ func InsertScreen(ctx context.Context, sessionId string, origScreenName string, 
 			return fmt.Errorf("cannot create screen, no local remote found")
 		}
 		newWindowId := txCreateWindow(tx, sessionId, RemotePtrType{RemoteId: remoteId})
-		maxScreenIdx := tx.GetInt(`SELECT COALESCE(max(screenidx), 0) FROM screen WHERE sessionid = ? AND NOT closed`, sessionId)
-		screenNames := tx.SelectStrings(`SELECT name FROM screen WHERE sessionid = ? AND NOT closed`, sessionId)
+		maxScreenIdx := tx.GetInt(`SELECT COALESCE(max(screenidx), 0) FROM screen WHERE sessionid = ? AND NOT archived`, sessionId)
+		screenNames := tx.SelectStrings(`SELECT name FROM screen WHERE sessionid = ? AND NOT archived`, sessionId)
 		screenName := fmtUniqueName(origScreenName, "s%d", maxScreenIdx+1, screenNames)
 		newScreenId = scbase.GenPromptUUID()
-		query = `INSERT INTO screen (sessionid, screenid, name, activewindowid, screenidx, screenopts, ownerid, sharemode, incognito, closed) VALUES (?, ?, ?, ?, ?, ?, '', 'local', 0, 0)`
+		query = `INSERT INTO screen (sessionid, screenid, name, activewindowid, screenidx, screenopts, ownerid, sharemode, incognito, archived) VALUES (?, ?, ?, ?, ?, ?, '', 'local', 0, 0)`
 		tx.ExecWrap(query, sessionId, newScreenId, screenName, newWindowId, maxScreenIdx+1, ScreenOptsType{})
 		layout := LayoutType{Type: LayoutFull}
 		query = `INSERT INTO screen_window (sessionid, screenid, windowid, name, layout, selectedline, anchor, focustype) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
@@ -832,7 +833,7 @@ func getNextId(ids []string, delId string) string {
 
 func SwitchScreenById(ctx context.Context, sessionId string, screenId string) (UpdatePacket, error) {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT screenid FROM screen WHERE sessionid = ? AND screenid = ? AND NOT closed`
+		query := `SELECT screenid FROM screen WHERE sessionid = ? AND screenid = ? AND NOT archived`
 		if !tx.Exists(query, sessionId, screenId) {
 			return fmt.Errorf("cannot switch to screen, screen=%s does not exist in session=%s", screenId, sessionId)
 		}
@@ -845,7 +846,31 @@ func SwitchScreenById(ctx context.Context, sessionId string, screenId string) (U
 	return update, txErr
 }
 
-func CleanWindows() {
+func CleanWindows(sessionId string) {
+	txErr := WithTx(context.Background(), func(tx *TxWrap) error {
+		query := `SELECT windowid FROM window WHERE sessionid = ? AND windowid NOT IN (SELECT windowid FROM screen_window WHERE sessionid = ?)`
+		removedWindowIds := tx.SelectStrings(query, sessionId, sessionId)
+		if len(removedWindowIds) == 0 {
+			return nil
+		}
+		for _, windowId := range removedWindowIds {
+			query = `DELETE FROM window WHERE sessionid = ? AND windowid = ?`
+			tx.ExecWrap(query, sessionId, windowId)
+			query = `DELETE FROM history WHERE sessionid = ? AND windowid = ?`
+			tx.ExecWrap(query, sessionId, windowId)
+			query = `DELETE FROM line WHERE sessinid = ? AND windowid = ?`
+			tx.ExecWrap(query, sessionId, windowId)
+		}
+		query = `SELECT cmdid FROM cmd WHERE sessionid = ? AND cmdid NOT IN (SELECT cmdid FROM line WHERE sessionid = ?)`
+		removedCmds := tx.SelectStrings(query, sessionId, sessionId)
+		query = `DELETE FROM cmd WHERE sessionid = ? AND cmdid NOT IN (SELECT cmdid FROM line WHERE sessionid = ?)`
+		tx.ExecWrap(query, sessionId, sessionId)
+		fmt.Printf("removed cmds: %v\n", removedCmds)
+		return nil
+	})
+	if txErr != nil {
+		fmt.Printf("ERROR cleaning windows sessionid:%s: %v\n", sessionId, txErr)
+	}
 }
 
 func CloseScreen(ctx context.Context, sessionId string, screenId string) (UpdatePacket, error) {
@@ -855,21 +880,21 @@ func CloseScreen(ctx context.Context, sessionId string, screenId string) (Update
 		if !tx.Exists(query, sessionId, screenId) {
 			return fmt.Errorf("cannot close screen (not found)")
 		}
-		query = `SELECT closed FROM screen WHERE sessionid = ? AND screenid = ?`
+		query = `SELECT archived FROM screen WHERE sessionid = ? AND screenid = ?`
 		closeVal := tx.GetBool(query, sessionId, screenId)
 		if closeVal {
 			return nil
 		}
-		query = `SELECT count(*) FROM screen WHERE sessionid = ? AND NOT closed`
+		query = `SELECT count(*) FROM screen WHERE sessionid = ? AND NOT archived`
 		numScreens := tx.GetInt(query, sessionId)
 		if numScreens <= 1 {
 			return fmt.Errorf("cannot close the last screen in a session")
 		}
-		query = `UPDATE screen SET closed = 1, screenidx = 0 WHERE sessionid = ? AND screenid = ?`
+		query = `UPDATE screen SET archived = 1, screenidx = 0 WHERE sessionid = ? AND screenid = ?`
 		tx.ExecWrap(query, sessionId, screenId)
 		isActive := tx.Exists(`SELECT sessionid FROM session WHERE sessionid = ? AND activescreenid = ?`, sessionId, screenId)
 		if isActive {
-			screenIds := tx.SelectStrings(`SELECT screenid FROM screen WHERE sessionid = ? AND NOT closed ORDER BY screenidx`, sessionId)
+			screenIds := tx.SelectStrings(`SELECT screenid FROM screen WHERE sessionid = ? AND NOT archived ORDER BY screenidx`, sessionId)
 			nextId := getNextId(screenIds, screenId)
 			tx.ExecWrap(`UPDATE session SET activescreenid = ? WHERE sessionid = ?`, nextId, sessionId)
 			newActiveScreenId = nextId
@@ -887,15 +912,15 @@ func CloseScreen(ctx context.Context, sessionId string, screenId string) (Update
 
 func UnCloseScreen(ctx context.Context, sessionId string, screenId string) error {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT screenid FROM screen WHERE sessionid = ? AND screenid = ? AND closed`
+		query := `SELECT screenid FROM screen WHERE sessionid = ? AND screenid = ? AND archived`
 		if !tx.Exists(query, sessionId, screenId) {
-			return fmt.Errorf("cannot re-open screen (not found or not closed)")
+			return fmt.Errorf("cannot re-open screen (not found or not archived)")
 		}
 		origScreenName := tx.GetString(`SELECT name FROM screen WHERE sessionid = ? AND screenid = ?`, sessionId, screenId)
-		maxScreenIdx := tx.GetInt(`SELECT COALESCE(max(screenidx), 0) FROM screen WHERE sessionid = ? AND NOT closed`, sessionId)
-		screenNames := tx.SelectStrings(`SELECT name FROM screen WHERE sessionid = ? AND NOT closed`, sessionId)
+		maxScreenIdx := tx.GetInt(`SELECT COALESCE(max(screenidx), 0) FROM screen WHERE sessionid = ? AND NOT archived`, sessionId)
+		screenNames := tx.SelectStrings(`SELECT name FROM screen WHERE sessionid = ? AND NOT archived`, sessionId)
 		newScreenName := fmtUniqueName(origScreenName, "s-%d", 2, screenNames)
-		query = `UPDATE screen SET closed = 0, screenidx = ?, name = ? WHERE sessionid = ? AND screenid = ?`
+		query = `UPDATE screen SET archived = 0, screenidx = ?, name = ? WHERE sessionid = ? AND screenid = ?`
 		tx.ExecWrap(query, maxScreenIdx+1, newScreenName, sessionId, screenId)
 		return nil
 	})
@@ -905,14 +930,23 @@ func UnCloseScreen(ctx context.Context, sessionId string, screenId string) error
 func DeleteScreen(ctx context.Context, sessionId string, screenId string) (UpdatePacket, error) {
 	var newActiveScreenId string
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT screenid FROM screen WHERE sessionid = ? AND screenid = ?`
+		if !tx.Exists(query, sessionId, screenId) {
+			return fmt.Errorf("cannot purge screen (not found)")
+		}
+		query = `SELECT count(*) FROM screen WHERE sessionid = ? AND NOT archived`
+		numScreens := tx.GetInt(query, sessionId)
+		if numScreens <= 1 {
+			return fmt.Errorf("cannot purge the last screen in a session")
+		}
 		isActive := tx.Exists(`SELECT sessionid FROM session WHERE sessionid = ? AND activescreenid = ?`, sessionId, screenId)
 		if isActive {
-			screenIds := tx.SelectStrings(`SELECT screenid FROM screen WHERE sessionid = ? AND NOT closed ORDER BY screenidx`, sessionId)
+			screenIds := tx.SelectStrings(`SELECT screenid FROM screen WHERE sessionid = ? AND NOT archived ORDER BY screenidx`, sessionId)
 			nextId := getNextId(screenIds, screenId)
 			tx.ExecWrap(`UPDATE session SET activescreenid = ? WHERE sessionid = ?`, nextId, sessionId)
 			newActiveScreenId = nextId
 		}
-		query := `DELETE FROM screen_window WHERE sessionid = ? AND screenid = ?`
+		query = `DELETE FROM screen_window WHERE sessionid = ? AND screenid = ?`
 		tx.ExecWrap(query, sessionId, screenId)
 		query = `DELETE FROM screen WHERE sessionid = ? AND screenid = ?`
 		tx.ExecWrap(query, sessionId, screenId)
@@ -921,7 +955,7 @@ func DeleteScreen(ctx context.Context, sessionId string, screenId string) (Updat
 	if txErr != nil {
 		return nil, txErr
 	}
-	go CleanWindows()
+	go CleanWindows(sessionId)
 	update, session := MakeSingleSessionUpdate(sessionId)
 	session.ActiveScreenId = newActiveScreenId
 	session.Screens = append(session.Screens, &ScreenType{SessionId: sessionId, ScreenId: screenId, Remove: true})
@@ -1144,7 +1178,7 @@ func SetScreenName(ctx context.Context, sessionId string, screenId string, name 
 		if !tx.Exists(query, sessionId, screenId) {
 			return fmt.Errorf("screen does not exist")
 		}
-		query = `SELECT screenid FROM screen WHERE sessionid = ? AND name = ? AND NOT closed`
+		query = `SELECT screenid FROM screen WHERE sessionid = ? AND name = ? AND NOT archived`
 		dupScreenId := tx.GetString(query, sessionId, name)
 		if dupScreenId == screenId {
 			return nil
@@ -1245,10 +1279,10 @@ func GetSessionStats(ctx context.Context, sessionId string) (*SessionStatsType, 
 		if !tx.Exists(query, sessionId) {
 			return fmt.Errorf("not found")
 		}
-		query = `SELECT count(*) FROM screen WHERE sessionid = ? AND NOT closed`
+		query = `SELECT count(*) FROM screen WHERE sessionid = ? AND NOT archived`
 		rtn.NumScreens = tx.GetInt(query, sessionId)
-		query = `SELECT count(*) FROM screen WHERE sessionid = ? AND closed`
-		rtn.NumClosedScreens = tx.GetInt(query, sessionId)
+		query = `SELECT count(*) FROM screen WHERE sessionid = ? AND archived`
+		rtn.NumArchivedScreens = tx.GetInt(query, sessionId)
 		query = `SELECT count(*) FROM window WHERE sessionid = ?`
 		rtn.NumWindows = tx.GetInt(query, sessionId)
 		query = `SELECT count(*) FROM line WHERE sessionid = ?`

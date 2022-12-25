@@ -152,7 +152,7 @@ type SessionType struct {
 	ShareMode      string            `json:"sharemode"`
 	AccessKey      string            `json:"-"`
 	NotifyNum      int64             `json:"notifynum"`
-	Closed         bool              `json:"closed,omitempty"`
+	Archived       bool              `json:"archived,omitempty"`
 	Screens        []*ScreenType     `json:"screens"`
 	Remotes        []*RemoteInstance `json:"remotes"`
 
@@ -162,13 +162,13 @@ type SessionType struct {
 }
 
 type SessionStatsType struct {
-	SessionId        string              `json:"sessionid"`
-	NumScreens       int                 `json:"numscreens"`
-	NumClosedScreens int                 `json:"numclosedscreens"`
-	NumWindows       int                 `json:"numwindows"`
-	NumLines         int                 `json:"numlines"`
-	NumCmds          int                 `json:"numcmds"`
-	DiskStats        SessionDiskSizeType `json:"diskstats"`
+	SessionId          string              `json:"sessionid"`
+	NumScreens         int                 `json:"numscreens"`
+	NumArchivedScreens int                 `json:"numarchivedscreens"`
+	NumWindows         int                 `json:"numwindows"`
+	NumLines           int                 `json:"numlines"`
+	NumCmds            int                 `json:"numcmds"`
+	DiskStats          SessionDiskSizeType `json:"diskstats"`
 }
 
 type WindowOptsType struct {
@@ -357,7 +357,7 @@ type ScreenType struct {
 	OwnerId        string              `json:"ownerid"`
 	ShareMode      string              `json:"sharemode"`
 	Incognito      bool                `json:"incognito,omitempty"`
-	Closed         bool                `json:"closed,omitempty"`
+	Archived       bool                `json:"archived,omitempty"`
 	Windows        []*ScreenWindowType `json:"windows"`
 
 	// only for updates
