@@ -6,6 +6,7 @@ type SessionDataType = {
     notifynum : number,
     activescreenid : string,
     sessionidx : number,
+    archived? : boolean,
     screens : ScreenDataType[],
     remotes : RemoteInstanceType[],
 
@@ -43,6 +44,7 @@ type ScreenDataType = {
     screenidx : number,
     activewindowid : string,
     name : string,
+    archived? : boolean,
     windows : ScreenWindowType[],
     screenopts : ScreenOptsType,
 

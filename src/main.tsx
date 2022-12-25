@@ -318,7 +318,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
     }
 
     componentDidMount() {
-        this.componentDidUpdate();
+        this.componentDidUpdate(null, null, null);
     }
 
     componentWillUnmount() {
@@ -621,6 +621,7 @@ class TextAreaInput extends React.Component<{}, {}> {
             }
             if (e.code == "Escape") {
                 e.preventDefault();
+                e.stopPropagation();
                 let inputModel = GlobalModel.inputModel;
                 inputModel.toggleInfoMsg();
                 if (inputModel.inputMode.get() != null) {
