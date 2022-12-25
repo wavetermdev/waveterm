@@ -153,6 +153,7 @@ type SessionType struct {
 	AccessKey      string            `json:"-"`
 	NotifyNum      int64             `json:"notifynum"`
 	Archived       bool              `json:"archived,omitempty"`
+	ArchivedTs     int64             `json:"archivedts,omitempty"`
 	Screens        []*ScreenType     `json:"screens"`
 	Remotes        []*RemoteInstance `json:"remotes"`
 
@@ -358,6 +359,7 @@ type ScreenType struct {
 	ShareMode      string              `json:"sharemode"`
 	Incognito      bool                `json:"incognito,omitempty"`
 	Archived       bool                `json:"archived,omitempty"`
+	ArchivedTs     int64               `json:"archivedts,omitempty"`
 	Windows        []*ScreenWindowType `json:"windows"`
 
 	// only for updates

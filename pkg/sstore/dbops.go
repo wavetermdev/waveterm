@@ -289,7 +289,7 @@ func GetAllSessions(ctx context.Context) (*ModelUpdate, error) {
 			session.Full = true
 		}
 		var screens []*ScreenType
-		query = `SELECT * FROM screen WHERE NOT archived ORDER BY screenidx`
+		query = `SELECT * FROM screen ORDER BY archived, screenidx, archivedts`
 		tx.SelectWrap(&screens, query)
 		screenMap := make(map[string][]*ScreenType)
 		for _, screen := range screens {
@@ -358,17 +358,7 @@ func GetWindowById(ctx context.Context, sessionId string, windowId string) (*Win
 func GetSessionScreens(ctx context.Context, sessionId string) ([]*ScreenType, error) {
 	var rtn []*ScreenType
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT * FROM screen WHERE sessionid = ? ORDER BY screenidx`
-		tx.SelectWrap(&rtn, query, sessionId)
-		return nil
-	})
-	return rtn, txErr
-}
-
-func GetAllSessionScreens(ctx context.Context, sessionId string) ([]*ScreenType, error) {
-	var rtn []*ScreenType
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT * FROM screen WHERE sessionid = ? ORDER BY archived, screenidx`
+		query := `SELECT * FROM screen WHERE sessionid = ? ORDER BY archived, screenidx, archivedts`
 		tx.SelectWrap(&rtn, query, sessionId)
 		return nil
 	})
@@ -418,8 +408,8 @@ func InsertSessionWithName(ctx context.Context, sessionName string, activate boo
 		names := tx.SelectStrings(`SELECT name FROM session`)
 		sessionName = fmtUniqueName(sessionName, "session-%d", len(names)+1, names)
 		maxSessionIdx := tx.GetInt(`SELECT COALESCE(max(sessionidx), 0) FROM session`)
-		query := `INSERT INTO session (sessionid, name, activescreenid, sessionidx, notifynum, archived, ownerid, sharemode, accesskey)
-                               VALUES (?,         ?,    '',             ?,          ?,         0,        '',      'local',   '')`
+		query := `INSERT INTO session (sessionid, name, activescreenid, sessionidx, notifynum, archived, archivedts, ownerid, sharemode, accesskey)
+                               VALUES (?,         ?,    '',             ?,          ?,         0,        0,          '',      'local',   '')`
 		tx.ExecWrap(query, newSessionId, sessionName, maxSessionIdx+1, 0)
 		_, err := InsertScreen(tx.Context(), newSessionId, "", true)
 		if err != nil {
@@ -528,7 +518,7 @@ func InsertScreen(ctx context.Context, sessionId string, origScreenName string, 
 		screenNames := tx.SelectStrings(`SELECT name FROM screen WHERE sessionid = ? AND NOT archived`, sessionId)
 		screenName := fmtUniqueName(origScreenName, "s%d", maxScreenIdx+1, screenNames)
 		newScreenId = scbase.GenPromptUUID()
-		query = `INSERT INTO screen (sessionid, screenid, name, activewindowid, screenidx, screenopts, ownerid, sharemode, incognito, archived) VALUES (?, ?, ?, ?, ?, ?, '', 'local', 0, 0)`
+		query = `INSERT INTO screen (sessionid, screenid, name, activewindowid, screenidx, screenopts, ownerid, sharemode, incognito, archived, archivedts) VALUES (?, ?, ?, ?, ?, ?, '', 'local', 0, 0, 0)`
 		tx.ExecWrap(query, sessionId, newScreenId, screenName, newWindowId, maxScreenIdx+1, ScreenOptsType{})
 		layout := LayoutType{Type: LayoutFull}
 		query = `INSERT INTO screen_window (sessionid, screenid, windowid, name, layout, selectedline, anchor, focustype) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
@@ -858,14 +848,20 @@ func CleanWindows(sessionId string) {
 			tx.ExecWrap(query, sessionId, windowId)
 			query = `DELETE FROM history WHERE sessionid = ? AND windowid = ?`
 			tx.ExecWrap(query, sessionId, windowId)
-			query = `DELETE FROM line WHERE sessinid = ? AND windowid = ?`
+			query = `DELETE FROM line WHERE sessionid = ? AND windowid = ?`
 			tx.ExecWrap(query, sessionId, windowId)
 		}
 		query = `SELECT cmdid FROM cmd WHERE sessionid = ? AND cmdid NOT IN (SELECT cmdid FROM line WHERE sessionid = ?)`
 		removedCmds := tx.SelectStrings(query, sessionId, sessionId)
 		query = `DELETE FROM cmd WHERE sessionid = ? AND cmdid NOT IN (SELECT cmdid FROM line WHERE sessionid = ?)`
 		tx.ExecWrap(query, sessionId, sessionId)
+		if tx.Err != nil {
+			return nil
+		}
 		fmt.Printf("removed cmds: %v\n", removedCmds)
+		for _, cmdId := range removedCmds {
+			DeletePtyOutFile(tx.Context(), sessionId, cmdId)
+		}
 		return nil
 	})
 	if txErr != nil {
@@ -873,7 +869,7 @@ func CleanWindows(sessionId string) {
 	}
 }
 
-func CloseScreen(ctx context.Context, sessionId string, screenId string) (UpdatePacket, error) {
+func ArchiveScreen(ctx context.Context, sessionId string, screenId string) (UpdatePacket, error) {
 	var newActiveScreenId string
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT screenid FROM screen WHERE sessionid = ? AND screenid = ?`
@@ -890,8 +886,8 @@ func CloseScreen(ctx context.Context, sessionId string, screenId string) (Update
 		if numScreens <= 1 {
 			return fmt.Errorf("cannot close the last screen in a session")
 		}
-		query = `UPDATE screen SET archived = 1, screenidx = 0 WHERE sessionid = ? AND screenid = ?`
-		tx.ExecWrap(query, sessionId, screenId)
+		query = `UPDATE screen SET archived = 1, archivedts = ?, screenidx = 0 WHERE sessionid = ? AND screenid = ?`
+		tx.ExecWrap(query, time.Now().UnixMilli(), sessionId, screenId)
 		isActive := tx.Exists(`SELECT sessionid FROM session WHERE sessionid = ? AND activescreenid = ?`, sessionId, screenId)
 		if isActive {
 			screenIds := tx.SelectStrings(`SELECT screenid FROM screen WHERE sessionid = ? AND NOT archived ORDER BY screenidx`, sessionId)
@@ -910,7 +906,7 @@ func CloseScreen(ctx context.Context, sessionId string, screenId string) (Update
 	return update, nil
 }
 
-func UnCloseScreen(ctx context.Context, sessionId string, screenId string) error {
+func UnArchiveScreen(ctx context.Context, sessionId string, screenId string) error {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT screenid FROM screen WHERE sessionid = ? AND screenid = ? AND archived`
 		if !tx.Exists(query, sessionId, screenId) {

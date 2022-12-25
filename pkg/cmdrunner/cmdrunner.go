@@ -124,7 +124,7 @@ func init() {
 	registerCmdFn("session:showall", SessionShowAllCommand)
 
 	registerCmdFn("screen", ScreenCommand)
-	registerCmdFn("screen:close", ScreenCloseCommand)
+	registerCmdFn("screen:archive", ScreenArchiveCommand)
 	registerCmdFn("screen:purge", ScreenPurgeCommand)
 	registerCmdFn("screen:open", ScreenOpenCommand)
 	registerCmdAlias("screen:new", ScreenOpenCommand)
@@ -381,42 +381,42 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 	return update, rtnErr
 }
 
-func ScreenCloseCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+func ScreenArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session) // don't force R_Screen
 	if err != nil {
-		return nil, fmt.Errorf("/screen:close cannot close screen: %w", err)
+		return nil, fmt.Errorf("/screen:archive cannot archive screen: %w", err)
 	}
 	screenId := ids.ScreenId
 	if len(pk.Args) > 0 {
 		ri, err := resolveSessionScreen(ctx, ids.SessionId, pk.Args[0], ids.ScreenId)
 		if err != nil {
-			return nil, fmt.Errorf("/screen:close cannot resolve screen arg: %v", err)
+			return nil, fmt.Errorf("/screen:archive cannot resolve screen arg: %v", err)
 		}
 		screenId = ri.Id
 	}
 	if screenId == "" {
-		return nil, fmt.Errorf("/screen:close no active screen or screen arg passed")
+		return nil, fmt.Errorf("/screen:archive no active screen or screen arg passed")
 	}
-	closeVal := true
+	archiveVal := true
 	if len(pk.Args) > 1 {
-		closeVal = resolveBool(pk.Args[1], true)
+		archiveVal = resolveBool(pk.Args[1], true)
 	}
 	var update sstore.UpdatePacket
-	if closeVal {
-		update, err = sstore.CloseScreen(ctx, ids.SessionId, screenId)
+	if archiveVal {
+		update, err = sstore.ArchiveScreen(ctx, ids.SessionId, screenId)
 		if err != nil {
 			return nil, err
 		}
 		return update, nil
 	} else {
-		fmt.Printf("unclose screen %s\n", screenId)
-		err = sstore.UnCloseScreen(ctx, ids.SessionId, screenId)
+		fmt.Printf("unarchive screen %s\n", screenId)
+		err = sstore.UnArchiveScreen(ctx, ids.SessionId, screenId)
 		if err != nil {
-			return nil, fmt.Errorf("/screen:close cannot re-open screen: %v", err)
+			return nil, fmt.Errorf("/screen:archive cannot re-open screen: %v", err)
 		}
 		screen, err := sstore.GetScreenById(ctx, ids.SessionId, screenId)
 		if err != nil {
-			return nil, fmt.Errorf("/screen:close cannot get updated screen obj: %v", err)
+			return nil, fmt.Errorf("/screen:archive cannot get updated screen obj: %v", err)
 		}
 		update, session := sstore.MakeSingleSessionUpdate(ids.SessionId)
 		session.Screens = append(session.Screens, screen)
@@ -427,7 +427,7 @@ func ScreenCloseCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 func ScreenPurgeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
 	if err != nil {
-		return nil, fmt.Errorf("/screen:purge cannot close screen: %w", err)
+		return nil, fmt.Errorf("/screen:purge cannot purge screen: %w", err)
 	}
 	update, err := sstore.DeleteScreen(ctx, ids.SessionId, ids.ScreenId)
 	if err != nil {
@@ -949,21 +949,21 @@ func RemoteShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 
 func ScreenShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session)
-	screenArr, err := sstore.GetAllSessionScreens(ctx, ids.SessionId)
+	screenArr, err := sstore.GetSessionScreens(ctx, ids.SessionId)
 	if err != nil {
 		return nil, fmt.Errorf("/screen:showall error getting screen list: %v", err)
 	}
 	var buf bytes.Buffer
 	for _, screen := range screenArr {
-		var closedStr string
+		var archivedStr string
 		if screen.Archived {
-			closedStr = " (closed)"
+			archivedStr = " (archived)"
 		}
 		screenIdxStr := "-"
 		if screen.ScreenIdx != 0 {
 			screenIdxStr = strconv.Itoa(int(screen.ScreenIdx))
 		}
-		outStr := fmt.Sprintf("%-30s %s %s\n", screen.Name+closedStr, screen.ScreenId, screenIdxStr)
+		outStr := fmt.Sprintf("%-30s %s %s\n", screen.Name+archivedStr, screen.ScreenId, screenIdxStr)
 		buf.WriteString(outStr)
 	}
 	return sstore.ModelUpdate{
