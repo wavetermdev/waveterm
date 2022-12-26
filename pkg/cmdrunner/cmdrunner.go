@@ -949,7 +949,7 @@ func RemoteShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 
 func ScreenShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session)
-	screenArr, err := sstore.GetSessionScreens(ctx, ids.SessionId)
+	screenArr, err := sstore.GetBareSessionScreens(ctx, ids.SessionId)
 	if err != nil {
 		return nil, fmt.Errorf("/screen:showall error getting screen list: %v", err)
 	}

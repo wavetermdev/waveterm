@@ -354,8 +354,8 @@ func GetWindowById(ctx context.Context, sessionId string, windowId string) (*Win
 	return rtnWindow, err
 }
 
-// includes archived screens
-func GetSessionScreens(ctx context.Context, sessionId string) ([]*ScreenType, error) {
+// includes archived screens (does not include screen windows)
+func GetBareSessionScreens(ctx context.Context, sessionId string) ([]*ScreenType, error) {
 	var rtn []*ScreenType
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * FROM screen WHERE sessionid = ? ORDER BY archived, screenidx, archivedts`
@@ -907,7 +907,10 @@ func ArchiveScreen(ctx context.Context, sessionId string, screenId string) (Upda
 	}
 	update, session := MakeSingleSessionUpdate(sessionId)
 	session.ActiveScreenId = newActiveScreenId
-	session.Screens = append(session.Screens, &ScreenType{SessionId: sessionId, ScreenId: screenId, Remove: true})
+	newScreen, _ := GetScreenById(ctx, sessionId, screenId)
+	if newScreen != nil {
+		session.Screens = append(session.Screens, newScreen)
+	}
 	return update, nil
 }
 

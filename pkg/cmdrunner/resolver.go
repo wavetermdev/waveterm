@@ -280,7 +280,7 @@ func resolveUiIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype i
 }
 
 func resolveSessionScreen(ctx context.Context, sessionId string, screenArg string, curScreenArg string) (*ResolveItem, error) {
-	screens, err := sstore.GetSessionScreens(ctx, sessionId)
+	screens, err := sstore.GetBareSessionScreens(ctx, sessionId)
 	if err != nil {
 		return nil, fmt.Errorf("could not retreive screens for session=%s: %v", sessionId, err)
 	}
@@ -349,11 +349,11 @@ func genericResolve(arg string, curArg string, items []ResolveItem, isNumeric bo
 		if (isUuid && item.Id == arg) || (tryPuid && strings.HasPrefix(item.Id, arg)) {
 			return &item, nil
 		}
-		if !item.Hidden && item.Name != "" {
+		if item.Name != "" {
 			if item.Name == arg {
 				return &item, nil
 			}
-			if strings.HasPrefix(item.Name, arg) {
+			if !item.Hidden && strings.HasPrefix(item.Name, arg) {
 				prefixMatches = append(prefixMatches, item)
 			}
 		}
