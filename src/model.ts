@@ -214,6 +214,7 @@ class Screen {
     name : OV<string>;
     activeWindowId : OV<string>;
     windows : OArr<ScreenWindow>;
+    archived : OV<boolean>;
 
     constructor(sdata : ScreenDataType) {
         this.sessionId = sdata.sessionid;
@@ -222,6 +223,7 @@ class Screen {
         this.screenIdx = mobx.observable.box(sdata.screenidx, {name: "screen-screenidx"});
         this.opts = mobx.observable.box(sdata.screenopts, {name: "screen-opts"});
         this.activeWindowId = mobx.observable.box(ces(sdata.activewindowid), {name: "screen-activewindowid"});
+        this.archived = mobx.observable.box(!!sdata.archived, {name: "screen-archived"});
         let swArr : ScreenWindow[] = [];
         let wins = sdata.windows || [];
         for (let i=0; i<wins.length; i++) {
@@ -251,6 +253,7 @@ class Screen {
             if (!isBlank(data.activewindowid)) {
                 this.activeWindowId.set(data.activewindowid);
             }
+            this.archived.set(!!data.archived);
             // TODO merge windows
         })();
     }

@@ -2308,11 +2308,18 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
         }
         let screen : Screen = null;
         let index = 0;
+        let showingScreens = [];
+        let activeScreenId = session.activeScreenId.get();
+        for (let screen of session.screens) {
+            if (!screen.archived.get() || activeScreenId == screen.screenId) {
+                showingScreens.push(screen);
+            }
+        }
         return (
             <div className="screen-tabs">
-                <For each="screen" index="index" of={session.screens}>
-                    <div key={screen.screenId} className={cn("screen-tab", {"is-active": session.activeScreenId.get() == screen.screenId}, "color-" + screen.getTabColor())} onClick={() => this.handleSwitchScreen(screen.screenId)} onContextMenu={(event) => this.handleContextMenu(event, screen.screenId)}>
-                        {screen.name.get()}
+                <For each="screen" index="index" of={showingScreens}>
+                    <div key={screen.screenId} className={cn("screen-tab", {"is-active": activeScreenId == screen.screenId, "is-archived": screen.archived.get()}, "color-" + screen.getTabColor())} onClick={() => this.handleSwitchScreen(screen.screenId)} onContextMenu={(event) => this.handleContextMenu(event, screen.screenId)}>
+                        <If condition={screen.archived.get()}><i title="archived" className="fa fa-archive"/></If>{screen.name.get()}
                         <If condition={index+1 <= 9}>
                             <div className="tab-index">&#x2318;{index+1}</div>
                         </If>
