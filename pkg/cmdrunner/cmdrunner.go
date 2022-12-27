@@ -122,6 +122,7 @@ func init() {
 	registerCmdFn("session:delete", SessionDeleteCommand)
 	registerCmdFn("session:archive", SessionArchiveCommand)
 	registerCmdFn("session:showall", SessionShowAllCommand)
+	registerCmdFn("session:show", SessionShowCommand)
 
 	registerCmdFn("screen", ScreenCommand)
 	registerCmdFn("screen:archive", ScreenArchiveCommand)
@@ -1443,6 +1444,50 @@ func SessionArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 		}
 		return update, nil
 	}
+}
+
+func SessionShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session)
+	if err != nil {
+		return nil, err
+	}
+	session, err := sstore.GetSessionById(ctx, ids.SessionId)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get session: %w", err)
+	}
+	if session == nil {
+		return nil, fmt.Errorf("session not found")
+	}
+	var buf bytes.Buffer
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "sessionid", session.SessionId))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "name", session.Name))
+	if session.SessionIdx != 0 {
+		buf.WriteString(fmt.Sprintf("  %-15s %d\n", "index", session.SessionIdx))
+	}
+	if session.Archived {
+		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "archived", "true"))
+		ts := time.UnixMilli(session.ArchivedTs)
+		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "archivedts", ts.Format("2006-01-02 15:04:05")))
+	}
+	stats, err := sstore.GetSessionStats(ctx, ids.SessionId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting session stats: %w", err)
+	}
+	var screenArchiveStr string
+	if stats.NumArchivedScreens > 0 {
+		screenArchiveStr = fmt.Sprintf(" (%d archived)", stats.NumArchivedScreens)
+	}
+	buf.WriteString(fmt.Sprintf("  %-15s %d%s\n", "screens", stats.NumScreens, screenArchiveStr))
+	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "lines", stats.NumLines))
+	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "cmds", stats.NumCmds))
+	buf.WriteString(fmt.Sprintf("  %-15s %0.2fM\n", "disksize", float64(stats.DiskStats.TotalSize)/1000000))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "disk-location", stats.DiskStats.Location))
+	return sstore.ModelUpdate{
+		Info: &sstore.InfoMsgType{
+			InfoTitle: "session info",
+			InfoLines: splitLinesForInfo(buf.String()),
+		},
+	}, nil
 }
 
 func SessionShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {

@@ -70,10 +70,12 @@ type SessionDiskSizeType struct {
 	NumFiles   int
 	TotalSize  int64
 	ErrorCount int
+	Location   string
 }
 
 func directorySize(dirName string) (SessionDiskSizeType, error) {
 	var rtn SessionDiskSizeType
+	rtn.Location = dirName
 	entries, err := os.ReadDir(dirName)
 	if err != nil {
 		return rtn, err
