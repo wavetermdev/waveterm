@@ -742,11 +742,13 @@ class Session {
     screens : OArr<Screen>;
     notifyNum : OV<number> = mobx.observable.box(0);
     remoteInstances : OArr<RemoteInstanceType>;
+    archived : OV<boolean>;
 
     constructor(sdata : SessionDataType) {
         this.sessionId = sdata.sessionid;
         this.name = mobx.observable.box(sdata.name);
         this.sessionIdx = mobx.observable.box(sdata.sessionidx);
+        this.archived = mobx.observable.box(!!sdata.archived);
         let screenData = sdata.screens || [];
         let screens : Screen[] = [];
         for (let i=0; i<screenData.length; i++) {
@@ -777,6 +779,7 @@ class Session {
             if (sdata.notifynum >= 0) {
                 this.notifyNum.set(sdata.notifynum);
             }
+            this.archived.set(!!sdata.archived);
             genMergeData(this.screens, sdata.screens, (s : Screen) => s.screenId, (s : ScreenDataType) => s.screenid, (data : ScreenDataType) => new Screen(data), (s : Screen) => s.screenIdx.get());
             if (!isBlank(sdata.activescreenid)) {
                 let screen = this.getScreenById(sdata.activescreenid);

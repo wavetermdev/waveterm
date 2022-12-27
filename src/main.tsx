@@ -2450,6 +2450,12 @@ class MainSideBar extends React.Component<{}, {}> {
         let remote : RemoteType = null;
         let idx : number = 0;
         remotes = sortAndFilterRemotes(remotes);
+        let sessionList = [];
+        for (let session of model.sessionList) {
+            if (!session.archived.get() || session.sessionId == activeSessionId) {
+                sessionList.push(session);
+            }
+        }
         return (
             <div className={cn("main-sidebar", {"collapsed": this.collapsed.get()})}>
                 <div className="collapse-container">
@@ -2467,9 +2473,14 @@ class MainSideBar extends React.Component<{}, {}> {
                             <li className="menu-loading-message"><a>(loading)</a></li>
                         </If>
                         <If condition={model.sessionListLoaded.get()}>
-                            <For each="session" index="idx" of={model.sessionList}>
+                            <For each="session" index="idx" of={sessionList}>
                                 <li key={session.sessionId}><a className={cn({"is-active": activeSessionId == session.sessionId})} onClick={() => this.handleSessionClick(session.sessionId)}>
-                                    <span className="session-num">{idx+1}&nbsp;</span>
+                                    <If condition={!session.archived.get()}>
+                                        <span className="session-num">{idx+1}&nbsp;</span>
+                                    </If>
+                                    <If condition={session.archived.get()}>
+                                        <i title="archived" className="fa fa-archive"/>&nbsp;
+                                    </If>
                                     {session.name.get()}
                                 </a></li>
                             </For>
@@ -2480,8 +2491,8 @@ class MainSideBar extends React.Component<{}, {}> {
                     <If condition={GlobalModel.debugSW.get() && sw != null}>
                         <div>
                             focus={sw.focusType.get()}<br/>
-                            sline={sw.selectedLine.get()}<br/>
-                            termfocus={sw.termLineNumFocus.get()}<br/>
+            sline={sw.selectedLine.get()}<br/>
+            termfocus={sw.termLineNumFocus.get()}<br/>
                         </div>
                     </If>
                     <p className="menu-label">
