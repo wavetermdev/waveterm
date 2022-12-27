@@ -1759,7 +1759,6 @@ class CmdInput extends React.Component<{}, {}> {
     }
 
     componentDidMount() {
-        console.log("cmd-input mount", this.cmdInputRef);
         let elem = this.cmdInputRef.current;
         if (elem == null) {
             return;
