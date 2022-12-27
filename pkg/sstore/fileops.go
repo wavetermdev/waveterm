@@ -8,7 +8,6 @@ import (
 	"path"
 
 	"github.com/google/uuid"
-	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/cirfile"
 	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 )
@@ -96,7 +95,7 @@ func directorySize(dirName string) (SessionDiskSizeType, error) {
 }
 
 func SessionDiskSize(sessionId string) (SessionDiskSizeType, error) {
-	sessionDir, err := base.EnsureSessionDir(sessionId)
+	sessionDir, err := scbase.EnsureSessionDir(sessionId)
 	if err != nil {
 		return SessionDiskSizeType{}, err
 	}
@@ -104,7 +103,7 @@ func SessionDiskSize(sessionId string) (SessionDiskSizeType, error) {
 }
 
 func FullSessionDiskSize() (map[string]SessionDiskSizeType, error) {
-	sdir := base.GetSessionsDir()
+	sdir := scbase.GetSessionsDir()
 	entries, err := os.ReadDir(sdir)
 	if err != nil {
 		return nil, err
@@ -137,9 +136,10 @@ func DeletePtyOutFile(ctx context.Context, sessionId string, cmdId string) error
 }
 
 func DeleteSessionDir(ctx context.Context, sessionId string) error {
-	sessionDir, err := base.EnsureSessionDir(sessionId)
+	sessionDir, err := scbase.EnsureSessionDir(sessionId)
 	if err != nil {
 		return fmt.Errorf("error getting sessiondir: %w", err)
 	}
+	fmt.Printf("remove-all %s\n", sessionDir)
 	return os.RemoveAll(sessionDir)
 }

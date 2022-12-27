@@ -146,6 +146,12 @@ func EnsureSessionDir(sessionId string) (string, error) {
 	return sdir, nil
 }
 
+func GetSessionsDir() string {
+	promptHome := GetPromptHomeDir()
+	sdir := path.Join(promptHome, SessionsDirBaseName)
+	return sdir
+}
+
 func ensureDir(dirName string) error {
 	info, err := os.Stat(dirName)
 	if errors.Is(err, fs.ErrNotExist) {
