@@ -49,17 +49,6 @@ func (ModelUpdate) UpdateType() string {
 	return ModelUpdateStr
 }
 
-func MakeSingleSessionUpdate(sessionId string) (ModelUpdate, *SessionType) {
-	session := &SessionType{
-		SessionId: sessionId,
-		NotifyNum: -1,
-	}
-	update := ModelUpdate{
-		Sessions: []*SessionType{session},
-	}
-	return update, session
-}
-
 func ReadHistoryDataFromUpdate(update UpdatePacket) (string, string, *RemotePtrType) {
 	modelUpdate, ok := update.(ModelUpdate)
 	if !ok {

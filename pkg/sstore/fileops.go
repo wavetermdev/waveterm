@@ -135,3 +135,11 @@ func DeletePtyOutFile(ctx context.Context, sessionId string, cmdId string) error
 	}
 	return os.Remove(ptyOutFileName)
 }
+
+func DeleteSessionDir(ctx context.Context, sessionId string) error {
+	sessionDir, err := base.EnsureSessionDir(sessionId)
+	if err != nil {
+		return fmt.Errorf("error getting sessiondir: %w", err)
+	}
+	return os.RemoveAll(sessionDir)
+}

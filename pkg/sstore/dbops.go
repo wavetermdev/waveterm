@@ -237,7 +237,7 @@ func GetHistoryItems(ctx context.Context, sessionId string, windowId string, opt
 func GetBareSessions(ctx context.Context) ([]*SessionType, error) {
 	var rtn []*SessionType
 	err := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT * FROM session ORDER BY sessionidx`
+		query := `SELECT * FROM session ORDER BY archived, sessionidx, archivedts`
 		tx.SelectWrap(&rtn, query)
 		return nil
 	})
@@ -247,8 +247,8 @@ func GetBareSessions(ctx context.Context) ([]*SessionType, error) {
 	return rtn, nil
 }
 
-// does not include archived
-func GetAllSessionIds(ctx context.Context) ([]string, error) {
+// does not include archived, finds lowest sessionidx (for resetting active session)
+func GetFirstSessionId(ctx context.Context) (string, error) {
 	var rtn []string
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT sessionid from session WHERE NOT archived ORDER by sessionidx`
@@ -256,9 +256,12 @@ func GetAllSessionIds(ctx context.Context) ([]string, error) {
 		return nil
 	})
 	if txErr != nil {
-		return nil, txErr
+		return "", txErr
 	}
-	return rtn, nil
+	if len(rtn) == 0 {
+		return "", nil
+	}
+	return rtn[0], nil
 }
 
 func GetBareSessionById(ctx context.Context, sessionId string) (*SessionType, error) {
@@ -281,7 +284,7 @@ func GetAllSessions(ctx context.Context) (*ModelUpdate, error) {
 	var rtn []*SessionType
 	var activeSessionId string
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT * FROM session`
+		query := `SELECT * FROM session ORDER BY archived, sessionidx, archivedts`
 		tx.SelectWrap(&rtn, query)
 		sessionMap := make(map[string]*SessionType)
 		for _, session := range rtn {
@@ -439,7 +442,7 @@ func InsertSessionWithName(ctx context.Context, sessionName string, activate boo
 
 func SetActiveSessionId(ctx context.Context, sessionId string) error {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT sessionid FROM session WHERE sessionid = ? AND NOT archived`
+		query := `SELECT sessionid FROM session WHERE sessionid = ?`
 		if !tx.Exists(query, sessionId) {
 			return fmt.Errorf("cannot switch to session, not found")
 		}
@@ -507,7 +510,7 @@ func InsertScreen(ctx context.Context, sessionId string, origScreenName string, 
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT sessionid FROM session WHERE sessionid = ? AND NOT archived`
 		if !tx.Exists(query, sessionId) {
-			return fmt.Errorf("cannot create screen, no session found")
+			return fmt.Errorf("cannot create screen, no session found (or session archived)")
 		}
 		remoteId := tx.GetString(`SELECT remoteid FROM remote WHERE remotealias = ?`, LocalRemoteAlias)
 		if remoteId == "" {
@@ -534,16 +537,19 @@ func InsertScreen(ctx context.Context, sessionId string, origScreenName string, 
 		}
 		return nil
 	})
+	if txErr != nil {
+		return nil, txErr
+	}
 	newScreen, err := GetScreenById(ctx, sessionId, newScreenId)
 	if err != nil {
 		return nil, err
 	}
-	update, session := MakeSingleSessionUpdate(sessionId)
-	if activate {
-		session.ActiveScreenId = newScreenId
+	bareSession, err := GetBareSessionById(ctx, sessionId)
+	if err != nil {
+		return nil, err
 	}
-	session.Screens = append(session.Screens, newScreen)
-	return update, txErr
+	bareSession.Screens = append(bareSession.Screens, newScreen)
+	return ModelUpdate{Sessions: []*SessionType{bareSession}}, nil
 }
 
 func GetScreenById(ctx context.Context, sessionId string, screenId string) (*ScreenType, error) {
@@ -836,9 +842,14 @@ func SwitchScreenById(ctx context.Context, sessionId string, screenId string) (U
 		tx.ExecWrap(query, screenId, sessionId)
 		return nil
 	})
-	update, session := MakeSingleSessionUpdate(sessionId)
-	session.ActiveScreenId = screenId
-	return update, txErr
+	if txErr != nil {
+		return nil, txErr
+	}
+	bareSession, err := GetBareSessionById(ctx, sessionId)
+	if err != nil {
+		return nil, err
+	}
+	return ModelUpdate{Sessions: []*SessionType{bareSession}}, nil
 }
 
 func CleanWindows(sessionId string) {
@@ -905,11 +916,14 @@ func ArchiveScreen(ctx context.Context, sessionId string, screenId string) (Upda
 	if txErr != nil {
 		return nil, txErr
 	}
-	update, session := MakeSingleSessionUpdate(sessionId)
-	session.ActiveScreenId = newActiveScreenId
+	bareSession, err := GetBareSessionById(ctx, sessionId)
+	if err != nil {
+		return nil, txErr
+	}
+	update := ModelUpdate{Sessions: []*SessionType{bareSession}}
 	newScreen, _ := GetScreenById(ctx, sessionId, screenId)
 	if newScreen != nil {
-		session.Screens = append(session.Screens, newScreen)
+		bareSession.Screens = append(bareSession.Screens, newScreen)
 	}
 	return update, nil
 }
@@ -957,10 +971,12 @@ func DeleteScreen(ctx context.Context, sessionId string, screenId string) (Updat
 		return nil, txErr
 	}
 	go CleanWindows(sessionId)
-	update, session := MakeSingleSessionUpdate(sessionId)
-	session.ActiveScreenId = newActiveScreenId
-	session.Screens = append(session.Screens, &ScreenType{SessionId: sessionId, ScreenId: screenId, Remove: true})
-	return update, nil
+	bareSession, err := GetBareSessionById(ctx, sessionId)
+	if err != nil {
+		return nil, err
+	}
+	bareSession.Screens = append(bareSession.Screens, &ScreenType{SessionId: sessionId, ScreenId: screenId, Remove: true})
+	return ModelUpdate{Sessions: []*SessionType{bareSession}}, nil
 }
 
 func GetRemoteState(ctx context.Context, sessionId string, windowId string, remotePtr RemotePtrType) (*packet.ShellState, *ShellStatePtr, error) {
@@ -1138,7 +1154,7 @@ func reorderStrings(strs []string, toMove string, newIndex int) []string {
 
 func ReIndexSessions(ctx context.Context, sessionId string, newIndex int) error {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT sessionid FROM session ORDER BY sessionidx, name, sessionid`
+		query := `SELECT sessionid FROM session WHERE NOT archived ORDER BY sessionidx, name, sessionid`
 		ids := tx.SelectStrings(query)
 		if sessionId != "" {
 			ids = reorderStrings(ids, sessionId, newIndex)
@@ -1158,13 +1174,17 @@ func SetSessionName(ctx context.Context, sessionId string, name string) error {
 		if !tx.Exists(query, sessionId) {
 			return fmt.Errorf("session does not exist")
 		}
-		query = `SELECT sessionid FROM session WHERE name = ?`
-		dupSessionId := tx.GetString(query, name)
-		if dupSessionId == sessionId {
-			return nil
-		}
-		if dupSessionId != "" {
-			return fmt.Errorf("invalid duplicate session name '%s'", name)
+		query = `SELECT archived FROM session WHERE sessionid = ?`
+		isArchived := tx.GetBool(query, sessionId)
+		if !isArchived {
+			query = `SELECT sessionid FROM session WHERE name = ? AND NOT archived`
+			dupSessionId := tx.GetString(query, name)
+			if dupSessionId == sessionId {
+				return nil
+			}
+			if dupSessionId != "" {
+				return fmt.Errorf("invalid duplicate session name '%s'", name)
+			}
 		}
 		query = `UPDATE session SET name = ? WHERE sessionid = ?`
 		tx.ExecWrap(query, name, sessionId)
@@ -1261,8 +1281,105 @@ func UpdateCmdTermOpts(ctx context.Context, sessionId string, cmdId string, term
 	return txErr
 }
 
-func DeleteSession(ctx context.Context, sessionId string) error {
-	return nil
+func DeleteSession(ctx context.Context, sessionId string) (UpdatePacket, error) {
+	var newActiveSessionId string
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT sessionid FROM session WHERE sessionid = ?`
+		if !tx.Exists(query, sessionId) {
+			return fmt.Errorf("session does not exist")
+		}
+		query = `DELETE FROM session WHERE sessionid = ?`
+		tx.ExecWrap(query, sessionId)
+		query = `DELETE FROM screen WHERE sessionid = ?`
+		tx.ExecWrap(query, sessionId)
+		query = `DELETE FROM screen_window WHERE sessionid = ?`
+		tx.ExecWrap(query, sessionId)
+		query = `DELETE FROM window WHERE sessionid = ?`
+		tx.ExecWrap(query, sessionId)
+		query = `DELETE FROM history WHERE sessionid = ?`
+		tx.ExecWrap(query, sessionId)
+		query = `DELETE FROM line WHERE sessionid = ?`
+		tx.ExecWrap(query, sessionId)
+		query = `DELETE FROM cmd WHERE sessionid = ?`
+		tx.ExecWrap(query, sessionId)
+		newActiveSessionId, _ = fixActiveSessionId(tx.Context())
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	delErr := DeleteSessionDir(ctx, sessionId)
+	update := ModelUpdate{}
+	if newActiveSessionId != "" {
+		update.ActiveSessionId = newActiveSessionId
+	}
+	if delErr != nil {
+		update.Info = &InfoMsgType{
+			InfoMsg: fmt.Sprintf("error removing session files: %v", delErr),
+		}
+	}
+	update.Sessions = append(update.Sessions, &SessionType{SessionId: sessionId, Remove: true})
+	return update, nil
+}
+
+func fixActiveSessionId(ctx context.Context) (string, error) {
+	var newActiveSessionId string
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		curActiveSessionId := tx.GetString("SELECT activesessionid FROM client")
+		query := `SELECT sessionid FROM session WHERE sessionid = ? AND NOT archived`
+		if tx.Exists(query, curActiveSessionId) {
+			return nil
+		}
+		var err error
+		newActiveSessionId, err = GetFirstSessionId(tx.Context())
+		if err != nil {
+			return err
+		}
+		tx.ExecWrap("UPDATE client SET activesessionid = ?", newActiveSessionId)
+		return nil
+	})
+	if txErr != nil {
+		return "", txErr
+	}
+	return newActiveSessionId, nil
+}
+
+func ArchiveSession(ctx context.Context, sessionId string) (UpdatePacket, error) {
+	if sessionId == "" {
+		return nil, fmt.Errorf("invalid blank sessionid")
+	}
+	var newActiveSessionId string
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT sessionid FROM session WHERE sessionid = ?`
+		if !tx.Exists(query, sessionId) {
+			return fmt.Errorf("session does not exist")
+		}
+		query = `SELECT archived FROM session WHERE sessionid = ?`
+		isArchived := tx.GetBool(query, sessionId)
+		if isArchived {
+			return nil
+		}
+		query = `UPDATE session SET archived = 1, archivedts = ? WHERE sessionid = ?`
+		tx.ExecWrap(query, time.Now().UnixMilli(), sessionId)
+		newActiveSessionId, _ = fixActiveSessionId(tx.Context())
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	bareSession, _ := GetBareSessionById(ctx, sessionId)
+	update := ModelUpdate{}
+	if bareSession != nil {
+		update.Sessions = append(update.Sessions, bareSession)
+	}
+	if newActiveSessionId != "" {
+		update.ActiveSessionId = newActiveSessionId
+	}
+	return update, nil
+}
+
+func UnArchiveSession(ctx context.Context, sessionId string) (UpdatePacket, error) {
+	return nil, nil
 }
 
 func GetSessionStats(ctx context.Context, sessionId string) (*SessionStatsType, error) {

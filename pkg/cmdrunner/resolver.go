@@ -288,6 +288,19 @@ func resolveSessionScreen(ctx context.Context, sessionId string, screenArg strin
 	return genericResolve(screenArg, curScreenArg, ritems, false, "screen")
 }
 
+func resolveSession(ctx context.Context, sessionArg string, curSessionArg string) (*ResolveItem, error) {
+	bareSessions, err := sstore.GetBareSessions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ritems := sessionsToResolveItems(bareSessions)
+	ritem, err := genericResolve(sessionArg, curSessionArg, ritems, false, "session")
+	if err != nil {
+		return nil, err
+	}
+	return ritem, nil
+}
+
 func resolveLine(ctx context.Context, sessionId string, windowId string, lineArg string, curLineArg string) (*ResolveItem, error) {
 	lines, err := sstore.GetLineResolveItems(ctx, sessionId, windowId)
 	if err != nil {

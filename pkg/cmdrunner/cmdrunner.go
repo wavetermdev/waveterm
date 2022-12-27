@@ -418,8 +418,14 @@ func ScreenArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		if err != nil {
 			return nil, fmt.Errorf("/screen:archive cannot get updated screen obj: %v", err)
 		}
-		update, session := sstore.MakeSingleSessionUpdate(ids.SessionId)
-		session.Screens = append(session.Screens, screen)
+		bareSession, err := sstore.GetBareSessionById(ctx, ids.SessionId)
+		if err != nil {
+			return nil, fmt.Errorf("/screen:archive cannot retrieve updated session obj: %v", err)
+		}
+		bareSession.Screens = append(bareSession.Screens, screen)
+		update := sstore.ModelUpdate{
+			Sessions: []*sstore.SessionType{bareSession},
+		}
 		return update, nil
 	}
 }
@@ -502,11 +508,17 @@ func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	if err != nil {
 		return nil, err
 	}
-	update, session := sstore.MakeSingleSessionUpdate(ids.SessionId)
-	session.Screens = append(session.Screens, screenObj)
-	update.Info = &sstore.InfoMsgType{
-		InfoMsg:   fmt.Sprintf("screen updated %s", formatStrs(varsUpdated, "and", false)),
-		TimeoutMs: 2000,
+	bareSession, err := sstore.GetBareSessionById(ctx, ids.SessionId)
+	if err != nil {
+		return nil, fmt.Errorf("/screen:set cannot retrieve session: %v", err)
+	}
+	bareSession.Screens = append(bareSession.Screens, screenObj)
+	update := sstore.ModelUpdate{
+		Sessions: []*sstore.SessionType{bareSession},
+		Info: &sstore.InfoMsgType{
+			InfoMsg:   fmt.Sprintf("screen updated %s", formatStrs(varsUpdated, "and", false)),
+			TimeoutMs: 2000,
+		},
 	}
 	return update, nil
 }
@@ -963,7 +975,7 @@ func ScreenShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		if screen.ScreenIdx != 0 {
 			screenIdxStr = strconv.Itoa(int(screen.ScreenIdx))
 		}
-		outStr := fmt.Sprintf("%-30s %s %s\n", screen.Name+archivedStr, screen.ScreenId, screenIdxStr)
+		outStr := fmt.Sprintf("%-30s %s  %s\n", screen.Name+archivedStr, screen.ScreenId, screenIdxStr)
 		buf.WriteString(outStr)
 	}
 	return sstore.ModelUpdate{
@@ -1379,25 +1391,77 @@ func SessionDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	if err != nil {
 		return nil, err
 	}
-	err = sstore.DeleteSession(ctx, ids.SessionId)
+	update, err := sstore.DeleteSession(ctx, ids.SessionId)
 	if err != nil {
 		return nil, fmt.Errorf("cannot delete session: %v", err)
 	}
-	delSession := &sstore.SessionType{SessionId: ids.SessionId, Remove: true}
-	update := sstore.ModelUpdate{
-		Sessions: []*sstore.SessionType{delSession},
-	}
-	activeSessionId, _ := sstore.GetActiveSessionId(ctx) // ignore error
-	if activeSessionId == "" {
-		sessionIds, _ := sstore.GetAllSessionIds(ctx) // ignore error, session is already deleted so that's the main return value
-		if len(sessionIds) > 0 {
-			err = sstore.SetActiveSessionId(ctx, sessionIds[0])
-			if err != nil {
-				update.ActiveSessionId = sessionIds[0]
-			}
-		}
-	}
 	return update, nil
+}
+
+func SessionArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, 0) // don't force R_Session
+	if err != nil {
+		return nil, err
+	}
+	sessionId := ""
+	if len(pk.Args) >= 1 {
+		ritem, err := resolveSession(ctx, pk.Args[0], ids.SessionId)
+		if err != nil {
+			return nil, fmt.Errorf("/session:archive error resolving session %q: %w", pk.Args[0], err)
+		}
+		if ritem == nil {
+			return nil, fmt.Errorf("/session:archive session %q not found", pk.Args[0])
+		}
+		sessionId = ritem.Id
+	} else {
+		sessionId = ids.SessionId
+	}
+	if sessionId == "" {
+		return nil, fmt.Errorf("/session:archive no sessionid found")
+	}
+	archiveVal := true
+	if len(pk.Args) >= 2 {
+		archiveVal = resolveBool(pk.Args[1], true)
+	}
+	if archiveVal {
+		update, err := sstore.ArchiveSession(ctx, sessionId)
+		if err != nil {
+			return nil, fmt.Errorf("cannot archive session: %v", err)
+		}
+		return update, nil
+	} else {
+		update, err := sstore.UnArchiveSession(ctx, sessionId)
+		if err != nil {
+			return nil, fmt.Errorf("cannot un-archive session: %v", err)
+		}
+		return update, nil
+	}
+}
+
+func SessionShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	sessions, err := sstore.GetBareSessions(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving sessions: %v", err)
+	}
+	var buf bytes.Buffer
+	for _, session := range sessions {
+		var archivedStr string
+		if session.Archived {
+			archivedStr = " (archived)"
+		}
+		sessionIdxStr := "-"
+		if session.SessionIdx != 0 {
+			sessionIdxStr = strconv.Itoa(int(session.SessionIdx))
+		}
+		outStr := fmt.Sprintf("%-30s %s  %s\n", session.Name+archivedStr, session.SessionId, sessionIdxStr)
+		buf.WriteString(outStr)
+	}
+	return sstore.ModelUpdate{
+		Info: &sstore.InfoMsgType{
+			InfoTitle: "all sessions",
+			InfoLines: splitLinesForInfo(buf.String()),
+		},
+	}, nil
 }
 
 func SessionSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -1444,12 +1508,7 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if firstArg == "" {
 		return nil, fmt.Errorf("usage /session [name|id|pos], no param specified")
 	}
-	bareSessions, err := sstore.GetBareSessions(ctx)
-	if err != nil {
-		return nil, err
-	}
-	ritems := sessionsToResolveItems(bareSessions)
-	ritem, err := genericResolve(firstArg, ids.SessionId, ritems, false, "session")
+	ritem, err := resolveSession(ctx, firstArg, ids.SessionId)
 	if err != nil {
 		return nil, err
 	}
@@ -2068,12 +2127,4 @@ func resolveSetArg(argName string) (bool, string, string) {
 		return false, "", ""
 	}
 	return true, scopeName, varName
-}
-
-func SessionShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	return nil, nil
-}
-
-func SessionArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	return nil, nil
 }
