@@ -1750,10 +1750,35 @@ class HistoryInfo extends React.Component<{}, {}> {
 
 @mobxReact.observer
 class CmdInput extends React.Component<{}, {}> {
+    cmdInputRef : React.RefObject<any> = React.createRef();
+    
     @boundMethod
     onInfoToggle() : void {
         GlobalModel.inputModel.toggleInfoMsg();
         return;
+    }
+
+    componentDidMount() {
+        console.log("cmd-input mount", this.cmdInputRef);
+        let elem = this.cmdInputRef.current;
+        if (elem == null) {
+            return;
+        }
+        let height = elem.offsetHeight;
+        mobx.action(() => {
+            GlobalModel.inputModel.cmdInputHeight.set(height);
+        })();
+    }
+
+    componentDidUpdate(prevProps, prevState, snapshot : {height : number}) : void {
+        let elem = this.cmdInputRef.current;
+        if (elem == null) {
+            return;
+        }
+        let height = elem.offsetHeight;
+        mobx.action(() => {
+            GlobalModel.inputModel.cmdInputHeight.set(height);
+        })();
     }
     
     render() {
@@ -1782,7 +1807,7 @@ class CmdInput extends React.Component<{}, {}> {
         let focusVal = inputModel.physicalInputFocused.get();
         let inputMode : string = inputModel.inputMode.get();
         return (
-            <div className={cn("cmd-input has-background-black", {"has-info": infoShow}, {"has-history": historyShow}, {"has-remote": remoteShow})}>
+            <div ref={this.cmdInputRef} className={cn("cmd-input has-background-black", {"has-info": infoShow}, {"has-history": historyShow}, {"has-remote": remoteShow})}>
                 <div key="focus" className={cn("focus-indicator", {"active": focusVal})}/>
                 <div key="minmax" onClick={this.onInfoToggle} className="input-minmax-control">
                     <If condition={infoShow || historyShow}>
@@ -2342,11 +2367,15 @@ class SessionView extends React.Component<{}, {}> {
             return <div className="session-view">(no active session)</div>;
         }
         let activeScreen = session.getActiveScreen();
+        let cmdInputHeight = model.inputModel.cmdInputHeight.get();
+        if (cmdInputHeight == 0) {
+            cmdInputHeight = 110;
+        }
         return (
             <div className="session-view" data-sessionid={session.sessionId}>
                 <ScreenView screen={activeScreen}/>
                 <ScreenTabs session={session}/>
-                <div style={{height: 110}}></div>
+                <div style={{height: cmdInputHeight}}></div>
                 <CmdInput/>
             </div>
         );

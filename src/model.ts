@@ -860,6 +860,7 @@ function getDefaultHistoryQueryOpts() : HistoryQueryOpts {
 class InputModel {
     historyShow : OV<boolean> = mobx.observable.box(false);
     infoShow : OV<boolean> = mobx.observable.box(false);
+    cmdInputHeight : OV<number> = mobx.observable.box(0);
 
     historyType : mobx.IObservableValue<string> = mobx.observable.box("window");
     historyLoading : mobx.IObservableValue<boolean> = mobx.observable.box(false);
