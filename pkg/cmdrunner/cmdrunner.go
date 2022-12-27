@@ -1428,11 +1428,18 @@ func SessionArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 		if err != nil {
 			return nil, fmt.Errorf("cannot archive session: %v", err)
 		}
+		update.Info = &sstore.InfoMsgType{
+			InfoMsg: "session archived",
+		}
 		return update, nil
 	} else {
-		update, err := sstore.UnArchiveSession(ctx, sessionId)
+		activate := resolveBool(pk.Kwargs["activate"], false)
+		update, err := sstore.UnArchiveSession(ctx, sessionId, activate)
 		if err != nil {
 			return nil, fmt.Errorf("cannot un-archive session: %v", err)
+		}
+		update.Info = &sstore.InfoMsgType{
+			InfoMsg: "session un-archived",
 		}
 		return update, nil
 	}

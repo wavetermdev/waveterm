@@ -1344,7 +1344,7 @@ func fixActiveSessionId(ctx context.Context) (string, error) {
 	return newActiveSessionId, nil
 }
 
-func ArchiveSession(ctx context.Context, sessionId string) (UpdatePacket, error) {
+func ArchiveSession(ctx context.Context, sessionId string) (*ModelUpdate, error) {
 	if sessionId == "" {
 		return nil, fmt.Errorf("invalid blank sessionid")
 	}
@@ -1368,7 +1368,7 @@ func ArchiveSession(ctx context.Context, sessionId string) (UpdatePacket, error)
 		return nil, txErr
 	}
 	bareSession, _ := GetBareSessionById(ctx, sessionId)
-	update := ModelUpdate{}
+	update := &ModelUpdate{}
 	if bareSession != nil {
 		update.Sessions = append(update.Sessions, bareSession)
 	}
@@ -1378,8 +1378,40 @@ func ArchiveSession(ctx context.Context, sessionId string) (UpdatePacket, error)
 	return update, nil
 }
 
-func UnArchiveSession(ctx context.Context, sessionId string) (UpdatePacket, error) {
-	return nil, nil
+func UnArchiveSession(ctx context.Context, sessionId string, activate bool) (*ModelUpdate, error) {
+	if sessionId == "" {
+		return nil, fmt.Errorf("invalid blank sessionid")
+	}
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT sessionid FROM session WHERE sessionid = ?`
+		if !tx.Exists(query, sessionId) {
+			return fmt.Errorf("session does not exist")
+		}
+		query = `SELECT archived FROM session WHERE sessionid = ?`
+		isArchived := tx.GetBool(query, sessionId)
+		if !isArchived {
+			return nil
+		}
+		query = `UPDATE session SET archived = 0, archivedts = 0 WHERE sessionid = ?`
+		tx.ExecWrap(query, sessionId)
+		if activate {
+			query = `UPDATE client SET activesessionid = ?`
+			tx.ExecWrap(query, sessionId)
+		}
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	bareSession, _ := GetBareSessionById(ctx, sessionId)
+	update := &ModelUpdate{}
+	if bareSession != nil {
+		update.Sessions = append(update.Sessions, bareSession)
+	}
+	if activate {
+		update.ActiveSessionId = sessionId
+	}
+	return update, nil
 }
 
 func GetSessionStats(ctx context.Context, sessionId string) (*SessionStatsType, error) {
