@@ -7,3 +7,5 @@ out/
 .DS_Store
 bin
 *.pw
+build/
+*.dmg

@@ -11,8 +11,9 @@ import {sprintf} from "sprintf-js";
 import {v4 as uuidv4} from "uuid";
 
 const PromptAppPathVarName = "PROMPT_APP_PATH";
+const PromptDevVarName = "PROMPT_DEV";
 const AuthKeyFile = "prompt.authkey";
-let isDev = (process.env.PROMPT_DEV != null);
+let isDev = (process.env[PromptDevVarName] != null);
 let scHome = getPromptHomeDir();
 ensureDir(scHome);
 let DistDir = (isDev ? "dist-dev" : "dist");
@@ -63,7 +64,7 @@ function getPromptHomeDir() {
         if (homeDir == null) {
             homeDir = "/";
         }
-        scHome = path.join(homeDir, "prompt");
+        scHome = path.join(homeDir, (isDev ? "prompt-dev" : "prompt"));
     }
     return scHome;
 }
@@ -380,6 +381,9 @@ function runLocalServer() {
     });
     let envCopy = Object.assign({}, process.env);
     envCopy[PromptAppPathVarName] = getAppBasePath();
+    if (isDev) {
+        envCopy[PromptDevVarName] = "1";
+    }
     console.log("trying to run local server", getLocalServerPath());
     let proc = child_process.spawn("/bin/bash", ["-c", getLocalServerCmd()], {
         cwd: getLocalServerCwd(),
