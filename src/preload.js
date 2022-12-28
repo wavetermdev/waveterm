@@ -2,6 +2,7 @@ let {contextBridge, ipcRenderer} = require("electron");
 
 contextBridge.exposeInMainWorld("api", {
     getId: () => ipcRenderer.sendSync("get-id"),
+    getIsDev: () => ipcRenderer.sendSync("get-isdev"),
     getAuthKey: () => ipcRenderer.sendSync("get-authkey"),
     getLocalServerStatus: () => ipcRenderer.sendSync("local-server-status"),
     restartLocalServer: () => ipcRenderer.sendSync("restart-server"),

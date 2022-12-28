@@ -230,10 +230,10 @@ class TermWrap {
 
     _getReloadUrl() : string {
         if (this.termContext.remoteId != null) {
-            return sprintf("http://localhost:8080/api/remote-pty?remoteid=%s", this.termContext.remoteId);
+            return sprintf(GlobalModel.getBaseHostPort() + "/api/remote-pty?remoteid=%s", this.termContext.remoteId);
         }
         else {
-            return sprintf("http://localhost:8080/api/ptyout?sessionid=%s&cmdid=%s", this.termContext.sessionId, this.termContext.cmdId);
+            return sprintf(GlobalModel.getBaseHostPort() + "/api/ptyout?sessionid=%s&cmdid=%s", this.termContext.sessionId, this.termContext.cmdId);
         }
     }
 

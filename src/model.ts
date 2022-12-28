@@ -92,6 +92,7 @@ type KeyModsType = {
 
 type ElectronApi = {
     getId : () => string,
+    getIsDev : () => boolean,
     getAuthKey : () => string,
     getLocalServerStatus : () => boolean,
     restartLocalServer : () => boolean,
@@ -1552,11 +1553,13 @@ class Model {
     debugSW : OV<boolean> = mobx.observable.box(false);
     localServerRunning : OV<boolean>;
     authKey : string;
+    isDev : boolean;
     
     constructor() {
         this.clientId = getApi().getId();
+        this.isDev = getApi().getIsDev();
         this.authKey = getApi().getAuthKey();
-        this.ws = new WSControl(this.clientId, this.authKey, (message : any) => this.runUpdate(message, false));
+        this.ws = new WSControl(this.getBaseWsHostPort(), this.clientId, this.authKey, (message : any) => this.runUpdate(message, false));
         this.ws.reconnect();
         this.inputModel = new InputModel();
         let isLocalServerRunning = getApi().getLocalServerStatus();
@@ -1573,6 +1576,14 @@ class Model {
         getApi().onDigitCmd(this.onDigitCmd.bind(this));
         getApi().onLocalServerStatusChange(this.onLocalServerStatusChange.bind(this));
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
+    }
+
+    getBaseHostPort() : string {
+        return "http://localhost:8080";
+    }
+
+    getBaseWsHostPort() : string {
+        return "ws://localhost:8081";
     }
 
     getFetchHeaders() : Record<string, string> {
@@ -1994,7 +2005,7 @@ class Model {
                 console.trace();
             }
         }
-        let url = sprintf("http://localhost:8080/api/run-command");
+        let url = sprintf(GlobalModel.getBaseHostPort() + "/api/run-command");
         let fetchHeaders = this.getFetchHeaders();
         fetch(url, {method: "post", body: JSON.stringify(cmdPk), headers: fetchHeaders}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
             mobx.action(() => {
@@ -2078,7 +2089,7 @@ class Model {
     _loadWindowAsync(newWin : Window) {
         this.windows.set(newWin.sessionId + "/" + newWin.windowId, newWin);
         let usp = new URLSearchParams({sessionid: newWin.sessionId, windowid: newWin.windowId});
-        let url = new URL("http://localhost:8080/api/get-window?" + usp.toString());
+        let url = new URL(GlobalModel.getBaseHostPort() + "/api/get-window?" + usp.toString());
         let fetchHeaders = GlobalModel.getFetchHeaders();
         fetch(url, {headers: fetchHeaders}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
             if (data.data == null) {

@@ -16,8 +16,10 @@ class WSControl {
     watchScreenId : string = null;
     wsLog : mobx.IObservableArray<string> = mobx.observable.array([], {name: "wsLog"})
     authKey : string;
+    baseHostPort : string;
     
-    constructor(clientId : string, authKey : string, messageCallback : (any) => void) {
+    constructor(baseHostPort : string, clientId : string, authKey : string, messageCallback : (any) => void) {
+        this.baseHostPort = baseHostPort;
         this.messageCallback = messageCallback;
         this.clientId = clientId;
         this.authKey = authKey;
@@ -48,7 +50,7 @@ class WSControl {
         }
         this.log(sprintf("try reconnect (%s)", desc));
         this.opening = true;
-        this.wsConn = new WebSocket("ws://localhost:8081/ws?clientid=" + this.clientId);
+        this.wsConn = new WebSocket(this.baseHostPort + "/ws?clientid=" + this.clientId);
         this.wsConn.onopen = this.onopen;
         this.wsConn.onmessage = this.onmessage;
         this.wsConn.onclose = this.onclose;

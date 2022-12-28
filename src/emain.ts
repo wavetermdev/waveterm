@@ -51,7 +51,7 @@ if (isDev) {
     console.log("prompt-app PROMPT_DEV set");
 }
 let app = electron.app;
-app.setName("Prompt");
+app.setName((isDev ? "Prompt (Dev)" : "Prompt"));
 const DevLocalServerPath = "/Users/mike/prompt/local-server";
 let localServerProc = null;
 let localServerShouldRestart = false;
@@ -73,6 +73,10 @@ function getPromptHomeDir() {
 // for prod, this is .../Prompt.app/Contents/Resources/app
 function getAppBasePath() {
     return path.dirname(__dirname);
+}
+
+function getBaseHostPort() {
+    return "http://localhost:8080";
 }
 
 function getLocalServerPath() {
@@ -103,7 +107,7 @@ function readAuthKey() {
     let authKeyFileName = path.join(homeDir, AuthKeyFile);
     if (!fs.existsSync(authKeyFileName)) {
         let authKeyStr = String(uuidv4());
-        fs.writeFileSync(authKeyFileName, authKeyStr, 0o600);
+        fs.writeFileSync(authKeyFileName, authKeyStr, {mode: 0o600});
         return authKeyStr;
     }
     let authKeyData = fs.readFileSync(authKeyFileName);
@@ -256,7 +260,7 @@ function mainResizeHandler(e) {
     let bounds = win.getBounds();
     console.log("resize/move", win.getBounds());
     let winSize = {width: bounds.width, height: bounds.height, top: bounds.y, left: bounds.x};
-    let url = "http://localhost:8080/api/set-winsize";
+    let url = getBaseHostPort() + "/api/set-winsize";
     let fetchHeaders = getFetchHeaders();
     fetch(url, {method: "post", body: JSON.stringify(winSize), headers: fetchHeaders}).then((resp) => handleJsonFetchResponse(url, resp)).catch((err) => {
         console.log("error setting winsize", err)
@@ -312,6 +316,11 @@ electron.ipcMain.on("get-id", (event) => {
     return;
 });
 
+electron.ipcMain.on("get-isdev", (event) => {
+    event.returnValue = isDev;
+    return;
+});
+
 electron.ipcMain.on("get-authkey", (event) => {
     event.returnValue = GlobalAuthKey;
     return;
@@ -349,7 +358,7 @@ function getFetchHeaders() {
 }
 
 function getClientData() {
-    let url = "http://localhost:8080/api/get-client-data";
+    let url = getBaseHostPort() + "/api/get-client-data";
     let fetchHeaders = getFetchHeaders();
     return fetch(url, {headers: fetchHeaders}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
         if (data == null) {
