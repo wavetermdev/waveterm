@@ -93,6 +93,7 @@ type MShellProc struct {
 	MakeClientCancelFn context.CancelFunc
 	StateMap           map[string]*packet.ShellState // sha1->state
 	CurrentState       string                        // sha1
+	NumTryConnect      int
 
 	// install
 	InstallStatus      string
@@ -247,7 +248,7 @@ func LoadRemoteById(ctx context.Context, remoteId string) error {
 	defer GlobalStore.Lock.Unlock()
 	existingRemote := GlobalStore.Map[remoteId]
 	if existingRemote != nil {
-		return fmt.Errorf("cannot add remote %d, already in global map", remoteId)
+		return fmt.Errorf("cannot add remote %s, already in global map", remoteId)
 	}
 	GlobalStore.Map[r.RemoteId] = msh
 	if r.ConnectMode == sstore.ConnectModeStartup {
@@ -1234,7 +1235,7 @@ func RunCommand(ctx context.Context, sessionId string, windowId string, remotePt
 			return nil, nil, fmt.Errorf("cannot run command while a stateful command is still running: %v", err)
 		}
 		if line == nil {
-			return nil, nil, fmt.Errorf("cannot run command while a stateful command is still running %s", *existingPSC, windowId)
+			return nil, nil, fmt.Errorf("cannot run command while a stateful command is still running %s", *existingPSC)
 		}
 		return nil, nil, fmt.Errorf("cannot run command while a stateful command (linenum=%d) is still running", line.LineNum)
 	}
@@ -1820,4 +1821,27 @@ func (msh *MShellProc) getFeStateFromDiff(stateDiff *packet.ShellStateDiff) (*ss
 		}
 		return sstore.FeStateFromShellState(&newState), nil
 	}
+}
+
+func (msh *MShellProc) TryAutoConnect() error {
+	if msh.IsConnected() {
+		return nil
+	}
+	rcopy := msh.GetRemoteCopy()
+	if !rcopy.AutoInstall {
+		return nil
+	}
+	var err error
+	msh.WithLock(func() {
+		if msh.NumTryConnect > 5 {
+			err = fmt.Errorf("cannot auto-connect remote %q (too many unsuccessful tries)", msh.Remote.GetName())
+			return
+		}
+		msh.NumTryConnect++
+	})
+	if err != nil {
+		return err
+	}
+	msh.Launch()
+	return nil
 }

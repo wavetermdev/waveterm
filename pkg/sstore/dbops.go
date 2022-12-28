@@ -886,7 +886,6 @@ func CleanWindows(sessionId string) {
 }
 
 func ArchiveScreen(ctx context.Context, sessionId string, screenId string) (UpdatePacket, error) {
-	var newActiveScreenId string
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT screenid FROM screen WHERE sessionid = ? AND screenid = ?`
 		if !tx.Exists(query, sessionId, screenId) {
@@ -909,7 +908,6 @@ func ArchiveScreen(ctx context.Context, sessionId string, screenId string) (Upda
 			screenIds := tx.SelectStrings(`SELECT screenid FROM screen WHERE sessionid = ? AND NOT archived ORDER BY screenidx`, sessionId)
 			nextId := getNextId(screenIds, screenId)
 			tx.ExecWrap(`UPDATE session SET activescreenid = ? WHERE sessionid = ?`, nextId, sessionId)
-			newActiveScreenId = nextId
 		}
 		return nil
 	})
@@ -943,7 +941,6 @@ func UnArchiveScreen(ctx context.Context, sessionId string, screenId string) err
 }
 
 func DeleteScreen(ctx context.Context, sessionId string, screenId string) (UpdatePacket, error) {
-	var newActiveScreenId string
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT screenid FROM screen WHERE sessionid = ? AND screenid = ?`
 		if !tx.Exists(query, sessionId, screenId) {
@@ -959,7 +956,6 @@ func DeleteScreen(ctx context.Context, sessionId string, screenId string) (Updat
 			screenIds := tx.SelectStrings(`SELECT screenid FROM screen WHERE sessionid = ? AND NOT archived ORDER BY screenidx`, sessionId)
 			nextId := getNextId(screenIds, screenId)
 			tx.ExecWrap(`UPDATE session SET activescreenid = ? WHERE sessionid = ?`, nextId, sessionId)
-			newActiveScreenId = nextId
 		}
 		query = `DELETE FROM screen_window WHERE sessionid = ? AND screenid = ?`
 		tx.ExecWrap(query, sessionId, screenId)
@@ -976,7 +972,8 @@ func DeleteScreen(ctx context.Context, sessionId string, screenId string) (Updat
 		return nil, err
 	}
 	bareSession.Screens = append(bareSession.Screens, &ScreenType{SessionId: sessionId, ScreenId: screenId, Remove: true})
-	return ModelUpdate{Sessions: []*SessionType{bareSession}}, nil
+	update := ModelUpdate{Sessions: []*SessionType{bareSession}}
+	return update, nil
 }
 
 func GetRemoteState(ctx context.Context, sessionId string, windowId string, remotePtr RemotePtrType) (*packet.ShellState, *ShellStatePtr, error) {

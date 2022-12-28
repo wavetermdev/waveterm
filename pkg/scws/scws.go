@@ -208,7 +208,7 @@ func (ws *WSState) RunWSRead() {
 			err := ws.handleWatchScreen(wsPk)
 			if err != nil {
 				// TODO send errors back to client, likely unrecoverable
-				log.Printf("[ws %s] error %v\n", err)
+				log.Printf("[ws %s] error %v\n", ws.ClientId, err)
 			}
 			continue
 		}
@@ -264,7 +264,7 @@ func sendCmdInput(pk *scpacket.FeInputPacketType) error {
 	}
 	msh := remote.GetRemoteById(pk.Remote.RemoteId)
 	if msh == nil {
-		return fmt.Errorf("remote %d not found", pk.Remote.RemoteId)
+		return fmt.Errorf("remote %s not found", pk.Remote.RemoteId)
 	}
 	if len(pk.InputData64) > 0 {
 		inputLen := packet.B64DecodedLen(pk.InputData64)

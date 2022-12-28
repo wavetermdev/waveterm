@@ -19,9 +19,11 @@ import (
 
 const HomeVarName = "HOME"
 const PromptHomeVarName = "PROMPT_HOME"
+const PromptDevVarName = "PROMPT_DEV"
 const SessionsDirBaseName = "sessions"
 const PromptLockFile = "prompt.lock"
 const PromptDirName = "prompt"
+const PromptDevDirName = "prompt-dev"
 const PromptAppPathVarName = "PROMPT_APP_PATH"
 const PromptVersion = "v0.1.0"
 const PromptAuthKeyFileName = "prompt.authkey"
@@ -37,7 +39,13 @@ func GetPromptHomeDir() string {
 		if homeVar == "" {
 			homeVar = "/"
 		}
-		scHome = path.Join(homeVar, PromptDirName)
+		pdev := os.Getenv(PromptDevVarName)
+		if pdev != "" {
+			scHome = path.Join(homeVar, PromptDevDirName)
+		} else {
+			scHome = path.Join(homeVar, PromptDirName)
+		}
+
 	}
 	return scHome
 }

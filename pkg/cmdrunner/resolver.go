@@ -270,10 +270,16 @@ func resolveUiIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype i
 	}
 	if rtype&R_RemoteConnected > 0 {
 		if !rtn.Remote.RState.IsConnected() {
-			return rtn, fmt.Errorf("remote '%s' is not connected", rtn.Remote.DisplayName)
+			err = rtn.Remote.MShell.TryAutoConnect()
+			if err != nil {
+				return rtn, fmt.Errorf("error trying to auto-connect remote %q", rtn.Remote.DisplayName)
+			}
+		}
+		if !rtn.Remote.RState.IsConnected() {
+			return rtn, fmt.Errorf("remote %q is not connected", rtn.Remote.DisplayName)
 		}
 		if rtn.Remote.StatePtr == nil || rtn.Remote.FeState == nil {
-			return rtn, fmt.Errorf("remote '%s' state is not available", rtn.Remote.DisplayName)
+			return rtn, fmt.Errorf("remote %q state is not available", rtn.Remote.DisplayName)
 		}
 	}
 	return rtn, nil
