@@ -29,7 +29,7 @@ type LineType = {
     cmdid? : string,
     contentheight? : number,
     star? : number,
-    hidden? : boolean,
+    archived? : boolean,
     ephemeral? : boolean,
     remove? : boolean,
 };

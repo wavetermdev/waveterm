@@ -4,7 +4,6 @@ import * as fs from "fs";
 import fetch from "node-fetch";
 import * as child_process from "node:child_process";
 import {debounce} from "throttle-debounce";
-import {acquirePromptElectronLock} from "./base";
 import {handleJsonFetchResponse} from "./util";
 import * as winston from "winston";
 import * as util from "util";
@@ -18,6 +17,7 @@ let scHome = getPromptHomeDir();
 ensureDir(scHome);
 let DistDir = (isDev ? "dist-dev" : "dist");
 let GlobalAuthKey = "";
+let instanceId = uuidv4();
 
 // these are either "darwin/amd64" or "darwin/arm64"
 // normalize darwin/x64 to darwin/amd64 for GOARCH compatibility
@@ -26,7 +26,6 @@ let unameArch = process.arch;
 if (unameArch == "x64") {
     unameArch = "amd64"
 }
-
 let logger;
 let loggerConfig = {
     level: "info",
@@ -50,7 +49,8 @@ console.log(sprintf("prompt-app starting, PROMPT_HOME=%s, apppath=%s arch=%s/%s"
 if (isDev) {
     console.log("prompt-app PROMPT_DEV set");
 }
-
+let app = electron.app;
+app.setName("Prompt");
 const DevLocalServerPath = "/Users/mike/prompt/local-server";
 let localServerProc = null;
 let localServerShouldRestart = false;
@@ -111,17 +111,6 @@ function readAuthKey() {
         throw new Error("cannot read authkey");
     }
     return authKeyStr.trim();
-}
-
-let app = electron.app;
-app.setName("Prompt");
-
-let lock : File;
-try {
-    lock = acquirePromptElectronLock();
-}
-catch (e) {
-    app.exit(0);
 }
 
 let menuTemplate = [
@@ -318,7 +307,7 @@ app.on('window-all-closed', () => {
 });
 
 electron.ipcMain.on("get-id", (event) => {
-    event.returnValue = event.processId;
+    event.returnValue = instanceId + ":" + event.processId;
     return;
 });
 
@@ -454,6 +443,12 @@ async function sleep(ms) {
 // ====== MAIN ====== //
 
 (async () => {
+    let instanceLock = app.requestSingleInstanceLock();
+    if (!instanceLock) {
+        console.log("prompt-app could not get single-instance-lock, shutting down");
+        app.quit();
+        return;
+    }
     GlobalAuthKey = readAuthKey();
     try {
         await runLocalServer();

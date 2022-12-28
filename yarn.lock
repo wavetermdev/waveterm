@@ -3529,13 +3529,6 @@ fresh@0.5.2:
   resolved "https://registry.yarnpkg.com/fresh/-/fresh-0.5.2.tgz#3d8cadd90d976569fa835ab1f8e4b23a105605a7"
   integrity sha512-zJ2mQYM18rEFOudeV4GShTGIQ7RbzA7ozbU9I/XBpm7kqgMywgmylMwXHxZJmkVoYkna9d2pVXVXPdYTP9ej8Q==
 
-fs-ext@^2.0.0:
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/fs-ext/-/fs-ext-2.0.0.tgz#e58168fcc37506a9358e0928f4aae60912af7caa"
-  integrity sha512-aK8NlpSO5LUdSoWeshpnkgtptbua1rGo58Wc+mHQ2+JnoBlubMTsnV56Swl4bA0msrgAhG8TDu1aGS8deJwzBQ==
-  dependencies:
-    nan "^2.14.0"
-
 fs-extra@^10.0.0, fs-extra@^10.1.0:
   version "10.1.0"
   resolved "https://registry.yarnpkg.com/fs-extra/-/fs-extra-10.1.0.tgz#02873cfbc4084dde127eaa5f9905eef2325d1abf"
@@ -4867,11 +4860,6 @@ mute-stream@0.0.8:
   version "0.0.8"
   resolved "https://registry.yarnpkg.com/mute-stream/-/mute-stream-0.0.8.tgz#1630c42b2251ff81e2a283de96a5497ea92e5e0d"
   integrity sha512-nnbWWOkoWyUsTjKrhgD0dcz22mdkSnpYqbEjIm2nhwhuxlSkpywJmBo8h0ZqJdkp73mb90SssHkN4rsRaBAfAA==
-
-nan@^2.14.0:
-  version "2.16.0"
-  resolved "https://registry.yarnpkg.com/nan/-/nan-2.16.0.tgz#664f43e45460fb98faf00edca0bb0d7b8dce7916"
-  integrity sha512-UdAqHyFngu7TfQKsCBgAA6pWDkT8MAO7d0jyOecVhN5354xbLqdn8mV9Tat9gepAupm0bt2DbeaSC8vS52MuFA==
 
 nanoid@^3.3.4:
   version "3.3.4"

@@ -1,6 +1,5 @@
 import * as path from "path";
 import * as fs from "fs";
-import {flockSync} from "fs-ext";
 
 const HomeVarName = "HOME";
 const PromptHomeVarName = "PROMPT_HOME";
@@ -26,12 +25,4 @@ function getDBName() : string {
     return path.join(promptHome, DBFileName);
 }
 
-function acquirePromptElectronLock() : File {
-    let promptHome = getPromptHomeDir();
-    let lockFileName = path.join(promptHome, PromptLockFile);
-    let fd = fs.openSync(lockFileName, "w", 0o600);
-    flockSync(fd, "exnb");
-    return fd;
-}
-
-export {getPromptHomeDir, getDBName, acquirePromptElectronLock};
+export {getPromptHomeDir, getDBName};

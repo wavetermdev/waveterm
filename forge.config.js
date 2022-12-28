@@ -7,9 +7,9 @@ var AllowedFirstParts = {
 };
 
 var AllowedNodeModules = {
-    "lzma-native": true,
-    "fs-ext": true,
-    "fsevents": true,
+    // "lzma-native": true,
+    // "fs-ext": true,
+    // "fsevents": true,
 };
 
 var modCache = {};
@@ -27,6 +27,11 @@ function ignoreFn(path) {
         if (parts.length <= 2) {
             return false;
         }
+        if (parts.length > 3) {
+            if (parts[3] == "build") {
+                return true;
+            }
+        }
         let nodeModule = parts[2];
         if (!modCache[nodeModule]) {
             modCache[nodeModule] = true;
@@ -34,6 +39,7 @@ function ignoreFn(path) {
         if (!AllowedNodeModules[nodeModule]) {
             return true;
         }
+        
     }
     return false;
 }
@@ -50,24 +56,39 @@ module.exports = {
             "node_modules/fsevents/**",
         ],
         icon: "static/PromptIcon.icns",
+        osxNotarize: {
+            tool: "notarytool",
+            keychainProfile: "notarytool-creds",
+        },
+        osxSign: {
+            "hardened-runtime": true,
+            binaries: [
+                "Contents/Resources/app/bin/prompt-local-server",
+                "Contents/Resources/app/bin/mshell/mshell-v0.2-linux.amd64",
+                "Contents/Resources/app/bin/mshell/mshell-v0.2-linux.arm64",
+                "Contents/Resources/app/bin/mshell/mshell-v0.2-darwin.amd64",
+                "Contents/Resources/app/bin/mshell/mshell-v0.2-darwin.arm64",
+            ],
+            identity: "VYQ48YC2N2",
+        },
     },
-  rebuildConfig: {},
-  makers: [
-    {
-      name: '@electron-forge/maker-squirrel',
-      config: {},
-    },
-    {
-      name: '@electron-forge/maker-zip',
-      platforms: ['darwin'],
-    },
-    {
-      name: '@electron-forge/maker-deb',
-      config: {},
-    },
-    {
-      name: '@electron-forge/maker-rpm',
-      config: {},
-    },
-  ],
+    rebuildConfig: {},
+    makers: [
+        {
+            name: '@electron-forge/maker-squirrel',
+            config: {},
+        },
+        {
+            name: '@electron-forge/maker-zip',
+            platforms: ['darwin'],
+        },
+        {
+            name: '@electron-forge/maker-deb',
+            config: {},
+        },
+        {
+            name: '@electron-forge/maker-rpm',
+            config: {},
+        },
+    ],
 };

@@ -507,7 +507,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
 class Line extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType}, {}> {
     render() {
         let line = this.props.line;
-        if (line.hidden) {
+        if (line.archived) {
             return null;
         }
         if (line.linetype == "text") {
