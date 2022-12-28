@@ -11,8 +11,8 @@ import (
 	"github.com/scripthaus-dev/sh2-server/pkg/remote"
 )
 
-// PTERM=WxH,Wx25
-// PTERM="Wx25!"
+// PTERM=MxM,Mx25
+// PTERM="Mx25!"
 // PTERM=80x25,80x35
 
 type PTermOptsType struct {

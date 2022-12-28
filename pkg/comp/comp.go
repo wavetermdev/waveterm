@@ -525,7 +525,6 @@ func DoCompGen(ctx context.Context, cmdStr utilfn.StrWithPos, compCtx CompContex
 	words := shparse.Tokenize(cmdStr.Str)
 	cmds := shparse.ParseCommands(words)
 	compPos := shparse.FindCompletionPos(cmds, cmdStr.Pos)
-	fmt.Printf("comppos: %v\n", compPos)
 	if compPos.CompType == shparse.CompTypeInvalid {
 		return nil, nil, nil
 	}

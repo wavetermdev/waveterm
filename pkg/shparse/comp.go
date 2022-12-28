@@ -1,7 +1,6 @@
 package shparse
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/scripthaus-dev/sh2-server/pkg/utilfn"
@@ -278,7 +277,6 @@ func (cpos CompletionPos) Extend(origStr utilfn.StrWithPos, extensionStr string,
 		compWord = MakeEmptyWord(WordTypeLit, nil, cpos.RawPos, true)
 	}
 	realOffset := compWord.Offset + cpos.SuperOffset
-	fmt.Printf("cpos-extend: %d[%s] ext[%s] cword[%v] off:%d super:%d real:%d\n", len([]rune(origStr.Str)), origStr, extensionStr, compWord, compWord.Offset, cpos.SuperOffset, realOffset)
 	if strings.HasSuffix(extensionStr, "/") {
 		extensionComplete = false
 	}

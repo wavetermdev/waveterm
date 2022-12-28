@@ -152,7 +152,7 @@ func init() {
 	registerCmdFn("line", LineCommand)
 	registerCmdFn("line:show", LineShowCommand)
 	registerCmdFn("line:star", LineStarCommand)
-	registerCmdFn("line:hide", LineHideCommand)
+	registerCmdFn("line:archive", LineArchiveCommand)
 	registerCmdFn("line:purge", LinePurgeCommand)
 
 	registerCmdFn("_history", HistoryCommand)
@@ -1781,13 +1781,13 @@ func LineStarCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	return sstore.ModelUpdate{Line: lineObj}, nil
 }
 
-func LineHideCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+func LineArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
 	if err != nil {
 		return nil, err
 	}
 	if len(pk.Args) == 0 {
-		return nil, fmt.Errorf("/line:hide requires an argument (line number or id)")
+		return nil, fmt.Errorf("/line:archive requires an argument (line number or id)")
 	}
 	lineArg := pk.Args[0]
 	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.WindowId, lineArg)
@@ -1797,17 +1797,17 @@ func LineHideCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	if lineId == "" {
 		return nil, fmt.Errorf("line %q not found", lineArg)
 	}
-	shouldHide := true
+	shouldArchive := true
 	if len(pk.Args) >= 2 {
-		shouldHide = resolveBool(pk.Args[1], true)
+		shouldArchive = resolveBool(pk.Args[1], true)
 	}
-	err = sstore.SetLineHiddenById(ctx, lineId, shouldHide)
+	err = sstore.SetLineArchivedById(ctx, lineId, shouldArchive)
 	if err != nil {
-		return nil, fmt.Errorf("/line:hide error updating hidden status: %v", err)
+		return nil, fmt.Errorf("/line:archive error updating hidden status: %v", err)
 	}
 	lineObj, err := sstore.GetLineById(ctx, lineId)
 	if err != nil {
-		return nil, fmt.Errorf("/line:star error getting line: %v", err)
+		return nil, fmt.Errorf("/line:archive error getting line: %v", err)
 	}
 	if lineObj == nil {
 		// no line (which is strange given we checked for it above).  just return a nop.

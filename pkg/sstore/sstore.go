@@ -590,7 +590,7 @@ type LineType struct {
 	Ephemeral     bool   `json:"ephemeral,omitempty"`
 	ContentHeight int64  `json:"contentheight,omitempty"`
 	Star          bool   `json:"star,omitempty"`
-	Hidden        bool   `json:"hidden,omitempty"`
+	Archived      bool   `json:"archived,omitempty"`
 	Remove        bool   `json:"remove,omitempty"`
 }
 
