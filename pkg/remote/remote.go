@@ -50,12 +50,16 @@ else
 fi
 `
 
-func MakeLocalMShellCommandStr() (string, error) {
+func MakeLocalMShellCommandStr(isSudo bool) (string, error) {
 	mshellPath, err := scbase.LocalMShellBinaryPath()
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s --server", mshellPath), nil
+	if isSudo {
+		return fmt.Sprintf("sudo %s --server", mshellPath), nil
+	} else {
+		return fmt.Sprintf("%s --server", mshellPath), nil
+	}
 }
 
 func MakeServerCommandStr() string {
@@ -119,26 +123,27 @@ type RunCmdType struct {
 }
 
 type RemoteRuntimeState struct {
-	RemoteType          string              `json:"remotetype"`
-	RemoteId            string              `json:"remoteid"`
-	PhysicalId          string              `json:"physicalremoteid"`
-	RemoteAlias         string              `json:"remotealias,omitempty"`
-	RemoteCanonicalName string              `json:"remotecanonicalname"`
-	RemoteVars          map[string]string   `json:"remotevars"`
-	DefaultFeState      *sstore.FeStateType `json:"defaultfestate"`
-	Status              string              `json:"status"`
-	ErrorStr            string              `json:"errorstr,omitempty"`
-	InstallStatus       string              `json:"installstatus"`
-	InstallErrorStr     string              `json:"installerrorstr,omitempty"`
-	NeedsMShellUpgrade  bool                `json:"needsmshellupgrade,omitempty"`
-	ConnectMode         string              `json:"connectmode"`
-	AutoInstall         bool                `json:"autoinstall"`
-	Archived            bool                `json:"archived,omitempty"`
-	RemoteIdx           int64               `json:"remoteidx"`
-	UName               string              `json:"uname"`
-	MShellVersion       string              `json:"mshellversion"`
-	WaitingForPassword  bool                `json:"waitingforpassword,omitempty"`
-	Local               bool                `json:"local,omitempty"`
+	RemoteType          string                 `json:"remotetype"`
+	RemoteId            string                 `json:"remoteid"`
+	PhysicalId          string                 `json:"physicalremoteid"`
+	RemoteAlias         string                 `json:"remotealias,omitempty"`
+	RemoteCanonicalName string                 `json:"remotecanonicalname"`
+	RemoteVars          map[string]string      `json:"remotevars"`
+	DefaultFeState      *sstore.FeStateType    `json:"defaultfestate"`
+	Status              string                 `json:"status"`
+	ErrorStr            string                 `json:"errorstr,omitempty"`
+	InstallStatus       string                 `json:"installstatus"`
+	InstallErrorStr     string                 `json:"installerrorstr,omitempty"`
+	NeedsMShellUpgrade  bool                   `json:"needsmshellupgrade,omitempty"`
+	ConnectMode         string                 `json:"connectmode"`
+	AutoInstall         bool                   `json:"autoinstall"`
+	Archived            bool                   `json:"archived,omitempty"`
+	RemoteIdx           int64                  `json:"remoteidx"`
+	UName               string                 `json:"uname"`
+	MShellVersion       string                 `json:"mshellversion"`
+	WaitingForPassword  bool                   `json:"waitingforpassword,omitempty"`
+	Local               bool                   `json:"local,omitempty"`
+	RemoteOpts          *sstore.RemoteOptsType `json:"remoteopts,omitempty"`
 }
 
 func (state RemoteRuntimeState) IsConnected() bool {
@@ -221,6 +226,7 @@ func LoadRemotes(ctx context.Context) error {
 		return err
 	}
 	var numLocal int
+	var numSudoLocal int
 	for _, remote := range allRemotes {
 		msh := MakeMShell(remote)
 		GlobalStore.Map[remote.RemoteId] = msh
@@ -228,7 +234,11 @@ func LoadRemotes(ctx context.Context) error {
 			go msh.Launch()
 		}
 		if remote.Local {
-			numLocal++
+			if remote.RemoteSudo {
+				numSudoLocal++
+			} else {
+				numLocal++
+			}
 		}
 	}
 	if numLocal == 0 {
@@ -236,6 +246,9 @@ func LoadRemotes(ctx context.Context) error {
 	}
 	if numLocal > 1 {
 		return fmt.Errorf("multiple local remotes found")
+	}
+	if numSudoLocal > 1 {
+		return fmt.Errorf("multiple local sudo remotes found")
 	}
 	return nil
 }
@@ -378,7 +391,7 @@ func GetLocalRemote() *MShellProc {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
 	for _, msh := range GlobalStore.Map {
-		if msh.IsLocal() {
+		if msh.IsLocal() && !msh.IsSudo() {
 			return msh
 		}
 	}
@@ -457,6 +470,12 @@ func (msh *MShellProc) IsLocal() bool {
 	return msh.Remote.Local
 }
 
+func (msh *MShellProc) IsSudo() bool {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	return msh.Remote.RemoteSudo
+}
+
 func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
@@ -475,6 +494,10 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		InstallStatus:       msh.InstallStatus,
 		NeedsMShellUpgrade:  msh.NeedsMShellUpgrade,
 		Local:               msh.Remote.Local,
+	}
+	if msh.Remote.RemoteOpts != nil {
+		optsCopy := *msh.Remote.RemoteOpts
+		state.RemoteOpts = &optsCopy
 	}
 	if msh.Err != nil {
 		state.ErrorStr = msh.Err.Error()
@@ -1024,9 +1047,9 @@ func (msh *MShellProc) Launch() {
 		sshOpts.BatchMode = true
 	}
 	var cmdStr string
-	if sshOpts.SSHHost == "" {
+	if sshOpts.SSHHost == "" && remoteCopy.Local {
 		var err error
-		cmdStr, err = MakeLocalMShellCommandStr()
+		cmdStr, err = MakeLocalMShellCommandStr(remoteCopy.RemoteSudo)
 		if err != nil {
 			msh.WriteToPtyBuffer("*error, cannot find local mshell binary: %v\n", err)
 			return

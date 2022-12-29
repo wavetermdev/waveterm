@@ -856,6 +856,26 @@ func EnsureLocalRemote(ctx context.Context) error {
 		return err
 	}
 	log.Printf("[db] added local remote '%s', id=%s\n", localRemote.RemoteCanonicalName, localRemote.RemoteId)
+	sudoRemote := &RemoteType{
+		RemoteId:            scbase.GenPromptUUID(),
+		PhysicalId:          "",
+		RemoteType:          RemoteTypeSsh,
+		RemoteAlias:         "sudo",
+		RemoteCanonicalName: fmt.Sprintf("sudo@%s@%s", user.Username, hostName),
+		RemoteSudo:          true,
+		RemoteUser:          "root",
+		RemoteHost:          hostName,
+		ConnectMode:         ConnectModeManual,
+		AutoInstall:         true,
+		SSHOpts:             &SSHOpts{Local: true},
+		RemoteOpts:          &RemoteOptsType{Color: "red"},
+		Local:               true,
+	}
+	err = UpsertRemote(ctx, sudoRemote)
+	if err != nil {
+		return err
+	}
+	log.Printf("[db] added sudo remote '%s', id=%s\n", sudoRemote.RemoteCanonicalName, sudoRemote.RemoteId)
 	return nil
 }
 
