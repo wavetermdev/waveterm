@@ -5,7 +5,8 @@ node_modules/
 *.log
 out/
 .DS_Store
-bin
+bin/
+dev-bin/
 *.pw
 build/
 *.dmg
