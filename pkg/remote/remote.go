@@ -39,9 +39,6 @@ const RemoteTermRows = 8
 const RemoteTermCols = 80
 const PtyReadBufSize = 100
 
-const MShellVersion = "v0.2.0"
-const MShellVersionConstraint = "^0.2"
-
 const MShellServerCommandFmt = `
 PATH=$PATH:~/.mshell;
 which mshell-[%VERSION%] > /dev/null;
@@ -53,8 +50,16 @@ else
 fi
 `
 
+func MakeLocalMShellCommandStr() (string, error) {
+	mshellPath, err := scbase.LocalMShellBinaryPath()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s --server", mshellPath), nil
+}
+
 func MakeServerCommandStr() string {
-	return strings.ReplaceAll(MShellServerCommandFmt, "[%VERSION%]", semver.MajorMinor(base.MShellVersion))
+	return strings.ReplaceAll(MShellServerCommandFmt, "[%VERSION%]", semver.MajorMinor(scbase.MShellVersion))
 }
 
 const (
@@ -65,8 +70,8 @@ const (
 )
 
 func init() {
-	if MShellVersion != base.MShellVersion {
-		panic(fmt.Sprintf("sh2-server mshell version must match '%s' vs '%s'", MShellVersion, base.MShellVersion))
+	if scbase.MShellVersion != base.MShellVersion {
+		panic(fmt.Sprintf("sh2-server mshell version must match '%s' vs '%s'", scbase.MShellVersion, base.MShellVersion))
 	}
 }
 
@@ -871,7 +876,7 @@ func (msh *MShellProc) RunInstall() {
 		msh.WriteToPtyBuffer("*error: cannot install on remote that is already trying to install, cancel current install to try again\n")
 		return
 	}
-	msh.WriteToPtyBuffer("installing mshell %s to %s...\n", MShellVersion, remoteCopy.RemoteCanonicalName)
+	msh.WriteToPtyBuffer("installing mshell %s to %s...\n", scbase.MShellVersion, remoteCopy.RemoteCanonicalName)
 	sshOpts := convertSSHOpts(remoteCopy.SSHOpts)
 	sshOpts.SSHErrorsToTty = true
 	cmdStr := shexec.MakeInstallCommandStr()
@@ -900,7 +905,7 @@ func (msh *MShellProc) RunInstall() {
 	msgFn := func(msg string) {
 		msh.WriteToPtyBuffer("%s", msg)
 	}
-	err = shexec.RunInstallFromCmd(clientCtx, ecmd, true, nil, scbase.MShellBinaryFromPackage, msgFn)
+	err = shexec.RunInstallFromCmd(clientCtx, ecmd, true, nil, scbase.MShellBinaryReader, msgFn)
 	if err == context.Canceled {
 		msh.WriteToPtyBuffer("*install canceled\n")
 		msh.WithLock(func() {
@@ -919,7 +924,7 @@ func (msh *MShellProc) RunInstall() {
 		msh.InstallCancelFn = nil
 		msh.NeedsMShellUpgrade = false
 	})
-	msh.WriteToPtyBuffer("successfully installed mshell %s\n", MShellVersion)
+	msh.WriteToPtyBuffer("successfully installed mshell %s\n", scbase.MShellVersion)
 	go msh.NotifyRemoteUpdate()
 	return
 }
@@ -1018,7 +1023,18 @@ func (msh *MShellProc) Launch() {
 	if remoteCopy.ConnectMode != sstore.ConnectModeManual && remoteCopy.SSHOpts.SSHPassword == "" {
 		sshOpts.BatchMode = true
 	}
-	cmdStr := MakeServerCommandStr()
+	var cmdStr string
+	if sshOpts.SSHHost == "" {
+		var err error
+		cmdStr, err = MakeLocalMShellCommandStr()
+		if err != nil {
+			msh.WriteToPtyBuffer("*error, cannot find local mshell binary: %v\n", err)
+			return
+		}
+		log.Printf("local mshell binary: %s\n", cmdStr)
+	} else {
+		cmdStr = MakeServerCommandStr()
+	}
 	ecmd := sshOpts.MakeSSHExecCmd(cmdStr)
 	cmdPty, err := msh.addControllingTty(ecmd)
 	if err != nil {
@@ -1053,7 +1069,7 @@ func (msh *MShellProc) Launch() {
 		if initPk != nil {
 			msh.UName = initPk.UName
 			mshellVersion = initPk.Version
-			if semver.Compare(mshellVersion, MShellVersion) < 0 {
+			if semver.Compare(mshellVersion, scbase.MShellVersion) < 0 {
 				// only set NeedsMShellUpgrade if we got an InitPk
 				msh.NeedsMShellUpgrade = true
 			}
@@ -1077,8 +1093,8 @@ func (msh *MShellProc) Launch() {
 		})
 		return
 	}
-	if err == nil && semver.MajorMinor(mshellVersion) != semver.MajorMinor(MShellVersion) {
-		err = fmt.Errorf("mshell version is not compatible current=%s remote=%s", MShellVersion, mshellVersion)
+	if err == nil && semver.MajorMinor(mshellVersion) != semver.MajorMinor(scbase.MShellVersion) {
+		err = fmt.Errorf("mshell version is not compatible current=%s remote=%s", scbase.MShellVersion, mshellVersion)
 	}
 	if err != nil {
 		msh.setErrorStatus(err)

@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"runtime"
 	"strconv"
 	"sync"
 
@@ -27,6 +28,7 @@ const PromptDevDirName = "prompt-dev"
 const PromptAppPathVarName = "PROMPT_APP_PATH"
 const PromptVersion = "v0.1.0"
 const PromptAuthKeyFileName = "prompt.authkey"
+const MShellVersion = "v0.2.0"
 
 var SessionDirCache = make(map[string]string)
 var BaseLock = &sync.Mutex{}
@@ -55,24 +57,43 @@ func GetPromptHomeDir() string {
 	return scHome
 }
 
-func MShellBinaryFromPackage(version string, goos string, goarch string) (io.ReadCloser, error) {
+func MShellBinaryDir() string {
 	appPath := os.Getenv(PromptAppPathVarName)
 	if appPath == "" {
-		return base.MShellBinaryFromOptDir(version, goos, goarch)
+		appPath = "."
 	}
+	if IsDevMode() {
+		return path.Join(appPath, "dev-bin")
+	}
+	return path.Join(appPath, "bin", "mshell")
+}
+
+func MShellBinaryPath(version string, goos string, goarch string) (string, error) {
 	if !base.ValidGoArch(goos, goarch) {
-		return nil, fmt.Errorf("invalid goos/goarch combination: %s/%s", goos, goarch)
+		return "", fmt.Errorf("invalid goos/goarch combination: %s/%s", goos, goarch)
 	}
+	binaryDir := MShellBinaryDir()
 	versionStr := semver.MajorMinor(version)
 	if versionStr == "" {
-		return nil, fmt.Errorf("invalid mshell version: %q", version)
+		return "", fmt.Errorf("invalid mshell version: %q", version)
 	}
 	fileName := fmt.Sprintf("mshell-%s-%s.%s", versionStr, goos, goarch)
-	fullFileName := path.Join(appPath, "bin", "mshell", fileName)
-	log.Printf("mshell-binary %q\n", fullFileName)
-	fd, err := os.Open(fullFileName)
+	fullFileName := path.Join(binaryDir, fileName)
+	return fullFileName, nil
+}
+
+func LocalMShellBinaryPath() (string, error) {
+	return MShellBinaryPath(MShellVersion, runtime.GOOS, runtime.GOARCH)
+}
+
+func MShellBinaryReader(version string, goos string, goarch string) (io.ReadCloser, error) {
+	mshellPath, err := MShellBinaryPath(version, goos, goarch)
 	if err != nil {
-		return nil, fmt.Errorf("cannot open mshell binary %q: %v", fullFileName, err)
+		return nil, err
+	}
+	fd, err := os.Open(mshellPath)
+	if err != nil {
+		return nil, fmt.Errorf("cannot open mshell binary %q: %v", mshellPath, err)
 	}
 	return fd, nil
 }
