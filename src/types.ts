@@ -80,6 +80,10 @@ type ScreenWindowType = {
     remove? : boolean,
 };
 
+type RemoteOptsType = {
+    color : string,
+};
+
 type RemoteType = {
     remotetype : string,
     remoteid : string,
@@ -100,6 +104,7 @@ type RemoteType = {
     mshellversion : string,
     needsmshellupgrade : boolean,
     waitingforpassword : boolean,
+    remoteopts? : RemoteOptsType,
     local : boolean,
     remove? : boolean,
 };

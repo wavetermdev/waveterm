@@ -205,9 +205,12 @@ class Prompt extends React.Component<{rptr : RemotePtrType, festate : FeStateTyp
                 isRoot = true;
             }
         }
-        let className = (isRoot ? "term-bright-red" : "term-bright-green");
+        let colorClass = (isRoot ? "color-red" : "color-green");
+        if (remote && remote.remoteopts && remote.remoteopts.color) {
+            colorClass = "color-" + remote.remoteopts.color;
+        }
         return (
-            <span className="term-bright-green">[{remoteStr}] {cwd} {isRoot ? "#" : "$"}</span>
+            <span className={cn("term-prompt", colorClass)}>[{remoteStr}] {cwd} {isRoot ? "#" : "$"}</span>
         );
     }
 }
