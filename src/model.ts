@@ -1579,10 +1579,16 @@ class Model {
     }
 
     getBaseHostPort() : string {
+        if (this.isDev) {
+            return "http://localhost:8090";
+        }
         return "http://localhost:8080";
     }
 
     getBaseWsHostPort() : string {
+        if (this.isDev) {
+            return "ws://localhost:8091";
+        }
         return "ws://localhost:8081";
     }
 

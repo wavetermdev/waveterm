@@ -2484,12 +2484,16 @@ class MainSideBar extends React.Component<{}, {}> {
                 sessionList.push(session);
             }
         }
+        let isCollapsed = this.collapsed.get();
         return (
-            <div className={cn("main-sidebar", {"collapsed": this.collapsed.get()})}>
+            <div className={cn("main-sidebar", {"collapsed": isCollapsed})}>
+                <h1 className={cn("title", "prompt-logo-small", {"collapsed": isCollapsed})}>
+                    {(isCollapsed ? "[p]" : "[prompt]")}
+                </h1>
                 <div className="collapse-container">
                     <div className="arrow-container" onClick={this.toggleCollapsed}>
-                        <If condition={!this.collapsed.get()}><i className="fa fa-arrow-left"/></If>
-                        <If condition={this.collapsed.get()}><i className="fa fa-arrow-right"/></If>
+                        <If condition={!isCollapsed}><i className="fa fa-arrow-left"/></If>
+                        <If condition={isCollapsed}><i className="fa fa-arrow-right"/></If>
                     </div>
                 </div>
                 <div className="menu">
@@ -2660,10 +2664,6 @@ class Main extends React.Component<{}, {}> {
     render() {
         return (
             <div id="main">
-                <h1 className="title prompt-logo-small">
-                    [prompt]
-                    <span className="title-cursor">&#9608;</span>
-                </h1>
                 <div className="main-content">
                     <MainSideBar/>
                     <SessionView/>

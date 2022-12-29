@@ -49,7 +49,7 @@ html, body, #main {
         display: flex;
         flex-direction: row;
         background-color: black;
-        height: calc(100% - 45px);
+        height: 100%;
 
         .session-view {
             flex-grow: 1;
@@ -171,7 +171,7 @@ html, body, #main {
 }
 
 .title.prompt-logo-small {
-    padding-left: 10px;
+    padding-left: 5px;
     padding-top: 8px;
     padding-bottom: 8px;
     margin-bottom: 0;
@@ -180,6 +180,12 @@ html, body, #main {
     color: rgb(0, 177, 10);
     position: relative;
     border-bottom: 2px solid #ddd;
+    white-space: nowrap;
+    overflow: hidden;
+
+    &.collapsed {
+        padding-left: 1px;
+    }
 
     .title-cursor {
         position: relative;
@@ -352,7 +358,7 @@ html, body, #main {
     }
 
     &.collapsed {
-        width: 50px;
+        width: 55px;
 
         .collapse-container {
             right: 12px;
@@ -366,7 +372,7 @@ html, body, #main {
     .collapse-container {
         position: absolute;
         right: 3px;
-        top: -4px;
+        top: 42px;
 
         .arrow-container {
             color: #777;
