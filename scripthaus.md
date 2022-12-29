@@ -1,16 +1,16 @@
 # SH2 Server Commands
 
 ```bash
-# @scripthaus command dump-schema
-sqlite3 /Users/mike/prompt/prompt.db .schema > db/schema.sql
+# @scripthaus command dump-schema-dev
+sqlite3 /Users/mike/prompt-dev/prompt.db .schema > db/schema.sql
 ```
 
 ```bash
-# @scripthaus command opendb
-sqlite3 /Users/mike/prompt/prompt.db
+# @scripthaus command opendb-dev
+sqlite3 /Users/mike/prompt-dev/prompt.db
 ```
 
 ```bash
 # @scripthaus command build
-go build -o ~/prompt/local-server cmd/main-server.go
+go build -o ~/prompt-dev/local-server cmd/main-server.go
 ```

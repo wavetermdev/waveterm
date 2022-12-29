@@ -348,15 +348,19 @@ func AuthKeyWrap(fn WebFnType) WebFnType {
 func runWebSocketServer() {
 	gr := mux.NewRouter()
 	gr.HandleFunc("/ws", HandleWs)
+	serverAddr := WebSocketServerAddr
+	if scbase.IsDevMode() {
+		serverAddr = WebSocketServerDevAddr
+	}
 	server := &http.Server{
-		Addr:           WebSocketServerAddr,
+		Addr:           serverAddr,
 		ReadTimeout:    HttpReadTimeout,
 		WriteTimeout:   HttpWriteTimeout,
 		MaxHeaderBytes: HttpMaxHeaderBytes,
 		Handler:        gr,
 	}
 	server.SetKeepAlivesEnabled(false)
-	log.Printf("Running websocket server on %s\n", WebSocketServerAddr)
+	log.Printf("Running websocket server on %s\n", serverAddr)
 	err := server.ListenAndServe()
 	if err != nil {
 		log.Printf("[error] trying to run websocket server: %v\n", err)
@@ -453,15 +457,19 @@ func main() {
 	gr.HandleFunc("/api/run-command", AuthKeyWrap(HandleRunCommand)).Methods("POST")
 	gr.HandleFunc("/api/get-client-data", AuthKeyWrap(HandleGetClientData))
 	gr.HandleFunc("/api/set-winsize", AuthKeyWrap(HandleSetWinSize))
+	serverAddr := MainServerAddr
+	if scbase.IsDevMode() {
+		serverAddr = MainServerDevAddr
+	}
 	server := &http.Server{
-		Addr:           MainServerAddr,
+		Addr:           serverAddr,
 		ReadTimeout:    HttpReadTimeout,
 		WriteTimeout:   HttpWriteTimeout,
 		MaxHeaderBytes: HttpMaxHeaderBytes,
 		Handler:        http.TimeoutHandler(gr, HttpTimeoutDuration, "Timeout"),
 	}
 	server.SetKeepAlivesEnabled(false)
-	log.Printf("Running main server on %s\n", MainServerAddr)
+	log.Printf("Running main server on %s\n", serverAddr)
 	err = server.ListenAndServe()
 	if err != nil {
 		log.Printf("ERROR: %v\n", err)

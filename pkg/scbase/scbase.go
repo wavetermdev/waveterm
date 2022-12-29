@@ -31,6 +31,11 @@ const PromptAuthKeyFileName = "prompt.authkey"
 var SessionDirCache = make(map[string]string)
 var BaseLock = &sync.Mutex{}
 
+func IsDevMode() bool {
+	pdev := os.Getenv(PromptDevVarName)
+	return pdev != ""
+}
+
 // must match js
 func GetPromptHomeDir() string {
 	scHome := os.Getenv(PromptHomeVarName)

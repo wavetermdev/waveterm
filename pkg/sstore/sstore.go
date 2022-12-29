@@ -94,6 +94,9 @@ func GetDB(ctx context.Context) (*sqlx.DB, error) {
 		globalDB, globalDBErr = sqlx.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000", dbName))
 		if globalDBErr != nil {
 			globalDBErr = fmt.Errorf("opening db[%s]: %w", dbName, globalDBErr)
+			log.Printf("[db] error: %v\n", globalDBErr)
+		} else {
+			log.Printf("[db] successfully opened db %s\n", dbName)
 		}
 	}
 	return globalDB, globalDBErr
