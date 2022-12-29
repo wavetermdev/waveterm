@@ -272,8 +272,13 @@ func resolveUiIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype i
 		if !rtn.Remote.RState.IsConnected() {
 			err = rtn.Remote.MShell.TryAutoConnect()
 			if err != nil {
-				return rtn, fmt.Errorf("error trying to auto-connect remote %q", rtn.Remote.DisplayName)
+				return rtn, fmt.Errorf("error trying to auto-connect remote %q: %w", rtn.Remote.DisplayName, err)
 			}
+			rrNew, err := resolveRemoteFromPtr(ctx, rptr, rtn.SessionId, rtn.WindowId)
+			if err != nil {
+				return rtn, err
+			}
+			rtn.Remote = rrNew
 		}
 		if !rtn.Remote.RState.IsConnected() {
 			return rtn, fmt.Errorf("remote %q is not connected", rtn.Remote.DisplayName)

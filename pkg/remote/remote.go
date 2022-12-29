@@ -1828,13 +1828,13 @@ func (msh *MShellProc) TryAutoConnect() error {
 		return nil
 	}
 	rcopy := msh.GetRemoteCopy()
-	if !rcopy.AutoInstall {
+	if rcopy.ConnectMode == sstore.ConnectModeManual {
 		return nil
 	}
 	var err error
 	msh.WithLock(func() {
 		if msh.NumTryConnect > 5 {
-			err = fmt.Errorf("cannot auto-connect remote %q (too many unsuccessful tries)", msh.Remote.GetName())
+			err = fmt.Errorf("too many unsuccessful tries")
 			return
 		}
 		msh.NumTryConnect++
@@ -1843,5 +1843,8 @@ func (msh *MShellProc) TryAutoConnect() error {
 		return err
 	}
 	msh.Launch()
+	if !msh.IsConnected() {
+		return fmt.Errorf("error connecting")
+	}
 	return nil
 }
