@@ -193,11 +193,12 @@ class LineText extends React.Component<{sw : ScreenWindow, line : LineType}, {}>
 @mobxReact.observer
 class Prompt extends React.Component<{rptr : RemotePtrType, festate : FeStateType}, {}> {
     render() {
-        let remote : RemoteType = null;
-        if (this.props.rptr && !isBlank(this.props.rptr.remoteid)) {
-            remote = GlobalModel.getRemote(this.props.rptr.remoteid);
+        let rptr = this.props.rptr;
+        if (rptr == null || isBlank(rptr.remoteid)) {
+            return <span className={cn("term-prompt", "color-green")}>&nbsp;</span>
         }
-        let remoteStr = getRemoteStr(this.props.rptr);
+        let remote = GlobalModel.getRemote(this.props.rptr.remoteid);
+        let remoteStr = getRemoteStr(rptr);
         let cwd = getCwdStr(remote, this.props.festate);
         let isRoot = false;
         if (remote && remote.remotevars) {

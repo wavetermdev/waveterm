@@ -76,6 +76,7 @@ open out/Prompt-darwin-x64/Prompt.app
 ```bash
 # @scripthaus command create-dmg
 # @scripthaus cd :playbook
+rm Prompt.dmg rw.Prompt.dmg
 ../../create-dmg/create-dmg/create-dmg \
   --volname "Prompt" \
   --window-pos 200 120 \
