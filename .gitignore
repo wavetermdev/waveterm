@@ -6,7 +6,7 @@ node_modules/
 out/
 .DS_Store
 bin/
-dev-bin/
+dev-bin
 *.pw
 build/
 *.dmg
