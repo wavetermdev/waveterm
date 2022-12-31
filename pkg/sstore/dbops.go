@@ -1776,3 +1776,22 @@ func PurgeLineById(ctx context.Context, sessionId string, lineId string) error {
 	})
 	return txErr
 }
+
+func GetRIsForWindow(ctx context.Context, sessionId string, windowId string) ([]*RemoteInstance, error) {
+	var rtn []*RemoteInstance
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT * FROM remote_instance WHERE sessionid = ? AND (windowid = '' OR windowid = ?)`
+		riMaps := tx.SelectMaps(query, sessionId, windowId)
+		for _, m := range riMaps {
+			ri := RIFromMap(m)
+			if ri != nil {
+				rtn = append(rtn, ri)
+			}
+		}
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	return rtn, nil
+}

@@ -1012,6 +1012,55 @@ func RemoteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	return nil, fmt.Errorf("/remote requires a subcommand: %s", formatStrs([]string{"show"}, "or", false))
 }
 
+func crShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, ids resolvedIds) (sstore.UpdatePacket, error) {
+	var buf bytes.Buffer
+	riArr, err := sstore.GetRIsForWindow(ctx, ids.SessionId, ids.WindowId)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get remote instances: %w", err)
+	}
+	rmap := remote.GetRemoteMap()
+	for _, ri := range riArr {
+		rptr := sstore.RemotePtrType{RemoteId: ri.RemoteId, Name: ri.Name}
+		msh := rmap[ri.RemoteId]
+		if msh == nil {
+			continue
+		}
+		baseDisplayName := msh.GetDisplayName()
+		displayName := rptr.GetDisplayName(baseDisplayName)
+		cwdStr := "-"
+		if ri.FeState.Cwd != "" {
+			cwdStr = ri.FeState.Cwd
+		}
+		buf.WriteString(fmt.Sprintf("%-30s %-50s\n", displayName, cwdStr))
+	}
+	riBaseMap := make(map[string]bool)
+	for _, ri := range riArr {
+		if ri.Name == "" {
+			riBaseMap[ri.RemoteId] = true
+		}
+	}
+	for remoteId, msh := range rmap {
+		if riBaseMap[remoteId] {
+			continue
+		}
+		feState := msh.GetDefaultFeState()
+		if feState == nil {
+			continue
+		}
+		cwdStr := "-"
+		if feState.Cwd != "" {
+			cwdStr = feState.Cwd
+		}
+		buf.WriteString(fmt.Sprintf("%-30s %-50s (default)\n", msh.GetDisplayName(), cwdStr))
+	}
+	update := sstore.ModelUpdate{
+		Info: &sstore.InfoMsgType{
+			InfoLines: splitLinesForInfo(buf.String()),
+		},
+	}
+	return update, nil
+}
+
 func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window)
 	if err != nil {
@@ -1019,7 +1068,7 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 	}
 	newRemote := firstArg(pk)
 	if newRemote == "" {
-		return nil, nil
+		return crShowCommand(ctx, pk, ids)
 	}
 	remoteName, rptr, rstate, err := resolveRemote(ctx, newRemote, ids.SessionId, ids.WindowId)
 	if err != nil {

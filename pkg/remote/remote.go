@@ -202,17 +202,11 @@ func (state RemoteRuntimeState) GetBaseDisplayName() string {
 }
 
 func (state RemoteRuntimeState) GetDisplayName(rptr *sstore.RemotePtrType) string {
-	name := state.GetBaseDisplayName()
+	baseDisplayName := state.GetBaseDisplayName()
 	if rptr == nil {
-		return name
+		return baseDisplayName
 	}
-	if rptr.Name != "" {
-		name = name + ":" + rptr.Name
-	}
-	if rptr.OwnerId != "" {
-		name = "@" + rptr.OwnerId + ":" + name
-	}
-	return name
+	return rptr.GetDisplayName(baseDisplayName)
 }
 
 func LoadRemotes(ctx context.Context) error {
@@ -385,6 +379,16 @@ func GetRemoteById(remoteId string) *MShellProc {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
 	return GlobalStore.Map[remoteId]
+}
+
+func GetRemoteMap() map[string]*MShellProc {
+	GlobalStore.Lock.Lock()
+	defer GlobalStore.Lock.Unlock()
+	rtn := make(map[string]*MShellProc)
+	for remoteId, msh := range GlobalStore.Map {
+		rtn[remoteId] = msh
+	}
+	return rtn
 }
 
 func GetLocalRemote() *MShellProc {
@@ -1886,4 +1890,9 @@ func (msh *MShellProc) TryAutoConnect() error {
 		return fmt.Errorf("error connecting")
 	}
 	return nil
+}
+
+func (msh *MShellProc) GetDisplayName() string {
+	rcopy := msh.GetRemoteCopy()
+	return rcopy.GetName()
 }

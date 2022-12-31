@@ -210,6 +210,20 @@ func (r RemotePtrType) IsSessionScope() bool {
 	return strings.HasPrefix(r.Name, "*")
 }
 
+func (rptr *RemotePtrType) GetDisplayName(baseDisplayName string) string {
+	name := baseDisplayName
+	if rptr == nil {
+		return name
+	}
+	if rptr.Name != "" {
+		name = name + ":" + rptr.Name
+	}
+	if rptr.OwnerId != "" {
+		name = "@" + rptr.OwnerId + ":" + name
+	}
+	return name
+}
+
 func (r RemotePtrType) Validate() error {
 	if r.OwnerId != "" {
 		if _, err := uuid.Parse(r.OwnerId); err != nil {
