@@ -18,6 +18,6 @@ contextBridge.exposeInMainWorld("api", {
     onBracketCmd: (callback) => ipcRenderer.on("bracket-cmd", callback),
     onDigitCmd: (callback) => ipcRenderer.on("digit-cmd", callback),
     contextScreen: (screenOpts, position) => ipcRenderer.send("context-screen", screenOpts, position),
-    contextEditMenu: (position) => ipcRenderer.send("context-editmenu", position),
+    contextEditMenu: (position, opts) => ipcRenderer.send("context-editmenu", position, opts),
     onLocalServerStatusChange: (callback) => ipcRenderer.on("local-server-status-change", callback),
 });

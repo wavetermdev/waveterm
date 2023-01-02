@@ -354,17 +354,6 @@ function getContextMenu() : any {
     return menu;
 }
 
-function getCutCopyPasteMenu() : any {
-    let menu = new electron.Menu();
-    let menuItem = new electron.MenuItem({label: "Cut", role: "cut"});
-    menu.append(menuItem);
-    menuItem = new electron.MenuItem({label: "Copy", role: "copy"});
-    menu.append(menuItem);
-    menuItem = new electron.MenuItem({label: "Paste", role: "paste"});
-    menu.append(menuItem);
-    return menu;
-}
-
 function getFetchHeaders() {
     return {
         "x-authkey": GlobalAuthKey,
@@ -448,9 +437,21 @@ electron.ipcMain.on("context-screen", (event, {screenId}, {x, y}) => {
     menu.popup({x, y});
 });
 
-electron.ipcMain.on("context-editmenu", (event, {x, y}) => {
+electron.ipcMain.on("context-editmenu", (event, {x, y}, opts) => {
+    if (opts == null) {
+        opts = {};
+    }
     console.log("context-editmenu");
-    let menu = getCutCopyPasteMenu();
+    let menu = new electron.Menu();
+    let menuItem = null;
+    if (opts.showCut) {
+        menuItem = new electron.MenuItem({label: "Cut", role: "cut"});
+        menu.append(menuItem);
+    }
+    menuItem = new electron.MenuItem({label: "Copy", role: "copy"});
+    menu.append(menuItem);
+    menuItem = new electron.MenuItem({label: "Paste", role: "paste"});
+    menu.append(menuItem);
     menu.popup({x, y});
 });
 

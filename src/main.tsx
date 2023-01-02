@@ -9,7 +9,7 @@ import dayjs from "dayjs";
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import cn from "classnames";
 import {TermWrap} from "./term";
-import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts, RemoteEditType, FeStateType} from "./types";
+import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts, RemoteEditType, FeStateType, ContextMenuOpts} from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, ScreenWindow, riToRPtr, widthToCols, termWidthFromCols, termHeightFromRows, termRowsFromHeight} from "./model";
 import {isModKeyPress} from "./util";
@@ -2672,9 +2672,36 @@ class Main extends React.Component<{}, {}> {
         super(props);
     }
 
+    @boundMethod
+    handleContextMenu(e : any) {
+        let isInNonTermInput = false;
+        let activeElem = document.activeElement;
+        if (activeElem != null && activeElem.nodeName == "TEXTAREA") {
+            if (!activeElem.classList.contains("xterm-helper-textarea")) {
+                isInNonTermInput = true;
+            }
+        }
+        if (activeElem != null && activeElem.nodeName == "INPUT" && activeElem.getAttribute("type") == "text") {
+            isInNonTermInput = true;
+        }
+        let opts : ContextMenuOpts = {};
+        if (isInNonTermInput) {
+            opts.showCut = true;
+        }
+        let sel = window.getSelection();
+        if (!isBlank(sel.toString())) {
+            GlobalModel.contextEditMenu(e, opts);
+        }
+        else {
+            if (isInNonTermInput) {
+                GlobalModel.contextEditMenu(e, opts);
+            }
+        }
+    }
+
     render() {
         return (
-            <div id="main">
+            <div id="main" onContextMenu={this.handleContextMenu}>
                 <div className="main-content">
                     <MainSideBar/>
                     <SessionView/>

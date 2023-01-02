@@ -108,10 +108,6 @@ class TermWrap {
             this.terminal.attachCustomKeyEventHandler((e) => opts.customKeyHandler(e, this));
         }
         this.reloadTerminal(0);
-        elem.addEventListener("contextmenu", (e) => {
-            console.log("elem-contextmenu", elem, e);
-            GlobalModel.contextEditMenu(e);
-        });
     }
 
     @boundMethod
