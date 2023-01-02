@@ -402,6 +402,13 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
     @boundMethod
     handleClick() {
         let {line} = this.props;
+        let sel = window.getSelection();
+        if (this.lineRef.current != null) {
+            let selText = sel.toString();
+            if (sel.anchorNode != null && this.lineRef.current.contains(sel.anchorNode) && !isBlank(selText)) {
+                return;
+            }
+        }
         GlobalCommandRunner.swSelectLine(String(line.linenum), "cmd");
     }
 
@@ -456,15 +463,15 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
             <div className={mainDivCn} id={"line-" + getLineId(line)}
                  ref={this.lineRef} onClick={this.handleClick}
                  data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} data-cmdid={line.cmdid}>
-                <div className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused}, {"fg-focus": isFgFocused})}/>
-                <div className="line-header">
+                <div key="focus" className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused}, {"fg-focus": isFgFocused})}/>
+                <div key="header" className="line-header">
                     <LineAvatar line={line} cmd={cmd}/>
-                    <div className="meta-wrap">
-                        <div className="meta">
+                    <div key="meta" className="meta-wrap">
+                        <div key="meta1" className="meta">
                             <div className="user" style={{display: "none"}}>{line.userid}</div>
                             <div className="ts">{formattedTime}</div>
                         </div>
-                        <div className="meta">
+                        <div key="meta2" className="meta">
                             <div className="metapart-mono" style={{display: "none"}}>
                                 {line.cmdid}
                                 ({termOpts.rows}x{termOpts.cols})
@@ -472,8 +479,8 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                             {this.renderCmdText(cmd, remote)}
                         </div>
                     </div>
-                    <div className="flex-spacer"/>
-                    <div className={cn("line-star", {"active": line.star > 0})} onClick={this.clickStar}>
+                    <div key="spacer" className="flex-spacer"/>
+                    <div key="star" className={cn("line-star", {"active": line.star > 0})} onClick={this.clickStar}>
                         <If condition={!line.star || line.star == 0}>
                             <i className="fa fa-star-o"/>
                         </If>
@@ -482,15 +489,15 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                         </If>
                     </div>
                 </div>
-                <div className={cn("terminal-wrapper", {"focus": isFocused}, {"cmd-done": !cmd.isRunning()}, {"zero-height": (termHeight == 0)})}>
+                <div key="term-wrap" className={cn("terminal-wrapper", {"focus": isFocused}, {"cmd-done": !cmd.isRunning()}, {"zero-height": (termHeight == 0)})}>
                     <If condition={!isFocused}>
-                        <div className="term-block" onClick={this.clickTermBlock}></div>
+                        <div key="term-block" className="term-block" onClick={this.clickTermBlock}></div>
                     </If>
-                    <div className="terminal-connectelem" id={"term-" + getLineId(line)} data-cmdid={line.cmdid} style={{height: termHeight}}></div>
-                    <If condition={!termLoaded}><div className="terminal-loading-message">(loading)</div></If>
+                    <div key="term-connectelem" className="terminal-connectelem" id={"term-" + getLineId(line)} data-cmdid={line.cmdid} style={{height: termHeight}}></div>
+                    <If condition={!termLoaded}><div key="term-loading" className="terminal-loading-message">(loading)</div></If>
                 </div>
                 <If condition={cmd.getRtnState()}>
-                    <div className="cmd-rtnstate" style={{visibility: ((cmd.getStatus() == "done") ? "visible" : "hidden")}}>
+                    <div key="rtnstate" className="cmd-rtnstate" style={{visibility: ((cmd.getStatus() == "done") ? "visible" : "hidden")}}>
                         <If condition={rsdiff == null || rsdiff == ""}>
                             <div className="cmd-rtnstate-label">state unchanged</div>
                             <div className="cmd-rtnstate-sep"></div>

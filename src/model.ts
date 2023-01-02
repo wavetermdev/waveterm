@@ -107,6 +107,7 @@ type ElectronApi = {
     onBracketCmd : (callback : (event : any, arg : {relative : number}, mods : KeyModsType) => void) => void,
     onDigitCmd : (callback : (event : any, arg : {digit : number}, mods : KeyModsType) => void) => void,
     contextScreen : (screenOpts : {screenId : string}, position : {x : number, y : number}) => void,
+    contextEditMenu : (position : {x : number, y : number}) => void,
     onLocalServerStatusChange : (callback : (status : boolean, pid : number) => void) => void,
 };
 
@@ -1576,6 +1577,7 @@ class Model {
         getApi().onDigitCmd(this.onDigitCmd.bind(this));
         getApi().onLocalServerStatusChange(this.onLocalServerStatusChange.bind(this));
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
+        document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
     }
 
     getBaseHostPort() : string {
@@ -1596,6 +1598,10 @@ class Model {
         return {
             "x-authkey": this.authKey,
         };
+    }
+
+    docSelectionChangeHandler(e : any) {
+        // nothing for now
     }
 
     docKeyDownHandler(e : any) {
@@ -1649,8 +1655,11 @@ class Model {
     }
     
     contextScreen(e : any, screenId : string) {
-        console.log("model", screenId);
         getApi().contextScreen({screenId: screenId}, {x: e.x, y: e.y});
+    }
+
+    contextEditMenu(e : any) {
+        getApi().contextEditMenu({x: e.x, y: e.y});
     }
 
     getUIContext() : UIContextType {

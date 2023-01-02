@@ -354,6 +354,17 @@ function getContextMenu() : any {
     return menu;
 }
 
+function getCutCopyPasteMenu() : any {
+    let menu = new electron.Menu();
+    let menuItem = new electron.MenuItem({label: "Cut", role: "cut"});
+    menu.append(menuItem);
+    menuItem = new electron.MenuItem({label: "Copy", role: "copy"});
+    menu.append(menuItem);
+    menuItem = new electron.MenuItem({label: "Paste", role: "paste"});
+    menu.append(menuItem);
+    return menu;
+}
+
 function getFetchHeaders() {
     return {
         "x-authkey": GlobalAuthKey,
@@ -434,6 +445,12 @@ function runLocalServer() {
 electron.ipcMain.on("context-screen", (event, {screenId}, {x, y}) => {
     console.log("context-screen", screenId);
     let menu = getContextMenu();
+    menu.popup({x, y});
+});
+
+electron.ipcMain.on("context-editmenu", (event, {x, y}) => {
+    console.log("context-editmenu");
+    let menu = getCutCopyPasteMenu();
     menu.popup({x, y});
 });
 
