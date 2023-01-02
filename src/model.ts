@@ -2242,7 +2242,7 @@ class CommandRunner {
         if (htype != null && htype != "window") {
             kwargs["type"] = htype;
         }
-        GlobalModel.submitCommand("_history", null, null, kwargs, true);
+        GlobalModel.submitCommand("history", null, null, kwargs, true);
     }
 
     switchSession(session : string) {
