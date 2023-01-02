@@ -1665,15 +1665,28 @@ func ClearCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 	if err != nil {
 		return nil, err
 	}
-	update, err := sstore.ClearWindow(ctx, ids.SessionId, ids.WindowId)
-	if err != nil {
-		return nil, fmt.Errorf("clearing window: %v", err)
+	if resolveBool(pk.Kwargs["purge"], false) {
+		update, err := sstore.PurgeWindowLines(ctx, ids.SessionId, ids.WindowId)
+		if err != nil {
+			return nil, fmt.Errorf("clearing window: %v", err)
+		}
+		update.Info = &sstore.InfoMsgType{
+			InfoMsg:   fmt.Sprintf("window cleared (all lines purged)"),
+			TimeoutMs: 2000,
+		}
+		return update, nil
+	} else {
+		update, err := sstore.ArchiveWindowLines(ctx, ids.SessionId, ids.WindowId)
+		if err != nil {
+			return nil, fmt.Errorf("clearing window: %v", err)
+		}
+		update.Info = &sstore.InfoMsgType{
+			InfoMsg:   fmt.Sprintf("window cleared"),
+			TimeoutMs: 2000,
+		}
+		return update, nil
 	}
-	update.Info = &sstore.InfoMsgType{
-		InfoMsg:   fmt.Sprintf("window cleared"),
-		TimeoutMs: 2000,
-	}
-	return update, nil
+
 }
 
 const DefaultMaxHistoryItems = 10000
