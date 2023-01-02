@@ -852,6 +852,26 @@ func SwitchScreenById(ctx context.Context, sessionId string, screenId string) (U
 	return ModelUpdate{Sessions: []*SessionType{bareSession}}, nil
 }
 
+func cleanSessionCmds(ctx context.Context, sessionId string) error {
+	txErr := WithTx(context.Background(), func(tx *TxWrap) error {
+		query := `SELECT cmdid FROM cmd WHERE sessionid = ? AND cmdid NOT IN (SELECT cmdid FROM line WHERE sessionid = ?)`
+		removedCmds := tx.SelectStrings(query, sessionId, sessionId)
+		query = `DELETE FROM cmd WHERE sessionid = ? AND cmdid NOT IN (SELECT cmdid FROM line WHERE sessionid = ?)`
+		tx.ExecWrap(query, sessionId, sessionId)
+		if tx.Err != nil {
+			return nil
+		}
+		for _, cmdId := range removedCmds {
+			DeletePtyOutFile(tx.Context(), sessionId, cmdId)
+		}
+		return nil
+	})
+	if txErr != nil {
+		return txErr
+	}
+	return nil
+}
+
 func CleanWindows(sessionId string) {
 	txErr := WithTx(context.Background(), func(tx *TxWrap) error {
 		query := `SELECT windowid FROM window WHERE sessionid = ? AND windowid NOT IN (SELECT windowid FROM screen_window WHERE sessionid = ?)`
@@ -867,18 +887,7 @@ func CleanWindows(sessionId string) {
 			query = `DELETE FROM line WHERE sessionid = ? AND windowid = ?`
 			tx.ExecWrap(query, sessionId, windowId)
 		}
-		query = `SELECT cmdid FROM cmd WHERE sessionid = ? AND cmdid NOT IN (SELECT cmdid FROM line WHERE sessionid = ?)`
-		removedCmds := tx.SelectStrings(query, sessionId, sessionId)
-		query = `DELETE FROM cmd WHERE sessionid = ? AND cmdid NOT IN (SELECT cmdid FROM line WHERE sessionid = ?)`
-		tx.ExecWrap(query, sessionId, sessionId)
-		if tx.Err != nil {
-			return nil
-		}
-		fmt.Printf("removed cmds: %v\n", removedCmds)
-		for _, cmdId := range removedCmds {
-			DeletePtyOutFile(tx.Context(), sessionId, cmdId)
-		}
-		return nil
+		return cleanSessionCmds(tx.Context(), sessionId)
 	})
 	if txErr != nil {
 		fmt.Printf("ERROR cleaning windows sessionid:%s: %v\n", sessionId, txErr)
@@ -1219,7 +1228,30 @@ func SetScreenOpts(ctx context.Context, sessionId string, screenId string, opts 
 	return txErr
 }
 
-func ClearWindow(ctx context.Context, sessionId string, windowId string) (*ModelUpdate, error) {
+func ArchiveWindowLines(ctx context.Context, sessionId string, windowId string) (*ModelUpdate, error) {
+	var lineIds []string
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT windowid FROM window WHERE sessionid = ? AND windowid = ?`
+		if !tx.Exists(query, sessionId, windowId) {
+			return fmt.Errorf("window does not exist")
+		}
+		query = `SELECT lineid FROM line WHERE sessionid = ? AND windowid = ?`
+		lineIds = tx.SelectStrings(query, sessionId, windowId)
+		query = `UPDATE line SET archived = 1 WHERE sessionid = ? AND windowid = ?`
+		tx.ExecWrap(query, sessionId, windowId)
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	win, err := GetWindowById(ctx, sessionId, windowId)
+	if err != nil {
+		return nil, err
+	}
+	return &ModelUpdate{Window: win}, nil
+}
+
+func PurgeWindowLines(ctx context.Context, sessionId string, windowId string) (*ModelUpdate, error) {
 	var lineIds []string
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT windowid FROM window WHERE sessionid = ? AND windowid = ?`
@@ -1230,6 +1262,8 @@ func ClearWindow(ctx context.Context, sessionId string, windowId string) (*Model
 		lineIds = tx.SelectStrings(query, sessionId, windowId)
 		query = `DELETE FROM line WHERE sessionid = ? AND windowid = ?`
 		tx.ExecWrap(query, sessionId, windowId)
+		query = `DELETE FROM history WHERE sessionid = ? AND windowid = ?`
+		tx.ExecWrap(query, sessionId, windowId)
 		query = `UPDATE window SET nextlinenum = 1 WHERE sessionid = ? AND windowid = ?`
 		tx.ExecWrap(query, sessionId, windowId)
 		return nil
@@ -1237,6 +1271,7 @@ func ClearWindow(ctx context.Context, sessionId string, windowId string) (*Model
 	if txErr != nil {
 		return nil, txErr
 	}
+	go cleanSessionCmds(context.Background(), sessionId)
 	win, err := GetWindowById(ctx, sessionId, windowId)
 	if err != nil {
 		return nil, err
@@ -1761,6 +1796,8 @@ func PurgeLineById(ctx context.Context, sessionId string, lineId string) error {
 		query := `SELECT cmdid FROM line WHERE sessionid = ? AND lineid = ?`
 		cmdId := tx.GetString(query, sessionId, lineId)
 		query = `DELETE FROM line WHERE sessionid = ? AND lineid = ?`
+		tx.ExecWrap(query, sessionId, lineId)
+		query = `DELETE FROM history WHERE sessionid = ? AND lineid = ?`
 		tx.ExecWrap(query, sessionId, lineId)
 		if cmdId != "" {
 			query = `SELECT count(*) FROM line WHERE sessionid = ? AND cmdid = ?`
