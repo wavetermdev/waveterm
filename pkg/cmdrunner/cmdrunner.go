@@ -51,7 +51,7 @@ var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cy
 var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}
 
 var WindowCmds = []string{"run", "comment", "cd", "cr", "clear", "sw", "reset", "signal"}
-var NoHistCmds = []string{"_compgen", "line", "_history", "_killserver"}
+var NoHistCmds = []string{"_compgen", "line", "history", "_killserver"}
 var GlobalCmds = []string{"session", "screen", "remote", "set"}
 
 var SetVarNameMap map[string]string = map[string]string{
@@ -155,7 +155,7 @@ func init() {
 	registerCmdFn("line:archive", LineArchiveCommand)
 	registerCmdFn("line:purge", LinePurgeCommand)
 
-	registerCmdFn("_history", HistoryCommand)
+	registerCmdFn("history", HistoryCommand)
 
 	registerCmdFn("_killserver", KillServerCommand)
 
