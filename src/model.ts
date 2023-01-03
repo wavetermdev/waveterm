@@ -547,7 +547,7 @@ class ScreenWindow {
         let cols = widthToCols(width);
         let usedRows = GlobalModel.getTUR(this.sessionId, cmdId, cols);
         termWrap = new TermWrap(elem, {
-            termContext: {sessionId: this.sessionId, cmdId: cmdId},
+            termContext: {sessionId: this.sessionId, cmdId: cmdId, lineNum: line.linenum},
             usedRows: usedRows,
             termOpts: cmd.getTermOpts(),
             winSize: {height: 0, width: width},

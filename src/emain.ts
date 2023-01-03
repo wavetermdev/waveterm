@@ -19,6 +19,7 @@ ensureDir(scHome);
 let DistDir = (isDev ? "dist-dev" : "dist");
 let GlobalAuthKey = "";
 let instanceId = uuidv4();
+let oldConsoleLog = console.log;
 
 // these are either "darwin/amd64" or "darwin/arm64"
 // normalize darwin/x64 to darwin/amd64 for GOARCH compatibility
@@ -43,7 +44,12 @@ if (isDev) {
 }
 logger = winston.createLogger(loggerConfig);
 function log(...msg) {
-    logger.info(util.format(...msg));
+    try {
+        logger.info(util.format(...msg));
+    }
+    catch (e) {
+        oldConsoleLog(...msg);
+    }
 }
 console.log = log;
 console.log(sprintf("prompt-app starting, PROMPT_HOME=%s, apppath=%s arch=%s/%s", scHome, getAppBasePath(), unamePlatform, unameArch));
@@ -55,6 +61,10 @@ app.setName((isDev ? "Prompt (Dev)" : "Prompt"));
 const DevLocalServerPath = "/Users/mike/prompt-dev/local-server";
 let localServerProc = null;
 let localServerShouldRestart = false;
+
+electron.dialog.showErrorBox = (title, content) => {
+    oldConsoleLog("ERROR", title, content);
+};
 
 // must match golang
 function getPromptHomeDir() {

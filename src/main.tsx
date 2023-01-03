@@ -494,7 +494,8 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                         <div key="term-block" className="term-block" onClick={this.clickTermBlock}></div>
                     </If>
                     <div key="term-connectelem" className="terminal-connectelem" id={"term-" + getLineId(line)} data-cmdid={line.cmdid} style={{height: termHeight}}></div>
-                    <If condition={!termLoaded}><div key="term-loading" className="terminal-loading-message">(loading)</div></If>
+                    <If condition={!termLoaded && false}><div key="term-loading" className="terminal-loading-message">...</div></If>
+                    <If condition={!termLoaded}><LoadingSpinner/></If>
                 </div>
                 <If condition={cmd.getRtnState()}>
                     <div key="rtnstate" className="cmd-rtnstate" style={{visibility: ((cmd.getStatus() == "done") ? "visible" : "hidden")}}>
@@ -1936,9 +1937,14 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
             let lineElem = lineElemArr[i];
             let lineTop = lineElem.offsetTop;
             let lineBot = lineElem.offsetTop + lineElem.offsetHeight;
-            let maxTop = Math.max(containerTop, lineTop);
-            let minBot = Math.min(containerBot, lineBot);
-            newMap.set(lineElem.dataset.linenum, (maxTop < minBot));
+            let isVis = false;
+            if (lineTop >= containerTop && lineTop <= containerBot) {
+                isVis = true;
+            }
+            if (lineBot >= containerTop && lineBot <= containerBot) {
+                isVis = true
+            }
+            newMap.set(lineElem.dataset.linenum, isVis);
         }
         mobx.action(() => {
             for (let [k, v] of newMap) {
@@ -2662,6 +2668,15 @@ class DisconnectedModal extends React.Component<{}, {}> {
                     </div>
                 </div>
             </div>
+        );
+    }
+}
+
+@mobxReact.observer
+class LoadingSpinner extends React.Component<{}, {}> {
+    render() {
+        return (
+            <div className="loading-spinner"><div></div><div></div><div></div><div></div></div>
         );
     }
 }

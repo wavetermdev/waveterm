@@ -20,7 +20,7 @@ type WindowSize = {
 const MinTermCols = 10;
 const MaxTermCols = 1024;
 
-type TermContext = {sessionId? : string, cmdId? : string, remoteId? : string};
+type TermContext = {sessionId? : string, cmdId? : string, remoteId? : string, lineNum? : number};
 
 type TermWrapOpts = {
     termContext : TermContext,

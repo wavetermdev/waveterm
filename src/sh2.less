@@ -452,13 +452,12 @@ html, body, #main {
     .terminal-wrapper {
         background-color: #000;
         padding: 2px 10px 5px 4px;
-        margin-left: -4px;
-        margin-right: 8px;
-        margin-top: 4px;
+        margin: 4px 8px 0 -4px;
         align-self: flex-start;
 
         &.zero-height {
-            display: none;
+            padding: 0;
+            margin: 0;
         }
 
         .terminal-connectelem {
@@ -476,7 +475,7 @@ html, body, #main {
 
         .terminal-loading-message {
             position: absolute;
-            top: 60px;
+            top: calc(40% - 8px);
             left: 30px;
             .mono-font();
         }
@@ -1509,4 +1508,48 @@ input[type=checkbox] {
 
 .flex-spacer {
     flex-grow: 1;
+}
+
+
+.loading-spinner {
+    display: inline-block;
+    position: absolute;
+    top: calc(40% - 8px);
+    left: 30px;
+    width: 20px;
+    height: 20px;
+
+    div {
+        box-sizing: border-box;
+        display: block;
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        margin: 2px;
+        border: 2px solid #777;
+        border-radius: 50%;
+        animation: loader-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+        border-color: #777 transparent transparent transparent;
+    }
+
+    div:nth-child(1) {
+        animation-delay: -0.45s;
+    }
+    
+    div:nth-child(2) {
+        animation-delay: -0.3s;
+    }
+    
+    div:nth-child(3) {
+        animation-delay: -0.15s;
+    }
+}
+
+@keyframes loader-ring {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
