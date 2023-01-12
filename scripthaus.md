@@ -88,3 +88,19 @@ rm Prompt.dmg rw.Prompt.dmg
   "Prompt.dmg" \
   "out/Prompt-darwin-x64/Prompt.app"
 ```
+
+```bash
+# @scripthaus command create-dmg-m1
+# @scripthaus cd :playbook
+rm Prompt.dmg rw.Prompt.dmg
+../../create-dmg/create-dmg/create-dmg \
+  --volname "Prompt" \
+  --window-pos 200 120 \
+  --window-size 600 300 \
+  --icon-size 100 \
+  --icon "Prompt.app" 200 130 \
+  --hide-extension "Prompt.app" \
+  --app-drop-link 400 125 \
+  "Prompt.dmg" \
+  "out/Prompt-darwin-arm64/Prompt.app"
+```
