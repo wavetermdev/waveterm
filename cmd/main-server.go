@@ -444,7 +444,11 @@ func main() {
 
 	err = sstore.HangupAllRunningCmds(context.Background())
 	if err != nil {
-		log.Printf("[error] calling HUP on all running commands\n")
+		log.Printf("[error] calling HUP on all running commands: %v\n", err)
+	}
+	err = sstore.ReInitFocus(context.Background())
+	if err != nil {
+		log.Printf("[error] resetting window focus: %v\n", err)
 	}
 
 	go stdinReadWatch()

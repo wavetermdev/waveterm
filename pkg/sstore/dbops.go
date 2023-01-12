@@ -784,6 +784,14 @@ func AppendCmdErrorPk(ctx context.Context, errPk *packet.CmdErrorPacketType) err
 	})
 }
 
+func ReInitFocus(ctx context.Context) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		query := `UPDATE screen_window SET focustype = 'input'`
+		tx.ExecWrap(query)
+		return nil
+	})
+}
+
 func HangupAllRunningCmds(ctx context.Context) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		query := `UPDATE cmd SET status = ? WHERE status = ?`
