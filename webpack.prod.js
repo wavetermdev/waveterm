@@ -2,8 +2,8 @@ const webpack = require('webpack');
 const merge = require('webpack-merge');
 const common = require('./webpack.common.js');
 const moment = require("dayjs");
-const VERSION = "v0.1.1";
 const path = require("path");
+const VERSION = require("./version.js");
 
 function makeBuildStr() {
     let buildStr = moment().format("YYYYMMDD-HHmmss");
@@ -34,9 +34,9 @@ if (BundleAnalyzerPlugin != null) {
     merged.plugins.push(new BundleAnalyzerPlugin());
 }
 merged.plugins.push(new webpack.DefinePlugin({
-    __SHDEV__: "false",
-    __SHVERSION__: JSON.stringify(VERSION),
-    __SHBUILD__: JSON.stringify(BUILD),
+    __PROMPT_DEV__: "false",
+    __PROMPT_VERSION__: JSON.stringify(VERSION),
+    __PROMPT_BUILD__: JSON.stringify(BUILD),
 }));
 
 module.exports = merged;

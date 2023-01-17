@@ -3,7 +3,7 @@ const merge = require('webpack-merge');
 const common = require('./webpack.common.js');
 const path = require('path');
 const CopyPlugin = require("copy-webpack-plugin");
-const VERSION = "v0.1.1";
+const VERSION = require("./version.js");
 
 var merged = merge.merge(common, {
     mode: "development",
@@ -27,9 +27,9 @@ var merged = merge.merge(common, {
 });
 
 var definePlugin = new webpack.DefinePlugin({
-    __SHDEV__: "true",
-    __SHVERSION__: JSON.stringify(VERSION),
-    __SHBUILD__: JSON.stringify("devbuild"),
+    __PROMPT_DEV__: "true",
+    __PROMPT_VERSION__: JSON.stringify(VERSION),
+    __PROMPT_BUILD__: JSON.stringify("devbuild"),
 });
 merged.plugins.push(definePlugin);
 

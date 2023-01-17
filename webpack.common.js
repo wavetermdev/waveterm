@@ -64,4 +64,4 @@ module.exports = {
     resolve: {
         extensions: ['.ts', '.tsx', '.js', '.mjs', '.cjs', '.wasm', '.json', '.less', '.css']
     },
-}
+};

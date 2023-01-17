@@ -2,7 +2,7 @@ const webpack = require('webpack');
 const merge = require('webpack-merge');
 const common = require('./webpack.electron.js');
 const moment = require("dayjs");
-const VERSION = "v0.1.1";
+const VERSION = require('./version.js');
 const path = require("path");
 
 function makeBuildStr() {
@@ -26,9 +26,9 @@ let merged = merge.merge(common, {
 });
 
 merged.plugins.push(new webpack.DefinePlugin({
-    __SHDEV__: "false",
-    __SHVERSION__: JSON.stringify(VERSION),
-    __SHBUILD__: JSON.stringify(BUILD),
+    __PROMPT_DEV__: "false",
+    __PROMPT_VERSION__: JSON.stringify(VERSION),
+    __PROMPT_BUILD__: JSON.stringify(BUILD),
 }));
 
 module.exports = merged;

@@ -8,7 +8,9 @@ import {GlobalModel} from "./model";
 import {v4 as uuidv4} from "uuid";
 
 // @ts-ignore
-let VERSION = __SHVERSION__;
+let VERSION = __PROMPT_VERSION__;
+// @ts-ignore
+let BUILD = __PROMPT_BUILD__;
 
 let jbmFontNormal = new FontFace("JetBrains Mono", "url('static/fonts/jetbrains-mono-v13-latin-regular.woff2')", {style: "normal", weight: "400"});
 let jbmFont200 = new FontFace("JetBrains Mono", "url('static/fonts/jetbrains-mono-v13-latin-200.woff2')", {style: "normal", weight: "200"});
@@ -42,4 +44,4 @@ document.addEventListener("DOMContentLoaded", () => {
 (window as any).mobx = mobx;
 (window as any).sprintf = sprintf;
 
-console.log("PROMPT", VERSION)
+console.log("PROMPT", VERSION, BUILD)
