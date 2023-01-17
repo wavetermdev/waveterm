@@ -3,7 +3,7 @@ const merge = require('webpack-merge');
 const common = require('./webpack.common.js');
 const path = require('path');
 const CopyPlugin = require("copy-webpack-plugin");
-const VERSION = "v0.1.0";
+const VERSION = "v0.1.1";
 
 var merged = merge.merge(common, {
     mode: "development",

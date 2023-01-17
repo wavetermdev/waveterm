@@ -20,6 +20,8 @@ let DistDir = (isDev ? "dist-dev" : "dist");
 let GlobalAuthKey = "";
 let instanceId = uuidv4();
 let oldConsoleLog = console.log;
+let wasActive = true;
+let wasInFg = true;
 
 // these are either "darwin/amd64" or "darwin/arm64"
 // normalize darwin/x64 to darwin/amd64 for GOARCH compatibility
@@ -180,6 +182,9 @@ function createMainWindow(clientData) {
     let indexHtml = (isDev ? "index-dev.html" : "index.html");
     win.loadFile(path.join(getAppBasePath(), "static", indexHtml));
     win.webContents.on("before-input-event", (e, input) => {
+        if (win.isFocused()) {
+            wasActive = true;
+        }
         if (input.type != "keyDown") {
             return;
         }
@@ -250,6 +255,10 @@ function createMainWindow(clientData) {
     win.webContents.on("will-navigate", shNavHandler);
     win.on("resized", debounce(400, mainResizeHandler));
     win.on("moved", debounce(400, mainResizeHandler));
+    win.on("focus", () => {
+        wasInFg = true;
+        wasActive = true;
+    });
     win.on("close", () => {
         MainWindow = null;
     });
@@ -483,6 +492,24 @@ async function sleep(ms) {
     return new Promise((resolve, reject) => setTimeout(resolve, ms));
 }
 
+function logActiveState() {
+    let activeState = {fg: wasInFg, active: wasActive, open: true};
+    let url = getBaseHostPort() + "/api/log-active-state";
+    let fetchHeaders = getFetchHeaders();
+    fetch(url, {method: "post", body: JSON.stringify(activeState), headers: fetchHeaders}).then((resp) => handleJsonFetchResponse(url, resp)).catch((err) => {
+        console.log("error logging active state", err)
+    });
+    // for next iteration
+    wasInFg = (MainWindow != null && MainWindow.isFocused());
+    wasActive = false;
+}
+
+// this isn't perfect, but gets the job done without being complicated
+function runActiveTimer() {
+    logActiveState();
+    setTimeout(runActiveTimer, 60000);
+}
+
 
 // ====== MAIN ====== //
 
@@ -501,6 +528,7 @@ async function sleep(ms) {
         console.log(e.toString());
     }
     await sleep(1000);  // TODO remove this sleep, poll getClientData() in createMainWindow
+    setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
     await app.whenReady();
     await createMainWindowWrap();
     app.on('activate', () => {

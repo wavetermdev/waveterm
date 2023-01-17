@@ -2,7 +2,7 @@ const webpack = require('webpack');
 const merge = require('webpack-merge');
 const common = require('./webpack.electron.js');
 const moment = require("dayjs");
-const VERSION = "v0.1.0";
+const VERSION = "v0.1.1";
 const path = require("path");
 
 function makeBuildStr() {
