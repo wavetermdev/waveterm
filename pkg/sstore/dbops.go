@@ -1837,3 +1837,51 @@ func GetRIsForWindow(ctx context.Context, sessionId string, windowId string) ([]
 	}
 	return rtn, nil
 }
+
+func UpdateCurrentActivity(ctx context.Context, update ActivityUpdate) error {
+	now := time.Now()
+	dayStr := now.Format("2006-01-02")
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT day FROM activity WHERE day = ?`
+		if !tx.Exists(query, dayStr) {
+			query = `INSERT INTO activity (day, uploaded, numlines, fgminutes, activeminutes, openminutes, tzname, tzoffset, clientversion, clientarch)
+                                   VALUES (?,   0,        0,        0,         0,             0,           ?,      ?,        ?,             ?)`
+			tzName, tzOffset := now.Zone()
+			if len(tzName) > MaxTzNameLen {
+				tzName = tzName[0:MaxTzNameLen]
+			}
+			tx.ExecWrap(query, dayStr, tzName, tzOffset, scbase.PromptVersion, scbase.ClientArch())
+		}
+		query = `UPDATE activity SET numlines = numlines + ?, fgminutes = fgminutes + ?, activeminutes = activeminutes + ?, openminutes = openminutes + ? WHERE day = ?`
+		tx.ExecWrap(query, update.NumLines, update.FgMinutes, update.ActiveMinutes, update.OpenMinutes, dayStr)
+		return nil
+	})
+	if txErr != nil {
+		return txErr
+	}
+	return nil
+}
+
+func GetNonUploadedActivity(ctx context.Context) ([]*ActivityType, error) {
+	var rtn []*ActivityType
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT * FROM activity WHERE uploaded = 0 ORDER BY day DESC LIMIT 30`
+		tx.SelectWrap(&rtn, query)
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	return rtn, nil
+}
+
+func MarkActivityAsUploaded(ctx context.Context, activityArr []*ActivityType) error {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `UPDATE activity SET uploaded = 1 WHERE day = ?`
+		for _, activity := range activityArr {
+			tx.ExecWrap(query, activity.Day)
+		}
+		return nil
+	})
+	return txErr
+}

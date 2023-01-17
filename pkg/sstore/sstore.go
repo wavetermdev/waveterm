@@ -70,6 +70,8 @@ const (
 	SWFocusCmdFg = "cmd-fg"
 )
 
+const MaxTzNameLen = 50
+
 var globalDBLock = &sync.Mutex{}
 var globalDB *sqlx.DB
 var globalDBErr error
@@ -108,6 +110,26 @@ type ClientWinSizeType struct {
 	Top        int  `json:"top"`
 	Left       int  `json:"left"`
 	FullScreen bool `json:"fullscreen,omitempty"`
+}
+
+type ActivityUpdate struct {
+	FgMinutes     int
+	ActiveMinutes int
+	OpenMinutes   int
+	NumLines      int
+}
+
+type ActivityType struct {
+	Day           string `json:"day"`
+	Uploaded      bool   `json:"-"`
+	NumLines      int    `json:"numlines"`
+	ActiveMinutes int    `json:"activeminutes"`
+	FgMinutes     int    `json:"fgminutes"`
+	OpenMinutes   int    `json:"openminutes"`
+	TzName        string `json:"tzname"`
+	TzOffset      int    `json:"tzoffset"`
+	ClientVersion string `json:"clientversion"`
+	ClientArch    string `json:"clientarch"`
 }
 
 type ClientData struct {

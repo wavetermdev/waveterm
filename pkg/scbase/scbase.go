@@ -318,3 +318,7 @@ func NumFormatB2(num int64) string {
 		return signStr + strconv.FormatFloat(gVal, 'f', 2, 64) + "G"
 	}
 }
+
+func ClientArch() string {
+	return fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH)
+}

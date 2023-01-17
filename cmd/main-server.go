@@ -46,6 +46,12 @@ var GlobalLock = &sync.Mutex{}
 var WSStateMap = make(map[string]*scws.WSState) // clientid -> WsState
 var GlobalAuthKey string
 
+type ClientActiveState struct {
+	Fg     bool `json:"fg"`
+	Active bool `json:"active"`
+	Open   bool `json:"open"`
+}
+
 func setWSState(state *scws.WSState) {
 	GlobalLock.Lock()
 	defer GlobalLock.Unlock()
@@ -144,6 +150,34 @@ func HandleSetWinSize(w http.ResponseWriter, r *http.Request) {
 	err = sstore.SetWinSize(r.Context(), winSize)
 	if err != nil {
 		WriteJsonError(w, fmt.Errorf("error setting winsize: %w", err))
+		return
+	}
+	WriteJsonSuccess(w, true)
+	return
+}
+
+// params: fg, active, open
+func HandleLogActiveState(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var activeState ClientActiveState
+	err := decoder.Decode(&activeState)
+	if err != nil {
+		WriteJsonError(w, fmt.Errorf("error decoding json: %w", err))
+		return
+	}
+	activity := sstore.ActivityUpdate{}
+	if activeState.Fg {
+		activity.FgMinutes = 1
+	}
+	if activeState.Active {
+		activity.ActiveMinutes = 1
+	}
+	if activeState.Open {
+		activity.OpenMinutes = 1
+	}
+	err = sstore.UpdateCurrentActivity(r.Context(), activity)
+	if err != nil {
+		WriteJsonError(w, fmt.Errorf("error updating activity: %w", err))
 		return
 	}
 	WriteJsonSuccess(w, true)
@@ -461,6 +495,7 @@ func main() {
 	gr.HandleFunc("/api/run-command", AuthKeyWrap(HandleRunCommand)).Methods("POST")
 	gr.HandleFunc("/api/get-client-data", AuthKeyWrap(HandleGetClientData))
 	gr.HandleFunc("/api/set-winsize", AuthKeyWrap(HandleSetWinSize))
+	gr.HandleFunc("/api/log-active-state", AuthKeyWrap(HandleLogActiveState))
 	serverAddr := MainServerAddr
 	if scbase.IsDevMode() {
 		serverAddr = MainServerDevAddr
