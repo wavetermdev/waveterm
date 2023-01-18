@@ -20,6 +20,7 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/scripthaus-dev/sh2-server/pkg/cmdrunner"
+	"github.com/scripthaus-dev/sh2-server/pkg/pcloud"
 	"github.com/scripthaus-dev/sh2-server/pkg/remote"
 	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
@@ -405,6 +406,10 @@ func test() error {
 	return nil
 }
 
+func doBeforeClose() {
+	pcloud.SendTelemetry()
+}
+
 // watch stdin, kill server if stdin is closed
 func stdinReadWatch() {
 	buf := make([]byte, 1024)
@@ -412,6 +417,7 @@ func stdinReadWatch() {
 		_, err := os.Stdin.Read(buf)
 		if err != nil {
 			log.Printf("stdin closed/error, shutting down: %v\n", err)
+			doBeforeClose()
 			time.Sleep(1 * time.Second)
 			syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 		}

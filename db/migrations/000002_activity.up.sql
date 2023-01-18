@@ -1,7 +1,7 @@
 CREATE TABLE activity (
     day varchar(20) PRIMARY KEY,
     uploaded boolean NOT NULL,
-    numlines int NOT NULL,
+    numcommands int NOT NULL,
     activeminutes int NOT NULL,
     fgminutes int NOT NULL,
     openminutes int NOT NULL,

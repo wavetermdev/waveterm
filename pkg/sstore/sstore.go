@@ -116,13 +116,13 @@ type ActivityUpdate struct {
 	FgMinutes     int
 	ActiveMinutes int
 	OpenMinutes   int
-	NumLines      int
+	NumCommands   int
 }
 
 type ActivityType struct {
 	Day           string `json:"day"`
 	Uploaded      bool   `json:"-"`
-	NumLines      int    `json:"numlines"`
+	NumCommands   int    `json:"numcommands"`
 	ActiveMinutes int    `json:"activeminutes"`
 	FgMinutes     int    `json:"fgminutes"`
 	OpenMinutes   int    `json:"openminutes"`

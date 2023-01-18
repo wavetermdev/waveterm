@@ -365,6 +365,13 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 	if len(pk.Args[0]) > MaxCommandLen {
 		return nil, fmt.Errorf("command length too long len:%d, max:%d", len(pk.Args[0]), MaxCommandLen)
 	}
+	if pk.Interactive {
+		err := sstore.UpdateCurrentActivity(ctx, sstore.ActivityUpdate{NumCommands: 1})
+		if err != nil {
+			log.Printf("[error] incrementing activity numcommands: %v\n", err)
+			// fall through (non-fatal error)
+		}
+	}
 	var historyContext historyContextType
 	ctxWithHistory := context.WithValue(ctx, historyContextKey, &historyContext)
 	var update sstore.UpdatePacket
@@ -376,7 +383,7 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 		err := addToHistory(ctx, pk, historyContext, (newPk.MetaCmd != "run"), (rtnErr != nil))
 		if err != nil {
 			log.Printf("[error] adding to history: %v\n", err)
-			// continue...
+			// fall through (non-fatal error)
 		}
 	}
 	return update, rtnErr

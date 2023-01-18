@@ -1844,16 +1844,22 @@ func UpdateCurrentActivity(ctx context.Context, update ActivityUpdate) error {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT day FROM activity WHERE day = ?`
 		if !tx.Exists(query, dayStr) {
-			query = `INSERT INTO activity (day, uploaded, numlines, fgminutes, activeminutes, openminutes, tzname, tzoffset, clientversion, clientarch)
-                                   VALUES (?,   0,        0,        0,         0,             0,           ?,      ?,        ?,             ?)`
+			query = `INSERT INTO activity (day, uploaded, numcommands, fgminutes, activeminutes, openminutes, tzname, tzoffset, clientversion, clientarch)
+                                   VALUES (?,   0,        0,           0,         0,             0,           ?,      ?,        ?,             ?)`
 			tzName, tzOffset := now.Zone()
 			if len(tzName) > MaxTzNameLen {
 				tzName = tzName[0:MaxTzNameLen]
 			}
 			tx.ExecWrap(query, dayStr, tzName, tzOffset, scbase.PromptVersion, scbase.ClientArch())
 		}
-		query = `UPDATE activity SET numlines = numlines + ?, fgminutes = fgminutes + ?, activeminutes = activeminutes + ?, openminutes = openminutes + ? WHERE day = ?`
-		tx.ExecWrap(query, update.NumLines, update.FgMinutes, update.ActiveMinutes, update.OpenMinutes, dayStr)
+		query = `UPDATE activity
+                 SET numcommands = numcommands + ?,
+                     fgminutes = fgminutes + ?,
+                     activeminutes = activeminutes + ?,
+                     openminutes = openminutes + ?,
+                     clientversion = ?
+                 WHERE day = ?`
+		tx.ExecWrap(query, update.NumCommands, update.FgMinutes, update.ActiveMinutes, update.OpenMinutes, scbase.PromptVersion, dayStr)
 		return nil
 	})
 	if txErr != nil {
