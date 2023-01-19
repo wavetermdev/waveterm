@@ -52,18 +52,20 @@ var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoins
 
 var WindowCmds = []string{"run", "comment", "cd", "cr", "clear", "sw", "reset", "signal"}
 var NoHistCmds = []string{"_compgen", "line", "history", "_killserver"}
-var GlobalCmds = []string{"session", "screen", "remote", "set"}
+var GlobalCmds = []string{"session", "screen", "remote", "set", "client"}
 
 var SetVarNameMap map[string]string = map[string]string{
-	"tabcolor": "screen.tabcolor",
-	"pterm":    "window.pterm",
-	"anchor":   "sw.anchor",
-	"focus":    "sw.focus",
-	"line":     "sw.line",
+	"tabcolor":  "screen.tabcolor",
+	"pterm":     "window.pterm",
+	"anchor":    "sw.anchor",
+	"focus":     "sw.focus",
+	"line":      "sw.line",
+	"telemetry": "client.telemetry",
 }
 
 var SetVarScopes = []SetVarScope{
 	SetVarScope{ScopeName: "global", VarNames: []string{}},
+	SetVarScope{ScopeName: "client", VarNames: []string{"telemetry"}},
 	SetVarScope{ScopeName: "session", VarNames: []string{"name", "pos"}},
 	SetVarScope{ScopeName: "screen", VarNames: []string{"name", "tabcolor", "pos"}},
 	SetVarScope{ScopeName: "window", VarNames: []string{"pterm"}},
@@ -154,6 +156,9 @@ func init() {
 	registerCmdFn("line:star", LineStarCommand)
 	registerCmdFn("line:archive", LineArchiveCommand)
 	registerCmdFn("line:purge", LinePurgeCommand)
+
+	registerCmdFn("client", ClientCommand)
+	registerCmdFn("client:set", ClientSetCommand)
 
 	registerCmdFn("history", HistoryCommand)
 
@@ -2075,6 +2080,14 @@ func KillServerCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 	}()
 	return nil, nil
+}
+
+func ClientCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	return nil, fmt.Errorf("/client requires a subcommand: %s", formatStrs([]string{"set"}, "or", false))
+}
+
+func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	return nil, fmt.Errorf("not implemented")
 }
 
 func formatTermOpts(termOpts sstore.TermOpts) string {
