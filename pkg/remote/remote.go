@@ -225,7 +225,7 @@ func LoadRemotes(ctx context.Context) error {
 		msh := MakeMShell(remote)
 		GlobalStore.Map[remote.RemoteId] = msh
 		if remote.ConnectMode == sstore.ConnectModeStartup {
-			go msh.Launch()
+			go msh.Launch(false)
 		}
 		if remote.Local {
 			if remote.RemoteSudo {
@@ -264,7 +264,7 @@ func LoadRemoteById(ctx context.Context, remoteId string) error {
 	}
 	GlobalStore.Map[r.RemoteId] = msh
 	if r.ConnectMode == sstore.ConnectModeStartup {
-		go msh.Launch()
+		go msh.Launch(false)
 	}
 	return nil
 }
@@ -307,7 +307,7 @@ func AddRemote(ctx context.Context, r *sstore.RemoteType, shouldStart bool) erro
 	GlobalStore.Map[r.RemoteId] = newMsh
 	go newMsh.NotifyRemoteUpdate()
 	if shouldStart {
-		go newMsh.Launch()
+		go newMsh.Launch(true)
 	}
 	return nil
 }
@@ -951,7 +951,7 @@ func (msh *MShellProc) RunInstall() {
 		msh.InstallCancelFn = nil
 		msh.NeedsMShellUpgrade = false
 	})
-	msh.WriteToPtyBuffer("successfully installed mshell %s\n", scbase.MShellVersion)
+	msh.WriteToPtyBuffer("successfully installed mshell %s to ~/.mshell\n", scbase.MShellVersion)
 	go msh.NotifyRemoteUpdate()
 	return
 }
@@ -1024,7 +1024,7 @@ func stripScVarsFromStateDiff(stateDiff *packet.ShellStateDiff) *packet.ShellSta
 	return &rtn
 }
 
-func (msh *MShellProc) Launch() {
+func (msh *MShellProc) Launch(interactive bool) {
 	remoteCopy := msh.GetRemoteCopy()
 	if remoteCopy.Archived {
 		msh.WriteToPtyBuffer("cannot launch archived remote\n")
@@ -1047,7 +1047,7 @@ func (msh *MShellProc) Launch() {
 	msh.WriteToPtyBuffer("connecting to %s...\n", remoteCopy.RemoteCanonicalName)
 	sshOpts := convertSSHOpts(remoteCopy.SSHOpts)
 	sshOpts.SSHErrorsToTty = true
-	if remoteCopy.ConnectMode != sstore.ConnectModeManual && remoteCopy.SSHOpts.SSHPassword == "" {
+	if remoteCopy.ConnectMode != sstore.ConnectModeManual && remoteCopy.SSHOpts.SSHPassword == "" && !interactive {
 		sshOpts.BatchMode = true
 	}
 	var cmdStr string
@@ -1885,7 +1885,7 @@ func (msh *MShellProc) TryAutoConnect() error {
 	if err != nil {
 		return err
 	}
-	msh.Launch()
+	msh.Launch(false)
 	if !msh.IsConnected() {
 		return fmt.Errorf("error connecting")
 	}
