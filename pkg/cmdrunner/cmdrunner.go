@@ -19,6 +19,7 @@ import (
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
 	"github.com/scripthaus-dev/sh2-server/pkg/comp"
+	"github.com/scripthaus-dev/sh2-server/pkg/pcloud"
 	"github.com/scripthaus-dev/sh2-server/pkg/remote"
 	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
@@ -159,6 +160,7 @@ func init() {
 
 	registerCmdFn("client", ClientCommand)
 	registerCmdFn("client:set", ClientSetCommand)
+	registerCmdFn("client:show", ClientShowCommand)
 
 	registerCmdFn("history", HistoryCommand)
 
@@ -2083,11 +2085,71 @@ func KillServerCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 }
 
 func ClientCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	return nil, fmt.Errorf("/client requires a subcommand: %s", formatStrs([]string{"set"}, "or", false))
+	return nil, fmt.Errorf("/client requires a subcommand: %s", formatStrs([]string{"set", "show"}, "or", false))
+}
+
+func boolToStr(v bool, trueStr string, falseStr string) string {
+	if v {
+		return trueStr
+	}
+	return falseStr
+}
+
+func ClientShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v\n", err)
+	}
+	var buf bytes.Buffer
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "userid", clientData.UserId))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "clientid", clientData.ClientId))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "telemetry", boolToStr(clientData.ClientOpts.NoTelemetry, "off", "on")))
+	update := sstore.ModelUpdate{
+		Info: &sstore.InfoMsgType{
+			InfoTitle: fmt.Sprintf("client info"),
+			InfoLines: splitLinesForInfo(buf.String()),
+		},
+	}
+	return update, nil
 }
 
 func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	return nil, fmt.Errorf("not implemented")
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v\n", err)
+	}
+	var varsUpdated []string
+	if pk.Kwargs["telemetry"] != "" {
+		noTelemetry := !resolveBool(pk.Kwargs["telemetry"], true)
+		if clientData.ClientOpts.NoTelemetry != noTelemetry {
+			clientOpts := clientData.ClientOpts
+			clientOpts.NoTelemetry = noTelemetry
+			err = sstore.SetClientOpts(ctx, clientOpts)
+			if err != nil {
+				return nil, fmt.Errorf("error trying to update client telemetry: %v", err)
+			}
+			log.Printf("client telemetry setting updated to %v\n", !noTelemetry)
+			err = pcloud.SendNoTelemetryUpdate(ctx, noTelemetry)
+			if err != nil {
+				// ignore error, just log
+				log.Printf("[error] sending no-telemetry update: %v\n", err)
+				log.Printf("note that telemetry update has still taken effect locally, and will be respected by the client\n")
+			}
+		} else {
+			log.Printf("client telemetry setting unchanged, is %v\n", !noTelemetry)
+		}
+		varsUpdated = append(varsUpdated, "telemetry")
+	}
+	if len(varsUpdated) == 0 {
+		return nil, fmt.Errorf("/client:set no updates, can set %s", formatStrs([]string{"telemetry"}, "or", false))
+	}
+	update := sstore.ModelUpdate{
+		Info: &sstore.InfoMsgType{
+			InfoMsg:   fmt.Sprintf("client updated %s", formatStrs(varsUpdated, "and", false)),
+			TimeoutMs: 2000,
+		},
+	}
+	return update, nil
 }
 
 func formatTermOpts(termOpts sstore.TermOpts) string {

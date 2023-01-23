@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"time"
 
 	_ "github.com/golang-migrate/migrate/v4/database/sqlite3"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -99,12 +100,18 @@ func MigratePrintVersion() error {
 func MigrateCommandOpts(opts []string) error {
 	var err error
 	if opts[0] == "--migrate-up" {
+		fmt.Printf("migrate-up %v\n", GetSessionDBName())
+		time.Sleep(3 * time.Second)
 		err = MigrateUp()
 	} else if opts[0] == "--migrate-down" {
+		fmt.Printf("migrate-down %v\n", GetSessionDBName())
+		time.Sleep(3 * time.Second)
 		err = MigrateDown()
 	} else if opts[0] == "--migrate-goto" {
 		n, err := strconv.Atoi(opts[1])
 		if err == nil {
+			fmt.Printf("migrate-goto %v => %d\n", GetSessionDBName(), n)
+			time.Sleep(3 * time.Second)
 			err = MigrateGoto(uint(n))
 		}
 	} else {

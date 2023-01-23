@@ -132,6 +132,10 @@ type ActivityType struct {
 	ClientArch    string `json:"clientarch"`
 }
 
+type ClientOptsType struct {
+	NoTelemetry bool `json:"notelemetry,omitempty"`
+}
+
 type ClientData struct {
 	ClientId            string            `json:"clientid"`
 	UserId              string            `json:"userid"`
@@ -141,6 +145,7 @@ type ClientData struct {
 	UserPublicKey       *ecdsa.PublicKey  `json:"-"`
 	ActiveSessionId     string            `json:"activesessionid"`
 	WinSize             ClientWinSizeType `json:"winsize"`
+	ClientOpts          ClientOptsType    `json:"clientopts"`
 }
 
 func (c *ClientData) ToMap() map[string]interface{} {
@@ -151,6 +156,7 @@ func (c *ClientData) ToMap() map[string]interface{} {
 	rtn["userpublickeybytes"] = c.UserPublicKeyBytes
 	rtn["activesessionid"] = c.ActiveSessionId
 	rtn["winsize"] = quickJson(c.WinSize)
+	rtn["clientopts"] = quickJson(c.ClientOpts)
 	return rtn
 }
 
@@ -165,6 +171,7 @@ func ClientDataFromMap(m map[string]interface{}) *ClientData {
 	quickSetBytes(&c.UserPublicKeyBytes, m, "userpublickeybytes")
 	quickSetStr(&c.ActiveSessionId, m, "activesessionid")
 	quickSetJson(&c.WinSize, m, "winsize")
+	quickSetJson(&c.ClientOpts, m, "clientopts")
 	return &c
 }
 
@@ -1004,4 +1011,13 @@ func EnsureClientData(ctx context.Context) (*ClientData, error) {
 		return nil, fmt.Errorf("invalid client data, wrong public key type: %T", pubKey)
 	}
 	return &rtn, nil
+}
+
+func SetClientOpts(ctx context.Context, clientOpts ClientOptsType) error {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `UPDATE client SET clientopts = ?`
+		tx.ExecWrap(query, quickJson(clientOpts))
+		return nil
+	})
+	return txErr
 }

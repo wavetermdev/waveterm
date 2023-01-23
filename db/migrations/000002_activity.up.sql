@@ -10,3 +10,5 @@ CREATE TABLE activity (
     clientversion varchar(20) NOT NULL,
     clientarch varchar(20) NOT NULL
 );
+
+ALTER TABLE client ADD COLUMN clientopts json NOT NULL DEFAULT '';

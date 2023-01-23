@@ -406,8 +406,13 @@ func test() error {
 	return nil
 }
 
-func doBeforeClose() {
-	pcloud.SendTelemetry()
+func sendTelemetryWrapper() {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	err := pcloud.SendTelemetry(ctx)
+	if err != nil {
+		log.Printf("[error] sending telemetry: %v\n", err)
+	}
 }
 
 // watch stdin, kill server if stdin is closed
@@ -417,7 +422,7 @@ func stdinReadWatch() {
 		_, err := os.Stdin.Read(buf)
 		if err != nil {
 			log.Printf("stdin closed/error, shutting down: %v\n", err)
-			doBeforeClose()
+			sendTelemetryWrapper()
 			time.Sleep(1 * time.Second)
 			syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 		}
@@ -491,6 +496,15 @@ func main() {
 		log.Printf("[error] resetting window focus: %v\n", err)
 	}
 
+	go func() {
+		log.Printf("PCLOUD_ENDPOINT=%s\n", pcloud.GetEndpoint())
+		time.Sleep(1 * time.Minute)
+		for {
+			sendTelemetryWrapper()
+			// send new telemetry every 8-hours
+			time.Sleep(8 * time.Hour)
+		}
+	}()
 	go stdinReadWatch()
 	go runWebSocketServer()
 	gr := mux.NewRouter()
