@@ -53,15 +53,14 @@ var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoins
 
 var WindowCmds = []string{"run", "comment", "cd", "cr", "clear", "sw", "reset", "signal"}
 var NoHistCmds = []string{"_compgen", "line", "history", "_killserver"}
-var GlobalCmds = []string{"session", "screen", "remote", "set", "client"}
+var GlobalCmds = []string{"session", "screen", "remote", "set", "client", "telemetry"}
 
 var SetVarNameMap map[string]string = map[string]string{
-	"tabcolor":  "screen.tabcolor",
-	"pterm":     "window.pterm",
-	"anchor":    "sw.anchor",
-	"focus":     "sw.focus",
-	"line":      "sw.line",
-	"telemetry": "client.telemetry",
+	"tabcolor": "screen.tabcolor",
+	"pterm":    "window.pterm",
+	"anchor":   "sw.anchor",
+	"focus":    "sw.focus",
+	"line":     "sw.line",
 }
 
 var SetVarScopes = []SetVarScope{
@@ -159,8 +158,13 @@ func init() {
 	registerCmdFn("line:purge", LinePurgeCommand)
 
 	registerCmdFn("client", ClientCommand)
-	registerCmdFn("client:set", ClientSetCommand)
 	registerCmdFn("client:show", ClientShowCommand)
+
+	registerCmdFn("telemetry", TelemetryCommand)
+	registerCmdFn("telemetry:on", TelemetryOnCommand)
+	registerCmdFn("telemetry:off", TelemetryOffCommand)
+	registerCmdFn("telemetry:send", TelemetrySendCommand)
+	registerCmdFn("telemetry:show", TelemetryShowCommand)
 
 	registerCmdFn("history", HistoryCommand)
 
@@ -2085,7 +2089,7 @@ func KillServerCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 }
 
 func ClientCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	return nil, fmt.Errorf("/client requires a subcommand: %s", formatStrs([]string{"set", "show"}, "or", false))
+	return nil, fmt.Errorf("/client requires a subcommand: %s", formatStrs([]string{"show"}, "or", false))
 }
 
 func boolToStr(v bool, trueStr string, falseStr string) string {
@@ -2113,43 +2117,92 @@ func ClientShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	return update, nil
 }
 
-func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+func TelemetryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	return nil, fmt.Errorf("/telemetry requires a subcommand: %s", formatStrs([]string{"show", "on", "off", "send"}, "or", false))
+}
+
+func setNoTelemetry(ctx context.Context, clientData *sstore.ClientData, noTelemetryVal bool) error {
+	clientOpts := clientData.ClientOpts
+	clientOpts.NoTelemetry = noTelemetryVal
+	err := sstore.SetClientOpts(ctx, clientOpts)
+	if err != nil {
+		return fmt.Errorf("error trying to update client telemetry: %v", err)
+	}
+	log.Printf("client no-telemetry setting updated to %v\n", noTelemetryVal)
+	err = pcloud.SendNoTelemetryUpdate(ctx, clientOpts.NoTelemetry)
+	if err != nil {
+		// ignore error, just log
+		log.Printf("[error] sending no-telemetry update: %v\n", err)
+		log.Printf("note that telemetry update has still taken effect locally, and will be respected by the client\n")
+	}
+	return nil
+}
+
+func TelemetryOnCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	clientData, err := sstore.EnsureClientData(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve client data: %v\n", err)
 	}
-	var varsUpdated []string
-	if pk.Kwargs["telemetry"] != "" {
-		noTelemetry := !resolveBool(pk.Kwargs["telemetry"], true)
-		if clientData.ClientOpts.NoTelemetry != noTelemetry {
-			clientOpts := clientData.ClientOpts
-			clientOpts.NoTelemetry = noTelemetry
-			err = sstore.SetClientOpts(ctx, clientOpts)
-			if err != nil {
-				return nil, fmt.Errorf("error trying to update client telemetry: %v", err)
-			}
-			log.Printf("client telemetry setting updated to %v\n", !noTelemetry)
-			err = pcloud.SendNoTelemetryUpdate(ctx, noTelemetry)
-			if err != nil {
-				// ignore error, just log
-				log.Printf("[error] sending no-telemetry update: %v\n", err)
-				log.Printf("note that telemetry update has still taken effect locally, and will be respected by the client\n")
-			}
-		} else {
-			log.Printf("client telemetry setting unchanged, is %v\n", !noTelemetry)
-		}
-		varsUpdated = append(varsUpdated, "telemetry")
+	if !clientData.ClientOpts.NoTelemetry {
+		return sstore.InfoMsgUpdate("telemetry is already on"), nil
 	}
-	if len(varsUpdated) == 0 {
-		return nil, fmt.Errorf("/client:set no updates, can set %s", formatStrs([]string{"telemetry"}, "or", false))
+	err = setNoTelemetry(ctx, clientData, false)
+	if err != nil {
+		return nil, err
 	}
+	err = pcloud.SendTelemetry(ctx, false)
+	if err != nil {
+		// ignore error, but log
+		log.Printf("[error] sending telemetry update (in /telemetry:on): %v\n", err)
+	}
+	return sstore.InfoMsgUpdate("telemetry is now on"), nil
+}
+
+func TelemetryOffCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v\n", err)
+	}
+	if clientData.ClientOpts.NoTelemetry {
+		return sstore.InfoMsgUpdate("telemetry is already off"), nil
+	}
+	err = setNoTelemetry(ctx, clientData, true)
+	if err != nil {
+		return nil, err
+	}
+	return sstore.InfoMsgUpdate("telemetry is now off"), nil
+}
+
+func TelemetryShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v\n", err)
+	}
+	var buf bytes.Buffer
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "telemetry", boolToStr(clientData.ClientOpts.NoTelemetry, "off", "on")))
 	update := sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
-			InfoMsg:   fmt.Sprintf("client updated %s", formatStrs(varsUpdated, "and", false)),
-			TimeoutMs: 2000,
+			InfoTitle: fmt.Sprintf("telemetry info"),
+			InfoLines: splitLinesForInfo(buf.String()),
 		},
 	}
 	return update, nil
+}
+
+func TelemetrySendCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v\n", err)
+	}
+	force := resolveBool(pk.Kwargs["force"], false)
+	if clientData.ClientOpts.NoTelemetry && !force {
+		return nil, fmt.Errorf("cannot send telemetry, telemetry is off.  pass force=1 to force the send, or turn on telemetry with /telemetry:on")
+	}
+	err = pcloud.SendTelemetry(ctx, force)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send telemetry: %v", err)
+	}
+	return sstore.InfoMsgUpdate("telemetry sent"), nil
 }
 
 func formatTermOpts(termOpts sstore.TermOpts) string {

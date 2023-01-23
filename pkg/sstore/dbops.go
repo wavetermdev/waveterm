@@ -1838,28 +1838,37 @@ func GetRIsForWindow(ctx context.Context, sessionId string, windowId string) ([]
 	return rtn, nil
 }
 
-func UpdateCurrentActivity(ctx context.Context, update ActivityUpdate) error {
+func GetCurDayStr() string {
 	now := time.Now()
 	dayStr := now.Format("2006-01-02")
+	return dayStr
+}
+
+func UpdateCurrentActivity(ctx context.Context, update ActivityUpdate) error {
+	now := time.Now()
+	dayStr := GetCurDayStr()
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT day FROM activity WHERE day = ?`
-		if !tx.Exists(query, dayStr) {
-			query = `INSERT INTO activity (day, uploaded, numcommands, fgminutes, activeminutes, openminutes, tzname, tzoffset, clientversion, clientarch)
-                                   VALUES (?,   0,        0,           0,         0,             0,           ?,      ?,        ?,             ?)`
+		var tdata TelemetryData
+		query := `SELECT tdata FROM activity WHERE day = ?`
+		found := tx.GetWrap(&tdata, query, dayStr)
+		if !found {
+			query = `INSERT INTO activity (day, uploaded, tdata, tzname, tzoffset, clientversion, clientarch)
+                                   VALUES (?,   0,        ?,     ?,      ?,        ?,             ?)`
 			tzName, tzOffset := now.Zone()
 			if len(tzName) > MaxTzNameLen {
 				tzName = tzName[0:MaxTzNameLen]
 			}
-			tx.ExecWrap(query, dayStr, tzName, tzOffset, scbase.PromptVersion, scbase.ClientArch())
+			tx.ExecWrap(query, dayStr, tdata, tzName, tzOffset, scbase.PromptVersion, scbase.ClientArch())
 		}
+		tdata.NumCommands += update.NumCommands
+		tdata.FgMinutes += update.FgMinutes
+		tdata.ActiveMinutes += update.ActiveMinutes
+		tdata.OpenMinutes += update.OpenMinutes
 		query = `UPDATE activity
-                 SET numcommands = numcommands + ?,
-                     fgminutes = fgminutes + ?,
-                     activeminutes = activeminutes + ?,
-                     openminutes = openminutes + ?,
+                 SET tdata = ?,
                      clientversion = ?
                  WHERE day = ?`
-		tx.ExecWrap(query, update.NumCommands, update.FgMinutes, update.ActiveMinutes, update.OpenMinutes, scbase.PromptVersion, dayStr)
+		tx.ExecWrap(query, tdata, scbase.PromptVersion, dayStr)
 		return nil
 	})
 	if txErr != nil {
@@ -1881,10 +1890,15 @@ func GetNonUploadedActivity(ctx context.Context) ([]*ActivityType, error) {
 	return rtn, nil
 }
 
+// note, will not mark the current day as uploaded
 func MarkActivityAsUploaded(ctx context.Context, activityArr []*ActivityType) error {
+	dayStr := GetCurDayStr()
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `UPDATE activity SET uploaded = 1 WHERE day = ?`
 		for _, activity := range activityArr {
+			if activity.Day == dayStr {
+				continue
+			}
 			tx.ExecWrap(query, activity.Day)
 		}
 		return nil

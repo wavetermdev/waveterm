@@ -28,6 +28,7 @@ type NoTelemetryInputType struct {
 type TelemetryInputType struct {
 	UserId   string                 `json:"userid"`
 	ClientId string                 `json:"clientid"`
+	CurDay   string                 `json:"curday"`
 	Activity []*sstore.ActivityType `json:"activity"`
 }
 
@@ -87,12 +88,12 @@ func doRequest(req *http.Request, outputObj interface{}) (*http.Response, error)
 	return resp, nil
 }
 
-func SendTelemetry(ctx context.Context) error {
+func SendTelemetry(ctx context.Context, force bool) error {
 	clientData, err := sstore.EnsureClientData(ctx)
 	if err != nil {
 		return fmt.Errorf("cannot retrieve client data: %v", err)
 	}
-	if clientData.ClientOpts.NoTelemetry {
+	if !force && clientData.ClientOpts.NoTelemetry {
 		return nil
 	}
 	activity, err := sstore.GetNonUploadedActivity(ctx)
@@ -103,7 +104,8 @@ func SendTelemetry(ctx context.Context) error {
 		return nil
 	}
 	log.Printf("sending telemetry data\n")
-	input := TelemetryInputType{UserId: clientData.UserId, ClientId: clientData.ClientId, Activity: activity}
+	dayStr := sstore.GetCurDayStr()
+	input := TelemetryInputType{UserId: clientData.UserId, ClientId: clientData.ClientId, CurDay: dayStr, Activity: activity}
 	req, err := makePostReq(ctx, "/telemetry", input)
 	if err != nil {
 		return err
@@ -111,6 +113,10 @@ func SendTelemetry(ctx context.Context) error {
 	_, err = doRequest(req, nil)
 	if err != nil {
 		return err
+	}
+	err = sstore.MarkActivityAsUploaded(ctx, activity)
+	if err != nil {
+		return fmt.Errorf("error marking activity as uploaded: %v", err)
 	}
 	return nil
 }

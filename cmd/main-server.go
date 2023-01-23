@@ -407,9 +407,18 @@ func test() error {
 }
 
 func sendTelemetryWrapper() {
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+		log.Printf("[error] in sendTelemetryWrapper: %v\n", r)
+		debug.PrintStack()
+		return
+	}()
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	err := pcloud.SendTelemetry(ctx)
+	err := pcloud.SendTelemetry(ctx, false)
 	if err != nil {
 		log.Printf("[error] sending telemetry: %v\n", err)
 	}
@@ -498,7 +507,7 @@ func main() {
 
 	go func() {
 		log.Printf("PCLOUD_ENDPOINT=%s\n", pcloud.GetEndpoint())
-		time.Sleep(1 * time.Minute)
+		time.Sleep(30 * time.Second)
 		for {
 			sendTelemetryWrapper()
 			// send new telemetry every 8-hours

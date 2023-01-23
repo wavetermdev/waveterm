@@ -120,16 +120,28 @@ type ActivityUpdate struct {
 }
 
 type ActivityType struct {
-	Day           string `json:"day"`
-	Uploaded      bool   `json:"-"`
-	NumCommands   int    `json:"numcommands"`
-	ActiveMinutes int    `json:"activeminutes"`
-	FgMinutes     int    `json:"fgminutes"`
-	OpenMinutes   int    `json:"openminutes"`
-	TzName        string `json:"tzname"`
-	TzOffset      int    `json:"tzoffset"`
-	ClientVersion string `json:"clientversion"`
-	ClientArch    string `json:"clientarch"`
+	Day           string        `json:"day"`
+	Uploaded      bool          `json:"-"`
+	TData         TelemetryData `json:"tdata"`
+	TzName        string        `json:"tzname"`
+	TzOffset      int           `json:"tzoffset"`
+	ClientVersion string        `json:"clientversion"`
+	ClientArch    string        `json:"clientarch"`
+}
+
+type TelemetryData struct {
+	NumCommands   int `json:"numcommands"`
+	ActiveMinutes int `json:"activeminutes"`
+	FgMinutes     int `json:"fgminutes"`
+	OpenMinutes   int `json:"openminutes"`
+}
+
+func (tdata TelemetryData) Value() (driver.Value, error) {
+	return quickValueJson(tdata)
+}
+
+func (tdata *TelemetryData) Scan(val interface{}) error {
+	return quickScanJson(tdata, val)
 }
 
 type ClientOptsType struct {
