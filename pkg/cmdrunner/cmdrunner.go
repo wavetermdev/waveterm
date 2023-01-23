@@ -656,7 +656,7 @@ func RemoteConnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	if err != nil {
 		return nil, err
 	}
-	go ids.Remote.MShell.Launch()
+	go ids.Remote.MShell.Launch(true)
 	return sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			PtyRemoteId: ids.Remote.RemotePtr.RemoteId,
@@ -907,13 +907,11 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		return makeRemoteEditErrorReturn_new(visualEdit, fmt.Errorf("cannot create remote %q: %v", r.RemoteCanonicalName, err))
 	}
 	// SUCCESS
-	update := sstore.ModelUpdate{
+	return sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
-			InfoMsg:   fmt.Sprintf("remote %q created", r.RemoteCanonicalName),
-			TimeoutMs: 2000,
+			PtyRemoteId: r.RemoteId,
 		},
-	}
-	return update, nil
+	}, nil
 }
 
 func RemoteSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
