@@ -283,7 +283,7 @@ func ReadRemotePty(ctx context.Context, remoteId string) (int64, []byte, error) 
 	return offset, barr, nil
 }
 
-func AddRemote(ctx context.Context, r *sstore.RemoteType) error {
+func AddRemote(ctx context.Context, r *sstore.RemoteType, shouldStart bool) error {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
 
@@ -306,7 +306,7 @@ func AddRemote(ctx context.Context, r *sstore.RemoteType) error {
 	newMsh := MakeMShell(r)
 	GlobalStore.Map[r.RemoteId] = newMsh
 	go newMsh.NotifyRemoteUpdate()
-	if r.ConnectMode == sstore.ConnectModeStartup {
+	if shouldStart {
 		go newMsh.Launch()
 	}
 	return nil
@@ -988,8 +988,8 @@ func addScVarsToState(state *packet.ShellState) *packet.ShellState {
 	}
 	rtn := *state
 	envMap := shexec.DeclMapFromState(&rtn)
-	envMap["PROMPT"] = &shexec.DeclareDeclType{Name: "PROMPT", Value: "1"}
-	envMap["PROMPT_VERSION"] = &shexec.DeclareDeclType{Name: "PROMPT_VERSION", Value: scbase.PromptVersion}
+	envMap["PROMPT"] = &shexec.DeclareDeclType{Name: "PROMPT", Value: "1", Args: "x"}
+	envMap["PROMPT_VERSION"] = &shexec.DeclareDeclType{Name: "PROMPT_VERSION", Value: scbase.PromptVersion, Args: "x"}
 	rtn.ShellVars = shexec.SerializeDeclMap(envMap)
 	return &rtn
 }

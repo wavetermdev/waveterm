@@ -902,7 +902,7 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	if editArgs.Color != "" {
 		r.RemoteOpts = &sstore.RemoteOptsType{Color: editArgs.Color}
 	}
-	err = remote.AddRemote(ctx, r)
+	err = remote.AddRemote(ctx, r, true)
 	if err != nil {
 		return makeRemoteEditErrorReturn_new(visualEdit, fmt.Errorf("cannot create remote %q: %v", r.RemoteCanonicalName, err))
 	}
