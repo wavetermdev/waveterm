@@ -34,7 +34,7 @@ node_modules/.bin/electron-rebuild
 ```bash
 # @scripthaus command electron
 # @scripthaus cd :playbook
-PROMPT_DEV=1 node_modules/.bin/electron dist-dev/emain.js
+PROMPT_DEV=1 PCLOUD_ENDPOINT="https://ot2e112zx5.execute-api.us-west-2.amazonaws.com/dev" node_modules/.bin/electron dist-dev/emain.js
 ```
 
 ```bash
