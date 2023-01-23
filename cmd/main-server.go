@@ -434,8 +434,11 @@ func stdinReadWatch() {
 			sendTelemetryWrapper()
 			time.Sleep(1 * time.Second)
 			syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+			break
 		}
 	}
+	time.Sleep(10 * time.Second)
+	syscall.Kill(syscall.Getpid(), syscall.SIGKILL)
 }
 
 func main() {
