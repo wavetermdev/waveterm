@@ -494,8 +494,8 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                         <div key="term-block" className="term-block" onClick={this.clickTermBlock}></div>
                     </If>
                     <div key="term-connectelem" className="terminal-connectelem" id={"term-" + getLineId(line)} data-cmdid={line.cmdid} style={{height: termHeight}}></div>
-                    <If condition={!termLoaded && false}><div key="term-loading" className="terminal-loading-message">...</div></If>
-                    <If condition={!termLoaded}><LoadingSpinner/></If>
+                    <If condition={!termLoaded}><div key="term-loading" className="terminal-loading-message">...</div></If>
+
                 </div>
                 <If condition={cmd.getRtnState()}>
                     <div key="rtnstate" className="cmd-rtnstate" style={{visibility: ((cmd.getStatus() == "done") ? "visible" : "hidden")}}>
