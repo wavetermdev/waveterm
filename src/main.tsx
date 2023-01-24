@@ -444,11 +444,16 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         let status = cmd.getStatus();
         let termOpts = cmd.getTermOpts();
         let lineNumStr = (line.linenumtemp ? "~" : "") + String(line.linenum);
-        let isSelected = (sw.selectedLine.get() == line.linenum);
-        let isPhysicalFocused = sw.getIsFocused(line.linenum);
-        let swFocusType = sw.focusType.get();
-        let isFocused = isPhysicalFocused && (swFocusType == "cmd" || swFocusType == "cmd-fg");
-        let isFgFocused = isPhysicalFocused && swFocusType == "cmd-fg";
+        let isSelected = mobx.computed(() => (sw.selectedLine.get() == line.linenum), {name: "computed-isSelected"}).get();
+        let isPhysicalFocused = mobx.computed(() => sw.getIsFocused(line.linenum), {name: "computed-getIsFocused"}).get();
+        let isFocused = mobx.computed(() => {
+            let swFocusType = sw.focusType.get();
+            return isPhysicalFocused && (swFocusType == "cmd" || swFocusType == "cmd-fg")
+        }, {name: "computed-isFocused"}).get();
+        let isFgFocused = mobx.computed(() => {
+            let swFocusType = sw.focusType.get();
+            return isPhysicalFocused && swFocusType == "cmd-fg"
+        }, {name: "computed-isFgFocused"}).get();
         let isStatic = staticRender;
         let rsdiff = this.rtnStateDiff.get();
         // console.log("render", "#" + line.linenum, termHeight, usedRows, cmd.getStatus(), (this.rtnStateDiff.get() != null), (!cmd.isRunning() ? "cmd-done" : "running"));
