@@ -861,26 +861,25 @@ func SwitchScreenById(ctx context.Context, sessionId string, screenId string) (U
 }
 
 func cleanSessionCmds(ctx context.Context, sessionId string) error {
-	txErr := WithTx(context.Background(), func(tx *TxWrap) error {
+	var removedCmds []string
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT cmdid FROM cmd WHERE sessionid = ? AND cmdid NOT IN (SELECT cmdid FROM line WHERE sessionid = ?)`
-		removedCmds := tx.SelectStrings(query, sessionId, sessionId)
+		removedCmds = tx.SelectStrings(query, sessionId, sessionId)
 		query = `DELETE FROM cmd WHERE sessionid = ? AND cmdid NOT IN (SELECT cmdid FROM line WHERE sessionid = ?)`
 		tx.ExecWrap(query, sessionId, sessionId)
-		if tx.Err != nil {
-			return nil
-		}
-		for _, cmdId := range removedCmds {
-			DeletePtyOutFile(tx.Context(), sessionId, cmdId)
-		}
 		return nil
 	})
 	if txErr != nil {
 		return txErr
 	}
+	for _, cmdId := range removedCmds {
+		DeletePtyOutFile(ctx, sessionId, cmdId)
+	}
 	return nil
 }
 
 func CleanWindows(sessionId string) {
+	// NOTE: context.Background() here! (this could take a long time, and is async)
 	txErr := WithTx(context.Background(), func(tx *TxWrap) error {
 		query := `SELECT windowid FROM window WHERE sessionid = ? AND windowid NOT IN (SELECT windowid FROM screen_window WHERE sessionid = ?)`
 		removedWindowIds := tx.SelectStrings(query, sessionId, sessionId)
