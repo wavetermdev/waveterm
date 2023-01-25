@@ -105,7 +105,7 @@ function getLocalServerCmd() {
     let localServerPath = getLocalServerPath();
     let scHome = getPromptHomeDir();
     let logFile = path.join(scHome, "local-server.log");
-    return `${localServerPath} > ${logFile} 2>&1`;
+    return `${localServerPath} >> ${logFile} 2>&1`;
 }
 
 function getLocalServerCwd() {
