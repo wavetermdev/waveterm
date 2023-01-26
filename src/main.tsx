@@ -173,12 +173,9 @@ class LineText extends React.Component<{sw : ScreenWindow, line : LineType}, {}>
         return (
             <div className="line line-text" data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} onClick={this.clickHandler}>
                 <div className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused})}/>
-                <div className="avatar">
-                    S
-                </div>
+                <LineAvatar line={line}/>
                 <div className="line-content">
                     <div className="meta">
-                        <div className="user">{line.userid}</div>
                         <div className="ts">{formattedTime}</div>
                     </div>
                     <div className="text">
