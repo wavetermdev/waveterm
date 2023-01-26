@@ -26,4 +26,4 @@ require (
 	mvdan.cc/sh/v3 v3.5.1 // indirect
 )
 
-replace github.com/scripthaus-dev/mshell v0.0.0 => /Users/mike/work/gopath/src/github.com/scripthaus-dev/mshell/
+replace github.com/scripthaus-dev/mshell v0.0.0 => ../mshell/
