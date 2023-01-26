@@ -43,6 +43,10 @@ const WebSocketServerDevAddr = "localhost:8091"
 const WSStateReconnectTime = 30 * time.Second
 const WSStatePacketChSize = 20
 
+const InitialTelemetryWait = 30 * time.Second
+const TelemetryTick = 30 * time.Minute
+const TelemetryInterval = 8 * time.Hour
+
 var GlobalLock = &sync.Mutex{}
 var WSStateMap = make(map[string]*scws.WSState) // clientid -> WsState
 var GlobalAuthKey string
@@ -424,6 +428,19 @@ func sendTelemetryWrapper() {
 	}
 }
 
+func telemetryLoop() {
+	var lastSent time.Time
+	time.Sleep(InitialTelemetryWait)
+	for {
+		dur := time.Now().Sub(lastSent)
+		if lastSent.IsZero() || dur >= TelemetryInterval {
+			lastSent = time.Now()
+			sendTelemetryWrapper()
+		}
+		time.Sleep(TelemetryTick)
+	}
+}
+
 // watch stdin, kill server if stdin is closed
 func stdinReadWatch() {
 	buf := make([]byte, 1024)
@@ -509,15 +526,8 @@ func main() {
 		log.Printf("[error] resetting window focus: %v\n", err)
 	}
 
-	go func() {
-		log.Printf("PCLOUD_ENDPOINT=%s\n", pcloud.GetEndpoint())
-		time.Sleep(30 * time.Second)
-		for {
-			sendTelemetryWrapper()
-			// send new telemetry every 8-hours
-			time.Sleep(8 * time.Hour)
-		}
-	}()
+	log.Printf("PCLOUD_ENDPOINT=%s\n", pcloud.GetEndpoint())
+	go telemetryLoop()
 	go stdinReadWatch()
 	go runWebSocketServer()
 	gr := mux.NewRouter()

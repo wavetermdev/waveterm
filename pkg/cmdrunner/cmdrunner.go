@@ -2106,6 +2106,7 @@ func ClientShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	var buf bytes.Buffer
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "userid", clientData.UserId))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "clientid", clientData.ClientId))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "backend", scbase.PromptVersion))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "telemetry", boolToStr(clientData.ClientOpts.NoTelemetry, "off", "on")))
 	update := sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
