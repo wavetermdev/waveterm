@@ -452,6 +452,7 @@ func main() {
 	}
 
 	scHomeDir := scbase.GetPromptHomeDir()
+	log.Printf("[prompt] local server version %s\n", scbase.PromptVersion)
 	log.Printf("[prompt] homedir = %q\n", scHomeDir)
 
 	scLock, err := scbase.AcquirePromptLock()
