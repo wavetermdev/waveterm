@@ -7,7 +7,7 @@ CREATE TABLE client (
     userpublickeybytes blob NOT NULL,
     userprivatekeybytes blob NOT NULL,
     winsize json NOT NULL
-);
+, clientopts json NOT NULL DEFAULT '');
 CREATE TABLE session (
     sessionid varchar(36) PRIMARY KEY,
     name varchar(50) NOT NULL,
@@ -97,7 +97,7 @@ CREATE TABLE line (
     ephemeral boolean NOT NULL,
     contentheight int NOT NULL,
     star int NOT NULL,
-    hidden boolean NOT NULL,
+    archived boolean NOT NULL,
     PRIMARY KEY (sessionid, windowid, lineid)
 );
 CREATE TABLE remote (
@@ -155,4 +155,13 @@ CREATE TABLE history (
     cmdstr text NOT NULL,
     ismetacmd boolean,
     incognito boolean
+);
+CREATE TABLE activity (
+    day varchar(20) PRIMARY KEY,
+    uploaded boolean NOT NULL,
+    tdata json NOT NULL,
+    tzname varchar(50) NOT NULL,
+    tzoffset int NOT NULL,
+    clientversion varchar(20) NOT NULL,
+    clientarch varchar(20) NOT NULL
 );
