@@ -15,6 +15,11 @@ const RemotePtyRows = 8; // also in main.tsx
 const RemotePtyCols = 80;
 const MinTermCols = 10;
 const MaxTermCols = 1024;
+const ProdServerEndpoint = "http://localhost:1619";
+const ProdServerWsEndpoint = "ws://localhost:1623";
+const DevServerEndpoint = "http://localhost:8090";
+const DevServerWsEndpoint = "ws://localhost:8091";
+
 
 type SWLinePtr = {
     line : LineType,
@@ -1582,16 +1587,16 @@ class Model {
 
     getBaseHostPort() : string {
         if (this.isDev) {
-            return "http://localhost:8090";
+            return DevServerEndpoint;
         }
-        return "http://localhost:8080";
+        return ProdServerEndpoint;
     }
 
     getBaseWsHostPort() : string {
         if (this.isDev) {
-            return "ws://localhost:8091";
+            return DevServerWsEndpoint;
         }
-        return "ws://localhost:8081";
+        return ProdServerWsEndpoint;
     }
 
     getFetchHeaders() : Record<string, string> {

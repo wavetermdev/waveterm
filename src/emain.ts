@@ -13,6 +13,9 @@ import {v4 as uuidv4} from "uuid";
 const PromptAppPathVarName = "PROMPT_APP_PATH";
 const PromptDevVarName = "PROMPT_DEV";
 const AuthKeyFile = "prompt.authkey";
+const DevServerEndpoint = "http://localhost:8090";
+const ProdServerEndpoint = "http://localhost:1619";
+
 let isDev = (process.env[PromptDevVarName] != null);
 let scHome = getPromptHomeDir();
 ensureDir(scHome);
@@ -89,9 +92,9 @@ function getAppBasePath() {
 
 function getBaseHostPort() {
     if (isDev) {
-        return "http://localhost:8090";
+        return DevServerEndpoint;
     }
-    return "http://localhost:8080";
+    return ProdServerEndpoint;
 }
 
 function getLocalServerPath() {
