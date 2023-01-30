@@ -36,8 +36,8 @@ const HttpWriteTimeout = 21 * time.Second
 const HttpMaxHeaderBytes = 60000
 const HttpTimeoutDuration = 21 * time.Second
 
-const MainServerAddr = "localhost:8080"
-const WebSocketServerAddr = "localhost:8081"
+const MainServerAddr = "localhost:1619"      // PromptServer,  P=16, S=19, PS=1619
+const WebSocketServerAddr = "localhost:1623" // PromptWebsock, P=16, W=23, PW=1623
 const MainServerDevAddr = "localhost:8090"
 const WebSocketServerDevAddr = "localhost:8091"
 const WSStateReconnectTime = 30 * time.Second
