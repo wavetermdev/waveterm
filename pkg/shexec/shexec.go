@@ -45,6 +45,8 @@ const DefaultTermType = "xterm-256color"
 const DefaultMaxPtySize = 1024 * 1024
 const MinMaxPtySize = 16 * 1024
 const MaxMaxPtySize = 100 * 1024 * 1024
+const MaxRunDataSize = 1024 * 1024
+const MaxTotalRunDataSize = 10 * MaxRunDataSize
 
 const GetStateTimeout = 5 * time.Second
 
@@ -385,12 +387,12 @@ func ValidateRunPacket(pk *packet.RunPacketType) error {
 		}
 		totalRunData := 0
 		for _, rd := range pk.RunData {
-			if rd.DataLen > mpio.ReadBufSize {
+			if rd.DataLen > MaxRunDataSize {
 				return fmt.Errorf("cannot detach command, constant rundata input too large fd=%d, len=%d, max=%d", rd.FdNum, rd.DataLen, mpio.ReadBufSize)
 			}
 			totalRunData += rd.DataLen
 		}
-		if totalRunData > mpio.MaxTotalRunDataSize {
+		if totalRunData > MaxTotalRunDataSize {
 			return fmt.Errorf("cannot detach command, constant rundata input too large len=%d, max=%d", totalRunData, mpio.MaxTotalRunDataSize)
 		}
 	}
@@ -618,8 +620,8 @@ func (opts *ClientOpts) MakeRunPacket() (*packet.RunPacketType, error) {
 }
 
 func AddRunData(pk *packet.RunPacketType, data string, dataType string) (int, error) {
-	if len(data) > mpio.ReadBufSize {
-		return 0, fmt.Errorf("%s too large, exceeds read buffer size", dataType)
+	if len(data) > MaxRunDataSize {
+		return 0, fmt.Errorf("%s too large, exceeds read buffer size size:%d", dataType, len(data))
 	}
 	fdNum, err := NextFreeFdNum(pk)
 	if err != nil {
