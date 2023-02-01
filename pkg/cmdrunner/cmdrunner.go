@@ -1882,10 +1882,10 @@ func LineSetHeightCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		return nil, fmt.Errorf("error looking up lineid: %v", err)
 	}
 	heightVal, err := resolveNonNegInt(pk.Args[1], 0)
-	if heightVal == 0 {
-		return nil, fmt.Errorf("/line:setheight invalid height val")
+	if err != nil {
+		return nil, fmt.Errorf("/line:setheight invalid height val: %v", err)
 	}
-	if heightVal > 10000 {
+	if heightVal > 1000 {
 		return nil, fmt.Errorf("/line:setheight invalid height val (too large): %d", heightVal)
 	}
 	err = sstore.UpdateLineHeight(ctx, lineId, heightVal)
