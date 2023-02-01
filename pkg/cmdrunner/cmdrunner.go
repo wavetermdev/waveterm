@@ -134,6 +134,7 @@ func init() {
 	registerCmdAlias("screen:new", ScreenOpenCommand)
 	registerCmdFn("screen:set", ScreenSetCommand)
 	registerCmdFn("screen:showall", ScreenShowAllCommand)
+	registerCmdFn("screen:reset", ScreenResetCommand)
 
 	registerCmdAlias("remote", RemoteCommand)
 	registerCmdFn("remote:show", RemoteShowCommand)
@@ -145,6 +146,7 @@ func init() {
 	registerCmdFn("remote:connect", RemoteConnectCommand)
 	registerCmdFn("remote:install", RemoteInstallCommand)
 	registerCmdFn("remote:installcancel", RemoteInstallCancelCommand)
+	registerCmdFn("remote:reset", RemoteResetCommand)
 
 	registerCmdFn("sw:set", SwSetCommand)
 	registerCmdFn("sw:resize", SwResizeCommand)
@@ -1004,6 +1006,52 @@ func ScreenShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	}, nil
 }
 
+func ScreenResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
+	if err != nil {
+		return nil, err
+	}
+	screen, err := sstore.GetScreenById(ctx, ids.SessionId, ids.ScreenId)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving screen: %v", err)
+	}
+	localRemote := remote.GetLocalRemote()
+	if localRemote == nil {
+		return nil, fmt.Errorf("error getting local remote (not found)")
+	}
+	rptr := sstore.RemotePtrType{RemoteId: localRemote.RemoteId}
+	var windows []*sstore.WindowType
+	sessionUpdate := &sstore.SessionType{SessionId: ids.SessionId}
+	for _, sw := range screen.Windows {
+		ris, err := sstore.WindowReset(ctx, ids.SessionId, sw.WindowId)
+		if err != nil {
+			return nil, fmt.Errorf("error resetting screen window: %v", err)
+		}
+		sessionUpdate.Remotes = append(sessionUpdate.Remotes, ris...)
+		err = sstore.UpdateCurRemote(ctx, ids.SessionId, sw.WindowId, rptr)
+		if err != nil {
+			return nil, fmt.Errorf("cannot reset window remote back to local: %w", err)
+		}
+		winUpdate := &sstore.WindowType{SessionId: ids.SessionId, WindowId: sw.WindowId, CurRemote: rptr}
+		windows = append(windows, winUpdate)
+	}
+	outputStr := "reset screen state (all remote state reset)"
+	cmd, err := makeStaticCmd(ctx, "screen:reset", ids, pk.GetRawStr(), []byte(outputStr))
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, err
+	}
+	update, err := addLineForCmd(ctx, "/screen:reset", false, ids, cmd)
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, err
+	}
+	update.Interactive = pk.Interactive
+	update.Windows = windows
+	update.Sessions = []*sstore.SessionType{sessionUpdate}
+	return update, nil
+}
+
 func RemoteArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window|R_Remote)
 	if err != nil {
@@ -1016,11 +1064,11 @@ func RemoteArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	update := sstore.InfoMsgUpdate("remote [%s] archived", ids.Remote.DisplayName)
 	localRemote := remote.GetLocalRemote()
 	if localRemote != nil {
-		update.Window = &sstore.WindowType{
+		update.Windows = []*sstore.WindowType{&sstore.WindowType{
 			SessionId: ids.SessionId,
 			WindowId:  ids.WindowId,
 			CurRemote: sstore.RemotePtrType{RemoteId: localRemote.GetRemoteId()},
-		}
+		}}
 	}
 	return update, nil
 }
@@ -1102,11 +1150,11 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 		return nil, fmt.Errorf("/cr error: cannot update curremote: %w", err)
 	}
 	update := sstore.ModelUpdate{
-		Window: &sstore.WindowType{
+		Windows: []*sstore.WindowType{&sstore.WindowType{
 			SessionId: ids.SessionId,
 			WindowId:  ids.WindowId,
 			CurRemote: *rptr,
-		},
+		}},
 		Info: &sstore.InfoMsgType{
 			InfoMsg:   fmt.Sprintf("current remote = %q", remoteName),
 			TimeoutMs: 2000,

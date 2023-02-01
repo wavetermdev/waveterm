@@ -1252,7 +1252,7 @@ func ArchiveWindowLines(ctx context.Context, sessionId string, windowId string) 
 	if err != nil {
 		return nil, err
 	}
-	return &ModelUpdate{Window: win}, nil
+	return &ModelUpdate{Windows: []*WindowType{win}}, nil
 }
 
 func PurgeWindowLines(ctx context.Context, sessionId string, windowId string) (*ModelUpdate, error) {
@@ -1289,7 +1289,7 @@ func PurgeWindowLines(ctx context.Context, sessionId string, windowId string) (*
 		}
 		win.Lines = append(win.Lines, line)
 	}
-	return &ModelUpdate{Window: win}, nil
+	return &ModelUpdate{Windows: []*WindowType{win}}, nil
 }
 
 func GetRunningWindowCmds(ctx context.Context, sessionId string, windowId string) ([]*CmdType, error) {
@@ -1315,6 +1315,27 @@ func UpdateCmdTermOpts(ctx context.Context, sessionId string, cmdId string, term
 		return nil
 	})
 	return txErr
+}
+
+// returns riids of deleted RIs
+func WindowReset(ctx context.Context, sessionId string, windowId string) ([]*RemoteInstance, error) {
+	var delRis []*RemoteInstance
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT windowid FROM window WHERE sessionid = ? AND windowid = ?`
+		if !tx.Exists(query, sessionId, windowId) {
+			return fmt.Errorf("window does not exist")
+		}
+		query = `SELECT riid FROM remote_instance WHERE sessionid = ? AND windowid = ?`
+		riids := tx.SelectStrings(query, sessionId, windowId)
+		for _, riid := range riids {
+			ri := &RemoteInstance{SessionId: sessionId, WindowId: windowId, RIId: riid, Remove: true}
+			delRis = append(delRis, ri)
+		}
+		query = `DELETE FROM remote_instance WHERE sessionid = ? AND windowid = ?`
+		tx.ExecWrap(query, sessionId, windowId)
+		return nil
+	})
+	return delRis, txErr
 }
 
 func DeleteSession(ctx context.Context, sessionId string) (UpdatePacket, error) {
