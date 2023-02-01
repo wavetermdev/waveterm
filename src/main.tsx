@@ -168,8 +168,8 @@ class LineText extends React.Component<{sw : ScreenWindow, line : LineType}, {}>
     render() {
         let {sw, line} = this.props;
         let formattedTime = getLineDateStr(line.ts);
-        let isSelected = (sw.selectedLine.get() == line.linenum);
-        let isFocused = (sw.focusType.get() == "cmd");
+        let isSelected = mobx.computed(() => (sw.selectedLine.get() == line.linenum), {name: "computed-isSelected"}).get();
+        let isFocused = mobx.computed(() => (sw.focusType.get() == "cmd"), {name: "computed-isFocused"}).get();
         return (
             <div className="line line-text" data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} onClick={this.clickHandler}>
                 <div className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused})}/>
@@ -391,6 +391,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         }
         if (snapshot.height != curHeight && this.props.onHeightChange != null) {
             this.props.onHeightChange(line.linenum, curHeight, snapshot.height);
+            // console.log("line height change: ", line.linenum, snapshot.height, "=>", curHeight);
         }
         this.checkLoad();
         this.checkStateDiffLoad();
@@ -479,7 +480,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                             <div className="ts">{formattedTime}</div>
                             <div className="termopts">
                                 ({termOpts.rows}x{termOpts.cols})
-                                <If condition={cmd.isRunning() && false}><i onClick={this.doResizeButton} className="resize-button fa fa-arrows-alt"/></If>
+                                <If condition={cmd.isRunning() && false}><i onClick={this.handleResizeButton} className="resize-button fa fa-arrows-alt"/></If>
                             </div>
                         </div>
                         <div key="meta2" className="meta">
@@ -631,8 +632,19 @@ class TextAreaInput extends React.Component<{}, {}> {
             if (e.code == "Enter") {
                 e.preventDefault();
                 if (!ctrlMod) {
-                    setTimeout(() => GlobalModel.inputModel.uiSubmitCommand(), 0);
-                    return;
+                    if (GlobalModel.inputModel.isEmpty()) {
+                        let activeWindow = GlobalModel.getActiveWindow();
+                        let activeSW = GlobalModel.getActiveSW();
+                        if (activeSW != null && activeWindow != null && activeWindow.lines.length > 0) {
+                            activeSW.setSelectedLine(0);
+                            GlobalCommandRunner.swSelectLine("E");
+                        }
+                        return;
+                    }
+                    else {
+                        setTimeout(() => GlobalModel.inputModel.uiSubmitCommand(), 0);
+                        return;
+                    }
                 }
                 e.target.setRangeText("\n", e.target.selectionStart, e.target.selectionEnd, "end");
                 GlobalModel.inputModel.setCurLine(e.target.value);
@@ -1874,8 +1886,8 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
     lastOffsetWidth : number = 0;
     ignoreNextScroll : boolean = false;
     visibleMap : Map<string, OV<boolean>>;  // lineid => OV<vis>
-    lastSelectedLine : number = 0;
     lastLinesLength : number = 0;
+    lastSelectedLine : number = 0;
 
     computeAnchorLine_throttled : () => void;
     computeVisibleMap_debounced : () => void;
@@ -2074,6 +2086,9 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
             return null;
         }
         let newLine = sw.selectedLine.get();
+        if (newLine == 0) {
+            return;
+        }
         this.setLineVisible(newLine, true);
         // console.log("update selected line", this.lastSelectedLine, "=>", newLine, sprintf("anchor=%d:%d", sw.anchorLine, sw.anchorOffset));
         let viewInfo = this.getLineViewInfo(newLine);

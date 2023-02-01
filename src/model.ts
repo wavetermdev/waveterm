@@ -422,6 +422,9 @@ class ScreenWindow {
         if (lines == null || lines.length == 0) {
             return null;
         }
+        if (lineNum == 0) {
+            return null;
+        }
         for (let i=0; i<lines.length; i++) {
             let line = lines[i];
             if (line.linenum == lineNum) {
@@ -1406,6 +1409,10 @@ class InputModel {
         })();
     }
 
+    isEmpty() : boolean {
+        return this.getCurLine().trim() == "";
+    }
+
     resetInputMode() : void {
         mobx.action(() => {
             this.setInputMode(null);
@@ -2054,6 +2061,7 @@ class Model {
             uicontext : this.getUIContext(),
             interactive : interactive,
         };
+        // console.log("CMD", pk.metacmd + (pk.metasubcmd != null ? ":" + pk.metasubcmd : ""), pk.args, pk.kwargs, pk.interactive);
         this.submitCommandPacket(pk, interactive);
     }
 
@@ -2343,6 +2351,14 @@ class CommandRunner {
             kwargs["focus"] = focusVal;
         }
         GlobalModel.submitCommand("sw", "set", null, kwargs, true);
+    }
+
+    setLineHeight(lineArg : string, height : number) {
+        let kwargs : Record<string, string> = {};
+        kwargs["line"] = lineArg;
+        kwargs["height"] = String(height);
+        kwargs["hohist"] = "1";
+        GlobalModel.submitCommand("line", "setheight", null, kwargs, false);
     }
 
     swSetAnchor(sessionId : string, screenId : string, windowId : string, anchorVal : string) : void {
