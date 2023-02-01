@@ -728,6 +728,9 @@ func RunInstallFromCmd(ctx context.Context, ecmd *exec.Cmd, tryDetect bool, mshe
 		case <-ctx.Done():
 			return ctx.Err()
 		}
+		if pk == nil {
+			return fmt.Errorf("no response packet received from client")
+		}
 		if pk.GetType() == packet.InitPacketStr && firstInit {
 			firstInit = false
 			initPacket := pk.(*packet.InitPacketType)
