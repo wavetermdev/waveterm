@@ -141,13 +141,14 @@ let menuTemplate = [
         role: "appMenu",
     },
     {
-        role: "fileMenu",
+        label: "File",
+        submenu: [
+            {role: "close"},
+            {role: "forceReload"},
+        ],
     },
     {
         role: "editMenu",
-    },
-    {
-        role: "viewMenu",
     },
     {
         role: "windowMenu",
@@ -201,9 +202,20 @@ function createMainWindow(clientData) {
             return;
         }
         if (input.code == "KeyI" && input.meta) {
+            e.preventDefault();
             if (!input.alt) {
                 win.webContents.send("i-cmd", mods);
-                e.preventDefault();
+            }
+            else {
+                win.webContents.toggleDevTools();
+            }
+            
+            return;
+        }
+        if (input.code == "KeyR" && input.meta) {
+            e.preventDefault();
+            if (input.shift) {
+                win.reload();
             }
             return;
         }
