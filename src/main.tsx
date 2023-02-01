@@ -2360,8 +2360,6 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
     handleContextMenu(e : any, screenId : string) : void {
         e.preventDefault();
         console.log("handle context menu!", screenId);
-        let model = GlobalModel;
-        model.contextScreen(e, screenId);
     }
 
     render() {
