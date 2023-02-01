@@ -159,6 +159,7 @@ func init() {
 	registerCmdFn("line:star", LineStarCommand)
 	registerCmdFn("line:archive", LineArchiveCommand)
 	registerCmdFn("line:purge", LinePurgeCommand)
+	registerCmdFn("line:setheight", LineSetHeightCommand)
 
 	registerCmdFn("client", ClientCommand)
 	registerCmdFn("client:show", ClientShowCommand)
@@ -1864,7 +1865,35 @@ func SwResizeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 }
 
 func LineCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	return nil, fmt.Errorf("/line requires a subcommand: %s", formatStrs([]string{"show", "star", "hide", "purge"}, "or", false))
+	return nil, fmt.Errorf("/line requires a subcommand: %s", formatStrs([]string{"show", "star", "hide", "purge", "setheight"}, "or", false))
+}
+
+func LineSetHeightCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
+	if err != nil {
+		return nil, err
+	}
+	if len(pk.Args) != 2 {
+		return nil, fmt.Errorf("/line:setheight requires 2 arguments (linearg and height)")
+	}
+	lineArg := pk.Args[0]
+	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.WindowId, lineArg)
+	if err != nil {
+		return nil, fmt.Errorf("error looking up lineid: %v", err)
+	}
+	heightVal, err := resolveNonNegInt(pk.Args[1], 0)
+	if heightVal == 0 {
+		return nil, fmt.Errorf("/line:setheight invalid height val")
+	}
+	if heightVal > 10000 {
+		return nil, fmt.Errorf("/line:setheight invalid height val (too large): %d", heightVal)
+	}
+	err = sstore.UpdateLineHeight(ctx, lineId, heightVal)
+	if err != nil {
+		return nil, fmt.Errorf("/line:setheight error updating height: %v", err)
+	}
+	// we don't need to pass the updated line height (it is "write only")
+	return nil, nil
 }
 
 func LineStarCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {

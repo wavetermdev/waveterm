@@ -1780,6 +1780,18 @@ func UpdateLineStar(ctx context.Context, lineId string, starVal int) error {
 	return nil
 }
 
+func UpdateLineHeight(ctx context.Context, lineId string, heightVal int) error {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `UPDATE line SET contentheight = ? WHERE lineid = ?`
+		tx.ExecWrap(query, heightVal, lineId)
+		return nil
+	})
+	if txErr != nil {
+		return txErr
+	}
+	return nil
+}
+
 // can return nil, nil if line is not found
 func GetLineById(ctx context.Context, lineId string) (*LineType, error) {
 	var rtn *LineType
