@@ -5,7 +5,7 @@ import {debounce} from "throttle-debounce";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData, boundInt, isModKeyPress} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts} from "./types";
+import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, NormalTermContext} from "./types";
 import {WSControl} from "./ws";
 
 var GlobalUser = "sawka";
@@ -554,6 +554,9 @@ class ScreenWindow {
         }
         let cols = widthToCols(width);
         let usedRows = GlobalModel.getTUR(this.sessionId, cmdId, cols);
+        if (line.contentheight != null && line.contentheight != -1) {
+            usedRows = line.contentheight;
+        }
         let termContext = {sessionId: this.sessionId, screenId: this.screenId, windowId: this.windowId, cmdId: cmdId, lineNum: line.linenum};
         termWrap = new TermWrap(elem, {
             termContext: termContext,
@@ -580,7 +583,7 @@ class ScreenWindow {
         }
     }
 
-    getUsedRows(cmd : Cmd, width : number) : number {
+    getUsedRows(line : LineType, cmd : Cmd, width : number) : number {
         let termOpts = cmd.getTermOpts();
         if (!termOpts.flexrows) {
             return termOpts.rows;
@@ -591,6 +594,9 @@ class ScreenWindow {
             let usedRows = GlobalModel.getTUR(this.sessionId, cmd.cmdId, cols);
             if (usedRows != null) {
                 return usedRows;
+            }
+            if (line.contentheight != null && line.contentheight != -1) {
+                return line.contentheight;
             }
             return (cmd.isRunning() ? 1 : 0);
         }
@@ -1662,9 +1668,10 @@ class Model {
         return this.termUsedRowsCache[key];
     }
 
-    setTUR(sessionId : string, cmdId : string, size : TermWinSize, usedRows : number) : void {
-        let key = sessionId + "/" + cmdId + "/" + size.cols;
+    setTUR(termContext : NormalTermContext, size : TermWinSize, usedRows : number) : void {
+        let key = termContext.sessionId + "/" + termContext.cmdId + "/" + size.cols;
         this.termUsedRowsCache[key] = usedRows;
+        GlobalCommandRunner.setTermUsedRows(termContext, usedRows);
     }
     
     contextScreen(e : any, screenId : string) {
@@ -1753,7 +1760,7 @@ class Model {
             let term = sw.getTermWrap(cmdId);
             if (term != null) {
                 term.setIsRunning(cmdStatusIsRunning(newStatus));
-                term.updateUsedRows(true);
+                term.updateUsedRows(true, "cmd-status");
                 // setTimeout(() => term.updateUsedRows(true), 500);
             }
         }
@@ -2354,12 +2361,14 @@ class CommandRunner {
         GlobalModel.submitCommand("sw", "set", null, kwargs, true);
     }
 
-    setLineHeight(lineArg : string, height : number) {
+    setTermUsedRows(termContext : NormalTermContext, height : number) {
         let kwargs : Record<string, string> = {};
-        kwargs["line"] = lineArg;
-        kwargs["height"] = String(height);
+        kwargs["session"] = termContext.sessionId;
+        kwargs["screen"] = termContext.screenId;
+        kwargs["window"] = termContext.windowId;
         kwargs["hohist"] = "1";
-        GlobalModel.submitCommand("line", "setheight", null, kwargs, false);
+        let posargs = [String(termContext.lineNum), String(height)];
+        GlobalModel.submitCommand("line", "setheight", posargs, kwargs, false);
     }
 
     swSetAnchor(sessionId : string, screenId : string, windowId : string, anchorVal : string) : void {

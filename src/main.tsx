@@ -441,7 +441,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
             );
         }
         let termLoaded = this.termLoaded.get();
-        let usedRows = sw.getUsedRows(cmd, width);
+        let usedRows = sw.getUsedRows(line, cmd, width);
         let termHeight = termHeightFromRows(usedRows);
         let remote = model.getRemote(cmd.remoteId);
         let status = cmd.getStatus();
@@ -1952,6 +1952,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
         let containerTop = linesElem.scrollTop - LinesVisiblePadding;
         let containerBot = linesElem.scrollTop + linesElem.clientHeight + LinesVisiblePadding;
         let newMap = new Map<string, boolean>();
+        // console.log("computevismap", linesElem.scrollTop, linesElem.clientHeight, containerTop + "-" + containerBot);
         for (let i=0; i<lineElemArr.length; i++) {
             let lineElem = lineElemArr[i];
             let lineTop = lineElem.offsetTop;
@@ -1964,6 +1965,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
                 isVis = true
             }
             newMap.set(lineElem.dataset.linenum, isVis);
+            // console.log("setvis", sprintf("%4d %4d-%4d (%4d) %s", lineElem.dataset.linenum, lineTop, lineBot, lineElem.offsetHeight, isVis));
         }
         mobx.action(() => {
             for (let [k, v] of newMap) {

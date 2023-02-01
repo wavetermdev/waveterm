@@ -5,7 +5,7 @@ import {boundMethod} from "autobind-decorator";
 import {v4 as uuidv4} from "uuid";
 import {GlobalModel, widthToCols, GlobalCommandRunner} from "./model";
 import {boundInt} from "./util";
-import type {TermOptsType, TermWinSize} from "./types";
+import type {TermOptsType, TermWinSize, NormalTermContext} from "./types";
 
 type DataUpdate = {
     data : Uint8Array,
@@ -20,7 +20,6 @@ type WindowSize = {
 const MinTermCols = 10;
 const MaxTermCols = 1024;
 
-type NormalTermContext = {sessionId : string, screenId : string, windowId : string, cmdId : string, lineNum : number};
 type RemoteTermContext = {remoteId : string};
 
 type TermContext = NormalTermContext | RemoteTermContext;
@@ -185,7 +184,7 @@ class TermWrap {
         return usedRows;
     }
 
-    updateUsedRows(forceFull : boolean) {
+    updateUsedRows(forceFull : boolean, reason : string) {
         if (this.terminal == null) {
             return;
         }
@@ -211,20 +210,11 @@ class TermWrap {
             if (!forceFull && tur <= oldUsedRows) {
                 return;
             }
-            this.usedRows.set(tur);
-            GlobalModel.setTUR(termContext.sessionId, termContext.cmdId, this.termSize, tur);
-            if (this.connectedElem) {
-                let resizeEvent = new CustomEvent("termresize", {
-                    bubbles: true,
-                    detail: {
-                        cmdId: termContext.cmdId,
-                        oldUsedRows: oldUsedRows,
-                        newUsedRows: tur,
-                    },
-                });
-                // console.log("resize-event", resizeEvent);
-                this.connectedElem.dispatchEvent(resizeEvent);
+            if (tur == oldUsedRows) {
+                return;
             }
+            this.usedRows.set(tur);
+            GlobalModel.setTUR(termContext, this.termSize, tur);
         })();
     }
 
@@ -243,7 +233,7 @@ class TermWrap {
         }
         this.termSize = newSize;
         this.terminal.resize(newSize.cols, newSize.rows);
-        this.updateUsedRows(true);
+        this.updateUsedRows(true, "resize");
     }
 
     _getReloadUrl() : string {
@@ -283,7 +273,9 @@ class TermWrap {
                     this.updatePtyData(this.dataUpdates[i].pos, this.dataUpdates[i].data, "reload-update-" + i);
                 }
                 this.dataUpdates = [];
-                this.updateUsedRows(true);
+                this.terminal.write(new Uint8Array(), () => {
+                    this.updateUsedRows(true, "reload");
+                });
             }, delayMs);
         }).catch((e) => {
             console.log("error reloading terminal", e);
@@ -317,7 +309,7 @@ class TermWrap {
         }
         this.ptyPos += data.length;
         this.terminal.write(data, () => {
-            this.updateUsedRows(false);
+            this.updateUsedRows(false, "updatePtyData");
         });
     }
 
