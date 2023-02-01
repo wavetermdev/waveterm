@@ -554,8 +554,9 @@ class ScreenWindow {
         }
         let cols = widthToCols(width);
         let usedRows = GlobalModel.getTUR(this.sessionId, cmdId, cols);
+        let termContext = {sessionId: this.sessionId, screenId: this.screenId, windowId: this.windowId, cmdId: cmdId, lineNum: line.linenum};
         termWrap = new TermWrap(elem, {
-            termContext: {sessionId: this.sessionId, cmdId: cmdId, lineNum: line.linenum},
+            termContext: termContext,
             usedRows: usedRows,
             termOpts: cmd.getTermOpts(),
             winSize: {height: 0, width: width},
@@ -1471,7 +1472,7 @@ class InputModel {
     syncTermWrap() : void {
         let infoMsg = this.infoMsg.get();
         let remoteId = (infoMsg == null ? null : infoMsg.ptyremoteid);
-        let curTermRemoteId = (this.remoteTermWrap == null ? null : this.remoteTermWrap.termContext.remoteId);
+        let curTermRemoteId = (this.remoteTermWrap == null ? null : this.remoteTermWrap.getContextRemoteId());
         if (remoteId == curTermRemoteId) {
             return;
         }

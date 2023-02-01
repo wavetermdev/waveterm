@@ -20,7 +20,10 @@ type WindowSize = {
 const MinTermCols = 10;
 const MaxTermCols = 1024;
 
-type TermContext = {sessionId? : string, cmdId? : string, remoteId? : string, lineNum? : number};
+type NormalTermContext = {sessionId : string, screenId : string, windowId : string, cmdId : string, lineNum : number};
+type RemoteTermContext = {remoteId : string};
+
+type TermContext = NormalTermContext | RemoteTermContext;
 
 type TermWrapOpts = {
     termContext : TermContext,
@@ -123,6 +126,20 @@ class TermWrap {
         e.target.scrollTop = 0;
     }
 
+    getContextRemoteId() : string {
+        if ("remoteId" in this.termContext) {
+            return this.termContext.remoteId;
+        }
+        return null;
+    }
+
+    getNormalTermContext() : NormalTermContext {
+        if ("remoteId" in this.termContext) {
+            return null;
+        }
+        return this.termContext;
+    }
+
     getFontHeight() : number {
         return this.terminal._core.viewport._currentRowHeight;
     }
@@ -175,7 +192,8 @@ class TermWrap {
         if (!this.flexRows) {
             return;
         }
-        if (this.termContext.remoteId != null) {
+        let termContext = this.getNormalTermContext();
+        if ("remoteId" in termContext) {
             return;
         }
         if (forceFull) {
@@ -194,12 +212,12 @@ class TermWrap {
                 return;
             }
             this.usedRows.set(tur);
-            GlobalModel.setTUR(this.termContext.sessionId, this.termContext.cmdId, this.termSize, tur);
+            GlobalModel.setTUR(termContext.sessionId, termContext.cmdId, this.termSize, tur);
             if (this.connectedElem) {
                 let resizeEvent = new CustomEvent("termresize", {
                     bubbles: true,
                     detail: {
-                        cmdId: this.termContext.cmdId,
+                        cmdId: termContext.cmdId,
                         oldUsedRows: oldUsedRows,
                         newUsedRows: tur,
                     },
@@ -229,12 +247,11 @@ class TermWrap {
     }
 
     _getReloadUrl() : string {
-        if (this.termContext.remoteId != null) {
-            return sprintf(GlobalModel.getBaseHostPort() + "/api/remote-pty?remoteid=%s", this.termContext.remoteId);
+        if (this.getContextRemoteId() != null) {
+            return sprintf(GlobalModel.getBaseHostPort() + "/api/remote-pty?remoteid=%s", this.getContextRemoteId());
         }
-        else {
-            return sprintf(GlobalModel.getBaseHostPort() + "/api/ptyout?sessionid=%s&cmdid=%s", this.termContext.sessionId, this.termContext.cmdId);
-        }
+        let termContext = this.getNormalTermContext();
+        return sprintf(GlobalModel.getBaseHostPort() + "/api/ptyout?sessionid=%s&cmdid=%s", termContext.sessionId, termContext.cmdId);
     }
 
     reloadTerminal(delayMs : number) {
@@ -266,6 +283,7 @@ class TermWrap {
                     this.updatePtyData(this.dataUpdates[i].pos, this.dataUpdates[i].data, "reload-update-" + i);
                 }
                 this.dataUpdates = [];
+                this.updateUsedRows(true);
             }, delayMs);
         }).catch((e) => {
             console.log("error reloading terminal", e);
