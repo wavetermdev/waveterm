@@ -269,7 +269,7 @@ type PtyDataUpdateType = {
 type ModelUpdateType = {
     sessions? : SessionDataType[],
     activesessionid? : string,
-    window? : WindowDataType,
+    windows? : WindowDataType[],
     screenwindows? : ScreenWindowType[],
     line? : LineType,
     cmd? : CmdDataType,

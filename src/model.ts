@@ -1852,8 +1852,10 @@ class Model {
         else if ("cmd" in update) {
             this.updateCmd(update.cmd);
         }
-        if ("window" in update) {
-            this.updateWindow(update.window, false);
+        if ("windows" in update) {
+            for (let i=0; i<update.windows.length; i++) {
+                this.updateWindow(update.windows[i], false);
+            }
         }
         if ("screenwindows" in update) {
             for (let i=0; i<update.screenwindows.length; i++) {
