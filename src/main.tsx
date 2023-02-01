@@ -419,6 +419,11 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
             GlobalCommandRunner.lineStar(line.lineid, 0);
         }
     }
+
+    @boundMethod
+    handleResizeButton() {
+        console.log("resize button");
+    }
     
     render() {
         let {sw, line, width, staticRender, visible} = this.props;
@@ -472,12 +477,12 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                         <div key="meta1" className="meta">
                             <div className="user" style={{display: "none"}}>{line.userid}</div>
                             <div className="ts">{formattedTime}</div>
+                            <div className="termopts">
+                                ({termOpts.rows}x{termOpts.cols})
+                                <If condition={cmd.isRunning() && false}><i onClick={this.doResizeButton} className="resize-button fa fa-arrows-alt"/></If>
+                            </div>
                         </div>
                         <div key="meta2" className="meta">
-                            <div className="metapart-mono" style={{display: "none"}}>
-                                {line.cmdid}
-                                ({termOpts.rows}x{termOpts.cols})
-                            </div>
                             {this.renderCmdText(cmd, remote)}
                         </div>
                     </div>

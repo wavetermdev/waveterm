@@ -28,7 +28,7 @@ type SWLinePtr = {
 };
 
 function widthToCols(width : number) : number {
-    let cols = Math.trunc((width - 32) / DefaultCellWidth) - 1;
+    let cols = Math.trunc((width - 50) / DefaultCellWidth) - 1;
     cols = boundInt(cols, MinTermCols, MaxTermCols);
     return cols;
 }
@@ -42,7 +42,7 @@ function termHeightFromRows(rows : number) : number {
 }
 
 function termRowsFromHeight(height : number) : number {
-    let rows = Math.floor((height - 80)/DefaultCellHeight);
+    let rows = Math.floor((height - 80)/DefaultCellHeight) - 1;
     if (rows <= 0) {
         rows = 1;
     }
@@ -472,15 +472,15 @@ class ScreenWindow {
         if (!this.isActive() || cols == 0 || rows == 0) {
             return;
         }
-        this.lastRows = rows;
-        if (cols == this.lastCols) {
+        if (rows == this.lastRows && cols == this.lastCols) {
             return;
         }
+        this.lastRows = rows;
         this.lastCols = cols;
         for (let cmdid in this.terms) {
             this.terms[cmdid].resizeCols(cols);
         }
-        GlobalCommandRunner.resizeWindow(this.windowId, cols);
+        GlobalCommandRunner.resizeWindow(this.windowId, rows, cols);
     }
 
     getTermWrap(cmdId : string) : TermWrap {
@@ -2281,8 +2281,8 @@ class CommandRunner {
         GlobalModel.submitCommand("screen", "close", [screen], {"nohist": "1"}, false);
     }
 
-    resizeWindow(windowId : string, cols : number) {
-        GlobalModel.submitCommand("sw", "resize", null, {"nohist": "1", "window": windowId, "cols": String(cols)}, false);
+    resizeWindow(windowId : string, rows : number, cols : number) {
+        GlobalModel.submitCommand("sw", "resize", null, {"nohist": "1", "window": windowId, "cols": String(cols), "rows": String(rows)}, false);
     }
 
     showRemote(remoteid : string) {

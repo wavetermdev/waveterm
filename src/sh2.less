@@ -559,6 +559,10 @@ html, body, #main {
         background-color: #222;
     }
 
+    &:hover .meta .termopts {
+        display: block;
+    }
+
     .focus-indicator {
         position: absolute;
         display: none;
@@ -679,6 +683,21 @@ html, body, #main {
             color: #ddd;
             margin-top: 5px;
             font-size: 12px;
+        }
+
+        .termopts {
+            margin-left: 10px;
+            color: #aaa;
+            margin-top: 7px;
+            font-size: 12px;
+            .mono-font(10px);
+            display: none;
+
+            .resize-button {
+                cursor: pointer;
+                padding-left: 3px;
+                padding-right: 3px;
+            }
         }
         
         .metapart-mono {
@@ -861,6 +880,7 @@ body .xterm .xterm-viewport {
             .mono-font();
             padding-bottom: calc(0.5em - 1px);
             padding-top: calc(0.5em - 1px);
+            resize: none;
 
             &:active, &:focus {
                 border-color: white !important;
