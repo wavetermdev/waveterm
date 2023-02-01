@@ -1006,7 +1006,6 @@ class InfoRemoteShow extends React.Component<{}, {}> {
 
     renderInstallStatus(remote : RemoteType) : any {
         let statusStr : string = null;
-        remote.mshellversion
         if (remote.installstatus == "disconnected") {
             if (remote.needsmshellupgrade) {
                 statusStr = "mshell " + remote.mshellversion + " (needs upgrade)";
