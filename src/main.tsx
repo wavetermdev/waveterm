@@ -993,7 +993,7 @@ class InfoRemoteShow extends React.Component<{}, {}> {
 
     renderInstallButton(remote : RemoteType) : any {
         if (remote.status == "connected" || remote.status == "connecting") {
-            return "(must disconnect to install)";
+            return null;
         }
         if (remote.installstatus == "disconnected" || remote.installstatus == "error") {
             return <div key="run-install" onClick={() => this.installRemote(remote.remoteid)} className="text-button connect-button">[run install]</div>
@@ -1006,9 +1006,16 @@ class InfoRemoteShow extends React.Component<{}, {}> {
 
     renderInstallStatus(remote : RemoteType) : any {
         let statusStr : string = null;
+        remote.mshellversion
         if (remote.installstatus == "disconnected") {
             if (remote.needsmshellupgrade) {
-                statusStr = "needs upgrade"
+                statusStr = "mshell " + remote.mshellversion + " (needs upgrade)";
+            }
+            else if (isBlank(remote.mshellversion)) {
+                statusStr = "mshell unknown";
+            }
+            else {
+                statusStr = "mshell " + remote.mshellversion + " (current)";
             }
         }
         else {
