@@ -14,6 +14,8 @@ import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, ScreenWindow, riToRPtr, widthToCols, termWidthFromCols, termHeightFromRows, termRowsFromHeight} from "./model";
 import {isModKeyPress} from "./util";
 
+let IS_DEV = __PROMPT_DEV__;
+
 dayjs.extend(localizedFormat)
 
 const RemotePtyRows = 8;
@@ -2531,8 +2533,8 @@ class MainSideBar extends React.Component<{}, {}> {
         }
         let isCollapsed = this.collapsed.get();
         return (
-            <div className={cn("main-sidebar", {"collapsed": isCollapsed})}>
-                <h1 className={cn("title", "prompt-logo-small", {"collapsed": isCollapsed})}>
+            <div className={cn("main-sidebar", {"collapsed": isCollapsed}, {"is-dev": IS_DEV})}>
+                <h1 className={cn("title", "prompt-logo-small", {"collapsed": isCollapsed}, {"is-dev": IS_DEV})}>
                     {(isCollapsed ? "[p]" : "[prompt]")}
                 </h1>
                 <div className="collapse-container">
