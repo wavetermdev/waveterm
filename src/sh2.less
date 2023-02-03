@@ -51,12 +51,16 @@ html, body, #main {
         background-color: black;
         height: 100%;
 
-        .session-view {
+        .session-view, .history-view {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
             min-width: 300px;
             position: relative;
+
+            &.is-hidden {
+                display: none;
+            }
         }
 
         .screen-view {
@@ -102,6 +106,14 @@ html, body, #main {
                 }
             }
         }
+    }
+}
+
+.history-view {
+    .history-title {
+        margin: 10px 0 10px 15px;
+        .mono-font(1.5rem);
+        color: @term-bright-white;
     }
 }
 
@@ -265,6 +277,10 @@ html, body, #main {
 
         li.menu-loading-message {
             .mono-font();
+        }
+
+        li.menu-history {
+            margin-left: -10px;
         }
     }
 
@@ -1048,6 +1064,11 @@ body .xterm .xterm-viewport {
             .info-comp {
                 min-width: 200px;
                 color: @term-white;
+                margin-right: 10px;
+
+                &.has-space {
+                    text-decoration: underline dotted #777;
+                }
             }
 
             .metacmd-comp {

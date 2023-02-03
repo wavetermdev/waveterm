@@ -14,8 +14,6 @@ import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, ScreenWindow, riToRPtr, widthToCols, termWidthFromCols, termHeightFromRows, termRowsFromHeight} from "./model";
 import {isModKeyPress} from "./util";
 
-let IS_DEV = __PROMPT_DEV__;
-
 dayjs.extend(localizedFormat)
 
 const RemotePtyRows = 8;
@@ -1591,6 +1589,14 @@ class InfoMsg extends React.Component<{}, {}> {
         return s.substr(slashIdx+1);
     }
 
+    hasSpace(s : string) : boolean {
+        return s.indexOf(" ") != -1;
+    }
+
+    handleCompClick(s : string) : void {
+        // TODO -> complete to this completion
+    }
+
     render() {
         let model = GlobalModel;
         let inputModel = model.inputModel;
@@ -1634,12 +1640,12 @@ class InfoMsg extends React.Component<{}, {}> {
                 <If condition={infoMsg && infoMsg.infocomps != null && infoMsg.infocomps.length > 0}>
                     <div key="infocomps" className="info-comps">
                         <For each="istr" index="idx" of={infoMsg.infocomps}>
-                            <div key={idx} className={cn("info-comp", {"metacmd-comp": istr.startsWith("^")})}>
+                            <div onClick={() => this.handleCompClick(istr)} key={idx} className={cn("info-comp", {"has-space": this.hasSpace(istr)}, {"metacmd-comp": istr.startsWith("^")})}>
                                 {this.getAfterSlash(istr)}
                             </div>
                         </For>
                         <If condition={infoMsg.infocompsmore}>
-                            <div key="more" className="info-comp">
+                            <div key="more" className="info-comp no-select">
                                 ...
                             </div>
                         </If>
@@ -2417,12 +2423,35 @@ class SessionView extends React.Component<{}, {}> {
         if (cmdInputHeight == 0) {
             cmdInputHeight = 110;
         }
+        let isHidden = GlobalModel.historyViewActive.get();
         return (
-            <div className="session-view" data-sessionid={session.sessionId}>
+            <div className={cn("session-view", {"is-hidden": isHidden})} data-sessionid={session.sessionId}>
                 <ScreenView screen={activeScreen}/>
                 <ScreenTabs session={session}/>
                 <div style={{height: cmdInputHeight}}></div>
                 <CmdInput/>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
+class HistoryView extends React.Component<{}, {}> {
+    render() {
+        let model = GlobalModel;
+        let session = model.getActiveSession();
+        if (session == null) {
+            return <div className="session-view">(no active session)</div>;
+        }
+        let activeScreen = session.getActiveScreen();
+        let cmdInputHeight = model.inputModel.cmdInputHeight.get();
+        if (cmdInputHeight == 0) {
+            cmdInputHeight = 110;
+        }
+        let isHidden = !GlobalModel.historyViewActive.get();
+        return (
+            <div className={cn("history-view", {"is-hidden": isHidden})}>
+                <div className="history-title">HISTORY</div>
             </div>
         );
     }
@@ -2505,6 +2534,14 @@ class MainSideBar extends React.Component<{}, {}> {
         GlobalCommandRunner.openCreateRemote();
     }
 
+    @boundMethod
+    handleHistoryClick() : void {
+        mobx.action(() => {
+            let isActive = GlobalModel.historyViewActive.get();
+            GlobalModel.historyViewActive.set(!isActive);
+        })();
+    }
+
     render() {
         let model = GlobalModel;
         let activeSessionId = model.activeSessionId.get();
@@ -2533,8 +2570,8 @@ class MainSideBar extends React.Component<{}, {}> {
         }
         let isCollapsed = this.collapsed.get();
         return (
-            <div className={cn("main-sidebar", {"collapsed": isCollapsed}, {"is-dev": IS_DEV})}>
-                <h1 className={cn("title", "prompt-logo-small", {"collapsed": isCollapsed}, {"is-dev": IS_DEV})}>
+            <div className={cn("main-sidebar", {"collapsed": isCollapsed}, {"is-dev": GlobalModel.isDev})}>
+                <h1 className={cn("title", "prompt-logo-small", {"collapsed": isCollapsed}, {"is-dev": GlobalModel.isDev})}>
                     {(isCollapsed ? "[p]" : "[prompt]")}
                 </h1>
                 <div className="collapse-container">
@@ -2565,6 +2602,9 @@ class MainSideBar extends React.Component<{}, {}> {
                             </For>
                             <li className="new-session"><a onClick={() => this.handleNewSession()}><i className="fa fa-plus"/> New Session</a></li>
                         </If>
+                    </ul>
+                    <ul className="menu-list" style={{marginTop: 20, display: "none"}}>
+                        <li className="menu-history"><a onClick={this.handleHistoryClick}><i className="fa fa-clock-o"/> HISTORY</a></li>
                     </ul>
                     <div className="spacer"></div>
                     <If condition={GlobalModel.debugSW.get() && sw != null}>
@@ -2750,6 +2790,7 @@ class Main extends React.Component<{}, {}> {
                 <div className="main-content">
                     <MainSideBar/>
                     <SessionView/>
+                    <HistoryView/>
                 </div>
                 <If condition={!GlobalModel.ws.open.get() || !GlobalModel.localServerRunning.get()}>
                     <DisconnectedModal/>

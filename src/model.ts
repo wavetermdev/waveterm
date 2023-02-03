@@ -1574,6 +1574,7 @@ class Model {
     localServerRunning : OV<boolean>;
     authKey : string;
     isDev : boolean;
+    historyViewActive : OV<boolean> = mobx.observable.box(false, {name: "historyViewActive"});
     
     constructor() {
         this.clientId = getApi().getId();
