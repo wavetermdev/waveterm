@@ -213,8 +213,8 @@ function createMainWindow(clientData) {
             return;
         }
         if (input.code == "KeyR" && input.meta) {
-            e.preventDefault();
             if (input.shift) {
+                e.preventDefault();
                 win.reload();
             }
             return;
