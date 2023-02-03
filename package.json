@@ -38,7 +38,7 @@
     "@types/electron": "^1.6.10",
     "@types/node": "^18.0.3",
     "@types/react": "^18.0.12",
-    "@types/uuid": "^8.3.4",
+    "@types/uuid": "9.0.0",
     "babel-loader": "^8.2.5",
     "babel-plugin-jsx-control-statements": "^4.1.2",
     "copy-webpack-plugin": "^11.0.0",
