@@ -340,7 +340,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         let model = GlobalModel;
         let termWrap = sw.getTermWrap(line.cmdid);
         if (termWrap != null) {
-            termWrap.reloadTerminal(500);
+            termWrap.reload(500);
         }
     }
 

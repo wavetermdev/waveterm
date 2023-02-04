@@ -557,7 +557,7 @@ class ScreenWindow {
         if (line.contentheight != null && line.contentheight != -1) {
             usedRows = line.contentheight;
         }
-        let termContext = {sessionId: this.sessionId, screenId: this.screenId, windowId: this.windowId, cmdId: cmdId, lineNum: line.linenum};
+        let termContext = {sessionId: this.sessionId, screenId: this.screenId, windowId: this.windowId, cmdId: cmdId, lineId : line.lineid, lineNum: line.linenum};
         termWrap = new TermWrap(elem, {
             termContext: termContext,
             usedRows: usedRows,
@@ -1761,8 +1761,6 @@ class Model {
             let term = sw.getTermWrap(cmdId);
             if (term != null) {
                 term.setIsRunning(cmdStatusIsRunning(newStatus));
-                term.updateUsedRows(true, "cmd-status");
-                // setTimeout(() => term.updateUsedRows(true), 500);
             }
         }
     }

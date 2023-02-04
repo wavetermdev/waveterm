@@ -109,7 +109,7 @@ class TermWrap {
         if (opts.customKeyHandler != null) {
             this.terminal.attachCustomKeyEventHandler((e) => opts.customKeyHandler(e, this));
         }
-        this.reloadTerminal(0);
+        this.reload(0);
     }
 
     @boundMethod
@@ -244,7 +244,7 @@ class TermWrap {
         return sprintf(GlobalModel.getBaseHostPort() + "/api/ptyout?sessionid=%s&cmdid=%s", termContext.sessionId, termContext.cmdId);
     }
 
-    reloadTerminal(delayMs : number) {
+    reload(delayMs : number) {
         if (this.terminal == null) {
             return;
         }
@@ -315,6 +315,7 @@ class TermWrap {
 
     setIsRunning(isRunning : boolean) {
         this.isRunning = isRunning;
+        this.updateUsedRows(true, "cmd-status");
     }
 }
 

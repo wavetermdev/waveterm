@@ -338,6 +338,7 @@ type NormalTermContext = {
     screenId : string,
     windowId : string,
     cmdId : string,
+    lineId : string,
     lineNum : number,
 };
 
