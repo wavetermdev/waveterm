@@ -214,9 +214,128 @@ class Prompt extends React.Component<{rptr : RemotePtrType, festate : FeStateTyp
 }
 
 @mobxReact.observer
-class TerminalRenderer extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType}, {}> {
+class TerminalRenderer extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : () => void}, {}> {
+    termLoaded : mobx.IObservableValue<boolean> = mobx.observable.box(false, {name: "linecmd-term-loaded"});
+    elemRef : React.RefObject<any> = React.createRef();
+
+    constructor(props) {
+        super(props);
+    }
+
+    componentDidMount() {
+        this.componentDidUpdate(null, null, null);
+    }
+
+    componentWillUnmount() {
+        if (this.termLoaded.get()) {
+            this.unloadTerminal(true);
+        }
+    }
+
+    getSnapshotBeforeUpdate(prevProps, prevState) : {height : number} {
+        let elem = this.elemRef.current;
+        if (elem == null) {
+            return {height: 0};
+        }
+        return {height: elem.offsetHeight};
+    }
+
+    componentDidUpdate(prevProps, prevState, snapshot : {height : number}) : void {
+        if (this.props.onHeightChange == null) {
+            return;
+        }
+        let {line} = this.props;
+        let curHeight = 0;
+        let elem = this.elemRef.current;
+        if (elem != null) {
+            curHeight = elem.offsetHeight;
+        }
+        if (snapshot == null) {
+            snapshot = {height: 0};
+        }
+        if (snapshot.height != curHeight) {
+            this.props.onHeightChange();
+            // console.log("line height change: ", line.linenum, snapshot.height, "=>", curHeight);
+        }
+        this.checkLoad();
+    }
+
+    checkLoad() : void {
+        let {line, staticRender, visible} = this.props;
+        if (staticRender) {
+            return;
+        }
+        let vis = visible && visible.get();
+        let curVis = this.termLoaded.get();
+        if (vis && !curVis) {
+            this.loadTerminal();
+        }
+        else if (!vis && curVis) {
+            this.unloadTerminal(false);
+        }
+    }
+
+    loadTerminal() : void {
+        let {sw, line} = this.props;
+        let model = GlobalModel;
+        let cmd = model.getCmd(line);
+        if (cmd == null) {
+            return;
+        }
+        let termId = "term-" + getLineId(line);
+        let termElem = document.getElementById(termId);
+        if (termElem == null) {
+            console.log("cannot load terminal, no term elem found", termId);
+            return;
+        }
+        sw.connectElem(termElem, line, cmd, this.props.width);
+        mobx.action(() => this.termLoaded.set(true))();
+    }
+
+    unloadTerminal(unmount : boolean) : void {
+        let {sw, line} = this.props;
+        sw.disconnectElem(line.cmdid);
+        if (!unmount) {
+            mobx.action(() => this.termLoaded.set(false))();
+            let termId = "term-" + getLineId(line);
+            let termElem = document.getElementById(termId);
+            if (termElem != null) {
+                termElem.replaceChildren();
+            }
+        }
+    }
+    
+    @boundMethod
+    clickTermBlock(e : any) {
+        let {sw, line} = this.props;
+        let model = GlobalModel;
+        let termWrap = sw.getRenderer(line.cmdid);
+        if (termWrap != null) {
+            termWrap.giveFocus();
+        }
+    }
+    
     render() {
-        return null;
+        let {sw, line, width, staticRender, visible} = this.props;
+        let isPhysicalFocused = mobx.computed(() => sw.getIsFocused(line.linenum), {name: "computed-getIsFocused"}).get();
+        let isFocused = mobx.computed(() => {
+            let swFocusType = sw.focusType.get();
+            return isPhysicalFocused && (swFocusType == "cmd" || swFocusType == "cmd-fg")
+        }, {name: "computed-isFocused"}).get();
+        let cmd = GlobalModel.getCmd(line); // will not be null
+        let usedRows = sw.getUsedRows(line, cmd, width);
+        let termHeight = termHeightFromRows(usedRows);
+        let termLoaded = this.termLoaded.get();
+        return (
+            <div ref={this.elemRef} key="term-wrap" className={cn("terminal-wrapper", {"focus": isFocused}, {"cmd-done": !cmd.isRunning()}, {"zero-height": (termHeight == 0)})}>
+                <If condition={!isFocused}>
+                    <div key="term-block" className="term-block" onClick={this.clickTermBlock}></div>
+                </If>
+                <div key="term-connectelem" className="terminal-connectelem" id={"term-" + getLineId(line)} data-cmdid={line.cmdid} style={{height: termHeight}}></div>
+                <If condition={!termLoaded}><div key="term-loading" className="terminal-loading-message">...</div></If>
+
+            </div>
+        );
     }
 }
 
@@ -233,6 +352,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
     lineRef : React.RefObject<any> = React.createRef();
     rtnStateDiff : mobx.IObservableValue<string> = mobx.observable.box(null, {name: "linecmd-rtn-state-diff"});
     rtnStateDiffFetched : boolean = false;
+    lastHeight : number;
     
     constructor(props) {
         super(props);
@@ -385,6 +505,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         }
     }
 
+    // TODO: this might not be necessary anymore because we're using this.lastHeight
     getSnapshotBeforeUpdate(prevProps, prevState) : {height : number} {
         let elem = this.lineRef.current;
         if (elem == null) {
@@ -394,21 +515,29 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
     }
 
     componentDidUpdate(prevProps, prevState, snapshot : {height : number}) : void {
+        this.handleHeightChange();
+        this.checkLoad();
+        this.checkStateDiffLoad();
+    }
+
+    @boundMethod
+    handleHeightChange() {
+        if (this.props.onHeightChange == null) {
+            return;
+        }
         let {line} = this.props;
         let curHeight = 0;
         let elem = this.lineRef.current;
         if (elem != null) {
             curHeight = elem.offsetHeight;
         }
-        if (snapshot == null) {
-            snapshot = {height: 0};
+        if (this.lastHeight == curHeight) {
+            return;
         }
-        if (snapshot.height != curHeight && this.props.onHeightChange != null) {
-            this.props.onHeightChange(line.linenum, curHeight, snapshot.height);
-            // console.log("line height change: ", line.linenum, snapshot.height, "=>", curHeight);
-        }
-        this.checkLoad();
-        this.checkStateDiffLoad();
+        let lastHeight = this.lastHeight;
+        this.lastHeight = curHeight;
+        this.props.onHeightChange(line.linenum, curHeight, lastHeight);
+        // console.log("line height change: ", line.linenum, lastHeight, "=>", curHeight);
     }
 
     @boundMethod
