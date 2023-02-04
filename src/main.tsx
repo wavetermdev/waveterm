@@ -214,6 +214,20 @@ class Prompt extends React.Component<{rptr : RemotePtrType, festate : FeStateTyp
 }
 
 @mobxReact.observer
+class TerminalRenderer extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType}, {}> {
+    render() {
+        return null;
+    }
+}
+
+@mobxReact.observer
+class MarkdownRenderer extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType}, {}> {
+    render() {
+        return null;
+    }
+}
+
+@mobxReact.observer
 class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType}, {}> {
     termLoaded : mobx.IObservableValue<boolean> = mobx.observable.box(false, {name: "linecmd-term-loaded"});
     lineRef : React.RefObject<any> = React.createRef();
@@ -338,7 +352,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
     doRefresh() {
         let {sw, line} = this.props;
         let model = GlobalModel;
-        let termWrap = sw.getTermWrap(line.cmdid);
+        let termWrap = sw.getRenderer(line.cmdid);
         if (termWrap != null) {
             termWrap.reload(500);
         }
@@ -365,9 +379,9 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
     clickTermBlock(e : any) {
         let {sw, line} = this.props;
         let model = GlobalModel;
-        let termWrap = sw.getTermWrap(line.cmdid);
+        let termWrap = sw.getRenderer(line.cmdid);
         if (termWrap != null) {
-            termWrap.focusTerminal();
+            termWrap.giveFocus();
         }
     }
 
@@ -1038,7 +1052,7 @@ class InfoRemoteShow extends React.Component<{}, {}> {
     clickTermBlock(e : any) {
         let inputModel = GlobalModel.inputModel;
         if (inputModel.remoteTermWrap != null) {
-            inputModel.remoteTermWrap.focusTerminal();
+            inputModel.remoteTermWrap.giveFocus();
         }
     }
 

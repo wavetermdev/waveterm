@@ -3,26 +3,21 @@ import {Terminal} from 'xterm';
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 import {v4 as uuidv4} from "uuid";
-import {GlobalModel, widthToCols, GlobalCommandRunner} from "./model";
+import {GlobalModel, widthToCols, GlobalCommandRunner, termHeightFromRows, termRowsFromHeight} from "./model";
 import {boundInt} from "./util";
-import type {TermOptsType, TermWinSize, NormalTermContext} from "./types";
+import type {TermOptsType, TermWinSize, RendererContext, WindowSize} from "./types";
 
 type DataUpdate = {
     data : Uint8Array,
     pos : number,
 }
 
-type WindowSize = {
-    height : number,
-    width: number,
-};
-
 const MinTermCols = 10;
 const MaxTermCols = 1024;
 
 type RemoteTermContext = {remoteId : string};
 
-type TermContext = NormalTermContext | RemoteTermContext;
+type TermContext = RendererContext | RemoteTermContext;
 
 type TermWrapOpts = {
     termContext : TermContext,
@@ -112,6 +107,10 @@ class TermWrap {
         this.reload(0);
     }
 
+    getUsedRows() : number {
+        return this.usedRows.get();
+    }
+
     @boundMethod
     elemScrollHandler(e : any) {
         // this stops a weird behavior in the terminal
@@ -132,7 +131,7 @@ class TermWrap {
         return null;
     }
 
-    getNormalTermContext() : NormalTermContext {
+    getRendererContext() : RendererContext {
         if ("remoteId" in this.termContext) {
             return null;
         }
@@ -150,7 +149,10 @@ class TermWrap {
         }
     }
 
-    focusTerminal() {
+    giveFocus() {
+        if (this.terminal == null) {
+            return;
+        }
         this.terminal.focus();
         setTimeout(() => this.terminal._core.viewport.syncScrollArea(true), 0)
     }
@@ -191,7 +193,7 @@ class TermWrap {
         if (!this.flexRows) {
             return;
         }
-        let termContext = this.getNormalTermContext();
+        let termContext = this.getRendererContext();
         if ("remoteId" in termContext) {
             return;
         }
@@ -218,11 +220,11 @@ class TermWrap {
         })();
     }
 
-    resizeCols(cols : number) {
+    resizeCols(cols : number) : void {
         this.resize({rows: this.termSize.rows, cols: cols});
     }
 
-    resize(size : TermWinSize) {
+    resize(size : TermWinSize) : void {
         if (this.terminal == null) {
             return;
         }
@@ -236,11 +238,17 @@ class TermWrap {
         this.updateUsedRows(true, "resize");
     }
 
+    resizeWindow(size : WindowSize) : void {
+        let cols = widthToCols(size.width);
+        let rows = termRowsFromHeight(size.height);
+        this.resize({rows, cols});
+    }
+
     _getReloadUrl() : string {
         if (this.getContextRemoteId() != null) {
             return sprintf(GlobalModel.getBaseHostPort() + "/api/remote-pty?remoteid=%s", this.getContextRemoteId());
         }
-        let termContext = this.getNormalTermContext();
+        let termContext = this.getRendererContext();
         return sprintf(GlobalModel.getBaseHostPort() + "/api/ptyout?sessionid=%s&cmdid=%s", termContext.sessionId, termContext.cmdId);
     }
 
@@ -268,9 +276,9 @@ class TermWrap {
             setTimeout(() => {
                 this.reloading = false;
                 this.ptyPos = ptyOffset;
-                this.updatePtyData(ptyOffset, new Uint8Array(buf), "reload-main");
+                this.receiveData(ptyOffset, new Uint8Array(buf), "reload-main");
                 for (let i=0; i<this.dataUpdates.length; i++) {
-                    this.updatePtyData(this.dataUpdates[i].pos, this.dataUpdates[i].data, "reload-update-" + i);
+                    this.receiveData(this.dataUpdates[i].pos, this.dataUpdates[i].data, "reload-update-" + i);
                 }
                 this.dataUpdates = [];
                 this.terminal.write(new Uint8Array(), () => {
@@ -282,7 +290,7 @@ class TermWrap {
         });
     }
 
-    updatePtyData(pos : number, data : Uint8Array, reason? : string) {
+    receiveData(pos : number, data : Uint8Array, reason? : string) {
         // console.log("update-pty-data", pos, data.length, reason);
         if (this.terminal == null) {
             return;
@@ -313,9 +321,9 @@ class TermWrap {
         });
     }
 
-    setIsRunning(isRunning : boolean) {
-        this.isRunning = isRunning;
-        this.updateUsedRows(true, "cmd-status");
+    cmdDone() : void {
+        this.isRunning = false;
+        this.updateUsedRows(true, "cmd-done");
     }
 }
 

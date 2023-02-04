@@ -5,7 +5,7 @@ import {debounce} from "throttle-debounce";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData, boundInt, isModKeyPress} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, NormalTermContext} from "./types";
+import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel} from "./types";
 import {WSControl} from "./ws";
 
 var GlobalUser = "sawka";
@@ -306,7 +306,7 @@ class ScreenWindow {
     termLineNumFocus : OV<number>;
 
     // cmdid => TermWrap
-    terms : Record<string, TermWrap> = {};
+    renderers : Record<string, RendererModel> = {};
 
     setAnchor_debounced : (anchorLine : number, anchorOffset : number) => void;
 
@@ -366,9 +366,9 @@ class ScreenWindow {
             (document.activeElement as HTMLElement).blur();
         }
         if (sline != null && sline.cmdid != null) {
-            let termWrap = this.getTermWrap(sline.cmdid);
-            if (termWrap != null && termWrap.terminal != null) {
-                termWrap.focusTerminal();
+            let termWrap = this.getRenderer(sline.cmdid);
+            if (termWrap != null) {
+                termWrap.giveFocus();
             }
         }
     }
@@ -455,12 +455,12 @@ class ScreenWindow {
 
     updatePtyData(ptyMsg : PtyDataUpdateType) {
         let cmdId = ptyMsg.cmdid;
-        let term = this.terms[cmdId];
-        if (term == null) {
+        let renderer = this.renderers[cmdId];
+        if (renderer == null) {
             return;
         }
         let data = base64ToArray(ptyMsg.ptydata64);
-        term.updatePtyData(ptyMsg.ptypos, data, "from-sw");
+        renderer.receiveData(ptyMsg.ptypos, data, "from-sw");
     }
 
     isActive() : boolean {
@@ -480,14 +480,14 @@ class ScreenWindow {
         }
         this.lastRows = rows;
         this.lastCols = cols;
-        for (let cmdid in this.terms) {
-            this.terms[cmdid].resizeCols(cols);
+        for (let cmdid in this.renderers) {
+            this.renderers[cmdid].resizeCols(cols);
         }
         GlobalCommandRunner.resizeWindow(this.windowId, rows, cols);
     }
 
-    getTermWrap(cmdId : string) : TermWrap {
-        return this.terms[cmdId];
+    getRenderer(cmdId : string) : RendererModel {
+        return this.renderers[cmdId];
     }
 
     setTermFocus(lineNum : number, focus : boolean) : void {
@@ -547,7 +547,7 @@ class ScreenWindow {
 
     connectElem(elem : Element, line : LineType, cmd : Cmd, width : number) {
         let cmdId = cmd.cmdId;
-        let termWrap = this.getTermWrap(cmdId);
+        let termWrap = this.getRenderer(cmdId);
         if (termWrap != null) {
             console.log("term-wrap already exists for", this.screenId, this.windowId, cmdId);
             return;
@@ -568,18 +568,18 @@ class ScreenWindow {
             isRunning: cmd.isRunning(),
             customKeyHandler: this.termCustomKeyHandler.bind(this),
         });
-        this.terms[cmdId] = termWrap;
+        this.renderers[cmdId] = termWrap;
         if ((this.focusType.get() == "cmd" || this.focusType.get() == "cmd-fg") && this.selectedLine.get() == line.linenum) {
-            termWrap.focusTerminal();
+            termWrap.giveFocus();
         }
         return;
     }
 
     disconnectElem(cmdId : string) {
-        let termWrap = this.terms[cmdId];
+        let termWrap = this.renderers[cmdId];
         if (termWrap != null) {
             termWrap.dispose();
-            delete this.terms[cmdId];
+            delete this.renderers[cmdId];
         }
     }
 
@@ -588,7 +588,7 @@ class ScreenWindow {
         if (!termOpts.flexrows) {
             return termOpts.rows;
         }
-        let termWrap = this.getTermWrap(cmd.cmdId);
+        let termWrap = this.getRenderer(cmd.cmdId);
         if (termWrap == null) {
             let cols = widthToCols(width);
             let usedRows = GlobalModel.getTUR(this.sessionId, cmd.cmdId, cols);
@@ -600,7 +600,7 @@ class ScreenWindow {
             }
             return (cmd.isRunning() ? 1 : 0);
         }
-        return termWrap.usedRows.get();
+        return termWrap.getUsedRows();
     }
 
     getIsFocused(lineNum : number) : boolean {
@@ -1669,7 +1669,7 @@ class Model {
         return this.termUsedRowsCache[key];
     }
 
-    setTUR(termContext : NormalTermContext, size : TermWinSize, usedRows : number) : void {
+    setTUR(termContext : RendererContext, size : TermWinSize, usedRows : number) : void {
         let key = termContext.sessionId + "/" + termContext.cmdId + "/" + size.cols;
         this.termUsedRowsCache[key] = usedRows;
         GlobalCommandRunner.setTermUsedRows(termContext, usedRows);
@@ -1754,13 +1754,17 @@ class Model {
     }
 
     cmdStatusUpdate(sessionId : string, cmdId : string, origStatus : string, newStatus : string) {
-        // console.log("cmd status", sessionId, cmdId, origStatus, "=>", newStatus);
-        let lines = this.getActiveLinesByCmdId(sessionId, cmdId);
-        for (let ptr of lines) {
-            let sw = ptr.sw;
-            let term = sw.getTermWrap(cmdId);
-            if (term != null) {
-                term.setIsRunning(cmdStatusIsRunning(newStatus));
+        let wasRunning = cmdStatusIsRunning(origStatus);
+        let isRunning = cmdStatusIsRunning(newStatus);
+        if (wasRunning && !isRunning) {
+            // console.log("cmd status", sessionId, cmdId, origStatus, "=>", newStatus);
+            let lines = this.getActiveLinesByCmdId(sessionId, cmdId);
+            for (let ptr of lines) {
+                let sw = ptr.sw;
+                let renderer = sw.getRenderer(cmdId);
+                if (renderer != null) {
+                    renderer.cmdDone();
+                }
             }
         }
     }
@@ -1829,7 +1833,7 @@ class Model {
                     return;
                 }
                 let ptyData = base64ToArray(ptyMsg.ptydata64);
-                this.inputModel.remoteTermWrap.updatePtyData(ptyMsg.ptypos, ptyData);
+                this.inputModel.remoteTermWrap.receiveData(ptyMsg.ptypos, ptyData);
                 return;
             }
         }
@@ -2360,7 +2364,7 @@ class CommandRunner {
         GlobalModel.submitCommand("sw", "set", null, kwargs, true);
     }
 
-    setTermUsedRows(termContext : NormalTermContext, height : number) {
+    setTermUsedRows(termContext : RendererContext, height : number) {
         let kwargs : Record<string, string> = {};
         kwargs["session"] = termContext.sessionId;
         kwargs["screen"] = termContext.screenId;
