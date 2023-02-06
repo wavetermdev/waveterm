@@ -26,6 +26,7 @@ type LineType = {
     linelocal : boolean,
     linetype : string,
     text : string,
+    renderer : string,
     cmdid? : string,
     contentheight? : number,
     star? : number,

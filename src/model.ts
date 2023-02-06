@@ -7,7 +7,7 @@ import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
 import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType} from "./types";
 import {WSControl} from "./ws";
-import {ImageRenderer} from "./imagerenderer";
+import {ImageRendererModel} from "./imagerenderer";
 
 var GlobalUser = "sawka";
 const DefaultCellWidth = 7.203125;
@@ -548,6 +548,14 @@ class ScreenWindow {
         e.preventDefault();
         this.termCustomKeyHandlerInternal(e, termWrap);
         return false;
+    }
+
+    loadImageRenderer(imageDivElem : any, line : LineType, cmd : Cmd) : ImageRendererModel {
+        let cmdId = cmd.cmdId;
+        let context = {sessionId: this.sessionId, screenId: this.screenId, windowId: this.windowId, cmdId: cmdId, lineId : line.lineid, lineNum: line.linenum};
+        let imageModel = new ImageRendererModel(imageDivElem, context, cmd.getTermOpts(), !cmd.isRunning());
+        this.renderers[cmdId] = imageModel;
+        return imageModel;
     }
 
     loadTerminalRenderer(elem : Element, line : LineType, cmd : Cmd, width : number) {

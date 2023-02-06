@@ -176,4 +176,10 @@ function isModKeyPress(e : any) {
     return e.code.match(/^(Control|Meta|Alt|Shift)(Left|Right)$/);
 }
 
-export {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData, parseEnv0, boundInt, isModKeyPress};
+function incObs(inum : mobx.IObservableValue<number>) {
+    mobx.action(() => {
+        inum.set(inum.get() + 1);
+    })();
+}
+
+export {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData, parseEnv0, boundInt, isModKeyPress, incObs};

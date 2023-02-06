@@ -13,6 +13,7 @@ import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, ScreenWindow, riToRPtr, windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols} from "./model";
 import {isModKeyPress} from "./util";
+import {ImageRendererModel} from "./imagerenderer";
 
 dayjs.extend(localizedFormat)
 
@@ -28,6 +29,9 @@ type OArr<V> = mobx.IObservableArray<V>;
 type OMap<K,V> = mobx.ObservableMap<K,V>;
 
 type HeightChangeCallbackType = (lineNum : number, newHeight : number, oldHeight : number) => void;
+
+type RendererComponentProps = {sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType};
+type RendererComponentType = { new(props : RendererComponentProps) : React.Component<RendererComponentProps, {}> };
 
 type InterObsValue = {
     sessionid : string,
@@ -209,6 +213,114 @@ class Prompt extends React.Component<{rptr : RemotePtrType, festate : FeStateTyp
         }
         return (
             <span className={cn("term-prompt", colorClass)}>[{remoteStr}] {cwd} {isRoot ? "#" : "$"}</span>
+        );
+    }
+}
+
+@mobxReact.observer
+class ImageRenderer extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : () => void}, {}> {
+    elemRef : React.RefObject<any> = React.createRef();
+    imageDivRef : React.RefObject<any> = React.createRef();
+    imageLoaded : mobx.IObservableValue<boolean> = mobx.observable.box(false, {name: "imageLoaded"});
+    imageModel : ImageRendererModel;
+
+    constructor(props) {
+        super(props);
+    }
+
+    componentDidMount() {
+        this.componentDidUpdate(null, null, null);
+    }
+
+    componentWillUnmount() {
+        if (this.imageLoaded.get()) {
+            this.unloadImage(true);
+        }
+    }
+
+    getSnapshotBeforeUpdate(prevProps, prevState) : {height : number} {
+        let elem = this.elemRef.current;
+        if (elem == null) {
+            return {height: 0};
+        }
+        return {height: elem.offsetHeight};
+    }
+
+    componentDidUpdate(prevProps, prevState, snapshot : {height : number}) : void {
+        if (this.props.onHeightChange == null) {
+            return;
+        }
+        let {line} = this.props;
+        let curHeight = 0;
+        let elem = this.elemRef.current;
+        if (elem != null) {
+            curHeight = elem.offsetHeight;
+        }
+        if (snapshot == null) {
+            snapshot = {height: 0};
+        }
+        if (snapshot.height != curHeight) {
+            this.props.onHeightChange();
+            // console.log("image-render height change: ", line.linenum, snapshot.height, "=>", curHeight);
+        }
+        this.checkLoad();
+    }
+
+    checkLoad() : void {
+        let {line, staticRender, visible} = this.props;
+        if (staticRender) {
+            return;
+        }
+        let vis = visible && visible.get();
+        let curVis = this.imageLoaded.get();
+        if (vis && !curVis) {
+            this.loadImage();
+        }
+        else if (!vis && curVis) {
+            this.unloadImage(false);
+        }
+    }
+
+    loadImage() : void {
+        let {sw, line} = this.props;
+        let model = GlobalModel;
+        let cmd = model.getCmd(line);
+        if (cmd == null) {
+            return;
+        }
+        let elem = this.imageDivRef.current;
+        if (elem == null) {
+            console.log("cannot load image, no elem found");
+            return;
+        }
+        this.imageModel = sw.loadImageRenderer(this.imageDivRef.current, line, cmd);
+        mobx.action(() => this.imageLoaded.set(true))();
+    }
+
+    unloadImage(unmount : boolean) : void {
+        let {sw, line} = this.props;
+        sw.unloadRenderer(line.cmdid);
+        this.imageModel = null;
+        if (!unmount) {
+            mobx.action(() => this.imageLoaded.set(false))();
+            if (this.imageDivRef.current != null) {
+                this.imageDivRef.current.replaceChildren();
+            }
+        }
+    }
+    
+    render() {
+        let imageModel = this.imageModel;
+        let isLoaded = this.imageLoaded.get();
+        let isDone = (imageModel != null && imageModel.isDone.get());
+        if (imageModel != null) {
+            let dataVersion = imageModel.dataVersion.get();
+        }
+        return (
+            <div ref={this.elemRef} className={"image-wrapper"}>
+                <div key="imagediv" ref={this.imageDivRef}></div>
+                <If condition={!isDone}><div className="loading-div">...</div></If>
+            </div>
         );
     }
 }
@@ -545,6 +657,10 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
             {"cmd-done": !cmd.isRunning()},
             {"has-rtnstate": cmd.getRtnState()},
         );
+        let RendererComponent : RendererComponentType = TerminalRenderer;
+        if (line.renderer == "image") {
+            RendererComponent = ImageRenderer;
+        }
         return (
             <div className={mainDivCn} id={"line-" + getLineId(line)}
                  ref={this.lineRef} onClick={this.handleClick}
@@ -575,7 +691,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                         </If>
                     </div>
                 </div>
-                <TerminalRenderer sw={sw} line={line} width={width} staticRender={staticRender} visible={visible} onHeightChange={this.handleHeightChange}/>
+                <RendererComponent sw={sw} line={line} width={width} staticRender={staticRender} visible={visible} onHeightChange={this.handleHeightChange}/>
                 <If condition={cmd.getRtnState()}>
                     <div key="rtnstate" className="cmd-rtnstate" style={{visibility: ((cmd.getStatus() == "done") ? "visible" : "hidden")}}>
                         <If condition={rsdiff == null || rsdiff == ""}>
