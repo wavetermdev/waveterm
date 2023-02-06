@@ -32,6 +32,14 @@ type File struct {
 	FlockStatus  int
 }
 
+type Stat struct {
+	Location   string
+	Version    byte
+	MaxSize    int64
+	FileOffset int64
+	DataSize   int64
+}
+
 func (f *File) flock(ctx context.Context, lockType int) error {
 	err := syscall.Flock(int(f.OSFile.Fd()), lockType|syscall.LOCK_NB)
 	if err == nil {
@@ -96,6 +104,25 @@ func OpenCirFile(fileName string) (*File, error) {
 	}
 	rtn := &File{OSFile: fd}
 	return rtn, nil
+}
+
+func StatCirFile(ctx context.Context, fileName string) (*Stat, error) {
+	file, err := OpenCirFile(fileName)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	fileOffset, dataSize, err := file.GetStartOffsetAndSize(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &Stat{
+		Location:   fileName,
+		Version:    file.Version,
+		MaxSize:    file.MaxSize,
+		FileOffset: fileOffset,
+		DataSize:   dataSize,
+	}, nil
 }
 
 // if the file already exists, it is an error.
