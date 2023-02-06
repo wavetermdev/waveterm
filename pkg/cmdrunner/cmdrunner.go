@@ -1197,7 +1197,7 @@ func makeStaticCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr 
 }
 
 func addLineForCmd(ctx context.Context, metaCmd string, shouldFocus bool, ids resolvedIds, cmd *sstore.CmdType) (*sstore.ModelUpdate, error) {
-	rtnLine, err := sstore.AddCmdLine(ctx, ids.SessionId, ids.WindowId, DefaultUserId, cmd)
+	rtnLine, err := sstore.AddCmdLine(ctx, ids.SessionId, ids.WindowId, DefaultUserId, cmd, "")
 	if err != nil {
 		return nil, err
 	}
@@ -1885,7 +1885,7 @@ func LineSetHeightCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	if err != nil {
 		return nil, fmt.Errorf("/line:setheight invalid height val: %v", err)
 	}
-	if heightVal > 1000 {
+	if heightVal > 10000 {
 		return nil, fmt.Errorf("/line:setheight invalid height val (too large): %d", heightVal)
 	}
 	err = sstore.UpdateLineHeight(ctx, lineId, heightVal)
@@ -2050,6 +2050,14 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		}
 		if cmd.RtnState {
 			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "rtnstate", "true"))
+		}
+		stat, _ := sstore.StatCmdPtyFile(ctx, cmd.SessionId, cmd.CmdId)
+		if stat == nil {
+			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "file", "-"))
+		} else {
+			fileDataStr := fmt.Sprintf("v%d data=%d offset=%d max=%s", stat.Version, stat.DataSize, stat.FileOffset, scbase.NumFormatB2(stat.MaxSize))
+			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "file", stat.Location))
+			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "file-data", fileDataStr))
 		}
 	}
 	update := sstore.ModelUpdate{

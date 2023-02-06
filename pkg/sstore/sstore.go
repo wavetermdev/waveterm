@@ -643,6 +643,7 @@ type LineType struct {
 	LineNumTemp   bool   `json:"linenumtemp,omitempty"`
 	LineLocal     bool   `json:"linelocal"`
 	LineType      string `json:"linetype"`
+	Renderer      string `json:"renderer,omitempty"`
 	Text          string `json:"text,omitempty"`
 	CmdId         string `json:"cmdid,omitempty"`
 	Ephemeral     bool   `json:"ephemeral,omitempty"`
@@ -825,7 +826,7 @@ func CmdFromMap(m map[string]interface{}) *CmdType {
 	return &cmd
 }
 
-func makeNewLineCmd(sessionId string, windowId string, userId string, cmdId string) *LineType {
+func makeNewLineCmd(sessionId string, windowId string, userId string, cmdId string, renderer string) *LineType {
 	rtn := &LineType{}
 	rtn.SessionId = sessionId
 	rtn.WindowId = windowId
@@ -836,6 +837,7 @@ func makeNewLineCmd(sessionId string, windowId string, userId string, cmdId stri
 	rtn.LineType = LineTypeCmd
 	rtn.CmdId = cmdId
 	rtn.ContentHeight = LineNoHeight
+	rtn.Renderer = renderer
 	return rtn
 }
 
@@ -862,8 +864,8 @@ func AddCommentLine(ctx context.Context, sessionId string, windowId string, user
 	return rtnLine, nil
 }
 
-func AddCmdLine(ctx context.Context, sessionId string, windowId string, userId string, cmd *CmdType) (*LineType, error) {
-	rtnLine := makeNewLineCmd(sessionId, windowId, userId, cmd.CmdId)
+func AddCmdLine(ctx context.Context, sessionId string, windowId string, userId string, cmd *CmdType, renderer string) (*LineType, error) {
+	rtnLine := makeNewLineCmd(sessionId, windowId, userId, cmd.CmdId, renderer)
 	err := InsertLine(ctx, rtnLine, cmd)
 	if err != nil {
 		return nil, err

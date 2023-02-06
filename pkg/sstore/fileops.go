@@ -24,6 +24,14 @@ func CreateCmdPtyFile(ctx context.Context, sessionId string, cmdId string, maxSi
 	return f.Close()
 }
 
+func StatCmdPtyFile(ctx context.Context, sessionId string, cmdId string) (*cirfile.Stat, error) {
+	ptyOutFileName, err := scbase.PtyOutFile(sessionId, cmdId)
+	if err != nil {
+		return nil, err
+	}
+	return cirfile.StatCirFile(ctx, ptyOutFileName)
+}
+
 func AppendToCmdPtyBlob(ctx context.Context, sessionId string, cmdId string, data []byte, pos int64) (*PtyDataUpdate, error) {
 	if pos < 0 {
 		return nil, fmt.Errorf("invalid seek pos '%d' in AppendToCmdPtyBlob", pos)
