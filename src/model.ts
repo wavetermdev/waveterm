@@ -5,8 +5,9 @@ import {debounce} from "throttle-debounce";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData, boundInt, isModKeyPress} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel} from "./types";
+import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType} from "./types";
 import {WSControl} from "./ws";
+import {ImageRenderer} from "./imagerenderer";
 
 var GlobalUser = "sawka";
 const DefaultCellWidth = 7.203125;
@@ -549,7 +550,7 @@ class ScreenWindow {
         return false;
     }
 
-    connectElem(elem : Element, line : LineType, cmd : Cmd, width : number) {
+    loadTerminalRenderer(elem : Element, line : LineType, cmd : Cmd, width : number) {
         let cmdId = cmd.cmdId;
         let termWrap = this.getRenderer(cmdId);
         if (termWrap != null) {
@@ -2415,6 +2416,33 @@ function cmdPacketString(pk : FeCmdPacketType) : string {
     return parts.join(" ");
 }
 
+function _getPtyDataFromUrl(url : string) : Promise<PtyDataType> {
+    let ptyOffset = 0;
+    let fetchHeaders = GlobalModel.getFetchHeaders();
+    return fetch(url, {headers: fetchHeaders}).then((resp) => {
+        if (!resp.ok) {
+            throw new Error(sprintf("Bad fetch response for /api/ptyout: %d %s", resp.status, resp.statusText));
+        }
+        let ptyOffsetStr = resp.headers.get("X-PtyDataOffset");
+        if (ptyOffsetStr != null && !isNaN(parseInt(ptyOffsetStr))) {
+            ptyOffset = parseInt(ptyOffsetStr);
+        }
+        return resp.arrayBuffer();
+    }).then((buf) => {
+        return {pos: ptyOffset, data: new Uint8Array(buf)};
+    });
+}
+
+function getPtyData(sessionId : string, cmdId : string) {
+    let url = sprintf(GlobalModel.getBaseHostPort() + "/api/ptyout?sessionid=%s&cmdid=%s", sessionId, cmdId);
+    return _getPtyDataFromUrl(url);
+}
+
+function getRemotePtyData(remoteId : string) {
+    let url = sprintf(GlobalModel.getBaseHostPort() + "/api/remote-pty?remoteid=%s", this.getContextRemoteId());
+    return _getPtyDataFromUrl(url);
+}
+
 let GlobalModel : Model = null;
 let GlobalCommandRunner : CommandRunner = null;
 if ((window as any).GlobalModel == null) {
@@ -2424,6 +2452,6 @@ if ((window as any).GlobalModel == null) {
 GlobalModel = (window as any).GlobalModel;
 GlobalCommandRunner = (window as any).GlobalCommandRunner;
 
-export {Model, Session, Window, GlobalModel, GlobalCommandRunner, Cmd, Screen, ScreenWindow, riToRPtr, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows};
+export {Model, Session, Window, GlobalModel, GlobalCommandRunner, Cmd, Screen, ScreenWindow, riToRPtr, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows, getPtyData, getRemotePtyData};
 
 

@@ -3,9 +3,9 @@ import {Terminal} from 'xterm';
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 import {v4 as uuidv4} from "uuid";
-import {GlobalModel, GlobalCommandRunner, termHeightFromRows, windowWidthToCols, windowHeightToRows} from "./model";
+import {GlobalModel, GlobalCommandRunner, termHeightFromRows, windowWidthToCols, windowHeightToRows, getPtyData, getRemotePtyData} from "./model";
 import {boundInt} from "./util";
-import type {TermOptsType, TermWinSize, RendererContext, WindowSize} from "./types";
+import type {TermOptsType, TermWinSize, RendererContext, WindowSize, PtyDataType} from "./types";
 
 type DataUpdate = {
     data : Uint8Array,
@@ -244,12 +244,17 @@ class TermWrap {
         this.resize({rows, cols});
     }
 
-    _getReloadUrl() : string {
-        if (this.getContextRemoteId() != null) {
-            return sprintf(GlobalModel.getBaseHostPort() + "/api/remote-pty?remoteid=%s", this.getContextRemoteId());
+    _reloadThenHandler(ptydata : PtyDataType) {
+        this.reloading = false;
+        this.ptyPos = ptydata.pos;
+        this.receiveData(ptydata.pos, ptydata.data, "reload-main");
+        for (let i=0; i<this.dataUpdates.length; i++) {
+            this.receiveData(this.dataUpdates[i].pos, this.dataUpdates[i].data, "reload-update-" + i);
         }
-        let termContext = this.getRendererContext();
-        return sprintf(GlobalModel.getBaseHostPort() + "/api/ptyout?sessionid=%s&cmdid=%s", termContext.sessionId, termContext.cmdId);
+        this.dataUpdates = [];
+        this.terminal.write(new Uint8Array(), () => {
+            this.updateUsedRows(true, "reload");
+        });
     }
 
     reload(delayMs : number) {
@@ -258,35 +263,23 @@ class TermWrap {
         }
         this.reloading = true;
         this.terminal.reset();
-        let url = this._getReloadUrl();
-        let ptyOffset = 0;
-        let fetchHeaders = GlobalModel.getFetchHeaders();
-        fetch(url, {headers: fetchHeaders}).then((resp) => {
-            if (!resp.ok) {
-                mobx.action(() => { this.loadError.set(true); })();
-                this.dataUpdates = [];
-                throw new Error(sprintf("Bad fetch response for /api/ptyout: %d %s", resp.status, resp.statusText));
-            }
-            let ptyOffsetStr = resp.headers.get("X-PtyDataOffset");
-            if (ptyOffsetStr != null && !isNaN(parseInt(ptyOffsetStr))) {
-                ptyOffset = parseInt(ptyOffsetStr);
-            }
-            return resp.arrayBuffer();
-        }).then((buf) => {
+        let rtnp : Promise<PtyDataType> = null;
+        if (this.getContextRemoteId() != null) {
+            rtnp = getRemotePtyData(this.getContextRemoteId());
+        }
+        else {
+            let termContext = this.getRendererContext();
+            rtnp = getPtyData(termContext.sessionId, termContext.cmdId);
+        }
+        rtnp.then((ptydata) => {
             setTimeout(() => {
-                this.reloading = false;
-                this.ptyPos = ptyOffset;
-                this.receiveData(ptyOffset, new Uint8Array(buf), "reload-main");
-                for (let i=0; i<this.dataUpdates.length; i++) {
-                    this.receiveData(this.dataUpdates[i].pos, this.dataUpdates[i].data, "reload-update-" + i);
-                }
-                this.dataUpdates = [];
-                this.terminal.write(new Uint8Array(), () => {
-                    this.updateUsedRows(true, "reload");
-                });
+                this._reloadThenHandler(ptydata);
             }, delayMs);
         }).catch((e) => {
-            console.log("error reloading terminal", e);
+            mobx.action(() => { this.loadError.set(true); })();
+            this.dataUpdates = [];
+            this.reloading = false;
+            console.log("error reloading terminal", this.termContext, e);
         });
     }
 

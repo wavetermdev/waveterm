@@ -288,7 +288,7 @@ class TerminalRenderer extends React.Component<{sw : ScreenWindow, line : LineTy
             console.log("cannot load terminal, no term elem found", termId);
             return;
         }
-        sw.connectElem(termElem, line, cmd, this.props.width);
+        sw.loadTerminalRenderer(termElem, line, cmd, this.props.width);
         mobx.action(() => this.termLoaded.set(true))();
     }
 

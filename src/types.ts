@@ -343,16 +343,14 @@ type RendererContext = {
 };
 
 type RendererModel = {
-    reload : (delayMs : number) => void,
     dispose : () => void,
+    reload : (delayMs : number) => void,
     receiveData : (pos : number, data : Uint8Array, reason? : string) => void,
     cmdDone : () => void,
     resizeWindow : (size : WindowSize) => void,
     resizeCols : (cols : number) => void,
     giveFocus : () => void,
     getUsedRows : () => number,
-
-    focusHandler : (focus : boolean) => void;
 };
 
 type WindowSize = {
@@ -360,4 +358,9 @@ type WindowSize = {
     width: number,
 };
 
-export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType, UIContextType, HistoryInfoType, HistoryQueryOpts, WatchScreenPacketType, TermWinSize, FeInputPacketType, RemoteInputPacketType, RemoteEditType, FeStateType, ContextMenuOpts, RendererContext, WindowSize, RendererModel};
+type PtyDataType = {
+    pos : number,
+    data : Uint8Array,
+};
+
+export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType, UIContextType, HistoryInfoType, HistoryQueryOpts, WatchScreenPacketType, TermWinSize, FeInputPacketType, RemoteInputPacketType, RemoteEditType, FeStateType, ContextMenuOpts, RendererContext, WindowSize, RendererModel, PtyDataType};
