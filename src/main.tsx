@@ -11,7 +11,7 @@ import cn from "classnames";
 import {TermWrap} from "./term";
 import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts, RemoteEditType, FeStateType, ContextMenuOpts} from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
-import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, ScreenWindow, riToRPtr, widthToCols, termWidthFromCols, termHeightFromRows, termRowsFromHeight} from "./model";
+import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, ScreenWindow, riToRPtr, windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols} from "./model";
 import {isModKeyPress} from "./util";
 
 dayjs.extend(localizedFormat)
@@ -255,7 +255,7 @@ class TerminalRenderer extends React.Component<{sw : ScreenWindow, line : LineTy
         }
         if (snapshot.height != curHeight) {
             this.props.onHeightChange();
-            // console.log("line height change: ", line.linenum, snapshot.height, "=>", curHeight);
+            // console.log("term-render height change: ", line.linenum, snapshot.height, "=>", curHeight);
         }
         this.checkLoad();
     }
@@ -294,7 +294,7 @@ class TerminalRenderer extends React.Component<{sw : ScreenWindow, line : LineTy
 
     unloadTerminal(unmount : boolean) : void {
         let {sw, line} = this.props;
-        sw.disconnectElem(line.cmdid);
+        sw.unloadRenderer(line.cmdid);
         if (!unmount) {
             mobx.action(() => this.termLoaded.set(false))();
             let termId = "term-" + getLineId(line);
@@ -317,6 +317,7 @@ class TerminalRenderer extends React.Component<{sw : ScreenWindow, line : LineTy
     
     render() {
         let {sw, line, width, staticRender, visible} = this.props;
+        let isVisible = visible.get(); // for reaction
         let isPhysicalFocused = mobx.computed(() => sw.getIsFocused(line.linenum), {name: "computed-getIsFocused"}).get();
         let isFocused = mobx.computed(() => {
             let swFocusType = sw.focusType.get();
@@ -348,7 +349,6 @@ class MarkdownRenderer extends React.Component<{sw : ScreenWindow, line : LineTy
 
 @mobxReact.observer
 class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType}, {}> {
-    termLoaded : mobx.IObservableValue<boolean> = mobx.observable.box(false, {name: "linecmd-term-loaded"});
     lineRef : React.RefObject<any> = React.createRef();
     rtnStateDiff : mobx.IObservableValue<string> = mobx.observable.box(null, {name: "linecmd-rtn-state-diff"});
     rtnStateDiffFetched : boolean = false;
@@ -356,21 +356,6 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
     
     constructor(props) {
         super(props);
-    }
-
-    checkLoad() : void {
-        let {line, staticRender, visible} = this.props;
-        if (staticRender) {
-            return;
-        }
-        let vis = visible && visible.get();
-        let curVis = this.termLoaded.get();
-        if (vis && !curVis) {
-            this.loadTerminal();
-        }
-        else if (!vis && curVis) {
-            this.unloadTerminal(false);
-        }
     }
 
     checkStateDiffLoad() : void {
@@ -393,36 +378,6 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
             return;
         }
         this.fetchRtnStateDiff();
-    }
-
-    loadTerminal() : void {
-        let {sw, line} = this.props;
-        let model = GlobalModel;
-        let cmd = model.getCmd(line);
-        if (cmd == null) {
-            return;
-        }
-        let termId = "term-" + getLineId(line);
-        let termElem = document.getElementById(termId);
-        if (termElem == null) {
-            console.log("cannot load terminal, no term elem found", termId);
-            return;
-        }
-        sw.connectElem(termElem, line, cmd, this.props.width);
-        mobx.action(() => this.termLoaded.set(true))();
-    }
-
-    unloadTerminal(unmount : boolean) : void {
-        let {sw, line} = this.props;
-        sw.disconnectElem(line.cmdid);
-        if (!unmount) {
-            mobx.action(() => this.termLoaded.set(false))();
-            let termId = "term-" + getLineId(line);
-            let termElem = document.getElementById(termId);
-            if (termElem != null) {
-                termElem.replaceChildren();
-            }
-        }
     }
 
     fetchRtnStateDiff() : void {
@@ -454,12 +409,6 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
 
     componentDidMount() {
         this.componentDidUpdate(null, null, null);
-    }
-
-    componentWillUnmount() {
-        if (this.termLoaded.get()) {
-            this.unloadTerminal(true);
-        }
     }
 
     // FIXME
@@ -495,16 +444,6 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         );
     }
 
-    @boundMethod
-    clickTermBlock(e : any) {
-        let {sw, line} = this.props;
-        let model = GlobalModel;
-        let termWrap = sw.getRenderer(line.cmdid);
-        if (termWrap != null) {
-            termWrap.giveFocus();
-        }
-    }
-
     // TODO: this might not be necessary anymore because we're using this.lastHeight
     getSnapshotBeforeUpdate(prevProps, prevState) : {height : number} {
         let elem = this.lineRef.current;
@@ -516,7 +455,6 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
 
     componentDidUpdate(prevProps, prevState, snapshot : {height : number}) : void {
         this.handleHeightChange();
-        this.checkLoad();
         this.checkStateDiffLoad();
     }
 
@@ -583,9 +521,6 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                 </div>
             );
         }
-        let termLoaded = this.termLoaded.get();
-        let usedRows = sw.getUsedRows(line, cmd, width);
-        let termHeight = termHeightFromRows(usedRows);
         let remote = model.getRemote(cmd.remoteId);
         let status = cmd.getStatus();
         let termOpts = cmd.getTermOpts();
@@ -640,14 +575,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                         </If>
                     </div>
                 </div>
-                <div key="term-wrap" className={cn("terminal-wrapper", {"focus": isFocused}, {"cmd-done": !cmd.isRunning()}, {"zero-height": (termHeight == 0)})}>
-                    <If condition={!isFocused}>
-                        <div key="term-block" className="term-block" onClick={this.clickTermBlock}></div>
-                    </If>
-                    <div key="term-connectelem" className="terminal-connectelem" id={"term-" + getLineId(line)} data-cmdid={line.cmdid} style={{height: termHeight}}></div>
-                    <If condition={!termLoaded}><div key="term-loading" className="terminal-loading-message">...</div></If>
-
-                </div>
+                <TerminalRenderer sw={sw} line={line} width={width} staticRender={staticRender} visible={visible} onHeightChange={this.handleHeightChange}/>
                 <If condition={cmd.getRtnState()}>
                     <div key="rtnstate" className="cmd-rtnstate" style={{visibility: ((cmd.getStatus() == "done") ? "visible" : "hidden")}}>
                         <If condition={rsdiff == null || rsdiff == ""}>
@@ -2076,7 +2004,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
             return;
         }
         let lineElemArr = linesElem.querySelectorAll(".line");
-        if (lineElemArr == null) {
+        if (lineElemArr == null || lineElemArr.length == 0) {
             sw.setAnchorFields(null, 0, "no-line");
             return;
         }
@@ -2369,8 +2297,8 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
             this.width.set(width);
             this.height.set(height);
             let {sw} = this.props;
-            let cols = widthToCols(width);
-            let rows = termRowsFromHeight(height);
+            let cols = windowWidthToCols(width);
+            let rows = windowHeightToRows(height);
             if (sw == null || cols == 0 || rows == 0) {
                 return;
             }

@@ -27,10 +27,18 @@ type SWLinePtr = {
     sw : ScreenWindow,
 };
 
-function widthToCols(width : number) : number {
+function windowWidthToCols(width : number) : number {
     let cols = Math.trunc((width - 50) / DefaultCellWidth) - 1;
     cols = boundInt(cols, MinTermCols, MaxTermCols);
     return cols;
+}
+
+function windowHeightToRows(height : number) : number {
+    let rows = Math.floor((height - 80)/DefaultCellHeight) - 1;
+    if (rows <= 0) {
+        rows = 1;
+    }
+    return rows;
 }
 
 function termWidthFromCols(cols : number) : number {
@@ -39,14 +47,6 @@ function termWidthFromCols(cols : number) : number {
 
 function termHeightFromRows(rows : number) : number {
     return Math.ceil(DefaultCellHeight*rows);
-}
-
-function termRowsFromHeight(height : number) : number {
-    let rows = Math.floor((height - 80)/DefaultCellHeight) - 1;
-    if (rows <= 0) {
-        rows = 1;
-    }
-    return rows;
 }
 
 function cmdStatusIsRunning(status : string) : boolean {
@@ -472,7 +472,11 @@ class ScreenWindow {
     }
 
     termSizeCallback(rows : number, cols : number) : void {
-        if (!this.isActive() || cols == 0 || rows == 0) {
+        if (!this.isActive()) {
+            console.log("termSize (not active)");
+            return;
+        }
+        if (cols == 0 || rows == 0) {
             return;
         }
         if (rows == this.lastRows && cols == this.lastCols) {
@@ -552,7 +556,7 @@ class ScreenWindow {
             console.log("term-wrap already exists for", this.screenId, this.windowId, cmdId);
             return;
         }
-        let cols = widthToCols(width);
+        let cols = windowWidthToCols(width);
         let usedRows = GlobalModel.getTUR(this.sessionId, cmdId, cols);
         if (line.contentheight != null && line.contentheight != -1) {
             usedRows = line.contentheight;
@@ -575,10 +579,10 @@ class ScreenWindow {
         return;
     }
 
-    disconnectElem(cmdId : string) {
-        let termWrap = this.renderers[cmdId];
-        if (termWrap != null) {
-            termWrap.dispose();
+    unloadRenderer(cmdId : string) {
+        let rmodel = this.renderers[cmdId];
+        if (rmodel != null) {
+            rmodel.dispose();
             delete this.renderers[cmdId];
         }
     }
@@ -590,7 +594,7 @@ class ScreenWindow {
         }
         let termWrap = this.getRenderer(cmd.cmdId);
         if (termWrap == null) {
-            let cols = widthToCols(width);
+            let cols = windowWidthToCols(width);
             let usedRows = GlobalModel.getTUR(this.sessionId, cmd.cmdId, cols);
             if (usedRows != null) {
                 return usedRows;
@@ -2420,6 +2424,6 @@ if ((window as any).GlobalModel == null) {
 GlobalModel = (window as any).GlobalModel;
 GlobalCommandRunner = (window as any).GlobalCommandRunner;
 
-export {Model, Session, Window, GlobalModel, GlobalCommandRunner, Cmd, Screen, ScreenWindow, riToRPtr, widthToCols, termWidthFromCols, termHeightFromRows, termRowsFromHeight};
+export {Model, Session, Window, GlobalModel, GlobalCommandRunner, Cmd, Screen, ScreenWindow, riToRPtr, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows};
 
 

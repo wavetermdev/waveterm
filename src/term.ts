@@ -3,7 +3,7 @@ import {Terminal} from 'xterm';
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 import {v4 as uuidv4} from "uuid";
-import {GlobalModel, widthToCols, GlobalCommandRunner, termHeightFromRows, termRowsFromHeight} from "./model";
+import {GlobalModel, GlobalCommandRunner, termHeightFromRows, windowWidthToCols, windowHeightToRows} from "./model";
 import {boundInt} from "./util";
 import type {TermOptsType, TermWinSize, RendererContext, WindowSize} from "./types";
 
@@ -69,7 +69,7 @@ class TermWrap {
             this.termSize = {rows: opts.termOpts.rows, cols: opts.termOpts.cols};
         }
         else {
-            let cols = widthToCols(opts.winSize.width);
+            let cols = windowWidthToCols(opts.winSize.width);
             this.termSize = {rows: opts.termOpts.rows, cols: cols};
         }
         let theme = {
@@ -239,8 +239,8 @@ class TermWrap {
     }
 
     resizeWindow(size : WindowSize) : void {
-        let cols = widthToCols(size.width);
-        let rows = termRowsFromHeight(size.height);
+        let cols = windowWidthToCols(size.width);
+        let rows = windowHeightToRows(size.height);
         this.resize({rows, cols});
     }
 
