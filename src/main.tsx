@@ -314,7 +314,7 @@ class ImageRenderer extends React.Component<{sw : ScreenWindow, line : LineType,
         let isLoaded = this.imageLoaded.get();
         let isDone = (imageModel != null && imageModel.isDone.get());
         if (imageModel != null) {
-            let dataVersion = imageModel.dataVersion.get();
+            let dataVersion = imageModel.dataBuf.dataVersion.get();
         }
         return (
             <div ref={this.elemRef} className={"image-wrapper"}>
