@@ -19,6 +19,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/sawka/txwrap"
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
@@ -86,7 +87,7 @@ func IsValidConnectMode(mode string) bool {
 }
 
 func GetDB(ctx context.Context) (*sqlx.DB, error) {
-	if IsTxWrapContext(ctx) {
+	if txwrap.IsTxWrapContext(ctx) {
 		return nil, fmt.Errorf("cannot call GetDB from within a running transaction")
 	}
 	globalDBLock.Lock()
@@ -975,7 +976,7 @@ func createClientData(tx *TxWrap) error {
 	}
 	query := `INSERT INTO client ( clientid, userid, activesessionid, userpublickeybytes, userprivatekeybytes, winsize) 
                           VALUES (:clientid,:userid,:activesessionid,:userpublickeybytes,:userprivatekeybytes,:winsize)`
-	tx.NamedExecWrap(query, c.ToMap())
+	tx.NamedExec(query, c.ToMap())
 	log.Printf("create new clientid[%s] userid[%s] with public/private keypair\n", c.ClientId, c.UserId)
 	return nil
 }
@@ -1030,7 +1031,7 @@ func EnsureClientData(ctx context.Context) (*ClientData, error) {
 func SetClientOpts(ctx context.Context, clientOpts ClientOptsType) error {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `UPDATE client SET clientopts = ?`
-		tx.ExecWrap(query, quickJson(clientOpts))
+		tx.Exec(query, quickJson(clientOpts))
 		return nil
 	})
 	return txErr
