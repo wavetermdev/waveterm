@@ -439,6 +439,7 @@ html, body, #main {
 
     .avatar {
         cursor: pointer;
+        margin-right: 0;
     }
 
     .line-header {
@@ -483,6 +484,13 @@ html, body, #main {
             margin-left: 50px;
             .mono-font();
         }
+
+        &.collapsed {
+            height: 0;
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+        }
     }
 
     .terminal-wrapper {
@@ -494,6 +502,13 @@ html, body, #main {
         &.zero-height {
             padding: 0;
             margin: 0;
+        }
+
+        &.collapsed {
+            height: 0;
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
         }
 
         .terminal-connectelem {
@@ -575,14 +590,58 @@ html, body, #main {
 }
 
 .line {
-    margin: 0px 5px 5px 5px;
+    margin: 0px 5px 0px 5px;
     padding: 10px 5px 5px 12px;
     display: flex;
     line-height: 1.25;
-    border-top: 1px solid #777;
     overflow: hidden;
     flex-shrink: 0;
     position: relative;
+
+    &.collapsed {
+        margin: 2px 5px 0px 5px;
+        padding: 0px 5px 0px 12px;
+
+        .avatar {
+            height: 20px;
+            width: 38px;
+            
+            &.num-4 {
+                font-size: 13px;
+            }
+            
+            &.num-5 {
+                font-size: 11px;
+            }
+            
+            &.num-6 {
+                font-size: 9px;
+            }
+        }
+
+        .meta-wrap .meta.meta-line1 {
+            display: none;
+        }
+
+        .focus-indicator {
+            height: calc(100% - 8px);
+            top: 4px;
+        }
+
+        .line-star {
+            padding-top: 0;
+            padding-bottom: 0;
+            font-size: 20px;
+            margin-top: -4px;
+            margin-bottom: -2px;
+        }
+    }
+
+    &.top-border, &.collapsed.top-border {
+        border-top: 1px solid #777;
+        padding-top: 5px;
+        margin-top: 5px;
+    }
 
     &:nth-child(2) {
         margin: 0px 5px 5px 5px;
@@ -626,7 +685,7 @@ html, body, #main {
     }
 
     .avatar {
-        height: 38px;
+        max-height: 38px;
         width: 38px;
         background-color: #555;
         display: flex;
@@ -702,6 +761,18 @@ html, body, #main {
         }
     }
 
+    .collapsed-indicator {
+        width: 20px;
+        font-size: 20px;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        margin-left: 2px;
+        margin-right: 2px;
+    }
+
     .meta {
         display: flex;
         flex-direction: row;
@@ -716,9 +787,9 @@ html, body, #main {
         }
         
         .ts {
-            color: #ddd;
+            color: #aaa;
             margin-top: 5px;
-            font-size: 12px;
+            .mono-font(11px);
         }
 
         .termopts {
@@ -840,6 +911,28 @@ body .xterm .xterm-viewport {
 
     .lines-spacer {
         flex-grow: 1;
+    }
+
+    .line-sep {
+        display: flex;
+        align-items: center;
+        .mono-font(11px);
+        color: #aaa;
+    }
+
+    .line-sep::before, .line-sep::after {
+        content: '';
+        height: 2px;
+        background-color: #ccc;
+        flex-grow: 1;
+    }
+
+    .line-sep::before {
+        margin-right: 1rem;
+    }
+
+    .line-sep::after {
+        margin-left: 1rem;
     }
 }
 

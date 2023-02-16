@@ -30,7 +30,7 @@ type OMap<K,V> = mobx.ObservableMap<K,V>;
 
 type HeightChangeCallbackType = (lineNum : number, newHeight : number, oldHeight : number) => void;
 
-type RendererComponentProps = {sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType};
+type RendererComponentProps = {sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType, collapsed : boolean};
 type RendererComponentType = { new(props : RendererComponentProps) : React.Component<RendererComponentProps, {}> };
 
 type InterObsValue = {
@@ -121,9 +121,11 @@ function getCwdStr(remote : RemoteType, state : FeStateType) : string {
     return cwd;
 }
 
-function getLineDateStr(ts : number) : string {
+function getLineDateTimeStr(ts : number) : string {
     let lineDate = new Date(ts);
     let nowDate = new Date();
+    
+    
     if (nowDate.getFullYear() != lineDate.getFullYear()) {
         return dayjs(lineDate).format("ddd L LTS");
     }
@@ -138,6 +140,44 @@ function getLineDateStr(ts : number) : string {
     else {
         return dayjs(ts).format("LTS");
     }
+}
+
+function getTodayStr() : string {
+    return getDateStr(new Date());
+}
+
+function getYesterdayStr() : string {
+    let d = new Date();
+    d.setDate(d.getDate()-1);
+    return getDateStr(d);
+}
+
+const DOW_STRS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function getDateStr(d : Date) : string {
+    let yearStr = String(d.getFullYear());
+    let monthStr = String(d.getMonth()+1);
+    if (monthStr.length == 1) {
+        monthStr = "0" + monthStr;
+    }
+    let dayStr = String(d.getDate());
+    if (dayStr.length == 1) {
+        dayStr = "0" + dayStr;
+    }
+    let dowStr = DOW_STRS[d.getDay()];
+    return dowStr + " " + yearStr + "-" + monthStr + "-" + dayStr;
+}
+
+function getLineDateStr(todayDate : string, yesterdayDate : string, ts : number) : string {
+    let lineDate = new Date(ts);
+    let dateStr = getDateStr(lineDate);
+    if (dateStr == todayDate) {
+        return "today";
+    }
+    if (dateStr == yesterdayDate) {
+        return "yesterday";
+    }
+    return dateStr;
 }
 
 @mobxReact.observer
@@ -171,11 +211,11 @@ class LineText extends React.Component<{sw : ScreenWindow, line : LineType}, {}>
 
     render() {
         let {sw, line} = this.props;
-        let formattedTime = getLineDateStr(line.ts);
+        let formattedTime = getLineDateTimeStr(line.ts);
         let isSelected = mobx.computed(() => (sw.selectedLine.get() == line.linenum), {name: "computed-isSelected"}).get();
         let isFocused = mobx.computed(() => (sw.focusType.get() == "cmd"), {name: "computed-isFocused"}).get();
         return (
-            <div className="line line-text" data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} onClick={this.clickHandler}>
+            <div className="line line-text top-border" data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} onClick={this.clickHandler}>
                 <div className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused})}/>
                 <LineAvatar line={line} cmd={null}/>
                 <div className="line-content">
@@ -218,7 +258,7 @@ class Prompt extends React.Component<{rptr : RemotePtrType, festate : FeStateTyp
 }
 
 @mobxReact.observer
-class ImageRenderer extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : () => void}, {}> {
+class ImageRenderer extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : () => void, collapsed : boolean}, {}> {
     elemRef : React.RefObject<any> = React.createRef();
     imageDivRef : React.RefObject<any> = React.createRef();
     imageLoaded : mobx.IObservableValue<boolean> = mobx.observable.box(false, {name: "imageLoaded"});
@@ -267,11 +307,11 @@ class ImageRenderer extends React.Component<{sw : ScreenWindow, line : LineType,
     }
 
     checkLoad() : void {
-        let {line, staticRender, visible} = this.props;
+        let {line, staticRender, visible, collapsed} = this.props;
         if (staticRender) {
             return;
         }
-        let vis = visible && visible.get();
+        let vis = visible && visible.get() && !collapsed;
         let curVis = this.imageLoaded.get();
         if (vis && !curVis) {
             this.loadImage();
@@ -316,8 +356,9 @@ class ImageRenderer extends React.Component<{sw : ScreenWindow, line : LineType,
         if (imageModel != null) {
             let dataVersion = imageModel.dataBuf.dataVersion.get();
         }
+        let collapsed = this.props.collapsed;
         return (
-            <div ref={this.elemRef} className={"image-wrapper"}>
+            <div ref={this.elemRef} className={cn("image-wrapper", {"collapsed": collapsed})}>
                 <div key="imagediv" ref={this.imageDivRef}></div>
                 <If condition={!isDone}><div className="loading-div">...</div></If>
             </div>
@@ -326,7 +367,7 @@ class ImageRenderer extends React.Component<{sw : ScreenWindow, line : LineType,
 }
 
 @mobxReact.observer
-class TerminalRenderer extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : () => void}, {}> {
+class TerminalRenderer extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : () => void, collapsed : boolean}, {}> {
     termLoaded : mobx.IObservableValue<boolean> = mobx.observable.box(false, {name: "linecmd-term-loaded"});
     elemRef : React.RefObject<any> = React.createRef();
 
@@ -373,11 +414,11 @@ class TerminalRenderer extends React.Component<{sw : ScreenWindow, line : LineTy
     }
 
     checkLoad() : void {
-        let {line, staticRender, visible} = this.props;
+        let {line, staticRender, visible, collapsed} = this.props;
         if (staticRender) {
             return;
         }
-        let vis = visible && visible.get();
+        let vis = visible && visible.get() && !collapsed;
         let curVis = this.termLoaded.get();
         if (vis && !curVis) {
             this.loadTerminal();
@@ -428,7 +469,7 @@ class TerminalRenderer extends React.Component<{sw : ScreenWindow, line : LineTy
     }
     
     render() {
-        let {sw, line, width, staticRender, visible} = this.props;
+        let {sw, line, width, staticRender, visible, collapsed} = this.props;
         let isVisible = visible.get(); // for reaction
         let isPhysicalFocused = mobx.computed(() => sw.getIsFocused(line.linenum), {name: "computed-getIsFocused"}).get();
         let isFocused = mobx.computed(() => {
@@ -440,7 +481,7 @@ class TerminalRenderer extends React.Component<{sw : ScreenWindow, line : LineTy
         let termHeight = termHeightFromRows(usedRows);
         let termLoaded = this.termLoaded.get();
         return (
-            <div ref={this.elemRef} key="term-wrap" className={cn("terminal-wrapper", {"focus": isFocused}, {"cmd-done": !cmd.isRunning()}, {"zero-height": (termHeight == 0)})}>
+            <div ref={this.elemRef} key="term-wrap" className={cn("terminal-wrapper", {"focus": isFocused}, {"cmd-done": !cmd.isRunning()}, {"zero-height": (termHeight == 0)}, {"collapsed": collapsed})}>
                 <If condition={!isFocused}>
                     <div key="term-block" className="term-block" onClick={this.clickTermBlock}></div>
                 </If>
@@ -460,7 +501,7 @@ class MarkdownRenderer extends React.Component<{sw : ScreenWindow, line : LineTy
 }
 
 @mobxReact.observer
-class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType}, {}> {
+class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType, collapsed : OV<boolean>, topBorder : boolean}, {}> {
     lineRef : React.RefObject<any> = React.createRef();
     rtnStateDiff : mobx.IObservableValue<string> = mobx.observable.box(null, {name: "linecmd-rtn-state-diff"});
     rtnStateDiffFetched : boolean = false;
@@ -471,8 +512,8 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
     }
 
     checkStateDiffLoad() : void {
-        let {line, staticRender, visible} = this.props;
-        if (staticRender) {
+        let {line, staticRender, visible, collapsed} = this.props;
+        if (staticRender || collapsed.get()) {
             return;
         }
         if (!visible) {
@@ -618,13 +659,21 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
     handleResizeButton() {
         console.log("resize button");
     }
+
+    @boundMethod
+    handleCollapsedClick() {
+        mobx.action(() => {
+            let isCollapsed = this.props.collapsed.get();
+            this.props.collapsed.set(!isCollapsed);
+        })();
+    }
     
     render() {
-        let {sw, line, width, staticRender, visible} = this.props;
+        let {sw, line, width, staticRender, visible, topBorder} = this.props;
         let model = GlobalModel;
         let lineid = line.lineid;
         let isVisible = visible.get();
-        let formattedTime = getLineDateStr(line.ts);
+        let formattedTime = getLineDateTimeStr(line.ts);
         let cmd = model.getCmd(line);
         if (cmd == null) {
             return (
@@ -648,14 +697,18 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
             return isPhysicalFocused && swFocusType == "cmd-fg"
         }, {name: "computed-isFgFocused"}).get();
         let isStatic = staticRender;
+        let isRunning = cmd.isRunning()
+        let isCollapsed = this.props.collapsed.get();
         let rsdiff = this.rtnStateDiff.get();
         // console.log("render", "#" + line.linenum, termHeight, usedRows, cmd.getStatus(), (this.rtnStateDiff.get() != null), (!cmd.isRunning() ? "cmd-done" : "running"));
         let mainDivCn = cn(
             "line",
             "line-cmd",
             {"focus": isFocused},
-            {"cmd-done": !cmd.isRunning()},
+            {"cmd-done": !isRunning},
             {"has-rtnstate": cmd.getRtnState()},
+            {"collapsed": isCollapsed},
+            {"top-border": topBorder},
         );
         let RendererComponent : RendererComponentType = TerminalRenderer;
         if (line.renderer == "image") {
@@ -668,8 +721,12 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                 <div key="focus" className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused}, {"fg-focus": isFgFocused})}/>
                 <div key="header" className="line-header">
                     <LineAvatar line={line} cmd={cmd}/>
+                    <div key="collapsed" className="collapsed-indicator" title={isCollapsed ? "output collapsed, click to show" : "click to hide output" } onClick={this.handleCollapsedClick}>
+                        <If condition={isCollapsed}><i className="fa fa-caret-right"/></If>
+                        <If condition={!isCollapsed}><i className="fa fa-caret-down"/></If>
+                    </div>
                     <div key="meta" className="meta-wrap">
-                        <div key="meta1" className="meta">
+                        <div key="meta1" className="meta meta-line1">
                             <div className="user" style={{display: "none"}}>{line.userid}</div>
                             <div className="ts">{formattedTime}</div>
                             <div className="termopts">
@@ -677,7 +734,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                                 <If condition={cmd.isRunning() && false}><i onClick={this.handleResizeButton} className="resize-button fa fa-arrows-alt"/></If>
                             </div>
                         </div>
-                        <div key="meta2" className="meta">
+                        <div key="meta2" className="meta meta-line2">
                             {this.renderCmdText(cmd, remote)}
                         </div>
                     </div>
@@ -691,8 +748,8 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                         </If>
                     </div>
                 </div>
-                <RendererComponent sw={sw} line={line} width={width} staticRender={staticRender} visible={visible} onHeightChange={this.handleHeightChange}/>
-                <If condition={cmd.getRtnState()}>
+                <RendererComponent sw={sw} line={line} width={width} staticRender={staticRender} visible={visible} onHeightChange={this.handleHeightChange} collapsed={isCollapsed}/>
+                <If condition={!isCollapsed && cmd.getRtnState()}>
                     <div key="rtnstate" className="cmd-rtnstate" style={{visibility: ((cmd.getStatus() == "done") ? "visible" : "hidden")}}>
                         <If condition={rsdiff == null || rsdiff == ""}>
                             <div className="cmd-rtnstate-label">state unchanged</div>
@@ -711,7 +768,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
 }
 
 @mobxReact.observer
-class Line extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType}, {}> {
+class Line extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType, collapsed : OV<boolean>, topBorder : boolean}, {}> {
     render() {
         let line = this.props.line;
         if (line.archived) {
@@ -2087,6 +2144,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
     lastOffsetWidth : number = 0;
     ignoreNextScroll : boolean = false;
     visibleMap : Map<string, OV<boolean>>;  // lineid => OV<vis>
+    collapsedMap : Map<string, OV<boolean>>;  // lineid => OV<collapsed>
     lastLinesLength : number = 0;
     lastSelectedLine : number = 0;
 
@@ -2098,6 +2156,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
         this.linesRef = React.createRef();
         this.computeAnchorLine_throttled = throttle(100, this.computeAnchorLine.bind(this), {noLeading: true, noTrailing: false});
         this.visibleMap = new Map();
+        this.collapsedMap = new Map();
         this.computeVisibleMap_debounced = debounce(1000, this.computeVisibleMap.bind(this));
     }
     
@@ -2368,25 +2427,67 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
         this.restoreAnchorOffset("height-change");
         this.computeVisibleMap_debounced();
     }
+
+    hasTopBorder(lines : LineType[], idx : number) : boolean {
+        if (idx == 0) {
+            return false;
+        }
+        let curLineNumStr = String(lines[idx].linenum);
+        let prevLineNumStr = String(lines[idx-1].linenum);
+        return !this.collapsedMap.get(curLineNumStr).get() || !this.collapsedMap.get(prevLineNumStr).get();
+    }
+
+    getDateSepStr(lines : LineType[], idx : number, prevStr : string, todayStr : string, yesterdayStr : string) : string {
+        let curLineDate = new Date(lines[idx].ts);
+        let curLineFormat = dayjs(curLineDate).format("ddd YYYY-MM-DD");
+        if (idx == 0) {
+            return ;
+        }
+        let prevLineDate = new Date(lines[idx].ts);
+        let prevLineFormat = dayjs(prevLineDate).format("YYYY-MM-DD");
+        return null;
+    }
     
     render() {
         let {sw, width, lines} = this.props;
         let selectedLine = sw.selectedLine.get();  // for re-rendering
         let line : LineType = null;
-        let idx : number = 0;
         for (let i=0; i<lines.length; i++) {
             let key = String(lines[i].linenum);
             let visObs = this.visibleMap.get(key);
             if (visObs == null) {
                 this.visibleMap.set(key, mobx.observable.box(false, {name: "lines-vis-map"}));
             }
+            let collObs = this.collapsedMap.get(key);
+            if (collObs == null) {
+                this.collapsedMap.set(key, mobx.observable.box(false, {name: "lines-collapsed-map"}));
+            }
+        }
+        let lineElements : any = [];
+        let todayStr = getTodayStr();
+        let yesterdayStr = getYesterdayStr();
+        let prevDateStr : string = null;
+        for (let idx=0; idx<lines.length; idx++) {
+            let line = lines[idx];
+            let lineNumStr = String(line.linenum);
+            let dateSepStr = null;
+            let curDateStr = getLineDateStr(todayStr, yesterdayStr, line.ts);
+            if (curDateStr != prevDateStr) {
+                dateSepStr = curDateStr;
+            }
+            prevDateStr = curDateStr;
+            if (dateSepStr != null) {
+                let sepElem = <div key={"sep-" + line.lineid} className="line-sep">{dateSepStr}</div>
+                lineElements.push(sepElem);
+            }
+            let topBorder = (dateSepStr == null) && this.hasTopBorder(lines, idx);
+            let lineElem = <Line key={line.lineid} line={line} sw={sw} width={width} visible={this.visibleMap.get(lineNumStr)} staticRender={this.staticRender.get()} onHeightChange={this.onHeightChange} collapsed={this.collapsedMap.get(lineNumStr)} topBorder={topBorder}/>;
+            lineElements.push(lineElem);
         }
         return (
             <div key="lines" className="lines" onScroll={this.scrollHandler} ref={this.linesRef}>
                 <div className="lines-spacer"></div>
-                <For each="line" of={lines} index="idx">
-                    <Line key={line.lineid} line={line} sw={sw} width={width} visible={this.visibleMap.get(String(line.linenum))} staticRender={this.staticRender.get()} onHeightChange={this.onHeightChange}/>
-                </For>
+                {lineElements}
             </div>
         );
     }
@@ -2495,15 +2596,16 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         let session = GlobalModel.getSessionById(sw.sessionId);
         let isActive = sw.isActive();
         let selectedLine = sw.selectedLine.get();
+        let lines = win.getNonArchivedLines();
         return (
             <div className="window-view" style={this.getWindowViewStyle()} ref={this.windowViewRef}>
                 <div key="window-tag" className={cn("window-tag", {"is-active": isActive})}>
                     <span>{sw.name.get()}</span>
                 </div>
-                <If condition={win.lines.length > 0}>
-                    <LinesView sw={sw} width={this.width.get()} lines={win.lines}/>
+                <If condition={lines.length > 0}>
+                    <LinesView sw={sw} width={this.width.get()} lines={lines}/>
                 </If>
-                <If condition={win.lines.length == 0}>
+                <If condition={lines.length == 0}>
                     <div key="window-empty" className="window-empty">
                         <div><code>[session="{session.name.get()}" screen="{screen.name.get()}" window="{sw.name.get()}"]</code></div>
                     </div>

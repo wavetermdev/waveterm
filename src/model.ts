@@ -639,6 +639,18 @@ class Window {
         this.windowId = windowId;
     }
 
+    getNonArchivedLines() : LineType[] {
+        let rtn : LineType[] = [];
+        for (let i=0; i<this.lines.length; i++) {
+            let line = this.lines[i];
+            if (line.archived) {
+                continue;
+            }
+            rtn.push(line);
+        }
+        return rtn;
+    }
+
     updateWindow(win : WindowDataType, load : boolean) {
         mobx.action(() => {
             if (win.curremote != null && win.curremote.remoteid != "") {
