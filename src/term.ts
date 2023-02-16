@@ -252,9 +252,11 @@ class TermWrap {
             this.receiveData(this.dataUpdates[i].pos, this.dataUpdates[i].data, "reload-update-" + i);
         }
         this.dataUpdates = [];
-        this.terminal.write(new Uint8Array(), () => {
-            this.updateUsedRows(true, "reload");
-        });
+        if (this.terminal != null) {
+            this.terminal.write(new Uint8Array(), () => {
+                this.updateUsedRows(true, "reload");
+            });
+        }
     }
 
     reload(delayMs : number) {

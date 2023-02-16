@@ -721,7 +721,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                 <div key="focus" className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused}, {"fg-focus": isFgFocused})}/>
                 <div key="header" className="line-header">
                     <LineAvatar line={line} cmd={cmd}/>
-                    <div key="collapsed" className="collapsed-indicator" title={isCollapsed ? "output collapsed, click to show" : "click to hide output" } onClick={this.handleCollapsedClick}>
+                    <div style={{display: "none"}} key="collapsed" className="collapsed-indicator" title={isCollapsed ? "output collapsed, click to show" : "click to hide output" } onClick={this.handleCollapsedClick}>
                         <If condition={isCollapsed}><i className="fa fa-caret-right"/></If>
                         <If condition={!isCollapsed}><i className="fa fa-caret-down"/></If>
                     </div>

@@ -85,7 +85,7 @@ class WSControl {
 
     @boundMethod
     onclose(event : any) {
-        console.log("close", event);
+        // console.log("close", event);
         if (event.wasClean) {
             this.log("connection closed");
         }
