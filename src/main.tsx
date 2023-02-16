@@ -2640,6 +2640,9 @@ class ScreenView extends React.Component<{screen : Screen}, {}> {
 
 @mobxReact.observer
 class ScreenTabs extends React.Component<{session : Session}, {}> {
+    tabsRef : React.RefObject<any> = React.createRef();
+    lastActiveScreenId : string = null;
+    
     @boundMethod
     handleNewScreen() {
         let {session} = this.props;
@@ -2667,6 +2670,22 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
         console.log("handle context menu!", screenId);
     }
 
+    componentDidMount() : void {
+        this.componentDidUpdate();
+    }
+
+    componentDidUpdate() : void {
+        let {session} = this.props;
+        let activeScreenId = session.activeScreenId.get();
+        if (activeScreenId != this.lastActiveScreenId && this.tabsRef.current) {
+            let tabElem = this.tabsRef.current.querySelector(sprintf(".screen-tab[data-screenid=\"%s\"]", activeScreenId));
+            if (tabElem != null) {
+                tabElem.scrollIntoView();
+            }
+        }
+        this.lastActiveScreenId = activeScreenId;
+    }
+
     render() {
         let {session} = this.props;
         if (session == null) {
@@ -2682,9 +2701,9 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
             }
         }
         return (
-            <div className="screen-tabs">
+            <div className="screen-tabs" ref={this.tabsRef}>
                 <For each="screen" index="index" of={showingScreens}>
-                    <div key={screen.screenId} className={cn("screen-tab", {"is-active": activeScreenId == screen.screenId, "is-archived": screen.archived.get()}, "color-" + screen.getTabColor())} onClick={() => this.handleSwitchScreen(screen.screenId)} onContextMenu={(event) => this.handleContextMenu(event, screen.screenId)}>
+                    <div key={screen.screenId} data-screenid={screen.screenId} className={cn("screen-tab", {"is-active": activeScreenId == screen.screenId, "is-archived": screen.archived.get()}, "color-" + screen.getTabColor())} onClick={() => this.handleSwitchScreen(screen.screenId)} onContextMenu={(event) => this.handleContextMenu(event, screen.screenId)}>
                         <If condition={screen.archived.get()}><i title="archived" className="fa fa-archive"/></If>{screen.name.get()}
                         <If condition={index+1 <= 9}>
                             <div className="tab-index">&#x2318;{index+1}</div>
