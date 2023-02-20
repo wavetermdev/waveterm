@@ -1969,3 +1969,67 @@ func MarkActivityAsUploaded(ctx context.Context, activityArr []*ActivityType) er
 	})
 	return txErr
 }
+
+func foundInStrArr(strs []string, s string) bool {
+	for _, sval := range strs {
+		if s == sval {
+			return true
+		}
+	}
+	return false
+}
+
+// newPos is 0-indexed
+func reorderStrs(strs []string, toMove string, newPos int) []string {
+	if !foundInStrArr(strs, toMove) {
+		return strs
+	}
+	var added bool
+	rtn := make([]string, 0, len(strs))
+	for _, s := range strs {
+		if s == toMove {
+			continue
+		}
+		if len(rtn) == newPos {
+			added = true
+			rtn = append(rtn, toMove)
+		}
+		rtn = append(rtn, s)
+	}
+	if !added {
+		rtn = append(rtn, toMove)
+	}
+	return rtn
+}
+
+// newScreenIdx is 1-indexed
+func SetScreenIdx(ctx context.Context, sessionId string, screenId string, newScreenIdx int) error {
+	if newScreenIdx <= 0 {
+		return fmt.Errorf("invalid screenidx/pos, must be greater than 0")
+	}
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT screenid FROM screen WHERE sessionid = ? AND screenid = ? AND NOT archived`
+		if !tx.Exists(query, sessionId, screenId) {
+			return fmt.Errorf("invalid screen, not found (or archived)")
+		}
+		query = `SELECT screenid FROM screen WHERE sessionid = ? AND NOT archived ORDER BY screenidx`
+		screens := tx.SelectStrings(query, sessionId)
+		newScreens := reorderStrs(screens, screenId, newScreenIdx-1)
+		query = `UPDATE screen SET screenidx = ? WHERE sessionid = ? AND screenid = ?`
+		for idx, sid := range newScreens {
+			tx.Exec(query, idx+1, sessionId, sid)
+		}
+		return nil
+	})
+	return txErr
+}
+
+func GetDBVersion(ctx context.Context) (int, error) {
+	var version int
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT version FROM schema_migrations`
+		version = tx.GetInt(query)
+		return nil
+	})
+	return version, txErr
+}

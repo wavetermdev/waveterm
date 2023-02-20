@@ -524,6 +524,10 @@ func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		}
 		varsUpdated = append(varsUpdated, "tabcolor")
 	}
+	if pk.Kwargs["pos"] != "" {
+
+		varsUpdated = append(varsUpdated, "pos")
+	}
 	if len(varsUpdated) == 0 {
 		return nil, fmt.Errorf("/screen:set no updates, can set %s", formatStrs([]string{"name", "pos", "tabcolor"}, "or", false))
 	}
@@ -2188,11 +2192,16 @@ func ClientShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve client data: %v\n", err)
 	}
+	dbVersion, err := sstore.GetDBVersion(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve db version: %v\n", err)
+	}
 	var buf bytes.Buffer
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "userid", clientData.UserId))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "clientid", clientData.ClientId))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "backend", scbase.PromptVersion))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "telemetry", boolToStr(clientData.ClientOpts.NoTelemetry, "off", "on")))
+	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "db-version", dbVersion))
 	update := sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			InfoTitle: fmt.Sprintf("client info"),
