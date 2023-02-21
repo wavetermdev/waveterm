@@ -650,8 +650,45 @@ type LineType struct {
 	Ephemeral     bool   `json:"ephemeral,omitempty"`
 	ContentHeight int64  `json:"contentheight,omitempty"`
 	Star          bool   `json:"star,omitempty"`
+	Bookmarked    bool   `json:"bookmarked,omitempty"`
+	Pinned        bool   `json:"pinned,omitempty"`
 	Archived      bool   `json:"archived,omitempty"`
 	Remove        bool   `json:"remove,omitempty"`
+}
+
+type BookmarkType struct {
+	BookmarkId  string            `json:"bookmarkid"`
+	CreatedTs   int64             `json:"createdts"`
+	CmdStr      string            `json:"cmdstr"`
+	Alias       string            `json:"alias,omitempty"`
+	Tags        []string          `json:"tags"`
+	Description string            `json:"description"`
+	CmdIds      []base.CommandKey `json:"cmdids"`
+}
+
+func (bm *BookmarkType) ToMap() map[string]interface{} {
+	rtn := make(map[string]interface{})
+	rtn["bookmarkid"] = bm.BookmarkId
+	rtn["createdts"] = bm.CreatedTs
+	rtn["cmdstr"] = bm.CmdStr
+	rtn["alias"] = bm.Alias
+	rtn["description"] = bm.Description
+	rtn["tags"] = quickJsonArr(bm.Tags)
+	return rtn
+}
+
+func BookmarkFromMap(m map[string]interface{}) *BookmarkType {
+	if len(m) == 0 {
+		return nil
+	}
+	var bm BookmarkType
+	quickSetStr(&bm.BookmarkId, m, "bookmarkid")
+	quickSetInt64(&bm.CreatedTs, m, "createdts")
+	quickSetStr(&bm.Alias, m, "alias")
+	quickSetStr(&bm.CmdStr, m, "cmdstr")
+	quickSetStr(&bm.Description, m, "description")
+	quickSetJsonArr(&bm.Tags, m, "tags")
+	return &bm
 }
 
 type ResolveItem struct {

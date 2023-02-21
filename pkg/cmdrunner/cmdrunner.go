@@ -157,6 +157,8 @@ func init() {
 	registerCmdFn("line", LineCommand)
 	registerCmdFn("line:show", LineShowCommand)
 	registerCmdFn("line:star", LineStarCommand)
+	registerCmdFn("line:bookmark", LineBookmarkCommand)
+	registerCmdFn("line:pin", LinePinCommand)
 	registerCmdFn("line:archive", LineArchiveCommand)
 	registerCmdFn("line:purge", LinePurgeCommand)
 	registerCmdFn("line:setheight", LineSetHeightCommand)
@@ -1900,6 +1902,58 @@ func LineSetHeightCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	return nil, nil
 }
 
+func LineBookmarkCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
+	if err != nil {
+		return nil, err
+	}
+	if len(pk.Args) == 0 {
+		return nil, fmt.Errorf("/line:bookmark requires an argument (line number or id)")
+	}
+	lineArg := pk.Args[0]
+	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.WindowId, lineArg)
+	if err != nil {
+		return nil, fmt.Errorf("error looking up lineid: %v", err)
+	}
+	if lineId == "" {
+		return nil, fmt.Errorf("line %q not found", lineArg)
+	}
+	lineObj, cmdObj, err := sstore.GetLineCmdByLineId(ctx, ids.SessionId, ids.WindowId, lineId)
+	if err != nil {
+		return nil, fmt.Errorf("/line:bookmark error getting line: %v", err)
+	}
+	if cmdObj == nil {
+		return nil, fmt.Errorf("cannot bookmark non-cmd line")
+	}
+	ck := base.MakeCommandKey(lineObj.SessionId, cmdObj.CmdId)
+	bm := &sstore.BookmarkType{
+		BookmarkId:  uuid.New().String(),
+		CreatedTs:   time.Now().UnixMilli(),
+		CmdStr:      cmdObj.CmdStr,
+		Alias:       "",
+		Tags:        nil,
+		Description: "",
+		CmdIds:      []base.CommandKey{ck},
+	}
+	err = sstore.InsertBookmark(ctx, bm)
+	if err != nil {
+		return nil, fmt.Errorf("cannot insert bookmark: %v", err)
+	}
+	newLineObj, err := sstore.GetLineById(ctx, ids.SessionId, ids.WindowId, lineId)
+	if err != nil {
+		return nil, fmt.Errorf("/line:bookmark error getting line: %v", err)
+	}
+	if newLineObj == nil {
+		// no line (which is strange given we checked for it above).  just return a nop.
+		return nil, nil
+	}
+	return sstore.ModelUpdate{Line: newLineObj}, nil
+}
+
+func LinePinCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	return nil, nil
+}
+
 func LineStarCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
 	if err != nil {
@@ -1930,7 +1984,7 @@ func LineStarCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	if err != nil {
 		return nil, fmt.Errorf("/line:star error updating star value: %v", err)
 	}
-	lineObj, err := sstore.GetLineById(ctx, lineId)
+	lineObj, err := sstore.GetLineById(ctx, ids.SessionId, ids.WindowId, lineId)
 	if err != nil {
 		return nil, fmt.Errorf("/line:star error getting line: %v", err)
 	}
@@ -1965,7 +2019,7 @@ func LineArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if err != nil {
 		return nil, fmt.Errorf("/line:archive error updating hidden status: %v", err)
 	}
-	lineObj, err := sstore.GetLineById(ctx, lineId)
+	lineObj, err := sstore.GetLineById(ctx, ids.SessionId, ids.WindowId, lineId)
 	if err != nil {
 		return nil, fmt.Errorf("/line:archive error getting line: %v", err)
 	}

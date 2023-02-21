@@ -16,6 +16,11 @@ CREATE TABLE bookmark_order (
 
 CREATE TABLE bookmark_cmd (
     bookmarkid varchar(36) NOT NULL,
+    sessionid varchar(36) NOT NULL,
     cmdid varchar(36) NOT NULL,
-    PRIMARY KEY (bookmarkid, cmdid)
+    PRIMARY KEY (bookmarkid, sessionid, cmdid)
 );
+
+ALTER TABLE line ADD COLUMN bookmarked boolean NOT NULL DEFAULT 0;
+ALTER TABLE line ADD COLUMN pinned boolean NOT NULL DEFAULT 0;
+

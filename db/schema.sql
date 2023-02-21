@@ -97,7 +97,7 @@ CREATE TABLE line (
     ephemeral boolean NOT NULL,
     contentheight int NOT NULL,
     star int NOT NULL,
-    archived boolean NOT NULL, renderer varchar(50) NOT NULL DEFAULT '',
+    archived boolean NOT NULL, renderer varchar(50) NOT NULL DEFAULT '', bookmarked boolean NOT NULL DEFAULT 0, pinned boolean NOT NULL DEFAULT 0,
     PRIMARY KEY (sessionid, windowid, lineid)
 );
 CREATE TABLE remote (
@@ -181,6 +181,7 @@ CREATE TABLE bookmark_order (
 );
 CREATE TABLE bookmark_cmd (
     bookmarkid varchar(36) NOT NULL,
+    sessionid varchar(36) NOT NULL,
     cmdid varchar(36) NOT NULL,
-    PRIMARY KEY (bookmarkid, cmdid)
+    PRIMARY KEY (bookmarkid, sessionid, cmdid)
 );

@@ -719,8 +719,8 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 		query = `SELECT nextlinenum FROM window WHERE sessionid = ? AND windowid = ?`
 		nextLineNum := tx.GetInt(query, line.SessionId, line.WindowId)
 		line.LineNum = int64(nextLineNum)
-		query = `INSERT INTO line  ( sessionid, windowid, userid, lineid, ts, linenum, linenumtemp, linelocal, linetype, text, cmdid, renderer, ephemeral, contentheight, star, archived)
-                            VALUES (:sessionid,:windowid,:userid,:lineid,:ts,:linenum,:linenumtemp,:linelocal,:linetype,:text,:cmdid,:renderer,:ephemeral,:contentheight,:star,:archived)`
+		query = `INSERT INTO line  ( sessionid, windowid, userid, lineid, ts, linenum, linenumtemp, linelocal, linetype, text, cmdid, renderer, ephemeral, contentheight, star, archived, bookmarked, pinned)
+                            VALUES (:sessionid,:windowid,:userid,:lineid,:ts,:linenum,:linenumtemp,:linelocal,:linetype,:text,:cmdid,:renderer,:ephemeral,:contentheight,:star,:archived,:bookmarked,:pinned)`
 		tx.NamedExec(query, line)
 		query = `UPDATE window SET nextlinenum = ? WHERE sessionid = ? AND windowid = ?`
 		tx.Exec(query, nextLineNum+1, line.SessionId, line.WindowId)
@@ -898,6 +898,8 @@ func cleanSessionCmds(ctx context.Context, sessionId string) error {
 		query := `SELECT cmdid FROM cmd WHERE sessionid = ? AND cmdid NOT IN (SELECT cmdid FROM line WHERE sessionid = ?)`
 		removedCmds = tx.SelectStrings(query, sessionId, sessionId)
 		query = `DELETE FROM cmd WHERE sessionid = ? AND cmdid NOT IN (SELECT cmdid FROM line WHERE sessionid = ?)`
+		tx.Exec(query, sessionId, sessionId)
+		query = `DELETE FROM bookmark_cmd WHERE sessionid = ? AND cmdid NOT IN (SELECT cmdid FROM cmd WHERE sessionid = ?)`
 		tx.Exec(query, sessionId, sessionId)
 		return nil
 	})
@@ -1391,6 +1393,8 @@ func DeleteSession(ctx context.Context, sessionId string) (UpdatePacket, error) 
 		tx.Exec(query, sessionId)
 		query = `DELETE FROM cmd WHERE sessionid = ?`
 		tx.Exec(query, sessionId)
+		query = `DELETE FROM bookmark_cmd WHERE sessionid = ?`
+		tx.Exec(query, sessionId)
 		newActiveSessionId, _ = fixActiveSessionId(tx.Context())
 		return nil
 	})
@@ -1825,12 +1829,12 @@ func UpdateLineHeight(ctx context.Context, lineId string, heightVal int) error {
 }
 
 // can return nil, nil if line is not found
-func GetLineById(ctx context.Context, lineId string) (*LineType, error) {
+func GetLineById(ctx context.Context, sessionId string, windowId string, lineId string) (*LineType, error) {
 	var rtn *LineType
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		var line LineType
-		query := `SELECT * FROM line WHERE lineid = ?`
-		found := tx.Get(&line, query, lineId)
+		query := `SELECT * FROM line WHERE sessionid = ? AND windowid = ? AND lineid = ?`
+		found := tx.Get(&line, query, sessionId, windowId, lineId)
 		if found {
 			rtn = &line
 		}
@@ -2032,4 +2036,68 @@ func GetDBVersion(ctx context.Context) (int, error) {
 		return nil
 	})
 	return version, txErr
+}
+
+func InsertBookmark(ctx context.Context, bm *BookmarkType) error {
+	if bm == nil || bm.BookmarkId == "" {
+		return fmt.Errorf("invalid empty bookmark id")
+	}
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT bookmarkid FROM bookmark WHERE bookmarkid = ?`
+		if tx.Exists(query, bm.BookmarkId) {
+			return fmt.Errorf("bookmarkid already exists")
+		}
+		query = `INSERT INTO bookmark ( bookmarkid, createdts, cmdstr, alias, tags, description)
+                               VALUES (:bookmarkid,:createdts,:cmdstr,:alias,:tags,:description)`
+		tx.NamedExec(query, bm.ToMap())
+		for _, tag := range append(bm.Tags, "") {
+			query = `SELECT COALESCE(max(orderidx), 0) FROM bookmark_order WHERE tag = ?`
+			maxOrder := tx.GetInt(query, tag)
+			query = `INSERT INTO bookmark_order (tag, bookmarkid, orderidx) VALUES (?, ?, ?)`
+			tx.Exec(query, tag, bm.BookmarkId, maxOrder+1)
+		}
+		query = `INSERT INTO bookmark_cmd (bookmarkid, sessionid, cmdid) VALUES (?, ?, ?)`
+		for _, ck := range bm.CmdIds {
+			tx.Exec(query, bm.BookmarkId, ck.GetSessionId(), ck.GetCmdId())
+		}
+		query = `UPDATE line SET bookmarked = 1 WHERE sessionid = ? AND cmdid = ?`
+		for _, ck := range bm.CmdIds {
+			tx.Exec(query, ck.GetSessionId(), ck.GetCmdId())
+		}
+		return nil
+	})
+	return txErr
+}
+
+func fixupBookmarkOrder(tx *TxWrap) {
+	query := `
+WITH new_order AS (
+  SELECT tag, bookmarkid, row_number() OVER (PARTITION BY tag ORDER BY orderidx) AS newidx FROM bookmark_order
+)
+UPDATE bookmark_order
+SET orderidx = new_order.newidx
+FROM new_order
+WHERE bookmark_order.tag = new_order.tag AND bookmark_order.bookmarkid = new_order.bookmarkid
+`
+	tx.Exec(query)
+}
+
+func DeleteBookmark(ctx context.Context, bookmarkId string) error {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT bookmarkid FROM bookmark WHERE bookmarkid = ?`
+		if !tx.Exists(query, bookmarkId) {
+			return fmt.Errorf("bookmark not found")
+		}
+		query = `DELETE FROM bookmark WHERE bookmarkid = ?`
+		tx.Exec(query, bookmarkId)
+		query = `DELETE FROM bookmark_order WHERE bookmarkid = ?`
+		tx.Exec(query, bookmarkId)
+		query = `UPDATE line SET bookmarked = 0 WHERE bookmarked AND cmdid <> '' AND (sessionid||cmdid) IN (SELECT sessionid||cmdid FROM bookmark_cmd WHERE bookmarkid = ?) `
+		tx.Exec(query, bookmarkId)
+		query = `DELETE FROM bookmark_cmd WHERE bookmarkid = ?`
+		tx.Exec(query, bookmarkId)
+		fixupBookmarkOrder(tx)
+		return nil
+	})
+	return txErr
 }
