@@ -1914,10 +1914,12 @@ func BookmarksShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve bookmarks: %v", err)
 	}
-	for _, bm := range bms {
-		fmt.Printf("%v\n", bm)
+	update := sstore.ModelUpdate{
+		BookmarksView: &sstore.BookmarksViewType{
+			Bookmarks: bms,
+		},
 	}
-	return nil, nil
+	return update, nil
 }
 
 func LineBookmarkCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {

@@ -43,6 +43,7 @@ type ModelUpdate struct {
 	History         *HistoryInfoType    `json:"history,omitempty"`
 	Interactive     bool                `json:"interactive"`
 	Connect         bool                `json:"connect,omitempty"`
+	BookmarksView   *BookmarksViewType  `json:"bookmarksview,omitempty"`
 }
 
 func (ModelUpdate) UpdateType() string {
@@ -183,4 +184,8 @@ func MakeSessionsUpdateForRemote(sessionId string, ri *RemoteInstance) []*Sessio
 			Remotes:   []*RemoteInstance{ri},
 		},
 	}
+}
+
+type BookmarksViewType struct {
+	Bookmarks []*BookmarkType `json:"bookmarks"`
 }
