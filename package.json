@@ -13,6 +13,7 @@
     "node-fetch": "^3.2.10",
     "react": "^18.1.0",
     "react-dom": "^18.1.0",
+    "react-markdown": "^8.0.5",
     "remark": "^14.0.2",
     "remark-gfm": "^3.0.1",
     "sprintf-js": "^1.1.2",

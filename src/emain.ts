@@ -282,8 +282,14 @@ function createMainWindow(clientData) {
         if (url.startsWith("https://docs.getprompt.dev/")) {
             electron.shell.openExternal(url);
         }
-        if (url.startsWith("https://discord.gg/")) {
+        else if (url.startsWith("https://discord.gg/")) {
             electron.shell.openExternal(url);
+        }
+        else if (url.startsWith("https://extern/?")) {
+            let qmark = url.indexOf("?");
+            let param = url.substr(qmark+1);
+            let newUrl = decodeURIComponent(param);
+            electron.shell.openExternal(newUrl);
         }
     });
     return win;

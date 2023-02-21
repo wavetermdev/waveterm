@@ -1585,6 +1585,55 @@ type LineFocusType = {
 
 class BookmarksModel {
     bookmarks : OArr<BookmarkType> = mobx.observable.array([], {name: "Bookmarks"});
+    activeBookmark : OV<string> = mobx.observable.box(null, {name: "activeBookmark"});
+    editingBookmark : OV<string> = mobx.observable.box(null, {name: "editingBookmark"});
+    pendingDelete : OV<string> = mobx.observable.box(false, {name: "pendingDelete"});
+
+    closeView() : void {
+        mobx.action(() => {
+            GlobalModel.activeMainView.set("session");
+        })();
+    }
+
+    @boundMethod
+    clearPendingDelete() : void {
+        mobx.action(() => this.pendingDelete.set(null))();
+    }
+
+    handleDeleteBookmark(bookmarkId : string) : void {
+        if (this.pendingDelete.get() == null || this.pendingDelete.get() != this.activeBookmark.get()) {
+            mobx.action(() => this.pendingDelete.set(this.activeBookmark.get()))();
+            setTimeout(this.clearPendingDelete, 2000);
+            return;
+        }
+        console.log("delete", bookmarkId);
+    }
+
+    handleDocKeyDown(e : any) : void {
+        if (e.code == "Escape") {
+            e.preventDefault();
+            this.closeView();
+            return;
+        }
+        if (this.editingBookmark.get() != null) {
+            return;
+        }
+        if (e.code == "Backspace" || e.code == "Delete") {
+            if (this.activeBookmark.get() == null) {
+                return;
+            }
+            e.preventDefault();
+            this.handleDeleteBookmark(this.activeBookmark.get());
+            return;
+        }
+        if (e.code == "ArrowUp") {
+        }
+        if (e.code == "ArrowDown") {
+        }
+        if (e.code == "Enter") {
+        }
+    }
+    return;
 }
 
 class Model {
@@ -1658,6 +1707,10 @@ class Model {
 
     docKeyDownHandler(e : any) {
         if (isModKeyPress(e)) {
+            return;
+        }
+        if (this.activeMainView.get() == "bookmarks") {
+            this.bookmarksModel.handleDocKeyDown(e);
             return;
         }
         if (e.code == "Escape") {
@@ -1943,7 +1996,12 @@ class Model {
     showBookmarksView(bmview : BookmarksViewType) : void {
         mobx.action(() => {
             this.activeMainView.set("bookmarks");
-            this.bookmarksModel.bookmarks.replace(bmview.bookmarks || []);
+            let bmArr = bmview.bookmarks ?? [];
+            this.bookmarksModel.bookmarks.replace(bmArr);
+            this.bookmarksModel.activeBookmark.set(null);
+            if (bmArr.length > 0) {
+                this.bookmarksModel.activeBookmark.set(bmArr[0].bookmarkid);
+            }
         })();
     }
 

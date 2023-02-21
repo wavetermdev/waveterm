@@ -14,6 +14,8 @@ import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, ScreenWindow, riToRPtr, windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols} from "./model";
 import {isModKeyPress} from "./util";
 import {ImageRendererModel} from "./imagerenderer";
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 dayjs.extend(localizedFormat)
 
@@ -2775,17 +2777,72 @@ class HistoryView extends React.Component<{}, {}> {
     }
 }
 
+function LinkRenderer(props : any) : any {
+    let newUrl = "https://extern?" + encodeURIComponent(props.href);
+    return <a href={newUrl} target="_blank">{props.children}</a>
+}
+
+function HeaderRenderer(props : any, hnum : number) : any {
+    return (
+        <div className={cn("title", "is-" + hnum)}>{props.children}</div>
+    );
+}
+
+function CodeRenderer(props : any) : any {
+    return (
+        <code className={cn({"inline": props.inline})}>{props.children}</code>
+    );
+}
+
 @mobxReact.observer
 class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
+    @boundMethod
+    handleDeleteClick() : void {
+        let {bookmark} = this.props;
+        let model = GlobalModel.bookmarksModel;
+        model.handleDeleteBookmark(bookmark.bookmarkid);
+    }
+
+    @boundMethod
+    handleEditClick() : void {
+        console.log("do edit");
+    }
+    
     render() {
         let bm = this.props.bookmark;
-        let isSelected = false;
+        let model = GlobalModel.bookmarksModel;
+        let isSelected = (model.activeBookmark.get() == bm.bookmarkid);
+        let markdown = bm.description ?? "";
+        let markdownComponents = {
+            a: LinkRenderer,
+            h1: (props) => HeaderRenderer(props, 1),
+            h2: (props) => HeaderRenderer(props, 2),
+            h3: (props) => HeaderRenderer(props, 3),
+            h4: (props) => HeaderRenderer(props, 4),
+            h5: (props) => HeaderRenderer(props, 5),
+            h6: (props) => HeaderRenderer(props, 6),
+            code: CodeRenderer,
+        };
+        if (bm.cmdstr.startsWith("git")) {
+            markdown = "Use to modify the code repo\n1. git pull\n2. git push\n3. git commit\n\n> one\n> more blockquote\n>\n> more";
+        }
+        let hasDesc = markdown != "";
         return (
-            <div className="bookmark focus-parent">
+            <div className={cn("bookmark focus-parent", {"pending-delete": model.pendingDelete.get() == bm.bookmarkid})}>
                 <div className={cn("focus-indicator", {"active": isSelected})}/>
-                <div>bookmark - {bm.bookmarkid}</div>
-                <div>
-                    <code>{bm.cmdstr}</code>
+                <div className="bookmark-content">
+                    <If condition={hasDesc}>
+                        <div className="markdown">
+                            <ReactMarkdown children={markdown} remarkPlugins={[remarkGfm]} components={markdownComponents}/>
+                        </div>
+                    </If>
+                    <div className={cn("bookmark-code", {"no-desc": !hasDesc})}>
+                        <code>{bm.cmdstr}</code>
+                    </div>
+                </div>
+                <div className="bookmark-controls">
+                    <div className="bookmark-control" onClick={this.handleEditClick}><i className="fa fa-pencil"/></div>
+                    <div className="bookmark-control" onClick={this.handleDeleteClick}><i className="fa fa-trash"/></div>
                 </div>
             </div>
         );
@@ -2809,7 +2866,23 @@ class BookmarksView extends React.Component<{}, {}> {
                     <For index="idx" each="bookmark" of={bookmarks}>
                         <Bookmark key={bookmark.bookmarkid} bookmark={bookmark}/>
                     </For>
+                    <If condition={bookmarks.length == 0}>
+                        <div className="no-bookmarks">
+                            No Bookmarks.<br/>
+                            Use the <i className="fa fa-bookmark"/> icon on commands to add your first bookmark.
+                        </div>
+                    </If>
                 </div>
+                <If condition={bookmarks.length > 0}>
+                    <div className="bookmarks-help">
+                        <div className="help-entry">
+                            [Enter] to Select<br/>
+                            [Arrow Up] / [Arrow Down] to Move in List<br/>
+                            [Backspace/Delete]x2 or <i className="fa fa-trash"/> to Delete<br/>
+                            [e] or <i className="fa fa-pencil"/> to Edit<br/>
+                        </div>
+                    </div>
+                </If>
             </div>
         );
     }
