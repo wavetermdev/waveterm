@@ -282,6 +282,10 @@ html, body, #main {
         li.menu-history {
             margin-left: -10px;
         }
+
+        li.menu-bookmarks {
+            margin-left: -10px;
+        }
     }
 
     .menu-list.remotes-menu-list {
@@ -458,19 +462,34 @@ html, body, #main {
         margin-left: 2px;
     }
 
-    .line-star {
+    .line-icon {
         display: none;
         cursor: pointer;
         padding: 3px;
         font-size: 1.5rem;
     }
 
-    .line-star.active {
-        display: block;
-        color: @term-bright-yellow;
+    .line-icon.line-bookmark.active {
+        cursor: auto;
     }
 
-    &:hover .line-star {
+    .line-icon + .line-icon {
+        margin-left: 5px;
+    }
+
+    .line-icon.active {
+        display: block;
+
+        i.fa-star, i.fa-thumb-tack {
+            color: @term-bright-yellow;
+        }
+
+        i.fa-bookmark {
+            color: @term-bright-blue;
+        }
+    }
+
+    &:hover .line-icon {
         display: block;
     }
 
@@ -632,7 +651,7 @@ html, body, #main {
             top: 4px;
         }
 
-        .line-star {
+        .line-icon {
             padding-top: 0;
             padding-bottom: 0;
             font-size: 20px;

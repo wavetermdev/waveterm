@@ -31,6 +31,8 @@ type LineType = {
     contentheight? : number,
     star? : number,
     archived? : boolean,
+    bookmarked? : boolean,
+    pinned? : boolean,
     ephemeral? : boolean,
     remove? : boolean,
 };

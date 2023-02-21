@@ -2417,6 +2417,14 @@ class CommandRunner {
     lineStar(lineId : string, starVal : number) {
         GlobalModel.submitCommand("line", "star", [lineId, String(starVal)], {"nohist": "1"}, true);
     }
+
+    lineBookmark(lineId : string) {
+        GlobalModel.submitCommand("line", "bookmark", [lineId], {"nohist": "1"}, true);
+    }
+
+    linePin(lineId : string, val : boolean) {
+        GlobalModel.submitCommand("line", "pin", [lineId, (val ? "1" : "0")], {"nohist": "1"}, true);
+    }
 };
 
 function cmdPacketString(pk : FeCmdPacketType) : string {

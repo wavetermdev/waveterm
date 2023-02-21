@@ -656,6 +656,23 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
     }
 
     @boundMethod
+    clickPin() {
+        let {line} = this.props;
+        if (!line.pinned) {
+            GlobalCommandRunner.linePin(line.lineid, true);
+        }
+        else {
+            GlobalCommandRunner.linePin(line.lineid, false);
+        }
+    }
+
+    @boundMethod
+    clickBookmark() {
+        let {line} = this.props;
+        GlobalCommandRunner.lineBookmark(line.lineid);
+    }
+
+    @boundMethod
     handleResizeButton() {
         console.log("resize button");
     }
@@ -739,12 +756,15 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                         </div>
                     </div>
                     <div key="spacer" className="flex-spacer"/>
-                    <div key="star" className={cn("line-star", {"active": line.star > 0})} onClick={this.clickStar}>
-                        <If condition={!line.star || line.star == 0}>
-                            <i className="fa fa-star-o"/>
+                    <div key="pin" title="Pin" className={cn("line-icon", {"active": line.pinned})} onClick={this.clickPin}>
+                        <i className="fa fa-thumb-tack"/>
+                    </div>
+                    <div key="bookmark" title="Bookmark" className={cn("line-icon", "line-bookmark", {"active": line.bookmarked})} onClick={this.clickBookmark}>
+                        <If condition={!line.bookmarked}>
+                            <i className="fa fa-bookmark-o"/>
                         </If>
-                        <If condition={line.star > 0}>
-                            <i className="fa fa-star"/>
+                        <If condition={line.bookmarked}>
+                            <i className="fa fa-bookmark"/>
                         </If>
                     </div>
                 </div>
@@ -2817,6 +2837,10 @@ class MainSideBar extends React.Component<{}, {}> {
         GlobalCommandRunner.createNewSession();
     }
 
+    handleNewSharedSession() {
+        console.log("create shared session");
+    }
+
     clickRemotes() {
         GlobalCommandRunner.showAllRemotes();
     }
@@ -2848,6 +2872,11 @@ class MainSideBar extends React.Component<{}, {}> {
             let isActive = GlobalModel.historyViewActive.get();
             GlobalModel.historyViewActive.set(!isActive);
         })();
+    }
+
+    @boundMethod
+    handleBookmarksClick() : void {
+        console.log("click bookmarks");
     }
 
     render() {
@@ -2911,15 +2940,24 @@ class MainSideBar extends React.Component<{}, {}> {
                             <li className="new-session"><a onClick={() => this.handleNewSession()}><i className="fa fa-plus"/> New Session</a></li>
                         </If>
                     </ul>
+                    <p className="menu-label">
+                        Shared Sessions
+                    </p>
+                    <ul className="menu-list">
+                        <li className="new-session"><a onClick={() => this.handleNewSharedSession()}><i className="fa fa-plus"/> New Session</a></li>
+                    </ul>
                     <ul className="menu-list" style={{marginTop: 20, display: "none"}}>
                         <li className="menu-history"><a onClick={this.handleHistoryClick}><i className="fa fa-clock-o"/> HISTORY</a></li>
+                    </ul>
+                    <ul className="menu-list" style={{marginTop: 20}}>
+                        <li className="menu-bookmarks"><a onClick={this.handleBookmarksClick}><i className="fa fa-bookmark"/> BOOKMARKS</a></li>
                     </ul>
                     <div className="spacer"></div>
                     <If condition={GlobalModel.debugSW.get() && sw != null}>
                         <div>
                             focus={sw.focusType.get()}<br/>
-            sline={sw.selectedLine.get()}<br/>
-            termfocus={sw.termLineNumFocus.get()}<br/>
+                            sline={sw.selectedLine.get()}<br/>
+                            termfocus={sw.termLineNumFocus.get()}<br/>
                         </div>
                     </If>
                     <p className="menu-label">
