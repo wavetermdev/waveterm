@@ -663,7 +663,8 @@ type BookmarkType struct {
 	Alias       string            `json:"alias,omitempty"`
 	Tags        []string          `json:"tags"`
 	Description string            `json:"description"`
-	CmdIds      []base.CommandKey `json:"cmdids"`
+	Cmds        []base.CommandKey `json:"cmds"`
+	OrderIdx    int64             `json:"orderidx"`
 }
 
 func (bm *BookmarkType) ToMap() map[string]interface{} {

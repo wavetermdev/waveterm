@@ -2038,6 +2038,62 @@ func GetDBVersion(ctx context.Context) (int, error) {
 	return version, txErr
 }
 
+type bookmarkOrderType struct {
+	BookmarkId string
+	OrderIdx   int64
+}
+
+type bookmarkCmdType struct {
+	BookmarkId string
+	SessionId  string
+	CmdId      string
+}
+
+func GetBookmarks(ctx context.Context, tag string) ([]*BookmarkType, error) {
+	var bms []*BookmarkType
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		var query string
+		var marr []map[string]interface{}
+		if tag == "" {
+			query = `SELECT * FROM bookmark`
+			marr = tx.SelectMaps(query)
+		} else {
+			query = `SELECT * FROM bookmark WHERE EXISTS (SELECT 1 FROM json_each(tags) WHERE value = ?)`
+			marr = tx.SelectMaps(query, tag)
+		}
+		bmMap := make(map[string]*BookmarkType)
+		for _, m := range marr {
+			bm := BookmarkFromMap(m)
+			bms = append(bms, bm)
+			bmMap[bm.BookmarkId] = bm
+		}
+		var orders []bookmarkOrderType
+		query = `SELECT bookmarkid, orderidx FROM bookmark_order WHERE tag = ?`
+		tx.Select(&orders, query, tag)
+		for _, bmOrder := range orders {
+			bm := bmMap[bmOrder.BookmarkId]
+			if bm != nil {
+				bm.OrderIdx = bmOrder.OrderIdx
+			}
+		}
+		var cmds []bookmarkCmdType
+		query = `SELECT bookmarkid, sessionid, cmdid FROM bookmark_cmd`
+		tx.Select(&cmds, query)
+		for _, cmd := range cmds {
+			bm := bmMap[cmd.BookmarkId]
+			if bm != nil {
+				bm.Cmds = append(bm.Cmds, base.MakeCommandKey(cmd.SessionId, cmd.CmdId))
+			}
+		}
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	return bms, nil
+}
+
+// ignores OrderIdx field
 func InsertBookmark(ctx context.Context, bm *BookmarkType) error {
 	if bm == nil || bm.BookmarkId == "" {
 		return fmt.Errorf("invalid empty bookmark id")
@@ -2057,11 +2113,11 @@ func InsertBookmark(ctx context.Context, bm *BookmarkType) error {
 			tx.Exec(query, tag, bm.BookmarkId, maxOrder+1)
 		}
 		query = `INSERT INTO bookmark_cmd (bookmarkid, sessionid, cmdid) VALUES (?, ?, ?)`
-		for _, ck := range bm.CmdIds {
+		for _, ck := range bm.Cmds {
 			tx.Exec(query, bm.BookmarkId, ck.GetSessionId(), ck.GetCmdId())
 		}
 		query = `UPDATE line SET bookmarked = 1 WHERE sessionid = ? AND cmdid = ?`
-		for _, ck := range bm.CmdIds {
+		for _, ck := range bm.Cmds {
 			tx.Exec(query, ck.GetSessionId(), ck.GetCmdId())
 		}
 		return nil

@@ -174,6 +174,8 @@ func init() {
 
 	registerCmdFn("history", HistoryCommand)
 
+	registerCmdFn("bookmarks:show", BookmarksShowCommand)
+
 	registerCmdFn("_killserver", KillServerCommand)
 
 	registerCmdFn("set", SetCommand)
@@ -1902,6 +1904,22 @@ func LineSetHeightCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	return nil, nil
 }
 
+func BookmarksShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	// no resolve ui ids!
+	var tagName string // defaults to ''
+	if len(pk.Args) > 0 {
+		tagName = pk.Args[0]
+	}
+	bms, err := sstore.GetBookmarks(ctx, tagName)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve bookmarks: %v", err)
+	}
+	for _, bm := range bms {
+		fmt.Printf("%v\n", bm)
+	}
+	return nil, nil
+}
+
 func LineBookmarkCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
 	if err != nil {
@@ -1933,7 +1951,7 @@ func LineBookmarkCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 		Alias:       "",
 		Tags:        nil,
 		Description: "",
-		CmdIds:      []base.CommandKey{ck},
+		Cmds:        []base.CommandKey{ck},
 	}
 	err = sstore.InsertBookmark(ctx, bm)
 	if err != nil {
