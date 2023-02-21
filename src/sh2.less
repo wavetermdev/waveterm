@@ -119,9 +119,26 @@ html, body, #main {
 
 .bookmarks-view {
     .bookmarks-title {
-        margin: 10px 0 10px 15px;
+        margin: 20px 10px 10px 15px;
+        padding-bottom: 12px;
         .mono-font(1.5rem);
         color: @term-bright-white;
+        border-bottom: 1px solid white;
+    }
+
+    .bookmarks-list {
+        color: white;
+        margin-left: 20px;
+    }
+
+    .bookmark {
+        border-top: 1px solid #ccc;
+        padding: 5px 5px 5px 0;
+        margin-bottom: 5px;
+    }
+
+    .bookmark:first-child {
+        border-top: 0;
     }
 }
 
@@ -680,39 +697,8 @@ html, body, #main {
         border-top: none;
     }
 
-    &:hover .focus-indicator {
-        display: block;
-        background-color: #222;
-    }
-
     &:hover .meta .termopts {
         display: block;
-    }
-
-    .focus-indicator {
-        position: absolute;
-        display: none;
-        width: 5px;
-        border-radius: 3px;
-        height: calc(100% - 20px);
-        top: 10px;
-        left: 0;
-        z-index: 8;
-
-        &.selected {
-            display: block;
-            background-color: #666;
-        }
-
-        &.active, &.active.selected {
-            display: block;
-            background-color: @tab-blue;
-        }
-
-        &.active.selected.fg-focus {
-            display: block;
-            background-color: @tab-green;
-        }
     }
 
     .avatar {
@@ -817,18 +803,18 @@ html, body, #main {
             margin-right: 10px;
         }
         
-        .ts {
+        .ts, .termopts {
+            display: flex;
             color: #aaa;
             margin-top: 5px;
             .mono-font(11px);
         }
 
         .termopts {
-            margin-left: 10px;
+            display: flex;
             color: #aaa;
-            margin-top: 7px;
-            font-size: 12px;
-            .mono-font(10px);
+            margin-top: 5px;
+            .mono-font(11px);
             display: none;
 
             .resize-button {
@@ -987,17 +973,9 @@ body .xterm .xterm-viewport {
     }
 
     .focus-indicator {
-        position: absolute;
-        background-color: #666;
-        width: 5px;
-        border-radius: 3px;
         height: 90%;
         top: 5%;
         left: 4px;
-
-        &.active {
-            background-color: @tab-blue;
-        }
     }
 
     &.has-history {
@@ -1728,6 +1706,37 @@ input[type=checkbox] {
     
     div:nth-child(3) {
         animation-delay: -0.15s;
+    }
+}
+
+.focus-parent:hover .focus-indicator {
+    display: block;
+    background-color: #222;
+}
+
+.focus-indicator {
+    position: absolute;
+    display: none;
+    width: 5px;
+    border-radius: 3px;
+    height: calc(100% - 20px);
+    top: 10px;
+    left: 0;
+    z-index: 8;
+
+    &.selected {
+        display: block;
+        background-color: #666;
+    }
+    
+    &.active, &.active.selected {
+        display: block;
+        background-color: @tab-blue;
+    }
+    
+    &.active.selected.fg-focus {
+        display: block;
+        background-color: @tab-green;
     }
 }
 

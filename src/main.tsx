@@ -215,7 +215,7 @@ class LineText extends React.Component<{sw : ScreenWindow, line : LineType}, {}>
         let isSelected = mobx.computed(() => (sw.selectedLine.get() == line.linenum), {name: "computed-isSelected"}).get();
         let isFocused = mobx.computed(() => (sw.focusType.get() == "cmd"), {name: "computed-isFocused"}).get();
         return (
-            <div className="line line-text top-border" data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} onClick={this.clickHandler}>
+            <div className="line line-text top-border focus-parent" data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} onClick={this.clickHandler}>
                 <div className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused})}/>
                 <LineAvatar line={line} cmd={null}/>
                 <div className="line-content">
@@ -744,8 +744,8 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                     </div>
                     <div key="meta" className="meta-wrap">
                         <div key="meta1" className="meta meta-line1">
-                            <div className="user" style={{display: "none"}}>{line.userid}</div>
                             <div className="ts">{formattedTime}</div>
+                            <div>&nbsp;</div>
                             <div className="termopts">
                                 ({termOpts.rows}x{termOpts.cols})
                                 <If condition={cmd.isRunning() && false}><i onClick={this.handleResizeButton} className="resize-button fa fa-arrows-alt"/></If>
@@ -2776,6 +2776,23 @@ class HistoryView extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
+class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
+    render() {
+        let bm = this.props.bookmark;
+        let isSelected = false;
+        return (
+            <div className="bookmark focus-parent">
+                <div className={cn("focus-indicator", {"active": isSelected})}/>
+                <div>bookmark - {bm.bookmarkid}</div>
+                <div>
+                    <code>{bm.cmdstr}</code>
+                </div>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
 class BookmarksView extends React.Component<{}, {}> {
     render() {
         let isHidden = (GlobalModel.activeMainView.get() != "bookmarks");
@@ -2784,10 +2801,13 @@ class BookmarksView extends React.Component<{}, {}> {
         let bookmark : BookmarkType = null;
         return (
             <div className={cn("bookmarks-view", {"is-hidden": isHidden})}>
-                <div className="bookmarks-title">BOOKMARKS</div>
-                <div>
+                <div className="bookmarks-title">
+                    <i className="fa fa-bookmark" style={{marginRight: 10}}/>
+                    BOOKMARKS
+                </div>
+                <div className="bookmarks-list">
                     <For index="idx" each="bookmark" of={bookmarks}>
-                        <div>bookmark {idx} -- {JSON.stringify(bookmark)}</div>
+                        <Bookmark key={bookmark.bookmarkid} bookmark={bookmark}/>
                     </For>
                 </div>
             </div>
