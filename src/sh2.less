@@ -51,7 +51,7 @@ html, body, #main {
         background-color: black;
         height: 100%;
 
-        .session-view, .history-view {
+        .session-view, .history-view, .bookmarks-view {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
@@ -111,6 +111,14 @@ html, body, #main {
 
 .history-view {
     .history-title {
+        margin: 10px 0 10px 15px;
+        .mono-font(1.5rem);
+        color: @term-bright-white;
+    }
+}
+
+.bookmarks-view {
+    .bookmarks-title {
         margin: 10px 0 10px 15px;
         .mono-font(1.5rem);
         color: @term-bright-white;

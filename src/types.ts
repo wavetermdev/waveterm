@@ -282,6 +282,22 @@ type ModelUpdateType = {
     history? : HistoryInfoType,
     interactive : boolean,
     connect? : boolean,
+    bookmarksview? : BookmarksViewType,
+};
+
+type BookmarksViewType = {
+    bookmarks: BookmarkType[],
+};
+
+type BookmarkType = {
+    bookmarkid : string,
+    createdts : number,
+    cmdstr : string,
+    alias : string,
+    tags : string[],
+    description : string,
+    cmds : string[],
+    orderidx : number,
 };
 
 type HistoryInfoType = {
@@ -366,4 +382,4 @@ type PtyDataType = {
     data : Uint8Array,
 };
 
-export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType, UIContextType, HistoryInfoType, HistoryQueryOpts, WatchScreenPacketType, TermWinSize, FeInputPacketType, RemoteInputPacketType, RemoteEditType, FeStateType, ContextMenuOpts, RendererContext, WindowSize, RendererModel, PtyDataType};
+export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType, UIContextType, HistoryInfoType, HistoryQueryOpts, WatchScreenPacketType, TermWinSize, FeInputPacketType, RemoteInputPacketType, RemoteEditType, FeStateType, ContextMenuOpts, RendererContext, WindowSize, RendererModel, PtyDataType, BookmarksViewType, BookmarkType};

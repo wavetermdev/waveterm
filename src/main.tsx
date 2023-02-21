@@ -9,7 +9,7 @@ import dayjs from "dayjs";
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import cn from "classnames";
 import {TermWrap} from "./term";
-import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts, RemoteEditType, FeStateType, ContextMenuOpts} from "./types";
+import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts, RemoteEditType, FeStateType, ContextMenuOpts, BookmarkType} from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, ScreenWindow, riToRPtr, windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols} from "./model";
 import {isModKeyPress} from "./util";
@@ -2751,7 +2751,7 @@ class SessionView extends React.Component<{}, {}> {
         if (cmdInputHeight == 0) {
             cmdInputHeight = 110;
         }
-        let isHidden = GlobalModel.historyViewActive.get();
+        let isHidden = (GlobalModel.activeMainView.get() != "session");
         return (
             <div className={cn("session-view", {"is-hidden": isHidden})} data-sessionid={session.sessionId}>
                 <ScreenView screen={activeScreen}/>
@@ -2766,20 +2766,30 @@ class SessionView extends React.Component<{}, {}> {
 @mobxReact.observer
 class HistoryView extends React.Component<{}, {}> {
     render() {
-        let model = GlobalModel;
-        let session = model.getActiveSession();
-        if (session == null) {
-            return <div className="session-view">(no active session)</div>;
-        }
-        let activeScreen = session.getActiveScreen();
-        let cmdInputHeight = model.inputModel.cmdInputHeight.get();
-        if (cmdInputHeight == 0) {
-            cmdInputHeight = 110;
-        }
-        let isHidden = !GlobalModel.historyViewActive.get();
+        let isHidden = (GlobalModel.activeMainView.get() != "history");
         return (
             <div className={cn("history-view", {"is-hidden": isHidden})}>
                 <div className="history-title">HISTORY</div>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
+class BookmarksView extends React.Component<{}, {}> {
+    render() {
+        let isHidden = (GlobalModel.activeMainView.get() != "bookmarks");
+        let bookmarks = GlobalModel.bookmarksModel.bookmarks;
+        let idx : number = 0;
+        let bookmark : BookmarkType = null;
+        return (
+            <div className={cn("bookmarks-view", {"is-hidden": isHidden})}>
+                <div className="bookmarks-title">BOOKMARKS</div>
+                <div>
+                    <For index="idx" each="bookmark" of={bookmarks}>
+                        <div>bookmark {idx} -- {JSON.stringify(bookmark)}</div>
+                    </For>
+                </div>
             </div>
         );
     }
@@ -2868,15 +2878,18 @@ class MainSideBar extends React.Component<{}, {}> {
 
     @boundMethod
     handleHistoryClick() : void {
-        mobx.action(() => {
-            let isActive = GlobalModel.historyViewActive.get();
-            GlobalModel.historyViewActive.set(!isActive);
-        })();
+        console.log("history click");
     }
 
     @boundMethod
     handleBookmarksClick() : void {
-        console.log("click bookmarks");
+        if (GlobalModel.activeMainView.get() == "bookmarks") {
+            mobx.action(() => {
+                GlobalModel.activeMainView.set("session");
+            })();
+            return;
+        }
+        GlobalCommandRunner.bookmarksView();
     }
 
     render() {
@@ -2906,6 +2919,7 @@ class MainSideBar extends React.Component<{}, {}> {
             }
         }
         let isCollapsed = this.collapsed.get();
+        let mainView = GlobalModel.activeMainView.get();
         return (
             <div className={cn("main-sidebar", {"collapsed": isCollapsed}, {"is-dev": GlobalModel.isDev})}>
                 <h1 className={cn("title", "prompt-logo-small", {"collapsed": isCollapsed}, {"is-dev": GlobalModel.isDev})}>
@@ -2927,7 +2941,7 @@ class MainSideBar extends React.Component<{}, {}> {
                         </If>
                         <If condition={model.sessionListLoaded.get()}>
                             <For each="session" index="idx" of={sessionList}>
-                                <li key={session.sessionId}><a className={cn({"is-active": activeSessionId == session.sessionId})} onClick={() => this.handleSessionClick(session.sessionId)}>
+                                <li key={session.sessionId}><a className={cn({"is-active": mainView == "session" && activeSessionId == session.sessionId})} onClick={() => this.handleSessionClick(session.sessionId)}>
                                     <If condition={!session.archived.get()}>
                                         <span className="session-num">{idx+1}&nbsp;</span>
                                     </If>
@@ -2947,17 +2961,17 @@ class MainSideBar extends React.Component<{}, {}> {
                         <li className="new-session"><a onClick={() => this.handleNewSharedSession()}><i className="fa fa-plus"/> New Session</a></li>
                     </ul>
                     <ul className="menu-list" style={{marginTop: 20, display: "none"}}>
-                        <li className="menu-history"><a onClick={this.handleHistoryClick}><i className="fa fa-clock-o"/> HISTORY</a></li>
+                        <li className="menu-history"><a onClick={this.handleHistoryClick} className={cn({"is-active": (mainView == "history")})}><i className="fa fa-clock-o"/> HISTORY</a></li>
                     </ul>
                     <ul className="menu-list" style={{marginTop: 20}}>
-                        <li className="menu-bookmarks"><a onClick={this.handleBookmarksClick}><i className="fa fa-bookmark"/> BOOKMARKS</a></li>
+                        <li className="menu-bookmarks"><a onClick={this.handleBookmarksClick} className={cn({"is-active": (mainView == "bookmarks")})}><i className="fa fa-bookmark"/> BOOKMARKS</a></li>
                     </ul>
                     <div className="spacer"></div>
                     <If condition={GlobalModel.debugSW.get() && sw != null}>
                         <div>
                             focus={sw.focusType.get()}<br/>
-                            sline={sw.selectedLine.get()}<br/>
-                            termfocus={sw.termLineNumFocus.get()}<br/>
+            sline={sw.selectedLine.get()}<br/>
+            termfocus={sw.termLineNumFocus.get()}<br/>
                         </div>
                     </If>
                     <p className="menu-label">
@@ -3137,6 +3151,7 @@ class Main extends React.Component<{}, {}> {
                     <MainSideBar/>
                     <SessionView/>
                     <HistoryView/>
+                    <BookmarksView/>
                 </div>
                 <If condition={!GlobalModel.ws.open.get() || !GlobalModel.localServerRunning.get()}>
                     <DisconnectedModal/>

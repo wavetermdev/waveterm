@@ -5,7 +5,7 @@ import {debounce} from "throttle-debounce";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData, boundInt, isModKeyPress} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType} from "./types";
+import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarksViewType, BookmarkType} from "./types";
 import {WSControl} from "./ws";
 import {ImageRendererModel} from "./imagerenderer";
 
@@ -1583,6 +1583,10 @@ type LineFocusType = {
     cmdid? : string,
 };
 
+class BookmarksModel {
+    bookmarks : OArr<BookmarkType> = mobx.observable.array([], {name: "Bookmarks"});
+}
+
 class Model {
     clientId : string;
     activeSessionId : OV<string> = mobx.observable.box(null, {name: "activeSessionId"});
@@ -1592,14 +1596,16 @@ class Model {
     remotes : OArr<RemoteType> = mobx.observable.array([], {name: "remotes", deep: false});
     remotesLoaded : OV<boolean> = mobx.observable.box(false, {name: "remotesLoaded"});
     windows : OMap<string, Window> = mobx.observable.map({}, {name: "windows", deep: false});  // key = "sessionid/windowid"
-    inputModel : InputModel;
     termUsedRowsCache : Record<string, number> = {};
     debugCmds : number = 0;
     debugSW : OV<boolean> = mobx.observable.box(false);
     localServerRunning : OV<boolean>;
     authKey : string;
     isDev : boolean;
-    historyViewActive : OV<boolean> = mobx.observable.box(false, {name: "historyViewActive"});
+    activeMainView : OV<"session" | "history" | "bookmarks"> = mobx.observable.box("session", {name: "activeMainView"});
+
+    inputModel : InputModel;
+    bookmarksModel : BookmarksModel;
     
     constructor() {
         this.clientId = getApi().getId();
@@ -1608,6 +1614,7 @@ class Model {
         this.ws = new WSControl(this.getBaseWsHostPort(), this.clientId, this.authKey, (message : any) => this.runUpdate(message, false));
         this.ws.reconnect();
         this.inputModel = new InputModel();
+        this.bookmarksModel = new BookmarksModel();
         let isLocalServerRunning = getApi().getLocalServerStatus();
         this.localServerRunning = mobx.observable.box(isLocalServerRunning, {name: "model-local-server-running"});
         getApi().onTCmd(this.onTCmd.bind(this));
@@ -1911,6 +1918,9 @@ class Model {
             }
             this.updateRemotes(update.remotes);
         }
+        if ("bookmarksview" in update) {
+            this.showBookmarksView(update.bookmarksview);
+        }
         if (interactive && "info" in update) {
             let info : InfoType = update.info;
             this.inputModel.flashInfoMsg(info, info.timeoutms);
@@ -1928,6 +1938,13 @@ class Model {
             this.remotesLoaded.set(true);
         }
         // console.log("run-update>", Date.now(), interactive, update);
+    }
+
+    showBookmarksView(bmview : BookmarksViewType) : void {
+        mobx.action(() => {
+            this.activeMainView.set("bookmarks");
+            this.bookmarksModel.bookmarks.replace(bmview.bookmarks || []);
+        })();
     }
 
     updateRemotes(remotes : RemoteType[]) : void {
@@ -2118,6 +2135,9 @@ class Model {
     }
 
     _activateSession(sessionId : string) {
+        mobx.action(() => {
+            this.activeMainView.set("session");
+        })();
         let oldActiveSession = this.getActiveSession();
         if (oldActiveSession != null && oldActiveSession.sessionId == sessionId) {
             return;
@@ -2130,6 +2150,9 @@ class Model {
     }
 
     _activateScreen(sessionId : string, screenId : string, oldActiveScreen? : Screen) {
+        mobx.action(() => {
+            this.activeMainView.set("session");
+        })();
         if (!oldActiveScreen) {
             oldActiveScreen = this.getActiveScreen();
         }
@@ -2424,6 +2447,10 @@ class CommandRunner {
 
     linePin(lineId : string, val : boolean) {
         GlobalModel.submitCommand("line", "pin", [lineId, (val ? "1" : "0")], {"nohist": "1"}, true);
+    }
+
+    bookmarksView() {
+        GlobalModel.submitCommand("bookmarks", "show", null, {"nohist": "1"}, true);
     }
 };
 
