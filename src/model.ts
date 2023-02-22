@@ -1592,6 +1592,29 @@ class BookmarksModel {
     tempDesc : OV<string> = mobx.observable.box("", {name: "bookmarkEdit-tempDesc"});
     tempCmd : OV<string> = mobx.observable.box("", {name: "bookmarkEdit-tempCmd"});
 
+    showBookmarksView(bmArr : BookmarkType[]) : void {
+        bmArr = bmArr ?? [];
+        mobx.action(() => {
+            this.reset();
+            GlobalModel.activeMainView.set("bookmarks");
+            this.bookmarks.replace(bmArr);
+            if (bmArr.length > 0) {
+                this.activeBookmark.set(bmArr[0].bookmarkid);
+            }
+            
+        })();
+    }
+
+    reset() : void {
+        mobx.action(() => {
+            this.activeBookmark.set(null);
+            this.editingBookmark.set(null);
+            this.pendingDelete.set(null);
+            this.tempDesc.set("");
+            this.tempCmd.set("");
+        })();
+    }
+
     closeView() : void {
         mobx.action(() => {
             GlobalModel.activeMainView.set("session");
@@ -1601,6 +1624,33 @@ class BookmarksModel {
     @boundMethod
     clearPendingDelete() : void {
         mobx.action(() => this.pendingDelete.set(null))();
+    }
+
+    useBookmark(bookmarkId : string) : void {
+        let bm = this.getBookmark(bookmarkId);
+        if (bm == null) {
+            return;
+        }
+        mobx.action(() => {
+            this.reset();
+            GlobalModel.activeMainView.set("session");
+            GlobalModel.inputModel.setCurLine(bm.cmdstr);
+            setTimeout(() => GlobalModel.inputModel.giveFocus(), 50);
+        })();
+    }
+
+    selectBookmark(bookmarkId : string) : void {
+        let bm = this.getBookmark(bookmarkId);
+        if (bm == null) {
+            return;
+        }
+        if (this.activeBookmark.get() == bookmarkId) {
+            return;
+        }
+        mobx.action(() => {
+            this.cancelEdit();
+            this.activeBookmark.set(bookmarkId);
+        })();
     }
 
     cancelEdit() : void {
@@ -1650,6 +1700,19 @@ class BookmarksModel {
         return null;
     }
 
+    getBookmarkPos(bookmarkId : string) : number {
+        if (bookmarkId == null) {
+            return -1;
+        }
+        for (let i=0; i<this.bookmarks.length; i++) {
+            let bm = this.bookmarks[i];
+            if (bm.bookmarkid == bookmarkId) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     getActiveBookmark() : BookmarkType {
         let activeBookmarkId = this.activeBookmark.get();
         return this.getBookmark(activeBookmarkId);
@@ -1696,14 +1759,35 @@ class BookmarksModel {
             this.handleDeleteBookmark(this.activeBookmark.get());
             return;
         }
-        if (e.code == "ArrowUp") {
-        }
-        if (e.code == "ArrowDown") {
+        if (e.code == "ArrowUp" || e.code == "ArrowDown" || e.code == "PageUp" || e.code == "PageDown") {
+            e.preventDefault();
+            if (this.bookmarks.length == 0) {
+                return;
+            }
+            let newPos = 0; // if active is null, then newPos will be 0 (select the first)
+            if (this.activeBookmark.get() != null) {
+                let amtMap = {"ArrowUp": -1, "ArrowDown": 1, "PageUp": -10, "PageDown": 10};
+                let amt = amtMap[e.code];
+                let curIdx = this.getBookmarkPos(this.activeBookmark.get());
+                newPos = curIdx + amt;
+                if (newPos < 0) {
+                    newPos = 0;
+                }
+                if (newPos >= this.bookmarks.length) {
+                    newPos = this.bookmarks.length-1;
+                }
+            }
+            let bm = this.bookmarks[newPos];
+            mobx.action(() => {
+                this.activeBookmark.set(bm.bookmarkid);
+            })();
+            return;
         }
         if (e.code == "Enter") {
             if (this.activeBookmark.get() == null) {
                 return;
             }
+            this.useBookmark(this.activeBookmark.get());
             return;
         }
         if (e.code == "KeyE") {
@@ -1803,6 +1887,10 @@ class Model {
                 inputModel.resetInputMode();
             }
             return;
+        }
+        if (e.code == "KeyB" && e.getModifierState("Meta")) {
+            e.preventDefault();
+            GlobalCommandRunner.bookmarksView();
         }
     }
 
@@ -2054,7 +2142,7 @@ class Model {
             this.updateRemotes(update.remotes);
         }
         if ("bookmarksview" in update) {
-            this.showBookmarksView(update.bookmarks);
+            this.bookmarksModel.showBookmarksView(update.bookmarks);
         }
         else if ("bookmarks" in update) {
             this.bookmarksModel.mergeBookmarks(update.bookmarks);
@@ -2076,18 +2164,6 @@ class Model {
             this.remotesLoaded.set(true);
         }
         // console.log("run-update>", Date.now(), interactive, update);
-    }
-
-    showBookmarksView(bmArr : BookmarkType[]) : void {
-        bmArr = bmArr ?? [];
-        mobx.action(() => {
-            this.activeMainView.set("bookmarks");
-            this.bookmarksModel.bookmarks.replace(bmArr);
-            this.bookmarksModel.activeBookmark.set(null);
-            if (bmArr.length > 0) {
-                this.bookmarksModel.activeBookmark.set(bmArr[0].bookmarkid);
-            }
-        })();
     }
 
     updateRemotes(remotes : RemoteType[]) : void {
@@ -2599,7 +2675,7 @@ class CommandRunner {
     editBookmark(bookmarkId : string, desc : string, cmdstr : string) {
         let kwargs = {
             "nohist": "1",
-            "description": desc,
+            "desc": desc,
             "cmdstr": cmdstr,
         };
         GlobalModel.submitCommand("bookmark", "set", [bookmarkId], kwargs, true);

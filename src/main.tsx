@@ -758,7 +758,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                         </div>
                     </div>
                     <div key="spacer" className="flex-spacer"/>
-                    <div key="pin" title="Pin" className={cn("line-icon", {"active": line.pinned})} onClick={this.clickPin}>
+                    <div key="pin" title="Pin" className={cn("line-icon", {"active": line.pinned})} onClick={this.clickPin} style={{display: "none"}}>
                         <i className="fa fa-thumb-tack"/>
                     </div>
                     <div key="bookmark" title="Bookmark" className={cn("line-icon", "line-bookmark", {"active": line.bookmarked})} onClick={this.clickBookmark}>
@@ -932,6 +932,11 @@ class TextAreaInput extends React.Component<{}, {}> {
                 return;
             }
             if (e.code == "KeyR" && e.getModifierState("Control")) {
+                e.preventDefault();
+                inputModel.openHistory();
+                return;
+            }
+            if (e.code == "ArrowUp" && e.getModifierState("Shift")) {
                 e.preventDefault();
                 inputModel.openHistory();
                 return;
@@ -2839,6 +2844,20 @@ class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
             model.tempCmd.set(e.target.value);
         })();
     }
+
+    @boundMethod
+    handleClick() : void {
+        let {bookmark} = this.props;
+        let model = GlobalModel.bookmarksModel;
+        model.selectBookmark(bookmark.bookmarkid);
+    }
+
+    @boundMethod
+    handleUse() : void {
+        let {bookmark} = this.props;
+        let model = GlobalModel.bookmarksModel;
+        model.useBookmark(bookmark.bookmarkid);
+    }
     
     render() {
         let bm = this.props.bookmark;
@@ -2859,7 +2878,7 @@ class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
         let isEditing = (model.editingBookmark.get() == bm.bookmarkid);
         if (isEditing) {
             return (
-                <div className={cn("bookmark focus-parent is-editing", {"pending-delete": model.pendingDelete.get() == bm.bookmarkid})}>
+                <div data-bookmarkid={bm.bookmarkid} className={cn("bookmark focus-parent is-editing", {"pending-delete": model.pendingDelete.get() == bm.bookmarkid})}>
                     <div className={cn("focus-indicator", {"active": isSelected})}/>
                     <div className="bookmark-edit">
                         <div className="field">
@@ -2887,7 +2906,7 @@ class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
             );
         }
         return (
-            <div className={cn("bookmark focus-parent", {"pending-delete": model.pendingDelete.get() == bm.bookmarkid})}>
+            <div className={cn("bookmark focus-parent", {"pending-delete": model.pendingDelete.get() == bm.bookmarkid})} onClick={this.handleClick}>
                 <div className={cn("focus-indicator", {"active": isSelected})}/>
                 <div className="bookmark-id-div">{bm.bookmarkid.substr(0, 8)}</div>
                 <div className="bookmark-content">
@@ -2897,6 +2916,7 @@ class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
                         </div>
                     </If>
                     <div className={cn("bookmark-code", {"no-desc": !hasDesc})}>
+                        <div className="use-button" title="Use Bookmark" onClick={this.handleUse}><i className="fa fa-check"/></div>
                         <code>{bm.cmdstr}</code>
                     </div>
                 </div>
@@ -2936,9 +2956,9 @@ class BookmarksView extends React.Component<{}, {}> {
                 <If condition={bookmarks.length > 0}>
                     <div className="bookmarks-help">
                         <div className="help-entry">
-                            [Enter] to Select<br/>
-                            [Arrow Up] / [Arrow Down] to Move in List<br/>
+                            [Enter] to Use Bookmark<br/>
                             [Backspace/Delete]x2 or <i className="fa fa-trash"/> to Delete<br/>
+                            [Arrow Up]/[Arrow Down]/[PageUp]/[PageDown] to Move in List<br/>
                             [e] or <i className="fa fa-pencil"/> to Edit<br/>
                         </div>
                     </div>

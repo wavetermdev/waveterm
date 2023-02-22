@@ -148,6 +148,7 @@ html, body, #main {
         flex-direction: row;
         align-items: center;
         font-size: 12px;
+        margin-bottom: 10px;
 
         .help-entry {
             margin-left: 20px;
@@ -237,11 +238,38 @@ html, body, #main {
     }
 
     .bookmark-code {
+        display: flex;
+        flex-direction: row;
+
+        .use-button {
+            flex-grow: 0;
+            padding: 3px;
+            border-radius: 3px 0 0 3px;
+            font-size: 12px;
+            height: 28px;
+            width: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            align-self: flex-start;
+            cursor: pointer;
+            background-color: black;
+
+            &:hover {
+                background-color: #777;
+            }
+        }
+        
         code {
+            border-left: 1px solid #777;
+            flex-shrink: 0;
             color: white;
             .mono-font();
             background-color: black;
+            white-space: pre;
+            padding: 2px 8px 2px 8px;
         }
+        
         padding: 4px 10px 4px 0;
         margin-top: 10px;
 
