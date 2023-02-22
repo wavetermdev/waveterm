@@ -126,6 +126,7 @@ func init() {
 	registerCmdFn("session:archive", SessionArchiveCommand)
 	registerCmdFn("session:showall", SessionShowAllCommand)
 	registerCmdFn("session:show", SessionShowCommand)
+	registerCmdFn("session:openshared", SessionOpenSharedCommand)
 
 	registerCmdFn("screen", ScreenCommand)
 	registerCmdFn("screen:archive", ScreenArchiveCommand)
@@ -1497,6 +1498,15 @@ func validateRemoteColor(color string, typeStr string) error {
 	return fmt.Errorf("invalid %s, valid colors are: %s", typeStr, formatStrs(RemoteColorNames, "or", false))
 }
 
+func SessionOpenSharedCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	activity := sstore.ActivityUpdate{ClickShared: 1}
+	err := sstore.UpdateCurrentActivity(ctx, activity)
+	if err != nil {
+		log.Printf("error updating click-shared: %v\n", err)
+	}
+	return nil, fmt.Errorf("shared sessions are not available in this version of prompt (stay tuned)")
+}
+
 func SessionOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	activate := resolveBool(pk.Kwargs["activate"], true)
 	newName := pk.Kwargs["name"]
@@ -1803,6 +1813,12 @@ func HistoryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		return nil, err
 	}
 	show := !resolveBool(pk.Kwargs["noshow"], false)
+	if show {
+		err = sstore.UpdateCurrentActivity(ctx, sstore.ActivityUpdate{HistoryView: 1})
+		if err != nil {
+			log.Printf("error updating current activity (history): %v\n", err)
+		}
+	}
 	update := sstore.ModelUpdate{}
 	update.History = &sstore.HistoryInfoType{
 		HistoryType: htype,
@@ -1916,6 +1932,10 @@ func BookmarksShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	bms, err := sstore.GetBookmarks(ctx, tagName)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve bookmarks: %v", err)
+	}
+	err = sstore.UpdateCurrentActivity(ctx, sstore.ActivityUpdate{BookmarksView: 1})
+	if err != nil {
+		log.Printf("error updating current activity (bookmarks): %v\n", err)
 	}
 	update := sstore.ModelUpdate{
 		BookmarksView: true,

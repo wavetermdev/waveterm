@@ -1932,6 +1932,12 @@ func UpdateCurrentActivity(ctx context.Context, update ActivityUpdate) error {
 		tdata.FgMinutes += update.FgMinutes
 		tdata.ActiveMinutes += update.ActiveMinutes
 		tdata.OpenMinutes += update.OpenMinutes
+		tdata.ClickShared += update.ClickShared
+		tdata.HistoryView += update.HistoryView
+		tdata.BookmarksView += update.BookmarksView
+		if update.NumConns > 0 {
+			tdata.NumConns = update.NumConns
+		}
 		query = `UPDATE activity
                  SET tdata = ?,
                      clientversion = ?

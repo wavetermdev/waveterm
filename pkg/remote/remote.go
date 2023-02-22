@@ -349,6 +349,12 @@ func isPartialUUID(s string) bool {
 	return partialUUIDRe.MatchString(s)
 }
 
+func NumRemotes() int {
+	GlobalStore.Lock.Lock()
+	defer GlobalStore.Lock.Unlock()
+	return len(GlobalStore.Map)
+}
+
 func GetRemoteByArg(arg string) *MShellProc {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()

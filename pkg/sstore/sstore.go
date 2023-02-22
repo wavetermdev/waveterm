@@ -118,6 +118,10 @@ type ActivityUpdate struct {
 	ActiveMinutes int
 	OpenMinutes   int
 	NumCommands   int
+	ClickShared   int
+	HistoryView   int
+	BookmarksView int
+	NumConns      int
 }
 
 type ActivityType struct {
@@ -135,6 +139,10 @@ type TelemetryData struct {
 	ActiveMinutes int `json:"activeminutes"`
 	FgMinutes     int `json:"fgminutes"`
 	OpenMinutes   int `json:"openminutes"`
+	ClickShared   int `json:"clickshared,omitempty"`
+	HistoryView   int `json:"historyview,omitempty"`
+	BookmarksView int `json:"bookmarksview,omitempty"`
+	NumConns      int `json:"numconns"`
 }
 
 func (tdata TelemetryData) Value() (driver.Value, error) {

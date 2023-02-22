@@ -180,6 +180,7 @@ func HandleLogActiveState(w http.ResponseWriter, r *http.Request) {
 	if activeState.Open {
 		activity.OpenMinutes = 1
 	}
+	activity.NumConns = remote.NumRemotes()
 	err = sstore.UpdateCurrentActivity(r.Context(), activity)
 	if err != nil {
 		WriteJsonError(w, fmt.Errorf("error updating activity: %w", err))
