@@ -2684,6 +2684,10 @@ class CommandRunner {
     deleteBookmark(bookmarkId : string) : void {
         GlobalModel.submitCommand("bookmark", "delete", [bookmarkId], {"nohist": "1"}, true);
     }
+
+    openSharedSession() : void {
+        GlobalModel.submitCommand("session", "openshared", null, {"nohist": "1"}, true);
+    }
 };
 
 function cmdPacketString(pk : FeCmdPacketType) : string {

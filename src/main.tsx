@@ -3021,7 +3021,7 @@ class MainSideBar extends React.Component<{}, {}> {
     }
 
     handleNewSharedSession() {
-        console.log("create shared session");
+        GlobalCommandRunner.openSharedSession();
     }
 
     clickRemotes() {
