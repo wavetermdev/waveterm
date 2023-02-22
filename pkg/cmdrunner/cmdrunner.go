@@ -176,7 +176,7 @@ func init() {
 
 	registerCmdFn("bookmarks:show", BookmarksShowCommand)
 
-	registerCmdFn("bookmark:edit", BookmarkEditCommand)
+	registerCmdFn("bookmark:set", BookmarkSetCommand)
 	registerCmdFn("bookmark:delete", BookmarkDeleteCommand)
 
 	registerCmdFn("_killserver", KillServerCommand)
@@ -1924,9 +1924,9 @@ func BookmarksShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	return update, nil
 }
 
-func BookmarkEditCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+func BookmarkSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	if len(pk.Args) == 0 {
-		return nil, fmt.Errorf("/bookmark:delete requires one argument (bookmark id)")
+		return nil, fmt.Errorf("/bookmark:set requires one argument (bookmark id)")
 	}
 	bookmarkArg := pk.Args[0]
 	bookmarkId, err := sstore.GetBookmarkIdByArg(ctx, bookmarkArg)
