@@ -5,7 +5,7 @@ import {debounce} from "throttle-debounce";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData, boundInt, isModKeyPress} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarksViewType, BookmarkType} from "./types";
+import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType} from "./types";
 import {WSControl} from "./ws";
 import {ImageRendererModel} from "./imagerenderer";
 
@@ -1587,7 +1587,10 @@ class BookmarksModel {
     bookmarks : OArr<BookmarkType> = mobx.observable.array([], {name: "Bookmarks"});
     activeBookmark : OV<string> = mobx.observable.box(null, {name: "activeBookmark"});
     editingBookmark : OV<string> = mobx.observable.box(null, {name: "editingBookmark"});
-    pendingDelete : OV<string> = mobx.observable.box(false, {name: "pendingDelete"});
+    pendingDelete : OV<string> = mobx.observable.box(null, {name: "pendingDelete"});
+
+    tempDesc : OV<string> = mobx.observable.box("", {name: "bookmarkEdit-tempDesc"});
+    tempCmd : OV<string> = mobx.observable.box("", {name: "bookmarkEdit-tempCmd"});
 
     closeView() : void {
         mobx.action(() => {
@@ -1600,18 +1603,85 @@ class BookmarksModel {
         mobx.action(() => this.pendingDelete.set(null))();
     }
 
+    cancelEdit() : void {
+        mobx.action(() => {
+            this.pendingDelete.set(null);
+            this.editingBookmark.set(null);
+            this.tempDesc.set("");
+            this.tempCmd.set("");
+        })();
+    }
+
+    confirmEdit() : void {
+        if (this.editingBookmark.get() == null) {
+            return;
+        }
+        let bm = this.getBookmark(this.editingBookmark.get());
+        mobx.action(() => {
+            this.editingBookmark.set(null);
+            bm.description = this.tempDesc.get();
+            bm.cmdstr = this.tempCmd.get();
+            this.tempDesc.set("");
+            this.tempCmd.set("");
+        })();
+        GlobalCommandRunner.editBookmark(bm.bookmarkid, bm.description, bm.cmdstr);
+    }
+
     handleDeleteBookmark(bookmarkId : string) : void {
         if (this.pendingDelete.get() == null || this.pendingDelete.get() != this.activeBookmark.get()) {
             mobx.action(() => this.pendingDelete.set(this.activeBookmark.get()))();
             setTimeout(this.clearPendingDelete, 2000);
             return;
         }
-        console.log("delete", bookmarkId);
+        GlobalCommandRunner.deleteBookmark(bookmarkId);
+        this.clearPendingDelete();
     }
 
+    getBookmark(bookmarkId : string) : BookmarkType {
+        if (bookmarkId == null) {
+            return null;
+        }
+        for (let i=0; i<this.bookmarks.length; i++) {
+            let bm = this.bookmarks[i];
+            if (bm.bookmarkid == bookmarkId) {
+                return bm;
+            }
+        }
+        return null;
+    }
+
+    getActiveBookmark() : BookmarkType {
+        let activeBookmarkId = this.activeBookmark.get();
+        return this.getBookmark(activeBookmarkId);
+    }
+
+    handleEditBookmark(bookmarkId : string) : void {
+        let bm = this.getBookmark(bookmarkId);
+        if (bm == null) {
+            return;
+        }
+        mobx.action(() => {
+            this.pendingDelete.set(null);
+            this.activeBookmark.set(bookmarkId);
+            this.editingBookmark.set(bookmarkId);
+            this.tempDesc.set(bm.description ?? "");
+            this.tempCmd.set(bm.cmdstr ?? "");
+        })();
+    }
+
+    mergeBookmarks(bmArr : BookmarkType[]) : void {
+        mobx.action(() => {
+            genMergeSimpleData(this.bookmarks, bmArr, (bm : BookmarkType) => bm.bookmarkid, (bm : BookmarkType) => sprintf("%05d", bm.orderidx));
+        })();
+    }
+    
     handleDocKeyDown(e : any) : void {
         if (e.code == "Escape") {
             e.preventDefault();
+            if (this.editingBookmark.get() != null) {
+                this.cancelEdit();
+                return;
+            }
             this.closeView();
             return;
         }
@@ -1631,6 +1701,18 @@ class BookmarksModel {
         if (e.code == "ArrowDown") {
         }
         if (e.code == "Enter") {
+            if (this.activeBookmark.get() == null) {
+                return;
+            }
+            return;
+        }
+        if (e.code == "KeyE") {
+            if (this.activeBookmark.get() == null) {
+                return;
+            }
+            e.preventDefault();
+            this.handleEditBookmark(this.activeBookmark.get());
+            return;
         }
     }
     return;
@@ -1972,7 +2054,10 @@ class Model {
             this.updateRemotes(update.remotes);
         }
         if ("bookmarksview" in update) {
-            this.showBookmarksView(update.bookmarksview);
+            this.showBookmarksView(update.bookmarks);
+        }
+        else if ("bookmarks" in update) {
+            this.bookmarksModel.mergeBookmarks(update.bookmarks);
         }
         if (interactive && "info" in update) {
             let info : InfoType = update.info;
@@ -1993,10 +2078,10 @@ class Model {
         // console.log("run-update>", Date.now(), interactive, update);
     }
 
-    showBookmarksView(bmview : BookmarksViewType) : void {
+    showBookmarksView(bmArr : BookmarkType[]) : void {
+        bmArr = bmArr ?? [];
         mobx.action(() => {
             this.activeMainView.set("bookmarks");
-            let bmArr = bmview.bookmarks ?? [];
             this.bookmarksModel.bookmarks.replace(bmArr);
             this.bookmarksModel.activeBookmark.set(null);
             if (bmArr.length > 0) {
@@ -2509,6 +2594,19 @@ class CommandRunner {
 
     bookmarksView() {
         GlobalModel.submitCommand("bookmarks", "show", null, {"nohist": "1"}, true);
+    }
+
+    editBookmark(bookmarkId : string, desc : string, cmdstr : string) {
+        let kwargs = {
+            "nohist": "1",
+            "description": desc,
+            "cmdstr": cmdstr,
+        };
+        GlobalModel.submitCommand("bookmark", "set", [bookmarkId], kwargs, true);
+    }
+
+    deleteBookmark(bookmarkId : string) : void {
+        GlobalModel.submitCommand("bookmark", "delete", [bookmarkId], {"nohist": "1"}, true);
     }
 };
 

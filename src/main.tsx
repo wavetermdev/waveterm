@@ -2805,7 +2805,39 @@ class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
 
     @boundMethod
     handleEditClick() : void {
-        console.log("do edit");
+        let {bookmark} = this.props;
+        let model = GlobalModel.bookmarksModel;
+        model.handleEditBookmark(bookmark.bookmarkid);
+    }
+
+    @boundMethod
+    handleEditCancel() : void {
+        let model = GlobalModel.bookmarksModel;
+        model.cancelEdit();
+        return;
+    }
+
+    @boundMethod
+    handleEditUpdate() : void {
+        let model = GlobalModel.bookmarksModel;
+        model.confirmEdit();
+        return;
+    }
+
+    @boundMethod
+    handleDescChange(e : any) : void {
+        let model = GlobalModel.bookmarksModel;
+        mobx.action(() => {
+            model.tempDesc.set(e.target.value);
+        })();
+    }
+
+    @boundMethod
+    handleCmdChange(e : any) : void {
+        let model = GlobalModel.bookmarksModel;
+        mobx.action(() => {
+            model.tempCmd.set(e.target.value);
+        })();
     }
     
     render() {
@@ -2823,13 +2855,41 @@ class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
             h6: (props) => HeaderRenderer(props, 6),
             code: CodeRenderer,
         };
-        if (bm.cmdstr.startsWith("git")) {
-            markdown = "Use to modify the code repo\n1. git pull\n2. git push\n3. git commit\n\n> one\n> more blockquote\n>\n> more";
-        }
         let hasDesc = markdown != "";
+        let isEditing = (model.editingBookmark.get() == bm.bookmarkid);
+        if (isEditing) {
+            return (
+                <div className={cn("bookmark focus-parent is-editing", {"pending-delete": model.pendingDelete.get() == bm.bookmarkid})}>
+                    <div className={cn("focus-indicator", {"active": isSelected})}/>
+                    <div className="bookmark-edit">
+                        <div className="field">
+                            <label className="label">Description (markdown)</label>
+                            <div className="control">
+                                <textarea className="textarea mono-font" rows={6} value={model.tempDesc.get()} onChange={this.handleDescChange}/>
+                            </div>
+                        </div>
+                        <div className="field">
+                            <label className="label">Command</label>
+                            <div className="control">
+                                <textarea className="textarea mono-font" rows={3} value={model.tempCmd.get()} onChange={this.handleCmdChange}/>
+                            </div>
+                        </div>
+                        <div className="field is-grouped">
+                            <div className="control">
+                                <button className="button is-link" onClick={this.handleEditUpdate}>Update</button>
+                            </div>
+                            <div className="control">
+                                <button className="button" onClick={this.handleEditCancel}>Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
         return (
             <div className={cn("bookmark focus-parent", {"pending-delete": model.pendingDelete.get() == bm.bookmarkid})}>
                 <div className={cn("focus-indicator", {"active": isSelected})}/>
+                <div className="bookmark-id-div">{bm.bookmarkid.substr(0, 8)}</div>
                 <div className="bookmark-content">
                     <If condition={hasDesc}>
                         <div className="markdown">

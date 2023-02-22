@@ -167,12 +167,46 @@ html, body, #main {
             height: calc(100% - 4px);
         }
 
+        &.is-editing {
+            padding-top: 8px;
+            padding-bottom: 12px;
+        }
+
         &.pending-delete {
             background-color: #522;
         }
         
-        .bookmark-content {
+        .bookmark-content, .bookmark-edit {
             flex-grow: 1;
+        }
+
+        label {
+            color: white;
+            margin-bottom: 4px;
+        }
+
+        textarea {
+            width: 80%;
+            min-width: 50%;
+            color: white;
+            background-color: black;
+
+            &.mono-font {
+                .mono-font(12px);
+            }
+        }
+
+        .bookmark-id-div {
+            display: none;
+            position: absolute;
+            color: #666;
+            right: 5px;
+            bottom: 2px;
+            .mono-font(8px);
+        }
+
+        &:hover .bookmark-id-div {
+            display: block;
         }
 
         .bookmark-controls {
