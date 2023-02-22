@@ -665,6 +665,7 @@ type BookmarkType struct {
 	Description string            `json:"description"`
 	Cmds        []base.CommandKey `json:"cmds"`
 	OrderIdx    int64             `json:"orderidx"`
+	Remove      bool              `json:"remove,omitempty"`
 }
 
 func (bm *BookmarkType) ToMap() map[string]interface{} {

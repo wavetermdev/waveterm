@@ -43,7 +43,8 @@ type ModelUpdate struct {
 	History         *HistoryInfoType    `json:"history,omitempty"`
 	Interactive     bool                `json:"interactive"`
 	Connect         bool                `json:"connect,omitempty"`
-	BookmarksView   *BookmarksViewType  `json:"bookmarksview,omitempty"`
+	BookmarksView   bool                `json:"bookmarksview,omitempty"`
+	Bookmarks       []*BookmarkType     `json:"bookmarks,omitempty"`
 }
 
 func (ModelUpdate) UpdateType() string {

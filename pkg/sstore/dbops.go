@@ -2093,6 +2093,50 @@ func GetBookmarks(ctx context.Context, tag string) ([]*BookmarkType, error) {
 	return bms, nil
 }
 
+func GetBookmarkById(ctx context.Context, bookmarkId string, tag string) (*BookmarkType, error) {
+	var rtn *BookmarkType
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT * FROM bookmark WHERE bookmarkid = ?`
+		m := tx.GetMap(query, bookmarkId)
+		rtn = BookmarkFromMap(m)
+		if rtn == nil {
+			return nil
+		}
+		query = `SELECT orderidx FROM bookmark_order WHERE bookmarkid = ? AND tag = ?`
+		orderIdx := tx.GetInt(query, bookmarkId, tag)
+		rtn.OrderIdx = int64(orderIdx)
+		query = `SELECT bookmarkid, sessionid, cmdid FROM bookmark_cmd WHERE bookmarkid = ?`
+		var cmds []bookmarkCmdType
+		tx.Select(&cmds, query, bookmarkId)
+		for _, cmd := range cmds {
+			rtn.Cmds = append(rtn.Cmds, base.MakeCommandKey(cmd.SessionId, cmd.CmdId))
+		}
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	return rtn, nil
+}
+
+func GetBookmarkIdByArg(ctx context.Context, bookmarkArg string) (string, error) {
+	var rtnId string
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		if len(bookmarkArg) == 8 {
+			query := `SELECT bookmarkid FROM bookmark WHERE bookmarkid LIKE (? || '%')`
+			rtnId = tx.GetString(query, bookmarkArg)
+			return nil
+		}
+		query := `SELECT bookmarkid FROM bookmark WHERE bookmarkid = ?`
+		rtnId = tx.GetString(query, bookmarkArg)
+		return nil
+	})
+	if txErr != nil {
+		return "", txErr
+	}
+	return rtnId, nil
+}
+
 // ignores OrderIdx field
 func InsertBookmark(ctx context.Context, bm *BookmarkType) error {
 	if bm == nil || bm.BookmarkId == "" {
@@ -2119,6 +2163,30 @@ func InsertBookmark(ctx context.Context, bm *BookmarkType) error {
 		query = `UPDATE line SET bookmarked = 1 WHERE sessionid = ? AND cmdid = ?`
 		for _, ck := range bm.Cmds {
 			tx.Exec(query, ck.GetSessionId(), ck.GetCmdId())
+		}
+		return nil
+	})
+	return txErr
+}
+
+const (
+	BookmarkField_Desc   = "desc"
+	BookmarkField_CmdStr = "cmdstr"
+)
+
+func EditBookmark(ctx context.Context, bookmarkId string, editMap map[string]interface{}) error {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT bookmarkid FROM bookmark WHERE bookmarkid = ?`
+		if !tx.Exists(query, bookmarkId) {
+			return fmt.Errorf("bookmark not found")
+		}
+		if desc, found := editMap[BookmarkField_Desc]; found {
+			query = `UPDATE bookmark SET description = ? WHERE bookmarkid = ?`
+			tx.Exec(query, desc, bookmarkId)
+		}
+		if cmdStr, found := editMap[BookmarkField_CmdStr]; found {
+			query = `UPDATE bookmark SET cmdstr = ? WHERE bookmarkid = ?`
+			tx.Exec(query, cmdStr, bookmarkId)
 		}
 		return nil
 	})

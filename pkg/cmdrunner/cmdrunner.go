@@ -53,7 +53,7 @@ var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoins
 
 var WindowCmds = []string{"run", "comment", "cd", "cr", "clear", "sw", "reset", "signal"}
 var NoHistCmds = []string{"_compgen", "line", "history", "_killserver"}
-var GlobalCmds = []string{"session", "screen", "remote", "set", "client", "telemetry"}
+var GlobalCmds = []string{"session", "screen", "remote", "set", "client", "telemetry", "bookmark", "bookmarks"}
 
 var SetVarNameMap map[string]string = map[string]string{
 	"tabcolor": "screen.tabcolor",
@@ -175,6 +175,9 @@ func init() {
 	registerCmdFn("history", HistoryCommand)
 
 	registerCmdFn("bookmarks:show", BookmarksShowCommand)
+
+	registerCmdFn("bookmark:edit", BookmarkEditCommand)
+	registerCmdFn("bookmark:delete", BookmarkDeleteCommand)
 
 	registerCmdFn("_killserver", KillServerCommand)
 
@@ -1915,11 +1918,73 @@ func BookmarksShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		return nil, fmt.Errorf("cannot retrieve bookmarks: %v", err)
 	}
 	update := sstore.ModelUpdate{
-		BookmarksView: &sstore.BookmarksViewType{
-			Bookmarks: bms,
-		},
+		BookmarksView: true,
+		Bookmarks:     bms,
 	}
 	return update, nil
+}
+
+func BookmarkEditCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	if len(pk.Args) == 0 {
+		return nil, fmt.Errorf("/bookmark:delete requires one argument (bookmark id)")
+	}
+	bookmarkArg := pk.Args[0]
+	bookmarkId, err := sstore.GetBookmarkIdByArg(ctx, bookmarkArg)
+	if err != nil {
+		return nil, fmt.Errorf("error trying to resolve bookmark: %v", err)
+	}
+	if bookmarkId == "" {
+		return nil, fmt.Errorf("bookmark not found")
+	}
+	editMap := make(map[string]interface{})
+	if descStr, found := pk.Kwargs["desc"]; found {
+		editMap[sstore.BookmarkField_Desc] = descStr
+	}
+	if cmdStr, found := pk.Kwargs["cmdstr"]; found {
+		editMap[sstore.BookmarkField_CmdStr] = cmdStr
+	}
+	if len(editMap) == 0 {
+		return nil, fmt.Errorf("no fields set, can set %s", formatStrs([]string{"desc", "cmdstr"}, "or", false))
+	}
+	err = sstore.EditBookmark(ctx, bookmarkId, editMap)
+	if err != nil {
+		return nil, fmt.Errorf("error trying to edit bookmark: %v", err)
+	}
+	bm, err := sstore.GetBookmarkById(ctx, bookmarkId, "")
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving edited bookmark: %v", err)
+	}
+	return sstore.ModelUpdate{
+		Info: &sstore.InfoMsgType{
+			InfoMsg: "bookmark edited",
+		},
+		Bookmarks: []*sstore.BookmarkType{bm},
+	}, nil
+}
+
+func BookmarkDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	if len(pk.Args) == 0 {
+		return nil, fmt.Errorf("/bookmark:delete requires one argument (bookmark id)")
+	}
+	bookmarkArg := pk.Args[0]
+	bookmarkId, err := sstore.GetBookmarkIdByArg(ctx, bookmarkArg)
+	if err != nil {
+		return nil, fmt.Errorf("error trying to resolve bookmark: %v", err)
+	}
+	if bookmarkId == "" {
+		return nil, fmt.Errorf("bookmark not found")
+	}
+	err = sstore.DeleteBookmark(ctx, bookmarkId)
+	if err != nil {
+		return nil, fmt.Errorf("error deleting bookmark: %v", err)
+	}
+	bm := &sstore.BookmarkType{BookmarkId: bookmarkId, Remove: true}
+	return sstore.ModelUpdate{
+		Info: &sstore.InfoMsgType{
+			InfoMsg: "bookmark deleted",
+		},
+		Bookmarks: []*sstore.BookmarkType{bm},
+	}, nil
 }
 
 func LineBookmarkCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
