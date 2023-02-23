@@ -122,6 +122,7 @@ type ActivityUpdate struct {
 	HistoryView   int
 	BookmarksView int
 	NumConns      int
+	BuildTime     string
 }
 
 type ActivityType struct {
@@ -132,6 +133,8 @@ type ActivityType struct {
 	TzOffset      int           `json:"tzoffset"`
 	ClientVersion string        `json:"clientversion"`
 	ClientArch    string        `json:"clientarch"`
+	BuildTime     string        `json:"buildtime"`
+	OSRelease     string        `json:"osrelease"`
 }
 
 type TelemetryData struct {

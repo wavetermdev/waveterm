@@ -1920,13 +1920,13 @@ func UpdateCurrentActivity(ctx context.Context, update ActivityUpdate) error {
 		query := `SELECT tdata FROM activity WHERE day = ?`
 		found := tx.Get(&tdata, query, dayStr)
 		if !found {
-			query = `INSERT INTO activity (day, uploaded, tdata, tzname, tzoffset, clientversion, clientarch)
-                                   VALUES (?,   0,        ?,     ?,      ?,        ?,             ?)`
+			query = `INSERT INTO activity (day, uploaded, tdata, tzname, tzoffset, clientversion, clientarch, buildtime, osrelease)
+                                   VALUES (?,   0,        ?,     ?,      ?,        ?,             ?         , ?        , ?)`
 			tzName, tzOffset := now.Zone()
 			if len(tzName) > MaxTzNameLen {
 				tzName = tzName[0:MaxTzNameLen]
 			}
-			tx.Exec(query, dayStr, tdata, tzName, tzOffset, scbase.PromptVersion, scbase.ClientArch())
+			tx.Exec(query, dayStr, tdata, tzName, tzOffset, scbase.PromptVersion, scbase.ClientArch(), scbase.BuildTime, scbase.MacOSRelease())
 		}
 		tdata.NumCommands += update.NumCommands
 		tdata.FgMinutes += update.FgMinutes
@@ -1940,9 +1940,10 @@ func UpdateCurrentActivity(ctx context.Context, update ActivityUpdate) error {
 		}
 		query = `UPDATE activity
                  SET tdata = ?,
-                     clientversion = ?
+                     clientversion = ?,
+                     buildtime = ?
                  WHERE day = ?`
-		tx.Exec(query, tdata, scbase.PromptVersion, dayStr)
+		tx.Exec(query, tdata, scbase.PromptVersion, scbase.BuildTime, dayStr)
 		return nil
 	})
 	if txErr != nil {

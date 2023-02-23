@@ -1,16 +1,21 @@
 package scbase
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"log"
 	"os"
+	"os/exec"
 	"path"
+	"regexp"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/scripthaus-dev/mshell/pkg/base"
@@ -32,6 +37,7 @@ const MShellVersion = "v0.2.0"
 
 var SessionDirCache = make(map[string]string)
 var BaseLock = &sync.Mutex{}
+var BuildTime = "-"
 
 func IsDevMode() bool {
 	pdev := os.Getenv(PromptDevVarName)
@@ -321,4 +327,31 @@ func NumFormatB2(num int64) string {
 
 func ClientArch() string {
 	return fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH)
+}
+
+var releaseRegex = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
+var osReleaseOnce = &sync.Once{}
+var osRelease string
+
+func macOSRelease() string {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
+	out, err := exec.CommandContext(ctx, "uname", "-r").CombinedOutput()
+	if err != nil {
+		log.Printf("error executing uname -r: %v\n", err)
+		return "-"
+	}
+	releaseStr := strings.TrimSpace(string(out))
+	if !releaseRegex.MatchString(releaseStr) {
+		log.Printf("invalid uname -r output: [%s]\n", releaseStr)
+		return "-"
+	}
+	return releaseStr
+}
+
+func MacOSRelease() string {
+	osReleaseOnce.Do(func() {
+		osRelease = macOSRelease()
+	})
+	return osRelease
 }

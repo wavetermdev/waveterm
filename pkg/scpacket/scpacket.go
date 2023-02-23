@@ -55,6 +55,7 @@ type UIContextType struct {
 	WindowId  string                `json:"windowid"`
 	Remote    *sstore.RemotePtrType `json:"remote,omitempty"`
 	WinSize   *packet.WinSize       `json:"winsize,omitempty"`
+	Build     string                `json:"build,omitempty"`
 }
 
 type FeInputPacketType struct {

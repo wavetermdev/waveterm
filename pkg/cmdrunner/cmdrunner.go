@@ -2355,12 +2355,19 @@ func ClientShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve db version: %v\n", err)
 	}
+	clientVersion := "-"
+	if pk.UIContext != nil && pk.UIContext.Build != "" {
+		clientVersion = pk.UIContext.Build
+	}
 	var buf bytes.Buffer
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "userid", clientData.UserId))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "clientid", clientData.ClientId))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "backend", scbase.PromptVersion))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "telemetry", boolToStr(clientData.ClientOpts.NoTelemetry, "off", "on")))
 	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "db-version", dbVersion))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "client-version", clientVersion))
+	buf.WriteString(fmt.Sprintf("  %-15s %s %s\n", "server-version", scbase.PromptVersion, scbase.BuildTime))
+	buf.WriteString(fmt.Sprintf("  %-15s %s (%s)\n", "arch", scbase.ClientArch(), scbase.MacOSRelease()))
 	update := sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			InfoTitle: fmt.Sprintf("client info"),

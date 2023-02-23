@@ -50,6 +50,7 @@ const TelemetryInterval = 8 * time.Hour
 var GlobalLock = &sync.Mutex{}
 var WSStateMap = make(map[string]*scws.WSState) // clientid -> WsState
 var GlobalAuthKey string
+var BuildTime = "0"
 
 type ClientActiveState struct {
 	Fg     bool `json:"fg"`
@@ -460,6 +461,8 @@ func stdinReadWatch() {
 }
 
 func main() {
+	scbase.BuildTime = BuildTime
+
 	if len(os.Args) >= 2 && os.Args[1] == "--test" {
 		log.Printf("running test fn\n")
 		err := test()
@@ -470,7 +473,7 @@ func main() {
 	}
 
 	scHomeDir := scbase.GetPromptHomeDir()
-	log.Printf("[prompt] local server version %s\n", scbase.PromptVersion)
+	log.Printf("[prompt] local server version %s+%s\n", scbase.PromptVersion, scbase.BuildTime)
 	log.Printf("[prompt] homedir = %q\n", scHomeDir)
 
 	scLock, err := scbase.AcquirePromptLock()
@@ -528,6 +531,10 @@ func main() {
 	}
 
 	log.Printf("PCLOUD_ENDPOINT=%s\n", pcloud.GetEndpoint())
+	err = sstore.UpdateCurrentActivity(context.Background(), sstore.ActivityUpdate{NumConns: remote.NumRemotes()}) // set at least one record into activity
+	if err != nil {
+		log.Printf("[error] updating activity: %v\n", err)
+	}
 	go telemetryLoop()
 	go stdinReadWatch()
 	go runWebSocketServer()
