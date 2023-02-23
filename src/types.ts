@@ -181,6 +181,7 @@ type UIContextType = {
     remote : RemotePtrType,
     winsize : TermWinSize,
     linenum : number,
+    build : string,
 };
 
 type FeCmdPacketType = {

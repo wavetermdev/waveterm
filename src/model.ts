@@ -21,6 +21,11 @@ const ProdServerWsEndpoint = "ws://localhost:1623";
 const DevServerEndpoint = "http://localhost:8090";
 const DevServerWsEndpoint = "ws://localhost:8091";
 
+// @ts-ignore
+const VERSION = __PROMPT_VERSION__;
+// @ts-ignore
+const BUILD = __PROMPT_BUILD__;
+
 
 type SWLinePtr = {
     line : LineType,
@@ -1946,6 +1951,7 @@ class Model {
             remote : null,
             winsize: null,
             linenum: null,
+            build: VERSION + " " + BUILD,
         };
         let session = this.getActiveSession();
         if (session != null) {
