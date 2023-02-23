@@ -1,6 +1,6 @@
 module github.com/scripthaus-dev/mshell
 
-go 1.17
+go 1.18
 
 require (
 	github.com/alessio/shellescape v1.4.1

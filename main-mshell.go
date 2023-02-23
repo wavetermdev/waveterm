@@ -22,6 +22,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+var BuildTime = "-"
+
 // func doMainRun(pk *packet.RunPacketType, sender *packet.PacketSender) {
 // 	err := shexec.ValidateRunPacket(pk)
 // 	if err != nil {
