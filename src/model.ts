@@ -2730,7 +2730,7 @@ function getPtyData(sessionId : string, cmdId : string) {
 }
 
 function getRemotePtyData(remoteId : string) {
-    let url = sprintf(GlobalModel.getBaseHostPort() + "/api/remote-pty?remoteid=%s", this.getContextRemoteId());
+    let url = sprintf(GlobalModel.getBaseHostPort() + "/api/remote-pty?remoteid=%s", remoteId);
     return _getPtyDataFromUrl(url);
 }
 
