@@ -77,7 +77,9 @@ open out/Prompt-darwin-x64/Prompt.app
 ```bash
 # @scripthaus command create-dmg
 # @scripthaus cd :playbook
-rm Prompt.dmg rw.Prompt.dmg
+DMG_VERSION=$(node -e 'console.log(require("./version.js"))')
+DMG_NAME="prompt-macos-x86-${DMG_VERSION}.dmg"
+rm *.dmg
 ../../create-dmg/create-dmg/create-dmg \
   --volname "Prompt" \
   --window-pos 200 120 \
@@ -86,14 +88,16 @@ rm Prompt.dmg rw.Prompt.dmg
   --icon "Prompt.app" 200 130 \
   --hide-extension "Prompt.app" \
   --app-drop-link 400 125 \
-  "Prompt.dmg" \
+  $DMG_NAME \
   "out/Prompt-darwin-x64/Prompt.app"
 ```
 
 ```bash
 # @scripthaus command create-dmg-m1
 # @scripthaus cd :playbook
-rm Prompt.dmg rw.Prompt.dmg
+DMG_VERSION=$(node -e 'console.log(require("./version.js"))')
+DMG_NAME="prompt-macos-arm64-${DMG_VERSION}.dmg"
+rm *.dmg
 ../../create-dmg/create-dmg/create-dmg \
   --volname "Prompt" \
   --window-pos 200 120 \
@@ -102,6 +106,6 @@ rm Prompt.dmg rw.Prompt.dmg
   --icon "Prompt.app" 200 130 \
   --hide-extension "Prompt.app" \
   --app-drop-link 400 125 \
-  "Prompt.dmg" \
+  $DMG_NAME \
   "out/Prompt-darwin-arm64/Prompt.app"
 ```
