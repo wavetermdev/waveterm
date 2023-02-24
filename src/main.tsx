@@ -808,18 +808,21 @@ class Line extends React.Component<{sw : ScreenWindow, line : LineType, width : 
 }
 
 @mobxReact.observer
-class TextAreaInput extends React.Component<{}, {}> {
+class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
     lastTab : boolean = false;
     lastHistoryUpDown : boolean = false;
     lastTabCurLine : mobx.IObservableValue<string> = mobx.observable.box(null);
     lastFocusType : string = null;
     mainInputRef : React.RefObject<any>;
     historyInputRef : React.RefObject<any>;
+    controlRef : React.RefObject<any>;
+    lastHeight : number = 0;
 
     constructor(props) {
         super(props);
         this.mainInputRef = React.createRef();
         this.historyInputRef = React.createRef();
+        this.controlRef = React.createRef();
     }
 
     setFocus() : void {
@@ -832,6 +835,21 @@ class TextAreaInput extends React.Component<{}, {}> {
         }
     }
 
+    checkHeight(shouldFire : boolean) : void {
+        let elem = this.controlRef.current;
+        if (elem == null) {
+            return;
+        }
+        let curHeight = elem.offsetHeight;
+        if (this.lastHeight == curHeight) {
+            return;
+        }
+        this.lastHeight = curHeight;
+        if (shouldFire && this.props.onHeightChange != null) {
+            this.props.onHeightChange();
+        }
+    }
+
     componentDidMount() {
         let activeSW = GlobalModel.getActiveSW();
         if (activeSW != null) {
@@ -841,6 +859,7 @@ class TextAreaInput extends React.Component<{}, {}> {
             }
             this.lastFocusType = focusType;
         }
+        this.checkHeight(false);
     }
 
     componentDidUpdate() {
@@ -860,6 +879,7 @@ class TextAreaInput extends React.Component<{}, {}> {
             }
             mobx.action(() => inputModel.forceCursorPos.set(null))();
         }
+        this.checkHeight(true);
     }
 
     getLinePos(elem : any) : {numLines : number, linePos : number} {
@@ -1140,7 +1160,7 @@ class TextAreaInput extends React.Component<{}, {}> {
             activeSW.focusType.get(); // for reaction
         }
         return (
-            <div className="control cmd-input-control is-expanded">
+            <div className="control cmd-input-control is-expanded" ref={this.controlRef}>
                 <textarea ref={this.mainInputRef} spellCheck="false" id="main-cmd-input" onFocus={this.handleMainFocus} onBlur={this.handleMainBlur} rows={displayLines} value={curLine} onKeyDown={this.onKeyDown} onChange={this.onChange} className={cn("textarea", {"display-disabled": disabled})}></textarea>
                 <input ref={this.historyInputRef} spellCheck="false" className="history-input" type="text" onFocus={this.handleHistoryFocus} onKeyDown={this.onHistoryKeyDown} onChange={this.handleHistoryInput} value={inputModel.historyQueryOpts.get().queryStr}/>
             </div>
@@ -2076,25 +2096,30 @@ class CmdInput extends React.Component<{}, {}> {
     }
 
     componentDidMount() {
+        this.updateCmdInputHeight();
+    }
+
+    updateCmdInputHeight() {
         let elem = this.cmdInputRef.current;
         if (elem == null) {
             return;
         }
         let height = elem.offsetHeight;
+        if (height == GlobalModel.inputModel.cmdInputHeight) {
+            return;
+        }
         mobx.action(() => {
             GlobalModel.inputModel.cmdInputHeight.set(height);
         })();
     }
 
-    componentDidUpdate(prevProps, prevState, snapshot : {height : number}) : void {
-        let elem = this.cmdInputRef.current;
-        if (elem == null) {
-            return;
-        }
-        let height = elem.offsetHeight;
-        mobx.action(() => {
-            GlobalModel.inputModel.cmdInputHeight.set(height);
-        })();
+    componentDidUpdate(prevProps, prevState, snapshot : {}) : void {
+        this.updateCmdInputHeight();
+    }
+
+    @boundMethod
+    handleInnerHeightUpdate() : void {
+        this.updateCmdInputHeight();
     }
     
     render() {
@@ -2149,7 +2174,7 @@ class CmdInput extends React.Component<{}, {}> {
                             <div className="button is-static">{inputMode}</div>
                         </div>
                     </If>
-                    <TextAreaInput/>
+                    <TextAreaInput onHeightChange={this.handleInnerHeightUpdate}/>
                     <div className="control cmd-exec">
                         <div onClick={GlobalModel.inputModel.uiSubmitCommand} className="button">
                             <span className="icon">
