@@ -2670,6 +2670,14 @@ class ScreenView extends React.Component<{screen : Screen}, {}> {
 class ScreenTabs extends React.Component<{session : Session}, {}> {
     tabsRef : React.RefObject<any> = React.createRef();
     lastActiveScreenId : string = null;
+    scrolling : OV<boolean> = mobx.observable.box(false, {name: "screentabs-scrolling"});
+
+    stopScrolling_debounced : () => void;
+
+    constructor(props : any) {
+        super(props);
+        this.stopScrolling_debounced = debounce(1500, this.stopScrolling.bind(this));
+    }
     
     @boundMethod
     handleNewScreen() {
@@ -2714,6 +2722,22 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
         this.lastActiveScreenId = activeScreenId;
     }
 
+    stopScrolling() : void {
+        mobx.action(() => {
+            this.scrolling.set(false);
+        })();
+    }
+
+    @boundMethod
+    handleScroll() {
+        if (!this.scrolling.get()) {
+            mobx.action(() => {
+                this.scrolling.set(true);
+            })();
+        }
+        this.stopScrolling_debounced();
+    }
+
     render() {
         let {session} = this.props;
         if (session == null) {
@@ -2729,7 +2753,7 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
             }
         }
         return (
-            <div className="screen-tabs" ref={this.tabsRef}>
+            <div className={cn("screen-tabs", {"scrolling": this.scrolling.get()})} ref={this.tabsRef} onScroll={this.handleScroll}>
                 <For each="screen" index="index" of={showingScreens}>
                     <div key={screen.screenId} data-screenid={screen.screenId} className={cn("screen-tab", {"is-active": activeScreenId == screen.screenId, "is-archived": screen.archived.get()}, "color-" + screen.getTabColor())} onClick={() => this.handleSwitchScreen(screen.screenId)} onContextMenu={(event) => this.handleContextMenu(event, screen.screenId)}>
                         <If condition={screen.archived.get()}><i title="archived" className="fa fa-archive"/></If>{screen.name.get()}

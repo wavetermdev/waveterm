@@ -40,6 +40,10 @@ html, body, #main {
     background-color: #000;
 }
 
+body::-webkit-scrollbar {
+    display: none;
+}
+
 #main {
     height: 100vh;
     display: flex;
@@ -346,8 +350,24 @@ html, body, #main {
     flex-direction: row;
     border-top: 1px solid #666;
     border-right: 1px solid #eee;
-    overflow-x: scroll;
+    overflow-x: overlay;
     align-items: center;
+
+    &::-webkit-scrollbar {
+        display: none;
+        z-index: 5;
+        background-color: #fff;
+        height: 4px;
+        width: 0;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: #777;
+    }
+
+    &.scrolling::-webkit-scrollbar {
+        display: block;
+    }
 
     .screen-tab {
         height: 30px;
