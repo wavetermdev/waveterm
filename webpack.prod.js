@@ -24,7 +24,7 @@ let merged = merge.merge(common, {
         path: path.resolve(__dirname, "dist"),
         filename: "[name].js",
     },
-    devtool: "source-map",
+    devtool: null,
     optimization: {
         minimize: true,
     },
