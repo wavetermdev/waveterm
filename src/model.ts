@@ -602,6 +602,9 @@ class ScreenWindow {
     }
 
     getUsedRows(line : LineType, cmd : Cmd, width : number) : number {
+        if (cmd == null) {
+            return 0;
+        }
         let termOpts = cmd.getTermOpts();
         if (!termOpts.flexrows) {
             return termOpts.rows;

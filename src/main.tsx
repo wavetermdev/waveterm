@@ -31,6 +31,8 @@ type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
 type OMap<K,V> = mobx.ObservableMap<K,V>;
 
+type VisType = "visible" | "";
+
 type HeightChangeCallbackType = (lineNum : number, newHeight : number, oldHeight : number) => void;
 
 type RendererComponentProps = {sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType, collapsed : boolean};
@@ -687,17 +689,51 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
             this.props.collapsed.set(!isCollapsed);
         })();
     }
+
+    getLineDomId() : string {
+        let {line} = this.props;
+        return "line-" + getLineId(line);
+    }
+
+    renderSimple() {
+        let {sw, line, width, topBorder} = this.props;
+        let cmd = GlobalModel.getCmd(line);
+        let usedRows = sw.getUsedRows(line, cmd, width);
+        let mainDivCn = cn(
+            "line",
+            "line-cmd",
+            {"top-border": topBorder},
+        );
+        // header is 36px tall, padding+border = 6px
+        // zero-terminal is 0px
+        // terminal-wrapper overhead is 11px (margin/padding)
+        // each terminal line 16px
+        // inner-height, if zero-lines => 42
+        //               else: 53+(lines*16)
+        let height = 42; // height of zero height terminal
+        if (usedRows > 0) {
+            height = 53 + termHeightFromRows(usedRows);
+        }
+        return (
+            <div className={mainDivCn} id={this.getLineDomId()} ref={this.lineRef} data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} style={{height: height}}>
+                <LineAvatar line={line} cmd={cmd}/>
+            </div>
+        );
+    }
     
     render() {
         let {sw, line, width, staticRender, visible, topBorder} = this.props;
         let model = GlobalModel;
         let lineid = line.lineid;
         let isVisible = visible.get();
+        if (staticRender || !isVisible) {
+            return this.renderSimple();
+        }
         let formattedTime = getLineDateTimeStr(line.ts);
         let cmd = model.getCmd(line);
         if (cmd == null) {
             return (
-                <div className="line line-invalid" id={"line-" + getLineId(line)} ref={this.lineRef} data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid}>
+                <div className="line line-invalid" id={this.getLineDomId()} ref={this.lineRef} data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid}>
                     [cmd not found '{line.cmdid}']
                 </div>
             );
@@ -734,6 +770,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         if (line.renderer == "image") {
             RendererComponent = ImageRenderer;
         }
+        
         return (
             <div className={mainDivCn} id={"line-" + getLineId(line)}
                  ref={this.lineRef} onClick={this.handleClick}
