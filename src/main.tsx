@@ -2653,7 +2653,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         return {position: "absolute", width: "100%", height: "100%", overflowX: "hidden"};
     }
 
-    renderError(message : string) {
+    renderError(message : string, fade : boolean) {
         let {sw} = this.props;
         return (
             <div className="window-view" style={this.getWindowViewStyle()} ref={this.windowViewRef} data-windowid={sw.windowId}>
@@ -2661,7 +2661,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
                     <span>{sw.name.get()}</span>
                 </div>
                 <div key="lines" className="lines"></div>
-                <div key="window-empty" className="window-empty">
+                <div key="window-empty" className={cn("window-empty", {"should-fade": fade})}>
                     <div>{message}</div>
                 </div>
             </div>
@@ -2672,13 +2672,13 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         let {sw} = this.props;
         let win = this.getWindow();
         if (win == null || !win.loaded.get()) {
-            return this.renderError("(loading)");
+            return this.renderError("...", true);
         }
         if (win.loadError.get() != null) {
-            return this.renderError(sprintf("(%s)", win.loadError.get()));
+            return this.renderError(sprintf("(%s)", win.loadError.get()), false);
         }
         if (this.width.get() == 0) {
-            return this.renderError("");
+            return this.renderError("", false);
         }
         let idx = 0;
         let line : LineType = null;

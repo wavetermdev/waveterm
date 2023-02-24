@@ -120,6 +120,11 @@ body::-webkit-scrollbar {
                     background-color: black;
                     color: #4e9a06;
                 }
+
+                &.should-fade {
+                    opacity: 0;
+                    animation: fade-in 2.5s;
+                }
             }
         }
     }
@@ -1985,5 +1990,19 @@ input[type=checkbox] {
     }
     100% {
         transform: rotate(360deg);
+    }
+}
+
+@keyframes fade-in {
+    0% {
+        opacity: 0;
+    }
+
+    80% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 1;
     }
 }
