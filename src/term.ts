@@ -117,7 +117,6 @@ class TermWrap {
         // xterm.js renders a textarea that handles focus.  when it focuses and a space is typed the browser
         //   will scroll to make it visible (even though our terminal element has overflow hidden)
         // this will undo that scroll.
-        console.log("scroll", this.atRowMax, e.target.scrollTop);
         if (this.atRowMax || e.target.scrollTop == 0) {
             return;
         }

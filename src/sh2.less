@@ -30,6 +30,8 @@
 
 @soft-blue: #729fcf;
 
+
+
 .mono-font(@size: inherit, @weight: inherit) {
     font-family: 'JetBrains Mono', monospace;
     font-size: @size;
@@ -42,6 +44,16 @@ html, body, #main {
 
 body::-webkit-scrollbar {
     display: none;
+}
+
+*::-webkit-scrollbar {
+    background-color: #777;
+    width: 5px;
+    height: 5px;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: white;
 }
 
 #main {
@@ -438,6 +450,7 @@ body::-webkit-scrollbar {
     border-bottom: 2px solid #ddd;
     white-space: nowrap;
     overflow: hidden;
+    flex-shrink: 0;
 
     &.is-dev {
         background-color: darken(rgb(177, 0, 10), 30%);
@@ -1076,6 +1089,12 @@ body .xterm .xterm-viewport {
         bottom: 0;
         background: transparent;
         z-index: 10;
+    }
+
+    .xterm-screen {
+        &::-webkit-scrollbar {
+            display: none;
+        }
     }
 }
 
