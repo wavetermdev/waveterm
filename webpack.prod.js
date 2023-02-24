@@ -24,7 +24,7 @@ let merged = merge.merge(common, {
         path: path.resolve(__dirname, "dist"),
         filename: "[name].js",
     },
-    devtool: null,
+    devtool: false,
     optimization: {
         minimize: true,
     },
