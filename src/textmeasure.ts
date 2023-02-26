@@ -1,6 +1,6 @@
 let canvasElem = document.createElement("canvas");
 
-function measureText(text : string, textOpts? : {pre? : boolean, mono? : boolean, fontSize? : number|string}) : {width : number, height : number} {
+function measureText(text : string, textOpts? : {pre? : boolean, mono? : boolean, fontSize? : number|string}) : DOMRect {
     if (textOpts == null) {
         textOpts = {};
     }
@@ -25,7 +25,7 @@ function measureText(text : string, textOpts? : {pre? : boolean, mono? : boolean
         throw new Error("cannot measure text, no #measure div");
     }
     measureDiv.replaceChildren(textElem);
-    return {width: textElem.clientWidth, height: textElem.clientHeight};
+    return measureDiv.getBoundingClientRect()
 }
 
 export {measureText};
