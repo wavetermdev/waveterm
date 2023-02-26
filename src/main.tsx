@@ -2600,13 +2600,17 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
     }
 
     setSize(width : number, height : number) : void {
+        let {sw} = this.props;
+        if (sw == null) {
+            return;
+        }
         mobx.action(() => {
             this.width.set(width);
             this.height.set(height);
-            let {sw} = this.props;
             let cols = windowWidthToCols(width, GlobalModel.termFontSize.get());
             let rows = windowHeightToRows(height, GlobalModel.termFontSize.get());
-            if (sw == null || cols == 0 || rows == 0) {
+            if (cols == 0 || rows == 0) {
+                console.log("cannot set sw size", rows, cols);
                 return;
             }
             sw.termSizeCallback(rows, cols);

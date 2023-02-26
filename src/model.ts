@@ -484,10 +484,6 @@ class ScreenWindow {
     }
 
     termSizeCallback(rows : number, cols : number) : void {
-        if (!this.isActive()) {
-            console.log("termSize (not active)");
-            return;
-        }
         if (cols == 0 || rows == 0) {
             return;
         }
