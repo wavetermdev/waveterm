@@ -5,7 +5,7 @@ import {debounce} from "throttle-debounce";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData, boundInt, isModKeyPress} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType} from "./types";
+import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType} from "./types";
 import {WSControl} from "./ws";
 import {ImageRendererModel} from "./imagerenderer";
 import {measureText, getMonoFontSize} from "./textmeasure";
@@ -1838,6 +1838,7 @@ class Model {
 
     inputModel : InputModel;
     bookmarksModel : BookmarksModel;
+    clientData : OV<ClientDataType> = mobx.observable.box(null, {name: "clientData"});
     
     constructor() {
         this.clientId = getApi().getId();
@@ -1862,6 +1863,7 @@ class Model {
         getApi().onLocalServerStatusChange(this.onLocalServerStatusChange.bind(this));
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
         document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
+        setTimeout(() => this.getClientData(), 10);
     }
 
     getBaseHostPort() : string {
@@ -2327,6 +2329,19 @@ class Model {
             return false;
         }
         return (update.info != null || update.history != null);
+    }
+
+    getClientData() : void {
+        let url = sprintf(GlobalModel.getBaseHostPort() + "/api/get-client-data");
+        let fetchHeaders = this.getFetchHeaders();
+        fetch(url, {method: "post", body: null, headers: fetchHeaders}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
+            mobx.action(() => {
+                let clientData = data.data;
+                this.clientData.set(clientData);
+            })();
+        }).catch((err) => {
+            this.errorHandler("calling get-client-data", err, true);
+        });
     }
 
     submitCommandPacket(cmdPk : FeCmdPacketType, interactive : boolean) {
