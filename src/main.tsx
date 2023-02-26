@@ -2684,6 +2684,10 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         if (this.width.get() == 0) {
             return this.renderError("", false);
         }
+        let cdata = GlobalModel.clientData.get();
+        if (cdata == null) {
+            return this.renderError("loading client data", true);
+        }
         let idx = 0;
         let line : LineType = null;
         let screen = GlobalModel.getScreenById(sw.sessionId, sw.screenId);

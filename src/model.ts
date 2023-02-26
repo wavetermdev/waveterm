@@ -72,6 +72,7 @@ function keyHasNoMods(e : any) {
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
 type OMap<K,V> = mobx.ObservableMap<K,V>;
+type CV<V> = mobx.IComputedValue<V>;
 
 function isBlank(s : string) {
     return (s == null || s == "");
@@ -1830,7 +1831,7 @@ class Model {
     authKey : string;
     isDev : boolean;
     activeMainView : OV<"session" | "history" | "bookmarks"> = mobx.observable.box("session", {name: "activeMainView"});
-    termFontSize : OV<number> = mobx.observable.box(DefaultTermFontSize, {name: "termFontSize"});
+    termFontSize : CV<number>;
 
     inputModel : InputModel;
     bookmarksModel : BookmarksModel;
@@ -1846,6 +1847,20 @@ class Model {
         this.bookmarksModel = new BookmarksModel();
         let isLocalServerRunning = getApi().getLocalServerStatus();
         this.localServerRunning = mobx.observable.box(isLocalServerRunning, {name: "model-local-server-running"});
+        this.termFontSize = mobx.computed(() => {
+            let cdata = this.clientData.get();
+            if (cdata == null || cdata.feopts == null || cdata.feopts.termfontsize == null) {
+                return DefaultTermFontSize;
+            }
+            let fontSize = Math.ceil(cdata.feopts.termfontsize);
+            if (fontSize < MinFontSize) {
+                return MinFontSize;
+            }
+            if (fontSize > MaxFontSize) {
+                return MaxFontSize;
+            }
+            return fontSize;
+        });
         getApi().onTCmd(this.onTCmd.bind(this));
         getApi().onICmd(this.onICmd.bind(this));
         getApi().onLCmd(this.onLCmd.bind(this));
@@ -2174,6 +2189,9 @@ class Model {
         }
         else if ("bookmarks" in update) {
             this.bookmarksModel.mergeBookmarks(update.bookmarks);
+        }
+        if ("clientdata" in update) {
+            this.clientData.set(update.clientdata);
         }
         if (interactive && "info" in update) {
             let info : InfoType = update.info;

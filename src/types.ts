@@ -271,6 +271,7 @@ type PtyDataUpdateType = {
 };
 
 type ModelUpdateType = {
+    interactive : boolean,
     sessions? : SessionDataType[],
     activesessionid? : string,
     windows? : WindowDataType[],
@@ -281,10 +282,10 @@ type ModelUpdateType = {
     cmdline? : CmdLineUpdateType,
     remotes? : RemoteType[],
     history? : HistoryInfoType,
-    interactive : boolean,
     connect? : boolean,
     bookmarksview? : boolean,
-    bookmarks : BookmarkType[],
+    bookmarks? : BookmarkType[],
+    clientdata? : ClientDataType,
 };
 
 type BookmarkType = {
