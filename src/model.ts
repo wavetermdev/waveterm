@@ -8,6 +8,7 @@ import {v4 as uuidv4} from "uuid";
 import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType} from "./types";
 import {WSControl} from "./ws";
 import {ImageRendererModel} from "./imagerenderer";
+import {measureText} from "./textmeasure";
 
 var GlobalUser = "sawka";
 const DefaultCellWidth = 7.203125;
@@ -2751,6 +2752,8 @@ if ((window as any).GlobalModel == null) {
 }
 GlobalModel = (window as any).GlobalModel;
 GlobalCommandRunner = (window as any).GlobalCommandRunner;
+
+window.measureText = measureText;
 
 export {Model, Session, Window, GlobalModel, GlobalCommandRunner, Cmd, Screen, ScreenWindow, riToRPtr, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows, getPtyData, getRemotePtyData};
 

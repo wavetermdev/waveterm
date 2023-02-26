@@ -30,8 +30,6 @@
 
 @soft-blue: #729fcf;
 
-
-
 .mono-font(@size: inherit, @weight: inherit) {
     font-family: 'JetBrains Mono', monospace;
     font-size: @size;
@@ -40,6 +38,10 @@
 
 html, body, #main {
     background-color: #000;
+}
+
+body {
+    overflow: hidden;
 }
 
 body::-webkit-scrollbar {
@@ -2004,5 +2006,19 @@ input[type=checkbox] {
 
     100% {
         opacity: 1;
+    }
+}
+
+#measure {
+    position: absolute;
+    z-index: -1;
+    top: -5000px;
+
+    .mono {
+        .mono-font();
+    }
+
+    .pre {
+        white-space: pre;
     }
 }
