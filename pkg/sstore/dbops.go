@@ -504,6 +504,15 @@ func SetWinSize(ctx context.Context, winSize ClientWinSizeType) error {
 	return txErr
 }
 
+func UpdateClientFeOpts(ctx context.Context, feOpts FeOptsType) error {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `UPDATE client SET feopts = ?`
+		tx.Exec(query, quickJson(feOpts))
+		return nil
+	})
+	return txErr
+}
+
 func containsStr(strs []string, testStr string) bool {
 	for _, s := range strs {
 		if s == testStr {

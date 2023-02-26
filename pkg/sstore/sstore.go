@@ -160,6 +160,10 @@ type ClientOptsType struct {
 	NoTelemetry bool `json:"notelemetry,omitempty"`
 }
 
+type FeOptsType struct {
+	TermFontSize int `json:"termfontsize,omitempty"`
+}
+
 type ClientData struct {
 	ClientId            string            `json:"clientid"`
 	UserId              string            `json:"userid"`
@@ -170,6 +174,7 @@ type ClientData struct {
 	ActiveSessionId     string            `json:"activesessionid"`
 	WinSize             ClientWinSizeType `json:"winsize"`
 	ClientOpts          ClientOptsType    `json:"clientopts"`
+	FeOpts              FeOptsType        `json:"feopts"`
 }
 
 func (c *ClientData) ToMap() map[string]interface{} {
@@ -181,6 +186,7 @@ func (c *ClientData) ToMap() map[string]interface{} {
 	rtn["activesessionid"] = c.ActiveSessionId
 	rtn["winsize"] = quickJson(c.WinSize)
 	rtn["clientopts"] = quickJson(c.ClientOpts)
+	rtn["feopts"] = quickJson(c.FeOpts)
 	return rtn
 }
 
@@ -196,6 +202,7 @@ func ClientDataFromMap(m map[string]interface{}) *ClientData {
 	quickSetStr(&c.ActiveSessionId, m, "activesessionid")
 	quickSetJson(&c.WinSize, m, "winsize")
 	quickSetJson(&c.ClientOpts, m, "clientopts")
+	quickSetJson(&c.FeOpts, m, "feopts")
 	return &c
 }
 

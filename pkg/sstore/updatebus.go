@@ -45,6 +45,7 @@ type ModelUpdate struct {
 	Connect         bool                `json:"connect,omitempty"`
 	BookmarksView   bool                `json:"bookmarksview,omitempty"`
 	Bookmarks       []*BookmarkType     `json:"bookmarks,omitempty"`
+	ClientData      *ClientData         `json:"clientdata,omitempty"`
 }
 
 func (ModelUpdate) UpdateType() string {

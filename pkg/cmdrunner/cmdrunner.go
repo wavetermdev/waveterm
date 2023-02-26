@@ -166,6 +166,7 @@ func init() {
 
 	registerCmdFn("client", ClientCommand)
 	registerCmdFn("client:show", ClientShowCommand)
+	registerCmdFn("client:set", ClientSetCommand)
 
 	registerCmdFn("telemetry", TelemetryCommand)
 	registerCmdFn("telemetry:on", TelemetryOnCommand)
@@ -2336,7 +2337,7 @@ func KillServerCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 }
 
 func ClientCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	return nil, fmt.Errorf("/client requires a subcommand: %s", formatStrs([]string{"show"}, "or", false))
+	return nil, fmt.Errorf("/client requires a subcommand: %s", formatStrs([]string{"show", "set"}, "or", false))
 }
 
 func boolToStr(v bool, trueStr string, falseStr string) string {
@@ -2346,10 +2347,49 @@ func boolToStr(v bool, trueStr string, falseStr string) string {
 	return falseStr
 }
 
+func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
+	}
+	var varsUpdated []string
+	if fontSizeStr, found := pk.Kwargs["termfontsize"]; found {
+		newFontSize, err := resolveNonNegInt(fontSizeStr, 0)
+		if err != nil {
+			return nil, fmt.Errorf("invalid termfontsize, must be a number between 8-15: %v", err)
+		}
+		if newFontSize < 8 || newFontSize > 15 {
+			return nil, fmt.Errorf("invalid termfontsize, must be a number between 8-15", err)
+		}
+		feOpts := clientData.FeOpts
+		feOpts.TermFontSize = newFontSize
+		err = sstore.UpdateClientFeOpts(ctx, feOpts)
+		if err != nil {
+			return nil, fmt.Errorf("error updating client feopts: %v", err)
+		}
+		varsUpdated = append(varsUpdated, "termfontsize")
+	}
+	if len(varsUpdated) == 0 {
+		return nil, fmt.Errorf("/client:set requires a value to set: %s", formatStrs([]string{"termfontsize"}, "or", false))
+	}
+	clientData, err = sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
+	}
+	update := sstore.ModelUpdate{
+		Info: &sstore.InfoMsgType{
+			InfoMsg:   fmt.Sprintf("client updated %s", formatStrs(varsUpdated, "and", false)),
+			TimeoutMs: 2000,
+		},
+		ClientData: clientData,
+	}
+	return update, nil
+}
+
 func ClientShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	clientData, err := sstore.EnsureClientData(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve client data: %v\n", err)
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
 	}
 	dbVersion, err := sstore.GetDBVersion(ctx)
 	if err != nil {
@@ -2401,7 +2441,7 @@ func setNoTelemetry(ctx context.Context, clientData *sstore.ClientData, noTeleme
 func TelemetryOnCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	clientData, err := sstore.EnsureClientData(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve client data: %v\n", err)
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
 	}
 	if !clientData.ClientOpts.NoTelemetry {
 		return sstore.InfoMsgUpdate("telemetry is already on"), nil
@@ -2421,7 +2461,7 @@ func TelemetryOnCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 func TelemetryOffCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	clientData, err := sstore.EnsureClientData(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve client data: %v\n", err)
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
 	}
 	if clientData.ClientOpts.NoTelemetry {
 		return sstore.InfoMsgUpdate("telemetry is already off"), nil
@@ -2436,7 +2476,7 @@ func TelemetryOffCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 func TelemetryShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	clientData, err := sstore.EnsureClientData(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve client data: %v\n", err)
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
 	}
 	var buf bytes.Buffer
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "telemetry", boolToStr(clientData.ClientOpts.NoTelemetry, "off", "on")))
@@ -2452,7 +2492,7 @@ func TelemetryShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 func TelemetrySendCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	clientData, err := sstore.EnsureClientData(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve client data: %v\n", err)
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
 	}
 	force := resolveBool(pk.Kwargs["force"], false)
 	if clientData.ClientOpts.NoTelemetry && !force {
