@@ -1,4 +1,17 @@
-let canvasElem = document.createElement("canvas");
+let MonoFontSizes : {height : number, width : number}[] = [];
+
+MonoFontSizes[8] = {height: 11, width: 4.797};
+MonoFontSizes[9] = {height: 12, width: 5.398};
+MonoFontSizes[10] = {height: 13, width: 6};
+MonoFontSizes[11] = {height: 15, width: 6.602};
+MonoFontSizes[12] = {height: 16, width: 7.203};
+MonoFontSizes[13] = {height: 18, width: 7.797};
+MonoFontSizes[14] = {height: 19, width: 8.398};
+MonoFontSizes[15] = {height: 20, width: 9};
+
+function getMonoFontSize(fontSize : number) : {height : number, width : number} {
+    return MonoFontSizes[fontSize];
+}
 
 function measureText(text : string, textOpts? : {pre? : boolean, mono? : boolean, fontSize? : number|string}) : DOMRect {
     if (textOpts == null) {
@@ -28,4 +41,4 @@ function measureText(text : string, textOpts? : {pre? : boolean, mono? : boolean
     return measureDiv.getBoundingClientRect()
 }
 
-export {measureText};
+export {measureText, getMonoFontSize};

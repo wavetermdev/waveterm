@@ -483,7 +483,7 @@ class TerminalRenderer extends React.Component<{sw : ScreenWindow, line : LineTy
         }, {name: "computed-isFocused"}).get();
         let cmd = GlobalModel.getCmd(line); // will not be null
         let usedRows = sw.getUsedRows(line, cmd, width);
-        let termHeight = termHeightFromRows(usedRows);
+        let termHeight = termHeightFromRows(usedRows, GlobalModel.termFontSize.get());
         let termLoaded = this.termLoaded.get();
         return (
             <div ref={this.elemRef} key="term-wrap" className={cn("terminal-wrapper", {"focus": isFocused}, {"cmd-done": !cmd.isRunning()}, {"zero-height": (termHeight == 0)}, {"collapsed": collapsed})}>
@@ -707,12 +707,11 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         // header is 36px tall, padding+border = 6px
         // zero-terminal is 0px
         // terminal-wrapper overhead is 11px (margin/padding)
-        // each terminal line 16px
         // inner-height, if zero-lines => 42
-        //               else: 53+(lines*16)
+        //               else: 53+(lines*lineheight)
         let height = 42; // height of zero height terminal
         if (usedRows > 0) {
-            height = 53 + termHeightFromRows(usedRows);
+            height = 53 + termHeightFromRows(usedRows, GlobalModel.termFontSize.get());
         }
         return (
             <div className={mainDivCn} id={this.getLineDomId()} ref={this.lineRef} data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} style={{height: height}}>
@@ -1396,6 +1395,7 @@ class InfoRemoteShow extends React.Component<{}, {}> {
                 </>
             );
         }
+        let termFontSize = GlobalModel.termFontSize.get();
         return (
             <>
                 <div key="info" className="info-remote">
@@ -1441,14 +1441,14 @@ class InfoRemoteShow extends React.Component<{}, {}> {
                         </div>
                     </If>
                 </div>
-                <div key="term" className={cn("terminal-wrapper", {"focus": isTermFocused}, (remote != null ? "status-" + remote.status : null))} style={{display: (ptyRemoteId == null ? "none" : "block"), width: termWidthFromCols(RemotePtyCols)}}>
+                <div key="term" className={cn("terminal-wrapper", {"focus": isTermFocused}, (remote != null ? "status-" + remote.status : null))} style={{display: (ptyRemoteId == null ? "none" : "block"), width: termWidthFromCols(RemotePtyCols, termFontSize)}}>
                     <If condition={!isTermFocused}>
                         <div key="termblock" className="term-block" onClick={this.clickTermBlock}></div>
                     </If>
                     <If condition={inputModel.showNoInputMsg.get()}>
                         <div key="termtag" className="term-tag">input is only allowed while status is 'connecting'</div>
                     </If>
-                    <div key="terminal" className="terminal-connectelem" id="term-remote" data-remoteid={ptyRemoteId} style={{height: termHeightFromRows(RemotePtyRows)}}></div>
+                    <div key="terminal" className="terminal-connectelem" id="term-remote" data-remoteid={ptyRemoteId} style={{height: termHeightFromRows(RemotePtyRows, termFontSize)}}></div>
                 </div>
             </>
         );
@@ -2604,8 +2604,8 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
             this.width.set(width);
             this.height.set(height);
             let {sw} = this.props;
-            let cols = windowWidthToCols(width);
-            let rows = windowHeightToRows(height);
+            let cols = windowWidthToCols(width, GlobalModel.termFontSize.get());
+            let rows = windowHeightToRows(height, GlobalModel.termFontSize.get());
             if (sw == null || cols == 0 || rows == 0) {
                 return;
             }
@@ -2720,9 +2720,11 @@ class ScreenView extends React.Component<{screen : Screen}, {}> {
                 </div>
             );
         }
+        let fontSize = GlobalModel.termFontSize.get();
+        let swKey = sw.windowId + "-fs" + fontSize;
         return (
             <div className="screen-view" data-screenid={sw.screenId}>
-                <ScreenWindowView key={sw.windowId} sw={sw}/>
+                <ScreenWindowView key={swKey} sw={sw}/>
             </div>
         );
     }

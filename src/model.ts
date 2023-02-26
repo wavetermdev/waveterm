@@ -8,11 +8,9 @@ import {v4 as uuidv4} from "uuid";
 import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType} from "./types";
 import {WSControl} from "./ws";
 import {ImageRendererModel} from "./imagerenderer";
-import {measureText} from "./textmeasure";
+import {measureText, getMonoFontSize} from "./textmeasure";
 
 var GlobalUser = "sawka";
-const DefaultCellWidth = 7.203125;
-const DefaultCellHeight = 16;
 const RemotePtyRows = 8; // also in main.tsx
 const RemotePtyCols = 80;
 const MinTermCols = 10;
@@ -21,6 +19,9 @@ const ProdServerEndpoint = "http://localhost:1619";
 const ProdServerWsEndpoint = "ws://localhost:1623";
 const DevServerEndpoint = "http://localhost:8090";
 const DevServerWsEndpoint = "ws://localhost:8091";
+const DefaultTermFontSize = 12;
+const MinFontSize = 8;
+const MaxFontSize = 15;
 
 // @ts-ignore
 const VERSION = __PROMPT_VERSION__;
@@ -34,26 +35,30 @@ type SWLinePtr = {
     sw : ScreenWindow,
 };
 
-function windowWidthToCols(width : number) : number {
-    let cols = Math.trunc((width - 50) / DefaultCellWidth) - 1;
+function windowWidthToCols(width : number, fontSize : number) : number {
+    let dr = getMonoFontSize(fontSize);
+    let cols = Math.trunc((width - 50) / dr.width) - 1;
     cols = boundInt(cols, MinTermCols, MaxTermCols);
     return cols;
 }
 
-function windowHeightToRows(height : number) : number {
-    let rows = Math.floor((height - 80)/DefaultCellHeight) - 1;
+function windowHeightToRows(height : number, fontSize : number) : number {
+    let dr = getMonoFontSize(fontSize);
+    let rows = Math.floor((height - 80) / dr.height) - 1;
     if (rows <= 0) {
         rows = 1;
     }
     return rows;
 }
 
-function termWidthFromCols(cols : number) : number {
-    return Math.ceil(DefaultCellWidth*cols) + 15;
+function termWidthFromCols(cols : number, fontSize : number) : number {
+    let dr = getMonoFontSize(fontSize);
+    return Math.ceil(dr.width*cols) + 15;
 }
 
-function termHeightFromRows(rows : number) : number {
-    return Math.ceil(DefaultCellHeight*rows);
+function termHeightFromRows(rows : number, fontSize : number) : number {
+    let dr = getMonoFontSize(fontSize);
+    return Math.ceil(dr.height*rows);
 }
 
 function cmdStatusIsRunning(status : string) : boolean {
@@ -559,7 +564,7 @@ class ScreenWindow {
     loadImageRenderer(imageDivElem : any, line : LineType, cmd : Cmd) : ImageRendererModel {
         let cmdId = cmd.cmdId;
         let context = {sessionId: this.sessionId, screenId: this.screenId, windowId: this.windowId, cmdId: cmdId, lineId : line.lineid, lineNum: line.linenum};
-        let imageModel = new ImageRendererModel(imageDivElem, context, cmd.getTermOpts(), !cmd.isRunning());
+        let imageModel = new ImageRendererModel(imageDivElem, context, cmd.getTermOpts(), !cmd.isRunning(), GlobalModel.termFontSize.get());
         this.renderers[cmdId] = imageModel;
         return imageModel;
     }
@@ -571,7 +576,7 @@ class ScreenWindow {
             console.log("term-wrap already exists for", this.screenId, this.windowId, cmdId);
             return;
         }
-        let cols = windowWidthToCols(width);
+        let cols = windowWidthToCols(width, GlobalModel.termFontSize.get());
         let usedRows = GlobalModel.getTUR(this.sessionId, cmdId, cols);
         if (line.contentheight != null && line.contentheight != -1) {
             usedRows = line.contentheight;
@@ -586,6 +591,7 @@ class ScreenWindow {
             focusHandler: (focus : boolean) => this.setTermFocus(line.linenum, focus),
             isRunning: cmd.isRunning(),
             customKeyHandler: this.termCustomKeyHandler.bind(this),
+            fontSize: GlobalModel.termFontSize.get(),
         });
         this.renderers[cmdId] = termWrap;
         if ((this.focusType.get() == "cmd" || this.focusType.get() == "cmd-fg") && this.selectedLine.get() == line.linenum) {
@@ -612,7 +618,7 @@ class ScreenWindow {
         }
         let termWrap = this.getRenderer(cmd.cmdId);
         if (termWrap == null) {
-            let cols = windowWidthToCols(width);
+            let cols = windowWidthToCols(width, GlobalModel.termFontSize.get());
             let usedRows = GlobalModel.getTUR(this.sessionId, cmd.cmdId, cols);
             if (usedRows != null) {
                 return usedRows;
@@ -1535,6 +1541,7 @@ class InputModel {
                     keyHandler: (e, termWrap) => { this.termKeyHandler(remoteId, e, termWrap)},
                     focusHandler: this.setRemoteTermWrapFocus.bind(this),
                     isRunning: true,
+                    fontSize: GlobalModel.termFontSize.get(),
                 });
             }
         }
@@ -1827,6 +1834,7 @@ class Model {
     authKey : string;
     isDev : boolean;
     activeMainView : OV<"session" | "history" | "bookmarks"> = mobx.observable.box("session", {name: "activeMainView"});
+    termFontSize : OV<number> = mobx.observable.box(DefaultTermFontSize, {name: "termFontSize"});
 
     inputModel : InputModel;
     bookmarksModel : BookmarksModel;
@@ -1861,6 +1869,18 @@ class Model {
             return DevServerEndpoint;
         }
         return ProdServerEndpoint;
+    }
+
+    setTermFontSize(fontSize : number) {
+        if (fontSize < MinFontSize) {
+            fontSize = MinFontSize;
+        }
+        if (fontSize > MaxFontSize) {
+            fontSize = MaxFontSize;
+        }
+        mobx.action(() => {
+            this.termFontSize.set(fontSize);
+        })();
     }
 
     getBaseWsHostPort() : string {
@@ -2749,11 +2769,10 @@ let GlobalCommandRunner : CommandRunner = null;
 if ((window as any).GlobalModel == null) {
     (window as any).GlobalModel = new Model();
     (window as any).GlobalCommandRunner = new CommandRunner();
+    (window as any).getMonoFontSize = getMonoFontSize;
 }
 GlobalModel = (window as any).GlobalModel;
 GlobalCommandRunner = (window as any).GlobalCommandRunner;
-
-window.measureText = measureText;
 
 export {Model, Session, Window, GlobalModel, GlobalCommandRunner, Cmd, Screen, ScreenWindow, riToRPtr, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows, getPtyData, getRemotePtyData};
 

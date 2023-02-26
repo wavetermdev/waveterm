@@ -29,6 +29,7 @@ type TermWrapOpts = {
     dataHandler? : (data : string, termWrap : TermWrap) => void,
     isRunning : boolean,
     customKeyHandler? : (event : any, termWrap : TermWrap) => boolean,
+    fontSize: number,
 };
 
 // cmd-instance
@@ -48,6 +49,7 @@ class TermWrap {
     termSize : TermWinSize;
     focusHandler : (focus : boolean) => void;
     isRunning : boolean;
+    fontSize : number;
 
     constructor(elem : Element, opts : TermWrapOpts) {
         opts = opts ?? ({} as any);
@@ -57,6 +59,7 @@ class TermWrap {
         this.winSize = opts.winSize;
         this.focusHandler = opts.focusHandler;
         this.isRunning = opts.isRunning;
+        this.fontSize = opts.fontSize;
         if (this.flexRows) {
             this.atRowMax = false;
             this.usedRows = mobx.observable.box(opts.usedRows ?? (opts.isRunning ? 1 : 0), {name: "term-usedrows"});
@@ -69,13 +72,13 @@ class TermWrap {
             this.termSize = {rows: opts.termOpts.rows, cols: opts.termOpts.cols};
         }
         else {
-            let cols = windowWidthToCols(opts.winSize.width);
+            let cols = windowWidthToCols(opts.winSize.width, opts.fontSize);
             this.termSize = {rows: opts.termOpts.rows, cols: cols};
         }
         let theme = {
             foreground: "#d3d7cf",
         };
-        this.terminal = new Terminal({rows: this.termSize.rows, cols: this.termSize.cols, fontSize: 12, fontFamily: "JetBrains Mono", theme: theme});
+        this.terminal = new Terminal({rows: this.termSize.rows, cols: this.termSize.cols, fontSize: opts.fontSize, fontFamily: "JetBrains Mono", theme: theme});
         this.terminal._core._inputHandler._parser.setErrorHandler((state) => {
             this.numParseErrors++;
             return state;
@@ -238,8 +241,8 @@ class TermWrap {
     }
 
     resizeWindow(size : WindowSize) : void {
-        let cols = windowWidthToCols(size.width);
-        let rows = windowHeightToRows(size.height);
+        let cols = windowWidthToCols(size.width, this.fontSize);
+        let rows = windowHeightToRows(size.height, this.fontSize);
         this.resize({rows, cols});
     }
 

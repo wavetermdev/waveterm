@@ -12,13 +12,15 @@ class ImageRendererModel {
     htmlImg : any;
     termOpts : TermOptsType;
     dataBuf : PtyDataBuffer;
+    fontSize : number;
 
-    constructor(imgDivElem : any, context : RendererContext, termOpts : TermOptsType, isDone : boolean) {
+    constructor(imgDivElem : any, context : RendererContext, termOpts : TermOptsType, isDone : boolean, fontSize : number) {
         this.dataBuf = new PtyDataBuffer();
         this.htmlImgDivElem = imgDivElem;
         this.termOpts = termOpts;
         this.context = context;
         this.isDone = mobx.observable.box(isDone, {name: "isDone"});
+        this.fontSize = fontSize;
         this.reload(0);
     }
 
@@ -39,8 +41,8 @@ class ImageRendererModel {
         let blob = new Blob([this.dataBuf.getData()], {type: "image/jpeg"});
         this.htmlImg = new Image();
         this.htmlImg.src = URL.createObjectURL(blob);
-        this.htmlImg.style.maxHeight = termHeightFromRows(this.termOpts.rows) + "px";
-        this.htmlImg.style.maxWidth = termWidthFromCols(this.termOpts.cols) + "px";
+        this.htmlImg.style.maxHeight = termHeightFromRows(this.termOpts.rows, this.fontSize) + "px";
+        this.htmlImg.style.maxWidth = termWidthFromCols(this.termOpts.cols, this.fontSize) + "px";
         this.htmlImgDivElem.replaceChildren(this.htmlImg);
     }
     
