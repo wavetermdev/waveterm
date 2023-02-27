@@ -102,13 +102,28 @@ body::-webkit-scrollbar {
                 right: 0;
                 background-color: rgba(78, 154, 6, 0.65);
                 color: black;
-                padding: 2px 4px 2px 4px;
+                padding: 2px 8px 2px 4px;
                 border-bottom-left-radius: 5px;
                 z-index: 10;
                 font-size: 12px;
 
                 &.is-active {
-                    color: white;
+                    color: #ccc;
+                }
+
+                .window-name {
+                }
+
+                .render-mode {
+                    padding-top: 2px;
+                    font-size: 16px;
+                    position: relative;
+                    cursor: pointer;
+                    color: #ccc;
+
+                    &:hover {
+                        color: white;
+                    }
                 }
             }
 
@@ -684,16 +699,30 @@ body::-webkit-scrollbar {
 
 .line.line-text {
     flex-direction: row;
+    padding-top: 5px;
 
     .line-content {
         display: flex;
         flex-direction: column;
         flex-grow: 1;
+        margin-left: 10px;
 
         .text {
             font-size: 1rem;
             color: #ddd;
         }
+    }
+
+    &.collapsed {
+        .meta {
+            display: none;
+        }
+
+        min-height: 20px;
+    }
+
+    &.collapsed.top-border {
+        min-height: 26px;
     }
 }
 
@@ -710,7 +739,6 @@ body::-webkit-scrollbar {
 
     .avatar {
         cursor: pointer;
-        margin-right: 10px;
         height: 36px;
     }
 
@@ -723,52 +751,65 @@ body::-webkit-scrollbar {
         &.is-expanded {
             height: auto;
         }
+
+        &.is-collapsed {
+            height: 24px;
+        }
+
+        &.is-expanded.is-collapsed {
+            height: auto;
+        }
         
         .meta-wrap {
             flex: 1 1 0px;
             min-width: 0;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
+            margin-left: 10px;
+        }
+
+        .collapsed-indicator + .meta-wrap {
+            margin-left: 0;
+        }
+
+        .line-icon {
+            display: block;
+            visibility: hidden;
+            cursor: pointer;
+            padding: 3px;
+            font-size: 1.5rem;
+        }
+        
+        .line-icon.line-bookmark.active {
+            cursor: auto;
+        }
+        
+        .line-icon + .line-icon {
+            margin-left: 5px;
+        }
+        
+        .line-icon.active {
+            visibility: visible;
+            display: block;
+            
+            i.fa-star, i.fa-thumb-tack {
+                color: @term-bright-yellow;
+            }
+            
+            i.fa-bookmark {
+                color: @term-bright-blue;
+            }
+        }
+
+        &:hover .line-icon {
+            visibility: visible;
+            display: block;
         }
     }
 
     .meta.meta-line1 {
         margin-left: 2px;
-    }
-
-    .line-icon {
-        display: block;
-        visibility: hidden;
-        cursor: pointer;
-        padding: 3px;
-        font-size: 1.5rem;
-    }
-
-    .line-icon.line-bookmark.active {
-        cursor: auto;
-    }
-
-    .line-icon + .line-icon {
-        margin-left: 5px;
-    }
-
-    .line-icon.active {
-        visibility: visible;
-        display: block;
-
-        i.fa-star, i.fa-thumb-tack {
-            color: @term-bright-yellow;
-        }
-
-        i.fa-bookmark {
-            color: @term-bright-blue;
-        }
-    }
-
-    &:hover .line-icon {
-        visibility: visible;
-        display: block;
     }
 
     &.has-rtnstate .terminal-wrapper {
@@ -965,7 +1006,6 @@ body::-webkit-scrollbar {
         font-weight: bold;
         color: white;
         font-size: 16px;
-        margin-right: 10px;
         border-radius: 5px;
         position: relative;
 
@@ -978,6 +1018,13 @@ body::-webkit-scrollbar {
             position: absolute;
             top: 2px;
             right: 2px;
+        }
+
+        .comment-icon {
+            font-size: 10px;
+            position: absolute;
+            top: 0px;
+            right: -4px;
         }
 
         &.num-4 {
@@ -1041,6 +1088,8 @@ body::-webkit-scrollbar {
         cursor: pointer;
         margin-left: 2px;
         margin-right: 2px;
+        position: relative;
+        top: -2px;
     }
 
     .meta {

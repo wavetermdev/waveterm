@@ -193,7 +193,7 @@ class Cmd {
     isMultiLineCmdText() : boolean {
         let cmdText = this.data.get().cmdstr;
         if (cmdText == null) {
-            return "(none)";
+            return false;
         }
         cmdText = cmdText.trim();
         let nlIdx = cmdText.indexOf("\n");

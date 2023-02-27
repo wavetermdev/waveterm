@@ -32,6 +32,7 @@ type OArr<V> = mobx.IObservableArray<V>;
 type OMap<K,V> = mobx.ObservableMap<K,V>;
 
 type VisType = "visible" | "";
+type RenderModeType = "normal" | "collapsed";
 
 type HeightChangeCallbackType = (lineNum : number, newHeight : number, oldHeight : number) => void;
 
@@ -192,6 +193,7 @@ class LineAvatar extends React.Component<{line : LineType, cmd : Cmd}, {}> {
         let lineNumStr = (line.linenumtemp ? "~" : "") + String(line.linenum);
         let status = (cmd != null ? cmd.getStatus() : "done");
         let rtnstate = (cmd != null ? cmd.getRtnState() : false);
+        let isComment = (line.linetype == "text");
         return (
             <div className={cn("avatar", "num-"+lineNumStr.length, "status-" + status, {"ephemeral": line.ephemeral}, {"rtnstate": rtnstate})}>
                 {lineNumStr}
@@ -201,13 +203,16 @@ class LineAvatar extends React.Component<{line : LineType, cmd : Cmd}, {}> {
                 <If condition={status == "detached"}>
                     <i className="fa fa-rotate status-icon"/>
                 </If>
+                <If condition={isComment}>
+                    <i className="fa-sharp fa-solid fa-comment comment-icon"/>
+                </If>
             </div>
         );
     }
 }
 
 @mobxReact.observer
-class LineText extends React.Component<{sw : ScreenWindow, line : LineType}, {}> {
+class LineText extends React.Component<{sw : ScreenWindow, line : LineType, renderMode : RenderModeType, topBorder : boolean}, {}> {
     @boundMethod
     clickHandler() {
         let {line} = this.props;
@@ -215,12 +220,20 @@ class LineText extends React.Component<{sw : ScreenWindow, line : LineType}, {}>
     }
 
     render() {
-        let {sw, line} = this.props;
+        let {sw, line, topBorder, renderMode} = this.props;
         let formattedTime = getLineDateTimeStr(line.ts);
         let isSelected = mobx.computed(() => (sw.selectedLine.get() == line.linenum), {name: "computed-isSelected"}).get();
         let isFocused = mobx.computed(() => (sw.focusType.get() == "cmd"), {name: "computed-isFocused"}).get();
+        let isCollapsed = (renderMode == "collapsed");
+        let mainClass = cn(
+            "line",
+            "line-text",
+            "focus-parent",
+            {"top-border": topBorder},
+            {"collapsed": isCollapsed},
+        );
         return (
-            <div className="line line-text top-border focus-parent" data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} onClick={this.clickHandler}>
+            <div className={mainClass} data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} onClick={this.clickHandler}>
                 <div className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused})}/>
                 <LineAvatar line={line} cmd={null}/>
                 <div className="line-content">
@@ -256,6 +269,10 @@ class Prompt extends React.Component<{rptr : RemotePtrType, festate : FeStateTyp
         if (remote && remote.remoteopts && remote.remoteopts.color) {
             colorClass = "color-" + remote.remoteopts.color;
         }
+        // TESTING cwd shortening with triple colon character
+        // if (cwd.startsWith("~/work/gopath/src/github.com/scripthaus-dev")) {
+        //     cwd = cwd.replace("~/work/gopath/src/github.com/scripthaus-dev", "\u22EEscripthaus-dev");
+        // }
         return (
             <span className={cn("term-prompt", colorClass)}>[{remoteStr}] {cwd} {isRoot ? "#" : "$"}</span>
         );
@@ -506,7 +523,7 @@ class MarkdownRenderer extends React.Component<{sw : ScreenWindow, line : LineTy
 }
 
 @mobxReact.observer
-class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType, collapsed : OV<boolean>, topBorder : boolean}, {}> {
+class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType, topBorder : boolean, renderMode : RenderModeType, overrideCollapsed : OV<boolean>}, {}> {
     lineRef : React.RefObject<any> = React.createRef();
     cmdTextRef : React.RefObject<any> = React.createRef();
     rtnStateDiff : mobx.IObservableValue<string> = mobx.observable.box(null, {name: "linecmd-rtn-state-diff"});
@@ -520,8 +537,8 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
     }
 
     checkStateDiffLoad() : void {
-        let {line, staticRender, visible, collapsed} = this.props;
-        if (staticRender || collapsed.get()) {
+        let {line, staticRender, visible} = this.props;
+        if (staticRender || this.isCollapsed()) {
             return;
         }
         if (!visible) {
@@ -737,9 +754,10 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
 
     @boundMethod
     handleCollapsedClick() {
+        let {overrideCollapsed} = this.props;
         mobx.action(() => {
-            let isCollapsed = this.props.collapsed.get();
-            this.props.collapsed.set(!isCollapsed);
+            let isCollapsed = overrideCollapsed.get();
+            overrideCollapsed.set(!isCollapsed);
         })();
     }
 
@@ -748,23 +766,33 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         return "line-" + getLineId(line);
     }
 
+    isCollapsed() : boolean {
+        let {renderMode, overrideCollapsed} = this.props;
+        return (renderMode == "collapsed" && !overrideCollapsed.get());
+    }
+
     renderSimple() {
-        let {sw, line, width, topBorder} = this.props;
+        let {sw, line, width, topBorder, renderMode} = this.props;
         let cmd = GlobalModel.getCmd(line);
-        let usedRows = sw.getUsedRows(line, cmd, width);
+        let isCollapsed = this.isCollapsed();
         let mainDivCn = cn(
             "line",
             "line-cmd",
             {"top-border": topBorder},
+            {"collapsed": isCollapsed},
         );
         // header is 36px tall, padding+border = 6px
+        // collapsed header is 24px tall + 6px
         // zero-terminal is 0px
         // terminal-wrapper overhead is 11px (margin/padding)
         // inner-height, if zero-lines => 42
         //               else: 53+(lines*lineheight)
-        let height = 42; // height of zero height terminal
-        if (usedRows > 0) {
-            height = 53 + termHeightFromRows(usedRows, GlobalModel.termFontSize.get());
+        let height = (isCollapsed ? 30 : 42); // height of zero height terminal
+        if (!isCollapsed) {
+            let usedRows = sw.getUsedRows(line, cmd, width);
+            if (usedRows > 0) {
+                height = 53 + termHeightFromRows(usedRows, GlobalModel.termFontSize.get());
+            }
         }
         return (
             <div className={mainDivCn} id={this.getLineDomId()} ref={this.lineRef} data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} style={{height: height}}>
@@ -795,7 +823,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
     }
     
     render() {
-        let {sw, line, width, staticRender, visible, topBorder} = this.props;
+        let {sw, line, width, staticRender, visible, topBorder, renderMode} = this.props;
         let model = GlobalModel;
         let lineid = line.lineid;
         let isVisible = visible.get();
@@ -825,7 +853,8 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         }, {name: "computed-isFgFocused"}).get();
         let isStatic = staticRender;
         let isRunning = cmd.isRunning()
-        let isCollapsed = this.props.collapsed.get();
+        let isCollapsed = this.isCollapsed();
+        let isExpanded = this.isCmdExpanded.get();
         let rsdiff = this.rtnStateDiff.get();
         // console.log("render", "#" + line.linenum, termHeight, usedRows, cmd.getStatus(), (this.rtnStateDiff.get() != null), (!cmd.isRunning() ? "cmd-done" : "running"));
         let mainDivCn = cn(
@@ -846,12 +875,14 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                  ref={this.lineRef} onClick={this.handleClick}
                  data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} data-cmdid={line.cmdid}>
                 <div key="focus" className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused}, {"fg-focus": isFgFocused})}/>
-                <div key="header" className={cn("line-header", {"is-expanded": this.isCmdExpanded.get()})}>
+                <div key="header" className={cn("line-header", {"is-expanded": isExpanded}, {"is-collapsed": isCollapsed})}>
                     <LineAvatar line={line} cmd={cmd}/>
-                    <div style={{display: "none"}} key="collapsed" className="collapsed-indicator" title={isCollapsed ? "output collapsed, click to show" : "click to hide output" } onClick={this.handleCollapsedClick}>
-                        <If condition={isCollapsed}><i className="fa fa-caret-right"/></If>
-                        <If condition={!isCollapsed}><i className="fa fa-caret-down"/></If>
-                    </div>
+                    <If condition={renderMode == "collapsed"}>
+                        <div key="collapsed" className="collapsed-indicator" title={isCollapsed ? "output collapsed, click to show" : "click to hide output" } onClick={this.handleCollapsedClick}>
+                            <If condition={isCollapsed}><i className="fa fa-caret-right"/></If>
+                            <If condition={!isCollapsed}><i className="fa fa-caret-down"/></If>
+                        </div>
+                    </If>
                     {this.renderMetaWrap(cmd)}
                     <div key="pin" title="Pin" className={cn("line-icon", {"active": line.pinned})} onClick={this.clickPin} style={{display: "none"}}>
                         <i className="fa fa-thumb-tack"/>
@@ -885,7 +916,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
 }
 
 @mobxReact.observer
-class Line extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType, collapsed : OV<boolean>, topBorder : boolean}, {}> {
+class Line extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType, overrideCollapsed : OV<boolean>, topBorder : boolean, renderMode : RenderModeType}, {}> {
     render() {
         let line = this.props.line;
         if (line.archived) {
@@ -2282,7 +2313,7 @@ class CmdInput extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
-class LinesView extends React.Component<{sw : ScreenWindow, width : number, lines : LineType[]}, {}> {
+class LinesView extends React.Component<{sw : ScreenWindow, width : number, lines : LineType[], renderMode : RenderModeType}, {}> {
     rszObs : any;
     linesRef : React.RefObject<any>;
     staticRender : OV<boolean> = mobx.observable.box(true, {name: "static-render"});
@@ -2595,7 +2626,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
     }
     
     render() {
-        let {sw, width, lines} = this.props;
+        let {sw, width, lines, renderMode} = this.props;
         let selectedLine = sw.selectedLine.get();  // for re-rendering
         let line : LineType = null;
         for (let i=0; i<lines.length; i++) {
@@ -2627,7 +2658,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
                 lineElements.push(sepElem);
             }
             let topBorder = (dateSepStr == null) && this.hasTopBorder(lines, idx);
-            let lineElem = <Line key={line.lineid} line={line} sw={sw} width={width} visible={this.visibleMap.get(lineNumStr)} staticRender={this.staticRender.get()} onHeightChange={this.onHeightChange} collapsed={this.collapsedMap.get(lineNumStr)} topBorder={topBorder}/>;
+            let lineElem = <Line key={line.lineid} line={line} sw={sw} width={width} visible={this.visibleMap.get(lineNumStr)} staticRender={this.staticRender.get()} onHeightChange={this.onHeightChange} overrideCollapsed={this.collapsedMap.get(lineNumStr)} topBorder={topBorder} renderMode={renderMode}/>;
             lineElements.push(lineElem);
         }
         return (
@@ -2648,6 +2679,8 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
     width : mobx.IObservableValue<number> = mobx.observable.box(0, {name: "sw-view-width"});
     height : mobx.IObservableValue<number> = mobx.observable.box(0, {name: "sw-view-height"});
     setSize_debounced : (width : number, height : number) => void;
+
+    renderMode : OV<RenderModeType> = mobx.observable.box("normal", {name: "renderMode"});
 
     constructor(props : any) {
         super(props);
@@ -2713,6 +2746,14 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         return {position: "absolute", width: "100%", height: "100%", overflowX: "hidden"};
     }
 
+    @boundMethod
+    toggleRenderMode() {
+        let renderMode = this.renderMode.get();
+        mobx.action(() => {
+            this.renderMode.set(renderMode == "normal" ? "collapsed" : "normal");
+        })();
+    }
+
     renderError(message : string, fade : boolean) {
         let {sw} = this.props;
         return (
@@ -2751,13 +2792,22 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         let isActive = sw.isActive();
         let selectedLine = sw.selectedLine.get();
         let lines = win.getNonArchivedLines();
+        let renderMode = this.renderMode.get();
         return (
             <div className="window-view" style={this.getWindowViewStyle()} ref={this.windowViewRef}>
                 <div key="window-tag" className={cn("window-tag", {"is-active": isActive})}>
-                    <span>{sw.name.get()}</span>
+                    <div className="window-name">{sw.name.get()}</div>
+                    <div className="render-mode" onClick={this.toggleRenderMode}>
+                        <If condition={renderMode == "normal"}>
+                            <i title="collapse" className="fa-sharp fa-solid fa-arrows-to-line"/>
+                        </If>
+                        <If condition={renderMode == "collapsed"}>
+                            <i title="expand" className="fa-sharp fa-solid fa-arrows-from-line"/>
+                        </If>
+                    </div>
                 </div>
                 <If condition={lines.length > 0}>
-                    <LinesView sw={sw} width={this.width.get()} lines={lines}/>
+                    <LinesView sw={sw} width={this.width.get()} lines={lines} renderMode={renderMode}/>
                 </If>
                 <If condition={lines.length == 0}>
                     <div key="window-empty" className="window-empty">
