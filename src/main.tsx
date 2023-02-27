@@ -199,7 +199,7 @@ class LineAvatar extends React.Component<{line : LineType, cmd : Cmd}, {}> {
                     <i className="fa fa-exclamation-triangle status-icon"/>
                 </If>
                 <If condition={status == "detached"}>
-                    <i className="fa fa-refresh status-icon"/>
+                    <i className="fa fa-rotate status-icon"/>
                 </If>
             </div>
         );
@@ -858,10 +858,10 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                     </div>
                     <div key="bookmark" title="Bookmark" className={cn("line-icon", "line-bookmark", {"active": line.bookmarked})} onClick={this.clickBookmark}>
                         <If condition={!line.bookmarked}>
-                            <i className="fa fa-bookmark-o"/>
+                            <i className="fa-sharp fa-regular fa-bookmark"/>
                         </If>
                         <If condition={line.bookmarked}>
-                            <i className="fa fa-bookmark"/>
+                            <i className="fa-sharp fa-solid fa-bookmark"/>
                         </If>
                     </div>
                 </div>
@@ -2960,10 +2960,10 @@ class RemoteStatusLight extends React.Component<{remote : RemoteType}, {}> {
         }
         let icon = "fa-circle"
         if (status == "connecting") {
-            icon = (wfp ? "fa-key" : "fa-refresh");
+            icon = (wfp ? "fa-sharp fa-solid fa-key" : "fa-sharp fa-solid fa-rotate");
         }
         return (
-            <i className={cn("remote-status fa", icon, "status-" + status)}/>
+            <i className={cn("remote-status", icon, "status-" + status)}/>
         );
     }
 }
@@ -3119,10 +3119,10 @@ class MainSideBar extends React.Component<{}, {}> {
                     </p>
                     <ul className="menu-list">
                         <li>
-                            <a target="_blank" href="https://docs.getprompt.dev/"><i className="fa fa-book"/> documentation</a>
+                            <a target="_blank" href="https://docs.getprompt.dev/"><i style={{width: 20}} className="fa fa-book"/> documentation</a>
                         </li>
                         <li>
-                            <a target="_blank" href="https://discord.gg/XfvZ334gwU"><i className="fa fa-comments"/> discord</a>
+                            <a target="_blank" href="https://discord.gg/XfvZ334gwU"><i style={{width: 20}} className="fa-brands fa-discord"/> discord</a>
                         </li>
                     </ul>
                     <p className="menu-label">
@@ -3225,7 +3225,7 @@ class DisconnectedModal extends React.Component<{}, {}> {
                         <div className="spacer"/>
                         <button onClick={this.tryReconnect} className="button">
                             <span className="icon">
-                                <i className="fa fa-refresh"/>
+                                <i className="fa fa-rotate"/>
                             </span>
                             <span>Try Reconnect</span>
                         </button>

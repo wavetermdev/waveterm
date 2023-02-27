@@ -146,13 +146,13 @@ class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
                         </div>
                     </If>
                     <div className={cn("bookmark-code", {"no-desc": !hasDesc})}>
-                        <div className="use-button" title="Use Bookmark" onClick={this.handleUse}><i className="fa fa-check"/></div>
+                        <div className="use-button" title="Use Bookmark" onClick={this.handleUse}><i className="fa-sharp fa-solid fa-check"/></div>
                         <code>{bm.cmdstr}</code>
                     </div>
                 </div>
                 <div className="bookmark-controls">
-                    <div className="bookmark-control" onClick={this.handleEditClick}><i className="fa fa-pencil"/></div>
-                    <div className="bookmark-control" onClick={this.handleDeleteClick}><i className="fa fa-trash"/></div>
+                    <div className="bookmark-control" onClick={this.handleEditClick}><i className="fa-sharp fa-solid fa-pen"/></div>
+                    <div className="bookmark-control" onClick={this.handleDeleteClick}><i className="fa-sharp fa-solid fa-trash"/></div>
                 </div>
             </div>
         );
@@ -193,9 +193,9 @@ class BookmarksView extends React.Component<{}, {}> {
                     <div className="bookmarks-help">
                         <div className="help-entry">
                             [Enter] to Use Bookmark<br/>
-                            [Backspace/Delete]x2 or <i className="fa fa-trash"/> to Delete<br/>
+                            [Backspace/Delete]x2 or <i className="fa-sharp fa-solid fa-trash"/> to Delete<br/>
                             [Arrow Up]/[Arrow Down]/[PageUp]/[PageDown] to Move in List<br/>
-                            [e] or <i className="fa fa-pencil"/> to Edit<br/>
+                            [e] or <i className="fa-sharp fa-solid fa-pen"/> to Edit<br/>
                         </div>
                     </div>
                 </If>
