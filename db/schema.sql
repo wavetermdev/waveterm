@@ -7,7 +7,7 @@ CREATE TABLE client (
     userpublickeybytes blob NOT NULL,
     userprivatekeybytes blob NOT NULL,
     winsize json NOT NULL
-, clientopts json NOT NULL DEFAULT '');
+, clientopts json NOT NULL DEFAULT '', feopts json NOT NULL DEFAULT '{}');
 CREATE TABLE session (
     sessionid varchar(36) PRIMARY KEY,
     name varchar(50) NOT NULL,
@@ -164,7 +164,7 @@ CREATE TABLE activity (
     tzoffset int NOT NULL,
     clientversion varchar(20) NOT NULL,
     clientarch varchar(20) NOT NULL
-);
+, buildtime varchar(20) NOT NULL DEFAULT '-', osrelease varchar(20) NOT NULL DEFAULT '-');
 CREATE TABLE bookmark (
     bookmarkid varchar(36) PRIMARY KEY,
     createdts bigint NOT NULL,
