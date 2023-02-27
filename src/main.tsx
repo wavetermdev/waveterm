@@ -508,9 +508,12 @@ class MarkdownRenderer extends React.Component<{sw : ScreenWindow, line : LineTy
 @mobxReact.observer
 class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType, collapsed : OV<boolean>, topBorder : boolean}, {}> {
     lineRef : React.RefObject<any> = React.createRef();
+    cmdTextRef : React.RefObject<any> = React.createRef();
     rtnStateDiff : mobx.IObservableValue<string> = mobx.observable.box(null, {name: "linecmd-rtn-state-diff"});
     rtnStateDiffFetched : boolean = false;
     lastHeight : number;
+    isOverflow : OV<boolean> = mobx.observable.box(false, {name: "line-overflow"});
+    isCmdExpanded : OV<boolean> = mobx.observable.box(false, {name: "cmd-expanded"});
     
     constructor(props) {
         super(props);
@@ -567,6 +570,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
 
     componentDidMount() {
         this.componentDidUpdate(null, null, null);
+        this.checkCmdText();
     }
 
     // FIXME
@@ -585,6 +589,13 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         }
     }
 
+    @boundMethod
+    handleExpandCmd() : void {
+        mobx.action(() => {
+            this.isCmdExpanded.set(true);
+        })();
+    }
+
     renderCmdText(cmd : Cmd, remote : RemoteType) : any {
         if (cmd == null) {
             return (
@@ -593,11 +604,31 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                 </div>
             );
         }
-        let remoteStr = getRemoteStr(cmd.remote);
-        let cwd = getCwdStr(remote, cmd.getRemoteFeState());
+        if (this.isCmdExpanded.get()) {
+            return (
+                <React.Fragment>
+                    <div key="meta2" className="meta meta-line2">
+                        <div className="metapart-mono cmdtext">
+                            <Prompt rptr={cmd.remote} festate={cmd.getRemoteFeState()}/>
+                        </div>
+                    </div>
+                    <div key="meta3" className="meta meta-line3 cmdtext-expanded-wrapper">
+                        <div className="cmdtext-expanded">{cmd.getFullCmdText()}</div>
+                    </div>
+                </React.Fragment>
+            );
+        }
+        let isMultiLine = cmd.isMultiLineCmdText();
         return (
-            <div className="metapart-mono cmdtext">
-                <Prompt rptr={cmd.remote} festate={cmd.getRemoteFeState()}/> {cmd.getSingleLineCmdText()}
+            <div key="meta2" className="meta meta-line2" ref={this.cmdTextRef}>
+                <div className="metapart-mono cmdtext">
+                    <Prompt rptr={cmd.remote} festate={cmd.getRemoteFeState()}/>
+                    <span> </span>
+                    <span>{cmd.getSingleLineCmdText()}</span>
+                </div>
+                <If condition={this.isOverflow.get() || isMultiLine}>
+                    <div className="cmdtext-overflow" onClick={this.handleExpandCmd}>...&#x25BC;</div>
+                </If>
             </div>
         );
     }
@@ -614,6 +645,28 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
     componentDidUpdate(prevProps, prevState, snapshot : {height : number}) : void {
         this.handleHeightChange();
         this.checkStateDiffLoad();
+        this.checkCmdText();
+    }
+
+    checkCmdText() {
+        let metaElem = this.cmdTextRef.current;
+        if (metaElem == null || metaElem.childNodes.length == 0) {
+            return;
+        }
+        let metaElemWidth = metaElem.offsetWidth;
+        let metaChild = metaElem.firstChild;
+        let children = metaChild.childNodes;
+        let childWidth = 0;
+        for (let i=0; i<children.length; i++) {
+            let ch = children[i];
+            childWidth += ch.offsetWidth;
+        }
+        let isOverflow = (childWidth > metaElemWidth);
+        if (isOverflow != this.isOverflow.get()) {
+            mobx.action(() => {
+                this.isOverflow.set(isOverflow);
+            })();
+        }
     }
 
     @boundMethod
@@ -719,6 +772,27 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
             </div>
         );
     }
+
+    renderMetaWrap(cmd : Cmd) {
+        let {line} = this.props;
+        let model = GlobalModel;
+        let formattedTime = getLineDateTimeStr(line.ts);
+        let termOpts = cmd.getTermOpts();
+        let remote = model.getRemote(cmd.remoteId);
+        return (
+            <div key="meta" className="meta-wrap">
+                <div key="meta1" className="meta meta-line1">
+                    <div className="ts">{formattedTime}</div>
+                    <div>&nbsp;</div>
+                    <div className="termopts">
+                        ({termOpts.rows}x{termOpts.cols})
+                        <If condition={cmd.isRunning() && false}><i onClick={this.handleResizeButton} className="resize-button fa fa-arrows-alt"/></If>
+                    </div>
+                </div>
+                {this.renderCmdText(cmd, remote)}
+            </div>
+        );
+    }
     
     render() {
         let {sw, line, width, staticRender, visible, topBorder} = this.props;
@@ -737,9 +811,7 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                 </div>
             );
         }
-        let remote = model.getRemote(cmd.remoteId);
         let status = cmd.getStatus();
-        let termOpts = cmd.getTermOpts();
         let lineNumStr = (line.linenumtemp ? "~" : "") + String(line.linenum);
         let isSelected = mobx.computed(() => (sw.selectedLine.get() == line.linenum), {name: "computed-isSelected"}).get();
         let isPhysicalFocused = mobx.computed(() => sw.getIsFocused(line.linenum), {name: "computed-getIsFocused"}).get();
@@ -768,33 +840,19 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
         let RendererComponent : RendererComponentType = TerminalRenderer;
         if (line.renderer == "image") {
             RendererComponent = ImageRenderer;
-        }
-        
+        }        
         return (
             <div className={mainDivCn} id={"line-" + getLineId(line)}
                  ref={this.lineRef} onClick={this.handleClick}
                  data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} data-cmdid={line.cmdid}>
                 <div key="focus" className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused}, {"fg-focus": isFgFocused})}/>
-                <div key="header" className="line-header">
+                <div key="header" className={cn("line-header", {"is-expanded": this.isCmdExpanded.get()})}>
                     <LineAvatar line={line} cmd={cmd}/>
                     <div style={{display: "none"}} key="collapsed" className="collapsed-indicator" title={isCollapsed ? "output collapsed, click to show" : "click to hide output" } onClick={this.handleCollapsedClick}>
                         <If condition={isCollapsed}><i className="fa fa-caret-right"/></If>
                         <If condition={!isCollapsed}><i className="fa fa-caret-down"/></If>
                     </div>
-                    <div key="meta" className="meta-wrap">
-                        <div key="meta1" className="meta meta-line1">
-                            <div className="ts">{formattedTime}</div>
-                            <div>&nbsp;</div>
-                            <div className="termopts">
-                                ({termOpts.rows}x{termOpts.cols})
-                                <If condition={cmd.isRunning() && false}><i onClick={this.handleResizeButton} className="resize-button fa fa-arrows-alt"/></If>
-                            </div>
-                        </div>
-                        <div key="meta2" className="meta meta-line2">
-                            {this.renderCmdText(cmd, remote)}
-                        </div>
-                    </div>
-                    <div key="spacer" className="flex-spacer"/>
+                    {this.renderMetaWrap(cmd)}
                     <div key="pin" title="Pin" className={cn("line-icon", {"active": line.pinned})} onClick={this.clickPin} style={{display: "none"}}>
                         <i className="fa fa-thumb-tack"/>
                     </div>
@@ -2175,8 +2233,6 @@ class CmdInput extends React.Component<{}, {}> {
             remote = GlobalModel.getRemote(ri.remoteid);
             remoteState = ri.festate;
         }
-        let remoteStr = getRemoteStr(rptr);
-        let cwdStr = getCwdStr(remote, remoteState);
         let infoShow = inputModel.infoShow.get();
         let historyShow = !infoShow && inputModel.historyShow.get();
         let infoMsg = inputModel.infoMsg.get();

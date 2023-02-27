@@ -190,6 +190,16 @@ class Cmd {
         return this.data.get().festate;
     }
 
+    isMultiLineCmdText() : boolean {
+        let cmdText = this.data.get().cmdstr;
+        if (cmdText == null) {
+            return "(none)";
+        }
+        cmdText = cmdText.trim();
+        let nlIdx = cmdText.indexOf("\n");
+        return (nlIdx != -1);
+    }
+
     getSingleLineCmdText() {
         let cmdText = this.data.get().cmdstr;
         if (cmdText == null) {
@@ -198,11 +208,17 @@ class Cmd {
         cmdText = cmdText.trim();
         let nlIdx = cmdText.indexOf("\n");
         if (nlIdx != -1) {
-            cmdText = cmdText.substr(0, nlIdx) + "...";
+            cmdText = cmdText.substr(0, nlIdx);
         }
-        if (cmdText.length > 80) {
-            cmdText = cmdText.substr(0, 77) + "...";
+        return cmdText;
+    }
+
+    getFullCmdText() {
+        let cmdText = this.data.get().cmdstr;
+        if (cmdText == null) {
+            return "(none)";
         }
+        cmdText = cmdText.trim();
         return cmdText;
     }
 

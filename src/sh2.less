@@ -714,9 +714,15 @@ body::-webkit-scrollbar {
         display: flex;
         flex-direction: row;
         height: 36px;
+        width: 100%;
+
+        &.is-expanded {
+            height: auto;
+        }
         
         .meta-wrap {
-            flex-grow: 1;
+            flex: 1 1 0px;
+            min-width: 0;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -728,7 +734,8 @@ body::-webkit-scrollbar {
     }
 
     .line-icon {
-        display: none;
+        display: block;
+        visibility: hidden;
         cursor: pointer;
         padding: 3px;
         font-size: 1.5rem;
@@ -743,6 +750,7 @@ body::-webkit-scrollbar {
     }
 
     .line-icon.active {
+        visibility: visible;
         display: block;
 
         i.fa-star, i.fa-thumb-tack {
@@ -755,6 +763,7 @@ body::-webkit-scrollbar {
     }
 
     &:hover .line-icon {
+        visibility: visible;
         display: block;
     }
 
@@ -1035,7 +1044,7 @@ body::-webkit-scrollbar {
         flex-direction: row;
         font-size: 1rem;
         margin-top: -4px;
-        
+
         .user {
             color: lighten(@soft-blue, 10%);
             font-weight: bold;
@@ -1078,6 +1087,31 @@ body::-webkit-scrollbar {
             font-weight: bold;
             overflow: hidden;
             margin-left: 0;
+        }
+
+        .cmdtext-overflow {
+            flex-shrink: 0;
+            padding-right: 2px;
+            color: white;
+            cursor: pointer;
+            .mono-font(16px);
+            margin-top: 4px;
+        }
+    }
+
+    .cmdtext-expanded-wrapper {
+        margin-top: 2px;
+        padding-left: 6px;
+        overflow-y: auto;
+        max-height: 54px;
+        border-left: 2px solid #333;
+        margin-left: 3px;
+
+        .cmdtext-expanded {
+            white-space: pre;
+            .mono-font(14px);
+            color: white;
+            padding-bottom: 5px;
         }
     }
 }
