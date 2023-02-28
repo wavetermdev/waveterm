@@ -173,9 +173,9 @@ class BookmarksView extends React.Component<{}, {}> {
         let bookmark : BookmarkType = null;
         return (
             <div className={cn("bookmarks-view", {"is-hidden": isHidden})}>
-                <div className="close-button" onClick={this.clickHandler}><i className="fa fa-times"></i></div>
+                <div className="close-button" onClick={this.clickHandler}><i className="fa-sharp fa-solid fa-xmark"></i></div>
                 <div className="bookmarks-title">
-                    <i className="fa fa-bookmark" style={{marginRight: 10}}/>
+                    <i className="fa-sharp fa-solid fa-bookmark" style={{marginRight: 10}}/>
                     BOOKMARKS
                 </div>
                 <div className="bookmarks-list">
@@ -185,7 +185,7 @@ class BookmarksView extends React.Component<{}, {}> {
                     <If condition={bookmarks.length == 0}>
                         <div className="no-bookmarks">
                             No Bookmarks.<br/>
-                            Use the <i className="fa fa-bookmark"/> icon on commands to add your first bookmark.
+                            Use the <i className="fa-sharp fa-solid fa-bookmark"/> icon on commands to add your first bookmark.
                         </div>
                     </If>
                 </div>

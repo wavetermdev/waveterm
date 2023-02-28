@@ -198,10 +198,10 @@ class LineAvatar extends React.Component<{line : LineType, cmd : Cmd}, {}> {
             <div className={cn("avatar", "num-"+lineNumStr.length, "status-" + status, {"ephemeral": line.ephemeral}, {"rtnstate": rtnstate})}>
                 {lineNumStr}
                 <If condition={status == "hangup" || status == "error"}>
-                    <i className="fa fa-exclamation-triangle status-icon"/>
+                    <i className="fa-sharp fa-solid fa-triangle-exclamation status-icon"/>
                 </If>
                 <If condition={status == "detached"}>
-                    <i className="fa fa-rotate status-icon"/>
+                    <i className="fa-sharp fa-solid fa-rotate status-icon"/>
                 </If>
                 <If condition={isComment}>
                     <i className="fa-sharp fa-solid fa-comment comment-icon"/>
@@ -814,7 +814,6 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                     <div>&nbsp;</div>
                     <div className="termopts">
                         ({termOpts.rows}x{termOpts.cols})
-                        <If condition={cmd.isRunning() && false}><i onClick={this.handleResizeButton} className="resize-button fa fa-arrows-alt"/></If>
                     </div>
                 </div>
                 {this.renderCmdText(cmd, remote)}
@@ -879,13 +878,13 @@ class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width
                     <LineAvatar line={line} cmd={cmd}/>
                     <If condition={renderMode == "collapsed"}>
                         <div key="collapsed" className="collapsed-indicator" title={isCollapsed ? "output collapsed, click to show" : "click to hide output" } onClick={this.handleCollapsedClick}>
-                            <If condition={isCollapsed}><i className="fa fa-caret-right"/></If>
-                            <If condition={!isCollapsed}><i className="fa fa-caret-down"/></If>
+                            <If condition={isCollapsed}><i className="fa-sharp fa-solid fa-caret-right"/></If>
+                            <If condition={!isCollapsed}><i className="fa-sharp fa-solid fa-caret-down"/></If>
                         </div>
                     </If>
                     {this.renderMetaWrap(cmd)}
                     <div key="pin" title="Pin" className={cn("line-icon", {"active": line.pinned})} onClick={this.clickPin} style={{display: "none"}}>
-                        <i className="fa fa-thumb-tack"/>
+                        <i className="fa-sharp fa-solid fa-thumbtack"/>
                     </div>
                     <div key="bookmark" title="Bookmark" className={cn("line-icon", "line-bookmark", {"active": line.bookmarked})} onClick={this.clickBookmark}>
                         <If condition={!line.bookmarked}>
@@ -1928,7 +1927,7 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
                         <div className="remote-field-control text-input">
                             <input type="password" onFocus={this.onFocusPasswordStr} onChange={this.onChangePasswordStr} value={this.passwordStr.get()}/>
                             <If condition={this.canResetPw()}>
-                                <i onClick={this.resetPw} title="restore to original password" className="icon fa fa-undo undo-icon"/>
+                                <i onClick={this.resetPw} title="restore to original password" className="icon fa-sharp fa-solid fa-rotate-left undo-icon"/>
                             </If>
                         </div>
                     </div>
@@ -2276,10 +2275,10 @@ class CmdInput extends React.Component<{}, {}> {
                 <div key="focus" className={cn("focus-indicator", {"active": focusVal})}/>
                 <div key="minmax" onClick={this.onInfoToggle} className="input-minmax-control">
                     <If condition={infoShow || historyShow}>
-                        <i className="fa fa-chevron-down"/>
+                        <i className="fa-sharp fa-solid fa-chevron-down"/>
                     </If>
                     <If condition={!(infoShow || historyShow) && hasInfo}>
-                        <i className="fa fa-chevron-up"/>
+                        <i className="fa-sharp fa-solid fa-chevron-up"/>
                     </If>
                 </div>
                 <If condition={historyShow}>
@@ -2302,7 +2301,7 @@ class CmdInput extends React.Component<{}, {}> {
                     <div className="control cmd-exec">
                         <div onClick={GlobalModel.inputModel.uiSubmitCommand} className="button">
                             <span className="icon">
-                                <i className="fa fa-rocket"/>
+                                <i className="fa-sharp fa-solid fa-rocket"/>
                             </span>
                         </div>
                     </div>
@@ -2934,7 +2933,7 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
             <div className={cn("screen-tabs", {"scrolling": this.scrolling.get()})} ref={this.tabsRef} onScroll={this.handleScroll}>
                 <For each="screen" index="index" of={showingScreens}>
                     <div key={screen.screenId} data-screenid={screen.screenId} className={cn("screen-tab", {"is-active": activeScreenId == screen.screenId, "is-archived": screen.archived.get()}, "color-" + screen.getTabColor())} onClick={() => this.handleSwitchScreen(screen.screenId)} onContextMenu={(event) => this.handleContextMenu(event, screen.screenId)}>
-                        <If condition={screen.archived.get()}><i title="archived" className="fa fa-archive"/></If>{screen.name.get()}
+                        <If condition={screen.archived.get()}><i title="archived" className="fa-sharp fa-solid fa-box-archive"/></If>{screen.name.get()}
                         <If condition={index+1 <= 9}>
                             <div className="tab-index">&#x2318;{index+1}</div>
                         </If>
@@ -3008,7 +3007,7 @@ class RemoteStatusLight extends React.Component<{remote : RemoteType}, {}> {
             status = remote.status;
             wfp = remote.waitingforpassword;
         }
-        let icon = "fa-circle"
+        let icon = "fa-sharp fa-solid fa-circle"
         if (status == "connecting") {
             icon = (wfp ? "fa-sharp fa-solid fa-key" : "fa-sharp fa-solid fa-rotate");
         }
@@ -3117,8 +3116,8 @@ class MainSideBar extends React.Component<{}, {}> {
                 </h1>
                 <div className="collapse-container">
                     <div className="arrow-container" onClick={this.toggleCollapsed}>
-                        <If condition={!isCollapsed}><i className="fa fa-arrow-left"/></If>
-                        <If condition={isCollapsed}><i className="fa fa-arrow-right"/></If>
+                        <If condition={!isCollapsed}><i className="fa-sharp fa-solid fa-arrow-left"/></If>
+                        <If condition={isCollapsed}><i className="fa-sharp fa-solid fa-arrow-right"/></If>
                     </div>
                 </div>
                 <div className="menu">
@@ -3136,25 +3135,25 @@ class MainSideBar extends React.Component<{}, {}> {
                                         <span className="session-num">{idx+1}&nbsp;</span>
                                     </If>
                                     <If condition={session.archived.get()}>
-                                        <i title="archived" className="fa fa-archive"/>&nbsp;
+                                        <i title="archived" className="fa-sharp fa-solid fa-box-archive"/>&nbsp;
                                     </If>
                                     {session.name.get()}
                                 </a></li>
                             </For>
-                            <li className="new-session"><a onClick={() => this.handleNewSession()}><i className="fa fa-plus"/> New Session</a></li>
+                            <li className="new-session"><a onClick={() => this.handleNewSession()}><i className="fa-sharp fa-solid fa-plus"/> New Session</a></li>
                         </If>
                     </ul>
                     <p className="menu-label">
                         Shared Sessions
                     </p>
                     <ul className="menu-list">
-                        <li className="new-session"><a onClick={() => this.handleNewSharedSession()}><i className="fa fa-plus"/> New Session</a></li>
+                        <li className="new-session"><a onClick={() => this.handleNewSharedSession()}><i className="fa-sharp fa-solid fa-plus"/> New Session</a></li>
                     </ul>
                     <ul className="menu-list" style={{marginTop: 20, display: "none"}}>
-                        <li className="menu-history"><a onClick={this.handleHistoryClick} className={cn({"is-active": (mainView == "history")})}><i className="fa fa-clock-o"/> HISTORY</a></li>
+                        <li className="menu-history"><a onClick={this.handleHistoryClick} className={cn({"is-active": (mainView == "history")})}><i className="fa-sharp fa-solid fa-clock"/> HISTORY</a></li>
                     </ul>
                     <ul className="menu-list" style={{marginTop: 20}}>
-                        <li className="menu-bookmarks"><a onClick={this.handleBookmarksClick} className={cn({"is-active": (mainView == "bookmarks")})}><i className="fa fa-bookmark"/> BOOKMARKS</a></li>
+                        <li className="menu-bookmarks"><a onClick={this.handleBookmarksClick} className={cn({"is-active": (mainView == "bookmarks")})}><i className="fa-sharp fa-solid fa-bookmark"/> BOOKMARKS</a></li>
                     </ul>
                     <div className="spacer"></div>
                     <If condition={GlobalModel.debugSW.get() && sw != null}>
@@ -3169,7 +3168,10 @@ class MainSideBar extends React.Component<{}, {}> {
                     </p>
                     <ul className="menu-list">
                         <li>
-                            <a target="_blank" href="https://docs.getprompt.dev/"><i style={{width: 20}} className="fa fa-book"/> documentation</a>
+                            <a target="_blank" href="https://docs.getprompt.dev/releasenotes"><i style={{width: 20}} className="fa-sharp fa-solid fa-notes"/> release notes</a>
+                        </li>
+                        <li>
+                            <a target="_blank" href="https://docs.getprompt.dev/"><i style={{width: 20}} className="fa-sharp fa-solid fa-book"/> documentation</a>
                         </li>
                         <li>
                             <a target="_blank" href="https://discord.gg/XfvZ334gwU"><i style={{width: 20}} className="fa-brands fa-discord"/> discord</a>
@@ -3186,7 +3188,7 @@ class MainSideBar extends React.Component<{}, {}> {
                             </a></li>
                         </For>
                         <li key="add-remote" className="add-remote">
-                            <a onClick={() => this.handleAddRemote()}><i className="fa fa-plus"/> Add Connection</a>
+                            <a onClick={() => this.handleAddRemote()}><i className="fa-sharp fa-solid fa-plus"/> Add Connection</a>
                         </li>
                     </ul>
                     <div className="bottom-spacer"></div>
@@ -3266,22 +3268,22 @@ class DisconnectedModal extends React.Component<{}, {}> {
                     <div className="message-footer">
                         <div className="footer-text-link" style={{marginLeft: 10}} onClick={this.handleShowLog}>
                             <If condition={!this.showLog.get()}>
-                                <i className="fa fa-plus"/> Show Log
+                                <i className="fa-sharp fa-solid fa-plus"/> Show Log
                             </If>
                             <If condition={this.showLog.get()}>
-                                <i className="fa fa-minus"/> Hide Log
+                                <i className="fa-sharp fa-solid fa-minus"/> Hide Log
                             </If>
                         </div>
                         <div className="spacer"/>
                         <button onClick={this.tryReconnect} className="button">
                             <span className="icon">
-                                <i className="fa fa-rotate"/>
+                                <i className="fa-sharp fa-solid fa-rotate"/>
                             </span>
                             <span>Try Reconnect</span>
                         </button>
                         <button onClick={this.restartServer} className="button is-danger" style={{marginLeft: 10}}>
                             <span className="icon">
-                                <i className="fa fa-exclamation-triangle"/>
+                                <i className="fa-sharp fa-solid fa-triangle-exclamation"/>
                             </span>
                             <span>Restart Server</span>
                         </button>
