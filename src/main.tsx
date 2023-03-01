@@ -117,7 +117,7 @@ function getCwdStr(remote : RemoteType, state : FeStateType) : string {
     if ((state == null || state.cwd == null) && remote != null) {
         return "~";
     }
-    let cwd = "(unknown)";
+    let cwd = "?";
     if (state && state.cwd) {
         cwd = state.cwd;
     }
