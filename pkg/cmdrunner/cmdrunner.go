@@ -112,6 +112,7 @@ func init() {
 	registerCmdFn("eval", EvalCommand)
 	registerCmdFn("comment", CommentCommand)
 	registerCmdFn("cr", CrCommand)
+	registerCmdFn("connect", CrCommand)
 	registerCmdFn("_compgen", CompGenCommand)
 	registerCmdFn("clear", ClearCommand)
 	registerCmdFn("reset", RemoteResetCommand)
@@ -203,6 +204,13 @@ func registerCmdFn(cmdName string, fn MetaCmdFnType) {
 
 func registerCmdAlias(cmdName string, fn MetaCmdFnType) {
 	MetaCmdFnMap[cmdName] = MetaCmdEntryType{IsAlias: true, Fn: fn}
+}
+
+func GetCmdStr(pk *scpacket.FeCommandPacketType) string {
+	if pk.MetaSubCmd == "" {
+		return pk.MetaCmd
+	}
+	return pk.MetaCmd + ":" + pk.MetaSubCmd
 }
 
 func HandleCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -1140,40 +1148,64 @@ func crShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, ids re
 	return update, nil
 }
 
+func GetFullRemoteDisplayName(rptr *sstore.RemotePtrType, rstate *remote.RemoteRuntimeState) string {
+	if rptr == nil {
+		return "(invalid)"
+	}
+	if rstate.RemoteAlias != "" {
+		fullName := rstate.RemoteAlias
+		if rptr.Name != "" {
+			fullName = fullName + ":" + rptr.Name
+		}
+		return fmt.Sprintf("[%s] (%s)", fullName, rstate.RemoteCanonicalName)
+	} else {
+		if rptr.Name != "" {
+			return fmt.Sprintf("[%s:%s]", rstate.RemoteCanonicalName, rptr.Name)
+		}
+		return fmt.Sprintf("[%s]", rstate.RemoteCanonicalName)
+	}
+}
+
 func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window)
 	if err != nil {
-		return nil, fmt.Errorf("/cr error: %w", err)
+		return nil, fmt.Errorf("/%s error: %w", GetCmdStr(pk), err)
 	}
 	newRemote := firstArg(pk)
 	if newRemote == "" {
 		return crShowCommand(ctx, pk, ids)
 	}
-	remoteName, rptr, rstate, err := resolveRemote(ctx, newRemote, ids.SessionId, ids.WindowId)
+	_, rptr, rstate, err := resolveRemote(ctx, newRemote, ids.SessionId, ids.WindowId)
 	if err != nil {
 		return nil, err
 	}
 	if rptr == nil {
-		return nil, fmt.Errorf("/cr error: remote %q not found", newRemote)
+		return nil, fmt.Errorf("/%s error: remote %q not found", GetCmdStr(pk), newRemote)
 	}
 	if rstate.Archived {
-		return nil, fmt.Errorf("/cr error: remote %q cannot switch to archived remote", newRemote)
+		return nil, fmt.Errorf("/%s error: remote %q cannot switch to archived remote", GetCmdStr(pk), newRemote)
 	}
 	err = sstore.UpdateCurRemote(ctx, ids.SessionId, ids.WindowId, *rptr)
 	if err != nil {
-		return nil, fmt.Errorf("/cr error: cannot update curremote: %w", err)
+		return nil, fmt.Errorf("/%s error: cannot update curremote: %w", GetCmdStr(pk), err)
 	}
-	update := sstore.ModelUpdate{
-		Windows: []*sstore.WindowType{&sstore.WindowType{
-			SessionId: ids.SessionId,
-			WindowId:  ids.WindowId,
-			CurRemote: *rptr,
-		}},
-		Info: &sstore.InfoMsgType{
-			InfoMsg:   fmt.Sprintf("current remote = %q", remoteName),
-			TimeoutMs: 2000,
-		},
+	outputStr := fmt.Sprintf("connected to %s", GetFullRemoteDisplayName(rptr, rstate))
+	cmd, err := makeStaticCmd(ctx, GetCmdStr(pk), ids, pk.GetRawStr(), []byte(outputStr))
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, err
 	}
+	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd)
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, err
+	}
+	update.Windows = []*sstore.WindowType{&sstore.WindowType{
+		SessionId: ids.SessionId,
+		WindowId:  ids.WindowId,
+		CurRemote: *rptr,
+	}}
+	update.Interactive = pk.Interactive
 	return update, nil
 }
 
