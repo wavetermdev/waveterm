@@ -125,7 +125,7 @@ class LineAvatar extends React.Component<{line : LineType, cmd : Cmd}, {}> {
 
 
 @mobxReact.observer
-class LineCmd extends React.Component<{sw : LineContainerModel, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType, topBorder : boolean, renderMode : RenderModeType, overrideCollapsed : OV<boolean>}, {}> {
+class LineCmd extends React.Component<{sw : LineContainerModel, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType, topBorder : boolean, renderMode : RenderModeType, overrideCollapsed : OV<boolean>, noSelect? : boolean}, {}> {
     lineRef : React.RefObject<any> = React.createRef();
     cmdTextRef : React.RefObject<any> = React.createRef();
     rtnStateDiff : mobx.IObservableValue<string> = mobx.observable.box(null, {name: "linecmd-rtn-state-diff"});
@@ -139,7 +139,7 @@ class LineCmd extends React.Component<{sw : LineContainerModel, line : LineType,
     }
 
     checkStateDiffLoad() : void {
-        let {line, staticRender, visible} = this.props;
+        let {sw, line, staticRender, visible} = this.props;
         if (staticRender || this.isCollapsed()) {
             return;
         }
@@ -150,7 +150,7 @@ class LineCmd extends React.Component<{sw : LineContainerModel, line : LineType,
             }
             return;
         }
-        let cmd = GlobalModel.getCmd(line);
+        let cmd = sw.getCmd(line);
         if (cmd == null || !cmd.getRtnState() || this.rtnStateDiffFetched) {
             return;
         }
@@ -310,7 +310,10 @@ class LineCmd extends React.Component<{sw : LineContainerModel, line : LineType,
 
     @boundMethod
     handleClick() {
-        let {line} = this.props;
+        let {line, noSelect} = this.props;
+        if (noSelect) {
+            return;
+        }
         let sel = window.getSelection();
         if (this.lineRef.current != null) {
             let selText = sel.toString();
@@ -375,7 +378,7 @@ class LineCmd extends React.Component<{sw : LineContainerModel, line : LineType,
 
     renderSimple() {
         let {sw, line, width, topBorder, renderMode} = this.props;
-        let cmd = GlobalModel.getCmd(line);
+        let cmd = sw.getCmd(line);
         let isCollapsed = this.isCollapsed();
         let mainDivCn = cn(
             "line",
@@ -432,7 +435,7 @@ class LineCmd extends React.Component<{sw : LineContainerModel, line : LineType,
             return this.renderSimple();
         }
         let formattedTime = getLineDateTimeStr(line.ts);
-        let cmd = model.getCmd(line);
+        let cmd = sw.getCmd(line);
         if (cmd == null) {
             return (
                 <div className="line line-invalid" id={this.getLineDomId()} ref={this.lineRef} data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid}>
@@ -517,7 +520,7 @@ class LineCmd extends React.Component<{sw : LineContainerModel, line : LineType,
 }
 
 @mobxReact.observer
-class Line extends React.Component<{sw : LineContainerModel, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType, overrideCollapsed : OV<boolean>, topBorder : boolean, renderMode : RenderModeType}, {}> {
+class Line extends React.Component<{sw : LineContainerModel, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType, overrideCollapsed : OV<boolean>, topBorder : boolean, renderMode : RenderModeType, noSelect? : boolean}, {}> {
     render() {
         let line = this.props.line;
         if (line.archived) {
@@ -571,10 +574,13 @@ class Prompt extends React.Component<{rptr : RemotePtrType, festate : FeStateTyp
 }
 
 @mobxReact.observer
-class LineText extends React.Component<{sw : LineContainerModel, line : LineType, renderMode : RenderModeType, topBorder : boolean}, {}> {
+class LineText extends React.Component<{sw : LineContainerModel, line : LineType, renderMode : RenderModeType, topBorder : boolean, noSelect? : boolean}, {}> {
     @boundMethod
     clickHandler() {
-        let {line} = this.props;
+        let {line, noSelect} = this.props;
+        if (noSelect) {
+            return;
+        }
         GlobalCommandRunner.swSelectLine(String(line.linenum));
     }
 
@@ -675,7 +681,7 @@ class ImageRenderer extends React.Component<{sw : LineContainerModel, line : Lin
     loadImage() : void {
         let {sw, line} = this.props;
         let model = GlobalModel;
-        let cmd = model.getCmd(line);
+        let cmd = sw.getCmd(line);
         if (cmd == null) {
             return;
         }
@@ -782,7 +788,7 @@ class TerminalRenderer extends React.Component<{sw : LineContainerModel, line : 
     loadTerminal() : void {
         let {sw, line} = this.props;
         let model = GlobalModel;
-        let cmd = model.getCmd(line);
+        let cmd = sw.getCmd(line);
         if (cmd == null) {
             return;
         }
@@ -827,7 +833,7 @@ class TerminalRenderer extends React.Component<{sw : LineContainerModel, line : 
             let swFocusType = sw.getFocusType();
             return isPhysicalFocused && (swFocusType == "cmd" || swFocusType == "cmd-fg")
         }, {name: "computed-isFocused"}).get();
-        let cmd = GlobalModel.getCmd(line); // will not be null
+        let cmd = sw.getCmd(line); // will not be null
         let usedRows = sw.getUsedRows(line, cmd, width);
         let termHeight = termHeightFromRows(usedRows, GlobalModel.termFontSize.get());
         let termLoaded = this.termLoaded.get();

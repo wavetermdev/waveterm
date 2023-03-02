@@ -37,6 +37,7 @@ type LineContainerModel = {
     getRenderer : (cmdId : string) => RendererModel,
     getFocusType : () => "input" | "cmd" | "cmd-fg",
     getSelectedLine : () => number,
+    getCmd : (line : LineType) => Cmd,
 }
 
 
@@ -363,6 +364,10 @@ class ScreenWindow {
             this.setAnchorFields(swdata.selectedline, 0, "init");
         }
         this.termLineNumFocus = mobx.observable.box(0, {name: "termLineNumFocus"});
+    }
+
+    getCmd(line : LineType) : Cmd {
+        return GlobalModel.getCmd(line);
     }
 
     getAnchorStr() : string {
@@ -725,7 +730,7 @@ class Window {
     dispose() {
     }
 
-    getCmd(cmdId : string) {
+    getCmd(cmdId : string) : Cmd {
         return this.cmds[cmdId];
     }
 
@@ -1637,6 +1642,10 @@ class SpecialHistoryViewLineContainer {
 
     constructor(hitem : HistoryItem) {
         this.historyItem = hitem;
+    }
+
+    getCmd(line : LineType) : Cmd {
+        return null;
     }
     
     loadTerminalRenderer(elem : Element, line : LineType, cmd : Cmd, width : number) : void {
