@@ -223,6 +223,7 @@ func runHistoryQuery(tx *TxWrap, sessionId string, windowId string, opts History
 	}
 	hnumStr := ""
 	whereClause := ""
+	var queryArgs []interface{}
 	if sessionId != "" && windowId != "" {
 		whereClause = fmt.Sprintf("WHERE sessionid = '%s' AND windowid = '%s'", sessionId, windowId)
 		hnumStr = "w"
@@ -232,15 +233,26 @@ func runHistoryQuery(tx *TxWrap, sessionId string, windowId string, opts History
 	} else {
 		hnumStr = "g"
 	}
+	if opts.SearchText != "" {
+		if whereClause == "" {
+			whereClause = "WHERE cmdstr LIKE ? ESCAPE '\\'"
+		} else {
+			whereClause = whereClause + " AND cmdstr LIKE ? ESCAPE '\\'"
+		}
+		likeArg := opts.SearchText
+		likeArg = strings.ReplaceAll(likeArg, "%", "\\%")
+		likeArg = strings.ReplaceAll(likeArg, "_", "\\_")
+		queryArgs = append(queryArgs, "%"+likeArg+"%")
+	}
 	maxItems := opts.MaxItems
 	if maxItems == 0 {
 		maxItems = DefaultMaxHistoryItems
 	}
-	query := fmt.Sprintf("SELECT %s, '%s' || row_number() OVER win AS historynum FROM history %s WINDOW win AS (ORDER BY ts, historyid) ORDER BY ts DESC, historyid DESC LIMIT %d", HistoryCols, hnumStr, whereClause, maxItems)
+	query := fmt.Sprintf("SELECT %s, '%s' || row_number() OVER win AS historynum FROM history %s WINDOW win AS (ORDER BY ts, historyid) ORDER BY ts DESC, historyid DESC LIMIT %d OFFSET %d", HistoryCols, hnumStr, whereClause, maxItems, opts.Offset)
 	if opts.FromTs > 0 {
 		query = fmt.Sprintf("SELECT * FROM (%s) WHERE ts >= %d", query, opts.FromTs)
 	}
-	marr := tx.SelectMaps(query)
+	marr := tx.SelectMaps(query, queryArgs...)
 	rtn := make([]*HistoryItemType, len(marr))
 	for idx, m := range marr {
 		hitem := HistoryItemFromMap(m)
@@ -2240,4 +2252,94 @@ func DeleteBookmark(ctx context.Context, bookmarkId string) error {
 		return nil
 	})
 	return txErr
+}
+
+func CreatePlaybook(ctx context.Context, name string) (*PlaybookType, error) {
+	var rtn *PlaybookType
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT playbookid FROM playbook WHERE name = ?`
+		if tx.Exists(query, name) {
+			return fmt.Errorf("playbook %q already exists", name)
+		}
+		rtn = &PlaybookType{}
+		rtn.PlaybookId = uuid.New().String()
+		rtn.PlaybookName = name
+		query = `INSERT INTO playbook ( playbookid, playbookname, description, entryids)
+                               VALUES (:playbookid,:playbookname,:description,:entryids)`
+		tx.Exec(query, rtn.ToMap())
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	return rtn, nil
+}
+
+func selectPlaybook(tx *TxWrap, playbookId string) *PlaybookType {
+	query := `SELECT * FROM playbook where playbookid = ?`
+	m := tx.GetMap(query, playbookId)
+	playbook := PlaybookFromMap(m)
+	return playbook
+}
+
+func AddPlaybookEntry(ctx context.Context, entry *PlaybookEntry) error {
+	if entry.EntryId == "" {
+		return fmt.Errorf("invalid entryid")
+	}
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		playbook := selectPlaybook(tx, entry.PlaybookId)
+		if playbook == nil {
+			return fmt.Errorf("cannot add entry, playbook does not exist")
+		}
+		query := `SELECT entryid FROM playbook_entry WHERE entryid = ?`
+		if tx.Exists(query, entry.EntryId) {
+			return fmt.Errorf("cannot add entry, entryid already exists")
+		}
+		query = `INSERT INTO playbook_entry ( entryid, playbookid, description, alias, cmdstr, createdts, updatedts)
+                                     VALUES (:entryid,:playbookid,:description,:alias,:cmdstr,:createdts,:updatedts)`
+		tx.Exec(query, entry)
+		playbook.EntryIds = append(playbook.EntryIds, entry.EntryId)
+		query = `UPDATE playbook SET entryids = ? WHERE playbookid = ?`
+		tx.Exec(query, quickJsonArr(playbook.EntryIds), entry.PlaybookId)
+		return nil
+	})
+	return txErr
+}
+
+func RemovePlaybookEntry(ctx context.Context, playbookId string, entryId string) error {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		playbook := selectPlaybook(tx, playbookId)
+		if playbook == nil {
+			return fmt.Errorf("cannot remove playbook entry, playbook does not exist")
+		}
+		query := `SELECT entryid FROM playbook_entry WHERE entryid = ?`
+		if !tx.Exists(query, entryId) {
+			return fmt.Errorf("cannot remove playbook entry, entry does not exist")
+		}
+		query = `DELETE FROM playbook_entry WHERE entryid = ?`
+		tx.Exec(query, entryId)
+		playbook.RemoveEntry(entryId)
+		query = `UPDATE playbook SET entryids = ? WHERE playbookid = ?`
+		tx.Exec(query, quickJsonArr(playbook.EntryIds), playbookId)
+		return nil
+	})
+	return txErr
+}
+
+func GetPlaybookById(ctx context.Context, playbookId string) (*PlaybookType, error) {
+	var rtn *PlaybookType
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		rtn = selectPlaybook(tx, playbookId)
+		if rtn == nil {
+			return nil
+		}
+		query := `SELECT * FROM playbook_entry WHERE playbookid = ?`
+		tx.Select(&rtn.Entries, query, playbookId)
+		rtn.OrderEntries()
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	return rtn, nil
 }

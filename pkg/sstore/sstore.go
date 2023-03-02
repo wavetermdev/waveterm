@@ -40,6 +40,12 @@ const DefaultScreenWindowName = "w1"
 const DefaultCwd = "~"
 
 const (
+	MainViewSession   = "session"
+	MainViewBookmarks = "bookmarks"
+	MainViewHistory   = "history"
+)
+
+const (
 	CmdStatusRunning  = "running"
 	CmdStatusDetached = "detached"
 	CmdStatusError    = "error"
@@ -525,8 +531,10 @@ type HistoryItemType struct {
 }
 
 type HistoryQueryOpts struct {
-	MaxItems int
-	FromTs   int64
+	Offset     int
+	MaxItems   int
+	FromTs     int64
+	SearchText string
 }
 
 type TermOpts struct {
@@ -672,6 +680,82 @@ type LineType struct {
 	Pinned        bool   `json:"pinned,omitempty"`
 	Archived      bool   `json:"archived,omitempty"`
 	Remove        bool   `json:"remove,omitempty"`
+}
+
+type PlaybookType struct {
+	PlaybookId   string   `json:"playbookid"`
+	PlaybookName string   `json:"playbookname"`
+	Description  string   `json:"description"`
+	EntryIds     []string `json:"entryids"`
+
+	// this is not persisted to DB, just for transport to FE
+	Entries []*PlaybookEntry `json:"entries"`
+}
+
+func (p *PlaybookType) ToMap() map[string]interface{} {
+	rtn := make(map[string]interface{})
+	rtn["playbookid"] = p.PlaybookId
+	rtn["playbookname"] = p.PlaybookName
+	rtn["description"] = p.Description
+	rtn["entryids"] = quickJsonArr(p.EntryIds)
+	return rtn
+}
+
+func PlaybookFromMap(m map[string]interface{}) *PlaybookType {
+	if len(m) == 0 {
+		return nil
+	}
+	var p PlaybookType
+	quickSetStr(&p.PlaybookId, m, "playbookid")
+	quickSetStr(&p.PlaybookName, m, "playbookname")
+	quickSetStr(&p.Description, m, "description")
+	quickSetJsonArr(&p.Entries, m, "entries")
+	return &p
+}
+
+// reorders p.Entries to match p.EntryIds
+func (p *PlaybookType) OrderEntries() {
+	if len(p.Entries) == 0 {
+		return
+	}
+	m := make(map[string]*PlaybookEntry)
+	for _, entry := range p.Entries {
+		m[entry.EntryId] = entry
+	}
+	newList := make([]*PlaybookEntry, 0, len(p.EntryIds))
+	for _, entryId := range p.EntryIds {
+		entry := m[entryId]
+		if entry != nil {
+			newList = append(newList, entry)
+		}
+	}
+	p.Entries = newList
+}
+
+// removes from p.EntryIds (not from p.Entries)
+func (p *PlaybookType) RemoveEntry(entryIdToRemove string) {
+	if len(p.EntryIds) == 0 {
+		return
+	}
+	newList := make([]string, 0, len(p.EntryIds)-1)
+	for _, entryId := range p.EntryIds {
+		if entryId == entryIdToRemove {
+			continue
+		}
+		newList = append(newList, entryId)
+	}
+	p.EntryIds = newList
+}
+
+type PlaybookEntry struct {
+	PlaybookId  string `json:"playbookid"`
+	EntryId     string `json:"entryid"`
+	Alias       string `json:"alias"`
+	CmdStr      string `json:"cmdstr"`
+	UpdatedTs   int64  `json:"updatedts"`
+	CreatedTs   int64  `json:"createdts"`
+	Description string `json:"description"`
+	Remove      bool   `json:"remove,omitempty"`
 }
 
 type BookmarkType struct {

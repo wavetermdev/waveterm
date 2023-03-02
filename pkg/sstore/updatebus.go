@@ -43,8 +43,9 @@ type ModelUpdate struct {
 	History         *HistoryInfoType    `json:"history,omitempty"`
 	Interactive     bool                `json:"interactive"`
 	Connect         bool                `json:"connect,omitempty"`
-	BookmarksView   bool                `json:"bookmarksview,omitempty"`
+	MainView        string              `json:"mainview,omitempty"`
 	Bookmarks       []*BookmarkType     `json:"bookmarks,omitempty"`
+	HistoryViewData *HistoryViewData    `json:"historyviewdata,omitempty"`
 	ClientData      *ClientData         `json:"clientdata,omitempty"`
 }
 
@@ -72,6 +73,12 @@ func InfoMsgUpdate(infoMsgFmt string, args ...interface{}) *ModelUpdate {
 	return &ModelUpdate{
 		Info: &InfoMsgType{InfoMsg: msg},
 	}
+}
+
+type HistoryViewData struct {
+	TotalCount int                `json:"totalcount"`
+	Offset     int                `json:"offset"`
+	Items      []*HistoryItemType `json:"items"`
 }
 
 type RemoteEditType struct {

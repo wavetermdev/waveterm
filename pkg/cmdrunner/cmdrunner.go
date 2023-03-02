@@ -176,6 +176,7 @@ func init() {
 	registerCmdFn("telemetry:show", TelemetryShowCommand)
 
 	registerCmdFn("history", HistoryCommand)
+	registerCmdFn("history:viewall", HistoryViewAllCommand)
 
 	registerCmdFn("bookmarks:show", BookmarksShowCommand)
 
@@ -1809,6 +1810,35 @@ func ClearCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 
 }
 
+func HistoryViewAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	_, err := resolveUiIds(ctx, pk, 0)
+	if err != nil {
+		return nil, err
+	}
+	offset, err := resolveNonNegInt(pk.Kwargs["offset"], 0)
+	if err != nil {
+		return nil, err
+	}
+	opts := sstore.HistoryQueryOpts{MaxItems: 51, Offset: offset}
+	if pk.Kwargs["text"] != "" {
+		opts.SearchText = pk.Kwargs["text"]
+	}
+	hitems, err := sstore.GetHistoryItems(ctx, "", "", opts)
+	if err != nil {
+		return nil, err
+	}
+	hvdata := &sstore.HistoryViewData{
+		TotalCount: 0,
+		Offset:     offset,
+		Items:      hitems,
+	}
+	update := sstore.ModelUpdate{
+		HistoryViewData: hvdata,
+		MainView:        sstore.MainViewHistory,
+	}
+	return update, nil
+}
+
 const DefaultMaxHistoryItems = 10000
 
 func HistoryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -1971,8 +2001,8 @@ func BookmarksShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		log.Printf("error updating current activity (bookmarks): %v\n", err)
 	}
 	update := sstore.ModelUpdate{
-		BookmarksView: true,
-		Bookmarks:     bms,
+		MainView:  sstore.MainViewBookmarks,
+		Bookmarks: bms,
 	}
 	return update, nil
 }
