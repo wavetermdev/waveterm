@@ -8,15 +8,15 @@ import {v4 as uuidv4} from "uuid";
 import dayjs from "dayjs";
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import cn from "classnames";
-import {TermWrap} from "./term";
-import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts, RemoteEditType, FeStateType, ContextMenuOpts, BookmarkType} from "./types";
+import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts, RemoteEditType, FeStateType, ContextMenuOpts, BookmarkType, RenderModeType} from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, ScreenWindow, riToRPtr, windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols} from "./model";
 import {isModKeyPress} from "./util";
-import {ImageRendererModel} from "./imagerenderer";
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {BookmarksView} from "./bookmarks";
+import {HistoryView} from "./history";
+import {Line, Prompt} from "./linecomps";
 
 dayjs.extend(localizedFormat)
 
@@ -32,12 +32,6 @@ type OArr<V> = mobx.IObservableArray<V>;
 type OMap<K,V> = mobx.ObservableMap<K,V>;
 
 type VisType = "visible" | "";
-type RenderModeType = "normal" | "collapsed";
-
-type HeightChangeCallbackType = (lineNum : number, newHeight : number, oldHeight : number) => void;
-
-type RendererComponentProps = {sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType, collapsed : boolean};
-type RendererComponentType = { new(props : RendererComponentProps) : React.Component<RendererComponentProps, {}> };
 
 type InterObsValue = {
     sessionid : string,
@@ -50,6 +44,16 @@ type InterObsValue = {
 
 function isBlank(s : string) : boolean {
     return (s == null || s == "");
+}
+
+function getTodayStr() : string {
+    return getDateStr(new Date());
+}
+
+function getYesterdayStr() : string {
+    let d = new Date();
+    d.setDate(d.getDate()-1);
+    return getDateStr(d);
 }
 
 function scrollDiv(div : any, amt : number) {
@@ -74,861 +78,6 @@ function pageSize(div : any) : number {
         size = size - 30;
     }
     return size;
-}
-
-function getLineId(line : LineType) : string {
-    return sprintf("%s-%s-%s", line.sessionid, line.windowid, line.lineid);
-}
-
-function makeFullRemoteRef(ownerName : string, remoteRef : string, name : string) : string {
-    if (isBlank(ownerName) && isBlank(name)) {
-        return remoteRef;
-    }
-    if (!isBlank(ownerName) && isBlank(name)) {
-        return ownerName + ":" + remoteRef;
-    }
-    if (isBlank(ownerName) && !isBlank(name)) {
-        return remoteRef + ":" + name;
-    }
-    return ownerName + ":" + remoteRef + ":" + name;
-}
-
-function getRemoteStr(rptr : RemotePtrType) : string {
-    if (rptr == null || isBlank(rptr.remoteid)) {
-        return "(invalid remote)";
-    }
-    let username = (isBlank(rptr.ownerid) ? null : GlobalModel.resolveUserIdToName(rptr.ownerid));
-    let remoteRef = GlobalModel.resolveRemoteIdToRef(rptr.remoteid);
-    let fullRef = makeFullRemoteRef(username, remoteRef, rptr.name);
-    return fullRef;
-}
-
-function replaceHomePath(path : string, homeDir : string) : string {
-    if (path == homeDir) {
-        return "~";
-    }
-    if (path.startsWith(homeDir + "/")) {
-        return "~" + path.substr(homeDir.length);
-    }
-    return path;
-}
-
-function getCwdStr(remote : RemoteType, state : FeStateType) : string {
-    if ((state == null || state.cwd == null) && remote != null) {
-        return "~";
-    }
-    let cwd = "?";
-    if (state && state.cwd) {
-        cwd = state.cwd;
-    }
-    if (remote && remote.remotevars.home) {
-        cwd = replaceHomePath(cwd, remote.remotevars.cwd)
-    }
-    return cwd;
-}
-
-function getLineDateTimeStr(ts : number) : string {
-    let lineDate = new Date(ts);
-    let nowDate = new Date();
-    
-    
-    if (nowDate.getFullYear() != lineDate.getFullYear()) {
-        return dayjs(lineDate).format("ddd L LTS");
-    }
-    else if (nowDate.getMonth() != lineDate.getMonth() || nowDate.getDate() != lineDate.getDate()) {
-        let yesterdayDate = (new Date());
-        yesterdayDate.setDate(yesterdayDate.getDate()-1);
-        if (yesterdayDate.getMonth() == lineDate.getMonth() && yesterdayDate.getDate() == lineDate.getDate()) {
-            return "Yesterday " + dayjs(lineDate).format("LTS");;
-        }
-        return dayjs(lineDate).format("ddd L LTS");
-    }
-    else {
-        return dayjs(ts).format("LTS");
-    }
-}
-
-function getTodayStr() : string {
-    return getDateStr(new Date());
-}
-
-function getYesterdayStr() : string {
-    let d = new Date();
-    d.setDate(d.getDate()-1);
-    return getDateStr(d);
-}
-
-const DOW_STRS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-function getDateStr(d : Date) : string {
-    let yearStr = String(d.getFullYear());
-    let monthStr = String(d.getMonth()+1);
-    if (monthStr.length == 1) {
-        monthStr = "0" + monthStr;
-    }
-    let dayStr = String(d.getDate());
-    if (dayStr.length == 1) {
-        dayStr = "0" + dayStr;
-    }
-    let dowStr = DOW_STRS[d.getDay()];
-    return dowStr + " " + yearStr + "-" + monthStr + "-" + dayStr;
-}
-
-function getLineDateStr(todayDate : string, yesterdayDate : string, ts : number) : string {
-    let lineDate = new Date(ts);
-    let dateStr = getDateStr(lineDate);
-    if (dateStr == todayDate) {
-        return "today";
-    }
-    if (dateStr == yesterdayDate) {
-        return "yesterday";
-    }
-    return dateStr;
-}
-
-@mobxReact.observer
-class LineAvatar extends React.Component<{line : LineType, cmd : Cmd}, {}> {
-    render() {
-        let {line, cmd} = this.props;
-        let lineNumStr = (line.linenumtemp ? "~" : "") + String(line.linenum);
-        let status = (cmd != null ? cmd.getStatus() : "done");
-        let rtnstate = (cmd != null ? cmd.getRtnState() : false);
-        let isComment = (line.linetype == "text");
-        return (
-            <div className={cn("avatar", "num-"+lineNumStr.length, "status-" + status, {"ephemeral": line.ephemeral}, {"rtnstate": rtnstate})}>
-                {lineNumStr}
-                <If condition={status == "hangup" || status == "error"}>
-                    <i className="fa-sharp fa-solid fa-triangle-exclamation status-icon"/>
-                </If>
-                <If condition={status == "detached"}>
-                    <i className="fa-sharp fa-solid fa-rotate status-icon"/>
-                </If>
-                <If condition={isComment}>
-                    <i className="fa-sharp fa-solid fa-comment comment-icon"/>
-                </If>
-            </div>
-        );
-    }
-}
-
-@mobxReact.observer
-class LineText extends React.Component<{sw : ScreenWindow, line : LineType, renderMode : RenderModeType, topBorder : boolean}, {}> {
-    @boundMethod
-    clickHandler() {
-        let {line} = this.props;
-        GlobalCommandRunner.swSelectLine(String(line.linenum));
-    }
-
-    render() {
-        let {sw, line, topBorder, renderMode} = this.props;
-        let formattedTime = getLineDateTimeStr(line.ts);
-        let isSelected = mobx.computed(() => (sw.selectedLine.get() == line.linenum), {name: "computed-isSelected"}).get();
-        let isFocused = mobx.computed(() => (sw.focusType.get() == "cmd"), {name: "computed-isFocused"}).get();
-        let isCollapsed = (renderMode == "collapsed");
-        let mainClass = cn(
-            "line",
-            "line-text",
-            "focus-parent",
-            {"top-border": topBorder},
-            {"collapsed": isCollapsed},
-        );
-        return (
-            <div className={mainClass} data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} onClick={this.clickHandler}>
-                <div className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused})}/>
-                <LineAvatar line={line} cmd={null}/>
-                <div className="line-content">
-                    <div className="meta">
-                        <div className="ts">{formattedTime}</div>
-                    </div>
-                    <div className="text">
-                        {line.text}
-                    </div>
-                </div>
-            </div>
-        );
-    }
-}
-
-@mobxReact.observer
-class Prompt extends React.Component<{rptr : RemotePtrType, festate : FeStateType}, {}> {
-    render() {
-        let rptr = this.props.rptr;
-        if (rptr == null || isBlank(rptr.remoteid)) {
-            return <span className={cn("term-prompt", "color-green")}>&nbsp;</span>
-        }
-        let remote = GlobalModel.getRemote(this.props.rptr.remoteid);
-        let remoteStr = getRemoteStr(rptr);
-        let cwd = getCwdStr(remote, this.props.festate);
-        let isRoot = false;
-        if (remote && remote.remotevars) {
-            if (remote.remotevars["sudo"] || remote.remotevars["bestuser"] == "root") {
-                isRoot = true;
-            }
-        }
-        let colorClass = (isRoot ? "color-red" : "color-green");
-        if (remote && remote.remoteopts && remote.remoteopts.color) {
-            colorClass = "color-" + remote.remoteopts.color;
-        }
-        // TESTING cwd shortening with triple colon character
-        // if (cwd.startsWith("~/work/gopath/src/github.com/scripthaus-dev")) {
-        //     cwd = cwd.replace("~/work/gopath/src/github.com/scripthaus-dev", "\u22EEscripthaus-dev");
-        // }
-        return (
-            <span className={cn("term-prompt", colorClass)}>[{remoteStr}] {cwd} {isRoot ? "#" : "$"}</span>
-        );
-    }
-}
-
-@mobxReact.observer
-class ImageRenderer extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : () => void, collapsed : boolean}, {}> {
-    elemRef : React.RefObject<any> = React.createRef();
-    imageDivRef : React.RefObject<any> = React.createRef();
-    imageLoaded : mobx.IObservableValue<boolean> = mobx.observable.box(false, {name: "imageLoaded"});
-    imageModel : ImageRendererModel;
-
-    constructor(props) {
-        super(props);
-    }
-
-    componentDidMount() {
-        this.componentDidUpdate(null, null, null);
-    }
-
-    componentWillUnmount() {
-        if (this.imageLoaded.get()) {
-            this.unloadImage(true);
-        }
-    }
-
-    getSnapshotBeforeUpdate(prevProps, prevState) : {height : number} {
-        let elem = this.elemRef.current;
-        if (elem == null) {
-            return {height: 0};
-        }
-        return {height: elem.offsetHeight};
-    }
-
-    componentDidUpdate(prevProps, prevState, snapshot : {height : number}) : void {
-        if (this.props.onHeightChange == null) {
-            return;
-        }
-        let {line} = this.props;
-        let curHeight = 0;
-        let elem = this.elemRef.current;
-        if (elem != null) {
-            curHeight = elem.offsetHeight;
-        }
-        if (snapshot == null) {
-            snapshot = {height: 0};
-        }
-        if (snapshot.height != curHeight) {
-            this.props.onHeightChange();
-            // console.log("image-render height change: ", line.linenum, snapshot.height, "=>", curHeight);
-        }
-        this.checkLoad();
-    }
-
-    checkLoad() : void {
-        let {line, staticRender, visible, collapsed} = this.props;
-        if (staticRender) {
-            return;
-        }
-        let vis = visible && visible.get() && !collapsed;
-        let curVis = this.imageLoaded.get();
-        if (vis && !curVis) {
-            this.loadImage();
-        }
-        else if (!vis && curVis) {
-            this.unloadImage(false);
-        }
-    }
-
-    loadImage() : void {
-        let {sw, line} = this.props;
-        let model = GlobalModel;
-        let cmd = model.getCmd(line);
-        if (cmd == null) {
-            return;
-        }
-        let elem = this.imageDivRef.current;
-        if (elem == null) {
-            console.log("cannot load image, no elem found");
-            return;
-        }
-        this.imageModel = sw.loadImageRenderer(this.imageDivRef.current, line, cmd);
-        mobx.action(() => this.imageLoaded.set(true))();
-    }
-
-    unloadImage(unmount : boolean) : void {
-        let {sw, line} = this.props;
-        sw.unloadRenderer(line.cmdid);
-        this.imageModel = null;
-        if (!unmount) {
-            mobx.action(() => this.imageLoaded.set(false))();
-            if (this.imageDivRef.current != null) {
-                this.imageDivRef.current.replaceChildren();
-            }
-        }
-    }
-    
-    render() {
-        let imageModel = this.imageModel;
-        let isLoaded = this.imageLoaded.get();
-        let isDone = (imageModel != null && imageModel.isDone.get());
-        if (imageModel != null) {
-            let dataVersion = imageModel.dataBuf.dataVersion.get();
-        }
-        let collapsed = this.props.collapsed;
-        return (
-            <div ref={this.elemRef} className={cn("image-wrapper", {"collapsed": collapsed})}>
-                <div key="imagediv" ref={this.imageDivRef}></div>
-                <If condition={!isDone}><div className="loading-div">...</div></If>
-            </div>
-        );
-    }
-}
-
-@mobxReact.observer
-class TerminalRenderer extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : () => void, collapsed : boolean}, {}> {
-    termLoaded : mobx.IObservableValue<boolean> = mobx.observable.box(false, {name: "linecmd-term-loaded"});
-    elemRef : React.RefObject<any> = React.createRef();
-
-    constructor(props) {
-        super(props);
-    }
-
-    componentDidMount() {
-        this.componentDidUpdate(null, null, null);
-    }
-
-    componentWillUnmount() {
-        if (this.termLoaded.get()) {
-            this.unloadTerminal(true);
-        }
-    }
-
-    getSnapshotBeforeUpdate(prevProps, prevState) : {height : number} {
-        let elem = this.elemRef.current;
-        if (elem == null) {
-            return {height: 0};
-        }
-        return {height: elem.offsetHeight};
-    }
-
-    componentDidUpdate(prevProps, prevState, snapshot : {height : number}) : void {
-        if (this.props.onHeightChange == null) {
-            return;
-        }
-        let {line} = this.props;
-        let curHeight = 0;
-        let elem = this.elemRef.current;
-        if (elem != null) {
-            curHeight = elem.offsetHeight;
-        }
-        if (snapshot == null) {
-            snapshot = {height: 0};
-        }
-        if (snapshot.height != curHeight) {
-            this.props.onHeightChange();
-            // console.log("term-render height change: ", line.linenum, snapshot.height, "=>", curHeight);
-        }
-        this.checkLoad();
-    }
-
-    checkLoad() : void {
-        let {line, staticRender, visible, collapsed} = this.props;
-        if (staticRender) {
-            return;
-        }
-        let vis = visible && visible.get() && !collapsed;
-        let curVis = this.termLoaded.get();
-        if (vis && !curVis) {
-            this.loadTerminal();
-        }
-        else if (!vis && curVis) {
-            this.unloadTerminal(false);
-        }
-    }
-
-    loadTerminal() : void {
-        let {sw, line} = this.props;
-        let model = GlobalModel;
-        let cmd = model.getCmd(line);
-        if (cmd == null) {
-            return;
-        }
-        let termId = "term-" + getLineId(line);
-        let termElem = document.getElementById(termId);
-        if (termElem == null) {
-            console.log("cannot load terminal, no term elem found", termId);
-            return;
-        }
-        sw.loadTerminalRenderer(termElem, line, cmd, this.props.width);
-        mobx.action(() => this.termLoaded.set(true))();
-    }
-
-    unloadTerminal(unmount : boolean) : void {
-        let {sw, line} = this.props;
-        sw.unloadRenderer(line.cmdid);
-        if (!unmount) {
-            mobx.action(() => this.termLoaded.set(false))();
-            let termId = "term-" + getLineId(line);
-            let termElem = document.getElementById(termId);
-            if (termElem != null) {
-                termElem.replaceChildren();
-            }
-        }
-    }
-    
-    @boundMethod
-    clickTermBlock(e : any) {
-        let {sw, line} = this.props;
-        let model = GlobalModel;
-        let termWrap = sw.getRenderer(line.cmdid);
-        if (termWrap != null) {
-            termWrap.giveFocus();
-        }
-    }
-    
-    render() {
-        let {sw, line, width, staticRender, visible, collapsed} = this.props;
-        let isVisible = visible.get(); // for reaction
-        let isPhysicalFocused = mobx.computed(() => sw.getIsFocused(line.linenum), {name: "computed-getIsFocused"}).get();
-        let isFocused = mobx.computed(() => {
-            let swFocusType = sw.focusType.get();
-            return isPhysicalFocused && (swFocusType == "cmd" || swFocusType == "cmd-fg")
-        }, {name: "computed-isFocused"}).get();
-        let cmd = GlobalModel.getCmd(line); // will not be null
-        let usedRows = sw.getUsedRows(line, cmd, width);
-        let termHeight = termHeightFromRows(usedRows, GlobalModel.termFontSize.get());
-        let termLoaded = this.termLoaded.get();
-        return (
-            <div ref={this.elemRef} key="term-wrap" className={cn("terminal-wrapper", {"focus": isFocused}, {"cmd-done": !cmd.isRunning()}, {"zero-height": (termHeight == 0)}, {"collapsed": collapsed})}>
-                <If condition={!isFocused}>
-                    <div key="term-block" className="term-block" onClick={this.clickTermBlock}></div>
-                </If>
-                <div key="term-connectelem" className="terminal-connectelem" id={"term-" + getLineId(line)} data-cmdid={line.cmdid} style={{height: termHeight}}></div>
-                <If condition={!termLoaded}><div key="term-loading" className="terminal-loading-message">...</div></If>
-
-            </div>
-        );
-    }
-}
-
-@mobxReact.observer
-class MarkdownRenderer extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType}, {}> {
-    render() {
-        return null;
-    }
-}
-
-@mobxReact.observer
-class LineCmd extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType, topBorder : boolean, renderMode : RenderModeType, overrideCollapsed : OV<boolean>}, {}> {
-    lineRef : React.RefObject<any> = React.createRef();
-    cmdTextRef : React.RefObject<any> = React.createRef();
-    rtnStateDiff : mobx.IObservableValue<string> = mobx.observable.box(null, {name: "linecmd-rtn-state-diff"});
-    rtnStateDiffFetched : boolean = false;
-    lastHeight : number;
-    isOverflow : OV<boolean> = mobx.observable.box(false, {name: "line-overflow"});
-    isCmdExpanded : OV<boolean> = mobx.observable.box(false, {name: "cmd-expanded"});
-    
-    constructor(props) {
-        super(props);
-    }
-
-    checkStateDiffLoad() : void {
-        let {line, staticRender, visible} = this.props;
-        if (staticRender || this.isCollapsed()) {
-            return;
-        }
-        if (!visible) {
-            if (this.rtnStateDiffFetched) {
-                this.rtnStateDiffFetched = false;
-                this.setRtnStateDiff(null);
-            }
-            return;
-        }
-        let cmd = GlobalModel.getCmd(line);
-        if (cmd == null || !cmd.getRtnState() || this.rtnStateDiffFetched) {
-            return;
-        }
-        if (cmd.getStatus() != "done") {
-            return;
-        }
-        this.fetchRtnStateDiff();
-    }
-
-    fetchRtnStateDiff() : void {
-        if (this.rtnStateDiffFetched) {
-            return;
-        }
-        let {line} = this.props;
-        this.rtnStateDiffFetched = true;
-        let usp = new URLSearchParams({sessionid: line.sessionid, cmdid: line.cmdid});
-        let url = GlobalModel.getBaseHostPort() + "/api/rtnstate?" + usp.toString();
-        let fetchHeaders = GlobalModel.getFetchHeaders();
-        fetch(url, {headers: fetchHeaders}).then((resp) => {
-            if (!resp.ok) {
-                throw new Error(sprintf("Bad fetch response for /api/rtnstate: %d %s", resp.status, resp.statusText));
-            }
-            return resp.text();
-        }).then((text) => {
-            this.setRtnStateDiff(text ?? "");
-        }).catch((err) => {
-            this.setRtnStateDiff("ERROR " + err.toString())
-        });
-    }
-
-    setRtnStateDiff(val : string) : void {
-        mobx.action(() => {
-            this.rtnStateDiff.set(val);
-        })();
-    }
-
-    componentDidMount() {
-        this.componentDidUpdate(null, null, null);
-        this.checkCmdText();
-    }
-
-    // FIXME
-    scrollIntoView() {
-        let lineElem = document.getElementById("line-" + getLineId(this.props.line));
-        lineElem.scrollIntoView({block: "end"});
-    }
-
-    @boundMethod
-    doRefresh() {
-        let {sw, line} = this.props;
-        let model = GlobalModel;
-        let termWrap = sw.getRenderer(line.cmdid);
-        if (termWrap != null) {
-            termWrap.reload(500);
-        }
-    }
-
-    @boundMethod
-    handleExpandCmd() : void {
-        mobx.action(() => {
-            this.isCmdExpanded.set(true);
-        })();
-    }
-
-    renderCmdText(cmd : Cmd, remote : RemoteType) : any {
-        if (cmd == null) {
-            return (
-                <div className="metapart-mono cmdtext">
-                    <span className="term-bright-green">(cmd not found)</span>
-                </div>
-            );
-        }
-        if (this.isCmdExpanded.get()) {
-            return (
-                <React.Fragment>
-                    <div key="meta2" className="meta meta-line2">
-                        <div className="metapart-mono cmdtext">
-                            <Prompt rptr={cmd.remote} festate={cmd.getRemoteFeState()}/>
-                        </div>
-                    </div>
-                    <div key="meta3" className="meta meta-line3 cmdtext-expanded-wrapper">
-                        <div className="cmdtext-expanded">{cmd.getFullCmdText()}</div>
-                    </div>
-                </React.Fragment>
-            );
-        }
-        let isMultiLine = cmd.isMultiLineCmdText();
-        return (
-            <div key="meta2" className="meta meta-line2" ref={this.cmdTextRef}>
-                <div className="metapart-mono cmdtext">
-                    <Prompt rptr={cmd.remote} festate={cmd.getRemoteFeState()}/>
-                    <span> </span>
-                    <span>{cmd.getSingleLineCmdText()}</span>
-                </div>
-                <If condition={this.isOverflow.get() || isMultiLine}>
-                    <div className="cmdtext-overflow" onClick={this.handleExpandCmd}>...&#x25BC;</div>
-                </If>
-            </div>
-        );
-    }
-
-    // TODO: this might not be necessary anymore because we're using this.lastHeight
-    getSnapshotBeforeUpdate(prevProps, prevState) : {height : number} {
-        let elem = this.lineRef.current;
-        if (elem == null) {
-            return {height: 0};
-        }
-        return {height: elem.offsetHeight};
-    }
-
-    componentDidUpdate(prevProps, prevState, snapshot : {height : number}) : void {
-        this.handleHeightChange();
-        this.checkStateDiffLoad();
-        this.checkCmdText();
-    }
-
-    checkCmdText() {
-        let metaElem = this.cmdTextRef.current;
-        if (metaElem == null || metaElem.childNodes.length == 0) {
-            return;
-        }
-        let metaElemWidth = metaElem.offsetWidth;
-        let metaChild = metaElem.firstChild;
-        let children = metaChild.childNodes;
-        let childWidth = 0;
-        for (let i=0; i<children.length; i++) {
-            let ch = children[i];
-            childWidth += ch.offsetWidth;
-        }
-        let isOverflow = (childWidth > metaElemWidth);
-        if (isOverflow != this.isOverflow.get()) {
-            mobx.action(() => {
-                this.isOverflow.set(isOverflow);
-            })();
-        }
-    }
-
-    @boundMethod
-    handleHeightChange() {
-        if (this.props.onHeightChange == null) {
-            return;
-        }
-        let {line} = this.props;
-        let curHeight = 0;
-        let elem = this.lineRef.current;
-        if (elem != null) {
-            curHeight = elem.offsetHeight;
-        }
-        if (this.lastHeight == curHeight) {
-            return;
-        }
-        let lastHeight = this.lastHeight;
-        this.lastHeight = curHeight;
-        this.props.onHeightChange(line.linenum, curHeight, lastHeight);
-        // console.log("line height change: ", line.linenum, lastHeight, "=>", curHeight);
-    }
-
-    @boundMethod
-    handleClick() {
-        let {line} = this.props;
-        let sel = window.getSelection();
-        if (this.lineRef.current != null) {
-            let selText = sel.toString();
-            if (sel.anchorNode != null && this.lineRef.current.contains(sel.anchorNode) && !isBlank(selText)) {
-                return;
-            }
-        }
-        GlobalCommandRunner.swSelectLine(String(line.linenum), "cmd");
-    }
-
-    @boundMethod
-    clickStar() {
-        let {line} = this.props;
-        if (!line.star || line.star == 0) {
-            GlobalCommandRunner.lineStar(line.lineid, 1);
-        }
-        else {
-            GlobalCommandRunner.lineStar(line.lineid, 0);
-        }
-    }
-
-    @boundMethod
-    clickPin() {
-        let {line} = this.props;
-        if (!line.pinned) {
-            GlobalCommandRunner.linePin(line.lineid, true);
-        }
-        else {
-            GlobalCommandRunner.linePin(line.lineid, false);
-        }
-    }
-
-    @boundMethod
-    clickBookmark() {
-        let {line} = this.props;
-        GlobalCommandRunner.lineBookmark(line.lineid);
-    }
-
-    @boundMethod
-    handleResizeButton() {
-        console.log("resize button");
-    }
-
-    @boundMethod
-    handleCollapsedClick() {
-        let {overrideCollapsed} = this.props;
-        mobx.action(() => {
-            let isCollapsed = overrideCollapsed.get();
-            overrideCollapsed.set(!isCollapsed);
-        })();
-    }
-
-    getLineDomId() : string {
-        let {line} = this.props;
-        return "line-" + getLineId(line);
-    }
-
-    isCollapsed() : boolean {
-        let {renderMode, overrideCollapsed} = this.props;
-        return (renderMode == "collapsed" && !overrideCollapsed.get());
-    }
-
-    renderSimple() {
-        let {sw, line, width, topBorder, renderMode} = this.props;
-        let cmd = GlobalModel.getCmd(line);
-        let isCollapsed = this.isCollapsed();
-        let mainDivCn = cn(
-            "line",
-            "line-cmd",
-            {"top-border": topBorder},
-            {"collapsed": isCollapsed},
-        );
-        // header is 36px tall, padding+border = 6px
-        // collapsed header is 24px tall + 6px
-        // zero-terminal is 0px
-        // terminal-wrapper overhead is 11px (margin/padding)
-        // inner-height, if zero-lines => 42
-        //               else: 53+(lines*lineheight)
-        let height = (isCollapsed ? 30 : 42); // height of zero height terminal
-        if (!isCollapsed) {
-            let usedRows = sw.getUsedRows(line, cmd, width);
-            if (usedRows > 0) {
-                height = 53 + termHeightFromRows(usedRows, GlobalModel.termFontSize.get());
-            }
-        }
-        return (
-            <div className={mainDivCn} id={this.getLineDomId()} ref={this.lineRef} data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} style={{height: height}}>
-                <LineAvatar line={line} cmd={cmd}/>
-            </div>
-        );
-    }
-
-    renderMetaWrap(cmd : Cmd) {
-        let {line} = this.props;
-        let model = GlobalModel;
-        let formattedTime = getLineDateTimeStr(line.ts);
-        let termOpts = cmd.getTermOpts();
-        let remote = model.getRemote(cmd.remoteId);
-        return (
-            <div key="meta" className="meta-wrap">
-                <div key="meta1" className="meta meta-line1">
-                    <div className="ts">{formattedTime}</div>
-                    <div>&nbsp;</div>
-                    <div className="termopts">
-                        ({termOpts.rows}x{termOpts.cols})
-                    </div>
-                </div>
-                {this.renderCmdText(cmd, remote)}
-            </div>
-        );
-    }
-    
-    render() {
-        let {sw, line, width, staticRender, visible, topBorder, renderMode} = this.props;
-        let model = GlobalModel;
-        let lineid = line.lineid;
-        let isVisible = visible.get();
-        if (staticRender || !isVisible) {
-            return this.renderSimple();
-        }
-        let formattedTime = getLineDateTimeStr(line.ts);
-        let cmd = model.getCmd(line);
-        if (cmd == null) {
-            return (
-                <div className="line line-invalid" id={this.getLineDomId()} ref={this.lineRef} data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid}>
-                    [cmd not found '{line.cmdid}']
-                </div>
-            );
-        }
-        let status = cmd.getStatus();
-        let lineNumStr = (line.linenumtemp ? "~" : "") + String(line.linenum);
-        let isSelected = mobx.computed(() => (sw.selectedLine.get() == line.linenum), {name: "computed-isSelected"}).get();
-        let isPhysicalFocused = mobx.computed(() => sw.getIsFocused(line.linenum), {name: "computed-getIsFocused"}).get();
-        let isFocused = mobx.computed(() => {
-            let swFocusType = sw.focusType.get();
-            return isPhysicalFocused && (swFocusType == "cmd" || swFocusType == "cmd-fg")
-        }, {name: "computed-isFocused"}).get();
-        let isFgFocused = mobx.computed(() => {
-            let swFocusType = sw.focusType.get();
-            return isPhysicalFocused && swFocusType == "cmd-fg"
-        }, {name: "computed-isFgFocused"}).get();
-        let isStatic = staticRender;
-        let isRunning = cmd.isRunning()
-        let isCollapsed = this.isCollapsed();
-        let isExpanded = this.isCmdExpanded.get();
-        let rsdiff = this.rtnStateDiff.get();
-        // console.log("render", "#" + line.linenum, termHeight, usedRows, cmd.getStatus(), (this.rtnStateDiff.get() != null), (!cmd.isRunning() ? "cmd-done" : "running"));
-        let mainDivCn = cn(
-            "line",
-            "line-cmd",
-            {"focus": isFocused},
-            {"cmd-done": !isRunning},
-            {"has-rtnstate": cmd.getRtnState()},
-            {"collapsed": isCollapsed},
-            {"top-border": topBorder},
-        );
-        let RendererComponent : RendererComponentType = TerminalRenderer;
-        if (line.renderer == "image") {
-            RendererComponent = ImageRenderer;
-        }        
-        return (
-            <div className={mainDivCn} id={"line-" + getLineId(line)}
-                 ref={this.lineRef} onClick={this.handleClick}
-                 data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} data-cmdid={line.cmdid}>
-                <div key="focus" className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused}, {"fg-focus": isFgFocused})}/>
-                <div key="header" className={cn("line-header", {"is-expanded": isExpanded}, {"is-collapsed": isCollapsed})}>
-                    <LineAvatar line={line} cmd={cmd}/>
-                    <If condition={renderMode == "collapsed"}>
-                        <div key="collapsed" className="collapsed-indicator" title={isCollapsed ? "output collapsed, click to show" : "click to hide output" } onClick={this.handleCollapsedClick}>
-                            <If condition={isCollapsed}><i className="fa-sharp fa-solid fa-caret-right"/></If>
-                            <If condition={!isCollapsed}><i className="fa-sharp fa-solid fa-caret-down"/></If>
-                        </div>
-                    </If>
-                    {this.renderMetaWrap(cmd)}
-                    <div key="pin" title="Pin" className={cn("line-icon", {"active": line.pinned})} onClick={this.clickPin} style={{display: "none"}}>
-                        <i className="fa-sharp fa-solid fa-thumbtack"/>
-                    </div>
-                    <div key="bookmark" title="Bookmark" className={cn("line-icon", "line-bookmark", {"active": line.bookmarked})} onClick={this.clickBookmark}>
-                        <If condition={!line.bookmarked}>
-                            <i className="fa-sharp fa-regular fa-bookmark"/>
-                        </If>
-                        <If condition={line.bookmarked}>
-                            <i className="fa-sharp fa-solid fa-bookmark"/>
-                        </If>
-                    </div>
-                </div>
-                <RendererComponent sw={sw} line={line} width={width} staticRender={staticRender} visible={visible} onHeightChange={this.handleHeightChange} collapsed={isCollapsed}/>
-                <If condition={!isCollapsed && cmd.getRtnState()}>
-                    <div key="rtnstate" className="cmd-rtnstate" style={{visibility: ((cmd.getStatus() == "done") ? "visible" : "hidden")}}>
-                        <If condition={rsdiff == null || rsdiff == ""}>
-                            <div className="cmd-rtnstate-label">state unchanged</div>
-                            <div className="cmd-rtnstate-sep"></div>
-                        </If>
-                        <If condition={rsdiff != null && rsdiff != ""}>
-                            <div className="cmd-rtnstate-label">new state</div>
-                            <div className="cmd-rtnstate-sep"></div>
-                            <div className="cmd-rtnstate-diff">{this.rtnStateDiff.get()}</div>
-                        </If>
-                    </div>
-                </If>
-            </div>
-        );
-    }
-}
-
-@mobxReact.observer
-class Line extends React.Component<{sw : ScreenWindow, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType, overrideCollapsed : OV<boolean>, topBorder : boolean, renderMode : RenderModeType}, {}> {
-    render() {
-        let line = this.props.line;
-        if (line.archived) {
-            return null;
-        }
-        if (line.linetype == "text") {
-            return <LineText {...this.props}/>;
-        }
-        if (line.linetype == "cmd") {
-            return <LineCmd {...this.props}/>;
-        }
-        return <div className="line line-invalid">[invalid line type '{line.linetype}']</div>;
-    }
 }
 
 @mobxReact.observer
@@ -2311,6 +1460,34 @@ class CmdInput extends React.Component<{}, {}> {
     }
 }
 
+const DOW_STRS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function getDateStr(d : Date) : string {
+    let yearStr = String(d.getFullYear());
+    let monthStr = String(d.getMonth()+1);
+    if (monthStr.length == 1) {
+        monthStr = "0" + monthStr;
+    }
+    let dayStr = String(d.getDate());
+    if (dayStr.length == 1) {
+        dayStr = "0" + dayStr;
+    }
+    let dowStr = DOW_STRS[d.getDay()];
+    return dowStr + " " + yearStr + "-" + monthStr + "-" + dayStr;
+}
+
+function getLineDateStr(todayDate : string, yesterdayDate : string, ts : number) : string {
+    let lineDate = new Date(ts);
+    let dateStr = getDateStr(lineDate);
+    if (dateStr == todayDate) {
+        return "today";
+    }
+    if (dateStr == yesterdayDate) {
+        return "yesterday";
+    }
+    return dateStr;
+}
+
 @mobxReact.observer
 class LinesView extends React.Component<{sw : ScreenWindow, width : number, lines : LineType[], renderMode : RenderModeType}, {}> {
     rszObs : any;
@@ -2456,7 +1633,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
         else {
             this.restoreAnchorOffset("re-mount");
         }
-        this.lastSelectedLine = sw.selectedLine.get();
+        this.lastSelectedLine = sw.getSelectedLine();
         this.lastLinesLength = lines.length;
 
         let linesElem = this.linesRef.current;
@@ -2523,7 +1700,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
         if (linesElem == null) {
             return null;
         }
-        let newLine = sw.selectedLine.get();
+        let newLine = sw.getSelectedLine();
         if (newLine == 0) {
             return;
         }
@@ -2565,9 +1742,9 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
 
     componentDidUpdate(prevProps, prevState, snapshot) : void {
         let {sw, lines} = this.props;
-        if (sw.selectedLine.get() != this.lastSelectedLine) {
+        if (sw.getSelectedLine() != this.lastSelectedLine) {
             this.updateSelectedLine();
-            this.lastSelectedLine = sw.selectedLine.get();
+            this.lastSelectedLine = sw.getSelectedLine();
         } else if (lines.length != this.lastLinesLength) {
             this.restoreAnchorOffset("line-length-change");
         }
@@ -2626,7 +1803,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
     
     render() {
         let {sw, width, lines, renderMode} = this.props;
-        let selectedLine = sw.selectedLine.get();  // for re-rendering
+        let selectedLine = sw.getSelectedLine();  // for re-rendering
         let line : LineType = null;
         for (let i=0; i<lines.length; i++) {
             let key = String(lines[i].linenum);
@@ -2789,7 +1966,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         let screen = GlobalModel.getScreenById(sw.sessionId, sw.screenId);
         let session = GlobalModel.getSessionById(sw.sessionId);
         let isActive = sw.isActive();
-        let selectedLine = sw.selectedLine.get();
+        let selectedLine = sw.getSelectedLine();
         let lines = win.getNonArchivedLines();
         let renderMode = this.renderMode.get();
         return (
@@ -2972,18 +2149,6 @@ class SessionView extends React.Component<{}, {}> {
     }
 }
 
-@mobxReact.observer
-class HistoryView extends React.Component<{}, {}> {
-    render() {
-        let isHidden = (GlobalModel.activeMainView.get() != "history");
-        return (
-            <div className={cn("history-view", {"is-hidden": isHidden})}>
-                <div className="history-title">HISTORY</div>
-            </div>
-        );
-    }
-}
-
 function getConnVal(r : RemoteType) : number {
     if (r.status == "connected") {
         return 1;
@@ -3067,7 +2232,19 @@ class MainSideBar extends React.Component<{}, {}> {
 
     @boundMethod
     handleHistoryClick() : void {
-        console.log("history click");
+        if (GlobalModel.activeMainView.get() == "history") {
+            mobx.action(() => {
+                GlobalModel.activeMainView.set("session");
+            })();
+            return;
+        }
+        GlobalCommandRunner.historyView({});
+    }
+
+    @boundMethod
+    handlePlaybookClick() : void {
+        console.log("playbook click");
+        return;
     }
 
     @boundMethod
@@ -3109,6 +2286,7 @@ class MainSideBar extends React.Component<{}, {}> {
         }
         let isCollapsed = this.collapsed.get();
         let mainView = GlobalModel.activeMainView.get();
+        let activePlaybookId : string = null;
         return (
             <div className={cn("main-sidebar", {"collapsed": isCollapsed}, {"is-dev": GlobalModel.isDev})}>
                 <h1 className={cn("title", "prompt-logo-small", {"collapsed": isCollapsed}, {"is-dev": GlobalModel.isDev})}>
@@ -3149,17 +2327,24 @@ class MainSideBar extends React.Component<{}, {}> {
                     <ul className="menu-list">
                         <li className="new-session"><a onClick={() => this.handleNewSharedSession()}><i className="fa-sharp fa-solid fa-plus"/> New Session</a></li>
                     </ul>
-                    <ul className="menu-list" style={{marginTop: 20, display: "none"}}>
+                    <ul className="menu-list" style={{marginTop: 20}}>
                         <li className="menu-history"><a onClick={this.handleHistoryClick} className={cn({"is-active": (mainView == "history")})}><i className="fa-sharp fa-solid fa-clock"/> HISTORY</a></li>
                     </ul>
-                    <ul className="menu-list" style={{marginTop: 20}}>
+                    <ul className="menu-list">
                         <li className="menu-bookmarks"><a onClick={this.handleBookmarksClick} className={cn({"is-active": (mainView == "bookmarks")})}><i className="fa-sharp fa-solid fa-bookmark"/> BOOKMARKS</a></li>
+                    </ul>
+                    <p className="menu-label">
+                        Playbooks
+                    </p>
+                    <ul className="menu-list">
+                        <li key="default"><a onClick={this.handlePlaybookClick}><i className="fa-sharp fa-solid fa-file-lines"/> default</a></li>
+                        <li key="prompt-dev"><a onClick={this.handlePlaybookClick}><i className="fa-sharp fa-solid fa-file-lines"/> prompt-dev</a></li>
                     </ul>
                     <div className="spacer"></div>
                     <If condition={GlobalModel.debugSW.get() && sw != null}>
                         <div>
                             focus={sw.focusType.get()}<br/>
-            sline={sw.selectedLine.get()}<br/>
+            sline={sw.getSelectedLine()}<br/>
             termfocus={sw.termLineNumFocus.get()}<br/>
                         </div>
                     </If>

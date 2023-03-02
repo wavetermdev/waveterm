@@ -172,9 +172,9 @@ class BookmarksView extends React.Component<{}, {}> {
         let idx : number = 0;
         let bookmark : BookmarkType = null;
         return (
-            <div className={cn("bookmarks-view", {"is-hidden": isHidden})}>
+            <div className={cn("bookmarks-view", "alt-view", {"is-hidden": isHidden})}>
                 <div className="close-button" onClick={this.clickHandler}><i className="fa-sharp fa-solid fa-xmark"></i></div>
-                <div className="bookmarks-title">
+                <div className="alt-title">
                     <i className="fa-sharp fa-solid fa-bookmark" style={{marginRight: 10}}/>
                     BOOKMARKS
                 </div>
@@ -190,7 +190,7 @@ class BookmarksView extends React.Component<{}, {}> {
                     </If>
                 </div>
                 <If condition={bookmarks.length > 0}>
-                    <div className="bookmarks-help">
+                    <div className="alt-help">
                         <div className="help-entry">
                             [Enter] to Use Bookmark<br/>
                             [Backspace/Delete]x2 or <i className="fa-sharp fa-solid fa-trash"/> to Delete<br/>

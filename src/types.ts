@@ -283,9 +283,16 @@ type ModelUpdateType = {
     remotes? : RemoteType[],
     history? : HistoryInfoType,
     connect? : boolean,
-    bookmarksview? : boolean,
+    mainview? : string,
     bookmarks? : BookmarkType[],
     clientdata? : ClientDataType,
+    historyviewdata? : HistoryViewDataType,
+};
+
+type HistoryViewDataType = {
+    totalcount : number,
+    offset : number,
+    items : HistoryItem[],
 };
 
 type BookmarkType = {
@@ -392,4 +399,25 @@ type ClientDataType = {
     feopts : FeOptsType;
 };
 
-export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType, UIContextType, HistoryInfoType, HistoryQueryOpts, WatchScreenPacketType, TermWinSize, FeInputPacketType, RemoteInputPacketType, RemoteEditType, FeStateType, ContextMenuOpts, RendererContext, WindowSize, RendererModel, PtyDataType, BookmarkType, ClientDataType};
+type PlaybookType = {
+    playbookid : string,
+    playbookname : string,
+    description : string,
+    entryids : string[],
+    entries : PlaybookEntryType[],
+};
+
+type PlaybookEntryType = {
+    entryid : string,
+    playbookid : string,
+    alias : string,
+    cmdstr : string,
+    description : string,
+    createdts : number,
+    updatedts : number,
+    remove : boolean,
+};
+
+type RenderModeType = "normal" | "collapsed";
+
+export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType, UIContextType, HistoryInfoType, HistoryQueryOpts, WatchScreenPacketType, TermWinSize, FeInputPacketType, RemoteInputPacketType, RemoteEditType, FeStateType, ContextMenuOpts, RendererContext, WindowSize, RendererModel, PtyDataType, BookmarkType, ClientDataType, PlaybookType, PlaybookEntryType, HistoryViewDataType, RenderModeType};

@@ -151,19 +151,11 @@ body::-webkit-scrollbar {
     }
 }
 
-.history-view {
-    .history-title {
-        margin: 10px 0 10px 15px;
-        .mono-font(1.5rem);
-        color: @term-bright-white;
-    }
-}
-
-.bookmarks-view {
+.alt-view {
     background-color: #222;
     overflow-y: auto;
     
-    .bookmarks-title {
+    .alt-title {
         margin: 20px 10px 0px 5px;
         padding-left: 10px;
         padding-bottom: 12px;
@@ -186,18 +178,7 @@ body::-webkit-scrollbar {
         }
     }
 
-    .bookmarks-list {
-        color: white;
-        margin: 4px 10px 5px 5px;
-
-        .no-bookmarks {
-            color: @term-white;
-            padding: 30px 10px 35px 10px;
-            border-bottom: 1px solid white;
-        }
-    }
-
-    .bookmarks-help {
+    .alt-help {
         color: @term-white;
         margin-top: 20px;
         display: flex;
@@ -208,6 +189,238 @@ body::-webkit-scrollbar {
 
         .help-entry {
             margin-left: 20px;
+        }
+    }
+}
+
+.history-view {
+    color: #ccc;
+
+    .close-button {
+        top: 10px;
+    }
+
+    .header {
+        display: flex;
+        flex-direction: row;
+        margin: 10px;
+
+        .history-title {
+            .mono-font(1.5rem);
+            font-weight: bold;
+            align-self: center;
+        }
+
+        input {
+            background-color: #333;
+            color: white;
+
+            i {
+                color: white;
+            }
+        }
+    }
+
+    .history-search {
+        flex-grow: 1;
+        margin-top: 5px;
+        margin-left: 15px;
+        .field {
+            width: 80%;
+        }
+    }
+
+    .control-bar {
+        display: flex;
+        flex-direction: row;
+        margin-bottom: 5px;
+        margin-right: 10px;
+        margin-top: 10px;
+        margin-left: 10px;
+        align-items: center;
+
+        .control-checkbox {
+            cursor: pointer;
+            color: #777;
+            font-size: 18px;
+            width: 24px;
+            margin-left: 14px;
+
+            &:hover {
+                color: white;
+            }
+        }
+
+        .control-button {
+            cursor: pointer;
+            color: #aaa;
+            margin-left: 10px;
+            font-size: 18px;
+
+            &.is-disabled {
+                cursor: default;
+                i {
+                    display: none;
+                }
+            }
+
+            &:hover {
+                color: white;
+            }
+
+            &.delete-button.is-active:hover {
+                color: @term-bright-red;
+            }
+        }
+
+        .spacer {
+            flex-grow: 1;
+        }
+
+        .showing-text {
+            font-size: 16px;
+            margin-right: 10px;
+        }
+
+        .showing-btn {
+            padding: 0 5px 0 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+
+            &.is-disabled {
+                cursor: default;
+                color: #777;
+                font-weight: normal;
+            }
+        }
+
+        .btn-spacer {
+            width: 10px;
+        }
+    }
+    
+    .history-table {
+        margin: 0px 10px 10px 10px;
+        table-layout: fixed;
+        border-top: 2px solid #ccc;
+
+        tr.active-history-item {
+            td {
+                padding: 10px;
+                background-color: blue;
+            }
+        }
+
+        tr.history-item {
+            padding: 0 10px 0 10px;
+            display: flex;
+            border-top: 1px solid #333;
+            align-items: center;
+
+            &.is-selected {
+                background-color: #003;
+
+                td.cmdstr {
+                    background-color: #000017;
+                }
+            }
+
+            &.is-selected:hover {
+                background-color: #336;
+
+                td.cmdstr {
+                    background-color: #113;
+                }
+            }
+
+            &:hover {
+                background-color: #333;
+
+                td.cmdstr {
+                    background-color: #111;
+                }
+
+                td.bookmark i {
+                    display: block;
+                }
+            }
+
+            td {
+                padding-top: 5px;
+                padding-bottom: 5px;
+                padding-left: 5px;
+            }
+
+            td.selectbox {
+                flex: 0 0 auto;
+                flex-basis: 24px;
+                font-size: 14px;
+                cursor: pointer;
+            }
+
+            td.bookmark {
+                flex: 0 0 auto;
+                flex-basis: 20px;
+                font-size: 14px;
+                cursor: pointer;
+
+                i {
+                    position: relative;
+                    top: 1px;
+                    display: none;
+                }
+            }
+
+            td.ts {
+                font-size: 12px;
+                flex: 0 0 auto;
+                flex-basis: 65px;
+                font-weight: bold;
+            }
+
+            td.session {
+                font-size: 12px;
+                flex: 0 0 auto;
+                flex-basis: 120px;
+                text-overflow: ellipsis;
+            }
+
+            td.remote {
+                .mono-font(12px);
+                flex: 0 0 auto;
+                flex-basis: 150px;
+                text-overflow: ellipsis;
+                padding-right: 5px;
+                max-width: 150px;
+                overflow: hidden;
+            }
+
+            td.cmdstr {
+                .mono-font(12px);
+                color: white;
+                background-color: black;
+                flex: 1 0 auto;
+                padding-left: 20px;
+                border-radius: 3px;
+                white-space: pre;
+                max-height: 64px;
+                overflow-y: auto;
+                cursor: pointer;
+            }
+        }
+    }
+}
+
+.bookmarks-view {
+    .bookmarks-list {
+        color: white;
+        margin: 4px 10px 5px 5px;
+
+        .no-bookmarks {
+            color: @term-white;
+            padding: 30px 10px 35px 10px;
+            border-bottom: 1px solid white;
         }
     }
 

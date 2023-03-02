@@ -5,7 +5,7 @@ import {debounce} from "throttle-debounce";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData, boundInt, isModKeyPress} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType} from "./types";
+import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType, HistoryViewDataType} from "./types";
 import {WSControl} from "./ws";
 import {ImageRendererModel} from "./imagerenderer";
 import {measureText, getMonoFontSize} from "./textmeasure";
@@ -27,6 +27,17 @@ const MaxFontSize = 15;
 const VERSION = __PROMPT_VERSION__;
 // @ts-ignore
 const BUILD = __PROMPT_BUILD__;
+
+type LineContainerModel = {
+    loadTerminalRenderer : (elem : Element, line : LineType, cmd : Cmd, width : number) => void,
+    loadImageRenderer : (imageDivElem : any, line : LineType, cmd : Cmd) => ImageRendererModel,
+    unloadRenderer : (cmdId : string) => void,
+    getUsedRows : (line : LineType, cmd : Cmd, width : number) => number,
+    getIsFocused : (lineNum : number) => boolean,
+    getRenderer : (cmdId : string) => RendererModel,
+    getFocusType : () => "input" | "cmd" | "cmd-fg",
+    getSelectedLine : () => number,
+}
 
 
 type SWLinePtr = {
@@ -408,6 +419,10 @@ class ScreenWindow {
         })();
     }
 
+    getFocusType() : "input" | "cmd" | "cmd-fg" {
+        return this.focusType.get();
+    }
+
     setAnchor(anchorLine : number, anchorOffset : number) : void {
         let setVal = ((anchorLine == null || anchorLine == 0) ? "0" : sprintf("%d:%d", anchorLine, anchorOffset));
         GlobalCommandRunner.swSetAnchor(this.sessionId, this.screenId, this.windowId, setVal);
@@ -646,6 +661,10 @@ class ScreenWindow {
 
     getIsFocused(lineNum : number) : boolean {
         return (this.termLineNumFocus.get() == lineNum);
+    }
+
+    getSelectedLine() : number {
+        return this.selectedLine.get();
     }
 
     getWindow() : Window {
@@ -1612,6 +1631,186 @@ type LineFocusType = {
     cmdid? : string,
 };
 
+class SpecialHistoryViewLineContainer {
+    historyItem : HistoryItem;
+    renderer : RendererModel;
+
+    constructor(hitem : HistoryItem) {
+        this.historyItem = hitem;
+    }
+    
+    loadTerminalRenderer(elem : Element, line : LineType, cmd : Cmd, width : number) : void {
+        this.unloadRenderer(null);
+    }
+    
+    loadImageRenderer(imageDivElem : any, line : LineType, cmd : Cmd) : ImageRendererModel {
+        this.unloadRenderer(null);
+        let cmdId = cmd.cmdId;
+        let context = {
+            sessionId: this.historyItem.sessionid,
+            screenId: this.historyItem.screenid,
+            windowId: this.historyItem.windowid,
+            cmdId: cmdId,
+            lineId : line.lineid,
+            lineNum: line.linenum
+        };
+        let imageModel = new ImageRendererModel(imageDivElem, context, cmd.getTermOpts(), !cmd.isRunning(), GlobalModel.termFontSize.get());
+        this.renderer = imageModel;
+        return imageModel;
+    }
+    
+    unloadRenderer(cmdId : string) : void {
+        if (this.renderer != null) {
+            this.renderer.dispose();
+            this.renderer = null;
+        }
+    }
+    
+    getUsedRows(line : LineType, cmd : Cmd, width : number) : number {
+        if (cmd == null) {
+            return 0;
+        }
+        let termOpts = cmd.getTermOpts();
+        if (!termOpts.flexrows) {
+            return termOpts.rows;
+        }
+        let termWrap = this.getRenderer(cmd.cmdId);
+        if (termWrap == null) {
+            let cols = windowWidthToCols(width, GlobalModel.termFontSize.get());
+            let usedRows = GlobalModel.getTUR(this.historyItem.sessionid, cmd.cmdId, cols);
+            if (usedRows != null) {
+                return usedRows;
+            }
+            if (line.contentheight != null && line.contentheight != -1) {
+                return line.contentheight;
+            }
+            return (cmd.isRunning() ? 1 : 0);
+        }
+        return termWrap.getUsedRows();
+    }
+    
+    getIsFocused(lineNum : number) : boolean {
+        return false;
+    }
+    
+    getRenderer(cmdId : string) : RendererModel {
+        return this.renderer;
+    }
+    
+    getFocusType() : "input" | "cmd" | "cmd-fg" {
+        return "input";
+    }
+    
+    getSelectedLine() : number {
+        return null;
+    }
+}
+
+const HistoryPageSize = 50;
+
+class HistoryViewModel {
+    items : OArr<HistoryItem> = mobx.observable.array([], {name: "HistoryItems"});
+    offset : OV<number> = mobx.observable.box(0, {name: "historyview-offset"});
+    searchText : OV<string> = mobx.observable.box("", {name: "historyview-searchtext"});
+    activeSearchText : string = null;
+    selectedItems : OMap<string, boolean> = mobx.observable.map({}, {name: "historyview-selectedItems"});
+    deleteActive : OV<boolean> = mobx.observable.box(false, {name: "historyview-deleteActive"});
+    activeItem : OV<string> = mobx.observable.box(null, {name: "historyview-activeItem"});
+    specialLineContainer : SpecialHistoryViewLineContainer;
+    
+    constructor() {
+    }
+
+    closeView() : void {
+        mobx.action(() => {
+            GlobalModel.activeMainView.set("session");
+        })();
+    }
+
+    setActiveItem(historyId : string) {
+        if (this.activeItem.get() == historyId) {
+            return;
+        }
+        let hitem : HistoryItem = null;
+        if (historyId != null) {
+            for (let i=0; i<this.items.length; i++) {
+                if (this.items[i].historyid == historyId) {
+                    hitem = this.items[i];
+                    break;
+                }
+            }
+        }
+        mobx.action(() => {
+            if (hitem == null) {
+                this.activeItem.set(null);
+                this.specialLineContainer = null;
+            }
+            else {
+                this.activeItem.set(hitem.historyid);
+                this.specialLineContainer = new SpecialHistoryViewLineContainer(hitem);
+            }
+        })();
+    }
+
+    doSelectedDelete() : void {
+        if (!this.deleteActive.get()) {
+            mobx.action(() => {
+                this.deleteActive.set(true);
+            })();
+            setTimeout(this.clearActiveDelete, 2000);
+            return;
+        }
+        console.log("DELETE!");
+    }
+
+    @boundMethod
+    clearActiveDelete() : void {
+        mobx.action(() => {
+            this.deleteActive.set(false);
+        })();
+    }
+
+    goPrev() : void {
+        let offset = this.offset.get();
+        offset = offset - HistoryPageSize;
+        if (offset < 0) {
+            offset = 0;
+        }
+        GlobalCommandRunner.historyView({offset: offset, searchText: this.activeSearchText});
+    }
+
+    goNext() : void {
+        let offset = this.offset.get();
+        GlobalCommandRunner.historyView({offset: offset+HistoryPageSize, searchText: this.activeSearchText});
+    }
+
+    submitSearch() : void {
+        mobx.action(() => {
+            this.items.replace([]);
+            this.offset.set(0);
+            this.activeSearchText = this.searchText.get();
+        })();
+        GlobalCommandRunner.historyView({offset: 0, searchText: this.activeSearchText});
+    }
+
+    handleDocKeyDown(e : any) : void {
+        if (e.code == "Escape") {
+            e.preventDefault();
+            this.closeView();
+            return;
+        }
+    }
+    
+    showHistoryView(data : HistoryViewDataType) : void {
+        mobx.action(() => {
+            GlobalModel.activeMainView.set("history");
+            this.items.replace(data.items || []);
+            this.offset.set(data.offset);
+            this.selectedItems.clear();
+        })();
+    }
+}
+
 class BookmarksModel {
     bookmarks : OArr<BookmarkType> = mobx.observable.array([], {name: "Bookmarks"});
     activeBookmark : OV<string> = mobx.observable.box(null, {name: "activeBookmark"});
@@ -1851,6 +2050,7 @@ class Model {
 
     inputModel : InputModel;
     bookmarksModel : BookmarksModel;
+    historyViewModel : HistoryViewModel;
     clientData : OV<ClientDataType> = mobx.observable.box(null, {name: "clientData"});
     
     constructor() {
@@ -1861,6 +2061,7 @@ class Model {
         this.ws.reconnect();
         this.inputModel = new InputModel();
         this.bookmarksModel = new BookmarksModel();
+        this.historyViewModel = new HistoryViewModel();
         let isLocalServerRunning = getApi().getLocalServerStatus();
         this.localServerRunning = mobx.observable.box(isLocalServerRunning, {name: "model-local-server-running"});
         this.termFontSize = mobx.computed(() => {
@@ -1935,6 +2136,10 @@ class Model {
         }
         if (this.activeMainView.get() == "bookmarks") {
             this.bookmarksModel.handleDocKeyDown(e);
+            return;
+        }
+        if (this.activeMainView.get() == "history") {
+            this.historyViewModel.handleDocKeyDown(e);
             return;
         }
         if (e.code == "Escape") {
@@ -2200,8 +2405,19 @@ class Model {
             }
             this.updateRemotes(update.remotes);
         }
-        if ("bookmarksview" in update) {
-            this.bookmarksModel.showBookmarksView(update.bookmarks);
+        if ("mainview" in update) {
+            if (update.mainview == "bookmarks") {
+                this.bookmarksModel.showBookmarksView(update.bookmarks);
+            }
+            else if (update.mainview == "session") {
+                this.activeMainView.set("session");
+            }
+            else if (update.mainview == "history") {
+                this.historyViewModel.showHistoryView(update.historyviewdata);
+            }
+            else {
+                console.log("invalid mainview in update:", update.mainview);
+            }
         }
         else if ("bookmarks" in update) {
             this.bookmarksModel.mergeBookmarks(update.bookmarks);
@@ -2234,6 +2450,27 @@ class Model {
 
     getActiveSession() : Session {
         return this.getSessionById(this.activeSessionId.get());
+    }
+
+    getSessionNames() : Record<string,string> {
+        let rtn : Record<string, string> = {};
+        for (let i=0; i<this.sessionList.length; i++) {
+            let session = this.sessionList[i];
+            rtn[session.sessionId] = session.name.get();
+        }
+        return rtn;
+    }
+
+    getScreenNames() : Record<string, string> {
+        let rtn : Record<string, string> = {};
+        for (let i=0; i<this.sessionList.length; i++) {
+            let session = this.sessionList[i];
+            for (let j=0; j<session.screens.length; j++) {
+                let screen = session.screens[j];
+                rtn[screen.screenId] = screen.name.get();
+            }
+        }
+        return rtn;
     }
 
     getSessionById(sessionId : string) : Session {
@@ -2501,6 +2738,20 @@ class Model {
         return null;
     }
 
+    getRemoteNames() : Record<string, string> {
+        let rtn : Record<string, string> = {};
+        for (let i=0; i<this.remotes.length; i++) {
+            let remote = this.remotes[i];
+            if (!isBlank(remote.remotealias)) {
+                rtn[remote.remoteid] = remote.remotealias;
+            }
+            else {
+                rtn[remote.remoteid] = remote.remotecanonicalname;
+            }
+        }
+        return rtn;
+    }
+
     getRemoteByName(name : string) : RemoteType {
         for (let i=0; i<this.remotes.length; i++) {
             if (this.remotes[i].remotecanonicalname == name || this.remotes[i].remotealias == name) {
@@ -2747,6 +2998,17 @@ class CommandRunner {
         GlobalModel.submitCommand("bookmarks", "show", null, {"nohist": "1"}, true);
     }
 
+    historyView(params : {offset? : number, searchText? : string}) {
+        let kwargs = {"nohist": "1"};
+        if (params.offset != null) {
+            kwargs["offset"] = String(params.offset);
+        }
+        if (params.searchText != null) {
+            kwargs["text"] = params.searchText;
+        }
+        GlobalModel.submitCommand("history", "viewall", null, kwargs, true);
+    }
+
     editBookmark(bookmarkId : string, desc : string, cmdstr : string) {
         let kwargs = {
             "nohist": "1",
@@ -2820,5 +3082,6 @@ GlobalModel = (window as any).GlobalModel;
 GlobalCommandRunner = (window as any).GlobalCommandRunner;
 
 export {Model, Session, Window, GlobalModel, GlobalCommandRunner, Cmd, Screen, ScreenWindow, riToRPtr, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows, getPtyData, getRemotePtyData};
+export type {LineContainerModel};
 
 
