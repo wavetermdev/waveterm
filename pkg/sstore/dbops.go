@@ -893,7 +893,7 @@ func getNextId(ids []string, delId string) string {
 	return ids[0]
 }
 
-func SwitchScreenById(ctx context.Context, sessionId string, screenId string) (UpdatePacket, error) {
+func SwitchScreenById(ctx context.Context, sessionId string, screenId string) (*ModelUpdate, error) {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT screenid FROM screen WHERE sessionid = ? AND screenid = ?`
 		if !tx.Exists(query, sessionId, screenId) {
@@ -910,7 +910,7 @@ func SwitchScreenById(ctx context.Context, sessionId string, screenId string) (U
 	if err != nil {
 		return nil, err
 	}
-	return ModelUpdate{Sessions: []*SessionType{bareSession}}, nil
+	return &ModelUpdate{ActiveSessionId: sessionId, Sessions: []*SessionType{bareSession}}, nil
 }
 
 func cleanSessionCmds(ctx context.Context, sessionId string) error {
