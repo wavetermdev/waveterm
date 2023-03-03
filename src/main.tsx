@@ -9,6 +9,7 @@ import dayjs from "dayjs";
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import cn from "classnames";
 import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts, RemoteEditType, FeStateType, ContextMenuOpts, BookmarkType, RenderModeType} from "./types";
+import type * as T from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, ScreenWindow, riToRPtr, windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols} from "./model";
 import {isModKeyPress} from "./util";
@@ -2489,6 +2490,41 @@ class LoadingSpinner extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
+class AlertModal extends React.Component<{}, {}> {
+    closeModal() : void {
+        mobx.action(() => {
+            GlobalModel.alertMessage.set(null);
+        })();
+    }
+    
+    render() {
+        let message = GlobalModel.alertMessage.get();
+        if (message == null) {
+            return null;
+        }
+        let title = message.title ?? "Alert";
+        return (
+            <div className="modal is-active">
+                <div className="modal-background"/>
+                <div className="modal-card">
+                    <header className="modal-card-head">
+                        <p className="modal-card-title">{title}</p>
+                        <button className="delete"></button>
+                    </header>
+                    <section className="modal-card-body">
+                        <p>{message.message}</p>
+                    </section>
+                    <footer className="modal-card-foot">
+                        <button className="button">OK</button>
+                    </footer>
+                </div>
+                <button class="modal-close is-large" aria-label="close"></button>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
 class Main extends React.Component<{}, {}> {
     constructor(props : any) {
         super(props);
@@ -2533,6 +2569,7 @@ class Main extends React.Component<{}, {}> {
                 <If condition={!GlobalModel.ws.open.get() || !GlobalModel.localServerRunning.get()}>
                     <DisconnectedModal/>
                 </If>
+                <AlertModal/>
             </div>
         );
     }
