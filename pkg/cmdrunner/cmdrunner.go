@@ -1454,6 +1454,7 @@ func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if err != nil {
 		return nil, err
 	}
+	updateHistoryContext(ctx, rtnLine, nil)
 	updateMap := make(map[string]interface{})
 	updateMap[sstore.SWField_SelectedLine] = rtnLine.LineNum
 	updateMap[sstore.SWField_Focus] = sstore.SWFocusInput
@@ -1810,6 +1811,8 @@ func ClearCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 
 }
 
+const HistoryViewPageSize = 50
+
 func HistoryViewAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	_, err := resolveUiIds(ctx, pk, 0)
 	if err != nil {
@@ -1819,7 +1822,7 @@ func HistoryViewAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	if err != nil {
 		return nil, err
 	}
-	opts := sstore.HistoryQueryOpts{MaxItems: 51, Offset: offset}
+	opts := sstore.HistoryQueryOpts{MaxItems: HistoryViewPageSize + 1, Offset: offset}
 	if pk.Kwargs["text"] != "" {
 		opts.SearchText = pk.Kwargs["text"]
 	}
@@ -1827,11 +1830,20 @@ func HistoryViewAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	if err != nil {
 		return nil, err
 	}
-	hvdata := &sstore.HistoryViewData{
-		TotalCount: 0,
-		Offset:     offset,
-		Items:      hitems,
+	hvdata := &sstore.HistoryViewData{Offset: offset}
+	if len(hitems) > HistoryViewPageSize {
+		hvdata.HasMore = true
+		hvdata.Items = hitems[0:HistoryViewPageSize]
+	} else {
+		hvdata.HasMore = false
+		hvdata.Items = hitems
 	}
+	lines, cmds, err := sstore.GetLineCmdsFromHistoryItems(ctx, hvdata.Items)
+	if err != nil {
+		return nil, err
+	}
+	hvdata.Lines = lines
+	hvdata.Cmds = cmds
 	update := sstore.ModelUpdate{
 		HistoryViewData: hvdata,
 		MainView:        sstore.MainViewHistory,

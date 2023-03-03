@@ -2343,3 +2343,48 @@ func GetPlaybookById(ctx context.Context, playbookId string) (*PlaybookType, err
 	}
 	return rtn, nil
 }
+
+func getLineIdsFromHistoryItems(historyItems []*HistoryItemType) []string {
+	var rtn []string
+	for _, hitem := range historyItems {
+		if hitem.LineId != "" {
+			rtn = append(rtn, hitem.LineId)
+		}
+	}
+	return rtn
+}
+
+func getCmdIdsFromHistoryItems(historyItems []*HistoryItemType) []string {
+	var rtn []string
+	for _, hitem := range historyItems {
+		if hitem.CmdId != "" {
+			rtn = append(rtn, hitem.CmdId)
+		}
+	}
+	return rtn
+}
+
+func GetLineCmdsFromHistoryItems(ctx context.Context, historyItems []*HistoryItemType) ([]*LineType, []*CmdType, error) {
+	var lineArr []*LineType
+	var cmdArr []*CmdType
+	if len(historyItems) == 0 {
+		return nil, nil, nil
+	}
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT * FROM line WHERE lineid IN (SELECT value FROM json_each(?))`
+		tx.Select(&lineArr, query, quickJsonArr(getLineIdsFromHistoryItems(historyItems)))
+		query = `SELECT * FROM cmd WHERE cmdid IN (SELECT value FROM json_each(?))`
+		marr := tx.SelectMaps(query, quickJsonArr(getCmdIdsFromHistoryItems(historyItems)))
+		for _, m := range marr {
+			cmd := CmdFromMap(m)
+			if cmd != nil {
+				cmdArr = append(cmdArr, cmd)
+			}
+		}
+		return nil
+	})
+	if txErr != nil {
+		return nil, nil, txErr
+	}
+	return lineArr, cmdArr, nil
+}

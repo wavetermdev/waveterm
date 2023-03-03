@@ -79,6 +79,9 @@ type HistoryViewData struct {
 	TotalCount int                `json:"totalcount"`
 	Offset     int                `json:"offset"`
 	Items      []*HistoryItemType `json:"items"`
+	Lines      []*LineType        `json:"lines"`
+	Cmds       []*CmdType         `json:"cmds"`
+	HasMore    bool               `json:"hasmore"`
 }
 
 type RemoteEditType struct {
