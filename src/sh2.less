@@ -307,8 +307,44 @@ body::-webkit-scrollbar {
 
         tr.active-history-item {
             td {
-                padding: 10px;
-                background-color: blue;
+                padding-right: 10px;
+                
+                .line-container {
+                    padding: 0px 10px 10px 10px;
+                    overflow-x: auto;
+                    background-color: black;
+                }
+
+                .line-context {
+                    .mono-font(12px);
+                    margin-left: 20px;
+                    margin-bottom: 10px;
+                    margin-top: 10px;
+                    display: flex;
+                    flex-direction: row;
+
+                    .vic-btn {
+                        cursor: pointer;
+                        color: #ccc;
+
+                        &:hover {
+                            color: white;
+                        }
+                    }
+                }
+
+                .no-line-context {
+                    height: 10px;
+                }
+
+                .line-container.no-line {
+                    .mono-font(12px);
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 20px;
+                }
             }
         }
 
@@ -400,13 +436,18 @@ body::-webkit-scrollbar {
                 .mono-font(12px);
                 color: white;
                 background-color: black;
-                flex: 1 0 auto;
+                flex: 1 0 0;
                 padding-left: 20px;
                 border-radius: 3px;
                 white-space: pre;
                 max-height: 64px;
-                overflow-y: auto;
                 cursor: pointer;
+                min-width: 300px;
+                overflow-y: auto;
+
+                .cmdstr-content {
+                    overflow-x: auto;
+                }
             }
         }
     }

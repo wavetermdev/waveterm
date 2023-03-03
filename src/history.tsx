@@ -5,15 +5,18 @@ import {If, For, When, Otherwise, Choose} from "tsx-control-statements/component
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 import cn from "classnames";
-import {GlobalModel, GlobalCommandRunner} from "./model";
-import {HistoryItem, RemotePtrType} from "./types";
+import {GlobalModel, GlobalCommandRunner, Cmd} from "./model";
+import {HistoryItem, RemotePtrType, LineType, CmdDataType} from "./types";
 import dayjs from "dayjs";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {Line} from "./linecomps";
 
 dayjs.extend(localizedFormat)
 
-const PageSize = 50;
+type OV<V> = mobx.IObservableValue<V>;
+type OArr<V> = mobx.IObservableArray<V>;
+type OMap<K,V> = mobx.ObservableMap<K,V>;
+type CV<V> = mobx.IComputedValue<V>;
 
 function isBlank(s : string) {
     return (s == null || s == "");
@@ -61,6 +64,10 @@ function formatSSName(snames : Record<string, string>, scrnames : Record<string,
 
 @mobxReact.observer
 class HistoryView extends React.Component<{}, {}> {
+    tableRef : React.RefObject<any> = React.createRef();
+    tableWidth : OV<number> = mobx.observable.box(0, {name: "tableWidth"});
+    tableRszObs : ResizeObserver;
+    
     @boundMethod
     clickCloseHandler() : void {
         GlobalModel.historyViewModel.closeView();
@@ -115,7 +122,7 @@ class HistoryView extends React.Component<{}, {}> {
                 return;
             }
             else {
-                for (let i=0; i<hvm.items.length && i<PageSize; i++) {
+                for (let i=0; i<hvm.items.length; i++) {
                     hvm.selectedItems.set(hvm.items[i].historyid, true);
                 }
             }
@@ -136,6 +143,37 @@ class HistoryView extends React.Component<{}, {}> {
             GlobalModel.historyViewModel.setActiveItem(historyId);
         }
     }
+
+    checkWidth() {
+        if (this.tableRef.current != null) {
+            mobx.action(() => {
+                this.tableWidth.set(this.tableRef.current.offsetWidth);
+            })();
+        }
+    }
+
+    @boundMethod
+    handleTableResize() {
+        this.checkWidth();
+    }
+
+    componentDidMount() {
+        if (this.tableRef.current != null) {
+            this.tableRszObs = new ResizeObserver(this.handleTableResize.bind(this));
+            this.tableRszObs.observe(this.tableRef.current);
+        }
+        this.checkWidth();
+    }
+
+    componentWillUnmount() {
+        if (this.tableRszObs != null) {
+            this.tableRszObs.disconnect();
+        }
+    }
+
+    componentDidUpdate() {
+        this.checkWidth();
+    }
     
     render() {
         let isHidden = (GlobalModel.activeMainView.get() != "history");
@@ -150,11 +188,7 @@ class HistoryView extends React.Component<{}, {}> {
         let snames = GlobalModel.getSessionNames();
         let rnames = GlobalModel.getRemoteNames();
         let scrnames = GlobalModel.getScreenNames();
-        let hasMore = false;
-        if (items.length > PageSize) {
-            items = items.slice(0, PageSize);
-            hasMore = true;
-        }
+        let hasMore = hvm.hasMore.get();
         let offset = hvm.offset.get();
         let numSelected = hvm.selectedItems.size;
         let controlCheckboxIcon = "fa-sharp fa-regular fa-square";
@@ -164,7 +198,12 @@ class HistoryView extends React.Component<{}, {}> {
         if (numSelected > 0 && numSelected == items.length) {
             controlCheckboxIcon = "fa-sharp fa-regular fa-square-check";
         }
-        let activeItem = hvm.activeItem.get();
+        let activeItemId = hvm.activeItem.get();
+        let activeItem = hvm.getHistoryItemById(activeItemId);
+        let activeLine : LineType = null;
+        if (activeItem != null) {
+            activeLine = hvm.getLineById(activeItem.lineid);
+        }
         return (
             <div className={cn("history-view", "alt-view", {"is-hidden": isHidden})}>
                 <div className="close-button" onClick={this.clickCloseHandler}><i className="fa-sharp fa-solid fa-xmark"></i></div>
@@ -196,7 +235,7 @@ class HistoryView extends React.Component<{}, {}> {
                     <div className="btn-spacer"/>
                     <div className={cn("showing-btn", {"is-disabled": !hasMore})} onClick={hasMore ? this.handleNext : null}><i className="fa-sharp fa-solid fa-chevron-right"/></div>
                 </div>
-                <table className="history-table" cellSpacing="0" cellPadding="0" border={0}>
+                <table className="history-table" cellSpacing="0" cellPadding="0" border={0} ref={this.tableRef}>
                     <tbody>
                         <For index="idx" each="item" of={items}>
                             <tr key={item.historyid} className={cn("history-item", {"is-selected": hvm.selectedItems.get(item.historyid)})}>
@@ -221,13 +260,13 @@ class HistoryView extends React.Component<{}, {}> {
                                     {formatRemoteName(rnames, item.remote)}
                                 </td>
                                 <td className="cmdstr" onClick={() => this.activateItem(item.historyid)}>
-                                    {item.cmdstr}
+                                    <div className="cmdstr-content">{item.cmdstr}</div>
                                 </td>
                             </tr>
-                            <If condition={activeItem == item.historyid}>
+                            <If condition={activeItemId == item.historyid}>
                                 <tr className="active-history-item">
-                                    <td colSpan={10}>
-                                        <line sw={hvm.specialLineContainer} line={null} width={600} staticRender={true} visible={null} onHeightChange={null} overrideCollapsed={null} topBorder={false} renderMode="normal"/>
+                                    <td colSpan={6}>
+                                        <LineContainer key={activeItemId} historyId={activeItemId} width={this.tableWidth.get()}/>
                                     </td>
                                 </tr>
                             </If>
@@ -239,6 +278,76 @@ class HistoryView extends React.Component<{}, {}> {
                         [Esc] to Close<br/>
                     </div>
                 </div>
+            </div>
+        );
+    }
+}
+
+class LineContainer extends React.Component<{historyId : string, width : number}, {}> {
+    line : LineType;
+    cmd : Cmd;
+    historyItem : HistoryItem;
+    visible : OV<boolean> = mobx.observable.box(true);
+    overrideCollapsed : OV<boolean> = mobx.observable.box(false);
+    
+    constructor(props : any) {
+        super(props);
+        let hvm = GlobalModel.historyViewModel;
+        this.historyItem = hvm.getHistoryItemById(props.historyId);
+        if (this.historyItem == null) {
+            return;
+        }
+        this.line = hvm.getLineById(this.historyItem.lineid);
+        this.cmd = hvm.getCmdById(this.historyItem.cmdid);
+    }
+
+    @boundMethod
+    handleHeightChange(lineNum : number, newHeight : number, oldHeight : number) : void {
+        return;
+    }
+
+    @boundMethod
+    viewInContext() {
+        let screen = GlobalModel.getScreenById(this.historyItem.sessionid, this.historyItem.screenid);
+        if (screen == null) {
+            return null;
+        }
+        GlobalModel.historyViewModel.closeView();
+        GlobalCommandRunner.lineView(screen.sessionId, screen.screenId, this.line.linenum);
+    }
+    
+    render() {
+        let hvm = GlobalModel.historyViewModel;
+        if (this.historyItem == null || this.props.width == 0) {
+            return null;
+        }
+        if (this.line == null) {
+            return <div className="line-container no-line"><div>[no line data]</div></div>;
+        }
+        let width = this.props.width;
+        width = width - 50;
+        if (width < 400) {
+            width = 400;
+        }
+        let session = GlobalModel.getSessionById(this.historyItem.sessionid);
+        let screen = GlobalModel.getScreenById(this.historyItem.sessionid, this.historyItem.screenid);
+        let ssStr = "";
+        let canViewInContext = false;
+        if (session != null && screen != null) {
+            ssStr = sprintf("#%s[%s]", session.name.get(), screen.name.get());
+            canViewInContext = true;
+        }
+        return (
+            <div className="line-container">
+                <If condition={canViewInContext}>
+                    <div className="line-context">
+                        <div title="View in Context" className="vic-btn" onClick={this.viewInContext}><i className="fa-sharp fa-solid fa-right"/> {ssStr}</div>
+                    </div>
+                </If>
+                <If condition={session == null}>
+                    <div className="no-line-context"/>
+                </If>
+                <Line sw={hvm.specialLineContainer} line={this.line} width={width} staticRender={false} visible={this.visible} onHeightChange={this.handleHeightChange} overrideCollapsed={this.overrideCollapsed} topBorder={false} renderMode="normal"/>
             </div>
         );
     }

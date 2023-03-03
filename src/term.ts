@@ -29,7 +29,8 @@ type TermWrapOpts = {
     dataHandler? : (data : string, termWrap : TermWrap) => void,
     isRunning : boolean,
     customKeyHandler? : (event : any, termWrap : TermWrap) => boolean,
-    fontSize: number,
+    fontSize : number,
+    noSetTUR? : boolean,
 };
 
 // cmd-instance
@@ -50,6 +51,7 @@ class TermWrap {
     focusHandler : (focus : boolean) => void;
     isRunning : boolean;
     fontSize : number;
+    noSetTUR : boolean;
 
     constructor(elem : Element, opts : TermWrapOpts) {
         opts = opts ?? ({} as any);
@@ -60,6 +62,7 @@ class TermWrap {
         this.focusHandler = opts.focusHandler;
         this.isRunning = opts.isRunning;
         this.fontSize = opts.fontSize;
+        this.noSetTUR = !!opts.noSetTUR;
         if (this.flexRows) {
             this.atRowMax = false;
             this.usedRows = mobx.observable.box(opts.usedRows ?? (opts.isRunning ? 1 : 0), {name: "term-usedrows"});
@@ -218,7 +221,9 @@ class TermWrap {
                 return;
             }
             this.usedRows.set(tur);
-            GlobalModel.setTUR(termContext, this.termSize, tur);
+            if (!this.noSetTUR) {
+                GlobalModel.setTUR(termContext, this.termSize, tur);
+            }
         })();
     }
 

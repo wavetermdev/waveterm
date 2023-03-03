@@ -290,9 +290,11 @@ type ModelUpdateType = {
 };
 
 type HistoryViewDataType = {
-    totalcount : number,
     offset : number,
     items : HistoryItem[],
+    lines : LineType[],
+    cmds : CmdDataType[],
+    hasmore : boolean,
 };
 
 type BookmarkType = {

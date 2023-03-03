@@ -163,7 +163,6 @@ class Cmd {
     remoteId : string;
     cmdId : string;
     data : OV<CmdDataType>;
-    watching : boolean = false;
 
     constructor(cmd : CmdDataType) {
         this.sessionId = cmd.sessionid;
@@ -1639,17 +1638,47 @@ type LineFocusType = {
 class SpecialHistoryViewLineContainer {
     historyItem : HistoryItem;
     renderer : RendererModel;
+    cmd : Cmd;
 
     constructor(hitem : HistoryItem) {
         this.historyItem = hitem;
     }
 
     getCmd(line : LineType) : Cmd {
-        return null;
+        if (this.cmd == null) {
+            this.cmd = GlobalModel.historyViewModel.getCmdById(line.cmdid);
+        }
+        return this.cmd;
     }
     
     loadTerminalRenderer(elem : Element, line : LineType, cmd : Cmd, width : number) : void {
         this.unloadRenderer(null);
+        let cmdId = cmd.cmdId;
+        let termWrap = this.getRenderer(cmdId);
+        if (termWrap != null) {
+            console.log("term-wrap already exists for", line.windowid, cmdId);
+            return;
+        }
+        let cols = windowWidthToCols(width, GlobalModel.termFontSize.get());
+        let usedRows = GlobalModel.getTUR(line.sessionid, cmdId, cols);
+        if (line.contentheight != null && line.contentheight != -1) {
+            usedRows = line.contentheight;
+        }
+        let termContext = {sessionId: line.sessionid, screenId: "(historyview)", windowId: line.windowid, cmdId: cmdId, lineId : line.lineid, lineNum: line.linenum};
+        termWrap = new TermWrap(elem, {
+            termContext: termContext,
+            usedRows: usedRows,
+            termOpts: cmd.getTermOpts(),
+            winSize: {height: 0, width: width},
+            dataHandler: null,
+            focusHandler: null,
+            isRunning: cmd.isRunning(),
+            customKeyHandler: null,
+            fontSize: GlobalModel.termFontSize.get(),
+            noSetTUR: true,
+        });
+        this.renderer = termWrap;
+        return;
     }
     
     loadImageRenderer(imageDivElem : any, line : LineType, cmd : Cmd) : ImageRendererModel {
@@ -1719,12 +1748,17 @@ const HistoryPageSize = 50;
 
 class HistoryViewModel {
     items : OArr<HistoryItem> = mobx.observable.array([], {name: "HistoryItems"});
+    hasMore : OV<boolean> = mobx.observable.box(false, {name: "historyview-hasmore"});
     offset : OV<number> = mobx.observable.box(0, {name: "historyview-offset"});
     searchText : OV<string> = mobx.observable.box("", {name: "historyview-searchtext"});
     activeSearchText : string = null;
     selectedItems : OMap<string, boolean> = mobx.observable.map({}, {name: "historyview-selectedItems"});
     deleteActive : OV<boolean> = mobx.observable.box(false, {name: "historyview-deleteActive"});
     activeItem : OV<string> = mobx.observable.box(null, {name: "historyview-activeItem"});
+    
+    historyItemLines : LineType[] = [];
+    historyItemCmds : CmdDataType[] = [];
+    
     specialLineContainer : SpecialHistoryViewLineContainer;
     
     constructor() {
@@ -1736,19 +1770,50 @@ class HistoryViewModel {
         })();
     }
 
+    getLineById(lineId : string) : LineType {
+        if (isBlank(lineId)) {
+            return null;
+        }
+        for (let i=0; i<this.historyItemLines.length; i++) {
+            let line = this.historyItemLines[i];
+            if (line.lineid == lineId) {
+                return line;
+            }
+        }
+        return null;
+    }
+
+    getCmdById(cmdId : string) : Cmd {
+        if (isBlank(cmdId)) {
+            return null;
+        }
+        for (let i=0; i<this.historyItemCmds.length; i++) {
+            let cmd = this.historyItemCmds[i];
+            if (cmd.cmdid == cmdId) {
+                return new Cmd(cmd);
+            }
+        }
+        return null;
+    }
+
+    getHistoryItemById(historyId : string) : HistoryItem {
+        if (isBlank(historyId)) {
+            return null;
+        }
+        for (let i=0; i<this.items.length; i++) {
+            let hitem = this.items[i];
+            if (hitem.historyid == historyId) {
+                return hitem;
+            }
+        }
+        return null;
+    }
+
     setActiveItem(historyId : string) {
         if (this.activeItem.get() == historyId) {
             return;
         }
-        let hitem : HistoryItem = null;
-        if (historyId != null) {
-            for (let i=0; i<this.items.length; i++) {
-                if (this.items[i].historyid == historyId) {
-                    hitem = this.items[i];
-                    break;
-                }
-            }
-        }
+        let hitem = this.getHistoryItemById(historyId);
         mobx.action(() => {
             if (hitem == null) {
                 this.activeItem.set(null);
@@ -1795,9 +1860,12 @@ class HistoryViewModel {
 
     submitSearch() : void {
         mobx.action(() => {
+            this.hasMore.set(false);
             this.items.replace([]);
             this.offset.set(0);
             this.activeSearchText = this.searchText.get();
+            this.historyItemLines = [];
+            this.historyItemCmds = [];
         })();
         GlobalCommandRunner.historyView({offset: 0, searchText: this.activeSearchText});
     }
@@ -1813,8 +1881,11 @@ class HistoryViewModel {
     showHistoryView(data : HistoryViewDataType) : void {
         mobx.action(() => {
             GlobalModel.activeMainView.set("history");
+            this.hasMore.set(data.hasmore);
             this.items.replace(data.items || []);
             this.offset.set(data.offset);
+            this.historyItemLines = (data.lines ?? []);
+            this.historyItemCmds = (data.cmds ?? []);
             this.selectedItems.clear();
         })();
     }
@@ -2888,6 +2959,17 @@ class CommandRunner {
 
     switchScreen(screen : string) {
         GlobalModel.submitCommand("screen", null, [screen], {"nohist": "1"}, false);
+    }
+
+    lineView(sessionId : string, screenId : string, lineNum : number) {
+        let screen = GlobalModel.getScreenById(sessionId, screenId);
+        if (screen != null) {
+            let sw = screen.getActiveSW();
+            if (sw != null) {
+                sw.setAnchorFields(lineNum, 0, "line:view");
+            }
+        }
+        GlobalModel.submitCommand("line", "view", [sessionId, screenId, String(lineNum)], {"nohist": "1"}, false);
     }
 
     createNewSession() {
