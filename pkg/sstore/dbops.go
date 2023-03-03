@@ -1885,21 +1885,23 @@ func purgeCmdById(ctx context.Context, sessionId string, cmdId string) error {
 	return txErr
 }
 
-func PurgeLineById(ctx context.Context, sessionId string, lineId string) error {
+func PurgeLinesByIds(ctx context.Context, sessionId string, lineIds []string) error {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT cmdid FROM line WHERE sessionid = ? AND lineid = ?`
-		cmdId := tx.GetString(query, sessionId, lineId)
-		query = `DELETE FROM line WHERE sessionid = ? AND lineid = ?`
-		tx.Exec(query, sessionId, lineId)
-		query = `DELETE FROM history WHERE sessionid = ? AND lineid = ?`
-		tx.Exec(query, sessionId, lineId)
-		if cmdId != "" {
-			query = `SELECT count(*) FROM line WHERE sessionid = ? AND cmdid = ?`
-			cmdRefCount := tx.GetInt(query, sessionId, cmdId)
-			if cmdRefCount == 0 {
-				err := purgeCmdById(tx.Context(), sessionId, cmdId)
-				if err != nil {
-					return err
+		for _, lineId := range lineIds {
+			query := `SELECT cmdid FROM line WHERE sessionid = ? AND lineid = ?`
+			cmdId := tx.GetString(query, sessionId, lineId)
+			query = `DELETE FROM line WHERE sessionid = ? AND lineid = ?`
+			tx.Exec(query, sessionId, lineId)
+			query = `DELETE FROM history WHERE sessionid = ? AND lineid = ?`
+			tx.Exec(query, sessionId, lineId)
+			if cmdId != "" {
+				query = `SELECT count(*) FROM line WHERE sessionid = ? AND cmdid = ?`
+				cmdRefCount := tx.GetInt(query, sessionId, cmdId)
+				if cmdRefCount == 0 {
+					err := purgeCmdById(tx.Context(), sessionId, cmdId)
+					if err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -2387,4 +2389,33 @@ func GetLineCmdsFromHistoryItems(ctx context.Context, historyItems []*HistoryIte
 		return nil, nil, txErr
 	}
 	return lineArr, cmdArr, nil
+}
+
+func PurgeHistoryByIds(ctx context.Context, historyIds []string) ([]*HistoryItemType, error) {
+	var rtn []*HistoryItemType
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT * FROM history WHERE historyid IN (SELECT value FROM json_each(?))`
+		marr := tx.SelectMaps(query, quickJsonArr(historyIds))
+		for _, m := range marr {
+			hitem := HistoryItemFromMap(m)
+			if hitem != nil {
+				rtn = append(rtn, hitem)
+			}
+		}
+		query = `DELETE FROM history WHERE historyid IN (SELECT value FROM json_each(?))`
+		tx.Exec(query, quickJsonArr(historyIds))
+		for _, hitem := range rtn {
+			if hitem.LineId != "" {
+				err := PurgeLinesByIds(tx.Context(), hitem.SessionId, []string{hitem.LineId})
+				if err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	return rtn, nil
 }

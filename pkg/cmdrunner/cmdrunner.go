@@ -178,6 +178,7 @@ func init() {
 
 	registerCmdFn("history", HistoryCommand)
 	registerCmdFn("history:viewall", HistoryViewAllCommand)
+	registerCmdFn("history:purge", HistoryPurgeCommand)
 
 	registerCmdFn("bookmarks:show", BookmarksShowCommand)
 
@@ -1814,6 +1815,38 @@ func ClearCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 
 }
 
+func HistoryPurgeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	if len(pk.Args) == 0 {
+		return nil, fmt.Errorf("/history:purge requires at least one argument (history id)")
+	}
+	var historyIds []string
+	for _, historyArg := range pk.Args {
+		_, err := uuid.Parse(historyArg)
+		if err != nil {
+			return nil, fmt.Errorf("invalid historyid (must be uuid)")
+		}
+		historyIds = append(historyIds, historyArg)
+	}
+	historyItemsRemoved, err := sstore.PurgeHistoryByIds(ctx, historyIds)
+	if err != nil {
+		return nil, fmt.Errorf("/history:purge error purging items: %v", err)
+	}
+	update := sstore.ModelUpdate{}
+	for _, historyItem := range historyItemsRemoved {
+		if historyItem.LineId == "" {
+			continue
+		}
+		lineObj := &sstore.LineType{
+			SessionId: historyItem.SessionId,
+			WindowId:  historyItem.WindowId,
+			LineId:    historyItem.LineId,
+			Remove:    true,
+		}
+		update.Lines = append(update.Lines, lineObj)
+	}
+	return update, nil
+}
+
 const HistoryViewPageSize = 50
 
 func HistoryViewAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -2258,27 +2291,34 @@ func LinePurgeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		return nil, err
 	}
 	if len(pk.Args) == 0 {
-		return nil, fmt.Errorf("/line:purge requires an argument (line number or id)")
+		return nil, fmt.Errorf("/line:purge requires at least one argument (line number or id)")
 	}
-	lineArg := pk.Args[0]
-	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.WindowId, lineArg)
+	var lineIds []string
+	for _, lineArg := range pk.Args {
+		lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.WindowId, lineArg)
+		if err != nil {
+			return nil, fmt.Errorf("error looking up lineid: %v", err)
+		}
+		if lineId == "" {
+			return nil, fmt.Errorf("line %q not found", lineArg)
+		}
+		lineIds = append(lineIds, lineId)
+	}
+	err = sstore.PurgeLinesByIds(ctx, ids.SessionId, lineIds)
 	if err != nil {
-		return nil, fmt.Errorf("error looking up lineid: %v", err)
+		return nil, fmt.Errorf("/line:purge error purging lines: %v", err)
 	}
-	if lineId == "" {
-		return nil, fmt.Errorf("line %q not found", lineArg)
+	update := sstore.ModelUpdate{}
+	for _, lineId := range lineIds {
+		lineObj := &sstore.LineType{
+			SessionId: ids.SessionId,
+			WindowId:  ids.WindowId,
+			LineId:    lineId,
+			Remove:    true,
+		}
+		update.Lines = append(update.Lines, lineObj)
 	}
-	err = sstore.PurgeLineById(ctx, ids.SessionId, lineId)
-	if err != nil {
-		return nil, fmt.Errorf("/line:purge error purging line: %v", err)
-	}
-	lineObj := &sstore.LineType{
-		SessionId: ids.SessionId,
-		WindowId:  ids.WindowId,
-		LineId:    lineId,
-		Remove:    true,
-	}
-	return sstore.ModelUpdate{Line: lineObj}, nil
+	return update, nil
 }
 
 func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {

@@ -35,6 +35,7 @@ type ModelUpdate struct {
 	Windows         []*WindowType       `json:"windows,omitempty"`
 	ScreenWindows   []*ScreenWindowType `json:"screenwindows,omitempty"`
 	Line            *LineType           `json:"line,omitempty"`
+	Lines           []*LineType         `json:"lines,omitempty"`
 	Cmd             *CmdType            `json:"cmd,omitempty"`
 	CmdLine         *CmdLineType        `json:"cmdline,omitempty"`
 	Info            *InfoMsgType        `json:"info,omitempty"`
