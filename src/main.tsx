@@ -1613,12 +1613,17 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
         if (anchorElem == null) {
             return;
         }
+        let isLastLine = sw.isLastLine(sw.anchorLine);
         let scrollTop = linesElem.scrollTop;
         let height = linesElem.clientHeight;
         let containerBottom = scrollTop + height;
         let curAnchorOffset = containerBottom - (anchorElem.offsetTop + anchorElem.offsetHeight);
-        if (curAnchorOffset != sw.anchorOffset) {
-            let offsetDiff = curAnchorOffset - sw.anchorOffset;
+        let newAnchorOffset = sw.anchorOffset;
+        if (isLastLine && newAnchorOffset == 0) {
+            newAnchorOffset = 10;
+        }
+        if (curAnchorOffset != newAnchorOffset) {
+            let offsetDiff = curAnchorOffset - newAnchorOffset;
             let newScrollTop = scrollTop - offsetDiff;
             // console.log("update scrolltop", reason, "line=" + sw.anchorLine, -offsetDiff, linesElem.scrollTop, "=>", newScrollTop);
             linesElem.scrollTop = newScrollTop;

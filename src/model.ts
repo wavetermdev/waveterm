@@ -461,6 +461,19 @@ class ScreenWindow {
         return null;
     }
 
+    isLastLine(lineNum : number) : boolean {
+        let win = this.getWindow();
+        if (win == null) {
+            return false;
+        }
+        let lines = win.lines;
+        if (lines == null || lines.length == 0) {
+            return false;
+        }
+        let lastLine = lines[lines.length-1];
+        return (lastLine.linenum == lineNum);
+    }
+
     getPresentLineNum(lineNum : number) : number {
         let win = this.getWindow();
         if (win == null || !win.loaded.get()) {
