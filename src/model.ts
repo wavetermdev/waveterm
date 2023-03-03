@@ -1847,7 +1847,19 @@ class HistoryViewModel {
             setTimeout(this.clearActiveDelete, 2000);
             return;
         }
-        GlobalModel.showAlert({message: "DELETE!"});
+        let prtn = GlobalModel.showAlert({message: "Deleting these lines from history will also delete their content from your sessions as well.", confirm: true});
+        prtn.then((result) => {
+            if (!result) {
+                return;
+            }
+            if (result) {
+                this._deleteSelected();
+            }
+        });
+    }
+
+    _deleteSelected() : void {
+        GlobalCommandRunner.historyView({offset: offset, searchText: this.activeSearchText});
     }
 
     @boundMethod
@@ -2141,6 +2153,7 @@ class Model {
     activeMainView : OV<"session" | "history" | "bookmarks"> = mobx.observable.box("session", {name: "activeMainView"});
     termFontSize : CV<number>;
     alertMessage : OV<AlertMessageType> = mobx.observable.box(null, {name: "alertMessage"});
+    alertPromiseResolver : (result : boolean) => void;
 
     inputModel : InputModel;
     bookmarksModel : BookmarksModel;
@@ -2188,10 +2201,34 @@ class Model {
         setTimeout(() => this.getClientData(), 10);
     }
 
-    showAlert(alertMessage : AlertMessageType) : void {
+    showAlert(alertMessage : AlertMessageType) : Promise<boolean> {
         mobx.action(() => {
             this.alertMessage.set(alertMessage);
         })();
+        let prtn = new Promise((resolve, reject) => {
+            this.alertPromiseResolver = resolve;
+        });
+        return prtn;
+    }
+
+    cancelAlert() : void {
+        mobx.action(() => {
+            this.alertMessage.set(null);
+        })();
+        if (this.alertPromiseResolver != null) {
+            this.alertPromiseResolver(false);
+            this.alertPromiseResolver = null;
+        }
+    }
+
+    confirmAlert() : void {
+        mobx.action(() => {
+            this.alertMessage.set(null);
+        })();
+        if (this.alertPromiseResolver != null) {
+            this.alertPromiseResolver(true);
+            this.alertPromiseResolver = null;
+        }
     }
 
     getBaseHostPort() : string {
@@ -2232,6 +2269,19 @@ class Model {
 
     docKeyDownHandler(e : any) {
         if (isModKeyPress(e)) {
+            return;
+        }
+        if (this.alertMessage.get() != null) {
+            if (e.code == "Escape") {
+                e.preventDefault();
+                this.cancelAlert();
+                return;
+            }
+            if (e.code == "Enter") {
+                e.preventDefault();
+                this.confirmAlert();
+                return;
+            }
             return;
         }
         if (this.activeMainView.get() == "bookmarks") {

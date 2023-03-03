@@ -423,6 +423,7 @@ type PlaybookEntryType = {
 type AlertMessageType = {
     title : string,
     message : string,
+    confirm? : boolean,
 };
 
 type RenderModeType = "normal" | "collapsed";

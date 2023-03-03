@@ -2496,10 +2496,14 @@ class LoadingSpinner extends React.Component<{}, {}> {
 
 @mobxReact.observer
 class AlertModal extends React.Component<{}, {}> {
+    @boundMethod
     closeModal() : void {
-        mobx.action(() => {
-            GlobalModel.alertMessage.set(null);
-        })();
+        GlobalModel.cancelAlert();
+    }
+
+    @boundMethod
+    handleOK() : void {
+        GlobalModel.confirmAlert();
     }
     
     render() {
@@ -2508,22 +2512,29 @@ class AlertModal extends React.Component<{}, {}> {
             return null;
         }
         let title = message.title ?? "Alert";
+        let isConfirm = message.confirm;
         return (
-            <div className="modal is-active">
+            <div className="modal is-active alert-modal">
                 <div className="modal-background"/>
                 <div className="modal-card">
-                    <header className="modal-card-head">
-                        <p className="modal-card-title">{title}</p>
-                        <button className="delete"></button>
+                    <header className="modal-card-head has-background-danger-light">
+                        <p className="modal-card-title"><i className="fa-sharp fa-solid fa-triangle-exclamation"/> {title}</p>
+                        <button onClick={this.closeModal} className="delete"></button>
                     </header>
                     <section className="modal-card-body">
                         <p>{message.message}</p>
                     </section>
                     <footer className="modal-card-foot">
-                        <button className="button">OK</button>
+                        <If condition={isConfirm}>
+                            <button onClick={this.handleOK} className="button is-primary is-outlined">OK</button>
+                            <button onClick={this.closeModal} className="button is-danger is-outlined">Cancel</button>
+                        </If>
+                        <If condition={!isConfirm}>
+                            <button onClick={this.handleOK} className="button is-primary">OK</button>
+                        </If>
                     </footer>
                 </div>
-                <button class="modal-close is-large" aria-label="close"></button>
+                <button onClick={this.closeModal} className="modal-close" aria-label="close"></button>
             </div>
         );
     }

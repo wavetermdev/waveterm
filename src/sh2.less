@@ -239,6 +239,10 @@ body::-webkit-scrollbar {
         margin-left: 10px;
         align-items: center;
 
+        .is-hidden {
+            display: none;
+        }
+
         .control-checkbox {
             cursor: pointer;
             color: #777;
@@ -298,6 +302,17 @@ body::-webkit-scrollbar {
         .btn-spacer {
             width: 10px;
         }
+    }
+
+    .no-items {
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        .mono-font(14px);
+        padding: 30px 0 30px 0;
+        border: 1px solid white;
+        border-radius: 3px;
+        margin: 20px 50px 20px 20px;
     }
     
     .history-table {
@@ -2361,5 +2376,32 @@ input[type=checkbox] {
 
     .pre {
         white-space: pre;
+    }
+}
+
+.modal.alert-modal {
+
+    .modal-card {
+        min-width: 350px;
+        max-width: 640px;
+        width: auto;
+        
+        header {
+            padding: 10px;
+            font-size: 1.5rem;
+        }
+        
+        footer {
+            padding: 10px;
+            justify-content: center;
+        }
+
+        .modal-card-body {
+            padding: 10px;
+
+            p {
+                text-align: center;
+            }
+        }
     }
 }

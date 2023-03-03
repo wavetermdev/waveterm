@@ -222,7 +222,7 @@ class HistoryView extends React.Component<{}, {}> {
                         </div>
                     </div>
                 </div>
-                <div className="control-bar">
+                <div className={cn("control-bar", {"is-hidden": (items.length == 0)})}>
                     <div className="control-checkbox" onClick={this.handleControlCheckbox}>
                         <i className={controlCheckboxIcon} title="Toggle Selection"/>
                     </div>
@@ -273,6 +273,18 @@ class HistoryView extends React.Component<{}, {}> {
                         </For>
                     </tbody>
                 </table>
+                <div className={cn("control-bar", {"is-hidden": (items.length == 0 || !hasMore)})}>
+                    <div className="spacer"/>
+                    <div className="showing-text">Showing {offset+1}-{offset+items.length}</div>
+                    <div className={cn("showing-btn", {"is-disabled": (offset == 0)})} onClick={(offset != 0 ? this.handlePrev : null)}><i className="fa-sharp fa-solid fa-chevron-left"/></div>
+                    <div className="btn-spacer"/>
+                    <div className={cn("showing-btn", {"is-disabled": !hasMore})} onClick={hasMore ? this.handleNext : null}><i className="fa-sharp fa-solid fa-chevron-right"/></div>
+                </div>
+                <If condition={items.length == 0}>
+                    <div className="no-items">
+                        <div>No History Items Found</div>
+                    </div>
+                </If>
                 <div className="alt-help">
                     <div className="help-entry">
                         [Esc] to Close<br/>
