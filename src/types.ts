@@ -277,6 +277,7 @@ type ModelUpdateType = {
     windows? : WindowDataType[],
     screenwindows? : ScreenWindowType[],
     line? : LineType,
+    lines? : LineType[],
     cmd? : CmdDataType,
     info? : InfoType,
     cmdline? : CmdLineUpdateType,
@@ -421,7 +422,7 @@ type PlaybookEntryType = {
 };
 
 type AlertMessageType = {
-    title : string,
+    title? : string,
     message : string,
     confirm? : boolean,
 };

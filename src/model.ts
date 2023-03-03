@@ -1859,6 +1859,7 @@ class HistoryViewModel {
     }
 
     _deleteSelected() : void {
+        let offset = this.offset.get();
         GlobalCommandRunner.historyView({offset: offset, searchText: this.activeSearchText});
     }
 
@@ -2205,7 +2206,7 @@ class Model {
         mobx.action(() => {
             this.alertMessage.set(alertMessage);
         })();
-        let prtn = new Promise((resolve, reject) => {
+        let prtn = new Promise<boolean>((resolve, reject) => {
             this.alertPromiseResolver = resolve;
         });
         return prtn;
@@ -2529,15 +2530,15 @@ class Model {
             this._activateSession(update.activesessionid);
         }
         if ("line" in update) {
-            if (update.line != null) {
-                this.addLineCmd(update.line, update.cmd, interactive);
-            }
-            else if (update.line == null && update.cmd != null) {
-                this.updateCmd(update.cmd);
-            }
+            this.addLineCmd(update.line, update.cmd, interactive);
         }
         else if ("cmd" in update) {
             this.updateCmd(update.cmd);
+        }
+        if ("lines" in update) {
+            for (let i=0; i<update.lines.length; i++) {
+                this.addLineCmd(update.lines[i], null, interactive);
+            }
         }
         if ("windows" in update) {
             for (let i=0; i<update.windows.length; i++) {
@@ -2761,7 +2762,7 @@ class Model {
         });
     }
 
-    submitCommandPacket(cmdPk : FeCmdPacketType, interactive : boolean) {
+    submitCommandPacket(cmdPk : FeCmdPacketType, interactive : boolean) : Promise<boolean> {
         if (this.debugCmds > 0) {
             console.log("[cmd]", cmdPacketString(cmdPk));
             if (this.debugCmds > 1) {
@@ -2770,7 +2771,7 @@ class Model {
         }
         let url = sprintf(GlobalModel.getBaseHostPort() + "/api/run-command");
         let fetchHeaders = this.getFetchHeaders();
-        fetch(url, {method: "post", body: JSON.stringify(cmdPk), headers: fetchHeaders}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
+        let prtn = fetch(url, {method: "post", body: JSON.stringify(cmdPk), headers: fetchHeaders}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
             mobx.action(() => {
                 let update = data.data;
                 if (update != null) {
@@ -2780,12 +2781,15 @@ class Model {
                     GlobalModel.inputModel.clearInfoMsg(true);
                 }
             })();
+            return true;
         }).catch((err) => {
             this.errorHandler("calling run-command", err, true);
+            return false;
         });
+        return prtn;
     }
 
-    submitCommand(metaCmd : string, metaSubCmd : string, args : string[], kwargs : Record<string, string>, interactive : boolean) : void {
+    submitCommand(metaCmd : string, metaSubCmd : string, args : string[], kwargs : Record<string, string>, interactive : boolean) : Promise<boolean> {
         let pk : FeCmdPacketType = {
             type: "fecmd",
             metacmd: metaCmd,
@@ -2796,10 +2800,10 @@ class Model {
             interactive : interactive,
         };
         // console.log("CMD", pk.metacmd + (pk.metasubcmd != null ? ":" + pk.metasubcmd : ""), pk.args, pk.kwargs, pk.interactive);
-        this.submitCommandPacket(pk, interactive);
+        return this.submitCommandPacket(pk, interactive);
     }
 
-    submitRawCommand(cmdStr : string, addToHistory : boolean, interactive : boolean) : void {
+    submitRawCommand(cmdStr : string, addToHistory : boolean, interactive : boolean) : Promise<boolean> {
         let pk : FeCmdPacketType = {
             type: "fecmd",
             metacmd: "eval",
@@ -2812,7 +2816,7 @@ class Model {
         if (!addToHistory) {
             pk.kwargs["nohist"] = "1";
         }
-        this.submitCommandPacket(pk, interactive)
+        return this.submitCommandPacket(pk, interactive)
     }
 
     _activateSession(sessionId : string) {
