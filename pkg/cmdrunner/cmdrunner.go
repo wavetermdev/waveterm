@@ -164,6 +164,7 @@ func init() {
 	registerCmdFn("line:archive", LineArchiveCommand)
 	registerCmdFn("line:purge", LinePurgeCommand)
 	registerCmdFn("line:setheight", LineSetHeightCommand)
+	registerCmdFn("line:view", LineViewCommand)
 
 	registerCmdFn("client", ClientCommand)
 	registerCmdFn("client:show", ClientShowCommand)
@@ -607,6 +608,8 @@ func SwSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 		if m[2] != "" {
 			anchorOffset, _ := strconv.Atoi(m[2])
 			updateMap[sstore.SWField_AnchorOffset] = anchorOffset
+		} else {
+			updateMap[sstore.SWField_AnchorOffset] = 0
 		}
 	}
 	if pk.Kwargs["focus"] != "" {
@@ -1996,6 +1999,45 @@ func LineSetHeightCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	}
 	// we don't need to pass the updated line height (it is "write only")
 	return nil, nil
+}
+
+func LineViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	if len(pk.Args) != 3 {
+		return nil, fmt.Errorf("usage /line:view [session] [screen] [line]")
+	}
+	sessionArg := pk.Args[0]
+	screenArg := pk.Args[1]
+	lineArg := pk.Args[2]
+	sessionId, err := resolveSessionArg(sessionArg)
+	if err != nil {
+		return nil, fmt.Errorf("/line:view invalid session arg: %v", err)
+	}
+	screenRItem, err := resolveSessionScreen(ctx, sessionId, screenArg, "")
+	if err != nil {
+		return nil, fmt.Errorf("/line:view invalid screen arg: %v", err)
+	}
+	screen, err := sstore.GetScreenById(ctx, sessionId, screenRItem.Id)
+	if err != nil {
+		return nil, fmt.Errorf("/line:view could not get screen: %v", err)
+	}
+	lineRItem, err := resolveLine(ctx, sessionId, screen.ActiveWindowId, lineArg, "")
+	if err != nil {
+		return nil, fmt.Errorf("/line:view invalid line arg: %v", err)
+	}
+	update, err := sstore.SwitchScreenById(ctx, sessionId, screenRItem.Id)
+	if err != nil {
+		return nil, err
+	}
+	updateMap := make(map[string]interface{})
+	updateMap[sstore.SWField_SelectedLine] = lineRItem.Num
+	updateMap[sstore.SWField_AnchorLine] = lineRItem.Num
+	updateMap[sstore.SWField_AnchorOffset] = 0
+	sw, err := sstore.UpdateScreenWindow(ctx, sessionId, screenRItem.Id, screen.ActiveWindowId, updateMap)
+	if err != nil {
+		return nil, err
+	}
+	update.ScreenWindows = []*sstore.ScreenWindowType{sw}
+	return update, nil
 }
 
 func BookmarksShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
