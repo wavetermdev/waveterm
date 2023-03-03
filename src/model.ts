@@ -1859,6 +1859,14 @@ class HistoryViewModel {
     }
 
     _deleteSelected() : void {
+        let lineIds = Array.from(this.selectedItems.keys());
+        let prtn = GlobalCommandRunner.historyPurgeLines(lineIds);
+        prtn.then((result : boolean) => {
+            if (!result) {
+                GlobalModel.showAlert({message: "Error removing history lines."});
+                return;
+            }
+        });
         let offset = this.offset.get();
         GlobalCommandRunner.historyView({offset: offset, searchText: this.activeSearchText});
     }
@@ -3025,6 +3033,11 @@ class CommandRunner {
             kwargs["type"] = htype;
         }
         GlobalModel.submitCommand("history", null, null, kwargs, true);
+    }
+
+    historyPurgeLines(lines : string[]) : Promise<boolean> {
+        let prtn = GlobalModel.submitCommand("history", "purge", lines, {"nohist": "1"}, false);
+        return prtn;
     }
 
     switchSession(session : string) {
