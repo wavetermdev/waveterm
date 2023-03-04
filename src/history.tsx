@@ -62,11 +62,24 @@ function formatSSName(snames : Record<string, string>, scrnames : Record<string,
     return sessionName;
 }
 
+function formatSessionName(snames : Record<string, string>, sessionId : string) : string {
+    if (isBlank(sessionId)) {
+        return "";
+    }
+    let sname = snames[sessionId];
+    if (sname == null) {
+        return sessionId.substr(0, 8);
+    }
+    return "#" + sname;
+}
+
 @mobxReact.observer
 class HistoryView extends React.Component<{}, {}> {
     tableRef : React.RefObject<any> = React.createRef();
     tableWidth : OV<number> = mobx.observable.box(0, {name: "tableWidth"});
     tableRszObs : ResizeObserver;
+    sessionDropdownActive : OV<boolean> = mobx.observable.box(false, {name: "sessionDropdownActive"});
+    remoteDropdownActive : OV<boolean> = mobx.observable.box(false, {name: "remoteDropdownActive"});
     
     @boundMethod
     clickCloseHandler() : void {
@@ -174,6 +187,52 @@ class HistoryView extends React.Component<{}, {}> {
     componentDidUpdate() {
         this.checkWidth();
     }
+
+    @boundMethod
+    toggleSessionDropdown() : void {
+        mobx.action(() => {
+            this.sessionDropdownActive.set(!this.sessionDropdownActive.get());
+            if (this.sessionDropdownActive.get()) {
+                this.remoteDropdownActive.set(false);
+            }
+        })();
+    }
+
+    @boundMethod
+    clickLimitSession(sessionId : string) : void {
+        let hvm = GlobalModel.historyViewModel;
+        mobx.action(() => {
+            this.sessionDropdownActive.set(false);
+            hvm.setSearchSessionId(sessionId);
+        })();
+    }
+
+    @boundMethod
+    toggleRemoteDropdown() : void {
+        mobx.action(() => {
+            this.remoteDropdownActive.set(!this.remoteDropdownActive.get());
+            if (this.remoteDropdownActive.get()) {
+                this.sessionDropdownActive.set(false);
+            }
+        })();
+    }
+
+    @boundMethod
+    clickLimitRemote(remoteId : string) : void {
+        let hvm = GlobalModel.historyViewModel;
+        mobx.action(() => {
+            this.remoteDropdownActive.set(false);
+            hvm.setSearchRemoteId(remoteId);
+        })();
+    }
+
+    @boundMethod
+    toggleShowMeta() : void {
+        let hvm = GlobalModel.historyViewModel;
+        mobx.action(() => {
+            hvm.setSearchShowMeta(!hvm.searchShowMeta.get());
+        })();
+    }
     
     render() {
         let isHidden = (GlobalModel.activeMainView.get() != "history");
@@ -204,6 +263,10 @@ class HistoryView extends React.Component<{}, {}> {
         if (activeItem != null) {
             activeLine = hvm.getLineById(activeItem.lineid);
         }
+        let sessionIds = Object.keys(snames);
+        let sessionId : string = null;
+        let remoteIds = Object.keys(rnames);
+        let remoteId : string = null;
         return (
             <div className={cn("history-view", "alt-view", {"is-hidden": isHidden})}>
                 <div className="close-button" onClick={this.clickCloseHandler}><i className="fa-sharp fa-solid fa-xmark"></i></div>
@@ -220,14 +283,56 @@ class HistoryView extends React.Component<{}, {}> {
                                 </span>
                             </p>
                         </div>
+                        <div className="advanced-search">
+                            <div className={cn("dropdown", "session-dropdown", {"is-active": this.sessionDropdownActive.get()})}>
+                                <div className="dropdown-trigger">
+                                    <button onClick={this.toggleSessionDropdown} className="button is-small is-dark">
+                                        <span>{hvm.searchSessionId.get() == null ? "Limit Session" : formatSessionName(snames, hvm.searchSessionId.get())}</span>
+                                        <span className="icon is-small">
+                                            <i className="fa-sharp fa-regular fa-angle-down" aria-hidden="true"></i>
+                                        </span>
+                                    </button>
+                                </div>
+                                <div className="dropdown-menu" role="menu">
+                                    <div className="dropdown-content has-background-black-ter">
+                                        <div onClick={() => this.clickLimitSession(null) } key="all" className="dropdown-item">(all sessions)</div>
+                                        <For each="sessionId" of={sessionIds}>
+                                            <div onClick={() => this.clickLimitSession(sessionId) } key={sessionId} className="dropdown-item">#{snames[sessionId]}</div>
+                                        </For>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className={cn("dropdown", "remote-dropdown", {"is-active": this.remoteDropdownActive.get()})}>
+                                <div className="dropdown-trigger">
+                                    <button onClick={this.toggleRemoteDropdown} className="button is-small is-dark">
+                                        <span>{hvm.searchRemoteId.get() == null ? "Limit Remote" : formatRemoteName(rnames, {remoteid: hvm.searchRemoteId.get()})}</span>
+                                        <span className="icon is-small">
+                                            <i className="fa-sharp fa-regular fa-angle-down" aria-hidden="true"></i>
+                                        </span>
+                                    </button>
+                                </div>
+                                <div className="dropdown-menu" role="menu">
+                                    <div className="dropdown-content has-background-black-ter">
+                                        <div onClick={() => this.clickLimitRemote(null) } key="all" className="dropdown-item">(all remotes)</div>
+                                        <For each="remoteId" of={remoteIds}>
+                                            <div onClick={() => this.clickLimitRemote(remoteId) } key={remoteId} className="dropdown-item">[{rnames[remoteId]}]</div>
+                                        </For>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="allow-meta">
+                                <div className="checkbox-container"><input onChange={this.toggleShowMeta} type="checkbox" checked={hvm.searchShowMeta.get()}/></div>
+                                <div onClick={this.toggleShowMeta} className="meta-text">Show MetaCmds</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div className={cn("control-bar", {"is-hidden": (items.length == 0)})}>
+                <div className={cn("control-bar", "is-top", {"is-hidden": (items.length == 0)})}>
                     <div className="control-checkbox" onClick={this.handleControlCheckbox}>
                         <i className={controlCheckboxIcon} title="Toggle Selection"/>
                     </div>
                     <div className={cn("control-button delete-button", {"is-disabled": (numSelected == 0)}, {"is-active": hvm.deleteActive.get()})} onClick={this.handleClickDelete}>
-                        <i className="fa-sharp fa-solid fa-trash" title="Purge Selected Items"/>
+                        <i className="fa-sharp fa-solid fa-trash" title="Purge Selected Items"/> <span>Delete Items</span>
                     </div>
                     <div className="spacer"/>
                     <div className="showing-text">Showing {offset+1}-{offset+items.length}</div>

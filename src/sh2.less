@@ -204,11 +204,12 @@ body::-webkit-scrollbar {
         display: flex;
         flex-direction: row;
         margin: 10px;
+        align-items: flex-start;
 
         .history-title {
+            margin-top: 5px;
             .mono-font(1.5rem);
             font-weight: bold;
-            align-self: center;
         }
 
         input {
@@ -228,6 +229,55 @@ body::-webkit-scrollbar {
         .field {
             width: 80%;
         }
+
+        .advanced-search {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            
+            .session-dropdown, .remote-dropdown {
+                .dropdown-item {
+                    color: white;
+                    cursor: pointer;
+                    &:hover {
+                        background-color: #666;
+                    }
+                }
+
+                .dropdown-content {
+                    border: 1px solid #333;
+                    border-radius: 3px;
+                }
+            }
+
+            .remote-dropdown {
+                margin-left: 15px;
+            }
+
+            .allow-meta {
+                margin-left: 15px;
+                border: 1px solid #777;
+                padding: 5px 10px 5px 10px;
+                font-size: 12px;
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+
+                &.is-active {
+                    background-color: #666;
+                }
+
+                .checkbox-container {
+                    position: relative;
+                    top: 2px;
+                }
+
+                .meta-text {
+                    padding-left: 8px;
+                    cursor: pointer;
+                }
+            }
+        }
     }
 
     .control-bar {
@@ -241,6 +291,11 @@ body::-webkit-scrollbar {
 
         .is-hidden {
             display: none;
+        }
+
+        &.is-top {
+            border-top: 1px solid #333;
+            padding-top: 4px;
         }
 
         .control-checkbox {
@@ -259,11 +314,11 @@ body::-webkit-scrollbar {
             cursor: pointer;
             color: #aaa;
             margin-left: 10px;
-            font-size: 18px;
+            font-size: 14px;
 
             &.is-disabled {
                 cursor: default;
-                i {
+                i, span {
                     display: none;
                 }
             }
@@ -272,8 +327,8 @@ body::-webkit-scrollbar {
                 color: white;
             }
 
-            &.delete-button.is-active:hover {
-                color: @term-bright-red;
+            &.delete-button.is-active {
+                color: @term-bright-red !important;
             }
         }
 

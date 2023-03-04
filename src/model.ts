@@ -5,7 +5,7 @@ import {debounce} from "throttle-debounce";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData, boundInt, isModKeyPress} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType, HistoryViewDataType, AlertMessageType} from "./types";
+import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType, HistoryViewDataType, AlertMessageType, HistorySearchParams} from "./types";
 import {WSControl} from "./ws";
 import {ImageRendererModel} from "./imagerenderer";
 import {measureText, getMonoFontSize} from "./textmeasure";
@@ -445,6 +445,9 @@ class ScreenWindow {
     }
 
     getLineByNum(lineNum : number) : LineType {
+        if (lineNum == null) {
+            return null;
+        }
         let win = this.getWindow();
         if (win == null) {
             return null;
@@ -1768,6 +1771,9 @@ class HistoryViewModel {
     selectedItems : OMap<string, boolean> = mobx.observable.map({}, {name: "historyview-selectedItems"});
     deleteActive : OV<boolean> = mobx.observable.box(false, {name: "historyview-deleteActive"});
     activeItem : OV<string> = mobx.observable.box(null, {name: "historyview-activeItem"});
+    searchSessionId : OV<string> = mobx.observable.box(null, {name: "historyview-searchSessionId"});
+    searchRemoteId : OV<string> = mobx.observable.box(null, {name: "historyview-searchRemoteId"});
+    searchShowMeta : OV<boolean> = mobx.observable.box(false, {name: "historyview-searchShowMeta"});
     
     historyItemLines : LineType[] = [];
     historyItemCmds : CmdDataType[] = [];
@@ -1867,8 +1873,8 @@ class HistoryViewModel {
                 return;
             }
         });
-        let offset = this.offset.get();
-        GlobalCommandRunner.historyView({offset: offset, searchText: this.activeSearchText});
+        let params = this._getSearchParams();
+        GlobalCommandRunner.historyView(params);
     }
 
     @boundMethod
@@ -1878,18 +1884,62 @@ class HistoryViewModel {
         })();
     }
 
+    _getSearchParams(newOffset? : number) : HistorySearchParams {
+        let offset = (newOffset != null ? newOffset : this.offset.get());
+        let opts : HistorySearchParms = {
+            offset: offset,
+            searchText: this.activeSearchText,
+            searchSessionId: this.searchSessionId.get(),
+            searchRemoteId: this.searchRemoteId.get(),
+        };
+        if (!this.searchShowMeta.get()) {
+            opts.noMeta = true;
+        }
+        return opts;
+    }
+
+    setSearchShowMeta(show : boolean) : void {
+        mobx.action(() => {
+            this.searchShowMeta.set(show);
+        })();
+        GlobalCommandRunner.historyView(this._getSearchParams(0));
+    }
+
+    setSearchSessionId(sessionId : string) : void {
+        if (this.searchSessionId.get() == sessionId) {
+            return;
+        }
+        mobx.action(() => {
+            this.searchSessionId.set(sessionId);
+        })();
+        GlobalCommandRunner.historyView(this._getSearchParams(0));
+    }
+
+    setSearchRemoteId(remoteId : string) : void {
+        if (this.searchRemoteId.get() == remoteId) {
+            return;
+        }
+        mobx.action(() => {
+            this.searchRemoteId.set(remoteId);
+        })();
+        GlobalCommandRunner.historyView(this._getSearchParams(0));
+    }
+
     goPrev() : void {
         let offset = this.offset.get();
         offset = offset - HistoryPageSize;
         if (offset < 0) {
             offset = 0;
         }
-        GlobalCommandRunner.historyView({offset: offset, searchText: this.activeSearchText});
+        let params = this._getSearchParams(offset);
+        GlobalCommandRunner.historyView(params);
     }
 
     goNext() : void {
         let offset = this.offset.get();
-        GlobalCommandRunner.historyView({offset: offset+HistoryPageSize, searchText: this.activeSearchText});
+        offset += HistoryPageSize;
+        let params = this._getSearchParams(offset);
+        GlobalCommandRunner.historyView(params);
     }
 
     submitSearch() : void {
@@ -1901,7 +1951,7 @@ class HistoryViewModel {
             this.historyItemLines = [];
             this.historyItemCmds = [];
         })();
-        GlobalCommandRunner.historyView({offset: 0, searchText: this.activeSearchText});
+        GlobalCommandRunner.historyView(this._getSearchParams());
     }
 
     handleDocKeyDown(e : any) : void {
@@ -3176,13 +3226,25 @@ class CommandRunner {
         GlobalModel.submitCommand("bookmarks", "show", null, {"nohist": "1"}, true);
     }
 
-    historyView(params : {offset? : number, searchText? : string}) {
+    historyView(params : HistorySearchParams) {
         let kwargs = {"nohist": "1"};
         if (params.offset != null) {
             kwargs["offset"] = String(params.offset);
         }
         if (params.searchText != null) {
             kwargs["text"] = params.searchText;
+        }
+        if (params.searchSessionId != null) {
+            kwargs["searchsession"] = params.searchSessionId;
+        }
+        if (params.searchRemoteId != null) {
+            kwargs["searchremote"] = params.searchRemoteId;
+        }
+        if (params.fromTs != null) {
+            kwargs["fromts"] = String(params.fromTs);
+        }
+        if (params.noMeta) {
+            kwargs["meta"] = "0";
         }
         GlobalModel.submitCommand("history", "viewall", null, kwargs, true);
     }
