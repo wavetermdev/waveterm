@@ -1633,7 +1633,13 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
 
     componentDidMount() : void {
         let {sw, lines} = this.props;
-        if (sw.anchorLine == null) {
+        let linesElem = this.linesRef.current;
+        let anchorLineObj = sw.getLineByNum(sw.anchorLine);
+        if (anchorLineObj == null) {
+            // scroll to bottom
+            if (linesElem != null) {
+                linesElem.scrollTop = linesElem.clientHeight;
+            }
             this.computeAnchorLine();
         }
         else {
@@ -1642,7 +1648,6 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
         this.lastSelectedLine = sw.getSelectedLine();
         this.lastLinesLength = lines.length;
 
-        let linesElem = this.linesRef.current;
         if (linesElem != null) {
             this.lastOffsetHeight = linesElem.offsetHeight;
             this.lastOffsetWidth = linesElem.offsetWidth;
