@@ -535,6 +535,10 @@ type HistoryQueryOpts struct {
 	MaxItems   int
 	FromTs     int64
 	SearchText string
+	SessionId  string
+	RemoteId   string
+	WindowId   string
+	NoMeta     bool
 }
 
 type TermOpts struct {

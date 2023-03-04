@@ -1862,7 +1862,36 @@ func HistoryViewAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	if pk.Kwargs["text"] != "" {
 		opts.SearchText = pk.Kwargs["text"]
 	}
-	hitems, err := sstore.GetHistoryItems(ctx, "", "", opts)
+	if pk.Kwargs["searchsession"] != "" {
+		sessionId, err := resolveSessionArg(pk.Kwargs["searchsession"])
+		if err != nil {
+			return nil, fmt.Errorf("invalid searchsession: %v", err)
+		}
+		opts.SessionId = sessionId
+	}
+	if pk.Kwargs["searchremote"] != "" {
+		rptr, err := resolveRemoteArg(pk.Kwargs["searchremote"])
+		if err != nil {
+			return nil, fmt.Errorf("invalid searchremote: %v", err)
+		}
+		if rptr != nil {
+			opts.RemoteId = rptr.RemoteId
+		}
+	}
+	if pk.Kwargs["fromts"] != "" {
+		fromTs, err := resolvePosInt(pk.Kwargs["fromts"], 0)
+		if err != nil {
+			return nil, fmt.Errorf("invalid fromts (must be unixtime (milliseconds): %v", err)
+		}
+		if fromTs > 0 {
+			opts.FromTs = int64(fromTs)
+		}
+	}
+	opts.NoMeta = resolveBool(pk.Kwargs["meta"], false)
+	if err != nil {
+		return nil, fmt.Errorf("invalid meta arg (must be boolean): %v", err)
+	}
+	hitems, err := sstore.GetHistoryItems(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -1919,7 +1948,8 @@ func HistoryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	} else if htype == HistoryTypeSession {
 		hWindowId = ""
 	}
-	hitems, err := sstore.GetHistoryItems(ctx, hSessionId, hWindowId, sstore.HistoryQueryOpts{MaxItems: maxItems})
+	hopts := sstore.HistoryQueryOpts{MaxItems: maxItems, SessionId: hSessionId, WindowId: hWindowId}
+	hitems, err := sstore.GetHistoryItems(ctx, hopts)
 	if err != nil {
 		return nil, err
 	}

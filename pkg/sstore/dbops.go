@@ -207,51 +207,59 @@ func IsIncognitoScreen(ctx context.Context, sessionId string, screenId string) (
 	return rtn, txErr
 }
 
-func runHistoryQuery(tx *TxWrap, sessionId string, windowId string, opts HistoryQueryOpts) ([]*HistoryItemType, error) {
+func runHistoryQuery(tx *TxWrap, opts HistoryQueryOpts) ([]*HistoryItemType, error) {
 	// check sessionid/windowid format because we are directly inserting them into the SQL
-	if sessionId != "" {
-		_, err := uuid.Parse(sessionId)
+	if opts.SessionId != "" {
+		_, err := uuid.Parse(opts.SessionId)
 		if err != nil {
 			return nil, fmt.Errorf("malformed sessionid")
 		}
 	}
-	if windowId != "" {
-		_, err := uuid.Parse(windowId)
+	if opts.WindowId != "" {
+		_, err := uuid.Parse(opts.WindowId)
 		if err != nil {
 			return nil, fmt.Errorf("malformed windowid")
 		}
 	}
+	if opts.RemoteId != "" {
+		_, err := uuid.Parse(opts.RemoteId)
+		if err != nil {
+			return nil, fmt.Errorf("malformed remoteid")
+		}
+	}
 	hnumStr := ""
-	whereClause := ""
+	whereClause := "WHERE 1"
 	var queryArgs []interface{}
-	if sessionId != "" && windowId != "" {
-		whereClause = fmt.Sprintf("WHERE sessionid = '%s' AND windowid = '%s'", sessionId, windowId)
+	if opts.SessionId != "" && opts.WindowId != "" {
+		whereClause += fmt.Sprintf(" AND sessionid = '%s' AND windowid = '%s'", opts.SessionId, opts.WindowId)
 		hnumStr = "w"
-	} else if sessionId != "" {
-		whereClause = fmt.Sprintf("WHERE sessionid = '%s'", sessionId)
+	} else if opts.SessionId != "" {
+		whereClause += fmt.Sprintf(" AND sessionid = '%s'", opts.SessionId)
 		hnumStr = "s"
 	} else {
 		hnumStr = "g"
 	}
 	if opts.SearchText != "" {
-		if whereClause == "" {
-			whereClause = "WHERE cmdstr LIKE ? ESCAPE '\\'"
-		} else {
-			whereClause = whereClause + " AND cmdstr LIKE ? ESCAPE '\\'"
-		}
+		whereClause += " AND cmdstr LIKE ? ESCAPE '\\'"
 		likeArg := opts.SearchText
 		likeArg = strings.ReplaceAll(likeArg, "%", "\\%")
 		likeArg = strings.ReplaceAll(likeArg, "_", "\\_")
 		queryArgs = append(queryArgs, "%"+likeArg+"%")
+	}
+	if opts.FromTs > 0 {
+		whereClause += fmt.Sprintf(" AND ts > %d", opts.FromTs)
+	}
+	if opts.RemoteId != "" {
+		whereClause += fmt.Sprintf(" AND remoteid = '%s'", opts.RemoteId)
+	}
+	if opts.NoMeta {
+		whereClause += " AND NOT ismetacmd"
 	}
 	maxItems := opts.MaxItems
 	if maxItems == 0 {
 		maxItems = DefaultMaxHistoryItems
 	}
 	query := fmt.Sprintf("SELECT %s, '%s' || row_number() OVER win AS historynum FROM history %s WINDOW win AS (ORDER BY ts, historyid) ORDER BY ts DESC, historyid DESC LIMIT %d OFFSET %d", HistoryCols, hnumStr, whereClause, maxItems, opts.Offset)
-	if opts.FromTs > 0 {
-		query = fmt.Sprintf("SELECT * FROM (%s) WHERE ts >= %d", query, opts.FromTs)
-	}
 	marr := tx.SelectMaps(query, queryArgs...)
 	rtn := make([]*HistoryItemType, len(marr))
 	for idx, m := range marr {
@@ -261,11 +269,11 @@ func runHistoryQuery(tx *TxWrap, sessionId string, windowId string, opts History
 	return rtn, nil
 }
 
-func GetHistoryItems(ctx context.Context, sessionId string, windowId string, opts HistoryQueryOpts) ([]*HistoryItemType, error) {
+func GetHistoryItems(ctx context.Context, opts HistoryQueryOpts) ([]*HistoryItemType, error) {
 	var rtn []*HistoryItemType
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		var err error
-		rtn, err = runHistoryQuery(tx, sessionId, windowId, opts)
+		rtn, err = runHistoryQuery(tx, opts)
 		if err != nil {
 			return err
 		}
