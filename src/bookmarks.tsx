@@ -31,6 +31,8 @@ function CodeRenderer(props : any) : any {
 
 @mobxReact.observer
 class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
+    copiedIndicator : OV<boolean> =  mobx.observable.box(false, {name: "copiedIndicator"});
+    
     @boundMethod
     handleDeleteClick() : void {
         let {bookmark} = this.props;
@@ -54,7 +56,7 @@ class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
 
     @boundMethod
     handleEditUpdate() : void {
-        let model = GlobalModel.bookmarksModel;
+        let model = GlobalModel.bookmarksModel;opie
         model.confirmEdit();
         return;
     }
@@ -87,6 +89,20 @@ class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
         let {bookmark} = this.props;
         let model = GlobalModel.bookmarksModel;
         model.useBookmark(bookmark.bookmarkid);
+    }
+
+    @boundMethod
+    clickCopy() : void {
+        let bm = this.props.bookmark
+        navigator.clipboard.writeText(bm.cmdstr);
+        mobx.action(() => {
+            this.copiedIndicator.set(true);
+        })();
+        setTimeout(() => {
+            mobx.action(() => {
+                this.copiedIndicator.set(false);
+            })();
+        }, 600)
     }
     
     render() {
@@ -137,6 +153,11 @@ class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
         }
         return (
             <div className={cn("bookmark focus-parent", {"pending-delete": model.pendingDelete.get() == bm.bookmarkid})} onClick={this.handleClick}>
+                <If condition={this.copiedIndicator.get()}>
+                    <div className="copied-indicator">
+                        <div>copied</div>
+                    </div>
+                </If>
                 <div className={cn("focus-indicator", {"active": isSelected})}/>
                 <div className="bookmark-id-div">{bm.bookmarkid.substr(0, 8)}</div>
                 <div className="bookmark-content">
@@ -147,7 +168,15 @@ class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
                     </If>
                     <div className={cn("bookmark-code", {"no-desc": !hasDesc})}>
                         <div className="use-button" title="Use Bookmark" onClick={this.handleUse}><i className="fa-sharp fa-solid fa-check"/></div>
-                        <code>{bm.cmdstr}</code>
+                        <div className="code-div">
+                            <code>{bm.cmdstr}</code>
+                        </div>
+                        <div className="copy-control">
+
+                            <div className="inner-copy" onClick={this.clickCopy}>
+                                <i title="copy" className="fa-sharp fa-regular fa-copy"/>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div className="bookmark-controls">
