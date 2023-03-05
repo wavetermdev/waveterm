@@ -247,7 +247,7 @@ func runHistoryQuery(tx *TxWrap, opts HistoryQueryOpts) ([]*HistoryItemType, err
 		queryArgs = append(queryArgs, "%"+likeArg+"%")
 	}
 	if opts.FromTs > 0 {
-		whereClause += fmt.Sprintf(" AND ts > %d", opts.FromTs)
+		whereClause += fmt.Sprintf(" AND ts <= %d", opts.FromTs)
 	}
 	if opts.RemoteId != "" {
 		whereClause += fmt.Sprintf(" AND remoteid = '%s'", opts.RemoteId)

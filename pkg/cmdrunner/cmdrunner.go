@@ -1887,7 +1887,9 @@ func HistoryViewAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 			opts.FromTs = int64(fromTs)
 		}
 	}
-	opts.NoMeta = resolveBool(pk.Kwargs["meta"], false)
+	if pk.Kwargs["meta"] != "" {
+		opts.NoMeta = !resolveBool(pk.Kwargs["meta"], true)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("invalid meta arg (must be boolean): %v", err)
 	}
