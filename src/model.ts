@@ -9,6 +9,12 @@ import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem,
 import {WSControl} from "./ws";
 import {ImageRendererModel} from "./imagerenderer";
 import {measureText, getMonoFontSize} from "./textmeasure";
+import dayjs from "dayjs";
+import localizedFormat from 'dayjs/plugin/localizedFormat';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
+
+dayjs.extend(customParseFormat)
+dayjs.extend(localizedFormat)
 
 var GlobalUser = "sawka";
 const RemotePtyRows = 8; // also in main.tsx
@@ -1796,6 +1802,7 @@ class HistoryViewModel {
     searchSessionId : OV<string> = mobx.observable.box(null, {name: "historyview-searchSessionId"});
     searchRemoteId : OV<string> = mobx.observable.box(null, {name: "historyview-searchRemoteId"});
     searchShowMeta : OV<boolean> = mobx.observable.box(false, {name: "historyview-searchShowMeta"});
+    searchFromDate : OV<string> = mobx.observable.box(null, {name: "historyview-searchfromts"});
     
     historyItemLines : LineType[] = [];
     historyItemCmds : CmdDataType[] = [];
@@ -1916,7 +1923,25 @@ class HistoryViewModel {
         if (!this.searchShowMeta.get()) {
             opts.noMeta = true;
         }
+        if (this.searchFromDate.get() != null) {
+            let fromDate = this.searchFromDate.get();
+            let fromTs = dayjs(fromDate, "YYYY-MM-DD").valueOf();
+            let d = new Date(fromTs);
+            d.setDate(d.getDate() + 1);
+            let ts = d.getTime()-1;
+            opts.fromTs = ts;
+        }
         return opts;
+    }
+
+    setFromDate(fromDate : string) : void {
+        if (this.searchFromDate.get() == fromDate) {
+            return;
+        }
+        mobx.action(() => {
+            this.searchFromDate.set(fromDate);
+        })();
+        GlobalCommandRunner.historyView(this._getSearchParams(0));
     }
 
     setSearchShowMeta(show : boolean) : void {

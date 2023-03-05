@@ -9,8 +9,10 @@ import {GlobalModel, GlobalCommandRunner, Cmd} from "./model";
 import {HistoryItem, RemotePtrType, LineType, CmdDataType} from "./types";
 import dayjs from "dayjs";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
 import {Line} from "./linecomps";
 
+dayjs.extend(customParseFormat)
 dayjs.extend(localizedFormat)
 
 type OV<V> = mobx.IObservableValue<V>;
@@ -188,6 +190,28 @@ class HistoryView extends React.Component<{}, {}> {
         this.checkWidth();
     }
 
+    searchFromTsInputValue() : string {
+        let hvm = GlobalModel.historyViewModel;
+        let fromDate = hvm.searchFromDate.get();
+        if (fromDate == null) {
+            return dayjs().format("YYYY-MM-DD");
+        }
+        return fromDate;
+    }
+
+    @boundMethod
+    handleFromTsChange(e : any) : void {
+        let hvm = GlobalModel.historyViewModel;
+        let newDate = e.target.value;
+        let today = dayjs().format("YYYY-MM-DD");
+        if (newDate == "" || newDate == today) {
+            hvm.setFromDate(null);
+            return;
+        }
+        hvm.setFromDate(e.target.value);
+        return;
+    }
+
     @boundMethod
     toggleSessionDropdown() : void {
         mobx.action(() => {
@@ -323,6 +347,12 @@ class HistoryView extends React.Component<{}, {}> {
                             <div className="allow-meta">
                                 <div className="checkbox-container"><input onChange={this.toggleShowMeta} type="checkbox" checked={hvm.searchShowMeta.get()}/></div>
                                 <div onClick={this.toggleShowMeta} className="meta-text">Show MetaCmds</div>
+                            </div>
+                            <div className="fromts">
+                                <div onClick={this.toggleShowMeta} className="fromts-text">From:&nbsp;</div>
+                                <div>
+                                    <input type="date" onChange={this.handleFromTsChange} value={this.searchFromTsInputValue()} className="input is-small"/>
+                                </div>
                             </div>
                         </div>
                     </div>
