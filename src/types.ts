@@ -134,9 +134,9 @@ type FeStateType = {
 };
 
 type RemotePtrType = {
-    ownerid : string,
     remoteid : string,
-    name : string,
+    ownerid? : string,
+    name? : string,
 };
 
 type WindowDataType = {
@@ -432,7 +432,7 @@ type HistorySearchParams = {
     searchText? : string,
     searchSessionId? : string,
     searchRemoteId? : string,
-    fromts? : number,
+    fromTs? : number,
     noMeta? : boolean,
 };
 

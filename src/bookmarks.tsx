@@ -31,8 +31,6 @@ function CodeRenderer(props : any) : any {
 
 @mobxReact.observer
 class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
-    copiedIndicator : OV<boolean> =  mobx.observable.box(false, {name: "copiedIndicator"});
-    
     @boundMethod
     handleDeleteClick() : void {
         let {bookmark} = this.props;
@@ -56,7 +54,7 @@ class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
 
     @boundMethod
     handleEditUpdate() : void {
-        let model = GlobalModel.bookmarksModel;opie
+        let model = GlobalModel.bookmarksModel;
         model.confirmEdit();
         return;
     }
@@ -93,16 +91,9 @@ class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
 
     @boundMethod
     clickCopy() : void {
-        let bm = this.props.bookmark
-        navigator.clipboard.writeText(bm.cmdstr);
-        mobx.action(() => {
-            this.copiedIndicator.set(true);
-        })();
-        setTimeout(() => {
-            mobx.action(() => {
-                this.copiedIndicator.set(false);
-            })();
-        }, 600)
+        let bm = this.props.bookmark;
+        let model = GlobalModel.bookmarksModel;
+        model.handleCopyBookmark(bm.bookmarkid);
     }
     
     render() {
@@ -122,6 +113,7 @@ class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
         };
         let hasDesc = markdown != "";
         let isEditing = (model.editingBookmark.get() == bm.bookmarkid);
+        let isCopied = mobx.computed(() => (model.copiedIndicator.get() == bm.bookmarkid)).get();
         if (isEditing) {
             return (
                 <div data-bookmarkid={bm.bookmarkid} className={cn("bookmark focus-parent is-editing", {"pending-delete": model.pendingDelete.get() == bm.bookmarkid})}>
@@ -153,7 +145,7 @@ class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
         }
         return (
             <div className={cn("bookmark focus-parent", {"pending-delete": model.pendingDelete.get() == bm.bookmarkid})} onClick={this.handleClick}>
-                <If condition={this.copiedIndicator.get()}>
+                <If condition={isCopied}>
                     <div className="copied-indicator">
                         <div>copied</div>
                     </div>
@@ -225,6 +217,7 @@ class BookmarksView extends React.Component<{}, {}> {
                             [Backspace/Delete]x2 or <i className="fa-sharp fa-solid fa-trash"/> to Delete<br/>
                             [Arrow Up]/[Arrow Down]/[PageUp]/[PageDown] to Move in List<br/>
                             [e] or <i className="fa-sharp fa-solid fa-pen"/> to Edit<br/>
+                            [c] or <i className="fa-sharp fa-regular fa-copy"/> to Copy<br/>
                         </div>
                     </div>
                 </If>

@@ -690,6 +690,28 @@ class ScreenWindow {
     getWindow() : Window {
         return GlobalModel.getWindowById(this.sessionId, this.windowId);
     }
+
+    giveFocus() : void {
+        if (!this.isActive()) {
+            return;
+        }
+        let ftype = this.focusType.get();
+        if (ftype == "input") {
+            GlobalModel.inputModel.giveFocus();
+        }
+        else {
+            let sline : LineType = null;
+            if (this.selectedLine.get() != 0) {
+                sline = this.getLineByNum(this.selectedLine.get());
+            }
+            if (sline != null) {
+                let termWrap = this.getRenderer(sline.cmdid);
+                if (termWrap != null) {
+                    termWrap.giveFocus();
+                }
+            }
+        }
+    }
 }
 
 class Window {
@@ -1784,9 +1806,8 @@ class HistoryViewModel {
     }
 
     closeView() : void {
-        mobx.action(() => {
-            GlobalModel.activeMainView.set("session");
-        })();
+        GlobalModel.showSessionView();
+        setTimeout(() => GlobalModel.inputModel.giveFocus(), 50);
     }
 
     getLineById(lineId : string) : LineType {
@@ -1886,7 +1907,7 @@ class HistoryViewModel {
 
     _getSearchParams(newOffset? : number) : HistorySearchParams {
         let offset = (newOffset != null ? newOffset : this.offset.get());
-        let opts : HistorySearchParms = {
+        let opts : HistorySearchParams = {
             offset: offset,
             searchText: this.activeSearchText,
             searchSessionId: this.searchSessionId.get(),
@@ -1980,6 +2001,7 @@ class BookmarksModel {
     activeBookmark : OV<string> = mobx.observable.box(null, {name: "activeBookmark"});
     editingBookmark : OV<string> = mobx.observable.box(null, {name: "editingBookmark"});
     pendingDelete : OV<string> = mobx.observable.box(null, {name: "pendingDelete"});
+    copiedIndicator : OV<string> =  mobx.observable.box(null, {name: "copiedIndicator"});
 
     tempDesc : OV<string> = mobx.observable.box("", {name: "bookmarkEdit-tempDesc"});
     tempCmd : OV<string> = mobx.observable.box("", {name: "bookmarkEdit-tempCmd"});
@@ -2008,9 +2030,8 @@ class BookmarksModel {
     }
 
     closeView() : void {
-        mobx.action(() => {
-            GlobalModel.activeMainView.set("session");
-        })();
+        GlobalModel.showSessionView();
+        setTimeout(() => GlobalModel.inputModel.giveFocus(), 50);
     }
 
     @boundMethod
@@ -2025,7 +2046,7 @@ class BookmarksModel {
         }
         mobx.action(() => {
             this.reset();
-            GlobalModel.activeMainView.set("session");
+            GlobalModel.showSessionView();
             GlobalModel.inputModel.setCurLine(bm.cmdstr);
             setTimeout(() => GlobalModel.inputModel.giveFocus(), 50);
         })();
@@ -2124,6 +2145,22 @@ class BookmarksModel {
         })();
     }
 
+    handleCopyBookmark(bookmarkId : string) : void {
+        let bm = this.getBookmark(bookmarkId);
+        if (bm == null) {
+            return;
+        }
+        navigator.clipboard.writeText(bm.cmdstr);
+        mobx.action(() => {
+            this.copiedIndicator.set(bm.bookmarkid);
+        })();
+        setTimeout(() => {
+            mobx.action(() => {
+                this.copiedIndicator.set(null);
+            })();
+        }, 600)
+    }
+
     mergeBookmarks(bmArr : BookmarkType[]) : void {
         mobx.action(() => {
             genMergeSimpleData(this.bookmarks, bmArr, (bm : BookmarkType) => bm.bookmarkid, (bm : BookmarkType) => sprintf("%05d", bm.orderidx));
@@ -2188,6 +2225,14 @@ class BookmarksModel {
             }
             e.preventDefault();
             this.handleEditBookmark(this.activeBookmark.get());
+            return;
+        }
+        if (e.code == "KeyC") {
+            if (this.activeBookmark.get() == null) {
+                return;
+            }
+            e.preventDefault();
+            this.handleCopyBookmark(this.activeBookmark.get());
             return;
         }
     }
@@ -2288,6 +2333,12 @@ class Model {
             this.alertPromiseResolver(true);
             this.alertPromiseResolver = null;
         }
+    }
+
+    showSessionView() : void {
+        mobx.action(() => {
+            this.activeMainView.set("session");
+        })();
     }
 
     getBaseHostPort() : string {
