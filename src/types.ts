@@ -293,6 +293,7 @@ type ModelUpdateType = {
 type HistoryViewDataType = {
     items : HistoryItem[],
     offset : number,
+    rawoffset : number,
     nextrawoffset : number,
     hasmore : boolean,
     lines : LineType[],
@@ -436,6 +437,7 @@ type HistorySearchParams = {
     searchRemoteId? : string,
     fromTs? : number,
     noMeta? : boolean,
+    filterCmds? : boolean,
 };
 
 type RenderModeType = "normal" | "collapsed";

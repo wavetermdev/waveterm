@@ -259,6 +259,14 @@ class HistoryView extends React.Component<{}, {}> {
     }
 
     @boundMethod
+    toggleFilterCmds() : void {
+        let hvm = GlobalModel.historyViewModel;
+        mobx.action(() => {
+            hvm.setSearchFilterCmds(!hvm.searchFilterCmds.get());
+        })();
+    }
+
+    @boundMethod
     resetAllFilters() : void {
         let hvm = GlobalModel.historyViewModel;
         hvm.resetAllFilters();
@@ -305,9 +313,9 @@ class HistoryView extends React.Component<{}, {}> {
                         HISTORY
                     </div>
                     <div className="history-search">
-                        <div className="field">
+                        <div className="main-search field">
                             <p className="control has-icons-left">
-                                <input className="input" type="text" placeholder="Search" value={hvm.searchText.get()} onChange={this.changeSearchText} onKeyDown={this.searchKeyDown}/>
+                                <input className="input" type="text" placeholder="Exact String Search" value={hvm.searchText.get()} onChange={this.changeSearchText} onKeyDown={this.searchKeyDown}/>
                                 <span className="icon is-small is-left">
                                     <i className="fa-sharp fa-solid fa-search"/>
                                 </span>
@@ -350,9 +358,9 @@ class HistoryView extends React.Component<{}, {}> {
                                     </div>
                                 </div>
                             </div>
-                            <div className="allow-meta">
+                            <div className="allow-meta search-checkbox">
                                 <div className="checkbox-container"><input onChange={this.toggleShowMeta} type="checkbox" checked={hvm.searchShowMeta.get()}/></div>
-                                <div onClick={this.toggleShowMeta} className="meta-text">Show MetaCmds</div>
+                                <div onClick={this.toggleShowMeta} className="checkbox-text">Show MetaCmds</div>
                             </div>
                             <div className="fromts">
                                 <div onClick={this.toggleShowMeta} className="fromts-text">From:&nbsp;</div>
@@ -360,8 +368,12 @@ class HistoryView extends React.Component<{}, {}> {
                                     <input type="date" onChange={this.handleFromTsChange} value={this.searchFromTsInputValue()} className="input is-small"/>
                                 </div>
                             </div>
+                            <div className="filter-cmds search-checkbox" title="Filter common commands like 'ls' and 'cd' from the results">
+                                <div className="checkbox-container"><input onChange={this.toggleFilterCmds} type="checkbox" checked={hvm.searchFilterCmds.get()}/></div>
+                                <div onClick={this.toggleFilterCmds} className="checkbox-text">Filter Cmds</div>
+                            </div>
                             <div onClick={this.resetAllFilters} className="reset-button">
-                                Reset All Filters
+                                Reset All
                             </div>
                         </div>
                     </div>

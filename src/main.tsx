@@ -2249,7 +2249,7 @@ class MainSideBar extends React.Component<{}, {}> {
             })();
             return;
         }
-        GlobalCommandRunner.historyView({offset: 0, rawOffset: 0, noMeta: true});
+        GlobalModel.historyViewModel.reSearch();
     }
 
     @boundMethod

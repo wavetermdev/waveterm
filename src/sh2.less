@@ -226,8 +226,15 @@ body::-webkit-scrollbar {
         flex-grow: 1;
         margin-top: 5px;
         margin-left: 15px;
-        .field {
-            width: 80%;
+
+        .main-search {
+            .field {
+                width: 80%;
+            }
+
+            input::placeholder {
+                color: #777;
+            }
         }
 
         .advanced-search {
@@ -254,7 +261,7 @@ body::-webkit-scrollbar {
                 margin-left: 15px;
             }
 
-            .allow-meta {
+            .search-checkbox {
                 margin-left: 15px;
                 border: 1px solid #777;
                 padding: 5px 10px 5px 10px;
@@ -272,7 +279,7 @@ body::-webkit-scrollbar {
                     top: 2px;
                 }
 
-                .meta-text {
+                .checkbox-text {
                     padding-left: 8px;
                     cursor: pointer;
                 }
