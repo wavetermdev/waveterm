@@ -79,7 +79,8 @@ func InfoMsgUpdate(infoMsgFmt string, args ...interface{}) *ModelUpdate {
 type HistoryViewData struct {
 	Items         []*HistoryItemType `json:"items"`
 	Offset        int                `json:"offset"`
-	NextRawOffset int                `json:"rawoffset"`
+	RawOffset     int                `json:"rawoffset"`
+	NextRawOffset int                `json:"nextrawoffset"`
 	HasMore       bool               `json:"hasmore"`
 	Lines         []*LineType        `json:"lines"`
 	Cmds          []*CmdType         `json:"cmds"`

@@ -1849,6 +1849,23 @@ func HistoryPurgeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 
 const HistoryViewPageSize = 50
 
+var cmdFilterLs = regexp.MustCompile(`^ls(\s|$)`)
+var cmdFilterCd = regexp.MustCompile(`^cd(\s|$)`)
+
+func historyCmdFilter(hitem *sstore.HistoryItemType) bool {
+	cmdStr := hitem.CmdStr
+	if cmdStr == "" || strings.Index(cmdStr, ";") != -1 || strings.Index(cmdStr, "\n") != -1 {
+		return true
+	}
+	if cmdFilterLs.MatchString(cmdStr) {
+		return false
+	}
+	if cmdFilterCd.MatchString(cmdStr) {
+		return false
+	}
+	return true
+}
+
 func HistoryViewAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	_, err := resolveUiIds(ctx, pk, 0)
 	if err != nil {
@@ -1894,6 +1911,9 @@ func HistoryViewAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	if pk.Kwargs["meta"] != "" {
 		opts.NoMeta = !resolveBool(pk.Kwargs["meta"], true)
 	}
+	if resolveBool(pk.Kwargs["filter"], false) {
+		opts.FilterFn = historyCmdFilter
+	}
 	if err != nil {
 		return nil, fmt.Errorf("invalid meta arg (must be boolean): %v", err)
 	}
@@ -1904,6 +1924,7 @@ func HistoryViewAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	hvdata := &sstore.HistoryViewData{
 		Items:         hresult.Items,
 		Offset:        hresult.Offset,
+		RawOffset:     hresult.RawOffset,
 		NextRawOffset: hresult.NextRawOffset,
 		HasMore:       hresult.HasMore,
 	}

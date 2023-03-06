@@ -219,41 +219,33 @@ func _getNextHistoryItem(items []*HistoryItemType, index int, filterFn func(*His
 	return nil, index
 }
 
+// returns true if done, false if we still need to process more items
 func (result *HistoryQueryResult) processItem(item *HistoryItemType, rawOffset int) bool {
+	if result.Offset < result.prevItems {
+		result.prevItems++
+		return false
+	}
 	if len(result.Items) == result.MaxItems {
 		result.HasMore = true
 		result.NextRawOffset = rawOffset
-		return false
+		return true
 	}
 	result.Items = append(result.Items, item)
-	return true
+	return false
 }
 
-func runHistoryQueryWithFilter(tx *TxWrap, opts HistoryQueryOpts, filterFn func(*HistoryItemType) bool) (*HistoryQueryResult, error) {
+func runHistoryQueryWithFilter(tx *TxWrap, opts HistoryQueryOpts) (*HistoryQueryResult, error) {
 	if opts.MaxItems == 0 {
 		return nil, fmt.Errorf("invalid query, maxitems is 0")
 	}
-	if opts.RawOffset < opts.Offset {
-		return nil, fmt.Errorf("invalid query, rawoffset[%d] is less than offset[%d]", opts.RawOffset, opts.Offset)
-	}
 	rtn := &HistoryQueryResult{Offset: opts.RawOffset, MaxItems: opts.MaxItems}
-	if filterFn == nil {
-		results, err := runHistoryQuery(tx, opts, opts.RawOffset, opts.MaxItems+1)
-		if err != nil {
-			return nil, err
-		}
-		if len(results) > opts.MaxItems {
-			rtn.Items = results[0:opts.MaxItems]
-			rtn.HasMore = true
-			rtn.NextRawOffset = opts.RawOffset + opts.MaxItems
-		} else {
-			rtn.Items = results
-			rtn.HasMore = false
-			rtn.NextRawOffset = 0
-		}
-		return rtn, nil
+	var rawOffset int
+	if opts.RawOffset >= opts.Offset {
+		rtn.prevItems = opts.Offset
+		rawOffset = opts.RawOffset
+	} else {
+		rawOffset = 0
 	}
-	rawOffset := opts.RawOffset
 	for {
 		resultItems, err := runHistoryQuery(tx, opts, rawOffset, HistoryQueryChunkSize)
 		if err != nil {
@@ -261,7 +253,7 @@ func runHistoryQueryWithFilter(tx *TxWrap, opts HistoryQueryOpts, filterFn func(
 		}
 		isDone := false
 		for resultIdx := 0; resultIdx < len(resultItems); resultIdx++ {
-			if !filterFn(resultItems[resultIdx]) {
+			if opts.FilterFn != nil && !opts.FilterFn(resultItems[resultIdx]) {
 				continue
 			}
 			isDone = rtn.processItem(resultItems[resultIdx], rawOffset+resultIdx)
@@ -275,6 +267,7 @@ func runHistoryQueryWithFilter(tx *TxWrap, opts HistoryQueryOpts, filterFn func(
 		if len(resultItems) < HistoryQueryChunkSize {
 			break
 		}
+		rawOffset += HistoryQueryChunkSize
 	}
 	return rtn, nil
 }
@@ -341,7 +334,7 @@ func GetHistoryItems(ctx context.Context, opts HistoryQueryOpts) (*HistoryQueryR
 	var rtn *HistoryQueryResult
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		var err error
-		rtn, err = runHistoryQueryWithFilter(tx, opts, nil)
+		rtn, err = runHistoryQueryWithFilter(tx, opts)
 		if err != nil {
 			return err
 		}

@@ -540,14 +540,18 @@ type HistoryQueryOpts struct {
 	WindowId   string
 	NoMeta     bool
 	RawOffset  int
+	FilterFn   func(*HistoryItemType) bool
 }
 
 type HistoryQueryResult struct {
 	MaxItems      int
 	Items         []*HistoryItemType
 	Offset        int // the offset shown to user
+	RawOffset     int // internal offset
 	HasMore       bool
 	NextRawOffset int // internal offset used by pager for next query
+
+	prevItems int // holds number of items skipped by RawOffset
 }
 
 type TermOpts struct {
