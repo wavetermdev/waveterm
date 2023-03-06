@@ -221,7 +221,7 @@ func _getNextHistoryItem(items []*HistoryItemType, index int, filterFn func(*His
 
 // returns true if done, false if we still need to process more items
 func (result *HistoryQueryResult) processItem(item *HistoryItemType, rawOffset int) bool {
-	if result.Offset < result.prevItems {
+	if result.prevItems < result.Offset {
 		result.prevItems++
 		return false
 	}
@@ -229,6 +229,9 @@ func (result *HistoryQueryResult) processItem(item *HistoryItemType, rawOffset i
 		result.HasMore = true
 		result.NextRawOffset = rawOffset
 		return true
+	}
+	if len(result.Items) == 0 {
+		result.RawOffset = rawOffset
 	}
 	result.Items = append(result.Items, item)
 	return false
@@ -238,7 +241,7 @@ func runHistoryQueryWithFilter(tx *TxWrap, opts HistoryQueryOpts) (*HistoryQuery
 	if opts.MaxItems == 0 {
 		return nil, fmt.Errorf("invalid query, maxitems is 0")
 	}
-	rtn := &HistoryQueryResult{Offset: opts.RawOffset, MaxItems: opts.MaxItems}
+	rtn := &HistoryQueryResult{Offset: opts.Offset, MaxItems: opts.MaxItems}
 	var rawOffset int
 	if opts.RawOffset >= opts.Offset {
 		rtn.prevItems = opts.Offset
