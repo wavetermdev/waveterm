@@ -11,6 +11,7 @@ import type {BookmarkType} from "./types";
 import {GlobalModel, GlobalCommandRunner} from "./model";
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import {CmdStrCode} from "./elements";
 
 function LinkRenderer(props : any) : any {
     let newUrl = "https://extern?" + encodeURIComponent(props.href);
@@ -145,11 +146,6 @@ class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
         }
         return (
             <div className={cn("bookmark focus-parent", {"pending-delete": model.pendingDelete.get() == bm.bookmarkid})} onClick={this.handleClick}>
-                <If condition={isCopied}>
-                    <div className="copied-indicator">
-                        <div>copied</div>
-                    </div>
-                </If>
                 <div className={cn("focus-indicator", {"active": isSelected})}/>
                 <div className="bookmark-id-div">{bm.bookmarkid.substr(0, 8)}</div>
                 <div className="bookmark-content">
@@ -158,18 +154,7 @@ class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
                             <ReactMarkdown children={markdown} remarkPlugins={[remarkGfm]} components={markdownComponents}/>
                         </div>
                     </If>
-                    <div className={cn("bookmark-code", {"no-desc": !hasDesc})}>
-                        <div className="use-button" title="Use Bookmark" onClick={this.handleUse}><i className="fa-sharp fa-solid fa-check"/></div>
-                        <div className="code-div">
-                            <code>{bm.cmdstr}</code>
-                        </div>
-                        <div className="copy-control">
-
-                            <div className="inner-copy" onClick={this.clickCopy}>
-                                <i title="copy" className="fa-sharp fa-regular fa-copy"/>
-                            </div>
-                        </div>
-                    </div>
+                    <CmdStrCode cmdstr={bm.cmdstr} onUse={this.handleUse} onCopy={this.clickCopy} isCopied={isCopied}/>
                 </div>
                 <div className="bookmark-controls">
                     <div className="bookmark-control" onClick={this.handleEditClick}><i className="fa-sharp fa-solid fa-pen"/></div>

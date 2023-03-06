@@ -553,6 +553,93 @@ body::-webkit-scrollbar {
     }
 }
 
+.cmdstr-code {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    padding: 4px 10px 4px 0;
+
+    .copied-indicator {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: white;
+        opacity: 0;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        .mono-font(12px);
+        animation-name: fade-in-out;
+        animation-duration: 0.3s;
+    }
+
+    .use-button {
+        flex-grow: 0;
+        padding: 3px;
+        border-radius: 3px 0 0 3px;
+        font-size: 12px;
+        height: 28px;
+        width: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        align-self: flex-start;
+        cursor: pointer;
+        background-color: black;
+
+        &:hover {
+            background-color: #777;
+        }
+    }
+
+    .code-div {
+        background-color: black;
+        display: flex;
+        flex-direction: row;
+        min-width: 100px;
+        overflow-x: auto;
+        border-left: 1px solid #777;
+        
+        code {
+            flex-shrink: 0;
+            min-width: 100px;
+            color: white;
+            .mono-font();
+            white-space: pre;
+            padding: 2px 8px 2px 8px;
+            background-color: black;
+        }
+    }
+
+    .copy-control {
+        width: 0;
+        position: relative;
+        display: none;
+        
+        .inner-copy {
+            position: absolute;
+            bottom: -1px;
+            right: -20px;
+            font-size: 9px;
+            padding: 2px;
+            padding-left: 4px;
+            cursor: pointer;
+            width: 20px;
+            background-color: black;
+            border: 1px solid #333;
+            color: #777;
+            &:hover {
+                color: white;
+            }
+        }
+    }
+    
+}
+
 .bookmarks-view {
     .bookmarks-list {
         color: white;
@@ -577,24 +664,6 @@ body::-webkit-scrollbar {
         .focus-indicator {
             top: 0;
             height: calc(100% - 4px);
-        }
-
-        .copied-indicator {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: white;
-            opacity: 0;
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            justify-content: center;
-            pointer-events: none;
-            .mono-font(12px);
-            animation-name: fade-in-out;
-            animation-duration: 0.3s;
         }
 
         &.is-editing {
@@ -671,81 +740,9 @@ body::-webkit-scrollbar {
         }
     }
 
-    .bookmark-code {
-        display: flex;
-        flex-direction: row;
-
-        .use-button {
-            flex-grow: 0;
-            padding: 3px;
-            border-radius: 3px 0 0 3px;
-            font-size: 12px;
-            height: 28px;
-            width: 28px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            align-self: flex-start;
-            cursor: pointer;
-            background-color: black;
-
-            &:hover {
-                background-color: #777;
-            }
-        }
-
-        .code-div {
-            background-color: black;
-            display: flex;
-            flex-direction: row;
-            min-width: 100px;
-            overflow-x: auto;
-            border-left: 1px solid #777;
-            
-            code {
-                flex-shrink: 0;
-                min-width: 100px;
-                color: white;
-                .mono-font();
-                white-space: pre;
-                padding: 2px 8px 2px 8px;
-                background-color: black;
-            }
-        }
-
-        .copy-control {
-            width: 0;
-            position: relative;
-            display: none;
-            
-            .inner-copy {
-                position: absolute;
-                bottom: -1px;
-                right: -20px;
-                font-size: 9px;
-                padding: 2px;
-                padding-left: 4px;
-                cursor: pointer;
-                width: 20px;
-                background-color: black;
-                border: 1px solid #333;
-                color: #777;
-                &:hover {
-                    color: white;
-                }
-            }
-        }
-        
-        padding: 4px 10px 4px 0;
-        margin-top: 10px;
-
-        &.no-desc {
-            margin-top: 0;
-        }
-    }
-
     .markdown {
         color: @term-white;
+        margin-bottom: 10px;
         
         code {
             background-color: black;
