@@ -2344,10 +2344,10 @@ class MainSideBar extends React.Component<{}, {}> {
                     <ul className="menu-list">
                         <li className="menu-bookmarks"><a onClick={this.handleBookmarksClick} className={cn({"is-active": (mainView == "bookmarks")})}><i className="fa-sharp fa-solid fa-bookmark"/> BOOKMARKS</a></li>
                     </ul>
-                    <p className="menu-label">
+                    <p className="menu-label display-none">
                         Playbooks
                     </p>
-                    <ul className="menu-list">
+                    <ul className="menu-list display-none">
                         <li key="default"><a onClick={this.handlePlaybookClick}><i className="fa-sharp fa-solid fa-file-lines"/> default</a></li>
                         <li key="prompt-dev"><a onClick={this.handlePlaybookClick}><i className="fa-sharp fa-solid fa-file-lines"/> prompt-dev</a></li>
                     </ul>
