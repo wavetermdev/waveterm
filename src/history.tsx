@@ -11,6 +11,7 @@ import dayjs from "dayjs";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import {Line} from "./linecomps";
+import {CmdStrCode} from "./elements";
 
 dayjs.extend(customParseFormat)
 dayjs.extend(localizedFormat)
@@ -82,6 +83,7 @@ class HistoryView extends React.Component<{}, {}> {
     tableRszObs : ResizeObserver;
     sessionDropdownActive : OV<boolean> = mobx.observable.box(false, {name: "sessionDropdownActive"});
     remoteDropdownActive : OV<boolean> = mobx.observable.box(false, {name: "remoteDropdownActive"});
+    copiedItemId : OV<string> = mobx.observable.box(null, {name: "copiedItemId"});
     
     @boundMethod
     clickCloseHandler() : void {
@@ -271,6 +273,34 @@ class HistoryView extends React.Component<{}, {}> {
         let hvm = GlobalModel.historyViewModel;
         hvm.resetAllFilters();
     }
+
+    @boundMethod
+    handleCopy(item : HistoryItem) : void {
+        if (isBlank(item.cmdstr)) {
+            return;
+        }
+        navigator.clipboard.writeText(item.cmdstr);
+        mobx.action(() => {
+            this.copiedItemId.set(item.historyid);
+        })();
+        setTimeout(() => {
+            mobx.action(() => {
+                this.copiedItemId.set(null);
+            })();
+        }, 600);
+    }
+
+    @boundMethod
+    handleUse(item : HistoryItem) : void {
+        if (isBlank(item.cmdstr)) {
+            return;
+        }
+        mobx.action(() => {
+            GlobalModel.showSessionView();
+            GlobalModel.inputModel.setCurLine(item.cmdstr);
+            setTimeout(() => GlobalModel.inputModel.giveFocus(), 50);
+        })();
+    }
     
     render() {
         let isHidden = (GlobalModel.activeMainView.get() != "history");
@@ -416,7 +446,7 @@ class HistoryView extends React.Component<{}, {}> {
                                     {formatRemoteName(rnames, item.remote)}
                                 </td>
                                 <td className="cmdstr" onClick={() => this.activateItem(item.historyid)}>
-                                    <div className="cmdstr-content">{item.cmdstr}</div>
+                                    <CmdStrCode cmdstr={item.cmdstr} onUse={() => this.handleUse(item)} onCopy={() => this.handleCopy(item)} isCopied={this.copiedItemId.get() == item.historyid} fontSize="normal" limitHeight={true}/>
                                 </td>
                             </tr>
                             <If condition={activeItemId == item.historyid}>

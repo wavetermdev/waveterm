@@ -154,7 +154,7 @@ class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
                             <ReactMarkdown children={markdown} remarkPlugins={[remarkGfm]} components={markdownComponents}/>
                         </div>
                     </If>
-                    <CmdStrCode cmdstr={bm.cmdstr} onUse={this.handleUse} onCopy={this.clickCopy} isCopied={isCopied}/>
+                    <CmdStrCode cmdstr={bm.cmdstr} onUse={this.handleUse} onCopy={this.clickCopy} isCopied={isCopied} fontSize="large" limitHeight={false}/>
                 </div>
                 <div className="bookmark-controls">
                     <div className="bookmark-control" onClick={this.handleEditClick}><i className="fa-sharp fa-solid fa-pen"/></div>

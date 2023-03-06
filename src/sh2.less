@@ -456,26 +456,14 @@ body::-webkit-scrollbar {
 
             &.is-selected {
                 background-color: #003;
-
-                td.cmdstr {
-                    background-color: #000017;
-                }
             }
 
             &.is-selected:hover {
                 background-color: #336;
-
-                td.cmdstr {
-                    background-color: #113;
-                }
             }
 
             &:hover {
                 background-color: #333;
-
-                td.cmdstr {
-                    background-color: #111;
-                }
 
                 td.bookmark i {
                     display: block;
@@ -535,18 +523,23 @@ body::-webkit-scrollbar {
             td.cmdstr {
                 .mono-font(12px);
                 color: white;
-                background-color: black;
                 flex: 1 0 0;
                 padding-left: 20px;
                 border-radius: 3px;
                 white-space: pre;
-                max-height: 64px;
+                max-height: 70px;
                 cursor: pointer;
                 min-width: 300px;
-                overflow-y: auto;
+                padding-top: 4px;
+                padding-bottom: 4px;
+                overflow: hidden;
 
-                .cmdstr-content {
-                    overflow-x: auto;
+                .use-button {
+                    visibility: hidden;
+                }
+
+                &:hover .use-button {
+                    visibility: visible;
                 }
             }
         }
@@ -557,7 +550,26 @@ body::-webkit-scrollbar {
     position: relative;
     display: flex;
     flex-direction: row;
-    padding: 4px 10px 4px 0;
+    padding: 0px 10px 0px 0;
+
+    &.is-large {
+        .use-button {
+            height: 28px;
+            width: 28px;
+        }
+
+        .code-div code {
+            .mono-font(14px);
+        }
+    }
+
+    &.limit-height .code-div {
+        max-height: 58px;
+    }
+
+    &.limit-height.is-large .code-div {
+        max-height: 68px;
+    }
 
     .copied-indicator {
         position: absolute;
@@ -582,8 +594,8 @@ body::-webkit-scrollbar {
         padding: 3px;
         border-radius: 3px 0 0 3px;
         font-size: 12px;
-        height: 28px;
-        width: 28px;
+        height: 22px;
+        width: 22px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -601,14 +613,14 @@ body::-webkit-scrollbar {
         display: flex;
         flex-direction: row;
         min-width: 100px;
-        overflow-x: auto;
+        overflow: auto;
         border-left: 1px solid #777;
         
         code {
             flex-shrink: 0;
             min-width: 100px;
             color: white;
-            .mono-font();
+            .mono-font(12px);
             white-space: pre;
             padding: 2px 8px 2px 8px;
             background-color: black;
@@ -637,7 +649,10 @@ body::-webkit-scrollbar {
             }
         }
     }
-    
+
+    &:hover .copy-control {
+        display: block !important;
+    }
 }
 
 .bookmarks-view {
@@ -707,10 +722,6 @@ body::-webkit-scrollbar {
 
         &:hover .bookmark-id-div {
             display: block;
-        }
-
-        &:hover .copy-control {
-            display: block !important;
         }
 
         .bookmark-controls {

@@ -6,25 +6,27 @@ import {boundMethod} from "autobind-decorator";
 import cn from "classnames";
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 
-class CmdStrCode extends React.Component<{cmdstr : string, onUse : () => void, onCopy : () => void, isCopied : boolean}, {}> {
+class CmdStrCode extends React.Component<{cmdstr : string, onUse : () => void, onCopy : () => void, isCopied : boolean, fontSize : "normal" | "large", limitHeight : boolean}, {}> {
     @boundMethod
-    handleUse() {
+    handleUse(e : any) {
+        e.stopPropagation();
         if (this.props.onUse != null) {
             this.props.onUse()
         }
     }
 
     @boundMethod
-    handleCopy() {
+    handleCopy(e : any) {
+        e.stopPropagation();
         if (this.props.onCopy != null) {
             this.props.onCopy();
         }
     }
 
     render() {
-        let {isCopied, cmdstr} = this.props;
+        let {isCopied, cmdstr, fontSize, limitHeight} = this.props;
         return (
-            <div className={cn("cmdstr-code")}>
+            <div className={cn("cmdstr-code", {"is-large": (fontSize == "large")}, {"limit-height": limitHeight})}>
                 <If condition={isCopied}>
                     <div key="copied" className="copied-indicator">
                         <div>copied</div>
