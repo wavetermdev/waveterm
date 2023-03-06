@@ -1858,7 +1858,11 @@ func HistoryViewAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	if err != nil {
 		return nil, err
 	}
-	opts := sstore.HistoryQueryOpts{MaxItems: HistoryViewPageSize + 1, Offset: offset}
+	rawOffset, err := resolveNonNegInt(pk.Kwargs["rawoffset"], 0)
+	if err != nil {
+		return nil, err
+	}
+	opts := sstore.HistoryQueryOpts{MaxItems: HistoryViewPageSize, Offset: offset, RawOffset: rawOffset}
 	if pk.Kwargs["text"] != "" {
 		opts.SearchText = pk.Kwargs["text"]
 	}
@@ -1893,17 +1897,15 @@ func HistoryViewAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	if err != nil {
 		return nil, fmt.Errorf("invalid meta arg (must be boolean): %v", err)
 	}
-	hitems, err := sstore.GetHistoryItems(ctx, opts)
+	hresult, err := sstore.GetHistoryItems(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	hvdata := &sstore.HistoryViewData{Offset: offset}
-	if len(hitems) > HistoryViewPageSize {
-		hvdata.HasMore = true
-		hvdata.Items = hitems[0:HistoryViewPageSize]
-	} else {
-		hvdata.HasMore = false
-		hvdata.Items = hitems
+	hvdata := &sstore.HistoryViewData{
+		Items:         hresult.Items,
+		Offset:        hresult.Offset,
+		NextRawOffset: hresult.NextRawOffset,
+		HasMore:       hresult.HasMore,
 	}
 	lines, cmds, err := sstore.GetLineCmdsFromHistoryItems(ctx, hvdata.Items)
 	if err != nil {
@@ -1951,7 +1953,7 @@ func HistoryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		hWindowId = ""
 	}
 	hopts := sstore.HistoryQueryOpts{MaxItems: maxItems, SessionId: hSessionId, WindowId: hWindowId}
-	hitems, err := sstore.GetHistoryItems(ctx, hopts)
+	hresult, err := sstore.GetHistoryItems(ctx, hopts)
 	if err != nil {
 		return nil, err
 	}
@@ -1967,7 +1969,7 @@ func HistoryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		HistoryType: htype,
 		SessionId:   ids.SessionId,
 		WindowId:    ids.WindowId,
-		Items:       hitems,
+		Items:       hresult.Items,
 		Show:        show,
 	}
 	return update, nil

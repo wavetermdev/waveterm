@@ -207,7 +207,79 @@ func IsIncognitoScreen(ctx context.Context, sessionId string, screenId string) (
 	return rtn, txErr
 }
 
-func runHistoryQuery(tx *TxWrap, opts HistoryQueryOpts) ([]*HistoryItemType, error) {
+const HistoryQueryChunkSize = 1000
+
+func _getNextHistoryItem(items []*HistoryItemType, index int, filterFn func(*HistoryItemType) bool) (*HistoryItemType, int) {
+	for ; index < len(items); index++ {
+		item := items[index]
+		if filterFn(item) {
+			return item, index
+		}
+	}
+	return nil, index
+}
+
+func (result *HistoryQueryResult) processItem(item *HistoryItemType, rawOffset int) bool {
+	if len(result.Items) == result.MaxItems {
+		result.HasMore = true
+		result.NextRawOffset = rawOffset
+		return false
+	}
+	result.Items = append(result.Items, item)
+	return true
+}
+
+func runHistoryQueryWithFilter(tx *TxWrap, opts HistoryQueryOpts, filterFn func(*HistoryItemType) bool) (*HistoryQueryResult, error) {
+	if opts.MaxItems == 0 {
+		return nil, fmt.Errorf("invalid query, maxitems is 0")
+	}
+	if opts.RawOffset < opts.Offset {
+		return nil, fmt.Errorf("invalid query, rawoffset[%d] is less than offset[%d]", opts.RawOffset, opts.Offset)
+	}
+	rtn := &HistoryQueryResult{Offset: opts.RawOffset, MaxItems: opts.MaxItems}
+	if filterFn == nil {
+		results, err := runHistoryQuery(tx, opts, opts.RawOffset, opts.MaxItems+1)
+		if err != nil {
+			return nil, err
+		}
+		if len(results) > opts.MaxItems {
+			rtn.Items = results[0:opts.MaxItems]
+			rtn.HasMore = true
+			rtn.NextRawOffset = opts.RawOffset + opts.MaxItems
+		} else {
+			rtn.Items = results
+			rtn.HasMore = false
+			rtn.NextRawOffset = 0
+		}
+		return rtn, nil
+	}
+	rawOffset := opts.RawOffset
+	for {
+		resultItems, err := runHistoryQuery(tx, opts, rawOffset, HistoryQueryChunkSize)
+		if err != nil {
+			return nil, err
+		}
+		isDone := false
+		for resultIdx := 0; resultIdx < len(resultItems); resultIdx++ {
+			if !filterFn(resultItems[resultIdx]) {
+				continue
+			}
+			isDone = rtn.processItem(resultItems[resultIdx], rawOffset+resultIdx)
+			if isDone {
+				break
+			}
+		}
+		if isDone {
+			break
+		}
+		if len(resultItems) < HistoryQueryChunkSize {
+			break
+		}
+	}
+	return rtn, nil
+}
+
+func runHistoryQuery(tx *TxWrap, opts HistoryQueryOpts, realOffset int, itemLimit int) ([]*HistoryItemType, error) {
 	// check sessionid/windowid format because we are directly inserting them into the SQL
 	if opts.SessionId != "" {
 		_, err := uuid.Parse(opts.SessionId)
@@ -255,11 +327,7 @@ func runHistoryQuery(tx *TxWrap, opts HistoryQueryOpts) ([]*HistoryItemType, err
 	if opts.NoMeta {
 		whereClause += " AND NOT ismetacmd"
 	}
-	maxItems := opts.MaxItems
-	if maxItems == 0 {
-		maxItems = DefaultMaxHistoryItems
-	}
-	query := fmt.Sprintf("SELECT %s, '%s' || row_number() OVER win AS historynum FROM history %s WINDOW win AS (ORDER BY ts, historyid) ORDER BY ts DESC, historyid DESC LIMIT %d OFFSET %d", HistoryCols, hnumStr, whereClause, maxItems, opts.Offset)
+	query := fmt.Sprintf("SELECT %s, '%s' || row_number() OVER win AS historynum FROM history %s WINDOW win AS (ORDER BY ts, historyid) ORDER BY ts DESC, historyid DESC LIMIT %d OFFSET %d", HistoryCols, hnumStr, whereClause, itemLimit, realOffset)
 	marr := tx.SelectMaps(query, queryArgs...)
 	rtn := make([]*HistoryItemType, len(marr))
 	for idx, m := range marr {
@@ -269,11 +337,11 @@ func runHistoryQuery(tx *TxWrap, opts HistoryQueryOpts) ([]*HistoryItemType, err
 	return rtn, nil
 }
 
-func GetHistoryItems(ctx context.Context, opts HistoryQueryOpts) ([]*HistoryItemType, error) {
-	var rtn []*HistoryItemType
+func GetHistoryItems(ctx context.Context, opts HistoryQueryOpts) (*HistoryQueryResult, error) {
+	var rtn *HistoryQueryResult
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		var err error
-		rtn, err = runHistoryQuery(tx, opts)
+		rtn, err = runHistoryQueryWithFilter(tx, opts, nil)
 		if err != nil {
 			return err
 		}

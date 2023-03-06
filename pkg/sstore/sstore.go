@@ -539,6 +539,15 @@ type HistoryQueryOpts struct {
 	RemoteId   string
 	WindowId   string
 	NoMeta     bool
+	RawOffset  int
+}
+
+type HistoryQueryResult struct {
+	MaxItems      int
+	Items         []*HistoryItemType
+	Offset        int // the offset shown to user
+	HasMore       bool
+	NextRawOffset int // internal offset used by pager for next query
 }
 
 type TermOpts struct {
