@@ -291,11 +291,12 @@ type ModelUpdateType = {
 };
 
 type HistoryViewDataType = {
-    offset : number,
     items : HistoryItem[],
+    offset : number,
+    nextrawoffset : number,
+    hasmore : boolean,
     lines : LineType[],
     cmds : CmdDataType[],
-    hasmore : boolean,
 };
 
 type BookmarkType = {
@@ -428,7 +429,8 @@ type AlertMessageType = {
 };
 
 type HistorySearchParams = {
-    offset? : number,
+    offset : number,
+    rawOffset : number,
     searchText? : string,
     searchSessionId? : string,
     searchRemoteId? : string,

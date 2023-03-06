@@ -257,6 +257,12 @@ class HistoryView extends React.Component<{}, {}> {
             hvm.setSearchShowMeta(!hvm.searchShowMeta.get());
         })();
     }
+
+    @boundMethod
+    resetAllFilters() : void {
+        let hvm = GlobalModel.historyViewModel;
+        hvm.resetAllFilters();
+    }
     
     render() {
         let isHidden = (GlobalModel.activeMainView.get() != "history");
@@ -353,6 +359,9 @@ class HistoryView extends React.Component<{}, {}> {
                                 <div>
                                     <input type="date" onChange={this.handleFromTsChange} value={this.searchFromTsInputValue()} className="input is-small"/>
                                 </div>
+                            </div>
+                            <div onClick={this.resetAllFilters} className="reset-button">
+                                Reset All Filters
                             </div>
                         </div>
                     </div>

@@ -1803,6 +1803,7 @@ class HistoryViewModel {
     searchRemoteId : OV<string> = mobx.observable.box(null, {name: "historyview-searchRemoteId"});
     searchShowMeta : OV<boolean> = mobx.observable.box(false, {name: "historyview-searchShowMeta"});
     searchFromDate : OV<string> = mobx.observable.box(null, {name: "historyview-searchfromts"});
+    nextRawOffset : number = 0;
     
     historyItemLines : LineType[] = [];
     historyItemCmds : CmdDataType[] = [];
@@ -1916,6 +1917,7 @@ class HistoryViewModel {
         let offset = (newOffset != null ? newOffset : this.offset.get());
         let opts : HistorySearchParams = {
             offset: offset,
+            rawOffset: offset,
             searchText: this.activeSearchText,
             searchSessionId: this.searchSessionId.get(),
             searchRemoteId: this.searchRemoteId.get(),
@@ -1932,6 +1934,19 @@ class HistoryViewModel {
             opts.fromTs = ts;
         }
         return opts;
+    }
+
+    resetAllFilters() : void {
+        mobx.action(() => {
+            this.offset.set(0);
+            this.activeSearchText = "";
+            this.searchText.set("");
+            this.searchSessionId.set(null);
+            this.searchRemoteId.set(null);
+            this.searchFromDate.set(null);
+            this.searchShowMeta.set(false);
+        })();
+        GlobalCommandRunner.historyView(this._getSearchParams());
     }
 
     setFromDate(fromDate : string) : void {
@@ -3304,9 +3319,8 @@ class CommandRunner {
 
     historyView(params : HistorySearchParams) {
         let kwargs = {"nohist": "1"};
-        if (params.offset != null) {
-            kwargs["offset"] = String(params.offset);
-        }
+        kwargs["offset"] = String(params.offset);
+        kwargs["rawoffset"] = String(params.rawOffset);
         if (params.searchText != null) {
             kwargs["text"] = params.searchText;
         }
