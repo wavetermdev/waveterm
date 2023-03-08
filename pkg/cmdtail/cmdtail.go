@@ -24,6 +24,15 @@ const MaxDataBytes = 4096
 const FileTypePty = "ptyout"
 const FileTypeRun = "runout"
 
+type Tailer struct {
+	Lock      *sync.Mutex
+	WatchList map[base.CommandKey]CmdWatchEntry
+	Watcher   *fsnotify.Watcher
+	Sender    *packet.PacketSender
+	Gen       FileNameGenerator
+	Sessions  map[string]bool
+}
+
 type TailPos struct {
 	ReqId      string
 	Running    bool // an active tailer sending data
@@ -43,6 +52,7 @@ type CmdWatchEntry struct {
 type FileNameGenerator interface {
 	PtyOutFile(ck base.CommandKey) string
 	RunOutFile(ck base.CommandKey) string
+	SessionDir(sessionId string) string
 }
 
 func (w CmdWatchEntry) getTailPos(reqId string) (TailPos, bool) {
@@ -77,14 +87,6 @@ func (w *CmdWatchEntry) removeTailPos(reqId string) {
 
 func (pos TailPos) IsCurrent(entry CmdWatchEntry) bool {
 	return pos.TailPtyPos >= entry.FilePtyLen && pos.TailRunPos >= entry.FileRunLen
-}
-
-type Tailer struct {
-	Lock      *sync.Mutex
-	WatchList map[base.CommandKey]CmdWatchEntry
-	Watcher   *fsnotify.Watcher
-	Sender    *packet.PacketSender
-	Gen       FileNameGenerator
 }
 
 func (t *Tailer) updateTailPos_nolock(cmdKey base.CommandKey, reqId string, pos TailPos) {
@@ -133,10 +135,38 @@ func (t *Tailer) getEntryAndPos_nolock(cmdKey base.CommandKey, reqId string) (Cm
 	return entry, pos, true
 }
 
+func (t *Tailer) addSessionWatcher(sessionId string) error {
+	t.Lock.Lock()
+	defer t.Lock.Unlock()
+
+	if t.Sessions[sessionId] {
+		return
+	}
+	sdir := t.Gen.SessionDir(sessionId)
+	err := t.Watcher.Add(sdir)
+	if err != nil {
+		return err
+	}
+	t.Sessions[sessionId] = true
+	return nil
+}
+
+func (t *Tailer) removeSessionWatcher(sessionId string) {
+	t.Lock.Lock()
+	defer t.Lock.Unlock()
+
+	if !t.Sessions[sessionId] {
+		return
+	}
+	sdir := t.Gen.SessionDir(sessionId)
+	t.Watcher.Remove(sdir)
+}
+
 func MakeTailer(sender *packet.PacketSender, gen FileNameGenerator) (*Tailer, error) {
 	rtn := &Tailer{
 		Lock:      &sync.Mutex{},
 		WatchList: make(map[base.CommandKey]CmdWatchEntry),
+		Sessions:  make(map[string]bool),
 		Sender:    sender,
 		Gen:       gen,
 	}
