@@ -2570,7 +2570,7 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 			return nil, fmt.Errorf("invalid termfontsize, must be a number between 8-15: %v", err)
 		}
 		if newFontSize < 8 || newFontSize > 15 {
-			return nil, fmt.Errorf("invalid termfontsize, must be a number between 8-15", err)
+			return nil, fmt.Errorf("invalid termfontsize, must be a number between 8-15")
 		}
 		feOpts := clientData.FeOpts
 		feOpts.TermFontSize = newFontSize
