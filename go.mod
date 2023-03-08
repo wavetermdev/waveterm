@@ -26,4 +26,4 @@ require (
 	go.uber.org/atomic v1.7.0 // indirect
 )
 
-replace github.com/scripthaus-dev/mshell v0.0.0 => ../mshell/
+
