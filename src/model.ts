@@ -2322,6 +2322,7 @@ class Model {
     termFontSize : CV<number>;
     alertMessage : OV<AlertMessageType> = mobx.observable.box(null, {name: "alertMessage"});
     alertPromiseResolver : (result : boolean) => void;
+    welcomeModalOpen : OV<boolean> = mobx.observable.box(false, {name: "welcomeModalOpen"});
 
     inputModel : InputModel;
     bookmarksModel : BookmarksModel;

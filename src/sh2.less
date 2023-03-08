@@ -28,6 +28,8 @@
 @tab-black-text: #333;
 @tab-white-text: #d7d7d7;
 
+@prompt-green: rgb(0, 177, 10);
+
 @soft-blue: #729fcf;
 
 :root {
@@ -2547,7 +2549,6 @@ input[type=checkbox] {
 }
 
 .modal.alert-modal {
-
     .modal-card {
         min-width: 350px;
         max-width: 640px;
@@ -2572,3 +2573,96 @@ input[type=checkbox] {
         }
     }
 }
+
+.modal.welcome-modal {
+    .modal-content {
+        /* box-shadow: 5px 5px 5px #333; */
+        border-radius: 5px;
+        border: 5px solid #333;
+    }
+    
+    header {
+        background-color: #000;
+        display: flex;
+        flex-direction: row;
+        padding: 10px;
+        position: relative;
+
+        .modal-title {
+            color: @prompt-green;
+            .mono-font(24px);
+        }
+
+        .close-icon {
+            position: absolute;
+            right: 10px;
+            top: 6px;
+            cursor: pointer;
+            padding: 3px;
+            color: #aaa;
+            font-size: 20px;
+
+            &:hover {
+                color: #fff;
+            }
+        }
+    }
+
+    .welcome-content {
+        background-color: #222;
+        padding: 15px 10px 15px 10px;
+        color: @term-white;
+
+        margin: 0;
+
+        &.is-hidden {
+            display: none;
+        }
+    }
+
+    footer {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        color: @term-white;
+        background-color: #222;
+        padding: 15px 10px 10px 10px;
+        border-top: 1px solid #666;
+
+        .prev-button {
+            margin-left: 15px;
+            width: 100px;
+        }
+
+        .prev-spacer {
+            margin-left: 15px;
+            width: 100px;
+        }
+
+        .next-button {
+            margin-right: 15px;
+            width: 100px;
+        }
+
+        .dots {
+            font-size: 10px;
+
+            i {
+                margin-left: 5px;
+            }
+        }
+    }
+}
+
+.modal {
+    z-index: 105;
+
+    .modal-background {
+        background-color: rgba(10,10,10,.6);
+    }
+}
+
+.flex-spacer {
+    flex-grow: 1;
+}
+

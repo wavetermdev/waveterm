@@ -226,6 +226,16 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
                 inputModel.resetInput();
                 return;
             }
+            if (e.code == "KeyU" && e.getModifierState("Control")) {
+                e.preventDefault();
+                this.controlU();
+                return;
+            }
+            if (e.code == "KeyY" && e.getModifierState("Control")) {
+                e.preventDefault();
+                this.controlY();
+                return;
+            }
             if (e.code == "KeyR" && e.getModifierState("Control")) {
                 e.preventDefault();
                 inputModel.openHistory();
@@ -361,6 +371,44 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
             inputModel.moveHistorySelection(e.code == "PageUp" ? 10 : -10);
             return;
         }
+    }
+
+    @boundMethod
+    controlU() {
+        if (this.mainInputRef.current == null) {
+            return;
+        }
+        let selStart = this.mainInputRef.current.selectionStart;
+        let value = this.mainInputRef.current.value;
+        if (selStart > value.length) {
+            return;
+        }
+        let cutValue = value.substr(0, selStart);
+        let restValue = value.substr(selStart);
+        let cmdLineUpdate = {cmdline: restValue, cursorpos: 0};
+        console.log("ss", selStart, value, "[" + cutValue + "]", "[" + restValue + "]");
+        navigator.clipboard.writeText(cutValue);
+        GlobalModel.inputModel.updateCmdLine(cmdLineUpdate);
+    }
+
+    @boundMethod
+    controlY() {
+        if (this.mainInputRef.current == null) {
+            return;
+        }
+        let pastePromise = navigator.clipboard.readText();
+        pastePromise.then((clipText) => {
+            clipText = clipText ?? "";
+            let selStart = this.mainInputRef.current.selectionStart;
+            let selEnd = this.mainInputRef.current.selectionEnd;
+            let value = this.mainInputRef.current.value;
+            if (selStart > value.length || selEnd > value.length) {
+                return;
+            }
+            let newValue = value.substr(0, selStart) + clipText + value.substr(selEnd);
+            let cmdLineUpdate = {cmdline: newValue, cursorpos: selStart+clipText.length};
+            GlobalModel.inputModel.updateCmdLine(cmdLineUpdate);
+        });
     }
 
     @boundMethod
@@ -2269,6 +2317,13 @@ class MainSideBar extends React.Component<{}, {}> {
         GlobalCommandRunner.bookmarksView();
     }
 
+    @boundMethod
+    handleWelcomeClick() : void {
+        mobx.action(() => {
+            GlobalModel.welcomeModalOpen.set(true);
+        })();
+    }
+
     render() {
         let model = GlobalModel;
         let activeSessionId = model.activeSessionId.get();
@@ -2359,6 +2414,9 @@ class MainSideBar extends React.Component<{}, {}> {
             termfocus={sw.termLineNumFocus.get()}<br/>
                         </div>
                     </If>
+                    <ul className="menu-list">
+                        <li className="menu-bookmarks"><a onClick={this.handleWelcomeClick} className={cn({"is-active": GlobalModel.welcomeModalOpen.get()})}><i className="fa-sharp fa-solid fa-door-open"/> WELCOME</a></li>
+                    </ul>
                     <p className="menu-label">
                         <a onClick={() => this.clickRemotes()}>Links</a>
                     </p>
@@ -2546,6 +2604,104 @@ class AlertModal extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
+class WelcomeModal extends React.Component<{}, {}> {
+    totalPages : number = 3;
+    pageNum : OV<number> = mobx.observable.box(1, {name: "welcome-pagenum"});
+    
+    @boundMethod
+    closeModal() : void {
+        mobx.action(() => {
+            GlobalModel.welcomeModalOpen.set(false);
+        })();
+    }
+
+    @boundMethod
+    goNext() : void {
+        mobx.action(() => {
+            this.pageNum.set(this.pageNum.get() + 1);
+        })();
+    }
+
+    @boundMethod
+    goPrev() : void {
+        mobx.action(() => {
+            this.pageNum.set(this.pageNum.get() - 1);
+        })();
+    }
+
+    renderDot(num : number) : any {
+        if (num == this.pageNum.get()) {
+            return <i key={String(num)} className="fa-sharp fa-solid fa-circle"/>;
+        }
+        return <i key={String(num)} className="fa-sharp fa-regular fa-circle"/>;
+    }
+
+    renderDots() : any {
+        let elems : any = [];
+        for (let i=1; i<=this.totalPages; i++) {
+            let elem = this.renderDot(i);
+            elems.push(elem);
+        }
+        return elems;
+    }
+
+    render() {
+        let title = "welcome to [prompt]";
+        let pageNum = this.pageNum.get();
+        return (
+            <div className={cn("modal welcome-modal is-active")}>
+                <div className="modal-background"/>
+                <div className="modal-content">
+                    <header>
+                        <div className="modal-title">welcome to [prompt]</div>
+                        <div className="close-icon">
+                            <i onClick={this.closeModal} className="fa-sharp fa-solid fa-times"/>
+                        </div>
+                    </header>
+                    <div className={cn("welcome-content content", {"is-hidden": pageNum != 1})}>
+                        <p>
+                            Prompt is a new terminal to help save you time and keep your command-line life organized.
+                            Here's a couple quick tips to get your started!
+                        </p>
+                    </div>
+                    <footer>
+                        <If condition={pageNum > 1}>
+                            <button className={cn("button is-dark prev-button is-small")} onClick={this.goPrev}>
+                                <span className="icon is-small">
+                                    <i className="fa-sharp fa-regular fa-angle-left"/>
+                                </span>
+                                <span>Prev</span>
+                            </button>
+                        </If>
+                        <If condition={pageNum == 1}>
+                            <div className="prev-spacer"/>
+                        </If>
+                        <div className="flex-spacer"/>
+                        <div className="dots">
+                            {this.renderDots()}
+                        </div>
+                        <div className="flex-spacer"/>
+                        <If condition={pageNum < this.totalPages}>
+                            <button className="button is-dark next-button is-small" onClick={this.goNext}>
+                                <span>Next</span>
+                                <span className="icon is-small">
+                                    <i className="fa-sharp fa-regular fa-angle-right"/>
+                                </span>
+                            </button>
+                        </If>
+                        <If condition={pageNum == this.totalPages}>
+                            <button className="button is-dark next-button is-small" onClick={this.closeModal}>
+                                <span>Done</span>
+                            </button>
+                        </If>
+                    </footer>
+                </div>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
 class Main extends React.Component<{}, {}> {
     constructor(props : any) {
         super(props);
@@ -2591,6 +2747,9 @@ class Main extends React.Component<{}, {}> {
                     <DisconnectedModal/>
                 </If>
                 <AlertModal/>
+                <If condition={GlobalModel.welcomeModalOpen.get()}>
+                    <WelcomeModal/>
+                </If>
             </div>
         );
     }
