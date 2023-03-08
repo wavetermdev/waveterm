@@ -14,6 +14,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.14
 	github.com/sawka/txwrap v0.1.0
 	github.com/scripthaus-dev/mshell v0.0.0
+	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/mod v0.5.1
 	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad
 	mvdan.cc/sh/v3 v3.5.1
