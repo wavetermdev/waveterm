@@ -212,14 +212,17 @@ func ClientDataFromMap(m map[string]interface{}) *ClientData {
 	return &c
 }
 
+type CloudAclType struct {
+	UserId string `json:"userid"`
+	Role   string `json:"role"`
+}
+
 type SessionType struct {
 	SessionId      string            `json:"sessionid"`
 	Name           string            `json:"name"`
 	SessionIdx     int64             `json:"sessionidx"`
 	ActiveScreenId string            `json:"activescreenid"`
-	OwnerId        string            `json:"ownerid"`
 	ShareMode      string            `json:"sharemode"`
-	AccessKey      string            `json:"-"`
 	NotifyNum      int64             `json:"notifynum"`
 	Archived       bool              `json:"archived,omitempty"`
 	ArchivedTs     int64             `json:"archivedts,omitempty"`
@@ -229,6 +232,16 @@ type SessionType struct {
 	// only for updates
 	Remove bool `json:"remove,omitempty"`
 	Full   bool `json:"full,omitempty"`
+}
+
+type CloudSessionType struct {
+	SessionId string
+	ViewKey   string
+	WriteKey  string
+	EncKey    string
+	EncType   string
+	Vts       int64
+	Acl       []*CloudAclType
 }
 
 type SessionStatsType struct {

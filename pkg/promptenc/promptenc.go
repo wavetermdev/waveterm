@@ -3,6 +3,7 @@ package promptenc
 import (
 	"crypto/cipher"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -40,6 +41,23 @@ func MakeRandomEncryptor() (*Encryptor, error) {
 		return nil, err
 	}
 	return rtn, nil
+}
+
+func MakeEncryptor(key []byte) (*Encryptor, error) {
+	rtn := &Encryptor{Key: key}
+	rtn.AEAD, err = ccp.NewX(rtn.Key)
+	if err != nil {
+		return nil, err
+	}
+	return rtn, nil
+}
+
+func MakeEncryptorB64(key64 string) (*Encryptor, error) {
+	keyBytes, err := base64.RawURLEncoding.DecodeString(key64)
+	if err != nil {
+		return nil, err
+	}
+	return MakeEncryptor(keyBytes)
 }
 
 func (enc *Encryptor) EncryptData(plainText []byte, odata string) ([]byte, error) {
