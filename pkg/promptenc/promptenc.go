@@ -44,6 +44,7 @@ func MakeRandomEncryptor() (*Encryptor, error) {
 }
 
 func MakeEncryptor(key []byte) (*Encryptor, error) {
+	var err error
 	rtn := &Encryptor{Key: key}
 	rtn.AEAD, err = ccp.NewX(rtn.Key)
 	if err != nil {

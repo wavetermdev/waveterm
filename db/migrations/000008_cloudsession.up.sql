@@ -11,3 +11,10 @@ CREATE TABLE cloud_session (
     acl json NOT NULL
 );
 
+CREATE TABLE cloud_update (
+    updateid varchar(36) PRIMARY KEY,
+    ts bigint NOT NULL,
+    updatetype varchar(50) NOT NULL,
+    updatekeys json NOT NULL
+);
+

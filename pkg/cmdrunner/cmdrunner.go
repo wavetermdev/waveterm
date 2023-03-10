@@ -128,6 +128,7 @@ func init() {
 	registerCmdFn("session:showall", SessionShowAllCommand)
 	registerCmdFn("session:show", SessionShowCommand)
 	registerCmdFn("session:openshared", SessionOpenSharedCommand)
+	registerCmdFn("session:opencloud", SessionOpenCloudCommand)
 
 	registerCmdFn("screen", ScreenCommand)
 	registerCmdFn("screen:archive", ScreenArchiveCommand)
@@ -1546,6 +1547,22 @@ func SessionOpenSharedCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 	return nil, fmt.Errorf("shared sessions are not available in this version of prompt (stay tuned)")
 }
 
+func SessionOpenCloudCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	activate := resolveBool(pk.Kwargs["activate"], true)
+	newName := pk.Kwargs["name"]
+	if newName != "" {
+		err := validateName(newName, "session")
+		if err != nil {
+			return nil, err
+		}
+	}
+	update, err := sstore.InsertSessionWithName(ctx, newName, sstore.ShareModeShared, activate)
+	if err != nil {
+		return nil, err
+	}
+	return update, nil
+}
+
 func SessionOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	activate := resolveBool(pk.Kwargs["activate"], true)
 	newName := pk.Kwargs["name"]
@@ -1555,7 +1572,7 @@ func SessionOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 			return nil, err
 		}
 	}
-	update, err := sstore.InsertSessionWithName(ctx, newName, activate)
+	update, err := sstore.InsertSessionWithName(ctx, newName, sstore.ShareModeLocal, activate)
 	if err != nil {
 		return nil, err
 	}

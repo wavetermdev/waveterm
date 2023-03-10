@@ -65,7 +65,7 @@ func GetAllRemotes(ctx context.Context) ([]*RemoteType, error) {
 		query := `SELECT * FROM remote ORDER BY remoteidx`
 		marr := tx.SelectMaps(query)
 		for _, m := range marr {
-			rtn = append(rtn, RemoteFromMap(m))
+			rtn = append(rtn, FromMap[*RemoteType](m))
 		}
 		return nil
 	})
@@ -80,7 +80,7 @@ func GetRemoteByAlias(ctx context.Context, alias string) (*RemoteType, error) {
 	err := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * FROM remote WHERE remotealias = ?`
 		m := tx.GetMap(query, alias)
-		remote = RemoteFromMap(m)
+		remote = FromMap[*RemoteType](m)
 		return nil
 	})
 	if err != nil {
@@ -94,7 +94,7 @@ func GetRemoteById(ctx context.Context, remoteId string) (*RemoteType, error) {
 	err := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * FROM remote WHERE remoteid = ?`
 		m := tx.GetMap(query, remoteId)
-		remote = RemoteFromMap(m)
+		remote = FromMap[*RemoteType](m)
 		return nil
 	})
 	if err != nil {
@@ -108,7 +108,7 @@ func GetLocalRemote(ctx context.Context) (*RemoteType, error) {
 	err := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * FROM remote WHERE local`
 		m := tx.GetMap(query)
-		remote = RemoteFromMap(m)
+		remote = FromMap[*RemoteType](m)
 		return nil
 	})
 	if err != nil {
@@ -121,8 +121,7 @@ func GetRemoteByCanonicalName(ctx context.Context, cname string) (*RemoteType, e
 	var remote *RemoteType
 	err := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * FROM remote WHERE remotecanonicalname = ?`
-		m := tx.GetMap(query, cname)
-		remote = RemoteFromMap(m)
+		remote = GetMapGen[*RemoteType](tx, query, cname)
 		return nil
 	})
 	if err != nil {
@@ -135,8 +134,7 @@ func GetRemoteByPhysicalId(ctx context.Context, physicalId string) (*RemoteType,
 	var remote *RemoteType
 	err := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * FROM remote WHERE physicalid = ?`
-		m := tx.GetMap(query, physicalId)
-		remote = RemoteFromMap(m)
+		remote = GetMapGen[*RemoteType](tx, query, physicalId)
 		return nil
 	})
 	if err != nil {
@@ -327,7 +325,7 @@ func runHistoryQuery(tx *TxWrap, opts HistoryQueryOpts, realOffset int, itemLimi
 	marr := tx.SelectMaps(query, queryArgs...)
 	rtn := make([]*HistoryItemType, len(marr))
 	for idx, m := range marr {
-		hitem := HistoryItemFromMap(m)
+		hitem := FromMap[*HistoryItemType](m)
 		rtn[idx] = hitem
 	}
 	return rtn, nil
@@ -434,9 +432,8 @@ func GetAllSessions(ctx context.Context) (*ModelUpdate, error) {
 			screen.Windows = append(screen.Windows, sw)
 		}
 		query = `SELECT * FROM remote_instance`
-		riMaps := tx.SelectMaps(query)
-		for _, m := range riMaps {
-			ri := RIFromMap(m)
+		riArr := SelectMapsGen[*RemoteInstance](tx, query)
+		for _, ri := range riArr {
 			s := sessionMap[ri.SessionId]
 			if s != nil {
 				s.Remotes = append(s.Remotes, ri)
@@ -460,14 +457,11 @@ func GetWindowById(ctx context.Context, sessionId string, windowId string) (*Win
 		if m == nil {
 			return nil
 		}
-		rtnWindow = WindowFromMap(m)
+		rtnWindow = FromMap[*WindowType](m)
 		query = `SELECT * FROM line WHERE sessionid = ? AND windowid = ? ORDER BY linenum`
 		tx.Select(&rtnWindow.Lines, query, sessionId, windowId)
 		query = `SELECT * FROM cmd WHERE cmdid IN (SELECT cmdid FROM line WHERE sessionid = ? AND windowid = ?)`
-		cmdMaps := tx.SelectMaps(query, sessionId, windowId)
-		for _, m := range cmdMaps {
-			rtnWindow.Cmds = append(rtnWindow.Cmds, CmdFromMap(m))
-		}
+		rtnWindow.Cmds = SelectMapsGen[*CmdType](tx, query, sessionId, windowId)
 		return nil
 	})
 	return rtnWindow, err
@@ -519,9 +513,27 @@ func GetSessionByName(ctx context.Context, name string) (*SessionType, error) {
 	return session, nil
 }
 
+func InsertCloudSession(ctx context.Context, sessionName string, shareMode string, activate bool) (*ModelUpdate, error) {
+	var updateRtn *ModelUpdate
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		var err error
+		updateRtn, err = InsertSessionWithName(tx.Context(), sessionName, shareMode, activate)
+		if err != nil {
+			return err
+		}
+		sessionId := updateRtn.Sessions[0].SessionId
+		fmt.Printf("sessionid: %v\n", sessionId)
+		return nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	return updateRtn, nil
+}
+
 // also creates default window, returns sessionId
 // if sessionName == "", it will be generated
-func InsertSessionWithName(ctx context.Context, sessionName string, activate bool) (UpdatePacket, error) {
+func InsertSessionWithName(ctx context.Context, sessionName string, shareMode string, activate bool) (*ModelUpdate, error) {
 	newSessionId := scbase.GenPromptUUID()
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		names := tx.SelectStrings(`SELECT name FROM session`)
@@ -553,7 +565,7 @@ func InsertSessionWithName(ctx context.Context, sessionName string, activate boo
 	if activate {
 		update.ActiveSessionId = newSessionId
 	}
-	return update, nil
+	return &update, nil
 }
 
 func SetActiveSessionId(ctx context.Context, sessionId string) error {
@@ -757,8 +769,7 @@ func GetLineCmdByLineId(ctx context.Context, sessionId string, windowId string, 
 		lineRtn = &lineVal
 		if lineVal.CmdId != "" {
 			query = `SELECT * FROM cmd WHERE sessionid = ? AND cmdid = ?`
-			m := tx.GetMap(query, sessionId, lineVal.CmdId)
-			cmdRtn = CmdFromMap(m)
+			cmdRtn = GetMapGen[*CmdType](tx, query, sessionId, lineVal.CmdId)
 		}
 		return nil
 	})
@@ -784,8 +795,7 @@ func GetLineCmdByCmdId(ctx context.Context, sessionId string, windowId string, c
 		}
 		lineRtn = &lineVal
 		query = `SELECT * FROM cmd WHERE sessionid = ? AND cmdid = ?`
-		m := tx.GetMap(query, sessionId, cmdId)
-		cmdRtn = CmdFromMap(m)
+		cmdRtn = GetMapGen[*CmdType](tx, query, sessionId, cmdId)
 		return nil
 	})
 	if txErr != nil {
@@ -834,8 +844,7 @@ func GetCmdById(ctx context.Context, sessionId string, cmdId string) (*CmdType, 
 	var cmd *CmdType
 	err := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * FROM cmd WHERE sessionid = ? AND cmdid = ?`
-		m := tx.GetMap(query, sessionId, cmdId)
-		cmd = CmdFromMap(m)
+		cmd = GetMapGen[*CmdType](tx, query, sessionId, cmdId)
 		return nil
 	})
 	if err != nil {
@@ -1176,8 +1185,7 @@ func GetRemoteInstance(ctx context.Context, sessionId string, windowId string, r
 	var ri *RemoteInstance
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * FROM remote_instance WHERE sessionid = ? AND windowid = ? AND remoteownerid = ? AND remoteid = ? AND name = ?`
-		m := tx.GetMap(query, sessionId, windowId, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name)
-		ri = RIFromMap(m)
+		ri = GetMapGen[*RemoteInstance](tx, query, sessionId, windowId, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name)
 		return nil
 	})
 	if txErr != nil {
@@ -1223,8 +1231,7 @@ func UpdateRemoteState(ctx context.Context, sessionId string, windowId string, r
 			return fmt.Errorf("cannot update remote instance state: %w", err)
 		}
 		query := `SELECT * FROM remote_instance WHERE sessionid = ? AND windowid = ? AND remoteownerid = ? AND remoteid = ? AND name = ?`
-		m := tx.GetMap(query, sessionId, windowId, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name)
-		ri = RIFromMap(m)
+		ri = GetMapGen[*RemoteInstance](tx, query, sessionId, windowId, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name)
 		if ri == nil {
 			ri = &RemoteInstance{
 				RIId:          scbase.GenPromptUUID(),
@@ -1423,10 +1430,7 @@ func GetRunningWindowCmds(ctx context.Context, sessionId string, windowId string
 	var rtn []*CmdType
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * from cmd WHERE cmdid IN (SELECT cmdid FROM line WHERE sessionid = ? AND windowid = ?) AND status = ?`
-		cmdMaps := tx.SelectMaps(query, sessionId, windowId, CmdStatusRunning)
-		for _, m := range cmdMaps {
-			rtn = append(rtn, CmdFromMap(m))
-		}
+		rtn = SelectMapsGen[*CmdType](tx, query, sessionId, windowId, CmdStatusRunning)
 		return nil
 	})
 	if txErr != nil {
@@ -1870,8 +1874,7 @@ func GetFullState(ctx context.Context, ssPtr ShellStatePtr) (*packet.ShellState,
 		}
 		for idx, diffHash := range ssPtr.DiffHashArr {
 			query = `SELECT * FROM state_diff WHERE diffhash = ?`
-			m := tx.GetMap(query, diffHash)
-			stateDiff := StateDiffFromMap(m)
+			stateDiff := GetMapGen[*StateDiff](tx, query, diffHash)
 			if stateDiff == nil {
 				return fmt.Errorf("ShellStateDiff %s not found", diffHash)
 			}
@@ -1986,13 +1989,7 @@ func GetRIsForWindow(ctx context.Context, sessionId string, windowId string) ([]
 	var rtn []*RemoteInstance
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * FROM remote_instance WHERE sessionid = ? AND (windowid = '' OR windowid = ?)`
-		riMaps := tx.SelectMaps(query, sessionId, windowId)
-		for _, m := range riMaps {
-			ri := RIFromMap(m)
-			if ri != nil {
-				rtn = append(rtn, ri)
-			}
-		}
+		rtn = SelectMapsGen[*RemoteInstance](tx, query, sessionId, windowId)
 		return nil
 	})
 	if txErr != nil {
@@ -2155,20 +2152,14 @@ func GetBookmarks(ctx context.Context, tag string) ([]*BookmarkType, error) {
 	var bms []*BookmarkType
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		var query string
-		var marr []map[string]interface{}
 		if tag == "" {
 			query = `SELECT * FROM bookmark`
-			marr = tx.SelectMaps(query)
+			bms = SelectMapsGen[*BookmarkType](tx, query)
 		} else {
 			query = `SELECT * FROM bookmark WHERE EXISTS (SELECT 1 FROM json_each(tags) WHERE value = ?)`
-			marr = tx.SelectMaps(query, tag)
+			bms = SelectMapsGen[*BookmarkType](tx, query, tag)
 		}
-		bmMap := make(map[string]*BookmarkType)
-		for _, m := range marr {
-			bm := BookmarkFromMap(m)
-			bms = append(bms, bm)
-			bmMap[bm.BookmarkId] = bm
-		}
+		bmMap := MakeGenMap(bms)
 		var orders []bookmarkOrderType
 		query = `SELECT bookmarkid, orderidx FROM bookmark_order WHERE tag = ?`
 		tx.Select(&orders, query, tag)
@@ -2199,8 +2190,7 @@ func GetBookmarkById(ctx context.Context, bookmarkId string, tag string) (*Bookm
 	var rtn *BookmarkType
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * FROM bookmark WHERE bookmarkid = ?`
-		m := tx.GetMap(query, bookmarkId)
-		rtn = BookmarkFromMap(m)
+		rtn = GetMapGen[*BookmarkType](tx, query, bookmarkId)
 		if rtn == nil {
 			return nil
 		}
@@ -2329,30 +2319,24 @@ func DeleteBookmark(ctx context.Context, bookmarkId string) error {
 }
 
 func CreatePlaybook(ctx context.Context, name string) (*PlaybookType, error) {
-	var rtn *PlaybookType
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
+	return WithTxRtn(ctx, func(tx *TxWrap) (*PlaybookType, error) {
 		query := `SELECT playbookid FROM playbook WHERE name = ?`
 		if tx.Exists(query, name) {
-			return fmt.Errorf("playbook %q already exists", name)
+			return nil, fmt.Errorf("playbook %q already exists", name)
 		}
-		rtn = &PlaybookType{}
+		rtn := &PlaybookType{}
 		rtn.PlaybookId = uuid.New().String()
 		rtn.PlaybookName = name
 		query = `INSERT INTO playbook ( playbookid, playbookname, description, entryids)
                                VALUES (:playbookid,:playbookname,:description,:entryids)`
 		tx.Exec(query, rtn.ToMap())
-		return nil
+		return rtn, nil
 	})
-	if txErr != nil {
-		return nil, txErr
-	}
-	return rtn, nil
 }
 
 func selectPlaybook(tx *TxWrap, playbookId string) *PlaybookType {
 	query := `SELECT * FROM playbook where playbookid = ?`
-	m := tx.GetMap(query, playbookId)
-	playbook := PlaybookFromMap(m)
+	playbook := GetMapGen[*PlaybookType](tx, query, playbookId)
 	return playbook
 }
 
@@ -2360,7 +2344,7 @@ func AddPlaybookEntry(ctx context.Context, entry *PlaybookEntry) error {
 	if entry.EntryId == "" {
 		return fmt.Errorf("invalid entryid")
 	}
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
 		playbook := selectPlaybook(tx, entry.PlaybookId)
 		if playbook == nil {
 			return fmt.Errorf("cannot add entry, playbook does not exist")
@@ -2377,11 +2361,10 @@ func AddPlaybookEntry(ctx context.Context, entry *PlaybookEntry) error {
 		tx.Exec(query, quickJsonArr(playbook.EntryIds), entry.PlaybookId)
 		return nil
 	})
-	return txErr
 }
 
 func RemovePlaybookEntry(ctx context.Context, playbookId string, entryId string) error {
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
 		playbook := selectPlaybook(tx, playbookId)
 		if playbook == nil {
 			return fmt.Errorf("cannot remove playbook entry, playbook does not exist")
@@ -2397,25 +2380,19 @@ func RemovePlaybookEntry(ctx context.Context, playbookId string, entryId string)
 		tx.Exec(query, quickJsonArr(playbook.EntryIds), playbookId)
 		return nil
 	})
-	return txErr
 }
 
 func GetPlaybookById(ctx context.Context, playbookId string) (*PlaybookType, error) {
-	var rtn *PlaybookType
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		rtn = selectPlaybook(tx, playbookId)
+	return WithTxRtn(ctx, func(tx *TxWrap) (*PlaybookType, error) {
+		rtn := selectPlaybook(tx, playbookId)
 		if rtn == nil {
-			return nil
+			return nil, nil
 		}
 		query := `SELECT * FROM playbook_entry WHERE playbookid = ?`
 		tx.Select(&rtn.Entries, query, playbookId)
 		rtn.OrderEntries()
-		return nil
+		return rtn, nil
 	})
-	if txErr != nil {
-		return nil, txErr
-	}
-	return rtn, nil
 }
 
 func getLineIdsFromHistoryItems(historyItems []*HistoryItemType) []string {
@@ -2439,55 +2416,33 @@ func getCmdIdsFromHistoryItems(historyItems []*HistoryItemType) []string {
 }
 
 func GetLineCmdsFromHistoryItems(ctx context.Context, historyItems []*HistoryItemType) ([]*LineType, []*CmdType, error) {
-	var lineArr []*LineType
-	var cmdArr []*CmdType
 	if len(historyItems) == 0 {
 		return nil, nil, nil
 	}
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
+	return WithTxRtn3(ctx, func(tx *TxWrap) ([]*LineType, []*CmdType, error) {
+		var lineArr []*LineType
 		query := `SELECT * FROM line WHERE lineid IN (SELECT value FROM json_each(?))`
 		tx.Select(&lineArr, query, quickJsonArr(getLineIdsFromHistoryItems(historyItems)))
 		query = `SELECT * FROM cmd WHERE cmdid IN (SELECT value FROM json_each(?))`
-		marr := tx.SelectMaps(query, quickJsonArr(getCmdIdsFromHistoryItems(historyItems)))
-		for _, m := range marr {
-			cmd := CmdFromMap(m)
-			if cmd != nil {
-				cmdArr = append(cmdArr, cmd)
-			}
-		}
-		return nil
+		cmdArr := SelectMapsGen[*CmdType](tx, query, quickJsonArr(getCmdIdsFromHistoryItems(historyItems)))
+		return lineArr, cmdArr, nil
 	})
-	if txErr != nil {
-		return nil, nil, txErr
-	}
-	return lineArr, cmdArr, nil
 }
 
 func PurgeHistoryByIds(ctx context.Context, historyIds []string) ([]*HistoryItemType, error) {
-	var rtn []*HistoryItemType
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
+	return WithTxRtn(ctx, func(tx *TxWrap) ([]*HistoryItemType, error) {
 		query := `SELECT * FROM history WHERE historyid IN (SELECT value FROM json_each(?))`
-		marr := tx.SelectMaps(query, quickJsonArr(historyIds))
-		for _, m := range marr {
-			hitem := HistoryItemFromMap(m)
-			if hitem != nil {
-				rtn = append(rtn, hitem)
-			}
-		}
+		rtn := SelectMapsGen[*HistoryItemType](tx, query, quickJsonArr(historyIds))
 		query = `DELETE FROM history WHERE historyid IN (SELECT value FROM json_each(?))`
 		tx.Exec(query, quickJsonArr(historyIds))
 		for _, hitem := range rtn {
 			if hitem.LineId != "" {
 				err := PurgeLinesByIds(tx.Context(), hitem.SessionId, []string{hitem.LineId})
 				if err != nil {
-					return err
+					return nil, err
 				}
 			}
 		}
-		return nil
+		return rtn, nil
 	})
-	if txErr != nil {
-		return nil, txErr
-	}
-	return rtn, nil
 }

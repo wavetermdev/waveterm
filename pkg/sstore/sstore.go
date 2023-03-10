@@ -175,42 +175,15 @@ type ClientData struct {
 	UserId              string            `json:"userid"`
 	UserPrivateKeyBytes []byte            `json:"-"`
 	UserPublicKeyBytes  []byte            `json:"-"`
-	UserPrivateKey      *ecdsa.PrivateKey `json:"-"`
-	UserPublicKey       *ecdsa.PublicKey  `json:"-"`
+	UserPrivateKey      *ecdsa.PrivateKey `json:"-" dbmap:"-"`
+	UserPublicKey       *ecdsa.PublicKey  `json:"-" dbmap:"-"`
 	ActiveSessionId     string            `json:"activesessionid"`
 	WinSize             ClientWinSizeType `json:"winsize"`
 	ClientOpts          ClientOptsType    `json:"clientopts"`
 	FeOpts              FeOptsType        `json:"feopts"`
 }
 
-func (c *ClientData) ToMap() map[string]interface{} {
-	rtn := make(map[string]interface{})
-	rtn["clientid"] = c.ClientId
-	rtn["userid"] = c.UserId
-	rtn["userprivatekeybytes"] = c.UserPrivateKeyBytes
-	rtn["userpublickeybytes"] = c.UserPublicKeyBytes
-	rtn["activesessionid"] = c.ActiveSessionId
-	rtn["winsize"] = quickJson(c.WinSize)
-	rtn["clientopts"] = quickJson(c.ClientOpts)
-	rtn["feopts"] = quickJson(c.FeOpts)
-	return rtn
-}
-
-func ClientDataFromMap(m map[string]interface{}) *ClientData {
-	if len(m) == 0 {
-		return nil
-	}
-	var c ClientData
-	quickSetStr(&c.ClientId, m, "clientid")
-	quickSetStr(&c.UserId, m, "userid")
-	quickSetBytes(&c.UserPrivateKeyBytes, m, "userprivatekeybytes")
-	quickSetBytes(&c.UserPublicKeyBytes, m, "userpublickeybytes")
-	quickSetStr(&c.ActiveSessionId, m, "activesessionid")
-	quickSetJson(&c.WinSize, m, "winsize")
-	quickSetJson(&c.ClientOpts, m, "clientopts")
-	quickSetJson(&c.FeOpts, m, "feopts")
-	return &c
-}
+func (c ClientData) UseDBMap() {}
 
 type CloudAclType struct {
 	UserId string `json:"userid"`
@@ -242,6 +215,36 @@ type CloudSessionType struct {
 	EncType   string
 	Vts       int64
 	Acl       []*CloudAclType
+}
+
+func (cs *CloudSessionType) ToMap() map[string]any {
+	m := make(map[string]any)
+	m["sessionid"] = cs.SessionId
+	m["viewkey"] = cs.ViewKey
+	m["writekey"] = cs.WriteKey
+	m["enckey"] = cs.EncKey
+	m["enctype"] = cs.EncType
+	m["vts"] = cs.Vts
+	m["acl"] = quickJsonArr(cs.Acl)
+	return m
+}
+
+func (cs *CloudSessionType) FromMap(m map[string]interface{}) bool {
+	quickSetStr(&cs.SessionId, m, "sessionid")
+	quickSetStr(&cs.ViewKey, m, "viewkey")
+	quickSetStr(&cs.WriteKey, m, "writekey")
+	quickSetStr(&cs.EncKey, m, "enckey")
+	quickSetStr(&cs.EncType, m, "enctype")
+	quickSetInt64(&cs.Vts, m, "vts")
+	quickSetJsonArr(&cs.Acl, m, "acl")
+	return true
+}
+
+type CloudUpdate struct {
+	UpdateId   string
+	Ts         int64
+	UpdateType string
+	UpdateKeys []string
 }
 
 type SessionStatsType struct {
@@ -370,11 +373,7 @@ func (w *WindowType) ToMap() map[string]interface{} {
 	return rtn
 }
 
-func WindowFromMap(m map[string]interface{}) *WindowType {
-	if len(m) == 0 {
-		return nil
-	}
-	var w WindowType
+func (w *WindowType) FromMap(m map[string]interface{}) bool {
 	quickSetStr(&w.SessionId, m, "sessionid")
 	quickSetStr(&w.WindowId, m, "windowid")
 	quickSetStr(&w.CurRemote.OwnerId, m, "curremoteownerid")
@@ -385,7 +384,7 @@ func WindowFromMap(m map[string]interface{}) *WindowType {
 	quickSetStr(&w.OwnerId, m, "ownerid")
 	quickSetStr(&w.ShareMode, m, "sharemode")
 	quickSetJson(&w.ShareOpts, m, "shareopts")
-	return &w
+	return true
 }
 
 func (h *HistoryItemType) ToMap() map[string]interface{} {
@@ -408,11 +407,7 @@ func (h *HistoryItemType) ToMap() map[string]interface{} {
 	return rtn
 }
 
-func HistoryItemFromMap(m map[string]interface{}) *HistoryItemType {
-	if len(m) == 0 {
-		return nil
-	}
-	var h HistoryItemType
+func (h *HistoryItemType) FromMap(m map[string]interface{}) bool {
 	quickSetStr(&h.HistoryId, m, "historyid")
 	quickSetInt64(&h.Ts, m, "ts")
 	quickSetStr(&h.UserId, m, "userid")
@@ -429,7 +424,7 @@ func HistoryItemFromMap(m map[string]interface{}) *HistoryItemType {
 	quickSetBool(&h.IsMetaCmd, m, "ismetacmd")
 	quickSetStr(&h.HistoryNum, m, "historynum")
 	quickSetBool(&h.Incognito, m, "incognito")
-	return &h
+	return true
 }
 
 type ScreenOptsType struct {
@@ -624,17 +619,13 @@ type StateDiff struct {
 	Data        []byte
 }
 
-func StateDiffFromMap(m map[string]interface{}) *StateDiff {
-	if len(m) == 0 {
-		return nil
-	}
-	var sd StateDiff
+func (sd *StateDiff) FromMap(m map[string]interface{}) bool {
 	quickSetStr(&sd.DiffHash, m, "diffhash")
 	quickSetInt64(&sd.Ts, m, "ts")
 	quickSetStr(&sd.BaseHash, m, "basehash")
 	quickSetJsonArr(&sd.DiffHashArr, m, "diffhasharr")
 	quickSetBytes(&sd.Data, m, "data")
-	return &sd
+	return true
 }
 
 func (sd *StateDiff) ToMap() map[string]interface{} {
@@ -659,11 +650,7 @@ func FeStateFromShellState(state *packet.ShellState) *FeStateType {
 	return &FeStateType{Cwd: state.Cwd}
 }
 
-func RIFromMap(m map[string]interface{}) *RemoteInstance {
-	if len(m) == 0 {
-		return nil
-	}
-	var ri RemoteInstance
+func (ri *RemoteInstance) FromMap(m map[string]interface{}) bool {
 	quickSetStr(&ri.RIId, m, "riid")
 	quickSetStr(&ri.Name, m, "name")
 	quickSetStr(&ri.SessionId, m, "sessionid")
@@ -673,7 +660,7 @@ func RIFromMap(m map[string]interface{}) *RemoteInstance {
 	quickSetJson(&ri.FeState, m, "festate")
 	quickSetStr(&ri.StateBaseHash, m, "statebasehash")
 	quickSetJsonArr(&ri.StateDiffHashArr, m, "statediffhasharr")
-	return &ri
+	return true
 }
 
 func (ri *RemoteInstance) ToMap() map[string]interface{} {
@@ -731,16 +718,12 @@ func (p *PlaybookType) ToMap() map[string]interface{} {
 	return rtn
 }
 
-func PlaybookFromMap(m map[string]interface{}) *PlaybookType {
-	if len(m) == 0 {
-		return nil
-	}
-	var p PlaybookType
+func (p *PlaybookType) FromMap(m map[string]interface{}) bool {
 	quickSetStr(&p.PlaybookId, m, "playbookid")
 	quickSetStr(&p.PlaybookName, m, "playbookname")
 	quickSetStr(&p.Description, m, "description")
 	quickSetJsonArr(&p.Entries, m, "entries")
-	return &p
+	return true
 }
 
 // reorders p.Entries to match p.EntryIds
@@ -800,6 +783,10 @@ type BookmarkType struct {
 	Remove      bool              `json:"remove,omitempty"`
 }
 
+func (bm *BookmarkType) GetSimpleKey() string {
+	return bm.BookmarkId
+}
+
 func (bm *BookmarkType) ToMap() map[string]interface{} {
 	rtn := make(map[string]interface{})
 	rtn["bookmarkid"] = bm.BookmarkId
@@ -811,18 +798,14 @@ func (bm *BookmarkType) ToMap() map[string]interface{} {
 	return rtn
 }
 
-func BookmarkFromMap(m map[string]interface{}) *BookmarkType {
-	if len(m) == 0 {
-		return nil
-	}
-	var bm BookmarkType
+func (bm *BookmarkType) FromMap(m map[string]interface{}) bool {
 	quickSetStr(&bm.BookmarkId, m, "bookmarkid")
 	quickSetInt64(&bm.CreatedTs, m, "createdts")
 	quickSetStr(&bm.Alias, m, "alias")
 	quickSetStr(&bm.CmdStr, m, "cmdstr")
 	quickSetStr(&bm.Description, m, "description")
 	quickSetJsonArr(&bm.Tags, m, "tags")
-	return &bm
+	return true
 }
 
 type ResolveItem struct {
@@ -925,11 +908,7 @@ func (r *RemoteType) ToMap() map[string]interface{} {
 	return rtn
 }
 
-func RemoteFromMap(m map[string]interface{}) *RemoteType {
-	if len(m) == 0 {
-		return nil
-	}
-	var r RemoteType
+func (r *RemoteType) FromMap(m map[string]interface{}) bool {
 	quickSetStr(&r.RemoteId, m, "remoteid")
 	quickSetStr(&r.PhysicalId, m, "physicalid")
 	quickSetStr(&r.RemoteType, m, "remotetype")
@@ -946,7 +925,7 @@ func RemoteFromMap(m map[string]interface{}) *RemoteType {
 	quickSetBool(&r.Archived, m, "archived")
 	quickSetInt64(&r.RemoteIdx, m, "remoteidx")
 	quickSetBool(&r.Local, m, "local")
-	return &r
+	return true
 }
 
 func (cmd *CmdType) ToMap() map[string]interface{} {
@@ -972,11 +951,7 @@ func (cmd *CmdType) ToMap() map[string]interface{} {
 	return rtn
 }
 
-func CmdFromMap(m map[string]interface{}) *CmdType {
-	if len(m) == 0 {
-		return nil
-	}
-	var cmd CmdType
+func (cmd *CmdType) FromMap(m map[string]interface{}) bool {
 	quickSetStr(&cmd.SessionId, m, "sessionid")
 	quickSetStr(&cmd.CmdId, m, "cmdid")
 	quickSetStr(&cmd.Remote.OwnerId, m, "remoteownerid")
@@ -995,7 +970,7 @@ func CmdFromMap(m map[string]interface{}) *CmdType {
 	quickSetBool(&cmd.RtnState, m, "rtnstate")
 	quickSetStr(&cmd.RtnStatePtr.BaseHash, m, "rtnbasehash")
 	quickSetJsonArr(&cmd.RtnStatePtr.DiffHashArr, m, "rtndiffhasharr")
-	return &cmd
+	return true
 }
 
 func makeNewLineCmd(sessionId string, windowId string, userId string, cmdId string, renderer string) *LineType {
@@ -1116,7 +1091,7 @@ func EnsureDefaultSession(ctx context.Context) (*SessionType, error) {
 	if session != nil {
 		return session, nil
 	}
-	_, err = InsertSessionWithName(ctx, DefaultSessionName, true)
+	_, err = InsertSessionWithName(ctx, DefaultSessionName, ShareModeLocal, true)
 	if err != nil {
 		return nil, err
 	}
@@ -1147,32 +1122,29 @@ func createClientData(tx *TxWrap) error {
 	}
 	query := `INSERT INTO client ( clientid, userid, activesessionid, userpublickeybytes, userprivatekeybytes, winsize) 
                           VALUES (:clientid,:userid,:activesessionid,:userpublickeybytes,:userprivatekeybytes,:winsize)`
-	tx.NamedExec(query, c.ToMap())
+	tx.NamedExec(query, ToDBMap(c))
 	log.Printf("create new clientid[%s] userid[%s] with public/private keypair\n", c.ClientId, c.UserId)
 	return nil
 }
 
 func EnsureClientData(ctx context.Context) (*ClientData, error) {
-	var rtn ClientData
-	err := WithTx(ctx, func(tx *TxWrap) error {
+	rtn, err := WithTxRtn(ctx, func(tx *TxWrap) (*ClientData, error) {
 		query := `SELECT count(*) FROM client`
 		count := tx.GetInt(query)
 		if count > 1 {
-			return fmt.Errorf("invalid client database, multiple (%d) rows in client table", count)
+			return nil, fmt.Errorf("invalid client database, multiple (%d) rows in client table", count)
 		}
 		if count == 0 {
 			createErr := createClientData(tx)
 			if createErr != nil {
-				return createErr
+				return nil, createErr
 			}
 		}
-		m := tx.GetMap(`SELECT * FROM client`)
-		cdata := ClientDataFromMap(m)
+		cdata := GetMappable[*ClientData](tx, `SELECT * FROM client`)
 		if cdata == nil {
-			return fmt.Errorf("no client data found")
+			return nil, fmt.Errorf("no client data found")
 		}
-		rtn = *cdata
-		return nil
+		return cdata, nil
 	})
 	if err != nil {
 		return nil, err
@@ -1196,7 +1168,7 @@ func EnsureClientData(ctx context.Context) (*ClientData, error) {
 	if !ok {
 		return nil, fmt.Errorf("invalid client data, wrong public key type: %T", pubKey)
 	}
-	return &rtn, nil
+	return rtn, nil
 }
 
 func SetClientOpts(ctx context.Context, clientOpts ClientOptsType) error {

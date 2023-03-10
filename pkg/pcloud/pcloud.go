@@ -199,7 +199,6 @@ func CreateCloudSession(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("authinfo: %v\n", authInfo)
 	req, err := makeAuthPostReq(ctx, CreateCloudSessionUrl, authInfo, nil)
 	if err != nil {
 		return err
