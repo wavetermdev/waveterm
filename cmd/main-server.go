@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -451,14 +452,27 @@ func stdinReadWatch() {
 		if err != nil {
 			log.Printf("[prompt] stdin closed/error, shutting down: %v\n", err)
 			sendTelemetryWrapper()
-			time.Sleep(1 * time.Second)
+			log.Printf("[prompt] closing db connection\n")
+			sstore.CloseDB()
 			log.Printf("[prompt] *** shutting down local server\n")
+			time.Sleep(1 * time.Second)
 			syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 			break
 		}
 	}
 	time.Sleep(10 * time.Second)
 	syscall.Kill(syscall.Getpid(), syscall.SIGKILL)
+}
+
+// ignore SIGHUP
+func installSignalHandlers() {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGHUP)
+	go func() {
+		for sig := range sigCh {
+			fmt.Printf("[prompt] got signal %v (ignoring)\n", sig)
+		}
+	}()
 }
 
 func main() {
@@ -537,6 +551,7 @@ func main() {
 	if err != nil {
 		log.Printf("[error] updating activity: %v\n", err)
 	}
+	installSignalHandlers()
 	go telemetryLoop()
 	go stdinReadWatch()
 	go runWebSocketServer()

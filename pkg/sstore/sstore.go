@@ -117,6 +117,19 @@ func GetDB(ctx context.Context) (*sqlx.DB, error) {
 	return globalDB, globalDBErr
 }
 
+func CloseDB() {
+	globalDBLock.Lock()
+	defer globalDBLock.Unlock()
+	if globalDB == nil {
+		return
+	}
+	err := globalDB.Close()
+	if err != nil {
+		log.Printf("[db] error closing database: %v\n", err)
+	}
+	globalDB = nil
+}
+
 type ClientWinSizeType struct {
 	Width      int  `json:"width"`
 	Height     int  `json:"height"`
