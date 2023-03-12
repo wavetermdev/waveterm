@@ -1,11 +1,14 @@
 import * as mobx from "mobx";
 
+type ShareModeType = "local" | "private" | "view" | "shared";
+
 type SessionDataType = {
     sessionid : string,
     name : string,
     notifynum : number,
     activescreenid : string,
     sessionidx : number,
+    sharemode : ShareModeType,
     archived? : boolean,
     screens : ScreenDataType[],
     remotes : RemoteInstanceType[],
