@@ -52,6 +52,7 @@ var GlobalLock = &sync.Mutex{}
 var WSStateMap = make(map[string]*scws.WSState) // clientid -> WsState
 var GlobalAuthKey string
 var BuildTime = "0"
+var shutdownOnce sync.Once
 
 type ClientActiveState struct {
 	Fg     bool `json:"fg"`
@@ -450,18 +451,10 @@ func stdinReadWatch() {
 	for {
 		_, err := os.Stdin.Read(buf)
 		if err != nil {
-			log.Printf("[prompt] stdin closed/error, shutting down: %v\n", err)
-			sendTelemetryWrapper()
-			log.Printf("[prompt] closing db connection\n")
-			sstore.CloseDB()
-			log.Printf("[prompt] *** shutting down local server\n")
-			time.Sleep(1 * time.Second)
-			syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+			doShutdown(fmt.Sprintf("stdin closed/error (%v)", err))
 			break
 		}
 	}
-	time.Sleep(10 * time.Second)
-	syscall.Kill(syscall.Getpid(), syscall.SIGKILL)
 }
 
 // ignore SIGHUP
@@ -470,9 +463,24 @@ func installSignalHandlers() {
 	signal.Notify(sigCh, syscall.SIGHUP)
 	go func() {
 		for sig := range sigCh {
-			fmt.Printf("[prompt] got signal %v (ignoring)\n", sig)
+			doShutdown(fmt.Sprintf("got signal %v", sig))
+			break
 		}
 	}()
+}
+
+func doShutdown(reason string) {
+	shutdownOnce.Do(func() {
+		log.Printf("[prompt] local server %v, start shutdown\n", reason)
+		sendTelemetryWrapper()
+		log.Printf("[prompt] closing db connection\n")
+		sstore.CloseDB()
+		log.Printf("[prompt] *** shutting down local server\n")
+		time.Sleep(1 * time.Second)
+		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+		time.Sleep(5 * time.Second)
+		syscall.Kill(syscall.Getpid(), syscall.SIGKILL)
+	})
 }
 
 func main() {
