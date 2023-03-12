@@ -449,9 +449,10 @@ func stdinReadWatch() {
 	for {
 		_, err := os.Stdin.Read(buf)
 		if err != nil {
-			log.Printf("stdin closed/error, shutting down: %v\n", err)
+			log.Printf("[prompt] stdin closed/error, shutting down: %v\n", err)
 			sendTelemetryWrapper()
 			time.Sleep(1 * time.Second)
+			log.Printf("[prompt] *** shutting down local server\n")
 			syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 			break
 		}
@@ -473,6 +474,7 @@ func main() {
 	}
 
 	scHomeDir := scbase.GetPromptHomeDir()
+	log.Printf("[prompt] *** starting local server\n")
 	log.Printf("[prompt] local server version %s+%s\n", scbase.PromptVersion, scbase.BuildTime)
 	log.Printf("[prompt] homedir = %q\n", scHomeDir)
 

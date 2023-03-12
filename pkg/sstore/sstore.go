@@ -31,6 +31,7 @@ const LineTypeCmd = "cmd"
 const LineTypeText = "text"
 const LineNoHeight = -1
 const DBFileName = "prompt.db"
+const DBFileNameBackup = "backup.prompt.db"
 
 const DefaultSessionName = "default"
 const DefaultWindowName = "default"
@@ -83,9 +84,14 @@ var globalDBLock = &sync.Mutex{}
 var globalDB *sqlx.DB
 var globalDBErr error
 
-func GetSessionDBName() string {
+func GetDBName() string {
 	scHome := scbase.GetPromptHomeDir()
 	return path.Join(scHome, DBFileName)
+}
+
+func GetDBBackupName() string {
+	scHome := scbase.GetPromptHomeDir()
+	return path.Join(scHome, DBFileNameBackup)
 }
 
 func IsValidConnectMode(mode string) bool {
@@ -99,7 +105,7 @@ func GetDB(ctx context.Context) (*sqlx.DB, error) {
 	globalDBLock.Lock()
 	defer globalDBLock.Unlock()
 	if globalDB == nil && globalDBErr == nil {
-		dbName := GetSessionDBName()
+		dbName := GetDBName()
 		globalDB, globalDBErr = sqlx.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000", dbName))
 		if globalDBErr != nil {
 			globalDBErr = fmt.Errorf("opening db[%s]: %w", dbName, globalDBErr)

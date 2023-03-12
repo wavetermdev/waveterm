@@ -143,7 +143,9 @@ func ToDBMap(v DBMappable) map[string]interface{} {
 		if dbName == "-" {
 			continue
 		}
-		if field.Type.Kind() == reflect.Slice {
+		if isByteArrayType(field.Type) {
+			m[dbName] = fieldVal.Interface()
+		} else if field.Type.Kind() == reflect.Slice {
 			m[dbName] = quickJsonArr(fieldVal.Interface())
 		} else if isStructType(field.Type) {
 			m[dbName] = quickJson(fieldVal.Interface())
