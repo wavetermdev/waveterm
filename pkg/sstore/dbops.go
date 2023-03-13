@@ -506,6 +506,7 @@ func InsertCloudSession(ctx context.Context, sessionName string, shareMode strin
 // also creates default window, returns sessionId
 // if sessionName == "", it will be generated
 func InsertSessionWithName(ctx context.Context, sessionName string, shareMode string, activate bool) (*ModelUpdate, error) {
+	var newScreen *ScreenType
 	newSessionId := scbase.GenPromptUUID()
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		names := tx.SelectStrings(`SELECT name FROM session`)
@@ -514,10 +515,11 @@ func InsertSessionWithName(ctx context.Context, sessionName string, shareMode st
 		query := `INSERT INTO session (sessionid, name, activescreenid, sessionidx, notifynum, archived, archivedts, sharemode)
                                VALUES (?,         ?,    '',             ?,          ?,         0,        0,          'local')`
 		tx.Exec(query, newSessionId, sessionName, maxSessionIdx+1, 0)
-		_, err := InsertScreen(tx.Context(), newSessionId, "", true)
+		screenUpdate, err := InsertScreen(tx.Context(), newSessionId, "", true)
 		if err != nil {
 			return err
 		}
+		newScreen = screenUpdate.Screens[0]
 		if activate {
 			query = `UPDATE client SET activesessionid = ?`
 			tx.Exec(query, newSessionId)
@@ -533,6 +535,7 @@ func InsertSessionWithName(ctx context.Context, sessionName string, shareMode st
 	}
 	update := ModelUpdate{
 		Sessions: []*SessionType{session},
+		Screens:  []*ScreenType{newScreen},
 	}
 	if activate {
 		update.ActiveSessionId = newSessionId
@@ -614,7 +617,7 @@ func fmtUniqueName(name string, defaultFmtStr string, startIdx int, strs []strin
 	}
 }
 
-func InsertScreen(ctx context.Context, sessionId string, origScreenName string, activate bool) (UpdatePacket, error) {
+func InsertScreen(ctx context.Context, sessionId string, origScreenName string, activate bool) (*ModelUpdate, error) {
 	var newScreenId string
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT sessionid FROM session WHERE sessionid = ? AND NOT archived`
@@ -667,7 +670,7 @@ func InsertScreen(ctx context.Context, sessionId string, origScreenName string, 
 	if err != nil {
 		return nil, err
 	}
-	update := ModelUpdate{Screens: []*ScreenType{newScreen}}
+	update := &ModelUpdate{Screens: []*ScreenType{newScreen}}
 	if activate {
 		bareSession, err := GetBareSessionById(ctx, sessionId)
 		if err != nil {

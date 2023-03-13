@@ -534,6 +534,7 @@ func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		if focusVal != sstore.ScreenFocusInput && focusVal != sstore.ScreenFocusCmd && focusVal != sstore.ScreenFocusCmdFg {
 			return nil, fmt.Errorf("/screen:set invalid focus argument %q, must be %s", focusVal, formatStrs([]string{sstore.ScreenFocusInput, sstore.ScreenFocusCmd, sstore.ScreenFocusCmdFg}, "or", false))
 		}
+		varsUpdated = append(varsUpdated, "focus")
 		updateMap[sstore.ScreenField_Focus] = focusVal
 		setNonAnchor = true
 	}
