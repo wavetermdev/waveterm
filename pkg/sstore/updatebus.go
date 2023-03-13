@@ -33,6 +33,7 @@ type ModelUpdate struct {
 	Sessions        []*SessionType   `json:"sessions,omitempty"`
 	ActiveSessionId string           `json:"activesessionid,omitempty"`
 	Screens         []*ScreenType    `json:"screens,omitempty"`
+	ScreenLines     *ScreenLinesType `json:"screenlines,omitempty"`
 	Line            *LineType        `json:"line,omitempty"`
 	Lines           []*LineType      `json:"lines,omitempty"`
 	Cmd             *CmdType         `json:"cmd,omitempty"`

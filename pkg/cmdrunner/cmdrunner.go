@@ -461,13 +461,8 @@ func ScreenArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		if err != nil {
 			return nil, fmt.Errorf("/screen:archive cannot get updated screen obj: %v", err)
 		}
-		bareSession, err := sstore.GetBareSessionById(ctx, ids.SessionId)
-		if err != nil {
-			return nil, fmt.Errorf("/screen:archive cannot retrieve updated session obj: %v", err)
-		}
-		bareSession.Screens = append(bareSession.Screens, screen)
 		update := sstore.ModelUpdate{
-			Sessions: []*sstore.SessionType{bareSession},
+			Screens: []*sstore.ScreenType{screen},
 		}
 		return update, nil
 	}

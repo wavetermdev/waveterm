@@ -202,7 +202,7 @@ type ClientData struct {
 	FeOpts              FeOptsType        `json:"feopts"`
 }
 
-func (c ClientData) UseDBMap() {}
+func (ClientData) UseDBMap() {}
 
 type CloudAclType struct {
 	UserId string `json:"userid"`
@@ -218,7 +218,6 @@ type SessionType struct {
 	NotifyNum      int64             `json:"notifynum"`
 	Archived       bool              `json:"archived,omitempty"`
 	ArchivedTs     int64             `json:"archivedts,omitempty"`
-	Screens        []*ScreenType     `json:"screens"`
 	Remotes        []*RemoteInstance `json:"remotes"`
 
 	// only for updates
@@ -387,6 +386,16 @@ type SWKeys struct {
 	WindowId  string
 }
 
+type ScreenLinesType struct {
+	SessionId string      `json:"sessionid"`
+	ScreenId  string      `json:"screenid"`
+	WindowId  string      `json:"windowid"`
+	Lines     []*LineType `json:"lines" dbmap:"-"`
+	Cmds      []*CmdType  `json:"cmds" dbmap:"-"`
+}
+
+func (ScreenLinesType) UseDBMap() {}
+
 type ScreenType struct {
 	SessionId    string           `json:"sessionid"`
 	ScreenId     string           `json:"screenid"`
@@ -404,13 +413,8 @@ type ScreenType struct {
 	Archived     bool             `json:"archived,omitempty"`
 	ArchivedTs   int64            `json:"archivedts,omitempty"`
 
-	// only for "full"
-	Lines []*LineType `json:"lines"`
-	Cmds  []*CmdType  `json:"cmds"`
-
 	// only for updates
 	Remove bool `json:"remove,omitempty"`
-	Full   bool `json:"full,omitempty"`
 }
 
 func (s *ScreenType) ToMap() map[string]interface{} {
