@@ -108,7 +108,7 @@ function getLocalServerCmd() {
     let localServerPath = getLocalServerPath();
     let scHome = getPromptHomeDir();
     let logFile = path.join(scHome, "local-server.log");
-    return `${localServerPath} >> ${logFile} 2>&1`;
+    return `${localServerPath} >> "${logFile}" 2>&1`;
 }
 
 function getLocalServerCwd() {
@@ -182,6 +182,7 @@ function createMainWindow(clientData) {
         webPreferences: {
             preload: path.join(getAppBasePath(), DistDir, "preload.js"),
         },
+        backgroundColor: '#000',
     });
     let indexHtml = (isDev ? "index-dev.html" : "index.html");
     win.loadFile(path.join(getAppBasePath(), "static", indexHtml));
