@@ -2589,6 +2589,18 @@ class Model {
             }
         }
         let update : ModelUpdateType = genUpdate;
+        if ("screens" in update) {
+            if (update.connect) {
+                this.screenList.clear();
+            }
+            genMergeData(this.screenList, update.screens, (s : Screen) => s.screenId, (sdata : ScreenDataType) => sdata.screenid, (sdata : ScreenDataType) => new Screen(sdata), null);
+            for (let i=0; i<update.screens.length; i++) {
+                let screen = update.screens[i];
+                if (screen.remove) {
+                    this.removeWindowByScreenId(screen.screenid);
+                }
+            }
+        }
         if ("sessions" in update) {
             if (update.connect) {
                 this.sessionList.clear();
@@ -2604,18 +2616,6 @@ class Model {
                     else {
                         this._activateScreen(newActiveScreen.sessionId, newActiveScreen.screenId, oldActiveScreen);
                     }
-                }
-            }
-        }
-        if ("screens" in update) {
-            if (update.connect) {
-                this.screenList.clear();
-            }
-            genMergeData(this.screenList, update.screens, (s : Screen) => s.screenId, (sdata : ScreenDataType) => sdata.screenid, (sdata : ScreenDataType) => new Screen(sdata), null);
-            for (let i=0; i<update.screens.length; i++) {
-                let screen = update.screens[i];
-                if (screen.remove) {
-                    this.removeWindowByScreenId(screen.screenid);
                 }
             }
         }
