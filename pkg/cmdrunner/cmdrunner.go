@@ -478,7 +478,7 @@ func ScreenPurgeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if err != nil {
 		return nil, fmt.Errorf("/screen:purge cannot purge screen: %w", err)
 	}
-	update, err := sstore.DeleteScreen(ctx, ids.SessionId, ids.ScreenId)
+	update, err := sstore.DeleteScreen(ctx, ids.ScreenId)
 	if err != nil {
 		return nil, err
 	}

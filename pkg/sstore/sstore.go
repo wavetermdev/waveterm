@@ -270,7 +270,6 @@ type SessionStatsType struct {
 	SessionId          string              `json:"sessionid"`
 	NumScreens         int                 `json:"numscreens"`
 	NumArchivedScreens int                 `json:"numarchivedscreens"`
-	NumWindows         int                 `json:"numwindows"`
 	NumLines           int                 `json:"numlines"`
 	NumCmds            int                 `json:"numcmds"`
 	DiskStats          SessionDiskSizeType `json:"diskstats"`
