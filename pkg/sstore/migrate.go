@@ -17,7 +17,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 )
 
-const MaxMigration = 8
+const MaxMigration = 9
 const MigratePrimaryScreenVersion = 9
 
 func MakeMigrate() (*migrate.Migrate, error) {

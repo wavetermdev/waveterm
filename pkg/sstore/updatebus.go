@@ -30,24 +30,23 @@ func (PtyDataUpdate) UpdateType() string {
 }
 
 type ModelUpdate struct {
-	Sessions        []*SessionType      `json:"sessions,omitempty"`
-	ActiveSessionId string              `json:"activesessionid,omitempty"`
-	Windows         []*WindowType       `json:"windows,omitempty"`
-	ScreenWindows   []*ScreenWindowType `json:"screenwindows,omitempty"`
-	Line            *LineType           `json:"line,omitempty"`
-	Lines           []*LineType         `json:"lines,omitempty"`
-	Cmd             *CmdType            `json:"cmd,omitempty"`
-	CmdLine         *CmdLineType        `json:"cmdline,omitempty"`
-	Info            *InfoMsgType        `json:"info,omitempty"`
-	ClearInfo       bool                `json:"clearinfo,omitempty"`
-	Remotes         []interface{}       `json:"remotes,omitempty"` // []*remote.RemoteState
-	History         *HistoryInfoType    `json:"history,omitempty"`
-	Interactive     bool                `json:"interactive"`
-	Connect         bool                `json:"connect,omitempty"`
-	MainView        string              `json:"mainview,omitempty"`
-	Bookmarks       []*BookmarkType     `json:"bookmarks,omitempty"`
-	HistoryViewData *HistoryViewData    `json:"historyviewdata,omitempty"`
-	ClientData      *ClientData         `json:"clientdata,omitempty"`
+	Sessions        []*SessionType   `json:"sessions,omitempty"`
+	ActiveSessionId string           `json:"activesessionid,omitempty"`
+	Screens         []*ScreenType    `json:"screens,omitempty"`
+	Line            *LineType        `json:"line,omitempty"`
+	Lines           []*LineType      `json:"lines,omitempty"`
+	Cmd             *CmdType         `json:"cmd,omitempty"`
+	CmdLine         *CmdLineType     `json:"cmdline,omitempty"`
+	Info            *InfoMsgType     `json:"info,omitempty"`
+	ClearInfo       bool             `json:"clearinfo,omitempty"`
+	Remotes         []interface{}    `json:"remotes,omitempty"` // []*remote.RemoteState
+	History         *HistoryInfoType `json:"history,omitempty"`
+	Interactive     bool             `json:"interactive"`
+	Connect         bool             `json:"connect,omitempty"`
+	MainView        string           `json:"mainview,omitempty"`
+	Bookmarks       []*BookmarkType  `json:"bookmarks,omitempty"`
+	HistoryViewData *HistoryViewData `json:"historyviewdata,omitempty"`
+	ClientData      *ClientData      `json:"clientdata,omitempty"`
 }
 
 func (ModelUpdate) UpdateType() string {

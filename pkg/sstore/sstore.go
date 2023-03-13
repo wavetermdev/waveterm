@@ -73,9 +73,9 @@ const (
 )
 
 const (
-	SWFocusInput = "input"
-	SWFocusCmd   = "cmd"
-	SWFocusCmdFg = "cmd-fg"
+	ScreenFocusInput = "input"
+	ScreenFocusCmd   = "cmd"
+	ScreenFocusCmdFg = "cmd-fg"
 )
 
 const MaxTzNameLen = 50
@@ -276,29 +276,6 @@ type SessionStatsType struct {
 	DiskStats          SessionDiskSizeType `json:"diskstats"`
 }
 
-type WindowOptsType struct {
-	PTerm string `json:"pterm,omitempty"`
-}
-
-func (opts *WindowOptsType) Scan(val interface{}) error {
-	return quickScanJson(opts, val)
-}
-
-func (opts WindowOptsType) Value() (driver.Value, error) {
-	return quickValueJson(opts)
-}
-
-type WindowShareOptsType struct {
-}
-
-func (opts *WindowShareOptsType) Scan(val interface{}) error {
-	return quickScanJson(opts, val)
-}
-
-func (opts WindowShareOptsType) Value() (driver.Value, error) {
-	return quickValueJson(opts)
-}
-
 var RemoteNameRe = regexp.MustCompile("^\\*?[a-zA-Z0-9_-]+$")
 
 type RemotePtrType struct {
@@ -361,51 +338,6 @@ func (r RemotePtrType) MakeFullRemoteRef() string {
 	return fmt.Sprintf("@%s:%s:%s", r.OwnerId, r.RemoteId, r.Name)
 }
 
-type WindowType struct {
-	SessionId   string              `json:"sessionid"`
-	WindowId    string              `json:"windowid"`
-	CurRemote   RemotePtrType       `json:"curremote"`
-	WinOpts     WindowOptsType      `json:"winopts"`
-	OwnerId     string              `json:"ownerid"`
-	NextLineNum int64               `json:"nextlinenum"`
-	ShareMode   string              `json:"sharemode"`
-	ShareOpts   WindowShareOptsType `json:"shareopts"`
-	Lines       []*LineType         `json:"lines"`
-	Cmds        []*CmdType          `json:"cmds"`
-
-	// only for updates
-	Remove bool `json:"remove,omitempty"`
-}
-
-func (w *WindowType) ToMap() map[string]interface{} {
-	rtn := make(map[string]interface{})
-	rtn["sessionid"] = w.SessionId
-	rtn["windowid"] = w.WindowId
-	rtn["curremoteownerid"] = w.CurRemote.OwnerId
-	rtn["curremoteid"] = w.CurRemote.RemoteId
-	rtn["curremotename"] = w.CurRemote.Name
-	rtn["nextlinenum"] = w.NextLineNum
-	rtn["winopts"] = quickJson(w.WinOpts)
-	rtn["ownerid"] = w.OwnerId
-	rtn["sharemode"] = w.ShareMode
-	rtn["shareopts"] = quickJson(w.ShareOpts)
-	return rtn
-}
-
-func (w *WindowType) FromMap(m map[string]interface{}) bool {
-	quickSetStr(&w.SessionId, m, "sessionid")
-	quickSetStr(&w.WindowId, m, "windowid")
-	quickSetStr(&w.CurRemote.OwnerId, m, "curremoteownerid")
-	quickSetStr(&w.CurRemote.RemoteId, m, "curremoteid")
-	quickSetStr(&w.CurRemote.Name, m, "curremotename")
-	quickSetInt64(&w.NextLineNum, m, "nextlinenum")
-	quickSetJson(&w.WinOpts, m, "winopts")
-	quickSetStr(&w.OwnerId, m, "ownerid")
-	quickSetStr(&w.ShareMode, m, "sharemode")
-	quickSetJson(&w.ShareOpts, m, "shareopts")
-	return true
-}
-
 func (h *HistoryItemType) ToMap() map[string]interface{} {
 	rtn := make(map[string]interface{})
 	rtn["historyid"] = h.HistoryId
@@ -448,33 +380,81 @@ func (h *HistoryItemType) FromMap(m map[string]interface{}) bool {
 
 type ScreenOptsType struct {
 	TabColor string `json:"tabcolor,omitempty"`
+	PTerm    string `json:"pterm,omitempty"`
 }
 
-func (opts *ScreenOptsType) Scan(val interface{}) error {
-	return quickScanJson(opts, val)
-}
-
-func (opts ScreenOptsType) Value() (driver.Value, error) {
-	return quickValueJson(opts)
+type SWKeys struct {
+	SessionId string
+	WindowId  string
 }
 
 type ScreenType struct {
-	SessionId      string              `json:"sessionid"`
-	ScreenId       string              `json:"screenid"`
-	ScreenIdx      int64               `json:"screenidx"`
-	Name           string              `json:"name"`
-	ActiveWindowId string              `json:"activewindowid"`
-	ScreenOpts     *ScreenOptsType     `json:"screenopts"`
-	OwnerId        string              `json:"ownerid"`
-	ShareMode      string              `json:"sharemode"`
-	Incognito      bool                `json:"incognito,omitempty"`
-	Archived       bool                `json:"archived,omitempty"`
-	ArchivedTs     int64               `json:"archivedts,omitempty"`
-	Windows        []*ScreenWindowType `json:"windows"`
+	SessionId    string           `json:"sessionid"`
+	ScreenId     string           `json:"screenid"`
+	WindowId     string           `json:"windowid"`
+	Name         string           `json:"name"`
+	ScreenIdx    int64            `json:"screenidx"`
+	ScreenOpts   ScreenOptsType   `json:"screenopts"`
+	OwnerId      string           `json:"ownerid"`
+	ShareMode    string           `json:"sharemode"`
+	CurRemote    RemotePtrType    `json:"curremote"`
+	NextLineNum  int64            `json:"nextlinenum"`
+	SelectedLine int64            `json:"selectedline"`
+	Anchor       ScreenAnchorType `json:"anchor"`
+	FocusType    string           `json:"focustype"`
+	Archived     bool             `json:"archived,omitempty"`
+	ArchivedTs   int64            `json:"archivedts,omitempty"`
+
+	// only for "full"
+	Lines []*LineType `json:"lines"`
+	Cmds  []*CmdType  `json:"cmds"`
 
 	// only for updates
 	Remove bool `json:"remove,omitempty"`
 	Full   bool `json:"full,omitempty"`
+}
+
+func (s *ScreenType) ToMap() map[string]interface{} {
+	rtn := make(map[string]interface{})
+	rtn["sessionid"] = s.SessionId
+	rtn["screenid"] = s.ScreenId
+	rtn["windowid"] = s.WindowId
+	rtn["name"] = s.Name
+	rtn["screenidx"] = s.ScreenIdx
+	rtn["screenopts"] = quickJson(s.ScreenOpts)
+	rtn["ownerid"] = s.OwnerId
+	rtn["sharemode"] = s.ShareMode
+	rtn["curremoteownerid"] = s.CurRemote.OwnerId
+	rtn["curremoteid"] = s.CurRemote.RemoteId
+	rtn["curremotename"] = s.CurRemote.Name
+	rtn["nextlinenum"] = s.NextLineNum
+	rtn["selectedline"] = s.SelectedLine
+	rtn["anchor"] = quickJson(s.Anchor)
+	rtn["focustype"] = s.FocusType
+	rtn["archived"] = s.Archived
+	rtn["archivedts"] = s.ArchivedTs
+	return rtn
+}
+
+func (s *ScreenType) FromMap(m map[string]interface{}) bool {
+	quickSetStr(&s.SessionId, m, "sessionid")
+	quickSetStr(&s.ScreenId, m, "screenid")
+	quickSetStr(&s.WindowId, m, "windowid")
+	quickSetStr(&s.Name, m, "name")
+	quickSetInt64(&s.ScreenIdx, m, "screenidx")
+	quickSetJson(&s.ScreenOpts, m, "screenopts")
+	quickSetStr(&s.OwnerId, m, "ownerid")
+	quickSetStr(&s.ShareMode, m, "sharemode")
+	quickSetStr(&s.CurRemote.OwnerId, m, "curremoteownerid")
+	quickSetStr(&s.CurRemote.RemoteId, m, "curremoteid")
+	quickSetStr(&s.CurRemote.Name, m, "curremotename")
+	quickSetInt64(&s.NextLineNum, m, "nextlinenum")
+	quickSetInt64(&s.SelectedLine, m, "selectedline")
+	quickSetJson(&s.Anchor, m, "anchor")
+	quickSetStr(&s.FocusType, m, "focustype")
+	quickSetBool(&s.Archived, m, "archived")
+	quickSetInt64(&s.ArchivedTs, m, "archivedts")
+	return true
 }
 
 const (
@@ -502,37 +482,9 @@ func (l LayoutType) Value() (driver.Value, error) {
 	return quickValueJson(l)
 }
 
-type SWAnchorType struct {
+type ScreenAnchorType struct {
 	AnchorLine   int `json:"anchorline,omitempty"`
 	AnchorOffset int `json:"anchoroffset,omitempty"`
-}
-
-func (a *SWAnchorType) Scan(val interface{}) error {
-	return quickScanJson(a, val)
-}
-
-func (a SWAnchorType) Value() (driver.Value, error) {
-	return quickValueJson(a)
-}
-
-type SWKey struct {
-	SessionId string
-	ScreenId  string
-	WindowId  string
-}
-
-type ScreenWindowType struct {
-	SessionId    string       `json:"sessionid"`
-	ScreenId     string       `json:"screenid"`
-	WindowId     string       `json:"windowid"`
-	Name         string       `json:"name"`
-	Layout       LayoutType   `json:"layout"`
-	SelectedLine int          `json:"selectedline"`
-	Anchor       SWAnchorType `json:"anchor"`
-	FocusType    string       `json:"focustype"`
-
-	// only for updates
-	Remove bool `json:"remove,omitempty"`
 }
 
 type HistoryItemType struct {

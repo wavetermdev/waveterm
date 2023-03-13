@@ -151,7 +151,6 @@ func init() {
 	registerCmdFn("remote:installcancel", RemoteInstallCancelCommand)
 	registerCmdFn("remote:reset", RemoteResetCommand)
 
-	registerCmdFn("sw:set", SwSetCommand)
 	registerCmdFn("sw:resize", SwResizeCommand)
 
 	// sw:resize
@@ -458,7 +457,7 @@ func ScreenArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		if err != nil {
 			return nil, fmt.Errorf("/screen:archive cannot re-open screen: %v", err)
 		}
-		screen, err := sstore.GetScreenById(ctx, ids.SessionId, screenId)
+		screen, err := sstore.GetScreenById(ctx, screenId)
 		if err != nil {
 			return nil, fmt.Errorf("/screen:archive cannot get updated screen obj: %v", err)
 		}
@@ -512,17 +511,17 @@ func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		return nil, err
 	}
 	var varsUpdated []string
+	var setNonAnchor bool // anchor does not receive an update
+	updateMap := make(map[string]interface{})
 	if pk.Kwargs["name"] != "" {
 		newName := pk.Kwargs["name"]
 		err = validateName(newName, "screen")
 		if err != nil {
 			return nil, err
 		}
-		err = sstore.SetScreenName(ctx, ids.SessionId, ids.ScreenId, newName)
-		if err != nil {
-			return nil, fmt.Errorf("setting screen name: %v", err)
-		}
+		updateMap[sstore.ScreenField_Name] = newName
 		varsUpdated = append(varsUpdated, "name")
+		setNonAnchor = true
 	}
 	if pk.Kwargs["tabcolor"] != "" {
 		color := pk.Kwargs["tabcolor"]
@@ -530,39 +529,67 @@ func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		if err != nil {
 			return nil, err
 		}
-		screenObj, err := sstore.GetScreenById(ctx, ids.SessionId, ids.ScreenId)
-		if err != nil {
-			return nil, err
-		}
-		opts := screenObj.ScreenOpts
-		if opts == nil {
-			opts = &sstore.ScreenOptsType{}
-		}
-		opts.TabColor = color
-		err = sstore.SetScreenOpts(ctx, ids.SessionId, ids.ScreenId, opts)
-		if err != nil {
-			return nil, fmt.Errorf("setting screen opts: %v", err)
-		}
+		updateMap[sstore.ScreenField_TabColor] = color
 		varsUpdated = append(varsUpdated, "tabcolor")
+		setNonAnchor = true
 	}
 	if pk.Kwargs["pos"] != "" {
-
 		varsUpdated = append(varsUpdated, "pos")
+		setNonAnchor = true
+	}
+	if pk.Kwargs["focus"] != "" {
+		focusVal := pk.Kwargs["focus"]
+		if focusVal != sstore.ScreenFocusInput && focusVal != sstore.ScreenFocusCmd && focusVal != sstore.ScreenFocusCmdFg {
+			return nil, fmt.Errorf("/screen:set invalid focus argument %q, must be %s", focusVal, formatStrs([]string{sstore.ScreenFocusInput, sstore.ScreenFocusCmd, sstore.ScreenFocusCmdFg}, "or", false))
+		}
+		updateMap[sstore.ScreenField_Focus] = focusVal
+		setNonAnchor = true
+	}
+	if pk.Kwargs["line"] != "" {
+		screen, err := sstore.GetScreenById(ctx, ids.ScreenId)
+		if err != nil {
+			return nil, fmt.Errorf("/screen:set cannot get screen: %v", err)
+		}
+		var selectedLineStr string
+		if screen.SelectedLine > 0 {
+			selectedLineStr = strconv.Itoa(int(screen.SelectedLine))
+		}
+		ritem, err := resolveLine(ctx, screen.SessionId, screen.WindowId, pk.Kwargs["line"], selectedLineStr)
+		if err != nil {
+			return nil, fmt.Errorf("/screen:set error resolving line: %v", err)
+		}
+		if ritem == nil {
+			return nil, fmt.Errorf("/screen:set could not resolve line %q", pk.Kwargs["line"])
+		}
+		setNonAnchor = true
+		updateMap[sstore.ScreenField_SelectedLine] = ritem.Num
+	}
+	if pk.Kwargs["anchor"] != "" {
+		m := swAnchorRe.FindStringSubmatch(pk.Kwargs["anchor"])
+		if m == nil {
+			return nil, fmt.Errorf("/screen:set invalid anchor argument (must be [line] or [line]:[offset])")
+		}
+		anchorLine, _ := strconv.Atoi(m[1])
+		updateMap[sstore.ScreenField_AnchorLine] = anchorLine
+		if m[2] != "" {
+			anchorOffset, _ := strconv.Atoi(m[2])
+			updateMap[sstore.ScreenField_AnchorOffset] = anchorOffset
+		} else {
+			updateMap[sstore.ScreenField_AnchorOffset] = 0
+		}
 	}
 	if len(varsUpdated) == 0 {
-		return nil, fmt.Errorf("/screen:set no updates, can set %s", formatStrs([]string{"name", "pos", "tabcolor"}, "or", false))
+		return nil, fmt.Errorf("/screen:set no updates, can set %s", formatStrs([]string{"name", "pos", "tabcolor", "focus", "anchor", "line"}, "or", false))
 	}
-	screenObj, err := sstore.GetScreenById(ctx, ids.SessionId, ids.ScreenId)
+	screen, err := sstore.UpdateScreen(ctx, ids.ScreenId, updateMap)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error updating screen: %v", err)
 	}
-	bareSession, err := sstore.GetBareSessionById(ctx, ids.SessionId)
-	if err != nil {
-		return nil, fmt.Errorf("/screen:set cannot retrieve session: %v", err)
+	if !setNonAnchor {
+		return nil, nil
 	}
-	bareSession.Screens = append(bareSession.Screens, screenObj)
 	update := sstore.ModelUpdate{
-		Sessions: []*sstore.SessionType{bareSession},
+		Screens: []*sstore.ScreenType{screen},
 		Info: &sstore.InfoMsgType{
 			InfoMsg:   fmt.Sprintf("screen updated %s", formatStrs(varsUpdated, "and", false)),
 			TimeoutMs: 2000,
@@ -593,69 +620,8 @@ func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 
 var swAnchorRe = regexp.MustCompile("^(\\d+)(?::(-?\\d+))?$")
 
-func SwSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
-	if err != nil {
-		return nil, fmt.Errorf("/sw:set cannot resolve current screen-window: %w", err)
-	}
-	var setNonST bool // scrolltop does not receive an update
-	updateMap := make(map[string]interface{})
-	if pk.Kwargs["anchor"] != "" {
-		m := swAnchorRe.FindStringSubmatch(pk.Kwargs["anchor"])
-		if m == nil {
-			return nil, fmt.Errorf("/sw:set invalid anchor argument (must be [line] or [line]:[offset])")
-		}
-		anchorLine, _ := strconv.Atoi(m[1])
-		updateMap[sstore.SWField_AnchorLine] = anchorLine
-		if m[2] != "" {
-			anchorOffset, _ := strconv.Atoi(m[2])
-			updateMap[sstore.SWField_AnchorOffset] = anchorOffset
-		} else {
-			updateMap[sstore.SWField_AnchorOffset] = 0
-		}
-	}
-	if pk.Kwargs["focus"] != "" {
-		focusVal := pk.Kwargs["focus"]
-		if focusVal != sstore.SWFocusInput && focusVal != sstore.SWFocusCmd && focusVal != sstore.SWFocusCmdFg {
-			return nil, fmt.Errorf("/sw:set invalid focus argument %q, must be %s", focusVal, formatStrs([]string{sstore.SWFocusInput, sstore.SWFocusCmd, sstore.SWFocusCmdFg}, "or", false))
-		}
-		updateMap[sstore.SWField_Focus] = focusVal
-		setNonST = true
-	}
-	if pk.Kwargs["line"] != "" {
-		sw, err := sstore.GetScreenWindowByIds(ctx, ids.SessionId, ids.ScreenId, ids.WindowId)
-		if err != nil {
-			return nil, fmt.Errorf("/sw:set cannot get screen-window: %v", err)
-		}
-		var selectedLineStr string
-		if sw.SelectedLine > 0 {
-			selectedLineStr = strconv.Itoa(sw.SelectedLine)
-		}
-		ritem, err := resolveLine(ctx, ids.SessionId, ids.WindowId, pk.Kwargs["line"], selectedLineStr)
-		if err != nil {
-			return nil, fmt.Errorf("/sw:set error resolving line: %v", err)
-		}
-		if ritem == nil {
-			return nil, fmt.Errorf("/sw:set could not resolve line %q", pk.Kwargs["line"])
-		}
-		setNonST = true
-		updateMap[sstore.SWField_SelectedLine] = ritem.Num
-	}
-	if len(updateMap) == 0 {
-		return nil, fmt.Errorf("/sw:set no updates, can set %s", formatStrs([]string{"line", "scrolltop", "focus"}, "or", false))
-	}
-	sw, err := sstore.UpdateScreenWindow(ctx, ids.SessionId, ids.ScreenId, ids.WindowId, updateMap)
-	if err != nil {
-		return nil, fmt.Errorf("/sw:set failed to update: %v", err)
-	}
-	if !setNonST {
-		return nil, nil
-	}
-	return sstore.ModelUpdate{ScreenWindows: []*sstore.ScreenWindowType{sw}}, nil
-}
-
 func RemoteInstallCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window|R_Remote)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_Remote)
 	if err != nil {
 		return nil, err
 	}
@@ -669,7 +635,7 @@ func RemoteInstallCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 }
 
 func RemoteInstallCancelCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window|R_Remote)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_Remote)
 	if err != nil {
 		return nil, err
 	}
@@ -683,7 +649,7 @@ func RemoteInstallCancelCommand(ctx context.Context, pk *scpacket.FeCommandPacke
 }
 
 func RemoteConnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window|R_Remote)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_Remote)
 	if err != nil {
 		return nil, err
 	}
@@ -696,7 +662,7 @@ func RemoteConnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 }
 
 func RemoteDisconnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window|R_Remote)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_Remote)
 	if err != nil {
 		return nil, err
 	}
@@ -946,7 +912,7 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 }
 
 func RemoteSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window|R_Remote)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_Remote)
 	if err != nil {
 		return nil, err
 	}
@@ -976,7 +942,7 @@ func RemoteSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 }
 
 func RemoteShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window|R_Remote)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_Remote)
 	if err != nil {
 		return nil, err
 	}
@@ -1039,29 +1005,20 @@ func ScreenResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if err != nil {
 		return nil, err
 	}
-	screen, err := sstore.GetScreenById(ctx, ids.SessionId, ids.ScreenId)
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving screen: %v", err)
-	}
 	localRemote := remote.GetLocalRemote()
 	if localRemote == nil {
 		return nil, fmt.Errorf("error getting local remote (not found)")
 	}
 	rptr := sstore.RemotePtrType{RemoteId: localRemote.RemoteId}
-	var windows []*sstore.WindowType
 	sessionUpdate := &sstore.SessionType{SessionId: ids.SessionId}
-	for _, sw := range screen.Windows {
-		ris, err := sstore.WindowReset(ctx, ids.SessionId, sw.WindowId)
-		if err != nil {
-			return nil, fmt.Errorf("error resetting screen window: %v", err)
-		}
-		sessionUpdate.Remotes = append(sessionUpdate.Remotes, ris...)
-		err = sstore.UpdateCurRemote(ctx, ids.SessionId, sw.WindowId, rptr)
-		if err != nil {
-			return nil, fmt.Errorf("cannot reset window remote back to local: %w", err)
-		}
-		winUpdate := &sstore.WindowType{SessionId: ids.SessionId, WindowId: sw.WindowId, CurRemote: rptr}
-		windows = append(windows, winUpdate)
+	ris, err := sstore.ScreenReset(ctx, ids.ScreenId)
+	if err != nil {
+		return nil, fmt.Errorf("error resetting screen window: %v", err)
+	}
+	sessionUpdate.Remotes = append(sessionUpdate.Remotes, ris...)
+	err = sstore.UpdateCurRemote(ctx, ids.ScreenId, rptr)
+	if err != nil {
+		return nil, fmt.Errorf("cannot reset screen remote back to local: %w", err)
 	}
 	outputStr := "reset screen state (all remote state reset)"
 	cmd, err := makeStaticCmd(ctx, "screen:reset", ids, pk.GetRawStr(), []byte(outputStr))
@@ -1075,13 +1032,12 @@ func ScreenResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		return nil, err
 	}
 	update.Interactive = pk.Interactive
-	update.Windows = windows
 	update.Sessions = []*sstore.SessionType{sessionUpdate}
 	return update, nil
 }
 
 func RemoteArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window|R_Remote)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_Remote)
 	if err != nil {
 		return nil, err
 	}
@@ -1091,13 +1047,16 @@ func RemoteArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	}
 	update := sstore.InfoMsgUpdate("remote [%s] archived", ids.Remote.DisplayName)
 	localRemote := remote.GetLocalRemote()
-	if localRemote != nil {
-		update.Windows = []*sstore.WindowType{&sstore.WindowType{
-			SessionId: ids.SessionId,
-			WindowId:  ids.WindowId,
-			CurRemote: sstore.RemotePtrType{RemoteId: localRemote.GetRemoteId()},
-		}}
+	rptr := sstore.RemotePtrType{RemoteId: localRemote.GetRemoteId()}
+	err = sstore.UpdateCurRemote(ctx, ids.ScreenId, rptr)
+	if err != nil {
+		return nil, fmt.Errorf("cannot switch remote back to local: %w", err)
 	}
+	screen, err := sstore.GetScreenById(ctx, ids.ScreenId)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get updated screen: %w", err)
+	}
+	update.Screens = []*sstore.ScreenType{screen}
 	return update, nil
 }
 
@@ -1173,7 +1132,7 @@ func GetFullRemoteDisplayName(rptr *sstore.RemotePtrType, rstate *remote.RemoteR
 }
 
 func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
 	if err != nil {
 		return nil, fmt.Errorf("/%s error: %w", GetCmdStr(pk), err)
 	}
@@ -1191,7 +1150,7 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 	if rstate.Archived {
 		return nil, fmt.Errorf("/%s error: remote %q cannot switch to archived remote", GetCmdStr(pk), newRemote)
 	}
-	err = sstore.UpdateCurRemote(ctx, ids.SessionId, ids.WindowId, *rptr)
+	err = sstore.UpdateCurRemote(ctx, ids.ScreenId, *rptr)
 	if err != nil {
 		return nil, fmt.Errorf("/%s error: cannot update curremote: %w", GetCmdStr(pk), err)
 	}
@@ -1206,11 +1165,6 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	update.Windows = []*sstore.WindowType{&sstore.WindowType{
-		SessionId: ids.SessionId,
-		WindowId:  ids.WindowId,
-		CurRemote: *rptr,
-	}}
 	update.Interactive = pk.Interactive
 	return update, nil
 }
@@ -1252,27 +1206,27 @@ func addLineForCmd(ctx context.Context, metaCmd string, shouldFocus bool, ids re
 	if err != nil {
 		return nil, err
 	}
-	sw, err := sstore.GetScreenWindowByIds(ctx, ids.SessionId, ids.ScreenId, ids.WindowId)
+	screen, err := sstore.GetScreenById(ctx, ids.ScreenId)
 	if err != nil {
 		// ignore error here, because the command has already run (nothing to do)
-		log.Printf("%s error getting screen-window: %v\n", metaCmd, err)
+		log.Printf("%s error getting screen: %v\n", metaCmd, err)
 	}
-	if sw != nil {
+	if screen != nil {
 		updateMap := make(map[string]interface{})
-		updateMap[sstore.SWField_SelectedLine] = rtnLine.LineNum
+		updateMap[sstore.ScreenField_SelectedLine] = rtnLine.LineNum
 		if shouldFocus {
-			updateMap[sstore.SWField_Focus] = sstore.SWFocusCmdFg
+			updateMap[sstore.ScreenField_Focus] = sstore.ScreenFocusCmdFg
 		}
-		sw, err = sstore.UpdateScreenWindow(ctx, ids.SessionId, ids.ScreenId, ids.WindowId, updateMap)
+		screen, err = sstore.UpdateScreen(ctx, ids.ScreenId, updateMap)
 		if err != nil {
 			// ignore error again (nothing to do)
-			log.Printf("%s error updating screen-window selected line: %v\n", metaCmd, err)
+			log.Printf("%s error updating screen selected line: %v\n", metaCmd, err)
 		}
 	}
 	update := &sstore.ModelUpdate{
-		Line:          rtnLine,
-		Cmd:           cmd,
-		ScreenWindows: []*sstore.ScreenWindowType{sw},
+		Line:    rtnLine,
+		Cmd:     cmd,
+		Screens: []*sstore.ScreenType{screen},
 	}
 	updateHistoryContext(ctx, rtnLine, cmd)
 	return update, nil
@@ -1374,7 +1328,7 @@ func doCompGen(ctx context.Context, pk *scpacket.FeCommandPacketType, prefix str
 	if !packet.IsValidCompGenType(compType) {
 		return nil, false, fmt.Errorf("/_compgen invalid type '%s'", compType)
 	}
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window|R_RemoteConnected)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_RemoteConnected)
 	if err != nil {
 		return nil, false, fmt.Errorf("/_compgen error: %w", err)
 	}
@@ -1447,7 +1401,7 @@ func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 }
 
 func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Window)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
 	if err != nil {
 		return nil, fmt.Errorf("/comment error: %w", err)
 	}
@@ -1461,14 +1415,14 @@ func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	}
 	updateHistoryContext(ctx, rtnLine, nil)
 	updateMap := make(map[string]interface{})
-	updateMap[sstore.SWField_SelectedLine] = rtnLine.LineNum
-	updateMap[sstore.SWField_Focus] = sstore.SWFocusInput
-	sw, err := sstore.UpdateScreenWindow(ctx, ids.SessionId, ids.ScreenId, ids.WindowId, updateMap)
+	updateMap[sstore.ScreenField_SelectedLine] = rtnLine.LineNum
+	updateMap[sstore.ScreenField_Focus] = sstore.ScreenFocusInput
+	screen, err := sstore.UpdateScreen(ctx, ids.ScreenId, updateMap)
 	if err != nil {
 		// ignore error again (nothing to do)
 		log.Printf("/comment error updating screen-window selected line: %v\n", err)
 	}
-	update := sstore.ModelUpdate{Line: rtnLine, ScreenWindows: []*sstore.ScreenWindowType{sw}}
+	update := sstore.ModelUpdate{Line: rtnLine, Screens: []*sstore.ScreenType{screen}}
 	return update, nil
 }
 
@@ -1809,22 +1763,22 @@ func ClearCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 		return nil, err
 	}
 	if resolveBool(pk.Kwargs["purge"], false) {
-		update, err := sstore.PurgeWindowLines(ctx, ids.SessionId, ids.WindowId)
+		update, err := sstore.PurgeScreenLines(ctx, ids.ScreenId)
 		if err != nil {
-			return nil, fmt.Errorf("clearing window: %v", err)
+			return nil, fmt.Errorf("clearing screen: %v", err)
 		}
 		update.Info = &sstore.InfoMsgType{
-			InfoMsg:   fmt.Sprintf("window cleared (all lines purged)"),
+			InfoMsg:   fmt.Sprintf("screen cleared (all lines purged)"),
 			TimeoutMs: 2000,
 		}
 		return update, nil
 	} else {
-		update, err := sstore.ArchiveWindowLines(ctx, ids.SessionId, ids.WindowId)
+		update, err := sstore.ArchiveScreenLines(ctx, ids.ScreenId)
 		if err != nil {
-			return nil, fmt.Errorf("clearing window: %v", err)
+			return nil, fmt.Errorf("clearing screen: %v", err)
 		}
 		update.Info = &sstore.InfoMsgType{
-			InfoMsg:   fmt.Sprintf("window cleared"),
+			InfoMsg:   fmt.Sprintf("screen cleared"),
 			TimeoutMs: 2000,
 		}
 		return update, nil
@@ -2121,11 +2075,11 @@ func LineViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	if err != nil {
 		return nil, fmt.Errorf("/line:view invalid screen arg: %v", err)
 	}
-	screen, err := sstore.GetScreenById(ctx, sessionId, screenRItem.Id)
+	screen, err := sstore.GetScreenById(ctx, screenRItem.Id)
 	if err != nil {
 		return nil, fmt.Errorf("/line:view could not get screen: %v", err)
 	}
-	lineRItem, err := resolveLine(ctx, sessionId, screen.ActiveWindowId, lineArg, "")
+	lineRItem, err := resolveLine(ctx, sessionId, screen.WindowId, lineArg, "")
 	if err != nil {
 		return nil, fmt.Errorf("/line:view invalid line arg: %v", err)
 	}
@@ -2134,14 +2088,14 @@ func LineViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		return nil, err
 	}
 	updateMap := make(map[string]interface{})
-	updateMap[sstore.SWField_SelectedLine] = lineRItem.Num
-	updateMap[sstore.SWField_AnchorLine] = lineRItem.Num
-	updateMap[sstore.SWField_AnchorOffset] = 0
-	sw, err := sstore.UpdateScreenWindow(ctx, sessionId, screenRItem.Id, screen.ActiveWindowId, updateMap)
+	updateMap[sstore.ScreenField_SelectedLine] = lineRItem.Num
+	updateMap[sstore.ScreenField_AnchorLine] = lineRItem.Num
+	updateMap[sstore.ScreenField_AnchorOffset] = 0
+	screen, err = sstore.UpdateScreen(ctx, screenRItem.Id, updateMap)
 	if err != nil {
 		return nil, err
 	}
-	update.ScreenWindows = []*sstore.ScreenWindowType{sw}
+	update.Screens = []*sstore.ScreenType{screen}
 	return update, nil
 }
 

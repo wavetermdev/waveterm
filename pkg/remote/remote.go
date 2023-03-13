@@ -1499,12 +1499,12 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 		msh.WriteToPtyBuffer("*error updating cmddone: %v\n", err)
 		return
 	}
-	sws, err := sstore.UpdateSWsWithCmdFg(context.Background(), donePk.CK.GetSessionId(), donePk.CK.GetCmdId())
+	screens, err := sstore.UpdateScreensWithCmdFg(context.Background(), donePk.CK.GetSessionId(), donePk.CK.GetCmdId())
 	if err != nil {
 		msh.WriteToPtyBuffer("*error trying to update cmd-fg screen windows: %v\n", err)
 		// fall-through (nothing to do)
 	}
-	update.ScreenWindows = sws
+	update.Screens = screens
 	rct := msh.GetRunningCmd(donePk.CK)
 	var statePtr *sstore.ShellStatePtr
 	if donePk.FinalState != nil && rct != nil {

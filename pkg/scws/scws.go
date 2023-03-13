@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
+	"github.com/scripthaus-dev/sh2-server/pkg/mapqueue"
 	"github.com/scripthaus-dev/sh2-server/pkg/remote"
 	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
@@ -17,6 +18,13 @@ import (
 
 const WSStatePacketChSize = 20
 const MaxInputDataSize = 1000
+const RemoteInputQueueSize = 100
+
+var RemoteInputMapQueue *mapqueue.MapQueue
+
+func init() {
+	RemoteInputMapQueue = mapqueue.MakeMapQueue(RemoteInputQueueSize)
+}
 
 type WSState struct {
 	Lock          *sync.Mutex
@@ -227,13 +235,16 @@ func (ws *WSState) RunWSRead() {
 				log.Printf("[error] invalid input packet, remoteid is not set\n")
 				continue
 			}
-			go func() {
-				// TODO enforce a strong ordering (channel with list)
+			err := RemoteInputMapQueue.Enqueue(feInputPk.Remote.RemoteId, func() {
 				err = sendCmdInput(feInputPk)
 				if err != nil {
 					log.Printf("[error] sending command input: %v\n", err)
 				}
-			}()
+			})
+			if err != nil {
+				log.Printf("[error] could not queue sendCmdInput: %v\n", err)
+				continue
+			}
 			continue
 		}
 		if pk.GetType() == scpacket.RemoteInputPacketStr {

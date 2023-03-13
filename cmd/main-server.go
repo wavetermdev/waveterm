@@ -193,25 +193,20 @@ func HandleLogActiveState(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// params: sessionid, windowid
-func HandleGetWindow(w http.ResponseWriter, r *http.Request) {
+// params: screenid
+func HandleGetFullScreen(w http.ResponseWriter, r *http.Request) {
 	qvals := r.URL.Query()
-	sessionId := qvals.Get("sessionid")
-	windowId := qvals.Get("windowid")
-	if _, err := uuid.Parse(sessionId); err != nil {
-		WriteJsonError(w, fmt.Errorf("invalid sessionid: %w", err))
+	screenId := qvals.Get("screenid")
+	if _, err := uuid.Parse(screenId); err != nil {
+		WriteJsonError(w, fmt.Errorf("invalid screenid: %w", err))
 		return
 	}
-	if _, err := uuid.Parse(windowId); err != nil {
-		WriteJsonError(w, fmt.Errorf("invalid windowid: %w", err))
-		return
-	}
-	window, err := sstore.GetWindowById(r.Context(), sessionId, windowId)
+	screen, err := sstore.GetFullScreenById(r.Context(), screenId)
 	if err != nil {
 		WriteJsonError(w, err)
 		return
 	}
-	WriteJsonSuccess(w, window)
+	WriteJsonSuccess(w, screen)
 	return
 }
 
@@ -567,7 +562,7 @@ func main() {
 	gr.HandleFunc("/api/ptyout", AuthKeyWrap(HandleGetPtyOut))
 	gr.HandleFunc("/api/remote-pty", AuthKeyWrap(HandleRemotePty))
 	gr.HandleFunc("/api/rtnstate", AuthKeyWrap(HandleRtnState))
-	gr.HandleFunc("/api/get-window", AuthKeyWrap(HandleGetWindow))
+	gr.HandleFunc("/api/get-full-screen", AuthKeyWrap(HandleGetFullScreen))
 	gr.HandleFunc("/api/run-command", AuthKeyWrap(HandleRunCommand)).Methods("POST")
 	gr.HandleFunc("/api/get-client-data", AuthKeyWrap(HandleGetClientData))
 	gr.HandleFunc("/api/set-winsize", AuthKeyWrap(HandleSetWinSize))
