@@ -11,7 +11,7 @@ import cn from "classnames";
 import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts, RemoteEditType, FeStateType, ContextMenuOpts, BookmarkType, RenderModeType} from "./types";
 import type * as T from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
-import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, ScreenWindow, riToRPtr, windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols} from "./model";
+import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, riToRPtr, windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols} from "./model";
 import {isModKeyPress} from "./util";
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -125,9 +125,9 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
     }
 
     componentDidMount() {
-        let activeSW = GlobalModel.getActiveSW();
-        if (activeSW != null) {
-            let focusType = activeSW.focusType.get();
+        let activeScreen = GlobalModel.getActiveScreen();
+        if (activeScreen != null) {
+            let focusType = activeScreen.focusType.get();
             if (focusType == "input") {
                 this.setFocus();
             }
@@ -137,9 +137,9 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
     }
 
     componentDidUpdate() {
-        let activeSW = GlobalModel.getActiveSW();
-        if (activeSW != null) {
-            let focusType = activeSW.focusType.get();
+        let activeScreen = GlobalModel.getActiveScreen();
+        if (activeScreen != null) {
+            let focusType = activeScreen.focusType.get();
             if (this.lastFocusType != focusType && focusType == "input") {
                 this.setFocus();
             }
@@ -195,10 +195,10 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
                 if (!ctrlMod) {
                     if (GlobalModel.inputModel.isEmpty()) {
                         let activeWindow = GlobalModel.getActiveWindow();
-                        let activeSW = GlobalModel.getActiveSW();
-                        if (activeSW != null && activeWindow != null && activeWindow.lines.length > 0) {
-                            activeSW.setSelectedLine(0);
-                            GlobalCommandRunner.swSelectLine("E");
+                        let activeScreen = GlobalModel.getActiveScreen();
+                        if (activeScreen != null && activeWindow != null && activeWindow.lines.length > 0) {
+                            activeScreen.setSelectedLine(0);
+                            GlobalCommandRunner.screenSelectLine("E");
                         }
                         return;
                     }
@@ -477,9 +477,9 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
         if (disabled) {
             displayLines = 1;
         }
-        let activeSW = GlobalModel.getActiveSW();
-        if (activeSW != null) {
-            activeSW.focusType.get(); // for reaction
+        let activeScreen = GlobalModel.getActiveScreen();
+        if (activeScreen != null) {
+            activeScreen.focusType.get(); // for reaction
         }
         return (
             <div className="control cmd-input-control is-expanded" ref={this.controlRef}>
@@ -1448,12 +1448,12 @@ class CmdInput extends React.Component<{}, {}> {
     render() {
         let model = GlobalModel;
         let inputModel = model.inputModel;
-        let win = GlobalModel.getActiveWindow();
+        let screen = GlobalModel.getActiveScreen();
         let ri : RemoteInstanceType = null;
         let rptr : RemotePtrType = null;
-        if (win != null) {
-            ri = win.getCurRemoteInstance();
-            rptr = win.curRemote.get();
+        if (screen != null) {
+            ri = screen.getCurRemoteInstance();
+            rptr = screen.curRemote.get();
         }
         let remote : RemoteType = null;
         let remoteState : FeStateType = null;
@@ -1538,7 +1538,7 @@ function getLineDateStr(todayDate : string, yesterdayDate : string, ts : number)
 }
 
 @mobxReact.observer
-class LinesView extends React.Component<{sw : ScreenWindow, width : number, lines : LineType[], renderMode : RenderModeType}, {}> {
+class LinesView extends React.Component<{screen : Screen, width : number, lines : LineType[], renderMode : RenderModeType}, {}> {
     rszObs : any;
     linesRef : React.RefObject<any>;
     staticRender : OV<boolean> = mobx.observable.box(true, {name: "static-render"});
@@ -1574,15 +1574,15 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
     }
 
     computeAnchorLine() : void {
-        let {sw} = this.props;
+        let {screen} = this.props;
         let linesElem = this.linesRef.current;
         if (linesElem == null) {
-            sw.setAnchorFields(null, 0, "no-lines");
+            screen.setAnchorFields(null, 0, "no-lines");
             return;
         }
         let lineElemArr = linesElem.querySelectorAll(".line");
         if (lineElemArr == null || lineElemArr.length == 0) {
-            sw.setAnchorFields(null, 0, "no-line");
+            screen.setAnchorFields(null, 0, "no-line");
             return;
         }
         let scrollTop = linesElem.scrollTop;
@@ -1599,7 +1599,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
         if (anchorElem == null) {
             anchorElem = lineElemArr[0];
         }
-        sw.setAnchorFields(parseInt(anchorElem.dataset.linenum), containerBottom - (anchorElem.offsetTop + anchorElem.offsetHeight), "computeAnchorLine");
+        screen.setAnchorFields(parseInt(anchorElem.dataset.linenum), containerBottom - (anchorElem.offsetTop + anchorElem.offsetHeight), "computeAnchorLine");
     }
 
     computeVisibleMap() : void {
@@ -1649,40 +1649,40 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
     }
 
     restoreAnchorOffset(reason : string) : void {
-        let {sw} = this.props;
+        let {screen} = this.props;
         let linesElem = this.linesRef.current;
         if (linesElem == null) {
             return;
         }
-        if (sw.anchorLine == null || sw.anchorLine == 0) {
+        if (screen.anchorLine == null || screen.anchorLine == 0) {
             return;
         }
-        let anchorElem = linesElem.querySelector(sprintf(".line[data-linenum=\"%d\"]", sw.anchorLine));
+        let anchorElem = linesElem.querySelector(sprintf(".line[data-linenum=\"%d\"]", screen.anchorLine));
         if (anchorElem == null) {
             return;
         }
-        let isLastLine = sw.isLastLine(sw.anchorLine);
+        let isLastLine = screen.isLastLine(screen.anchorLine);
         let scrollTop = linesElem.scrollTop;
         let height = linesElem.clientHeight;
         let containerBottom = scrollTop + height;
         let curAnchorOffset = containerBottom - (anchorElem.offsetTop + anchorElem.offsetHeight);
-        let newAnchorOffset = sw.anchorOffset;
+        let newAnchorOffset = screen.anchorOffset;
         if (isLastLine && newAnchorOffset == 0) {
             newAnchorOffset = 10;
         }
         if (curAnchorOffset != newAnchorOffset) {
             let offsetDiff = curAnchorOffset - newAnchorOffset;
             let newScrollTop = scrollTop - offsetDiff;
-            // console.log("update scrolltop", reason, "line=" + sw.anchorLine, -offsetDiff, linesElem.scrollTop, "=>", newScrollTop);
+            // console.log("update scrolltop", reason, "line=" + screen.anchorLine, -offsetDiff, linesElem.scrollTop, "=>", newScrollTop);
             linesElem.scrollTop = newScrollTop;
             this.ignoreNextScroll = true;
         }
     }
 
     componentDidMount() : void {
-        let {sw, lines} = this.props;
+        let {screen, lines} = this.props;
         let linesElem = this.linesRef.current;
-        let anchorLineObj = sw.getLineByNum(sw.anchorLine);
+        let anchorLineObj = screen.getLineByNum(screen.anchorLine);
         if (anchorLineObj == null) {
             // scroll to bottom
             if (linesElem != null) {
@@ -1693,7 +1693,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
         else {
             this.restoreAnchorOffset("re-mount");
         }
-        this.lastSelectedLine = sw.getSelectedLine();
+        this.lastSelectedLine = screen.getSelectedLine();
         this.lastLinesLength = lines.length;
 
         if (linesElem != null) {
@@ -1754,35 +1754,35 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
     }
 
     updateSelectedLine() : void {
-        let {sw, lines} = this.props;
+        let {screen, lines} = this.props;
         let linesElem = this.linesRef.current;
         if (linesElem == null) {
             return null;
         }
-        let newLine = sw.getSelectedLine();
+        let newLine = screen.getSelectedLine();
         if (newLine == 0) {
             return;
         }
         this.setLineVisible(newLine, true);
-        // console.log("update selected line", this.lastSelectedLine, "=>", newLine, sprintf("anchor=%d:%d", sw.anchorLine, sw.anchorOffset));
+        // console.log("update selected line", this.lastSelectedLine, "=>", newLine, sprintf("anchor=%d:%d", screen.anchorLine, screen.anchorOffset));
         let viewInfo = this.getLineViewInfo(newLine);
         if (viewInfo == null) {
             return;
         }
-        sw.setAnchorFields(newLine, viewInfo.anchorOffset, "updateSelectedLine");
+        screen.setAnchorFields(newLine, viewInfo.anchorOffset, "updateSelectedLine");
         let isFirst = (newLine == lines[0].linenum);
         let isLast = (newLine == lines[lines.length-1].linenum);
         if (viewInfo.botOffset > 0) {
             linesElem.scrollTop = linesElem.scrollTop + viewInfo.botOffset + (isLast ? 10 : 0);
             this.ignoreNextScroll = true;
-            sw.anchorOffset = (isLast ? 10 : 0);
+            screen.anchorOffset = (isLast ? 10 : 0);
         }
         else if (viewInfo.topOffset < 0) {
             linesElem.scrollTop = linesElem.scrollTop + viewInfo.topOffset + (isFirst ? -10 : 0);
             this.ignoreNextScroll = true;
-            sw.anchorOffset = linesElem.clientHeight - viewInfo.height;
+            screen.anchorOffset = linesElem.clientHeight - viewInfo.height;
         }
-        // console.log("new anchor", sw.getAnchorStr());
+        // console.log("new anchor", screen.getAnchorStr());
     }
 
     setLineVisible(lineNum : number, vis : boolean) : void {
@@ -1800,10 +1800,10 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
     }
 
     componentDidUpdate(prevProps, prevState, snapshot) : void {
-        let {sw, lines} = this.props;
-        if (sw.getSelectedLine() != this.lastSelectedLine) {
+        let {screen, lines} = this.props;
+        if (screen.getSelectedLine() != this.lastSelectedLine) {
             this.updateSelectedLine();
-            this.lastSelectedLine = sw.getSelectedLine();
+            this.lastSelectedLine = screen.getSelectedLine();
         } else if (lines.length != this.lastLinesLength) {
             this.restoreAnchorOffset("line-length-change");
         }
@@ -1861,8 +1861,8 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
     }
     
     render() {
-        let {sw, width, lines, renderMode} = this.props;
-        let selectedLine = sw.getSelectedLine();  // for re-rendering
+        let {screen, width, lines, renderMode} = this.props;
+        let selectedLine = screen.getSelectedLine();  // for re-rendering
         let line : LineType = null;
         for (let i=0; i<lines.length; i++) {
             let key = String(lines[i].linenum);
@@ -1893,7 +1893,7 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
                 lineElements.push(sepElem);
             }
             let topBorder = (dateSepStr == null) && this.hasTopBorder(lines, idx);
-            let lineElem = <Line key={line.lineid} line={line} sw={sw} width={width} visible={this.visibleMap.get(lineNumStr)} staticRender={this.staticRender.get()} onHeightChange={this.onHeightChange} overrideCollapsed={this.collapsedMap.get(lineNumStr)} topBorder={topBorder} renderMode={renderMode}/>;
+            let lineElem = <Line key={line.lineid} line={line} screen={screen} width={width} visible={this.visibleMap.get(lineNumStr)} staticRender={this.staticRender.get()} onHeightChange={this.onHeightChange} overrideCollapsed={this.collapsedMap.get(lineNumStr)} topBorder={topBorder} renderMode={renderMode}/>;
             lineElements.push(lineElem);
         }
         return (
@@ -1905,9 +1905,9 @@ class LinesView extends React.Component<{sw : ScreenWindow, width : number, line
     }
 }
 
-// sw is not null
+// screen is not null
 @mobxReact.observer
-class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
+class ScreenWindowView extends React.Component<{screen : Screen}, {}> {
     rszObs : any;
     windowViewRef : React.RefObject<any>;
 
@@ -1924,8 +1924,8 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
     }
 
     setSize(width : number, height : number) : void {
-        let {sw} = this.props;
-        if (sw == null) {
+        let {screen} = this.props;
+        if (screen == null) {
             return;
         }
         mobx.action(() => {
@@ -1934,10 +1934,10 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
             let cols = windowWidthToCols(width, GlobalModel.termFontSize.get());
             let rows = windowHeightToRows(height, GlobalModel.termFontSize.get());
             if (cols == 0 || rows == 0) {
-                console.log("cannot set sw size", rows, cols);
+                console.log("cannot set screen size", rows, cols);
                 return;
             }
-            sw.termSizeCallback(rows, cols);
+            screen.termSizeCallback(rows, cols);
         })();
     }
 
@@ -1969,10 +1969,10 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
     }
 
     getWindow() : Window {
-        let {sw} = this.props;
-        let win = GlobalModel.getWindowById(sw.sessionId, sw.windowId);
+        let {screen} = this.props;
+        let win = GlobalModel.getWindowById(screen.sessionId, screen.windowId);
         if (win == null) {
-            win = GlobalModel.loadWindow(sw.sessionId, sw.windowId);
+            win = GlobalModel.loadWindow(screen.sessionId, screen.screenId, screen.windowId);
         }
         return win;
     }
@@ -1990,11 +1990,11 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
     }
 
     renderError(message : string, fade : boolean) {
-        let {sw} = this.props;
+        let {screen} = this.props;
         return (
-            <div className="window-view" style={this.getWindowViewStyle()} ref={this.windowViewRef} data-windowid={sw.windowId}>
+            <div className="window-view" style={this.getWindowViewStyle()} ref={this.windowViewRef} data-windowid={screen.windowId}>
                 <div key="window-tag" className="window-tag">
-                    <span>{sw.name.get()}</span>
+                    <span>{screen.name.get()}</span>
                 </div>
                 <div key="lines" className="lines"></div>
                 <div key="window-empty" className={cn("window-empty", {"should-fade": fade})}>
@@ -2005,7 +2005,7 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
     }
 
     render() {
-        let {sw} = this.props;
+        let {screen} = this.props;
         let win = this.getWindow();
         if (win == null || !win.loaded.get()) {
             return this.renderError("...", true);
@@ -2022,16 +2022,15 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
         }
         let idx = 0;
         let line : LineType = null;
-        let screen = GlobalModel.getScreenById(sw.sessionId, sw.screenId);
-        let session = GlobalModel.getSessionById(sw.sessionId);
-        let isActive = sw.isActive();
-        let selectedLine = sw.getSelectedLine();
+        let session = GlobalModel.getSessionById(screen.sessionId);
+        let isActive = screen.isActive();
+        let selectedLine = screen.getSelectedLine();
         let lines = win.getNonArchivedLines();
         let renderMode = this.renderMode.get();
         return (
             <div className="window-view" style={this.getWindowViewStyle()} ref={this.windowViewRef}>
                 <div key="window-tag" className={cn("window-tag", {"is-active": isActive})}>
-                    <div className="window-name">{sw.name.get()}</div>
+                    <div className="window-name">{screen.name.get()}</div>
                     <div className="render-mode" onClick={this.toggleRenderMode}>
                         <If condition={renderMode == "normal"}>
                             <i title="collapse" className="fa-sharp fa-solid fa-arrows-to-line"/>
@@ -2042,11 +2041,11 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
                     </div>
                 </div>
                 <If condition={lines.length > 0}>
-                    <LinesView sw={sw} width={this.width.get()} lines={lines} renderMode={renderMode}/>
+                    <LinesView screen={screen} width={this.width.get()} lines={lines} renderMode={renderMode}/>
                 </If>
                 <If condition={lines.length == 0}>
                     <div key="window-empty" className="window-empty">
-                        <div><code>[session="{session.name.get()}" screen="{screen.name.get()}" window="{sw.name.get()}"]</code></div>
+                        <div><code>[session="{session.name.get()}" screen="{screen.name.get()}" window="{screen.name.get()}"]</code></div>
                     </div>
                 </If>
             </div>
@@ -2058,22 +2057,17 @@ class ScreenWindowView extends React.Component<{sw : ScreenWindow}, {}> {
 class ScreenView extends React.Component<{screen : Screen}, {}> {
     render() {
         let {screen} = this.props;
-        let sw : ScreenWindow = null;
-        if (screen != null) {
-            sw = screen.getActiveSW();
-        }
-        if (screen == null || sw == null) {
+        if (screen == null) {
             return (
                 <div className="screen-view">
-                    (no screen or window)
+                    (no screen found)
                 </div>
             );
         }
         let fontSize = GlobalModel.termFontSize.get();
-        let swKey = sw.windowId + "-fs" + fontSize;
         return (
-            <div className="screen-view" data-screenid={sw.screenId}>
-                <ScreenWindowView key={swKey} sw={sw}/>
+            <div className="screen-view" data-screenid={screen.screenId}>
+                <ScreenWindowView key={screen.screenId} screen={screen}/>
             </div>
         );
     }
@@ -2160,7 +2154,8 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
         let index = 0;
         let showingScreens = [];
         let activeScreenId = session.activeScreenId.get();
-        for (let screen of session.screens) {
+        let screens = GlobalModel.getSessionScreens(session.sessionId);
+        for (let screen of screens) {
             if (!screen.archived.get() || activeScreenId == screen.screenId) {
                 showingScreens.push(screen);
             }
@@ -2328,16 +2323,13 @@ class MainSideBar extends React.Component<{}, {}> {
         let model = GlobalModel;
         let activeSessionId = model.activeSessionId.get();
         let activeWindow = model.getActiveWindow();
+        let activeScreen = model.getActiveScreen();
         let activeRemoteId : string = null;
-        if (activeWindow != null) {
-            let rptr = activeWindow.curRemote.get();
+        if (activeScreen != null) {
+            let rptr = activeScreen.curRemote.get();
             if (rptr != null && !isBlank(rptr.remoteid)) {
                 activeRemoteId = rptr.remoteid;
             }
-        }
-        let sw : ScreenWindow = null;
-        if (GlobalModel.debugSW.get()) {
-            sw = GlobalModel.getActiveSW();
         }
         let session : Session = null;
         let remotes = model.remotes ?? [];
@@ -2397,7 +2389,7 @@ class MainSideBar extends React.Component<{}, {}> {
                         <li className="menu-history"><a onClick={this.handleHistoryClick} className={cn({"is-active": (mainView == "history")})}><i className="fa-sharp fa-solid fa-clock"/> HISTORY</a></li>
                     </ul>
                     <ul className="menu-list">
-                        <li className="menu-bookmarks"><a onClick={this.handleBookmarksClick} className={cn({"is-active": (mainView == "bookmarks")})}><i className="fa-sharp fa-solid fa-bookmark"/> BOOKMARKS</a></li>
+                        <li className="menu-bookmarks"><a onClick={this.handleBookmarksClick} className={cn({"is-active": (mainView == "bookmarks")})}><i className="fa-sharp fa-solid fa-bookmark"/> BOOKMARKS <span>&#x2318;B</span></a></li>
                     </ul>
                     <p className="menu-label display-none">
                         Playbooks
@@ -2407,11 +2399,11 @@ class MainSideBar extends React.Component<{}, {}> {
                         <li key="prompt-dev"><a onClick={this.handlePlaybookClick}><i className="fa-sharp fa-solid fa-file-lines"/> prompt-dev</a></li>
                     </ul>
                     <div className="spacer"></div>
-                    <If condition={GlobalModel.debugSW.get() && sw != null}>
+                    <If condition={GlobalModel.debugScreen.get() && activeScreen != null}>
                         <div>
-                            focus={sw.focusType.get()}<br/>
-            sline={sw.getSelectedLine()}<br/>
-            termfocus={sw.termLineNumFocus.get()}<br/>
+                            focus={activeScreen.focusType.get()}<br/>
+            sline={activeScreen.getSelectedLine()}<br/>
+            termfocus={activeScreen.termLineNumFocus.get()}<br/>
                         </div>
                     </If>
                     <ul className="menu-list">

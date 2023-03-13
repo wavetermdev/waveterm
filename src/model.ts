@@ -5,7 +5,7 @@ import {debounce} from "throttle-debounce";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData, boundInt, isModKeyPress} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, WindowDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenWindowType, ScreenOptsType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType, HistoryViewDataType, AlertMessageType, HistorySearchParams} from "./types";
+import type {SessionDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType, HistoryViewDataType, AlertMessageType, HistorySearchParams, FocusTypeStrs, ScreenLinesType} from "./types";
 import {WSControl} from "./ws";
 import {ImageRendererModel} from "./imagerenderer";
 import {measureText, getMonoFontSize} from "./textmeasure";
@@ -28,6 +28,7 @@ const DevServerWsEndpoint = "ws://localhost:8091";
 const DefaultTermFontSize = 12;
 const MinFontSize = 8;
 const MaxFontSize = 15;
+const InputChunkSize = 500;
 
 // @ts-ignore
 const VERSION = __PROMPT_VERSION__;
@@ -50,7 +51,7 @@ type LineContainerModel = {
 type SWLinePtr = {
     line : LineType,
     win : Window,
-    sw : ScreenWindow,
+    screen : Screen,
 };
 
 function windowWidthToCols(width : number, fontSize : number) : number {
@@ -249,6 +250,13 @@ class Cmd {
         if (!this.isRunning()) {
             return;
         }
+        for (let pos=0; pos<data.length; pos += InputChunkSize) {
+            let dataChunk = data.slice(pos, pos+InputChunkSize);
+            this.handleInputChunk(dataChunk);
+        }
+    }
+
+    handleInputChunk(data : string) : void {
         let inputPacket : FeInputPacketType = {
             type: "feinput",
             ck: this.sessionId + "/" + this.cmdId,
@@ -262,28 +270,38 @@ class Cmd {
 class Screen {
     sessionId : string;
     screenId : string;
+    windowId : string;
     screenIdx : OV<number>;
     opts : OV<ScreenOptsType>;
     name : OV<string>;
-    activeWindowId : OV<string>;
-    windows : OArr<ScreenWindow>;
     archived : OV<boolean>;
-
+    curRemote : OV<RemotePtrType>;
+    lastCols : number;
+    lastRows : number;
+    selectedLine : OV<number>;
+    focusType : OV<FocusTypeStrs>;
+    anchorLine : number = null;
+    anchorOffset : number = 0;
+    termLineNumFocus : OV<number>;
+    setAnchor_debounced : (anchorLine : number, anchorOffset : number) => void;
+    renderers : Record<string, RendererModel> = {};  // cmdid => TermWrap
+    
     constructor(sdata : ScreenDataType) {
         this.sessionId = sdata.sessionid;
         this.screenId = sdata.screenid;
+        this.windowId = sdata.windowid;
         this.name = mobx.observable.box(sdata.name, {name: "screen-name"});
         this.screenIdx = mobx.observable.box(sdata.screenidx, {name: "screen-screenidx"});
         this.opts = mobx.observable.box(sdata.screenopts, {name: "screen-opts"});
-        this.activeWindowId = mobx.observable.box(ces(sdata.activewindowid), {name: "screen-activewindowid"});
         this.archived = mobx.observable.box(!!sdata.archived, {name: "screen-archived"});
-        let swArr : ScreenWindow[] = [];
-        let wins = sdata.windows || [];
-        for (let i=0; i<wins.length; i++) {
-            let sw = new ScreenWindow(wins[i]);
-            swArr.push(sw);
+        this.focusType = mobx.observable.box(sdata.focustype, {name: "focusType"});
+        this.selectedLine = mobx.observable.box(sdata.selectedline == 0 ? null : sdata.selectedline, {name: "selectedLine"});
+        this.setAnchor_debounced = debounce(1000, this.setAnchor.bind(this));
+        if (sdata.selectedline != 0) {
+            this.setAnchorFields(sdata.selectedline, 0, "init");
         }
-        this.windows = mobx.observable.array(swArr, {deep: false})
+        this.termLineNumFocus = mobx.observable.box(0, {name: "termLineNumFocus"});
+        this.curRemote = mobx.observable.box(sdata.curremote, {name: "window-curRemote"});
     }
 
     dispose() {
@@ -294,81 +312,17 @@ class Screen {
             throw new Error("invalid screen update, ids don't match")
         }
         mobx.action(() => {
-            if (data.screenidx != 0) {
-                this.screenIdx.set(data.screenidx);
-            }
-            if (data.screenopts != null) {
-                this.opts.set(data.screenopts);
-            }
-            if (!isBlank(data.name)) {
-                this.name.set(data.name);
-            }
-            if (!isBlank(data.activewindowid)) {
-                this.activeWindowId.set(data.activewindowid);
-            }
+            this.screenIdx.set(data.screenidx);
+            this.opts.set(data.screenopts);
+            this.name.set(data.name);
             this.archived.set(!!data.archived);
-            // TODO merge windows
+            let oldSelectedLine = this.selectedLine.get();
+            let oldFocusType = this.focusType.get();
+            this.selectedLine.set(data.selectedline);
+            this.focusType.set(data.focustype);
+            this.refocusLine(data, oldFocusType, oldSelectedLine);
+            // do not update anchorLine/anchorOffset (only stored)
         })();
-    }
-
-    getActiveSW() : ScreenWindow {
-        return this.getSW(this.activeWindowId.get());
-    }
-
-    getTabColor() : string {
-        let tabColor = "green";
-        let screenOpts = this.opts.get();
-        if (screenOpts != null && !isBlank(screenOpts.tabcolor)) {
-            tabColor = screenOpts.tabcolor;
-        }
-        return tabColor;
-    }
-
-    getSW(windowId : string) : ScreenWindow {
-        if (windowId == null) {
-            return null;
-        }
-        for (let i=0; i<this.windows.length; i++) {
-            if (this.windows[i].windowId == windowId) {
-                return this.windows[i];
-            }
-        }
-        return null;
-    }
-}
-
-class ScreenWindow {
-    sessionId : string;
-    screenId : string;
-    windowId : string;
-    name : OV<string>;
-    layout : OV<LayoutType>;
-    lastCols : number;
-    lastRows : number;
-    selectedLine : OV<number>;
-    focusType : OV<"input"|"cmd"|"cmd-fg">;
-    anchorLine : number = null;
-    anchorOffset : number = 0;
-    termLineNumFocus : OV<number>;
-
-    // cmdid => TermWrap
-    renderers : Record<string, RendererModel> = {};
-
-    setAnchor_debounced : (anchorLine : number, anchorOffset : number) => void;
-
-    constructor(swdata : ScreenWindowType) {
-        this.sessionId = swdata.sessionid;
-        this.screenId = swdata.screenid;
-        this.windowId = swdata.windowid;
-        this.name = mobx.observable.box(swdata.name, {name: "name"});
-        this.layout = mobx.observable.box(swdata.layout, {name: "layout"});
-        this.focusType = mobx.observable.box(swdata.focustype, {name: "focusType"});
-        this.selectedLine = mobx.observable.box(swdata.selectedline == 0 ? null : swdata.selectedline, {name: "selectedLine"});
-        this.setAnchor_debounced = debounce(1000, this.setAnchor.bind(this));
-        if (swdata.selectedline != 0) {
-            this.setAnchorFields(swdata.selectedline, 0, "init");
-        }
-        this.termLineNumFocus = mobx.observable.box(0, {name: "termLineNumFocus"});
     }
 
     getCmd(line : LineType) : Cmd {
@@ -382,37 +336,46 @@ class ScreenWindow {
         return sprintf("%d:%d", this.anchorLine, this.anchorOffset);
     }
 
+    getWindowId() : string {
+        return this.windowId;
+    }
+
+    getTabColor() : string {
+        let tabColor = "green";
+        let screenOpts = this.opts.get();
+        if (screenOpts != null && !isBlank(screenOpts.tabcolor)) {
+            tabColor = screenOpts.tabcolor;
+        }
+        return tabColor;
+    }
+
+    getCurRemoteInstance() : RemoteInstanceType {
+        let session = GlobalModel.getSessionById(this.sessionId);
+        let rptr = this.curRemote.get();
+        if (rptr == null) {
+            return null;
+        }
+        return session.getRemoteInstance(this.windowId, rptr);
+    }
+
     setAnchorFields(anchorLine : number, anchorOffset : number, reason : string) {
         this.anchorLine = anchorLine;
         this.anchorOffset = anchorOffset;
         // console.log("set-anchor-fields", anchorLine, anchorOffset, reason);
     }
 
-    updateSelf(swdata : ScreenWindowType) {
-        mobx.action(() => {
-            this.name.set(swdata.name);
-            this.layout.set(swdata.layout);
-            let oldSelectedLine = this.selectedLine.get();
-            let oldFocusType = this.focusType.get();
-            this.selectedLine.set(swdata.selectedline);
-            this.focusType.set(swdata.focustype);
-            this.refocusLine(swdata, oldFocusType, oldSelectedLine);
-            // do not update anchorLine/anchorOffset (only stored)
-        })();
-    }
-
-    refocusLine(swdata : ScreenWindowType, oldFocusType : string, oldSelectedLine : number) : void {
-        let isCmdFocus = (swdata.focustype == "cmd" || swdata.focustype == "cmd-fg");
+    refocusLine(sdata : ScreenDataType, oldFocusType : string, oldSelectedLine : number) : void {
+        let isCmdFocus = (sdata.focustype == "cmd" || sdata.focustype == "cmd-fg");
         if (!isCmdFocus) {
             return;
         }
         let curLineFocus = GlobalModel.getFocusedLine();
         let sline : LineType = null;
-        if (swdata.selectedline != 0) {
-            sline = this.getLineByNum(swdata.selectedline);
+        if (sdata.selectedline != 0) {
+            sline = this.getLineByNum(sdata.selectedline);
         }
-        // console.log("refocus", curLineFocus.linenum, "=>", swdata.selectedline, sline.cmdid);
-        if (curLineFocus.cmdInputFocus || (curLineFocus.linenum != null && curLineFocus.linenum != swdata.selectedline)) {
+        // console.log("refocus", curLineFocus.linenum, "=>", sdata.selectedline, sline.cmdid);
+        if (curLineFocus.cmdInputFocus || (curLineFocus.linenum != null && curLineFocus.linenum != sdata.selectedline)) {
             (document.activeElement as HTMLElement).blur();
         }
         if (sline != null && sline.cmdid != null) {
@@ -423,19 +386,15 @@ class ScreenWindow {
         }
     }
 
-    setFocusType(ftype : "input" | "cmd" | "cmd-fg") : void {
+    setFocusType(ftype : FocusTypeStrs) : void {
         mobx.action(() => {
             this.focusType.set(ftype);
         })();
     }
 
-    getFocusType() : "input" | "cmd" | "cmd-fg" {
-        return this.focusType.get();
-    }
-
     setAnchor(anchorLine : number, anchorOffset : number) : void {
         let setVal = ((anchorLine == null || anchorLine == 0) ? "0" : sprintf("%d:%d", anchorLine, anchorOffset));
-        GlobalCommandRunner.swSetAnchor(this.sessionId, this.screenId, this.windowId, setVal);
+        GlobalCommandRunner.screenSetAnchor(this.sessionId, this.screenId, this.windowId, setVal);
     }
 
     getMaxLineNum() : number {
@@ -564,10 +523,10 @@ class ScreenWindow {
         // console.log("SW setTermFocus", lineNum, focus);
         mobx.action(() => this.termLineNumFocus.set(focus ? lineNum : 0))();
         if (focus && this.selectedLine.get() != lineNum) {
-            GlobalCommandRunner.swSelectLine(String(lineNum), "cmd");
+            GlobalCommandRunner.screenSelectLine(String(lineNum), "cmd");
         }
         else if (focus && this.focusType.get() == "input") {
-            GlobalCommandRunner.swSetFocus("cmd");
+            GlobalCommandRunner.screenSetFocus("cmd");
         }
     }
 
@@ -697,6 +656,10 @@ class ScreenWindow {
         return GlobalModel.getWindowById(this.sessionId, this.windowId);
     }
 
+    getFocusType() : FocusTypeStrs {
+        return this.focusType.get();
+    }
+
     giveFocus() : void {
         if (!this.isActive()) {
             return;
@@ -720,17 +683,19 @@ class ScreenWindow {
     }
 }
 
+// fake window for now (this is really ScreenLines)
 class Window {
     sessionId : string;
+    screenId : string;
     windowId : string;
-    curRemote : OV<RemotePtrType> = mobx.observable.box(null, {name: "window-curRemote"});
     loaded : OV<boolean> = mobx.observable.box(false, {name: "window-loaded"});
     loadError : OV<string> = mobx.observable.box(null);
     lines : OArr<LineType> = mobx.observable.array([], {name: "window-lines", deep: false});
     cmds : Record<string, Cmd> = {};
 
-    constructor(sessionId : string, windowId : string) {
+    constructor(sessionId : string, screenId : string, windowId : string) {
         this.sessionId = sessionId;
+        this.screenId = screenId;
         this.windowId = windowId;
     }
 
@@ -746,17 +711,13 @@ class Window {
         return rtn;
     }
 
-    updateWindow(win : WindowDataType, load : boolean) {
+    updateWindow(slines : ScreenLinesType, load : boolean) {
         mobx.action(() => {
-            if (win.curremote != null && win.curremote.remoteid != "") {
-                this.curRemote.set(win.curremote);
-            }
             if (load) {
                 this.loaded.set(true);
             }
-            genMergeSimpleData(this.lines, win.lines, (l : LineType) => String(l.lineid), (l : LineType) => sprintf("%013d:%s", l.ts, l.lineid));
-            
-            let cmds = win.cmds || [];
+            genMergeSimpleData(this.lines, slines.lines, (l : LineType) => String(l.lineid), (l : LineType) => sprintf("%013d:%s", l.ts, l.lineid));
+            let cmds = slines.cmds || [];
             for (let i=0; i<cmds.length; i++) {
                 this.cmds[cmds[i].cmdid] = new Cmd(cmds[i]);
             }
@@ -794,15 +755,6 @@ class Window {
             }
         }
         return rtn;
-    }
-
-    getCurRemoteInstance() : RemoteInstanceType {
-        let session = GlobalModel.getSessionById(this.sessionId);
-        let rptr = this.curRemote.get();
-        if (rptr == null) {
-            return null;
-        }
-        return session.getRemoteInstance(this.windowId, this.curRemote.get());
     }
 
     updateCmd(cmd : CmdDataType) : void {
@@ -876,7 +828,6 @@ class Session {
     name : OV<string>;
     activeScreenId : OV<string>;
     sessionIdx : OV<number>;
-    screens : OArr<Screen>;
     notifyNum : OV<number> = mobx.observable.box(0);
     remoteInstances : OArr<RemoteInstanceType>;
     archived : OV<boolean>;
@@ -886,13 +837,6 @@ class Session {
         this.name = mobx.observable.box(sdata.name);
         this.sessionIdx = mobx.observable.box(sdata.sessionidx);
         this.archived = mobx.observable.box(!!sdata.archived);
-        let screenData = sdata.screens || [];
-        let screens : Screen[] = [];
-        for (let i=0; i<screenData.length; i++) {
-            let screen = new Screen(screenData[i]);
-            screens.push(screen);
-        }
-        this.screens = mobx.observable.array(screens, {deep: false});
         this.activeScreenId = mobx.observable.box(ces(sdata.activescreenid));
         let remotes = sdata.remotes || [];
         this.remoteInstances = mobx.observable.array(remotes);
@@ -917,7 +861,6 @@ class Session {
                 this.notifyNum.set(sdata.notifynum);
             }
             this.archived.set(!!sdata.archived);
-            genMergeData(this.screens, sdata.screens, (s : Screen) => s.screenId, (s : ScreenDataType) => s.screenid, (data : ScreenDataType) => new Screen(data), (s : Screen) => s.screenIdx.get());
             if (!isBlank(sdata.activescreenid)) {
                 let screen = this.getScreenById(sdata.activescreenid);
                 if (screen == null) {
@@ -943,12 +886,7 @@ class Session {
         if (screenId == null) {
             return null;
         }
-        for (let i=0; i<this.screens.length; i++) {
-            if (this.screens[i].screenId == screenId) {
-                return this.screens[i];
-            }
-        }
-        return null;
+        return GlobalModel.getScreenById(this.sessionId, screenId);
     }
 
     getRemoteInstance(windowId : string, rptr : RemotePtrType) : RemoteInstanceType {
@@ -967,17 +905,6 @@ class Session {
                     remoteownerid: rptr.ownerid, remoteid: rptr.remoteid, name: rptr.name, festate: remote.defaultfestate};
         }
         return null;
-    }
-
-    getSWs(windowId : string) : ScreenWindow[] {
-        let rtn : ScreenWindow[] = [];
-        for (let screen of this.screens) {
-            let sw = screen.getSW(windowId);
-            if (sw != null) {
-                rtn.push(sw);
-            }
-        }
-        return rtn;
     }
 }
 
@@ -1114,10 +1041,10 @@ class InputModel {
             this.physicalInputFocused.set(isFocused);
         })();
         if (isFocused) {
-            let sw = GlobalModel.getActiveSW();
-            if (sw != null) {
-                if (sw.focusType.get() != "input") {
-                    GlobalCommandRunner.swSetFocus("input");
+            let screen = GlobalModel.getActiveScreen();
+            if (screen != null) {
+                if (screen.focusType.get() != "input") {
+                    GlobalCommandRunner.screenSetFocus("input");
                 }
             }
         }
@@ -2308,13 +2235,14 @@ class Model {
     activeSessionId : OV<string> = mobx.observable.box(null, {name: "activeSessionId"});
     sessionListLoaded : OV<boolean> = mobx.observable.box(false, {name: "sessionListLoaded"});
     sessionList : OArr<Session> = mobx.observable.array([], {name: "SessionList", deep: false});
+    screenList : OArr<Screen> = mobx.observable.array([], {name: "ScreenList", deep: false});
     ws : WSControl;
     remotes : OArr<RemoteType> = mobx.observable.array([], {name: "remotes", deep: false});
     remotesLoaded : OV<boolean> = mobx.observable.box(false, {name: "remotesLoaded"});
-    windows : OMap<string, Window> = mobx.observable.map({}, {name: "windows", deep: false});  // key = "sessionid/windowid"
+    windows : OMap<string, Window> = mobx.observable.map({}, {name: "windows", deep: false});  // key = "sessionid/windowid" (screenlines)
     termUsedRowsCache : Record<string, number> = {};
     debugCmds : number = 0;
-    debugSW : OV<boolean> = mobx.observable.box(false);
+    debugScreen : OV<boolean> = mobx.observable.box(false);
     localServerRunning : OV<boolean>;
     authKey : string;
     isDev : boolean;
@@ -2492,21 +2420,6 @@ class Model {
         })();
     }
 
-    dumpStructure() : void {
-        for (let i=0; i<this.sessionList.length; i++) {
-            let session = this.sessionList[i];
-            console.log("SESSION", session.sessionId);
-            for (let j=0; j<session.screens.length; j++) {
-                let screen = session.screens[j];
-                console.log("  SCREEN", screen.sessionId, screen.screenId);
-                for (let k=0; k<screen.windows.length; k++) {
-                    let win = screen.windows[k];
-                    console.log("    WINDOW", win.sessionId, win.screenId, win.windowId);
-                }
-            }
-        }
-    }
-
     getTUR(sessionId : string, cmdId : string, cols : number) : number {
         let key = sessionId + "/" + cmdId + "/" + cols;
         return this.termUsedRowsCache[key];
@@ -2542,16 +2455,10 @@ class Model {
             let screen = session.getActiveScreen();
             if (screen != null) {
                 rtn.screenid = screen.screenId;
-                let win = this.getActiveWindow();
-                if (win != null) {
-                    rtn.windowid = win.windowId;
-                    rtn.remote = win.curRemote.get();
-                }
-                let sw = screen.getActiveSW();
-                if (sw != null) {
-                    rtn.winsize = {rows: sw.lastRows, cols: sw.lastCols};
-                    rtn.linenum = sw.selectedLine.get();
-                }
+                rtn.windowid = screen.windowId;
+                rtn.remote = screen.curRemote.get();
+                rtn.winsize = {rows: screen.lastRows, cols: screen.lastCols};
+                rtn.linenum = screen.selectedLine.get();
             }
         }
         return rtn;
@@ -2566,9 +2473,9 @@ class Model {
     }
 
     onLCmd(e : any, mods : KeyModsType) {
-        let sw = this.getActiveSW();
-        if (sw != null) {
-            GlobalCommandRunner.swSetFocus("cmd");
+        let screen = this.getActiveScreen();
+        if (screen != null) {
+            GlobalCommandRunner.screenSetFocus("cmd");
         }
     }
 
@@ -2604,8 +2511,8 @@ class Model {
             // console.log("cmd status", sessionId, cmdId, origStatus, "=>", newStatus);
             let lines = this.getActiveLinesByCmdId(sessionId, cmdId);
             for (let ptr of lines) {
-                let sw = ptr.sw;
-                let renderer = sw.getRenderer(cmdId);
+                let screen = ptr.screen;
+                let renderer = screen.getRenderer(cmdId);
                 if (renderer != null) {
                     renderer.cmdDone();
                 }
@@ -2614,19 +2521,19 @@ class Model {
     }
 
     onMetaPageUp() : void {
-        GlobalCommandRunner.swSelectLine("-1");
+        GlobalCommandRunner.screenSelectLine("-1");
     }
 
     onMetaPageDown() : void {
-        GlobalCommandRunner.swSelectLine("+1");
+        GlobalCommandRunner.screenSelectLine("+1");
     }
 
     onMetaArrowUp() : void {
-        GlobalCommandRunner.swSelectLine("-1");
+        GlobalCommandRunner.screenSelectLine("-1");
     }
 
     onMetaArrowDown() : void {
-        GlobalCommandRunner.swSelectLine("+1");
+        GlobalCommandRunner.screenSelectLine("+1");
     }
 
     onBracketCmd(e : any, arg : {relative: number}, mods : KeyModsType) {
@@ -2700,6 +2607,18 @@ class Model {
                 }
             }
         }
+        if ("screens" in update) {
+            if (update.connect) {
+                this.screenList.clear();
+            }
+            genMergeData(this.screenList, update.screens, (s : Screen) => s.screenId, (sdata : ScreenDataType) => sdata.screenid, (sdata : ScreenDataType) => new Screen(sdata), null);
+            for (let i=0; i<update.screens.length; i++) {
+                let screen = update.screens[i];
+                if (screen.remove) {
+                    this.removeWindowByScreenId(screen.screenid);
+                }
+            }
+        }
         if ("activesessionid" in update) {
             this._activateSession(update.activesessionid);
         }
@@ -2714,15 +2633,8 @@ class Model {
                 this.addLineCmd(update.lines[i], null, interactive);
             }
         }
-        if ("windows" in update) {
-            for (let i=0; i<update.windows.length; i++) {
-                this.updateWindow(update.windows[i], false);
-            }
-        }
-        if ("screenwindows" in update) {
-            for (let i=0; i<update.screenwindows.length; i++) {
-                this.updateSW(update.screenwindows[i]);
-            }
+        if ("screenlines" in update) {
+            this.updateScreenLines(update.screenlines, false);
         }
         if ("remotes" in update) {
             if (update.connect) {
@@ -2788,12 +2700,9 @@ class Model {
 
     getScreenNames() : Record<string, string> {
         let rtn : Record<string, string> = {};
-        for (let i=0; i<this.sessionList.length; i++) {
-            let session = this.sessionList[i];
-            for (let j=0; j<session.screens.length; j++) {
-                let screen = session.screens[j];
-                rtn[screen.screenId] = screen.name.get();
-            }
+        for (let i=0; i<this.screenList.length; i++) {
+            let screen = this.screenList[i];
+            rtn[screen.screenId] = screen.name.get();
         }
         return rtn;
     }
@@ -2820,45 +2729,58 @@ class Model {
         return this.windows.get(sessionId + "/" + windowId);
     }
 
-    updateWindow(win : WindowDataType, load : boolean) {
+    updateScreenLines(slines : ScreenLinesType, load : boolean) {
         mobx.action(() => {
-            let winKey = win.sessionid + "/" + win.windowid;
-            if (win.remove) {
-                this.windows.delete(winKey);
-                return;
-            }
+            let winKey = slines.sessionid + "/" + slines.windowid;
             let existingWin = this.windows.get(winKey);
             if (existingWin == null) {
                 if (!load) {
                     console.log("cannot update window that does not exist", winKey);
                     return;
                 }
-                let newWindow = new Window(win.sessionid, win.windowid);
+                let newWindow = new Window(slines.sessionid, slines.screenid, slines.windowid);
                 this.windows.set(winKey, newWindow);
-                newWindow.updateWindow(win, load);
+                newWindow.updateWindow(slines, load);
                 return;
             }
             else {
-                existingWin.updateWindow(win, load);
+                existingWin.updateWindow(slines, load);
                 existingWin.loaded.set(true);
             }
         })();
     }
 
-    updateSW(swdata : ScreenWindowType) {
-        let sw = this.getSWByIds(swdata.sessionid, swdata.screenid, swdata.windowid);
-        if (sw == null) {
-            return;
-        }
-        sw.updateSelf(swdata);
+    removeWindowByScreenId(screenId : string) {
+        mobx.action(() => {
+            for (let winKey of this.windows.keys()) {
+                let win = this.windows.get(winKey);
+                if (win.screenId == screenId) {
+                    this.windows.delete(winKey);
+                    return;
+                }
+            }
+        })();
     }
 
     getScreenById(sessionId : string, screenId : string) : Screen {
-        let session = this.getSessionById(sessionId);
-        if (session == null) {
-            return null;
+        for (let i=0; i<this.screenList.length; i++) {
+            let screen = this.screenList[i];
+            if (screen.screenId == screenId) {
+                return screen;
+            }
         }
-        return session.getScreenById(screenId);
+        return null;
+    }
+
+    getSessionScreens(sessionId : string) : Screen[] {
+        let rtn : Screen[] = [];
+        for (let i=0; i<this.screenList.length; i++) {
+            let screen = this.screenList[i];
+            if (screen.sessionId == sessionId) {
+                rtn.push(screen);
+            }
+        }
+        return rtn;
     }
 
     getActiveWindow() : Window {
@@ -2866,32 +2788,7 @@ class Model {
         if (screen == null) {
             return null;
         }
-        let activeWindowId = screen.activeWindowId.get();
-        return this.windows.get(screen.sessionId + "/" + activeWindowId);
-    }
-
-    getActiveSW() : ScreenWindow {
-        let screen = this.getActiveScreen();
-        if (screen == null) {
-            return null;
-        }
-        return screen.getActiveSW();
-    }
-
-    getSWByWindowId(windowId : string) : ScreenWindow {
-        let screen = this.getActiveScreen();
-        if (screen == null) {
-            return null;
-        }
-        return screen.getSW(windowId);
-    }
-
-    getSWByIds(sessionId : string, screenId : string, windowId : string) : ScreenWindow {
-        let screen = this.getScreenById(sessionId, screenId);
-        if (screen == null) {
-            return null;
-        }
-        return screen.getSW(windowId);
+        return this.windows.get(screen.sessionId + "/" + screen.windowId);
     }
 
     getActiveScreen() : Screen {
@@ -3036,23 +2933,24 @@ class Model {
 
     _loadWindowAsync(newWin : Window) {
         this.windows.set(newWin.sessionId + "/" + newWin.windowId, newWin);
-        let usp = new URLSearchParams({sessionid: newWin.sessionId, windowid: newWin.windowId});
-        let url = new URL(GlobalModel.getBaseHostPort() + "/api/get-window?" + usp.toString());
+        let usp = new URLSearchParams({screenid: newWin.screenId});
+        let url = new URL(GlobalModel.getBaseHostPort() + "/api/get-screen-lines?" + usp.toString());
         let fetchHeaders = GlobalModel.getFetchHeaders();
         fetch(url, {headers: fetchHeaders}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
             if (data.data == null) {
                 console.log("null window returned from get-window");
                 return;
             }
-            this.updateWindow(data.data, true);
+            let slines : ScreenLinesType = data.data;
+            this.updateScreenLines(slines, true);
             return;
         }).catch((err) => {
             this.errorHandler(sprintf("getting window=%s", newWin.windowId), err, false);
         });
     }
 
-    loadWindow(sessionId : string, windowId : string) : Window {
-        let newWin = new Window(sessionId, windowId);
+    loadWindow(sessionId : string, screenId : string, windowId : string) : Window {
+        let newWin = new Window(sessionId, screenId, windowId);
         setTimeout(() => this._loadWindowAsync(newWin), 0);
         return newWin;
     }
@@ -3139,10 +3037,8 @@ class Model {
                 }
             }
             if (winLine != null) {
-                let sws = session.getSWs(win.windowId);
-                for (let sw of sws) {
-                    rtn.push({line : winLine, win: win, sw: sw});
-                }
+                let screen = this.getScreenById(win.sessionId, win.screenId);
+                rtn.push({line : winLine, win: win, screen: screen});
             }
         }
         return rtn;
@@ -3151,7 +3047,7 @@ class Model {
     updatePtyData(ptyMsg : PtyDataUpdateType) : void {
         let activeLinePtrs = this.getActiveLinesByCmdId(ptyMsg.sessionid, ptyMsg.cmdid);
         for (let lineptr of activeLinePtrs) {
-            lineptr.sw.updatePtyData(ptyMsg);
+            lineptr.screen.updatePtyData(ptyMsg);
         }
     }
 
@@ -3217,10 +3113,7 @@ class CommandRunner {
     lineView(sessionId : string, screenId : string, lineNum : number) {
         let screen = GlobalModel.getScreenById(sessionId, screenId);
         if (screen != null) {
-            let sw = screen.getActiveSW();
-            if (sw != null) {
-                sw.setAnchorFields(lineNum, 0, "line:view");
-            }
+            screen.setAnchorFields(lineNum, 0, "line:view");
         }
         GlobalModel.submitCommand("line", "view", [sessionId, screenId, String(lineNum)], {"nohist": "1"}, false);
     }
@@ -3238,7 +3131,7 @@ class CommandRunner {
     }
 
     resizeWindow(windowId : string, rows : number, cols : number) {
-        GlobalModel.submitCommand("sw", "resize", null, {"nohist": "1", "window": windowId, "cols": String(cols), "rows": String(rows)}, false);
+        GlobalModel.submitCommand("screen", "resize", null, {"nohist": "1", "window": windowId, "cols": String(cols), "rows": String(rows)}, false);
     }
 
     showRemote(remoteid : string) {
@@ -3290,7 +3183,7 @@ class CommandRunner {
         GlobalModel.submitCommand("remote", "archive", null, {"remote": remoteid, "nohist": "1"}, true);
     }
 
-    swSelectLine(lineArg : string, focusVal? : string) {
+    screenSelectLine(lineArg : string, focusVal? : string) {
         let kwargs : Record<string, string> = {
             "nohist": "1",
             "line": lineArg,
@@ -3298,7 +3191,7 @@ class CommandRunner {
         if (focusVal != null) {
             kwargs["focus"] = focusVal;
         }
-        GlobalModel.submitCommand("sw", "set", null, kwargs, true);
+        GlobalModel.submitCommand("screen", "set", null, kwargs, false);
     }
 
     setTermUsedRows(termContext : RendererContext, height : number) {
@@ -3311,7 +3204,7 @@ class CommandRunner {
         GlobalModel.submitCommand("line", "setheight", posargs, kwargs, false);
     }
 
-    swSetAnchor(sessionId : string, screenId : string, windowId : string, anchorVal : string) : void {
+    screenSetAnchor(sessionId : string, screenId : string, windowId : string, anchorVal : string) : void {
         let kwargs = {
             "nohist": "1",
             "anchor": anchorVal,
@@ -3319,11 +3212,11 @@ class CommandRunner {
             "screen": screenId,
             "window": windowId,
         };
-        GlobalModel.submitCommand("sw", "set", null, kwargs, true);
+        GlobalModel.submitCommand("screen", "set", null, kwargs, false);
     }
 
-    swSetFocus(focusVal : string) : void {
-        GlobalModel.submitCommand("sw", "set", null, {"focus": focusVal, "nohist": "1"}, true);
+    screenSetFocus(focusVal : string) : void {
+        GlobalModel.submitCommand("screen", "set", null, {"focus": focusVal, "nohist": "1"}, false);
     }
 
     lineStar(lineId : string, starVal : number) {
@@ -3439,7 +3332,7 @@ if ((window as any).GlobalModel == null) {
 GlobalModel = (window as any).GlobalModel;
 GlobalCommandRunner = (window as any).GlobalCommandRunner;
 
-export {Model, Session, Window, GlobalModel, GlobalCommandRunner, Cmd, Screen, ScreenWindow, riToRPtr, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows, getPtyData, getRemotePtyData};
+export {Model, Session, Window, GlobalModel, GlobalCommandRunner, Cmd, Screen, riToRPtr, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows, getPtyData, getRemotePtyData};
 export type {LineContainerModel};
 
 

@@ -1,6 +1,7 @@
 import * as mobx from "mobx";
 
 type ShareModeType = "local" | "private" | "view" | "shared";
+type FocusTypeStrs = "input"|"cmd"|"cmd-fg";
 
 type SessionDataType = {
     sessionid : string,
@@ -10,7 +11,6 @@ type SessionDataType = {
     sessionidx : number,
     sharemode : ShareModeType,
     archived? : boolean,
-    screens : ScreenDataType[],
     remotes : RemoteInstanceType[],
 
     // for updates
@@ -42,47 +42,25 @@ type LineType = {
 
 type ScreenOptsType = {
     tabcolor? : string,
+    pterm? : string,
 }
 
 type ScreenDataType = {
     sessionid : string,
     screenid : string,
+    windowid : string,
     screenidx : number,
-    activewindowid : string,
     name : string,
     archived? : boolean,
-    windows : ScreenWindowType[],
     screenopts : ScreenOptsType,
-
-    // for updates
-    remove? : boolean,
-    full? : boolean,
-};
-
-type LayoutType = {
-    type : string,
-    parent? : string,
-    zindex? : number,
-    float? : boolean,
-    top? : string,
-    bottom? : string,
-    left? : string,
-    right? : string,
-    width? : string,
-    height? : string,
-};
-
-type ScreenWindowType = {
-    sessionid : string,
-    screenid : string,
-    windowid : string,
-    name : string,
-    layout : LayoutType,
+    curremote : RemotePtrType,
+    nextlinenum : number,
     selectedline : number,
-    focustype : "input"|"cmd"|"cmd-fg",
+    focustype : FocusTypeStrs,
     anchor : {anchorline : number, anchoroffset : number},
 
     // for updates
+    full? : boolean,
     remove? : boolean,
 };
 
@@ -140,18 +118,6 @@ type RemotePtrType = {
     remoteid : string,
     ownerid? : string,
     name? : string,
-};
-
-type WindowDataType = {
-    sessionid : string,
-    windowid : string,
-    curremote : RemotePtrType,
-    nextlinenum : number,
-    lines : LineType[],
-    cmds : CmdDataType[],
-
-    // for updates
-    remove? : boolean,
 };
 
 type HistoryItem = {
@@ -273,12 +239,20 @@ type PtyDataUpdateType = {
     ptydatalen : number,
 };
 
+type ScreenLinesType = {
+    sessionid : string,
+    screenid : string,
+    windowid : string,
+    lines : LineType[],
+    cmds : CmdDataType[],
+};
+
 type ModelUpdateType = {
     interactive : boolean,
     sessions? : SessionDataType[],
     activesessionid? : string,
-    windows? : WindowDataType[],
-    screenwindows? : ScreenWindowType[],
+    screens? : ScreenDataType[],
+    screenlines? : ScreenLinesType,
     line? : LineType,
     lines? : LineType[],
     cmd? : CmdDataType,
@@ -445,4 +419,4 @@ type HistorySearchParams = {
 
 type RenderModeType = "normal" | "collapsed";
 
-export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, WindowDataType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDataType, ScreenDataType, ScreenOptsType, ScreenWindowType, LayoutType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType, UIContextType, HistoryInfoType, HistoryQueryOpts, WatchScreenPacketType, TermWinSize, FeInputPacketType, RemoteInputPacketType, RemoteEditType, FeStateType, ContextMenuOpts, RendererContext, WindowSize, RendererModel, PtyDataType, BookmarkType, ClientDataType, PlaybookType, PlaybookEntryType, HistoryViewDataType, RenderModeType, AlertMessageType, HistorySearchParams};
+export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDataType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType, UIContextType, HistoryInfoType, HistoryQueryOpts, WatchScreenPacketType, TermWinSize, FeInputPacketType, RemoteInputPacketType, RemoteEditType, FeStateType, ContextMenuOpts, RendererContext, WindowSize, RendererModel, PtyDataType, BookmarkType, ClientDataType, PlaybookType, PlaybookEntryType, HistoryViewDataType, RenderModeType, AlertMessageType, HistorySearchParams, ScreenLinesType, FocusTypeStrs};
