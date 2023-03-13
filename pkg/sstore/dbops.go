@@ -196,13 +196,7 @@ func InsertHistoryItem(ctx context.Context, hitem *HistoryItemType) error {
 }
 
 func IsIncognitoScreen(ctx context.Context, sessionId string, screenId string) (bool, error) {
-	var rtn bool
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT incognito FROM screen WHERE sessionid = ? AND screenid = ?`
-		tx.Get(&rtn, query, sessionId, screenId)
-		return nil
-	})
-	return rtn, txErr
+	return false, nil
 }
 
 const HistoryQueryChunkSize = 1000
