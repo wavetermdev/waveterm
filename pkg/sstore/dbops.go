@@ -406,6 +406,9 @@ func GetAllSessions(ctx context.Context) (*ModelUpdate, error) {
 		}
 		query = `SELECT * FROM screen ORDER BY archived, screenidx, archivedts`
 		update.Screens = SelectMapsGen[*ScreenType](tx, query)
+		for _, screen := range update.Screens {
+			screen.Full = true
+		}
 		query = `SELECT * FROM remote_instance`
 		riArr := SelectMapsGen[*RemoteInstance](tx, query)
 		for _, ri := range riArr {
@@ -436,14 +439,15 @@ func GetScreenLinesById(ctx context.Context, screenId string) (*ScreenLinesType,
 }
 
 // includes archived screens (does not include screen windows)
-func GetBareSessionScreens(ctx context.Context, sessionId string) ([]*ScreenType, error) {
-	var rtn []*ScreenType
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
+func GetSessionScreens(ctx context.Context, sessionId string) ([]*ScreenType, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) ([]*ScreenType, error) {
 		query := `SELECT * FROM screen WHERE sessionid = ? ORDER BY archived, screenidx, archivedts`
-		tx.Select(&rtn, query, sessionId)
-		return nil
+		rtn := SelectMapsGen[*ScreenType](tx, query, sessionId)
+		for _, screen := range rtn {
+			screen.Full = true
+		}
+		return rtn, nil
 	})
-	return rtn, txErr
 }
 
 func GetSessionById(ctx context.Context, id string) (*SessionType, error) {
@@ -678,6 +682,7 @@ func GetScreenById(ctx context.Context, screenId string) (*ScreenType, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) (*ScreenType, error) {
 		query := `SELECT * FROM screen WHERE screenid = ?`
 		screen := GetMapGen[*ScreenType](tx, query, screenId)
+		screen.Full = true
 		return screen, nil
 	})
 }

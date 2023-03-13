@@ -206,8 +206,7 @@ func HandleGetScreenLines(w http.ResponseWriter, r *http.Request) {
 		WriteJsonError(w, err)
 		return
 	}
-	update := &sstore.ModelUpdate{ScreenLines: screenLines}
-	WriteJsonSuccess(w, update)
+	WriteJsonSuccess(w, screenLines)
 	return
 }
 

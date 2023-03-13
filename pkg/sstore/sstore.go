@@ -414,6 +414,7 @@ type ScreenType struct {
 	ArchivedTs   int64            `json:"archivedts,omitempty"`
 
 	// only for updates
+	Full   bool `json:"full,omitempty"`
 	Remove bool `json:"remove,omitempty"`
 }
 

@@ -151,10 +151,7 @@ func init() {
 	registerCmdFn("remote:installcancel", RemoteInstallCancelCommand)
 	registerCmdFn("remote:reset", RemoteResetCommand)
 
-	registerCmdFn("sw:resize", SwResizeCommand)
-
-	// sw:resize
-	registerCmdFn("window:resize", SwResizeCommand)
+	registerCmdFn("screen:resize", ScreenResizeCommand)
 
 	registerCmdFn("line", LineCommand)
 	registerCmdFn("line:show", LineShowCommand)
@@ -556,6 +553,7 @@ func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		if ritem == nil {
 			return nil, fmt.Errorf("/screen:set could not resolve line %q", pk.Kwargs["line"])
 		}
+		varsUpdated = append(varsUpdated, "line")
 		setNonAnchor = true
 		updateMap[sstore.ScreenField_SelectedLine] = ritem.Num
 	}
@@ -565,6 +563,7 @@ func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 			return nil, fmt.Errorf("/screen:set invalid anchor argument (must be [line] or [line]:[offset])")
 		}
 		anchorLine, _ := strconv.Atoi(m[1])
+		varsUpdated = append(varsUpdated, "anchor")
 		updateMap[sstore.ScreenField_AnchorLine] = anchorLine
 		if m[2] != "" {
 			anchorOffset, _ := strconv.Atoi(m[2])
@@ -970,7 +969,7 @@ func RemoteShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 
 func ScreenShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session)
-	screenArr, err := sstore.GetBareSessionScreens(ctx, ids.SessionId)
+	screenArr, err := sstore.GetSessionScreens(ctx, ids.SessionId)
 	if err != nil {
 		return nil, fmt.Errorf("/screen:showall error getting screen list: %v", err)
 	}
@@ -1991,7 +1990,7 @@ func resizeRunningCommand(ctx context.Context, cmd *sstore.CmdType, newCols int)
 	return nil
 }
 
-func SwResizeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+func ScreenResizeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
 	if err != nil {
 		return nil, err

@@ -291,7 +291,7 @@ func resolveUiIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype i
 }
 
 func resolveSessionScreen(ctx context.Context, sessionId string, screenArg string, curScreenArg string) (*ResolveItem, error) {
-	screens, err := sstore.GetBareSessionScreens(ctx, sessionId)
+	screens, err := sstore.GetSessionScreens(ctx, sessionId)
 	if err != nil {
 		return nil, fmt.Errorf("could not retreive screens for session=%s: %v", sessionId, err)
 	}
