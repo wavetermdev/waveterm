@@ -17,7 +17,7 @@ import (
 	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 )
 
-const HistoryCols = "historyid, ts, userid, sessionid, screenid, windowid, lineid, cmdid, haderror, cmdstr, remoteownerid, remoteid, remotename, ismetacmd, incognito"
+const HistoryCols = "historyid, ts, userid, sessionid, screenid, lineid, cmdid, haderror, cmdstr, remoteownerid, remoteid, remotename, ismetacmd, incognito"
 const DefaultMaxHistoryItems = 1000
 
 type SingleConnDBGetter struct {
@@ -187,8 +187,8 @@ func InsertHistoryItem(ctx context.Context, hitem *HistoryItemType) error {
 	}
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `INSERT INTO history 
-                  ( historyid, ts, userid, sessionid, screenid, windowid, lineid, cmdid, haderror, cmdstr, remoteownerid, remoteid, remotename, ismetacmd, incognito) VALUES
-                  (:historyid,:ts,:userid,:sessionid,:screenid,:windowid,:lineid,:cmdid,:haderror,:cmdstr,:remoteownerid,:remoteid,:remotename,:ismetacmd,:incognito)`
+                  ( historyid, ts, userid, sessionid, screenid, lineid, cmdid, haderror, cmdstr, remoteownerid, remoteid, remotename, ismetacmd, incognito) VALUES
+                  (:historyid,:ts,:userid,:sessionid,:screenid,:lineid,:cmdid,:haderror,:cmdstr,:remoteownerid,:remoteid,:remotename,:ismetacmd,:incognito)`
 		tx.NamedExec(query, hitem.ToMap())
 		return nil
 	})
@@ -268,17 +268,17 @@ func runHistoryQueryWithFilter(tx *TxWrap, opts HistoryQueryOpts) (*HistoryQuery
 }
 
 func runHistoryQuery(tx *TxWrap, opts HistoryQueryOpts, realOffset int, itemLimit int) ([]*HistoryItemType, error) {
-	// check sessionid/windowid format because we are directly inserting them into the SQL
+	// check sessionid/screenid format because we are directly inserting them into the SQL
 	if opts.SessionId != "" {
 		_, err := uuid.Parse(opts.SessionId)
 		if err != nil {
 			return nil, fmt.Errorf("malformed sessionid")
 		}
 	}
-	if opts.WindowId != "" {
-		_, err := uuid.Parse(opts.WindowId)
+	if opts.ScreenId != "" {
+		_, err := uuid.Parse(opts.ScreenId)
 		if err != nil {
-			return nil, fmt.Errorf("malformed windowid")
+			return nil, fmt.Errorf("malformed screenid")
 		}
 	}
 	if opts.RemoteId != "" {
@@ -290,8 +290,8 @@ func runHistoryQuery(tx *TxWrap, opts HistoryQueryOpts, realOffset int, itemLimi
 	hnumStr := ""
 	whereClause := "WHERE 1"
 	var queryArgs []interface{}
-	if opts.SessionId != "" && opts.WindowId != "" {
-		whereClause += fmt.Sprintf(" AND sessionid = '%s' AND windowid = '%s'", opts.SessionId, opts.WindowId)
+	if opts.SessionId != "" && opts.ScreenId != "" {
+		whereClause += fmt.Sprintf(" AND sessionid = '%s' AND screenid = '%s'", opts.SessionId, opts.ScreenId)
 		hnumStr = "w"
 	} else if opts.SessionId != "" {
 		whereClause += fmt.Sprintf(" AND sessionid = '%s'", opts.SessionId)
@@ -419,20 +419,20 @@ func GetAllSessions(ctx context.Context) (*ModelUpdate, error) {
 
 func GetScreenLinesById(ctx context.Context, screenId string) (*ScreenLinesType, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) (*ScreenLinesType, error) {
-		query := `SELECT sessionid, screenid, windowid FROM screen WHERE screenid = ?`
+		query := `SELECT sessionid, screenid FROM screen WHERE screenid = ?`
 		screen := GetMappable[*ScreenLinesType](tx, query, screenId)
 		if screen == nil {
 			return nil, nil
 		}
-		query = `SELECT * FROM line WHERE sessionid = ? AND windowid = ? ORDER BY linenum`
-		tx.Select(&screen.Lines, query, screen.SessionId, screen.WindowId)
-		query = `SELECT * FROM cmd WHERE cmdid IN (SELECT cmdid FROM line WHERE sessionid = ? AND windowid = ?)`
-		screen.Cmds = SelectMapsGen[*CmdType](tx, query, screen.SessionId, screen.WindowId)
+		query = `SELECT * FROM line WHERE sessionid = ? AND screenid = ? ORDER BY linenum`
+		tx.Select(&screen.Lines, query, screen.SessionId, screen.ScreenId)
+		query = `SELECT * FROM cmd WHERE cmdid IN (SELECT cmdid FROM line WHERE sessionid = ? AND screenid = ?)`
+		screen.Cmds = SelectMapsGen[*CmdType](tx, query, screen.SessionId, screen.ScreenId)
 		return screen, nil
 	})
 }
 
-// includes archived screens (does not include screen windows)
+// includes archived screens
 func GetSessionScreens(ctx context.Context, sessionId string) ([]*ScreenType, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) ([]*ScreenType, error) {
 		query := `SELECT * FROM screen WHERE sessionid = ? ORDER BY archived, screenidx, archivedts`
@@ -497,7 +497,7 @@ func InsertCloudSession(ctx context.Context, sessionName string, shareMode strin
 	return updateRtn, nil
 }
 
-// also creates default window, returns sessionId
+// returns sessionId
 // if sessionName == "", it will be generated
 func InsertSessionWithName(ctx context.Context, sessionName string, shareMode string, activate bool) (*ModelUpdate, error) {
 	var newScreen *ScreenType
@@ -622,7 +622,6 @@ func InsertScreen(ctx context.Context, sessionId string, origScreenName string, 
 		if localRemoteId == "" {
 			return fmt.Errorf("cannot create screen, no local remote found")
 		}
-		newWindowId := scbase.GenPromptUUID()
 		maxScreenIdx := tx.GetInt(`SELECT COALESCE(max(screenidx), 0) FROM screen WHERE sessionid = ? AND NOT archived`, sessionId)
 		var screenName string
 		if origScreenName == "" {
@@ -635,7 +634,6 @@ func InsertScreen(ctx context.Context, sessionId string, origScreenName string, 
 		screen := &ScreenType{
 			SessionId:    sessionId,
 			ScreenId:     newScreenId,
-			WindowId:     newWindowId,
 			Name:         screenName,
 			ScreenIdx:    int64(maxScreenIdx) + 1,
 			ScreenOpts:   ScreenOptsType{},
@@ -649,7 +647,7 @@ func InsertScreen(ctx context.Context, sessionId string, origScreenName string, 
 			Archived:     false,
 			ArchivedTs:   0,
 		}
-		query = `INSERT INTO screen (sessionid, screenid, windowid, name, screenidx, screenopts, ownerid, sharemode, curremoteownerid, curremoteid, curremotename, nextlinenum, selectedline, anchor, focustype, archived, archivedts) VALUES (:sessionid,:screenid,:windowid,:name,:screenidx,:screenopts,:ownerid,:sharemode,:curremoteownerid,:curremoteid,:curremotename,:nextlinenum,:selectedline,:anchor,:focustype,:archived,:archivedts)`
+		query = `INSERT INTO screen (sessionid, screenid, name, screenidx, screenopts, ownerid, sharemode, curremoteownerid, curremoteid, curremotename, nextlinenum, selectedline, anchor, focustype, archived, archivedts) VALUES (:sessionid,:screenid,:name,:screenidx,:screenopts,:ownerid,:sharemode,:curremoteownerid,:curremoteid,:curremotename,:nextlinenum,:selectedline,:anchor,:focustype,:archived,:archivedts)`
 		tx.NamedExec(query, screen.ToMap())
 		if activate {
 			query = `UPDATE session SET activescreenid = ? WHERE sessionid = ?`
@@ -684,22 +682,22 @@ func GetScreenById(ctx context.Context, screenId string) (*ScreenType, error) {
 	})
 }
 
-func FindLineIdByArg(ctx context.Context, sessionId string, windowId string, lineArg string) (string, error) {
+func FindLineIdByArg(ctx context.Context, sessionId string, screenId string, lineArg string) (string, error) {
 	var lineId string
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		lineNum, err := strconv.Atoi(lineArg)
 		if err == nil {
 			// valid linenum
-			query := `SELECT lineid FROM line WHERE sessionid = ? AND windowid = ? AND linenum = ?`
-			lineId = tx.GetString(query, sessionId, windowId, lineNum)
+			query := `SELECT lineid FROM line WHERE sessionid = ? AND screenid = ? AND linenum = ?`
+			lineId = tx.GetString(query, sessionId, screenId, lineNum)
 		} else if len(lineArg) == 8 {
 			// prefix id string match
-			query := `SELECT lineid FROM line WHERE sessionid = ? AND windowid = ? AND substr(lineid, 1, 8) = ?`
-			lineId = tx.GetString(query, sessionId, windowId, lineArg)
+			query := `SELECT lineid FROM line WHERE sessionid = ? AND screenid = ? AND substr(lineid, 1, 8) = ?`
+			lineId = tx.GetString(query, sessionId, screenId, lineArg)
 		} else {
 			// id match
-			query := `SELECT lineid FROM line WHERE sessionid = ? AND windowid = ? AND lineid = ?`
-			lineId = tx.GetString(query, sessionId, windowId, lineArg)
+			query := `SELECT lineid FROM line WHERE sessionid = ? AND screenid = ? AND lineid = ?`
+			lineId = tx.GetString(query, sessionId, screenId, lineArg)
 		}
 		return nil
 	})
@@ -709,11 +707,11 @@ func FindLineIdByArg(ctx context.Context, sessionId string, windowId string, lin
 	return lineId, nil
 }
 
-func GetLineCmdByLineId(ctx context.Context, sessionId string, windowId string, lineId string) (*LineType, *CmdType, error) {
+func GetLineCmdByLineId(ctx context.Context, sessionId string, screenId string, lineId string) (*LineType, *CmdType, error) {
 	return WithTxRtn3(ctx, func(tx *TxWrap) (*LineType, *CmdType, error) {
 		var lineVal LineType
-		query := `SELECT * FROM line WHERE sessionid = ? AND windowid = ? AND lineid = ?`
-		found := tx.Get(&lineVal, query, sessionId, windowId, lineId)
+		query := `SELECT * FROM line WHERE sessionid = ? AND screenid = ? AND lineid = ?`
+		found := tx.Get(&lineVal, query, sessionId, screenId, lineId)
 		if !found {
 			return nil, nil, nil
 		}
@@ -726,11 +724,11 @@ func GetLineCmdByLineId(ctx context.Context, sessionId string, windowId string, 
 	})
 }
 
-func GetLineCmdByCmdId(ctx context.Context, sessionId string, windowId string, cmdId string) (*LineType, *CmdType, error) {
+func GetLineCmdByCmdId(ctx context.Context, sessionId string, screenId string, cmdId string) (*LineType, *CmdType, error) {
 	return WithTxRtn3(ctx, func(tx *TxWrap) (*LineType, *CmdType, error) {
 		var lineVal LineType
-		query := `SELECT * FROM line WHERE sessionid = ? AND windowid = ? AND cmdid = ?`
-		found := tx.Get(&lineVal, query, sessionId, windowId, cmdId)
+		query := `SELECT * FROM line WHERE sessionid = ? AND screenid = ? AND cmdid = ?`
+		found := tx.Get(&lineVal, query, sessionId, screenId, cmdId)
 		if !found {
 			return nil, nil, nil
 		}
@@ -751,18 +749,18 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 		return fmt.Errorf("line should not hage linenum set")
 	}
 	return WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT screenid FROM screen WHERE sessionid = ? AND windowid = ?`
-		if !tx.Exists(query, line.SessionId, line.WindowId) {
-			return fmt.Errorf("screen not found, cannot insert line[%s/%s]", line.SessionId, line.WindowId)
+		query := `SELECT screenid FROM screen WHERE sessionid = ? AND screenid = ?`
+		if !tx.Exists(query, line.SessionId, line.ScreenId) {
+			return fmt.Errorf("screen not found, cannot insert line[%s/%s]", line.SessionId, line.ScreenId)
 		}
-		query = `SELECT nextlinenum FROM screen WHERE sessionid = ? AND windowid = ?`
-		nextLineNum := tx.GetInt(query, line.SessionId, line.WindowId)
+		query = `SELECT nextlinenum FROM screen WHERE sessionid = ? AND screenid = ?`
+		nextLineNum := tx.GetInt(query, line.SessionId, line.ScreenId)
 		line.LineNum = int64(nextLineNum)
-		query = `INSERT INTO line  ( sessionid, windowid, userid, lineid, ts, linenum, linenumtemp, linelocal, linetype, text, cmdid, renderer, ephemeral, contentheight, star, archived, bookmarked, pinned)
-                            VALUES (:sessionid,:windowid,:userid,:lineid,:ts,:linenum,:linenumtemp,:linelocal,:linetype,:text,:cmdid,:renderer,:ephemeral,:contentheight,:star,:archived,:bookmarked,:pinned)`
+		query = `INSERT INTO line  ( sessionid, screenid, userid, lineid, ts, linenum, linenumtemp, linelocal, linetype, text, cmdid, renderer, ephemeral, contentheight, star, archived, bookmarked, pinned)
+                            VALUES (:sessionid,:screenid,:userid,:lineid,:ts,:linenum,:linenumtemp,:linelocal,:linetype,:text,:cmdid,:renderer,:ephemeral,:contentheight,:star,:archived,:bookmarked,:pinned)`
 		tx.NamedExec(query, line)
-		query = `UPDATE screen SET nextlinenum = ? WHERE sessionid = ? AND windowid = ?`
-		tx.Exec(query, nextLineNum+1, line.SessionId, line.WindowId)
+		query = `UPDATE screen SET nextlinenum = ? WHERE sessionid = ? AND screenid = ?`
+		tx.Exec(query, nextLineNum+1, line.SessionId, line.ScreenId)
 		if cmd != nil {
 			cmd.OrigTermOpts = cmd.TermOpts
 			cmdMap := cmd.ToMap()
@@ -950,17 +948,17 @@ func cleanSessionCmds(ctx context.Context, sessionId string) error {
 	return nil
 }
 
-func CleanWindow(sessionId string, windowId string) {
+func CleanScreen(sessionId string, screenId string) {
 	// NOTE: context.Background() here! (this could take a long time, and is async)
 	txErr := WithTx(context.Background(), func(tx *TxWrap) error {
-		query := `DELETE FROM history WHERE sessionid = ? AND windowid = ?`
-		tx.Exec(query, sessionId, windowId)
-		query = `DELETE FROM line WHERE sessionid = ? AND windowid = ?`
-		tx.Exec(query, sessionId, windowId)
+		query := `DELETE FROM history WHERE sessionid = ? AND screenid = ?`
+		tx.Exec(query, sessionId, screenId)
+		query = `DELETE FROM line WHERE sessionid = ? AND screenid = ?`
+		tx.Exec(query, sessionId, screenId)
 		return cleanSessionCmds(tx.Context(), sessionId)
 	})
 	if txErr != nil {
-		fmt.Printf("ERROR cleaning session:%s window:%s : %v\n", sessionId, windowId, txErr)
+		fmt.Printf("ERROR cleaning session:%s screen:%s : %v\n", sessionId, screenId, txErr)
 	}
 }
 
@@ -1024,28 +1022,28 @@ func UnArchiveScreen(ctx context.Context, sessionId string, screenId string) err
 }
 
 func DeleteScreen(ctx context.Context, screenId string) (UpdatePacket, error) {
-	var swkeys SWKeys
+	var sessionId string
 	var isActive bool
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT screenid FROM screen WHERE screenid = ?`
 		if !tx.Exists(query, screenId) {
 			return fmt.Errorf("cannot purge screen (not found)")
 		}
-		query = `SELECT sessionid, windowid FROM screen WHERE screenid = ?`
-		tx.Get(&swkeys, query, screenId)
-		if swkeys.SessionId == "" || swkeys.WindowId == "" {
-			return fmt.Errorf("cannot purge screen (no windowid)")
+		query = `SELECT sessionid FROM screen WHERE screenid = ?`
+		sessionId = tx.GetString(query, screenId)
+		if sessionId == "" {
+			return fmt.Errorf("cannot purge screen (no sessionid)")
 		}
 		query = `SELECT count(*) FROM screen WHERE sessionid = ? AND NOT archived`
-		numScreens := tx.GetInt(query, swkeys.SessionId)
+		numScreens := tx.GetInt(query, sessionId)
 		if numScreens <= 1 {
 			return fmt.Errorf("cannot purge the last screen in a session")
 		}
-		isActive = tx.Exists(`SELECT sessionid FROM session WHERE sessionid = ? AND activescreenid = ?`, swkeys.SessionId, screenId)
+		isActive = tx.Exists(`SELECT sessionid FROM session WHERE sessionid = ? AND activescreenid = ?`, sessionId, screenId)
 		if isActive {
-			screenIds := tx.SelectStrings(`SELECT screenid FROM screen WHERE sessionid = ? AND NOT archived ORDER BY screenidx`, swkeys.SessionId)
+			screenIds := tx.SelectStrings(`SELECT screenid FROM screen WHERE sessionid = ? AND NOT archived ORDER BY screenidx`, sessionId)
 			nextId := getNextId(screenIds, screenId)
-			tx.Exec(`UPDATE session SET activescreenid = ? WHERE sessionid = ?`, nextId, swkeys.SessionId)
+			tx.Exec(`UPDATE session SET activescreenid = ? WHERE sessionid = ?`, nextId, sessionId)
 		}
 		query = `DELETE FROM screen WHERE screenid = ?`
 		tx.Exec(query, screenId)
@@ -1054,11 +1052,11 @@ func DeleteScreen(ctx context.Context, screenId string) (UpdatePacket, error) {
 	if txErr != nil {
 		return nil, txErr
 	}
-	go CleanWindow(swkeys.SessionId, swkeys.WindowId)
+	go CleanScreen(sessionId, screenId)
 	update := ModelUpdate{}
-	update.Screens = []*ScreenType{&ScreenType{SessionId: swkeys.SessionId, ScreenId: screenId, Remove: true}}
+	update.Screens = []*ScreenType{&ScreenType{SessionId: sessionId, ScreenId: screenId, Remove: true}}
 	if isActive {
-		bareSession, err := GetBareSessionById(ctx, swkeys.SessionId)
+		bareSession, err := GetBareSessionById(ctx, sessionId)
 		if err != nil {
 			return nil, err
 		}
@@ -1067,8 +1065,8 @@ func DeleteScreen(ctx context.Context, screenId string) (UpdatePacket, error) {
 	return update, nil
 }
 
-func GetRemoteState(ctx context.Context, sessionId string, windowId string, remotePtr RemotePtrType) (*packet.ShellState, *ShellStatePtr, error) {
-	ssptr, err := GetRemoteStatePtr(ctx, sessionId, windowId, remotePtr)
+func GetRemoteState(ctx context.Context, sessionId string, screenId string, remotePtr RemotePtrType) (*packet.ShellState, *ShellStatePtr, error) {
+	ssptr, err := GetRemoteStatePtr(ctx, sessionId, screenId, remotePtr)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1082,10 +1080,10 @@ func GetRemoteState(ctx context.Context, sessionId string, windowId string, remo
 	return state, ssptr, err
 }
 
-func GetRemoteStatePtr(ctx context.Context, sessionId string, windowId string, remotePtr RemotePtrType) (*ShellStatePtr, error) {
+func GetRemoteStatePtr(ctx context.Context, sessionId string, screenId string, remotePtr RemotePtrType) (*ShellStatePtr, error) {
 	var ssptr *ShellStatePtr
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		ri, err := GetRemoteInstance(tx.Context(), sessionId, windowId, remotePtr)
+		ri, err := GetRemoteInstance(tx.Context(), sessionId, screenId, remotePtr)
 		if err != nil {
 			return err
 		}
@@ -1101,30 +1099,30 @@ func GetRemoteStatePtr(ctx context.Context, sessionId string, windowId string, r
 	return ssptr, nil
 }
 
-func validateSessionWindow(tx *TxWrap, sessionId string, windowId string) error {
-	if windowId == "" {
+func validateSessionScreen(tx *TxWrap, sessionId string, screenId string) error {
+	if screenId == "" {
 		query := `SELECT sessionid FROM session WHERE sessionid = ?`
 		if !tx.Exists(query, sessionId) {
 			return fmt.Errorf("no session found")
 		}
 		return nil
 	} else {
-		query := `SELECT windowid FROM screen WHERE sessionid = ? AND windowid = ?`
-		if !tx.Exists(query, sessionId, windowId) {
+		query := `SELECT screenid FROM screen WHERE sessionid = ? AND screenid = ?`
+		if !tx.Exists(query, sessionId, screenId) {
 			return fmt.Errorf("no screen found")
 		}
 		return nil
 	}
 }
 
-func GetRemoteInstance(ctx context.Context, sessionId string, windowId string, remotePtr RemotePtrType) (*RemoteInstance, error) {
+func GetRemoteInstance(ctx context.Context, sessionId string, screenId string, remotePtr RemotePtrType) (*RemoteInstance, error) {
 	if remotePtr.IsSessionScope() {
-		windowId = ""
+		screenId = ""
 	}
 	var ri *RemoteInstance
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT * FROM remote_instance WHERE sessionid = ? AND windowid = ? AND remoteownerid = ? AND remoteid = ? AND name = ?`
-		ri = GetMapGen[*RemoteInstance](tx, query, sessionId, windowId, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name)
+		query := `SELECT * FROM remote_instance WHERE sessionid = ? AND screenid = ? AND remoteownerid = ? AND remoteid = ? AND name = ?`
+		ri = GetMapGen[*RemoteInstance](tx, query, sessionId, screenId, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name)
 		return nil
 	})
 	if txErr != nil {
@@ -1153,7 +1151,7 @@ func updateRIWithState(ctx context.Context, ri *RemoteInstance, stateBase *packe
 	return nil
 }
 
-func UpdateRemoteState(ctx context.Context, sessionId string, windowId string, remotePtr RemotePtrType, feState FeStateType, stateBase *packet.ShellState, stateDiff *packet.ShellStateDiff) (*RemoteInstance, error) {
+func UpdateRemoteState(ctx context.Context, sessionId string, screenId string, remotePtr RemotePtrType, feState FeStateType, stateBase *packet.ShellState, stateDiff *packet.ShellStateDiff) (*RemoteInstance, error) {
 	if stateBase == nil && stateDiff == nil {
 		return nil, fmt.Errorf("UpdateRemoteState, must set state or diff")
 	}
@@ -1161,22 +1159,22 @@ func UpdateRemoteState(ctx context.Context, sessionId string, windowId string, r
 		return nil, fmt.Errorf("UpdateRemoteState, cannot set state and diff")
 	}
 	if remotePtr.IsSessionScope() {
-		windowId = ""
+		screenId = ""
 	}
 	var ri *RemoteInstance
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		err := validateSessionWindow(tx, sessionId, windowId)
+		err := validateSessionScreen(tx, sessionId, screenId)
 		if err != nil {
 			return fmt.Errorf("cannot update remote instance state: %w", err)
 		}
-		query := `SELECT * FROM remote_instance WHERE sessionid = ? AND windowid = ? AND remoteownerid = ? AND remoteid = ? AND name = ?`
-		ri = GetMapGen[*RemoteInstance](tx, query, sessionId, windowId, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name)
+		query := `SELECT * FROM remote_instance WHERE sessionid = ? AND screenid = ? AND remoteownerid = ? AND remoteid = ? AND name = ?`
+		ri = GetMapGen[*RemoteInstance](tx, query, sessionId, screenId, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name)
 		if ri == nil {
 			ri = &RemoteInstance{
 				RIId:          scbase.GenPromptUUID(),
 				Name:          remotePtr.Name,
 				SessionId:     sessionId,
-				WindowId:      windowId,
+				ScreenId:      screenId,
 				RemoteOwnerId: remotePtr.OwnerId,
 				RemoteId:      remotePtr.RemoteId,
 				FeState:       feState,
@@ -1185,8 +1183,8 @@ func UpdateRemoteState(ctx context.Context, sessionId string, windowId string, r
 			if err != nil {
 				return err
 			}
-			query = `INSERT INTO remote_instance ( riid, name, sessionid, windowid, remoteownerid, remoteid, festate, statebasehash, statediffhasharr)
-                                          VALUES (:riid,:name,:sessionid,:windowid,:remoteownerid,:remoteid,:festate,:statebasehash,:statediffhasharr)`
+			query = `INSERT INTO remote_instance ( riid, name, sessionid, screenid, remoteownerid, remoteid, festate, statebasehash, statediffhasharr)
+                                          VALUES (:riid,:name,:sessionid,:screenid,:remoteownerid,:remoteid,:festate,:statebasehash,:statediffhasharr)`
 			tx.NamedExec(query, ri.ToMap())
 			return nil
 		} else {
@@ -1293,14 +1291,13 @@ func SetScreenName(ctx context.Context, sessionId string, screenId string, name 
 
 func ArchiveScreenLines(ctx context.Context, screenId string) (*ModelUpdate, error) {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT sessionid, windowid FROM screen WHERE screenid = ?`
-		var swkeys SWKeys
-		tx.Get(&swkeys, query, screenId)
-		if swkeys.SessionId == "" || swkeys.WindowId == "" {
-			return fmt.Errorf("screen windowid does not exist")
+		query := `SELECT sessionid FROM screen WHERE screenid = ?`
+		sessionId := tx.GetString(query, screenId)
+		if sessionId == "" {
+			return fmt.Errorf("screen sessionid does not exist")
 		}
-		query = `UPDATE line SET archived = 1 WHERE sessionid = ? AND windowid = ?`
-		tx.Exec(query, swkeys.SessionId, swkeys.WindowId)
+		query = `UPDATE line SET archived = 1 WHERE sessionid = ? AND screenid = ?`
+		tx.Exec(query, sessionId, screenId)
 		return nil
 	})
 	if txErr != nil {
@@ -1315,19 +1312,19 @@ func ArchiveScreenLines(ctx context.Context, screenId string) (*ModelUpdate, err
 
 func PurgeScreenLines(ctx context.Context, screenId string) (*ModelUpdate, error) {
 	var lineIds []string
-	var swkeys SWKeys
+	var sessionId string
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT sessionid, windowid FROM screen WHERE screenid = ?`
-		tx.Get(&swkeys, query, screenId)
-		if swkeys.SessionId == "" || swkeys.WindowId == "" {
-			return fmt.Errorf("screen windowid does not exist")
+		query := `SELECT sessionid FROM screen WHERE screenid = ?`
+		sessionId = tx.GetString(query, screenId)
+		if sessionId == "" {
+			return fmt.Errorf("screen sessionid does not exist")
 		}
-		query = `SELECT lineid FROM line WHERE sessionid = ? AND windowid = ?`
-		lineIds = tx.SelectStrings(query, swkeys.SessionId, swkeys.WindowId)
-		query = `DELETE FROM line WHERE sessionid = ? AND windowid = ?`
-		tx.Exec(query, swkeys.SessionId, swkeys.WindowId)
-		query = `DELETE FROM history WHERE sessionid = ? AND windowid = ?`
-		tx.Exec(query, swkeys.SessionId, swkeys.WindowId)
+		query = `SELECT lineid FROM line WHERE sessionid = ? AND screenid = ?`
+		lineIds = tx.SelectStrings(query, sessionId, screenId)
+		query = `DELETE FROM line WHERE sessionid = ? AND screenid = ?`
+		tx.Exec(query, sessionId, screenId)
+		query = `DELETE FROM history WHERE sessionid = ? AND screenid = ?`
+		tx.Exec(query, sessionId, screenId)
 		query = `UPDATE screen SET nextlinenum = 1 WHERE screenid = ?`
 		tx.Exec(query, screenId)
 		return nil
@@ -1335,7 +1332,7 @@ func PurgeScreenLines(ctx context.Context, screenId string) (*ModelUpdate, error
 	if txErr != nil {
 		return nil, txErr
 	}
-	go cleanSessionCmds(context.Background(), swkeys.SessionId)
+	go cleanSessionCmds(context.Background(), sessionId)
 	screen, err := GetScreenById(ctx, screenId)
 	if err != nil {
 		return nil, err
@@ -1346,8 +1343,8 @@ func PurgeScreenLines(ctx context.Context, screenId string) (*ModelUpdate, error
 	}
 	for _, lineId := range lineIds {
 		line := &LineType{
-			SessionId: swkeys.SessionId,
-			WindowId:  swkeys.WindowId,
+			SessionId: sessionId,
+			ScreenId:  screenId,
 			LineId:    lineId,
 			Remove:    true,
 		}
@@ -1356,11 +1353,11 @@ func PurgeScreenLines(ctx context.Context, screenId string) (*ModelUpdate, error
 	return &ModelUpdate{Screens: []*ScreenType{screen}, ScreenLines: screenLines}, nil
 }
 
-func GetRunningWindowCmds(ctx context.Context, sessionId string, windowId string) ([]*CmdType, error) {
+func GetRunningScreenCmds(ctx context.Context, sessionId string, screenId string) ([]*CmdType, error) {
 	var rtn []*CmdType
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT * from cmd WHERE cmdid IN (SELECT cmdid FROM line WHERE sessionid = ? AND windowid = ?) AND status = ?`
-		rtn = SelectMapsGen[*CmdType](tx, query, sessionId, windowId, CmdStatusRunning)
+		query := `SELECT * from cmd WHERE cmdid IN (SELECT cmdid FROM line WHERE sessionid = ? AND screenid = ?) AND status = ?`
+		rtn = SelectMapsGen[*CmdType](tx, query, sessionId, screenId, CmdStatusRunning)
 		return nil
 	})
 	if txErr != nil {
@@ -1381,21 +1378,20 @@ func UpdateCmdTermOpts(ctx context.Context, sessionId string, cmdId string, term
 // returns riids of deleted RIs
 func ScreenReset(ctx context.Context, screenId string) ([]*RemoteInstance, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) ([]*RemoteInstance, error) {
-		var swkeys SWKeys
-		query := `SELECT sessionid, windowid FROM screen WHERE screenid = ?`
-		tx.Get(&swkeys, query, screenId)
-		if swkeys.SessionId == "" || swkeys.WindowId == "" {
+		query := `SELECT sessionid FROM screen WHERE screenid = ?`
+		sessionId := tx.GetString(query, screenId)
+		if sessionId == "" {
 			return nil, fmt.Errorf("screen does not exist")
 		}
-		query = `SELECT riid FROM remote_instance WHERE sessionid = ? AND windowid = ?`
-		riids := tx.SelectStrings(query, swkeys.SessionId, swkeys.WindowId)
+		query = `SELECT riid FROM remote_instance WHERE sessionid = ? AND screenid = ?`
+		riids := tx.SelectStrings(query, sessionId, screenId)
 		var delRis []*RemoteInstance
 		for _, riid := range riids {
-			ri := &RemoteInstance{SessionId: swkeys.SessionId, WindowId: swkeys.WindowId, RIId: riid, Remove: true}
+			ri := &RemoteInstance{SessionId: sessionId, ScreenId: screenId, RIId: riid, Remove: true}
 			delRis = append(delRis, ri)
 		}
-		query = `DELETE FROM remote_instance WHERE sessionid = ? AND windowid = ?`
-		tx.Exec(query, swkeys.SessionId, swkeys.WindowId)
+		query = `DELETE FROM remote_instance WHERE sessionid = ? AND screenid = ?`
+		tx.Exec(query, sessionId, screenId)
 		return delRis, nil
 	})
 }
@@ -1669,11 +1665,11 @@ func UpdateScreen(ctx context.Context, screenId string, editMap map[string]inter
 	return GetScreenById(ctx, screenId)
 }
 
-func GetLineResolveItems(ctx context.Context, sessionId string, windowId string) ([]ResolveItem, error) {
+func GetLineResolveItems(ctx context.Context, sessionId string, screenId string) ([]ResolveItem, error) {
 	var rtn []ResolveItem
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT lineid as id, linenum as num FROM line WHERE sessionid = ? AND windowid = ? ORDER BY linenum`
-		tx.Select(&rtn, query, sessionId, windowId)
+		query := `SELECT lineid as id, linenum as num FROM line WHERE sessionid = ? AND screenid = ? ORDER BY linenum`
+		tx.Select(&rtn, query, sessionId, screenId)
 		return nil
 	})
 	if txErr != nil {
@@ -1693,7 +1689,7 @@ func UpdateScreensWithCmdFg(ctx context.Context, sessionId string, cmdId string)
                     AND s.selectedline IN (SELECT linenum 
                                            FROM line l 
                                            WHERE l.sessionid = s.sessionid
-                                             AND l.windowid = s.windowid 
+                                             AND l.screenid = s.screenid 
                                              AND l.cmdid = ?
                                           )`
 		screenIds := tx.SelectStrings(query, sessionId, cmdId)
@@ -1840,12 +1836,12 @@ func UpdateLineHeight(ctx context.Context, lineId string, heightVal int) error {
 }
 
 // can return nil, nil if line is not found
-func GetLineById(ctx context.Context, sessionId string, windowId string, lineId string) (*LineType, error) {
+func GetLineById(ctx context.Context, sessionId string, screenId string, lineId string) (*LineType, error) {
 	var rtn *LineType
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		var line LineType
-		query := `SELECT * FROM line WHERE sessionid = ? AND windowid = ? AND lineid = ?`
-		found := tx.Get(&line, query, sessionId, windowId, lineId)
+		query := `SELECT * FROM line WHERE sessionid = ? AND screenid = ? AND lineid = ?`
+		found := tx.Get(&line, query, sessionId, screenId, lineId)
 		if found {
 			rtn = &line
 		}
@@ -1900,11 +1896,11 @@ func PurgeLinesByIds(ctx context.Context, sessionId string, lineIds []string) er
 	return txErr
 }
 
-func GetRIsForWindow(ctx context.Context, sessionId string, windowId string) ([]*RemoteInstance, error) {
+func GetRIsForScreen(ctx context.Context, sessionId string, screenId string) ([]*RemoteInstance, error) {
 	var rtn []*RemoteInstance
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT * FROM remote_instance WHERE sessionid = ? AND (windowid = '' OR windowid = ?)`
-		rtn = SelectMapsGen[*RemoteInstance](tx, query, sessionId, windowId)
+		query := `SELECT * FROM remote_instance WHERE sessionid = ? AND (screenid = '' OR screenid = ?)`
+		rtn = SelectMapsGen[*RemoteInstance](tx, query, sessionId, screenId)
 		return nil
 	})
 	if txErr != nil {

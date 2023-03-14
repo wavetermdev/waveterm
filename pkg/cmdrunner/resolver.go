@@ -17,7 +17,6 @@ import (
 const (
 	R_Session         = 1
 	R_Screen          = 2
-	R_Window          = 4
 	R_Remote          = 8
 	R_RemoteConnected = 16
 )
@@ -25,7 +24,6 @@ const (
 type resolvedIds struct {
 	SessionId string
 	ScreenId  string
-	WindowId  string
 	Remote    *ResolvedRemote
 }
 
@@ -203,7 +201,6 @@ func resolveUiIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype i
 	if uictx != nil {
 		rtn.SessionId = uictx.SessionId
 		rtn.ScreenId = uictx.ScreenId
-		rtn.WindowId = uictx.WindowId
 	}
 	if pk.Kwargs["session"] != "" {
 		sessionId, err := resolveSessionArg(pk.Kwargs["session"])
@@ -221,15 +218,6 @@ func resolveUiIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype i
 		}
 		if screenId != "" {
 			rtn.ScreenId = screenId
-		}
-	}
-	if pk.Kwargs["window"] != "" {
-		windowId, err := resolveWindowArg(rtn.SessionId, rtn.ScreenId, pk.Kwargs["window"])
-		if err != nil {
-			return rtn, err
-		}
-		if windowId != "" {
-			rtn.WindowId = windowId
 		}
 	}
 	var rptr *sstore.RemotePtrType
@@ -250,7 +238,7 @@ func resolveUiIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype i
 		if err != nil {
 			return rtn, fmt.Errorf("invalid resolved remote: %v", err)
 		}
-		rr, err := resolveRemoteFromPtr(ctx, rptr, rtn.SessionId, rtn.WindowId)
+		rr, err := resolveRemoteFromPtr(ctx, rptr, rtn.SessionId, rtn.ScreenId)
 		if err != nil {
 			return rtn, err
 		}
@@ -262,9 +250,6 @@ func resolveUiIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype i
 	if rtype&R_Screen > 0 && rtn.ScreenId == "" {
 		return rtn, fmt.Errorf("no screen")
 	}
-	if rtype&R_Window > 0 && rtn.WindowId == "" {
-		return rtn, fmt.Errorf("no window")
-	}
 	if (rtype&R_Remote > 0 || rtype&R_RemoteConnected > 0) && rtn.Remote == nil {
 		return rtn, fmt.Errorf("no remote")
 	}
@@ -274,7 +259,7 @@ func resolveUiIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype i
 			if err != nil {
 				return rtn, fmt.Errorf("error trying to auto-connect remote [%s]: %w", rtn.Remote.DisplayName, err)
 			}
-			rrNew, err := resolveRemoteFromPtr(ctx, rptr, rtn.SessionId, rtn.WindowId)
+			rrNew, err := resolveRemoteFromPtr(ctx, rptr, rtn.SessionId, rtn.ScreenId)
 			if err != nil {
 				return rtn, err
 			}
@@ -312,8 +297,8 @@ func resolveSession(ctx context.Context, sessionArg string, curSessionArg string
 	return ritem, nil
 }
 
-func resolveLine(ctx context.Context, sessionId string, windowId string, lineArg string, curLineArg string) (*ResolveItem, error) {
-	lines, err := sstore.GetLineResolveItems(ctx, sessionId, windowId)
+func resolveLine(ctx context.Context, sessionId string, screenId string, lineArg string, curLineArg string) (*ResolveItem, error) {
+	lines, err := sstore.GetLineResolveItems(ctx, sessionId, screenId)
 	if err != nil {
 		return nil, fmt.Errorf("could not get lines: %v", err)
 	}
@@ -402,16 +387,6 @@ func resolveSessionId(pk *scpacket.FeCommandPacketType) (string, error) {
 	return sessionId, nil
 }
 
-func resolveWindowArg(sessionId string, screenId string, windowArg string) (string, error) {
-	if windowArg == "" {
-		return "", nil
-	}
-	if _, err := uuid.Parse(windowArg); err != nil {
-		return "", fmt.Errorf("invalid window arg specified (must be windowid) '%s'", windowArg)
-	}
-	return windowArg, nil
-}
-
 func resolveSessionArg(sessionArg string) (string, error) {
 	if sessionArg == "" {
 		return "", nil
@@ -471,7 +446,7 @@ func parseFullRemoteRef(fullRemoteRef string) (string, string, string, error) {
 	return fields[0], fields[1], fields[2], nil
 }
 
-func resolveRemoteFromPtr(ctx context.Context, rptr *sstore.RemotePtrType, sessionId string, windowId string) (*ResolvedRemote, error) {
+func resolveRemoteFromPtr(ctx context.Context, rptr *sstore.RemotePtrType, sessionId string, screenId string) (*ResolvedRemote, error) {
 	if rptr == nil || rptr.RemoteId == "" {
 		return nil, nil
 	}
@@ -491,8 +466,8 @@ func resolveRemoteFromPtr(ctx context.Context, rptr *sstore.RemotePtrType, sessi
 		StatePtr:    nil,
 		FeState:     nil,
 	}
-	if sessionId != "" && windowId != "" {
-		ri, err := sstore.GetRemoteInstance(ctx, sessionId, windowId, *rptr)
+	if sessionId != "" && screenId != "" {
+		ri, err := sstore.GetRemoteInstance(ctx, sessionId, screenId, *rptr)
 		if err != nil {
 			log.Printf("ERROR resolving remote state '%s': %v\n", displayName, err)
 			// continue with state set to nil
@@ -510,7 +485,7 @@ func resolveRemoteFromPtr(ctx context.Context, rptr *sstore.RemotePtrType, sessi
 }
 
 // returns (remoteDisplayName, remoteptr, state, rstate, err)
-func resolveRemote(ctx context.Context, fullRemoteRef string, sessionId string, windowId string) (string, *sstore.RemotePtrType, *remote.RemoteRuntimeState, error) {
+func resolveRemote(ctx context.Context, fullRemoteRef string, sessionId string, screenId string) (string, *sstore.RemotePtrType, *remote.RemoteRuntimeState, error) {
 	if fullRemoteRef == "" {
 		return "", nil, nil, nil
 	}

@@ -34,9 +34,7 @@ const DBFileName = "prompt.db"
 const DBFileNameBackup = "backup.prompt.db"
 
 const DefaultSessionName = "default"
-const DefaultWindowName = "default"
 const LocalRemoteAlias = "local"
-const DefaultScreenWindowName = "w1"
 
 const DefaultCwd = "~"
 
@@ -343,7 +341,6 @@ func (h *HistoryItemType) ToMap() map[string]interface{} {
 	rtn["userid"] = h.UserId
 	rtn["sessionid"] = h.SessionId
 	rtn["screenid"] = h.ScreenId
-	rtn["windowid"] = h.WindowId
 	rtn["lineid"] = h.LineId
 	rtn["haderror"] = h.HadError
 	rtn["cmdid"] = h.CmdId
@@ -362,7 +359,6 @@ func (h *HistoryItemType) FromMap(m map[string]interface{}) bool {
 	quickSetStr(&h.UserId, m, "userid")
 	quickSetStr(&h.SessionId, m, "sessionid")
 	quickSetStr(&h.ScreenId, m, "screenid")
-	quickSetStr(&h.WindowId, m, "windowid")
 	quickSetStr(&h.LineId, m, "lineid")
 	quickSetBool(&h.HadError, m, "haderror")
 	quickSetStr(&h.CmdId, m, "cmdid")
@@ -381,15 +377,9 @@ type ScreenOptsType struct {
 	PTerm    string `json:"pterm,omitempty"`
 }
 
-type SWKeys struct {
-	SessionId string
-	WindowId  string
-}
-
 type ScreenLinesType struct {
 	SessionId string      `json:"sessionid"`
 	ScreenId  string      `json:"screenid"`
-	WindowId  string      `json:"windowid"`
 	Lines     []*LineType `json:"lines" dbmap:"-"`
 	Cmds      []*CmdType  `json:"cmds" dbmap:"-"`
 }
@@ -399,7 +389,6 @@ func (ScreenLinesType) UseDBMap() {}
 type ScreenType struct {
 	SessionId    string           `json:"sessionid"`
 	ScreenId     string           `json:"screenid"`
-	WindowId     string           `json:"windowid"`
 	Name         string           `json:"name"`
 	ScreenIdx    int64            `json:"screenidx"`
 	ScreenOpts   ScreenOptsType   `json:"screenopts"`
@@ -422,7 +411,6 @@ func (s *ScreenType) ToMap() map[string]interface{} {
 	rtn := make(map[string]interface{})
 	rtn["sessionid"] = s.SessionId
 	rtn["screenid"] = s.ScreenId
-	rtn["windowid"] = s.WindowId
 	rtn["name"] = s.Name
 	rtn["screenidx"] = s.ScreenIdx
 	rtn["screenopts"] = quickJson(s.ScreenOpts)
@@ -443,7 +431,6 @@ func (s *ScreenType) ToMap() map[string]interface{} {
 func (s *ScreenType) FromMap(m map[string]interface{}) bool {
 	quickSetStr(&s.SessionId, m, "sessionid")
 	quickSetStr(&s.ScreenId, m, "screenid")
-	quickSetStr(&s.WindowId, m, "windowid")
 	quickSetStr(&s.Name, m, "name")
 	quickSetInt64(&s.ScreenIdx, m, "screenidx")
 	quickSetJson(&s.ScreenOpts, m, "screenopts")
@@ -497,7 +484,6 @@ type HistoryItemType struct {
 	UserId    string        `json:"userid"`
 	SessionId string        `json:"sessionid"`
 	ScreenId  string        `json:"screenid"`
-	WindowId  string        `json:"windowid"`
 	LineId    string        `json:"lineid"`
 	HadError  bool          `json:"haderror"`
 	CmdId     string        `json:"cmdid"`
@@ -520,7 +506,7 @@ type HistoryQueryOpts struct {
 	SearchText string
 	SessionId  string
 	RemoteId   string
-	WindowId   string
+	ScreenId   string
 	NoMeta     bool
 	RawOffset  int
 	FilterFn   func(*HistoryItemType) bool
@@ -568,7 +554,7 @@ type RemoteInstance struct {
 	RIId             string      `json:"riid"`
 	Name             string      `json:"name"`
 	SessionId        string      `json:"sessionid"`
-	WindowId         string      `json:"windowid"`
+	ScreenId         string      `json:"screenid"`
 	RemoteOwnerId    string      `json:"remoteownerid"`
 	RemoteId         string      `json:"remoteid"`
 	FeState          FeStateType `json:"festate"`
@@ -629,7 +615,7 @@ func (ri *RemoteInstance) FromMap(m map[string]interface{}) bool {
 	quickSetStr(&ri.RIId, m, "riid")
 	quickSetStr(&ri.Name, m, "name")
 	quickSetStr(&ri.SessionId, m, "sessionid")
-	quickSetStr(&ri.WindowId, m, "windowid")
+	quickSetStr(&ri.ScreenId, m, "screenid")
 	quickSetStr(&ri.RemoteOwnerId, m, "remoteownerid")
 	quickSetStr(&ri.RemoteId, m, "remoteid")
 	quickSetJson(&ri.FeState, m, "festate")
@@ -643,7 +629,7 @@ func (ri *RemoteInstance) ToMap() map[string]interface{} {
 	rtn["riid"] = ri.RIId
 	rtn["name"] = ri.Name
 	rtn["sessionid"] = ri.SessionId
-	rtn["windowid"] = ri.WindowId
+	rtn["screenid"] = ri.ScreenId
 	rtn["remoteownerid"] = ri.RemoteOwnerId
 	rtn["remoteid"] = ri.RemoteId
 	rtn["festate"] = quickJson(ri.FeState)
@@ -654,7 +640,7 @@ func (ri *RemoteInstance) ToMap() map[string]interface{} {
 
 type LineType struct {
 	SessionId     string `json:"sessionid"`
-	WindowId      string `json:"windowid"`
+	ScreenId      string `json:"screenid"`
 	UserId        string `json:"userid"`
 	LineId        string `json:"lineid"`
 	Ts            int64  `json:"ts"`
@@ -948,10 +934,10 @@ func (cmd *CmdType) FromMap(m map[string]interface{}) bool {
 	return true
 }
 
-func makeNewLineCmd(sessionId string, windowId string, userId string, cmdId string, renderer string) *LineType {
+func makeNewLineCmd(sessionId string, screenId string, userId string, cmdId string, renderer string) *LineType {
 	rtn := &LineType{}
 	rtn.SessionId = sessionId
-	rtn.WindowId = windowId
+	rtn.ScreenId = screenId
 	rtn.UserId = userId
 	rtn.LineId = scbase.GenPromptUUID()
 	rtn.Ts = time.Now().UnixMilli()
@@ -963,10 +949,10 @@ func makeNewLineCmd(sessionId string, windowId string, userId string, cmdId stri
 	return rtn
 }
 
-func makeNewLineText(sessionId string, windowId string, userId string, text string) *LineType {
+func makeNewLineText(sessionId string, screenId string, userId string, text string) *LineType {
 	rtn := &LineType{}
 	rtn.SessionId = sessionId
-	rtn.WindowId = windowId
+	rtn.ScreenId = screenId
 	rtn.UserId = userId
 	rtn.LineId = scbase.GenPromptUUID()
 	rtn.Ts = time.Now().UnixMilli()
@@ -977,8 +963,8 @@ func makeNewLineText(sessionId string, windowId string, userId string, text stri
 	return rtn
 }
 
-func AddCommentLine(ctx context.Context, sessionId string, windowId string, userId string, commentText string) (*LineType, error) {
-	rtnLine := makeNewLineText(sessionId, windowId, userId, commentText)
+func AddCommentLine(ctx context.Context, sessionId string, screenId string, userId string, commentText string) (*LineType, error) {
+	rtnLine := makeNewLineText(sessionId, screenId, userId, commentText)
 	err := InsertLine(ctx, rtnLine, nil)
 	if err != nil {
 		return nil, err
@@ -986,8 +972,8 @@ func AddCommentLine(ctx context.Context, sessionId string, windowId string, user
 	return rtnLine, nil
 }
 
-func AddCmdLine(ctx context.Context, sessionId string, windowId string, userId string, cmd *CmdType, renderer string) (*LineType, error) {
-	rtnLine := makeNewLineCmd(sessionId, windowId, userId, cmd.CmdId, renderer)
+func AddCmdLine(ctx context.Context, sessionId string, screenId string, userId string, cmd *CmdType, renderer string) (*LineType, error) {
+	rtnLine := makeNewLineCmd(sessionId, screenId, userId, cmd.CmdId, renderer)
 	err := InsertLine(ctx, rtnLine, cmd)
 	if err != nil {
 		return nil, err

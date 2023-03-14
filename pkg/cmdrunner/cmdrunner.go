@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	HistoryTypeWindow  = "window"
+	HistoryTypeScreen  = "screen"
 	HistoryTypeSession = "session"
 	HistoryTypeGlobal  = "global"
 )
@@ -51,25 +51,23 @@ var ColorNames = []string{"black", "red", "green", "yellow", "blue", "magenta", 
 var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
 var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}
 
-var WindowCmds = []string{"run", "comment", "cd", "cr", "clear", "sw", "reset", "signal"}
+var ScreenCmds = []string{"run", "comment", "cd", "cr", "clear", "sw", "reset", "signal"}
 var NoHistCmds = []string{"_compgen", "line", "history", "_killserver"}
 var GlobalCmds = []string{"session", "screen", "remote", "set", "client", "telemetry", "bookmark", "bookmarks"}
 
 var SetVarNameMap map[string]string = map[string]string{
 	"tabcolor": "screen.tabcolor",
-	"pterm":    "window.pterm",
-	"anchor":   "sw.anchor",
-	"focus":    "sw.focus",
-	"line":     "sw.line",
+	"pterm":    "screen.pterm",
+	"anchor":   "screen.anchor",
+	"focus":    "screen.focus",
+	"line":     "screen.line",
 }
 
 var SetVarScopes = []SetVarScope{
 	SetVarScope{ScopeName: "global", VarNames: []string{}},
 	SetVarScope{ScopeName: "client", VarNames: []string{"telemetry"}},
 	SetVarScope{ScopeName: "session", VarNames: []string{"name", "pos"}},
-	SetVarScope{ScopeName: "screen", VarNames: []string{"name", "tabcolor", "pos"}},
-	SetVarScope{ScopeName: "window", VarNames: []string{"pterm"}},
-	SetVarScope{ScopeName: "sw", VarNames: []string{"anchor", "focus", "line"}},
+	SetVarScope{ScopeName: "screen", VarNames: []string{"name", "tabcolor", "pos", "pterm", "anchor", "focus", "line"}},
 	SetVarScope{ScopeName: "line", VarNames: []string{}},
 	// connection = remote, remote = remoteinstance
 	SetVarScope{ScopeName: "connection", VarNames: []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}},
@@ -322,7 +320,7 @@ func resolveNonNegInt(arg string, def int) (int, error) {
 }
 
 func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_RemoteConnected)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
 	if err != nil {
 		return nil, fmt.Errorf("/run error: %w", err)
 	}
@@ -340,7 +338,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	}
 	runPacket.Command = strings.TrimSpace(cmdStr)
 	runPacket.ReturnState = resolveBool(pk.Kwargs["rtnstate"], isRtnStateCmd)
-	cmd, callback, err := remote.RunCommand(ctx, ids.SessionId, ids.WindowId, ids.Remote.RemotePtr, runPacket)
+	cmd, callback, err := remote.RunCommand(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr, runPacket)
 	if callback != nil {
 		defer callback()
 	}
@@ -358,7 +356,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 
 func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, historyContext historyContextType, isMetaCmd bool, hadError bool) error {
 	cmdStr := firstArg(pk)
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
 	if err != nil {
 		return err
 	}
@@ -372,7 +370,6 @@ func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, history
 		UserId:    DefaultUserId,
 		SessionId: ids.SessionId,
 		ScreenId:  ids.ScreenId,
-		WindowId:  ids.WindowId,
 		LineId:    historyContext.LineId,
 		HadError:  hadError,
 		CmdId:     historyContext.CmdId,
@@ -547,7 +544,7 @@ func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		if screen.SelectedLine > 0 {
 			selectedLineStr = strconv.Itoa(int(screen.SelectedLine))
 		}
-		ritem, err := resolveLine(ctx, screen.SessionId, screen.WindowId, pk.Kwargs["line"], selectedLineStr)
+		ritem, err := resolveLine(ctx, screen.SessionId, screen.ScreenId, pk.Kwargs["line"], selectedLineStr)
 		if err != nil {
 			return nil, fmt.Errorf("/screen:set error resolving line: %v", err)
 		}
@@ -559,7 +556,7 @@ func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		updateMap[sstore.ScreenField_SelectedLine] = ritem.Num
 	}
 	if pk.Kwargs["anchor"] != "" {
-		m := swAnchorRe.FindStringSubmatch(pk.Kwargs["anchor"])
+		m := screenAnchorRe.FindStringSubmatch(pk.Kwargs["anchor"])
 		if m == nil {
 			return nil, fmt.Errorf("/screen:set invalid anchor argument (must be [line] or [line]:[offset])")
 		}
@@ -613,10 +610,10 @@ func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	return update, nil
 }
 
-var swAnchorRe = regexp.MustCompile("^(\\d+)(?::(-?\\d+))?$")
+var screenAnchorRe = regexp.MustCompile("^(\\d+)(?::(-?\\d+))?$")
 
 func RemoteInstallCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_Remote)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Remote)
 	if err != nil {
 		return nil, err
 	}
@@ -630,7 +627,7 @@ func RemoteInstallCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 }
 
 func RemoteInstallCancelCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_Remote)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Remote)
 	if err != nil {
 		return nil, err
 	}
@@ -644,7 +641,7 @@ func RemoteInstallCancelCommand(ctx context.Context, pk *scpacket.FeCommandPacke
 }
 
 func RemoteConnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_Remote)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Remote)
 	if err != nil {
 		return nil, err
 	}
@@ -657,7 +654,7 @@ func RemoteConnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 }
 
 func RemoteDisconnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_Remote)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Remote)
 	if err != nil {
 		return nil, err
 	}
@@ -907,7 +904,7 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 }
 
 func RemoteSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_Remote)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Remote)
 	if err != nil {
 		return nil, err
 	}
@@ -937,7 +934,7 @@ func RemoteSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 }
 
 func RemoteShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_Remote)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Remote)
 	if err != nil {
 		return nil, err
 	}
@@ -1008,7 +1005,7 @@ func ScreenResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	sessionUpdate := &sstore.SessionType{SessionId: ids.SessionId}
 	ris, err := sstore.ScreenReset(ctx, ids.ScreenId)
 	if err != nil {
-		return nil, fmt.Errorf("error resetting screen window: %v", err)
+		return nil, fmt.Errorf("error resetting screen: %v", err)
 	}
 	sessionUpdate.Remotes = append(sessionUpdate.Remotes, ris...)
 	err = sstore.UpdateCurRemote(ctx, ids.ScreenId, rptr)
@@ -1032,7 +1029,7 @@ func ScreenResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 }
 
 func RemoteArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_Remote)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Remote)
 	if err != nil {
 		return nil, err
 	}
@@ -1061,7 +1058,7 @@ func RemoteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 
 func crShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, ids resolvedIds) (sstore.UpdatePacket, error) {
 	var buf bytes.Buffer
-	riArr, err := sstore.GetRIsForWindow(ctx, ids.SessionId, ids.WindowId)
+	riArr, err := sstore.GetRIsForScreen(ctx, ids.SessionId, ids.ScreenId)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get remote instances: %w", err)
 	}
@@ -1127,7 +1124,7 @@ func GetFullRemoteDisplayName(rptr *sstore.RemotePtrType, rstate *remote.RemoteR
 }
 
 func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
 	if err != nil {
 		return nil, fmt.Errorf("/%s error: %w", GetCmdStr(pk), err)
 	}
@@ -1135,7 +1132,7 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 	if newRemote == "" {
 		return crShowCommand(ctx, pk, ids)
 	}
-	_, rptr, rstate, err := resolveRemote(ctx, newRemote, ids.SessionId, ids.WindowId)
+	_, rptr, rstate, err := resolveRemote(ctx, newRemote, ids.SessionId, ids.ScreenId)
 	if err != nil {
 		return nil, err
 	}
@@ -1197,7 +1194,7 @@ func makeStaticCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr 
 }
 
 func addLineForCmd(ctx context.Context, metaCmd string, shouldFocus bool, ids resolvedIds, cmd *sstore.CmdType) (*sstore.ModelUpdate, error) {
-	rtnLine, err := sstore.AddCmdLine(ctx, ids.SessionId, ids.WindowId, DefaultUserId, cmd, "")
+	rtnLine, err := sstore.AddCmdLine(ctx, ids.SessionId, ids.ScreenId, DefaultUserId, cmd, "")
 	if err != nil {
 		return nil, err
 	}
@@ -1323,7 +1320,7 @@ func doCompGen(ctx context.Context, pk *scpacket.FeCommandPacketType, prefix str
 	if !packet.IsValidCompGenType(compType) {
 		return nil, false, fmt.Errorf("/_compgen invalid type '%s'", compType)
 	}
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_RemoteConnected)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
 	if err != nil {
 		return nil, false, fmt.Errorf("/_compgen error: %w", err)
 	}
@@ -1396,7 +1393,7 @@ func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 }
 
 func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
 	if err != nil {
 		return nil, fmt.Errorf("/comment error: %w", err)
 	}
@@ -1404,7 +1401,7 @@ func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if strings.TrimSpace(text) == "" {
 		return nil, fmt.Errorf("cannot post empty comment")
 	}
-	rtnLine, err := sstore.AddCommentLine(ctx, ids.SessionId, ids.WindowId, DefaultUserId, text)
+	rtnLine, err := sstore.AddCommentLine(ctx, ids.SessionId, ids.ScreenId, DefaultUserId, text)
 	if err != nil {
 		return nil, err
 	}
@@ -1415,7 +1412,7 @@ func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	screen, err := sstore.UpdateScreen(ctx, ids.ScreenId, updateMap)
 	if err != nil {
 		// ignore error again (nothing to do)
-		log.Printf("/comment error updating screen-window selected line: %v\n", err)
+		log.Printf("/comment error updating screen selected line: %v\n", err)
 	}
 	update := sstore.ModelUpdate{Line: rtnLine, Screens: []*sstore.ScreenType{screen}}
 	return update, nil
@@ -1720,7 +1717,7 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 }
 
 func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
 	if err != nil {
 		return nil, err
 	}
@@ -1732,7 +1729,7 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		return nil, fmt.Errorf("invalid initpk received from remote (no remote state)")
 	}
 	feState := sstore.FeStateFromShellState(initPk.State)
-	remoteInst, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.WindowId, ids.Remote.RemotePtr, *feState, initPk.State, nil)
+	remoteInst, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr, *feState, initPk.State, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1753,7 +1750,7 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 }
 
 func ClearCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
 	if err != nil {
 		return nil, err
 	}
@@ -1804,7 +1801,7 @@ func HistoryPurgeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 		}
 		lineObj := &sstore.LineType{
 			SessionId: historyItem.SessionId,
-			WindowId:  historyItem.WindowId,
+			ScreenId:  historyItem.ScreenId,
 			LineId:    historyItem.LineId,
 			Remove:    true,
 		}
@@ -1910,7 +1907,7 @@ func HistoryViewAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 const DefaultMaxHistoryItems = 10000
 
 func HistoryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window|R_Remote)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Remote)
 	if err != nil {
 		return nil, err
 	}
@@ -1924,22 +1921,22 @@ func HistoryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if maxItems == 0 {
 		maxItems = DefaultMaxHistoryItems
 	}
-	htype := HistoryTypeWindow
+	htype := HistoryTypeScreen
 	hSessionId := ids.SessionId
-	hWindowId := ids.WindowId
+	hScreenId := ids.ScreenId
 	if pk.Kwargs["type"] != "" {
 		htype = pk.Kwargs["type"]
-		if htype != HistoryTypeWindow && htype != HistoryTypeSession && htype != HistoryTypeGlobal {
-			return nil, fmt.Errorf("invalid history type '%s', valid types: %s", htype, formatStrs([]string{HistoryTypeWindow, HistoryTypeSession, HistoryTypeGlobal}, "or", false))
+		if htype != HistoryTypeScreen && htype != HistoryTypeSession && htype != HistoryTypeGlobal {
+			return nil, fmt.Errorf("invalid history type '%s', valid types: %s", htype, formatStrs([]string{HistoryTypeScreen, HistoryTypeSession, HistoryTypeGlobal}, "or", false))
 		}
 	}
 	if htype == HistoryTypeGlobal {
 		hSessionId = ""
-		hWindowId = ""
+		hScreenId = ""
 	} else if htype == HistoryTypeSession {
-		hWindowId = ""
+		hScreenId = ""
 	}
-	hopts := sstore.HistoryQueryOpts{MaxItems: maxItems, SessionId: hSessionId, WindowId: hWindowId}
+	hopts := sstore.HistoryQueryOpts{MaxItems: maxItems, SessionId: hSessionId, ScreenId: hScreenId}
 	hresult, err := sstore.GetHistoryItems(ctx, hopts)
 	if err != nil {
 		return nil, err
@@ -1955,7 +1952,7 @@ func HistoryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	update.History = &sstore.HistoryInfoType{
 		HistoryType: htype,
 		SessionId:   ids.SessionId,
-		WindowId:    ids.WindowId,
+		ScreenId:    ids.ScreenId,
 		Items:       hresult.Items,
 		Show:        show,
 	}
@@ -1992,25 +1989,25 @@ func resizeRunningCommand(ctx context.Context, cmd *sstore.CmdType, newCols int)
 }
 
 func ScreenResizeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
 	if err != nil {
 		return nil, err
 	}
 	colsStr := pk.Kwargs["cols"]
 	if colsStr == "" {
-		return nil, fmt.Errorf("/sw:resize requires a numeric 'cols' argument")
+		return nil, fmt.Errorf("/screen:resize requires a numeric 'cols' argument")
 	}
 	cols, err := strconv.Atoi(colsStr)
 	if err != nil {
-		return nil, fmt.Errorf("/sw:resize requires a numeric 'cols' argument: %v", err)
+		return nil, fmt.Errorf("/screen:resize requires a numeric 'cols' argument: %v", err)
 	}
 	if cols <= 0 {
-		return nil, fmt.Errorf("/sw:resize invalid zero/negative 'cols' argument")
+		return nil, fmt.Errorf("/screen:resize invalid zero/negative 'cols' argument")
 	}
 	cols = base.BoundInt(cols, shexec.MinTermCols, shexec.MaxTermCols)
-	runningCmds, err := sstore.GetRunningWindowCmds(ctx, ids.SessionId, ids.WindowId)
+	runningCmds, err := sstore.GetRunningScreenCmds(ctx, ids.SessionId, ids.ScreenId)
 	if err != nil {
-		return nil, fmt.Errorf("/sw:resize cannot get running commands: %v", err)
+		return nil, fmt.Errorf("/screen:resize cannot get running commands: %v", err)
 	}
 	if len(runningCmds) == 0 {
 		return nil, nil
@@ -2028,7 +2025,7 @@ func LineCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 }
 
 func LineSetHeightCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
 	if err != nil {
 		return nil, err
 	}
@@ -2036,7 +2033,7 @@ func LineSetHeightCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		return nil, fmt.Errorf("/line:setheight requires 2 arguments (linearg and height)")
 	}
 	lineArg := pk.Args[0]
-	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.WindowId, lineArg)
+	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.ScreenId, lineArg)
 	if err != nil {
 		return nil, fmt.Errorf("error looking up lineid: %v", err)
 	}
@@ -2074,7 +2071,7 @@ func LineViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	if err != nil {
 		return nil, fmt.Errorf("/line:view could not get screen: %v", err)
 	}
-	lineRItem, err := resolveLine(ctx, sessionId, screen.WindowId, lineArg, "")
+	lineRItem, err := resolveLine(ctx, sessionId, screen.ScreenId, lineArg, "")
 	if err != nil {
 		return nil, fmt.Errorf("/line:view invalid line arg: %v", err)
 	}
@@ -2179,7 +2176,7 @@ func BookmarkDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 }
 
 func LineBookmarkCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
 	if err != nil {
 		return nil, err
 	}
@@ -2187,14 +2184,14 @@ func LineBookmarkCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 		return nil, fmt.Errorf("/line:bookmark requires an argument (line number or id)")
 	}
 	lineArg := pk.Args[0]
-	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.WindowId, lineArg)
+	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.ScreenId, lineArg)
 	if err != nil {
 		return nil, fmt.Errorf("error looking up lineid: %v", err)
 	}
 	if lineId == "" {
 		return nil, fmt.Errorf("line %q not found", lineArg)
 	}
-	lineObj, cmdObj, err := sstore.GetLineCmdByLineId(ctx, ids.SessionId, ids.WindowId, lineId)
+	lineObj, cmdObj, err := sstore.GetLineCmdByLineId(ctx, ids.SessionId, ids.ScreenId, lineId)
 	if err != nil {
 		return nil, fmt.Errorf("/line:bookmark error getting line: %v", err)
 	}
@@ -2215,7 +2212,7 @@ func LineBookmarkCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	if err != nil {
 		return nil, fmt.Errorf("cannot insert bookmark: %v", err)
 	}
-	newLineObj, err := sstore.GetLineById(ctx, ids.SessionId, ids.WindowId, lineId)
+	newLineObj, err := sstore.GetLineById(ctx, ids.SessionId, ids.ScreenId, lineId)
 	if err != nil {
 		return nil, fmt.Errorf("/line:bookmark error getting line: %v", err)
 	}
@@ -2231,7 +2228,7 @@ func LinePinCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 }
 
 func LineStarCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
 	if err != nil {
 		return nil, err
 	}
@@ -2242,7 +2239,7 @@ func LineStarCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		return nil, fmt.Errorf("/line:star only takes up to 2 arguments (line-number and star-value)")
 	}
 	lineArg := pk.Args[0]
-	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.WindowId, lineArg)
+	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.ScreenId, lineArg)
 	if err != nil {
 		return nil, fmt.Errorf("error looking up lineid: %v", err)
 	}
@@ -2260,7 +2257,7 @@ func LineStarCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	if err != nil {
 		return nil, fmt.Errorf("/line:star error updating star value: %v", err)
 	}
-	lineObj, err := sstore.GetLineById(ctx, ids.SessionId, ids.WindowId, lineId)
+	lineObj, err := sstore.GetLineById(ctx, ids.SessionId, ids.ScreenId, lineId)
 	if err != nil {
 		return nil, fmt.Errorf("/line:star error getting line: %v", err)
 	}
@@ -2272,7 +2269,7 @@ func LineStarCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 }
 
 func LineArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
 	if err != nil {
 		return nil, err
 	}
@@ -2280,7 +2277,7 @@ func LineArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		return nil, fmt.Errorf("/line:archive requires an argument (line number or id)")
 	}
 	lineArg := pk.Args[0]
-	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.WindowId, lineArg)
+	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.ScreenId, lineArg)
 	if err != nil {
 		return nil, fmt.Errorf("error looking up lineid: %v", err)
 	}
@@ -2295,7 +2292,7 @@ func LineArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if err != nil {
 		return nil, fmt.Errorf("/line:archive error updating hidden status: %v", err)
 	}
-	lineObj, err := sstore.GetLineById(ctx, ids.SessionId, ids.WindowId, lineId)
+	lineObj, err := sstore.GetLineById(ctx, ids.SessionId, ids.ScreenId, lineId)
 	if err != nil {
 		return nil, fmt.Errorf("/line:archive error getting line: %v", err)
 	}
@@ -2307,7 +2304,7 @@ func LineArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 }
 
 func LinePurgeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
 	if err != nil {
 		return nil, err
 	}
@@ -2316,7 +2313,7 @@ func LinePurgeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	}
 	var lineIds []string
 	for _, lineArg := range pk.Args {
-		lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.WindowId, lineArg)
+		lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.ScreenId, lineArg)
 		if err != nil {
 			return nil, fmt.Errorf("error looking up lineid: %v", err)
 		}
@@ -2333,7 +2330,7 @@ func LinePurgeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	for _, lineId := range lineIds {
 		lineObj := &sstore.LineType{
 			SessionId: ids.SessionId,
-			WindowId:  ids.WindowId,
+			ScreenId:  ids.ScreenId,
 			LineId:    lineId,
 			Remove:    true,
 		}
@@ -2343,7 +2340,7 @@ func LinePurgeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 }
 
 func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
 	if err != nil {
 		return nil, err
 	}
@@ -2351,14 +2348,14 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		return nil, fmt.Errorf("/line:show requires an argument (line number or id)")
 	}
 	lineArg := pk.Args[0]
-	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.WindowId, lineArg)
+	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.ScreenId, lineArg)
 	if err != nil {
 		return nil, fmt.Errorf("error looking up lineid: %v", err)
 	}
 	if lineId == "" {
 		return nil, fmt.Errorf("line %q not found", lineArg)
 	}
-	line, cmd, err := sstore.GetLineCmdByLineId(ctx, ids.SessionId, ids.WindowId, lineId)
+	line, cmd, err := sstore.GetLineCmdByLineId(ctx, ids.SessionId, ids.ScreenId, lineId)
 	if err != nil {
 		return nil, fmt.Errorf("error getting line: %v", err)
 	}
@@ -2438,7 +2435,7 @@ func SetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 }
 
 func SignalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Window)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
 	if err != nil {
 		return nil, err
 	}
@@ -2449,11 +2446,11 @@ func SignalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		return nil, fmt.Errorf("/signal requires a second argument (signal name)")
 	}
 	lineArg := pk.Args[0]
-	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.WindowId, lineArg)
+	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.ScreenId, lineArg)
 	if err != nil {
 		return nil, fmt.Errorf("error looking up lineid: %v", err)
 	}
-	line, cmd, err := sstore.GetLineCmdByLineId(ctx, ids.SessionId, ids.WindowId, lineId)
+	line, cmd, err := sstore.GetLineCmdByLineId(ctx, ids.SessionId, ids.ScreenId, lineId)
 	if err != nil {
 		return nil, fmt.Errorf("error getting line: %v", err)
 	}
@@ -2837,7 +2834,7 @@ func isValidInScope(scopeName string, varName string) bool {
 }
 
 // returns (is-valid, scope, name)
-// TODO write a full resolver to allow for indexed arguments.  e.g. session[1].screen[1].window.pterm="25x80"
+// TODO write a full resolver to allow for indexed arguments.  e.g. session[1].screen[1].screen.pterm="25x80"
 func resolveSetArg(argName string) (bool, string, string) {
 	dotIdx := strings.Index(argName, ".")
 	if dotIdx == -1 {

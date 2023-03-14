@@ -546,7 +546,7 @@ func main() {
 	}
 	err = sstore.ReInitFocus(context.Background())
 	if err != nil {
-		log.Printf("[error] resetting window focus: %v\n", err)
+		log.Printf("[error] resetting screen focus: %v\n", err)
 	}
 
 	log.Printf("PCLOUD_ENDPOINT=%s\n", pcloud.GetEndpoint())

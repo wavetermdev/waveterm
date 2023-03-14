@@ -117,7 +117,7 @@ type MShellProc struct {
 
 type RunCmdType struct {
 	SessionId string
-	WindowId  string
+	ScreenId  string
 	RemotePtr sstore.RemotePtrType
 	RunPacket *packet.RunPacketType
 }
@@ -1250,10 +1250,10 @@ func (msh *MShellProc) removePendingStateCmd(riName string, ck base.CommandKey) 
 }
 
 // returns (cmdtype, allow-updates-callback, err)
-func RunCommand(ctx context.Context, sessionId string, windowId string, remotePtr sstore.RemotePtrType, runPacket *packet.RunPacketType) (rtnCmd *sstore.CmdType, rtnCallback func(), rtnErr error) {
+func RunCommand(ctx context.Context, sessionId string, screenId string, remotePtr sstore.RemotePtrType, runPacket *packet.RunPacketType) (rtnCmd *sstore.CmdType, rtnCallback func(), rtnErr error) {
 	rct := RunCmdType{
 		SessionId: sessionId,
-		WindowId:  windowId,
+		ScreenId:  screenId,
 		RemotePtr: remotePtr,
 		RunPacket: runPacket,
 	}
@@ -1279,7 +1279,7 @@ func RunCommand(ctx context.Context, sessionId string, windowId string, remotePt
 	}
 	ok, existingPSC := msh.testAndSetPendingStateCmd(remotePtr.Name, newPSC)
 	if !ok {
-		line, _, err := sstore.GetLineCmdByCmdId(ctx, sessionId, windowId, existingPSC.GetCmdId())
+		line, _, err := sstore.GetLineCmdByCmdId(ctx, sessionId, screenId, existingPSC.GetCmdId())
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot run command while a stateful command is still running: %v", err)
 		}
@@ -1298,7 +1298,7 @@ func RunCommand(ctx context.Context, sessionId string, windowId string, remotePt
 		}
 	}()
 	// get current remote-instance state
-	statePtr, err := sstore.GetRemoteStatePtr(ctx, sessionId, windowId, remotePtr)
+	statePtr, err := sstore.GetRemoteStatePtr(ctx, sessionId, screenId, remotePtr)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot get current remote stateptr: %w", err)
 	}
@@ -1371,7 +1371,7 @@ func (msh *MShellProc) reExecSingle(rct RunCmdType) {
 	// TODO fixme
 	ctx, cancelFn := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancelFn()
-	_, callback, _ := RunCommand(ctx, rct.SessionId, rct.WindowId, rct.RemotePtr, rct.RunPacket)
+	_, callback, _ := RunCommand(ctx, rct.SessionId, rct.ScreenId, rct.RemotePtr, rct.RunPacket)
 	if callback != nil {
 		defer callback()
 	}
@@ -1501,7 +1501,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 	}
 	screens, err := sstore.UpdateScreensWithCmdFg(context.Background(), donePk.CK.GetSessionId(), donePk.CK.GetCmdId())
 	if err != nil {
-		msh.WriteToPtyBuffer("*error trying to update cmd-fg screen windows: %v\n", err)
+		msh.WriteToPtyBuffer("*error trying to update cmd-fg screens: %v\n", err)
 		// fall-through (nothing to do)
 	}
 	update.Screens = screens
@@ -1509,7 +1509,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 	var statePtr *sstore.ShellStatePtr
 	if donePk.FinalState != nil && rct != nil {
 		feState := sstore.FeStateFromShellState(donePk.FinalState)
-		remoteInst, err := sstore.UpdateRemoteState(context.Background(), rct.SessionId, rct.WindowId, rct.RemotePtr, *feState, donePk.FinalState, nil)
+		remoteInst, err := sstore.UpdateRemoteState(context.Background(), rct.SessionId, rct.ScreenId, rct.RemotePtr, *feState, donePk.FinalState, nil)
 		if err != nil {
 			msh.WriteToPtyBuffer("*error trying to update remotestate: %v\n", err)
 			// fall-through (nothing to do)
@@ -1524,7 +1524,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 			msh.WriteToPtyBuffer("*error trying to update remotestate: %v\n", err)
 			// fall-through (nothing to do)
 		} else {
-			remoteInst, err := sstore.UpdateRemoteState(context.Background(), rct.SessionId, rct.WindowId, rct.RemotePtr, *feState, nil, donePk.FinalStateDiff)
+			remoteInst, err := sstore.UpdateRemoteState(context.Background(), rct.SessionId, rct.ScreenId, rct.RemotePtr, *feState, nil, donePk.FinalStateDiff)
 			if err != nil {
 				msh.WriteToPtyBuffer("*error trying to update remotestate: %v\n", err)
 				// fall-through (nothing to do)

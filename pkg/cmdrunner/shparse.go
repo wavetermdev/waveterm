@@ -69,8 +69,6 @@ func SubMetaCmd(cmd string) string {
 	switch cmd {
 	case "s":
 		return "screen"
-	case "w":
-		return "window"
 	case "r":
 		return "run"
 	case "c":
@@ -245,7 +243,7 @@ func EvalMetaCommand(ctx context.Context, origPk *scpacket.FeCommandPacketType) 
 	if err != nil {
 		return nil, fmt.Errorf("parsing metacmd, position %v", err)
 	}
-	envMap := make(map[string]string) // later we can add vars like session, window, screen, remote, and user
+	envMap := make(map[string]string) // later we can add vars like session, screen, remote, and user
 	cfg := shexec.GetParserConfig(envMap)
 	// process arguments
 	for idx, w := range words {

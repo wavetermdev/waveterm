@@ -16,53 +16,12 @@ CREATE TABLE session (
     notifynum int NOT NULL,
     archived boolean NOT NULL,
     archivedts bigint NOT NULL,
-    ownerid varchar(36) NOT NULL,
-    sharemode varchar(12) NOT NULL,
-    accesskey varchar(36) NOT NULL
-);
-CREATE TABLE window (
-    sessionid varchar(36) NOT NULL,
-    windowid varchar(36) NOT NULL,
-    curremoteownerid varchar(36) NOT NULL,
-    curremoteid varchar(36) NOT NULL,
-    curremotename varchar(50) NOT NULL,
-    nextlinenum int NOT NULL,
-    winopts json NOT NULL,
-    ownerid varchar(36) NOT NULL,
-    sharemode varchar(12) NOT NULL,
-    shareopts json NOT NULL,
-    PRIMARY KEY (sessionid, windowid)
-);
-CREATE TABLE screen (
-    sessionid varchar(36) NOT NULL,
-    screenid varchar(36) NOT NULL,
-    name varchar(50) NOT NULL,
-    activewindowid varchar(36) NOT NULL,
-    screenidx int NOT NULL,
-    screenopts json NOT NULL,
-    ownerid varchar(36) NOT NULL,
-    sharemode varchar(12) NOT NULL,
-    incognito boolean NOT NULL,
-    archived boolean NOT NULL,
-    archivedts bigint NOT NULL,
-    PRIMARY KEY (sessionid, screenid)
-);
-CREATE TABLE screen_window (
-    sessionid varchar(36) NOT NULL,
-    screenid varchar(36) NOT NULL,
-    windowid varchar(36) NOT NULL,
-    name varchar(50) NOT NULL,
-    layout json NOT NULL,
-    selectedline int NOT NULL,
-    anchor json NOT NULL,
-    focustype varchar(12) NOT NULL,
-    PRIMARY KEY (sessionid, screenid, windowid)
-);
+    sharemode varchar(12) NOT NULL);
 CREATE TABLE remote_instance (
     riid varchar(36) PRIMARY KEY,
     name varchar(50) NOT NULL,
     sessionid varchar(36) NOT NULL,
-    windowid varchar(36) NOT NULL,
+    screenid varchar(36) NOT NULL,
     remoteownerid varchar(36) NOT NULL,
     remoteid varchar(36) NOT NULL,
     festate json NOT NULL,
@@ -84,7 +43,7 @@ CREATE TABLE state_diff (
 );
 CREATE TABLE line (
     sessionid varchar(36) NOT NULL,
-    windowid varchar(36) NOT NULL,
+    screenid varchar(36) NOT NULL,
     userid varchar(36) NOT NULL,
     lineid varchar(36) NOT NULL,
     ts bigint NOT NULL,
@@ -98,7 +57,7 @@ CREATE TABLE line (
     contentheight int NOT NULL,
     star int NOT NULL,
     archived boolean NOT NULL, renderer varchar(50) NOT NULL DEFAULT '', bookmarked boolean NOT NULL DEFAULT 0, pinned boolean NOT NULL DEFAULT 0,
-    PRIMARY KEY (sessionid, windowid, lineid)
+    PRIMARY KEY (sessionid, screenid, lineid)
 );
 CREATE TABLE remote (
     remoteid varchar(36) PRIMARY KEY,
@@ -145,7 +104,6 @@ CREATE TABLE history (
     userid varchar(36) NOT NULL,
     sessionid varchar(36) NOT NULL,
     screenid varchar(36) NOT NULL,
-    windowid varchar(36) NOT NULL,
     lineid int NOT NULL,
     remoteownerid varchar(36) NOT NULL,
     remoteid varchar(36) NOT NULL,
@@ -156,15 +114,6 @@ CREATE TABLE history (
     ismetacmd boolean,
     incognito boolean
 );
-CREATE TABLE activity (
-    day varchar(20) PRIMARY KEY,
-    uploaded boolean NOT NULL,
-    tdata json NOT NULL,
-    tzname varchar(50) NOT NULL,
-    tzoffset int NOT NULL,
-    clientversion varchar(20) NOT NULL,
-    clientarch varchar(20) NOT NULL
-, buildtime varchar(20) NOT NULL DEFAULT '-', osrelease varchar(20) NOT NULL DEFAULT '-');
 CREATE TABLE bookmark (
     bookmarkid varchar(36) PRIMARY KEY,
     createdts bigint NOT NULL,
@@ -184,4 +133,62 @@ CREATE TABLE bookmark_cmd (
     sessionid varchar(36) NOT NULL,
     cmdid varchar(36) NOT NULL,
     PRIMARY KEY (bookmarkid, sessionid, cmdid)
+);
+CREATE TABLE activity (
+    day varchar(20) PRIMARY KEY,
+    uploaded boolean NOT NULL,
+    tdata json NOT NULL,
+    tzname varchar(50) NOT NULL,
+    tzoffset int NOT NULL,
+    clientversion varchar(50) NOT NULL,
+    clientarch varchar(50) NOT NULL
+, buildtime varchar(20) NOT NULL DEFAULT '-', osrelease varchar(20) NOT NULL DEFAULT '-');
+CREATE TABLE playbook (
+    playbookid varchar(36) PRIMARY KEY,
+    playbookname varchar(100) NOT NULL,
+    description text NOT NULL,
+    entryids json NOT NULL
+);
+CREATE TABLE playbook_entry (
+    entryid varchar(36) PRIMARY KEY,
+    playbookid varchar(36) NOT NULL,
+    description text NOT NULL,
+    alias varchar(50) NOT NULL,
+    cmdstr text NOT NULL,
+    createdts bigint NOT NULL,
+    updatedts bigint NOT NULL
+);
+CREATE TABLE cloud_session (
+    sessionid varchar(36) PRIMARY KEY,
+    viewkey varchar(50) NOT NULL,
+    writekey varchar(50) NOT NULL,
+    enckey varchar(100) NOT NULL,
+    enctype varchar(50) NOT NULL,
+    vts bigint NOT NULL,
+    acl json NOT NULL
+);
+CREATE TABLE cloud_update (
+    updateid varchar(36) PRIMARY KEY,
+    ts bigint NOT NULL,
+    updatetype varchar(50) NOT NULL,
+    updatekeys json NOT NULL
+);
+CREATE TABLE IF NOT EXISTS "screen" (
+    sessionid varchar(36) NOT NULL,
+    screenid varchar(36) NOT NULL,
+    name varchar(50) NOT NULL,
+    screenidx int NOT NULL,
+    screenopts json NOT NULL,
+    ownerid varchar(36) NOT NULL,
+    sharemode varchar(12) NOT NULL,
+    curremoteownerid varchar(36) NOT NULL,
+    curremoteid varchar(36) NOT NULL,
+    curremotename varchar(50) NOT NULL,
+    nextlinenum int NOT NULL,
+    selectedline int NOT NULL,
+    anchor json NOT NULL,
+    focustype varchar(12) NOT NULL,
+    archived boolean NOT NULL,
+    archivedts bigint NOT NULL,
+    PRIMARY KEY (sessionid, screenid)
 );

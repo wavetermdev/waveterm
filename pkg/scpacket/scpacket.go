@@ -52,7 +52,6 @@ func (pk *FeCommandPacketType) GetRawStr() string {
 type UIContextType struct {
 	SessionId string                `json:"sessionid"`
 	ScreenId  string                `json:"screenid"`
-	WindowId  string                `json:"windowid"`
 	Remote    *sstore.RemotePtrType `json:"remote,omitempty"`
 	WinSize   *packet.WinSize       `json:"winsize,omitempty"`
 	Build     string                `json:"build,omitempty"`
