@@ -35,7 +35,6 @@ type VisType = "visible" | "";
 
 type InterObsValue = {
     sessionid : string,
-    windowid : string,
     lineid : string,
     cmdid : string,
     visible : mobx.IObservableValue<boolean>,
@@ -253,7 +252,7 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
                 if (!inputModel.isHistoryLoaded()) {
                     if (e.code == "ArrowUp") {
                         this.lastHistoryUpDown = true;
-                        inputModel.loadHistory(false, 1, "window");
+                        inputModel.loadHistory(false, 1, "screen");
                     }
                     return;
                 }
@@ -341,14 +340,14 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
             e.preventDefault();
             let opts = mobx.toJS(inputModel.historyQueryOpts.get());
             let htype = opts.queryType;
-            if (htype == "window") {
+            if (htype == "screen") {
                 htype = "session";
             }
             else if (htype == "session") {
                 htype = "global";
             }
             else {
-                htype = "window";
+                htype = "screen";
             }
             inputModel.setHistoryType(htype);
             return;
@@ -1984,9 +1983,9 @@ class ScreenWindowView extends React.Component<{screen : Screen}, {}> {
 
     getWindow() : Window {
         let {screen} = this.props;
-        let win = GlobalModel.getWindowById(screen.sessionId, screen.windowId);
+        let win = GlobalModel.getWindowById(screen.sessionId, screen.screenId);
         if (win == null) {
-            win = GlobalModel.loadWindow(screen.sessionId, screen.screenId, screen.windowId);
+            win = GlobalModel.loadWindow(screen.sessionId, screen.screenId);
         }
         return win;
     }
@@ -2006,10 +2005,7 @@ class ScreenWindowView extends React.Component<{screen : Screen}, {}> {
     renderError(message : string, fade : boolean) {
         let {screen} = this.props;
         return (
-            <div className="window-view" style={this.getWindowViewStyle()} ref={this.windowViewRef} data-windowid={screen.windowId}>
-                <div key="window-tag" className="window-tag">
-                    <span>{screen.name.get()}</span>
-                </div>
+            <div className="window-view" style={this.getWindowViewStyle()} ref={this.windowViewRef} data-screenid={screen.screenId}>
                 <div key="lines" className="lines"></div>
                 <div key="window-empty" className={cn("window-empty", {"should-fade": fade})}>
                     <div>{message}</div>
@@ -2043,8 +2039,7 @@ class ScreenWindowView extends React.Component<{screen : Screen}, {}> {
         let renderMode = this.renderMode.get();
         return (
             <div className="window-view" style={this.getWindowViewStyle()} ref={this.windowViewRef}>
-                <div key="window-tag" className={cn("window-tag", {"is-active": isActive})}>
-                    <div className="window-name">{screen.name.get()}</div>
+                <div key="rendermode-tag" className={cn("rendermode-tag", {"is-active": isActive})}>
                     <div className="render-mode" onClick={this.toggleRenderMode}>
                         <If condition={renderMode == "normal"}>
                             <i title="collapse" className="fa-sharp fa-solid fa-arrows-to-line"/>
@@ -2059,7 +2054,7 @@ class ScreenWindowView extends React.Component<{screen : Screen}, {}> {
                 </If>
                 <If condition={lines.length == 0}>
                     <div key="window-empty" className="window-empty">
-                        <div><code>[session="{session.name.get()}" screen="{screen.name.get()}" window="{screen.name.get()}"]</code></div>
+                        <div><code>[session="{session.name.get()}" screen="{screen.name.get()}"]</code></div>
                     </div>
                 </If>
             </div>

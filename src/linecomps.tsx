@@ -28,7 +28,7 @@ function isBlank(s : string) : boolean {
 }
 
 function getLineId(line : LineType) : string {
-    return sprintf("%s-%s-%s", line.sessionid, line.windowid, line.lineid);
+    return sprintf("%s-%s-%s", line.sessionid, line.screenid, line.lineid);
 }
 
 function makeFullRemoteRef(ownerName : string, remoteRef : string, name : string) : string {
@@ -400,7 +400,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
             }
         }
         return (
-            <div className={mainDivCn} id={this.getLineDomId()} ref={this.lineRef} data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} style={{height: height}}>
+            <div className={mainDivCn} id={this.getLineDomId()} ref={this.lineRef} data-lineid={line.lineid} data-linenum={line.linenum} data-screenid={line.screenid} style={{height: height}}>
                 <LineAvatar line={line} cmd={cmd}/>
             </div>
         );
@@ -438,7 +438,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         let cmd = screen.getCmd(line);
         if (cmd == null) {
             return (
-                <div className="line line-invalid" id={this.getLineDomId()} ref={this.lineRef} data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid}>
+                <div className="line line-invalid" id={this.getLineDomId()} ref={this.lineRef} data-lineid={line.lineid} data-linenum={line.linenum} data-screenid={line.screenid}>
                     [cmd not found '{line.cmdid}']
                 </div>
             );
@@ -477,7 +477,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         return (
             <div className={mainDivCn} id={"line-" + getLineId(line)}
                  ref={this.lineRef} onClick={this.handleClick}
-                 data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} data-cmdid={line.cmdid}>
+                 data-lineid={line.lineid} data-linenum={line.linenum} data-screenid={line.screenid} data-cmdid={line.cmdid}>
                 <div key="focus" className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused}, {"fg-focus": isFgFocused})}/>
                 <div key="header" className={cn("line-header", {"is-expanded": isExpanded}, {"is-collapsed": isCollapsed})}>
                     <LineAvatar line={line} cmd={cmd}/>
@@ -598,7 +598,7 @@ class LineText extends React.Component<{screen : LineContainerModel, line : Line
             {"collapsed": isCollapsed},
         );
         return (
-            <div className={mainClass} data-lineid={line.lineid} data-linenum={line.linenum} data-windowid={line.windowid} onClick={this.clickHandler}>
+            <div className={mainClass} data-lineid={line.lineid} data-linenum={line.linenum} data-screenid={line.screenid} onClick={this.clickHandler}>
                 <div className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused})}/>
                 <LineAvatar line={line} cmd={null}/>
                 <div className="line-content">

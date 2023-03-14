@@ -2,6 +2,7 @@ import * as mobx from "mobx";
 
 type ShareModeType = "local" | "private" | "view" | "shared";
 type FocusTypeStrs = "input"|"cmd"|"cmd-fg";
+type HistoryTypeStrs = "global" | "session" | "screen";
 
 type SessionDataType = {
     sessionid : string,
@@ -20,7 +21,7 @@ type SessionDataType = {
 
 type LineType = {
     sessionid : string,
-    windowid : string,
+    screenid : string,
     userid : string,
     lineid : string,
     ts : number,
@@ -48,7 +49,6 @@ type ScreenOptsType = {
 type ScreenDataType = {
     sessionid : string,
     screenid : string,
-    windowid : string,
     screenidx : number,
     name : string,
     archived? : boolean,
@@ -102,7 +102,7 @@ type RemoteInstanceType = {
     riid : string,
     name : string,
     sessionid : string,
-    windowid : string,
+    screenid : string,
     remoteownerid : string,
     remoteid : string,
     festate : FeStateType,
@@ -126,7 +126,6 @@ type HistoryItem = {
     userid : string,
     sessionid : string,
     screenid : string,
-    windowid : string,
     lineid : string,
     haderror : boolean,
     cmdid : string,
@@ -146,7 +145,6 @@ type CmdRemoteStateType = {
 type UIContextType = {
     sessionid : string,
     screenid : string,
-    windowid : string,
     remote : RemotePtrType,
     winsize : TermWinSize,
     linenum : number,
@@ -242,7 +240,6 @@ type PtyDataUpdateType = {
 type ScreenLinesType = {
     sessionid : string,
     screenid : string,
-    windowid : string,
     lines : LineType[],
     cmds : CmdDataType[],
 };
@@ -290,9 +287,9 @@ type BookmarkType = {
 };
 
 type HistoryInfoType = {
-    historytype : "global" | "session" | "window",
+    historytype : HistoryTypeStrs,
     sessionid : string,
-    windowid : string,
+    screenid : string,
     items : HistoryItem[],
     show : boolean,
 };
@@ -325,7 +322,7 @@ type InfoType = {
 };
 
 type HistoryQueryOpts = {
-    queryType : "global" | "session" | "window";
+    queryType : "global" | "session" | "screen";
     limitRemote : boolean,
     limitRemoteInstance : boolean,
     limitUser : boolean,
@@ -344,7 +341,6 @@ type UpdateMessage = PtyDataUpdateType | ModelUpdateType;
 type RendererContext = {
     sessionId : string,
     screenId : string,
-    windowId : string,
     cmdId : string,
     lineId : string,
     lineNum : number,
@@ -419,4 +415,4 @@ type HistorySearchParams = {
 
 type RenderModeType = "normal" | "collapsed";
 
-export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDataType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType, UIContextType, HistoryInfoType, HistoryQueryOpts, WatchScreenPacketType, TermWinSize, FeInputPacketType, RemoteInputPacketType, RemoteEditType, FeStateType, ContextMenuOpts, RendererContext, WindowSize, RendererModel, PtyDataType, BookmarkType, ClientDataType, PlaybookType, PlaybookEntryType, HistoryViewDataType, RenderModeType, AlertMessageType, HistorySearchParams, ScreenLinesType, FocusTypeStrs};
+export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDataType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType, UIContextType, HistoryInfoType, HistoryQueryOpts, WatchScreenPacketType, TermWinSize, FeInputPacketType, RemoteInputPacketType, RemoteEditType, FeStateType, ContextMenuOpts, RendererContext, WindowSize, RendererModel, PtyDataType, BookmarkType, ClientDataType, PlaybookType, PlaybookEntryType, HistoryViewDataType, RenderModeType, AlertMessageType, HistorySearchParams, ScreenLinesType, FocusTypeStrs, HistoryTypeStrs};

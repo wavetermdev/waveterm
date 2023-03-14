@@ -5,7 +5,7 @@ import {debounce} from "throttle-debounce";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData, boundInt, isModKeyPress} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType, HistoryViewDataType, AlertMessageType, HistorySearchParams, FocusTypeStrs, ScreenLinesType} from "./types";
+import type {SessionDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType, HistoryViewDataType, AlertMessageType, HistorySearchParams, FocusTypeStrs, ScreenLinesType, HistoryTypeStrs} from "./types";
 import {WSControl} from "./ws";
 import {ImageRendererModel} from "./imagerenderer";
 import {measureText, getMonoFontSize} from "./textmeasure";
@@ -155,7 +155,7 @@ function getApi() : ElectronApi {
 }
 
 function getLineId(line : LineType) : string {
-    return sprintf("%s-%s-%s", line.sessionid, line.windowid, line.lineid);
+    return sprintf("%s-%s-%s", line.sessionid, line.screenid, line.lineid);
 }
 
 // clean empty string
@@ -272,7 +272,6 @@ class Cmd {
 class Screen {
     sessionId : string;
     screenId : string;
-    windowId : string;
     screenIdx : OV<number>;
     opts : OV<ScreenOptsType>;
     name : OV<string>;
@@ -291,7 +290,6 @@ class Screen {
     constructor(sdata : ScreenDataType) {
         this.sessionId = sdata.sessionid;
         this.screenId = sdata.screenid;
-        this.windowId = sdata.windowid;
         this.name = mobx.observable.box(sdata.name, {name: "screen-name"});
         this.screenIdx = mobx.observable.box(sdata.screenidx, {name: "screen-screenidx"});
         this.opts = mobx.observable.box(sdata.screenopts, {name: "screen-opts"});
@@ -338,10 +336,6 @@ class Screen {
         return sprintf("%d:%d", this.anchorLine, this.anchorOffset);
     }
 
-    getWindowId() : string {
-        return this.windowId;
-    }
-
     getTabColor() : string {
         let tabColor = "green";
         let screenOpts = this.opts.get();
@@ -357,7 +351,7 @@ class Screen {
         if (rptr == null) {
             return null;
         }
-        return session.getRemoteInstance(this.windowId, rptr);
+        return session.getRemoteInstance(this.screenId, rptr);
     }
 
     setAnchorFields(anchorLine : number, anchorOffset : number, reason : string) {
@@ -396,7 +390,7 @@ class Screen {
 
     setAnchor(anchorLine : number, anchorOffset : number) : void {
         let setVal = ((anchorLine == null || anchorLine == 0) ? "0" : sprintf("%d:%d", anchorLine, anchorOffset));
-        GlobalCommandRunner.screenSetAnchor(this.sessionId, this.screenId, this.windowId, setVal);
+        GlobalCommandRunner.screenSetAnchor(this.sessionId, this.screenId, setVal);
     }
 
     getMaxLineNum() : number {
@@ -514,7 +508,7 @@ class Screen {
         for (let cmdid in this.renderers) {
             this.renderers[cmdid].resizeCols(cols);
         }
-        GlobalCommandRunner.resizeWindow(this.windowId, rows, cols);
+        GlobalCommandRunner.resizeScreen(this.screenId, rows, cols);
     }
 
     getRenderer(cmdId : string) : RendererModel {
@@ -578,7 +572,7 @@ class Screen {
 
     loadImageRenderer(imageDivElem : any, line : LineType, cmd : Cmd) : ImageRendererModel {
         let cmdId = cmd.cmdId;
-        let context = {sessionId: this.sessionId, screenId: this.screenId, windowId: this.windowId, cmdId: cmdId, lineId : line.lineid, lineNum: line.linenum};
+        let context = {sessionId: this.sessionId, screenId: this.screenId, cmdId: cmdId, lineId : line.lineid, lineNum: line.linenum};
         let imageModel = new ImageRendererModel(imageDivElem, context, cmd.getTermOpts(), !cmd.isRunning(), GlobalModel.termFontSize.get());
         this.renderers[cmdId] = imageModel;
         return imageModel;
@@ -588,7 +582,7 @@ class Screen {
         let cmdId = cmd.cmdId;
         let termWrap = this.getRenderer(cmdId);
         if (termWrap != null) {
-            console.log("term-wrap already exists for", this.screenId, this.windowId, cmdId);
+            console.log("term-wrap already exists for", this.screenId, cmdId);
             return;
         }
         let cols = windowWidthToCols(width, GlobalModel.termFontSize.get());
@@ -596,7 +590,7 @@ class Screen {
         if (line.contentheight != null && line.contentheight != -1) {
             usedRows = line.contentheight;
         }
-        let termContext = {sessionId: this.sessionId, screenId: this.screenId, windowId: this.windowId, cmdId: cmdId, lineId : line.lineid, lineNum: line.linenum};
+        let termContext = {sessionId: this.sessionId, screenId: this.screenId, cmdId: cmdId, lineId : line.lineid, lineNum: line.linenum};
         termWrap = new TermWrap(elem, {
             termContext: termContext,
             usedRows: usedRows,
@@ -655,7 +649,7 @@ class Screen {
     }
 
     getWindow() : Window {
-        return GlobalModel.getWindowById(this.sessionId, this.windowId);
+        return GlobalModel.getWindowById(this.sessionId, this.screenId);
     }
 
     getFocusType() : FocusTypeStrs {
@@ -689,16 +683,14 @@ class Screen {
 class Window {
     sessionId : string;
     screenId : string;
-    windowId : string;
     loaded : OV<boolean> = mobx.observable.box(false, {name: "window-loaded"});
     loadError : OV<string> = mobx.observable.box(null);
     lines : OArr<LineType> = mobx.observable.array([], {name: "window-lines", deep: false});
     cmds : Record<string, Cmd> = {};
 
-    constructor(sessionId : string, screenId : string, windowId : string) {
+    constructor(sessionId : string, screenId : string) {
         this.sessionId = sessionId;
         this.screenId = screenId;
-        this.windowId = windowId;
     }
 
     getNonArchivedLines() : LineType[] {
@@ -891,19 +883,19 @@ class Session {
         return GlobalModel.getScreenById(this.sessionId, screenId);
     }
 
-    getRemoteInstance(windowId : string, rptr : RemotePtrType) : RemoteInstanceType {
+    getRemoteInstance(screenId : string, rptr : RemotePtrType) : RemoteInstanceType {
         if (rptr.name.startsWith("*")) {
-            windowId = "";
+            screenId = "";
         }
         for (let i=0; i<this.remoteInstances.length; i++) {
             let rdata = this.remoteInstances[i];
-            if (rdata.windowid == windowId && rdata.remoteid == rptr.remoteid && rdata.remoteownerid == rptr.ownerid && rdata.name == rptr.name) {
+            if (rdata.screenid == screenId && rdata.remoteid == rptr.remoteid && rdata.remoteownerid == rptr.ownerid && rdata.name == rptr.name) {
                 return rdata;
             }
         }
         let remote = GlobalModel.getRemote(rptr.remoteid);
         if (remote != null) {
-            return {riid: "", sessionid: this.sessionId, windowid: windowId,
+            return {riid: "", sessionid: this.sessionId, screenid: screenId,
                     remoteownerid: rptr.ownerid, remoteid: rptr.remoteid, name: rptr.name, festate: remote.defaultfestate};
         }
         return null;
@@ -912,7 +904,7 @@ class Session {
 
 function getDefaultHistoryQueryOpts() : HistoryQueryOpts {
     return {
-        queryType: "window",
+        queryType: "screen",
         limitRemote: true,
         limitRemoteInstance: true,
         limitUser: true,
@@ -928,7 +920,7 @@ class InputModel {
     infoShow : OV<boolean> = mobx.observable.box(false);
     cmdInputHeight : OV<number> = mobx.observable.box(0);
 
-    historyType : mobx.IObservableValue<string> = mobx.observable.box("window");
+    historyType : mobx.IObservableValue<HistoryTypeStrs> = mobx.observable.box("screen");
     historyLoading : mobx.IObservableValue<boolean> = mobx.observable.box(false);
     historyAfterLoadIndex : number = 0;
     historyItems : mobx.IObservableValue<HistoryItem[]> = mobx.observable.box(null, {name: "history-items", deep: false}); // sorted in reverse (most recent is index 0)
@@ -1072,7 +1064,7 @@ class InputModel {
         return false;
     }
 
-    setHistoryType(htype : string) : void {
+    setHistoryType(htype : HistoryTypeStrs) : void {
         if (this.historyQueryOpts.get().queryType == htype) {
             return;
         }
@@ -1133,7 +1125,7 @@ class InputModel {
         return (hitems != null);
     }
 
-    loadHistory(show : boolean, afterLoadIndex : number, htype : string) {
+    loadHistory(show : boolean, afterLoadIndex : number, htype : HistoryTypeStrs) {
         if (this.historyLoading.get()) {
             return;
         }
@@ -1154,7 +1146,7 @@ class InputModel {
             return;
         }
         if (!this.isHistoryLoaded()) {
-            this.loadHistory(true, 0, "window");
+            this.loadHistory(true, 0, "screen");
             return;
         }
         if (!this.historyShow.get()) {
@@ -1590,7 +1582,7 @@ class InputModel {
         mobx.action(() => {
             this.setHistoryShow(false);
             this.historyLoading.set(false);
-            this.historyType.set("window");
+            this.historyType.set("screen");
             this.historyItems.set(null);
             this.historyIndex.set(0);
             this.historyQueryOpts.set(getDefaultHistoryQueryOpts());
@@ -1604,7 +1596,7 @@ type LineFocusType = {
     cmdInputFocus : boolean,
     lineid? : string,
     linenum? : number,
-    windowid? : string,
+    screenid? : string,
     cmdid? : string,
 };
 
@@ -1629,7 +1621,7 @@ class SpecialHistoryViewLineContainer {
         let cmdId = cmd.cmdId;
         let termWrap = this.getRenderer(cmdId);
         if (termWrap != null) {
-            console.log("term-wrap already exists for", line.windowid, cmdId);
+            console.log("term-wrap already exists for", line.screenid, cmdId);
             return;
         }
         let cols = windowWidthToCols(width, GlobalModel.termFontSize.get());
@@ -1637,7 +1629,7 @@ class SpecialHistoryViewLineContainer {
         if (line.contentheight != null && line.contentheight != -1) {
             usedRows = line.contentheight;
         }
-        let termContext = {sessionId: line.sessionid, screenId: "(historyview)", windowId: line.windowid, cmdId: cmdId, lineId : line.lineid, lineNum: line.linenum};
+        let termContext = {sessionId: line.sessionid, screenId: line.screenid, cmdId: cmdId, lineId : line.lineid, lineNum: line.linenum};
         termWrap = new TermWrap(elem, {
             termContext: termContext,
             usedRows: usedRows,
@@ -1660,7 +1652,6 @@ class SpecialHistoryViewLineContainer {
         let context = {
             sessionId: this.historyItem.sessionid,
             screenId: this.historyItem.screenid,
-            windowId: this.historyItem.windowid,
             cmdId: cmdId,
             lineId : line.lineid,
             lineNum: line.linenum
@@ -1813,7 +1804,7 @@ class HistoryViewModel {
             setTimeout(this.clearActiveDelete, 2000);
             return;
         }
-        let prtn = GlobalModel.showAlert({message: "Deleting these lines from history will also delete their content from your sessions as well.", confirm: true});
+        let prtn = GlobalModel.showAlert({message: "Deleting lines from history also deletes their content from your sessions.", confirm: true});
         prtn.then((result) => {
             if (!result) {
                 return;
@@ -2242,7 +2233,7 @@ class Model {
     ws : WSControl;
     remotes : OArr<RemoteType> = mobx.observable.array([], {name: "remotes", deep: false});
     remotesLoaded : OV<boolean> = mobx.observable.box(false, {name: "remotesLoaded"});
-    windows : OMap<string, Window> = mobx.observable.map({}, {name: "windows", deep: false});  // key = "sessionid/windowid" (screenlines)
+    windows : OMap<string, Window> = mobx.observable.map({}, {name: "windows", deep: false});  // key = "sessionid/screenid" (screenlines)
     termUsedRowsCache : Record<string, number> = {};
     debugCmds : number = 0;
     debugScreen : OV<boolean> = mobx.observable.box(false);
@@ -2448,7 +2439,6 @@ class Model {
         let rtn : UIContextType = {
             sessionid : null,
             screenid : null,
-            windowid : null,
             remote : null,
             winsize: null,
             linenum: null,
@@ -2460,7 +2450,6 @@ class Model {
             let screen = session.getActiveScreen();
             if (screen != null) {
                 rtn.screenid = screen.screenId;
-                rtn.windowid = screen.windowId;
                 rtn.remote = screen.curRemote.get();
                 rtn.winsize = {rows: screen.lastRows, cols: screen.lastCols};
                 rtn.linenum = screen.selectedLine.get();
@@ -2501,7 +2490,7 @@ class Model {
             cmdInputFocus: false,
             lineid: lineElem.dataset.lineid,
             linenum: (isNaN(lineNum) ? null : lineNum),
-            windowid: lineElem.dataset.windowid,
+            screenid: lineElem.dataset.screenid,
             cmdid: lineElem.dataset.cmdid,
         };
     }
@@ -2561,8 +2550,7 @@ class Model {
             this.runUpdate_internal(genUpdate, oldContext, interactive);
             let newContext = this.getUIContext()
             if (oldContext.sessionid != newContext.sessionid
-                || oldContext.screenid != newContext.screenid
-                || oldContext.windowid != newContext.windowid) {
+                || oldContext.screenid != newContext.screenid) {
                 this.inputModel.resetInput();
             }
             else if (remotePtrToString(oldContext.remote) != remotePtrToString(newContext.remote)) {
@@ -2672,7 +2660,7 @@ class Model {
             this.inputModel.updateCmdLine(update.cmdline);
         }
         if (interactive && "history" in update) {
-            if (uiContext.sessionid == update.history.sessionid && uiContext.windowid == update.history.windowid) {
+            if (uiContext.sessionid == update.history.sessionid && uiContext.screenid == update.history.screenid) {
                 this.inputModel.setHistoryInfo(update.history);
             }
         }
@@ -2727,20 +2715,20 @@ class Model {
         })();
     }
 
-    getWindowById(sessionId : string, windowId : string) : Window {
-        return this.windows.get(sessionId + "/" + windowId);
+    getWindowById(sessionId : string, screenId : string) : Window {
+        return this.windows.get(sessionId + "/" + screenId);
     }
 
     updateScreenLines(slines : ScreenLinesType, load : boolean) {
         mobx.action(() => {
-            let winKey = slines.sessionid + "/" + slines.windowid;
+            let winKey = slines.sessionid + "/" + slines.screenid;
             let existingWin = this.windows.get(winKey);
             if (existingWin == null) {
                 if (!load) {
                     console.log("cannot update window that does not exist", winKey);
                     return;
                 }
-                let newWindow = new Window(slines.sessionid, slines.screenid, slines.windowid);
+                let newWindow = new Window(slines.sessionid, slines.screenid);
                 this.windows.set(winKey, newWindow);
                 newWindow.updateWindow(slines, load);
                 return;
@@ -2790,7 +2778,7 @@ class Model {
         if (screen == null) {
             return null;
         }
-        return this.windows.get(screen.sessionId + "/" + screen.windowId);
+        return this.windows.get(screen.sessionId + "/" + screen.screenId);
     }
 
     getActiveScreen() : Screen {
@@ -2802,7 +2790,7 @@ class Model {
     }
 
     addLineCmd(line : LineType, cmd : CmdDataType, interactive : boolean) {
-        let win = this.getWindowById(line.sessionid, line.windowid);
+        let win = this.getWindowById(line.sessionid, line.screenid);
         if (win == null) {
             return;
         }
@@ -2934,7 +2922,7 @@ class Model {
     }
 
     _loadWindowAsync(newWin : Window) {
-        this.windows.set(newWin.sessionId + "/" + newWin.windowId, newWin);
+        this.windows.set(newWin.sessionId + "/" + newWin.screenId, newWin);
         let usp = new URLSearchParams({screenid: newWin.screenId});
         let url = new URL(GlobalModel.getBaseHostPort() + "/api/get-screen-lines?" + usp.toString());
         let fetchHeaders = GlobalModel.getFetchHeaders();
@@ -2947,12 +2935,12 @@ class Model {
             this.updateScreenLines(slines, true);
             return;
         }).catch((err) => {
-            this.errorHandler(sprintf("getting window=%s", newWin.windowId), err, false);
+            this.errorHandler(sprintf("getting window=%s", newWin.screenId), err, false);
         });
     }
 
-    loadWindow(sessionId : string, screenId : string, windowId : string) : Window {
-        let newWin = new Window(sessionId, screenId, windowId);
+    loadWindow(sessionId : string, screenId : string) : Window {
+        let newWin = new Window(sessionId, screenId);
         setTimeout(() => this._loadWindowAsync(newWin), 0);
         return newWin;
     }
@@ -2994,7 +2982,7 @@ class Model {
         if (session == null) {
             return null;
         }
-        let window = this.getWindowById(line.sessionid, line.windowid);
+        let window = this.getWindowById(line.sessionid, line.screenid);
         if (window == null) {
             return null;
         }
@@ -3132,8 +3120,8 @@ class CommandRunner {
         GlobalModel.submitCommand("screen", "close", [screen], {"nohist": "1"}, false);
     }
 
-    resizeWindow(windowId : string, rows : number, cols : number) {
-        GlobalModel.submitCommand("screen", "resize", null, {"nohist": "1", "window": windowId, "cols": String(cols), "rows": String(rows)}, false);
+    resizeScreen(screenId : string, rows : number, cols : number) {
+        GlobalModel.submitCommand("screen", "resize", null, {"nohist": "1", "screen": screenId, "cols": String(cols), "rows": String(rows)}, false);
     }
 
     showRemote(remoteid : string) {
@@ -3200,19 +3188,17 @@ class CommandRunner {
         let kwargs : Record<string, string> = {};
         kwargs["session"] = termContext.sessionId;
         kwargs["screen"] = termContext.screenId;
-        kwargs["window"] = termContext.windowId;
         kwargs["hohist"] = "1";
         let posargs = [String(termContext.lineNum), String(height)];
         GlobalModel.submitCommand("line", "setheight", posargs, kwargs, false);
     }
 
-    screenSetAnchor(sessionId : string, screenId : string, windowId : string, anchorVal : string) : void {
+    screenSetAnchor(sessionId : string, screenId : string, anchorVal : string) : void {
         let kwargs = {
             "nohist": "1",
             "anchor": anchorVal,
             "session": sessionId,
             "screen": screenId,
-            "window": windowId,
         };
         GlobalModel.submitCommand("screen", "set", null, kwargs, false);
     }
