@@ -27,6 +27,7 @@ const PasswordUnchangedSentinel = "--unchanged--";
 const LinesVisiblePadding = 500;
 
 const RemoteColors = ["red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"];
+const TabColors = ["red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange", "black"];
 
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
@@ -2628,6 +2629,21 @@ class AlertModal extends React.Component<{}, {}> {
 
 @mobxReact.observer
 class ScreenSettingsModal extends React.Component<{sessionId : string, screenId : string}, {}> {
+    tempName : OV<string>;
+    tempTabColor : OV<string>;
+    tabColorDropdownOpen : OV<boolean> = mobx.observable.box(false, {name: "tabColorDropdownOpen"});
+
+    constructor(props : any) {
+        super(props);
+        let {sessionId, screenId} = props;
+        let screen = GlobalModel.getScreenById(sessionId, screenId);
+        if (screen == null) {
+            return;
+        }
+        this.tempName = mobx.observable.box(screen.name.get(), {name: "screenSettings-tempName"});
+        this.tempTabColor = mobx.observable.box(screen.getTabColor(), {name: "screenSettings-tempTabColor"});
+    }
+    
     @boundMethod
     closeModal() : void {
         mobx.action(() => {
@@ -2639,21 +2655,35 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
     handleOK() : void {
         mobx.action(() => {
             GlobalModel.screenSettingsModal.set(null);
+            GlobalCommandRunner.screenSetSettings({
+                "tabcolor": this.tempTabColor.get(),
+                "name": this.tempName.get(),
+            });
         })();
         console.log("ok");
     }
-    
+
+    @boundMethod
+    handleChangeName(e : any) : void {
+        mobx.action(() => {
+            this.tempName.set(e.target.value);
+        })();
+    }
+
+    @boundMethod
+    selectTabColor(color : string) : void {
+        mobx.action(() => {
+            this.tempTabColor.set(color);
+        })();
+    }
+
     render() {
         let {sessionId, screenId} = this.props;
         let screen = GlobalModel.getScreenById(sessionId, screenId);
         if (screen == null) {
             return null;
         }
-        let opts = screen.opts.get();
-        let tabColor = "default";
-        if (opts != null && !isBlank(opts.tabcolor)) {
-            tabColor = opts.tabcolor;
-        }
+        let color : string = null;
         return (
             <div className={cn("modal screen-settings-modal prompt-modal is-active")}>
                 <div className="modal-background"/>
@@ -2665,23 +2695,36 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
                         </div>
                     </header>
                     <div className="inner-content">
-                        <div>
-                            sessionid - {screen.sessionId}
+                        <div className="settings-field">
+                            <div className="settings-label">
+                                Name
+                            </div>
+                            <div className="settings-input">
+                                <input type="text" placeholder="Tab Name" onChange={this.handleChangeName} value={this.tempName.get()} maxlength="50"/>
+                            </div>
                         </div>
-                        <div>
-                            screenid - {screen.screenId}
-                        </div>
-                        <div>
-                            name - {screen.name.get()}
-                        </div>
-                        <div>
-                            tabcolor - {tabColor}
-                        </div>
-                        <div>
-                            archived - {screen.archived.get() ? "true" : "false"}
-                        </div>
-                        <div>
-                            index - {screen.screenIdx.get()}
+                        <div className="settings-field">
+                            <div className="settings-label">
+                                Tab Color
+                            </div>
+                            <div className="settings-input">
+                                <div className="tab-colors">
+                                    <div className="tab-color-cur">
+                                        <span className={cn("icon tab-color-icon", "color-" + this.tempTabColor.get())}>
+                                            <i className="fa-sharp fa-solid fa-square"/>
+                                        </span>
+                                        <span>{this.tempTabColor.get()}</span>
+                                    </div>
+                                    <div className="tab-color-sep">|</div>
+                                    <For each="color" of={TabColors}>
+                                        <div key={color} className="tab-color-select" onClick={() => this.selectTabColor(color)}>
+                                            <span className={cn("tab-color-icon", "color-" + color)}>
+                                                <i className="fa-sharp fa-solid fa-square"/>
+                                            </span>
+                                        </div>
+                                    </For>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <footer>
@@ -2842,7 +2885,7 @@ class Main extends React.Component<{}, {}> {
                     <WelcomeModal/>
                 </If>
                 <If condition={ssm != null}>
-                    <ScreenSettingsModal sessionId={ssm.sessionId} screenId={ssm.screenId}/>
+                    <ScreenSettingsModal key={ssm.sessionId + ":" + ssm.screenId} sessionId={ssm.sessionId} screenId={ssm.screenId}/>
                 </If>
             </div>
         );

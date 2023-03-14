@@ -2771,3 +2771,78 @@ input[type=checkbox] {
     }
 }
 
+.settings-field {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+
+    .settings-label {
+        font-weight: bold;
+        color: #fff;
+        width: 120px;
+    }
+
+    .settings-input {
+        input {
+            padding: 4px;
+            border-radius: 3px;
+        }
+        .tab-color-icon.color-green {
+            color: desaturate(@tab-green, 30%);
+        }
+        .tab-color-icon.color-orange {
+            color: desaturate(@tab-orange, 30%);
+        }
+        .tab-color-icon.color-red {
+            color: desaturate(@tab-red, 20%);
+        }
+        .tab-color-icon.color-yellow {
+            color: desaturate(@tab-yellow, 30%);
+        }
+        .tab-color-icon.color-blue {
+            color: desaturate(@tab-blue, 20%);
+        }
+        .tab-color-icon.color-magenta {
+            color: desaturate(@tab-magenta, 20%);
+        }
+        .tab-color-icon.color-cyan {
+            color: desaturate(@tab-cyan, 20%);
+        }
+        .tab-color-icon.color-white {
+            color: @term-white;
+        }
+        .tab-color-icon.color-black {
+            color: lighten(@tab-black, 20%);
+        }
+
+        .tab-colors {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+
+            .tab-color-sep {
+                padding-left: 10px;
+                padding-right: 10px;
+                font-weight: bold;
+            }
+
+            .tab-color-cur {
+                font-size: 12px;
+                width: 100px;
+            }
+
+            .tab-color-select {
+                cursor: pointer;
+                margin: 5px;
+                line-height: 1;
+                &:hover {
+                    outline: 2px solid white;
+                }
+            }
+        }
+    }
+
+    &:not(:first-child) {
+        margin-top: 10px;
+    }
+}

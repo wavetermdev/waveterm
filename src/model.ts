@@ -3218,6 +3218,12 @@ class CommandRunner {
         GlobalModel.submitCommand("screen", "set", null, {"focus": focusVal, "nohist": "1"}, false);
     }
 
+    screenSetSettings(settings : {tabcolor? : string, name? : string}) : void {
+        let kwargs = Object.assign({}, settings);
+        kwargs["nohist"] = "1";
+        GlobalModel.submitCommand("screen", "set", null, kwargs, true);
+    }
+
     lineStar(lineId : string, starVal : number) {
         GlobalModel.submitCommand("line", "star", [lineId, String(starVal)], {"nohist": "1"}, true);
     }
