@@ -43,6 +43,10 @@ type InterObsValue = {
     timeoutid? : any,
 };
 
+function renderCmdText(text : string) : any {
+    return <span>&#x2318;{text}</span>;
+}
+
 function isBlank(s : string) : boolean {
     return (s == null || s == "");
 }
@@ -1510,8 +1514,8 @@ class CmdInput extends React.Component<{}, {}> {
                             </span>
                         </div>
                     </div>
-                    <div className="cmd-input-hints">
-                        <If condition={!focusVal}><div onClick={this.clickFocusInputHint} className="hint-item color-white">focus input (&#x2318;I)</div></If>
+                    <div className="cmd-hints">
+                        <If condition={!focusVal}><div onClick={this.clickFocusInputHint} className="hint-item color-white">focus input ({renderCmdText("I")})</div></If>
                         <If condition={focusVal}><div onClick={this.clickHistoryHint} className="hint-item color-green"><i className={cn("fa-sharp fa-solid", (historyShow ? "fa-angle-down" : "fa-angle-up"))}/> {historyShow ? "close history (esc)" : "show history (ctrl-r)"}</div></If>
                     </div>
                 </div>
@@ -2119,11 +2123,6 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
         GlobalCommandRunner.switchScreen(screenId);
     }
 
-    handleContextMenu(e : any, screenId : string) : void {
-        e.preventDefault();
-        console.log("handle context menu!", screenId);
-    }
-
     componentDidMount() : void {
         this.componentDidUpdate();
     }
@@ -2156,6 +2155,14 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
         this.stopScrolling_debounced();
     }
 
+    @boundMethod
+    openScreenSettings(e : any, screen : Screen) : void {
+        e.preventDefault();
+        mobx.action(() => {
+            GlobalModel.screenSettingsModal.set({sessionId: screen.sessionId, screenId: screen.screenId});
+        })();
+    }
+
     render() {
         let {session} = this.props;
         if (session == null) {
@@ -2172,17 +2179,29 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
             }
         }
         return (
-            <div className={cn("screen-tabs", {"scrolling": this.scrolling.get()})} ref={this.tabsRef} onScroll={this.handleScroll}>
-                <For each="screen" index="index" of={showingScreens}>
-                    <div key={screen.screenId} data-screenid={screen.screenId} className={cn("screen-tab", {"is-active": activeScreenId == screen.screenId, "is-archived": screen.archived.get()}, "color-" + screen.getTabColor())} onClick={() => this.handleSwitchScreen(screen.screenId)} onContextMenu={(event) => this.handleContextMenu(event, screen.screenId)}>
-                        <If condition={screen.archived.get()}><i title="archived" className="fa-sharp fa-solid fa-box-archive"/></If>{screen.name.get()}
-                        <If condition={index+1 <= 9}>
-                            <div className="tab-index">&#x2318;{index+1}</div>
-                        </If>
+            <div className="screen-tabs-container">
+                <div className={cn("screen-tabs", {"scrolling": this.scrolling.get()})} ref={this.tabsRef} onScroll={this.handleScroll}>
+                    <For each="screen" index="index" of={showingScreens}>
+                        <div key={screen.screenId} data-screenid={screen.screenId} className={cn("screen-tab", {"is-active": activeScreenId == screen.screenId, "is-archived": screen.archived.get()}, "color-" + screen.getTabColor())} onClick={() => this.handleSwitchScreen(screen.screenId)} onContextMenu={(event) => this.openScreenSettings(event, screen)}>
+                            <If condition={screen.archived.get()}><i title="archived" className="fa-sharp fa-solid fa-box-archive"/></If>{screen.name.get()}
+                            <If condition={index+1 <= 9}>
+                                <div className="tab-index">{renderCmdText(String(index+1))}</div>
+                                <div onClick={(e) => this.openScreenSettings(e, screen)} title="Settings" className="tab-gear"><i className="fa-sharp fa-solid fa-gear"/></div>
+                            </If>
+                            <If condition={index+1 > 9}>
+                                <div onClick={(e) => this.openScreenSettings(e, screen)} title="Settings" className="tab-gear"><i className="fa-sharp fa-solid fa-gear"/></div>
+                            </If>
+                        </div>
+                    </For>
+                    <div key="new-screen" className="screen-tab new-screen" onClick={this.handleNewScreen}>
+                        <i className="fa-sharp fa-solid fa-plus"/>
                     </div>
-                </For>
-                <div key="new-screen" className="screen-tab new-screen" onClick={this.handleNewScreen}>
-                    <i className="fa-sharp fa-solid fa-plus"/> <div className="tab-index">&#x2318;T</div>
+                    
+                </div>
+                <div className="cmd-hints">
+                    <div className="hint-item color-green">move left {renderCmdText("[")}</div>
+                    <div className="hint-item color-green">move right {renderCmdText("]")}</div>
+                    <div className="hint-item color-green">new tab {renderCmdText("T")}</div>
                 </div>
             </div>
         );
@@ -2580,27 +2599,96 @@ class AlertModal extends React.Component<{}, {}> {
         let title = message.title ?? "Alert";
         let isConfirm = message.confirm;
         return (
-            <div className="modal is-active alert-modal">
+            <div className="modal prompt-modal is-active alert-modal">
                 <div className="modal-background"/>
-                <div className="modal-card">
-                    <header className="modal-card-head has-background-danger-light">
-                        <p className="modal-card-title"><i className="fa-sharp fa-solid fa-triangle-exclamation"/> {title}</p>
-                        <button onClick={this.closeModal} className="delete"></button>
+                <div className="modal-content">
+                    <header>
+                        <p className="modal-title"><i className="fa-sharp fa-solid fa-triangle-exclamation"/> {title}</p>
+                        <div className="close-icon">
+                            <i onClick={this.closeModal} className="fa-sharp fa-solid fa-times"/>
+                        </div>
                     </header>
-                    <section className="modal-card-body">
+                    <div className="inner-content content">
                         <p>{message.message}</p>
-                    </section>
-                    <footer className="modal-card-foot">
+                    </div>
+                    <footer>
                         <If condition={isConfirm}>
-                            <button onClick={this.handleOK} className="button is-primary is-outlined">OK</button>
-                            <button onClick={this.closeModal} className="button is-danger is-outlined">Cancel</button>
+                            <div onClick={this.handleOK} className="button is-primary is-outlined is-small">OK</div>
+                            <div onClick={this.closeModal} className="button is-danger is-outlined is-small">Cancel</div>
                         </If>
                         <If condition={!isConfirm}>
-                            <button onClick={this.handleOK} className="button is-primary">OK</button>
+                            <div onClick={this.handleOK} className="button is-primary is-small">OK</div>
                         </If>
                     </footer>
                 </div>
-                <button onClick={this.closeModal} className="modal-close" aria-label="close"></button>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
+class ScreenSettingsModal extends React.Component<{sessionId : string, screenId : string}, {}> {
+    @boundMethod
+    closeModal() : void {
+        mobx.action(() => {
+            GlobalModel.screenSettingsModal.set(null);
+        })();
+    }
+
+    @boundMethod
+    handleOK() : void {
+        mobx.action(() => {
+            GlobalModel.screenSettingsModal.set(null);
+        })();
+        console.log("ok");
+    }
+    
+    render() {
+        let {sessionId, screenId} = this.props;
+        let screen = GlobalModel.getScreenById(sessionId, screenId);
+        if (screen == null) {
+            return null;
+        }
+        let opts = screen.opts.get();
+        let tabColor = "default";
+        if (opts != null && !isBlank(opts.tabcolor)) {
+            tabColor = opts.tabcolor;
+        }
+        return (
+            <div className={cn("modal screen-settings-modal prompt-modal is-active")}>
+                <div className="modal-background"/>
+                <div className="modal-content">
+                    <header>
+                        <div className="modal-title">screen settings ({screen.name.get()})</div>
+                        <div className="close-icon">
+                            <i onClick={this.closeModal} className="fa-sharp fa-solid fa-times"/>
+                        </div>
+                    </header>
+                    <div className="inner-content">
+                        <div>
+                            sessionid - {screen.sessionId}
+                        </div>
+                        <div>
+                            screenid - {screen.screenId}
+                        </div>
+                        <div>
+                            name - {screen.name.get()}
+                        </div>
+                        <div>
+                            tabcolor - {tabColor}
+                        </div>
+                        <div>
+                            archived - {screen.archived.get() ? "true" : "false"}
+                        </div>
+                        <div>
+                            index - {screen.screenIdx.get()}
+                        </div>
+                    </div>
+                    <footer>
+                        <div onClick={this.handleOK} className="button is-primary is-outlined is-small">OK</div>
+                        <div onClick={this.closeModal} className="button is-danger is-outlined is-small">Cancel</div>
+                    </footer>
+                </div>
             </div>
         );
     }
@@ -2649,10 +2737,9 @@ class WelcomeModal extends React.Component<{}, {}> {
     }
 
     render() {
-        let title = "welcome to [prompt]";
         let pageNum = this.pageNum.get();
         return (
-            <div className={cn("modal welcome-modal is-active")}>
+            <div className={cn("modal welcome-modal prompt-modal is-active")}>
                 <div className="modal-background"/>
                 <div className="modal-content">
                     <header>
@@ -2661,7 +2748,7 @@ class WelcomeModal extends React.Component<{}, {}> {
                             <i onClick={this.closeModal} className="fa-sharp fa-solid fa-times"/>
                         </div>
                     </header>
-                    <div className={cn("welcome-content content", {"is-hidden": pageNum != 1})}>
+                    <div className={cn("inner-content content", {"is-hidden": pageNum != 1})}>
                         <p>
                             Prompt is a new terminal to help save you time and keep your command-line life organized.
                             Here's a couple quick tips to get your started!
@@ -2738,6 +2825,7 @@ class Main extends React.Component<{}, {}> {
     }
 
     render() {
+        let ssm = GlobalModel.screenSettingsModal.get();
         return (
             <div id="main" onContextMenu={this.handleContextMenu}>
                 <div className="main-content">
@@ -2752,6 +2840,9 @@ class Main extends React.Component<{}, {}> {
                 <AlertModal/>
                 <If condition={GlobalModel.welcomeModalOpen.get()}>
                     <WelcomeModal/>
+                </If>
+                <If condition={ssm != null}>
+                    <ScreenSettingsModal sessionId={ssm.sessionId} screenId={ssm.screenId}/>
                 </If>
             </div>
         );

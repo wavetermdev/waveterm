@@ -817,6 +817,25 @@ body::-webkit-scrollbar {
     }
 }
 
+.screen-tabs-container {
+    position: relative;
+    
+    &:hover {
+        z-index: 200;
+    }
+
+    &:hover .cmd-hints {
+        display: flex;
+    }
+
+    .cmd-hints {
+        position: absolute;
+        bottom: -18px;
+        left: 0px;
+        display: flex;
+    }
+}
+
 .screen-tabs {
     height: 30px;
     display: flex;
@@ -824,6 +843,7 @@ body::-webkit-scrollbar {
     border-top: 1px solid #666;
     border-right: 1px solid #eee;
     overflow-x: overlay;
+    overflow-y: visible;
     align-items: center;
 
     &::-webkit-scrollbar {
@@ -872,11 +892,24 @@ body::-webkit-scrollbar {
             }
         }
 
-        .tab-index {
+        .tab-index, .tab-gear {
             position: absolute;
             right: 5px;
             font-weight: normal;
             display: none;
+        }
+
+        &:hover .tab-gear {
+            display: block;
+
+            &:hover {
+                i {
+                    display: block;
+                    position: relative;
+                    top: 2px;
+                    font-size: 15px;
+                }
+            }
         }
     }
 
@@ -884,9 +917,13 @@ body::-webkit-scrollbar {
         display: block;
     }
 
+    &:hover .screen-tab:hover .tab-index {
+        display: none;
+    }
+
     .screen-tab.new-screen {
-        width: 80px;
-        min-width: 80px;
+        width: 30px;
+        min-width: 30px;
         background-color: black;
         border-right: none;
         color: #ccc;
@@ -1747,7 +1784,7 @@ body .xterm .xterm-viewport {
     z-index: 100;
 
     &.has-info {
-        padding-top: 5px;
+        padding-top: 10px;
     }
 
     .focus-indicator {
@@ -1792,45 +1829,10 @@ body .xterm .xterm-viewport {
             line-height: 0;
         }
 
-        .cmd-input-hints {
+        .cmd-hints {
             position: absolute;
             bottom: -14px;
             right: 0px;
-            .mono-font(10px);
-            display: flex;
-            flex-direction: row;
-
-            .hint-item {
-                padding: 0px 5px 0px 5px;
-                border-radius: 0 0 3px 3px;
-                cursor: pointer;
-                
-                &:hover {
-                    font-weight: bold;
-                }
-            }
-
-            .hint-item:not(:last-child) {
-                margin-right: 8px;
-            }
-
-            .hint-item.color-green {
-                color: black;
-                background-color: @tab-green;
-
-                &:hover {
-                    color: white;
-                }
-            }
-
-            .hint-item.color-white {
-                color: black;
-                background-color: @term-white;
-
-                &:hover {
-                    background-color: @term-bright-white;
-                }
-            }
         }
 
         textarea {
@@ -2613,38 +2615,39 @@ input[type=checkbox] {
 }
 
 .modal.alert-modal {
-    .modal-card {
-        min-width: 350px;
-        max-width: 640px;
-        width: auto;
-        
-        header {
-            padding: 10px;
-            font-size: 1.5rem;
-        }
-        
-        footer {
-            padding: 10px;
-            justify-content: center;
+    footer {
+        justify-content: center;
+
+        .button {
+            margin-left: 20px;
         }
 
-        .modal-card-body {
-            padding: 10px;
-
-            p {
-                text-align: center;
-            }
+        .button:first-child {
+            margin-left: 0;
         }
     }
 }
 
-.modal.welcome-modal {
+.modal.screen-settings-modal {
+    footer {
+        justify-content: center;
+
+        .button {
+            margin-left: 20px;
+        }
+
+        .button:first-child {
+            margin-left: 0;
+        }
+    }
+}
+
+.modal.prompt-modal {
     .modal-content {
-        /* box-shadow: 5px 5px 5px #333; */
         border-radius: 5px;
         border: 5px solid #333;
     }
-    
+
     header {
         background-color: #000;
         display: flex;
@@ -2672,7 +2675,7 @@ input[type=checkbox] {
         }
     }
 
-    .welcome-content {
+    .inner-content {
         background-color: #222;
         padding: 15px 10px 15px 10px;
         color: @term-white;
@@ -2692,7 +2695,11 @@ input[type=checkbox] {
         background-color: #222;
         padding: 15px 10px 10px 10px;
         border-top: 1px solid #666;
+    }
+}
 
+.modal.welcome-modal {
+    footer {
         .prev-button {
             margin-left: 15px;
             width: 100px;
@@ -2728,5 +2735,39 @@ input[type=checkbox] {
 
 .flex-spacer {
     flex-grow: 1;
+}
+
+.cmd-hints {
+    .mono-font(10px);
+    display: flex;
+    flex-direction: row;
+    
+    .hint-item {
+        padding: 0px 5px 0px 5px;
+        border-radius: 0 0 3px 3px;
+        cursor: pointer;
+    }
+
+    .hint-item:not(:last-child) {
+        margin-right: 8px;
+    }
+
+    .hint-item.color-green {
+        color: black;
+        background-color: @tab-green;
+        
+        &:hover {
+            color: white;
+        }
+    }
+    
+    .hint-item.color-white {
+        color: black;
+        background-color: @term-white;
+        
+        &:hover {
+            background-color: @term-bright-white;
+        }
+    }
 }
 

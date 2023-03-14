@@ -2252,6 +2252,7 @@ class Model {
     alertMessage : OV<AlertMessageType> = mobx.observable.box(null, {name: "alertMessage"});
     alertPromiseResolver : (result : boolean) => void;
     welcomeModalOpen : OV<boolean> = mobx.observable.box(false, {name: "welcomeModalOpen"});
+    screenSettingsModal : OV<{sessionId : string, screenId : string}> = mobx.observable.box(null, {name: "screenSettingsModal"});
 
     inputModel : InputModel;
     bookmarksModel : BookmarksModel;
