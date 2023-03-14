@@ -2386,10 +2386,10 @@ class MainSideBar extends React.Component<{}, {}> {
                         <li className="new-session"><a onClick={() => this.handleNewSharedSession()}><i className="fa-sharp fa-solid fa-plus"/> New Session</a></li>
                     </ul>
                     <ul className="menu-list" style={{marginTop: 20}}>
-                        <li className="menu-history"><a onClick={this.handleHistoryClick} className={cn({"is-active": (mainView == "history")})}><i className="fa-sharp fa-solid fa-clock"/> HISTORY</a></li>
+                        <li className="menu-history"><a onClick={this.handleHistoryClick} className={cn({"is-active": (mainView == "history")})}><i className="fa-sharp fa-solid fa-clock"/> HISTORY <span className="hotkey">&#x2318;H</span></a></li>
                     </ul>
                     <ul className="menu-list">
-                        <li className="menu-bookmarks"><a onClick={this.handleBookmarksClick} className={cn({"is-active": (mainView == "bookmarks")})}><i className="fa-sharp fa-solid fa-bookmark"/> BOOKMARKS <span>&#x2318;B</span></a></li>
+                        <li className="menu-bookmarks"><a onClick={this.handleBookmarksClick} className={cn({"is-active": (mainView == "bookmarks")})}><i className="fa-sharp fa-solid fa-bookmark"/> BOOKMARKS <span className="hotkey">&#x2318;B</span></a></li>
                     </ul>
                     <p className="menu-label display-none">
                         Playbooks

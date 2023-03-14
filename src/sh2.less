@@ -203,8 +203,18 @@ body::-webkit-scrollbar {
 .history-view {
     color: #ccc;
 
-    .close-button {
-        top: 10px;
+    .close-div {
+        padding-top: 10px;
+        font-size: 24px;
+
+        i {
+            padding: 5px 5px 5px 10px;
+            cursor: pointer;
+        }
+
+        i:hover {
+            color: #fff;
+        }
     }
 
     .header {
@@ -992,6 +1002,16 @@ body::-webkit-scrollbar {
 
         li.menu-bookmarks {
             margin-left: -10px;
+        }
+
+        li {
+            .hotkey {
+                visibility: hidden;
+            }
+
+            &:hover .hotkey {
+                visibility: visible;
+            }
         }
     }
 

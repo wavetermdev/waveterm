@@ -337,7 +337,6 @@ class HistoryView extends React.Component<{}, {}> {
         let remoteId : string = null;
         return (
             <div className={cn("history-view", "alt-view", {"is-hidden": isHidden})}>
-                <div className="close-button" onClick={this.clickCloseHandler}><i className="fa-sharp fa-solid fa-xmark"></i></div>
                 <div className="header">
                     <div className="history-title">
                         HISTORY
@@ -406,6 +405,9 @@ class HistoryView extends React.Component<{}, {}> {
                                 Reset All
                             </div>
                         </div>
+                    </div>
+                    <div className="close-div">
+                        <i onClick={this.clickCloseHandler} className="fa-sharp fa-solid fa-xmark"/>
                     </div>
                 </div>
                 <div className={cn("control-bar", "is-top", {"is-hidden": (items.length == 0)})}>

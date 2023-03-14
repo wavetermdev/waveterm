@@ -1870,6 +1870,7 @@ class HistoryViewModel {
     }
 
     reSearch() : void {
+        this.setActiveItem(null);
         GlobalCommandRunner.historyView(this._getSearchParams());
     }
 
@@ -2480,10 +2481,7 @@ class Model {
     }
 
     onHCmd(e : any, mods : KeyModsType) {
-        let focusedLine = this.getFocusedLine();
-        if (focusedLine != null && focusedLine.cmdInputFocus) {
-            this.inputModel.openHistory();
-        }
+        GlobalModel.historyViewModel.reSearch();
     }
 
     getFocusedLine() : LineFocusType {
