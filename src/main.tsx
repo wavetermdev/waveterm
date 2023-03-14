@@ -320,13 +320,6 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
             inputModel.resetInput();
             return;
         }
-        if (e.code == "KeyM" && (e.getModifierState("Meta") || e.getModifierState("Control"))) {
-            e.preventDefault();
-            let opts = mobx.toJS(inputModel.historyQueryOpts.get());
-            opts.includeMeta = !opts.includeMeta;
-            inputModel.setHistoryQueryOpts(opts);
-            return;
-        }
         if (e.code == "KeyR" && ((e.getModifierState("Meta") || e.getModifierState("Control")) && !e.getModifierState("Shift"))) {
             e.preventDefault();
             let opts = mobx.toJS(inputModel.historyQueryOpts.get());
@@ -1387,8 +1380,6 @@ class HistoryInfo extends React.Component<{}, {}> {
                     <div className="history-opt">[containing '{opts.queryStr}']</div>
                     <div className="spacer"></div>
                     <div className="history-opt">[{opts.limitRemote ? "this" : "any"} remote &#x2318;R]</div>
-                    <div className="spacer"></div>
-                    <div className="history-opt">[{opts.includeMeta ? "" : "no "}metacmds &#x2318;M]</div>
                     <div className="grow-spacer"></div>
                     <div className="history-clickable-opt" onClick={this.handleClose}>(ESC)</div>
                     <div className="spacer"></div>
@@ -1444,6 +1435,22 @@ class CmdInput extends React.Component<{}, {}> {
     handleInnerHeightUpdate() : void {
         this.updateCmdInputHeight();
     }
+
+    @boundMethod
+    clickFocusInputHint() : void {
+        GlobalModel.inputModel.giveFocus();
+    }
+
+    @boundMethod
+    clickHistoryHint() : void {
+        let inputModel = GlobalModel.inputModel;
+        if (inputModel.historyShow.get()) {
+            inputModel.resetHistory();
+        }
+        else {
+            inputModel.openHistory();
+        }
+    }
     
     render() {
         let model = GlobalModel;
@@ -1497,11 +1504,15 @@ class CmdInput extends React.Component<{}, {}> {
                     </If>
                     <TextAreaInput onHeightChange={this.handleInnerHeightUpdate}/>
                     <div className="control cmd-exec">
-                        <div onClick={GlobalModel.inputModel.uiSubmitCommand} className="button">
+                        <div onClick={GlobalModel.inputModel.uiSubmitCommand} className="button" title="Run Command">
                             <span className="icon">
                                 <i className="fa-sharp fa-solid fa-rocket"/>
                             </span>
                         </div>
+                    </div>
+                    <div className="cmd-input-hints">
+                        <If condition={!focusVal}><div onClick={this.clickFocusInputHint} className="hint-item color-white">focus input (&#x2318;I)</div></If>
+                        <If condition={focusVal}><div onClick={this.clickHistoryHint} className="hint-item color-green"><i className={cn("fa-sharp fa-solid", (historyShow ? "fa-angle-down" : "fa-angle-up"))}/> {historyShow ? "close history (esc)" : "show history (ctrl-r)"}</div></If>
                     </div>
                 </div>
             </div>
@@ -2171,7 +2182,7 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
                     </div>
                 </For>
                 <div key="new-screen" className="screen-tab new-screen" onClick={this.handleNewScreen}>
-                    +
+                    <i className="fa-sharp fa-solid fa-plus"/> <div className="tab-index">&#x2318;T</div>
                 </div>
             </div>
         );

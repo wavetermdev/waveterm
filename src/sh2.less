@@ -885,8 +885,8 @@ body::-webkit-scrollbar {
     }
 
     .screen-tab.new-screen {
-        width: 30px;
-        min-width: 30px;
+        width: 80px;
+        min-width: 80px;
         background-color: black;
         border-right: none;
         color: #ccc;
@@ -1786,10 +1786,53 @@ body .xterm .xterm-viewport {
     }
 
     .cmd-input-field {
+        position: relative;
+        
         .cmd-input-control {
             line-height: 0;
         }
-        
+
+        .cmd-input-hints {
+            position: absolute;
+            bottom: -14px;
+            right: 0px;
+            .mono-font(10px);
+            display: flex;
+            flex-direction: row;
+
+            .hint-item {
+                padding: 0px 5px 0px 5px;
+                border-radius: 0 0 3px 3px;
+                cursor: pointer;
+                
+                &:hover {
+                    font-weight: bold;
+                }
+            }
+
+            .hint-item:not(:last-child) {
+                margin-right: 8px;
+            }
+
+            .hint-item.color-green {
+                color: black;
+                background-color: @tab-green;
+
+                &:hover {
+                    color: white;
+                }
+            }
+
+            .hint-item.color-white {
+                color: black;
+                background-color: @term-white;
+
+                &:hover {
+                    background-color: @term-bright-white;
+                }
+            }
+        }
+
         textarea {
             color: white;
             background-color: black;
