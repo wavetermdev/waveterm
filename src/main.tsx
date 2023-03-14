@@ -3,21 +3,22 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
+import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
+import cn from "classnames";
 import {debounce, throttle} from "throttle-debounce";
 import {v4 as uuidv4} from "uuid";
 import dayjs from "dayjs";
-import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
-import cn from "classnames";
 import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts, RemoteEditType, FeStateType, ContextMenuOpts, BookmarkType, RenderModeType} from "./types";
 import type * as T from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
-import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, riToRPtr, windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols} from "./model";
+import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, riToRPtr, windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols, TabColors, RemoteColors} from "./model";
 import {isModKeyPress} from "./util";
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {BookmarksView} from "./bookmarks";
 import {HistoryView} from "./history";
 import {Line, Prompt} from "./linecomps";
+import {ScreenSettingsModal, SessionSettingsModal} from "./settings";
 
 dayjs.extend(localizedFormat)
 
@@ -25,9 +26,6 @@ const RemotePtyRows = 8;
 const RemotePtyCols = 80;
 const PasswordUnchangedSentinel = "--unchanged--";
 const LinesVisiblePadding = 500;
-
-const RemoteColors = ["red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"];
-const TabColors = ["red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange", "black"];
 
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
@@ -2159,6 +2157,7 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
     @boundMethod
     openScreenSettings(e : any, screen : Screen) : void {
         e.preventDefault();
+        e.stopPropagation();
         mobx.action(() => {
             GlobalModel.screenSettingsModal.set({sessionId: screen.sessionId, screenId: screen.screenId});
         })();
@@ -2350,6 +2349,15 @@ class MainSideBar extends React.Component<{}, {}> {
         })();
     }
 
+    @boundMethod
+    openSessionSettings(e : any, session : Session) : void {
+        e.preventDefault();
+        e.stopPropagation();
+        mobx.action(() => {
+            GlobalModel.sessionSettingsModal.set(session.sessionId);
+        })();
+    }
+
     render() {
         let model = GlobalModel;
         let activeSessionId = model.activeSessionId.get();
@@ -2391,20 +2399,26 @@ class MainSideBar extends React.Component<{}, {}> {
                     <p className="menu-label">
                         Private Sessions
                     </p>
-                    <ul className="menu-list">
+                    <ul className="menu-list session-menu-list">
                         <If condition={!model.sessionListLoaded.get()}>
-                            <li className="menu-loading-message"><a>(loading)</a></li>
+                            <li className="menu-loading-message"><a>...</a></li>
                         </If>
                         <If condition={model.sessionListLoaded.get()}>
                             <For each="session" index="idx" of={sessionList}>
                                 <li key={session.sessionId}><a className={cn({"is-active": mainView == "session" && activeSessionId == session.sessionId})} onClick={() => this.handleSessionClick(session.sessionId)}>
                                     <If condition={!session.archived.get()}>
-                                        <span className="session-num">{idx+1}&nbsp;</span>
+                                        <div className="session-num">{idx+1}</div>
                                     </If>
                                     <If condition={session.archived.get()}>
-                                        <i title="archived" className="fa-sharp fa-solid fa-box-archive"/>&nbsp;
+                                        <div className="session-num"><i title="archived" className="fa-sharp fa-solid fa-box-archive"/></div>
                                     </If>
-                                    {session.name.get()}
+                                    <div>
+                                        {session.name.get()}
+                                    </div>
+                                    <div className="flex-spacer"/>
+                                    <div className="session-gear" onClick={(e) => this.openSessionSettings(e, session)}>
+                                        <i className="fa-sharp fa-solid fa-gear"/>
+                                    </div>
                                 </a></li>
                             </For>
                             <li className="new-session"><a onClick={() => this.handleNewSession()}><i className="fa-sharp fa-solid fa-plus"/> New Session</a></li>
@@ -2628,116 +2642,6 @@ class AlertModal extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
-class ScreenSettingsModal extends React.Component<{sessionId : string, screenId : string}, {}> {
-    tempName : OV<string>;
-    tempTabColor : OV<string>;
-    tabColorDropdownOpen : OV<boolean> = mobx.observable.box(false, {name: "tabColorDropdownOpen"});
-
-    constructor(props : any) {
-        super(props);
-        let {sessionId, screenId} = props;
-        let screen = GlobalModel.getScreenById(sessionId, screenId);
-        if (screen == null) {
-            return;
-        }
-        this.tempName = mobx.observable.box(screen.name.get(), {name: "screenSettings-tempName"});
-        this.tempTabColor = mobx.observable.box(screen.getTabColor(), {name: "screenSettings-tempTabColor"});
-    }
-    
-    @boundMethod
-    closeModal() : void {
-        mobx.action(() => {
-            GlobalModel.screenSettingsModal.set(null);
-        })();
-    }
-
-    @boundMethod
-    handleOK() : void {
-        mobx.action(() => {
-            GlobalModel.screenSettingsModal.set(null);
-            GlobalCommandRunner.screenSetSettings({
-                "tabcolor": this.tempTabColor.get(),
-                "name": this.tempName.get(),
-            });
-        })();
-        console.log("ok");
-    }
-
-    @boundMethod
-    handleChangeName(e : any) : void {
-        mobx.action(() => {
-            this.tempName.set(e.target.value);
-        })();
-    }
-
-    @boundMethod
-    selectTabColor(color : string) : void {
-        mobx.action(() => {
-            this.tempTabColor.set(color);
-        })();
-    }
-
-    render() {
-        let {sessionId, screenId} = this.props;
-        let screen = GlobalModel.getScreenById(sessionId, screenId);
-        if (screen == null) {
-            return null;
-        }
-        let color : string = null;
-        return (
-            <div className={cn("modal screen-settings-modal prompt-modal is-active")}>
-                <div className="modal-background"/>
-                <div className="modal-content">
-                    <header>
-                        <div className="modal-title">screen settings ({screen.name.get()})</div>
-                        <div className="close-icon">
-                            <i onClick={this.closeModal} className="fa-sharp fa-solid fa-times"/>
-                        </div>
-                    </header>
-                    <div className="inner-content">
-                        <div className="settings-field">
-                            <div className="settings-label">
-                                Name
-                            </div>
-                            <div className="settings-input">
-                                <input type="text" placeholder="Tab Name" onChange={this.handleChangeName} value={this.tempName.get()} maxlength="50"/>
-                            </div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">
-                                Tab Color
-                            </div>
-                            <div className="settings-input">
-                                <div className="tab-colors">
-                                    <div className="tab-color-cur">
-                                        <span className={cn("icon tab-color-icon", "color-" + this.tempTabColor.get())}>
-                                            <i className="fa-sharp fa-solid fa-square"/>
-                                        </span>
-                                        <span>{this.tempTabColor.get()}</span>
-                                    </div>
-                                    <div className="tab-color-sep">|</div>
-                                    <For each="color" of={TabColors}>
-                                        <div key={color} className="tab-color-select" onClick={() => this.selectTabColor(color)}>
-                                            <span className={cn("tab-color-icon", "color-" + color)}>
-                                                <i className="fa-sharp fa-solid fa-square"/>
-                                            </span>
-                                        </div>
-                                    </For>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <footer>
-                        <div onClick={this.handleOK} className="button is-primary is-outlined is-small">OK</div>
-                        <div onClick={this.closeModal} className="button is-danger is-outlined is-small">Cancel</div>
-                    </footer>
-                </div>
-            </div>
-        );
-    }
-}
-
-@mobxReact.observer
 class WelcomeModal extends React.Component<{}, {}> {
     totalPages : number = 3;
     pageNum : OV<number> = mobx.observable.box(1, {name: "welcome-pagenum"});
@@ -2868,7 +2772,8 @@ class Main extends React.Component<{}, {}> {
     }
 
     render() {
-        let ssm = GlobalModel.screenSettingsModal.get();
+        let screenSettingsModal = GlobalModel.screenSettingsModal.get();
+        let sessionSettingsModal = GlobalModel.sessionSettingsModal.get();
         return (
             <div id="main" onContextMenu={this.handleContextMenu}>
                 <div className="main-content">
@@ -2884,8 +2789,11 @@ class Main extends React.Component<{}, {}> {
                 <If condition={GlobalModel.welcomeModalOpen.get()}>
                     <WelcomeModal/>
                 </If>
-                <If condition={ssm != null}>
-                    <ScreenSettingsModal key={ssm.sessionId + ":" + ssm.screenId} sessionId={ssm.sessionId} screenId={ssm.screenId}/>
+                <If condition={screenSettingsModal != null}>
+                    <ScreenSettingsModal key={screenSettingsModal.sessionId + ":" + screenSettingsModal.screenId} sessionId={screenSettingsModal.sessionId} screenId={screenSettingsModal.screenId}/>
+                </If>
+                <If condition={sessionSettingsModal != null}>
+                    <SessionSettingsModal key={sessionSettingsModal} sessionId={sessionSettingsModal}/>
                 </If>
             </div>
         );

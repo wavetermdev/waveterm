@@ -29,6 +29,8 @@ const DefaultTermFontSize = 12;
 const MinFontSize = 8;
 const MaxFontSize = 15;
 const InputChunkSize = 500;
+const RemoteColors = ["red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"];
+const TabColors = ["red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange", "black"];
 
 // @ts-ignore
 const VERSION = __PROMPT_VERSION__;
@@ -2253,6 +2255,7 @@ class Model {
     alertPromiseResolver : (result : boolean) => void;
     welcomeModalOpen : OV<boolean> = mobx.observable.box(false, {name: "welcomeModalOpen"});
     screenSettingsModal : OV<{sessionId : string, screenId : string}> = mobx.observable.box(null, {name: "screenSettingsModal"});
+    sessionSettingsModal : OV<string> = mobx.observable.box(null, {name: "sessionSettingsModal"});
 
     inputModel : InputModel;
     bookmarksModel : BookmarksModel;
@@ -3224,6 +3227,12 @@ class CommandRunner {
         GlobalModel.submitCommand("screen", "set", null, kwargs, true);
     }
 
+    sessionSetSettings(settings : {name? : string}) : void {
+        let kwargs = Object.assign({}, settings);
+        kwargs["nohist"] = "1";
+        GlobalModel.submitCommand("session", "set", null, kwargs, true);
+    }
+
     lineStar(lineId : string, starVal : number) {
         GlobalModel.submitCommand("line", "star", [lineId, String(starVal)], {"nohist": "1"}, true);
     }
@@ -3337,7 +3346,7 @@ if ((window as any).GlobalModel == null) {
 GlobalModel = (window as any).GlobalModel;
 GlobalCommandRunner = (window as any).GlobalCommandRunner;
 
-export {Model, Session, Window, GlobalModel, GlobalCommandRunner, Cmd, Screen, riToRPtr, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows, getPtyData, getRemotePtyData};
+export {Model, Session, Window, GlobalModel, GlobalCommandRunner, Cmd, Screen, riToRPtr, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows, getPtyData, getRemotePtyData, TabColors, RemoteColors};
 export type {LineContainerModel};
 
 

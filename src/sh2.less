@@ -1052,6 +1052,31 @@ body::-webkit-scrollbar {
         }
     }
 
+    .menu-list.session-menu-list {
+        li a {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+
+            .session-num {
+                width: 14px;
+            }
+
+            .session-gear {
+                visibility: hidden;
+            }
+
+            &:hover .session-gear {
+                color: #ccc;
+                visibility: visible;
+
+                &:hover {
+                    color: white;
+                }
+            }
+        }
+    }
+
     .menu-list.remotes-menu-list {
         max-height: 35%;
         overflow-y: auto;
@@ -2628,7 +2653,7 @@ input[type=checkbox] {
     }
 }
 
-.modal.screen-settings-modal {
+.modal.settings-modal {
     footer {
         justify-content: center;
 
