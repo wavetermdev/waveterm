@@ -27,6 +27,7 @@ const RemotePtyRows = 8;
 const RemotePtyCols = 80;
 const PasswordUnchangedSentinel = "--unchanged--";
 const LinesVisiblePadding = 500;
+const TDots = "⋮";
 
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
@@ -65,6 +66,16 @@ function scrollDiv(div : any, amt : number) {
         newScrollTop = 0;
     }
     div.scrollTo({top: newScrollTop, behavior: "smooth"});
+}
+
+function truncateWithTDots(str : string, maxLen : number) : string {
+    if (str == null) {
+        return null;
+    }
+    if (str.length <= maxLen) {
+        return str;
+    }
+    return str.slice(0, maxLen-1) + TDots;
 }
 
 function pageSize(div : any) : number {
@@ -1324,33 +1335,62 @@ class HistoryInfo extends React.Component<{}, {}> {
         if (!isBlank(hitem.remote.name)) {
             rname = rname + ":" + hitem.remote.name;
         }
-        let rtn = sprintf("%-15s ", "[" + rname + "]")
+        let rtn = sprintf("%-15s ", "[" + truncateWithTDots(rname, 13) + "]")
         return rtn;
     }
 
-    renderHItem(hitem : HistoryItem, opts : HistoryQueryOpts, isSelected : boolean) : any {
+    renderHInfoText(hitem : HistoryItem, opts : HistoryQueryOpts, isSelected : boolean, snames : Record<string, string>, scrNames : Record<string, string>) : string {
+        let remoteStr = "";
+        if (!opts.limitRemote) {
+            remoteStr = this.renderRemote(hitem);
+        }
+        let selectedStr = (isSelected ? "*" : " ");
+        let lineNumStr = (hitem.linenum > 0 ? "(" + hitem.linenum + ")" : "");
+        if (isBlank(opts.queryType) || opts.queryType == "screen") {
+            return selectedStr + sprintf("%7s", lineNumStr) + " " + remoteStr;
+        }
+        if (opts.queryType == "session") {
+            let screenStr = "";
+            if (!isBlank(hitem.screenid)) {
+                let scrName = scrNames[hitem.screenid];
+                if (scrName != null) {
+                    screenStr = "[" + truncateWithTDots(scrName, 15) + "]";
+                }
+            }
+            return selectedStr + sprintf("%17s", screenStr) + sprintf("%7s", lineNumStr) + " " + remoteStr;
+        }
+        if (opts.queryType == "global") {
+            let sessionStr = "";
+            if (!isBlank(hitem.sessionid)) {
+                let sessionName = snames[hitem.sessionid];
+                if (sessionName != null) {
+                    sessionStr = "#" + truncateWithTDots(sessionName, 15);
+                }
+            }
+            let screenStr = "";
+            if (!isBlank(hitem.screenid)) {
+                let scrName = scrNames[hitem.screenid];
+                if (scrName != null) {
+                    screenStr = "[" + truncateWithTDots(scrName, 13) + "]";
+                }
+            }
+            let ssStr = sessionStr + screenStr;
+            return selectedStr + sprintf("%15s ", sessionStr) + " " + sprintf("%15s", screenStr) + sprintf("%7s", lineNumStr) + " " + remoteStr;
+        }
+        return "-";
+    }
+
+    renderHItem(hitem : HistoryItem, opts : HistoryQueryOpts, isSelected : boolean, snames : Record<string, string>, scrNames : Record<string, string>) : any {
         let lines = hitem.cmdstr.split("\n");
         let line : string = "";
         let idx = 0;
-        let limitRemote = opts.limitRemote;
-        let sessionStr = "";
-        if (opts.queryType == "global") {
-            if (!isBlank(hitem.sessionid)) {
-                let s = GlobalModel.getSessionById(hitem.sessionid);
-                if (s != null) {
-                    sessionStr = s.name.get();
-                    if (sessionStr.indexOf(" ") != -1) {
-                        sessionStr = "[" + sessionStr + "]";
-                    }
-                    sessionStr = sprintf("#%-15s ", sessionStr);
-                }
-            }
-        }
+        let infoText = this.renderHInfoText(hitem, opts, isSelected, snames, scrNames);
+        let infoTextSpacer = sprintf("%" + infoText.length + "s", "");
         return (
             <div key={hitem.historynum} className={cn("history-item", {"is-selected": isSelected}, {"history-haderror": hitem.haderror}, "hnum-" + hitem.historynum)} onClick={() => this.handleItemClick(hitem)}>
-                <div className="history-line">{(isSelected ? "*" : " ")}{sprintf("%5s", hitem.historynum)} {opts.queryType == "global" ? sessionStr : ""}{!limitRemote ? this.renderRemote(hitem) : ""} {lines[0]}</div>
+                <div className="history-line">{infoText} {lines[0]}</div>
                 <For each="line" index="idx" of={lines.slice(1)}>
-                    <div key={idx} className="history-line">{line}</div>
+                    <div key={idx} className="history-line">{infoTextSpacer} {line}</div>
                 </For>
             </div>
         );
@@ -1369,6 +1409,15 @@ class HistoryInfo extends React.Component<{}, {}> {
         hitems = hitems.slice().reverse();
         let hitem : HistoryItem = null;
         let opts = inputModel.historyQueryOpts.get();
+        let snames : Record<string, string> = {};
+        let scrNames : Record<string, string> = {};
+        if (opts.queryType == "global") {
+            scrNames = GlobalModel.getScreenNames();
+            snames = GlobalModel.getSessionNames();
+        }
+        else if (opts.queryType == "session") {
+            scrNames = GlobalModel.getScreenNames();
+        }
         return (
             <div className="cmd-history">
                 <div className="history-title">
@@ -1389,7 +1438,7 @@ class HistoryInfo extends React.Component<{}, {}> {
                     </If>
                     <If condition={hitems.length > 0}>
                         <For each="hitem" index="idx" of={hitems}>
-                            {this.renderHItem(hitem, opts, (hitem == selItem))}
+                            {this.renderHItem(hitem, opts, (hitem == selItem), snames, scrNames)}
                         </For>
                     </If>
                 </div>
@@ -1446,7 +1495,6 @@ class CmdInput extends React.Component<{}, {}> {
         e.stopPropagation();
         
         let inputModel = GlobalModel.inputModel;
-        console.log("hitory hint", inputModel.historyShow.get());
         if (inputModel.historyShow.get()) {
             inputModel.resetHistory();
         }

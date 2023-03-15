@@ -134,6 +134,7 @@ type HistoryItem = {
     remote : RemotePtrType,
     ismetacmd : boolean,
     historynum : string,
+    linenum : number,
 };
 
 type CmdRemoteStateType = {
