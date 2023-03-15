@@ -7,7 +7,7 @@ import dayjs from "dayjs";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {ImageRendererModel} from "./imagerenderer";
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
-import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols} from "./model";
+import {GlobalModel, GlobalCommandRunner, Session, Cmd, ScreenLines, Screen, windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols} from "./model";
 import type {LineType, CmdDataType, FeStateType, RemoteType, RemotePtrType, RenderModeType} from "./types";
 import cn from "classnames";
 import {TermWrap} from "./term";

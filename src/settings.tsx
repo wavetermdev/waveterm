@@ -6,6 +6,7 @@ import {boundMethod} from "autobind-decorator";
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import cn from "classnames";
 import {GlobalModel, GlobalCommandRunner, TabColors} from "./model";
+import {Toggle} from "./elements";
 
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
@@ -16,6 +17,7 @@ type CV<V> = mobx.IComputedValue<V>;
 class ScreenSettingsModal extends React.Component<{sessionId : string, screenId : string}, {}> {
     tempName : OV<string>;
     tempTabColor : OV<string>;
+    tempArchived : OV<boolean>;
 
     constructor(props : any) {
         super(props);
@@ -26,6 +28,7 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
         }
         this.tempName = mobx.observable.box(screen.name.get(), {name: "screenSettings-tempName"});
         this.tempTabColor = mobx.observable.box(screen.getTabColor(), {name: "screenSettings-tempTabColor"});
+        this.tempArchived = mobx.observable.box(screen.archived.get(), {name: "screenSettings-tempArchived"});
     }
     
     @boundMethod
@@ -39,11 +42,24 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
     handleOK() : void {
         mobx.action(() => {
             GlobalModel.screenSettingsModal.set(null);
-            GlobalCommandRunner.screenSetSettings({
-                "tabcolor": this.tempTabColor.get(),
-                "name": this.tempName.get(),
-            });
         })();
+        let screen = GlobalModel.getScreenById(this.props.sessionId, this.props.screenId);
+        if (screen == null) {
+            return;
+        }
+        let settings : {tabcolor? : string, name? : string} = {};
+        if (this.tempTabColor.get() != screen.getTabColor()) {
+            settings.tabcolor = this.tempTabColor.get();
+        }
+        if (this.tempName.get() != screen.name.get()) {
+            settings.name = this.tempName.get();
+        }
+        if (Object.keys(settings).length > 0) {
+            GlobalCommandRunner.screenSetSettings(settings);
+        }
+        if (this.tempArchived.get() != screen.archived.get()) {
+            GlobalCommandRunner.screenArchive(screen.screenId, this.tempArchived.get());
+        }
     }
 
     @boundMethod
@@ -57,6 +73,13 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
     selectTabColor(color : string) : void {
         mobx.action(() => {
             this.tempTabColor.set(color);
+        })();
+    }
+
+    @boundMethod
+    handleChangeArchived(val : boolean) : void {
+        mobx.action(() => {
+            this.tempArchived.set(val);
         })();
     }
 
@@ -109,10 +132,22 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
                                 </div>
                             </div>
                         </div>
+                        <div className="settings-field">
+                            <div className="settings-label">
+                                Archived
+                            </div>
+                            <div className="settings-input">
+                                <Toggle checked={this.tempArchived.get()} onChange={this.handleChangeArchived}/>
+                                <div className="action-text">
+                                    <If condition={this.tempArchived.get() && this.tempArchived.get() != screen.archived.get()}>will be archived</If>
+                                    <If condition={!this.tempArchived.get() && this.tempArchived.get() != screen.archived.get()}>will be un-archived</If>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <footer>
-                        <div onClick={this.handleOK} className="button is-primary is-outlined is-small">OK</div>
-                        <div onClick={this.closeModal} className="button is-danger is-outlined is-small">Cancel</div>
+                        <div onClick={this.closeModal} className="button is-prompt-cancel is-outlined is-small">Cancel</div>
+                        <div onClick={this.handleOK} className="button is-prompt-green is-outlined is-small">OK</div>
                     </footer>
                 </div>
             </div>
@@ -185,8 +220,8 @@ class SessionSettingsModal extends React.Component<{sessionId : string}, {}> {
                         </div>
                     </div>
                     <footer>
-                        <div onClick={this.handleOK} className="button is-primary is-outlined is-small">OK</div>
-                        <div onClick={this.closeModal} className="button is-danger is-outlined is-small">Cancel</div>
+                        <div onClick={this.closeModal} className="button is-prompt-cancel is-outlined is-small">Cancel</div>
+                        <div onClick={this.handleOK} className="button is-prompt-green is-outlined is-small">OK</div>
                     </footer>
                 </div>
             </div>

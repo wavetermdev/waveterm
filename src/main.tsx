@@ -11,7 +11,7 @@ import dayjs from "dayjs";
 import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts, RemoteEditType, FeStateType, ContextMenuOpts, BookmarkType, RenderModeType} from "./types";
 import type * as T from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
-import {GlobalModel, GlobalCommandRunner, Session, Cmd, Window, Screen, riToRPtr, windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols, TabColors, RemoteColors} from "./model";
+import {GlobalModel, GlobalCommandRunner, Session, Cmd, ScreenLines, Screen, riToRPtr, windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols, TabColors, RemoteColors} from "./model";
 import {isModKeyPress} from "./util";
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -172,7 +172,7 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
             }
             let model = GlobalModel;
             let inputModel = model.inputModel;
-            let win = model.getActiveWindow();
+            let win = model.getScreenLinesForActiveScreen();
             let ctrlMod = e.getModifierState("Control") || e.getModifierState("Meta") || e.getModifierState("Shift");
             let curLine = inputModel.getCurLine();
             
@@ -196,7 +196,7 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
                 e.preventDefault();
                 if (!ctrlMod) {
                     if (GlobalModel.inputModel.isEmpty()) {
-                        let activeWindow = GlobalModel.getActiveWindow();
+                        let activeWindow = GlobalModel.getScreenLinesForActiveScreen();
                         let activeScreen = GlobalModel.getActiveScreen();
                         if (activeScreen != null && activeWindow != null && activeWindow.lines.length > 0) {
                             activeScreen.setSelectedLine(0);
@@ -1981,11 +1981,11 @@ class ScreenWindowView extends React.Component<{screen : Screen}, {}> {
         this.setSize_debounced(width, height);
     }
 
-    getWindow() : Window {
+    getScreenLines() : ScreenLines {
         let {screen} = this.props;
-        let win = GlobalModel.getWindowById(screen.sessionId, screen.screenId);
+        let win = GlobalModel.getScreenLinesById(screen.sessionId, screen.screenId);
         if (win == null) {
-            win = GlobalModel.loadWindow(screen.sessionId, screen.screenId);
+            win = GlobalModel.loadScreenLines(screen.sessionId, screen.screenId);
         }
         return win;
     }
@@ -2016,7 +2016,7 @@ class ScreenWindowView extends React.Component<{screen : Screen}, {}> {
 
     render() {
         let {screen} = this.props;
-        let win = this.getWindow();
+        let win = this.getScreenLines();
         if (win == null || !win.loaded.get()) {
             return this.renderError("...", true);
         }
@@ -2356,7 +2356,7 @@ class MainSideBar extends React.Component<{}, {}> {
     render() {
         let model = GlobalModel;
         let activeSessionId = model.activeSessionId.get();
-        let activeWindow = model.getActiveWindow();
+        let activeWindow = model.getScreenLinesForActiveScreen();
         let activeScreen = model.getActiveScreen();
         let activeRemoteId : string = null;
         if (activeScreen != null) {
@@ -2623,11 +2623,11 @@ class AlertModal extends React.Component<{}, {}> {
                     </div>
                     <footer>
                         <If condition={isConfirm}>
-                            <div onClick={this.handleOK} className="button is-primary is-outlined is-small">OK</div>
-                            <div onClick={this.closeModal} className="button is-danger is-outlined is-small">Cancel</div>
+                            <div onClick={this.closeModal} className="button is-prompt-cancel is-outlined is-small">Cancel</div>
+                            <div onClick={this.handleOK} className="button is-prompt-green is-outlined is-small">OK</div>
                         </If>
                         <If condition={!isConfirm}>
-                            <div onClick={this.handleOK} className="button is-primary is-small">OK</div>
+                            <div onClick={this.handleOK} className="button is-prompt-green is-small">OK</div>
                         </If>
                     </footer>
                 </div>

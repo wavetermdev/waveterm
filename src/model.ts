@@ -52,7 +52,7 @@ type LineContainerModel = {
 
 type SWLinePtr = {
     line : LineType,
-    win : Window,
+    slines : ScreenLines,
     screen : Screen,
 };
 
@@ -301,7 +301,7 @@ class Screen {
             this.setAnchorFields(sdata.selectedline, 0, "init");
         }
         this.termLineNumFocus = mobx.observable.box(0, {name: "termLineNumFocus"});
-        this.curRemote = mobx.observable.box(sdata.curremote, {name: "window-curRemote"});
+        this.curRemote = mobx.observable.box(sdata.curremote, {name: "screen-curRemote"});
     }
 
     dispose() {
@@ -394,7 +394,7 @@ class Screen {
     }
 
     getMaxLineNum() : number {
-        let win = this.getWindow();
+        let win = this.getScreenLines();
         if (win == null) {
             return null;
         }
@@ -409,7 +409,7 @@ class Screen {
         if (lineNum == null) {
             return null;
         }
-        let win = this.getWindow();
+        let win = this.getScreenLines();
         if (win == null) {
             return null;
         }
@@ -426,7 +426,7 @@ class Screen {
     }
 
     isLastLine(lineNum : number) : boolean {
-        let win = this.getWindow();
+        let win = this.getScreenLines();
         if (win == null) {
             return false;
         }
@@ -439,7 +439,7 @@ class Screen {
     }
 
     getPresentLineNum(lineNum : number) : number {
-        let win = this.getWindow();
+        let win = this.getScreenLines();
         if (win == null || !win.loaded.get()) {
             return lineNum;
         }
@@ -648,8 +648,8 @@ class Screen {
         return this.selectedLine.get();
     }
 
-    getWindow() : Window {
-        return GlobalModel.getWindowById(this.sessionId, this.screenId);
+    getScreenLines() : ScreenLines {
+        return GlobalModel.getScreenLinesById(this.sessionId, this.screenId);
     }
 
     getFocusType() : FocusTypeStrs {
@@ -679,13 +679,12 @@ class Screen {
     }
 }
 
-// fake window for now (this is really ScreenLines)
-class Window {
+class ScreenLines {
     sessionId : string;
     screenId : string;
-    loaded : OV<boolean> = mobx.observable.box(false, {name: "window-loaded"});
+    loaded : OV<boolean> = mobx.observable.box(false, {name: "slines-loaded"});
     loadError : OV<string> = mobx.observable.box(null);
-    lines : OArr<LineType> = mobx.observable.array([], {name: "window-lines", deep: false});
+    lines : OArr<LineType> = mobx.observable.array([], {name: "slines-lines", deep: false});
     cmds : Record<string, Cmd> = {};
 
     constructor(sessionId : string, screenId : string) {
@@ -705,7 +704,7 @@ class Window {
         return rtn;
     }
 
-    updateWindow(slines : ScreenLinesType, load : boolean) {
+    updateData(slines : ScreenLinesType, load : boolean) {
         mobx.action(() => {
             if (load) {
                 this.loaded.set(true);
@@ -718,7 +717,7 @@ class Window {
         })();
     }
 
-    setWindowLoadError(errStr : string) {
+    setLoadError(errStr : string) {
         mobx.action(() => {
             this.loaded.set(true);
             this.loadError.set(errStr);
@@ -2233,7 +2232,7 @@ class Model {
     ws : WSControl;
     remotes : OArr<RemoteType> = mobx.observable.array([], {name: "remotes", deep: false});
     remotesLoaded : OV<boolean> = mobx.observable.box(false, {name: "remotesLoaded"});
-    windows : OMap<string, Window> = mobx.observable.map({}, {name: "windows", deep: false});  // key = "sessionid/screenid" (screenlines)
+    screenLines : OMap<string, ScreenLines> = mobx.observable.map({}, {name: "screenLines", deep: false});  // key = "sessionid/screenid" (screenlines)
     termUsedRowsCache : Record<string, number> = {};
     debugCmds : number = 0;
     debugScreen : OV<boolean> = mobx.observable.box(false);
@@ -2587,7 +2586,7 @@ class Model {
             for (let i=0; i<update.screens.length; i++) {
                 let screen = update.screens[i];
                 if (screen.remove) {
-                    this.removeWindowByScreenId(screen.screenid);
+                    this.removeScreenLinesByScreenId(screen.screenid);
                 }
             }
         }
@@ -2709,43 +2708,43 @@ class Model {
         return null;
     }
 
-    deactivateWindows() {
+    deactivateScreenLines() {
         mobx.action(() => {
-            this.windows.clear();
+            this.screenLines.clear();
         })();
     }
 
-    getWindowById(sessionId : string, screenId : string) : Window {
-        return this.windows.get(sessionId + "/" + screenId);
+    getScreenLinesById(sessionId : string, screenId : string) : ScreenLines {
+        return this.screenLines.get(sessionId + "/" + screenId);
     }
 
     updateScreenLines(slines : ScreenLinesType, load : boolean) {
         mobx.action(() => {
             let winKey = slines.sessionid + "/" + slines.screenid;
-            let existingWin = this.windows.get(winKey);
+            let existingWin = this.screenLines.get(winKey);
             if (existingWin == null) {
                 if (!load) {
-                    console.log("cannot update window that does not exist", winKey);
+                    console.log("cannot update screen-lines that does not exist", winKey);
                     return;
                 }
-                let newWindow = new Window(slines.sessionid, slines.screenid);
-                this.windows.set(winKey, newWindow);
-                newWindow.updateWindow(slines, load);
+                let newWindow = new ScreenLines(slines.sessionid, slines.screenid);
+                this.screenLines.set(winKey, newWindow);
+                newWindow.updateData(slines, load);
                 return;
             }
             else {
-                existingWin.updateWindow(slines, load);
+                existingWin.updateData(slines, load);
                 existingWin.loaded.set(true);
             }
         })();
     }
 
-    removeWindowByScreenId(screenId : string) {
+    removeScreenLinesByScreenId(screenId : string) {
         mobx.action(() => {
-            for (let winKey of this.windows.keys()) {
-                let win = this.windows.get(winKey);
+            for (let winKey of this.screenLines.keys()) {
+                let win = this.screenLines.get(winKey);
                 if (win.screenId == screenId) {
-                    this.windows.delete(winKey);
+                    this.screenLines.delete(winKey);
                     return;
                 }
             }
@@ -2773,12 +2772,12 @@ class Model {
         return rtn;
     }
 
-    getActiveWindow() : Window {
+    getScreenLinesForActiveScreen() : ScreenLines {
         let screen = this.getActiveScreen();
         if (screen == null) {
             return null;
         }
-        return this.windows.get(screen.sessionId + "/" + screen.screenId);
+        return this.screenLines.get(screen.sessionId + "/" + screen.screenId);
     }
 
     getActiveScreen() : Screen {
@@ -2790,7 +2789,7 @@ class Model {
     }
 
     addLineCmd(line : LineType, cmd : CmdDataType, interactive : boolean) {
-        let win = this.getWindowById(line.sessionid, line.screenid);
+        let win = this.getScreenLinesById(line.sessionid, line.screenid);
         if (win == null) {
             return;
         }
@@ -2798,7 +2797,7 @@ class Model {
     }
 
     updateCmd(cmd : CmdDataType) {
-        this.windows.forEach((win : Window) => {
+        this.screenLines.forEach((win : ScreenLines) => {
             win.updateCmd(cmd);
         });
     }
@@ -2906,7 +2905,7 @@ class Model {
             return;
         }
         mobx.action(() => {
-            this.deactivateWindows();
+            this.deactivateScreenLines();
             let curSessionId = this.activeSessionId.get();
             if (curSessionId != sessionId) {
                 this.activeSessionId.set(sessionId);
@@ -2921,27 +2920,27 @@ class Model {
         this.ws.watchScreen(curScreen.sessionId, curScreen.screenId);
     }
 
-    _loadWindowAsync(newWin : Window) {
-        this.windows.set(newWin.sessionId + "/" + newWin.screenId, newWin);
+    _loadScreenLinesAsync(newWin : ScreenLines) {
+        this.screenLines.set(newWin.sessionId + "/" + newWin.screenId, newWin);
         let usp = new URLSearchParams({screenid: newWin.screenId});
         let url = new URL(GlobalModel.getBaseHostPort() + "/api/get-screen-lines?" + usp.toString());
         let fetchHeaders = GlobalModel.getFetchHeaders();
         fetch(url, {headers: fetchHeaders}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
             if (data.data == null) {
-                console.log("null window returned from get-window");
+                console.log("null screen-lines returned from get-screen-lines");
                 return;
             }
             let slines : ScreenLinesType = data.data;
             this.updateScreenLines(slines, true);
             return;
         }).catch((err) => {
-            this.errorHandler(sprintf("getting window=%s", newWin.screenId), err, false);
+            this.errorHandler(sprintf("getting screen-lines=%s", newWin.screenId), err, false);
         });
     }
 
-    loadWindow(sessionId : string, screenId : string) : Window {
-        let newWin = new Window(sessionId, screenId);
-        setTimeout(() => this._loadWindowAsync(newWin), 0);
+    loadScreenLines(sessionId : string, screenId : string) : ScreenLines {
+        let newWin = new ScreenLines(sessionId, screenId);
+        setTimeout(() => this._loadScreenLinesAsync(newWin), 0);
         return newWin;
     }
 
@@ -2982,15 +2981,15 @@ class Model {
         if (session == null) {
             return null;
         }
-        let window = this.getWindowById(line.sessionid, line.screenid);
-        if (window == null) {
+        let slines = this.getScreenLinesById(line.sessionid, line.screenid);
+        if (slines == null) {
             return null;
         }
-        return window.getCmd(line.cmdid);
+        return slines.getCmd(line.cmdid);
     }
 
     getCmdByIds(sessionid : string, cmdid : string) : Cmd {
-        for (let win of this.windows.values()) {
+        for (let win of this.screenLines.values()) {
             if (win.sessionId != sessionid) {
                 continue;
             }
@@ -3008,7 +3007,7 @@ class Model {
         if (session == null) {
             return [];
         }
-        for (let win of this.windows.values()) {
+        for (let win of this.screenLines.values()) {
             if (win.sessionId != sessionid) {
                 continue;
             }
@@ -3028,7 +3027,7 @@ class Model {
             }
             if (winLine != null) {
                 let screen = this.getScreenById(win.sessionId, win.screenId);
-                rtn.push({line : winLine, win: win, screen: screen});
+                rtn.push({line : winLine, slines: win, screen: screen});
             }
         }
         return rtn;
@@ -3081,7 +3080,7 @@ class CommandRunner {
         if (!show) {
             kwargs["noshow"] = "1";
         }
-        if (htype != null && htype != "window") {
+        if (htype != null && htype != "screen") {
             kwargs["type"] = htype;
         }
         GlobalModel.submitCommand("history", null, null, kwargs, true);
@@ -3122,6 +3121,10 @@ class CommandRunner {
 
     resizeScreen(screenId : string, rows : number, cols : number) {
         GlobalModel.submitCommand("screen", "resize", null, {"nohist": "1", "screen": screenId, "cols": String(cols), "rows": String(rows)}, false);
+    }
+
+    screenArchive(screenId : string, shouldArchive : boolean) {
+        GlobalModel.submitCommand("screen", "archive", [screenId, (shouldArchive ? "1" : "0")], {"nohist": "1"}, false);
     }
 
     showRemote(remoteid : string) {
@@ -3332,7 +3335,7 @@ if ((window as any).GlobalModel == null) {
 GlobalModel = (window as any).GlobalModel;
 GlobalCommandRunner = (window as any).GlobalCommandRunner;
 
-export {Model, Session, Window, GlobalModel, GlobalCommandRunner, Cmd, Screen, riToRPtr, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows, getPtyData, getRemotePtyData, TabColors, RemoteColors};
+export {Model, Session, ScreenLines, GlobalModel, GlobalCommandRunner, Cmd, Screen, riToRPtr, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows, getPtyData, getRemotePtyData, TabColors, RemoteColors};
 export type {LineContainerModel};
 
 

@@ -46,4 +46,23 @@ class CmdStrCode extends React.Component<{cmdstr : string, onUse : () => void, o
     }
 }
 
-export {CmdStrCode};
+class Toggle extends React.Component<{checked : boolean, onChange : (value : boolean) => void}, {}> {
+    @boundMethod
+    handleChange(e : any) : void {
+        let {onChange} = this.props;
+        if (onChange != null) {
+            onChange(e.target.checked);
+        }
+    }
+    
+    render() {
+        return (
+            <label className="checkbox-toggle">
+                <input type="checkbox" checked={this.props.checked} onChange={this.handleChange}/>
+                <span className="slider"/>
+            </label>
+        );
+    }
+}
+
+export {CmdStrCode, Toggle};
