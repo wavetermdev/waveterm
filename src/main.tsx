@@ -19,6 +19,7 @@ import {BookmarksView} from "./bookmarks";
 import {HistoryView} from "./history";
 import {Line, Prompt} from "./linecomps";
 import {ScreenSettingsModal, SessionSettingsModal} from "./settings";
+import {renderCmdText} from "./elements";
 
 dayjs.extend(localizedFormat)
 
@@ -40,10 +41,6 @@ type InterObsValue = {
     visible : mobx.IObservableValue<boolean>,
     timeoutid? : any,
 };
-
-function renderCmdText(text : string) : any {
-    return <span>&#x2318;{text}</span>;
-}
 
 function isBlank(s : string) : boolean {
     return (s == null || s == "");
@@ -1444,8 +1441,12 @@ class CmdInput extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    clickHistoryHint() : void {
+    clickHistoryHint(e : any) : void {
+        e.preventDefault();
+        e.stopPropagation();
+        
         let inputModel = GlobalModel.inputModel;
+        console.log("hitory hint", inputModel.historyShow.get());
         if (inputModel.historyShow.get()) {
             inputModel.resetHistory();
         }
@@ -1514,7 +1515,7 @@ class CmdInput extends React.Component<{}, {}> {
                     </div>
                     <div className="cmd-hints">
                         <If condition={!focusVal}><div onClick={this.clickFocusInputHint} className="hint-item color-white">focus input ({renderCmdText("I")})</div></If>
-                        <If condition={focusVal}><div onClick={this.clickHistoryHint} className="hint-item color-green"><i className={cn("fa-sharp fa-solid", (historyShow ? "fa-angle-down" : "fa-angle-up"))}/> {historyShow ? "close history (esc)" : "show history (ctrl-r)"}</div></If>
+                        <If condition={focusVal}><div onMouseDown={this.clickHistoryHint} className="hint-item color-green"><i className={cn("fa-sharp fa-solid", (historyShow ? "fa-angle-down" : "fa-angle-up"))}/> {historyShow ? "close history (esc)" : "show history (ctrl-r)"}</div></If>
                     </div>
                 </div>
             </div>
@@ -2173,6 +2174,17 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
                 showingScreens.push(screen);
             }
         }
+        showingScreens.sort((a, b) => {
+            let aidx = a.screenIdx.get();
+            let bidx = b.screenIdx.get();
+            if (aidx < bidx) {
+                return -1;
+            }
+            if (aidx > bidx) {
+                return 1;
+            }
+            return 0;
+        });
         return (
             <div className="screen-tabs-container">
                 <div className={cn("screen-tabs", {"scrolling": this.scrolling.get()})} ref={this.tabsRef} onScroll={this.handleScroll}>

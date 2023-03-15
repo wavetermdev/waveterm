@@ -142,6 +142,45 @@ function genMergeData<ObjType extends IObjType<DataType>, DataType extends IData
     objs.replace(newObjs);
 }
 
+function genMergeDataMap<ObjType extends IObjType<DataType>, DataType extends IDataType>(
+    objMap : mobx.ObservableMap<string, ObjType>,
+    dataArr : DataType[],
+    objIdFn : (obj : ObjType) => string,
+    dataIdFn : (data : DataType) => string,
+    ctorFn : (data : DataType) => ObjType,
+) : {added : string[], removed : string[]}
+{
+    let rtn : {added : string[], removed : string[]} = {added: [], removed: []};
+    if (dataArr == null || dataArr.length == 0) {
+        return rtn;
+    }
+    for (let i=0; i<dataArr.length; i++) {
+        let dataItem = dataArr[i];
+        let id = dataIdFn(dataItem);
+        let obj = objMap.get(id);
+        if (dataItem.remove) {
+            if (obj != null) {
+                obj.dispose();
+                objMap.delete(id);
+                rtn.removed.push(id);
+            }
+            continue;
+        }
+        if (obj == null) {
+            if (!dataItem.full) {
+                console.log("cannot create object, dataitem is not full", dataItem);
+                continue
+            }
+            obj = ctorFn(dataItem);
+            objMap.set(id, obj);
+            rtn.added.push(id);
+            continue;
+        }
+        obj.mergeData(dataItem);
+    }
+    return rtn;
+}
+
 function parseEnv0(envStr64 : string) : Map<string, string> {
     let envStr = atob(envStr64);
     let parts = envStr.split("\x00");
@@ -182,4 +221,4 @@ function incObs(inum : mobx.IObservableValue<number>) {
     })();
 }
 
-export {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData, parseEnv0, boundInt, isModKeyPress, incObs};
+export {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeDataMap, genMergeSimpleData, parseEnv0, boundInt, isModKeyPress, incObs};

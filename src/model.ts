@@ -2,7 +2,7 @@ import * as mobx from "mobx";
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 import {debounce} from "throttle-debounce";
-import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeSimpleData, boundInt, isModKeyPress} from "./util";
+import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeDataMap, genMergeSimpleData, boundInt, isModKeyPress} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
 import type {SessionDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType, HistoryViewDataType, AlertMessageType, HistorySearchParams, FocusTypeStrs, ScreenLinesType, HistoryTypeStrs} from "./types";
@@ -2228,7 +2228,7 @@ class Model {
     activeSessionId : OV<string> = mobx.observable.box(null, {name: "activeSessionId"});
     sessionListLoaded : OV<boolean> = mobx.observable.box(false, {name: "sessionListLoaded"});
     sessionList : OArr<Session> = mobx.observable.array([], {name: "SessionList", deep: false});
-    screenList : OArr<Screen> = mobx.observable.array([], {name: "ScreenList", deep: false});
+    screenMap : OMap<string, Screen> = mobx.observable.map({}, {name: "ScreenMap", deep: false});
     ws : WSControl;
     remotes : OArr<RemoteType> = mobx.observable.array([], {name: "remotes", deep: false});
     remotesLoaded : OV<boolean> = mobx.observable.box(false, {name: "remotesLoaded"});
@@ -2580,14 +2580,11 @@ class Model {
         let update : ModelUpdateType = genUpdate;
         if ("screens" in update) {
             if (update.connect) {
-                this.screenList.clear();
+                this.screenMap.clear();
             }
-            genMergeData(this.screenList, update.screens, (s : Screen) => s.screenId, (sdata : ScreenDataType) => sdata.screenid, (sdata : ScreenDataType) => new Screen(sdata), null);
-            for (let i=0; i<update.screens.length; i++) {
-                let screen = update.screens[i];
-                if (screen.remove) {
-                    this.removeScreenLinesByScreenId(screen.screenid);
-                }
+            let mods = genMergeDataMap(this.screenMap, update.screens, (s : Screen) => s.screenId, (sdata : ScreenDataType) => sdata.screenid, (sdata : ScreenDataType) => new Screen(sdata));
+            for (let i=0; i<mods.removed.length; i++) {
+                this.removeScreenLinesByScreenId(mods.removed[i]);
             }
         }
         if ("sessions" in update) {
@@ -2689,8 +2686,7 @@ class Model {
 
     getScreenNames() : Record<string, string> {
         let rtn : Record<string, string> = {};
-        for (let i=0; i<this.screenList.length; i++) {
-            let screen = this.screenList[i];
+        for (let screen of this.screenMap.values()) {
             rtn[screen.screenId] = screen.name.get();
         }
         return rtn;
@@ -2752,19 +2748,12 @@ class Model {
     }
 
     getScreenById(sessionId : string, screenId : string) : Screen {
-        for (let i=0; i<this.screenList.length; i++) {
-            let screen = this.screenList[i];
-            if (screen.screenId == screenId) {
-                return screen;
-            }
-        }
-        return null;
+        return this.screenMap.get(screenId);
     }
 
     getSessionScreens(sessionId : string) : Screen[] {
         let rtn : Screen[] = [];
-        for (let i=0; i<this.screenList.length; i++) {
-            let screen = this.screenList[i];
+        for (let screen of this.screenMap.values()) {
             if (screen.sessionId == sessionId) {
                 rtn.push(screen);
             }

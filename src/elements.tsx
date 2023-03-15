@@ -6,6 +6,10 @@ import {boundMethod} from "autobind-decorator";
 import cn from "classnames";
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 
+function renderCmdText(text : string) : any {
+    return <span>&#x2318;{text}</span>;
+}
+
 class CmdStrCode extends React.Component<{cmdstr : string, onUse : () => void, onCopy : () => void, isCopied : boolean, fontSize : "normal" | "large", limitHeight : boolean}, {}> {
     @boundMethod
     handleUse(e : any) {
@@ -65,4 +69,4 @@ class Toggle extends React.Component<{checked : boolean, onChange : (value : boo
     }
 }
 
-export {CmdStrCode, Toggle};
+export {CmdStrCode, Toggle, renderCmdText};

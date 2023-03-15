@@ -1671,6 +1671,21 @@ body::-webkit-scrollbar {
             padding-bottom: 5px;
         }
     }
+
+    .cmd-hints {
+        position: absolute;
+        bottom: 0px;
+        right: 0px;
+        display: none;
+
+        .hint-item {
+            border-radius: 3px;
+        }
+    }
+
+    &:hover .cmd-hints {
+        display: flex;
+    }
 }
 
 body .xterm .xterm-viewport {
@@ -2782,6 +2797,12 @@ input[type=checkbox] {
             color: white;
         }
     }
+
+    .hint-item.color-nohover-green {
+        color: black;
+        background-color: @tab-green;
+        cursor: default;
+    }
     
     .hint-item.color-white {
         color: black;
@@ -2790,6 +2811,27 @@ input[type=checkbox] {
         &:hover {
             background-color: @term-bright-white;
         }
+    }
+
+    .hint-item.color-nohover-white {
+        color: black;
+        background-color: @term-white;
+        cursor: default;
+    }
+
+    .hint-item.color-blue {
+        color: black;
+        background-color: @tab-blue;
+        
+        &:hover {
+            color: white;
+        }
+    }
+
+    .hint-item.color-nohover-blue {
+        color: black;
+        background-color: @tab-blue;
+        cursor: default;
     }
 }
 

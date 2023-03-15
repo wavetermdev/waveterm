@@ -12,6 +12,7 @@ import type {LineType, CmdDataType, FeStateType, RemoteType, RemotePtrType, Rend
 import cn from "classnames";
 import {TermWrap} from "./term";
 import type {LineContainerModel} from "./model";
+import {renderCmdText} from "./elements";
 
 dayjs.extend(localizedFormat)
 
@@ -125,7 +126,7 @@ class LineAvatar extends React.Component<{line : LineType, cmd : Cmd}, {}> {
 
 
 @mobxReact.observer
-class LineCmd extends React.Component<{screen : LineContainerModel, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType, topBorder : boolean, renderMode : RenderModeType, overrideCollapsed : OV<boolean>, noSelect? : boolean}, {}> {
+class LineCmd extends React.Component<{screen : LineContainerModel, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType, topBorder : boolean, renderMode : RenderModeType, overrideCollapsed : OV<boolean>, noSelect? : boolean, showHints? : boolean}, {}> {
     lineRef : React.RefObject<any> = React.createRef();
     cmdTextRef : React.RefObject<any> = React.createRef();
     rtnStateDiff : mobx.IObservableValue<string> = mobx.observable.box(null, {name: "linecmd-rtn-state-diff"});
@@ -512,6 +513,11 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
                             <div className="cmd-rtnstate-sep"></div>
                             <div className="cmd-rtnstate-diff">{this.rtnStateDiff.get()}</div>
                         </If>
+                    </div>
+                </If>
+                <If condition={isSelected && !isFocused}>
+                    <div className="cmd-hints">
+                        <div className="hint-item color-nohover-white">focus line ({renderCmdText("L")})</div>
                     </div>
                 </If>
             </div>
