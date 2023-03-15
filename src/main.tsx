@@ -2458,7 +2458,7 @@ class MainSideBar extends React.Component<{}, {}> {
             termfocus={activeScreen.termLineNumFocus.get()}<br/>
                         </div>
                     </If>
-                    <ul className="menu-list">
+                    <ul className="menu-list" style={{display: "none"}}>
                         <li className="menu-bookmarks"><a onClick={this.handleWelcomeClick} className={cn({"is-active": GlobalModel.welcomeModalOpen.get()})}><i className="fa-sharp fa-solid fa-door-open"/> WELCOME</a></li>
                     </ul>
                     <p className="menu-label">
