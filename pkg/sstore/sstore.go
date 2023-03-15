@@ -368,6 +368,7 @@ func (h *HistoryItemType) FromMap(m map[string]interface{}) bool {
 	quickSetStr(&h.Remote.Name, m, "remotename")
 	quickSetBool(&h.IsMetaCmd, m, "ismetacmd")
 	quickSetStr(&h.HistoryNum, m, "historynum")
+	quickSetInt64(&h.LineNum, m, "linenum")
 	quickSetBool(&h.Incognito, m, "incognito")
 	return true
 }
@@ -497,6 +498,7 @@ type HistoryItemType struct {
 
 	// transient (string because of different history orderings)
 	HistoryNum string `json:"historynum"`
+	LineNum    int64  `json:"linenum"`
 }
 
 type HistoryQueryOpts struct {

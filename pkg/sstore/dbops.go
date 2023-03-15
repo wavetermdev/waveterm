@@ -17,7 +17,7 @@ import (
 	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 )
 
-const HistoryCols = "historyid, ts, userid, sessionid, screenid, lineid, cmdid, haderror, cmdstr, remoteownerid, remoteid, remotename, ismetacmd, incognito"
+const HistoryCols = "h.historyid, h.ts, h.userid, h.sessionid, h.screenid, h.lineid, h.cmdid, h.haderror, h.cmdstr, h.remoteownerid, h.remoteid, h.remotename, h.ismetacmd, h.incognito"
 const DefaultMaxHistoryItems = 1000
 
 type SingleConnDBGetter struct {
@@ -287,35 +287,36 @@ func runHistoryQuery(tx *TxWrap, opts HistoryQueryOpts, realOffset int, itemLimi
 			return nil, fmt.Errorf("malformed remoteid")
 		}
 	}
-	hnumStr := ""
 	whereClause := "WHERE 1"
 	var queryArgs []interface{}
+	hNumStr := ""
 	if opts.SessionId != "" && opts.ScreenId != "" {
-		whereClause += fmt.Sprintf(" AND sessionid = '%s' AND screenid = '%s'", opts.SessionId, opts.ScreenId)
-		hnumStr = "w"
+		whereClause += fmt.Sprintf(" AND h.sessionid = '%s' AND h.screenid = '%s'", opts.SessionId, opts.ScreenId)
+		hNumStr = ""
 	} else if opts.SessionId != "" {
-		whereClause += fmt.Sprintf(" AND sessionid = '%s'", opts.SessionId)
-		hnumStr = "s"
+		whereClause += fmt.Sprintf(" AND h.sessionid = '%s'", opts.SessionId)
+		hNumStr = "s"
 	} else {
-		hnumStr = "g"
+		hNumStr = "g"
 	}
 	if opts.SearchText != "" {
-		whereClause += " AND cmdstr LIKE ? ESCAPE '\\'"
+		whereClause += " AND h.cmdstr LIKE ? ESCAPE '\\'"
 		likeArg := opts.SearchText
 		likeArg = strings.ReplaceAll(likeArg, "%", "\\%")
 		likeArg = strings.ReplaceAll(likeArg, "_", "\\_")
 		queryArgs = append(queryArgs, "%"+likeArg+"%")
 	}
 	if opts.FromTs > 0 {
-		whereClause += fmt.Sprintf(" AND ts <= %d", opts.FromTs)
+		whereClause += fmt.Sprintf(" AND h.ts <= %d", opts.FromTs)
 	}
 	if opts.RemoteId != "" {
-		whereClause += fmt.Sprintf(" AND remoteid = '%s'", opts.RemoteId)
+		whereClause += fmt.Sprintf(" AND h.remoteid = '%s'", opts.RemoteId)
 	}
 	if opts.NoMeta {
-		whereClause += " AND NOT ismetacmd"
+		whereClause += " AND NOT h.ismetacmd"
 	}
-	query := fmt.Sprintf("SELECT %s, '%s' || row_number() OVER win AS historynum FROM history %s WINDOW win AS (ORDER BY ts, historyid) ORDER BY ts DESC, historyid DESC LIMIT %d OFFSET %d", HistoryCols, hnumStr, whereClause, itemLimit, realOffset)
+	query := fmt.Sprintf("SELECT %s, ('%s' || CAST((row_number() OVER win) as text)) historynum, l.linenum FROM history h LEFT OUTER JOIN line l ON (h.lineid = l.lineid) %s WINDOW win AS (ORDER BY h.ts, h.historyid) ORDER BY h.ts DESC, h.historyid DESC LIMIT %d OFFSET %d", HistoryCols, hNumStr, whereClause, itemLimit, realOffset)
+	fmt.Printf("HISTORY QUERY %s\n", query)
 	marr := tx.SelectMaps(query, queryArgs...)
 	rtn := make([]*HistoryItemType, len(marr))
 	for idx, m := range marr {
