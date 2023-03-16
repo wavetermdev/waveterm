@@ -215,6 +215,7 @@ type CmdDoneInfoType = {
 
 type CmdDataType = {
     sessionid : string,
+    screenid : string,
     cmdid : string,
     remote : RemotePtrType,
     cmdstr : string,
@@ -231,6 +232,7 @@ type CmdDataType = {
 
 type PtyDataUpdateType = {
     sessionid : string,
+    screenid : string,
     cmdid : string,
     remoteid : string,
     ptypos : number,
@@ -239,7 +241,6 @@ type PtyDataUpdateType = {
 };
 
 type ScreenLinesType = {
-    sessionid : string,
     screenid : string,
     lines : LineType[],
     cmds : CmdDataType[],

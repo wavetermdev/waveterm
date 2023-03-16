@@ -168,6 +168,7 @@ function ces(s : string) {
 
 class Cmd {
     sessionId : string;
+    screenId : string;
     remote : RemotePtrType;
     remoteId : string;
     cmdId : string;
@@ -175,6 +176,7 @@ class Cmd {
 
     constructor(cmd : CmdDataType) {
         this.sessionId = cmd.sessionid;
+        this.screenId = cmd.screenid;
         this.cmdId = cmd.cmdid;
         this.remote = cmd.remote;
         this.data = mobx.observable.box(cmd, {deep: false, name: "cmd-data"});
@@ -185,7 +187,7 @@ class Cmd {
             let origData = this.data.get();
             this.data.set(cmd);
             if (origData != null && cmd != null && origData.status != cmd.status) {
-                GlobalModel.cmdStatusUpdate(this.sessionId, this.cmdId, origData.status, cmd.status);
+                GlobalModel.cmdStatusUpdate(this.screenId, this.cmdId, origData.status, cmd.status);
             }
         })();
     }
@@ -649,7 +651,7 @@ class Screen {
     }
 
     getScreenLines() : ScreenLines {
-        return GlobalModel.getScreenLinesById(this.sessionId, this.screenId);
+        return GlobalModel.getScreenLinesById(this.screenId);
     }
 
     getFocusType() : FocusTypeStrs {
@@ -680,15 +682,13 @@ class Screen {
 }
 
 class ScreenLines {
-    sessionId : string;
     screenId : string;
     loaded : OV<boolean> = mobx.observable.box(false, {name: "slines-loaded"});
     loadError : OV<string> = mobx.observable.box(null);
     lines : OArr<LineType> = mobx.observable.array([], {name: "slines-lines", deep: false});
     cmds : Record<string, Cmd> = {};
 
-    constructor(sessionId : string, screenId : string) {
-        this.sessionId = sessionId;
+    constructor(screenId : string) {
         this.screenId = screenId;
     }
 
@@ -2494,12 +2494,12 @@ class Model {
         };
     }
 
-    cmdStatusUpdate(sessionId : string, cmdId : string, origStatus : string, newStatus : string) {
+    cmdStatusUpdate(screenId : string, cmdId : string, origStatus : string, newStatus : string) {
         let wasRunning = cmdStatusIsRunning(origStatus);
         let isRunning = cmdStatusIsRunning(newStatus);
         if (wasRunning && !isRunning) {
-            // console.log("cmd status", sessionId, cmdId, origStatus, "=>", newStatus);
-            let lines = this.getActiveLinesByCmdId(sessionId, cmdId);
+            // console.log("cmd status", screenId, cmdId, origStatus, "=>", newStatus);
+            let lines = this.getActiveLinesByCmdId(screenId, cmdId);
             for (let ptr of lines) {
                 let screen = ptr.screen;
                 let renderer = screen.getRenderer(cmdId);
@@ -2710,21 +2710,20 @@ class Model {
         })();
     }
 
-    getScreenLinesById(sessionId : string, screenId : string) : ScreenLines {
-        return this.screenLines.get(sessionId + "/" + screenId);
+    getScreenLinesById(screenId : string) : ScreenLines {
+        return this.screenLines.get(screenId);
     }
 
     updateScreenLines(slines : ScreenLinesType, load : boolean) {
         mobx.action(() => {
-            let winKey = slines.sessionid + "/" + slines.screenid;
-            let existingWin = this.screenLines.get(winKey);
+            let existingWin = this.screenLines.get(slines.screenid);
             if (existingWin == null) {
                 if (!load) {
-                    console.log("cannot update screen-lines that does not exist", winKey);
+                    console.log("cannot update screen-lines that does not exist", slines.screenid);
                     return;
                 }
-                let newWindow = new ScreenLines(slines.sessionid, slines.screenid);
-                this.screenLines.set(winKey, newWindow);
+                let newWindow = new ScreenLines(slines.screenid);
+                this.screenLines.set(slines.screenid, newWindow);
                 newWindow.updateData(slines, load);
                 return;
             }
@@ -2737,17 +2736,15 @@ class Model {
 
     removeScreenLinesByScreenId(screenId : string) {
         mobx.action(() => {
-            for (let winKey of this.screenLines.keys()) {
-                let win = this.screenLines.get(winKey);
-                if (win.screenId == screenId) {
-                    this.screenLines.delete(winKey);
-                    return;
-                }
-            }
+            this.screenLines.delete(screenId);
         })();
     }
 
     getScreenById(sessionId : string, screenId : string) : Screen {
+        return this.screenMap.get(screenId);
+    }
+
+    getScreenById_single(screenId : string) : Screen {
         return this.screenMap.get(screenId);
     }
 
@@ -2766,7 +2763,7 @@ class Model {
         if (screen == null) {
             return null;
         }
-        return this.screenLines.get(screen.sessionId + "/" + screen.screenId);
+        return this.screenLines.get(screen.screenId);
     }
 
     getActiveScreen() : Screen {
@@ -2778,17 +2775,18 @@ class Model {
     }
 
     addLineCmd(line : LineType, cmd : CmdDataType, interactive : boolean) {
-        let win = this.getScreenLinesById(line.sessionid, line.screenid);
-        if (win == null) {
+        let slines = this.getScreenLinesById(line.screenid);
+        if (slines == null) {
             return;
         }
-        win.addLineCmd(line, cmd, interactive);
+        slines.addLineCmd(line, cmd, interactive);
     }
 
     updateCmd(cmd : CmdDataType) {
-        this.screenLines.forEach((win : ScreenLines) => {
-            win.updateCmd(cmd);
-        });
+        let slines = this.screenLines.get(cmd.screenid);
+        if (slines != null) {
+            slines.updateCmd(cmd);
+        }
     }
 
     isInfoUpdate(update : UpdateMessage) : boolean {
@@ -2910,7 +2908,7 @@ class Model {
     }
 
     _loadScreenLinesAsync(newWin : ScreenLines) {
-        this.screenLines.set(newWin.sessionId + "/" + newWin.screenId, newWin);
+        this.screenLines.set(newWin.screenId, newWin);
         let usp = new URLSearchParams({screenid: newWin.screenId});
         let url = new URL(GlobalModel.getBaseHostPort() + "/api/get-screen-lines?" + usp.toString());
         let fetchHeaders = GlobalModel.getFetchHeaders();
@@ -2927,8 +2925,8 @@ class Model {
         });
     }
 
-    loadScreenLines(sessionId : string, screenId : string) : ScreenLines {
-        let newWin = new ScreenLines(sessionId, screenId);
+    loadScreenLines(screenId : string) : ScreenLines {
+        let newWin = new ScreenLines(screenId);
         setTimeout(() => this._loadScreenLinesAsync(newWin), 0);
         return newWin;
     }
@@ -2970,60 +2968,42 @@ class Model {
         if (session == null) {
             return null;
         }
-        let slines = this.getScreenLinesById(line.sessionid, line.screenid);
+        let slines = this.getScreenLinesById(line.screenid);
         if (slines == null) {
             return null;
         }
         return slines.getCmd(line.cmdid);
     }
 
-    getCmdByIds(sessionid : string, cmdid : string) : Cmd {
-        for (let win of this.screenLines.values()) {
-            if (win.sessionId != sessionid) {
-                continue;
-            }
-            let cmd = win.getCmd(cmdid);
-            if (cmd != null) {
-                return cmd;
-            }
-        }
-        return null;
-    }
-
-    getActiveLinesByCmdId(sessionid : string, cmdid : string) : SWLinePtr[] {
+    getActiveLinesByCmdId(screenId : string, cmdid : string) : SWLinePtr[] {
         let rtn : SWLinePtr[] = [];
-        let session = this.getSessionById(sessionid);
-        if (session == null) {
+        let slines = this.screenLines.get(screenId);
+        if (slines == null) {
             return [];
         }
-        for (let win of this.screenLines.values()) {
-            if (win.sessionId != sessionid) {
-                continue;
+        if (!slines.loaded.get()) {
+            return [];
+        }
+        let cmd = slines.getCmd(cmdid);
+        if (cmd == null) {
+            return [];
+        }
+        let line : LineType = null;
+        for (let i=0; i<slines.lines.length; i++) {
+            if (slines.lines[i].cmdid == cmdid) {
+                line = slines.lines[i];
+                break;
             }
-            if (!win.loaded.get()) {
-                continue;
-            }
-            let cmd = win.getCmd(cmdid);
-            if (cmd == null) {
-                continue;
-            }
-            let winLine : LineType = null;
-            for (let i=0; i<win.lines.length; i++) {
-                if (win.lines[i].cmdid == cmdid) {
-                    winLine = win.lines[i];
-                    break;
-                }
-            }
-            if (winLine != null) {
-                let screen = this.getScreenById(win.sessionId, win.screenId);
-                rtn.push({line : winLine, slines: win, screen: screen});
-            }
+        }
+        if (line != null) {
+            let screen = this.getScreenById_single(slines.screenId);
+            rtn.push({line : line, slines: slines, screen: screen});
         }
         return rtn;
     }
 
     updatePtyData(ptyMsg : PtyDataUpdateType) : void {
-        let activeLinePtrs = this.getActiveLinesByCmdId(ptyMsg.sessionid, ptyMsg.cmdid);
+        let activeLinePtrs = this.getActiveLinesByCmdId(ptyMsg.screenid, ptyMsg.cmdid);
         for (let lineptr of activeLinePtrs) {
             lineptr.screen.updatePtyData(ptyMsg);
         }

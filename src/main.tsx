@@ -2032,9 +2032,9 @@ class ScreenWindowView extends React.Component<{screen : Screen}, {}> {
 
     getScreenLines() : ScreenLines {
         let {screen} = this.props;
-        let win = GlobalModel.getScreenLinesById(screen.sessionId, screen.screenId);
+        let win = GlobalModel.getScreenLinesById(screen.screenId);
         if (win == null) {
-            win = GlobalModel.loadScreenLines(screen.sessionId, screen.screenId);
+            win = GlobalModel.loadScreenLines(screen.screenId);
         }
         return win;
     }
