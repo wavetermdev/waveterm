@@ -1,0 +1,2 @@
+ALTER TABLE cmd DROP COLUMN screenid;
+

@@ -1340,6 +1340,7 @@ func RunCommand(ctx context.Context, sessionId string, screenId string, remotePt
 	}
 	cmd := &sstore.CmdType{
 		SessionId: runPacket.CK.GetSessionId(),
+		ScreenId:  screenId,
 		CmdId:     runPacket.CK.GetCmdId(),
 		CmdStr:    runPacket.Command,
 		Remote:    remotePtr,
@@ -1593,7 +1594,8 @@ func (msh *MShellProc) handleDataPacket(dataPk *packet.DataPacketType, dataPosMa
 	var ack *packet.DataAckPacketType
 	if len(realData) > 0 {
 		dataPos := dataPosMap[dataPk.CK]
-		update, err := sstore.AppendToCmdPtyBlob(context.Background(), dataPk.CK.GetSessionId(), dataPk.CK.GetCmdId(), realData, dataPos)
+		rcmd := msh.GetRunningCmd(dataPk.CK)
+		update, err := sstore.AppendToCmdPtyBlob(context.Background(), dataPk.CK.GetSessionId(), rcmd.ScreenId, dataPk.CK.GetCmdId(), realData, dataPos)
 		if err != nil {
 			ack = makeDataAckPacket(dataPk.CK, dataPk.FdNum, 0, err)
 		} else {

@@ -18,6 +18,7 @@ type UpdatePacket interface {
 
 type PtyDataUpdate struct {
 	SessionId  string `json:"sessionid,omitempty"`
+	ScreenId   string `json:"screenid,omitempty"`
 	CmdId      string `json:"cmdid,omitempty"`
 	RemoteId   string `json:"remoteid,omitempty"`
 	PtyPos     int64  `json:"ptypos"`

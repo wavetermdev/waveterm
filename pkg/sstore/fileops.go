@@ -32,7 +32,10 @@ func StatCmdPtyFile(ctx context.Context, sessionId string, cmdId string) (*cirfi
 	return cirfile.StatCirFile(ctx, ptyOutFileName)
 }
 
-func AppendToCmdPtyBlob(ctx context.Context, sessionId string, cmdId string, data []byte, pos int64) (*PtyDataUpdate, error) {
+func AppendToCmdPtyBlob(ctx context.Context, sessionId string, screenId string, cmdId string, data []byte, pos int64) (*PtyDataUpdate, error) {
+	if screenId == "" {
+		return nil, fmt.Errorf("cannot append to PtyBlob, screenid is not set")
+	}
 	if pos < 0 {
 		return nil, fmt.Errorf("invalid seek pos '%d' in AppendToCmdPtyBlob", pos)
 	}
@@ -52,6 +55,7 @@ func AppendToCmdPtyBlob(ctx context.Context, sessionId string, cmdId string, dat
 	data64 := base64.StdEncoding.EncodeToString(data)
 	update := &PtyDataUpdate{
 		SessionId:  sessionId,
+		ScreenId:   screenId,
 		CmdId:      cmdId,
 		PtyPos:     pos,
 		PtyData64:  data64,

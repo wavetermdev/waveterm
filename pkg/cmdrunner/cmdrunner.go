@@ -1164,6 +1164,7 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 func makeStaticCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr string, cmdOutput []byte) (*sstore.CmdType, error) {
 	cmd := &sstore.CmdType{
 		SessionId: ids.SessionId,
+		ScreenId:  ids.ScreenId,
 		CmdId:     scbase.GenPromptUUID(),
 		CmdStr:    cmdStr,
 		Remote:    ids.Remote.RemotePtr,
@@ -1185,7 +1186,7 @@ func makeStaticCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr 
 		return nil, fmt.Errorf("cannot create local ptyout file for %s command: %w", metaCmd, err)
 	}
 	// can ignore ptyupdate
-	_, err = sstore.AppendToCmdPtyBlob(ctx, cmd.SessionId, cmd.CmdId, cmdOutput, 0)
+	_, err = sstore.AppendToCmdPtyBlob(ctx, cmd.SessionId, ids.ScreenId, cmd.CmdId, cmdOutput, 0)
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, fmt.Errorf("cannot append to local ptyout file for %s command: %v", metaCmd, err)

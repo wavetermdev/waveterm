@@ -1,3 +1,3 @@
--- invalid, will throw an error, cannot migrate down past 9
+-- invalid, will throw an error, cannot migrate down
 SELECT x;
 

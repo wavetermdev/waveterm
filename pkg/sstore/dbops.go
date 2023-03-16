@@ -316,7 +316,6 @@ func runHistoryQuery(tx *TxWrap, opts HistoryQueryOpts, realOffset int, itemLimi
 		whereClause += " AND NOT h.ismetacmd"
 	}
 	query := fmt.Sprintf("SELECT %s, ('%s' || CAST((row_number() OVER win) as text)) historynum, l.linenum FROM history h LEFT OUTER JOIN line l ON (h.lineid = l.lineid) %s WINDOW win AS (ORDER BY h.ts, h.historyid) ORDER BY h.ts DESC, h.historyid DESC LIMIT %d OFFSET %d", HistoryCols, hNumStr, whereClause, itemLimit, realOffset)
-	fmt.Printf("HISTORY QUERY %s\n", query)
 	marr := tx.SelectMaps(query, queryArgs...)
 	rtn := make([]*HistoryItemType, len(marr))
 	for idx, m := range marr {
@@ -420,15 +419,17 @@ func GetAllSessions(ctx context.Context) (*ModelUpdate, error) {
 
 func GetScreenLinesById(ctx context.Context, screenId string) (*ScreenLinesType, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) (*ScreenLinesType, error) {
-		query := `SELECT sessionid, screenid FROM screen WHERE screenid = ?`
+		query := `SELECT screenid FROM screen WHERE screenid = ?`
 		screen := GetMappable[*ScreenLinesType](tx, query, screenId)
 		if screen == nil {
 			return nil, nil
 		}
+		query = `SELECT sessionid FROM screen WHERE screenid = ?`
+		sessionId := tx.GetString(query, screenId)
 		query = `SELECT * FROM line WHERE sessionid = ? AND screenid = ? ORDER BY linenum`
-		tx.Select(&screen.Lines, query, screen.SessionId, screen.ScreenId)
+		tx.Select(&screen.Lines, query, sessionId, screen.ScreenId)
 		query = `SELECT * FROM cmd WHERE cmdid IN (SELECT cmdid FROM line WHERE sessionid = ? AND screenid = ?)`
-		screen.Cmds = SelectMapsGen[*CmdType](tx, query, screen.SessionId, screen.ScreenId)
+		screen.Cmds = SelectMapsGen[*CmdType](tx, query, sessionId, screen.ScreenId)
 		return screen, nil
 	})
 }
@@ -749,6 +750,9 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 	if line.LineNum != 0 {
 		return fmt.Errorf("line should not hage linenum set")
 	}
+	if cmd.ScreenId == "" {
+		return fmt.Errorf("cmd should have screenid set")
+	}
 	return WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT screenid FROM screen WHERE sessionid = ? AND screenid = ?`
 		if !tx.Exists(query, line.SessionId, line.ScreenId) {
@@ -766,8 +770,8 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 			cmd.OrigTermOpts = cmd.TermOpts
 			cmdMap := cmd.ToMap()
 			query = `
-INSERT INTO cmd  ( sessionid, cmdid, remoteownerid, remoteid, remotename, cmdstr, festate, statebasehash, statediffhasharr, termopts, origtermopts, status, startpk, doneinfo, rtnstate, runout, rtnbasehash, rtndiffhasharr)
-          VALUES (:sessionid,:cmdid,:remoteownerid,:remoteid,:remotename,:cmdstr,:festate,:statebasehash,:statediffhasharr,:termopts,:origtermopts,:status,:startpk,:doneinfo,:rtnstate,:runout,:rtnbasehash,:rtndiffhasharr)
+INSERT INTO cmd  ( sessionid, screenid, cmdid, remoteownerid, remoteid, remotename, cmdstr, festate, statebasehash, statediffhasharr, termopts, origtermopts, status, startpk, doneinfo, rtnstate, runout, rtnbasehash, rtndiffhasharr)
+          VALUES (:sessionid,:screenid,:cmdid,:remoteownerid,:remoteid,:remotename,:cmdstr,:festate,:statebasehash,:statediffhasharr,:termopts,:origtermopts,:status,:startpk,:doneinfo,:rtnstate,:runout,:rtnbasehash,:rtndiffhasharr)
 `
 			tx.NamedExec(query, cmdMap)
 		}
@@ -2356,5 +2360,12 @@ func PurgeHistoryByIds(ctx context.Context, historyIds []string) ([]*HistoryItem
 			}
 		}
 		return rtn, nil
+	})
+}
+
+func GetScreenIdFromCmd(ctx context.Context, sessionId string, cmdId string) (string, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (string, error) {
+		query := `SELECT screenid FROM cmd WHERE sessionid = ? AND cmdid = ?`
+		return tx.GetString(query, sessionId, cmdId), nil
 	})
 }

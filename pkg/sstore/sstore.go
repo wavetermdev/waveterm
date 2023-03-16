@@ -379,10 +379,9 @@ type ScreenOptsType struct {
 }
 
 type ScreenLinesType struct {
-	SessionId string      `json:"sessionid"`
-	ScreenId  string      `json:"screenid"`
-	Lines     []*LineType `json:"lines" dbmap:"-"`
-	Cmds      []*CmdType  `json:"cmds" dbmap:"-"`
+	ScreenId string      `json:"screenid"`
+	Lines    []*LineType `json:"lines" dbmap:"-"`
+	Cmds     []*CmdType  `json:"cmds" dbmap:"-"`
 }
 
 func (ScreenLinesType) UseDBMap() {}
@@ -834,6 +833,7 @@ type CmdDoneInfo struct {
 
 type CmdType struct {
 	SessionId    string                     `json:"sessionid"`
+	ScreenId     string                     `json:"screenid"`
 	CmdId        string                     `json:"cmdid"`
 	Remote       RemotePtrType              `json:"remote"`
 	CmdStr       string                     `json:"cmdstr"`
@@ -894,6 +894,7 @@ func (r *RemoteType) FromMap(m map[string]interface{}) bool {
 func (cmd *CmdType) ToMap() map[string]interface{} {
 	rtn := make(map[string]interface{})
 	rtn["sessionid"] = cmd.SessionId
+	rtn["screenid"] = cmd.ScreenId
 	rtn["cmdid"] = cmd.CmdId
 	rtn["remoteownerid"] = cmd.Remote.OwnerId
 	rtn["remoteid"] = cmd.Remote.RemoteId
@@ -916,6 +917,7 @@ func (cmd *CmdType) ToMap() map[string]interface{} {
 
 func (cmd *CmdType) FromMap(m map[string]interface{}) bool {
 	quickSetStr(&cmd.SessionId, m, "sessionid")
+	quickSetStr(&cmd.ScreenId, m, "screenid")
 	quickSetStr(&cmd.CmdId, m, "cmdid")
 	quickSetStr(&cmd.Remote.OwnerId, m, "remoteownerid")
 	quickSetStr(&cmd.Remote.RemoteId, m, "remoteid")
