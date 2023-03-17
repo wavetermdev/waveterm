@@ -40,6 +40,7 @@ func init() {
 
 const DefaultUserId = "sawka"
 const MaxNameLen = 50
+const MaxRendererLen = 50
 const MaxRemoteAliasLen = 50
 const PasswordUnchangedSentinel = "--unchanged--"
 const DefaultPTERM = "MxM"
@@ -78,6 +79,7 @@ var hostNameRe = regexp.MustCompile("^[a-z][a-z0-9.-]*$")
 var userHostRe = regexp.MustCompile("^(sudo@)?([a-z][a-z0-9-]*)@([a-z0-9][a-z0-9.-]*)(?::([0-9]+))?$")
 var remoteAliasRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_-]*$")
 var genericNameRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_ .()<>,/\"'\\[\\]{}=+$@!*-]*$")
+var rendererRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_.:-]*$")
 var positionRe = regexp.MustCompile("^((S?\\+|E?-)?[0-9]+|(\\+|-|S|E))$")
 var wsRe = regexp.MustCompile("\\s+")
 var sigNameRe = regexp.MustCompile("^((SIG[A-Z0-9]+)|(\\d+))$")
@@ -324,6 +326,10 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	if err != nil {
 		return nil, fmt.Errorf("/run error: %w", err)
 	}
+	if err = validateRenderer(pk.Kwargs["renderer"]); err != nil {
+		return nil, fmt.Errorf("/run error: %w", err)
+	}
+	renderer := pk.Kwargs["renderer"]
 	cmdStr := firstArg(pk)
 	isRtnStateCmd := IsReturnStateCommand(cmdStr)
 	// runPacket.State is set in remote.RunCommand()
@@ -345,7 +351,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	if err != nil {
 		return nil, err
 	}
-	update, err := addLineForCmd(ctx, "/run", true, ids, cmd)
+	update, err := addLineForCmd(ctx, "/run", true, ids, cmd, renderer)
 	if err != nil {
 		return nil, err
 	}
@@ -1018,7 +1024,7 @@ func ScreenResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	update, err := addLineForCmd(ctx, "/screen:reset", false, ids, cmd)
+	update, err := addLineForCmd(ctx, "/screen:reset", false, ids, cmd, "")
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
@@ -1152,7 +1158,7 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd)
+	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "")
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
@@ -1194,8 +1200,8 @@ func makeStaticCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr 
 	return cmd, nil
 }
 
-func addLineForCmd(ctx context.Context, metaCmd string, shouldFocus bool, ids resolvedIds, cmd *sstore.CmdType) (*sstore.ModelUpdate, error) {
-	rtnLine, err := sstore.AddCmdLine(ctx, ids.SessionId, ids.ScreenId, DefaultUserId, cmd, "")
+func addLineForCmd(ctx context.Context, metaCmd string, shouldFocus bool, ids resolvedIds, cmd *sstore.CmdType, renderer string) (*sstore.ModelUpdate, error) {
+	rtnLine, err := sstore.AddCmdLine(ctx, ids.SessionId, ids.ScreenId, DefaultUserId, cmd, renderer)
 	if err != nil {
 		return nil, err
 	}
@@ -1463,6 +1469,19 @@ func validateName(name string, typeStr string) error {
 	}
 	if !genericNameRe.MatchString(name) {
 		return fmt.Errorf("invalid %s name", typeStr)
+	}
+	return nil
+}
+
+func validateRenderer(renderer string) error {
+	if renderer == "" {
+		return nil
+	}
+	if len(renderer) > MaxRendererLen {
+		return fmt.Errorf("renderer name too long, max length is %d", MaxRendererLen)
+	}
+	if !rendererRe.MatchString(renderer) {
+		return fmt.Errorf("invalid renderer format")
 	}
 	return nil
 }
@@ -1740,7 +1759,7 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	update, err := addLineForCmd(ctx, "/reset", false, ids, cmd)
+	update, err := addLineForCmd(ctx, "/reset", false, ids, cmd, "")
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
@@ -2375,6 +2394,11 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "ts", ts.Format("2006-01-02 15:04:05")))
 	if line.Ephemeral {
 		buf.WriteString(fmt.Sprintf("  %-15s %v\n", "ephemeral", true))
+	}
+	if line.Renderer != "" {
+		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "renderer", line.Renderer))
+	} else {
+		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "renderer", "terminal"))
 	}
 	if cmd != nil {
 		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "cmdid", cmd.CmdId))
