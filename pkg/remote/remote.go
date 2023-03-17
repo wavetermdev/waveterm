@@ -660,6 +660,7 @@ func convertSSHOpts(opts *sstore.SSHOpts) shexec.SSHOpts {
 		SSHOptsStr:  opts.SSHOptsStr,
 		SSHIdentity: opts.SSHIdentity,
 		SSHUser:     opts.SSHUser,
+		SSHPort:     opts.SSHPort,
 	}
 }
 
@@ -1050,7 +1051,11 @@ func (msh *MShellProc) Launch(interactive bool) {
 		msh.WriteToPtyBuffer("remote is trying to install, cancel install before trying to connect again\n")
 		return
 	}
-	msh.WriteToPtyBuffer("connecting to %s...\n", remoteCopy.RemoteCanonicalName)
+	if remoteCopy.SSHOpts.SSHPort != 0 && remoteCopy.SSHOpts.SSHPort != 22 {
+		msh.WriteToPtyBuffer("connecting to %s (port %d)...\n", remoteCopy.RemoteCanonicalName, remoteCopy.SSHOpts.SSHPort)
+	} else {
+		msh.WriteToPtyBuffer("connecting to %s...\n", remoteCopy.RemoteCanonicalName)
+	}
 	sshOpts := convertSSHOpts(remoteCopy.SSHOpts)
 	sshOpts.SSHErrorsToTty = true
 	if remoteCopy.ConnectMode != sstore.ConnectModeManual && remoteCopy.SSHOpts.SSHPassword == "" && !interactive {
