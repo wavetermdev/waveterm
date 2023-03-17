@@ -405,17 +405,6 @@ type SimpleBlobRendererComponent = React.ComponentType<{data : Blob, context : R
 type SimpleJsonRendererComponent = React.ComponentType<{data : any, context : RendererContext, opts : RendererOpts}>;
 type FullRendererComponent = React.ComponentType<{model : any}>;
 
-type OldRendererModel = {
-    dispose : () => void,
-    reload : (delayMs : number) => void,
-    receiveData : (pos : number, data : Uint8Array, reason? : string) => void,
-    cmdDone : () => void,
-    resizeWindow : (size : WindowSize) => void,
-    resizeCols : (cols : number) => void,
-    giveFocus : () => void,
-    getUsedRows : () => number,
-};
-
 type WindowSize = {
     height : number,
     width: number,

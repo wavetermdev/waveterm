@@ -52,6 +52,7 @@ class SimpleBlobRendererModel {
         if (this.savedHeight != newHeight) {
             this.savedHeight = newHeight;
             this.api.saveHeight(newHeight);
+            console.log("saveheight", sprintf("[%d]", this.context.lineNum), newHeight);
         }
     }
     
@@ -118,9 +119,10 @@ function apiAdapter(lcm : LineContainerModel, line : LineType, cmd : Cmd) : Rend
 }
 
 @mobxReact.observer
-class SimpleBlobRenderer extends React.Component<{lcm : LineContainerModel, line : LineType, cmd : Cmd, plugin : RendererPluginType}, {}> {
+class SimpleBlobRenderer extends React.Component<{lcm : LineContainerModel, line : LineType, cmd : Cmd, plugin : RendererPluginType, onHeightChange : () => void}, {}> {
     model : SimpleBlobRendererModel;
     wrapperDivRef : React.RefObject<any> = React.createRef();
+    rszObs : ResizeObserver;
 
     constructor(props : any) {
         super(props);
@@ -151,27 +153,44 @@ class SimpleBlobRenderer extends React.Component<{lcm : LineContainerModel, line
         this.model.initialize(initOpts);
         lcm.registerRenderer(line.cmdid, this.model);
     }
+
+    handleResize(entries : ResizeObserverEntry[]) : void {
+        console.log("simplerender resize", sprintf("[%d]", this.model.context.lineNum), entries);
+        if (this.props.onHeightChange) {
+            this.props.onHeightChange();
+        }
+        if (!this.model.loading.get() && this.wrapperDivRef.current != null) {
+            let height = this.wrapperDivRef.current.offsetHeight;
+            this.model.updateHeight(height);
+        }
+    }
+
+    checkRszObs() {
+        if (this.rszObs != null) {
+            return;
+        }
+        if (this.wrapperDivRef.current == null) {
+            return;
+        }
+        this.rszObs = new ResizeObserver(this.handleResize.bind(this));
+        this.rszObs.observe(this.wrapperDivRef.current);
+    }
     
     componentDidMount() {
-        this.checkHeight();
+        this.checkRszObs();
     }
 
     componentWillUnmount() {
         let {lcm, line} = this.props;
         lcm.unloadRenderer(line.cmdid);
+        if (this.rszObs != null) {
+            this.rszObs.disconnect();
+            this.rszObs = null;
+        }
     }
 
     componentDidUpdate() {
-        this.checkHeight();
-    }
-
-    checkHeight() : void {
-        // TODO: use resizeobserver instead of ref.
-        if (this.wrapperDivRef.current == null) {
-            return;
-        }
-        let height = this.wrapperDivRef.current.offsetHeight;
-        this.model.updateHeight(height);
+        this.checkRszObs();
     }
 
     render() {
@@ -179,7 +198,7 @@ class SimpleBlobRenderer extends React.Component<{lcm : LineContainerModel, line
         let model = this.model;
         if (model.loading.get()) {
             let height = this.model.savedHeight;
-            return (<div style={{minHeight: height}}>...</div>);
+            return (<div ref={this.wrapperDivRef} style={{minHeight: height}}>...</div>);
         }
         let Comp = plugin.component;
         let dataBlob = new Blob([model.ptyData.data]);

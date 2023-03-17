@@ -531,7 +531,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
                     <TerminalRenderer screen={screen} line={line} width={width} staticRender={staticRender} visible={visible} onHeightChange={this.handleHeightChange} collapsed={isCollapsed}/>
                 </If>
                 <If condition={rendererPlugin != null}>
-                    <SimpleBlobRenderer lcm={screen} line={line} cmd={cmd} plugin={rendererPlugin}/>
+                    <SimpleBlobRenderer lcm={screen} line={line} cmd={cmd} plugin={rendererPlugin} onHeightChange={this.handleHeightChange}/>
                 </If>
                 <If condition={!isCollapsed && cmd.getRtnState()}>
                     <div key="rtnstate" className="cmd-rtnstate" style={{visibility: ((cmd.getStatus() == "done") ? "visible" : "hidden")}}>
