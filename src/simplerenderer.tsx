@@ -178,7 +178,8 @@ class SimpleBlobRenderer extends React.Component<{lcm : LineContainerModel, line
         let {plugin} = this.props;
         let model = this.model;
         if (model.loading.get()) {
-            return (<div style={{height: this.model.savedHeight}}>...</div>);
+            let height = this.model.savedHeight;
+            return (<div style={{minHeight: height}}>...</div>);
         }
         let Comp = plugin.component;
         let dataBlob = new Blob([model.ptyData.data]);
