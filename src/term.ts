@@ -222,7 +222,7 @@ class TermWrap {
             }
             this.usedRows.set(tur);
             if (!this.noSetTUR) {
-                GlobalModel.setTUR(termContext, this.termSize, tur);
+                GlobalModel.setContentHeight(termContext, tur);
             }
         })();
     }

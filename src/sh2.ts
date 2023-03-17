@@ -6,6 +6,9 @@ import {Terminal} from 'xterm';
 import {Main} from "./main";
 import {GlobalModel} from "./model";
 import {v4 as uuidv4} from "uuid";
+import {RendererPluginType} from "./types";
+import {SimpleImageRenderer} from "./imagerenderer";
+import {SimpleMarkdownRenderer} from "./markdownrenderer";
 
 // @ts-ignore
 let VERSION = __PROMPT_VERSION__;
@@ -25,6 +28,31 @@ jbmFontNormal.load();
 jbmFont200.load();
 jbmFont700.load();
 faFont.load();
+
+const ImagePlugin : RendererPluginType = {
+    name: "image",
+    rendererType: "simple",
+    heightType: "pixels",
+    dataType: "blob",
+    collapseType: "hide",
+    globalCss: null,
+    mimeTypes: ["image/*"],
+    component: SimpleImageRenderer,
+};
+
+const MarkdownPlugin : RendererPluginType = {
+    name: "markdown",
+    rendererType: "simple",
+    heightType: "pixels",
+    dataType: "blob",
+    collapseType: "hide",
+    globalCss: null,
+    mimeTypes: ["text/markdown"],
+    component: SimpleMarkdownRenderer,
+};
+
+GlobalModel.registerRendererPlugin(ImagePlugin);
+GlobalModel.registerRendererPlugin(MarkdownPlugin);
 
 document.addEventListener("DOMContentLoaded", () => {
     let reactElem = React.createElement(Main, null, null);

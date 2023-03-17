@@ -1,8 +1,11 @@
+import * as React from "react";
 import * as mobx from "mobx";
 
 type ShareModeType = "local" | "private" | "view" | "shared";
 type FocusTypeStrs = "input"|"cmd"|"cmd-fg";
 type HistoryTypeStrs = "global" | "session" | "screen";
+
+type OV<V> = mobx.IObservableValue<V>;
 
 type SessionDataType = {
     sessionid : string,
@@ -348,7 +351,61 @@ type RendererContext = {
     lineNum : number,
 };
 
+type RendererOpts = {
+    maxSize : WindowSize,
+    idealSize : WindowSize,
+    termOpts : TermOptsType,
+    termFontSize : number,
+};
+
+type RendererOptsUpdate = {
+    maxSize? : WindowSize,
+    idealSize? : WindowSize,
+    termOpts? : TermOptsType,
+    termFontSize? : number,
+};
+
+type RendererPluginType = {
+    name : string,
+    rendererType : "simple" | "full",
+    heightType : "rows" | "pixels",
+    dataType : "json" | "blob",
+    collapseType : "hide" | "remove",
+    globalCss? : string,
+    mimeTypes? : string[],
+    modelCtor? : RendererModel,
+    component : SimpleBlobRendererComponent,
+}
+
+type RendererModelContainerApi = {
+    onFocusChanged : (focus : boolean) => void,
+    saveHeight : (height : number) => void,
+    dataHandler : (data : string, model : RendererModel) => void,
+};
+
+type RendererModelInitializeParams = {
+    context : RendererContext,
+    isDone : boolean,
+    savedHeight : number,
+    opts : RendererOpts,
+    api : RendererModelContainerApi,
+};
+
 type RendererModel = {
+    initialize : (params : RendererModelInitializeParams) => void,
+    dispose : () => void,
+    reload : (delayMs : number) => void,
+    giveFocus : () => void,
+    updateOpts : (opts : RendererOptsUpdate) => void,
+    setIsDone : () => void,
+    receiveData : (pos : number, data : Uint8Array, reason? : string) => void,
+};
+
+type SimpleBlobRendererComponent = React.ComponentType<{data : Blob, context : RendererContext, opts : RendererOpts}>;
+type SimpleJsonRendererComponent = React.ComponentType<{data : any, context : RendererContext, opts : RendererOpts}>;
+type FullRendererComponent = React.ComponentType<{model : any}>;
+
+type OldRendererModel = {
     dispose : () => void,
     reload : (delayMs : number) => void,
     receiveData : (pos : number, data : Uint8Array, reason? : string) => void,
@@ -417,4 +474,4 @@ type HistorySearchParams = {
 
 type RenderModeType = "normal" | "collapsed";
 
-export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDataType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType, UIContextType, HistoryInfoType, HistoryQueryOpts, WatchScreenPacketType, TermWinSize, FeInputPacketType, RemoteInputPacketType, RemoteEditType, FeStateType, ContextMenuOpts, RendererContext, WindowSize, RendererModel, PtyDataType, BookmarkType, ClientDataType, PlaybookType, PlaybookEntryType, HistoryViewDataType, RenderModeType, AlertMessageType, HistorySearchParams, ScreenLinesType, FocusTypeStrs, HistoryTypeStrs};
+export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDataType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType, UIContextType, HistoryInfoType, HistoryQueryOpts, WatchScreenPacketType, TermWinSize, FeInputPacketType, RemoteInputPacketType, RemoteEditType, FeStateType, ContextMenuOpts, RendererContext, WindowSize, RendererModel, PtyDataType, BookmarkType, ClientDataType, PlaybookType, PlaybookEntryType, HistoryViewDataType, RenderModeType, AlertMessageType, HistorySearchParams, ScreenLinesType, FocusTypeStrs, HistoryTypeStrs, RendererOpts, RendererPluginType, SimpleBlobRendererComponent, RendererModelContainerApi, RendererModelInitializeParams, RendererOptsUpdate};

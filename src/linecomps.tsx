@@ -5,14 +5,14 @@ import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 import dayjs from "dayjs";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
-import {ImageRendererModel} from "./imagerenderer";
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
-import {GlobalModel, GlobalCommandRunner, Session, Cmd, ScreenLines, Screen, windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols} from "./model";
-import type {LineType, CmdDataType, FeStateType, RemoteType, RemotePtrType, RenderModeType} from "./types";
+import {GlobalModel, GlobalCommandRunner, Session, Cmd, ScreenLines, Screen, windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols, getRendererContext, getRendererType} from "./model";
+import type {LineType, CmdDataType, FeStateType, RemoteType, RemotePtrType, RenderModeType, RendererContext, RendererOpts, SimpleBlobRendererComponent, RendererPluginType} from "./types";
 import cn from "classnames";
 import {TermWrap} from "./term";
 import type {LineContainerModel} from "./model";
 import {renderCmdText} from "./elements";
+import {SimpleBlobRendererModel, SimpleBlobRenderer} from "./simplerenderer";
 
 dayjs.extend(localizedFormat)
 
@@ -377,16 +377,9 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         return (renderMode == "collapsed" && !overrideCollapsed.get());
     }
 
-    renderSimple() {
+    getTerminalRendererHeight(cmd : Cmd) : number {
         let {screen, line, width, topBorder, renderMode} = this.props;
-        let cmd = screen.getCmd(line);
         let isCollapsed = this.isCollapsed();
-        let mainDivCn = cn(
-            "line",
-            "line-cmd",
-            {"top-border": topBorder},
-            {"collapsed": isCollapsed},
-        );
         // header is 36px tall, padding+border = 6px
         // collapsed header is 24px tall + 6px
         // zero-terminal is 0px
@@ -395,11 +388,39 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         //               else: 53+(lines*lineheight)
         let height = (isCollapsed ? 30 : 42); // height of zero height terminal
         if (!isCollapsed) {
-            let usedRows = screen.getUsedRows(line, cmd, width);
+            let usedRows = screen.getUsedRows(getRendererContext(line), line, cmd, width);
             if (usedRows > 0) {
                 height = 53 + termHeightFromRows(usedRows, GlobalModel.termFontSize.get());
             }
         }
+        return height;
+    }
+
+    renderSimple() {
+        let {screen, line, topBorder} = this.props;
+        let cmd = screen.getCmd(line);
+        let isCollapsed = this.isCollapsed();
+        let height : number = 0;
+        if (isBlank(line.renderer) || line.renderer == "terminal") {
+            height = this.getTerminalRendererHeight(cmd);
+        }
+        else {
+            let isCollapsed = this.isCollapsed();
+            if (isCollapsed) {
+                height = 24;
+            }
+            else {
+                let {screen, line, width} = this.props;
+                let usedRows = screen.getUsedRows(getRendererContext(line), line, cmd, width);
+                height = 36 + usedRows;
+            }
+        }
+        let mainDivCn = cn(
+            "line",
+            "line-cmd",
+            {"top-border": topBorder},
+            {"collapsed": isCollapsed},
+        );
         return (
             <div className={mainDivCn} id={this.getLineDomId()} ref={this.lineRef} data-lineid={line.lineid} data-linenum={line.linenum} data-screenid={line.screenid} style={{height: height}}>
                 <LineAvatar line={line} cmd={cmd}/>
@@ -413,11 +434,15 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         let formattedTime = getLineDateTimeStr(line.ts);
         let termOpts = cmd.getTermOpts();
         let remote = model.getRemote(cmd.remoteId);
+        let renderer = line.renderer;
         return (
             <div key="meta" className="meta-wrap">
                 <div key="meta1" className="meta meta-line1">
                     <div className="ts">{formattedTime}</div>
                     <div>&nbsp;</div>
+                    <If condition={!isBlank(renderer) && renderer != "terminal"}>
+                        <div className="renderer"><i className="fa-sharp fa-solid fa-fill"/>{renderer}&nbsp;</div>
+                    </If>
                     <div className="termopts">
                         ({termOpts.rows}x{termOpts.cols})
                     </div>
@@ -471,10 +496,11 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
             {"collapsed": isCollapsed},
             {"top-border": topBorder},
         );
-        let RendererComponent : RendererComponentType = TerminalRenderer;
-        if (line.renderer == "image") {
-            RendererComponent = ImageRenderer;
-        }        
+        let rendererPlugin : RendererPluginType = null;
+        if (!isBlank(line.renderer) && line.renderer != "terminal") {
+            rendererPlugin = GlobalModel.getRendererPluginByName(line.renderer);
+        }
+        let rendererType = getRendererType(line);
         return (
             <div className={mainDivCn} id={"line-" + getLineId(line)}
                  ref={this.lineRef} onClick={this.handleClick}
@@ -501,7 +527,12 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
                         </If>
                     </div>
                 </div>
-                <RendererComponent screen={screen} line={line} width={width} staticRender={staticRender} visible={visible} onHeightChange={this.handleHeightChange} collapsed={isCollapsed}/>
+                <If condition={rendererPlugin == null}>
+                    <TerminalRenderer screen={screen} line={line} width={width} staticRender={staticRender} visible={visible} onHeightChange={this.handleHeightChange} collapsed={isCollapsed}/>
+                </If>
+                <If condition={rendererPlugin != null}>
+                    <SimpleBlobRenderer lcm={screen} line={line} cmd={cmd} plugin={rendererPlugin}/>
+                </If>
                 <If condition={!isCollapsed && cmd.getRtnState()}>
                     <div key="rtnstate" className="cmd-rtnstate" style={{visibility: ((cmd.getStatus() == "done") ? "visible" : "hidden")}}>
                         <If condition={rsdiff == null || rsdiff == ""}>
@@ -515,7 +546,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
                         </If>
                     </div>
                 </If>
-                <If condition={isSelected && !isFocused}>
+                <If condition={isSelected && !isFocused && rendererType == "terminal"}>
                     <div className="cmd-hints">
                         <div className="hint-item color-nohover-white">focus line ({renderCmdText("L")})</div>
                     </div>
@@ -539,13 +570,6 @@ class Line extends React.Component<{screen : LineContainerModel, line : LineType
             return <LineCmd {...this.props}/>;
         }
         return <div className="line line-invalid">[invalid line type '{line.linetype}']</div>;
-    }
-}
-
-@mobxReact.observer
-class MarkdownRenderer extends React.Component<{s : Screen, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType}, {}> {
-    render() {
-        return null;
     }
 }
 
@@ -615,115 +639,6 @@ class LineText extends React.Component<{screen : LineContainerModel, line : Line
                         {line.text}
                     </div>
                 </div>
-            </div>
-        );
-    }
-}
-
-@mobxReact.observer
-class ImageRenderer extends React.Component<{screen : LineContainerModel, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : () => void, collapsed : boolean}, {}> {
-    elemRef : React.RefObject<any> = React.createRef();
-    imageDivRef : React.RefObject<any> = React.createRef();
-    imageLoaded : mobx.IObservableValue<boolean> = mobx.observable.box(false, {name: "imageLoaded"});
-    imageModel : ImageRendererModel;
-
-    constructor(props) {
-        super(props);
-    }
-
-    componentDidMount() {
-        this.componentDidUpdate(null, null, null);
-    }
-
-    componentWillUnmount() {
-        if (this.imageLoaded.get()) {
-            this.unloadImage(true);
-        }
-    }
-
-    getSnapshotBeforeUpdate(prevProps, prevState) : {height : number} {
-        let elem = this.elemRef.current;
-        if (elem == null) {
-            return {height: 0};
-        }
-        return {height: elem.offsetHeight};
-    }
-
-    componentDidUpdate(prevProps, prevState, snapshot : {height : number}) : void {
-        if (this.props.onHeightChange == null) {
-            return;
-        }
-        let {line} = this.props;
-        let curHeight = 0;
-        let elem = this.elemRef.current;
-        if (elem != null) {
-            curHeight = elem.offsetHeight;
-        }
-        if (snapshot == null) {
-            snapshot = {height: 0};
-        }
-        if (snapshot.height != curHeight) {
-            this.props.onHeightChange();
-            // console.log("image-render height change: ", line.linenum, snapshot.height, "=>", curHeight);
-        }
-        this.checkLoad();
-    }
-
-    checkLoad() : void {
-        let {line, staticRender, visible, collapsed} = this.props;
-        if (staticRender) {
-            return;
-        }
-        let vis = visible && visible.get() && !collapsed;
-        let curVis = this.imageLoaded.get();
-        if (vis && !curVis) {
-            this.loadImage();
-        }
-        else if (!vis && curVis) {
-            this.unloadImage(false);
-        }
-    }
-
-    loadImage() : void {
-        let {screen, line} = this.props;
-        let model = GlobalModel;
-        let cmd = screen.getCmd(line);
-        if (cmd == null) {
-            return;
-        }
-        let elem = this.imageDivRef.current;
-        if (elem == null) {
-            console.log("cannot load image, no elem found");
-            return;
-        }
-        this.imageModel = screen.loadImageRenderer(this.imageDivRef.current, line, cmd);
-        mobx.action(() => this.imageLoaded.set(true))();
-    }
-
-    unloadImage(unmount : boolean) : void {
-        let {screen, line} = this.props;
-        screen.unloadRenderer(line.cmdid);
-        this.imageModel = null;
-        if (!unmount) {
-            mobx.action(() => this.imageLoaded.set(false))();
-            if (this.imageDivRef.current != null) {
-                this.imageDivRef.current.replaceChildren();
-            }
-        }
-    }
-    
-    render() {
-        let imageModel = this.imageModel;
-        let isLoaded = this.imageLoaded.get();
-        let isDone = (imageModel != null && imageModel.isDone.get());
-        if (imageModel != null) {
-            let dataVersion = imageModel.dataBuf.dataVersion.get();
-        }
-        let collapsed = this.props.collapsed;
-        return (
-            <div ref={this.elemRef} className={cn("image-wrapper", {"collapsed": collapsed})}>
-                <div key="imagediv" ref={this.imageDivRef}></div>
-                <If condition={!isDone}><div className="loading-div">...</div></If>
             </div>
         );
     }
@@ -840,7 +755,7 @@ class TerminalRenderer extends React.Component<{screen : LineContainerModel, lin
             return isPhysicalFocused && (screenFocusType == "cmd" || screenFocusType == "cmd-fg")
         }, {name: "computed-isFocused"}).get();
         let cmd = screen.getCmd(line); // will not be null
-        let usedRows = screen.getUsedRows(line, cmd, width);
+        let usedRows = screen.getUsedRows(getRendererContext(line), line, cmd, width);
         let termHeight = termHeightFromRows(usedRows, GlobalModel.termFontSize.get());
         let termLoaded = this.termLoaded.get();
         return (

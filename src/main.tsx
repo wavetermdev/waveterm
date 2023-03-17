@@ -1990,16 +1990,13 @@ class ScreenWindowView extends React.Component<{screen : Screen}, {}> {
         if (screen == null) {
             return;
         }
+        if (width == null || height == null || width == 0 || height == 0) {
+            return;
+        }
         mobx.action(() => {
             this.width.set(width);
             this.height.set(height);
-            let cols = windowWidthToCols(width, GlobalModel.termFontSize.get());
-            let rows = windowHeightToRows(height, GlobalModel.termFontSize.get());
-            if (cols == 0 || rows == 0) {
-                console.log("cannot set screen size", rows, cols);
-                return;
-            }
-            screen.termSizeCallback(rows, cols);
+            screen.screenSizeCallback({height: height, width: width});
         })();
     }
 

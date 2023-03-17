@@ -5,9 +5,8 @@ import {debounce} from "throttle-debounce";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeDataMap, genMergeSimpleData, boundInt, isModKeyPress} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType, HistoryViewDataType, AlertMessageType, HistorySearchParams, FocusTypeStrs, ScreenLinesType, HistoryTypeStrs} from "./types";
+import type {SessionDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType, HistoryViewDataType, AlertMessageType, HistorySearchParams, FocusTypeStrs, ScreenLinesType, HistoryTypeStrs, RendererPluginType, WindowSize} from "./types";
 import {WSControl} from "./ws";
-import {ImageRendererModel} from "./imagerenderer";
 import {measureText, getMonoFontSize} from "./textmeasure";
 import dayjs from "dayjs";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
@@ -39,22 +38,44 @@ const BUILD = __PROMPT_BUILD__;
 
 type LineContainerModel = {
     loadTerminalRenderer : (elem : Element, line : LineType, cmd : Cmd, width : number) => void,
-    loadImageRenderer : (imageDivElem : any, line : LineType, cmd : Cmd) => ImageRendererModel,
+    registerRenderer : (cmdId : string, renderer : RendererModel) => void,
     unloadRenderer : (cmdId : string) => void,
-    getUsedRows : (line : LineType, cmd : Cmd, width : number) => number,
     getIsFocused : (lineNum : number) => boolean,
+    getTermWrap : (cmdId : string) => TermWrap;
     getRenderer : (cmdId : string) => RendererModel,
     getFocusType : () => "input" | "cmd" | "cmd-fg",
     getSelectedLine : () => number,
     getCmd : (line : LineType) => Cmd,
+    setTermFocus : (lineNum : number, focus : boolean) => void,
+    getUsedRows : (context : RendererContext, line : LineType, cmd : Cmd, width : number) => number,
+    getContentHeight : (context : RendererContext) => number,
+    setContentHeight : (context : RendererContext, height : number) => void,
+    getMaxContentSize() : WindowSize,
+    getIdealContentSize() : WindowSize,
 }
-
 
 type SWLinePtr = {
     line : LineType,
     slines : ScreenLines,
     screen : Screen,
 };
+
+function getRendererType(line : LineType) : "terminal" | "plugin" {
+    if (isBlank(line.renderer) || line.renderer == "terminal") {
+        return "terminal";
+    }
+    return "plugin";
+}
+
+function getRendererContext(line : LineType) : RendererContext {
+    return {
+        sessionId: line.sessionid,
+        screenId: line.screenid,
+        cmdId: line.cmdid,
+        lineId: line.lineid,
+        lineNum: line.linenum,
+    };
+}
 
 function windowWidthToCols(width : number, fontSize : number) : number {
     let dr = getMonoFontSize(fontSize);
@@ -260,6 +281,17 @@ class Cmd {
         }
     }
 
+    handleDataFromRenderer(data : string, renderer : RendererModel) : void {
+        // console.log("handle data", {data: data});
+        if (!this.isRunning()) {
+            return;
+        }
+        for (let pos=0; pos<data.length; pos += InputChunkSize) {
+            let dataChunk = data.slice(pos, pos+InputChunkSize);
+            this.handleInputChunk(dataChunk);
+        }
+    }
+
     handleInputChunk(data : string) : void {
         let inputPacket : FeInputPacketType = {
             type: "feinput",
@@ -279,6 +311,7 @@ class Screen {
     name : OV<string>;
     archived : OV<boolean>;
     curRemote : OV<RemotePtrType>;
+    lastScreenSize : WindowSize;
     lastCols : number;
     lastRows : number;
     selectedLine : OV<number>;
@@ -287,7 +320,8 @@ class Screen {
     anchorOffset : number = 0;
     termLineNumFocus : OV<number>;
     setAnchor_debounced : (anchorLine : number, anchorOffset : number) => void;
-    renderers : Record<string, RendererModel> = {};  // cmdid => TermWrap
+    terminals : Record<string, TermWrap> = {};        // cmdid => TermWrap
+    renderers : Record<string, RendererModel> = {};  // cmdid => RendererModel
     
     constructor(sdata : ScreenDataType) {
         this.sessionId = sdata.sessionid;
@@ -325,6 +359,14 @@ class Screen {
             this.refocusLine(data, oldFocusType, oldSelectedLine);
             // do not update anchorLine/anchorOffset (only stored)
         })();
+    }
+
+    getContentHeight(context : RendererContext) : number {
+        return GlobalModel.getContentHeight(context);
+    }
+
+    setContentHeight(context : RendererContext, height : number) : void {
+        GlobalModel.setContentHeight(context, height);
     }
 
     getCmd(line : LineType) : Cmd {
@@ -483,11 +525,15 @@ class Screen {
     updatePtyData(ptyMsg : PtyDataUpdateType) {
         let cmdId = ptyMsg.cmdid;
         let renderer = this.renderers[cmdId];
-        if (renderer == null) {
-            return;
+        if (renderer != null) {
+            let data = base64ToArray(ptyMsg.ptydata64);
+            renderer.receiveData(ptyMsg.ptypos, data, "from-sw");
         }
-        let data = base64ToArray(ptyMsg.ptydata64);
-        renderer.receiveData(ptyMsg.ptypos, data, "from-sw");
+        let term = this.terminals[cmdId];
+        if (term != null) {
+            let data = base64ToArray(ptyMsg.ptydata64);
+            term.receiveData(ptyMsg.ptypos, data, "from-sw");
+        }
     }
 
     isActive() : boolean {
@@ -498,7 +544,44 @@ class Screen {
         return (this.sessionId == activeScreen.sessionId) && (this.screenId == activeScreen.screenId);
     }
 
-    termSizeCallback(rows : number, cols : number) : void {
+    screenSizeCallback(winSize : WindowSize) : void {
+        if (winSize.height == 0 || winSize.width == 0) {
+            return;
+        }
+        if (this.lastScreenSize != null && this.lastScreenSize.height == winSize.height && this.lastScreenSize.width == winSize.width) {
+            return;
+        }
+        this.lastScreenSize = winSize;
+        let cols = windowWidthToCols(winSize.width, GlobalModel.termFontSize.get());
+        let rows = windowHeightToRows(winSize.height, GlobalModel.termFontSize.get());
+        this._termSizeCallback(rows, cols);
+    }
+
+    getMaxContentSize() : WindowSize {
+        if (this.lastScreenSize == null) {
+            let width = termWidthFromCols(80, GlobalModel.termFontSize.get());
+            let height = termHeightFromRows(25, GlobalModel.termFontSize.get());
+            return {width, height};
+        }
+        let winSize = this.lastScreenSize;
+        let width = boundInt(winSize.width-50, 100, 5000);
+        let height = boundInt(winSize.height-100, 100, 5000);
+        return {width, height};
+    }
+    
+    getIdealContentSize() : WindowSize {
+        if (this.lastScreenSize == null) {
+            let width = termWidthFromCols(80, GlobalModel.termFontSize.get());
+            let height = termHeightFromRows(25, GlobalModel.termFontSize.get());
+            return {width, height};
+        }
+        let winSize = this.lastScreenSize;
+        let width = boundInt(Math.ceil((winSize.width-50)*0.7), 100, 5000);
+        let height = boundInt(Math.ceil((winSize.height-100)*0.5), 100, 5000);
+        return {width, height};
+    }
+
+    _termSizeCallback(rows : number, cols : number) : void {
         if (cols == 0 || rows == 0) {
             return;
         }
@@ -507,14 +590,22 @@ class Screen {
         }
         this.lastRows = rows;
         this.lastCols = cols;
-        for (let cmdid in this.renderers) {
-            this.renderers[cmdid].resizeCols(cols);
+        for (let cmdid in this.terminals) {
+            this.terminals[cmdid].resizeCols(cols);
         }
         GlobalCommandRunner.resizeScreen(this.screenId, rows, cols);
     }
 
+    getTermWrap(cmdId : string) : TermWrap {
+        return this.terminals[cmdId];
+    }
+
     getRenderer(cmdId : string) : RendererModel {
         return this.renderers[cmdId];
+    }
+
+    registerRenderer(cmdId : string, renderer : RendererModel) {
+        this.renderers[cmdId] = renderer;
     }
 
     setTermFocus(lineNum : number, focus : boolean) : void {
@@ -572,23 +663,15 @@ class Screen {
         return false;
     }
 
-    loadImageRenderer(imageDivElem : any, line : LineType, cmd : Cmd) : ImageRendererModel {
-        let cmdId = cmd.cmdId;
-        let context = {sessionId: this.sessionId, screenId: this.screenId, cmdId: cmdId, lineId : line.lineid, lineNum: line.linenum};
-        let imageModel = new ImageRendererModel(imageDivElem, context, cmd.getTermOpts(), !cmd.isRunning(), GlobalModel.termFontSize.get());
-        this.renderers[cmdId] = imageModel;
-        return imageModel;
-    }
-
     loadTerminalRenderer(elem : Element, line : LineType, cmd : Cmd, width : number) {
         let cmdId = cmd.cmdId;
-        let termWrap = this.getRenderer(cmdId);
+        let termWrap = this.getTermWrap(cmdId);
         if (termWrap != null) {
             console.log("term-wrap already exists for", this.screenId, cmdId);
             return;
         }
         let cols = windowWidthToCols(width, GlobalModel.termFontSize.get());
-        let usedRows = GlobalModel.getTUR(this.sessionId, cmdId, cols);
+        let usedRows = GlobalModel.getContentHeight(getRendererContext(line));
         if (line.contentheight != null && line.contentheight != -1) {
             usedRows = line.contentheight;
         }
@@ -604,7 +687,7 @@ class Screen {
             customKeyHandler: this.termCustomKeyHandler.bind(this),
             fontSize: GlobalModel.termFontSize.get(),
         });
-        this.renderers[cmdId] = termWrap;
+        this.terminals[cmdId] = termWrap;
         if ((this.focusType.get() == "cmd" || this.focusType.get() == "cmd-fg") && this.selectedLine.get() == line.linenum) {
             termWrap.giveFocus();
         }
@@ -617,9 +700,14 @@ class Screen {
             rmodel.dispose();
             delete this.renderers[cmdId];
         }
+        let term = this.terminals[cmdId];
+        if (term != null) {
+            term.dispose();
+            delete this.terminals[cmdId];
+        }
     }
 
-    getUsedRows(line : LineType, cmd : Cmd, width : number) : number {
+    getUsedRows(context : RendererContext, line : LineType, cmd : Cmd, width : number) : number {
         if (cmd == null) {
             return 0;
         }
@@ -627,10 +715,10 @@ class Screen {
         if (!termOpts.flexrows) {
             return termOpts.rows;
         }
-        let termWrap = this.getRenderer(cmd.cmdId);
+        let termWrap = this.getTermWrap(cmd.cmdId);
         if (termWrap == null) {
             let cols = windowWidthToCols(width, GlobalModel.termFontSize.get());
-            let usedRows = GlobalModel.getTUR(this.sessionId, cmd.cmdId, cols);
+            let usedRows = GlobalModel.getContentHeight(context);
             if (usedRows != null) {
                 return usedRows;
             }
@@ -1601,6 +1689,7 @@ type LineFocusType = {
 
 class SpecialHistoryViewLineContainer {
     historyItem : HistoryItem;
+    terminal : TermWrap;
     renderer : RendererModel;
     cmd : Cmd;
 
@@ -1614,17 +1703,37 @@ class SpecialHistoryViewLineContainer {
         }
         return this.cmd;
     }
+
+    setTermFocus(lineNum : number, focus : boolean) : void {
+        return;
+    }
+
+    setContentHeight(context : RendererContext, height : number) : void {
+        return;
+    }
+
+    getMaxContentSize() : WindowSize {
+        let width = termWidthFromCols(80, GlobalModel.termFontSize.get());
+        let height = termHeightFromRows(25, GlobalModel.termFontSize.get());
+        return {width, height};
+    }
+    
+    getIdealContentSize() : WindowSize {
+        let width = termWidthFromCols(80, GlobalModel.termFontSize.get());
+        let height = termHeightFromRows(25, GlobalModel.termFontSize.get());
+        return {width, height};
+    }
     
     loadTerminalRenderer(elem : Element, line : LineType, cmd : Cmd, width : number) : void {
         this.unloadRenderer(null);
         let cmdId = cmd.cmdId;
-        let termWrap = this.getRenderer(cmdId);
+        let termWrap = this.getTermWrap(cmdId);
         if (termWrap != null) {
             console.log("term-wrap already exists for", line.screenid, cmdId);
             return;
         }
         let cols = windowWidthToCols(width, GlobalModel.termFontSize.get());
-        let usedRows = GlobalModel.getTUR(line.sessionid, cmdId, cols);
+        let usedRows = GlobalModel.getContentHeight(getRendererContext(line));
         if (line.contentheight != null && line.contentheight != -1) {
             usedRows = line.contentheight;
         }
@@ -1641,23 +1750,12 @@ class SpecialHistoryViewLineContainer {
             fontSize: GlobalModel.termFontSize.get(),
             noSetTUR: true,
         });
-        this.renderer = termWrap;
+        this.terminal = termWrap;
         return;
     }
-    
-    loadImageRenderer(imageDivElem : any, line : LineType, cmd : Cmd) : ImageRendererModel {
-        this.unloadRenderer(null);
-        let cmdId = cmd.cmdId;
-        let context = {
-            sessionId: this.historyItem.sessionid,
-            screenId: this.historyItem.screenid,
-            cmdId: cmdId,
-            lineId : line.lineid,
-            lineNum: line.linenum
-        };
-        let imageModel = new ImageRendererModel(imageDivElem, context, cmd.getTermOpts(), !cmd.isRunning(), GlobalModel.termFontSize.get());
-        this.renderer = imageModel;
-        return imageModel;
+
+    registerRenderer(cmdId : string, renderer : RendererModel) : void {
+        this.renderer = renderer;
     }
     
     unloadRenderer(cmdId : string) : void {
@@ -1665,9 +1763,17 @@ class SpecialHistoryViewLineContainer {
             this.renderer.dispose();
             this.renderer = null;
         }
+        if (this.terminal != null) {
+            this.terminal.dispose();
+            this.terminal = null;
+        }
+    }
+
+    getContentHeight(context : RendererContext) : number {
+        return GlobalModel.getContentHeight(context);
     }
     
-    getUsedRows(line : LineType, cmd : Cmd, width : number) : number {
+    getUsedRows(context : RendererContext, line : LineType, cmd : Cmd, width : number) : number {
         if (cmd == null) {
             return 0;
         }
@@ -1675,10 +1781,10 @@ class SpecialHistoryViewLineContainer {
         if (!termOpts.flexrows) {
             return termOpts.rows;
         }
-        let termWrap = this.getRenderer(cmd.cmdId);
+        let termWrap = this.getTermWrap(cmd.cmdId);
         if (termWrap == null) {
             let cols = windowWidthToCols(width, GlobalModel.termFontSize.get());
-            let usedRows = GlobalModel.getTUR(this.historyItem.sessionid, cmd.cmdId, cols);
+            let usedRows = GlobalModel.getContentHeight(context);
             if (usedRows != null) {
                 return usedRows;
             }
@@ -1696,6 +1802,10 @@ class SpecialHistoryViewLineContainer {
     
     getRenderer(cmdId : string) : RendererModel {
         return this.renderer;
+    }
+
+    getTermWrap(cmdId : string) : TermWrap {
+        return this.terminal;
     }
     
     getFocusType() : "input" | "cmd" | "cmd-fg" {
@@ -2246,6 +2356,7 @@ class Model {
     welcomeModalOpen : OV<boolean> = mobx.observable.box(false, {name: "welcomeModalOpen"});
     screenSettingsModal : OV<{sessionId : string, screenId : string}> = mobx.observable.box(null, {name: "screenSettingsModal"});
     sessionSettingsModal : OV<string> = mobx.observable.box(null, {name: "sessionSettingsModal"});
+    rendererPlugins : RendererPluginType[] = [];
 
     inputModel : InputModel;
     bookmarksModel : BookmarksModel;
@@ -2291,6 +2402,27 @@ class Model {
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
         document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
         setTimeout(() => this.getClientData(), 10);
+    }
+
+    registerRendererPlugin(plugin : RendererPluginType) {
+        if (isBlank(plugin.name)) {
+            throw new Error("invalid plugin, no name");
+        }
+        let existingPlugin = this.getRendererPluginByName(plugin.name);
+        if (existingPlugin != null) {
+            throw new Error(sprintf("plugin with name %s already registered", plugin.name));
+        }
+        this.rendererPlugins.push(plugin);
+    }
+
+    getRendererPluginByName(name : string) : RendererPluginType {
+        for (let i=0; i<this.rendererPlugins.length; i++) {
+            let plugin = this.rendererPlugins[i];
+            if (plugin.name == name) {
+                return plugin;
+            }
+        }
+        return null;
     }
 
     showAlert(alertMessage : AlertMessageType) : Promise<boolean> {
@@ -2415,15 +2547,15 @@ class Model {
         })();
     }
 
-    getTUR(sessionId : string, cmdId : string, cols : number) : number {
-        let key = sessionId + "/" + cmdId + "/" + cols;
+    getContentHeight(context : RendererContext) : number {
+        let key = context.sessionId + "/" + context.cmdId;
         return this.termUsedRowsCache[key];
     }
 
-    setTUR(termContext : RendererContext, size : TermWinSize, usedRows : number) : void {
-        let key = termContext.sessionId + "/" + termContext.cmdId + "/" + size.cols;
-        this.termUsedRowsCache[key] = usedRows;
-        GlobalCommandRunner.setTermUsedRows(termContext, usedRows);
+    setContentHeight(context : RendererContext, height : number) : void {
+        let key = context.sessionId + "/" + context.cmdId;
+        this.termUsedRowsCache[key] = height;
+        GlobalCommandRunner.setTermUsedRows(context, height);
     }
     
     contextScreen(e : any, screenId : string) {
@@ -2504,7 +2636,11 @@ class Model {
                 let screen = ptr.screen;
                 let renderer = screen.getRenderer(cmdId);
                 if (renderer != null) {
-                    renderer.cmdDone();
+                    renderer.setIsDone();
+                }
+                let term = screen.getTermWrap(cmdId);
+                if (term != null) {
+                    term.cmdDone();
                 }
             }
         }
@@ -3284,12 +3420,12 @@ function _getPtyDataFromUrl(url : string) : Promise<PtyDataType> {
     });
 }
 
-function getPtyData(sessionId : string, cmdId : string) {
+function getPtyData(sessionId : string, cmdId : string) : Promise<PtyDataType> {
     let url = sprintf(GlobalModel.getBaseHostPort() + "/api/ptyout?sessionid=%s&cmdid=%s", sessionId, cmdId);
     return _getPtyDataFromUrl(url);
 }
 
-function getRemotePtyData(remoteId : string) {
+function getRemotePtyData(remoteId : string) : Promise<PtyDataType> {
     let url = sprintf(GlobalModel.getBaseHostPort() + "/api/remote-pty?remoteid=%s", remoteId);
     return _getPtyDataFromUrl(url);
 }
@@ -3304,7 +3440,7 @@ if ((window as any).GlobalModel == null) {
 GlobalModel = (window as any).GlobalModel;
 GlobalCommandRunner = (window as any).GlobalCommandRunner;
 
-export {Model, Session, ScreenLines, GlobalModel, GlobalCommandRunner, Cmd, Screen, riToRPtr, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows, getPtyData, getRemotePtyData, TabColors, RemoteColors};
+export {Model, Session, ScreenLines, GlobalModel, GlobalCommandRunner, Cmd, Screen, riToRPtr, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows, getPtyData, getRemotePtyData, TabColors, RemoteColors, getRendererType, getRendererContext};
 export type {LineContainerModel};
 
 
