@@ -7,6 +7,7 @@ import {If, For, When, Otherwise, Choose} from "tsx-control-statements/component
 import cn from "classnames";
 import {GlobalModel, GlobalCommandRunner, TabColors} from "./model";
 import {Toggle} from "./elements";
+import {LineType} from "./types";
 
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
@@ -229,4 +230,59 @@ class SessionSettingsModal extends React.Component<{sessionId : string}, {}> {
     }
 }
 
-export {ScreenSettingsModal, SessionSettingsModal};
+@mobxReact.observer
+class LineSettingsModal extends React.Component<{line : LineType}, {}> {
+    constructor(props : any) {
+        super(props);
+    }
+    
+    @boundMethod
+    closeModal() : void {
+        mobx.action(() => {
+            GlobalModel.lineSettingsModal.set(null);
+        })();
+    }
+
+    @boundMethod
+    handleOK() : void {
+        mobx.action(() => {
+            GlobalModel.lineSettingsModal.set(null);
+        })();
+    }
+
+    render() {
+        let {line} = this.props;
+        if (line == null) {
+            return null;
+        }
+        return (
+            <div className={cn("modal line-settings-modal settings-modal prompt-modal is-active")}>
+                <div className="modal-background"/>
+                <div className="modal-content">
+                    <header>
+                        <div className="modal-title">line settings ({line.linenum})</div>
+                        <div className="close-icon">
+                            <i onClick={this.closeModal} className="fa-sharp fa-solid fa-times"/>
+                        </div>
+                    </header>
+                    <div className="inner-content">
+                        <div className="settings-field">
+                            <div className="settings-label">
+                                Renderer
+                            </div>
+                            <div className="settings-input">
+                                xxx
+                            </div>
+                        </div>
+                    </div>
+                    <footer>
+                        <div onClick={this.closeModal} className="button is-prompt-cancel is-outlined is-small">Cancel</div>
+                        <div onClick={this.handleOK} className="button is-prompt-green is-outlined is-small">OK</div>
+                    </footer>
+                </div>
+            </div>
+        );
+    }
+}
+
+export {ScreenSettingsModal, SessionSettingsModal, LineSettingsModal};

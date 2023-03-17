@@ -2356,6 +2356,7 @@ class Model {
     welcomeModalOpen : OV<boolean> = mobx.observable.box(false, {name: "welcomeModalOpen"});
     screenSettingsModal : OV<{sessionId : string, screenId : string}> = mobx.observable.box(null, {name: "screenSettingsModal"});
     sessionSettingsModal : OV<string> = mobx.observable.box(null, {name: "sessionSettingsModal"});
+    lineSettingsModal : OV<LineType> = mobx.observable.box(null, {name: "lineSettingsModal"});
     rendererPlugins : RendererPluginType[] = [];
 
     inputModel : InputModel;

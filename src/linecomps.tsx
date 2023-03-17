@@ -101,6 +101,18 @@ function getLineDateTimeStr(ts : number) : string {
 
 @mobxReact.observer
 class LineAvatar extends React.Component<{line : LineType, cmd : Cmd}, {}> {
+    @boundMethod
+    handleRightClick(e : any) {
+        e.preventDefault();
+        e.stopPropagation();
+        let {line} = this.props;
+        if (line != null) {
+            mobx.action(() => {
+                GlobalModel.lineSettingsModal.set(this.props.line);
+            })();
+        }
+    }
+    
     render() {
         let {line, cmd} = this.props;
         let lineNumStr = (line.linenumtemp ? "~" : "") + String(line.linenum);
@@ -108,7 +120,7 @@ class LineAvatar extends React.Component<{line : LineType, cmd : Cmd}, {}> {
         let rtnstate = (cmd != null ? cmd.getRtnState() : false);
         let isComment = (line.linetype == "text");
         return (
-            <div className={cn("avatar", "num-"+lineNumStr.length, "status-" + status, {"ephemeral": line.ephemeral}, {"rtnstate": rtnstate})}>
+            <div onContextMenu={(e) => this.handleRightClick(e)} className={cn("avatar", "num-"+lineNumStr.length, "status-" + status, {"ephemeral": line.ephemeral}, {"rtnstate": rtnstate})}>
                 {lineNumStr}
                 <If condition={status == "hangup" || status == "error"}>
                     <i className="fa-sharp fa-solid fa-triangle-exclamation status-icon"/>
@@ -497,7 +509,8 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
             {"top-border": topBorder},
         );
         let rendererPlugin : RendererPluginType = null;
-        if (!isBlank(line.renderer) && line.renderer != "terminal") {
+        let isNoneRenderer = (line.renderer == "none");
+        if (!isBlank(line.renderer) && line.renderer != "terminal" && !isNoneRenderer) {
             rendererPlugin = GlobalModel.getRendererPluginByName(line.renderer);
         }
         let rendererType = getRendererType(line);
@@ -527,7 +540,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
                         </If>
                     </div>
                 </div>
-                <If condition={rendererPlugin == null}>
+                <If condition={rendererPlugin == null && !isNoneRenderer}>
                     <TerminalRenderer screen={screen} line={line} width={width} staticRender={staticRender} visible={visible} onHeightChange={this.handleHeightChange} collapsed={isCollapsed}/>
                 </If>
                 <If condition={rendererPlugin != null}>

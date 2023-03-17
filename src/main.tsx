@@ -18,7 +18,7 @@ import remarkGfm from 'remark-gfm'
 import {BookmarksView} from "./bookmarks";
 import {HistoryView} from "./history";
 import {Line, Prompt} from "./linecomps";
-import {ScreenSettingsModal, SessionSettingsModal} from "./settings";
+import {ScreenSettingsModal, SessionSettingsModal, LineSettingsModal} from "./settings";
 import {renderCmdText} from "./elements";
 
 dayjs.extend(localizedFormat)
@@ -2798,6 +2798,7 @@ class Main extends React.Component<{}, {}> {
 
     @boundMethod
     handleContextMenu(e : any) {
+        console.log("main contextmenu");
         let isInNonTermInput = false;
         let activeElem = document.activeElement;
         if (activeElem != null && activeElem.nodeName == "TEXTAREA") {
@@ -2826,6 +2827,7 @@ class Main extends React.Component<{}, {}> {
     render() {
         let screenSettingsModal = GlobalModel.screenSettingsModal.get();
         let sessionSettingsModal = GlobalModel.sessionSettingsModal.get();
+        let lineSettingsModal = GlobalModel.lineSettingsModal.get();
         return (
             <div id="main" onContextMenu={this.handleContextMenu}>
                 <div className="main-content">
@@ -2846,6 +2848,9 @@ class Main extends React.Component<{}, {}> {
                 </If>
                 <If condition={sessionSettingsModal != null}>
                     <SessionSettingsModal key={sessionSettingsModal} sessionId={sessionSettingsModal}/>
+                </If>
+                <If condition={lineSettingsModal != null}>
+                    <LineSettingsModal key={lineSettingsModal.lineid} line={lineSettingsModal}/>
                 </If>
             </div>
         );
