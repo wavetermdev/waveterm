@@ -1840,6 +1840,14 @@ func UpdateLineHeight(ctx context.Context, lineId string, heightVal int) error {
 	return nil
 }
 
+func UpdateLineRenderer(ctx context.Context, lineId string, renderer string) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		query := `UPDATE line SET renderer = ? WHERE lineid = ?`
+		tx.Exec(query, renderer, lineId)
+		return nil
+	})
+}
+
 // can return nil, nil if line is not found
 func GetLineById(ctx context.Context, sessionId string, screenId string, lineId string) (*LineType, error) {
 	var rtn *LineType

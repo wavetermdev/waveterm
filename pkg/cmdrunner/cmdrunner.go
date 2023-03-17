@@ -162,6 +162,7 @@ func init() {
 	registerCmdFn("line:purge", LinePurgeCommand)
 	registerCmdFn("line:setheight", LineSetHeightCommand)
 	registerCmdFn("line:view", LineViewCommand)
+	registerCmdFn("line:set", LineSetCommand)
 
 	registerCmdFn("client", ClientCommand)
 	registerCmdFn("client:show", ClientShowCommand)
@@ -2041,7 +2042,7 @@ func ScreenResizeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 }
 
 func LineCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	return nil, fmt.Errorf("/line requires a subcommand: %s", formatStrs([]string{"show", "star", "hide", "purge", "setheight"}, "or", false))
+	return nil, fmt.Errorf("/line requires a subcommand: %s", formatStrs([]string{"show", "star", "hide", "purge", "setheight", "set"}, "or", false))
 }
 
 func LineSetHeightCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -2070,6 +2071,47 @@ func LineSetHeightCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	}
 	// we don't need to pass the updated line height (it is "write only")
 	return nil, nil
+}
+
+func LineSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
+	if err != nil {
+		return nil, err
+	}
+	if len(pk.Args) != 1 {
+		return nil, fmt.Errorf("/line:set requires 1 argument (linearg)")
+	}
+	lineArg := pk.Args[0]
+	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.ScreenId, lineArg)
+	if err != nil {
+		return nil, fmt.Errorf("error looking up lineid: %v", err)
+	}
+	var varsUpdated []string
+	if renderer, found := pk.Kwargs["renderer"]; found {
+		if err = validateRenderer(renderer); err != nil {
+			return nil, fmt.Errorf("invalid renderer value: %w", err)
+		}
+		err = sstore.UpdateLineRenderer(ctx, lineId, renderer)
+		if err != nil {
+			return nil, fmt.Errorf("error changing line renderer: %v", err)
+		}
+		varsUpdated = append(varsUpdated, "renderer")
+	}
+	if len(varsUpdated) == 0 {
+		return nil, fmt.Errorf("/line:set requires a value to set: %s", formatStrs([]string{"renderer"}, "or", false))
+	}
+	updatedLine, err := sstore.GetLineById(ctx, ids.SessionId, ids.ScreenId, lineId)
+	if err != nil {
+		return nil, fmt.Errorf("/line:set cannot retrieve updated line: %v", err)
+	}
+	update := sstore.ModelUpdate{
+		Line: updatedLine,
+		Info: &sstore.InfoMsgType{
+			InfoMsg:   fmt.Sprintf("line updated %s", formatStrs(varsUpdated, "and", false)),
+			TimeoutMs: 2000,
+		},
+	}
+	return update, nil
 }
 
 func LineViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
