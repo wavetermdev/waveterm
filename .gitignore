@@ -7,6 +7,7 @@ out/
 .DS_Store
 bin/
 dev-bin
+local-server-bin
 *.pw
 build/
 *.dmg

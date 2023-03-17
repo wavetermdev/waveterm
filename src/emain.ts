@@ -63,7 +63,6 @@ if (isDev) {
 }
 let app = electron.app;
 app.setName((isDev ? "Prompt (Dev)" : "Prompt"));
-const DevLocalServerPath = "/Users/mike/prompt-dev/local-server";
 let localServerProc = null;
 let localServerShouldRestart = false;
 
@@ -99,7 +98,7 @@ function getBaseHostPort() {
 
 function getLocalServerPath() {
     if (isDev) {
-        return DevLocalServerPath
+        return path.join(getAppBasePath(), "local-server-bin", "local-server");
     }
     return path.join(getAppBasePath(), "bin", "prompt-local-server");
 }

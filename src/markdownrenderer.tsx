@@ -6,6 +6,7 @@ import {If, For, When, Otherwise, Choose} from "tsx-control-statements/component
 import {WindowSize, RendererContext, TermOptsType, LineType, RendererOpts} from "./types";
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import {boundInt} from "./util";
 
 type OV<V> = mobx.IObservableValue<V>;
 
@@ -70,10 +71,17 @@ class SimpleMarkdownRenderer extends React.Component<{data : Blob, context : Ren
         };
         let opts = this.props.opts;
         let markdownText = this.markdownText.get();
+        let maxWidth = opts.maxSize.width;
+        let minWidth = opts.maxSize.width;
+        if (minWidth > 1000) {
+            minWidth = 1000;
+        }
         return (
             <div className="markdown-renderer">
-                <div className="markdown content" style={{maxHeight: opts.maxSize.height, maxWidth: opts.maxSize.width, overflow: "auto"}}>
-                    <ReactMarkdown children={this.markdownText.get()} remarkPlugins={[remarkGfm]} components={markdownComponents}/>
+                <div className="markdown-scroller" style={{maxHeight: opts.maxSize.height}}>
+                    <div className="markdown content" style={{maxWidth: maxWidth, minWidth: minWidth}}>
+                        <ReactMarkdown children={this.markdownText.get()} remarkPlugins={[remarkGfm]} components={markdownComponents}/>
+                    </div>
                 </div>
             </div>
         );

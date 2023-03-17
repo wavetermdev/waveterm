@@ -2984,7 +2984,7 @@ input[type=checkbox] {
 .markdown {
     color: @term-white;
     margin-bottom: 10px;
-    
+
     code {
         background-color: black;
         color: white;
@@ -2999,7 +2999,9 @@ input[type=checkbox] {
 
     .title {
         color: white;
-        margin-bottom: 0;
+        margin-top: 16px;
+        line-height: 1.25;
+        margin-bottom: 8px;
     }
 
     strong {
@@ -3033,6 +3035,33 @@ input[type=checkbox] {
         margin: 4px 10px 4px 10px;
         padding: 2px 4px 2px 6px;
     }
+
+    .title.is-1 {
+        font-size: 32px;
+        border-bottom: 1px solid #777;
+        padding-bottom: 6px;
+    }
+    .title.is-2 {
+        font-size: 24px;
+        border-bottom: 1px solid #777;
+        padding-bottom: 6px;
+    }
+    .title.is-3 {
+        font-size: 20px;
+    }
+    .title.is-4 {
+        font-size: 16px;
+    }
+    .title.is-5 {
+        font-size: 14px;
+    }
+    .title.is-6 {
+        font-size: 14px;
+    }
+}
+
+.markdown > *:first-child {
+    margin-top: 0 !important;
 }
 
 .markdown-renderer {
@@ -3043,9 +3072,18 @@ input[type=checkbox] {
     }
 }
 
+.markdown-renderer {
+    .markdown-scroller {
+        overflow: auto;
+        display: flex;
+        flex-diretion: row;
+    }
+}
+
 .markdown-renderer .markdown {
     padding: 5px;
     line-height: 1.5;
+    width: min-content;
 
     blockquote {
         background-color: #222;
@@ -3058,5 +3096,7 @@ input[type=checkbox] {
 
     pre {
         background-color: #222;
+        margin: 2px 10px 6px 10px;
+        padding: 4px 4px 4px 6px;
     }
 }
