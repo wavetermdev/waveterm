@@ -241,6 +241,11 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
                 this.controlU();
                 return;
             }
+            if (e.code == "KeyW" && e.getModifierState("Control")) {
+                e.preventDefault();
+                this.controlW();
+                return;
+            }
             if (e.code == "KeyY" && e.getModifierState("Control")) {
                 e.preventDefault();
                 this.controlY();
@@ -395,6 +400,40 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
     }
 
     @boundMethod
+    controlW() {
+        if (this.mainInputRef.current == null) {
+            return;
+        }
+        let selStart = this.mainInputRef.current.selectionStart;
+        let value = this.mainInputRef.current.value;
+        if (selStart > value.length) {
+            return;
+        }
+        let cutSpot = selStart-1;
+        let initial = true;
+        for (;cutSpot>=0; cutSpot--) {
+            let ch = value[cutSpot];
+            console.log(cutSpot, "[" + ch + "]");
+            if (ch == " " && initial) {
+                continue;
+            }
+            initial = false;
+            if (ch == " ") {
+                cutSpot++;
+                break;
+            }
+        }
+        let cutValue = value.slice(cutSpot, selStart);
+        let prevValue = value.slice(0, cutSpot);
+        let restValue = value.slice(selStart);
+        let cmdLineUpdate = {cmdline: prevValue + restValue, cursorpos: prevValue.length};
+        console.log("ss", selStart, value, "prev[" + prevValue + "]", "cut[" + cutValue + "]", "rest[" + restValue + "]");
+        console.log("  ", cmdLineUpdate);
+        navigator.clipboard.writeText(cutValue);
+        GlobalModel.inputModel.updateCmdLine(cmdLineUpdate);
+    }
+
+    @boundMethod
     controlY() {
         if (this.mainInputRef.current == null) {
             return;
@@ -486,8 +525,8 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
         }
         return (
             <div className="control cmd-input-control is-expanded" ref={this.controlRef}>
-                <textarea ref={this.mainInputRef} spellCheck="false" id="main-cmd-input" onFocus={this.handleMainFocus} onBlur={this.handleMainBlur} rows={displayLines} value={curLine} onKeyDown={this.onKeyDown} onChange={this.onChange} className={cn("textarea", {"display-disabled": disabled})}></textarea>
-                <input ref={this.historyInputRef} spellCheck="false" className="history-input" type="text" onFocus={this.handleHistoryFocus} onKeyDown={this.onHistoryKeyDown} onChange={this.handleHistoryInput} value={inputModel.historyQueryOpts.get().queryStr}/>
+                <textarea ref={this.mainInputRef} spellCheck="false" autoComplete="off" autoCorrect="off" id="main-cmd-input" onFocus={this.handleMainFocus} onBlur={this.handleMainBlur} rows={displayLines} value={curLine} onKeyDown={this.onKeyDown} onChange={this.onChange} className={cn("textarea", {"display-disabled": disabled})}></textarea>
+                <input ref={this.historyInputRef} spellCheck="false" autoComplete="off" autoCorrect="off" className="history-input" type="text" onFocus={this.handleHistoryFocus} onKeyDown={this.onHistoryKeyDown} onChange={this.handleHistoryInput} value={inputModel.historyQueryOpts.get().queryStr}/>
             </div>
         );
     }
