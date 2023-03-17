@@ -861,6 +861,9 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
             if (this.sudoBool.get()) {
                 kwargs["sudo"] = "1";
             }
+            if (this.portStr.get() != "" && this.portStr.get() != "22") {
+                kwargs["port"] = this.portStr.get();
+            }
         }
         kwargs["alias"] = this.alias.get();
         kwargs["color"] = this.colorStr.get();
