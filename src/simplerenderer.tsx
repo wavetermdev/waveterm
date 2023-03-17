@@ -7,6 +7,7 @@ import {If, For, When, Otherwise, Choose} from "tsx-control-statements/component
 import type {RendererModelInitializeParams, TermOptsType, RendererContext, RendererOpts, SimpleBlobRendererComponent, RendererModelContainerApi, RendererPluginType, PtyDataType, RendererModel, RendererOptsUpdate, LineType} from "./types";
 import {GlobalModel, LineContainerModel, getPtyData, Cmd} from "./model";
 import {PtyDataBuffer} from "./ptydata";
+import {debounce, throttle} from "throttle-debounce";
 
 type OV<V> = mobx.IObservableValue<V>;
 type CV<V> = mobx.IComputedValue<V>;
@@ -20,8 +21,10 @@ class SimpleBlobRendererModel {
     loading : OV<boolean>;
     loadError : OV<string> = mobx.observable.box(null, {name: "renderer-loadError"});
     ptyData : PtyDataType;
+    updateHeight_debounced : (newHeight : number) => void
     
     constructor() {
+        this.updateHeight_debounced = debounce(1000, this.updateHeight.bind(this));
     }
 
     initialize(params : RendererModelInitializeParams) : void {
@@ -52,7 +55,6 @@ class SimpleBlobRendererModel {
         if (this.savedHeight != newHeight) {
             this.savedHeight = newHeight;
             this.api.saveHeight(newHeight);
-            console.log("saveheight", sprintf("[%d]", this.context.lineNum), newHeight);
         }
     }
     
@@ -155,13 +157,15 @@ class SimpleBlobRenderer extends React.Component<{lcm : LineContainerModel, line
     }
 
     handleResize(entries : ResizeObserverEntry[]) : void {
-        console.log("simplerender resize", sprintf("[%d]", this.model.context.lineNum), entries);
+        if (this.model.loading.get()) {
+            return;
+        }
         if (this.props.onHeightChange) {
             this.props.onHeightChange();
         }
         if (!this.model.loading.get() && this.wrapperDivRef.current != null) {
             let height = this.wrapperDivRef.current.offsetHeight;
-            this.model.updateHeight(height);
+            this.model.updateHeight_debounced(height);
         }
     }
 
@@ -204,7 +208,7 @@ class SimpleBlobRenderer extends React.Component<{lcm : LineContainerModel, line
         let dataBlob = new Blob([model.ptyData.data]);
         return (
             <div ref={this.wrapperDivRef}>
-                <Comp data={dataBlob} context={model.context} opts={model.opts}/>
+                <Comp data={dataBlob} context={model.context} opts={model.opts} savedHeight={this.model.savedHeight}/>
             </div>
         );
     }

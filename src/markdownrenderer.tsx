@@ -27,7 +27,7 @@ function CodeRenderer(props : any) : any {
 }
 
 @mobxReact.observer
-class SimpleMarkdownRenderer extends React.Component<{data : Blob, context : RendererContext, opts : RendererOpts}, {}> {
+class SimpleMarkdownRenderer extends React.Component<{data : Blob, context : RendererContext, opts : RendererOpts, savedHeight : number}, {}> {
     markdownText : OV<string> = mobx.observable.box(null, {name: "markdownText"});
 
     componentDidMount() {
@@ -38,9 +38,10 @@ class SimpleMarkdownRenderer extends React.Component<{data : Blob, context : Ren
             })();
         });
     }
+    
     render() {
         if (this.markdownText.get() == null) {
-            return null;
+            return <div className="markdown-renderer" style={{height: this.props.savedHeight}}/>
         }
         let markdownComponents = {
             a: LinkRenderer,
@@ -54,8 +55,10 @@ class SimpleMarkdownRenderer extends React.Component<{data : Blob, context : Ren
         };
         let markdownText = this.markdownText.get();
         return (
-            <div className="markdown-renderer markdown content">
-                <ReactMarkdown children={this.markdownText.get()} remarkPlugins={[remarkGfm]} components={markdownComponents}/>
+            <div className="markdown-renderer">
+                <div className="markdown content">
+                    <ReactMarkdown children={this.markdownText.get()} remarkPlugins={[remarkGfm]} components={markdownComponents}/>
+                </div>
             </div>
         );
     }

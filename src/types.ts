@@ -401,8 +401,8 @@ type RendererModel = {
     receiveData : (pos : number, data : Uint8Array, reason? : string) => void,
 };
 
-type SimpleBlobRendererComponent = React.ComponentType<{data : Blob, context : RendererContext, opts : RendererOpts}>;
-type SimpleJsonRendererComponent = React.ComponentType<{data : any, context : RendererContext, opts : RendererOpts}>;
+type SimpleBlobRendererComponent = React.ComponentType<{data : Blob, context : RendererContext, opts : RendererOpts, savedHeight : number}>;
+type SimpleJsonRendererComponent = React.ComponentType<{data : any, context : RendererContext, opts : RendererOpts, savedHeight : number}>;
 type FullRendererComponent = React.ComponentType<{model : any}>;
 
 type WindowSize = {
