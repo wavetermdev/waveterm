@@ -2798,7 +2798,6 @@ class Main extends React.Component<{}, {}> {
 
     @boundMethod
     handleContextMenu(e : any) {
-        console.log("main contextmenu");
         let isInNonTermInput = false;
         let activeElem = document.activeElement;
         if (activeElem != null && activeElem.nodeName == "TEXTAREA") {

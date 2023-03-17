@@ -26,13 +26,25 @@ function CodeRenderer(props : any) : any {
     );
 }
 
+const MaxMarkdownSize = 50000;
+
 @mobxReact.observer
 class SimpleMarkdownRenderer extends React.Component<{data : Blob, context : RendererContext, opts : RendererOpts, savedHeight : number}, {}> {
     markdownText : OV<string> = mobx.observable.box(null, {name: "markdownText"});
+    markdownError : OV<string> = mobx.observable.box(null, {name: "markdownError"});
 
     componentDidMount() {
-        let prtn = this.props.data.text()
+        let dataBlob = this.props.data;
+        if (dataBlob.size > 50000) {
+            this.markdownError.set(sprintf("error: markdown too large to render size=%d", dataBlob.size));
+            return;
+        }
+        let prtn = dataBlob.text()
         prtn.then((text) => {
+            if (/[\x00-\x08]/.test(text)) {
+                this.markdownError.set(sprintf("error: not rendering markdown, binary characters detected"));
+                return;
+            }
             mobx.action(() => {
                 this.markdownText.set(text);
             })();
@@ -40,6 +52,9 @@ class SimpleMarkdownRenderer extends React.Component<{data : Blob, context : Ren
     }
     
     render() {
+        if (this.markdownError.get() != null) {
+            return <div className="markdown-renderer"><div className="markdown-error">{this.markdownError.get()}</div></div>;
+        }
         if (this.markdownText.get() == null) {
             return <div className="markdown-renderer" style={{height: this.props.savedHeight}}/>
         }
@@ -53,10 +68,11 @@ class SimpleMarkdownRenderer extends React.Component<{data : Blob, context : Ren
             h6: (props) => HeaderRenderer(props, 6),
             code: CodeRenderer,
         };
+        let opts = this.props.opts;
         let markdownText = this.markdownText.get();
         return (
             <div className="markdown-renderer">
-                <div className="markdown content">
+                <div className="markdown content" style={{maxHeight: opts.maxSize.height, maxWidth: opts.maxSize.width, overflow: "auto"}}>
                     <ReactMarkdown children={this.markdownText.get()} remarkPlugins={[remarkGfm]} components={markdownComponents}/>
                 </div>
             </div>

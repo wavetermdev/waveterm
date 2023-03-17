@@ -2633,6 +2633,23 @@ input[type=checkbox] {
             margin-left: 0;
         }
     }
+
+    .dropdown {
+        .dropdown-menu .dropdown-content {
+            .dropdown-item {
+                color: white;
+                cursor: pointer;
+                &:hover {
+                    background-color: #333;
+                }
+            }
+        }
+
+        .dropdown-menu {
+            max-height: 120px;
+            overflow: auto;
+        }
+    }
 }
 
 .modal.prompt-modal {
@@ -3006,10 +3023,18 @@ input[type=checkbox] {
     }
 }
 
+.markdown-renderer {
+    .markdown-error {
+        color: @term-red;
+        font-size: 14px;
+        padding: 5px;
+    }
+}
+
 .markdown-renderer .markdown {
     padding: 5px;
     line-height: 1.5;
-    
+
     blockquote {
         background-color: #222;
     }

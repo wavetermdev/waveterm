@@ -2409,6 +2409,9 @@ class Model {
         if (isBlank(plugin.name)) {
             throw new Error("invalid plugin, no name");
         }
+        if (plugin.name == "terminal" || plugin.name == "none") {
+            throw new Error(sprintf("invalid plugin, name '%s' is reserved", plugin.name));
+        }
         let existingPlugin = this.getRendererPluginByName(plugin.name);
         if (existingPlugin != null) {
             throw new Error(sprintf("plugin with name %s already registered", plugin.name));
@@ -3211,6 +3214,20 @@ class CommandRunner {
             screen.setAnchorFields(lineNum, 0, "line:view");
         }
         GlobalModel.submitCommand("line", "view", [sessionId, screenId, String(lineNum)], {"nohist": "1"}, false);
+    }
+
+    lineArchive(lineArg : string, archive : boolean) {
+        let kwargs = {"nohist": "1"};
+        let archiveStr = (archive ? "1" : "0");
+        GlobalModel.submitCommand("line", "archive", [lineArg, archiveStr], kwargs, false);
+    }
+
+    lineSet(lineArg : string, opts : {renderer? : string}) {
+        let kwargs = {"nohist": "1"};
+        if ("renderer" in opts) {
+            kwargs["renderer"] = opts.renderer ?? "";
+        }
+        GlobalModel.submitCommand("line", "set", [lineArg], kwargs, false);
     }
 
     createNewSession() {

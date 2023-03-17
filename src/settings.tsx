@@ -7,7 +7,7 @@ import {If, For, When, Otherwise, Choose} from "tsx-control-statements/component
 import cn from "classnames";
 import {GlobalModel, GlobalCommandRunner, TabColors} from "./model";
 import {Toggle} from "./elements";
-import {LineType} from "./types";
+import {LineType, RendererPluginType} from "./types";
 
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
@@ -232,8 +232,18 @@ class SessionSettingsModal extends React.Component<{sessionId : string}, {}> {
 
 @mobxReact.observer
 class LineSettingsModal extends React.Component<{line : LineType}, {}> {
+    tempArchived : OV<boolean>;
+    tempRenderer : OV<string>;
+    rendererDropdownActive : OV<boolean> = mobx.observable.box(false, {name: "lineSettings-rendererDropdownActive"});
+    
     constructor(props : any) {
         super(props);
+        let {line} = props;
+        if (line == null) {
+            return;
+        }
+        this.tempArchived = mobx.observable.box(!!line.archived, {name: "lineSettings-tempArchived"});
+        this.tempRenderer = mobx.observable.box(line.renderer, {name: "lineSettings-renderer"});
     }
     
     @boundMethod
@@ -245,9 +255,68 @@ class LineSettingsModal extends React.Component<{line : LineType}, {}> {
 
     @boundMethod
     handleOK() : void {
+        let {line} = this.props;
         mobx.action(() => {
             GlobalModel.lineSettingsModal.set(null);
         })();
+        if (this.tempRenderer.get() != line.renderer) {
+            GlobalCommandRunner.lineSet(line.lineid, {
+                "renderer": this.tempRenderer.get(),
+            });
+        }
+        if (this.tempArchived.get() != !!line.archived) {
+            GlobalCommandRunner.lineArchive(line.lineid, this.tempArchived.get());
+        }
+    }
+
+    @boundMethod
+    handleChangeArchived(val : boolean) : void {
+        mobx.action(() => {
+            this.tempArchived.set(val);
+        })();
+    }
+
+    @boundMethod
+    toggleRendererDropdown() : void {
+        mobx.action(() => {
+            this.rendererDropdownActive.set(!this.rendererDropdownActive.get());
+        })();
+    }
+
+    @boundMethod
+    clickSetRenderer(renderer : string) : void {
+        mobx.action(() => {
+            this.tempRenderer.set(renderer);
+            this.rendererDropdownActive.set(false);
+        })();
+    }
+
+    renderRendererDropdown() : any {
+        let {line} = this.props;
+        let renderer = this.tempRenderer.get() ?? "terminal";
+        let plugins = GlobalModel.rendererPlugins;
+        let plugin : RendererPluginType = null;
+        return (
+            <div className={cn("dropdown", "renderer-dropdown", {"is-active": this.rendererDropdownActive.get()})}>
+                <div className="dropdown-trigger">
+                    <button onClick={this.toggleRendererDropdown} className="button is-small is-dark">
+                        <span><i className="fa-sharp fa-solid fa-fill"/> {renderer}</span>
+                        <span className="icon is-small">
+                            <i className="fa-sharp fa-regular fa-angle-down" aria-hidden="true"></i>
+                        </span>
+                    </button>
+                </div>
+                <div className="dropdown-menu" role="menu">
+                    <div className="dropdown-content has-background-black">
+                        <div onClick={() => this.clickSetRenderer("none") } key="none" className="dropdown-item">none</div>
+                        <div onClick={() => this.clickSetRenderer(null) } key="terminal" className="dropdown-item">terminal</div>
+                        <For each="plugin" of={plugins}>
+                            <div onClick={() => this.clickSetRenderer(plugin.name) } key={plugin.name} className="dropdown-item">{plugin.name}</div>
+                        </For>
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     render() {
@@ -271,9 +340,22 @@ class LineSettingsModal extends React.Component<{line : LineType}, {}> {
                                 Renderer
                             </div>
                             <div className="settings-input">
-                                xxx
+                                {this.renderRendererDropdown()}
                             </div>
                         </div>
+                        <div className="settings-field">
+                            <div className="settings-label">
+                                Archived
+                            </div>
+                            <div className="settings-input">
+                                <Toggle checked={this.tempArchived.get()} onChange={this.handleChangeArchived}/>
+                                <div className="action-text">
+                                    <If condition={this.tempArchived.get() && this.tempArchived.get() != !!line.archived}>will be archived</If>
+                                    <If condition={!this.tempArchived.get() && this.tempArchived.get() != !!line.archived}>will be un-archived</If>
+                                </div>
+                            </div>
+                        </div>
+                        <div style={{height: 50}}/>
                     </div>
                     <footer>
                         <div onClick={this.closeModal} className="button is-prompt-cancel is-outlined is-small">Cancel</div>
