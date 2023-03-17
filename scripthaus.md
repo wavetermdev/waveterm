@@ -12,5 +12,5 @@ sqlite3 /Users/mike/prompt-dev/prompt.db
 
 ```bash
 # @scripthaus command build
-go build -ldflags "-X main.BuildTime=$(date +'%Y%m%d%H%M')" -o ~/prompt-dev/local-server ./cmd
+go build -ldflags "-X main.BuildTime=$(date +'%Y%m%d%H%M')" -o bin/local-server ./cmd
 ```
