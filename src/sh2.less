@@ -1451,6 +1451,10 @@ body::-webkit-scrollbar {
         display: block;
     }
 
+    &:hover .meta .settings {
+        display: block;
+    }
+
     .avatar {
         max-height: 38px;
         width: 38px;
@@ -1581,8 +1585,16 @@ body::-webkit-scrollbar {
             }
         }
 
+        .settings {
+            display: none;
+            color: #aaa;
+            font-size: 11px;
+            margin-left: 5px;
+            margin-top: 5px;
+            cursor: pointer;
+        }
+
         .termopts {
-            display: flex;
             color: #aaa;
             margin-top: 5px;
             .mono-font(11px);

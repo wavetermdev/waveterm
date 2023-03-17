@@ -108,7 +108,7 @@ class LineAvatar extends React.Component<{line : LineType, cmd : Cmd}, {}> {
         let {line} = this.props;
         if (line != null) {
             mobx.action(() => {
-                GlobalModel.lineSettingsModal.set(this.props.line);
+                GlobalModel.lineSettingsModal.set(line);
             })();
         }
     }
@@ -440,6 +440,18 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         );
     }
 
+    @boundMethod
+    handleLineSettings(e : any) : void {
+        e.preventDefault();
+        e.stopPropagation();
+        let {line} = this.props;
+        if (line != null) {
+            mobx.action(() => {
+                GlobalModel.lineSettingsModal.set(line);
+            })();
+        }
+    }
+
     renderMetaWrap(cmd : Cmd) {
         let {line} = this.props;
         let model = GlobalModel;
@@ -457,6 +469,9 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
                     </If>
                     <div className="termopts">
                         ({termOpts.rows}x{termOpts.cols})
+                    </div>
+                    <div className="settings" onClick={this.handleLineSettings}>
+                        <i className="fa-sharp fa-solid fa-gear"/>
                     </div>
                 </div>
                 {this.renderCmdText(cmd, remote)}
