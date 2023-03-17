@@ -7,6 +7,7 @@ import {WindowSize, RendererContext, TermOptsType, LineType, RendererOpts} from 
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {boundInt} from "./util";
+import {sprintf} from "sprintf-js";
 
 type OV<V> = mobx.IObservableValue<V>;
 
