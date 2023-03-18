@@ -80,7 +80,7 @@ open out/Prompt-darwin-x64/Prompt.app
 DMG_VERSION=$(node -e 'console.log(require("./version.js"))')
 DMG_NAME="prompt-macos-x86-${DMG_VERSION}.dmg"
 rm *.dmg
-../../create-dmg/create-dmg/create-dmg \
+/Users/mike/work/gopath/src/github.com/create-dmg/create-dmg/create-dmg \
   --volname "Prompt" \
   --window-pos 200 120 \
   --window-size 600 300 \

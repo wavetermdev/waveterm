@@ -56,7 +56,7 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
             settings.name = this.tempName.get();
         }
         if (Object.keys(settings).length > 0) {
-            GlobalCommandRunner.screenSetSettings(settings);
+            GlobalCommandRunner.screenSetSettings(this.props.screenId, settings);
         }
         if (this.tempArchived.get() != screen.archived.get()) {
             GlobalCommandRunner.screenArchive(screen.screenId, this.tempArchived.get());
@@ -181,7 +181,7 @@ class SessionSettingsModal extends React.Component<{sessionId : string}, {}> {
     handleOK() : void {
         mobx.action(() => {
             GlobalModel.sessionSettingsModal.set(null);
-            GlobalCommandRunner.sessionSetSettings({
+            GlobalCommandRunner.sessionSetSettings(this.props.sessionId, {
                 "name": this.tempName.get(),
             });
         })();

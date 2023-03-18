@@ -3333,15 +3333,17 @@ class CommandRunner {
         GlobalModel.submitCommand("screen", "set", null, {"focus": focusVal, "nohist": "1"}, false);
     }
 
-    screenSetSettings(settings : {tabcolor? : string, name? : string}) : void {
+    screenSetSettings(screenId : string, settings : {tabcolor? : string, name? : string}) : void {
         let kwargs = Object.assign({}, settings);
         kwargs["nohist"] = "1";
+        kwargs["screen"] = screenId;
         GlobalModel.submitCommand("screen", "set", null, kwargs, true);
     }
 
-    sessionSetSettings(settings : {name? : string}) : void {
+    sessionSetSettings(sessionId : string, settings : {name? : string}) : void {
         let kwargs = Object.assign({}, settings);
         kwargs["nohist"] = "1";
+        kwargs["session"] = sessionId;
         GlobalModel.submitCommand("session", "set", null, kwargs, true);
     }
 
