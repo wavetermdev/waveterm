@@ -342,6 +342,7 @@ func (h *HistoryItemType) ToMap() map[string]interface{} {
 	rtn["sessionid"] = h.SessionId
 	rtn["screenid"] = h.ScreenId
 	rtn["lineid"] = h.LineId
+	rtn["linenum"] = h.LineNum
 	rtn["haderror"] = h.HadError
 	rtn["cmdid"] = h.CmdId
 	rtn["cmdstr"] = h.CmdStr
