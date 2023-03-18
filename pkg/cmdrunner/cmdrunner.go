@@ -95,6 +95,7 @@ type SetVarScope struct {
 
 type historyContextType struct {
 	LineId    string
+	LineNum   int64
 	CmdId     string
 	RemotePtr *sstore.RemotePtrType
 }
@@ -378,6 +379,7 @@ func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, history
 		SessionId: ids.SessionId,
 		ScreenId:  ids.ScreenId,
 		LineId:    historyContext.LineId,
+		LineNum:   historyContext.LineNum,
 		HadError:  hadError,
 		CmdId:     historyContext.CmdId,
 		CmdStr:    cmdStr,
@@ -1240,6 +1242,7 @@ func updateHistoryContext(ctx context.Context, line *sstore.LineType, cmd *sstor
 	hctx := ctxVal.(*historyContextType)
 	if line != nil {
 		hctx.LineId = line.LineId
+		hctx.LineNum = line.LineNum
 	}
 	if cmd != nil {
 		hctx.CmdId = cmd.CmdId

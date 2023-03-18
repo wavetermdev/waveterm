@@ -17,7 +17,7 @@ import (
 	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 )
 
-const HistoryCols = "h.historyid, h.ts, h.userid, h.sessionid, h.screenid, h.lineid, h.cmdid, h.haderror, h.cmdstr, h.remoteownerid, h.remoteid, h.remotename, h.ismetacmd, h.incognito"
+const HistoryCols = "h.historyid, h.ts, h.userid, h.sessionid, h.screenid, h.lineid, h.cmdid, h.haderror, h.cmdstr, h.remoteownerid, h.remoteid, h.remotename, h.ismetacmd, h.incognito, h.linenum"
 const DefaultMaxHistoryItems = 1000
 
 type SingleConnDBGetter struct {
@@ -187,8 +187,8 @@ func InsertHistoryItem(ctx context.Context, hitem *HistoryItemType) error {
 	}
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `INSERT INTO history 
-                  ( historyid, ts, userid, sessionid, screenid, lineid, cmdid, haderror, cmdstr, remoteownerid, remoteid, remotename, ismetacmd, incognito) VALUES
-                  (:historyid,:ts,:userid,:sessionid,:screenid,:lineid,:cmdid,:haderror,:cmdstr,:remoteownerid,:remoteid,:remotename,:ismetacmd,:incognito)`
+                  ( historyid, ts, userid, sessionid, screenid, lineid, cmdid, haderror, cmdstr, remoteownerid, remoteid, remotename, ismetacmd, incognito, linenum) VALUES
+                  (:historyid,:ts,:userid,:sessionid,:screenid,:lineid,:cmdid,:haderror,:cmdstr,:remoteownerid,:remoteid,:remotename,:ismetacmd,:incognito,:linenum)`
 		tx.NamedExec(query, hitem.ToMap())
 		return nil
 	})
@@ -315,7 +315,7 @@ func runHistoryQuery(tx *TxWrap, opts HistoryQueryOpts, realOffset int, itemLimi
 	if opts.NoMeta {
 		whereClause += " AND NOT h.ismetacmd"
 	}
-	query := fmt.Sprintf("SELECT %s, ('%s' || CAST((row_number() OVER win) as text)) historynum, l.linenum FROM history h LEFT OUTER JOIN line l ON (h.lineid = l.lineid) %s WINDOW win AS (ORDER BY h.ts, h.historyid) ORDER BY h.ts DESC, h.historyid DESC LIMIT %d OFFSET %d", HistoryCols, hNumStr, whereClause, itemLimit, realOffset)
+	query := fmt.Sprintf("SELECT %s, ('%s' || CAST((row_number() OVER win) as text)) historynum FROM history h %s WINDOW win AS (ORDER BY h.ts, h.historyid) ORDER BY h.ts DESC, h.historyid DESC LIMIT %d OFFSET %d", HistoryCols, hNumStr, whereClause, itemLimit, realOffset)
 	marr := tx.SelectMaps(query, queryArgs...)
 	rtn := make([]*HistoryItemType, len(marr))
 	for idx, m := range marr {
