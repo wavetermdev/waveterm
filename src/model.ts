@@ -2402,7 +2402,7 @@ class Model {
         getApi().onLocalServerStatusChange(this.onLocalServerStatusChange.bind(this));
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
         document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
-        setTimeout(() => this.getClientData(), 10);
+        setTimeout(() => this.getClientDataLoop(1), 10);
     }
 
     registerRendererPlugin(plugin : RendererPluginType) {
@@ -2934,6 +2934,24 @@ class Model {
             return false;
         }
         return (update.info != null || update.history != null);
+    }
+
+    getClientDataLoop(loopNum : number) : void {
+        this.getClientData();
+        if (this.clientData.get() != null) {
+            return;
+        }
+        let timeoutMs = 1000;
+        if (loopNum > 5) {
+            timeoutMs = 3000;
+        }
+        if (loopNum > 10) {
+            timeoutMs = 10000;
+        }
+        if (loopNum > 15) {
+            timeoutMs = 30000;
+        }
+        setTimeout(() => this.getClientDataLoop(loopNum+1), timeoutMs);
     }
 
     getClientData() : void {

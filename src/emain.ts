@@ -400,7 +400,17 @@ function getFetchHeaders() {
     };
 }
 
-function getClientData() {
+async function getClientDataPoll(loopNum : number) {
+    let lastTime = (loopNum >= 6);
+    let cdata = await getClientData(!lastTime, loopNum);
+    if (lastTime || cdata != null) {
+        return cdata;
+    }
+    await sleep(1000);
+    return getClientDataPoll(loopNum+1);
+}
+
+function getClientData(willRetry : boolean, retryNum : number) {
     let url = getBaseHostPort() + "/api/get-client-data";
     let fetchHeaders = getFetchHeaders();
     return fetch(url, {headers: fetchHeaders}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
@@ -409,7 +419,11 @@ function getClientData() {
         }
         return data.data;
     }).catch((err) => {
-        console.log("error getting client-data", err);
+        if (willRetry) {
+            console.log("error getting client-data from local-server, will retry", "(" + retryNum + ")");
+            return null;
+        }
+        console.log("error getting client-data from local-server, failed: ", err);
         return null;
     });
 }
@@ -498,7 +512,7 @@ electron.ipcMain.on("context-editmenu", (event, {x, y}, opts) => {
 async function createMainWindowWrap() {
     let clientData = null;
     try {
-        clientData = await getClientData();
+        clientData = await getClientDataPoll(1);
     }
     catch (e) {
         console.log("error getting local-server clientdata", e.toString());
@@ -531,7 +545,6 @@ function runActiveTimer() {
     setTimeout(runActiveTimer, 60000);
 }
 
-
 // ====== MAIN ====== //
 
 (async () => {
@@ -548,7 +561,6 @@ function runActiveTimer() {
     catch (e) {
         console.log(e.toString());
     }
-    await sleep(1000);  // TODO remove this sleep, poll getClientData() in createMainWindow
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
     await app.whenReady();
     await createMainWindowWrap();

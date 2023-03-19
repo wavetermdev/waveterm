@@ -2635,14 +2635,14 @@ class DisconnectedModal extends React.Component<{}, {}> {
         let logLine : string = null;
         let idx : number = 0;
         return (
-            <div className="sc-modal disconnected-modal modal is-active">
+            <div className="prompt-modal disconnected-modal modal is-active">
                 <div className="modal-background"></div>
-                <div className="modal-content message">
+                <div className="modal-content">
                     <div className="message-header">
-                        <p>Prompt Client Disconnected</p>
+                        <div className="modal-title">Prompt Client Disconnected</div>
                     </div>
                     <If condition={this.showLog.get()}>
-                        <div className="message-content">
+                        <div className="inner-content">
                             <div className="ws-log" ref={this.logRef}>
                                 <For each="logLine" index="idx" of={GlobalModel.ws.wsLog}>
                                     <div key={idx} className="ws-logline">{logLine}</div>
@@ -2650,7 +2650,7 @@ class DisconnectedModal extends React.Component<{}, {}> {
                             </div>
                         </div>
                     </If>
-                    <div className="message-footer">
+                    <footer>
                         <div className="footer-text-link" style={{marginLeft: 10}} onClick={this.handleShowLog}>
                             <If condition={!this.showLog.get()}>
                                 <i className="fa-sharp fa-solid fa-plus"/> Show Log
@@ -2659,7 +2659,7 @@ class DisconnectedModal extends React.Component<{}, {}> {
                                 <i className="fa-sharp fa-solid fa-minus"/> Hide Log
                             </If>
                         </div>
-                        <div className="spacer"/>
+                        <div className="flex-spacer"/>
                         <button onClick={this.tryReconnect} className="button">
                             <span className="icon">
                                 <i className="fa-sharp fa-solid fa-rotate"/>
@@ -2672,7 +2672,7 @@ class DisconnectedModal extends React.Component<{}, {}> {
                             </span>
                             <span>Restart Server</span>
                         </button>
-                    </div>
+                    </footer>
                 </div>
             </div>
         );

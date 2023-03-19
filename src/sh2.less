@@ -147,7 +147,7 @@ body::-webkit-scrollbar {
                 }
 
                 &.should-fade {
-                    opacity: 0;
+                    opacity: 1.0;
                     animation: fade-in 2.5s;
                 }
             }
@@ -2403,52 +2403,20 @@ input[type=checkbox] {
     .mono-font(inherit, 700);
 }
 
-.sc-modal {
+.disconnected-modal {
     .modal-content {
-        padding: 10px;
-        background-color: #666;
-
-        .message-header {
-            .mono-font();
-            font-size: 16px;
-            margin-bottom: 10px;
-        }
-
-        .message-content {
-            flex-grow: 1;
-            max-height: 80%;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 10px;
-        }
-
-        .message-footer {
-            border-top: 1px solid #666;
-            display: flex;
-            flex-direction: row;
-            justify-content: center;
-            align-items: center;
-
-            .spacer {
-                flex-grow: 1;
-            }
-
+        footer {
             .footer-text-link {
                 .mono-font(12px);
                 color: @term-white;
                 cursor: pointer;
             }
         }
-
-        .button {
-            .mono-font();
-        }
     }
 }
 
 .disconnected-modal {
-    .message-content {
+    .inner-content {
         .ws-log {
             padding: 5px;
             background-color: black;
