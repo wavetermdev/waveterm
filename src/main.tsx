@@ -1711,9 +1711,15 @@ class LinesView extends React.Component<{screen : Screen, width : number, lines 
         if (linesElem == null) {
             return;
         }
+        if (linesElem.offsetParent == null) {
+            return;  // handles when parent is set to display:none (is-hidden)
+        }
         let lineElemArr = linesElem.querySelectorAll(".line");
         if (lineElemArr == null) {
             return;
+        }
+        if (linesElem.clientHeight == 0) {
+            return;  // when linesElem is collapsed (or display:none)
         }
         let containerTop = linesElem.scrollTop - LinesVisiblePadding;
         let containerBot = linesElem.scrollTop + linesElem.clientHeight + LinesVisiblePadding;
@@ -1730,6 +1736,7 @@ class LinesView extends React.Component<{screen : Screen, width : number, lines 
             if (lineBot >= containerTop && lineBot <= containerBot) {
                 isVis = true
             }
+            // console.log("line", lineElem.dataset.linenum, "top=" + lineTop, "bot=" + lineTop, isVis);
             newMap.set(lineElem.dataset.linenum, isVis);
             // console.log("setvis", sprintf("%4d %4d-%4d (%4d) %s", lineElem.dataset.linenum, lineTop, lineBot, lineElem.offsetHeight, isVis));
         }
@@ -1750,6 +1757,19 @@ class LinesView extends React.Component<{screen : Screen, width : number, lines 
                 }
             }
         })();
+    }
+
+    printVisMap() : void {
+        let visMap = this.visibleMap;
+        let lines = this.props.lines;
+        let visLines : string[] = [];
+        for (let i=0; i<lines.length; i++) {
+            let linenum = String(lines[i].linenum);
+            if (visMap.get(linenum).get()) {
+                visLines.push(linenum);
+            }
+        }
+        console.log("vislines", visLines);
     }
 
     restoreAnchorOffset(reason : string) : void {
