@@ -47,6 +47,7 @@ const DefaultPTERM = "MxM"
 const MaxCommandLen = 4096
 const MaxSignalLen = 12
 const MaxSignalNum = 64
+const MaxEvalDepth = 5
 
 var ColorNames = []string{"black", "red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
 var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
@@ -87,6 +88,7 @@ var sigNameRe = regexp.MustCompile("^((SIG[A-Z0-9]+)|(\\d+))$")
 type contextType string
 
 var historyContextKey = contextType("history")
+var depthContextKey = contextType("depth")
 
 type SetVarScope struct {
 	ScopeName string
@@ -323,6 +325,68 @@ func resolveNonNegInt(arg string, def int) (int, error) {
 	return ival, nil
 }
 
+var histExpansionRe = regexp.MustCompile(`^!(\d+)$`)
+
+func doCmdHistoryExpansion(ctx context.Context, ids resolvedIds, cmdStr string) (string, error) {
+	if !strings.HasPrefix(cmdStr, "!") {
+		return "", nil
+	}
+	if strings.HasPrefix(cmdStr, "! ") {
+		return "", nil
+	}
+	if cmdStr == "!!" {
+		return doHistoryExpansion(ctx, ids, -1)
+	}
+	if strings.HasPrefix(cmdStr, "!-") {
+		return "", fmt.Errorf("prompt does not support negative history offsets, use a stable positive history offset instead: '![linenum]'")
+	}
+	m := histExpansionRe.FindStringSubmatch(cmdStr)
+	if m == nil {
+		return "", fmt.Errorf("unsupported history substitution, can use '!!' or '![linenum]'")
+	}
+	ival, err := strconv.Atoi(m[1])
+	if err != nil {
+		return "", fmt.Errorf("invalid history expansion")
+	}
+	return doHistoryExpansion(ctx, ids, ival)
+}
+
+func doHistoryExpansion(ctx context.Context, ids resolvedIds, hnum int) (string, error) {
+	if hnum == 0 {
+		return "", fmt.Errorf("invalid history expansion, cannot expand line number '0'")
+	}
+	if hnum < -1 {
+		return "", fmt.Errorf("invalid history expansion, cannot expand negative history offsets")
+	}
+	foundHistoryNum := hnum
+	if hnum == -1 {
+		var err error
+		foundHistoryNum, err = sstore.GetLastHistoryLineNum(ctx, ids.ScreenId)
+		if err != nil {
+			return "", fmt.Errorf("cannot expand history, error finding last history item: %v", err)
+		}
+		if foundHistoryNum == 0 {
+			return "", fmt.Errorf("cannot expand history, no last history item")
+		}
+	}
+	hitem, err := sstore.GetHistoryItemByLineNum(ctx, ids.ScreenId, foundHistoryNum)
+	if err != nil {
+		return "", fmt.Errorf("cannot get history item '%d': %v", foundHistoryNum, err)
+	}
+	if hitem == nil {
+		return "", fmt.Errorf("cannot expand history, history item '%d' not found", foundHistoryNum)
+	}
+	return hitem.CmdStr, nil
+}
+
+func getEvalDepth(ctx context.Context) int {
+	depthVal := ctx.Value(depthContextKey)
+	if depthVal == nil {
+		return 0
+	}
+	return depthVal.(int)
+}
+
 func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
 	if err != nil {
@@ -333,6 +397,22 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	}
 	renderer := pk.Kwargs["renderer"]
 	cmdStr := firstArg(pk)
+	expandedCmdStr, err := doCmdHistoryExpansion(ctx, ids, cmdStr)
+	if err != nil {
+		return nil, err
+	}
+	if expandedCmdStr != "" {
+		newPk := scpacket.MakeFeCommandPacket()
+		newPk.MetaCmd = "eval"
+		newPk.Args = []string{expandedCmdStr}
+		newPk.Kwargs = pk.Kwargs
+		newPk.RawStr = pk.RawStr
+		newPk.UIContext = pk.UIContext
+		newPk.Interactive = pk.Interactive
+		evalDepth := getEvalDepth(ctx)
+		ctxWithDepth := context.WithValue(ctx, depthContextKey, evalDepth+1)
+		return EvalCommand(ctxWithDepth, newPk)
+	}
 	isRtnStateCmd := IsReturnStateCommand(cmdStr)
 	// runPacket.State is set in remote.RunCommand()
 	runPacket := packet.MakeRunPacket()
@@ -409,6 +489,9 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 			log.Printf("[error] incrementing activity numcommands: %v\n", err)
 			// fall through (non-fatal error)
 		}
+	}
+	if getEvalDepth(ctx) > MaxEvalDepth {
+		return nil, fmt.Errorf("alias/history expansion max-depth exceeded")
 	}
 	var historyContext historyContextType
 	ctxWithHistory := context.WithValue(ctx, historyContextKey, &historyContext)

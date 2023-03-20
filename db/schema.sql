@@ -95,7 +95,7 @@ CREATE TABLE cmd (
     runout json NOT NULL,
     rtnstate boolean NOT NULL,
     rtnbasehash varchar(36) NOT NULL,
-    rtndiffhasharr json NOT NULL,
+    rtndiffhasharr json NOT NULL, screenid varchar(36) NOT NULL DEFAULT '',
     PRIMARY KEY (sessionid, cmdid)
 );
 CREATE TABLE history (
@@ -113,7 +113,16 @@ CREATE TABLE history (
     cmdstr text NOT NULL,
     ismetacmd boolean,
     incognito boolean
-);
+, linenum int NOT NULL DEFAULT 0);
+CREATE TABLE activity (
+    day varchar(20) PRIMARY KEY,
+    uploaded boolean NOT NULL,
+    tdata json NOT NULL,
+    tzname varchar(50) NOT NULL,
+    tzoffset int NOT NULL,
+    clientversion varchar(20) NOT NULL,
+    clientarch varchar(20) NOT NULL
+, buildtime varchar(20) NOT NULL DEFAULT '-', osrelease varchar(20) NOT NULL DEFAULT '-');
 CREATE TABLE bookmark (
     bookmarkid varchar(36) PRIMARY KEY,
     createdts bigint NOT NULL,
@@ -134,15 +143,6 @@ CREATE TABLE bookmark_cmd (
     cmdid varchar(36) NOT NULL,
     PRIMARY KEY (bookmarkid, sessionid, cmdid)
 );
-CREATE TABLE activity (
-    day varchar(20) PRIMARY KEY,
-    uploaded boolean NOT NULL,
-    tdata json NOT NULL,
-    tzname varchar(50) NOT NULL,
-    tzoffset int NOT NULL,
-    clientversion varchar(50) NOT NULL,
-    clientarch varchar(50) NOT NULL
-, buildtime varchar(20) NOT NULL DEFAULT '-', osrelease varchar(20) NOT NULL DEFAULT '-');
 CREATE TABLE playbook (
     playbookid varchar(36) PRIMARY KEY,
     playbookname varchar(100) NOT NULL,

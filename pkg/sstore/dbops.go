@@ -341,6 +341,22 @@ func GetHistoryItems(ctx context.Context, opts HistoryQueryOpts) (*HistoryQueryR
 	return rtn, nil
 }
 
+func GetHistoryItemByLineNum(ctx context.Context, screenId string, lineNum int) (*HistoryItemType, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (*HistoryItemType, error) {
+		query := `SELECT * FROM history WHERE screenid = ? AND linenum = ?`
+		hitem := GetMapGen[*HistoryItemType](tx, query, screenId, lineNum)
+		return hitem, nil
+	})
+}
+
+func GetLastHistoryLineNum(ctx context.Context, screenId string) (int, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (int, error) {
+		query := `SELECT COALESCE(max(linenum), 0) FROM history WHERE screenid = ?`
+		maxLineNum := tx.GetInt(query, screenId)
+		return maxLineNum, nil
+	})
+}
+
 // includes archived sessions
 func GetBareSessions(ctx context.Context) ([]*SessionType, error) {
 	var rtn []*SessionType
