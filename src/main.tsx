@@ -2500,9 +2500,11 @@ class MainSideBar extends React.Component<{}, {}> {
         let activePlaybookId : string = null;
         return (
             <div className={cn("main-sidebar", {"collapsed": isCollapsed}, {"is-dev": GlobalModel.isDev})}>
-                <h1 className={cn("title", "prompt-logo-small", {"collapsed": isCollapsed}, {"is-dev": GlobalModel.isDev})}>
-                    {(isCollapsed ? "[p]" : "[prompt]")}
-                </h1>
+                <div className="logo-header">
+                    <h1 className={cn("title", "prompt-logo-small", {"collapsed": isCollapsed}, {"is-dev": GlobalModel.isDev})}>
+                        {(isCollapsed ? "[p]" : "[prompt]")}
+                    </h1>
+                </div>
                 <div className="collapse-container">
                     <div className="arrow-container" onClick={this.toggleCollapsed}>
                         <If condition={!isCollapsed}><i className="fa-sharp fa-solid fa-arrow-left"/></If>
