@@ -419,7 +419,11 @@ class Screen {
             (document.activeElement as HTMLElement).blur();
         }
         if (sline != null && sline.cmdid != null) {
-            let termWrap = this.getRenderer(sline.cmdid);
+            let renderer = this.getRenderer(sline.cmdid);
+            if (renderer != null) {
+                renderer.giveFocus();
+            }
+            let termWrap = this.getTermWrap(sline.cmdid);
             if (termWrap != null) {
                 termWrap.giveFocus();
             }
@@ -760,7 +764,11 @@ class Screen {
                 sline = this.getLineByNum(this.selectedLine.get());
             }
             if (sline != null) {
-                let termWrap = this.getRenderer(sline.cmdid);
+                let renderer = this.getRenderer(sline.cmdid);
+                if (renderer != null) {
+                    renderer.giveFocus();
+                }
+                let termWrap = this.getTermWrap(sline.cmdid);
                 if (termWrap != null) {
                     termWrap.giveFocus();
                 }

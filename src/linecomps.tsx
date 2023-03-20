@@ -212,16 +212,6 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
     }
 
     @boundMethod
-    doRefresh() {
-        let {screen, line} = this.props;
-        let model = GlobalModel;
-        let termWrap = screen.getRenderer(line.cmdid);
-        if (termWrap != null) {
-            termWrap.reload(500);
-        }
-    }
-
-    @boundMethod
     handleExpandCmd() : void {
         mobx.action(() => {
             this.isCmdExpanded.set(true);
@@ -768,7 +758,7 @@ class TerminalRenderer extends React.Component<{screen : LineContainerModel, lin
     clickTermBlock(e : any) {
         let {screen, line} = this.props;
         let model = GlobalModel;
-        let termWrap = screen.getRenderer(line.cmdid);
+        let termWrap = screen.getTermWrap(line.cmdid);
         if (termWrap != null) {
             termWrap.giveFocus();
         }
