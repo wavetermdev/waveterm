@@ -87,7 +87,12 @@ func SetEnableDebugLog(enable bool) {
 	DebugLogEnabled = enable
 }
 
+// deprecated (use GetGroupId instead)
 func (ckey CommandKey) GetSessionId() string {
+	return ckey.GetGroupId()
+}
+
+func (ckey CommandKey) GetGroupId() string {
 	slashIdx := strings.Index(string(ckey), "/")
 	if slashIdx == -1 {
 		return ""
