@@ -539,7 +539,7 @@ func ScreenArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		}
 		return update, nil
 	} else {
-		fmt.Printf("unarchive screen %s\n", screenId)
+		log.Printf("unarchive screen %s\n", screenId)
 		err = sstore.UnArchiveScreen(ctx, ids.SessionId, screenId)
 		if err != nil {
 			return nil, fmt.Errorf("/screen:archive cannot re-open screen: %v", err)
@@ -2582,7 +2582,6 @@ func SetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 		}
 		setMap[scopeName][varName] = argVal
 	}
-	fmt.Printf("setmap: %#v\n", setMap)
 	return nil, nil
 }
 

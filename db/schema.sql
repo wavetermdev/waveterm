@@ -7,7 +7,7 @@ CREATE TABLE client (
     userpublickeybytes blob NOT NULL,
     userprivatekeybytes blob NOT NULL,
     winsize json NOT NULL
-, clientopts json NOT NULL DEFAULT '', feopts json NOT NULL DEFAULT '{}');
+, clientopts json NOT NULL DEFAULT '', feopts json NOT NULL DEFAULT '{}', cmdstoretype varchar(20) DEFAULT 'session');
 CREATE TABLE session (
     sessionid varchar(36) PRIMARY KEY,
     name varchar(50) NOT NULL,
@@ -41,24 +41,6 @@ CREATE TABLE state_diff (
     diffhasharr json NOT NULL,    
     data blob NOT NULL
 );
-CREATE TABLE line (
-    sessionid varchar(36) NOT NULL,
-    screenid varchar(36) NOT NULL,
-    userid varchar(36) NOT NULL,
-    lineid varchar(36) NOT NULL,
-    ts bigint NOT NULL,
-    linenum int NOT NULL,
-    linenumtemp boolean NOT NULL,
-    linetype varchar(10) NOT NULL,
-    linelocal boolean NOT NULL,
-    text text NOT NULL,
-    cmdid varchar(36) NOT NULL,
-    ephemeral boolean NOT NULL,
-    contentheight int NOT NULL,
-    star int NOT NULL,
-    archived boolean NOT NULL, renderer varchar(50) NOT NULL DEFAULT '', bookmarked boolean NOT NULL DEFAULT 0, pinned boolean NOT NULL DEFAULT 0,
-    PRIMARY KEY (sessionid, screenid, lineid)
-);
 CREATE TABLE remote (
     remoteid varchar(36) PRIMARY KEY,
     physicalid varchar(36) NOT NULL,
@@ -76,27 +58,6 @@ CREATE TABLE remote (
     local boolean NOT NULL,
     archived boolean NOT NULL,
     remoteidx int NOT NULL
-);
-CREATE TABLE cmd (
-    sessionid varchar(36) NOT NULL,
-    cmdid varchar(36) NOT NULL,
-    remoteownerid varchar(36) NOT NULL,
-    remoteid varchar(36) NOT NULL,
-    remotename varchar(50) NOT NULL,
-    cmdstr text NOT NULL,
-    festate json NOT NULL,
-    statebasehash varchar(36) NOT NULL,
-    statediffhasharr json NOT NULL,
-    termopts json NOT NULL,
-    origtermopts json NOT NULL,
-    status varchar(10) NOT NULL,
-    startpk json NOT NULL,
-    doneinfo json NOT NULL,
-    runout json NOT NULL,
-    rtnstate boolean NOT NULL,
-    rtnbasehash varchar(36) NOT NULL,
-    rtndiffhasharr json NOT NULL, screenid varchar(36) NOT NULL DEFAULT '',
-    PRIMARY KEY (sessionid, cmdid)
 );
 CREATE TABLE history (
     historyid varchar(36) PRIMARY KEY,
@@ -137,12 +98,6 @@ CREATE TABLE bookmark_order (
     orderidx int NOT NULL,
     PRIMARY KEY (tag, bookmarkid)
 );
-CREATE TABLE bookmark_cmd (
-    bookmarkid varchar(36) NOT NULL,
-    sessionid varchar(36) NOT NULL,
-    cmdid varchar(36) NOT NULL,
-    PRIMARY KEY (bookmarkid, sessionid, cmdid)
-);
 CREATE TABLE playbook (
     playbookid varchar(36) PRIMARY KEY,
     playbookname varchar(100) NOT NULL,
@@ -173,9 +128,20 @@ CREATE TABLE cloud_update (
     updatetype varchar(50) NOT NULL,
     updatekeys json NOT NULL
 );
-CREATE TABLE IF NOT EXISTS "screen" (
+CREATE TABLE IF NOT EXISTS "bookmark_cmd" (
+    bookmarkid varchar(36) NOT NULL,
+    screenid varchar(36) NOT NULL,
+    cmdid varchar(36) NOT NULL,
+    PRIMARY KEY (bookmarkid, screenid, cmdid)
+);
+CREATE TABLE cmd_migrate (
     sessionid varchar(36) NOT NULL,
     screenid varchar(36) NOT NULL,
+    cmdid varchar(36) NOT NULL
+);
+CREATE TABLE IF NOT EXISTS "screen" (
+    screenid varchar(36) NOT NULL,
+    sessionid varchar(36) NOT NULL,
     name varchar(50) NOT NULL,
     screenidx int NOT NULL,
     screenopts json NOT NULL,
@@ -190,5 +156,46 @@ CREATE TABLE IF NOT EXISTS "screen" (
     focustype varchar(12) NOT NULL,
     archived boolean NOT NULL,
     archivedts bigint NOT NULL,
-    PRIMARY KEY (sessionid, screenid)
+    PRIMARY KEY (screenid)
+);
+CREATE TABLE IF NOT EXISTS "line" (
+    screenid varchar(36) NOT NULL,
+    userid varchar(36) NOT NULL,
+    lineid varchar(36) NOT NULL,
+    ts bigint NOT NULL,
+    linenum int NOT NULL,
+    linenumtemp boolean NOT NULL,
+    linetype varchar(10) NOT NULL,
+    linelocal boolean NOT NULL,
+    text text NOT NULL,
+    cmdid varchar(36) NOT NULL,
+    ephemeral boolean NOT NULL,
+    contentheight int NOT NULL,
+    star int NOT NULL,
+    archived boolean NOT NULL,
+    renderer varchar(50) NOT NULL,
+    bookmarked boolean NOT NULL,
+    PRIMARY KEY (screenid, lineid)
+);
+CREATE TABLE IF NOT EXISTS "cmd" (
+    screenid varchar(36) NOT NULL,
+    cmdid varchar(36) NOT NULL,
+    remoteownerid varchar(36) NOT NULL,
+    remoteid varchar(36) NOT NULL,
+    remotename varchar(50) NOT NULL,
+    cmdstr text NOT NULL,
+    rawcmdstr text NOT NULL,
+    festate json NOT NULL,
+    statebasehash varchar(36) NOT NULL,
+    statediffhasharr json NOT NULL,
+    termopts json NOT NULL,
+    origtermopts json NOT NULL,
+    status varchar(10) NOT NULL,
+    startpk json NOT NULL,
+    doneinfo json NOT NULL,
+    runout json NOT NULL,
+    rtnstate boolean NOT NULL,
+    rtnbasehash varchar(36) NOT NULL,
+    rtndiffhasharr json NOT NULL,
+    PRIMARY KEY (screenid, cmdid)
 );
