@@ -3202,10 +3202,16 @@ class CommandRunner {
     }
 
     switchSession(session : string) {
+        mobx.action(() => {
+            GlobalModel.activeMainView.set("session");
+        })();
         GlobalModel.submitCommand("session", null, [session], {"nohist": "1"}, false);
     }
 
     switchScreen(screen : string) {
+        mobx.action(() => {
+            GlobalModel.activeMainView.set("session");
+        })();
         GlobalModel.submitCommand("screen", null, [screen], {"nohist": "1"}, false);
     }
 

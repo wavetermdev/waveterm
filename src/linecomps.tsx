@@ -28,10 +28,6 @@ function isBlank(s : string) : boolean {
     return (s == null || s == "");
 }
 
-function getLineId(line : LineType) : string {
-    return sprintf("%s-%s", line.screenid, line.lineid);
-}
-
 function makeFullRemoteRef(ownerName : string, remoteRef : string, name : string) : string {
     if (isBlank(ownerName) && isBlank(name)) {
         return remoteRef;
@@ -205,10 +201,10 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         this.checkCmdText();
     }
 
-    // FIXME
     scrollIntoView() {
-        let lineElem = document.getElementById("line-" + getLineId(this.props.line));
-        lineElem.scrollIntoView({block: "end"});
+        if (this.lineRef.current != null) {
+            this.lineRef.current.scrollIntoView({block: "end"});
+        }
     }
 
     @boundMethod
@@ -369,11 +365,6 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         })();
     }
 
-    getLineDomId() : string {
-        let {line} = this.props;
-        return "line-" + getLineId(line);
-    }
-
     isCollapsed() : boolean {
         let {renderMode, overrideCollapsed} = this.props;
         return (renderMode == "collapsed" && !overrideCollapsed.get());
@@ -424,7 +415,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
             {"collapsed": isCollapsed},
         );
         return (
-            <div className={mainDivCn} id={this.getLineDomId()} ref={this.lineRef} data-lineid={line.lineid} data-linenum={line.linenum} data-screenid={line.screenid} style={{height: height}}>
+            <div className={mainDivCn} ref={this.lineRef} data-lineid={line.lineid} data-linenum={line.linenum} data-screenid={line.screenid} style={{height: height}}>
                 <LineAvatar line={line} cmd={cmd}/>
             </div>
         );
@@ -481,7 +472,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         let cmd = screen.getCmd(line);
         if (cmd == null) {
             return (
-                <div className="line line-invalid" id={this.getLineDomId()} ref={this.lineRef} data-lineid={line.lineid} data-linenum={line.linenum} data-screenid={line.screenid}>
+                <div className="line line-invalid" ref={this.lineRef} data-lineid={line.lineid} data-linenum={line.linenum} data-screenid={line.screenid}>
                     [cmd not found '{line.cmdid}']
                 </div>
             );
@@ -520,7 +511,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         }
         let rendererType = getRendererType(line);
         return (
-            <div className={mainDivCn} id={"line-" + getLineId(line)}
+            <div className={mainDivCn}
                  ref={this.lineRef} onClick={this.handleClick}
                  data-lineid={line.lineid} data-linenum={line.linenum} data-screenid={line.screenid} data-cmdid={line.cmdid}>
                 <div key="focus" className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused}, {"fg-focus": isFgFocused})}/>
@@ -666,6 +657,7 @@ class LineText extends React.Component<{screen : LineContainerModel, line : Line
 class TerminalRenderer extends React.Component<{screen : LineContainerModel, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : () => void, collapsed : boolean}, {}> {
     termLoaded : mobx.IObservableValue<boolean> = mobx.observable.box(false, {name: "linecmd-term-loaded"});
     elemRef : React.RefObject<any> = React.createRef();
+    termRef : React.RefObject<any> = React.createRef();
 
     constructor(props) {
         super(props);
@@ -731,10 +723,9 @@ class TerminalRenderer extends React.Component<{screen : LineContainerModel, lin
         if (cmd == null) {
             return;
         }
-        let termId = "term-" + getLineId(line);
-        let termElem = document.getElementById(termId);
+        let termElem = this.termRef.current;
         if (termElem == null) {
-            console.log("cannot load terminal, no term elem found", termId);
+            console.log("cannot load terminal, no term elem found", line);
             return;
         }
         screen.loadTerminalRenderer(termElem, line, cmd, this.props.width);
@@ -746,8 +737,7 @@ class TerminalRenderer extends React.Component<{screen : LineContainerModel, lin
         screen.unloadRenderer(line.cmdid);
         if (!unmount) {
             mobx.action(() => this.termLoaded.set(false))();
-            let termId = "term-" + getLineId(line);
-            let termElem = document.getElementById(termId);
+            let termElem = this.termRef.current;
             if (termElem != null) {
                 termElem.replaceChildren();
             }
@@ -781,7 +771,7 @@ class TerminalRenderer extends React.Component<{screen : LineContainerModel, lin
                 <If condition={!isFocused}>
                     <div key="term-block" className="term-block" onClick={this.clickTermBlock}></div>
                 </If>
-                <div key="term-connectelem" className="terminal-connectelem" id={"term-" + getLineId(line)} data-cmdid={line.cmdid} style={{height: termHeight}}></div>
+                <div key="term-connectelem" className="terminal-connectelem" ref={this.termRef} data-cmdid={line.cmdid} style={{height: termHeight}}></div>
                 <If condition={!termLoaded}><div key="term-loading" className="terminal-loading-message">...</div></If>
 
             </div>
