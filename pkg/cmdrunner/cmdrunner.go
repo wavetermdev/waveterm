@@ -417,7 +417,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	// runPacket.State is set in remote.RunCommand()
 	runPacket := packet.MakeRunPacket()
 	runPacket.ReqId = uuid.New().String()
-	runPacket.CK = base.MakeCommandKey(ids.SessionId, scbase.GenPromptUUID())
+	runPacket.CK = base.MakeCommandKey(ids.ScreenId, scbase.GenPromptUUID())
 	runPacket.UsePty = true
 	ptermVal := defaultStr(pk.Kwargs["pterm"], DefaultPTERM)
 	runPacket.TermOpts, err = GetUITermOpts(pk.UIContext.WinSize, ptermVal)
@@ -433,12 +433,13 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	if err != nil {
 		return nil, err
 	}
+	cmd.RawCmdStr = pk.GetRawStr()
 	update, err := addLineForCmd(ctx, "/run", true, ids, cmd, renderer)
 	if err != nil {
 		return nil, err
 	}
 	update.Interactive = pk.Interactive
-	sstore.MainBus.SendUpdate(ids.SessionId, update)
+	sstore.MainBus.SendScreenUpdate(ids.ScreenId, update)
 	return nil, nil
 }
 
@@ -559,7 +560,7 @@ func ScreenPurgeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if err != nil {
 		return nil, fmt.Errorf("/screen:purge cannot purge screen: %w", err)
 	}
-	update, err := sstore.DeleteScreen(ctx, ids.ScreenId)
+	update, err := sstore.PurgeScreen(ctx, ids.ScreenId, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1255,10 +1256,10 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 
 func makeStaticCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr string, cmdOutput []byte) (*sstore.CmdType, error) {
 	cmd := &sstore.CmdType{
-		SessionId: ids.SessionId,
 		ScreenId:  ids.ScreenId,
 		CmdId:     scbase.GenPromptUUID(),
 		CmdStr:    cmdStr,
+		RawCmdStr: cmdStr,
 		Remote:    ids.Remote.RemotePtr,
 		TermOpts:  sstore.TermOpts{Rows: shexec.DefaultTermRows, Cols: shexec.DefaultTermCols, FlexRows: true, MaxPtySize: remote.DefaultMaxPtySize},
 		Status:    sstore.CmdStatusDone,
@@ -1272,13 +1273,13 @@ func makeStaticCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr 
 	if ids.Remote.FeState != nil {
 		cmd.FeState = *ids.Remote.FeState
 	}
-	err := sstore.CreateCmdPtyFile(ctx, cmd.SessionId, cmd.CmdId, cmd.TermOpts.MaxPtySize)
+	err := sstore.CreateCmdPtyFile(ctx, cmd.ScreenId, cmd.CmdId, cmd.TermOpts.MaxPtySize)
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, fmt.Errorf("cannot create local ptyout file for %s command: %w", metaCmd, err)
 	}
 	// can ignore ptyupdate
-	_, err = sstore.AppendToCmdPtyBlob(ctx, cmd.SessionId, ids.ScreenId, cmd.CmdId, cmdOutput, 0)
+	_, err = sstore.AppendToCmdPtyBlob(ctx, ids.ScreenId, cmd.CmdId, cmdOutput, 0)
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, fmt.Errorf("cannot append to local ptyout file for %s command: %v", metaCmd, err)
@@ -1287,7 +1288,7 @@ func makeStaticCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr 
 }
 
 func addLineForCmd(ctx context.Context, metaCmd string, shouldFocus bool, ids resolvedIds, cmd *sstore.CmdType, renderer string) (*sstore.ModelUpdate, error) {
-	rtnLine, err := sstore.AddCmdLine(ctx, ids.SessionId, ids.ScreenId, DefaultUserId, cmd, renderer)
+	rtnLine, err := sstore.AddCmdLine(ctx, ids.ScreenId, DefaultUserId, cmd, renderer)
 	if err != nil {
 		return nil, err
 	}
@@ -1495,7 +1496,7 @@ func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if strings.TrimSpace(text) == "" {
 		return nil, fmt.Errorf("cannot post empty comment")
 	}
-	rtnLine, err := sstore.AddCommentLine(ctx, ids.SessionId, ids.ScreenId, DefaultUserId, text)
+	rtnLine, err := sstore.AddCommentLine(ctx, ids.ScreenId, DefaultUserId, text)
 	if err != nil {
 		return nil, err
 	}
@@ -1637,7 +1638,7 @@ func SessionDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	if err != nil {
 		return nil, err
 	}
-	update, err := sstore.DeleteSession(ctx, ids.SessionId)
+	update, err := sstore.PurgeSession(ctx, ids.SessionId)
 	if err != nil {
 		return nil, fmt.Errorf("cannot delete session: %v", err)
 	}
@@ -1907,10 +1908,9 @@ func HistoryPurgeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 			continue
 		}
 		lineObj := &sstore.LineType{
-			SessionId: historyItem.SessionId,
-			ScreenId:  historyItem.ScreenId,
-			LineId:    historyItem.LineId,
-			Remove:    true,
+			ScreenId: historyItem.ScreenId,
+			LineId:   historyItem.LineId,
+			Remove:   true,
 		}
 		update.Lines = append(update.Lines, lineObj)
 	}
@@ -2076,7 +2076,7 @@ func splitLinesForInfo(str string) []string {
 
 func resizeRunningCommand(ctx context.Context, cmd *sstore.CmdType, newCols int) error {
 	siPk := packet.MakeSpecialInputPacket()
-	siPk.CK = base.MakeCommandKey(cmd.SessionId, cmd.CmdId)
+	siPk.CK = base.MakeCommandKey(cmd.ScreenId, cmd.CmdId)
 	siPk.WinSize = &packet.WinSize{Rows: int(cmd.TermOpts.Rows), Cols: newCols}
 	msh := remote.GetRemoteById(cmd.Remote.RemoteId)
 	if msh == nil {
@@ -2088,7 +2088,7 @@ func resizeRunningCommand(ctx context.Context, cmd *sstore.CmdType, newCols int)
 	}
 	newTermOpts := cmd.TermOpts
 	newTermOpts.Cols = int64(newCols)
-	err = sstore.UpdateCmdTermOpts(ctx, cmd.SessionId, cmd.CmdId, newTermOpts)
+	err = sstore.UpdateCmdTermOpts(ctx, cmd.ScreenId, cmd.CmdId, newTermOpts)
 	if err != nil {
 		return err
 	}
@@ -2112,7 +2112,7 @@ func ScreenResizeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 		return nil, fmt.Errorf("/screen:resize invalid zero/negative 'cols' argument")
 	}
 	cols = base.BoundInt(cols, shexec.MinTermCols, shexec.MaxTermCols)
-	runningCmds, err := sstore.GetRunningScreenCmds(ctx, ids.SessionId, ids.ScreenId)
+	runningCmds, err := sstore.GetRunningScreenCmds(ctx, ids.ScreenId)
 	if err != nil {
 		return nil, fmt.Errorf("/screen:resize cannot get running commands: %v", err)
 	}
@@ -2140,7 +2140,7 @@ func LineSetHeightCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		return nil, fmt.Errorf("/line:setheight requires 2 arguments (linearg and height)")
 	}
 	lineArg := pk.Args[0]
-	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.ScreenId, lineArg)
+	lineId, err := sstore.FindLineIdByArg(ctx, ids.ScreenId, lineArg)
 	if err != nil {
 		return nil, fmt.Errorf("error looking up lineid: %v", err)
 	}
@@ -2168,7 +2168,7 @@ func LineSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		return nil, fmt.Errorf("/line:set requires 1 argument (linearg)")
 	}
 	lineArg := pk.Args[0]
-	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.ScreenId, lineArg)
+	lineId, err := sstore.FindLineIdByArg(ctx, ids.ScreenId, lineArg)
 	if err != nil {
 		return nil, fmt.Errorf("error looking up lineid: %v", err)
 	}
@@ -2186,7 +2186,7 @@ func LineSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if len(varsUpdated) == 0 {
 		return nil, fmt.Errorf("/line:set requires a value to set: %s", formatStrs([]string{"renderer"}, "or", false))
 	}
-	updatedLine, err := sstore.GetLineById(ctx, ids.SessionId, ids.ScreenId, lineId)
+	updatedLine, err := sstore.GetLineById(ctx, ids.ScreenId, lineId)
 	if err != nil {
 		return nil, fmt.Errorf("/line:set cannot retrieve updated line: %v", err)
 	}
@@ -2332,21 +2332,21 @@ func LineBookmarkCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 		return nil, fmt.Errorf("/line:bookmark requires an argument (line number or id)")
 	}
 	lineArg := pk.Args[0]
-	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.ScreenId, lineArg)
+	lineId, err := sstore.FindLineIdByArg(ctx, ids.ScreenId, lineArg)
 	if err != nil {
 		return nil, fmt.Errorf("error looking up lineid: %v", err)
 	}
 	if lineId == "" {
 		return nil, fmt.Errorf("line %q not found", lineArg)
 	}
-	lineObj, cmdObj, err := sstore.GetLineCmdByLineId(ctx, ids.SessionId, ids.ScreenId, lineId)
+	lineObj, cmdObj, err := sstore.GetLineCmdByLineId(ctx, ids.ScreenId, lineId)
 	if err != nil {
 		return nil, fmt.Errorf("/line:bookmark error getting line: %v", err)
 	}
 	if cmdObj == nil {
 		return nil, fmt.Errorf("cannot bookmark non-cmd line")
 	}
-	ck := base.MakeCommandKey(lineObj.SessionId, cmdObj.CmdId)
+	ck := base.MakeCommandKey(lineObj.ScreenId, cmdObj.CmdId)
 	bm := &sstore.BookmarkType{
 		BookmarkId:  uuid.New().String(),
 		CreatedTs:   time.Now().UnixMilli(),
@@ -2360,7 +2360,7 @@ func LineBookmarkCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	if err != nil {
 		return nil, fmt.Errorf("cannot insert bookmark: %v", err)
 	}
-	newLineObj, err := sstore.GetLineById(ctx, ids.SessionId, ids.ScreenId, lineId)
+	newLineObj, err := sstore.GetLineById(ctx, ids.ScreenId, lineId)
 	if err != nil {
 		return nil, fmt.Errorf("/line:bookmark error getting line: %v", err)
 	}
@@ -2387,7 +2387,7 @@ func LineStarCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		return nil, fmt.Errorf("/line:star only takes up to 2 arguments (line-number and star-value)")
 	}
 	lineArg := pk.Args[0]
-	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.ScreenId, lineArg)
+	lineId, err := sstore.FindLineIdByArg(ctx, ids.ScreenId, lineArg)
 	if err != nil {
 		return nil, fmt.Errorf("error looking up lineid: %v", err)
 	}
@@ -2405,7 +2405,7 @@ func LineStarCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	if err != nil {
 		return nil, fmt.Errorf("/line:star error updating star value: %v", err)
 	}
-	lineObj, err := sstore.GetLineById(ctx, ids.SessionId, ids.ScreenId, lineId)
+	lineObj, err := sstore.GetLineById(ctx, ids.ScreenId, lineId)
 	if err != nil {
 		return nil, fmt.Errorf("/line:star error getting line: %v", err)
 	}
@@ -2425,7 +2425,7 @@ func LineArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		return nil, fmt.Errorf("/line:archive requires an argument (line number or id)")
 	}
 	lineArg := pk.Args[0]
-	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.ScreenId, lineArg)
+	lineId, err := sstore.FindLineIdByArg(ctx, ids.ScreenId, lineArg)
 	if err != nil {
 		return nil, fmt.Errorf("error looking up lineid: %v", err)
 	}
@@ -2440,7 +2440,7 @@ func LineArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if err != nil {
 		return nil, fmt.Errorf("/line:archive error updating hidden status: %v", err)
 	}
-	lineObj, err := sstore.GetLineById(ctx, ids.SessionId, ids.ScreenId, lineId)
+	lineObj, err := sstore.GetLineById(ctx, ids.ScreenId, lineId)
 	if err != nil {
 		return nil, fmt.Errorf("/line:archive error getting line: %v", err)
 	}
@@ -2461,7 +2461,7 @@ func LinePurgeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	}
 	var lineIds []string
 	for _, lineArg := range pk.Args {
-		lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.ScreenId, lineArg)
+		lineId, err := sstore.FindLineIdByArg(ctx, ids.ScreenId, lineArg)
 		if err != nil {
 			return nil, fmt.Errorf("error looking up lineid: %v", err)
 		}
@@ -2470,17 +2470,16 @@ func LinePurgeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		}
 		lineIds = append(lineIds, lineId)
 	}
-	err = sstore.PurgeLinesByIds(ctx, ids.SessionId, lineIds)
+	err = sstore.PurgeLinesByIds(ctx, ids.ScreenId, lineIds)
 	if err != nil {
 		return nil, fmt.Errorf("/line:purge error purging lines: %v", err)
 	}
 	update := sstore.ModelUpdate{}
 	for _, lineId := range lineIds {
 		lineObj := &sstore.LineType{
-			SessionId: ids.SessionId,
-			ScreenId:  ids.ScreenId,
-			LineId:    lineId,
-			Remove:    true,
+			ScreenId: ids.ScreenId,
+			LineId:   lineId,
+			Remove:   true,
 		}
 		update.Lines = append(update.Lines, lineObj)
 	}
@@ -2496,14 +2495,14 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		return nil, fmt.Errorf("/line:show requires an argument (line number or id)")
 	}
 	lineArg := pk.Args[0]
-	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.ScreenId, lineArg)
+	lineId, err := sstore.FindLineIdByArg(ctx, ids.ScreenId, lineArg)
 	if err != nil {
 		return nil, fmt.Errorf("error looking up lineid: %v", err)
 	}
 	if lineId == "" {
 		return nil, fmt.Errorf("line %q not found", lineArg)
 	}
-	line, cmd, err := sstore.GetLineCmdByLineId(ctx, ids.SessionId, ids.ScreenId, lineId)
+	line, cmd, err := sstore.GetLineCmdByLineId(ctx, ids.ScreenId, lineId)
 	if err != nil {
 		return nil, fmt.Errorf("error getting line: %v", err)
 	}
@@ -2542,7 +2541,7 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		if cmd.RtnState {
 			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "rtnstate", "true"))
 		}
-		stat, _ := sstore.StatCmdPtyFile(ctx, cmd.SessionId, cmd.CmdId)
+		stat, _ := sstore.StatCmdPtyFile(ctx, cmd.ScreenId, cmd.CmdId)
 		if stat == nil {
 			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "file", "-"))
 		} else {
@@ -2599,11 +2598,11 @@ func SignalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		return nil, fmt.Errorf("/signal requires a second argument (signal name)")
 	}
 	lineArg := pk.Args[0]
-	lineId, err := sstore.FindLineIdByArg(ctx, ids.SessionId, ids.ScreenId, lineArg)
+	lineId, err := sstore.FindLineIdByArg(ctx, ids.ScreenId, lineArg)
 	if err != nil {
 		return nil, fmt.Errorf("error looking up lineid: %v", err)
 	}
-	line, cmd, err := sstore.GetLineCmdByLineId(ctx, ids.SessionId, ids.ScreenId, lineId)
+	line, cmd, err := sstore.GetLineCmdByLineId(ctx, ids.ScreenId, lineId)
 	if err != nil {
 		return nil, fmt.Errorf("error getting line: %v", err)
 	}
@@ -2640,7 +2639,7 @@ func SignalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		return nil, fmt.Errorf("cannot send signal, remote is not connected")
 	}
 	siPk := packet.MakeSpecialInputPacket()
-	siPk.CK = base.MakeCommandKey(cmd.SessionId, cmd.CmdId)
+	siPk.CK = base.MakeCommandKey(cmd.ScreenId, cmd.CmdId)
 	siPk.SigName = sigArg
 	err = msh.SendSpecialInput(siPk)
 	if err != nil {
@@ -2950,8 +2949,8 @@ func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newSt
 	}
 }
 
-func GetRtnStateDiff(ctx context.Context, sessionId string, cmdId string) ([]byte, error) {
-	cmd, err := sstore.GetCmdById(ctx, sessionId, cmdId)
+func GetRtnStateDiff(ctx context.Context, screenId string, cmdId string) ([]byte, error) {
+	cmd, err := sstore.GetCmdByScreenId(ctx, screenId, cmdId)
 	if err != nil {
 		return nil, err
 	}

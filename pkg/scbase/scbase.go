@@ -27,6 +27,7 @@ const HomeVarName = "HOME"
 const PromptHomeVarName = "PROMPT_HOME"
 const PromptDevVarName = "PROMPT_DEV"
 const SessionsDirBaseName = "sessions"
+const ScreensDirBaseName = "screens"
 const PromptLockFile = "prompt.lock"
 const PromptDirName = "prompt"
 const PromptDevDirName = "prompt-dev"
@@ -36,6 +37,7 @@ const PromptAuthKeyFileName = "prompt.authkey"
 const MShellVersion = "v0.2.0"
 
 var SessionDirCache = make(map[string]string)
+var ScreenDirCache = make(map[string]string)
 var BaseLock = &sync.Mutex{}
 var BuildTime = "-"
 
@@ -164,6 +166,7 @@ func AcquirePromptLock() (*os.File, error) {
 	return fd, nil
 }
 
+// deprecated (v0.1.8)
 func EnsureSessionDir(sessionId string) (string, error) {
 	if sessionId == "" {
 		return "", fmt.Errorf("cannot get session dir for blank sessionid")
@@ -186,9 +189,38 @@ func EnsureSessionDir(sessionId string) (string, error) {
 	return sdir, nil
 }
 
+// deprecated (v0.1.8)
 func GetSessionsDir() string {
 	promptHome := GetPromptHomeDir()
 	sdir := path.Join(promptHome, SessionsDirBaseName)
+	return sdir
+}
+
+func EnsureScreenDir(screenId string) (string, error) {
+	if screenId == "" {
+		return "", fmt.Errorf("cannot get screen dir for blank sessionid")
+	}
+	BaseLock.Lock()
+	sdir, ok := ScreenDirCache[screenId]
+	BaseLock.Unlock()
+	if ok {
+		return sdir, nil
+	}
+	scHome := GetPromptHomeDir()
+	sdir = path.Join(scHome, ScreensDirBaseName, screenId)
+	err := ensureDir(sdir)
+	if err != nil {
+		return "", err
+	}
+	BaseLock.Lock()
+	ScreenDirCache[screenId] = sdir
+	BaseLock.Unlock()
+	return sdir, nil
+}
+
+func GetScreensDir() string {
+	promptHome := GetPromptHomeDir()
+	sdir := path.Join(promptHome, ScreensDirBaseName)
 	return sdir
 }
 
@@ -211,7 +243,8 @@ func ensureDir(dirName string) error {
 	return nil
 }
 
-func PtyOutFile(sessionId string, cmdId string) (string, error) {
+// deprecated (v0.1.8)
+func PtyOutFile_Sessions(sessionId string, cmdId string) (string, error) {
 	sdir, err := EnsureSessionDir(sessionId)
 	if err != nil {
 		return "", err
@@ -225,30 +258,18 @@ func PtyOutFile(sessionId string, cmdId string) (string, error) {
 	return fmt.Sprintf("%s/%s.ptyout.cf", sdir, cmdId), nil
 }
 
-func RunOutFile(sessionId string, cmdId string) (string, error) {
-	sdir, err := EnsureSessionDir(sessionId)
+func PtyOutFile(screenId string, cmdId string) (string, error) {
+	sdir, err := EnsureScreenDir(screenId)
 	if err != nil {
 		return "", err
 	}
-	if sessionId == "" {
-		return "", fmt.Errorf("cannot get runout file for blank sessionid")
+	if screenId == "" {
+		return "", fmt.Errorf("cannot get ptyout file for blank screenid")
 	}
 	if cmdId == "" {
-		return "", fmt.Errorf("cannot get runout file for blank cmdid")
+		return "", fmt.Errorf("cannot get ptyout file for blank cmdid")
 	}
-	return fmt.Sprintf("%s/%s.runout", sdir, cmdId), nil
-}
-
-type PromptFileNameGenerator struct {
-	PromptHome string
-}
-
-func (g PromptFileNameGenerator) PtyOutFile(ck base.CommandKey) string {
-	return path.Join(g.PromptHome, SessionsDirBaseName, ck.GetSessionId(), ck.GetCmdId()+".ptyout")
-}
-
-func (g PromptFileNameGenerator) RunOutFile(ck base.CommandKey) string {
-	return path.Join(g.PromptHome, SessionsDirBaseName, ck.GetSessionId(), ck.GetCmdId()+".runout")
+	return fmt.Sprintf("%s/%s.ptyout.cf", sdir, cmdId), nil
 }
 
 func GenPromptUUID() string {

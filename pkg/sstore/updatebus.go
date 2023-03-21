@@ -17,7 +17,6 @@ type UpdatePacket interface {
 }
 
 type PtyDataUpdate struct {
-	SessionId  string `json:"sessionid,omitempty"`
 	ScreenId   string `json:"screenid,omitempty"`
 	CmdId      string `json:"cmdid,omitempty"`
 	RemoteId   string `json:"remoteid,omitempty"`
@@ -123,16 +122,16 @@ type CmdLineType struct {
 }
 
 type UpdateChannel struct {
-	SessionId string
-	ClientId  string
-	Ch        chan interface{}
+	ScreenId string
+	ClientId string
+	Ch       chan interface{}
 }
 
-func (uch UpdateChannel) Match(sessionId string) bool {
-	if sessionId == "" {
+func (uch UpdateChannel) Match(screenId string) bool {
+	if screenId == "" {
 		return true
 	}
-	return sessionId == uch.SessionId
+	return screenId == uch.ScreenId
 }
 
 type UpdateBus struct {
@@ -148,19 +147,19 @@ func MakeUpdateBus() *UpdateBus {
 }
 
 // always returns a new channel
-func (bus *UpdateBus) RegisterChannel(clientId string, sessionId string) chan interface{} {
+func (bus *UpdateBus) RegisterChannel(clientId string, screenId string) chan interface{} {
 	bus.Lock.Lock()
 	defer bus.Lock.Unlock()
 	uch, found := bus.Channels[clientId]
 	if found {
 		close(uch.Ch)
-		uch.SessionId = sessionId
+		uch.ScreenId = screenId
 		uch.Ch = make(chan interface{}, UpdateChSize)
 	} else {
 		uch = UpdateChannel{
-			ClientId:  clientId,
-			SessionId: sessionId,
-			Ch:        make(chan interface{}, UpdateChSize),
+			ClientId: clientId,
+			ScreenId: screenId,
+			Ch:       make(chan interface{}, UpdateChSize),
 		}
 	}
 	bus.Channels[clientId] = uch
@@ -177,11 +176,24 @@ func (bus *UpdateBus) UnregisterChannel(clientId string) {
 	}
 }
 
-func (bus *UpdateBus) SendUpdate(sessionId string, update interface{}) {
+func (bus *UpdateBus) SendUpdate(update interface{}) {
 	bus.Lock.Lock()
 	defer bus.Lock.Unlock()
 	for _, uch := range bus.Channels {
-		if uch.Match(sessionId) {
+		select {
+		case uch.Ch <- update:
+
+		default:
+			log.Printf("[error] dropped update on updatebus uch clientid=%s\n", uch.ClientId)
+		}
+	}
+}
+
+func (bus *UpdateBus) SendScreenUpdate(screenId string, update interface{}) {
+	bus.Lock.Lock()
+	defer bus.Lock.Unlock()
+	for _, uch := range bus.Channels {
+		if uch.Match(screenId) {
 			select {
 			case uch.Ch <- update:
 

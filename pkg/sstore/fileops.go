@@ -12,8 +12,8 @@ import (
 	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 )
 
-func CreateCmdPtyFile(ctx context.Context, sessionId string, cmdId string, maxSize int64) error {
-	ptyOutFileName, err := scbase.PtyOutFile(sessionId, cmdId)
+func CreateCmdPtyFile(ctx context.Context, screenId string, cmdId string, maxSize int64) error {
+	ptyOutFileName, err := scbase.PtyOutFile(screenId, cmdId)
 	if err != nil {
 		return err
 	}
@@ -24,22 +24,22 @@ func CreateCmdPtyFile(ctx context.Context, sessionId string, cmdId string, maxSi
 	return f.Close()
 }
 
-func StatCmdPtyFile(ctx context.Context, sessionId string, cmdId string) (*cirfile.Stat, error) {
-	ptyOutFileName, err := scbase.PtyOutFile(sessionId, cmdId)
+func StatCmdPtyFile(ctx context.Context, screenId string, cmdId string) (*cirfile.Stat, error) {
+	ptyOutFileName, err := scbase.PtyOutFile(screenId, cmdId)
 	if err != nil {
 		return nil, err
 	}
 	return cirfile.StatCirFile(ctx, ptyOutFileName)
 }
 
-func AppendToCmdPtyBlob(ctx context.Context, sessionId string, screenId string, cmdId string, data []byte, pos int64) (*PtyDataUpdate, error) {
+func AppendToCmdPtyBlob(ctx context.Context, screenId string, cmdId string, data []byte, pos int64) (*PtyDataUpdate, error) {
 	if screenId == "" {
 		return nil, fmt.Errorf("cannot append to PtyBlob, screenid is not set")
 	}
 	if pos < 0 {
 		return nil, fmt.Errorf("invalid seek pos '%d' in AppendToCmdPtyBlob", pos)
 	}
-	ptyOutFileName, err := scbase.PtyOutFile(sessionId, cmdId)
+	ptyOutFileName, err := scbase.PtyOutFile(screenId, cmdId)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,6 @@ func AppendToCmdPtyBlob(ctx context.Context, sessionId string, screenId string, 
 	}
 	data64 := base64.StdEncoding.EncodeToString(data)
 	update := &PtyDataUpdate{
-		SessionId:  sessionId,
 		ScreenId:   screenId,
 		CmdId:      cmdId,
 		PtyPos:     pos,
@@ -65,8 +64,8 @@ func AppendToCmdPtyBlob(ctx context.Context, sessionId string, screenId string, 
 }
 
 // returns (offset, data, err)
-func ReadFullPtyOutFile(ctx context.Context, sessionId string, cmdId string) (int64, []byte, error) {
-	ptyOutFileName, err := scbase.PtyOutFile(sessionId, cmdId)
+func ReadFullPtyOutFile(ctx context.Context, screenId string, cmdId string) (int64, []byte, error) {
+	ptyOutFileName, err := scbase.PtyOutFile(screenId, cmdId)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -141,8 +140,8 @@ func FullSessionDiskSize() (map[string]SessionDiskSizeType, error) {
 	return rtn, nil
 }
 
-func DeletePtyOutFile(ctx context.Context, sessionId string, cmdId string) error {
-	ptyOutFileName, err := scbase.PtyOutFile(sessionId, cmdId)
+func DeletePtyOutFile(ctx context.Context, screenId string, cmdId string) error {
+	ptyOutFileName, err := scbase.PtyOutFile(screenId, cmdId)
 	if err != nil {
 		return err
 	}
@@ -156,4 +155,13 @@ func DeleteSessionDir(ctx context.Context, sessionId string) error {
 	}
 	fmt.Printf("remove-all %s\n", sessionDir)
 	return os.RemoveAll(sessionDir)
+}
+
+func DeleteScreenDir(ctx context.Context, screenId string) error {
+	screenDir, err := scbase.EnsureScreenDir(screenId)
+	if err != nil {
+		return fmt.Errorf("error getting screendir: %w", err)
+	}
+	fmt.Printf("remove-all %s\n", screenDir)
+	return os.RemoveAll(screenDir)
 }

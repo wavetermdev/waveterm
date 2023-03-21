@@ -298,7 +298,7 @@ func resolveSession(ctx context.Context, sessionArg string, curSessionArg string
 }
 
 func resolveLine(ctx context.Context, sessionId string, screenId string, lineArg string, curLineArg string) (*ResolveItem, error) {
-	lines, err := sstore.GetLineResolveItems(ctx, sessionId, screenId)
+	lines, err := sstore.GetLineResolveItems(ctx, screenId)
 	if err != nil {
 		return nil, fmt.Errorf("could not get lines: %v", err)
 	}

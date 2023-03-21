@@ -578,7 +578,7 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 func (msh *MShellProc) NotifyRemoteUpdate() {
 	rstate := msh.GetRemoteRuntimeState()
 	update := &sstore.ModelUpdate{Remotes: []interface{}{rstate}}
-	sstore.MainBus.SendUpdate("", update)
+	sstore.MainBus.SendUpdate(update)
 }
 
 func GetAllRemoteRuntimeState() []RemoteRuntimeState {
@@ -811,7 +811,7 @@ func sendRemotePtyUpdate(remoteId string, dataOffset int64, data []byte) {
 		PtyData64:  data64,
 		PtyDataLen: int64(len(data)),
 	}
-	sstore.MainBus.SendUpdate("", update)
+	sstore.MainBus.SendUpdate(update)
 }
 
 func (msh *MShellProc) isWaitingForPassword_nolock() bool {
@@ -1265,8 +1265,8 @@ func RunCommand(ctx context.Context, sessionId string, screenId string, remotePt
 	if remotePtr.OwnerId != "" {
 		return nil, nil, fmt.Errorf("cannot run command against another user's remote '%s'", remotePtr.MakeFullRemoteRef())
 	}
-	if sessionId != runPacket.CK.GetSessionId() {
-		return nil, nil, fmt.Errorf("run commands sessionids do not match")
+	if screenId != runPacket.CK.GetGroupId() {
+		return nil, nil, fmt.Errorf("run commands screenids do not match")
 	}
 	msh := GetRemoteById(remotePtr.RemoteId)
 	if msh == nil {
@@ -1284,7 +1284,7 @@ func RunCommand(ctx context.Context, sessionId string, screenId string, remotePt
 	}
 	ok, existingPSC := msh.testAndSetPendingStateCmd(remotePtr.Name, newPSC)
 	if !ok {
-		line, _, err := sstore.GetLineCmdByCmdId(ctx, sessionId, screenId, existingPSC.GetCmdId())
+		line, _, err := sstore.GetLineCmdByCmdId(ctx, screenId, existingPSC.GetCmdId())
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot run command while a stateful command is still running: %v", err)
 		}
@@ -1344,10 +1344,10 @@ func RunCommand(ctx context.Context, sessionId string, screenId string, remotePt
 		status = sstore.CmdStatusDetached
 	}
 	cmd := &sstore.CmdType{
-		SessionId: runPacket.CK.GetSessionId(),
-		ScreenId:  screenId,
+		ScreenId:  runPacket.CK.GetGroupId(),
 		CmdId:     runPacket.CK.GetCmdId(),
 		CmdStr:    runPacket.Command,
+		RawCmdStr: runPacket.Command,
 		Remote:    remotePtr,
 		FeState:   *sstore.FeStateFromShellState(currentState),
 		StatePtr:  *statePtr,
@@ -1358,7 +1358,7 @@ func RunCommand(ctx context.Context, sessionId string, screenId string, remotePt
 		RunOut:    nil,
 		RtnState:  runPacket.ReturnState,
 	}
-	err = sstore.CreateCmdPtyFile(ctx, cmd.SessionId, cmd.CmdId, cmd.TermOpts.MaxPtySize)
+	err = sstore.CreateCmdPtyFile(ctx, cmd.ScreenId, cmd.CmdId, cmd.TermOpts.MaxPtySize)
 	if err != nil {
 		// TODO the cmd is running, so this is a tricky error to handle
 		return nil, nil, fmt.Errorf("cannot create local ptyout file for running command: %v", err)
@@ -1476,12 +1476,12 @@ func makeDataAckPacket(ck base.CommandKey, fdNum int, ackLen int, err error) *pa
 
 func (msh *MShellProc) notifyHangups_nolock() {
 	for ck, _ := range msh.RunningCmds {
-		cmd, err := sstore.GetCmdById(context.Background(), ck.GetSessionId(), ck.GetCmdId())
+		cmd, err := sstore.GetCmdByScreenId(context.Background(), ck.GetGroupId(), ck.GetCmdId())
 		if err != nil {
 			continue
 		}
 		update := sstore.ModelUpdate{Cmd: cmd}
-		sstore.MainBus.SendUpdate(ck.GetSessionId(), update)
+		sstore.MainBus.SendScreenUpdate(ck.GetGroupId(), update)
 	}
 	msh.RunningCmds = make(map[base.CommandKey]RunCmdType)
 }
@@ -1505,12 +1505,12 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 		msh.WriteToPtyBuffer("*error updating cmddone: %v\n", err)
 		return
 	}
-	screens, err := sstore.UpdateScreensWithCmdFg(context.Background(), donePk.CK.GetSessionId(), donePk.CK.GetCmdId())
+	screen, err := sstore.UpdateScreenWithCmdFg(context.Background(), donePk.CK.GetGroupId(), donePk.CK.GetCmdId())
 	if err != nil {
 		msh.WriteToPtyBuffer("*error trying to update cmd-fg screens: %v\n", err)
 		// fall-through (nothing to do)
 	}
-	update.Screens = screens
+	update.Screens = []*sstore.ScreenType{screen}
 	rct := msh.GetRunningCmd(donePk.CK)
 	var statePtr *sstore.ShellStatePtr
 	if donePk.FinalState != nil && rct != nil {
@@ -1550,13 +1550,13 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 			// fall-through (nothing to do)
 		}
 	}
-	sstore.MainBus.SendUpdate(donePk.CK.GetSessionId(), update)
+	sstore.MainBus.SendScreenUpdate(donePk.CK.GetGroupId(), update)
 	return
 }
 
 func (msh *MShellProc) handleCmdFinalPacket(finalPk *packet.CmdFinalPacketType) {
 	defer msh.RemoveRunningCmd(finalPk.CK)
-	rtnCmd, err := sstore.GetCmdById(context.Background(), finalPk.CK.GetSessionId(), finalPk.CK.GetCmdId())
+	rtnCmd, err := sstore.GetCmdByScreenId(context.Background(), finalPk.CK.GetGroupId(), finalPk.CK.GetCmdId())
 	if err != nil {
 		log.Printf("error calling GetCmdById in handleCmdFinalPacket: %v\n", err)
 		return
@@ -1566,7 +1566,7 @@ func (msh *MShellProc) handleCmdFinalPacket(finalPk *packet.CmdFinalPacketType) 
 	}
 	log.Printf("finalpk %s (hangup): %s\n", finalPk.CK, finalPk.Error)
 	sstore.HangupCmd(context.Background(), finalPk.CK)
-	rtnCmd, err = sstore.GetCmdById(context.Background(), finalPk.CK.GetSessionId(), finalPk.CK.GetCmdId())
+	rtnCmd, err = sstore.GetCmdByScreenId(context.Background(), finalPk.CK.GetGroupId(), finalPk.CK.GetCmdId())
 	if err != nil {
 		log.Printf("error getting cmd(2) in handleCmdFinalPacket: %v\n", err)
 		return
@@ -1576,7 +1576,7 @@ func (msh *MShellProc) handleCmdFinalPacket(finalPk *packet.CmdFinalPacketType) 
 		return
 	}
 	update := &sstore.ModelUpdate{Cmd: rtnCmd}
-	sstore.MainBus.SendUpdate(finalPk.CK.GetSessionId(), update)
+	sstore.MainBus.SendScreenUpdate(finalPk.CK.GetGroupId(), update)
 }
 
 // TODO notify FE about cmd errors
@@ -1600,7 +1600,7 @@ func (msh *MShellProc) handleDataPacket(dataPk *packet.DataPacketType, dataPosMa
 	if len(realData) > 0 {
 		dataPos := dataPosMap[dataPk.CK]
 		rcmd := msh.GetRunningCmd(dataPk.CK)
-		update, err := sstore.AppendToCmdPtyBlob(context.Background(), dataPk.CK.GetSessionId(), rcmd.ScreenId, dataPk.CK.GetCmdId(), realData, dataPos)
+		update, err := sstore.AppendToCmdPtyBlob(context.Background(), rcmd.ScreenId, dataPk.CK.GetCmdId(), realData, dataPos)
 		if err != nil {
 			ack = makeDataAckPacket(dataPk.CK, dataPk.FdNum, 0, err)
 		} else {
@@ -1608,7 +1608,7 @@ func (msh *MShellProc) handleDataPacket(dataPk *packet.DataPacketType, dataPosMa
 		}
 		dataPosMap[dataPk.CK] += int64(len(realData))
 		if update != nil {
-			sstore.MainBus.SendUpdate(dataPk.CK.GetSessionId(), update)
+			sstore.MainBus.SendScreenUpdate(dataPk.CK.GetGroupId(), update)
 		}
 	}
 	if ack != nil {

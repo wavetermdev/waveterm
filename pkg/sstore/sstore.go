@@ -76,6 +76,11 @@ const (
 	ScreenFocusCmdFg = "cmd-fg"
 )
 
+const (
+	CmdStoreTypeSession = "session"
+	CmdStoreTypeScreen  = "screen"
+)
+
 const MaxTzNameLen = 50
 
 var globalDBLock = &sync.Mutex{}
@@ -187,17 +192,26 @@ type FeOptsType struct {
 	TermFontSize int `json:"termfontsize,omitempty"`
 }
 
+type ClientMigrationData struct {
+	MigrationType  string `json:"migrationtype"`
+	MigrationPos   int    `json:"migrationpos"`
+	MigrationTotal int    `json:"migrationtotal"`
+	MigrationDone  bool   `json:"migrationdone"`
+}
+
 type ClientData struct {
-	ClientId            string            `json:"clientid"`
-	UserId              string            `json:"userid"`
-	UserPrivateKeyBytes []byte            `json:"-"`
-	UserPublicKeyBytes  []byte            `json:"-"`
-	UserPrivateKey      *ecdsa.PrivateKey `json:"-" dbmap:"-"`
-	UserPublicKey       *ecdsa.PublicKey  `json:"-" dbmap:"-"`
-	ActiveSessionId     string            `json:"activesessionid"`
-	WinSize             ClientWinSizeType `json:"winsize"`
-	ClientOpts          ClientOptsType    `json:"clientopts"`
-	FeOpts              FeOptsType        `json:"feopts"`
+	ClientId            string               `json:"clientid"`
+	UserId              string               `json:"userid"`
+	UserPrivateKeyBytes []byte               `json:"-"`
+	UserPublicKeyBytes  []byte               `json:"-"`
+	UserPrivateKey      *ecdsa.PrivateKey    `json:"-" dbmap:"-"`
+	UserPublicKey       *ecdsa.PublicKey     `json:"-" dbmap:"-"`
+	ActiveSessionId     string               `json:"activesessionid"`
+	WinSize             ClientWinSizeType    `json:"winsize"`
+	ClientOpts          ClientOptsType       `json:"clientopts"`
+	FeOpts              FeOptsType           `json:"feopts"`
+	CmdStoreType        string               `json:"cmdstoretype"`
+	Migration           *ClientMigrationData `json:"migration,omitempty" dbmap:"-"`
 }
 
 func (ClientData) UseDBMap() {}
@@ -641,7 +655,6 @@ func (ri *RemoteInstance) ToMap() map[string]interface{} {
 }
 
 type LineType struct {
-	SessionId     string `json:"sessionid"`
 	ScreenId      string `json:"screenid"`
 	UserId        string `json:"userid"`
 	LineId        string `json:"lineid"`
@@ -657,7 +670,6 @@ type LineType struct {
 	ContentHeight int64  `json:"contentheight,omitempty"`
 	Star          bool   `json:"star,omitempty"`
 	Bookmarked    bool   `json:"bookmarked,omitempty"`
-	Pinned        bool   `json:"pinned,omitempty"`
 	Archived      bool   `json:"archived,omitempty"`
 	Remove        bool   `json:"remove,omitempty"`
 }
@@ -832,12 +844,18 @@ type CmdDoneInfo struct {
 	DurationMs int64 `json:"durationms"`
 }
 
+type CmdMapType struct {
+	SessionId string `json:"sessionid"`
+	ScreenId  string `json:"screenid"`
+	CmdId     string `json:"cmdid"`
+}
+
 type CmdType struct {
-	SessionId    string                     `json:"sessionid"`
 	ScreenId     string                     `json:"screenid"`
 	CmdId        string                     `json:"cmdid"`
 	Remote       RemotePtrType              `json:"remote"`
 	CmdStr       string                     `json:"cmdstr"`
+	RawCmdStr    string                     `json:"rawcmdstr"`
 	FeState      FeStateType                `json:"festate"`
 	StatePtr     ShellStatePtr              `json:"state"`
 	TermOpts     TermOpts                   `json:"termopts"`
@@ -894,13 +912,13 @@ func (r *RemoteType) FromMap(m map[string]interface{}) bool {
 
 func (cmd *CmdType) ToMap() map[string]interface{} {
 	rtn := make(map[string]interface{})
-	rtn["sessionid"] = cmd.SessionId
 	rtn["screenid"] = cmd.ScreenId
 	rtn["cmdid"] = cmd.CmdId
 	rtn["remoteownerid"] = cmd.Remote.OwnerId
 	rtn["remoteid"] = cmd.Remote.RemoteId
 	rtn["remotename"] = cmd.Remote.Name
 	rtn["cmdstr"] = cmd.CmdStr
+	rtn["rawcmdstr"] = cmd.RawCmdStr
 	rtn["festate"] = quickJson(cmd.FeState)
 	rtn["statebasehash"] = cmd.StatePtr.BaseHash
 	rtn["statediffhasharr"] = quickJsonArr(cmd.StatePtr.DiffHashArr)
@@ -917,13 +935,13 @@ func (cmd *CmdType) ToMap() map[string]interface{} {
 }
 
 func (cmd *CmdType) FromMap(m map[string]interface{}) bool {
-	quickSetStr(&cmd.SessionId, m, "sessionid")
 	quickSetStr(&cmd.ScreenId, m, "screenid")
 	quickSetStr(&cmd.CmdId, m, "cmdid")
 	quickSetStr(&cmd.Remote.OwnerId, m, "remoteownerid")
 	quickSetStr(&cmd.Remote.RemoteId, m, "remoteid")
 	quickSetStr(&cmd.Remote.Name, m, "remotename")
 	quickSetStr(&cmd.CmdStr, m, "cmdstr")
+	quickSetStr(&cmd.RawCmdStr, m, "rawcmdstr")
 	quickSetJson(&cmd.FeState, m, "festate")
 	quickSetStr(&cmd.StatePtr.BaseHash, m, "statebasehash")
 	quickSetJsonArr(&cmd.StatePtr.DiffHashArr, m, "statediffhasharr")
@@ -939,9 +957,8 @@ func (cmd *CmdType) FromMap(m map[string]interface{}) bool {
 	return true
 }
 
-func makeNewLineCmd(sessionId string, screenId string, userId string, cmdId string, renderer string) *LineType {
+func makeNewLineCmd(screenId string, userId string, cmdId string, renderer string) *LineType {
 	rtn := &LineType{}
-	rtn.SessionId = sessionId
 	rtn.ScreenId = screenId
 	rtn.UserId = userId
 	rtn.LineId = scbase.GenPromptUUID()
@@ -954,9 +971,8 @@ func makeNewLineCmd(sessionId string, screenId string, userId string, cmdId stri
 	return rtn
 }
 
-func makeNewLineText(sessionId string, screenId string, userId string, text string) *LineType {
+func makeNewLineText(screenId string, userId string, text string) *LineType {
 	rtn := &LineType{}
-	rtn.SessionId = sessionId
 	rtn.ScreenId = screenId
 	rtn.UserId = userId
 	rtn.LineId = scbase.GenPromptUUID()
@@ -968,8 +984,8 @@ func makeNewLineText(sessionId string, screenId string, userId string, text stri
 	return rtn
 }
 
-func AddCommentLine(ctx context.Context, sessionId string, screenId string, userId string, commentText string) (*LineType, error) {
-	rtnLine := makeNewLineText(sessionId, screenId, userId, commentText)
+func AddCommentLine(ctx context.Context, screenId string, userId string, commentText string) (*LineType, error) {
+	rtnLine := makeNewLineText(screenId, userId, commentText)
 	err := InsertLine(ctx, rtnLine, nil)
 	if err != nil {
 		return nil, err
@@ -977,8 +993,8 @@ func AddCommentLine(ctx context.Context, sessionId string, screenId string, user
 	return rtnLine, nil
 }
 
-func AddCmdLine(ctx context.Context, sessionId string, screenId string, userId string, cmd *CmdType, renderer string) (*LineType, error) {
-	rtnLine := makeNewLineCmd(sessionId, screenId, userId, cmd.CmdId, renderer)
+func AddCmdLine(ctx context.Context, screenId string, userId string, cmd *CmdType, renderer string) (*LineType, error) {
+	rtnLine := makeNewLineCmd(screenId, userId, cmd.CmdId, renderer)
 	err := InsertLine(ctx, rtnLine, cmd)
 	if err != nil {
 		return nil, err
@@ -1085,6 +1101,7 @@ func createClientData(tx *TxWrap) error {
 		UserPublicKeyBytes:  pubBytes,
 		ActiveSessionId:     "",
 		WinSize:             ClientWinSizeType{},
+		CmdStoreType:        CmdStoreTypeScreen,
 	}
 	query := `INSERT INTO client ( clientid, userid, activesessionid, userpublickeybytes, userprivatekeybytes, winsize) 
                           VALUES (:clientid,:userid,:activesessionid,:userpublickeybytes,:userprivatekeybytes,:winsize)`
@@ -1137,6 +1154,28 @@ func EnsureClientData(ctx context.Context) (*ClientData, error) {
 	return rtn, nil
 }
 
+func GetCmdMigrationInfo(ctx context.Context) (*ClientMigrationData, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (*ClientMigrationData, error) {
+		cdata := GetMappable[*ClientData](tx, `SELECT * FROM client`)
+		if cdata == nil {
+			return nil, fmt.Errorf("no client data found")
+		}
+		if cdata.CmdStoreType == "session" {
+			total := tx.GetInt(`SELECT count(*) FROM cmd`)
+			posInv := tx.GetInt(`SELECT count(*) FROM cmd_migrate`)
+			mdata := &ClientMigrationData{
+				MigrationType:  "cmdscreen",
+				MigrationPos:   total - posInv,
+				MigrationTotal: total,
+				MigrationDone:  false,
+			}
+			return mdata, nil
+		}
+		// no migration info
+		return nil, nil
+	})
+}
+
 func SetClientOpts(ctx context.Context, clientOpts ClientOptsType) error {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `UPDATE client SET clientopts = ?`
@@ -1144,4 +1183,94 @@ func SetClientOpts(ctx context.Context, clientOpts ClientOptsType) error {
 		return nil
 	})
 	return txErr
+}
+
+type cmdMigrationType struct {
+	SessionId string
+	ScreenId  string
+	CmdId     string
+}
+
+func getSliceChunk[T any](slice []T, chunkSize int) ([]T, []T) {
+	if chunkSize >= len(slice) {
+		return slice, nil
+	}
+	return slice[0:chunkSize], slice[chunkSize:]
+}
+
+func processChunk(ctx context.Context, mchunk []cmdMigrationType) error {
+	for _, mig := range mchunk {
+		newFile, err := scbase.PtyOutFile(mig.ScreenId, mig.CmdId)
+		if err != nil {
+			log.Printf("ptyoutfile error: %v\n", err)
+			continue
+		}
+		oldFile, err := scbase.PtyOutFile_Sessions(mig.SessionId, mig.CmdId)
+		if err != nil {
+			log.Printf("ptyoutfile_sessions error: %v\n", err)
+			continue
+		}
+		err = os.Rename(oldFile, newFile)
+		if err != nil {
+			log.Printf("error renaming %s => %s: %v\n", oldFile, newFile, err)
+			continue
+		}
+	}
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		for _, mig := range mchunk {
+			query := `DELETE FROM cmd_migrate WHERE cmdid = ?`
+			tx.Exec(query, mig.CmdId)
+		}
+		return nil
+	})
+	if txErr != nil {
+		return txErr
+	}
+	return nil
+}
+
+func RunCmdScreenMigration() {
+	ctx := context.Background()
+	startTime := time.Now()
+	mdata, err := GetCmdMigrationInfo(ctx)
+	if err != nil {
+		log.Printf("[prompt] error trying to run cmd migration: %v\n", err)
+		return
+	}
+	if mdata == nil || mdata.MigrationType != "cmdscreen" {
+		return
+	}
+	var migrations []cmdMigrationType
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		tx.Select(&migrations, `SELECT * FROM cmd_migrate`)
+		return nil
+	})
+	if txErr != nil {
+		log.Printf("[prompt] error trying to get cmd migrations: %v\n", txErr)
+		return
+	}
+	log.Printf("[db] got %d cmd migrations\n", len(migrations))
+	for len(migrations) > 0 {
+		var mchunk []cmdMigrationType
+		mchunk, migrations = getSliceChunk(migrations, 5)
+		err = processChunk(ctx, mchunk)
+		if err != nil {
+			log.Printf("[prompt] cmd migration failed on chunk: %v\n%#v\n", err, mchunk)
+			return
+		}
+	}
+	err = os.RemoveAll(scbase.GetSessionsDir())
+	if err != nil {
+		log.Printf("[db] cannot remove old sessions dir %s: %v\n", scbase.GetSessionsDir(), err)
+	}
+	txErr = WithTx(ctx, func(tx *TxWrap) error {
+		query := `UPDATE client SET cmdstoretype = 'screen'`
+		tx.Exec(query)
+		return nil
+	})
+	if txErr != nil {
+		log.Printf("[db] cannot change client cmdstoretype: %v\n", err)
+	}
+	log.Printf("[db] cmd screen migration done: %v\n", time.Since(startTime))
+	return
 }

@@ -143,6 +143,12 @@ func HandleGetClientData(w http.ResponseWriter, r *http.Request) {
 		WriteJsonError(w, err)
 		return
 	}
+	mdata, err := sstore.GetCmdMigrationInfo(r.Context())
+	if err != nil {
+		WriteJsonError(w, err)
+		return
+	}
+	cdata.Migration = mdata
 	WriteJsonSuccess(w, cdata)
 	return
 }
@@ -223,16 +229,16 @@ func HandleRtnState(w http.ResponseWriter, r *http.Request) {
 		return
 	}()
 	qvals := r.URL.Query()
-	sessionId := qvals.Get("sessionid")
+	screenId := qvals.Get("screenid")
 	cmdId := qvals.Get("cmdid")
-	if sessionId == "" || cmdId == "" {
+	if screenId == "" || cmdId == "" {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("must specify sessionid and cmdid")))
+		w.Write([]byte(fmt.Sprintf("must specify screenid and cmdid")))
 		return
 	}
-	if _, err := uuid.Parse(sessionId); err != nil {
+	if _, err := uuid.Parse(screenId); err != nil {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("invalid sessionid: %v", err)))
+		w.Write([]byte(fmt.Sprintf("invalid screenid: %v", err)))
 		return
 	}
 	if _, err := uuid.Parse(cmdId); err != nil {
@@ -240,7 +246,7 @@ func HandleRtnState(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("invalid cmdid: %v", err)))
 		return
 	}
-	data, err := cmdrunner.GetRtnStateDiff(r.Context(), sessionId, cmdId)
+	data, err := cmdrunner.GetRtnStateDiff(r.Context(), screenId, cmdId)
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(fmt.Sprintf("cannot get rtnstate diff: %v", err)))
@@ -278,16 +284,16 @@ func HandleRemotePty(w http.ResponseWriter, r *http.Request) {
 
 func HandleGetPtyOut(w http.ResponseWriter, r *http.Request) {
 	qvals := r.URL.Query()
-	sessionId := qvals.Get("sessionid")
+	screenId := qvals.Get("screenid")
 	cmdId := qvals.Get("cmdid")
-	if sessionId == "" || cmdId == "" {
+	if screenId == "" || cmdId == "" {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("must specify sessionid and cmdid")))
+		w.Write([]byte(fmt.Sprintf("must specify screenid and cmdid")))
 		return
 	}
-	if _, err := uuid.Parse(sessionId); err != nil {
+	if _, err := uuid.Parse(screenId); err != nil {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("invalid sessionid: %v", err)))
+		w.Write([]byte(fmt.Sprintf("invalid screenid: %v", err)))
 		return
 	}
 	if _, err := uuid.Parse(cmdId); err != nil {
@@ -295,7 +301,7 @@ func HandleGetPtyOut(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("invalid cmdid: %v", err)))
 		return
 	}
-	realOffset, data, err := sstore.ReadFullPtyOutFile(r.Context(), sessionId, cmdId)
+	realOffset, data, err := sstore.ReadFullPtyOutFile(r.Context(), screenId, cmdId)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			w.WriteHeader(http.StatusOK)
@@ -558,6 +564,7 @@ func main() {
 	go telemetryLoop()
 	go stdinReadWatch()
 	go runWebSocketServer()
+	go sstore.RunCmdScreenMigration()
 	gr := mux.NewRouter()
 	gr.HandleFunc("/api/ptyout", AuthKeyWrap(HandleGetPtyOut))
 	gr.HandleFunc("/api/remote-pty", AuthKeyWrap(HandleRemotePty))

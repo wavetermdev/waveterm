@@ -17,7 +17,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 )
 
-const MaxMigration = 12
+const MaxMigration = 13
 const MigratePrimaryScreenVersion = 9
 
 func MakeMigrate() (*migrate.Migrate, error) {
@@ -81,7 +81,9 @@ func MigrateUp() error {
 	if err != nil {
 		return fmt.Errorf("error creating database backup: %v", err)
 	}
+	startTime := time.Now()
 	err = m.Migrate(MaxMigration)
+	log.Printf("[db] migration took %v\n", time.Since(startTime))
 	if err != nil {
 		return err
 	}

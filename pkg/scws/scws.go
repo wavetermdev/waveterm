@@ -99,7 +99,7 @@ func (ws *WSState) WatchScreen(sessionId string, screenId string) {
 	}
 	ws.SessionId = sessionId
 	ws.ScreenId = screenId
-	ws.UpdateCh = sstore.MainBus.RegisterChannel(ws.ClientId, ws.SessionId)
+	ws.UpdateCh = sstore.MainBus.RegisterChannel(ws.ClientId, ws.ScreenId)
 	go ws.RunUpdates(ws.UpdateCh)
 }
 
