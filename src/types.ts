@@ -23,7 +23,6 @@ type SessionDataType = {
 };
 
 type LineType = {
-    sessionid : string,
     screenid : string,
     userid : string,
     lineid : string,
@@ -217,7 +216,6 @@ type CmdDoneInfoType = {
 };
 
 type CmdDataType = {
-    sessionid : string,
     screenid : string,
     cmdid : string,
     remote : RemotePtrType,
@@ -234,7 +232,6 @@ type CmdDataType = {
 };
 
 type PtyDataUpdateType = {
-    sessionid : string,
     screenid : string,
     cmdid : string,
     remoteid : string,
@@ -344,7 +341,6 @@ type ContextMenuOpts = {
 type UpdateMessage = PtyDataUpdateType | ModelUpdateType;
 
 type RendererContext = {
-    sessionId : string,
     screenId : string,
     cmdId : string,
     lineId : string,
@@ -423,6 +419,15 @@ type ClientDataType = {
     clientid : string,
     userid : string,
     feopts : FeOptsType;
+    cmdstoretype : "session" | "screen";
+    migration? : ClientMigrationInfo;
+};
+
+type ClientMigrationInfo = {
+    migrationtype : string,
+    migrationpos : number,
+    migrationtotal : number,
+    migrationdone : boolean,
 };
 
 type PlaybookType = {
@@ -463,4 +468,4 @@ type HistorySearchParams = {
 
 type RenderModeType = "normal" | "collapsed";
 
-export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDataType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType, UIContextType, HistoryInfoType, HistoryQueryOpts, WatchScreenPacketType, TermWinSize, FeInputPacketType, RemoteInputPacketType, RemoteEditType, FeStateType, ContextMenuOpts, RendererContext, WindowSize, RendererModel, PtyDataType, BookmarkType, ClientDataType, PlaybookType, PlaybookEntryType, HistoryViewDataType, RenderModeType, AlertMessageType, HistorySearchParams, ScreenLinesType, FocusTypeStrs, HistoryTypeStrs, RendererOpts, RendererPluginType, SimpleBlobRendererComponent, RendererModelContainerApi, RendererModelInitializeParams, RendererOptsUpdate};
+export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDataType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType, UIContextType, HistoryInfoType, HistoryQueryOpts, WatchScreenPacketType, TermWinSize, FeInputPacketType, RemoteInputPacketType, RemoteEditType, FeStateType, ContextMenuOpts, RendererContext, WindowSize, RendererModel, PtyDataType, BookmarkType, ClientDataType, PlaybookType, PlaybookEntryType, HistoryViewDataType, RenderModeType, AlertMessageType, HistorySearchParams, ScreenLinesType, FocusTypeStrs, HistoryTypeStrs, RendererOpts, RendererPluginType, SimpleBlobRendererComponent, RendererModelContainerApi, RendererModelInitializeParams, RendererOptsUpdate, ClientMigrationInfo};

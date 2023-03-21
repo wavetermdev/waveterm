@@ -8,7 +8,7 @@ import cn from "classnames";
 import {debounce, throttle} from "throttle-debounce";
 import {v4 as uuidv4} from "uuid";
 import dayjs from "dayjs";
-import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts, RemoteEditType, FeStateType, ContextMenuOpts, BookmarkType, RenderModeType} from "./types";
+import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts, RemoteEditType, FeStateType, ContextMenuOpts, BookmarkType, RenderModeType, ClientMigrationInfo} from "./types";
 import type * as T from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {GlobalModel, GlobalCommandRunner, Session, Cmd, ScreenLines, Screen, riToRPtr, windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols, TabColors, RemoteColors} from "./model";
@@ -1642,7 +1642,7 @@ function getLineDateStr(todayDate : string, yesterdayDate : string, ts : number)
 }
 
 @mobxReact.observer
-class LinesView extends React.Component<{screen : Screen, width : number, lines : LineType[], renderMode : RenderModeType}, {}> {
+class LinesView extends React.Component<{sessionId : string, screen : Screen, width : number, lines : LineType[], renderMode : RenderModeType}, {}> {
     rszObs : any;
     linesRef : React.RefObject<any>;
     staticRender : OV<boolean> = mobx.observable.box(true, {name: "static-render"});
@@ -2158,7 +2158,7 @@ class ScreenWindowView extends React.Component<{screen : Screen}, {}> {
                     </div>
                 </div>
                 <If condition={lines.length > 0}>
-                    <LinesView screen={screen} width={this.width.get()} lines={lines} renderMode={renderMode}/>
+                    <LinesView sessionId={screen.sessionId} screen={screen} width={this.width.get()} lines={lines} renderMode={renderMode}/>
                 </If>
                 <If condition={lines.length == 0}>
                     <div key="window-empty" className="window-empty">
@@ -2702,6 +2702,56 @@ class DisconnectedModal extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
+class ClientStopModal extends React.Component<{}, {}> {
+    @boundMethod
+    refreshClient() {
+        GlobalModel.refreshClient();
+    }
+
+    render() {
+        let model = GlobalModel;
+        let cdata = model.clientData.get();
+        let mdata : ClientMigrationInfo = (cdata != null ? cdata.migration : null);
+        let title = "Client Not Ready";
+        if (mdata != null) {
+            title = "Migrating Data";
+        }
+        return (
+            <div className="prompt-modal client-stop-modal modal is-active">
+                <div className="modal-background"></div>
+                <div className="modal-content">
+                    <div className="message-header">
+                        <div className="modal-title">[prompt] {title}</div>
+                    </div>
+                    <div className="inner-content">
+                        <If condition={cdata == null}>
+                            <div>Cannot get client data.</div>
+                        </If>
+                        <If condition={cdata != null && cdata.cmdstoretype == "session"}>
+                            <div>Client database is being migrated to the latest version, please wait.</div>
+                            <If condition={mdata != null}>
+                                <div className="progress-container">
+                                    <progress className="progress is-primary" value={mdata.migrationpos} max={mdata.migrationtotal}>{mdata.migrationpos}</progress>
+                                </div>
+                                <div className="progress-text">{mdata.migrationpos}/{mdata.migrationtotal}</div>
+                            </If>
+                        </If>
+                    </div>
+                    <footer>
+                        <button onClick={this.refreshClient} className="button">
+                            <span className="icon">
+                                <i className="fa-sharp fa-solid fa-rotate"/>
+                            </span>
+                            <span>Hard Refresh Client</span>
+                        </button>
+                    </footer>
+                </div>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
 class LoadingSpinner extends React.Component<{}, {}> {
     render() {
         return (
@@ -2856,6 +2906,8 @@ class WelcomeModal extends React.Component<{}, {}> {
 
 @mobxReact.observer
 class Main extends React.Component<{}, {}> {
+    dcWait : OV<boolean> = mobx.observable.box(false, {name: "dcWait"});
+    
     constructor(props : any) {
         super(props);
     }
@@ -2887,10 +2939,44 @@ class Main extends React.Component<{}, {}> {
         }
     }
 
+    @boundMethod
+    updateDcWait(val : boolean) : void {
+        mobx.action(() => {
+            this.dcWait.set(val);
+        })();
+    }
+
     render() {
         let screenSettingsModal = GlobalModel.screenSettingsModal.get();
         let sessionSettingsModal = GlobalModel.sessionSettingsModal.get();
         let lineSettingsModal = GlobalModel.lineSettingsModal.get();
+        let disconnected = !GlobalModel.ws.open.get() || !GlobalModel.localServerRunning.get();
+        let hasClientStop = GlobalModel.getHasClientStop();
+        let dcWait = this.dcWait.get();
+        if (disconnected || hasClientStop) {
+            if (!dcWait) {
+                setTimeout(() => this.updateDcWait(true), 1500);
+            }
+            return (
+                <div id="main" onContextMenu={this.handleContextMenu}>
+                    <div className="main-content">
+                        <MainSideBar/>
+                        <div className="session-view"/>
+                    </div>
+                    <If condition={dcWait}>
+                        <If condition={disconnected}>
+                            <DisconnectedModal/>
+                        </If>
+                        <If condition={!disconnected && hasClientStop}>
+                            <ClientStopModal/>
+                        </If>
+                    </If>
+                </div>
+            );
+        }
+        if (dcWait) {
+            setTimeout(() => this.updateDcWait(false), 0);
+        }
         return (
             <div id="main" onContextMenu={this.handleContextMenu}>
                 <div className="main-content">
@@ -2899,9 +2985,6 @@ class Main extends React.Component<{}, {}> {
                     <HistoryView/>
                     <BookmarksView/>
                 </div>
-                <If condition={!GlobalModel.ws.open.get() || !GlobalModel.localServerRunning.get()}>
-                    <DisconnectedModal/>
-                </If>
                 <AlertModal/>
                 <If condition={GlobalModel.welcomeModalOpen.get()}>
                     <WelcomeModal/>

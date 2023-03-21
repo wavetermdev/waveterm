@@ -29,7 +29,7 @@ function isBlank(s : string) : boolean {
 }
 
 function getLineId(line : LineType) : string {
-    return sprintf("%s-%s-%s", line.sessionid, line.screenid, line.lineid);
+    return sprintf("%s-%s", line.screenid, line.lineid);
 }
 
 function makeFullRemoteRef(ownerName : string, remoteRef : string, name : string) : string {
@@ -179,7 +179,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         }
         let {line} = this.props;
         this.rtnStateDiffFetched = true;
-        let usp = new URLSearchParams({sessionid: line.sessionid, cmdid: line.cmdid});
+        let usp = new URLSearchParams({screenid: line.screenid, cmdid: line.cmdid});
         let url = GlobalModel.getBaseHostPort() + "/api/rtnstate?" + usp.toString();
         let fetchHeaders = GlobalModel.getFetchHeaders();
         fetch(url, {headers: fetchHeaders}).then((resp) => {

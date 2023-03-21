@@ -387,6 +387,14 @@ electron.ipcMain.on("restart-server", (event) => {
     return;
 });
 
+electron.ipcMain.on("reload-window", (event) => {
+    if (MainWindow != null) {
+        MainWindow.reload();
+    }
+    event.returnValue = true;
+    return;
+});
+
 function getContextMenu() : any {
     let menu = new electron.Menu();
     let menuItem = new electron.MenuItem({label: "Testing", click: () => console.log("click testing!")});

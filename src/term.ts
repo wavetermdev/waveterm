@@ -278,7 +278,7 @@ class TermWrap {
         }
         else {
             let termContext = this.getRendererContext();
-            rtnp = getPtyData(termContext.sessionId, termContext.cmdId);
+            rtnp = getPtyData(termContext.screenId, termContext.cmdId);
         }
         rtnp.then((ptydata) => {
             setTimeout(() => {

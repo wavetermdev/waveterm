@@ -1746,7 +1746,7 @@ body .xterm .xterm-viewport {
 }
 
 .line.line-invalid {
-    color: #000;
+    color: @term-white;
     margin-left: 5px;
 }
 
@@ -2421,9 +2421,7 @@ input[type=checkbox] {
             }
         }
     }
-}
 
-.disconnected-modal {
     .inner-content {
         .ws-log {
             padding: 5px;
@@ -2435,6 +2433,26 @@ input[type=checkbox] {
                 .mono-font(12px);
                 color: @term-white;
             }
+        }
+    }
+}
+
+.modal.prompt-modal.client-stop-modal {
+    footer {
+        justify-content: center;
+    }
+
+    .inner-content {
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+        .progress-container {
+            margin-top: 20px;
+        }
+        .progress-text {
+            color: @term-white;
+            align-self: center;
+            font-size: 12px;
         }
     }
 }

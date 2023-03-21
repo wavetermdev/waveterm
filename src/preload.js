@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld("api", {
     getAuthKey: () => ipcRenderer.sendSync("get-authkey"),
     getLocalServerStatus: () => ipcRenderer.sendSync("local-server-status"),
     restartLocalServer: () => ipcRenderer.sendSync("restart-server"),
+    reloadWindow: () => ipcRenderer.sendSync("reload-window"),
     onTCmd: (callback) => ipcRenderer.on("t-cmd", callback),
     onICmd: (callback) => ipcRenderer.on("i-cmd", callback),
     onLCmd: (callback) => ipcRenderer.on("l-cmd", callback),

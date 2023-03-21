@@ -5,7 +5,7 @@ import {debounce} from "throttle-debounce";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeDataMap, genMergeSimpleData, boundInt, isModKeyPress} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType, HistoryViewDataType, AlertMessageType, HistorySearchParams, FocusTypeStrs, ScreenLinesType, HistoryTypeStrs, RendererPluginType, WindowSize} from "./types";
+import type {SessionDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType, HistoryViewDataType, AlertMessageType, HistorySearchParams, FocusTypeStrs, ScreenLinesType, HistoryTypeStrs, RendererPluginType, WindowSize, ClientMigrationInfo} from "./types";
 import {WSControl} from "./ws";
 import {measureText, getMonoFontSize} from "./textmeasure";
 import dayjs from "dayjs";
@@ -69,7 +69,6 @@ function getRendererType(line : LineType) : "terminal" | "plugin" {
 
 function getRendererContext(line : LineType) : RendererContext {
     return {
-        sessionId: line.sessionid,
         screenId: line.screenid,
         cmdId: line.cmdid,
         lineId: line.lineid,
@@ -156,6 +155,7 @@ type ElectronApi = {
     getAuthKey : () => string,
     getLocalServerStatus : () => boolean,
     restartLocalServer : () => boolean,
+    reloadWindow : () => void,
     onTCmd : (callback : (mods : KeyModsType) => void) => void,
     onICmd : (callback : (mods : KeyModsType) => void) => void,
     onLCmd : (callback : (mods : KeyModsType) => void) => void,
@@ -175,10 +175,6 @@ function getApi() : ElectronApi {
     return (window as any).api;
 }
 
-function getLineId(line : LineType) : string {
-    return sprintf("%s-%s-%s", line.sessionid, line.screenid, line.lineid);
-}
-
 // clean empty string
 function ces(s : string) {
     if (s == "") {
@@ -188,7 +184,6 @@ function ces(s : string) {
 }
 
 class Cmd {
-    sessionId : string;
     screenId : string;
     remote : RemotePtrType;
     remoteId : string;
@@ -196,7 +191,6 @@ class Cmd {
     data : OV<CmdDataType>;
 
     constructor(cmd : CmdDataType) {
-        this.sessionId = cmd.sessionid;
         this.screenId = cmd.screenid;
         this.cmdId = cmd.cmdid;
         this.remote = cmd.remote;
@@ -295,7 +289,7 @@ class Cmd {
     handleInputChunk(data : string) : void {
         let inputPacket : FeInputPacketType = {
             type: "feinput",
-            ck: this.sessionId + "/" + this.cmdId,
+            ck: this.screenId + "/" + this.cmdId,
             remote: this.remote,
             inputdata64: btoa(data),
         };
@@ -1745,7 +1739,7 @@ class SpecialHistoryViewLineContainer {
         if (line.contentheight != null && line.contentheight != -1) {
             usedRows = line.contentheight;
         }
-        let termContext = {sessionId: line.sessionid, screenId: line.screenid, cmdId: cmdId, lineId : line.lineid, lineNum: line.linenum};
+        let termContext = {screenId: line.screenid, cmdId: cmdId, lineId : line.lineid, lineNum: line.linenum};
         termWrap = new TermWrap(elem, {
             termContext: termContext,
             usedRows: usedRows,
@@ -2371,6 +2365,7 @@ class Model {
     bookmarksModel : BookmarksModel;
     historyViewModel : HistoryViewModel;
     clientData : OV<ClientDataType> = mobx.observable.box(null, {name: "clientData"});
+    clientMigrationInfo : OV<ClientMigrationInfo> = mobx.observable.box(null, {name: "clientMigrationInfo"});
     
     constructor() {
         this.clientId = getApi().getId();
@@ -2413,6 +2408,10 @@ class Model {
         setTimeout(() => this.getClientDataLoop(1), 10);
     }
 
+    refreshClient() : void {
+        getApi().reloadWindow();
+    }
+
     registerRendererPlugin(plugin : RendererPluginType) {
         if (isBlank(plugin.name)) {
             throw new Error("invalid plugin, no name");
@@ -2425,6 +2424,17 @@ class Model {
             throw new Error(sprintf("plugin with name %s already registered", plugin.name));
         }
         this.rendererPlugins.push(plugin);
+    }
+
+    getHasClientStop() : boolean {
+        if (this.clientData.get() == null) {
+            return true;
+        }
+        let cdata = this.clientData.get();
+        if (cdata.cmdstoretype == "session") {
+            return true;
+        }
+        return false;
     }
 
     getRendererPluginByName(name : string) : RendererPluginType {
@@ -2560,12 +2570,12 @@ class Model {
     }
 
     getContentHeight(context : RendererContext) : number {
-        let key = context.sessionId + "/" + context.cmdId;
+        let key = context.screenId + "/" + context.cmdId;
         return this.termUsedRowsCache[key];
     }
 
     setContentHeight(context : RendererContext, height : number) : void {
-        let key = context.sessionId + "/" + context.cmdId;
+        let key = context.screenId + "/" + context.cmdId;
         this.termUsedRowsCache[key] = height;
         GlobalCommandRunner.setTermUsedRows(context, height);
     }
@@ -2735,26 +2745,24 @@ class Model {
                 this.removeScreenLinesByScreenId(mods.removed[i]);
             }
         }
-        if ("sessions" in update) {
+        if ("sessions" in update || "activesessionid" in update) {
             if (update.connect) {
                 this.sessionList.clear();
             }
-            let oldActiveScreen = this.getActiveScreen();
+            let [oldActiveSessionId, oldActiveScreenId] = this.getActiveIds();
             genMergeData(this.sessionList, update.sessions, (s : Session) => s.sessionId, (sdata : SessionDataType) => sdata.sessionid, (sdata : SessionDataType) => new Session(sdata), (s : Session) => s.sessionIdx.get());
-            if (!("activesessionid" in update)) {
-                let newActiveScreen = this.getActiveScreen();
-                if (oldActiveScreen != newActiveScreen) {
-                    if (newActiveScreen == null) {
-                        this._activateScreen(this.activeSessionId.get(), null, oldActiveScreen);
-                    }
-                    else {
-                        this._activateScreen(newActiveScreen.sessionId, newActiveScreen.screenId, oldActiveScreen);
-                    }
+            if ("activesessionid" in update) {
+                let newSessionId = update.activesessionid;
+                if (this.activeSessionId.get() != newSessionId) {
+                    this.activeSessionId.set(newSessionId);
                 }
             }
-        }
-        if ("activesessionid" in update) {
-            this._activateSession(update.activesessionid);
+            let [newActiveSessionId, newActiveScreenId] = this.getActiveIds();
+            if (oldActiveSessionId != newActiveSessionId || oldActiveScreenId != newActiveScreenId) {
+                this.activeMainView.set("session");
+                this.deactivateScreenLines();
+                this.ws.watchScreen(newActiveSessionId, newActiveScreenId);
+            }
         }
         if ("line" in update) {
             this.addLineCmd(update.line, update.cmd, interactive);
@@ -2946,17 +2954,18 @@ class Model {
 
     getClientDataLoop(loopNum : number) : void {
         this.getClientData();
-        if (this.clientData.get() != null) {
+        let clientStop = this.getHasClientStop()
+        if (this.clientData.get() != null && !clientStop) {
             return;
         }
         let timeoutMs = 1000;
-        if (loopNum > 5) {
+        if (!clientStop && loopNum > 5) {
             timeoutMs = 3000;
         }
-        if (loopNum > 10) {
+        if (!clientStop && loopNum > 10) {
             timeoutMs = 10000;
         }
-        if (loopNum > 15) {
+        if (!clientStop && loopNum > 15) {
             timeoutMs = 30000;
         }
         setTimeout(() => this.getClientDataLoop(loopNum+1), timeoutMs);
@@ -2969,6 +2978,7 @@ class Model {
             mobx.action(() => {
                 let clientData = data.data;
                 this.clientData.set(clientData);
+                this.clientMigrationInfo.set(clientData.migration);
             })();
         }).catch((err) => {
             this.errorHandler("calling get-client-data", err, true);
@@ -3032,45 +3042,14 @@ class Model {
         return this.submitCommandPacket(pk, interactive)
     }
 
-    _activateSession(sessionId : string) {
-        mobx.action(() => {
-            this.activeMainView.set("session");
-        })();
-        let oldActiveSession = this.getActiveSession();
-        if (oldActiveSession != null && oldActiveSession.sessionId == sessionId) {
-            return;
-        }
-        let newSession = this.getSessionById(sessionId);
-        if (newSession == null) {
-            return;
-        }
-        this._activateScreen(sessionId, newSession.activeScreenId.get());
-    }
-
-    _activateScreen(sessionId : string, screenId : string, oldActiveScreen? : Screen) {
-        mobx.action(() => {
-            this.activeMainView.set("session");
-        })();
-        if (!oldActiveScreen) {
-            oldActiveScreen = this.getActiveScreen();
-        }
-        if (oldActiveScreen && oldActiveScreen.sessionId == sessionId && oldActiveScreen.screenId == screenId) {
-            return;
-        }
-        mobx.action(() => {
-            this.deactivateScreenLines();
-            let curSessionId = this.activeSessionId.get();
-            if (curSessionId != sessionId) {
-                this.activeSessionId.set(sessionId);
-            }
-            this.getActiveSession().activeScreenId.set(screenId);
-        })();
-        let curScreen = this.getActiveScreen();
-        if (curScreen == null) {
-            this.ws.watchScreen(sessionId, null);
-            return;
-        }
-        this.ws.watchScreen(curScreen.sessionId, curScreen.screenId);
+    // returns [sessionId, screenId]
+    getActiveIds() : [string, string] {
+        let activeSession = this.getActiveSession();
+        let activeScreen = this.getActiveScreen();
+        return [
+            (activeSession == null ? null : activeSession.sessionId),
+            (activeScreen == null ? null : activeScreen.screenId),
+        ];
     }
 
     _loadScreenLinesAsync(newWin : ScreenLines) {
@@ -3130,10 +3109,6 @@ class Model {
     }
 
     getCmd(line : LineType) : Cmd {
-        let session = this.getSessionById(line.sessionid);
-        if (session == null) {
-            return null;
-        }
         let slines = this.getScreenLinesById(line.screenid);
         if (slines == null) {
             return null;
@@ -3338,7 +3313,6 @@ class CommandRunner {
 
     setTermUsedRows(termContext : RendererContext, height : number) {
         let kwargs : Record<string, string> = {};
-        kwargs["session"] = termContext.sessionId;
         kwargs["screen"] = termContext.screenId;
         kwargs["hohist"] = "1";
         let posargs = [String(termContext.lineNum), String(height)];
@@ -3466,8 +3440,8 @@ function _getPtyDataFromUrl(url : string) : Promise<PtyDataType> {
     });
 }
 
-function getPtyData(sessionId : string, cmdId : string) : Promise<PtyDataType> {
-    let url = sprintf(GlobalModel.getBaseHostPort() + "/api/ptyout?sessionid=%s&cmdid=%s", sessionId, cmdId);
+function getPtyData(screenId : string, cmdId : string) : Promise<PtyDataType> {
+    let url = sprintf(GlobalModel.getBaseHostPort() + "/api/ptyout?screenid=%s&cmdid=%s", screenId, cmdId);
     return _getPtyDataFromUrl(url);
 }
 

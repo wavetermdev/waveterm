@@ -72,7 +72,7 @@ class SimpleBlobRendererModel {
         mobx.action(() => {
             this.loading.set(true);
         })();
-        let rtnp = getPtyData(this.context.sessionId, this.context.cmdId);
+        let rtnp = getPtyData(this.context.screenId, this.context.cmdId);
         rtnp.then((ptydata) => {
             setTimeout(() => {
                 this.ptyData = ptydata;
@@ -96,7 +96,6 @@ class SimpleBlobRendererModel {
 
 function contextFromLine(line : LineType) : RendererContext {
     return {
-        sessionId: line.sessionid,
         screenId: line.screenid,
         cmdId: line.cmdid,
         lineId: line.lineid,
