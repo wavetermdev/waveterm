@@ -1643,7 +1643,7 @@ function getLineDateStr(todayDate : string, yesterdayDate : string, ts : number)
 
 @mobxReact.observer
 class LinesView extends React.Component<{sessionId : string, screen : Screen, width : number, lines : LineType[], renderMode : RenderModeType}, {}> {
-    rszObs : any;
+    rszObs : ResizeObserver;
     linesRef : React.RefObject<any>;
     staticRender : OV<boolean> = mobx.observable.box(true, {name: "static-render"});
     lastOffsetHeight : number = 0;
@@ -1668,7 +1668,16 @@ class LinesView extends React.Component<{sessionId : string, screen : Screen, wi
     
     @boundMethod
     scrollHandler() {
-        // console.log("scroll", this.linesRef.current.scrollTop);
+        let linesElem = this.linesRef.current;
+        if (linesElem == null) {
+            return;
+        }
+        let heightDiff = linesElem.offsetHeight - this.lastOffsetHeight;
+        if (heightDiff > 0) {
+            this.ignoreNextScroll = true;
+        }
+        let fromBottom = linesElem.scrollHeight - linesElem.scrollTop - linesElem.offsetHeight;
+        // console.log("scroll", linesElem.scrollTop, (this.ignoreNextScroll ? "ignore" : "------"), "height-diff:" + heightDiff, "scroll-height:" + linesElem.scrollHeight, "from-bottom:" + fromBottom);
         this.computeVisibleMap_debounced(); // always do this
         if (this.ignoreNextScroll) {
             this.ignoreNextScroll = false;
@@ -1703,7 +1712,10 @@ class LinesView extends React.Component<{sessionId : string, screen : Screen, wi
         if (anchorElem == null) {
             anchorElem = lineElemArr[0];
         }
-        screen.setAnchorFields(parseInt(anchorElem.dataset.linenum), containerBottom - (anchorElem.offsetTop + anchorElem.offsetHeight), "computeAnchorLine");
+        let anchorLineNum = parseInt(anchorElem.dataset.linenum);
+        let anchorOffset = containerBottom - (anchorElem.offsetTop + anchorElem.offsetHeight);
+        // console.log("compute-anchor-line", anchorLineNum, anchorOffset, "st:" + scrollTop);
+        screen.setAnchorFields(anchorLineNum, anchorOffset, "computeAnchorLine");
     }
 
     computeVisibleMap() : void {
@@ -1826,7 +1838,6 @@ class LinesView extends React.Component<{sessionId : string, screen : Screen, wi
             this.rszObs = new ResizeObserver(this.handleResize.bind(this));
             this.rszObs.observe(linesElem);
         }
-
         mobx.action(() => {
             this.staticRender.set(false)
             this.computeVisibleMap();
@@ -1946,9 +1957,8 @@ class LinesView extends React.Component<{sessionId : string, screen : Screen, wi
         }
         let heightDiff = linesElem.offsetHeight - this.lastOffsetHeight;
         if (heightDiff != 0) {
-            linesElem.scrollTop = linesElem.scrollTop - heightDiff;
             this.lastOffsetHeight = linesElem.offsetHeight;
-            this.ignoreNextScroll = true;
+            this.restoreAnchorOffset("resize");
         }
         if (this.lastOffsetWidth != linesElem.offsetWidth) {
             this.restoreAnchorOffset("resize-width");
@@ -2067,7 +2077,9 @@ class ScreenWindowView extends React.Component<{screen : Screen}, {}> {
         if (wvElem != null) {
             let width = wvElem.offsetWidth;
             let height = wvElem.offsetHeight;
-            this.setSize(width, height);
+            mobx.action(() => {
+                this.setSize(width, height);
+            })();
             this.rszObs = new ResizeObserver(this.handleResize.bind(this));
             this.rszObs.observe(wvElem);
         }
@@ -2086,7 +2098,9 @@ class ScreenWindowView extends React.Component<{screen : Screen}, {}> {
         let entry = entries[0];
         let width = entry.target.offsetWidth;
         let height = entry.target.offsetHeight;
-        this.setSize_debounced(width, height);
+        mobx.action(() => {
+            this.setSize_debounced(width, height);
+        })();
     }
 
     getScreenLines() : ScreenLines {
