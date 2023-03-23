@@ -14,6 +14,11 @@ type OArr<V> = mobx.IObservableArray<V>;
 type OMap<K,V> = mobx.ObservableMap<K,V>;
 type CV<V> = mobx.IComputedValue<V>;
 
+// @ts-ignore
+const VERSION = __PROMPT_VERSION__;
+// @ts-ignore
+const BUILD = __PROMPT_BUILD__;
+
 @mobxReact.observer
 class ScreenSettingsModal extends React.Component<{sessionId : string, screenId : string}, {}> {
     tempName : OV<string>;
@@ -367,4 +372,154 @@ class LineSettingsModal extends React.Component<{line : LineType}, {}> {
     }
 }
 
-export {ScreenSettingsModal, SessionSettingsModal, LineSettingsModal};
+@mobxReact.observer
+class ClientSettingsModal extends React.Component<{}, {}> {
+    tempFontSize : OV<number>;
+    tempTelemetry : OV<boolean>;
+    fontSizeDropdownActive : OV<boolean> = mobx.observable.box(false, {name: "clientSettings-fontSizeDropdownActive"});
+
+    constructor(props : any) {
+        super(props);
+        let cdata = GlobalModel.clientData.get();
+        this.tempFontSize = mobx.observable.box(GlobalModel.termFontSize.get(), {name: "clientSettings-tempFontSize"});
+        this.tempTelemetry = mobx.observable.box(!cdata.clientopts.notelemetry, {name: "clientSettings-telemetry"});
+    }
+    
+    @boundMethod
+    closeModal() : void {
+        mobx.action(() => {
+            GlobalModel.clientSettingsModal.set(false);
+        })();
+    }
+
+    @boundMethod
+    handleOK() : void {
+        mobx.action(() => {
+            GlobalModel.clientSettingsModal.set(false);
+        })();
+        let cdata = GlobalModel.clientData.get();
+        let curTel = !cdata.clientopts.notelemetry;
+        if (this.tempTelemetry.get() != curTel) {
+            if (this.tempTelemetry.get()) {
+                GlobalCommandRunner.telemetryOn();
+            }
+            else {
+                GlobalCommandRunner.telemetryOff();
+            }
+        }
+        if (GlobalModel.termFontSize.get() != this.tempFontSize.get()) {
+            GlobalCommandRunner.setTermFontSize(this.tempFontSize.get());
+        }
+    }
+
+    @boundMethod
+    handleChangeFontSize(newFontSize : number) : void {
+        mobx.action(() => {
+            this.fontSizeDropdownActive.set(false);
+            this.tempFontSize.set(newFontSize);
+        })();
+    }
+
+    @boundMethod
+    togglefontSizeDropdown() : void {
+        mobx.action(() => {
+            this.fontSizeDropdownActive.set(!this.fontSizeDropdownActive.get());
+        })();
+    }
+
+    @boundMethod
+    handleChangeTelemetry(val : boolean) : void {
+        mobx.action(() => {
+            this.tempTelemetry.set(val);
+        })();
+    }
+
+    renderFontSizeDropdown() : any {
+        let availableFontSizes = [8, 9, 10, 11, 12, 13, 14, 15];
+        let fsize : number = 0;
+        return (
+            <div className={cn("dropdown", "font-size-dropdown", {"is-active": this.fontSizeDropdownActive.get()})}>
+                <div className="dropdown-trigger">
+                    <button onClick={this.togglefontSizeDropdown} className="button is-small is-dark">
+                        <span>{this.tempFontSize.get()}px</span>
+                        <span className="icon is-small">
+                            <i className="fa-sharp fa-regular fa-angle-down" aria-hidden="true"></i>
+                        </span>
+                    </button>
+                </div>
+                <div className="dropdown-menu" role="menu">
+                    <div className="dropdown-content has-background-black">
+                        <For each="fsize" of={availableFontSizes}>
+                            <div onClick={() => this.handleChangeFontSize(fsize) } key={fsize + "px"} className="dropdown-item">{fsize}px</div>
+                        </For>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    render() {
+        let cdata : ClientDataType = GlobalModel.clientData.get();
+        return (
+            <div className={cn("modal client-settings-modal settings-modal prompt-modal is-active")}>
+                <div className="modal-background"/>
+                <div className="modal-content">
+                    <header>
+                        <div className="modal-title">client settings</div>
+                        <div className="close-icon">
+                            <i onClick={this.closeModal} className="fa-sharp fa-solid fa-times"/>
+                        </div>
+                    </header>
+                    <div className="inner-content">
+                        <div className="settings-field">
+                            <div className="settings-label">
+                                Term Font Size
+                            </div>
+                            <div className="settings-input">
+                                {this.renderFontSizeDropdown()}
+                            </div>
+                        </div>
+                        <div className="settings-field">
+                            <div className="settings-label">
+                                Client ID
+                            </div>
+                            <div className="settings-input">
+                                {cdata.clientid}
+                            </div>
+                        </div>
+                        <div className="settings-field">
+                            <div className="settings-label">
+                                Client Version
+                            </div>
+                            <div className="settings-input">
+                                {VERSION} {BUILD}
+                            </div>
+                        </div>
+                        <div className="settings-field">
+                            <div className="settings-label">
+                                DB Version
+                            </div>
+                            <div className="settings-input">
+                                {cdata.dbversion}
+                            </div>
+                        </div>
+                        <div className="settings-field">
+                            <div className="settings-label">
+                                Basic Telemetry
+                            </div>
+                            <div className="settings-input">
+                                <Toggle checked={this.tempTelemetry.get()} onChange={this.handleChangeTelemetry}/>
+                            </div>
+                        </div>
+                    </div>
+                    <footer>
+                        <div onClick={this.closeModal} className="button is-prompt-cancel is-outlined is-small">Cancel</div>
+                        <div onClick={this.handleOK} className="button is-prompt-green is-outlined is-small">OK</div>
+                    </footer>
+                </div>
+            </div>
+        );
+    }
+}
+
+export {ScreenSettingsModal, SessionSettingsModal, LineSettingsModal, ClientSettingsModal};

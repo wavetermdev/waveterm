@@ -18,7 +18,7 @@ import remarkGfm from 'remark-gfm'
 import {BookmarksView} from "./bookmarks";
 import {HistoryView} from "./history";
 import {Line, Prompt} from "./linecomps";
-import {ScreenSettingsModal, SessionSettingsModal, LineSettingsModal} from "./settings";
+import {ScreenSettingsModal, SessionSettingsModal, LineSettingsModal, ClientSettingsModal} from "./settings";
 import {renderCmdText} from "./elements";
 
 dayjs.extend(localizedFormat)
@@ -2237,7 +2237,7 @@ class ScreenView extends React.Component<{screen : Screen}, {}> {
         let fontSize = GlobalModel.termFontSize.get();
         return (
             <div className="screen-view" data-screenid={screen.screenId}>
-                <ScreenWindowView key={screen.screenId} screen={screen}/>
+                <ScreenWindowView key={screen.screenId + ":" + fontSize} screen={screen}/>
             </div>
         );
     }
@@ -2517,6 +2517,13 @@ class MainSideBar extends React.Component<{}, {}> {
     }
 
     @boundMethod
+    handleSettingsClick() : void {
+        mobx.action(() => {
+            GlobalModel.clientSettingsModal.set(true);
+        })();
+    }
+
+    @boundMethod
     openSessionSettings(e : any, session : Session) : void {
         e.preventDefault();
         e.stopPropagation();
@@ -2622,6 +2629,9 @@ class MainSideBar extends React.Component<{}, {}> {
                     </If>
                     <ul className="menu-list" style={{display: "none"}}>
                         <li className="menu-bookmarks"><a onClick={this.handleWelcomeClick} className={cn({"is-active": GlobalModel.welcomeModalOpen.get()})}><i className="fa-sharp fa-solid fa-door-open"/> WELCOME</a></li>
+                    </ul>
+                    <ul className="menu-list">
+                        <li className="menu-bookmarks"><a onClick={this.handleSettingsClick}><i className="fa-sharp fa-solid fa-cog"/> SETTINGS</a></li>
                     </ul>
                     <p className="menu-label">
                         <a onClick={() => this.clickRemotes()}>Links</a>
@@ -3003,6 +3013,7 @@ class Main extends React.Component<{}, {}> {
         let screenSettingsModal = GlobalModel.screenSettingsModal.get();
         let sessionSettingsModal = GlobalModel.sessionSettingsModal.get();
         let lineSettingsModal = GlobalModel.lineSettingsModal.get();
+        let clientSettingsModal = GlobalModel.clientSettingsModal.get();
         let disconnected = !GlobalModel.ws.open.get() || !GlobalModel.localServerRunning.get();
         let hasClientStop = GlobalModel.getHasClientStop();
         let dcWait = this.dcWait.get();
@@ -3050,6 +3061,9 @@ class Main extends React.Component<{}, {}> {
                 </If>
                 <If condition={lineSettingsModal != null}>
                     <LineSettingsModal key={lineSettingsModal.lineid} line={lineSettingsModal}/>
+                </If>
+                <If condition={clientSettingsModal}>
+                    <ClientSettingsModal/>
                 </If>
             </div>
         );

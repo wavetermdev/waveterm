@@ -2358,6 +2358,7 @@ class Model {
     welcomeModalOpen : OV<boolean> = mobx.observable.box(false, {name: "welcomeModalOpen"});
     screenSettingsModal : OV<{sessionId : string, screenId : string}> = mobx.observable.box(null, {name: "screenSettingsModal"});
     sessionSettingsModal : OV<string> = mobx.observable.box(null, {name: "sessionSettingsModal"});
+    clientSettingsModal : OV<boolean> = mobx.observable.box(false, {name: "clientSettingsModal"});
     lineSettingsModal : OV<LineType> = mobx.observable.box(null, {name: "lineSettingsModal"});
     rendererPlugins : RendererPluginType[] = [];
 
@@ -3392,6 +3393,22 @@ class CommandRunner {
             kwargs["filter"] = "1";
         }
         GlobalModel.submitCommand("history", "viewall", null, kwargs, true);
+    }
+
+    telemetryOff() {
+        GlobalModel.submitCommand("telemetry", "off", null, {"nohist": "1"}, true);
+    }
+
+    telemetryOn() {
+        GlobalModel.submitCommand("telemetry", "on", null, {"nohist": "1"}, true);
+    }
+
+    setTermFontSize(fsize : number) {
+        let kwargs = {
+            "nohist": "1",
+            "termfontsize": String(fsize),
+        };
+        GlobalModel.submitCommand("client", "set", null, kwargs, true);
     }
 
     editBookmark(bookmarkId : string, desc : string, cmdstr : string) {
