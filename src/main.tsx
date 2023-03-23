@@ -241,6 +241,16 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
                 this.controlU();
                 return;
             }
+            if (e.code == "KeyP" && e.getModifierState("Control")) {
+                e.preventDefault();
+                this.controlP();
+                return;
+            }
+            if (e.code == "KeyN" && e.getModifierState("Control")) {
+                e.preventDefault();
+                this.controlN();
+                return;
+            }
             if (e.code == "KeyW" && e.getModifierState("Control")) {
                 e.preventDefault();
                 this.controlW();
@@ -379,6 +389,16 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
             inputModel.moveHistorySelection(e.code == "PageUp" ? 10 : -10);
             return;
         }
+        if (e.code == "KeyP" && e.getModifierState("Control")) {
+            e.preventDefault();
+            inputModel.moveHistorySelection(1);
+            return;
+        }
+        if (e.code == "KeyN" && e.getModifierState("Control")) {
+            e.preventDefault();
+            inputModel.moveHistorySelection(-1);
+            return;
+        }
     }
 
     @boundMethod
@@ -397,6 +417,25 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
         console.log("ss", selStart, value, "[" + cutValue + "]", "[" + restValue + "]");
         navigator.clipboard.writeText(cutValue);
         GlobalModel.inputModel.updateCmdLine(cmdLineUpdate);
+    }
+
+    @boundMethod
+    controlP(e : any) {
+        let inputModel = GlobalModel.inputModel;
+        if (!inputModel.isHistoryLoaded()) {
+            this.lastHistoryUpDown = true;
+            inputModel.loadHistory(false, 1, "screen");
+            return;
+        }
+        inputModel.moveHistorySelection(1);
+        this.lastHistoryUpDown = true;
+    }
+
+    @boundMethod
+    controlN(e : any) {
+        let inputModel = GlobalModel.inputModel;
+        inputModel.moveHistorySelection(-1);
+        this.lastHistoryUpDown = true;
     }
 
     @boundMethod
