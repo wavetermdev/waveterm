@@ -72,7 +72,7 @@ class SimpleBlobRendererModel {
         mobx.action(() => {
             this.loading.set(true);
         })();
-        let rtnp = getPtyData(this.context.screenId, this.context.cmdId);
+        let rtnp = getPtyData(this.context.screenId, this.context.cmdId, this.context.lineNum);
         rtnp.then((ptydata) => {
             setTimeout(() => {
                 this.ptyData = ptydata;

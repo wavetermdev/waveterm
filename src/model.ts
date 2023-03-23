@@ -3464,8 +3464,8 @@ function _getPtyDataFromUrl(url : string) : Promise<PtyDataType> {
     });
 }
 
-function getPtyData(screenId : string, cmdId : string) : Promise<PtyDataType> {
-    let url = sprintf(GlobalModel.getBaseHostPort() + "/api/ptyout?screenid=%s&cmdid=%s", screenId, cmdId);
+function getPtyData(screenId : string, cmdId : string, lineNum : number) : Promise<PtyDataType> {
+    let url = sprintf(GlobalModel.getBaseHostPort() + "/api/ptyout?linenum=%d&screenid=%s&cmdid=%s", lineNum, screenId, cmdId);
     return _getPtyDataFromUrl(url);
 }
 

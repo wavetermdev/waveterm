@@ -7,7 +7,7 @@ import {If, For, When, Otherwise, Choose} from "tsx-control-statements/component
 import cn from "classnames";
 import {GlobalModel, GlobalCommandRunner, TabColors} from "./model";
 import {Toggle} from "./elements";
-import {LineType, RendererPluginType} from "./types";
+import {LineType, RendererPluginType, ClientDataType} from "./types";
 
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;

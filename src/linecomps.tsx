@@ -152,7 +152,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         if (staticRender || this.isCollapsed()) {
             return;
         }
-        if (!visible) {
+        if (!visible.get()) {
             if (this.rtnStateDiffFetched) {
                 this.rtnStateDiffFetched = false;
                 this.setRtnStateDiff(null);
@@ -175,7 +175,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         }
         let {line} = this.props;
         this.rtnStateDiffFetched = true;
-        let usp = new URLSearchParams({screenid: line.screenid, cmdid: line.cmdid});
+        let usp = new URLSearchParams({linenum: String(line.linenum), screenid: line.screenid, cmdid: line.cmdid});
         let url = GlobalModel.getBaseHostPort() + "/api/rtnstate?" + usp.toString();
         let fetchHeaders = GlobalModel.getFetchHeaders();
         fetch(url, {headers: fetchHeaders}).then((resp) => {

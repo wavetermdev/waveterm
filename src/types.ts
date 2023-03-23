@@ -415,11 +415,17 @@ type FeOptsType = {
     termfontsize : number,
 };
 
+type ClientOptsType = {
+    notelemetry : boolean,
+};
+
 type ClientDataType = {
     clientid : string,
     userid : string,
     feopts : FeOptsType;
+    clientopts : ClientOptsType,
     cmdstoretype : "session" | "screen";
+    dbversion : number,
     migration? : ClientMigrationInfo;
 };
 

@@ -420,7 +420,7 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
     }
 
     @boundMethod
-    controlP(e : any) {
+    controlP() {
         let inputModel = GlobalModel.inputModel;
         if (!inputModel.isHistoryLoaded()) {
             this.lastHistoryUpDown = true;
@@ -432,7 +432,7 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
     }
 
     @boundMethod
-    controlN(e : any) {
+    controlN() {
         let inputModel = GlobalModel.inputModel;
         inputModel.moveHistorySelection(-1);
         this.lastHistoryUpDown = true;
