@@ -2727,7 +2727,6 @@ func ClientShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	var buf bytes.Buffer
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "userid", clientData.UserId))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "clientid", clientData.ClientId))
-	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "backend", scbase.PromptVersion))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "telemetry", boolToStr(clientData.ClientOpts.NoTelemetry, "off", "on")))
 	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "db-version", dbVersion))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "client-version", clientVersion))
@@ -2780,7 +2779,13 @@ func TelemetryOnCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		// ignore error, but log
 		log.Printf("[error] sending telemetry update (in /telemetry:on): %v\n", err)
 	}
-	return sstore.InfoMsgUpdate("telemetry is now on"), nil
+	clientData, err = sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
+	}
+	update := sstore.InfoMsgUpdate("telemetry is now on")
+	update.ClientData = clientData
+	return update, nil
 }
 
 func TelemetryOffCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -2795,7 +2800,13 @@ func TelemetryOffCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	if err != nil {
 		return nil, err
 	}
-	return sstore.InfoMsgUpdate("telemetry is now off"), nil
+	clientData, err = sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
+	}
+	update := sstore.InfoMsgUpdate("telemetry is now off")
+	update.ClientData = clientData
+	return update, nil
 }
 
 func TelemetryShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
