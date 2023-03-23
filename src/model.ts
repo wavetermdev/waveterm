@@ -2367,6 +2367,7 @@ class Model {
     historyViewModel : HistoryViewModel;
     clientData : OV<ClientDataType> = mobx.observable.box(null, {name: "clientData"});
     clientMigrationInfo : OV<ClientMigrationInfo> = mobx.observable.box(null, {name: "clientMigrationInfo"});
+    showLinks : OV<boolean> = mobx.observable.box(true, {name: "model-showLinks"});
     
     constructor() {
         this.clientId = getApi().getId();

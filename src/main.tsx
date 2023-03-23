@@ -2460,6 +2460,12 @@ class MainSideBar extends React.Component<{}, {}> {
         GlobalCommandRunner.showAllRemotes();
     }
 
+    clickLinks() {
+        mobx.action(() => {
+            GlobalModel.showLinks.set(!GlobalModel.showLinks.get());
+        })();
+    }
+
     remoteDisplayName(remote : RemoteType) : any {
         if (!isBlank(remote.remotealias)) {
             return (
@@ -2567,8 +2573,8 @@ class MainSideBar extends React.Component<{}, {}> {
                 </div>
                 <div className="collapse-container">
                     <div className="arrow-container" onClick={this.toggleCollapsed}>
-                        <If condition={!isCollapsed}><i className="fa-sharp fa-solid fa-arrow-left"/></If>
-                        <If condition={isCollapsed}><i className="fa-sharp fa-solid fa-arrow-right"/></If>
+                        <If condition={!isCollapsed}><i className="fa-sharp fa-solid fa-angle-left"/></If>
+                        <If condition={isCollapsed}><i className="fa-sharp fa-solid fa-angle-right"/></If>
                     </div>
                 </div>
                 <div className="menu">
@@ -2634,9 +2640,9 @@ class MainSideBar extends React.Component<{}, {}> {
                         <li className="menu-bookmarks"><a onClick={this.handleSettingsClick}><i className="fa-sharp fa-solid fa-cog"/> SETTINGS</a></li>
                     </ul>
                     <p className="menu-label">
-                        <a onClick={() => this.clickRemotes()}>Links</a>
+                        <a onClick={() => this.clickLinks()}>LINKS <i className={cn("fa-sharp fa-solid", (GlobalModel.showLinks.get() ? "fa-angle-down" : "fa-angle-right"))}/></a>
                     </p>
-                    <ul className="menu-list">
+                    <ul className="menu-list" style={{display: (GlobalModel.showLinks.get() ? null : "none")}}>
                         <li>
                             <a target="_blank" href="https://docs.getprompt.dev/releasenotes"><i style={{width: 20}} className="fa-sharp fa-solid fa-notes"/> release notes</a>
                         </li>
