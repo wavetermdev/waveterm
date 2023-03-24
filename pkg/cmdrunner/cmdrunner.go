@@ -3,6 +3,8 @@ package cmdrunner
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"os"
@@ -12,6 +14,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"unicode"
 
 	"github.com/alessio/shellescape"
 	"github.com/google/uuid"
@@ -40,6 +43,7 @@ func init() {
 
 const DefaultUserId = "sawka"
 const MaxNameLen = 50
+const MaxShareNameLen = 150
 const MaxRendererLen = 50
 const MaxRemoteAliasLen = 50
 const PasswordUnchangedSentinel = "--unchanged--"
@@ -131,7 +135,6 @@ func init() {
 	registerCmdFn("session:showall", SessionShowAllCommand)
 	registerCmdFn("session:show", SessionShowCommand)
 	registerCmdFn("session:openshared", SessionOpenSharedCommand)
-	registerCmdFn("session:opencloud", SessionOpenCloudCommand)
 
 	registerCmdFn("screen", ScreenCommand)
 	registerCmdFn("screen:archive", ScreenArchiveCommand)
@@ -141,6 +144,7 @@ func init() {
 	registerCmdFn("screen:set", ScreenSetCommand)
 	registerCmdFn("screen:showall", ScreenShowAllCommand)
 	registerCmdFn("screen:reset", ScreenResetCommand)
+	registerCmdFn("screen:webshare", ScreenWebShareCommand)
 
 	registerCmdAlias("remote", RemoteCommand)
 	registerCmdFn("remote:show", RemoteShowCommand)
@@ -1561,6 +1565,18 @@ func validateName(name string, typeStr string) error {
 	return nil
 }
 
+func validateShareName(name string) error {
+	if len(name) > MaxShareNameLen {
+		return fmt.Errorf("share name too long, max length is %d", MaxShareNameLen)
+	}
+	for _, ch := range name {
+		if !unicode.IsPrint(ch) {
+			return fmt.Errorf("invalid character %q in share name", string(ch))
+		}
+	}
+	return nil
+}
+
 func validateRenderer(renderer string) error {
 	if renderer == "" {
 		return nil
@@ -1601,22 +1617,6 @@ func SessionOpenSharedCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 	return nil, fmt.Errorf("shared sessions are not available in this version of prompt (stay tuned)")
 }
 
-func SessionOpenCloudCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	activate := resolveBool(pk.Kwargs["activate"], true)
-	newName := pk.Kwargs["name"]
-	if newName != "" {
-		err := validateName(newName, "session")
-		if err != nil {
-			return nil, err
-		}
-	}
-	update, err := sstore.InsertSessionWithName(ctx, newName, sstore.ShareModeShared, activate)
-	if err != nil {
-		return nil, err
-	}
-	return update, nil
-}
-
 func SessionOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	activate := resolveBool(pk.Kwargs["activate"], true)
 	newName := pk.Kwargs["name"]
@@ -1629,6 +1629,53 @@ func SessionOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	update, err := sstore.InsertSessionWithName(ctx, newName, sstore.ShareModeLocal, activate)
 	if err != nil {
 		return nil, err
+	}
+	return update, nil
+}
+
+func ScreenWebShareCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Screen)
+	if err != nil {
+		return nil, err
+	}
+	shouldShare := true
+	if len(pk.Args) > 0 {
+		shouldShare = resolveBool(pk.Args[0], true)
+	}
+	shareName := pk.Kwargs["sharename"]
+	if err := validateShareName(shareName); err != nil {
+		return nil, err
+	}
+	var infoMsg string
+	if shouldShare {
+		viewKeyBytes := make([]byte, 9)
+		_, err = rand.Read(viewKeyBytes)
+		if err != nil {
+			return nil, fmt.Errorf("cannot create viewkey: %v", err)
+		}
+		webShareOpts := sstore.ScreenWebShareOpts{ShareName: shareName, ViewKey: base64.RawURLEncoding.EncodeToString(viewKeyBytes)}
+		err = sstore.ScreenWebShareStart(ctx, ids.ScreenId, webShareOpts)
+		if err != nil {
+			return nil, fmt.Errorf("cannot web-share screen: %v", err)
+		}
+		pcloud.NotifyUpdateWriter()
+		infoMsg = fmt.Sprintf("screen is now shared to the web at %s", "[screen-share-url]")
+	} else {
+		err = sstore.ScreenWebShareStop(ctx, ids.ScreenId)
+		if err != nil {
+			return nil, fmt.Errorf("cannot stop web-sharing screen: %v", err)
+		}
+		infoMsg = fmt.Sprintf("screen is no longer web shared")
+	}
+	screen, err := sstore.GetScreenById(ctx, ids.ScreenId)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get updated screen: %v", err)
+	}
+	update := sstore.ModelUpdate{
+		Screens: []*sstore.ScreenType{screen},
+		Info: &sstore.InfoMsgType{
+			InfoMsg: infoMsg,
+		},
 	}
 	return update, nil
 }
@@ -2339,36 +2386,42 @@ func LineBookmarkCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	if lineId == "" {
 		return nil, fmt.Errorf("line %q not found", lineArg)
 	}
-	lineObj, cmdObj, err := sstore.GetLineCmdByLineId(ctx, ids.ScreenId, lineId)
+	_, cmdObj, err := sstore.GetLineCmdByLineId(ctx, ids.ScreenId, lineId)
 	if err != nil {
 		return nil, fmt.Errorf("/line:bookmark error getting line: %v", err)
 	}
 	if cmdObj == nil {
 		return nil, fmt.Errorf("cannot bookmark non-cmd line")
 	}
-	ck := base.MakeCommandKey(lineObj.ScreenId, cmdObj.CmdId)
-	bm := &sstore.BookmarkType{
-		BookmarkId:  uuid.New().String(),
-		CreatedTs:   time.Now().UnixMilli(),
-		CmdStr:      cmdObj.CmdStr,
-		Alias:       "",
-		Tags:        nil,
-		Description: "",
-		Cmds:        []base.CommandKey{ck},
-	}
-	err = sstore.InsertBookmark(ctx, bm)
+	existingBmIds, err := sstore.GetBookmarkIdsByCmdStr(ctx, cmdObj.CmdStr)
 	if err != nil {
-		return nil, fmt.Errorf("cannot insert bookmark: %v", err)
+		return nil, fmt.Errorf("error trying to retrieve current boookmarks: %v", err)
 	}
-	newLineObj, err := sstore.GetLineById(ctx, ids.ScreenId, lineId)
-	if err != nil {
-		return nil, fmt.Errorf("/line:bookmark error getting line: %v", err)
+	var newBmId string
+	if len(existingBmIds) > 0 {
+		newBmId = existingBmIds[0]
+	} else {
+		newBm := &sstore.BookmarkType{
+			BookmarkId:  uuid.New().String(),
+			CreatedTs:   time.Now().UnixMilli(),
+			CmdStr:      cmdObj.CmdStr,
+			Alias:       "",
+			Tags:        nil,
+			Description: "",
+		}
+		err = sstore.InsertBookmark(ctx, newBm)
+		if err != nil {
+			return nil, fmt.Errorf("cannot insert bookmark: %v", err)
+		}
+		newBmId = newBm.BookmarkId
 	}
-	if newLineObj == nil {
-		// no line (which is strange given we checked for it above).  just return a nop.
-		return nil, nil
+	bms, err := sstore.GetBookmarks(ctx, "")
+	update := sstore.ModelUpdate{
+		MainView:         sstore.MainViewBookmarks,
+		Bookmarks:        bms,
+		SelectedBookmark: newBmId,
 	}
-	return sstore.ModelUpdate{Line: newLineObj}, nil
+	return update, nil
 }
 
 func LinePinCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {

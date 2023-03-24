@@ -54,10 +54,8 @@ const (
 )
 
 const (
-	ShareModeLocal   = "local"
-	ShareModePrivate = "private"
-	ShareModeView    = "view"
-	ShareModeShared  = "shared"
+	ShareModeLocal = "local"
+	ShareModeWeb   = "web"
 )
 
 const (
@@ -79,6 +77,19 @@ const (
 const (
 	CmdStoreTypeSession = "session"
 	CmdStoreTypeScreen  = "screen"
+)
+
+const (
+	UpdateType_ScreenName      = "screen:sharename"
+	UpdateType_ScreenCurRemote = "screen:curremote"
+	UpdateType_LineNew         = "line:new"
+	UpdateType_LineDel         = "line:del"
+	UpdateType_LineArchived    = "line:archived"
+	UpdateType_LineRenderer    = "line:renderer"
+	UpdateType_CmdStatus       = "cmd:status"
+	UpdateType_CmdDoneInfo     = "cmd:doneinfo"
+	UpdateType_CmdRunOut       = "cmd:runout"
+	UpdateType_CmdRtnState     = "cmd:rtnstate"
 )
 
 const MaxTzNameLen = 50
@@ -212,6 +223,7 @@ type ClientData struct {
 	FeOpts              FeOptsType           `json:"feopts"`
 	CmdStoreType        string               `json:"cmdstoretype"`
 	Migration           *ClientMigrationData `json:"migration,omitempty" dbmap:"-"`
+	DBVersion           int                  `json:"dbversion" dbmap:"-"`
 }
 
 func (ClientData) UseDBMap() {}
@@ -401,21 +413,27 @@ type ScreenLinesType struct {
 
 func (ScreenLinesType) UseDBMap() {}
 
+type ScreenWebShareOpts struct {
+	ShareName string `json:"sharename"`
+	ViewKey   string `json:"viewkey"`
+}
+
 type ScreenType struct {
-	SessionId    string           `json:"sessionid"`
-	ScreenId     string           `json:"screenid"`
-	Name         string           `json:"name"`
-	ScreenIdx    int64            `json:"screenidx"`
-	ScreenOpts   ScreenOptsType   `json:"screenopts"`
-	OwnerId      string           `json:"ownerid"`
-	ShareMode    string           `json:"sharemode"`
-	CurRemote    RemotePtrType    `json:"curremote"`
-	NextLineNum  int64            `json:"nextlinenum"`
-	SelectedLine int64            `json:"selectedline"`
-	Anchor       ScreenAnchorType `json:"anchor"`
-	FocusType    string           `json:"focustype"`
-	Archived     bool             `json:"archived,omitempty"`
-	ArchivedTs   int64            `json:"archivedts,omitempty"`
+	SessionId    string              `json:"sessionid"`
+	ScreenId     string              `json:"screenid"`
+	Name         string              `json:"name"`
+	ScreenIdx    int64               `json:"screenidx"`
+	ScreenOpts   ScreenOptsType      `json:"screenopts"`
+	OwnerId      string              `json:"ownerid"`
+	ShareMode    string              `json:"sharemode"`
+	WebShareOpts *ScreenWebShareOpts `json:"webshareopts,omitempty"`
+	CurRemote    RemotePtrType       `json:"curremote"`
+	NextLineNum  int64               `json:"nextlinenum"`
+	SelectedLine int64               `json:"selectedline"`
+	Anchor       ScreenAnchorType    `json:"anchor"`
+	FocusType    string              `json:"focustype"`
+	Archived     bool                `json:"archived,omitempty"`
+	ArchivedTs   int64               `json:"archivedts,omitempty"`
 
 	// only for updates
 	Full   bool `json:"full,omitempty"`
@@ -431,6 +449,7 @@ func (s *ScreenType) ToMap() map[string]interface{} {
 	rtn["screenopts"] = quickJson(s.ScreenOpts)
 	rtn["ownerid"] = s.OwnerId
 	rtn["sharemode"] = s.ShareMode
+	rtn["webshareopts"] = quickNullableJson(s.WebShareOpts)
 	rtn["curremoteownerid"] = s.CurRemote.OwnerId
 	rtn["curremoteid"] = s.CurRemote.RemoteId
 	rtn["curremotename"] = s.CurRemote.Name
@@ -451,6 +470,7 @@ func (s *ScreenType) FromMap(m map[string]interface{}) bool {
 	quickSetJson(&s.ScreenOpts, m, "screenopts")
 	quickSetStr(&s.OwnerId, m, "ownerid")
 	quickSetStr(&s.ShareMode, m, "sharemode")
+	quickSetNullableJson(&s.WebShareOpts, m, "webshareopts")
 	quickSetStr(&s.CurRemote.OwnerId, m, "curremoteownerid")
 	quickSetStr(&s.CurRemote.RemoteId, m, "curremoteid")
 	quickSetStr(&s.CurRemote.Name, m, "curremotename")
@@ -654,6 +674,16 @@ func (ri *RemoteInstance) ToMap() map[string]interface{} {
 	return rtn
 }
 
+type ScreenUpdateType struct {
+	UpdateId   int64  `json:"updateid"`
+	ScreenId   string `json:"screenid"`
+	LineId     string `json:"lineid"`
+	UpdateType string `json:"updatetype"`
+	UpdateTs   int64  `json:"updatets"`
+}
+
+func (ScreenUpdateType) UseDBMap() {}
+
 type LineType struct {
 	ScreenId      string `json:"screenid"`
 	UserId        string `json:"userid"`
@@ -669,7 +699,6 @@ type LineType struct {
 	Ephemeral     bool   `json:"ephemeral,omitempty"`
 	ContentHeight int64  `json:"contentheight,omitempty"`
 	Star          bool   `json:"star,omitempty"`
-	Bookmarked    bool   `json:"bookmarked,omitempty"`
 	Archived      bool   `json:"archived,omitempty"`
 	Remove        bool   `json:"remove,omitempty"`
 }
@@ -747,15 +776,14 @@ type PlaybookEntry struct {
 }
 
 type BookmarkType struct {
-	BookmarkId  string            `json:"bookmarkid"`
-	CreatedTs   int64             `json:"createdts"`
-	CmdStr      string            `json:"cmdstr"`
-	Alias       string            `json:"alias,omitempty"`
-	Tags        []string          `json:"tags"`
-	Description string            `json:"description"`
-	Cmds        []base.CommandKey `json:"cmds"`
-	OrderIdx    int64             `json:"orderidx"`
-	Remove      bool              `json:"remove,omitempty"`
+	BookmarkId  string   `json:"bookmarkid"`
+	CreatedTs   int64    `json:"createdts"`
+	CmdStr      string   `json:"cmdstr"`
+	Alias       string   `json:"alias,omitempty"`
+	Tags        []string `json:"tags"`
+	Description string   `json:"description"`
+	OrderIdx    int64    `json:"orderidx"`
+	Remove      bool     `json:"remove,omitempty"`
 }
 
 func (bm *BookmarkType) GetSimpleKey() string {
@@ -1127,6 +1155,8 @@ func EnsureClientData(ctx context.Context) (*ClientData, error) {
 		if cdata == nil {
 			return nil, fmt.Errorf("no client data found")
 		}
+		dbVersion := tx.GetInt(`SELECT version FROM schema_migrations`)
+		cdata.DBVersion = dbVersion
 		return cdata, nil
 	})
 	if err != nil {

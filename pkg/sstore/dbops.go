@@ -663,7 +663,8 @@ func InsertScreen(ctx context.Context, sessionId string, origScreenName string, 
 			Archived:     false,
 			ArchivedTs:   0,
 		}
-		query = `INSERT INTO screen (sessionid, screenid, name, screenidx, screenopts, ownerid, sharemode, curremoteownerid, curremoteid, curremotename, nextlinenum, selectedline, anchor, focustype, archived, archivedts) VALUES (:sessionid,:screenid,:name,:screenidx,:screenopts,:ownerid,:sharemode,:curremoteownerid,:curremoteid,:curremotename,:nextlinenum,:selectedline,:anchor,:focustype,:archived,:archivedts)`
+		query = `INSERT INTO screen ( sessionid, screenid, name, screenidx, screenopts, ownerid, sharemode, webshareopts, curremoteownerid, curremoteid, curremotename, nextlinenum, selectedline, anchor, focustype, archived, archivedts)
+                             VALUES (:sessionid,:screenid,:name,:screenidx,:screenopts,:ownerid,:sharemode,:webshareopts,:curremoteownerid,:curremoteid,:curremotename,:nextlinenum,:selectedline,:anchor,:focustype,:archived,:archivedts)`
 		tx.NamedExec(query, screen.ToMap())
 		if activate {
 			query = `UPDATE session SET activescreenid = ? WHERE sessionid = ?`
@@ -775,8 +776,8 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 		query = `SELECT nextlinenum FROM screen WHERE screenid = ?`
 		nextLineNum := tx.GetInt(query, line.ScreenId)
 		line.LineNum = int64(nextLineNum)
-		query = `INSERT INTO line  ( screenid, userid, lineid, ts, linenum, linenumtemp, linelocal, linetype, text, cmdid, renderer, ephemeral, contentheight, star, archived, bookmarked)
-                            VALUES (:screenid,:userid,:lineid,:ts,:linenum,:linenumtemp,:linelocal,:linetype,:text,:cmdid,:renderer,:ephemeral,:contentheight,:star,:archived,:bookmarked)`
+		query = `INSERT INTO line  ( screenid, userid, lineid, ts, linenum, linenumtemp, linelocal, linetype, text, cmdid, renderer, ephemeral, contentheight, star, archived)
+                            VALUES (:screenid,:userid,:lineid,:ts,:linenum,:linenumtemp,:linelocal,:linetype,:text,:cmdid,:renderer,:ephemeral,:contentheight,:star,:archived)`
 		tx.NamedExec(query, line)
 		query = `UPDATE screen SET nextlinenum = ? WHERE screenid = ?`
 		tx.Exec(query, nextLineNum+1, line.ScreenId)
@@ -942,8 +943,6 @@ func cleanScreenCmds(ctx context.Context, screenId string) error {
 		query := `SELECT cmdid FROM cmd WHERE screenid = ? AND cmdid NOT IN (SELECT cmdid FROM line WHERE screenid = ?)`
 		removedCmds = tx.SelectStrings(query, screenId, screenId)
 		query = `DELETE FROM cmd WHERE screenid = ? AND cmdid NOT IN (SELECT cmdid FROM line WHERE screenid = ?)`
-		tx.Exec(query, screenId, screenId)
-		query = `DELETE FROM bookmark_cmd WHERE screenid = ? AND cmdid NOT IN (SELECT cmdid FROM cmd WHERE screenid = ?)`
 		tx.Exec(query, screenId, screenId)
 		return nil
 	})
@@ -2039,12 +2038,6 @@ type bookmarkOrderType struct {
 	OrderIdx   int64
 }
 
-type bookmarkCmdType struct {
-	BookmarkId string
-	ScreenId   string
-	CmdId      string
-}
-
 func GetBookmarks(ctx context.Context, tag string) ([]*BookmarkType, error) {
 	var bms []*BookmarkType
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
@@ -2066,15 +2059,6 @@ func GetBookmarks(ctx context.Context, tag string) ([]*BookmarkType, error) {
 				bm.OrderIdx = bmOrder.OrderIdx
 			}
 		}
-		var cmds []bookmarkCmdType
-		query = `SELECT bookmarkid, screenid, cmdid FROM bookmark_cmd`
-		tx.Select(&cmds, query)
-		for _, cmd := range cmds {
-			bm := bmMap[cmd.BookmarkId]
-			if bm != nil {
-				bm.Cmds = append(bm.Cmds, base.MakeCommandKey(cmd.ScreenId, cmd.CmdId))
-			}
-		}
 		return nil
 	})
 	if txErr != nil {
@@ -2094,12 +2078,6 @@ func GetBookmarkById(ctx context.Context, bookmarkId string, tag string) (*Bookm
 		query = `SELECT orderidx FROM bookmark_order WHERE bookmarkid = ? AND tag = ?`
 		orderIdx := tx.GetInt(query, bookmarkId, tag)
 		rtn.OrderIdx = int64(orderIdx)
-		query = `SELECT bookmarkid, screenid, cmdid FROM bookmark_cmd WHERE bookmarkid = ?`
-		var cmds []bookmarkCmdType
-		tx.Select(&cmds, query, bookmarkId)
-		for _, cmd := range cmds {
-			rtn.Cmds = append(rtn.Cmds, base.MakeCommandKey(cmd.ScreenId, cmd.CmdId))
-		}
 		return nil
 	})
 	if txErr != nil {
@@ -2126,6 +2104,14 @@ func GetBookmarkIdByArg(ctx context.Context, bookmarkArg string) (string, error)
 	return rtnId, nil
 }
 
+func GetBookmarkIdsByCmdStr(ctx context.Context, cmdStr string) ([]string, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) ([]string, error) {
+		query := `SELECT bookmarkid FROM bookmark WHERE cmdstr = ?`
+		bmIds := tx.SelectStrings(query, cmdStr)
+		return bmIds, nil
+	})
+}
+
 // ignores OrderIdx field
 func InsertBookmark(ctx context.Context, bm *BookmarkType) error {
 	if bm == nil || bm.BookmarkId == "" {
@@ -2144,14 +2130,6 @@ func InsertBookmark(ctx context.Context, bm *BookmarkType) error {
 			maxOrder := tx.GetInt(query, tag)
 			query = `INSERT INTO bookmark_order (tag, bookmarkid, orderidx) VALUES (?, ?, ?)`
 			tx.Exec(query, tag, bm.BookmarkId, maxOrder+1)
-		}
-		query = `INSERT INTO bookmark_cmd (bookmarkid, screenid, cmdid) VALUES (?, ?, ?)`
-		for _, ck := range bm.Cmds {
-			tx.Exec(query, bm.BookmarkId, ck.GetGroupId(), ck.GetCmdId())
-		}
-		query = `UPDATE line SET bookmarked = 1 WHERE screenid = ? AND cmdid = ?`
-		for _, ck := range bm.Cmds {
-			tx.Exec(query, ck.GetGroupId(), ck.GetCmdId())
 		}
 		return nil
 	})
@@ -2204,10 +2182,6 @@ func DeleteBookmark(ctx context.Context, bookmarkId string) error {
 		query = `DELETE FROM bookmark WHERE bookmarkid = ?`
 		tx.Exec(query, bookmarkId)
 		query = `DELETE FROM bookmark_order WHERE bookmarkid = ?`
-		tx.Exec(query, bookmarkId)
-		query = `UPDATE line SET bookmarked = 0 WHERE bookmarked AND cmdid <> '' AND (screenid||cmdid) IN (SELECT screenid||cmdid FROM bookmark_cmd WHERE bookmarkid = ?) `
-		tx.Exec(query, bookmarkId)
-		query = `DELETE FROM bookmark_cmd WHERE bookmarkid = ?`
 		tx.Exec(query, bookmarkId)
 		fixupBookmarkOrder(tx)
 		return nil
@@ -2342,4 +2316,48 @@ func PurgeHistoryByIds(ctx context.Context, historyIds []string) ([]*HistoryItem
 		}
 		return rtn, nil
 	})
+}
+
+func ScreenWebShareStart(ctx context.Context, screenId string, shareOpts ScreenWebShareOpts) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT screenid FROM screen WHERE screenid = ?`
+		if !tx.Exists(query, screenId) {
+			return fmt.Errorf("screen does not exist")
+		}
+		shareMode := tx.GetString(`SELECT sharemode FROM screen WHERE screenid = ?`, screenId)
+		if shareMode == ShareModeWeb {
+			return fmt.Errorf("screen is already shared to web")
+		}
+		if shareMode != ShareModeLocal {
+			return fmt.Errorf("screen cannot be shared, invalid current share mode %q (must be local)", shareMode)
+		}
+		query = `UPDATE screen SET sharemode = ?, webshareopts = ? WHERE screenid = ?`
+		tx.Exec(query, ShareModeWeb, quickJson(shareOpts), screenId)
+		query = `INSERT INTO screenupdates (screenid, lineid, updatetype, updatets)
+                 SELECT screenid, lineid, ?, ? FROM line WHERE screenid = ? ORDER BY linenum`
+		tx.Exec(query, UpdateType_LineNew, time.Now().UnixMilli(), screenId)
+		return nil
+	})
+}
+
+func ScreenWebShareStop(ctx context.Context, screenId string) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT screenid FROM screen WHERE screenid = ?`
+		if !tx.Exists(query, screenId) {
+			return fmt.Errorf("screen does not exist")
+		}
+		shareMode := tx.GetString(`SELECT sharemode FROM screen WHERE screenid = ?`, screenId)
+		if shareMode != ShareModeWeb {
+			return fmt.Errorf("screen is not currently shared to the web")
+		}
+		query = `UPDATE screen SET sharemode = ?, webshareopts = ? WHERE screenid = ?`
+		tx.Exec(query, ShareModeLocal, "null", screenId)
+		query = `DELETE FROM screenupdates WHERE screenid = ?`
+		tx.Exec(query, screenId)
+		return nil
+	})
+}
+
+func isWebShare(tx *TxWrap, screenId string) bool {
+	return tx.Exists(`SELECT screenid FROM screen WHERE screenid = ? AND sharemode = ?`, screenId, ShareModeWeb)
 }

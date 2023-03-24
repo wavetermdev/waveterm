@@ -209,3 +209,6 @@ func CreateCloudSession(ctx context.Context) error {
 	}
 	return nil
 }
+
+func NotifyUpdateWriter() {
+}

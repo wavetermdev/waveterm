@@ -128,12 +128,6 @@ CREATE TABLE cloud_update (
     updatetype varchar(50) NOT NULL,
     updatekeys json NOT NULL
 );
-CREATE TABLE IF NOT EXISTS "bookmark_cmd" (
-    bookmarkid varchar(36) NOT NULL,
-    screenid varchar(36) NOT NULL,
-    cmdid varchar(36) NOT NULL,
-    PRIMARY KEY (bookmarkid, screenid, cmdid)
-);
 CREATE TABLE cmd_migrate (
     sessionid varchar(36) NOT NULL,
     screenid varchar(36) NOT NULL,
@@ -155,7 +149,7 @@ CREATE TABLE IF NOT EXISTS "screen" (
     anchor json NOT NULL,
     focustype varchar(12) NOT NULL,
     archived boolean NOT NULL,
-    archivedts bigint NOT NULL,
+    archivedts bigint NOT NULL, webshareopts json NOT NULL DEFAULT 'null',
     PRIMARY KEY (screenid)
 );
 CREATE TABLE IF NOT EXISTS "line" (
@@ -174,7 +168,6 @@ CREATE TABLE IF NOT EXISTS "line" (
     star int NOT NULL,
     archived boolean NOT NULL,
     renderer varchar(50) NOT NULL,
-    bookmarked boolean NOT NULL,
     PRIMARY KEY (screenid, lineid)
 );
 CREATE TABLE IF NOT EXISTS "cmd" (
@@ -198,4 +191,11 @@ CREATE TABLE IF NOT EXISTS "cmd" (
     rtnbasehash varchar(36) NOT NULL,
     rtndiffhasharr json NOT NULL,
     PRIMARY KEY (screenid, cmdid)
+);
+CREATE TABLE screenupdates (
+    updateid integer PRIMARY KEY,
+    screenid varchar(36) NOT NULL,
+    lineid varchar(36) NOT NULL,
+    updatetype varchar(50) NOT NULL,
+    updatets bigint NOT NULL
 );
