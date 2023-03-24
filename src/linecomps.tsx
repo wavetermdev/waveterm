@@ -527,13 +527,8 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
                     <div key="pin" title="Pin" className={cn("line-icon", {"active": line.pinned})} onClick={this.clickPin} style={{display: "none"}}>
                         <i className="fa-sharp fa-solid fa-thumbtack"/>
                     </div>
-                    <div key="bookmark" title="Bookmark" className={cn("line-icon", "line-bookmark", {"active": line.bookmarked})} onClick={this.clickBookmark}>
-                        <If condition={!line.bookmarked}>
-                            <i className="fa-sharp fa-regular fa-bookmark"/>
-                        </If>
-                        <If condition={line.bookmarked}>
-                            <i className="fa-sharp fa-solid fa-bookmark"/>
-                        </If>
+                    <div key="bookmark" title="Bookmark" className={cn("line-icon", "line-bookmark")} onClick={this.clickBookmark}>
+                        <i className="fa-sharp fa-regular fa-bookmark"/>
                     </div>
                 </div>
                 <If condition={rendererPlugin == null && !isNoneRenderer}>

@@ -109,6 +109,14 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
                     <div className="inner-content">
                         <div className="settings-field">
                             <div className="settings-label">
+                                Screen Id
+                            </div>
+                            <div className="settings-input">
+                                {screen.screenId}
+                            </div>
+                        </div>
+                        <div className="settings-field">
+                            <div className="settings-label">
                                 Name
                             </div>
                             <div className="settings-input">

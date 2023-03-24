@@ -1,7 +1,7 @@
 import * as React from "react";
 import * as mobx from "mobx";
 
-type ShareModeType = "local" | "private" | "view" | "shared";
+type ShareModeType = "local" | "web";
 type FocusTypeStrs = "input"|"cmd"|"cmd-fg";
 type HistoryTypeStrs = "global" | "session" | "screen";
 
@@ -37,7 +37,6 @@ type LineType = {
     contentheight? : number,
     star? : number,
     archived? : boolean,
-    bookmarked? : boolean,
     pinned? : boolean,
     ephemeral? : boolean,
     remove? : boolean,
@@ -48,11 +47,18 @@ type ScreenOptsType = {
     pterm? : string,
 }
 
+type WebShareOpts = {
+    sharename : string,
+    viewkey : string,
+};
+
 type ScreenDataType = {
     sessionid : string,
     screenid : string,
     screenidx : number,
     name : string,
+    sharemode : ShareModeType,
+    webshareopts? : WebShareOpts,
     archived? : boolean,
     screenopts : ScreenOptsType,
     curremote : RemotePtrType,
@@ -262,6 +268,7 @@ type ModelUpdateType = {
     connect? : boolean,
     mainview? : string,
     bookmarks? : BookmarkType[],
+    selectedbookmark? : string,
     clientdata? : ClientDataType,
     historyviewdata? : HistoryViewDataType,
 };

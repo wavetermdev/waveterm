@@ -2102,16 +2102,18 @@ class BookmarksModel {
     tempDesc : OV<string> = mobx.observable.box("", {name: "bookmarkEdit-tempDesc"});
     tempCmd : OV<string> = mobx.observable.box("", {name: "bookmarkEdit-tempCmd"});
 
-    showBookmarksView(bmArr : BookmarkType[]) : void {
+    showBookmarksView(bmArr : BookmarkType[], selectedBookmarkId : string) : void {
         bmArr = bmArr ?? [];
         mobx.action(() => {
             this.reset();
             GlobalModel.activeMainView.set("bookmarks");
             this.bookmarks.replace(bmArr);
-            if (bmArr.length > 0) {
+            if (selectedBookmarkId != null) {
+                this.selectBookmark(selectedBookmarkId);
+            }
+            if (this.activeBookmark.get() == null && bmArr.length > 0) {
                 this.activeBookmark.set(bmArr[0].bookmarkid);
             }
-            
         })();
     }
 
@@ -2788,7 +2790,7 @@ class Model {
         }
         if ("mainview" in update) {
             if (update.mainview == "bookmarks") {
-                this.bookmarksModel.showBookmarksView(update.bookmarks);
+                this.bookmarksModel.showBookmarksView(update.bookmarks, update.selectedbookmark);
             }
             else if (update.mainview == "session") {
                 this.activeMainView.set("session");
