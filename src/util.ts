@@ -74,6 +74,10 @@ function genMergeSimpleData<T extends ISimpleDataType>(objs : mobx.IObservableAr
     }
     for (let i=0; i<dataArr.length; i++) {
         let dataItem = dataArr[i];
+        if (dataItem == null) {
+            console.log("genMergeSimpleData, null item");
+            console.trace();
+        }
         let id = idFn(dataItem);
         if (dataItem.remove) {
             delete objMap[id];
@@ -113,6 +117,11 @@ function genMergeData<ObjType extends IObjType<DataType>, DataType extends IData
     }
     for (let i=0; i<dataArr.length; i++) {
         let dataItem = dataArr[i];
+        if (dataItem == null) {
+            console.log("genMergeData, null item");
+            console.trace();
+            continue;
+        }
         let id = dataIdFn(dataItem);
         let obj = objMap[id];
         if (dataItem.remove) {
@@ -156,6 +165,11 @@ function genMergeDataMap<ObjType extends IObjType<DataType>, DataType extends ID
     }
     for (let i=0; i<dataArr.length; i++) {
         let dataItem = dataArr[i];
+        if (dataItem == null) {
+            console.log("genMergeDataMap, null item");
+            console.trace();
+            continue;
+        }
         let id = dataIdFn(dataItem);
         let obj = objMap.get(id);
         if (dataItem.remove) {

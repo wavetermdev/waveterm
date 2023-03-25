@@ -310,8 +310,7 @@ class Screen {
     lastRows : number;
     selectedLine : OV<number>;
     focusType : OV<FocusTypeStrs>;
-    anchorLine : number = null;
-    anchorOffset : number = 0;
+    anchor : OV<{anchorLine : number, anchorOffset : number}>;
     termLineNumFocus : OV<number>;
     setAnchor_debounced : (anchorLine : number, anchorOffset : number) => void;
     terminals : Record<string, TermWrap> = {};        // cmdid => TermWrap
@@ -328,7 +327,7 @@ class Screen {
         this.selectedLine = mobx.observable.box(sdata.selectedline == 0 ? null : sdata.selectedline, {name: "selectedLine"});
         this.setAnchor_debounced = debounce(1000, this.setAnchor.bind(this));
         if (sdata.selectedline != 0) {
-            this.setAnchorFields(sdata.selectedline, 0, "init");
+            this.anchor = mobx.observable.box({anchorLine: sdata.selectedline, anchorOffset: 0}, {name: "screen-anchor"});
         }
         this.termLineNumFocus = mobx.observable.box(0, {name: "termLineNumFocus"});
         this.curRemote = mobx.observable.box(sdata.curremote, {name: "screen-curRemote"});
@@ -368,10 +367,11 @@ class Screen {
     }
 
     getAnchorStr() : string {
-        if (this.anchorLine == null || this.anchorLine == 0) {
+        let anchor = this.anchor.get();
+        if (anchor.anchorLine == null || anchor.anchorLine == 0) {
             return "0";
         }
-        return sprintf("%d:%d", this.anchorLine, this.anchorOffset);
+        return sprintf("%d:%d", anchor.anchorLine, anchor.anchorOffset);
     }
 
     getTabColor() : string {
@@ -393,8 +393,9 @@ class Screen {
     }
 
     setAnchorFields(anchorLine : number, anchorOffset : number, reason : string) {
-        this.anchorLine = anchorLine;
-        this.anchorOffset = anchorOffset;
+        mobx.action(() => {
+            this.anchor.set({anchorLine: anchorLine, anchorOffset: anchorOffset});
+        })();
         // console.log("set-anchor-fields", anchorLine, anchorOffset, reason);
     }
 
@@ -435,6 +436,14 @@ class Screen {
         GlobalCommandRunner.screenSetAnchor(this.sessionId, this.screenId, setVal);
     }
 
+    getAnchor() : {anchorLine : number, anchorOffset : number} {
+        let anchor = this.anchor.get();
+        if (anchor.anchorLine == null || anchor.anchorLine == 0) {
+            return {anchorLine: this.selectedLine.get(), anchorOffset: 0};
+        }
+        return anchor;
+    }
+
     getMaxLineNum() : number {
         let win = this.getScreenLines();
         if (win == null) {
@@ -465,19 +474,6 @@ class Screen {
             }
         }
         return null;
-    }
-
-    isLastLine(lineNum : number) : boolean {
-        let win = this.getScreenLines();
-        if (win == null) {
-            return false;
-        }
-        let lines = win.lines;
-        if (lines == null || lines.length == 0) {
-            return false;
-        }
-        let lastLine = lines[lines.length-1];
-        return (lastLine.linenum == lineNum);
     }
 
     getPresentLineNum(lineNum : number) : number {
@@ -2708,7 +2704,13 @@ class Model {
     runUpdate(genUpdate : UpdateMessage, interactive : boolean) {
         mobx.action(() => {
             let oldContext = this.getUIContext();
-            this.runUpdate_internal(genUpdate, oldContext, interactive);
+            try {
+                this.runUpdate_internal(genUpdate, oldContext, interactive);
+            }
+            catch (e) {
+                console.log("error running update", e, genUpdate);
+                throw e;
+            }
             let newContext = this.getUIContext()
             if (oldContext.sessionid != newContext.sessionid
                 || oldContext.screenid != newContext.screenid) {

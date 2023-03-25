@@ -12,7 +12,7 @@ import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType
 import type * as T from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {GlobalModel, GlobalCommandRunner, Session, Cmd, ScreenLines, Screen, riToRPtr, windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols, TabColors, RemoteColors} from "./model";
-import {isModKeyPress} from "./util";
+import {isModKeyPress, boundInt} from "./util";
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {BookmarksView} from "./bookmarks";
@@ -1688,8 +1688,8 @@ class LinesView extends React.Component<{sessionId : string, screen : Screen, wi
     lastOffsetHeight : number = 0;
     lastOffsetWidth : number = 0;
     ignoreNextScroll : boolean = false;
-    visibleMap : Map<string, OV<boolean>>;  // lineid => OV<vis>
-    collapsedMap : Map<string, OV<boolean>>;  // lineid => OV<collapsed>
+    visibleMap : Map<string, OV<boolean>>;  // linenum => OV<vis>
+    collapsedMap : Map<string, OV<boolean>>;  // linenum => OV<collapsed>
     lastLinesLength : number = 0;
     lastSelectedLine : number = 0;
 
@@ -1788,9 +1788,11 @@ class LinesView extends React.Component<{sessionId : string, screen : Screen, wi
                 isVis = true
             }
             // console.log("line", lineElem.dataset.linenum, "top=" + lineTop, "bot=" + lineTop, isVis);
+            let lineNumInt = parseInt(lineElem.dataset.linenum);
             newMap.set(lineElem.dataset.linenum, isVis);
             // console.log("setvis", sprintf("%4d %4d-%4d (%4d) %s", lineElem.dataset.linenum, lineTop, lineBot, lineElem.offsetHeight, isVis));
         }
+        // console.log("compute vismap", "[" + this.firstVisLine + "," + this.lastVisLine + "]");
         mobx.action(() => {
             for (let [k, v] of newMap) {
                 let oldVal = this.visibleMap.get(k);
@@ -1824,31 +1826,29 @@ class LinesView extends React.Component<{sessionId : string, screen : Screen, wi
     }
 
     restoreAnchorOffset(reason : string) : void {
-        let {screen} = this.props;
+        let {lines} = this.props;
         let linesElem = this.linesRef.current;
         if (linesElem == null) {
             return;
         }
-        if (screen.anchorLine == null || screen.anchorLine == 0) {
-            return;
-        }
-        let anchorElem = linesElem.querySelector(sprintf(".line[data-linenum=\"%d\"]", screen.anchorLine));
+        let anchor = this.getAnchor();
+        let anchorElem = linesElem.querySelector(sprintf(".line[data-linenum=\"%d\"]", anchor.anchorLine));
         if (anchorElem == null) {
             return;
         }
-        let isLastLine = screen.isLastLine(screen.anchorLine);
+        let isLastLine = (anchor.anchorIndex == lines.length-1);
         let scrollTop = linesElem.scrollTop;
         let height = linesElem.clientHeight;
         let containerBottom = scrollTop + height;
         let curAnchorOffset = containerBottom - (anchorElem.offsetTop + anchorElem.offsetHeight);
-        let newAnchorOffset = screen.anchorOffset;
+        let newAnchorOffset = anchor.anchorOffset;
         if (isLastLine && newAnchorOffset == 0) {
             newAnchorOffset = 10;
         }
         if (curAnchorOffset != newAnchorOffset) {
             let offsetDiff = curAnchorOffset - newAnchorOffset;
             let newScrollTop = scrollTop - offsetDiff;
-            // console.log("update scrolltop", reason, "line=" + screen.anchorLine, -offsetDiff, linesElem.scrollTop, "=>", newScrollTop);
+            // console.log("update scrolltop", reason, "line=" + anchor.anchorLine, -offsetDiff, linesElem.scrollTop, "=>", newScrollTop);
             linesElem.scrollTop = newScrollTop;
             this.ignoreNextScroll = true;
         }
@@ -1857,11 +1857,10 @@ class LinesView extends React.Component<{sessionId : string, screen : Screen, wi
     componentDidMount() : void {
         let {screen, lines} = this.props;
         let linesElem = this.linesRef.current;
-        let anchorLineObj = screen.getLineByNum(screen.anchorLine);
-        if (anchorLineObj == null) {
-            // scroll to bottom
+        let anchor = this.getAnchor();
+        if (anchor.anchorIndex == lines.length-1) {
             if (linesElem != null) {
-                linesElem.scrollTop = linesElem.clientHeight;
+                linesElem.scrollTop = linesElem.scrollHeight;
             }
             this.computeAnchorLine();
         }
@@ -1870,7 +1869,6 @@ class LinesView extends React.Component<{sessionId : string, screen : Screen, wi
         }
         this.lastSelectedLine = screen.getSelectedLine();
         this.lastLinesLength = lines.length;
-
         if (linesElem != null) {
             this.lastOffsetHeight = linesElem.offsetHeight;
             this.lastOffsetWidth = linesElem.offsetWidth;
@@ -1937,24 +1935,29 @@ class LinesView extends React.Component<{sessionId : string, screen : Screen, wi
         if (newLine == 0) {
             return;
         }
+        let lidx = this.findClosestLineIndex(newLine);
         this.setLineVisible(newLine, true);
         // console.log("update selected line", this.lastSelectedLine, "=>", newLine, sprintf("anchor=%d:%d", screen.anchorLine, screen.anchorOffset));
         let viewInfo = this.getLineViewInfo(newLine);
+        let isFirst = (lidx.index == 0);
+        let isLast = (lidx.index == lines.length-1);
+        let offsetDelta = (isLast ? 10 : (isFirst ? -10 : 0));
         if (viewInfo == null) {
-            return;
+            screen.setAnchorFields(newLine, 0+offsetDelta, "updateSelectedLine");
         }
-        screen.setAnchorFields(newLine, viewInfo.anchorOffset, "updateSelectedLine");
-        let isFirst = (newLine == lines[0].linenum);
-        let isLast = (newLine == lines[lines.length-1].linenum);
-        if (viewInfo.botOffset > 0) {
-            linesElem.scrollTop = linesElem.scrollTop + viewInfo.botOffset + (isLast ? 10 : 0);
+        else if (viewInfo.botOffset > 0) {
+            linesElem.scrollTop = linesElem.scrollTop + viewInfo.botOffset + offsetDelta;
             this.ignoreNextScroll = true;
-            screen.anchorOffset = (isLast ? 10 : 0);
+            screen.setAnchorFields(newLine, offsetDelta, "updateSelectedLine");
         }
         else if (viewInfo.topOffset < 0) {
-            linesElem.scrollTop = linesElem.scrollTop + viewInfo.topOffset + (isFirst ? -10 : 0);
+            linesElem.scrollTop = linesElem.scrollTop + viewInfo.topOffset + offsetDelta;
             this.ignoreNextScroll = true;
-            screen.anchorOffset = linesElem.clientHeight - viewInfo.height;
+            let newOffset = linesElem.clientHeight - viewInfo.height;
+            screen.setAnchorFields(newLine, newOffset, "updateSelectedLine");
+        }
+        else {
+            screen.setAnchorFields(newLine, viewInfo.anchorOffset, "updateSelectedLine");
         }
         // console.log("new anchor", screen.getAnchorStr());
     }
@@ -2008,6 +2011,9 @@ class LinesView extends React.Component<{sessionId : string, screen : Screen, wi
 
     @boundMethod
     onHeightChange(lineNum : number, newHeight : number, oldHeight : number) : void {
+        if (oldHeight == null) {
+            return;
+        }
         // console.log("height-change", lineNum, oldHeight, "=>", newHeight);
         this.restoreAnchorOffset("height-change");
         this.computeVisibleMap_debounced();
@@ -2032,6 +2038,38 @@ class LinesView extends React.Component<{sessionId : string, screen : Screen, wi
         let prevLineFormat = dayjs(prevLineDate).format("YYYY-MM-DD");
         return null;
     }
+
+    findClosestLineIndex(lineNum : number) : {line : LineType, index : number} {
+        let {lines} = this.props;
+        if (lines.length == 0) {
+            throw new Error("invalid lines, cannot have 0 length in LinesView");
+        }
+        if (lineNum == null || lineNum == 0) {
+            return {line: lines[lines.length-1], index: lines.length-1};
+        }
+        // todo: bsearch
+        // lines is sorted by linenum
+        for (let idx=0; idx<lines.length; idx++) {
+            let line = lines[idx];
+            if (line.linenum >= lineNum) {
+                return {line: line, index: idx};
+            }
+        }
+        return {line: lines[lines.length-1], index: lines.length-1};
+    }
+
+    getAnchor() : {anchorLine : number, anchorOffset : number, anchorIndex : number} {
+        let {screen, lines} = this.props;
+        let anchor = screen.getAnchor();
+        if (anchor.anchorLine == null || anchor.anchorLine == 0) {
+            return {anchorLine: lines[lines.length-1].linenum, anchorOffset: 0, anchorIndex: lines.length-1};
+        }
+        let lidx = this.findClosestLineIndex(anchor.anchorLine);
+        if (lidx.line.linenum == anchor.anchorLine) {
+            return {anchorLine: anchor.anchorLine, anchorOffset: anchor.anchorOffset, anchorIndex: lidx.index};
+        }
+        return {anchorLine: lidx.line.linenum, anchorOffset: 0, anchorIndex: lidx.index};
+    }
     
     render() {
         let {screen, width, lines, renderMode} = this.props;
@@ -2052,7 +2090,11 @@ class LinesView extends React.Component<{sessionId : string, screen : Screen, wi
         let todayStr = getTodayStr();
         let yesterdayStr = getYesterdayStr();
         let prevDateStr : string = null;
-        for (let idx=0; idx<lines.length; idx++) {
+        let anchor = this.getAnchor();
+        let startIdx = boundInt(anchor.anchorIndex-50, 0, lines.length-1);
+        let endIdx = boundInt(anchor.anchorIndex+50, 0, lines.length-1);
+        // console.log("render", anchor, "[" + startIdx + "," + endIdx + "]");
+        for (let idx=startIdx; idx<=endIdx; idx++) {
             let line = lines[idx];
             let lineNumStr = String(line.linenum);
             let dateSepStr = null;
