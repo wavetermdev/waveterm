@@ -2,6 +2,7 @@ package sstore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -790,6 +791,9 @@ INSERT INTO cmd  ( screenid, cmdid, remoteownerid, remoteid, remotename, cmdstr,
 `
 			tx.NamedExec(query, cmdMap)
 		}
+		if isWebShare(tx, line.ScreenId) {
+			insertScreenUpdate(tx, line.ScreenId, line.LineId, UpdateType_LineNew)
+		}
 		return nil
 	})
 }
@@ -814,14 +818,19 @@ func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, doneInfo *CmdDon
 	if ck.IsEmpty() {
 		return nil, fmt.Errorf("cannot update cmddoneinfo, empty ck")
 	}
+	screenId := ck.GetGroupId()
 	var rtnCmd *CmdType
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `UPDATE cmd SET status = ?, doneinfo = ? WHERE screenid = ? AND cmdid = ?`
-		tx.Exec(query, CmdStatusDone, quickJson(doneInfo), ck.GetGroupId(), ck.GetCmdId())
+		tx.Exec(query, CmdStatusDone, quickJson(doneInfo), screenId, ck.GetCmdId())
 		var err error
-		rtnCmd, err = GetCmdByScreenId(tx.Context(), ck.GetGroupId(), ck.GetCmdId())
+		rtnCmd, err = GetCmdByScreenId(tx.Context(), screenId, ck.GetCmdId())
 		if err != nil {
 			return err
+		}
+		if isWebShare(tx, screenId) {
+			insertScreenUpdateByCmdId(tx, screenId, ck.GetCmdId(), UpdateType_CmdDoneInfo)
+			insertScreenUpdateByCmdId(tx, screenId, ck.GetCmdId(), UpdateType_CmdStatus)
 		}
 		return nil
 	})
@@ -838,9 +847,13 @@ func UpdateCmdRtnState(ctx context.Context, ck base.CommandKey, statePtr ShellSt
 	if ck.IsEmpty() {
 		return fmt.Errorf("cannot update cmdrtnstate, empty ck")
 	}
+	screenId := ck.GetGroupId()
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `UPDATE cmd SET rtnbasehash = ?, rtndiffhasharr = ? WHERE screenid = ? AND cmdid = ?`
-		tx.Exec(query, statePtr.BaseHash, quickJsonArr(statePtr.DiffHashArr), ck.GetGroupId(), ck.GetCmdId())
+		tx.Exec(query, statePtr.BaseHash, quickJsonArr(statePtr.DiffHashArr), screenId, ck.GetCmdId())
+		if isWebShare(tx, screenId) {
+			insertScreenUpdateByCmdId(tx, screenId, ck.GetCmdId(), UpdateType_CmdRtnState)
+		}
 		return nil
 	})
 	if txErr != nil {
@@ -853,9 +866,13 @@ func AppendCmdErrorPk(ctx context.Context, errPk *packet.CmdErrorPacketType) err
 	if errPk == nil || errPk.CK.IsEmpty() {
 		return fmt.Errorf("invalid cmderror packet (no ck)")
 	}
+	screenId := errPk.CK.GetGroupId()
 	return WithTx(ctx, func(tx *TxWrap) error {
 		query := `UPDATE cmd SET runout = json_insert(runout, '$[#]', ?) WHERE screenid = ? AND cmdid = ?`
-		tx.Exec(query, quickJson(errPk), errPk.CK.GetGroupId(), errPk.CK.GetCmdId())
+		tx.Exec(query, quickJson(errPk), screenId, errPk.CK.GetCmdId())
+		if isWebShare(tx, screenId) {
+			insertScreenUpdateByCmdId(tx, screenId, errPk.CK.GetCmdId(), UpdateType_CmdRunOut)
+		}
 		return nil
 	})
 }
@@ -1816,10 +1833,13 @@ func UpdateLineHeight(ctx context.Context, lineId string, heightVal int) error {
 	return nil
 }
 
-func UpdateLineRenderer(ctx context.Context, lineId string, renderer string) error {
+func UpdateLineRenderer(ctx context.Context, screenId string, lineId string, renderer string) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		query := `UPDATE line SET renderer = ? WHERE lineid = ?`
 		tx.Exec(query, renderer, lineId)
+		if isWebShare(tx, screenId) {
+			insertScreenUpdate(tx, screenId, lineId, UpdateType_LineRenderer)
+		}
 		return nil
 	})
 }
@@ -1842,10 +1862,13 @@ func GetLineById(ctx context.Context, screenId string, lineId string) (*LineType
 	return rtn, nil
 }
 
-func SetLineArchivedById(ctx context.Context, lineId string, archived bool) error {
+func SetLineArchivedById(ctx context.Context, screenId string, lineId string, archived bool) error {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `UPDATE line SET archived = ? WHERE lineid = ?`
 		tx.Exec(query, archived, lineId)
+		if isWebShare(tx, screenId) {
+			insertScreenUpdate(tx, screenId, lineId, UpdateType_LineArchived)
+		}
 		return nil
 	})
 	return txErr
@@ -1862,6 +1885,7 @@ func purgeCmdByScreenId(ctx context.Context, screenId string, cmdId string) erro
 
 func PurgeLinesByIds(ctx context.Context, screenId string, lineIds []string) error {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		isWS := isWebShare(tx, screenId)
 		for _, lineId := range lineIds {
 			query := `SELECT cmdid FROM line WHERE screenid = ? AND lineid = ?`
 			cmdId := tx.GetString(query, screenId, lineId)
@@ -1874,6 +1898,9 @@ func PurgeLinesByIds(ctx context.Context, screenId string, lineIds []string) err
 				if err != nil {
 					return err
 				}
+			}
+			if isWS {
+				insertScreenUpdate(tx, screenId, lineId, UpdateType_LineDel)
 			}
 		}
 		return nil
@@ -2333,7 +2360,7 @@ func ScreenWebShareStart(ctx context.Context, screenId string, shareOpts ScreenW
 		}
 		query = `UPDATE screen SET sharemode = ?, webshareopts = ? WHERE screenid = ?`
 		tx.Exec(query, ShareModeWeb, quickJson(shareOpts), screenId)
-		query = `INSERT INTO screenupdates (screenid, lineid, updatetype, updatets)
+		query = `INSERT INTO screenupdate (screenid, lineid, updatetype, updatets)
                  SELECT screenid, lineid, ?, ? FROM line WHERE screenid = ? ORDER BY linenum`
 		tx.Exec(query, UpdateType_LineNew, time.Now().UnixMilli(), screenId)
 		return nil
@@ -2352,7 +2379,7 @@ func ScreenWebShareStop(ctx context.Context, screenId string) error {
 		}
 		query = `UPDATE screen SET sharemode = ?, webshareopts = ? WHERE screenid = ?`
 		tx.Exec(query, ShareModeLocal, "null", screenId)
-		query = `DELETE FROM screenupdates WHERE screenid = ?`
+		query = `DELETE FROM screenupdate WHERE screenid = ?`
 		tx.Exec(query, screenId)
 		return nil
 	})
@@ -2360,4 +2387,33 @@ func ScreenWebShareStop(ctx context.Context, screenId string) error {
 
 func isWebShare(tx *TxWrap, screenId string) bool {
 	return tx.Exists(`SELECT screenid FROM screen WHERE screenid = ? AND sharemode = ?`, screenId, ShareModeWeb)
+}
+
+func insertScreenUpdate(tx *TxWrap, screenId string, lineId string, updateType string) {
+	if screenId == "" {
+		tx.SetErr(errors.New("invalid screen-update, screenid is empty"))
+		return
+	}
+	if lineId == "" {
+		tx.SetErr(errors.New("invalid screen-update, lineid is empty"))
+		return
+	}
+	query := `INSERT INTO screenupdate (screenid, lineid, updatetype, updatets) VALUES (?, ?, ?, ?)`
+	tx.Exec(query, screenId, lineId, updateType, time.Now().UnixMilli())
+}
+
+func insertScreenUpdateByCmdId(tx *TxWrap, screenId string, cmdId string, updateType string) {
+	if screenId == "" {
+		tx.SetErr(errors.New("invalid screen-update, screenid is empty"))
+		return
+	}
+	if cmdId == "" {
+		tx.SetErr(errors.New("invalid screen-update, cmdid is empty"))
+		return
+	}
+	query := `SELECT lineid FROM line WHERE screenid = ? AND cmdid = ?`
+	lineId := tx.GetString(query, screenId, cmdId)
+	if lineId != "" {
+		insertScreenUpdate(tx, screenId, lineId, updateType)
+	}
 }

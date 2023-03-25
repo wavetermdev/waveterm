@@ -2224,7 +2224,7 @@ func LineSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		if err = validateRenderer(renderer); err != nil {
 			return nil, fmt.Errorf("invalid renderer value: %w", err)
 		}
-		err = sstore.UpdateLineRenderer(ctx, lineId, renderer)
+		err = sstore.UpdateLineRenderer(ctx, ids.ScreenId, lineId, renderer)
 		if err != nil {
 			return nil, fmt.Errorf("error changing line renderer: %v", err)
 		}
@@ -2489,7 +2489,7 @@ func LineArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if len(pk.Args) >= 2 {
 		shouldArchive = resolveBool(pk.Args[1], true)
 	}
-	err = sstore.SetLineArchivedById(ctx, lineId, shouldArchive)
+	err = sstore.SetLineArchivedById(ctx, ids.ScreenId, lineId, shouldArchive)
 	if err != nil {
 		return nil, fmt.Errorf("/line:archive error updating hidden status: %v", err)
 	}

@@ -1,4 +1,4 @@
-CREATE TABLE screenupdates (
+CREATE TABLE screenupdate (
     updateid integer PRIMARY KEY,
     screenid varchar(36) NOT NULL,
     lineid varchar(36) NOT NULL,
