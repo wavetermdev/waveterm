@@ -1510,7 +1510,9 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 		msh.WriteToPtyBuffer("*error trying to update cmd-fg screens: %v\n", err)
 		// fall-through (nothing to do)
 	}
-	update.Screens = []*sstore.ScreenType{screen}
+	if screen != nil {
+		update.Screens = []*sstore.ScreenType{screen}
+	}
 	rct := msh.GetRunningCmd(donePk.CK)
 	var statePtr *sstore.ShellStatePtr
 	if donePk.FinalState != nil && rct != nil {
