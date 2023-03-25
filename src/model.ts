@@ -5,7 +5,7 @@ import {debounce} from "throttle-debounce";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeDataMap, genMergeSimpleData, boundInt, isModKeyPress} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType, HistoryViewDataType, AlertMessageType, HistorySearchParams, FocusTypeStrs, ScreenLinesType, HistoryTypeStrs, RendererPluginType, WindowSize, ClientMigrationInfo} from "./types";
+import type {SessionDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType, HistoryViewDataType, AlertMessageType, HistorySearchParams, FocusTypeStrs, ScreenLinesType, HistoryTypeStrs, RendererPluginType, WindowSize, ClientMigrationInfo, WebShareOpts} from "./types";
 import {WSControl} from "./ws";
 import {measureText, getMonoFontSize} from "./textmeasure";
 import dayjs from "dayjs";
@@ -315,6 +315,8 @@ class Screen {
     setAnchor_debounced : (anchorLine : number, anchorOffset : number) => void;
     terminals : Record<string, TermWrap> = {};        // cmdid => TermWrap
     renderers : Record<string, RendererModel> = {};  // cmdid => RendererModel
+    shareMode : OV<string>;
+    webShareOpts : OV<WebShareOpts>;
     
     constructor(sdata : ScreenDataType) {
         this.sessionId = sdata.sessionid;
@@ -331,9 +333,15 @@ class Screen {
         }
         this.termLineNumFocus = mobx.observable.box(0, {name: "termLineNumFocus"});
         this.curRemote = mobx.observable.box(sdata.curremote, {name: "screen-curRemote"});
+        this.shareMode = mobx.observable.box(sdata.sharemode, {name: "screen-shareMode"});
+        this.webShareOpts = mobx.observable.box(sdata.webshareopts, {name: "screen-webShareOpts"});
     }
 
     dispose() {
+    }
+
+    isWebShare() : boolean {
+        return this.shareMode.get() == "web";
     }
 
     mergeData(data : ScreenDataType) {
@@ -350,6 +358,8 @@ class Screen {
             this.selectedLine.set(data.selectedline);
             this.focusType.set(data.focustype);
             this.refocusLine(data, oldFocusType, oldSelectedLine);
+            this.shareMode.set(data.sharemode);
+            this.webShareOpts.set(data.webshreopts);
             // do not update anchorLine/anchorOffset (only stored)
         })();
     }
@@ -2252,7 +2262,7 @@ class BookmarksModel {
             mobx.action(() => {
                 this.copiedIndicator.set(null);
             })();
-        }, 600)
+        }, 600);
     }
 
     mergeBookmarks(bmArr : BookmarkType[]) : void {

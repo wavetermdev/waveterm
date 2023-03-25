@@ -47,6 +47,10 @@ function isBlank(s : string) : boolean {
     return (s == null || s == "");
 }
 
+function makeExternLink(url : string) : string {
+    return "https://extern?" + encodeURIComponent(url);
+}
+
 function getTodayStr() : string {
     return getDateStr(new Date());
 }
@@ -2131,6 +2135,7 @@ class ScreenWindowView extends React.Component<{screen : Screen}, {}> {
     setSize_debounced : (width : number, height : number) => void;
 
     renderMode : OV<RenderModeType> = mobx.observable.box("normal", {name: "renderMode"});
+    shareCopied : OV<boolean> = mobx.observable.box(false, {name: "sw-shareCopied"});
 
     constructor(props : any) {
         super(props);
@@ -2217,6 +2222,19 @@ class ScreenWindowView extends React.Component<{screen : Screen}, {}> {
         );
     }
 
+    @boundMethod
+    copyShareLink() : void {
+        console.log("copy-share-link");
+        mobx.action(() => {
+            this.shareCopied.set(true);
+        })();
+        setTimeout(() => {
+            mobx.action(() => {
+                this.shareCopied.set(false);
+            })();
+        }, 600)
+    }
+
     render() {
         let {screen} = this.props;
         let win = this.getScreenLines();
@@ -2252,6 +2270,15 @@ class ScreenWindowView extends React.Component<{screen : Screen}, {}> {
                         </If>
                     </div>
                 </div>
+                <If condition={screen.isWebShare()}>
+                    <div key="share-tag" className="share-tag">
+                        <If condition={this.shareCopied.get()}>
+                            <div className="copied-indicator"/>
+                        </If>
+                        <div><i title="archived" className="fa-sharp fa-solid fa-share-nodes"/> web shared</div>
+                        <div className="share-tag-link"><a target="_blank" href={makeExternLink("https://www.google.com")}>https://share.getprompt.dev/s/a8sls-x8s88-x82ls?viewkey=77s8xkk7s</a> <i onClick={this.copyShareLink} title="copy link" className="fa-sharp fa-solid fa-copy"/></div>
+                    </div>
+                </If>
                 <If condition={lines.length > 0}>
                     <LinesView sessionId={screen.sessionId} screen={screen} width={this.width.get()} lines={lines} renderMode={renderMode}/>
                 </If>
@@ -2392,7 +2419,9 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
                 <div className={cn("screen-tabs", {"scrolling": this.scrolling.get()})} ref={this.tabsRef} onScroll={this.handleScroll}>
                     <For each="screen" index="index" of={showingScreens}>
                         <div key={screen.screenId} data-screenid={screen.screenId} className={cn("screen-tab", {"is-active": activeScreenId == screen.screenId, "is-archived": screen.archived.get()}, "color-" + screen.getTabColor())} onClick={() => this.handleSwitchScreen(screen.screenId)} onContextMenu={(event) => this.openScreenSettings(event, screen)}>
-                            <If condition={screen.archived.get()}><i title="archived" className="fa-sharp fa-solid fa-box-archive"/></If>{screen.name.get()}
+                            <If condition={screen.archived.get()}><i title="archived" className="fa-sharp fa-solid fa-box-archive"/></If>
+                            <If condition={screen.isWebShare()}><i title="archived" className="fa-sharp fa-solid fa-share-nodes web-share-icon"/></If>
+                            {screen.name.get()}
                             <If condition={index+1 <= 9}>
                                 <div className="tab-index">{renderCmdText(String(index+1))}</div>
                                 <div onClick={(e) => this.openScreenSettings(e, screen)} title="Settings" className="tab-gear"><i className="fa-sharp fa-solid fa-gear"/></div>
