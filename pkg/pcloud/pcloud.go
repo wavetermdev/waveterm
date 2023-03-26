@@ -22,10 +22,12 @@ const PCloudEndpoint = "https://api.getprompt.dev/central"
 const PCloudEndpointVarName = "PCLOUD_ENDPOINT"
 const APIVersion = 1
 const MaxPtyUpdateSize = (128 * 1024) + 1
+const MaxUpdatesPerReq = 10
 
 const TelemetryUrl = "/telemetry"
 const NoTelemetryUrl = "/no-telemetry"
 const CreateWebScreenUrl = "/auth/create-web-screen"
+const WebShareUpdateUrl = "/auth/web-share-update"
 
 type AuthInfo struct {
 	UserId   string `json:"userid"`
@@ -177,7 +179,7 @@ func defaultError(err error, estr string) error {
 	return errors.New(estr)
 }
 
-func makeWebScreenUpdate(ctx context.Context, update sstore.ScreenUpdateType) (*WebShareUpdateType, error) {
+func makeWebShareUpdate(ctx context.Context, update *sstore.ScreenUpdateType) (*WebShareUpdateType, error) {
 	rtn := &WebShareUpdateType{
 		ScreenId:   update.ScreenId,
 		LineId:     update.LineId,
@@ -286,7 +288,7 @@ func makeWebScreenUpdate(ctx context.Context, update sstore.ScreenUpdateType) (*
 	return rtn, nil
 }
 
-func finalizeWebScreenUpdate(ctx context.Context, screenUpdate sstore.ScreenUpdateType, webUpdate *WebShareUpdateType) error {
+func finalizeWebScreenUpdate(ctx context.Context, screenUpdate *sstore.ScreenUpdateType, webUpdate *WebShareUpdateType) error {
 	switch screenUpdate.UpdateType {
 	case sstore.UpdateType_PtyPos:
 		dataEof := len(webUpdate.PtyData.Data) < MaxPtyUpdateSize
@@ -312,7 +314,26 @@ func finalizeWebScreenUpdate(ctx context.Context, screenUpdate sstore.ScreenUpda
 	return nil
 }
 
-func DoWebScreenUpdate(ctx context.Context, update sstore.ScreenUpdateType) error {
+func DoWebScreenUpdates(ctx context.Context, authInfo AuthInfo, updateArr []*sstore.ScreenUpdateType) error {
+	var webUpdates []*WebShareUpdateType
+	for _, update := range updateArr {
+		webUpdate, err := makeWebShareUpdate(ctx, update)
+		if err != nil {
+			return fmt.Errorf("error create web-share update updateid:%d: %v", update.UpdateId, err)
+		}
+		if webUpdate == nil {
+			continue
+		}
+		webUpdates = append(webUpdates, webUpdate)
+	}
+	req, err := makeAuthPostReq(ctx, WebShareUpdateUrl, authInfo, webUpdates)
+	if err != nil {
+		return fmt.Errorf("cannot create auth-post-req for %s: %v", WebShareUpdateUrl, err)
+	}
+	_, err = doRequest(req, nil)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
