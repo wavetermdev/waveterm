@@ -16,7 +16,6 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/alessio/shellescape"
 	"github.com/google/uuid"
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
@@ -2949,94 +2948,6 @@ func formatTextTable(totalCols int, data [][]string, colMeta []ColMeta) []string
 		rtn = append(rtn, sval)
 	}
 	return rtn
-}
-
-const MaxDiffKeyLen = 40
-const MaxDiffValLen = 50
-
-func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newState packet.ShellState) {
-	if newState.Cwd != oldState.Cwd {
-		buf.WriteString(fmt.Sprintf("cwd %s\n", newState.Cwd))
-	}
-	if !bytes.Equal(newState.ShellVars, oldState.ShellVars) {
-		newEnvMap := shexec.DeclMapFromState(&newState)
-		oldEnvMap := shexec.DeclMapFromState(&oldState)
-		for key, newVal := range newEnvMap {
-			oldVal, found := oldEnvMap[key]
-			if !found || !shexec.DeclsEqual(false, oldVal, newVal) {
-				var exportStr string
-				if newVal.IsExport() {
-					exportStr = "export "
-				}
-				buf.WriteString(fmt.Sprintf("%s%s=%s\n", exportStr, utilfn.EllipsisStr(key, MaxDiffKeyLen), utilfn.EllipsisStr(newVal.Value, MaxDiffValLen)))
-			}
-		}
-		for key, _ := range oldEnvMap {
-			_, found := newEnvMap[key]
-			if !found {
-				buf.WriteString(fmt.Sprintf("unset %s\n", utilfn.EllipsisStr(key, MaxDiffKeyLen)))
-			}
-		}
-	}
-	if newState.Aliases != oldState.Aliases {
-		newAliasMap, _ := ParseAliases(newState.Aliases)
-		oldAliasMap, _ := ParseAliases(oldState.Aliases)
-		for aliasName, newAliasVal := range newAliasMap {
-			oldAliasVal, found := oldAliasMap[aliasName]
-			if !found || newAliasVal != oldAliasVal {
-				buf.WriteString(fmt.Sprintf("alias %s\n", utilfn.EllipsisStr(shellescape.Quote(aliasName), MaxDiffKeyLen)))
-			}
-		}
-		for aliasName, _ := range oldAliasMap {
-			_, found := newAliasMap[aliasName]
-			if !found {
-				buf.WriteString(fmt.Sprintf("unalias %s\n", utilfn.EllipsisStr(shellescape.Quote(aliasName), MaxDiffKeyLen)))
-			}
-		}
-	}
-	if newState.Funcs != oldState.Funcs {
-		newFuncMap, _ := ParseFuncs(newState.Funcs)
-		oldFuncMap, _ := ParseFuncs(oldState.Funcs)
-		for funcName, newFuncVal := range newFuncMap {
-			oldFuncVal, found := oldFuncMap[funcName]
-			if !found || newFuncVal != oldFuncVal {
-				buf.WriteString(fmt.Sprintf("function %s\n", utilfn.EllipsisStr(shellescape.Quote(funcName), MaxDiffKeyLen)))
-			}
-		}
-		for funcName, _ := range oldFuncMap {
-			_, found := newFuncMap[funcName]
-			if !found {
-				buf.WriteString(fmt.Sprintf("unset -f %s\n", utilfn.EllipsisStr(shellescape.Quote(funcName), MaxDiffKeyLen)))
-			}
-		}
-	}
-}
-
-func GetRtnStateDiff(ctx context.Context, screenId string, cmdId string) ([]byte, error) {
-	cmd, err := sstore.GetCmdByScreenId(ctx, screenId, cmdId)
-	if err != nil {
-		return nil, err
-	}
-	if cmd == nil {
-		return nil, nil
-	}
-	if !cmd.RtnState {
-		return nil, nil
-	}
-	if cmd.RtnStatePtr.IsEmpty() {
-		return nil, nil
-	}
-	var outputBytes bytes.Buffer
-	initialState, err := sstore.GetFullState(ctx, cmd.StatePtr)
-	if err != nil {
-		return nil, fmt.Errorf("getting initial full state: %v", err)
-	}
-	rtnState, err := sstore.GetFullState(ctx, cmd.RtnStatePtr)
-	if err != nil {
-		return nil, fmt.Errorf("getting rtn full state: %v", err)
-	}
-	displayStateUpdateDiff(&outputBytes, *initialState, *rtnState)
-	return outputBytes.Bytes(), nil
 }
 
 func isValidInScope(scopeName string, varName string) bool {

@@ -80,16 +80,17 @@ const (
 )
 
 const (
-	UpdateType_ScreenName      = "screen:sharename"
-	UpdateType_ScreenCurRemote = "screen:curremote"
-	UpdateType_LineNew         = "line:new"
-	UpdateType_LineDel         = "line:del"
-	UpdateType_LineArchived    = "line:archived"
-	UpdateType_LineRenderer    = "line:renderer"
-	UpdateType_CmdStatus       = "cmd:status"
-	UpdateType_CmdDoneInfo     = "cmd:doneinfo"
-	UpdateType_CmdRunOut       = "cmd:runout"
-	UpdateType_CmdRtnState     = "cmd:rtnstate"
+	UpdateType_ScreenNew    = "screen:new"
+	UpdateType_ScreenDel    = "screen:del"
+	UpdateType_ScreenName   = "screen:sharename"
+	UpdateType_LineNew      = "line:new"
+	UpdateType_LineDel      = "line:del"
+	UpdateType_LineArchived = "line:archived"
+	UpdateType_LineRenderer = "line:renderer"
+	UpdateType_CmdStatus    = "cmd:status"
+	UpdateType_CmdDoneInfo  = "cmd:doneinfo"
+	UpdateType_CmdRtnState  = "cmd:rtnstate"
+	UpdateType_PtyPos       = "pty:pos"
 )
 
 const MaxTzNameLen = 50
@@ -142,6 +143,11 @@ func CloseDB() {
 		log.Printf("[db] error closing database: %v\n", err)
 	}
 	globalDB = nil
+}
+
+type CmdPtr struct {
+	ScreenId string
+	CmdId    string
 }
 
 type ClientWinSizeType struct {
@@ -228,11 +234,6 @@ type ClientData struct {
 
 func (ClientData) UseDBMap() {}
 
-type CloudAclType struct {
-	UserId string `json:"userid"`
-	Role   string `json:"role"`
-}
-
 type SessionType struct {
 	SessionId      string            `json:"sessionid"`
 	Name           string            `json:"name"`
@@ -247,46 +248,6 @@ type SessionType struct {
 	// only for updates
 	Remove bool `json:"remove,omitempty"`
 	Full   bool `json:"full,omitempty"`
-}
-
-type CloudSessionType struct {
-	SessionId string
-	ViewKey   string
-	WriteKey  string
-	EncKey    string
-	EncType   string
-	Vts       int64
-	Acl       []*CloudAclType
-}
-
-func (cs *CloudSessionType) ToMap() map[string]any {
-	m := make(map[string]any)
-	m["sessionid"] = cs.SessionId
-	m["viewkey"] = cs.ViewKey
-	m["writekey"] = cs.WriteKey
-	m["enckey"] = cs.EncKey
-	m["enctype"] = cs.EncType
-	m["vts"] = cs.Vts
-	m["acl"] = quickJsonArr(cs.Acl)
-	return m
-}
-
-func (cs *CloudSessionType) FromMap(m map[string]interface{}) bool {
-	quickSetStr(&cs.SessionId, m, "sessionid")
-	quickSetStr(&cs.ViewKey, m, "viewkey")
-	quickSetStr(&cs.WriteKey, m, "writekey")
-	quickSetStr(&cs.EncKey, m, "enckey")
-	quickSetStr(&cs.EncType, m, "enctype")
-	quickSetInt64(&cs.Vts, m, "vts")
-	quickSetJsonArr(&cs.Acl, m, "acl")
-	return true
-}
-
-type CloudUpdate struct {
-	UpdateId   string
-	Ts         int64
-	UpdateType string
-	UpdateKeys []string
 }
 
 type SessionStatsType struct {

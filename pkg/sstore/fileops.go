@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"log"
 	"os"
 	"path"
 
@@ -60,10 +61,15 @@ func AppendToCmdPtyBlob(ctx context.Context, screenId string, cmdId string, data
 		PtyData64:  data64,
 		PtyDataLen: int64(len(data)),
 	}
+	err = InsertPtyPosUpdate(ctx, screenId, cmdId)
+	if err != nil {
+		// just log
+		log.Printf("error inserting ptypos update %s/%s: %v\n", screenId, cmdId, err)
+	}
 	return update, nil
 }
 
-// returns (offset, data, err)
+// returns (real-offset, data, err)
 func ReadFullPtyOutFile(ctx context.Context, screenId string, cmdId string) (int64, []byte, error) {
 	ptyOutFileName, err := scbase.PtyOutFile(screenId, cmdId)
 	if err != nil {
@@ -75,6 +81,20 @@ func ReadFullPtyOutFile(ctx context.Context, screenId string, cmdId string) (int
 	}
 	defer f.Close()
 	return f.ReadAll(ctx)
+}
+
+// returns (real-offset, data, err)
+func ReadPtyOutFile(ctx context.Context, screenId string, cmdId string, offset int64, maxSize int64) (int64, []byte, error) {
+	ptyOutFileName, err := scbase.PtyOutFile(screenId, cmdId)
+	if err != nil {
+		return 0, nil, err
+	}
+	f, err := cirfile.OpenCirFile(ptyOutFileName)
+	if err != nil {
+		return 0, nil, err
+	}
+	defer f.Close()
+	return f.ReadAtWithMax(ctx, offset, maxSize)
 }
 
 type SessionDiskSizeType struct {

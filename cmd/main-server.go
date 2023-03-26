@@ -23,6 +23,7 @@ import (
 	"github.com/scripthaus-dev/sh2-server/pkg/cmdrunner"
 	"github.com/scripthaus-dev/sh2-server/pkg/pcloud"
 	"github.com/scripthaus-dev/sh2-server/pkg/remote"
+	"github.com/scripthaus-dev/sh2-server/pkg/rtnstate"
 	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
 	"github.com/scripthaus-dev/sh2-server/pkg/scws"
@@ -246,7 +247,7 @@ func HandleRtnState(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("invalid cmdid: %v", err)))
 		return
 	}
-	data, err := cmdrunner.GetRtnStateDiff(r.Context(), screenId, cmdId)
+	data, err := rtnstate.GetRtnStateDiff(r.Context(), screenId, cmdId)
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(fmt.Sprintf("cannot get rtnstate diff: %v", err)))

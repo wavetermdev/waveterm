@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -12,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/scripthaus-dev/sh2-server/pkg/rtnstate"
 	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
 )
@@ -19,37 +21,11 @@ import (
 const PCloudEndpoint = "https://api.getprompt.dev/central"
 const PCloudEndpointVarName = "PCLOUD_ENDPOINT"
 const APIVersion = 1
+const MaxPtyUpdateSize = (128 * 1024) + 1
 
 const TelemetryUrl = "/telemetry"
 const NoTelemetryUrl = "/no-telemetry"
-const CreateCloudSessionUrl = "/auth/create-cloud-session"
-
-type NoTelemetryInputType struct {
-	ClientId string `json:"clientid"`
-	Value    bool   `json:"value"`
-}
-
-type TelemetryInputType struct {
-	UserId   string                 `json:"userid"`
-	ClientId string                 `json:"clientid"`
-	CurDay   string                 `json:"curday"`
-	Activity []*sstore.ActivityType `json:"activity"`
-}
-
-type CloudSession struct {
-	SessionId string `json:"sessionid"`
-	ViewKey   string `json:"viewkey"`
-	WriteKey  string `json:"writekey"`
-	EncType   string `json:"enctype"`
-	UpdateVTS int64  `json:"updatevts"`
-
-	EncSessionData []byte `json:"enc_sessiondata" enc:"*"`
-	Name           string `json:"-" enc:"name"`
-}
-
-func (cs *CloudSession) GetOData() string {
-	return fmt.Sprintf("session:%s", cs.SessionId)
-}
+const CreateWebScreenUrl = "/auth/create-web-screen"
 
 type AuthInfo struct {
 	UserId   string `json:"userid"`
@@ -194,12 +170,158 @@ func getAuthInfo(ctx context.Context) (AuthInfo, error) {
 	return AuthInfo{UserId: clientData.UserId, ClientId: clientData.ClientId}, nil
 }
 
-func CreateCloudSession(ctx context.Context) error {
+func defaultError(err error, estr string) error {
+	if err != nil {
+		return err
+	}
+	return errors.New(estr)
+}
+
+func makeWebScreenUpdate(ctx context.Context, update sstore.ScreenUpdateType) (*WebShareUpdateType, error) {
+	rtn := &WebShareUpdateType{
+		ScreenId:   update.ScreenId,
+		LineId:     update.LineId,
+		UpdateType: update.UpdateType,
+	}
+	switch update.UpdateType {
+	case sstore.UpdateType_ScreenNew:
+		screen, err := sstore.GetScreenById(ctx, update.ScreenId)
+		if err != nil || screen == nil {
+			return nil, fmt.Errorf("error getting screen: %v", defaultError(err, "not found"))
+		}
+		rtn.Screen, err = webScreenFromScreen(screen)
+		if err != nil {
+			return nil, fmt.Errorf("error converting screen to web-screen: %v", err)
+		}
+
+	case sstore.UpdateType_ScreenDel:
+		break
+
+	case sstore.UpdateType_ScreenName:
+		screen, err := sstore.GetScreenById(ctx, update.ScreenId)
+		if err != nil {
+			return nil, fmt.Errorf("error getting screen: %v", err)
+		}
+		if screen == nil || screen.WebShareOpts == nil || screen.WebShareOpts.ShareName == "" {
+			return nil, fmt.Errorf("invalid screen sharename (makeWebScreenUpdate)")
+		}
+		rtn.SVal = screen.WebShareOpts.ShareName
+
+	case sstore.UpdateType_LineNew:
+		line, cmd, err := sstore.GetLineCmdByLineId(ctx, update.ScreenId, update.LineId)
+		if err != nil || line == nil {
+			return nil, fmt.Errorf("error getting line/cmd: %v", defaultError(err, "not found"))
+		}
+		rtn.Line, err = webLineFromLine(line)
+		if err != nil {
+			return nil, fmt.Errorf("error converting line to web-line: %v", err)
+		}
+		if cmd != nil {
+			rtn.Cmd, err = webCmdFromCmd(cmd)
+			if err != nil {
+				return nil, fmt.Errorf("error converting cmd to web-cmd: %v", err)
+			}
+		}
+
+	case sstore.UpdateType_LineDel:
+		break
+
+	case sstore.UpdateType_LineArchived:
+		line, err := sstore.GetLineById(ctx, update.ScreenId, update.LineId)
+		if err != nil || line == nil {
+			return nil, fmt.Errorf("error getting line: %v", defaultError(err, "not found"))
+		}
+		rtn.BVal = line.Archived
+
+	case sstore.UpdateType_LineRenderer:
+		line, err := sstore.GetLineById(ctx, update.ScreenId, update.LineId)
+		if err != nil || line == nil {
+			return nil, fmt.Errorf("error getting line: %v", defaultError(err, "not found"))
+		}
+		rtn.SVal = line.Renderer
+
+	case sstore.UpdateType_CmdStatus:
+		_, cmd, err := sstore.GetLineCmdByLineId(ctx, update.ScreenId, update.LineId)
+		if err != nil || cmd == nil {
+			return nil, fmt.Errorf("error getting cmd: %v", defaultError(err, "not found"))
+		}
+		rtn.SVal = cmd.Status
+
+	case sstore.UpdateType_CmdDoneInfo:
+		_, cmd, err := sstore.GetLineCmdByLineId(ctx, update.ScreenId, update.LineId)
+		if err != nil || cmd == nil {
+			return nil, fmt.Errorf("error getting cmd: %v", defaultError(err, "not found"))
+		}
+		rtn.DoneInfo = cmd.DoneInfo
+
+	case sstore.UpdateType_CmdRtnState:
+		_, cmd, err := sstore.GetLineCmdByLineId(ctx, update.ScreenId, update.LineId)
+		if err != nil || cmd == nil {
+			return nil, fmt.Errorf("error getting cmd: %v", defaultError(err, "not found"))
+		}
+		data, err := rtnstate.GetRtnStateDiff(ctx, update.ScreenId, cmd.CmdId)
+		if err != nil {
+			return nil, fmt.Errorf("cannot compute rtnstate: %v", err)
+		}
+		rtn.SVal = string(data)
+
+	case sstore.UpdateType_PtyPos:
+		cmdId, err := sstore.GetCmdIdFromLineId(ctx, update.ScreenId, update.LineId)
+		if err != nil {
+			return nil, fmt.Errorf("error getting cmdid: %v", err)
+		}
+		ptyPos, err := sstore.GetWebPtyPos(ctx, update.ScreenId, update.LineId)
+		if err != nil {
+			return nil, fmt.Errorf("error getting ptypos: %v", err)
+		}
+		realOffset, data, err := sstore.ReadPtyOutFile(ctx, update.ScreenId, cmdId, ptyPos, MaxPtyUpdateSize)
+		if err != nil {
+			return nil, fmt.Errorf("error getting ptydata: %v", err)
+		}
+		rtn.PtyData = &WebSharePtyData{PtyPos: realOffset, Data: data}
+
+	default:
+		return nil, fmt.Errorf("unsupported update type (pcloud/makeWebScreenUpdate): %s\n", update.UpdateType)
+	}
+	return rtn, nil
+}
+
+func finalizeWebScreenUpdate(ctx context.Context, screenUpdate sstore.ScreenUpdateType, webUpdate *WebShareUpdateType) error {
+	switch screenUpdate.UpdateType {
+	case sstore.UpdateType_PtyPos:
+		dataEof := len(webUpdate.PtyData.Data) < MaxPtyUpdateSize
+		newPos := webUpdate.PtyData.PtyPos + int64(len(webUpdate.PtyData.Data))
+		if dataEof {
+			err := sstore.RemoveScreenUpdate(ctx, screenUpdate.UpdateType)
+			if err != nil {
+				return err
+			}
+		}
+		err := sstore.SetWebPtyPos(ctx, screenUpdate.ScreenId, screenUpdate.LineId, newPos)
+		if err != nil {
+			return err
+		}
+
+	default:
+		err := sstore.RemoveScreenUpdate(ctx, screenUpdate.UpdateType)
+		if err != nil {
+			// this is not great, this *should* never fail and is not easy to recover from
+			return err
+		}
+	}
+	return nil
+}
+
+func DoWebScreenUpdate(ctx context.Context, update sstore.ScreenUpdateType) error {
+	return nil
+}
+
+func CreateWebScreen(ctx context.Context, screen *WebShareScreenType) error {
 	authInfo, err := getAuthInfo(ctx)
 	if err != nil {
 		return err
 	}
-	req, err := makeAuthPostReq(ctx, CreateCloudSessionUrl, authInfo, nil)
+	req, err := makeAuthPostReq(ctx, CreateWebScreenUrl, authInfo, screen)
 	if err != nil {
 		return err
 	}
