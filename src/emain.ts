@@ -193,9 +193,6 @@ function createMainWindow(clientData) {
             return;
         }
         let mods = getMods(input);
-        if (input.meta) {
-            console.log("before-input", input.code, input.modifiers);
-        }
         if (input.code == "KeyT" && input.meta) {
             win.webContents.send("t-cmd", mods);
             e.preventDefault();
