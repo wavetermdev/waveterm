@@ -30,11 +30,9 @@ const PCloudDefaultTimeout = 5 * time.Second
 
 const TelemetryUrl = "/telemetry"
 const NoTelemetryUrl = "/no-telemetry"
-const CreateWebScreenUrl = "/auth/create-web-screen"
 const WebShareUpdateUrl = "/auth/web-share-update"
 
-var updateWriterCVar = sync.NewCond(&sync.Mutex{})
-var updateWriterMoreData = false
+var updateWriterLock = &sync.Mutex{}
 var updateWriterRunning = false
 
 type AuthInfo struct {
@@ -101,7 +99,7 @@ func makeAnonPostReq(ctx context.Context, apiUrl string, data interface{}) (*htt
 
 func doRequest(req *http.Request, outputObj interface{}) (*http.Response, error) {
 	apiUrl := req.Header.Get("X-PromptAPIUrl")
-	log.Printf("sending request %v\n", req.URL)
+	log.Printf("[pcloud] sending request %v\n", req.URL)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error contacting pcloud %q service: %v", apiUrl, err)
@@ -138,7 +136,7 @@ func SendTelemetry(ctx context.Context, force bool) error {
 	if len(activity) == 0 {
 		return nil
 	}
-	log.Printf("sending telemetry data\n")
+	log.Printf("[pcloud] sending telemetry data\n")
 	dayStr := sstore.GetCurDayStr()
 	input := TelemetryInputType{UserId: clientData.UserId, ClientId: clientData.ClientId, CurDay: dayStr, Activity: activity}
 	req, err := makeAnonPostReq(ctx, TelemetryUrl, input)
@@ -369,49 +367,21 @@ func DoWebScreenUpdates(authInfo AuthInfo, updateArr []*sstore.ScreenUpdateType)
 	return nil
 }
 
-func CreateWebScreen(ctx context.Context, screen *WebShareScreenType) error {
-	authInfo, err := getAuthInfo(ctx)
-	if err != nil {
-		return err
-	}
-	req, err := makeAuthPostReq(ctx, CreateWebScreenUrl, authInfo, screen)
-	if err != nil {
-		return err
-	}
-	_, err = doRequest(req, nil)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func updateWriterCheckMoreData() {
-	updateWriterCVar.L.Lock()
-	defer updateWriterCVar.L.Unlock()
-	for {
-		if updateWriterMoreData {
-			updateWriterMoreData = false
-			break
-		}
-		updateWriterCVar.Wait()
-	}
-}
-
 func setUpdateWriterRunning(running bool) {
-	updateWriterCVar.L.Lock()
-	defer updateWriterCVar.L.Unlock()
+	updateWriterLock.Lock()
+	defer updateWriterLock.Unlock()
 	updateWriterRunning = running
 }
 
 func GetUpdateWriterRunning() bool {
-	updateWriterCVar.L.Lock()
-	defer updateWriterCVar.L.Unlock()
+	updateWriterLock.Lock()
+	defer updateWriterLock.Unlock()
 	return updateWriterRunning
 }
 
 func StartUpdateWriter() {
-	updateWriterCVar.L.Lock()
-	defer updateWriterCVar.L.Unlock()
+	updateWriterLock.Lock()
+	defer updateWriterLock.Unlock()
 	if updateWriterRunning {
 		return
 	}
@@ -449,6 +419,7 @@ func runWebShareUpdateWriter() {
 	numErrors := 0
 	numSendErrors := 0
 	for {
+		time.Sleep(100 * time.Millisecond)
 		updateArr, err := sstore.GetScreenUpdates(context.Background(), MaxUpdatesPerReq)
 		if err != nil {
 			log.Printf("[pcloud] error retrieving updates: %v", err)
@@ -460,7 +431,8 @@ func runWebShareUpdateWriter() {
 			}
 		}
 		if len(updateArr) == 0 {
-			updateWriterCheckMoreData()
+			sstore.UpdateWriterCheckMoreData()
+			continue
 		}
 		numErrors = 0
 		authInfo, err := getAuthInfo(context.Background())
@@ -472,13 +444,7 @@ func runWebShareUpdateWriter() {
 			time.Sleep(backoffTime)
 			continue
 		}
+		log.Printf("[pcloud] sent %d web-updates\n", len(updateArr))
 		numSendErrors = 0
 	}
-}
-
-func NotifyUpdateWriter() {
-	updateWriterCVar.L.Lock()
-	defer updateWriterCVar.L.Unlock()
-	updateWriterMoreData = true
-	updateWriterCVar.Signal()
 }

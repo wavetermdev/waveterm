@@ -1657,7 +1657,6 @@ func ScreenWebShareCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 		if err != nil {
 			return nil, fmt.Errorf("cannot web-share screen: %v", err)
 		}
-		pcloud.NotifyUpdateWriter()
 		infoMsg = fmt.Sprintf("screen is now shared to the web at %s", "[screen-share-url]")
 	} else {
 		err = sstore.ScreenWebShareStop(ctx, ids.ScreenId)

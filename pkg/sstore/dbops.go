@@ -21,6 +21,9 @@ import (
 const HistoryCols = "h.historyid, h.ts, h.userid, h.sessionid, h.screenid, h.lineid, h.cmdid, h.haderror, h.cmdstr, h.remoteownerid, h.remoteid, h.remotename, h.ismetacmd, h.incognito, h.linenum"
 const DefaultMaxHistoryItems = 1000
 
+var updateWriterCVar = sync.NewCond(&sync.Mutex{})
+var updateWriterMoreData = false
+
 type SingleConnDBGetter struct {
 	SingleConnLock *sync.Mutex
 }
@@ -48,6 +51,25 @@ func (dbg *SingleConnDBGetter) ReleaseDB(db *sqlx.DB) {
 
 func WithTx(ctx context.Context, fn func(tx *TxWrap) error) error {
 	return txwrap.DBGWithTx(ctx, dbWrap, fn)
+}
+
+func NotifyUpdateWriter() {
+	updateWriterCVar.L.Lock()
+	defer updateWriterCVar.L.Unlock()
+	updateWriterMoreData = true
+	updateWriterCVar.Signal()
+}
+
+func UpdateWriterCheckMoreData() {
+	updateWriterCVar.L.Lock()
+	defer updateWriterCVar.L.Unlock()
+	for {
+		if updateWriterMoreData {
+			updateWriterMoreData = false
+			break
+		}
+		updateWriterCVar.Wait()
+	}
 }
 
 func NumSessions(ctx context.Context) (int, error) {
@@ -2383,6 +2405,7 @@ func ScreenWebShareStart(ctx context.Context, screenId string, shareOpts ScreenW
 		query = `INSERT INTO screenupdate (screenid, lineid, updatetype, updatets)
                  SELECT screenid, lineid, ?, ? FROM line WHERE screenid = ? ORDER BY linenum`
 		tx.Exec(query, UpdateType_LineNew, time.Now().UnixMilli(), screenId)
+		NotifyUpdateWriter()
 		return nil
 	})
 }
@@ -2417,6 +2440,7 @@ func insertScreenUpdate(tx *TxWrap, screenId string, updateType string) {
 	}
 	query := `INSERT INTO screenupdate (screenid, lineid, updatetype, updatets) VALUES (?, ?, ?, ?)`
 	tx.Exec(query, screenId, "", updateType, time.Now().UnixMilli())
+	NotifyUpdateWriter()
 }
 
 func insertScreenLineUpdate(tx *TxWrap, screenId string, lineId string, updateType string) {
@@ -2428,8 +2452,12 @@ func insertScreenLineUpdate(tx *TxWrap, screenId string, lineId string, updateTy
 		tx.SetErr(errors.New("invalid screen-update, lineid is empty"))
 		return
 	}
-	query := `INSERT INTO screenupdate (screenid, lineid, updatetype, updatets) VALUES (?, ?, ?, ?)`
-	tx.Exec(query, screenId, lineId, updateType, time.Now().UnixMilli())
+	query := `SELECT updateid FROM screenupdate WHERE screenid = ? AND lineid = ? AND (updatetype = ? OR updatetype = ?)`
+	if !tx.Exists(query, screenId, lineId, updateType, UpdateType_LineNew) {
+		query = `INSERT INTO screenupdate (screenid, lineid, updatetype, updatets) VALUES (?, ?, ?, ?)`
+		tx.Exec(query, screenId, lineId, updateType, time.Now().UnixMilli())
+		NotifyUpdateWriter()
+	}
 }
 
 func insertScreenCmdUpdate(tx *TxWrap, screenId string, cmdId string, updateType string) {
@@ -2474,7 +2502,9 @@ func InsertPtyPosUpdate(ctx context.Context, screenId string, cmdId string) erro
 		}
 		query = `SELECT updateid FROM screenupdate WHERE screenid = ? AND lineid = ? AND updatetype = ?`
 		if !tx.Exists(query, screenId, lineId, UpdateType_PtyPos) {
-			insertScreenLineUpdate(tx, screenId, lineId, UpdateType_PtyPos)
+			query := `INSERT INTO screenupdate (screenid, lineid, updatetype, updatets) VALUES (?, ?, ?, ?)`
+			tx.Exec(query, screenId, lineId, UpdateType_PtyPos, time.Now().UnixMilli())
+			NotifyUpdateWriter()
 		}
 		return nil
 	})
