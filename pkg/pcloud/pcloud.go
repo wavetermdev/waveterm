@@ -12,6 +12,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/scripthaus-dev/sh2-server/pkg/rtnstate"
 	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
@@ -23,11 +25,17 @@ const PCloudEndpointVarName = "PCLOUD_ENDPOINT"
 const APIVersion = 1
 const MaxPtyUpdateSize = (128 * 1024) + 1
 const MaxUpdatesPerReq = 10
+const MaxUpdateWriterErrors = 3
+const PCloudDefaultTimeout = 5 * time.Second
 
 const TelemetryUrl = "/telemetry"
 const NoTelemetryUrl = "/no-telemetry"
 const CreateWebScreenUrl = "/auth/create-web-screen"
 const WebShareUpdateUrl = "/auth/web-share-update"
+
+var updateWriterCVar = sync.NewCond(&sync.Mutex{})
+var updateWriterMoreData = false
+var updateWriterRunning = false
 
 type AuthInfo struct {
 	UserId   string `json:"userid"`
@@ -183,6 +191,7 @@ func makeWebShareUpdate(ctx context.Context, update *sstore.ScreenUpdateType) (*
 	rtn := &WebShareUpdateType{
 		ScreenId:   update.ScreenId,
 		LineId:     update.LineId,
+		UpdateId:   update.UpdateId,
 		UpdateType: update.UpdateType,
 	}
 	switch update.UpdateType {
@@ -219,7 +228,7 @@ func makeWebShareUpdate(ctx context.Context, update *sstore.ScreenUpdateType) (*
 			return nil, fmt.Errorf("error converting line to web-line: %v", err)
 		}
 		if cmd != nil {
-			rtn.Cmd, err = webCmdFromCmd(cmd)
+			rtn.Cmd, err = webCmdFromCmd(update.LineId, cmd)
 			if err != nil {
 				return nil, fmt.Errorf("error converting cmd to web-cmd: %v", err)
 			}
@@ -248,6 +257,13 @@ func makeWebShareUpdate(ctx context.Context, update *sstore.ScreenUpdateType) (*
 			return nil, fmt.Errorf("error getting cmd: %v", defaultError(err, "not found"))
 		}
 		rtn.SVal = cmd.Status
+
+	case sstore.UpdateType_CmdTermOpts:
+		_, cmd, err := sstore.GetLineCmdByLineId(ctx, update.ScreenId, update.LineId)
+		if err != nil || cmd == nil {
+			return nil, fmt.Errorf("error getting cmd: %v", defaultError(err, "not found"))
+		}
+		rtn.TermOpts = &cmd.TermOpts
 
 	case sstore.UpdateType_CmdDoneInfo:
 		_, cmd, err := sstore.GetLineCmdByLineId(ctx, update.ScreenId, update.LineId)
@@ -288,24 +304,24 @@ func makeWebShareUpdate(ctx context.Context, update *sstore.ScreenUpdateType) (*
 	return rtn, nil
 }
 
-func finalizeWebScreenUpdate(ctx context.Context, screenUpdate *sstore.ScreenUpdateType, webUpdate *WebShareUpdateType) error {
-	switch screenUpdate.UpdateType {
+func finalizeWebScreenUpdate(ctx context.Context, webUpdate *WebShareUpdateType) error {
+	switch webUpdate.UpdateType {
 	case sstore.UpdateType_PtyPos:
 		dataEof := len(webUpdate.PtyData.Data) < MaxPtyUpdateSize
 		newPos := webUpdate.PtyData.PtyPos + int64(len(webUpdate.PtyData.Data))
 		if dataEof {
-			err := sstore.RemoveScreenUpdate(ctx, screenUpdate.UpdateType)
+			err := sstore.RemoveScreenUpdate(ctx, webUpdate.UpdateId)
 			if err != nil {
 				return err
 			}
 		}
-		err := sstore.SetWebPtyPos(ctx, screenUpdate.ScreenId, screenUpdate.LineId, newPos)
+		err := sstore.SetWebPtyPos(ctx, webUpdate.ScreenId, webUpdate.LineId, newPos)
 		if err != nil {
 			return err
 		}
 
 	default:
-		err := sstore.RemoveScreenUpdate(ctx, screenUpdate.UpdateType)
+		err := sstore.RemoveScreenUpdate(ctx, webUpdate.UpdateId)
 		if err != nil {
 			// this is not great, this *should* never fail and is not easy to recover from
 			return err
@@ -314,18 +330,27 @@ func finalizeWebScreenUpdate(ctx context.Context, screenUpdate *sstore.ScreenUpd
 	return nil
 }
 
-func DoWebScreenUpdates(ctx context.Context, authInfo AuthInfo, updateArr []*sstore.ScreenUpdateType) error {
+func DoWebScreenUpdates(authInfo AuthInfo, updateArr []*sstore.ScreenUpdateType) error {
 	var webUpdates []*WebShareUpdateType
 	for _, update := range updateArr {
-		webUpdate, err := makeWebShareUpdate(ctx, update)
+		webUpdate, err := makeWebShareUpdate(context.Background(), update)
 		if err != nil {
-			return fmt.Errorf("error create web-share update updateid:%d: %v", update.UpdateId, err)
+			// log error, remove update, and continue
+			log.Printf("[pcloud] error create web-share update updateid:%d: %v", update.UpdateId, err)
+			err = sstore.RemoveScreenUpdate(context.Background(), update.UpdateId)
+			if err != nil {
+				// ignore this error too (although this is really problematic, there is nothing to do)
+				log.Printf("[pcloud] error removing screen update updateid:%d: %v", update.UpdateId, err)
+			}
+			continue
 		}
 		if webUpdate == nil {
 			continue
 		}
 		webUpdates = append(webUpdates, webUpdate)
 	}
+	ctx, cancelFn := context.WithTimeout(context.Background(), PCloudDefaultTimeout)
+	defer cancelFn()
 	req, err := makeAuthPostReq(ctx, WebShareUpdateUrl, authInfo, webUpdates)
 	if err != nil {
 		return fmt.Errorf("cannot create auth-post-req for %s: %v", WebShareUpdateUrl, err)
@@ -333,6 +358,13 @@ func DoWebScreenUpdates(ctx context.Context, authInfo AuthInfo, updateArr []*sst
 	_, err = doRequest(req, nil)
 	if err != nil {
 		return err
+	}
+	for _, update := range webUpdates {
+		err = finalizeWebScreenUpdate(context.Background(), update)
+		if err != nil {
+			// ignore this error (nothing to do)
+			log.Printf("[pcloud] error finalizing web-update: %v\n", err)
+		}
 	}
 	return nil
 }
@@ -353,5 +385,100 @@ func CreateWebScreen(ctx context.Context, screen *WebShareScreenType) error {
 	return nil
 }
 
+func updateWriterCheckMoreData() {
+	updateWriterCVar.L.Lock()
+	defer updateWriterCVar.L.Unlock()
+	for {
+		if updateWriterMoreData {
+			updateWriterMoreData = false
+			break
+		}
+		updateWriterCVar.Wait()
+	}
+}
+
+func setUpdateWriterRunning(running bool) {
+	updateWriterCVar.L.Lock()
+	defer updateWriterCVar.L.Unlock()
+	updateWriterRunning = running
+}
+
+func GetUpdateWriterRunning() bool {
+	updateWriterCVar.L.Lock()
+	defer updateWriterCVar.L.Unlock()
+	return updateWriterRunning
+}
+
+func StartUpdateWriter() {
+	updateWriterCVar.L.Lock()
+	defer updateWriterCVar.L.Unlock()
+	if updateWriterRunning {
+		return
+	}
+	updateWriterRunning = true
+	go runWebShareUpdateWriter()
+}
+
+func computeBackoff(numFailures int) time.Duration {
+	// TODO remove once API implemented
+	return time.Hour
+
+	switch numFailures {
+	case 1:
+		return 100 * time.Millisecond
+	case 2:
+		return 1 * time.Second
+	case 3:
+		return 5 * time.Second
+	case 4:
+		return time.Minute
+	case 5:
+		return 5 * time.Minute
+	case 6:
+		return time.Hour
+	default:
+		return time.Hour
+	}
+}
+
+func runWebShareUpdateWriter() {
+	defer func() {
+		setUpdateWriterRunning(false)
+	}()
+	log.Printf("[pcloud] starting update writer\n")
+	numErrors := 0
+	numSendErrors := 0
+	for {
+		updateArr, err := sstore.GetScreenUpdates(context.Background(), MaxUpdatesPerReq)
+		if err != nil {
+			log.Printf("[pcloud] error retrieving updates: %v", err)
+			time.Sleep(1 * time.Second)
+			numErrors++
+			if numErrors > MaxUpdateWriterErrors {
+				log.Printf("[pcloud] update-writer, too many read errors, exiting\n")
+				break
+			}
+		}
+		if len(updateArr) == 0 {
+			updateWriterCheckMoreData()
+		}
+		numErrors = 0
+		authInfo, err := getAuthInfo(context.Background())
+		err = DoWebScreenUpdates(authInfo, updateArr)
+		if err != nil {
+			numSendErrors++
+			backoffTime := computeBackoff(numSendErrors)
+			log.Printf("[pcloud] error processing web-updates (backoff=%v): %v\n", backoffTime, err)
+			time.Sleep(backoffTime)
+			continue
+		}
+		numSendErrors = 0
+	}
+}
+
 func NotifyUpdateWriter() {
+	updateWriterCVar.L.Lock()
+	defer updateWriterCVar.L.Unlock()
+	updateWriterMoreData = true
+	updateWriterCVar.Signal()
 }

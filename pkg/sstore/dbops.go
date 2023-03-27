@@ -1399,6 +1399,7 @@ func UpdateCmdTermOpts(ctx context.Context, screenId string, cmdId string, termO
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `UPDATE cmd SET termopts = ? WHERE screenid = ? AND cmdid = ?`
 		tx.Exec(query, termOpts, screenId, cmdId)
+		insertScreenCmdUpdate(tx, screenId, cmdId, UpdateType_CmdTermOpts)
 		return nil
 	})
 	return txErr
@@ -2447,7 +2448,16 @@ func insertScreenCmdUpdate(tx *TxWrap, screenId string, cmdId string, updateType
 	}
 }
 
-func RemoveScreenUpdate(ctx context.Context, updateId string) error {
+func GetScreenUpdates(ctx context.Context, maxNum int) ([]*ScreenUpdateType, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) ([]*ScreenUpdateType, error) {
+		var updates []*ScreenUpdateType
+		query := `SELECT * FROM screenupdate ORDER BY updateid LIMIT ?`
+		tx.Select(&updates, query, maxNum)
+		return updates, nil
+	})
+}
+
+func RemoveScreenUpdate(ctx context.Context, updateId int64) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		query := `DELETE FROM screenupdate WHERE updateid = ?`
 		tx.Exec(query, updateId)

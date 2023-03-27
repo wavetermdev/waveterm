@@ -565,6 +565,10 @@ func main() {
 	go telemetryLoop()
 	go stdinReadWatch()
 	go runWebSocketServer()
+	go func() {
+		time.Sleep(10 * time.Second)
+		pcloud.StartUpdateWriter()
+	}()
 	go sstore.RunCmdScreenMigration()
 	gr := mux.NewRouter()
 	gr.HandleFunc("/api/ptyout", AuthKeyWrap(HandleGetPtyOut))

@@ -88,6 +88,7 @@ const (
 	UpdateType_LineArchived = "line:archived"
 	UpdateType_LineRenderer = "line:renderer"
 	UpdateType_CmdStatus    = "cmd:status"
+	UpdateType_CmdTermOpts  = "cmd:termopts"
 	UpdateType_CmdDoneInfo  = "cmd:doneinfo"
 	UpdateType_CmdRtnState  = "cmd:rtnstate"
 	UpdateType_PtyPos       = "pty:pos"

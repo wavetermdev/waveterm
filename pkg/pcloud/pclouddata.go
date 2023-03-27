@@ -1,9 +1,12 @@
 package pcloud
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/scripthaus-dev/mshell/pkg/packet"
+	"github.com/scripthaus-dev/sh2-server/pkg/remote"
+	"github.com/scripthaus-dev/sh2-server/pkg/rtnstate"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
 )
 
@@ -22,6 +25,7 @@ type TelemetryInputType struct {
 type WebShareUpdateType struct {
 	ScreenId   string `json:"screenid"`
 	LineId     string `json:"lineid"`
+	UpdateId   int64  `json:"-"` // just for internal use
 	UpdateType string `json:"updatetype"`
 
 	Screen   *WebShareScreenType `json:"screen,omitempty"`
@@ -31,12 +35,25 @@ type WebShareUpdateType struct {
 	SVal     string              `json:"sval,omitempty"`
 	BVal     bool                `json:"bval,omitempty"`
 	DoneInfo *sstore.CmdDoneInfo `json:"doneinfo,omitempty"`
+	TermOpts *sstore.TermOpts    `json:"termopts,omitempty"`
 }
 
 type WebShareRemotePtr struct {
 	Alias         string `json:"remotealias,omitempty"`
 	CanonicalName string `json:"remotecanonicalname"`
 	Name          string `json:"name,omitempty"`
+}
+
+func webRemoteFromRemotePtr(rptr sstore.RemotePtrType) *WebShareRemotePtr {
+	if rptr.RemoteId == "" {
+		return nil
+	}
+	rcopy := remote.GetRemoteById(rptr.RemoteId).GetRemoteCopy()
+	return &WebShareRemotePtr{
+		Alias:         rcopy.RemoteAlias,
+		CanonicalName: rcopy.RemoteCanonicalName,
+		Name:          rptr.Name,
+	}
 }
 
 type WebShareScreenType struct {
@@ -73,14 +90,24 @@ type WebShareLineType struct {
 }
 
 func webLineFromLine(line *sstore.LineType) (*WebShareLineType, error) {
-	return nil, nil
+	rtn := &WebShareLineType{
+		LineId:   line.LineId,
+		Ts:       line.Ts,
+		LineNum:  line.LineNum,
+		LineType: line.LineType,
+		Renderer: line.Renderer,
+		Text:     line.Text,
+		CmdId:    line.CmdId,
+		Archived: line.Archived,
+	}
+	return rtn, nil
 }
 
 type WebShareCmdType struct {
 	LineId      string                     `json:"lineid"`
 	CmdStr      string                     `json:"cmdstr"`
 	RawCmdStr   string                     `json:"rawcmdstr"`
-	Remote      WebShareRemotePtr          `json:"remote"`
+	Remote      *WebShareRemotePtr         `json:"remote"`
 	FeState     sstore.FeStateType         `json:"festate"`
 	TermOpts    sstore.TermOpts            `json:"termopts"`
 	Status      string                     `json:"status"`
@@ -90,8 +117,27 @@ type WebShareCmdType struct {
 	RtnStateStr string                     `json:"rtnstatestr,omitempty"`
 }
 
-func webCmdFromCmd(cmd *sstore.CmdType) (*WebShareCmdType, error) {
-	return nil, nil
+func webCmdFromCmd(lineId string, cmd *sstore.CmdType) (*WebShareCmdType, error) {
+	rtn := &WebShareCmdType{
+		LineId:    lineId,
+		CmdStr:    cmd.CmdStr,
+		RawCmdStr: cmd.RawCmdStr,
+		Remote:    webRemoteFromRemotePtr(cmd.Remote),
+		FeState:   cmd.FeState,
+		TermOpts:  cmd.TermOpts,
+		Status:    cmd.Status,
+		StartPk:   cmd.StartPk,
+		DoneInfo:  cmd.DoneInfo,
+		RtnState:  cmd.RtnState,
+	}
+	if cmd.RtnState {
+		barr, err := rtnstate.GetRtnStateDiff(context.Background(), cmd.ScreenId, cmd.CmdId)
+		if err != nil {
+			return nil, fmt.Errorf("error creating rtnstate diff for cmd:%s: %v", cmd.CmdId, err)
+		}
+		rtn.RtnStateStr = string(barr)
+	}
+	return rtn, nil
 }
 
 type WebSharePtyData struct {
