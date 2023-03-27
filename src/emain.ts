@@ -163,7 +163,7 @@ electron.Menu.setApplicationMenu(menu);
 let MainWindow = null;
 
 function getMods(input : any) {
-    return {meta: input.meta, shift: input.shift, ctrl: input.ctrl, alt: input.alt};
+    return {meta: input.meta, shift: input.shift, ctrl: input.control, alt: input.alt};
 }
 
 function shNavHandler(event : any, url : any) {

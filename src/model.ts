@@ -2704,6 +2704,10 @@ class Model {
     }
 
     onDigitCmd(e : any, arg : {digit: number}, mods : KeyModsType) {
+        if (mods.meta && mods.ctrl) {
+            GlobalCommandRunner.switchSession(String(arg.digit));
+            return;
+        }
         GlobalCommandRunner.switchScreen(String(arg.digit));
     }
 
