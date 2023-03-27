@@ -162,6 +162,8 @@ func resolveByPosition(isNumeric bool, allItems []ResolveItem, curId string, pos
 			}
 		}
 		finalPos = curIdx + posArg.Pos
+		finalPos = boundInt(finalPos, len(items), posArg.IsWrap)
+		return &items[finalPos-1]
 	} else if isNumeric {
 		// these resolve items have a "Num" set that should be used to look up non-relative positions
 		// use allItems for numeric resolve
@@ -174,9 +176,11 @@ func resolveByPosition(isNumeric bool, allItems []ResolveItem, curId string, pos
 	} else {
 		// non-numeric means position is just the index
 		finalPos = posArg.Pos
+		if finalPos <= 0 || finalPos > len(items) {
+			return nil
+		}
+		return &items[finalPos-1]
 	}
-	finalPos = boundInt(finalPos, len(items), posArg.IsWrap)
-	return &items[finalPos-1]
 }
 
 func resolveRemoteArg(remoteArg string) (*sstore.RemotePtrType, error) {
