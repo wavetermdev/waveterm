@@ -22,6 +22,7 @@ import (
 	"github.com/sawka/txwrap"
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
+	"github.com/scripthaus-dev/sh2-server/pkg/dbutil"
 	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -1095,7 +1096,7 @@ func createClientData(tx *TxWrap) error {
 	}
 	query := `INSERT INTO client ( clientid, userid, activesessionid, userpublickeybytes, userprivatekeybytes, winsize) 
                           VALUES (:clientid,:userid,:activesessionid,:userpublickeybytes,:userprivatekeybytes,:winsize)`
-	tx.NamedExec(query, ToDBMap(c))
+	tx.NamedExec(query, dbutil.ToDBMap(c, false))
 	log.Printf("create new clientid[%s] userid[%s] with public/private keypair\n", c.ClientId, c.UserId)
 	return nil
 }
@@ -1113,7 +1114,7 @@ func EnsureClientData(ctx context.Context) (*ClientData, error) {
 				return nil, createErr
 			}
 		}
-		cdata := GetMappable[*ClientData](tx, `SELECT * FROM client`)
+		cdata := dbutil.GetMappable[*ClientData](tx, `SELECT * FROM client`)
 		if cdata == nil {
 			return nil, fmt.Errorf("no client data found")
 		}
@@ -1148,7 +1149,7 @@ func EnsureClientData(ctx context.Context) (*ClientData, error) {
 
 func GetCmdMigrationInfo(ctx context.Context) (*ClientMigrationData, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) (*ClientMigrationData, error) {
-		cdata := GetMappable[*ClientData](tx, `SELECT * FROM client`)
+		cdata := dbutil.GetMappable[*ClientData](tx, `SELECT * FROM client`)
 		if cdata == nil {
 			return nil, fmt.Errorf("no client data found")
 		}

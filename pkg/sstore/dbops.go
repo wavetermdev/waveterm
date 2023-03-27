@@ -15,6 +15,7 @@ import (
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
+	"github.com/scripthaus-dev/sh2-server/pkg/dbutil"
 	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 )
 
@@ -88,7 +89,7 @@ func GetAllRemotes(ctx context.Context) ([]*RemoteType, error) {
 		query := `SELECT * FROM remote ORDER BY remoteidx`
 		marr := tx.SelectMaps(query)
 		for _, m := range marr {
-			rtn = append(rtn, FromMap[*RemoteType](m))
+			rtn = append(rtn, dbutil.FromMap[*RemoteType](m))
 		}
 		return nil
 	})
@@ -103,7 +104,7 @@ func GetRemoteByAlias(ctx context.Context, alias string) (*RemoteType, error) {
 	err := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * FROM remote WHERE remotealias = ?`
 		m := tx.GetMap(query, alias)
-		remote = FromMap[*RemoteType](m)
+		remote = dbutil.FromMap[*RemoteType](m)
 		return nil
 	})
 	if err != nil {
@@ -117,7 +118,7 @@ func GetRemoteById(ctx context.Context, remoteId string) (*RemoteType, error) {
 	err := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * FROM remote WHERE remoteid = ?`
 		m := tx.GetMap(query, remoteId)
-		remote = FromMap[*RemoteType](m)
+		remote = dbutil.FromMap[*RemoteType](m)
 		return nil
 	})
 	if err != nil {
@@ -131,7 +132,7 @@ func GetLocalRemote(ctx context.Context) (*RemoteType, error) {
 	err := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * FROM remote WHERE local`
 		m := tx.GetMap(query)
-		remote = FromMap[*RemoteType](m)
+		remote = dbutil.FromMap[*RemoteType](m)
 		return nil
 	})
 	if err != nil {
@@ -144,7 +145,7 @@ func GetRemoteByCanonicalName(ctx context.Context, cname string) (*RemoteType, e
 	var remote *RemoteType
 	err := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * FROM remote WHERE remotecanonicalname = ?`
-		remote = GetMapGen[*RemoteType](tx, query, cname)
+		remote = dbutil.GetMapGen[*RemoteType](tx, query, cname)
 		return nil
 	})
 	if err != nil {
@@ -157,7 +158,7 @@ func GetRemoteByPhysicalId(ctx context.Context, physicalId string) (*RemoteType,
 	var remote *RemoteType
 	err := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * FROM remote WHERE physicalid = ?`
-		remote = GetMapGen[*RemoteType](tx, query, physicalId)
+		remote = dbutil.GetMapGen[*RemoteType](tx, query, physicalId)
 		return nil
 	})
 	if err != nil {
@@ -342,7 +343,7 @@ func runHistoryQuery(tx *TxWrap, opts HistoryQueryOpts, realOffset int, itemLimi
 	marr := tx.SelectMaps(query, queryArgs...)
 	rtn := make([]*HistoryItemType, len(marr))
 	for idx, m := range marr {
-		hitem := FromMap[*HistoryItemType](m)
+		hitem := dbutil.FromMap[*HistoryItemType](m)
 		rtn[idx] = hitem
 	}
 	return rtn, nil
@@ -367,7 +368,7 @@ func GetHistoryItems(ctx context.Context, opts HistoryQueryOpts) (*HistoryQueryR
 func GetHistoryItemByLineNum(ctx context.Context, screenId string, lineNum int) (*HistoryItemType, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) (*HistoryItemType, error) {
 		query := `SELECT * FROM history WHERE screenid = ? AND linenum = ?`
-		hitem := GetMapGen[*HistoryItemType](tx, query, screenId, lineNum)
+		hitem := dbutil.GetMapGen[*HistoryItemType](tx, query, screenId, lineNum)
 		return hitem, nil
 	})
 }
@@ -438,12 +439,12 @@ func GetAllSessions(ctx context.Context) (*ModelUpdate, error) {
 			session.Full = true
 		}
 		query = `SELECT * FROM screen ORDER BY archived, screenidx, archivedts`
-		update.Screens = SelectMapsGen[*ScreenType](tx, query)
+		update.Screens = dbutil.SelectMapsGen[*ScreenType](tx, query)
 		for _, screen := range update.Screens {
 			screen.Full = true
 		}
 		query = `SELECT * FROM remote_instance`
-		riArr := SelectMapsGen[*RemoteInstance](tx, query)
+		riArr := dbutil.SelectMapsGen[*RemoteInstance](tx, query)
 		for _, ri := range riArr {
 			s := sessionMap[ri.SessionId]
 			if s != nil {
@@ -459,14 +460,14 @@ func GetAllSessions(ctx context.Context) (*ModelUpdate, error) {
 func GetScreenLinesById(ctx context.Context, screenId string) (*ScreenLinesType, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) (*ScreenLinesType, error) {
 		query := `SELECT screenid FROM screen WHERE screenid = ?`
-		screen := GetMappable[*ScreenLinesType](tx, query, screenId)
+		screen := dbutil.GetMappable[*ScreenLinesType](tx, query, screenId)
 		if screen == nil {
 			return nil, nil
 		}
 		query = `SELECT * FROM line WHERE screenid = ? ORDER BY linenum`
 		tx.Select(&screen.Lines, query, screen.ScreenId)
 		query = `SELECT * FROM cmd WHERE cmdid IN (SELECT cmdid FROM line WHERE screenid = ?)`
-		screen.Cmds = SelectMapsGen[*CmdType](tx, query, screen.ScreenId)
+		screen.Cmds = dbutil.SelectMapsGen[*CmdType](tx, query, screen.ScreenId)
 		return screen, nil
 	})
 }
@@ -475,7 +476,7 @@ func GetScreenLinesById(ctx context.Context, screenId string) (*ScreenLinesType,
 func GetSessionScreens(ctx context.Context, sessionId string) ([]*ScreenType, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) ([]*ScreenType, error) {
 		query := `SELECT * FROM screen WHERE sessionid = ? ORDER BY archived, screenidx, archivedts`
-		rtn := SelectMapsGen[*ScreenType](tx, query, sessionId)
+		rtn := dbutil.SelectMapsGen[*ScreenType](tx, query, sessionId)
 		for _, screen := range rtn {
 			screen.Full = true
 		}
@@ -716,7 +717,7 @@ func InsertScreen(ctx context.Context, sessionId string, origScreenName string, 
 func GetScreenById(ctx context.Context, screenId string) (*ScreenType, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) (*ScreenType, error) {
 		query := `SELECT * FROM screen WHERE screenid = ?`
-		screen := GetMapGen[*ScreenType](tx, query, screenId)
+		screen := dbutil.GetMapGen[*ScreenType](tx, query, screenId)
 		screen.Full = true
 		return screen, nil
 	})
@@ -766,7 +767,7 @@ func GetLineCmdByLineId(ctx context.Context, screenId string, lineId string) (*L
 		var cmdRtn *CmdType
 		if lineVal.CmdId != "" {
 			query = `SELECT * FROM cmd WHERE screenid = ? AND cmdid = ?`
-			cmdRtn = GetMapGen[*CmdType](tx, query, screenId, lineVal.CmdId)
+			cmdRtn = dbutil.GetMapGen[*CmdType](tx, query, screenId, lineVal.CmdId)
 		}
 		return &lineVal, cmdRtn, nil
 	})
@@ -781,7 +782,7 @@ func GetLineCmdByCmdId(ctx context.Context, screenId string, cmdId string) (*Lin
 			return nil, nil, nil
 		}
 		query = `SELECT * FROM cmd WHERE screenid = ? AND cmdid = ?`
-		cmdRtn := GetMapGen[*CmdType](tx, query, screenId, cmdId)
+		cmdRtn := dbutil.GetMapGen[*CmdType](tx, query, screenId, cmdId)
 		return &lineVal, cmdRtn, nil
 	})
 }
@@ -832,7 +833,7 @@ func GetCmdByScreenId(ctx context.Context, screenId string, cmdId string) (*CmdT
 	var cmd *CmdType
 	err := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * FROM cmd WHERE screenid = ? AND cmdid = ?`
-		cmd = GetMapGen[*CmdType](tx, query, screenId, cmdId)
+		cmd = dbutil.GetMapGen[*CmdType](tx, query, screenId, cmdId)
 		return nil
 	})
 	if err != nil {
@@ -1181,7 +1182,7 @@ func GetRemoteInstance(ctx context.Context, sessionId string, screenId string, r
 	var ri *RemoteInstance
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * FROM remote_instance WHERE sessionid = ? AND screenid = ? AND remoteownerid = ? AND remoteid = ? AND name = ?`
-		ri = GetMapGen[*RemoteInstance](tx, query, sessionId, screenId, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name)
+		ri = dbutil.GetMapGen[*RemoteInstance](tx, query, sessionId, screenId, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name)
 		return nil
 	})
 	if txErr != nil {
@@ -1227,7 +1228,7 @@ func UpdateRemoteState(ctx context.Context, sessionId string, screenId string, r
 			return fmt.Errorf("cannot update remote instance state: %w", err)
 		}
 		query := `SELECT * FROM remote_instance WHERE sessionid = ? AND screenid = ? AND remoteownerid = ? AND remoteid = ? AND name = ?`
-		ri = GetMapGen[*RemoteInstance](tx, query, sessionId, screenId, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name)
+		ri = dbutil.GetMapGen[*RemoteInstance](tx, query, sessionId, screenId, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name)
 		if ri == nil {
 			ri = &RemoteInstance{
 				RIId:          scbase.GenPromptUUID(),
@@ -1408,7 +1409,7 @@ func GetRunningScreenCmds(ctx context.Context, screenId string) ([]*CmdType, err
 	var rtn []*CmdType
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * from cmd WHERE cmdid IN (SELECT cmdid FROM line WHERE screenid = ?) AND status = ?`
-		rtn = SelectMapsGen[*CmdType](tx, query, screenId, CmdStatusRunning)
+		rtn = dbutil.SelectMapsGen[*CmdType](tx, query, screenId, CmdStatusRunning)
 		return nil
 	})
 	if txErr != nil {
@@ -1824,7 +1825,7 @@ func GetFullState(ctx context.Context, ssPtr ShellStatePtr) (*packet.ShellState,
 		}
 		for idx, diffHash := range ssPtr.DiffHashArr {
 			query = `SELECT * FROM state_diff WHERE diffhash = ?`
-			stateDiff := GetMapGen[*StateDiff](tx, query, diffHash)
+			stateDiff := dbutil.GetMapGen[*StateDiff](tx, query, diffHash)
 			if stateDiff == nil {
 				return fmt.Errorf("ShellStateDiff %s not found", diffHash)
 			}
@@ -1953,7 +1954,7 @@ func GetRIsForScreen(ctx context.Context, sessionId string, screenId string) ([]
 	var rtn []*RemoteInstance
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * FROM remote_instance WHERE sessionid = ? AND (screenid = '' OR screenid = ?)`
-		rtn = SelectMapsGen[*RemoteInstance](tx, query, sessionId, screenId)
+		rtn = dbutil.SelectMapsGen[*RemoteInstance](tx, query, sessionId, screenId)
 		return nil
 	})
 	if txErr != nil {
@@ -2112,12 +2113,12 @@ func GetBookmarks(ctx context.Context, tag string) ([]*BookmarkType, error) {
 		var query string
 		if tag == "" {
 			query = `SELECT * FROM bookmark`
-			bms = SelectMapsGen[*BookmarkType](tx, query)
+			bms = dbutil.SelectMapsGen[*BookmarkType](tx, query)
 		} else {
 			query = `SELECT * FROM bookmark WHERE EXISTS (SELECT 1 FROM json_each(tags) WHERE value = ?)`
-			bms = SelectMapsGen[*BookmarkType](tx, query, tag)
+			bms = dbutil.SelectMapsGen[*BookmarkType](tx, query, tag)
 		}
-		bmMap := MakeGenMap(bms)
+		bmMap := dbutil.MakeGenMap(bms)
 		var orders []bookmarkOrderType
 		query = `SELECT bookmarkid, orderidx FROM bookmark_order WHERE tag = ?`
 		tx.Select(&orders, query, tag)
@@ -2139,7 +2140,7 @@ func GetBookmarkById(ctx context.Context, bookmarkId string, tag string) (*Bookm
 	var rtn *BookmarkType
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * FROM bookmark WHERE bookmarkid = ?`
-		rtn = GetMapGen[*BookmarkType](tx, query, bookmarkId)
+		rtn = dbutil.GetMapGen[*BookmarkType](tx, query, bookmarkId)
 		if rtn == nil {
 			return nil
 		}
@@ -2275,7 +2276,7 @@ func CreatePlaybook(ctx context.Context, name string) (*PlaybookType, error) {
 
 func selectPlaybook(tx *TxWrap, playbookId string) *PlaybookType {
 	query := `SELECT * FROM playbook where playbookid = ?`
-	playbook := GetMapGen[*PlaybookType](tx, query, playbookId)
+	playbook := dbutil.GetMapGen[*PlaybookType](tx, query, playbookId)
 	return playbook
 }
 
@@ -2363,7 +2364,7 @@ func GetLineCmdsFromHistoryItems(ctx context.Context, historyItems []*HistoryIte
 		query := `SELECT * FROM line WHERE lineid IN (SELECT value FROM json_each(?))`
 		tx.Select(&lineArr, query, quickJsonArr(getLineIdsFromHistoryItems(historyItems)))
 		query = `SELECT * FROM cmd WHERE cmdid IN (SELECT value FROM json_each(?))`
-		cmdArr := SelectMapsGen[*CmdType](tx, query, quickJsonArr(getCmdIdsFromHistoryItems(historyItems)))
+		cmdArr := dbutil.SelectMapsGen[*CmdType](tx, query, quickJsonArr(getCmdIdsFromHistoryItems(historyItems)))
 		return lineArr, cmdArr, nil
 	})
 }
@@ -2371,7 +2372,7 @@ func GetLineCmdsFromHistoryItems(ctx context.Context, historyItems []*HistoryIte
 func PurgeHistoryByIds(ctx context.Context, historyIds []string) ([]*HistoryItemType, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) ([]*HistoryItemType, error) {
 		query := `SELECT * FROM history WHERE historyid IN (SELECT value FROM json_each(?))`
-		rtn := SelectMapsGen[*HistoryItemType](tx, query, quickJsonArr(historyIds))
+		rtn := dbutil.SelectMapsGen[*HistoryItemType](tx, query, quickJsonArr(historyIds))
 		query = `DELETE FROM history WHERE historyid IN (SELECT value FROM json_each(?))`
 		tx.Exec(query, quickJsonArr(historyIds))
 		for _, hitem := range rtn {
