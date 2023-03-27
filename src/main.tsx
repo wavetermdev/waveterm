@@ -1587,6 +1587,11 @@ class CmdInput extends React.Component<{}, {}> {
             inputModel.openHistory();
         }
     }
+
+    @boundMethod
+    clickConnectRemote(remoteId : string) : void {
+        GlobalCommandRunner.connectRemote(remoteId);
+    }
     
     render() {
         let model = GlobalModel;
@@ -1627,6 +1632,12 @@ class CmdInput extends React.Component<{}, {}> {
                     <HistoryInfo/>
                 </If>
                 <InfoMsg key="infomsg"/>
+                <If condition={remote && remote.status != "connected"}>
+                    <div className="remote-status-warning">
+                        WARNING:&nbsp;<span className="remote-name">[{GlobalModel.resolveRemoteIdToFullRef(remote.remoteid)}]</span>&nbsp;is {remote.status}
+                        <If condition={remote.status != "connecting"}><div className="button is-prompt-green is-outlined is-small" onClick={() => this.clickConnectRemote(remote.remoteid)}>connect now</div></If>
+                    </div>
+                </If>
                 <div key="prompt" className="cmd-input-context">
                     <div className="has-text-white">
                         <Prompt rptr={rptr} festate={remoteState}/>
@@ -2475,7 +2486,7 @@ function getConnVal(r : RemoteType) : number {
     if (r.status == "connected") {
         return 1;
     }
-    if (r.status == "init" || r.status == "disconnected") {
+    if (r.status == "disconnected") {
         return 2;
     }
     if (r.status == "error") {

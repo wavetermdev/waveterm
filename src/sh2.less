@@ -1845,6 +1845,22 @@ body .xterm .xterm-viewport {
         max-height: max(300px, 70%);
     }
 
+    .remote-status-warning {
+        display: flex;
+        flex-direction: row;
+        color: @term-yellow;
+        align-items: center;
+        font-size: 14px;
+
+        .button {
+            margin-left: 10px;
+        }
+
+        .remote-name {
+            .mono-font(14px)
+        }
+    }
+
     .input-minmax-control {
         position: absolute;
         top: 5px;
@@ -2268,7 +2284,7 @@ input[type=checkbox] {
     color: @term-bright-red;
 }
 
-#main .term-prompt {
+#main .term-prompt-remote {
     color: @term-bright-green;
     
     &.color-green {
@@ -2302,6 +2318,14 @@ input[type=checkbox] {
     &.color-orange {
         color: @tab-orange;
     }
+}
+
+#main .term-prompt-cwd {
+    color: @term-bright-green;
+}
+
+#main .term-prompt-end {
+    color: @term-bright-blue;
 }
 
 #main .screen-tabs .screen-tab {

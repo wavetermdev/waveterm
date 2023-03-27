@@ -593,16 +593,20 @@ class Prompt extends React.Component<{rptr : RemotePtrType, festate : FeStateTyp
                 isRoot = true;
             }
         }
-        let colorClass = (isRoot ? "color-red" : "color-green");
+        let remoteColorClass = (isRoot ? "color-red" : "color-green");
         if (remote && remote.remoteopts && remote.remoteopts.color) {
-            colorClass = "color-" + remote.remoteopts.color;
+            remoteColorClass = "color-" + remote.remoteopts.color;
         }
         // TESTING cwd shortening with triple colon character
         // if (cwd.startsWith("~/work/gopath/src/github.com/scripthaus-dev")) {
         //     cwd = cwd.replace("~/work/gopath/src/github.com/scripthaus-dev", "\u22EEscripthaus-dev");
         // }
+        let remoteTitle : string = null;
+        if (remote && remote.remotecanonicalname) {
+            remoteTitle = "connected to " + remote.remotecanonicalname;
+        }
         return (
-            <span className={cn("term-prompt", colorClass)}>[{remoteStr}] {cwd} {isRoot ? "#" : "$"}</span>
+            <span className="term-prompt"><span title={remoteTitle} className={cn("term-prompt-remote", remoteColorClass)}>[{remoteStr}]</span> <span className="term-prompt-cwd">{cwd}</span> <span className="term-prompt-end">{isRoot ? "#" : "$"}</span></span>
         );
     }
 }

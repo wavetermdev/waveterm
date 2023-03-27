@@ -356,10 +356,11 @@ class Screen {
             let oldSelectedLine = this.selectedLine.get();
             let oldFocusType = this.focusType.get();
             this.selectedLine.set(data.selectedline);
+            this.curRemote.set(data.curremote);
             this.focusType.set(data.focustype);
             this.refocusLine(data, oldFocusType, oldSelectedLine);
             this.shareMode.set(data.sharemode);
-            this.webShareOpts.set(data.webshreopts);
+            this.webShareOpts.set(data.webshareopts);
             // do not update anchorLine/anchorOffset (only stored)
         })();
     }
@@ -3196,6 +3197,17 @@ class Model {
         }
         if (!isBlank(remote.remotealias)) {
             return remote.remotealias;
+        }
+        return remote.remotecanonicalname;
+    }
+
+    resolveRemoteIdToFullRef(remoteId : string) {
+        let remote = this.getRemote(remoteId)
+        if (remote == null) {
+            return "[unknown]";
+        }
+        if (!isBlank(remote.remotealias)) {
+            return remote.remotealias + " (" + remote.remotecanonicalname + ")";
         }
         return remote.remotecanonicalname;
     }
