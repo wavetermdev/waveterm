@@ -44,6 +44,12 @@ node_modules/.bin/webpack-dev-server --config webpack.dev.js --host 0.0.0.0
 ```
 
 ```bash
+# @scripthaus command webshare-devserver
+# @scripthaus cd :playbook
+node_modules/.bin/webpack-dev-server --config webpack.share.dev.js --host 127.0.0.1
+```
+
+```bash
 # @scripthaus command typecheck
 # @scripthaus cd :playbook
 node_modules/.bin/tsc --jsx preserve --noEmit --esModuleInterop --target ES5 --experimentalDecorators --downlevelIteration src/sh2.ts

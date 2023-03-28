@@ -11,3 +11,5 @@ local-server-bin
 *.pw
 build/
 *.dmg
+webshare/dist/
+webshare/dist-dev/
