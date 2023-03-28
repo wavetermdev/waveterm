@@ -24,6 +24,8 @@ const DefaultMaxHistoryItems = 1000
 
 var updateWriterCVar = sync.NewCond(&sync.Mutex{})
 var updateWriterMoreData = false
+var WebScreenPtyPosLock = &sync.Mutex{}
+var WebScreenPtyPosDelIntent = make(map[string]bool) // map[screenid + ":" + lineid] -> bool
 
 type SingleConnDBGetter struct {
 	SingleConnLock *sync.Mutex
@@ -2400,12 +2402,16 @@ func ScreenWebShareStart(ctx context.Context, screenId string, shareOpts ScreenW
 		if shareMode != ShareModeLocal {
 			return fmt.Errorf("screen cannot be shared, invalid current share mode %q (must be local)", shareMode)
 		}
+		nowTs := time.Now().UnixMilli()
 		query = `UPDATE screen SET sharemode = ?, webshareopts = ? WHERE screenid = ?`
 		tx.Exec(query, ShareModeWeb, quickJson(shareOpts), screenId)
 		insertScreenUpdate(tx, screenId, UpdateType_ScreenNew)
 		query = `INSERT INTO screenupdate (screenid, lineid, updatetype, updatets)
                  SELECT screenid, lineid, ?, ? FROM line WHERE screenid = ? ORDER BY linenum`
-		tx.Exec(query, UpdateType_LineNew, time.Now().UnixMilli(), screenId)
+		tx.Exec(query, UpdateType_LineNew, nowTs, screenId)
+		query = `INSERT INTO screenupdate (screenid, lineid, updatetype, updatets)
+                 SELECT c.screenid, l.lineid, ?, ? FROM cmd c, line l WHERE c.screenid = ? AND l.cmdid = c.cmdid`
+		tx.Exec(query, UpdateType_PtyPos, nowTs, screenId)
 		NotifyUpdateWriter()
 		return nil
 	})
@@ -2424,6 +2430,8 @@ func ScreenWebShareStop(ctx context.Context, screenId string) error {
 		query = `UPDATE screen SET sharemode = ?, webshareopts = ? WHERE screenid = ?`
 		tx.Exec(query, ShareModeLocal, "null", screenId)
 		query = `DELETE FROM screenupdate WHERE screenid = ?`
+		tx.Exec(query, screenId)
+		query = `DELETE FROM webptypos WHERE screenid = ?`
 		tx.Exec(query, screenId)
 		insertScreenUpdate(tx, screenId, UpdateType_ScreenDel)
 		return nil
@@ -2494,19 +2502,49 @@ func RemoveScreenUpdate(ctx context.Context, updateId int64) error {
 	})
 }
 
-func InsertPtyPosUpdate(ctx context.Context, screenId string, cmdId string) error {
+func SetWebScreenPtyPosDelIntent(screenId string, lineId string) {
+	WebScreenPtyPosLock.Lock()
+	defer WebScreenPtyPosLock.Unlock()
+	WebScreenPtyPosDelIntent[screenId+":"+lineId] = true
+}
+
+func ClearWebScreenPtyPosDelIntent(screenId string, lineId string) bool {
+	WebScreenPtyPosLock.Lock()
+	defer WebScreenPtyPosLock.Unlock()
+	rtn := WebScreenPtyPosDelIntent[screenId+":"+lineId]
+	delete(WebScreenPtyPosDelIntent, screenId+":"+lineId)
+	return rtn
+}
+
+func MaybeInsertPtyPosUpdate(ctx context.Context, screenId string, cmdId string) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
+		if !isWebShare(tx, screenId) {
+			return nil
+		}
 		query := `SELECT lineid FROM line WHERE screenid = ? AND cmdid = ?`
 		lineId := tx.GetString(query, screenId, cmdId)
 		if lineId == "" {
 			return fmt.Errorf("invalid ptypos update, no lineid found for %s/%s", screenId, cmdId)
 		}
+		ClearWebScreenPtyPosDelIntent(screenId, lineId) // clear delete intention because we have a new update
 		query = `SELECT updateid FROM screenupdate WHERE screenid = ? AND lineid = ? AND updatetype = ?`
 		if !tx.Exists(query, screenId, lineId, UpdateType_PtyPos) {
 			query := `INSERT INTO screenupdate (screenid, lineid, updatetype, updatets) VALUES (?, ?, ?, ?)`
 			tx.Exec(query, screenId, lineId, UpdateType_PtyPos, time.Now().UnixMilli())
 			NotifyUpdateWriter()
 		}
+		return nil
+	})
+}
+
+func MaybeRemovePtyPosUpdate(ctx context.Context, screenId string, lineId string, updateId int64) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		intent := ClearWebScreenPtyPosDelIntent(screenId, lineId) // check for intention before deleting
+		if !intent {
+			return nil
+		}
+		query := `DELETE FROM screenupdate WHERE updateid = ?`
+		tx.Exec(query, updateId)
 		return nil
 	})
 }

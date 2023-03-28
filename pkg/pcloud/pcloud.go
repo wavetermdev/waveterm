@@ -24,7 +24,7 @@ import (
 const PCloudEndpoint = "https://api.getprompt.dev/central"
 const PCloudEndpointVarName = "PCLOUD_ENDPOINT"
 const APIVersion = 1
-const MaxPtyUpdateSize = (128 * 1024) + 1
+const MaxPtyUpdateSize = (128 * 1024)
 const MaxUpdatesPerReq = 10
 const MaxUpdateWriterErrors = 3
 const PCloudDefaultTimeout = 5 * time.Second
@@ -291,11 +291,19 @@ func makeWebShareUpdate(ctx context.Context, update *sstore.ScreenUpdateType) (*
 		if err != nil {
 			return nil, fmt.Errorf("error getting ptypos: %v", err)
 		}
-		realOffset, data, err := sstore.ReadPtyOutFile(ctx, update.ScreenId, cmdId, ptyPos, MaxPtyUpdateSize)
+		sstore.SetWebScreenPtyPosDelIntent(update.ScreenId, update.LineId)
+		realOffset, data, err := sstore.ReadPtyOutFile(ctx, update.ScreenId, cmdId, ptyPos, MaxPtyUpdateSize+1)
 		if err != nil {
 			return nil, fmt.Errorf("error getting ptydata: %v", err)
 		}
-		rtn.PtyData = &WebSharePtyData{PtyPos: realOffset, Data: data}
+		if len(data) == 0 {
+			return nil, nil
+		}
+		if len(data) > MaxPtyUpdateSize {
+			rtn.PtyData = &WebSharePtyData{PtyPos: realOffset, Data: data[0:MaxPtyUpdateSize], Eof: false}
+		} else {
+			rtn.PtyData = &WebSharePtyData{PtyPos: realOffset, Data: data, Eof: true}
+		}
 
 	default:
 		return nil, fmt.Errorf("unsupported update type (pcloud/makeWebScreenUpdate): %s\n", update.UpdateType)
@@ -306,7 +314,7 @@ func makeWebShareUpdate(ctx context.Context, update *sstore.ScreenUpdateType) (*
 func finalizeWebScreenUpdate(ctx context.Context, webUpdate *WebShareUpdateType) error {
 	switch webUpdate.UpdateType {
 	case sstore.UpdateType_PtyPos:
-		dataEof := len(webUpdate.PtyData.Data) < MaxPtyUpdateSize
+		dataEof := webUpdate.PtyData.Eof
 		newPos := webUpdate.PtyData.PtyPos + int64(len(webUpdate.PtyData.Data))
 		if dataEof {
 			err := sstore.RemoveScreenUpdate(ctx, webUpdate.UpdateId)
@@ -315,6 +323,10 @@ func finalizeWebScreenUpdate(ctx context.Context, webUpdate *WebShareUpdateType)
 			}
 		}
 		err := sstore.SetWebPtyPos(ctx, webUpdate.ScreenId, webUpdate.LineId, newPos)
+		if err != nil {
+			return err
+		}
+		err = sstore.MaybeRemovePtyPosUpdate(ctx, webUpdate.ScreenId, webUpdate.LineId, webUpdate.UpdateId)
 		if err != nil {
 			return err
 		}
@@ -338,20 +350,26 @@ func DoWebScreenUpdates(authInfo AuthInfo, updateArr []*sstore.ScreenUpdateType)
 	var webUpdates []*WebShareUpdateType
 	for _, update := range updateArr {
 		webUpdate, err := makeWebShareUpdate(context.Background(), update)
-		if err != nil {
-			// log error, remove update, and continue
-			log.Printf("[pcloud] error create web-share update updateid:%d: %v", update.UpdateId, err)
-			err = sstore.RemoveScreenUpdate(context.Background(), update.UpdateId)
+		if err != nil || webUpdate == nil {
+			// log error (if there is one), remove update, and continue
+			if err != nil {
+				log.Printf("[pcloud] error create web-share update updateid:%d: %v", update.UpdateId, err)
+			}
+			if update.UpdateType == sstore.UpdateType_PtyPos {
+				err = sstore.MaybeRemovePtyPosUpdate(context.Background(), update.ScreenId, update.LineId, update.UpdateId)
+			} else {
+				err = sstore.RemoveScreenUpdate(context.Background(), update.UpdateId)
+			}
 			if err != nil {
 				// ignore this error too (although this is really problematic, there is nothing to do)
 				log.Printf("[pcloud] error removing screen update updateid:%d: %v", update.UpdateId, err)
 			}
 			continue
 		}
-		if webUpdate == nil {
-			continue
-		}
 		webUpdates = append(webUpdates, webUpdate)
+	}
+	if len(webUpdates) == 0 {
+		return nil
 	}
 	ctx, cancelFn := context.WithTimeout(context.Background(), PCloudDefaultTimeout)
 	defer cancelFn()

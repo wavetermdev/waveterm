@@ -61,7 +61,7 @@ func AppendToCmdPtyBlob(ctx context.Context, screenId string, cmdId string, data
 		PtyData64:  data64,
 		PtyDataLen: int64(len(data)),
 	}
-	err = InsertPtyPosUpdate(ctx, screenId, cmdId)
+	err = MaybeInsertPtyPosUpdate(ctx, screenId, cmdId)
 	if err != nil {
 		// just log
 		log.Printf("error inserting ptypos update %s/%s: %v\n", screenId, cmdId, err)
