@@ -189,6 +189,9 @@ func FromDBMap(v DBMappable, m map[string]interface{}) {
 		} else if field.Type.Kind() == reflect.Int64 {
 			intVal := fieldVal.Addr().Interface()
 			QuickSetInt64(intVal.(*int64), m, dbName)
+		} else if field.Type.Kind() == reflect.Int {
+			intVal := fieldVal.Addr().Interface()
+			QuickSetInt(intVal.(*int), m, dbName)
 		} else if field.Type.Kind() == reflect.Bool {
 			boolVal := fieldVal.Addr().Interface()
 			QuickSetBool(boolVal.(*bool), m, dbName)

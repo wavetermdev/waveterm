@@ -24,16 +24,38 @@ func QuickSetStr(strVal *string, m map[string]interface{}, name string) {
 	*strVal = str
 }
 
+func QuickSetInt(ival *int, m map[string]interface{}, name string) {
+	v, ok := m[name]
+	if !ok {
+		return
+	}
+	sqlInt, ok := v.(int)
+	if ok {
+		*ival = sqlInt
+		return
+	}
+	sqlInt64, ok := v.(int64)
+	if ok {
+		*ival = int(sqlInt64)
+		return
+	}
+}
+
 func QuickSetInt64(ival *int64, m map[string]interface{}, name string) {
 	v, ok := m[name]
 	if !ok {
 		return
 	}
-	sqlInt, ok := v.(int64)
-	if !ok {
+	sqlInt64, ok := v.(int64)
+	if ok {
+		*ival = sqlInt64
 		return
 	}
-	*ival = sqlInt
+	sqlInt, ok := v.(int)
+	if ok {
+		*ival = int64(sqlInt)
+		return
+	}
 }
 
 func QuickSetBool(bval *bool, m map[string]interface{}, name string) {
