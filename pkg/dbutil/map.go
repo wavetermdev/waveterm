@@ -104,6 +104,10 @@ func isByteArrayType(t reflect.Type) bool {
 	return t.Kind() == reflect.Slice && t.Elem().Kind() == reflect.Uint8
 }
 
+func isStringMapType(t reflect.Type) bool {
+	return t.Kind() == reflect.Map && t.Key().Kind() == reflect.String
+}
+
 func ToDBMap(v DBMappable, useBytes bool) map[string]interface{} {
 	if v == nil {
 		return nil
@@ -136,7 +140,7 @@ func ToDBMap(v DBMappable, useBytes bool) map[string]interface{} {
 			} else {
 				m[dbName] = QuickJsonArr(fieldVal.Interface())
 			}
-		} else if isStructType(field.Type) {
+		} else if isStructType(field.Type) || isStringMapType(field.Type) {
 			if useBytes {
 				m[dbName] = QuickJsonBytes(fieldVal.Interface())
 			} else {
@@ -177,7 +181,7 @@ func FromDBMap(v DBMappable, m map[string]interface{}) {
 			QuickSetBytes(barrVal.(*[]byte), m, dbName)
 		} else if field.Type.Kind() == reflect.Slice {
 			QuickSetJsonArr(fieldVal.Addr().Interface(), m, dbName)
-		} else if isStructType(field.Type) {
+		} else if isStructType(field.Type) || isStringMapType(field.Type) {
 			QuickSetJson(fieldVal.Addr().Interface(), m, dbName)
 		} else if field.Type.Kind() == reflect.String {
 			strVal := fieldVal.Addr().Interface()
