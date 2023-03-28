@@ -192,6 +192,7 @@ func makeWebShareUpdate(ctx context.Context, update *sstore.ScreenUpdateType) (*
 		LineId:     update.LineId,
 		UpdateId:   update.UpdateId,
 		UpdateType: update.UpdateType,
+		UpdateTs:   update.UpdateTs,
 	}
 	switch update.UpdateType {
 	case sstore.UpdateType_ScreenNew:

@@ -27,6 +27,7 @@ type WebShareUpdateType struct {
 	LineId     string `json:"lineid"`
 	UpdateId   int64  `json:"updateid"`
 	UpdateType string `json:"updatetype"`
+	UpdateTs   int64  `json:"updatets"`
 
 	Screen   *WebShareScreenType `json:"screen,omitempty"`
 	Line     *WebShareLineType   `json:"line,omitempty"`
