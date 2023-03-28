@@ -21,6 +21,10 @@ type HasSimpleKey interface {
 	GetSimpleKey() string
 }
 
+type HasSimpleInt64Key interface {
+	GetSimpleKey() int64
+}
+
 type MapConverterPtr[T any] interface {
 	MapConverter
 	*T
@@ -72,6 +76,14 @@ func SelectMapsGen[PT MapConverterPtr[T], T any](tx *txwrap.TxWrap, query string
 
 func MakeGenMap[T HasSimpleKey](arr []T) map[string]T {
 	rtn := make(map[string]T)
+	for _, val := range arr {
+		rtn[val.GetSimpleKey()] = val
+	}
+	return rtn
+}
+
+func MakeGenMapInt64[T HasSimpleInt64Key](arr []T) map[int64]T {
+	rtn := make(map[int64]T)
 	for _, val := range arr {
 		rtn[val.GetSimpleKey()] = val
 	}

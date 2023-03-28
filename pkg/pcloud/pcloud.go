@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/scripthaus-dev/sh2-server/pkg/dbutil"
 	"github.com/scripthaus-dev/sh2-server/pkg/rtnstate"
 	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
@@ -328,6 +329,11 @@ func finalizeWebScreenUpdate(ctx context.Context, webUpdate *WebShareUpdateType)
 	return nil
 }
 
+type webShareResponseType struct {
+	Success bool                          `json:"success"`
+	Data    []*WebShareUpdateResponseType `json:"data"`
+}
+
 func DoWebScreenUpdates(authInfo AuthInfo, updateArr []*sstore.ScreenUpdateType) error {
 	var webUpdates []*WebShareUpdateType
 	for _, update := range updateArr {
@@ -353,16 +359,23 @@ func DoWebScreenUpdates(authInfo AuthInfo, updateArr []*sstore.ScreenUpdateType)
 	if err != nil {
 		return fmt.Errorf("cannot create auth-post-req for %s: %v", WebShareUpdateUrl, err)
 	}
-	_, err = doRequest(req, nil)
+	var resp webShareResponseType
+	_, err = doRequest(req, &resp)
 	if err != nil {
 		return err
 	}
+	respMap := dbutil.MakeGenMapInt64(resp.Data)
 	for _, update := range webUpdates {
 		err = finalizeWebScreenUpdate(context.Background(), update)
 		if err != nil {
 			// ignore this error (nothing to do)
 			log.Printf("[pcloud] error finalizing web-update: %v\n", err)
 		}
+		resp := respMap[update.UpdateId]
+		if resp == nil {
+			resp = &WebShareUpdateResponseType{Success: false, Error: "resp not found"}
+		}
+		log.Printf("[pcloud] updateid:%d, type:%s %s/%s success:%v err:%v\n", update.UpdateId, update.UpdateType, update.ScreenId, update.LineId, resp.Success, resp.Error)
 	}
 	return nil
 }
@@ -390,9 +403,6 @@ func StartUpdateWriter() {
 }
 
 func computeBackoff(numFailures int) time.Duration {
-	// TODO remove once API implemented
-	return time.Hour
-
 	switch numFailures {
 	case 1:
 		return 100 * time.Millisecond

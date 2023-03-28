@@ -25,7 +25,7 @@ type TelemetryInputType struct {
 type WebShareUpdateType struct {
 	ScreenId   string `json:"screenid"`
 	LineId     string `json:"lineid"`
-	UpdateId   int64  `json:"-"` // just for internal use
+	UpdateId   int64  `json:"updateid"`
 	UpdateType string `json:"updatetype"`
 
 	Screen   *WebShareScreenType `json:"screen,omitempty"`
@@ -36,6 +36,16 @@ type WebShareUpdateType struct {
 	BVal     bool                `json:"bval,omitempty"`
 	DoneInfo *sstore.CmdDoneInfo `json:"doneinfo,omitempty"`
 	TermOpts *sstore.TermOpts    `json:"termopts,omitempty"`
+}
+
+type WebShareUpdateResponseType struct {
+	UpdateId int64  `json:"updateid"`
+	Success  bool   `json:"success"`
+	Error    string `json:"error,omitempty"`
+}
+
+func (ur *WebShareUpdateResponseType) GetSimpleKey() int64 {
+	return ur.UpdateId
 }
 
 type WebShareRemotePtr struct {
@@ -72,10 +82,13 @@ func webScreenFromScreen(s *sstore.ScreenType) (*WebShareScreenType, error) {
 	if s.WebShareOpts.ViewKey == "" {
 		return nil, fmt.Errorf("invalid screen, no ViewKey")
 	}
-	if s.WebShareOpts.ShareName == "" {
-		return nil, fmt.Errorf("invalid screen, no ShareName")
+	var shareName string
+	if s.WebShareOpts.ShareName != "" {
+		shareName = s.WebShareOpts.ShareName
+	} else {
+		shareName = s.Name
 	}
-	return &WebShareScreenType{ScreenId: s.ScreenId, ShareName: s.WebShareOpts.ShareName, ViewKey: s.WebShareOpts.ViewKey}, nil
+	return &WebShareScreenType{ScreenId: s.ScreenId, ShareName: shareName, ViewKey: s.WebShareOpts.ViewKey}, nil
 }
 
 type WebShareLineType struct {
