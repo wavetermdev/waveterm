@@ -123,7 +123,7 @@ func isStringMapType(t reflect.Type) bool {
 }
 
 func ToDBMap(v DBMappable, useBytes bool) map[string]interface{} {
-	if v == nil {
+	if CheckNil(v) {
 		return nil
 	}
 	rv := reflect.ValueOf(v)
@@ -168,7 +168,7 @@ func ToDBMap(v DBMappable, useBytes bool) map[string]interface{} {
 }
 
 func FromDBMap(v DBMappable, m map[string]interface{}) {
-	if v == nil {
+	if CheckNil(v) {
 		panic("StructFromDBMap, v cannot be nil")
 	}
 	rv := reflect.ValueOf(v)

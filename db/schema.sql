@@ -58,7 +58,7 @@ CREATE TABLE remote (
     local boolean NOT NULL,
     archived boolean NOT NULL,
     remoteidx int NOT NULL
-);
+, statevars json NOT NULL DEFAULT '{}');
 CREATE TABLE history (
     historyid varchar(36) PRIMARY KEY,
     ts bigint NOT NULL,
@@ -192,10 +192,17 @@ CREATE TABLE IF NOT EXISTS "cmd" (
     rtndiffhasharr json NOT NULL,
     PRIMARY KEY (screenid, cmdid)
 );
-CREATE TABLE screenupdates (
+CREATE TABLE screenupdate (
     updateid integer PRIMARY KEY,
     screenid varchar(36) NOT NULL,
     lineid varchar(36) NOT NULL,
     updatetype varchar(50) NOT NULL,
     updatets bigint NOT NULL
 );
+CREATE TABLE webptypos (
+    screenid varchar(36) NOT NULL,
+    lineid varchar(36) NOT NULL,
+    ptypos bigint NOT NULL,
+    PRIMARY KEY (screenid, lineid)
+);
+CREATE INDEX idx_screenupdate_ids ON screenupdate (screenid, lineid);

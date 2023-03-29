@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strconv"
 )
 
@@ -130,8 +131,22 @@ func QuickSetJsonArr(ptr interface{}, m map[string]interface{}, name string) {
 	json.Unmarshal(barr, ptr)
 }
 
+func CheckNil(v interface{}) bool {
+	rv := reflect.ValueOf(v)
+	if !rv.IsValid() {
+		return true
+	}
+	switch rv.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return rv.IsNil()
+
+	default:
+		return false
+	}
+}
+
 func QuickNullableJson(v interface{}) string {
-	if v == nil {
+	if CheckNil(v) {
 		return "null"
 	}
 	barr, _ := json.Marshal(v)
@@ -139,7 +154,7 @@ func QuickNullableJson(v interface{}) string {
 }
 
 func QuickJson(v interface{}) string {
-	if v == nil {
+	if CheckNil(v) {
 		return "{}"
 	}
 	barr, _ := json.Marshal(v)
@@ -147,7 +162,7 @@ func QuickJson(v interface{}) string {
 }
 
 func QuickJsonBytes(v interface{}) []byte {
-	if v == nil {
+	if CheckNil(v) {
 		return []byte("{}")
 	}
 	barr, _ := json.Marshal(v)
@@ -155,7 +170,7 @@ func QuickJsonBytes(v interface{}) []byte {
 }
 
 func QuickJsonArr(v interface{}) string {
-	if v == nil {
+	if CheckNil(v) {
 		return "[]"
 	}
 	barr, _ := json.Marshal(v)
@@ -163,7 +178,7 @@ func QuickJsonArr(v interface{}) string {
 }
 
 func QuickJsonArrBytes(v interface{}) []byte {
-	if v == nil {
+	if CheckNil(v) {
 		return []byte("[]")
 	}
 	barr, _ := json.Marshal(v)
@@ -186,7 +201,7 @@ func QuickScanJson(ptr interface{}, val interface{}) error {
 }
 
 func QuickValueJson(v interface{}) (driver.Value, error) {
-	if v == nil {
+	if CheckNil(v) {
 		return "{}", nil
 	}
 	barr, err := json.Marshal(v)
