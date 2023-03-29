@@ -1,6 +1,26 @@
 import * as mobx from "mobx";
 import {sprintf} from "sprintf-js";
 
+function handleNotOkResp(resp : any, url : URL) : Promise<any> {
+    let errMsg = sprintf("Bad status code response from fetch '%s': code=%d %s", url.toString(), resp.status, resp.statusText);
+    return resp.text().then((textData) => {
+        if (textData == null || textData == "") {
+            throw new Error(errMsg);
+        }
+        let rtnData : any = null;
+        try {
+            rtnData = JSON.parse(textData);
+        }
+        catch (err) {
+            // nothing (rtnData will be null)
+        }
+        if (rtnData != null && typeof(rtnData) == "object" && rtnData["error"] != null) {
+            throw new Error(rtnData["error"]);
+        }
+        throw new Error(errMsg + "\n" + textData);
+    });
+}
+
 function fetchJsonData(resp : any, ctErr : boolean) : Promise<any> {
     let contentType = resp.headers.get("Content-Type");
     if (contentType != null && contentType.startsWith("application/json")) {
@@ -27,13 +47,7 @@ function fetchJsonData(resp : any, ctErr : boolean) : Promise<any> {
 
 function handleJsonFetchResponse(url : URL, resp : any) : Promise<any> {
     if (!resp.ok) {
-        let errData = fetchJsonData(resp, false);
-        if (errData && errData["error"]) {
-            throw new Error(errData["error"])
-        }
-        let errMsg = sprintf("Bad status code response from fetch '%s': %d %s", url.toString(), resp.status, resp.statusText);
-        let rtnErr = new Error(errMsg);
-        throw rtnErr;
+        return handleNotOkResp(resp, url);
     }
     let rtnData = fetchJsonData(resp, true);
     return rtnData;

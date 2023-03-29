@@ -20,6 +20,9 @@ var merged = merge.merge(common, {
         headers: {
             'Cache-Control': 'no-store',
         },
+        allowedHosts: "all",
+        hot: false,
+        liveReload: false,
     },
     watchOptions: {
         aggregateTimeout: 200,

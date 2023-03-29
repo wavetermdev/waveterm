@@ -3172,7 +3172,47 @@ input[type=checkbox] {
     animation-duration: 0.3s;
 }
 
-body.prompt-webshare {
+body.prompt-webshare #main {
+    display: flex;
+    flex-direction: column;
+    
+    .logo-header {
+        display: flex;
+        flex-direction: row;
+        padding: 10px;
+        border-bottom: 1px solid #777;
+        align-items: center;
+
+        .logo-text {
+            .mono-font(32px);
+            color: @prompt-green;
+        }
+
+        .download-button {
+            margin-right: 20px;
+        }
+    }
+
+    .prompt-content {
+        flex-grow: 1;
+        padding: 10px;
+    }
+
+    .prompt-footer {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        color: #aaa;
+        border-top: 1px solid #777;
+        height: 50px;
+        padding-left: 20px;
+        padding-right: 20px;
+
+        a {
+            display: block;
+        }
+    }
+    
     color: white;
     
     #app {
