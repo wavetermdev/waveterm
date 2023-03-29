@@ -50,8 +50,8 @@ func (ur *WebShareUpdateResponseType) GetSimpleKey() int64 {
 }
 
 type WebShareRemotePtr struct {
-	Alias         string `json:"remotealias,omitempty"`
-	CanonicalName string `json:"remotecanonicalname"`
+	Alias         string `json:"alias,omitempty"`
+	CanonicalName string `json:"canonicalname"`
 	Name          string `json:"name,omitempty"`
 }
 

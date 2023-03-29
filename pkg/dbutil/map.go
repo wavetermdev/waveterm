@@ -62,6 +62,20 @@ func GetMappable[PT DBMappablePtr[T], T any](tx *txwrap.TxWrap, query string, ar
 	return rtn
 }
 
+func SelectMappable[PT DBMappablePtr[T], T any](tx *txwrap.TxWrap, query string, args ...interface{}) []PT {
+	var rtn []PT
+	marr := tx.SelectMaps(query, args...)
+	for _, m := range marr {
+		if len(m) == 0 {
+			continue
+		}
+		val := PT(new(T))
+		FromDBMap(val, m)
+		rtn = append(rtn, val)
+	}
+	return rtn
+}
+
 func SelectMapsGen[PT MapConverterPtr[T], T any](tx *txwrap.TxWrap, query string, args ...interface{}) []PT {
 	var rtn []PT
 	marr := tx.SelectMaps(query, args...)

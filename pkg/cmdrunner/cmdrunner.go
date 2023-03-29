@@ -1652,12 +1652,13 @@ func ScreenWebShareCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 		if err != nil {
 			return nil, fmt.Errorf("cannot create viewkey: %v", err)
 		}
-		webShareOpts := sstore.ScreenWebShareOpts{ShareName: shareName, ViewKey: base64.RawURLEncoding.EncodeToString(viewKeyBytes)}
+		viewKey := base64.RawURLEncoding.EncodeToString(viewKeyBytes)
+		webShareOpts := sstore.ScreenWebShareOpts{ShareName: shareName, ViewKey: viewKey}
 		err = sstore.ScreenWebShareStart(ctx, ids.ScreenId, webShareOpts)
 		if err != nil {
 			return nil, fmt.Errorf("cannot web-share screen: %v", err)
 		}
-		infoMsg = fmt.Sprintf("screen is now shared to the web at %s", "[screen-share-url]")
+		infoMsg = fmt.Sprintf("screen is now shared to the web at %s", fmt.Sprintf("screenid=%s viewkey=%s", ids.ScreenId, viewKey))
 	} else {
 		err = sstore.ScreenWebShareStop(ctx, ids.ScreenId)
 		if err != nil {
