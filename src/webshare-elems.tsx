@@ -43,18 +43,13 @@ function replaceHomePath(path : string, homeDir : string) : string {
     return path;
 }
 
-function getCwdStr(state : T.FeStateType) : string {
-    let remote = null;
-    if ((state == null || state.cwd == null) && remote != null) {
+function getCwdStr(remote : T.WebRemote, state : T.FeStateType) : string {
+    if (state == null || isBlank(state.cwd)) {
         return "~";
     }
-    let cwd = "?";
-    if (state && state.cwd) {
-        cwd = state.cwd;
-    }
-    // TODO fix
-    if (remote && remote.remotevars.home) {
-         cwd = replaceHomePath(cwd, remote.remotevars.cwd)
+    let cwd = state.cwd;
+    if (remote && remote.homedir) {
+        cwd = replaceHomePath(cwd, remote.homedir)
     }
     return cwd;
 }
@@ -73,13 +68,8 @@ class Prompt extends React.Component<{remote : T.WebRemote, festate : T.FeStateT
     render() {
         let {remote, festate} = this.props;
         let remoteStr = getRemoteStr(remote);
-        let cwd = getCwdStr(festate);
-        let isRoot = false;
-        // if (remote && remote.remotevars) {
-        //     if (remote.remotevars["sudo"] || remote.remotevars["bestuser"] == "root") {
-        //         isRoot = true;
-        //     }
-        // }
+        let cwd = getCwdStr(remote, festate);
+        let isRoot = !!remote.isroot;
         let remoteColorClass = (isRoot ? "color-red" : "color-green");
         // if (remote && remote.remoteopts && remote.remoteopts.color) {
         //     remoteColorClass = "color-" + remote.remoteopts.color;

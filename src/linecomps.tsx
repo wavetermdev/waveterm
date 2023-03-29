@@ -62,15 +62,12 @@ function replaceHomePath(path : string, homeDir : string) : string {
 }
 
 function getCwdStr(remote : RemoteType, state : FeStateType) : string {
-    if ((state == null || state.cwd == null) && remote != null) {
+    if (state == null || isBlank(state.cwd)) {
         return "~";
     }
-    let cwd = "?";
-    if (state && state.cwd) {
-        cwd = state.cwd;
-    }
+    let cwd = state.cwd;
     if (remote && remote.remotevars.home) {
-        cwd = replaceHomePath(cwd, remote.remotevars.cwd)
+        cwd = replaceHomePath(cwd, remote.remotevars.home)
     }
     return cwd;
 }

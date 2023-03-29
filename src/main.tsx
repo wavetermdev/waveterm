@@ -966,7 +966,6 @@ class InfoRemoteEdit extends React.Component<{}, {}> {
         kwargs["autoinstall"] = (this.autoInstallBool.get() ? "1" : "0");
         kwargs["visual"] = "1";
         kwargs["submit"] = "1";
-        console.log("submit remote", (isEditing ? redit.remoteid : cname), kwargs);
         mobx.action(() => {
             if (isEditing) {
                 GlobalCommandRunner.editRemote(redit.remoteid, kwargs);

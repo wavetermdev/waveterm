@@ -506,9 +506,12 @@ type WebLine = {
 };
 
 type WebRemote = {
+    remoteid : string,
     alias : string,
     canonicalname : string,
     name : string,
+    homedir : string,
+    isroot : boolean,
 };
 
 type WebCmd = {
