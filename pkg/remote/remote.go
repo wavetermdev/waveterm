@@ -387,6 +387,15 @@ func GetRemoteById(remoteId string) *MShellProc {
 	return GlobalStore.Map[remoteId]
 }
 
+func GetRemoteCopyById(remoteId string) *sstore.RemoteType {
+	msh := GetRemoteById(remoteId)
+	if msh == nil {
+		return nil
+	}
+	rcopy := msh.GetRemoteCopy()
+	return &rcopy
+}
+
 func GetRemoteMap() map[string]*MShellProc {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
@@ -518,7 +527,10 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 	if msh.Status == StatusConnecting {
 		state.WaitingForPassword = msh.isWaitingForPassword_nolock()
 	}
-	vars := make(map[string]string)
+	vars := msh.Remote.StateVars
+	if vars == nil {
+		vars = make(map[string]string)
+	}
 	vars["user"] = msh.Remote.RemoteUser
 	vars["bestuser"] = vars["user"]
 	vars["host"] = msh.Remote.RemoteHost
@@ -963,6 +975,33 @@ func (msh *MShellProc) RunInstall() {
 	return
 }
 
+func (msh *MShellProc) updateRemoteStateVars(ctx context.Context, remoteId string, initPk *packet.InitPacketType) {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	stateVars := getStateVarsFromInitPk(initPk)
+	if stateVars == nil {
+		return
+	}
+	msh.Remote.StateVars = stateVars
+	err := sstore.UpdateRemoteStateVars(ctx, remoteId, stateVars)
+	if err != nil {
+		// ignore error, nothing to do
+		log.Printf("error updating remote statevars: %v\n", err)
+	}
+}
+
+func getStateVarsFromInitPk(initPk *packet.InitPacketType) map[string]string {
+	if initPk == nil || initPk.NotFound {
+		return nil
+	}
+	rtn := make(map[string]string)
+	rtn["home"] = initPk.HomeDir
+	rtn["remoteuser"] = initPk.User
+	rtn["remotehost"] = initPk.HostName
+	rtn["remoteuname"] = initPk.UName
+	return rtn
+}
+
 func (msh *MShellProc) ReInit(ctx context.Context) (*packet.InitPacketType, error) {
 	reinitPk := packet.MakeReInitPacket()
 	reinitPk.ReqId = uuid.New().String()
@@ -986,6 +1025,8 @@ func (msh *MShellProc) ReInit(ctx context.Context) (*packet.InitPacketType, erro
 		msh.CurrentState = hval
 		msh.StateMap[hval] = initPk.State
 	})
+	msh.updateRemoteStateVars(ctx, msh.RemoteId, initPk)
+
 	return initPk, nil
 }
 
@@ -1139,6 +1180,7 @@ func (msh *MShellProc) Launch(interactive bool) {
 		msh.WriteToPtyBuffer("*error connecting to remote: %v\n", err)
 		return
 	}
+	msh.updateRemoteStateVars(context.Background(), msh.RemoteId, initPk)
 	msh.WriteToPtyBuffer("connected state:%s\n", stateBaseHash)
 	msh.WithLock(func() {
 		msh.ServerProc = cproc

@@ -199,12 +199,20 @@ func UpsertRemote(ctx context.Context, r *RemoteType) error {
 		maxRemoteIdx := tx.GetInt(query)
 		r.RemoteIdx = int64(maxRemoteIdx + 1)
 		query = `INSERT INTO remote
-            ( remoteid, physicalid, remotetype, remotealias, remotecanonicalname, remotesudo, remoteuser, remotehost, connectmode, autoinstall, sshopts, remoteopts, lastconnectts, archived, remoteidx, local) VALUES
-            (:remoteid,:physicalid,:remotetype,:remotealias,:remotecanonicalname,:remotesudo,:remoteuser,:remotehost,:connectmode,:autoinstall,:sshopts,:remoteopts,:lastconnectts,:archived,:remoteidx,:local)`
+            ( remoteid, physicalid, remotetype, remotealias, remotecanonicalname, remotesudo, remoteuser, remotehost, connectmode, autoinstall, sshopts, remoteopts, lastconnectts, archived, remoteidx, local, statevars) VALUES
+            (:remoteid,:physicalid,:remotetype,:remotealias,:remotecanonicalname,:remotesudo,:remoteuser,:remotehost,:connectmode,:autoinstall,:sshopts,:remoteopts,:lastconnectts,:archived,:remoteidx,:local,:statevars)`
 		tx.NamedExec(query, r.ToMap())
 		return nil
 	})
 	return txErr
+}
+
+func UpdateRemoteStateVars(ctx context.Context, remoteId string, stateVars map[string]string) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		query := `UPDATE remote SET statevars = ? WHERE remoteid = ?`
+		tx.Exec(query, quickJson(stateVars), remoteId)
+		return nil
+	})
 }
 
 func InsertHistoryItem(ctx context.Context, hitem *HistoryItemType) error {

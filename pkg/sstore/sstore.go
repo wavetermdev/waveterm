@@ -377,8 +377,9 @@ type ScreenLinesType struct {
 func (ScreenLinesType) UseDBMap() {}
 
 type ScreenWebShareOpts struct {
-	ShareName string `json:"sharename"`
-	ViewKey   string `json:"viewkey"`
+	ShareName     string   `json:"sharename"`
+	ViewKey       string   `json:"viewkey"`
+	SharedRemotes []string `json:"sharedremotes"`
 }
 
 type ScreenType struct {
@@ -804,22 +805,23 @@ func (opts RemoteOptsType) Value() (driver.Value, error) {
 }
 
 type RemoteType struct {
-	RemoteId            string          `json:"remoteid"`
-	PhysicalId          string          `json:"physicalid"`
-	RemoteType          string          `json:"remotetype"`
-	RemoteAlias         string          `json:"remotealias"`
-	RemoteCanonicalName string          `json:"remotecanonicalname"`
-	RemoteSudo          bool            `json:"remotesudo"`
-	RemoteUser          string          `json:"remoteuser"`
-	RemoteHost          string          `json:"remotehost"`
-	ConnectMode         string          `json:"connectmode"`
-	AutoInstall         bool            `json:"autoinstall"`
-	SSHOpts             *SSHOpts        `json:"sshopts"`
-	RemoteOpts          *RemoteOptsType `json:"remoteopts"`
-	LastConnectTs       int64           `json:"lastconnectts"`
-	Archived            bool            `json:"archived"`
-	RemoteIdx           int64           `json:"remoteidx"`
-	Local               bool            `json:"local"`
+	RemoteId            string            `json:"remoteid"`
+	PhysicalId          string            `json:"physicalid"`
+	RemoteType          string            `json:"remotetype"`
+	RemoteAlias         string            `json:"remotealias"`
+	RemoteCanonicalName string            `json:"remotecanonicalname"`
+	RemoteSudo          bool              `json:"remotesudo"`
+	RemoteUser          string            `json:"remoteuser"`
+	RemoteHost          string            `json:"remotehost"`
+	ConnectMode         string            `json:"connectmode"`
+	AutoInstall         bool              `json:"autoinstall"`
+	SSHOpts             *SSHOpts          `json:"sshopts"`
+	RemoteOpts          *RemoteOptsType   `json:"remoteopts"`
+	LastConnectTs       int64             `json:"lastconnectts"`
+	Archived            bool              `json:"archived"`
+	RemoteIdx           int64             `json:"remoteidx"`
+	Local               bool              `json:"local"`
+	StateVars           map[string]string `json:"statevars"`
 }
 
 func (r *RemoteType) GetName() string {
@@ -878,6 +880,7 @@ func (r *RemoteType) ToMap() map[string]interface{} {
 	rtn["archived"] = r.Archived
 	rtn["remoteidx"] = r.RemoteIdx
 	rtn["local"] = r.Local
+	rtn["statevars"] = quickJson(r.StateVars)
 	return rtn
 }
 
@@ -898,6 +901,7 @@ func (r *RemoteType) FromMap(m map[string]interface{}) bool {
 	quickSetBool(&r.Archived, m, "archived")
 	quickSetInt64(&r.RemoteIdx, m, "remoteidx")
 	quickSetBool(&r.Local, m, "local")
+	quickSetJson(&r.StateVars, m, "statevars")
 	return true
 }
 

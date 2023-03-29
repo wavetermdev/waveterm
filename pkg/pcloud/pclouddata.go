@@ -49,28 +49,30 @@ func (ur *WebShareUpdateResponseType) GetSimpleKey() int64 {
 	return ur.UpdateId
 }
 
-type WebShareRemotePtr struct {
+type WebShareRemote struct {
+	RemoteId      string `json:"remoteid"`
 	Alias         string `json:"alias,omitempty"`
 	CanonicalName string `json:"canonicalname"`
 	Name          string `json:"name,omitempty"`
-}
-
-func webRemoteFromRemotePtr(rptr sstore.RemotePtrType) *WebShareRemotePtr {
-	if rptr.RemoteId == "" {
-		return nil
-	}
-	rcopy := remote.GetRemoteById(rptr.RemoteId).GetRemoteCopy()
-	return &WebShareRemotePtr{
-		Alias:         rcopy.RemoteAlias,
-		CanonicalName: rcopy.RemoteCanonicalName,
-		Name:          rptr.Name,
-	}
+	HomeDir       string `json:"homedir,omitempty"`
+	IsRoot        bool   `json:"isroot,omitempty"`
 }
 
 type WebShareScreenType struct {
 	ScreenId  string `json:"screenid"`
 	ShareName string `json:"sharename"`
 	ViewKey   string `json:"viewkey"`
+}
+
+func webRemoteFromRemote(rptr sstore.RemotePtrType, r *sstore.RemoteType) *WebShareRemote {
+	return &WebShareRemote{
+		RemoteId:      r.RemoteId,
+		Alias:         r.RemoteAlias,
+		CanonicalName: r.RemoteCanonicalName,
+		Name:          rptr.Name,
+		HomeDir:       r.StateVars["home"],
+		IsRoot:        r.StateVars["remoteuser"] == "root",
+	}
 }
 
 func webScreenFromScreen(s *sstore.ScreenType) (*WebShareScreenType, error) {
@@ -121,7 +123,7 @@ type WebShareCmdType struct {
 	LineId      string                     `json:"lineid"`
 	CmdStr      string                     `json:"cmdstr"`
 	RawCmdStr   string                     `json:"rawcmdstr"`
-	Remote      *WebShareRemotePtr         `json:"remote"`
+	Remote      *WebShareRemote            `json:"remote"`
 	FeState     sstore.FeStateType         `json:"festate"`
 	TermOpts    sstore.TermOpts            `json:"termopts"`
 	Status      string                     `json:"status"`
@@ -132,11 +134,19 @@ type WebShareCmdType struct {
 }
 
 func webCmdFromCmd(lineId string, cmd *sstore.CmdType) (*WebShareCmdType, error) {
+	if cmd.Remote.RemoteId == "" {
+		return nil, fmt.Errorf("invalid cmd, remoteptr has no remoteid")
+	}
+	remote := remote.GetRemoteCopyById(cmd.Remote.RemoteId)
+	if remote == nil {
+		return nil, fmt.Errorf("invalid cmd, cannot retrieve remote:%s", cmd.Remote.RemoteId)
+	}
+	webRemote := webRemoteFromRemote(cmd.Remote, remote)
 	rtn := &WebShareCmdType{
 		LineId:    lineId,
 		CmdStr:    cmd.CmdStr,
 		RawCmdStr: cmd.RawCmdStr,
-		Remote:    webRemoteFromRemotePtr(cmd.Remote),
+		Remote:    webRemote,
 		FeState:   cmd.FeState,
 		TermOpts:  cmd.TermOpts,
 		Status:    cmd.Status,
