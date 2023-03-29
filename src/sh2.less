@@ -3182,6 +3182,7 @@ body.prompt-webshare #main {
         padding: 10px;
         border-bottom: 1px solid #777;
         align-items: center;
+        flex-shrink: 0;
 
         .logo-text {
             .mono-font(32px);
@@ -3203,7 +3204,22 @@ body.prompt-webshare #main {
 
     .prompt-content {
         flex-grow: 1;
-        padding: 10px;        
+        padding: 10px;
+        display: flex;
+        flex-direction: row;
+        overflow: hidden;
+
+        .web-screen-view {
+            height: 100%;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            
+            .web-lines {
+                height: 100%;
+                flex-grow: 1;
+            }
+        }
     }
 
     .prompt-footer {
@@ -3215,6 +3231,11 @@ body.prompt-webshare #main {
         height: 50px;
         padding-left: 20px;
         padding-right: 20px;
+        flex-shrink: 0;
+
+        .footer-copy {
+            font-size: 12px;
+        }
 
         a {
             display: block;

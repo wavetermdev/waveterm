@@ -11,6 +11,11 @@ import {isBlank} from "./util";
 import {PluginModel} from "./plugins";
 import * as lineutil from "./lineutil";
 import * as util from "./util";
+import {windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols} from "./textmeasure";
+
+type OV<V> = mobx.IObservableValue<V>;
+type OArr<V> = mobx.IObservableArray<V>;
+type OMap<K,V> = mobx.ObservableMap<K,V>;
 
 // TODO selection
 // TODO remotevars
@@ -38,7 +43,8 @@ function replaceHomePath(path : string, homeDir : string) : string {
     return path;
 }
 
-function getCwdStr(state : FeStateType) : string {
+function getCwdStr(state : T.FeStateType) : string {
+    let remote = null;
     if ((state == null || state.cwd == null) && remote != null) {
         return "~";
     }
@@ -46,13 +52,14 @@ function getCwdStr(state : FeStateType) : string {
     if (state && state.cwd) {
         cwd = state.cwd;
     }
-    // if (remote && remote.remotevars.home) {
-    //     cwd = replaceHomePath(cwd, remote.remotevars.cwd)
-    // }
+    // TODO fix
+    if (remote && remote.remotevars.home) {
+         cwd = replaceHomePath(cwd, remote.remotevars.cwd)
+    }
     return cwd;
 }
 
-function getRemoteStr(remote : WebRemote) : string {
+function getRemoteStr(remote : T.WebRemote) : string {
     if (remote == null) {
         return "(invalid remote)";
     }
@@ -74,9 +81,9 @@ class Prompt extends React.Component<{remote : T.WebRemote, festate : T.FeStateT
         //     }
         // }
         let remoteColorClass = (isRoot ? "color-red" : "color-green");
-        if (remote && remote.remoteopts && remote.remoteopts.color) {
-            remoteColorClass = "color-" + remote.remoteopts.color;
-        }
+        // if (remote && remote.remoteopts && remote.remoteopts.color) {
+        //     remoteColorClass = "color-" + remote.remoteopts.color;
+        // }
         let remoteTitle : string = null;
         if (remote && remote.canonicalname) {
             remoteTitle = remote.canonicalname;
@@ -113,17 +120,28 @@ class LineAvatar extends React.Component<{line : T.WebLine, cmd : T.WebCmd}, {}>
 }
 
 @mobxReact.observer
-class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd}, {}> {
+class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, topBorder : boolean}, {}> {
     isCmdExpanded : OV<boolean> = mobx.observable.box(false, {name: "cmd-expanded"});
     isOverflow : OV<boolean> = mobx.observable.box(false, {name: "line-overflow"});
+    cmdTextRef : React.RefObject<any> = React.createRef();
     
     renderSimple() {
-        <div className={cn("web-line line", (line.linetype == "cmd" ? "line-cmd" : "line-text"))}>
-            <LineAvatar line={line}/>
-        </div>
+        let {line} = this.props;
+        return (
+            <div className={cn("web-line line", (line.linetype == "cmd" ? "line-cmd" : "line-text"))}>
+                <LineAvatar line={line} cmd={null}/>
+            </div>
+        );
     }
 
-    renderCmdText(cmd : Cmd, remote : WebRemote) : any {
+    @boundMethod
+    handleExpandCmd() : void {
+        mobx.action(() => {
+            this.isCmdExpanded.set(true);
+        })();
+    }
+
+    renderCmdText(cmd : T.WebCmd, remote : T.WebRemote) : any {
         if (cmd == null) {
             return (
                 <div className="metapart-mono cmdtext">
@@ -140,7 +158,7 @@ class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd},
                         </div>
                     </div>
                     <div key="meta3" className="meta meta-line3 cmdtext-expanded-wrapper">
-                        <div className="cmdtext-expanded">{getFullCmdText(cmd.cmdstr)}</div>
+                        <div className="cmdtext-expanded">{lineutil.getFullCmdText(cmd.cmdstr)}</div>
                     </div>
                 </React.Fragment>
             );
@@ -158,6 +176,10 @@ class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd},
                 </If>
             </div>
         );
+    }
+
+    @boundMethod
+    handleHeightChange() : void {
     }
 
     renderMetaWrap() {
@@ -184,37 +206,42 @@ class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd},
     }
     
     render() {
-        let {line, cmd} = this.props;
+        let {line, cmd, topBorder} = this.props;
         let model = WebShareModel;
         let isSelected = mobx.computed(() => (model.getSelectedLine() == line.linenum), {name: "computed-isSelected"}).get();
-        let rendererPlugin : RendererPluginType = null;
+        let rendererPlugin : T.RendererPluginType = null;
         let isNoneRenderer = (line.renderer == "none");
         if (!isBlank(line.renderer) && line.renderer != "terminal" && !isNoneRenderer) {
             rendererPlugin = PluginModel.getRendererPluginByName(line.renderer);
         }
         let rendererType = lineutil.getRendererType(line);
+        let mainCn = cn("web-line line line-cmd", {"top-border": topBorder});
+        let visObs = mobx.observable.box(true, {name: "visObs"});
         return (
-            <div className={cn("web-line line line-cmd")}>
+            <div className={mainCn}>
                 <div key="focus" className={cn("focus-indicator", {"selected active": isSelected})}/>
                 <div className="line-header">
                     <LineAvatar line={line} cmd={cmd}/>
                     {this.renderMetaWrap()}
                 </div>
+                <TerminalRenderer line={line} cmd={cmd} width={1024} staticRender={false} visible={visObs} onHeightChange={this.handleHeightChange}/>
             </div>
         );
     }
 }
 
 @mobxReact.observer
-class WebLineTextView extends React.Component<{line : T.WebLine, cmd : T.WebCmd}, {}> {
+class WebLineTextView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, topBorder : boolean}, {}> {
     render() {
-        let {line} = this.props;
+        let {line, topBorder} = this.props;
+        let model = WebShareModel;
         let isSelected = mobx.computed(() => (model.getSelectedLine() == line.linenum), {name: "computed-isSelected"}).get();
+        let mainCn = cn("web-line line line-text", {"top-border": topBorder});
         return (
-            <div className={cn("web-line line line-text")}>
+            <div className={mainCn}>
                 <div key="focus" className={cn("focus-indicator", {"selected active": isSelected})}/>
                 <div className="line-header">
-                    <LineAvatar line={line}/>
+                    <LineAvatar line={line} cmd={null}/>
                 </div>
                 <div>
                     <div>{line.text}</div>
@@ -225,7 +252,121 @@ class WebLineTextView extends React.Component<{line : T.WebLine, cmd : T.WebCmd}
 }
 
 @mobxReact.observer
-class WebLineView extends React.Component<{line : T.WebLine, cmd : T.WebCmd}, {}> {
+class TerminalRenderer extends React.Component<{line : T.WebLine, cmd : T.WebCmd, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : () => void}, {}> {
+    termLoaded : mobx.IObservableValue<boolean> = mobx.observable.box(false, {name: "termrenderer-termLoaded"});
+    elemRef : React.RefObject<any> = React.createRef();
+    termRef : React.RefObject<any> = React.createRef();
+
+    constructor(props) {
+        super(props);
+    }
+
+    componentDidMount() {
+        this.componentDidUpdate(null, null, null);
+    }
+
+    componentWillUnmount() {
+        if (this.termLoaded.get()) {
+            this.unloadTerminal(true);
+        }
+    }
+
+    getSnapshotBeforeUpdate(prevProps, prevState) : {height : number} {
+        let elem = this.elemRef.current;
+        if (elem == null) {
+            return {height: 0};
+        }
+        return {height: elem.offsetHeight};
+    }
+
+    componentDidUpdate(prevProps, prevState, snapshot : {height : number}) : void {
+        if (this.props.onHeightChange == null) {
+            return;
+        }
+        let {line} = this.props;
+        let curHeight = 0;
+        let elem = this.elemRef.current;
+        if (elem != null) {
+            curHeight = elem.offsetHeight;
+        }
+        if (snapshot == null) {
+            snapshot = {height: 0};
+        }
+        if (snapshot.height != curHeight) {
+            this.props.onHeightChange();
+            // console.log("term-render height change: ", line.linenum, snapshot.height, "=>", curHeight);
+        }
+        this.checkLoad();
+    }
+
+    checkLoad() : void {
+        let {line, staticRender, visible} = this.props;
+        if (staticRender) {
+            return;
+        }
+        let vis = visible && visible.get();
+        let curVis = this.termLoaded.get();
+        if (vis && !curVis) {
+            this.loadTerminal();
+        }
+        else if (!vis && curVis) {
+            this.unloadTerminal(false);
+        }
+    }
+
+    loadTerminal() : void {
+        let {line, cmd} = this.props;
+        if (cmd == null) {
+            return;
+        }
+        let termElem = this.termRef.current;
+        if (termElem == null) {
+            console.log("cannot load terminal, no term elem found", line);
+            return;
+        }
+        WebShareModel.loadTerminalRenderer(termElem, line, cmd, this.props.width);
+        mobx.action(() => this.termLoaded.set(true))();
+    }
+
+    unloadTerminal(unmount : boolean) : void {
+        let {line} = this.props;
+        WebShareModel.unloadRenderer(line.lineid);
+        if (!unmount) {
+            mobx.action(() => this.termLoaded.set(false))();
+            let termElem = this.termRef.current;
+            if (termElem != null) {
+                termElem.replaceChildren();
+            }
+        }
+    }
+    
+    @boundMethod
+    clickTermBlock(e : any) {
+        let {line} = this.props;
+        let termWrap = WebShareModel.getTermWrap(line.lineid);
+        if (termWrap != null) {
+            termWrap.giveFocus();
+        }
+    }
+    
+    render() {
+        let {cmd, line, width, staticRender, visible} = this.props;
+        let isVisible = visible.get(); // for reaction
+        let usedRows = WebShareModel.getUsedRows(lineutil.getWebRendererContext(line), line, cmd, width);
+        let termHeight = termHeightFromRows(usedRows, WebShareModel.getTermFontSize());
+        let termLoaded = this.termLoaded.get();
+        return (
+            <div ref={this.elemRef} key="term-wrap" className={cn("terminal-wrapper", {"cmd-done": !lineutil.cmdStatusIsRunning(cmd.status)}, {"zero-height": (termHeight == 0)})}>
+                <div key="term-connectelem" className="terminal-connectelem" ref={this.termRef} data-cmdid={line.lineid} style={{height: termHeight}}></div>
+                <If condition={!termLoaded}><div key="term-loading" className="terminal-loading-message">...</div></If>
+
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
+class WebLineView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, topBorder : boolean}, {}> {
     render() {
         let {line} = this.props;
         if (line.linetype == "text") {
@@ -246,7 +387,7 @@ class WebScreenView extends React.Component<{screen : T.WebFullScreen}, {}> {
         let {screen} = this.props;
         let lines = screen.lines ?? [];
         let cmds = screen.cmds ?? [];
-        let cmdMap : Record<string, WebCmd> = {};
+        let cmdMap : Record<string, T.WebCmd> = {};
         for (let i=0; i<cmds.length; i++) {
             let cmd = cmds[i];
             cmdMap[cmd.lineid] = cmd;
@@ -286,7 +427,7 @@ class WebScreenView extends React.Component<{screen : T.WebFullScreen}, {}> {
 @mobxReact.observer
 class WebShareMain extends React.Component<{}, {}> {
     renderCopy() {
-        return (<div>&copy; 2023 Dashborg Inc</div>);
+        return (<div className="footer-copy">&copy; 2023 Dashborg Inc</div>);
     }
             
     render() {

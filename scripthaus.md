@@ -56,6 +56,12 @@ node_modules/.bin/tsc --jsx preserve --noEmit --esModuleInterop --target ES5 --e
 ```
 
 ```bash
+# @scripthaus command typecheck-webshare
+# @scripthaus cd :playbook
+node_modules/.bin/tsc --jsx preserve --noEmit --esModuleInterop --target ES5 --experimentalDecorators --downlevelIteration src/webshare.ts
+```
+
+```bash
 # @scripthaus command build-package
 # @scripthaus cd :playbook
 rm -rf dist/

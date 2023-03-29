@@ -11,6 +11,7 @@ import {measureText, getMonoFontSize, windowWidthToCols, windowHeightToRows, ter
 import dayjs from "dayjs";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
+import {getRendererContext, cmdStatusIsRunning} from "./lineutil";
 
 dayjs.extend(customParseFormat)
 dayjs.extend(localizedFormat)
@@ -57,19 +58,6 @@ type SWLinePtr = {
     slines : ScreenLines,
     screen : Screen,
 };
-
-function getRendererContext(line : LineType) : RendererContext {
-    return {
-        screenId: line.screenid,
-        cmdId: line.cmdid,
-        lineId: line.lineid,
-        lineNum: line.linenum,
-    };
-}
-
-function cmdStatusIsRunning(status : string) : boolean {
-    return status == "running" || status == "detached";
-}
 
 function keyHasNoMods(e : any) {
     return !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey;
@@ -3434,7 +3422,7 @@ if ((window as any).GlobalModel == null) {
 GlobalModel = (window as any).GlobalModel;
 GlobalCommandRunner = (window as any).GlobalCommandRunner;
 
-export {Model, Session, ScreenLines, GlobalModel, GlobalCommandRunner, Cmd, Screen, riToRPtr, TabColors, RemoteColors, getRendererContext, getTermPtyData};
+export {Model, Session, ScreenLines, GlobalModel, GlobalCommandRunner, Cmd, Screen, riToRPtr, TabColors, RemoteColors, getTermPtyData};
 export type {LineContainerModel};
 
 

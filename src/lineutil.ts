@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {isBlank, getDateStr} from "./util";
-import {LineType, WebLine} from "./types";
+import {LineType, WebLine, RendererContext} from "./types";
 
 dayjs.extend(localizedFormat)
 
@@ -73,4 +73,26 @@ function getSingleLineCmdText(cmdText : string) {
     return cmdText;
 }
 
-export {getRendererType, getLineDateStr, getLineDateTimeStr, isMultiLineCmdText, getFullCmdText, getSingleLineCmdText};
+function getRendererContext(line : LineType) : RendererContext {
+    return {
+        screenId: line.screenid,
+        cmdId: line.cmdid,
+        lineId: line.lineid,
+        lineNum: line.linenum,
+    };
+}
+
+function getWebRendererContext(line : WebLine) : RendererContext {
+    return {
+        screenId: line.screenid,
+        cmdId: line.lineid,
+        lineId: line.lineid,
+        lineNum: line.linenum,
+    };
+}
+
+function cmdStatusIsRunning(status : string) : boolean {
+    return status == "running" || status == "detached";
+}
+
+export {getRendererType, getLineDateStr, getLineDateTimeStr, isMultiLineCmdText, getFullCmdText, getSingleLineCmdText, getRendererContext, getWebRendererContext, cmdStatusIsRunning};

@@ -6,7 +6,7 @@ import {boundMethod} from "autobind-decorator";
 import dayjs from "dayjs";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
-import {GlobalModel, GlobalCommandRunner, Session, Cmd, ScreenLines, Screen, getRendererContext} from "./model";
+import {GlobalModel, GlobalCommandRunner, Session, Cmd, ScreenLines, Screen} from "./model";
 import {windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols} from "./textmeasure";
 import type {LineType, CmdDataType, FeStateType, RemoteType, RemotePtrType, RenderModeType, RendererContext, RendererOpts, SimpleBlobRendererComponent, RendererPluginType} from "./types";
 import cn from "classnames";
@@ -348,7 +348,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         //               else: 53+(lines*lineheight)
         let height = (isCollapsed ? 30 : 42); // height of zero height terminal
         if (!isCollapsed) {
-            let usedRows = screen.getUsedRows(getRendererContext(line), line, cmd, width);
+            let usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
             if (usedRows > 0) {
                 height = 53 + termHeightFromRows(usedRows, GlobalModel.termFontSize.get());
             }
@@ -386,7 +386,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
             }
             else {
                 let {screen, line, width} = this.props;
-                let usedRows = screen.getUsedRows(getRendererContext(line), line, cmd, width);
+                let usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
                 height = 36 + usedRows;
             }
         }
@@ -769,7 +769,7 @@ class TerminalRenderer extends React.Component<{screen : LineContainerModel, lin
             return isPhysicalFocused && (screenFocusType == "cmd" || screenFocusType == "cmd-fg")
         }, {name: "computed-isFocused"}).get();
         let cmd = screen.getCmd(line); // will not be null
-        let usedRows = screen.getUsedRows(getRendererContext(line), line, cmd, width);
+        let usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
         let termHeight = termHeightFromRows(usedRows, GlobalModel.termFontSize.get());
         let termLoaded = this.termLoaded.get();
         return (
