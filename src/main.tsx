@@ -11,7 +11,8 @@ import dayjs from "dayjs";
 import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts, RemoteEditType, FeStateType, ContextMenuOpts, BookmarkType, RenderModeType, ClientMigrationInfo} from "./types";
 import type * as T from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
-import {GlobalModel, GlobalCommandRunner, Session, Cmd, ScreenLines, Screen, riToRPtr, windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols, TabColors, RemoteColors} from "./model";
+import {GlobalModel, GlobalCommandRunner, Session, Cmd, ScreenLines, Screen, riToRPtr, TabColors, RemoteColors} from "./model";
+import {windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols} from "./textmeasure";
 import {isModKeyPress, boundInt} from "./util";
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'

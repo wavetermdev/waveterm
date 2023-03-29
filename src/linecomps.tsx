@@ -6,13 +6,17 @@ import {boundMethod} from "autobind-decorator";
 import dayjs from "dayjs";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
-import {GlobalModel, GlobalCommandRunner, Session, Cmd, ScreenLines, Screen, windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols, getRendererContext, getRendererType} from "./model";
+import {GlobalModel, GlobalCommandRunner, Session, Cmd, ScreenLines, Screen, getRendererContext} from "./model";
+import {windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols} from "./textmeasure";
 import type {LineType, CmdDataType, FeStateType, RemoteType, RemotePtrType, RenderModeType, RendererContext, RendererOpts, SimpleBlobRendererComponent, RendererPluginType} from "./types";
 import cn from "classnames";
 import {TermWrap} from "./term";
 import type {LineContainerModel} from "./model";
 import {renderCmdText} from "./elements";
 import {SimpleBlobRendererModel, SimpleBlobRenderer} from "./simplerenderer";
+import {isBlank} from "./util";
+import {PluginModel} from "./plugins";
+import * as lineutil from "./lineutil";
 
 dayjs.extend(localizedFormat)
 
@@ -23,10 +27,6 @@ type OMap<K,V> = mobx.ObservableMap<K,V>;
 type HeightChangeCallbackType = (lineNum : number, newHeight : number, oldHeight : number) => void;
 type RendererComponentProps = {screen : LineContainerModel, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType, collapsed : boolean};
 type RendererComponentType = { new(props : RendererComponentProps) : React.Component<RendererComponentProps, {}> };
-
-function isBlank(s : string) : boolean {
-    return (s == null || s == "");
-}
 
 function makeFullRemoteRef(ownerName : string, remoteRef : string, name : string) : string {
     if (isBlank(ownerName) && isBlank(name)) {
@@ -75,40 +75,8 @@ function getCwdStr(remote : RemoteType, state : FeStateType) : string {
     return cwd;
 }
 
-function getLineDateTimeStr(ts : number) : string {
-    let lineDate = new Date(ts);
-    let nowDate = new Date();
-    
-    if (nowDate.getFullYear() != lineDate.getFullYear()) {
-        return dayjs(lineDate).format("ddd L LTS");
-    }
-    else if (nowDate.getMonth() != lineDate.getMonth() || nowDate.getDate() != lineDate.getDate()) {
-        let yesterdayDate = (new Date());
-        yesterdayDate.setDate(yesterdayDate.getDate()-1);
-        if (yesterdayDate.getMonth() == lineDate.getMonth() && yesterdayDate.getDate() == lineDate.getDate()) {
-            return "Yesterday " + dayjs(lineDate).format("LTS");;
-        }
-        return dayjs(lineDate).format("ddd L LTS");
-    }
-    else {
-        return dayjs(lineDate).format("LTS");
-    }
-}
-
 @mobxReact.observer
-class LineAvatar extends React.Component<{line : LineType, cmd : Cmd}, {}> {
-    @boundMethod
-    handleRightClick(e : any) {
-        e.preventDefault();
-        e.stopPropagation();
-        let {line} = this.props;
-        if (line != null) {
-            mobx.action(() => {
-                GlobalModel.lineSettingsModal.set(line);
-            })();
-        }
-    }
-    
+class LineAvatar extends React.Component<{line : LineType, cmd : Cmd, onRightClick? : (e : any) => void}, {}> {
     render() {
         let {line, cmd} = this.props;
         let lineNumStr = (line.linenumtemp ? "~" : "") + String(line.linenum);
@@ -116,7 +84,7 @@ class LineAvatar extends React.Component<{line : LineType, cmd : Cmd}, {}> {
         let rtnstate = (cmd != null ? cmd.getRtnState() : false);
         let isComment = (line.linetype == "text");
         return (
-            <div onContextMenu={(e) => this.handleRightClick(e)} className={cn("avatar", "num-"+lineNumStr.length, "status-" + status, {"ephemeral": line.ephemeral}, {"rtnstate": rtnstate})}>
+            <div onContextMenu={this.props.onRightClick} className={cn("avatar", "num-"+lineNumStr.length, "status-" + status, {"ephemeral": line.ephemeral}, {"rtnstate": rtnstate})}>
                 {lineNumStr}
                 <If condition={status == "hangup" || status == "error"}>
                     <i className="fa-sharp fa-solid fa-triangle-exclamation status-icon"/>
@@ -131,7 +99,6 @@ class LineAvatar extends React.Component<{line : LineType, cmd : Cmd}, {}> {
         );
     }
 }
-
 
 @mobxReact.observer
 class LineCmd extends React.Component<{screen : LineContainerModel, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType, topBorder : boolean, renderMode : RenderModeType, overrideCollapsed : OV<boolean>, noSelect? : boolean, showHints? : boolean}, {}> {
@@ -231,18 +198,18 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
                         </div>
                     </div>
                     <div key="meta3" className="meta meta-line3 cmdtext-expanded-wrapper">
-                        <div className="cmdtext-expanded">{cmd.getFullCmdText()}</div>
+                        <div className="cmdtext-expanded">{lineutil.getFullCmdText(cmd.getCmdStr())}</div>
                     </div>
                 </React.Fragment>
             );
         }
-        let isMultiLine = cmd.isMultiLineCmdText();
+        let isMultiLine = lineutil.isMultiLineCmdText(cmd.getCmdStr());
         return (
             <div key="meta2" className="meta meta-line2" ref={this.cmdTextRef}>
                 <div className="metapart-mono cmdtext">
                     <Prompt rptr={cmd.remote} festate={cmd.getRemoteFeState()}/>
                     <span> </span>
-                    <span>{cmd.getSingleLineCmdText()}</span>
+                    <span>{lineutil.getSingleLineCmdText(cmd.getCmdStr())}</span>
                 </div>
                 <If condition={this.isOverflow.get() || isMultiLine}>
                     <div className="cmdtext-overflow" onClick={this.handleExpandCmd}>...&#x25BC;</div>
@@ -389,6 +356,21 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         return height;
     }
 
+    @boundMethod
+    onAvatarRightClick(e : any) : void {
+        let {line, noSelect} = this.props;
+        if (noSelect) {
+            return;
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        if (line != null) {
+            mobx.action(() => {
+                GlobalModel.lineSettingsModal.set(line);
+            })();
+        }
+    }
+
     renderSimple() {
         let {screen, line, topBorder} = this.props;
         let cmd = screen.getCmd(line);
@@ -436,7 +418,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
     renderMetaWrap(cmd : Cmd) {
         let {line} = this.props;
         let model = GlobalModel;
-        let formattedTime = getLineDateTimeStr(line.ts);
+        let formattedTime = lineutil.getLineDateTimeStr(line.ts);
         let termOpts = cmd.getTermOpts();
         let remote = model.getRemote(cmd.remoteId);
         let renderer = line.renderer;
@@ -459,6 +441,16 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
             </div>
         );
     }
+
+    getRendererOpts(cmd : Cmd) : RendererOpts {
+        let {screen} = this.props;
+        return {
+            maxSize: screen.getMaxContentSize(),
+            idealSize: screen.getIdealContentSize(),
+            termOpts: cmd.getTermOpts(),
+            termFontSize: GlobalModel.termFontSize.get(),
+        };
+    }
     
     render() {
         let {screen, line, width, staticRender, visible, topBorder, renderMode} = this.props;
@@ -468,7 +460,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         if (staticRender || !isVisible) {
             return this.renderSimple();
         }
-        let formattedTime = getLineDateTimeStr(line.ts);
+        let formattedTime = lineutil.getLineDateTimeStr(line.ts);
         let cmd = screen.getCmd(line);
         if (cmd == null) {
             return (
@@ -507,16 +499,16 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         let rendererPlugin : RendererPluginType = null;
         let isNoneRenderer = (line.renderer == "none");
         if (!isBlank(line.renderer) && line.renderer != "terminal" && !isNoneRenderer) {
-            rendererPlugin = GlobalModel.getRendererPluginByName(line.renderer);
+            rendererPlugin = PluginModel.getRendererPluginByName(line.renderer);
         }
-        let rendererType = getRendererType(line);
+        let rendererType = lineutil.getRendererType(line);
         return (
             <div className={mainDivCn}
                  ref={this.lineRef} onClick={this.handleClick}
                  data-lineid={line.lineid} data-linenum={line.linenum} data-screenid={line.screenid} data-cmdid={line.cmdid}>
                 <div key="focus" className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused}, {"fg-focus": isFgFocused})}/>
                 <div key="header" className={cn("line-header", {"is-expanded": isExpanded}, {"is-collapsed": isCollapsed})}>
-                    <LineAvatar line={line} cmd={cmd}/>
+                    <LineAvatar line={line} cmd={cmd} onRightClick={this.onAvatarRightClick}/>
                     <If condition={renderMode == "collapsed"}>
                         <div key="collapsed" className="collapsed-indicator" title={isCollapsed ? "output collapsed, click to show" : "click to hide output" } onClick={this.handleCollapsedClick}>
                             <If condition={isCollapsed}><i className="fa-sharp fa-solid fa-caret-right"/></If>
@@ -535,7 +527,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
                     <TerminalRenderer screen={screen} line={line} width={width} staticRender={staticRender} visible={visible} onHeightChange={this.handleHeightChange} collapsed={isCollapsed}/>
                 </If>
                 <If condition={rendererPlugin != null}>
-                    <SimpleBlobRenderer lcm={screen} line={line} cmd={cmd} plugin={rendererPlugin} onHeightChange={this.handleHeightChange}/>
+                    <SimpleBlobRenderer lcm={screen} line={line} cmd={cmd} plugin={rendererPlugin} onHeightChange={this.handleHeightChange} rendererOpts={this.getRendererOpts(cmd)}/>
                 </If>
                 <If condition={!isCollapsed && cmd.getRtnState()}>
                     <div key="rtnstate" className="cmd-rtnstate" style={{visibility: ((cmd.getStatus() == "done") ? "visible" : "hidden")}}>
@@ -622,9 +614,24 @@ class LineText extends React.Component<{screen : LineContainerModel, line : Line
         GlobalCommandRunner.screenSelectLine(String(line.linenum));
     }
 
+    @boundMethod
+    onAvatarRightClick(e : any) : void {
+        let {line, noSelect} = this.props;
+        if (noSelect) {
+            return;
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        if (line != null) {
+            mobx.action(() => {
+                GlobalModel.lineSettingsModal.set(line);
+            })();
+        }
+    }
+
     render() {
         let {screen, line, topBorder, renderMode} = this.props;
-        let formattedTime = getLineDateTimeStr(line.ts);
+        let formattedTime = lineutil.getLineDateTimeStr(line.ts);
         let isSelected = mobx.computed(() => (screen.getSelectedLine() == line.linenum), {name: "computed-isSelected"}).get();
         let isFocused = mobx.computed(() => (screen.getFocusType() == "cmd"), {name: "computed-isFocused"}).get();
         let isCollapsed = (renderMode == "collapsed");
@@ -638,7 +645,7 @@ class LineText extends React.Component<{screen : LineContainerModel, line : Line
         return (
             <div className={mainClass} data-lineid={line.lineid} data-linenum={line.linenum} data-screenid={line.screenid} onClick={this.clickHandler}>
                 <div className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused})}/>
-                <LineAvatar line={line} cmd={null}/>
+                <LineAvatar line={line} cmd={null} onRightClick={this.onAvatarRightClick}/>
                 <div className="line-content">
                     <div className="meta">
                         <div className="ts">{formattedTime}</div>

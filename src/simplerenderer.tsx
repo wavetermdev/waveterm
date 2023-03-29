@@ -5,7 +5,7 @@ import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import type {RendererModelInitializeParams, TermOptsType, RendererContext, RendererOpts, SimpleBlobRendererComponent, RendererModelContainerApi, RendererPluginType, PtyDataType, RendererModel, RendererOptsUpdate, LineType} from "./types";
-import {GlobalModel, LineContainerModel, getPtyData, Cmd} from "./model";
+import {LineContainerModel, getTermPtyData, Cmd} from "./model";
 import {PtyDataBuffer} from "./ptydata";
 import {debounce, throttle} from "throttle-debounce";
 
@@ -72,7 +72,7 @@ class SimpleBlobRendererModel {
         mobx.action(() => {
             this.loading.set(true);
         })();
-        let rtnp = getPtyData(this.context.screenId, this.context.cmdId, this.context.lineNum);
+        let rtnp = getTermPtyData(this.context);
         rtnp.then((ptydata) => {
             setTimeout(() => {
                 this.ptyData = ptydata;
@@ -120,14 +120,14 @@ function apiAdapter(lcm : LineContainerModel, line : LineType, cmd : Cmd) : Rend
 }
 
 @mobxReact.observer
-class SimpleBlobRenderer extends React.Component<{lcm : LineContainerModel, line : LineType, cmd : Cmd, plugin : RendererPluginType, onHeightChange : () => void}, {}> {
+class SimpleBlobRenderer extends React.Component<{lcm : LineContainerModel, line : LineType, cmd : Cmd, rendererOpts : RendererOpts, plugin : RendererPluginType, onHeightChange : () => void}, {}> {
     model : SimpleBlobRendererModel;
     wrapperDivRef : React.RefObject<any> = React.createRef();
     rszObs : ResizeObserver;
 
     constructor(props : any) {
         super(props);
-        let {lcm, line, cmd} = this.props;
+        let {lcm, line, cmd, rendererOpts} = this.props;
         let context = contextFromLine(line);
         let savedHeight = lcm.getContentHeight(context);
         if (savedHeight == null) {
@@ -142,12 +142,7 @@ class SimpleBlobRenderer extends React.Component<{lcm : LineContainerModel, line
             context: context,
             isDone: !cmd.isRunning(),
             savedHeight: savedHeight,
-            opts: {
-                maxSize: lcm.getMaxContentSize(),
-                idealSize: lcm.getIdealContentSize(),
-                termOpts: cmd.getTermOpts(),
-                termFontSize: GlobalModel.termFontSize.get(),
-            },
+            opts: rendererOpts,
             api: apiAdapter(lcm, line, cmd),
         };
         this.model = new SimpleBlobRendererModel();

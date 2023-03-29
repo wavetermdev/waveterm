@@ -1,3 +1,8 @@
+import {boundInt} from "./util";
+
+const MinTermCols = 10;
+const MaxTermCols = 1024;
+
 let MonoFontSizes : {height : number, width : number}[] = [];
 
 MonoFontSizes[8] = {height: 11, width: 4.797};
@@ -41,4 +46,30 @@ function measureText(text : string, textOpts? : {pre? : boolean, mono? : boolean
     return measureDiv.getBoundingClientRect()
 }
 
-export {measureText, getMonoFontSize};
+function windowWidthToCols(width : number, fontSize : number) : number {
+    let dr = getMonoFontSize(fontSize);
+    let cols = Math.trunc((width - 50) / dr.width) - 1;
+    cols = boundInt(cols, MinTermCols, MaxTermCols);
+    return cols;
+}
+
+function windowHeightToRows(height : number, fontSize : number) : number {
+    let dr = getMonoFontSize(fontSize);
+    let rows = Math.floor((height - 80) / dr.height) - 1;
+    if (rows <= 0) {
+        rows = 1;
+    }
+    return rows;
+}
+
+function termWidthFromCols(cols : number, fontSize : number) : number {
+    let dr = getMonoFontSize(fontSize);
+    return Math.ceil(dr.width*cols) + 15;
+}
+
+function termHeightFromRows(rows : number, fontSize : number) : number {
+    let dr = getMonoFontSize(fontSize);
+    return Math.ceil(dr.height*rows);
+}
+
+export {measureText, getMonoFontSize, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows};

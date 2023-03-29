@@ -1,5 +1,13 @@
 import * as mobx from "mobx";
 import {sprintf} from "sprintf-js";
+import dayjs from "dayjs";
+import localizedFormat from 'dayjs/plugin/localizedFormat';
+
+dayjs.extend(localizedFormat)
+
+function isBlank(s : string) : boolean {
+    return (s == null || s == "");
+}
 
 function handleNotOkResp(resp : any, url : URL) : Promise<any> {
     let errMsg = sprintf("Bad status code response from fetch '%s': code=%d %s", url.toString(), resp.status, resp.statusText);
@@ -249,4 +257,46 @@ function incObs(inum : mobx.IObservableValue<number>) {
     })();
 }
 
-export {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeDataMap, genMergeSimpleData, parseEnv0, boundInt, isModKeyPress, incObs};
+function loadFonts() {
+    let jbmFontNormal = new FontFace("JetBrains Mono", "url('static/fonts/jetbrains-mono-v13-latin-regular.woff2')", {style: "normal", weight: "400"});
+    let jbmFont200 = new FontFace("JetBrains Mono", "url('static/fonts/jetbrains-mono-v13-latin-200.woff2')", {style: "normal", weight: "200"});
+    let jbmFont700 = new FontFace("JetBrains Mono", "url('static/fonts/jetbrains-mono-v13-latin-700.woff2')", {style: "normal", weight: "700"});
+    let faFont = new FontFace("FontAwesome", "url(static/fonts/fontawesome-webfont-4.7.woff2)", {style: "normal", weight: "normal"});
+    let docFonts : any = document.fonts; // work around ts typing issue
+    docFonts.add(jbmFontNormal);
+    docFonts.add(jbmFont200);
+    docFonts.add(jbmFont700);
+    docFonts.add(faFont);
+    jbmFontNormal.load();
+    jbmFont200.load();
+    jbmFont700.load();
+    faFont.load();
+}
+
+const DOW_STRS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function getTodayStr() : string {
+    return getDateStr(new Date());
+}
+
+function getYesterdayStr() : string {
+    let d = new Date();
+    d.setDate(d.getDate()-1);
+    return getDateStr(d);
+}
+
+function getDateStr(d : Date) : string {
+    let yearStr = String(d.getFullYear());
+    let monthStr = String(d.getMonth()+1);
+    if (monthStr.length == 1) {
+        monthStr = "0" + monthStr;
+    }
+    let dayStr = String(d.getDate());
+    if (dayStr.length == 1) {
+        dayStr = "0" + dayStr;
+    }
+    let dowStr = DOW_STRS[d.getDay()];
+    return dowStr + " " + yearStr + "-" + monthStr + "-" + dayStr;
+}
+
+export {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeDataMap, genMergeSimpleData, parseEnv0, boundInt, isModKeyPress, incObs, isBlank, loadFonts, getTodayStr, getYesterdayStr, getDateStr};

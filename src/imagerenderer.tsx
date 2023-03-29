@@ -4,7 +4,8 @@ import * as mobxReact from "mobx-react";
 import cn from "classnames";
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import {WindowSize, RendererContext, TermOptsType, LineType, RendererOpts} from "./types";
-import {getPtyData, termWidthFromCols, termHeightFromRows, GlobalModel, LineContainerModel} from "./model";
+import {LineContainerModel} from "./model";
+import {termWidthFromCols, termHeightFromRows} from "./textmeasure";
 import {incObs} from "./util";
 import {PtyDataBuffer} from "./ptydata";
 

@@ -355,6 +355,10 @@ type RendererContext = {
     lineNum : number,
 };
 
+type RemoteTermContext = {remoteId : string};
+
+type TermContextUnion = RendererContext | RemoteTermContext;
+
 type RendererOpts = {
     maxSize : WindowSize,
     idealSize : WindowSize,
@@ -482,4 +486,52 @@ type HistorySearchParams = {
 
 type RenderModeType = "normal" | "collapsed";
 
-export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDataType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType, UIContextType, HistoryInfoType, HistoryQueryOpts, WatchScreenPacketType, TermWinSize, FeInputPacketType, RemoteInputPacketType, RemoteEditType, FeStateType, ContextMenuOpts, RendererContext, WindowSize, RendererModel, PtyDataType, BookmarkType, ClientDataType, PlaybookType, PlaybookEntryType, HistoryViewDataType, RenderModeType, AlertMessageType, HistorySearchParams, ScreenLinesType, FocusTypeStrs, HistoryTypeStrs, RendererOpts, RendererPluginType, SimpleBlobRendererComponent, RendererModelContainerApi, RendererModelInitializeParams, RendererOptsUpdate, ClientMigrationInfo, WebShareOpts, RemoteStatusTypeStrs};
+type WebScreen = {
+    screenid : string,
+    sharename : string,
+    vts : number,
+};
+
+type WebLine = {
+    screenid : string,
+    lineid : string,
+    ts : number,
+    linenum : number,
+    linetype : string,
+    text : string,
+    contentheight : number,
+    renderer : string,
+    archived : boolean,
+    vts : number,
+};
+
+type WebRemote = {
+    alias : string,
+    canonicalname : string,
+    name : string,
+};
+
+type WebCmd = {
+    screeid : string,
+    lineid : string,
+    remote : WebRemote,
+    cmdstr : string,
+    rawcmdstr : string,
+    festate : FeStateType,
+    termopts : TermOptsType,
+    status : string,
+    startpk : CmdStartPacketType,
+    doneinfo : CmdDoneInfoType,
+    rtnstate : boolean,
+    rtnstatestr : string,
+    vts : number,
+};
+
+type WebFullScreen = {
+    screen : WebScreen,
+    lines : WebLine[],
+    cmds : WebCmd[],
+    vts : number,
+}
+
+export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDataType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType, UIContextType, HistoryInfoType, HistoryQueryOpts, WatchScreenPacketType, TermWinSize, FeInputPacketType, RemoteInputPacketType, RemoteEditType, FeStateType, ContextMenuOpts, RendererContext, WindowSize, RendererModel, PtyDataType, BookmarkType, ClientDataType, PlaybookType, PlaybookEntryType, HistoryViewDataType, RenderModeType, AlertMessageType, HistorySearchParams, ScreenLinesType, FocusTypeStrs, HistoryTypeStrs, RendererOpts, RendererPluginType, SimpleBlobRendererComponent, RendererModelContainerApi, RendererModelInitializeParams, RendererOptsUpdate, ClientMigrationInfo, WebShareOpts, RemoteStatusTypeStrs, WebFullScreen, WebScreen, WebLine, WebCmd, RemoteTermContext, TermContextUnion};

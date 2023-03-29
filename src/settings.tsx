@@ -8,6 +8,7 @@ import cn from "classnames";
 import {GlobalModel, GlobalCommandRunner, TabColors} from "./model";
 import {Toggle} from "./elements";
 import {LineType, RendererPluginType, ClientDataType} from "./types";
+import {PluginModel} from "./plugins";
 
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
@@ -307,7 +308,7 @@ class LineSettingsModal extends React.Component<{line : LineType}, {}> {
     renderRendererDropdown() : any {
         let {line} = this.props;
         let renderer = this.tempRenderer.get() ?? "terminal";
-        let plugins = GlobalModel.rendererPlugins;
+        let plugins = PluginModel.rendererPlugins;
         let plugin : RendererPluginType = null;
         return (
             <div className={cn("dropdown", "renderer-dropdown", {"is-active": this.rendererDropdownActive.get()})}>

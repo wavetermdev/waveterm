@@ -5,9 +5,9 @@ import {debounce} from "throttle-debounce";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeDataMap, genMergeSimpleData, boundInt, isModKeyPress} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType, HistoryViewDataType, AlertMessageType, HistorySearchParams, FocusTypeStrs, ScreenLinesType, HistoryTypeStrs, RendererPluginType, WindowSize, ClientMigrationInfo, WebShareOpts} from "./types";
+import type {SessionDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType, HistoryViewDataType, AlertMessageType, HistorySearchParams, FocusTypeStrs, ScreenLinesType, HistoryTypeStrs, RendererPluginType, WindowSize, ClientMigrationInfo, WebShareOpts, TermContextUnion} from "./types";
 import {WSControl} from "./ws";
-import {measureText, getMonoFontSize} from "./textmeasure";
+import {measureText, getMonoFontSize, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows} from "./textmeasure";
 import dayjs from "dayjs";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
@@ -18,8 +18,6 @@ dayjs.extend(localizedFormat)
 var GlobalUser = "sawka";
 const RemotePtyRows = 8; // also in main.tsx
 const RemotePtyCols = 80;
-const MinTermCols = 10;
-const MaxTermCols = 1024;
 const ProdServerEndpoint = "http://localhost:1619";
 const ProdServerWsEndpoint = "ws://localhost:1623";
 const DevServerEndpoint = "http://localhost:8090";
@@ -60,13 +58,6 @@ type SWLinePtr = {
     screen : Screen,
 };
 
-function getRendererType(line : LineType) : "terminal" | "plugin" {
-    if (isBlank(line.renderer) || line.renderer == "terminal") {
-        return "terminal";
-    }
-    return "plugin";
-}
-
 function getRendererContext(line : LineType) : RendererContext {
     return {
         screenId: line.screenid,
@@ -74,32 +65,6 @@ function getRendererContext(line : LineType) : RendererContext {
         lineId: line.lineid,
         lineNum: line.linenum,
     };
-}
-
-function windowWidthToCols(width : number, fontSize : number) : number {
-    let dr = getMonoFontSize(fontSize);
-    let cols = Math.trunc((width - 50) / dr.width) - 1;
-    cols = boundInt(cols, MinTermCols, MaxTermCols);
-    return cols;
-}
-
-function windowHeightToRows(height : number, fontSize : number) : number {
-    let dr = getMonoFontSize(fontSize);
-    let rows = Math.floor((height - 80) / dr.height) - 1;
-    if (rows <= 0) {
-        rows = 1;
-    }
-    return rows;
-}
-
-function termWidthFromCols(cols : number, fontSize : number) : number {
-    let dr = getMonoFontSize(fontSize);
-    return Math.ceil(dr.width*cols) + 15;
-}
-
-function termHeightFromRows(rows : number, fontSize : number) : number {
-    let dr = getMonoFontSize(fontSize);
-    return Math.ceil(dr.height*rows);
 }
 
 function cmdStatusIsRunning(status : string) : boolean {
@@ -225,38 +190,6 @@ class Cmd {
 
     getRemoteFeState() : FeStateType {
         return this.data.get().festate;
-    }
-
-    isMultiLineCmdText() : boolean {
-        let cmdText = this.data.get().cmdstr;
-        if (cmdText == null) {
-            return false;
-        }
-        cmdText = cmdText.trim();
-        let nlIdx = cmdText.indexOf("\n");
-        return (nlIdx != -1);
-    }
-
-    getSingleLineCmdText() {
-        let cmdText = this.data.get().cmdstr;
-        if (cmdText == null) {
-            return "(none)";
-        }
-        cmdText = cmdText.trim();
-        let nlIdx = cmdText.indexOf("\n");
-        if (nlIdx != -1) {
-            cmdText = cmdText.substr(0, nlIdx);
-        }
-        return cmdText;
-    }
-
-    getFullCmdText() {
-        let cmdText = this.data.get().cmdstr;
-        if (cmdText == null) {
-            return "(none)";
-        }
-        cmdText = cmdText.trim();
-        return cmdText;
     }
 
     isRunning() : boolean {
@@ -691,6 +624,8 @@ class Screen {
             isRunning: cmd.isRunning(),
             customKeyHandler: this.termCustomKeyHandler.bind(this),
             fontSize: GlobalModel.termFontSize.get(),
+            ptyDataSource: getTermPtyData,
+            onUpdateContentHeight: (termContext : RendererContext, height : number) => { GlobalModel.setContentHeight(termContext, height); },
         });
         this.terminals[cmdId] = termWrap;
         if ((this.focusType.get() == "cmd" || this.focusType.get() == "cmd-fg") && this.selectedLine.get() == line.linenum) {
@@ -1639,6 +1574,8 @@ class InputModel {
                     focusHandler: this.setRemoteTermWrapFocus.bind(this),
                     isRunning: true,
                     fontSize: GlobalModel.termFontSize.get(),
+                    ptyDataSource: getTermPtyData,
+                    onUpdateContentHeight: null,
                 });
             }
         }
@@ -1757,7 +1694,8 @@ class SpecialHistoryViewLineContainer {
             isRunning: cmd.isRunning(),
             customKeyHandler: null,
             fontSize: GlobalModel.termFontSize.get(),
-            noSetTUR: true,
+            ptyDataSource: getTermPtyData,
+            onUpdateContentHeight: null,
         });
         this.terminal = termWrap;
         return;
@@ -2369,7 +2307,6 @@ class Model {
     sessionSettingsModal : OV<string> = mobx.observable.box(null, {name: "sessionSettingsModal"});
     clientSettingsModal : OV<boolean> = mobx.observable.box(false, {name: "clientSettingsModal"});
     lineSettingsModal : OV<LineType> = mobx.observable.box(null, {name: "lineSettingsModal"});
-    rendererPlugins : RendererPluginType[] = [];
 
     inputModel : InputModel;
     bookmarksModel : BookmarksModel;
@@ -2423,20 +2360,6 @@ class Model {
         getApi().reloadWindow();
     }
 
-    registerRendererPlugin(plugin : RendererPluginType) {
-        if (isBlank(plugin.name)) {
-            throw new Error("invalid plugin, no name");
-        }
-        if (plugin.name == "terminal" || plugin.name == "none") {
-            throw new Error(sprintf("invalid plugin, name '%s' is reserved", plugin.name));
-        }
-        let existingPlugin = this.getRendererPluginByName(plugin.name);
-        if (existingPlugin != null) {
-            throw new Error(sprintf("plugin with name %s already registered", plugin.name));
-        }
-        this.rendererPlugins.push(plugin);
-    }
-
     getHasClientStop() : boolean {
         if (this.clientData.get() == null) {
             return true;
@@ -2446,16 +2369,6 @@ class Model {
             return true;
         }
         return false;
-    }
-
-    getRendererPluginByName(name : string) : RendererPluginType {
-        for (let i=0; i<this.rendererPlugins.length; i++) {
-            let plugin = this.rendererPlugins[i];
-            if (plugin.name == name) {
-                return plugin;
-            }
-        }
-        return null;
     }
 
     showAlert(alertMessage : AlertMessageType) : Promise<boolean> {
@@ -3494,6 +3407,13 @@ function _getPtyDataFromUrl(url : string) : Promise<PtyDataType> {
     });
 }
 
+function getTermPtyData(termContext : TermContextUnion) : Promise<PtyDataType> {
+    if ("remoteId" in termContext) {
+        return getRemotePtyData(termContext.remoteId);
+    }
+    return getPtyData(termContext.screenId, termContext.cmdId, termContext.lineNum);
+}
+
 function getPtyData(screenId : string, cmdId : string, lineNum : number) : Promise<PtyDataType> {
     let url = sprintf(GlobalModel.getBaseHostPort() + "/api/ptyout?linenum=%d&screenid=%s&cmdid=%s", lineNum, screenId, cmdId);
     return _getPtyDataFromUrl(url);
@@ -3514,7 +3434,7 @@ if ((window as any).GlobalModel == null) {
 GlobalModel = (window as any).GlobalModel;
 GlobalCommandRunner = (window as any).GlobalCommandRunner;
 
-export {Model, Session, ScreenLines, GlobalModel, GlobalCommandRunner, Cmd, Screen, riToRPtr, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows, getPtyData, getRemotePtyData, TabColors, RemoteColors, getRendererType, getRendererContext};
+export {Model, Session, ScreenLines, GlobalModel, GlobalCommandRunner, Cmd, Screen, riToRPtr, TabColors, RemoteColors, getRendererContext, getTermPtyData};
 export type {LineContainerModel};
 
 

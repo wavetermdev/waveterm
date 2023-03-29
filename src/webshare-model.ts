@@ -1,6 +1,7 @@
 import * as mobx from "mobx";
 import {boundMethod} from "autobind-decorator";
 import {handleJsonFetchResponse} from "./util";
+import * as T from "./types";
 
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
@@ -19,6 +20,7 @@ class WebShareModelClass {
     viewKey : string;
     screenId : string;
     errMessage : OV<string> = mobx.observable.box(null, {name: "errMessage"});
+    screen : OV<T.WebFullScreen> = mobx.observable.box(null, {name: "webScreen"});
     
     constructor() {
         let urlParams = new URLSearchParams(window.location.search);
@@ -34,6 +36,10 @@ class WebShareModelClass {
         })();
     }
 
+    getSelectedLine() : number {
+        return 10;
+    }
+
     loadFullScreenData() : void {
         if (isBlank(this.screenId)) {
             this.setErrMessage("No ScreenId Specified, Cannot Load.");
@@ -46,7 +52,7 @@ class WebShareModelClass {
         let usp = new URLSearchParams({screenid: this.screenId, viewkey: this.viewKey});
         let url = new URL(getBaseUrl() + "/webshare/screen?" + usp.toString());
         fetch(url, {method: "GET", mode: "cors", cache: "no-cache"}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
-            console.log("got data", data);
+            mobx.action(() => this.screen.set(data))();
         }).catch((err) => {
             this.errMessage.set("Cannot get screen: " + err.message);
         });

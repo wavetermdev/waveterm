@@ -3185,7 +3185,15 @@ body.prompt-webshare #main {
 
         .logo-text {
             .mono-font(32px);
-            color: @prompt-green;
+            a {
+                color: @prompt-green;
+            }
+        }
+
+        .screen-name {
+            color: white;
+            .mono-font(24px);
+            margin-left: 20px;
         }
 
         .download-button {
@@ -3195,7 +3203,7 @@ body.prompt-webshare #main {
 
     .prompt-content {
         flex-grow: 1;
-        padding: 10px;
+        padding: 10px;        
     }
 
     .prompt-footer {
@@ -3217,5 +3225,10 @@ body.prompt-webshare #main {
     
     #app {
         color: white;
+    }
+
+    .lines .line-sep {
+        margin-left: 0px;
+        margin-right: 10px;
     }
 }

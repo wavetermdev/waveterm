@@ -6,53 +6,14 @@ import {Terminal} from 'xterm';
 import {Main} from "./main";
 import {GlobalModel} from "./model";
 import {v4 as uuidv4} from "uuid";
-import {RendererPluginType} from "./types";
-import {SimpleImageRenderer} from "./imagerenderer";
-import {SimpleMarkdownRenderer} from "./markdownrenderer";
+import {loadFonts} from "./util";
 
 // @ts-ignore
 let VERSION = __PROMPT_VERSION__;
 // @ts-ignore
 let BUILD = __PROMPT_BUILD__;
 
-let jbmFontNormal = new FontFace("JetBrains Mono", "url('static/fonts/jetbrains-mono-v13-latin-regular.woff2')", {style: "normal", weight: "400"});
-let jbmFont200 = new FontFace("JetBrains Mono", "url('static/fonts/jetbrains-mono-v13-latin-200.woff2')", {style: "normal", weight: "200"});
-let jbmFont700 = new FontFace("JetBrains Mono", "url('static/fonts/jetbrains-mono-v13-latin-700.woff2')", {style: "normal", weight: "700"});
-let faFont = new FontFace("FontAwesome", "url(static/fonts/fontawesome-webfont-4.7.woff2)", {style: "normal", weight: "normal"});
-let docFonts : any = document.fonts; // work around ts typing issue
-docFonts.add(jbmFontNormal);
-docFonts.add(jbmFont200);
-docFonts.add(jbmFont700);
-docFonts.add(faFont);
-jbmFontNormal.load();
-jbmFont200.load();
-jbmFont700.load();
-faFont.load();
-
-const ImagePlugin : RendererPluginType = {
-    name: "image",
-    rendererType: "simple",
-    heightType: "pixels",
-    dataType: "blob",
-    collapseType: "hide",
-    globalCss: null,
-    mimeTypes: ["image/*"],
-    component: SimpleImageRenderer,
-};
-
-const MarkdownPlugin : RendererPluginType = {
-    name: "markdown",
-    rendererType: "simple",
-    heightType: "pixels",
-    dataType: "blob",
-    collapseType: "hide",
-    globalCss: null,
-    mimeTypes: ["text/markdown"],
-    component: SimpleMarkdownRenderer,
-};
-
-GlobalModel.registerRendererPlugin(ImagePlugin);
-GlobalModel.registerRendererPlugin(MarkdownPlugin);
+loadFonts();
 
 document.addEventListener("DOMContentLoaded", () => {
     let reactElem = React.createElement(Main, null, null);

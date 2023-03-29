@@ -547,7 +547,7 @@ class LineContainer extends React.Component<{historyId : string, width : number}
                 <If condition={session == null}>
                     <div className="no-line-context"/>
                 </If>
-                <Line screen={hvm.specialLineContainer} line={this.line} width={width} staticRender={false} visible={this.visible} onHeightChange={this.handleHeightChange} overrideCollapsed={this.overrideCollapsed} topBorder={false} renderMode="normal"/>
+                <Line screen={hvm.specialLineContainer} line={this.line} width={width} staticRender={false} visible={this.visible} onHeightChange={this.handleHeightChange} overrideCollapsed={this.overrideCollapsed} topBorder={false} renderMode="normal" noSelect={true}/>
             </div>
         );
     }

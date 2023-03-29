@@ -6,6 +6,282 @@ import {boundMethod} from "autobind-decorator";
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import cn from "classnames";
 import {WebShareModel} from "./webshare-model";
+import * as T from "./types";
+import {isBlank} from "./util";
+import {PluginModel} from "./plugins";
+import * as lineutil from "./lineutil";
+import * as util from "./util";
+
+// TODO selection
+// TODO remotevars
+
+function makeFullRemoteRef(ownerName : string, remoteRef : string, name : string) : string {
+    if (isBlank(ownerName) && isBlank(name)) {
+        return remoteRef;
+    }
+    if (!isBlank(ownerName) && isBlank(name)) {
+        return ownerName + ":" + remoteRef;
+    }
+    if (isBlank(ownerName) && !isBlank(name)) {
+        return remoteRef + ":" + name;
+    }
+    return ownerName + ":" + remoteRef + ":" + name;
+}
+
+function replaceHomePath(path : string, homeDir : string) : string {
+    if (path == homeDir) {
+        return "~";
+    }
+    if (path.startsWith(homeDir + "/")) {
+        return "~" + path.substr(homeDir.length);
+    }
+    return path;
+}
+
+function getCwdStr(state : FeStateType) : string {
+    if ((state == null || state.cwd == null) && remote != null) {
+        return "~";
+    }
+    let cwd = "?";
+    if (state && state.cwd) {
+        cwd = state.cwd;
+    }
+    // if (remote && remote.remotevars.home) {
+    //     cwd = replaceHomePath(cwd, remote.remotevars.cwd)
+    // }
+    return cwd;
+}
+
+function getRemoteStr(remote : WebRemote) : string {
+    if (remote == null) {
+        return "(invalid remote)";
+    }
+    let remoteRef = (!isBlank(remote.alias) ? remote.alias : remote.canonicalname);
+    let fullRef = makeFullRemoteRef(null, remoteRef, remote.name);
+    return fullRef;
+}
+
+@mobxReact.observer
+class Prompt extends React.Component<{remote : T.WebRemote, festate : T.FeStateType}, {}> {
+    render() {
+        let {remote, festate} = this.props;
+        let remoteStr = getRemoteStr(remote);
+        let cwd = getCwdStr(festate);
+        let isRoot = false;
+        // if (remote && remote.remotevars) {
+        //     if (remote.remotevars["sudo"] || remote.remotevars["bestuser"] == "root") {
+        //         isRoot = true;
+        //     }
+        // }
+        let remoteColorClass = (isRoot ? "color-red" : "color-green");
+        if (remote && remote.remoteopts && remote.remoteopts.color) {
+            remoteColorClass = "color-" + remote.remoteopts.color;
+        }
+        let remoteTitle : string = null;
+        if (remote && remote.canonicalname) {
+            remoteTitle = remote.canonicalname;
+        }
+        return (
+            <span className="term-prompt"><span title={remoteTitle} className={cn("term-prompt-remote", remoteColorClass)}>[{remoteStr}]</span> <span className="term-prompt-cwd">{cwd}</span> <span className="term-prompt-end">{isRoot ? "#" : "$"}</span></span>
+        );
+    }
+}
+
+@mobxReact.observer
+class LineAvatar extends React.Component<{line : T.WebLine, cmd : T.WebCmd}, {}> {
+    render() {
+        let {line, cmd} = this.props;
+        let lineNumStr = String(line.linenum);
+        let status = (cmd != null ? cmd.status : "done");
+        let rtnstate = (cmd != null ? cmd.rtnstate : false);
+        let isComment = (line.linetype == "text");
+        return (
+            <div className={cn("avatar", "num-"+lineNumStr.length, "status-" + status, {"rtnstate": rtnstate})}>
+                {lineNumStr}
+                <If condition={status == "hangup" || status == "error"}>
+                    <i className="fa-sharp fa-solid fa-triangle-exclamation status-icon"/>
+                </If>
+                <If condition={status == "detached"}>
+                    <i className="fa-sharp fa-solid fa-rotate status-icon"/>
+                </If>
+                <If condition={isComment}>
+                    <i className="fa-sharp fa-solid fa-comment comment-icon"/>
+                </If>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
+class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd}, {}> {
+    isCmdExpanded : OV<boolean> = mobx.observable.box(false, {name: "cmd-expanded"});
+    isOverflow : OV<boolean> = mobx.observable.box(false, {name: "line-overflow"});
+    
+    renderSimple() {
+        <div className={cn("web-line line", (line.linetype == "cmd" ? "line-cmd" : "line-text"))}>
+            <LineAvatar line={line}/>
+        </div>
+    }
+
+    renderCmdText(cmd : Cmd, remote : WebRemote) : any {
+        if (cmd == null) {
+            return (
+                <div className="metapart-mono cmdtext">
+                    <span className="term-bright-green">(cmd not found)</span>
+                </div>
+            );
+        }
+        if (this.isCmdExpanded.get()) {
+            return (
+                <React.Fragment>
+                    <div key="meta2" className="meta meta-line2">
+                        <div className="metapart-mono cmdtext">
+                            <Prompt remote={cmd.remote} festate={cmd.festate}/>
+                        </div>
+                    </div>
+                    <div key="meta3" className="meta meta-line3 cmdtext-expanded-wrapper">
+                        <div className="cmdtext-expanded">{getFullCmdText(cmd.cmdstr)}</div>
+                    </div>
+                </React.Fragment>
+            );
+        }
+        let isMultiLine = lineutil.isMultiLineCmdText(cmd.cmdstr);
+        return (
+            <div key="meta2" className="meta meta-line2" ref={this.cmdTextRef}>
+                <div className="metapart-mono cmdtext">
+                    <Prompt remote={cmd.remote} festate={cmd.festate}/>
+                    <span> </span>
+                    <span>{lineutil.getSingleLineCmdText(cmd.cmdstr)}</span>
+                </div>
+                <If condition={this.isOverflow.get() || isMultiLine}>
+                    <div className="cmdtext-overflow" onClick={this.handleExpandCmd}>...&#x25BC;</div>
+                </If>
+            </div>
+        );
+    }
+
+    renderMetaWrap() {
+        let {line, cmd} = this.props;
+        let formattedTime = lineutil.getLineDateTimeStr(line.ts);
+        let termOpts = cmd.termopts;
+        let remote = cmd.remote;
+        let renderer = line.renderer;
+        return (
+            <div key="meta" className="meta-wrap">
+                <div key="meta1" className="meta meta-line1">
+                    <div className="ts">{formattedTime}</div>
+                    <div>&nbsp;</div>
+                    <If condition={!isBlank(renderer) && renderer != "terminal"}>
+                        <div className="renderer"><i className="fa-sharp fa-solid fa-fill"/>{renderer}&nbsp;</div>
+                    </If>
+                    <div className="termopts">
+                        ({termOpts.rows}x{termOpts.cols})
+                    </div>
+                </div>
+                {this.renderCmdText(cmd, remote)}
+            </div>
+        );
+    }
+    
+    render() {
+        let {line, cmd} = this.props;
+        let model = WebShareModel;
+        let isSelected = mobx.computed(() => (model.getSelectedLine() == line.linenum), {name: "computed-isSelected"}).get();
+        let rendererPlugin : RendererPluginType = null;
+        let isNoneRenderer = (line.renderer == "none");
+        if (!isBlank(line.renderer) && line.renderer != "terminal" && !isNoneRenderer) {
+            rendererPlugin = PluginModel.getRendererPluginByName(line.renderer);
+        }
+        let rendererType = lineutil.getRendererType(line);
+        return (
+            <div className={cn("web-line line line-cmd")}>
+                <div key="focus" className={cn("focus-indicator", {"selected active": isSelected})}/>
+                <div className="line-header">
+                    <LineAvatar line={line} cmd={cmd}/>
+                    {this.renderMetaWrap()}
+                </div>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
+class WebLineTextView extends React.Component<{line : T.WebLine, cmd : T.WebCmd}, {}> {
+    render() {
+        let {line} = this.props;
+        let isSelected = mobx.computed(() => (model.getSelectedLine() == line.linenum), {name: "computed-isSelected"}).get();
+        return (
+            <div className={cn("web-line line line-text")}>
+                <div key="focus" className={cn("focus-indicator", {"selected active": isSelected})}/>
+                <div className="line-header">
+                    <LineAvatar line={line}/>
+                </div>
+                <div>
+                    <div>{line.text}</div>
+                </div>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
+class WebLineView extends React.Component<{line : T.WebLine, cmd : T.WebCmd}, {}> {
+    render() {
+        let {line} = this.props;
+        if (line.linetype == "text") {
+            return <WebLineTextView {...this.props}/>
+        }
+        if (line.linetype == "cmd") {
+            return <WebLineCmdView {...this.props}/>
+        }
+        return (
+            <div className="web-line line">invalid linetype "{line.linetype}"</div>
+        );
+    }
+}
+
+@mobxReact.observer
+class WebScreenView extends React.Component<{screen : T.WebFullScreen}, {}> {
+    render() {
+        let {screen} = this.props;
+        let lines = screen.lines ?? [];
+        let cmds = screen.cmds ?? [];
+        let cmdMap : Record<string, WebCmd> = {};
+        for (let i=0; i<cmds.length; i++) {
+            let cmd = cmds[i];
+            cmdMap[cmd.lineid] = cmd;
+        }
+        let lineElements : any[] = [];
+        let todayStr = util.getTodayStr();
+        let yesterdayStr = util.getYesterdayStr();
+        let prevDateStr : string = null;
+        for (let idx=0; idx<lines.length; idx++) {
+            let line = lines[idx];
+            let lineNumStr = String(line.linenum);
+            let dateSepStr = null;
+            let curDateStr = lineutil.getLineDateStr(todayStr, yesterdayStr, line.ts);
+            if (curDateStr != prevDateStr) {
+                dateSepStr = curDateStr;
+            }
+            prevDateStr = curDateStr;
+            if (dateSepStr != null) {
+                let sepElem = <div key={"sep-" + line.lineid} className="line-sep">{dateSepStr}</div>
+                lineElements.push(sepElem);
+            }
+            let topBorder = (dateSepStr == null) && (idx != 0);
+            let lineElem = <WebLineView key={line.lineid} line={line} cmd={cmdMap[line.lineid]} topBorder={topBorder}/>;
+            lineElements.push(lineElem);
+        }
+        return (
+            <div className="web-screen-view">
+                <div className="web-lines lines">
+                    <div className="lines-spacer"></div>
+                    {lineElements}
+                </div>
+            </div>
+        );
+    }
+}
 
 @mobxReact.observer
 class WebShareMain extends React.Component<{}, {}> {
@@ -14,10 +290,17 @@ class WebShareMain extends React.Component<{}, {}> {
     }
             
     render() {
+        let screen = WebShareModel.screen.get();
+        let errMessage = WebShareModel.errMessage.get();
         return (
             <div id="main">
                 <div className="logo-header">
-                    <div className="logo-text">[prompt]</div>
+                    <div className="logo-text">
+                        <a target="_blank" href="https://www.getprompt.dev">[prompt]</a>
+                    </div>
+                    <If condition={screen != null}>
+                        <div className="screen-name">{screen.screen.sharename}</div>
+                    </If>
                     <div className="flex-spacer"/>
                     <a href="https://getprompt.dev/download/" target="_blank" className="download-button button is-link">
                         <span>Download Prompt</span>
@@ -27,8 +310,12 @@ class WebShareMain extends React.Component<{}, {}> {
                     </a>
                 </div>
                 <div className="prompt-content">
-                    <div>screenid={WebShareModel.screenId}, viewkey={WebShareModel.viewKey}</div>
-                    <div>{WebShareModel.errMessage.get()}</div>
+                    <If condition={screen != null}>
+                        <WebScreenView screen={screen}/>
+                    </If>
+                    <If condition={errMessage != null}>
+                        <div className="err-message">{WebShareModel.errMessage.get()}</div>
+                    </If>
                 </div>
                 <div className="prompt-footer">
                     {this.renderCopy()}

@@ -3,9 +3,9 @@ import {Terminal} from 'xterm';
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 import {v4 as uuidv4} from "uuid";
-import {GlobalModel, GlobalCommandRunner, termHeightFromRows, windowWidthToCols, windowHeightToRows, getPtyData, getRemotePtyData} from "./model";
+import {termHeightFromRows, windowWidthToCols, windowHeightToRows} from "./textmeasure";
 import {boundInt} from "./util";
-import type {TermOptsType, TermWinSize, RendererContext, WindowSize, PtyDataType} from "./types";
+import type {TermContextUnion, TermOptsType, TermWinSize, RendererContext, WindowSize, PtyDataType} from "./types";
 
 type DataUpdate = {
     data : Uint8Array,
@@ -15,12 +15,8 @@ type DataUpdate = {
 const MinTermCols = 10;
 const MaxTermCols = 1024;
 
-type RemoteTermContext = {remoteId : string};
-
-type TermContext = RendererContext | RemoteTermContext;
-
 type TermWrapOpts = {
-    termContext : TermContext,
+    termContext : TermContextUnion,
     usedRows? : number,
     termOpts : TermOptsType,
     winSize : WindowSize,
@@ -30,13 +26,14 @@ type TermWrapOpts = {
     isRunning : boolean,
     customKeyHandler? : (event : any, termWrap : TermWrap) => boolean,
     fontSize : number,
-    noSetTUR? : boolean,
+    ptyDataSource : (termContext : TermContextUnion) => Promise<PtyDataType>,
+    onUpdateContentHeight : (termContext : RendererContext, height : number) => void,
 };
 
 // cmd-instance
 class TermWrap {
     terminal : any;
-    termContext : TermContext;
+    termContext : TermContextUnion;
     atRowMax : boolean;
     usedRows : mobx.IObservableValue<number>;
     flexRows : boolean;
@@ -51,7 +48,8 @@ class TermWrap {
     focusHandler : (focus : boolean) => void;
     isRunning : boolean;
     fontSize : number;
-    noSetTUR : boolean;
+    onUpdateContentHeight : (termContext : RendererContext, height : number) => void;
+    ptyDataSource : (termContext : TermContextUnion) => Promise<PtyDataType>;
 
     constructor(elem : Element, opts : TermWrapOpts) {
         opts = opts ?? ({} as any);
@@ -62,7 +60,8 @@ class TermWrap {
         this.focusHandler = opts.focusHandler;
         this.isRunning = opts.isRunning;
         this.fontSize = opts.fontSize;
-        this.noSetTUR = !!opts.noSetTUR;
+        this.ptyDataSource = opts.ptyDataSource;
+        this.onUpdateContentHeight = opts.onUpdateContentHeight;
         if (this.flexRows) {
             this.atRowMax = false;
             this.usedRows = mobx.observable.box(opts.usedRows ?? (opts.isRunning ? 1 : 0), {name: "term-usedrows"});
@@ -221,8 +220,8 @@ class TermWrap {
                 return;
             }
             this.usedRows.set(tur);
-            if (!this.noSetTUR) {
-                GlobalModel.setContentHeight(termContext, tur);
+            if (this.onUpdateContentHeight != null) {
+                this.onUpdateContentHeight(termContext, tur);
             }
         })();
     }
@@ -272,14 +271,7 @@ class TermWrap {
         }
         this.reloading = true;
         this.terminal.reset();
-        let rtnp : Promise<PtyDataType> = null;
-        if (this.getContextRemoteId() != null) {
-            rtnp = getRemotePtyData(this.getContextRemoteId());
-        }
-        else {
-            let termContext = this.getRendererContext();
-            rtnp = getPtyData(termContext.screenId, termContext.cmdId, termContext.lineNum);
-        }
+        let rtnp = this.ptyDataSource(this.termContext);
         rtnp.then((ptydata) => {
             setTimeout(() => {
                 this._reloadThenHandler(ptydata);
