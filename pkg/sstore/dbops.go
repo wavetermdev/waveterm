@@ -1365,10 +1365,15 @@ func ArchiveScreenLines(ctx context.Context, screenId string) (*ModelUpdate, err
 		if !tx.Exists(query, screenId) {
 			return fmt.Errorf("screen does not exist")
 		}
+		fmt.Printf("** archive-screen-lines: %s\n", screenId)
 		if isWebShare(tx, screenId) {
 			query = `INSERT INTO screenupdate (screenid, lineid, updatetype, updatets)
                      SELECT screenid, lineid, ?, ? FROM line WHERE screenid = ? AND archived = 0`
-			tx.Exec(query, UpdateType_LineArchived, time.Now().UnixMilli(), screenId)
+			tx.Exec(query, UpdateType_LineDel, time.Now().UnixMilli(), screenId)
+			NotifyUpdateWriter()
+			query = `SELECT count(*) FROM line WHERE screenid = ? AND archived = 0`
+			count := tx.GetInt(query, screenId)
+			fmt.Printf("** archive-screen-lines: wrote into screenupdate: %d\n", count)
 		}
 		query = `UPDATE line SET archived = 1 WHERE screenid = ? AND archived = 0`
 		tx.Exec(query, screenId)
@@ -1924,7 +1929,11 @@ func SetLineArchivedById(ctx context.Context, screenId string, lineId string, ar
 		query := `UPDATE line SET archived = ? WHERE lineid = ?`
 		tx.Exec(query, archived, lineId)
 		if isWebShare(tx, screenId) {
-			insertScreenLineUpdate(tx, screenId, lineId, UpdateType_LineArchived)
+			if archived {
+				insertScreenLineUpdate(tx, screenId, lineId, UpdateType_LineDel)
+			} else {
+				insertScreenLineUpdate(tx, screenId, lineId, UpdateType_LineNew)
+			}
 		}
 		return nil
 	})
@@ -2420,10 +2429,10 @@ func ScreenWebShareStart(ctx context.Context, screenId string, shareOpts ScreenW
 		tx.Exec(query, ShareModeWeb, quickJson(shareOpts), screenId)
 		insertScreenUpdate(tx, screenId, UpdateType_ScreenNew)
 		query = `INSERT INTO screenupdate (screenid, lineid, updatetype, updatets)
-                 SELECT screenid, lineid, ?, ? FROM line WHERE screenid = ? ORDER BY linenum`
+                 SELECT screenid, lineid, ?, ? FROM line WHERE screenid = ? AND NOT archived ORDER BY linenum`
 		tx.Exec(query, UpdateType_LineNew, nowTs, screenId)
 		query = `INSERT INTO screenupdate (screenid, lineid, updatetype, updatets)
-                 SELECT c.screenid, l.lineid, ?, ? FROM cmd c, line l WHERE c.screenid = ? AND l.cmdid = c.cmdid`
+                 SELECT c.screenid, l.lineid, ?, ? FROM cmd c, line l WHERE c.screenid = ? AND l.cmdid = c.cmdid AND NOT l.archived`
 		tx.Exec(query, UpdateType_PtyPos, nowTs, screenId)
 		NotifyUpdateWriter()
 		return nil
@@ -2474,12 +2483,16 @@ func insertScreenLineUpdate(tx *TxWrap, screenId string, lineId string, updateTy
 		tx.SetErr(errors.New("invalid screen-update, lineid is empty"))
 		return
 	}
-	query := `SELECT updateid FROM screenupdate WHERE screenid = ? AND lineid = ? AND (updatetype = ? OR updatetype = ?)`
-	if !tx.Exists(query, screenId, lineId, updateType, UpdateType_LineNew) {
-		query = `INSERT INTO screenupdate (screenid, lineid, updatetype, updatets) VALUES (?, ?, ?, ?)`
-		tx.Exec(query, screenId, lineId, updateType, time.Now().UnixMilli())
-		NotifyUpdateWriter()
+	if updateType == UpdateType_LineNew || updateType == UpdateType_LineDel {
+		query := `DELETE FROM screenupdate WHERE screenid = ? AND lineid = ?`
+		tx.Exec(query, screenId, lineId)
 	}
+	query := `INSERT INTO screenupdate (screenid, lineid, updatetype, updatets) VALUES (?, ?, ?, ?)`
+	tx.Exec(query, screenId, lineId, updateType, time.Now().UnixMilli())
+	if updateType == UpdateType_LineNew {
+		tx.Exec(query, screenId, lineId, UpdateType_PtyPos, time.Now().UnixMilli())
+	}
+	NotifyUpdateWriter()
 }
 
 func insertScreenCmdUpdate(tx *TxWrap, screenId string, cmdId string, updateType string) {
@@ -2515,49 +2528,12 @@ func RemoveScreenUpdate(ctx context.Context, updateId int64) error {
 	})
 }
 
-func SetWebScreenPtyPosDelIntent(screenId string, lineId string) {
-	WebScreenPtyPosLock.Lock()
-	defer WebScreenPtyPosLock.Unlock()
-	WebScreenPtyPosDelIntent[screenId+":"+lineId] = true
-}
-
-func ClearWebScreenPtyPosDelIntent(screenId string, lineId string) bool {
-	WebScreenPtyPosLock.Lock()
-	defer WebScreenPtyPosLock.Unlock()
-	rtn := WebScreenPtyPosDelIntent[screenId+":"+lineId]
-	delete(WebScreenPtyPosDelIntent, screenId+":"+lineId)
-	return rtn
-}
-
 func MaybeInsertPtyPosUpdate(ctx context.Context, screenId string, cmdId string) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		if !isWebShare(tx, screenId) {
 			return nil
 		}
-		query := `SELECT lineid FROM line WHERE screenid = ? AND cmdid = ?`
-		lineId := tx.GetString(query, screenId, cmdId)
-		if lineId == "" {
-			return fmt.Errorf("invalid ptypos update, no lineid found for %s/%s", screenId, cmdId)
-		}
-		ClearWebScreenPtyPosDelIntent(screenId, lineId) // clear delete intention because we have a new update
-		query = `SELECT updateid FROM screenupdate WHERE screenid = ? AND lineid = ? AND updatetype = ?`
-		if !tx.Exists(query, screenId, lineId, UpdateType_PtyPos) {
-			query := `INSERT INTO screenupdate (screenid, lineid, updatetype, updatets) VALUES (?, ?, ?, ?)`
-			tx.Exec(query, screenId, lineId, UpdateType_PtyPos, time.Now().UnixMilli())
-			NotifyUpdateWriter()
-		}
-		return nil
-	})
-}
-
-func MaybeRemovePtyPosUpdate(ctx context.Context, screenId string, lineId string, updateId int64) error {
-	return WithTx(ctx, func(tx *TxWrap) error {
-		intent := ClearWebScreenPtyPosDelIntent(screenId, lineId) // check for intention before deleting
-		if !intent {
-			return nil
-		}
-		query := `DELETE FROM screenupdate WHERE updateid = ?`
-		tx.Exec(query, updateId)
+		insertScreenCmdUpdate(tx, screenId, cmdId, UpdateType_PtyPos)
 		return nil
 	})
 }
@@ -2567,6 +2543,15 @@ func GetWebPtyPos(ctx context.Context, screenId string, lineId string) (int64, e
 		query := `SELECT ptypos FROM webptypos WHERE screenid = ? AND lineid = ?`
 		ptyPos := tx.GetInt(query, screenId, lineId)
 		return int64(ptyPos), nil
+	})
+}
+
+func DeleteWebPtyPos(ctx context.Context, screenId string, lineId string) error {
+	fmt.Printf("del webptypos %s:%s\n", screenId, lineId)
+	return WithTx(ctx, func(tx *TxWrap) error {
+		query := `DELETE FROM webptypos WHERE screenid = ? AND lineid = ?`
+		tx.Exec(query, screenId, lineId)
+		return nil
 	})
 }
 

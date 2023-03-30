@@ -51,6 +51,8 @@ const MaxCommandLen = 4096
 const MaxSignalLen = 12
 const MaxSignalNum = 64
 const MaxEvalDepth = 5
+const DevWebScreenUrlFmt = "http://devtest.getprompt.com:9001/static/index.html?screenid=%s&viewkey=%s"
+const ProdWebScreenUrlFmt = "https://share.getprompt.dev/s/%s?viewkey=%s"
 
 var ColorNames = []string{"black", "red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
 var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
@@ -218,6 +220,13 @@ func GetCmdStr(pk *scpacket.FeCommandPacketType) string {
 		return pk.MetaCmd
 	}
 	return pk.MetaCmd + ":" + pk.MetaSubCmd
+}
+
+func GetWebShareUrl(screenId string, viewKey string) string {
+	if scbase.IsDevMode() {
+		return fmt.Sprintf(DevWebScreenUrlFmt, screenId, viewKey)
+	}
+	return fmt.Sprintf(ProdWebScreenUrlFmt, screenId, viewKey)
 }
 
 func HandleCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -1658,7 +1667,7 @@ func ScreenWebShareCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 		if err != nil {
 			return nil, fmt.Errorf("cannot web-share screen: %v", err)
 		}
-		infoMsg = fmt.Sprintf("screen is now shared to the web at %s", fmt.Sprintf("screenid=%s viewkey=%s", ids.ScreenId, viewKey))
+		infoMsg = fmt.Sprintf("screen is now shared to the web at %s", GetWebShareUrl(ids.ScreenId, viewKey))
 	} else {
 		err = sstore.ScreenWebShareStop(ctx, ids.ScreenId)
 		if err != nil {

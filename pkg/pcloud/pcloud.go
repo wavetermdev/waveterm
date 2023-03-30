@@ -237,13 +237,6 @@ func makeWebShareUpdate(ctx context.Context, update *sstore.ScreenUpdateType) (*
 	case sstore.UpdateType_LineDel:
 		break
 
-	case sstore.UpdateType_LineArchived:
-		line, err := sstore.GetLineById(ctx, update.ScreenId, update.LineId)
-		if err != nil || line == nil {
-			return nil, fmt.Errorf("error getting line: %v", defaultError(err, "not found"))
-		}
-		rtn.BVal = line.Archived
-
 	case sstore.UpdateType_LineRenderer:
 		line, err := sstore.GetLineById(ctx, update.ScreenId, update.LineId)
 		if err != nil || line == nil {
@@ -292,7 +285,6 @@ func makeWebShareUpdate(ctx context.Context, update *sstore.ScreenUpdateType) (*
 		if err != nil {
 			return nil, fmt.Errorf("error getting ptypos: %v", err)
 		}
-		sstore.SetWebScreenPtyPosDelIntent(update.ScreenId, update.LineId)
 		realOffset, data, err := sstore.ReadPtyOutFile(ctx, update.ScreenId, cmdId, ptyPos, MaxPtyUpdateSize+1)
 		if err != nil {
 			return nil, fmt.Errorf("error getting ptydata: %v", err)
@@ -315,29 +307,22 @@ func makeWebShareUpdate(ctx context.Context, update *sstore.ScreenUpdateType) (*
 func finalizeWebScreenUpdate(ctx context.Context, webUpdate *WebShareUpdateType) error {
 	switch webUpdate.UpdateType {
 	case sstore.UpdateType_PtyPos:
-		dataEof := webUpdate.PtyData.Eof
 		newPos := webUpdate.PtyData.PtyPos + int64(len(webUpdate.PtyData.Data))
-		if dataEof {
-			err := sstore.RemoveScreenUpdate(ctx, webUpdate.UpdateId)
-			if err != nil {
-				return err
-			}
-		}
 		err := sstore.SetWebPtyPos(ctx, webUpdate.ScreenId, webUpdate.LineId, newPos)
 		if err != nil {
 			return err
 		}
-		err = sstore.MaybeRemovePtyPosUpdate(ctx, webUpdate.ScreenId, webUpdate.LineId, webUpdate.UpdateId)
-		if err != nil {
-			return err
-		}
 
-	default:
-		err := sstore.RemoveScreenUpdate(ctx, webUpdate.UpdateId)
+	case sstore.UpdateType_LineDel:
+		err := sstore.DeleteWebPtyPos(ctx, webUpdate.ScreenId, webUpdate.LineId)
 		if err != nil {
-			// this is not great, this *should* never fail and is not easy to recover from
 			return err
 		}
+	}
+	err := sstore.RemoveScreenUpdate(ctx, webUpdate.UpdateId)
+	if err != nil {
+		// this is not great, this *should* never fail and is not easy to recover from
+		return err
 	}
 	return nil
 }
@@ -357,8 +342,6 @@ func DoWebScreenUpdates(authInfo AuthInfo, updateArr []*sstore.ScreenUpdateType)
 				log.Printf("[pcloud] error create web-share update updateid:%d: %v", update.UpdateId, err)
 			}
 			if update.UpdateType == sstore.UpdateType_PtyPos {
-				err = sstore.MaybeRemovePtyPosUpdate(context.Background(), update.ScreenId, update.LineId, update.UpdateId)
-			} else {
 				err = sstore.RemoveScreenUpdate(context.Background(), update.UpdateId)
 			}
 			if err != nil {

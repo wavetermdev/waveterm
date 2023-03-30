@@ -86,7 +86,6 @@ const (
 	UpdateType_ScreenName   = "screen:sharename"
 	UpdateType_LineNew      = "line:new"
 	UpdateType_LineDel      = "line:del"
-	UpdateType_LineArchived = "line:archived"
 	UpdateType_LineRenderer = "line:renderer"
 	UpdateType_CmdStatus    = "cmd:status"
 	UpdateType_CmdTermOpts  = "cmd:termopts"
