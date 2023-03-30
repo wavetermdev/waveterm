@@ -1365,7 +1365,12 @@ func ArchiveScreenLines(ctx context.Context, screenId string) (*ModelUpdate, err
 		if !tx.Exists(query, screenId) {
 			return fmt.Errorf("screen does not exist")
 		}
-		query = `UPDATE line SET archived = 1 WHERE screenid = ?`
+		if isWebShare(tx, screenId) {
+			query = `INSERT INTO screenupdate (screenid, lineid, updatetype, updatets)
+                     SELECT screenid, lineid, ?, ? FROM line WHERE screenid = ? AND archived = 0`
+			tx.Exec(query, UpdateType_LineArchived, time.Now().UnixMilli(), screenId)
+		}
+		query = `UPDATE line SET archived = 1 WHERE screenid = ? AND archived = 0`
 		tx.Exec(query, screenId)
 		return nil
 	})
