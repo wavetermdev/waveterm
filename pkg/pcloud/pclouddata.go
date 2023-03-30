@@ -165,7 +165,7 @@ func webCmdFromCmd(lineId string, cmd *sstore.CmdType) (*WebShareCmdType, error)
 }
 
 type WebSharePtyData struct {
-	PtyPos int64  `json:"ptypos,omitempty"`
-	Data   []byte `json:"data,omitempty"`
+	PtyPos int64  `json:"ptypos"`
+	Data   []byte `json:"data"`
 	Eof    bool   `json:"-"` // internal use
 }
