@@ -1,7 +1,7 @@
 import * as mobx from "mobx";
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
-import {handleJsonFetchResponse, isModKeyPress} from "./util";
+import {handleJsonFetchResponse, isModKeyPress, base64ToArray} from "./util";
 import * as T from "./types";
 import {TermWrap} from "./term";
 import * as lineutil from "./lineutil";
@@ -58,12 +58,81 @@ class WebShareModelClass {
         return 12;
     }
 
+    mergeLine(fullScreen : T.WebFullScreen, newLine : T.WebLine) {
+        for (let i=0; i<fullScreen.lines.length; i++) {
+            let line = fullScreen.lines[i];
+            if (line.lineid == newLine.lineid) {
+                fullScreen.lines[i] = newLine;
+                return;
+            }
+            if (line.linenum > newLine.linenum) {
+                fullScreen.lines.splice(i, 0, newLine);
+                return;
+            }
+        }
+        fullScreen.lines.push(newLine);
+    }
+
+    mergeCmd(fullScreen : T.WebFullScreen, newCmd : T.WebCmd) {
+        for (let i=0; i<fullScreen.cmds.length; i++) {
+            let cmd = fullScreen.cmds[i];
+            if (cmd.lineid == newCmd.lineid) {
+                fullScreen.cmds[i] = newCmd;
+                return;
+            }
+        }
+        fullScreen.cmds.push(newCmd);
+    }
+
+    mergeUpdate(msg : T.WebScreenUpdate) {
+        if (msg.screenid != this.screenId) {
+            console.log("bad WebScreenUpdate, wrong screenid", msg.screenid);
+            return;
+        }
+        console.log("merge", msg);
+        mobx.action(() => {
+            let fullScreen = this.screen.get();
+            if (msg.screen) {
+                fullScreen.screen = msg.screen;
+            }
+            if (msg.lines != null && msg.lines.length > 0) {
+                for (let line of msg.lines) {
+                    this.mergeLine(fullScreen, line);
+                }
+            }
+            if (msg.cmds != null && msg.cmds.length > 0) {
+                for (let cmd of msg.cmds) {
+                    this.mergeCmd(fullScreen, cmd);
+                }
+            }
+            if (msg.ptydata != null && msg.ptydata.length > 0) {
+                for (let data of msg.ptydata) {
+                    let termWrap = this.getTermWrap(data.lineid);
+                    if (termWrap == null) {
+                        continue;
+                    }
+                    termWrap.receiveData(data.ptypos, base64ToArray(data.data));
+                }
+            }
+        })();
+    }
+
     wsMessageCallback(msg : any) {
+        if (msg.type == "webscreen:update") {
+            this.mergeUpdate(msg);
+            return;
+        }
         console.log("ws message", msg);
     }
 
     setWebFullScreen(screen : T.WebFullScreen) {
         mobx.action(() => {
+            if (screen.lines == null) {
+                screen.lines = [];
+            }
+            if (screen.cmds == null) {
+                screen.cmds = [];
+            }
             this.screen.set(screen);
             if (screen.lines != null && screen.lines.length > 0) {
                 this.selectedLine.set(screen.lines[screen.lines.length-1].linenum);

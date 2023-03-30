@@ -1,7 +1,7 @@
 import * as mobx from "mobx";
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
-import {WatchScreenPacketType} from "./types";
+import {WebShareWSMessage} from "./types";
 import dayjs from "dayjs";
 
 class WebShareWSControl {
@@ -153,7 +153,7 @@ class WebShareWSControl {
                 this.messageCallback(eventData);
             }
             catch (e) {
-                this.log("[error] messageCallback", e);
+                this.log("[error] messageCallback " + e);
             }
         }
     }
@@ -182,7 +182,7 @@ class WebShareWSControl {
     }
 
     sendWebShareInit() {
-        let pk : WatchScreenPacketType = {"type": "webshare", screenid: this.screenId, viewkey: this.viewKey};
+        let pk : WebShareWSMessage = {"type": "webshare", screenid: this.screenId, viewkey: this.viewKey};
         this.pushMessage(pk);
     }
 }

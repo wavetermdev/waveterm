@@ -18,7 +18,9 @@ type OArr<V> = mobx.IObservableArray<V>;
 type OMap<K,V> = mobx.ObservableMap<K,V>;
 
 // TODO selection
-// TODO websocket
+// TODO bug with finishing up the ptydata
+// TODO bug with ptydata late -- not updating usedrows
+// TODO scroll screen when new cmds arrive (selection)
 
 function makeFullRemoteRef(ownerName : string, remoteRef : string, name : string) : string {
     if (isBlank(ownerName) && isBlank(name)) {
