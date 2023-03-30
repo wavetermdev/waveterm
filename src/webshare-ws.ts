@@ -72,8 +72,8 @@ class WebShareWSControl {
             this.log("cannot connect, giving up");
             return;
         }
-        let timeoutArr = [0, 5, 5, 15, 30, 60, 300, 3600];
-        let timeout = 60;
+        let timeoutArr = [0, 0, 5, 5, 15, 30, 60, 300, 3600];
+        let timeout = timeoutArr[timeoutArr.length-1];
         if (this.reconnectTimes < timeoutArr.length) {
             timeout = timeoutArr[this.reconnectTimes];
         }
