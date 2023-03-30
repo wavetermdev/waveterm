@@ -12,6 +12,7 @@ import {PluginModel} from "./plugins";
 import * as lineutil from "./lineutil";
 import * as util from "./util";
 import {windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols} from "./textmeasure";
+import {debounce, throttle} from "throttle-debounce";
 
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
@@ -21,6 +22,8 @@ type OMap<K,V> = mobx.ObservableMap<K,V>;
 // TODO bug with finishing up the ptydata
 // TODO bug with ptydata late -- not updating usedrows
 // TODO scroll screen when new cmds arrive (selection)
+// TODO archived should delete line
+// TODO implement linedel
 
 function makeFullRemoteRef(ownerName : string, remoteRef : string, name : string) : string {
     if (isBlank(ownerName) && isBlank(name)) {
@@ -112,7 +115,7 @@ class LineAvatar extends React.Component<{line : T.WebLine, cmd : T.WebCmd}, {}>
 }
 
 @mobxReact.observer
-class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, topBorder : boolean}, {}> {
+class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, topBorder : boolean, width: number}, {}> {
     isCmdExpanded : OV<boolean> = mobx.observable.box(false, {name: "cmd-expanded"});
     isOverflow : OV<boolean> = mobx.observable.box(false, {name: "line-overflow"});
     cmdTextRef : React.RefObject<any> = React.createRef();
@@ -209,6 +212,10 @@ class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, 
         let rendererType = lineutil.getRendererType(line);
         let mainCn = cn("web-line line line-cmd", {"top-border": topBorder});
         let visObs = mobx.observable.box(true, {name: "visObs"});
+        let width = this.props.width;
+        if (width == 0) {
+            width = 1024;
+        }
         return (
             <div className={mainCn}>
                 <div key="focus" className={cn("focus-indicator", {"selected active": isSelected})}/>
@@ -216,7 +223,7 @@ class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, 
                     <LineAvatar line={line} cmd={cmd}/>
                     {this.renderMetaWrap()}
                 </div>
-                <TerminalRenderer line={line} cmd={cmd} width={1024} staticRender={false} visible={visObs} onHeightChange={this.handleHeightChange}/>
+                <TerminalRenderer line={line} cmd={cmd} width={width} staticRender={false} visible={visObs} onHeightChange={this.handleHeightChange}/>
             </div>
         );
     }
@@ -358,7 +365,7 @@ class TerminalRenderer extends React.Component<{line : T.WebLine, cmd : T.WebCmd
 }
 
 @mobxReact.observer
-class WebLineView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, topBorder : boolean}, {}> {
+class WebLineView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, topBorder : boolean, width : number}, {}> {
     render() {
         let {line} = this.props;
         if (line.linetype == "text") {
@@ -375,6 +382,56 @@ class WebLineView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, top
 
 @mobxReact.observer
 class WebScreenView extends React.Component<{screen : T.WebFullScreen}, {}> {
+    viewRef : React.RefObject<any> = React.createRef();
+    width : OV<number> = mobx.observable.box(0, {name: "webScreenView-width"});
+    rszObs : ResizeObserver;
+    handleResize_debounced : (entries : any) => void;
+
+    constructor(props : any) {
+        super(props);
+        this.handleResize_debounced = debounce(1000, this.handleResize.bind(this));
+    }
+
+    componentDidMount() : void {
+        if (this.viewRef.current != null) {
+            let linesElem = this.viewRef.current;
+            this.rszObs = new ResizeObserver(this.handleResize_debounced.bind(this));
+            this.rszObs.observe(linesElem);
+            let width = linesElem.offsetWidth;
+            if (width > 0) {
+                mobx.action(() => {
+                    this.width.set(width);
+                })();
+            }
+        }
+    }
+
+    handleResize(entries : any) : void {
+        let linesElem = this.viewRef.current;
+        if (linesElem == null) {
+            return;
+        }
+        let width = linesElem.offsetWidth;
+        let height = linesElem.offsetHeight;
+        if (width != this.width.get()) {
+            WebShareModel.resizeWindow({width: width, height: height});
+            console.log("width-update", width);
+            mobx.action(() => {
+                this.width.set(width);
+            })();
+        }
+    }
+
+    renderEmpty() : any {
+        return (
+            <div className="web-screen-view" ref={this.viewRef}>
+                <div className="web-lines lines">
+                    <div key="spacer" className="lines-spacer"></div>
+                </div>
+            </div>
+        );
+    }
+    
     render() {
         let {screen} = this.props;
         let lines = screen.lines ?? [];
@@ -388,6 +445,10 @@ class WebScreenView extends React.Component<{screen : T.WebFullScreen}, {}> {
         let todayStr = util.getTodayStr();
         let yesterdayStr = util.getYesterdayStr();
         let prevDateStr : string = null;
+        let width = this.width.get();
+        if (width == 0) {
+            return this.renderEmpty();
+        }
         for (let idx=0; idx<lines.length; idx++) {
             let line = lines[idx];
             let lineNumStr = String(line.linenum);
@@ -402,13 +463,13 @@ class WebScreenView extends React.Component<{screen : T.WebFullScreen}, {}> {
                 lineElements.push(sepElem);
             }
             let topBorder = (dateSepStr == null) && (idx != 0);
-            let lineElem = <WebLineView key={line.lineid} line={line} cmd={cmdMap[line.lineid]} topBorder={topBorder}/>;
+            let lineElem = <WebLineView key={line.lineid} line={line} cmd={cmdMap[line.lineid]} topBorder={topBorder} width={width}/>;
             lineElements.push(lineElem);
         }
         return (
-            <div className="web-screen-view">
+            <div className="web-screen-view" ref={this.viewRef}>
                 <div className="web-lines lines">
-                    <div className="lines-spacer"></div>
+                    <div key="spacer" className="lines-spacer"></div>
                     {lineElements}
                 </div>
             </div>

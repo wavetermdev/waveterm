@@ -58,6 +58,14 @@ class WebShareModelClass {
         return 12;
     }
 
+    resizeWindow(winSize : T.WindowSize) : void {
+        let cols = windowWidthToCols(winSize.width, this.getTermFontSize());
+        for (let lineId in this.terminals) {
+            let termWrap = this.terminals[lineId];
+            termWrap.resizeCols(cols);
+        }
+    }
+
     mergeLine(fullScreen : T.WebFullScreen, newLine : T.WebLine) {
         for (let i=0; i<fullScreen.lines.length; i++) {
             let line = fullScreen.lines[i];
@@ -73,10 +81,40 @@ class WebShareModelClass {
         fullScreen.lines.push(newLine);
     }
 
+    removeLine(fullScreen : T.WebFullScreen, lineId : string) {
+        for (let i=0; i<fullScreen.lines.length; i++) {
+            let line = fullScreen.lines[i];
+            if (line.lineid == lineId) {
+                fullScreen.lines.splice(i, 1);
+                break;
+            }
+        }
+        for (let i=0; i<fullScreen.cmds.length; i++) {
+            let cmd = fullScreen.cmds[i];
+            if (cmd.lineid == lineId) {
+                fullScreen.cmds.splice(i, 1);
+                break;
+            }
+        }
+        this.unloadRenderer(lineId);
+    }
+
+    setCmdDone(lineId : string) : void {
+        let termWrap = this.getTermWrap(lineId);
+        if (termWrap != null) {
+            termWrap.cmdDone();
+        }
+    }
+
     mergeCmd(fullScreen : T.WebFullScreen, newCmd : T.WebCmd) {
         for (let i=0; i<fullScreen.cmds.length; i++) {
             let cmd = fullScreen.cmds[i];
             if (cmd.lineid == newCmd.lineid) {
+                let wasRunning = lineutil.cmdStatusIsRunning(cmd.status);
+                let isRunning = lineutil.cmdStatusIsRunning(newCmd.status);
+                if (wasRunning && !isRunning) {
+                    setTimeout(() => this.setCmdDone(cmd.lineid), 300);
+                }
                 fullScreen.cmds[i] = newCmd;
                 return;
             }
@@ -111,7 +149,14 @@ class WebShareModelClass {
                     if (termWrap == null) {
                         continue;
                     }
-                    termWrap.receiveData(data.ptypos, base64ToArray(data.data));
+                    let dataArr = base64ToArray(data.data);
+                    termWrap.receiveData(data.ptypos, dataArr);
+                    console.log("receivedata", data.lineid, data.ptypos + dataArr.length);
+                }
+            }
+            if (msg.removedlines != null && msg.removedlines.length > 0) {
+                for (let lineid of msg.removedlines) {
+                    this.removeLine(fullScreen, lineid);
                 }
             }
         })();

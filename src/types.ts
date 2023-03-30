@@ -551,6 +551,7 @@ type WebScreenUpdate = {
     lines : WebLine[],
     cmds : WebCmd[],
     ptydata : PtyDataUpdate[],
+    removedlines : string[],
 };
 
 type WebShareWSMessage = {
