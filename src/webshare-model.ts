@@ -6,6 +6,7 @@ import * as T from "./types";
 import {TermWrap} from "./term";
 import * as lineutil from "./lineutil";
 import {windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows} from "./textmeasure";
+import {WebShareWSControl} from "./webshare-ws";
 
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
@@ -20,6 +21,10 @@ function getBaseUrl() {
     return "https://ot2e112zx5.execute-api.us-west-2.amazonaws.com/dev";
 }
 
+function getBaseWSUrl() {
+    return "wss://5lfzlg5crl.execute-api.us-west-2.amazonaws.com/dev";
+}
+
 class WebShareModelClass {
     viewKey : string;
     screenId : string;
@@ -29,13 +34,14 @@ class WebShareModelClass {
     renderers : Record<string, T.RendererModel> = {};   // lineid => RendererModel
     contentHeightCache : Record<string, number> = {};  // lineid => height
     selectedLine : OV<number> = mobx.observable.box(0, {name: "selectedLine"});
+    wsControl : WebShareWSControl;
     
     constructor() {
         let urlParams = new URLSearchParams(window.location.search);
         this.viewKey = urlParams.get("viewkey");
         this.screenId = urlParams.get("screenid");
         setTimeout(() => this.loadFullScreenData(), 10);
-        
+        this.wsControl = new WebShareWSControl(getBaseWSUrl(), this.screenId, this.viewKey, this.wsMessageCallback.bind(this));
     }
 
     setErrMessage(msg : string) : void {
@@ -50,6 +56,21 @@ class WebShareModelClass {
 
     getTermFontSize() : number {
         return 12;
+    }
+
+    wsMessageCallback(msg : any) {
+        console.log("ws message", msg);
+    }
+
+    setWebFullScreen(screen : T.WebFullScreen) {
+        mobx.action(() => {
+            this.screen.set(screen);
+            if (screen.lines != null && screen.lines.length > 0) {
+                this.selectedLine.set(screen.lines[screen.lines.length-1].linenum);
+            }
+            this.wsControl.reconnect(true);
+        })();
+        
     }
 
     loadTerminalRenderer(elem : Element, line : T.WebLine, cmd : T.WebCmd, width : number) : void {
@@ -181,10 +202,7 @@ class WebShareModelClass {
         fetch(url, {method: "GET", mode: "cors", cache: "no-cache"}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
             mobx.action(() => {
                 let screen : T.WebFullScreen = data;
-                this.screen.set(screen);
-                if (screen.lines != null && screen.lines.length > 0) {
-                    this.selectedLine.set(screen.lines[screen.lines.length-1].linenum);
-                }
+                this.setWebFullScreen(screen);
             })();
         }).catch((err) => {
             this.errMessage.set("Cannot get screen: " + err.message);
