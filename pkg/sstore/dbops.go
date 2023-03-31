@@ -1114,6 +1114,7 @@ func PurgeScreen(ctx context.Context, screenId string, sessionDel bool) (UpdateP
 		tx.Exec(query, screenId)
 		query = `DELETE FROM line WHERE screenid = ?`
 		tx.Exec(query, screenId)
+		insertScreenDelUpdate(tx, screenId)
 		return nil
 	})
 	if txErr != nil {
@@ -1715,6 +1716,9 @@ func UpdateScreen(ctx context.Context, screenId string, editMap map[string]inter
 		if sline, found := editMap[ScreenField_SelectedLine]; found {
 			query = `UPDATE screen SET selectedline = ? WHERE screenid = ?`
 			tx.Exec(query, sline, screenId)
+			if isWebShare(tx, screenId) {
+				insertScreenUpdate(tx, screenId, UpdateType_ScreenSelectedLine)
+			}
 		}
 		if focusType, found := editMap[ScreenField_Focus]; found {
 			query = `UPDATE screen SET focustype = ? WHERE screenid = ?`
@@ -1743,7 +1747,7 @@ func UpdateScreen(ctx context.Context, screenId string, editMap map[string]inter
 func GetLineResolveItems(ctx context.Context, screenId string) ([]ResolveItem, error) {
 	var rtn []ResolveItem
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT lineid as id, linenum as num FROM line WHERE screenid = ? ORDER BY linenum`
+		query := `SELECT lineid as id, linenum as num, archived as hidden FROM line WHERE screenid = ? ORDER BY linenum`
 		tx.Select(&rtn, query, screenId)
 		return nil
 	})
@@ -2411,6 +2415,19 @@ func PurgeHistoryByIds(ctx context.Context, historyIds []string) ([]*HistoryItem
 	})
 }
 
+func CanScreenWebShare(screen *ScreenType) error {
+	if screen == nil {
+		return fmt.Errorf("cannot share screen, not found")
+	}
+	if screen.ShareMode == ShareModeWeb {
+		return fmt.Errorf("screen is already shared to web")
+	}
+	if screen.ShareMode != ShareModeLocal {
+		return fmt.Errorf("screen cannot be shared, invalid current share mode %q (must be local)", screen.ShareMode)
+	}
+	return nil
+}
+
 func ScreenWebShareStart(ctx context.Context, screenId string, shareOpts ScreenWebShareOpts) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT screenid FROM screen WHERE screenid = ?`
@@ -2424,17 +2441,9 @@ func ScreenWebShareStart(ctx context.Context, screenId string, shareOpts ScreenW
 		if shareMode != ShareModeLocal {
 			return fmt.Errorf("screen cannot be shared, invalid current share mode %q (must be local)", shareMode)
 		}
-		nowTs := time.Now().UnixMilli()
 		query = `UPDATE screen SET sharemode = ?, webshareopts = ? WHERE screenid = ?`
 		tx.Exec(query, ShareModeWeb, quickJson(shareOpts), screenId)
-		insertScreenUpdate(tx, screenId, UpdateType_ScreenNew)
-		query = `INSERT INTO screenupdate (screenid, lineid, updatetype, updatets)
-                 SELECT screenid, lineid, ?, ? FROM line WHERE screenid = ? AND NOT archived ORDER BY linenum`
-		tx.Exec(query, UpdateType_LineNew, nowTs, screenId)
-		query = `INSERT INTO screenupdate (screenid, lineid, updatetype, updatets)
-                 SELECT c.screenid, l.lineid, ?, ? FROM cmd c, line l WHERE c.screenid = ? AND l.cmdid = c.cmdid AND NOT l.archived`
-		tx.Exec(query, UpdateType_PtyPos, nowTs, screenId)
-		NotifyUpdateWriter()
+		insertScreenNewUpdate(tx, screenId)
 		return nil
 	})
 }
@@ -2451,11 +2460,7 @@ func ScreenWebShareStop(ctx context.Context, screenId string) error {
 		}
 		query = `UPDATE screen SET sharemode = ?, webshareopts = ? WHERE screenid = ?`
 		tx.Exec(query, ShareModeLocal, "null", screenId)
-		query = `DELETE FROM screenupdate WHERE screenid = ?`
-		tx.Exec(query, screenId)
-		query = `DELETE FROM webptypos WHERE screenid = ?`
-		tx.Exec(query, screenId)
-		insertScreenUpdate(tx, screenId, UpdateType_ScreenDel)
+		insertScreenDelUpdate(tx, screenId)
 		return nil
 	})
 }
@@ -2469,9 +2474,29 @@ func insertScreenUpdate(tx *TxWrap, screenId string, updateType string) {
 		tx.SetErr(errors.New("invalid screen-update, screenid is empty"))
 		return
 	}
+	nowTs := time.Now().UnixMilli()
 	query := `INSERT INTO screenupdate (screenid, lineid, updatetype, updatets) VALUES (?, ?, ?, ?)`
-	tx.Exec(query, screenId, "", updateType, time.Now().UnixMilli())
+	tx.Exec(query, screenId, "", updateType, nowTs)
 	NotifyUpdateWriter()
+}
+
+func insertScreenNewUpdate(tx *TxWrap, screenId string) {
+	nowTs := time.Now().UnixMilli()
+	query := `INSERT INTO screenupdate (screenid, lineid, updatetype, updatets)
+              SELECT screenid, lineid, ?, ? FROM line WHERE screenid = ? AND NOT archived ORDER BY linenum`
+	tx.Exec(query, UpdateType_LineNew, nowTs, screenId)
+	query = `INSERT INTO screenupdate (screenid, lineid, updatetype, updatets)
+             SELECT c.screenid, l.lineid, ?, ? FROM cmd c, line l WHERE c.screenid = ? AND l.cmdid = c.cmdid AND NOT l.archived`
+	tx.Exec(query, UpdateType_PtyPos, nowTs, screenId)
+	NotifyUpdateWriter()
+}
+
+func insertScreenDelUpdate(tx *TxWrap, screenId string) {
+	query := `DELETE FROM screenupdate WHERE screenid = ?`
+	tx.Exec(query, screenId)
+	query = `DELETE FROM webptypos WHERE screenid = ?`
+	tx.Exec(query, screenId)
+	insertScreenUpdate(tx, screenId, UpdateType_ScreenDel)
 }
 
 func insertScreenLineUpdate(tx *TxWrap, screenId string, lineId string, updateType string) {
@@ -2521,6 +2546,9 @@ func GetScreenUpdates(ctx context.Context, maxNum int) ([]*ScreenUpdateType, err
 }
 
 func RemoveScreenUpdate(ctx context.Context, updateId int64) error {
+	if updateId < 0 {
+		return nil // in-memory updates (not from DB)
+	}
 	return WithTx(ctx, func(tx *TxWrap) error {
 		query := `DELETE FROM screenupdate WHERE updateid = ?`
 		tx.Exec(query, updateId)

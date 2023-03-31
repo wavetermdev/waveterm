@@ -34,6 +34,7 @@ type WebShareUpdateType struct {
 	Cmd      *WebShareCmdType    `json:"cmd,omitempty"`
 	PtyData  *WebSharePtyData    `json:"ptydata,omitempty"`
 	SVal     string              `json:"sval,omitempty"`
+	IVal     int64               `json:"ival,omitempty"`
 	BVal     bool                `json:"bval,omitempty"`
 	DoneInfo *sstore.CmdDoneInfo `json:"doneinfo,omitempty"`
 	TermOpts *sstore.TermOpts    `json:"termopts,omitempty"`
@@ -59,9 +60,10 @@ type WebShareRemote struct {
 }
 
 type WebShareScreenType struct {
-	ScreenId  string `json:"screenid"`
-	ShareName string `json:"sharename"`
-	ViewKey   string `json:"viewkey"`
+	ScreenId     string `json:"screenid"`
+	ShareName    string `json:"sharename"`
+	ViewKey      string `json:"viewkey"`
+	SelectedLine int    `json:"selectedline"`
 }
 
 func webRemoteFromRemote(rptr sstore.RemotePtrType, r *sstore.RemoteType) *WebShareRemote {
@@ -91,7 +93,7 @@ func webScreenFromScreen(s *sstore.ScreenType) (*WebShareScreenType, error) {
 	} else {
 		shareName = s.Name
 	}
-	return &WebShareScreenType{ScreenId: s.ScreenId, ShareName: shareName, ViewKey: s.WebShareOpts.ViewKey}, nil
+	return &WebShareScreenType{ScreenId: s.ScreenId, ShareName: shareName, ViewKey: s.WebShareOpts.ViewKey, SelectedLine: int(s.SelectedLine)}, nil
 }
 
 type WebShareLineType struct {

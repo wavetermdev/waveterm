@@ -100,6 +100,8 @@ type InfoMsgType struct {
 	InfoTitle     string          `json:"infotitle"`
 	InfoError     string          `json:"infoerror,omitempty"`
 	InfoMsg       string          `json:"infomsg,omitempty"`
+	InfoMsgHtml   bool            `json:"infomsghtml,omitempty"`
+	WebShareLink  bool            `json:"websharelink,omitempty"`
 	InfoComps     []string        `json:"infocomps,omitempty"`
 	InfoCompsMore bool            `json:"infocompssmore,omitempty"`
 	InfoLines     []string        `json:"infolines,omitempty"`

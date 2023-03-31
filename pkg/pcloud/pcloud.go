@@ -186,6 +186,22 @@ func defaultError(err error, estr string) error {
 	return errors.New(estr)
 }
 
+func MakeScreenNewUpdate(screen *sstore.ScreenType, webShareOpts sstore.ScreenWebShareOpts) *WebShareUpdateType {
+	rtn := &WebShareUpdateType{
+		ScreenId:   screen.ScreenId,
+		UpdateId:   -1,
+		UpdateType: sstore.UpdateType_ScreenNew,
+		UpdateTs:   time.Now().UnixMilli(),
+	}
+	rtn.Screen = &WebShareScreenType{
+		ScreenId:     screen.ScreenId,
+		SelectedLine: int(screen.SelectedLine),
+		ShareName:    webShareOpts.ShareName,
+		ViewKey:      webShareOpts.ViewKey,
+	}
+	return rtn
+}
+
 func makeWebShareUpdate(ctx context.Context, update *sstore.ScreenUpdateType) (*WebShareUpdateType, error) {
 	rtn := &WebShareUpdateType{
 		ScreenId:   update.ScreenId,
@@ -208,15 +224,19 @@ func makeWebShareUpdate(ctx context.Context, update *sstore.ScreenUpdateType) (*
 	case sstore.UpdateType_ScreenDel:
 		break
 
-	case sstore.UpdateType_ScreenName:
+	case sstore.UpdateType_ScreenName, sstore.UpdateType_ScreenSelectedLine:
 		screen, err := sstore.GetScreenById(ctx, update.ScreenId)
 		if err != nil {
 			return nil, fmt.Errorf("error getting screen: %v", err)
 		}
-		if screen == nil || screen.WebShareOpts == nil || screen.WebShareOpts.ShareName == "" {
-			return nil, fmt.Errorf("invalid screen sharename (makeWebScreenUpdate)")
+		if screen == nil || screen.WebShareOpts == nil {
+			return nil, fmt.Errorf("invalid screen, not webshared (makeWebScreenUpdate)")
 		}
-		rtn.SVal = screen.WebShareOpts.ShareName
+		if update.UpdateType == sstore.UpdateType_ScreenName {
+			rtn.SVal = screen.WebShareOpts.ShareName
+		} else if update.UpdateType == sstore.UpdateType_ScreenSelectedLine {
+			rtn.IVal = int64(screen.SelectedLine)
+		}
 
 	case sstore.UpdateType_LineNew:
 		line, cmd, err := sstore.GetLineCmdByLineId(ctx, update.ScreenId, update.LineId)
@@ -332,7 +352,7 @@ type webShareResponseType struct {
 	Data    []*WebShareUpdateResponseType `json:"data"`
 }
 
-func DoWebScreenUpdates(authInfo AuthInfo, updateArr []*sstore.ScreenUpdateType) error {
+func convertUpdates(updateArr []*sstore.ScreenUpdateType) []*WebShareUpdateType {
 	var webUpdates []*WebShareUpdateType
 	for _, update := range updateArr {
 		webUpdate, err := makeWebShareUpdate(context.Background(), update)
@@ -352,8 +372,42 @@ func DoWebScreenUpdates(authInfo AuthInfo, updateArr []*sstore.ScreenUpdateType)
 		}
 		webUpdates = append(webUpdates, webUpdate)
 	}
+	return webUpdates
+}
+
+func DoSyncWebUpdate(webUpdate *WebShareUpdateType) error {
+	authInfo, err := getAuthInfo(context.Background())
+	if err != nil {
+		return fmt.Errorf("could not get authinfo for request: %v", err)
+	}
+	ctx, cancelFn := context.WithTimeout(context.Background(), PCloudDefaultTimeout)
+	defer cancelFn()
+	req, err := makeAuthPostReq(ctx, WebShareUpdateUrl, authInfo, []*WebShareUpdateType{webUpdate})
+	if err != nil {
+		return fmt.Errorf("cannot create auth-post-req for %s: %v", WebShareUpdateUrl, err)
+	}
+	var resp webShareResponseType
+	_, err = doRequest(req, &resp)
+	if err != nil {
+		return err
+	}
+	if len(resp.Data) == 0 {
+		return fmt.Errorf("invalid response received from server")
+	}
+	urt := resp.Data[0]
+	if urt.Error != "" {
+		return errors.New(urt.Error)
+	}
+	return nil
+}
+
+func DoWebUpdates(webUpdates []*WebShareUpdateType) error {
 	if len(webUpdates) == 0 {
 		return nil
+	}
+	authInfo, err := getAuthInfo(context.Background())
+	if err != nil {
+		return fmt.Errorf("could not get authinfo for request: %v", err)
 	}
 	ctx, cancelFn := context.WithTimeout(context.Background(), PCloudDefaultTimeout)
 	defer cancelFn()
@@ -377,7 +431,9 @@ func DoWebScreenUpdates(authInfo AuthInfo, updateArr []*sstore.ScreenUpdateType)
 		if resp == nil {
 			resp = &WebShareUpdateResponseType{Success: false, Error: "resp not found"}
 		}
-		log.Printf("[pcloud] updateid:%d, type:%s %s/%s success:%v err:%v\n", update.UpdateId, update.UpdateType, update.ScreenId, update.LineId, resp.Success, resp.Error)
+		if resp.Error != "" {
+			log.Printf("[pcloud] error updateid:%d, type:%s %s/%s err:%v\n", update.UpdateId, update.UpdateType, update.ScreenId, update.LineId, resp.Error)
+		}
 	}
 	return nil
 }
@@ -447,8 +503,8 @@ func runWebShareUpdateWriter() {
 			continue
 		}
 		numErrors = 0
-		authInfo, err := getAuthInfo(context.Background())
-		err = DoWebScreenUpdates(authInfo, updateArr)
+		webUpdates := convertUpdates(updateArr)
+		err = DoWebUpdates(webUpdates)
 		if err != nil {
 			numSendErrors++
 			backoffTime := computeBackoff(numSendErrors)

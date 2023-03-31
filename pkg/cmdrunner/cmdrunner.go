@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"regexp"
 	"sort"
@@ -1641,6 +1642,10 @@ func SessionOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	return update, nil
 }
 
+func makeExternLink(urlStr string) string {
+	return fmt.Sprintf(`https://extern?%s`, url.QueryEscape(urlStr))
+}
+
 func ScreenWebShareCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Screen)
 	if err != nil {
@@ -1655,6 +1660,7 @@ func ScreenWebShareCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 		return nil, err
 	}
 	var infoMsg string
+	var infoWebShareLink bool
 	if shouldShare {
 		viewKeyBytes := make([]byte, 9)
 		_, err = rand.Read(viewKeyBytes)
@@ -1663,11 +1669,24 @@ func ScreenWebShareCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 		}
 		viewKey := base64.RawURLEncoding.EncodeToString(viewKeyBytes)
 		webShareOpts := sstore.ScreenWebShareOpts{ShareName: shareName, ViewKey: viewKey}
+		screen, err := sstore.GetScreenById(ctx, ids.ScreenId)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get screen: %v", err)
+		}
+		err = sstore.CanScreenWebShare(screen)
+		if err != nil {
+			return nil, err
+		}
+		webUpdate := pcloud.MakeScreenNewUpdate(screen, webShareOpts)
+		err = pcloud.DoSyncWebUpdate(webUpdate)
+		if err != nil {
+			return nil, fmt.Errorf("error starting webshare, error contacting prompt cloud server: %v", err)
+		}
 		err = sstore.ScreenWebShareStart(ctx, ids.ScreenId, webShareOpts)
 		if err != nil {
-			return nil, fmt.Errorf("cannot web-share screen: %v", err)
+			return nil, fmt.Errorf("cannot webshare screen, error updating: %v", err)
 		}
-		infoMsg = fmt.Sprintf("screen is now shared to the web at %s", GetWebShareUrl(ids.ScreenId, viewKey))
+		infoWebShareLink = true
 	} else {
 		err = sstore.ScreenWebShareStop(ctx, ids.ScreenId)
 		if err != nil {
@@ -1682,7 +1701,8 @@ func ScreenWebShareCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	update := sstore.ModelUpdate{
 		Screens: []*sstore.ScreenType{screen},
 		Info: &sstore.InfoMsgType{
-			InfoMsg: infoMsg,
+			InfoMsg:      infoMsg,
+			WebShareLink: infoWebShareLink,
 		},
 	}
 	return update, nil

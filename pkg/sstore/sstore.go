@@ -81,17 +81,18 @@ const (
 )
 
 const (
-	UpdateType_ScreenNew    = "screen:new"
-	UpdateType_ScreenDel    = "screen:del"
-	UpdateType_ScreenName   = "screen:sharename"
-	UpdateType_LineNew      = "line:new"
-	UpdateType_LineDel      = "line:del"
-	UpdateType_LineRenderer = "line:renderer"
-	UpdateType_CmdStatus    = "cmd:status"
-	UpdateType_CmdTermOpts  = "cmd:termopts"
-	UpdateType_CmdDoneInfo  = "cmd:doneinfo"
-	UpdateType_CmdRtnState  = "cmd:rtnstate"
-	UpdateType_PtyPos       = "pty:pos"
+	UpdateType_ScreenNew          = "screen:new"
+	UpdateType_ScreenDel          = "screen:del"
+	UpdateType_ScreenSelectedLine = "screen:selectedline"
+	UpdateType_ScreenName         = "screen:sharename"
+	UpdateType_LineNew            = "line:new"
+	UpdateType_LineDel            = "line:del"
+	UpdateType_LineRenderer       = "line:renderer"
+	UpdateType_CmdStatus          = "cmd:status"
+	UpdateType_CmdTermOpts        = "cmd:termopts"
+	UpdateType_CmdDoneInfo        = "cmd:doneinfo"
+	UpdateType_CmdRtnState        = "cmd:rtnstate"
+	UpdateType_PtyPos             = "pty:pos"
 )
 
 const MaxTzNameLen = 50
