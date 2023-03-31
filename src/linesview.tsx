@@ -290,7 +290,7 @@ class LinesView extends React.Component<{screen : ScreenInterface, width : numbe
         let viewInfo = this.getLineViewInfo(newLine);
         let isFirst = (lidx.index == 0);
         let isLast = (lidx.index == lines.length-1);
-        let offsetDelta = (isLast ? 10 : (isFirst ? -10 : 0));
+        let offsetDelta = (isLast ? 10 : (isFirst ? -28 : 0));
         if (viewInfo == null) {
             screen.setAnchorFields(newLine, 0+offsetDelta, "updateSelectedLine");
         }
