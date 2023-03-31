@@ -249,9 +249,7 @@ class Screen {
         this.focusType = mobx.observable.box(sdata.focustype, {name: "focusType"});
         this.selectedLine = mobx.observable.box(sdata.selectedline == 0 ? null : sdata.selectedline, {name: "selectedLine"});
         this.setAnchor_debounced = debounce(1000, this.setAnchor.bind(this));
-        if (sdata.selectedline != 0) {
-            this.anchor = mobx.observable.box({anchorLine: sdata.selectedline, anchorOffset: 0}, {name: "screen-anchor"});
-        }
+        this.anchor = mobx.observable.box({anchorLine: sdata.selectedline, anchorOffset: 0}, {name: "screen-anchor"});
         this.termLineNumFocus = mobx.observable.box(0, {name: "termLineNumFocus"});
         this.curRemote = mobx.observable.box(sdata.curremote, {name: "screen-curRemote"});
         this.shareMode = mobx.observable.box(sdata.sharemode, {name: "screen-shareMode"});
