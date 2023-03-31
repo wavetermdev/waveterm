@@ -202,6 +202,16 @@ func MakeScreenNewUpdate(screen *sstore.ScreenType, webShareOpts sstore.ScreenWe
 	return rtn
 }
 
+func MakeScreenDelUpdate(screen *sstore.ScreenType, screenId string) *WebShareUpdateType {
+	rtn := &WebShareUpdateType{
+		ScreenId:   screenId,
+		UpdateId:   -1,
+		UpdateType: sstore.UpdateType_ScreenDel,
+		UpdateTs:   time.Now().UnixMilli(),
+	}
+	return rtn
+}
+
 func makeWebShareUpdate(ctx context.Context, update *sstore.ScreenUpdateType) (*WebShareUpdateType, error) {
 	rtn := &WebShareUpdateType{
 		ScreenId:   update.ScreenId,

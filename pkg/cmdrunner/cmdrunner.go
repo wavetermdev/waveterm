@@ -176,6 +176,7 @@ func init() {
 	registerCmdFn("client", ClientCommand)
 	registerCmdFn("client:show", ClientShowCommand)
 	registerCmdFn("client:set", ClientSetCommand)
+	registerCmdFn("client:notifyupdatewriter", ClientNotifyUpdateWriterCommand)
 
 	registerCmdFn("telemetry", TelemetryCommand)
 	registerCmdFn("telemetry:on", TelemetryOnCommand)
@@ -1691,11 +1692,26 @@ func ScreenWebShareCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 		}
 		infoWebShareLink = true
 	} else {
+		screen, err := sstore.GetScreenById(ctx, ids.ScreenId)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get screen: %v", err)
+		}
+		if screen == nil {
+			return nil, fmt.Errorf("screen not found")
+		}
+		if screen.ShareMode != sstore.ShareModeWeb {
+			return nil, fmt.Errorf("screen is not currently shared")
+		}
+		webUpdate := pcloud.MakeScreenDelUpdate(screen, ids.ScreenId)
+		err = pcloud.DoSyncWebUpdate(webUpdate)
+		if err != nil {
+			return nil, fmt.Errorf("error stopping webshare, error contacting prompt cloud server: %v", err)
+		}
 		err = sstore.ScreenWebShareStop(ctx, ids.ScreenId)
 		if err != nil {
 			return nil, fmt.Errorf("cannot stop web-sharing screen: %v", err)
 		}
-		infoMsg = fmt.Sprintf("screen is no longer web shared")
+		infoMsg = fmt.Sprintf("screen websharing stopped")
 	}
 	screen, err := sstore.GetScreenById(ctx, ids.ScreenId)
 	if err != nil {
@@ -2747,6 +2763,16 @@ func KillServerCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 
 func ClientCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	return nil, fmt.Errorf("/client requires a subcommand: %s", formatStrs([]string{"show", "set"}, "or", false))
+}
+
+func ClientNotifyUpdateWriterCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	sstore.NotifyUpdateWriter()
+	update := sstore.ModelUpdate{
+		Info: &sstore.InfoMsgType{
+			InfoMsg: fmt.Sprintf("notified update writer"),
+		},
+	}
+	return update, nil
 }
 
 func boolToStr(v bool, trueStr string, falseStr string) string {

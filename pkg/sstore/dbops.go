@@ -2463,7 +2463,7 @@ func ScreenWebShareStop(ctx context.Context, screenId string) error {
 		}
 		query = `UPDATE screen SET sharemode = ?, webshareopts = ? WHERE screenid = ?`
 		tx.Exec(query, ShareModeLocal, "null", screenId)
-		insertScreenDelUpdate(tx, screenId)
+		handleScreenDelUpdate(tx, screenId)
 		return nil
 	})
 }
@@ -2494,12 +2494,18 @@ func insertScreenNewUpdate(tx *TxWrap, screenId string) {
 	NotifyUpdateWriter()
 }
 
-func insertScreenDelUpdate(tx *TxWrap, screenId string) {
+func handleScreenDelUpdate(tx *TxWrap, screenId string) {
 	query := `DELETE FROM screenupdate WHERE screenid = ?`
 	tx.Exec(query, screenId)
 	query = `DELETE FROM webptypos WHERE screenid = ?`
 	tx.Exec(query, screenId)
+	// don't insert UpdateType_ScreenDel (we already processed it in cmdrunner)
+}
+
+func insertScreenDelUpdate(tx *TxWrap, screenId string) {
+	handleScreenDelUpdate(tx, screenId)
 	insertScreenUpdate(tx, screenId, UpdateType_ScreenDel)
+	// don't insert UpdateType_ScreenDel (we already processed it in cmdrunner)
 }
 
 func insertScreenLineUpdate(tx *TxWrap, screenId string, lineId string, updateType string) {
