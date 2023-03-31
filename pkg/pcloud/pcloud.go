@@ -257,12 +257,16 @@ func makeWebShareUpdate(ctx context.Context, update *sstore.ScreenUpdateType) (*
 	case sstore.UpdateType_LineDel:
 		break
 
-	case sstore.UpdateType_LineRenderer:
+	case sstore.UpdateType_LineRenderer, sstore.UpdateType_LineContentHeight:
 		line, err := sstore.GetLineById(ctx, update.ScreenId, update.LineId)
 		if err != nil || line == nil {
 			return nil, fmt.Errorf("error getting line: %v", defaultError(err, "not found"))
 		}
-		rtn.SVal = line.Renderer
+		if update.UpdateType == sstore.UpdateType_LineRenderer {
+			rtn.SVal = line.Renderer
+		} else if update.UpdateType == sstore.UpdateType_LineContentHeight {
+			rtn.IVal = line.ContentHeight
+		}
 
 	case sstore.UpdateType_CmdStatus:
 		_, cmd, err := sstore.GetLineCmdByLineId(ctx, update.ScreenId, update.LineId)

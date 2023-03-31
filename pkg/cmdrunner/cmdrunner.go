@@ -1667,12 +1667,15 @@ func ScreenWebShareCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 		if err != nil {
 			return nil, fmt.Errorf("cannot create viewkey: %v", err)
 		}
-		viewKey := base64.RawURLEncoding.EncodeToString(viewKeyBytes)
-		webShareOpts := sstore.ScreenWebShareOpts{ShareName: shareName, ViewKey: viewKey}
 		screen, err := sstore.GetScreenById(ctx, ids.ScreenId)
 		if err != nil {
 			return nil, fmt.Errorf("cannot get screen: %v", err)
 		}
+		if shareName == "" {
+			shareName = screen.Name
+		}
+		viewKey := base64.RawURLEncoding.EncodeToString(viewKeyBytes)
+		webShareOpts := sstore.ScreenWebShareOpts{ShareName: shareName, ViewKey: viewKey}
 		err = sstore.CanScreenWebShare(screen)
 		if err != nil {
 			return nil, err
@@ -2226,7 +2229,7 @@ func LineSetHeightCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	if heightVal > 10000 {
 		return nil, fmt.Errorf("/line:setheight invalid height val (too large): %d", heightVal)
 	}
-	err = sstore.UpdateLineHeight(ctx, lineId, heightVal)
+	err = sstore.UpdateLineHeight(ctx, ids.ScreenId, lineId, heightVal)
 	if err != nil {
 		return nil, fmt.Errorf("/line:setheight error updating height: %v", err)
 	}

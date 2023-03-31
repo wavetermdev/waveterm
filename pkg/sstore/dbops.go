@@ -1887,10 +1887,13 @@ func UpdateLineStar(ctx context.Context, lineId string, starVal int) error {
 	return nil
 }
 
-func UpdateLineHeight(ctx context.Context, lineId string, heightVal int) error {
+func UpdateLineHeight(ctx context.Context, screenId string, lineId string, heightVal int) error {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `UPDATE line SET contentheight = ? WHERE lineid = ?`
 		tx.Exec(query, heightVal, lineId)
+		if isWebShare(tx, screenId) {
+			insertScreenLineUpdate(tx, screenId, lineId, UpdateType_LineContentHeight)
+		}
 		return nil
 	})
 	if txErr != nil {

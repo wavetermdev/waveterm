@@ -88,6 +88,7 @@ const (
 	UpdateType_LineNew            = "line:new"
 	UpdateType_LineDel            = "line:del"
 	UpdateType_LineRenderer       = "line:renderer"
+	UpdateType_LineContentHeight  = "line:contentheight"
 	UpdateType_CmdStatus          = "cmd:status"
 	UpdateType_CmdTermOpts        = "cmd:termopts"
 	UpdateType_CmdDoneInfo        = "cmd:doneinfo"
