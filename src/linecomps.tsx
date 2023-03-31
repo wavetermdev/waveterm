@@ -164,12 +164,6 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         this.checkCmdText();
     }
 
-    scrollIntoView() {
-        if (this.lineRef.current != null) {
-            this.lineRef.current.scrollIntoView({block: "end"});
-        }
-    }
-
     @boundMethod
     handleExpandCmd() : void {
         mobx.action(() => {

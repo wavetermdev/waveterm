@@ -22,12 +22,8 @@ type OMap<K,V> = mobx.ObservableMap<K,V>;
 
 let foo = LinesView;
 
-// TODO selection
-// TODO scroll screen when new cmds arrive (selection)
-// TODO archived should delete line
-// TODO implement linedel
 // TODO reshare
-// TODO contentheight
+// TODO debounce some of the updates
 
 function makeFullRemoteRef(ownerName : string, remoteRef : string, name : string) : string {
     if (isBlank(ownerName) && isBlank(name)) {
@@ -119,23 +115,54 @@ class LineAvatar extends React.Component<{line : T.WebLine, cmd : T.WebCmd}, {}>
 }
 
 @mobxReact.observer
-class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, topBorder : boolean, width: number}, {}> {
+class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, topBorder : boolean, width: number, onHeightChange : T.LineHeightChangeCallbackType, staticRender : boolean, visible : OV<boolean>}, {}> {
+    lineRef : React.RefObject<any> = React.createRef();
     isCmdExpanded : OV<boolean> = mobx.observable.box(false, {name: "cmd-expanded"});
     isOverflow : OV<boolean> = mobx.observable.box(false, {name: "line-overflow"});
     cmdTextRef : React.RefObject<any> = React.createRef();
     copiedIndicator : OV<boolean> =  mobx.observable.box(false, {name: "copiedIndicator"});
+    lastHeight : number;
 
     componentDidMount() : void {
         this.checkCmdText();
+        this.componentDidUpdate();
+    }
+
+    componentDidUpdate() : void {
+        this.handleHeightChange();
     }
     
     renderSimple() {
-        let {line} = this.props;
+        let {line, cmd, topBorder} = this.props;
+        let height : number = 0;
+        if (isBlank(line.renderer) || line.renderer == "terminal") {
+            height = this.getTerminalRendererHeight(cmd);
+        }
+        else {
+            let {line, width} = this.props;
+            let usedRows = WebShareModel.getUsedRows(lineutil.getWebRendererContext(line), line, cmd, width);
+            height = 36 + usedRows;
+        }
+        let mainCn = cn(
+            "line",
+            "line-cmd",
+            {"top-border": topBorder},
+        );
         return (
-            <div className={cn("web-line line", (line.linetype == "cmd" ? "line-cmd" : "line-text"))}>
+            <div ref={this.lineRef} className={mainCn} data-lineid={line.lineid} data-linenum={line.linenum} style={{height: height}}>
                 <LineAvatar line={line} cmd={null}/>
             </div>
         );
+    }
+
+    getTerminalRendererHeight(cmd : T.WebCmd) : number {
+        let {line, width} = this.props;
+        let height = 42; // height of zero height terminal
+        let usedRows = WebShareModel.getUsedRows(lineutil.getWebRendererContext(line), line, cmd, width);
+        if (usedRows > 0) {
+            height = 53 + termHeightFromRows(usedRows, WebShareModel.getTermFontSize());
+        }
+        return height;
     }
 
     @boundMethod
@@ -205,6 +232,19 @@ class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, 
 
     @boundMethod
     handleHeightChange() : void {
+        let {line} = this.props;
+        let curHeight = 0;
+        let elem = this.lineRef.current;
+        if (elem != null) {
+            curHeight = elem.offsetHeight;
+        }
+        if (this.lastHeight == curHeight) {
+            return;
+        }
+        let lastHeight = this.lastHeight;
+        this.lastHeight = curHeight;
+        this.props.onHeightChange(line.linenum, curHeight, lastHeight);
+        // console.log("line height change: ", line.linenum, lastHeight, "=>", curHeight);
     }
 
     @boundMethod
@@ -256,7 +296,11 @@ class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, 
     }
     
     render() {
-        let {line, cmd, topBorder} = this.props;
+        let {line, cmd, topBorder, staticRender, visible} = this.props;
+        let isVisible = visible.get();
+        if (staticRender || !isVisible) {
+            return this.renderSimple();
+        }
         let model = WebShareModel;
         let isSelected = mobx.computed(() => (model.getSelectedLine() == line.linenum), {name: "computed-isSelected"}).get();
         let isServerSelected = mobx.computed(() => (model.getServerSelectedLine() == line.linenum), {name: "computed-isServerSelected"}).get();
@@ -274,7 +318,7 @@ class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, 
         }
         let isExpanded = this.isCmdExpanded.get();
         return (
-            <div className={mainCn} data-lineid={line.lineid} data-linenum={line.linenum} onClick={this.handleClick}>
+            <div ref={this.lineRef} className={mainCn} data-lineid={line.lineid} data-linenum={line.linenum} onClick={this.handleClick}>
                 <If condition={this.copiedIndicator.get()}>
                     <div key="copied" className="copied-indicator">
                         <div>copied</div>
@@ -439,7 +483,7 @@ class TerminalRenderer extends React.Component<{line : T.WebLine, cmd : T.WebCmd
 }
 
 @mobxReact.observer
-class WebLineView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, topBorder : boolean, width : number}, {}> {
+class WebLineView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, topBorder : boolean, width : number, onHeightChange : T.LineHeightChangeCallbackType, staticRender : boolean, visible : OV<boolean>}, {}> {
     render() {
         let {line} = this.props;
         if (line.linetype == "text") {
@@ -500,7 +544,7 @@ class WebScreenView extends React.Component<{}, {}> {
         let line : T.WebLine = (lineProps.line as T.WebLine);
         let cmd = WebShareModel.getCmdById(lineProps.line.lineid);
         return (
-            <WebLineView key={line.lineid} line={line} cmd={cmd} topBorder={lineProps.topBorder} width={lineProps.width}/>
+            <WebLineView key={line.lineid} line={line} cmd={cmd} topBorder={lineProps.topBorder} width={lineProps.width} onHeightChange={lineProps.onHeightChange} staticRender={lineProps.staticRender} visible={lineProps.visible}/>
         );
     }
 
