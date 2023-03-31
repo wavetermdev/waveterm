@@ -6,9 +6,9 @@ import {boundMethod} from "autobind-decorator";
 import dayjs from "dayjs";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
-import {GlobalModel, GlobalCommandRunner, Session, Cmd, ScreenLines, Screen} from "./model";
+import {GlobalModel, GlobalCommandRunner, Session, Cmd, ScreenLines, Screen, getTermPtyData} from "./model";
 import {windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols} from "./textmeasure";
-import type {LineType, CmdDataType, FeStateType, RemoteType, RemotePtrType, RenderModeType, RendererContext, RendererOpts, SimpleBlobRendererComponent, RendererPluginType, LineHeightChangeCallbackType} from "./types";
+import type {LineType, CmdDataType, FeStateType, RemoteType, RemotePtrType, RenderModeType, RendererContext, RendererOpts, SimpleBlobRendererComponent, RendererPluginType, LineHeightChangeCallbackType, RendererModelInitializeParams, RendererModel} from "./types";
 import cn from "classnames";
 import {TermWrap} from "./term";
 import type {LineContainerModel} from "./model";
@@ -441,6 +441,40 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
             termFontSize: GlobalModel.termFontSize.get(),
         };
     }
+
+    makeRendererModelInitializeParams() : RendererModelInitializeParams {
+        let {screen, line} = this.props;
+        let context = lineutil.getRendererContext(line);
+        let cmd = screen.getCmd(line); // won't be null
+        let savedHeight = screen.getContentHeight(context);
+        if (savedHeight == null) {
+            if (line.contentheight != null && line.contentheight != -1) {
+                savedHeight = line.contentheight;
+            }
+            else {
+                savedHeight = 0;
+            }
+        }
+        let api = {
+            saveHeight: (height : number) => {
+                screen.setContentHeight(lineutil.getRendererContext(line), height);
+            },
+            onFocusChanged: (focus : boolean) => {
+                screen.setTermFocus(line.linenum, focus);
+            },
+            dataHandler: (data : string, model : RendererModel) => {
+                cmd.handleDataFromRenderer(data, model);
+            },
+        };
+        return {
+            context: context,
+            isDone: !cmd.isRunning(),
+            savedHeight: savedHeight,
+            opts: this.getRendererOpts(cmd),
+            ptyDataSource: getTermPtyData,
+            api: api,
+        };
+    }
     
     render() {
         let {screen, line, width, staticRender, visible, topBorder, renderMode} = this.props;
@@ -517,7 +551,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
                     <TerminalRenderer screen={screen} line={line} width={width} staticRender={staticRender} visible={visible} onHeightChange={this.handleHeightChange} collapsed={isCollapsed}/>
                 </If>
                 <If condition={rendererPlugin != null}>
-                    <SimpleBlobRenderer lcm={screen} line={line} cmd={cmd} plugin={rendererPlugin} onHeightChange={this.handleHeightChange} rendererOpts={this.getRendererOpts(cmd)}/>
+                    <SimpleBlobRenderer rendererContainer={screen} cmdId={line.cmdid} plugin={rendererPlugin} onHeightChange={this.handleHeightChange} initParams={this.makeRendererModelInitializeParams()}/>
                 </If>
                 <If condition={!isCollapsed && cmd.getRtnState()}>
                     <div key="rtnstate" className="cmd-rtnstate" style={{visibility: ((cmd.getStatus() == "done") ? "visible" : "hidden")}}>

@@ -5,7 +5,7 @@ import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import cn from "classnames";
-import {WebShareModel} from "./webshare-model";
+import {WebShareModel, getTermPtyData} from "./webshare-model";
 import * as T from "./types";
 import {isBlank} from "./util";
 import {PluginModel} from "./plugins";
@@ -15,6 +15,7 @@ import {windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFrom
 import {debounce, throttle} from "throttle-debounce";
 import {LinesView} from "./linesview";
 import {Toggle} from "./elements";
+import {SimpleBlobRendererModel, SimpleBlobRenderer} from "./simplerenderer";
 
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
@@ -122,6 +123,7 @@ class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, 
     cmdTextRef : React.RefObject<any> = React.createRef();
     copiedIndicator : OV<boolean> =  mobx.observable.box(false, {name: "copiedIndicator"});
     lastHeight : number;
+    lastScreenSize : T.WindowSize;
 
     componentDidMount() : void {
         this.checkCmdText();
@@ -234,9 +236,14 @@ class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, 
     handleHeightChange() : void {
         let {line} = this.props;
         let curHeight = 0;
+        let curWidth = 0;
         let elem = this.lineRef.current;
         if (elem != null) {
             curHeight = elem.offsetHeight;
+            curWidth = elem.offsetWidth;
+            if (curHeight != 0 && curWidth != 0) {
+                this.lastScreenSize = {height: curHeight, width: curWidth};
+            }
         }
         if (this.lastHeight == curHeight) {
             return;
@@ -294,6 +301,72 @@ class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, 
             })();
         }, 600);
     }
+
+    getMaxContentSize() : T.WindowSize {
+        if (this.lastScreenSize == null) {
+            let width = termWidthFromCols(80, WebShareModel.getTermFontSize());
+            let height = termHeightFromRows(25, WebShareModel.getTermFontSize());
+            return {width, height};
+        }
+        let winSize = this.lastScreenSize;
+        let width = util.boundInt(winSize.width-50, 100, 5000);
+        let height = util.boundInt(winSize.height-100, 100, 5000);
+        return {width, height};
+    }
+    
+    getIdealContentSize() : T.WindowSize {
+        if (this.lastScreenSize == null) {
+            let width = termWidthFromCols(80, WebShareModel.getTermFontSize());
+            let height = termHeightFromRows(25, WebShareModel.getTermFontSize());
+            return {width, height};
+        }
+        let winSize = this.lastScreenSize;
+        let width = util.boundInt(Math.ceil((winSize.width-50)*0.7), 100, 5000);
+        let height = util.boundInt(Math.ceil((winSize.height-100)*0.5), 100, 5000);
+        return {width, height};
+    }
+
+    getRendererOpts(cmd : T.WebCmd) : T.RendererOpts {
+        return {
+            maxSize: this.getMaxContentSize(),
+            idealSize: this.getIdealContentSize(),
+            termOpts: cmd.termopts,
+            termFontSize: WebShareModel.getTermFontSize(),
+        };
+    }
+
+    makeRendererModelInitializeParams() : T.RendererModelInitializeParams {
+        let {line, cmd} = this.props;
+        let context = lineutil.getWebRendererContext(line);
+        let savedHeight = WebShareModel.getContentHeight(context);
+        if (savedHeight == null) {
+            if (line.contentheight != null && line.contentheight != -1) {
+                savedHeight = line.contentheight;
+            }
+            else {
+                savedHeight = 0;
+            }
+        }
+        let api = {
+            saveHeight: (height : number) => {
+                WebShareModel.setContentHeight(lineutil.getWebRendererContext(line), height);
+            },
+            onFocusChanged: (focus : boolean) => {
+                // nothing
+            },
+            dataHandler: (data : string, model : T.RendererModel) => {
+                // nothing
+            },
+        };
+        return {
+            context: context,
+            isDone: !lineutil.cmdStatusIsRunning(cmd.status),
+            savedHeight: savedHeight,
+            opts: this.getRendererOpts(cmd),
+            ptyDataSource: getTermPtyData,
+            api: api,
+        };
+    }
     
     render() {
         let {line, cmd, topBorder, staticRender, visible} = this.props;
@@ -334,7 +407,12 @@ class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, 
                         </div>
                     </If>
                 </div>
-                <TerminalRenderer line={line} cmd={cmd} width={width} staticRender={false} visible={visObs} onHeightChange={this.handleHeightChange}/>
+                <If condition={rendererPlugin == null && !isNoneRenderer}>
+                    <TerminalRenderer line={line} cmd={cmd} width={width} staticRender={staticRender} visible={visible} onHeightChange={this.handleHeightChange}/>
+                </If>
+                <If condition={rendererPlugin != null}>
+                    <SimpleBlobRenderer rendererContainer={WebShareModel} cmdId={line.lineid} plugin={rendererPlugin} onHeightChange={this.handleHeightChange} initParams={this.makeRendererModelInitializeParams()}/>
+                </If>
             </div>
         );
     }

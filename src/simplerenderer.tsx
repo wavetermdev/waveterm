@@ -4,8 +4,7 @@ import * as mobx from "mobx";
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
-import type {RendererModelInitializeParams, TermOptsType, RendererContext, RendererOpts, SimpleBlobRendererComponent, RendererModelContainerApi, RendererPluginType, PtyDataType, RendererModel, RendererOptsUpdate, LineType} from "./types";
-import {LineContainerModel, getTermPtyData, Cmd} from "./model";
+import type {RendererModelInitializeParams, TermOptsType, RendererContext, RendererOpts, SimpleBlobRendererComponent, RendererModelContainerApi, RendererPluginType, PtyDataType, RendererModel, RendererOptsUpdate, LineType, TermContextUnion, RendererContainerType} from "./types";
 import {PtyDataBuffer} from "./ptydata";
 import {debounce, throttle} from "throttle-debounce";
 
@@ -21,7 +20,8 @@ class SimpleBlobRendererModel {
     loading : OV<boolean>;
     loadError : OV<string> = mobx.observable.box(null, {name: "renderer-loadError"});
     ptyData : PtyDataType;
-    updateHeight_debounced : (newHeight : number) => void
+    updateHeight_debounced : (newHeight : number) => void;
+    ptyDataSource : (termContext : TermContextUnion) => Promise<PtyDataType>;
     
     constructor() {
         this.updateHeight_debounced = debounce(1000, this.updateHeight.bind(this));
@@ -34,6 +34,7 @@ class SimpleBlobRendererModel {
         this.opts = params.opts;
         this.api = params.api;
         this.savedHeight = params.savedHeight;
+        this.ptyDataSource = params.ptyDataSource;
         if (this.isDone.get()) {
             this.reload(0);
         }
@@ -72,7 +73,7 @@ class SimpleBlobRendererModel {
         mobx.action(() => {
             this.loading.set(true);
         })();
-        let rtnp = getTermPtyData(this.context);
+        let rtnp = this.ptyDataSource(this.context);
         rtnp.then((ptydata) => {
             setTimeout(() => {
                 this.ptyData = ptydata;
@@ -94,60 +95,18 @@ class SimpleBlobRendererModel {
     }
 }
 
-function contextFromLine(line : LineType) : RendererContext {
-    return {
-        screenId: line.screenid,
-        cmdId: line.cmdid,
-        lineId: line.lineid,
-        lineNum: line.linenum,
-    };
-}
-
-function apiAdapter(lcm : LineContainerModel, line : LineType, cmd : Cmd) : RendererModelContainerApi {
-    return {
-        saveHeight: (height : number) => {
-            lcm.setContentHeight(contextFromLine(line), height);
-        },
-
-        onFocusChanged: (focus : boolean) => {
-            lcm.setTermFocus(line.linenum, focus);
-        },
-
-        dataHandler: (data : string, model : RendererModel) => {
-            cmd.handleDataFromRenderer(data, model);
-        },
-    };
-}
-
 @mobxReact.observer
-class SimpleBlobRenderer extends React.Component<{lcm : LineContainerModel, line : LineType, cmd : Cmd, rendererOpts : RendererOpts, plugin : RendererPluginType, onHeightChange : () => void}, {}> {
+class SimpleBlobRenderer extends React.Component<{rendererContainer : RendererContainerType, cmdId : string, plugin : RendererPluginType, onHeightChange : () => void, initParams : RendererModelInitializeParams}, {}> {
     model : SimpleBlobRendererModel;
     wrapperDivRef : React.RefObject<any> = React.createRef();
     rszObs : ResizeObserver;
 
     constructor(props : any) {
         super(props);
-        let {lcm, line, cmd, rendererOpts} = this.props;
-        let context = contextFromLine(line);
-        let savedHeight = lcm.getContentHeight(context);
-        if (savedHeight == null) {
-            if (line.contentheight != null && line.contentheight != -1) {
-                savedHeight = line.contentheight;
-            }
-            else {
-                savedHeight = 0;
-            }
-        }
-        let initOpts = {
-            context: context,
-            isDone: !cmd.isRunning(),
-            savedHeight: savedHeight,
-            opts: rendererOpts,
-            api: apiAdapter(lcm, line, cmd),
-        };
+        let {rendererContainer, cmdId, initParams} = this.props;
         this.model = new SimpleBlobRendererModel();
-        this.model.initialize(initOpts);
-        lcm.registerRenderer(line.cmdid, this.model);
+        this.model.initialize(initParams);
+        rendererContainer.registerRenderer(cmdId, this.model);
     }
 
     handleResize(entries : ResizeObserverEntry[]) : void {
@@ -179,8 +138,8 @@ class SimpleBlobRenderer extends React.Component<{lcm : LineContainerModel, line
     }
 
     componentWillUnmount() {
-        let {lcm, line} = this.props;
-        lcm.unloadRenderer(line.cmdid);
+        let {rendererContainer, cmdId} = this.props;
+        rendererContainer.unloadRenderer(cmdId);
         if (this.rszObs != null) {
             this.rszObs.disconnect();
             this.rszObs = null;

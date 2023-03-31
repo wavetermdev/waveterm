@@ -358,6 +358,10 @@ class WebShareModelClass {
         return this.renderers[lineId];
     }
 
+    registerRenderer(cmdId : string, renderer : T.RendererModel) {
+        this.renderers[cmdId] = renderer;
+    }
+
     loadFullScreenData() : void {
         if (isBlank(this.screenId)) {
             this.setErrMessage("No ScreenId Specified, Cannot Load.");
@@ -455,4 +459,4 @@ if ((window as any).WebShareModel == null) {
     (window as any).WebShareModel = WebShareModel;
 }
 
-export {WebShareModel};
+export {WebShareModel, getTermPtyData};

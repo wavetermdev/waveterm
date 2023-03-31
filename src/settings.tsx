@@ -322,11 +322,11 @@ class LineSettingsModal extends React.Component<{line : LineType}, {}> {
                 </div>
                 <div className="dropdown-menu" role="menu">
                     <div className="dropdown-content has-background-black">
-                        <div onClick={() => this.clickSetRenderer("none") } key="none" className="dropdown-item">none</div>
                         <div onClick={() => this.clickSetRenderer(null) } key="terminal" className="dropdown-item">terminal</div>
                         <For each="plugin" of={plugins}>
                             <div onClick={() => this.clickSetRenderer(plugin.name) } key={plugin.name} className="dropdown-item">{plugin.name}</div>
                         </For>
+                        <div onClick={() => this.clickSetRenderer("none") } key="none" className="dropdown-item">none</div>
                     </div>
                 </div>
             </div>
