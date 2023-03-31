@@ -1327,7 +1327,7 @@ class InfoMsg extends React.Component<{}, {}> {
                 </If>
                 <If condition={infoMsg && infoMsg.websharelink && activeScreen != null}>
                     <div key="infomsg" className="info-msg">
-                        screen is now shared at <a target="_blank" href={makeExternLink(activeScreen.getWebShareUrl())}>[link]</a>
+                        started sharing screen at <a target="_blank" href={makeExternLink(activeScreen.getWebShareUrl())}>[link]</a>
                     </div>
                 </If>
                 <If condition={infoMsg && infoMsg.infolines != null}>

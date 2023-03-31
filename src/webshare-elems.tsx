@@ -25,8 +25,6 @@ let foo = LinesView;
 
 // TODO reshare
 // TODO debounce some of the updates
-// TODO image size
-// TODO rtnstate
 
 function makeFullRemoteRef(ownerName : string, remoteRef : string, name : string) : string {
     if (isBlank(ownerName) && isBlank(name)) {
@@ -386,6 +384,19 @@ class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, 
                 </If>
                 <If condition={rendererPlugin != null}>
                     <SimpleBlobRenderer rendererContainer={WebShareModel} cmdId={line.lineid} plugin={rendererPlugin} onHeightChange={this.handleHeightChange} initParams={this.makeRendererModelInitializeParams()}/>
+                </If>
+                <If condition={cmd && cmd.rtnstate}>
+                    <div key="rtnstate" className="cmd-rtnstate" style={{visibility: ((cmd.status == "done") ? "visible" : "hidden")}}>
+                        <If condition={isBlank(cmd.rtnstatestr)}>
+                            <div className="cmd-rtnstate-label">state unchanged</div>
+                            <div className="cmd-rtnstate-sep"></div>
+                        </If>
+                        <If condition={!isBlank(cmd.rtnstatestr)}>
+                            <div className="cmd-rtnstate-label">new state</div>
+                            <div className="cmd-rtnstate-sep"></div>
+                            <div className="cmd-rtnstate-diff">{cmd.rtnstatestr}</div>
+                        </If>
+                    </div>
                 </If>
             </div>
         );
