@@ -58,6 +58,13 @@ class WebShareModelClass {
         return 0;
     }
 
+    setSelectedLine(lineNum : number) : void {
+        let fullScreen = this.screen.get();
+        if (fullScreen != null) {
+            return fullScreen.screen.selectedline = lineNum;
+        }
+    }
+
     setAnchorFields(anchorLine : number, anchorOffset : number, reason : string) : void {
         this.anchor.anchorLine = anchorLine;
         this.anchor.anchorOffset = anchorOffset;

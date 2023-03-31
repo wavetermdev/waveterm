@@ -25,6 +25,8 @@ let foo = LinesView;
 // TODO scroll screen when new cmds arrive (selection)
 // TODO archived should delete line
 // TODO implement linedel
+// TODO reshare
+// TODO contentheight
 
 function makeFullRemoteRef(ownerName : string, remoteRef : string, name : string) : string {
     if (isBlank(ownerName) && isBlank(name)) {
@@ -347,6 +349,9 @@ class TerminalRenderer extends React.Component<{line : T.WebLine, cmd : T.WebCmd
         if (termWrap != null) {
             termWrap.giveFocus();
         }
+        mobx.action(() => {
+            WebShareModel.setSelectedLine(line.linenum);
+        })();
     }
     
     render() {
@@ -355,8 +360,12 @@ class TerminalRenderer extends React.Component<{line : T.WebLine, cmd : T.WebCmd
         let usedRows = WebShareModel.getUsedRows(lineutil.getWebRendererContext(line), line, cmd, width);
         let termHeight = termHeightFromRows(usedRows, WebShareModel.getTermFontSize());
         let termLoaded = this.termLoaded.get();
+        let isFocused = (WebShareModel.getSelectedLine() == line.linenum);
         return (
             <div ref={this.elemRef} key="term-wrap" className={cn("terminal-wrapper", {"cmd-done": !lineutil.cmdStatusIsRunning(cmd.status)}, {"zero-height": (termHeight == 0)})}>
+                <If condition={!isFocused}>
+                    <div key="term-block" className="term-block" onClick={this.clickTermBlock}></div>
+                </If>
                 <div key="term-connectelem" className="terminal-connectelem" ref={this.termRef} data-cmdid={line.lineid} style={{height: termHeight}}></div>
                 <If condition={!termLoaded}><div key="term-loading" className="terminal-loading-message">...</div></If>
 
