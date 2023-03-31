@@ -5,6 +5,7 @@ import {handleJsonFetchResponse, isModKeyPress, base64ToArray} from "./util";
 import * as T from "./types";
 import {TermWrap} from "./term";
 import * as lineutil from "./lineutil";
+import * as util from "./util";
 import {windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows} from "./textmeasure";
 import {WebShareWSControl} from "./webshare-ws";
 
@@ -37,6 +38,7 @@ class WebShareModelClass {
     anchor : {anchorLine : number, anchorOffset : number} = {anchorLine: 0, anchorOffset: 0};
     selectedLine : OV<number> = mobx.observable.box(0, {name: "selectedLine"});
     syncSelectedLine : OV<boolean> = mobx.observable.box(true, {name: "syncSelectedLine"});
+    lastScreenSize : T.WindowSize = null;
     
     constructor() {
         let urlParams = new URLSearchParams(window.location.search);
@@ -63,6 +65,37 @@ class WebShareModelClass {
                 }
             }
         })();
+    }
+
+    setLastScreenSize(winSize : T.WindowSize) {
+        if (winSize == null || winSize.height == 0 || winSize.width == 0) {
+            return;
+        }
+        this.lastScreenSize = winSize;
+    }
+
+    getMaxContentSize() : T.WindowSize {
+        if (this.lastScreenSize == null) {
+            let width = termWidthFromCols(80, WebShareModel.getTermFontSize());
+            let height = termHeightFromRows(25, WebShareModel.getTermFontSize());
+            return {width, height};
+        }
+        let winSize = this.lastScreenSize;
+        let width = util.boundInt(winSize.width-50, 100, 5000);
+        let height = util.boundInt(winSize.height-100, 100, 5000);
+        return {width, height};
+    }
+    
+    getIdealContentSize() : T.WindowSize {
+        if (this.lastScreenSize == null) {
+            let width = termWidthFromCols(80, WebShareModel.getTermFontSize());
+            let height = termHeightFromRows(25, WebShareModel.getTermFontSize());
+            return {width, height};
+        }
+        let winSize = this.lastScreenSize;
+        let width = util.boundInt(Math.ceil((winSize.width-50)*0.7), 100, 5000);
+        let height = util.boundInt(Math.ceil((winSize.height-100)*0.5), 100, 5000);
+        return {width, height};
     }
 
     getSelectedLine() : number {

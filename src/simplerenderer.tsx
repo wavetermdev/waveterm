@@ -103,7 +103,7 @@ class SimpleBlobRenderer extends React.Component<{rendererContainer : RendererCo
 
     constructor(props : any) {
         super(props);
-        let {rendererContainer, cmdId, initParams} = this.props;
+        let {rendererContainer, cmdId, plugin, initParams} = this.props;
         this.model = new SimpleBlobRendererModel();
         this.model.initialize(initParams);
         rendererContainer.registerRenderer(cmdId, this.model);

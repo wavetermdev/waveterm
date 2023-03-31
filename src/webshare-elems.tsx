@@ -125,7 +125,6 @@ class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, 
     cmdTextRef : React.RefObject<any> = React.createRef();
     copiedIndicator : OV<boolean> =  mobx.observable.box(false, {name: "copiedIndicator"});
     lastHeight : number;
-    lastScreenSize : T.WindowSize;
 
     componentDidMount() : void {
         this.checkCmdText();
@@ -243,9 +242,6 @@ class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, 
         if (elem != null) {
             curHeight = elem.offsetHeight;
             curWidth = elem.offsetWidth;
-            if (curHeight != 0 && curWidth != 0) {
-                this.lastScreenSize = {height: curHeight, width: curWidth};
-            }
         }
         if (this.lastHeight == curHeight) {
             return;
@@ -304,35 +300,11 @@ class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, 
         }, 600);
     }
 
-    getMaxContentSize() : T.WindowSize {
-        if (this.lastScreenSize == null) {
-            let width = termWidthFromCols(80, WebShareModel.getTermFontSize());
-            let height = termHeightFromRows(25, WebShareModel.getTermFontSize());
-            return {width, height};
-        }
-        let winSize = this.lastScreenSize;
-        let width = util.boundInt(winSize.width-50, 100, 5000);
-        let height = util.boundInt(winSize.height-100, 100, 5000);
-        return {width, height};
-    }
-    
-    getIdealContentSize() : T.WindowSize {
-        if (this.lastScreenSize == null) {
-            let width = termWidthFromCols(80, WebShareModel.getTermFontSize());
-            let height = termHeightFromRows(25, WebShareModel.getTermFontSize());
-            return {width, height};
-        }
-        let winSize = this.lastScreenSize;
-        let width = util.boundInt(Math.ceil((winSize.width-50)*0.7), 100, 5000);
-        let height = util.boundInt(Math.ceil((winSize.height-100)*0.5), 100, 5000);
-        return {width, height};
-    }
-
     getRendererOpts(cmd : T.WebCmd) : T.RendererOpts {
         return {
-            maxSize: this.getMaxContentSize(),
-            idealSize: this.getIdealContentSize(),
-            termOpts: cmd.termopts,
+            maxSize: WebShareModel.getMaxContentSize(),
+            idealSize: WebShareModel.getIdealContentSize(),
+            termOpts: mobx.toJS(cmd.termopts),
             termFontSize: WebShareModel.getTermFontSize(),
         };
     }
@@ -582,7 +554,7 @@ class WebLineView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, top
 class WebScreenView extends React.Component<{}, {}> {
     viewRef : React.RefObject<any> = React.createRef();
     width : OV<number> = mobx.observable.box(0, {name: "WebScreenView-width"});
-    handleResize_debounced : (entries : any) => void;
+    handleResize_debounced : () => void;
     rszObs : ResizeObserver;
 
     constructor(props : any) {
@@ -599,18 +571,20 @@ class WebScreenView extends React.Component<{}, {}> {
             if (width > 0) {
                 mobx.action(() => {
                     this.width.set(width);
+                    this.handleResize();
                 })();
             }
         }
     }
 
-    handleResize(entries : any) : void {
+    handleResize() : void {
         let viewElem = this.viewRef.current;
         if (viewElem == null) {
             return;
         }
         let width = viewElem.offsetWidth;
         let height = viewElem.offsetHeight;
+        WebShareModel.setLastScreenSize({width, height});
         if (width != this.width.get()) {
             WebShareModel.resizeWindow({width: width, height: height});
             mobx.action(() => {
