@@ -35,6 +35,8 @@ class WebShareModelClass {
     contentHeightCache : Record<string, number> = {};  // lineid => height
     wsControl : WebShareWSControl;
     anchor : {anchorLine : number, anchorOffset : number} = {anchorLine: 0, anchorOffset: 0};
+    selectedLine : OV<number> = mobx.observable.box(0, {name: "selectedLine"});
+    syncSelectedLine : OV<boolean> = mobx.observable.box(true, {name: "syncSelectedLine"});
     
     constructor() {
         let urlParams = new URLSearchParams(window.location.search);
@@ -42,6 +44,7 @@ class WebShareModelClass {
         this.screenId = urlParams.get("screenid");
         setTimeout(() => this.loadFullScreenData(), 10);
         this.wsControl = new WebShareWSControl(getBaseWSUrl(), this.screenId, this.viewKey, this.wsMessageCallback.bind(this));
+        document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
     }
 
     setErrMessage(msg : string) : void {
@@ -50,19 +53,50 @@ class WebShareModelClass {
         })();
     }
 
+    setSyncSelectedLine(val : boolean) : void {
+        mobx.action(() => {
+            this.syncSelectedLine.set(val);
+            if (val) {
+                let fullScreen = this.screen.get();
+                if (fullScreen != null) {
+                    this.selectedLine.set(fullScreen.screen.selectedline);
+                }
+            }
+        })();
+    }
+
     getSelectedLine() : number {
+        return this.selectedLine.get();
+    }
+
+    getServerSelectedLine() : number {
         let fullScreen = this.screen.get();
         if (fullScreen != null) {
             return fullScreen.screen.selectedline;
         }
-        return 0;
     }
 
     setSelectedLine(lineNum : number) : void {
+        mobx.action(() => {
+            this.selectedLine.set(lineNum);
+        })();
+    }
+
+    updateSelectedLineIndex(delta : number) : void {
         let fullScreen = this.screen.get();
-        if (fullScreen != null) {
-            return fullScreen.screen.selectedline = lineNum;
+        if (fullScreen == null) {
+            return;
         }
+        let lineIndex = this.getLineIndex(this.selectedLine.get());
+        if (lineIndex == -1) {
+            return;
+        }
+        lineIndex += delta;
+        let lines = fullScreen.lines;
+        if (lineIndex < 0 || lineIndex >= lines.length) {
+            return;
+        }
+        this.setSelectedLine(lines[lineIndex].linenum);
     }
 
     setAnchorFields(anchorLine : number, anchorOffset : number, reason : string) : void {
@@ -152,6 +186,9 @@ class WebShareModelClass {
             let fullScreen = this.screen.get();
             if (msg.screen) {
                 fullScreen.screen = msg.screen;
+                if (this.syncSelectedLine.get()) {
+                    this.selectedLine.set(msg.screen.selectedline);
+                }
             }
             if (msg.lines != null && msg.lines.length > 0) {
                 for (let line of msg.lines) {
@@ -199,6 +236,9 @@ class WebShareModelClass {
             }
             this.screen.set(screen);
             this.wsControl.reconnect(true);
+            if (this.syncSelectedLine.get()) {
+               this.selectedLine.set(screen.screen.selectedline);
+            }
         })();
         
     }
@@ -372,6 +412,18 @@ class WebShareModelClass {
             }
         }
         return null;
+    }
+
+    docKeyDownHandler(e : any) : void {
+        if (isModKeyPress(e)) {
+            return;
+        }
+        if (e.code == "PageUp" && e.getModifierState("Meta")) {
+            this.updateSelectedLineIndex(-1);
+        }
+        if (e.code == "PageDown" && e.getModifierState("Meta")) {
+            this.updateSelectedLineIndex(1);
+        }
     }
 }
 

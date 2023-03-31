@@ -14,6 +14,7 @@ import * as util from "./util";
 import {windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols} from "./textmeasure";
 import {debounce, throttle} from "throttle-debounce";
 import {LinesView} from "./linesview";
+import {Toggle} from "./elements";
 
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
@@ -122,6 +123,11 @@ class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, 
     isCmdExpanded : OV<boolean> = mobx.observable.box(false, {name: "cmd-expanded"});
     isOverflow : OV<boolean> = mobx.observable.box(false, {name: "line-overflow"});
     cmdTextRef : React.RefObject<any> = React.createRef();
+    copiedIndicator : OV<boolean> =  mobx.observable.box(false, {name: "copiedIndicator"});
+
+    componentDidMount() : void {
+        this.checkCmdText();
+    }
     
     renderSimple() {
         let {line} = this.props;
@@ -176,8 +182,34 @@ class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, 
         );
     }
 
+    checkCmdText() {
+        let metaElem = this.cmdTextRef.current;
+        if (metaElem == null || metaElem.childNodes.length == 0) {
+            return;
+        }
+        let metaElemWidth = metaElem.offsetWidth;
+        let metaChild = metaElem.firstChild;
+        let children = metaChild.childNodes;
+        let childWidth = 0;
+        for (let i=0; i<children.length; i++) {
+            let ch = children[i];
+            childWidth += ch.offsetWidth;
+        }
+        let isOverflow = (childWidth > metaElemWidth);
+        if (isOverflow != this.isOverflow.get()) {
+            mobx.action(() => {
+                this.isOverflow.set(isOverflow);
+            })();
+        }
+    }
+
     @boundMethod
     handleHeightChange() : void {
+    }
+
+    @boundMethod
+    handleClick() : void {
+        WebShareModel.setSelectedLine(this.props.line.linenum);
     }
 
     renderMetaWrap() {
@@ -202,11 +234,32 @@ class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, 
             </div>
         );
     }
+
+    copyAllowed() : boolean {
+        return (navigator.clipboard != null);
+    }
+
+    @boundMethod
+    clickCopy() : void {
+        if (this.copyAllowed()) {
+            let {cmd} = this.props;
+            navigator.clipboard.writeText(cmd.cmdstr);
+        }
+        mobx.action(() => {
+            this.copiedIndicator.set(true);
+        })();
+        setTimeout(() => {
+            mobx.action(() => {
+                this.copiedIndicator.set(false);
+            })();
+        }, 600);
+    }
     
     render() {
         let {line, cmd, topBorder} = this.props;
         let model = WebShareModel;
         let isSelected = mobx.computed(() => (model.getSelectedLine() == line.linenum), {name: "computed-isSelected"}).get();
+        let isServerSelected = mobx.computed(() => (model.getServerSelectedLine() == line.linenum), {name: "computed-isServerSelected"}).get();
         let rendererPlugin : T.RendererPluginType = null;
         let isNoneRenderer = (line.renderer == "none");
         if (!isBlank(line.renderer) && line.renderer != "terminal" && !isNoneRenderer) {
@@ -219,12 +272,23 @@ class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, 
         if (width == 0) {
             width = 1024;
         }
+        let isExpanded = this.isCmdExpanded.get();
         return (
-            <div className={mainCn} data-lineid={line.lineid} data-linenum={line.linenum}>
-                <div key="focus" className={cn("focus-indicator", {"selected active": isSelected})}/>
-                <div className="line-header">
+            <div className={mainCn} data-lineid={line.lineid} data-linenum={line.linenum} onClick={this.handleClick}>
+                <If condition={this.copiedIndicator.get()}>
+                    <div key="copied" className="copied-indicator">
+                        <div>copied</div>
+                    </div>
+                </If>
+                <div key="focus" className={cn("focus-indicator", {"selected": isSelected || isServerSelected}, {"active": isSelected})}/>
+                <div className={cn("line-header", {"is-expanded": isExpanded})}>
                     <LineAvatar line={line} cmd={cmd}/>
                     {this.renderMetaWrap()}
+                    <If condition={this.copyAllowed()}>
+                        <div key="copy" title="Copy Command" className={cn("line-icon copy-icon")} onClick={this.clickCopy} style={{marginLeft: 5}}>
+                            <i className="fa-sharp fa-solid fa-copy"/>
+                        </div>
+                    </If>
                 </div>
                 <TerminalRenderer line={line} cmd={cmd} width={width} staticRender={false} visible={visObs} onHeightChange={this.handleHeightChange}/>
             </div>
@@ -472,15 +536,16 @@ class WebShareMain extends React.Component<{}, {}> {
     render() {
         let screen = WebShareModel.screen.get();
         let errMessage = WebShareModel.errMessage.get();
+        let shareName = "";
+        if (screen != null) {
+            shareName = isBlank(screen.screen.sharename) ? "(no name)" : screen.screen.sharename;
+        }
         return (
             <div id="main">
                 <div className="logo-header">
                     <div className="logo-text">
                         <a target="_blank" href="https://www.getprompt.dev">[prompt]</a>
                     </div>
-                    <If condition={screen != null}>
-                        <div className="screen-name">{screen.screen.sharename}</div>
-                    </If>
                     <div className="flex-spacer"/>
                     <a href="https://getprompt.dev/download/" target="_blank" className="download-button button is-link">
                         <span>Download Prompt</span>
@@ -488,6 +553,14 @@ class WebShareMain extends React.Component<{}, {}> {
                             <i className="fa-sharp fa-solid fa-cloud-arrow-down"/>
                         </span>
                     </a>
+                </div>
+                <div className="webshare-controls">
+                    <div className="screen-sharename">{shareName}</div>
+                    <div className="flex-spacer"/>
+                    <div className="sync-control">
+                        <div>Sync Selection</div>
+                        <Toggle checked={WebShareModel.syncSelectedLine.get()} onChange={(val) => WebShareModel.setSyncSelectedLine(val)}/>
+                    </div>
                 </div>
                 <div className="prompt-content">
                     <If condition={screen != null}>

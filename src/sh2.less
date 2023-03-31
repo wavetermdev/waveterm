@@ -3208,9 +3208,37 @@ body.prompt-webshare #main {
         }
     }
 
+    .webshare-controls {
+        display: flex;
+        flex-direction: row;
+        flex-shrink: 0;
+        height: 40px;
+        align-items: center;
+        padding-left: 20px;
+        padding-right: 20px;
+        background-color: darken(@prompt-green, 30%);
+        color: white;
+
+        .screen-sharename {
+            font-weight: bold;
+        }
+
+        .sync-control {
+            display: flex;
+            flex-direction: row;
+            color: @term-white;
+            font-size: 13px;
+            align-items: center;
+
+            div:first-child {
+                margin-right: 5px;
+            }
+        }
+    }
+
     .prompt-content {
         flex-grow: 1;
-        padding: 10px;
+        padding: 10px 0;
         display: flex;
         flex-direction: row;
         overflow: hidden;
@@ -3221,10 +3249,11 @@ body.prompt-webshare #main {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
-            
-            .web-lines {
+
+            .lines {
                 height: 100%;
                 flex-grow: 1;
+                padding-top: 0;
             }
         }
     }
@@ -3258,5 +3287,20 @@ body.prompt-webshare #main {
     .lines .line-sep {
         margin-left: 0px;
         margin-right: 10px;
+    }
+
+    .lines .line.line-cmd {
+        .line-icon.copy-icon {
+            color: @term-white;
+            font-size: 18px;
+
+            &:hover {
+                color: @term-bright-white;
+            }
+        }
+
+        .copied-indicator {
+            z-index: 10;
+        }
     }
 }
