@@ -97,26 +97,28 @@ func webScreenFromScreen(s *sstore.ScreenType) (*WebShareScreenType, error) {
 }
 
 type WebShareLineType struct {
-	LineId   string `json:"lineid"`
-	Ts       int64  `json:"ts"`
-	LineNum  int64  `json:"linenum"`
-	LineType string `json:"linetype"`
-	Renderer string `json:"renderer,omitempty"`
-	Text     string `json:"text,omitempty"`
-	CmdId    string `json:"cmdid,omitempty"`
-	Archived bool   `json:"archived,omitempty"`
+	LineId        string `json:"lineid"`
+	Ts            int64  `json:"ts"`
+	LineNum       int64  `json:"linenum"`
+	LineType      string `json:"linetype"`
+	ContentHeight int64  `json:"contentheight"`
+	Renderer      string `json:"renderer,omitempty"`
+	Text          string `json:"text,omitempty"`
+	CmdId         string `json:"cmdid,omitempty"`
+	Archived      bool   `json:"archived,omitempty"`
 }
 
 func webLineFromLine(line *sstore.LineType) (*WebShareLineType, error) {
 	rtn := &WebShareLineType{
-		LineId:   line.LineId,
-		Ts:       line.Ts,
-		LineNum:  line.LineNum,
-		LineType: line.LineType,
-		Renderer: line.Renderer,
-		Text:     line.Text,
-		CmdId:    line.CmdId,
-		Archived: line.Archived,
+		LineId:        line.LineId,
+		Ts:            line.Ts,
+		LineNum:       line.LineNum,
+		LineType:      line.LineType,
+		ContentHeight: line.ContentHeight,
+		Renderer:      line.Renderer,
+		Text:          line.Text,
+		CmdId:         line.CmdId,
+		Archived:      line.Archived,
 	}
 	return rtn, nil
 }
