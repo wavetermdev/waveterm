@@ -382,14 +382,11 @@ class WebLineView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, top
 }
 
 @mobxReact.observer
-class WebScreenView extends React.Component<{screen : T.WebFullScreen}, {}> {
+class WebScreenView extends React.Component<{}, {}> {
     viewRef : React.RefObject<any> = React.createRef();
-    linesRef : React.RefObject<any> = React.createRef();
-    width : OV<number> = mobx.observable.box(0, {name: "webScreenView-width"});
-    rszObs : ResizeObserver;
+    width : OV<number> = mobx.observable.box(0, {name: "WebScreenView-width"});
     handleResize_debounced : (entries : any) => void;
-    lastSelectedLine : number = 0;
-    ignoreNextScroll : boolean = false;
+    rszObs : ResizeObserver;
 
     constructor(props : any) {
         super(props);
@@ -398,118 +395,46 @@ class WebScreenView extends React.Component<{screen : T.WebFullScreen}, {}> {
 
     componentDidMount() : void {
         if (this.viewRef.current != null) {
-            let linesElem = this.viewRef.current;
+            let viewElem = this.viewRef.current;
             this.rszObs = new ResizeObserver(this.handleResize_debounced.bind(this));
-            this.rszObs.observe(linesElem);
-            let width = linesElem.offsetWidth;
+            this.rszObs.observe(viewElem);
+            let width = viewElem.offsetWidth;
             if (width > 0) {
                 mobx.action(() => {
                     this.width.set(width);
                 })();
             }
         }
-        this.lastSelectedLine = WebShareModel.getSelectedLine();
-    }
-
-    getLineElem(lineNum : number) : HTMLElement {
-        let linesElem = this.linesRef.current;
-        if (linesElem == null) {
-            return null;
-        }
-        let elem = linesElem.querySelector(sprintf(".line[data-linenum=\"%d\"]", lineNum));
-        return elem;
-    }
-
-    getLineViewInfo(lineNum : number) : {height: number, topOffset: number, botOffset: number, anchorOffset: number} {
-        let linesElem = this.linesRef.current;
-        if (linesElem == null) {
-            return null;
-        }
-        let lineElem = this.getLineElem(lineNum);
-        if (lineElem == null) {
-            return null;
-        }
-        let rtn = {
-            height: lineElem.offsetHeight,
-            topOffset: 0,
-            botOffset: 0,
-            anchorOffset: 0,
-        };
-        let containerTop = linesElem.scrollTop;
-        let containerBot = linesElem.scrollTop + linesElem.clientHeight;
-        let lineTop = lineElem.offsetTop;
-        let lineBot = lineElem.offsetTop + lineElem.offsetHeight;
-        if (lineTop < containerTop) {
-            rtn.topOffset = lineTop - containerTop;
-        }
-        else if (lineTop > containerBot) {
-            rtn.topOffset = lineTop - containerBot;
-        }
-        if (lineBot < containerTop) {
-            rtn.botOffset = lineBot - containerTop;
-        }
-        else if (lineBot > containerBot) {
-            rtn.botOffset = lineBot - containerBot;
-        }
-        rtn.anchorOffset = containerBot - lineBot;
-        return rtn;
-    }
-
-    updateSelectedLine() : void {
-        let linesElem = this.linesRef.current;
-        if (linesElem == null) {
-            return null;
-        }
-        let newLine = WebShareModel.getSelectedLine();
-        let lineIdx = WebShareModel.getLineIndex(newLine);
-        if (lineIdx == -1) {
-            return;
-        }
-        let viewInfo = this.getLineViewInfo(newLine);
-        if (viewInfo == null) {
-            return;
-        }
-        let numLines = WebShareModel.getNumLines();
-        let isFirst = (lineIdx == 0);
-        let isLast = (lineIdx == numLines-1);
-        let offsetDelta = (isLast ? 10 : (isFirst ? -10 : 0));
-        if (viewInfo.botOffset > 0) {
-            linesElem.scrollTop = linesElem.scrollTop + viewInfo.botOffset + offsetDelta;
-            this.ignoreNextScroll = true;
-        }
-        else if (viewInfo.topOffset < 0) {
-            linesElem.scrollTop = linesElem.scrollTop + viewInfo.topOffset + offsetDelta;
-            this.ignoreNextScroll = true;
-        }
-        this.lastSelectedLine = newLine;
-    }
-
-    componentDidUpdate(prevProps, prevState, snapshot) : void {
-        if (WebShareModel.getSelectedLine() != this.lastSelectedLine) {
-            this.updateSelectedLine();
-        }
     }
 
     handleResize(entries : any) : void {
-        let linesElem = this.viewRef.current;
-        if (linesElem == null) {
+        let viewElem = this.viewRef.current;
+        if (viewElem == null) {
             return;
         }
-        let width = linesElem.offsetWidth;
-        let height = linesElem.offsetHeight;
+        let width = viewElem.offsetWidth;
+        let height = viewElem.offsetHeight;
         if (width != this.width.get()) {
             WebShareModel.resizeWindow({width: width, height: height});
-            console.log("width-update", width);
             mobx.action(() => {
                 this.width.set(width);
             })();
         }
     }
 
+    @boundMethod
+    buildLineComponent(lineProps : T.LineFactoryProps) : JSX.Element {
+        let line : T.WebLine = (lineProps.line as T.WebLine);
+        let cmd = WebShareModel.getCmdById(lineProps.line.lineid);
+        return (
+            <WebLineView key={line.lineid} line={line} cmd={cmd} topBorder={lineProps.topBorder} width={lineProps.width}/>
+        );
+    }
+
     renderEmpty() : any {
         return (
             <div className="web-screen-view" ref={this.viewRef}>
-                <div className="web-lines lines" ref={this.linesRef}>
+                <div className="web-lines lines">
                     <div key="spacer" className="lines-spacer"></div>
                 </div>
             </div>
@@ -517,46 +442,13 @@ class WebScreenView extends React.Component<{screen : T.WebFullScreen}, {}> {
     }
     
     render() {
-        let {screen} = this.props;
-        let lines = screen.lines ?? [];
-        let cmds = screen.cmds ?? [];
-        let cmdMap : Record<string, T.WebCmd> = {};
-        for (let i=0; i<cmds.length; i++) {
-            let cmd = cmds[i];
-            cmdMap[cmd.lineid] = cmd;
-        }
-        let lineElements : any[] = [];
-        let todayStr = util.getTodayStr();
-        let yesterdayStr = util.getYesterdayStr();
-        let prevDateStr : string = null;
-        let width = this.width.get();
-        if (width == 0) {
+        let fullScreen = WebShareModel.screen.get();
+        if (fullScreen == null || fullScreen.lines.length == 0) {
             return this.renderEmpty();
-        }
-        let selectedLine = WebShareModel.getSelectedLine();  // for re-rendering
-        for (let idx=0; idx<lines.length; idx++) {
-            let line = lines[idx];
-            let lineNumStr = String(line.linenum);
-            let dateSepStr = null;
-            let curDateStr = lineutil.getLineDateStr(todayStr, yesterdayStr, line.ts);
-            if (curDateStr != prevDateStr) {
-                dateSepStr = curDateStr;
-            }
-            prevDateStr = curDateStr;
-            if (dateSepStr != null) {
-                let sepElem = <div key={"sep-" + line.lineid} className="line-sep">{dateSepStr}</div>
-                lineElements.push(sepElem);
-            }
-            let topBorder = (dateSepStr == null) && (idx != 0);
-            let lineElem = <WebLineView key={line.lineid} line={line} cmd={cmdMap[line.lineid]} topBorder={topBorder} width={width}/>;
-            lineElements.push(lineElem);
         }
         return (
             <div className="web-screen-view" ref={this.viewRef}>
-                <div className="web-lines lines" ref={this.linesRef}>
-                    <div key="spacer" className="lines-spacer"></div>
-                    {lineElements}
-                </div>
+                <LinesView screen={WebShareModel} width={this.width.get()} lines={fullScreen.lines} renderMode="normal" lineFactory={this.buildLineComponent}/>
             </div>
         );
     }
@@ -590,7 +482,7 @@ class WebShareMain extends React.Component<{}, {}> {
                 </div>
                 <div className="prompt-content">
                     <If condition={screen != null}>
-                        <WebScreenView screen={screen}/>
+                        <WebScreenView/>
                     </If>
                     <If condition={errMessage != null}>
                         <div className="err-message">{WebShareModel.errMessage.get()}</div>

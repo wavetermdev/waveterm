@@ -34,6 +34,7 @@ class WebShareModelClass {
     renderers : Record<string, T.RendererModel> = {};   // lineid => RendererModel
     contentHeightCache : Record<string, number> = {};  // lineid => height
     wsControl : WebShareWSControl;
+    anchor : {anchorLine : number, anchorOffset : number} = {anchorLine: 0, anchorOffset: 0};
     
     constructor() {
         let urlParams = new URLSearchParams(window.location.search);
@@ -55,6 +56,15 @@ class WebShareModelClass {
             return fullScreen.screen.selectedline;
         }
         return 0;
+    }
+
+    setAnchorFields(anchorLine : number, anchorOffset : number, reason : string) : void {
+        this.anchor.anchorLine = anchorLine;
+        this.anchor.anchorOffset = anchorOffset;
+    }
+
+    getAnchor() : {anchorLine : number, anchorOffset : number} {
+        return this.anchor;
     }
 
     getTermFontSize() : number {
@@ -342,6 +352,19 @@ class WebShareModelClass {
             return 0;
         }
         return fullScreen.lines.length;
+    }
+
+    getCmdById(lineId : string) : T.WebCmd {
+        let fullScreen = this.screen.get();
+        if (fullScreen == null) {
+            return null;
+        }
+        for (let cmd of fullScreen.cmds) {
+            if (cmd.lineid == lineId) {
+                return cmd;
+            }
+        }
+        return null;
     }
 }
 

@@ -1781,12 +1781,12 @@ class ScreenWindowView extends React.Component<{screen : Screen}, {}> {
     }
 
     @boundMethod
-    buildLineComponent(lineProps : LineFactoryProps) {
+    buildLineComponent(lineProps : LineFactoryProps) : JSX.Element {
         let {screen} = this.props;
         let {line, ...restProps} = lineProps;
         let realLine : LineType = (line as LineType);
         return (
-            <Line screen={screen} line={realLine} {...restProps}/>
+            <Line key={realLine.lineid} screen={screen} line={realLine} {...restProps}/>
         );
     }
 

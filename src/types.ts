@@ -570,7 +570,6 @@ type LineInterface = {
 }
 
 type LineFactoryProps = {
-    key : string,
     line : LineInterface,
     width : number,
     visible : OV<boolean>,
