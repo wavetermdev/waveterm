@@ -141,12 +141,14 @@ body::-webkit-scrollbar {
                 z-index: 11;
                 font-size: 12px;
                 border-bottom-right-radius: 5px;
+                opacity: 0.8;
 
                 .share-tag-link {
                     display: none;
                 }
 
                 &:hover {
+                    opacity: 1.0;
                     padding: 20px;
                     
                     .share-tag-link {
@@ -2025,6 +2027,10 @@ body .xterm .xterm-viewport {
             .mono-font(14px, 400);
             color: @soft-blue;
             padding-bottom: 2px;
+
+            a {
+                color: @term-blue;
+            }
         }
 
         .info-title {

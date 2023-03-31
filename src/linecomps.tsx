@@ -8,7 +8,7 @@ import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import {GlobalModel, GlobalCommandRunner, Session, Cmd, ScreenLines, Screen} from "./model";
 import {windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols} from "./textmeasure";
-import type {LineType, CmdDataType, FeStateType, RemoteType, RemotePtrType, RenderModeType, RendererContext, RendererOpts, SimpleBlobRendererComponent, RendererPluginType} from "./types";
+import type {LineType, CmdDataType, FeStateType, RemoteType, RemotePtrType, RenderModeType, RendererContext, RendererOpts, SimpleBlobRendererComponent, RendererPluginType, LineHeightChangeCallbackType} from "./types";
 import cn from "classnames";
 import {TermWrap} from "./term";
 import type {LineContainerModel} from "./model";
@@ -24,8 +24,7 @@ type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
 type OMap<K,V> = mobx.ObservableMap<K,V>;
 
-type HeightChangeCallbackType = (lineNum : number, newHeight : number, oldHeight : number) => void;
-type RendererComponentProps = {screen : LineContainerModel, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType, collapsed : boolean};
+type RendererComponentProps = {screen : LineContainerModel, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : LineHeightChangeCallbackType, collapsed : boolean};
 type RendererComponentType = { new(props : RendererComponentProps) : React.Component<RendererComponentProps, {}> };
 
 function makeFullRemoteRef(ownerName : string, remoteRef : string, name : string) : string {
@@ -98,7 +97,7 @@ class LineAvatar extends React.Component<{line : LineType, cmd : Cmd, onRightCli
 }
 
 @mobxReact.observer
-class LineCmd extends React.Component<{screen : LineContainerModel, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType, topBorder : boolean, renderMode : RenderModeType, overrideCollapsed : OV<boolean>, noSelect? : boolean, showHints? : boolean}, {}> {
+class LineCmd extends React.Component<{screen : LineContainerModel, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : LineHeightChangeCallbackType, topBorder : boolean, renderMode : RenderModeType, overrideCollapsed : OV<boolean>, noSelect? : boolean, showHints? : boolean}, {}> {
     lineRef : React.RefObject<any> = React.createRef();
     cmdTextRef : React.RefObject<any> = React.createRef();
     rtnStateDiff : mobx.IObservableValue<string> = mobx.observable.box(null, {name: "linecmd-rtn-state-diff"});
@@ -550,7 +549,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
 }
 
 @mobxReact.observer
-class Line extends React.Component<{screen : LineContainerModel, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : HeightChangeCallbackType, overrideCollapsed : OV<boolean>, topBorder : boolean, renderMode : RenderModeType, noSelect? : boolean}, {}> {
+class Line extends React.Component<{screen : LineContainerModel, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : LineHeightChangeCallbackType, overrideCollapsed : OV<boolean>, topBorder : boolean, renderMode : RenderModeType, noSelect? : boolean}, {}> {
     render() {
         let line = this.props.line;
         if (line.archived) {

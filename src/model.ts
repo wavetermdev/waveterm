@@ -262,7 +262,21 @@ class Screen {
     }
 
     isWebShare() : boolean {
-        return this.shareMode.get() == "web";
+        return (this.shareMode.get() == "web") && (this.webShareOpts.get() != null);
+    }
+
+    getWebShareUrl() : string {
+        let viewKey : string = null;
+        if (this.webShareOpts.get() != null) {
+            viewKey = this.webShareOpts.get().viewkey;
+        }
+        if (viewKey == null) {
+            return null;
+        }
+        if (GlobalModel.isDev) {
+            return sprintf("http://devtest.getprompt.com:9001/static/index.html?screenid=%s&viewkey=%s", this.screenId, viewKey);
+        }
+        return sprintf("https://share.getprompt.dev/s/%s?viewkey=%s", this.screenId, viewKey);
     }
 
     mergeData(data : ScreenDataType) {
@@ -324,7 +338,7 @@ class Screen {
         return session.getRemoteInstance(this.screenId, rptr);
     }
 
-    setAnchorFields(anchorLine : number, anchorOffset : number, reason : string) {
+    setAnchorFields(anchorLine : number, anchorOffset : number, reason : string) : void {
         mobx.action(() => {
             this.anchor.set({anchorLine: anchorLine, anchorOffset: anchorOffset});
         })();
@@ -2574,7 +2588,7 @@ class Model {
                 }
                 let term = screen.getTermWrap(cmdId);
                 if (term != null) {
-                    term.cmdDone();
+                    setTimeout(() => term.cmdDone(), 300);
                 }
             }
         }

@@ -265,10 +265,19 @@ class TermWrap {
         }
     }
 
+    getLineNum() : number {
+        let context = this.getRendererContext();
+        if (context == null) {
+            return 0;
+        }
+        return context.lineNum;
+    }
+
     reload(delayMs : number) {
         if (this.terminal == null) {
             return;
         }
+        // console.log("reload-term", this.getLineNum());
         this.reloading = true;
         this.terminal.reset();
         let rtnp = this.ptyDataSource(this.termContext);
@@ -285,7 +294,7 @@ class TermWrap {
     }
 
     receiveData(pos : number, data : Uint8Array, reason? : string) {
-        // console.log("update-pty-data", pos, data.length, reason);
+        // console.log("update-pty-data", reason, this.getLineNum(), data.length, "|", pos, "=>", pos + data.length);
         if (this.terminal == null) {
             return;
         }

@@ -33,7 +33,6 @@ class WebShareModelClass {
     terminals : Record<string, TermWrap> = {};        // lineid => TermWrap
     renderers : Record<string, T.RendererModel> = {};   // lineid => RendererModel
     contentHeightCache : Record<string, number> = {};  // lineid => height
-    selectedLine : OV<number> = mobx.observable.box(0, {name: "selectedLine"});
     wsControl : WebShareWSControl;
     
     constructor() {
@@ -51,7 +50,11 @@ class WebShareModelClass {
     }
 
     getSelectedLine() : number {
-        return this.selectedLine.get();
+        let fullScreen = this.screen.get();
+        if (fullScreen != null) {
+            return fullScreen.screen.selectedline;
+        }
+        return 0;
     }
 
     getTermFontSize() : number {
@@ -150,8 +153,7 @@ class WebShareModelClass {
                         continue;
                     }
                     let dataArr = base64ToArray(data.data);
-                    termWrap.receiveData(data.ptypos, dataArr);
-                    console.log("receivedata", data.lineid, data.ptypos + dataArr.length);
+                    termWrap.receiveData(data.ptypos, dataArr, "ws:ptydata");
                 }
             }
             if (msg.removedlines != null && msg.removedlines.length > 0) {
@@ -179,9 +181,6 @@ class WebShareModelClass {
                 screen.cmds = [];
             }
             this.screen.set(screen);
-            if (screen.lines != null && screen.lines.length > 0) {
-                this.selectedLine.set(screen.lines[screen.lines.length-1].linenum);
-            }
             this.wsControl.reconnect(true);
         })();
         
@@ -214,7 +213,7 @@ class WebShareModelClass {
             onUpdateContentHeight: (termContext : T.RendererContext, height : number) => { this.setContentHeight(termContext, height); },
         });
         this.terminals[lineId] = termWrap;
-        if (this.selectedLine.get() == line.linenum) {
+        if (this.getSelectedLine() == line.linenum) {
             termWrap.giveFocus();
         }
         return;
@@ -321,7 +320,28 @@ class WebShareModelClass {
         }).catch((err) => {
             this.errMessage.set("Cannot get screen: " + err.message);
         });
-        
+    }
+
+    getLineIndex(lineNum : number) : number {
+        let fullScreen = this.screen.get();
+        if (fullScreen == null) {
+            return -1;
+        }
+        for (let i=0; i<fullScreen.lines.length; i++) {
+            let line = fullScreen.lines[i];
+            if (line.linenum == lineNum) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    getNumLines() : number {
+        let fullScreen = this.screen.get();
+        if (fullScreen == null) {
+            return 0;
+        }
+        return fullScreen.lines.length;
     }
 }
 

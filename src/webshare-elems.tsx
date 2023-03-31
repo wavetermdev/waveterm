@@ -13,14 +13,15 @@ import * as lineutil from "./lineutil";
 import * as util from "./util";
 import {windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols} from "./textmeasure";
 import {debounce, throttle} from "throttle-debounce";
+import {LinesView} from "./linesview";
 
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
 type OMap<K,V> = mobx.ObservableMap<K,V>;
 
+let foo = LinesView;
+
 // TODO selection
-// TODO bug with finishing up the ptydata
-// TODO bug with ptydata late -- not updating usedrows
 // TODO scroll screen when new cmds arrive (selection)
 // TODO archived should delete line
 // TODO implement linedel
@@ -217,7 +218,7 @@ class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, 
             width = 1024;
         }
         return (
-            <div className={mainCn}>
+            <div className={mainCn} data-lineid={line.lineid} data-linenum={line.linenum}>
                 <div key="focus" className={cn("focus-indicator", {"selected active": isSelected})}/>
                 <div className="line-header">
                     <LineAvatar line={line} cmd={cmd}/>
@@ -237,7 +238,7 @@ class WebLineTextView extends React.Component<{line : T.WebLine, cmd : T.WebCmd,
         let isSelected = mobx.computed(() => (model.getSelectedLine() == line.linenum), {name: "computed-isSelected"}).get();
         let mainCn = cn("web-line line line-text", {"top-border": topBorder});
         return (
-            <div className={mainCn}>
+            <div className={mainCn} data-lineid={line.lineid} data-linenum={line.linenum}>
                 <div key="focus" className={cn("focus-indicator", {"selected active": isSelected})}/>
                 <div className="line-header">
                     <LineAvatar line={line} cmd={null}/>
@@ -383,9 +384,12 @@ class WebLineView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, top
 @mobxReact.observer
 class WebScreenView extends React.Component<{screen : T.WebFullScreen}, {}> {
     viewRef : React.RefObject<any> = React.createRef();
+    linesRef : React.RefObject<any> = React.createRef();
     width : OV<number> = mobx.observable.box(0, {name: "webScreenView-width"});
     rszObs : ResizeObserver;
     handleResize_debounced : (entries : any) => void;
+    lastSelectedLine : number = 0;
+    ignoreNextScroll : boolean = false;
 
     constructor(props : any) {
         super(props);
@@ -403,6 +407,86 @@ class WebScreenView extends React.Component<{screen : T.WebFullScreen}, {}> {
                     this.width.set(width);
                 })();
             }
+        }
+        this.lastSelectedLine = WebShareModel.getSelectedLine();
+    }
+
+    getLineElem(lineNum : number) : HTMLElement {
+        let linesElem = this.linesRef.current;
+        if (linesElem == null) {
+            return null;
+        }
+        let elem = linesElem.querySelector(sprintf(".line[data-linenum=\"%d\"]", lineNum));
+        return elem;
+    }
+
+    getLineViewInfo(lineNum : number) : {height: number, topOffset: number, botOffset: number, anchorOffset: number} {
+        let linesElem = this.linesRef.current;
+        if (linesElem == null) {
+            return null;
+        }
+        let lineElem = this.getLineElem(lineNum);
+        if (lineElem == null) {
+            return null;
+        }
+        let rtn = {
+            height: lineElem.offsetHeight,
+            topOffset: 0,
+            botOffset: 0,
+            anchorOffset: 0,
+        };
+        let containerTop = linesElem.scrollTop;
+        let containerBot = linesElem.scrollTop + linesElem.clientHeight;
+        let lineTop = lineElem.offsetTop;
+        let lineBot = lineElem.offsetTop + lineElem.offsetHeight;
+        if (lineTop < containerTop) {
+            rtn.topOffset = lineTop - containerTop;
+        }
+        else if (lineTop > containerBot) {
+            rtn.topOffset = lineTop - containerBot;
+        }
+        if (lineBot < containerTop) {
+            rtn.botOffset = lineBot - containerTop;
+        }
+        else if (lineBot > containerBot) {
+            rtn.botOffset = lineBot - containerBot;
+        }
+        rtn.anchorOffset = containerBot - lineBot;
+        return rtn;
+    }
+
+    updateSelectedLine() : void {
+        let linesElem = this.linesRef.current;
+        if (linesElem == null) {
+            return null;
+        }
+        let newLine = WebShareModel.getSelectedLine();
+        let lineIdx = WebShareModel.getLineIndex(newLine);
+        if (lineIdx == -1) {
+            return;
+        }
+        let viewInfo = this.getLineViewInfo(newLine);
+        if (viewInfo == null) {
+            return;
+        }
+        let numLines = WebShareModel.getNumLines();
+        let isFirst = (lineIdx == 0);
+        let isLast = (lineIdx == numLines-1);
+        let offsetDelta = (isLast ? 10 : (isFirst ? -10 : 0));
+        if (viewInfo.botOffset > 0) {
+            linesElem.scrollTop = linesElem.scrollTop + viewInfo.botOffset + offsetDelta;
+            this.ignoreNextScroll = true;
+        }
+        else if (viewInfo.topOffset < 0) {
+            linesElem.scrollTop = linesElem.scrollTop + viewInfo.topOffset + offsetDelta;
+            this.ignoreNextScroll = true;
+        }
+        this.lastSelectedLine = newLine;
+    }
+
+    componentDidUpdate(prevProps, prevState, snapshot) : void {
+        if (WebShareModel.getSelectedLine() != this.lastSelectedLine) {
+            this.updateSelectedLine();
         }
     }
 
@@ -425,7 +509,7 @@ class WebScreenView extends React.Component<{screen : T.WebFullScreen}, {}> {
     renderEmpty() : any {
         return (
             <div className="web-screen-view" ref={this.viewRef}>
-                <div className="web-lines lines">
+                <div className="web-lines lines" ref={this.linesRef}>
                     <div key="spacer" className="lines-spacer"></div>
                 </div>
             </div>
@@ -449,6 +533,7 @@ class WebScreenView extends React.Component<{screen : T.WebFullScreen}, {}> {
         if (width == 0) {
             return this.renderEmpty();
         }
+        let selectedLine = WebShareModel.getSelectedLine();  // for re-rendering
         for (let idx=0; idx<lines.length; idx++) {
             let line = lines[idx];
             let lineNumStr = String(line.linenum);
@@ -468,7 +553,7 @@ class WebScreenView extends React.Component<{screen : T.WebFullScreen}, {}> {
         }
         return (
             <div className="web-screen-view" ref={this.viewRef}>
-                <div className="web-lines lines">
+                <div className="web-lines lines" ref={this.linesRef}>
                     <div key="spacer" className="lines-spacer"></div>
                     {lineElements}
                 </div>
