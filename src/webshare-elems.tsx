@@ -25,6 +25,8 @@ let foo = LinesView;
 
 // TODO reshare
 // TODO debounce some of the updates
+// TODO image size
+// TODO rtnstate
 
 function makeFullRemoteRef(ownerName : string, remoteRef : string, name : string) : string {
     if (isBlank(ownerName) && isBlank(name)) {
