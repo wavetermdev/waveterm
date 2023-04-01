@@ -135,39 +135,28 @@ body::-webkit-scrollbar {
                 color: #ccc;
                 position: absolute;
                 top: 0;
-                left: 0;
+                left: 40%;
                 background-color: darken(rgb(0, 177, 10), 20%);
                 padding: 2px 8px 2px 4px;
                 z-index: 11;
                 font-size: 12px;
                 border-bottom-right-radius: 5px;
                 opacity: 0.8;
+                display: flex;
+                flex-direction: column;
 
                 .share-tag-link {
+                    margin-top: 10px;
                     display: none;
                 }
 
                 &:hover {
                     opacity: 1.0;
                     padding: 20px;
+                    width: 150px;
                     
                     .share-tag-link {
                         display: block;
-                        a {
-                            color: #ccc;
-                        }
-                    }
-
-                    .share-tag-link a:hover {
-                        color: white;
-                    }
-
-                    .share-tag-link i:hover {
-                        color: white;
-                    }
-
-                    .share-tag-link i {
-                        cursor: pointer;
                     }
                 }
             }

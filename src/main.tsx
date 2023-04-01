@@ -1769,7 +1769,12 @@ class ScreenWindowView extends React.Component<{screen : Screen}, {}> {
 
     @boundMethod
     copyShareLink() : void {
-        console.log("copy-share-link");
+        let {screen} = this.props;
+        let shareLink = screen.getWebShareUrl();
+        if (shareLink == null) {
+            return;
+        }
+        navigator.clipboard.writeText(shareLink);
         mobx.action(() => {
             this.shareCopied.set(true);
         })();
@@ -1831,7 +1836,14 @@ class ScreenWindowView extends React.Component<{screen : Screen}, {}> {
                             <div className="copied-indicator"/>
                         </If>
                         <div><i title="archived" className="fa-sharp fa-solid fa-share-nodes"/> web shared</div>
-                        <div className="share-tag-link"><a target="_blank" href={makeExternLink(screen.getWebShareUrl())}>{screen.getWebShareUrl()}</a> <i onClick={this.copyShareLink} title="copy link" className="fa-sharp fa-solid fa-copy"/></div>
+                        <div className="share-tag-link">
+                            <div className="button is-prompt-green is-outlined is-small" onClick={this.copyShareLink}>
+                                <span>copy link</span>
+                                <span className="icon">
+                                    <i className="fa-sharp fa-solid fa-copy"/>
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 </If>
                 <If condition={lines.length > 0}>
