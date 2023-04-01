@@ -24,7 +24,6 @@ type OMap<K,V> = mobx.ObservableMap<K,V>;
 let foo = LinesView;
 
 // TODO reshare
-// TODO debounce some of the updates
 
 function makeFullRemoteRef(ownerName : string, remoteRef : string, name : string) : string {
     if (isBlank(ownerName) && isBlank(name)) {
@@ -624,7 +623,7 @@ class WebScreenView extends React.Component<{}, {}> {
     }
     
     render() {
-        let fullScreen = WebShareModel.screen.get();
+        let fullScreen = WebShareModel.fullScreen.get();
         if (fullScreen == null || fullScreen.lines.length == 0) {
             return this.renderEmpty();
         }
@@ -643,7 +642,7 @@ class WebShareMain extends React.Component<{}, {}> {
     }
             
     render() {
-        let screen = WebShareModel.screen.get();
+        let screen = WebShareModel.fullScreen.get();
         let errMessage = WebShareModel.errMessage.get();
         let shareName = "";
         if (screen != null) {

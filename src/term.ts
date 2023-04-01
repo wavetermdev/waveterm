@@ -109,7 +109,7 @@ class TermWrap {
         if (opts.customKeyHandler != null) {
             this.terminal.attachCustomKeyEventHandler((e) => opts.customKeyHandler(e, this));
         }
-        this.reload(0);
+        setTimeout(() => this.reload(0), 10);
     }
 
     getUsedRows() : number {
@@ -281,6 +281,10 @@ class TermWrap {
         this.reloading = true;
         this.terminal.reset();
         let rtnp = this.ptyDataSource(this.termContext);
+        if (rtnp == null) {
+            console.log("no promise returned from ptyDataSource (termwrap)", this.termContext);
+            return;
+        }
         rtnp.then((ptydata) => {
             setTimeout(() => {
                 this._reloadThenHandler(ptydata);

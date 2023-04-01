@@ -36,7 +36,7 @@ class SimpleBlobRendererModel {
         this.savedHeight = params.savedHeight;
         this.ptyDataSource = params.ptyDataSource;
         if (this.isDone.get()) {
-            this.reload(0);
+            setTimeout(() => this.reload(0), 10);
         }
     }
 
@@ -74,6 +74,10 @@ class SimpleBlobRendererModel {
             this.loading.set(true);
         })();
         let rtnp = this.ptyDataSource(this.context);
+        if (rtnp == null) {
+            console.log("no promise returned from ptyDataSource (simplerenderer)", this.context);
+            return;
+        }
         rtnp.then((ptydata) => {
             setTimeout(() => {
                 this.ptyData = ptydata;

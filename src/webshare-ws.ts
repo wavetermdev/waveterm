@@ -23,7 +23,7 @@ class WebShareWSControl {
         this.viewKey = viewKey;
         this.open = mobx.observable.box(false, {name: "WSOpen"});
         this.closed = true;
-        setInterval(this.sendPing, 15000);
+        setInterval(this.sendPing, 20000);
     }
 
     close() : void {

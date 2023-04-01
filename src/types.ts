@@ -535,9 +535,11 @@ type WebCmd = {
 };
 
 type WebFullScreen = {
+    screenid : string,
     screen : WebScreen,
     lines : WebLine[],
     cmds : WebCmd[],
+    cmdptymap : Record<string, number>,
     vts : number,
 }
 
@@ -546,16 +548,6 @@ type PtyDataUpdate = {
     lineid : string,
     ptypos : number,
     data : string,
-};
-
-type WebScreenUpdate = {
-    type : string,
-    screenid : string,
-    screen : WebScreen,
-    lines : WebLine[],
-    cmds : WebCmd[],
-    ptydata : PtyDataUpdate[],
-    removedlines : string[],
 };
 
 type WebShareWSMessage = {
@@ -589,4 +581,4 @@ type RendererContainerType = {
 
 type LineHeightChangeCallbackType = (lineNum : number, newHeight : number, oldHeight : number) => void;
 
-export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDataType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType, UIContextType, HistoryInfoType, HistoryQueryOpts, WatchScreenPacketType, TermWinSize, FeInputPacketType, RemoteInputPacketType, RemoteEditType, FeStateType, ContextMenuOpts, RendererContext, WindowSize, RendererModel, PtyDataType, BookmarkType, ClientDataType, PlaybookType, PlaybookEntryType, HistoryViewDataType, RenderModeType, AlertMessageType, HistorySearchParams, ScreenLinesType, FocusTypeStrs, HistoryTypeStrs, RendererOpts, RendererPluginType, SimpleBlobRendererComponent, RendererModelContainerApi, RendererModelInitializeParams, RendererOptsUpdate, ClientMigrationInfo, WebShareOpts, RemoteStatusTypeStrs, WebFullScreen, WebScreen, WebLine, WebCmd, RemoteTermContext, TermContextUnion, WebRemote, WebScreenUpdate, PtyDataUpdate, WebShareWSMessage, LineHeightChangeCallbackType, LineFactoryProps, LineInterface, RendererContainerType};
+export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDataType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType, UIContextType, HistoryInfoType, HistoryQueryOpts, WatchScreenPacketType, TermWinSize, FeInputPacketType, RemoteInputPacketType, RemoteEditType, FeStateType, ContextMenuOpts, RendererContext, WindowSize, RendererModel, PtyDataType, BookmarkType, ClientDataType, PlaybookType, PlaybookEntryType, HistoryViewDataType, RenderModeType, AlertMessageType, HistorySearchParams, ScreenLinesType, FocusTypeStrs, HistoryTypeStrs, RendererOpts, RendererPluginType, SimpleBlobRendererComponent, RendererModelContainerApi, RendererModelInitializeParams, RendererOptsUpdate, ClientMigrationInfo, WebShareOpts, RemoteStatusTypeStrs, WebFullScreen, WebScreen, WebLine, WebCmd, RemoteTermContext, TermContextUnion, WebRemote, PtyDataUpdate, WebShareWSMessage, LineHeightChangeCallbackType, LineFactoryProps, LineInterface, RendererContainerType};
