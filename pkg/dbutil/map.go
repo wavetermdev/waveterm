@@ -12,6 +12,11 @@ type DBMappable interface {
 	UseDBMap()
 }
 
+type MapEntry[T any] struct {
+	Key string
+	Val T
+}
+
 type MapConverter interface {
 	ToMap() map[string]interface{}
 	FromMap(map[string]interface{}) bool
@@ -86,6 +91,19 @@ func SelectMapsGen[PT MapConverterPtr[T], T any](tx *txwrap.TxWrap, query string
 		}
 	}
 	return rtn
+}
+
+func SelectSimpleMap[T any](tx *txwrap.TxWrap, query string, args ...interface{}) map[string]T {
+	var rtn []MapEntry[T]
+	tx.Select(&rtn, query, args...)
+	if len(rtn) == 0 {
+		return nil
+	}
+	rtnMap := make(map[string]T)
+	for _, entry := range rtn {
+		rtnMap[entry.Key] = entry.Val
+	}
+	return rtnMap
 }
 
 func MakeGenMap[T HasSimpleKey](arr []T) map[string]T {

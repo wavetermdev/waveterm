@@ -2,6 +2,7 @@ package pcloud
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/scripthaus-dev/mshell/pkg/packet"
@@ -38,6 +39,26 @@ type WebShareUpdateType struct {
 	BVal     bool                `json:"bval,omitempty"`
 	DoneInfo *sstore.CmdDoneInfo `json:"doneinfo,omitempty"`
 	TermOpts *sstore.TermOpts    `json:"termopts,omitempty"`
+}
+
+const EstimatedSizePadding = 100
+
+func (update *WebShareUpdateType) GetEstimatedSize() int {
+	barr, _ := json.Marshal(update)
+	return len(barr) + 100
+}
+
+func (update *WebShareUpdateType) String() string {
+	var idStr string
+	if update.LineId != "" && update.ScreenId != "" {
+		idStr = fmt.Sprintf("%s:%s", update.ScreenId[0:8], update.LineId[0:8])
+	} else if update.ScreenId != "" {
+		idStr = update.ScreenId[0:8]
+	}
+	if update.UpdateType == sstore.UpdateType_PtyPos && update.PtyData != nil {
+		return fmt.Sprintf("ptydata[%s][%d:%d]", idStr, update.PtyData.PtyPos, len(update.PtyData.Data))
+	}
+	return fmt.Sprintf("%s[%s]", update.UpdateType, idStr)
 }
 
 type WebShareUpdateResponseType struct {
@@ -105,7 +126,6 @@ type WebShareLineType struct {
 	Renderer      string `json:"renderer,omitempty"`
 	Text          string `json:"text,omitempty"`
 	CmdId         string `json:"cmdid,omitempty"`
-	Archived      bool   `json:"archived,omitempty"`
 }
 
 func webLineFromLine(line *sstore.LineType) (*WebShareLineType, error) {
@@ -118,7 +138,6 @@ func webLineFromLine(line *sstore.LineType) (*WebShareLineType, error) {
 		Renderer:      line.Renderer,
 		Text:          line.Text,
 		CmdId:         line.CmdId,
-		Archived:      line.Archived,
 	}
 	return rtn, nil
 }

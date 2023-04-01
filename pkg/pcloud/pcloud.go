@@ -26,8 +26,14 @@ const PCloudEndpointVarName = "PCLOUD_ENDPOINT"
 const APIVersion = 1
 const MaxPtyUpdateSize = (128 * 1024)
 const MaxUpdatesPerReq = 10
+const MaxUpdatesToDeDup = 1000
 const MaxUpdateWriterErrors = 3
 const PCloudDefaultTimeout = 5 * time.Second
+const PCloudWebShareUpdateTimeout = 15 * time.Second
+
+// setting to 1M to be safe (max is 6M for API-GW + Lambda, but there is base64 encoding and upload time)
+// we allow one extra update past this estimated size
+const MaxUpdatePayloadSize = 1 * (1024 * 1024)
 
 const TelemetryUrl = "/telemetry"
 const NoTelemetryUrl = "/no-telemetry"
@@ -366,27 +372,20 @@ type webShareResponseType struct {
 	Data    []*WebShareUpdateResponseType `json:"data"`
 }
 
-func convertUpdates(updateArr []*sstore.ScreenUpdateType) []*WebShareUpdateType {
-	var webUpdates []*WebShareUpdateType
-	for _, update := range updateArr {
-		webUpdate, err := makeWebShareUpdate(context.Background(), update)
-		if err != nil || webUpdate == nil {
-			// log error (if there is one), remove update, and continue
-			if err != nil {
-				log.Printf("[pcloud] error create web-share update updateid:%d: %v", update.UpdateId, err)
-			}
-			if update.UpdateType == sstore.UpdateType_PtyPos {
-				err = sstore.RemoveScreenUpdate(context.Background(), update.UpdateId)
-			}
-			if err != nil {
-				// ignore this error too (although this is really problematic, there is nothing to do)
-				log.Printf("[pcloud] error removing screen update updateid:%d: %v", update.UpdateId, err)
-			}
-			continue
+func convertUpdate(update *sstore.ScreenUpdateType) *WebShareUpdateType {
+	webUpdate, err := makeWebShareUpdate(context.Background(), update)
+	if err != nil || webUpdate == nil {
+		if err != nil {
+			log.Printf("[pcloud] error create web-share update updateid:%d: %v", update.UpdateId, err)
 		}
-		webUpdates = append(webUpdates, webUpdate)
+		// if err, or no web update created, remove the screenupdate
+		removeErr := sstore.RemoveScreenUpdate(context.Background(), update.UpdateId)
+		if removeErr != nil {
+			// ignore this error too (although this is really problematic, there is nothing to do)
+			log.Printf("[pcloud] error removing screen update updateid:%d: %v", update.UpdateId, removeErr)
+		}
 	}
-	return webUpdates
+	return webUpdate
 }
 
 func DoSyncWebUpdate(webUpdate *WebShareUpdateType) error {
@@ -423,7 +422,7 @@ func DoWebUpdates(webUpdates []*WebShareUpdateType) error {
 	if err != nil {
 		return fmt.Errorf("could not get authinfo for request: %v", err)
 	}
-	ctx, cancelFn := context.WithTimeout(context.Background(), PCloudDefaultTimeout)
+	ctx, cancelFn := context.WithTimeout(context.Background(), PCloudWebShareUpdateTimeout)
 	defer cancelFn()
 	req, err := makeAuthPostReq(ctx, WebShareUpdateUrl, authInfo, webUpdates)
 	if err != nil {
@@ -477,9 +476,9 @@ func StartUpdateWriter() {
 func computeBackoff(numFailures int) time.Duration {
 	switch numFailures {
 	case 1:
-		return 100 * time.Millisecond
+		return 500 * time.Millisecond
 	case 2:
-		return 1 * time.Second
+		return 2 * time.Second
 	case 3:
 		return 5 * time.Second
 	case 4:
@@ -493,6 +492,34 @@ func computeBackoff(numFailures int) time.Duration {
 	}
 }
 
+type updateKey struct {
+	ScreenId   string
+	LineId     string
+	UpdateType string
+}
+
+func DeDupUpdates(ctx context.Context, updateArr []*sstore.ScreenUpdateType) ([]*sstore.ScreenUpdateType, error) {
+	var rtn []*sstore.ScreenUpdateType
+	var idsToDelete []int64
+	umap := make(map[updateKey]bool)
+	for _, update := range updateArr {
+		key := updateKey{ScreenId: update.ScreenId, LineId: update.LineId, UpdateType: update.UpdateType}
+		if umap[key] {
+			idsToDelete = append(idsToDelete, update.UpdateId)
+			continue
+		}
+		umap[key] = true
+		rtn = append(rtn, update)
+	}
+	if len(idsToDelete) > 0 {
+		err := sstore.RemoveScreenUpdates(ctx, idsToDelete)
+		if err != nil {
+			return nil, fmt.Errorf("error trying to delete screenupdates: %v\n", err)
+		}
+	}
+	return rtn, nil
+}
+
 func runWebShareUpdateWriter() {
 	defer func() {
 		setUpdateWriterRunning(false)
@@ -501,32 +528,58 @@ func runWebShareUpdateWriter() {
 	numErrors := 0
 	numSendErrors := 0
 	for {
+		if numErrors > MaxUpdateWriterErrors {
+			log.Printf("[pcloud] update-writer, too many errors, exiting\n")
+			break
+		}
 		time.Sleep(100 * time.Millisecond)
-		updateArr, err := sstore.GetScreenUpdates(context.Background(), MaxUpdatesPerReq)
+		fullUpdateArr, err := sstore.GetScreenUpdates(context.Background(), MaxUpdatesToDeDup)
 		if err != nil {
 			log.Printf("[pcloud] error retrieving updates: %v", err)
 			time.Sleep(1 * time.Second)
 			numErrors++
-			if numErrors > MaxUpdateWriterErrors {
-				log.Printf("[pcloud] update-writer, too many read errors, exiting\n")
-				break
-			}
+			continue
 		}
-		if len(updateArr) == 0 {
-			sstore.UpdateWriterCheckMoreData()
+		updateArr, err := DeDupUpdates(context.Background(), fullUpdateArr)
+		if err != nil {
+			log.Printf("[pcloud] error deduping screenupdates: %v", err)
+			time.Sleep(1 * time.Second)
+			numErrors++
 			continue
 		}
 		numErrors = 0
-		webUpdates := convertUpdates(updateArr)
-		err = DoWebUpdates(webUpdates)
+
+		var webUpdateArr []*WebShareUpdateType
+		totalSize := 0
+		for _, update := range updateArr {
+			webUpdate := convertUpdate(update)
+			if webUpdate == nil {
+				continue
+			}
+			webUpdateArr = append(webUpdateArr, webUpdate)
+			totalSize += webUpdate.GetEstimatedSize()
+			if totalSize > MaxUpdatePayloadSize {
+				break
+			}
+		}
+		if len(webUpdateArr) == 0 {
+			sstore.UpdateWriterCheckMoreData()
+			continue
+		}
+		err = DoWebUpdates(webUpdateArr)
 		if err != nil {
 			numSendErrors++
 			backoffTime := computeBackoff(numSendErrors)
-			log.Printf("[pcloud] error processing web-updates (backoff=%v): %v\n", backoffTime, err)
+			log.Printf("[pcloud] error processing %d web-updates (backoff=%v): %v\n", len(webUpdateArr), backoffTime, err)
 			time.Sleep(backoffTime)
 			continue
 		}
-		log.Printf("[pcloud] sent %d web-updates\n", len(updateArr))
+		log.Printf("[pcloud] sent %d web-updates\n", len(webUpdateArr))
+		var debugStrs []string
+		for _, webUpdate := range webUpdateArr {
+			debugStrs = append(debugStrs, webUpdate.String())
+		}
+		log.Printf("[pcloud] updates: %s\n", strings.Join(debugStrs, " "))
 		numSendErrors = 0
 	}
 }

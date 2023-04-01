@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"sync"
@@ -23,7 +24,6 @@ const HistoryCols = "h.historyid, h.ts, h.userid, h.sessionid, h.screenid, h.lin
 const DefaultMaxHistoryItems = 1000
 
 var updateWriterCVar = sync.NewCond(&sync.Mutex{})
-var updateWriterMoreData = false
 var WebScreenPtyPosLock = &sync.Mutex{}
 var WebScreenPtyPosDelIntent = make(map[string]bool) // map[screenid + ":" + lineid] -> bool
 
@@ -57,18 +57,25 @@ func WithTx(ctx context.Context, fn func(tx *TxWrap) error) error {
 }
 
 func NotifyUpdateWriter() {
-	updateWriterCVar.L.Lock()
-	defer updateWriterCVar.L.Unlock()
-	updateWriterMoreData = true
-	updateWriterCVar.Signal()
+	// must happen in a goroutine to prevent deadlock.
+	// update-writer holds this lock while reading from the DB.  we can't be holding the DB lock while calling this!
+	go func() {
+		updateWriterCVar.L.Lock()
+		defer updateWriterCVar.L.Unlock()
+		updateWriterCVar.Signal()
+	}()
 }
 
 func UpdateWriterCheckMoreData() {
 	updateWriterCVar.L.Lock()
 	defer updateWriterCVar.L.Unlock()
 	for {
-		if updateWriterMoreData {
-			updateWriterMoreData = false
+		updateCount, err := CountScreenUpdates(context.Background())
+		if err != nil {
+			log.Printf("ERROR getting screen update count (sleeping): %v", err)
+			// will just lead to a Wait()
+		}
+		if updateCount > 0 {
 			break
 		}
 		updateWriterCVar.Wait()
@@ -2561,6 +2568,21 @@ func RemoveScreenUpdate(ctx context.Context, updateId int64) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		query := `DELETE FROM screenupdate WHERE updateid = ?`
 		tx.Exec(query, updateId)
+		return nil
+	})
+}
+
+func CountScreenUpdates(ctx context.Context) (int, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (int, error) {
+		query := `SELECT count(*) FROM screenupdate`
+		return tx.GetInt(query), nil
+	})
+}
+
+func RemoveScreenUpdates(ctx context.Context, updateIds []int64) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		query := `DELETE FROM screenupdate WHERE updateid IN (SELECT value FROM json_each(?))`
+		tx.Exec(query, quickJsonArr(updateIds))
 		return nil
 	})
 }
