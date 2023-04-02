@@ -1037,6 +1037,9 @@ func ArchiveScreen(ctx context.Context, sessionId string, screenId string) (Upda
 		if !tx.Exists(query, sessionId, screenId) {
 			return fmt.Errorf("cannot close screen (not found)")
 		}
+		if isWebShare(tx, screenId) {
+			return fmt.Errorf("cannot archive screen while web-sharing.  stop web-sharing before trying to archive.")
+		}
 		query = `SELECT archived FROM screen WHERE sessionid = ? AND screenid = ?`
 		closeVal := tx.GetBool(query, sessionId, screenId)
 		if closeVal {
@@ -2434,6 +2437,9 @@ func CanScreenWebShare(screen *ScreenType) error {
 	}
 	if screen.ShareMode != ShareModeLocal {
 		return fmt.Errorf("screen cannot be shared, invalid current share mode %q (must be local)", screen.ShareMode)
+	}
+	if screen.Archived {
+		return fmt.Errorf("screen cannot be shared, must un-archive before sharing")
 	}
 	return nil
 }

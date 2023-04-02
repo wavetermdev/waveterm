@@ -556,7 +556,7 @@ func ScreenArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		log.Printf("unarchive screen %s\n", screenId)
 		err = sstore.UnArchiveScreen(ctx, ids.SessionId, screenId)
 		if err != nil {
-			return nil, fmt.Errorf("/screen:archive cannot re-open screen: %v", err)
+			return nil, fmt.Errorf("/screen:archive cannot un-archive screen: %v", err)
 		}
 		screen, err := sstore.GetScreenById(ctx, screenId)
 		if err != nil {
