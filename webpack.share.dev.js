@@ -20,6 +20,9 @@ var merged = merge.merge(common, {
         headers: {
             'Cache-Control': 'no-store',
         },
+        devMiddleware: {
+            publicPath: '/dist-dev/'
+        },
         allowedHosts: "all",
         hot: false,
         liveReload: false,

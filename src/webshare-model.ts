@@ -50,9 +50,16 @@ class WebShareModelClass {
     remoteScreenVts : number = 0;
     
     constructor() {
+        let pathName = window.location.pathname;
+        let screenMatch = pathName.match(/\/share\/([a-f0-9-]+)/);
+        if (screenMatch != null) {
+            this.screenId = screenMatch[1];
+        }
         let urlParams = new URLSearchParams(window.location.search);
         this.viewKey = urlParams.get("viewkey");
-        this.screenId = urlParams.get("screenid");
+        if (this.screenId == null) {
+            this.screenId = urlParams.get("screenid");
+        }
         setTimeout(() => this.loadFullScreenData(false), 10);
         this.wsControl = new WebShareWSControl(getBaseWSUrl(), this.screenId, this.viewKey, this.wsMessageCallback.bind(this));
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));

@@ -131,7 +131,7 @@ rm *.dmg
 ```bash
 # @scripthaus command sync-webshare-dev
 # @scripthaus cd :playbook
-aws --profile prompt-s3 s3 cp webshare/static/index.html s3://prompt-devshare-static/ --cache-control 'public, max-age=600, s-maxage=300, stale-if-error=60'
-aws --profile prompt-s3 s3 sync webshare/static s3://prompt-devshare-static/static --cache-control 'public, max-age=600, s-maxage=300, stale-if-error=60'
-aws --profile prompt-s3 s3 sync webshare/dist-dev s3://prompt-devshare-static/ --cache-control 'public, max-age=600, s-maxage=300, stale-if-error=60'
+# no-cache for dev
+aws --profile prompt-s3 s3 sync webshare/static s3://prompt-devshare-static/static --cache-control 'no-cache'
+aws --profile prompt-s3 s3 sync webshare/dist-dev s3://prompt-devshare-static/dist-dev --cache-control 'no-cache'
 ```
