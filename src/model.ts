@@ -259,7 +259,7 @@ class Screen {
     dispose() {
     }
 
-    isWebShare() : boolean {
+    isWebShared() : boolean {
         return (this.shareMode.get() == "web") && (this.webShareOpts.get() != null);
     }
 
@@ -3200,6 +3200,12 @@ class CommandRunner {
 
     screenArchive(screenId : string, shouldArchive : boolean) {
         GlobalModel.submitCommand("screen", "archive", [screenId, (shouldArchive ? "1" : "0")], {"nohist": "1"}, false);
+    }
+
+    screenWebShare(screenId : string, shouldShare : boolean) {
+        let kwargs : Record<string, string> = {"nohist": "1"};
+        kwargs["screen"] = screenId;
+        GlobalModel.submitCommand("screen", "webshare", [(shouldShare ? "1" : "0")], kwargs, true);
     }
 
     showRemote(remoteid : string) {

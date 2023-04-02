@@ -1830,7 +1830,7 @@ class ScreenWindowView extends React.Component<{screen : Screen}, {}> {
                         </If>
                     </div>
                 </div>
-                <If condition={screen.isWebShare()}>
+                <If condition={screen.isWebShared()}>
                     <div key="share-tag" className="share-tag">
                         <If condition={this.shareCopied.get()}>
                             <div className="copied-indicator"/>
@@ -1987,7 +1987,7 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
                     <For each="screen" index="index" of={showingScreens}>
                         <div key={screen.screenId} data-screenid={screen.screenId} className={cn("screen-tab", {"is-active": activeScreenId == screen.screenId, "is-archived": screen.archived.get()}, "color-" + screen.getTabColor())} onClick={() => this.handleSwitchScreen(screen.screenId)} onContextMenu={(event) => this.openScreenSettings(event, screen)}>
                             <If condition={screen.archived.get()}><i title="archived" className="fa-sharp fa-solid fa-box-archive"/></If>
-                            <If condition={screen.isWebShare()}><i title="archived" className="fa-sharp fa-solid fa-share-nodes web-share-icon"/></If>
+                            <If condition={screen.isWebShared()}><i title="archived" className="fa-sharp fa-solid fa-share-nodes web-share-icon"/></If>
                             {screen.name.get()}
                             <If condition={index+1 <= 9}>
                                 <div className="tab-index">{renderCmdText(String(index+1))}</div>

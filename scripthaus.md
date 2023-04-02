@@ -50,6 +50,12 @@ node_modules/.bin/webpack-dev-server --config webpack.share.dev.js --host 127.0.
 ```
 
 ```bash
+# @scripthaus command webshare-build
+# @scripthaus cd :playbook
+node_modules/.bin/webpack --config webpack.share.dev.js
+```
+
+```bash
 # @scripthaus command typecheck
 # @scripthaus cd :playbook
 node_modules/.bin/tsc --jsx preserve --noEmit --esModuleInterop --target ES5 --experimentalDecorators --downlevelIteration src/sh2.ts
@@ -120,4 +126,12 @@ rm *.dmg
   --app-drop-link 400 125 \
   $DMG_NAME \
   "out/Prompt-darwin-arm64/Prompt.app"
+```
+
+```bash
+# @scripthaus command sync-webshare-dev
+# @scripthaus cd :playbook
+aws --profile prompt-s3 s3 cp webshare/static/index.html s3://prompt-devshare-static/ --cache-control 'public, max-age=600, s-maxage=300, stale-if-error=60'
+aws --profile prompt-s3 s3 sync webshare/static s3://prompt-devshare-static/static --cache-control 'public, max-age=600, s-maxage=300, stale-if-error=60'
+aws --profile prompt-s3 s3 sync webshare/dist-dev s3://prompt-devshare-static/ --cache-control 'public, max-age=600, s-maxage=300, stale-if-error=60'
 ```

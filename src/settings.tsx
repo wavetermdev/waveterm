@@ -25,6 +25,8 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
     tempName : OV<string>;
     tempTabColor : OV<string>;
     tempArchived : OV<boolean>;
+    tempWebShared : OV<boolean>;
+    shareCopied : OV<boolean> = mobx.observable.box(false, {name: "sw-shareCopied"});
 
     constructor(props : any) {
         super(props);
@@ -36,6 +38,7 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
         this.tempName = mobx.observable.box(screen.name.get(), {name: "screenSettings-tempName"});
         this.tempTabColor = mobx.observable.box(screen.getTabColor(), {name: "screenSettings-tempTabColor"});
         this.tempArchived = mobx.observable.box(screen.archived.get(), {name: "screenSettings-tempArchived"});
+        this.tempWebShared = mobx.observable.box(screen.isWebShared(), {name: "screenSettings-tempWebShare"});
     }
     
     @boundMethod
@@ -67,6 +70,9 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
         if (this.tempArchived.get() != screen.archived.get()) {
             GlobalCommandRunner.screenArchive(screen.screenId, this.tempArchived.get());
         }
+        if (this.tempWebShared.get() != screen.isWebShared()) {
+            GlobalCommandRunner.screenWebShare(screen.screenId, this.tempWebShared.get());
+        }
     }
 
     @boundMethod
@@ -90,6 +96,44 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
         })();
     }
 
+    @boundMethod
+    handleChangeWebShare(val : boolean) : void {
+        mobx.action(() => {
+            this.tempWebShared.set(val);
+        })();
+    }
+
+    @boundMethod
+    copyShareLink() : void {
+        let {sessionId, screenId} = this.props;
+        let screen = GlobalModel.getScreenById(sessionId, screenId);
+        if (screen == null) {
+            return null;
+        }
+        let shareLink = screen.getWebShareUrl();
+        if (shareLink == null) {
+            return;
+        }
+        navigator.clipboard.writeText(shareLink);
+        mobx.action(() => {
+            this.shareCopied.set(true);
+        })();
+        setTimeout(() => {
+            mobx.action(() => {
+                this.shareCopied.set(false);
+            })();
+        }, 600)
+    }
+
+    webSharedUpdated() : boolean {
+        let {sessionId, screenId} = this.props;
+        let screen = GlobalModel.getScreenById(sessionId, screenId);
+        if (screen == null) {
+            return null;
+        }
+        return screen.isWebShared() != this.tempWebShared.get();
+    }
+
     render() {
         let {sessionId, screenId} = this.props;
         let screen = GlobalModel.getScreenById(sessionId, screenId);
@@ -101,6 +145,9 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
             <div className={cn("modal screen-settings-modal settings-modal prompt-modal is-active")}>
                 <div className="modal-background"/>
                 <div className="modal-content">
+                    <If condition={this.shareCopied.get()}>
+                        <div className="copied-indicator"/>
+                    </If>
                     <header>
                         <div className="modal-title">screen settings ({screen.name.get()})</div>
                         <div className="close-icon">
@@ -157,6 +204,27 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
                                     <If condition={this.tempArchived.get() && this.tempArchived.get() != screen.archived.get()}>will be archived</If>
                                     <If condition={!this.tempArchived.get() && this.tempArchived.get() != screen.archived.get()}>will be un-archived</If>
                                 </div>
+                            </div>
+                        </div>
+                        <div className="settings-field">
+                            <div className="settings-label">
+                                Web Shared
+                            </div>
+                            <div className="settings-input">
+                                <Toggle checked={this.tempWebShared.get()} onChange={this.handleChangeWebShare}/>
+                                <div className="action-text">
+                                    <If condition={this.tempWebShared.get() && this.webSharedUpdated()}>will be web-shared</If>
+                                    <If condition={!this.tempWebShared.get() && this.webSharedUpdated()}>will stop being web-shared</If>
+                                    <If condition={screen.isWebShared() && !this.webSharedUpdated()}>
+                                        <div className="button settings-share-link is-prompt-green is-outlined is-small" onClick={this.copyShareLink}>
+                                            <span>copy share link</span>
+                                            <span className="icon">
+                                                <i className="fa-sharp fa-solid fa-copy"/>
+                                            </span>
+                                        </div>
+                                    </If>
+                                </div>
+                                
                             </div>
                         </div>
                     </div>

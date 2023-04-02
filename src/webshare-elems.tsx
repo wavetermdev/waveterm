@@ -24,6 +24,7 @@ type OMap<K,V> = mobx.ObservableMap<K,V>;
 let foo = LinesView;
 
 // TODO reshare
+// TODO document.visibility API to disconnect websocket: document.addEventListener("visibilitychange", () => { document.hidden });
 
 function makeFullRemoteRef(ownerName : string, remoteRef : string, name : string) : string {
     if (isBlank(ownerName) && isBlank(name)) {
