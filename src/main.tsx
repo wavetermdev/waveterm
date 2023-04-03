@@ -19,7 +19,8 @@ import remarkGfm from 'remark-gfm'
 import {BookmarksView} from "./bookmarks";
 import {HistoryView} from "./history";
 import {Line, Prompt} from "./linecomps";
-import {ScreenSettingsModal, SessionSettingsModal, LineSettingsModal, ClientSettingsModal, RemotesModal} from "./settings";
+import {ScreenSettingsModal, SessionSettingsModal, LineSettingsModal, ClientSettingsModal} from "./settings";
+import {RemotesModal} from "./remotes";
 import {renderCmdText, RemoteStatusLight} from "./elements";
 import {LinesView} from "./linesview";
 
@@ -2136,7 +2137,7 @@ class MainSideBar extends React.Component<{}, {}> {
 
     @boundMethod
     handleConnectionsClick() : void {
-        GlobalModel.openRemotesModal();
+        GlobalModel.remotesModalModel.openModal();
     }
 
     @boundMethod
@@ -2620,7 +2621,7 @@ class Main extends React.Component<{}, {}> {
         let sessionSettingsModal = GlobalModel.sessionSettingsModal.get();
         let lineSettingsModal = GlobalModel.lineSettingsModal.get();
         let clientSettingsModal = GlobalModel.clientSettingsModal.get();
-        let remotesModal = GlobalModel.remotesModal.get();
+        let remotesModal = GlobalModel.remotesModalModel.isOpen();
         let disconnected = !GlobalModel.ws.open.get() || !GlobalModel.localServerRunning.get();
         let hasClientStop = GlobalModel.getHasClientStop();
         let dcWait = this.dcWait.get();
@@ -2672,8 +2673,8 @@ class Main extends React.Component<{}, {}> {
                 <If condition={clientSettingsModal}>
                     <ClientSettingsModal/>
                 </If>
-                <If condition={remotesModal != null}>
-                    <RemotesModal/>
+                <If condition={remotesModal}>
+                    <RemotesModal model={GlobalModel.remotesModalModel}/>
                 </If>
             </div>
         );
