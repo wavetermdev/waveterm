@@ -978,15 +978,18 @@ class RemotesModal extends React.Component<{}, {}> {
                         </If>
                     </div>
                 </div>
-                <div className="settings-field">
+                <div className="settings-field" style={{minHeight: 24}}>
                     <div className="settings-label">Alias</div>
                     <InlineSettingsTextEdit onChange={(val) => this.editAlias(remote.remoteid, val)} text={remoteAliasText ?? ""} value={remote.remotealias} placeholder="" maxLength={50}/>
                 </div>
                 <div className="settings-field">
                     <div className="settings-label">Auth Type</div>
-                    <div className="settings-input settings-clickable" onClick={() => this.editAuthSettings()}>
-                        {remote.authtype}
-                        <i style={{marginLeft: 5}} className="fa-sharp fa-solid fa-pen"/>
+                    <div className="settings-input">
+                        {remote.authtype} <i style={{marginLeft: 12}} className="fa-sharp fa-solid fa-pen hide-hover"/>
+                        <div onClick={() => this.editAuthSettings()} className="button is-plain is-outlined is-small is-inline-height ml-2 update-auth-button">
+                            <span className="icon is-small"><i className="fa-sharp fa-solid fa-pen"/></span>
+                            <span>Update Auth Settings</span>
+                        </div>
                     </div>
                 </div>
                 <div className="settings-field">

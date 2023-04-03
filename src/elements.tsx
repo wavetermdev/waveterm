@@ -169,7 +169,6 @@ class InlineSettingsTextEdit extends React.Component<{text : string, value : str
             return (
                 <div onClick={this.clickEdit} className={cn("settings-input inline-edit", "edit-not-active")}>
                     {this.props.text}
-                    <i style={{marginLeft: 5}} className="fa-sharp fa-solid fa-pen"/>
                 </div>
             );
         }

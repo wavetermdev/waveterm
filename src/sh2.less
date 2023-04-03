@@ -2915,6 +2915,22 @@ input[type=checkbox] {
                     height: 22px;
                 }
             }
+
+            .settings-field {
+                .update-auth-button {
+                    visibility: hidden;
+                }
+                
+                &:hover {
+                    .update-auth-button {
+                        visibility: visible;
+                    }
+
+                    .hide-hover {
+                        display: none;
+                    }
+                }
+            }
         }
     }
 }
@@ -3045,6 +3061,11 @@ input[type=checkbox] {
 
         &.inline-edit.edit-not-active {
             cursor: pointer;
+
+            &:hover {
+                text-decoration: underline;
+                text-decoration-style: dotted;
+            }
         }
 
         &.settings-clickable {
