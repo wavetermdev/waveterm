@@ -175,4 +175,23 @@ class InlineSettingsTextEdit extends React.Component<{text : string, value : str
     }
 }
 
-export {CmdStrCode, Toggle, renderCmdText, RemoteStatusLight, InlineSettingsTextEdit};
+@mobxReact.observer
+class InfoMessage extends React.Component<{width : number, children : React.ReactNode}> {
+    render() {
+        return (
+            <div className="info-message">
+                <div className="message-icon">
+                    <i className="fa-sharp fa-solid fa-circle-info"/>
+                </div>
+                <div className="message-content" style={{width: this.props.width}}>
+                    <div className="info-icon">
+                        <i className="fa-sharp fa-solid fa-circle-info"/>
+                    </div>
+                    <div className="info-children">{this.props.children}</div>
+                </div>
+            </div>
+        );
+    }
+}
+
+export {CmdStrCode, Toggle, renderCmdText, RemoteStatusLight, InlineSettingsTextEdit, InfoMessage};

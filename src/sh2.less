@@ -2860,6 +2860,12 @@ input[type=checkbox] {
                 flex-shrink: 0;
             }
 
+            .detail-subtitle {
+                font-size: 18px;
+                margin-bottom: 10px;
+                margin-top: 10px;
+            }
+
             .title {
                 color: white;
                 padding-bottom: 8px;
@@ -2931,6 +2937,104 @@ input[type=checkbox] {
                     }
                 }
             }
+
+            &.auth-editing {
+                .settings-field.align-top {
+                    align-items: flex-start;
+
+                    .settings-label {
+                        margin-top: 8px;
+                    }
+
+                    .settings-input {
+                        align-items: flex-start;
+                    }
+                }
+
+                .settings-field .settings-input .undo-icon {
+                    cursor: pointer;
+                    font-size: 18px;
+                    margin-left: 5px;
+                }
+
+                .authmode-dropdown .dropdown-trigger button {
+                    width: 120px;
+                    justify-content: flex-start;
+                }
+
+                .connectmode-dropdown .dropdown-trigger button {
+                    width: 120px;
+                    justify-content: flex-start;
+                }
+
+                .settings-field .raw-input {
+                    width: 120px;
+                }
+
+                .settings-input input {
+                    width: 250px;
+                }
+                
+                .dropdown .dropdown-trigger button {
+                    font-size: 12px;
+                }
+                
+                .dropdown .dropdown-item {
+                    font-size: 12px;
+                    padding: 5px 5px 5px 12px;
+                }
+
+                .info-message {
+                    margin-left: 22px;
+                }
+
+                .remoteedit-error {
+                    font-size: 14px;
+                    color: @term-red;
+                    margin-top: 20px;
+                    padding: 10px;
+                    border-radius: 5px;
+                    background-color: #333;
+                    border: 1px solid @term-red;
+                    font-weight: bold;
+                }
+            }
+        }
+    }
+}
+
+.info-message {
+    position: relative;
+    
+    .message-content {
+        position: absolute;
+        display: none;
+        flex-direction: row;
+        align-items: flex-start;
+        top: -6px;
+        left: -6px;
+        padding: 5px;
+        border: 1px solid #777;
+        background-color: #444;
+        border-radius: 5px;
+        z-index: 5;
+        overflow: hidden;
+
+        .info-icon {
+            margin-right: 5px;
+            width: 12px;
+            flex-shrink: 0;
+        }
+
+        .info-children {
+            flex: 1 0 0;
+            overflow: hidden;
+        }
+    }
+    
+    &:hover {
+        .message-content {
+            display: flex;
         }
     }
 }
