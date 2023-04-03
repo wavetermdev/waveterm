@@ -5,7 +5,7 @@ import {debounce} from "throttle-debounce";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeDataMap, genMergeSimpleData, boundInt, isModKeyPress} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType, HistoryViewDataType, AlertMessageType, HistorySearchParams, FocusTypeStrs, ScreenLinesType, HistoryTypeStrs, RendererPluginType, WindowSize, ClientMigrationInfo, WebShareOpts, TermContextUnion} from "./types";
+import type {SessionDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType, HistoryViewDataType, AlertMessageType, HistorySearchParams, FocusTypeStrs, ScreenLinesType, HistoryTypeStrs, RendererPluginType, WindowSize, ClientMigrationInfo, WebShareOpts, TermContextUnion, RemoteEditType, RemoteViewType} from "./types";
 import {WSControl} from "./ws";
 import {measureText, getMonoFontSize, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows} from "./textmeasure";
 import dayjs from "dayjs";
@@ -2283,12 +2283,13 @@ class BookmarksModel {
 }
 
 class RemotesModalModel {
+    openState : OV<boolean> = mobx.observable.box(false, {name: "RemotesModalModel-isOpen"});
     selectedRemoteId : OV<string> = mobx.observable.box(null, {name: "RemotesModalModel-selectedRemoteId"});
     remoteTermWrap : TermWrap;
     remoteTermWrapFocus : OV<boolean> = mobx.observable.box(false, {name: "RemotesModalModel-remoteTermWrapFocus"});
     showNoInputMsg : OV<boolean> = mobx.observable.box(false, {name: "RemotesModel-showNoInputMg"});
     showNoInputTimeoutId : any = null;
-    authEditMode : OV<boolean> = mobx.observable.box(false, {name: "RemotesModal-authEditMode"});
+    remoteEdit : OV<RemoteEditType> = mobx.observable.box(null, {name: "RemoteModal-remoteEdit"});
 
     openModal(remoteId? : string) : void {
         if (remoteId == null) {
@@ -2304,7 +2305,17 @@ class RemotesModalModel {
             }
         }
         mobx.action(() => {
+            this.openState.set(true);
             this.selectedRemoteId.set(remoteId);
+            this.remoteEdit.set(null);
+        })();
+    }
+
+    openModalForEdit(redit : RemoteEditType) : void {
+        mobx.action(() => {
+            this.openState.set(true);
+            this.selectedRemoteId.set(redit.remoteid);
+            this.remoteEdit.set(redit);
         })();
     }
 
@@ -2314,31 +2325,38 @@ class RemotesModalModel {
         }
         mobx.action(() => {
             this.selectedRemoteId.set(remoteId);
-            this.authEditMode.set(false);
+            this.remoteEdit.set(null);
         })();
     }
 
     @boundMethod
     startEditAuth() : void {
-        mobx.action(() => {
-            this.authEditMode.set(true);
-        })();
+        let remoteId = this.selectedRemoteId.get();
+        if (remoteId != null) {
+            GlobalCommandRunner.openEditRemote(remoteId);
+        }
     }
 
     @boundMethod
     cancelEditAuth() : void {
         mobx.action(() => {
-            this.authEditMode.set(false);
+            this.remoteEdit.set(null);
         })();
     }
 
     isOpen() : boolean {
-        return this.selectedRemoteId.get() != null;
+        return this.openState.get();
+    }
+
+    isAuthEditMode() : boolean {
+        return this.remoteEdit.get() != null;
     }
 
     closeModal() : void {
         mobx.action(() => {
+            this.openState.set(false);
             this.selectedRemoteId.set(null);
+            this.remoteEdit.set(null);
         })();
     }
 
@@ -2618,6 +2636,9 @@ class Model {
         }
         if (e.code == "Escape") {
             e.preventDefault();
+            if (this.clearModals()) {
+                return;
+            }
             let inputModel = this.inputModel;
             inputModel.toggleInfoMsg();
             if (inputModel.inputMode.get() != null) {
@@ -2629,6 +2650,41 @@ class Model {
             e.preventDefault();
             GlobalCommandRunner.bookmarksView();
         }
+    }
+
+    clearModals() : boolean {
+        let didSomething = false;
+        mobx.action(() => {
+            if (GlobalModel.screenSettingsModal.get()) {
+                GlobalModel.screenSettingsModal.set(null);
+                didSomething = true;
+            }
+            if (GlobalModel.sessionSettingsModal.get()) {
+                GlobalModel.sessionSettingsModal.set(null);
+                didSomething = true;
+            }
+            if (GlobalModel.screenSettingsModal.get()) {
+                GlobalModel.screenSettingsModal.set(null);
+                didSomething = true;
+            }
+            if (GlobalModel.remotesModalModel.isOpen()) {
+                GlobalModel.remotesModalModel.closeModal();
+                didSomething = true;
+            }
+            if (GlobalModel.clientSettingsModal.get()) {
+                GlobalModel.clientSettingsModal.set(false);
+                didSomething = true;
+            }
+            if (GlobalModel.lineSettingsModal.get()) {
+                GlobalModel.lineSettingsModal.set(null);
+                didSomething = true;
+            }
+            if (GlobalModel.welcomeModalOpen.get()) {
+                GlobalModel.welcomeModalOpen.set(false);
+                didSomething = true;
+            }
+        })();
+        return didSomething;
     }
 
     restartLocalServer() : void {
@@ -2912,6 +2968,18 @@ class Model {
         if (interactive && "info" in update) {
             let info : InfoType = update.info;
             this.inputModel.flashInfoMsg(info, info.timeoutms);
+        }
+        if (interactive && "remoteview" in update) {
+            let rview : RemoteViewType = update.remoteview;
+            if (rview.remoteshowall) {
+                this.remotesModalModel.openModal();
+            }
+            else if (rview.remoteedit != null) {
+                this.remotesModalModel.openModalForEdit(rview.remoteedit);
+            }
+            else if (rview.ptyremoteid) {
+                this.remotesModalModel.openModal(rview.ptyremoteid);
+            }
         }
         if ("cmdline" in update) {
             this.inputModel.updateCmdLine(update.cmdline);
