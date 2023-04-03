@@ -55,6 +55,13 @@ const (
 )
 
 const (
+	RemoteAuthTypeNone        = "none"
+	RemoteAuthTypePassword    = "password"
+	RemoteAuthTypeKey         = "key"
+	RemoteAuthTypeKeyPassword = "key+password"
+)
+
+const (
 	ShareModeLocal = "local"
 	ShareModeWeb   = "web"
 )
@@ -791,6 +798,19 @@ type SSHOpts struct {
 	SSHIdentity string `json:"sshidentity,omitempty"`
 	SSHPort     int    `json:"sshport,omitempty"`
 	SSHPassword string `json:"sshpassword,omitempty"`
+}
+
+func (opts SSHOpts) GetAuthType() string {
+	if opts.SSHPassword != "" && opts.SSHIdentity != "" {
+		return RemoteAuthTypeKeyPassword
+	}
+	if opts.SSHIdentity != "" {
+		return RemoteAuthTypeKey
+	}
+	if opts.SSHPassword != "" {
+		return RemoteAuthTypePassword
+	}
+	return RemoteAuthTypeNone
 }
 
 type RemoteOptsType struct {

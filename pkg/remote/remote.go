@@ -97,6 +97,7 @@ type MShellProc struct {
 	ServerProc         *shexec.ClientProc
 	UName              string
 	Err                error
+	ErrNoInitPk        bool
 	ControllingPty     *os.File
 	PtyBuffer          *circbuf.Buffer
 	MakeClientCancelFn context.CancelFunc
@@ -135,6 +136,8 @@ type RemoteRuntimeState struct {
 	InstallStatus       string                 `json:"installstatus"`
 	InstallErrorStr     string                 `json:"installerrorstr,omitempty"`
 	NeedsMShellUpgrade  bool                   `json:"needsmshellupgrade,omitempty"`
+	NoInitPk            bool                   `json:"noinitpk,omitempty"`
+	AuthType            string                 `json:"authtype,omitempty"`
 	ConnectMode         string                 `json:"connectmode"`
 	AutoInstall         bool                   `json:"autoinstall"`
 	Archived            bool                   `json:"archived,omitempty"`
@@ -513,6 +516,11 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		InstallStatus:       msh.InstallStatus,
 		NeedsMShellUpgrade:  msh.NeedsMShellUpgrade,
 		Local:               msh.Remote.Local,
+		NoInitPk:            msh.ErrNoInitPk,
+		AuthType:            sstore.RemoteAuthTypeNone,
+	}
+	if msh.Remote.SSHOpts != nil {
+		state.AuthType = msh.Remote.SSHOpts.GetAuthType()
 	}
 	if msh.Remote.RemoteOpts != nil {
 		optsCopy := *msh.Remote.RemoteOpts
@@ -1135,6 +1143,7 @@ func (msh *MShellProc) Launch(interactive bool) {
 	defer makeClientCancelFn()
 	msh.WithLock(func() {
 		msh.Err = nil
+		msh.ErrNoInitPk = false
 		msh.Status = StatusConnecting
 		msh.MakeClientCancelFn = makeClientCancelFn
 		go msh.NotifyRemoteUpdate()
@@ -1145,6 +1154,9 @@ func (msh *MShellProc) Launch(interactive bool) {
 	var stateBaseHash string
 	msh.WithLock(func() {
 		msh.MakeClientCancelFn = nil
+		if initPk == nil {
+			msh.ErrNoInitPk = true
+		}
 		if initPk != nil {
 			msh.UName = initPk.UName
 			mshellVersion = initPk.Version
