@@ -34,7 +34,26 @@ function getRemoteTitle(remote : RemoteType) {
 }
 
 @mobxReact.observer
-class RemoteDetailView extends React.Component<{remoteId : string, model : RemotesModalModel}, {}> {
+class RemoteAuthSettings extends React.Component<{model : RemotesModalModel, remote : RemoteType}, {}> {
+    render() {
+        let {model, remote} = this.props;
+        return (
+            <div className="remote-detail">
+                <div className="title is-5">{getRemoteTitle(remote)}</div>
+                <div>
+                    Editing Authentication Settings
+                </div>
+                <div>
+                    <div onClick={model.cancelEditAuth} className="button is-plain is-outlined is-small">Cancel</div>
+                    <div style={{marginLeft: 10}} onClick={null} className="button is-prompt-green is-outlined is-small">Submit</div>
+                </div>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
+class RemoteDetailView extends React.Component<{model : RemotesModalModel, remote : RemoteType}, {}> {
     termRef : React.RefObject<any> = React.createRef();
 
     componentDidMount() {
@@ -206,18 +225,8 @@ class RemoteDetailView extends React.Component<{remoteId : string, model : Remot
     }
     
     render() {
-        let remoteId = this.props.remoteId;
-        let remote = GlobalModel.getRemote(remoteId);
-        if (remote == null) {
-            return (
-                <div className="remote-detail flex-centered-row">
-                    <div>
-                        No Remote Selected
-                    </div>
-                </div>
-            );
-        }
-        let isTermFocused = this.props.model.remoteTermWrapFocus.get();
+        let {model, remote} = this.props;
+        let isTermFocused = model.remoteTermWrapFocus.get();
         let termFontSize = GlobalModel.termFontSize.get();
         let remoteMessage = this.renderRemoteMessage(remote);
         let termWidth = textmeasure.termWidthFromCols(RemotePtyCols, termFontSize);
@@ -275,14 +284,14 @@ class RemoteDetailView extends React.Component<{remoteId : string, model : Remot
                 <div style={{width: termWidth}}>
                     {remoteMessage}
                 </div>
-                <div key="term" className={cn("terminal-wrapper", {"focus": isTermFocused}, (remote != null ? "status-" + remote.status : null), {"has-message": remoteMessage != null})} style={{display: (remoteId == null ? "none" : "block"), width: termWidth}}>
+                <div key="term" className={cn("terminal-wrapper", {"focus": isTermFocused}, (remote != null ? "status-" + remote.status : null), {"has-message": remoteMessage != null})} style={{width: termWidth}}>
                     <If condition={!isTermFocused}>
                         <div key="termblock" className="term-block" onClick={this.clickTermBlock}></div>
                     </If>
-                    <If condition={this.props.model.showNoInputMsg.get()}>
+                    <If condition={model.showNoInputMsg.get()}>
                         <div key="termtag" className="term-tag">input is only allowed while status is 'connecting'</div>
                     </If>
-                    <div key="terminal" className="terminal-connectelem" ref={this.termRef} data-remoteid={remoteId} style={{height: textmeasure.termHeightFromRows(RemotePtyRows, termFontSize)}}></div>
+                    <div key="terminal" className="terminal-connectelem" ref={this.termRef} data-remoteid={remote.remoteid} style={{height: textmeasure.termHeightFromRows(RemotePtyRows, termFontSize)}}></div>
                 </div>
             </div>
         );
@@ -304,16 +313,6 @@ class RemotesModal extends React.Component<{model : RemotesModalModel}, {}> {
 
     @boundMethod
     clickAddRemote() : void {
-    }
-
-    @boundMethod
-    cancelEditAuth() : void {
-        this.props.model.cancelEditAuth();
-    }
-
-    @boundMethod
-    editAuthSettings() : void {
-        this.props.model.startEditAuth();
     }
 
     renderRemoteMenuItem(remote : RemoteType, selectedId : string) : any {
@@ -345,37 +344,23 @@ class RemotesModal extends React.Component<{model : RemotesModalModel}, {}> {
         );
     }
 
-    renderEditAuthSettings(remoteId : string) : any {
-        let remote = GlobalModel.getRemote(remoteId);
-        if (remote == null) {
-            return (
-                <div className="remote-detail flex-centered-row">
-                    <div>
-                        No Remote Selected
-                    </div>
-                </div>
-            );
-        }
+    renderEmptyDetail() : any {
         return (
-            <div className="remote-detail">
-                <div className="title is-5">{getRemoteTitle(remote)}</div>
+            <div className="remote-detail flex-centered-row">
                 <div>
-                    Editing Authentication Settings
-                </div>
-                <div>
-                    <div onClick={this.cancelEditAuth} className="button is-plain is-outlined is-small">Cancel</div>
-                    <div style={{marginLeft: 10}} onClick={null} className="button is-prompt-green is-outlined is-small">Submit</div>
+                    No Remote Selected
                 </div>
             </div>
         );
     }
-    
+
     render() {
         let model = this.props.model;
         let selectedRemoteId = model.selectedRemoteId.get();
         let allRemotes = util.sortAndFilterRemotes(GlobalModel.remotes.slice());
         let remote : RemoteType = null;
         let isAuthEditMode = model.authEditMode.get();
+        let selectedRemote = GlobalModel.getRemote(selectedRemoteId);
         return (
             <div className={cn("modal remotes-modal settings-modal prompt-modal is-active")}>
                 <div className="modal-background"/>
@@ -393,11 +378,16 @@ class RemotesModal extends React.Component<{model : RemotesModalModel}, {}> {
                                 {this.renderRemoteMenuItem(remote, selectedRemoteId)}
                             </For>
                         </div>
-                        <If condition={!isAuthEditMode}>
-                            <RemoteDetailView key={"remotedetail-" + selectedRemoteId} remoteId={selectedRemoteId} model={model}/>
+                        <If condition={selectedRemote == null}>
+                            {this.renderEmptyDetail()}
                         </If>
-                        <If condition={isAuthEditMode}>
-                            {this.renderEditAuthSettings(selectedRemoteId)}
+                        <If condition={selectedRemote != null}>
+                            <If condition={!isAuthEditMode}>
+                                <RemoteDetailView key={"remotedetail-" + selectedRemoteId} remote={selectedRemote} model={model}/>
+                            </If>
+                            <If condition={isAuthEditMode}>
+                                <RemoteAuthSettings key={"remoteauth-" + selectedRemoteId} remote={selectedRemote} model={model}/>
+                            </If>
                         </If>
                     </div>
                     <footer>
