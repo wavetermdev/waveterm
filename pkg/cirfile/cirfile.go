@@ -352,6 +352,28 @@ func (f *File) ReadAll(ctx context.Context) (int64, []byte, error) {
 	return realOffset, buf[0:nr], err
 }
 
+func (f *File) ReadAtWithMax(ctx context.Context, offset int64, maxSize int64) (int64, []byte, error) {
+	err := f.flock(ctx, syscall.LOCK_SH)
+	if err != nil {
+		return 0, nil, err
+	}
+	defer f.unflock()
+	err = f.readMeta()
+	if err != nil {
+		return 0, nil, err
+	}
+	chunks := f.getFileChunks()
+	curSize := totalChunksSize(chunks)
+	var buf []byte
+	if maxSize > curSize {
+		buf = make([]byte, curSize)
+	} else {
+		buf = make([]byte, maxSize)
+	}
+	realOffset, nr, err := f.internalReadNext(buf, offset)
+	return realOffset, buf[0:nr], err
+}
+
 func (f *File) internalReadNext(buf []byte, offset int64) (int64, int, error) {
 	if offset < f.FileOffset {
 		offset = f.FileOffset

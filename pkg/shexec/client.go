@@ -75,7 +75,7 @@ func MakeClientProc(ctx context.Context, ecmd *exec.Cmd) (*ClientProc, *packet.I
 		initPk := pk.(*packet.InitPacketType)
 		if initPk.NotFound {
 			cproc.Close()
-			return nil, initPk, fmt.Errorf("mshell-%s command not found on local server", semver.MajorMinor(base.MShellVersion))
+			return nil, initPk, fmt.Errorf("mshell client not found", semver.MajorMinor(base.MShellVersion))
 		}
 		if semver.MajorMinor(initPk.Version) != semver.MajorMinor(base.MShellVersion) {
 			cproc.Close()

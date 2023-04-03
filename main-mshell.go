@@ -528,9 +528,6 @@ Examples:
 
     # run a script as root (via sudo), capture output
     mshell --sudo-with-passfile pw.txt --ssh ubuntu@somehost -- "python3 /dev/fd/3 > /dev/fd/4" 3< myscript.py 4> script-output.txt < script-input.txt
-
-mshell is licensed under the MPLv2
-Please see https://github.com/scripthaus-dev/mshell for extended usage modes, source code, bugs, and feature requests
 `
 	fmt.Printf("%s\n\n", strings.TrimSpace(usage))
 }
