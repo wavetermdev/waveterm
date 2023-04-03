@@ -49,10 +49,17 @@ type ModelUpdate struct {
 	SelectedBookmark string           `json:"selectedbookmark,omitempty"`
 	HistoryViewData  *HistoryViewData `json:"historyviewdata,omitempty"`
 	ClientData       *ClientData      `json:"clientdata,omitempty"`
+	RemoteView       *RemoteViewType  `json:"remoteview,omitempty"`
 }
 
 func (ModelUpdate) UpdateType() string {
 	return ModelUpdateStr
+}
+
+type RemoteViewType struct {
+	RemoteShowAll bool            `json:"remoteshowall,omitempty"`
+	PtyRemoteId   string          `json:"ptyremoteid,omitempty"`
+	RemoteEdit    *RemoteEditType `json:"remoteedit,omitempty"`
 }
 
 func ReadHistoryDataFromUpdate(update UpdatePacket) (string, string, *RemotePtrType) {
@@ -97,18 +104,15 @@ type RemoteEditType struct {
 }
 
 type InfoMsgType struct {
-	InfoTitle     string          `json:"infotitle"`
-	InfoError     string          `json:"infoerror,omitempty"`
-	InfoMsg       string          `json:"infomsg,omitempty"`
-	InfoMsgHtml   bool            `json:"infomsghtml,omitempty"`
-	WebShareLink  bool            `json:"websharelink,omitempty"`
-	InfoComps     []string        `json:"infocomps,omitempty"`
-	InfoCompsMore bool            `json:"infocompssmore,omitempty"`
-	InfoLines     []string        `json:"infolines,omitempty"`
-	TimeoutMs     int64           `json:"timeoutms,omitempty"`
-	PtyRemoteId   string          `json:"ptyremoteid,omitempty"`
-	RemoteShowAll bool            `json:"remoteshowall,omitempty"`
-	RemoteEdit    *RemoteEditType `json:"remoteedit,omitempty"`
+	InfoTitle     string   `json:"infotitle"`
+	InfoError     string   `json:"infoerror,omitempty"`
+	InfoMsg       string   `json:"infomsg,omitempty"`
+	InfoMsgHtml   bool     `json:"infomsghtml,omitempty"`
+	WebShareLink  bool     `json:"websharelink,omitempty"`
+	InfoComps     []string `json:"infocomps,omitempty"`
+	InfoCompsMore bool     `json:"infocompssmore,omitempty"`
+	InfoLines     []string `json:"infolines,omitempty"`
+	TimeoutMs     int64    `json:"timeoutms,omitempty"`
 }
 
 type HistoryInfoType struct {
