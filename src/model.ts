@@ -2307,6 +2307,8 @@ class Model {
     sessionSettingsModal : OV<string> = mobx.observable.box(null, {name: "sessionSettingsModal"});
     clientSettingsModal : OV<boolean> = mobx.observable.box(false, {name: "clientSettingsModal"});
     lineSettingsModal : OV<LineType> = mobx.observable.box(null, {name: "lineSettingsModal"});
+    remotesModal : OV<string> = mobx.observable.box(null, {name: "remotesModal"}); // set with remoteid
+    remoteTermWrap : TermWrap = null;
 
     inputModel : InputModel;
     bookmarksModel : BookmarksModel;
@@ -2487,6 +2489,40 @@ class Model {
         getApi().restartLocalServer();
     }
 
+    openRemotesModal() : void {
+        let ri = this.getCurRemoteInstance();
+        let remoteId : string = null;
+        if (ri != null) {
+            remoteId = ri.remoteid;
+        }
+        else {
+            let localRemote = this.getLocalRemote();
+            if (localRemote != null) {
+                remoteId = localRemote.remoteid;
+            }
+        }
+        mobx.action(() => {
+            this.remotesModal.set(remoteId);
+        })();
+    }
+
+    getLocalRemote() : RemoteType {
+        for (let i=0; i<this.remotes.length; i++) {
+            if (this.remotes[i].local) {
+                return this.remotes[i];
+            }
+        }
+        return null;
+    }
+
+    getCurRemoteInstance() : RemoteInstanceType {
+        let screen = this.getActiveScreen();
+        if (screen == null) {
+            return null;
+        }
+        return screen.getCurRemoteInstance();
+    }
+
     onLocalServerStatusChange(status : boolean) : void {
         mobx.action(() => {
             this.localServerRunning.set(status);
@@ -2660,12 +2696,20 @@ class Model {
             }
             else {
                 // remote update
+                let ptyData = base64ToArray(ptyMsg.ptydata64);
+
+                // new remote term
+                if (this.remoteTermWrap != null && this.remoteTermWrap.getContextRemoteId() == ptyMsg.remoteid) {
+                    this.remoteTermWrap.receiveData(ptyMsg.ptypos, ptyData);
+                }
+
+                // old remote term
                 let activeRemoteId = this.inputModel.getPtyRemoteId();
                 if (activeRemoteId != ptyMsg.remoteid || this.inputModel.remoteTermWrap == null) {
                     return;
                 }
-                let ptyData = base64ToArray(ptyMsg.ptydata64);
                 this.inputModel.remoteTermWrap.receiveData(ptyMsg.ptypos, ptyData);
+                
                 return;
             }
         }

@@ -5,6 +5,9 @@ import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 import cn from "classnames";
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
+import type {RemoteType} from "./types";
+
+type OV<V> = mobx.IObservableValue<V>;
 
 function renderCmdText(text : string) : any {
     return <span>&#x2318;{text}</span>;
@@ -69,4 +72,108 @@ class Toggle extends React.Component<{checked : boolean, onChange : (value : boo
     }
 }
 
-export {CmdStrCode, Toggle, renderCmdText};
+@mobxReact.observer
+class RemoteStatusLight extends React.Component<{remote : RemoteType}, {}> {
+    render() {
+        let remote = this.props.remote;
+        let status = "error";
+        let wfp = false;
+        if (remote != null) {
+            status = remote.status;
+            wfp = remote.waitingforpassword;
+        }
+        let icon = "fa-sharp fa-solid fa-circle"
+        if (status == "connecting") {
+            icon = (wfp ? "fa-sharp fa-solid fa-key" : "fa-sharp fa-solid fa-rotate");
+        }
+        return (
+            <i className={cn("remote-status", icon, "status-" + status)}/>
+        );
+    }
+}
+
+@mobxReact.observer
+class InlineSettingsTextEdit extends React.Component<{text : string, value : string, onChange : (val : string) => void, maxLength : number, placeholder : string}, {}> {
+    isEditing : OV<boolean> = mobx.observable.box(false, {name: "inlineedit-isEditing"});
+    tempText : OV<string>;
+
+    @boundMethod
+    handleChangeText(e : any) : void {
+        mobx.action(() => {
+            this.tempText.set(e.target.value);
+        })();
+    }
+
+    @boundMethod
+    confirmChange() : void {
+        mobx.action(() => {
+            let newText = this.tempText.get();
+            this.isEditing.set(false);
+            this.tempText = null;
+            this.props.onChange(newText);
+        })();
+    }
+
+    @boundMethod
+    cancelChange() : void {
+        mobx.action(() => {
+            this.isEditing.set(false);
+            this.tempText = null;
+        })();
+    }
+
+    @boundMethod
+    handleKeyDown(e : any) : void {
+        if (e.code == "Enter") {
+            e.preventDefault();
+            e.stopPropagation();
+            this.confirmChange();
+            return;
+        }
+        if (e.code == "Escape") {
+            e.preventDefault();
+            e.stopPropagation();
+            this.cancelChange();
+            return;
+        }
+        return;
+    }
+
+    @boundMethod
+    clickEdit() : void {
+        mobx.action(() => {
+            this.isEditing.set(true);
+            this.tempText = mobx.observable.box(this.props.value, {name: "inlineedit-tempText"});
+        })();
+    }
+    
+    render() {
+        if (this.isEditing.get()) {
+            return (
+                <div className={cn("settings-input inline-edit", "edit-active")}>
+                    <div className="field has-addons">
+                        <div className="control">
+                            <input className="input" type="text" onKeyDown={this.handleKeyDown} placeholder={this.props.placeholder} onChange={this.handleChangeText} value={this.tempText.get()} maxLength={this.props.maxLength}/>
+                        </div>
+                        <div className="control">
+                            <div onClick={this.cancelChange} title="Cancel (Esc)" className="button is-prompt-danger is-outlined is-small"><span className="icon is-small"><i className="fa-sharp fa-solid fa-xmark"/></span></div>
+                        </div>
+                        <div className="control">
+                            <div onClick={this.confirmChange} title="Confirm (Enter)" className="button is-prompt-green is-outlined is-small"><span className="icon is-small"><i className="fa-sharp fa-solid fa-check"/></span></div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+        else {
+            return (
+                <div onClick={this.clickEdit} className={cn("settings-input inline-edit", "edit-not-active")}>
+                    {this.props.text}
+                    <i style={{marginLeft: 5}} className="fa-sharp fa-solid fa-pen"/>
+                </div>
+            );
+        }
+    }
+}
+
+export {CmdStrCode, Toggle, renderCmdText, RemoteStatusLight, InlineSettingsTextEdit};

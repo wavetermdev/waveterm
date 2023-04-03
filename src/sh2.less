@@ -32,6 +32,8 @@
 
 @soft-blue: #729fcf;
 
+@active-menu-color: #485fc7;
+
 :root {
     --fa-style-family: "Font Awesome 6 Sharp";
 }
@@ -1383,7 +1385,7 @@ body::-webkit-scrollbar {
     }
 }
 
-.cmd-input-info {
+.cmd-input-info, .remotes-modal {
     .terminal-wrapper {
         position: relative;
         background-color: #000;
@@ -2542,6 +2544,19 @@ input[type=checkbox] {
     flex-grow: 1;
 }
 
+.flex-centered-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+.flex-centered-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
 
 .loading-spinner {
     display: inline-block;
@@ -2660,6 +2675,8 @@ input[type=checkbox] {
 }
 
 .modal.alert-modal {
+    z-index: 205;
+    
     footer {
         justify-content: center;
 
@@ -2757,6 +2774,148 @@ input[type=checkbox] {
         background-color: #222;
         padding: 15px 10px 10px 10px;
         border-top: 1px solid #666;
+    }
+}
+
+.modal.prompt-modal.remotes-modal {
+    .modal-content {
+        min-width: 850px;
+    }
+    
+    .inner-content {
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+        padding: 0;
+        max-height: 80vh;
+
+        .remotes-menu {
+            flex: 0 0 200px;
+            min-height: 450px;
+            border-right: 1px solid #666;
+            overflow-y: auto;
+            height: 100px;
+
+            .remote-menu-item {
+                border-top: 1px solid #666;
+                padding: 5px;
+                display: flex;
+                flex-direction: row;
+                cursor: pointer;
+
+                &.add-remote {
+                    font-size: 13px;
+                    padding: 10px 5px 10px 5px;
+                }
+
+                &:hover {
+                    background-color: #333;
+                }
+
+                &.is-selected {
+                    background-color: @active-menu-color;
+
+                    .remote-name .remote-name-secondary {
+                        color: white;
+                    }
+                }
+                
+                &:first-child {
+                    border-top: 0;
+                }
+
+                .remote-status-light {
+                    width: 15px;
+                    margin-top: -2px;
+                }
+
+                .remote-name {
+                    flex-grow: 1;
+
+                    .remote-name-primary {
+                        font-size: 12px;
+                        font-weight: bold;
+                    }
+
+                    .remote-name-secondary {
+                        font-size: 11px;
+                        color: #777;
+                    }
+                }
+            }
+        }
+
+        .remote-detail {
+            padding: 10px;
+            flex-grow: 1;
+            font-size: 12px;
+            display: flex;
+            flex-direction: column;
+
+            .settings-field {
+                margin-top: 5px;
+            }
+
+            * {
+                flex-shrink: 0;
+            }
+
+            .title {
+                color: white;
+                padding-bottom: 8px;
+                margin-bottom: 0;
+                border-bottom: 1px solid #777;
+            }
+
+            .terminal-wrapper {
+                margin-left: 0;
+                margin-bottom: 0;
+
+                &.has-message {
+                    margin-top: 0;
+                }
+
+                box-shadow: none;
+                border: 1px solid #777;
+            }
+
+            .action-buttons {
+                display: flex;
+                flex-direction: row;
+                gap: 10px;
+                margin-top: 2px;
+            }
+
+            .remote-message {
+                margin-top: 5px;
+                padding: 8px;
+                border-radius: 5px 5px 0 0;
+                background-color: #333;
+
+                i.fa-check {
+                    color: @term-green;
+                }
+                
+                &.is-ok {
+                    
+                }
+
+                .message-row {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                }
+
+                .remote-status {
+                    position: relative;
+                    top: -1px;
+                }
+
+                .button {
+                    height: 22px;
+                }
+            }
+        }
     }
 }
 
@@ -2883,6 +3042,26 @@ input[type=checkbox] {
         display: flex;
         flex-direction: row;
         align-items: center;
+
+        &.inline-edit.edit-not-active {
+            cursor: pointer;
+        }
+
+        &.settings-clickable {
+            cursor: pointer;
+        }
+
+        &.inline-edit.edit-active {
+            input.input {
+                padding: 0;
+                height: 20px;
+                font-size: 12px;
+            }
+
+            .button {
+                height: 20px;
+            }
+        }
         
         input {
             padding: 4px;
@@ -3010,21 +3189,37 @@ input[type=checkbox] {
 
     &:hover {
         background-color: @term-green;
-        font-weight: bold;
+        color: @term-bright-white;
     }
 }
 
-.button.is-prompt-cancel {
+.button.is-plain, .button.is-prompt-cancel {
     background-color: #222;
-    color: #777;
-    border-color: #777;
+    color: @term-white;
 
     &:hover {
-        background-color: #777;
-        color: #fff;
+        background-color: #666;
+        color: @term-bright-white;
     }
 }
 
+.button.is-prompt-danger {
+    background-color: #222;
+    color: @term-white;
+
+    &:hover {
+        background-color: @tab-red;
+        color: @term-bright-white;
+    }
+}
+
+.button.is-inline-height {
+    height: 22px;
+}
+
+.button input.confirm-checkbox {
+    margin-right: 5px;
+}
 
 .simple-image-renderer {
     padding: 10px;
@@ -3297,3 +3492,4 @@ body.prompt-webshare #main {
         }
     }
 }
+

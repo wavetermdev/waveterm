@@ -2,6 +2,7 @@ import * as mobx from "mobx";
 import {sprintf} from "sprintf-js";
 import dayjs from "dayjs";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
+import type {RemoteType} from "./types";
 
 dayjs.extend(localizedFormat)
 
@@ -299,4 +300,33 @@ function getDateStr(d : Date) : string {
     return dowStr + " " + yearStr + "-" + monthStr + "-" + dayStr;
 }
 
-export {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeDataMap, genMergeSimpleData, parseEnv0, boundInt, isModKeyPress, incObs, isBlank, loadFonts, getTodayStr, getYesterdayStr, getDateStr};
+function getRemoteConnVal(r : RemoteType) : number {
+    if (r.status == "connected") {
+        return 1;
+    }
+    if (r.status == "connecting") {
+        return 2;
+    }
+    if (r.status == "disconnected") {
+        return 3;
+    }
+    if (r.status == "error") {
+        return 4;
+    }
+    return 5;
+}
+
+function sortAndFilterRemotes(origRemotes : RemoteType[]) : RemoteType[] {
+    let remotes = origRemotes.filter((r) => !r.archived);
+    remotes.sort((a, b) => {
+        let connValA = getRemoteConnVal(a);
+        let connValB = getRemoteConnVal(b);
+        if (connValA != connValB) {
+            return connValA - connValB;
+        }
+        return a.remoteidx - b.remoteidx;
+    });
+    return remotes;
+}
+
+export {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeDataMap, genMergeSimpleData, parseEnv0, boundInt, isModKeyPress, incObs, isBlank, loadFonts, getTodayStr, getYesterdayStr, getDateStr, sortAndFilterRemotes};

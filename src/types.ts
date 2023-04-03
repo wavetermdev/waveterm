@@ -96,6 +96,8 @@ type RemoteType = {
     uname : string,
     mshellversion : string,
     needsmshellupgrade : boolean,
+    noinitpk : boolean,
+    authtype : string,
     waitingforpassword : boolean,
     remoteopts? : RemoteOptsType,
     local : boolean,

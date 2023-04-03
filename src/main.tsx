@@ -13,14 +13,14 @@ import type * as T from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {GlobalModel, GlobalCommandRunner, Session, Cmd, ScreenLines, Screen, riToRPtr, TabColors, RemoteColors} from "./model";
 import {windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols} from "./textmeasure";
-import {isModKeyPress, boundInt} from "./util";
+import {isModKeyPress, boundInt, sortAndFilterRemotes} from "./util";
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {BookmarksView} from "./bookmarks";
 import {HistoryView} from "./history";
 import {Line, Prompt} from "./linecomps";
-import {ScreenSettingsModal, SessionSettingsModal, LineSettingsModal, ClientSettingsModal} from "./settings";
-import {renderCmdText} from "./elements";
+import {ScreenSettingsModal, SessionSettingsModal, LineSettingsModal, ClientSettingsModal, RemotesModal} from "./settings";
+import {renderCmdText, RemoteStatusLight} from "./elements";
 import {LinesView} from "./linesview";
 
 dayjs.extend(localizedFormat)
@@ -2038,39 +2038,6 @@ class SessionView extends React.Component<{}, {}> {
     }
 }
 
-function getConnVal(r : RemoteType) : number {
-    if (r.status == "connected") {
-        return 1;
-    }
-    if (r.status == "disconnected") {
-        return 2;
-    }
-    if (r.status == "error") {
-        return 3;
-    }
-    return 4;
-}
-
-@mobxReact.observer
-class RemoteStatusLight extends React.Component<{remote : RemoteType}, {}> {
-    render() {
-        let remote = this.props.remote;
-        let status = "error";
-        let wfp = false;
-        if (remote != null) {
-            status = remote.status;
-            wfp = remote.waitingforpassword;
-        }
-        let icon = "fa-sharp fa-solid fa-circle"
-        if (status == "connecting") {
-            icon = (wfp ? "fa-sharp fa-solid fa-key" : "fa-sharp fa-solid fa-rotate");
-        }
-        return (
-            <i className={cn("remote-status", icon, "status-" + status)}/>
-        );
-    }
-}
-
 @mobxReact.observer
 class MainSideBar extends React.Component<{}, {}> {
     collapsed : mobx.IObservableValue<boolean> = mobx.observable.box(false);
@@ -2165,6 +2132,11 @@ class MainSideBar extends React.Component<{}, {}> {
         mobx.action(() => {
             GlobalModel.clientSettingsModal.set(true);
         })();
+    }
+
+    @boundMethod
+    handleConnectionsClick() : void {
+        GlobalModel.openRemotesModal();
     }
 
     @boundMethod
@@ -2275,7 +2247,10 @@ class MainSideBar extends React.Component<{}, {}> {
                         <li className="menu-bookmarks"><a onClick={this.handleWelcomeClick} className={cn({"is-active": GlobalModel.welcomeModalOpen.get()})}><i className="fa-sharp fa-solid fa-door-open"/> WELCOME</a></li>
                     </ul>
                     <ul className="menu-list">
-                        <li className="menu-bookmarks"><a onClick={this.handleSettingsClick}><i className="fa-sharp fa-solid fa-cog"/> SETTINGS</a></li>
+                        <li className="menu-settings"><a onClick={this.handleSettingsClick}><i className="fa-sharp fa-solid fa-cog"/> SETTINGS</a></li>
+                    </ul>
+                    <ul className="menu-list">
+                        <li className="menu-connections"><a onClick={this.handleConnectionsClick}><i className="fa-sharp fa-solid fa-computer-classic"/> CONNECTIONS</a></li>
                     </ul>
                     <p className="menu-label">
                         <a onClick={() => this.clickLinks()}>LINKS <i className={cn("fa-sharp fa-solid", (GlobalModel.showLinks.get() ? "fa-angle-down" : "fa-angle-right"))}/></a>
@@ -2310,19 +2285,6 @@ class MainSideBar extends React.Component<{}, {}> {
             </div>
         );
     }
-}
-
-function sortAndFilterRemotes(origRemotes : RemoteType[]) : RemoteType[] {
-    let remotes = origRemotes.filter((r) => !r.archived);
-    remotes.sort((a, b) => {
-        let connValA = getConnVal(a);
-        let connValB = getConnVal(b);
-        if (connValA != connValB) {
-            return connValA - connValB;
-        }
-        return a.remoteidx - b.remoteidx;
-    });
-    return remotes;
 }
 
 @mobxReact.observer
@@ -2484,7 +2446,7 @@ class AlertModal extends React.Component<{}, {}> {
         if (message == null) {
             return null;
         }
-        let title = message.title ?? "Alert";
+        let title = message.title ?? (message.confirm ? "Confirm" : "Alert");
         let isConfirm = message.confirm;
         return (
             <div className="modal prompt-modal is-active alert-modal">
@@ -2658,6 +2620,7 @@ class Main extends React.Component<{}, {}> {
         let sessionSettingsModal = GlobalModel.sessionSettingsModal.get();
         let lineSettingsModal = GlobalModel.lineSettingsModal.get();
         let clientSettingsModal = GlobalModel.clientSettingsModal.get();
+        let remotesModal = GlobalModel.remotesModal.get();
         let disconnected = !GlobalModel.ws.open.get() || !GlobalModel.localServerRunning.get();
         let hasClientStop = GlobalModel.getHasClientStop();
         let dcWait = this.dcWait.get();
@@ -2708,6 +2671,9 @@ class Main extends React.Component<{}, {}> {
                 </If>
                 <If condition={clientSettingsModal}>
                     <ClientSettingsModal/>
+                </If>
+                <If condition={remotesModal != null}>
+                    <RemotesModal/>
                 </If>
             </div>
         );
