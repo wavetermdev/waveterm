@@ -52,7 +52,7 @@ const MaxCommandLen = 4096
 const MaxSignalLen = 12
 const MaxSignalNum = 64
 const MaxEvalDepth = 5
-const DevWebScreenUrlFmt = "http://devtest.getprompt.com:9001/static/index.html?screenid=%s&viewkey=%s"
+const DevWebScreenUrlFmt = "http://devtest.getprompt.com:9001/static/index-dev.html?screenid=%s&viewkey=%s"
 const ProdWebScreenUrlFmt = "https://share.getprompt.dev/s/%s?viewkey=%s"
 
 var ColorNames = []string{"black", "red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
