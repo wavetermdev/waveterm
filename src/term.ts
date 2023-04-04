@@ -50,6 +50,7 @@ class TermWrap {
     fontSize : number;
     onUpdateContentHeight : (termContext : RendererContext, height : number) => void;
     ptyDataSource : (termContext : TermContextUnion) => Promise<PtyDataType>;
+    initializing : boolean;
 
     constructor(elem : Element, opts : TermWrapOpts) {
         opts = opts ?? ({} as any);
@@ -62,6 +63,7 @@ class TermWrap {
         this.fontSize = opts.fontSize;
         this.ptyDataSource = opts.ptyDataSource;
         this.onUpdateContentHeight = opts.onUpdateContentHeight;
+        this.initializing = true;
         if (this.flexRows) {
             this.atRowMax = false;
             this.usedRows = mobx.observable.box(opts.usedRows ?? (opts.isRunning ? 1 : 0), {name: "term-usedrows"});
@@ -273,13 +275,27 @@ class TermWrap {
         return context.lineNum;
     }
 
+    hardResetTerminal() : void {
+        if (this.terminal == null) {
+            return;
+        }
+        this.terminal.reset();
+        this.ptyPos = 0;
+        this.updateUsedRows(true, "term-reset");
+        this.dataUpdates = [];
+        this.numParseErrors = 0;
+    }
+
     reload(delayMs : number) {
         if (this.terminal == null) {
             return;
         }
         // console.log("reload-term", this.getLineNum());
+        if (!this.initializing) {
+            this.hardResetTerminal();
+        }
         this.reloading = true;
-        this.terminal.reset();
+        this.initializing = false;
         let rtnp = this.ptyDataSource(this.termContext);
         if (rtnp == null) {
             console.log("no promise returned from ptyDataSource (termwrap)", this.termContext);
@@ -298,7 +314,10 @@ class TermWrap {
     }
 
     receiveData(pos : number, data : Uint8Array, reason? : string) {
-        // console.log("update-pty-data", reason, this.getLineNum(), data.length, "|", pos, "=>", pos + data.length);
+        // console.log("update-pty-data", reason, "line:" + this.getLineNum(), pos, data.length, "=>", pos + data.length);
+        if (this.initializing) {
+            return;
+        }
         if (this.terminal == null) {
             return;
         }
