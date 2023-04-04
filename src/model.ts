@@ -2275,11 +2275,15 @@ class RemotesModalModel {
     }
 
     closeModal() : void {
+        if (!this.openState.get()) {
+            return;
+        }
         mobx.action(() => {
             this.openState.set(false);
             this.selectedRemoteId.set(null);
             this.remoteEdit.set(null);
         })();
+        setTimeout(() => GlobalModel.refocus(), 10);
     }
 
     disposeTerm() : void {
@@ -2446,6 +2450,14 @@ class Model {
 
     refreshClient() : void {
         getApi().reloadWindow();
+    }
+
+    refocus() {  // givefocus() give back focus to cmd or input
+        let activeScreen = this.getActiveScreen();
+        if (screen == null) {
+            return;
+        }
+        activeScreen.giveFocus();
     }
 
     getHasClientStop() : boolean {
