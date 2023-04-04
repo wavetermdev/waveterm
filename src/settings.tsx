@@ -212,7 +212,7 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
                         </div>
                         <div className="settings-field">
                             <div className="settings-label">
-                                Web Shared
+                                Web Sharing
                             </div>
                             <div className="settings-input">
                                 <Toggle checked={this.tempWebShared.get()} onChange={this.handleChangeWebShare}/>
@@ -231,6 +231,27 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
                                 
                             </div>
                         </div>
+                        <If condition={this.tempWebShared.get() && false}>
+                            <div className="settings-field sub-field">
+                                <div className="settings-label">
+                                    Share Link
+                                </div>
+                                <div className="settings-input">
+                                    <div className="button is-prompt-green is-outlined is-small" onClick={this.copyShareLink}>
+                                        <span>open in browser</span>
+                                        <span className="icon">
+                                            <i className="fa-sharp fa-solid fa-up-right-from-square"/>
+                                        </span>
+                                    </div>
+                                    <div className="button is-prompt-green is-outlined is-small ml-4" onClick={this.copyShareLink}>
+                                        <span>copy link</span>
+                                        <span className="icon">
+                                            <i className="fa-sharp fa-solid fa-copy"/>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </If>
                     </div>
                     <footer>
                         <div onClick={this.closeModal} className="button is-prompt-cancel is-outlined is-small">Cancel</div>

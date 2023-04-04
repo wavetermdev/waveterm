@@ -5,7 +5,7 @@ import {debounce} from "throttle-debounce";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeDataMap, genMergeSimpleData, boundInt, isModKeyPress} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType, HistoryViewDataType, AlertMessageType, HistorySearchParams, FocusTypeStrs, ScreenLinesType, HistoryTypeStrs, RendererPluginType, WindowSize, ClientMigrationInfo, WebShareOpts, TermContextUnion, RemoteEditType, RemoteViewType} from "./types";
+import type {SessionDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, FeStateType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType, HistoryViewDataType, AlertMessageType, HistorySearchParams, FocusTypeStrs, ScreenLinesType, HistoryTypeStrs, RendererPluginType, WindowSize, ClientMigrationInfo, WebShareOpts, TermContextUnion, RemoteEditType, RemoteViewType, CommandRtnType} from "./types";
 import {WSControl} from "./ws";
 import {measureText, getMonoFontSize, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows} from "./textmeasure";
 import dayjs from "dayjs";
@@ -1786,8 +1786,8 @@ class HistoryViewModel {
     _deleteSelected() : void {
         let lineIds = Array.from(this.selectedItems.keys());
         let prtn = GlobalCommandRunner.historyPurgeLines(lineIds);
-        prtn.then((result : boolean) => {
-            if (!result) {
+        prtn.then((result : CommandRtnType) => {
+            if (!result.success) {
                 GlobalModel.showAlert({message: "Error removing history lines."});
                 return;
             }
@@ -3081,7 +3081,7 @@ class Model {
         });
     }
 
-    submitCommandPacket(cmdPk : FeCmdPacketType, interactive : boolean) : Promise<boolean> {
+    submitCommandPacket(cmdPk : FeCmdPacketType, interactive : boolean) : Promise<CommandRtnType> {
         if (this.debugCmds > 0) {
             console.log("[cmd]", cmdPacketString(cmdPk));
             if (this.debugCmds > 1) {
@@ -3100,15 +3100,19 @@ class Model {
                     GlobalModel.inputModel.clearInfoMsg(true);
                 }
             })();
-            return true;
+            return {success: true};
         }).catch((err) => {
             this.errorHandler("calling run-command", err, true);
-            return false;
+            let errMessage = "error running command";
+            if (err != null && !isBlank(err.message)) {
+                errMessage = err.message;
+            }
+            return {success: false, error: errMessage};
         });
         return prtn;
     }
 
-    submitCommand(metaCmd : string, metaSubCmd : string, args : string[], kwargs : Record<string, string>, interactive : boolean) : Promise<boolean> {
+    submitCommand(metaCmd : string, metaSubCmd : string, args : string[], kwargs : Record<string, string>, interactive : boolean) : Promise<CommandRtnType> {
         let pk : FeCmdPacketType = {
             type: "fecmd",
             metacmd: metaCmd,
@@ -3122,7 +3126,7 @@ class Model {
         return this.submitCommandPacket(pk, interactive);
     }
 
-    submitRawCommand(cmdStr : string, addToHistory : boolean, interactive : boolean) : Promise<boolean> {
+    submitRawCommand(cmdStr : string, addToHistory : boolean, interactive : boolean) : Promise<CommandRtnType> {
         let pk : FeCmdPacketType = {
             type: "fecmd",
             metacmd: "eval",
@@ -3303,7 +3307,7 @@ class CommandRunner {
         GlobalModel.submitCommand("history", null, null, kwargs, true);
     }
 
-    historyPurgeLines(lines : string[]) : Promise<boolean> {
+    historyPurgeLines(lines : string[]) : Promise<CommandRtnType> {
         let prtn = GlobalModel.submitCommand("history", "purge", lines, {"nohist": "1"}, false);
         return prtn;
     }

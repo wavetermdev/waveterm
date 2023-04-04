@@ -142,7 +142,7 @@ body::-webkit-scrollbar {
                 padding: 2px 8px 2px 4px;
                 z-index: 11;
                 font-size: 12px;
-                border-bottom-right-radius: 5px;
+                border-radius: 0 0 5px 5px;
                 opacity: 0.8;
                 display: flex;
                 flex-direction: column;
@@ -3164,6 +3164,16 @@ input[type=checkbox] {
     display: flex;
     flex-direction: row;
     align-items: center;
+    font-size: 14px;
+
+    &.settings-field.sub-field {
+        .settings-label {
+            font-weight: normal;
+            font-size: 13px;
+            text-align: right;
+            padding-right: 20px;
+        }
+    }
 
     .settings-label {
         font-weight: bold;

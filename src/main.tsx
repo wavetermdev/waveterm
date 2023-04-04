@@ -1016,9 +1016,7 @@ class ScreenWindowView extends React.Component<{screen : Screen}, {}> {
         if (wvElem != null) {
             let width = wvElem.offsetWidth;
             let height = wvElem.offsetHeight;
-            mobx.action(() => {
-                this.setSize(width, height);
-            })();
+            this.setSize(width, height);
             this.rszObs = new ResizeObserver(this.handleResize.bind(this));
             this.rszObs.observe(wvElem);
         }
