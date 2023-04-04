@@ -2741,7 +2741,7 @@ class Model {
                 }
                 let term = screen.getTermWrap(cmdId);
                 if (term != null) {
-                    setTimeout(() => term.cmdDone(), 300);
+                    term.cmdDone();
                 }
             }
         }

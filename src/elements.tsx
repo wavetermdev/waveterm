@@ -3,6 +3,8 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import cn from "classnames";
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import type {RemoteType} from "./types";
@@ -194,4 +196,43 @@ class InfoMessage extends React.Component<{width : number, children : React.Reac
     }
 }
 
-export {CmdStrCode, Toggle, renderCmdText, RemoteStatusLight, InlineSettingsTextEdit, InfoMessage};
+function LinkRenderer(props : any) : any {
+    let newUrl = "https://extern?" + encodeURIComponent(props.href);
+    return <a href={newUrl} target="_blank">{props.children}</a>
+}
+
+function HeaderRenderer(props : any, hnum : number) : any {
+    return (
+        <div className={cn("title", "is-" + hnum)}>{props.children}</div>
+    );
+}
+
+function CodeRenderer(props : any) : any {
+    return (
+        <code className={cn({"inline": props.inline})}>{props.children}</code>
+    );
+}
+
+@mobxReact.observer
+class Markdown extends React.Component<{text : string, style? : any, extraClassName? : string}, {}> {
+    render() {
+        let text = this.props.text;
+        let markdownComponents = {
+            a: LinkRenderer,
+            h1: (props) => HeaderRenderer(props, 1),
+            h2: (props) => HeaderRenderer(props, 2),
+            h3: (props) => HeaderRenderer(props, 3),
+            h4: (props) => HeaderRenderer(props, 4),
+            h5: (props) => HeaderRenderer(props, 5),
+            h6: (props) => HeaderRenderer(props, 6),
+            code: CodeRenderer,
+        };
+        return (
+            <div className={cn("markdown content", this.props.extraClassName)} style={this.props.style}>
+                <ReactMarkdown children={text} remarkPlugins={[remarkGfm]} components={markdownComponents}/>
+            </div>
+        );
+    }
+}
+
+export {CmdStrCode, Toggle, renderCmdText, RemoteStatusLight, InlineSettingsTextEdit, InfoMessage, Markdown};

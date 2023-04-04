@@ -960,7 +960,7 @@ class RemotesModal extends React.Component<{model : RemotesModalModel}, {}> {
         return (
             <div className="remote-detail flex-centered-row">
                 <div>
-                    No Remote Selected
+                    No Connection Selected
                 </div>
             </div>
         );
@@ -981,7 +981,7 @@ class RemotesModal extends React.Component<{model : RemotesModalModel}, {}> {
                     <header>
                         <div className="modal-title">Connections</div>
                         <div className="close-icon">
-                            <i onClick={this.closeModal} className="fa-sharp fa-solid fa-times"/>
+                            <i title="Close (Escape)" onClick={this.closeModal} className="fa-sharp fa-solid fa-times"/>
                         </div>
                     </header>
                     <div className="inner-content">

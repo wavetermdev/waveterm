@@ -481,6 +481,7 @@ type AlertMessageType = {
     title? : string,
     message : string,
     confirm? : boolean,
+    markdown? : boolean,
 };
 
 type HistorySearchParams = {

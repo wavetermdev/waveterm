@@ -9,26 +9,7 @@ import {If, For, When, Otherwise, Choose} from "tsx-control-statements/component
 import cn from "classnames";
 import type {BookmarkType} from "./types";
 import {GlobalModel, GlobalCommandRunner} from "./model";
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import {CmdStrCode} from "./elements";
-
-function LinkRenderer(props : any) : any {
-    let newUrl = "https://extern?" + encodeURIComponent(props.href);
-    return <a href={newUrl} target="_blank">{props.children}</a>
-}
-
-function HeaderRenderer(props : any, hnum : number) : any {
-    return (
-        <div className={cn("title", "is-" + hnum)}>{props.children}</div>
-    );
-}
-
-function CodeRenderer(props : any) : any {
-    return (
-        <code className={cn({"inline": props.inline})}>{props.children}</code>
-    );
-}
+import {CmdStrCode, Markdown} from "./elements";
 
 @mobxReact.observer
 class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
@@ -102,16 +83,6 @@ class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
         let model = GlobalModel.bookmarksModel;
         let isSelected = (model.activeBookmark.get() == bm.bookmarkid);
         let markdown = bm.description ?? "";
-        let markdownComponents = {
-            a: LinkRenderer,
-            h1: (props) => HeaderRenderer(props, 1),
-            h2: (props) => HeaderRenderer(props, 2),
-            h3: (props) => HeaderRenderer(props, 3),
-            h4: (props) => HeaderRenderer(props, 4),
-            h5: (props) => HeaderRenderer(props, 5),
-            h6: (props) => HeaderRenderer(props, 6),
-            code: CodeRenderer,
-        };
         let hasDesc = markdown != "";
         let isEditing = (model.editingBookmark.get() == bm.bookmarkid);
         let isCopied = mobx.computed(() => (model.copiedIndicator.get() == bm.bookmarkid)).get();
@@ -150,9 +121,7 @@ class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
                 <div className="bookmark-id-div">{bm.bookmarkid.substr(0, 8)}</div>
                 <div className="bookmark-content">
                     <If condition={hasDesc}>
-                        <div className="markdown">
-                            <ReactMarkdown children={markdown} remarkPlugins={[remarkGfm]} components={markdownComponents}/>
-                        </div>
+                        <Markdown text={markdown}/>
                     </If>
                     <CmdStrCode cmdstr={bm.cmdstr} onUse={this.handleUse} onCopy={this.clickCopy} isCopied={isCopied} fontSize="large" limitHeight={false}/>
                 </div>

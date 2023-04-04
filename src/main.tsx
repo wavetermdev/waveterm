@@ -14,14 +14,12 @@ import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {GlobalModel, GlobalCommandRunner, Session, Cmd, ScreenLines, Screen, riToRPtr, TabColors, RemoteColors} from "./model";
 import {windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols, getMonoFontSize} from "./textmeasure";
 import {isModKeyPress, boundInt, sortAndFilterRemotes} from "./util";
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import {BookmarksView} from "./bookmarks";
 import {HistoryView} from "./history";
 import {Line, Prompt} from "./linecomps";
 import {ScreenSettingsModal, SessionSettingsModal, LineSettingsModal, ClientSettingsModal} from "./settings";
 import {RemotesModal} from "./remotes";
-import {renderCmdText, RemoteStatusLight} from "./elements";
+import {renderCmdText, RemoteStatusLight, Markdown} from "./elements";
 import {LinesView} from "./linesview";
 
 dayjs.extend(localizedFormat)
@@ -1774,9 +1772,14 @@ class AlertModal extends React.Component<{}, {}> {
                             <i onClick={this.closeModal} className="fa-sharp fa-solid fa-times"/>
                         </div>
                     </header>
-                    <div className="inner-content content">
-                        <p>{message.message}</p>
-                    </div>
+                    <If condition={message.markdown}>
+                        <Markdown text={message.message} extraClassName="inner-content"/>
+                    </If>
+                    <If condition={!message.markdown}>
+                        <div className="inner-content content">
+                            <p>{message.message}</p>
+                        </div>
+                    </If>
                     <footer>
                         <If condition={isConfirm}>
                             <div onClick={this.closeModal} className="button is-prompt-cancel is-outlined is-small">Cancel</div>
