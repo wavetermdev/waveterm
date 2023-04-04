@@ -35,24 +35,165 @@ function getRemoteTitle(remote : RemoteType) {
 }
 
 @mobxReact.observer
-class RemoteAuthSettings extends React.Component<{model : RemotesModalModel, remote : RemoteType, remoteEdit : RemoteEditType}, {}> {
-    authModeDropdownActive : OV<boolean> = mobx.observable.box(false, {name: "RemoteAuthSettings-authModeDropdownActive"});
-    connectModeDropdownActive : OV<boolean> = mobx.observable.box(false, {name: "RemoteAuthSettings-connectModeDropdownActive"});
+class AuthModeDropdown extends React.Component<{tempVal : OV<string>}, {}> {
+    active : OV<boolean> = mobx.observable.box(false, {name: "AuthModeDropdown-active"});
+
+    @boundMethod
+    toggleActive() : void {
+        mobx.action(() => {
+            this.active.set(!this.active.get());
+        })();
+    }
+
+    @boundMethod
+    updateValue(val : string) : void {
+        mobx.action(() => {
+            this.props.tempVal.set(val);
+            this.active.set(false);
+        })();
+    }
+    
+    render() {
+        return (
+            <div className={cn("dropdown", "editremote-dropdown", {"is-active": this.active.get()})}>
+                <div className="dropdown-trigger">
+                    <button onClick={this.toggleActive} className="button is-small is-dark">
+                        <span>{this.props.tempVal.get()}</span>
+                        <div className="flex-spacer"/>
+                        <span className="icon is-small">
+                            <i className="fa-sharp fa-regular fa-angle-down" aria-hidden="true"></i>
+                        </span>
+                    </button>
+                </div>
+                <div className="dropdown-menu" role="menu">
+                    <div className="dropdown-content has-background-black">
+                        <div key="none" onClick={() => this.updateValue("none") } className="dropdown-item">none</div>
+                        <div key="key" onClick={() => this.updateValue("key") } className="dropdown-item">key</div>
+                        <div key="password" onClick={() => this.updateValue("password") } className="dropdown-item">password</div>
+                        <div key="key+password" onClick={() => this.updateValue("key+password") } className="dropdown-item">key+password</div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
+class ConnectModeDropdown extends React.Component<{tempVal : OV<string>}, {}> {
+    active : OV<boolean> = mobx.observable.box(false, {name: "ConnectModeDropdown-active"});
+
+    @boundMethod
+    toggleActive() : void {
+        mobx.action(() => {
+            this.active.set(!this.active.get());
+        })();
+    }
+
+    @boundMethod
+    updateValue(val : string) : void {
+        mobx.action(() => {
+            this.props.tempVal.set(val);
+            this.active.set(false);
+        })();
+    }
+    
+    render() {
+        return (
+            <div className={cn("dropdown", "editremote-dropdown", {"is-active": this.active.get()})}>
+                <div className="dropdown-trigger">
+                    <button onClick={this.toggleActive} className="button is-small is-dark">
+                        <span>{this.props.tempVal.get()}</span>
+                        <div className="flex-spacer"/>
+                        <span className="icon is-small">
+                            <i className="fa-sharp fa-regular fa-angle-down" aria-hidden="true"></i>
+                        </span>
+                    </button>
+                </div>
+                <div className="dropdown-menu" role="menu">
+                    <div className="dropdown-content has-background-black">
+                        <div key="startup" onClick={() => this.updateValue("startup") } className="dropdown-item">startup</div>
+                        <div key="auto" onClick={() => this.updateValue("auto") } className="dropdown-item">auto</div>
+                        <div key="manual" onClick={() => this.updateValue("manual") } className="dropdown-item">manual</div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
+class CreateRemote extends React.Component<{model : RemotesModalModel, remoteEdit : RemoteEditType}, {}> {
+    tempAlias : OV<string>
+    tempHostName : OV<string>;
+    tempPort : OV<string>;
     tempAuthMode : OV<string>;
     tempConnectMode : OV<string>;
     tempManualMode : OV<boolean>;
     tempPassword : OV<string>;
     tempKeyFile : OV<string>;
+    errorStr : OV<string>;
 
     constructor(props : any) {
         super(props);
-        let {remote, remoteEdit} = this.props;
-        this.tempAuthMode = mobx.observable.box(remote.authtype, {name: "RemoteAuthSettings-authMode"});
-        this.tempConnectMode = mobx.observable.box(remote.connectmode, {name: "RemoteAuthSettings-connectMode"});
-        this.tempKeyFile = mobx.observable.box(remoteEdit.keystr ?? "", {name: "RemoteAuthSettings-keystr"});
-        this.tempPassword = mobx.observable.box(remoteEdit.haspassword ? PasswordUnchangedSentinel : "", {name: "RemoteAuthSettings-password"});
-        console.log("tempkeyfile", this.tempKeyFile.get());
-        console.log("keystr", mobx.toJS(remoteEdit));
+        let {remoteEdit} = this.props;
+        this.tempAlias = mobx.observable.box("", {name: "CreateRemote-alias"});
+        this.tempHostName = mobx.observable.box("", {name: "CreateRemote-hostName"});
+        this.tempPort = mobx.observable.box("", {name: "CreateRemote-port"});
+        this.tempAuthMode = mobx.observable.box("none", {name: "CreateRemote-authMode"});
+        this.tempConnectMode = mobx.observable.box("auto", {name: "CreateRemote-connectMode"});
+        this.tempKeyFile = mobx.observable.box("", {name: "CreateRemote-keystr"});
+        this.tempPassword = mobx.observable.box("", {name: "CreateRemote-password"});
+        this.errorStr = mobx.observable.box(remoteEdit.errorstr, {name: "CreateRemote-errorStr"});
+    }
+
+    getErrorStr() : string {
+        if (this.errorStr.get() != null) {
+            return this.errorStr.get();
+        }
+        return this.props.remoteEdit.errorstr;
+    }
+
+    @boundMethod
+    submitRemote() : void {
+        mobx.action(() => {
+            this.errorStr.set(null);
+        })();
+        let authMode = this.tempAuthMode.get();
+        let cname = this.tempHostName.get();
+        if (cname == "") {
+            this.errorStr.set("You must specify a 'user@host' value to create a new connection");
+            return;
+        }
+        let kwargs : Record<string, string> = {};
+        kwargs["alias"] = this.tempAlias.get();
+        if (this.tempPort.get() != "" && this.tempPort.get() != "22") {
+            kwargs["port"] = this.tempPort.get();
+        }
+        if (authMode == "key" || authMode == "key+password") {
+            if (this.tempKeyFile.get() == "") {
+                this.errorStr.set("When AuthMode is set to 'key', you must supply a valid key file name.");
+                return;
+            }
+            kwargs["key"] = this.tempKeyFile.get();
+        }
+        else {
+            kwargs["key"] = "";
+        }
+        if (authMode == "password" || authMode == "key+password") {
+            if (this.tempPassword.get() == "") {
+                this.errorStr.set("When AuthMode is set to 'password', you must supply a password.");
+                return;
+            }
+            kwargs["password"] = this.tempPassword.get();
+        }
+        else {
+            kwargs["password"] = ""
+        }
+        kwargs["connectmode"] = this.tempConnectMode.get();
+        kwargs["autoinstall"] = "1";
+        kwargs["visual"] = "1";
+        kwargs["submit"] = "1";
+        GlobalCommandRunner.createRemote(cname, kwargs);
     }
 
     @boundMethod
@@ -66,6 +207,178 @@ class RemoteAuthSettings extends React.Component<{model : RemotesModalModel, rem
     handleChangePassword(e : any) : void {
         mobx.action(() => {
             this.tempPassword.set(e.target.value);
+        })();
+    }
+
+    @boundMethod
+    handleChangeAlias(e : any) : void {
+        mobx.action(() => {
+            this.tempAlias.set(e.target.value);
+        })();
+    }
+
+    @boundMethod
+    handleChangePort(e : any) : void {
+        mobx.action(() => {
+            this.tempPort.set(e.target.value);
+        })();
+    }
+
+    @boundMethod
+    handleChangeHostName(e : any) : void {
+        mobx.action(() => {
+            this.tempHostName.set(e.target.value);
+        })();
+    }
+    
+    render() {
+        let {model, remote, remoteEdit} = this.props;
+        let authMode = this.tempAuthMode.get();
+        return (
+            <div className="remote-detail create-remote">
+                <div className="title is-5">Create New Remote</div>
+                <div className="settings-field mt-3">
+                    <div className="settings-label">
+                        <div>user@host</div>
+                        <div className="flex-spacer"/>
+                        <InfoMessage width={400}>
+                            (Required) The user and host that you want to connect with.  This is in the same format as you would pass to ssh, e.g. "ubuntu@test.mydomain.com".
+                        </InfoMessage>
+                    </div>
+                    <div className="settings-input">
+                        <input type="text" placeholder="user@host" onChange={this.handleChangeHostName} value={this.tempHostName.get()} maxLength={100}/>
+                    </div>
+                </div>
+                <div className="settings-field">
+                    <div className="settings-label">
+                        <div>Alias</div>
+                        <div className="flex-spacer"/>
+                        <InfoMessage width={400}>
+                            (Optional) A short alias to use when selecting or displaying this connection.
+                        </InfoMessage>
+                    </div>
+                    <div className="settings-input">
+                        <input type="text" onChange={this.handleChangeAlias} value={this.tempAlias.get()} maxLength={40}/>
+                    </div>
+                </div>
+                <div className="settings-field">
+                    <div className="settings-label">
+                        <div>Port</div>
+                        <div className="flex-spacer"/>
+                        <InfoMessage width={400}>
+                            (Optional) Defaults to 22.  Set if the server you are connecting to listens to a non-standard SSH port.
+                        </InfoMessage>
+                    </div>
+                    <div className="settings-input">
+                        <input type="number" placeholder="22" onChange={this.handleChangePort} value={this.tempPort.get()}/>
+                    </div>
+                </div>
+                <div className="settings-field align-top">
+                    <div className="settings-label">
+                        <div>Auth Mode</div>
+                        <div className="flex-spacer"/>
+                        <InfoMessage width={350}>
+                            <ul>
+                                <li><b>none</b> - no authentication, or authentication is already configured in your ssh config.</li>
+                                <li><b>key</b> - use a private key.</li>
+                                <li><b>password</b> - use a password.</li>
+                                <li><b>key+password</b> - use a key with a passphrase.</li>
+                            </ul>
+                        </InfoMessage>
+                    </div>
+                    <div className="settings-input">
+                        <div className="raw-input"><AuthModeDropdown tempVal={this.tempAuthMode}/></div>
+                    </div>
+                </div>
+                <If condition={authMode == "key" || authMode == "key+password"}>
+                    <div className="settings-field" style={{marginTop: 10}}>
+                        <div className="settings-label">
+                            SSH Keyfile
+                        </div>
+                        <div className="settings-input">
+                            <input type="text" placeholder="keyfile" onChange={this.handleChangeKeyFile} value={this.tempKeyFile.get()} maxLength={400}/>
+                        </div>
+                    </div>
+                </If>
+                <If condition={authMode == "password" || authMode == "key+password"}>
+                    <div className="settings-field" style={{marginTop: 10}}>
+                        <div className="settings-label">
+                            {authMode == "password" ? "SSH Password" : "Key Passphrase"}
+                        </div>
+                        <div className="settings-input">
+                            <input type="password" placeholder="password" onFocus={this.onFocusPassword} onChange={this.handleChangePassword} value={this.tempPassword.get()} maxLength={400}/>
+                        </div>
+                    </div>
+                </If>
+                <div className="settings-field align-top" style={{marginTop: 10}}>
+                    <div className="settings-label">
+                        <div>Connect Mode</div>
+                        <div className="flex-spacer"/>
+                        <InfoMessage width={350}>
+                            <ul>
+                                <li><b>startup</b> - connect when [prompt] starts.</li>
+                                <li><b>auto</b> - connect when you first run a command using this connection.</li>
+                                <li><b>manual</b> - connect manually. Note, if your connection requires manual input, like an OPT code, you must use this setting.</li>
+                            </ul>
+                        </InfoMessage>
+                    </div>
+                    <div className="settings-input">
+                        <div className="raw-input"><div className="raw-input"><ConnectModeDropdown tempVal={this.tempConnectMode}/></div></div>
+                    </div>
+                </div>
+                <If condition={!util.isBlank(this.getErrorStr())}>
+                    <div className="remoteedit-error">
+                        Error: {this.getErrorStr()}
+                    </div>
+                </If>
+                <div className="flex-spacer"/>
+                <div className="action-buttons">
+                    <div className="flex-spacer"/>
+                    <div onClick={model.cancelEditAuth} className="button is-plain is-outlined is-small">Cancel</div>
+                    <div style={{marginLeft: 10, marginRight: 20}} onClick={this.submitRemote} className="button is-prompt-green is-outlined is-small">Create Remote</div>
+                </div>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
+class EditRemoteSettings extends React.Component<{model : RemotesModalModel, remote : RemoteType, remoteEdit : RemoteEditType}, {}> {
+    tempAlias : OV<string>
+    tempAuthMode : OV<string>;
+    tempConnectMode : OV<string>;
+    tempManualMode : OV<boolean>;
+    tempPassword : OV<string>;
+    tempKeyFile : OV<string>;
+
+    constructor(props : any) {
+        super(props);
+        let {remote, remoteEdit} = this.props;
+        this.tempAlias = mobx.observable.box(remote.remotealias ?? "", {name: "EditRemoteSettings-alias"});
+        this.tempAuthMode = mobx.observable.box(remote.authtype, {name: "EditRemoteSettings-authMode"});
+        this.tempConnectMode = mobx.observable.box(remote.connectmode, {name: "EditRemoteSettings-connectMode"});
+        this.tempKeyFile = mobx.observable.box(remoteEdit.keystr ?? "", {name: "EditRemoteSettings-keystr"});
+        this.tempPassword = mobx.observable.box(remoteEdit.haspassword ? PasswordUnchangedSentinel : "", {name: "EditRemoteSettings-password"});
+    }
+
+    @boundMethod
+    handleChangeKeyFile(e : any) : void {
+        mobx.action(() => {
+            this.tempKeyFile.set(e.target.value);
+        })();
+    }
+
+    @boundMethod
+    handleChangePassword(e : any) : void {
+        mobx.action(() => {
+            this.tempPassword.set(e.target.value);
+        })();
+    }
+
+    @boundMethod
+    handleChangeAlias(e : any) : void {
+        mobx.action(() => {
+            this.tempAlias.set(e.target.value);
         })();
     }
 
@@ -93,105 +406,29 @@ class RemoteAuthSettings extends React.Component<{model : RemotesModalModel, rem
     }
 
     @boundMethod
-    clickSetAuthMode(authMode : string) : void {
-        mobx.action(() => {
-            this.tempAuthMode.set(authMode);
-            this.authModeDropdownActive.set(false);
-        })();
-    }
-
-    @boundMethod
-    toggleAuthModeDropdown() : void {
-        mobx.action(() => {
-            this.authModeDropdownActive.set(!this.authModeDropdownActive.get());
-        })();
-    }
-
-    @boundMethod
     submitRemote() : void {
         let {remote} = this.props;
         let authMode = this.tempAuthMode.get();
         let kwargs : Record<string, string> = {};
-        if (authMode == "key" || authMode == "key+pw") {
+        if (authMode == "key" || authMode == "key+password") {
             kwargs["key"] = this.tempKeyFile.get();
         }
         else {
             kwargs["key"] = "";
         }
-        if (authMode == "pw" || authMode == "key+pw") {
+        if (authMode == "password" || authMode == "key+password") {
             kwargs["password"] = this.tempPassword.get();
         }
         else {
             kwargs["password"] = ""
         }
+        kwargs["alias"] = this.tempAlias.get();
         kwargs["connectmode"] = this.tempConnectMode.get();
         kwargs["visual"] = "1";
         kwargs["submit"] = "1";
         GlobalCommandRunner.editRemote(remote.remoteid, kwargs);
     }
     
-    renderAuthModeDropdown() : any {
-        return (
-            <div className={cn("dropdown", "authmode-dropdown", {"is-active": this.authModeDropdownActive.get()})}>
-                <div className="dropdown-trigger">
-                    <button onClick={this.toggleAuthModeDropdown} className="button is-small is-dark">
-                        <span>{this.tempAuthMode.get()}</span>
-                        <div className="flex-spacer"/>
-                        <span className="icon is-small">
-                            <i className="fa-sharp fa-regular fa-angle-down" aria-hidden="true"></i>
-                        </span>
-                    </button>
-                </div>
-                <div className="dropdown-menu" role="menu">
-                    <div className="dropdown-content has-background-black">
-                        <div key="none" onClick={() => this.clickSetAuthMode("none") } className="dropdown-item">none</div>
-                        <div key="key" onClick={() => this.clickSetAuthMode("key") } className="dropdown-item">key</div>
-                        <div key="password" onClick={() => this.clickSetAuthMode("password") } className="dropdown-item">password</div>
-                        <div key="key+password" onClick={() => this.clickSetAuthMode("key+password") } className="dropdown-item">key+password</div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    @boundMethod
-    clickSetConnectMode(connectMode : string) : void {
-        mobx.action(() => {
-            this.tempConnectMode.set(connectMode);
-            this.connectModeDropdownActive.set(false);
-        })();
-    }
-
-    @boundMethod
-    toggleConnectModeDropdown() : void {
-        mobx.action(() => {
-            this.connectModeDropdownActive.set(!this.connectModeDropdownActive.get());
-        })();
-    }
-
-    renderConnectModeDropdown() : any {
-        return (
-            <div className={cn("dropdown", "connectmode-dropdown", {"is-active": this.connectModeDropdownActive.get()})}>
-                <div className="dropdown-trigger">
-                    <button onClick={this.toggleConnectModeDropdown} className="button is-small is-dark">
-                        <span>{this.tempConnectMode.get()}</span>
-                        <div className="flex-spacer"/>
-                        <span className="icon is-small">
-                            <i className="fa-sharp fa-regular fa-angle-down" aria-hidden="true"></i>
-                        </span>
-                    </button>
-                </div>
-                <div className="dropdown-menu" role="menu">
-                    <div className="dropdown-content has-background-black">
-                        <div key="startup" onClick={() => this.clickSetConnectMode("startup") } className="dropdown-item">startup</div>
-                        <div key="auto" onClick={() => this.clickSetConnectMode("auto") } className="dropdown-item">auto</div>
-                        <div key="manual" onClick={() => this.clickSetConnectMode("manual") } className="dropdown-item">manual</div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
     renderAuthModeMessage() : any {
         let authMode = this.tempAuthMode.get();
         if (authMode == "none") {
@@ -216,22 +453,35 @@ class RemoteAuthSettings extends React.Component<{model : RemotesModalModel, rem
             <div className="remote-detail auth-editing">
                 <div className="title is-5">{getRemoteTitle(remote)}</div>
                 <div className="detail-subtitle">
-                    Editing Authentication Settings
+                    Editing Remote Settings
+                </div>
+                <div className="settings-field">
+                    <div className="settings-label">
+                        <div>Alias</div>
+                        <div className="flex-spacer"/>
+                        <InfoMessage width={400}>
+                            (Optional) A short alias to use when selecting or displaying this connection.
+                        </InfoMessage>
+                    </div>
+                    <div className="settings-input">
+                        <input type="text" onChange={this.handleChangeAlias} value={this.tempAlias.get()} maxLength={40}/>
+                    </div>
                 </div>
                 <div className="settings-field align-top">
                     <div className="settings-label">
-                        Auth Mode
-                    </div>
-                    <div className="settings-input">
-                        <div className="raw-input">{this.renderAuthModeDropdown()}</div>
+                        <div>Auth Mode</div>
+                        <div className="flex-spacer"/>
                         <InfoMessage width={350}>
                             <ul>
-                                <li><b>none</b> - No authentication, or authentication is already configured in your ssh config.</li>
-                                <li><b>key</b> - Use a private key.</li>
-                                <li><b>password</b> - Use a password.</li>
-                                <li><b>key+password</b> - Use a key with a passphrase.</li>
+                                <li><b>none</b> - no authentication, or authentication is already configured in your ssh config.</li>
+                                <li><b>key</b> - use a private key.</li>
+                                <li><b>password</b> - use a password.</li>
+                                <li><b>key+password</b> - use a key with a passphrase.</li>
                             </ul>
                         </InfoMessage>
+                    </div>
+                    <div className="settings-input">
+                        <div className="raw-input"><AuthModeDropdown tempVal={this.tempAuthMode}/></div>
                     </div>
                 </div>
                 <If condition={authMode == "key" || authMode == "key+password"}>
@@ -259,18 +509,18 @@ class RemoteAuthSettings extends React.Component<{model : RemotesModalModel, rem
                 </If>
                 <div className="settings-field align-top" style={{marginTop: 10}}>
                     <div className="settings-label">
-                        Connect Mode
-                    </div>
-                    <div className="settings-input">
-                        <div className="raw-input"><div className="raw-input">{this.renderConnectModeDropdown()}</div></div>
+                        <div>Connect Mode</div>
+                        <div className="flex-spacer"/>
                         <InfoMessage width={350}>
                             <ul>
                                 <li><b>startup</b> - connect when [prompt] starts.</li>
                                 <li><b>auto</b> - connect when you first run a command using this connection.</li>
                                 <li><b>manual</b> - connect manually. Note, if your connection requires manual input, like an OPT code, you must use this setting.</li>
                             </ul>
-                            
                         </InfoMessage>
+                    </div>
+                    <div className="settings-input">
+                        <div className="raw-input"><div className="raw-input"><ConnectModeDropdown tempVal={this.tempConnectMode}/></div></div>
                     </div>
                 </div>
                 <If condition={!util.isBlank(remoteEdit.errorstr)}>
@@ -300,6 +550,13 @@ class RemoteDetailView extends React.Component<{model : RemotesModalModel, remot
             return;
         }
         this.props.model.createTermWrap(elem);
+    }
+
+    componentDidUpdate() {
+        let {remote} = this.props;
+        if (remote == null || remote.archived) {
+            this.props.model.deSelectRemote();
+        }
     }
 
     componentWillUnmount() {
@@ -349,6 +606,11 @@ class RemoteDetailView extends React.Component<{model : RemotesModalModel, remot
 
     @boundMethod
     clickArchive(remoteId : string) : void {
+        let {remote} = this.props;
+        if (remote.status == "connected") {
+            GlobalModel.showAlert({message: "Cannot archived a connected remote.  Disconnect and try again."});
+            return;
+        }
         let prtn = GlobalModel.showAlert({message: "Are you sure you want to archive this connection?", confirm: true});
         prtn.then((confirm) => {
             if (!confirm) {
@@ -360,6 +622,7 @@ class RemoteDetailView extends React.Component<{model : RemotesModalModel, remot
 
     @boundMethod
     editAlias(remoteId : string, alias : string) : void {
+        this.props.model.startEditAuth();
     }
 
     renderInstallStatus(remote : RemoteType) : any {
@@ -425,6 +688,8 @@ class RemoteDetailView extends React.Component<{model : RemotesModalModel, remot
         }
         else if (remote.status == "connecting") {
             message = (remote.waitingforpassword ? "Connecting, waiting for user-input..." : "Connecting...");
+            let connectTimeout = (remote.connecttimeout ?? 0);
+            message = message + " (" + connectTimeout + "s)";
             buttons = [disconnectButton];
         }
         else if (remote.status == "disconnected") {
@@ -494,7 +759,13 @@ class RemoteDetailView extends React.Component<{model : RemotesModalModel, remot
                 </div>
                 <div className="settings-field" style={{minHeight: 24}}>
                     <div className="settings-label">Alias</div>
-                    <InlineSettingsTextEdit onChange={(val) => this.editAlias(remote.remoteid, val)} text={remoteAliasText ?? ""} value={remote.remotealias} placeholder="" maxLength={50}/>
+                    <div className="settings-input">
+                        {remoteAliasText} <i style={{marginLeft: 12}} className="fa-sharp fa-solid fa-pen hide-hover"/>
+                        <div onClick={() => this.editAlias()} className="button is-plain is-outlined is-small is-inline-height ml-2 update-auth-button">
+                            <span className="icon is-small"><i className="fa-sharp fa-solid fa-pen"/></span>
+                            <span>Update Alias</span>
+                        </div>
+                    </div>
                 </div>
                 <div className="settings-field">
                     <div className="settings-label">Auth Type</div>
@@ -561,6 +832,7 @@ class RemotesModal extends React.Component<{model : RemotesModalModel}, {}> {
 
     @boundMethod
     clickAddRemote() : void {
+        GlobalCommandRunner.openCreateRemote();
     }
 
     renderRemoteMenuItem(remote : RemoteType, selectedId : string) : any {
@@ -609,6 +881,7 @@ class RemotesModal extends React.Component<{model : RemotesModalModel}, {}> {
         let remote : RemoteType = null;
         let isAuthEditMode = model.isAuthEditMode();
         let selectedRemote = GlobalModel.getRemote(selectedRemoteId);
+        let remoteEdit = model.remoteEdit.get();
         return (
             <div className={cn("modal remotes-modal settings-modal prompt-modal is-active")}>
                 <div className="modal-background"/>
@@ -627,14 +900,19 @@ class RemotesModal extends React.Component<{model : RemotesModalModel}, {}> {
                             </For>
                         </div>
                         <If condition={selectedRemote == null}>
-                            {this.renderEmptyDetail()}
+                            <If condition={remoteEdit != null}>
+                                <CreateRemote model={model} remoteEdit={remoteEdit}/>
+                            </If>
+                            <If condition={remoteEdit == null}>
+                                {this.renderEmptyDetail()}
+                            </If>
                         </If>
                         <If condition={selectedRemote != null}>
                             <If condition={!isAuthEditMode}>
                                 <RemoteDetailView key={"remotedetail-" + selectedRemoteId} remote={selectedRemote} model={model}/>
                             </If>
                             <If condition={isAuthEditMode}>
-                                <RemoteAuthSettings key={"remoteauth-" + selectedRemoteId} remote={selectedRemote} remoteEdit={model.remoteEdit.get()} model={model}/>
+                                <EditRemoteSettings key={"editremote-" + selectedRemoteId} remote={selectedRemote} remoteEdit={remoteEdit} model={model}/>
                             </If>
                         </If>
                     </div>

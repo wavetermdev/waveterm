@@ -2938,7 +2938,7 @@ input[type=checkbox] {
                 }
             }
 
-            &.auth-editing {
+            &.auth-editing, &.create-remote {
                 .settings-field.align-top {
                     align-items: flex-start;
 
@@ -2951,18 +2951,19 @@ input[type=checkbox] {
                     }
                 }
 
+                .settings-label {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                }
+
                 .settings-field .settings-input .undo-icon {
                     cursor: pointer;
                     font-size: 18px;
                     margin-left: 5px;
                 }
 
-                .authmode-dropdown .dropdown-trigger button {
-                    width: 120px;
-                    justify-content: flex-start;
-                }
-
-                .connectmode-dropdown .dropdown-trigger button {
+                .editremote-dropdown .dropdown-trigger button {
                     width: 120px;
                     justify-content: flex-start;
                 }
@@ -2984,8 +2985,16 @@ input[type=checkbox] {
                     padding: 5px 5px 5px 12px;
                 }
 
-                .info-message {
-                    margin-left: 22px;
+                .settings-input {
+                    .info-message {
+                        margin-left: 22px;
+                    }
+                }
+
+                .settings-label {
+                    .info-message {
+                        margin-right: 15px;
+                    }
                 }
 
                 .remoteedit-error {
@@ -3005,6 +3014,9 @@ input[type=checkbox] {
 
 .info-message {
     position: relative;
+    font-weight: normal;
+    font-size: 12px;
+    color: @term-white;
     
     .message-content {
         position: absolute;

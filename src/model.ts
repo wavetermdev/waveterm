@@ -2311,6 +2311,12 @@ class RemotesModalModel {
         })();
     }
 
+    deSelectRemote() : void {
+        mobx.action(() => {
+            this.selectedRemoteId.set(null);
+        })();
+    }
+
     openModalForEdit(redit : RemoteEditType) : void {
         mobx.action(() => {
             this.openState.set(true);
@@ -2341,6 +2347,9 @@ class RemotesModalModel {
     cancelEditAuth() : void {
         mobx.action(() => {
             this.remoteEdit.set(null);
+            if (this.selectedRemoteId.get() == null) {
+                this.openModal();
+            }
         })();
     }
 

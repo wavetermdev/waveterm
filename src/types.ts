@@ -85,6 +85,7 @@ type RemoteType = {
     remotecanonicalname : string,
     remotevars : Record<string, string>,
     status : RemoteStatusTypeStrs,
+    connecttimeout : number,
     errorstr : string,
     installstatus : string,
     installerrorstr : string,
