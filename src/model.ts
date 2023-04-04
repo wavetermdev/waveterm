@@ -962,10 +962,6 @@ class InputModel {
     
     infoMsg : OV<InfoType> = mobx.observable.box(null);
     infoTimeoutId : any = null;
-    remoteTermWrap : TermWrap;
-    remoteTermWrapFocus : OV<boolean> = mobx.observable.box(false, {name: "remoteTermWrapFocus"});
-    showNoInputMsg : OV<boolean> = mobx.observable.box(false);
-    showNoInputTimeoutId : any = null;
     inputMode : OV<null | "comment" | "global"> = mobx.observable.box(null);
 
     // cursor
@@ -982,31 +978,9 @@ class InputModel {
         });
     }
 
-    setRemoteTermWrapFocus(focus : boolean) : void {
-        mobx.action(() => {
-            this.remoteTermWrapFocus.set(focus);
-        })();
-    }
-
     setInputMode(inputMode : null | "comment" | "global") : void {
         mobx.action(() => {
             this.inputMode.set(inputMode);
-        })();
-    }
-
-    setShowNoInputMsg(val : boolean) {
-        mobx.action(() => {
-            if (this.showNoInputTimeoutId != null) {
-                clearTimeout(this.showNoInputTimeoutId);
-                this.showNoInputTimeoutId = null;
-            }
-            if (val) {
-                this.showNoInputMsg.set(true);
-                this.showNoInputTimeoutId = setTimeout(() => this.setShowNoInputMsg(false), 2000);
-            }
-            else {
-                this.showNoInputMsg.set(false);
-            }
         })();
     }
 
@@ -1073,14 +1047,6 @@ class InputModel {
                 }
             }
         }
-    }
-
-    getPtyRemoteId() : string {
-        let info = this.infoMsg.get();
-        if (info == null || isBlank(info.ptyremoteid)) {
-            return null;
-        }
-        return info.ptyremoteid;
     }
 
     hasFocus() : boolean {
@@ -1404,7 +1370,6 @@ class InputModel {
         this._clearInfoTimeout();
         mobx.action(() => {
             this.infoMsg.set(info);
-            this.syncTermWrap();
             if (info == null) {
                 this.infoShow.set(false);
             }
@@ -1452,7 +1417,6 @@ class InputModel {
             this.infoShow.set(false);
             if (setNull) {
                 this.infoMsg.set(null);
-                this.syncTermWrap();
             }
         })();
     }
@@ -1525,60 +1489,8 @@ class InputModel {
             this.resetHistory();
             this.dropModHistory(false);
             this.infoMsg.set(null);
-            this.syncTermWrap();
             this._clearInfoTimeout();
         })();
-    }
-
-    termKeyHandler(remoteId : string, event : any, termWrap : TermWrap) : void {
-        let remote = GlobalModel.getRemote(remoteId);
-        if (remote == null) {
-            return;
-        }
-        if (remote.status != "connecting" && remote.installstatus != "connecting") {
-            this.setShowNoInputMsg(true);
-            return;
-        }
-        let inputPacket : RemoteInputPacketType = {
-            type: "remoteinput",
-            remoteid: remoteId,
-            inputdata64: btoa(event.key),
-        };
-        GlobalModel.sendInputPacket(inputPacket);
-    }
-
-    syncTermWrap() : void {
-        let infoMsg = this.infoMsg.get();
-        let remoteId = (infoMsg == null ? null : infoMsg.ptyremoteid);
-        let curTermRemoteId = (this.remoteTermWrap == null ? null : this.remoteTermWrap.getContextRemoteId());
-        if (remoteId == curTermRemoteId) {
-            return;
-        }
-        if (this.remoteTermWrap != null) {
-            this.remoteTermWrap.dispose();
-            this.remoteTermWrap = null;
-        }
-        if (remoteId != null) {
-            let elem = document.getElementById("term-remote");
-            if (elem == null) {
-                console.log("ERROR null term-remote element");
-            }
-            else {
-                let termOpts = {rows: RemotePtyRows, cols: RemotePtyCols, flexrows: false, maxptysize: 64*1024};
-                this.remoteTermWrap = new TermWrap(elem, {
-                    termContext: {remoteId: remoteId},
-                    usedRows: RemotePtyRows,
-                    termOpts: termOpts,
-                    winSize: null,
-                    keyHandler: (e, termWrap) => { this.termKeyHandler(remoteId, e, termWrap)},
-                    focusHandler: this.setRemoteTermWrapFocus.bind(this),
-                    isRunning: true,
-                    fontSize: GlobalModel.termFontSize.get(),
-                    ptyDataSource: getTermPtyData,
-                    onUpdateContentHeight: null,
-                });
-            }
-        }
     }
 
     getCurLine() : string {
@@ -2314,6 +2226,7 @@ class RemotesModalModel {
     deSelectRemote() : void {
         mobx.action(() => {
             this.selectedRemoteId.set(null);
+            this.remoteEdit.set(null);
         })();
     }
 
@@ -2886,24 +2799,13 @@ class Model {
             if (isBlank(ptyMsg.remoteid)) {
                 // regular update
                 this.updatePtyData(ptyMsg);
-                return;
             }
             else {
                 // remote update
                 let ptyData = base64ToArray(ptyMsg.ptydata64);
-
-                // new remote term
                 this.remotesModalModel.receiveData(ptyMsg.remoteid, ptyMsg.ptypos, ptyData);
-
-                // old remote term
-                let activeRemoteId = this.inputModel.getPtyRemoteId();
-                if (activeRemoteId != ptyMsg.remoteid || this.inputModel.remoteTermWrap == null) {
-                    return;
-                }
-                this.inputModel.remoteTermWrap.receiveData(ptyMsg.ptypos, ptyData);
-                
-                return;
             }
+            return;
         }
         let update : ModelUpdateType = genUpdate;
         if ("screens" in update) {

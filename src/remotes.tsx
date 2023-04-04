@@ -34,6 +34,17 @@ function getRemoteTitle(remote : RemoteType) {
     return remote.remotecanonicalname;
 }
 
+function isStrEq(s1 : string, s2 : string) {
+    if (util.isBlank(s1) && util.isBlank(s2)) {
+        return true;
+    }
+    return s1 == s2;
+}
+
+function isBoolEq(b1 : boolean, b2 : boolean) {
+    return (!!b1) == (!!b2);
+}
+
 @mobxReact.observer
 class AuthModeDropdown extends React.Component<{tempVal : OV<string>}, {}> {
     active : OV<boolean> = mobx.observable.box(false, {name: "AuthModeDropdown-active"});
@@ -131,6 +142,7 @@ class CreateRemote extends React.Component<{model : RemotesModalModel, remoteEdi
     tempManualMode : OV<boolean>;
     tempPassword : OV<string>;
     tempKeyFile : OV<string>;
+    tempAutoInstall : OV<boolean>;
     errorStr : OV<string>;
 
     constructor(props : any) {
@@ -143,7 +155,19 @@ class CreateRemote extends React.Component<{model : RemotesModalModel, remoteEdi
         this.tempConnectMode = mobx.observable.box("auto", {name: "CreateRemote-connectMode"});
         this.tempKeyFile = mobx.observable.box("", {name: "CreateRemote-keystr"});
         this.tempPassword = mobx.observable.box("", {name: "CreateRemote-password"});
+        this.tempAutoInstall = mobx.observable.box(true, {name: "CreateRemote-autoinstall"});
         this.errorStr = mobx.observable.box(remoteEdit.errorstr, {name: "CreateRemote-errorStr"});
+    }
+
+    remoteCName() : string {
+        let hostName = this.tempHostName.get();
+        if (hostName == "") {
+            return "[no host]";
+        }
+        if (hostName.indexOf("@") == -1) {
+            hostName = "[no user]@" + hostName;
+        }
+        return hostName;
     }
 
     getErrorStr() : string {
@@ -190,7 +214,7 @@ class CreateRemote extends React.Component<{model : RemotesModalModel, remoteEdi
             kwargs["password"] = ""
         }
         kwargs["connectmode"] = this.tempConnectMode.get();
-        kwargs["autoinstall"] = "1";
+        kwargs["autoinstall"] = (this.tempAutoInstall.get() ? "1" : "0");
         kwargs["visual"] = "1";
         kwargs["submit"] = "1";
         GlobalCommandRunner.createRemote(cname, kwargs);
@@ -230,13 +254,20 @@ class CreateRemote extends React.Component<{model : RemotesModalModel, remoteEdi
             this.tempHostName.set(e.target.value);
         })();
     }
+
+    @boundMethod
+    handleChangeAutoInstall(val : boolean) : void {
+        mobx.action(() => {
+            this.tempAutoInstall.set(val);
+        })();
+    }
     
     render() {
-        let {model, remote, remoteEdit} = this.props;
+        let {model, remoteEdit} = this.props;
         let authMode = this.tempAuthMode.get();
         return (
             <div className="remote-detail create-remote">
-                <div className="title is-5">Create New Remote</div>
+                <div className="title is-5">Create New Connection</div>
                 <div className="settings-field mt-3">
                     <div className="settings-label">
                         <div>user@host</div>
@@ -304,11 +335,11 @@ class CreateRemote extends React.Component<{model : RemotesModalModel, remoteEdi
                     <div className="settings-field" style={{marginTop: 10}}>
                         <div className="settings-label">
                             {authMode == "password" ? "SSH Password" : "Key Passphrase"}
-                        </div>
-                        <div className="settings-input">
-                            <input type="password" placeholder="password" onFocus={this.onFocusPassword} onChange={this.handleChangePassword} value={this.tempPassword.get()} maxLength={400}/>
-                        </div>
-                    </div>
+            </div>
+            <div className="settings-input">
+                <input type="password" placeholder="password" onChange={this.handleChangePassword} value={this.tempPassword.get()} maxLength={400}/>
+            </div>
+            </div>
                 </If>
                 <div className="settings-field align-top" style={{marginTop: 10}}>
                     <div className="settings-label">
@@ -324,6 +355,18 @@ class CreateRemote extends React.Component<{model : RemotesModalModel, remoteEdi
                     </div>
                     <div className="settings-input">
                         <div className="raw-input"><div className="raw-input"><ConnectModeDropdown tempVal={this.tempConnectMode}/></div></div>
+                    </div>
+                </div>
+                <div className="settings-field" style={{marginTop: 10}}>
+                    <div className="settings-label">
+                        <div>Auto Install</div>
+                        <div className="flex-spacer"/>
+                        <InfoMessage width={350}>
+                            If selected, will try to auto-install the mshell client if it is not installed or out of date.
+                        </InfoMessage>
+                    </div>
+                    <div className="settings-input">
+                        <Toggle checked={this.tempAutoInstall.get()} onChange={this.handleChangeAutoInstall}/>
                     </div>
                 </div>
                 <If condition={!util.isBlank(this.getErrorStr())}>
@@ -350,6 +393,7 @@ class EditRemoteSettings extends React.Component<{model : RemotesModalModel, rem
     tempManualMode : OV<boolean>;
     tempPassword : OV<string>;
     tempKeyFile : OV<string>;
+    tempAutoInstall : OV<boolean>;
 
     constructor(props : any) {
         super(props);
@@ -359,6 +403,36 @@ class EditRemoteSettings extends React.Component<{model : RemotesModalModel, rem
         this.tempConnectMode = mobx.observable.box(remote.connectmode, {name: "EditRemoteSettings-connectMode"});
         this.tempKeyFile = mobx.observable.box(remoteEdit.keystr ?? "", {name: "EditRemoteSettings-keystr"});
         this.tempPassword = mobx.observable.box(remoteEdit.haspassword ? PasswordUnchangedSentinel : "", {name: "EditRemoteSettings-password"});
+        this.tempAutoInstall = mobx.observable.box(!!remote.autoinstall, {name: "EditRemoteSettings-autoinstall"});
+    }
+
+    componentDidUpdate() {
+        let {remote} = this.props;
+        if (remote == null || remote.archived) {
+            this.props.model.deSelectRemote();
+        }
+    }
+
+    @boundMethod
+    clickArchive() : void {
+        let {remote} = this.props;
+        if (remote.status == "connected") {
+            GlobalModel.showAlert({message: "Cannot archived a connected remote.  Disconnect and try again."});
+            return;
+        }
+        let prtn = GlobalModel.showAlert({message: "Are you sure you want to archive this connection?", confirm: true});
+        prtn.then((confirm) => {
+            if (!confirm) {
+                return;
+            }
+            GlobalCommandRunner.archiveRemote(remote.remoteid);
+        });
+    }
+
+    @boundMethod
+    clickForceInstall() : void {
+        let {remote} = this.props;
+        GlobalCommandRunner.installRemote(remote.remoteid);
     }
 
     @boundMethod
@@ -379,6 +453,13 @@ class EditRemoteSettings extends React.Component<{model : RemotesModalModel, rem
     handleChangeAlias(e : any) : void {
         mobx.action(() => {
             this.tempAlias.set(e.target.value);
+        })();
+    }
+
+    @boundMethod
+    handleChangeAutoInstall(val : boolean) : void {
+        mobx.action(() => {
+            this.tempAutoInstall.set(val);
         })();
     }
 
@@ -407,23 +488,39 @@ class EditRemoteSettings extends React.Component<{model : RemotesModalModel, rem
 
     @boundMethod
     submitRemote() : void {
-        let {remote} = this.props;
+        let {remote, remoteEdit} = this.props;
         let authMode = this.tempAuthMode.get();
         let kwargs : Record<string, string> = {};
-        if (authMode == "key" || authMode == "key+password") {
-            kwargs["key"] = this.tempKeyFile.get();
-        }
-        else {
-            kwargs["key"] = "";
+        if (!isStrEq(this.tempKeyFile.get(), remoteEdit.keystr)) {
+            if (authMode == "key" || authMode == "key+password") {
+                kwargs["key"] = this.tempKeyFile.get();
+            }
+            else {
+                kwargs["key"] = "";
+            }
         }
         if (authMode == "password" || authMode == "key+password") {
-            kwargs["password"] = this.tempPassword.get();
+            if (this.tempPassword.get() != PasswordUnchangedSentinel) {
+                kwargs["password"] = this.tempPassword.get();
+            }
         }
         else {
-            kwargs["password"] = ""
+            if (remoteEdit.haspassword) {
+                kwargs["password"] = ""
+            }
         }
-        kwargs["alias"] = this.tempAlias.get();
-        kwargs["connectmode"] = this.tempConnectMode.get();
+        if (!isStrEq(this.tempAlias.get(), remote.remotealias)) {
+            kwargs["alias"] = this.tempAlias.get();
+        }
+        if (!isStrEq(this.tempConnectMode.get(), remote.connectmode)) {
+            kwargs["connectmode"] = this.tempConnectMode.get();
+        }
+        if (!isBoolEq(this.tempAutoInstall.get(), remote.autoinstall)) {
+            kwargs["autoinstall"] = (this.tempAutoInstall.get() ? "1" : "0");
+        }
+        if (Object.keys(kwargs).length == 0) {
+            return;
+        }
         kwargs["visual"] = "1";
         kwargs["submit"] = "1";
         GlobalCommandRunner.editRemote(remote.remoteid, kwargs);
@@ -453,7 +550,7 @@ class EditRemoteSettings extends React.Component<{model : RemotesModalModel, rem
             <div className="remote-detail auth-editing">
                 <div className="title is-5">{getRemoteTitle(remote)}</div>
                 <div className="detail-subtitle">
-                    Editing Remote Settings
+                    Editing Connection Settings
                 </div>
                 <div className="settings-field">
                     <div className="settings-label">
@@ -521,6 +618,29 @@ class EditRemoteSettings extends React.Component<{model : RemotesModalModel, rem
                     </div>
                     <div className="settings-input">
                         <div className="raw-input"><div className="raw-input"><ConnectModeDropdown tempVal={this.tempConnectMode}/></div></div>
+                    </div>
+                </div>
+                <div className="settings-field" style={{marginTop: 10}}>
+                    <div className="settings-label">
+                        <div>Auto Install</div>
+                        <div className="flex-spacer"/>
+                        <InfoMessage width={350}>
+                            If selected, will try to auto-install the mshell client if it is not installed or out of date.
+                        </InfoMessage>
+                    </div>
+                    <div className="settings-input">
+                        <Toggle checked={this.tempAutoInstall.get()} onChange={this.handleChangeAutoInstall}/>
+                    </div>
+                </div>
+                <div className="settings-field mt-3">
+                    <div className="settings-label">Actions</div>
+                    <div className="settings-input">
+                        <div onClick={this.clickArchive} className="button is-prompt-danger is-outlined is-small is-inline-height">
+                            Archive Connection
+                        </div>
+                        <div onClick={this.clickForceInstall} className="button is-prompt-danger is-outlined is-small is-inline-height ml-3">
+                            Force Install
+                        </div>
                     </div>
                 </div>
                 <If condition={!util.isBlank(remoteEdit.errorstr)}>
@@ -604,38 +724,17 @@ class RemoteDetailView extends React.Component<{model : RemotesModalModel, remot
         this.props.model.startEditAuth();
     }
 
-    @boundMethod
-    clickArchive(remoteId : string) : void {
-        let {remote} = this.props;
-        if (remote.status == "connected") {
-            GlobalModel.showAlert({message: "Cannot archived a connected remote.  Disconnect and try again."});
-            return;
-        }
-        let prtn = GlobalModel.showAlert({message: "Are you sure you want to archive this connection?", confirm: true});
-        prtn.then((confirm) => {
-            if (!confirm) {
-                return;
-            }
-            GlobalCommandRunner.archiveRemote(remoteId);
-        });
-    }
-
-    @boundMethod
-    editAlias(remoteId : string, alias : string) : void {
-        this.props.model.startEditAuth();
-    }
-
     renderInstallStatus(remote : RemoteType) : any {
         let statusStr : string = null;
         if (remote.installstatus == "disconnected") {
             if (remote.needsmshellupgrade) {
-                statusStr = "mshell " + remote.mshellversion + " (needs upgrade)";
+                statusStr = "mshell " + remote.mshellversion + " - needs upgrade";
             }
             else if (util.isBlank(remote.mshellversion)) {
                 statusStr = "mshell unknown";
             }
             else {
-                statusStr = "mshell " + remote.mshellversion + " (current)";
+                statusStr = "mshell " + remote.mshellversion + " - current";
             }
         }
         else {
@@ -643,6 +742,9 @@ class RemoteDetailView extends React.Component<{model : RemotesModalModel, remot
         }
         if (statusStr == null) {
             return null;
+        }
+        if (remote.autoinstall) {
+            statusStr = statusStr + " (autoinstall)";
         }
         return (
             <div key="install-status" className="settings-field">
@@ -760,22 +862,14 @@ class RemoteDetailView extends React.Component<{model : RemotesModalModel, remot
                 <div className="settings-field" style={{minHeight: 24}}>
                     <div className="settings-label">Alias</div>
                     <div className="settings-input">
-                        {remoteAliasText} <i style={{marginLeft: 12}} className="fa-sharp fa-solid fa-pen hide-hover"/>
-                        <div onClick={() => this.editAlias()} className="button is-plain is-outlined is-small is-inline-height ml-2 update-auth-button">
-                            <span className="icon is-small"><i className="fa-sharp fa-solid fa-pen"/></span>
-                            <span>Update Alias</span>
-                        </div>
+                        {remoteAliasText}
                     </div>
                 </div>
                 <div className="settings-field">
                     <div className="settings-label">Auth Type</div>
                     <div className="settings-input">
                         <If condition={!remote.local}>
-                            {remote.authtype} <i style={{marginLeft: 12}} className="fa-sharp fa-solid fa-pen hide-hover"/>
-                            <div onClick={() => this.editAuthSettings()} className="button is-plain is-outlined is-small is-inline-height ml-2 update-auth-button">
-                                <span className="icon is-small"><i className="fa-sharp fa-solid fa-pen"/></span>
-                                <span>Update Auth Settings</span>
-                            </div>
+                            {remote.authtype}
                         </If>
                         <If condition={remote.local}>
                             local
@@ -789,16 +883,14 @@ class RemoteDetailView extends React.Component<{model : RemotesModalModel, remot
                     </div>
                 </div>
                 {this.renderInstallStatus(remote)}
-                <If condition={!remote.local}>
-                    <div className="settings-field">
-                        <div className="settings-label">Archive</div>
-                        <div className="settings-input">
-                            <div onClick={() => this.clickArchive(remote.remoteid)} className="button is-prompt-danger is-outlined is-small is-inline-height">
-                                Archive This Connection
-                            </div>
+                <div className="settings-field">
+                    <div className="settings-label">Actions</div>
+                    <div className="settings-input">
+                        <div onClick={() => this.editAuthSettings()} className="button is-prompt-green is-outlined is-small is-inline-height">
+                            Edit Connection Settings
                         </div>
                     </div>
-                </If>
+                </div>
                 <div className="flex-spacer" style={{minHeight: 20}}/>
                 <div style={{width: termWidth}}>
                     {remoteMessage}
