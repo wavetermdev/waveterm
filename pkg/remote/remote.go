@@ -38,6 +38,7 @@ const CircBufSize = 64 * 1024
 const RemoteTermRows = 8
 const RemoteTermCols = 80
 const PtyReadBufSize = 100
+const RemoteConnectTimeout = 15 * time.Second
 
 const MShellServerCommandFmt = `
 PATH=$PATH:~/.mshell;
@@ -101,6 +102,7 @@ type MShellProc struct {
 	ControllingPty     *os.File
 	PtyBuffer          *circbuf.Buffer
 	MakeClientCancelFn context.CancelFunc
+	MakeClientDeadline *time.Time
 	StateMap           map[string]*packet.ShellState // sha1->state
 	CurrentState       string                        // sha1
 	NumTryConnect      int
@@ -132,6 +134,7 @@ type RemoteRuntimeState struct {
 	RemoteVars          map[string]string      `json:"remotevars"`
 	DefaultFeState      *sstore.FeStateType    `json:"defaultfestate"`
 	Status              string                 `json:"status"`
+	ConnectTimeout      int                    `json:"connecttimeout,omitempty"`
 	ErrorStr            string                 `json:"errorstr,omitempty"`
 	InstallStatus       string                 `json:"installstatus"`
 	InstallErrorStr     string                 `json:"installerrorstr,omitempty"`
@@ -534,6 +537,12 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 	}
 	if msh.Status == StatusConnecting {
 		state.WaitingForPassword = msh.isWaitingForPassword_nolock()
+		if msh.MakeClientDeadline != nil {
+			state.ConnectTimeout = int((*msh.MakeClientDeadline).Sub(time.Now()) / time.Second)
+			if state.ConnectTimeout < 0 {
+				state.ConnectTimeout = 0
+			}
+		}
 	}
 	vars := msh.Remote.StateVars
 	if vars == nil {
@@ -668,7 +677,47 @@ func SendRemoteInput(pk *scpacket.RemoteInputPacketType) error {
 	if err != nil {
 		return fmt.Errorf("writing to pty: %v", err)
 	}
+	msh.resetClientDeadline()
 	return nil
+}
+
+func (msh *MShellProc) getClientDeadline() *time.Time {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	return msh.MakeClientDeadline
+}
+
+func (msh *MShellProc) resetClientDeadline() {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	if msh.Status != StatusConnecting {
+		return
+	}
+	deadline := msh.MakeClientDeadline
+	if deadline == nil {
+		return
+	}
+	newDeadline := time.Now().Add(RemoteConnectTimeout)
+	msh.MakeClientDeadline = &newDeadline
+}
+
+func (msh *MShellProc) watchClientDeadlineTime() {
+	for {
+		time.Sleep(1 * time.Second)
+		status := msh.GetStatus()
+		if status != StatusConnecting {
+			break
+		}
+		deadline := msh.getClientDeadline()
+		if deadline == nil {
+			break
+		}
+		if time.Now().After(*deadline) {
+			msh.Disconnect(false)
+			break
+		}
+		go msh.NotifyRemoteUpdate()
+	}
 }
 
 func convertSSHOpts(opts *sstore.SSHOpts) shexec.SSHOpts {
@@ -977,6 +1026,8 @@ func (msh *MShellProc) RunInstall() {
 		msh.InstallStatus = StatusDisconnected
 		msh.InstallCancelFn = nil
 		msh.NeedsMShellUpgrade = false
+		msh.Status = StatusDisconnected
+		msh.Err = nil
 	})
 	msh.WriteToPtyBuffer("successfully installed mshell %s to ~/.mshell\n", scbase.MShellVersion)
 	go msh.NotifyRemoteUpdate()
@@ -1146,14 +1197,22 @@ func (msh *MShellProc) Launch(interactive bool) {
 		msh.ErrNoInitPk = false
 		msh.Status = StatusConnecting
 		msh.MakeClientCancelFn = makeClientCancelFn
+		deadlineTime := time.Now().Add(RemoteConnectTimeout)
+		msh.MakeClientDeadline = &deadlineTime
 		go msh.NotifyRemoteUpdate()
 	})
+	go msh.watchClientDeadlineTime()
 	cproc, initPk, err := shexec.MakeClientProc(makeClientCtx, ecmd)
 	// TODO check if initPk.State is not nil
 	var mshellVersion string
 	var stateBaseHash string
+	var hitDeadline bool
 	msh.WithLock(func() {
 		msh.MakeClientCancelFn = nil
+		if time.Now().After(*msh.MakeClientDeadline) {
+			hitDeadline = true
+		}
+		msh.MakeClientDeadline = nil
 		if initPk == nil {
 			msh.ErrNoInitPk = true
 		}
@@ -1177,11 +1236,16 @@ func (msh *MShellProc) Launch(interactive bool) {
 		// no notify here, because we'll call notify in either case below
 	})
 	if err == context.Canceled {
-		msh.WriteToPtyBuffer("*forced disconnection\n")
-		msh.WithLock(func() {
-			msh.Status = StatusDisconnected
-			go msh.NotifyRemoteUpdate()
-		})
+		if hitDeadline {
+			msh.WriteToPtyBuffer("*connect timeout\n")
+			msh.setErrorStatus(errors.New("connect timeout"))
+		} else {
+			msh.WriteToPtyBuffer("*forced disconnection\n")
+			msh.WithLock(func() {
+				msh.Status = StatusDisconnected
+				go msh.NotifyRemoteUpdate()
+			})
+		}
 		return
 	}
 	if err == nil && semver.MajorMinor(mshellVersion) != semver.MajorMinor(scbase.MShellVersion) {
