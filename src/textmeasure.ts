@@ -13,6 +13,7 @@ MonoFontSizes[12] = {height: 16, width: 7.203};
 MonoFontSizes[13] = {height: 18, width: 7.797};
 MonoFontSizes[14] = {height: 19, width: 8.398};
 MonoFontSizes[15] = {height: 20, width: 9};
+MonoFontSizes[16] = {height: 22, width: 9.594};
 
 function getMonoFontSize(fontSize : number) : {height : number, width : number} {
     return MonoFontSizes[fontSize];

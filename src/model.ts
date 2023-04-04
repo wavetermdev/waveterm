@@ -272,7 +272,7 @@ class Screen {
             return null;
         }
         if (GlobalModel.isDev) {
-            return sprintf("http://devtest.getprompt.com:9001/static/index.html?screenid=%s&viewkey=%s", this.screenId, viewKey);
+            return sprintf("http://devtest.getprompt.com:9001/static/index-dev.html?screenid=%s&viewkey=%s", this.screenId, viewKey);
         }
         return sprintf("https://share.getprompt.dev/s/%s?viewkey=%s", this.screenId, viewKey);
     }

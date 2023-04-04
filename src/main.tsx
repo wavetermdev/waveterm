@@ -12,7 +12,7 @@ import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType
 import type * as T from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {GlobalModel, GlobalCommandRunner, Session, Cmd, ScreenLines, Screen, riToRPtr, TabColors, RemoteColors} from "./model";
-import {windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols} from "./textmeasure";
+import {windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols, getMonoFontSize} from "./textmeasure";
 import {isModKeyPress, boundInt, sortAndFilterRemotes} from "./util";
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -114,6 +114,21 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
         else {
             this.mainInputRef.current.focus();
         }
+    }
+
+    getTextAreaMaxCols() : number {
+        let taElem = this.mainInputRef.current;
+        if (taElem == null) {
+            return 0;
+        }
+        let cs = window.getComputedStyle(taElem);
+        let padding = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+        let borders = parseFloat(cs.borderLeft) + parseFloat(cs.borderRight);
+        let contentWidth = taElem.clientWidth - padding - borders;
+        let fontSize = getMonoFontSize(parseInt(cs.fontSize));
+        let maxCols = Math.floor(contentWidth / fontSize.width);
+        console.log("getareamaxcols", contentWidth, fontSize, maxCols);
+        return maxCols;
     }
 
     checkHeight(shouldFire : boolean) : void {
@@ -559,9 +574,10 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
         if (activeScreen != null) {
             activeScreen.focusType.get(); // for reaction
         }
+        let computedHeight = (displayLines*24)+14;
         return (
             <div className="control cmd-input-control is-expanded" ref={this.controlRef}>
-                <textarea ref={this.mainInputRef} spellCheck="false" autoComplete="off" autoCorrect="off" id="main-cmd-input" onFocus={this.handleMainFocus} onBlur={this.handleMainBlur} rows={displayLines} value={curLine} onKeyDown={this.onKeyDown} onChange={this.onChange} className={cn("textarea", {"display-disabled": disabled})}></textarea>
+                <textarea ref={this.mainInputRef} spellCheck="false" autoComplete="off" autoCorrect="off" id="main-cmd-input" onFocus={this.handleMainFocus} onBlur={this.handleMainBlur} style={{height: computedHeight, minHeight: computedHeight}} value={curLine} onKeyDown={this.onKeyDown} onChange={this.onChange} className={cn("textarea", {"display-disabled": disabled})}></textarea>
                 <input ref={this.historyInputRef} spellCheck="false" autoComplete="off" autoCorrect="off" className="history-input" type="text" onFocus={this.handleHistoryFocus} onKeyDown={this.onHistoryKeyDown} onChange={this.handleHistoryInput} value={inputModel.historyQueryOpts.get().queryStr}/>
             </div>
         );
