@@ -142,7 +142,7 @@ body::-webkit-scrollbar {
                 padding: 2px 8px 2px 4px;
                 z-index: 11;
                 font-size: 12px;
-                border-radius: 0 0 5px 5px;
+                /* border-radius: 0 0 5px 5px; */
                 opacity: 0.8;
                 display: flex;
                 flex-direction: column;
@@ -153,12 +153,21 @@ body::-webkit-scrollbar {
                 }
 
                 &:hover {
+                    .share-tag-title {
+                        font-size: 14px;
+                        font-weight: bold;
+                    }
                     opacity: 1.0;
                     padding: 20px;
-                    width: 150px;
+                    width: 250px;
+                    border: 1px solid #ccc;
+                    border-top: 0;
                     
                     .share-tag-link {
-                        display: block;
+                        display: flex;
+                        flex-direction: row;
+                        align-items: center;
+                        gap: 10px;
                     }
                 }
             }

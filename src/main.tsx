@@ -1092,6 +1092,14 @@ class ScreenWindowView extends React.Component<{screen : Screen}, {}> {
     }
 
     @boundMethod
+    openScreenSettings() : void {
+        let {screen} = this.props;
+        mobx.action(() => {
+            GlobalModel.screenSettingsModal.set({sessionId: screen.sessionId, screenId: screen.screenId});
+        })();
+    }
+
+    @boundMethod
     buildLineComponent(lineProps : LineFactoryProps) : JSX.Element {
         let {screen} = this.props;
         let {line, ...restProps} = lineProps;
@@ -1141,12 +1149,18 @@ class ScreenWindowView extends React.Component<{screen : Screen}, {}> {
                         <If condition={this.shareCopied.get()}>
                             <div className="copied-indicator"/>
                         </If>
-                        <div><i title="archived" className="fa-sharp fa-solid fa-share-nodes"/> web shared</div>
+                        <div className="share-tag-title"><i title="archived" className="fa-sharp fa-solid fa-share-nodes"/> web shared</div>
                         <div className="share-tag-link">
                             <div className="button is-prompt-green is-outlined is-small" onClick={this.copyShareLink}>
                                 <span>copy link</span>
                                 <span className="icon">
                                     <i className="fa-sharp fa-solid fa-copy"/>
+                                </span>
+                            </div>
+                            <div className="button is-prompt-green is-outlined is-small" onClick={this.openScreenSettings}>
+                                <span>open settings</span>
+                                <span className="icon">
+                                    <i className="fa-sharp fa-solid fa-cog"/>
                                 </span>
                             </div>
                         </div>
