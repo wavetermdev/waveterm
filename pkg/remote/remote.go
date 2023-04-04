@@ -653,7 +653,7 @@ func MakeMShell(r *sstore.RemoteType) *MShellProc {
 		PendingStateCmds: make(map[string]base.CommandKey),
 		StateMap:         make(map[string]*packet.ShellState),
 	}
-	rtn.WriteToPtyBuffer("console for remote [%s]\n", r.GetName())
+	rtn.WriteToPtyBuffer("console for connection [%s]\n", r.GetName())
 	return rtn
 }
 
