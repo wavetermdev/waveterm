@@ -3008,17 +3008,6 @@ input[type=checkbox] {
                         margin-right: 15px;
                     }
                 }
-
-                .remoteedit-error {
-                    font-size: 14px;
-                    color: @term-red;
-                    margin-top: 20px;
-                    padding: 10px;
-                    border-radius: 5px;
-                    background-color: #333;
-                    border: 1px solid @term-red;
-                    font-weight: bold;
-                }
             }
         }
     }
@@ -3186,6 +3175,22 @@ input[type=checkbox] {
         }
     }
 
+    &.settings-error {
+        font-size: 14px;
+        color: @term-red;
+        margin-top: 20px;
+        padding: 10px;
+        border-radius: 5px;
+        background-color: #200707;
+        border: 1px solid @term-red;
+        font-weight: bold;
+
+        .error-dismiss {
+            padding: 2px;
+            cursor: pointer;
+        }
+    }
+
     .settings-label {
         font-weight: bold;
         color: #fff;
@@ -3199,6 +3204,10 @@ input[type=checkbox] {
 
         &.inline-edit.edit-not-active {
             cursor: pointer;
+
+            i.fa-pen {
+                margin-left: 5px;
+            }
 
             &:hover {
                 text-decoration: underline;
@@ -3226,6 +3235,11 @@ input[type=checkbox] {
             padding: 4px;
             border-radius: 3px;
         }
+
+        .control {
+            font-size: 12px;
+        }
+        
         .tab-color-icon.color-green {
             color: desaturate(@tab-green, 30%);
         }
