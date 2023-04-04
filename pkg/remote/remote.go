@@ -501,6 +501,16 @@ func (msh *MShellProc) IsSudo() bool {
 	return msh.Remote.RemoteSudo
 }
 
+func (msh *MShellProc) tryAutoInstall() {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	if !msh.Remote.AutoInstall || !msh.NeedsMShellUpgrade || msh.InstallErr != nil {
+		return
+	}
+	msh.writeToPtyBuffer_nolock("trying auto-install\n")
+	go msh.RunInstall()
+}
+
 func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
@@ -1022,15 +1032,21 @@ func (msh *MShellProc) RunInstall() {
 		msh.setInstallErrorStatus(statusErr)
 		return
 	}
+	var connectMode string
 	msh.WithLock(func() {
 		msh.InstallStatus = StatusDisconnected
 		msh.InstallCancelFn = nil
 		msh.NeedsMShellUpgrade = false
 		msh.Status = StatusDisconnected
 		msh.Err = nil
+		connectMode = msh.Remote.ConnectMode
 	})
 	msh.WriteToPtyBuffer("successfully installed mshell %s to ~/.mshell\n", scbase.MShellVersion)
 	go msh.NotifyRemoteUpdate()
+	if connectMode == sstore.ConnectModeStartup || connectMode == sstore.ConnectModeAuto {
+		// the install was successful, and we don't have a manual connect mode, try to connect
+		go msh.Launch(true)
+	}
 	return
 }
 
@@ -1254,6 +1270,7 @@ func (msh *MShellProc) Launch(interactive bool) {
 	if err != nil {
 		msh.setErrorStatus(err)
 		msh.WriteToPtyBuffer("*error connecting to remote: %v\n", err)
+		go msh.tryAutoInstall()
 		return
 	}
 	msh.updateRemoteStateVars(context.Background(), msh.RemoteId, initPk)
