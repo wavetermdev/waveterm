@@ -188,7 +188,7 @@ body::-webkit-scrollbar {
 }
 
 .alt-view {
-    background-color: #222;
+    background-color: #111;
     overflow-y: auto;
     
     .alt-title {
@@ -256,6 +256,7 @@ body::-webkit-scrollbar {
             margin-top: 5px;
             .mono-font(1.5rem);
             font-weight: bold;
+            color: white;
         }
 
         input {
@@ -658,7 +659,8 @@ body::-webkit-scrollbar {
     .copy-control {
         width: 0;
         position: relative;
-        display: none;
+        display: block;
+        visibility: hidden;
         
         .inner-copy {
             position: absolute;
@@ -679,7 +681,7 @@ body::-webkit-scrollbar {
     }
 
     &:hover .copy-control {
-        display: block !important;
+        visibility: visible !important;
     }
 }
 
