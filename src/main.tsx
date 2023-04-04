@@ -1369,10 +1369,6 @@ class MainSideBar extends React.Component<{}, {}> {
         GlobalCommandRunner.openSharedSession();
     }
 
-    clickRemotes() {
-        GlobalCommandRunner.showAllRemotes();
-    }
-
     clickLinks() {
         mobx.action(() => {
             GlobalModel.showLinks.set(!GlobalModel.showLinks.get());
@@ -1536,6 +1532,9 @@ class MainSideBar extends React.Component<{}, {}> {
                     <ul className="menu-list">
                         <li className="menu-bookmarks"><a onClick={this.handleBookmarksClick} className={cn({"is-active": (mainView == "bookmarks")})}><i className="fa-sharp fa-solid fa-bookmark"/> BOOKMARKS <span className="hotkey">&#x2318;B</span></a></li>
                     </ul>
+                    <ul className="menu-list" style={{display: "none"}}>
+                        <li className="menu-websharing"><a onClick={this.handleBookmarksClick} className={cn({"is-active": (mainView == "bookmarks")})}><i className="fa-sharp fa-solid fa-share-nodes"/> WEB SHARING</a></li>
+                    </ul>
                     <p className="menu-label display-none">
                         Playbooks
                     </p>
@@ -1557,9 +1556,6 @@ class MainSideBar extends React.Component<{}, {}> {
                     <ul className="menu-list">
                         <li className="menu-settings"><a onClick={this.handleSettingsClick}><i className="fa-sharp fa-solid fa-cog"/> SETTINGS</a></li>
                     </ul>
-                    <ul className="menu-list">
-                        <li className="menu-connections"><a onClick={this.handleConnectionsClick}><i className="fa-sharp fa-solid fa-computer-classic"/> CONNECTIONS</a></li>
-                    </ul>
                     <p className="menu-label">
                         <a onClick={() => this.clickLinks()}>LINKS <i className={cn("fa-sharp fa-solid", (GlobalModel.showLinks.get() ? "fa-angle-down" : "fa-angle-right"))}/></a>
                     </p>
@@ -1575,7 +1571,7 @@ class MainSideBar extends React.Component<{}, {}> {
                         </li>
                     </ul>
                     <p className="menu-label">
-                        <a onClick={() => this.clickRemotes()}>Connections</a>
+                        <a onClick={this.handleConnectionsClick}>Connections</a>
                     </p>
                     <ul className="menu-list remotes-menu-list">
                         <For each="remote" of={remotes}>
