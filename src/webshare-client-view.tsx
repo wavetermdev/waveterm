@@ -9,6 +9,7 @@ import {If, For, When, Otherwise, Choose} from "tsx-control-statements/component
 import cn from "classnames";
 import {GlobalModel, GlobalCommandRunner, Screen} from "./model";
 import {WebStopShareConfirmMarkdown} from "./settings";
+import * as util from "./util";
 
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
@@ -111,6 +112,12 @@ class WebShareView extends React.Component<{}, {}> {
                                     </span>
                                 </div>
                                 <div className="actions">
+                                    <a href={util.makeExternLink(screen.getWebShareUrl())} target="_blank" className="button is-prompt-green is-outlined is-small a-block">
+                                        <span>open in browser</span>
+                                        <span className="icon">
+                                            <i className="fa-sharp fa-solid fa-up-right-from-square"/>
+                                        </span>
+                                    </a>
                                     <div className="button is-prompt-green is-outlined is-small" onClick={() => this.copyShareLink(screen)}>
                                         <span>copy link</span>
                                         <span className="icon">
