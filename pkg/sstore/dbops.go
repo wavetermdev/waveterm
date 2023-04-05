@@ -2437,22 +2437,6 @@ func PurgeHistoryByIds(ctx context.Context, historyIds []string) ([]*HistoryItem
 	})
 }
 
-func CanScreenWebShare(screen *ScreenType) error {
-	if screen == nil {
-		return fmt.Errorf("cannot share screen, not found")
-	}
-	if screen.ShareMode == ShareModeWeb {
-		return fmt.Errorf("screen is already shared to web")
-	}
-	if screen.ShareMode != ShareModeLocal {
-		return fmt.Errorf("screen cannot be shared, invalid current share mode %q (must be local)", screen.ShareMode)
-	}
-	if screen.Archived {
-		return fmt.Errorf("screen cannot be shared, must un-archive before sharing")
-	}
-	return nil
-}
-
 func ScreenWebShareStart(ctx context.Context, screenId string, shareOpts ScreenWebShareOpts) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT screenid FROM screen WHERE screenid = ?`
@@ -2465,6 +2449,12 @@ func ScreenWebShareStart(ctx context.Context, screenId string, shareOpts ScreenW
 		}
 		if shareMode != ShareModeLocal {
 			return fmt.Errorf("screen cannot be shared, invalid current share mode %q (must be local)", shareMode)
+		}
+		query = `SELECT count(*) FROM line WHERE screenid = ? AND NOT archived`
+		lineCount := tx.GetInt(query, screenId)
+		if lineCount > MaxWebShareLineCount {
+			return fmt.Errorf("screen cannot be shared, limited to a maximum of %d lines", MaxWebShareLineCount)
+			go UpdateCurrentActivity(context.Background(), ActivityUpdate{WebShareLimit: 1})
 		}
 		query = `UPDATE screen SET sharemode = ?, webshareopts = ? WHERE screenid = ?`
 		tx.Exec(query, ShareModeWeb, quickJson(shareOpts), screenId)

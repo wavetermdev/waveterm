@@ -33,6 +33,7 @@ const LineTypeText = "text"
 const LineNoHeight = -1
 const DBFileName = "prompt.db"
 const DBFileNameBackup = "backup.prompt.db"
+const MaxWebShareLineCount = 50
 
 const DefaultSessionName = "default"
 const LocalRemoteAlias = "local"
@@ -177,6 +178,7 @@ type ActivityUpdate struct {
 	HistoryView   int
 	BookmarksView int
 	NumConns      int
+	WebShareLimit int
 	BuildTime     string
 }
 
@@ -201,6 +203,7 @@ type TelemetryData struct {
 	HistoryView   int `json:"historyview,omitempty"`
 	BookmarksView int `json:"bookmarksview,omitempty"`
 	NumConns      int `json:"numconns"`
+	WebShareLimit int `json:"websharelimit,omitempty"`
 }
 
 func (tdata TelemetryData) Value() (driver.Value, error) {
