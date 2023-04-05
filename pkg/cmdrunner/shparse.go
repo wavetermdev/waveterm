@@ -77,6 +77,8 @@ func SubMetaCmd(cmd string) string {
 		return "eval"
 	case "export":
 		return "setenv"
+	case "connection":
+		return "remote"
 	default:
 		return cmd
 	}

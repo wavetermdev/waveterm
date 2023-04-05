@@ -2499,10 +2499,10 @@ func insertScreenUpdate(tx *TxWrap, screenId string, updateType string) {
 func insertScreenNewUpdate(tx *TxWrap, screenId string) {
 	nowTs := time.Now().UnixMilli()
 	query := `INSERT INTO screenupdate (screenid, lineid, updatetype, updatets)
-              SELECT screenid, lineid, ?, ? FROM line WHERE screenid = ? AND NOT archived ORDER BY linenum`
+              SELECT screenid, lineid, ?, ? FROM line WHERE screenid = ? AND NOT archived ORDER BY linenum DESC`
 	tx.Exec(query, UpdateType_LineNew, nowTs, screenId)
 	query = `INSERT INTO screenupdate (screenid, lineid, updatetype, updatets)
-             SELECT c.screenid, l.lineid, ?, ? FROM cmd c, line l WHERE c.screenid = ? AND l.cmdid = c.cmdid AND NOT l.archived`
+             SELECT c.screenid, l.lineid, ?, ? FROM cmd c, line l WHERE c.screenid = ? AND l.cmdid = c.cmdid AND NOT l.archived ORDER BY l.linenum DESC`
 	tx.Exec(query, UpdateType_PtyPos, nowTs, screenId)
 	NotifyUpdateWriter()
 }

@@ -177,6 +177,7 @@ func init() {
 	registerCmdFn("client:show", ClientShowCommand)
 	registerCmdFn("client:set", ClientSetCommand)
 	registerCmdFn("client:notifyupdatewriter", ClientNotifyUpdateWriterCommand)
+	registerCmdFn("client:accepttos", ClientAcceptTosCommand)
 
 	registerCmdFn("telemetry", TelemetryCommand)
 	registerCmdFn("telemetry:on", TelemetryOnCommand)
@@ -2796,6 +2797,27 @@ func boolToStr(v bool, trueStr string, falseStr string) string {
 		return trueStr
 	}
 	return falseStr
+}
+
+func ClientAcceptTosCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
+	}
+	clientOpts := clientData.ClientOpts
+	clientOpts.AcceptedTos = time.Now().UnixMilli()
+	err = sstore.SetClientOpts(ctx, clientOpts)
+	if err != nil {
+		return nil, fmt.Errorf("error updating client data: %v", err)
+	}
+	clientData, err = sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
+	}
+	update := sstore.ModelUpdate{
+		ClientData: clientData,
+	}
+	return update, nil
 }
 
 func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
