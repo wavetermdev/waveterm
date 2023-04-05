@@ -237,7 +237,7 @@ class WebShareModelClass {
             console.log("bad WebFullScreen update, wrong screenid", msg.screenid);
             return;
         }
-        console.log("merge screen-update", "vts=" + msg.vts);
+        // console.log("merge screen-update", "vts=" + msg.vts);
         // console.log("merge", "vts=" + msg.vts, msg);
         mobx.action(() => {
             let fullScreen = this.fullScreen.get();
@@ -356,7 +356,7 @@ class WebShareModelClass {
         }).then((buf) => {
             let dataArr = new Uint8Array(buf);
             let newOffset = ptyOffset + dataArr.length;
-            console.log("fetch pty success", lineNum, "len=" + dataArr.length, "pos => " + newOffset);
+            // console.log("fetch pty success", lineNum, "len=" + dataArr.length, "pos => " + newOffset);
             this.localPtyOffsetMap[lineId] = newOffset;
             return {pos: ptyOffset, data: dataArr};
         }).finally(() => {
@@ -366,18 +366,21 @@ class WebShareModelClass {
 
     wsMessageCallback(msg : any) {
         if (msg.type == "webscreen:update") {
-            console.log("[ws] update vts", msg.vts);
+            // console.log("[ws] update vts", msg.vts);
             if (msg.vts > this.remoteScreenVts) {
                 this.remoteScreenVts = msg.vts;
                 setTimeout(() => this.checkUpdateScreenData(), 10);
             }
             return;
         }
+        if (msg.type == "success:webshare") {
+            return;
+        }
         console.log("[ws] unhandled message", msg);
     }
 
     setWebFullScreen(screen : T.WebFullScreen) {
-        console.log("got initial screen", "vts=" + screen.vts);
+        // console.log("got initial screen", "vts=" + screen.vts);
         mobx.action(() => {
             if (screen.lines == null) {
                 screen.lines = [];

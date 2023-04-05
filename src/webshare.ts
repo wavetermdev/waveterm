@@ -9,7 +9,7 @@ import * as textmeasure from "./textmeasure";
 
 let PROMPT_DEV = __PROMPT_DEV__;
 let PROMPT_VERSION = __PROMPT_VERSION__;
-let PROMPT_BULILD = __PROMPT_BUILD__;
+let PROMPT_BUILD = __PROMPT_BUILD__;
 
 loadFonts();
 
