@@ -1624,9 +1624,9 @@ func GetSessionStats(ctx context.Context, sessionId string) (*SessionStatsType, 
 		rtn.NumScreens = tx.GetInt(query, sessionId)
 		query = `SELECT count(*) FROM screen WHERE sessionid = ? AND archived`
 		rtn.NumArchivedScreens = tx.GetInt(query, sessionId)
-		query = `SELECT count(*) FROM line WHERE sessionid = ?`
+		query = `SELECT count(*) FROM line WHERE screenid IN (SELECT screenid FROM screen WHERE sessionid = ?)`
 		rtn.NumLines = tx.GetInt(query, sessionId)
-		query = `SELECT count(*) FROM cmd WHERE screenid IN (select screenid FROM screen WHERE sessionid = ?)`
+		query = `SELECT count(*) FROM cmd WHERE screenid IN (SELECT screenid FROM screen WHERE sessionid = ?)`
 		rtn.NumCmds = tx.GetInt(query, sessionId)
 		return nil
 	})
