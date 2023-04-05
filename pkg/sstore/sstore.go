@@ -34,7 +34,7 @@ const LineNoHeight = -1
 const DBFileName = "prompt.db"
 const DBFileNameBackup = "backup.prompt.db"
 const MaxWebShareLineCount = 50
-const MaxWebShareScreenCount = 5
+const MaxWebShareScreenCount = 3
 
 const DefaultSessionName = "default"
 const LocalRemoteAlias = "local"

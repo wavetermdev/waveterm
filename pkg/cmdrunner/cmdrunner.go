@@ -2332,9 +2332,15 @@ func LineViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	if err != nil {
 		return nil, fmt.Errorf("/line:view invalid session arg: %v", err)
 	}
+	if sessionId == "" {
+		return nil, fmt.Errorf("/line:view no session found")
+	}
 	screenRItem, err := resolveSessionScreen(ctx, sessionId, screenArg, "")
 	if err != nil {
 		return nil, fmt.Errorf("/line:view invalid screen arg: %v", err)
+	}
+	if screenRItem == nil {
+		return nil, fmt.Errorf("/line:view no screen found")
 	}
 	screen, err := sstore.GetScreenById(ctx, screenRItem.Id)
 	if err != nil {
@@ -2348,15 +2354,17 @@ func LineViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	if err != nil {
 		return nil, err
 	}
-	updateMap := make(map[string]interface{})
-	updateMap[sstore.ScreenField_SelectedLine] = lineRItem.Num
-	updateMap[sstore.ScreenField_AnchorLine] = lineRItem.Num
-	updateMap[sstore.ScreenField_AnchorOffset] = 0
-	screen, err = sstore.UpdateScreen(ctx, screenRItem.Id, updateMap)
-	if err != nil {
-		return nil, err
+	if lineRItem != nil {
+		updateMap := make(map[string]interface{})
+		updateMap[sstore.ScreenField_SelectedLine] = lineRItem.Num
+		updateMap[sstore.ScreenField_AnchorLine] = lineRItem.Num
+		updateMap[sstore.ScreenField_AnchorOffset] = 0
+		screen, err = sstore.UpdateScreen(ctx, screenRItem.Id, updateMap)
+		if err != nil {
+			return nil, err
+		}
+		update.Screens = []*sstore.ScreenType{screen}
 	}
-	update.Screens = []*sstore.ScreenType{screen}
 	return update, nil
 }
 
