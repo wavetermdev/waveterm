@@ -24,12 +24,14 @@ const VERSION = __PROMPT_VERSION__;
 // @ts-ignore
 const BUILD = __PROMPT_BUILD__;
 
-const WebShareMarkdown = `
+const WebShareConfirmMarkdown = `
 You are about to share a terminal tab on the web.  Please make sure that you do
 NOT share any private information, keys, passwords, or other sensitive information.
 You are responsible for what you are sharing, be smart.
+`.trim();
 
-See [Terms of Service](https://www.getprompt.dev/tos.html) for more details.
+const WebStopShareConfirmMarkdown = `
+Are you sure you want to stop web-sharing this screen?
 `.trim();
 
 function commandRtnHandler(prtn : Promise<CommandRtnType>, errorMessage : OV<string>) {
@@ -102,8 +104,15 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
         if (screen.isWebShared() == val) {
             return;
         }
-        let prtn = GlobalCommandRunner.screenWebShare(screen.screenId, val);
-        commandRtnHandler(prtn, this.errorMessage);
+        let message = (val ? WebShareConfirmMarkdown : WebStopShareConfirmMarkdown);
+        let alertRtn = GlobalModel.showAlert({message: message, confirm: true, markdown: true});
+        alertRtn.then((result) => {
+            if (!result) {
+                return;
+            }
+            let prtn = GlobalCommandRunner.screenWebShare(screen.screenId, val);
+            commandRtnHandler(prtn, this.errorMessage);
+        });
     }
 
     @boundMethod

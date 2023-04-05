@@ -1958,6 +1958,12 @@ class HistoryViewModel {
             this.selectedItems.clear();
         })();
     }
+
+    showWebShareView() : void {
+        mobx.action(() => {
+            GlobalModel.activeMainView.set("webshare");
+        })();
+    }
 }
 
 class BookmarksModel {
@@ -2399,7 +2405,7 @@ class Model {
     localServerRunning : OV<boolean>;
     authKey : string;
     isDev : boolean;
-    activeMainView : OV<"session" | "history" | "bookmarks"> = mobx.observable.box("session", {name: "activeMainView"});
+    activeMainView : OV<"session" | "history" | "bookmarks" | "webshare"> = mobx.observable.box("session", {name: "activeMainView"});
     termFontSize : CV<number>;
     alertMessage : OV<AlertMessageType> = mobx.observable.box(null, {name: "alertMessage"});
     alertPromiseResolver : (result : boolean) => void;
@@ -2409,6 +2415,7 @@ class Model {
     clientSettingsModal : OV<boolean> = mobx.observable.box(false, {name: "clientSettingsModal"});
     lineSettingsModal : OV<LineType> = mobx.observable.box(null, {name: "lineSettingsModal"});
     remotesModalModel : RemotesModalModel;
+    
 
     inputModel : InputModel;
     bookmarksModel : BookmarksModel;
@@ -2589,6 +2596,10 @@ class Model {
         }
         if (e.code == "Escape") {
             e.preventDefault();
+            if (this.activeMainView.get() == "webshare") {
+                this.showSessionView();
+                return;
+            }
             if (this.clearModals()) {
                 return;
             }
@@ -3121,7 +3132,7 @@ class Model {
             })();
             return {success: true};
         }).catch((err) => {
-            this.errorHandler("calling run-command", err, true);
+            this.errorHandler("calling run-command", err, interactive);
             let errMessage = "error running command";
             if (err != null && !isBlank(err.message)) {
                 errMessage = err.message;

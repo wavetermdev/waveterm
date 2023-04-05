@@ -15,6 +15,7 @@ import {GlobalModel, GlobalCommandRunner, Session, Cmd, ScreenLines, Screen, riT
 import {windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols, getMonoFontSize} from "./textmeasure";
 import {isModKeyPress, boundInt, sortAndFilterRemotes, makeExternLink, isBlank} from "./util";
 import {BookmarksView} from "./bookmarks";
+import {WebShareView} from "./webshare-client-view";
 import {HistoryView} from "./history";
 import {Line, Prompt} from "./linecomps";
 import {ScreenSettingsModal, SessionSettingsModal, LineSettingsModal, ClientSettingsModal} from "./settings";
@@ -1496,7 +1497,7 @@ class MainSideBar extends React.Component<{}, {}> {
                 </div>
                 <div className="menu">
                     <p className="menu-label">
-                        Private Sessions
+                        Sessions
                     </p>
                     <ul className="menu-list session-menu-list">
                         <If condition={!model.sessionListLoaded.get()}>
@@ -1506,7 +1507,7 @@ class MainSideBar extends React.Component<{}, {}> {
                             <For each="session" index="idx" of={sessionList}>
                                 <li key={session.sessionId}><a className={cn({"is-active": mainView == "session" && activeSessionId == session.sessionId})} onClick={() => this.handleSessionClick(session.sessionId)}>
                                     <If condition={!session.archived.get()}>
-                                        <div className="session-num">{idx+1}</div>
+                                        <div className="session-num"><span className="hotkey">^⌘</span>{idx+1}</div>
                                     </If>
                                     <If condition={session.archived.get()}>
                                         <div className="session-num"><i title="archived" className="fa-sharp fa-solid fa-box-archive"/></div>
@@ -1522,12 +1523,6 @@ class MainSideBar extends React.Component<{}, {}> {
                             </For>
                             <li className="new-session"><a onClick={() => this.handleNewSession()}><i className="fa-sharp fa-solid fa-plus"/> New Session</a></li>
                         </If>
-                    </ul>
-                    <p className="menu-label">
-                        Shared Sessions
-                    </p>
-                    <ul className="menu-list">
-                        <li className="new-session"><a onClick={() => this.handleNewSharedSession()}><i className="fa-sharp fa-solid fa-plus"/> New Session</a></li>
                     </ul>
                     <ul className="menu-list" style={{marginTop: 20}}>
                         <li className="menu-history"><a onClick={this.handleHistoryClick} className={cn({"is-active": (mainView == "history")})}><i className="fa-sharp fa-solid fa-clock"/> HISTORY <span className="hotkey">&#x2318;H</span></a></li>
@@ -1967,6 +1962,7 @@ class Main extends React.Component<{}, {}> {
                     <SessionView/>
                     <HistoryView/>
                     <BookmarksView/>
+                    <WebShareView/>
                 </div>
                 <AlertModal/>
                 <If condition={GlobalModel.needsTos()}>

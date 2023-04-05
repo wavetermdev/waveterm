@@ -143,6 +143,9 @@ class BookmarksView extends React.Component<{}, {}> {
     
     render() {
         let isHidden = (GlobalModel.activeMainView.get() != "bookmarks");
+        if (isHidden) {
+            return null;
+        }
         let bookmarks = GlobalModel.bookmarksModel.bookmarks;
         let idx : number = 0;
         let bookmark : BookmarkType = null;
