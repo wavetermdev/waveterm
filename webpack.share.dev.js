@@ -36,6 +36,8 @@ var definePlugin = new webpack.DefinePlugin({
     __PROMPT_DEV__: "true",
     __PROMPT_VERSION__: JSON.stringify(VERSION),
     __PROMPT_BUILD__: JSON.stringify("devbuild"),
+    __PROMPT_API_ENDPOINT__: JSON.stringify("https://ot2e112zx5.execute-api.us-west-2.amazonaws.com/dev"),
+    __PROMPT_WSAPI_ENDPOINT__: JSON.stringify("wss://5lfzlg5crl.execute-api.us-west-2.amazonaws.com/dev"),
 });
 merged.plugins.push(definePlugin);
 

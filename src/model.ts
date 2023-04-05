@@ -285,7 +285,7 @@ class Screen {
         if (GlobalModel.isDev) {
             return sprintf("http://devtest.getprompt.com:9001/static/index-dev.html?screenid=%s&viewkey=%s", this.screenId, viewKey);
         }
-        return sprintf("https://share.getprompt.dev/s/%s?viewkey=%s", this.screenId, viewKey);
+        return sprintf("https://share.getprompt.dev/share/%s?viewkey=%s", this.screenId, viewKey);
     }
 
     mergeData(data : ScreenDataType) {

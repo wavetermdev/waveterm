@@ -9,6 +9,12 @@ import * as util from "./util";
 import {windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows} from "./textmeasure";
 import {WebShareWSControl} from "./webshare-ws";
 
+let PROMPT_DEV = __PROMPT_DEV__;
+let PROMPT_VERSION = __PROMPT_VERSION__;
+let PROMPT_BULILD = __PROMPT_BUILD__;
+let PROMPT_API_ENDPOINT = __PROMPT_API_ENDPOINT__;
+let PROMPT_WSAPI_ENDPOINT = __PROMPT_WSAPI_ENDPOINT__;
+
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
 type OMap<K,V> = mobx.ObservableMap<K,V>;
@@ -23,11 +29,11 @@ function isBlank(s : string) {
 }
 
 function getBaseUrl() {
-    return "https://ot2e112zx5.execute-api.us-west-2.amazonaws.com/dev";
+    return PROMPT_API_ENDPOINT;
 }
 
 function getBaseWSUrl() {
-    return "wss://5lfzlg5crl.execute-api.us-west-2.amazonaws.com/dev";
+    return PROMPT_WSAPI_ENDPOINT;
 }
 
 class WebShareModelClass {
@@ -48,6 +54,7 @@ class WebShareModelClass {
     remotePtyOffsetMap : Record<string, number> = {};
     activeUpdateFetch : boolean = false;
     remoteScreenVts : number = 0;
+    isDev : boolean = PROMPT_DEV;
     
     constructor() {
         let pathName = window.location.pathname;

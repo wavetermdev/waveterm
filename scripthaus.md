@@ -56,6 +56,12 @@ node_modules/.bin/webpack --config webpack.share.dev.js
 ```
 
 ```bash
+# @scripthaus command webshare-build-prod
+# @scripthaus cd :playbook
+node_modules/.bin/webpack --config webpack.share.prod.js
+```
+
+```bash
 # @scripthaus command typecheck
 # @scripthaus cd :playbook
 node_modules/.bin/tsc --jsx preserve --noEmit --esModuleInterop --target ES5 --experimentalDecorators --downlevelIteration src/sh2.ts
@@ -134,4 +140,12 @@ rm *.dmg
 # no-cache for dev
 aws --profile prompt-s3 s3 sync webshare/static s3://prompt-devshare-static/static --cache-control 'no-cache'
 aws --profile prompt-s3 s3 sync webshare/dist-dev s3://prompt-devshare-static/dist-dev --cache-control 'no-cache'
+```
+
+```bash
+# @scripthaus command sync-webshare
+# @scripthaus cd :playbook
+# no-cache for dev
+aws --profile prompt-s3 s3 sync webshare/static s3://prompt-share-static/static --cache-control 'no-cache'
+aws --profile prompt-s3 s3 sync webshare/dist s3://prompt-share-static/dist --cache-control 'no-cache'
 ```

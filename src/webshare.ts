@@ -7,6 +7,10 @@ import {loadFonts} from "./util";
 import {WebShareModel} from "./webshare-model";
 import * as textmeasure from "./textmeasure";
 
+let PROMPT_DEV = __PROMPT_DEV__;
+let PROMPT_VERSION = __PROMPT_VERSION__;
+let PROMPT_BULILD = __PROMPT_BUILD__;
+
 loadFonts();
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -27,3 +31,5 @@ document.addEventListener("DOMContentLoaded", () => {
 (window as any).textmeasure = textmeasure;
 (window as any).mobx = mobx;
 (window as any).sprintf = sprintf;
+
+console.log("PROMPT webshare", PROMPT_VERSION, PROMPT_BUILD);
