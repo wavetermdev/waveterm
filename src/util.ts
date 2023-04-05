@@ -329,4 +329,8 @@ function sortAndFilterRemotes(origRemotes : RemoteType[]) : RemoteType[] {
     return remotes;
 }
 
-export {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeDataMap, genMergeSimpleData, parseEnv0, boundInt, isModKeyPress, incObs, isBlank, loadFonts, getTodayStr, getYesterdayStr, getDateStr, sortAndFilterRemotes};
+function makeExternLink(url : string) : string {
+    return "https://extern?" + encodeURIComponent(url);
+}
+
+export {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeDataMap, genMergeSimpleData, parseEnv0, boundInt, isModKeyPress, incObs, isBlank, loadFonts, getTodayStr, getYesterdayStr, getDateStr, sortAndFilterRemotes, makeExternLink};

@@ -13,7 +13,7 @@ import type * as T from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {GlobalModel, GlobalCommandRunner, Session, Cmd, ScreenLines, Screen, riToRPtr, TabColors, RemoteColors} from "./model";
 import {windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols, getMonoFontSize} from "./textmeasure";
-import {isModKeyPress, boundInt, sortAndFilterRemotes} from "./util";
+import {isModKeyPress, boundInt, sortAndFilterRemotes, makeExternLink, isBlank} from "./util";
 import {BookmarksView} from "./bookmarks";
 import {HistoryView} from "./history";
 import {Line, Prompt} from "./linecomps";
@@ -21,6 +21,7 @@ import {ScreenSettingsModal, SessionSettingsModal, LineSettingsModal, ClientSett
 import {RemotesModal} from "./remotes";
 import {renderCmdText, RemoteStatusLight, Markdown} from "./elements";
 import {LinesView} from "./linesview";
+import {TosModal} from "./modals";
 
 dayjs.extend(localizedFormat)
 
@@ -43,14 +44,6 @@ type InterObsValue = {
     visible : mobx.IObservableValue<boolean>,
     timeoutid? : any,
 };
-
-function isBlank(s : string) : boolean {
-    return (s == null || s == "");
-}
-
-function makeExternLink(url : string) : string {
-    return "https://extern?" + encodeURIComponent(url);
-}
 
 function scrollDiv(div : any, amt : number) {
     if (div == null) {
@@ -1976,6 +1969,9 @@ class Main extends React.Component<{}, {}> {
                     <BookmarksView/>
                 </div>
                 <AlertModal/>
+                <If condition={GlobalModel.needsTos()}>
+                    <TosModal/>
+                </If>
                 <If condition={GlobalModel.welcomeModalOpen.get()}>
                     <WelcomeModal/>
                 </If>

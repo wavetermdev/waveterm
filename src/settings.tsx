@@ -6,8 +6,8 @@ import {boundMethod} from "autobind-decorator";
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import cn from "classnames";
 import {GlobalModel, GlobalCommandRunner, TabColors} from "./model";
-import {Toggle, RemoteStatusLight, InlineSettingsTextEdit} from "./elements";
-import {LineType, RendererPluginType, ClientDataType} from "./types";
+import {Toggle, RemoteStatusLight, InlineSettingsTextEdit, SettingsError} from "./elements";
+import {LineType, RendererPluginType, ClientDataType, CommandRtnType} from "./types";
 import {PluginModel} from "./plugins";
 import * as util from "./util";
 
@@ -24,13 +24,29 @@ const VERSION = __PROMPT_VERSION__;
 // @ts-ignore
 const BUILD = __PROMPT_BUILD__;
 
+const WebShareMarkdown = `
+You are about to share a terminal tab on the web.  Please make sure that you do
+NOT share any private information, keys, passwords, or other sensitive information.
+You are responsible for what you are sharing, be smart.
+
+See [Terms of Service](https://www.getprompt.dev/tos.html) for more details.
+`.trim();
+
+function commandRtnHandler(prtn : Promise<CommandRtnType>, errorMessage : OV<string>) {
+    prtn.then((crtn) => {
+        if (crtn.success) {
+            return;
+        }
+        mobx.action(() => {
+            errorMessage.set(crtn.error);
+        })();
+    });
+}
+
 @mobxReact.observer
 class ScreenSettingsModal extends React.Component<{sessionId : string, screenId : string}, {}> {
-    tempName : OV<string>;
-    tempTabColor : OV<string>;
-    tempArchived : OV<boolean>;
-    tempWebShared : OV<boolean>;
-    shareCopied : OV<boolean> = mobx.observable.box(false, {name: "sw-shareCopied"});
+    shareCopied : OV<boolean> = mobx.observable.box(false, {name: "ScreenSettings-shareCopied"});
+    errorMessage : OV<string> = mobx.observable.box(null, {name: "ScreenSettings-errorMessage"});
 
     constructor(props : any) {
         super(props);
@@ -39,10 +55,6 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
         if (screen == null) {
             return;
         }
-        this.tempName = mobx.observable.box(screen.name.get(), {name: "screenSettings-tempName"});
-        this.tempTabColor = mobx.observable.box(screen.getTabColor(), {name: "screenSettings-tempTabColor"});
-        this.tempArchived = mobx.observable.box(screen.archived.get(), {name: "screenSettings-tempArchived"});
-        this.tempWebShared = mobx.observable.box(screen.isWebShared(), {name: "screenSettings-tempWebShare"});
     }
     
     @boundMethod
@@ -53,58 +65,45 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
     }
 
     @boundMethod
-    handleOK() : void {
-        mobx.action(() => {
-            GlobalModel.screenSettingsModal.set(null);
-        })();
-        let screen = GlobalModel.getScreenById(this.props.sessionId, this.props.screenId);
+    selectTabColor(color : string) : void {
+        let {sessionId, screenId} = this.props;
+        let screen = GlobalModel.getScreenById(sessionId, screenId);
         if (screen == null) {
             return;
         }
-        let settings : {tabcolor? : string, name? : string} = {};
-        if (this.tempTabColor.get() != screen.getTabColor()) {
-            settings.tabcolor = this.tempTabColor.get();
+        if (screen.getTabColor() == color) {
+            return;
         }
-        if (this.tempName.get() != screen.name.get()) {
-            settings.name = this.tempName.get();
-        }
-        if (Object.keys(settings).length > 0) {
-            GlobalCommandRunner.screenSetSettings(this.props.screenId, settings);
-        }
-        if (this.tempArchived.get() != screen.archived.get()) {
-            GlobalCommandRunner.screenArchive(screen.screenId, this.tempArchived.get());
-        }
-        if (this.tempWebShared.get() != screen.isWebShared()) {
-            GlobalCommandRunner.screenWebShare(screen.screenId, this.tempWebShared.get());
-        }
-    }
-
-    @boundMethod
-    handleChangeName(e : any) : void {
-        mobx.action(() => {
-            this.tempName.set(e.target.value);
-        })();
-    }
-
-    @boundMethod
-    selectTabColor(color : string) : void {
-        mobx.action(() => {
-            this.tempTabColor.set(color);
-        })();
+        let prtn = GlobalCommandRunner.screenSetSettings(this.props.screenId, {tabcolor: color}, false);
+        commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
     handleChangeArchived(val : boolean) : void {
-        mobx.action(() => {
-            this.tempArchived.set(val);
-        })();
+        let {sessionId, screenId} = this.props;
+        let screen = GlobalModel.getScreenById(sessionId, screenId);
+        if (screen == null) {
+            return;
+        }
+        if (screen.archived.get() == val) {
+            return;
+        }
+        let prtn = GlobalCommandRunner.screenArchive(this.props.screenId, val);
+        commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
     handleChangeWebShare(val : boolean) : void {
-        mobx.action(() => {
-            this.tempWebShared.set(val);
-        })();
+        let {sessionId, screenId} = this.props;
+        let screen = GlobalModel.getScreenById(sessionId, screenId);
+        if (screen == null) {
+            return;
+        }
+        if (screen.isWebShared() == val) {
+            return;
+        }
+        let prtn = GlobalCommandRunner.screenWebShare(screen.screenId, val);
+        commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
@@ -129,13 +128,33 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
         }, 600)
     }
 
-    webSharedUpdated() : boolean {
+    @boundMethod
+    inlineUpdateName(val : string) : void {
         let {sessionId, screenId} = this.props;
         let screen = GlobalModel.getScreenById(sessionId, screenId);
         if (screen == null) {
-            return null;
+            return;
         }
-        return screen.isWebShared() != this.tempWebShared.get();
+        console.log("inline update name", val);
+        if (val == screen.name.get()) {
+            return;
+        }
+        let prtn = GlobalCommandRunner.screenSetSettings(this.props.screenId, {name: val}, false);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
+    setErrorMessage(msg : string) : void {
+        mobx.action(() => {
+            this.errorMessage.set(msg);
+        })();
+    }
+
+    @boundMethod
+    dismissError() : void {
+        mobx.action(() => {
+            this.errorMessage.set(null);
+        })();
     }
 
     render() {
@@ -172,7 +191,7 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
                                 Name
                             </div>
                             <div className="settings-input">
-                                <input type="text" placeholder="Tab Name" onChange={this.handleChangeName} value={this.tempName.get()} maxLength={50}/>
+                                <InlineSettingsTextEdit placeholder="name" text={screen.name.get() ?? "(none)"} value={screen.name.get() ?? ""} onChange={this.inlineUpdateName} maxLength={50} showIcon={true}/>
                             </div>
                         </div>
                         <div className="settings-field">
@@ -182,10 +201,10 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
                             <div className="settings-input">
                                 <div className="tab-colors">
                                     <div className="tab-color-cur">
-                                        <span className={cn("icon tab-color-icon", "color-" + this.tempTabColor.get())}>
+                                        <span className={cn("icon tab-color-icon", "color-" + screen.getTabColor())}>
                                             <i className="fa-sharp fa-solid fa-square"/>
                                         </span>
-                                        <span>{this.tempTabColor.get()}</span>
+                                        <span>{screen.getTabColor()}</span>
                                     </div>
                                     <div className="tab-color-sep">|</div>
                                     <For each="color" of={TabColors}>
@@ -203,11 +222,7 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
                                 Archived
                             </div>
                             <div className="settings-input">
-                                <Toggle checked={this.tempArchived.get()} onChange={this.handleChangeArchived}/>
-                                <div className="action-text">
-                                    <If condition={this.tempArchived.get() && this.tempArchived.get() != screen.archived.get()}>will be archived</If>
-                                    <If condition={!this.tempArchived.get() && this.tempArchived.get() != screen.archived.get()}>will be un-archived</If>
-                                </div>
+                                <Toggle checked={screen.archived.get()} onChange={this.handleChangeArchived}/>
                             </div>
                         </div>
                         <div className="settings-field">
@@ -215,34 +230,21 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
                                 Web Sharing
                             </div>
                             <div className="settings-input">
-                                <Toggle checked={this.tempWebShared.get()} onChange={this.handleChangeWebShare}/>
-                                <div className="action-text">
-                                    <If condition={this.tempWebShared.get() && this.webSharedUpdated()}>will be web-shared</If>
-                                    <If condition={!this.tempWebShared.get() && this.webSharedUpdated()}>will stop being web-shared</If>
-                                    <If condition={screen.isWebShared() && !this.webSharedUpdated()}>
-                                        <div className="button settings-share-link is-prompt-green is-outlined is-small" onClick={this.copyShareLink}>
-                                            <span>copy share link</span>
-                                            <span className="icon">
-                                                <i className="fa-sharp fa-solid fa-copy"/>
-                                            </span>
-                                        </div>
-                                    </If>
-                                </div>
-                                
+                                <Toggle checked={screen.isWebShared()} onChange={this.handleChangeWebShare}/>
                             </div>
                         </div>
-                        <If condition={this.tempWebShared.get() && false}>
+                        <If condition={screen.isWebShared()}>
                             <div className="settings-field sub-field">
                                 <div className="settings-label">
                                     Share Link
                                 </div>
                                 <div className="settings-input">
-                                    <div className="button is-prompt-green is-outlined is-small" onClick={this.copyShareLink}>
+                                    <a href={util.makeExternLink(screen.getWebShareUrl())} target="_blank" className="button is-prompt-green is-outlined is-small a-block">
                                         <span>open in browser</span>
                                         <span className="icon">
                                             <i className="fa-sharp fa-solid fa-up-right-from-square"/>
                                         </span>
-                                    </div>
+                                    </a>
                                     <div className="button is-prompt-green is-outlined is-small ml-4" onClick={this.copyShareLink}>
                                         <span>copy link</span>
                                         <span className="icon">
@@ -252,10 +254,10 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
                                 </div>
                             </div>
                         </If>
+                        <SettingsError errorMessage={this.errorMessage}/>
                     </div>
                     <footer>
-                        <div onClick={this.closeModal} className="button is-prompt-cancel is-outlined is-small">Cancel</div>
-                        <div onClick={this.handleOK} className="button is-prompt-green is-outlined is-small">OK</div>
+                        <div onClick={this.closeModal} className="button is-prompt-green is-outlined is-small">Close</div>
                     </footer>
                 </div>
             </div>

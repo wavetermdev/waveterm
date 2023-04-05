@@ -247,4 +247,27 @@ class Markdown extends React.Component<{text : string, style? : any, extraClassN
     }
 }
 
-export {CmdStrCode, Toggle, renderCmdText, RemoteStatusLight, InlineSettingsTextEdit, InfoMessage, Markdown};
+@mobxReact.observer
+class SettingsError extends React.Component<{errorMessage : OV<string>}, {}> {
+    @boundMethod
+    dismissError() : void {
+        mobx.action(() => {
+            this.props.errorMessage.set(null);
+        })();
+    }
+
+    render() {
+        if (this.props.errorMessage.get() == null) {
+            return null;
+        }
+        return (
+            <div className="settings-field settings-error">
+                <div>Error: {this.props.errorMessage.get()}</div>
+                <div className="flex-spacer"/>
+                <div onClick={this.dismissError} className="error-dismiss"><i className="fa-sharp fa-solid fa-xmark"/></div>
+            </div>
+        );
+    }
+}
+
+export {CmdStrCode, Toggle, renderCmdText, RemoteStatusLight, InlineSettingsTextEdit, InfoMessage, Markdown, SettingsError};

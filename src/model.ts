@@ -2448,6 +2448,14 @@ class Model {
         setTimeout(() => this.getClientDataLoop(1), 10);
     }
 
+    needsTos() : boolean {
+        let cdata = this.clientData.get();
+        if (cdata == null) {
+            return false;
+        }
+        return (cdata.clientopts == null || !cdata.clientopts.acceptedtos);
+    }
+
     refreshClient() : void {
         getApi().reloadWindow();
     }
@@ -3364,14 +3372,14 @@ class CommandRunner {
         GlobalModel.submitCommand("screen", "resize", null, {"nohist": "1", "screen": screenId, "cols": String(cols), "rows": String(rows)}, false);
     }
 
-    screenArchive(screenId : string, shouldArchive : boolean) {
-        GlobalModel.submitCommand("screen", "archive", [screenId, (shouldArchive ? "1" : "0")], {"nohist": "1"}, false);
+    screenArchive(screenId : string, shouldArchive : boolean) : Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("screen", "archive", [screenId, (shouldArchive ? "1" : "0")], {"nohist": "1"}, false);
     }
 
-    screenWebShare(screenId : string, shouldShare : boolean) {
+    screenWebShare(screenId : string, shouldShare : boolean) : Promise<CommandRtnType> {
         let kwargs : Record<string, string> = {"nohist": "1"};
         kwargs["screen"] = screenId;
-        GlobalModel.submitCommand("screen", "webshare", [(shouldShare ? "1" : "0")], kwargs, true);
+        return GlobalModel.submitCommand("screen", "webshare", [(shouldShare ? "1" : "0")], kwargs, false);
     }
 
     showRemote(remoteid : string) {
@@ -3456,11 +3464,11 @@ class CommandRunner {
         GlobalModel.submitCommand("screen", "set", null, {"focus": focusVal, "nohist": "1"}, false);
     }
 
-    screenSetSettings(screenId : string, settings : {tabcolor? : string, name? : string}) : void {
+    screenSetSettings(screenId : string, settings : {tabcolor? : string, name? : string}, interactive : boolean) : Promise<CommandRtnType> {
         let kwargs = Object.assign({}, settings);
         kwargs["nohist"] = "1";
         kwargs["screen"] = screenId;
-        GlobalModel.submitCommand("screen", "set", null, kwargs, true);
+        return GlobalModel.submitCommand("screen", "set", null, kwargs, interactive);
     }
 
     sessionSetSettings(sessionId : string, settings : {name? : string}) : void {
@@ -3525,6 +3533,10 @@ class CommandRunner {
             "termfontsize": String(fsize),
         };
         GlobalModel.submitCommand("client", "set", null, kwargs, true);
+    }
+
+    clientAcceptTos() : void {
+        GlobalModel.submitCommand("client", "accepttos", null, {"nohist": "1"}, true);
     }
 
     editBookmark(bookmarkId : string, desc : string, cmdstr : string) {

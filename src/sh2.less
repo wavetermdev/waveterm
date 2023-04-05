@@ -51,6 +51,10 @@
 html, body, #app, #main {
     background-color: #000;
     height: 100vh;
+
+    a:hover {
+        color: #485fc7;
+    }
 }
 
 body {
@@ -984,10 +988,6 @@ body::-webkit-scrollbar {
 
         a {
             color: #bbb;
-        }
-        
-        a:hover {
-            color: #3273dc;
         }
     }
 
@@ -2471,6 +2471,16 @@ input[type=checkbox] {
     .mono-font(inherit, 700);
 }
 
+.tos-modal {
+    a:hover {
+        text-decoration: underline;
+    }
+
+    .content {
+        .mono-font(13px);
+    }
+}
+
 .disconnected-modal {
     .modal-content {
         footer {
@@ -3666,3 +3676,6 @@ body.prompt-webshare #main {
     }
 }
 
+a.a-block {
+    display: block;
+}

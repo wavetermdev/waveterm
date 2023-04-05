@@ -439,6 +439,7 @@ type FeOptsType = {
 
 type ClientOptsType = {
     notelemetry : boolean,
+    acceptedtos : number,
 };
 
 type ClientDataType = {

@@ -370,7 +370,7 @@ class CreateRemote extends React.Component<{model : RemotesModalModel, remoteEdi
                     </div>
                 </div>
                 <If condition={!util.isBlank(this.getErrorStr())}>
-                    <div className="remoteedit-error">
+                    <div className="settings-field settings-error">
                         Error: {this.getErrorStr()}
                     </div>
                 </If>
