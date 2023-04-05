@@ -1707,6 +1707,7 @@ const (
 	ScreenField_TabColor     = "tabcolor"     // string
 	ScreenField_PTerm        = "pterm"        // string
 	ScreenField_Name         = "name"         // string
+	ScreenField_ShareName    = "sharename"    // string
 )
 
 func UpdateScreen(ctx context.Context, screenId string, editMap map[string]interface{}) (*ScreenType, error) {
@@ -1745,6 +1746,14 @@ func UpdateScreen(ctx context.Context, screenId string, editMap map[string]inter
 		if name, found := editMap[ScreenField_Name]; found {
 			query = `UPDATE screen SET name = ? WHERE screenid = ?`
 			tx.Exec(query, name, screenId)
+		}
+		if shareName, found := editMap[ScreenField_ShareName]; found {
+			if !isWebShare(tx, screenId) {
+				return fmt.Errorf("cannot set sharename, screen is not web-shared")
+			}
+			query = `UPDATE screen SET webshareopts = json_set(webshareopts, '$.sharename', ?) WHERE screenid = ?`
+			tx.Exec(query, shareName, screenId)
+			insertScreenUpdate(tx, screenId, UpdateType_ScreenName)
 		}
 		return nil
 	})

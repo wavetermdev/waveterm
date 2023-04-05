@@ -620,6 +620,16 @@ func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		varsUpdated = append(varsUpdated, "name")
 		setNonAnchor = true
 	}
+	if pk.Kwargs["sharename"] != "" {
+		shareName := pk.Kwargs["sharename"]
+		err = validateShareName(shareName)
+		if err != nil {
+			return nil, err
+		}
+		updateMap[sstore.ScreenField_ShareName] = shareName
+		varsUpdated = append(varsUpdated, "sharename")
+		setNonAnchor = true
+	}
 	if pk.Kwargs["tabcolor"] != "" {
 		color := pk.Kwargs["tabcolor"]
 		err = validateColor(color, "screen tabcolor")
@@ -679,7 +689,7 @@ func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		}
 	}
 	if len(varsUpdated) == 0 {
-		return nil, fmt.Errorf("/screen:set no updates, can set %s", formatStrs([]string{"name", "pos", "tabcolor", "focus", "anchor", "line"}, "or", false))
+		return nil, fmt.Errorf("/screen:set no updates, can set %s", formatStrs([]string{"name", "pos", "tabcolor", "focus", "anchor", "line", "sharename"}, "or", false))
 	}
 	screen, err := sstore.UpdateScreen(ctx, ids.ScreenId, updateMap)
 	if err != nil {

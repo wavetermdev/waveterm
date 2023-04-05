@@ -386,9 +386,8 @@ type ScreenLinesType struct {
 func (ScreenLinesType) UseDBMap() {}
 
 type ScreenWebShareOpts struct {
-	ShareName     string   `json:"sharename"`
-	ViewKey       string   `json:"viewkey"`
-	SharedRemotes []string `json:"sharedremotes"`
+	ShareName string `json:"sharename"`
+	ViewKey   string `json:"viewkey"`
 }
 
 type ScreenType struct {
