@@ -41,6 +41,7 @@ const WebShareUpdateUrl = "/auth/web-share-update"
 
 var updateWriterLock = &sync.Mutex{}
 var updateWriterRunning = false
+var updateWriterNumFailures = 0
 
 type AuthInfo struct {
 	UserId   string `json:"userid"`
@@ -106,7 +107,7 @@ func makeAnonPostReq(ctx context.Context, apiUrl string, data interface{}) (*htt
 
 func doRequest(req *http.Request, outputObj interface{}) (*http.Response, error) {
 	apiUrl := req.Header.Get("X-PromptAPIUrl")
-	log.Printf("[pcloud] sending request %v\n", req.URL)
+	log.Printf("[pcloud] sending request %s %v\n", req.Method, req.URL)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error contacting pcloud %q service: %v", apiUrl, err)
@@ -473,10 +474,15 @@ func StartUpdateWriter() {
 	go runWebShareUpdateWriter()
 }
 
-func computeBackoff(numFailures int) time.Duration {
+func computeUpdateWriterBackoff() time.Duration {
+	updateWriterLock.Lock()
+	numFailures := updateWriterNumFailures
+	updateWriterLock.Unlock()
 	switch numFailures {
+	case 0:
+		return 0
 	case 1:
-		return 500 * time.Millisecond
+		return 1 * time.Second
 	case 2:
 		return 2 * time.Second
 	case 3:
@@ -490,6 +496,24 @@ func computeBackoff(numFailures int) time.Duration {
 	default:
 		return time.Hour
 	}
+}
+
+func incrementUpdateWriterNumFailures() {
+	updateWriterLock.Lock()
+	defer updateWriterLock.Unlock()
+	updateWriterNumFailures++
+}
+
+func ResetUpdateWriterNumFailures() {
+	updateWriterLock.Lock()
+	defer updateWriterLock.Unlock()
+	updateWriterNumFailures = 0
+}
+
+func GetUpdateWriterNumFailures() int {
+	updateWriterLock.Lock()
+	defer updateWriterLock.Unlock()
+	return updateWriterNumFailures
 }
 
 type updateKey struct {
@@ -526,7 +550,6 @@ func runWebShareUpdateWriter() {
 	}()
 	log.Printf("[pcloud] starting update writer\n")
 	numErrors := 0
-	numSendErrors := 0
 	for {
 		if numErrors > MaxUpdateWriterErrors {
 			log.Printf("[pcloud] update-writer, too many errors, exiting\n")
@@ -568,10 +591,10 @@ func runWebShareUpdateWriter() {
 		}
 		err = DoWebUpdates(webUpdateArr)
 		if err != nil {
-			numSendErrors++
-			backoffTime := computeBackoff(numSendErrors)
+			incrementUpdateWriterNumFailures()
+			backoffTime := computeUpdateWriterBackoff()
 			log.Printf("[pcloud] error processing %d web-updates (backoff=%v): %v\n", len(webUpdateArr), backoffTime, err)
-			time.Sleep(backoffTime)
+			updateBackoffSleep(backoffTime)
 			continue
 		}
 		log.Printf("[pcloud] sent %d web-updates\n", len(webUpdateArr))
@@ -580,6 +603,23 @@ func runWebShareUpdateWriter() {
 			debugStrs = append(debugStrs, webUpdate.String())
 		}
 		log.Printf("[pcloud] updates: %s\n", strings.Join(debugStrs, " "))
-		numSendErrors = 0
+		ResetUpdateWriterNumFailures()
+	}
+}
+
+// todo fix this, set deadline, check with condition variable, backoff then just needs to notify
+func updateBackoffSleep(backoffTime time.Duration) {
+	var totalSleep time.Duration
+	for {
+		sleepTime := time.Second
+		totalSleep += sleepTime
+		time.Sleep(sleepTime)
+		if totalSleep >= backoffTime {
+			break
+		}
+		numFailures := GetUpdateWriterNumFailures()
+		if numFailures == 0 {
+			break
+		}
 	}
 }
