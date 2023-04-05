@@ -1704,7 +1704,7 @@ func ScreenWebShareCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 		}
 		viewKey := base64.RawURLEncoding.EncodeToString(viewKeyBytes)
 		webShareOpts := sstore.ScreenWebShareOpts{ShareName: shareName, ViewKey: viewKey}
-		err = sstore.CanScreenWebShare(screen)
+		err = sstore.CanScreenWebShare(ctx, screen)
 		if err != nil {
 			return nil, err
 		}
