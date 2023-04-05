@@ -9,10 +9,15 @@ import * as util from "./util";
 import {windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows} from "./textmeasure";
 import {WebShareWSControl} from "./webshare-ws";
 
+// @ts-ignore
 let PROMPT_DEV = __PROMPT_DEV__;
+// @ts-ignore
 let PROMPT_VERSION = __PROMPT_VERSION__;
+// @ts-ignore
 let PROMPT_BULILD = __PROMPT_BUILD__;
+// @ts-ignore
 let PROMPT_API_ENDPOINT = __PROMPT_API_ENDPOINT__;
+// @ts-ignore
 let PROMPT_WSAPI_ENDPOINT = __PROMPT_WSAPI_ENDPOINT__;
 
 type OV<V> = mobx.IObservableValue<V>;

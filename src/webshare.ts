@@ -7,8 +7,11 @@ import {loadFonts} from "./util";
 import {WebShareModel} from "./webshare-model";
 import * as textmeasure from "./textmeasure";
 
+// @ts-ignore
 let PROMPT_DEV = __PROMPT_DEV__;
+// @ts-ignore
 let PROMPT_VERSION = __PROMPT_VERSION__;
+// @ts-ignore
 let PROMPT_BUILD = __PROMPT_BUILD__;
 
 loadFonts();
