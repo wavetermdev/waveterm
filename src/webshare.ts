@@ -5,6 +5,7 @@ import {sprintf} from "sprintf-js";
 import {WebShareMain} from "./webshare-elems";
 import {loadFonts} from "./util";
 import {WebShareModel} from "./webshare-model";
+import * as textmeasure from "./textmeasure";
 
 loadFonts();
 
@@ -23,5 +24,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
+(window as any).textmeasure = textmeasure;
 (window as any).mobx = mobx;
 (window as any).sprintf = sprintf;

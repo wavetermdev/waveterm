@@ -5,25 +5,32 @@ const MaxTermCols = 1024;
 
 let MonoFontSizes : {height : number, width : number}[] = [];
 
-MonoFontSizes[8] = {height: 11, width: 4.797};
-MonoFontSizes[9] = {height: 12, width: 5.398};
-MonoFontSizes[10] = {height: 13, width: 6};
-MonoFontSizes[11] = {height: 15, width: 6.602};
-MonoFontSizes[12] = {height: 16, width: 7.203};
-MonoFontSizes[13] = {height: 18, width: 7.797};
-MonoFontSizes[14] = {height: 19, width: 8.398};
-MonoFontSizes[15] = {height: 20, width: 9};
-MonoFontSizes[16] = {height: 22, width: 9.594};
+// MonoFontSizes[8] = {height: 11, width: 4.797};
+// MonoFontSizes[9] = {height: 12, width: 5.398};
+// MonoFontSizes[10] = {height: 13, width: 6};
+// MonoFontSizes[11] = {height: 15, width: 6.602};
+// MonoFontSizes[12] = {height: 16, width: 7.203};
+// MonoFontSizes[13] = {height: 18, width: 7.797};
+// MonoFontSizes[14] = {height: 19, width: 8.398};
+// MonoFontSizes[15] = {height: 20, width: 9};
+// MonoFontSizes[16] = {height: 22, width: 9.594};
 
 function getMonoFontSize(fontSize : number) : {height : number, width : number} {
-    return MonoFontSizes[fontSize];
+    if (MonoFontSizes[fontSize] != null) {
+        return MonoFontSizes[fontSize];
+    }
+    let size = measureText("W", {pre: true, mono: true, fontSize: fontSize});
+    if (size.height != 0 && size.width != 0) {
+        MonoFontSizes[fontSize] = size;
+    }
+    return size;
 }
 
-function measureText(text : string, textOpts? : {pre? : boolean, mono? : boolean, fontSize? : number|string}) : DOMRect {
+function measureText(text : string, textOpts? : {pre? : boolean, mono? : boolean, fontSize? : number|string}) : {height : number, width : number} {
     if (textOpts == null) {
         textOpts = {};
     }
-    let textElem = document.createElement("div");
+    let textElem = document.createElement("span");
     if (textOpts.pre) {
         textElem.classList.add("pre");
     }
@@ -44,7 +51,8 @@ function measureText(text : string, textOpts? : {pre? : boolean, mono? : boolean
         throw new Error("cannot measure text, no #measure div");
     }
     measureDiv.replaceChildren(textElem);
-    return measureDiv.getBoundingClientRect()
+    let rect = textElem.getBoundingClientRect()
+    return {width: rect.width, height: Math.ceil(rect.height)};
 }
 
 function windowWidthToCols(width : number, fontSize : number) : number {
