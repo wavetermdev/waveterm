@@ -190,7 +190,7 @@ func (ws *WSState) handleWatchScreen(wsPk *scpacket.WatchScreenPacketType) error
 		log.Printf("[ws %s] watchscreen %s/%s\n", ws.ClientId, wsPk.SessionId, wsPk.ScreenId)
 	}
 	if wsPk.Connect {
-		log.Printf("[ws %s] watchscreen connect\n", ws.ClientId)
+		// log.Printf("[ws %s] watchscreen connect\n", ws.ClientId)
 		err := ws.handleConnection()
 		if err != nil {
 			return fmt.Errorf("connect: %w", err)
