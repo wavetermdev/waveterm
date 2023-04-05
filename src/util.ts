@@ -333,4 +333,15 @@ function makeExternLink(url : string) : string {
     return "https://extern?" + encodeURIComponent(url);
 }
 
-export {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeDataMap, genMergeSimpleData, parseEnv0, boundInt, isModKeyPress, incObs, isBlank, loadFonts, getTodayStr, getYesterdayStr, getDateStr, sortAndFilterRemotes, makeExternLink};
+function isStrEq(s1 : string, s2 : string) {
+    if (isBlank(s1) && isBlank(s2)) {
+        return true;
+    }
+    return s1 == s2;
+}
+
+function isBoolEq(b1 : boolean, b2 : boolean) {
+    return (!!b1) == (!!b2);
+}
+
+export {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeDataMap, genMergeSimpleData, parseEnv0, boundInt, isModKeyPress, incObs, isBlank, loadFonts, getTodayStr, getYesterdayStr, getDateStr, sortAndFilterRemotes, makeExternLink, isStrEq, isBoolEq};

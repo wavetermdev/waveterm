@@ -34,17 +34,6 @@ function getRemoteTitle(remote : RemoteType) {
     return remote.remotecanonicalname;
 }
 
-function isStrEq(s1 : string, s2 : string) {
-    if (util.isBlank(s1) && util.isBlank(s2)) {
-        return true;
-    }
-    return s1 == s2;
-}
-
-function isBoolEq(b1 : boolean, b2 : boolean) {
-    return (!!b1) == (!!b2);
-}
-
 @mobxReact.observer
 class AuthModeDropdown extends React.Component<{tempVal : OV<string>}, {}> {
     active : OV<boolean> = mobx.observable.box(false, {name: "AuthModeDropdown-active"});
@@ -491,7 +480,7 @@ class EditRemoteSettings extends React.Component<{model : RemotesModalModel, rem
         let {remote, remoteEdit} = this.props;
         let authMode = this.tempAuthMode.get();
         let kwargs : Record<string, string> = {};
-        if (!isStrEq(this.tempKeyFile.get(), remoteEdit.keystr)) {
+        if (!util.isStrEq(this.tempKeyFile.get(), remoteEdit.keystr)) {
             if (authMode == "key" || authMode == "key+password") {
                 kwargs["key"] = this.tempKeyFile.get();
             }
@@ -509,13 +498,13 @@ class EditRemoteSettings extends React.Component<{model : RemotesModalModel, rem
                 kwargs["password"] = ""
             }
         }
-        if (!isStrEq(this.tempAlias.get(), remote.remotealias)) {
+        if (!util.isStrEq(this.tempAlias.get(), remote.remotealias)) {
             kwargs["alias"] = this.tempAlias.get();
         }
-        if (!isStrEq(this.tempConnectMode.get(), remote.connectmode)) {
+        if (!util.isStrEq(this.tempConnectMode.get(), remote.connectmode)) {
             kwargs["connectmode"] = this.tempConnectMode.get();
         }
-        if (!isBoolEq(this.tempAutoInstall.get(), remote.autoinstall)) {
+        if (!util.isBoolEq(this.tempAutoInstall.get(), remote.autoinstall)) {
             kwargs["autoinstall"] = (this.tempAutoInstall.get() ? "1" : "0");
         }
         if (Object.keys(kwargs).length == 0) {

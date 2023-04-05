@@ -135,11 +135,24 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
         if (screen == null) {
             return;
         }
-        console.log("inline update name", val);
-        if (val == screen.name.get()) {
+        if (util.isStrEq(val, screen.name.get())) {
             return;
         }
         let prtn = GlobalCommandRunner.screenSetSettings(this.props.screenId, {name: val}, false);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
+    inlineUpdateShareName(val : string) : void {
+        let {sessionId, screenId} = this.props;
+        let screen = GlobalModel.getScreenById(sessionId, screenId);
+        if (screen == null) {
+            return;
+        }
+        if (util.isStrEq(val, screen.getShareName())) {
+            return;
+        }
+        let prtn = GlobalCommandRunner.screenSetSettings(this.props.screenId, {sharename: val}, false);
         commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -250,6 +263,19 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
                                         <span className="icon">
                                             <i className="fa-sharp fa-solid fa-copy"/>
                                         </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="settings-field sub-field">
+                                <div className="settings-label">
+                                    Share Name
+                                </div>
+                                <div className="settings-input">
+                                    <div className="settings-input">
+                                        <InlineSettingsTextEdit placeholder="name"
+                                                                text={util.isBlank(screen.getShareName()) ? "(none)" : screen.getShareName()}
+                                                                value={screen.getShareName() ?? ""}
+                                                                onChange={this.inlineUpdateShareName} maxLength={150} showIcon={true}/>
                                     </div>
                                 </div>
                             </div>

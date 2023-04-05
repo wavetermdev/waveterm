@@ -263,6 +263,17 @@ class Screen {
         return (this.shareMode.get() == "web") && (this.webShareOpts.get() != null);
     }
 
+    getShareName() : string {
+        if (!this.isWebShared()) {
+            return null;
+        }
+        let opts = this.webShareOpts.get();
+        if (opts == null) {
+            return null;
+        }
+        return opts.sharename;
+    }
+
     getWebShareUrl() : string {
         let viewKey : string = null;
         if (this.webShareOpts.get() != null) {
@@ -3464,7 +3475,7 @@ class CommandRunner {
         GlobalModel.submitCommand("screen", "set", null, {"focus": focusVal, "nohist": "1"}, false);
     }
 
-    screenSetSettings(screenId : string, settings : {tabcolor? : string, name? : string}, interactive : boolean) : Promise<CommandRtnType> {
+    screenSetSettings(screenId : string, settings : {tabcolor? : string, name? : string, sharename? : string}, interactive : boolean) : Promise<CommandRtnType> {
         let kwargs = Object.assign({}, settings);
         kwargs["nohist"] = "1";
         kwargs["screen"] = screenId;
