@@ -661,4 +661,4 @@ class ClientSettingsModal extends React.Component<{}, {}> {
     }
 }
 
-export {ScreenSettingsModal, SessionSettingsModal, LineSettingsModal, ClientSettingsModal};
+export {ScreenSettingsModal, SessionSettingsModal, LineSettingsModal, ClientSettingsModal, WebStopShareConfirmMarkdown};

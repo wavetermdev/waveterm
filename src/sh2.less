@@ -205,6 +205,7 @@ body::-webkit-scrollbar {
 .alt-view {
     background-color: #111;
     overflow-y: auto;
+    flex-grow: 1;
     
     .alt-title {
         margin: 20px 10px 0px 5px;
@@ -212,6 +213,18 @@ body::-webkit-scrollbar {
         padding-bottom: 12px;
         .mono-font(1.5rem);
         color: @term-bright-white;
+        border-bottom: 1px solid white;
+    }
+
+    .alt-list {
+        color: white;
+        margin: 4px 10px 5px 5px;
+        border-bottom: 1px solid white;
+    }
+
+    .no-content {
+        color: @term-white;
+        padding: 30px 10px 35px 10px;
         border-bottom: 1px solid white;
     }
 
@@ -697,6 +710,45 @@ body::-webkit-scrollbar {
 
     &:hover .copy-control {
         visibility: visible !important;
+    }
+}
+
+.webshare-view {
+    .webshare-item {
+        padding: 4px 5px 8px 15px;
+        margin-bottom: 4px;
+        border-top: 1px solid white;
+        display: flex;
+        flex-direction: row;
+        position: relative;
+        min-height: 55px;
+        align-items: center;
+
+        &:first-child {
+            border-top: 0;
+        }
+
+        .webshare-vic {
+            width: 200px;
+
+            .webshare-vic-link {
+                cursor: pointer;
+                
+                &:hover {
+                    text-decoration: underline;
+                }
+            }
+        }
+
+        .actions {
+            display: none;
+            flex-direction: row;
+            gap: 10px;
+        }
+
+        &:hover .actions {
+            display: flex;
+        }
     }
 }
 

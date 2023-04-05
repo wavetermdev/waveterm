@@ -1420,12 +1420,19 @@ class MainSideBar extends React.Component<{}, {}> {
     @boundMethod
     handleBookmarksClick() : void {
         if (GlobalModel.activeMainView.get() == "bookmarks") {
-            mobx.action(() => {
-                GlobalModel.activeMainView.set("session");
-            })();
+            GlobalModel.showSessionView();
             return;
         }
         GlobalCommandRunner.bookmarksView();
+    }
+
+    @boundMethod
+    handleWebSharingClick() : void {
+        if (GlobalModel.activeMainView.get() == "webshare") {
+            GlobalModel.showSessionView();
+            return;
+        }
+        GlobalModel.showWebShareView();
     }
 
     @boundMethod
@@ -1530,8 +1537,8 @@ class MainSideBar extends React.Component<{}, {}> {
                     <ul className="menu-list">
                         <li className="menu-bookmarks"><a onClick={this.handleBookmarksClick} className={cn({"is-active": (mainView == "bookmarks")})}><i className="fa-sharp fa-solid fa-bookmark"/> BOOKMARKS <span className="hotkey">&#x2318;B</span></a></li>
                     </ul>
-                    <ul className="menu-list" style={{display: "none"}}>
-                        <li className="menu-websharing"><a onClick={this.handleBookmarksClick} className={cn({"is-active": (mainView == "bookmarks")})}><i className="fa-sharp fa-solid fa-share-nodes"/> WEB SHARING</a></li>
+                    <ul className="menu-list">
+                        <li className="menu-websharing"><a onClick={this.handleWebSharingClick} className={cn({"is-active": (mainView == "webshare")})}><i className="fa-sharp fa-solid fa-share-nodes"/> WEB SHARING</a></li>
                     </ul>
                     <p className="menu-label display-none">
                         Playbooks

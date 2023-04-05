@@ -137,7 +137,7 @@ class Bookmark extends React.Component<{bookmark : BookmarkType}, {}> {
 @mobxReact.observer
 class BookmarksView extends React.Component<{}, {}> {
     @boundMethod
-    clickHandler() : void {
+    closeView() : void {
         GlobalModel.bookmarksModel.closeView();
     }
     
@@ -151,7 +151,7 @@ class BookmarksView extends React.Component<{}, {}> {
         let bookmark : BookmarkType = null;
         return (
             <div className={cn("bookmarks-view", "alt-view", {"is-hidden": isHidden})}>
-                <div className="close-button" onClick={this.clickHandler}><i className="fa-sharp fa-solid fa-xmark"></i></div>
+                <div className="close-button" onClick={this.closeView}><i className="fa-sharp fa-solid fa-xmark"></i></div>
                 <div className="alt-title">
                     <i className="fa-sharp fa-solid fa-bookmark" style={{marginRight: 10}}/>
                     BOOKMARKS
@@ -161,7 +161,7 @@ class BookmarksView extends React.Component<{}, {}> {
                         <Bookmark key={bookmark.bookmarkid} bookmark={bookmark}/>
                     </For>
                     <If condition={bookmarks.length == 0}>
-                        <div className="no-bookmarks">
+                        <div className="no-content">
                             No Bookmarks.<br/>
                             Use the <i className="fa-sharp fa-solid fa-bookmark"/> icon on commands to add your first bookmark.
                         </div>

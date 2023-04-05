@@ -1958,12 +1958,6 @@ class HistoryViewModel {
             this.selectedItems.clear();
         })();
     }
-
-    showWebShareView() : void {
-        mobx.action(() => {
-            GlobalModel.activeMainView.set("webshare");
-        })();
-    }
 }
 
 class BookmarksModel {
@@ -2486,6 +2480,16 @@ class Model {
         activeScreen.giveFocus();
     }
 
+    getWebSharedScreens() : Screen[] {
+        let rtn : Screen[] = [];
+        for (let screen of this.screenMap.values()) {
+            if (screen.shareMode.get() == "web") {
+                rtn.push(screen);
+            }
+        }
+        return rtn;
+    }
+
     getHasClientStop() : boolean {
         if (this.clientData.get() == null) {
             return true;
@@ -2530,6 +2534,12 @@ class Model {
     showSessionView() : void {
         mobx.action(() => {
             this.activeMainView.set("session");
+        })();
+    }
+
+    showWebShareView() : void {
+        mobx.action(() => {
+            this.activeMainView.set("webshare");
         })();
     }
 
@@ -3356,12 +3366,13 @@ class CommandRunner {
         GlobalModel.submitCommand("screen", null, [screen], {"nohist": "1"}, false);
     }
 
-    lineView(sessionId : string, screenId : string, lineNum : number) {
+    lineView(sessionId : string, screenId : string, lineNum? : number) {
         let screen = GlobalModel.getScreenById(sessionId, screenId);
-        if (screen != null) {
+        if (screen != null && lineNum != null) {
             screen.setAnchorFields(lineNum, 0, "line:view");
         }
-        GlobalModel.submitCommand("line", "view", [sessionId, screenId, String(lineNum)], {"nohist": "1"}, false);
+        let lineNumStr = ((lineNum == null || lineNum == 0) ? "E" : String(lineNum));
+        GlobalModel.submitCommand("line", "view", [sessionId, screenId, lineNumStr], {"nohist": "1"}, false);
     }
 
     lineArchive(lineArg : string, archive : boolean) {
