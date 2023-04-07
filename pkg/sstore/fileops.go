@@ -168,15 +168,6 @@ func DeletePtyOutFile(ctx context.Context, screenId string, cmdId string) error 
 	return os.Remove(ptyOutFileName)
 }
 
-func DeleteSessionDir(ctx context.Context, sessionId string) error {
-	sessionDir, err := scbase.EnsureSessionDir(sessionId)
-	if err != nil {
-		return fmt.Errorf("error getting sessiondir: %w", err)
-	}
-	fmt.Printf("remove-all %s\n", sessionDir)
-	return os.RemoveAll(sessionDir)
-}
-
 func DeleteScreenDir(ctx context.Context, screenId string) error {
 	screenDir, err := scbase.EnsureScreenDir(screenId)
 	if err != nil {

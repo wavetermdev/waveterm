@@ -1124,13 +1124,18 @@ func PurgeScreen(ctx context.Context, screenId string, sessionDel bool) (UpdateP
 		tx.Exec(query, screenId)
 		query = `DELETE FROM line WHERE screenid = ?`
 		tx.Exec(query, screenId)
+		query = `DELETE FROM cmd WHERE screenid = ?`
+		tx.Exec(query, screenId)
 		insertScreenDelUpdate(tx, screenId)
 		return nil
 	})
 	if txErr != nil {
 		return nil, txErr
 	}
-	go cleanScreenCmds(context.Background(), screenId)
+	delErr := DeleteScreenDir(ctx, screenId)
+	if delErr != nil {
+		log.Printf("error removing screendir")
+	}
 	if sessionDel {
 		return nil, nil
 	}
@@ -1491,7 +1496,7 @@ func PurgeSession(ctx context.Context, sessionId string) (UpdatePacket, error) {
 		query = `SELECT screenid FROM screen WHERE sessionid = ?`
 		screenIds = tx.SelectStrings(query, sessionId)
 		for _, screenId := range screenIds {
-			_, err := PurgeScreen(ctx, screenId, true)
+			_, err := PurgeScreen(tx.Context(), screenId, true)
 			if err != nil {
 				return fmt.Errorf("error purging screen[%s]: %v", screenId, err)
 			}
@@ -1504,15 +1509,9 @@ func PurgeSession(ctx context.Context, sessionId string) (UpdatePacket, error) {
 	if txErr != nil {
 		return nil, txErr
 	}
-	delErr := DeleteSessionDir(ctx, sessionId)
 	update := ModelUpdate{}
 	if newActiveSessionId != "" {
 		update.ActiveSessionId = newActiveSessionId
-	}
-	if delErr != nil {
-		update.Info = &InfoMsgType{
-			InfoMsg: fmt.Sprintf("error removing session files: %v", delErr),
-		}
 	}
 	update.Sessions = append(update.Sessions, &SessionType{SessionId: sessionId, Remove: true})
 	for _, screenId := range screenIds {
