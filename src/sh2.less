@@ -2352,48 +2352,63 @@ input[type=checkbox] {
     color: @term-bright-red;
 }
 
-#main .term-prompt-remote {
-    color: @term-bright-green;
-    
-    &.color-green {
-        color: @term-bright-green;
+#main .term-prompt {
+    i {
+        font-size: 12px;
+        margin-right: 3px;
     }
 
-    &.color-red {
-        color: @term-bright-red;
+    .term-prompt-branch {
+        color: @term-white;
     }
 
-    &.color-blue {
-        color: @term-bright-blue;
-    }
-
-    &.color-yellow {
-        color: @term-bright-yellow;
-    }
-
-    &.color-magenta {
+    .term-prompt-python {
         color: @term-bright-magenta;
     }
 
-    &.color-cyan {
-        color: @term-bright-cyan;
+    .term-prompt-remote {
+        color: @term-bright-green;
+        
+        &.color-green {
+            color: @term-bright-green;
+        }
+
+        &.color-red {
+            color: @term-bright-red;
+        }
+
+        &.color-blue {
+            color: @term-bright-blue;
+        }
+
+        &.color-yellow {
+            color: @term-bright-yellow;
+        }
+
+        &.color-magenta {
+            color: @term-bright-magenta;
+        }
+
+        &.color-cyan {
+            color: @term-bright-cyan;
+        }
+
+        &.color-white {
+            color: @term-bright-white;
+        }
+
+        &.color-orange {
+            color: @tab-orange;
+        }
     }
 
-    &.color-white {
-        color: @term-bright-white;
+    .term-prompt-cwd {
+        color: @term-bright-green;
     }
 
-    &.color-orange {
-        color: @tab-orange;
+    .term-prompt-end {
+        color: @term-bright-green;
     }
-}
-
-#main .term-prompt-cwd {
-    color: @term-bright-green;
-}
-
-#main .term-prompt-end {
-    color: @term-bright-green;
 }
 
 #main .screen-tabs .screen-tab {

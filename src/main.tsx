@@ -8,7 +8,7 @@ import cn from "classnames";
 import {debounce, throttle} from "throttle-debounce";
 import {v4 as uuidv4} from "uuid";
 import dayjs from "dayjs";
-import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts, RemoteEditType, FeStateType, ContextMenuOpts, BookmarkType, RenderModeType, ClientMigrationInfo, LineFactoryProps} from "./types";
+import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts, RemoteEditType, ContextMenuOpts, BookmarkType, RenderModeType, ClientMigrationInfo, LineFactoryProps} from "./types";
 import type * as T from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {GlobalModel, GlobalCommandRunner, Session, Cmd, ScreenLines, Screen, riToRPtr, TabColors, RemoteColors} from "./model";
@@ -907,10 +907,10 @@ class CmdInput extends React.Component<{}, {}> {
             rptr = screen.curRemote.get();
         }
         let remote : RemoteType = null;
-        let remoteState : FeStateType = null;
+        let feState : Record<string, string> = null;
         if (ri != null) {
             remote = GlobalModel.getRemote(ri.remoteid);
-            remoteState = ri.festate;
+            feState = ri.festate;
         }
         let infoShow = inputModel.infoShow.get();
         let historyShow = !infoShow && inputModel.historyShow.get();
@@ -942,7 +942,7 @@ class CmdInput extends React.Component<{}, {}> {
                 </If>
                 <div key="prompt" className="cmd-input-context">
                     <div className="has-text-white">
-                        <Prompt rptr={rptr} festate={remoteState}/>
+                        <Prompt rptr={rptr} festate={feState}/>
                     </div>
                 </div>
                 <div key="input" className={cn("cmd-input-field field has-addons", (inputMode != null ? "inputmode-" + inputMode : null))}>

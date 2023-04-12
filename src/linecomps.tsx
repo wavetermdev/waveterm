@@ -8,7 +8,7 @@ import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import {GlobalModel, GlobalCommandRunner, Session, Cmd, ScreenLines, Screen, getTermPtyData} from "./model";
 import {windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols} from "./textmeasure";
-import type {LineType, CmdDataType, FeStateType, RemoteType, RemotePtrType, RenderModeType, RendererContext, RendererOpts, SimpleBlobRendererComponent, RendererPluginType, LineHeightChangeCallbackType, RendererModelInitializeParams, RendererModel} from "./types";
+import type {LineType, CmdDataType, RemoteType, RemotePtrType, RenderModeType, RendererContext, RendererOpts, SimpleBlobRendererComponent, RendererPluginType, LineHeightChangeCallbackType, RendererModelInitializeParams, RendererModel} from "./types";
 import cn from "classnames";
 import {TermWrap} from "./term";
 import type {LineContainerModel} from "./model";
@@ -26,6 +26,17 @@ type OMap<K,V> = mobx.ObservableMap<K,V>;
 
 type RendererComponentProps = {screen : LineContainerModel, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : LineHeightChangeCallbackType, collapsed : boolean};
 type RendererComponentType = { new(props : RendererComponentProps) : React.Component<RendererComponentProps, {}> };
+
+function getShortVEnv(venvDir : string) : string {
+    if (isBlank(venvDir)) {
+        return "";
+    }
+    let lastSlash = venvDir.lastIndexOf("/");
+    if (lastSlash == -1) {
+        return venvDir;
+    }
+    return venvDir.substr(lastSlash+1);
+}
 
 function makeFullRemoteRef(ownerName : string, remoteRef : string, name : string) : string {
     if (isBlank(ownerName) && isBlank(name)) {
@@ -60,7 +71,7 @@ function replaceHomePath(path : string, homeDir : string) : string {
     return path;
 }
 
-function getCwdStr(remote : RemoteType, state : FeStateType) : string {
+function getCwdStr(remote : RemoteType, state : Record<string, string>) : string {
     if (state == null || isBlank(state.cwd)) {
         return "~";
     }
@@ -594,7 +605,7 @@ class Line extends React.Component<{screen : LineContainerModel, line : LineType
 }
 
 @mobxReact.observer
-class Prompt extends React.Component<{rptr : RemotePtrType, festate : FeStateType}, {}> {
+class Prompt extends React.Component<{rptr : RemotePtrType, festate : Record<string, string>}, {}> {
     render() {
         let rptr = this.props.rptr;
         if (rptr == null || isBlank(rptr.remoteid)) {
@@ -602,7 +613,8 @@ class Prompt extends React.Component<{rptr : RemotePtrType, festate : FeStateTyp
         }
         let remote = GlobalModel.getRemote(this.props.rptr.remoteid);
         let remoteStr = getRemoteStr(rptr);
-        let cwd = getCwdStr(remote, this.props.festate);
+        let festate = this.props.festate ?? {};
+        let cwd = getCwdStr(remote, festate);
         let isRoot = false;
         if (remote && remote.remotevars) {
             if (remote.remotevars["sudo"] || remote.remotevars["bestuser"] == "root") {
@@ -621,8 +633,22 @@ class Prompt extends React.Component<{rptr : RemotePtrType, festate : FeStateTyp
         if (remote && remote.remotecanonicalname) {
             remoteTitle = "connected to " + remote.remotecanonicalname;
         }
+        let cwdElem = (<span title="current directory" className="term-prompt-cwd">{cwd}</span>);
+        let remoteElem = (<span title={remoteTitle} className={cn("term-prompt-remote", remoteColorClass)}>[{remoteStr}]</span>);
+        let rootIndicatorElem = (<span className="term-prompt-end">{isRoot ? "#" : "$"}</span>);
+        let branchElem = null;
+        let pythonElem = null;
+        if (!isBlank(festate["PROMPTVAR_GITBRANCH"])) {
+            let branchName = festate["PROMPTVAR_GITBRANCH"];
+            branchElem = (<span title="current git branch" className="term-prompt-branch"><i className="fa-sharp fa-solid fa-code-branch"/>{branchName} </span>);
+        }
+        if (!isBlank(festate["VIRTUAL_ENV"])) {
+            let venvDir = festate["VIRTUAL_ENV"];
+            let venv = getShortVEnv(venvDir);
+            pythonElem = (<span title="python venv" className="term-prompt-python"><i className="fa-brands fa-python"/>{venv} </span>);
+        }
         return (
-            <span className="term-prompt"><span title={remoteTitle} className={cn("term-prompt-remote", remoteColorClass)}>[{remoteStr}]</span> <span className="term-prompt-cwd">{cwd}</span> <span className="term-prompt-end">{isRoot ? "#" : "$"}</span></span>
+            <span className="term-prompt">{remoteElem} {pythonElem}{branchElem}{cwdElem} {rootIndicatorElem}</span>
         );
     }
 }
