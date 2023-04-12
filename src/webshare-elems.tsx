@@ -39,6 +39,17 @@ function makeFullRemoteRef(ownerName : string, remoteRef : string, name : string
     return ownerName + ":" + remoteRef + ":" + name;
 }
 
+function getShortVEnv(venvDir : string) : string {
+    if (isBlank(venvDir)) {
+        return "";
+    }
+    let lastSlash = venvDir.lastIndexOf("/");
+    if (lastSlash == -1) {
+        return venvDir;
+    }
+    return venvDir.substr(lastSlash+1);
+}
+
 function replaceHomePath(path : string, homeDir : string) : string {
     if (path == homeDir) {
         return "~";
@@ -49,7 +60,7 @@ function replaceHomePath(path : string, homeDir : string) : string {
     return path;
 }
 
-function getCwdStr(remote : T.WebRemote, state : T.FeStateType) : string {
+function getCwdStr(remote : T.WebRemote, state : Record<string, string>) : string {
     if (state == null || isBlank(state.cwd)) {
         return "~";
     }
@@ -70,22 +81,33 @@ function getRemoteStr(remote : T.WebRemote) : string {
 }
 
 @mobxReact.observer
-class Prompt extends React.Component<{remote : T.WebRemote, festate : T.FeStateType}, {}> {
+class Prompt extends React.Component<{remote : T.WebRemote, festate : Record<string, string>}, {}> {
     render() {
         let {remote, festate} = this.props;
         let remoteStr = getRemoteStr(remote);
         let cwd = getCwdStr(remote, festate);
         let isRoot = !!remote.isroot;
         let remoteColorClass = (isRoot ? "color-red" : "color-green");
-        // if (remote && remote.remoteopts && remote.remoteopts.color) {
-        //     remoteColorClass = "color-" + remote.remoteopts.color;
-        // }
         let remoteTitle : string = null;
         if (remote && remote.canonicalname) {
             remoteTitle = remote.canonicalname;
         }
+        let cwdElem = (<span title="current directory" className="term-prompt-cwd"><i className="fa-solid fa-sharp fa-folder-open"/>{cwd}</span>);
+        let remoteElem = (<span title={remoteTitle} className={cn("term-prompt-remote", remoteColorClass)}>[{remoteStr}] </span>);
+        let rootIndicatorElem = (<span className="term-prompt-end">{isRoot ? "#" : "$"}</span>);
+        let branchElem = null;
+        let pythonElem = null;
+        if (!isBlank(festate["PROMPTVAR_GITBRANCH"])) {
+            let branchName = festate["PROMPTVAR_GITBRANCH"];
+            branchElem = (<span title="current git branch" className="term-prompt-branch"><i className="fa-sharp fa-solid fa-code-branch"/>{branchName} </span>);
+        }
+        if (!isBlank(festate["VIRTUAL_ENV"])) {
+            let venvDir = festate["VIRTUAL_ENV"];
+            let venv = getShortVEnv(venvDir);
+            pythonElem = (<span title="python venv" className="term-prompt-python"><i className="fa-brands fa-python"/>{venv} </span>);
+        }
         return (
-            <span className="term-prompt"><span title={remoteTitle} className={cn("term-prompt-remote", remoteColorClass)}>[{remoteStr}]</span> <span className="term-prompt-cwd">{cwd}</span> <span className="term-prompt-end">{isRoot ? "#" : "$"}</span></span>
+            <span className="term-prompt">{remoteElem} {pythonElem}{branchElem}{cwdElem} {rootIndicatorElem}</span>
         );
     }
 }

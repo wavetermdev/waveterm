@@ -2353,8 +2353,9 @@ input[type=checkbox] {
 }
 
 #main .term-prompt {
+    font-size: 14px;
+    
     i {
-        font-size: 12px;
         margin-right: 3px;
     }
 
@@ -2364,6 +2365,12 @@ input[type=checkbox] {
 
     .term-prompt-python {
         color: @term-bright-magenta;
+    }
+
+    .term-prompt-remote {
+        i {
+            margin-right: 0;
+        }
     }
 
     .term-prompt-remote {

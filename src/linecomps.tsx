@@ -633,8 +633,8 @@ class Prompt extends React.Component<{rptr : RemotePtrType, festate : Record<str
         if (remote && remote.remotecanonicalname) {
             remoteTitle = "connected to " + remote.remotecanonicalname;
         }
-        let cwdElem = (<span title="current directory" className="term-prompt-cwd">{cwd}</span>);
-        let remoteElem = (<span title={remoteTitle} className={cn("term-prompt-remote", remoteColorClass)}>[{remoteStr}]</span>);
+        let cwdElem = (<span title="current directory" className="term-prompt-cwd"><i className="fa-solid fa-sharp fa-folder-open"/>{cwd}</span>);
+        let remoteElem = (<span title={remoteTitle} className={cn("term-prompt-remote", remoteColorClass)}>[{remoteStr}] </span>);
         let rootIndicatorElem = (<span className="term-prompt-end">{isRoot ? "#" : "$"}</span>);
         let branchElem = null;
         let pythonElem = null;
