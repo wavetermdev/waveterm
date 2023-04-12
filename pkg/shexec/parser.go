@@ -398,7 +398,7 @@ func parseDeclareStmt(stmt *syntax.Stmt, src string) (*DeclareDeclType, error) {
 	return rtn, nil
 }
 
-func parseDeclareOutput(state *packet.ShellState, declareBytes []byte) error {
+func parseDeclareOutput(state *packet.ShellState, declareBytes []byte, pvarBytes []byte) error {
 	declareStr := string(declareBytes)
 	r := bytes.NewReader(declareBytes)
 	parser := syntax.NewParser(syntax.Variant(syntax.LangBash))
@@ -419,6 +419,21 @@ func parseDeclareOutput(state *packet.ShellState, declareBytes []byte) error {
 			declMap[decl.Name] = decl
 		}
 	}
+	pvars := bytes.Split(pvarBytes, []byte{0})
+	for _, pvarBA := range pvars {
+		pvarStr := string(pvarBA)
+		pvarFields := strings.SplitN(pvarStr, " ", 2)
+		if len(pvarFields) != 2 {
+			continue
+		}
+		if pvarFields[0] == "" || pvarFields[1] == "" {
+			continue
+		}
+		decl := &DeclareDeclType{Args: "x"}
+		decl.Name = "PROMPTVAR_" + pvarFields[0]
+		decl.Value = shellescape.Quote(pvarFields[1])
+		declMap[decl.Name] = decl
+	}
 	state.ShellVars = SerializeDeclMap(declMap) // this writes out the decls in a canonical order
 	if firstParseErr != nil {
 		state.Error = firstParseErr.Error()
@@ -429,7 +444,7 @@ func parseDeclareOutput(state *packet.ShellState, declareBytes []byte) error {
 func ParseShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
 	// 5 fields: version, cwd, env/vars, aliases, funcs
 	fields := bytes.Split(outputBytes, []byte{0, 0})
-	if len(fields) != 5 {
+	if len(fields) != 6 {
 		return nil, fmt.Errorf("invalid shell state output, wrong number of fields, fields=%d", len(fields))
 	}
 	rtn := &packet.ShellState{}
@@ -445,7 +460,7 @@ func ParseShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
 		cwdStr = cwdStr[0 : len(cwdStr)-1]
 	}
 	rtn.Cwd = string(cwdStr)
-	err := parseDeclareOutput(rtn, fields[2])
+	err := parseDeclareOutput(rtn, fields[2], fields[5])
 	if err != nil {
 		return nil, err
 	}

@@ -51,7 +51,15 @@ const MaxTotalRunDataSize = 10 * MaxRunDataSize
 const GetStateTimeout = 5 * time.Second
 
 const BaseBashOpts = `set +m; set +H; shopt -s extglob`
-const GetShellStateCmd = `echo bash v${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}.${BASH_VERSINFO[2]}; printf "\x00\x00"; pwd; printf "\x00\x00"; declare -p $(compgen -A variable); printf "\x00\x00"; alias -p; printf "\x00\x00"; declare -f;`
+
+var GetShellStateCmds = []string{
+	`echo bash v${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}.${BASH_VERSINFO[2]};`,
+	`pwd;`,
+	`declare -p $(compgen -A variable);`,
+	`alias -p;`,
+	`declare -f;`,
+	`printf "GITBRANCH %s\x00" "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"`,
+}
 
 const ClientCommandFmt = `
 PATH=$PATH:~/.mshell;
@@ -159,6 +167,10 @@ type FdContext interface {
 type ShExecUPR struct {
 	ShExec *ShExecType
 	UPR    packet.UnknownPacketReporter
+}
+
+func GetShellStateCmd() string {
+	return strings.Join(GetShellStateCmds, ` printf "\x00\x00";`)
 }
 
 func (s *ShExecType) processSpecialInputPacket(pk *packet.SpecialInputPacketType) error {
@@ -1500,12 +1512,12 @@ func runSimpleCmdInPty(ecmd *exec.Cmd) ([]byte, error) {
 }
 
 func GetShellStateRedirectCommandStr(outputFdNum int) string {
-	return fmt.Sprintf("cat <(%s) > /dev/fd/%d", GetShellStateCmd, outputFdNum)
+	return fmt.Sprintf("cat <(%s) > /dev/fd/%d", GetShellStateCmd(), outputFdNum)
 }
 
 func GetShellState() (*packet.ShellState, error) {
 	ctx, _ := context.WithTimeout(context.Background(), GetStateTimeout)
-	cmdStr := BaseBashOpts + "; " + GetShellStateCmd
+	cmdStr := BaseBashOpts + "; " + GetShellStateCmd()
 	ecmd := exec.CommandContext(ctx, "bash", "-l", "-i", "-c", cmdStr)
 	outputBytes, err := runSimpleCmdInPty(ecmd)
 	if err != nil {
