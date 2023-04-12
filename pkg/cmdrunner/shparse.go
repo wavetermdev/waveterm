@@ -158,6 +158,21 @@ func setBracketArgs(argMap map[string]string, bracketStr string) error {
 
 var literalRtnStateCommands = []string{".", "source", "unset", "cd", "alias", "unalias", "deactivate"}
 
+func getCallExprLitArg(callExpr *syntax.CallExpr, argNum int) string {
+	if len(callExpr.Args) <= argNum {
+		return ""
+	}
+	arg := callExpr.Args[argNum]
+	if len(arg.Parts) == 0 {
+		return ""
+	}
+	lit, ok := arg.Parts[0].(*syntax.Lit)
+	if !ok {
+		return ""
+	}
+	return lit.Value
+}
+
 // detects: export, declare, ., source, X=1, unset
 func IsReturnStateCommand(cmdStr string) bool {
 	cmdReader := strings.NewReader(cmdStr)
@@ -171,14 +186,15 @@ func IsReturnStateCommand(cmdStr string) bool {
 			if len(callExpr.Assigns) > 0 && len(callExpr.Args) == 0 {
 				return true
 			}
-			if len(callExpr.Args) > 0 && len(callExpr.Args[0].Parts) > 0 {
-				lit, ok := callExpr.Args[0].Parts[0].(*syntax.Lit)
-				if ok {
-					if utilfn.ContainsStr(literalRtnStateCommands, lit.Value) {
-						return true
-					}
+			arg0 := getCallExprLitArg(callExpr, 0)
+			if arg0 != "" && utilfn.ContainsStr(literalRtnStateCommands, arg0) {
+				return true
+			}
+			if arg0 == "git" {
+				arg1 := getCallExprLitArg(callExpr, 1)
+				if arg1 == "checkout" || arg1 == "switch" {
+					return true
 				}
-
 			}
 		} else if _, ok := stmt.Cmd.(*syntax.DeclClause); ok {
 			return true
