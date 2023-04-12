@@ -34,7 +34,7 @@ type ResolvedRemote struct {
 	RState      remote.RemoteRuntimeState
 	RemoteCopy  *sstore.RemoteType
 	StatePtr    *sstore.ShellStatePtr
-	FeState     *sstore.FeStateType
+	FeState     map[string]string
 }
 
 type ResolveItem = sstore.ResolveItem
@@ -481,7 +481,7 @@ func resolveRemoteFromPtr(ctx context.Context, rptr *sstore.RemotePtrType, sessi
 				rtn.FeState = msh.GetDefaultFeState()
 			} else {
 				rtn.StatePtr = &sstore.ShellStatePtr{BaseHash: ri.StateBaseHash, DiffHashArr: ri.StateDiffHashArr}
-				rtn.FeState = &ri.FeState
+				rtn.FeState = ri.FeState
 			}
 		}
 	}

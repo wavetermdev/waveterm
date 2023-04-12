@@ -132,7 +132,7 @@ type RemoteRuntimeState struct {
 	RemoteAlias         string                 `json:"remotealias,omitempty"`
 	RemoteCanonicalName string                 `json:"remotecanonicalname"`
 	RemoteVars          map[string]string      `json:"remotevars"`
-	DefaultFeState      *sstore.FeStateType    `json:"defaultfestate"`
+	DefaultFeState      map[string]string      `json:"defaultfestate"`
 	Status              string                 `json:"status"`
 	ConnectTimeout      int                    `json:"connecttimeout,omitempty"`
 	ErrorStr            string                 `json:"errorstr,omitempty"`
@@ -177,7 +177,7 @@ func (msh *MShellProc) GetDefaultStatePtr() *sstore.ShellStatePtr {
 	return &sstore.ShellStatePtr{BaseHash: msh.CurrentState}
 }
 
-func (msh *MShellProc) GetDefaultFeState() *sstore.FeStateType {
+func (msh *MShellProc) GetDefaultFeState() map[string]string {
 	state := msh.GetDefaultState()
 	return sstore.FeStateFromShellState(state)
 }
@@ -1484,7 +1484,7 @@ func RunCommand(ctx context.Context, sessionId string, screenId string, remotePt
 		CmdStr:    runPacket.Command,
 		RawCmdStr: runPacket.Command,
 		Remote:    remotePtr,
-		FeState:   *sstore.FeStateFromShellState(currentState),
+		FeState:   sstore.FeStateFromShellState(currentState),
 		StatePtr:  *statePtr,
 		TermOpts:  makeTermOpts(runPacket),
 		Status:    status,
@@ -1652,7 +1652,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 	var statePtr *sstore.ShellStatePtr
 	if donePk.FinalState != nil && rct != nil {
 		feState := sstore.FeStateFromShellState(donePk.FinalState)
-		remoteInst, err := sstore.UpdateRemoteState(context.Background(), rct.SessionId, rct.ScreenId, rct.RemotePtr, *feState, donePk.FinalState, nil)
+		remoteInst, err := sstore.UpdateRemoteState(context.Background(), rct.SessionId, rct.ScreenId, rct.RemotePtr, feState, donePk.FinalState, nil)
 		if err != nil {
 			msh.WriteToPtyBuffer("*error trying to update remotestate: %v\n", err)
 			// fall-through (nothing to do)
@@ -1667,7 +1667,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 			msh.WriteToPtyBuffer("*error trying to update remotestate: %v\n", err)
 			// fall-through (nothing to do)
 		} else {
-			remoteInst, err := sstore.UpdateRemoteState(context.Background(), rct.SessionId, rct.ScreenId, rct.RemotePtr, *feState, nil, donePk.FinalStateDiff)
+			remoteInst, err := sstore.UpdateRemoteState(context.Background(), rct.SessionId, rct.ScreenId, rct.RemotePtr, feState, nil, donePk.FinalStateDiff)
 			if err != nil {
 				msh.WriteToPtyBuffer("*error trying to update remotestate: %v\n", err)
 				// fall-through (nothing to do)
@@ -1995,7 +1995,7 @@ func (msh *MShellProc) getFullState(stateDiff *packet.ShellStateDiff) (*packet.S
 }
 
 // internal func, first tries the StateMap, otherwise will fallback on sstore.GetFullState
-func (msh *MShellProc) getFeStateFromDiff(stateDiff *packet.ShellStateDiff) (*sstore.FeStateType, error) {
+func (msh *MShellProc) getFeStateFromDiff(stateDiff *packet.ShellStateDiff) (map[string]string, error) {
 	baseState := msh.GetStateByHash(stateDiff.BaseHash)
 	if baseState != nil && len(stateDiff.DiffHashArr) == 0 {
 		newState, err := shexec.ApplyShellStateDiff(*baseState, *stateDiff)

@@ -1197,8 +1197,8 @@ func crShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, ids re
 		baseDisplayName := msh.GetDisplayName()
 		displayName := rptr.GetDisplayName(baseDisplayName)
 		cwdStr := "-"
-		if ri.FeState.Cwd != "" {
-			cwdStr = ri.FeState.Cwd
+		if ri.FeState["cwd"] != "" {
+			cwdStr = ri.FeState["cwd"]
 		}
 		buf.WriteString(fmt.Sprintf("%-30s %-50s\n", displayName, cwdStr))
 	}
@@ -1217,8 +1217,8 @@ func crShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, ids re
 			continue
 		}
 		cwdStr := "-"
-		if feState.Cwd != "" {
-			cwdStr = feState.Cwd
+		if feState["cwd"] != "" {
+			cwdStr = feState["cwd"]
 		}
 		buf.WriteString(fmt.Sprintf("%-30s %-50s (default)\n", msh.GetDisplayName(), cwdStr))
 	}
@@ -1303,7 +1303,7 @@ func makeStaticCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr 
 		cmd.StatePtr = *ids.Remote.StatePtr
 	}
 	if ids.Remote.FeState != nil {
-		cmd.FeState = *ids.Remote.FeState
+		cmd.FeState = ids.Remote.FeState
 	}
 	err := sstore.CreateCmdPtyFile(ctx, cmd.ScreenId, cmd.CmdId, cmd.TermOpts.MaxPtySize)
 	if err != nil {
@@ -1455,7 +1455,7 @@ func doCompGen(ctx context.Context, pk *scpacket.FeCommandPacketType, prefix str
 	cgPacket.ReqId = uuid.New().String()
 	cgPacket.CompType = compType
 	cgPacket.Prefix = prefix
-	cgPacket.Cwd = ids.Remote.FeState.Cwd
+	cgPacket.Cwd = ids.Remote.FeState["cwd"]
 	resp, err := ids.Remote.MShell.PacketRpc(ctx, cgPacket)
 	if err != nil {
 		return nil, false, err
@@ -1495,7 +1495,7 @@ func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		rptr := ids.Remote.RemotePtr
 		compCtx.RemotePtr = &rptr
 		if ids.Remote.FeState != nil {
-			compCtx.Cwd = ids.Remote.FeState.Cwd
+			compCtx.Cwd = ids.Remote.FeState["cwd"]
 		}
 	}
 	compCtx.ForDisplay = showComps
@@ -1949,7 +1949,7 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		return nil, fmt.Errorf("invalid initpk received from remote (no remote state)")
 	}
 	feState := sstore.FeStateFromShellState(initPk.State)
-	remoteInst, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr, *feState, initPk.State, nil)
+	remoteInst, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr, feState, initPk.State, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -2657,8 +2657,8 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "cmdid", cmd.CmdId))
 		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "remote", cmd.Remote.MakeFullRemoteRef()))
 		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "status", cmd.Status))
-		if cmd.FeState.Cwd != "" {
-			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "cwd", cmd.FeState.Cwd))
+		if cmd.FeState["cwd"] != "" {
+			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "cwd", cmd.FeState["cwd"]))
 		}
 		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "termopts", formatTermOpts(cmd.TermOpts)))
 		if cmd.TermOpts != cmd.OrigTermOpts {

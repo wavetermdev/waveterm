@@ -22,6 +22,7 @@ import (
 	"github.com/sawka/txwrap"
 	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
+	"github.com/scripthaus-dev/mshell/pkg/shexec"
 	"github.com/scripthaus-dev/sh2-server/pkg/dbutil"
 	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 
@@ -563,15 +564,15 @@ func (ssptr *ShellStatePtr) IsEmpty() bool {
 }
 
 type RemoteInstance struct {
-	RIId             string      `json:"riid"`
-	Name             string      `json:"name"`
-	SessionId        string      `json:"sessionid"`
-	ScreenId         string      `json:"screenid"`
-	RemoteOwnerId    string      `json:"remoteownerid"`
-	RemoteId         string      `json:"remoteid"`
-	FeState          FeStateType `json:"festate"`
-	StateBaseHash    string      `json:"-"`
-	StateDiffHashArr []string    `json:"-"`
+	RIId             string            `json:"riid"`
+	Name             string            `json:"name"`
+	SessionId        string            `json:"sessionid"`
+	ScreenId         string            `json:"screenid"`
+	RemoteOwnerId    string            `json:"remoteownerid"`
+	RemoteId         string            `json:"remoteid"`
+	FeState          map[string]string `json:"festate"`
+	StateBaseHash    string            `json:"-"`
+	StateDiffHashArr []string          `json:"-"`
 
 	// only for updates
 	Remove bool `json:"remove,omitempty"`
@@ -611,16 +612,22 @@ func (sd *StateDiff) ToMap() map[string]interface{} {
 	return rtn
 }
 
-type FeStateType struct {
-	Cwd string `json:"cwd"`
-	// maybe later we can add some vars
-}
-
-func FeStateFromShellState(state *packet.ShellState) *FeStateType {
+func FeStateFromShellState(state *packet.ShellState) map[string]string {
 	if state == nil {
 		return nil
 	}
-	return &FeStateType{Cwd: state.Cwd}
+	rtn := make(map[string]string)
+	rtn["cwd"] = state.Cwd
+	envMap := shexec.EnvMapFromState(state)
+	if envMap["VIRTUAL_ENV"] != "" {
+		rtn["VIRTUAL_ENV"] = envMap["VIRTUAL_ENV"]
+	}
+	for key, val := range envMap {
+		if strings.HasPrefix(key, "PROMPTVAR_") {
+			rtn[key] = val
+		}
+	}
+	return rtn
 }
 
 func (ri *RemoteInstance) FromMap(m map[string]interface{}) bool {
@@ -874,7 +881,7 @@ type CmdType struct {
 	Remote       RemotePtrType              `json:"remote"`
 	CmdStr       string                     `json:"cmdstr"`
 	RawCmdStr    string                     `json:"rawcmdstr"`
-	FeState      FeStateType                `json:"festate"`
+	FeState      map[string]string          `json:"festate"`
 	StatePtr     ShellStatePtr              `json:"state"`
 	TermOpts     TermOpts                   `json:"termopts"`
 	OrigTermOpts TermOpts                   `json:"origtermopts"`

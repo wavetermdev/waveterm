@@ -23,6 +23,7 @@ type BareMetaCmdDecl struct {
 
 var BareMetaCmds = []BareMetaCmdDecl{
 	BareMetaCmdDecl{"cr", "cr"},
+	BareMetaCmdDecl{"connect", "cr"},
 	BareMetaCmdDecl{"clear", "clear"},
 	BareMetaCmdDecl{"reset", "reset"},
 }
@@ -155,6 +156,8 @@ func setBracketArgs(argMap map[string]string, bracketStr string) error {
 	return nil
 }
 
+var literalRtnStateCommands = []string{".", "source", "unset", "cd", "alias", "unalias", "deactivate"}
+
 // detects: export, declare, ., source, X=1, unset
 func IsReturnStateCommand(cmdStr string) bool {
 	cmdReader := strings.NewReader(cmdStr)
@@ -171,7 +174,7 @@ func IsReturnStateCommand(cmdStr string) bool {
 			if len(callExpr.Args) > 0 && len(callExpr.Args[0].Parts) > 0 {
 				lit, ok := callExpr.Args[0].Parts[0].(*syntax.Lit)
 				if ok {
-					if lit.Value == "." || lit.Value == "source" || lit.Value == "unset" || lit.Value == "cd" || lit.Value == "alias" || lit.Value == "unalias" {
+					if utilfn.ContainsStr(literalRtnStateCommands, lit.Value) {
 						return true
 					}
 				}

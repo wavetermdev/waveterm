@@ -31,6 +31,8 @@ type SingleConnDBGetter struct {
 	SingleConnLock *sync.Mutex
 }
 
+type FeStateType map[string]string
+
 type TxWrap = txwrap.TxWrap
 
 var dbWrap *SingleConnDBGetter
