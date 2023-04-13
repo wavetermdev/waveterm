@@ -119,7 +119,6 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
         let contentWidth = taElem.clientWidth - padding - borders;
         let fontSize = getMonoFontSize(parseInt(cs.fontSize));
         let maxCols = Math.floor(contentWidth / fontSize.width);
-        console.log("getareamaxcols", contentWidth, fontSize, maxCols);
         return maxCols;
     }
 
@@ -918,6 +917,7 @@ class CmdInput extends React.Component<{}, {}> {
         let hasInfo = (infoMsg != null);
         let focusVal = inputModel.physicalInputFocused.get();
         let inputMode : string = inputModel.inputMode.get();
+        let textAreaInputKey = (screen == null ? "null" : screen.screenId);
         return (
             <div ref={this.cmdInputRef} className={cn("cmd-input has-background-black", {"has-info": infoShow}, {"has-history": historyShow})}>
                 <div key="focus" className={cn("focus-indicator", {"active": focusVal})}/>
@@ -951,7 +951,7 @@ class CmdInput extends React.Component<{}, {}> {
                             <div className="button is-static">{inputMode}</div>
                         </div>
                     </If>
-                    <TextAreaInput onHeightChange={this.handleInnerHeightUpdate}/>
+                    <TextAreaInput key={textAreaInputKey} onHeightChange={this.handleInnerHeightUpdate}/>
                     <div className="control cmd-exec">
                         <div onClick={GlobalModel.inputModel.uiSubmitCommand} className="button" title="Run Command">
                             <span className="icon">
