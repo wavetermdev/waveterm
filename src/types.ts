@@ -2,7 +2,7 @@ import * as React from "react";
 import * as mobx from "mobx";
 
 type ShareModeType = "local" | "web";
-type FocusTypeStrs = "input"|"cmd"|"cmd-fg";
+type FocusTypeStrs = "input"|"cmd";
 type HistoryTypeStrs = "global" | "session" | "screen";
 type RemoteStatusTypeStrs = "connected" | "connecting" | "disconnected" | "error";
 

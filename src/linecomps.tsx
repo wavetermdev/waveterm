@@ -510,12 +510,8 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         let isPhysicalFocused = mobx.computed(() => screen.getIsFocused(line.linenum), {name: "computed-getIsFocused"}).get();
         let isFocused = mobx.computed(() => {
             let screenFocusType = screen.getFocusType();
-            return isPhysicalFocused && (screenFocusType == "cmd" || screenFocusType == "cmd-fg")
+            return isPhysicalFocused && (screenFocusType == "cmd");
         }, {name: "computed-isFocused"}).get();
-        let isFgFocused = mobx.computed(() => {
-            let screenFocusType = screen.getFocusType();
-            return isPhysicalFocused && screenFocusType == "cmd-fg"
-        }, {name: "computed-isFgFocused"}).get();
         let isStatic = staticRender;
         let isRunning = cmd.isRunning()
         let isCollapsed = this.isCollapsed();
@@ -541,7 +537,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
             <div className={mainDivCn}
                  ref={this.lineRef} onClick={this.handleClick}
                  data-lineid={line.lineid} data-linenum={line.linenum} data-screenid={line.screenid} data-cmdid={line.cmdid}>
-                <div key="focus" className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused}, {"fg-focus": isFgFocused})}/>
+                <div key="focus" className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused})}/>
                 <div key="header" className={cn("line-header", {"is-expanded": isExpanded}, {"is-collapsed": isCollapsed})}>
                     <LineAvatar line={line} cmd={cmd} onRightClick={this.onAvatarRightClick}/>
                     <If condition={renderMode == "collapsed"}>
@@ -816,7 +812,7 @@ class TerminalRenderer extends React.Component<{screen : LineContainerModel, lin
         let isPhysicalFocused = mobx.computed(() => screen.getIsFocused(line.linenum), {name: "computed-getIsFocused"}).get();
         let isFocused = mobx.computed(() => {
             let screenFocusType = screen.getFocusType();
-            return isPhysicalFocused && (screenFocusType == "cmd" || screenFocusType == "cmd-fg")
+            return isPhysicalFocused && (screenFocusType == "cmd");
         }, {name: "computed-isFocused"}).get();
         let cmd = screen.getCmd(line); // will not be null
         let usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);

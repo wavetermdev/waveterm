@@ -42,7 +42,7 @@ type LineContainerModel = {
     getIsFocused : (lineNum : number) => boolean,
     getTermWrap : (cmdId : string) => TermWrap;
     getRenderer : (cmdId : string) => RendererModel,
-    getFocusType : () => "input" | "cmd" | "cmd-fg",
+    getFocusType : () => FocusTypeStrs,
     getSelectedLine : () => number,
     getCmd : (line : LineType) => Cmd,
     setTermFocus : (lineNum : number, focus : boolean) => void,
@@ -355,7 +355,7 @@ class Screen {
     }
 
     refocusLine(sdata : ScreenDataType, oldFocusType : string, oldSelectedLine : number) : void {
-        let isCmdFocus = (sdata.focustype == "cmd" || sdata.focustype == "cmd-fg");
+        let isCmdFocus = (sdata.focustype == "cmd");
         if (!isCmdFocus) {
             return;
         }
@@ -639,7 +639,7 @@ class Screen {
             onUpdateContentHeight: (termContext : RendererContext, height : number) => { GlobalModel.setContentHeight(termContext, height); },
         });
         this.terminals[cmdId] = termWrap;
-        if ((this.focusType.get() == "cmd" || this.focusType.get() == "cmd-fg") && this.selectedLine.get() == line.linenum) {
+        if ((this.focusType.get() == "cmd") && this.selectedLine.get() == line.linenum) {
             termWrap.giveFocus();
         }
         return;
@@ -974,6 +974,7 @@ class InputModel {
     infoMsg : OV<InfoType> = mobx.observable.box(null);
     infoTimeoutId : any = null;
     inputMode : OV<null | "comment" | "global"> = mobx.observable.box(null);
+    inputExpanded : OV<boolean> = mobx.observable.box(false, {name: "inputExpanded"});
 
     // cursor
     forceCursorPos : OV<number> = mobx.observable.box(null);
@@ -982,6 +983,7 @@ class InputModel {
     inputFocused : OV<boolean> = mobx.observable.box(false);
     lineFocused : OV<boolean> = mobx.observable.box(false);
     physicalInputFocused : OV<boolean> = mobx.observable.box(false);
+    forceInputFocus : boolean = false;
 
     constructor() {
         this.filteredHistoryItems = mobx.computed(() => {
@@ -1500,7 +1502,16 @@ class InputModel {
             this.resetHistory();
             this.dropModHistory(false);
             this.infoMsg.set(null);
+            this.inputExpanded.set(false);
             this._clearInfoTimeout();
+        })();
+    }
+
+    @boundMethod
+    toggleExpandInput() : void {
+        mobx.action(() => {
+            this.inputExpanded.set(!this.inputExpanded.get());
+            this.forceInputFocus = true;
         })();
     }
 
@@ -1678,7 +1689,7 @@ class SpecialHistoryViewLineContainer {
         return this.terminal;
     }
     
-    getFocusType() : "input" | "cmd" | "cmd-fg" {
+    getFocusType() : FocusTypeStrs {
         return "input";
     }
     

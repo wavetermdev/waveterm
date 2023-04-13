@@ -166,6 +166,10 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
             }
             mobx.action(() => inputModel.forceCursorPos.set(null))();
         }
+        if (inputModel.forceInputFocus) {
+            inputModel.forceInputFocus = false;
+            this.setFocus();
+        }
         this.checkHeight(true);
     }
 
@@ -233,6 +237,12 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
                     inputModel.resetInputMode();
                 }
                 return;
+            }
+            if (e.code == "KeyE" && e.getModifierState("Meta")) {
+                e.preventDefault();
+                e.stopPropagation();
+                let inputModel = GlobalModel.inputModel;
+                inputModel.toggleExpandInput();
             }
             if (e.code == "KeyC" && e.getModifierState("Control")) {
                 e.preventDefault();
@@ -557,6 +567,9 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
         if (displayLines > 5) {
             displayLines = 5;
         }
+        if (inputModel.inputExpanded.get()) {
+            displayLines = 5;
+        }
         let disabled = inputModel.historyShow.get();
         if (disabled) {
             displayLines = 1;
@@ -565,11 +578,11 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
         if (activeScreen != null) {
             activeScreen.focusType.get(); // for reaction
         }
-        let computedHeight = (displayLines*24)+14;
+        let computedHeight = (displayLines*24)+14+2;  // 24 = height of line, 14 = padding, 2 = border
         return (
             <div className="control cmd-input-control is-expanded" ref={this.controlRef}>
-                <textarea ref={this.mainInputRef} spellCheck="false" autoComplete="off" autoCorrect="off" id="main-cmd-input" onFocus={this.handleMainFocus} onBlur={this.handleMainBlur} style={{height: computedHeight, minHeight: computedHeight}} value={curLine} onKeyDown={this.onKeyDown} onChange={this.onChange} className={cn("textarea", {"display-disabled": disabled})}></textarea>
-                <input ref={this.historyInputRef} spellCheck="false" autoComplete="off" autoCorrect="off" className="history-input" type="text" onFocus={this.handleHistoryFocus} onKeyDown={this.onHistoryKeyDown} onChange={this.handleHistoryInput} value={inputModel.historyQueryOpts.get().queryStr}/>
+                <textarea key="main" ref={this.mainInputRef} spellCheck="false" autoComplete="off" autoCorrect="off" id="main-cmd-input" onFocus={this.handleMainFocus} onBlur={this.handleMainBlur} style={{height: computedHeight, minHeight: computedHeight}} value={curLine} onKeyDown={this.onKeyDown} onChange={this.onChange} className={cn("textarea", {"display-disabled": disabled})}></textarea>
+                <input key="history" ref={this.historyInputRef} spellCheck="false" autoComplete="off" autoCorrect="off" className="history-input" type="text" onFocus={this.handleHistoryFocus} onKeyDown={this.onHistoryKeyDown} onChange={this.handleHistoryInput} value={inputModel.historyQueryOpts.get().queryStr}/>
             </div>
         );
     }
@@ -953,13 +966,14 @@ class CmdInput extends React.Component<{}, {}> {
                     </If>
                     <TextAreaInput key={textAreaInputKey} onHeightChange={this.handleInnerHeightUpdate}/>
                     <div className="control cmd-exec">
-                        <div onClick={GlobalModel.inputModel.uiSubmitCommand} className="button" title="Run Command">
+                        <div onClick={inputModel.uiSubmitCommand} className="button" title="Run Command">
                             <span className="icon">
                                 <i className="fa-sharp fa-solid fa-rocket"/>
                             </span>
                         </div>
                     </div>
                     <div className="cmd-hints">
+                        <div onClick={inputModel.toggleExpandInput} className="hint-item color-white">{inputModel.inputExpanded.get() ? "shrink" : "expand"} input ({renderCmdText("E")})</div>
                         <If condition={!focusVal}><div onClick={this.clickFocusInputHint} className="hint-item color-white">focus input ({renderCmdText("I")})</div></If>
                         <If condition={focusVal}><div onMouseDown={this.clickHistoryHint} className="hint-item color-green"><i className={cn("fa-sharp fa-solid", (historyShow ? "fa-angle-down" : "fa-angle-up"))}/> {historyShow ? "close history (esc)" : "show history (ctrl-r)"}</div></If>
                     </div>
