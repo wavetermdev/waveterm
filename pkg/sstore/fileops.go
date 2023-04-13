@@ -173,6 +173,6 @@ func DeleteScreenDir(ctx context.Context, screenId string) error {
 	if err != nil {
 		return fmt.Errorf("error getting screendir: %w", err)
 	}
-	fmt.Printf("remove-all %s\n", screenDir)
+	log.Printf("remove-all %s\n", screenDir)
 	return os.RemoveAll(screenDir)
 }

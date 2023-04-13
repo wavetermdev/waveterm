@@ -1106,7 +1106,6 @@ func (msh *MShellProc) ReInit(ctx context.Context) (*packet.InitPacketType, erro
 		msh.StateMap[hval] = initPk.State
 	})
 	msh.updateRemoteStateVars(ctx, msh.RemoteId, initPk)
-
 	return initPk, nil
 }
 
@@ -1144,6 +1143,7 @@ func stripScVarsFromStateDiff(stateDiff *packet.ShellStateDiff) *packet.ShellSta
 	var mapDiff statediff.MapDiffType
 	err := mapDiff.Decode(stateDiff.VarsDiff)
 	if err != nil {
+		log.Printf("error decoding statediff in stripScVarsFromStateDiff: %v\n", err)
 		return stateDiff
 	}
 	delete(mapDiff.ToAdd, "PROMPT")
@@ -1645,9 +1645,9 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 		msh.WriteToPtyBuffer("*error updating cmddone: %v\n", err)
 		return
 	}
-	screen, err := sstore.UpdateScreenWithCmdFg(context.Background(), donePk.CK.GetGroupId(), donePk.CK.GetCmdId())
+	screen, err := sstore.UpdateScreenFocusForDoneCmd(context.Background(), donePk.CK.GetGroupId(), donePk.CK.GetCmdId())
 	if err != nil {
-		msh.WriteToPtyBuffer("*error trying to update cmd-fg screens: %v\n", err)
+		msh.WriteToPtyBuffer("*error trying to update screen focus type: %v\n", err)
 		// fall-through (nothing to do)
 	}
 	if screen != nil {
@@ -1692,7 +1692,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 			// fall-through (nothing to do)
 		}
 	}
-	sstore.MainBus.SendScreenUpdate(donePk.CK.GetGroupId(), update)
+	sstore.MainBus.SendUpdate(update)
 	return
 }
 
@@ -1707,7 +1707,11 @@ func (msh *MShellProc) handleCmdFinalPacket(finalPk *packet.CmdFinalPacketType) 
 		return
 	}
 	log.Printf("finalpk %s (hangup): %s\n", finalPk.CK, finalPk.Error)
-	sstore.HangupCmd(context.Background(), finalPk.CK)
+	screen, err := sstore.HangupCmd(context.Background(), finalPk.CK)
+	if err != nil {
+		log.Printf("error in hangup-cmd in handleCmdFinalPacket: %v\n", err)
+		return
+	}
 	rtnCmd, err = sstore.GetCmdByScreenId(context.Background(), finalPk.CK.GetGroupId(), finalPk.CK.GetCmdId())
 	if err != nil {
 		log.Printf("error getting cmd(2) in handleCmdFinalPacket: %v\n", err)
@@ -1718,7 +1722,10 @@ func (msh *MShellProc) handleCmdFinalPacket(finalPk *packet.CmdFinalPacketType) 
 		return
 	}
 	update := &sstore.ModelUpdate{Cmd: rtnCmd}
-	sstore.MainBus.SendScreenUpdate(finalPk.CK.GetGroupId(), update)
+	if screen != nil {
+		update.Screens = []*sstore.ScreenType{screen}
+	}
+	sstore.MainBus.SendUpdate(update)
 }
 
 // TODO notify FE about cmd errors
@@ -1777,17 +1784,26 @@ func (msh *MShellProc) makeHandleCmdFinalPacketClosure(finalPk *packet.CmdFinalP
 	}
 }
 
+func sendScreenUpdates(screens []*sstore.ScreenType) {
+	for _, screen := range screens {
+		sstore.MainBus.SendUpdate(&sstore.ModelUpdate{Screens: []*sstore.ScreenType{screen}})
+	}
+}
+
 func (msh *MShellProc) ProcessPackets() {
 	defer msh.WithLock(func() {
 		if msh.Status == StatusConnected {
 			msh.Status = StatusDisconnected
 		}
-		err := sstore.HangupRunningCmdsByRemoteId(context.Background(), msh.Remote.RemoteId)
+		screens, err := sstore.HangupRunningCmdsByRemoteId(context.Background(), msh.Remote.RemoteId)
 		if err != nil {
 			msh.writeToPtyBuffer_nolock("error calling HUP on cmds %v\n", err)
 		}
 		msh.notifyHangups_nolock()
 		go msh.NotifyRemoteUpdate()
+		if len(screens) > 0 {
+			go sendScreenUpdates(screens)
+		}
 	})
 	dataPosMap := make(map[base.CommandKey]int64)
 	for pk := range msh.ServerProc.Output.MainCh {

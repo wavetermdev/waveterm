@@ -102,6 +102,8 @@ func ParseFuncs(funcs string) (map[string]string, error) {
 const MaxDiffKeyLen = 40
 const MaxDiffValLen = 50
 
+var IgnoreVars = map[string]bool{"PROMPT": true, "PROMPT_VERSION": true, "MSHELL": true}
+
 func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newState packet.ShellState) {
 	if newState.Cwd != oldState.Cwd {
 		buf.WriteString(fmt.Sprintf("cwd %s\n", newState.Cwd))
@@ -110,6 +112,9 @@ func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newSt
 		newEnvMap := shexec.DeclMapFromState(&newState)
 		oldEnvMap := shexec.DeclMapFromState(&oldState)
 		for key, newVal := range newEnvMap {
+			if IgnoreVars[key] {
+				continue
+			}
 			oldVal, found := oldEnvMap[key]
 			if !found || !shexec.DeclsEqual(false, oldVal, newVal) {
 				var exportStr string
@@ -120,6 +125,9 @@ func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newSt
 			}
 		}
 		for key, _ := range oldEnvMap {
+			if IgnoreVars[key] {
+				continue
+			}
 			_, found := newEnvMap[key]
 			if !found {
 				buf.WriteString(fmt.Sprintf("unset %s\n", utilfn.EllipsisStr(key, MaxDiffKeyLen)))

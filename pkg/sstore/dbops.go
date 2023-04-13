@@ -940,32 +940,52 @@ func HangupAllRunningCmds(ctx context.Context) error {
 		query = `UPDATE cmd SET status = ? WHERE status = ?`
 		tx.Exec(query, CmdStatusHangup, CmdStatusRunning)
 		for _, cmdPtr := range cmdPtrs {
-			insertScreenCmdUpdate(tx, cmdPtr.ScreenId, cmdPtr.CmdId, UpdateType_CmdStatus)
+			if isWebShare(tx, cmdPtr.ScreenId) {
+				insertScreenCmdUpdate(tx, cmdPtr.ScreenId, cmdPtr.CmdId, UpdateType_CmdStatus)
+			}
 		}
 		return nil
 	})
 }
 
-func HangupRunningCmdsByRemoteId(ctx context.Context, remoteId string) error {
-	return WithTx(ctx, func(tx *TxWrap) error {
+// TODO send update
+func HangupRunningCmdsByRemoteId(ctx context.Context, remoteId string) ([]*ScreenType, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) ([]*ScreenType, error) {
 		var cmdPtrs []CmdPtr
 		query := `SELECT screenid, cmdid FROM cmd WHERE status = ? AND remoteid = ?`
 		tx.Select(&cmdPtrs, query, CmdStatusRunning, remoteId)
 		query = `UPDATE cmd SET status = ? WHERE status = ? AND remoteid = ?`
 		tx.Exec(query, CmdStatusHangup, CmdStatusRunning, remoteId)
+		var rtn []*ScreenType
 		for _, cmdPtr := range cmdPtrs {
-			insertScreenCmdUpdate(tx, cmdPtr.ScreenId, cmdPtr.CmdId, UpdateType_CmdStatus)
+			if isWebShare(tx, cmdPtr.ScreenId) {
+				insertScreenCmdUpdate(tx, cmdPtr.ScreenId, cmdPtr.CmdId, UpdateType_CmdStatus)
+			}
+			screen, err := UpdateScreenFocusForDoneCmd(tx.Context(), cmdPtr.ScreenId, cmdPtr.CmdId)
+			if err != nil {
+				return nil, err
+			}
+			if screen != nil {
+				rtn = append(rtn, screen)
+			}
 		}
-		return nil
+		return rtn, nil
 	})
 }
 
-func HangupCmd(ctx context.Context, ck base.CommandKey) error {
-	return WithTx(ctx, func(tx *TxWrap) error {
+// TODO send update
+func HangupCmd(ctx context.Context, ck base.CommandKey) (*ScreenType, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (*ScreenType, error) {
 		query := `UPDATE cmd SET status = ? WHERE screenid = ? AND cmdid = ?`
 		tx.Exec(query, CmdStatusHangup, ck.GetGroupId(), ck.GetCmdId())
-		insertScreenCmdUpdate(tx, ck.GetGroupId(), ck.GetCmdId(), UpdateType_CmdStatus)
-		return nil
+		if isWebShare(tx, ck.GetGroupId()) {
+			insertScreenCmdUpdate(tx, ck.GetGroupId(), ck.GetCmdId(), UpdateType_CmdStatus)
+		}
+		screen, err := UpdateScreenFocusForDoneCmd(tx.Context(), ck.GetGroupId(), ck.GetCmdId())
+		if err != nil {
+			return nil, err
+		}
+		return screen, nil
 	})
 }
 
@@ -1777,14 +1797,14 @@ func GetLineResolveItems(ctx context.Context, screenId string) ([]ResolveItem, e
 	return rtn, nil
 }
 
-func UpdateScreenWithCmdFg(ctx context.Context, screenId string, cmdId string) (*ScreenType, error) {
+func UpdateScreenFocusForDoneCmd(ctx context.Context, screenId string, cmdId string) (*ScreenType, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) (*ScreenType, error) {
 		query := `SELECT screenid
                   FROM screen s
-                  WHERE s.screenid = ? AND s.focustype = 'cmd-fg'
+                  WHERE s.screenid = ? AND s.focustype = ?
                     AND s.selectedline IN (SELECT linenum FROM line l WHERE l.screenid = s.screenid AND l.cmdid = ?)
         `
-		if !tx.Exists(query, screenId, cmdId) {
+		if !tx.Exists(query, screenId, ScreenFocusCmd, cmdId) {
 			return nil, nil
 		}
 		editMap := make(map[string]interface{})
@@ -1803,6 +1823,7 @@ func StoreStateBase(ctx context.Context, state *packet.ShellState) error {
 		Ts:      time.Now().UnixMilli(),
 	}
 	stateBase.BaseHash, stateBase.Data = state.EncodeAndHash()
+	// envMap := shexec.DeclMapFromState(state)
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT basehash FROM state_base WHERE basehash = ?`
 		if tx.Exists(query, stateBase.BaseHash) {

@@ -671,8 +671,8 @@ func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	}
 	if pk.Kwargs["focus"] != "" {
 		focusVal := pk.Kwargs["focus"]
-		if focusVal != sstore.ScreenFocusInput && focusVal != sstore.ScreenFocusCmd && focusVal != sstore.ScreenFocusCmdFg {
-			return nil, fmt.Errorf("/screen:set invalid focus argument %q, must be %s", focusVal, formatStrs([]string{sstore.ScreenFocusInput, sstore.ScreenFocusCmd, sstore.ScreenFocusCmdFg}, "or", false))
+		if focusVal != sstore.ScreenFocusInput && focusVal != sstore.ScreenFocusCmd {
+			return nil, fmt.Errorf("/screen:set invalid focus argument %q, must be %s", focusVal, formatStrs([]string{sstore.ScreenFocusInput, sstore.ScreenFocusCmd}, "or", false))
 		}
 		varsUpdated = append(varsUpdated, "focus")
 		updateMap[sstore.ScreenField_Focus] = focusVal
@@ -1367,7 +1367,7 @@ func addLineForCmd(ctx context.Context, metaCmd string, shouldFocus bool, ids re
 		updateMap := make(map[string]interface{})
 		updateMap[sstore.ScreenField_SelectedLine] = rtnLine.LineNum
 		if shouldFocus {
-			updateMap[sstore.ScreenField_Focus] = sstore.ScreenFocusCmdFg
+			updateMap[sstore.ScreenField_Focus] = sstore.ScreenFocusCmd
 		}
 		screen, err = sstore.UpdateScreen(ctx, ids.ScreenId, updateMap)
 		if err != nil {

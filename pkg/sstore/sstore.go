@@ -82,7 +82,6 @@ const (
 const (
 	ScreenFocusInput = "input"
 	ScreenFocusCmd   = "cmd"
-	ScreenFocusCmdFg = "cmd-fg"
 )
 
 const (
