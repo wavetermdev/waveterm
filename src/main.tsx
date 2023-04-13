@@ -190,7 +190,7 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
             let win = model.getScreenLinesForActiveScreen();
             let ctrlMod = e.getModifierState("Control") || e.getModifierState("Meta") || e.getModifierState("Shift");
             let curLine = inputModel.getCurLine();
-            
+
             let lastTab = this.lastTab;
             this.lastTab = (e.code == "Tab");
             let lastHist = this.lastHistoryUpDown;
@@ -562,12 +562,14 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
         let inputModel = model.inputModel;
         let curLine = inputModel.getCurLine();
         let fcp = inputModel.forceCursorPos.get(); // for reaction
+        let displayLines = 1;
         let numLines = curLine.split("\n").length;
-        let displayLines = numLines;
-        if (displayLines > 5) {
-            displayLines = 5;
+        let maxCols = this.getTextAreaMaxCols();
+        let longLine = false;
+        if (maxCols != 0 && curLine.length >= maxCols - 4) {
+            longLine = true;
         }
-        if (inputModel.inputExpanded.get()) {
+        if (numLines > 1 || longLine || inputModel.inputExpanded.get()) {
             displayLines = 5;
         }
         let disabled = inputModel.historyShow.get();
