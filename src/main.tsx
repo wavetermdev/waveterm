@@ -13,7 +13,7 @@ import type * as T from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {GlobalModel, GlobalCommandRunner, Session, Cmd, ScreenLines, Screen, riToRPtr, TabColors, RemoteColors} from "./model";
 import {windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols, getMonoFontSize} from "./textmeasure";
-import {isModKeyPress, boundInt, sortAndFilterRemotes, makeExternLink, isBlank} from "./util";
+import {isModKeyPress, boundInt, sortAndFilterRemotes, makeExternLink, isBlank, hasNoModifiers} from "./util";
 import {BookmarksView} from "./bookmarks";
 import {WebShareView} from "./webshare-client-view";
 import {HistoryView} from "./history";
@@ -279,12 +279,7 @@ class TextAreaInput extends React.Component<{onHeightChange : () => void}, {}> {
                 inputModel.openHistory();
                 return;
             }
-            if (e.code == "ArrowUp" && e.getModifierState("Shift")) {
-                e.preventDefault();
-                inputModel.openHistory();
-                return;
-            }
-            if (e.code == "ArrowUp" || e.code == "ArrowDown") {
+            if ((e.code == "ArrowUp" || e.code == "ArrowDown") && hasNoModifiers(e)) {
                 if (!inputModel.isHistoryLoaded()) {
                     if (e.code == "ArrowUp") {
                         this.lastHistoryUpDown = true;

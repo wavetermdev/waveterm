@@ -344,4 +344,8 @@ function isBoolEq(b1 : boolean, b2 : boolean) {
     return (!!b1) == (!!b2);
 }
 
-export {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeDataMap, genMergeSimpleData, parseEnv0, boundInt, isModKeyPress, incObs, isBlank, loadFonts, getTodayStr, getYesterdayStr, getDateStr, sortAndFilterRemotes, makeExternLink, isStrEq, isBoolEq};
+function hasNoModifiers(e : any) : boolean {
+    return !e.getModifierState("Shift") && !e.getModifierState("Control") && !e.getModifierState("Meta") && !e.getModifierState("Alt");
+}
+
+export {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeDataMap, genMergeSimpleData, parseEnv0, boundInt, isModKeyPress, incObs, isBlank, loadFonts, getTodayStr, getYesterdayStr, getDateStr, sortAndFilterRemotes, makeExternLink, isStrEq, isBoolEq, hasNoModifiers};
