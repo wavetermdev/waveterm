@@ -41,6 +41,7 @@ var sessionDirCache = make(map[string]string)
 var baseLock = &sync.Mutex{}
 var DebugLogEnabled = false
 var DebugLogger *log.Logger
+var BuildTime string = "0"
 
 type CommandFileNames struct {
 	PtyOutFile    string
@@ -49,6 +50,10 @@ type CommandFileNames struct {
 }
 
 type CommandKey string
+
+func SetBuildTime(build string) {
+	BuildTime = build
+}
 
 func MakeCommandKey(sessionId string, cmdId string) CommandKey {
 	if sessionId == "" && cmdId == "" {

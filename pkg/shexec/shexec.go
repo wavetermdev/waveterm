@@ -1405,6 +1405,7 @@ func (c *ShExecType) WaitForCommand() *packet.CmdDonePacketType {
 func MakeInitPacket() *packet.InitPacketType {
 	initPacket := packet.MakeInitPacket()
 	initPacket.Version = base.MShellVersion
+	initPacket.BuildTime = base.BuildTime
 	initPacket.HomeDir = base.GetHomeDir()
 	initPacket.MShellHomeDir = base.GetMShellHomeDir()
 	if user, _ := user.Current(); user != nil {

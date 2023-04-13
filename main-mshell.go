@@ -22,7 +22,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-var BuildTime = "-"
+var BuildTime = "0"
 
 // func doMainRun(pk *packet.RunPacketType, sender *packet.PacketSender) {
 // 	err := shexec.ValidateRunPacket(pk)
@@ -533,6 +533,7 @@ Examples:
 }
 
 func main() {
+	base.SetBuildTime(BuildTime)
 	if len(os.Args) == 1 {
 		handleUsage()
 		return
@@ -542,7 +543,7 @@ func main() {
 		handleUsage()
 		return
 	} else if firstArg == "--version" {
-		fmt.Printf("mshell %s\n", base.MShellVersion)
+		fmt.Printf("mshell %s+%s\n", base.MShellVersion, base.BuildTime)
 		return
 	} else if firstArg == "--test-env" {
 		state, err := shexec.GetShellState()

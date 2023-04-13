@@ -461,6 +461,7 @@ type InitPacketType struct {
 	Type          string      `json:"type"`
 	RespId        string      `json:"respid,omitempty"`
 	Version       string      `json:"version"`
+	BuildTime     string      `json:"buildtime,omitempty"`
 	MShellHomeDir string      `json:"mshellhomedir,omitempty"`
 	HomeDir       string      `json:"homedir,omitempty"`
 	State         *ShellState `json:"state,omitempty"`
