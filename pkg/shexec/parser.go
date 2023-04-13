@@ -426,7 +426,7 @@ func parseDeclareOutput(state *packet.ShellState, declareBytes []byte, pvarBytes
 		if len(pvarFields) != 2 {
 			continue
 		}
-		if pvarFields[0] == "" || pvarFields[1] == "" {
+		if pvarFields[0] == "" {
 			continue
 		}
 		decl := &DeclareDeclType{Args: "x"}
