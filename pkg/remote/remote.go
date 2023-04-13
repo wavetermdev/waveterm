@@ -584,12 +584,17 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		vars["color"] = msh.Remote.RemoteOpts.Color
 	}
 	if msh.ServerProc != nil && msh.ServerProc.InitPk != nil {
-		state.MShellVersion = msh.ServerProc.InitPk.Version
-		vars["home"] = msh.ServerProc.InitPk.HomeDir
-		vars["remoteuser"] = msh.ServerProc.InitPk.User
+		initPk := msh.ServerProc.InitPk
+		if initPk.BuildTime == "" || initPk.BuildTime == "0" {
+			state.MShellVersion = initPk.Version
+		} else {
+			state.MShellVersion = fmt.Sprintf("%s+%s", initPk.Version, initPk.BuildTime)
+		}
+		vars["home"] = initPk.HomeDir
+		vars["remoteuser"] = initPk.User
 		vars["bestuser"] = vars["remoteuser"]
-		vars["remotehost"] = msh.ServerProc.InitPk.HostName
-		vars["remoteshorthost"] = makeShortHost(msh.ServerProc.InitPk.HostName)
+		vars["remotehost"] = initPk.HostName
+		vars["remoteshorthost"] = makeShortHost(initPk.HostName)
 		vars["besthost"] = vars["remotehost"]
 		vars["bestshorthost"] = vars["remoteshorthost"]
 	}

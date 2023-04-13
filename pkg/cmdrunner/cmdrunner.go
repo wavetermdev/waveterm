@@ -124,6 +124,7 @@ func init() {
 	registerCmdFn("clear", ClearCommand)
 	registerCmdFn("reset", RemoteResetCommand)
 	registerCmdFn("signal", SignalCommand)
+	registerCmdFn("sync", SyncCommand)
 
 	registerCmdFn("session", SessionCommand)
 	registerCmdFn("session:open", SessionOpenCommand)
@@ -391,6 +392,39 @@ func getEvalDepth(ctx context.Context) int {
 		return 0
 	}
 	return depthVal.(int)
+}
+
+func SyncCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
+	if err != nil {
+		return nil, fmt.Errorf("/run error: %w", err)
+	}
+	runPacket := packet.MakeRunPacket()
+	runPacket.ReqId = uuid.New().String()
+	runPacket.CK = base.MakeCommandKey(ids.ScreenId, scbase.GenPromptUUID())
+	runPacket.UsePty = true
+	ptermVal := defaultStr(pk.Kwargs["pterm"], DefaultPTERM)
+	runPacket.TermOpts, err = GetUITermOpts(pk.UIContext.WinSize, ptermVal)
+	if err != nil {
+		return nil, fmt.Errorf("/sync error, invalid 'pterm' value %q: %v", ptermVal, err)
+	}
+	runPacket.Command = ":"
+	runPacket.ReturnState = true
+	cmd, callback, err := remote.RunCommand(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr, runPacket)
+	if callback != nil {
+		defer callback()
+	}
+	if err != nil {
+		return nil, err
+	}
+	cmd.RawCmdStr = pk.GetRawStr()
+	update, err := addLineForCmd(ctx, "/sync", true, ids, cmd, "terminal")
+	if err != nil {
+		return nil, err
+	}
+	update.Interactive = pk.Interactive
+	sstore.MainBus.SendScreenUpdate(ids.ScreenId, update)
+	return nil, nil
 }
 
 func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
