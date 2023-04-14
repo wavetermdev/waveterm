@@ -1,6 +1,6 @@
 import {RendererPluginType} from "./types";
-import {SimpleImageRenderer} from "./imagerenderer";
-import {SimpleMarkdownRenderer} from "./markdownrenderer";
+import {SimpleImageRenderer} from "./view/image";
+import {SimpleMarkdownRenderer} from "./view/markdown";
 import {isBlank} from "./util";
 import {sprintf} from "sprintf-js";
 

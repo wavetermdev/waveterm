@@ -3,11 +3,7 @@ import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
 import cn from "classnames";
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
-import {WindowSize, RendererContext, TermOptsType, LineType, RendererOpts} from "./types";
-import {LineContainerModel} from "./model";
-import {termWidthFromCols, termHeightFromRows} from "./textmeasure";
-import {incObs} from "./util";
-import {PtyDataBuffer} from "./ptydata";
+import {WindowSize, RendererContext, TermOptsType, LineType, RendererOpts} from "../types";
 
 type OV<V> = mobx.IObservableValue<V>;
 type CV<V> = mobx.IComputedValue<V>;
