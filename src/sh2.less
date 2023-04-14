@@ -3485,13 +3485,6 @@ input[type=checkbox] {
     margin-right: 5px;
 }
 
-.simple-image-renderer {
-    padding: 10px;
-    img {
-        display: block;
-    }
-}
-
 .markdown {
     color: @term-white;
     margin-bottom: 10px;
@@ -3575,20 +3568,30 @@ input[type=checkbox] {
     margin-top: 0 !important;
 }
 
-.markdown-renderer {
-    .markdown-error {
+.image-renderer {
+    padding: 10px;
+    img {
+        display: block;
+    }
+}
+
+.renderer-container {
+    .error-container {
         color: @term-red;
         font-size: 14px;
         padding: 5px;
     }
-}
 
-.markdown-renderer {
-    .markdown-scroller {
+    .scroller {
         overflow: auto;
         display: flex;
         flex-diretion: row;
     }
+}
+
+.renderer-container.json-renderer {
+    padding: 10px;
+    font-size: 12px;
 }
 
 .markdown-renderer .markdown {

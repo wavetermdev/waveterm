@@ -68,7 +68,7 @@ class SimpleImageRenderer extends React.Component<{data : Blob, context : Render
             forceHeight = this.props.savedHeight;
         }
         return (
-            <div className="simple-image-renderer" style={{height: forceHeight}}>
+            <div className="renderer-container image-renderer" style={{height: forceHeight}}>
                 <img ref={this.imageRef} style={{maxHeight: opts.idealSize.height, maxWidth: opts.idealSize.width}} src={this.objUrl}/>
             </div>
         );

@@ -18,7 +18,7 @@ class SimpleMarkdownRenderer extends React.Component<{data : Blob, context : Ren
 
     componentDidMount() {
         let dataBlob = this.props.data;
-        if (dataBlob.size > 50000) {
+        if (dataBlob.size > MaxMarkdownSize) {
             this.markdownError.set(sprintf("error: markdown too large to render size=%d", dataBlob.size));
             return;
         }
@@ -36,10 +36,10 @@ class SimpleMarkdownRenderer extends React.Component<{data : Blob, context : Ren
     
     render() {
         if (this.markdownError.get() != null) {
-            return <div className="markdown-renderer"><div className="markdown-error">{this.markdownError.get()}</div></div>;
+            return <div className="renderer-container markdown-renderer"><div className="error-container">{this.markdownError.get()}</div></div>;
         }
         if (this.markdownText.get() == null) {
-            return <div className="markdown-renderer" style={{height: this.props.savedHeight}}/>
+            return <div className="renderer-container markdown-renderer" style={{height: this.props.savedHeight}}/>
         }
         let opts = this.props.opts;
         let markdownText = this.markdownText.get();
@@ -49,8 +49,8 @@ class SimpleMarkdownRenderer extends React.Component<{data : Blob, context : Ren
             minWidth = 1000;
         }
         return (
-            <div className="markdown-renderer">
-                <div className="markdown-scroller" style={{maxHeight: opts.maxSize.height}}>
+            <div className="renderer-container markdown-renderer">
+                <div className="scroller" style={{maxHeight: opts.maxSize.height}}>
                     <Markdown text={this.markdownText.get()} style={{maxHeight: opts.maxSize.height}}/>
                 </div>
             </div>

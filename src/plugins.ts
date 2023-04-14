@@ -1,6 +1,7 @@
 import {RendererPluginType} from "./types";
 import {SimpleImageRenderer} from "./view/image";
 import {SimpleMarkdownRenderer} from "./view/markdown";
+import {SimpleJsonRenderer} from "./view/json";
 import {isBlank} from "./util";
 import {sprintf} from "sprintf-js";
 
@@ -26,7 +27,16 @@ const MarkdownPlugin : RendererPluginType = {
     component: SimpleMarkdownRenderer,
 };
 
-let AllPlugins = [ImagePlugin, MarkdownPlugin];
+const JsonPlugin : RendererPluginType = {
+    name: "json",
+    rendererType: "simple",
+    heightType: "pixels",
+    dataType: "blob",
+    collapseType: "hide",
+    globalCss: null,
+    mimeTypes: ["application/json"],
+    component: SimpleJsonRenderer,
+};
 
 class PluginModelClass {
     rendererPlugins : RendererPluginType[] = [];
@@ -61,6 +71,7 @@ if ((window as any).PluginModel == null) {
     PluginModel = new PluginModelClass();
     PluginModel.registerRendererPlugin(ImagePlugin);
     PluginModel.registerRendererPlugin(MarkdownPlugin);
+    PluginModel.registerRendererPlugin(JsonPlugin);
     (window as any).PluginModel = PluginModel;
 }
 
