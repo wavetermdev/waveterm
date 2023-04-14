@@ -1278,6 +1278,28 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
         })();
     }
 
+    renderTab(screen : Screen, activeScreenId : string, index : number) : any {
+        let tabIndex = null;
+        if (index+1 <= 9) {
+            tabIndex = (<div className="tab-index">{renderCmdText(String(index+1))}</div>);
+        }
+        let settings = (<div onClick={(e) => this.openScreenSettings(e, screen)} title="Settings" className="tab-gear"><i className="fa-sharp fa-solid fa-gear"/></div>);
+        let archived = (screen.archived.get() ? (<i title="archived" className="fa-sharp fa-solid fa-box-archive"/>) : null);
+
+        let webShared = (screen.isWebShared() ? (<i title="shared to web" className="fa-sharp fa-solid fa-share-nodes web-share-icon"/>) : null);
+        return (
+            <div key={screen.screenId} data-screenid={screen.screenId} className={cn("screen-tab", {"is-active": activeScreenId == screen.screenId, "is-archived": screen.archived.get()}, "color-" + screen.getTabColor())} onClick={() => this.handleSwitchScreen(screen.screenId)} onContextMenu={(event) => this.openScreenSettings(event, screen)}>
+                <div className="tab-name">
+                    {archived}
+                    {webShared}
+                    {screen.name.get()}
+                </div>
+                {tabIndex}
+                {settings}
+            </div>
+        );
+    }
+
     render() {
         let {session} = this.props;
         if (session == null) {
@@ -1308,18 +1330,7 @@ class ScreenTabs extends React.Component<{session : Session}, {}> {
             <div className="screen-tabs-container">
                 <div className={cn("screen-tabs", {"scrolling": this.scrolling.get()})} ref={this.tabsRef} onScroll={this.handleScroll}>
                     <For each="screen" index="index" of={showingScreens}>
-                        <div key={screen.screenId} data-screenid={screen.screenId} className={cn("screen-tab", {"is-active": activeScreenId == screen.screenId, "is-archived": screen.archived.get()}, "color-" + screen.getTabColor())} onClick={() => this.handleSwitchScreen(screen.screenId)} onContextMenu={(event) => this.openScreenSettings(event, screen)}>
-                            <If condition={screen.archived.get()}><i title="archived" className="fa-sharp fa-solid fa-box-archive"/></If>
-                            <If condition={screen.isWebShared()}><i title="archived" className="fa-sharp fa-solid fa-share-nodes web-share-icon"/></If>
-                            {screen.name.get()}
-                            <If condition={index+1 <= 9}>
-                                <div className="tab-index">{renderCmdText(String(index+1))}</div>
-                                <div onClick={(e) => this.openScreenSettings(e, screen)} title="Settings" className="tab-gear"><i className="fa-sharp fa-solid fa-gear"/></div>
-                            </If>
-                            <If condition={index+1 > 9}>
-                                <div onClick={(e) => this.openScreenSettings(e, screen)} title="Settings" className="tab-gear"><i className="fa-sharp fa-solid fa-gear"/></div>
-                            </If>
-                        </div>
+                        {this.renderTab(screen, activeScreenId, index)}
                     </For>
                     <div key="new-screen" className="screen-tab new-screen" onClick={this.handleNewScreen}>
                         <i className="fa-sharp fa-solid fa-plus"/>

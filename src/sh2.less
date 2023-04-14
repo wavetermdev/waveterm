@@ -17,10 +17,10 @@
 
 @tab-black: rgb(0, 0, 0);
 @tab-red: rgb(205, 49, 49);
-@tab-green: rgb(0, 177, 10);   /* #00B10A */
+@tab-green: rgb(0, 128, 0);
 @tab-orange: rgb(255, 199, 6);
 @tab-yellow: rgb(229, 229, 16);
-@tab-blue: rgb(36, 114, 200);
+@tab-blue: rgb(0, 71, 171);
 @tab-magenta: rgb(188, 63, 188);
 @tab-cyan: rgb(17, 168, 205);
 @tab-white: rgb(249, 249, 249);
@@ -32,7 +32,7 @@
 
 @soft-blue: #729fcf;
 
-@active-menu-color: #485fc7;
+@active-menu-color: rgb(0, 71, 171);
 
 :root {
     --fa-style-family: "Font Awesome 6 Sharp";
@@ -904,13 +904,20 @@ body::-webkit-scrollbar {
         justify-content: center;
         align-items: center;
         font-size: 12px;
-        font-weight: bold;
-        padding-left: 10px;
-        padding-right: 10px;
+        font-weight: 500;
+        padding-left: 0;
+        padding-right: 0;
         cursor: pointer;
         position: relative;
         border-right: 1px solid #777;
-        opacity: 0.8;
+
+        .tab-name {
+            flex-grow: 1;
+            flex-basis: 50px;
+            padding-left: 2px;
+            padding-right: 2px;
+            text-align: center;
+        }
 
         &.is-active {
             box-shadow: 0 3px 0 #fff inset;
@@ -924,22 +931,44 @@ body::-webkit-scrollbar {
             }
         }
 
-        .tab-index, .tab-gear {
+        .tab-index {
+            font-size: 11px;
             position: absolute;
-            right: 5px;
+            right: 2px;
+            top: 4px;
+            bottom: 0;
             font-weight: normal;
             display: none;
+            padding-left: 4px;
+            padding-top: 6px;
+            background-color: inherit;
         }
 
-        &:hover .tab-gear {
-            display: block;
+        .tab-gear {
+            position: absolute;
+            right: 5px;
+            top: 4px;
+            bottom: 0;
+            font-weight: normal;
+            display: none;
+            padding-left: 5px;
+            padding-top: 5px;
+            background-color: inherit;
+        }
 
-            &:hover {
-                i {
+        &:hover {
+            .tab-gear {
+                display: block;
+
+                &:hover {
                     display: block;
-                    position: relative;
-                    top: 2px;
-                    font-size: 15px;
+                    top: 4px;
+                    padding-top: 4px;
+                    right: 3px;
+                    padding-left: 4px;
+                    i {
+                        font-size: 15px;
+                    }
                 }
             }
         }
@@ -1170,6 +1199,7 @@ body::-webkit-scrollbar {
         &.is-active {
             color: #ddd;
             font-weight: bold;
+            background-color: @active-menu-color;
 
             .session-num {
                 color: #aaa;
@@ -2420,13 +2450,13 @@ input[type=checkbox] {
 
 #main .screen-tabs .screen-tab {
     &.color-green {
-        color: @tab-black-text;
-        background-color: desaturate(@tab-green, 30%);
+        color: @tab-white-text;
+        background-color: desaturate(@tab-green, 50%);
         &:hover {
             background-color: @tab-green;
         }
         &.is-active {
-            color: black;
+            color: white;
             background-color: @tab-green;
         }
     }
@@ -2444,20 +2474,20 @@ input[type=checkbox] {
     }
 
     &.color-red {
-        color: @tab-black-text;
-        background-color: desaturate(@tab-red, 20%);
+        color: @tab-white-text;
+        background-color: desaturate(@tab-red, 40%);
         &:hover {
             background-color: @tab-red;
         }
         &.is-active {
-            color: black;
+            color: white;
             background-color: @tab-red;
         }
     }
 
     &.color-yellow {
         color: @tab-black-text;
-        background-color: desaturate(@tab-yellow, 30%);
+        background-color: desaturate(@tab-yellow, 40%);
         &:hover {
             background-color: @tab-yellow;
         }
@@ -2471,25 +2501,25 @@ input[type=checkbox] {
     }
 
     &.color-blue {
-        color: @tab-black-text;
-        background-color: desaturate(@tab-blue, 20%);
+        color: @tab-white-text;
+        background-color: desaturate(@tab-blue, 50%);
         &:hover {
             background-color: @tab-blue;
         }
         &.is-active {
-            color: black;
+            color: white;
             background-color: @tab-blue;
         }
     }
 
     &.color-magenta {
-        color: @tab-black-text;
+        color: @tab-white-text;
         background-color: desaturate(@tab-magenta, 20%);
         &:hover {
             background-color: @tab-magenta;
         }
         &.is-active {
-            color: black;
+            color: white;
             background-color: @tab-magenta;
         }
     }

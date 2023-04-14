@@ -1479,14 +1479,14 @@ class InputModel {
     setCurLine(val : string) : void {
         let hidx = this.historyIndex.get();
         mobx.action(() => {
-            if (val == "\" ") {
-                this.setInputMode("comment");
-                val = "";
-            }
-            if (val == "//") {
-                this.setInputMode("global");
-                val = "";
-            }
+            // if (val == "\" ") {
+            //     this.setInputMode("comment");
+            //     val = "";
+            // }
+            // if (val == "//") {
+            //     this.setInputMode("global");
+            //     val = "";
+            // }
             if (this.modHistory.length <= hidx) {
                 this.modHistory.length = hidx + 1;
             }
