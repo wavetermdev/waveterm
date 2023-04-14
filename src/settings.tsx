@@ -6,7 +6,7 @@ import {boundMethod} from "autobind-decorator";
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import cn from "classnames";
 import {GlobalModel, GlobalCommandRunner, TabColors} from "./model";
-import {Toggle, RemoteStatusLight, InlineSettingsTextEdit, SettingsError} from "./elements";
+import {Toggle, RemoteStatusLight, InlineSettingsTextEdit, SettingsError, InfoMessage} from "./elements";
 import {LineType, RendererPluginType, ClientDataType, CommandRtnType} from "./types";
 import {PluginModel} from "./plugins";
 import * as util from "./util";
@@ -23,6 +23,19 @@ const RemotePtyCols = 80;
 const VERSION = __PROMPT_VERSION__;
 // @ts-ignore
 const BUILD = __PROMPT_BUILD__;
+
+
+const ScreenDeleteMessage = `
+Are you sure you want to delete this screen/tab?
+
+All commands and output will be deleted, and removed from history.  To hide the screen, and retain the commands in history, use 'archive'.
+`.trim();
+
+const SessionDeleteMessage = `
+Are you sure you want to delete this session?
+
+All commands and output will be deleted, and removed from history.  To hide the session, and retain the commands in history, use 'archive'.
+`.trim();
 
 const WebShareConfirmMarkdown = `
 You are about to share a terminal tab on the web.  Please make sure that you do
@@ -179,6 +192,24 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
         })();
     }
 
+    @boundMethod
+    handleDeleteScreen() : void {
+        let {sessionId, screenId} = this.props;
+        let screen = GlobalModel.getScreenById(sessionId, screenId);
+        if (screen == null) {
+            return;
+        }
+        let message = ScreenDeleteMessage;
+        let alertRtn = GlobalModel.showAlert({message: message, confirm: true, markdown: true});
+        alertRtn.then((result) => {
+            if (!result) {
+                return;
+            }
+            let prtn = GlobalCommandRunner.screenPurge(screenId);
+            commandRtnHandler(prtn, this.errorMessage);
+        });
+    }
+
     render() {
         let {sessionId, screenId} = this.props;
         let screen = GlobalModel.getScreenById(sessionId, screenId);
@@ -241,7 +272,10 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
                         </div>
                         <div className="settings-field">
                             <div className="settings-label">
-                                Archived
+                                <div>Archived</div>
+                                <InfoMessage width={400}>
+                                    Archive will hide the screen tab.  Commands and output will be retained in history.
+                                </InfoMessage>
                             </div>
                             <div className="settings-input">
                                 <Toggle checked={screen.archived.get()} onChange={this.handleChangeArchived}/>
@@ -289,6 +323,17 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
                                 </div>
                             </div>
                         </If>
+                        <div className="settings-field">
+                            <div className="settings-label">
+                                <div>Actions</div>
+                                <InfoMessage width={400}>
+                                    Delete will remove the screen, removing all commands and output from history.
+                                </InfoMessage>
+                            </div>
+                            <div className="settings-input">
+                                <div onClick={this.handleDeleteScreen} className="button is-prompt-danger is-outlined is-small">Delete Screen</div>
+                            </div>
+                        </div>
                         <SettingsError errorMessage={this.errorMessage}/>
                     </div>
                     <footer>
@@ -302,8 +347,8 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
 
 @mobxReact.observer
 class SessionSettingsModal extends React.Component<{sessionId : string}, {}> {
-    tempName : OV<string>;
-
+    errorMessage : OV<string> = mobx.observable.box(null, {name: "ScreenSettings-errorMessage"});
+    
     constructor(props : any) {
         super(props);
         let {sessionId} = props;
@@ -311,7 +356,6 @@ class SessionSettingsModal extends React.Component<{sessionId : string}, {}> {
         if (session == null) {
             return;
         }
-        this.tempName = mobx.observable.box(session.name.get(), {name: "sessionSettings-tempName"});
     }
     
     @boundMethod
@@ -322,19 +366,58 @@ class SessionSettingsModal extends React.Component<{sessionId : string}, {}> {
     }
 
     @boundMethod
-    handleOK() : void {
+    handleInlineChangeName(newVal : string) : void {
+        let {sessionId} = this.props;
+        let session = GlobalModel.getSessionById(sessionId);
+        if (session == null) {
+            return;
+        }
+        if (util.isStrEq(newVal, session.name.get())) {
+            return;
+        }
+        let prtn = GlobalCommandRunner.sessionSetSettings(this.props.sessionId, {"name": newVal}, false);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
+    handleChangeArchived(val : boolean) : void {
+        let {sessionId} = this.props;
+        let session = GlobalModel.getSessionById(sessionId);
+        if (session == null) {
+            return;
+        }
+        if (session.archived.get() == val) {
+            return;
+        }
+        let prtn = GlobalCommandRunner.sessionArchive(this.props.sessionId, val);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
+    handleDeleteSession() : void {
+        let {sessionId} = this.props;
+        let message = SessionDeleteMessage;
+        let alertRtn = GlobalModel.showAlert({message: message, confirm: true, markdown: true});
+        alertRtn.then((result) => {
+            if (!result) {
+                return;
+            }
+            let prtn = GlobalCommandRunner.sessionPurge(this.props.sessionId);
+            commandRtnHandler(prtn, this.errorMessage);
+        });
+    }
+
+    @boundMethod
+    setErrorMessage(msg : string) : void {
         mobx.action(() => {
-            GlobalModel.sessionSettingsModal.set(null);
-            GlobalCommandRunner.sessionSetSettings(this.props.sessionId, {
-                "name": this.tempName.get(),
-            });
+            this.errorMessage.set(msg);
         })();
     }
 
     @boundMethod
-    handleChangeName(e : any) : void {
+    dismissError() : void {
         mobx.action(() => {
-            this.tempName.set(e.target.value);
+            this.errorMessage.set(null);
         })();
     }
 
@@ -360,13 +443,35 @@ class SessionSettingsModal extends React.Component<{sessionId : string}, {}> {
                                 Name
                             </div>
                             <div className="settings-input">
-                                <input type="text" placeholder="Tab Name" onChange={this.handleChangeName} value={this.tempName.get()} maxLength={50}/>
+                                <InlineSettingsTextEdit placeholder="name" text={session.name.get() ?? "(none)"} value={session.name.get() ?? ""} onChange={this.handleInlineChangeName} maxLength={50} showIcon={true}/>
                             </div>
                         </div>
+                        <div className="settings-field">
+                            <div className="settings-label">
+                                <div>Archived</div>
+                                <InfoMessage width={400}>
+                                    Archive will hide the session from the active menu.  Commands and output will be retained in history.
+                                </InfoMessage>
+                            </div>
+                            <div className="settings-input">
+                                <Toggle checked={session.archived.get()} onChange={this.handleChangeArchived}/>
+                            </div>
+                        </div>
+                        <div className="settings-field">
+                            <div className="settings-label">
+                                <div>Actions</div>
+                                <InfoMessage width={400}>
+                                    Delete will remove the session, removing all commands and output from history.
+                                </InfoMessage>
+                            </div>
+                            <div className="settings-input">
+                                <div onClick={this.handleDeleteSession} className="button is-prompt-danger is-outlined is-small">Delete Session</div>
+                            </div>
+                        </div>
+                        <SettingsError errorMessage={this.errorMessage}/>
                     </div>
                     <footer>
-                        <div onClick={this.closeModal} className="button is-prompt-cancel is-outlined is-small">Cancel</div>
-                        <div onClick={this.handleOK} className="button is-prompt-green is-outlined is-small">OK</div>
+                        <div onClick={this.closeModal} className="button is-prompt-green is-outlined is-small">Close</div>
                     </footer>
                 </div>
             </div>

@@ -3420,6 +3420,10 @@ class CommandRunner {
         return GlobalModel.submitCommand("screen", "archive", [screenId, (shouldArchive ? "1" : "0")], {"nohist": "1"}, false);
     }
 
+    screenPurge(screenId : string) : Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("screen", "purge", [screenId], {"nohist": "1"}, false);
+    }
+
     screenWebShare(screenId : string, shouldShare : boolean) : Promise<CommandRtnType> {
         let kwargs : Record<string, string> = {"nohist": "1"};
         kwargs["screen"] = screenId;
@@ -3515,11 +3519,19 @@ class CommandRunner {
         return GlobalModel.submitCommand("screen", "set", null, kwargs, interactive);
     }
 
-    sessionSetSettings(sessionId : string, settings : {name? : string}) : void {
+    sessionArchive(sessionId : string, shouldArchive : boolean) : Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("session", "archive", [sessionId, (shouldArchive ? "1" : "0")], {"nohist": "1"}, false);
+    }
+
+    sessionPurge(sessionId : string) : Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("session", "purge", [sessionId], {"nohist": "1"}, false);
+    }
+
+    sessionSetSettings(sessionId : string, settings : {name? : string}, interactive : boolean) : Promise<CommandRtnType> {
         let kwargs = Object.assign({}, settings);
         kwargs["nohist"] = "1";
         kwargs["session"] = sessionId;
-        GlobalModel.submitCommand("session", "set", null, kwargs, true);
+        return GlobalModel.submitCommand("session", "set", null, kwargs, interactive);
     }
 
     lineStar(lineId : string, starVal : number) {
