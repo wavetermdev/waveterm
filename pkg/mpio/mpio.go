@@ -95,27 +95,28 @@ func (m *Multiplexer) MakeReaderPipe(fdNum int) (*os.File, error) {
 }
 
 // returns the *reader* to connect to process, writer is put in FdWriters
-func (m *Multiplexer) MakeWriterPipe(fdNum int) (*os.File, error) {
+func (m *Multiplexer) MakeWriterPipe(fdNum int, desc string) (*os.File, error) {
 	pr, pw, err := os.Pipe()
 	if err != nil {
 		return nil, err
 	}
 	m.Lock.Lock()
 	defer m.Lock.Unlock()
-	m.FdWriters[fdNum] = MakeFdWriter(m, pw, fdNum, true)
+	m.FdWriters[fdNum] = MakeFdWriter(m, pw, fdNum, true, desc)
 	m.CloseAfterStart = append(m.CloseAfterStart, pr)
 	return pr, nil
 }
 
 // returns the *reader* to connect to process, writer is put in FdWriters
-func (m *Multiplexer) MakeStaticWriterPipe(fdNum int, data []byte) (*os.File, error) {
+func (m *Multiplexer) MakeStaticWriterPipe(fdNum int, data []byte, bufferLimit int, desc string) (*os.File, error) {
 	pr, pw, err := os.Pipe()
 	if err != nil {
 		return nil, err
 	}
 	m.Lock.Lock()
 	defer m.Lock.Unlock()
-	fdWriter := MakeFdWriter(m, pw, fdNum, true)
+	fdWriter := MakeFdWriter(m, pw, fdNum, true, desc)
+	fdWriter.BufferLimit = bufferLimit
 	err = fdWriter.AddData(data, true)
 	if err != nil {
 		return nil, err
@@ -131,10 +132,10 @@ func (m *Multiplexer) MakeRawFdReader(fdNum int, fd io.ReadCloser, shouldClose b
 	m.FdReaders[fdNum] = MakeFdReader(m, fd, fdNum, shouldClose, isPty)
 }
 
-func (m *Multiplexer) MakeRawFdWriter(fdNum int, fd io.WriteCloser, shouldClose bool) {
+func (m *Multiplexer) MakeRawFdWriter(fdNum int, fd io.WriteCloser, shouldClose bool, desc string) {
 	m.Lock.Lock()
 	defer m.Lock.Unlock()
-	m.FdWriters[fdNum] = MakeFdWriter(m, fd, fdNum, shouldClose)
+	m.FdWriters[fdNum] = MakeFdWriter(m, fd, fdNum, shouldClose, desc)
 }
 
 func (m *Multiplexer) makeDataAckPacket(fdNum int, ackLen int, err error) *packet.DataAckPacketType {
@@ -225,27 +226,31 @@ func (m *Multiplexer) runPacketInputLoop() *packet.CmdDonePacketType {
 	return nil
 }
 
-func (m *Multiplexer) processDataPacket(dataPacket *packet.DataPacketType) error {
-	realData, err := base64.StdEncoding.DecodeString(dataPacket.Data64)
-	if err != nil {
-		return fmt.Errorf("decoding base64 data: %w", err)
-	}
+func (m *Multiplexer) WriteDataToFd(fdNum int, data []byte, isEof bool) error {
 	m.Lock.Lock()
 	defer m.Lock.Unlock()
-	fw := m.FdWriters[dataPacket.FdNum]
+	fw := m.FdWriters[fdNum]
 	if fw == nil {
 		// add a closed FdWriter as a placeholder so we only send one error
-		fw := MakeFdWriter(m, nil, dataPacket.FdNum, false)
+		fw := MakeFdWriter(m, nil, fdNum, false, "invalid-fd")
 		fw.Close()
-		m.FdWriters[dataPacket.FdNum] = fw
+		m.FdWriters[fdNum] = fw
 		return fmt.Errorf("write to closed file (no fd)")
 	}
-	err = fw.AddData(realData, dataPacket.Eof)
+	err := fw.AddData(data, isEof)
 	if err != nil {
 		fw.Close()
 		return err
 	}
 	return nil
+}
+
+func (m *Multiplexer) processDataPacket(dataPacket *packet.DataPacketType) error {
+	realData, err := base64.StdEncoding.DecodeString(dataPacket.Data64)
+	if err != nil {
+		return fmt.Errorf("decoding base64 data: %w", err)
+	}
+	return m.WriteDataToFd(dataPacket.FdNum, realData, dataPacket.Eof)
 }
 
 func (m *Multiplexer) processAckPacket(ackPacket *packet.DataAckPacketType) {

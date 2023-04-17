@@ -840,8 +840,8 @@ func RunClientSSHCommandAndWait(runPacket *packet.RunPacketType, fdContext FdCon
 	if !HasDupStdin(runPacket.Fds) {
 		cmd.Multiplexer.MakeRawFdReader(0, fdContext.GetReader(0), false, false)
 	}
-	cmd.Multiplexer.MakeRawFdWriter(1, fdContext.GetWriter(1), false)
-	cmd.Multiplexer.MakeRawFdWriter(2, fdContext.GetWriter(2), false)
+	cmd.Multiplexer.MakeRawFdWriter(1, fdContext.GetWriter(1), false, "client")
+	cmd.Multiplexer.MakeRawFdWriter(2, fdContext.GetWriter(2), false, "client")
 	for _, rfd := range runPacket.Fds {
 		if rfd.Read && rfd.DupStdin {
 			cmd.Multiplexer.MakeRawFdReader(rfd.FdNum, fdContext.GetReader(0), false, false)
@@ -852,7 +852,7 @@ func RunClientSSHCommandAndWait(runPacket *packet.RunPacketType, fdContext FdCon
 			cmd.Multiplexer.MakeRawFdReader(rfd.FdNum, fd, false, false)
 		} else if rfd.Write {
 			fd := fdContext.GetWriter(rfd.FdNum)
-			cmd.Multiplexer.MakeRawFdWriter(rfd.FdNum, fd, true)
+			cmd.Multiplexer.MakeRawFdWriter(rfd.FdNum, fd, true, "client")
 		}
 	}
 	err = ecmd.Start()
@@ -1123,7 +1123,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 			Setsid:  true,
 			Setctty: true,
 		}
-		cmd.Multiplexer.MakeRawFdWriter(0, cmdPty, false)
+		cmd.Multiplexer.MakeRawFdWriter(0, cmdPty, false, "simple")
 		cmd.Multiplexer.MakeRawFdReader(1, cmdPty, false, true)
 		nullFd, err := os.Open("/dev/null")
 		if err != nil {
@@ -1131,7 +1131,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		}
 		cmd.Multiplexer.MakeRawFdReader(2, nullFd, true, false)
 	} else {
-		cmd.Cmd.Stdin, err = cmd.Multiplexer.MakeWriterPipe(0)
+		cmd.Cmd.Stdin, err = cmd.Multiplexer.MakeWriterPipe(0, "simple")
 		if err != nil {
 			return nil, err
 		}
@@ -1149,7 +1149,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		if runData.FdNum >= len(extraFiles) {
 			extraFiles = extraFiles[:runData.FdNum+1]
 		}
-		extraFiles[runData.FdNum], err = cmd.Multiplexer.MakeStaticWriterPipe(runData.FdNum, runData.Data)
+		extraFiles[runData.FdNum], err = cmd.Multiplexer.MakeStaticWriterPipe(runData.FdNum, runData.Data, MaxRunDataSize, "simple-rundata")
 		if err != nil {
 			return nil, err
 		}
@@ -1160,7 +1160,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		}
 		if rfd.Read {
 			// client file is open for reading, so we make a writer pipe
-			extraFiles[rfd.FdNum], err = cmd.Multiplexer.MakeWriterPipe(rfd.FdNum)
+			extraFiles[rfd.FdNum], err = cmd.Multiplexer.MakeWriterPipe(rfd.FdNum, "simple")
 			if err != nil {
 				return nil, err
 			}

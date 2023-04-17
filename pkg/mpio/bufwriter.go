@@ -17,19 +17,23 @@ type FdWriter struct {
 	M             *Multiplexer
 	FdNum         int
 	Buffer        []byte
+	BufferLimit   int
 	Fd            io.WriteCloser
 	Eof           bool
 	Closed        bool
 	ShouldCloseFd bool
+	Desc          string
 }
 
-func MakeFdWriter(m *Multiplexer, fd io.WriteCloser, fdNum int, shouldCloseFd bool) *FdWriter {
+func MakeFdWriter(m *Multiplexer, fd io.WriteCloser, fdNum int, shouldCloseFd bool, desc string) *FdWriter {
 	fw := &FdWriter{
 		CVar:          sync.NewCond(&sync.Mutex{}),
 		Fd:            fd,
 		M:             m,
 		FdNum:         fdNum,
 		ShouldCloseFd: shouldCloseFd,
+		Desc:          desc,
+		BufferLimit:   WriteBufSize,
 	}
 	return fw
 }
@@ -68,11 +72,11 @@ func (w *FdWriter) AddData(data []byte, eof bool) error {
 		if len(data) == 0 {
 			return nil
 		}
-		return fmt.Errorf("write to closed file eof[%v]", w.Eof)
+		return fmt.Errorf("write to closed file %q (fd:%d) eof[%v]", w.Desc, w.FdNum, w.Eof)
 	}
 	if len(data) > 0 {
-		if len(data)+len(w.Buffer) > WriteBufSize {
-			return fmt.Errorf("write exceeds buffer size bufsize=%d (max=%d)", len(data)+len(w.Buffer), WriteBufSize)
+		if len(data)+len(w.Buffer) > w.BufferLimit {
+			return fmt.Errorf("write exceeds buffer size %q (fd:%d) bufsize=%d (max=%d)", w.Desc, w.FdNum, len(data)+len(w.Buffer), w.BufferLimit)
 		}
 		w.Buffer = append(w.Buffer, data...)
 	}
