@@ -240,7 +240,13 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
             return;
         }
         let metaElemWidth = metaElem.offsetWidth;
+        if (metaElemWidth == 0) {
+            return;
+        }
         let metaChild = metaElem.firstChild;
+        if (metaChild == null) {
+            return;
+        }
         let children = metaChild.childNodes;
         let childWidth = 0;
         for (let i=0; i<children.length; i++) {
@@ -248,7 +254,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
             childWidth += ch.offsetWidth;
         }
         let isOverflow = (childWidth > metaElemWidth);
-        if (isOverflow != this.isOverflow.get()) {
+        if (isOverflow && isOverflow != this.isOverflow.get()) {
             mobx.action(() => {
                 this.isOverflow.set(isOverflow);
             })();
