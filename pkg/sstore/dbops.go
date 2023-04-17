@@ -1122,6 +1122,7 @@ func PurgeScreen(ctx context.Context, screenId string, sessionDel bool) (UpdateP
 		if !tx.Exists(query, screenId) {
 			return fmt.Errorf("cannot purge screen (not found)")
 		}
+		webSharing := isWebShare(tx, screenId)
 		if !sessionDel {
 			query = `SELECT sessionid FROM screen WHERE screenid = ?`
 			sessionId = tx.GetString(query, screenId)
@@ -1148,7 +1149,9 @@ func PurgeScreen(ctx context.Context, screenId string, sessionDel bool) (UpdateP
 		tx.Exec(query, screenId)
 		query = `DELETE FROM cmd WHERE screenid = ?`
 		tx.Exec(query, screenId)
-		insertScreenDelUpdate(tx, screenId)
+		if webSharing {
+			insertScreenDelUpdate(tx, screenId)
+		}
 		return nil
 	})
 	if txErr != nil {
