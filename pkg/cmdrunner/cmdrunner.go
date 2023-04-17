@@ -53,6 +53,11 @@ const MaxSignalLen = 12
 const MaxSignalNum = 64
 const MaxEvalDepth = 5
 
+const (
+	KwArgRenderer = "renderer"
+	KwArgView     = "view"
+)
+
 var ColorNames = []string{"black", "red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
 var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
 var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}
@@ -427,15 +432,30 @@ func SyncCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 	return nil, nil
 }
 
+func getRendererArg(pk *scpacket.FeCommandPacketType) (string, error) {
+	rval := pk.Kwargs[KwArgView]
+	if rval == "" {
+		rval = pk.Kwargs[KwArgRenderer]
+	}
+	if rval == "" {
+		return "", nil
+	}
+	err := validateRenderer(rval)
+	if err != nil {
+		return "", err
+	}
+	return rval, nil
+}
+
 func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
 	if err != nil {
 		return nil, fmt.Errorf("/run error: %w", err)
 	}
-	if err = validateRenderer(pk.Kwargs["renderer"]); err != nil {
-		return nil, fmt.Errorf("/run error: %w", err)
+	renderer, err := getRendererArg(pk)
+	if err != nil {
+		return nil, fmt.Errorf("/run error, invalid view/renderer: %w", err)
 	}
-	renderer := pk.Kwargs["renderer"]
 	cmdStr := firstArg(pk)
 	expandedCmdStr, err := doCmdHistoryExpansion(ctx, ids, cmdStr)
 	if err != nil {
@@ -596,11 +616,22 @@ func ScreenArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 }
 
 func ScreenPurgeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
+	ids, err := resolveUiIds(ctx, pk, R_Session) // don't force R_Screen
 	if err != nil {
 		return nil, fmt.Errorf("/screen:purge cannot purge screen: %w", err)
 	}
-	update, err := sstore.PurgeScreen(ctx, ids.ScreenId, false)
+	screenId := ids.ScreenId
+	if len(pk.Args) > 0 {
+		ri, err := resolveSessionScreen(ctx, ids.SessionId, pk.Args[0], ids.ScreenId)
+		if err != nil {
+			return nil, fmt.Errorf("/screen:purge cannot resolve screen arg: %v", err)
+		}
+		screenId = ri.Id
+	}
+	if screenId == "" {
+		return nil, fmt.Errorf("/screen:purge no active screen or screen arg passed")
+	}
+	update, err := sstore.PurgeScreen(ctx, screenId, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1780,11 +1811,27 @@ func ScreenWebShareCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 }
 
 func SessionDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session)
+	ids, err := resolveUiIds(ctx, pk, 0) // don't force R_Session
 	if err != nil {
 		return nil, err
 	}
-	update, err := sstore.PurgeSession(ctx, ids.SessionId)
+	sessionId := ""
+	if len(pk.Args) >= 1 {
+		ritem, err := resolveSession(ctx, pk.Args[0], ids.SessionId)
+		if err != nil {
+			return nil, fmt.Errorf("/session:purge error resolving session %q: %w", pk.Args[0], err)
+		}
+		if ritem == nil {
+			return nil, fmt.Errorf("/session:purge session %q not found", pk.Args[0])
+		}
+		sessionId = ritem.Id
+	} else {
+		sessionId = ids.SessionId
+	}
+	if sessionId == "" {
+		return nil, fmt.Errorf("/session:purge no sessionid found")
+	}
+	update, err := sstore.PurgeSession(ctx, sessionId)
 	if err != nil {
 		return nil, fmt.Errorf("cannot delete session: %v", err)
 	}
@@ -2319,7 +2366,7 @@ func LineSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		return nil, fmt.Errorf("error looking up lineid: %v", err)
 	}
 	var varsUpdated []string
-	if renderer, found := pk.Kwargs["renderer"]; found {
+	if renderer, found := pk.Kwargs[KwArgRenderer]; found {
 		if err = validateRenderer(renderer); err != nil {
 			return nil, fmt.Errorf("invalid renderer value: %w", err)
 		}
@@ -2327,10 +2374,20 @@ func LineSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		if err != nil {
 			return nil, fmt.Errorf("error changing line renderer: %v", err)
 		}
-		varsUpdated = append(varsUpdated, "renderer")
+		varsUpdated = append(varsUpdated, KwArgRenderer)
+	}
+	if view, found := pk.Kwargs[KwArgView]; found {
+		if err = validateRenderer(view); err != nil {
+			return nil, fmt.Errorf("invalid view value: %w", err)
+		}
+		err = sstore.UpdateLineRenderer(ctx, ids.ScreenId, lineId, view)
+		if err != nil {
+			return nil, fmt.Errorf("error changing line view: %v", err)
+		}
+		varsUpdated = append(varsUpdated, KwArgView)
 	}
 	if len(varsUpdated) == 0 {
-		return nil, fmt.Errorf("/line:set requires a value to set: %s", formatStrs([]string{"renderer"}, "or", false))
+		return nil, fmt.Errorf("/line:set requires a value to set: %s", formatStrs([]string{KwArgView}, "or", false))
 	}
 	updatedLine, err := sstore.GetLineById(ctx, ids.ScreenId, lineId)
 	if err != nil {
