@@ -480,20 +480,9 @@ class SessionSettingsModal extends React.Component<{sessionId : string}, {}> {
 }
 
 @mobxReact.observer
-class LineSettingsModal extends React.Component<{line : LineType}, {}> {
-    tempArchived : OV<boolean>;
-    tempRenderer : OV<string>;
+class LineSettingsModal extends React.Component<{linenum : number}, {}> {
     rendererDropdownActive : OV<boolean> = mobx.observable.box(false, {name: "lineSettings-rendererDropdownActive"});
-    
-    constructor(props : any) {
-        super(props);
-        let {line} = props;
-        if (line == null) {
-            return;
-        }
-        this.tempArchived = mobx.observable.box(!!line.archived, {name: "lineSettings-tempArchived"});
-        this.tempRenderer = mobx.observable.box(line.renderer, {name: "lineSettings-renderer"});
-    }
+    errorMessage : OV<string> = mobx.observable.box(null, {name: "ScreenSettings-errorMessage"});
     
     @boundMethod
     closeModal() : void {
@@ -503,26 +492,13 @@ class LineSettingsModal extends React.Component<{line : LineType}, {}> {
     }
 
     @boundMethod
-    handleOK() : void {
-        let {line} = this.props;
-        mobx.action(() => {
-            GlobalModel.lineSettingsModal.set(null);
-        })();
-        if (this.tempRenderer.get() != line.renderer) {
-            GlobalCommandRunner.lineSet(line.lineid, {
-                "renderer": this.tempRenderer.get(),
-            });
-        }
-        if (this.tempArchived.get() != !!line.archived) {
-            GlobalCommandRunner.lineArchive(line.lineid, this.tempArchived.get());
-        }
-    }
-
-    @boundMethod
     handleChangeArchived(val : boolean) : void {
-        mobx.action(() => {
-            this.tempArchived.set(val);
-        })();
+        let line = this.getLine();
+        if (line == null) {
+            return;
+        }
+        let prtn = GlobalCommandRunner.lineArchive(line.lineid, val);
+        commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
@@ -532,19 +508,35 @@ class LineSettingsModal extends React.Component<{line : LineType}, {}> {
         })();
     }
 
+    getLine() : LineType {
+        let screen = GlobalModel.getActiveScreen();
+        if (screen == null) {
+            return;
+        }
+        return screen.getLineByNum(this.props.linenum);
+    }
+
     @boundMethod
     clickSetRenderer(renderer : string) : void {
+        let line = this.getLine();
+        if (line == null) {
+            return;
+        }
+        let prtn = GlobalCommandRunner.lineSet(line.lineid, {renderer: renderer});
+        commandRtnHandler(prtn, this.errorMessage);
         mobx.action(() => {
-            this.tempRenderer.set(renderer);
             this.rendererDropdownActive.set(false);
         })();
     }
 
     renderRendererDropdown() : any {
-        let {line} = this.props;
-        let renderer = this.tempRenderer.get() ?? "terminal";
+        let line = this.getLine();
+        if (line == null) {
+            return null;
+        }
         let plugins = PluginModel.rendererPlugins;
         let plugin : RendererPluginType = null;
+        let renderer = line.renderer ?? "terminal";
         return (
             <div className={cn("dropdown", "renderer-dropdown", {"is-active": this.rendererDropdownActive.get()})}>
                 <div className="dropdown-trigger">
@@ -569,8 +561,11 @@ class LineSettingsModal extends React.Component<{line : LineType}, {}> {
     }
 
     render() {
-        let {line} = this.props;
+        let line = this.getLine();
         if (line == null) {
+            setTimeout(() => {
+                this.closeModal();
+            }, 0);
             return null;
         }
         return (
@@ -597,18 +592,14 @@ class LineSettingsModal extends React.Component<{line : LineType}, {}> {
                                 Archived
                             </div>
                             <div className="settings-input">
-                                <Toggle checked={this.tempArchived.get()} onChange={this.handleChangeArchived}/>
-                                <div className="action-text">
-                                    <If condition={this.tempArchived.get() && this.tempArchived.get() != !!line.archived}>will be archived</If>
-                                    <If condition={!this.tempArchived.get() && this.tempArchived.get() != !!line.archived}>will be un-archived</If>
-                                </div>
+                                <Toggle checked={!!line.archived} onChange={this.handleChangeArchived}/>
                             </div>
                         </div>
+                        <SettingsError errorMessage={this.errorMessage}/>
                         <div style={{height: 50}}/>
                     </div>
                     <footer>
-                        <div onClick={this.closeModal} className="button is-prompt-cancel is-outlined is-small">Cancel</div>
-                        <div onClick={this.handleOK} className="button is-prompt-green is-outlined is-small">OK</div>
+                        <div onClick={this.closeModal} className="button is-prompt-green is-outlined is-small">Close</div>
                     </footer>
                 </div>
             </div>

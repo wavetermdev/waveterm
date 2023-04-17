@@ -2418,7 +2418,7 @@ class Model {
     screenSettingsModal : OV<{sessionId : string, screenId : string}> = mobx.observable.box(null, {name: "screenSettingsModal"});
     sessionSettingsModal : OV<string> = mobx.observable.box(null, {name: "sessionSettingsModal"});
     clientSettingsModal : OV<boolean> = mobx.observable.box(false, {name: "clientSettingsModal"});
-    lineSettingsModal : OV<LineType> = mobx.observable.box(null, {name: "lineSettingsModal"});
+    lineSettingsModal : OV<number> = mobx.observable.box(null, {name: "lineSettingsModal"}); // linenum
     remotesModalModel : RemotesModalModel;
     
 
@@ -3386,18 +3386,18 @@ class CommandRunner {
         GlobalModel.submitCommand("line", "view", [sessionId, screenId, lineNumStr], {"nohist": "1"}, false);
     }
 
-    lineArchive(lineArg : string, archive : boolean) {
+    lineArchive(lineArg : string, archive : boolean) : Promise<CommandRtnType> {
         let kwargs = {"nohist": "1"};
         let archiveStr = (archive ? "1" : "0");
-        GlobalModel.submitCommand("line", "archive", [lineArg, archiveStr], kwargs, false);
+        return GlobalModel.submitCommand("line", "archive", [lineArg, archiveStr], kwargs, false);
     }
 
-    lineSet(lineArg : string, opts : {renderer? : string}) {
+    lineSet(lineArg : string, opts : {renderer? : string}) : Promise<CommandRtnType> {
         let kwargs = {"nohist": "1"};
         if ("renderer" in opts) {
             kwargs["renderer"] = opts.renderer ?? "";
         }
-        GlobalModel.submitCommand("line", "set", [lineArg], kwargs, false);
+        return GlobalModel.submitCommand("line", "set", [lineArg], kwargs, false);
     }
 
     createNewSession() {

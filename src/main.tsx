@@ -2007,7 +2007,7 @@ class Main extends React.Component<{}, {}> {
                     <SessionSettingsModal key={sessionSettingsModal} sessionId={sessionSettingsModal}/>
                 </If>
                 <If condition={lineSettingsModal != null}>
-                    <LineSettingsModal key={lineSettingsModal.lineid} line={lineSettingsModal}/>
+                    <LineSettingsModal key={String(lineSettingsModal)} linenum={lineSettingsModal}/>
                 </If>
                 <If condition={clientSettingsModal}>
                     <ClientSettingsModal/>

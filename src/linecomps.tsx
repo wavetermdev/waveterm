@@ -367,7 +367,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         e.stopPropagation();
         if (line != null) {
             mobx.action(() => {
-                GlobalModel.lineSettingsModal.set(line);
+                GlobalModel.lineSettingsModal.set(line.linenum);
             })();
         }
     }
@@ -411,7 +411,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         let {line} = this.props;
         if (line != null) {
             mobx.action(() => {
-                GlobalModel.lineSettingsModal.set(line);
+                GlobalModel.lineSettingsModal.set(line.linenum);
             })();
         }
     }
@@ -670,7 +670,7 @@ class LineText extends React.Component<{screen : LineContainerModel, line : Line
         e.stopPropagation();
         if (line != null) {
             mobx.action(() => {
-                GlobalModel.lineSettingsModal.set(line);
+                GlobalModel.lineSettingsModal.set(line.linenum);
             })();
         }
     }
