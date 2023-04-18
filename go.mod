@@ -7,11 +7,7 @@ require (
 	github.com/creack/pty v1.1.18
 	github.com/fsnotify/fsnotify v1.5.4
 	github.com/google/uuid v1.3.0
+	golang.org/x/mod v0.5.1
 	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad
-)
-
-require (
-	github.com/Masterminds/semver/v3 v3.1.1 // indirect
-	golang.org/x/mod v0.5.1 // indirect
-	mvdan.cc/sh/v3 v3.5.1 // indirect
+	mvdan.cc/sh/v3 v3.5.1
 )
