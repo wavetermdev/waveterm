@@ -1,0 +1,605 @@
+// modal css (also includes settings-field)
+
+.modal {
+    z-index: 105;
+
+    .modal-background {
+        background-color: rgba(10,10,10,.6);
+    }
+}
+
+.tos-modal {
+    a:hover {
+        text-decoration: underline;
+    }
+
+    .content {
+        .mono-font(13px);
+    }
+}
+
+.disconnected-modal {
+    .modal-content {
+        footer {
+            .footer-text-link {
+                .mono-font(12px);
+                color: @term-white;
+                cursor: pointer;
+            }
+        }
+    }
+
+    .inner-content {
+        .ws-log {
+            padding: 5px;
+            background-color: black;
+            height: 250px;
+            overflow: auto;
+            
+            .ws-logline {
+                .mono-font(12px);
+                color: @term-white;
+            }
+        }
+    }
+}
+
+.modal.prompt-modal.client-stop-modal {
+    footer {
+        justify-content: center;
+    }
+
+    .inner-content {
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+        .progress-container {
+            margin-top: 20px;
+        }
+        .progress-text {
+            color: @term-white;
+            align-self: center;
+            font-size: 12px;
+        }
+    }
+}
+
+.modal.alert-modal {
+    z-index: 205;
+    
+    footer {
+        justify-content: center;
+
+        .button {
+            margin-left: 20px;
+        }
+
+        .button:first-child {
+            margin-left: 0;
+        }
+    }
+}
+
+.modal.settings-modal {
+    footer {
+        justify-content: center;
+
+        .button {
+            margin-left: 20px;
+        }
+
+        .button:first-child {
+            margin-left: 0;
+        }
+    }
+
+    .dropdown {
+        .dropdown-menu .dropdown-content {
+            .dropdown-item {
+                color: white;
+                cursor: pointer;
+                &:hover {
+                    background-color: #333;
+                }
+            }
+        }
+
+        .dropdown-menu {
+            max-height: 120px;
+            overflow: auto;
+        }
+    }
+}
+
+.modal.prompt-modal {
+    .modal-content {
+        border-radius: 5px;
+        border: 5px solid #333;
+    }
+
+    header {
+        background-color: #000;
+        display: flex;
+        flex-direction: row;
+        padding: 10px;
+        position: relative;
+
+        .modal-title {
+            color: @prompt-green;
+            .mono-font(24px);
+        }
+
+        .close-icon {
+            position: absolute;
+            right: 10px;
+            top: 6px;
+            cursor: pointer;
+            padding: 3px;
+            color: #aaa;
+            font-size: 20px;
+
+            &:hover {
+                color: #fff;
+            }
+        }
+    }
+
+    .inner-content {
+        background-color: #222;
+        padding: 15px 10px 15px 10px;
+        color: @term-white;
+
+        margin: 0;
+
+        &.is-hidden {
+            display: none;
+        }
+    }
+
+    footer {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        color: @term-white;
+        background-color: #222;
+        padding: 15px 10px 10px 10px;
+        border-top: 1px solid #666;
+    }
+}
+
+.modal.prompt-modal.remotes-modal {
+    .modal-content {
+        min-width: 850px;
+    }
+    
+    .inner-content {
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+        padding: 0;
+        max-height: 80vh;
+
+        .remotes-menu {
+            flex: 0 0 200px;
+            min-height: 450px;
+            border-right: 1px solid #666;
+            overflow-y: auto;
+            height: 100px;
+
+            .remote-menu-item {
+                border-top: 1px solid #666;
+                padding: 5px;
+                display: flex;
+                flex-direction: row;
+                cursor: pointer;
+
+                &.add-remote {
+                    font-size: 13px;
+                    padding: 10px 5px 10px 5px;
+                }
+
+                &:hover {
+                    background-color: #333;
+                }
+
+                &.is-selected {
+                    background-color: @active-menu-color;
+
+                    .remote-name .remote-name-secondary {
+                        color: white;
+                    }
+                }
+                
+                &:first-child {
+                    border-top: 0;
+                }
+
+                .remote-status-light {
+                    width: 15px;
+                    margin-top: -2px;
+                }
+
+                .remote-name {
+                    flex-grow: 1;
+
+                    .remote-name-primary {
+                        font-size: 12px;
+                        font-weight: bold;
+                    }
+
+                    .remote-name-secondary {
+                        font-size: 11px;
+                        color: #777;
+                    }
+                }
+            }
+        }
+
+        .remote-detail {
+            padding: 10px;
+            flex-grow: 1;
+            font-size: 12px;
+            display: flex;
+            flex-direction: column;
+
+            .settings-field {
+                margin-top: 5px;
+            }
+
+            * {
+                flex-shrink: 0;
+            }
+
+            .detail-subtitle {
+                font-size: 18px;
+                margin-bottom: 10px;
+                margin-top: 10px;
+            }
+
+            .title {
+                color: white;
+                padding-bottom: 8px;
+                margin-bottom: 0;
+                border-bottom: 1px solid #777;
+            }
+
+            .terminal-wrapper {
+                margin-left: 0;
+                margin-bottom: 0;
+
+                &.has-message {
+                    margin-top: 0;
+                }
+
+                box-shadow: none;
+                border: 1px solid #777;
+            }
+
+            .action-buttons {
+                display: flex;
+                flex-direction: row;
+                gap: 10px;
+                margin-top: 2px;
+            }
+
+            .remote-message {
+                margin-top: 5px;
+                padding: 8px;
+                border-radius: 5px 5px 0 0;
+                background-color: #333;
+
+                i.fa-check {
+                    color: @term-green;
+                }
+                
+                &.is-ok {
+                    
+                }
+
+                .message-row {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                }
+
+                .remote-status {
+                    position: relative;
+                    top: -1px;
+                }
+
+                .button {
+                    height: 22px;
+                }
+            }
+
+            .settings-field {
+                .update-auth-button {
+                    visibility: hidden;
+                }
+                
+                &:hover {
+                    .update-auth-button {
+                        visibility: visible;
+                    }
+
+                    .hide-hover {
+                        display: none;
+                    }
+                }
+            }
+
+            &.auth-editing, &.create-remote {
+                .settings-field.align-top {
+                    align-items: flex-start;
+
+                    .settings-label {
+                        margin-top: 8px;
+                    }
+
+                    .settings-input {
+                        align-items: flex-start;
+                    }
+                }
+
+                .settings-label {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                }
+
+                .settings-field .settings-input .undo-icon {
+                    cursor: pointer;
+                    font-size: 18px;
+                    margin-left: 5px;
+                }
+
+                .editremote-dropdown .dropdown-trigger button {
+                    width: 120px;
+                    justify-content: flex-start;
+                }
+
+                .settings-field .raw-input {
+                    width: 120px;
+                }
+
+                .settings-input input {
+                    width: 250px;
+                }
+                
+                .dropdown .dropdown-trigger button {
+                    font-size: 12px;
+                }
+                
+                .dropdown .dropdown-item {
+                    font-size: 12px;
+                    padding: 5px 5px 5px 12px;
+                }
+
+                .settings-input {
+                    .info-message {
+                        margin-left: 22px;
+                    }
+                }
+
+                .settings-label {
+                    .info-message {
+                        margin-right: 15px;
+                    }
+                }
+            }
+        }
+    }
+
+    .terminal-wrapper {
+        position: relative;
+        background-color: #000;
+        padding: 2px 10px 5px 4px;
+        margin: 5px 5px 10px 5px;
+        box-shadow: 0 0 1px 1px rgba(255, 255, 255, 0.3);
+        &.focus {
+            box-shadow: 0 0 3px 3px rgba(255, 255, 255, 0.3);
+        }
+
+        .term-tag {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background-color: @term-red;
+            color: white;
+            z-index: 110;
+            padding: 4px;
+            .mono-font(10px);
+        }
+    }
+}
+
+.modal.welcome-modal {
+    footer {
+        .prev-button {
+            margin-left: 15px;
+            width: 100px;
+        }
+
+        .prev-spacer {
+            margin-left: 15px;
+            width: 100px;
+        }
+
+        .next-button {
+            margin-right: 15px;
+            width: 100px;
+        }
+
+        .dots {
+            font-size: 10px;
+
+            i {
+                margin-left: 5px;
+            }
+        }
+    }
+}
+
+.client-settings-modal {
+    .settings-field {
+        .settings-label {
+            width: 150px;
+        }
+    }
+}
+
+.settings-field {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    font-size: 14px;
+
+    &.settings-field.sub-field {
+        .settings-label {
+            font-weight: normal;
+            font-size: 13px;
+            text-align: right;
+            padding-right: 20px;
+        }
+    }
+
+    &.settings-error {
+        font-size: 14px;
+        color: @term-red;
+        margin-top: 20px;
+        padding: 10px;
+        border-radius: 5px;
+        background-color: #200707;
+        border: 1px solid @term-red;
+        font-weight: bold;
+
+        .error-dismiss {
+            padding: 2px;
+            cursor: pointer;
+        }
+    }
+
+    .settings-label {
+        font-weight: bold;
+        color: #fff;
+        width: 120px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        .info-message {
+            margin-left: 5px;
+        }
+    }
+
+    .settings-input {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+
+        &.inline-edit.edit-not-active {
+            cursor: pointer;
+
+            i.fa-pen {
+                margin-left: 5px;
+            }
+
+            &:hover {
+                text-decoration: underline;
+                text-decoration-style: dotted;
+            }
+        }
+
+        &.settings-clickable {
+            cursor: pointer;
+        }
+
+        &.inline-edit.edit-active {
+            input.input {
+                padding: 0;
+                height: 20px;
+                font-size: 12px;
+            }
+
+            .button {
+                height: 20px;
+            }
+        }
+        
+        input {
+            padding: 4px;
+            border-radius: 3px;
+        }
+
+        .control {
+            font-size: 12px;
+        }
+        
+        .tab-color-icon.color-green {
+            color: desaturate(@tab-green, 30%);
+        }
+        .tab-color-icon.color-orange {
+            color: desaturate(@tab-orange, 30%);
+        }
+        .tab-color-icon.color-red {
+            color: desaturate(@tab-red, 20%);
+        }
+        .tab-color-icon.color-yellow {
+            color: desaturate(@tab-yellow, 30%);
+        }
+        .tab-color-icon.color-blue {
+            color: desaturate(@tab-blue, 20%);
+        }
+        .tab-color-icon.color-magenta {
+            color: desaturate(@tab-magenta, 20%);
+        }
+        .tab-color-icon.color-cyan {
+            color: desaturate(@tab-cyan, 20%);
+        }
+        .tab-color-icon.color-white {
+            color: @term-white;
+        }
+        .tab-color-icon.color-black {
+            color: lighten(@tab-black, 20%);
+        }
+
+        .tab-colors {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+
+            .tab-color-sep {
+                padding-left: 10px;
+                padding-right: 10px;
+                font-weight: bold;
+            }
+
+            .tab-color-cur {
+                font-size: 12px;
+                width: 100px;
+            }
+
+            .tab-color-select {
+                cursor: pointer;
+                margin: 5px;
+                line-height: 1;
+                &:hover {
+                    outline: 2px solid white;
+                }
+            }
+        }
+
+        .action-text {
+            margin-left: 20px;
+            font-size: 12px;
+            color: @term-red;
+        }
+
+        .settings-share-link {
+            width: 160px;
+        }
+    }
+
+    &:not(:first-child) {
+        margin-top: 10px;
+    }
+}

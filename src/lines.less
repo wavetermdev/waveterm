@@ -1,0 +1,532 @@
+.line.line-text {
+    flex-direction: row;
+    padding-top: 5px;
+
+    .line-content {
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+        margin-left: 10px;
+
+        .text {
+            font-size: 1rem;
+            color: #ddd;
+        }
+    }
+
+    &.collapsed {
+        .meta {
+            display: none;
+        }
+
+        min-height: 20px;
+    }
+
+    &.collapsed.top-border {
+        min-height: 26px;
+    }
+}
+
+.line.line-selected {
+    &.line-focused {
+        outline-left: 3px solid blue;
+    }
+}
+
+.line.line-cmd {
+    flex-direction: column;
+    scroll-margin-bottom: 20px;
+    position: relative;
+
+    .avatar {
+        cursor: pointer;
+        height: 36px;
+    }
+
+    .line-header {
+        display: flex;
+        flex-direction: row;
+        height: 36px;
+        width: 100%;
+
+        &.is-expanded {
+            height: auto;
+        }
+
+        &.is-collapsed {
+            height: 24px;
+        }
+
+        &.is-expanded.is-collapsed {
+            height: auto;
+        }
+        
+        .meta-wrap {
+            flex: 1 1 0px;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            margin-left: 10px;
+        }
+
+        .collapsed-indicator + .meta-wrap {
+            margin-left: 0;
+        }
+
+        .line-icon {
+            display: block;
+            visibility: hidden;
+            cursor: pointer;
+            padding: 3px;
+            font-size: 1.5rem;
+        }
+
+        .line-bookmark:hover {
+            color: white;
+        }
+        
+        .line-icon + .line-icon {
+            margin-left: 5px;
+        }
+        
+        .line-icon.active {
+            visibility: visible;
+            display: block;
+            
+            i.fa-star, i.fa-thumb-tack {
+                color: @term-bright-yellow;
+            }
+            
+            i.fa-bookmark {
+                color: @term-bright-blue;
+            }
+        }
+
+        &:hover .line-icon {
+            visibility: visible;
+            display: block;
+        }
+    }
+
+    .meta.meta-line1 {
+        margin-left: 2px;
+    }
+
+    &.has-rtnstate .terminal-wrapper {
+        padding-bottom: 0;
+        margin-bottom: -5px;
+    }
+
+    .image-wrapper {
+        padding: 2px 10px 5px 4px;
+        margin: 4px 8px 0 -4px;
+
+        .loading-div {
+            height: 20px;
+            margin-left: 50px;
+            .mono-font();
+        }
+
+        &.collapsed {
+            height: 0;
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+        }
+    }
+
+    .terminal-wrapper {
+        background-color: #000;
+        padding: 2px 10px 5px 4px;
+        margin: 4px 8px 0 -4px;
+        align-self: flex-start;
+
+        &.zero-height {
+            padding: 0;
+            margin: 0;
+        }
+
+        &.collapsed {
+            height: 0;
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .terminal-connectelem {
+            overflow-y: hidden;
+            overflow-x: hidden;
+        }
+
+        .terminal {
+            margin-right: 8px; /* needed to show scrollbar */
+        }
+
+        &.cmd-done .terminal .xterm-cursor {
+            display: none;
+        }
+
+        .terminal-loading-message {
+            position: absolute;
+            top: calc(40% - 8px);
+            left: 50px;
+            height: 20px;
+            .mono-font();
+        }
+    }
+
+    .cmd-rtnstate {
+        position: relative;
+
+        .cmd-rtnstate-label {
+            position: relative;
+            z-index: 2;
+            .mono-font(9px);
+            margin-left: 10px;
+            padding: 2px 5px 2px 5px;
+            color: #666;
+            background-color: black;
+            display: inline-block;
+        }
+
+        .cmd-rtnstate-sep {
+            height: 1px;
+            border-bottom: 1px solid #222;
+            position: relative;
+            top: -8px;
+            width: min(300px, 50%);
+            margin-bottom: -3px;
+        }
+
+        .cmd-rtnstate-diff {
+            color: @term-white;
+            .mono-font(12px);
+            white-space: pre;
+            margin-left: 15px;
+        }
+    }
+}
+
+.line {
+    margin: 0px 5px 0px 5px;
+    padding: 10px 5px 0px 12px;
+    display: flex;
+    line-height: 1.25;
+    overflow: hidden;
+    flex-shrink: 0;
+    position: relative;
+
+    &.collapsed {
+        margin: 2px 5px 0px 5px;
+        padding: 0px 5px 0px 12px;
+
+        .avatar {
+            height: 20px;
+            width: 38px;
+            
+            &.num-4 {
+                font-size: 13px;
+            }
+            
+            &.num-5 {
+                font-size: 11px;
+            }
+            
+            &.num-6 {
+                font-size: 9px;
+            }
+        }
+
+        .meta-wrap .meta.meta-line1 {
+            display: none;
+        }
+
+        .focus-indicator {
+            height: calc(100% - 8px);
+            top: 4px;
+        }
+
+        .line-icon {
+            padding-top: 0;
+            padding-bottom: 0;
+            font-size: 20px;
+            margin-top: -4px;
+            margin-bottom: -2px;
+        }
+    }
+
+    &.top-border, &.collapsed.top-border {
+        border-top: 1px solid #777;
+        padding-top: 5px;
+        margin-top: 5px;
+    }
+
+    &:nth-child(2) {
+        margin: 0px 5px 5px 5px;
+        padding: 0px 5px 5px 12px;
+        border-top: none;
+    }
+
+    &:hover .meta .termopts {
+        display: block;
+    }
+
+    &:hover .meta .settings {
+        display: block;
+    }
+
+    .avatar {
+        max-height: 38px;
+        width: 38px;
+        background-color: #555;
+        display: flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        color: white;
+        font-size: 16px;
+        border-radius: 5px;
+        position: relative;
+
+        &.rtnstate {
+            border: 1px solid white;
+        }
+        
+        .status-icon {
+            font-size: 8px;
+            position: absolute;
+            top: 2px;
+            right: 2px;
+        }
+
+        .comment-icon {
+            font-size: 10px;
+            position: absolute;
+            top: 0px;
+            right: -4px;
+        }
+
+        &.num-4 {
+            font-size: 13px;
+        }
+
+        &.num-5 {
+            font-size: 11px;
+        }
+
+        &.num-6 {
+            font-size: 9px;
+        }
+
+        &.status-done {
+            background-color: #555;
+        }
+
+        &.ephemeral {
+            opacity: 0.5;
+            outline: 1px solid white;
+        }
+
+        &.status-error {
+            .status-icon {
+                color: #cc0000;
+            }
+        }
+
+        &.status-hangup {
+            .status-icon {
+                color: @term-yellow;
+            }
+        }
+
+        &.status-running {
+            background-color: @soft-blue;
+        }
+
+        &.status-waiting {
+            background-color: @term-yellow;
+        }
+
+        &.status-detached {
+            background-color: @soft-blue;
+            .status-icon {
+                top: 3px;
+                right: 3px;
+                color: white;
+            }
+        }
+    }
+
+    .collapsed-indicator {
+        width: 20px;
+        font-size: 20px;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        margin-left: 2px;
+        margin-right: 2px;
+        position: relative;
+        top: -2px;
+    }
+
+    .meta {
+        display: flex;
+        flex-direction: row;
+        font-size: 1rem;
+        margin-top: -4px;
+
+        .user {
+            color: lighten(@soft-blue, 10%);
+            font-weight: bold;
+            margin-top: 1px;
+            margin-right: 10px;
+        }
+        
+        .ts, .termopts, .renderer {
+            display: flex;
+            color: #aaa;
+            margin-top: 5px;
+            .mono-font(11px);
+        }
+
+        .renderer {
+            color: #aaa;
+            margin-left: 3px;
+            margin-top: 5px;
+            .mono-font(11px);
+            i {
+                display: inline-block;
+                font-size: 9px;
+                margin-right: 2px;
+                margin-top: 2px;
+            }
+        }
+
+        .settings {
+            display: none;
+            color: #aaa;
+            font-size: 11px;
+            margin-left: 5px;
+            margin-top: 5px;
+            cursor: pointer;
+        }
+
+        .termopts {
+            color: #aaa;
+            margin-top: 5px;
+            .mono-font(11px);
+            display: none;
+
+            .resize-button {
+                cursor: pointer;
+                padding-left: 3px;
+                padding-right: 3px;
+            }
+        }
+        
+        .metapart-mono {
+            color: #ddd;
+            margin-left: 8px;
+            margin-top: 4px;
+            white-space: nowrap;
+            .mono-font(14px);
+        }
+        
+        .cmdtext {
+            color: #fff;
+            font-size: 16px;
+            font-weight: bold;
+            overflow: hidden;
+            margin-left: 0;
+        }
+
+        .cmdtext-overflow {
+            flex-shrink: 0;
+            padding-right: 2px;
+            color: white;
+            cursor: pointer;
+            .mono-font(16px);
+            margin-top: 4px;
+        }
+    }
+
+    .cmdtext-expanded-wrapper {
+        margin-top: 2px;
+        padding-left: 6px;
+        overflow-y: auto;
+        max-height: 54px;
+        border-left: 2px solid #333;
+        margin-left: 3px;
+
+        .cmdtext-expanded {
+            white-space: pre;
+            .mono-font(14px);
+            color: white;
+            padding-bottom: 5px;
+        }
+    }
+
+    .cmd-hints {
+        position: absolute;
+        bottom: 0px;
+        right: 0px;
+        display: none;
+
+        .hint-item {
+            border-radius: 3px;
+        }
+    }
+
+    &:hover .cmd-hints {
+        display: flex;
+    }
+}
+
+.line.line-invalid {
+    color: @term-white;
+    margin-left: 5px;
+}
+
+.lines {
+    display: flex;
+    flex-direction: column;
+    height: 80vh;
+    overflow-y: scroll;
+    padding: 10px 0 10px 0;
+    flex-grow: 1;
+    position: relative;
+
+    .line:nth-child(2) {
+        padding-top: 1px;
+    }
+
+    .lines-spacer {
+        flex-grow: 1;
+    }
+
+    .line-sep {
+        display: flex;
+        align-items: center;
+        .mono-font(11px);
+        color: #aaa;
+    }
+
+    .line-sep::before, .line-sep::after {
+        content: '';
+        height: 2px;
+        background-color: #ccc;
+        flex-grow: 1;
+    }
+
+    .line-sep::before {
+        margin-right: 1rem;
+    }
+
+    .line-sep::after {
+        margin-left: 1rem;
+    }
+}
