@@ -128,7 +128,6 @@ type RunCmdType struct {
 type RemoteRuntimeState struct {
 	RemoteType          string                 `json:"remotetype"`
 	RemoteId            string                 `json:"remoteid"`
-	PhysicalId          string                 `json:"physicalremoteid"`
 	RemoteAlias         string                 `json:"remotealias,omitempty"`
 	RemoteCanonicalName string                 `json:"remotecanonicalname"`
 	RemoteVars          map[string]string      `json:"remotevars"`
@@ -150,10 +149,20 @@ type RemoteRuntimeState struct {
 	WaitingForPassword  bool                   `json:"waitingforpassword,omitempty"`
 	Local               bool                   `json:"local,omitempty"`
 	RemoteOpts          *sstore.RemoteOptsType `json:"remoteopts,omitempty"`
+	CanComplete         bool                   `json:"cancomplete,omitempty"`
 }
 
 func (state RemoteRuntimeState) IsConnected() bool {
 	return state.Status == StatusConnected
+}
+
+func CanComplete(remoteType string) bool {
+	switch remoteType {
+	case sstore.RemoteTypeSsh:
+		return true
+	default:
+		return false
+	}
 }
 
 func (msh *MShellProc) GetStatus() string {
@@ -234,7 +243,7 @@ func LoadRemotes(ctx context.Context) error {
 			go msh.Launch(false)
 		}
 		if remote.Local {
-			if remote.RemoteSudo {
+			if remote.IsSudo() {
 				numSudoLocal++
 			} else {
 				numLocal++
@@ -498,7 +507,7 @@ func (msh *MShellProc) IsLocal() bool {
 func (msh *MShellProc) IsSudo() bool {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
-	return msh.Remote.RemoteSudo
+	return msh.Remote.IsSudo()
 }
 
 func (msh *MShellProc) tryAutoInstall() {
@@ -519,7 +528,6 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		RemoteId:            msh.Remote.RemoteId,
 		RemoteAlias:         msh.Remote.RemoteAlias,
 		RemoteCanonicalName: msh.Remote.RemoteCanonicalName,
-		PhysicalId:          msh.Remote.PhysicalId,
 		Status:              msh.Status,
 		ConnectMode:         msh.Remote.ConnectMode,
 		AutoInstall:         msh.Remote.AutoInstall,
@@ -564,11 +572,10 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 	vars["shorthost"] = makeShortHost(msh.Remote.RemoteHost)
 	vars["alias"] = msh.Remote.RemoteAlias
 	vars["cname"] = msh.Remote.RemoteCanonicalName
-	vars["physicalid"] = msh.Remote.PhysicalId
 	vars["remoteid"] = msh.Remote.RemoteId
 	vars["status"] = msh.Status
 	vars["type"] = msh.Remote.RemoteType
-	if msh.Remote.RemoteSudo {
+	if msh.Remote.IsSudo() {
 		vars["sudo"] = "1"
 	}
 	if msh.Remote.Local {
@@ -603,9 +610,9 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		state.DefaultFeState = sstore.FeStateFromShellState(curState)
 		vars["cwd"] = curState.Cwd
 	}
-	if msh.Remote.Local && msh.Remote.RemoteSudo {
+	if msh.Remote.Local && msh.Remote.IsSudo() {
 		vars["bestuser"] = "sudo"
-	} else if msh.Remote.RemoteSudo {
+	} else if msh.Remote.IsSudo() {
 		vars["bestuser"] = "sudo@" + vars["bestuser"]
 	}
 	if msh.Remote.Local {
@@ -1185,7 +1192,7 @@ func (msh *MShellProc) Launch(interactive bool) {
 	var cmdStr string
 	if sshOpts.SSHHost == "" && remoteCopy.Local {
 		var err error
-		cmdStr, err = MakeLocalMShellCommandStr(remoteCopy.RemoteSudo)
+		cmdStr, err = MakeLocalMShellCommandStr(remoteCopy.IsSudo())
 		if err != nil {
 			msh.WriteToPtyBuffer("*error, cannot find local mshell binary: %v\n", err)
 			return

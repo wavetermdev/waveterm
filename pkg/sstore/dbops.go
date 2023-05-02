@@ -165,19 +165,6 @@ func GetRemoteByCanonicalName(ctx context.Context, cname string) (*RemoteType, e
 	return remote, nil
 }
 
-func GetRemoteByPhysicalId(ctx context.Context, physicalId string) (*RemoteType, error) {
-	var remote *RemoteType
-	err := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT * FROM remote WHERE physicalid = ?`
-		remote = dbutil.GetMapGen[*RemoteType](tx, query, physicalId)
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return remote, nil
-}
-
 func UpsertRemote(ctx context.Context, r *RemoteType) error {
 	if r == nil {
 		return fmt.Errorf("cannot insert nil remote")
@@ -208,8 +195,8 @@ func UpsertRemote(ctx context.Context, r *RemoteType) error {
 		maxRemoteIdx := tx.GetInt(query)
 		r.RemoteIdx = int64(maxRemoteIdx + 1)
 		query = `INSERT INTO remote
-            ( remoteid, physicalid, remotetype, remotealias, remotecanonicalname, remotesudo, remoteuser, remotehost, connectmode, autoinstall, sshopts, remoteopts, lastconnectts, archived, remoteidx, local, statevars) VALUES
-            (:remoteid,:physicalid,:remotetype,:remotealias,:remotecanonicalname,:remotesudo,:remoteuser,:remotehost,:connectmode,:autoinstall,:sshopts,:remoteopts,:lastconnectts,:archived,:remoteidx,:local,:statevars)`
+            ( remoteid, remotetype, remotealias, remotecanonicalname, remoteuser, remotehost, connectmode, autoinstall, sshopts, remoteopts, lastconnectts, archived, remoteidx, local, statevars, openaiopts) VALUES
+            (:remoteid,:remotetype,:remotealias,:remotecanonicalname,:remoteuser,:remotehost,:connectmode,:autoinstall,:sshopts,:remoteopts,:lastconnectts,:archived,:remoteidx,:local,:statevars,:openaiopts)`
 		tx.NamedExec(query, r.ToMap())
 		return nil
 	})
@@ -816,7 +803,7 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 	if line.LineNum != 0 {
 		return fmt.Errorf("line should not hage linenum set")
 	}
-	if cmd.ScreenId == "" {
+	if cmd != nil && cmd.ScreenId == "" {
 		return fmt.Errorf("cmd should have screenid set")
 	}
 	return WithTx(ctx, func(tx *TxWrap) error {

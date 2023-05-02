@@ -544,14 +544,16 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 	if len(pk.Args[0]) > MaxCommandLen {
 		return nil, fmt.Errorf("command length too long len:%d, max:%d", len(pk.Args[0]), MaxCommandLen)
 	}
-	if pk.Interactive {
+	evalDepth := getEvalDepth(ctx)
+	if pk.Interactive && evalDepth == 0 {
 		err := sstore.UpdateCurrentActivity(ctx, sstore.ActivityUpdate{NumCommands: 1})
 		if err != nil {
 			log.Printf("[error] incrementing activity numcommands: %v\n", err)
 			// fall through (non-fatal error)
 		}
+		log.Printf("inc numcommands\n")
 	}
-	if getEvalDepth(ctx) > MaxEvalDepth {
+	if evalDepth > MaxEvalDepth {
 		return nil, fmt.Errorf("alias/history expansion max-depth exceeded")
 	}
 	var historyContext historyContextType
@@ -893,7 +895,6 @@ func makeRemoteEditErrorReturn_edit(ids resolvedIds, visual bool, err error) (ss
 type RemoteEditArgs struct {
 	CanonicalName string
 	SSHOpts       *sstore.SSHOpts
-	Sudo          bool
 	ConnectMode   string
 	Alias         string
 	AutoInstall   bool
@@ -942,6 +943,7 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 			Local:   false,
 			SSHHost: remoteHost,
 			SSHUser: remoteUser,
+			IsSudo:  isSudo,
 		}
 		portVal, err := resolvePosInt(pk.Kwargs["port"], 0)
 		if err != nil {
@@ -1036,7 +1038,6 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 
 	return &RemoteEditArgs{
 		SSHOpts:       sshOpts,
-		Sudo:          isSudo,
 		ConnectMode:   connectMode,
 		Alias:         alias,
 		AutoInstall:   autoInstall,
@@ -1060,11 +1061,9 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	}
 	r := &sstore.RemoteType{
 		RemoteId:            scbase.GenPromptUUID(),
-		PhysicalId:          "",
 		RemoteType:          sstore.RemoteTypeSsh,
 		RemoteAlias:         editArgs.Alias,
 		RemoteCanonicalName: editArgs.CanonicalName,
-		RemoteSudo:          editArgs.Sudo,
 		RemoteUser:          editArgs.SSHOpts.SSHUser,
 		RemoteHost:          editArgs.SSHOpts.SSHHost,
 		ConnectMode:         editArgs.ConnectMode,

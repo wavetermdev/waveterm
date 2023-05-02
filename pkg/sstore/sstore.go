@@ -20,7 +20,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/sawka/txwrap"
-	"github.com/scripthaus-dev/mshell/pkg/base"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
 	"github.com/scripthaus-dev/sh2-server/pkg/dbutil"
@@ -76,7 +75,8 @@ const (
 )
 
 const (
-	RemoteTypeSsh = "ssh"
+	RemoteTypeSsh    = "ssh"
+	RemoteTypeOpenAI = "openai"
 )
 
 const (
@@ -802,6 +802,7 @@ type ResolveItem struct {
 
 type SSHOpts struct {
 	Local       bool   `json:"local,omitempty"`
+	IsSudo      bool   `json:"issudo,omitempty"`
 	SSHHost     string `json:"sshhost"`
 	SSHUser     string `json:"sshuser"`
 	SSHOptsStr  string `json:"sshopts,omitempty"`
@@ -827,32 +828,34 @@ type RemoteOptsType struct {
 	Color string `json:"color"`
 }
 
-func (opts *RemoteOptsType) Scan(val interface{}) error {
-	return quickScanJson(opts, val)
-}
-
-func (opts RemoteOptsType) Value() (driver.Value, error) {
-	return quickValueJson(opts)
+type OpenAIOptsType struct {
 }
 
 type RemoteType struct {
-	RemoteId            string            `json:"remoteid"`
-	PhysicalId          string            `json:"physicalid"`
-	RemoteType          string            `json:"remotetype"`
-	RemoteAlias         string            `json:"remotealias"`
-	RemoteCanonicalName string            `json:"remotecanonicalname"`
-	RemoteSudo          bool              `json:"remotesudo"`
-	RemoteUser          string            `json:"remoteuser"`
-	RemoteHost          string            `json:"remotehost"`
-	ConnectMode         string            `json:"connectmode"`
-	AutoInstall         bool              `json:"autoinstall"`
-	SSHOpts             *SSHOpts          `json:"sshopts"`
-	RemoteOpts          *RemoteOptsType   `json:"remoteopts"`
-	LastConnectTs       int64             `json:"lastconnectts"`
-	Archived            bool              `json:"archived"`
-	RemoteIdx           int64             `json:"remoteidx"`
-	Local               bool              `json:"local"`
-	StateVars           map[string]string `json:"statevars"`
+	RemoteId            string          `json:"remoteid"`
+	RemoteType          string          `json:"remotetype"`
+	RemoteAlias         string          `json:"remotealias"`
+	RemoteCanonicalName string          `json:"remotecanonicalname"`
+	RemoteOpts          *RemoteOptsType `json:"remoteopts"`
+	LastConnectTs       int64           `json:"lastconnectts"`
+	RemoteIdx           int64           `json:"remoteidx"`
+	Archived            bool            `json:"archived"`
+
+	// SSH fields
+	Local       bool              `json:"local"`
+	RemoteUser  string            `json:"remoteuser"`
+	RemoteHost  string            `json:"remotehost"`
+	ConnectMode string            `json:"connectmode"`
+	AutoInstall bool              `json:"autoinstall"`
+	SSHOpts     *SSHOpts          `json:"sshopts"`
+	StateVars   map[string]string `json:"statevars"`
+
+	// OpenAI fields
+	OpenAIOpts *OpenAIOptsType `json:"openaiopts,omitempty"`
+}
+
+func (r *RemoteType) IsSudo() bool {
+	return r.SSHOpts != nil && r.SSHOpts.IsSudo
 }
 
 func (r *RemoteType) GetName() string {
@@ -896,11 +899,9 @@ type CmdType struct {
 func (r *RemoteType) ToMap() map[string]interface{} {
 	rtn := make(map[string]interface{})
 	rtn["remoteid"] = r.RemoteId
-	rtn["physicalid"] = r.PhysicalId
 	rtn["remotetype"] = r.RemoteType
 	rtn["remotealias"] = r.RemoteAlias
 	rtn["remotecanonicalname"] = r.RemoteCanonicalName
-	rtn["remotesudo"] = r.RemoteSudo
 	rtn["remoteuser"] = r.RemoteUser
 	rtn["remotehost"] = r.RemoteHost
 	rtn["connectmode"] = r.ConnectMode
@@ -912,16 +913,15 @@ func (r *RemoteType) ToMap() map[string]interface{} {
 	rtn["remoteidx"] = r.RemoteIdx
 	rtn["local"] = r.Local
 	rtn["statevars"] = quickJson(r.StateVars)
+	rtn["openaiopts"] = quickJson(r.OpenAIOpts)
 	return rtn
 }
 
 func (r *RemoteType) FromMap(m map[string]interface{}) bool {
 	quickSetStr(&r.RemoteId, m, "remoteid")
-	quickSetStr(&r.PhysicalId, m, "physicalid")
 	quickSetStr(&r.RemoteType, m, "remotetype")
 	quickSetStr(&r.RemoteAlias, m, "remotealias")
 	quickSetStr(&r.RemoteCanonicalName, m, "remotecanonicalname")
-	quickSetBool(&r.RemoteSudo, m, "remotesudo")
 	quickSetStr(&r.RemoteUser, m, "remoteuser")
 	quickSetStr(&r.RemoteHost, m, "remotehost")
 	quickSetStr(&r.ConnectMode, m, "connectmode")
@@ -933,6 +933,7 @@ func (r *RemoteType) FromMap(m map[string]interface{}) bool {
 	quickSetInt64(&r.RemoteIdx, m, "remoteidx")
 	quickSetBool(&r.Local, m, "local")
 	quickSetJson(&r.StateVars, m, "statevars")
+	quickSetJson(&r.OpenAIOpts, m, "openaiopts")
 	return true
 }
 
@@ -1029,10 +1030,6 @@ func AddCmdLine(ctx context.Context, screenId string, userId string, cmd *CmdTyp
 }
 
 func EnsureLocalRemote(ctx context.Context) error {
-	physicalId, err := base.GetRemoteId()
-	if err != nil {
-		return fmt.Errorf("getting local physical remoteid: %w", err)
-	}
 	remote, err := GetLocalRemote(ctx)
 	if err != nil {
 		return fmt.Errorf("getting local remote from db: %w", err)
@@ -1051,11 +1048,9 @@ func EnsureLocalRemote(ctx context.Context) error {
 	// create the local remote
 	localRemote := &RemoteType{
 		RemoteId:            scbase.GenPromptUUID(),
-		PhysicalId:          physicalId,
 		RemoteType:          RemoteTypeSsh,
 		RemoteAlias:         LocalRemoteAlias,
 		RemoteCanonicalName: fmt.Sprintf("%s@%s", user.Username, hostName),
-		RemoteSudo:          false,
 		RemoteUser:          user.Username,
 		RemoteHost:          hostName,
 		ConnectMode:         ConnectModeStartup,
@@ -1070,16 +1065,14 @@ func EnsureLocalRemote(ctx context.Context) error {
 	log.Printf("[db] added local remote '%s', id=%s\n", localRemote.RemoteCanonicalName, localRemote.RemoteId)
 	sudoRemote := &RemoteType{
 		RemoteId:            scbase.GenPromptUUID(),
-		PhysicalId:          "",
 		RemoteType:          RemoteTypeSsh,
 		RemoteAlias:         "sudo",
 		RemoteCanonicalName: fmt.Sprintf("sudo@%s@%s", user.Username, hostName),
-		RemoteSudo:          true,
 		RemoteUser:          "root",
 		RemoteHost:          hostName,
 		ConnectMode:         ConnectModeManual,
 		AutoInstall:         true,
-		SSHOpts:             &SSHOpts{Local: true},
+		SSHOpts:             &SSHOpts{Local: true, IsSudo: true},
 		RemoteOpts:          &RemoteOptsType{Color: "red"},
 		Local:               true,
 	}
