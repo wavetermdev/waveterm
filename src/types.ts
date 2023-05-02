@@ -80,7 +80,6 @@ type RemoteOptsType = {
 type RemoteType = {
     remotetype : string,
     remoteid : string,
-    physicalid : string,
     remotealias : string,
     remotecanonicalname : string,
     remotevars : Record<string, string>,
@@ -492,7 +491,7 @@ type HistorySearchParams = {
     filterCmds? : boolean,
 };
 
-type RenderModeType = "normal" | "collapsed";
+type RenderModeType = "normal" | "collapsed" | "expanded";
 
 type WebScreen = {
     screenid : string,

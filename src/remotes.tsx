@@ -939,7 +939,7 @@ class RemotesModal extends React.Component<{model : RemotesModalModel}, {}> {
         return (
             <div key="add" onClick={this.clickAddRemote} className={cn("remote-menu-item add-remote")}>
                 <div>
-                    <i className="fa-sharp fa-solid fa-plus"/> Add Connection
+                    <i className="fa-sharp fa-solid fa-plus"/> Add SSH Connection
                 </div>
             </div>
         );

@@ -471,8 +471,12 @@ class LinesView extends React.Component<{screen : ScreenInterface, width : numbe
             // let lineElem = <Line key={line.lineid} line={line} screen={screen} width={width} visible={this.visibleMap.get(lineNumStr)} staticRender={this.staticRender.get()} onHeightChange={this.onHeightChange} overrideCollapsed={this.collapsedMap.get(lineNumStr)} topBorder={topBorder} renderMode={renderMode}/>;
             lineElements.push(lineElem);
         }
+        let linesClass = cn(
+            "lines",
+            (renderMode == "normal" ? "lines-expanded" : "lines-collapsed"),
+        );
         return (
-            <div key="lines" className="lines" onScroll={this.scrollHandler} ref={this.linesRef}>
+            <div key="lines" className={linesClass} onScroll={this.scrollHandler} ref={this.linesRef}>
                 <div className="lines-spacer"></div>
                 {lineElements}
             </div>

@@ -123,7 +123,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
 
     checkStateDiffLoad() : void {
         let {screen, line, staticRender, visible} = this.props;
-        if (staticRender || this.isCollapsed()) {
+        if (staticRender) {
             return;
         }
         if (!visible.get()) {
@@ -330,35 +330,17 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         console.log("resize button");
     }
 
-    @boundMethod
-    handleCollapsedClick() {
-        let {overrideCollapsed} = this.props;
-        mobx.action(() => {
-            let isCollapsed = overrideCollapsed.get();
-            overrideCollapsed.set(!isCollapsed);
-        })();
-    }
-
-    isCollapsed() : boolean {
-        let {renderMode, overrideCollapsed} = this.props;
-        return (renderMode == "collapsed" && !overrideCollapsed.get());
-    }
-
     getTerminalRendererHeight(cmd : Cmd) : number {
         let {screen, line, width, topBorder, renderMode} = this.props;
-        let isCollapsed = this.isCollapsed();
         // header is 36px tall, padding+border = 6px
-        // collapsed header is 24px tall + 6px
         // zero-terminal is 0px
         // terminal-wrapper overhead is 11px (margin/padding)
         // inner-height, if zero-lines => 42
         //               else: 53+(lines*lineheight)
-        let height = (isCollapsed ? 30 : 42); // height of zero height terminal
-        if (!isCollapsed) {
-            let usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
-            if (usedRows > 0) {
-                height = 53 + termHeightFromRows(usedRows, GlobalModel.termFontSize.get());
-            }
+        let height = 42; // height of zero height terminal
+        let usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
+        if (usedRows > 0) {
+            height = 53 + termHeightFromRows(usedRows, GlobalModel.termFontSize.get());
         }
         return height;
     }
@@ -381,27 +363,19 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
     renderSimple() {
         let {screen, line, topBorder} = this.props;
         let cmd = screen.getCmd(line);
-        let isCollapsed = this.isCollapsed();
         let height : number = 0;
         if (isBlank(line.renderer) || line.renderer == "terminal") {
             height = this.getTerminalRendererHeight(cmd);
         }
         else {
-            let isCollapsed = this.isCollapsed();
-            if (isCollapsed) {
-                height = 24;
-            }
-            else {
-                let {screen, line, width} = this.props;
-                let usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
-                height = 36 + usedRows;
-            }
+            let {screen, line, width} = this.props;
+            let usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
+            height = 36 + usedRows;
         }
         let mainDivCn = cn(
             "line",
             "line-cmd",
             {"top-border": topBorder},
-            {"collapsed": isCollapsed},
         );
         return (
             <div className={mainDivCn} ref={this.lineRef} data-lineid={line.lineid} data-linenum={line.linenum} data-screenid={line.screenid} style={{height: height}}>
@@ -520,7 +494,6 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         }, {name: "computed-isFocused"}).get();
         let isStatic = staticRender;
         let isRunning = cmd.isRunning()
-        let isCollapsed = this.isCollapsed();
         let isExpanded = this.isCmdExpanded.get();
         let rsdiff = this.rtnStateDiff.get();
         // console.log("render", "#" + line.linenum, termHeight, usedRows, cmd.getStatus(), (this.rtnStateDiff.get() != null), (!cmd.isRunning() ? "cmd-done" : "running"));
@@ -530,7 +503,6 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
             {"focus": isFocused},
             {"cmd-done": !isRunning},
             {"has-rtnstate": cmd.getRtnState()},
-            {"collapsed": isCollapsed},
             {"top-border": topBorder},
         );
         let rendererPlugin : RendererPluginType = null;
@@ -544,14 +516,8 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
                  ref={this.lineRef} onClick={this.handleClick}
                  data-lineid={line.lineid} data-linenum={line.linenum} data-screenid={line.screenid} data-cmdid={line.cmdid}>
                 <div key="focus" className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused})}/>
-                <div key="header" className={cn("line-header", {"is-expanded": isExpanded}, {"is-collapsed": isCollapsed})}>
+                <div key="header" className={cn("line-header", {"is-expanded": isExpanded})}>
                     <LineAvatar line={line} cmd={cmd} onRightClick={this.onAvatarRightClick}/>
-                    <If condition={renderMode == "collapsed"}>
-                        <div key="collapsed" className="collapsed-indicator" title={isCollapsed ? "output collapsed, click to show" : "click to hide output" } onClick={this.handleCollapsedClick}>
-                            <If condition={isCollapsed}><i className="fa-sharp fa-solid fa-caret-right"/></If>
-                            <If condition={!isCollapsed}><i className="fa-sharp fa-solid fa-caret-down"/></If>
-                        </div>
-                    </If>
                     {this.renderMetaWrap(cmd)}
                     <div key="pin" title="Pin" className={cn("line-icon", {"active": line.pinned})} onClick={this.clickPin} style={{display: "none"}}>
                         <i className="fa-sharp fa-solid fa-thumbtack"/>
@@ -561,12 +527,12 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
                     </div>
                 </div>
                 <If condition={rendererPlugin == null && !isNoneRenderer}>
-                    <TerminalRenderer screen={screen} line={line} width={width} staticRender={staticRender} visible={visible} onHeightChange={this.handleHeightChange} collapsed={isCollapsed}/>
+                    <TerminalRenderer screen={screen} line={line} width={width} staticRender={staticRender} visible={visible} onHeightChange={this.handleHeightChange} collapsed={false}/>
                 </If>
                 <If condition={rendererPlugin != null}>
                     <SimpleBlobRenderer rendererContainer={screen} cmdId={line.cmdid} plugin={rendererPlugin} onHeightChange={this.handleHeightChange} initParams={this.makeRendererModelInitializeParams()}/>
                 </If>
-                <If condition={!isCollapsed && cmd.getRtnState()}>
+                <If condition={cmd.getRtnState()}>
                     <div key="rtnstate" className="cmd-rtnstate" style={{visibility: ((cmd.getStatus() == "done") ? "visible" : "hidden")}}>
                         <If condition={rsdiff == null || rsdiff == ""}>
                             <div className="cmd-rtnstate-label">state unchanged</div>
@@ -686,13 +652,11 @@ class LineText extends React.Component<{screen : LineContainerModel, line : Line
         let formattedTime = lineutil.getLineDateTimeStr(line.ts);
         let isSelected = mobx.computed(() => (screen.getSelectedLine() == line.linenum), {name: "computed-isSelected"}).get();
         let isFocused = mobx.computed(() => (screen.getFocusType() == "cmd"), {name: "computed-isFocused"}).get();
-        let isCollapsed = (renderMode == "collapsed");
         let mainClass = cn(
             "line",
             "line-text",
             "focus-parent",
             {"top-border": topBorder},
-            {"collapsed": isCollapsed},
         );
         return (
             <div className={mainClass} data-lineid={line.lineid} data-linenum={line.linenum} data-screenid={line.screenid} onClick={this.clickHandler}>

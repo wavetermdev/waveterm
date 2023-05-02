@@ -13,18 +13,6 @@
             color: #ddd;
         }
     }
-
-    &.collapsed {
-        .meta {
-            display: none;
-        }
-
-        min-height: 20px;
-    }
-
-    &.collapsed.top-border {
-        min-height: 26px;
-    }
 }
 
 .line.line-selected {
@@ -49,18 +37,6 @@
         height: 36px;
         width: 100%;
 
-        &.is-expanded {
-            height: auto;
-        }
-
-        &.is-collapsed {
-            height: 24px;
-        }
-
-        &.is-expanded.is-collapsed {
-            height: auto;
-        }
-        
         .meta-wrap {
             flex: 1 1 0px;
             min-width: 0;
@@ -68,10 +44,6 @@
             flex-direction: column;
             justify-content: flex-start;
             margin-left: 10px;
-        }
-
-        .collapsed-indicator + .meta-wrap {
-            margin-left: 0;
         }
 
         .line-icon {
@@ -127,13 +99,6 @@
             margin-left: 50px;
             .mono-font();
         }
-
-        &.collapsed {
-            height: 0;
-            padding: 0;
-            margin: 0;
-            overflow: hidden;
-        }
     }
 
     .terminal-wrapper {
@@ -145,13 +110,6 @@
         &.zero-height {
             padding: 0;
             margin: 0;
-        }
-
-        &.collapsed {
-            height: 0;
-            padding: 0;
-            margin: 0;
-            overflow: hidden;
         }
 
         .terminal-connectelem {
@@ -217,46 +175,12 @@
     flex-shrink: 0;
     position: relative;
 
-    &.collapsed {
-        margin: 2px 5px 0px 5px;
-        padding: 0px 5px 0px 12px;
-
-        .avatar {
-            height: 20px;
-            width: 38px;
-            
-            &.num-4 {
-                font-size: 13px;
-            }
-            
-            &.num-5 {
-                font-size: 11px;
-            }
-            
-            &.num-6 {
-                font-size: 9px;
-            }
-        }
-
-        .meta-wrap .meta.meta-line1 {
-            display: none;
-        }
-
-        .focus-indicator {
-            height: calc(100% - 8px);
-            top: 4px;
-        }
-
-        .line-icon {
-            padding-top: 0;
-            padding-bottom: 0;
-            font-size: 20px;
-            margin-top: -4px;
-            margin-bottom: -2px;
-        }
+    .focus-indicator {
+        height: calc(100% - 7px);
+        top: 5px;
     }
 
-    &.top-border, &.collapsed.top-border {
+    &.top-border {
         border-top: 1px solid #777;
         padding-top: 5px;
         margin-top: 5px;
@@ -357,20 +281,6 @@
                 color: white;
             }
         }
-    }
-
-    .collapsed-indicator {
-        width: 20px;
-        font-size: 20px;
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        margin-left: 2px;
-        margin-right: 2px;
-        position: relative;
-        top: -2px;
     }
 
     .meta {
