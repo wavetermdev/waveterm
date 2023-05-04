@@ -565,7 +565,7 @@ class Line extends React.Component<{screen : LineContainerModel, line : LineType
         if (line.linetype == "text") {
             return <LineText {...this.props}/>;
         }
-        if (line.linetype == "cmd") {
+        if (line.linetype == "cmd" || line.linetype == "openai") {
             return <LineCmd {...this.props}/>;
         }
         return <div className="line line-invalid">[invalid line type '{line.linetype}']</div>;
