@@ -28,6 +28,20 @@ var BareMetaCmds = []BareMetaCmdDecl{
 	BareMetaCmdDecl{"reset", "reset"},
 }
 
+const (
+	CmdParseTypePositional = "pos"
+	CmdParseTypeRaw        = "raw"
+)
+
+var CmdParseOverrides map[string]string = map[string]string{
+	"setenv":  CmdParseTypePositional,
+	"unset":   CmdParseTypePositional,
+	"set":     CmdParseTypePositional,
+	"run":     CmdParseTypeRaw,
+	"comment": CmdParseTypeRaw,
+	"openai":  CmdParseTypeRaw,
+}
+
 func DumpPacket(pk *scpacket.FeCommandPacketType) {
 	if pk == nil || pk.MetaCmd == "" {
 		fmt.Printf("[no metacmd]\n")
@@ -111,11 +125,11 @@ func parseMetaCmd(origCommandStr string) (string, string, string) {
 }
 
 func onlyPositionalArgs(metaCmd string, metaSubCmd string) bool {
-	return (metaCmd == "setenv" || metaCmd == "unset" || metaCmd == "set") && metaSubCmd == ""
+	return (CmdParseOverrides[metaCmd] == CmdParseTypePositional) && metaSubCmd == ""
 }
 
 func onlyRawArgs(metaCmd string, metaSubCmd string) bool {
-	return metaCmd == "run" || metaCmd == "comment"
+	return CmdParseOverrides[metaCmd] == CmdParseTypeRaw
 }
 
 func setBracketArgs(argMap map[string]string, bracketStr string) error {

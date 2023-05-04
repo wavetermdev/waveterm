@@ -24,6 +24,7 @@ import (
 	"github.com/scripthaus-dev/sh2-server/pkg/comp"
 	"github.com/scripthaus-dev/sh2-server/pkg/pcloud"
 	"github.com/scripthaus-dev/sh2-server/pkg/remote"
+	"github.com/scripthaus-dev/sh2-server/pkg/remote/openai"
 	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
 	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
 	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
@@ -41,7 +42,7 @@ func init() {
 	comp.RegisterSimpleCompFn(comp.CGTypeCommandMeta, simpleCompCommandMeta)
 }
 
-const DefaultUserId = "sawka"
+const DefaultUserId = "user"
 const MaxNameLen = 50
 const MaxShareNameLen = 150
 const MaxRendererLen = 50
@@ -197,6 +198,9 @@ func init() {
 
 	registerCmdFn("bookmark:set", BookmarkSetCommand)
 	registerCmdFn("bookmark:delete", BookmarkDeleteCommand)
+
+	registerCmdFn("openai", OpenAICommand)
+	registerCmdFn("openai:stream", OpenAICommand)
 
 	registerCmdFn("_killserver", KillServerCommand)
 
@@ -551,7 +555,6 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 			log.Printf("[error] incrementing activity numcommands: %v\n", err)
 			// fall through (non-fatal error)
 		}
-		log.Printf("inc numcommands\n")
 	}
 	if evalDepth > MaxEvalDepth {
 		return nil, fmt.Errorf("alias/history expansion max-depth exceeded")
@@ -1312,6 +1315,185 @@ func GetFullRemoteDisplayName(rptr *sstore.RemotePtrType, rstate *remote.RemoteR
 	}
 }
 
+func writeErrorToPty(cmd *sstore.CmdType, errStr string, outputPos int64) {
+	errPk := openai.CreateErrorPacket(errStr)
+	errBytes, err := packet.MarshalPacket(errPk)
+	if err != nil {
+		log.Printf("error writing error packet to openai response: %v\n", err)
+		return
+	}
+	errCtx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	update, err := sstore.AppendToCmdPtyBlob(errCtx, cmd.ScreenId, cmd.CmdId, errBytes, outputPos)
+	if err != nil {
+		log.Printf("error writing ptyupdate for openai response: %v\n", err)
+		return
+	}
+	sstore.MainBus.SendScreenUpdate(cmd.ScreenId, update)
+	return
+}
+
+func writePacketToPty(ctx context.Context, cmd *sstore.CmdType, pk packet.PacketType, outputPos *int64) error {
+	outBytes, err := packet.MarshalPacket(pk)
+	if err != nil {
+		return err
+	}
+	update, err := sstore.AppendToCmdPtyBlob(ctx, cmd.ScreenId, cmd.CmdId, outBytes, *outputPos)
+	if err != nil {
+		return err
+	}
+	*outputPos += int64(len(outBytes))
+	sstore.MainBus.SendScreenUpdate(cmd.ScreenId, update)
+	return nil
+}
+
+func doOpenAICompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, prompt []sstore.OpenAIPromptMessageType) {
+	var outputPos int64
+	var hadError bool
+	startTime := time.Now()
+	ctx, cancelFn := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancelFn()
+	defer func() {
+		r := recover()
+		if r != nil {
+			panicMsg := fmt.Sprintf("panic: %v", r)
+			log.Printf("panic in doOpenAICompletion: %s\n", panicMsg)
+			writeErrorToPty(cmd, panicMsg, outputPos)
+			hadError = true
+		}
+		duration := time.Since(startTime)
+		cmdStatus := sstore.CmdStatusDone
+		var exitCode int64
+		if hadError {
+			cmdStatus = sstore.CmdStatusError
+			exitCode = 1
+		}
+		doneInfo := &sstore.CmdDoneInfo{
+			Ts:         time.Now().UnixMilli(),
+			ExitCode:   exitCode,
+			DurationMs: duration.Milliseconds(),
+		}
+		ck := base.MakeCommandKey(cmd.ScreenId, cmd.CmdId)
+		update, err := sstore.UpdateCmdDoneInfo(context.Background(), ck, doneInfo, cmdStatus)
+		if err != nil {
+			// nothing to do
+			log.Printf("error updating cmddoneinfo (in openai): %v\n", err)
+			return
+		}
+		sstore.MainBus.SendScreenUpdate(cmd.ScreenId, update)
+	}()
+	respPks, err := openai.RunCompletion(ctx, opts, prompt)
+	if err != nil {
+		writeErrorToPty(cmd, fmt.Sprintf("error calling OpenAI API: %v", err), outputPos)
+		return
+	}
+	for _, pk := range respPks {
+		err = writePacketToPty(ctx, cmd, pk, &outputPos)
+		if err != nil {
+			writeErrorToPty(cmd, fmt.Sprintf("error writing response to ptybuffer: %v", err), outputPos)
+			return
+		}
+	}
+	return
+}
+
+func doOpenAIStreamCompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, prompt []sstore.OpenAIPromptMessageType) {
+	var outputPos int64
+	var hadError bool
+	startTime := time.Now()
+	ctx, cancelFn := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancelFn()
+	defer func() {
+		r := recover()
+		if r != nil {
+			panicMsg := fmt.Sprintf("panic: %v", r)
+			log.Printf("panic in doOpenAICompletion: %s\n", panicMsg)
+			writeErrorToPty(cmd, panicMsg, outputPos)
+			hadError = true
+		}
+		duration := time.Since(startTime)
+		cmdStatus := sstore.CmdStatusDone
+		var exitCode int64
+		if hadError {
+			cmdStatus = sstore.CmdStatusError
+			exitCode = 1
+		}
+		doneInfo := &sstore.CmdDoneInfo{
+			Ts:         time.Now().UnixMilli(),
+			ExitCode:   exitCode,
+			DurationMs: duration.Milliseconds(),
+		}
+		ck := base.MakeCommandKey(cmd.ScreenId, cmd.CmdId)
+		update, err := sstore.UpdateCmdDoneInfo(context.Background(), ck, doneInfo, cmdStatus)
+		if err != nil {
+			// nothing to do
+			log.Printf("error updating cmddoneinfo (in openai): %v\n", err)
+			return
+		}
+		sstore.MainBus.SendScreenUpdate(cmd.ScreenId, update)
+	}()
+	ch, err := openai.RunCompletionStream(ctx, opts, prompt)
+	if err != nil {
+		writeErrorToPty(cmd, fmt.Sprintf("error calling OpenAI API: %v", err), outputPos)
+		return
+	}
+	for pk := range ch {
+		err = writePacketToPty(ctx, cmd, pk, &outputPos)
+		if err != nil {
+			writeErrorToPty(cmd, fmt.Sprintf("error writing response to ptybuffer: %v", err), outputPos)
+			return
+		}
+	}
+	return
+}
+
+func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
+	if err != nil {
+		return nil, fmt.Errorf("/%s error: %w", GetCmdStr(pk), err)
+	}
+	opts := &sstore.OpenAIOptsType{
+		Model:     "gpt-3.5-turbo",
+		APIToken:  OpenAIKey,
+		MaxTokens: 1000,
+	}
+	promptStr := firstArg(pk)
+	if promptStr == "" {
+		return nil, fmt.Errorf("/openai error, prompt string is blank")
+	}
+	ptermVal := defaultStr(pk.Kwargs["pterm"], DefaultPTERM)
+	pkTermOpts, err := GetUITermOpts(pk.UIContext.WinSize, ptermVal)
+	if err != nil {
+		return nil, fmt.Errorf("/openai error, invalid 'pterm' value %q: %v", ptermVal, err)
+	}
+	termOpts := convertTermOpts(pkTermOpts)
+	cmd, err := makeDynCmd(ctx, GetCmdStr(pk), ids, pk.GetRawStr(), *termOpts)
+	if err != nil {
+		return nil, fmt.Errorf("/openai error, cannot make dyn cmd")
+	}
+	line, err := sstore.AddOpenAILine(ctx, ids.ScreenId, DefaultUserId, cmd)
+	if err != nil {
+		return nil, fmt.Errorf("cannot add new line: %v", err)
+	}
+	prompt := []sstore.OpenAIPromptMessageType{{Role: sstore.OpenAIRoleUser, Content: promptStr}}
+	if pk.MetaSubCmd == "stream" {
+		go doOpenAIStreamCompletion(cmd, opts, prompt)
+	} else {
+		go doOpenAICompletion(cmd, opts, prompt)
+	}
+	updateHistoryContext(ctx, line, cmd)
+	updateMap := make(map[string]interface{})
+	updateMap[sstore.ScreenField_SelectedLine] = line.LineNum
+	updateMap[sstore.ScreenField_Focus] = sstore.ScreenFocusInput
+	screen, err := sstore.UpdateScreen(ctx, ids.ScreenId, updateMap)
+	if err != nil {
+		// ignore error again (nothing to do)
+		log.Printf("/openai error updating screen selected line: %v\n", err)
+	}
+	update := sstore.ModelUpdate{Line: line, Cmd: cmd, Screens: []*sstore.ScreenType{screen}}
+	return update, nil
+}
+
 func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
 	if err != nil {
@@ -1348,6 +1530,33 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 	}
 	update.Interactive = pk.Interactive
 	return update, nil
+}
+
+func makeDynCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr string, termOpts sstore.TermOpts) (*sstore.CmdType, error) {
+	cmd := &sstore.CmdType{
+		ScreenId:  ids.ScreenId,
+		CmdId:     scbase.GenPromptUUID(),
+		CmdStr:    cmdStr,
+		RawCmdStr: cmdStr,
+		Remote:    ids.Remote.RemotePtr,
+		TermOpts:  termOpts,
+		Status:    sstore.CmdStatusRunning,
+		StartPk:   nil,
+		DoneInfo:  nil,
+		RunOut:    nil,
+	}
+	if ids.Remote.StatePtr != nil {
+		cmd.StatePtr = *ids.Remote.StatePtr
+	}
+	if ids.Remote.FeState != nil {
+		cmd.FeState = ids.Remote.FeState
+	}
+	err := sstore.CreateCmdPtyFile(ctx, cmd.ScreenId, cmd.CmdId, cmd.TermOpts.MaxPtySize)
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, fmt.Errorf("cannot create local ptyout file for %s command: %w", metaCmd, err)
+	}
+	return cmd, nil
 }
 
 func makeStaticCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr string, cmdOutput []byte) (*sstore.CmdType, error) {

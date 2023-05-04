@@ -848,7 +848,7 @@ func GetCmdByScreenId(ctx context.Context, screenId string, cmdId string) (*CmdT
 	return cmd, nil
 }
 
-func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, doneInfo *CmdDoneInfo) (*ModelUpdate, error) {
+func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, doneInfo *CmdDoneInfo, status string) (*ModelUpdate, error) {
 	if doneInfo == nil {
 		return nil, fmt.Errorf("invalid cmddone packet")
 	}
@@ -859,7 +859,7 @@ func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, doneInfo *CmdDon
 	var rtnCmd *CmdType
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `UPDATE cmd SET status = ?, doneinfo = ? WHERE screenid = ? AND cmdid = ?`
-		tx.Exec(query, CmdStatusDone, quickJson(doneInfo), screenId, ck.GetCmdId())
+		tx.Exec(query, status, quickJson(doneInfo), screenId, ck.GetCmdId())
 		var err error
 		rtnCmd, err = GetCmdByScreenId(tx.Context(), screenId, ck.GetCmdId())
 		if err != nil {

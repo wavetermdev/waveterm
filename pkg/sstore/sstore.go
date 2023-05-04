@@ -28,8 +28,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-const LineTypeCmd = "cmd"
-const LineTypeText = "text"
 const LineNoHeight = -1
 const DBFileName = "prompt.db"
 const DBFileNameBackup = "backup.prompt.db"
@@ -40,6 +38,12 @@ const DefaultSessionName = "default"
 const LocalRemoteAlias = "local"
 
 const DefaultCwd = "~"
+
+const (
+	LineTypeCmd    = "cmd"
+	LineTypeText   = "text"
+	LineTypeOpenAI = "openai"
+)
 
 const (
 	MainViewSession   = "session"
@@ -54,6 +58,16 @@ const (
 	CmdStatusDone     = "done"
 	CmdStatusHangup   = "hangup"
 	CmdStatusWaiting  = "waiting"
+)
+
+const (
+	CmdRendererOpenAI = "openai"
+)
+
+const (
+	OpenAIRoleSystem    = "system"
+	OpenAIRoleUser      = "user"
+	OpenAIRoleAssistant = "assistant"
 )
 
 const (
@@ -685,6 +699,31 @@ type LineType struct {
 	Remove        bool   `json:"remove,omitempty"`
 }
 
+type OpenAIUsage struct {
+	PromptTokens     int `json:"prompt_tokens"`
+	CompletionTokens int `json:"completion_tokens"`
+	TotalTokens      int `json:"total_tokens"`
+}
+
+type OpenAIChoiceType struct {
+	Text         string `json:"text"`
+	Index        int    `json:"index"`
+	FinishReason string `json:"finish_reason"`
+}
+
+type OpenAIResponse struct {
+	Model   string             `json:"model"`
+	Created int64              `json:"created"`
+	Usage   *OpenAIUsage       `json:"usage,omitempty"`
+	Choices []OpenAIChoiceType `json:"choices,omitempty"`
+}
+
+type OpenAIPromptMessageType struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+	Name    string `json:"name,omitempty"`
+}
+
 type PlaybookType struct {
 	PlaybookId   string   `json:"playbookid"`
 	PlaybookName string   `json:"playbookname"`
@@ -829,6 +868,10 @@ type RemoteOptsType struct {
 }
 
 type OpenAIOptsType struct {
+	Model      string `json:"model"`
+	APIToken   string `json:"apitoken"`
+	MaxTokens  int    `json:"maxtokens,omitempty"`
+	MaxChoices int    `json:"maxchoices,omitempty"`
 }
 
 type RemoteType struct {
@@ -1011,9 +1054,32 @@ func makeNewLineText(screenId string, userId string, text string) *LineType {
 	return rtn
 }
 
+func makeNewLineOpenAI(screenId string, userId string, cmdId string) *LineType {
+	rtn := &LineType{}
+	rtn.ScreenId = screenId
+	rtn.UserId = userId
+	rtn.LineId = scbase.GenPromptUUID()
+	rtn.CmdId = cmdId
+	rtn.Ts = time.Now().UnixMilli()
+	rtn.LineLocal = true
+	rtn.LineType = LineTypeOpenAI
+	rtn.ContentHeight = LineNoHeight
+	rtn.Renderer = CmdRendererOpenAI
+	return rtn
+}
+
 func AddCommentLine(ctx context.Context, screenId string, userId string, commentText string) (*LineType, error) {
 	rtnLine := makeNewLineText(screenId, userId, commentText)
 	err := InsertLine(ctx, rtnLine, nil)
+	if err != nil {
+		return nil, err
+	}
+	return rtnLine, nil
+}
+
+func AddOpenAILine(ctx context.Context, screenId string, userId string, cmd *CmdType) (*LineType, error) {
+	rtnLine := makeNewLineOpenAI(screenId, userId, cmd.CmdId)
+	err := InsertLine(ctx, rtnLine, cmd)
 	if err != nil {
 		return nil, err
 	}

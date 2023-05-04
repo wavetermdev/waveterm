@@ -9,6 +9,7 @@ import (
 	"github.com/scripthaus-dev/mshell/pkg/packet"
 	"github.com/scripthaus-dev/mshell/pkg/shexec"
 	"github.com/scripthaus-dev/sh2-server/pkg/remote"
+	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
 )
 
 // PTERM=MxM,Mx25
@@ -107,4 +108,13 @@ func GetUITermOpts(winSize *packet.WinSize, ptermStr string) (*packet.TermOpts, 
 	termOpts.Cols = base.BoundInt(termOpts.Cols, shexec.MinTermCols, shexec.MaxTermCols)
 	termOpts.Rows = base.BoundInt(termOpts.Rows, shexec.MinTermRows, shexec.MaxTermRows)
 	return termOpts, nil
+}
+
+func convertTermOpts(pkto *packet.TermOpts) *sstore.TermOpts {
+	return &sstore.TermOpts{
+		Rows:       int64(pkto.Rows),
+		Cols:       int64(pkto.Cols),
+		FlexRows:   true,
+		MaxPtySize: pkto.MaxPtySize,
+	}
 }

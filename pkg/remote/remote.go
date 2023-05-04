@@ -1647,7 +1647,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 		ExitCode:   int64(donePk.ExitCode),
 		DurationMs: donePk.DurationMs,
 	}
-	update, err := sstore.UpdateCmdDoneInfo(context.Background(), donePk.CK, doneInfo)
+	update, err := sstore.UpdateCmdDoneInfo(context.Background(), donePk.CK, doneInfo, sstore.CmdStatusDone)
 	if err != nil {
 		msh.WriteToPtyBuffer("*error updating cmddone: %v\n", err)
 		return
