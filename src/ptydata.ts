@@ -1,6 +1,10 @@
 import * as mobx from "mobx";
 import {incObs} from "./util";
 
+type OV<V> = mobx.IObservableValue<V>;
+type OArr<V> = mobx.IObservableArray<V>;
+type OMap<K,V> = mobx.ObservableMap<K,V>;
+
 const InitialSize = 10*1024;
 const IncreaseFactor = 1.5;
 
@@ -55,4 +59,66 @@ class PtyDataBuffer {
     }
 }
 
-export {PtyDataBuffer};
+const NewLineCharCode = "\n".charCodeAt(0);
+
+class PacketDataBuffer extends PtyDataBuffer {
+    parsePos : number;
+    packets : OArr<Object>;
+
+    constructor() {
+        super();
+        this.parsePos = 0;
+        this.packets = mobx.observable.array([], {name: "packets"});
+    }
+
+    processLine(line : string) {
+        if (line.length == 0) {
+            return;
+        }
+        if (!line.startsWith("##")) {
+            console.log("invalid line packet", line);
+            return;
+        }
+        let bracePos = line.indexOf("{");
+        if (bracePos == -1) {
+            console.log("invalid line packet", line);
+            return;
+        }
+        let packetStr = line.substring(bracePos);
+        let sizeStr = line.substring(2, bracePos);
+        if (sizeStr != "N") {
+            let packetSize = parseInt(sizeStr);
+            if (isNaN(packetSize) || packetSize != packetStr.length) {
+                console.log("invalid line packet", line);
+            }
+        }
+        try {
+            let packet = JSON.parse(packetStr);
+            this.packets.push(packet);
+        }
+        catch (e) {
+            console.log("invalid line packet (bad json)", line);
+            return;
+        }
+    }
+
+    parseData() {
+        for (let i=this.parsePos; i<this.dataSize; i++) {
+            let ch = this.rawData[i];
+            if (ch == NewLineCharCode) {
+                // line does *not* include the newline
+                let line = (new TextDecoder()).decode(new Uint8Array(this.rawData.buffer, this.parsePos, i-this.parsePos));
+                this.parsePos = i+1;
+                this.processLine(line);
+            }
+        }
+        return;
+    }
+    
+    receiveData(pos : number, data : Uint8Array, reason? : string) : void {
+        super.receiveData(pos, data, reason);
+        this.parseData();
+    }
+}
+
+export {PtyDataBuffer, PacketDataBuffer};

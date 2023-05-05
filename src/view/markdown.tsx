@@ -50,7 +50,7 @@ class SimpleMarkdownRenderer extends React.Component<{data : Blob, context : Ren
         }
         return (
             <div className="renderer-container markdown-renderer">
-                <div className="scroller" style={{maxHeight: opts.maxSize.height, width: minWidth, maxWidth: maxWidth}}>
+                <div className="scroller" style={{maxHeight: opts.maxSize.height, minWidth: minWidth, width: "min-content", maxWidth: maxWidth}}>
                     <Markdown text={this.markdownText.get()} style={{maxHeight: opts.maxSize.height}}/>
                 </div>
             </div>

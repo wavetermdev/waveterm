@@ -21,6 +21,42 @@
     }
 }
 
+.line.line-openai {
+    flex-direction: column;
+    position: relative;
+
+    .line-header {
+        display: flex;
+        flex-direction: row;
+        height: 18px;
+        width: 100%;
+
+        .line-icon {
+            display: block;
+            cursor: pointer;
+            padding: 3px;
+            font-size: 1.5rem;
+        }
+    }
+
+    .openai-message {
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+        
+        .openai-role {
+            color: @term-green;
+            font-weight: bold;
+            width: 100px;
+        }
+
+        .openai-content {
+            white-space: pre;
+            color: white;
+        }
+    }
+}
+
 .line.line-cmd {
     flex-direction: column;
     scroll-margin-bottom: 20px;
@@ -36,15 +72,6 @@
         flex-direction: row;
         height: 36px;
         width: 100%;
-
-        .meta-wrap {
-            flex: 1 1 0px;
-            min-width: 0;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            margin-left: 10px;
-        }
 
         .line-icon {
             display: block;
@@ -168,7 +195,7 @@
 
 .line {
     margin: 0px 5px 0px 5px;
-    padding: 10px 5px 0px 12px;
+    padding: 5px 5px 0px 12px;
     display: flex;
     line-height: 1.25;
     overflow: hidden;
@@ -178,6 +205,37 @@
     .focus-indicator {
         height: calc(100% - 7px);
         top: 5px;
+    }
+
+    &.line-simple {
+        flex-direction: row;
+
+        .ts {
+            display: flex;
+            color: #aaa;
+            .mono-font(11px);
+        }
+    }
+
+    .simple-line-status {
+        .mono-font(12px);
+        color: #aaa;
+
+        i {
+            padding-left: 6px;
+            padding-right: 6px;
+        }
+
+        .linenum {
+            cursor: pointer;
+        }
+
+        &.has-rtnstate {
+            .linenum {
+                color: white;
+                font-weight: bold;
+            }
+        }
     }
 
     &.top-border {
@@ -283,11 +341,23 @@
         }
     }
 
+    .meta-wrap {
+        flex: 1 1 0px;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+    }
+
     .meta {
         display: flex;
         flex-direction: row;
         font-size: 1rem;
         margin-top: -4px;
+
+        .simple-line-status {
+            margin-top: 5px;
+        }
 
         .user {
             color: lighten(@soft-blue, 10%);

@@ -381,7 +381,7 @@ type RendererPluginType = {
     name : string,
     rendererType : "simple" | "full",
     heightType : "rows" | "pixels",
-    dataType : "json" | "blob",
+    dataType : "json" | "blob" | "packet",
     collapseType : "hide" | "remove",
     globalCss? : string,
     mimeTypes? : string[],

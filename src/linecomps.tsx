@@ -16,6 +16,7 @@ import {renderCmdText} from "./elements";
 import {SimpleBlobRendererModel, SimpleBlobRenderer} from "./simplerenderer";
 import {isBlank} from "./util";
 import {PluginModel} from "./plugins";
+import {PtyDataBuffer} from "./ptydata";
 import * as lineutil from "./lineutil";
 
 dayjs.extend(localizedFormat)
@@ -108,6 +109,237 @@ class LineAvatar extends React.Component<{line : LineType, cmd : Cmd, onRightCli
 }
 
 @mobxReact.observer
+class SmallLineAvatar extends React.Component<{line : LineType, cmd : Cmd, onRightClick? : (e : any) => void}, {}> {
+    render() {
+        let {line, cmd} = this.props;
+        let lineNumStr = (line.linenumtemp ? "~" : "#") + String(line.linenum);
+        let status = (cmd != null ? cmd.getStatus() : "done");
+        let rtnstate = (cmd != null ? cmd.getRtnState() : false);
+        let isComment = (line.linetype == "text");
+        let icon : string = null;
+        let iconTitle = null;
+        if (isComment) {
+            icon = "fa-comment";
+            iconTitle = "comment";
+        }
+        else if (status == "done") {
+            icon = "fa-check";
+            iconTitle = "done";
+        }
+        else if (status == "hangup" || status == "error") {
+            icon = "fa-triangle-exclamation";
+            iconTitle = status;
+        }
+        else if (status == "running" || "detached") {
+            icon = "fa-rotate fa-spin";
+            iconTitle = "running";
+        }
+        else {
+            icon = "fa-square-question";
+            iconTitle = "unknown";
+        }
+        return (
+            <div onContextMenu={this.props.onRightClick} className={cn("simple-line-status", "status-" + status, (rtnstate ? "has-rtnstate" : null))}>
+                <span className="linenum">{lineNumStr}</span><i title={iconTitle} className={cn("fa-sharp fa-solid", icon)}/>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
+class LineOpenAI extends React.Component<{screen : LineContainerModel, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : LineHeightChangeCallbackType, topBorder : boolean, renderMode : RenderModeType, overrideCollapsed : OV<boolean>, noSelect? : boolean, showHints? : boolean}, {}> {
+    dataBuffer : PtyDataBuffer = new PtyDataBuffer();
+    loading : OV<boolean> = mobx.observable.box(null, {name: "loading"});
+    loadError : OV<string> = mobx.observable.box(null, {name: "loadError"});
+    dataLines : OArr<string> = mobx.observable.array([], {name: "dataLines"});
+    dataPos : number = 0;
+    lineRef : React.RefObject<any> = React.createRef();
+
+    renderSimple() {
+        let {screen, line, topBorder, width} = this.props;
+        let cmd = screen.getCmd(line);
+        let usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
+        let height = 36 + usedRows;
+        let formattedTime = lineutil.getLineDateTimeStr(line.ts);
+        let mainDivCn = cn(
+            "line",
+            "line-openai",
+            "line-simple",
+            {"top-border": topBorder},
+        );
+        return (
+            <div className={mainDivCn} ref={this.lineRef} data-lineid={line.lineid} data-linenum={line.linenum} data-screenid={line.screenid} style={{height: height}}>
+                <SmallLineAvatar line={line} cmd={cmd}/>
+                <div className="ts">{formattedTime}</div>
+            </div>
+        );
+    }
+
+    componentDidMount() {
+        this.reload(0);
+    }
+
+    updateLines() : void {
+        
+    }
+
+    reload(delayMs : number) {
+        let {line} = this.props;
+        
+        mobx.action(() => {
+            this.loading.set(true);
+            this.dataLines.clear();
+        })();
+        let rtnp = getTermPtyData(lineutil.getRendererContext(line));
+        if (rtnp == null) {
+            console.log("no promise returned from ptyDataSource (simplerenderer)", this.context);
+            return;
+        }
+        rtnp.then((ptydata) => {
+            setTimeout(() => {
+                this.dataPos = 0;
+                this.dataBuffer.reset();
+                this.dataBuffer.receiveData(ptydata.pos, ptydata.data, "reload");
+                mobx.action(() => {
+                    this.loadError.set(null);
+                })();
+            }, delayMs);
+        }).catch((e) => {
+            console.log("error loading data", e);
+            mobx.action(() => {
+                this.loadError.set("error loading data: " + e);
+            })();
+        }).finally(() => {
+            mobx.action(() => {
+                this.loading.set(false);
+            })();
+        });
+    }
+
+    @boundMethod
+    handleClick() {
+    }
+
+    @boundMethod
+    onAvatarRightClick(e : any) {
+        this.handleLineSettings(e)
+    }
+
+    @boundMethod
+    handleLineSettings(e : any) : void {
+        let {line, noSelect} = this.props;
+        if (noSelect) {
+            return;
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        if (line != null) {
+            mobx.action(() => {
+                GlobalModel.lineSettingsModal.set(line.linenum);
+            })();
+        }
+    }
+
+    renderMetaWrap(cmd : Cmd) {
+        let {line} = this.props;
+        let model = GlobalModel;
+        let formattedTime = lineutil.getLineDateTimeStr(line.ts);
+        let termOpts = cmd.getTermOpts();
+        let remote = model.getRemote(cmd.remoteId);
+        let renderer = line.renderer;
+        return (
+            <div key="meta" className="meta-wrap">
+                <div key="meta1" className="meta meta-line1">
+                    <div className="ts">{formattedTime}</div>
+                    <div>&nbsp;</div>
+                    <div className="renderer"><i className="fa-sharp fa-solid fa-fill"/>openai&nbsp;</div>
+                    <div className="termopts">
+                        ({termOpts.rows}x{termOpts.cols})
+                    </div>
+                    <div className="settings" onClick={this.handleLineSettings}>
+                        <i className="fa-sharp fa-solid fa-gear"/>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    renderPrompt(cmd : Cmd) {
+        let cmdStr = cmd.getCmdStr().trim();
+        if (cmdStr.startsWith("/openai")) {
+            let spaceIdx = cmdStr.indexOf(" ");
+            if (spaceIdx > 0) {
+                cmdStr = cmdStr.substr(spaceIdx+1).trim();
+            }
+        }
+        return (
+            <div className="openai-message">
+                <span className="openai-role">[user]</span>
+                <div className="openai-content">{cmdStr}</div>
+            </div>
+        );
+    }
+
+    renderOutput(cmd : Cmd) {
+        let output = "...\nhello\nmore";
+        return (
+            <div className="openai-message">
+                <div className="openai-role">[assistant]</div>
+                <div className="openai-content">{output}</div>
+            </div>
+        );
+    }
+    
+    render() {
+        let {screen, line, width, staticRender, visible, topBorder, renderMode} = this.props;
+        let model = GlobalModel;
+        let lineid = line.lineid;
+        let isVisible = visible.get();
+        if (staticRender || !isVisible) {
+            return this.renderSimple();
+        }
+        let formattedTime = lineutil.getLineDateTimeStr(line.ts);
+        let cmd = screen.getCmd(line);
+        if (cmd == null) {
+            return (
+                <div className="line line-invalid" ref={this.lineRef} data-lineid={line.lineid} data-linenum={line.linenum} data-screenid={line.screenid}>
+                    [cmd not found '{line.cmdid}']
+                </div>
+            );
+        }
+        let status = cmd.getStatus();
+        let lineNumStr = (line.linenumtemp ? "~" : "") + String(line.linenum);
+        let isSelected = mobx.computed(() => (screen.getSelectedLine() == line.linenum), {name: "computed-isSelected"}).get();
+        let isFocused = mobx.computed(() => {
+            let screenFocusType = screen.getFocusType();
+            return isSelected && (screenFocusType == "cmd");
+        }, {name: "computed-isFocused"}).get();
+        let isStatic = staticRender;
+        let isRunning = cmd.isRunning()
+        let mainDivCn = cn(
+            "line",
+            "line-openai",
+            {"focus": isFocused},
+            {"cmd-done": !isRunning},
+            {"has-rtnstate": cmd.getRtnState()},
+            {"top-border": topBorder},
+        );
+        return (
+            <div className={mainDivCn} onClick={this.handleClick}
+                 data-lineid={line.lineid} data-linenum={line.linenum} data-screenid={line.screenid} data-cmdid={line.cmdid}>
+                <div key="focus" className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused})}/>
+                <div key="header" className={cn("line-header")}>
+                    <SmallLineAvatar line={line} cmd={cmd} onRightClick={this.onAvatarRightClick}/>
+                    {this.renderMetaWrap(cmd)}
+                </div>
+                {this.renderPrompt(cmd)}
+                {this.renderOutput(cmd)}
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
 class LineCmd extends React.Component<{screen : LineContainerModel, line : LineType, width : number, staticRender : boolean, visible : OV<boolean>, onHeightChange : LineHeightChangeCallbackType, topBorder : boolean, renderMode : RenderModeType, overrideCollapsed : OV<boolean>, noSelect? : boolean, showHints? : boolean}, {}> {
     lineRef : React.RefObject<any> = React.createRef();
     cmdTextRef : React.RefObject<any> = React.createRef();
@@ -182,7 +414,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         })();
     }
 
-    renderCmdText(cmd : Cmd, remote : RemoteType) : any {
+    renderCmdText(cmd : Cmd) : any {
         if (cmd == null) {
             return (
                 <div className="metapart-mono cmdtext">
@@ -372,14 +604,17 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
             let usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
             height = 36 + usedRows;
         }
+        let formattedTime = lineutil.getLineDateTimeStr(line.ts);
         let mainDivCn = cn(
             "line",
             "line-cmd",
+            "line-simple",
             {"top-border": topBorder},
         );
         return (
             <div className={mainDivCn} ref={this.lineRef} data-lineid={line.lineid} data-linenum={line.linenum} data-screenid={line.screenid} style={{height: height}}>
-                <LineAvatar line={line} cmd={cmd}/>
+                <SmallLineAvatar line={line} cmd={cmd}/>
+                <div className="ts">{formattedTime}</div>
             </div>
         );
     }
@@ -396,16 +631,39 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         }
     }
 
+    renderMeta1(cmd : Cmd) {
+        let {line} = this.props;
+        let termOpts = cmd.getTermOpts();
+        let formattedTime = lineutil.getLineDateTimeStr(line.ts);
+        let renderer = line.renderer;
+        return (
+            <div key="meta1" className="meta meta-line1">
+                <SmallLineAvatar line={line} cmd={cmd}/>
+                <div className="ts">{formattedTime}</div>
+                <div>&nbsp;</div>
+                <If condition={!isBlank(renderer) && renderer != "terminal"}>
+                    <div className="renderer"><i className="fa-sharp fa-solid fa-fill"/>{renderer}&nbsp;</div>
+                </If>
+                <div className="termopts">
+                    ({termOpts.rows}x{termOpts.cols})
+                </div>
+                <div className="settings" onClick={this.handleLineSettings}>
+                    <i className="fa-sharp fa-solid fa-gear"/>
+                </div>
+            </div>
+        );
+    }
+
     renderMetaWrap(cmd : Cmd) {
         let {line} = this.props;
         let model = GlobalModel;
         let formattedTime = lineutil.getLineDateTimeStr(line.ts);
         let termOpts = cmd.getTermOpts();
-        let remote = model.getRemote(cmd.remoteId);
         let renderer = line.renderer;
         return (
             <div key="meta" className="meta-wrap">
                 <div key="meta1" className="meta meta-line1">
+                    <SmallLineAvatar line={line} cmd={cmd}/>
                     <div className="ts">{formattedTime}</div>
                     <div>&nbsp;</div>
                     <If condition={!isBlank(renderer) && renderer != "terminal"}>
@@ -418,7 +676,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
                         <i className="fa-sharp fa-solid fa-gear"/>
                     </div>
                 </div>
-                {this.renderCmdText(cmd, remote)}
+                {this.renderCmdText(cmd)}
             </div>
         );
     }
@@ -517,8 +775,10 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
                  data-lineid={line.lineid} data-linenum={line.linenum} data-screenid={line.screenid} data-cmdid={line.cmdid}>
                 <div key="focus" className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused})}/>
                 <div key="header" className={cn("line-header", {"is-expanded": isExpanded})}>
-                    <LineAvatar line={line} cmd={cmd} onRightClick={this.onAvatarRightClick}/>
-                    {this.renderMetaWrap(cmd)}
+                    <div key="meta" className="meta-wrap">
+                        {this.renderMeta1(cmd)}
+                        {this.renderCmdText(cmd)}
+                    </div>
                     <div key="pin" title="Pin" className={cn("line-icon", {"active": line.pinned})} onClick={this.clickPin} style={{display: "none"}}>
                         <i className="fa-sharp fa-solid fa-thumbtack"/>
                     </div>
@@ -565,8 +825,11 @@ class Line extends React.Component<{screen : LineContainerModel, line : LineType
         if (line.linetype == "text") {
             return <LineText {...this.props}/>;
         }
-        if (line.linetype == "cmd" || line.linetype == "openai") {
+        if (line.linetype == "cmd") {
             return <LineCmd {...this.props}/>;
+        }
+        if (line.linetype == "openai") {
+            return <LineOpenAI {...this.props}/>;
         }
         return <div className="line line-invalid">[invalid line type '{line.linetype}']</div>;
     }
@@ -661,9 +924,9 @@ class LineText extends React.Component<{screen : LineContainerModel, line : Line
         return (
             <div className={mainClass} data-lineid={line.lineid} data-linenum={line.linenum} data-screenid={line.screenid} onClick={this.clickHandler}>
                 <div className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused})}/>
-                <LineAvatar line={line} cmd={null} onRightClick={this.onAvatarRightClick}/>
                 <div className="line-content">
                     <div className="meta">
+                        <SmallLineAvatar line={line} cmd={null} onRightClick={this.onAvatarRightClick}/>
                         <div className="ts">{formattedTime}</div>
                     </div>
                     <div className="text">
