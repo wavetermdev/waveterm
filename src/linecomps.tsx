@@ -274,7 +274,7 @@ class LineOpenAI extends React.Component<{screen : LineContainerModel, line : Li
         }
         return (
             <div className="openai-message">
-                <span className="openai-role">[user]</span>
+                <span className="openai-role openai-role-user">[user]</span>
                 <div className="openai-content">{cmdStr}</div>
             </div>
         );
@@ -284,7 +284,7 @@ class LineOpenAI extends React.Component<{screen : LineContainerModel, line : Li
         let output = "...\nhello\nmore";
         return (
             <div className="openai-message">
-                <div className="openai-role">[assistant]</div>
+                <div className="openai-role openai-role-assistant">[assistant]</div>
                 <div className="openai-content">{output}</div>
             </div>
         );

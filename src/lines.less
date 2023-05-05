@@ -45,9 +45,13 @@
         justify-content: flex-start;
         
         .openai-role {
-            color: @term-green;
+            color: @term-bright-green;
             font-weight: bold;
             width: 100px;
+        }
+
+        .openai-role.openai-role-assistant {
+            color: @term-bright-white;
         }
 
         .openai-content {
@@ -72,6 +76,10 @@
         flex-direction: row;
         height: 36px;
         width: 100%;
+
+        &.is-expanded {
+            height: auto;
+        }
 
         .line-icon {
             display: block;
@@ -438,7 +446,7 @@
         margin-top: 2px;
         padding-left: 6px;
         overflow-y: auto;
-        max-height: 54px;
+        max-height: 60px;
         border-left: 2px solid #333;
         margin-left: 3px;
 
