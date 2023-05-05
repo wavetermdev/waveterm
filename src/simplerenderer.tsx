@@ -5,7 +5,7 @@ import {sprintf} from "sprintf-js";
 import {boundMethod} from "autobind-decorator";
 import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
 import type {RendererModelInitializeParams, TermOptsType, RendererContext, RendererOpts, SimpleBlobRendererComponent, RendererModelContainerApi, RendererPluginType, PtyDataType, RendererModel, RendererOptsUpdate, LineType, TermContextUnion, RendererContainerType} from "./types";
-import {PtyDataBuffer} from "./ptydata";
+import {PacketDataBuffer} from "./ptydata";
 import {debounce, throttle} from "throttle-debounce";
 
 type OV<V> = mobx.IObservableValue<V>;
@@ -20,13 +20,8 @@ class SimpleBlobRendererModel {
     loading : OV<boolean>;
     loadError : OV<string> = mobx.observable.box(null, {name: "renderer-loadError"});
     ptyData : PtyDataType;
-    updateHeight_debounced : (newHeight : number) => void;
     ptyDataSource : (termContext : TermContextUnion) => Promise<PtyDataType>;
     
-    constructor() {
-        this.updateHeight_debounced = debounce(1000, this.updateHeight.bind(this));
-    }
-
     initialize(params : RendererModelInitializeParams) : void {
         this.loading = mobx.observable.box(true, {name: "renderer-loading"});
         this.isDone = mobx.observable.box(params.isDone, {name: "renderer-isDone"});
@@ -104,6 +99,7 @@ class SimpleBlobRenderer extends React.Component<{rendererContainer : RendererCo
     model : SimpleBlobRendererModel;
     wrapperDivRef : React.RefObject<any> = React.createRef();
     rszObs : ResizeObserver;
+    updateHeight_debounced : (newHeight : number) => void;
 
     constructor(props : any) {
         super(props);
@@ -111,6 +107,11 @@ class SimpleBlobRenderer extends React.Component<{rendererContainer : RendererCo
         this.model = new SimpleBlobRendererModel();
         this.model.initialize(initParams);
         rendererContainer.registerRenderer(cmdId, this.model);
+        this.updateHeight_debounced = debounce(1000, this.updateHeight.bind(this));
+    }
+
+    updateHeight(newHeight : number) : void {
+        this.model.updateHeight(newHeight);
     }
 
     handleResize(entries : ResizeObserverEntry[]) : void {
@@ -122,7 +123,7 @@ class SimpleBlobRenderer extends React.Component<{rendererContainer : RendererCo
         }
         if (!this.model.loading.get() && this.wrapperDivRef.current != null) {
             let height = this.wrapperDivRef.current.offsetHeight;
-            this.model.updateHeight_debounced(height);
+            this.updateHeight_debounced(height);
         }
     }
 
@@ -161,11 +162,17 @@ class SimpleBlobRenderer extends React.Component<{rendererContainer : RendererCo
             let height = this.model.savedHeight;
             return (<div ref={this.wrapperDivRef} style={{minHeight: height}}>...</div>);
         }
-        let Comp = plugin.component;
+        let Comp = plugin.simpleComponent;
+        if (Comp == null) {
+            <div ref={this.wrapperDivRef}>
+                (no component found in plugin)
+            </div>
+        }
         let dataBlob = new Blob([model.ptyData.data]);
+        let simpleModel = (model as SimpleBlobRendererModel);
         return (
             <div ref={this.wrapperDivRef}>
-                <Comp data={dataBlob} context={model.context} opts={model.opts} savedHeight={this.model.savedHeight}/>
+                <Comp data={dataBlob} context={simpleModel.context} opts={simpleModel.opts} savedHeight={simpleModel.savedHeight}/>
             </div>
         );
     }

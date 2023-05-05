@@ -225,6 +225,7 @@ type CmdDataType = {
     cmdid : string,
     remote : RemotePtrType,
     cmdstr : string,
+    rawcmdstr : string,
     festate : Record<string, string>,
     termopts : TermOptsType,
     origtermopts : TermOptsType,
@@ -381,12 +382,14 @@ type RendererPluginType = {
     name : string,
     rendererType : "simple" | "full",
     heightType : "rows" | "pixels",
-    dataType : "json" | "blob" | "packet",
+    dataType : "json" | "blob" | "model",
     collapseType : "hide" | "remove",
+    hidePrompt? : boolean,
     globalCss? : string,
     mimeTypes? : string[],
-    modelCtor? : RendererModel,
-    component : SimpleBlobRendererComponent,
+    modelCtor? : () => RendererModel,
+    simpleComponent? : SimpleBlobRendererComponent,
+    fullComponent? : FullRendererComponent,
 }
 
 type RendererModelContainerApi = {
@@ -398,6 +401,7 @@ type RendererModelContainerApi = {
 type RendererModelInitializeParams = {
     context : RendererContext,
     isDone : boolean,
+    rawCmd : WebCmd,
     savedHeight : number,
     opts : RendererOpts,
     api : RendererModelContainerApi,
@@ -412,7 +416,8 @@ type RendererModel = {
     updateOpts : (opts : RendererOptsUpdate) => void,
     setIsDone : () => void,
     receiveData : (pos : number, data : Uint8Array, reason? : string) => void,
-};
+    updateHeight : (newHeight : number) => void,
+ };
 
 type SimpleBlobRendererComponent = React.ComponentType<{data : Blob, context : RendererContext, opts : RendererOpts, savedHeight : number}>;
 type SimpleJsonRendererComponent = React.ComponentType<{data : any, context : RendererContext, opts : RendererOpts, savedHeight : number}>;
@@ -523,7 +528,7 @@ type WebRemote = {
 };
 
 type WebCmd = {
-    screeid : string,
+    screenid : string,
     lineid : string,
     remote : WebRemote,
     cmdstr : string,
@@ -589,5 +594,15 @@ type CommandRtnType = {
 };
 
 type LineHeightChangeCallbackType = (lineNum : number, newHeight : number, oldHeight : number) => void;
+
+type OpenAIPacketType = {
+    type : string,
+    model : string,
+    created : number,
+    finish_reason : string,
+    usage : Record<string, number>,
+    index : number,
+    text : string,
+};
 
 export type {SessionDataType, LineType, RemoteType, RemoteStateType, RemoteInstanceType, HistoryItem, CmdRemoteStateType, FeCmdPacketType, TermOptsType, CmdStartPacketType, CmdDataType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, RemotePtrType, UIContextType, HistoryInfoType, HistoryQueryOpts, WatchScreenPacketType, TermWinSize, FeInputPacketType, RemoteInputPacketType, RemoteEditType, ContextMenuOpts, RendererContext, WindowSize, RendererModel, PtyDataType, BookmarkType, ClientDataType, PlaybookType, PlaybookEntryType, HistoryViewDataType, RenderModeType, AlertMessageType, HistorySearchParams, ScreenLinesType, FocusTypeStrs, HistoryTypeStrs, RendererOpts, RendererPluginType, SimpleBlobRendererComponent, RendererModelContainerApi, RendererModelInitializeParams, RendererOptsUpdate, ClientMigrationInfo, WebShareOpts, RemoteStatusTypeStrs, WebFullScreen, WebScreen, WebLine, WebCmd, RemoteTermContext, TermContextUnion, WebRemote, PtyDataUpdate, WebShareWSMessage, LineHeightChangeCallbackType, LineFactoryProps, LineInterface, RendererContainerType, RemoteViewType, CommandRtnType};

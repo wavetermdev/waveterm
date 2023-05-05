@@ -21,46 +21,6 @@
     }
 }
 
-.line.line-openai {
-    flex-direction: column;
-    position: relative;
-
-    .line-header {
-        display: flex;
-        flex-direction: row;
-        height: 18px;
-        width: 100%;
-
-        .line-icon {
-            display: block;
-            cursor: pointer;
-            padding: 3px;
-            font-size: 1.5rem;
-        }
-    }
-
-    .openai-message {
-        display: flex;
-        flex-direction: row;
-        justify-content: flex-start;
-        
-        .openai-role {
-            color: @term-bright-green;
-            font-weight: bold;
-            width: 100px;
-        }
-
-        .openai-role.openai-role-assistant {
-            color: @term-bright-white;
-        }
-
-        .openai-content {
-            white-space: pre;
-            color: white;
-        }
-    }
-}
-
 .line.line-cmd {
     flex-direction: column;
     scroll-margin-bottom: 20px;
@@ -79,6 +39,10 @@
 
         &.is-expanded {
             height: auto;
+        }
+
+        &.hide-prompt {
+            height: 16px;
         }
 
         .line-icon {

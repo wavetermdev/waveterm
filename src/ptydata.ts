@@ -63,12 +63,17 @@ const NewLineCharCode = "\n".charCodeAt(0);
 
 class PacketDataBuffer extends PtyDataBuffer {
     parsePos : number;
-    packets : OArr<Object>;
+    callback : (any) => void;
 
-    constructor() {
+    constructor(callback : (any) => void) {
         super();
         this.parsePos = 0;
-        this.packets = mobx.observable.array([], {name: "packets"});
+        this.callback = callback;
+    }
+
+    reset() : void {
+        super.reset();
+        this.parsePos = 0;
     }
 
     processLine(line : string) {
@@ -94,7 +99,7 @@ class PacketDataBuffer extends PtyDataBuffer {
         }
         try {
             let packet = JSON.parse(packetStr);
-            this.packets.push(packet);
+            this.callback(packet);
         }
         catch (e) {
             console.log("invalid line packet (bad json)", line);

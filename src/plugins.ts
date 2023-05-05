@@ -2,6 +2,7 @@ import {RendererPluginType} from "./types";
 import {SimpleImageRenderer} from "./view/image";
 import {SimpleMarkdownRenderer} from "./view/markdown";
 import {SimpleJsonRenderer} from "./view/json";
+import {OpenAIRenderer, OpenAIRendererModel} from "./view/openai";
 import {isBlank} from "./util";
 import {sprintf} from "sprintf-js";
 
@@ -13,7 +14,7 @@ const ImagePlugin : RendererPluginType = {
     collapseType: "hide",
     globalCss: null,
     mimeTypes: ["image/*"],
-    component: SimpleImageRenderer,
+    simpleComponent: SimpleImageRenderer,
 };
 
 const MarkdownPlugin : RendererPluginType = {
@@ -24,7 +25,7 @@ const MarkdownPlugin : RendererPluginType = {
     collapseType: "hide",
     globalCss: null,
     mimeTypes: ["text/markdown"],
-    component: SimpleMarkdownRenderer,
+    simpleComponent: SimpleMarkdownRenderer,
 };
 
 const JsonPlugin : RendererPluginType = {
@@ -35,7 +36,20 @@ const JsonPlugin : RendererPluginType = {
     collapseType: "hide",
     globalCss: null,
     mimeTypes: ["application/json"],
-    component: SimpleJsonRenderer,
+    simpleComponent: SimpleJsonRenderer,
+};
+
+const OpenAIPlugin : RendererPluginType = {
+    name: "openai",
+    rendererType: "full",
+    heightType: "pixels",
+    dataType: "model",
+    collapseType: "remove",
+    hidePrompt: true,
+    globalCss: null,
+    mimeTypes: ["application/json"],
+    fullComponent: OpenAIRenderer,
+    modelCtor: () => new OpenAIRendererModel(),
 };
 
 class PluginModelClass {
@@ -72,6 +86,7 @@ if ((window as any).PluginModel == null) {
     PluginModel.registerRendererPlugin(ImagePlugin);
     PluginModel.registerRendererPlugin(MarkdownPlugin);
     PluginModel.registerRendererPlugin(JsonPlugin);
+    PluginModel.registerRendererPlugin(OpenAIPlugin);
     (window as any).PluginModel = PluginModel;
 }
 

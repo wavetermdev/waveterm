@@ -260,3 +260,30 @@ input[type=checkbox] {
         padding: 4px 4px 4px 6px;
     }
 }
+
+.openai-renderer {
+    .openai-message {
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+        
+        .openai-role {
+            color: @term-bright-green;
+            font-weight: bold;
+            width: 100px;
+        }
+
+        .openai-role.openai-role-assistant {
+            color: @term-bright-white;
+        }
+
+        .openai-content-user {
+            white-space: pre;
+            color: white;
+        }
+
+        .openai-content-assistant {
+            color: white;
+        }
+    }
+}

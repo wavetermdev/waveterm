@@ -5,7 +5,7 @@ import {debounce} from "throttle-debounce";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeDataMap, genMergeSimpleData, boundInt, isModKeyPress} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType, HistoryViewDataType, AlertMessageType, HistorySearchParams, FocusTypeStrs, ScreenLinesType, HistoryTypeStrs, RendererPluginType, WindowSize, ClientMigrationInfo, WebShareOpts, TermContextUnion, RemoteEditType, RemoteViewType, CommandRtnType} from "./types";
+import type {SessionDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType, HistoryViewDataType, AlertMessageType, HistorySearchParams, FocusTypeStrs, ScreenLinesType, HistoryTypeStrs, RendererPluginType, WindowSize, ClientMigrationInfo, WebShareOpts, TermContextUnion, RemoteEditType, RemoteViewType, CommandRtnType, WebCmd, WebRemote} from "./types";
 import {WSControl} from "./ws";
 import {measureText, getMonoFontSize, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows} from "./textmeasure";
 import dayjs from "dayjs";
@@ -139,7 +139,6 @@ function ces(s : string) {
 class Cmd {
     screenId : string;
     remote : RemotePtrType;
-    remoteId : string;
     cmdId : string;
     data : OV<CmdDataType>;
 
@@ -158,6 +157,38 @@ class Cmd {
                 GlobalModel.cmdStatusUpdate(this.screenId, this.cmdId, origData.status, cmd.status);
             }
         })();
+    }
+
+    getAsWebCmd(lineid : string) : WebCmd {
+        let cmd = this.data.get();
+        let remote = GlobalModel.getRemote(this.remote.remoteid);
+        let webRemote : WebRemote = null;
+        if (remote != null) {
+            webRemote = {
+                remoteid: cmd.remote.remoteid,
+                alias: remote.remotealias,
+                canonicalname: remote.remotecanonicalname,
+                name: this.remote.name,
+                homedir: remote.remotevars["home"],
+                isroot: !!remote.remotevars["isroot"],
+            }
+        }
+        let webCmd : WebCmd = {
+            screenid: cmd.screenid,
+            lineid: lineid,
+            remote: webRemote,
+            status: cmd.status,
+            cmdstr: cmd.cmdstr,
+            rawcmdstr: cmd.rawcmdstr,
+            festate: cmd.festate,
+            termopts: cmd.termopts,
+            startpk: cmd.startpk,
+            doneinfo: cmd.doneinfo,
+            rtnstate: cmd.rtnstate,
+            vts: 0,
+            rtnstatestr: null,
+        };
+        return webCmd;
     }
 
     getRtnState() : boolean {
