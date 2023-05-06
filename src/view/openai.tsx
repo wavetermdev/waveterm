@@ -193,8 +193,12 @@ class OpenAIRenderer extends React.Component<{model : OpenAIRendererModel}> {
     render() {
         let model : OpenAIRendererModel = this.props.model;
         let cmd = model.rawCmd;
+        let styleVal : Record<string, any> = null;
+        if (model.loading.get() && model.savedHeight >= 0) {
+            styleVal = {height: model.savedHeight};
+        }
         return (
-            <div className="renderer-container openai-renderer">
+            <div className="renderer-container openai-renderer" style={styleVal}>
                 {this.renderPrompt(cmd)}
                 {this.renderOutput(cmd)}
             </div>

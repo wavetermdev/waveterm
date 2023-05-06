@@ -384,16 +384,14 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
     getTerminalRendererHeight(cmd : Cmd) : number {
         let {screen, line, width, topBorder, renderMode} = this.props;
         // header is 36px tall, padding+border = 6px
-        // header is 16px tall with hide-prompt, padding+border = 6px
         // zero-terminal is 0px
         // terminal-wrapper overhead is 11px (margin/padding)
         // inner-height, if zero-lines => 42
         //               else: 53+(lines*lineheight)
-        let hidePrompt = this.getIsHidePrompt();
-        let height = (hidePrompt ? 22 : 42); // height of zero height terminal
+        let height = 36 + 6; // height of zero height terminal
         let usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
         if (usedRows > 0) {
-            height = 53 + termHeightFromRows(usedRows, GlobalModel.termFontSize.get());
+            height = 36 + 6 + 11 + termHeightFromRows(usedRows, GlobalModel.termFontSize.get());
         }
         return height;
     }
@@ -421,9 +419,11 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
             height = this.getTerminalRendererHeight(cmd);
         }
         else {
+            // header is 16px tall with hide-prompt, 36px otherwise
             let {screen, line, width} = this.props;
+            let hidePrompt = this.getIsHidePrompt();
             let usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
-            height = 36 + usedRows;
+            height = (hidePrompt ? 16 + 6 : 36 + 6) + usedRows;
         }
         let formattedTime = lineutil.getLineDateTimeStr(line.ts);
         let mainDivCn = cn(
