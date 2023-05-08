@@ -144,6 +144,7 @@ func HandleGetClientData(w http.ResponseWriter, r *http.Request) {
 		WriteJsonError(w, err)
 		return
 	}
+	cdata = cdata.Clean()
 	mdata, err := sstore.GetCmdMigrationInfo(r.Context())
 	if err != nil {
 		WriteJsonError(w, err)
@@ -367,6 +368,9 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		WriteJsonError(w, err)
 		return
+	}
+	if update != nil {
+		update.Clean()
 	}
 	WriteJsonSuccess(w, update)
 	return

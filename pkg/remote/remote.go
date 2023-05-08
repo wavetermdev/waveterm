@@ -622,6 +622,9 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		vars["bestname"] = vars["bestuser"] + "@" + vars["besthost"]
 		vars["bestshortname"] = vars["bestuser"] + "@" + vars["bestshorthost"]
 	}
+	if vars["remoteuser"] == "root" || vars["sudo"] == "1" {
+		vars["isroot"] = "1"
+	}
 	state.RemoteVars = vars
 	return state
 }
@@ -1627,7 +1630,7 @@ func (msh *MShellProc) notifyHangups_nolock() {
 		if err != nil {
 			continue
 		}
-		update := sstore.ModelUpdate{Cmd: cmd}
+		update := &sstore.ModelUpdate{Cmd: cmd}
 		sstore.MainBus.SendScreenUpdate(ck.GetGroupId(), update)
 	}
 	msh.RunningCmds = make(map[base.CommandKey]RunCmdType)

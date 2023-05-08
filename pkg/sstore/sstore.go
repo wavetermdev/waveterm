@@ -38,6 +38,7 @@ const DefaultSessionName = "default"
 const LocalRemoteAlias = "local"
 
 const DefaultCwd = "~"
+const APITokenSentinel = "--apitoken--"
 
 const (
 	LineTypeCmd    = "cmd"
@@ -259,9 +260,29 @@ type ClientData struct {
 	CmdStoreType        string               `json:"cmdstoretype"`
 	Migration           *ClientMigrationData `json:"migration,omitempty" dbmap:"-"`
 	DBVersion           int                  `json:"dbversion" dbmap:"-"`
+	OpenAIOpts          *OpenAIOptsType      `json:"openaiopts,omitempty" dbmap:"openaiopts"`
 }
 
 func (ClientData) UseDBMap() {}
+
+func (cdata *ClientData) Clean() *ClientData {
+	if cdata == nil {
+		return nil
+	}
+	rtn := *cdata
+	if rtn.OpenAIOpts != nil {
+		rtn.OpenAIOpts = &OpenAIOptsType{
+			Model:      cdata.OpenAIOpts.Model,
+			MaxTokens:  cdata.OpenAIOpts.MaxTokens,
+			MaxChoices: cdata.OpenAIOpts.MaxChoices,
+			// omit API Token
+		}
+		if cdata.OpenAIOpts.APIToken != "" {
+			rtn.OpenAIOpts.APIToken = APITokenSentinel
+		}
+	}
+	return &rtn
+}
 
 type SessionType struct {
 	SessionId      string            `json:"sessionid"`

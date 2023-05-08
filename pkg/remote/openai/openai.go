@@ -13,6 +13,8 @@ import (
 
 // https://github.com/tiktoken-go/tokenizer
 
+const DefaultMaxTokens = 1000
+const DefaultModel = "gpt-3.5-turbo"
 const DefaultStreamChanSize = 10
 
 func convertUsage(resp openaiapi.ChatCompletionResponse) *packet.OpenAIUsageType {
@@ -141,7 +143,7 @@ func marshalResponse(resp openaiapi.ChatCompletionResponse) []*packet.OpenAIPack
 
 func CreateErrorPacket(errStr string) *packet.OpenAIPacketType {
 	errPk := packet.MakeOpenAIPacket()
-	errPk.Text = errStr
-	errPk.FinishReason = "stop"
+	errPk.FinishReason = "error"
+	errPk.Error = errStr
 	return errPk
 }

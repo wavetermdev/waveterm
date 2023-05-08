@@ -53,6 +53,8 @@ const MaxCommandLen = 4096
 const MaxSignalLen = 12
 const MaxSignalNum = 64
 const MaxEvalDepth = 5
+const MaxOpenAIAPITokenLen = 100
+const MaxOpenAIModelLen = 100
 
 const (
 	KwArgRenderer = "renderer"
@@ -200,7 +202,6 @@ func init() {
 	registerCmdFn("bookmark:delete", BookmarkDeleteCommand)
 
 	registerCmdFn("openai", OpenAICommand)
-	registerCmdFn("openai:stream", OpenAICommand)
 
 	registerCmdFn("_killserver", KillServerCommand)
 
@@ -613,7 +614,7 @@ func ScreenArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		if err != nil {
 			return nil, fmt.Errorf("/screen:archive cannot get updated screen obj: %v", err)
 		}
-		update := sstore.ModelUpdate{
+		update := &sstore.ModelUpdate{
 			Screens: []*sstore.ScreenType{screen},
 		}
 		return update, nil
@@ -759,7 +760,7 @@ func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	if !setNonAnchor {
 		return nil, nil
 	}
-	update := sstore.ModelUpdate{
+	update := &sstore.ModelUpdate{
 		Screens: []*sstore.ScreenType{screen},
 		Info: &sstore.InfoMsgType{
 			InfoMsg:   fmt.Sprintf("screen updated %s", formatStrs(varsUpdated, "and", false)),
@@ -798,7 +799,7 @@ func RemoteInstallCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	}
 	mshell := ids.Remote.MShell
 	go mshell.RunInstall()
-	return sstore.ModelUpdate{
+	return &sstore.ModelUpdate{
 		RemoteView: &sstore.RemoteViewType{
 			PtyRemoteId: ids.Remote.RemotePtr.RemoteId,
 		},
@@ -812,7 +813,7 @@ func RemoteInstallCancelCommand(ctx context.Context, pk *scpacket.FeCommandPacke
 	}
 	mshell := ids.Remote.MShell
 	go mshell.CancelInstall()
-	return sstore.ModelUpdate{
+	return &sstore.ModelUpdate{
 		RemoteView: &sstore.RemoteViewType{
 			PtyRemoteId: ids.Remote.RemotePtr.RemoteId,
 		},
@@ -825,7 +826,7 @@ func RemoteConnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		return nil, err
 	}
 	go ids.Remote.MShell.Launch(true)
-	return sstore.ModelUpdate{
+	return &sstore.ModelUpdate{
 		RemoteView: &sstore.RemoteViewType{
 			PtyRemoteId: ids.Remote.RemotePtr.RemoteId,
 		},
@@ -839,7 +840,7 @@ func RemoteDisconnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketTy
 	}
 	force := resolveBool(pk.Kwargs["force"], false)
 	go ids.Remote.MShell.Disconnect(force)
-	return sstore.ModelUpdate{
+	return &sstore.ModelUpdate{
 		RemoteView: &sstore.RemoteViewType{
 			PtyRemoteId: ids.Remote.RemotePtr.RemoteId,
 		},
@@ -853,7 +854,7 @@ func makeRemoteEditUpdate_new(err error) sstore.UpdatePacket {
 	if err != nil {
 		redit.ErrorStr = err.Error()
 	}
-	update := sstore.ModelUpdate{
+	update := &sstore.ModelUpdate{
 		RemoteView: &sstore.RemoteViewType{
 			RemoteEdit: redit,
 		},
@@ -880,7 +881,7 @@ func makeRemoteEditUpdate_edit(ids resolvedIds, err error) sstore.UpdatePacket {
 	if err != nil {
 		redit.ErrorStr = err.Error()
 	}
-	update := sstore.ModelUpdate{
+	update := &sstore.ModelUpdate{
 		RemoteView: &sstore.RemoteViewType{
 			RemoteEdit: redit,
 		},
@@ -1081,7 +1082,7 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		return makeRemoteEditErrorReturn_new(visualEdit, fmt.Errorf("cannot create remote %q: %v", r.RemoteCanonicalName, err))
 	}
 	// SUCCESS
-	return sstore.ModelUpdate{
+	return &sstore.ModelUpdate{
 		RemoteView: &sstore.RemoteViewType{
 			PtyRemoteId: r.RemoteId,
 		},
@@ -1110,13 +1111,13 @@ func RemoteSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		return makeRemoteEditErrorReturn_edit(ids, visualEdit, fmt.Errorf("/remote:new error updating remote: %v", err))
 	}
 	if visualEdit {
-		return sstore.ModelUpdate{
+		return &sstore.ModelUpdate{
 			RemoteView: &sstore.RemoteViewType{
 				PtyRemoteId: ids.Remote.RemoteCopy.RemoteId,
 			},
 		}, nil
 	}
-	update := sstore.ModelUpdate{
+	update := &sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			InfoMsg:   fmt.Sprintf("remote %q updated", ids.Remote.DisplayName),
 			TimeoutMs: 2000,
@@ -1131,7 +1132,7 @@ func RemoteShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 		return nil, err
 	}
 	state := ids.Remote.RState
-	return sstore.ModelUpdate{
+	return &sstore.ModelUpdate{
 		RemoteView: &sstore.RemoteViewType{
 			PtyRemoteId: state.RemoteId,
 		},
@@ -1150,7 +1151,7 @@ func RemoteShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		}
 		buf.WriteString(fmt.Sprintf("%-12s %-5s %8s  %s\n", rstate.Status, rstate.RemoteType, rstate.RemoteId[0:8], name))
 	}
-	return sstore.ModelUpdate{
+	return &sstore.ModelUpdate{
 		RemoteView: &sstore.RemoteViewType{
 			RemoteShowAll: true,
 		},
@@ -1176,7 +1177,7 @@ func ScreenShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		outStr := fmt.Sprintf("%-30s %s  %s\n", screen.Name+archivedStr, screen.ScreenId, screenIdxStr)
 		buf.WriteString(outStr)
 	}
-	return sstore.ModelUpdate{
+	return &sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			InfoTitle: fmt.Sprintf("all screens for session"),
 			InfoLines: splitLinesForInfo(buf.String()),
@@ -1289,7 +1290,7 @@ func crShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, ids re
 		}
 		buf.WriteString(fmt.Sprintf("%-30s %-50s (default)\n", msh.GetDisplayName(), cwdStr))
 	}
-	update := sstore.ModelUpdate{
+	update := &sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			InfoLines: splitLinesForInfo(buf.String()),
 		},
@@ -1452,10 +1453,19 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	if err != nil {
 		return nil, fmt.Errorf("/%s error: %w", GetCmdStr(pk), err)
 	}
-	opts := &sstore.OpenAIOptsType{
-		Model:     "gpt-3.5-turbo",
-		APIToken:  OpenAIKey,
-		MaxTokens: 1000,
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
+	}
+	if clientData.OpenAIOpts == nil || clientData.OpenAIOpts.APIToken == "" {
+		return nil, fmt.Errorf("no openai API token found, configure in client settings")
+	}
+	opts := clientData.OpenAIOpts
+	if opts.Model == "" {
+		opts.Model = openai.DefaultModel
+	}
+	if opts.MaxTokens == 0 {
+		opts.MaxTokens = openai.DefaultMaxTokens
 	}
 	promptStr := firstArg(pk)
 	if promptStr == "" {
@@ -1476,7 +1486,7 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		return nil, fmt.Errorf("cannot add new line: %v", err)
 	}
 	prompt := []sstore.OpenAIPromptMessageType{{Role: sstore.OpenAIRoleUser, Content: promptStr}}
-	if pk.MetaSubCmd == "stream" {
+	if resolveBool(pk.Kwargs["stream"], true) {
 		go doOpenAIStreamCompletion(cmd, opts, prompt)
 	} else {
 		go doOpenAICompletion(cmd, opts, prompt)
@@ -1490,7 +1500,7 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		// ignore error again (nothing to do)
 		log.Printf("/openai error updating screen selected line: %v\n", err)
 	}
-	update := sstore.ModelUpdate{Line: line, Cmd: cmd, Screens: []*sstore.ScreenType{screen}}
+	update := &sstore.ModelUpdate{Line: line, Cmd: cmd, Screens: []*sstore.ScreenType{screen}}
 	return update, nil
 }
 
@@ -1656,7 +1666,7 @@ func makeInfoFromComps(compType string, comps []string, hasMore bool) sstore.Upd
 	if len(comps) == 0 {
 		comps = []string{"(no completions)"}
 	}
-	update := sstore.ModelUpdate{
+	update := &sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			InfoTitle:     fmt.Sprintf("%s completions", compType),
 			InfoComps:     comps,
@@ -1786,7 +1796,7 @@ func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if newSP == nil || cmdSP == *newSP {
 		return nil, nil
 	}
-	update := sstore.ModelUpdate{
+	update := &sstore.ModelUpdate{
 		CmdLine: &sstore.CmdLineType{CmdLine: newSP.Str, CursorPos: newSP.Pos},
 	}
 	return update, nil
@@ -1814,7 +1824,7 @@ func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		// ignore error again (nothing to do)
 		log.Printf("/comment error updating screen selected line: %v\n", err)
 	}
-	update := sstore.ModelUpdate{Line: rtnLine, Screens: []*sstore.ScreenType{screen}}
+	update := &sstore.ModelUpdate{Line: rtnLine, Screens: []*sstore.ScreenType{screen}}
 	return update, nil
 }
 
@@ -2008,7 +2018,7 @@ func ScreenWebShareCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	if err != nil {
 		return nil, fmt.Errorf("cannot get updated screen: %v", err)
 	}
-	update := sstore.ModelUpdate{
+	update := &sstore.ModelUpdate{
 		Screens: []*sstore.ScreenType{screen},
 		Info: &sstore.InfoMsgType{
 			InfoMsg:      infoMsg,
@@ -2129,7 +2139,7 @@ func SessionShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "cmds", stats.NumCmds))
 	buf.WriteString(fmt.Sprintf("  %-15s %0.2fM\n", "disksize", float64(stats.DiskStats.TotalSize)/1000000))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "disk-location", stats.DiskStats.Location))
-	return sstore.ModelUpdate{
+	return &sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			InfoTitle: "session info",
 			InfoLines: splitLinesForInfo(buf.String()),
@@ -2155,7 +2165,7 @@ func SessionShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 		outStr := fmt.Sprintf("%-30s %s  %s\n", session.Name+archivedStr, session.SessionId, sessionIdxStr)
 		buf.WriteString(outStr)
 	}
-	return sstore.ModelUpdate{
+	return &sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			InfoTitle: "all sessions",
 			InfoLines: splitLinesForInfo(buf.String()),
@@ -2188,7 +2198,7 @@ func SessionSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 		return nil, fmt.Errorf("/session:set no updates, can set %s", formatStrs([]string{"name", "pos"}, "or", false))
 	}
 	bareSession, err := sstore.GetBareSessionById(ctx, ids.SessionId)
-	update := sstore.ModelUpdate{
+	update := &sstore.ModelUpdate{
 		Sessions: []*sstore.SessionType{bareSession},
 		Info: &sstore.InfoMsgType{
 			InfoMsg:   fmt.Sprintf("session updated %s", formatStrs(varsUpdated, "and", false)),
@@ -2215,7 +2225,7 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if err != nil {
 		return nil, err
 	}
-	update := sstore.ModelUpdate{
+	update := &sstore.ModelUpdate{
 		ActiveSessionId: ritem.Id,
 		Info: &sstore.InfoMsgType{
 			InfoMsg:   fmt.Sprintf("switched to session %q", ritem.Name),
@@ -2303,7 +2313,7 @@ func HistoryPurgeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	if err != nil {
 		return nil, fmt.Errorf("/history:purge error purging items: %v", err)
 	}
-	update := sstore.ModelUpdate{}
+	update := &sstore.ModelUpdate{}
 	for _, historyItem := range historyItemsRemoved {
 		if historyItem.LineId == "" {
 			continue
@@ -2405,7 +2415,7 @@ func HistoryViewAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	}
 	hvdata.Lines = lines
 	hvdata.Cmds = cmds
-	update := sstore.ModelUpdate{
+	update := &sstore.ModelUpdate{
 		HistoryViewData: hvdata,
 		MainView:        sstore.MainViewHistory,
 	}
@@ -2456,7 +2466,7 @@ func HistoryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 			log.Printf("error updating current activity (history): %v\n", err)
 		}
 	}
-	update := sstore.ModelUpdate{}
+	update := &sstore.ModelUpdate{}
 	update.History = &sstore.HistoryInfoType{
 		HistoryType: htype,
 		SessionId:   ids.SessionId,
@@ -2601,7 +2611,7 @@ func LineSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if err != nil {
 		return nil, fmt.Errorf("/line:set cannot retrieve updated line: %v", err)
 	}
-	update := sstore.ModelUpdate{
+	update := &sstore.ModelUpdate{
 		Line: updatedLine,
 		Info: &sstore.InfoMsgType{
 			InfoMsg:   fmt.Sprintf("line updated %s", formatStrs(varsUpdated, "and", false)),
@@ -2672,7 +2682,7 @@ func BookmarksShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	if err != nil {
 		log.Printf("error updating current activity (bookmarks): %v\n", err)
 	}
-	update := sstore.ModelUpdate{
+	update := &sstore.ModelUpdate{
 		MainView:  sstore.MainViewBookmarks,
 		Bookmarks: bms,
 	}
@@ -2709,7 +2719,7 @@ func BookmarkSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving edited bookmark: %v", err)
 	}
-	return sstore.ModelUpdate{
+	return &sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			InfoMsg: "bookmark edited",
 		},
@@ -2734,7 +2744,7 @@ func BookmarkDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 		return nil, fmt.Errorf("error deleting bookmark: %v", err)
 	}
 	bm := &sstore.BookmarkType{BookmarkId: bookmarkId, Remove: true}
-	return sstore.ModelUpdate{
+	return &sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			InfoMsg: "bookmark deleted",
 		},
@@ -2788,7 +2798,7 @@ func LineBookmarkCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 		newBmId = newBm.BookmarkId
 	}
 	bms, err := sstore.GetBookmarks(ctx, "")
-	update := sstore.ModelUpdate{
+	update := &sstore.ModelUpdate{
 		MainView:         sstore.MainViewBookmarks,
 		Bookmarks:        bms,
 		SelectedBookmark: newBmId,
@@ -2838,7 +2848,7 @@ func LineStarCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		// no line (which is strange given we checked for it above).  just return a nop.
 		return nil, nil
 	}
-	return sstore.ModelUpdate{Line: lineObj}, nil
+	return &sstore.ModelUpdate{Line: lineObj}, nil
 }
 
 func LineArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -2873,7 +2883,7 @@ func LineArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		// no line (which is strange given we checked for it above).  just return a nop.
 		return nil, nil
 	}
-	return sstore.ModelUpdate{Line: lineObj}, nil
+	return &sstore.ModelUpdate{Line: lineObj}, nil
 }
 
 func LinePurgeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -2899,7 +2909,7 @@ func LinePurgeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	if err != nil {
 		return nil, fmt.Errorf("/line:purge error purging lines: %v", err)
 	}
-	update := sstore.ModelUpdate{}
+	update := &sstore.ModelUpdate{}
 	for _, lineId := range lineIds {
 		lineObj := &sstore.LineType{
 			ScreenId: ids.ScreenId,
@@ -2975,7 +2985,7 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "file-data", fileDataStr))
 		}
 	}
-	update := sstore.ModelUpdate{
+	update := &sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			InfoTitle: fmt.Sprintf("line %d info", line.LineNum),
 			InfoLines: splitLinesForInfo(buf.String()),
@@ -3069,7 +3079,7 @@ func SignalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	if err != nil {
 		return nil, fmt.Errorf("cannot send signal: %v", err)
 	}
-	update := sstore.ModelUpdate{
+	update := &sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			InfoMsg: fmt.Sprintf("sent line %s signal %s", lineArg, sigArg),
 		},
@@ -3093,7 +3103,7 @@ func ClientCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 func ClientNotifyUpdateWriterCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	pcloud.ResetUpdateWriterNumFailures()
 	sstore.NotifyUpdateWriter()
-	update := sstore.ModelUpdate{
+	update := &sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			InfoMsg: fmt.Sprintf("notified update writer"),
 		},
@@ -3123,10 +3133,40 @@ func ClientAcceptTosCommand(ctx context.Context, pk *scpacket.FeCommandPacketTyp
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
 	}
-	update := sstore.ModelUpdate{
+	update := &sstore.ModelUpdate{
 		ClientData: clientData,
 	}
 	return update, nil
+}
+
+func validateOpenAIAPIToken(key string) error {
+	if len(key) == 0 {
+		return fmt.Errorf("invalid openai token, zero length")
+	}
+	if len(key) > MaxOpenAIAPITokenLen {
+		return fmt.Errorf("invalid openai token, too long")
+	}
+	for idx, ch := range key {
+		if !unicode.IsPrint(ch) {
+			return fmt.Errorf("invalid openai token, char at idx:%d is invalid %q", idx, string(ch))
+		}
+	}
+	return nil
+}
+
+func validateOpenAIModel(model string) error {
+	if len(model) == 0 {
+		return nil
+	}
+	if len(model) > MaxOpenAIModelLen {
+		return fmt.Errorf("invalid openai model, too long")
+	}
+	for idx, ch := range model {
+		if !unicode.IsPrint(ch) {
+			return fmt.Errorf("invalid openai model, char at idx:%d is invalid %q", idx, string(ch))
+		}
+	}
+	return nil
 }
 
 func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -3151,14 +3191,88 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		}
 		varsUpdated = append(varsUpdated, "termfontsize")
 	}
+	if apiToken, found := pk.Kwargs["openaiapitoken"]; found {
+		err = validateOpenAIAPIToken(apiToken)
+		if err != nil {
+			return nil, err
+		}
+		varsUpdated = append(varsUpdated, "openaiapitoken")
+		aiOpts := clientData.OpenAIOpts
+		if aiOpts == nil {
+			aiOpts = &sstore.OpenAIOptsType{}
+			clientData.OpenAIOpts = aiOpts
+		}
+		aiOpts.APIToken = apiToken
+		err = sstore.UpdateClientOpenAIOpts(ctx, *aiOpts)
+		if err != nil {
+			return nil, fmt.Errorf("error updating client openai api token: %v", err)
+		}
+	}
+	if aiModel, found := pk.Kwargs["openaimodel"]; found {
+		err = validateOpenAIModel(aiModel)
+		if err != nil {
+			return nil, err
+		}
+		varsUpdated = append(varsUpdated, "openaimodel")
+		aiOpts := clientData.OpenAIOpts
+		if aiOpts == nil {
+			aiOpts = &sstore.OpenAIOptsType{}
+			clientData.OpenAIOpts = aiOpts
+		}
+		aiOpts.Model = aiModel
+		err = sstore.UpdateClientOpenAIOpts(ctx, *aiOpts)
+		if err != nil {
+			return nil, fmt.Errorf("error updating client openai model: %v", err)
+		}
+	}
+	if maxTokensStr, found := pk.Kwargs["openaimaxtokens"]; found {
+		maxTokens, err := strconv.Atoi(maxTokensStr)
+		if err != nil {
+			return nil, fmt.Errorf("error updating client openai maxtokens, invalid number: %v", err)
+		}
+		if maxTokens < 0 || maxTokens > 1000000 {
+			return nil, fmt.Errorf("error updating client openai maxtokens, out of range: %d", maxTokens)
+		}
+		varsUpdated = append(varsUpdated, "openaimaxtokens")
+		aiOpts := clientData.OpenAIOpts
+		if aiOpts == nil {
+			aiOpts = &sstore.OpenAIOptsType{}
+			clientData.OpenAIOpts = aiOpts
+		}
+		aiOpts.MaxTokens = maxTokens
+		err = sstore.UpdateClientOpenAIOpts(ctx, *aiOpts)
+		if err != nil {
+			return nil, fmt.Errorf("error updating client openai maxtokens: %v", err)
+		}
+	}
+	if maxChoicesStr, found := pk.Kwargs["openaimaxchoices"]; found {
+		maxChoices, err := strconv.Atoi(maxChoicesStr)
+		if err != nil {
+			return nil, fmt.Errorf("error updating client openai maxchoices, invalid number: %v", err)
+		}
+		if maxChoices < 0 || maxChoices > 10 {
+			return nil, fmt.Errorf("error updating client openai maxchoices, out of range: %d", maxChoices)
+		}
+		varsUpdated = append(varsUpdated, "openaimaxchoices")
+		aiOpts := clientData.OpenAIOpts
+		if aiOpts == nil {
+			aiOpts = &sstore.OpenAIOptsType{}
+			clientData.OpenAIOpts = aiOpts
+		}
+		aiOpts.MaxChoices = maxChoices
+		err = sstore.UpdateClientOpenAIOpts(ctx, *aiOpts)
+		if err != nil {
+			return nil, fmt.Errorf("error updating client openai maxchoices: %v", err)
+		}
+	}
 	if len(varsUpdated) == 0 {
-		return nil, fmt.Errorf("/client:set requires a value to set: %s", formatStrs([]string{"termfontsize"}, "or", false))
+		return nil, fmt.Errorf("/client:set requires a value to set: %s", formatStrs([]string{"termfontsize", "openaiapitoken", "openaimodel", "openaimaxtokens", "openaimaxchoices"}, "or", false))
 	}
 	clientData, err = sstore.EnsureClientData(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
 	}
-	update := sstore.ModelUpdate{
+	update := &sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			InfoMsg:   fmt.Sprintf("client updated %s", formatStrs(varsUpdated, "and", false)),
 			TimeoutMs: 2000,
@@ -3189,7 +3303,7 @@ func ClientShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "client-version", clientVersion))
 	buf.WriteString(fmt.Sprintf("  %-15s %s %s\n", "server-version", scbase.PromptVersion, scbase.BuildTime))
 	buf.WriteString(fmt.Sprintf("  %-15s %s (%s)\n", "arch", scbase.ClientArch(), scbase.MacOSRelease()))
-	update := sstore.ModelUpdate{
+	update := &sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			InfoTitle: fmt.Sprintf("client info"),
 			InfoLines: splitLinesForInfo(buf.String()),
@@ -3273,7 +3387,7 @@ func TelemetryShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	}
 	var buf bytes.Buffer
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "telemetry", boolToStr(clientData.ClientOpts.NoTelemetry, "off", "on")))
-	update := sstore.ModelUpdate{
+	update := &sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			InfoTitle: fmt.Sprintf("telemetry info"),
 			InfoLines: splitLinesForInfo(buf.String()),

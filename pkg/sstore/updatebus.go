@@ -14,6 +14,7 @@ const UpdateChSize = 100
 
 type UpdatePacket interface {
 	UpdateType() string
+	Clean()
 }
 
 type PtyDataUpdate struct {
@@ -25,9 +26,11 @@ type PtyDataUpdate struct {
 	PtyDataLen int64  `json:"ptydatalen"`
 }
 
-func (PtyDataUpdate) UpdateType() string {
+func (*PtyDataUpdate) UpdateType() string {
 	return PtyDataUpdateStr
 }
+
+func (pdu *PtyDataUpdate) Clean() {}
 
 type ModelUpdate struct {
 	Sessions         []*SessionType   `json:"sessions,omitempty"`
@@ -52,8 +55,15 @@ type ModelUpdate struct {
 	RemoteView       *RemoteViewType  `json:"remoteview,omitempty"`
 }
 
-func (ModelUpdate) UpdateType() string {
+func (*ModelUpdate) UpdateType() string {
 	return ModelUpdateStr
+}
+
+func (update *ModelUpdate) Clean() {
+	if update == nil {
+		return
+	}
+	update.ClientData = update.ClientData.Clean()
 }
 
 type RemoteViewType struct {
@@ -63,7 +73,7 @@ type RemoteViewType struct {
 }
 
 func ReadHistoryDataFromUpdate(update UpdatePacket) (string, string, *RemotePtrType) {
-	modelUpdate, ok := update.(ModelUpdate)
+	modelUpdate, ok := update.(*ModelUpdate)
 	if !ok {
 		return "", "", nil
 	}
@@ -183,7 +193,11 @@ func (bus *UpdateBus) UnregisterChannel(clientId string) {
 	}
 }
 
-func (bus *UpdateBus) SendUpdate(update interface{}) {
+func (bus *UpdateBus) SendUpdate(update UpdatePacket) {
+	if update == nil {
+		return
+	}
+	update.Clean()
 	bus.Lock.Lock()
 	defer bus.Lock.Unlock()
 	for _, uch := range bus.Channels {
@@ -196,7 +210,11 @@ func (bus *UpdateBus) SendUpdate(update interface{}) {
 	}
 }
 
-func (bus *UpdateBus) SendScreenUpdate(screenId string, update interface{}) {
+func (bus *UpdateBus) SendScreenUpdate(screenId string, update UpdatePacket) {
+	if update == nil {
+		return
+	}
+	update.Clean()
 	bus.Lock.Lock()
 	defer bus.Lock.Unlock()
 	for _, uch := range bus.Channels {

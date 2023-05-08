@@ -624,6 +624,15 @@ func UpdateClientFeOpts(ctx context.Context, feOpts FeOptsType) error {
 	return txErr
 }
 
+func UpdateClientOpenAIOpts(ctx context.Context, aiOpts OpenAIOptsType) error {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `UPDATE client SET openaiopts = ?`
+		tx.Exec(query, quickJson(aiOpts))
+		return nil
+	})
+	return txErr
+}
+
 func containsStr(strs []string, testStr string) bool {
 	for _, s := range strs {
 		if s == testStr {
@@ -1076,7 +1085,7 @@ func ArchiveScreen(ctx context.Context, sessionId string, screenId string) (Upda
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrive archived screen: %w", err)
 	}
-	update := ModelUpdate{Screens: []*ScreenType{newScreen}}
+	update := &ModelUpdate{Screens: []*ScreenType{newScreen}}
 	if isActive {
 		bareSession, err := GetBareSessionById(ctx, sessionId)
 		if err != nil {
@@ -1151,7 +1160,7 @@ func PurgeScreen(ctx context.Context, screenId string, sessionDel bool) (UpdateP
 	if sessionDel {
 		return nil, nil
 	}
-	update := ModelUpdate{}
+	update := &ModelUpdate{}
 	update.Screens = []*ScreenType{&ScreenType{SessionId: sessionId, ScreenId: screenId, Remove: true}}
 	if isActive {
 		bareSession, err := GetBareSessionById(ctx, sessionId)
@@ -1521,7 +1530,7 @@ func PurgeSession(ctx context.Context, sessionId string) (UpdatePacket, error) {
 	if txErr != nil {
 		return nil, txErr
 	}
-	update := ModelUpdate{}
+	update := &ModelUpdate{}
 	if newActiveSessionId != "" {
 		update.ActiveSessionId = newActiveSessionId
 	}
