@@ -3606,20 +3606,36 @@ class CommandRunner {
         GlobalModel.submitCommand("history", "viewall", null, kwargs, true);
     }
 
-    telemetryOff() {
-        GlobalModel.submitCommand("telemetry", "off", null, {"nohist": "1"}, true);
+    telemetryOff(interactive : boolean) : Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("telemetry", "off", null, {"nohist": "1"}, interactive);
     }
 
-    telemetryOn() {
-        GlobalModel.submitCommand("telemetry", "on", null, {"nohist": "1"}, true);
+    telemetryOn(interactive : boolean) : Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("telemetry", "on", null, {"nohist": "1"}, interactive);
     }
 
-    setTermFontSize(fsize : number) {
+    setTermFontSize(fsize : number, interactive : boolean) : Promise<CommandRtnType> {
         let kwargs = {
             "nohist": "1",
             "termfontsize": String(fsize),
         };
-        GlobalModel.submitCommand("client", "set", null, kwargs, true);
+        return GlobalModel.submitCommand("client", "set", null, kwargs, interactive);
+    }
+
+    setClientOpenAISettings(opts : {model? : string, apitoken? : string, maxtokens? : string}) : Promise<CommandRtnType> {
+        let kwargs = {
+            "nohist": "1",
+        };
+        if (opts.model != null) {
+            kwargs["openaimodel"] = opts.model;
+        }
+        if (opts.apitoken != null) {
+            kwargs["openaiapitoken"] = opts.apitoken;
+        }
+        if (opts.maxtokens != null) {
+            kwargs["openaimaxtokens"] = opts.maxtokens;
+        }
+        return GlobalModel.submitCommand("client", "set", null, kwargs, false);
     }
 
     clientAcceptTos() : void {

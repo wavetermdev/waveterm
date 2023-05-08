@@ -34,11 +34,13 @@ class OpenAIRendererModel {
     packetData : PacketDataBuffer;
     rawCmd : T.WebCmd;
     output : OV<OpenAIOutputType>;
+    version : OV<number>;
     
     constructor() {
         this.updateHeight_debounced = debounce(1000, this.updateHeight.bind(this));
         this.packetData = new PacketDataBuffer(this.packetCallback);
         this.output = mobx.observable.box(null, {name: "openai-output"});
+        this.version = mobx.observable.box(0);
     }
 
     initialize(params : T.RendererModelInitializeParams) : void {
@@ -50,15 +52,22 @@ class OpenAIRendererModel {
         this.savedHeight = params.savedHeight;
         this.ptyDataSource = params.ptyDataSource;
         this.rawCmd = params.rawCmd;
-        if (this.isDone.get()) {
-            setTimeout(() => this.reload(0), 10);
-        }
+        setTimeout(() => this.reload(0), 10);
     }
 
     @boundMethod
     packetCallback(packetAny : any) {
         let packet : T.OpenAIPacketType = packetAny
         if (packet == null) {
+            return;
+        }
+        // console.log("got packet", packet);
+        if (packet.error != null) {
+            mobx.action(() => {
+                this.loadError.set(packet.error);
+                this.version.set(this.version.get()+1);
+                console.log("set error", this.loadError.get());
+            })();
             return;
         }
         if (packet.model != null && (packet.index ?? 0) == 0) {
@@ -75,12 +84,17 @@ class OpenAIRendererModel {
         }
         if ((packet.index ?? 0) == 0) {
             mobx.action(() => {
+                let output = this.output.get();
+                if (output == null) {
+                    return;
+                }
                 if (packet.finish_reason != null) {
                     this.output.get().finish_reason = packet.finish_reason;
                 }
                 if (packet.text != null) {
                     this.output.get().message += packet.text;
                 }
+                this.version.set(this.version.get()+1);
             })();
         }
     }
@@ -111,12 +125,13 @@ class OpenAIRendererModel {
         mobx.action(() => {
             this.isDone.set(true);
         })();
-        this.reload(0);
+        // this.reload(0);
     }
 
     reload(delayMs : number) : void {
         mobx.action(() => {
             this.loading.set(true);
+            this.loadError.set(null);
         })();
         let rtnp = this.ptyDataSource(this.context);
         if (rtnp == null) {
@@ -129,7 +144,6 @@ class OpenAIRendererModel {
                 this.receiveData(ptydata.pos, ptydata.data, "reload");
                 mobx.action(() => {
                     this.loading.set(false);
-                    this.loadError.set(null);
                 })();
             }, delayMs);
         }).catch((e) => {
@@ -165,6 +179,18 @@ class OpenAIRenderer extends React.Component<{model : OpenAIRendererModel}> {
         );
     }
 
+    renderError() {
+        let model : OpenAIRendererModel = this.props.model;
+        return (
+            <div className="openai-message">
+                <span className="openai-role openai-role-error">[error]</span>
+                <div className="openai-content-error">
+                    {model.loadError.get()}
+                </div>
+            </div>
+        );
+    }
+
     renderOutput(cmd : T.WebCmd) {
         let output = this.props.model.output.get();
         let message = "";
@@ -194,8 +220,20 @@ class OpenAIRenderer extends React.Component<{model : OpenAIRendererModel}> {
         let model : OpenAIRendererModel = this.props.model;
         let cmd = model.rawCmd;
         let styleVal : Record<string, any> = null;
-        if (model.loading.get() && model.savedHeight >= 0) {
+        if (model.loading.get() && model.savedHeight >= 0 && model.isDone) {
             styleVal = {height: model.savedHeight};
+        }
+        console.log("render again", mobx.toJS(model.output.get()));
+        let version = model.version.get();
+        let loadError = model.loadError.get();
+        console.log(model.context.lineNum, "got load error", loadError);
+        if (loadError != null) {
+            return (
+                <div className="renderer-container openai-renderer openai-error" style={styleVal}>
+                    {this.renderPrompt(cmd)}
+                    {this.renderError()}
+                </div>
+            );
         }
         return (
             <div className="renderer-container openai-renderer" style={styleVal}>

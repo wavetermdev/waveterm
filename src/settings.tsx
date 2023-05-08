@@ -18,6 +18,7 @@ type CV<V> = mobx.IComputedValue<V>;
 
 const RemotePtyRows = 8;
 const RemotePtyCols = 80;
+const APITokenSentinel = "--apitoken--";
 
 // @ts-ignore
 const VERSION = __PROMPT_VERSION__;
@@ -176,13 +177,6 @@ class ScreenSettingsModal extends React.Component<{sessionId : string, screenId 
         }
         let prtn = GlobalCommandRunner.screenSetSettings(this.props.screenId, {sharename: val}, false);
         commandRtnHandler(prtn, this.errorMessage);
-    }
-
-    @boundMethod
-    setErrorMessage(msg : string) : void {
-        mobx.action(() => {
-            this.errorMessage.set(msg);
-        })();
     }
 
     @boundMethod
@@ -408,13 +402,6 @@ class SessionSettingsModal extends React.Component<{sessionId : string}, {}> {
     }
 
     @boundMethod
-    setErrorMessage(msg : string) : void {
-        mobx.action(() => {
-            this.errorMessage.set(msg);
-        })();
-    }
-
-    @boundMethod
     dismissError() : void {
         mobx.action(() => {
             this.errorMessage.set(null);
@@ -610,14 +597,13 @@ class LineSettingsModal extends React.Component<{linenum : number}, {}> {
 @mobxReact.observer
 class ClientSettingsModal extends React.Component<{}, {}> {
     tempFontSize : OV<number>;
-    tempTelemetry : OV<boolean>;
     fontSizeDropdownActive : OV<boolean> = mobx.observable.box(false, {name: "clientSettings-fontSizeDropdownActive"});
+    errorMessage : OV<string> = mobx.observable.box(null, {name: "ClientSettings-errorMessage"});
 
     constructor(props : any) {
         super(props);
         let cdata = GlobalModel.clientData.get();
         this.tempFontSize = mobx.observable.box(GlobalModel.termFontSize.get(), {name: "clientSettings-tempFontSize"});
-        this.tempTelemetry = mobx.observable.box(!cdata.clientopts.notelemetry, {name: "clientSettings-telemetry"});
     }
     
     @boundMethod
@@ -628,31 +614,19 @@ class ClientSettingsModal extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    handleOK() : void {
+    dismissError() : void {
         mobx.action(() => {
-            GlobalModel.clientSettingsModal.set(false);
+            this.errorMessage.set(null);
         })();
-        let cdata = GlobalModel.clientData.get();
-        let curTel = !cdata.clientopts.notelemetry;
-        if (this.tempTelemetry.get() != curTel) {
-            if (this.tempTelemetry.get()) {
-                GlobalCommandRunner.telemetryOn();
-            }
-            else {
-                GlobalCommandRunner.telemetryOff();
-            }
-        }
-        if (GlobalModel.termFontSize.get() != this.tempFontSize.get()) {
-            GlobalCommandRunner.setTermFontSize(this.tempFontSize.get());
-        }
     }
 
     @boundMethod
     handleChangeFontSize(newFontSize : number) : void {
-        mobx.action(() => {
-            this.fontSizeDropdownActive.set(false);
-            this.tempFontSize.set(newFontSize);
-        })();
+        if (GlobalModel.termFontSize.get() == newFontSize) {
+            return;
+        }
+        let prtn = GlobalCommandRunner.setTermFontSize(newFontSize, false);
+        commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
@@ -664,9 +638,14 @@ class ClientSettingsModal extends React.Component<{}, {}> {
 
     @boundMethod
     handleChangeTelemetry(val : boolean) : void {
-        mobx.action(() => {
-            this.tempTelemetry.set(val);
-        })();
+        let prtn : Promise<CommandRtnType> = null;
+        if (val) {
+            prtn = GlobalCommandRunner.telemetryOn(false);
+        }
+        else {
+            prtn = GlobalCommandRunner.telemetryOff(false);
+        }
+        commandRtnHandler(prtn, this.errorMessage);
     }
 
     renderFontSizeDropdown() : any {
@@ -693,8 +672,36 @@ class ClientSettingsModal extends React.Component<{}, {}> {
         );
     }
 
+    @boundMethod
+    inlineUpdateOpenAIModel(newModel : string) : void {
+        let prtn = GlobalCommandRunner.setClientOpenAISettings({model: newModel});
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
+    inlineUpdateOpenAIToken(newToken : string) : void {
+        let prtn = GlobalCommandRunner.setClientOpenAISettings({apitoken: newToken});
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
+    inlineUpdateOpenAIMaxTokens(newMaxTokensStr : string) : void {
+        let prtn = GlobalCommandRunner.setClientOpenAISettings({maxtokens: newMaxTokensStr});
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
+    setErrorMessage(msg : string) : void {
+        mobx.action(() => {
+            this.errorMessage.set(msg);
+        })();
+    }
+
     render() {
         let cdata : ClientDataType = GlobalModel.clientData.get();
+        let openAIOpts = cdata.openaiopts ?? {};
+        let apiTokenStr = (util.isBlank(openAIOpts.apitoken) ? "(not set)" : "********");
+        let maxTokensStr = String(openAIOpts.maxtokens == null || openAIOpts.maxtokens == 0 ? 1000 : openAIOpts.maxtokens);
         return (
             <div className={cn("modal client-settings-modal settings-modal prompt-modal is-active")}>
                 <div className="modal-background"/>
@@ -743,13 +750,37 @@ class ClientSettingsModal extends React.Component<{}, {}> {
                                 Basic Telemetry
                             </div>
                             <div className="settings-input">
-                                <Toggle checked={this.tempTelemetry.get()} onChange={this.handleChangeTelemetry}/>
+                                <Toggle checked={!cdata.clientopts.notelemetry} onChange={this.handleChangeTelemetry}/>
                             </div>
                         </div>
+                        <div className="settings-field">
+                            <div className="settings-label">
+                                OpenAI Token
+                            </div>
+                            <div className="settings-input">
+                                <InlineSettingsTextEdit placeholder="" text={apiTokenStr} value={""} onChange={this.inlineUpdateOpenAIToken} maxLength={100} showIcon={true}/>
+                            </div>
+                        </div>
+                        <div className="settings-field">
+                            <div className="settings-label">
+                                OpenAI Model
+                            </div>
+                            <div className="settings-input">
+                                <InlineSettingsTextEdit placeholder="gpt-3.5-turbo" text={util.isBlank(openAIOpts.model) ? "gpt-3.5-turbo" : openAIOpts.model} value={openAIOpts.model ?? ""} onChange={this.inlineUpdateOpenAIModel} maxLength={100} showIcon={true}/>
+                            </div>
+                        </div>
+                        <div className="settings-field">
+                            <div className="settings-label">
+                                OpenAI MaxTokens
+                            </div>
+                            <div className="settings-input">
+                                <InlineSettingsTextEdit placeholder="" text={maxTokensStr} value={maxTokensStr} onChange={this.inlineUpdateOpenAIMaxTokens} maxLength={10} showIcon={true}/>
+                            </div>
+                        </div>
+                        <SettingsError errorMessage={this.errorMessage}/>
                     </div>
                     <footer>
-                        <div onClick={this.closeModal} className="button is-prompt-cancel is-outlined is-small">Cancel</div>
-                        <div onClick={this.handleOK} className="button is-prompt-green is-outlined is-small">OK</div>
+                        <div onClick={this.closeModal} className="button is-prompt-green is-outlined is-small">Close</div>
                     </footer>
                 </div>
             </div>

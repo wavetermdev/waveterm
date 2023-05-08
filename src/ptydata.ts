@@ -97,13 +97,16 @@ class PacketDataBuffer extends PtyDataBuffer {
                 console.log("invalid line packet", line);
             }
         }
+        let packet : any = null;
         try {
-            let packet = JSON.parse(packetStr);
-            this.callback(packet);
+            packet = JSON.parse(packetStr);
         }
         catch (e) {
-            console.log("invalid line packet (bad json)", line);
+            console.log("invalid line packet (bad json)", line, e);
             return;
+        }
+        if (packet != null) {
+            this.callback(packet);
         }
     }
 
