@@ -65,7 +65,7 @@ var ColorNames = []string{"black", "red", "green", "yellow", "blue", "magenta", 
 var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
 var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}
 
-var ScreenCmds = []string{"run", "comment", "cd", "cr", "clear", "sw", "reset", "signal"}
+var ScreenCmds = []string{"run", "comment", "cd", "cr", "clear", "sw", "reset", "signal", "chat"}
 var NoHistCmds = []string{"_compgen", "line", "history", "_killserver"}
 var GlobalCmds = []string{"session", "screen", "remote", "set", "client", "telemetry", "bookmark", "bookmarks"}
 
@@ -201,7 +201,7 @@ func init() {
 	registerCmdFn("bookmark:set", BookmarkSetCommand)
 	registerCmdFn("bookmark:delete", BookmarkDeleteCommand)
 
-	registerCmdFn("openai", OpenAICommand)
+	registerCmdFn("chat", OpenAICommand)
 
 	registerCmdFn("_killserver", KillServerCommand)
 
@@ -1469,17 +1469,17 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	}
 	promptStr := firstArg(pk)
 	if promptStr == "" {
-		return nil, fmt.Errorf("/openai error, prompt string is blank")
+		return nil, fmt.Errorf("openai error, prompt string is blank")
 	}
 	ptermVal := defaultStr(pk.Kwargs["pterm"], DefaultPTERM)
 	pkTermOpts, err := GetUITermOpts(pk.UIContext.WinSize, ptermVal)
 	if err != nil {
-		return nil, fmt.Errorf("/openai error, invalid 'pterm' value %q: %v", ptermVal, err)
+		return nil, fmt.Errorf("openai error, invalid 'pterm' value %q: %v", ptermVal, err)
 	}
 	termOpts := convertTermOpts(pkTermOpts)
 	cmd, err := makeDynCmd(ctx, GetCmdStr(pk), ids, pk.GetRawStr(), *termOpts)
 	if err != nil {
-		return nil, fmt.Errorf("/openai error, cannot make dyn cmd")
+		return nil, fmt.Errorf("openai error, cannot make dyn cmd")
 	}
 	line, err := sstore.AddOpenAILine(ctx, ids.ScreenId, DefaultUserId, cmd)
 	if err != nil {
@@ -1498,7 +1498,7 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	screen, err := sstore.UpdateScreen(ctx, ids.ScreenId, updateMap)
 	if err != nil {
 		// ignore error again (nothing to do)
-		log.Printf("/openai error updating screen selected line: %v\n", err)
+		log.Printf("openai error updating screen selected line: %v\n", err)
 	}
 	update := &sstore.ModelUpdate{Line: line, Cmd: cmd, Screens: []*sstore.ScreenType{screen}}
 	return update, nil

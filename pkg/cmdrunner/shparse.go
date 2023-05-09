@@ -39,7 +39,7 @@ var CmdParseOverrides map[string]string = map[string]string{
 	"set":     CmdParseTypePositional,
 	"run":     CmdParseTypeRaw,
 	"comment": CmdParseTypeRaw,
-	"openai":  CmdParseTypeRaw,
+	"chat":    CmdParseTypeRaw,
 }
 
 func DumpPacket(pk *scpacket.FeCommandPacketType) {
