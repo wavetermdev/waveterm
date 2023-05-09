@@ -1137,7 +1137,7 @@ class ScreenWindowView extends React.Component<{screen : Screen}, {}> {
         let renderMode = this.renderMode.get();
         return (
             <div className="window-view" style={this.getWindowViewStyle()} ref={this.windowViewRef}>
-                <div key="rendermode-tag" className={cn("rendermode-tag", {"is-active": isActive})}>
+                <div key="rendermode-tag" className={cn("rendermode-tag", {"is-active": isActive})} style={{display: "none"}}>
                     <div className="render-mode" onClick={this.toggleRenderMode}>
                         <If condition={renderMode == "normal"}>
                             <i title="collapse" className="fa-sharp fa-solid fa-arrows-to-line"/>
