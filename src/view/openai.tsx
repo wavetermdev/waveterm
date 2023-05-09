@@ -66,7 +66,6 @@ class OpenAIRendererModel {
             mobx.action(() => {
                 this.loadError.set(packet.error);
                 this.version.set(this.version.get()+1);
-                console.log("set error", this.loadError.get());
             })();
             return;
         }
@@ -223,10 +222,8 @@ class OpenAIRenderer extends React.Component<{model : OpenAIRendererModel}> {
         if (model.loading.get() && model.savedHeight >= 0 && model.isDone) {
             styleVal = {height: model.savedHeight};
         }
-        console.log("render again", mobx.toJS(model.output.get()));
         let version = model.version.get();
         let loadError = model.loadError.get();
-        console.log(model.context.lineNum, "got load error", loadError);
         if (loadError != null) {
             return (
                 <div className="renderer-container openai-renderer openai-error" style={styleVal}>
