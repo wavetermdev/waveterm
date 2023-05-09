@@ -53,6 +53,8 @@ const (
 	CompGenPacketStr      = "compgen"  // rpc
 	ReInitPacketStr       = "reinit"   // rpc
 	CmdFinalPacketStr     = "cmdfinal" // command, pushed at the "end" of a command (fail-safe for no cmddone)
+
+	OpenAIPacketStr = "openai" // other
 )
 
 const PacketSenderQueueSize = 20
@@ -82,6 +84,7 @@ func init() {
 	TypeStrToFactory[CompGenPacketStr] = reflect.TypeOf(CompGenPacketType{})
 	TypeStrToFactory[ReInitPacketStr] = reflect.TypeOf(ReInitPacketType{})
 	TypeStrToFactory[CmdFinalPacketStr] = reflect.TypeOf(CmdFinalPacketType{})
+	TypeStrToFactory[OpenAIPacketStr] = reflect.TypeOf(OpenAIPacketType{})
 
 	var _ RpcPacketType = (*RunPacketType)(nil)
 	var _ RpcPacketType = (*GetCmdPacketType)(nil)
@@ -543,11 +546,11 @@ func MakeCmdDonePacket(ck base.CommandKey) *CmdDonePacketType {
 
 type CmdStartPacketType struct {
 	Type      string          `json:"type"`
-	RespId    string          `json:"respid"`
+	RespId    string          `json:"respid,omitempty"`
 	Ts        int64           `json:"ts"`
 	CK        base.CommandKey `json:"ck"`
-	Pid       int             `json:"pid"`
-	MShellPid int             `json:"mshellpid"`
+	Pid       int             `json:"pid,omitempty"`
+	MShellPid int             `json:"mshellpid,omitempty"`
 }
 
 func (*CmdStartPacketType) GetType() string {
@@ -612,6 +615,31 @@ func (p *RunPacketType) GetReqId() string {
 
 func MakeRunPacket() *RunPacketType {
 	return &RunPacketType{Type: RunPacketStr}
+}
+
+type OpenAIUsageType struct {
+	PromptTokens     int `json:"prompt_tokens,omitempty"`
+	CompletionTokens int `json:"completion_tokens,omitempty"`
+	TotalTokens      int `json:"total_tokens,omitempty"`
+}
+
+type OpenAIPacketType struct {
+	Type         string           `json:"type"`
+	Model        string           `json:"model,omitempty"`
+	Created      int64            `json:"created,omitempty"`
+	FinishReason string           `json:"finish_reason,omitempty"`
+	Usage        *OpenAIUsageType `json:"usage,omitempty"`
+	Index        int              `json:"index,omitempty"`
+	Text         string           `json:"text,omitempty"`
+	Error        string           `json:"error,omitempty"`
+}
+
+func (*OpenAIPacketType) GetType() string {
+	return OpenAIPacketStr
+}
+
+func MakeOpenAIPacket() *OpenAIPacketType {
+	return &OpenAIPacketType{Type: OpenAIPacketStr}
 }
 
 type BarePacketType struct {
@@ -729,24 +757,35 @@ func (e *SendError) Error() string {
 	}
 }
 
-func SendPacket(w io.Writer, packet PacketType) error {
+func MarshalPacket(packet PacketType) ([]byte, error) {
 	if packet == nil {
-		return nil
+		return nil, fmt.Errorf("invalid nil packet")
 	}
 	jsonBytes, err := json.Marshal(packet)
 	if err != nil {
-		return &SendError{IsMarshalError: true, PacketType: packet.GetType(), Err: err}
+		return nil, &SendError{IsMarshalError: true, PacketType: packet.GetType(), Err: err}
 	}
 	var outBuf bytes.Buffer
 	outBuf.WriteByte('\n')
 	outBuf.WriteString(fmt.Sprintf("##%d", len(jsonBytes)))
 	outBuf.Write(jsonBytes)
 	outBuf.WriteByte('\n')
+	outBytes := outBuf.Bytes()
+	sanitizeBytes(outBytes)
+	return outBytes, nil
+}
+
+func SendPacket(w io.Writer, packet PacketType) error {
+	if packet == nil {
+		return nil
+	}
+	outBytes, err := MarshalPacket(packet)
+	if err != nil {
+		return err
+	}
 	if GlobalDebug {
 		base.Logf("SEND> %s\n", AsString(packet))
 	}
-	outBytes := outBuf.Bytes()
-	sanitizeBytes(outBytes)
 	_, err = w.Write(outBytes)
 	if err != nil {
 		return &SendError{IsWriteError: true, PacketType: packet.GetType(), Err: err}
