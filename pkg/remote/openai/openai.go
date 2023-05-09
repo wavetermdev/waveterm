@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 
 	openaiapi "github.com/sashabaranov/go-openai"
 	"github.com/scripthaus-dev/mshell/pkg/packet"
@@ -104,7 +103,6 @@ func RunCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, promp
 				rtn <- errPk
 				break
 			}
-			log.Printf("stream-resp: %#v\n", streamResp)
 			if streamResp.Model != "" && !sentHeader {
 				pk := packet.MakeOpenAIPacket()
 				pk.Model = streamResp.Model
