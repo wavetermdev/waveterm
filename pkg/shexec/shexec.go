@@ -25,10 +25,10 @@ import (
 
 	"github.com/alessio/shellescape"
 	"github.com/creack/pty"
-	"github.com/scripthaus-dev/mshell/pkg/base"
-	"github.com/scripthaus-dev/mshell/pkg/cirfile"
-	"github.com/scripthaus-dev/mshell/pkg/mpio"
-	"github.com/scripthaus-dev/mshell/pkg/packet"
+	"github.com/commandlinedev/apishell/pkg/base"
+	"github.com/commandlinedev/apishell/pkg/cirfile"
+	"github.com/commandlinedev/apishell/pkg/mpio"
+	"github.com/commandlinedev/apishell/pkg/packet"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sys/unix"
 )

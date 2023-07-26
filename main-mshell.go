@@ -15,10 +15,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/scripthaus-dev/mshell/pkg/base"
-	"github.com/scripthaus-dev/mshell/pkg/packet"
-	"github.com/scripthaus-dev/mshell/pkg/server"
-	"github.com/scripthaus-dev/mshell/pkg/shexec"
+	"github.com/commandlinedev/apishell/pkg/base"
+	"github.com/commandlinedev/apishell/pkg/packet"
+	"github.com/commandlinedev/apishell/pkg/server"
+	"github.com/commandlinedev/apishell/pkg/shexec"
 	"golang.org/x/sys/unix"
 )
 

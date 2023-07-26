@@ -13,8 +13,8 @@ import (
 	"os"
 	"sync"
 
-	"github.com/scripthaus-dev/mshell/pkg/base"
-	"github.com/scripthaus-dev/mshell/pkg/packet"
+	"github.com/commandlinedev/apishell/pkg/base"
+	"github.com/commandlinedev/apishell/pkg/packet"
 )
 
 const ReadBufSize = 128 * 1024

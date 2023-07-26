@@ -16,8 +16,8 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/scripthaus-dev/mshell/pkg/base"
-	"github.com/scripthaus-dev/mshell/pkg/packet"
+	"github.com/commandlinedev/apishell/pkg/base"
+	"github.com/commandlinedev/apishell/pkg/packet"
 )
 
 const MaxDataBytes = 4096

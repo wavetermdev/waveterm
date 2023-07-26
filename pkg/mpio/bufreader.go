@@ -10,7 +10,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/scripthaus-dev/mshell/pkg/packet"
+	"github.com/commandlinedev/apishell/pkg/packet"
 )
 
 type FdReader struct {

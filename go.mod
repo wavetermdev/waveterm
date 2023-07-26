@@ -1,4 +1,4 @@
-module github.com/scripthaus-dev/mshell
+module github.com/commandlinedev/apishell
 
 go 1.18
 

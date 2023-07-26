@@ -7,8 +7,8 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/scripthaus-dev/mshell/pkg/base"
-	"github.com/scripthaus-dev/mshell/pkg/packet"
+	"github.com/commandlinedev/apishell/pkg/base"
+	"github.com/commandlinedev/apishell/pkg/packet"
 	"golang.org/x/mod/semver"
 )
 

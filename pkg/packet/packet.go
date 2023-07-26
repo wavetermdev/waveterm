@@ -18,7 +18,7 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/scripthaus-dev/mshell/pkg/base"
+	"github.com/commandlinedev/apishell/pkg/base"
 )
 
 // single          : <init, >run, >cmddata, >cmddone, <cmdstart, <>data, <>dataack, <cmddone

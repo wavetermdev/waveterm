@@ -17,9 +17,9 @@ import (
 	"time"
 
 	"github.com/alessio/shellescape"
-	"github.com/scripthaus-dev/mshell/pkg/base"
-	"github.com/scripthaus-dev/mshell/pkg/packet"
-	"github.com/scripthaus-dev/mshell/pkg/shexec"
+	"github.com/commandlinedev/apishell/pkg/base"
+	"github.com/commandlinedev/apishell/pkg/packet"
+	"github.com/commandlinedev/apishell/pkg/shexec"
 )
 
 // TODO create unblockable packet-sender (backed by an array) for clientproc

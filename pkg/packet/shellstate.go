@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/scripthaus-dev/mshell/pkg/binpack"
-	"github.com/scripthaus-dev/mshell/pkg/statediff"
+	"github.com/commandlinedev/apishell/pkg/binpack"
+	"github.com/commandlinedev/apishell/pkg/statediff"
 )
 
 const ShellStatePackVersion = 0
