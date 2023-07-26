@@ -132,7 +132,7 @@ class SmallLineAvatar extends React.Component<{line : LineType, cmd : Cmd, onRig
             iconTitle = status;
         }
         else if (status == "running" || "detached") {
-            icon = "fa-rotate fa-spin";
+            icon = "fa-rotate";
             iconTitle = "running";
         }
         else {
