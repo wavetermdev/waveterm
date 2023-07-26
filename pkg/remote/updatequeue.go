@@ -1,7 +1,7 @@
 package remote
 
 import (
-	"github.com/scripthaus-dev/mshell/pkg/base"
+	"github.com/commandlinedev/apishell/pkg/base"
 )
 
 func startCmdWait(ck base.CommandKey) {

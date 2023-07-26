@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/scripthaus-dev/sh2-server/pkg/utilfn"
+	"github.com/commandlinedev/prompt-server/pkg/utilfn"
 )
 
 // $(ls f[*]); ./x

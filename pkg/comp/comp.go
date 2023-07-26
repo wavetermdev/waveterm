@@ -11,10 +11,10 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/scripthaus-dev/mshell/pkg/simpleexpand"
-	"github.com/scripthaus-dev/sh2-server/pkg/shparse"
-	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
-	"github.com/scripthaus-dev/sh2-server/pkg/utilfn"
+	"github.com/commandlinedev/apishell/pkg/simpleexpand"
+	"github.com/commandlinedev/prompt-server/pkg/shparse"
+	"github.com/commandlinedev/prompt-server/pkg/sstore"
+	"github.com/commandlinedev/prompt-server/pkg/utilfn"
 	"mvdan.cc/sh/v3/syntax"
 )
 

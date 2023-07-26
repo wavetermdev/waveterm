@@ -9,8 +9,8 @@ import (
 	"path"
 
 	"github.com/google/uuid"
-	"github.com/scripthaus-dev/mshell/pkg/cirfile"
-	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
+	"github.com/commandlinedev/apishell/pkg/cirfile"
+	"github.com/commandlinedev/prompt-server/pkg/scbase"
 )
 
 func CreateCmdPtyFile(ctx context.Context, screenId string, cmdId string, maxSize int64) error {

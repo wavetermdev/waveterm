@@ -7,11 +7,11 @@ import (
 	"strings"
 
 	"github.com/alessio/shellescape"
-	"github.com/scripthaus-dev/mshell/pkg/packet"
-	"github.com/scripthaus-dev/mshell/pkg/shexec"
-	"github.com/scripthaus-dev/mshell/pkg/simpleexpand"
-	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
-	"github.com/scripthaus-dev/sh2-server/pkg/utilfn"
+	"github.com/commandlinedev/apishell/pkg/packet"
+	"github.com/commandlinedev/apishell/pkg/shexec"
+	"github.com/commandlinedev/apishell/pkg/simpleexpand"
+	"github.com/commandlinedev/prompt-server/pkg/sstore"
+	"github.com/commandlinedev/prompt-server/pkg/utilfn"
 	"mvdan.cc/sh/v3/syntax"
 )
 

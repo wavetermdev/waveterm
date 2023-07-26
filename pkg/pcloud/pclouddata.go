@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/scripthaus-dev/mshell/pkg/packet"
-	"github.com/scripthaus-dev/sh2-server/pkg/remote"
-	"github.com/scripthaus-dev/sh2-server/pkg/rtnstate"
-	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
+	"github.com/commandlinedev/apishell/pkg/packet"
+	"github.com/commandlinedev/prompt-server/pkg/remote"
+	"github.com/commandlinedev/prompt-server/pkg/rtnstate"
+	"github.com/commandlinedev/prompt-server/pkg/sstore"
 )
 
 type NoTelemetryInputType struct {

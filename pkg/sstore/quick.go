@@ -1,7 +1,7 @@
 package sstore
 
 import (
-	"github.com/scripthaus-dev/sh2-server/pkg/dbutil"
+	"github.com/commandlinedev/prompt-server/pkg/dbutil"
 )
 
 var quickSetStr = dbutil.QuickSetStr

@@ -15,10 +15,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/scripthaus-dev/sh2-server/pkg/dbutil"
-	"github.com/scripthaus-dev/sh2-server/pkg/rtnstate"
-	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
-	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
+	"github.com/commandlinedev/prompt-server/pkg/dbutil"
+	"github.com/commandlinedev/prompt-server/pkg/rtnstate"
+	"github.com/commandlinedev/prompt-server/pkg/scbase"
+	"github.com/commandlinedev/prompt-server/pkg/sstore"
 )
 
 const PCloudEndpoint = "https://api.getprompt.dev/central"

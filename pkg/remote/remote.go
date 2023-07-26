@@ -19,15 +19,15 @@ import (
 	"time"
 
 	"github.com/armon/circbuf"
+	"github.com/commandlinedev/apishell/pkg/base"
+	"github.com/commandlinedev/apishell/pkg/packet"
+	"github.com/commandlinedev/apishell/pkg/shexec"
+	"github.com/commandlinedev/apishell/pkg/statediff"
+	"github.com/commandlinedev/prompt-server/pkg/scbase"
+	"github.com/commandlinedev/prompt-server/pkg/scpacket"
+	"github.com/commandlinedev/prompt-server/pkg/sstore"
 	"github.com/creack/pty"
 	"github.com/google/uuid"
-	"github.com/scripthaus-dev/mshell/pkg/base"
-	"github.com/scripthaus-dev/mshell/pkg/packet"
-	"github.com/scripthaus-dev/mshell/pkg/shexec"
-	"github.com/scripthaus-dev/mshell/pkg/statediff"
-	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
-	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
-	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
 	"golang.org/x/mod/semver"
 )
 
@@ -76,7 +76,7 @@ const (
 
 func init() {
 	if scbase.MShellVersion != base.MShellVersion {
-		panic(fmt.Sprintf("sh2-server mshell version must match '%s' vs '%s'", scbase.MShellVersion, base.MShellVersion))
+		panic(fmt.Sprintf("prompt-server apishell version must match '%s' vs '%s'", scbase.MShellVersion, base.MShellVersion))
 	}
 }
 

@@ -12,7 +12,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	_ "github.com/mattn/go-sqlite3"
-	sh2db "github.com/scripthaus-dev/sh2-server/db"
+	sh2db "github.com/commandlinedev/prompt-server/db"
 
 	"github.com/golang-migrate/migrate/v4"
 )

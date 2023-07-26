@@ -6,9 +6,9 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/scripthaus-dev/mshell/pkg/packet"
-	"github.com/scripthaus-dev/sh2-server/pkg/remote"
-	"github.com/scripthaus-dev/sh2-server/pkg/utilfn"
+	"github.com/commandlinedev/apishell/pkg/packet"
+	"github.com/commandlinedev/prompt-server/pkg/remote"
+	"github.com/commandlinedev/prompt-server/pkg/utilfn"
 )
 
 var globalLock = &sync.Mutex{}

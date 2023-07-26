@@ -5,11 +5,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/scripthaus-dev/mshell/pkg/base"
-	"github.com/scripthaus-dev/mshell/pkg/packet"
-	"github.com/scripthaus-dev/mshell/pkg/shexec"
-	"github.com/scripthaus-dev/sh2-server/pkg/remote"
-	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
+	"github.com/commandlinedev/apishell/pkg/base"
+	"github.com/commandlinedev/apishell/pkg/packet"
+	"github.com/commandlinedev/apishell/pkg/shexec"
+	"github.com/commandlinedev/prompt-server/pkg/remote"
+	"github.com/commandlinedev/prompt-server/pkg/sstore"
 )
 
 // PTERM=MxM,Mx25

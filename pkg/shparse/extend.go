@@ -5,7 +5,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/scripthaus-dev/sh2-server/pkg/utilfn"
+	"github.com/commandlinedev/prompt-server/pkg/utilfn"
 )
 
 var noEscChars []bool

@@ -9,9 +9,9 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/scripthaus-dev/sh2-server/pkg/remote"
-	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
-	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
+	"github.com/commandlinedev/prompt-server/pkg/remote"
+	"github.com/commandlinedev/prompt-server/pkg/scpacket"
+	"github.com/commandlinedev/prompt-server/pkg/sstore"
 )
 
 const (

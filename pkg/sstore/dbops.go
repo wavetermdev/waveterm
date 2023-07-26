@@ -13,11 +13,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/sawka/txwrap"
-	"github.com/scripthaus-dev/mshell/pkg/base"
-	"github.com/scripthaus-dev/mshell/pkg/packet"
-	"github.com/scripthaus-dev/mshell/pkg/shexec"
-	"github.com/scripthaus-dev/sh2-server/pkg/dbutil"
-	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
+	"github.com/commandlinedev/apishell/pkg/base"
+	"github.com/commandlinedev/apishell/pkg/packet"
+	"github.com/commandlinedev/apishell/pkg/shexec"
+	"github.com/commandlinedev/prompt-server/pkg/dbutil"
+	"github.com/commandlinedev/prompt-server/pkg/scbase"
 )
 
 const HistoryCols = "h.historyid, h.ts, h.userid, h.sessionid, h.screenid, h.lineid, h.cmdid, h.haderror, h.cmdstr, h.remoteownerid, h.remoteid, h.remotename, h.ismetacmd, h.incognito, h.linenum"

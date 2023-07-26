@@ -20,15 +20,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 
-	"github.com/scripthaus-dev/sh2-server/pkg/cmdrunner"
-	"github.com/scripthaus-dev/sh2-server/pkg/pcloud"
-	"github.com/scripthaus-dev/sh2-server/pkg/remote"
-	"github.com/scripthaus-dev/sh2-server/pkg/rtnstate"
-	"github.com/scripthaus-dev/sh2-server/pkg/scbase"
-	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
-	"github.com/scripthaus-dev/sh2-server/pkg/scws"
-	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
-	"github.com/scripthaus-dev/sh2-server/pkg/wsshell"
+	"github.com/commandlinedev/prompt-server/pkg/cmdrunner"
+	"github.com/commandlinedev/prompt-server/pkg/pcloud"
+	"github.com/commandlinedev/prompt-server/pkg/remote"
+	"github.com/commandlinedev/prompt-server/pkg/rtnstate"
+	"github.com/commandlinedev/prompt-server/pkg/scbase"
+	"github.com/commandlinedev/prompt-server/pkg/scpacket"
+	"github.com/commandlinedev/prompt-server/pkg/scws"
+	"github.com/commandlinedev/prompt-server/pkg/sstore"
+	"github.com/commandlinedev/prompt-server/pkg/wsshell"
 )
 
 type WebFnType = func(http.ResponseWriter, *http.Request)

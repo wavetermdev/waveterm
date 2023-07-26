@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/scripthaus-dev/mshell/pkg/base"
+	"github.com/commandlinedev/apishell/pkg/base"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sys/unix"
 )

@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"github.com/alessio/shellescape"
-	"github.com/scripthaus-dev/mshell/pkg/base"
-	"github.com/scripthaus-dev/mshell/pkg/packet"
-	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
+	"github.com/commandlinedev/apishell/pkg/base"
+	"github.com/commandlinedev/apishell/pkg/packet"
+	"github.com/commandlinedev/prompt-server/pkg/sstore"
 )
 
 const FeCommandPacketStr = "fecmd"

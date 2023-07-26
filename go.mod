@@ -1,4 +1,4 @@
-module github.com/scripthaus-dev/sh2-server
+module github.com/commandlinedev/prompt-server
 
 go 1.18
 
@@ -13,7 +13,7 @@ require (
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/mattn/go-sqlite3 v1.14.14
 	github.com/sawka/txwrap v0.1.2
-	github.com/scripthaus-dev/mshell v0.0.0
+	github.com/commandlinedev/apishell v0.0.0
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/mod v0.5.1
 	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad

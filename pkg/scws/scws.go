@@ -8,12 +8,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/scripthaus-dev/mshell/pkg/packet"
-	"github.com/scripthaus-dev/sh2-server/pkg/mapqueue"
-	"github.com/scripthaus-dev/sh2-server/pkg/remote"
-	"github.com/scripthaus-dev/sh2-server/pkg/scpacket"
-	"github.com/scripthaus-dev/sh2-server/pkg/sstore"
-	"github.com/scripthaus-dev/sh2-server/pkg/wsshell"
+	"github.com/commandlinedev/apishell/pkg/packet"
+	"github.com/commandlinedev/prompt-server/pkg/mapqueue"
+	"github.com/commandlinedev/prompt-server/pkg/remote"
+	"github.com/commandlinedev/prompt-server/pkg/scpacket"
+	"github.com/commandlinedev/prompt-server/pkg/sstore"
+	"github.com/commandlinedev/prompt-server/pkg/wsshell"
 )
 
 const WSStatePacketChSize = 20
