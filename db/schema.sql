@@ -7,7 +7,7 @@ CREATE TABLE client (
     userpublickeybytes blob NOT NULL,
     userprivatekeybytes blob NOT NULL,
     winsize json NOT NULL
-, clientopts json NOT NULL DEFAULT '', feopts json NOT NULL DEFAULT '{}', cmdstoretype varchar(20) DEFAULT 'session');
+, clientopts json NOT NULL DEFAULT '', feopts json NOT NULL DEFAULT '{}', cmdstoretype varchar(20) DEFAULT 'session', openaiopts json NOT NULL DEFAULT '{}');
 CREATE TABLE session (
     sessionid varchar(36) PRIMARY KEY,
     name varchar(50) NOT NULL,
@@ -43,11 +43,9 @@ CREATE TABLE state_diff (
 );
 CREATE TABLE remote (
     remoteid varchar(36) PRIMARY KEY,
-    physicalid varchar(36) NOT NULL,
     remotetype varchar(10) NOT NULL,
     remotealias varchar(50) NOT NULL,
     remotecanonicalname varchar(200) NOT NULL,
-    remotesudo boolean NOT NULL,
     remoteuser varchar(50) NOT NULL,
     remotehost varchar(200) NOT NULL,
     connectmode varchar(20) NOT NULL,
@@ -58,7 +56,7 @@ CREATE TABLE remote (
     local boolean NOT NULL,
     archived boolean NOT NULL,
     remoteidx int NOT NULL
-, statevars json NOT NULL DEFAULT '{}');
+, statevars json NOT NULL DEFAULT '{}', openaiopts json NOT NULL DEFAULT '{}');
 CREATE TABLE history (
     historyid varchar(36) PRIMARY KEY,
     ts bigint NOT NULL,

@@ -429,6 +429,17 @@ type ScreenWebShareOpts struct {
 	ViewKey   string `json:"viewkey"`
 }
 
+type ScreenCreateOpts struct {
+	BaseScreenId string
+	CopyRemote   bool
+	CopyCwd      bool
+	CopyEnv      bool
+}
+
+func (sco ScreenCreateOpts) HasCopy() bool {
+	return sco.CopyRemote || sco.CopyCwd || sco.CopyEnv
+}
+
 type ScreenType struct {
 	SessionId    string              `json:"sessionid"`
 	ScreenId     string              `json:"screenid"`
@@ -1179,7 +1190,7 @@ func EnsureDefaultSession(ctx context.Context) (*SessionType, error) {
 	if session != nil {
 		return session, nil
 	}
-	_, err = InsertSessionWithName(ctx, DefaultSessionName, ShareModeLocal, true)
+	_, err = InsertSessionWithName(ctx, DefaultSessionName, true)
 	if err != nil {
 		return nil, err
 	}

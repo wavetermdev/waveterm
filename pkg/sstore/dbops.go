@@ -525,27 +525,9 @@ func GetSessionByName(ctx context.Context, name string) (*SessionType, error) {
 	return session, nil
 }
 
-func InsertCloudSession(ctx context.Context, sessionName string, shareMode string, activate bool) (*ModelUpdate, error) {
-	var updateRtn *ModelUpdate
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		var err error
-		updateRtn, err = InsertSessionWithName(tx.Context(), sessionName, shareMode, activate)
-		if err != nil {
-			return err
-		}
-		sessionId := updateRtn.Sessions[0].SessionId
-		fmt.Printf("sessionid: %v\n", sessionId)
-		return nil
-	})
-	if txErr != nil {
-		return nil, txErr
-	}
-	return updateRtn, nil
-}
-
 // returns sessionId
 // if sessionName == "", it will be generated
-func InsertSessionWithName(ctx context.Context, sessionName string, shareMode string, activate bool) (*ModelUpdate, error) {
+func InsertSessionWithName(ctx context.Context, sessionName string, activate bool) (*ModelUpdate, error) {
 	var newScreen *ScreenType
 	newSessionId := scbase.GenPromptUUID()
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
@@ -553,9 +535,9 @@ func InsertSessionWithName(ctx context.Context, sessionName string, shareMode st
 		sessionName = fmtUniqueName(sessionName, "session-%d", len(names)+1, names)
 		maxSessionIdx := tx.GetInt(`SELECT COALESCE(max(sessionidx), 0) FROM session`)
 		query := `INSERT INTO session (sessionid, name, activescreenid, sessionidx, notifynum, archived, archivedts, sharemode)
-                               VALUES (?,         ?,    '',             ?,          ?,         0,        0,          'local')`
-		tx.Exec(query, newSessionId, sessionName, maxSessionIdx+1, 0)
-		screenUpdate, err := InsertScreen(tx.Context(), newSessionId, "", true)
+                               VALUES (?,         ?,    '',             ?,          0,         0,        0,          ?)`
+		tx.Exec(query, newSessionId, sessionName, maxSessionIdx+1, ShareModeLocal)
+		screenUpdate, err := InsertScreen(tx.Context(), newSessionId, "", ScreenCreateOpts{}, true)
 		if err != nil {
 			return err
 		}
@@ -666,7 +648,7 @@ func fmtUniqueName(name string, defaultFmtStr string, startIdx int, strs []strin
 	}
 }
 
-func InsertScreen(ctx context.Context, sessionId string, origScreenName string, activate bool) (*ModelUpdate, error) {
+func InsertScreen(ctx context.Context, sessionId string, origScreenName string, opts ScreenCreateOpts, activate bool) (*ModelUpdate, error) {
 	var newScreenId string
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT sessionid FROM session WHERE sessionid = ? AND NOT archived`
@@ -684,6 +666,20 @@ func InsertScreen(ctx context.Context, sessionId string, origScreenName string, 
 			screenName = fmtUniqueName("", "s%d", maxScreenIdx+1, screenNames)
 		} else {
 			screenName = origScreenName
+		}
+		var baseScreen *ScreenType
+		if opts.HasCopy() {
+			if opts.BaseScreenId == "" {
+				return fmt.Errorf("invalid screen create opts, copy option with no base screen specified")
+			}
+			var err error
+			baseScreen, err = GetScreenById(tx.Context(), opts.BaseScreenId)
+			if err != nil {
+				return err
+			}
+			if baseScreen == nil {
+				return fmt.Errorf("cannot create screen, base screen not found")
+			}
 		}
 		newScreenId = scbase.GenPromptUUID()
 		screen := &ScreenType{

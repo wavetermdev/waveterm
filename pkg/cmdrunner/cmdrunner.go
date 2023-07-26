@@ -657,7 +657,7 @@ func ScreenOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 			return nil, err
 		}
 	}
-	update, err := sstore.InsertScreen(ctx, ids.SessionId, newName, activate)
+	update, err := sstore.InsertScreen(ctx, ids.SessionId, newName, sstore.ScreenCreateOpts{}, activate)
 	if err != nil {
 		return nil, err
 	}
@@ -1937,7 +1937,7 @@ func SessionOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 			return nil, err
 		}
 	}
-	update, err := sstore.InsertSessionWithName(ctx, newName, sstore.ShareModeLocal, activate)
+	update, err := sstore.InsertSessionWithName(ctx, newName, activate)
 	if err != nil {
 		return nil, err
 	}
