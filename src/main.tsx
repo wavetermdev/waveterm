@@ -8,7 +8,7 @@ import cn from "classnames";
 import {debounce, throttle} from "throttle-debounce";
 import {v4 as uuidv4} from "uuid";
 import dayjs from "dayjs";
-import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts, RemoteEditType, ContextMenuOpts, BookmarkType, RenderModeType, ClientMigrationInfo, LineFactoryProps} from "./types";
+import type {SessionDataType, LineType, CmdDataType, RemoteType, RemoteStateType, RemoteInstanceType, RemotePtrType, HistoryItem, HistoryQueryOpts, RemoteEditType, ContextMenuOpts, BookmarkType, RenderModeType, LineFactoryProps} from "./types";
 import type * as T from "./types";
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {GlobalModel, GlobalCommandRunner, Session, Cmd, ScreenLines, Screen, riToRPtr, TabColors, RemoteColors} from "./model";
@@ -1711,11 +1711,7 @@ class ClientStopModal extends React.Component<{}, {}> {
     render() {
         let model = GlobalModel;
         let cdata = model.clientData.get();
-        let mdata : ClientMigrationInfo = (cdata != null ? cdata.migration : null);
         let title = "Client Not Ready";
-        if (mdata != null) {
-            title = "Migrating Data";
-        }
         return (
             <div className="prompt-modal client-stop-modal modal is-active">
                 <div className="modal-background"></div>
@@ -1726,15 +1722,6 @@ class ClientStopModal extends React.Component<{}, {}> {
                     <div className="inner-content">
                         <If condition={cdata == null}>
                             <div>Cannot get client data.</div>
-                        </If>
-                        <If condition={cdata != null && cdata.cmdstoretype == "session"}>
-                            <div>Client database is being migrated to the latest version, please wait.</div>
-                            <If condition={mdata != null}>
-                                <div className="progress-container">
-                                    <progress className="progress is-primary" value={mdata.migrationpos} max={mdata.migrationtotal}>{mdata.migrationpos}</progress>
-                                </div>
-                                <div className="progress-text">{mdata.migrationpos}/{mdata.migrationtotal}</div>
-                            </If>
                         </If>
                     </div>
                     <footer>

@@ -5,7 +5,7 @@ import {debounce} from "throttle-debounce";
 import {handleJsonFetchResponse, base64ToArray, genMergeData, genMergeDataMap, genMergeSimpleData, boundInt, isModKeyPress} from "./util";
 import {TermWrap} from "./term";
 import {v4 as uuidv4} from "uuid";
-import type {SessionDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType, HistoryViewDataType, AlertMessageType, HistorySearchParams, FocusTypeStrs, ScreenLinesType, HistoryTypeStrs, RendererPluginType, WindowSize, ClientMigrationInfo, WebShareOpts, TermContextUnion, RemoteEditType, RemoteViewType, CommandRtnType, WebCmd, WebRemote} from "./types";
+import type {SessionDataType, LineType, RemoteType, HistoryItem, RemoteInstanceType, RemotePtrType, CmdDataType, FeCmdPacketType, TermOptsType, RemoteStateType, ScreenDataType, ScreenOptsType, PtyDataUpdateType, ModelUpdateType, UpdateMessage, InfoType, CmdLineUpdateType, UIContextType, HistoryInfoType, HistoryQueryOpts, FeInputPacketType, TermWinSize, RemoteInputPacketType, ContextMenuOpts, RendererContext, RendererModel, PtyDataType, BookmarkType, ClientDataType, HistoryViewDataType, AlertMessageType, HistorySearchParams, FocusTypeStrs, ScreenLinesType, HistoryTypeStrs, RendererPluginType, WindowSize, WebShareOpts, TermContextUnion, RemoteEditType, RemoteViewType, CommandRtnType, WebCmd, WebRemote} from "./types";
 import {WSControl} from "./ws";
 import {measureText, getMonoFontSize, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows} from "./textmeasure";
 import dayjs from "dayjs";
@@ -2457,7 +2457,6 @@ class Model {
     bookmarksModel : BookmarksModel;
     historyViewModel : HistoryViewModel;
     clientData : OV<ClientDataType> = mobx.observable.box(null, {name: "clientData"});
-    clientMigrationInfo : OV<ClientMigrationInfo> = mobx.observable.box(null, {name: "clientMigrationInfo"});
     showLinks : OV<boolean> = mobx.observable.box(true, {name: "model-showLinks"});
     
     constructor() {
@@ -3154,9 +3153,8 @@ class Model {
         let fetchHeaders = this.getFetchHeaders();
         fetch(url, {method: "post", body: null, headers: fetchHeaders}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
             mobx.action(() => {
-                let clientData = data.data;
+                let clientData : ClientDataType = data.data;
                 this.clientData.set(clientData);
-                this.clientMigrationInfo.set(clientData.migration);
             })();
         }).catch((err) => {
             this.errorHandler("calling get-client-data", err, true);
