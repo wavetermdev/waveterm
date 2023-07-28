@@ -17,13 +17,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
-	"github.com/sawka/txwrap"
 	"github.com/commandlinedev/apishell/pkg/packet"
 	"github.com/commandlinedev/apishell/pkg/shexec"
 	"github.com/commandlinedev/prompt-server/pkg/dbutil"
 	"github.com/commandlinedev/prompt-server/pkg/scbase"
+	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
+	"github.com/sawka/txwrap"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -239,28 +239,20 @@ type FeOptsType struct {
 	TermFontSize int `json:"termfontsize,omitempty"`
 }
 
-type ClientMigrationData struct {
-	MigrationType  string `json:"migrationtype"`
-	MigrationPos   int    `json:"migrationpos"`
-	MigrationTotal int    `json:"migrationtotal"`
-	MigrationDone  bool   `json:"migrationdone"`
-}
-
 type ClientData struct {
-	ClientId            string               `json:"clientid"`
-	UserId              string               `json:"userid"`
-	UserPrivateKeyBytes []byte               `json:"-"`
-	UserPublicKeyBytes  []byte               `json:"-"`
-	UserPrivateKey      *ecdsa.PrivateKey    `json:"-" dbmap:"-"`
-	UserPublicKey       *ecdsa.PublicKey     `json:"-" dbmap:"-"`
-	ActiveSessionId     string               `json:"activesessionid"`
-	WinSize             ClientWinSizeType    `json:"winsize"`
-	ClientOpts          ClientOptsType       `json:"clientopts"`
-	FeOpts              FeOptsType           `json:"feopts"`
-	CmdStoreType        string               `json:"cmdstoretype"`
-	Migration           *ClientMigrationData `json:"migration,omitempty" dbmap:"-"`
-	DBVersion           int                  `json:"dbversion" dbmap:"-"`
-	OpenAIOpts          *OpenAIOptsType      `json:"openaiopts,omitempty" dbmap:"openaiopts"`
+	ClientId            string            `json:"clientid"`
+	UserId              string            `json:"userid"`
+	UserPrivateKeyBytes []byte            `json:"-"`
+	UserPublicKeyBytes  []byte            `json:"-"`
+	UserPrivateKey      *ecdsa.PrivateKey `json:"-" dbmap:"-"`
+	UserPublicKey       *ecdsa.PublicKey  `json:"-" dbmap:"-"`
+	ActiveSessionId     string            `json:"activesessionid"`
+	WinSize             ClientWinSizeType `json:"winsize"`
+	ClientOpts          ClientOptsType    `json:"clientopts"`
+	FeOpts              FeOptsType        `json:"feopts"`
+	CmdStoreType        string            `json:"cmdstoretype"`
+	DBVersion           int               `json:"dbversion" dbmap:"-"`
+	OpenAIOpts          *OpenAIOptsType   `json:"openaiopts,omitempty" dbmap:"openaiopts"`
 }
 
 func (ClientData) UseDBMap() {}
@@ -1220,8 +1212,8 @@ func createClientData(tx *TxWrap) error {
 		WinSize:             ClientWinSizeType{},
 		CmdStoreType:        CmdStoreTypeScreen,
 	}
-	query := `INSERT INTO client ( clientid, userid, activesessionid, userpublickeybytes, userprivatekeybytes, winsize) 
-                          VALUES (:clientid,:userid,:activesessionid,:userpublickeybytes,:userprivatekeybytes,:winsize)`
+	query := `INSERT INTO client ( clientid, userid, activesessionid, userpublickeybytes, userprivatekeybytes, winsize, cmdstoretype) 
+                          VALUES (:clientid,:userid,:activesessionid,:userpublickeybytes,:userprivatekeybytes,:winsize,:cmdstoretype)`
 	tx.NamedExec(query, dbutil.ToDBMap(c, false))
 	log.Printf("create new clientid[%s] userid[%s] with public/private keypair\n", c.ClientId, c.UserId)
 	return nil
@@ -1273,28 +1265,6 @@ func EnsureClientData(ctx context.Context) (*ClientData, error) {
 	return rtn, nil
 }
 
-func GetCmdMigrationInfo(ctx context.Context) (*ClientMigrationData, error) {
-	return WithTxRtn(ctx, func(tx *TxWrap) (*ClientMigrationData, error) {
-		cdata := dbutil.GetMappable[*ClientData](tx, `SELECT * FROM client`)
-		if cdata == nil {
-			return nil, fmt.Errorf("no client data found")
-		}
-		if cdata.CmdStoreType == "session" {
-			total := tx.GetInt(`SELECT count(*) FROM cmd`)
-			posInv := tx.GetInt(`SELECT count(*) FROM cmd_migrate`)
-			mdata := &ClientMigrationData{
-				MigrationType:  "cmdscreen",
-				MigrationPos:   total - posInv,
-				MigrationTotal: total,
-				MigrationDone:  false,
-			}
-			return mdata, nil
-		}
-		// no migration info
-		return nil, nil
-	})
-}
-
 func SetClientOpts(ctx context.Context, clientOpts ClientOptsType) error {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `UPDATE client SET clientopts = ?`
@@ -1302,94 +1272,4 @@ func SetClientOpts(ctx context.Context, clientOpts ClientOptsType) error {
 		return nil
 	})
 	return txErr
-}
-
-type cmdMigrationType struct {
-	SessionId string
-	ScreenId  string
-	CmdId     string
-}
-
-func getSliceChunk[T any](slice []T, chunkSize int) ([]T, []T) {
-	if chunkSize >= len(slice) {
-		return slice, nil
-	}
-	return slice[0:chunkSize], slice[chunkSize:]
-}
-
-func processChunk(ctx context.Context, mchunk []cmdMigrationType) error {
-	for _, mig := range mchunk {
-		newFile, err := scbase.PtyOutFile(mig.ScreenId, mig.CmdId)
-		if err != nil {
-			log.Printf("ptyoutfile error: %v\n", err)
-			continue
-		}
-		oldFile, err := scbase.PtyOutFile_Sessions(mig.SessionId, mig.CmdId)
-		if err != nil {
-			log.Printf("ptyoutfile_sessions error: %v\n", err)
-			continue
-		}
-		err = os.Rename(oldFile, newFile)
-		if err != nil {
-			log.Printf("error renaming %s => %s: %v\n", oldFile, newFile, err)
-			continue
-		}
-	}
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		for _, mig := range mchunk {
-			query := `DELETE FROM cmd_migrate WHERE cmdid = ?`
-			tx.Exec(query, mig.CmdId)
-		}
-		return nil
-	})
-	if txErr != nil {
-		return txErr
-	}
-	return nil
-}
-
-func RunCmdScreenMigration() {
-	ctx := context.Background()
-	startTime := time.Now()
-	mdata, err := GetCmdMigrationInfo(ctx)
-	if err != nil {
-		log.Printf("[prompt] error trying to run cmd migration: %v\n", err)
-		return
-	}
-	if mdata == nil || mdata.MigrationType != "cmdscreen" {
-		return
-	}
-	var migrations []cmdMigrationType
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		tx.Select(&migrations, `SELECT * FROM cmd_migrate`)
-		return nil
-	})
-	if txErr != nil {
-		log.Printf("[prompt] error trying to get cmd migrations: %v\n", txErr)
-		return
-	}
-	log.Printf("[db] got %d cmd migrations\n", len(migrations))
-	for len(migrations) > 0 {
-		var mchunk []cmdMigrationType
-		mchunk, migrations = getSliceChunk(migrations, 5)
-		err = processChunk(ctx, mchunk)
-		if err != nil {
-			log.Printf("[prompt] cmd migration failed on chunk: %v\n%#v\n", err, mchunk)
-			return
-		}
-	}
-	err = os.RemoveAll(scbase.GetSessionsDir())
-	if err != nil {
-		log.Printf("[db] cannot remove old sessions dir %s: %v\n", scbase.GetSessionsDir(), err)
-	}
-	txErr = WithTx(ctx, func(tx *TxWrap) error {
-		query := `UPDATE client SET cmdstoretype = 'screen'`
-		tx.Exec(query)
-		return nil
-	})
-	if txErr != nil {
-		log.Printf("[db] cannot change client cmdstoretype: %v\n", err)
-	}
-	log.Printf("[db] cmd screen migration done: %v\n", time.Since(startTime))
-	return
 }

@@ -145,12 +145,6 @@ func HandleGetClientData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	cdata = cdata.Clean()
-	mdata, err := sstore.GetCmdMigrationInfo(r.Context())
-	if err != nil {
-		WriteJsonError(w, err)
-		return
-	}
-	cdata.Migration = mdata
 	WriteJsonSuccess(w, cdata)
 	return
 }
@@ -573,7 +567,6 @@ func main() {
 		time.Sleep(10 * time.Second)
 		pcloud.StartUpdateWriter()
 	}()
-	go sstore.RunCmdScreenMigration()
 	gr := mux.NewRouter()
 	gr.HandleFunc("/api/ptyout", AuthKeyWrap(HandleGetPtyOut))
 	gr.HandleFunc("/api/remote-pty", AuthKeyWrap(HandleRemotePty))
