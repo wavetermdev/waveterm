@@ -26,16 +26,14 @@ CREATE TABLE cmd_new (
     PRIMARY KEY (screenid, lineid)
 );
 
-DROP TABLE IF EXISTS cmd_migrate;
-
-CREATE TABLE cmd_migrate (
+CREATE TABLE cmd_migrate20 (
     screenid varchar(36) NOT NULL,
     lineid varchar(36) NOT NULL,
     cmdid varchar(36) NOT NULL,
     PRIMARY KEY (screenid, lineid)
 );
 
-INSERT INTO cmd_migrate
+INSERT INTO cmd_migrate20
 SELECT screenid, lineid, cmdid
 FROM line;
 

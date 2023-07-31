@@ -36,11 +36,13 @@ func RunMigration20() error {
 	startTime := time.Now()
 	var migrations []cmdMigration20Type
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		tx.Select(&migrations, `SELECT * FROM cmd_migrate`)
+		m := tx.SelectMaps(`SELECT * FROM cmd_migrate20`)
+		fmt.Printf("got maps: %#v\n", m)
+		tx.Select(&migrations, `SELECT * FROM cmd_migrate20`)
 		return nil
 	})
 	if txErr != nil {
-		return fmt.Errorf("trying to get cmd migrations: %w", txErr)
+		return fmt.Errorf("trying to get cmd20 migrations: %w", txErr)
 	}
 	log.Printf("[db] got %d cmd-line migrations\n", len(migrations))
 	for len(migrations) > 0 {
@@ -75,7 +77,7 @@ func processMigration20Chunk(ctx context.Context, mchunk []cmdMigration20Type) e
 	}
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		for _, mig := range mchunk {
-			query := `DELETE FROM cmd_migrate WHERE cmdid = ?`
+			query := `DELETE FROM cmd_migrate20 WHERE cmdid = ?`
 			tx.Exec(query, mig.CmdId)
 		}
 		return nil
@@ -95,7 +97,7 @@ func RunMigration13() error {
 		return nil
 	})
 	if txErr != nil {
-		return fmt.Errorf("trying to get cmd migrations: %w", txErr)
+		return fmt.Errorf("trying to get cmd13 migrations: %w", txErr)
 	}
 	log.Printf("[db] got %d cmd-screen migrations\n", len(migrations))
 	for len(migrations) > 0 {

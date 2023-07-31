@@ -104,7 +104,7 @@ func MigrateUp(targetVersion uint) error {
 	for newVersion := curVersion + 1; newVersion <= targetVersion; newVersion++ {
 		err = MigrateUpStep(m, newVersion)
 		if err != nil {
-			return fmt.Errorf("during migration v%d: %w", err, newVersion)
+			return fmt.Errorf("during migration v%d: %w", newVersion, err)
 		}
 	}
 	log.Printf("[db] migration done, new version = %d\n", targetVersion)
