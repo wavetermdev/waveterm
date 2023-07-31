@@ -36,7 +36,6 @@ func RunMigration20() error {
 	startTime := time.Now()
 	var migrations []cmdMigration20Type
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		m := tx.SelectMaps(`SELECT * FROM cmd_migrate20`)
 		tx.Select(&migrations, `SELECT * FROM cmd_migrate20`)
 		return nil
 	})
