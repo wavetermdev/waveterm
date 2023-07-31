@@ -226,10 +226,10 @@ func HandleRtnState(w http.ResponseWriter, r *http.Request) {
 	}()
 	qvals := r.URL.Query()
 	screenId := qvals.Get("screenid")
-	cmdId := qvals.Get("cmdid")
-	if screenId == "" || cmdId == "" {
+	lineId := qvals.Get("lineid")
+	if screenId == "" || lineId == "" {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("must specify screenid and cmdid")))
+		w.Write([]byte(fmt.Sprintf("must specify screenid and lineid")))
 		return
 	}
 	if _, err := uuid.Parse(screenId); err != nil {
@@ -237,12 +237,12 @@ func HandleRtnState(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("invalid screenid: %v", err)))
 		return
 	}
-	if _, err := uuid.Parse(cmdId); err != nil {
+	if _, err := uuid.Parse(lineId); err != nil {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("invalid cmdid: %v", err)))
+		w.Write([]byte(fmt.Sprintf("invalid lineid: %v", err)))
 		return
 	}
-	data, err := rtnstate.GetRtnStateDiff(r.Context(), screenId, cmdId)
+	data, err := rtnstate.GetRtnStateDiff(r.Context(), screenId, lineId)
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(fmt.Sprintf("cannot get rtnstate diff: %v", err)))
@@ -281,10 +281,10 @@ func HandleRemotePty(w http.ResponseWriter, r *http.Request) {
 func HandleGetPtyOut(w http.ResponseWriter, r *http.Request) {
 	qvals := r.URL.Query()
 	screenId := qvals.Get("screenid")
-	cmdId := qvals.Get("cmdid")
-	if screenId == "" || cmdId == "" {
+	lineId := qvals.Get("lineid")
+	if screenId == "" || lineId == "" {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("must specify screenid and cmdid")))
+		w.Write([]byte(fmt.Sprintf("must specify screenid and lineid")))
 		return
 	}
 	if _, err := uuid.Parse(screenId); err != nil {
@@ -292,12 +292,12 @@ func HandleGetPtyOut(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("invalid screenid: %v", err)))
 		return
 	}
-	if _, err := uuid.Parse(cmdId); err != nil {
+	if _, err := uuid.Parse(lineId); err != nil {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("invalid cmdid: %v", err)))
+		w.Write([]byte(fmt.Sprintf("invalid lineid: %v", err)))
 		return
 	}
-	realOffset, data, err := sstore.ReadFullPtyOutFile(r.Context(), screenId, cmdId)
+	realOffset, data, err := sstore.ReadFullPtyOutFile(r.Context(), screenId, lineId)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			w.WriteHeader(http.StatusOK)
