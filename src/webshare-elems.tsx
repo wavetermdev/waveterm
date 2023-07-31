@@ -405,7 +405,7 @@ class WebLineCmdView extends React.Component<{line : T.WebLine, cmd : T.WebCmd, 
                     <TerminalRenderer line={line} cmd={cmd} width={width} staticRender={staticRender} visible={visible} onHeightChange={this.handleHeightChange}/>
                 </If>
                 <If condition={rendererPlugin != null}>
-                    <SimpleBlobRenderer rendererContainer={WebShareModel} cmdId={line.lineid} plugin={rendererPlugin} onHeightChange={this.handleHeightChange} initParams={this.makeRendererModelInitializeParams()}/>
+                    <SimpleBlobRenderer rendererContainer={WebShareModel} lineId={line.lineid} plugin={rendererPlugin} onHeightChange={this.handleHeightChange} initParams={this.makeRendererModelInitializeParams()}/>
                 </If>
                 <If condition={cmd && cmd.rtnstate}>
                     <div key="rtnstate" className="cmd-rtnstate" style={{visibility: ((cmd.status == "done") ? "visible" : "hidden")}}>
@@ -559,7 +559,7 @@ class TerminalRenderer extends React.Component<{line : T.WebLine, cmd : T.WebCmd
                 <If condition={!isFocused}>
                     <div key="term-block" className="term-block" onClick={this.clickTermBlock}></div>
                 </If>
-                <div key="term-connectelem" className="terminal-connectelem" ref={this.termRef} data-cmdid={line.lineid} style={{height: termHeight}}></div>
+                <div key="term-connectelem" className="terminal-connectelem" ref={this.termRef} data-lineid={line.lineid} style={{height: termHeight}}></div>
                 <If condition={!termLoaded}><div key="term-loading" className="terminal-loading-message">...</div></If>
 
             </div>

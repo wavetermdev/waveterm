@@ -2810,7 +2810,7 @@ class Model {
         let wasRunning = cmdStatusIsRunning(origStatus);
         let isRunning = cmdStatusIsRunning(newStatus);
         if (wasRunning && !isRunning) {
-            // console.log("cmd status", screenId, cmdId, origStatus, "=>", newStatus);
+            // console.log("cmd status", screenId, lineId, origStatus, "=>", newStatus);
             let ptr = this.getActiveLine(screenId, lineId);
             if (ptr != null) {
                 let screen = ptr.screen;

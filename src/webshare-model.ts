@@ -475,7 +475,7 @@ class WebShareModelClass {
     }
 
     setContentHeight(context : T.RendererContext, height : number) : void {
-        let key = context.cmdId;
+        let key = context.lineId;
         this.contentHeightCache[key] = height;
     }
 

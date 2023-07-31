@@ -41,7 +41,6 @@ type VisType = "visible" | "";
 type InterObsValue = {
     sessionid : string,
     lineid : string,
-    cmdid : string,
     visible : mobx.IObservableValue<boolean>,
     timeoutid? : any,
 };
