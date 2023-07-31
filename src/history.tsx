@@ -498,7 +498,7 @@ class LineContainer extends React.Component<{historyId : string, width : number}
             return;
         }
         this.line = hvm.getLineById(this.historyItem.lineid);
-        this.cmd = hvm.getCmdById(this.historyItem.cmdid);
+        this.cmd = hvm.getCmdById(this.historyItem.lineid);
     }
 
     @boundMethod

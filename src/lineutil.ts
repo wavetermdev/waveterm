@@ -76,7 +76,6 @@ function getSingleLineCmdText(cmdText : string) {
 function getRendererContext(line : LineType) : RendererContext {
     return {
         screenId: line.screenid,
-        cmdId: line.cmdid,
         lineId: line.lineid,
         lineNum: line.linenum,
     };
@@ -85,7 +84,6 @@ function getRendererContext(line : LineType) : RendererContext {
 function getWebRendererContext(line : WebLine) : RendererContext {
     return {
         screenId: line.screenid,
-        cmdId: line.lineid,
         lineId: line.lineid,
         lineNum: line.linenum,
     };

@@ -12,7 +12,7 @@ type OV<V> = mobx.IObservableValue<V>;
 type CV<V> = mobx.IComputedValue<V>;
 
 @mobxReact.observer
-class FullRenderer extends React.Component<{rendererContainer : RendererContainerType, cmdId : string, plugin : RendererPluginType, onHeightChange : () => void, initParams : RendererModelInitializeParams}, {}> {
+class FullRenderer extends React.Component<{rendererContainer : RendererContainerType, lineId : string, plugin : RendererPluginType, onHeightChange : () => void, initParams : RendererModelInitializeParams}, {}> {
     model : RendererModel;
     wrapperDivRef : React.RefObject<any> = React.createRef();
     rszObs : ResizeObserver;
@@ -20,10 +20,10 @@ class FullRenderer extends React.Component<{rendererContainer : RendererContaine
 
     constructor(props : any) {
         super(props);
-        let {rendererContainer, cmdId, plugin, initParams} = this.props;
+        let {rendererContainer, lineId, plugin, initParams} = this.props;
         this.model = plugin.modelCtor();
         this.model.initialize(initParams);
-        rendererContainer.registerRenderer(cmdId, this.model);
+        rendererContainer.registerRenderer(lineId, this.model);
         this.updateHeight_debounced = debounce(1000, this.updateHeight.bind(this));
     }
 
@@ -57,8 +57,8 @@ class FullRenderer extends React.Component<{rendererContainer : RendererContaine
     }
 
     componentWillUnmount() {
-        let {rendererContainer, cmdId} = this.props;
-        rendererContainer.unloadRenderer(cmdId);
+        let {rendererContainer, lineId} = this.props;
+        rendererContainer.unloadRenderer(lineId);
         if (this.rszObs != null) {
             this.rszObs.disconnect();
             this.rszObs = null;

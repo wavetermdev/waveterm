@@ -95,7 +95,7 @@ class SimpleBlobRendererModel {
 }
 
 @mobxReact.observer
-class SimpleBlobRenderer extends React.Component<{rendererContainer : RendererContainerType, cmdId : string, plugin : RendererPluginType, onHeightChange : () => void, initParams : RendererModelInitializeParams}, {}> {
+class SimpleBlobRenderer extends React.Component<{rendererContainer : RendererContainerType, lineId : string, plugin : RendererPluginType, onHeightChange : () => void, initParams : RendererModelInitializeParams}, {}> {
     model : SimpleBlobRendererModel;
     wrapperDivRef : React.RefObject<any> = React.createRef();
     rszObs : ResizeObserver;
@@ -103,10 +103,10 @@ class SimpleBlobRenderer extends React.Component<{rendererContainer : RendererCo
 
     constructor(props : any) {
         super(props);
-        let {rendererContainer, cmdId, plugin, initParams} = this.props;
+        let {rendererContainer, lineId, plugin, initParams} = this.props;
         this.model = new SimpleBlobRendererModel();
         this.model.initialize(initParams);
-        rendererContainer.registerRenderer(cmdId, this.model);
+        rendererContainer.registerRenderer(lineId, this.model);
         this.updateHeight_debounced = debounce(1000, this.updateHeight.bind(this));
     }
 
@@ -143,8 +143,8 @@ class SimpleBlobRenderer extends React.Component<{rendererContainer : RendererCo
     }
 
     componentWillUnmount() {
-        let {rendererContainer, cmdId} = this.props;
-        rendererContainer.unloadRenderer(cmdId);
+        let {rendererContainer, lineId} = this.props;
+        rendererContainer.unloadRenderer(lineId);
         if (this.rszObs != null) {
             this.rszObs.disconnect();
             this.rszObs = null;

@@ -37,11 +37,11 @@ const BUILD = __PROMPT_BUILD__;
 
 type LineContainerModel = {
     loadTerminalRenderer : (elem : Element, line : LineType, cmd : Cmd, width : number) => void,
-    registerRenderer : (cmdId : string, renderer : RendererModel) => void,
-    unloadRenderer : (cmdId : string) => void,
+    registerRenderer : (lineId : string, renderer : RendererModel) => void,
+    unloadRenderer : (lineId : string) => void,
     getIsFocused : (lineNum : number) => boolean,
-    getTermWrap : (cmdId : string) => TermWrap;
-    getRenderer : (cmdId : string) => RendererModel,
+    getTermWrap : (lineId : string) => TermWrap;
+    getRenderer : (lineId : string) => RendererModel,
     getFocusType : () => FocusTypeStrs,
     getSelectedLine : () => number,
     getCmd : (line : LineType) => Cmd,
@@ -139,12 +139,12 @@ function ces(s : string) {
 class Cmd {
     screenId : string;
     remote : RemotePtrType;
-    cmdId : string;
+    lineId : string;
     data : OV<CmdDataType>;
 
     constructor(cmd : CmdDataType) {
         this.screenId = cmd.screenid;
-        this.cmdId = cmd.cmdid;
+        this.lineId = cmd.lineid;
         this.remote = cmd.remote;
         this.data = mobx.observable.box(cmd, {deep: false, name: "cmd-data"});
     }
@@ -154,7 +154,7 @@ class Cmd {
             let origData = this.data.get();
             this.data.set(cmd);
             if (origData != null && cmd != null && origData.status != cmd.status) {
-                GlobalModel.cmdStatusUpdate(this.screenId, this.cmdId, origData.status, cmd.status);
+                GlobalModel.cmdStatusUpdate(this.screenId, this.lineId, origData.status, cmd.status);
             }
         })();
     }
@@ -182,8 +182,11 @@ class Cmd {
             rawcmdstr: cmd.rawcmdstr,
             festate: cmd.festate,
             termopts: cmd.termopts,
-            startpk: cmd.startpk,
-            doneinfo: cmd.doneinfo,
+            cmdpid : cmd.cmdpid,
+            remotepid : cmd.remotepid,
+            donets : cmd.donets,
+            exitcode : cmd.exitcode,
+            durationms : cmd.durationms,
             rtnstate: cmd.rtnstate,
             vts: 0,
             rtnstatestr: null,
@@ -241,7 +244,7 @@ class Cmd {
     handleInputChunk(data : string) : void {
         let inputPacket : FeInputPacketType = {
             type: "feinput",
-            ck: this.screenId + "/" + this.cmdId,
+            ck: this.screenId + "/" + this.lineId,
             remote: this.remote,
             inputdata64: btoa(data),
         };
@@ -265,8 +268,8 @@ class Screen {
     anchor : OV<{anchorLine : number, anchorOffset : number}>;
     termLineNumFocus : OV<number>;
     setAnchor_debounced : (anchorLine : number, anchorOffset : number) => void;
-    terminals : Record<string, TermWrap> = {};        // cmdid => TermWrap
-    renderers : Record<string, RendererModel> = {};  // cmdid => RendererModel
+    terminals : Record<string, TermWrap> = {};        // lineid => TermWrap
+    renderers : Record<string, RendererModel> = {};  // lineid => RendererModel
     shareMode : OV<string>;
     webShareOpts : OV<WebShareOpts>;
     
@@ -395,16 +398,16 @@ class Screen {
         if (sdata.selectedline != 0) {
             sline = this.getLineByNum(sdata.selectedline);
         }
-        // console.log("refocus", curLineFocus.linenum, "=>", sdata.selectedline, sline.cmdid);
+        // console.log("refocus", curLineFocus.linenum, "=>", sdata.selectedline, sline.lineid);
         if (curLineFocus.cmdInputFocus || (curLineFocus.linenum != null && curLineFocus.linenum != sdata.selectedline)) {
             (document.activeElement as HTMLElement).blur();
         }
-        if (sline != null && sline.cmdid != null) {
-            let renderer = this.getRenderer(sline.cmdid);
+        if (sline != null) {
+            let renderer = this.getRenderer(sline.lineid);
             if (renderer != null) {
                 renderer.giveFocus();
             }
-            let termWrap = this.getTermWrap(sline.cmdid);
+            let termWrap = this.getTermWrap(sline.lineid);
             if (termWrap != null) {
                 termWrap.giveFocus();
             }
@@ -503,13 +506,13 @@ class Screen {
     }
 
     updatePtyData(ptyMsg : PtyDataUpdateType) {
-        let cmdId = ptyMsg.cmdid;
-        let renderer = this.renderers[cmdId];
+        let lineId = ptyMsg.lineid;
+        let renderer = this.renderers[lineId];
         if (renderer != null) {
             let data = base64ToArray(ptyMsg.ptydata64);
             renderer.receiveData(ptyMsg.ptypos, data, "from-sw");
         }
-        let term = this.terminals[cmdId];
+        let term = this.terminals[lineId];
         if (term != null) {
             let data = base64ToArray(ptyMsg.ptydata64);
             term.receiveData(ptyMsg.ptypos, data, "from-sw");
@@ -570,22 +573,22 @@ class Screen {
         }
         this.lastRows = rows;
         this.lastCols = cols;
-        for (let cmdid in this.terminals) {
-            this.terminals[cmdid].resizeCols(cols);
+        for (let lineid in this.terminals) {
+            this.terminals[lineid].resizeCols(cols);
         }
         GlobalCommandRunner.resizeScreen(this.screenId, rows, cols);
     }
 
-    getTermWrap(cmdId : string) : TermWrap {
-        return this.terminals[cmdId];
+    getTermWrap(lineId : string) : TermWrap {
+        return this.terminals[lineId];
     }
 
-    getRenderer(cmdId : string) : RendererModel {
-        return this.renderers[cmdId];
+    getRenderer(lineId : string) : RendererModel {
+        return this.renderers[lineId];
     }
 
-    registerRenderer(cmdId : string, renderer : RendererModel) {
-        this.renderers[cmdId] = renderer;
+    registerRenderer(lineId : string, renderer : RendererModel) {
+        this.renderers[lineId] = renderer;
     }
 
     setTermFocus(lineNum : number, focus : boolean) : void {
@@ -644,10 +647,10 @@ class Screen {
     }
 
     loadTerminalRenderer(elem : Element, line : LineType, cmd : Cmd, width : number) {
-        let cmdId = cmd.cmdId;
-        let termWrap = this.getTermWrap(cmdId);
+        let lineId = cmd.lineId;
+        let termWrap = this.getTermWrap(lineId);
         if (termWrap != null) {
-            console.log("term-wrap already exists for", this.screenId, cmdId);
+            console.log("term-wrap already exists for", this.screenId, lineId);
             return;
         }
         let cols = windowWidthToCols(width, GlobalModel.termFontSize.get());
@@ -655,7 +658,7 @@ class Screen {
         if (line.contentheight != null && line.contentheight != -1) {
             usedRows = line.contentheight;
         }
-        let termContext = {sessionId: this.sessionId, screenId: this.screenId, cmdId: cmdId, lineId : line.lineid, lineNum: line.linenum};
+        let termContext = {sessionId: this.sessionId, screenId: this.screenId, lineId : line.lineid, lineNum: line.linenum};
         termWrap = new TermWrap(elem, {
             termContext: termContext,
             usedRows: usedRows,
@@ -669,23 +672,23 @@ class Screen {
             ptyDataSource: getTermPtyData,
             onUpdateContentHeight: (termContext : RendererContext, height : number) => { GlobalModel.setContentHeight(termContext, height); },
         });
-        this.terminals[cmdId] = termWrap;
+        this.terminals[lineId] = termWrap;
         if ((this.focusType.get() == "cmd") && this.selectedLine.get() == line.linenum) {
             termWrap.giveFocus();
         }
         return;
     }
 
-    unloadRenderer(cmdId : string) {
-        let rmodel = this.renderers[cmdId];
+    unloadRenderer(lineId : string) {
+        let rmodel = this.renderers[lineId];
         if (rmodel != null) {
             rmodel.dispose();
-            delete this.renderers[cmdId];
+            delete this.renderers[lineId];
         }
-        let term = this.terminals[cmdId];
+        let term = this.terminals[lineId];
         if (term != null) {
             term.dispose();
-            delete this.terminals[cmdId];
+            delete this.terminals[lineId];
         }
     }
 
@@ -697,7 +700,7 @@ class Screen {
         if (!termOpts.flexrows) {
             return termOpts.rows;
         }
-        let termWrap = this.getTermWrap(cmd.cmdId);
+        let termWrap = this.getTermWrap(cmd.lineId);
         if (termWrap == null) {
             let cols = windowWidthToCols(width, GlobalModel.termFontSize.get());
             let usedRows = GlobalModel.getContentHeight(context);
@@ -742,11 +745,11 @@ class Screen {
                 sline = this.getLineByNum(this.selectedLine.get());
             }
             if (sline != null) {
-                let renderer = this.getRenderer(sline.cmdid);
+                let renderer = this.getRenderer(sline.lineid);
                 if (renderer != null) {
                     renderer.giveFocus();
                 }
-                let termWrap = this.getTermWrap(sline.cmdid);
+                let termWrap = this.getTermWrap(sline.lineid);
                 if (termWrap != null) {
                     termWrap.giveFocus();
                 }
@@ -760,7 +763,7 @@ class ScreenLines {
     loaded : OV<boolean> = mobx.observable.box(false, {name: "slines-loaded"});
     loadError : OV<string> = mobx.observable.box(null);
     lines : OArr<LineType> = mobx.observable.array([], {name: "slines-lines", deep: false});
-    cmds : Record<string, Cmd> = {};
+    cmds : Record<string, Cmd> = {};  // lineid => Cmd
 
     constructor(screenId : string) {
         this.screenId = screenId;
@@ -786,7 +789,7 @@ class ScreenLines {
             genMergeSimpleData(this.lines, slines.lines, (l : LineType) => String(l.lineid), (l : LineType) => sprintf("%013d:%s", l.ts, l.lineid));
             let cmds = slines.cmds || [];
             for (let i=0; i<cmds.length; i++) {
-                this.cmds[cmds[i].cmdid] = new Cmd(cmds[i]);
+                this.cmds[cmds[i].lineid] = new Cmd(cmds[i]);
             }
         })();
     }
@@ -801,18 +804,15 @@ class ScreenLines {
     dispose() {
     }
 
-    getCmd(cmdId : string) : Cmd {
-        return this.cmds[cmdId];
+    getCmd(lineId : string) : Cmd {
+        return this.cmds[lineId];
     }
 
     getRunningCmdLines() : LineType[] {
         let rtn : LineType[] = [];
         for (let i=0; i<this.lines.length; i++) {
             let line = this.lines[i];
-            if (line.cmdid == null) {
-                continue;
-            }
-            let cmd = this.getCmd(line.cmdid);
+            let cmd = this.getCmd(line.lineid);
             if (cmd == null) {
                 continue;
             }
@@ -826,9 +826,9 @@ class ScreenLines {
 
     updateCmd(cmd : CmdDataType) : void {
         if (cmd.remove) {
-            throw new Error("cannot remove cmd with updateCmd call [" + cmd.cmdid + "]");
+            throw new Error("cannot remove cmd with updateCmd call [" + cmd.lineid + "]");
         }
-        let origCmd = this.cmds[cmd.cmdid];
+        let origCmd = this.cmds[cmd.lineid];
         if (origCmd != null) {
             origCmd.setCmd(cmd);
         }
@@ -837,12 +837,12 @@ class ScreenLines {
 
     mergeCmd(cmd : CmdDataType) : void {
         if (cmd.remove) {
-            delete this.cmds[cmd.cmdid];
+            delete this.cmds[cmd.lineid];
             return;
         }
-        let origCmd = this.cmds[cmd.cmdid];
+        let origCmd = this.cmds[cmd.lineid];
         if (origCmd == null) {
-            this.cmds[cmd.cmdid] = new Cmd(cmd);
+            this.cmds[cmd.lineid] = new Cmd(cmd);
             return;
         }
         origCmd.setCmd(cmd);
@@ -1595,7 +1595,6 @@ type LineFocusType = {
     lineid? : string,
     linenum? : number,
     screenid? : string,
-    cmdid? : string,
 };
 
 class SpecialHistoryViewLineContainer {
@@ -1610,7 +1609,7 @@ class SpecialHistoryViewLineContainer {
 
     getCmd(line : LineType) : Cmd {
         if (this.cmd == null) {
-            this.cmd = GlobalModel.historyViewModel.getCmdById(line.cmdid);
+            this.cmd = GlobalModel.historyViewModel.getCmdById(line.lineid);
         }
         return this.cmd;
     }
@@ -1637,10 +1636,10 @@ class SpecialHistoryViewLineContainer {
     
     loadTerminalRenderer(elem : Element, line : LineType, cmd : Cmd, width : number) : void {
         this.unloadRenderer(null);
-        let cmdId = cmd.cmdId;
-        let termWrap = this.getTermWrap(cmdId);
+        let lineId = cmd.lineId;
+        let termWrap = this.getTermWrap(lineId);
         if (termWrap != null) {
-            console.log("term-wrap already exists for", line.screenid, cmdId);
+            console.log("term-wrap already exists for", line.screenid, lineId);
             return;
         }
         let cols = windowWidthToCols(width, GlobalModel.termFontSize.get());
@@ -1648,7 +1647,7 @@ class SpecialHistoryViewLineContainer {
         if (line.contentheight != null && line.contentheight != -1) {
             usedRows = line.contentheight;
         }
-        let termContext = {screenId: line.screenid, cmdId: cmdId, lineId : line.lineid, lineNum: line.linenum};
+        let termContext = {screenId: line.screenid, lineId : line.lineid, lineNum: line.linenum};
         termWrap = new TermWrap(elem, {
             termContext: termContext,
             usedRows: usedRows,
@@ -1666,11 +1665,11 @@ class SpecialHistoryViewLineContainer {
         return;
     }
 
-    registerRenderer(cmdId : string, renderer : RendererModel) : void {
+    registerRenderer(lineId : string, renderer : RendererModel) : void {
         this.renderer = renderer;
     }
     
-    unloadRenderer(cmdId : string) : void {
+    unloadRenderer(lineId : string) : void {
         if (this.renderer != null) {
             this.renderer.dispose();
             this.renderer = null;
@@ -1693,7 +1692,7 @@ class SpecialHistoryViewLineContainer {
         if (!termOpts.flexrows) {
             return termOpts.rows;
         }
-        let termWrap = this.getTermWrap(cmd.cmdId);
+        let termWrap = this.getTermWrap(cmd.lineId);
         if (termWrap == null) {
             let cols = windowWidthToCols(width, GlobalModel.termFontSize.get());
             let usedRows = GlobalModel.getContentHeight(context);
@@ -1712,11 +1711,11 @@ class SpecialHistoryViewLineContainer {
         return false;
     }
     
-    getRenderer(cmdId : string) : RendererModel {
+    getRenderer(lineId : string) : RendererModel {
         return this.renderer;
     }
 
-    getTermWrap(cmdId : string) : TermWrap {
+    getTermWrap(lineId : string) : TermWrap {
         return this.terminal;
     }
     
@@ -1774,13 +1773,13 @@ class HistoryViewModel {
         return null;
     }
 
-    getCmdById(cmdId : string) : Cmd {
-        if (isBlank(cmdId)) {
+    getCmdById(lineId : string) : Cmd {
+        if (isBlank(lineId)) {
             return null;
         }
         for (let i=0; i<this.historyItemCmds.length; i++) {
             let cmd = this.historyItemCmds[i];
-            if (cmd.cmdid == cmdId) {
+            if (cmd.lineid == lineId) {
                 return new Cmd(cmd);
             }
         }
@@ -2435,7 +2434,7 @@ class Model {
     remotes : OArr<RemoteType> = mobx.observable.array([], {name: "remotes", deep: false});
     remotesLoaded : OV<boolean> = mobx.observable.box(false, {name: "remotesLoaded"});
     screenLines : OMap<string, ScreenLines> = mobx.observable.map({}, {name: "screenLines", deep: false});  // key = "sessionid/screenid" (screenlines)
-    termUsedRowsCache : Record<string, number> = {};
+    termUsedRowsCache : Record<string, number> = {};  // key = "screenid/lineid"
     debugCmds : number = 0;
     debugScreen : OV<boolean> = mobx.observable.box(false);
     localServerRunning : OV<boolean>;
@@ -2730,12 +2729,12 @@ class Model {
     }
 
     getContentHeight(context : RendererContext) : number {
-        let key = context.screenId + "/" + context.cmdId;
+        let key = context.screenId + "/" + context.lineId;
         return this.termUsedRowsCache[key];
     }
 
     setContentHeight(context : RendererContext, height : number) : void {
-        let key = context.screenId + "/" + context.cmdId;
+        let key = context.screenId + "/" + context.lineId;
         this.termUsedRowsCache[key] = height;
         GlobalCommandRunner.setTermUsedRows(context, height);
     }
@@ -2804,23 +2803,22 @@ class Model {
             lineid: lineElem.dataset.lineid,
             linenum: (isNaN(lineNum) ? null : lineNum),
             screenid: lineElem.dataset.screenid,
-            cmdid: lineElem.dataset.cmdid,
         };
     }
 
-    cmdStatusUpdate(screenId : string, cmdId : string, origStatus : string, newStatus : string) {
+    cmdStatusUpdate(screenId : string, lineId : string, origStatus : string, newStatus : string) {
         let wasRunning = cmdStatusIsRunning(origStatus);
         let isRunning = cmdStatusIsRunning(newStatus);
         if (wasRunning && !isRunning) {
             // console.log("cmd status", screenId, cmdId, origStatus, "=>", newStatus);
-            let lines = this.getActiveLinesByCmdId(screenId, cmdId);
-            for (let ptr of lines) {
+            let ptr = this.getActiveLine(screenId, lineId);
+            if (ptr != null) {
                 let screen = ptr.screen;
-                let renderer = screen.getRenderer(cmdId);
+                let renderer = screen.getRenderer(lineId);
                 if (renderer != null) {
                     renderer.setIsDone();
                 }
-                let term = screen.getTermWrap(cmdId);
+                let term = screen.getTermWrap(lineId);
                 if (term != null) {
                     term.cmdDone();
                 }
@@ -3293,40 +3291,39 @@ class Model {
         if (slines == null) {
             return null;
         }
-        return slines.getCmd(line.cmdid);
+        return slines.getCmd(line.lineid);
     }
 
-    getActiveLinesByCmdId(screenId : string, cmdid : string) : SWLinePtr[] {
-        let rtn : SWLinePtr[] = [];
+    getActiveLine(screenId : string, lineid : string) : SWLinePtr {
         let slines = this.screenLines.get(screenId);
         if (slines == null) {
-            return [];
+            return null;
         }
         if (!slines.loaded.get()) {
-            return [];
+            return null;
         }
-        let cmd = slines.getCmd(cmdid);
+        let cmd = slines.getCmd(lineid);
         if (cmd == null) {
-            return [];
+            return null;
         }
         let line : LineType = null;
         for (let i=0; i<slines.lines.length; i++) {
-            if (slines.lines[i].cmdid == cmdid) {
+            if (slines.lines[i].lineid == lineid) {
                 line = slines.lines[i];
                 break;
             }
         }
-        if (line != null) {
-            let screen = this.getScreenById_single(slines.screenId);
-            rtn.push({line : line, slines: slines, screen: screen});
+        if (line == null) {
+            return null;
         }
-        return rtn;
+        let screen = this.getScreenById_single(slines.screenId);
+        return {line: line, slines: slines, screen: screen};
     }
 
     updatePtyData(ptyMsg : PtyDataUpdateType) : void {
-        let activeLinePtrs = this.getActiveLinesByCmdId(ptyMsg.screenid, ptyMsg.cmdid);
-        for (let lineptr of activeLinePtrs) {
-            lineptr.screen.updatePtyData(ptyMsg);
+        let linePtr = this.getActiveLine(ptyMsg.screenid, ptyMsg.lineid);
+        if (linePtr != null) {
+            linePtr.screen.updatePtyData(ptyMsg);
         }
     }
 
@@ -3696,11 +3693,11 @@ function getTermPtyData(termContext : TermContextUnion) : Promise<PtyDataType> {
     if ("remoteId" in termContext) {
         return getRemotePtyData(termContext.remoteId);
     }
-    return getPtyData(termContext.screenId, termContext.cmdId, termContext.lineNum);
+    return getPtyData(termContext.screenId, termContext.lineId, termContext.lineNum);
 }
 
-function getPtyData(screenId : string, cmdId : string, lineNum : number) : Promise<PtyDataType> {
-    let url = sprintf(GlobalModel.getBaseHostPort() + "/api/ptyout?linenum=%d&screenid=%s&cmdid=%s", lineNum, screenId, cmdId);
+function getPtyData(screenId : string, lineId : string, lineNum : number) : Promise<PtyDataType> {
+    let url = sprintf(GlobalModel.getBaseHostPort() + "/api/ptyout?linenum=%d&screenid=%s&lineid=%s", lineNum, screenId, lineId);
     return _getPtyDataFromUrl(url);
 }
 

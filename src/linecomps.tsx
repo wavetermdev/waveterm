@@ -189,7 +189,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         }
         let {line} = this.props;
         this.rtnStateDiffFetched = true;
-        let usp = new URLSearchParams({linenum: String(line.linenum), screenid: line.screenid, cmdid: line.cmdid});
+        let usp = new URLSearchParams({linenum: String(line.linenum), screenid: line.screenid, lineid: line.lineid});
         let url = GlobalModel.getBaseHostPort() + "/api/rtnstate?" + usp.toString();
         let fetchHeaders = GlobalModel.getFetchHeaders();
         fetch(url, {headers: fetchHeaders}).then((resp) => {
@@ -533,7 +533,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         if (cmd == null) {
             return (
                 <div className="line line-invalid" ref={this.lineRef} data-lineid={line.lineid} data-linenum={line.linenum} data-screenid={line.screenid}>
-                    [cmd not found '{line.cmdid}']
+                    [cmd not found '{line.lineid}']
                 </div>
             );
         }
@@ -568,7 +568,7 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
         return (
             <div className={mainDivCn}
                  ref={this.lineRef} onClick={this.handleClick}
-                 data-lineid={line.lineid} data-linenum={line.linenum} data-screenid={line.screenid} data-cmdid={line.cmdid}>
+                 data-lineid={line.lineid} data-linenum={line.linenum} data-screenid={line.screenid}>
                 <div key="focus" className={cn("focus-indicator", {"selected": isSelected}, {"active": isSelected && isFocused})}/>
                 <div key="header" className={cn("line-header", {"is-expanded": isExpanded}, {"hide-prompt": hidePrompt})}>
                     <div key="meta" className="meta-wrap">
@@ -588,10 +588,10 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
                     <TerminalRenderer screen={screen} line={line} width={width} staticRender={staticRender} visible={visible} onHeightChange={this.handleHeightChange} collapsed={false}/>
                 </If>
                 <If condition={rendererPlugin != null && rendererPlugin.rendererType == "simple"}>
-                    <SimpleBlobRenderer rendererContainer={screen} cmdId={line.cmdid} plugin={rendererPlugin} onHeightChange={this.handleHeightChange} initParams={this.makeRendererModelInitializeParams()}/>
+                    <SimpleBlobRenderer rendererContainer={screen} lineId={line.lineid} plugin={rendererPlugin} onHeightChange={this.handleHeightChange} initParams={this.makeRendererModelInitializeParams()}/>
                 </If>
                 <If condition={rendererPlugin != null && rendererPlugin.rendererType == "full"}>
-                    <FullRenderer rendererContainer={screen} cmdId={line.cmdid} plugin={rendererPlugin} onHeightChange={this.handleHeightChange} initParams={this.makeRendererModelInitializeParams()}/>
+                    <FullRenderer rendererContainer={screen} lineId={line.lineid} plugin={rendererPlugin} onHeightChange={this.handleHeightChange} initParams={this.makeRendererModelInitializeParams()}/>
                 </If>
                 <If condition={cmd.getRtnState()}>
                     <div key="rtnstate" className="cmd-rtnstate" style={{visibility: ((cmd.getStatus() == "done") ? "visible" : "hidden")}}>
@@ -817,7 +817,7 @@ class TerminalRenderer extends React.Component<{screen : LineContainerModel, lin
 
     unloadTerminal(unmount : boolean) : void {
         let {screen, line} = this.props;
-        screen.unloadRenderer(line.cmdid);
+        screen.unloadRenderer(line.lineid);
         if (!unmount) {
             mobx.action(() => this.termLoaded.set(false))();
             let termElem = this.termRef.current;
@@ -831,7 +831,7 @@ class TerminalRenderer extends React.Component<{screen : LineContainerModel, lin
     clickTermBlock(e : any) {
         let {screen, line} = this.props;
         let model = GlobalModel;
-        let termWrap = screen.getTermWrap(line.cmdid);
+        let termWrap = screen.getTermWrap(line.lineid);
         if (termWrap != null) {
             termWrap.giveFocus();
         }
@@ -854,7 +854,7 @@ class TerminalRenderer extends React.Component<{screen : LineContainerModel, lin
                 <If condition={!isFocused}>
                     <div key="term-block" className="term-block" onClick={this.clickTermBlock}></div>
                 </If>
-                <div key="term-connectelem" className="terminal-connectelem" ref={this.termRef} data-cmdid={line.cmdid} style={{height: termHeight}}></div>
+                <div key="term-connectelem" className="terminal-connectelem" ref={this.termRef} data-lineid={line.lineid} style={{height: termHeight}}></div>
                 <If condition={!termLoaded}><div key="term-loading" className="terminal-loading-message">...</div></If>
 
             </div>
