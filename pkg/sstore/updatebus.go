@@ -19,7 +19,7 @@ type UpdatePacket interface {
 
 type PtyDataUpdate struct {
 	ScreenId   string `json:"screenid,omitempty"`
-	CmdId      string `json:"cmdid,omitempty"`
+	LineId     string `json:"lineid,omitempty"`
 	RemoteId   string `json:"remoteid,omitempty"`
 	PtyPos     int64  `json:"ptypos"`
 	PtyData64  string `json:"ptydata64"`
@@ -70,21 +70,6 @@ type RemoteViewType struct {
 	RemoteShowAll bool            `json:"remoteshowall,omitempty"`
 	PtyRemoteId   string          `json:"ptyremoteid,omitempty"`
 	RemoteEdit    *RemoteEditType `json:"remoteedit,omitempty"`
-}
-
-func ReadHistoryDataFromUpdate(update UpdatePacket) (string, string, *RemotePtrType) {
-	modelUpdate, ok := update.(*ModelUpdate)
-	if !ok {
-		return "", "", nil
-	}
-	if modelUpdate.Line == nil {
-		return "", "", nil
-	}
-	var rptr *RemotePtrType
-	if modelUpdate.Cmd != nil {
-		rptr = &modelUpdate.Cmd.Remote
-	}
-	return modelUpdate.Line.LineId, modelUpdate.Line.CmdId, rptr
 }
 
 func InfoMsgUpdate(infoMsgFmt string, args ...interface{}) *ModelUpdate {

@@ -17,7 +17,6 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/google/uuid"
 	"github.com/commandlinedev/apishell/pkg/base"
 	"github.com/commandlinedev/apishell/pkg/packet"
 	"github.com/commandlinedev/apishell/pkg/shexec"
@@ -29,6 +28,7 @@ import (
 	"github.com/commandlinedev/prompt-server/pkg/scpacket"
 	"github.com/commandlinedev/prompt-server/pkg/sstore"
 	"github.com/commandlinedev/prompt-server/pkg/utilfn"
+	"github.com/google/uuid"
 )
 
 const (
@@ -110,7 +110,6 @@ type SetVarScope struct {
 type historyContextType struct {
 	LineId    string
 	LineNum   int64
-	CmdId     string
 	RemotePtr *sstore.RemotePtrType
 }
 
@@ -527,7 +526,6 @@ func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, history
 		LineId:    historyContext.LineId,
 		LineNum:   historyContext.LineNum,
 		HadError:  hadError,
-		CmdId:     historyContext.CmdId,
 		CmdStr:    cmdStr,
 		IsMetaCmd: isMetaCmd,
 		Incognito: isIncognito,
@@ -1325,7 +1323,7 @@ func writeErrorToPty(cmd *sstore.CmdType, errStr string, outputPos int64) {
 	}
 	errCtx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	update, err := sstore.AppendToCmdPtyBlob(errCtx, cmd.ScreenId, cmd.CmdId, errBytes, outputPos)
+	update, err := sstore.AppendToCmdPtyBlob(errCtx, cmd.ScreenId, cmd.LineId, errBytes, outputPos)
 	if err != nil {
 		log.Printf("error writing ptyupdate for openai response: %v\n", err)
 		return
@@ -1339,7 +1337,7 @@ func writePacketToPty(ctx context.Context, cmd *sstore.CmdType, pk packet.Packet
 	if err != nil {
 		return err
 	}
-	update, err := sstore.AppendToCmdPtyBlob(ctx, cmd.ScreenId, cmd.CmdId, outBytes, *outputPos)
+	update, err := sstore.AppendToCmdPtyBlob(ctx, cmd.ScreenId, cmd.LineId, outBytes, *outputPos)
 	if err != nil {
 		return err
 	}
@@ -1364,18 +1362,17 @@ func doOpenAICompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, prompt
 		}
 		duration := time.Since(startTime)
 		cmdStatus := sstore.CmdStatusDone
-		var exitCode int64
+		var exitCode int
 		if hadError {
 			cmdStatus = sstore.CmdStatusError
 			exitCode = 1
 		}
-		doneInfo := &sstore.CmdDoneInfo{
-			Ts:         time.Now().UnixMilli(),
-			ExitCode:   exitCode,
-			DurationMs: duration.Milliseconds(),
-		}
-		ck := base.MakeCommandKey(cmd.ScreenId, cmd.CmdId)
-		update, err := sstore.UpdateCmdDoneInfo(context.Background(), ck, doneInfo, cmdStatus)
+		ck := base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
+		donePk := packet.MakeCmdDonePacket(ck)
+		donePk.Ts = time.Now().UnixMilli()
+		donePk.ExitCode = exitCode
+		donePk.DurationMs = duration.Milliseconds()
+		update, err := sstore.UpdateCmdDoneInfo(context.Background(), ck, donePk, cmdStatus)
 		if err != nil {
 			// nothing to do
 			log.Printf("error updating cmddoneinfo (in openai): %v\n", err)
@@ -1414,18 +1411,17 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, 
 		}
 		duration := time.Since(startTime)
 		cmdStatus := sstore.CmdStatusDone
-		var exitCode int64
+		var exitCode int
 		if hadError {
 			cmdStatus = sstore.CmdStatusError
 			exitCode = 1
 		}
-		doneInfo := &sstore.CmdDoneInfo{
-			Ts:         time.Now().UnixMilli(),
-			ExitCode:   exitCode,
-			DurationMs: duration.Milliseconds(),
-		}
-		ck := base.MakeCommandKey(cmd.ScreenId, cmd.CmdId)
-		update, err := sstore.UpdateCmdDoneInfo(context.Background(), ck, doneInfo, cmdStatus)
+		ck := base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
+		donePk := packet.MakeCmdDonePacket(ck)
+		donePk.Ts = time.Now().UnixMilli()
+		donePk.ExitCode = exitCode
+		donePk.DurationMs = duration.Milliseconds()
+		update, err := sstore.UpdateCmdDoneInfo(context.Background(), ck, donePk, cmdStatus)
 		if err != nil {
 			// nothing to do
 			log.Printf("error updating cmddoneinfo (in openai): %v\n", err)
@@ -1545,14 +1541,12 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 func makeDynCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr string, termOpts sstore.TermOpts) (*sstore.CmdType, error) {
 	cmd := &sstore.CmdType{
 		ScreenId:  ids.ScreenId,
-		CmdId:     scbase.GenPromptUUID(),
+		LineId:    scbase.GenPromptUUID(),
 		CmdStr:    cmdStr,
 		RawCmdStr: cmdStr,
 		Remote:    ids.Remote.RemotePtr,
 		TermOpts:  termOpts,
 		Status:    sstore.CmdStatusRunning,
-		StartPk:   nil,
-		DoneInfo:  nil,
 		RunOut:    nil,
 	}
 	if ids.Remote.StatePtr != nil {
@@ -1561,7 +1555,7 @@ func makeDynCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr str
 	if ids.Remote.FeState != nil {
 		cmd.FeState = ids.Remote.FeState
 	}
-	err := sstore.CreateCmdPtyFile(ctx, cmd.ScreenId, cmd.CmdId, cmd.TermOpts.MaxPtySize)
+	err := sstore.CreateCmdPtyFile(ctx, cmd.ScreenId, cmd.LineId, cmd.TermOpts.MaxPtySize)
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, fmt.Errorf("cannot create local ptyout file for %s command: %w", metaCmd, err)
@@ -1572,14 +1566,12 @@ func makeDynCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr str
 func makeStaticCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr string, cmdOutput []byte) (*sstore.CmdType, error) {
 	cmd := &sstore.CmdType{
 		ScreenId:  ids.ScreenId,
-		CmdId:     scbase.GenPromptUUID(),
+		LineId:    scbase.GenPromptUUID(),
 		CmdStr:    cmdStr,
 		RawCmdStr: cmdStr,
 		Remote:    ids.Remote.RemotePtr,
 		TermOpts:  sstore.TermOpts{Rows: shexec.DefaultTermRows, Cols: shexec.DefaultTermCols, FlexRows: true, MaxPtySize: remote.DefaultMaxPtySize},
 		Status:    sstore.CmdStatusDone,
-		StartPk:   nil,
-		DoneInfo:  nil,
 		RunOut:    nil,
 	}
 	if ids.Remote.StatePtr != nil {
@@ -1588,13 +1580,13 @@ func makeStaticCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr 
 	if ids.Remote.FeState != nil {
 		cmd.FeState = ids.Remote.FeState
 	}
-	err := sstore.CreateCmdPtyFile(ctx, cmd.ScreenId, cmd.CmdId, cmd.TermOpts.MaxPtySize)
+	err := sstore.CreateCmdPtyFile(ctx, cmd.ScreenId, cmd.LineId, cmd.TermOpts.MaxPtySize)
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, fmt.Errorf("cannot create local ptyout file for %s command: %w", metaCmd, err)
 	}
 	// can ignore ptyupdate
-	_, err = sstore.AppendToCmdPtyBlob(ctx, ids.ScreenId, cmd.CmdId, cmdOutput, 0)
+	_, err = sstore.AppendToCmdPtyBlob(ctx, ids.ScreenId, cmd.LineId, cmdOutput, 0)
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, fmt.Errorf("cannot append to local ptyout file for %s command: %v", metaCmd, err)
@@ -1644,7 +1636,6 @@ func updateHistoryContext(ctx context.Context, line *sstore.LineType, cmd *sstor
 		hctx.LineNum = line.LineNum
 	}
 	if cmd != nil {
-		hctx.CmdId = cmd.CmdId
 		hctx.RemotePtr = &cmd.Remote
 	}
 }
@@ -2487,7 +2478,7 @@ func splitLinesForInfo(str string) []string {
 
 func resizeRunningCommand(ctx context.Context, cmd *sstore.CmdType, newCols int) error {
 	siPk := packet.MakeSpecialInputPacket()
-	siPk.CK = base.MakeCommandKey(cmd.ScreenId, cmd.CmdId)
+	siPk.CK = base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
 	siPk.WinSize = &packet.WinSize{Rows: int(cmd.TermOpts.Rows), Cols: newCols}
 	msh := remote.GetRemoteById(cmd.Remote.RemoteId)
 	if msh == nil {
@@ -2499,7 +2490,7 @@ func resizeRunningCommand(ctx context.Context, cmd *sstore.CmdType, newCols int)
 	}
 	newTermOpts := cmd.TermOpts
 	newTermOpts.Cols = int64(newCols)
-	err = sstore.UpdateCmdTermOpts(ctx, cmd.ScreenId, cmd.CmdId, newTermOpts)
+	err = sstore.UpdateCmdTermOpts(ctx, cmd.ScreenId, cmd.LineId, newTermOpts)
 	if err != nil {
 		return err
 	}
@@ -2963,7 +2954,6 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "renderer", "terminal"))
 	}
 	if cmd != nil {
-		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "cmdid", cmd.CmdId))
 		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "remote", cmd.Remote.MakeFullRemoteRef()))
 		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "status", cmd.Status))
 		if cmd.FeState["cwd"] != "" {
@@ -2976,7 +2966,7 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		if cmd.RtnState {
 			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "rtnstate", "true"))
 		}
-		stat, _ := sstore.StatCmdPtyFile(ctx, cmd.ScreenId, cmd.CmdId)
+		stat, _ := sstore.StatCmdPtyFile(ctx, cmd.ScreenId, cmd.LineId)
 		if stat == nil {
 			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "file", "-"))
 		} else {
@@ -3073,7 +3063,7 @@ func SignalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		return nil, fmt.Errorf("cannot send signal, remote is not connected")
 	}
 	siPk := packet.MakeSpecialInputPacket()
-	siPk.CK = base.MakeCommandKey(cmd.ScreenId, cmd.CmdId)
+	siPk.CK = base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
 	siPk.SigName = sigArg
 	err = msh.SendSpecialInput(siPk)
 	if err != nil {

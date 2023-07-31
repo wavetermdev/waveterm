@@ -10,10 +10,18 @@ import (
 	"github.com/commandlinedev/prompt-server/pkg/scbase"
 )
 
-type cmdMigrationType struct {
+const MigrationChunkSize = 10
+
+type cmdMigration13Type struct {
 	SessionId string
 	ScreenId  string
 	CmdId     string
+}
+
+type cmdMigration20Type struct {
+	ScreenId string
+	LineId   string
+	CmdId    string
 }
 
 func getSliceChunk[T any](slice []T, chunkSize int) ([]T, []T) {
@@ -23,10 +31,65 @@ func getSliceChunk[T any](slice []T, chunkSize int) ([]T, []T) {
 	return slice[0:chunkSize], slice[chunkSize:]
 }
 
-func RunCmdScreenMigration13() error {
+func RunMigration20() error {
 	ctx := context.Background()
 	startTime := time.Now()
-	var migrations []cmdMigrationType
+	var migrations []cmdMigration20Type
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		tx.Select(&migrations, `SELECT * FROM cmd_migrate`)
+		return nil
+	})
+	if txErr != nil {
+		return fmt.Errorf("trying to get cmd migrations: %w", txErr)
+	}
+	log.Printf("[db] got %d cmd-line migrations\n", len(migrations))
+	for len(migrations) > 0 {
+		var mchunk []cmdMigration20Type
+		mchunk, migrations = getSliceChunk(migrations, MigrationChunkSize)
+		err := processMigration20Chunk(ctx, mchunk)
+		if err != nil {
+			return fmt.Errorf("cmd migration failed on chunk: %w", err)
+		}
+	}
+	log.Printf("[db] cmd line migration done: %v\n", time.Since(startTime))
+	return nil
+}
+
+func processMigration20Chunk(ctx context.Context, mchunk []cmdMigration20Type) error {
+	for _, mig := range mchunk {
+		newFile, err := scbase.PtyOutFile(mig.ScreenId, mig.LineId)
+		if err != nil {
+			log.Printf("ptyoutfile(lineid) error: %v\n", err)
+			continue
+		}
+		oldFile, err := scbase.PtyOutFile(mig.ScreenId, mig.CmdId)
+		if err != nil {
+			log.Printf("ptyoutfile(cmdid) error: %v\n", err)
+			continue
+		}
+		err = os.Rename(oldFile, newFile)
+		if err != nil {
+			log.Printf("error renaming %s => %s: %v\n", oldFile, newFile, err)
+			continue
+		}
+	}
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		for _, mig := range mchunk {
+			query := `DELETE FROM cmd_migrate WHERE cmdid = ?`
+			tx.Exec(query, mig.CmdId)
+		}
+		return nil
+	})
+	if txErr != nil {
+		return txErr
+	}
+	return nil
+}
+
+func RunMigration13() error {
+	ctx := context.Background()
+	startTime := time.Now()
+	var migrations []cmdMigration13Type
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		tx.Select(&migrations, `SELECT * FROM cmd_migrate`)
 		return nil
@@ -36,9 +99,9 @@ func RunCmdScreenMigration13() error {
 	}
 	log.Printf("[db] got %d cmd-screen migrations\n", len(migrations))
 	for len(migrations) > 0 {
-		var mchunk []cmdMigrationType
-		mchunk, migrations = getSliceChunk(migrations, 5)
-		err := processMigrationChunk(ctx, mchunk)
+		var mchunk []cmdMigration13Type
+		mchunk, migrations = getSliceChunk(migrations, MigrationChunkSize)
+		err := processMigration13Chunk(ctx, mchunk)
 		if err != nil {
 			return fmt.Errorf("cmd migration failed on chunk: %w", err)
 		}
@@ -59,7 +122,7 @@ func RunCmdScreenMigration13() error {
 	return nil
 }
 
-func processMigrationChunk(ctx context.Context, mchunk []cmdMigrationType) error {
+func processMigration13Chunk(ctx context.Context, mchunk []cmdMigration13Type) error {
 	for _, mig := range mchunk {
 		newFile, err := scbase.PtyOutFile(mig.ScreenId, mig.CmdId)
 		if err != nil {

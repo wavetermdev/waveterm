@@ -299,34 +299,34 @@ func makeWebShareUpdate(ctx context.Context, update *sstore.ScreenUpdateType) (*
 		}
 		rtn.TermOpts = &cmd.TermOpts
 
-	case sstore.UpdateType_CmdDoneInfo:
+	case sstore.UpdateType_CmdExitCode, sstore.UpdateType_CmdDurationMs:
 		_, cmd, err := sstore.GetLineCmdByLineId(ctx, update.ScreenId, update.LineId)
 		if err != nil || cmd == nil {
 			return nil, fmt.Errorf("error getting cmd: %v", defaultError(err, "not found"))
 		}
-		rtn.DoneInfo = cmd.DoneInfo
+		if update.UpdateType == sstore.UpdateType_CmdExitCode {
+			rtn.IVal = int64(cmd.ExitCode)
+		} else if update.UpdateType == sstore.UpdateType_CmdDurationMs {
+			rtn.IVal = int64(cmd.DurationMs)
+		}
 
 	case sstore.UpdateType_CmdRtnState:
 		_, cmd, err := sstore.GetLineCmdByLineId(ctx, update.ScreenId, update.LineId)
 		if err != nil || cmd == nil {
 			return nil, fmt.Errorf("error getting cmd: %v", defaultError(err, "not found"))
 		}
-		data, err := rtnstate.GetRtnStateDiff(ctx, update.ScreenId, cmd.CmdId)
+		data, err := rtnstate.GetRtnStateDiff(ctx, update.ScreenId, cmd.LineId)
 		if err != nil {
 			return nil, fmt.Errorf("cannot compute rtnstate: %v", err)
 		}
 		rtn.SVal = string(data)
 
 	case sstore.UpdateType_PtyPos:
-		cmdId, err := sstore.GetCmdIdFromLineId(ctx, update.ScreenId, update.LineId)
-		if err != nil {
-			return nil, fmt.Errorf("error getting cmdid: %v", err)
-		}
 		ptyPos, err := sstore.GetWebPtyPos(ctx, update.ScreenId, update.LineId)
 		if err != nil {
 			return nil, fmt.Errorf("error getting ptypos: %v", err)
 		}
-		realOffset, data, err := sstore.ReadPtyOutFile(ctx, update.ScreenId, cmdId, ptyPos, MaxPtyUpdateSize+1)
+		realOffset, data, err := sstore.ReadPtyOutFile(ctx, update.ScreenId, update.LineId, ptyPos, MaxPtyUpdateSize+1)
 		if err != nil {
 			return nil, fmt.Errorf("error getting ptydata: %v", err)
 		}

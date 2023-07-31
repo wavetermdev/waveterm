@@ -1434,7 +1434,7 @@ func RunCommand(ctx context.Context, sessionId string, screenId string, remotePt
 	}
 	ok, existingPSC := msh.testAndSetPendingStateCmd(remotePtr.Name, newPSC)
 	if !ok {
-		line, _, err := sstore.GetLineCmdByCmdId(ctx, screenId, existingPSC.GetCmdId())
+		line, _, err := sstore.GetLineCmdByLineId(ctx, screenId, existingPSC.GetCmdId())
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot run command while a stateful command is still running: %v", err)
 		}
@@ -1494,21 +1494,23 @@ func RunCommand(ctx context.Context, sessionId string, screenId string, remotePt
 		status = sstore.CmdStatusDetached
 	}
 	cmd := &sstore.CmdType{
-		ScreenId:  runPacket.CK.GetGroupId(),
-		CmdId:     runPacket.CK.GetCmdId(),
-		CmdStr:    runPacket.Command,
-		RawCmdStr: runPacket.Command,
-		Remote:    remotePtr,
-		FeState:   sstore.FeStateFromShellState(currentState),
-		StatePtr:  *statePtr,
-		TermOpts:  makeTermOpts(runPacket),
-		Status:    status,
-		StartPk:   startPk,
-		DoneInfo:  nil,
-		RunOut:    nil,
-		RtnState:  runPacket.ReturnState,
+		ScreenId:   runPacket.CK.GetGroupId(),
+		LineId:     runPacket.CK.GetCmdId(),
+		CmdStr:     runPacket.Command,
+		RawCmdStr:  runPacket.Command,
+		Remote:     remotePtr,
+		FeState:    sstore.FeStateFromShellState(currentState),
+		StatePtr:   *statePtr,
+		TermOpts:   makeTermOpts(runPacket),
+		Status:     status,
+		CmdPid:     startPk.Pid,
+		RemotePid:  startPk.MShellPid,
+		ExitCode:   0,
+		DurationMs: 0,
+		RunOut:     nil,
+		RtnState:   runPacket.ReturnState,
 	}
-	err = sstore.CreateCmdPtyFile(ctx, cmd.ScreenId, cmd.CmdId, cmd.TermOpts.MaxPtySize)
+	err = sstore.CreateCmdPtyFile(ctx, cmd.ScreenId, cmd.LineId, cmd.TermOpts.MaxPtySize)
 	if err != nil {
 		// TODO the cmd is running, so this is a tricky error to handle
 		return nil, nil, fmt.Errorf("cannot create local ptyout file for running command: %v", err)
@@ -1645,12 +1647,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 	if donePk.FinalStateDiff != nil {
 		donePk.FinalStateDiff = stripScVarsFromStateDiff(donePk.FinalStateDiff)
 	}
-	doneInfo := &sstore.CmdDoneInfo{
-		Ts:         donePk.Ts,
-		ExitCode:   int64(donePk.ExitCode),
-		DurationMs: donePk.DurationMs,
-	}
-	update, err := sstore.UpdateCmdDoneInfo(context.Background(), donePk.CK, doneInfo, sstore.CmdStatusDone)
+	update, err := sstore.UpdateCmdDoneInfo(context.Background(), donePk.CK, donePk, sstore.CmdStatusDone)
 	if err != nil {
 		msh.WriteToPtyBuffer("*error updating cmddone: %v\n", err)
 		return
@@ -1713,7 +1710,7 @@ func (msh *MShellProc) handleCmdFinalPacket(finalPk *packet.CmdFinalPacketType) 
 		log.Printf("error calling GetCmdById in handleCmdFinalPacket: %v\n", err)
 		return
 	}
-	if rtnCmd == nil || rtnCmd.DoneInfo != nil {
+	if rtnCmd == nil || rtnCmd.DoneTs > 0 {
 		return
 	}
 	log.Printf("finalpk %s (hangup): %s\n", finalPk.CK, finalPk.Error)

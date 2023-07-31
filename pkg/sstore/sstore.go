@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/commandlinedev/apishell/pkg/base"
 	"github.com/commandlinedev/apishell/pkg/packet"
 	"github.com/commandlinedev/apishell/pkg/shexec"
 	"github.com/commandlinedev/prompt-server/pkg/dbutil"
@@ -58,7 +59,6 @@ const (
 	CmdStatusError    = "error"
 	CmdStatusDone     = "done"
 	CmdStatusHangup   = "hangup"
-	CmdStatusWaiting  = "waiting"
 )
 
 const (
@@ -115,7 +115,8 @@ const (
 	UpdateType_LineContentHeight  = "line:contentheight"
 	UpdateType_CmdStatus          = "cmd:status"
 	UpdateType_CmdTermOpts        = "cmd:termopts"
-	UpdateType_CmdDoneInfo        = "cmd:doneinfo"
+	UpdateType_CmdExitCode        = "cmd:exitcode"
+	UpdateType_CmdDurationMs      = "cmd:durationms"
 	UpdateType_CmdRtnState        = "cmd:rtnstate"
 	UpdateType_PtyPos             = "pty:pos"
 )
@@ -125,6 +126,10 @@ const MaxTzNameLen = 50
 var globalDBLock = &sync.Mutex{}
 var globalDB *sqlx.DB
 var globalDBErr error
+
+func lineIdFromCK(ck base.CommandKey) string {
+	return ck.GetCmdId()
+}
 
 func GetDBName() string {
 	scHome := scbase.GetPromptHomeDir()
@@ -174,7 +179,7 @@ func CloseDB() {
 
 type CmdPtr struct {
 	ScreenId string
-	CmdId    string
+	LineId   string
 }
 
 type ClientWinSizeType struct {
@@ -373,7 +378,6 @@ func (h *HistoryItemType) ToMap() map[string]interface{} {
 	rtn["lineid"] = h.LineId
 	rtn["linenum"] = h.LineNum
 	rtn["haderror"] = h.HadError
-	rtn["cmdid"] = h.CmdId
 	rtn["cmdstr"] = h.CmdStr
 	rtn["remoteownerid"] = h.Remote.OwnerId
 	rtn["remoteid"] = h.Remote.RemoteId
@@ -391,7 +395,6 @@ func (h *HistoryItemType) FromMap(m map[string]interface{}) bool {
 	quickSetStr(&h.ScreenId, m, "screenid")
 	quickSetStr(&h.LineId, m, "lineid")
 	quickSetBool(&h.HadError, m, "haderror")
-	quickSetStr(&h.CmdId, m, "cmdid")
 	quickSetStr(&h.CmdStr, m, "cmdstr")
 	quickSetStr(&h.Remote.OwnerId, m, "remoteownerid")
 	quickSetStr(&h.Remote.RemoteId, m, "remoteid")
@@ -535,7 +538,6 @@ type HistoryItemType struct {
 	ScreenId  string        `json:"screenid"`
 	LineId    string        `json:"lineid"`
 	HadError  bool          `json:"haderror"`
-	CmdId     string        `json:"cmdid"`
 	CmdStr    string        `json:"cmdstr"`
 	Remote    RemotePtrType `json:"remote"`
 	IsMetaCmd bool          `json:"ismetacmd"`
@@ -715,7 +717,6 @@ type LineType struct {
 	LineType      string `json:"linetype"`
 	Renderer      string `json:"renderer,omitempty"`
 	Text          string `json:"text,omitempty"`
-	CmdId         string `json:"cmdid,omitempty"`
 	Ephemeral     bool   `json:"ephemeral,omitempty"`
 	ContentHeight int64  `json:"contentheight,omitempty"`
 	Star          bool   `json:"star,omitempty"`
@@ -932,35 +933,26 @@ func (r *RemoteType) GetName() string {
 	return r.RemoteCanonicalName
 }
 
-type CmdDoneInfo struct {
-	Ts         int64 `json:"ts"`
-	ExitCode   int64 `json:"exitcode"`
-	DurationMs int64 `json:"durationms"`
-}
-
-type CmdMapType struct {
-	SessionId string `json:"sessionid"`
-	ScreenId  string `json:"screenid"`
-	CmdId     string `json:"cmdid"`
-}
-
 type CmdType struct {
-	ScreenId     string                     `json:"screenid"`
-	CmdId        string                     `json:"cmdid"`
-	Remote       RemotePtrType              `json:"remote"`
-	CmdStr       string                     `json:"cmdstr"`
-	RawCmdStr    string                     `json:"rawcmdstr"`
-	FeState      map[string]string          `json:"festate"`
-	StatePtr     ShellStatePtr              `json:"state"`
-	TermOpts     TermOpts                   `json:"termopts"`
-	OrigTermOpts TermOpts                   `json:"origtermopts"`
-	Status       string                     `json:"status"`
-	StartPk      *packet.CmdStartPacketType `json:"startpk,omitempty"`
-	DoneInfo     *CmdDoneInfo               `json:"doneinfo,omitempty"`
-	RunOut       []packet.PacketType        `json:"runout,omitempty"`
-	RtnState     bool                       `json:"rtnstate,omitempty"`
-	RtnStatePtr  ShellStatePtr              `json:"rtnstateptr,omitempty"`
-	Remove       bool                       `json:"remove,omitempty"`
+	ScreenId     string              `json:"screenid"`
+	LineId       string              `json:"lineid"`
+	Remote       RemotePtrType       `json:"remote"`
+	CmdStr       string              `json:"cmdstr"`
+	RawCmdStr    string              `json:"rawcmdstr"`
+	FeState      map[string]string   `json:"festate"`
+	StatePtr     ShellStatePtr       `json:"state"`
+	TermOpts     TermOpts            `json:"termopts"`
+	OrigTermOpts TermOpts            `json:"origtermopts"`
+	Status       string              `json:"status"`
+	CmdPid       int                 `json:"cmdpid"`
+	RemotePid    int                 `json:"remotepid"`
+	DoneTs       int64               `json:"donets"`
+	ExitCode     int                 `json:"exitcode"`
+	DurationMs   int                 `json:"durationms"`
+	RunOut       []packet.PacketType `json:"runout,omitempty"`
+	RtnState     bool                `json:"rtnstate,omitempty"`
+	RtnStatePtr  ShellStatePtr       `json:"rtnstateptr,omitempty"`
+	Remove       bool                `json:"remove,omitempty"`
 }
 
 func (r *RemoteType) ToMap() map[string]interface{} {
@@ -1007,7 +999,7 @@ func (r *RemoteType) FromMap(m map[string]interface{}) bool {
 func (cmd *CmdType) ToMap() map[string]interface{} {
 	rtn := make(map[string]interface{})
 	rtn["screenid"] = cmd.ScreenId
-	rtn["cmdid"] = cmd.CmdId
+	rtn["lineid"] = cmd.LineId
 	rtn["remoteownerid"] = cmd.Remote.OwnerId
 	rtn["remoteid"] = cmd.Remote.RemoteId
 	rtn["remotename"] = cmd.Remote.Name
@@ -1019,8 +1011,11 @@ func (cmd *CmdType) ToMap() map[string]interface{} {
 	rtn["termopts"] = quickJson(cmd.TermOpts)
 	rtn["origtermopts"] = quickJson(cmd.OrigTermOpts)
 	rtn["status"] = cmd.Status
-	rtn["startpk"] = quickJson(cmd.StartPk)
-	rtn["doneinfo"] = quickJson(cmd.DoneInfo)
+	rtn["cmdpid"] = cmd.CmdPid
+	rtn["remotepid"] = cmd.RemotePid
+	rtn["donets"] = cmd.DoneTs
+	rtn["exitcode"] = cmd.ExitCode
+	rtn["durationms"] = cmd.DurationMs
 	rtn["runout"] = quickJson(cmd.RunOut)
 	rtn["rtnstate"] = cmd.RtnState
 	rtn["rtnbasehash"] = cmd.RtnStatePtr.BaseHash
@@ -1030,7 +1025,7 @@ func (cmd *CmdType) ToMap() map[string]interface{} {
 
 func (cmd *CmdType) FromMap(m map[string]interface{}) bool {
 	quickSetStr(&cmd.ScreenId, m, "screenid")
-	quickSetStr(&cmd.CmdId, m, "cmdid")
+	quickSetStr(&cmd.LineId, m, "lineid")
 	quickSetStr(&cmd.Remote.OwnerId, m, "remoteownerid")
 	quickSetStr(&cmd.Remote.RemoteId, m, "remoteid")
 	quickSetStr(&cmd.Remote.Name, m, "remotename")
@@ -1042,8 +1037,11 @@ func (cmd *CmdType) FromMap(m map[string]interface{}) bool {
 	quickSetJson(&cmd.TermOpts, m, "termopts")
 	quickSetJson(&cmd.OrigTermOpts, m, "origtermopts")
 	quickSetStr(&cmd.Status, m, "status")
-	quickSetJson(&cmd.StartPk, m, "startpk")
-	quickSetJson(&cmd.DoneInfo, m, "doneinfo")
+	quickSetInt(&cmd.CmdPid, m, "cmdpid")
+	quickSetInt(&cmd.RemotePid, m, "remotepid")
+	quickSetInt64(&cmd.DoneTs, m, "donets")
+	quickSetInt(&cmd.ExitCode, m, "exitcode")
+	quickSetInt(&cmd.DurationMs, m, "durationms")
 	quickSetJson(&cmd.RunOut, m, "runout")
 	quickSetBool(&cmd.RtnState, m, "rtnstate")
 	quickSetStr(&cmd.RtnStatePtr.BaseHash, m, "rtnbasehash")
@@ -1051,15 +1049,19 @@ func (cmd *CmdType) FromMap(m map[string]interface{}) bool {
 	return true
 }
 
-func makeNewLineCmd(screenId string, userId string, cmdId string, renderer string) *LineType {
+func (cmd *CmdType) IsRunning() bool {
+	return cmd.Status == CmdStatusRunning || cmd.Status == CmdStatusDetached
+}
+
+func makeNewLineCmd(screenId string, userId string, lineId string, renderer string) *LineType {
 	rtn := &LineType{}
 	rtn.ScreenId = screenId
 	rtn.UserId = userId
-	rtn.LineId = scbase.GenPromptUUID()
+	rtn.LineId = lineId
 	rtn.Ts = time.Now().UnixMilli()
 	rtn.LineLocal = true
 	rtn.LineType = LineTypeCmd
-	rtn.CmdId = cmdId
+	rtn.LineId = lineId
 	rtn.ContentHeight = LineNoHeight
 	rtn.Renderer = renderer
 	return rtn
@@ -1078,12 +1080,11 @@ func makeNewLineText(screenId string, userId string, text string) *LineType {
 	return rtn
 }
 
-func makeNewLineOpenAI(screenId string, userId string, cmdId string) *LineType {
+func makeNewLineOpenAI(screenId string, userId string, lineId string) *LineType {
 	rtn := &LineType{}
 	rtn.ScreenId = screenId
 	rtn.UserId = userId
-	rtn.LineId = scbase.GenPromptUUID()
-	rtn.CmdId = cmdId
+	rtn.LineId = lineId
 	rtn.Ts = time.Now().UnixMilli()
 	rtn.LineLocal = true
 	rtn.LineType = LineTypeOpenAI
@@ -1102,7 +1103,7 @@ func AddCommentLine(ctx context.Context, screenId string, userId string, comment
 }
 
 func AddOpenAILine(ctx context.Context, screenId string, userId string, cmd *CmdType) (*LineType, error) {
-	rtnLine := makeNewLineOpenAI(screenId, userId, cmd.CmdId)
+	rtnLine := makeNewLineOpenAI(screenId, userId, cmd.LineId)
 	err := InsertLine(ctx, rtnLine, cmd)
 	if err != nil {
 		return nil, err
@@ -1111,7 +1112,7 @@ func AddOpenAILine(ctx context.Context, screenId string, userId string, cmd *Cmd
 }
 
 func AddCmdLine(ctx context.Context, screenId string, userId string, cmd *CmdType, renderer string) (*LineType, error) {
-	rtnLine := makeNewLineCmd(screenId, userId, cmd.CmdId, renderer)
+	rtnLine := makeNewLineCmd(screenId, userId, cmd.LineId, renderer)
 	err := InsertLine(ctx, rtnLine, cmd)
 	if err != nil {
 		return nil, err

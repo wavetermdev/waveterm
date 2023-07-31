@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/commandlinedev/apishell/pkg/packet"
 	"github.com/commandlinedev/prompt-server/pkg/remote"
 	"github.com/commandlinedev/prompt-server/pkg/rtnstate"
 	"github.com/commandlinedev/prompt-server/pkg/sstore"
@@ -37,7 +36,6 @@ type WebShareUpdateType struct {
 	SVal     string              `json:"sval,omitempty"`
 	IVal     int64               `json:"ival,omitempty"`
 	BVal     bool                `json:"bval,omitempty"`
-	DoneInfo *sstore.CmdDoneInfo `json:"doneinfo,omitempty"`
 	TermOpts *sstore.TermOpts    `json:"termopts,omitempty"`
 }
 
@@ -125,7 +123,6 @@ type WebShareLineType struct {
 	ContentHeight int64  `json:"contentheight"`
 	Renderer      string `json:"renderer,omitempty"`
 	Text          string `json:"text,omitempty"`
-	CmdId         string `json:"cmdid,omitempty"`
 }
 
 func webLineFromLine(line *sstore.LineType) (*WebShareLineType, error) {
@@ -137,23 +134,25 @@ func webLineFromLine(line *sstore.LineType) (*WebShareLineType, error) {
 		ContentHeight: line.ContentHeight,
 		Renderer:      line.Renderer,
 		Text:          line.Text,
-		CmdId:         line.CmdId,
 	}
 	return rtn, nil
 }
 
 type WebShareCmdType struct {
-	LineId      string                     `json:"lineid"`
-	CmdStr      string                     `json:"cmdstr"`
-	RawCmdStr   string                     `json:"rawcmdstr"`
-	Remote      *WebShareRemote            `json:"remote"`
-	FeState     sstore.FeStateType         `json:"festate"`
-	TermOpts    sstore.TermOpts            `json:"termopts"`
-	Status      string                     `json:"status"`
-	StartPk     *packet.CmdStartPacketType `json:"startpk,omitempty"`
-	DoneInfo    *sstore.CmdDoneInfo        `json:"doneinfo,omitempty"`
-	RtnState    bool                       `json:"rtnstate,omitempty"`
-	RtnStateStr string                     `json:"rtnstatestr,omitempty"`
+	LineId      string             `json:"lineid"`
+	CmdStr      string             `json:"cmdstr"`
+	RawCmdStr   string             `json:"rawcmdstr"`
+	Remote      *WebShareRemote    `json:"remote"`
+	FeState     sstore.FeStateType `json:"festate"`
+	TermOpts    sstore.TermOpts    `json:"termopts"`
+	Status      string             `json:"status"`
+	CmdPid      int                `json:"cmdpid"`
+	RemotePid   int                `json:"remotepid"`
+	DoneTs      int64              `json:"donets,omitempty"`
+	ExitCode    int                `json:"exitcode,omitempty"`
+	DurationMs  int                `json:"durationms,omitempty"`
+	RtnState    bool               `json:"rtnstate,omitempty"`
+	RtnStateStr string             `json:"rtnstatestr,omitempty"`
 }
 
 func webCmdFromCmd(lineId string, cmd *sstore.CmdType) (*WebShareCmdType, error) {
@@ -166,21 +165,24 @@ func webCmdFromCmd(lineId string, cmd *sstore.CmdType) (*WebShareCmdType, error)
 	}
 	webRemote := webRemoteFromRemote(cmd.Remote, remote)
 	rtn := &WebShareCmdType{
-		LineId:    lineId,
-		CmdStr:    cmd.CmdStr,
-		RawCmdStr: cmd.RawCmdStr,
-		Remote:    webRemote,
-		FeState:   cmd.FeState,
-		TermOpts:  cmd.TermOpts,
-		Status:    cmd.Status,
-		StartPk:   cmd.StartPk,
-		DoneInfo:  cmd.DoneInfo,
-		RtnState:  cmd.RtnState,
+		LineId:     lineId,
+		CmdStr:     cmd.CmdStr,
+		RawCmdStr:  cmd.RawCmdStr,
+		Remote:     webRemote,
+		FeState:    cmd.FeState,
+		TermOpts:   cmd.TermOpts,
+		Status:     cmd.Status,
+		CmdPid:     cmd.CmdPid,
+		RemotePid:  cmd.RemotePid,
+		DoneTs:     cmd.DoneTs,
+		ExitCode:   cmd.ExitCode,
+		DurationMs: cmd.DurationMs,
+		RtnState:   cmd.RtnState,
 	}
 	if cmd.RtnState {
-		barr, err := rtnstate.GetRtnStateDiff(context.Background(), cmd.ScreenId, cmd.CmdId)
+		barr, err := rtnstate.GetRtnStateDiff(context.Background(), cmd.ScreenId, cmd.LineId)
 		if err != nil {
-			return nil, fmt.Errorf("error creating rtnstate diff for cmd:%s: %v", cmd.CmdId, err)
+			return nil, fmt.Errorf("error creating rtnstate diff for cmd:%s: %v", cmd.LineId, err)
 		}
 		rtn.RtnStateStr = string(barr)
 	}

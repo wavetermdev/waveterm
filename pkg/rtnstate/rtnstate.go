@@ -168,8 +168,8 @@ func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newSt
 	}
 }
 
-func GetRtnStateDiff(ctx context.Context, screenId string, cmdId string) ([]byte, error) {
-	cmd, err := sstore.GetCmdByScreenId(ctx, screenId, cmdId)
+func GetRtnStateDiff(ctx context.Context, screenId string, lineId string) ([]byte, error) {
+	cmd, err := sstore.GetCmdByScreenId(ctx, screenId, lineId)
 	if err != nil {
 		return nil, err
 	}

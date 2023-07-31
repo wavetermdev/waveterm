@@ -6,6 +6,7 @@ import (
 
 var quickSetStr = dbutil.QuickSetStr
 var quickSetInt64 = dbutil.QuickSetInt64
+var quickSetInt = dbutil.QuickSetInt
 var quickSetBool = dbutil.QuickSetBool
 var quickSetBytes = dbutil.QuickSetBytes
 var quickSetJson = dbutil.QuickSetJson

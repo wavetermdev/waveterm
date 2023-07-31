@@ -3,18 +3,20 @@ package sstore
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"path"
 
-	"github.com/google/uuid"
 	"github.com/commandlinedev/apishell/pkg/cirfile"
 	"github.com/commandlinedev/prompt-server/pkg/scbase"
+	"github.com/google/uuid"
 )
 
-func CreateCmdPtyFile(ctx context.Context, screenId string, cmdId string, maxSize int64) error {
-	ptyOutFileName, err := scbase.PtyOutFile(screenId, cmdId)
+func CreateCmdPtyFile(ctx context.Context, screenId string, lineId string, maxSize int64) error {
+	ptyOutFileName, err := scbase.PtyOutFile(screenId, lineId)
 	if err != nil {
 		return err
 	}
@@ -25,22 +27,22 @@ func CreateCmdPtyFile(ctx context.Context, screenId string, cmdId string, maxSiz
 	return f.Close()
 }
 
-func StatCmdPtyFile(ctx context.Context, screenId string, cmdId string) (*cirfile.Stat, error) {
-	ptyOutFileName, err := scbase.PtyOutFile(screenId, cmdId)
+func StatCmdPtyFile(ctx context.Context, screenId string, lineId string) (*cirfile.Stat, error) {
+	ptyOutFileName, err := scbase.PtyOutFile(screenId, lineId)
 	if err != nil {
 		return nil, err
 	}
 	return cirfile.StatCirFile(ctx, ptyOutFileName)
 }
 
-func AppendToCmdPtyBlob(ctx context.Context, screenId string, cmdId string, data []byte, pos int64) (*PtyDataUpdate, error) {
+func AppendToCmdPtyBlob(ctx context.Context, screenId string, lineId string, data []byte, pos int64) (*PtyDataUpdate, error) {
 	if screenId == "" {
 		return nil, fmt.Errorf("cannot append to PtyBlob, screenid is not set")
 	}
 	if pos < 0 {
 		return nil, fmt.Errorf("invalid seek pos '%d' in AppendToCmdPtyBlob", pos)
 	}
-	ptyOutFileName, err := scbase.PtyOutFile(screenId, cmdId)
+	ptyOutFileName, err := scbase.PtyOutFile(screenId, lineId)
 	if err != nil {
 		return nil, err
 	}
@@ -56,22 +58,22 @@ func AppendToCmdPtyBlob(ctx context.Context, screenId string, cmdId string, data
 	data64 := base64.StdEncoding.EncodeToString(data)
 	update := &PtyDataUpdate{
 		ScreenId:   screenId,
-		CmdId:      cmdId,
+		LineId:     lineId,
 		PtyPos:     pos,
 		PtyData64:  data64,
 		PtyDataLen: int64(len(data)),
 	}
-	err = MaybeInsertPtyPosUpdate(ctx, screenId, cmdId)
+	err = MaybeInsertPtyPosUpdate(ctx, screenId, lineId)
 	if err != nil {
 		// just log
-		log.Printf("error inserting ptypos update %s/%s: %v\n", screenId, cmdId, err)
+		log.Printf("error inserting ptypos update %s/%s: %v\n", screenId, lineId, err)
 	}
 	return update, nil
 }
 
 // returns (real-offset, data, err)
-func ReadFullPtyOutFile(ctx context.Context, screenId string, cmdId string) (int64, []byte, error) {
-	ptyOutFileName, err := scbase.PtyOutFile(screenId, cmdId)
+func ReadFullPtyOutFile(ctx context.Context, screenId string, lineId string) (int64, []byte, error) {
+	ptyOutFileName, err := scbase.PtyOutFile(screenId, lineId)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -84,8 +86,8 @@ func ReadFullPtyOutFile(ctx context.Context, screenId string, cmdId string) (int
 }
 
 // returns (real-offset, data, err)
-func ReadPtyOutFile(ctx context.Context, screenId string, cmdId string, offset int64, maxSize int64) (int64, []byte, error) {
-	ptyOutFileName, err := scbase.PtyOutFile(screenId, cmdId)
+func ReadPtyOutFile(ctx context.Context, screenId string, lineId string, offset int64, maxSize int64) (int64, []byte, error) {
+	ptyOutFileName, err := scbase.PtyOutFile(screenId, lineId)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -160,12 +162,16 @@ func FullSessionDiskSize() (map[string]SessionDiskSizeType, error) {
 	return rtn, nil
 }
 
-func DeletePtyOutFile(ctx context.Context, screenId string, cmdId string) error {
-	ptyOutFileName, err := scbase.PtyOutFile(screenId, cmdId)
+func DeletePtyOutFile(ctx context.Context, screenId string, lineId string) error {
+	ptyOutFileName, err := scbase.PtyOutFile(screenId, lineId)
 	if err != nil {
 		return err
 	}
-	return os.Remove(ptyOutFileName)
+	err = os.Remove(ptyOutFileName)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	return err
 }
 
 func DeleteScreenDir(ctx context.Context, screenId string) error {

@@ -17,8 +17,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/commandlinedev/apishell/pkg/base"
+	"github.com/google/uuid"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sys/unix"
 )
@@ -258,7 +258,7 @@ func PtyOutFile_Sessions(sessionId string, cmdId string) (string, error) {
 	return fmt.Sprintf("%s/%s.ptyout.cf", sdir, cmdId), nil
 }
 
-func PtyOutFile(screenId string, cmdId string) (string, error) {
+func PtyOutFile(screenId string, lineId string) (string, error) {
 	sdir, err := EnsureScreenDir(screenId)
 	if err != nil {
 		return "", err
@@ -266,10 +266,10 @@ func PtyOutFile(screenId string, cmdId string) (string, error) {
 	if screenId == "" {
 		return "", fmt.Errorf("cannot get ptyout file for blank screenid")
 	}
-	if cmdId == "" {
-		return "", fmt.Errorf("cannot get ptyout file for blank cmdid")
+	if lineId == "" {
+		return "", fmt.Errorf("cannot get ptyout file for blank lineid")
 	}
-	return fmt.Sprintf("%s/%s.ptyout.cf", sdir, cmdId), nil
+	return fmt.Sprintf("%s/%s.ptyout.cf", sdir, lineId), nil
 }
 
 func GenPromptUUID() string {
