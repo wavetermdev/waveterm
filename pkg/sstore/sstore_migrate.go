@@ -37,7 +37,6 @@ func RunMigration20() error {
 	var migrations []cmdMigration20Type
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		m := tx.SelectMaps(`SELECT * FROM cmd_migrate20`)
-		fmt.Printf("got maps: %#v\n", m)
 		tx.Select(&migrations, `SELECT * FROM cmd_migrate20`)
 		return nil
 	})

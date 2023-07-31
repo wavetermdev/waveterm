@@ -35,7 +35,9 @@ CREATE TABLE cmd_migrate20 (
 
 INSERT INTO cmd_migrate20
 SELECT screenid, lineid, cmdid
-FROM line;
+FROM line
+WHERE cmdid <> ''
+;
 
 INSERT INTO cmd_new
 SELECT
