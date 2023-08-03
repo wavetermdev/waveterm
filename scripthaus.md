@@ -64,7 +64,7 @@ node_modules/.bin/webpack --config webpack.share.prod.js
 ```bash
 # @scripthaus command typecheck
 # @scripthaus cd :playbook
-node_modules/.bin/tsc --jsx preserve --noEmit --esModuleInterop --target ES5 --experimentalDecorators --downlevelIteration src/sh2.ts
+node_modules/.bin/tsc --jsx preserve --noEmit --esModuleInterop --target ES5 --experimentalDecorators --downlevelIteration src/prompt.ts
 ```
 
 ```bash

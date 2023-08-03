@@ -5,7 +5,7 @@ const path = require("path");
 module.exports = {
     mode: "development",
     entry: {
-        sh2: ["./src/sh2.ts", "./src/sh2.less"],
+        prompt: ["./src/prompt.ts", "./src/prompt.less"],
     },
     output: {
         path: path.resolve(__dirname, "dist"),

@@ -7,7 +7,7 @@ const path = require("path");
 
 function makeBuildStr() {
     let buildStr = moment().format("YYYYMMDD-HHmmss");
-    console.log("ScriptHaus Electron " + VERSION + " build " + buildStr);
+    console.log("Prompt Electron " + VERSION + " build " + buildStr);
     return buildStr;
 }
 

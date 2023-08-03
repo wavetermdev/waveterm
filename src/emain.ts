@@ -83,7 +83,7 @@ function getPromptHomeDir() {
     return scHome;
 }
 
-// for dev, this is just the github.com/scripthaus-dev/sh2 directory
+// for dev, this is just the github.com/commandlinedev/prompt-client directory
 // for prod, this is .../Prompt.app/Contents/Resources/app
 function getAppBasePath() {
     return path.dirname(__dirname);
