@@ -10,9 +10,9 @@ import (
 )
 
 // CBUF[version] [maxsize] [fileoffset] [startpos] [endpos]
-const HeaderFmt = "CBUF%02d %19d %19d %19d %19d\n" // 87 bytes
-const HeaderLen = 256                              // set to 256 for future expandability
-const FullHeaderFmt = "%-255s\n"                   // 256 bytes (255 + newline)
+const HeaderFmt1 = "CBUF%02d %19d %19d %19d %19d\n" // 87 bytes
+const HeaderLen = 256                               // set to 256 for future expandability
+const FullHeaderFmt = "%-255s\n"                    // 256 bytes (255 + newline)
 const CurrentVersion = 1
 const FilePosEmpty = -1 // sentinel, if startpos is set to -1, file is empty
 
@@ -203,7 +203,7 @@ func (f *File) readMeta() error {
 		return fmt.Errorf("error reading header: %w", err)
 	}
 	// currently only one version, so we don't need to have special logic here yet
-	_, err = fmt.Sscanf(string(buf), HeaderFmt, &f.Version, &f.MaxSize, &f.FileOffset, &f.StartPos, &f.EndPos)
+	_, err = fmt.Sscanf(string(buf), HeaderFmt1, &f.Version, &f.MaxSize, &f.FileOffset, &f.StartPos, &f.EndPos)
 	if err != nil {
 		return fmt.Errorf("sscanf error: %w", err)
 	}
@@ -240,7 +240,7 @@ func (f *File) writeMeta() error {
 	if err != nil {
 		return fmt.Errorf("cannot seek file: %w", err)
 	}
-	metaStr := fmt.Sprintf(HeaderFmt, f.Version, f.MaxSize, f.FileOffset, f.StartPos, f.EndPos)
+	metaStr := fmt.Sprintf(HeaderFmt1, f.Version, f.MaxSize, f.FileOffset, f.StartPos, f.EndPos)
 	fullMetaStr := fmt.Sprintf(FullHeaderFmt, metaStr)
 	_, err = f.OSFile.WriteString(fullMetaStr)
 	if err != nil {
