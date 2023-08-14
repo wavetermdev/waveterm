@@ -24,11 +24,11 @@ import (
 	"time"
 
 	"github.com/alessio/shellescape"
-	"github.com/creack/pty"
 	"github.com/commandlinedev/apishell/pkg/base"
 	"github.com/commandlinedev/apishell/pkg/cirfile"
 	"github.com/commandlinedev/apishell/pkg/mpio"
 	"github.com/commandlinedev/apishell/pkg/packet"
+	"github.com/creack/pty"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sys/unix"
 )
@@ -1080,6 +1080,14 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		defer pw.Close()
 		trapCmdStr := makeExitTrap(cmd.ReturnState.FdNum)
 		rcFileStr += trapCmdStr
+	}
+	shellVarMap := ShellVarMapFromState(state)
+	if base.HasDebugFlag(shellVarMap, base.DebugFlag_LogRcFile) {
+		debugRcFileName := base.GetDebugRcFileName()
+		err := os.WriteFile(debugRcFileName, []byte(rcFileStr), 0600)
+		if err != nil {
+			base.Logf("error writing %s: %v\n", debugRcFileName, err)
+		}
 	}
 	rcFileFdNum, err := AddRunData(pk, rcFileStr, "rcfile")
 	if err != nil {

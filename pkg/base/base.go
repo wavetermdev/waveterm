@@ -30,12 +30,16 @@ const MShellPathVarName = "MSHELL_PATH"
 const MShellHomeVarName = "MSHELL_HOME"
 const MShellInstallBinVarName = "MSHELL_INSTALLBIN_PATH"
 const SSHCommandVarName = "SSH_COMMAND"
+const MShellDebugVarName = "MSHELL_DEBUG"
 const SessionsDirBaseName = "sessions"
 const MShellVersion = "v0.2.0"
 const RemoteIdFile = "remoteid"
 const DefaultMShellInstallBinDir = "/opt/mshell/bin"
 const LogFileName = "mshell.log"
 const ForceDebugLog = false
+
+const DebugFlag_LogRcFile = "logrc"
+const LogRcFileName = "debug.rcfile"
 
 var sessionDirCache = make(map[string]string)
 var baseLock = &sync.Mutex{}
@@ -144,6 +148,23 @@ func (ckey CommandKey) Validate(typeStr string) error {
 		return fmt.Errorf("%s has invalid cmdid '%s'", typeStr, cmdId)
 	}
 	return nil
+}
+
+func HasDebugFlag(envMap map[string]string, flagName string) bool {
+	msDebug := envMap[MShellDebugVarName]
+	flags := strings.Split(msDebug, ",")
+	Logf("hasdebugflag[%s]: %s [%#v]\n", flagName, msDebug, flags)
+	for _, flag := range flags {
+		if strings.TrimSpace(flag) == flagName {
+			return true
+		}
+	}
+	return false
+}
+
+func GetDebugRcFileName() string {
+	msHome := GetMShellHomeDir()
+	return path.Join(msHome, LogRcFileName)
 }
 
 func GetHomeDir() string {
