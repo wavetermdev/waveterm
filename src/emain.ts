@@ -13,8 +13,8 @@ import {v4 as uuidv4} from "uuid";
 const PromptAppPathVarName = "PROMPT_APP_PATH";
 const PromptDevVarName = "PROMPT_DEV";
 const AuthKeyFile = "prompt.authkey";
-const DevServerEndpoint = "http://localhost:8090";
-const ProdServerEndpoint = "http://localhost:1619";
+const DevServerEndpoint = "http://127.0.0.1:8090";
+const ProdServerEndpoint = "http://127.0.0.1:1619";
 
 let isDev = (process.env[PromptDevVarName] != null);
 let scHome = getPromptHomeDir();
@@ -265,8 +265,8 @@ function createMainWindow(clientData) {
         }
     });
     win.webContents.on("will-navigate", shNavHandler);
-    win.on("resized", debounce(400, mainResizeHandler));
-    win.on("moved", debounce(400, mainResizeHandler));
+    win.on("resized", debounce(400, (e) => mainResizeHandler(e, win)));
+    win.on("moved", debounce(400, (e) => mainResizeHandler(e, win)));
     win.on("focus", () => {
         wasInFg = true;
         wasActive = true;
@@ -292,8 +292,7 @@ function createMainWindow(clientData) {
     return win;
 }
 
-function mainResizeHandler(e) {
-    let win = e.sender;
+function mainResizeHandler(e, win) {
     if (win == null || win.isDestroyed() || win.fullScreen) {
         return;
     }

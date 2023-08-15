@@ -19,10 +19,10 @@ dayjs.extend(localizedFormat)
 var GlobalUser = "sawka";
 const RemotePtyRows = 8; // also in main.tsx
 const RemotePtyCols = 80;
-const ProdServerEndpoint = "http://localhost:1619";
-const ProdServerWsEndpoint = "ws://localhost:1623";
-const DevServerEndpoint = "http://localhost:8090";
-const DevServerWsEndpoint = "ws://localhost:8091";
+const ProdServerEndpoint = "http://127.0.0.1:1619";
+const ProdServerWsEndpoint = "ws://127.0.0.1:1623";
+const DevServerEndpoint = "http://127.0.0.1:8090";
+const DevServerWsEndpoint = "ws://127.0.0.1:8091";
 const DefaultTermFontSize = 12;
 const MinFontSize = 8;
 const MaxFontSize = 15;
