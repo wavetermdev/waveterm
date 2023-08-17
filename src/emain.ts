@@ -183,6 +183,21 @@ function createMainWindow(clientData) {
         },
         backgroundColor: '#000',
     });
+    // open dev tools while developing - TODO: can make it at a part of node --debug flag
+    if (isDev) {
+        win.webContents.openDevTools(); 
+        win.webContents.on('context-menu', (e, params) => {
+            electron.Menu.buildFromTemplate([
+            {
+                label: 'Inspect element',
+                click: () => {
+                    win.webContents.inspectElement(params.x, params.y);
+                }
+            }
+            ]).popup(win);
+        });
+      }
+    
     let indexHtml = (isDev ? "index-dev.html" : "index.html");
     win.loadFile(path.join(getAppBasePath(), "static", indexHtml));
     win.webContents.on("before-input-event", (e, input) => {
