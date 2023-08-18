@@ -155,10 +155,12 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
     rtnStateDiffFetched : boolean = false;
     lastHeight : number;
     isOverflow : OV<boolean> = mobx.observable.box(false, {name: "line-overflow"});
+    isMinimised : OV<boolean> = mobx.observable.box(false, {name: "line-minimised"});
     isCmdExpanded : OV<boolean> = mobx.observable.box(false, {name: "cmd-expanded"});
     
     constructor(props) {
         super(props);
+
     }
 
     checkStateDiffLoad() : void {
@@ -363,6 +365,11 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
     clickBookmark() {
         let {line} = this.props;
         GlobalCommandRunner.lineBookmark(line.lineid);
+    }
+
+    @boundMethod
+    clickMinimise() {
+        this.isMinimised.set(!this.isMinimised.get())
     }
 
     @boundMethod
@@ -583,33 +590,38 @@ class LineCmd extends React.Component<{screen : LineContainerModel, line : LineT
                     <div key="bookmark" title="Bookmark" className={cn("line-icon", "line-bookmark")} onClick={this.clickBookmark}>
                         <i className="fa-sharp fa-regular fa-bookmark"/>
                     </div>
+                    <div key="minimise" title={`${this.isMinimised.get() ?  'Maximise' : 'Minimise'}`} className={cn("line-icon", "line-minimise")} onClick={this.clickMinimise}>
+                        <i className={`fa-sharp fa-regular ${this.isMinimised.get() ?  'fa-plus-circle' : 'fa-minus-circle'}`}/>
+                    </div>
                 </div>
-                <If condition={rendererPlugin == null && !isNoneRenderer}>
-                    <TerminalRenderer screen={screen} line={line} width={width} staticRender={staticRender} visible={visible} onHeightChange={this.handleHeightChange} collapsed={false}/>
-                </If>
-                <If condition={rendererPlugin != null && rendererPlugin.rendererType == "simple"}>
-                    <SimpleBlobRenderer rendererContainer={screen} lineId={line.lineid} plugin={rendererPlugin} onHeightChange={this.handleHeightChange} initParams={this.makeRendererModelInitializeParams()}/>
-                </If>
-                <If condition={rendererPlugin != null && rendererPlugin.rendererType == "full"}>
-                    <FullRenderer rendererContainer={screen} lineId={line.lineid} plugin={rendererPlugin} onHeightChange={this.handleHeightChange} initParams={this.makeRendererModelInitializeParams()}/>
-                </If>
-                <If condition={cmd.getRtnState()}>
-                    <div key="rtnstate" className="cmd-rtnstate" style={{visibility: ((cmd.getStatus() == "done") ? "visible" : "hidden")}}>
-                        <If condition={rsdiff == null || rsdiff == ""}>
-                            <div className="cmd-rtnstate-label">state unchanged</div>
-                            <div className="cmd-rtnstate-sep"></div>
-                        </If>
-                        <If condition={rsdiff != null && rsdiff != ""}>
-                            <div className="cmd-rtnstate-label">new state</div>
-                            <div className="cmd-rtnstate-sep"></div>
-                            <div className="cmd-rtnstate-diff">{this.rtnStateDiff.get()}</div>
-                        </If>
-                    </div>
-                </If>
-                <If condition={isSelected && !isFocused && rendererType == "terminal"}>
-                    <div className="cmd-hints">
-                        <div className="hint-item color-nohover-white">focus line ({renderCmdText("L")})</div>
-                    </div>
+                <If condition={!this.isMinimised.get()} > 
+                    <If condition={rendererPlugin == null && !isNoneRenderer}>
+                        <TerminalRenderer screen={screen} line={line} width={width} staticRender={staticRender} visible={visible} onHeightChange={this.handleHeightChange} collapsed={false}/>
+                    </If>
+                    <If condition={rendererPlugin != null && rendererPlugin.rendererType == "simple"}>
+                        <SimpleBlobRenderer rendererContainer={screen} lineId={line.lineid} plugin={rendererPlugin} onHeightChange={this.handleHeightChange} initParams={this.makeRendererModelInitializeParams()}/>
+                    </If>
+                    <If condition={rendererPlugin != null && rendererPlugin.rendererType == "full"}>
+                        <FullRenderer rendererContainer={screen} lineId={line.lineid} plugin={rendererPlugin} onHeightChange={this.handleHeightChange} initParams={this.makeRendererModelInitializeParams()}/>
+                    </If>
+                    <If condition={cmd.getRtnState()}>
+                        <div key="rtnstate" className="cmd-rtnstate" style={{visibility: ((cmd.getStatus() == "done") ? "visible" : "hidden")}}>
+                            <If condition={rsdiff == null || rsdiff == ""}>
+                                <div className="cmd-rtnstate-label">state unchanged</div>
+                                <div className="cmd-rtnstate-sep"></div>
+                            </If>
+                            <If condition={rsdiff != null && rsdiff != ""}>
+                                <div className="cmd-rtnstate-label">new state</div>
+                                <div className="cmd-rtnstate-sep"></div>
+                                <div className="cmd-rtnstate-diff">{this.rtnStateDiff.get()}</div>
+                            </If>
+                        </div>
+                    </If>
+                    <If condition={isSelected && !isFocused && rendererType == "terminal"}>
+                        <div className="cmd-hints">
+                            <div className="hint-item color-nohover-white">focus line ({renderCmdText("L")})</div>
+                        </div>
+                    </If>
                 </If>
             </div>
         );
