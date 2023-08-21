@@ -409,18 +409,14 @@ type RendererModel = {
 };
 
 type SimpleBlobRendererComponent = React.ComponentType<{
+  path: String;
   data: Blob;
   context: RendererContext;
   opts: RendererOpts;
   savedHeight: number;
 }>;
+// @mike - I guess we can remove SimpleJsonRendererComponent - its doesnt have any references
 type SimpleJsonRendererComponent = React.ComponentType<{
-  data: any;
-  context: RendererContext;
-  opts: RendererOpts;
-  savedHeight: number;
-}>;
-type SimpleCodeRendererComponent = React.ComponentType<{
   data: any;
   context: RendererContext;
   opts: RendererOpts;

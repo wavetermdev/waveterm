@@ -15,9 +15,10 @@ type OV<V> = mobx.IObservableValue<V>;
 const MaxJsonSize = 50000;
 
 @mobxReact.observer
-class CodeRenderer extends React.Component<
+class SourceCodeRenderer extends React.Component<
   {
     data: Blob;
+    path: String;
     context: RendererContext;
     opts: RendererOpts;
     savedHeight: number;
@@ -33,16 +34,33 @@ class CodeRenderer extends React.Component<
     deep: false,
   });
 
-  componentDidMount() {
-    let dataBlob = this.props.data;
-    let prtn = dataBlob.text();
-    prtn.then((text) => {
-      this.code.set(text);
-      const detectedLanguage = `javascript`;
-      this.language.set(detectedLanguage);
-      console.log(`1. ${detectedLanguage}\n\n${text}\n\n`);
-    });
+  editorRef;
+  constructor(props) {
+    super(props);
+    this.editorRef = React.createRef();
   }
+
+  componentDidMount() {
+    let prtn = this.props.data.text();
+    prtn.then((text) => this.code.set(text));
+  }
+
+  handleEditorDidMount = (editor, monaco) => {
+    const extension = this.props.cmdstr.split(".").pop();
+    const detectedLanguage = monaco.languages
+      .getLanguages()
+      .find(
+        (lang) => lang.extensions && lang.extensions.includes("." + extension)
+      );
+    if (detectedLanguage) {
+      this.editorRef.current = editor;
+      const model = editor.getModel();
+      if (model) {
+        monaco.editor.setModelLanguage(model, detectedLanguage.id);
+        this.language.set(detectedLanguage.id);
+      }
+    }
+  };
 
   render() {
     let opts = this.props.opts;
@@ -53,16 +71,20 @@ class CodeRenderer extends React.Component<
     }
     let lang = this.language.get();
     let code = this.code.get();
-    console.log(`2. ${lang}\n\n${code}\n\n`);
-    if (!lang) return <></>;
+    if (!code) return <></>;
     return (
-      <div className="renderer-container json-renderer">
+      <div className="renderer-container code-renderer">
         <div className="scroller" style={{ maxHeight: opts.maxSize.height }}>
           <Editor
             height="30vh"
-            theme="vs-dark"
+            theme="hc-black"
             defaultLanguage={lang}
             defaultValue={code}
+            onMount={this.handleEditorDidMount}
+            options={{
+              scrollBeyondLastLine: false,
+              fontSize: "14px",
+            }}
           />
         </div>
       </div>
@@ -70,4 +92,4 @@ class CodeRenderer extends React.Component<
   }
 }
 
-export { CodeRenderer };
+export { SourceCodeRenderer };

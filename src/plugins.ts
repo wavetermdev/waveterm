@@ -2,7 +2,7 @@ import { RendererPluginType } from "./types";
 import { SimpleImageRenderer } from "./view/image";
 import { SimpleMarkdownRenderer } from "./view/markdown";
 import { SimpleJsonRenderer } from "./view/json";
-import { CodeRenderer } from "./view/code";
+import { SourceCodeRenderer } from "./view/code";
 import { OpenAIRenderer, OpenAIRendererModel } from "./view/openai";
 import { isBlank } from "./util";
 import { sprintf } from "sprintf-js";
@@ -48,7 +48,7 @@ const CodePlugin: RendererPluginType = {
   collapseType: "hide",
   globalCss: null,
   mimeTypes: ["text/plain"],
-  simpleComponent: CodeRenderer,
+  simpleComponent: SourceCodeRenderer,
 };
 
 const OpenAIPlugin: RendererPluginType = {
