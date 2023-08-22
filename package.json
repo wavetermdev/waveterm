@@ -4,6 +4,7 @@
   "main": "dist/emain.js",
   "license": "Proprietary",
   "dependencies": {
+    "@monaco-editor/react": "^4.5.1",
     "autobind-decorator": "^2.4.0",
     "classnames": "^2.3.1",
     "dayjs": "^1.11.3",
