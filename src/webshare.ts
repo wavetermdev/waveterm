@@ -1,10 +1,10 @@
 import * as mobx from "mobx";
 import * as React from "react";
-import {createRoot} from 'react-dom/client';
-import {sprintf} from "sprintf-js";
-import {WebShareMain} from "./webshare-elems";
-import {loadFonts} from "./util";
-import {WebShareModel} from "./webshare-model";
+import { createRoot } from "react-dom/client";
+import { sprintf } from "sprintf-js";
+import { WebShareMain } from "./webshare-elems";
+import { loadFonts } from "./util";
+import { WebShareModel } from "./webshare-model";
 import * as textmeasure from "./textmeasure";
 
 // @ts-ignore
@@ -23,8 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let isFontLoaded = document.fonts.check("12px 'JetBrains Mono'");
     if (isFontLoaded) {
         root.render(reactElem);
-    }
-    else {
+    } else {
         document.fonts.ready.then(() => {
             root.render(reactElem);
         });

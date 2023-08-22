@@ -1,7 +1,7 @@
-const webpack = require('webpack');
-const merge = require('webpack-merge');
-const common = require('./webpack.common.js');
-const path = require('path');
+const webpack = require("webpack");
+const merge = require("webpack-merge");
+const common = require("./webpack.common.js");
+const path = require("path");
 const CopyPlugin = require("copy-webpack-plugin");
 const VERSION = require("./version.js");
 
@@ -18,7 +18,7 @@ var merged = merge.merge(common, {
         },
         port: 9000,
         headers: {
-            'Cache-Control': 'no-store',
+            "Cache-Control": "no-store",
         },
     },
     watchOptions: {
@@ -34,4 +34,3 @@ var definePlugin = new webpack.DefinePlugin({
 merged.plugins.push(definePlugin);
 
 module.exports = merged;
-

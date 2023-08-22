@@ -1,5 +1,5 @@
-const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const LodashModuleReplacementPlugin = require('lodash-webpack-plugin');
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const LodashModuleReplacementPlugin = require("lodash-webpack-plugin");
 const path = require("path");
 
 module.exports = {
@@ -23,18 +23,20 @@ module.exports = {
                             [
                                 "@babel/preset-env",
                                 {
-                                    targets: "defaults and not ie > 0 and not op_mini all and not op_mob > 0 and not kaios > 0 and not and_qq > 0 and not and_uc > 0 and not baidu > 0",
+                                    targets:
+                                        "defaults and not ie > 0 and not op_mini all and not op_mob > 0 and not kaios > 0 and not and_qq > 0 and not and_uc > 0 and not baidu > 0",
                                 },
                             ],
                             "@babel/preset-react",
-                            "@babel/preset-typescript"],
+                            "@babel/preset-typescript",
+                        ],
                         plugins: [
-                            ["@babel/transform-runtime", {"regenerator": true}],
+                            ["@babel/transform-runtime", { regenerator: true }],
                             "@babel/plugin-transform-react-jsx",
-                            ["@babel/plugin-proposal-decorators", { "legacy": true }],
-                            ["@babel/plugin-proposal-class-properties", { "loose": true }],
-                            ["@babel/plugin-proposal-private-methods", { "loose": true }],
-                            ["@babel/plugin-proposal-private-property-in-object", { "loose": true }],
+                            ["@babel/plugin-proposal-decorators", { legacy: true }],
+                            ["@babel/plugin-proposal-class-properties", { loose: true }],
+                            ["@babel/plugin-proposal-private-methods", { loose: true }],
+                            ["@babel/plugin-proposal-private-property-in-object", { loose: true }],
                             "babel-plugin-jsx-control-statements",
                         ],
                     },
@@ -42,26 +44,19 @@ module.exports = {
             },
             {
                 test: /\.css$/,
-                use: [
-                    "style-loader",
-                    "css-loader",
-                ],
+                use: ["style-loader", "css-loader"],
             },
             {
                 test: /\.less$/,
-                use: [
-                    {loader: MiniCssExtractPlugin.loader},
-                    "css-loader",
-                    "less-loader"
-                ]
+                use: [{ loader: MiniCssExtractPlugin.loader }, "css-loader", "less-loader"],
             },
-        ]
+        ],
     },
     plugins: [
-        new MiniCssExtractPlugin({filename: "[name].css", ignoreOrder: true}),
+        new MiniCssExtractPlugin({ filename: "[name].css", ignoreOrder: true }),
         new LodashModuleReplacementPlugin(),
     ],
     resolve: {
-        extensions: ['.ts', '.tsx', '.js', '.mjs', '.cjs', '.wasm', '.json', '.less', '.css']
+        extensions: [".ts", ".tsx", ".js", ".mjs", ".cjs", ".wasm", ".json", ".less", ".css"],
     },
 };

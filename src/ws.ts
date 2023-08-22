@@ -1,50 +1,50 @@
 import * as mobx from "mobx";
-import {sprintf} from "sprintf-js";
-import {boundMethod} from "autobind-decorator";
-import {WatchScreenPacketType} from "./types";
+import { sprintf } from "sprintf-js";
+import { boundMethod } from "autobind-decorator";
+import { WatchScreenPacketType } from "./types";
 import dayjs from "dayjs";
 
 class WSControl {
-    wsConn : any;
-    open : mobx.IObservableValue<boolean>;
-    opening : boolean = false;
-    reconnectTimes : number = 0;
-    msgQueue : any[] = [];
-    clientId : string;
-    messageCallback : (any) => void = null;
-    watchSessionId : string = null;
-    watchScreenId : string = null;
-    wsLog : mobx.IObservableArray<string> = mobx.observable.array([], {name: "wsLog"})
-    authKey : string;
-    baseHostPort : string;
-    
-    constructor(baseHostPort : string, clientId : string, authKey : string, messageCallback : (any) => void) {
+    wsConn: any;
+    open: mobx.IObservableValue<boolean>;
+    opening: boolean = false;
+    reconnectTimes: number = 0;
+    msgQueue: any[] = [];
+    clientId: string;
+    messageCallback: (any) => void = null;
+    watchSessionId: string = null;
+    watchScreenId: string = null;
+    wsLog: mobx.IObservableArray<string> = mobx.observable.array([], { name: "wsLog" });
+    authKey: string;
+    baseHostPort: string;
+
+    constructor(baseHostPort: string, clientId: string, authKey: string, messageCallback: (any) => void) {
         this.baseHostPort = baseHostPort;
         this.messageCallback = messageCallback;
         this.clientId = clientId;
         this.authKey = authKey;
-        this.open = mobx.observable.box(false, {name: "WSOpen"});
+        this.open = mobx.observable.box(false, { name: "WSOpen" });
         setInterval(this.sendPing, 5000);
     }
 
-    log(str : string) {
+    log(str: string) {
         mobx.action(() => {
             let ts = dayjs().format("YYYY-MM-DD HH:mm:ss");
             this.wsLog.push("[" + ts + "] " + str);
             if (this.wsLog.length > 50) {
-                this.wsLog.splice(0, this.wsLog.length-50);
+                this.wsLog.splice(0, this.wsLog.length - 50);
             }
         })();
     }
 
     @mobx.action
-    setOpen(val : boolean) {
+    setOpen(val: boolean) {
         mobx.action(() => {
             this.open.set(val);
         })();
     }
 
-    connectNow(desc : string) {
+    connectNow(desc: string) {
         if (this.open.get()) {
             return;
         }
@@ -58,7 +58,7 @@ class WSControl {
         // this.wsConn.onerror = this.onerror;
     }
 
-    reconnect(forceClose? : boolean) {
+    reconnect(forceClose?: boolean) {
         if (this.open.get()) {
             if (forceClose) {
                 this.wsConn.close(); // this will force a reconnect
@@ -80,16 +80,15 @@ class WSControl {
         }
         setTimeout(() => {
             this.connectNow(String(this.reconnectTimes));
-        }, timeout*1000);
+        }, timeout * 1000);
     }
 
     @boundMethod
-    onclose(event : any) {
+    onclose(event: any) {
         // console.log("close", event);
         if (event.wasClean) {
             this.log("connection closed");
-        }
-        else {
+        } else {
             this.log("connection error/disconnected");
         }
         if (this.open.get() || this.opening) {
@@ -124,7 +123,7 @@ class WSControl {
     }
 
     @boundMethod
-    onmessage(event : any) {
+    onmessage(event: any) {
         let eventData = null;
         if (event.data != null) {
             eventData = JSON.parse(event.data);
@@ -133,7 +132,7 @@ class WSControl {
             return;
         }
         if (eventData.type == "ping") {
-            this.wsConn.send(JSON.stringify({type: "pong", stime: Date.now()}));
+            this.wsConn.send(JSON.stringify({ type: "pong", stime: Date.now() }));
             return;
         }
         if (eventData.type == "pong") {
@@ -147,8 +146,7 @@ class WSControl {
         if (this.messageCallback) {
             try {
                 this.messageCallback(eventData);
-            }
-            catch (e) {
+            } catch (e) {
                 console.log("[error] messageCallback", e);
             }
         }
@@ -159,17 +157,17 @@ class WSControl {
         if (!this.open.get()) {
             return;
         }
-        this.wsConn.send(JSON.stringify({type: "ping", stime: Date.now()}));
+        this.wsConn.send(JSON.stringify({ type: "ping", stime: Date.now() }));
     }
 
-    sendMessage(data : any) {
+    sendMessage(data: any) {
         if (!this.open.get()) {
             return;
         }
         this.wsConn.send(JSON.stringify(data));
     }
 
-    pushMessage(data : any) {
+    pushMessage(data: any) {
         if (!this.open.get()) {
             this.msgQueue.push(data);
             return;
@@ -177,8 +175,14 @@ class WSControl {
         this.sendMessage(data);
     }
 
-    sendWatchScreenPacket(connect : boolean) {
-        let pk : WatchScreenPacketType = {"type": "watchscreen", connect: connect, sessionid: null, screenid: null, authkey: this.authKey};
+    sendWatchScreenPacket(connect: boolean) {
+        let pk: WatchScreenPacketType = {
+            type: "watchscreen",
+            connect: connect,
+            sessionid: null,
+            screenid: null,
+            authkey: this.authKey,
+        };
         if (this.watchSessionId != null) {
             pk.sessionid = this.watchSessionId;
         }
@@ -189,11 +193,11 @@ class WSControl {
     }
 
     // these params can be null.  (null, null) means stop watching
-    watchScreen(sessionId : string, screenId : string) {
+    watchScreen(sessionId: string, screenId: string) {
         this.watchSessionId = sessionId;
         this.watchScreenId = screenId;
         this.sendWatchScreenPacket(false);
     }
 }
 
-export {WSControl};
+export { WSControl };

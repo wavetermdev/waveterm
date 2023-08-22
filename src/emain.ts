@@ -3,12 +3,12 @@ import * as path from "path";
 import * as fs from "fs";
 import fetch from "node-fetch";
 import * as child_process from "node:child_process";
-import {debounce} from "throttle-debounce";
-import {handleJsonFetchResponse} from "./util";
+import { debounce } from "throttle-debounce";
+import { handleJsonFetchResponse } from "./util";
 import * as winston from "winston";
 import * as util from "util";
-import {sprintf} from "sprintf-js";
-import {v4 as uuidv4} from "uuid";
+import { sprintf } from "sprintf-js";
+import { v4 as uuidv4 } from "uuid";
 
 const PromptAppPathVarName = "PROMPT_APP_PATH";
 const PromptDevVarName = "PROMPT_DEV";
@@ -16,10 +16,10 @@ const AuthKeyFile = "prompt.authkey";
 const DevServerEndpoint = "http://127.0.0.1:8090";
 const ProdServerEndpoint = "http://127.0.0.1:1619";
 
-let isDev = (process.env[PromptDevVarName] != null);
+let isDev = process.env[PromptDevVarName] != null;
 let scHome = getPromptHomeDir();
 ensureDir(scHome);
-let DistDir = (isDev ? "dist-dev" : "dist");
+let DistDir = isDev ? "dist-dev" : "dist";
 let GlobalAuthKey = "";
 let instanceId = uuidv4();
 let oldConsoleLog = console.log;
@@ -31,18 +31,16 @@ let wasInFg = true;
 let unamePlatform = process.platform;
 let unameArch = process.arch;
 if (unameArch == "x64") {
-    unameArch = "amd64"
+    unameArch = "amd64";
 }
 let logger;
 let loggerConfig = {
     level: "info",
     format: winston.format.combine(
-        winston.format.timestamp({format: "YYYY-MM-DD HH:mm:ss"}),
-        winston.format.printf(info => `${info.timestamp} ${info.message}`),
+        winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
+        winston.format.printf((info) => `${info.timestamp} ${info.message}`)
     ),
-    transports: [
-        new winston.transports.File({filename: path.join(scHome, "prompt-app.log"), level: "info"}),
-    ],
+    transports: [new winston.transports.File({ filename: path.join(scHome, "prompt-app.log"), level: "info" })],
 };
 if (isDev) {
     loggerConfig.transports.push(new winston.transports.Console());
@@ -51,18 +49,25 @@ logger = winston.createLogger(loggerConfig);
 function log(...msg) {
     try {
         logger.info(util.format(...msg));
-    }
-    catch (e) {
+    } catch (e) {
         oldConsoleLog(...msg);
     }
 }
 console.log = log;
-console.log(sprintf("prompt-app starting, PROMPT_HOME=%s, apppath=%s arch=%s/%s", scHome, getAppBasePath(), unamePlatform, unameArch));
+console.log(
+    sprintf(
+        "prompt-app starting, PROMPT_HOME=%s, apppath=%s arch=%s/%s",
+        scHome,
+        getAppBasePath(),
+        unamePlatform,
+        unameArch
+    )
+);
 if (isDev) {
     console.log("prompt-app PROMPT_DEV set");
 }
 let app = electron.app;
-app.setName((isDev ? "Prompt (Dev)" : "Prompt"));
+app.setName(isDev ? "Prompt (Dev)" : "Prompt");
 let localServerProc = null;
 let localServerShouldRestart = false;
 
@@ -78,7 +83,7 @@ function getPromptHomeDir() {
         if (homeDir == null) {
             homeDir = "/";
         }
-        scHome = path.join(homeDir, (isDev ? "prompt-dev" : "prompt"));
+        scHome = path.join(homeDir, isDev ? "prompt-dev" : "prompt");
     }
     return scHome;
 }
@@ -116,7 +121,7 @@ function getLocalServerCwd() {
 }
 
 function ensureDir(dir) {
-    fs.mkdirSync(dir, {recursive: true, mode: 0o700});
+    fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
 }
 
 function readAuthKey() {
@@ -124,7 +129,7 @@ function readAuthKey() {
     let authKeyFileName = path.join(homeDir, AuthKeyFile);
     if (!fs.existsSync(authKeyFileName)) {
         let authKeyStr = String(uuidv4());
-        fs.writeFileSync(authKeyFileName, authKeyStr, {mode: 0o600});
+        fs.writeFileSync(authKeyFileName, authKeyStr, { mode: 0o600 });
         return authKeyStr;
     }
     let authKeyData = fs.readFileSync(authKeyFileName);
@@ -141,10 +146,7 @@ let menuTemplate = [
     },
     {
         label: "File",
-        submenu: [
-            {role: "close"},
-            {role: "forceReload"},
-        ],
+        submenu: [{ role: "close" }, { role: "forceReload" }],
     },
     {
         role: "editMenu",
@@ -162,11 +164,11 @@ electron.Menu.setApplicationMenu(menu);
 
 let MainWindow = null;
 
-function getMods(input : any) {
-    return {meta: input.meta, shift: input.shift, ctrl: input.control, alt: input.alt};
+function getMods(input: any) {
+    return { meta: input.meta, shift: input.shift, ctrl: input.control, alt: input.alt };
 }
 
-function shNavHandler(event : any, url : any) {
+function shNavHandler(event: any, url: any) {
     console.log("navigation", url);
     event.preventDefault();
 }
@@ -181,9 +183,9 @@ function createMainWindow(clientData) {
         webPreferences: {
             preload: path.join(getAppBasePath(), DistDir, "preload.js"),
         },
-        backgroundColor: '#000',
+        backgroundColor: "#000",
     });
-    let indexHtml = (isDev ? "index-dev.html" : "index.html");
+    let indexHtml = isDev ? "index-dev.html" : "index.html";
     win.loadFile(path.join(getAppBasePath(), "static", indexHtml));
     win.webContents.on("before-input-event", (e, input) => {
         if (win.isFocused()) {
@@ -202,11 +204,10 @@ function createMainWindow(clientData) {
             e.preventDefault();
             if (!input.alt) {
                 win.webContents.send("i-cmd", mods);
-            }
-            else {
+            } else {
                 win.webContents.toggleDevTools();
             }
-            
+
             return;
         }
         if (input.code == "KeyR" && input.meta) {
@@ -255,18 +256,24 @@ function createMainWindow(clientData) {
                 return;
             }
             e.preventDefault();
-            win.webContents.send("digit-cmd", {digit: digitNum}, mods);
+            win.webContents.send("digit-cmd", { digit: digitNum }, mods);
         }
         if ((input.code == "BracketRight" || input.code == "BracketLeft") && input.meta) {
-            let rel = (input.code == "BracketRight" ? 1 : -1);
-            win.webContents.send("bracket-cmd", {relative: rel}, mods);
+            let rel = input.code == "BracketRight" ? 1 : -1;
+            win.webContents.send("bracket-cmd", { relative: rel }, mods);
             e.preventDefault();
             return;
         }
     });
     win.webContents.on("will-navigate", shNavHandler);
-    win.on("resized", debounce(400, (e) => mainResizeHandler(e, win)));
-    win.on("moved", debounce(400, (e) => mainResizeHandler(e, win)));
+    win.on(
+        "resized",
+        debounce(400, (e) => mainResizeHandler(e, win))
+    );
+    win.on(
+        "moved",
+        debounce(400, (e) => mainResizeHandler(e, win))
+    );
     win.on("focus", () => {
         wasInFg = true;
         wasActive = true;
@@ -278,13 +285,11 @@ function createMainWindow(clientData) {
         e.preventDefault();
         if (url.startsWith("https://docs.getprompt.dev/")) {
             electron.shell.openExternal(url);
-        }
-        else if (url.startsWith("https://discord.gg/")) {
+        } else if (url.startsWith("https://discord.gg/")) {
             electron.shell.openExternal(url);
-        }
-        else if (url.startsWith("https://extern/?")) {
+        } else if (url.startsWith("https://extern/?")) {
             let qmark = url.indexOf("?");
-            let param = url.substr(qmark+1);
+            let param = url.substr(qmark + 1);
             let newUrl = decodeURIComponent(param);
             electron.shell.openExternal(newUrl);
         }
@@ -298,18 +303,20 @@ function mainResizeHandler(e, win) {
     }
     let bounds = win.getBounds();
     console.log("resize/move", win.getBounds());
-    let winSize = {width: bounds.width, height: bounds.height, top: bounds.y, left: bounds.x};
+    let winSize = { width: bounds.width, height: bounds.height, top: bounds.y, left: bounds.x };
     let url = getBaseHostPort() + "/api/set-winsize";
     let fetchHeaders = getFetchHeaders();
-    fetch(url, {method: "post", body: JSON.stringify(winSize), headers: fetchHeaders}).then((resp) => handleJsonFetchResponse(url, resp)).catch((err) => {
-        console.log("error setting winsize", err)
-    });
+    fetch(url, { method: "post", body: JSON.stringify(winSize), headers: fetchHeaders })
+        .then((resp) => handleJsonFetchResponse(url, resp))
+        .catch((err) => {
+            console.log("error setting winsize", err);
+        });
 }
 
 function calcBounds(clientData) {
     let primaryDisplay = electron.screen.getPrimaryDisplay();
     let pdBounds = primaryDisplay.bounds;
-    let size = {x: 50, y: 50, width: pdBounds.width-150, height: pdBounds.height-150};
+    let size = { x: 50, y: 50, width: pdBounds.width - 150, height: pdBounds.height - 150 };
     if (clientData != null && clientData.winsize != null && clientData.winsize.width > 0) {
         let cwinSize = clientData.winsize;
         if (cwinSize.width > 0) {
@@ -346,8 +353,8 @@ function calcBounds(clientData) {
     return size;
 }
 
-app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit()
+app.on("window-all-closed", () => {
+    if (process.platform !== "darwin") app.quit();
 });
 
 electron.ipcMain.on("get-id", (event) => {
@@ -366,7 +373,7 @@ electron.ipcMain.on("get-authkey", (event) => {
 });
 
 electron.ipcMain.on("local-server-status", (event) => {
-    event.returnValue = (localServerProc != null);
+    event.returnValue = localServerProc != null;
     return;
 });
 
@@ -375,8 +382,7 @@ electron.ipcMain.on("restart-server", (event) => {
         localServerProc.kill();
         localServerShouldRestart = true;
         return;
-    }
-    else {
+    } else {
         runLocalServer();
     }
     event.returnValue = true;
@@ -391,9 +397,9 @@ electron.ipcMain.on("reload-window", (event) => {
     return;
 });
 
-function getContextMenu() : any {
+function getContextMenu(): any {
     let menu = new electron.Menu();
-    let menuItem = new electron.MenuItem({label: "Testing", click: () => console.log("click testing!")});
+    let menuItem = new electron.MenuItem({ label: "Testing", click: () => console.log("click testing!") });
     menu.append(menuItem);
     return menu;
 }
@@ -404,32 +410,35 @@ function getFetchHeaders() {
     };
 }
 
-async function getClientDataPoll(loopNum : number) {
-    let lastTime = (loopNum >= 6);
+async function getClientDataPoll(loopNum: number) {
+    let lastTime = loopNum >= 6;
     let cdata = await getClientData(!lastTime, loopNum);
     if (lastTime || cdata != null) {
         return cdata;
     }
     await sleep(1000);
-    return getClientDataPoll(loopNum+1);
+    return getClientDataPoll(loopNum + 1);
 }
 
-function getClientData(willRetry : boolean, retryNum : number) {
+function getClientData(willRetry: boolean, retryNum: number) {
     let url = getBaseHostPort() + "/api/get-client-data";
     let fetchHeaders = getFetchHeaders();
-    return fetch(url, {headers: fetchHeaders}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
-        if (data == null) {
+    return fetch(url, { headers: fetchHeaders })
+        .then((resp) => handleJsonFetchResponse(url, resp))
+        .then((data) => {
+            if (data == null) {
+                return null;
+            }
+            return data.data;
+        })
+        .catch((err) => {
+            if (willRetry) {
+                console.log("error getting client-data from local-server, will retry", "(" + retryNum + ")");
+                return null;
+            }
+            console.log("error getting client-data from local-server, failed: ", err);
             return null;
-        }
-        return data.data;
-    }).catch((err) => {
-        if (willRetry) {
-            console.log("error getting client-data from local-server, will retry", "(" + retryNum + ")");
-            return null;
-        }
-        console.log("error getting client-data from local-server, failed: ", err);
-        return null;
-    });
+        });
 }
 
 function sendLSSC() {
@@ -479,23 +488,23 @@ function runLocalServer() {
     });
     proc.on("error", (e) => {
         console.log("error running local-server", e);
-    })
-    proc.stdout.on("data", output => {
+    });
+    proc.stdout.on("data", (output) => {
         return;
     });
-    proc.stderr.on("data", output => {
+    proc.stderr.on("data", (output) => {
         return;
     });
     return rtnPromise;
 }
 
-electron.ipcMain.on("context-screen", (event, {screenId}, {x, y}) => {
+electron.ipcMain.on("context-screen", (event, { screenId }, { x, y }) => {
     console.log("context-screen", screenId);
     let menu = getContextMenu();
-    menu.popup({x, y});
+    menu.popup({ x, y });
 });
 
-electron.ipcMain.on("context-editmenu", (event, {x, y}, opts) => {
+electron.ipcMain.on("context-editmenu", (event, { x, y }, opts) => {
     if (opts == null) {
         opts = {};
     }
@@ -503,22 +512,21 @@ electron.ipcMain.on("context-editmenu", (event, {x, y}, opts) => {
     let menu = new electron.Menu();
     let menuItem = null;
     if (opts.showCut) {
-        menuItem = new electron.MenuItem({label: "Cut", role: "cut"});
+        menuItem = new electron.MenuItem({ label: "Cut", role: "cut" });
         menu.append(menuItem);
     }
-    menuItem = new electron.MenuItem({label: "Copy", role: "copy"});
+    menuItem = new electron.MenuItem({ label: "Copy", role: "copy" });
     menu.append(menuItem);
-    menuItem = new electron.MenuItem({label: "Paste", role: "paste"});
+    menuItem = new electron.MenuItem({ label: "Paste", role: "paste" });
     menu.append(menuItem);
-    menu.popup({x, y});
+    menu.popup({ x, y });
 });
 
 async function createMainWindowWrap() {
     let clientData = null;
     try {
         clientData = await getClientDataPoll(1);
-    }
-    catch (e) {
+    } catch (e) {
         console.log("error getting local-server clientdata", e.toString());
     }
     MainWindow = createMainWindow(clientData);
@@ -532,14 +540,16 @@ async function sleep(ms) {
 }
 
 function logActiveState() {
-    let activeState = {fg: wasInFg, active: wasActive, open: true};
+    let activeState = { fg: wasInFg, active: wasActive, open: true };
     let url = getBaseHostPort() + "/api/log-active-state";
     let fetchHeaders = getFetchHeaders();
-    fetch(url, {method: "post", body: JSON.stringify(activeState), headers: fetchHeaders}).then((resp) => handleJsonFetchResponse(url, resp)).catch((err) => {
-        console.log("error logging active state", err)
-    });
+    fetch(url, { method: "post", body: JSON.stringify(activeState), headers: fetchHeaders })
+        .then((resp) => handleJsonFetchResponse(url, resp))
+        .catch((err) => {
+            console.log("error logging active state", err);
+        });
     // for next iteration
-    wasInFg = (MainWindow != null && MainWindow.isFocused());
+    wasInFg = MainWindow != null && MainWindow.isFocused();
     wasActive = false;
 }
 
@@ -561,17 +571,15 @@ function runActiveTimer() {
     GlobalAuthKey = readAuthKey();
     try {
         await runLocalServer();
-    }
-    catch (e) {
+    } catch (e) {
         console.log(e.toString());
     }
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
     await app.whenReady();
     await createMainWindowWrap();
-    app.on('activate', () => {
+    app.on("activate", () => {
         if (electron.BrowserWindow.getAllWindows().length === 0) {
             createMainWindowWrap().then();
         }
-    })
+    });
 })();
-

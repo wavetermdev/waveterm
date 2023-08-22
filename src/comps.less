@@ -49,7 +49,7 @@
         min-width: 100px;
         overflow: auto;
         border-left: 1px solid #777;
-        
+
         code {
             flex-shrink: 0;
             min-width: 100px;
@@ -66,7 +66,7 @@
         position: relative;
         display: block;
         visibility: hidden;
-        
+
         .inner-copy {
             position: absolute;
             bottom: -1px;
@@ -92,7 +92,7 @@
 
 .terminal-wrapper {
     position: relative;
-    
+
     .term-block {
         position: absolute;
         top: 0;
@@ -126,7 +126,7 @@
             width: 5px;
             height: 5px;
         }
-        
+
         &::-webkit-scrollbar-thumb {
             background: white;
         }
@@ -138,7 +138,7 @@
             width: 5px;
             height: 5px;
         }
-        
+
         &::-webkit-scrollbar-thumb {
             background: #555;
         }
@@ -206,7 +206,8 @@ body .xterm .xterm-viewport {
     }
 }
 
-.button.is-plain, .button.is-prompt-cancel {
+.button.is-plain,
+.button.is-prompt-cancel {
     background-color: #222;
     color: @term-white;
 
@@ -238,7 +239,7 @@ body .xterm .xterm-viewport {
     .mono-font(10px);
     display: flex;
     flex-direction: row;
-    
+
     .hint-item {
         padding: 0px 5px 0px 5px;
         border-radius: 0 0 3px 3px;
@@ -252,7 +253,7 @@ body .xterm .xterm-viewport {
     .hint-item.color-green {
         color: black;
         background-color: @tab-green;
-        
+
         &:hover {
             color: white;
         }
@@ -263,11 +264,11 @@ body .xterm .xterm-viewport {
         background-color: @tab-green;
         cursor: default;
     }
-    
+
     .hint-item.color-white {
         color: black;
         background-color: @term-white;
-        
+
         &:hover {
             background-color: @term-bright-white;
         }
@@ -282,7 +283,7 @@ body .xterm .xterm-viewport {
     .hint-item.color-blue {
         color: black;
         background-color: @tab-blue;
-        
+
         &:hover {
             color: white;
         }
@@ -426,11 +427,11 @@ body .xterm .xterm-viewport {
     div:nth-child(1) {
         animation-delay: -0.45s;
     }
-    
+
     div:nth-child(2) {
         animation-delay: -0.3s;
     }
-    
+
     div:nth-child(3) {
         animation-delay: -0.15s;
     }
@@ -457,19 +458,20 @@ body .xterm .xterm-viewport {
     background-color: #171717;
     outline: 2px solid #171717;
 
-    &:hover, &:focus {
+    &:hover,
+    &:focus {
         color: @term-white;
         background-color: #333;
         outline: 2px solid #333;
     }
-    
+
     &.connect-button {
         color: @term-green;
         &:hover {
             color: @term-green;
         }
     }
-    
+
     &.disconnect-button {
         color: @term-red;
         &:hover {
@@ -499,7 +501,8 @@ body .xterm .xterm-viewport {
     }
 
     &.disabled-button {
-        &:hover, &:focus {
+        &:hover,
+        &:focus {
             outline: none;
             background-color: #171717;
         }
@@ -521,12 +524,13 @@ body .xterm .xterm-viewport {
         display: block;
         background-color: #666 !important;
     }
-    
-    &.active, &.active.selected {
+
+    &.active,
+    &.active.selected {
         display: block;
         background-color: @tab-blue !important;
     }
-    
+
     &.active.selected.fg-focus {
         display: block;
         background-color: @tab-green !important;
@@ -540,7 +544,7 @@ body .xterm .xterm-viewport {
 
 #main .term-prompt {
     font-size: 14px;
-    
+
     i {
         margin-right: 3px;
     }
@@ -561,7 +565,7 @@ body .xterm .xterm-viewport {
 
     .term-prompt-remote {
         color: @term-bright-green;
-        
+
         &.color-green {
             color: @term-bright-green;
         }
@@ -611,18 +615,19 @@ body .xterm .xterm-viewport {
     top: -3px;
     color: #c4a000;
 
-    &.status-init, &.status-disconnected {
+    &.status-init,
+    &.status-disconnected {
         color: #c4a000;
     }
 
     &.status-connecting {
         color: #c4a000;
     }
-    
+
     &.status-connected {
         color: #4e9a06;
     }
-    
+
     &.status-error {
         color: #cc0000;
     }

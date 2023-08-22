@@ -1,58 +1,58 @@
 import * as mobx from "mobx";
-import {Terminal} from 'xterm';
-import {sprintf} from "sprintf-js";
-import {boundMethod} from "autobind-decorator";
-import {v4 as uuidv4} from "uuid";
-import {termHeightFromRows, windowWidthToCols, windowHeightToRows} from "./textmeasure";
-import {boundInt} from "./util";
-import type {TermContextUnion, TermOptsType, TermWinSize, RendererContext, WindowSize, PtyDataType} from "./types";
+import { Terminal } from "xterm";
+import { sprintf } from "sprintf-js";
+import { boundMethod } from "autobind-decorator";
+import { v4 as uuidv4 } from "uuid";
+import { termHeightFromRows, windowWidthToCols, windowHeightToRows } from "./textmeasure";
+import { boundInt } from "./util";
+import type { TermContextUnion, TermOptsType, TermWinSize, RendererContext, WindowSize, PtyDataType } from "./types";
 
 type DataUpdate = {
-    data : Uint8Array,
-    pos : number,
-}
+    data: Uint8Array;
+    pos: number;
+};
 
 const MinTermCols = 10;
 const MaxTermCols = 1024;
 
 type TermWrapOpts = {
-    termContext : TermContextUnion,
-    usedRows? : number,
-    termOpts : TermOptsType,
-    winSize : WindowSize,
-    keyHandler? : (event : any, termWrap : TermWrap) => void,
-    focusHandler? : (focus : boolean) => void,
-    dataHandler? : (data : string, termWrap : TermWrap) => void,
-    isRunning : boolean,
-    customKeyHandler? : (event : any, termWrap : TermWrap) => boolean,
-    fontSize : number,
-    ptyDataSource : (termContext : TermContextUnion) => Promise<PtyDataType>,
-    onUpdateContentHeight : (termContext : RendererContext, height : number) => void,
+    termContext: TermContextUnion;
+    usedRows?: number;
+    termOpts: TermOptsType;
+    winSize: WindowSize;
+    keyHandler?: (event: any, termWrap: TermWrap) => void;
+    focusHandler?: (focus: boolean) => void;
+    dataHandler?: (data: string, termWrap: TermWrap) => void;
+    isRunning: boolean;
+    customKeyHandler?: (event: any, termWrap: TermWrap) => boolean;
+    fontSize: number;
+    ptyDataSource: (termContext: TermContextUnion) => Promise<PtyDataType>;
+    onUpdateContentHeight: (termContext: RendererContext, height: number) => void;
 };
 
 // cmd-instance
 class TermWrap {
-    terminal : any;
-    termContext : TermContextUnion;
-    atRowMax : boolean;
-    usedRows : mobx.IObservableValue<number>;
-    flexRows : boolean;
-    connectedElem : Element;
-    ptyPos : number = 0;
-    reloading : boolean = false;
-    dataUpdates : DataUpdate[] = [];
-    loadError : mobx.IObservableValue<boolean> = mobx.observable.box(false, {name: "term-loaderror"});
-    winSize : WindowSize;
-    numParseErrors : number = 0;
-    termSize : TermWinSize;
-    focusHandler : (focus : boolean) => void;
-    isRunning : boolean;
-    fontSize : number;
-    onUpdateContentHeight : (termContext : RendererContext, height : number) => void;
-    ptyDataSource : (termContext : TermContextUnion) => Promise<PtyDataType>;
-    initializing : boolean;
+    terminal: any;
+    termContext: TermContextUnion;
+    atRowMax: boolean;
+    usedRows: mobx.IObservableValue<number>;
+    flexRows: boolean;
+    connectedElem: Element;
+    ptyPos: number = 0;
+    reloading: boolean = false;
+    dataUpdates: DataUpdate[] = [];
+    loadError: mobx.IObservableValue<boolean> = mobx.observable.box(false, { name: "term-loaderror" });
+    winSize: WindowSize;
+    numParseErrors: number = 0;
+    termSize: TermWinSize;
+    focusHandler: (focus: boolean) => void;
+    isRunning: boolean;
+    fontSize: number;
+    onUpdateContentHeight: (termContext: RendererContext, height: number) => void;
+    ptyDataSource: (termContext: TermContextUnion) => Promise<PtyDataType>;
+    initializing: boolean;
 
-    constructor(elem : Element, opts : TermWrapOpts) {
+    constructor(elem: Element, opts: TermWrapOpts) {
         opts = opts ?? ({} as any);
         this.termContext = opts.termContext;
         this.connectedElem = elem;
@@ -66,23 +66,27 @@ class TermWrap {
         this.initializing = true;
         if (this.flexRows) {
             this.atRowMax = false;
-            this.usedRows = mobx.observable.box(opts.usedRows ?? (opts.isRunning ? 1 : 0), {name: "term-usedrows"});
-        }
-        else {
+            this.usedRows = mobx.observable.box(opts.usedRows ?? (opts.isRunning ? 1 : 0), { name: "term-usedrows" });
+        } else {
             this.atRowMax = true;
-            this.usedRows = mobx.observable.box(opts.termOpts.rows, {name: "term-usedrows"});
+            this.usedRows = mobx.observable.box(opts.termOpts.rows, { name: "term-usedrows" });
         }
         if (opts.winSize == null) {
-            this.termSize = {rows: opts.termOpts.rows, cols: opts.termOpts.cols};
-        }
-        else {
+            this.termSize = { rows: opts.termOpts.rows, cols: opts.termOpts.cols };
+        } else {
             let cols = windowWidthToCols(opts.winSize.width, opts.fontSize);
-            this.termSize = {rows: opts.termOpts.rows, cols: cols};
+            this.termSize = { rows: opts.termOpts.rows, cols: cols };
         }
         let theme = {
             foreground: "#d3d7cf",
         };
-        this.terminal = new Terminal({rows: this.termSize.rows, cols: this.termSize.cols, fontSize: opts.fontSize, fontFamily: "JetBrains Mono", theme: theme});
+        this.terminal = new Terminal({
+            rows: this.termSize.rows,
+            cols: this.termSize.cols,
+            fontSize: opts.fontSize,
+            fontFamily: "JetBrains Mono",
+            theme: theme,
+        });
         this.terminal._core._inputHandler._parser.setErrorHandler((state) => {
             this.numParseErrors++;
             return state;
@@ -99,7 +103,7 @@ class TermWrap {
                 this.focusHandler(true);
             }
         });
-        this.terminal.textarea.addEventListener("blur", (e : any) => {
+        this.terminal.textarea.addEventListener("blur", (e: any) => {
             if (document.activeElement == this.terminal.textarea) {
                 return;
             }
@@ -114,12 +118,12 @@ class TermWrap {
         setTimeout(() => this.reload(0), 10);
     }
 
-    getUsedRows() : number {
+    getUsedRows(): number {
         return this.usedRows.get();
     }
 
     @boundMethod
-    elemScrollHandler(e : any) {
+    elemScrollHandler(e: any) {
         // this stops a weird behavior in the terminal
         // xterm.js renders a textarea that handles focus.  when it focuses and a space is typed the browser
         //   will scroll to make it visible (even though our terminal element has overflow hidden)
@@ -130,21 +134,21 @@ class TermWrap {
         e.target.scrollTop = 0;
     }
 
-    getContextRemoteId() : string {
+    getContextRemoteId(): string {
         if ("remoteId" in this.termContext) {
             return this.termContext.remoteId;
         }
         return null;
     }
 
-    getRendererContext() : RendererContext {
+    getRendererContext(): RendererContext {
         if ("remoteId" in this.termContext) {
             return null;
         }
         return this.termContext;
     }
 
-    getFontHeight() : number {
+    getFontHeight(): number {
         return this.terminal._core.viewport._currentRowHeight;
     }
 
@@ -160,14 +164,14 @@ class TermWrap {
             return;
         }
         this.terminal.focus();
-        setTimeout(() => this.terminal._core.viewport.syncScrollArea(true), 0)
+        setTimeout(() => this.terminal._core.viewport.syncScrollArea(true), 0);
     }
 
     disconnectElem() {
         this.connectedElem = null;
     }
 
-    getTermUsedRows() : number {
+    getTermUsedRows(): number {
         let term = this.terminal;
         if (term == null) {
             return 0;
@@ -178,21 +182,21 @@ class TermWrap {
         if (termNumLines > term.rows) {
             return term.rows;
         }
-        let usedRows = (this.isRunning ? 1 : 0);
+        let usedRows = this.isRunning ? 1 : 0;
         if (this.isRunning && termYPos >= usedRows) {
             usedRows = termYPos + 1;
         }
-        for (let i=term.rows-1; i>=usedRows; i--) {
+        for (let i = term.rows - 1; i >= usedRows; i--) {
             let line = termBuf.translateBufferLineToString(i, true);
             if (line != null && line.trim() != "") {
-                usedRows = i+1;
+                usedRows = i + 1;
                 break;
             }
         }
         return usedRows;
     }
 
-    updateUsedRows(forceFull : boolean, reason : string) {
+    updateUsedRows(forceFull: boolean, reason: string) {
         if (this.terminal == null) {
             return;
         }
@@ -228,15 +232,15 @@ class TermWrap {
         })();
     }
 
-    resizeCols(cols : number) : void {
-        this.resize({rows: this.termSize.rows, cols: cols});
+    resizeCols(cols: number): void {
+        this.resize({ rows: this.termSize.rows, cols: cols });
     }
 
-    resize(size : TermWinSize) : void {
+    resize(size: TermWinSize): void {
         if (this.terminal == null) {
             return;
         }
-        let newSize = {rows: size.rows, cols: size.cols};
+        let newSize = { rows: size.rows, cols: size.cols };
         newSize.cols = boundInt(newSize.cols, MinTermCols, MaxTermCols);
         if (newSize.rows == this.termSize.rows && newSize.cols == this.termSize.cols) {
             return;
@@ -246,17 +250,17 @@ class TermWrap {
         this.updateUsedRows(true, "resize");
     }
 
-    resizeWindow(size : WindowSize) : void {
+    resizeWindow(size: WindowSize): void {
         let cols = windowWidthToCols(size.width, this.fontSize);
         let rows = windowHeightToRows(size.height, this.fontSize);
-        this.resize({rows, cols});
+        this.resize({ rows, cols });
     }
 
-    _reloadThenHandler(ptydata : PtyDataType) {
+    _reloadThenHandler(ptydata: PtyDataType) {
         this.reloading = false;
         this.ptyPos = ptydata.pos;
         this.receiveData(ptydata.pos, ptydata.data, "reload-main");
-        for (let i=0; i<this.dataUpdates.length; i++) {
+        for (let i = 0; i < this.dataUpdates.length; i++) {
             this.receiveData(this.dataUpdates[i].pos, this.dataUpdates[i].data, "reload-update-" + i);
         }
         this.dataUpdates = [];
@@ -267,7 +271,7 @@ class TermWrap {
         }
     }
 
-    getLineNum() : number {
+    getLineNum(): number {
         let context = this.getRendererContext();
         if (context == null) {
             return 0;
@@ -275,7 +279,7 @@ class TermWrap {
         return context.lineNum;
     }
 
-    hardResetTerminal() : void {
+    hardResetTerminal(): void {
         if (this.terminal == null) {
             return;
         }
@@ -286,7 +290,7 @@ class TermWrap {
         this.numParseErrors = 0;
     }
 
-    reload(delayMs : number) {
+    reload(delayMs: number) {
         if (this.terminal == null) {
             return;
         }
@@ -306,14 +310,16 @@ class TermWrap {
                 this._reloadThenHandler(ptydata);
             }, delayMs);
         }).catch((e) => {
-            mobx.action(() => { this.loadError.set(true); })();
+            mobx.action(() => {
+                this.loadError.set(true);
+            })();
             this.dataUpdates = [];
             this.reloading = false;
             console.log("error reloading terminal", this.termContext, e);
         });
     }
 
-    receiveData(pos : number, data : Uint8Array, reason? : string) {
+    receiveData(pos: number, data: Uint8Array, reason?: string) {
         // console.log("update-pty-data", reason, "line:" + this.getLineNum(), pos, data.length, "=>", pos + data.length);
         if (this.initializing) {
             return;
@@ -325,7 +331,7 @@ class TermWrap {
             return;
         }
         if (this.reloading) {
-            this.dataUpdates.push({data: data, pos: pos});
+            this.dataUpdates.push({ data: data, pos: pos });
             return;
         }
         if (pos > this.ptyPos) {
@@ -347,10 +353,10 @@ class TermWrap {
         });
     }
 
-    cmdDone() : void {
+    cmdDone(): void {
         this.isRunning = false;
         this.updateUsedRows(true, "cmd-done");
     }
 }
 
-export {TermWrap};
+export { TermWrap };

@@ -1,7 +1,7 @@
-const webpack = require('webpack');
-const merge = require('webpack-merge');
-const common = require('./webpack.share.js');
-const path = require('path');
+const webpack = require("webpack");
+const merge = require("webpack-merge");
+const common = require("./webpack.share.js");
+const path = require("path");
 const CopyPlugin = require("copy-webpack-plugin");
 const VERSION = require("./version.js");
 
@@ -18,10 +18,10 @@ var merged = merge.merge(common, {
         },
         port: 9001,
         headers: {
-            'Cache-Control': 'no-store',
+            "Cache-Control": "no-store",
         },
         devMiddleware: {
-            publicPath: '/dist-dev/'
+            publicPath: "/dist-dev/",
         },
         allowedHosts: "all",
         hot: false,
@@ -42,4 +42,3 @@ var definePlugin = new webpack.DefinePlugin({
 merged.plugins.push(definePlugin);
 
 module.exports = merged;
-

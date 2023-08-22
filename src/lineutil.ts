@@ -1,18 +1,18 @@
 import dayjs from "dayjs";
-import localizedFormat from 'dayjs/plugin/localizedFormat';
-import {isBlank, getDateStr} from "./util";
-import {LineType, WebLine, RendererContext} from "./types";
+import localizedFormat from "dayjs/plugin/localizedFormat";
+import { isBlank, getDateStr } from "./util";
+import { LineType, WebLine, RendererContext } from "./types";
 
-dayjs.extend(localizedFormat)
+dayjs.extend(localizedFormat);
 
-function getRendererType(line : LineType|WebLine) : "terminal" | "plugin" {
+function getRendererType(line: LineType | WebLine): "terminal" | "plugin" {
     if (isBlank(line.renderer) || line.renderer == "terminal") {
         return "terminal";
     }
     return "plugin";
 }
 
-function getLineDateStr(todayDate : string, yesterdayDate : string, ts : number) : string {
+function getLineDateStr(todayDate: string, yesterdayDate: string, ts: number): string {
     let lineDate = new Date(ts);
     let dateStr = getDateStr(lineDate);
     if (dateStr == todayDate) {
@@ -24,36 +24,34 @@ function getLineDateStr(todayDate : string, yesterdayDate : string, ts : number)
     return dateStr;
 }
 
-function getLineDateTimeStr(ts : number) : string {
+function getLineDateTimeStr(ts: number): string {
     let lineDate = new Date(ts);
     let nowDate = new Date();
-    
+
     if (nowDate.getFullYear() != lineDate.getFullYear()) {
         return dayjs(lineDate).format("ddd L LTS");
-    }
-    else if (nowDate.getMonth() != lineDate.getMonth() || nowDate.getDate() != lineDate.getDate()) {
-        let yesterdayDate = (new Date());
-        yesterdayDate.setDate(yesterdayDate.getDate()-1);
+    } else if (nowDate.getMonth() != lineDate.getMonth() || nowDate.getDate() != lineDate.getDate()) {
+        let yesterdayDate = new Date();
+        yesterdayDate.setDate(yesterdayDate.getDate() - 1);
         if (yesterdayDate.getMonth() == lineDate.getMonth() && yesterdayDate.getDate() == lineDate.getDate()) {
-            return "Yesterday " + dayjs(lineDate).format("LTS");;
+            return "Yesterday " + dayjs(lineDate).format("LTS");
         }
         return dayjs(lineDate).format("ddd L LTS");
-    }
-    else {
+    } else {
         return dayjs(lineDate).format("LTS");
     }
 }
 
-function isMultiLineCmdText(cmdText : string) : boolean {
+function isMultiLineCmdText(cmdText: string): boolean {
     if (cmdText == null) {
         return false;
     }
     cmdText = cmdText.trim();
     let nlIdx = cmdText.indexOf("\n");
-    return (nlIdx != -1);
+    return nlIdx != -1;
 }
 
-function getFullCmdText(cmdText : string) {
+function getFullCmdText(cmdText: string) {
     if (cmdText == null) {
         return "(none)";
     }
@@ -61,7 +59,7 @@ function getFullCmdText(cmdText : string) {
     return cmdText;
 }
 
-function getSingleLineCmdText(cmdText : string) {
+function getSingleLineCmdText(cmdText: string) {
     if (cmdText == null) {
         return "(none)";
     }
@@ -73,7 +71,7 @@ function getSingleLineCmdText(cmdText : string) {
     return cmdText;
 }
 
-function getRendererContext(line : LineType) : RendererContext {
+function getRendererContext(line: LineType): RendererContext {
     return {
         screenId: line.screenid,
         lineId: line.lineid,
@@ -81,7 +79,7 @@ function getRendererContext(line : LineType) : RendererContext {
     };
 }
 
-function getWebRendererContext(line : WebLine) : RendererContext {
+function getWebRendererContext(line: WebLine): RendererContext {
     return {
         screenId: line.screenid,
         lineId: line.lineid,
@@ -89,8 +87,18 @@ function getWebRendererContext(line : WebLine) : RendererContext {
     };
 }
 
-function cmdStatusIsRunning(status : string) : boolean {
+function cmdStatusIsRunning(status: string): boolean {
     return status == "running" || status == "detached";
 }
 
-export {getRendererType, getLineDateStr, getLineDateTimeStr, isMultiLineCmdText, getFullCmdText, getSingleLineCmdText, getRendererContext, getWebRendererContext, cmdStatusIsRunning};
+export {
+    getRendererType,
+    getLineDateStr,
+    getLineDateTimeStr,
+    isMultiLineCmdText,
+    getFullCmdText,
+    getSingleLineCmdText,
+    getRendererContext,
+    getWebRendererContext,
+    cmdStatusIsRunning,
+};

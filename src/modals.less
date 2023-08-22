@@ -4,7 +4,7 @@
     z-index: 105;
 
     .modal-background {
-        background-color: rgba(10,10,10,.6);
+        background-color: rgba(10, 10, 10, 0.6);
     }
 }
 
@@ -35,7 +35,7 @@
             background-color: black;
             height: 250px;
             overflow: auto;
-            
+
             .ws-logline {
                 .mono-font(12px);
                 color: @term-white;
@@ -66,7 +66,7 @@
 
 .modal.alert-modal {
     z-index: 205;
-    
+
     footer {
         justify-content: center;
 
@@ -171,7 +171,7 @@
     .modal-content {
         min-width: 850px;
     }
-    
+
     .inner-content {
         display: flex;
         flex-direction: row;
@@ -209,7 +209,7 @@
                         color: white;
                     }
                 }
-                
+
                 &:first-child {
                     border-top: 0;
                 }
@@ -291,9 +291,8 @@
                 i.fa-check {
                     color: @term-green;
                 }
-                
+
                 &.is-ok {
-                    
                 }
 
                 .message-row {
@@ -316,7 +315,7 @@
                 .update-auth-button {
                     visibility: hidden;
                 }
-                
+
                 &:hover {
                     .update-auth-button {
                         visibility: visible;
@@ -328,7 +327,8 @@
                 }
             }
 
-            &.auth-editing, &.create-remote {
+            &.auth-editing,
+            &.create-remote {
                 .settings-field.align-top {
                     align-items: flex-start;
 
@@ -366,11 +366,11 @@
                 .settings-input input {
                     width: 250px;
                 }
-                
+
                 .dropdown .dropdown-trigger button {
                     font-size: 12px;
                 }
-                
+
                 .dropdown .dropdown-item {
                     font-size: 12px;
                     padding: 5px 5px 5px 12px;
@@ -525,7 +525,7 @@
                 height: 20px;
             }
         }
-        
+
         input {
             padding: 4px;
             border-radius: 3px;
@@ -534,7 +534,7 @@
         .control {
             font-size: 12px;
         }
-        
+
         .tab-color-icon.color-green {
             color: desaturate(@tab-green, 30%);
         }

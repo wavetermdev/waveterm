@@ -2,50 +2,50 @@ import * as React from "react";
 import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
 import cn from "classnames";
-import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
+import { If, For, When, Otherwise, Choose } from "tsx-control-statements/components";
 import * as T from "../types";
-import {debounce, throttle} from "throttle-debounce";
-import {boundMethod} from "autobind-decorator";
-import {sprintf} from "sprintf-js";
-import {PacketDataBuffer} from "../ptydata";
-import {Markdown} from "../elements";
+import { debounce, throttle } from "throttle-debounce";
+import { boundMethod } from "autobind-decorator";
+import { sprintf } from "sprintf-js";
+import { PacketDataBuffer } from "../ptydata";
+import { Markdown } from "../elements";
 
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
-type OMap<K,V> = mobx.ObservableMap<K,V>;
+type OMap<K, V> = mobx.ObservableMap<K, V>;
 
 type OpenAIOutputType = {
-    model : string,
-    created : number,
-    finish_reason : string,
-    message : string,
+    model: string;
+    created: number;
+    finish_reason: string;
+    message: string;
 };
 
 class OpenAIRendererModel {
-    context : T.RendererContext;
-    opts : T.RendererOpts;
-    isDone : OV<boolean>;
-    api : T.RendererModelContainerApi;
-    savedHeight : number;
-    loading : OV<boolean>;
-    loadError : OV<string> = mobx.observable.box(null, {name: "renderer-loadError"});
-    updateHeight_debounced : (newHeight : number) => void;
-    ptyDataSource : (termContext : T.TermContextUnion) => Promise<T.PtyDataType>;
-    packetData : PacketDataBuffer;
-    rawCmd : T.WebCmd;
-    output : OV<OpenAIOutputType>;
-    version : OV<number>;
-    
+    context: T.RendererContext;
+    opts: T.RendererOpts;
+    isDone: OV<boolean>;
+    api: T.RendererModelContainerApi;
+    savedHeight: number;
+    loading: OV<boolean>;
+    loadError: OV<string> = mobx.observable.box(null, { name: "renderer-loadError" });
+    updateHeight_debounced: (newHeight: number) => void;
+    ptyDataSource: (termContext: T.TermContextUnion) => Promise<T.PtyDataType>;
+    packetData: PacketDataBuffer;
+    rawCmd: T.WebCmd;
+    output: OV<OpenAIOutputType>;
+    version: OV<number>;
+
     constructor() {
         this.updateHeight_debounced = debounce(1000, this.updateHeight.bind(this));
         this.packetData = new PacketDataBuffer(this.packetCallback);
-        this.output = mobx.observable.box(null, {name: "openai-output"});
+        this.output = mobx.observable.box(null, { name: "openai-output" });
         this.version = mobx.observable.box(0);
     }
 
-    initialize(params : T.RendererModelInitializeParams) : void {
-        this.loading = mobx.observable.box(true, {name: "renderer-loading"});
-        this.isDone = mobx.observable.box(params.isDone, {name: "renderer-isDone"});
+    initialize(params: T.RendererModelInitializeParams): void {
+        this.loading = mobx.observable.box(true, { name: "renderer-loading" });
+        this.isDone = mobx.observable.box(params.isDone, { name: "renderer-isDone" });
         this.context = params.context;
         this.opts = params.opts;
         this.api = params.api;
@@ -56,8 +56,8 @@ class OpenAIRendererModel {
     }
 
     @boundMethod
-    packetCallback(packetAny : any) {
-        let packet : T.OpenAIPacketType = packetAny
+    packetCallback(packetAny: any) {
+        let packet: T.OpenAIPacketType = packetAny;
         if (packet == null) {
             return;
         }
@@ -65,7 +65,7 @@ class OpenAIRendererModel {
         if (packet.error != null) {
             mobx.action(() => {
                 this.loadError.set(packet.error);
-                this.version.set(this.version.get()+1);
+                this.version.set(this.version.get() + 1);
             })();
             return;
         }
@@ -74,7 +74,7 @@ class OpenAIRendererModel {
                 model: packet.model,
                 created: packet.created,
                 finish_reason: packet.finish_reason,
-                message: (packet.text ?? ""),
+                message: packet.text ?? "",
             };
             mobx.action(() => {
                 this.output.set(output);
@@ -93,31 +93,31 @@ class OpenAIRendererModel {
                 if (packet.text != null) {
                     this.output.get().message += packet.text;
                 }
-                this.version.set(this.version.get()+1);
+                this.version.set(this.version.get() + 1);
             })();
         }
     }
 
-    dispose() : void {
-        return;
-    }
-    
-    giveFocus() : void {
+    dispose(): void {
         return;
     }
 
-    updateOpts(update : T.RendererOptsUpdate) : void {
+    giveFocus(): void {
+        return;
+    }
+
+    updateOpts(update: T.RendererOptsUpdate): void {
         Object.assign(this.opts, update);
     }
 
-    updateHeight(newHeight : number) : void {
+    updateHeight(newHeight: number): void {
         if (this.savedHeight != newHeight) {
             this.savedHeight = newHeight;
             this.api.saveHeight(newHeight);
         }
     }
-    
-    setIsDone() : void {
+
+    setIsDone(): void {
         if (this.isDone.get()) {
             return;
         }
@@ -127,7 +127,7 @@ class OpenAIRendererModel {
         // this.reload(0);
     }
 
-    reload(delayMs : number) : void {
+    reload(delayMs: number): void {
         mobx.action(() => {
             this.loading.set(true);
             this.loadError.set(null);
@@ -152,45 +152,41 @@ class OpenAIRendererModel {
             })();
         });
     }
-    
-    receiveData(pos : number, data : Uint8Array, reason? : string) : void {
+
+    receiveData(pos: number, data: Uint8Array, reason?: string): void {
         this.packetData.receiveData(pos, data, reason);
     }
 }
 
 @mobxReact.observer
-class OpenAIRenderer extends React.Component<{model : OpenAIRendererModel}> {
-    renderPrompt(cmd : T.WebCmd) {
+class OpenAIRenderer extends React.Component<{ model: OpenAIRendererModel }> {
+    renderPrompt(cmd: T.WebCmd) {
         let cmdStr = cmd.cmdstr.trim();
         if (cmdStr.startsWith("/openai")) {
             let spaceIdx = cmdStr.indexOf(" ");
             if (spaceIdx > 0) {
-                cmdStr = cmdStr.substr(spaceIdx+1).trim();
+                cmdStr = cmdStr.substr(spaceIdx + 1).trim();
             }
         }
         return (
             <div className="openai-message">
                 <span className="openai-role openai-role-user">[user]</span>
-                <div className="openai-content-user">
-                    {cmdStr}
-                </div>
+                <div className="openai-content-user">{cmdStr}</div>
             </div>
         );
     }
 
     renderError() {
-        let model : OpenAIRendererModel = this.props.model;
+        let model: OpenAIRendererModel = this.props.model;
         return (
             <div className="openai-message">
                 <span className="openai-role openai-role-error">[error]</span>
-                <div className="openai-content-error">
-                    {model.loadError.get()}
-                </div>
+                <div className="openai-content-error">{model.loadError.get()}</div>
             </div>
         );
     }
 
-    renderOutput(cmd : T.WebCmd) {
+    renderOutput(cmd: T.WebCmd) {
         let output = this.props.model.output.get();
         let message = "";
         if (output != null) {
@@ -207,20 +203,28 @@ class OpenAIRenderer extends React.Component<{model : OpenAIRendererModel}> {
             <div className="openai-message">
                 <div className="openai-role openai-role-assistant">[assistant]</div>
                 <div className="openai-content-assistant">
-                    <div className="scroller" style={{maxHeight: opts.maxSize.height, minWidth: minWidth, width: "min-content", maxWidth: maxWidth}}>
-                        <Markdown text={message} style={{maxHeight: opts.maxSize.height}}/>
+                    <div
+                        className="scroller"
+                        style={{
+                            maxHeight: opts.maxSize.height,
+                            minWidth: minWidth,
+                            width: "min-content",
+                            maxWidth: maxWidth,
+                        }}
+                    >
+                        <Markdown text={message} style={{ maxHeight: opts.maxSize.height }} />
                     </div>
                 </div>
             </div>
         );
     }
-    
+
     render() {
-        let model : OpenAIRendererModel = this.props.model;
+        let model: OpenAIRendererModel = this.props.model;
         let cmd = model.rawCmd;
-        let styleVal : Record<string, any> = null;
+        let styleVal: Record<string, any> = null;
         if (model.loading.get() && model.savedHeight >= 0 && model.isDone) {
-            styleVal = {height: model.savedHeight};
+            styleVal = { height: model.savedHeight };
         }
         let version = model.version.get();
         let loadError = model.loadError.get();
@@ -241,4 +245,4 @@ class OpenAIRenderer extends React.Component<{model : OpenAIRendererModel}> {
     }
 }
 
-export {OpenAIRenderer, OpenAIRendererModel};
+export { OpenAIRenderer, OpenAIRendererModel };

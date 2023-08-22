@@ -1,9 +1,8 @@
-
 .alt-view {
     background-color: #111;
     overflow-y: auto;
     flex-grow: 1;
-    
+
     .alt-title {
         margin: 20px 10px 0px 5px;
         padding-left: 10px;
@@ -113,8 +112,9 @@
             display: flex;
             flex-direction: row;
             align-items: center;
-            
-            .session-dropdown, .remote-dropdown {
+
+            .session-dropdown,
+            .remote-dropdown {
                 .dropdown-item {
                     color: white;
                     cursor: pointer;
@@ -163,7 +163,7 @@
                 flex-direction: row;
                 align-items: center;
                 margin-left: 15px;
-                
+
                 .fromts-text {
                 }
             }
@@ -174,7 +174,7 @@
                 font-size: 12px;
                 border: 1px solid #777;
                 padding: 5px 10px 5px 10px;
-                
+
                 &:hover {
                     background-color: #666;
                 }
@@ -220,7 +220,8 @@
 
             &.is-disabled {
                 cursor: default;
-                i, span {
+                i,
+                span {
                     display: none;
                 }
             }
@@ -271,7 +272,7 @@
         border-radius: 3px;
         margin: 20px 50px 20px 20px;
     }
-    
+
     .history-table {
         margin: 0px 10px 10px 10px;
         table-layout: fixed;
@@ -280,7 +281,7 @@
         tr.active-history-item {
             td {
                 padding-right: 10px;
-                
+
                 .line-container {
                     padding: 0px 10px 10px 10px;
                     overflow-x: auto;
@@ -418,7 +419,6 @@
     }
 }
 
-
 .webshare-view {
     .webshare-item {
         padding: 4px 5px 8px 15px;
@@ -439,7 +439,7 @@
 
             .webshare-vic-link {
                 cursor: pointer;
-                
+
                 &:hover {
                     text-decoration: underline;
                 }
@@ -492,8 +492,9 @@
         &.pending-delete {
             background-color: #522;
         }
-        
-        .bookmark-content, .bookmark-edit {
+
+        .bookmark-content,
+        .bookmark-edit {
             flex-grow: 1;
             max-width: calc(100% - 50px);
         }

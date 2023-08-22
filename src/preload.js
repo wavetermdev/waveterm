@@ -1,4 +1,4 @@
-let {contextBridge, ipcRenderer} = require("electron");
+let { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("api", {
     getId: () => ipcRenderer.sendSync("get-id"),

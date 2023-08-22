@@ -1,23 +1,23 @@
 import * as mobx from "mobx";
-import {incObs} from "./util";
+import { incObs } from "./util";
 
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
-type OMap<K,V> = mobx.ObservableMap<K,V>;
+type OMap<K, V> = mobx.ObservableMap<K, V>;
 
-const InitialSize = 10*1024;
+const InitialSize = 10 * 1024;
 const IncreaseFactor = 1.5;
 
 class PtyDataBuffer {
-    ptyPos : number;
-    dataVersion : mobx.IObservableValue<number>;
-    brokenData : boolean;
-    rawData : Uint8Array;
-    dataSize : number;
+    ptyPos: number;
+    dataVersion: mobx.IObservableValue<number>;
+    brokenData: boolean;
+    rawData: Uint8Array;
+    dataSize: number;
 
     constructor() {
         this.ptyPos = 0;
-        this.dataVersion = mobx.observable.box(0, {name: "dataVersion"});
+        this.dataVersion = mobx.observable.box(0, { name: "dataVersion" });
         this._resetData();
     }
 
@@ -27,15 +27,15 @@ class PtyDataBuffer {
         this.brokenData = false;
     }
 
-    reset() : void {
+    reset(): void {
         this._resetData();
     }
 
-    getData() : Uint8Array {
+    getData(): Uint8Array {
         return this.rawData.slice(0, this.dataSize);
     }
 
-    _growArray(minSize : number) : void {
+    _growArray(minSize: number): void {
         let newSize = Math.round(this.rawData.length * IncreaseFactor);
         if (newSize < minSize) {
             newSize = minSize;
@@ -45,7 +45,7 @@ class PtyDataBuffer {
         this.rawData = newData;
     }
 
-    receiveData(pos : number, data : Uint8Array, reason? : string) : void {
+    receiveData(pos: number, data: Uint8Array, reason?: string): void {
         if (pos != this.dataSize) {
             this.brokenData = true;
             return;
@@ -62,21 +62,21 @@ class PtyDataBuffer {
 const NewLineCharCode = "\n".charCodeAt(0);
 
 class PacketDataBuffer extends PtyDataBuffer {
-    parsePos : number;
-    callback : (any) => void;
+    parsePos: number;
+    callback: (any) => void;
 
-    constructor(callback : (any) => void) {
+    constructor(callback: (any) => void) {
         super();
         this.parsePos = 0;
         this.callback = callback;
     }
 
-    reset() : void {
+    reset(): void {
         super.reset();
         this.parsePos = 0;
     }
 
-    processLine(line : string) {
+    processLine(line: string) {
         if (line.length == 0) {
             return;
         }
@@ -97,11 +97,10 @@ class PacketDataBuffer extends PtyDataBuffer {
                 console.log("invalid line packet", line);
             }
         }
-        let packet : any = null;
+        let packet: any = null;
         try {
             packet = JSON.parse(packetStr);
-        }
-        catch (e) {
+        } catch (e) {
             console.log("invalid line packet (bad json)", line, e);
             return;
         }
@@ -111,22 +110,24 @@ class PacketDataBuffer extends PtyDataBuffer {
     }
 
     parseData() {
-        for (let i=this.parsePos; i<this.dataSize; i++) {
+        for (let i = this.parsePos; i < this.dataSize; i++) {
             let ch = this.rawData[i];
             if (ch == NewLineCharCode) {
                 // line does *not* include the newline
-                let line = (new TextDecoder()).decode(new Uint8Array(this.rawData.buffer, this.parsePos, i-this.parsePos));
-                this.parsePos = i+1;
+                let line = new TextDecoder().decode(
+                    new Uint8Array(this.rawData.buffer, this.parsePos, i - this.parsePos)
+                );
+                this.parsePos = i + 1;
                 this.processLine(line);
             }
         }
         return;
     }
-    
-    receiveData(pos : number, data : Uint8Array, reason? : string) : void {
+
+    receiveData(pos: number, data: Uint8Array, reason?: string): void {
         super.receiveData(pos, data, reason);
         this.parseData();
     }
 }
 
-export {PtyDataBuffer, PacketDataBuffer};
+export { PtyDataBuffer, PacketDataBuffer };

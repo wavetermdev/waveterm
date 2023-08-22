@@ -1,13 +1,13 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
-import {sprintf} from "sprintf-js";
-import {boundMethod} from "autobind-decorator";
-import {If, For, When, Otherwise, Choose} from "tsx-control-statements/components";
+import { sprintf } from "sprintf-js";
+import { boundMethod } from "autobind-decorator";
+import { If, For, When, Otherwise, Choose } from "tsx-control-statements/components";
 import cn from "classnames";
 import dayjs from "dayjs";
-import localizedFormat from 'dayjs/plugin/localizedFormat';
-import {debounce, throttle} from "throttle-debounce";
+import localizedFormat from "dayjs/plugin/localizedFormat";
+import { debounce, throttle } from "throttle-debounce";
 import * as T from "./types";
 import * as util from "./util";
 import * as lineutil from "./lineutil";
@@ -15,45 +15,57 @@ import * as lineutil from "./lineutil";
 dayjs.extend(localizedFormat);
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
-type OMap<K,V> = mobx.ObservableMap<K,V>;
+type OMap<K, V> = mobx.ObservableMap<K, V>;
 
 const LinesVisiblePadding = 500;
 
 type ScreenInterface = {
-    setAnchorFields(anchorLine : number, anchorOffset : number, reason : string) : void,
-    getSelectedLine() : number,
-    getAnchor() : {anchorLine : number, anchorOffset : number},
-}
+    setAnchorFields(anchorLine: number, anchorOffset: number, reason: string): void;
+    getSelectedLine(): number;
+    getAnchor(): { anchorLine: number; anchorOffset: number };
+};
 
 // <Line key={line.lineid} line={line} screen={screen} width={width} visible={this.visibleMap.get(lineNumStr)} staticRender={this.staticRender.get()} onHeightChange={this.onHeightChange} overrideCollapsed={this.collapsedMap.get(lineNumStr)} topBorder={topBorder} renderMode={renderMode}/>;
 
-type LineCompFactory = (props : T.LineFactoryProps) => JSX.Element;
+type LineCompFactory = (props: T.LineFactoryProps) => JSX.Element;
 
 @mobxReact.observer
-class LinesView extends React.Component<{screen : ScreenInterface, width : number, lines : T.LineInterface[], renderMode : T.RenderModeType, lineFactory : LineCompFactory}, {}> {
-    rszObs : ResizeObserver;
-    linesRef : React.RefObject<any>;
-    staticRender : OV<boolean> = mobx.observable.box(true, {name: "static-render"});
-    lastOffsetHeight : number = 0;
-    lastOffsetWidth : number = 0;
-    ignoreNextScroll : boolean = false;
-    visibleMap : Map<string, OV<boolean>>;  // linenum => OV<vis>
-    collapsedMap : Map<string, OV<boolean>>;  // linenum => OV<collapsed>
-    lastLinesLength : number = 0;
-    lastSelectedLine : number = 0;
+class LinesView extends React.Component<
+    {
+        screen: ScreenInterface;
+        width: number;
+        lines: T.LineInterface[];
+        renderMode: T.RenderModeType;
+        lineFactory: LineCompFactory;
+    },
+    {}
+> {
+    rszObs: ResizeObserver;
+    linesRef: React.RefObject<any>;
+    staticRender: OV<boolean> = mobx.observable.box(true, { name: "static-render" });
+    lastOffsetHeight: number = 0;
+    lastOffsetWidth: number = 0;
+    ignoreNextScroll: boolean = false;
+    visibleMap: Map<string, OV<boolean>>; // linenum => OV<vis>
+    collapsedMap: Map<string, OV<boolean>>; // linenum => OV<collapsed>
+    lastLinesLength: number = 0;
+    lastSelectedLine: number = 0;
 
-    computeAnchorLine_throttled : () => void;
-    computeVisibleMap_debounced : () => void;
+    computeAnchorLine_throttled: () => void;
+    computeVisibleMap_debounced: () => void;
 
     constructor(props) {
         super(props);
         this.linesRef = React.createRef();
-        this.computeAnchorLine_throttled = throttle(100, this.computeAnchorLine.bind(this), {noLeading: true, noTrailing: false});
+        this.computeAnchorLine_throttled = throttle(100, this.computeAnchorLine.bind(this), {
+            noLeading: true,
+            noTrailing: false,
+        });
         this.visibleMap = new Map();
         this.collapsedMap = new Map();
         this.computeVisibleMap_debounced = debounce(1000, this.computeVisibleMap.bind(this));
     }
-    
+
     @boundMethod
     scrollHandler() {
         let linesElem = this.linesRef.current;
@@ -74,8 +86,8 @@ class LinesView extends React.Component<{screen : ScreenInterface, width : numbe
         this.computeAnchorLine_throttled(); // only do this when we're not ignoring the scroll
     }
 
-    computeAnchorLine() : void {
-        let {screen} = this.props;
+    computeAnchorLine(): void {
+        let { screen } = this.props;
         let linesElem = this.linesRef.current;
         if (linesElem == null) {
             screen.setAnchorFields(null, 0, "no-lines");
@@ -89,8 +101,8 @@ class LinesView extends React.Component<{screen : ScreenInterface, width : numbe
         let scrollTop = linesElem.scrollTop;
         let height = linesElem.clientHeight;
         let containerBottom = scrollTop + height;
-        let anchorElem : HTMLElement = null;
-        for (let i=lineElemArr.length-1; i >= 0; i--) {
+        let anchorElem: HTMLElement = null;
+        for (let i = lineElemArr.length - 1; i >= 0; i--) {
             let lineElem = lineElemArr[i];
             let bottomPos = lineElem.offsetTop + lineElem.offsetHeight;
             if (anchorElem == null && (bottomPos <= containerBottom || lineElem.offsetTop <= scrollTop)) {
@@ -106,26 +118,26 @@ class LinesView extends React.Component<{screen : ScreenInterface, width : numbe
         screen.setAnchorFields(anchorLineNum, anchorOffset, "computeAnchorLine");
     }
 
-    computeVisibleMap() : void {
+    computeVisibleMap(): void {
         let linesElem = this.linesRef.current;
         if (linesElem == null) {
             return;
         }
         if (linesElem.offsetParent == null) {
-            return;  // handles when parent is set to display:none (is-hidden)
+            return; // handles when parent is set to display:none (is-hidden)
         }
         let lineElemArr = linesElem.querySelectorAll(".line");
         if (lineElemArr == null) {
             return;
         }
         if (linesElem.clientHeight == 0) {
-            return;  // when linesElem is collapsed (or display:none)
+            return; // when linesElem is collapsed (or display:none)
         }
         let containerTop = linesElem.scrollTop - LinesVisiblePadding;
         let containerBot = linesElem.scrollTop + linesElem.clientHeight + LinesVisiblePadding;
         let newMap = new Map<string, boolean>();
         // console.log("computevismap", linesElem.scrollTop, linesElem.clientHeight, containerTop + "-" + containerBot);
-        for (let i=0; i<lineElemArr.length; i++) {
+        for (let i = 0; i < lineElemArr.length; i++) {
             let lineElem = lineElemArr[i];
             let lineTop = lineElem.offsetTop;
             let lineBot = lineElem.offsetTop + lineElem.offsetHeight;
@@ -134,7 +146,7 @@ class LinesView extends React.Component<{screen : ScreenInterface, width : numbe
                 isVis = true;
             }
             if (lineBot >= containerTop && lineBot <= containerBot) {
-                isVis = true
+                isVis = true;
             }
             // console.log("line", lineElem.dataset.linenum, "top=" + lineTop, "bot=" + lineTop, isVis);
             let lineNumInt = parseInt(lineElem.dataset.linenum);
@@ -146,7 +158,7 @@ class LinesView extends React.Component<{screen : ScreenInterface, width : numbe
             for (let [k, v] of newMap) {
                 let oldVal = this.visibleMap.get(k);
                 if (oldVal == null) {
-                    oldVal = mobx.observable.box(v, {name: "lines-vis-map"});
+                    oldVal = mobx.observable.box(v, { name: "lines-vis-map" });
                     this.visibleMap.set(k, oldVal);
                 }
                 if (oldVal.get() != v) {
@@ -161,11 +173,11 @@ class LinesView extends React.Component<{screen : ScreenInterface, width : numbe
         })();
     }
 
-    printVisMap() : void {
+    printVisMap(): void {
         let visMap = this.visibleMap;
         let lines = this.props.lines;
-        let visLines : string[] = [];
-        for (let i=0; i<lines.length; i++) {
+        let visLines: string[] = [];
+        for (let i = 0; i < lines.length; i++) {
             let linenum = String(lines[i].linenum);
             if (visMap.get(linenum).get()) {
                 visLines.push(linenum);
@@ -174,18 +186,18 @@ class LinesView extends React.Component<{screen : ScreenInterface, width : numbe
         console.log("vislines", visLines);
     }
 
-    restoreAnchorOffset(reason : string) : void {
-        let {lines} = this.props;
+    restoreAnchorOffset(reason: string): void {
+        let { lines } = this.props;
         let linesElem = this.linesRef.current;
         if (linesElem == null) {
             return;
         }
         let anchor = this.getAnchor();
-        let anchorElem = linesElem.querySelector(sprintf(".line[data-linenum=\"%d\"]", anchor.anchorLine));
+        let anchorElem = linesElem.querySelector(sprintf('.line[data-linenum="%d"]', anchor.anchorLine));
         if (anchorElem == null) {
             return;
         }
-        let isLastLine = (anchor.anchorIndex == lines.length-1);
+        let isLastLine = anchor.anchorIndex == lines.length - 1;
         let scrollTop = linesElem.scrollTop;
         let height = linesElem.clientHeight;
         let containerBottom = scrollTop + height;
@@ -203,17 +215,16 @@ class LinesView extends React.Component<{screen : ScreenInterface, width : numbe
         }
     }
 
-    componentDidMount() : void {
-        let {screen, lines} = this.props;
+    componentDidMount(): void {
+        let { screen, lines } = this.props;
         let linesElem = this.linesRef.current;
         let anchor = this.getAnchor();
-        if (anchor.anchorIndex == lines.length-1) {
+        if (anchor.anchorIndex == lines.length - 1) {
             if (linesElem != null) {
                 linesElem.scrollTop = linesElem.scrollHeight;
             }
             this.computeAnchorLine();
-        }
-        else {
+        } else {
             this.restoreAnchorOffset("re-mount");
         }
         this.lastSelectedLine = screen.getSelectedLine();
@@ -225,21 +236,21 @@ class LinesView extends React.Component<{screen : ScreenInterface, width : numbe
             this.rszObs.observe(linesElem);
         }
         mobx.action(() => {
-            this.staticRender.set(false)
+            this.staticRender.set(false);
             this.computeVisibleMap();
         })();
     }
 
-    getLineElem(lineNum : number) : HTMLElement {
+    getLineElem(lineNum: number): HTMLElement {
         let linesElem = this.linesRef.current;
         if (linesElem == null) {
             return null;
         }
-        let elem = linesElem.querySelector(sprintf(".line[data-linenum=\"%d\"]", lineNum));
+        let elem = linesElem.querySelector(sprintf('.line[data-linenum="%d"]', lineNum));
         return elem;
     }
 
-    getLineViewInfo(lineNum : number) : {height: number, topOffset: number, botOffset: number, anchorOffset: number} {
+    getLineViewInfo(lineNum: number): { height: number; topOffset: number; botOffset: number; anchorOffset: number } {
         let linesElem = this.linesRef.current;
         if (linesElem == null) {
             return null;
@@ -260,22 +271,20 @@ class LinesView extends React.Component<{screen : ScreenInterface, width : numbe
         let lineBot = lineElem.offsetTop + lineElem.offsetHeight;
         if (lineTop < containerTop) {
             rtn.topOffset = lineTop - containerTop;
-        }
-        else if (lineTop > containerBot) {
+        } else if (lineTop > containerBot) {
             rtn.topOffset = lineTop - containerBot;
         }
         if (lineBot < containerTop) {
             rtn.botOffset = lineBot - containerTop;
-        }
-        else if (lineBot > containerBot) {
+        } else if (lineBot > containerBot) {
             rtn.botOffset = lineBot - containerBot;
         }
         rtn.anchorOffset = containerBot - lineBot;
         return rtn;
     }
 
-    updateSelectedLine() : void {
-        let {screen, lines} = this.props;
+    updateSelectedLine(): void {
+        let { screen, lines } = this.props;
         let linesElem = this.linesRef.current;
         if (linesElem == null) {
             return null;
@@ -288,45 +297,41 @@ class LinesView extends React.Component<{screen : ScreenInterface, width : numbe
         this.setLineVisible(newLine, true);
         // console.log("update selected line", this.lastSelectedLine, "=>", newLine, sprintf("anchor=%d:%d", screen.anchorLine, screen.anchorOffset));
         let viewInfo = this.getLineViewInfo(newLine);
-        let isFirst = (lidx.index == 0);
-        let isLast = (lidx.index == lines.length-1);
-        let offsetDelta = (isLast ? 10 : (isFirst ? -28 : 0));
+        let isFirst = lidx.index == 0;
+        let isLast = lidx.index == lines.length - 1;
+        let offsetDelta = isLast ? 10 : isFirst ? -28 : 0;
         if (viewInfo == null) {
-            screen.setAnchorFields(newLine, 0+offsetDelta, "updateSelectedLine");
-        }
-        else if (viewInfo.botOffset > 0) {
+            screen.setAnchorFields(newLine, 0 + offsetDelta, "updateSelectedLine");
+        } else if (viewInfo.botOffset > 0) {
             linesElem.scrollTop = linesElem.scrollTop + viewInfo.botOffset + offsetDelta;
             this.ignoreNextScroll = true;
             screen.setAnchorFields(newLine, offsetDelta, "updateSelectedLine");
-        }
-        else if (viewInfo.topOffset < 0) {
+        } else if (viewInfo.topOffset < 0) {
             linesElem.scrollTop = linesElem.scrollTop + viewInfo.topOffset + offsetDelta;
             this.ignoreNextScroll = true;
             let newOffset = linesElem.clientHeight - viewInfo.height;
             screen.setAnchorFields(newLine, newOffset, "updateSelectedLine");
-        }
-        else {
+        } else {
             screen.setAnchorFields(newLine, viewInfo.anchorOffset, "updateSelectedLine");
         }
         // console.log("new anchor", screen.getAnchorStr());
     }
 
-    setLineVisible(lineNum : number, vis : boolean) : void {
+    setLineVisible(lineNum: number, vis: boolean): void {
         mobx.action(() => {
             let key = String(lineNum);
             let visObj = this.visibleMap.get(key);
             if (visObj == null) {
-                visObj = mobx.observable.box(true, {name: "lines-vis-map"});
+                visObj = mobx.observable.box(true, { name: "lines-vis-map" });
                 this.visibleMap.set(key, visObj);
-            }
-            else {
+            } else {
                 visObj.set(true);
             }
         })();
     }
 
-    componentDidUpdate(prevProps, prevState, snapshot) : void {
-        let {screen, lines} = this.props;
+    componentDidUpdate(prevProps, prevState, snapshot): void {
+        let { screen, lines } = this.props;
         if (screen.getSelectedLine() != this.lastSelectedLine) {
             this.updateSelectedLine();
             this.lastSelectedLine = screen.getSelectedLine();
@@ -335,13 +340,13 @@ class LinesView extends React.Component<{screen : ScreenInterface, width : numbe
         }
     }
 
-    componentWillUnmount() : void {
+    componentWillUnmount(): void {
         if (this.rszObs != null) {
             this.rszObs.disconnect();
         }
     }
 
-    handleResize(entries : any) {
+    handleResize(entries: any) {
         let linesElem = this.linesRef.current;
         if (linesElem == null) {
             return;
@@ -359,7 +364,7 @@ class LinesView extends React.Component<{screen : ScreenInterface, width : numbe
     }
 
     @boundMethod
-    onHeightChange(lineNum : number, newHeight : number, oldHeight : number) : void {
+    onHeightChange(lineNum: number, newHeight: number, oldHeight: number): void {
         if (oldHeight == null) {
             return;
         }
@@ -368,81 +373,87 @@ class LinesView extends React.Component<{screen : ScreenInterface, width : numbe
         this.computeVisibleMap_debounced();
     }
 
-    hasTopBorder(lines : T.LineInterface[], idx : number) : boolean {
+    hasTopBorder(lines: T.LineInterface[], idx: number): boolean {
         if (idx == 0) {
             return false;
         }
         let curLineNumStr = String(lines[idx].linenum);
-        let prevLineNumStr = String(lines[idx-1].linenum);
+        let prevLineNumStr = String(lines[idx - 1].linenum);
         return !this.collapsedMap.get(curLineNumStr).get() || !this.collapsedMap.get(prevLineNumStr).get();
     }
 
-    getDateSepStr(lines : T.LineInterface[], idx : number, prevStr : string, todayStr : string, yesterdayStr : string) : string {
+    getDateSepStr(
+        lines: T.LineInterface[],
+        idx: number,
+        prevStr: string,
+        todayStr: string,
+        yesterdayStr: string
+    ): string {
         let curLineDate = new Date(lines[idx].ts);
         let curLineFormat = dayjs(curLineDate).format("ddd YYYY-MM-DD");
         if (idx == 0) {
-            return ;
+            return;
         }
         let prevLineDate = new Date(lines[idx].ts);
         let prevLineFormat = dayjs(prevLineDate).format("YYYY-MM-DD");
         return null;
     }
 
-    findClosestLineIndex(lineNum : number) : {line : T.LineInterface, index : number} {
-        let {lines} = this.props;
+    findClosestLineIndex(lineNum: number): { line: T.LineInterface; index: number } {
+        let { lines } = this.props;
         if (lines.length == 0) {
             throw new Error("invalid lines, cannot have 0 length in LinesView");
         }
         if (lineNum == null || lineNum == 0) {
-            return {line: lines[lines.length-1], index: lines.length-1};
+            return { line: lines[lines.length - 1], index: lines.length - 1 };
         }
         // todo: bsearch
         // lines is sorted by linenum
-        for (let idx=0; idx<lines.length; idx++) {
+        for (let idx = 0; idx < lines.length; idx++) {
             let line = lines[idx];
             if (line.linenum >= lineNum) {
-                return {line: line, index: idx};
+                return { line: line, index: idx };
             }
         }
-        return {line: lines[lines.length-1], index: lines.length-1};
+        return { line: lines[lines.length - 1], index: lines.length - 1 };
     }
 
-    getAnchor() : {anchorLine : number, anchorOffset : number, anchorIndex : number} {
-        let {screen, lines} = this.props;
+    getAnchor(): { anchorLine: number; anchorOffset: number; anchorIndex: number } {
+        let { screen, lines } = this.props;
         let anchor = screen.getAnchor();
         if (anchor.anchorLine == null || anchor.anchorLine == 0) {
-            return {anchorLine: lines[lines.length-1].linenum, anchorOffset: 0, anchorIndex: lines.length-1};
+            return { anchorLine: lines[lines.length - 1].linenum, anchorOffset: 0, anchorIndex: lines.length - 1 };
         }
         let lidx = this.findClosestLineIndex(anchor.anchorLine);
         if (lidx.line.linenum == anchor.anchorLine) {
-            return {anchorLine: anchor.anchorLine, anchorOffset: anchor.anchorOffset, anchorIndex: lidx.index};
+            return { anchorLine: anchor.anchorLine, anchorOffset: anchor.anchorOffset, anchorIndex: lidx.index };
         }
-        return {anchorLine: lidx.line.linenum, anchorOffset: 0, anchorIndex: lidx.index};
+        return { anchorLine: lidx.line.linenum, anchorOffset: 0, anchorIndex: lidx.index };
     }
     render() {
-        let {screen, width, lines, renderMode} = this.props;
-        let selectedLine = screen.getSelectedLine();  // for re-rendering
-        let line : T.LineInterface = null;
-        for (let i=0; i<lines.length; i++) {
+        let { screen, width, lines, renderMode } = this.props;
+        let selectedLine = screen.getSelectedLine(); // for re-rendering
+        let line: T.LineInterface = null;
+        for (let i = 0; i < lines.length; i++) {
             let key = String(lines[i].linenum);
             let visObs = this.visibleMap.get(key);
             if (visObs == null) {
-                this.visibleMap.set(key, mobx.observable.box(false, {name: "lines-vis-map"}));
+                this.visibleMap.set(key, mobx.observable.box(false, { name: "lines-vis-map" }));
             }
             let collObs = this.collapsedMap.get(key);
             if (collObs == null) {
-                this.collapsedMap.set(key, mobx.observable.box(false, {name: "lines-collapsed-map"}));
+                this.collapsedMap.set(key, mobx.observable.box(false, { name: "lines-collapsed-map" }));
             }
         }
-        let lineElements : any = [];
+        let lineElements: any = [];
         let todayStr = util.getTodayStr();
         let yesterdayStr = util.getYesterdayStr();
-        let prevDateStr : string = null;
+        let prevDateStr: string = null;
         let anchor = this.getAnchor();
-        let startIdx = util.boundInt(anchor.anchorIndex-50, 0, lines.length-1);
-        let endIdx = util.boundInt(anchor.anchorIndex+50, 0, lines.length-1);
+        let startIdx = util.boundInt(anchor.anchorIndex - 50, 0, lines.length - 1);
+        let endIdx = util.boundInt(anchor.anchorIndex + 50, 0, lines.length - 1);
         // console.log("render", anchor, "[" + startIdx + "," + endIdx + "]");
-        for (let idx=startIdx; idx <= endIdx; idx++) {
+        for (let idx = startIdx; idx <= endIdx; idx++) {
             let line = lines[idx];
             let lineNumStr = String(line.linenum);
             let dateSepStr = null;
@@ -452,10 +463,14 @@ class LinesView extends React.Component<{screen : ScreenInterface, width : numbe
             }
             prevDateStr = curDateStr;
             if (dateSepStr != null) {
-                let sepElem = (<div key={"sep-" + line.lineid} className="line-sep">{dateSepStr}</div>);
+                let sepElem = (
+                    <div key={"sep-" + line.lineid} className="line-sep">
+                        {dateSepStr}
+                    </div>
+                );
                 lineElements.push(sepElem);
             }
-            let topBorder = (dateSepStr == null) && this.hasTopBorder(lines, idx);
+            let topBorder = dateSepStr == null && this.hasTopBorder(lines, idx);
             let lineProps = {
                 key: line.lineid,
                 line: line,
@@ -471,10 +486,7 @@ class LinesView extends React.Component<{screen : ScreenInterface, width : numbe
             // let lineElem = <Line key={line.lineid} line={line} screen={screen} width={width} visible={this.visibleMap.get(lineNumStr)} staticRender={this.staticRender.get()} onHeightChange={this.onHeightChange} overrideCollapsed={this.collapsedMap.get(lineNumStr)} topBorder={topBorder} renderMode={renderMode}/>;
             lineElements.push(lineElem);
         }
-        let linesClass = cn(
-            "lines",
-            (renderMode == "normal" ? "lines-expanded" : "lines-collapsed"),
-        );
+        let linesClass = cn("lines", renderMode == "normal" ? "lines-expanded" : "lines-collapsed");
         return (
             <div key="lines" className={linesClass} onScroll={this.scrollHandler} ref={this.linesRef}>
                 <div className="lines-spacer"></div>
@@ -484,4 +496,4 @@ class LinesView extends React.Component<{screen : ScreenInterface, width : numbe
     }
 }
 
-export {LinesView};
+export { LinesView };

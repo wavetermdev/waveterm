@@ -1,4 +1,5 @@
-.cmd-input-info, .cmd-history {
+.cmd-input-info,
+.cmd-history {
     &::-webkit-scrollbar {
         background-color: #777;
         width: 5px;
@@ -15,7 +16,7 @@
     font-weight: normal;
     font-size: 12px;
     color: @term-white;
-    
+
     .message-content {
         position: absolute;
         display: none;
@@ -41,7 +42,7 @@
             overflow: hidden;
         }
     }
-    
+
     &:hover {
         .message-content {
             display: flex;
@@ -95,7 +96,7 @@
         }
 
         .remote-name {
-            .mono-font(14px)
+            .mono-font(14px);
         }
     }
 
@@ -121,7 +122,7 @@
 
     .cmd-input-field {
         position: relative;
-        
+
         .cmd-input-control {
             line-height: 0;
         }
@@ -141,7 +142,8 @@
             resize: none;
             overflow-wrap: anywhere;
 
-            &:active, &:focus {
+            &:active,
+            &:focus {
                 border-color: white !important;
             }
 
@@ -259,7 +261,7 @@
         flex-shrink: 1;
         overflow-y: auto;
         margin-bottom: 5px;
-        
+
         .info-msg {
             .mono-font(14px, 400);
             color: @soft-blue;
@@ -289,7 +291,7 @@
             flex-wrap: wrap;
             padding-bottom: 5px;
             .mono-font(14px, 400);
-            
+
             .info-comp {
                 min-width: 200px;
                 color: @term-white;
@@ -317,8 +319,9 @@
                     color: white;
                     font-weight: bold;
                 }
-                
-                th, td {
+
+                th,
+                td {
                     padding: 3px 8px 3px 8px;
                 }
 
@@ -341,7 +344,8 @@
                 color: @term-cyan;
             }
 
-            .info-error, .info-msg {
+            .info-error,
+            .info-msg {
                 margin-top: 5px;
                 padding: 5px;
             }
@@ -354,7 +358,7 @@
                     white-space: pre;
                     width: 120px;
                 }
-                
+
                 .remote-field-val {
                     white-space: pre;
                     display: flex;
@@ -386,7 +390,9 @@
                     }
 
                     &.text-input {
-                        input[type=text], input[type=number], input[type=password] {
+                        input[type="text"],
+                        input[type="number"],
+                        input[type="password"] {
                             background-color: black;
                             color: white;
                             width: 200px;
@@ -394,7 +400,7 @@
                     }
 
                     &.checkbox-input {
-                        input[type=checkbox] {
+                        input[type="checkbox"] {
                             position: relative;
                             top: 3px;
                         }

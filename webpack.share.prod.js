@@ -1,6 +1,6 @@
-const webpack = require('webpack');
-const merge = require('webpack-merge');
-const common = require('./webpack.share.js');
+const webpack = require("webpack");
+const merge = require("webpack-merge");
+const common = require("./webpack.share.js");
 const moment = require("dayjs");
 const path = require("path");
 const VERSION = require("./version.js");
@@ -25,12 +25,14 @@ let merged = merge.merge(common, {
     },
 });
 
-merged.plugins.push(new webpack.DefinePlugin({
-    __PROMPT_DEV__: "false",
-    __PROMPT_VERSION__: JSON.stringify(VERSION),
-    __PROMPT_BUILD__: JSON.stringify(BUILD),
-    __PROMPT_API_ENDPOINT__: JSON.stringify("https://share.getprompt.dev/api"),
-    __PROMPT_WSAPI_ENDPOINT__: JSON.stringify("wss://wsapi.getprompt.dev"),
-}));
+merged.plugins.push(
+    new webpack.DefinePlugin({
+        __PROMPT_DEV__: "false",
+        __PROMPT_VERSION__: JSON.stringify(VERSION),
+        __PROMPT_BUILD__: JSON.stringify(BUILD),
+        __PROMPT_API_ENDPOINT__: JSON.stringify("https://share.getprompt.dev/api"),
+        __PROMPT_WSAPI_ENDPOINT__: JSON.stringify("wss://wsapi.getprompt.dev"),
+    })
+);
 
 module.exports = merged;

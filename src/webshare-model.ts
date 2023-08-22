@@ -1,13 +1,13 @@
 import * as mobx from "mobx";
-import {sprintf} from "sprintf-js";
-import {boundMethod} from "autobind-decorator";
-import {handleJsonFetchResponse, isModKeyPress, base64ToArray} from "./util";
+import { sprintf } from "sprintf-js";
+import { boundMethod } from "autobind-decorator";
+import { handleJsonFetchResponse, isModKeyPress, base64ToArray } from "./util";
 import * as T from "./types";
-import {TermWrap} from "./term";
+import { TermWrap } from "./term";
 import * as lineutil from "./lineutil";
 import * as util from "./util";
-import {windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows} from "./textmeasure";
-import {WebShareWSControl} from "./webshare-ws";
+import { windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows } from "./textmeasure";
+import { WebShareWSControl } from "./webshare-ws";
 
 // @ts-ignore
 let PROMPT_DEV = __PROMPT_DEV__;
@@ -22,15 +22,15 @@ let PROMPT_WSAPI_ENDPOINT = __PROMPT_WSAPI_ENDPOINT__;
 
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
-type OMap<K,V> = mobx.ObservableMap<K,V>;
+type OMap<K, V> = mobx.ObservableMap<K, V>;
 type CV<V> = mobx.IComputedValue<V>;
 
 type PtyListener = {
-    receiveData(ptyPos : number, data : Uint8Array, reason? : string);
+    receiveData(ptyPos: number, data: Uint8Array, reason?: string);
 };
 
-function isBlank(s : string) {
-    return (s == null || s == "");
+function isBlank(s: string) {
+    return s == null || s == "";
 }
 
 function getBaseUrl() {
@@ -42,25 +42,25 @@ function getBaseWSUrl() {
 }
 
 class WebShareModelClass {
-    viewKey : string;
-    screenId : string;
-    errMessage : OV<string> = mobx.observable.box(null, {name: "errMessage"});
-    fullScreen : OV<T.WebFullScreen> = mobx.observable.box(null, {name: "webScreen"});
-    terminals : Record<string, TermWrap> = {};        // lineid => TermWrap
-    renderers : Record<string, T.RendererModel> = {};   // lineid => RendererModel
-    contentHeightCache : Record<string, number> = {};  // lineid => height
-    wsControl : WebShareWSControl;
-    anchor : {anchorLine : number, anchorOffset : number} = {anchorLine: 0, anchorOffset: 0};
-    selectedLine : OV<number> = mobx.observable.box(0, {name: "selectedLine"});
-    syncSelectedLine : OV<boolean> = mobx.observable.box(true, {name: "syncSelectedLine"});
-    lastScreenSize : T.WindowSize = null;
-    activePtyFetch : Record<string, boolean> = {}; // lineid -> active
-    localPtyOffsetMap : Record<string, number> = {};
-    remotePtyOffsetMap : Record<string, number> = {};
-    activeUpdateFetch : boolean = false;
-    remoteScreenVts : number = 0;
-    isDev : boolean = PROMPT_DEV;
-    
+    viewKey: string;
+    screenId: string;
+    errMessage: OV<string> = mobx.observable.box(null, { name: "errMessage" });
+    fullScreen: OV<T.WebFullScreen> = mobx.observable.box(null, { name: "webScreen" });
+    terminals: Record<string, TermWrap> = {}; // lineid => TermWrap
+    renderers: Record<string, T.RendererModel> = {}; // lineid => RendererModel
+    contentHeightCache: Record<string, number> = {}; // lineid => height
+    wsControl: WebShareWSControl;
+    anchor: { anchorLine: number; anchorOffset: number } = { anchorLine: 0, anchorOffset: 0 };
+    selectedLine: OV<number> = mobx.observable.box(0, { name: "selectedLine" });
+    syncSelectedLine: OV<boolean> = mobx.observable.box(true, { name: "syncSelectedLine" });
+    lastScreenSize: T.WindowSize = null;
+    activePtyFetch: Record<string, boolean> = {}; // lineid -> active
+    localPtyOffsetMap: Record<string, number> = {};
+    remotePtyOffsetMap: Record<string, number> = {};
+    activeUpdateFetch: boolean = false;
+    remoteScreenVts: number = 0;
+    isDev: boolean = PROMPT_DEV;
+
     constructor() {
         let pathName = window.location.pathname;
         let screenMatch = pathName.match(/\/share\/([a-f0-9-]+)/);
@@ -73,17 +73,22 @@ class WebShareModelClass {
             this.screenId = urlParams.get("screenid");
         }
         setTimeout(() => this.loadFullScreenData(false), 10);
-        this.wsControl = new WebShareWSControl(getBaseWSUrl(), this.screenId, this.viewKey, this.wsMessageCallback.bind(this));
+        this.wsControl = new WebShareWSControl(
+            getBaseWSUrl(),
+            this.screenId,
+            this.viewKey,
+            this.wsMessageCallback.bind(this)
+        );
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
     }
 
-    setErrMessage(msg : string) : void {
+    setErrMessage(msg: string): void {
         mobx.action(() => {
             this.errMessage.set(msg);
         })();
     }
 
-    setSyncSelectedLine(val : boolean) : void {
+    setSyncSelectedLine(val: boolean): void {
         mobx.action(() => {
             this.syncSelectedLine.set(val);
             if (val) {
@@ -95,55 +100,55 @@ class WebShareModelClass {
         })();
     }
 
-    setLastScreenSize(winSize : T.WindowSize) {
+    setLastScreenSize(winSize: T.WindowSize) {
         if (winSize == null || winSize.height == 0 || winSize.width == 0) {
             return;
         }
         this.lastScreenSize = winSize;
     }
 
-    getMaxContentSize() : T.WindowSize {
+    getMaxContentSize(): T.WindowSize {
         if (this.lastScreenSize == null) {
             let width = termWidthFromCols(80, WebShareModel.getTermFontSize());
             let height = termHeightFromRows(25, WebShareModel.getTermFontSize());
-            return {width, height};
+            return { width, height };
         }
         let winSize = this.lastScreenSize;
-        let width = util.boundInt(winSize.width-50, 100, 5000);
-        let height = util.boundInt(winSize.height-100, 100, 5000);
-        return {width, height};
-    }
-    
-    getIdealContentSize() : T.WindowSize {
-        if (this.lastScreenSize == null) {
-            let width = termWidthFromCols(80, WebShareModel.getTermFontSize());
-            let height = termHeightFromRows(25, WebShareModel.getTermFontSize());
-            return {width, height};
-        }
-        let winSize = this.lastScreenSize;
-        let width = util.boundInt(Math.ceil((winSize.width-50)*0.7), 100, 5000);
-        let height = util.boundInt(Math.ceil((winSize.height-100)*0.5), 100, 5000);
-        return {width, height};
+        let width = util.boundInt(winSize.width - 50, 100, 5000);
+        let height = util.boundInt(winSize.height - 100, 100, 5000);
+        return { width, height };
     }
 
-    getSelectedLine() : number {
+    getIdealContentSize(): T.WindowSize {
+        if (this.lastScreenSize == null) {
+            let width = termWidthFromCols(80, WebShareModel.getTermFontSize());
+            let height = termHeightFromRows(25, WebShareModel.getTermFontSize());
+            return { width, height };
+        }
+        let winSize = this.lastScreenSize;
+        let width = util.boundInt(Math.ceil((winSize.width - 50) * 0.7), 100, 5000);
+        let height = util.boundInt(Math.ceil((winSize.height - 100) * 0.5), 100, 5000);
+        return { width, height };
+    }
+
+    getSelectedLine(): number {
         return this.selectedLine.get();
     }
 
-    getServerSelectedLine() : number {
+    getServerSelectedLine(): number {
         let fullScreen = this.fullScreen.get();
         if (fullScreen != null) {
             return fullScreen.screen.selectedline;
         }
     }
 
-    setSelectedLine(lineNum : number) : void {
+    setSelectedLine(lineNum: number): void {
         mobx.action(() => {
             this.selectedLine.set(lineNum);
         })();
     }
 
-    updateSelectedLineIndex(delta : number) : void {
+    updateSelectedLineIndex(delta: number): void {
         let fullScreen = this.fullScreen.get();
         if (fullScreen == null) {
             return;
@@ -160,20 +165,20 @@ class WebShareModelClass {
         this.setSelectedLine(lines[lineIndex].linenum);
     }
 
-    setAnchorFields(anchorLine : number, anchorOffset : number, reason : string) : void {
+    setAnchorFields(anchorLine: number, anchorOffset: number, reason: string): void {
         this.anchor.anchorLine = anchorLine;
         this.anchor.anchorOffset = anchorOffset;
     }
 
-    getAnchor() : {anchorLine : number, anchorOffset : number} {
+    getAnchor(): { anchorLine: number; anchorOffset: number } {
         return this.anchor;
     }
 
-    getTermFontSize() : number {
+    getTermFontSize(): number {
         return 12;
     }
 
-    resizeWindow(winSize : T.WindowSize) : void {
+    resizeWindow(winSize: T.WindowSize): void {
         let cols = windowWidthToCols(winSize.width, this.getTermFontSize());
         for (let lineId in this.terminals) {
             let termWrap = this.terminals[lineId];
@@ -181,8 +186,8 @@ class WebShareModelClass {
         }
     }
 
-    mergeLine(fullScreen : T.WebFullScreen, newLine : T.WebLine) {
-        for (let i=0; i<fullScreen.lines.length; i++) {
+    mergeLine(fullScreen: T.WebFullScreen, newLine: T.WebLine) {
+        for (let i = 0; i < fullScreen.lines.length; i++) {
             let line = fullScreen.lines[i];
             if (line.lineid == newLine.lineid) {
                 fullScreen.lines[i] = newLine;
@@ -196,15 +201,15 @@ class WebShareModelClass {
         fullScreen.lines.push(newLine);
     }
 
-    removeLine(fullScreen : T.WebFullScreen, lineId : string) {
-        for (let i=0; i<fullScreen.lines.length; i++) {
+    removeLine(fullScreen: T.WebFullScreen, lineId: string) {
+        for (let i = 0; i < fullScreen.lines.length; i++) {
             let line = fullScreen.lines[i];
             if (line.lineid == lineId) {
                 fullScreen.lines.splice(i, 1);
                 break;
             }
         }
-        for (let i=0; i<fullScreen.cmds.length; i++) {
+        for (let i = 0; i < fullScreen.cmds.length; i++) {
             let cmd = fullScreen.cmds[i];
             if (cmd.lineid == lineId) {
                 fullScreen.cmds.splice(i, 1);
@@ -214,15 +219,15 @@ class WebShareModelClass {
         this.unloadRenderer(lineId);
     }
 
-    setCmdDone(lineId : string) : void {
+    setCmdDone(lineId: string): void {
         let termWrap = this.getTermWrap(lineId);
         if (termWrap != null) {
             termWrap.cmdDone();
         }
     }
 
-    mergeCmd(fullScreen : T.WebFullScreen, newCmd : T.WebCmd) {
-        for (let i=0; i<fullScreen.cmds.length; i++) {
+    mergeCmd(fullScreen: T.WebFullScreen, newCmd: T.WebCmd) {
+        for (let i = 0; i < fullScreen.cmds.length; i++) {
             let cmd = fullScreen.cmds[i];
             if (cmd.lineid == newCmd.lineid) {
                 let wasRunning = lineutil.cmdStatusIsRunning(cmd.status);
@@ -237,7 +242,7 @@ class WebShareModelClass {
         fullScreen.cmds.push(newCmd);
     }
 
-    mergeUpdate(msg : T.WebFullScreen) {
+    mergeUpdate(msg: T.WebFullScreen) {
         if (msg.screenid != this.screenId) {
             console.log("bad WebFullScreen update, wrong screenid", msg.screenid);
             return;
@@ -272,10 +277,10 @@ class WebShareModelClass {
                 }
             }
             this.handleCmdPtyMap(msg.cmdptymap);
-         })();
+        })();
     }
 
-    handleCmdPtyMap(ptyMap : Record<string, number>) {
+    handleCmdPtyMap(ptyMap: Record<string, number>) {
         if (ptyMap == null) {
             return;
         }
@@ -289,7 +294,7 @@ class WebShareModelClass {
         }
     }
 
-    runPtyFetch(lineId : string) {
+    runPtyFetch(lineId: string) {
         let prtn = this.checkFetchPtyData(lineId, false);
         let ptyListener = this.getPtyListener(lineId);
         if (ptyListener != null) {
@@ -302,7 +307,7 @@ class WebShareModelClass {
         }
     }
 
-    getPtyListener(lineId : string) {
+    getPtyListener(lineId: string) {
         let termWrap = this.getTermWrap(lineId);
         if (termWrap != null) {
             return termWrap;
@@ -314,7 +319,7 @@ class WebShareModelClass {
         return null;
     }
 
-    receivePtyData(lineId : string, ptyPos : number, data : Uint8Array, reason? : string) : void {
+    receivePtyData(lineId: string, ptyPos: number, data: Uint8Array, reason?: string): void {
         let termWrap = this.getTermWrap(lineId);
         if (termWrap != null) {
             termWrap.receiveData(ptyPos, data, reason);
@@ -325,7 +330,7 @@ class WebShareModelClass {
         }
     }
 
-    checkFetchPtyData(lineId : string, reload : boolean) : Promise<T.PtyDataType> {
+    checkFetchPtyData(lineId: string, reload: boolean): Promise<T.PtyDataType> {
         let lineNum = this.getLineNumFromId(lineId);
         if (this.activePtyFetch[lineId]) {
             // console.log("check-fetch", lineNum, "already running");
@@ -342,34 +347,44 @@ class WebShareModelClass {
         let remotePtyOffset = this.remotePtyOffsetMap[lineId];
         if (ptyOffset >= remotePtyOffset) {
             // up to date
-            return Promise.resolve({pos: ptyOffset, data: new Uint8Array(0)});
+            return Promise.resolve({ pos: ptyOffset, data: new Uint8Array(0) });
         }
         this.activePtyFetch[lineId] = true;
         let viewKey = WebShareModel.viewKey;
         // console.log("fetch pty", lineNum, "pos=" + ptyOffset);
-        let usp = new URLSearchParams({screenid: this.screenId, viewkey: viewKey, lineid: lineId, pos: String(ptyOffset)});
-        let url = new URL(getBaseUrl() + "/webshare/ptydata?" + usp.toString());
-        return fetch(url, {method: "GET", mode: "cors", cache: "no-cache"}).then((resp) => {
-            if (!resp.ok) {
-                throw new Error(sprintf("Bad fetch response for /webshare/ptydata: %d %s", resp.status, resp.statusText));
-            }
-            let ptyOffsetStr = resp.headers.get("X-PtyDataOffset");
-            if (ptyOffsetStr != null && !isNaN(parseInt(ptyOffsetStr))) {
-                ptyOffset = parseInt(ptyOffsetStr);
-            }
-            return resp.arrayBuffer();
-        }).then((buf) => {
-            let dataArr = new Uint8Array(buf);
-            let newOffset = ptyOffset + dataArr.length;
-            // console.log("fetch pty success", lineNum, "len=" + dataArr.length, "pos => " + newOffset);
-            this.localPtyOffsetMap[lineId] = newOffset;
-            return {pos: ptyOffset, data: dataArr};
-        }).finally(() => {
-            this.activePtyFetch[lineId] = false;
+        let usp = new URLSearchParams({
+            screenid: this.screenId,
+            viewkey: viewKey,
+            lineid: lineId,
+            pos: String(ptyOffset),
         });
+        let url = new URL(getBaseUrl() + "/webshare/ptydata?" + usp.toString());
+        return fetch(url, { method: "GET", mode: "cors", cache: "no-cache" })
+            .then((resp) => {
+                if (!resp.ok) {
+                    throw new Error(
+                        sprintf("Bad fetch response for /webshare/ptydata: %d %s", resp.status, resp.statusText)
+                    );
+                }
+                let ptyOffsetStr = resp.headers.get("X-PtyDataOffset");
+                if (ptyOffsetStr != null && !isNaN(parseInt(ptyOffsetStr))) {
+                    ptyOffset = parseInt(ptyOffsetStr);
+                }
+                return resp.arrayBuffer();
+            })
+            .then((buf) => {
+                let dataArr = new Uint8Array(buf);
+                let newOffset = ptyOffset + dataArr.length;
+                // console.log("fetch pty success", lineNum, "len=" + dataArr.length, "pos => " + newOffset);
+                this.localPtyOffsetMap[lineId] = newOffset;
+                return { pos: ptyOffset, data: dataArr };
+            })
+            .finally(() => {
+                this.activePtyFetch[lineId] = false;
+            });
     }
 
-    wsMessageCallback(msg : any) {
+    wsMessageCallback(msg: any) {
         if (msg.type == "webscreen:update") {
             // console.log("[ws] update vts", msg.vts);
             if (msg.vts > this.remoteScreenVts) {
@@ -384,7 +399,7 @@ class WebShareModelClass {
         console.log("[ws] unhandled message", msg);
     }
 
-    setWebFullScreen(screen : T.WebFullScreen) {
+    setWebFullScreen(screen: T.WebFullScreen) {
         // console.log("got initial screen", "vts=" + screen.vts);
         mobx.action(() => {
             if (screen.lines == null) {
@@ -398,13 +413,12 @@ class WebShareModelClass {
             this.fullScreen.set(screen);
             this.wsControl.reconnect(true);
             if (this.syncSelectedLine.get()) {
-               this.selectedLine.set(screen.screen.selectedline);
+                this.selectedLine.set(screen.screen.selectedline);
             }
         })();
-        
     }
 
-    loadTerminalRenderer(elem : Element, line : T.WebLine, cmd : T.WebCmd, width : number) : void {
+    loadTerminalRenderer(elem: Element, line: T.WebLine, cmd: T.WebCmd, width: number): void {
         let lineId = cmd.lineid;
         let termWrap = this.getTermWrap(lineId);
         if (termWrap != null) {
@@ -421,14 +435,16 @@ class WebShareModelClass {
             termContext: termContext,
             usedRows: usedRows,
             termOpts: cmd.termopts,
-            winSize: {height: 0, width: width},
+            winSize: { height: 0, width: width },
             dataHandler: null,
-            focusHandler: (focus : boolean) => this.setTermFocus(line.linenum, focus),
+            focusHandler: (focus: boolean) => this.setTermFocus(line.linenum, focus),
             isRunning: lineutil.cmdStatusIsRunning(cmd.status),
             customKeyHandler: this.termCustomKeyHandler.bind(this),
             fontSize: this.getTermFontSize(),
             ptyDataSource: getTermPtyData,
-            onUpdateContentHeight: (termContext : T.RendererContext, height : number) => { this.setContentHeight(termContext, height); },
+            onUpdateContentHeight: (termContext: T.RendererContext, height: number) => {
+                this.setContentHeight(termContext, height);
+            },
         });
         this.terminals[lineId] = termWrap;
         if (this.localPtyOffsetMap[lineId] == null) {
@@ -441,7 +457,7 @@ class WebShareModelClass {
         return;
     }
 
-    termCustomKeyHandler(e : any, termWrap : TermWrap) : boolean {
+    termCustomKeyHandler(e: any, termWrap: TermWrap): boolean {
         if (e.type != "keydown" || isModKeyPress(e)) {
             return false;
         }
@@ -466,20 +482,19 @@ class WebShareModelClass {
         return false;
     }
 
-    setTermFocus(lineNum : number, focus : boolean) : void {
-    }
+    setTermFocus(lineNum: number, focus: boolean): void {}
 
-    getContentHeight(context : T.RendererContext) : number {
+    getContentHeight(context: T.RendererContext): number {
         let key = context.lineId;
         return this.contentHeightCache[key];
     }
 
-    setContentHeight(context : T.RendererContext, height : number) : void {
+    setContentHeight(context: T.RendererContext, height: number): void {
         let key = context.lineId;
         this.contentHeightCache[key] = height;
     }
 
-    unloadRenderer(lineId : string) : void {
+    unloadRenderer(lineId: string): void {
         let rmodel = this.renderers[lineId];
         if (rmodel != null) {
             rmodel.dispose();
@@ -493,7 +508,7 @@ class WebShareModelClass {
         delete this.localPtyOffsetMap[lineId];
     }
 
-    getUsedRows(context : T.RendererContext, line : T.WebLine, cmd : T.WebCmd, width : number) : number {
+    getUsedRows(context: T.RendererContext, line: T.WebLine, cmd: T.WebCmd, width: number): number {
         if (cmd == null) {
             return 0;
         }
@@ -511,27 +526,27 @@ class WebShareModelClass {
             if (line.contentheight != null && line.contentheight != -1) {
                 return line.contentheight;
             }
-            return (lineutil.cmdStatusIsRunning(cmd.status) ? 1 : 0);
+            return lineutil.cmdStatusIsRunning(cmd.status) ? 1 : 0;
         }
         return termWrap.getUsedRows();
     }
 
-    getTermWrap(lineId : string) : TermWrap {
+    getTermWrap(lineId: string): TermWrap {
         return this.terminals[lineId];
     }
 
-    getRenderer(lineId : string) : T.RendererModel {
+    getRenderer(lineId: string): T.RendererModel {
         return this.renderers[lineId];
     }
 
-    registerRenderer(lineId : string, renderer : T.RendererModel) {
+    registerRenderer(lineId: string, renderer: T.RendererModel) {
         this.renderers[lineId] = renderer;
         if (this.localPtyOffsetMap[lineId] == null) {
             this.localPtyOffsetMap[lineId] = 0;
         }
     }
 
-    checkUpdateScreenData() : void {
+    checkUpdateScreenData(): void {
         let fullScreen = this.fullScreen.get();
         if (fullScreen == null) {
             return;
@@ -543,7 +558,7 @@ class WebShareModelClass {
         this.loadFullScreenData(true);
     }
 
-    loadFullScreenData(update : boolean) : void {
+    loadFullScreenData(update: boolean): void {
         if (isBlank(this.screenId)) {
             this.setErrMessage("No ScreenId Specified, Cannot Load.");
             return;
@@ -558,7 +573,7 @@ class WebShareModelClass {
         }
         // console.log("running screen-data update");
         this.activeUpdateFetch = true;
-        let urlParams : Record<string, string> = {screenid: this.screenId, viewkey: this.viewKey};
+        let urlParams: Record<string, string> = { screenid: this.screenId, viewkey: this.viewKey };
         if (update) {
             let fullScreen = this.fullScreen.get();
             if (fullScreen != null) {
@@ -567,28 +582,31 @@ class WebShareModelClass {
         }
         let usp = new URLSearchParams(urlParams);
         let url = new URL(getBaseUrl() + "/webshare/screen?" + usp.toString());
-        fetch(url, {method: "GET", mode: "cors", cache: "no-cache"}).then((resp) => handleJsonFetchResponse(url, resp)).then((data) => {
-            let screen : T.WebFullScreen = data;
-            if (update) {
-                this.mergeUpdate(screen);
-            }
-            else {
-                this.setWebFullScreen(screen);
-            }
-            setTimeout(() => this.checkUpdateScreenData(), 300);
-        }).catch((err) => {
-            this.errMessage.set("Cannot get screen: " + err.message);
-        }).finally(() => {
-            this.activeUpdateFetch = false;
-        });
+        fetch(url, { method: "GET", mode: "cors", cache: "no-cache" })
+            .then((resp) => handleJsonFetchResponse(url, resp))
+            .then((data) => {
+                let screen: T.WebFullScreen = data;
+                if (update) {
+                    this.mergeUpdate(screen);
+                } else {
+                    this.setWebFullScreen(screen);
+                }
+                setTimeout(() => this.checkUpdateScreenData(), 300);
+            })
+            .catch((err) => {
+                this.errMessage.set("Cannot get screen: " + err.message);
+            })
+            .finally(() => {
+                this.activeUpdateFetch = false;
+            });
     }
 
-    getLineNumFromId(lineId : string) : number {
+    getLineNumFromId(lineId: string): number {
         let fullScreen = this.fullScreen.get();
         if (fullScreen == null) {
             return -1;
         }
-        for (let i=0; i<fullScreen.lines.length; i++) {
+        for (let i = 0; i < fullScreen.lines.length; i++) {
             let line = fullScreen.lines[i];
             if (line.lineid == lineId) {
                 return line.linenum;
@@ -597,12 +615,12 @@ class WebShareModelClass {
         return -1;
     }
 
-    getLineIndex(lineNum : number) : number {
+    getLineIndex(lineNum: number): number {
         let fullScreen = this.fullScreen.get();
         if (fullScreen == null) {
             return -1;
         }
-        for (let i=0; i<fullScreen.lines.length; i++) {
+        for (let i = 0; i < fullScreen.lines.length; i++) {
             let line = fullScreen.lines[i];
             if (line.linenum == lineNum) {
                 return i;
@@ -611,7 +629,7 @@ class WebShareModelClass {
         return -1;
     }
 
-    getNumLines() : number {
+    getNumLines(): number {
         let fullScreen = this.fullScreen.get();
         if (fullScreen == null) {
             return 0;
@@ -619,7 +637,7 @@ class WebShareModelClass {
         return fullScreen.lines.length;
     }
 
-    getCmdById(lineId : string) : T.WebCmd {
+    getCmdById(lineId: string): T.WebCmd {
         let fullScreen = this.fullScreen.get();
         if (fullScreen == null) {
             return null;
@@ -632,7 +650,7 @@ class WebShareModelClass {
         return null;
     }
 
-    docKeyDownHandler(e : any) : void {
+    docKeyDownHandler(e: any): void {
         if (isModKeyPress(e)) {
             return;
         }
@@ -645,17 +663,17 @@ class WebShareModelClass {
     }
 }
 
-function getTermPtyData(termContext : T.TermContextUnion) : Promise<T.PtyDataType> {
+function getTermPtyData(termContext: T.TermContextUnion): Promise<T.PtyDataType> {
     if ("remoteId" in termContext) {
         throw new Error("remote term ptydata is not supported in webshare");
     }
     return WebShareModel.checkFetchPtyData(termContext.lineId, true);
 }
 
-let WebShareModel : WebShareModelClass = null;
+let WebShareModel: WebShareModelClass = null;
 if ((window as any).WebShareModel == null) {
     WebShareModel = new WebShareModelClass();
     (window as any).WebShareModel = WebShareModel;
 }
 
-export {WebShareModel, getTermPtyData};
+export { WebShareModel, getTermPtyData };

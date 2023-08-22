@@ -44,9 +44,7 @@
         &.is-active {
             background-color: @tab-yellow;
             color: black;
-            box-shadow:
-                0 3px 0 #fff inset,
-                0 4px 0 #000 inset;
+            box-shadow: 0 3px 0 #fff inset, 0 4px 0 #000 inset;
         }
     }
 
@@ -95,9 +93,7 @@
         &.is-active {
             color: black;
             background-color: @tab-white;
-            box-shadow:
-                0 3px 0 #fff inset,
-                0 4px 0 #000 inset;
+            box-shadow: 0 3px 0 #fff inset, 0 4px 0 #000 inset;
         }
     }
 
@@ -122,7 +118,7 @@
 
 .screen-tabs-container {
     position: relative;
-    
+
     &:hover {
         z-index: 200;
     }
@@ -169,7 +165,7 @@
         height: 30px;
         min-width: 80px;
         width: 150px;
-        line-height: 1.0;
+        line-height: 1;
         flex-shrink: 1;
         display: flex;
         justify-content: center;
@@ -193,7 +189,7 @@
         &.is-active {
             box-shadow: 0 3px 0 #fff inset;
             border-top: none;
-            opacity: 1.0;
+            opacity: 1;
         }
 
         &.is-archived {

@@ -1,9 +1,9 @@
 var AllowedFirstParts = {
     "package.json": true,
-    "dist": true,
-    "static": true,
-    "node_modules": true,
-    "bin": true,
+    dist: true,
+    static: true,
+    node_modules: true,
+    bin: true,
 };
 
 var AllowedNodeModules = {
@@ -39,7 +39,6 @@ function ignoreFn(path) {
         if (!AllowedNodeModules[nodeModule]) {
             return true;
         }
-        
     }
     return false;
 }
@@ -75,19 +74,19 @@ module.exports = {
     rebuildConfig: {},
     makers: [
         {
-            name: '@electron-forge/maker-squirrel',
+            name: "@electron-forge/maker-squirrel",
             config: {},
         },
         {
-            name: '@electron-forge/maker-zip',
-            platforms: ['darwin'],
+            name: "@electron-forge/maker-zip",
+            platforms: ["darwin"],
         },
         {
-            name: '@electron-forge/maker-deb',
+            name: "@electron-forge/maker-deb",
             config: {},
         },
         {
-            name: '@electron-forge/maker-rpm',
+            name: "@electron-forge/maker-rpm",
             config: {},
         },
     ],

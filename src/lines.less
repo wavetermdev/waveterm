@@ -60,19 +60,20 @@
         .line-minimise:hover {
             color: white;
         }
-        
+
         .line-icon + .line-icon {
             margin-left: 5px;
         }
-        
+
         .line-icon.active {
             visibility: visible;
             display: block;
-            
-            i.fa-star, i.fa-thumb-tack {
+
+            i.fa-star,
+            i.fa-thumb-tack {
                 color: @term-bright-yellow;
             }
-            
+
             i.fa-bookmark {
                 color: @term-bright-blue;
             }
@@ -251,7 +252,7 @@
         &.rtnstate {
             border: 1px solid white;
         }
-        
+
         .status-icon {
             font-size: 8px;
             position: absolute;
@@ -341,8 +342,10 @@
             margin-top: 1px;
             margin-right: 10px;
         }
-        
-        .ts, .termopts, .renderer {
+
+        .ts,
+        .termopts,
+        .renderer {
             display: flex;
             color: #aaa;
             margin-top: 5px;
@@ -383,7 +386,7 @@
                 padding-right: 3px;
             }
         }
-        
+
         .metapart-mono {
             color: #ddd;
             margin-left: 8px;
@@ -391,7 +394,7 @@
             white-space: nowrap;
             .mono-font(14px);
         }
-        
+
         .cmdtext {
             color: #fff;
             font-size: 16px;
@@ -471,8 +474,9 @@
         color: #aaa;
     }
 
-    .line-sep::before, .line-sep::after {
-        content: '';
+    .line-sep::before,
+    .line-sep::after {
+        content: "";
         height: 2px;
         background-color: #ccc;
         flex-grow: 1;

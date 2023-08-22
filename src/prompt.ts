@@ -1,12 +1,12 @@
 import * as mobx from "mobx";
 import * as React from "react";
-import {createRoot} from 'react-dom/client';
-import {sprintf} from "sprintf-js";
-import {Terminal} from 'xterm';
-import {Main} from "./main";
-import {GlobalModel} from "./model";
-import {v4 as uuidv4} from "uuid";
-import {loadFonts} from "./util";
+import { createRoot } from "react-dom/client";
+import { sprintf } from "sprintf-js";
+import { Terminal } from "xterm";
+import { Main } from "./main";
+import { GlobalModel } from "./model";
+import { v4 as uuidv4 } from "uuid";
+import { loadFonts } from "./util";
 
 // @ts-ignore
 let VERSION = __PROMPT_VERSION__;
@@ -22,8 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let isFontLoaded = document.fonts.check("12px 'JetBrains Mono'");
     if (isFontLoaded) {
         root.render(reactElem);
-    }
-    else {
+    } else {
         document.fonts.ready.then(() => {
             root.render(reactElem);
         });
@@ -33,4 +32,4 @@ document.addEventListener("DOMContentLoaded", () => {
 (window as any).mobx = mobx;
 (window as any).sprintf = sprintf;
 
-console.log("PROMPT", VERSION, BUILD)
+console.log("PROMPT", VERSION, BUILD);

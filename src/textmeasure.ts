@@ -1,9 +1,9 @@
-import {boundInt} from "./util";
+import { boundInt } from "./util";
 
 const MinTermCols = 10;
 const MaxTermCols = 1024;
 
-let MonoFontSizes : {height : number, width : number}[] = [];
+let MonoFontSizes: { height: number; width: number }[] = [];
 
 // MonoFontSizes[8] = {height: 11, width: 4.797};
 // MonoFontSizes[9] = {height: 12, width: 5.398};
@@ -15,18 +15,21 @@ let MonoFontSizes : {height : number, width : number}[] = [];
 // MonoFontSizes[15] = {height: 20, width: 9};
 // MonoFontSizes[16] = {height: 22, width: 9.594};
 
-function getMonoFontSize(fontSize : number) : {height : number, width : number} {
+function getMonoFontSize(fontSize: number): { height: number; width: number } {
     if (MonoFontSizes[fontSize] != null) {
         return MonoFontSizes[fontSize];
     }
-    let size = measureText("W", {pre: true, mono: true, fontSize: fontSize});
+    let size = measureText("W", { pre: true, mono: true, fontSize: fontSize });
     if (size.height != 0 && size.width != 0) {
         MonoFontSizes[fontSize] = size;
     }
     return size;
 }
 
-function measureText(text : string, textOpts? : {pre? : boolean, mono? : boolean, fontSize? : number|string}) : {height : number, width : number} {
+function measureText(
+    text: string,
+    textOpts?: { pre?: boolean; mono?: boolean; fontSize?: number | string }
+): { height: number; width: number } {
     if (textOpts == null) {
         textOpts = {};
     }
@@ -38,10 +41,9 @@ function measureText(text : string, textOpts? : {pre? : boolean, mono? : boolean
         textElem.classList.add("mono");
     }
     if (textOpts.fontSize != null) {
-        if (typeof(textOpts.fontSize) == "number") {
+        if (typeof textOpts.fontSize == "number") {
             textElem.style.fontSize = textOpts.fontSize + "px";
-        }
-        else {
+        } else {
             textElem.style.fontSize = textOpts.fontSize;
         }
     }
@@ -51,18 +53,18 @@ function measureText(text : string, textOpts? : {pre? : boolean, mono? : boolean
         throw new Error("cannot measure text, no #measure div");
     }
     measureDiv.replaceChildren(textElem);
-    let rect = textElem.getBoundingClientRect()
-    return {width: rect.width, height: Math.ceil(rect.height)};
+    let rect = textElem.getBoundingClientRect();
+    return { width: rect.width, height: Math.ceil(rect.height) };
 }
 
-function windowWidthToCols(width : number, fontSize : number) : number {
+function windowWidthToCols(width: number, fontSize: number): number {
     let dr = getMonoFontSize(fontSize);
     let cols = Math.trunc((width - 50) / dr.width) - 1;
     cols = boundInt(cols, MinTermCols, MaxTermCols);
     return cols;
 }
 
-function windowHeightToRows(height : number, fontSize : number) : number {
+function windowHeightToRows(height: number, fontSize: number): number {
     let dr = getMonoFontSize(fontSize);
     let rows = Math.floor((height - 80) / dr.height) - 1;
     if (rows <= 0) {
@@ -71,14 +73,14 @@ function windowHeightToRows(height : number, fontSize : number) : number {
     return rows;
 }
 
-function termWidthFromCols(cols : number, fontSize : number) : number {
+function termWidthFromCols(cols: number, fontSize: number): number {
     let dr = getMonoFontSize(fontSize);
-    return Math.ceil(dr.width*cols) + 15;
+    return Math.ceil(dr.width * cols) + 15;
 }
 
-function termHeightFromRows(rows : number, fontSize : number) : number {
+function termHeightFromRows(rows: number, fontSize: number): number {
     let dr = getMonoFontSize(fontSize);
-    return Math.ceil(dr.height*rows);
+    return Math.ceil(dr.height * rows);
 }
 
-export {measureText, getMonoFontSize, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows};
+export { measureText, getMonoFontSize, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows };
