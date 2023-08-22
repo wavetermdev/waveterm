@@ -1,0 +1,9 @@
+node_modules
+dist
+dist-dev
+static
+build
+bin
+.git
+webshare
+out
