@@ -237,10 +237,23 @@ input[type="checkbox"] {
         display: flex;
         flex-direction: row;
     }
+
+    .dropdown {
+        background: rgb(180, 180, 180);
+        color: black;
+        border-radius: 4px 4px 0 0;
+        font-size: 10px;
+        font-family: system-ui;
+        padding: 1px 0 3px 3px;
+        outline: none;
+    }
 }
 
 .renderer-container.code-renderer {
     margin-top: 10px;
+    .monaco-editor .monaco-editor-background {
+        background-color: rgba(255, 255, 255, 0.075) !important;
+    }
 }
 
 .renderer-container.json-renderer {
