@@ -221,7 +221,6 @@ class LineCmd extends React.Component<
         super(props);
     }
 
-    // Hi
     checkStateDiffLoad(): void {
         let { screen, line, staticRender, visible } = this.props;
         if (staticRender) {
