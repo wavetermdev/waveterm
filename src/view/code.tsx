@@ -3,6 +3,7 @@ import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
 import { RendererContext, RendererOpts } from "../types";
 import Editor from "@monaco-editor/react";
+import { GlobalModel } from "../model";
 
 type OV<V> = mobx.IObservableValue<V>;
 
@@ -18,14 +19,19 @@ class SourceCodeRenderer extends React.Component<
     },
     {}
 > {
-    code: OV<any> = mobx.observable.box(null, {
+    code: OV<string> = mobx.observable.box("", {
         name: "code",
         deep: false,
     });
-    language: OV<any> = mobx.observable.box(null, {
+    language: OV<string> = mobx.observable.box("", {
         name: "language",
         deep: false,
     });
+    isFullscreen: OV<boolean> = mobx.observable.box(false, {
+        name: "isFullscreen",
+        deep: false,
+    });
+
     languages: OV<string[]> = mobx.observable.box([]);
     selectedLanguage: OV<string> = mobx.observable.box("");
 
@@ -38,6 +44,7 @@ class SourceCodeRenderer extends React.Component<
     componentDidMount() {
         let prtn = this.props.data.text();
         prtn.then((text) => this.code.set(text));
+        document.addEventListener("fullscreenchange", () => this.isFullscreen.set(!!document.fullscreenElement));
     }
 
     handleEditorDidMount = (editor, monaco) => {
@@ -73,26 +80,30 @@ class SourceCodeRenderer extends React.Component<
 
     render() {
         let opts = this.props.opts;
-        let maxWidth = opts.maxSize.width;
-        let minWidth = opts.maxSize.width;
-        if (minWidth > 1000) {
-            minWidth = 1000;
-        }
         let lang = this.language.get();
         let code = this.code.get();
-        if (!code) return <></>;
+        if (!code) {
+            console.log(`rendering blank div with ${this.props.savedHeight}`);
+            return <div className="renderer-container code-renderer" style={{ height: this.props.savedHeight }} />;
+        }
         return (
             <div className="renderer-container code-renderer">
-                <div className="scroller" style={{ maxHeight: opts.maxSize.height }}>
+                <div
+                    className="scroller"
+                    style={{
+                        maxHeight: this.isFullscreen.get() ? "none" : opts.maxSize.height,
+                    }}
+                >
                     <Editor
-                        height="30vh"
+                        height={this.isFullscreen.get() ? "calc(100vh - 6rem)" : "30vh"}
                         theme="hc-black"
                         defaultLanguage={lang}
                         defaultValue={code}
                         onMount={this.handleEditorDidMount}
                         options={{
                             scrollBeyondLastLine: false,
-                            fontSize: "14px",
+                            fontSize: GlobalModel.termFontSize.get(),
+                            readOnly: this.props.opts.readOnly,
                         }}
                     />
                 </div>

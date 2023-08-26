@@ -213,6 +213,9 @@ class LineCmd extends React.Component<
     isMinimised: OV<boolean> = mobx.observable.box(false, {
         name: "line-minimised",
     });
+    isFulscreen: OV<boolean> = mobx.observable.box(false, {
+        name: "line-fullscreened",
+    });
     isCmdExpanded: OV<boolean> = mobx.observable.box(false, {
         name: "cmd-expanded",
     });
@@ -437,6 +440,17 @@ class LineCmd extends React.Component<
     @boundMethod
     clickMinimise() {
         this.isMinimised.set(!this.isMinimised.get());
+    }
+
+    @boundMethod
+    clickFullscreen(data_lineid) {
+        if (!document.fullscreenElement) {
+            document.querySelector(`div[data-lineid="${data_lineid}"]`).requestFullscreen();
+            this.isFulscreen.set(true);
+        } else {
+            document.exitFullscreen();
+            this.isFulscreen.set(false);
+        }
     }
 
     @boundMethod
@@ -712,6 +726,14 @@ class LineCmd extends React.Component<
                                 this.isMinimised.get() ? "fa-plus-circle" : "fa-minus-circle"
                             }`}
                         />
+                    </div>
+                    <div
+                        key="fullscreen"
+                        title={`${this.isFulscreen.get() ? "Inline" : "Fullscreen"}`}
+                        className={cn("line-icon", "line-fullscreen")}
+                        onClick={() => this.clickFullscreen(line.lineid)}
+                    >
+                        <i className={`fa-sharp fa-regular ${this.isFulscreen.get() ? "fa-compress" : "fa-expand"}`} />
                     </div>
                 </div>
                 <If condition={!this.isMinimised.get()}>

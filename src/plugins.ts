@@ -1,7 +1,6 @@
 import { RendererPluginType } from "./types";
 import { SimpleImageRenderer } from "./view/image";
 import { SimpleMarkdownRenderer } from "./view/markdown";
-import { SimpleJsonRenderer } from "./view/json";
 import { SourceCodeRenderer } from "./view/code";
 import { OpenAIRenderer, OpenAIRendererModel } from "./view/openai";
 import { isBlank } from "./util";
@@ -27,17 +26,6 @@ const MarkdownPlugin: RendererPluginType = {
     globalCss: null,
     mimeTypes: ["text/markdown"],
     simpleComponent: SimpleMarkdownRenderer,
-};
-
-const JsonPlugin: RendererPluginType = {
-    name: "json",
-    rendererType: "simple",
-    heightType: "pixels",
-    dataType: "blob",
-    collapseType: "hide",
-    globalCss: null,
-    mimeTypes: ["application/json"],
-    simpleComponent: SimpleJsonRenderer,
 };
 
 const CodePlugin: RendererPluginType = {
@@ -97,7 +85,6 @@ if ((window as any).PluginModel == null) {
     PluginModel = new PluginModelClass();
     PluginModel.registerRendererPlugin(ImagePlugin);
     PluginModel.registerRendererPlugin(MarkdownPlugin);
-    PluginModel.registerRendererPlugin(JsonPlugin);
     PluginModel.registerRendererPlugin(CodePlugin);
     PluginModel.registerRendererPlugin(OpenAIPlugin);
     (window as any).PluginModel = PluginModel;
