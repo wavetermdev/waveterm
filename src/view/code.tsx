@@ -19,19 +19,8 @@ class SourceCodeRenderer extends React.Component<
     },
     {}
 > {
-    code: OV<string> = mobx.observable.box("", {
-        name: "code",
-        deep: false,
-    });
-    language: OV<string> = mobx.observable.box("", {
-        name: "language",
-        deep: false,
-    });
-    isFullscreen: OV<boolean> = mobx.observable.box(false, {
-        name: "isFullscreen",
-        deep: false,
-    });
-
+    code: OV<string> = mobx.observable.box("");
+    language: OV<string> = mobx.observable.box("");
     languages: OV<string[]> = mobx.observable.box([]);
     selectedLanguage: OV<string> = mobx.observable.box("");
 
@@ -44,7 +33,6 @@ class SourceCodeRenderer extends React.Component<
     componentDidMount() {
         let prtn = this.props.data.text();
         prtn.then((text) => this.code.set(text));
-        document.addEventListener("fullscreenchange", () => this.isFullscreen.set(!!document.fullscreenElement));
     }
 
     handleEditorDidMount = (editor, monaco) => {
@@ -64,6 +52,10 @@ class SourceCodeRenderer extends React.Component<
                 this.language.set(detectedLanguage.id);
             }
         }
+        requestAnimationFrame(() => {
+            const layoutInfo = editor.getLayoutInfo();
+            console.log(`editorHeight = ${layoutInfo.height}`);
+        });
     };
 
     handleLanguageChange = (event) => {
@@ -83,20 +75,16 @@ class SourceCodeRenderer extends React.Component<
         let lang = this.language.get();
         let code = this.code.get();
         if (!code) {
-            console.log(`rendering blank div with ${this.props.savedHeight}`);
             return <div className="renderer-container code-renderer" style={{ height: this.props.savedHeight }} />;
         }
+        const noOfLines = code.split("\n").length;
+        const editorHeight = Math.min(noOfLines * GlobalModel.termFontSize.get() * 1.5, parseInt(opts.maxSize.height));
         return (
             <div className="renderer-container code-renderer">
-                <div
-                    className="scroller"
-                    style={{
-                        maxHeight: this.isFullscreen.get() ? "none" : opts.maxSize.height,
-                    }}
-                >
+                <div className="scroller" style={{ maxHeight: opts.maxSize.height }}>
                     <Editor
-                        height={this.isFullscreen.get() ? "calc(100vh - 6rem)" : "30vh"}
                         theme="hc-black"
+                        height={editorHeight}
                         defaultLanguage={lang}
                         defaultValue={code}
                         onMount={this.handleEditorDidMount}

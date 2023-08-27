@@ -182,7 +182,6 @@ function createMainWindow(clientData) {
         height: bounds.height,
         webPreferences: {
             preload: path.join(getAppBasePath(), DistDir, "preload.js"),
-            nodeIntegration: true,
         },
         backgroundColor: "#000",
     });
