@@ -52,10 +52,6 @@ class SourceCodeRenderer extends React.Component<
                 this.language.set(detectedLanguage.id);
             }
         }
-        requestAnimationFrame(() => {
-            const layoutInfo = editor.getLayoutInfo();
-            console.log(`editorHeight = ${layoutInfo.height}`);
-        });
     };
 
     handleLanguageChange = (event) => {
@@ -78,10 +74,13 @@ class SourceCodeRenderer extends React.Component<
             return <div className="renderer-container code-renderer" style={{ height: this.props.savedHeight }} />;
         }
         const noOfLines = code.split("\n").length;
-        const editorHeight = Math.min(noOfLines * GlobalModel.termFontSize.get() * 1.5, parseInt(opts.maxSize.height));
+        const editorHeight = Math.min(
+            noOfLines * GlobalModel.termFontSize.get() * 1.5 + 10,
+            parseInt(opts.maxSize.height)
+        );
         return (
             <div className="renderer-container code-renderer">
-                <div className="scroller" style={{ maxHeight: opts.maxSize.height }}>
+                <div className="scroller" style={{ maxHeight: opts.maxSize.height, paddingBottom: "15px" }}>
                     <Editor
                         theme="hc-black"
                         height={editorHeight}
