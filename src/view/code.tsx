@@ -90,6 +90,7 @@ class SourceCodeRenderer extends React.Component<
                         options={{
                             scrollBeyondLastLine: false,
                             fontSize: GlobalModel.termFontSize.get(),
+                            fontFamily: "JetBrains Mono",
                             readOnly: this.props.opts.readOnly,
                         }}
                     />
