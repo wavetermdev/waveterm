@@ -3,6 +3,7 @@ import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
 import { RendererContext, RendererOpts } from "../types";
 import Editor from "@monaco-editor/react";
+import { GlobalModel } from "../model";
 
 type OV<V> = mobx.IObservableValue<V>;
 
@@ -18,14 +19,8 @@ class SourceCodeRenderer extends React.Component<
     },
     {}
 > {
-    code: OV<any> = mobx.observable.box(null, {
-        name: "code",
-        deep: false,
-    });
-    language: OV<any> = mobx.observable.box(null, {
-        name: "language",
-        deep: false,
-    });
+    code: OV<string> = mobx.observable.box("");
+    language: OV<string> = mobx.observable.box("");
     languages: OV<string[]> = mobx.observable.box([]);
     selectedLanguage: OV<string> = mobx.observable.box("");
 
@@ -73,26 +68,30 @@ class SourceCodeRenderer extends React.Component<
 
     render() {
         let opts = this.props.opts;
-        let maxWidth = opts.maxSize.width;
-        let minWidth = opts.maxSize.width;
-        if (minWidth > 1000) {
-            minWidth = 1000;
-        }
         let lang = this.language.get();
         let code = this.code.get();
-        if (!code) return <></>;
+        if (!code) {
+            return <div className="renderer-container code-renderer" style={{ height: this.props.savedHeight }} />;
+        }
+        const noOfLines = code.split("\n").length;
+        const editorHeight = Math.min(
+            noOfLines * GlobalModel.termFontSize.get() * 1.5 + 10,
+            parseInt(opts.maxSize.height)
+        );
         return (
             <div className="renderer-container code-renderer">
-                <div className="scroller" style={{ maxHeight: opts.maxSize.height }}>
+                <div className="scroller" style={{ maxHeight: opts.maxSize.height, paddingBottom: "15px" }}>
                     <Editor
-                        height="30vh"
                         theme="hc-black"
+                        height={editorHeight}
                         defaultLanguage={lang}
                         defaultValue={code}
                         onMount={this.handleEditorDidMount}
                         options={{
                             scrollBeyondLastLine: false,
-                            fontSize: "14px",
+                            fontSize: GlobalModel.termFontSize.get(),
+                            fontFamily: "JetBrains Mono",
+                            readOnly: this.props.opts.readOnly,
                         }}
                     />
                 </div>

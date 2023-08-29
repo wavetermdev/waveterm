@@ -704,7 +704,7 @@ class LineCmd extends React.Component<
                     <div
                         key="minimise"
                         title={`${this.isMinimised.get() ? "Maximise" : "Minimise"}`}
-                        className={cn("line-icon", "line-minimise")}
+                        className={cn("line-icon", "line-minimise", this.isMinimised.get() ? "line-icon-show" : "")}
                         onClick={this.clickMinimise}
                     >
                         <i
