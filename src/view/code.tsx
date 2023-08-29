@@ -16,6 +16,7 @@ class SourceCodeRenderer extends React.Component<
         context: RendererContext;
         opts: RendererOpts;
         savedHeight: number;
+        scrollToAlign: () => void;
     },
     {}
 > {
@@ -23,6 +24,7 @@ class SourceCodeRenderer extends React.Component<
     language: OV<string> = mobx.observable.box("");
     languages: OV<string[]> = mobx.observable.box([]);
     selectedLanguage: OV<string> = mobx.observable.box("");
+    isFullWindow: OV<boolean> = mobx.observable.box(false); // load this from opts
 
     editorRef;
     constructor(props) {
@@ -66,6 +68,11 @@ class SourceCodeRenderer extends React.Component<
         }
     };
 
+    toggleFit = () => {
+        this.isFullWindow.set(!this.isFullWindow.get());
+        setTimeout(() => this.props.scrollToAlign(), 10);
+    };
+
     render() {
         let opts = this.props.opts;
         let lang = this.language.get();
@@ -73,11 +80,13 @@ class SourceCodeRenderer extends React.Component<
         if (!code) {
             return <div className="renderer-container code-renderer" style={{ height: this.props.savedHeight }} />;
         }
-        const noOfLines = code.split("\n").length;
-        const editorHeight = Math.min(
-            noOfLines * GlobalModel.termFontSize.get() * 1.5 + 10,
-            parseInt(opts.maxSize.height)
-        );
+        const fullWindowHeight = parseInt(opts.maxSize.height);
+        let editorHeight = fullWindowHeight;
+        if (!this.isFullWindow.get()) {
+            const noOfLines = code.split("\n").length;
+            editorHeight = Math.min(noOfLines * GlobalModel.termFontSize.get() * 1.5 + 10, fullWindowHeight);
+        }
+
         return (
             <div className="renderer-container code-renderer">
                 <div className="scroller" style={{ maxHeight: opts.maxSize.height, paddingBottom: "15px" }}>
@@ -100,7 +109,7 @@ class SourceCodeRenderer extends React.Component<
                         className="dropdown"
                         value={this.selectedLanguage.get()}
                         onChange={this.handleLanguageChange}
-                        style={{ maxWidth: "5rem", marginRight: "24px" }}
+                        style={{ minWidth: "6rem", maxWidth: "6rem", marginRight: "8px" }}
                     >
                         {this.languages.get().map((lang, index) => (
                             <option key={index} value={lang}>
@@ -108,6 +117,11 @@ class SourceCodeRenderer extends React.Component<
                             </option>
                         ))}
                     </select>
+                    <div className="cmd-hints" style={{ minWidth: "6rem", maxWidth: "6rem" }}>
+                        <div onClick={this.toggleFit} className="hint-item color-white">
+                            {this.isFullWindow.get() ? `shrink` : `expand`}
+                        </div>
+                    </div>
                 </div>
             </div>
         );

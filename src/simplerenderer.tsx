@@ -120,6 +120,7 @@ class SimpleBlobRenderer extends React.Component<
         plugin: RendererPluginType;
         onHeightChange: () => void;
         initParams: RendererModelInitializeParams;
+        scrollToAlign: () => void;
     },
     {}
 > {
@@ -209,6 +210,7 @@ class SimpleBlobRenderer extends React.Component<
                     context={simpleModel.context}
                     opts={simpleModel.opts}
                     savedHeight={simpleModel.savedHeight}
+                    scrollToAlign={this.props.scrollToAlign}
                 />
             </div>
         );
