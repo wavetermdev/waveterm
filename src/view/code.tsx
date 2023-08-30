@@ -73,7 +73,7 @@ class SourceCodeRenderer extends React.Component<
     toggleFit = () => {
         this.isFullWindow.set(!this.isFullWindow.get());
         this.setEditorHeight();
-        setTimeout(() => this.props.scrollToBringIntoViewport(), 10);
+        setTimeout(() => this.props.scrollToBringIntoViewport(), 350);
     };
 
     handleEditorChange = (value, event) => {
@@ -81,7 +81,7 @@ class SourceCodeRenderer extends React.Component<
         this.isFullWindow.set(true);
         this.code.set(value);
         this.setEditorHeight();
-        setTimeout(() => this.props.scrollToBringIntoViewport(), 10);
+        setTimeout(() => this.props.scrollToBringIntoViewport(), 350);
     };
 
     setEditorHeight = () => {
