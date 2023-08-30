@@ -16,7 +16,7 @@ class SourceCodeRenderer extends React.Component<
         context: RendererContext;
         opts: RendererOpts;
         savedHeight: number;
-        scrollToAlign: () => void;
+        scrollToBringIntoViewport: () => void;
     },
     {}
 > {
@@ -25,8 +25,9 @@ class SourceCodeRenderer extends React.Component<
     languages: OV<string[]> = mobx.observable.box([]);
     selectedLanguage: OV<string> = mobx.observable.box("");
     isFullWindow: OV<boolean> = mobx.observable.box(false); // load this from opts
-
+    editorHeight: OV<number> = mobx.observable.box(this.props.savedHeight); // load this from opts
     editorRef;
+    resizeObserver;
     constructor(props) {
         super(props);
         this.editorRef = React.createRef();
@@ -54,6 +55,7 @@ class SourceCodeRenderer extends React.Component<
                 this.language.set(detectedLanguage.id);
             }
         }
+        this.setEditorHeight();
     };
 
     handleLanguageChange = (event) => {
@@ -70,7 +72,28 @@ class SourceCodeRenderer extends React.Component<
 
     toggleFit = () => {
         this.isFullWindow.set(!this.isFullWindow.get());
-        setTimeout(() => this.props.scrollToAlign(), 10);
+        this.setEditorHeight();
+        setTimeout(() => this.props.scrollToBringIntoViewport(), 10);
+    };
+
+    handleEditorChange = (value, event) => {
+        // editing will always be in fullscreen
+        this.isFullWindow.set(true);
+        this.code.set(value);
+        this.setEditorHeight();
+        setTimeout(() => this.props.scrollToBringIntoViewport(), 10);
+    };
+
+    setEditorHeight = () => {
+        const fullWindowHeight = parseInt(this.props.opts.maxSize.height);
+        let _editorHeight = fullWindowHeight;
+        console.log(`this.isFullWindow.get() = ${this.isFullWindow.get()} and _editorHeight = ${_editorHeight}`);
+        if (!this.isFullWindow.get()) {
+            console.log(`recalculating _editorHeight`);
+            const noOfLines = this.code.get().split("\n").length;
+            _editorHeight = Math.min(noOfLines * GlobalModel.termFontSize.get() * 1.5 + 10, fullWindowHeight);
+        }
+        this.editorHeight.set(_editorHeight);
     };
 
     render() {
@@ -80,19 +103,12 @@ class SourceCodeRenderer extends React.Component<
         if (!code) {
             return <div className="renderer-container code-renderer" style={{ height: this.props.savedHeight }} />;
         }
-        const fullWindowHeight = parseInt(opts.maxSize.height);
-        let editorHeight = fullWindowHeight;
-        if (!this.isFullWindow.get()) {
-            const noOfLines = code.split("\n").length;
-            editorHeight = Math.min(noOfLines * GlobalModel.termFontSize.get() * 1.5 + 10, fullWindowHeight);
-        }
-
         return (
             <div className="renderer-container code-renderer">
                 <div className="scroller" style={{ maxHeight: opts.maxSize.height, paddingBottom: "15px" }}>
                     <Editor
                         theme="hc-black"
-                        height={editorHeight}
+                        height={this.editorHeight.get()}
                         defaultLanguage={lang}
                         defaultValue={code}
                         onMount={this.handleEditorDidMount}
@@ -102,6 +118,7 @@ class SourceCodeRenderer extends React.Component<
                             fontFamily: "JetBrains Mono",
                             readOnly: this.props.opts.readOnly,
                         }}
+                        onChange={this.handleEditorChange}
                     />
                 </div>
                 <div style={{ position: "absolute", bottom: "-3px", right: 0 }}>

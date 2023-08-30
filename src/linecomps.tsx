@@ -599,7 +599,8 @@ class LineCmd extends React.Component<
         };
     }
 
-    scrollToAlign = () => {
+    scrollToBringIntoViewport = () => {
+        console.log(`here`);
         const container = document.getElementsByClassName("lines")[0];
         const targetDiv = this.lineRef.current;
         const targetPosition = targetDiv.getBoundingClientRect();
@@ -760,7 +761,7 @@ class LineCmd extends React.Component<
                             plugin={rendererPlugin}
                             onHeightChange={this.handleHeightChange}
                             initParams={this.makeRendererModelInitializeParams()}
-                            scrollToAlign={this.scrollToAlign}
+                            scrollToBringIntoViewport={this.scrollToBringIntoViewport}
                         />
                     </If>
                     <If condition={rendererPlugin != null && rendererPlugin.rendererType == "full"}>
