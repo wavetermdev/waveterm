@@ -3651,7 +3651,21 @@ class Model {
         return prtn;
     }
 
-    writeRemoteFile(screenId: string, lineId: string, path: string, data: Uint8Array) {}
+    writeRemoteFile(screenId: string, lineId: string, path: string, data: Uint8Array) {
+        let params = {
+            screenid: screenId,
+            lineid: lineId,
+            path: path,
+        };
+        let formData = new FormData();
+        formData.append("params", JSON.stringify(params));
+        let blob = new Blob([data], {type: "application/octet-stream"});
+        formData.append("data", blob);
+        let url = new URL(GlobalModel.getBaseHostPort() + "/api/write-file");
+        let fetchHeaders = this.getFetchHeaders();
+        let prtn = fetch(url, {method: "post", headers: fetchHeaders, body: formData});
+        return prtn;
+    }
 }
 
 class CommandRunner {
