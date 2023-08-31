@@ -600,6 +600,14 @@ type OpenAIPacketType = {
     error: string;
 };
 
+type FileInfoType = {
+    name: string;
+    size: number;
+    modts: number;
+    isdir: boolean;
+    perm: number;
+};
+
 export type {
     SessionDataType,
     LineType,

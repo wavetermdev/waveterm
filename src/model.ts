@@ -59,6 +59,7 @@ import type {
     WebCmd,
     WebRemote,
 } from "./types";
+import * as T from "./types";
 import { WSControl } from "./ws";
 import {
     measureText,
@@ -3606,6 +3607,51 @@ class Model {
         }
         return remote.remotecanonicalname;
     }
+
+    readRemoteFile(screenId: string, lineId: string, path: string, opts?: { useTemp: bool }): Promise<File> {
+        let urlParams = {
+            screenid: screenId,
+            lineid: lineId,
+            path: path,
+        };
+        let usp = new URLSearchParams(urlParams);
+        let url = new URL(GlobalModel.getBaseHostPort() + "/api/read-file?" + usp.toString());
+        let fetchHeaders = this.getFetchHeaders();
+        let fileInfo: T.FileInfoType = null;
+        let contentType: string = null;
+        let isError = false;
+        let badResponseStr: string = null;
+        let prtn = fetch(url, { method: "get", headers: fetchHeaders })
+            .then((resp) => {
+                if (!resp.ok) {
+                    isError = true;
+                    badResponseStr = sprintf(
+                        "Bad fetch response for /api/read-file: %d %s",
+                        resp.status,
+                        resp.statusText
+                    );
+                    return resp.text();
+                }
+                contentType = resp.headers.get("Content-Type");
+                fileInfo = JSON.parse(atob(resp.headers.get("X-FileInfo")));
+                return resp.blob();
+            })
+            .then((blobOrText: Blob | string) => {
+                if (blobOrText instanceof Blob) {
+                    let blob: Blob = blobOrText;
+                    return new File([blob], fileInfo.name, { type: blob.type, lastModified: fileInfo.modts });
+                } else {
+                    let textError: string = blobOrText;
+                    if (textError == null || textError.length == 0) {
+                        throw new Error(badResponseStr);
+                    }
+                    throw new Error(textError);
+                }
+            });
+        return prtn;
+    }
+
+    writeRemoteFile(screenId: string, lineId: string, path: string, data: Uint8Array) {}
 }
 
 class CommandRunner {
