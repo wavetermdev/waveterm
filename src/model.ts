@@ -3639,7 +3639,10 @@ class Model {
             .then((blobOrText: Blob | string) => {
                 if (blobOrText instanceof Blob) {
                     let blob: Blob = blobOrText;
-                    return new File([blob], fileInfo.name, { type: blob.type, lastModified: fileInfo.modts });
+                    let file = new File([blob], fileInfo.name, { type: blob.type, lastModified: fileInfo.modts });
+                    let isWriteable = (fileInfo.perm & 0o222) > 0; // checks for unix permission "w" bits
+                    file.readOnly = !isWriteable;
+                    return file;
                 } else {
                     let textError: string = blobOrText;
                     if (textError == null || textError.length == 0) {
@@ -3659,11 +3662,11 @@ class Model {
         };
         let formData = new FormData();
         formData.append("params", JSON.stringify(params));
-        let blob = new Blob([data], {type: "application/octet-stream"});
+        let blob = new Blob([data], { type: "application/octet-stream" });
         formData.append("data", blob);
         let url = new URL(GlobalModel.getBaseHostPort() + "/api/write-file");
         let fetchHeaders = this.getFetchHeaders();
-        let prtn = fetch(url, {method: "post", headers: fetchHeaders, body: formData});
+        let prtn = fetch(url, { method: "post", headers: fetchHeaders, body: formData });
         return prtn;
     }
 }
