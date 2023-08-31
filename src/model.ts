@@ -255,7 +255,7 @@ class Cmd {
         return webCmd;
     }
 
-    getExitCode(): boolean {
+    getExitCode(): number {
         return this.data.get().exitcode;
     }
 
@@ -3608,7 +3608,7 @@ class Model {
         return remote.remotecanonicalname;
     }
 
-    readRemoteFile(screenId: string, lineId: string, path: string, opts?: { useTemp: bool }): Promise<File> {
+    readRemoteFile(screenId: string, lineId: string, path: string, opts?: { useTemp: boolean }): Promise<File> {
         let urlParams = {
             screenid: screenId,
             lineid: lineId,
@@ -3630,18 +3630,18 @@ class Model {
                         resp.status,
                         resp.statusText
                     );
-                    return resp.text();
+                    return resp.text() as any;
                 }
                 contentType = resp.headers.get("Content-Type");
                 fileInfo = JSON.parse(atob(resp.headers.get("X-FileInfo")));
                 return resp.blob();
             })
-            .then((blobOrText: Blob | string) => {
+            .then((blobOrText: any) => {
                 if (blobOrText instanceof Blob) {
                     let blob: Blob = blobOrText;
                     let file = new File([blob], fileInfo.name, { type: blob.type, lastModified: fileInfo.modts });
                     let isWriteable = (fileInfo.perm & 0o222) > 0; // checks for unix permission "w" bits
-                    file.readOnly = !isWriteable;
+                    (file as any).readOnly = !isWriteable;
                     return file;
                 } else {
                     let textError: string = blobOrText;
@@ -3649,6 +3649,7 @@ class Model {
                         throw new Error(badResponseStr);
                     }
                     throw new Error(textError);
+                    return null;
                 }
             });
         return prtn;

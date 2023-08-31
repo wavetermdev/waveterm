@@ -675,4 +675,5 @@ export type {
     RemoteViewType,
     CommandRtnType,
     OpenAIPacketType,
+    FileInfoType,
 };
