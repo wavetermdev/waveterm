@@ -1,7 +1,7 @@
 import * as React from "react";
 import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
-import { RendererContext, RendererOpts } from "../types";
+import { RendererContext, RendererOpts, LineStateType } from "../types";
 import Editor from "@monaco-editor/react";
 import { GlobalModel } from "../model";
 
@@ -16,6 +16,7 @@ class SourceCodeRenderer extends React.Component<
         context: RendererContext;
         opts: RendererOpts;
         savedHeight: number;
+        lineState: LineStateType;
     },
     {}
 > {

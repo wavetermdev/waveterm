@@ -59,6 +59,7 @@ import type {
     WebCmd,
     WebRemote,
 } from "./types";
+import * as T from "./types";
 import { WSControl } from "./ws";
 import {
     measureText,
@@ -254,7 +255,7 @@ class Cmd {
         return webCmd;
     }
 
-    getExitCode(): boolean {
+    getExitCode(): number {
         return this.data.get().exitcode;
     }
 
@@ -3606,6 +3607,71 @@ class Model {
         }
         return remote.remotecanonicalname;
     }
+
+    readRemoteFile(screenId: string, lineId: string, path: string): Promise<File> {
+        let urlParams = {
+            screenid: screenId,
+            lineid: lineId,
+            path: path,
+        };
+        let usp = new URLSearchParams(urlParams);
+        let url = new URL(GlobalModel.getBaseHostPort() + "/api/read-file?" + usp.toString());
+        let fetchHeaders = this.getFetchHeaders();
+        let fileInfo: T.FileInfoType = null;
+        let contentType: string = null;
+        let isError = false;
+        let badResponseStr: string = null;
+        let prtn = fetch(url, { method: "get", headers: fetchHeaders })
+            .then((resp) => {
+                if (!resp.ok) {
+                    isError = true;
+                    badResponseStr = sprintf(
+                        "Bad fetch response for /api/read-file: %d %s",
+                        resp.status,
+                        resp.statusText
+                    );
+                    return resp.text() as any;
+                }
+                contentType = resp.headers.get("Content-Type");
+                fileInfo = JSON.parse(atob(resp.headers.get("X-FileInfo")));
+                return resp.blob();
+            })
+            .then((blobOrText: any) => {
+                if (blobOrText instanceof Blob) {
+                    let blob: Blob = blobOrText;
+                    let file = new File([blob], fileInfo.name, { type: blob.type, lastModified: fileInfo.modts });
+                    let isWriteable = (fileInfo.perm & 0o222) > 0; // checks for unix permission "w" bits
+                    (file as any).readOnly = !isWriteable;
+                    return file;
+                } else {
+                    let textError: string = blobOrText;
+                    if (textError == null || textError.length == 0) {
+                        throw new Error(badResponseStr);
+                    }
+                    throw new Error(textError);
+                    return null;
+                }
+            });
+        return prtn;
+    }
+
+    writeRemoteFile(screenId: string, lineId: string, path: string, data: Uint8Array, opts?: { useTemp?: boolean }) {
+        opts = opts || {};
+        let params = {
+            screenid: screenId,
+            lineid: lineId,
+            path: path,
+            usetemp: !!opts.useTemp,
+        };
+        let formData = new FormData();
+        formData.append("params", JSON.stringify(params));
+        let blob = new Blob([data], { type: "application/octet-stream" });
+        formData.append("data", blob);
+        let url = new URL(GlobalModel.getBaseHostPort() + "/api/write-file");
+        let fetchHeaders = this.getFetchHeaders();
+        let prtn = fetch(url, { method: "post", headers: fetchHeaders, body: formData });
+        return prtn;
+    }
 }
 
 class CommandRunner {
@@ -3912,6 +3978,22 @@ class CommandRunner {
 
     openSharedSession(): void {
         GlobalModel.submitCommand("session", "openshared", null, { nohist: "1" }, true);
+    }
+
+    setLineState(
+        screenId: string,
+        lineId: string,
+        state: T.LineStateType,
+        interactive: boolean
+    ): Promise<CommandRtnType> {
+        let stateStr = JSON.stringify(state);
+        return GlobalModel.submitCommand(
+            "line",
+            "set",
+            [lineId],
+            { screen: screenId, nohist: "1", state: stateStr },
+            interactive
+        );
     }
 }
 
