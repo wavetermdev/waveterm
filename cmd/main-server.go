@@ -2,14 +2,19 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"regexp"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -20,6 +25,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 
+	"github.com/commandlinedev/apishell/pkg/packet"
+	"github.com/commandlinedev/apishell/pkg/server"
 	"github.com/commandlinedev/prompt-server/pkg/cmdrunner"
 	"github.com/commandlinedev/prompt-server/pkg/pcloud"
 	"github.com/commandlinedev/prompt-server/pkg/remote"
@@ -49,11 +56,14 @@ const InitialTelemetryWait = 30 * time.Second
 const TelemetryTick = 30 * time.Minute
 const TelemetryInterval = 8 * time.Hour
 
+const MaxWriteFileMemSize = 20 * (1024 * 1024) // 20M
+
 var GlobalLock = &sync.Mutex{}
 var WSStateMap = make(map[string]*scws.WSState) // clientid -> WsState
 var GlobalAuthKey string
 var BuildTime = "0"
 var shutdownOnce sync.Once
+var ContentTypeHeaderValidRe = regexp.MustCompile(`^\w+/[\w.+-]+$`)
 
 type ClientActiveState struct {
 	Fg     bool `json:"fg"`
@@ -310,6 +320,273 @@ func HandleGetPtyOut(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-PtyDataOffset", strconv.FormatInt(realOffset, 10))
 	w.WriteHeader(http.StatusOK)
 	w.Write(data)
+}
+
+type writeFileParamsType struct {
+	ScreenId string `json:"screenid"`
+	LineId   string `json:"lineid"`
+	Path     string `json:"path"`
+	UseTemp  bool   `json:"usetemp,omitempty"`
+}
+
+func parseWriteFileParams(r *http.Request) (*writeFileParamsType, multipart.File, error) {
+	err := r.ParseMultipartForm(MaxWriteFileMemSize)
+	if err != nil {
+		return nil, nil, fmt.Errorf("cannot parse multipart form data: %v", err)
+	}
+	form := r.MultipartForm
+	if len(form.Value["params"]) == 0 {
+		return nil, nil, fmt.Errorf("no params found")
+	}
+	paramsStr := form.Value["params"][0]
+	var params writeFileParamsType
+	err = json.Unmarshal([]byte(paramsStr), &params)
+	if err != nil {
+		return nil, nil, fmt.Errorf("bad params json: %v", err)
+	}
+	if len(form.File["data"]) == 0 {
+		return nil, nil, fmt.Errorf("no data found")
+	}
+	fileHeader := form.File["data"][0]
+	file, err := fileHeader.Open()
+	if err != nil {
+		return nil, nil, fmt.Errorf("error opening multipart data file: %v", err)
+	}
+	return &params, file, nil
+}
+
+func HandleWriteFile(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+		log.Printf("[error] in write-file: %v\n", r)
+		debug.PrintStack()
+		WriteJsonError(w, fmt.Errorf("panic: %v", r))
+		return
+	}()
+	w.Header().Set("Cache-Control", "no-cache")
+	params, mpFile, err := parseWriteFileParams(r)
+	if err != nil {
+		WriteJsonError(w, fmt.Errorf("error parsing multipart form params: %w", err))
+		return
+	}
+	if params.ScreenId == "" || params.LineId == "" || params.Path == "" {
+		WriteJsonError(w, fmt.Errorf("invalid params, must set screenid, lineid, and path"))
+		return
+	}
+	if _, err := uuid.Parse(params.ScreenId); err != nil {
+		WriteJsonError(w, fmt.Errorf("invalid screenid: %v", err))
+		return
+	}
+	if _, err := uuid.Parse(params.LineId); err != nil {
+		WriteJsonError(w, fmt.Errorf("invalid lineid: %v", err))
+		return
+	}
+	_, cmd, err := sstore.GetLineCmdByLineId(r.Context(), params.ScreenId, params.LineId)
+	if err != nil {
+		WriteJsonError(w, fmt.Errorf("cannot retrieve line/cmd: %v", err))
+		return
+	}
+	if cmd == nil {
+		WriteJsonError(w, fmt.Errorf("line not found"))
+		return
+	}
+	if cmd.Remote.RemoteId == "" {
+		WriteJsonError(w, fmt.Errorf("invalid line, no remote"))
+		return
+	}
+	msh := remote.GetRemoteById(cmd.Remote.RemoteId)
+	if msh == nil {
+		WriteJsonError(w, fmt.Errorf("invalid line, cannot resolve remote"))
+		return
+	}
+	cwd := cmd.FeState["cwd"]
+	writePk := packet.MakeWriteFilePacket()
+	writePk.ReqId = uuid.New().String()
+	writePk.UseTemp = params.UseTemp
+	if filepath.IsAbs(params.Path) {
+		writePk.Path = params.Path
+	} else {
+		writePk.Path = filepath.Join(cwd, params.Path)
+	}
+	iter, err := msh.PacketRpcIter(r.Context(), writePk)
+	if err != nil {
+		WriteJsonError(w, fmt.Errorf("error: %v", err))
+		return
+	}
+	// first packet should be WriteFileReady
+	readyIf, err := iter.Next(r.Context())
+	if err != nil {
+		WriteJsonError(w, fmt.Errorf("error while getting ready response: %w", err))
+		return
+	}
+	readyPk, ok := readyIf.(*packet.WriteFileReadyPacketType)
+	if !ok {
+		WriteJsonError(w, fmt.Errorf("bad ready packet received: %T", readyIf))
+		return
+	}
+	if readyPk.Error != "" {
+		WriteJsonError(w, fmt.Errorf("ready error: %s", readyPk.Error))
+		return
+	}
+	var buffer [server.MaxFileDataPacketSize]byte
+	bufSlice := buffer[:]
+	for {
+		dataPk := packet.MakeFileDataPacket(writePk.ReqId)
+		nr, err := io.ReadFull(mpFile, bufSlice)
+		if err == io.ErrUnexpectedEOF || err == io.EOF {
+			dataPk.Eof = true
+		} else if err != nil {
+			dataErr := fmt.Errorf("error reading file data: %v", err)
+			dataPk.Error = dataErr.Error()
+			msh.SendFileData(dataPk)
+			WriteJsonError(w, dataErr)
+			return
+		}
+		if nr > 0 {
+			dataPk.Data = make([]byte, nr)
+			copy(dataPk.Data, bufSlice[0:nr])
+		}
+		msh.SendFileData(dataPk)
+		if dataPk.Eof {
+			break
+		}
+		// slight throttle for sending packets
+		time.Sleep(10 * time.Millisecond)
+	}
+	doneIf, err := iter.Next(r.Context())
+	if err != nil {
+		WriteJsonError(w, fmt.Errorf("error while getting done response: %w", err))
+		return
+	}
+	donePk, ok := doneIf.(*packet.WriteFileDonePacketType)
+	if !ok {
+		WriteJsonError(w, fmt.Errorf("bad done packet received: %T", doneIf))
+		return
+	}
+	if donePk.Error != "" {
+		WriteJsonError(w, fmt.Errorf("dne error: %s", donePk.Error))
+		return
+	}
+	WriteJsonSuccess(w, nil)
+	return
+}
+
+func HandleReadFile(w http.ResponseWriter, r *http.Request) {
+	qvals := r.URL.Query()
+	screenId := qvals.Get("screenid")
+	lineId := qvals.Get("lineid")
+	path := qvals.Get("path") // validate path?
+	contentType := qvals.Get("mimetype")
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+	if screenId == "" || lineId == "" {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("must specify sessionid, screenid, and lineid")))
+		return
+	}
+	if path == "" {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("must specify path")))
+		return
+	}
+	if _, err := uuid.Parse(screenId); err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("invalid screenid: %v", err)))
+		return
+	}
+	if _, err := uuid.Parse(lineId); err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("invalid lineid: %v", err)))
+		return
+	}
+	if !ContentTypeHeaderValidRe.MatchString(contentType) {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("invalid mimetype specified")))
+		return
+	}
+	_, cmd, err := sstore.GetLineCmdByLineId(r.Context(), screenId, lineId)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("invalid lineid: %v", err)))
+		return
+	}
+	if cmd == nil {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("invalid line, no cmd")))
+		return
+	}
+	if cmd.Remote.RemoteId == "" {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("invalid line, no remote")))
+		return
+	}
+	streamPk := packet.MakeStreamFilePacket()
+	streamPk.ReqId = uuid.New().String()
+	cwd := cmd.FeState["cwd"]
+	if filepath.IsAbs(path) {
+		streamPk.Path = path
+	} else {
+		streamPk.Path = filepath.Join(cwd, path)
+	}
+	msh := remote.GetRemoteById(cmd.Remote.RemoteId)
+	if msh == nil {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("invalid line, cannot resolve remote")))
+		return
+	}
+	iter, err := msh.StreamFile(r.Context(), streamPk)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("error trying to stream file: %v", err)))
+		return
+	}
+	defer iter.Close()
+	respIf, err := iter.Next(r.Context())
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("error getting streamfile response: %v", err)))
+		return
+	}
+	resp, ok := respIf.(*packet.StreamFileResponseType)
+	if !ok {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("bad response packet type: %T", respIf)))
+		return
+	}
+	if resp.Error != "" {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("error response: %s", resp.Error)))
+		return
+	}
+	infoJson, _ := json.Marshal(resp.Info)
+	w.Header().Set("X-FileInfo", base64.StdEncoding.EncodeToString(infoJson))
+	w.Header().Set("Content-Type", contentType)
+	w.WriteHeader(http.StatusOK)
+	for {
+		dataPkIf, err := iter.Next(r.Context())
+		if err != nil {
+			log.Printf("error in read-file while getting data: %v\n", err)
+			break
+		}
+		if dataPkIf == nil {
+			break
+		}
+		dataPk, ok := dataPkIf.(*packet.FileDataPacketType)
+		if !ok {
+			log.Printf("error in read-file, invalid data packet type: %T", dataPkIf)
+			break
+		}
+		if dataPk.Error != "" {
+			log.Printf("in read-file, data packet error: %s", dataPk.Error)
+			break
+		}
+		w.Write(dataPk.Data)
+	}
+	return
 }
 
 func WriteJsonError(w http.ResponseWriter, errVal error) {
@@ -576,6 +853,8 @@ func main() {
 	gr.HandleFunc("/api/get-client-data", AuthKeyWrap(HandleGetClientData))
 	gr.HandleFunc("/api/set-winsize", AuthKeyWrap(HandleSetWinSize))
 	gr.HandleFunc("/api/log-active-state", AuthKeyWrap(HandleLogActiveState))
+	gr.HandleFunc("/api/read-file", AuthKeyWrap(HandleReadFile))
+	gr.HandleFunc("/api/write-file", AuthKeyWrap(HandleWriteFile)).Methods("POST")
 	serverAddr := MainServerAddr
 	if scbase.IsDevMode() {
 		serverAddr = MainServerDevAddr

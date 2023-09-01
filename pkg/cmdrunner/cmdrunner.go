@@ -6,9 +6,11 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -55,6 +57,8 @@ const MaxSignalNum = 64
 const MaxEvalDepth = 5
 const MaxOpenAIAPITokenLen = 100
 const MaxOpenAIModelLen = 100
+
+const TsFormatStr = "2006-01-02 15:04:05"
 
 const (
 	KwArgRenderer = "renderer"
@@ -205,6 +209,11 @@ func init() {
 	registerCmdFn("_killserver", KillServerCommand)
 
 	registerCmdFn("set", SetCommand)
+
+	registerCmdFn("view:stat", ViewStatCommand)
+	registerCmdFn("view:test", ViewTestCommand)
+
+	registerCmdFn("edit:test", EditTestCommand)
 }
 
 func getValidCommands() []string {
@@ -2115,7 +2124,7 @@ func SessionShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if session.Archived {
 		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "archived", "true"))
 		ts := time.UnixMilli(session.ArchivedTs)
-		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "archivedts", ts.Format("2006-01-02 15:04:05")))
+		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "archivedts", ts.Format(TsFormatStr)))
 	}
 	stats, err := sstore.GetSessionStats(ctx, ids.SessionId)
 	if err != nil {
@@ -2936,6 +2945,7 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		return nil, fmt.Errorf("line %q not found", lineArg)
 	}
 	var buf bytes.Buffer
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "screenid", line.ScreenId))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "lineid", line.LineId))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "type", line.LineType))
 	lineNumStr := strconv.FormatInt(line.LineNum, 10)
@@ -2944,7 +2954,7 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	}
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "linenum", lineNumStr))
 	ts := time.UnixMilli(line.Ts)
-	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "ts", ts.Format("2006-01-02 15:04:05")))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "ts", ts.Format(TsFormatStr)))
 	if line.Ephemeral {
 		buf.WriteString(fmt.Sprintf("  %-15s %v\n", "ephemeral", true))
 	}
@@ -2973,6 +2983,12 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 			fileDataStr := fmt.Sprintf("v%d data=%d offset=%d max=%s", stat.Version, stat.DataSize, stat.FileOffset, scbase.NumFormatB2(stat.MaxSize))
 			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "file", stat.Location))
 			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "file-data", fileDataStr))
+		}
+		if cmd.DoneTs != 0 {
+			doneTs := time.UnixMilli(cmd.DoneTs)
+			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "donets", doneTs.Format(TsFormatStr)))
+			buf.WriteString(fmt.Sprintf("  %-15s %d\n", "exitcode", cmd.ExitCode))
+			buf.WriteString(fmt.Sprintf("  %-15s %dms\n", "duration", cmd.DurationMs))
 		}
 	}
 	update := &sstore.ModelUpdate{
@@ -3008,6 +3024,205 @@ func SetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 		setMap[scopeName][varName] = argVal
 	}
 	return nil, nil
+}
+
+func makeStreamFilePk(ids resolvedIds, pk *scpacket.FeCommandPacketType) (*packet.StreamFilePacketType, error) {
+	cwd := ids.Remote.FeState["cwd"]
+	fileArg := pk.Args[0]
+	if fileArg == "" {
+		return nil, fmt.Errorf("/view:stat file argument must be set (cannot be empty)")
+	}
+	streamPk := packet.MakeStreamFilePacket()
+	streamPk.ReqId = uuid.New().String()
+	if filepath.IsAbs(fileArg) {
+		streamPk.Path = fileArg
+	} else {
+		streamPk.Path = filepath.Join(cwd, fileArg)
+	}
+	return streamPk, nil
+}
+
+func ViewStatCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	if len(pk.Args) == 0 {
+		return nil, fmt.Errorf("/view:stat requires an argument (file name)")
+	}
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
+	if err != nil {
+		return nil, err
+	}
+	streamPk, err := makeStreamFilePk(ids, pk)
+	if err != nil {
+		return nil, err
+	}
+	streamPk.StatOnly = true
+	msh := ids.Remote.MShell
+	iter, err := msh.StreamFile(ctx, streamPk)
+	if err != nil {
+		return nil, fmt.Errorf("/view:stat error: %v", err)
+	}
+	defer iter.Close()
+	respIf, err := iter.Next(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("/view:stat error getting response: %v", err)
+	}
+	resp, ok := respIf.(*packet.StreamFileResponseType)
+	if !ok {
+		return nil, fmt.Errorf("/view:stat error, bad response packet type: %T", respIf)
+	}
+	if resp.Error != "" {
+		return nil, fmt.Errorf("/view:stat error: %s", resp.Error)
+	}
+	if resp.Info == nil {
+		return nil, fmt.Errorf("/view:stat error, no file info")
+	}
+	var buf bytes.Buffer
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "path", resp.Info.Name))
+	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "size", resp.Info.Size))
+	modTs := time.UnixMilli(resp.Info.ModTs)
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "modts", modTs.Format(TsFormatStr)))
+	buf.WriteString(fmt.Sprintf("  %-15s %v\n", "isdir", resp.Info.IsDir))
+	modeStr := fs.FileMode(resp.Info.Perm).String()
+	if len(modeStr) > 9 {
+		modeStr = modeStr[len(modeStr)-9:]
+	}
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "perms", modeStr))
+	update := &sstore.ModelUpdate{
+		Info: &sstore.InfoMsgType{
+			InfoTitle: fmt.Sprintf("view stat %q", streamPk.Path),
+			InfoLines: splitLinesForInfo(buf.String()),
+		},
+	}
+	return update, nil
+}
+
+func ViewTestCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	if len(pk.Args) == 0 {
+		return nil, fmt.Errorf("/view:test requires an argument (file name)")
+	}
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
+	if err != nil {
+		return nil, err
+	}
+	streamPk, err := makeStreamFilePk(ids, pk)
+	if err != nil {
+		return nil, err
+	}
+	msh := ids.Remote.MShell
+	iter, err := msh.StreamFile(ctx, streamPk)
+	if err != nil {
+		return nil, fmt.Errorf("/view:test error: %v", err)
+	}
+	defer iter.Close()
+	respIf, err := iter.Next(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("/view:test error getting response: %v", err)
+	}
+	resp, ok := respIf.(*packet.StreamFileResponseType)
+	if !ok {
+		return nil, fmt.Errorf("/view:test error, bad response packet type: %T", respIf)
+	}
+	if resp.Error != "" {
+		return nil, fmt.Errorf("/view:test error: %s", resp.Error)
+	}
+	if resp.Info == nil {
+		return nil, fmt.Errorf("/view:test error, no file info")
+	}
+	var buf bytes.Buffer
+	var numPackets int
+	for {
+		dataPkIf, err := iter.Next(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("/view:test error while getting data: %w", err)
+		}
+		if dataPkIf == nil {
+			break
+		}
+		dataPk, ok := dataPkIf.(*packet.FileDataPacketType)
+		if !ok {
+			return nil, fmt.Errorf("/view:test invalid data packet type: %T", dataPkIf)
+		}
+		if dataPk.Error != "" {
+			return nil, fmt.Errorf("/view:test error returned while getting data: %s", dataPk.Error)
+		}
+		numPackets++
+		buf.Write(dataPk.Data)
+	}
+	buf.WriteString(fmt.Sprintf("\n\ntotal packets: %d\n", numPackets))
+	update := &sstore.ModelUpdate{
+		Info: &sstore.InfoMsgType{
+			InfoTitle: fmt.Sprintf("view file %q", streamPk.Path),
+			InfoLines: splitLinesForInfo(buf.String()),
+		},
+	}
+	return update, nil
+}
+
+func EditTestCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	if len(pk.Args) == 0 {
+		return nil, fmt.Errorf("/edit:test requires an argument (file name)")
+	}
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
+	if err != nil {
+		return nil, err
+	}
+	content, ok := pk.Kwargs["content"]
+	if !ok {
+		return nil, fmt.Errorf("/edit:test no content for file specified")
+	}
+	fileArg := pk.Args[0]
+	if fileArg == "" {
+		return nil, fmt.Errorf("/view:stat file argument must be set (cannot be empty)")
+	}
+	writePk := packet.MakeWriteFilePacket()
+	writePk.ReqId = uuid.New().String()
+	writePk.UseTemp = true
+	cwd := ids.Remote.FeState["cwd"]
+	if filepath.IsAbs(fileArg) {
+		writePk.Path = fileArg
+	} else {
+		writePk.Path = filepath.Join(cwd, fileArg)
+	}
+	msh := ids.Remote.MShell
+	iter, err := msh.PacketRpcIter(ctx, writePk)
+	if err != nil {
+		return nil, fmt.Errorf("/edit:test error: %v", err)
+	}
+	// first packet should be WriteFileReady
+	readyIf, err := iter.Next(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("/edit:test error while getting ready response: %w", err)
+	}
+	readyPk, ok := readyIf.(*packet.WriteFileReadyPacketType)
+	if !ok {
+		return nil, fmt.Errorf("/edit:test bad ready packet received: %T", readyIf)
+	}
+	if readyPk.Error != "" {
+		return nil, fmt.Errorf("/edit:test %s", readyPk.Error)
+	}
+	dataPk := packet.MakeFileDataPacket(writePk.ReqId)
+	dataPk.Data = []byte(content)
+	dataPk.Eof = true
+	err = msh.SendFileData(dataPk)
+	if err != nil {
+		return nil, fmt.Errorf("/edit:test error sending data packet: %v", err)
+	}
+	doneIf, err := iter.Next(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("/edit:test error while getting done response: %w", err)
+	}
+	donePk, ok := doneIf.(*packet.WriteFileDonePacketType)
+	if !ok {
+		return nil, fmt.Errorf("/edit:test bad done packet received: %T", doneIf)
+	}
+	if donePk.Error != "" {
+		return nil, fmt.Errorf("/edit:test %s", donePk.Error)
+	}
+	update := &sstore.ModelUpdate{
+		Info: &sstore.InfoMsgType{
+			InfoTitle: fmt.Sprintf("edit test, wrote %q", writePk.Path),
+		},
+	}
+	return update, nil
 }
 
 func SignalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {

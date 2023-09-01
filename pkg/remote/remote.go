@@ -1119,6 +1119,10 @@ func (msh *MShellProc) ReInit(ctx context.Context) (*packet.InitPacketType, erro
 	return initPk, nil
 }
 
+func (msh *MShellProc) StreamFile(ctx context.Context, streamPk *packet.StreamFilePacketType) (*packet.RpcResponseIter, error) {
+	return msh.PacketRpcIter(ctx, streamPk)
+}
+
 func addScVarsToState(state *packet.ShellState) *packet.ShellState {
 	if state == nil {
 		return nil
@@ -1374,6 +1378,13 @@ func (msh *MShellProc) SendSpecialInput(siPk *packet.SpecialInputPacketType) err
 	return msh.ServerProc.Input.SendPacket(siPk)
 }
 
+func (msh *MShellProc) SendFileData(dataPk *packet.FileDataPacketType) error {
+	if !msh.IsConnected() {
+		return fmt.Errorf("remote is not connected, cannot send input")
+	}
+	return msh.ServerProc.Input.SendPacket(dataPk)
+}
+
 func makeTermOpts(runPk *packet.RunPacketType) sstore.TermOpts {
 	return sstore.TermOpts{Rows: int64(runPk.TermOpts.Rows), Cols: int64(runPk.TermOpts.Cols), FlexRows: true, MaxPtySize: DefaultMaxPtySize}
 }
@@ -1577,9 +1588,25 @@ func (msh *MShellProc) RemoveRunningCmd(ck base.CommandKey) {
 	}
 }
 
+func (msh *MShellProc) PacketRpcIter(ctx context.Context, pk packet.RpcPacketType) (*packet.RpcResponseIter, error) {
+	if !msh.IsConnected() {
+		return nil, fmt.Errorf("remote is not connected")
+	}
+	if pk == nil {
+		return nil, fmt.Errorf("PacketRpc passed nil packet")
+	}
+	reqId := pk.GetReqId()
+	msh.ServerProc.Output.RegisterRpc(reqId)
+	err := msh.ServerProc.Input.SendPacketCtx(ctx, pk)
+	if err != nil {
+		return nil, err
+	}
+	return msh.ServerProc.Output.GetResponseIter(reqId), nil
+}
+
 func (msh *MShellProc) PacketRpcRaw(ctx context.Context, pk packet.RpcPacketType) (packet.RpcResponsePacketType, error) {
 	if !msh.IsConnected() {
-		return nil, fmt.Errorf("runner is not connected")
+		return nil, fmt.Errorf("remote is not connected")
 	}
 	if pk == nil {
 		return nil, fmt.Errorf("PacketRpc passed nil packet")
@@ -1812,6 +1839,7 @@ func (msh *MShellProc) ProcessPackets() {
 			go sendScreenUpdates(screens)
 		}
 	})
+	// TODO need to clean dataPosMap
 	dataPosMap := make(map[base.CommandKey]int64)
 	for pk := range msh.ServerProc.Output.MainCh {
 		if pk.GetType() == packet.DataPacketStr {

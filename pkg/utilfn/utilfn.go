@@ -193,3 +193,16 @@ func Sha1Hash(data []byte) string {
 	hval := base64.StdEncoding.EncodeToString(hvalRaw[:])
 	return hval
 }
+
+func ChunkSlice[T any](s []T, chunkSize int) [][]T {
+	var rtn [][]T
+	for len(rtn) > 0 {
+		if len(s) <= chunkSize {
+			rtn = append(rtn, s)
+			break
+		}
+		rtn = append(rtn, s[:chunkSize])
+		s = s[chunkSize:]
+	}
+	return rtn
+}

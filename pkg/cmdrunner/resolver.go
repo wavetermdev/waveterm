@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/commandlinedev/prompt-server/pkg/remote"
 	"github.com/commandlinedev/prompt-server/pkg/scpacket"
 	"github.com/commandlinedev/prompt-server/pkg/sstore"
+	"github.com/google/uuid"
 )
 
 const (
@@ -242,7 +242,7 @@ func resolveUiIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype i
 		if err != nil {
 			return rtn, fmt.Errorf("invalid resolved remote: %v", err)
 		}
-		rr, err := resolveRemoteFromPtr(ctx, rptr, rtn.SessionId, rtn.ScreenId)
+		rr, err := ResolveRemoteFromPtr(ctx, rptr, rtn.SessionId, rtn.ScreenId)
 		if err != nil {
 			return rtn, err
 		}
@@ -263,7 +263,7 @@ func resolveUiIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype i
 			if err != nil {
 				return rtn, fmt.Errorf("error trying to auto-connect remote [%s]: %w", rtn.Remote.DisplayName, err)
 			}
-			rrNew, err := resolveRemoteFromPtr(ctx, rptr, rtn.SessionId, rtn.ScreenId)
+			rrNew, err := ResolveRemoteFromPtr(ctx, rptr, rtn.SessionId, rtn.ScreenId)
 			if err != nil {
 				return rtn, err
 			}
@@ -450,7 +450,7 @@ func parseFullRemoteRef(fullRemoteRef string) (string, string, string, error) {
 	return fields[0], fields[1], fields[2], nil
 }
 
-func resolveRemoteFromPtr(ctx context.Context, rptr *sstore.RemotePtrType, sessionId string, screenId string) (*ResolvedRemote, error) {
+func ResolveRemoteFromPtr(ctx context.Context, rptr *sstore.RemotePtrType, sessionId string, screenId string) (*ResolvedRemote, error) {
 	if rptr == nil || rptr.RemoteId == "" {
 		return nil, nil
 	}
