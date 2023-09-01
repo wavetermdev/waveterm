@@ -176,6 +176,7 @@ class SimpleBlobRenderer extends React.Component<
         plugin: RendererPluginType;
         onHeightChange: () => void;
         initParams: RendererModelInitializeParams;
+        scrollToBringIntoViewport: () => void;
     },
     {}
 > {
@@ -262,17 +263,19 @@ class SimpleBlobRenderer extends React.Component<
             <div ref={this.wrapperDivRef}>(no component found in plugin)</div>;
         }
         let simpleModel = model as SimpleBlobRendererModel;
-        let { festate, cmdstr } = this.props.initParams.rawCmd;
+        let { festate, cmdstr, exitcode } = this.props.initParams.rawCmd;
         return (
             <div ref={this.wrapperDivRef}>
                 <Comp
                     cwd={festate.cwd}
                     cmdstr={cmdstr}
+                    exitcode={exitcode}
                     data={simpleModel.dataBlob}
                     lineState={simpleModel.lineState}
                     context={simpleModel.context}
                     opts={simpleModel.opts}
                     savedHeight={simpleModel.savedHeight}
+                    scrollToBringIntoViewport={this.props.scrollToBringIntoViewport}
                 />
             </div>
         );

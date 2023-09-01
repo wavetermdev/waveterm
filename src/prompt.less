@@ -239,12 +239,11 @@ input[type="checkbox"] {
     }
 
     .dropdown {
-        background: rgb(180, 180, 180);
+        background: #dbdbdb;
         color: black;
-        border-radius: 4px 4px 0 0;
+        border-radius: 6px 6px 0 0;
         font-size: 10px;
-        font-family: system-ui;
-        padding: 1px 0 3px 3px;
+        padding: 2px 0 5px 5px;
         outline: none;
     }
 }
@@ -253,6 +252,37 @@ input[type="checkbox"] {
     margin-top: 10px;
     .monaco-editor .monaco-editor-background {
         background-color: rgba(255, 255, 255, 0.075) !important;
+    }
+    .cmd-hints {
+        display: inline-block;
+        position: relative;
+        margin-right: 26px;
+    }
+    .hint-item {
+        border-radius: 4px 4px 0 0;
+        padding: 3px 9px 2px 8px;
+        line-height: 15px;
+        text-align: center;
+    }
+    section {
+        transition: height 0.3s ease-in-out;
+    }
+    .save-enabled {
+        color: white;
+        background-color: #4e9a06;
+    }
+    .save-disabled {
+        color: rgb(52, 52, 52);
+        background-color: #aaaea7;
+        cursor: default !important;
+    }
+    .error {
+        background-color: red;
+        color: white;
+        border-radius: 6px;
+        margin-bottom: 1rem;
+        padding: 4px 1rem;
+        max-width: 16rem;
     }
 }
 
