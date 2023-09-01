@@ -68,7 +68,6 @@ CREATE TABLE history (
     remoteid varchar(36) NOT NULL,
     remotename varchar(50) NOT NULL,
     haderror boolean NOT NULL,
-    cmdid varchar(36) NOT NULL,
     cmdstr text NOT NULL,
     ismetacmd boolean,
     incognito boolean
@@ -160,35 +159,12 @@ CREATE TABLE IF NOT EXISTS "line" (
     linetype varchar(10) NOT NULL,
     linelocal boolean NOT NULL,
     text text NOT NULL,
-    cmdid varchar(36) NOT NULL,
     ephemeral boolean NOT NULL,
     contentheight int NOT NULL,
     star int NOT NULL,
     archived boolean NOT NULL,
-    renderer varchar(50) NOT NULL,
+    renderer varchar(50) NOT NULL, linestate json NOT NULL DEFAULT '{}',
     PRIMARY KEY (screenid, lineid)
-);
-CREATE TABLE IF NOT EXISTS "cmd" (
-    screenid varchar(36) NOT NULL,
-    cmdid varchar(36) NOT NULL,
-    remoteownerid varchar(36) NOT NULL,
-    remoteid varchar(36) NOT NULL,
-    remotename varchar(50) NOT NULL,
-    cmdstr text NOT NULL,
-    rawcmdstr text NOT NULL,
-    festate json NOT NULL,
-    statebasehash varchar(36) NOT NULL,
-    statediffhasharr json NOT NULL,
-    termopts json NOT NULL,
-    origtermopts json NOT NULL,
-    status varchar(10) NOT NULL,
-    startpk json NOT NULL,
-    doneinfo json NOT NULL,
-    runout json NOT NULL,
-    rtnstate boolean NOT NULL,
-    rtnbasehash varchar(36) NOT NULL,
-    rtndiffhasharr json NOT NULL,
-    PRIMARY KEY (screenid, cmdid)
 );
 CREATE TABLE screenupdate (
     updateid integer PRIMARY KEY,
@@ -204,3 +180,40 @@ CREATE TABLE webptypos (
     PRIMARY KEY (screenid, lineid)
 );
 CREATE INDEX idx_screenupdate_ids ON screenupdate (screenid, lineid);
+CREATE TABLE cmd_migration (
+    screenid varchar(36) NOT NULL,
+    lineid varchar(36) NOT NULL,
+    cmdid varchar(36) NOT NULL,
+    PRIMARY KEY (screenid, lineid)
+);
+CREATE TABLE IF NOT EXISTS "cmd" (
+    screenid varchar(36) NOT NULL,
+    lineid varchar(36) NOT NULL,
+    remoteownerid varchar(36) NOT NULL,
+    remoteid varchar(36) NOT NULL,
+    remotename varchar(50) NOT NULL,
+    cmdstr text NOT NULL,
+    rawcmdstr text NOT NULL,
+    festate json NOT NULL,
+    statebasehash varchar(36) NOT NULL,
+    statediffhasharr json NOT NULL,
+    termopts json NOT NULL,
+    origtermopts json NOT NULL,
+    status varchar(10) NOT NULL,
+    cmdpid int NOT NULL,
+    remotepid int NOT NULL,
+    donets bigint NOT NULL,
+    exitcode int NOT NULL,
+    durationms int NOT NULL,
+    rtnstate boolean NOT NULL,
+    rtnbasehash varchar(36) NOT NULL,
+    rtndiffhasharr json NOT NULL,
+    runout json NOT NULL,
+    PRIMARY KEY (screenid, lineid)
+);
+CREATE TABLE cmd_migrate20 (
+    screenid varchar(36) NOT NULL,
+    lineid varchar(36) NOT NULL,
+    cmdid varchar(36) NOT NULL,
+    PRIMARY KEY (screenid, lineid)
+);

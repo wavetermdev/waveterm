@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"log"
@@ -23,6 +24,7 @@ import (
 	"github.com/commandlinedev/apishell/pkg/packet"
 	"github.com/commandlinedev/apishell/pkg/shexec"
 	"github.com/commandlinedev/prompt-server/pkg/comp"
+	"github.com/commandlinedev/prompt-server/pkg/dbutil"
 	"github.com/commandlinedev/prompt-server/pkg/pcloud"
 	"github.com/commandlinedev/prompt-server/pkg/remote"
 	"github.com/commandlinedev/prompt-server/pkg/remote/openai"
@@ -63,6 +65,7 @@ const TsFormatStr = "2006-01-02 15:04:05"
 const (
 	KwArgRenderer = "renderer"
 	KwArgView     = "view"
+	KwArgState    = "state"
 )
 
 var ColorNames = []string{"black", "red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
@@ -2604,8 +2607,23 @@ func LineSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		}
 		varsUpdated = append(varsUpdated, KwArgView)
 	}
+	if stateJson, found := pk.Kwargs[KwArgState]; found {
+		if len(stateJson) > sstore.MaxLineStateSize {
+			return nil, fmt.Errorf("invalid state value (too large), size[%d], max[%d]", len(stateJson), sstore.MaxLineStateSize)
+		}
+		var stateMap map[string]any
+		err = json.Unmarshal([]byte(stateJson), &stateMap)
+		if err != nil {
+			return nil, fmt.Errorf("invalid state value, cannot parse json: %v", err)
+		}
+		err = sstore.UpdateLineState(ctx, ids.ScreenId, lineId, stateMap)
+		if err != nil {
+			return nil, fmt.Errorf("cannot update linestate: %v", err)
+		}
+		varsUpdated = append(varsUpdated, KwArgState)
+	}
 	if len(varsUpdated) == 0 {
-		return nil, fmt.Errorf("/line:set requires a value to set: %s", formatStrs([]string{KwArgView}, "or", false))
+		return nil, fmt.Errorf("/line:set requires a value to set: %s", formatStrs([]string{KwArgView, KwArgState}, "or", false))
 	}
 	updatedLine, err := sstore.GetLineById(ctx, ids.ScreenId, lineId)
 	if err != nil {
@@ -2836,7 +2854,7 @@ func LineStarCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	if starVal > 5 {
 		return nil, fmt.Errorf("/line:star invalid star-value must be in the range of 0-5")
 	}
-	err = sstore.UpdateLineStar(ctx, lineId, starVal)
+	err = sstore.UpdateLineStar(ctx, ids.ScreenId, lineId, starVal)
 	if err != nil {
 		return nil, fmt.Errorf("/line:star error updating star value: %v", err)
 	}
@@ -2991,6 +3009,11 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 			buf.WriteString(fmt.Sprintf("  %-15s %dms\n", "duration", cmd.DurationMs))
 		}
 	}
+	stateStr := dbutil.QuickJson(line.LineState)
+	if len(stateStr) > 80 {
+		stateStr = stateStr[0:77] + "..."
+	}
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "state", stateStr))
 	update := &sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			InfoTitle: fmt.Sprintf("line %d info", line.LineNum),

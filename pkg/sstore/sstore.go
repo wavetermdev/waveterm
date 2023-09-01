@@ -34,6 +34,7 @@ const DBFileName = "prompt.db"
 const DBFileNameBackup = "backup.prompt.db"
 const MaxWebShareLineCount = 50
 const MaxWebShareScreenCount = 3
+const MaxLineStateSize = 4 * 1024 // 4k for now, can raise if needed
 
 const DefaultSessionName = "default"
 const LocalRemoteAlias = "local"
@@ -113,6 +114,7 @@ const (
 	UpdateType_LineDel            = "line:del"
 	UpdateType_LineRenderer       = "line:renderer"
 	UpdateType_LineContentHeight  = "line:contentheight"
+	UpdateType_LineState          = "line:state"
 	UpdateType_CmdStatus          = "cmd:status"
 	UpdateType_CmdTermOpts        = "cmd:termopts"
 	UpdateType_CmdExitCode        = "cmd:exitcode"
@@ -707,22 +709,25 @@ type ScreenUpdateType struct {
 func (ScreenUpdateType) UseDBMap() {}
 
 type LineType struct {
-	ScreenId      string `json:"screenid"`
-	UserId        string `json:"userid"`
-	LineId        string `json:"lineid"`
-	Ts            int64  `json:"ts"`
-	LineNum       int64  `json:"linenum"`
-	LineNumTemp   bool   `json:"linenumtemp,omitempty"`
-	LineLocal     bool   `json:"linelocal"`
-	LineType      string `json:"linetype"`
-	Renderer      string `json:"renderer,omitempty"`
-	Text          string `json:"text,omitempty"`
-	Ephemeral     bool   `json:"ephemeral,omitempty"`
-	ContentHeight int64  `json:"contentheight,omitempty"`
-	Star          bool   `json:"star,omitempty"`
-	Archived      bool   `json:"archived,omitempty"`
-	Remove        bool   `json:"remove,omitempty"`
+	ScreenId      string         `json:"screenid"`
+	UserId        string         `json:"userid"`
+	LineId        string         `json:"lineid"`
+	Ts            int64          `json:"ts"`
+	LineNum       int64          `json:"linenum"`
+	LineNumTemp   bool           `json:"linenumtemp,omitempty"`
+	LineLocal     bool           `json:"linelocal"`
+	LineType      string         `json:"linetype"`
+	LineState     map[string]any `json:"linestate"`
+	Renderer      string         `json:"renderer,omitempty"`
+	Text          string         `json:"text,omitempty"`
+	Ephemeral     bool           `json:"ephemeral,omitempty"`
+	ContentHeight int64          `json:"contentheight,omitempty"`
+	Star          bool           `json:"star,omitempty"`
+	Archived      bool           `json:"archived,omitempty"`
+	Remove        bool           `json:"remove,omitempty"`
 }
+
+func (LineType) UseDBMap() {}
 
 type OpenAIUsage struct {
 	PromptTokens     int `json:"prompt_tokens"`

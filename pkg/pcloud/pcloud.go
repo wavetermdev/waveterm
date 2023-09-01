@@ -339,6 +339,9 @@ func makeWebShareUpdate(ctx context.Context, update *sstore.ScreenUpdateType) (*
 			rtn.PtyData = &WebSharePtyData{PtyPos: realOffset, Data: data, Eof: true}
 		}
 
+	case sstore.UpdateType_LineState:
+		// TODO implement!
+
 	default:
 		return nil, fmt.Errorf("unsupported update type (pcloud/makeWebScreenUpdate): %s\n", update.UpdateType)
 	}

@@ -58,11 +58,11 @@ func GetMapGen[PT MapConverterPtr[T], T any](tx *txwrap.TxWrap, query string, ar
 }
 
 func GetMappable[PT DBMappablePtr[T], T any](tx *txwrap.TxWrap, query string, args ...interface{}) PT {
-	rtn := PT(new(T))
 	m := tx.GetMap(query, args...)
 	if len(m) == 0 {
 		return nil
 	}
+	rtn := PT(new(T))
 	FromDBMap(rtn, m)
 	return rtn
 }

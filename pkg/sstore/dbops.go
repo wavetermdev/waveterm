@@ -471,7 +471,7 @@ func GetScreenLinesById(ctx context.Context, screenId string) (*ScreenLinesType,
 			return nil, nil
 		}
 		query = `SELECT * FROM line WHERE screenid = ? ORDER BY linenum`
-		tx.Select(&screen.Lines, query, screen.ScreenId)
+		screen.Lines = dbutil.SelectMappable[*LineType](tx, query, screen.ScreenId)
 		query = `SELECT * FROM cmd WHERE screenid = ?`
 		screen.Cmds = dbutil.SelectMapsGen[*CmdType](tx, query, screen.ScreenId)
 		return screen, nil
@@ -761,16 +761,15 @@ func FindLineIdByArg(ctx context.Context, screenId string, lineArg string) (stri
 
 func GetLineCmdByLineId(ctx context.Context, screenId string, lineId string) (*LineType, *CmdType, error) {
 	return WithTxRtn3(ctx, func(tx *TxWrap) (*LineType, *CmdType, error) {
-		var lineVal LineType
 		query := `SELECT * FROM line WHERE screenid = ? AND lineid = ?`
-		found := tx.Get(&lineVal, query, screenId, lineId)
-		if !found {
+		lineVal := dbutil.GetMappable[*LineType](tx, query, screenId, lineId)
+		if lineVal == nil {
 			return nil, nil, nil
 		}
 		var cmdRtn *CmdType
 		query = `SELECT * FROM cmd WHERE screenid = ? AND lineid = ?`
 		cmdRtn = dbutil.GetMapGen[*CmdType](tx, query, screenId, lineId)
-		return &lineVal, cmdRtn, nil
+		return lineVal, cmdRtn, nil
 	})
 }
 
@@ -795,9 +794,9 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 		query = `SELECT nextlinenum FROM screen WHERE screenid = ?`
 		nextLineNum := tx.GetInt(query, line.ScreenId)
 		line.LineNum = int64(nextLineNum)
-		query = `INSERT INTO line  ( screenid, userid, lineid, ts, linenum, linenumtemp, linelocal, linetype, text, renderer, ephemeral, contentheight, star, archived)
-                            VALUES (:screenid,:userid,:lineid,:ts,:linenum,:linenumtemp,:linelocal,:linetype,:text,:renderer,:ephemeral,:contentheight,:star,:archived)`
-		tx.NamedExec(query, line)
+		query = `INSERT INTO line  ( screenid, userid, lineid, ts, linenum, linenumtemp, linelocal, linetype, linestate, text, renderer, ephemeral, contentheight, star, archived)
+                            VALUES (:screenid,:userid,:lineid,:ts,:linenum,:linenumtemp,:linelocal,:linetype,:linestate,:text,:renderer,:ephemeral,:contentheight,:star,:archived)`
+		tx.NamedExec(query, dbutil.ToDBMap(line, false))
 		query = `UPDATE screen SET nextlinenum = ? WHERE screenid = ?`
 		tx.Exec(query, nextLineNum+1, line.ScreenId)
 		if cmd != nil {
@@ -1889,10 +1888,10 @@ func GetFullState(ctx context.Context, ssPtr ShellStatePtr) (*packet.ShellState,
 	return state, nil
 }
 
-func UpdateLineStar(ctx context.Context, lineId string, starVal int) error {
+func UpdateLineStar(ctx context.Context, screenId string, lineId string, starVal int) error {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `UPDATE line SET star = ? WHERE lineid = ?`
-		tx.Exec(query, starVal, lineId)
+		query := `UPDATE line SET star = ? WHERE screenid = ? AND lineid = ?`
+		tx.Exec(query, starVal, screenId, lineId)
 		return nil
 	})
 	if txErr != nil {
@@ -1903,8 +1902,8 @@ func UpdateLineStar(ctx context.Context, lineId string, starVal int) error {
 
 func UpdateLineHeight(ctx context.Context, screenId string, lineId string, heightVal int) error {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `UPDATE line SET contentheight = ? WHERE lineid = ?`
-		tx.Exec(query, heightVal, lineId)
+		query := `UPDATE line SET contentheight = ? WHERE screenid = ? AND lineid = ?`
+		tx.Exec(query, heightVal, screenId, lineId)
 		if isWebShare(tx, screenId) {
 			insertScreenLineUpdate(tx, screenId, lineId, UpdateType_LineContentHeight)
 		}
@@ -1918,8 +1917,8 @@ func UpdateLineHeight(ctx context.Context, screenId string, lineId string, heigh
 
 func UpdateLineRenderer(ctx context.Context, screenId string, lineId string, renderer string) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
-		query := `UPDATE line SET renderer = ? WHERE lineid = ?`
-		tx.Exec(query, renderer, lineId)
+		query := `UPDATE line SET renderer = ? WHERE screenid = ? AND lineid = ?`
+		tx.Exec(query, renderer, screenId, lineId)
 		if isWebShare(tx, screenId) {
 			insertScreenLineUpdate(tx, screenId, lineId, UpdateType_LineRenderer)
 		}
@@ -1927,28 +1926,34 @@ func UpdateLineRenderer(ctx context.Context, screenId string, lineId string, ren
 	})
 }
 
-// can return nil, nil if line is not found
-func GetLineById(ctx context.Context, screenId string, lineId string) (*LineType, error) {
-	var rtn *LineType
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		var line LineType
-		query := `SELECT * FROM line WHERE screenid = ? AND lineid = ?`
-		found := tx.Get(&line, query, screenId, lineId)
-		if found {
-			rtn = &line
+func UpdateLineState(ctx context.Context, screenId string, lineId string, lineState map[string]any) error {
+	qjs := dbutil.QuickJson(lineState)
+	if len(qjs) > MaxLineStateSize {
+		return fmt.Errorf("linestate for line[%s:%s] exceeds maxsize, size[%d] max[%d]", screenId, lineId, len(qjs), MaxLineStateSize)
+	}
+	return WithTx(ctx, func(tx *TxWrap) error {
+		query := `UPDATE line SET linestate = ? WHERE screenid = ? AND lineid = ?`
+		tx.Exec(query, qjs, screenId, lineId)
+		if isWebShare(tx, screenId) {
+			insertScreenLineUpdate(tx, screenId, lineId, UpdateType_LineState)
 		}
 		return nil
 	})
-	if txErr != nil {
-		return nil, txErr
-	}
-	return rtn, nil
+}
+
+// can return nil, nil if line is not found
+func GetLineById(ctx context.Context, screenId string, lineId string) (*LineType, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (*LineType, error) {
+		query := `SELECT * FROM line WHERE screenid = ? AND lineid = ?`
+		line := dbutil.GetMappable[*LineType](tx, query, screenId, lineId)
+		return line, nil
+	})
 }
 
 func SetLineArchivedById(ctx context.Context, screenId string, lineId string, archived bool) error {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `UPDATE line SET archived = ? WHERE lineid = ?`
-		tx.Exec(query, archived, lineId)
+		query := `UPDATE line SET archived = ? WHERE screenid = ? AND lineid = ?`
+		tx.Exec(query, archived, screenId, lineId)
 		if isWebShare(tx, screenId) {
 			if archived {
 				insertScreenLineUpdate(tx, screenId, lineId, UpdateType_LineDel)
@@ -2395,10 +2400,9 @@ func GetLineCmdsFromHistoryItems(ctx context.Context, historyItems []*HistoryIte
 		return nil, nil, nil
 	}
 	return WithTxRtn3(ctx, func(tx *TxWrap) ([]*LineType, []*CmdType, error) {
-		var lineArr []*LineType
 		lineIdsJsonArr := quickJsonArr(getLineIdsFromHistoryItems(historyItems))
 		query := `SELECT * FROM line WHERE lineid IN (SELECT value FROM json_each(?))`
-		tx.Select(&lineArr, query, lineIdsJsonArr)
+		lineArr := dbutil.SelectMappable[*LineType](tx, query, lineIdsJsonArr)
 		query = `SELECT * FROM cmd WHERE lineid IN (SELECT value FROM json_each(?))`
 		cmdArr := dbutil.SelectMapsGen[*CmdType](tx, query, lineIdsJsonArr)
 		return lineArr, cmdArr, nil
