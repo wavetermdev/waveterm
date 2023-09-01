@@ -3608,7 +3608,7 @@ class Model {
         return remote.remotecanonicalname;
     }
 
-    readRemoteFile(screenId: string, lineId: string, path: string, opts?: { useTemp: boolean }): Promise<File> {
+    readRemoteFile(screenId: string, lineId: string, path: string): Promise<File> {
         let urlParams = {
             screenid: screenId,
             lineid: lineId,
@@ -3655,11 +3655,13 @@ class Model {
         return prtn;
     }
 
-    writeRemoteFile(screenId: string, lineId: string, path: string, data: Uint8Array) {
+    writeRemoteFile(screenId: string, lineId: string, path: string, data: Uint8Array, opts?: { useTemp?: boolean }) {
+        opts = opts || {};
         let params = {
             screenid: screenId,
             lineid: lineId,
             path: path,
+            usetemp: !!opts.useTemp,
         };
         let formData = new FormData();
         formData.append("params", JSON.stringify(params));
