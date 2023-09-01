@@ -1069,6 +1069,7 @@ func makeNewLineCmd(screenId string, userId string, lineId string, renderer stri
 	rtn.LineId = lineId
 	rtn.ContentHeight = LineNoHeight
 	rtn.Renderer = renderer
+	rtn.LineState = make(map[string]any)
 	return rtn
 }
 
@@ -1082,6 +1083,7 @@ func makeNewLineText(screenId string, userId string, text string) *LineType {
 	rtn.LineType = LineTypeText
 	rtn.Text = text
 	rtn.ContentHeight = LineNoHeight
+	rtn.LineState = make(map[string]any)
 	return rtn
 }
 
@@ -1095,6 +1097,7 @@ func makeNewLineOpenAI(screenId string, userId string, lineId string) *LineType 
 	rtn.LineType = LineTypeOpenAI
 	rtn.ContentHeight = LineNoHeight
 	rtn.Renderer = CmdRendererOpenAI
+	rtn.LineState = make(map[string]any)
 	return rtn
 }
 
