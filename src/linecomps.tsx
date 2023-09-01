@@ -600,7 +600,6 @@ class LineCmd extends React.Component<
     }
 
     scrollToBringIntoViewport = () => {
-        console.log(`here`);
         const container = document.getElementsByClassName("lines")[0];
         const targetDiv = this.lineRef.current;
         const targetPosition = targetDiv.getBoundingClientRect();

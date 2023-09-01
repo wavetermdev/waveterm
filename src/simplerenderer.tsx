@@ -200,12 +200,13 @@ class SimpleBlobRenderer extends React.Component<
         }
         let dataBlob = new Blob([model.ptyData.data]);
         let simpleModel = model as SimpleBlobRendererModel;
-        let { festate, cmdstr } = this.props.initParams.rawCmd;
+        let { festate, cmdstr, exitcode } = this.props.initParams.rawCmd;
         return (
             <div ref={this.wrapperDivRef}>
                 <Comp
                     cwd={festate.cwd}
                     cmdstr={cmdstr}
+                    exitcode={exitcode}
                     data={dataBlob}
                     context={simpleModel.context}
                     opts={simpleModel.opts}

@@ -241,7 +241,7 @@ input[type="checkbox"] {
     .dropdown {
         background: #dbdbdb;
         color: black;
-        border-radius: 4px 4px 0 0;
+        border-radius: 6px 6px 0 0;
         font-size: 10px;
         padding: 2px 0 5px 5px;
         outline: none;
@@ -266,6 +266,23 @@ input[type="checkbox"] {
     }
     section {
         transition: height 0.3s ease-in-out;
+    }
+    .save-enabled {
+        color: white;
+        background-color: #4e9a06;
+    }
+    .save-disabled {
+        color: rgb(52, 52, 52);
+        background-color: #aaaea7;
+        cursor: default !important;
+    }
+    .error {
+        background-color: red;
+        color: white;
+        border-radius: 6px;
+        margin-bottom: 1rem;
+        padding: 4px 1rem;
+        max-width: 16rem;
     }
 }
 
