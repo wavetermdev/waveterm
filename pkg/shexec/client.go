@@ -47,9 +47,9 @@ func MakeClientProc(ctx context.Context, ecmd *exec.Cmd) (*ClientProc, *packet.I
 		return nil, nil, fmt.Errorf("running local client: %w", err)
 	}
 	sender := packet.MakePacketSender(inputWriter, nil)
-	stdoutPacketParser := packet.MakePacketParser(stdoutReader)
-	stderrPacketParser := packet.MakePacketParser(stderrReader)
-	packetParser := packet.CombinePacketParsers(stdoutPacketParser, stderrPacketParser)
+	stdoutPacketParser := packet.MakePacketParser(stdoutReader, false)
+	stderrPacketParser := packet.MakePacketParser(stderrReader, false)
+	packetParser := packet.CombinePacketParsers(stdoutPacketParser, stderrPacketParser, true)
 	cproc := &ClientProc{
 		Cmd:          ecmd,
 		StartTs:      startTs,

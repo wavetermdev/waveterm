@@ -727,7 +727,7 @@ func RunInstallFromCmd(ctx context.Context, ecmd *exec.Cmd, tryDetect bool, mshe
 	if mshellStream != nil {
 		sendMShellBinary(inputWriter, mshellStream)
 	}
-	packetParser := packet.MakePacketParser(stdoutReader)
+	packetParser := packet.MakePacketParser(stdoutReader, false)
 	err = ecmd.Start()
 	if err != nil {
 		return fmt.Errorf("running ssh command: %w", err)
@@ -860,9 +860,9 @@ func RunClientSSHCommandAndWait(runPacket *packet.RunPacketType, fdContext FdCon
 		return nil, fmt.Errorf("running ssh command: %w", err)
 	}
 	defer cmd.Close()
-	stdoutPacketParser := packet.MakePacketParser(stdoutReader)
-	stderrPacketParser := packet.MakePacketParser(stderrReader)
-	packetParser := packet.CombinePacketParsers(stdoutPacketParser, stderrPacketParser)
+	stdoutPacketParser := packet.MakePacketParser(stdoutReader, false)
+	stderrPacketParser := packet.MakePacketParser(stderrReader, false)
+	packetParser := packet.CombinePacketParsers(stdoutPacketParser, stderrPacketParser, false)
 	sender := packet.MakePacketSender(inputWriter, nil)
 	versionOk := false
 	for pk := range packetParser.MainCh {

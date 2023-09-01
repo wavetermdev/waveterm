@@ -8,9 +8,12 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -22,22 +25,109 @@ import (
 	"github.com/commandlinedev/apishell/pkg/shexec"
 )
 
+const MaxFileDataPacketSize = 16 * 1024
+const WriteFileContextTimeout = 30 * time.Second
+const cleanLoopTime = 5 * time.Second
+const MaxWriteFileContextData = 100
+
 // TODO create unblockable packet-sender (backed by an array) for clientproc
 type MServer struct {
-	Lock             *sync.Mutex
-	MainInput        *packet.PacketParser
-	Sender           *packet.PacketSender
-	ClientMap        map[base.CommandKey]*shexec.ClientProc
-	Debug            bool
-	StateMap         map[string]*packet.ShellState // sha1->state
-	CurrentState     string                        // sha1
-	WriteErrorCh     chan bool                     // closed if there is a I/O write error
-	WriteErrorChOnce *sync.Once
+	Lock                *sync.Mutex
+	MainInput           *packet.PacketParser
+	Sender              *packet.PacketSender
+	ClientMap           map[base.CommandKey]*shexec.ClientProc
+	Debug               bool
+	StateMap            map[string]*packet.ShellState // sha1->state
+	CurrentState        string                        // sha1
+	WriteErrorCh        chan bool                     // closed if there is a I/O write error
+	WriteErrorChOnce    *sync.Once
+	WriteFileContextMap map[string]*WriteFileContext
+	Done                bool
+}
+
+type WriteFileContext struct {
+	CVar       *sync.Cond
+	Data       []*packet.FileDataPacketType
+	LastActive time.Time
+	Err        error
+	Done       bool
 }
 
 func (m *MServer) Close() {
 	m.Sender.Close()
 	m.Sender.WaitForDone()
+	m.Lock.Lock()
+	defer m.Lock.Unlock()
+	m.Done = true
+}
+
+func (m *MServer) checkDone() bool {
+	m.Lock.Lock()
+	defer m.Lock.Unlock()
+	return m.Done
+}
+
+func (m *MServer) getWriteFileContext(reqId string) *WriteFileContext {
+	m.Lock.Lock()
+	defer m.Lock.Unlock()
+	wfc := m.WriteFileContextMap[reqId]
+	if wfc == nil {
+		wfc = &WriteFileContext{
+			CVar:       sync.NewCond(&sync.Mutex{}),
+			LastActive: time.Now(),
+		}
+		m.WriteFileContextMap[reqId] = wfc
+	}
+	return wfc
+}
+
+func (m *MServer) addFileDataPacket(pk *packet.FileDataPacketType) {
+	m.Lock.Lock()
+	wfc := m.WriteFileContextMap[pk.RespId]
+	m.Lock.Unlock()
+	if wfc == nil {
+		return
+	}
+	wfc.CVar.L.Lock()
+	defer wfc.CVar.L.Unlock()
+	if wfc.Done || wfc.Err != nil {
+		return
+	}
+	if len(wfc.Data) > MaxWriteFileContextData {
+		wfc.Err = errors.New("write-file buffer length exceeded")
+		wfc.Data = nil
+		wfc.CVar.Broadcast()
+		return
+	}
+	wfc.LastActive = time.Now()
+	wfc.Data = append(wfc.Data, pk)
+	wfc.CVar.Signal()
+}
+
+func (wfc *WriteFileContext) setDone() {
+	wfc.CVar.L.Lock()
+	defer wfc.CVar.L.Unlock()
+	wfc.Done = true
+	wfc.Data = nil
+	wfc.CVar.Broadcast()
+}
+
+func (m *MServer) cleanWriteFileContexts() {
+	now := time.Now()
+	var staleWfcs []*WriteFileContext
+	m.Lock.Lock()
+	for reqId, wfc := range m.WriteFileContextMap {
+		if now.Sub(wfc.LastActive) > WriteFileContextTimeout {
+			staleWfcs = append(staleWfcs, wfc)
+			delete(m.WriteFileContextMap, reqId)
+		}
+	}
+	m.Lock.Unlock()
+
+	// we do this outside of m.Lock just in case there is some lock contention (end of WriteFile could theoretically be slow)
+	for _, wfc := range staleWfcs {
+		wfc.setDone()
+	}
 }
 
 func (m *MServer) ProcessCommandPacket(pk packet.CommandPacketType) {
@@ -164,6 +254,224 @@ func (m *MServer) reinit(reqId string) {
 	m.Sender.SendPacket(initPk)
 }
 
+func (m *MServer) writeFile(pk *packet.WriteFilePacketType, wfc *WriteFileContext) {
+	defer wfc.setDone()
+	if pk.Path == "" {
+		resp := packet.MakeWriteFileReadyPacket(pk.ReqId)
+		resp.Error = "invalid write-file request, no path specified"
+		m.Sender.SendPacket(resp)
+		return
+	}
+	finfo, err := os.Stat(pk.Path)
+	if err == nil && finfo.IsDir() {
+		err = fmt.Errorf("invalid path, cannot write a directory")
+	}
+	if err == nil {
+		writePerm := (finfo.Mode().Perm() & 0o222)
+		if writePerm == 0 {
+			err = fmt.Errorf("file is not writable, perms: %v", finfo.Mode().Perm())
+		}
+	}
+	if err != nil {
+		resp := packet.MakeWriteFileReadyPacket(pk.ReqId)
+		resp.Error = err.Error()
+		m.Sender.SendPacket(resp)
+		return
+	}
+
+	var writeFd *os.File
+	if pk.UseTemp {
+		dirName := filepath.Dir(pk.Path)
+		dirFInfo, err := os.Stat(dirName)
+		if err == nil {
+			writePerm := (dirFInfo.Mode().Perm() & 0o222)
+			if writePerm == 0 {
+				err = fmt.Errorf("file-write tempmode is set, but parent directory is not writeable, perms: %v", dirFInfo.Mode().Perm())
+			}
+		}
+		if err != nil {
+			resp := packet.MakeWriteFileReadyPacket(pk.ReqId)
+			resp.Error = err.Error()
+			m.Sender.SendPacket(resp)
+			return
+		}
+		baseName := filepath.Base(pk.Path)
+		writeFd, err = os.CreateTemp(dirName, baseName+".tmp.")
+		if err != nil {
+			resp := packet.MakeWriteFileReadyPacket(pk.ReqId)
+			resp.Error = fmt.Sprintf("write-file could not open tempfile: %v", err)
+			m.Sender.SendPacket(resp)
+			return
+		}
+	} else {
+		writeFd, err = os.OpenFile(pk.Path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o777) // use 777 because OpenFile respects umask
+		if err != nil {
+			resp := packet.MakeWriteFileReadyPacket(pk.ReqId)
+			resp.Error = fmt.Sprintf("write-file could not open file: %v", err)
+			m.Sender.SendPacket(resp)
+			return
+		}
+	}
+
+	// ok, so now writeFd is valid, send the "ready" response
+	resp := packet.MakeWriteFileReadyPacket(pk.ReqId)
+	m.Sender.SendPacket(resp)
+
+	// now we wait for data (cond var)
+	// this Unlock() runs first (because it is a later defer) so we can still run wfc.setDone() safely
+	wfc.CVar.L.Lock()
+	defer wfc.CVar.L.Unlock()
+	var doneErr error
+	for {
+		if wfc.Done {
+			break
+		}
+		if wfc.Err != nil {
+			doneErr = wfc.Err
+			break
+		}
+		if len(wfc.Data) == 0 {
+			wfc.CVar.Wait()
+			continue
+		}
+		dataPk := wfc.Data[0]
+		wfc.Data = wfc.Data[1:]
+		if dataPk.Error != "" {
+			doneErr = fmt.Errorf("error received from client: %v", errors.New(dataPk.Error))
+			break
+		}
+		if len(dataPk.Data) > 0 {
+			_, err := writeFd.Write(dataPk.Data)
+			if err != nil {
+				doneErr = fmt.Errorf("error writing data to file: %v", err)
+				break
+			}
+		}
+		if dataPk.Eof {
+			break
+		}
+	}
+	closeErr := writeFd.Close()
+	if doneErr == nil && closeErr != nil {
+		doneErr = fmt.Errorf("error closing file: %v", closeErr)
+	}
+	if pk.UseTemp {
+		if doneErr != nil {
+			os.Remove(writeFd.Name())
+		} else {
+			renameErr := os.Rename(writeFd.Name(), pk.Path)
+			if renameErr != nil {
+				doneErr = fmt.Errorf("error renaming temp file: %v", renameErr)
+				// rename failed, try to remove temp file still
+				os.Remove(writeFd.Name())
+			}
+		}
+	}
+	donePk := packet.MakeWriteFileDonePacket(pk.ReqId)
+	if doneErr != nil {
+		donePk.Error = doneErr.Error()
+	}
+	m.Sender.SendPacket(donePk)
+}
+
+func (m *MServer) streamFile(pk *packet.StreamFilePacketType) {
+	resp := packet.MakeStreamFileResponse(pk.ReqId)
+	finfo, err := os.Stat(pk.Path)
+	if err != nil {
+		resp.Error = fmt.Sprintf("cannot stat file %q: %v", pk.Path, err)
+		m.Sender.SendPacket(resp)
+		return
+	}
+	resp.Info = &packet.FileInfo{
+		Name:  pk.Path,
+		Size:  finfo.Size(),
+		ModTs: finfo.ModTime().UnixMilli(),
+		IsDir: finfo.IsDir(),
+		Perm:  int(finfo.Mode().Perm()),
+	}
+	if pk.StatOnly {
+		resp.Done = true
+		m.Sender.SendPacket(resp)
+		return
+	}
+	// like the http Range header.  range header is end inclusive.  for us, endByte is non-inclusive (so we add 1)
+	var startByte, endByte int64
+	if len(pk.ByteRange) == 0 {
+		endByte = finfo.Size()
+	} else if len(pk.ByteRange) == 1 && pk.ByteRange[0] >= 0 {
+		startByte = pk.ByteRange[0]
+		endByte = finfo.Size()
+	} else if len(pk.ByteRange) == 1 && pk.ByteRange[0] < 0 {
+		startByte = finfo.Size() + pk.ByteRange[0] // "+" since ByteRange[0] is less than 0
+		endByte = finfo.Size()
+	} else if len(pk.ByteRange) == 2 {
+		startByte = pk.ByteRange[0]
+		endByte = pk.ByteRange[1] + 1
+	} else {
+		resp.Error = fmt.Sprintf("invalid byte range (%d entries)", len(pk.ByteRange))
+		m.Sender.SendPacket(resp)
+		return
+	}
+	if startByte < 0 {
+		startByte = 0
+	}
+	if endByte > finfo.Size() {
+		endByte = finfo.Size()
+	}
+	if startByte >= endByte {
+		resp.Done = true
+		m.Sender.SendPacket(resp)
+		return
+	}
+	fd, err := os.Open(pk.Path)
+	if err != nil {
+		resp.Error = fmt.Sprintf("opening file: %v", err)
+		m.Sender.SendPacket(resp)
+		return
+	}
+	defer fd.Close()
+	m.Sender.SendPacket(resp)
+	var buffer [MaxFileDataPacketSize]byte
+	var sentDone bool
+	first := true
+	for ; startByte < endByte; startByte += MaxFileDataPacketSize {
+		if !first {
+			// throttle packet sending @ 1000 packets/s, or 16M/s
+			time.Sleep(1 * time.Millisecond)
+		}
+		first = false
+		readLen := int64Min(MaxFileDataPacketSize, endByte-startByte)
+		bufSlice := buffer[0:readLen]
+		nr, err := fd.ReadAt(bufSlice, startByte)
+		dataPk := packet.MakeFileDataPacket(pk.ReqId)
+		dataPk.Data = make([]byte, nr)
+		copy(dataPk.Data, bufSlice)
+		if err == io.EOF {
+			dataPk.Eof = true
+		} else if err != nil {
+			dataPk.Error = err.Error()
+		}
+		m.Sender.SendPacket(dataPk)
+		if dataPk.GetResponseDone() {
+			sentDone = true
+			break
+		}
+	}
+	if !sentDone {
+		dataPk := packet.MakeFileDataPacket(pk.ReqId)
+		dataPk.Eof = true
+		m.Sender.SendPacket(dataPk)
+	}
+	return
+}
+
+func int64Min(v1 int64, v2 int64) int64 {
+	if v1 < v2 {
+		return v1
+	}
+	return v2
+}
+
 func (m *MServer) ProcessRpcPacket(pk packet.RpcPacketType) {
 	reqId := pk.GetReqId()
 	if cdPk, ok := pk.(*packet.CdPacketType); ok {
@@ -181,6 +489,15 @@ func (m *MServer) ProcessRpcPacket(pk packet.RpcPacketType) {
 	}
 	if _, ok := pk.(*packet.ReInitPacketType); ok {
 		go m.reinit(reqId)
+		return
+	}
+	if streamPk, ok := pk.(*packet.StreamFilePacketType); ok {
+		go m.streamFile(streamPk)
+		return
+	}
+	if writePk, ok := pk.(*packet.WriteFilePacketType); ok {
+		wfc := m.getWriteFileContext(writePk.ReqId)
+		go m.writeFile(writePk, wfc)
 		return
 	}
 	m.Sender.SendErrorResponse(reqId, fmt.Errorf("invalid rpc type '%s'", pk.GetType()))
@@ -288,6 +605,10 @@ func (server *MServer) runReadLoop() {
 			server.ProcessRpcPacket(rpcPk)
 			continue
 		}
+		if fileDataPk, ok := pk.(*packet.FileDataPacketType); ok {
+			server.addFileDataPacket(fileDataPk)
+			continue
+		}
 		server.Sender.SendMessageFmt("invalid packet '%s' sent to mshell server", packet.AsString(pk))
 		continue
 	}
@@ -299,17 +620,27 @@ func RunServer() (int, error) {
 		debug = true
 	}
 	server := &MServer{
-		Lock:             &sync.Mutex{},
-		ClientMap:        make(map[base.CommandKey]*shexec.ClientProc),
-		StateMap:         make(map[string]*packet.ShellState),
-		Debug:            debug,
-		WriteErrorCh:     make(chan bool),
-		WriteErrorChOnce: &sync.Once{},
+		Lock:                &sync.Mutex{},
+		ClientMap:           make(map[base.CommandKey]*shexec.ClientProc),
+		StateMap:            make(map[string]*packet.ShellState),
+		Debug:               debug,
+		WriteErrorCh:        make(chan bool),
+		WriteErrorChOnce:    &sync.Once{},
+		WriteFileContextMap: make(map[string]*WriteFileContext),
 	}
+	go func() {
+		for {
+			if server.checkDone() {
+				return
+			}
+			time.Sleep(cleanLoopTime)
+			server.cleanWriteFileContexts()
+		}
+	}()
 	if debug {
 		packet.GlobalDebug = true
 	}
-	server.MainInput = packet.MakePacketParser(os.Stdin)
+	server.MainInput = packet.MakePacketParser(os.Stdin, false)
 	server.Sender = packet.MakePacketSender(os.Stdout, server.packetSenderErrorHandler)
 	defer server.Close()
 	var err error

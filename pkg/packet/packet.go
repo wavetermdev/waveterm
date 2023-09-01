@@ -26,33 +26,42 @@ import (
 // server          : <init, >run, >cmddata, >cmddone, <cmdstart, <>data, <>dataack, <cmddone
 //                   >cd, >getcmd, >untailcmd, >input, <resp
 // all             : <>error, <>message, <>ping, <raw
+//
+// >streamfile, <streamfileresp, <filedata*
+// >writefile, <writefileready, >filedata*, <writefiledone
 
 const MaxCompGenValues = 100
 
 var GlobalDebug = false
 
 const (
-	RunPacketStr          = "run" // rpc
-	PingPacketStr         = "ping"
-	InitPacketStr         = "init"
-	DataPacketStr         = "data"     // command
-	DataAckPacketStr      = "dataack"  // command
-	CmdStartPacketStr     = "cmdstart" // rpc-response
-	CmdDonePacketStr      = "cmddone"  // command
-	DataEndPacketStr      = "dataend"
-	ResponsePacketStr     = "resp" // rpc-response
-	DonePacketStr         = "done"
-	CmdErrorPacketStr     = "cmderror" // command
-	MessagePacketStr      = "message"
-	GetCmdPacketStr       = "getcmd"    // rpc
-	UntailCmdPacketStr    = "untailcmd" // rpc
-	CdPacketStr           = "cd"        // rpc
-	CmdDataPacketStr      = "cmddata"   // rpc-response
-	RawPacketStr          = "raw"
-	SpecialInputPacketStr = "sinput"   // command
-	CompGenPacketStr      = "compgen"  // rpc
-	ReInitPacketStr       = "reinit"   // rpc
-	CmdFinalPacketStr     = "cmdfinal" // command, pushed at the "end" of a command (fail-safe for no cmddone)
+	RunPacketStr            = "run" // rpc
+	PingPacketStr           = "ping"
+	InitPacketStr           = "init"
+	DataPacketStr           = "data"     // command
+	DataAckPacketStr        = "dataack"  // command
+	CmdStartPacketStr       = "cmdstart" // rpc-response
+	CmdDonePacketStr        = "cmddone"  // command
+	DataEndPacketStr        = "dataend"
+	ResponsePacketStr       = "resp" // rpc-response
+	DonePacketStr           = "done"
+	CmdErrorPacketStr       = "cmderror" // command
+	MessagePacketStr        = "message"
+	GetCmdPacketStr         = "getcmd"    // rpc
+	UntailCmdPacketStr      = "untailcmd" // rpc
+	CdPacketStr             = "cd"        // rpc
+	CmdDataPacketStr        = "cmddata"   // rpc-response
+	RawPacketStr            = "raw"
+	SpecialInputPacketStr   = "sinput"         // command
+	CompGenPacketStr        = "compgen"        // rpc
+	ReInitPacketStr         = "reinit"         // rpc
+	CmdFinalPacketStr       = "cmdfinal"       // command, pushed at the "end" of a command (fail-safe for no cmddone)
+	StreamFilePacketStr     = "streamfile"     // rpc
+	StreamFileResponseStr   = "streamfileresp" // rpc-response
+	WriteFilePacketStr      = "writefile"      // rpc
+	WriteFileReadyPacketStr = "writefileready" // rpc-response
+	WriteFileDonePacketStr  = "writefiledone"  // rpc-response
+	FileDataPacketStr       = "filedata"
 
 	OpenAIPacketStr = "openai" // other
 )
@@ -84,7 +93,13 @@ func init() {
 	TypeStrToFactory[CompGenPacketStr] = reflect.TypeOf(CompGenPacketType{})
 	TypeStrToFactory[ReInitPacketStr] = reflect.TypeOf(ReInitPacketType{})
 	TypeStrToFactory[CmdFinalPacketStr] = reflect.TypeOf(CmdFinalPacketType{})
+	TypeStrToFactory[StreamFilePacketStr] = reflect.TypeOf(StreamFilePacketType{})
+	TypeStrToFactory[StreamFileResponseStr] = reflect.TypeOf(StreamFileResponseType{})
 	TypeStrToFactory[OpenAIPacketStr] = reflect.TypeOf(OpenAIPacketType{})
+	TypeStrToFactory[FileDataPacketStr] = reflect.TypeOf(FileDataPacketType{})
+	TypeStrToFactory[WriteFilePacketStr] = reflect.TypeOf(WriteFilePacketType{})
+	TypeStrToFactory[WriteFileReadyPacketStr] = reflect.TypeOf(WriteFileReadyPacketType{})
+	TypeStrToFactory[WriteFileDonePacketStr] = reflect.TypeOf(WriteFileDonePacketType{})
 
 	var _ RpcPacketType = (*RunPacketType)(nil)
 	var _ RpcPacketType = (*GetCmdPacketType)(nil)
@@ -92,10 +107,16 @@ func init() {
 	var _ RpcPacketType = (*CdPacketType)(nil)
 	var _ RpcPacketType = (*CompGenPacketType)(nil)
 	var _ RpcPacketType = (*ReInitPacketType)(nil)
+	var _ RpcPacketType = (*StreamFilePacketType)(nil)
+	var _ RpcPacketType = (*WriteFilePacketType)(nil)
 
 	var _ RpcResponsePacketType = (*CmdStartPacketType)(nil)
 	var _ RpcResponsePacketType = (*ResponsePacketType)(nil)
 	var _ RpcResponsePacketType = (*CmdDataPacketType)(nil)
+	var _ RpcResponsePacketType = (*StreamFileResponseType)(nil)
+	var _ RpcResponsePacketType = (*FileDataPacketType)(nil)
+	var _ RpcResponsePacketType = (*WriteFileReadyPacketType)(nil)
+	var _ RpcResponsePacketType = (*WriteFileDonePacketType)(nil)
 
 	var _ CommandPacketType = (*DataPacketType)(nil)
 	var _ CommandPacketType = (*DataAckPacketType)(nil)
@@ -157,6 +178,33 @@ func (*PingPacketType) GetType() string {
 
 func MakePingPacket() *PingPacketType {
 	return &PingPacketType{Type: PingPacketStr}
+}
+
+type FileDataPacketType struct {
+	Type   string `json:"type"`
+	RespId string `json:"respid"`
+	Data   []byte `json:"data"`
+	Eof    bool   `json:"eof,omitempty"`
+	Error  string `json:"error,omitempty"`
+}
+
+func (*FileDataPacketType) GetType() string {
+	return FileDataPacketStr
+}
+
+func MakeFileDataPacket(reqId string) *FileDataPacketType {
+	return &FileDataPacketType{
+		Type:   FileDataPacketStr,
+		RespId: reqId,
+	}
+}
+
+func (p *FileDataPacketType) GetResponseId() string {
+	return p.RespId
+}
+
+func (p *FileDataPacketType) GetResponseDone() bool {
+	return p.Eof || p.Error != ""
 }
 
 type DataPacketType struct {
@@ -346,6 +394,61 @@ func (p *ReInitPacketType) GetReqId() string {
 
 func MakeReInitPacket() *ReInitPacketType {
 	return &ReInitPacketType{Type: ReInitPacketStr}
+}
+
+type StreamFilePacketType struct {
+	Type      string  `json:"type"`
+	ReqId     string  `json:"reqid"`
+	Path      string  `json:"path"`
+	ByteRange []int64 `json:"byterange"`          // works like the http "Range" header (multiple ranges are not allowed)
+	StatOnly  bool    `json:"statonly,omitempty"` // set if you just want the stat response (no data returned)
+}
+
+func (*StreamFilePacketType) GetType() string {
+	return StreamFilePacketStr
+}
+
+func (p *StreamFilePacketType) GetReqId() string {
+	return p.ReqId
+}
+
+func MakeStreamFilePacket() *StreamFilePacketType {
+	return &StreamFilePacketType{Type: StreamFilePacketStr}
+}
+
+type FileInfo struct {
+	Name  string `json:"name"`
+	Size  int64  `json:"size"`
+	ModTs int64  `json:"modts"`
+	IsDir bool   `json:"isdir,omitempty"`
+	Perm  int    `json:"perm"`
+}
+
+type StreamFileResponseType struct {
+	Type   string    `json:"type"`
+	RespId string    `json:"respid"`
+	Done   bool      `json:"done,omitempty"`
+	Info   *FileInfo `json:"info,omitempty"`
+	Error  string    `json:"error,omitempty"`
+}
+
+func (*StreamFileResponseType) GetType() string {
+	return StreamFileResponseStr
+}
+
+func (p *StreamFileResponseType) GetResponseId() string {
+	return p.RespId
+}
+
+func (p *StreamFileResponseType) GetResponseDone() bool {
+	return p.Done
+}
+
+func MakeStreamFileResponse(respId string) *StreamFileResponseType {
+	return &StreamFileResponseType{
+		Type:   StreamFileResponseStr,
+		RespId: respId,
+	}
 }
 
 type CompGenPacketType struct {
@@ -666,6 +769,75 @@ func (p *CmdErrorPacketType) String() string {
 
 func MakeCmdErrorPacket(ck base.CommandKey, err error) *CmdErrorPacketType {
 	return &CmdErrorPacketType{Type: CmdErrorPacketStr, CK: ck, Error: err.Error()}
+}
+
+type WriteFilePacketType struct {
+	Type    string `json:"type"`
+	ReqId   string `json:"reqid"`
+	UseTemp bool   `json:"usetemp,omitempty"`
+	Path    string `json:"path"`
+}
+
+func (*WriteFilePacketType) GetType() string {
+	return WriteFilePacketStr
+}
+
+func (p *WriteFilePacketType) GetReqId() string {
+	return p.ReqId
+}
+
+func MakeWriteFilePacket() *WriteFilePacketType {
+	return &WriteFilePacketType{Type: WriteFilePacketStr}
+}
+
+type WriteFileReadyPacketType struct {
+	Type   string `json:"type"`
+	RespId string `json:"reqid"`
+	Error  string `json:"error,omitempty"`
+}
+
+func (*WriteFileReadyPacketType) GetType() string {
+	return WriteFileReadyPacketStr
+}
+
+func (p *WriteFileReadyPacketType) GetResponseId() string {
+	return p.RespId
+}
+
+func (p *WriteFileReadyPacketType) GetResponseDone() bool {
+	return p.Error != ""
+}
+
+func MakeWriteFileReadyPacket(reqId string) *WriteFileReadyPacketType {
+	return &WriteFileReadyPacketType{
+		Type:   WriteFileReadyPacketStr,
+		RespId: reqId,
+	}
+}
+
+type WriteFileDonePacketType struct {
+	Type   string `json:"type"`
+	RespId string `json:"reqid"`
+	Error  string `json:"error,omitempty"`
+}
+
+func (*WriteFileDonePacketType) GetType() string {
+	return WriteFileDonePacketStr
+}
+
+func (p *WriteFileDonePacketType) GetResponseId() string {
+	return p.RespId
+}
+
+func (p *WriteFileDonePacketType) GetResponseDone() bool {
+	return true
+}
+
+func MakeWriteFileDonePacket(reqId string) *WriteFileDonePacketType {
+	return &WriteFileDonePacketType{
+		Type:   WriteFileDonePacketStr,
+		RespId: reqId,
+	}
 }
 
 type PacketType interface {

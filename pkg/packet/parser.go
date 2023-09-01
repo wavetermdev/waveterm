@@ -16,10 +16,11 @@ import (
 )
 
 type PacketParser struct {
-	Lock   *sync.Mutex
-	MainCh chan PacketType
-	RpcMap map[string]*RpcEntry
-	Err    error
+	Lock       *sync.Mutex
+	MainCh     chan PacketType
+	RpcMap     map[string]*RpcEntry
+	RpcHandler bool
+	Err        error
 }
 
 type RpcEntry struct {
@@ -27,20 +28,37 @@ type RpcEntry struct {
 	RespCh chan RpcResponsePacketType
 }
 
-func CombinePacketParsers(p1 *PacketParser, p2 *PacketParser) *PacketParser {
+type RpcResponseIter struct {
+	ReqId  string
+	Parser *PacketParser
+}
+
+func (iter *RpcResponseIter) Next(ctx context.Context) (RpcResponsePacketType, error) {
+	// will unregister the rpc on ResponseDone
+	return iter.Parser.GetNextResponse(ctx, iter.ReqId)
+}
+
+func (iter *RpcResponseIter) Close() {
+	iter.Parser.UnRegisterRpc(iter.ReqId)
+}
+
+func CombinePacketParsers(p1 *PacketParser, p2 *PacketParser, rpcHandler bool) *PacketParser {
 	rtnParser := &PacketParser{
-		Lock:   &sync.Mutex{},
-		MainCh: make(chan PacketType),
-		RpcMap: make(map[string]*RpcEntry),
+		Lock:       &sync.Mutex{},
+		MainCh:     make(chan PacketType),
+		RpcMap:     make(map[string]*RpcEntry),
+		RpcHandler: rpcHandler,
 	}
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
 		for pk := range p1.MainCh {
-			sent := rtnParser.trySendRpcResponse(pk)
-			if sent {
-				continue
+			if rtnParser.RpcHandler {
+				sent := rtnParser.trySendRpcResponse(pk)
+				if sent {
+					continue
+				}
 			}
 			rtnParser.MainCh <- pk
 		}
@@ -48,9 +66,11 @@ func CombinePacketParsers(p1 *PacketParser, p2 *PacketParser) *PacketParser {
 	go func() {
 		defer wg.Done()
 		for pk := range p2.MainCh {
-			sent := rtnParser.trySendRpcResponse(pk)
-			if sent {
-				continue
+			if rtnParser.RpcHandler {
+				sent := rtnParser.trySendRpcResponse(pk)
+				if sent {
+					continue
+				}
 			}
 			rtnParser.MainCh <- pk
 		}
@@ -74,6 +94,26 @@ func (p *PacketParser) WaitForResponse(ctx context.Context, reqId string) RpcRes
 		return resp
 	case <-ctx.Done():
 		return nil
+	}
+}
+
+func (p *PacketParser) GetResponseIter(reqId string) *RpcResponseIter {
+	return &RpcResponseIter{Parser: p, ReqId: reqId}
+}
+
+func (p *PacketParser) GetNextResponse(ctx context.Context, reqId string) (RpcResponsePacketType, error) {
+	entry := p.getRpcEntry(reqId)
+	if entry == nil {
+		return nil, nil
+	}
+	select {
+	case resp := <-entry.RespCh:
+		if resp.GetResponseDone() {
+			p.UnRegisterRpc(reqId)
+		}
+		return resp, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	}
 }
 
@@ -123,10 +163,6 @@ func (p *PacketParser) trySendRpcResponse(pk PacketType) bool {
 	case entry.RespCh <- respPk:
 	default:
 	}
-	if respPk.GetResponseDone() {
-		delete(p.RpcMap, respPk.GetResponseId())
-		close(entry.RespCh)
-	}
 	return true
 }
 
@@ -144,11 +180,12 @@ func (p *PacketParser) SetErr(err error) {
 	}
 }
 
-func MakePacketParser(input io.Reader) *PacketParser {
+func MakePacketParser(input io.Reader, rpcHandler bool) *PacketParser {
 	parser := &PacketParser{
-		Lock:   &sync.Mutex{},
-		MainCh: make(chan PacketType),
-		RpcMap: make(map[string]*RpcEntry),
+		Lock:       &sync.Mutex{},
+		MainCh:     make(chan PacketType),
+		RpcMap:     make(map[string]*RpcEntry),
+		RpcHandler: rpcHandler,
 	}
 	bufReader := bufio.NewReader(input)
 	go func() {
@@ -194,9 +231,11 @@ func MakePacketParser(input io.Reader) *PacketParser {
 			if pk.GetType() == PingPacketStr {
 				continue
 			}
-			sent := parser.trySendRpcResponse(pk)
-			if sent {
-				continue
+			if parser.RpcHandler {
+				sent := parser.trySendRpcResponse(pk)
+				if sent {
+					continue
+				}
 			}
 			parser.MainCh <- pk
 		}
