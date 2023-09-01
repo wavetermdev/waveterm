@@ -3979,6 +3979,22 @@ class CommandRunner {
     openSharedSession(): void {
         GlobalModel.submitCommand("session", "openshared", null, { nohist: "1" }, true);
     }
+
+    setLineState(
+        screenId: string,
+        lineId: string,
+        state: T.LineStateType,
+        interactive: boolean
+    ): Promise<CommandRtnType> {
+        let stateStr = JSON.stringify(state);
+        return GlobalModel.submitCommand(
+            "line",
+            "set",
+            [lineId],
+            { screen: screenId, nohist: "1", state: stateStr },
+            interactive
+        );
+    }
 }
 
 function cmdPacketString(pk: FeCmdPacketType): string {

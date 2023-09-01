@@ -23,6 +23,8 @@ type SessionDataType = {
     full?: boolean;
 };
 
+type LineStateType = { [k: string]: any };
+
 type LineType = {
     screenid: string;
     userid: string;
@@ -32,6 +34,7 @@ type LineType = {
     linenumtemp: boolean;
     linelocal: boolean;
     linetype: string;
+    linestate: LineStateType;
     text: string;
     renderer: string;
     contentheight?: number;
@@ -610,6 +613,7 @@ type FileInfoType = {
 
 export type {
     SessionDataType,
+    LineStateType,
     LineType,
     RemoteType,
     RemoteStateType,
