@@ -594,6 +594,7 @@ class LineCmd extends React.Component<
             savedHeight: savedHeight,
             opts: this.getRendererOpts(cmd),
             ptyDataSource: getTermPtyData,
+            lineState: line.linestate,
             api: api,
             rawCmd: cmd.getAsWebCmd(line.lineid),
         };

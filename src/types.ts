@@ -23,6 +23,8 @@ type SessionDataType = {
     full?: boolean;
 };
 
+type LineStateType = { [k: string]: any };
+
 type LineType = {
     screenid: string;
     userid: string;
@@ -32,6 +34,7 @@ type LineType = {
     linenumtemp: boolean;
     linelocal: boolean;
     linetype: string;
+    linestate: LineStateType;
     text: string;
     renderer: string;
     contentheight?: number;
@@ -390,6 +393,7 @@ type RendererModelInitializeParams = {
     rawCmd: WebCmd;
     savedHeight: number;
     opts: RendererOpts;
+    lineState: LineStateType,
     api: RendererModelContainerApi;
     ptyDataSource: (termContext: TermContextUnion) => Promise<PtyDataType>;
 };
@@ -600,8 +604,17 @@ type OpenAIPacketType = {
     error: string;
 };
 
+type FileInfoType = {
+    name: string;
+    size: number;
+    modts: number;
+    isdir: boolean;
+    perm: number;
+};
+
 export type {
     SessionDataType,
+    LineStateType,
     LineType,
     RemoteType,
     RemoteStateType,
@@ -667,4 +680,5 @@ export type {
     RemoteViewType,
     CommandRtnType,
     OpenAIPacketType,
+    FileInfoType,
 };

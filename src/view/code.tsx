@@ -1,4 +1,5 @@
 import * as React from "react";
+import { RendererContext, RendererOpts, LineStateType } from "../types";
 import Editor from "@monaco-editor/react";
 import { GlobalModel } from "../model";
 
@@ -12,6 +13,7 @@ class SourceCodeRenderer extends React.Component<
         opts: RendererOpts;
         savedHeight: number;
         scrollToBringIntoViewport: () => void;
+        lineState: LineStateType;
     },
     {}
 > {
