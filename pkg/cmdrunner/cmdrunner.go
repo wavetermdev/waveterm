@@ -217,6 +217,8 @@ func init() {
 	registerCmdFn("view:test", ViewTestCommand)
 
 	registerCmdFn("edit:test", EditTestCommand)
+
+	registerCmdFn("codeedit", CodeEditCommand)
 }
 
 func getValidCommands() []string {
@@ -3177,6 +3179,43 @@ func ViewTestCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 			InfoLines: splitLinesForInfo(buf.String()),
 		},
 	}
+	return update, nil
+}
+
+func CodeEditCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	if len(pk.Args) == 0 {
+		return nil, fmt.Errorf("/codeedit requires an argument (file name)")
+	}
+	// TODO more error checking on filename format?
+	if pk.Args[0] == "" {
+		return nil, fmt.Errorf("/codeedit argument cannot be empty")
+	}
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
+	if err != nil {
+		return nil, err
+	}
+	outputStr := fmt.Sprintf("codeedit %q", pk.Args[0])
+	cmd, err := makeStaticCmd(ctx, GetCmdStr(pk), ids, pk.GetRawStr(), []byte(outputStr))
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, err
+	}
+	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "code")
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, err
+	}
+	// set the line state
+	// TODO turn these strings into constants
+	lineState := make(map[string]any)
+	lineState["prompt:source"] = "file"
+	lineState["prompt:file"] = pk.Args[0]
+	err = sstore.UpdateLineState(ctx, ids.ScreenId, update.Line.LineId, lineState)
+	if err != nil {
+		return nil, fmt.Errorf("/codeedit error updating line state: %v", err)
+	}
+	update.Line.LineState = lineState
+	update.Interactive = pk.Interactive
 	return update, nil
 }
 
