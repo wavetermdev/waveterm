@@ -15,12 +15,14 @@ import type {
     PtyDataType,
     RendererModel,
     RendererOptsUpdate,
+    LineStateType,
     LineType,
     TermContextUnion,
     RendererContainerType,
 } from "./types";
 import { PacketDataBuffer } from "./ptydata";
 import { debounce, throttle } from "throttle-debounce";
+import * as util from "./util";
 
 type OV<V> = mobx.IObservableValue<V>;
 type CV<V> = mobx.IComputedValue<V>;
@@ -35,8 +37,11 @@ class SimpleBlobRendererModel {
     loadError: OV<string> = mobx.observable.box(null, {
         name: "renderer-loadError",
     });
+    lineState: LineStateType;
     ptyData: PtyDataType;
     ptyDataSource: (termContext: TermContextUnion) => Promise<PtyDataType>;
+    dataBlob: Blob;
+    readOnly: boolean;
 
     initialize(params: RendererModelInitializeParams): void {
         this.loading = mobx.observable.box(true, { name: "renderer-loading" });
@@ -46,6 +51,7 @@ class SimpleBlobRendererModel {
         this.context = params.context;
         this.opts = params.opts;
         this.api = params.api;
+        this.lineState = params.lineState;
         this.savedHeight = params.savedHeight;
         this.ptyDataSource = params.ptyDataSource;
         if (this.isDone.get()) {
@@ -86,21 +92,71 @@ class SimpleBlobRendererModel {
         mobx.action(() => {
             this.loading.set(true);
         })();
+        if (delayMs == 0) {
+            this.reload_noDelay();
+        }
+        else {
+            setTimeout(() => {
+                reload_noDelay();
+            }, delayMs);
+        }
+    }
+
+    reload_noDelay(): void {
+        let source = this.lineState["prompt:source"] || "pty";
+        if (source == "pty") {
+            this.reloadPtyData();
+        }
+        else if (source == "file") {
+            this.reloadFileData();
+        }
+        else {
+            mobx.action(() => {
+                this.loadError.set("error: invalid load source: " + source);
+            })();
+        }
+    }
+
+    reloadFileData(): void {
+        // todo add file methods to API, so we don't have a GlobalModel dependency here!
+        let path = this.lineState["prompt:file"];
+        if (util.isBlank(path)) {
+            mobx.action(() => {
+                this.loadError.set("renderer has file source, but no prompt:file specified");
+            })();
+            return;
+        }
+        let rtnp = GlobalModel.readRemoteFile(this.context.screenId, this.context.lineId, path);
+        rtnp.then((file) => {
+            this.readOnly = file.readOnly;
+            this.dataBlob = file;
+            console.log("got file", file);
+            mobx.action(() => {
+                this.loading.set(false);
+                this.loadError.set(null);
+            })();
+        }).catch((e) => {
+            mobx.action(() => {
+                this.loadError.set("error loading file data: " + e);
+            })();
+        });
+    }
+
+    reloadPtyData(): void {
+        this.readOnly = true;
         let rtnp = this.ptyDataSource(this.context);
         if (rtnp == null) {
             console.log("no promise returned from ptyDataSource (simplerenderer)", this.context);
             return;
         }
         rtnp.then((ptydata) => {
-            setTimeout(() => {
-                this.ptyData = ptydata;
-                mobx.action(() => {
-                    this.loading.set(false);
-                    this.loadError.set(null);
-                })();
-            }, delayMs);
+            this.ptyData = ptydata;
+            this.dataBlob = new Blob([this.ptyData.data]);
+            mobx.action(() => {
+                this.loading.set(false);
+                this.loadError.set(null);
+            })();
         }).catch((e) => {
-            console.log("error loading data", e);
             mobx.action(() => {
                 this.loadError.set("error loading data: " + e);
             })();
@@ -185,6 +241,14 @@ class SimpleBlobRenderer extends React.Component<
     render() {
         let { plugin } = this.props;
         let model = this.model;
+        if (model.loadError.get() != null) {
+            let height = this.model.savedHeight;
+            return (
+                <div ref={this.wrapperDivRef} style={{ minHeight: height }}>
+                    <div className="load-error-text">ERROR: {model.loadError.get()}</div>
+                </div>
+            );
+        }
         if (model.loading.get()) {
             let height = this.model.savedHeight;
             return (
@@ -197,7 +261,6 @@ class SimpleBlobRenderer extends React.Component<
         if (Comp == null) {
             <div ref={this.wrapperDivRef}>(no component found in plugin)</div>;
         }
-        let dataBlob = new Blob([model.ptyData.data]);
         let simpleModel = model as SimpleBlobRendererModel;
         let { festate, cmdstr } = this.props.initParams.rawCmd;
         return (
@@ -205,7 +268,8 @@ class SimpleBlobRenderer extends React.Component<
                 <Comp
                     cwd={festate.cwd}
                     cmdstr={cmdstr}
-                    data={dataBlob}
+                    data={simpleModel.dataBlob}
+                    lineState={simpleModel.lineState}
                     context={simpleModel.context}
                     opts={simpleModel.opts}
                     savedHeight={simpleModel.savedHeight}

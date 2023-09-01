@@ -393,6 +393,7 @@ type RendererModelInitializeParams = {
     rawCmd: WebCmd;
     savedHeight: number;
     opts: RendererOpts;
+    lineState: LineStateType,
     api: RendererModelContainerApi;
     ptyDataSource: (termContext: TermContextUnion) => Promise<PtyDataType>;
 };
