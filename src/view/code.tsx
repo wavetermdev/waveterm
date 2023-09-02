@@ -21,10 +21,6 @@ class SourceCodeRenderer extends React.Component<
     /**
      * codeCache is a Hashmap with key=screenId:lineId:filepath and value=code
      * Editor should never read the code directly from the filesystem. it should read from the cache.
-     * Upon loading a file (props.data contains the file-contents) FOR THE FIRST TIME,
-     * we will put it in the cache, and will update the contents of the cache upon every onChange().
-     * ALl this is to ensure that the file contents doesnt get reloaded when the line scrolls out of the viewport
-     * (and hence the react component gets destroyed)
      */
     static codeCache = new Map();
 
@@ -42,7 +38,7 @@ class SourceCodeRenderer extends React.Component<
             isFullWindow: false,
             isSave: false,
             editorHeight: props.savedHeight,
-            errorMessage: null,
+            message: null,
         };
     }
 
@@ -78,6 +74,12 @@ class SourceCodeRenderer extends React.Component<
             }
         }
         this.setEditorHeight();
+        editor.onKeyDown((e) => {
+            if (e.code === "KeyS" && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                this.doSave();
+            }
+        });
     };
 
     handleLanguageChange = (event) => {
@@ -106,11 +108,15 @@ class SourceCodeRenderer extends React.Component<
         GlobalModel.writeRemoteFile(screenId, lineId, this.filePath, encodedCode, { useTemp: true })
             .then(() => {
                 this.originalData = this.state.code;
-                this.setState({ isSave: false });
+                this.setState({
+                    isSave: false,
+                    message: { status: "success", text: `Saved to ${this.props.cwd}/${this.filePath}` },
+                });
+                setTimeout(() => this.setState({ message: null }), 3000);
             })
-            .catch(() => {
-                this.setState({ errorMessage: "File could not be saved" });
-                setTimeout(() => this.setState({ errorMessage: null }), 3000);
+            .catch((e) => {
+                this.setState({ message: { status: "error", text: e.message } });
+                setTimeout(() => this.setState({ message: null }), 3000);
             });
     };
 
@@ -167,6 +173,16 @@ class SourceCodeRenderer extends React.Component<
                             fontSize: GlobalModel.termFontSize.get(),
                             fontFamily: "JetBrains Mono",
                             readOnly: this.props.readOnly,
+                            keybindings: [
+                                {
+                                    key: "ctrl+s",
+                                    command: "-editor.action.filesave",
+                                },
+                                {
+                                    key: "cmd+s",
+                                    command: "-editor.action.filesave",
+                                },
+                            ],
                         }}
                         onChange={this.handleEditorChange}
                     />
@@ -200,13 +216,17 @@ class SourceCodeRenderer extends React.Component<
                         </div>
                     )}
                 </div>
-                {this.state.errorMessage && (
+                {this.state.message && (
                     <div style={{ position: "absolute", bottom: "-3px", left: "14px" }}>
                         <div
-                            className="error"
-                            style={{ fontSize: GlobalModel.termFontSize.get(), fontFamily: "JetBrains Mono" }}
+                            className="message"
+                            style={{
+                                fontSize: GlobalModel.termFontSize.get(),
+                                fontFamily: "JetBrains Mono",
+                                background: `${this.state.message.status === "error" ? "red" : "#4e9a06"}`,
+                            }}
                         >
-                            {this.state.errorMessage}
+                            {this.state.message.text}
                         </div>
                     </div>
                 )}
