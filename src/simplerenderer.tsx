@@ -269,6 +269,7 @@ class SimpleBlobRenderer extends React.Component<
                     cmdstr={cmdstr}
                     exitcode={exitcode}
                     data={simpleModel.dataBlob}
+                    readOnly={simpleModel.readOnly}
                     lineState={simpleModel.lineState}
                     context={simpleModel.context}
                     opts={simpleModel.opts}
