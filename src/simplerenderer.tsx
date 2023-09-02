@@ -94,8 +94,7 @@ class SimpleBlobRendererModel {
         })();
         if (delayMs == 0) {
             this.reload_noDelay();
-        }
-        else {
+        } else {
             setTimeout(() => {
                 reload_noDelay();
             }, delayMs);
@@ -106,11 +105,9 @@ class SimpleBlobRendererModel {
         let source = this.lineState["prompt:source"] || "pty";
         if (source == "pty") {
             this.reloadPtyData();
-        }
-        else if (source == "file") {
+        } else if (source == "file") {
             this.reloadFileData();
-        }
-        else {
+        } else {
             mobx.action(() => {
                 this.loadError.set("error: invalid load source: " + source);
             })();
@@ -271,6 +268,7 @@ class SimpleBlobRenderer extends React.Component<
                     cmdstr={cmdstr}
                     exitcode={exitcode}
                     data={simpleModel.dataBlob}
+                    readOnly={simpleModel.readOnly}
                     lineState={simpleModel.lineState}
                     context={simpleModel.context}
                     opts={simpleModel.opts}

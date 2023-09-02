@@ -6,9 +6,10 @@ import { GlobalModel } from "../model";
 class SourceCodeRenderer extends React.Component<
     {
         data: Blob;
-        cmdstr: String;
-        cwd: String;
-        exitcode: Number;
+        cmdstr: string;
+        cwd: string;
+        readOnly: boolean;
+        exitcode: number;
         context: RendererContext;
         opts: RendererOpts;
         savedHeight: number;
@@ -18,7 +19,7 @@ class SourceCodeRenderer extends React.Component<
     {}
 > {
     /**
-     * codeCache is a Hashmap with key=filepath and value=code
+     * codeCache is a Hashmap with key=screenId:lineId:filepath and value=code
      * Editor should never read the code directly from the filesystem. it should read from the cache.
      * Upon loading a file (props.data contains the file-contents) FOR THE FIRST TIME,
      * we will put it in the cache, and will update the contents of the cache upon every onChange().
@@ -28,6 +29,8 @@ class SourceCodeRenderer extends React.Component<
     static codeCache = new Map();
 
     filePath;
+    cacheKey;
+    originalData;
     constructor(props) {
         super(props);
         this.editorRef = React.createRef();
@@ -44,21 +47,23 @@ class SourceCodeRenderer extends React.Component<
     }
 
     componentDidMount(): void {
-        // DANGEROUS ... I AM ASSUMING THE COMMAND IS IN FORMAT cat prompt_samples/sample.java
-        // filePath should be saved in the new lineOpts field that Mike is working on :)
-        this.filePath = `${this.props.cwd}/${this.props.cmdstr.split(" ")[1]}`;
-        const code = SourceCodeRenderer.codeCache.get(this.filePath);
+        this.filePath = this.props.lineState["prompt:file"];
+        const { screenId, lineId } = this.props.context;
+        this.cacheKey = `${screenId}-${lineId}-${this.filePath}`;
+        const code = SourceCodeRenderer.codeCache.get(this.cacheKey);
         if (code) {
             this.setState({ code });
         } else
             this.props.data.text().then((code) => {
+                this.originalData = code;
                 this.setState({ code });
-                SourceCodeRenderer.codeCache.set(this.filePath, code);
+                SourceCodeRenderer.codeCache.set(this.cacheKey, code);
             });
     }
 
     handleEditorDidMount = (editor, monaco) => {
-        const extension = this.props.cmdstr.match(/(?:[^\\\/:*?"<>|\r\n]+\.)([a-zA-Z0-9]+)\b/)?.[1] || "";
+        const extension =
+            (this.filePath && this.filePath.match(/(?:[^\\\/:*?"<>|\r\n]+\.)([a-zA-Z0-9]+)\b/)?.[1]) || "";
         const detectedLanguage = monaco.languages
             .getLanguages()
             .find((lang) => lang.extensions?.includes("." + extension));
@@ -95,17 +100,23 @@ class SourceCodeRenderer extends React.Component<
     };
 
     doSave = () => {
-        // call the function that would save the file to filesystem. would likely be async
-        // as a result of the save operation, the entire component should get reloaded (** HOW **)
-        // once its reloaded, this.props.data.text() should contain the latest code
-        // in which case, the cache will get refilled and we can consider the transaction "committed"
-        this.setState({ errorMessage: "File could not be saved" });
-        setTimeout(() => this.setState({ errorMessage: null }), 3000);
+        const { screenId, lineId } = this.props.context;
+        const encodedCode = new TextEncoder().encode(this.state.code);
+        debugger;
+        GlobalModel.writeRemoteFile(screenId, lineId, this.filePath, encodedCode, { useTemp: true })
+            .then(() => {
+                this.originalData = this.state.code;
+                this.setState({ isSave: false });
+            })
+            .catch(() => {
+                this.setState({ errorMessage: "File could not be saved" });
+                setTimeout(() => this.setState({ errorMessage: null }), 3000);
+            });
     };
 
     handleEditorChange = (code) => {
         this.setState({ isFullWindow: true, code });
-        SourceCodeRenderer.codeCache.set(this.filePath, code);
+        SourceCodeRenderer.codeCache.set(this.cacheKey, code);
         this.setEditorHeight();
         setTimeout(() => this.props.scrollToBringIntoViewport(), 350);
         this.props.data.text().then((originalCode) => this.setState({ isSave: code !== originalCode }));
@@ -155,7 +166,7 @@ class SourceCodeRenderer extends React.Component<
                             scrollBeyondLastLine: false,
                             fontSize: GlobalModel.termFontSize.get(),
                             fontFamily: "JetBrains Mono",
-                            readOnly: this.props.opts.readOnly,
+                            readOnly: this.props.readOnly,
                         }}
                         onChange={this.handleEditorChange}
                     />
