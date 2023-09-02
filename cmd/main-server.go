@@ -402,14 +402,20 @@ func HandleWriteFile(w http.ResponseWriter, r *http.Request) {
 		WriteJsonError(w, fmt.Errorf("invalid line, cannot resolve remote"))
 		return
 	}
+	rrState := msh.GetRemoteRuntimeState()
+	fullPath, err := rrState.ExpandHomeDir(params.Path)
+	if err != nil {
+		WriteJsonError(w, fmt.Errorf("error expanding homedir: %v", err))
+		return
+	}
 	cwd := cmd.FeState["cwd"]
 	writePk := packet.MakeWriteFilePacket()
 	writePk.ReqId = uuid.New().String()
 	writePk.UseTemp = params.UseTemp
-	if filepath.IsAbs(params.Path) {
-		writePk.Path = params.Path
+	if filepath.IsAbs(fullPath) {
+		writePk.Path = fullPath
 	} else {
-		writePk.Path = filepath.Join(cwd, params.Path)
+		writePk.Path = filepath.Join(cwd, fullPath)
 	}
 	iter, err := msh.PacketRpcIter(r.Context(), writePk)
 	if err != nil {
@@ -524,19 +530,25 @@ func HandleReadFile(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("invalid line, no remote")))
 		return
 	}
-	streamPk := packet.MakeStreamFilePacket()
-	streamPk.ReqId = uuid.New().String()
-	cwd := cmd.FeState["cwd"]
-	if filepath.IsAbs(path) {
-		streamPk.Path = path
-	} else {
-		streamPk.Path = filepath.Join(cwd, path)
-	}
 	msh := remote.GetRemoteById(cmd.Remote.RemoteId)
 	if msh == nil {
 		w.WriteHeader(500)
 		w.Write([]byte(fmt.Sprintf("invalid line, cannot resolve remote")))
 		return
+	}
+	rrState := msh.GetRemoteRuntimeState()
+	fullPath, err := rrState.ExpandHomeDir(path)
+	if err != nil {
+		WriteJsonError(w, fmt.Errorf("error expanding homedir: %v", err))
+		return
+	}
+	streamPk := packet.MakeStreamFilePacket()
+	streamPk.ReqId = uuid.New().String()
+	cwd := cmd.FeState["cwd"]
+	if filepath.IsAbs(fullPath) {
+		streamPk.Path = fullPath
+	} else {
+		streamPk.Path = filepath.Join(cwd, fullPath)
 	}
 	iter, err := msh.StreamFile(r.Context(), streamPk)
 	if err != nil {
