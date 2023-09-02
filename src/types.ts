@@ -393,7 +393,7 @@ type RendererModelInitializeParams = {
     rawCmd: WebCmd;
     savedHeight: number;
     opts: RendererOpts;
-    lineState: LineStateType,
+    lineState: LineStateType;
     api: RendererModelContainerApi;
     ptyDataSource: (termContext: TermContextUnion) => Promise<PtyDataType>;
 };
@@ -410,7 +410,7 @@ type RendererModel = {
 };
 
 type SimpleBlobRendererComponent = React.ComponentType<{
-    path: String;
+    path: string;
     data: Blob;
     context: RendererContext;
     opts: RendererOpts;

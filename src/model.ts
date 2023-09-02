@@ -3655,7 +3655,13 @@ class Model {
         return prtn;
     }
 
-    writeRemoteFile(screenId: string, lineId: string, path: string, data: Uint8Array, opts?: { useTemp?: boolean }) {
+    writeRemoteFile(
+        screenId: string,
+        lineId: string,
+        path: string,
+        data: Uint8Array,
+        opts?: { useTemp?: boolean }
+    ): Promise<void> {
         opts = opts || {};
         let params = {
             screenid: screenId,
@@ -3670,7 +3676,11 @@ class Model {
         let url = new URL(GlobalModel.getBaseHostPort() + "/api/write-file");
         let fetchHeaders = this.getFetchHeaders();
         let prtn = fetch(url, { method: "post", headers: fetchHeaders, body: formData });
-        return prtn;
+        return prtn
+            .then((resp) => handleJsonFetchResponse(url, resp))
+            .then((data) => {
+                return;
+            });
     }
 }
 
