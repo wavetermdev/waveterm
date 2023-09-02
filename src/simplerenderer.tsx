@@ -23,6 +23,7 @@ import type {
 import { PacketDataBuffer } from "./ptydata";
 import { debounce, throttle } from "throttle-debounce";
 import * as util from "./util";
+import { GlobalModel } from "./model";
 
 type OV<V> = mobx.IObservableValue<V>;
 type CV<V> = mobx.IComputedValue<V>;
