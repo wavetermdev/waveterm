@@ -58,8 +58,9 @@ class SourceCodeRenderer extends React.Component<
     }
 
     handleEditorDidMount = (editor, monaco) => {
-        const extension =
-            (this.filePath && this.filePath.match(/(?:[^\\\/:*?"<>|\r\n]+\.)([a-zA-Z0-9]+)\b/)?.[1]) || "";
+        // we try to grab the filename from with filePath (coming from lineState["prompt:file"]) or cmdstr
+        const strForFilePath = this.filePath || this.props.cmdstr;
+        const extension = strForFilePath.match(/(?:[^\\\/:*?"<>|\r\n]+\.)([a-zA-Z0-9]+)\b/)?.[1] || "";
         const detectedLanguage = monaco.languages
             .getLanguages()
             .find((lang) => lang.extensions?.includes("." + extension));
@@ -96,9 +97,8 @@ class SourceCodeRenderer extends React.Component<
 
     toggleFit = () => {
         const isFullWindow = !this.state.isFullWindow;
-        this.setState({ isFullWindow });
-        this.setEditorHeight();
-        setTimeout(() => this.props.scrollToBringIntoViewport(), 350);
+        this.setState({ isFullWindow }, () => this.setEditorHeight());
+        setTimeout(() => this.props.scrollToBringIntoViewport(), 300);
     };
 
     doSave = () => {
@@ -121,11 +121,12 @@ class SourceCodeRenderer extends React.Component<
     };
 
     handleEditorChange = (code) => {
-        this.setState({ isFullWindow: true, code });
         SourceCodeRenderer.codeCache.set(this.cacheKey, code);
-        this.setEditorHeight();
-        setTimeout(() => this.props.scrollToBringIntoViewport(), 350);
-        this.props.data.text().then((originalCode) => this.setState({ isSave: code !== originalCode }));
+        this.setState({ isFullWindow: true, code }, () => {
+            this.setEditorHeight();
+            this.props.data.text().then((originalCode) => this.setState({ isSave: code !== originalCode }));
+        });
+        setTimeout(() => this.props.scrollToBringIntoViewport(), 300);
     };
 
     setEditorHeight = () => {
@@ -140,7 +141,7 @@ class SourceCodeRenderer extends React.Component<
 
     render() {
         const { opts, exitcode } = this.props;
-        const { lang, code, isSave } = this.state;
+        const { lang, code, isSave, isFullWindow } = this.state;
 
         if (!code)
             return <div className="renderer-container code-renderer" style={{ height: this.props.savedHeight }} />;
@@ -201,8 +202,11 @@ class SourceCodeRenderer extends React.Component<
                         ))}
                     </select>
                     <div className="cmd-hints" style={{ minWidth: "6rem", maxWidth: "6rem" }}>
-                        <div onClick={this.toggleFit} className="hint-item color-white">
-                            {this.state.isFullWindow ? `shrink` : `expand`}
+                        <div
+                            onClick={() => !isSave && this.toggleFit()}
+                            className={`hint-item color-white ${isSave ? "save-disabled" : ""}`}
+                        >
+                            {isFullWindow ? `shrink` : `expand`}
                         </div>
                     </div>
                     {!this.props.opts.readOnly && (
