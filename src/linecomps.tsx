@@ -600,31 +600,34 @@ class LineCmd extends React.Component<
         };
     }
 
-    scrollToBringIntoViewport = () => {
+    scrollToBringIntoViewport = (delay = 1) => {
         const container = document.getElementsByClassName("lines")[0];
         const targetDiv = this.lineRef.current;
         const targetPosition = targetDiv.getBoundingClientRect();
         const containerPosition = container.getBoundingClientRect();
 
-        // Check if the top of the targetDiv is above the container's visible area
-        if (targetPosition.top < containerPosition.top) {
-            // Scroll up to make the top of the targetDiv visible
-            const scrollAmount = container.scrollTop + targetPosition.top - containerPosition.top;
-            container.scrollTo({
-                top: scrollAmount,
-                behavior: "smooth",
-            });
-        }
-        // Check if the bottom of the targetDiv is below the container's visible area
-        else if (targetPosition.bottom > containerPosition.bottom) {
-            // Scroll down to make the bottom of the targetDiv visible
-            const scrollAmount = container.scrollTop + targetPosition.bottom - containerPosition.bottom;
-            container.scrollTo({
-                top: scrollAmount,
-                behavior: "smooth",
-            });
-        }
-        // If both conditions are false, then targetDiv is already fully visible, no scrolling needed
+        setTimeout(() => doScroll(), delay);
+        const doScroll = () => {
+            // Check if the top of the targetDiv is above the container's visible area
+            if (targetPosition.top < containerPosition.top) {
+                // Scroll up to make the top of the targetDiv visible
+                const scrollAmount = container.scrollTop + targetPosition.top - containerPosition.top;
+                container.scrollTo({
+                    top: scrollAmount,
+                    behavior: "smooth",
+                });
+            }
+            // Check if the bottom of the targetDiv is below the container's visible area
+            else if (targetPosition.bottom > containerPosition.bottom) {
+                // Scroll down to make the bottom of the targetDiv visible
+                const scrollAmount = container.scrollTop + targetPosition.bottom - containerPosition.bottom;
+                container.scrollTo({
+                    top: scrollAmount,
+                    behavior: "smooth",
+                });
+            }
+            // If both conditions are false, then targetDiv is already fully visible, no scrolling needed
+        };
     };
 
     render() {

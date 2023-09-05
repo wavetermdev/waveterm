@@ -3,12 +3,15 @@ import { RendererContext, RendererOpts, LineStateType } from "../types";
 import Editor from "@monaco-editor/react";
 import { GlobalModel } from "../model";
 
+function renderCmdText(text: string): any {
+    return <span>&#x2318;{text}</span>;
+}
+
 class SourceCodeRenderer extends React.Component<
     {
         data: Blob;
         cmdstr: string;
         cwd: string;
-        readOnly: boolean;
         exitcode: number;
         context: RendererContext;
         opts: RendererOpts;
@@ -35,7 +38,6 @@ class SourceCodeRenderer extends React.Component<
             language: "",
             languages: [],
             selectedLanguage: "",
-            isFullWindow: false,
             isSave: false,
             editorHeight: props.savedHeight,
             message: null,
@@ -43,6 +45,7 @@ class SourceCodeRenderer extends React.Component<
     }
 
     componentDidMount(): void {
+        console.dir(this.props);
         this.filePath = this.props.lineState["prompt:file"];
         const { screenId, lineId } = this.props.context;
         this.cacheKey = `${screenId}-${lineId}-${this.filePath}`;
@@ -95,12 +98,6 @@ class SourceCodeRenderer extends React.Component<
         }
     };
 
-    toggleFit = () => {
-        const isFullWindow = !this.state.isFullWindow;
-        this.setState({ isFullWindow }, () => this.setEditorHeight());
-        setTimeout(() => this.props.scrollToBringIntoViewport(), 300);
-    };
-
     doSave = () => {
         const { screenId, lineId } = this.props.context;
         const encodedCode = new TextEncoder().encode(this.state.code);
@@ -122,26 +119,25 @@ class SourceCodeRenderer extends React.Component<
 
     handleEditorChange = (code) => {
         SourceCodeRenderer.codeCache.set(this.cacheKey, code);
-        this.setState({ isFullWindow: true, code }, () => {
+        this.setState({ code }, () => {
             this.setEditorHeight();
             this.props.data.text().then((originalCode) => this.setState({ isSave: code !== originalCode }));
         });
-        setTimeout(() => this.props.scrollToBringIntoViewport(), 300);
     };
 
     setEditorHeight = () => {
         const fullWindowHeight = parseInt(this.props.opts.maxSize.height);
         let _editorHeight = fullWindowHeight;
-        if (!this.state.isFullWindow) {
+        if (this.props.readOnly) {
             const noOfLines = this.state.code.split("\n").length;
             _editorHeight = Math.min(noOfLines * GlobalModel.termFontSize.get() * 1.5 + 10, fullWindowHeight);
         }
-        this.setState({ editorHeight: _editorHeight });
+        this.setState({ editorHeight: _editorHeight }, () => this.props.scrollToBringIntoViewport());
     };
 
     render() {
         const { opts, exitcode } = this.props;
-        const { lang, code, isSave, isFullWindow } = this.state;
+        const { lang, code, isSave } = this.state;
 
         if (!code)
             return <div className="renderer-container code-renderer" style={{ height: this.props.savedHeight }} />;
@@ -193,7 +189,7 @@ class SourceCodeRenderer extends React.Component<
                         className="dropdown"
                         value={this.state.selectedLanguage}
                         onChange={this.handleLanguageChange}
-                        style={{ minWidth: "6rem", maxWidth: "6rem", marginRight: "8px" }}
+                        style={{ minWidth: "6rem", maxWidth: "6rem", marginRight: "26px" }}
                     >
                         {this.state.languages.map((lang, index) => (
                             <option key={index} value={lang}>
@@ -201,21 +197,13 @@ class SourceCodeRenderer extends React.Component<
                             </option>
                         ))}
                     </select>
-                    <div className="cmd-hints" style={{ minWidth: "6rem", maxWidth: "6rem" }}>
-                        <div
-                            onClick={() => !isSave && this.toggleFit()}
-                            className={`hint-item color-white ${isSave ? "save-disabled" : ""}`}
-                        >
-                            {isFullWindow ? `shrink` : `expand`}
-                        </div>
-                    </div>
-                    {!this.props.opts.readOnly && (
+                    {!this.props.readOnly && (
                         <div className="cmd-hints" style={{ minWidth: "6rem", maxWidth: "6rem", marginLeft: "-18px" }}>
                             <div
                                 onClick={this.doSave}
                                 className={`hint-item ${isSave ? "save-enabled" : "save-disabled"}`}
                             >
-                                {"save"}
+                                {`save`} {renderCmdText("S")}
                             </div>
                         </div>
                     )}
