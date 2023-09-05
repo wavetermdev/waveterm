@@ -3,12 +3,15 @@ import { RendererContext, RendererOpts, LineStateType } from "../types";
 import Editor from "@monaco-editor/react";
 import { GlobalModel } from "../model";
 
+function renderCmdText(text: string): any {
+    return <span>&#x2318;{text}</span>;
+}
+
 class SourceCodeRenderer extends React.Component<
     {
         data: Blob;
         cmdstr: string;
         cwd: string;
-        readOnly: boolean;
         exitcode: number;
         context: RendererContext;
         opts: RendererOpts;
@@ -35,7 +38,6 @@ class SourceCodeRenderer extends React.Component<
             language: "",
             languages: [],
             selectedLanguage: "",
-            isFullWindow: false,
             isSave: false,
             editorHeight: props.savedHeight,
             message: null,
@@ -43,6 +45,7 @@ class SourceCodeRenderer extends React.Component<
     }
 
     componentDidMount(): void {
+        console.dir(this.props);
         this.filePath = this.props.lineState["prompt:file"];
         const { screenId, lineId } = this.props.context;
         this.cacheKey = `${screenId}-${lineId}-${this.filePath}`;
@@ -58,8 +61,9 @@ class SourceCodeRenderer extends React.Component<
     }
 
     handleEditorDidMount = (editor, monaco) => {
-        const extension =
-            (this.filePath && this.filePath.match(/(?:[^\\\/:*?"<>|\r\n]+\.)([a-zA-Z0-9]+)\b/)?.[1]) || "";
+        // we try to grab the filename from with filePath (coming from lineState["prompt:file"]) or cmdstr
+        const strForFilePath = this.filePath || this.props.cmdstr;
+        const extension = strForFilePath.match(/(?:[^\\\/:*?"<>|\r\n]+\.)([a-zA-Z0-9]+)\b/)?.[1] || "";
         const detectedLanguage = monaco.languages
             .getLanguages()
             .find((lang) => lang.extensions?.includes("." + extension));
@@ -94,13 +98,6 @@ class SourceCodeRenderer extends React.Component<
         }
     };
 
-    toggleFit = () => {
-        const isFullWindow = !this.state.isFullWindow;
-        this.setState({ isFullWindow });
-        this.setEditorHeight();
-        setTimeout(() => this.props.scrollToBringIntoViewport(), 350);
-    };
-
     doSave = () => {
         const { screenId, lineId } = this.props.context;
         const encodedCode = new TextEncoder().encode(this.state.code);
@@ -121,21 +118,21 @@ class SourceCodeRenderer extends React.Component<
     };
 
     handleEditorChange = (code) => {
-        this.setState({ isFullWindow: true, code });
         SourceCodeRenderer.codeCache.set(this.cacheKey, code);
-        this.setEditorHeight();
-        setTimeout(() => this.props.scrollToBringIntoViewport(), 350);
-        this.props.data.text().then((originalCode) => this.setState({ isSave: code !== originalCode }));
+        this.setState({ code }, () => {
+            this.setEditorHeight();
+            this.props.data.text().then((originalCode) => this.setState({ isSave: code !== originalCode }));
+        });
     };
 
     setEditorHeight = () => {
         const fullWindowHeight = parseInt(this.props.opts.maxSize.height);
         let _editorHeight = fullWindowHeight;
-        if (!this.state.isFullWindow) {
+        if (this.props.readOnly) {
             const noOfLines = this.state.code.split("\n").length;
             _editorHeight = Math.min(noOfLines * GlobalModel.termFontSize.get() * 1.5 + 10, fullWindowHeight);
         }
-        this.setState({ editorHeight: _editorHeight });
+        this.setState({ editorHeight: _editorHeight }, () => this.props.scrollToBringIntoViewport());
     };
 
     render() {
@@ -192,7 +189,7 @@ class SourceCodeRenderer extends React.Component<
                         className="dropdown"
                         value={this.state.selectedLanguage}
                         onChange={this.handleLanguageChange}
-                        style={{ minWidth: "6rem", maxWidth: "6rem", marginRight: "8px" }}
+                        style={{ minWidth: "6rem", maxWidth: "6rem", marginRight: "26px" }}
                     >
                         {this.state.languages.map((lang, index) => (
                             <option key={index} value={lang}>
@@ -200,18 +197,13 @@ class SourceCodeRenderer extends React.Component<
                             </option>
                         ))}
                     </select>
-                    <div className="cmd-hints" style={{ minWidth: "6rem", maxWidth: "6rem" }}>
-                        <div onClick={this.toggleFit} className="hint-item color-white">
-                            {this.state.isFullWindow ? `shrink` : `expand`}
-                        </div>
-                    </div>
-                    {!this.props.opts.readOnly && (
+                    {!this.props.readOnly && (
                         <div className="cmd-hints" style={{ minWidth: "6rem", maxWidth: "6rem", marginLeft: "-18px" }}>
                             <div
                                 onClick={this.doSave}
                                 className={`hint-item ${isSave ? "save-enabled" : "save-disabled"}`}
                             >
-                                {"save"}
+                                {`save`} {renderCmdText("S")}
                             </div>
                         </div>
                     )}

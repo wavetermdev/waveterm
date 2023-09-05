@@ -128,7 +128,6 @@ class SimpleBlobRendererModel {
         rtnp.then((file) => {
             this.readOnly = file.readOnly;
             this.dataBlob = file;
-            console.log("got file", file);
             mobx.action(() => {
                 this.loading.set(false);
                 this.loadError.set(null);
