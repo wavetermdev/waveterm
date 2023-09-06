@@ -68,7 +68,6 @@ class SourceCodeRenderer extends React.Component<
         let detectedLanguage = this.props.lineState["prompt:lang"];
         // if not found, we try to grab the filename from with filePath (coming from lineState["prompt:file"]) or cmdstr
         if (!detectedLanguage) {
-            debugger;
             const strForFilePath = this.filePath || this.props.cmdstr;
             const extension = strForFilePath.match(/(?:[^\\\/:*?"<>|\r\n]+\.)([a-zA-Z0-9]+)\b/)?.[1] || "";
             const detectedLanguageObj = monaco.languages
