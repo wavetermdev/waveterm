@@ -35,7 +35,6 @@ class SourceCodeRenderer extends React.Component<
         this.editorRef = React.createRef();
         this.state = {
             code: null,
-            language: "",
             languages: [],
             selectedLanguage: "",
             isSave: false,
@@ -60,23 +59,43 @@ class SourceCodeRenderer extends React.Component<
             });
     }
 
-    handleEditorDidMount = (editor, monaco) => {
-        // we try to grab the filename from with filePath (coming from lineState["prompt:file"]) or cmdstr
-        const strForFilePath = this.filePath || this.props.cmdstr;
-        const extension = strForFilePath.match(/(?:[^\\\/:*?"<>|\r\n]+\.)([a-zA-Z0-9]+)\b/)?.[1] || "";
-        const detectedLanguage = monaco.languages
-            .getLanguages()
-            .find((lang) => lang.extensions?.includes("." + extension));
+    setInitialLanguage = (editor) => {
+        const { screenId, lineId } = this.props.context;
+        // set all languages
         const languages = monaco.languages.getLanguages().map((lang) => lang.id);
         this.setState({ languages });
+        // detect the current language from previous settings
+        let detectedLanguage = this.props.lineState["prompt:lang"];
+        // if not found, we try to grab the filename from with filePath (coming from lineState["prompt:file"]) or cmdstr
+        if (!detectedLanguage) {
+            debugger;
+            const strForFilePath = this.filePath || this.props.cmdstr;
+            const extension = strForFilePath.match(/(?:[^\\\/:*?"<>|\r\n]+\.)([a-zA-Z0-9]+)\b/)?.[1] || "";
+            const detectedLanguageObj = monaco.languages
+                .getLanguages()
+                .find((lang) => lang.extensions?.includes("." + extension));
+            if (detectedLanguageObj) {
+                detectedLanguage = detectedLanguageObj.id;
+                GlobalCommandRunner.setLineState(
+                    screenId,
+                    lineId,
+                    { ...this.props.lineState, "prompt:lang": detectedLanguage },
+                    false
+                );
+            }
+        }
         if (detectedLanguage) {
             this.editorRef.current = editor;
             const model = editor.getModel();
             if (model) {
-                monaco.editor.setModelLanguage(model, detectedLanguage.id);
-                this.setState({ selectedLanguage: detectedLanguage.id, language: detectedLanguage.id });
+                monaco.editor.setModelLanguage(model, detectedLanguage);
+                this.setState({ selectedLanguage: detectedLanguage });
             }
         }
+    };
+
+    handleEditorDidMount = (editor, monaco) => {
+        this.setInitialLanguage(editor);
         this.setEditorHeight();
         editor.onKeyDown((e) => {
             if (e.code === "KeyS" && (e.ctrlKey || e.metaKey) && this.state.isSave) {
@@ -91,13 +110,22 @@ class SourceCodeRenderer extends React.Component<
     };
 
     handleLanguageChange = (event) => {
+        const { screenId, lineId } = this.props.context;
         const selectedLanguage = event.target.value;
         this.setState({ selectedLanguage });
         if (this.editorRef.current) {
             const model = this.editorRef.current.getModel();
             if (model) {
                 monaco.editor.setModelLanguage(model, selectedLanguage);
-                this.setState({ language: selectedLanguage });
+                GlobalCommandRunner.setLineState(
+                    screenId,
+                    lineId,
+                    {
+                        ...this.props.lineState,
+                        "prompt:lang": selectedLanguage,
+                    },
+                    false
+                );
             }
         }
     };
@@ -166,7 +194,7 @@ class SourceCodeRenderer extends React.Component<
 
     render() {
         const { opts, exitcode, readOnly } = this.props;
-        const { lang, code, isSave, isClosed } = this.state;
+        const { language, code, isSave, isClosed } = this.state;
 
         if (code == null)
             return <div className="renderer-container code-renderer" style={{ height: this.props.savedHeight }} />;
@@ -191,7 +219,7 @@ class SourceCodeRenderer extends React.Component<
                     <Editor
                         theme="hc-black"
                         height={this.state.editorHeight}
-                        defaultLanguage={lang}
+                        defaultLanguage={language}
                         defaultValue={code}
                         onMount={this.handleEditorDidMount}
                         options={{
