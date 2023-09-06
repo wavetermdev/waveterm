@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -254,6 +255,23 @@ func (m *MServer) reinit(reqId string) {
 	m.Sender.SendPacket(initPk)
 }
 
+func makeTemp(path string, mode fs.FileMode) (*os.File, error) {
+	dirName := filepath.Dir(path)
+	baseName := filepath.Base(path)
+	baseTempName := baseName + ".tmp."
+	writeFd, err := os.CreateTemp(dirName, baseTempName)
+	if err != nil {
+		return nil, err
+	}
+	err = writeFd.Chmod(mode)
+	if err != nil {
+		writeFd.Close()
+		os.Remove(writeFd.Name())
+		return nil, fmt.Errorf("error setting tempfile permissions: %w", err)
+	}
+	return writeFd, nil
+}
+
 func (m *MServer) writeFile(pk *packet.WriteFilePacketType, wfc *WriteFileContext) {
 	defer wfc.setDone()
 	if pk.Path == "" {
@@ -262,9 +280,21 @@ func (m *MServer) writeFile(pk *packet.WriteFilePacketType, wfc *WriteFileContex
 		m.Sender.SendPacket(resp)
 		return
 	}
-	finfo, err := os.Stat(pk.Path)
+	var finfo fs.FileInfo
+	var err error
+	if pk.UseTemp {
+		finfo, err = os.Lstat(pk.Path)
+	} else {
+		finfo, err = os.Stat(pk.Path)
+	}
 	if err == nil && finfo.IsDir() {
 		err = fmt.Errorf("invalid path, cannot write a directory")
+	}
+	if err == nil && ((finfo.Mode() & fs.ModeSymlink) != 0) {
+		err = fmt.Errorf("writefile (with usetemp) does not support symlinks")
+	}
+	if err == nil && ((finfo.Mode() & (fs.ModeNamedPipe | fs.ModeSocket | fs.ModeDevice | fs.ModeSetuid | fs.ModeSetgid)) != 0) {
+		err = fmt.Errorf("writefile does not support special files (named pipes, sockets, devices, setuid, or setgid): mode=%v", finfo.Mode())
 	}
 	if err == nil {
 		writePerm := (finfo.Mode().Perm() & 0o222)
@@ -295,8 +325,7 @@ func (m *MServer) writeFile(pk *packet.WriteFilePacketType, wfc *WriteFileContex
 			m.Sender.SendPacket(resp)
 			return
 		}
-		baseName := filepath.Base(pk.Path)
-		writeFd, err = os.CreateTemp(dirName, baseName+".tmp.")
+		writeFd, err = makeTemp(pk.Path, finfo.Mode().Perm())
 		if err != nil {
 			resp := packet.MakeWriteFileReadyPacket(pk.ReqId)
 			resp.Error = fmt.Sprintf("write-file could not open tempfile: %v", err)
