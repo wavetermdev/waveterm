@@ -1,7 +1,7 @@
 import * as React from "react";
 import { RendererContext, RendererOpts, LineStateType } from "../types";
 import Editor from "@monaco-editor/react";
-import { GlobalModel } from "../model";
+import { GlobalModel, GlobalCommandRunner } from "../model";
 
 function renderCmdText(text: string): any {
     return <span>&#x2318;{text}</span>;
@@ -34,28 +34,28 @@ class SourceCodeRenderer extends React.Component<
         super(props);
         this.editorRef = React.createRef();
         this.state = {
-            code: "",
+            code: null,
             language: "",
             languages: [],
             selectedLanguage: "",
             isSave: false,
+            isClosed: false,
             editorHeight: props.savedHeight,
             message: null,
         };
     }
 
     componentDidMount(): void {
-        console.dir(this.props);
         this.filePath = this.props.lineState["prompt:file"];
         const { screenId, lineId } = this.props.context;
         this.cacheKey = `${screenId}-${lineId}-${this.filePath}`;
         const code = SourceCodeRenderer.codeCache.get(this.cacheKey);
         if (code) {
-            this.setState({ code });
+            this.setState({ code, isClosed: this.props.lineState["prompt:closed"] });
         } else
             this.props.data.text().then((code) => {
                 this.originalData = code;
-                this.setState({ code });
+                this.setState({ code, isClosed: this.props.lineState["prompt:closed"] });
                 SourceCodeRenderer.codeCache.set(this.cacheKey, code);
             });
     }
@@ -79,9 +79,13 @@ class SourceCodeRenderer extends React.Component<
         }
         this.setEditorHeight();
         editor.onKeyDown((e) => {
-            if (e.code === "KeyS" && (e.ctrlKey || e.metaKey)) {
+            if (e.code === "KeyS" && (e.ctrlKey || e.metaKey) && this.state.isSave) {
                 e.preventDefault();
                 this.doSave();
+            }
+            if (e.code === "KeyD" && (e.ctrlKey || e.metaKey) && !this.state.isSave) {
+                e.preventDefault();
+                this.doClose();
             }
         });
     };
@@ -99,9 +103,9 @@ class SourceCodeRenderer extends React.Component<
     };
 
     doSave = () => {
+        if (!this.state.isSave) return;
         const { screenId, lineId } = this.props.context;
         const encodedCode = new TextEncoder().encode(this.state.code);
-        debugger;
         GlobalModel.writeRemoteFile(screenId, lineId, this.filePath, encodedCode, { useTemp: true })
             .then(() => {
                 this.originalData = this.state.code;
@@ -117,6 +121,31 @@ class SourceCodeRenderer extends React.Component<
             });
     };
 
+    doClose = () => {
+        if (this.state.isSave) return;
+        const { screenId, lineId } = this.props.context;
+        GlobalCommandRunner.setLineState(screenId, lineId, { ...this.props.lineState, "prompt:closed": true }, false)
+            .then(() => {
+                this.setState({
+                    isClosed: true,
+                    message: { status: "success", text: `Closed. This editor is now read-only` },
+                });
+                setTimeout(() => {
+                    this.setEditorHeight();
+                }, 100);
+                setTimeout(() => {
+                    this.setState({ message: null });
+                }, 3000);
+            })
+            .catch((e) => {
+                this.setState({ message: { status: "error", text: e.message } });
+
+                setTimeout(() => {
+                    this.setState({ message: null });
+                }, 3000);
+            });
+    };
+
     handleEditorChange = (code) => {
         SourceCodeRenderer.codeCache.set(this.cacheKey, code);
         this.setState({ code }, () => {
@@ -128,18 +157,18 @@ class SourceCodeRenderer extends React.Component<
     setEditorHeight = () => {
         const fullWindowHeight = parseInt(this.props.opts.maxSize.height);
         let _editorHeight = fullWindowHeight;
-        if (this.props.readOnly) {
-            const noOfLines = this.state.code.split("\n").length;
+        if (this.props.readOnly || this.state.isClosed) {
+            const noOfLines = Math.max(this.state.code.split("\n").length, 5);
             _editorHeight = Math.min(noOfLines * GlobalModel.termFontSize.get() * 1.5 + 10, fullWindowHeight);
         }
         this.setState({ editorHeight: _editorHeight }, () => this.props.scrollToBringIntoViewport());
     };
 
     render() {
-        const { opts, exitcode } = this.props;
-        const { lang, code, isSave } = this.state;
+        const { opts, exitcode, readOnly } = this.props;
+        const { lang, code, isSave, isClosed } = this.state;
 
-        if (!code)
+        if (code == null)
             return <div className="renderer-container code-renderer" style={{ height: this.props.savedHeight }} />;
 
         if (exitcode === 1)
@@ -169,7 +198,7 @@ class SourceCodeRenderer extends React.Component<
                             scrollBeyondLastLine: false,
                             fontSize: GlobalModel.termFontSize.get(),
                             fontFamily: "JetBrains Mono",
-                            readOnly: this.props.readOnly,
+                            readOnly: readOnly || isClosed,
                             keybindings: [
                                 {
                                     key: "ctrl+s",
@@ -197,13 +226,27 @@ class SourceCodeRenderer extends React.Component<
                             </option>
                         ))}
                     </select>
-                    {!this.props.readOnly && (
+                    {!readOnly && !isClosed && (
                         <div className="cmd-hints" style={{ minWidth: "6rem", maxWidth: "6rem", marginLeft: "-18px" }}>
                             <div
                                 onClick={this.doSave}
                                 className={`hint-item ${isSave ? "save-enabled" : "save-disabled"}`}
                             >
-                                {`save`} {renderCmdText("S")}
+                                {`save (`}
+                                {renderCmdText("S")}
+                                {`)`}
+                            </div>
+                        </div>
+                    )}
+                    {!readOnly && !isClosed && (
+                        <div className="cmd-hints" style={{ minWidth: "6rem", maxWidth: "6rem", marginLeft: "-18px" }}>
+                            <div
+                                onClick={this.doClose}
+                                className={`hint-item ${!isSave ? "close-enabled" : "close-disabled"}`}
+                            >
+                                {`close (`}
+                                {renderCmdText("D")}
+                                {`)`}
                             </div>
                         </div>
                     )}
