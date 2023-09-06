@@ -218,7 +218,9 @@ func init() {
 
 	registerCmdFn("edit:test", EditTestCommand)
 
+	// CodeEditCommand is overloaded to do codeedit and codeview
 	registerCmdFn("codeedit", CodeEditCommand)
+	registerCmdFn("codeview", CodeEditCommand)
 }
 
 func getValidCommands() []string {
@@ -3184,17 +3186,17 @@ func ViewTestCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 
 func CodeEditCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	if len(pk.Args) == 0 {
-		return nil, fmt.Errorf("/codeedit requires an argument (file name)")
+		return nil, fmt.Errorf("%s requires an argument (file name)", GetCmdStr(pk))
 	}
 	// TODO more error checking on filename format?
 	if pk.Args[0] == "" {
-		return nil, fmt.Errorf("/codeedit argument cannot be empty")
+		return nil, fmt.Errorf("%s argument cannot be empty", GetCmdStr(pk))
 	}
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
 	if err != nil {
 		return nil, err
 	}
-	outputStr := fmt.Sprintf("codeedit %q", pk.Args[0])
+	outputStr := fmt.Sprintf("%s %q", GetCmdStr(pk), pk.Args[0])
 	cmd, err := makeStaticCmd(ctx, GetCmdStr(pk), ids, pk.GetRawStr(), []byte(outputStr))
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
@@ -3210,9 +3212,18 @@ func CodeEditCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	lineState := make(map[string]any)
 	lineState["prompt:source"] = "file"
 	lineState["prompt:file"] = pk.Args[0]
+	if GetCmdStr(pk) == "codeview" {
+		lineState["mode"] = "view"
+	} else {
+		lineState["mode"] = "edit"
+	}
+	// TODO better error checking for lang
+	if pk.Kwargs["lang"] != "" && len(pk.Kwargs["lang"]) <= 50 {
+		lineState["lang"] = pk.Kwargs["lang"]
+	}
 	err = sstore.UpdateLineState(ctx, ids.ScreenId, update.Line.LineId, lineState)
 	if err != nil {
-		return nil, fmt.Errorf("/codeedit error updating line state: %v", err)
+		return nil, fmt.Errorf("%s error updating line state: %v", GetCmdStr(pk), err)
 	}
 	update.Line.LineState = lineState
 	update.Interactive = pk.Interactive

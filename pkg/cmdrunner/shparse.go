@@ -26,6 +26,8 @@ var BareMetaCmds = []BareMetaCmdDecl{
 	BareMetaCmdDecl{"connect", "cr"},
 	BareMetaCmdDecl{"clear", "clear"},
 	BareMetaCmdDecl{"reset", "reset"},
+	BareMetaCmdDecl{"codeedit", "codeedit"},
+	BareMetaCmdDecl{"codeview", "codeview"},
 }
 
 const (
