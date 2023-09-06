@@ -65,7 +65,7 @@ class SourceCodeRenderer extends React.Component<
         const languages = monaco.languages.getLanguages().map((lang) => lang.id);
         this.setState({ languages });
         // detect the current language from previous settings
-        let detectedLanguage = this.props.lineState["prompt:lang"];
+        let detectedLanguage = this.props.lineState["lang"];
         // if not found, we try to grab the filename from with filePath (coming from lineState["prompt:file"]) or cmdstr
         if (!detectedLanguage) {
             const strForFilePath = this.filePath || this.props.cmdstr;
@@ -78,7 +78,7 @@ class SourceCodeRenderer extends React.Component<
                 GlobalCommandRunner.setLineState(
                     screenId,
                     lineId,
-                    { ...this.props.lineState, "prompt:lang": detectedLanguage },
+                    { ...this.props.lineState, lang: detectedLanguage },
                     false
                 );
             }
@@ -121,7 +121,7 @@ class SourceCodeRenderer extends React.Component<
                     lineId,
                     {
                         ...this.props.lineState,
-                        "prompt:lang": selectedLanguage,
+                        lang: selectedLanguage,
                     },
                     false
                 );
