@@ -411,6 +411,8 @@ type RendererModel = {
 type SimpleBlobRendererComponent = React.ComponentType<{
     data: Blob;
     readOnly?: boolean;
+    notFound?: boolean;
+    isSelected?: boolean;
     cmdstr?: string;
     cwd?: string;
     exitcode?: number;

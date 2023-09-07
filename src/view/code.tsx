@@ -15,7 +15,6 @@ declare var monaco: any;
 class SourceCodeRenderer extends React.Component<
     {
         data: Blob;
-        readOnly: boolean;
         cmdstr: string;
         cwd: string;
         readOnly: boolean;
