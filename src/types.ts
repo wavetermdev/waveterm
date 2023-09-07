@@ -357,7 +357,6 @@ type RendererOpts = {
     idealSize: WindowSize;
     termOpts: TermOptsType;
     termFontSize: number;
-    readOnly: boolean;
 };
 
 type RendererOptsUpdate = {
@@ -410,11 +409,16 @@ type RendererModel = {
 };
 
 type SimpleBlobRendererComponent = React.ComponentType<{
-    path: string;
     data: Blob;
+    readOnly?: boolean;
+    cmdstr?: string;
+    cwd?: string;
+    exitcode?: number;
     context: RendererContext;
     opts: RendererOpts;
     savedHeight: number;
+    scrollToBringIntoViewport?: () => void;
+    lineState?: LineStateType;
 }>;
 type FullRendererComponent = React.ComponentType<{ model: any }>;
 
@@ -610,6 +614,7 @@ type FileInfoType = {
     modts: number;
     isdir: boolean;
     perm: number;
+    notfound: boolean;
 };
 
 export type {
