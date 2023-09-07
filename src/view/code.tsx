@@ -194,7 +194,7 @@ class SourceCodeRenderer extends React.Component<
         this.setState({ editorHeight: _editorHeight }, () => this.props.scrollToBringIntoViewport());
     };
 
-    getAllowEditing() : boolean {
+    getAllowEditing(): boolean {
         let lineState = this.props.lineState;
         let mode = lineState["mode"] || "view";
         if (mode == "view") {
