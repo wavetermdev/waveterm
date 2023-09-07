@@ -417,11 +417,12 @@ func MakeStreamFilePacket() *StreamFilePacketType {
 }
 
 type FileInfo struct {
-	Name  string `json:"name"`
-	Size  int64  `json:"size"`
-	ModTs int64  `json:"modts"`
-	IsDir bool   `json:"isdir,omitempty"`
-	Perm  int    `json:"perm"`
+	Name     string `json:"name"`
+	Size     int64  `json:"size"`
+	ModTs    int64  `json:"modts"`
+	IsDir    bool   `json:"isdir,omitempty"`
+	Perm     int    `json:"perm"`
+	NotFound bool   `json:"notfound,omitempty"` // when NotFound is set, Perm will be set to permission for directory
 }
 
 type StreamFileResponseType struct {
