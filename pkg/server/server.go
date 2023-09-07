@@ -311,7 +311,7 @@ func copyFile(dstName string, srcName string) error {
 		return err
 	}
 	defer srcFd.Close()
-	dstFd, err := os.OpenFile(dstName, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o777) // use 777 because OpenFile respects umask
+	dstFd, err := os.OpenFile(dstName, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o666) // use 666 because OpenFile respects umask
 	if err != nil {
 		return err
 	}
@@ -349,7 +349,7 @@ func (m *MServer) writeFile(pk *packet.WriteFilePacketType, wfc *WriteFileContex
 			return
 		}
 	} else {
-		writeFd, err = os.OpenFile(pk.Path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o777) // use 777 because OpenFile respects umask
+		writeFd, err = os.OpenFile(pk.Path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o666) // use 666 because OpenFile respects umask
 		if err != nil {
 			resp := packet.MakeWriteFileReadyPacket(pk.ReqId)
 			resp.Error = fmt.Sprintf("write-file could not open file: %v", err)
