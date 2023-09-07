@@ -2,6 +2,8 @@ import * as React from "react";
 import { RendererContext, RendererOpts, LineStateType } from "../types";
 import Editor from "@monaco-editor/react";
 import { GlobalModel } from "../model";
+import loader from "@monaco-editor/loader";
+loader.config({ paths: { vs: "./node_modules/monaco-editor/min/vs" } });
 
 class SourceCodeRenderer extends React.Component<
     {
