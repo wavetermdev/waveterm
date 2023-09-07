@@ -9,9 +9,13 @@ function renderCmdText(text: string): any {
     return <span>&#x2318;{text}</span>;
 }
 
+// there is a global monaco variable (TODO get the correct TS type)
+declare var monaco: any;
+
 class SourceCodeRenderer extends React.Component<
-{
-    data: Blob;
+    {
+        data: Blob;
+        readOnly: boolean;
         cmdstr: string;
         cwd: string;
         readOnly: boolean;
@@ -23,7 +27,15 @@ class SourceCodeRenderer extends React.Component<
         scrollToBringIntoViewport: () => void;
         lineState: LineStateType;
     },
-    {}
+    {
+        code: string;
+        languages: string[];
+        selectedLanguage: string;
+        isSave: boolean;
+        isClosed: boolean;
+        editorHeight: number;
+        message: { status: string; text: string };
+    }
 > {
     /**
      * codeCache is a Hashmap with key=screenId:lineId:filepath and value=code
@@ -34,9 +46,11 @@ class SourceCodeRenderer extends React.Component<
     filePath;
     cacheKey;
     originalData;
+    monacoEditor: any; // reference to mounted monaco editor.  TODO need the correct type
+
     constructor(props) {
         super(props);
-        this.editorRef = React.createRef();
+        this.monacoEditor = null;
         this.state = {
             code: null,
             languages: [],
@@ -88,7 +102,6 @@ class SourceCodeRenderer extends React.Component<
             }
         }
         if (detectedLanguage) {
-            this.editorRef.current = editor;
             const model = editor.getModel();
             if (model) {
                 monaco.editor.setModelLanguage(model, detectedLanguage);
@@ -98,6 +111,7 @@ class SourceCodeRenderer extends React.Component<
     };
 
     handleEditorDidMount = (editor, monaco) => {
+        this.monacoEditor = editor;
         this.setInitialLanguage(editor);
         this.setEditorHeight();
         editor.onKeyDown((e) => {
@@ -116,8 +130,8 @@ class SourceCodeRenderer extends React.Component<
         const { screenId, lineId } = this.props.context;
         const selectedLanguage = event.target.value;
         this.setState({ selectedLanguage });
-        if (this.editorRef.current) {
-            const model = this.editorRef.current.getModel();
+        if (this.monacoEditor) {
+            const model = this.monacoEditor.getModel();
             if (model) {
                 monaco.editor.setModelLanguage(model, selectedLanguage);
                 GlobalCommandRunner.setLineState(
@@ -186,7 +200,7 @@ class SourceCodeRenderer extends React.Component<
     };
 
     setEditorHeight = () => {
-        const fullWindowHeight = parseInt(this.props.opts.maxSize.height);
+        const fullWindowHeight = this.props.opts.maxSize.height;
         let _editorHeight = fullWindowHeight;
         if (this.props.readOnly || this.state.isClosed) {
             const noOfLines = Math.max(this.state.code.split("\n").length, 5);
@@ -197,7 +211,7 @@ class SourceCodeRenderer extends React.Component<
 
     render() {
         const { opts, exitcode, readOnly } = this.props;
-        const { language, code, isSave, isClosed } = this.state;
+        const { selectedLanguage, code, isSave, isClosed } = this.state;
 
         if (code == null)
             return <div className="renderer-container code-renderer" style={{ height: this.props.savedHeight }} />;
@@ -222,7 +236,7 @@ class SourceCodeRenderer extends React.Component<
                     <Editor
                         theme="hc-black"
                         height={this.state.editorHeight}
-                        defaultLanguage={language}
+                        defaultLanguage={selectedLanguage}
                         defaultValue={code}
                         onMount={this.handleEditorDidMount}
                         options={{
@@ -230,16 +244,6 @@ class SourceCodeRenderer extends React.Component<
                             fontSize: GlobalModel.termFontSize.get(),
                             fontFamily: "JetBrains Mono",
                             readOnly: readOnly || isClosed,
-                            keybindings: [
-                                {
-                                    key: "ctrl+s",
-                                    command: "-editor.action.filesave",
-                                },
-                                {
-                                    key: "cmd+s",
-                                    command: "-editor.action.filesave",
-                                },
-                            ],
                         }}
                         onChange={this.handleEditorChange}
                     />
