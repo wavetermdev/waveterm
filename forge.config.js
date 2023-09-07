@@ -10,6 +10,7 @@ var AllowedNodeModules = {
     // "lzma-native": true,
     // "fs-ext": true,
     // "fsevents": true,
+    "monaco-editor": true,
 };
 
 var modCache = {};
