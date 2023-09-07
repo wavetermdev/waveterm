@@ -436,7 +436,9 @@ class LineCmd extends React.Component<
 
     @boundMethod
     clickMinimise() {
-        this.isMinimised.set(!this.isMinimised.get());
+        mobx.action(() => {
+            this.isMinimised.set(!this.isMinimised.get());
+        })();
     }
 
     @boundMethod

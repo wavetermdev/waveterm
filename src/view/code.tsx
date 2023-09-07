@@ -18,6 +18,8 @@ class SourceCodeRenderer extends React.Component<
         readOnly: boolean;
         cmdstr: string;
         cwd: string;
+        readOnly: boolean;
+        notFound: boolean;
         exitcode: number;
         context: RendererContext;
         opts: RendererOpts;

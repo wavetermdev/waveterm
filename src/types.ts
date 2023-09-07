@@ -614,6 +614,7 @@ type FileInfoType = {
     modts: number;
     isdir: boolean;
     perm: number;
+    notfound: boolean;
 };
 
 export type {
