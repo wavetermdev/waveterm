@@ -20,6 +20,7 @@ class SourceCodeRenderer extends React.Component<
         savedHeight: number;
         scrollToBringIntoViewport: () => void;
         lineState: LineStateType;
+        isSelected: boolean;
     },
     {}
 > {
@@ -35,13 +36,14 @@ class SourceCodeRenderer extends React.Component<
     constructor(props) {
         super(props);
         this.editorRef = React.createRef();
+        const editorHeight = Math.max(props.savedHeight - 25, 0); // must subtract the padding/margin to get the real editorHeight
         this.state = {
             code: null,
             languages: [],
             selectedLanguage: "",
             isSave: false,
             isClosed: false,
-            editorHeight: props.savedHeight,
+            editorHeight: editorHeight,
             message: null,
         };
     }
@@ -188,9 +190,14 @@ class SourceCodeRenderer extends React.Component<
         let _editorHeight = fullWindowHeight;
         if (this.props.readOnly || this.state.isClosed) {
             const noOfLines = Math.max(this.state.code.split("\n").length, 5);
-            _editorHeight = Math.min(noOfLines * GlobalModel.termFontSize.get() * 1.5 + 10, fullWindowHeight);
+            const lineHeight = Math.ceil(GlobalModel.termFontSize.get() * 1.5);
+            _editorHeight = Math.min(noOfLines * lineHeight + 10, fullWindowHeight);
         }
-        this.setState({ editorHeight: _editorHeight }, () => this.props.scrollToBringIntoViewport());
+        this.setState({ editorHeight: _editorHeight }, () => {
+            if (this.props.isSelected) {
+                this.props.scrollToBringIntoViewport();
+            }
+        });
     };
 
     render() {
@@ -216,7 +223,7 @@ class SourceCodeRenderer extends React.Component<
 
         return (
             <div className="renderer-container code-renderer">
-                <div className="scroller" style={{ maxHeight: opts.maxSize.height, paddingBottom: "15px" }}>
+                <div className="scroller" style={{ maxHeight: opts.maxSize.height }}>
                     <Editor
                         theme="hc-black"
                         height={this.state.editorHeight}

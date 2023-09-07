@@ -765,6 +765,7 @@ class LineCmd extends React.Component<
                             onHeightChange={this.handleHeightChange}
                             initParams={this.makeRendererModelInitializeParams()}
                             scrollToBringIntoViewport={this.scrollToBringIntoViewport}
+                            isSelected={isSelected}
                         />
                     </If>
                     <If condition={rendererPlugin != null && rendererPlugin.rendererType == "full"}>
@@ -774,6 +775,7 @@ class LineCmd extends React.Component<
                             plugin={rendererPlugin}
                             onHeightChange={this.handleHeightChange}
                             initParams={this.makeRendererModelInitializeParams()}
+                            isSelected={isSelected}
                         />
                     </If>
                     <If condition={cmd.getRtnState()}>
