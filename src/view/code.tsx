@@ -186,16 +186,26 @@ class SourceCodeRenderer extends React.Component<
     setEditorHeight = () => {
         const fullWindowHeight = parseInt(this.props.opts.maxSize.height);
         let _editorHeight = fullWindowHeight;
-        if (this.props.readOnly || this.state.isClosed) {
+        let allowEditing = this.getAllowEditing();
+        if (!allowEditing) {
             const noOfLines = Math.max(this.state.code.split("\n").length, 5);
             _editorHeight = Math.min(noOfLines * GlobalModel.termFontSize.get() * 1.5 + 10, fullWindowHeight);
         }
         this.setState({ editorHeight: _editorHeight }, () => this.props.scrollToBringIntoViewport());
     };
 
+    getAllowEditing() : boolean {
+        let lineState = this.props.lineState;
+        let mode = lineState["mode"] || "view";
+        if (mode == "view") {
+            return false;
+        }
+        return !(this.props.readOnly || this.state.isClosed);
+    }
+
     render() {
-        const { opts, exitcode, readOnly } = this.props;
-        const { language, code, isSave, isClosed } = this.state;
+        const { opts, exitcode } = this.props;
+        const { language, code, isSave } = this.state;
 
         if (code == null)
             return <div className="renderer-container code-renderer" style={{ height: this.props.savedHeight }} />;
@@ -214,6 +224,7 @@ class SourceCodeRenderer extends React.Component<
                 </div>
             );
 
+        let allowEditing = this.getAllowEditing();
         return (
             <div className="renderer-container code-renderer">
                 <div className="scroller" style={{ maxHeight: opts.maxSize.height, paddingBottom: "15px" }}>
@@ -227,17 +238,7 @@ class SourceCodeRenderer extends React.Component<
                             scrollBeyondLastLine: false,
                             fontSize: GlobalModel.termFontSize.get(),
                             fontFamily: "JetBrains Mono",
-                            readOnly: readOnly || isClosed,
-                            keybindings: [
-                                {
-                                    key: "ctrl+s",
-                                    command: "-editor.action.filesave",
-                                },
-                                {
-                                    key: "cmd+s",
-                                    command: "-editor.action.filesave",
-                                },
-                            ],
+                            readOnly: !allowEditing,
                         }}
                         onChange={this.handleEditorChange}
                     />
@@ -255,7 +256,7 @@ class SourceCodeRenderer extends React.Component<
                             </option>
                         ))}
                     </select>
-                    {!readOnly && !isClosed && (
+                    {allowEditing && (
                         <div className="cmd-hints" style={{ minWidth: "6rem", maxWidth: "6rem", marginLeft: "-18px" }}>
                             <div
                                 onClick={this.doSave}
@@ -267,7 +268,7 @@ class SourceCodeRenderer extends React.Component<
                             </div>
                         </div>
                     )}
-                    {!readOnly && !isClosed && (
+                    {allowEditing && (
                         <div className="cmd-hints" style={{ minWidth: "6rem", maxWidth: "6rem", marginLeft: "-18px" }}>
                             <div
                                 onClick={this.doClose}
