@@ -9,11 +9,17 @@ function renderCmdText(text: string): any {
     return <span>&#x2318;{text}</span>;
 }
 
+// there is a global monaco variable (TODO get the correct TS type)
+declare var monaco: any;
+
 class SourceCodeRenderer extends React.Component<
     {
         data: Blob;
+        readOnly: boolean;
         cmdstr: string;
         cwd: string;
+        readOnly: boolean;
+        notFound: boolean;
         exitcode: number;
         context: RendererContext;
         opts: RendererOpts;
@@ -22,7 +28,15 @@ class SourceCodeRenderer extends React.Component<
         lineState: LineStateType;
         isSelected: boolean;
     },
-    {}
+    {
+        code: string;
+        languages: string[];
+        selectedLanguage: string;
+        isSave: boolean;
+        isClosed: boolean;
+        editorHeight: number;
+        message: { status: string; text: string };
+    }
 > {
     /**
      * codeCache is a Hashmap with key=screenId:lineId:filepath and value=code
@@ -33,9 +47,11 @@ class SourceCodeRenderer extends React.Component<
     filePath;
     cacheKey;
     originalData;
+    monacoEditor: any; // reference to mounted monaco editor.  TODO need the correct type
+
     constructor(props) {
         super(props);
-        this.editorRef = React.createRef();
+        this.monacoEditor = null;
         const editorHeight = Math.max(props.savedHeight - 25, 0); // must subtract the padding/margin to get the real editorHeight
         this.state = {
             code: null,
@@ -88,7 +104,6 @@ class SourceCodeRenderer extends React.Component<
             }
         }
         if (detectedLanguage) {
-            this.editorRef.current = editor;
             const model = editor.getModel();
             if (model) {
                 monaco.editor.setModelLanguage(model, detectedLanguage);
@@ -98,6 +113,7 @@ class SourceCodeRenderer extends React.Component<
     };
 
     handleEditorDidMount = (editor, monaco) => {
+        this.monacoEditor = editor;
         this.setInitialLanguage(editor);
         this.setEditorHeight();
         editor.onKeyDown((e) => {
@@ -116,8 +132,8 @@ class SourceCodeRenderer extends React.Component<
         const { screenId, lineId } = this.props.context;
         const selectedLanguage = event.target.value;
         this.setState({ selectedLanguage });
-        if (this.editorRef.current) {
-            const model = this.editorRef.current.getModel();
+        if (this.monacoEditor) {
+            const model = this.monacoEditor.getModel();
             if (model) {
                 monaco.editor.setModelLanguage(model, selectedLanguage);
                 GlobalCommandRunner.setLineState(
@@ -186,9 +202,10 @@ class SourceCodeRenderer extends React.Component<
     };
 
     setEditorHeight = () => {
-        const fullWindowHeight = parseInt(this.props.opts.maxSize.height);
+        const fullWindowHeight = this.props.opts.maxSize.height;
         let _editorHeight = fullWindowHeight;
-        if (this.props.readOnly || this.state.isClosed) {
+        let allowEditing = this.getAllowEditing();
+        if (!allowEditing) {
             const noOfLines = Math.max(this.state.code.split("\n").length, 5);
             const lineHeight = Math.ceil(GlobalModel.termFontSize.get() * 1.5);
             _editorHeight = Math.min(noOfLines * lineHeight + 10, fullWindowHeight);
@@ -200,9 +217,18 @@ class SourceCodeRenderer extends React.Component<
         });
     };
 
+    getAllowEditing(): boolean {
+        let lineState = this.props.lineState;
+        let mode = lineState["mode"] || "view";
+        if (mode == "view") {
+            return false;
+        }
+        return !(this.props.readOnly || this.state.isClosed);
+    }
+
     render() {
-        const { opts, exitcode, readOnly } = this.props;
-        const { language, code, isSave, isClosed } = this.state;
+        const { opts, exitcode } = this.props;
+        const { selectedLanguage, code, isSave } = this.state;
 
         if (code == null)
             return <div className="renderer-container code-renderer" style={{ height: this.props.savedHeight }} />;
@@ -221,30 +247,21 @@ class SourceCodeRenderer extends React.Component<
                 </div>
             );
 
+        let allowEditing = this.getAllowEditing();
         return (
             <div className="renderer-container code-renderer">
                 <div className="scroller" style={{ maxHeight: opts.maxSize.height }}>
                     <Editor
                         theme="hc-black"
                         height={this.state.editorHeight}
-                        defaultLanguage={language}
+                        defaultLanguage={selectedLanguage}
                         defaultValue={code}
                         onMount={this.handleEditorDidMount}
                         options={{
                             scrollBeyondLastLine: false,
                             fontSize: GlobalModel.termFontSize.get(),
                             fontFamily: "JetBrains Mono",
-                            readOnly: readOnly || isClosed,
-                            keybindings: [
-                                {
-                                    key: "ctrl+s",
-                                    command: "-editor.action.filesave",
-                                },
-                                {
-                                    key: "cmd+s",
-                                    command: "-editor.action.filesave",
-                                },
-                            ],
+                            readOnly: !allowEditing,
                         }}
                         onChange={this.handleEditorChange}
                     />
@@ -262,7 +279,7 @@ class SourceCodeRenderer extends React.Component<
                             </option>
                         ))}
                     </select>
-                    {!readOnly && !isClosed && (
+                    {allowEditing && (
                         <div className="cmd-hints" style={{ minWidth: "6rem", maxWidth: "6rem", marginLeft: "-18px" }}>
                             <div
                                 onClick={this.doSave}
@@ -274,7 +291,7 @@ class SourceCodeRenderer extends React.Component<
                             </div>
                         </div>
                     )}
-                    {!readOnly && !isClosed && (
+                    {allowEditing && (
                         <div className="cmd-hints" style={{ minWidth: "6rem", maxWidth: "6rem", marginLeft: "-18px" }}>
                             <div
                                 onClick={this.doClose}

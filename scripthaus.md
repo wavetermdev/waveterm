@@ -82,10 +82,10 @@ rm -rf build/
 node_modules/.bin/webpack --config webpack.prod.js
 node_modules/.bin/webpack --config webpack.electron.prod.js
 GO_LDFLAGS="-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')"
-(cd ../apishell; GOOS=darwin GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../prompt-client/bin/mshell/mshell-v0.2-darwin.amd64 main-mshell.go)
-(cd ../apishell; GOOS=darwin GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../prompt-client/bin/mshell/mshell-v0.2-darwin.arm64 main-mshell.go)
-(cd ../apishell; GOOS=linux GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../prompt-client/bin/mshell/mshell-v0.2-linux.amd64 main-mshell.go)
-(cd ../apishell; GOOS=linux GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../prompt-client/bin/mshell/mshell-v0.2-linux.arm64 main-mshell.go)
+(cd ../apishell; GOOS=darwin GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../prompt-client/bin/mshell/mshell-v0.3-darwin.amd64 main-mshell.go)
+(cd ../apishell; GOOS=darwin GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../prompt-client/bin/mshell/mshell-v0.3-darwin.arm64 main-mshell.go)
+(cd ../apishell; GOOS=linux GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../prompt-client/bin/mshell/mshell-v0.3-linux.amd64 main-mshell.go)
+(cd ../apishell; GOOS=linux GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../prompt-client/bin/mshell/mshell-v0.3-linux.arm64 main-mshell.go)
 (cd ../prompt-server; GOOS=darwin GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../prompt-client/build/prompt-local-server.amd64 ./cmd)
 (cd ../prompt-server; GOOS=darwin GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../prompt-client/build/prompt-local-server.arm64 ./cmd)
 lipo -create -output bin/prompt-local-server build/prompt-local-server.amd64 build/prompt-local-server.arm64

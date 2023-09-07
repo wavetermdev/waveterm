@@ -3642,6 +3642,7 @@ class Model {
                     let file = new File([blob], fileInfo.name, { type: blob.type, lastModified: fileInfo.modts });
                     let isWriteable = (fileInfo.perm & 0o222) > 0; // checks for unix permission "w" bits
                     (file as any).readOnly = !isWriteable;
+                    (file as any).notFound = !!fileInfo.notfound;
                     return file;
                 } else {
                     let textError: string = blobOrText;
