@@ -34,7 +34,7 @@ const PromptDevDirName = "prompt-dev"
 const PromptAppPathVarName = "PROMPT_APP_PATH"
 const PromptVersion = "v0.3.0"
 const PromptAuthKeyFileName = "prompt.authkey"
-const MShellVersion = "v0.2.0"
+const MShellVersion = "v0.3.0"
 
 var SessionDirCache = make(map[string]string)
 var ScreenDirCache = make(map[string]string)
