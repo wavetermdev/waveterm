@@ -176,6 +176,7 @@ class SimpleBlobRenderer extends React.Component<
         onHeightChange: () => void;
         initParams: RendererModelInitializeParams;
         scrollToBringIntoViewport: () => void;
+        isSelected: boolean;
     },
     {}
 > {
@@ -264,7 +265,7 @@ class SimpleBlobRenderer extends React.Component<
         let simpleModel = model as SimpleBlobRendererModel;
         let { festate, cmdstr, exitcode } = this.props.initParams.rawCmd;
         return (
-            <div ref={this.wrapperDivRef}>
+            <div ref={this.wrapperDivRef} className="sr-wrapper">
                 <Comp
                     cwd={festate.cwd}
                     cmdstr={cmdstr}
@@ -277,6 +278,7 @@ class SimpleBlobRenderer extends React.Component<
                     opts={simpleModel.opts}
                     savedHeight={simpleModel.savedHeight}
                     scrollToBringIntoViewport={this.props.scrollToBringIntoViewport}
+                    isSelected={this.props.isSelected}
                 />
             </div>
         );

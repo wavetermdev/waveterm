@@ -33,6 +33,7 @@ class FullRenderer extends React.Component<
         plugin: RendererPluginType;
         onHeightChange: () => void;
         initParams: RendererModelInitializeParams;
+        isSelected: boolean;
     },
     {}
 > {
