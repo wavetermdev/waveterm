@@ -10,10 +10,12 @@ function renderCmdText(text: string): any {
 }
 
 class SourceCodeRenderer extends React.Component<
-    {
-        data: Blob;
+{
+    data: Blob;
         cmdstr: string;
         cwd: string;
+        readOnly: boolean;
+        notFound: boolean;
         exitcode: number;
         context: RendererContext;
         opts: RendererOpts;

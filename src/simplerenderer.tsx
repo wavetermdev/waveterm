@@ -43,6 +43,7 @@ class SimpleBlobRendererModel {
     ptyDataSource: (termContext: TermContextUnion) => Promise<PtyDataType>;
     dataBlob: Blob;
     readOnly: boolean;
+    notFound: boolean;
 
     initialize(params: RendererModelInitializeParams): void {
         this.loading = mobx.observable.box(true, { name: "renderer-loading" });
@@ -127,6 +128,7 @@ class SimpleBlobRendererModel {
         let rtnp = GlobalModel.readRemoteFile(this.context.screenId, this.context.lineId, path);
         rtnp.then((file) => {
             this.readOnly = file.readOnly;
+            this.notFound = file.notFound;
             this.dataBlob = file;
             mobx.action(() => {
                 this.loading.set(false);
@@ -269,6 +271,7 @@ class SimpleBlobRenderer extends React.Component<
                     exitcode={exitcode}
                     data={simpleModel.dataBlob}
                     readOnly={simpleModel.readOnly}
+                    notFound={simpleModel.notFound}
                     lineState={simpleModel.lineState}
                     context={simpleModel.context}
                     opts={simpleModel.opts}
