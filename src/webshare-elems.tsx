@@ -806,13 +806,13 @@ class WebShareMain extends React.Component<{}, {}> {
             <div id="main">
                 <div className="logo-header">
                     <div className="logo-text">
-                        <a target="_blank" href="https://www.getprompt.dev">
+                        <a target="_blank" href="https://www.commandline.dev">
                             [prompt]
                         </a>
                     </div>
                     <div className="flex-spacer" />
                     <a
-                        href="https://getprompt.dev/download/"
+                        href="https://www.commandline.dev/download/"
                         target="_blank"
                         className="download-button button is-link"
                     >
