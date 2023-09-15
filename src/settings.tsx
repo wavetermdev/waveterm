@@ -278,55 +278,6 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
                             </div>
                         </div>
                         <div className="settings-field">
-                            <div className="settings-label">Web Sharing</div>
-                            <div className="settings-input">
-                                <Toggle checked={screen.isWebShared()} onChange={this.handleChangeWebShare} />
-                            </div>
-                        </div>
-                        <If condition={screen.isWebShared()}>
-                            <div className="settings-field sub-field">
-                                <div className="settings-label">Share Link</div>
-                                <div className="settings-input">
-                                    <a
-                                        href={util.makeExternLink(screen.getWebShareUrl())}
-                                        target="_blank"
-                                        className="button is-prompt-green is-outlined is-small a-block"
-                                    >
-                                        <span>open in browser</span>
-                                        <span className="icon">
-                                            <i className="fa-sharp fa-solid fa-up-right-from-square" />
-                                        </span>
-                                    </a>
-                                    <div
-                                        className="button is-prompt-green is-outlined is-small ml-4"
-                                        onClick={this.copyShareLink}
-                                    >
-                                        <span>copy link</span>
-                                        <span className="icon">
-                                            <i className="fa-sharp fa-solid fa-copy" />
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="settings-field sub-field">
-                                <div className="settings-label">Share Name</div>
-                                <div className="settings-input">
-                                    <div className="settings-input">
-                                        <InlineSettingsTextEdit
-                                            placeholder="name"
-                                            text={
-                                                util.isBlank(screen.getShareName()) ? "(none)" : screen.getShareName()
-                                            }
-                                            value={screen.getShareName() ?? ""}
-                                            onChange={this.inlineUpdateShareName}
-                                            maxLength={150}
-                                            showIcon={true}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </If>
-                        <div className="settings-field">
                             <div className="settings-label">
                                 <div>Actions</div>
                                 <InfoMessage width={400}>
