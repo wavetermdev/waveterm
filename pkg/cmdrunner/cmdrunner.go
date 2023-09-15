@@ -3,8 +3,6 @@ package cmdrunner
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -1956,83 +1954,7 @@ func makeExternLink(urlStr string) string {
 }
 
 func ScreenWebShareCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Screen)
-	if err != nil {
-		return nil, err
-	}
-	shouldShare := true
-	if len(pk.Args) > 0 {
-		shouldShare = resolveBool(pk.Args[0], true)
-	}
-	shareName := pk.Kwargs["sharename"]
-	if err := validateShareName(shareName); err != nil {
-		return nil, err
-	}
-	var infoMsg string
-	var infoWebShareLink bool
-	if shouldShare {
-		viewKeyBytes := make([]byte, 9)
-		_, err = rand.Read(viewKeyBytes)
-		if err != nil {
-			return nil, fmt.Errorf("cannot create viewkey: %v", err)
-		}
-		screen, err := sstore.GetScreenById(ctx, ids.ScreenId)
-		if err != nil {
-			return nil, fmt.Errorf("cannot get screen: %v", err)
-		}
-		if shareName == "" {
-			shareName = screen.Name
-		}
-		viewKey := base64.RawURLEncoding.EncodeToString(viewKeyBytes)
-		webShareOpts := sstore.ScreenWebShareOpts{ShareName: shareName, ViewKey: viewKey}
-		err = sstore.CanScreenWebShare(ctx, screen)
-		if err != nil {
-			return nil, err
-		}
-		webUpdate := pcloud.MakeScreenNewUpdate(screen, webShareOpts)
-		err = pcloud.DoSyncWebUpdate(webUpdate)
-		if err != nil {
-			return nil, fmt.Errorf("error starting webshare, error contacting prompt cloud server: %v", err)
-		}
-		err = sstore.ScreenWebShareStart(ctx, ids.ScreenId, webShareOpts)
-		if err != nil {
-			return nil, fmt.Errorf("cannot webshare screen, error updating: %v", err)
-		}
-		infoWebShareLink = true
-	} else {
-		screen, err := sstore.GetScreenById(ctx, ids.ScreenId)
-		if err != nil {
-			return nil, fmt.Errorf("cannot get screen: %v", err)
-		}
-		if screen == nil {
-			return nil, fmt.Errorf("screen not found")
-		}
-		if screen.ShareMode != sstore.ShareModeWeb {
-			return nil, fmt.Errorf("screen is not currently shared")
-		}
-		webUpdate := pcloud.MakeScreenDelUpdate(screen, ids.ScreenId)
-		err = pcloud.DoSyncWebUpdate(webUpdate)
-		if err != nil {
-			return nil, fmt.Errorf("error stopping webshare, error contacting prompt cloud server: %v", err)
-		}
-		err = sstore.ScreenWebShareStop(ctx, ids.ScreenId)
-		if err != nil {
-			return nil, fmt.Errorf("cannot stop web-sharing screen: %v", err)
-		}
-		infoMsg = fmt.Sprintf("screen websharing stopped")
-	}
-	screen, err := sstore.GetScreenById(ctx, ids.ScreenId)
-	if err != nil {
-		return nil, fmt.Errorf("cannot get updated screen: %v", err)
-	}
-	update := &sstore.ModelUpdate{
-		Screens: []*sstore.ScreenType{screen},
-		Info: &sstore.InfoMsgType{
-			InfoMsg:      infoMsg,
-			WebShareLink: infoWebShareLink,
-		},
-	}
-	return update, nil
+	return nil, fmt.Errorf("websharing is no longer available")
 }
 
 func SessionDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {

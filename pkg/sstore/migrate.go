@@ -17,7 +17,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 )
 
-const MaxMigration = 21
+const MaxMigration = 22
 const MigratePrimaryScreenVersion = 9
 const CmdScreenSpecialMigration = 13
 const CmdLineSpecialMigration = 20
