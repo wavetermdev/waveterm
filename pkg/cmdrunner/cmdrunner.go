@@ -3202,7 +3202,7 @@ func CodeEditCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "code")
+	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), true, ids, cmd, "code")
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
