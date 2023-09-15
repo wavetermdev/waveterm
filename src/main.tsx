@@ -1793,16 +1793,6 @@ class MainSideBar extends React.Component<{}, {}> {
                             </a>
                         </li>
                     </ul>
-                    <ul className="menu-list">
-                        <li className="menu-websharing">
-                            <a
-                                onClick={this.handleWebSharingClick}
-                                className={cn({ "is-active": mainView == "webshare" })}
-                            >
-                                <i className="fa-sharp fa-solid fa-share-nodes" /> WEB SHARING
-                            </a>
-                        </li>
-                    </ul>
                     <p className="menu-label display-none">Playbooks</p>
                     <ul className="menu-list display-none">
                         <li key="default">

@@ -26,6 +26,7 @@ class SourceCodeRenderer extends React.Component<
         scrollToBringIntoViewport: () => void;
         lineState: LineStateType;
         isSelected: boolean;
+        shouldFocus: boolean;
     },
     {
         code: string;
@@ -70,12 +71,21 @@ class SourceCodeRenderer extends React.Component<
         const code = SourceCodeRenderer.codeCache.get(this.cacheKey);
         if (code) {
             this.setState({ code, isClosed: this.props.lineState["prompt:closed"] });
-        } else
+        } else {
             this.props.data.text().then((code) => {
                 this.originalData = code;
                 this.setState({ code, isClosed: this.props.lineState["prompt:closed"] });
                 SourceCodeRenderer.codeCache.set(this.cacheKey, code);
             });
+        }
+    }
+
+    componentDidUpdate(prevProps: any): void {
+        if (!prevProps.shouldFocus && this.props.shouldFocus) {
+            if (this.monacoEditor) {
+                this.monacoEditor.focus();
+            }
+        }
     }
 
     setInitialLanguage = (editor) => {
@@ -125,6 +135,9 @@ class SourceCodeRenderer extends React.Component<
                 this.doClose();
             }
         });
+        if (this.props.shouldFocus) {
+            this.monacoEditor.focus();
+        }
     };
 
     handleLanguageChange = (event) => {
