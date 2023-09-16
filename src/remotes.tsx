@@ -271,7 +271,7 @@ class CreateRemote extends React.Component<{ model: RemotesModalModel; remoteEdi
         let { model, remoteEdit } = this.props;
         let authMode = this.tempAuthMode.get();
         return (
-            <div className="remote-detail create-remote">
+            <div className="remote-detail create-remote" style={{ overflow: "hidden" }}>
                 <div className="title is-5">Create New Connection</div>
                 <div className="settings-field mt-3">
                     <div className="settings-label">
@@ -621,7 +621,7 @@ class EditRemoteSettings extends React.Component<
         let { model, remote, remoteEdit } = this.props;
         let authMode = this.tempAuthMode.get();
         return (
-            <div className="remote-detail auth-editing">
+            <div className="remote-detail auth-editing" style={{ overflow: "hidden" }}>
                 <div className="title is-5">{getRemoteTitle(remote)}</div>
                 <div className="detail-subtitle">Editing Connection Settings</div>
                 <div className="settings-field">
@@ -998,7 +998,7 @@ class RemoteDetailView extends React.Component<{ model: RemotesModalModel; remot
         let termWidth = textmeasure.termWidthFromCols(RemotePtyCols, termFontSize);
         let remoteAliasText = util.isBlank(remote.remotealias) ? "(none)" : remote.remotealias;
         return (
-            <div className="remote-detail">
+            <div className="remote-detail" style={{ overflow: "hidden" }}>
                 <div className="title is-5">{getRemoteTitle(remote)}</div>
                 <div className="settings-field">
                     <div className="settings-label">Conn Id</div>
@@ -1045,7 +1045,7 @@ class RemoteDetailView extends React.Component<{ model: RemotesModalModel; remot
                     </div>
                 </div>
                 <div className="flex-spacer" style={{ minHeight: 20 }} />
-                <div style={{ width: termWidth }}>{remoteMessage}</div>
+                <div style={{ width: "100%" }}>{remoteMessage}</div>
                 <div
                     key="term"
                     className={cn(
@@ -1054,7 +1054,7 @@ class RemoteDetailView extends React.Component<{ model: RemotesModalModel; remot
                         remote != null ? "status-" + remote.status : null,
                         { "has-message": remoteMessage != null }
                     )}
-                    style={{ width: termWidth }}
+                    style={{ width: "100%", overflowX: "auto" }}
                 >
                     <If condition={!isTermFocused}>
                         <div key="termblock" className="term-block" onClick={this.clickTermBlock}></div>
@@ -1069,7 +1069,10 @@ class RemoteDetailView extends React.Component<{ model: RemotesModalModel; remot
                         className="terminal-connectelem"
                         ref={this.termRef}
                         data-remoteid={remote.remoteid}
-                        style={{ height: textmeasure.termHeightFromRows(RemotePtyRows, termFontSize) }}
+                        style={{
+                            height: textmeasure.termHeightFromRows(RemotePtyRows, termFontSize),
+                            width: termWidth,
+                        }}
                     ></div>
                 </div>
             </div>

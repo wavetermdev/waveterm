@@ -797,6 +797,7 @@ class LineCmd extends React.Component<
                             className="cmd-rtnstate"
                             style={{
                                 visibility: cmd.getStatus() == "done" ? "visible" : "hidden",
+                                fontSize: GlobalModel.termFontSize.get(),
                             }}
                         >
                             <If condition={rsdiff == null || rsdiff == ""}>
