@@ -61,8 +61,17 @@ class SimpleImageRenderer extends React.Component<
     }
 
     render() {
+        let dataBlob = this.props.data;
+        if (dataBlob == null || dataBlob.notFound) {
+            return (
+                <div className="renderer-container image-renderer" style={{ fontSize: this.props.opts.termFontSize }}>
+                    <div className="load-error-text">
+                        ERROR: file {dataBlob && dataBlob.name ? JSON.stringify(dataBlob.name) : ""} not found
+                    </div>
+                </div>
+            );
+        }
         if (this.objUrl == null) {
-            let dataBlob = this.props.data;
             this.objUrl = URL.createObjectURL(dataBlob);
         }
         let opts = this.props.opts;
