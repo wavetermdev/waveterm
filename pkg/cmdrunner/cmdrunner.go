@@ -219,6 +219,10 @@ func init() {
 	// CodeEditCommand is overloaded to do codeedit and codeview
 	registerCmdFn("codeedit", CodeEditCommand)
 	registerCmdFn("codeview", CodeEditCommand)
+
+	registerCmdFn("imageview", ImageViewCommand)
+	registerCmdFn("mdview", MarkdownViewCommand)
+	registerCmdFn("markdownview", MarkdownViewCommand)
 }
 
 func getValidCommands() []string {
@@ -3143,6 +3147,80 @@ func CodeEditCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	if pk.Kwargs["lang"] != "" && len(pk.Kwargs["lang"]) <= 50 {
 		lineState["lang"] = pk.Kwargs["lang"]
 	}
+	err = sstore.UpdateLineState(ctx, ids.ScreenId, update.Line.LineId, lineState)
+	if err != nil {
+		return nil, fmt.Errorf("%s error updating line state: %v", GetCmdStr(pk), err)
+	}
+	update.Line.LineState = lineState
+	update.Interactive = pk.Interactive
+	return update, nil
+}
+
+func ImageViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	if len(pk.Args) == 0 {
+		return nil, fmt.Errorf("%s requires an argument (file name)", GetCmdStr(pk))
+	}
+	// TODO more error checking on filename format?
+	if pk.Args[0] == "" {
+		return nil, fmt.Errorf("%s argument cannot be empty", GetCmdStr(pk))
+	}
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
+	if err != nil {
+		return nil, err
+	}
+	outputStr := fmt.Sprintf("%s %q", GetCmdStr(pk), pk.Args[0])
+	cmd, err := makeStaticCmd(ctx, GetCmdStr(pk), ids, pk.GetRawStr(), []byte(outputStr))
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, err
+	}
+	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "image")
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, err
+	}
+	// set the line state
+	// TODO turn these strings into constants
+	lineState := make(map[string]any)
+	lineState["prompt:source"] = "file"
+	lineState["prompt:file"] = pk.Args[0]
+	err = sstore.UpdateLineState(ctx, ids.ScreenId, update.Line.LineId, lineState)
+	if err != nil {
+		return nil, fmt.Errorf("%s error updating line state: %v", GetCmdStr(pk), err)
+	}
+	update.Line.LineState = lineState
+	update.Interactive = pk.Interactive
+	return update, nil
+}
+
+func MarkdownViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	if len(pk.Args) == 0 {
+		return nil, fmt.Errorf("%s requires an argument (file name)", GetCmdStr(pk))
+	}
+	// TODO more error checking on filename format?
+	if pk.Args[0] == "" {
+		return nil, fmt.Errorf("%s argument cannot be empty", GetCmdStr(pk))
+	}
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
+	if err != nil {
+		return nil, err
+	}
+	outputStr := fmt.Sprintf("%s %q", GetCmdStr(pk), pk.Args[0])
+	cmd, err := makeStaticCmd(ctx, GetCmdStr(pk), ids, pk.GetRawStr(), []byte(outputStr))
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, err
+	}
+	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "markdown")
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, err
+	}
+	// set the line state
+	// TODO turn these strings into constants
+	lineState := make(map[string]any)
+	lineState["prompt:source"] = "file"
+	lineState["prompt:file"] = pk.Args[0]
 	err = sstore.UpdateLineState(ctx, ids.ScreenId, update.Line.LineId, lineState)
 	if err != nil {
 		return nil, fmt.Errorf("%s error updating line state: %v", GetCmdStr(pk), err)

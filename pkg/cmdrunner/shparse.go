@@ -28,6 +28,9 @@ var BareMetaCmds = []BareMetaCmdDecl{
 	BareMetaCmdDecl{"reset", "reset"},
 	BareMetaCmdDecl{"codeedit", "codeedit"},
 	BareMetaCmdDecl{"codeview", "codeview"},
+	BareMetaCmdDecl{"imageview", "imageview"},
+	BareMetaCmdDecl{"markdownview", "markdownview"},
+	BareMetaCmdDecl{"mdview", "markdownview"},
 }
 
 const (
@@ -241,6 +244,27 @@ func EvalBracketArgs(origCmdStr string) (map[string]string, string, error) {
 	return rtn, restStr, nil
 }
 
+func unescapeBackSlashes(s string) string {
+	if strings.Index(s, "\\") == -1 {
+		return s
+	}
+	var newStr []rune
+	var lastSlash bool
+	for _, r := range s {
+		if lastSlash {
+			lastSlash = false
+			newStr = append(newStr, r)
+			continue
+		}
+		if r == '\\' {
+			lastSlash = true
+			continue
+		}
+		newStr = append(newStr, r)
+	}
+	return string(newStr)
+}
+
 func EvalMetaCommand(ctx context.Context, origPk *scpacket.FeCommandPacketType) (*scpacket.FeCommandPacketType, error) {
 	if len(origPk.Args) == 0 {
 		return nil, fmt.Errorf("empty command (no fields)")
@@ -299,7 +323,7 @@ func EvalMetaCommand(ctx context.Context, origPk *scpacket.FeCommandPacketType) 
 			rtnPk.Kwargs[varName] = varVal
 			continue
 		}
-		rtnPk.Args = append(rtnPk.Args, literalVal)
+		rtnPk.Args = append(rtnPk.Args, unescapeBackSlashes(literalVal))
 	}
 	if resolveBool(rtnPk.Kwargs["dump"], false) {
 		DumpPacket(rtnPk)
