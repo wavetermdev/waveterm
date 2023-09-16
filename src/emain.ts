@@ -281,8 +281,7 @@ function createMainWindow(clientData) {
     win.on("close", () => {
         MainWindow = null;
     });
-    win.webContents.on("new-window", (e, url) => {
-        e.preventDefault();
+    win.webContents.setWindowOpenHandler(({url, frameName}) => {
         if (url.startsWith("https://docs.getprompt.dev/")) {
             electron.shell.openExternal(url);
         } else if (url.startsWith("https://discord.gg/")) {
@@ -293,6 +292,7 @@ function createMainWindow(clientData) {
             let newUrl = decodeURIComponent(param);
             electron.shell.openExternal(newUrl);
         }
+        return { action: 'deny' };
     });
     return win;
 }
