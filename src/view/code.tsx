@@ -203,6 +203,9 @@ class SourceCodeRenderer extends React.Component<
                     this.setState({ message: null });
                 }, 3000);
             });
+        if (this.props.shouldFocus) {
+            GlobalCommandRunner.screenSetFocus("input");
+        }
     };
 
     handleEditorChange = (code) => {
