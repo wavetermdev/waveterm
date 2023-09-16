@@ -22,7 +22,15 @@
 }
 
 .line .load-error-text {
-    color: #cc0000;
+    .mono-font();
+    color: @term-red;
+    padding-top: 5px;
+}
+
+.line .renderer-loading {
+    .mono-font();
+    color: @term-white;
+    padding-top: 5px;
 }
 
 .line.line-cmd {
@@ -220,6 +228,18 @@
                 color: white;
                 font-weight: bold;
             }
+        }
+
+        .color-red {
+            color: @term-red;
+        }
+
+        .color-green {
+            color: @term-bright-green;
+        }
+
+        .color-yellow {
+            color: @term-bright-yellow;
         }
     }
 

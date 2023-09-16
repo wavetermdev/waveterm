@@ -152,21 +152,22 @@ class SmallLineAvatar extends React.Component<{ line: LineType; cmd: Cmd; onRigh
         let isComment = line.linetype == "text";
         let icon: string = null;
         let iconTitle = null;
-        let iconColor = "auto";
+        let iconColor = null;
         if (isComment) {
             icon = "fa-comment";
             iconTitle = "comment";
         } else if (status == "done") {
             icon = exitcode === 0 ? "fa-check" : "fa-xmark";
             iconTitle = exitcode === 0 ? "success" : "fail";
-            iconColor = exitcode === 0 ? "auto" : "red";
+            iconColor = exitcode === 0 ? "color-green" : "color-red";
         } else if (status == "hangup" || status == "error") {
             icon = "fa-triangle-exclamation";
             iconTitle = status;
-            iconColor = "yellow";
+            iconColor = "color-yellow";
         } else if (status == "running" || "detached") {
-            icon = "fa-rotate";
+            icon = "fa-rotate fa-spin";
             iconTitle = "running";
+            iconColor = "color-green";
         } else {
             icon = "fa-square-question";
             iconTitle = "unknown";
@@ -177,7 +178,7 @@ class SmallLineAvatar extends React.Component<{ line: LineType; cmd: Cmd; onRigh
                 className={cn("simple-line-status", "status-" + status, rtnstate ? "has-rtnstate" : null)}
             >
                 <span className="linenum">{lineNumStr}</span>
-                <i title={iconTitle} className={cn("fa-sharp fa-solid", icon)} style={{ color: iconColor }} />
+                <i title={iconTitle} className={cn("fa-sharp fa-solid", icon, iconColor)} />
             </div>
         );
     }
@@ -676,6 +677,15 @@ class LineCmd extends React.Component<
                 { name: "computed-isFocused" }
             )
             .get();
+        let shouldCmdFocus = mobx
+            .computed(
+                () => {
+                    let screenFocusType = screen.getFocusType();
+                    return isSelected && screenFocusType == "cmd";
+                },
+                { name: "computed-shouldCmdFocus" }
+            )
+            .get();
         let isStatic = staticRender;
         let isRunning = cmd.isRunning();
         let isExpanded = this.isCmdExpanded.get();
@@ -768,6 +778,7 @@ class LineCmd extends React.Component<
                             initParams={this.makeRendererModelInitializeParams()}
                             scrollToBringIntoViewport={this.scrollToBringIntoViewport}
                             isSelected={isSelected}
+                            shouldFocus={shouldCmdFocus}
                         />
                     </If>
                     <If condition={rendererPlugin != null && rendererPlugin.rendererType == "full"}>

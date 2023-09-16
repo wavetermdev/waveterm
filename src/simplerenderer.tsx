@@ -20,6 +20,7 @@ import type {
     TermContextUnion,
     RendererContainerType,
 } from "./types";
+import * as T from "./types";
 import { PacketDataBuffer } from "./ptydata";
 import { debounce, throttle } from "throttle-debounce";
 import * as util from "./util";
@@ -177,6 +178,7 @@ class SimpleBlobRenderer extends React.Component<
         initParams: RendererModelInitializeParams;
         scrollToBringIntoViewport: () => void;
         isSelected: boolean;
+        shouldFocus: boolean;
     },
     {}
 > {
@@ -243,18 +245,23 @@ class SimpleBlobRenderer extends React.Component<
         let { plugin } = this.props;
         let model = this.model;
         if (model.loadError.get() != null) {
+            let errorText = model.loadError.get();
             let height = this.model.savedHeight;
             return (
-                <div ref={this.wrapperDivRef} style={{ minHeight: height }}>
-                    <div className="load-error-text">ERROR: {model.loadError.get()}</div>
+                <div ref={this.wrapperDivRef} style={{ minHeight: height, fontSize: model.opts.termFontSize }}>
+                    <div className="load-error-text">ERROR: {errorText}</div>
                 </div>
             );
         }
         if (model.loading.get()) {
             let height = this.model.savedHeight;
             return (
-                <div ref={this.wrapperDivRef} style={{ minHeight: height }}>
-                    ...
+                <div
+                    ref={this.wrapperDivRef}
+                    className="renderer-loading"
+                    style={{ minHeight: height, fontSize: model.opts.termFontSize }}
+                >
+                    loading content <i className="fa fa-ellipsis fa-fade" />
                 </div>
             );
         }
@@ -262,7 +269,6 @@ class SimpleBlobRenderer extends React.Component<
         if (Comp == null) {
             <div ref={this.wrapperDivRef}>(no component found in plugin)</div>;
         }
-        let simpleModel = model as SimpleBlobRendererModel;
         let { festate, cmdstr, exitcode } = this.props.initParams.rawCmd;
         return (
             <div ref={this.wrapperDivRef} className="sr-wrapper">
@@ -270,15 +276,16 @@ class SimpleBlobRenderer extends React.Component<
                     cwd={festate.cwd}
                     cmdstr={cmdstr}
                     exitcode={exitcode}
-                    data={simpleModel.dataBlob}
-                    readOnly={simpleModel.readOnly}
-                    notFound={simpleModel.notFound}
-                    lineState={simpleModel.lineState}
-                    context={simpleModel.context}
-                    opts={simpleModel.opts}
-                    savedHeight={simpleModel.savedHeight}
+                    data={model.dataBlob}
+                    readOnly={model.readOnly}
+                    notFound={model.notFound}
+                    lineState={model.lineState}
+                    context={model.context}
+                    opts={model.opts}
+                    savedHeight={model.savedHeight}
                     scrollToBringIntoViewport={this.props.scrollToBringIntoViewport}
                     isSelected={this.props.isSelected}
+                    shouldFocus={this.props.shouldFocus}
                 />
             </div>
         );
