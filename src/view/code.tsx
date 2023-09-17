@@ -1,8 +1,13 @@
 import * as React from "react";
 import { RendererContext, RendererOpts, LineStateType, RendererModelContainerApi } from "../types";
 import Editor from "@monaco-editor/react";
+import cn from "classnames";
+import { Markdown } from "../elements";
 import { GlobalModel, GlobalCommandRunner } from "../model";
+import Split from "react-split-it";
+import "./split.css";
 import loader from "@monaco-editor/loader";
+import { editor } from "monaco-editor";
 loader.config({ paths: { vs: "./node_modules/monaco-editor/min/vs" } });
 
 function renderCmdText(text: string): any {
@@ -37,6 +42,9 @@ class SourceCodeRenderer extends React.Component<
         isClosed: boolean;
         editorHeight: number;
         message: { status: string; text: string };
+        isPreviewerAvailable: boolean;
+        showPreview: boolean;
+        editorFraction: number;
     }
 > {
     /**
@@ -45,23 +53,32 @@ class SourceCodeRenderer extends React.Component<
      */
     static codeCache = new Map();
 
+    // which languages have preview options
+    languagesWithPreviewer = ["markdown"];
     filePath;
     cacheKey;
     originalData;
     monacoEditor: any; // reference to mounted monaco editor.  TODO need the correct type
+    markdownRef;
+    syncing;
 
     constructor(props) {
         super(props);
         this.monacoEditor = null;
         const editorHeight = Math.max(props.savedHeight - 25, 0); // must subtract the padding/margin to get the real editorHeight
+        this.markdownRef = React.createRef();
+        this.syncing = false; // to avoid recursive calls between the two scroll listeners
         this.state = {
             code: null,
             languages: [],
             selectedLanguage: "",
             isSave: false,
             isClosed: false,
-            editorHeight: editorHeight,
+            editorHeight,
             message: null,
+            isPreviewerAvailable: false,
+            showPreview: this.props.lineState["showPreview"],
+            editorFraction: this.props.lineState["editorFraction"] || 0.5,
         };
     }
 
@@ -89,8 +106,12 @@ class SourceCodeRenderer extends React.Component<
         }
     }
 
-    setInitialLanguage = (editor) => {
+    saveLineState = (kvp) => {
         const { screenId, lineId } = this.props.context;
+        GlobalCommandRunner.setLineState(screenId, lineId, { ...this.props.lineState, ...kvp }, false);
+    };
+
+    setInitialLanguage = (editor) => {
         // set all languages
         const languages = monaco.languages.getLanguages().map((lang) => lang.id);
         this.setState({ languages });
@@ -105,19 +126,17 @@ class SourceCodeRenderer extends React.Component<
                 .find((lang) => lang.extensions?.includes("." + extension));
             if (detectedLanguageObj) {
                 detectedLanguage = detectedLanguageObj.id;
-                GlobalCommandRunner.setLineState(
-                    screenId,
-                    lineId,
-                    { ...this.props.lineState, lang: detectedLanguage },
-                    false
-                );
+                this.saveLineState({ lang: detectedLanguage });
             }
         }
         if (detectedLanguage) {
             const model = editor.getModel();
             if (model) {
                 monaco.editor.setModelLanguage(model, detectedLanguage);
-                this.setState({ selectedLanguage: detectedLanguage });
+                this.setState({
+                    selectedLanguage: detectedLanguage,
+                    isPreviewerAvailable: this.languagesWithPreviewer.includes(detectedLanguage),
+                });
             }
         }
     };
@@ -135,6 +154,17 @@ class SourceCodeRenderer extends React.Component<
                 e.preventDefault();
                 this.doClose();
             }
+            if (e.code === "KeyP" && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                this.togglePreview();
+            }
+        });
+        editor.onDidScrollChange((e) => {
+            if (!this.syncing && e.scrollTopChanged) {
+                this.syncing = true;
+                this.handleEditorScrollChange(e);
+                this.syncing = false;
+            }
         });
         if (this.props.shouldFocus) {
             this.monacoEditor.focus();
@@ -150,23 +180,49 @@ class SourceCodeRenderer extends React.Component<
         }
     };
 
+    handleEditorScrollChange(e) {
+        // Get the maximum scrollable height for the editor
+        const scrollableHeightEditor = this.monacoEditor.getScrollHeight() - this.monacoEditor.getLayoutInfo().height;
+
+        // Calculate the scroll percentage
+        const verticalScrollPercentage = e.scrollTop / scrollableHeightEditor;
+
+        // Apply the same percentage to the markdown div
+        const markdownDiv = this.markdownRef.current;
+        if (markdownDiv) {
+            const scrollableHeightMarkdown = markdownDiv.scrollHeight - markdownDiv.clientHeight;
+            markdownDiv.scrollTop = verticalScrollPercentage * scrollableHeightMarkdown;
+        }
+    }
+
+    handleDivScroll() {
+        if (!this.syncing) {
+            this.syncing = true;
+            // Calculate the scroll percentage for the markdown div
+            const markdownDiv = this.markdownRef.current;
+            const scrollableHeightMarkdown = markdownDiv.scrollHeight - markdownDiv.clientHeight;
+            const verticalScrollPercentage = markdownDiv.scrollTop / scrollableHeightMarkdown;
+
+            // Apply the same percentage to the editor
+            const scrollableHeightEditor =
+                this.monacoEditor.getScrollHeight() - this.monacoEditor.getLayoutInfo().height;
+            this.monacoEditor.setScrollTop(verticalScrollPercentage * scrollableHeightEditor);
+
+            this.syncing = false;
+        }
+    }
+
     handleLanguageChange = (event) => {
-        const { screenId, lineId } = this.props.context;
         const selectedLanguage = event.target.value;
-        this.setState({ selectedLanguage });
+        this.setState({
+            selectedLanguage,
+            isPreviewerAvailable: this.languagesWithPreviewer.includes(selectedLanguage),
+        });
         if (this.monacoEditor) {
             const model = this.monacoEditor.getModel();
             if (model) {
                 monaco.editor.setModelLanguage(model, selectedLanguage);
-                GlobalCommandRunner.setLineState(
-                    screenId,
-                    lineId,
-                    {
-                        ...this.props.lineState,
-                        lang: selectedLanguage,
-                    },
-                    false
-                );
+                this.saveLineState({ lang: selectedLanguage });
             }
         }
     };
@@ -251,9 +307,112 @@ class SourceCodeRenderer extends React.Component<
         return !(this.props.readOnly || this.state.isClosed);
     }
 
+    getCodeEditor = () => (
+        <div style={{ maxHeight: this.props.opts.maxSize.height }}>
+            <Editor
+                theme="hc-black"
+                height={this.state.editorHeight}
+                defaultLanguage={this.state.selectedLanguage}
+                defaultValue={this.state.code}
+                onMount={this.handleEditorDidMount}
+                options={{
+                    scrollBeyondLastLine: false,
+                    fontSize: GlobalModel.termFontSize.get(),
+                    fontFamily: "JetBrains Mono",
+                    readOnly: !this.getAllowEditing(),
+                }}
+                onChange={this.handleEditorChange}
+            />
+        </div>
+    );
+
+    getPreviewer = () => {
+        return (
+            <div
+                className="scroller"
+                style={{ maxHeight: this.props.opts.maxSize.height }}
+                ref={this.markdownRef}
+                onScroll={() => this.handleDivScroll()}
+            >
+                <Markdown text={this.state.code} style={{width: "100%", padding: "1rem"}}/>
+            </div>
+        );
+    };
+
+    togglePreview = () => {
+        this.saveLineState({ showPreview: !this.state.showPreview });
+        this.setState({ showPreview: !this.state.showPreview });
+    };
+
+    getEditorControls = () => {
+        const { selectedLanguage, isSave, languages, isPreviewerAvailable, showPreview } = this.state;
+        let allowEditing = this.getAllowEditing();
+        return (
+            <div style={{ position: "absolute", bottom: "-3px", right: "8px" }}>
+                {isPreviewerAvailable && (
+                    <div className="cmd-hints" style={{ minWidth: "8rem", maxWidth: "8rem" }}>
+                        <div onClick={this.togglePreview} className={`hint-item preview`}>
+                            {`${showPreview ? "hide" : "show"} preview (`}
+                            {renderCmdText("P")}
+                            {`)`}
+                        </div>
+                    </div>
+                )}
+                <select className="dropdown" value={selectedLanguage} onChange={this.handleLanguageChange}>
+                    {languages.map((lang, index) => (
+                        <option key={index} value={lang}>
+                            {lang}
+                        </option>
+                    ))}
+                </select>
+                {allowEditing && (
+                    <div className="cmd-hints">
+                        <div onClick={this.doSave} className={`hint-item ${isSave ? "save-enabled" : "save-disabled"}`}>
+                            {`save (`}
+                            {renderCmdText("S")}
+                            {`)`}
+                        </div>
+                    </div>
+                )}
+                {allowEditing && (
+                    <div className="cmd-hints">
+                        <div
+                            onClick={this.doClose}
+                            className={`hint-item ${!isSave ? "close-enabled" : "close-disabled"}`}
+                        >
+                            {`close (`}
+                            {renderCmdText("D")}
+                            {`)`}
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    getMessage = () => (
+        <div style={{ position: "absolute", bottom: "-3px", left: "14px" }}>
+            <div
+                className="message"
+                style={{
+                    fontSize: GlobalModel.termFontSize.get(),
+                    fontFamily: "JetBrains Mono",
+                    background: `${this.state.message.status === "error" ? "red" : "#4e9a06"}`,
+                }}
+            >
+                {this.state.message.text}
+            </div>
+        </div>
+    );
+
+    setSizes = (sizes) => {
+        this.setState({ editorFraction: sizes[0] });
+        this.saveLineState({ editorFraction: sizes[0] });
+    };
+
     render() {
-        const { opts, exitcode } = this.props;
-        const { selectedLanguage, code, isSave } = this.state;
+        const { exitcode } = this.props;
+        const { code, message, isPreviewerAvailable, showPreview, editorFraction } = this.state;
 
         if (code == null)
             return <div className="renderer-container code-renderer" style={{ height: this.props.savedHeight }} />;
@@ -272,77 +431,14 @@ class SourceCodeRenderer extends React.Component<
                 </div>
             );
 
-        let allowEditing = this.getAllowEditing();
         return (
             <div className="renderer-container code-renderer">
-                <div className="scroller" style={{ maxHeight: opts.maxSize.height }}>
-                    <Editor
-                        theme="hc-black"
-                        height={this.state.editorHeight}
-                        defaultLanguage={selectedLanguage}
-                        defaultValue={code}
-                        onMount={this.handleEditorDidMount}
-                        options={{
-                            scrollBeyondLastLine: false,
-                            fontSize: GlobalModel.termFontSize.get(),
-                            fontFamily: "JetBrains Mono",
-                            readOnly: !allowEditing,
-                        }}
-                        onChange={this.handleEditorChange}
-                    />
-                </div>
-                <div style={{ position: "absolute", bottom: "-3px", right: 0 }}>
-                    <select
-                        className="dropdown"
-                        value={this.state.selectedLanguage}
-                        onChange={this.handleLanguageChange}
-                        style={{ minWidth: "6rem", maxWidth: "6rem", marginRight: "26px" }}
-                    >
-                        {this.state.languages.map((lang, index) => (
-                            <option key={index} value={lang}>
-                                {lang}
-                            </option>
-                        ))}
-                    </select>
-                    {allowEditing && (
-                        <div className="cmd-hints" style={{ minWidth: "6rem", maxWidth: "6rem", marginLeft: "-18px" }}>
-                            <div
-                                onClick={this.doSave}
-                                className={`hint-item ${isSave ? "save-enabled" : "save-disabled"}`}
-                            >
-                                {`save (`}
-                                {renderCmdText("S")}
-                                {`)`}
-                            </div>
-                        </div>
-                    )}
-                    {allowEditing && (
-                        <div className="cmd-hints" style={{ minWidth: "6rem", maxWidth: "6rem", marginLeft: "-18px" }}>
-                            <div
-                                onClick={this.doClose}
-                                className={`hint-item ${!isSave ? "close-enabled" : "close-disabled"}`}
-                            >
-                                {`close (`}
-                                {renderCmdText("D")}
-                                {`)`}
-                            </div>
-                        </div>
-                    )}
-                </div>
-                {this.state.message && (
-                    <div style={{ position: "absolute", bottom: "-3px", left: "14px" }}>
-                        <div
-                            className="message"
-                            style={{
-                                fontSize: GlobalModel.termFontSize.get(),
-                                fontFamily: "JetBrains Mono",
-                                background: `${this.state.message.status === "error" ? "red" : "#4e9a06"}`,
-                            }}
-                        >
-                            {this.state.message.text}
-                        </div>
-                    </div>
-                )}
+                <Split sizes={[editorFraction, 1 - editorFraction]} onSetSizes={this.setSizes}>
+                    {this.getCodeEditor()}
+                    {isPreviewerAvailable && showPreview && this.getPreviewer()}
+                </Split>
+                {this.getEditorControls()}
+                {message && this.getMessage()}
             </div>
         );
     }
