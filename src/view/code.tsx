@@ -1,7 +1,12 @@
 import * as React from "react";
 import { RendererContext, RendererOpts, LineStateType } from "../types";
 import Editor from "@monaco-editor/react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner } from "../model";
+import Split from "react-split-it";
+import "./split.css";
 import loader from "@monaco-editor/loader";
 loader.config({ paths: { vs: "./node_modules/monaco-editor/min/vs" } });
 
@@ -36,6 +41,7 @@ class SourceCodeRenderer extends React.Component<
         isClosed: boolean;
         editorHeight: number;
         message: { status: string; text: string };
+        isPreviewerAvailable: boolean;
     }
 > {
     /**
@@ -43,6 +49,9 @@ class SourceCodeRenderer extends React.Component<
      * Editor should never read the code directly from the filesystem. it should read from the cache.
      */
     static codeCache = new Map();
+
+    // which languages have preview options
+    languagesWithPreviewer = ["markdown", "html"];
 
     filePath;
     cacheKey;
@@ -61,6 +70,7 @@ class SourceCodeRenderer extends React.Component<
             isClosed: false,
             editorHeight: editorHeight,
             message: null,
+            isPreviewerAvailable: true,
         };
     }
 
@@ -116,7 +126,10 @@ class SourceCodeRenderer extends React.Component<
             const model = editor.getModel();
             if (model) {
                 monaco.editor.setModelLanguage(model, detectedLanguage);
-                this.setState({ selectedLanguage: detectedLanguage });
+                this.setState({
+                    selectedLanguage: detectedLanguage,
+                    isPreviewerAvailable: this.languagesWithPreviewer.includes(detectedLanguage),
+                });
             }
         }
     };
@@ -143,7 +156,10 @@ class SourceCodeRenderer extends React.Component<
     handleLanguageChange = (event) => {
         const { screenId, lineId } = this.props.context;
         const selectedLanguage = event.target.value;
-        this.setState({ selectedLanguage });
+        this.setState({
+            selectedLanguage,
+            isPreviewerAvailable: this.languagesWithPreviewer.includes(selectedLanguage),
+        });
         if (this.monacoEditor) {
             const model = this.monacoEditor.getModel();
             if (model) {
@@ -241,9 +257,125 @@ class SourceCodeRenderer extends React.Component<
         return !(this.props.readOnly || this.state.isClosed);
     }
 
+    getCodeEditor = () => (
+        <div style={{ maxHeight: this.props.opts.maxSize.height }}>
+            <Editor
+                theme="hc-black"
+                height={this.state.editorHeight}
+                defaultLanguage={this.state.selectedLanguage}
+                defaultValue={this.state.code}
+                onMount={this.handleEditorDidMount}
+                options={{
+                    scrollBeyondLastLine: false,
+                    fontSize: GlobalModel.termFontSize.get(),
+                    fontFamily: "JetBrains Mono",
+                    readOnly: !this.getAllowEditing(),
+                }}
+                onChange={this.handleEditorChange}
+            />
+        </div>
+    );
+
+    getPreviewer = () => {
+        function LinkRenderer(props: any): any {
+            let newUrl = "https://extern?" + encodeURIComponent(props.href);
+            return (
+                <a href={newUrl} target="_blank">
+                    {props.children}
+                </a>
+            );
+        }
+
+        function HeaderRenderer(props: any, hnum: number): any {
+            return <div className={cn("title", "is-" + hnum)}>{props.children}</div>;
+        }
+
+        function CodeRenderer(props: any): any {
+            return <code className={cn({ inline: props.inline })}>{props.children}</code>;
+        }
+        let markdownComponents = {
+            a: LinkRenderer,
+            h1: (props) => HeaderRenderer(props, 1),
+            h2: (props) => HeaderRenderer(props, 2),
+            h3: (props) => HeaderRenderer(props, 3),
+            h4: (props) => HeaderRenderer(props, 4),
+            h5: (props) => HeaderRenderer(props, 5),
+            h6: (props) => HeaderRenderer(props, 6),
+            code: CodeRenderer,
+        };
+        return (
+            <div className="scroller" style={{ maxHeight: this.props.opts.maxSize.height }}>
+                <div className={"markdown content"} style={{ width: "100%", padding: "1rem" }}>
+                    <ReactMarkdown
+                        children={this.state.code}
+                        remarkPlugins={[remarkGfm]}
+                        components={markdownComponents}
+                    />
+                </div>
+            </div>
+        );
+    };
+
+    getEditorControls = () => {
+        const { selectedLanguage, isSave, languages } = this.state;
+        let allowEditing = this.getAllowEditing();
+        return (
+            <div style={{ position: "absolute", bottom: "-3px", right: 0 }}>
+                <select
+                    className="dropdown"
+                    value={selectedLanguage}
+                    onChange={this.handleLanguageChange}
+                    style={{ minWidth: "6rem", maxWidth: "6rem", marginRight: "26px" }}
+                >
+                    {languages.map((lang, index) => (
+                        <option key={index} value={lang}>
+                            {lang}
+                        </option>
+                    ))}
+                </select>
+                {allowEditing && (
+                    <div className="cmd-hints" style={{ minWidth: "6rem", maxWidth: "6rem", marginLeft: "-18px" }}>
+                        <div onClick={this.doSave} className={`hint-item ${isSave ? "save-enabled" : "save-disabled"}`}>
+                            {`save (`}
+                            {renderCmdText("S")}
+                            {`)`}
+                        </div>
+                    </div>
+                )}
+                {allowEditing && (
+                    <div className="cmd-hints" style={{ minWidth: "6rem", maxWidth: "6rem", marginLeft: "-18px" }}>
+                        <div
+                            onClick={this.doClose}
+                            className={`hint-item ${!isSave ? "close-enabled" : "close-disabled"}`}
+                        >
+                            {`close (`}
+                            {renderCmdText("D")}
+                            {`)`}
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    getMessage = () => (
+        <div style={{ position: "absolute", bottom: "-3px", left: "14px" }}>
+            <div
+                className="message"
+                style={{
+                    fontSize: GlobalModel.termFontSize.get(),
+                    fontFamily: "JetBrains Mono",
+                    background: `${this.state.message.status === "error" ? "red" : "#4e9a06"}`,
+                }}
+            >
+                {this.state.message.text}
+            </div>
+        </div>
+    );
+
     render() {
-        const { opts, exitcode } = this.props;
-        const { selectedLanguage, code, isSave } = this.state;
+        const { exitcode } = this.props;
+        const { code, message, isPreviewerAvailable } = this.state;
 
         if (code == null)
             return <div className="renderer-container code-renderer" style={{ height: this.props.savedHeight }} />;
@@ -262,77 +394,14 @@ class SourceCodeRenderer extends React.Component<
                 </div>
             );
 
-        let allowEditing = this.getAllowEditing();
         return (
             <div className="renderer-container code-renderer">
-                <div className="scroller" style={{ maxHeight: opts.maxSize.height }}>
-                    <Editor
-                        theme="hc-black"
-                        height={this.state.editorHeight}
-                        defaultLanguage={selectedLanguage}
-                        defaultValue={code}
-                        onMount={this.handleEditorDidMount}
-                        options={{
-                            scrollBeyondLastLine: false,
-                            fontSize: GlobalModel.termFontSize.get(),
-                            fontFamily: "JetBrains Mono",
-                            readOnly: !allowEditing,
-                        }}
-                        onChange={this.handleEditorChange}
-                    />
-                </div>
-                <div style={{ position: "absolute", bottom: "-3px", right: 0 }}>
-                    <select
-                        className="dropdown"
-                        value={this.state.selectedLanguage}
-                        onChange={this.handleLanguageChange}
-                        style={{ minWidth: "6rem", maxWidth: "6rem", marginRight: "26px" }}
-                    >
-                        {this.state.languages.map((lang, index) => (
-                            <option key={index} value={lang}>
-                                {lang}
-                            </option>
-                        ))}
-                    </select>
-                    {allowEditing && (
-                        <div className="cmd-hints" style={{ minWidth: "6rem", maxWidth: "6rem", marginLeft: "-18px" }}>
-                            <div
-                                onClick={this.doSave}
-                                className={`hint-item ${isSave ? "save-enabled" : "save-disabled"}`}
-                            >
-                                {`save (`}
-                                {renderCmdText("S")}
-                                {`)`}
-                            </div>
-                        </div>
-                    )}
-                    {allowEditing && (
-                        <div className="cmd-hints" style={{ minWidth: "6rem", maxWidth: "6rem", marginLeft: "-18px" }}>
-                            <div
-                                onClick={this.doClose}
-                                className={`hint-item ${!isSave ? "close-enabled" : "close-disabled"}`}
-                            >
-                                {`close (`}
-                                {renderCmdText("D")}
-                                {`)`}
-                            </div>
-                        </div>
-                    )}
-                </div>
-                {this.state.message && (
-                    <div style={{ position: "absolute", bottom: "-3px", left: "14px" }}>
-                        <div
-                            className="message"
-                            style={{
-                                fontSize: GlobalModel.termFontSize.get(),
-                                fontFamily: "JetBrains Mono",
-                                background: `${this.state.message.status === "error" ? "red" : "#4e9a06"}`,
-                            }}
-                        >
-                            {this.state.message.text}
-                        </div>
-                    </div>
-                )}
+                <Split>
+                    {this.getCodeEditor()}
+                    {isPreviewerAvailable && this.getPreviewer()}
+                </Split>
+                {this.getEditorControls()}
+                {message && this.getMessage()}
             </div>
         );
     }
