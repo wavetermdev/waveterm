@@ -309,7 +309,11 @@ input[type="checkbox"] {
     font-size: 12px;
 }
 
-.markdown-renderer .markdown {
+.renderer-container.mustache-renderer {
+    color: @term-white;
+}
+
+.markdown-renderer .markdown, .mustache-renderer .mustache {
     padding: 5px;
     line-height: 1.5;
     width: fit-content;
@@ -327,6 +331,10 @@ input[type="checkbox"] {
         background-color: #222;
         margin: 2px 10px 6px 10px;
         padding: 4px 4px 4px 6px;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        color: @term-white;
     }
 }
 
