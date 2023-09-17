@@ -1,9 +1,8 @@
 import * as React from "react";
 import { RendererContext, RendererOpts, LineStateType } from "../types";
 import Editor from "@monaco-editor/react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import cn from "classnames";
+import { Markdown } from "../elements";
 import { GlobalModel, GlobalCommandRunner } from "../model";
 import Split from "react-split-it";
 import "./split.css";
@@ -180,8 +179,10 @@ class SourceCodeRenderer extends React.Component<
 
         // Apply the same percentage to the markdown div
         const markdownDiv = this.markdownRef.current;
-        const scrollableHeightMarkdown = markdownDiv.scrollHeight - markdownDiv.clientHeight;
-        markdownDiv.scrollTop = verticalScrollPercentage * scrollableHeightMarkdown;
+        if (markdownDiv) {
+            const scrollableHeightMarkdown = markdownDiv.scrollHeight - markdownDiv.clientHeight;
+            markdownDiv.scrollTop = verticalScrollPercentage * scrollableHeightMarkdown;
+        }
     }
 
     handleDivScroll() {
@@ -316,48 +317,7 @@ class SourceCodeRenderer extends React.Component<
     );
 
     getPreviewer = () => {
-        function LinkRenderer(props: any): any {
-            let newUrl = "https://extern?" + encodeURIComponent(props.href);
-            return (
-                <a href={newUrl} target="_blank">
-                    {props.children}
-                </a>
-            );
-        }
-
-        function HeaderRenderer(props: any, hnum: number): any {
-            return <div className={cn("title", "is-" + hnum)}>{props.children}</div>;
-        }
-
-        function CodeRenderer(props: any): any {
-            return <code className={cn({ inline: props.inline })}>{props.children}</code>;
-        }
-        let markdownComponents = {
-            a: LinkRenderer,
-            h1: (props) => HeaderRenderer(props, 1),
-            h2: (props) => HeaderRenderer(props, 2),
-            h3: (props) => HeaderRenderer(props, 3),
-            h4: (props) => HeaderRenderer(props, 4),
-            h5: (props) => HeaderRenderer(props, 5),
-            h6: (props) => HeaderRenderer(props, 6),
-            code: CodeRenderer,
-        };
-        return (
-            <div
-                className="scroller"
-                style={{ maxHeight: this.props.opts.maxSize.height }}
-                ref={this.markdownRef}
-                onScroll={() => this.handleDivScroll()}
-            >
-                <div className={"markdown content"} style={{ width: "100%", padding: "1rem" }}>
-                    <ReactMarkdown
-                        children={this.state.code}
-                        remarkPlugins={[remarkGfm]}
-                        components={markdownComponents}
-                    />
-                </div>
-            </div>
-        );
+        return <Markdown text={this.state.code} style={{width: "100%", padding: "1rem"}}/>
     };
 
     togglePreview = () => {
