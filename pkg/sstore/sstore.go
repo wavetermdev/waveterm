@@ -49,6 +49,14 @@ const (
 )
 
 const (
+	LineState_Source   = "prompt:source"
+	LineState_File     = "prompt:file"
+	LineState_Template = "template"
+	LineState_Mode     = "mode"
+	LineState_Lang     = "lang"
+)
+
+const (
 	MainViewSession   = "session"
 	MainViewBookmarks = "bookmarks"
 	MainViewHistory   = "history"
@@ -1058,7 +1066,7 @@ func (cmd *CmdType) IsRunning() bool {
 	return cmd.Status == CmdStatusRunning || cmd.Status == CmdStatusDetached
 }
 
-func makeNewLineCmd(screenId string, userId string, lineId string, renderer string) *LineType {
+func makeNewLineCmd(screenId string, userId string, lineId string, renderer string, lineState map[string]any) *LineType {
 	rtn := &LineType{}
 	rtn.ScreenId = screenId
 	rtn.UserId = userId
@@ -1069,7 +1077,10 @@ func makeNewLineCmd(screenId string, userId string, lineId string, renderer stri
 	rtn.LineId = lineId
 	rtn.ContentHeight = LineNoHeight
 	rtn.Renderer = renderer
-	rtn.LineState = make(map[string]any)
+	if lineState == nil {
+		lineState = make(map[string]any)
+	}
+	rtn.LineState = lineState
 	return rtn
 }
 
@@ -1119,8 +1130,8 @@ func AddOpenAILine(ctx context.Context, screenId string, userId string, cmd *Cmd
 	return rtnLine, nil
 }
 
-func AddCmdLine(ctx context.Context, screenId string, userId string, cmd *CmdType, renderer string) (*LineType, error) {
-	rtnLine := makeNewLineCmd(screenId, userId, cmd.LineId, renderer)
+func AddCmdLine(ctx context.Context, screenId string, userId string, cmd *CmdType, renderer string, lineState map[string]any) (*LineType, error) {
+	rtnLine := makeNewLineCmd(screenId, userId, cmd.LineId, renderer, lineState)
 	err := InsertLine(ctx, rtnLine, cmd)
 	if err != nil {
 		return nil, err

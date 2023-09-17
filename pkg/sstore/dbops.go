@@ -786,6 +786,10 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 	if cmd != nil && cmd.ScreenId == "" {
 		return fmt.Errorf("cmd should have screenid set")
 	}
+	qjs := dbutil.QuickJson(line.LineState)
+	if len(qjs) > MaxLineStateSize {
+		return fmt.Errorf("linestate exceeds maxsize, size[%d] max[%d]", len(qjs), MaxLineStateSize)
+	}
 	return WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT screenid FROM screen WHERE screenid = ?`
 		if !tx.Exists(query, line.ScreenId) {

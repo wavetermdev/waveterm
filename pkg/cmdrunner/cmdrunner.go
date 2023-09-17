@@ -64,6 +64,8 @@ const (
 	KwArgRenderer = "renderer"
 	KwArgView     = "view"
 	KwArgState    = "state"
+	KwArgTemplate = "template"
+	KwArgLang     = "lang"
 )
 
 var ColorNames = []string{"black", "red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
@@ -445,7 +447,7 @@ func SyncCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 		return nil, err
 	}
 	cmd.RawCmdStr = pk.GetRawStr()
-	update, err := addLineForCmd(ctx, "/sync", true, ids, cmd, "terminal")
+	update, err := addLineForCmd(ctx, "/sync", true, ids, cmd, "terminal", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -469,6 +471,23 @@ func getRendererArg(pk *scpacket.FeCommandPacketType) (string, error) {
 	return rval, nil
 }
 
+func getTemplateArg(pk *scpacket.FeCommandPacketType) (string, error) {
+	rval := pk.Kwargs[KwArgTemplate]
+	if rval == "" {
+		return "", nil
+	}
+	// TODO validate
+	return rval, nil
+}
+
+func getLangArg(pk *scpacket.FeCommandPacketType) (string, error) {
+	// TODO better error checking
+	if len(pk.Kwargs[KwArgLang]) > 50 {
+		return "", nil // TODO return error, don't fail silently
+	}
+	return pk.Kwargs[KwArgLang], nil
+}
+
 func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
 	if err != nil {
@@ -477,6 +496,14 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	renderer, err := getRendererArg(pk)
 	if err != nil {
 		return nil, fmt.Errorf("/run error, invalid view/renderer: %w", err)
+	}
+	templateArg, err := getTemplateArg(pk)
+	if err != nil {
+		return nil, fmt.Errorf("/run error, invalid template: %w", err)
+	}
+	langArg, err := getLangArg(pk)
+	if err != nil {
+		return nil, fmt.Errorf("/run error, invalid lang: %w", err)
 	}
 	cmdStr := firstArg(pk)
 	expandedCmdStr, err := doCmdHistoryExpansion(ctx, ids, cmdStr)
@@ -516,7 +543,14 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 		return nil, err
 	}
 	cmd.RawCmdStr = pk.GetRawStr()
-	update, err := addLineForCmd(ctx, "/run", true, ids, cmd, renderer)
+	lineState := make(map[string]any)
+	if templateArg != "" {
+		lineState[sstore.LineState_Template] = templateArg
+	}
+	if langArg != "" {
+		lineState[sstore.LineState_Lang] = langArg
+	}
+	update, err := addLineForCmd(ctx, "/run", true, ids, cmd, renderer, lineState)
 	if err != nil {
 		return nil, err
 	}
@@ -1227,7 +1261,7 @@ func ScreenResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	update, err := addLineForCmd(ctx, "/screen:reset", false, ids, cmd, "")
+	update, err := addLineForCmd(ctx, "/screen:reset", false, ids, cmd, "", nil)
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
@@ -1547,7 +1581,7 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "")
+	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "", nil)
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
@@ -1612,8 +1646,8 @@ func makeStaticCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr 
 	return cmd, nil
 }
 
-func addLineForCmd(ctx context.Context, metaCmd string, shouldFocus bool, ids resolvedIds, cmd *sstore.CmdType, renderer string) (*sstore.ModelUpdate, error) {
-	rtnLine, err := sstore.AddCmdLine(ctx, ids.ScreenId, DefaultUserId, cmd, renderer)
+func addLineForCmd(ctx context.Context, metaCmd string, shouldFocus bool, ids resolvedIds, cmd *sstore.CmdType, renderer string, lineState map[string]any) (*sstore.ModelUpdate, error) {
+	rtnLine, err := sstore.AddCmdLine(ctx, ids.ScreenId, DefaultUserId, cmd, renderer, lineState)
 	if err != nil {
 		return nil, err
 	}
@@ -2191,7 +2225,7 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	update, err := addLineForCmd(ctx, "/reset", false, ids, cmd, "")
+	update, err := addLineForCmd(ctx, "/reset", false, ids, cmd, "", nil)
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
@@ -3118,6 +3152,10 @@ func CodeEditCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	if pk.Args[0] == "" {
 		return nil, fmt.Errorf("%s argument cannot be empty", GetCmdStr(pk))
 	}
+	langArg, err := getLangArg(pk)
+	if err != nil {
+		return nil, fmt.Errorf("%s invalid 'lang': %v", GetCmdStr(pk), err)
+	}
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
 	if err != nil {
 		return nil, err
@@ -3128,30 +3166,23 @@ func CodeEditCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), true, ids, cmd, "code")
+	// set the line state
+	lineState := make(map[string]any)
+	lineState[sstore.LineState_Source] = "file"
+	lineState[sstore.LineState_File] = pk.Args[0]
+	if GetCmdStr(pk) == "codeview" {
+		lineState[sstore.LineState_Mode] = "view"
+	} else {
+		lineState[sstore.LineState_Mode] = "edit"
+	}
+	if langArg != "" {
+		lineState[sstore.LineState_Lang] = langArg
+	}
+	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), true, ids, cmd, "code", lineState)
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	// set the line state
-	// TODO turn these strings into constants
-	lineState := make(map[string]any)
-	lineState["prompt:source"] = "file"
-	lineState["prompt:file"] = pk.Args[0]
-	if GetCmdStr(pk) == "codeview" {
-		lineState["mode"] = "view"
-	} else {
-		lineState["mode"] = "edit"
-	}
-	// TODO better error checking for lang
-	if pk.Kwargs["lang"] != "" && len(pk.Kwargs["lang"]) <= 50 {
-		lineState["lang"] = pk.Kwargs["lang"]
-	}
-	err = sstore.UpdateLineState(ctx, ids.ScreenId, update.Line.LineId, lineState)
-	if err != nil {
-		return nil, fmt.Errorf("%s error updating line state: %v", GetCmdStr(pk), err)
-	}
-	update.Line.LineState = lineState
 	update.Interactive = pk.Interactive
 	return update, nil
 }
@@ -3174,21 +3205,15 @@ func ImageViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "image")
+	// set the line state
+	lineState := make(map[string]any)
+	lineState[sstore.LineState_Source] = "file"
+	lineState[sstore.LineState_File] = pk.Args[0]
+	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "image", lineState)
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	// set the line state
-	// TODO turn these strings into constants
-	lineState := make(map[string]any)
-	lineState["prompt:source"] = "file"
-	lineState["prompt:file"] = pk.Args[0]
-	err = sstore.UpdateLineState(ctx, ids.ScreenId, update.Line.LineId, lineState)
-	if err != nil {
-		return nil, fmt.Errorf("%s error updating line state: %v", GetCmdStr(pk), err)
-	}
-	update.Line.LineState = lineState
 	update.Interactive = pk.Interactive
 	return update, nil
 }
@@ -3211,21 +3236,15 @@ func MarkdownViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "markdown")
+	// set the line state
+	lineState := make(map[string]any)
+	lineState[sstore.LineState_Source] = "file"
+	lineState[sstore.LineState_File] = pk.Args[0]
+	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "markdown", lineState)
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	// set the line state
-	// TODO turn these strings into constants
-	lineState := make(map[string]any)
-	lineState["prompt:source"] = "file"
-	lineState["prompt:file"] = pk.Args[0]
-	err = sstore.UpdateLineState(ctx, ids.ScreenId, update.Line.LineId, lineState)
-	if err != nil {
-		return nil, fmt.Errorf("%s error updating line state: %v", GetCmdStr(pk), err)
-	}
-	update.Line.LineState = lineState
 	update.Interactive = pk.Interactive
 	return update, nil
 }
