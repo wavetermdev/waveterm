@@ -8,6 +8,7 @@ import { GlobalModel, GlobalCommandRunner } from "../model";
 import Split from "react-split-it";
 import "./split.css";
 import loader from "@monaco-editor/loader";
+import { editor } from "monaco-editor";
 loader.config({ paths: { vs: "./node_modules/monaco-editor/min/vs" } });
 
 function renderCmdText(text: string): any {
@@ -43,6 +44,7 @@ class SourceCodeRenderer extends React.Component<
         message: { status: string; text: string };
         isPreviewerAvailable: boolean;
         showPreview: boolean;
+        editorFraction: number;
     }
 > {
     /**
@@ -52,8 +54,7 @@ class SourceCodeRenderer extends React.Component<
     static codeCache = new Map();
 
     // which languages have preview options
-    languagesWithPreviewer = ["markdown", "html"];
-
+    languagesWithPreviewer = ["markdown"];
     filePath;
     cacheKey;
     originalData;
@@ -73,10 +74,11 @@ class SourceCodeRenderer extends React.Component<
             selectedLanguage: "",
             isSave: false,
             isClosed: false,
-            editorHeight: editorHeight,
+            editorHeight,
             message: null,
             isPreviewerAvailable: false,
-            showPreview: false,
+            showPreview: this.props.lineState["showPreview"],
+            editorFraction: this.props.lineState["editorFraction"] || 0.5,
         };
     }
 
@@ -104,8 +106,12 @@ class SourceCodeRenderer extends React.Component<
         }
     }
 
-    setInitialLanguage = (editor) => {
+    saveLineState = (kvp) => {
         const { screenId, lineId } = this.props.context;
+        GlobalCommandRunner.setLineState(screenId, lineId, { ...this.props.lineState, ...kvp }, false);
+    };
+
+    setInitialLanguage = (editor) => {
         // set all languages
         const languages = monaco.languages.getLanguages().map((lang) => lang.id);
         this.setState({ languages });
@@ -120,12 +126,7 @@ class SourceCodeRenderer extends React.Component<
                 .find((lang) => lang.extensions?.includes("." + extension));
             if (detectedLanguageObj) {
                 detectedLanguage = detectedLanguageObj.id;
-                GlobalCommandRunner.setLineState(
-                    screenId,
-                    lineId,
-                    { ...this.props.lineState, lang: detectedLanguage },
-                    false
-                );
+                this.saveLineState({ lang: detectedLanguage });
             }
         }
         if (detectedLanguage) {
@@ -152,6 +153,10 @@ class SourceCodeRenderer extends React.Component<
             if (e.code === "KeyD" && (e.ctrlKey || e.metaKey) && !this.state.isSave) {
                 e.preventDefault();
                 this.doClose();
+            }
+            if (e.code === "KeyP" && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                this.togglePreview();
             }
         });
         editor.onDidScrollChange((e) => {
@@ -197,7 +202,6 @@ class SourceCodeRenderer extends React.Component<
     }
 
     handleLanguageChange = (event) => {
-        const { screenId, lineId } = this.props.context;
         const selectedLanguage = event.target.value;
         this.setState({
             selectedLanguage,
@@ -207,15 +211,7 @@ class SourceCodeRenderer extends React.Component<
             const model = this.monacoEditor.getModel();
             if (model) {
                 monaco.editor.setModelLanguage(model, selectedLanguage);
-                GlobalCommandRunner.setLineState(
-                    screenId,
-                    lineId,
-                    {
-                        ...this.props.lineState,
-                        lang: selectedLanguage,
-                    },
-                    false
-                );
+                this.saveLineState({ lang: selectedLanguage });
             }
         }
     };
@@ -364,6 +360,11 @@ class SourceCodeRenderer extends React.Component<
         );
     };
 
+    togglePreview = () => {
+        this.saveLineState({ showPreview: !this.state.showPreview });
+        this.setState({ showPreview: !this.state.showPreview });
+    };
+
     getEditorControls = () => {
         const { selectedLanguage, isSave, languages, isPreviewerAvailable, showPreview } = this.state;
         let allowEditing = this.getAllowEditing();
@@ -371,10 +372,7 @@ class SourceCodeRenderer extends React.Component<
             <div style={{ position: "absolute", bottom: "-3px", right: "8px" }}>
                 {isPreviewerAvailable && (
                     <div className="cmd-hints" style={{ minWidth: "8rem", maxWidth: "8rem" }}>
-                        <div
-                            onClick={() => this.setState({ showPreview: !showPreview })}
-                            className={`hint-item preview`}
-                        >
+                        <div onClick={this.togglePreview} className={`hint-item preview`}>
                             {`${showPreview ? "hide" : "show"} preview (`}
                             {renderCmdText("P")}
                             {`)`}
@@ -428,9 +426,14 @@ class SourceCodeRenderer extends React.Component<
         </div>
     );
 
+    setSizes = (sizes) => {
+        this.setState({ editorFraction: sizes[0] });
+        this.saveLineState({ editorFraction: sizes[0] });
+    };
+
     render() {
         const { exitcode } = this.props;
-        const { code, message, isPreviewerAvailable, showPreview } = this.state;
+        const { code, message, isPreviewerAvailable, showPreview, editorFraction } = this.state;
 
         if (code == null)
             return <div className="renderer-container code-renderer" style={{ height: this.props.savedHeight }} />;
@@ -451,7 +454,7 @@ class SourceCodeRenderer extends React.Component<
 
         return (
             <div className="renderer-container code-renderer">
-                <Split>
+                <Split sizes={[editorFraction, 1 - editorFraction]} onSetSizes={this.setSizes}>
                     {this.getCodeEditor()}
                     {isPreviewerAvailable && showPreview && this.getPreviewer()}
                 </Split>
