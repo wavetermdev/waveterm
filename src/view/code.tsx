@@ -317,7 +317,16 @@ class SourceCodeRenderer extends React.Component<
     );
 
     getPreviewer = () => {
-        return <Markdown text={this.state.code} style={{width: "100%", padding: "1rem"}}/>
+        return (
+            <div
+                className="scroller"
+                style={{ maxHeight: this.props.opts.maxSize.height }}
+                ref={this.markdownRef}
+                onScroll={() => this.handleDivScroll()}
+            >
+                <Markdown text={this.state.code} style={{width: "100%", padding: "1rem"}}/>
+            </div>
+        );
     };
 
     togglePreview = () => {
