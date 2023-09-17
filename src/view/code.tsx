@@ -57,11 +57,15 @@ class SourceCodeRenderer extends React.Component<
     cacheKey;
     originalData;
     monacoEditor: any; // reference to mounted monaco editor.  TODO need the correct type
+    markdownRef;
+    syncing;
 
     constructor(props) {
         super(props);
         this.monacoEditor = null;
         const editorHeight = Math.max(props.savedHeight - 25, 0); // must subtract the padding/margin to get the real editorHeight
+        this.markdownRef = React.createRef();
+        this.syncing = false; // to avoid recursive calls between the two scroll listeners
         this.state = {
             code: null,
             languages: [],
@@ -70,7 +74,7 @@ class SourceCodeRenderer extends React.Component<
             isClosed: false,
             editorHeight: editorHeight,
             message: null,
-            isPreviewerAvailable: true,
+            isPreviewerAvailable: false,
         };
     }
 
@@ -148,10 +152,47 @@ class SourceCodeRenderer extends React.Component<
                 this.doClose();
             }
         });
+        editor.onDidScrollChange((e) => {
+            if (!this.syncing && e.scrollTopChanged) {
+                this.syncing = true;
+                this.handleEditorScrollChange(e);
+                this.syncing = false;
+            }
+        });
         if (this.props.shouldFocus) {
             this.monacoEditor.focus();
         }
     };
+
+    handleEditorScrollChange(e) {
+        // Get the maximum scrollable height for the editor
+        const scrollableHeightEditor = this.monacoEditor.getScrollHeight() - this.monacoEditor.getLayoutInfo().height;
+
+        // Calculate the scroll percentage
+        const verticalScrollPercentage = e.scrollTop / scrollableHeightEditor;
+
+        // Apply the same percentage to the markdown div
+        const markdownDiv = this.markdownRef.current;
+        const scrollableHeightMarkdown = markdownDiv.scrollHeight - markdownDiv.clientHeight;
+        markdownDiv.scrollTop = verticalScrollPercentage * scrollableHeightMarkdown;
+    }
+
+    handleDivScroll() {
+        if (!this.syncing) {
+            this.syncing = true;
+            // Calculate the scroll percentage for the markdown div
+            const markdownDiv = this.markdownRef.current;
+            const scrollableHeightMarkdown = markdownDiv.scrollHeight - markdownDiv.clientHeight;
+            const verticalScrollPercentage = markdownDiv.scrollTop / scrollableHeightMarkdown;
+
+            // Apply the same percentage to the editor
+            const scrollableHeightEditor =
+                this.monacoEditor.getScrollHeight() - this.monacoEditor.getLayoutInfo().height;
+            this.monacoEditor.setScrollTop(verticalScrollPercentage * scrollableHeightEditor);
+
+            this.syncing = false;
+        }
+    }
 
     handleLanguageChange = (event) => {
         const { screenId, lineId } = this.props.context;
@@ -304,7 +345,12 @@ class SourceCodeRenderer extends React.Component<
             code: CodeRenderer,
         };
         return (
-            <div className="scroller" style={{ maxHeight: this.props.opts.maxSize.height }}>
+            <div
+                className="scroller"
+                style={{ maxHeight: this.props.opts.maxSize.height }}
+                ref={this.markdownRef}
+                onScroll={() => this.handleDivScroll()}
+            >
                 <div className={"markdown content"} style={{ width: "100%", padding: "1rem" }}>
                     <ReactMarkdown
                         children={this.state.code}
