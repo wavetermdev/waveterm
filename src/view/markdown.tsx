@@ -9,7 +9,7 @@ import { Markdown } from "../elements";
 
 type OV<V> = mobx.IObservableValue<V>;
 
-const MaxMarkdownSize = 50000;
+const MaxMarkdownSize = 200000;
 
 @mobxReact.observer
 class SimpleMarkdownRenderer extends React.Component<
@@ -44,7 +44,7 @@ class SimpleMarkdownRenderer extends React.Component<
         let dataBlob = this.props.data;
         if (dataBlob == null || dataBlob.notFound) {
             return (
-                <div className="renderer-container image-renderer" style={{ fontSize: this.props.opts.termFontSize }}>
+                <div className="renderer-container markdown-renderer" style={{ fontSize: this.props.opts.termFontSize }}>
                     <div className="load-error-text">
                         ERROR: file {dataBlob && dataBlob.name ? JSON.stringify(dataBlob.name) : ""} not found
                     </div>
@@ -54,7 +54,7 @@ class SimpleMarkdownRenderer extends React.Component<
         if (this.markdownError.get() != null) {
             return (
                 <div className="renderer-container markdown-renderer" style={{ fontSize: this.props.opts.termFontSize }}>
-                    <div className="error-container">{this.markdownError.get()}</div>
+                    <div className="load-error-text">{this.markdownError.get()}</div>
                 </div>
             );
         }
