@@ -42,6 +42,7 @@ class SourceCodeRenderer extends React.Component<
         editorHeight: number;
         message: { status: string; text: string };
         isPreviewerAvailable: boolean;
+        showPreview: boolean;
     }
 > {
     /**
@@ -75,6 +76,7 @@ class SourceCodeRenderer extends React.Component<
             editorHeight: editorHeight,
             message: null,
             isPreviewerAvailable: false,
+            showPreview: false,
         };
     }
 
@@ -363,16 +365,23 @@ class SourceCodeRenderer extends React.Component<
     };
 
     getEditorControls = () => {
-        const { selectedLanguage, isSave, languages } = this.state;
+        const { selectedLanguage, isSave, languages, isPreviewerAvailable, showPreview } = this.state;
         let allowEditing = this.getAllowEditing();
         return (
-            <div style={{ position: "absolute", bottom: "-3px", right: 0 }}>
-                <select
-                    className="dropdown"
-                    value={selectedLanguage}
-                    onChange={this.handleLanguageChange}
-                    style={{ minWidth: "6rem", maxWidth: "6rem", marginRight: "26px" }}
-                >
+            <div style={{ position: "absolute", bottom: "-3px", right: "8px" }}>
+                {isPreviewerAvailable && (
+                    <div className="cmd-hints" style={{ minWidth: "8rem", maxWidth: "8rem" }}>
+                        <div
+                            onClick={() => this.setState({ showPreview: !showPreview })}
+                            className={`hint-item preview`}
+                        >
+                            {`${showPreview ? "hide" : "show"} preview (`}
+                            {renderCmdText("P")}
+                            {`)`}
+                        </div>
+                    </div>
+                )}
+                <select className="dropdown" value={selectedLanguage} onChange={this.handleLanguageChange}>
                     {languages.map((lang, index) => (
                         <option key={index} value={lang}>
                             {lang}
@@ -380,7 +389,7 @@ class SourceCodeRenderer extends React.Component<
                     ))}
                 </select>
                 {allowEditing && (
-                    <div className="cmd-hints" style={{ minWidth: "6rem", maxWidth: "6rem", marginLeft: "-18px" }}>
+                    <div className="cmd-hints">
                         <div onClick={this.doSave} className={`hint-item ${isSave ? "save-enabled" : "save-disabled"}`}>
                             {`save (`}
                             {renderCmdText("S")}
@@ -389,7 +398,7 @@ class SourceCodeRenderer extends React.Component<
                     </div>
                 )}
                 {allowEditing && (
-                    <div className="cmd-hints" style={{ minWidth: "6rem", maxWidth: "6rem", marginLeft: "-18px" }}>
+                    <div className="cmd-hints">
                         <div
                             onClick={this.doClose}
                             className={`hint-item ${!isSave ? "close-enabled" : "close-disabled"}`}
@@ -421,7 +430,7 @@ class SourceCodeRenderer extends React.Component<
 
     render() {
         const { exitcode } = this.props;
-        const { code, message, isPreviewerAvailable } = this.state;
+        const { code, message, isPreviewerAvailable, showPreview } = this.state;
 
         if (code == null)
             return <div className="renderer-container code-renderer" style={{ height: this.props.savedHeight }} />;
@@ -444,7 +453,7 @@ class SourceCodeRenderer extends React.Component<
             <div className="renderer-container code-renderer">
                 <Split>
                     {this.getCodeEditor()}
-                    {isPreviewerAvailable && this.getPreviewer()}
+                    {isPreviewerAvailable && showPreview && this.getPreviewer()}
                 </Split>
                 {this.getEditorControls()}
                 {message && this.getMessage()}

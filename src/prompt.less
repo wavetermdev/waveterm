@@ -265,19 +265,29 @@ input[type="checkbox"] {
         background-color: rgba(255, 255, 255) !important;
     }
 
-    .cmd-hints {
+    .cmd-hints,
+    .dropdown {
         display: inline-block;
         position: relative;
-        margin-right: 26px;
+        min-width: 6rem;
+        max-width: 6rem;
+        margin-right: 8px;
     }
     .hint-item {
         border-radius: 4px 4px 0 0;
         padding: 3px 9px 2px 8px;
-        line-height: 15px;
+        line-height: 19px;
         text-align: center;
     }
     section {
         transition: height 0.3s ease-in-out;
+    }
+    .preview {
+        color: #000;
+        background-color: rgb(200, 200, 200);
+    }
+    .preview:hover {
+        background-color: white !important;
     }
     .save-enabled {
         color: white;
