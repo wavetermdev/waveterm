@@ -106,7 +106,7 @@ type LineContainerModel = {
     getFocusType: () => FocusTypeStrs;
     getSelectedLine: () => number;
     getCmd: (line: LineType) => Cmd;
-    setTermFocus: (lineNum: number, focus: boolean) => void;
+    setLineFocus: (lineNum: number, focus: boolean) => void;
     getUsedRows: (context: RendererContext, line: LineType, cmd: Cmd, width: number) => number;
     getContentHeight: (context: RendererContext) => number;
     setContentHeight: (context: RendererContext, height: number) => void;
@@ -685,8 +685,8 @@ class Screen {
         this.renderers[lineId] = renderer;
     }
 
-    setTermFocus(lineNum: number, focus: boolean): void {
-        // console.log("SW setTermFocus", lineNum, focus);
+    setLineFocus(lineNum: number, focus: boolean): void {
+        // console.log("SW setLineFocus", lineNum, focus);
         mobx.action(() => this.termLineNumFocus.set(focus ? lineNum : 0))();
         if (focus && this.selectedLine.get() != lineNum) {
             GlobalCommandRunner.screenSelectLine(String(lineNum), "cmd");
@@ -763,7 +763,7 @@ class Screen {
             termOpts: cmd.getTermOpts(),
             winSize: { height: 0, width: width },
             dataHandler: cmd.handleData.bind(cmd),
-            focusHandler: (focus: boolean) => this.setTermFocus(line.linenum, focus),
+            focusHandler: (focus: boolean) => this.setLineFocus(line.linenum, focus),
             isRunning: cmd.isRunning(),
             customKeyHandler: this.termCustomKeyHandler.bind(this),
             fontSize: GlobalModel.termFontSize.get(),
@@ -1743,7 +1743,7 @@ class SpecialHistoryViewLineContainer {
         return this.cmd;
     }
 
-    setTermFocus(lineNum: number, focus: boolean): void {
+    setLineFocus(lineNum: number, focus: boolean): void {
         return;
     }
 

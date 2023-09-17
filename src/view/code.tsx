@@ -1,5 +1,5 @@
 import * as React from "react";
-import { RendererContext, RendererOpts, LineStateType } from "../types";
+import { RendererContext, RendererOpts, LineStateType, RendererModelContainerApi } from "../types";
 import Editor from "@monaco-editor/react";
 import cn from "classnames";
 import { Markdown } from "../elements";
@@ -32,6 +32,7 @@ class SourceCodeRenderer extends React.Component<
         lineState: LineStateType;
         isSelected: boolean;
         shouldFocus: boolean;
+        rendererApi: RendererModelContainerApi;
     },
     {
         code: string;
@@ -167,6 +168,15 @@ class SourceCodeRenderer extends React.Component<
         });
         if (this.props.shouldFocus) {
             this.monacoEditor.focus();
+            this.props.rendererApi.onFocusChanged(true);
+        }
+        if (this.monacoEditor.onDidFocusEditorWidget) {
+            this.monacoEditor.onDidFocusEditorWidget(() => {
+                this.props.rendererApi.onFocusChanged(true);
+            });
+            this.monacoEditor.onDidBlurEditorWidget(() => {
+                this.props.rendererApi.onFocusChanged(false);
+            });
         }
     };
 

@@ -9,7 +9,7 @@ import { Markdown } from "../elements";
 
 type OV<V> = mobx.IObservableValue<V>;
 
-const MaxMarkdownSize = 50000;
+const MaxMarkdownSize = 200000;
 
 @mobxReact.observer
 class SimpleMarkdownRenderer extends React.Component<
@@ -21,6 +21,9 @@ class SimpleMarkdownRenderer extends React.Component<
 
     componentDidMount() {
         let dataBlob = this.props.data;
+        if (dataBlob == null || dataBlob.notFound) {
+            return;
+        }
         if (dataBlob.size > MaxMarkdownSize) {
             this.markdownError.set(sprintf("error: markdown too large to render size=%d", dataBlob.size));
             return;
@@ -38,10 +41,20 @@ class SimpleMarkdownRenderer extends React.Component<
     }
 
     render() {
+        let dataBlob = this.props.data;
+        if (dataBlob == null || dataBlob.notFound) {
+            return (
+                <div className="renderer-container markdown-renderer" style={{ fontSize: this.props.opts.termFontSize }}>
+                    <div className="load-error-text">
+                        ERROR: file {dataBlob && dataBlob.name ? JSON.stringify(dataBlob.name) : ""} not found
+                    </div>
+                </div>
+            );
+        }
         if (this.markdownError.get() != null) {
             return (
-                <div className="renderer-container markdown-renderer">
-                    <div className="error-container">{this.markdownError.get()}</div>
+                <div className="renderer-container markdown-renderer" style={{ fontSize: this.props.opts.termFontSize }}>
+                    <div className="load-error-text">{this.markdownError.get()}</div>
                 </div>
             );
         }

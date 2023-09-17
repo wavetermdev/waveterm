@@ -585,7 +585,7 @@ class LineCmd extends React.Component<
                 screen.setContentHeight(lineutil.getRendererContext(line), height);
             },
             onFocusChanged: (focus: boolean) => {
-                screen.setTermFocus(line.linenum, focus);
+                screen.setLineFocus(line.linenum, focus);
             },
             dataHandler: (data: string, model: RendererModel) => {
                 cmd.handleDataFromRenderer(data, model);
