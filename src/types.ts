@@ -413,6 +413,7 @@ type SimpleBlobRendererComponent = React.ComponentType<{
     readOnly?: boolean;
     notFound?: boolean;
     isSelected?: boolean;
+    rendererApi?: RendererModelContainerApi;
     shouldFocus?: boolean;
     cmdstr?: string;
     cwd?: string;

@@ -286,6 +286,7 @@ class SimpleBlobRenderer extends React.Component<
                     scrollToBringIntoViewport={this.props.scrollToBringIntoViewport}
                     isSelected={this.props.isSelected}
                     shouldFocus={this.props.shouldFocus}
+                    rendererApi={model.api}
                 />
             </div>
         );
