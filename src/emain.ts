@@ -173,8 +173,7 @@ function shNavHandler(event: any, url: any) {
     if (url.startsWith("https://") || url.startsWith("http://") || url.startsWith("file://")) {
         console.log("open external, shNav", url);
         electron.shell.openExternal(url);
-    }
-    else {
+    } else {
         console.log("navigation canceled", url);
     }
 }

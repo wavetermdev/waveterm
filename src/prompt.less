@@ -253,7 +253,6 @@ input[type="checkbox"] {
         padding-top: 10px;
         padding-bottom: 15px;
     }
-    
     .monaco-editor .monaco-editor-background {
         background-color: rgba(255, 255, 255, 0.075) !important;
     }
@@ -311,9 +310,25 @@ input[type="checkbox"] {
 
 .renderer-container.mustache-renderer {
     color: @term-white;
+    .cmd-hints {
+        display: inline-block !important;
+        position: relative;
+        margin-right: 26px;
+    }
+    .hint-item {
+        border-radius: 4px 4px 0 0;
+        padding: 3px 9px 2px 8px;
+        line-height: 15px;
+        text-align: center;
+    }
+    .refresh-button {
+        color: rgb(52, 52, 52);
+        background-color: @term-white;
+    }
 }
 
-.markdown-renderer .markdown, .mustache-renderer .mustache {
+.markdown-renderer .markdown,
+.mustache-renderer .mustache {
     padding: 5px;
     line-height: 1.5;
     width: fit-content;
@@ -333,7 +348,12 @@ input[type="checkbox"] {
         padding: 4px 4px 4px 6px;
     }
 
-    h1, h2, h3, h4, h5, h6 {
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
         color: @term-white;
     }
 }
