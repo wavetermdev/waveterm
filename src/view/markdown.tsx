@@ -21,6 +21,9 @@ class SimpleMarkdownRenderer extends React.Component<
 
     componentDidMount() {
         let dataBlob = this.props.data;
+        if (dataBlob == null || dataBlob.notFound) {
+            return;
+        }
         if (dataBlob.size > MaxMarkdownSize) {
             this.markdownError.set(sprintf("error: markdown too large to render size=%d", dataBlob.size));
             return;
@@ -38,9 +41,19 @@ class SimpleMarkdownRenderer extends React.Component<
     }
 
     render() {
+        let dataBlob = this.props.data;
+        if (dataBlob == null || dataBlob.notFound) {
+            return (
+                <div className="renderer-container image-renderer" style={{ fontSize: this.props.opts.termFontSize }}>
+                    <div className="load-error-text">
+                        ERROR: file {dataBlob && dataBlob.name ? JSON.stringify(dataBlob.name) : ""} not found
+                    </div>
+                </div>
+            );
+        }
         if (this.markdownError.get() != null) {
             return (
-                <div className="renderer-container markdown-renderer">
+                <div className="renderer-container markdown-renderer" style={{ fontSize: this.props.opts.termFontSize }}>
                     <div className="error-container">{this.markdownError.get()}</div>
                 </div>
             );
