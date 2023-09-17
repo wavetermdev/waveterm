@@ -169,8 +169,25 @@ function getMods(input: any) {
 }
 
 function shNavHandler(event: any, url: any) {
-    console.log("navigation", url);
+    console.log("navigation canceled", url);
     event.preventDefault();
+}
+
+function shFrameNavHandler(event: any, url: any) {
+    if (!event.frame || event.frame.parent == null) {
+        // only use this handler to process iframe events (non-iframe events go to shNavHandler)
+        return;
+    }
+    event.preventDefault();
+    console.log(`frame-navigation url=${url} frame=${event.frame.name}`);
+    if (event.frame.name == "webview") {
+        // "webview" links always open in new window
+        // this will *not* effect the initial load because srcdoc does not count as an electron navigation
+        electron.shell.openExternal(url);
+        return;
+    }
+    console.log("frame navigation canceled");
+    return;
 }
 
 function createMainWindow(clientData) {
@@ -266,6 +283,7 @@ function createMainWindow(clientData) {
         }
     });
     win.webContents.on("will-navigate", shNavHandler);
+    win.webContents.on("will-frame-navigate", shFrameNavHandler);
     win.on(
         "resized",
         debounce(400, (e) => mainResizeHandler(e, win))
@@ -281,7 +299,7 @@ function createMainWindow(clientData) {
     win.on("close", () => {
         MainWindow = null;
     });
-    win.webContents.setWindowOpenHandler(({url, frameName}) => {
+    win.webContents.setWindowOpenHandler(({ url, frameName }) => {
         if (url.startsWith("https://docs.getprompt.dev/")) {
             electron.shell.openExternal(url);
         } else if (url.startsWith("https://discord.gg/")) {
@@ -292,7 +310,8 @@ function createMainWindow(clientData) {
             let newUrl = decodeURIComponent(param);
             electron.shell.openExternal(newUrl);
         }
-        return { action: 'deny' };
+        console.log("window-open denied", url);
+        return { action: "deny" };
     });
     return win;
 }
