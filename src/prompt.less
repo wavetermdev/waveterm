@@ -236,6 +236,7 @@ input[type="checkbox"] {
         overflow: auto;
         display: flex;
         flex-direction: row;
+        overscroll-behavior: contain;
     }
 
     .dropdown {
@@ -253,22 +254,41 @@ input[type="checkbox"] {
         padding-top: 10px;
         padding-bottom: 15px;
     }
+    
     .monaco-editor .monaco-editor-background {
         background-color: rgba(255, 255, 255, 0.075) !important;
     }
-    .cmd-hints {
+    .monaco-editor .scrollbar {
+        height: 4px !important;
+        width: 4px !important;
+    }
+    .monaco-editor .scrollbar .slider {
+        background-color: rgba(255, 255, 255) !important;
+    }
+
+    .cmd-hints,
+    .dropdown {
         display: inline-block;
         position: relative;
-        margin-right: 26px;
+        min-width: 6rem;
+        max-width: 6rem;
+        margin-right: 8px;
     }
     .hint-item {
         border-radius: 4px 4px 0 0;
         padding: 3px 9px 2px 8px;
-        line-height: 15px;
+        line-height: 19px;
         text-align: center;
     }
     section {
         transition: height 0.3s ease-in-out;
+    }
+    .preview {
+        color: #000;
+        background-color: rgb(200, 200, 200);
+    }
+    .preview:hover {
+        background-color: white !important;
     }
     .save-enabled {
         color: white;
@@ -282,17 +302,9 @@ input[type="checkbox"] {
     .save-disabled:hover {
         background-color: #aaaea7;
     }
-    .close-enabled {
+    .close {
         color: white;
         background-color: #9e0000;
-    }
-    .close-disabled {
-        color: rgb(52, 52, 52);
-        background-color: #aaaea7;
-        cursor: default !important;
-    }
-    .close-disabled:hover {
-        background-color: #aaaea7;
     }
     .message {
         color: white;
@@ -300,6 +312,17 @@ input[type="checkbox"] {
         margin-bottom: 1rem;
         padding: 4px 1rem;
         max-width: 80vw;
+    }
+    .readonly {
+        .mono-font(12px);
+        position: absolute;
+        top: calc(1.5rem + 3px);
+        right: 10rem;
+        border-radius: 5px;
+        background-color: @term-bright-red;
+        color: white;
+        z-index: 1;
+        padding: 0 6px 2px;
     }
 }
 
@@ -327,8 +350,7 @@ input[type="checkbox"] {
     }
 }
 
-.markdown-renderer .markdown,
-.mustache-renderer .mustache {
+.renderer-container .content {
     padding: 5px;
     line-height: 1.5;
     width: fit-content;
