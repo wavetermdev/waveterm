@@ -43,6 +43,7 @@ class SourceCodeRenderer extends React.Component<
         isPreviewerAvailable: boolean;
         showPreview: boolean;
         editorFraction: number;
+        showReadonly: boolean;
     }
 > {
     /**
@@ -77,6 +78,7 @@ class SourceCodeRenderer extends React.Component<
             isPreviewerAvailable: false,
             showPreview: this.props.lineState["showPreview"],
             editorFraction: this.props.lineState["editorFraction"] || 0.5,
+            showReadonly: false,
         };
     }
 
@@ -176,6 +178,7 @@ class SourceCodeRenderer extends React.Component<
                 this.props.rendererApi.onFocusChanged(false);
             });
         }
+        if (!this.getAllowEditing()) this.setState({ showReadonly: true });
     };
 
     handleEditorScrollChange(e) {
@@ -259,6 +262,7 @@ class SourceCodeRenderer extends React.Component<
                 this.setState({
                     isClosed: true,
                     message: { status: "success", text: `Closed. This editor is now read-only` },
+                    showReadonly: true,
                 });
                 setTimeout(() => {
                     this.setEditorHeight();
@@ -314,6 +318,7 @@ class SourceCodeRenderer extends React.Component<
 
     getCodeEditor = () => (
         <div style={{ maxHeight: this.props.opts.maxSize.height }}>
+            {this.state.showReadonly && <div className="readonly">{"read-only"}</div>}
             <Editor
                 theme="hc-black"
                 height={this.state.editorHeight}
