@@ -13,6 +13,7 @@
         "mobx": "^6.6.0",
         "mobx-react": "^7.5.0",
         "monaco-editor": "^0.41.0",
+        "mustache": "^4.2.0",
         "node-fetch": "^3.2.10",
         "react": "^18.1.0",
         "react-dom": "^18.1.0",

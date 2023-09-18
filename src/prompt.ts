@@ -7,6 +7,7 @@ import { Main } from "./main";
 import { GlobalModel } from "./model";
 import { v4 as uuidv4 } from "uuid";
 import { loadFonts } from "./util";
+import * as DOMPurify from "dompurify";
 
 // @ts-ignore
 let VERSION = __PROMPT_VERSION__;
@@ -31,5 +32,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 (window as any).mobx = mobx;
 (window as any).sprintf = sprintf;
+(window as any).DOMPurify = DOMPurify;
 
 console.log("PROMPT", VERSION, BUILD);

@@ -2,6 +2,7 @@ import { RendererPluginType } from "./types";
 import { SimpleImageRenderer } from "./view/image";
 import { SimpleMarkdownRenderer } from "./view/markdown";
 import { SourceCodeRenderer } from "./view/code";
+import { SimpleMustacheRenderer } from "./view/mustache";
 import { OpenAIRenderer, OpenAIRendererModel } from "./view/openai";
 import { isBlank } from "./util";
 import { sprintf } from "sprintf-js";
@@ -26,6 +27,17 @@ const MarkdownPlugin: RendererPluginType = {
     globalCss: null,
     mimeTypes: ["text/markdown"],
     simpleComponent: SimpleMarkdownRenderer,
+};
+
+const MustachePlugin: RendererPluginType = {
+    name: "mustache",
+    rendererType: "simple",
+    heightType: "pixels",
+    dataType: "blob",
+    collapseType: "hide",
+    globalCss: null,
+    mimeTypes: ["text/plain"],
+    simpleComponent: SimpleMustacheRenderer,
 };
 
 const CodePlugin: RendererPluginType = {
@@ -87,6 +99,7 @@ if ((window as any).PluginModel == null) {
     PluginModel.registerRendererPlugin(MarkdownPlugin);
     PluginModel.registerRendererPlugin(CodePlugin);
     PluginModel.registerRendererPlugin(OpenAIPlugin);
+    PluginModel.registerRendererPlugin(MustachePlugin);
     (window as any).PluginModel = PluginModel;
 }
 
