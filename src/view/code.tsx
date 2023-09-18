@@ -1,13 +1,11 @@
 import * as React from "react";
 import { RendererContext, RendererOpts, LineStateType, RendererModelContainerApi } from "../types";
 import Editor from "@monaco-editor/react";
-import cn from "classnames";
 import { Markdown } from "../elements";
 import { GlobalModel, GlobalCommandRunner } from "../model";
 import Split from "react-split-it";
 import "./split.css";
 import loader from "@monaco-editor/loader";
-import { editor } from "monaco-editor";
 loader.config({ paths: { vs: "./node_modules/monaco-editor/min/vs" } });
 
 function renderCmdText(text: string): any {
@@ -45,6 +43,7 @@ class SourceCodeRenderer extends React.Component<
         isPreviewerAvailable: boolean;
         showPreview: boolean;
         editorFraction: number;
+        showReadonly: boolean;
     }
 > {
     /**
@@ -57,7 +56,7 @@ class SourceCodeRenderer extends React.Component<
     languagesWithPreviewer = ["markdown"];
     filePath;
     cacheKey;
-    originalData;
+    originalCode;
     monacoEditor: any; // reference to mounted monaco editor.  TODO need the correct type
     markdownRef;
     syncing;
@@ -67,7 +66,7 @@ class SourceCodeRenderer extends React.Component<
         this.monacoEditor = null;
         const editorHeight = Math.max(props.savedHeight - 25, 0); // must subtract the padding/margin to get the real editorHeight
         this.markdownRef = React.createRef();
-        this.syncing = false; // to avoid recursive calls between the two scroll listeners
+        this.syncing = false;
         this.state = {
             code: null,
             languages: [],
@@ -79,6 +78,7 @@ class SourceCodeRenderer extends React.Component<
             isPreviewerAvailable: false,
             showPreview: this.props.lineState["showPreview"],
             editorFraction: this.props.lineState["editorFraction"] || 0.5,
+            showReadonly: false,
         };
     }
 
@@ -91,7 +91,7 @@ class SourceCodeRenderer extends React.Component<
             this.setState({ code, isClosed: this.props.lineState["prompt:closed"] });
         } else {
             this.props.data.text().then((code) => {
-                this.originalData = code;
+                this.originalCode = code;
                 this.setState({ code, isClosed: this.props.lineState["prompt:closed"] });
                 SourceCodeRenderer.codeCache.set(this.cacheKey, code);
             });
@@ -150,7 +150,7 @@ class SourceCodeRenderer extends React.Component<
                 e.preventDefault();
                 this.doSave();
             }
-            if (e.code === "KeyD" && (e.ctrlKey || e.metaKey) && !this.state.isSave) {
+            if (e.code === "KeyD" && (e.ctrlKey || e.metaKey)) {
                 e.preventDefault();
                 this.doClose();
             }
@@ -178,16 +178,13 @@ class SourceCodeRenderer extends React.Component<
                 this.props.rendererApi.onFocusChanged(false);
             });
         }
+        if (!this.getAllowEditing()) this.setState({ showReadonly: true });
     };
 
     handleEditorScrollChange(e) {
-        // Get the maximum scrollable height for the editor
+        if (!this.state.showPreview) return;
         const scrollableHeightEditor = this.monacoEditor.getScrollHeight() - this.monacoEditor.getLayoutInfo().height;
-
-        // Calculate the scroll percentage
         const verticalScrollPercentage = e.scrollTop / scrollableHeightEditor;
-
-        // Apply the same percentage to the markdown div
         const markdownDiv = this.markdownRef.current;
         if (markdownDiv) {
             const scrollableHeightMarkdown = markdownDiv.scrollHeight - markdownDiv.clientHeight;
@@ -227,17 +224,20 @@ class SourceCodeRenderer extends React.Component<
         }
     };
 
-    doSave = () => {
+    doSave = (onSave = () => {}) => {
         if (!this.state.isSave) return;
         const { screenId, lineId } = this.props.context;
         const encodedCode = new TextEncoder().encode(this.state.code);
         GlobalModel.writeRemoteFile(screenId, lineId, this.filePath, encodedCode, { useTemp: true })
             .then(() => {
-                this.originalData = this.state.code;
-                this.setState({
-                    isSave: false,
-                    message: { status: "success", text: `Saved to ${this.props.cwd}/${this.filePath}` },
-                });
+                this.originalCode = this.state.code;
+                this.setState(
+                    {
+                        isSave: false,
+                        message: { status: "success", text: `Saved to ${this.props.cwd}/${this.filePath}` },
+                    },
+                    onSave
+                );
                 setTimeout(() => this.setState({ message: null }), 3000);
             })
             .catch((e) => {
@@ -247,13 +247,22 @@ class SourceCodeRenderer extends React.Component<
     };
 
     doClose = () => {
-        if (this.state.isSave) return;
+        // if there is unsaved data
+        if (this.state.isSave)
+            return GlobalModel.showAlert({
+                message: "Do you want to Save your changes before closing?",
+                confirm: true,
+            }).then((result) => {
+                if (result) return this.doSave(this.doClose);
+                this.setState({ code: this.originalCode, isSave: false }, this.doClose);
+            });
         const { screenId, lineId } = this.props.context;
         GlobalCommandRunner.setLineState(screenId, lineId, { ...this.props.lineState, "prompt:closed": true }, false)
             .then(() => {
                 this.setState({
                     isClosed: true,
                     message: { status: "success", text: `Closed. This editor is now read-only` },
+                    showReadonly: true,
                 });
                 setTimeout(() => {
                     this.setEditorHeight();
@@ -278,7 +287,7 @@ class SourceCodeRenderer extends React.Component<
         SourceCodeRenderer.codeCache.set(this.cacheKey, code);
         this.setState({ code }, () => {
             this.setEditorHeight();
-            this.props.data.text().then((originalCode) => this.setState({ isSave: code !== originalCode }));
+            this.setState({ isSave: code !== this.originalCode });
         });
     };
 
@@ -309,11 +318,12 @@ class SourceCodeRenderer extends React.Component<
 
     getCodeEditor = () => (
         <div style={{ maxHeight: this.props.opts.maxSize.height }}>
+            {this.state.showReadonly && <div className="readonly">{"read-only"}</div>}
             <Editor
                 theme="hc-black"
                 height={this.state.editorHeight}
                 defaultLanguage={this.state.selectedLanguage}
-                defaultValue={this.state.code}
+                value={this.state.code}
                 onMount={this.handleEditorDidMount}
                 options={{
                     scrollBeyondLastLine: false,
@@ -334,7 +344,7 @@ class SourceCodeRenderer extends React.Component<
                 ref={this.markdownRef}
                 onScroll={() => this.handleDivScroll()}
             >
-                <Markdown text={this.state.code} style={{width: "100%", padding: "1rem"}}/>
+                <Markdown text={this.state.code} style={{ width: "100%", padding: "1rem" }} />
             </div>
         );
     };
@@ -376,10 +386,7 @@ class SourceCodeRenderer extends React.Component<
                 )}
                 {allowEditing && (
                     <div className="cmd-hints">
-                        <div
-                            onClick={this.doClose}
-                            className={`hint-item ${!isSave ? "close-enabled" : "close-disabled"}`}
-                        >
+                        <div onClick={this.doClose} className={`hint-item close`}>
                             {`close (`}
                             {renderCmdText("D")}
                             {`)`}
