@@ -1,0 +1,52 @@
+/* example-split.css */
+.code-renderer {
+    .jsoneditor {
+        border: none !important;
+    }
+
+    .split-horizontal {
+        display: flex;
+        width: 100%;
+        height: 100%;
+    }
+    .split-vertical {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .gutter {
+        flex-shrink: 0;
+        flex-grow: 0;
+        background: rgb(100, 100, 100);
+        max-width: 4px;
+    }
+    .gutter-horizontal {
+        cursor: col-resize;
+    }
+    .gutter-vertical {
+        cursor: row-resize;
+    }
+    .gutter:hover {
+        background: rgb(155, 155, 155);
+    }
+    .gutter-dragging:hover {
+        background: rgb(155, 155, 155);
+    }
+
+    .pane {
+        flex-shrink: 1;
+        flex-grow: 1;
+        position: relative;
+        min-width: 20rem;
+    }
+    .pane-dragging {
+        overflow: hidden;
+    }
+
+    .scrollable {
+        height: 100vh;
+        max-height: 100vh;
+        overflow: scroll;
+    }
+}
