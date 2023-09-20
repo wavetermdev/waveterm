@@ -1,10 +1,10 @@
 import * as React from "react";
-import { RendererContext, RendererOpts, LineStateType, RendererModelContainerApi } from "../types";
+import { RendererContext, RendererOpts, LineStateType, RendererModelContainerApi } from "../../types";
 import Editor from "@monaco-editor/react";
-import { Markdown } from "../elements";
-import { GlobalModel, GlobalCommandRunner } from "../model";
+import { Markdown } from "../../elements";
+import { GlobalModel, GlobalCommandRunner } from "../../model";
 import Split from "react-split-it";
-import "./split.css";
+import "./split.less";
 import loader from "@monaco-editor/loader";
 loader.config({ paths: { vs: "./node_modules/monaco-editor/min/vs" } });
 
