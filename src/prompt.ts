@@ -3,7 +3,7 @@ import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { sprintf } from "sprintf-js";
 import { Terminal } from "xterm";
-import { Main } from "./main";
+import { Main } from "./main/Main";
 import { GlobalModel } from "./model";
 import { v4 as uuidv4 } from "uuid";
 import { loadFonts } from "./util";

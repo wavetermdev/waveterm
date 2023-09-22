@@ -1,0 +1,99 @@
+@import "../prompt.less";
+
+.bookmarks-view {
+    .bookmarks-list {
+        color: white;
+        margin: 4px 10px 5px 5px;
+
+        .no-bookmarks {
+            color: @term-white;
+            padding: 30px 10px 35px 10px;
+            border-bottom: 1px solid white;
+        }
+    }
+
+    .bookmark {
+        border-bottom: 1px solid #777;
+        padding: 4px 5px 8px 15px;
+        margin-bottom: 4px;
+        position: relative;
+        display: flex;
+        flex-direction: row;
+        max-width: 100%;
+
+        .focus-indicator {
+            top: 0;
+            height: calc(100% - 4px);
+        }
+
+        &.is-editing {
+            padding-top: 8px;
+            padding-bottom: 12px;
+        }
+
+        &.pending-delete {
+            background-color: #522;
+        }
+
+        .bookmark-content,
+        .bookmark-edit {
+            flex-grow: 1;
+            max-width: calc(100% - 50px);
+        }
+
+        label {
+            color: white;
+            margin-bottom: 4px;
+        }
+
+        textarea {
+            width: 80%;
+            min-width: 50%;
+            color: white;
+            background-color: black;
+
+            &.mono-font {
+                .mono-font(12px);
+            }
+        }
+
+        .bookmark-id-div {
+            display: none;
+            position: absolute;
+            color: #666;
+            right: 5px;
+            bottom: 2px;
+            .mono-font(8px);
+        }
+
+        &:hover .bookmark-id-div {
+            display: block;
+        }
+
+        .bookmark-controls {
+            display: flex;
+            flex-direction: row;
+            font-size: 16px;
+            visibility: hidden;
+            color: @term-white;
+
+            .bookmark-control:first-child {
+                margin-left: 0;
+            }
+
+            .bookmark-control {
+                margin-left: 10px;
+                cursor: pointer;
+                padding: 2px;
+
+                &:hover {
+                    color: @term-bright-white;
+                }
+            }
+        }
+
+        &:hover .bookmark-controls {
+            visibility: visible;
+        }
+    }
+}

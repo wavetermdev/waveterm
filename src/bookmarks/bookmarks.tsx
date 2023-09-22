@@ -7,9 +7,11 @@ import { v4 as uuidv4 } from "uuid";
 import dayjs from "dayjs";
 import { If, For, When, Otherwise, Choose } from "tsx-control-statements/components";
 import cn from "classnames";
-import type { BookmarkType } from "./types";
-import { GlobalModel, GlobalCommandRunner } from "./model";
-import { CmdStrCode, Markdown } from "./elements";
+import type { BookmarkType } from "../types";
+import { GlobalModel, GlobalCommandRunner } from "../model";
+import { CmdStrCode, Markdown } from "../elements";
+
+import "./bookmarks.less";
 
 @mobxReact.observer
 class Bookmark extends React.Component<{ bookmark: BookmarkType }, {}> {
