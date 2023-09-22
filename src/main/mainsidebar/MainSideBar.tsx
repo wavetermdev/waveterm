@@ -14,6 +14,8 @@ import { sortAndFilterRemotes, isBlank } from "../../util";
 
 import { RemoteStatusLight } from "../../elements";
 
+import "./sidebar.less";
+
 dayjs.extend(localizedFormat);
 
 type OV<V> = mobx.IObservableValue<V>;
@@ -134,7 +136,6 @@ class MainSideBar extends React.Component<{}, {}> {
     render() {
         let model = GlobalModel;
         let activeSessionId = model.activeSessionId.get();
-        let activeWindow = model.getScreenLinesForActiveScreen();
         let activeScreen = model.getActiveScreen();
         let activeRemoteId: string = null;
         if (activeScreen != null) {
@@ -156,7 +157,6 @@ class MainSideBar extends React.Component<{}, {}> {
         }
         let isCollapsed = this.collapsed.get();
         let mainView = GlobalModel.activeMainView.get();
-        let activePlaybookId: string = null;
         return (
             <div className={cn("main-sidebar", { collapsed: isCollapsed }, { "is-dev": GlobalModel.isDev })}>
                 <div className="logo-header">

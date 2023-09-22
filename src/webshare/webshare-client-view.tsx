@@ -8,7 +8,7 @@ import dayjs from "dayjs";
 import { If, For, When, Otherwise, Choose } from "tsx-control-statements/components";
 import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, Screen } from "../model";
-import { WebStopShareConfirmMarkdown } from "../settings";
+import { WebStopShareConfirmMarkdown } from "../main/modals/settings";
 import * as util from "../util";
 
 type OV<V> = mobx.IObservableValue<V>;

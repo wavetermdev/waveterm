@@ -11,9 +11,9 @@ import { isBlank } from "../util";
 import { BookmarksView } from "../bookmarks/bookmarks";
 import { WebShareView } from "../webshare/webshare-client-view";
 import { HistoryView } from "../history/history";
-import { ScreenSettingsModal, SessionSettingsModal, LineSettingsModal, ClientSettingsModal } from "../settings";
+import { ScreenSettingsModal, SessionSettingsModal, LineSettingsModal, ClientSettingsModal } from "./modals/settings";
 import { RemotesModal } from "../remotes";
-import { TosModal } from "../modals";
+import { TosModal } from "./modals/Modals";
 
 import { SessionView } from "./sessionview/SessionView";
 import { MainSideBar } from "./mainsidebar/MainSideBar";

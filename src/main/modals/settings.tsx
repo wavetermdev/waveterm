@@ -1,24 +1,18 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
-import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
-import { If, For, When, Otherwise, Choose } from "tsx-control-statements/components";
+import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner, TabColors } from "./model";
-import { Toggle, RemoteStatusLight, InlineSettingsTextEdit, SettingsError, InfoMessage } from "./elements";
-import { LineType, RendererPluginType, ClientDataType, CommandRtnType } from "./types";
-import { PluginModel } from "./plugins";
-import * as util from "./util";
+import { GlobalModel, GlobalCommandRunner, TabColors } from "../../model";
+import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage } from "../../elements";
+import { LineType, RendererPluginType, ClientDataType, CommandRtnType } from "../../types";
+import { PluginModel } from "../../plugins";
+import * as util from "../../util";
+
+import "./modals.less";
 
 type OV<V> = mobx.IObservableValue<V>;
-type OArr<V> = mobx.IObservableArray<V>;
-type OMap<K, V> = mobx.ObservableMap<K, V>;
-type CV<V> = mobx.IComputedValue<V>;
-
-const RemotePtyRows = 8;
-const RemotePtyCols = 80;
-const APITokenSentinel = "--apitoken--";
 
 // @ts-ignore
 const VERSION = __PROMPT_VERSION__;

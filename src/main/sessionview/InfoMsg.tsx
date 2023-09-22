@@ -1,60 +1,11 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
-import * as mobx from "mobx";
-import { sprintf } from "sprintf-js";
-import { boundMethod } from "autobind-decorator";
-import { If, For, When, Otherwise, Choose } from "tsx-control-statements/components";
+import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
-import { debounce, throttle } from "throttle-debounce";
-import { v4 as uuidv4 } from "uuid";
 import dayjs from "dayjs";
-import type {
-    SessionDataType,
-    LineType,
-    CmdDataType,
-    RemoteType,
-    RemoteStateType,
-    RemoteInstanceType,
-    RemotePtrType,
-    HistoryItem,
-    HistoryQueryOpts,
-    RemoteEditType,
-    ContextMenuOpts,
-    BookmarkType,
-    RenderModeType,
-    LineFactoryProps,
-} from "../../types";
-import type * as T from "../../types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import {
-    GlobalModel,
-    GlobalCommandRunner,
-    Session,
-    Cmd,
-    ScreenLines,
-    Screen,
-    riToRPtr,
-    TabColors,
-    RemoteColors,
-} from "../../model";
-import {
-    windowWidthToCols,
-    windowHeightToRows,
-    termHeightFromRows,
-    termWidthFromCols,
-    getMonoFontSize,
-} from "../../textmeasure";
-import { isModKeyPress, boundInt, sortAndFilterRemotes, makeExternLink, isBlank, hasNoModifiers } from "../../util";
-import { BookmarksView } from "../../bookmarks/bookmarks";
-import { WebShareView } from "../../webshare/webshare-client-view";
-import { HistoryView } from "../../history/history";
-import { Line, Prompt } from "../../linecomps";
-import { ScreenSettingsModal, SessionSettingsModal, LineSettingsModal, ClientSettingsModal } from "../../settings";
-import { RemotesModal } from "../../remotes";
-import { renderCmdText, RemoteStatusLight, Markdown } from "../../elements";
-import { LinesView } from "../../linesview";
-import { TosModal } from "../../modals";
-import { TextAreaInput } from "./TextareaInput";
+import { GlobalModel } from "../../model";
+import { makeExternLink } from "../../util";
 
 dayjs.extend(localizedFormat);
 
