@@ -1,3 +1,44 @@
+@import "../index.less";
+
+.info-message {
+    position: relative;
+    font-weight: normal;
+    font-size: 12px;
+    color: @term-white;
+
+    .message-content {
+        position: absolute;
+        display: none;
+        flex-direction: row;
+        align-items: flex-start;
+        top: -6px;
+        left: -6px;
+        padding: 5px;
+        border: 1px solid #777;
+        background-color: #444;
+        border-radius: 5px;
+        z-index: 5;
+        overflow: hidden;
+
+        .info-icon {
+            margin-right: 5px;
+            width: 12px;
+            flex-shrink: 0;
+        }
+
+        .info-children {
+            flex: 1 0 0;
+            overflow: hidden;
+        }
+    }
+
+    &:hover {
+        .message-content {
+            display: flex;
+        }
+    }
+}
+
 .cmdstr-code {
     position: relative;
     display: flex;

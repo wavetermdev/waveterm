@@ -12,7 +12,7 @@ import { GlobalModel, GlobalCommandRunner, Session } from "../../model";
 
 import { sortAndFilterRemotes, isBlank } from "../../util";
 
-import { RemoteStatusLight } from "../../elements";
+import { RemoteStatusLight } from "../../components/common";
 
 import "./sidebar.less";
 

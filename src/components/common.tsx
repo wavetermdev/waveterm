@@ -1,13 +1,14 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
-import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import cn from "classnames";
-import { If, For, When, Otherwise, Choose } from "tsx-control-statements/components";
-import type { RemoteType } from "./types";
+import { If } from "tsx-control-statements/components";
+import type { RemoteType } from "../types";
+
+import "./common.less";
 
 type OV<V> = mobx.IObservableValue<V>;
 

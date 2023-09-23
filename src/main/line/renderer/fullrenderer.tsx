@@ -1,25 +1,12 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
-import { sprintf } from "sprintf-js";
-import { boundMethod } from "autobind-decorator";
-import { If, For, When, Otherwise, Choose } from "tsx-control-statements/components";
 import type {
     RendererModelInitializeParams,
-    TermOptsType,
-    RendererContext,
-    RendererOpts,
-    SimpleBlobRendererComponent,
-    RendererModelContainerApi,
     RendererPluginType,
-    PtyDataType,
     RendererModel,
-    RendererOptsUpdate,
-    LineType,
-    TermContextUnion,
     RendererContainerType,
-} from "./types";
-import { PacketDataBuffer } from "./ptydata";
+} from "../../../types";
 import { debounce, throttle } from "throttle-debounce";
 
 type OV<V> = mobx.IObservableValue<V>;

@@ -1,18 +1,16 @@
 import * as React from "react";
 import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
-import cn from "classnames";
-import { If, For, When, Otherwise, Choose } from "tsx-control-statements/components";
 import * as T from "../types";
-import { debounce, throttle } from "throttle-debounce";
+import { debounce } from "throttle-debounce";
 import { boundMethod } from "autobind-decorator";
 import { sprintf } from "sprintf-js";
 import { PacketDataBuffer } from "../ptydata";
-import { Markdown } from "../elements";
+import { Markdown } from "../components/common";
+
+import "./plugins.less";
 
 type OV<V> = mobx.IObservableValue<V>;
-type OArr<V> = mobx.IObservableArray<V>;
-type OMap<K, V> = mobx.ObservableMap<K, V>;
 
 type OpenAIOutputType = {
     model: string;

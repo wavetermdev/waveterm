@@ -7,7 +7,7 @@ import cn from "classnames";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "../../model";
-import { Markdown } from "../../elements";
+import { Markdown } from "../../components/common";
 
 dayjs.extend(localizedFormat);
 

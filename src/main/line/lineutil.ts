@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { isBlank, getDateStr } from "./util";
-import { LineType, WebLine, RendererContext } from "./types";
+import { isBlank, getDateStr } from "../../util";
+import { LineType, WebLine, RendererContext } from "../../types";
 
 dayjs.extend(localizedFormat);
 

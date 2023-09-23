@@ -6,6 +6,7 @@ import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner } from "../../model";
 import { getMonoFontSize } from "../../textmeasure";
 import { isModKeyPress, hasNoModifiers } from "../../util";
+import "./sessionview.less";
 
 function pageSize(div: any): number {
     if (div == null) {

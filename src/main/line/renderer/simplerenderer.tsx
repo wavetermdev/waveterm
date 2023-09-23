@@ -19,12 +19,12 @@ import type {
     LineType,
     TermContextUnion,
     RendererContainerType,
-} from "./types";
-import * as T from "./types";
-import { PacketDataBuffer } from "./ptydata";
+} from "../../../types";
+import * as T from "../../../types";
+import { PacketDataBuffer } from "../../../ptydata";
 import { debounce, throttle } from "throttle-debounce";
-import * as util from "./util";
-import { GlobalModel } from "./model";
+import * as util from "../../../util";
+import { GlobalModel } from "../../../model";
 
 type OV<V> = mobx.IObservableValue<V>;
 type CV<V> = mobx.IComputedValue<V>;

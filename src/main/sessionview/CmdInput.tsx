@@ -8,11 +8,12 @@ import dayjs from "dayjs";
 import type { RemoteType, RemoteInstanceType, RemotePtrType } from "../../types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner } from "../../model";
-import { Prompt } from "../../linecomps";
-import { renderCmdText } from "../../elements";
+import { Prompt } from "../line/linecomps";
+import { renderCmdText } from "../../components/common";
 import { TextAreaInput } from "./TextareaInput";
 import { InfoMsg } from "./InfoMsg";
 import { HistoryInfo } from "./HistoryInfo";
+import "./sessionview.less";
 
 dayjs.extend(localizedFormat);
 

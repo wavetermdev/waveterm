@@ -5,13 +5,12 @@ import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
-
 import dayjs from "dayjs";
 import type { HistoryItem, HistoryQueryOpts } from "../../types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "../../model";
-
 import { isBlank } from "../../util";
+import "./sessionview.less";
 
 dayjs.extend(localizedFormat);
 

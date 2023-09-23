@@ -5,7 +5,7 @@ const path = require("path");
 module.exports = {
     mode: "development",
     entry: {
-        webshare: ["./src/webshare.ts", "./src/prompt.less"],
+        webshare: ["./src/webshare.ts", "./src/index.less"],
     },
     output: {
         path: path.resolve(__dirname, "webshare/dist"),

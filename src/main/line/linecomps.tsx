@@ -5,9 +5,9 @@ import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { If, For, When, Otherwise, Choose } from "tsx-control-statements/components";
-import { GlobalModel, GlobalCommandRunner, Session, Cmd, ScreenLines, Screen, getTermPtyData } from "./model";
-import { windowWidthToCols, windowHeightToRows, termHeightFromRows, termWidthFromCols } from "./textmeasure";
+import { If } from "tsx-control-statements/components";
+import { GlobalModel, GlobalCommandRunner, Cmd, getTermPtyData } from "../../model";
+import { termHeightFromRows } from "../../textmeasure";
 import type {
     LineType,
     CmdDataType,
@@ -21,17 +21,17 @@ import type {
     LineHeightChangeCallbackType,
     RendererModelInitializeParams,
     RendererModel,
-} from "./types";
+} from "../../types";
 import cn from "classnames";
-import { TermWrap } from "./term";
-import type { LineContainerModel } from "./model";
-import { renderCmdText } from "./elements";
-import { SimpleBlobRendererModel, SimpleBlobRenderer } from "./simplerenderer";
-import { FullRenderer } from "./fullrenderer";
-import { isBlank } from "./util";
-import { PluginModel } from "./plugins";
-import { PtyDataBuffer } from "./ptydata";
+import type { LineContainerModel } from "../../model";
+import { renderCmdText } from "../../components/common";
+import { SimpleBlobRenderer } from "./renderer/simplerenderer";
+import { FullRenderer } from "./renderer/fullrenderer";
+import { isBlank } from "../../util";
+import { PluginModel } from "../../plugins/plugins";
 import * as lineutil from "./lineutil";
+
+import "./lines.less";
 
 dayjs.extend(localizedFormat);
 

@@ -11,6 +11,8 @@ import { GlobalModel, GlobalCommandRunner, Screen } from "../model";
 import { WebStopShareConfirmMarkdown } from "../main/modals/settings";
 import * as util from "../util";
 
+import "./webshare.less";
+
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
 type OMap<K, V> = mobx.ObservableMap<K, V>;

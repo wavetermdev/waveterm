@@ -10,11 +10,12 @@ import dayjs from "dayjs";
 import type { LineType, RenderModeType, LineFactoryProps } from "../../types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Session, ScreenLines, Screen } from "../../model";
-
-import { Line } from "../../linecomps";
-import { renderCmdText } from "../../elements";
-import { LinesView } from "../../linesview";
+import { Line } from "../line/linecomps";
+import { renderCmdText } from "../../components/common";
+import { LinesView } from "../line/linesview";
 import { CmdInput } from "./CmdInput";
+import "./sessionview.less";
+
 dayjs.extend(localizedFormat);
 
 type OV<V> = mobx.IObservableValue<V>;

@@ -1,15 +1,12 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
-import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
-import { v4 as uuidv4 } from "uuid";
-import dayjs from "dayjs";
-import { If, For, When, Otherwise, Choose } from "tsx-control-statements/components";
+import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
-import type { BookmarkType } from "../types";
-import { GlobalModel, GlobalCommandRunner } from "../model";
-import { CmdStrCode, Markdown } from "../elements";
+import type { BookmarkType } from "../../types";
+import { GlobalModel } from "../../model";
+import { CmdStrCode, Markdown } from "../../components/common";
 
 import "./bookmarks.less";
 

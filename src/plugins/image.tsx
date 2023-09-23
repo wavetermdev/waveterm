@@ -1,9 +1,9 @@
 import * as React from "react";
 import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
-import cn from "classnames";
-import { If, For, When, Otherwise, Choose } from "tsx-control-statements/components";
-import { WindowSize, RendererContext, TermOptsType, LineType, RendererOpts } from "../types";
+import { RendererContext, RendererOpts } from "../types";
+
+import "./plugins.less";
 
 type OV<V> = mobx.IObservableValue<V>;
 type CV<V> = mobx.IComputedValue<V>;

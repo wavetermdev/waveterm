@@ -1,12 +1,14 @@
 import * as React from "react";
 import { RendererContext, RendererOpts, LineStateType, RendererModelContainerApi } from "../../types";
 import Editor from "@monaco-editor/react";
-import { Markdown } from "../../elements";
+import { Markdown } from "../../components/common";
 import { GlobalModel, GlobalCommandRunner } from "../../model";
 import Split from "react-split-it";
-import "./split.less";
 import loader from "@monaco-editor/loader";
 loader.config({ paths: { vs: "./node_modules/monaco-editor/min/vs" } });
+
+import "./split.less";
+import "../plugins.less";
 
 function renderCmdText(text: string): any {
     return <span>&#x2318;{text}</span>;

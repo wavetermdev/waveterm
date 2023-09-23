@@ -5,13 +5,13 @@ import { If, For, When, Otherwise, Choose } from "tsx-control-statements/compone
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner, Cmd } from "../model";
-import { HistoryItem, RemotePtrType, LineType, CmdDataType } from "../types";
+import { GlobalModel, GlobalCommandRunner, Cmd } from "../../model";
+import { HistoryItem, RemotePtrType, LineType, CmdDataType } from "../../types";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
-import { Line } from "../linecomps";
-import { CmdStrCode } from "../elements";
+import { Line } from "../line/linecomps";
+import { CmdStrCode } from "../../components/common";
 
 import "./history.less";
 

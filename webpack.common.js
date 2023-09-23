@@ -5,7 +5,7 @@ const path = require("path");
 module.exports = {
     mode: "development",
     entry: {
-        prompt: ["./src/prompt.ts", "./src/prompt.less"],
+        prompt: ["./src/index.ts", "./src/index.less"],
     },
     output: {
         path: path.resolve(__dirname, "dist"),

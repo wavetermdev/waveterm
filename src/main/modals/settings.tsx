@@ -5,9 +5,9 @@ import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, TabColors } from "../../model";
-import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage } from "../../elements";
+import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage } from "../../components/common";
 import { LineType, RendererPluginType, ClientDataType, CommandRtnType } from "../../types";
-import { PluginModel } from "../../plugins";
+import { PluginModel } from "../../plugins/plugins";
 import * as util from "../../util";
 
 import "./modals.less";

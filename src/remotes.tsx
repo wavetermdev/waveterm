@@ -1,16 +1,14 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
-import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
-import { If, For, When, Otherwise, Choose } from "tsx-control-statements/components";
+import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner, getTermPtyData, RemotesModalModel } from "./model";
-import { Toggle, RemoteStatusLight, InlineSettingsTextEdit, InfoMessage } from "./elements";
-import { RemoteType, RemoteInputPacketType, RemoteEditType } from "./types";
+import { GlobalModel, GlobalCommandRunner, RemotesModalModel } from "./model";
+import { Toggle, RemoteStatusLight, InfoMessage } from "./components/common";
+import { RemoteType, RemoteEditType } from "./types";
 import * as util from "./util";
 import * as textmeasure from "./textmeasure";
-import { TermWrap } from "./term";
 
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;

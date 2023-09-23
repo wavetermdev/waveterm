@@ -1,3 +1,5 @@
+@import "../index.less";
+
 body.prompt-webshare #main {
     display: flex;
     flex-direction: column;
@@ -121,6 +123,45 @@ body.prompt-webshare #main {
 
         .copied-indicator {
             z-index: 10;
+        }
+    }
+}
+
+.webshare-view {
+    .webshare-item {
+        padding: 4px 5px 8px 15px;
+        margin-bottom: 4px;
+        border-top: 1px solid white;
+        display: flex;
+        flex-direction: row;
+        position: relative;
+        min-height: 55px;
+        align-items: center;
+
+        &:first-child {
+            border-top: 0;
+        }
+
+        .webshare-vic {
+            width: 200px;
+
+            .webshare-vic-link {
+                cursor: pointer;
+
+                &:hover {
+                    text-decoration: underline;
+                }
+            }
+        }
+
+        .actions {
+            display: flex;
+            flex-direction: row;
+            gap: 10px;
+        }
+
+        &:hover {
+            background-color: #222;
         }
     }
 }

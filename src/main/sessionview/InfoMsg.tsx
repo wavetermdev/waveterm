@@ -6,6 +6,7 @@ import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "../../model";
 import { makeExternLink } from "../../util";
+import "./sessionview.less";
 
 dayjs.extend(localizedFormat);
 
