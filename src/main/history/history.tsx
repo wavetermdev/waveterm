@@ -11,7 +11,7 @@ import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { Line } from "../line/linecomps";
-import { CmdStrCode } from "../../components/common";
+import { CmdStrCode } from "../../common/common";
 
 import "./history.less";
 

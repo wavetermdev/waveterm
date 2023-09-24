@@ -5,7 +5,7 @@ import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, TabColors } from "../../model";
-import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage } from "../../components/common";
+import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage } from "../../common/common";
 import { LineType, RendererPluginType, ClientDataType, CommandRtnType } from "../../types";
 import { PluginModel } from "../../plugins/plugins";
 import * as util from "../../util";

@@ -11,10 +11,11 @@ import type { LineType, RenderModeType, LineFactoryProps } from "../../types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Session, ScreenLines, Screen } from "../../model";
 import { Line } from "../line/linecomps";
-import { renderCmdText } from "../../components/common";
+import { renderCmdText } from "../../common/common";
 import { LinesView } from "../line/linesview";
 import { CmdInput } from "./CmdInput";
 import "./sessionview.less";
+import "./tabs.less";
 
 dayjs.extend(localizedFormat);
 

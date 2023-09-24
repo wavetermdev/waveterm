@@ -24,7 +24,7 @@ import type {
 } from "../../types";
 import cn from "classnames";
 import type { LineContainerModel } from "../../model";
-import { renderCmdText } from "../../components/common";
+import { renderCmdText } from "../../common/common";
 import { SimpleBlobRenderer } from "./renderer/simplerenderer";
 import { FullRenderer } from "./renderer/fullrenderer";
 import { isBlank } from "../../util";

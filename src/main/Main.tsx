@@ -12,12 +12,12 @@ import { BookmarksView } from "./bookmarks/bookmarks";
 import { WebShareView } from "../webshare/webshare-client-view";
 import { HistoryView } from "./history/history";
 import { ScreenSettingsModal, SessionSettingsModal, LineSettingsModal, ClientSettingsModal } from "./modals/settings";
-import { RemotesModal } from "../remotes";
+import { RemotesModal } from "../remotes/remotes";
 import { TosModal } from "./modals/Modals";
 
 import { SessionView } from "./sessionview/SessionView";
 import { MainSideBar } from "./sidebar/MainSideBar";
-import { DisconnectedModal, ClientStopModal, LoadingSpinner, AlertModal, WelcomeModal } from "./modals/Modals";
+import { DisconnectedModal, ClientStopModal, AlertModal, WelcomeModal } from "./modals/Modals";
 
 dayjs.extend(localizedFormat);
 

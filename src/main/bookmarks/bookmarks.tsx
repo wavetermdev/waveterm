@@ -6,7 +6,7 @@ import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import type { BookmarkType } from "../../types";
 import { GlobalModel } from "../../model";
-import { CmdStrCode, Markdown } from "../../components/common";
+import { CmdStrCode, Markdown } from "../../common/common";
 
 import "./bookmarks.less";
 

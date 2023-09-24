@@ -1,7 +1,7 @@
 import * as React from "react";
 import { RendererContext, RendererOpts, LineStateType, RendererModelContainerApi } from "../../types";
 import Editor from "@monaco-editor/react";
-import { Markdown } from "../../components/common";
+import { Markdown } from "../../common/common";
 import { GlobalModel, GlobalCommandRunner } from "../../model";
 import Split from "react-split-it";
 import loader from "@monaco-editor/loader";

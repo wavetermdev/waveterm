@@ -4,11 +4,13 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner, RemotesModalModel } from "./model";
-import { Toggle, RemoteStatusLight, InfoMessage } from "./components/common";
-import { RemoteType, RemoteEditType } from "./types";
-import * as util from "./util";
-import * as textmeasure from "./textmeasure";
+import { GlobalModel, GlobalCommandRunner, RemotesModalModel } from "../model";
+import { Toggle, RemoteStatusLight, InfoMessage } from "../common/common";
+import { RemoteType, RemoteEditType } from "../types";
+import * as util from "../util";
+import * as textmeasure from "../textmeasure";
+
+import "./remotes.less";
 
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;

@@ -6,7 +6,7 @@ import { debounce } from "throttle-debounce";
 import { boundMethod } from "autobind-decorator";
 import { sprintf } from "sprintf-js";
 import { PacketDataBuffer } from "../ptydata";
-import { Markdown } from "../components/common";
+import { Markdown } from "../common/common";
 
 import "./plugins.less";
 
