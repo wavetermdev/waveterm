@@ -1,0 +1,290 @@
+@import "../../index.less";
+
+.main-sidebar .logo-header {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    border-bottom: 2px solid #ddd;
+    margin-left: -4px;
+    margin-right: -5px;
+
+    .title.prompt-logo-small {
+        padding-left: 5px;
+        padding-top: 8px;
+        padding-bottom: 8px;
+        margin-bottom: 0;
+        .mono-font(1.5rem);
+        background-color: darken(rgb(0, 177, 10), 30%);
+        color: rgb(0, 177, 10);
+        position: relative;
+        white-space: nowrap;
+        overflow: hidden;
+        flex-shrink: 0;
+
+        &.is-dev {
+            background-color: darken(rgb(177, 0, 10), 30%);
+        }
+
+        &.collapsed {
+            padding-left: 1px;
+        }
+
+        .title-cursor {
+            position: relative;
+            bottom: 3px;
+            left: 3px;
+            .mono-font(1.2rem);
+        }
+    }
+}
+
+.main-sidebar {
+    border-right: 1px solid #aaa;
+    padding: 0 5px 5px 5px;
+    width: 200px;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    color: #ddd;
+    position: relative;
+    background-color: darken(rgb(0, 177, 10), 30%);
+    flex-shrink: 0;
+
+    &.is-dev {
+        background-color: darken(rgb(177, 0, 10), 30%);
+    }
+
+    .menu {
+        padding-top: 10px;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+
+        .spacer {
+            flex-grow: 1;
+        }
+
+        .bottom-spacer {
+            height: 10px;
+        }
+
+        a:hover {
+            color: white;
+        }
+    }
+
+    .menu-label {
+        color: #bbb;
+
+        a {
+            color: #bbb;
+        }
+    }
+
+    p.menu-label {
+        margin-bottom: 0px;
+    }
+
+    .menu-list {
+        li.new-session,
+        li.add-remote {
+            a {
+                color: #666;
+                font-size: 13px;
+            }
+
+            .fa {
+                font-size: 10px;
+            }
+        }
+
+        li {
+            .mono-font();
+        }
+
+        li.menu-loading-message {
+            .mono-font();
+        }
+
+        li.menu-history,
+        li.menu-bookmarks,
+        li.menu-settings,
+        li.menu-websharing {
+            margin-left: -10px;
+        }
+
+        li.menu-bookmarks {
+            margin-left: -10px;
+        }
+
+        li {
+            .hotkey {
+                visibility: hidden;
+            }
+
+            &:hover .hotkey {
+                visibility: visible;
+            }
+        }
+    }
+
+    .menu-list.session-menu-list {
+        li a {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+
+            .session-num {
+                width: 24px;
+                margin-left: -12px;
+            }
+
+            .session-gear {
+                visibility: hidden;
+            }
+
+            &:hover .session-gear {
+                color: #ccc;
+                visibility: visible;
+
+                &:hover {
+                    color: white;
+                }
+            }
+        }
+    }
+
+    .menu-list.remotes-menu-list {
+        max-height: 35%;
+        overflow-y: auto;
+    }
+
+    .menu-list li.remote-menu-item {
+        a {
+            .mono-font(11px);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    }
+
+    .menu-list li a {
+        color: #bbb;
+        white-space: nowrap;
+        padding: 3px 5px 3px 12px;
+        vertical-align: middle;
+        position: relative;
+        font-size: 13px;
+
+        .user-status {
+            position: absolute !important;
+            top: 24px !important;
+            left: 32px !important;
+        }
+
+        .avatar {
+            width: 24px;
+            height: 24px;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+
+        .session-num {
+            color: #777;
+            font-size: 10px;
+        }
+
+        &.is-active .small-text {
+            color: white;
+        }
+
+        .small-text {
+            color: #777;
+            font-size: 10px;
+        }
+
+        &.is-active {
+            color: #ddd;
+            font-weight: bold;
+            background-color: @active-menu-color;
+
+            .session-num {
+                color: #aaa;
+                font-weight: normal;
+            }
+        }
+
+        .sub-label {
+            font-size: 12px;
+            font-style: italic;
+        }
+
+        &.activity {
+            font-weight: bold;
+            color: #ddd;
+
+            .tag {
+                margin-left: 4px;
+                padding: 0 5px 0 5px;
+                position: relative;
+                top: -1px;
+            }
+        }
+
+        &.is-active:hover {
+            background-color: #3273dc;
+        }
+
+        &:hover {
+            background-color: #444;
+            color: #ddd;
+        }
+
+        .status {
+            font-size: 8px;
+            margin-right: 5px;
+            position: relative;
+            top: -3px;
+            color: #4e9a06;
+
+            &.offline {
+                color: #cc0000;
+            }
+        }
+    }
+
+    &.collapsed {
+        width: 55px;
+
+        .collapse-container {
+            right: 17px;
+        }
+
+        .menu {
+            display: none;
+        }
+    }
+
+    .collapse-container {
+        position: absolute;
+        right: 3px;
+        top: 42px;
+
+        .arrow-container {
+            color: #777;
+            padding: 5px;
+            cursor: pointer;
+
+            &:hover {
+                color: #ddd;
+            }
+        }
+    }
+}
+
+.menu-list .remote-status.status-connecting {
+    position: relative;
+    top: 0px;
+    font-size: 12px;
+    margin-left: -3px;
+}

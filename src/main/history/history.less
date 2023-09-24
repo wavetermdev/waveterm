@@ -1,0 +1,367 @@
+@import "../../index.less";
+
+.history-view {
+    color: #ccc;
+
+    .close-div {
+        padding-top: 10px;
+        font-size: 24px;
+
+        i {
+            padding: 5px 5px 5px 10px;
+            cursor: pointer;
+        }
+
+        i:hover {
+            color: #fff;
+        }
+    }
+
+    .header {
+        display: flex;
+        flex-direction: row;
+        margin: 10px;
+        align-items: flex-start;
+
+        .history-title {
+            margin-top: 5px;
+            .mono-font(1.5rem);
+            font-weight: bold;
+            color: white;
+        }
+
+        input {
+            background-color: #333;
+            color: white;
+
+            i {
+                color: white;
+            }
+        }
+    }
+
+    .history-search {
+        flex-grow: 1;
+        margin-top: 5px;
+        margin-left: 15px;
+
+        .main-search {
+            .field {
+                width: 80%;
+            }
+
+            input::placeholder {
+                color: #777;
+            }
+        }
+
+        .advanced-search {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+
+            .session-dropdown,
+            .remote-dropdown {
+                .dropdown-item {
+                    color: white;
+                    cursor: pointer;
+                    &:hover {
+                        background-color: #666;
+                    }
+                }
+
+                .dropdown-content {
+                    border: 1px solid #333;
+                    border-radius: 3px;
+                }
+            }
+
+            .remote-dropdown {
+                margin-left: 15px;
+            }
+
+            .search-checkbox {
+                margin-left: 15px;
+                border: 1px solid #777;
+                padding: 5px 10px 5px 10px;
+                font-size: 12px;
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+
+                &.is-active {
+                    background-color: #666;
+                }
+
+                .checkbox-container {
+                    position: relative;
+                    top: 2px;
+                }
+
+                .checkbox-text {
+                    padding-left: 8px;
+                    cursor: pointer;
+                }
+            }
+
+            .fromts {
+                font-size: 12px;
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                margin-left: 15px;
+
+                .fromts-text {
+                }
+            }
+
+            .reset-button {
+                cursor: pointer;
+                margin-left: 15px;
+                font-size: 12px;
+                border: 1px solid #777;
+                padding: 5px 10px 5px 10px;
+
+                &:hover {
+                    background-color: #666;
+                }
+            }
+        }
+    }
+
+    .control-bar {
+        display: flex;
+        flex-direction: row;
+        margin-bottom: 5px;
+        margin-right: 10px;
+        margin-top: 10px;
+        margin-left: 10px;
+        align-items: center;
+
+        .is-hidden {
+            display: none;
+        }
+
+        &.is-top {
+            border-top: 1px solid #333;
+            padding-top: 4px;
+        }
+
+        .control-checkbox {
+            cursor: pointer;
+            color: #777;
+            font-size: 18px;
+            width: 24px;
+            margin-left: 14px;
+
+            &:hover {
+                color: white;
+            }
+        }
+
+        .control-button {
+            cursor: pointer;
+            color: #aaa;
+            margin-left: 10px;
+            font-size: 14px;
+
+            &.is-disabled {
+                cursor: default;
+                i,
+                span {
+                    display: none;
+                }
+            }
+
+            &:hover {
+                color: white;
+            }
+
+            &.delete-button.is-active {
+                color: @term-bright-red !important;
+            }
+        }
+
+        .spacer {
+            flex-grow: 1;
+        }
+
+        .showing-text {
+            font-size: 16px;
+            margin-right: 10px;
+        }
+
+        .showing-btn {
+            padding: 0 5px 0 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+
+            &.is-disabled {
+                cursor: default;
+                color: #777;
+                font-weight: normal;
+            }
+        }
+
+        .btn-spacer {
+            width: 10px;
+        }
+    }
+
+    .no-items {
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        .mono-font(14px);
+        padding: 30px 0 30px 0;
+        border: 1px solid white;
+        border-radius: 3px;
+        margin: 20px 50px 20px 20px;
+    }
+
+    .history-table {
+        margin: 0px 10px 10px 10px;
+        table-layout: fixed;
+        border-top: 2px solid #ccc;
+
+        tr.active-history-item {
+            td {
+                padding-right: 10px;
+
+                .line-container {
+                    padding: 0px 10px 10px 10px;
+                    overflow-x: auto;
+                    background-color: black;
+                }
+
+                .line-context {
+                    .mono-font(12px);
+                    margin-left: 20px;
+                    margin-bottom: 10px;
+                    margin-top: 10px;
+                    display: flex;
+                    flex-direction: row;
+
+                    .vic-btn {
+                        cursor: pointer;
+                        color: #ccc;
+
+                        &:hover {
+                            color: white;
+                        }
+                    }
+                }
+
+                .no-line-context {
+                    height: 10px;
+                }
+
+                .line-container.no-line {
+                    .mono-font(12px);
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 20px;
+                }
+            }
+        }
+
+        tr.history-item {
+            padding: 0 10px 0 10px;
+            display: flex;
+            border-top: 1px solid #333;
+            align-items: center;
+
+            &.is-selected {
+                background-color: #003;
+            }
+
+            &.is-selected:hover {
+                background-color: #336;
+            }
+
+            &:hover {
+                background-color: #333;
+
+                td.bookmark i {
+                    display: block;
+                }
+            }
+
+            td {
+                padding-top: 5px;
+                padding-bottom: 5px;
+                padding-left: 5px;
+            }
+
+            td.selectbox {
+                flex: 0 0 auto;
+                flex-basis: 24px;
+                font-size: 14px;
+                cursor: pointer;
+            }
+
+            td.bookmark {
+                flex: 0 0 auto;
+                flex-basis: 20px;
+                font-size: 14px;
+                cursor: pointer;
+
+                i {
+                    position: relative;
+                    top: 1px;
+                    display: none;
+                }
+            }
+
+            td.ts {
+                font-size: 12px;
+                flex: 0 0 auto;
+                flex-basis: 65px;
+                font-weight: bold;
+            }
+
+            td.session {
+                font-size: 12px;
+                flex: 0 0 auto;
+                flex-basis: 120px;
+                text-overflow: ellipsis;
+            }
+
+            td.remote {
+                .mono-font(12px);
+                flex: 0 0 auto;
+                flex-basis: 150px;
+                text-overflow: ellipsis;
+                padding-right: 5px;
+                max-width: 150px;
+                overflow: hidden;
+            }
+
+            td.cmdstr {
+                .mono-font(12px);
+                color: white;
+                flex: 1 0 0;
+                padding-left: 20px;
+                border-radius: 3px;
+                white-space: pre;
+                max-height: 70px;
+                cursor: pointer;
+                min-width: 300px;
+                padding-top: 4px;
+                padding-bottom: 4px;
+                overflow: hidden;
+
+                .use-button {
+                    visibility: hidden;
+                }
+
+                &:hover .use-button {
+                    visibility: visible;
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,167 @@
+@import "../index.less";
+
+body.prompt-webshare #main {
+    display: flex;
+    flex-direction: column;
+
+    .logo-header {
+        display: flex;
+        flex-direction: row;
+        padding: 10px;
+        border-bottom: 1px solid #777;
+        align-items: center;
+        flex-shrink: 0;
+
+        .logo-text {
+            .mono-font(32px);
+            a {
+                color: @prompt-green;
+            }
+        }
+
+        .screen-name {
+            color: white;
+            .mono-font(24px);
+            margin-left: 20px;
+        }
+
+        .download-button {
+            margin-right: 20px;
+        }
+    }
+
+    .webshare-controls {
+        display: flex;
+        flex-direction: row;
+        flex-shrink: 0;
+        height: 40px;
+        align-items: center;
+        padding-left: 20px;
+        padding-right: 20px;
+        background-color: darken(@prompt-green, 30%);
+        color: white;
+
+        .screen-sharename {
+            font-weight: bold;
+        }
+
+        .sync-control {
+            display: flex;
+            flex-direction: row;
+            color: @term-white;
+            font-size: 13px;
+            align-items: center;
+
+            div:first-child {
+                margin-right: 5px;
+            }
+        }
+    }
+
+    .prompt-content {
+        flex-grow: 1;
+        padding: 10px 0;
+        display: flex;
+        flex-direction: row;
+        overflow: hidden;
+
+        .web-screen-view {
+            height: 100%;
+            width: 100%;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+
+            .lines {
+                height: 100%;
+                flex-grow: 1;
+                padding-top: 0;
+            }
+        }
+    }
+
+    .prompt-footer {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        color: #aaa;
+        border-top: 1px solid #777;
+        height: 50px;
+        padding-left: 20px;
+        padding-right: 20px;
+        flex-shrink: 0;
+
+        .footer-copy {
+            font-size: 12px;
+        }
+
+        a {
+            display: block;
+        }
+    }
+
+    color: white;
+
+    #app {
+        color: white;
+    }
+
+    .lines .line-sep {
+        margin-left: 0px;
+        margin-right: 10px;
+    }
+
+    .lines .line.line-cmd {
+        .line-icon.copy-icon {
+            color: @term-white;
+            font-size: 18px;
+
+            &:hover {
+                color: @term-bright-white;
+            }
+        }
+
+        .copied-indicator {
+            z-index: 10;
+        }
+    }
+}
+
+.webshare-view {
+    .webshare-item {
+        padding: 4px 5px 8px 15px;
+        margin-bottom: 4px;
+        border-top: 1px solid white;
+        display: flex;
+        flex-direction: row;
+        position: relative;
+        min-height: 55px;
+        align-items: center;
+
+        &:first-child {
+            border-top: 0;
+        }
+
+        .webshare-vic {
+            width: 200px;
+
+            .webshare-vic-link {
+                cursor: pointer;
+
+                &:hover {
+                    text-decoration: underline;
+                }
+            }
+        }
+
+        .actions {
+            display: flex;
+            flex-direction: row;
+            gap: 10px;
+        }
+
+        &:hover {
+            background-color: #222;
+        }
+    }
+}

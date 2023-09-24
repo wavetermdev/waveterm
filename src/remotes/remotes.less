@@ -1,0 +1,248 @@
+@import "../index.less";
+
+.modal.prompt-modal.remotes-modal {
+    .modal-content {
+        min-width: 850px;
+    }
+
+    .inner-content {
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+        padding: 0;
+        max-height: 80vh;
+
+        .remotes-menu {
+            flex: 0 0 200px;
+            min-height: 450px;
+            border-right: 1px solid #666;
+            overflow-y: auto;
+            height: 100px;
+
+            .remote-menu-item {
+                border-top: 1px solid #666;
+                padding: 5px;
+                display: flex;
+                flex-direction: row;
+                cursor: pointer;
+
+                &.add-remote {
+                    font-size: 13px;
+                    padding: 10px 5px 10px 5px;
+                }
+
+                &:hover {
+                    background-color: #333;
+                }
+
+                &.is-selected {
+                    background-color: @active-menu-color;
+
+                    .remote-name .remote-name-secondary {
+                        color: white;
+                    }
+                }
+
+                &:first-child {
+                    border-top: 0;
+                }
+
+                .remote-status-light {
+                    width: 15px;
+                    margin-top: -2px;
+                }
+
+                .remote-name {
+                    flex-grow: 1;
+
+                    .remote-name-primary {
+                        font-size: 12px;
+                        font-weight: bold;
+                    }
+
+                    .remote-name-secondary {
+                        font-size: 11px;
+                        color: #777;
+                    }
+                }
+            }
+        }
+
+        .remote-detail {
+            padding: 10px;
+            flex-grow: 1;
+            font-size: 12px;
+            display: flex;
+            flex-direction: column;
+
+            .settings-field {
+                margin-top: 5px;
+            }
+
+            * {
+                flex-shrink: 0;
+            }
+
+            .detail-subtitle {
+                font-size: 18px;
+                margin-bottom: 10px;
+                margin-top: 10px;
+            }
+
+            .title {
+                color: white;
+                padding-bottom: 8px;
+                margin-bottom: 0;
+                border-bottom: 1px solid #777;
+            }
+
+            .terminal-wrapper {
+                margin-left: 0;
+                margin-bottom: 0;
+
+                &.has-message {
+                    margin-top: 0;
+                }
+
+                box-shadow: none;
+                border: 1px solid #777;
+            }
+
+            .action-buttons {
+                display: flex;
+                flex-direction: row;
+                gap: 10px;
+                margin-top: 2px;
+            }
+
+            .remote-message {
+                margin-top: 5px;
+                padding: 8px;
+                border-radius: 5px 5px 0 0;
+                background-color: #333;
+
+                i.fa-check {
+                    color: @term-green;
+                }
+
+                &.is-ok {
+                }
+
+                .message-row {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                }
+
+                .remote-status {
+                    position: relative;
+                    top: -1px;
+                }
+
+                .button {
+                    height: 22px;
+                }
+            }
+
+            .settings-field {
+                .update-auth-button {
+                    visibility: hidden;
+                }
+
+                &:hover {
+                    .update-auth-button {
+                        visibility: visible;
+                    }
+
+                    .hide-hover {
+                        display: none;
+                    }
+                }
+            }
+
+            &.auth-editing,
+            &.create-remote {
+                .settings-field.align-top {
+                    align-items: flex-start;
+
+                    .settings-label {
+                        margin-top: 8px;
+                    }
+
+                    .settings-input {
+                        align-items: flex-start;
+                    }
+                }
+
+                .settings-label {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                    width: 135px;
+                }
+
+                .settings-field .settings-input .undo-icon {
+                    cursor: pointer;
+                    font-size: 18px;
+                    margin-left: 5px;
+                }
+
+                .editremote-dropdown .dropdown-trigger button {
+                    width: 120px;
+                    justify-content: flex-start;
+                }
+
+                .settings-field .raw-input {
+                    width: 120px;
+                }
+
+                .settings-input input {
+                    width: 250px;
+                }
+
+                .dropdown .dropdown-trigger button {
+                    font-size: 12px;
+                }
+
+                .dropdown .dropdown-item {
+                    font-size: 12px;
+                    padding: 5px 5px 5px 12px;
+                }
+
+                .settings-input {
+                    .info-message {
+                        margin-left: 22px;
+                    }
+                }
+
+                .settings-label {
+                    .info-message {
+                        margin-right: 15px;
+                    }
+                }
+            }
+        }
+    }
+
+    .terminal-wrapper {
+        position: relative;
+        background-color: #000;
+        padding: 2px 10px 5px 4px;
+        margin: 5px 5px 10px 5px;
+        box-shadow: 0 0 1px 1px rgba(255, 255, 255, 0.3);
+        &.focus {
+            box-shadow: 0 0 3px 3px rgba(255, 255, 255, 0.3);
+        }
+
+        .term-tag {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background-color: @term-red;
+            color: white;
+            z-index: 110;
+            padding: 4px;
+            .mono-font(10px);
+        }
+    }
+}

@@ -1,0 +1,267 @@
+@import "../../index.less";
+
+#main .screen-tabs .screen-tab {
+    &.color-green {
+        color: @tab-white-text;
+        background-color: desaturate(@tab-green, 50%);
+        &:hover {
+            background-color: @tab-green;
+        }
+        &.is-active {
+            color: white;
+            background-color: @tab-green;
+        }
+    }
+
+    &.color-orange {
+        color: @tab-black-text;
+        background-color: desaturate(@tab-orange, 30%);
+        &:hover {
+            background-color: @tab-orange;
+        }
+        &.is-active {
+            color: black;
+            background-color: @tab-orange;
+        }
+    }
+
+    &.color-red {
+        color: @tab-white-text;
+        background-color: desaturate(@tab-red, 40%);
+        &:hover {
+            background-color: @tab-red;
+        }
+        &.is-active {
+            color: white;
+            background-color: @tab-red;
+        }
+    }
+
+    &.color-yellow {
+        color: @tab-black-text;
+        background-color: desaturate(@tab-yellow, 40%);
+        &:hover {
+            background-color: @tab-yellow;
+        }
+        &.is-active {
+            background-color: @tab-yellow;
+            color: black;
+            box-shadow: 0 3px 0 #fff inset, 0 4px 0 #000 inset;
+        }
+    }
+
+    &.color-blue {
+        color: @tab-white-text;
+        background-color: desaturate(@tab-blue, 50%);
+        &:hover {
+            background-color: @tab-blue;
+        }
+        &.is-active {
+            color: white;
+            background-color: @tab-blue;
+        }
+    }
+
+    &.color-magenta {
+        color: @tab-white-text;
+        background-color: desaturate(@tab-magenta, 20%);
+        &:hover {
+            background-color: @tab-magenta;
+        }
+        &.is-active {
+            color: white;
+            background-color: @tab-magenta;
+        }
+    }
+
+    &.color-cyan {
+        color: @tab-black-text;
+        background-color: desaturate(@tab-cyan, 20%);
+        &:hover {
+            background-color: @tab-cyan;
+        }
+        &.is-active {
+            color: black;
+            background-color: @tab-cyan;
+        }
+    }
+
+    &.color-white {
+        color: @tab-black-text;
+        background-color: @term-white;
+        &:hover {
+            background-color: @tab-white;
+        }
+        &.is-active {
+            color: black;
+            background-color: @tab-white;
+            box-shadow: 0 3px 0 #fff inset, 0 4px 0 #000 inset;
+        }
+    }
+
+    &.color-black {
+        color: @tab-white-text;
+        background-color: lighten(@tab-black, 20%);
+        &:hover {
+            background-color: @tab-black;
+        }
+        &.is-active {
+            color: white;
+            background-color: @tab-black;
+        }
+    }
+
+    .web-share-icon {
+        position: relative;
+        top: 1px;
+        margin-right: 3px;
+    }
+}
+
+.screen-tabs-container {
+    position: relative;
+
+    &:hover {
+        z-index: 200;
+    }
+
+    &:hover .cmd-hints {
+        display: flex;
+    }
+
+    .cmd-hints {
+        position: absolute;
+        bottom: -18px;
+        left: 0px;
+        display: flex;
+    }
+}
+
+.screen-tabs {
+    height: 30px;
+    display: flex;
+    flex-direction: row;
+    border-top: 1px solid #666;
+    border-right: 1px solid #eee;
+    overflow-x: overlay;
+    overflow-y: visible;
+    align-items: center;
+
+    &::-webkit-scrollbar {
+        display: none;
+        z-index: 5;
+        background-color: #fff;
+        height: 4px;
+        width: 0;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: #777;
+    }
+
+    &.scrolling::-webkit-scrollbar {
+        display: block;
+    }
+
+    .screen-tab {
+        height: 30px;
+        min-width: 80px;
+        width: 150px;
+        line-height: 1;
+        flex-shrink: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 12px;
+        font-weight: 500;
+        padding-left: 0;
+        padding-right: 0;
+        cursor: pointer;
+        position: relative;
+        border-right: 1px solid #777;
+
+        .tab-name {
+            flex-grow: 1;
+            flex-basis: 50px;
+            padding-left: 2px;
+            padding-right: 2px;
+            text-align: center;
+        }
+
+        &.is-active {
+            box-shadow: 0 3px 0 #fff inset;
+            border-top: none;
+            opacity: 1;
+        }
+
+        &.is-archived {
+            .fa.fa-archive {
+                margin-right: 4px;
+            }
+        }
+
+        .tab-index {
+            font-size: 11px;
+            position: absolute;
+            right: 2px;
+            top: 4px;
+            bottom: 0;
+            font-weight: normal;
+            display: none;
+            padding-left: 4px;
+            padding-top: 6px;
+            background-color: inherit;
+        }
+
+        .tab-gear {
+            position: absolute;
+            right: 5px;
+            top: 4px;
+            bottom: 0;
+            font-weight: normal;
+            display: none;
+            padding-left: 5px;
+            padding-top: 5px;
+            background-color: inherit;
+        }
+
+        &:hover {
+            .tab-gear {
+                display: block;
+
+                &:hover {
+                    display: block;
+                    top: 4px;
+                    padding-top: 4px;
+                    right: 3px;
+                    padding-left: 4px;
+                    i {
+                        font-size: 15px;
+                    }
+                }
+            }
+        }
+    }
+
+    &:hover .screen-tab .tab-index {
+        display: block;
+    }
+
+    &:hover .screen-tab:hover .tab-index {
+        display: none;
+    }
+
+    .screen-tab.new-screen {
+        width: 30px;
+        min-width: 30px;
+        background-color: black;
+        border-right: none;
+        color: #ccc;
+        cursor: pointer;
+
+        &:hover {
+            background-color: #666;
+            border-right: 1px solid #ccc;
+        }
+    }
+}

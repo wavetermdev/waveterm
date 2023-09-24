@@ -1,0 +1,388 @@
+@import "../../index.less";
+
+.cmd-input-info,
+.cmd-history {
+    &::-webkit-scrollbar {
+        background-color: #777;
+        width: 5px;
+        height: 5px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: white;
+    }
+}
+
+.cmd-input {
+    border-radius: 0;
+    border-top: 4px solid #ccc;
+    border-right: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;
+    border-bottom-right-radius: 10px;
+    max-height: max(300px, 40%);
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    padding: 20px 25px 20px 20px;
+    z-index: 100;
+
+    &.has-info {
+        padding-top: 10px;
+    }
+
+    .focus-indicator {
+        height: 90%;
+        top: 5%;
+        left: 4px;
+    }
+
+    &.has-history {
+        padding-top: 5px;
+        height: max(300px, 40%);
+    }
+
+    &.has-remote {
+        max-height: max(300px, 70%);
+    }
+
+    .remote-status-warning {
+        display: flex;
+        flex-direction: row;
+        color: @term-yellow;
+        align-items: center;
+        font-size: 14px;
+
+        .button {
+            margin-left: 10px;
+        }
+
+        .remote-name {
+            .mono-font(14px);
+        }
+    }
+
+    .input-minmax-control {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        color: @term-white;
+        font-size: 12px;
+        padding: 5px;
+        cursor: pointer;
+    }
+
+    .cmd-input-grow-spacer {
+        flex-grow: 1;
+    }
+
+    .cmd-input-context {
+        .mono-font();
+        color: #fff;
+        white-space: nowrap;
+    }
+
+    .cmd-input-field {
+        position: relative;
+
+        .cmd-input-control {
+            line-height: 0;
+        }
+
+        .cmd-hints {
+            position: absolute;
+            bottom: -14px;
+            right: 0px;
+        }
+
+        textarea {
+            color: white;
+            background-color: black;
+            .mono-font();
+            padding-bottom: calc(0.5em - 1px);
+            padding-top: calc(0.5em - 1px);
+            resize: none;
+            overflow-wrap: anywhere;
+
+            &:active,
+            &:focus {
+                border-color: white !important;
+            }
+
+            &.display-disabled {
+                background-color: #444;
+            }
+        }
+
+        input.history-input {
+            border: 0;
+            padding: 0;
+            height: 0;
+        }
+
+        .cmd-quick-context .button {
+            .mono-font();
+            background-color: #000 !important;
+            color: white;
+        }
+
+        &.inputmode-global .cmd-quick-context .button {
+            color: black;
+            background-color: @tab-green !important;
+        }
+
+        &.inputmode-comment .cmd-quick-context .button {
+            color: black;
+            background-color: @tab-blue !important;
+        }
+
+        .cmd-exec .button {
+            background-color: #000 !important;
+            color: #d3d7cf;
+        }
+    }
+
+    .cmd-history {
+        color: @term-white;
+        margin-bottom: 5px;
+        overflow: auto;
+        flex-shrink: 1;
+
+        .history-title {
+            position: absolute;
+            z-index: 102;
+            top: 5px;
+            left: 20px;
+            background-color: black;
+            .mono-font(12px, 700);
+            color: @soft-blue;
+            padding-bottom: 4px;
+            display: flex;
+            flex-direction: row;
+            width: calc(100% - 40px);
+            overflow-x: auto;
+
+            .history-opt {
+                white-space: nowrap;
+            }
+
+            .history-clickable-opt {
+                white-space: nowrap;
+                cursor: pointer;
+            }
+
+            .grow-spacer {
+                flex: 1 0 10px;
+            }
+
+            .spacer {
+                flex: 0 0 10px;
+            }
+        }
+
+        .history-items {
+            margin-top: 24px;
+            color: @term-white;
+            .mono-font(12px);
+            padding-bottom: 6px;
+
+            .history-line {
+                white-space: pre;
+            }
+
+            .history-item.history-haderror {
+                color: mix(@term-red, @term-white, 50%);
+            }
+
+            .history-line:first-child {
+                margin-left: 0 !important;
+            }
+
+            .history-item {
+                padding-left: 5px;
+                cursor: pointer;
+
+                &:hover {
+                    background-color: #222;
+                }
+            }
+
+            .history-item.is-selected {
+                font-weight: bold;
+                color: @term-bright-white;
+                background-color: #444;
+            }
+
+            .history-item.is-selected.history-haderror {
+                color: mix(@term-bright-red, @term-bright-white, 50%);
+            }
+        }
+    }
+
+    .cmd-input-info {
+        flex-shrink: 1;
+        overflow-y: auto;
+        margin-bottom: 5px;
+
+        .info-msg {
+            .mono-font(14px, 400);
+            color: @soft-blue;
+            padding-bottom: 2px;
+
+            a {
+                color: @term-blue;
+            }
+        }
+
+        .info-title {
+            .mono-font(14px, 700);
+            color: @soft-blue;
+            padding-bottom: 2px;
+        }
+
+        .info-lines {
+            .mono-font(12px);
+            color: @term-white;
+            white-space: pre;
+            padding-bottom: 6px;
+        }
+
+        .info-comps {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            padding-bottom: 5px;
+            .mono-font(14px, 400);
+
+            .info-comp {
+                min-width: 200px;
+                color: @term-white;
+                margin-right: 10px;
+
+                &.has-space {
+                    text-decoration: underline dotted #777;
+                }
+            }
+
+            .metacmd-comp {
+                color: @term-bright-green;
+            }
+        }
+
+        .info-error {
+            .mono-font(14px, 700);
+            color: @term-red;
+            padding-bottom: 2px;
+        }
+
+        .info-remote-showall {
+            table.remotes-table {
+                th {
+                    color: white;
+                    font-weight: bold;
+                }
+
+                th,
+                td {
+                    padding: 3px 8px 3px 8px;
+                }
+
+                td {
+                    cursor: pointer;
+                }
+
+                tr:hover td {
+                    background-color: #333;
+                }
+            }
+        }
+
+        .info-remote {
+            color: #d3d7cf;
+            .mono-font(12px);
+
+            .info-remote-title {
+                font-weight: bold;
+                color: @term-cyan;
+            }
+
+            .info-error,
+            .info-msg {
+                margin-top: 5px;
+                padding: 5px;
+            }
+
+            .remote-field {
+                display: flex;
+                flex-direction: row;
+
+                .remote-field-def {
+                    white-space: pre;
+                    width: 120px;
+                }
+
+                .remote-field-val {
+                    white-space: pre;
+                    display: flex;
+                    flex-direction: row;
+                }
+            }
+
+            .remote-input-field {
+                display: flex;
+                flex-direction: row;
+                height: 25px;
+                align-items: center;
+
+                .remote-field-label {
+                    white-space: pre;
+                    width: 140px;
+                    font-weight: bold;
+                    color: @term-bright-white;
+                }
+
+                .undo-icon {
+                    margin-left: 4px;
+                    cursor: pointer;
+                    padding: 2px;
+                }
+
+                .remote-field-control {
+                    &.text-control {
+                    }
+
+                    &.text-input {
+                        input[type="text"],
+                        input[type="number"],
+                        input[type="password"] {
+                            background-color: black;
+                            color: white;
+                            width: 200px;
+                        }
+                    }
+
+                    &.checkbox-input {
+                        input[type="checkbox"] {
+                            position: relative;
+                            top: 3px;
+                        }
+                    }
+
+                    &.select-input {
+                        select {
+                            width: 200px;
+                            background-color: black;
+                            color: white;
+                        }
+                    }
+                }
+            }
+        }
+
+        .info-remote-showall {
+            color: #d3d7cf;
+            .mono-font(12px);
+        }
+    }
+}

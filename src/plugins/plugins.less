@@ -1,0 +1,337 @@
+@import "../index.less";
+
+.alt-view {
+    background-color: #111;
+    overflow-y: auto;
+    flex-grow: 1;
+
+    .alt-title {
+        margin: 20px 10px 0px 5px;
+        padding-left: 10px;
+        padding-bottom: 12px;
+        .mono-font(1.5rem);
+        color: @term-bright-white;
+        border-bottom: 1px solid white;
+    }
+
+    .alt-list {
+        color: white;
+        margin: 4px 10px 5px 5px;
+        border-bottom: 1px solid white;
+    }
+
+    .no-content {
+        color: @term-white;
+        padding: 30px 10px 35px 10px;
+        border-bottom: 1px solid white;
+    }
+
+    .close-button {
+        position: absolute;
+        padding: 4px;
+        font-size: 24px;
+        color: #aaa;
+        right: 15px;
+        top: 18px;
+        cursor: pointer;
+
+        &:hover {
+            color: #fff;
+        }
+    }
+
+    .alt-help {
+        color: @term-white;
+        margin-top: 20px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        font-size: 12px;
+        margin-bottom: 10px;
+
+        .help-entry {
+            margin-left: 20px;
+        }
+    }
+}
+
+.image-renderer {
+    padding: 10px;
+    img {
+        display: block;
+    }
+}
+
+.renderer-container {
+    .error-container {
+        color: @term-red;
+        font-size: 14px;
+        padding: 5px;
+    }
+
+    .scroller {
+        overflow: auto;
+        display: flex;
+        flex-direction: row;
+        overscroll-behavior: contain;
+    }
+
+    .dropdown {
+        background: #dbdbdb;
+        color: black;
+        border-radius: 6px 6px 0 0;
+        font-size: 10px;
+        padding: 2px 0 5px 5px;
+        outline: none;
+    }
+}
+
+.renderer-container.code-renderer {
+    .scroller {
+        padding-top: 10px;
+        padding-bottom: 15px;
+    }
+
+    .monaco-editor .monaco-editor-background {
+        background-color: rgba(255, 255, 255, 0.075) !important;
+    }
+    .monaco-editor .scrollbar {
+        height: 4px !important;
+        width: 4px !important;
+    }
+    .monaco-editor .scrollbar .slider {
+        background-color: rgba(255, 255, 255) !important;
+    }
+
+    .cmd-hints,
+    .dropdown {
+        display: inline-block;
+        position: relative;
+        min-width: 6rem;
+        max-width: 6rem;
+        margin-right: 8px;
+    }
+    .hint-item {
+        border-radius: 4px 4px 0 0;
+        padding: 3px 9px 2px 8px;
+        line-height: 19px;
+        text-align: center;
+    }
+    section {
+        transition: height 0.3s ease-in-out;
+    }
+    .preview {
+        color: #000;
+        background-color: rgb(200, 200, 200);
+    }
+    .preview:hover {
+        background-color: white !important;
+    }
+    .save-enabled {
+        color: white;
+        background-color: #4e9a06;
+    }
+    .save-disabled {
+        color: rgb(52, 52, 52);
+        background-color: #aaaea7;
+        cursor: default !important;
+    }
+    .save-disabled:hover {
+        background-color: #aaaea7;
+    }
+    .close {
+        color: white;
+        background-color: #9e0000;
+    }
+    .message {
+        color: white;
+        border-radius: 6px;
+        margin-bottom: 1rem;
+        padding: 4px 1rem;
+        max-width: 80vw;
+    }
+    .readonly {
+        .mono-font(12px);
+        position: absolute;
+        top: calc(1.5rem + 3px);
+        right: 10rem;
+        border-radius: 5px;
+        background-color: @term-bright-red;
+        color: white;
+        z-index: 1;
+        padding: 0 6px 2px;
+    }
+}
+
+.renderer-container.mustache-renderer {
+    color: @term-white;
+    .cmd-hints {
+        display: inline-block !important;
+        position: relative;
+        margin-right: 26px;
+    }
+    .hint-item {
+        border-radius: 4px 4px 0 0;
+        padding: 3px 9px 2px 8px;
+        line-height: 15px;
+        text-align: center;
+    }
+    .refresh-button {
+        color: rgb(52, 52, 52);
+        background-color: @term-white;
+    }
+}
+
+.renderer-container .content {
+    padding: 5px;
+    line-height: 1.5;
+    width: fit-content;
+
+    blockquote {
+        background-color: #222;
+    }
+
+    code {
+        background-color: #222;
+        font-size: 14px;
+    }
+
+    pre {
+        background-color: #222;
+        margin: 2px 10px 6px 10px;
+        padding: 4px 4px 4px 6px;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        color: @term-white;
+    }
+}
+
+.openai-renderer {
+    .openai-message {
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+
+        .openai-role {
+            color: @term-bright-green;
+            font-weight: bold;
+            width: 100px;
+        }
+
+        .openai-role.openai-role-assistant {
+            color: @term-bright-white;
+        }
+
+        .openai-content-user {
+            white-space: pre;
+            color: white;
+        }
+
+        .openai-content-assistant {
+            color: white;
+        }
+
+        .openai-role-error {
+            color: @term-bright-red;
+        }
+
+        .openai-content-error {
+            color: @term-bright-red;
+        }
+    }
+}
+
+.markdown {
+    color: @term-white;
+    margin-bottom: 10px;
+
+    code {
+        background-color: black;
+        color: white;
+        .mono-font();
+        padding: 5px;
+    }
+
+    code.inline {
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+
+    .title {
+        color: white;
+        margin-top: 16px;
+        line-height: 1.25;
+        margin-bottom: 8px;
+    }
+
+    strong {
+        color: white;
+    }
+
+    a {
+        color: #32afff;
+    }
+
+    table {
+        tr th {
+            color: white;
+        }
+    }
+
+    ul {
+        list-style-type: disc;
+        list-style-position: outside;
+        margin-left: 16px;
+    }
+
+    ol {
+        list-style-position: outside;
+        margin-left: 19px;
+    }
+
+    blockquote {
+        margin: 4px 10px 4px 10px;
+        border-radius: 3px;
+        background-color: #444;
+        padding: 2px 4px 2px 6px;
+    }
+
+    pre {
+        background-color: inherit;
+        margin: 4px 10px 4px 10px;
+        padding: 2px 4px 2px 6px;
+    }
+
+    .title.is-1 {
+        font-size: 32px;
+        border-bottom: 1px solid #777;
+        padding-bottom: 6px;
+    }
+    .title.is-2 {
+        font-size: 24px;
+        border-bottom: 1px solid #777;
+        padding-bottom: 6px;
+    }
+    .title.is-3 {
+        font-size: 20px;
+    }
+    .title.is-4 {
+        font-size: 16px;
+    }
+    .title.is-5 {
+        font-size: 14px;
+    }
+    .title.is-6 {
+        font-size: 14px;
+    }
+}
+
+.markdown > *:first-child {
+    margin-top: 0 !important;
+}

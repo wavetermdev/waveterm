@@ -72,7 +72,7 @@ import {
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
-import { getRendererContext, cmdStatusIsRunning } from "./lineutil";
+import { getRendererContext, cmdStatusIsRunning } from "./main/line/lineutil";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(localizedFormat);

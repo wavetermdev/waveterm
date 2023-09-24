@@ -1,0 +1,361 @@
+@import "../../index.less";
+
+// modal css (also includes settings-field)
+
+.modal {
+    z-index: 105;
+
+    .modal-background {
+        background-color: rgba(10, 10, 10, 0.6);
+    }
+}
+
+.tos-modal {
+    a:hover {
+        text-decoration: underline;
+    }
+
+    .content {
+        .mono-font(13px);
+    }
+}
+
+.disconnected-modal {
+    .modal-content {
+        footer {
+            .footer-text-link {
+                .mono-font(12px);
+                color: @term-white;
+                cursor: pointer;
+            }
+        }
+    }
+
+    .inner-content {
+        .ws-log {
+            padding: 5px;
+            background-color: black;
+            height: 250px;
+            overflow: auto;
+
+            .ws-logline {
+                .mono-font(12px);
+                color: @term-white;
+            }
+        }
+    }
+}
+
+.modal.prompt-modal.client-stop-modal {
+    footer {
+        justify-content: center;
+    }
+
+    .inner-content {
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+        .progress-container {
+            margin-top: 20px;
+        }
+        .progress-text {
+            color: @term-white;
+            align-self: center;
+            font-size: 12px;
+        }
+    }
+}
+
+.modal.alert-modal {
+    z-index: 205;
+
+    footer {
+        justify-content: center;
+
+        .button {
+            margin-left: 20px;
+        }
+
+        .button:first-child {
+            margin-left: 0;
+        }
+    }
+}
+
+.modal.settings-modal {
+    footer {
+        justify-content: center;
+
+        .button {
+            margin-left: 20px;
+        }
+
+        .button:first-child {
+            margin-left: 0;
+        }
+    }
+
+    .dropdown {
+        .dropdown-menu .dropdown-content {
+            .dropdown-item {
+                color: white;
+                cursor: pointer;
+                &:hover {
+                    background-color: #333;
+                }
+            }
+        }
+
+        .dropdown-menu {
+            max-height: 120px;
+            overflow: auto;
+        }
+    }
+}
+
+.modal.prompt-modal {
+    .modal-content {
+        border-radius: 5px;
+        border: 5px solid #333;
+    }
+
+    header {
+        background-color: #000;
+        display: flex;
+        flex-direction: row;
+        padding: 10px;
+        position: relative;
+
+        .modal-title {
+            color: @prompt-green;
+            .mono-font(24px);
+        }
+
+        .close-icon {
+            position: absolute;
+            right: 10px;
+            top: 6px;
+            cursor: pointer;
+            padding: 3px;
+            color: #aaa;
+            font-size: 20px;
+
+            &:hover {
+                color: #fff;
+            }
+        }
+    }
+
+    .inner-content {
+        background-color: #222;
+        padding: 15px 10px 15px 10px;
+        color: @term-white;
+
+        margin: 0;
+
+        &.is-hidden {
+            display: none;
+        }
+    }
+
+    footer {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        color: @term-white;
+        background-color: #222;
+        padding: 15px 10px 10px 10px;
+        border-top: 1px solid #666;
+    }
+}
+
+.modal.welcome-modal {
+    footer {
+        .prev-button {
+            margin-left: 15px;
+            width: 100px;
+        }
+
+        .prev-spacer {
+            margin-left: 15px;
+            width: 100px;
+        }
+
+        .next-button {
+            margin-right: 15px;
+            width: 100px;
+        }
+
+        .dots {
+            font-size: 10px;
+
+            i {
+                margin-left: 5px;
+            }
+        }
+    }
+}
+
+.client-settings-modal {
+    .settings-field {
+        .settings-label {
+            width: 150px;
+        }
+    }
+}
+
+.settings-field {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    font-size: 14px;
+
+    &.settings-field.sub-field {
+        .settings-label {
+            font-weight: normal;
+            font-size: 13px;
+            text-align: right;
+            padding-right: 20px;
+        }
+    }
+
+    &.settings-error {
+        font-size: 14px;
+        color: @term-red;
+        margin-top: 20px;
+        padding: 10px;
+        border-radius: 5px;
+        background-color: #200707;
+        border: 1px solid @term-red;
+        font-weight: bold;
+
+        .error-dismiss {
+            padding: 2px;
+            cursor: pointer;
+        }
+    }
+
+    .settings-label {
+        font-weight: bold;
+        color: #fff;
+        width: 120px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        .info-message {
+            margin-left: 5px;
+        }
+    }
+
+    .settings-input {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+
+        &.inline-edit.edit-not-active {
+            cursor: pointer;
+
+            i.fa-pen {
+                margin-left: 5px;
+            }
+
+            &:hover {
+                text-decoration: underline;
+                text-decoration-style: dotted;
+            }
+        }
+
+        &.settings-clickable {
+            cursor: pointer;
+        }
+
+        &.inline-edit.edit-active {
+            input.input {
+                padding: 0;
+                height: 20px;
+                font-size: 12px;
+            }
+
+            .button {
+                height: 20px;
+            }
+        }
+
+        input {
+            padding: 4px;
+            border-radius: 3px;
+        }
+
+        .control {
+            font-size: 12px;
+        }
+
+        .tab-color-icon.color-green {
+            color: desaturate(@tab-green, 30%);
+        }
+        .tab-color-icon.color-orange {
+            color: desaturate(@tab-orange, 30%);
+        }
+        .tab-color-icon.color-red {
+            color: desaturate(@tab-red, 20%);
+        }
+        .tab-color-icon.color-yellow {
+            color: desaturate(@tab-yellow, 30%);
+        }
+        .tab-color-icon.color-blue {
+            color: desaturate(@tab-blue, 20%);
+        }
+        .tab-color-icon.color-magenta {
+            color: desaturate(@tab-magenta, 20%);
+        }
+        .tab-color-icon.color-cyan {
+            color: desaturate(@tab-cyan, 20%);
+        }
+        .tab-color-icon.color-white {
+            color: @term-white;
+        }
+        .tab-color-icon.color-black {
+            color: lighten(@tab-black, 20%);
+        }
+
+        .tab-colors {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+
+            .tab-color-sep {
+                padding-left: 10px;
+                padding-right: 10px;
+                font-weight: bold;
+            }
+
+            .tab-color-cur {
+                font-size: 12px;
+                width: 100px;
+            }
+
+            .tab-color-select {
+                cursor: pointer;
+                margin: 5px;
+                line-height: 1;
+                &:hover {
+                    outline: 2px solid white;
+                }
+            }
+        }
+
+        .action-text {
+            margin-left: 20px;
+            font-size: 12px;
+            color: @term-red;
+        }
+
+        .settings-share-link {
+            width: 160px;
+        }
+    }
+
+    &:not(:first-child) {
+        margin-top: 10px;
+    }
+}
