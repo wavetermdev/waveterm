@@ -1,3 +1,6 @@
+@base-background: rgba(21, 23, 21, 1);
+@base-background-dev: rgb(39, 0, 40);
+
 @term-black: #000000;
 @term-red: #cc0000;
 @term-green: #4e9a06;
@@ -43,21 +46,27 @@
 }
 
 html,
-body,
-#app,
-#main {
-    background-color: #000;
-    height: 100vh;
+body {
+    overflow: hidden;
+    background: @base-background;
+}
+
+#title-bar {
+    -webkit-app-region: drag;
+    height: 30px;
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+.is-dev #title-bar {
+    background: @base-background-dev;
 }
 
 .content {
     a:hover {
         color: #485fc7;
     }
-}
-
-body {
-    overflow: hidden;
 }
 
 body::-webkit-scrollbar {
@@ -80,14 +89,14 @@ input[type="checkbox"] {
 
 // main layout
 #main {
-    height: 100vh;
+    margin-top: 30px;
+    height: calc(100vh - 30px);
     display: flex;
     flex-direction: column;
 
     .main-content {
         display: flex;
         flex-direction: row;
-        background-color: black;
         height: 100%;
 
         .session-view,

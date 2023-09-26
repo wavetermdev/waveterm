@@ -201,12 +201,12 @@ function createMainWindow(clientData) {
     let win = new electron.BrowserWindow({
         x: bounds.x,
         y: bounds.y,
+        titleBarStyle: "hiddenInset",
         width: bounds.width,
         height: bounds.height,
         webPreferences: {
             preload: path.join(getAppBasePath(), DistDir, "preload.js"),
         },
-        backgroundColor: "#000",
     });
     let indexHtml = isDev ? "index-dev.html" : "index.html";
     win.loadFile(path.join(getAppBasePath(), "static", indexHtml));

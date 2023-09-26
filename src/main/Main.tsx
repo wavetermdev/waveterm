@@ -29,6 +29,7 @@ class Main extends React.Component<{}, {}> {
 
     constructor(props: any) {
         super(props);
+        if (GlobalModel.isDev) document.body.className = "is-dev";
     }
 
     @boundMethod

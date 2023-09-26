@@ -21,10 +21,6 @@
         overflow: hidden;
         flex-shrink: 0;
 
-        &.is-dev {
-            background-color: darken(rgb(177, 0, 10), 30%);
-        }
-
         &.collapsed {
             padding-left: 1px;
         }
@@ -47,12 +43,7 @@
     flex-direction: column;
     color: #ddd;
     position: relative;
-    background-color: darken(rgb(0, 177, 10), 30%);
     flex-shrink: 0;
-
-    &.is-dev {
-        background-color: darken(rgb(177, 0, 10), 30%);
-    }
 
     .menu {
         padding-top: 10px;
@@ -280,6 +271,9 @@
             }
         }
     }
+}
+.is-dev .main-sidebar {
+    background: @base-background-dev;
 }
 
 .menu-list .remote-status.status-connecting {
