@@ -2,10 +2,17 @@ import * as mobx from "mobx";
 import { Terminal } from "xterm";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
-import { v4 as uuidv4 } from "uuid";
-import { termHeightFromRows, windowWidthToCols, windowHeightToRows } from "./textmeasure";
-import { boundInt } from "./util";
-import type { TermContextUnion, TermOptsType, TermWinSize, RendererContext, WindowSize, PtyDataType } from "./types";
+import { windowWidthToCols, windowHeightToRows } from "../../util/textmeasure";
+import { boundInt } from "../../util/util";
+import type {
+    TermContextUnion,
+    TermOptsType,
+    TermWinSize,
+    RendererContext,
+    WindowSize,
+    PtyDataType,
+} from "../../types";
+import { getTheme } from "../../themes";
 
 type DataUpdate = {
     data: Uint8Array;
@@ -77,15 +84,13 @@ class TermWrap {
             let cols = windowWidthToCols(opts.winSize.width, opts.fontSize);
             this.termSize = { rows: opts.termOpts.rows, cols: cols };
         }
-        let theme = {
-            foreground: "#d3d7cf",
-        };
+        const { terminal } = getTheme();
         this.terminal = new Terminal({
             rows: this.termSize.rows,
             cols: this.termSize.cols,
             fontSize: opts.fontSize,
-            fontFamily: "JetBrains Mono",
-            theme: theme,
+            theme: { foreground: terminal.foreground, background: terminal.background },
+            /*fontFamily: "JetBrains Mono", @check:font */
         });
         this.terminal._core._inputHandler._parser.setErrorHandler((state) => {
             this.numParseErrors++;

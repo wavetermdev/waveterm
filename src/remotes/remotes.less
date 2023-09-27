@@ -27,7 +27,6 @@
                 cursor: pointer;
 
                 &.add-remote {
-                    font-size: 13px;
                     padding: 10px 5px 10px 5px;
                 }
 
@@ -39,7 +38,7 @@
                     background-color: @active-menu-color;
 
                     .remote-name .remote-name-secondary {
-                        color: white;
+                        color: @term-white;
                     }
                 }
 
@@ -56,12 +55,10 @@
                     flex-grow: 1;
 
                     .remote-name-primary {
-                        font-size: 12px;
                         font-weight: bold;
                     }
 
                     .remote-name-secondary {
-                        font-size: 11px;
                         color: #777;
                     }
                 }
@@ -71,7 +68,7 @@
         .remote-detail {
             padding: 10px;
             flex-grow: 1;
-            font-size: 12px;
+
             display: flex;
             flex-direction: column;
 
@@ -84,13 +81,12 @@
             }
 
             .detail-subtitle {
-                font-size: 18px;
                 margin-bottom: 10px;
                 margin-top: 10px;
             }
 
             .title {
-                color: white;
+                color: @term-white;
                 padding-bottom: 8px;
                 margin-bottom: 0;
                 border-bottom: 1px solid #777;
@@ -183,7 +179,7 @@
 
                 .settings-field .settings-input .undo-icon {
                     cursor: pointer;
-                    font-size: 18px;
+
                     margin-left: 5px;
                 }
 
@@ -201,11 +197,9 @@
                 }
 
                 .dropdown .dropdown-trigger button {
-                    font-size: 12px;
                 }
 
                 .dropdown .dropdown-item {
-                    font-size: 12px;
                     padding: 5px 5px 5px 12px;
                 }
 
@@ -239,10 +233,9 @@
             top: 0;
             right: 0;
             background-color: @term-red;
-            color: white;
+            color: @term-white;
             z-index: 110;
             padding: 4px;
-            .mono-font(10px);
         }
     }
 }

@@ -20,6 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let elem = document.getElementById("app");
     let root = createRoot(elem);
     let reactElem = React.createElement(WebShareMain, null, null);
+    // @check:font
     let isFontLoaded = document.fonts.check("12px 'JetBrains Mono'");
     if (isFontLoaded) {
         root.render(reactElem);

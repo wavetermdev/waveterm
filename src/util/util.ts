@@ -2,7 +2,7 @@ import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import type { RemoteType } from "./types";
+import type { RemoteType } from "../types";
 
 dayjs.extend(localizedFormat);
 
@@ -264,6 +264,7 @@ function incObs(inum: mobx.IObservableValue<number>) {
     })();
 }
 
+// @check:font
 function loadFonts() {
     let jbmFontNormal = new FontFace("JetBrains Mono", "url('static/fonts/jetbrains-mono-v13-latin-regular.woff2')", {
         style: "normal",

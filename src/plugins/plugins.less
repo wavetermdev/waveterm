@@ -9,13 +9,12 @@
         margin: 20px 10px 0px 5px;
         padding-left: 10px;
         padding-bottom: 12px;
-        .mono-font(1.5rem);
         color: @term-bright-white;
         border-bottom: 1px solid white;
     }
 
     .alt-list {
-        color: white;
+        color: @term-white;
         margin: 4px 10px 5px 5px;
         border-bottom: 1px solid white;
     }
@@ -29,7 +28,7 @@
     .close-button {
         position: absolute;
         padding: 4px;
-        font-size: 24px;
+
         color: #aaa;
         right: 15px;
         top: 18px;
@@ -46,7 +45,7 @@
         display: flex;
         flex-direction: row;
         align-items: center;
-        font-size: 12px;
+
         margin-bottom: 10px;
 
         .help-entry {
@@ -65,7 +64,7 @@
 .renderer-container {
     .error-container {
         color: @term-red;
-        font-size: 14px;
+
         padding: 5px;
     }
 
@@ -78,9 +77,9 @@
 
     .dropdown {
         background: #dbdbdb;
-        color: black;
+        color: @term-black;
         border-radius: 6px 6px 0 0;
-        font-size: 10px;
+
         padding: 2px 0 5px 5px;
         outline: none;
     }
@@ -114,7 +113,6 @@
     .hint-item {
         border-radius: 4px 4px 0 0;
         padding: 3px 9px 2px 8px;
-        line-height: 19px;
         text-align: center;
     }
     section {
@@ -125,10 +123,10 @@
         background-color: rgb(200, 200, 200);
     }
     .preview:hover {
-        background-color: white !important;
+        background-color: @term-white !important;
     }
     .save-enabled {
-        color: white;
+        color: @term-white;
         background-color: #4e9a06;
     }
     .save-disabled {
@@ -140,24 +138,23 @@
         background-color: #aaaea7;
     }
     .close {
-        color: white;
+        color: @term-white;
         background-color: #9e0000;
     }
     .message {
-        color: white;
+        color: @term-white;
         border-radius: 6px;
         margin-bottom: 1rem;
         padding: 4px 1rem;
         max-width: 80vw;
     }
     .readonly {
-        .mono-font(12px);
         position: absolute;
         top: calc(1.5rem + 3px);
         right: 10rem;
         border-radius: 5px;
         background-color: @term-bright-red;
-        color: white;
+        color: @term-white;
         z-index: 1;
         padding: 0 6px 2px;
     }
@@ -173,7 +170,6 @@
     .hint-item {
         border-radius: 4px 4px 0 0;
         padding: 3px 9px 2px 8px;
-        line-height: 15px;
         text-align: center;
     }
     .refresh-button {
@@ -184,7 +180,6 @@
 
 .renderer-container .content {
     padding: 5px;
-    line-height: 1.5;
     width: fit-content;
 
     blockquote {
@@ -193,7 +188,6 @@
 
     code {
         background-color: #222;
-        font-size: 14px;
     }
 
     pre {
@@ -230,11 +224,11 @@
 
         .openai-content-user {
             white-space: pre;
-            color: white;
+            color: @term-white;
         }
 
         .openai-content-assistant {
-            color: white;
+            color: @term-white;
         }
 
         .openai-role-error {
@@ -252,9 +246,8 @@
     margin-bottom: 10px;
 
     code {
-        background-color: black;
-        color: white;
-        .mono-font();
+        background-color: @term-black;
+        color: @term-white;
         padding: 5px;
     }
 
@@ -264,14 +257,13 @@
     }
 
     .title {
-        color: white;
+        color: @term-white;
         margin-top: 16px;
-        line-height: 1.25;
         margin-bottom: 8px;
     }
 
     strong {
-        color: white;
+        color: @term-white;
     }
 
     a {
@@ -280,7 +272,7 @@
 
     table {
         tr th {
-            color: white;
+            color: @term-white;
         }
     }
 
@@ -309,26 +301,20 @@
     }
 
     .title.is-1 {
-        font-size: 32px;
         border-bottom: 1px solid #777;
         padding-bottom: 6px;
     }
     .title.is-2 {
-        font-size: 24px;
         border-bottom: 1px solid #777;
         padding-bottom: 6px;
     }
     .title.is-3 {
-        font-size: 20px;
     }
     .title.is-4 {
-        font-size: 16px;
     }
     .title.is-5 {
-        font-size: 14px;
     }
     .title.is-6 {
-        font-size: 14px;
     }
 }
 

@@ -13,15 +13,14 @@ body.prompt-webshare #main {
         flex-shrink: 0;
 
         .logo-text {
-            .mono-font(32px);
             a {
                 color: @prompt-green;
             }
         }
 
         .screen-name {
-            color: white;
-            .mono-font(24px);
+            color: @term-white;
+
             margin-left: 20px;
         }
 
@@ -39,7 +38,7 @@ body.prompt-webshare #main {
         padding-left: 20px;
         padding-right: 20px;
         background-color: darken(@prompt-green, 30%);
-        color: white;
+        color: @term-white;
 
         .screen-sharename {
             font-weight: bold;
@@ -49,7 +48,7 @@ body.prompt-webshare #main {
             display: flex;
             flex-direction: row;
             color: @term-white;
-            font-size: 13px;
+
             align-items: center;
 
             div:first-child {
@@ -92,7 +91,6 @@ body.prompt-webshare #main {
         flex-shrink: 0;
 
         .footer-copy {
-            font-size: 12px;
         }
 
         a {
@@ -100,10 +98,10 @@ body.prompt-webshare #main {
         }
     }
 
-    color: white;
+    color: @term-white;
 
     #app {
-        color: white;
+        color: @term-white;
     }
 
     .lines .line-sep {
@@ -114,7 +112,6 @@ body.prompt-webshare #main {
     .lines .line.line-cmd {
         .line-icon.copy-icon {
             color: @term-white;
-            font-size: 18px;
 
             &:hover {
                 color: @term-bright-white;

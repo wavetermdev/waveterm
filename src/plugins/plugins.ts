@@ -4,7 +4,7 @@ import { SimpleMarkdownRenderer } from "./markdown";
 import { SourceCodeRenderer } from "./code";
 import { SimpleMustacheRenderer } from "./mustache";
 import { OpenAIRenderer, OpenAIRendererModel } from "./openai";
-import { isBlank } from "../util";
+import { isBlank } from "../util/util";
 import { sprintf } from "sprintf-js";
 
 const ImagePlugin: RendererPluginType = {

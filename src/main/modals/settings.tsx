@@ -8,7 +8,7 @@ import { GlobalModel, GlobalCommandRunner, TabColors } from "../../model";
 import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage } from "../../common/common";
 import { LineType, RendererPluginType, ClientDataType, CommandRtnType } from "../../types";
 import { PluginModel } from "../../plugins/plugins";
-import * as util from "../../util";
+import * as util from "../../util/util";
 
 import "./modals.less";
 

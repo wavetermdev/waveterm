@@ -1,5 +1,5 @@
 import * as mobx from "mobx";
-import { incObs } from "./util";
+import { incObs } from "../../util/util";
 
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;

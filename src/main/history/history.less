@@ -1,11 +1,10 @@
 @import "../../index.less";
 
 .history-view {
-    color: #ccc;
+    color: @term-white;
 
     .close-div {
         padding-top: 10px;
-        font-size: 24px;
 
         i {
             padding: 5px 5px 5px 10px;
@@ -25,17 +24,16 @@
 
         .history-title {
             margin-top: 5px;
-            .mono-font(1.5rem);
             font-weight: bold;
-            color: white;
+            color: @term-white;
         }
 
         input {
             background-color: #333;
-            color: white;
+            color: @term-white;
 
             i {
-                color: white;
+                color: @term-white;
             }
         }
     }
@@ -63,7 +61,7 @@
             .session-dropdown,
             .remote-dropdown {
                 .dropdown-item {
-                    color: white;
+                    color: @term-white;
                     cursor: pointer;
                     &:hover {
                         background-color: #666;
@@ -84,7 +82,7 @@
                 margin-left: 15px;
                 border: 1px solid #777;
                 padding: 5px 10px 5px 10px;
-                font-size: 12px;
+
                 display: flex;
                 flex-direction: row;
                 align-items: center;
@@ -105,7 +103,6 @@
             }
 
             .fromts {
-                font-size: 12px;
                 display: flex;
                 flex-direction: row;
                 align-items: center;
@@ -118,7 +115,7 @@
             .reset-button {
                 cursor: pointer;
                 margin-left: 15px;
-                font-size: 12px;
+
                 border: 1px solid #777;
                 padding: 5px 10px 5px 10px;
 
@@ -150,12 +147,12 @@
         .control-checkbox {
             cursor: pointer;
             color: #777;
-            font-size: 18px;
+
             width: 24px;
             margin-left: 14px;
 
             &:hover {
-                color: white;
+                color: @term-white;
             }
         }
 
@@ -163,7 +160,6 @@
             cursor: pointer;
             color: #aaa;
             margin-left: 10px;
-            font-size: 14px;
 
             &.is-disabled {
                 cursor: default;
@@ -174,7 +170,7 @@
             }
 
             &:hover {
-                color: white;
+                color: @term-white;
             }
 
             &.delete-button.is-active {
@@ -187,14 +183,13 @@
         }
 
         .showing-text {
-            font-size: 16px;
             margin-right: 10px;
         }
 
         .showing-btn {
             padding: 0 5px 0 5px;
             cursor: pointer;
-            font-size: 16px;
+
             font-weight: bold;
 
             &.is-disabled {
@@ -213,7 +208,6 @@
         display: flex;
         flex-direction: row;
         justify-content: center;
-        .mono-font(14px);
         padding: 30px 0 30px 0;
         border: 1px solid white;
         border-radius: 3px;
@@ -232,11 +226,10 @@
                 .line-container {
                     padding: 0px 10px 10px 10px;
                     overflow-x: auto;
-                    background-color: black;
+                    background-color: @term-black;
                 }
 
                 .line-context {
-                    .mono-font(12px);
                     margin-left: 20px;
                     margin-bottom: 10px;
                     margin-top: 10px;
@@ -245,10 +238,10 @@
 
                     .vic-btn {
                         cursor: pointer;
-                        color: #ccc;
+                        color: @term-white;
 
                         &:hover {
-                            color: white;
+                            color: @term-white;
                         }
                     }
                 }
@@ -258,7 +251,6 @@
                 }
 
                 .line-container.no-line {
-                    .mono-font(12px);
                     display: flex;
                     flex-direction: row;
                     align-items: center;
@@ -299,14 +291,14 @@
             td.selectbox {
                 flex: 0 0 auto;
                 flex-basis: 24px;
-                font-size: 14px;
+
                 cursor: pointer;
             }
 
             td.bookmark {
                 flex: 0 0 auto;
                 flex-basis: 20px;
-                font-size: 14px;
+
                 cursor: pointer;
 
                 i {
@@ -317,21 +309,18 @@
             }
 
             td.ts {
-                font-size: 12px;
                 flex: 0 0 auto;
                 flex-basis: 65px;
                 font-weight: bold;
             }
 
             td.session {
-                font-size: 12px;
                 flex: 0 0 auto;
                 flex-basis: 120px;
                 text-overflow: ellipsis;
             }
 
             td.remote {
-                .mono-font(12px);
                 flex: 0 0 auto;
                 flex-basis: 150px;
                 text-overflow: ellipsis;
@@ -341,8 +330,7 @@
             }
 
             td.cmdstr {
-                .mono-font(12px);
-                color: white;
+                color: @term-white;
                 flex: 1 0 0;
                 padding-left: 20px;
                 border-radius: 3px;

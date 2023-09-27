@@ -21,9 +21,9 @@ import type {
     RendererContainerType,
 } from "../../../types";
 import * as T from "../../../types";
-import { PacketDataBuffer } from "../../../ptydata";
+import { PacketDataBuffer } from "../../../terminal/ptydata";
 import { debounce, throttle } from "throttle-debounce";
-import * as util from "../../../util";
+import * as util from "../../../util/util";
 import { GlobalModel } from "../../../model";
 
 type OV<V> = mobx.IObservableValue<V>;

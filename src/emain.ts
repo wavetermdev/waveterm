@@ -4,7 +4,7 @@ import * as fs from "fs";
 import fetch from "node-fetch";
 import * as child_process from "node:child_process";
 import { debounce } from "throttle-debounce";
-import { handleJsonFetchResponse } from "./util";
+import { handleJsonFetchResponse } from "./util/util";
 import * as winston from "winston";
 import * as util from "util";
 import { sprintf } from "sprintf-js";

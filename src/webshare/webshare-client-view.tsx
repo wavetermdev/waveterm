@@ -9,7 +9,7 @@ import { If, For, When, Otherwise, Choose } from "tsx-control-statements/compone
 import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, Screen } from "../model";
 import { WebStopShareConfirmMarkdown } from "../main/modals/settings";
-import * as util from "../util";
+import * as util from "../util/util";
 
 import "./webshare.less";
 

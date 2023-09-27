@@ -10,7 +10,7 @@ import type * as T from "../../types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Session } from "../../model";
 
-import { sortAndFilterRemotes, isBlank } from "../../util";
+import { sortAndFilterRemotes, isBlank } from "../../util/util";
 
 import { RemoteStatusLight } from "../../common/common";
 

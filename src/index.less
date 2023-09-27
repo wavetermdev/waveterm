@@ -1,5 +1,6 @@
+@base-color: #eceeec;
 @base-background: rgba(21, 23, 21, 1);
-@base-background-dev: rgb(39, 0, 40);
+@base-background-dev: rgba(21, 23, 21, 1);
 
 @term-black: #000000;
 @term-red: #cc0000;
@@ -37,9 +38,12 @@
 
 @active-menu-color: rgb(0, 71, 171);
 
-@import "utils.less";
-
-// global settings / overrides
+@font-face {
+    font-family: "Martian Mono";
+    src: url("./fonts/MartianMono-VariableFont_wdth,wght.ttf") format("truetype");
+    font-weight: normal;
+    font-style: normal;
+}
 
 :root {
     --fa-style-family: "Font Awesome 6 Sharp";
@@ -48,7 +52,12 @@
 html,
 body {
     overflow: hidden;
+    font-family: "Martian Mono", sans-serif;
+    font-size: 12.5px;
+    font-weight: 300;
+    line-height: 20px;
     background: @base-background;
+    color: @base-color;
 }
 
 #title-bar {
@@ -85,6 +94,25 @@ body::-webkit-scrollbar {
 
 input[type="checkbox"] {
     cursor: pointer;
+}
+
+.display-none {
+    display: none;
+}
+
+.flex-spacer {
+    flex-grow: 1;
+}
+
+.flex-centered-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+a.a-block {
+    display: block;
 }
 
 // main layout
@@ -129,38 +157,37 @@ input[type="checkbox"] {
                 top: 0;
                 right: 0;
                 background-color: rgba(78, 154, 6, 0.65);
-                color: black;
+                color: @term-black;
                 padding: 2px 8px 2px 4px;
                 border-bottom-left-radius: 5px;
                 z-index: 10;
-                font-size: 12px;
 
                 &.is-active {
-                    color: #ccc;
+                    color: @term-white;
                 }
 
                 .render-mode {
                     padding-top: 2px;
-                    font-size: 16px;
+
                     position: relative;
                     cursor: pointer;
-                    color: #ccc;
+                    color: @term-white;
 
                     &:hover {
-                        color: white;
+                        color: @term-white;
                     }
                 }
             }
 
             .share-tag {
-                color: #ccc;
+                color: @term-white;
                 position: absolute;
                 top: 0;
                 left: 40%;
                 background-color: darken(rgb(0, 177, 10), 20%);
                 padding: 2px 8px 2px 4px;
                 z-index: 11;
-                font-size: 12px;
+
                 /* border-radius: 0 0 5px 5px; */
                 opacity: 0.8;
                 display: flex;
@@ -173,7 +200,6 @@ input[type="checkbox"] {
 
                 &:hover {
                     .share-tag-title {
-                        font-size: 14px;
                         font-weight: bold;
                     }
                     opacity: 1;
@@ -198,11 +224,10 @@ input[type="checkbox"] {
                 width: 100%;
                 padding: 10px;
                 height: 100%;
-                color: #ccc;
-                .mono-font();
+                color: @term-white;
 
                 code {
-                    background-color: black;
+                    background-color: @term-black;
                     color: #4e9a06;
                 }
 
@@ -215,169 +240,19 @@ input[type="checkbox"] {
     }
 }
 
-.remote-field .remote-status {
-    top: 4px;
-}
-
-.terminal-wrapper {
-    position: relative;
-
-    .term-block {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: transparent;
-        z-index: 10;
-    }
-
-    .xterm-screen {
-        &::-webkit-scrollbar {
-            display: none;
-        }
-    }
-
-    &.focus .xterm {
-        .xterm-screen {
-            overflow-y: scroll;
-            overscroll-behavior: contain;
-        }
-
-        .xterm-viewport {
-            overscroll-behavior: contain;
-        }
-    }
-
-    &.focus .xterm-viewport {
-        &::-webkit-scrollbar {
-            background-color: #777;
-            width: 5px;
-            height: 5px;
-        }
-
-        &::-webkit-scrollbar-thumb {
-            background: white;
-        }
-    }
-
-    .xterm-viewport {
-        &::-webkit-scrollbar {
-            background-color: #222;
-            width: 5px;
-            height: 5px;
-        }
-
-        &::-webkit-scrollbar-thumb {
-            background: #555;
-        }
-    }
-}
-
-body .xterm .xterm-viewport {
-    overflow-y: auto;
-    width: calc(100% + 5px);
-}
-
-.checkbox-toggle {
-    position: relative;
-    display: inline-block;
-    width: 40px;
-    height: 23px;
-
-    input {
-        opacity: 0;
-        width: 0;
-        height: 0;
-    }
-
-    .slider {
-        position: absolute;
-        content: "";
-        cursor: pointer;
-        top: 0;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background-color: #333;
-        transition: 0.5s;
-        border-radius: 33px;
-    }
-
-    .slider:before {
-        position: absolute;
-        content: "";
-        height: 18px;
-        width: 18px;
-        left: 3px;
-        bottom: 3px;
-        background-color: white;
-        transition: 0.5s;
-        border-radius: 50%;
-    }
-
-    input:checked + .slider {
-        background-color: @term-green;
-    }
-
-    input:checked + .slider:before {
-        transform: translateX(18px);
-    }
-}
-
-.button.is-prompt-green {
-    background-color: #222;
-    color: @term-white;
-
-    &:hover {
-        background-color: @term-green;
-        color: @term-bright-white;
-    }
-}
-
-.button.is-plain,
-.button.is-prompt-cancel {
-    background-color: #222;
-    color: @term-white;
-
-    &:hover {
-        background-color: #666;
-        color: @term-bright-white;
-    }
-}
-
-.button.is-prompt-danger {
-    background-color: #222;
-    color: @term-white;
-
-    &:hover {
-        background-color: @tab-red;
-        color: @term-bright-white;
-    }
-}
-
-.button.is-inline-height {
-    height: 22px;
-}
-
-.button input.confirm-checkbox {
-    margin-right: 5px;
-}
-
 .copied-indicator {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: white;
+    background-color: @term-white;
     opacity: 0;
     display: flex;
     flex-direction: row;
     align-items: center;
     justify-content: center;
     pointer-events: none;
-    .mono-font(12px);
     animation-name: fade-in-out;
     animation-duration: 0.3s;
 }
@@ -421,17 +296,12 @@ body .xterm .xterm-viewport {
     z-index: -1;
     top: -5000px;
 
-    .mono {
-        .mono-font();
-    }
-
     .pre {
         white-space: pre;
     }
 }
 
 .text-button {
-    .mono-font(12px, 700);
     color: @term-white;
     cursor: pointer;
     background-color: #171717;
@@ -522,8 +392,6 @@ body .xterm .xterm-viewport {
 }
 
 #main .term-prompt {
-    font-size: 14px;
-
     i {
         margin-right: 3px;
     }
@@ -588,7 +456,6 @@ body .xterm .xterm-viewport {
 }
 
 .remote-status {
-    font-size: 8px;
     margin-right: 5px;
     position: relative;
     top: -3px;

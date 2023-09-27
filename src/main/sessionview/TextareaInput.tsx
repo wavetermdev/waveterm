@@ -4,8 +4,8 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner } from "../../model";
-import { getMonoFontSize } from "../../textmeasure";
-import { isModKeyPress, hasNoModifiers } from "../../util";
+import { getMonoFontSize } from "../../util/textmeasure";
+import { isModKeyPress, hasNoModifiers } from "../../util/util";
 import "./sessionview.less";
 
 function pageSize(div: any): number {

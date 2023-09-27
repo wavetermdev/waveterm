@@ -99,7 +99,7 @@ class Bookmark extends React.Component<{ bookmark: BookmarkType }, {}> {
                             <label className="label">Description (markdown)</label>
                             <div className="control">
                                 <textarea
-                                    className="textarea mono-font"
+                                    className="textarea"
                                     rows={6}
                                     value={model.tempDesc.get()}
                                     onChange={this.handleDescChange}
@@ -110,7 +110,7 @@ class Bookmark extends React.Component<{ bookmark: BookmarkType }, {}> {
                             <label className="label">Command</label>
                             <div className="control">
                                 <textarea
-                                    className="textarea mono-font"
+                                    className="textarea"
                                     rows={3}
                                     value={model.tempCmd.get()}
                                     onChange={this.handleCmdChange}
