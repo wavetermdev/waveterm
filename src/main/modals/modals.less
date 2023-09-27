@@ -16,7 +16,6 @@
     }
 
     .content {
-        .mono-font(13px);
     }
 }
 
@@ -24,7 +23,6 @@
     .modal-content {
         footer {
             .footer-text-link {
-                .mono-font(12px);
                 color: @term-white;
                 cursor: pointer;
             }
@@ -34,12 +32,11 @@
     .inner-content {
         .ws-log {
             padding: 5px;
-            background-color: black;
+            background-color: @term-black;
             height: 250px;
             overflow: auto;
 
             .ws-logline {
-                .mono-font(12px);
                 color: @term-white;
             }
         }
@@ -61,7 +58,6 @@
         .progress-text {
             color: @term-white;
             align-self: center;
-            font-size: 12px;
         }
     }
 }
@@ -98,7 +94,7 @@
     .dropdown {
         .dropdown-menu .dropdown-content {
             .dropdown-item {
-                color: white;
+                color: @term-white;
                 cursor: pointer;
                 &:hover {
                     background-color: #333;
@@ -128,7 +124,6 @@
 
         .modal-title {
             color: @prompt-green;
-            .mono-font(24px);
         }
 
         .close-icon {
@@ -138,7 +133,6 @@
             cursor: pointer;
             padding: 3px;
             color: #aaa;
-            font-size: 20px;
 
             &:hover {
                 color: #fff;
@@ -187,8 +181,6 @@
         }
 
         .dots {
-            font-size: 10px;
-
             i {
                 margin-left: 5px;
             }
@@ -208,19 +200,17 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-    font-size: 14px;
 
     &.settings-field.sub-field {
         .settings-label {
             font-weight: normal;
-            font-size: 13px;
+
             text-align: right;
             padding-right: 20px;
         }
     }
 
     &.settings-error {
-        font-size: 14px;
         color: @term-red;
         margin-top: 20px;
         padding: 10px;
@@ -273,7 +263,6 @@
             input.input {
                 padding: 0;
                 height: 20px;
-                font-size: 12px;
             }
 
             .button {
@@ -287,7 +276,6 @@
         }
 
         .control {
-            font-size: 12px;
         }
 
         .tab-color-icon.color-green {
@@ -330,14 +318,12 @@
             }
 
             .tab-color-cur {
-                font-size: 12px;
                 width: 100px;
             }
 
             .tab-color-select {
                 cursor: pointer;
                 margin: 5px;
-                line-height: 1;
                 &:hover {
                     outline: 2px solid white;
                 }
@@ -346,7 +332,7 @@
 
         .action-text {
             margin-left: 20px;
-            font-size: 12px;
+
             color: @term-red;
         }
 

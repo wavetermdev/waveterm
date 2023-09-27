@@ -6,7 +6,7 @@ import { boundMethod } from "autobind-decorator";
 import { If, For, When, Otherwise, Choose } from "tsx-control-statements/components";
 import * as T from "../types";
 import { sprintf } from "sprintf-js";
-import { isBlank } from "../util";
+import { isBlank } from "../util/util";
 import mustache from "mustache";
 import * as DOMPurify from "dompurify";
 import { GlobalModel } from "../model";

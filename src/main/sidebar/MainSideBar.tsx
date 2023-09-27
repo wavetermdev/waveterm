@@ -10,7 +10,7 @@ import type * as T from "../../types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Session } from "../../model";
 
-import { sortAndFilterRemotes, isBlank } from "../../util";
+import { sortAndFilterRemotes, isBlank } from "../../util/util";
 
 import { RemoteStatusLight } from "../../common/common";
 
@@ -159,18 +159,6 @@ class MainSideBar extends React.Component<{}, {}> {
         let mainView = GlobalModel.activeMainView.get();
         return (
             <div className={cn("main-sidebar", { collapsed: isCollapsed }, { "is-dev": GlobalModel.isDev })}>
-                <div className="logo-header">
-                    <h1
-                        className={cn(
-                            "title",
-                            "prompt-logo-small",
-                            { collapsed: isCollapsed },
-                            { "is-dev": GlobalModel.isDev }
-                        )}
-                    >
-                        {isCollapsed ? "[p]" : "[prompt]"}
-                    </h1>
-                </div>
                 <div className="collapse-container">
                     <div className="arrow-container" onClick={this.toggleCollapsed}>
                         <If condition={!isCollapsed}>

@@ -3,7 +3,7 @@ import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { sprintf } from "sprintf-js";
 import { Main } from "./main/Main";
-import { loadFonts } from "./util";
+import { loadFonts } from "./util/util";
 import * as DOMPurify from "dompurify";
 
 // @ts-ignore
@@ -17,14 +17,11 @@ document.addEventListener("DOMContentLoaded", () => {
     let reactElem = React.createElement(Main, null, null);
     let elem = document.getElementById("app");
     let root = createRoot(elem);
-    let isFontLoaded = document.fonts.check("12px 'JetBrains Mono'");
-    if (isFontLoaded) {
+    // @check:font
+    // let isFontLoaded = document.fonts.check("12px 'JetBrains Mono'");
+    document.fonts.ready.then(() => {
         root.render(reactElem);
-    } else {
-        document.fonts.ready.then(() => {
-            root.render(reactElem);
-        });
-    }
+    });
 });
 
 (window as any).mobx = mobx;

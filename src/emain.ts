@@ -4,7 +4,7 @@ import * as fs from "fs";
 import fetch from "node-fetch";
 import * as child_process from "node:child_process";
 import { debounce } from "throttle-debounce";
-import { handleJsonFetchResponse } from "./util";
+import { handleJsonFetchResponse } from "./util/util";
 import * as winston from "winston";
 import * as util from "util";
 import { sprintf } from "sprintf-js";
@@ -201,12 +201,12 @@ function createMainWindow(clientData) {
     let win = new electron.BrowserWindow({
         x: bounds.x,
         y: bounds.y,
+        titleBarStyle: "hiddenInset",
         width: bounds.width,
         height: bounds.height,
         webPreferences: {
             preload: path.join(getAppBasePath(), DistDir, "preload.js"),
         },
-        backgroundColor: "#000",
     });
     let indexHtml = isDev ? "index-dev.html" : "index.html";
     win.loadFile(path.join(getAppBasePath(), "static", indexHtml));

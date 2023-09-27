@@ -2,7 +2,7 @@
 
 .bookmarks-view {
     .bookmarks-list {
-        color: white;
+        color: @term-white;
         margin: 4px 10px 5px 5px;
 
         .no-bookmarks {
@@ -42,19 +42,15 @@
         }
 
         label {
-            color: white;
+            color: @term-white;
             margin-bottom: 4px;
         }
 
         textarea {
             width: 80%;
             min-width: 50%;
-            color: white;
-            background-color: black;
-
-            &.mono-font {
-                .mono-font(12px);
-            }
+            color: @term-white;
+            background-color: @term-black;
         }
 
         .bookmark-id-div {
@@ -63,7 +59,6 @@
             color: #666;
             right: 5px;
             bottom: 2px;
-            .mono-font(8px);
         }
 
         &:hover .bookmark-id-div {
@@ -73,7 +68,7 @@
         .bookmark-controls {
             display: flex;
             flex-direction: row;
-            font-size: 16px;
+
             visibility: hidden;
             color: @term-white;
 

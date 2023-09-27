@@ -52,14 +52,12 @@
         flex-direction: row;
         color: @term-yellow;
         align-items: center;
-        font-size: 14px;
 
         .button {
             margin-left: 10px;
         }
 
         .remote-name {
-            .mono-font(14px);
         }
     }
 
@@ -68,7 +66,7 @@
         top: 5px;
         right: 5px;
         color: @term-white;
-        font-size: 12px;
+
         padding: 5px;
         cursor: pointer;
     }
@@ -78,17 +76,12 @@
     }
 
     .cmd-input-context {
-        .mono-font();
         color: #fff;
         white-space: nowrap;
     }
 
     .cmd-input-field {
         position: relative;
-
-        .cmd-input-control {
-            line-height: 0;
-        }
 
         .cmd-hints {
             position: absolute;
@@ -97,9 +90,8 @@
         }
 
         textarea {
-            color: white;
-            background-color: black;
-            .mono-font();
+            color: @term-white;
+            background-color: @term-black;
             padding-bottom: calc(0.5em - 1px);
             padding-top: calc(0.5em - 1px);
             resize: none;
@@ -107,7 +99,7 @@
 
             &:active,
             &:focus {
-                border-color: white !important;
+                border-color: @term-white !important;
             }
 
             &.display-disabled {
@@ -122,18 +114,17 @@
         }
 
         .cmd-quick-context .button {
-            .mono-font();
             background-color: #000 !important;
-            color: white;
+            color: @term-white;
         }
 
         &.inputmode-global .cmd-quick-context .button {
-            color: black;
+            color: @term-black;
             background-color: @tab-green !important;
         }
 
         &.inputmode-comment .cmd-quick-context .button {
-            color: black;
+            color: @term-black;
             background-color: @tab-blue !important;
         }
 
@@ -154,8 +145,7 @@
             z-index: 102;
             top: 5px;
             left: 20px;
-            background-color: black;
-            .mono-font(12px, 700);
+            background-color: @term-black;
             color: @soft-blue;
             padding-bottom: 4px;
             display: flex;
@@ -184,7 +174,7 @@
         .history-items {
             margin-top: 24px;
             color: @term-white;
-            .mono-font(12px);
+
             padding-bottom: 6px;
 
             .history-line {
@@ -226,7 +216,6 @@
         margin-bottom: 5px;
 
         .info-msg {
-            .mono-font(14px, 400);
             color: @soft-blue;
             padding-bottom: 2px;
 
@@ -236,13 +225,11 @@
         }
 
         .info-title {
-            .mono-font(14px, 700);
             color: @soft-blue;
             padding-bottom: 2px;
         }
 
         .info-lines {
-            .mono-font(12px);
             color: @term-white;
             white-space: pre;
             padding-bottom: 6px;
@@ -253,7 +240,6 @@
             flex-direction: row;
             flex-wrap: wrap;
             padding-bottom: 5px;
-            .mono-font(14px, 400);
 
             .info-comp {
                 min-width: 200px;
@@ -271,7 +257,6 @@
         }
 
         .info-error {
-            .mono-font(14px, 700);
             color: @term-red;
             padding-bottom: 2px;
         }
@@ -279,7 +264,7 @@
         .info-remote-showall {
             table.remotes-table {
                 th {
-                    color: white;
+                    color: @term-white;
                     font-weight: bold;
                 }
 
@@ -300,7 +285,6 @@
 
         .info-remote {
             color: #d3d7cf;
-            .mono-font(12px);
 
             .info-remote-title {
                 font-weight: bold;
@@ -356,8 +340,8 @@
                         input[type="text"],
                         input[type="number"],
                         input[type="password"] {
-                            background-color: black;
-                            color: white;
+                            background-color: @term-black;
+                            color: @term-white;
                             width: 200px;
                         }
                     }
@@ -372,8 +356,8 @@
                     &.select-input {
                         select {
                             width: 200px;
-                            background-color: black;
-                            color: white;
+                            background-color: @term-black;
+                            color: @term-white;
                         }
                     }
                 }
@@ -382,7 +366,6 @@
 
         .info-remote-showall {
             color: #d3d7cf;
-            .mono-font(12px);
         }
     }
 }

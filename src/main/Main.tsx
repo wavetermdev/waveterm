@@ -7,17 +7,17 @@ import dayjs from "dayjs";
 import type { ContextMenuOpts } from "../types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "../model";
-import { isBlank } from "../util";
+import { isBlank } from "../util/util";
 import { BookmarksView } from "./bookmarks/bookmarks";
 import { WebShareView } from "../webshare/webshare-client-view";
 import { HistoryView } from "./history/history";
 import { ScreenSettingsModal, SessionSettingsModal, LineSettingsModal, ClientSettingsModal } from "./modals/settings";
 import { RemotesModal } from "../remotes/remotes";
 import { TosModal } from "./modals/Modals";
-
 import { SessionView } from "./sessionview/SessionView";
 import { MainSideBar } from "./sidebar/MainSideBar";
 import { DisconnectedModal, ClientStopModal, AlertModal, WelcomeModal } from "./modals/Modals";
+import "../index.less";
 
 dayjs.extend(localizedFormat);
 
@@ -29,6 +29,7 @@ class Main extends React.Component<{}, {}> {
 
     constructor(props: any) {
         super(props);
+        if (GlobalModel.isDev) document.body.className = "is-dev";
     }
 
     @boundMethod

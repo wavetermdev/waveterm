@@ -330,7 +330,7 @@ class SourceCodeRenderer extends React.Component<
                 options={{
                     scrollBeyondLastLine: false,
                     fontSize: GlobalModel.termFontSize.get(),
-                    fontFamily: "JetBrains Mono",
+                    /* fontFamily: "JetBrains Mono", @check:font */
                     readOnly: !this.getAllowEditing(),
                 }}
                 onChange={this.handleEditorChange}
@@ -405,7 +405,7 @@ class SourceCodeRenderer extends React.Component<
                 className="message"
                 style={{
                     fontSize: GlobalModel.termFontSize.get(),
-                    fontFamily: "JetBrains Mono",
+                    /* fontFamily: "JetBrains Mono", @check:font */
                     background: `${this.state.message.status === "error" ? "red" : "#4e9a06"}`,
                 }}
             >
@@ -432,7 +432,7 @@ class SourceCodeRenderer extends React.Component<
                     className="renderer-container code-renderer"
                     style={{
                         fontSize: GlobalModel.termFontSize.get(),
-                        fontFamily: "JetBrains Mono",
+                        /* fontFamily: "JetBrains Mono", @check:font */
                         color: "white",
                     }}
                 >

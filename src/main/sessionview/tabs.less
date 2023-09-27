@@ -8,7 +8,7 @@
             background-color: @tab-green;
         }
         &.is-active {
-            color: white;
+            color: @term-white;
             background-color: @tab-green;
         }
     }
@@ -20,7 +20,7 @@
             background-color: @tab-orange;
         }
         &.is-active {
-            color: black;
+            color: @term-black;
             background-color: @tab-orange;
         }
     }
@@ -32,7 +32,7 @@
             background-color: @tab-red;
         }
         &.is-active {
-            color: white;
+            color: @term-white;
             background-color: @tab-red;
         }
     }
@@ -45,7 +45,7 @@
         }
         &.is-active {
             background-color: @tab-yellow;
-            color: black;
+            color: @term-black;
             box-shadow: 0 3px 0 #fff inset, 0 4px 0 #000 inset;
         }
     }
@@ -57,7 +57,7 @@
             background-color: @tab-blue;
         }
         &.is-active {
-            color: white;
+            color: @term-white;
             background-color: @tab-blue;
         }
     }
@@ -69,7 +69,7 @@
             background-color: @tab-magenta;
         }
         &.is-active {
-            color: white;
+            color: @term-white;
             background-color: @tab-magenta;
         }
     }
@@ -81,7 +81,7 @@
             background-color: @tab-cyan;
         }
         &.is-active {
-            color: black;
+            color: @term-black;
             background-color: @tab-cyan;
         }
     }
@@ -93,7 +93,7 @@
             background-color: @tab-white;
         }
         &.is-active {
-            color: black;
+            color: @term-black;
             background-color: @tab-white;
             box-shadow: 0 3px 0 #fff inset, 0 4px 0 #000 inset;
         }
@@ -106,7 +106,7 @@
             background-color: @tab-black;
         }
         &.is-active {
-            color: white;
+            color: @term-white;
             background-color: @tab-black;
         }
     }
@@ -167,12 +167,11 @@
         height: 30px;
         min-width: 80px;
         width: 150px;
-        line-height: 1;
         flex-shrink: 1;
         display: flex;
         justify-content: center;
         align-items: center;
-        font-size: 12px;
+
         font-weight: 500;
         padding-left: 0;
         padding-right: 0;
@@ -201,7 +200,6 @@
         }
 
         .tab-index {
-            font-size: 11px;
             position: absolute;
             right: 2px;
             top: 4px;
@@ -236,7 +234,6 @@
                     right: 3px;
                     padding-left: 4px;
                     i {
-                        font-size: 15px;
                     }
                 }
             }
@@ -254,9 +251,9 @@
     .screen-tab.new-screen {
         width: 30px;
         min-width: 30px;
-        background-color: black;
+        background-color: @term-black;
         border-right: none;
-        color: #ccc;
+        color: @term-white;
         cursor: pointer;
 
         &:hover {

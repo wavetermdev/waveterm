@@ -9,7 +9,7 @@ import dayjs from "dayjs";
 import type { HistoryItem, HistoryQueryOpts } from "../../types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "../../model";
-import { isBlank } from "../../util";
+import { isBlank } from "../../util/util";
 import "./sessionview.less";
 
 dayjs.extend(localizedFormat);

@@ -10,8 +10,8 @@ import {
     genMergeSimpleData,
     boundInt,
     isModKeyPress,
-} from "./util";
-import { TermWrap } from "./term";
+} from "./util/util";
+import { TermWrap } from "./common/terminal/term";
 import { v4 as uuidv4 } from "uuid";
 import type {
     SessionDataType,
@@ -68,7 +68,7 @@ import {
     windowHeightToRows,
     termWidthFromCols,
     termHeightFromRows,
-} from "./textmeasure";
+} from "./util/textmeasure";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
