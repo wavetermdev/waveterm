@@ -1,4 +1,4 @@
-import { RendererPluginType } from "../types";
+import { RendererPluginType } from "../types/types";
 import { SimpleImageRenderer } from "./image";
 import { SimpleMarkdownRenderer } from "./markdown";
 import { SourceCodeRenderer } from "./code";

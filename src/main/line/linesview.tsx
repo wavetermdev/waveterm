@@ -8,7 +8,7 @@ import cn from "classnames";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { debounce, throttle } from "throttle-debounce";
-import * as T from "../../types";
+import * as T from "../../types/types";
 import * as util from "../../util/util";
 import * as lineutil from "./lineutil";
 

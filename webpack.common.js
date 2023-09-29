@@ -50,6 +50,10 @@ module.exports = {
                 test: /\.less$/,
                 use: [{ loader: MiniCssExtractPlugin.loader }, "css-loader", "less-loader"],
             },
+            {
+                test: /\.svg$/,
+                use: ["@svgr/webpack", "file-loader"],
+            },
         ],
     },
     plugins: [

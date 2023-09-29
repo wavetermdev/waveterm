@@ -2,7 +2,7 @@ import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import type { RemoteType } from "../types";
+import type { RemoteType } from "../types/types";
 
 dayjs.extend(localizedFormat);
 
@@ -372,6 +372,10 @@ function hasNoModifiers(e: any): boolean {
     );
 }
 
+function openLink(url: string): void {
+    window.open(url, "_blank");
+}
+
 export {
     handleJsonFetchResponse,
     base64ToArray,
@@ -392,4 +396,5 @@ export {
     isStrEq,
     isBoolEq,
     hasNoModifiers,
+    openLink,
 };

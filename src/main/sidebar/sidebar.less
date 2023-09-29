@@ -1,40 +1,42 @@
 @import "../../index.less";
 
-.main-sidebar .logo-header {
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    border-bottom: 2px solid #ddd;
-    margin-left: -4px;
-    margin-right: -5px;
-}
-
 .main-sidebar {
-    border-right: 1px solid #aaa;
-    padding: 0 5px 5px 5px;
+    padding: 0;
     width: 200px;
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
     position: relative;
-    flex-shrink: 0;
+    transition: width 0.2s ease;
 
-    .menu {
-        padding-top: 10px;
-        display: flex;
-        flex-direction: column;
-        height: 100%;
+    .arrow-container {
+        position: absolute;
+        top: 8px;
+        right: 16px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        transition: transform 0.3s ease-in-out;
+    }
 
-        .spacer {
-            flex-grow: 1;
-        }
+    .bottom {
+        position: absolute;
+        bottom: 6px;
+        left: 0;
+        width: 100%;
+    }
 
-        .bottom-spacer {
-            height: 10px;
-        }
-
-        a:hover {
-            color: @term-white;
+    .item {
+        cursor: pointer;
+        padding: 6px;
+        margin: 0 6px;
+        border-radius: 4px;
+        opacity: 1;
+        visibility: visible;
+        transition: opacity 0.1s ease-in-out, visibility 0.1s step-end;
+        .icon {
+            margin: 0 8px 0 6px;
+            vertical-align: middle;
         }
     }
 
@@ -151,49 +153,28 @@
             }
         }
 
-        &.is-active:hover {
-        }
-
-        &:hover {
-        }
-
         .status {
             margin-right: 5px;
             position: relative;
             top: -3px;
         }
     }
-
-    &.collapsed {
-        width: 55px;
-
-        .collapse-container {
-            right: 17px;
-        }
-
-        .menu {
-            display: none;
-        }
-    }
-
-    .collapse-container {
-        position: absolute;
-        right: 3px;
-        top: 42px;
-
-        .arrow-container {
-            padding: 5px;
-            cursor: pointer;
-        }
-    }
 }
-.is-dev .main-sidebar {
-    background: @base-background-dev;
+
+.main-sidebar.collapsed {
+    width: 50px;
+    .arrow-container {
+        transform: rotate(180deg);
+    }
+    .item {
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.1s ease-in-out, visibility 0.1s step-start;
+    }
 }
 
 .menu-list .remote-status.status-connecting {
     position: relative;
     top: 0px;
-
     margin-left: -3px;
 }

@@ -21,7 +21,7 @@ import type {
     LineHeightChangeCallbackType,
     RendererModelInitializeParams,
     RendererModel,
-} from "../../types";
+} from "../../types/types";
 import cn from "classnames";
 import type { LineContainerModel } from "../../model";
 import { renderCmdText } from "../../common/common";

@@ -2,8 +2,9 @@ import * as mobx from "mobx";
 import { Terminal } from "xterm";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
-import { windowWidthToCols, windowHeightToRows } from "../../util/textmeasure";
-import { boundInt } from "../../util/util";
+import { v4 as uuidv4 } from "uuid";
+import { termHeightFromRows, windowWidthToCols, windowHeightToRows } from "../util/textmeasure";
+import { boundInt } from "../util/util";
 import type {
     TermContextUnion,
     TermOptsType,
@@ -11,8 +12,7 @@ import type {
     RendererContext,
     WindowSize,
     PtyDataType,
-} from "../../types/types";
-import { getTheme } from "../../themes";
+} from "../types/types";
 
 type DataUpdate = {
     data: Uint8Array;
@@ -84,12 +84,10 @@ class TermWrap {
             let cols = windowWidthToCols(opts.winSize.width, opts.fontSize);
             this.termSize = { rows: opts.termOpts.rows, cols: cols };
         }
-        const { terminal } = getTheme();
         this.terminal = new Terminal({
             rows: this.termSize.rows,
             cols: this.termSize.cols,
             fontSize: opts.fontSize,
-            theme: { foreground: terminal.foreground, background: terminal.background },
             /*fontFamily: "JetBrains Mono", @check:font */
         });
         this.terminal._core._inputHandler._parser.setErrorHandler((state) => {

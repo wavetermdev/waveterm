@@ -1,7 +1,7 @@
 import * as React from "react";
 import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
-import * as T from "../types";
+import * as T from "../types/types";
 import { debounce } from "throttle-debounce";
 import { boundMethod } from "autobind-decorator";
 import { PacketDataBuffer } from "../common/terminal/ptydata";

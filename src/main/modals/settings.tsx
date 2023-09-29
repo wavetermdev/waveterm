@@ -6,7 +6,7 @@ import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, TabColors } from "../../model";
 import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage } from "../../common/common";
-import { LineType, RendererPluginType, ClientDataType, CommandRtnType } from "../../types";
+import { LineType, RendererPluginType, ClientDataType, CommandRtnType } from "../../types/types";
 import { PluginModel } from "../../plugins/plugins";
 import * as util from "../../util/util";
 

@@ -60,6 +60,21 @@ body {
     color: @base-color;
 }
 
+svg {
+    fill: @base-color;
+}
+
+// styles.less
+
+.hoverEffect {
+    &:hover {
+        cursor: pointer;
+        box-shadow: 0px 2px 4px 0 rgba(255, 255, 255, 0.1), 0px 4px 10px 0 rgba(255, 255, 255, 0.2),
+            0px 0px 10px 2.5px rgba(255, 255, 255, 0.5);
+        transition: box-shadow 0.2s ease;
+    }
+}
+
 #title-bar {
     -webkit-app-region: drag;
     height: 30px;

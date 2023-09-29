@@ -6,7 +6,7 @@ import type {
     RendererPluginType,
     RendererModel,
     RendererContainerType,
-} from "../../../types";
+} from "../../../types/types";
 import { debounce, throttle } from "throttle-debounce";
 
 type OV<V> = mobx.IObservableValue<V>;

@@ -58,8 +58,8 @@ import type {
     CommandRtnType,
     WebCmd,
     WebRemote,
-} from "./types";
-import * as T from "./types";
+} from "./types/types";
+import * as T from "./types/types";
 import { WSControl } from "./ws";
 import {
     measureText,
