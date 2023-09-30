@@ -19,6 +19,16 @@
         transition: transform 0.3s ease-in-out;
     }
 
+    .top {
+        margin-top: 32px;
+    }
+
+    .separator {
+        height: 1px;
+        margin: 16px 0;
+        background-color: @base-border;
+    }
+
     .bottom {
         position: absolute;
         bottom: 6px;
@@ -27,7 +37,6 @@
     }
 
     .item {
-        cursor: pointer;
         padding: 6px;
         margin: 0 6px;
         border-radius: 4px;
@@ -36,6 +45,25 @@
         transition: opacity 0.1s ease-in-out, visibility 0.1s step-end;
         .icon {
             margin: 0 8px 0 6px;
+            vertical-align: middle;
+        }
+        .hotkey {
+            float: right;
+            margin-right: 6px;
+            visibility: hidden;
+            letter-spacing: 6px;
+        }
+        &:hover .hotkey {
+            visibility: visible;
+        }
+        .add_workspace {
+            float: right;
+            width: 20px;
+            height: 20px;
+            padding: 2px;
+            margin-right: 6px;
+            border-radius: 50%;
+            transition: transform 0.3s ease-in-out;
             vertical-align: middle;
         }
     }

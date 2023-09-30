@@ -11,6 +11,12 @@ import { ReactComponent as LeftChevronIcon } from "../../assets/icons/chevron_le
 import { ReactComponent as HelpIcon } from "../../assets/icons/help.svg";
 import { ReactComponent as SettingsIcon } from "../../assets/icons/settings.svg";
 import { ReactComponent as DiscordIcon } from "../../assets/icons/discord.svg";
+import { ReactComponent as HistoryIcon } from "../../assets/icons/history.svg";
+import { ReactComponent as FavouritesIcon } from "../../assets/icons/favourites.svg";
+import { ReactComponent as AppsIcon } from "../../assets/icons/apps.svg";
+import { ReactComponent as ConnectionsIcon } from "../../assets/icons/connections.svg";
+import { ReactComponent as WorkspacesIcon } from "../../assets/icons/workspaces.svg";
+import { ReactComponent as AddIcon } from "../../assets/icons/add.svg";
 
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Session } from "../../model";
@@ -214,28 +220,10 @@ class MainSideBar extends React.Component<{}, {}> {
                                 </li>
                             </If>
                         </ul>
-                        <ul className="menu-list" style={{ marginTop: 20 }}>
-                            <li className="menu-history">
-                                <a
-                                    onClick={this.handleHistoryClick}
-                                    className={cn({ "is-active": mainView == "history" })}
-                                >
-                                    <i className="fa-sharp fa-solid fa-clock" /> HISTORY{" "}
-                                    <span className="hotkey">&#x2318;H</span>
-                                </a>
-                            </li>
-                        </ul>
-                        <ul className="menu-list">
-                            <li className="menu-bookmarks">
-                                <a
-                                    onClick={this.handleBookmarksClick}
-                                    className={cn({ "is-active": mainView == "bookmarks" })}
-                                >
-                                    <i className="fa-sharp fa-solid fa-bookmark" /> BOOKMARKS{" "}
-                                    <span className="hotkey">&#x2318;B</span>
-                                </a>
-                            </li>
-                        </ul>
+                    </>
+                )}
+                {false && (
+                    <>
                         <p className="menu-label display-none">Playbooks</p>
                         <ul className="menu-list display-none">
                             <li key="default">
@@ -260,16 +248,6 @@ class MainSideBar extends React.Component<{}, {}> {
                                 <br />
                             </div>
                         </If>
-                        <ul className="menu-list" style={{ display: "none" }}>
-                            <li className="menu-bookmarks">
-                                <a
-                                    onClick={this.handleWelcomeClick}
-                                    className={cn({ "is-active": GlobalModel.welcomeModalOpen.get() })}
-                                >
-                                    <i className="fa-sharp fa-solid fa-door-open" /> WELCOME
-                                </a>
-                            </li>
-                        </ul>
                         <p className="menu-label">
                             <a onClick={this.handleConnectionsClick}>Connections</a>
                         </p>
@@ -293,7 +271,37 @@ class MainSideBar extends React.Component<{}, {}> {
                         </ul>
                     </>
                 )}
-
+                <div className="top">
+                    <div className="item hoverEffect">
+                        <AppsIcon className="icon" />
+                        Apps
+                        <span className="hotkey">&#x2318;A</span>
+                    </div>
+                    <div className="item hoverEffect" onClick={this.handleHistoryClick}>
+                        <HistoryIcon className="icon" />
+                        History
+                        <span className="hotkey">&#x2318;H</span>
+                    </div>
+                    <div className="item hoverEffect" onClick={this.handleBookmarksClick}>
+                        <FavouritesIcon className="icon" />
+                        Favourites
+                        <span className="hotkey">&#x2318;B</span>
+                    </div>
+                    <div className="item hoverEffect">
+                        <ConnectionsIcon className="icon" />
+                        Connections
+                    </div>
+                </div>
+                <div className="separator" />
+                <div className="middle">
+                    <div className="item">
+                        <WorkspacesIcon className="icon" />
+                        Workspaces
+                        <div className="add_workspace hoverEffect" onClick={this.handleAddRemote}>
+                            <AddIcon />
+                        </div>
+                    </div>
+                </div>
                 <div className="bottom">
                     <div className="item hoverEffect" onClick={this.handleSettingsClick}>
                         <SettingsIcon className="icon" />
