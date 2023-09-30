@@ -2,20 +2,34 @@
 
 .main-sidebar {
     padding: 0;
-    width: 200px;
+    width: 20rem;
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
     position: relative;
     transition: width 0.2s ease;
 
+    &.collapsed {
+        width: 4em;
+        .arrow-container {
+            transform: rotate(180deg);
+        }
+        .contents {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.1s ease-in-out, visibility 0.1s step-start;
+        }
+        overflow: hidden;
+    }
+
     .arrow-container {
         position: absolute;
         top: 8px;
-        right: 16px;
-        width: 16px;
-        height: 16px;
+        right: 18px;
+        width: 20px;
+        height: 20px;
         border-radius: 50%;
+        padding: 2px;
         transition: transform 0.3s ease-in-out;
     }
 
@@ -27,6 +41,34 @@
         height: 1px;
         margin: 16px 0;
         background-color: @base-border;
+    }
+
+    .middle {
+        max-height: calc(100vh - 30em);
+        overflow-y: auto;
+        padding: 8px 6px;
+        border-bottom: 1px solid @base-border;
+        .item {
+            &.active {
+                background: @base-border;
+                box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
+                    0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
+            }
+            .index {
+                margin: 0 1.5em 0 -0.5rem;
+                font-size: 0.8em;
+                vertical-align: middle;
+                text-align: right;
+                width: 2em;
+                display: inline-block;
+            }
+            .hotkey {
+                float: left !important;
+                margin-right: 0 !important;
+                visibility: hidden;
+                letter-spacing: 0 !important;
+            }
+        }
     }
 
     .bottom {
@@ -121,12 +163,12 @@
         }
     }
 
-    .menu-list.remotes-menu-list {
+    .menu-list.emotes-menu-list {
         max-height: 35%;
         overflow-y: auto;
     }
 
-    .menu-list li.remote-menu-item {
+    .menu-list li.emote-menu-item {
         a {
             white-space: nowrap;
             overflow: hidden;
@@ -189,19 +231,7 @@
     }
 }
 
-.main-sidebar.collapsed {
-    width: 50px;
-    .arrow-container {
-        transform: rotate(180deg);
-    }
-    .item {
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity 0.1s ease-in-out, visibility 0.1s step-start;
-    }
-}
-
-.menu-list .remote-status.status-connecting {
+.menu-list .emote-status.status-connecting {
     position: relative;
     top: 0px;
     margin-left: -3px;
