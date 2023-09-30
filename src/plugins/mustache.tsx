@@ -4,7 +4,7 @@ import * as mobxReact from "mobx-react";
 import cn from "classnames";
 import { boundMethod } from "autobind-decorator";
 import { If, For, When, Otherwise, Choose } from "tsx-control-statements/components";
-import * as T from "../types";
+import * as T from "../types/types";
 import { sprintf } from "sprintf-js";
 import { isBlank } from "../util/util";
 import mustache from "mustache";

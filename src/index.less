@@ -1,6 +1,7 @@
 @base-color: #eceeec;
 @base-background: rgba(21, 23, 21, 1);
 @base-background-dev: rgba(21, 23, 21, 1);
+@base-border: rgba(241, 246, 243, 0.08);
 
 @term-black: #000000;
 @term-red: #cc0000;
@@ -58,6 +59,22 @@ body {
     line-height: 20px;
     background: @base-background;
     color: @base-color;
+}
+
+svg {
+    fill: @base-color;
+}
+
+// styles.less
+
+.hoverEffect {
+    &:hover {
+        cursor: pointer;
+        box-shadow: 0px 2px 2px 0 rgba(255, 255, 255, 0.1), 0px 4px 5px 0 rgba(255, 255, 255, 0.2),
+            0px 0px 5px 2.5px rgba(255, 255, 255, 0.5);
+
+        transition: box-shadow 0.2s ease;
+    }
 }
 
 #title-bar {

@@ -5,7 +5,7 @@ import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
 import cn from "classnames";
 import dayjs from "dayjs";
-import type { RemoteType, RemoteInstanceType, RemotePtrType } from "../../types";
+import type { RemoteType, RemoteInstanceType, RemotePtrType } from "../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner } from "../../model";
 import { Prompt } from "../line/linecomps";

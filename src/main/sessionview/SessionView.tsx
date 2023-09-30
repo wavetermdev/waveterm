@@ -7,7 +7,7 @@ import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { debounce } from "throttle-debounce";
 import dayjs from "dayjs";
-import type { LineType, RenderModeType, LineFactoryProps } from "../../types";
+import type { LineType, RenderModeType, LineFactoryProps } from "../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Session, ScreenLines, Screen } from "../../model";
 import { Line } from "../line/linecomps";

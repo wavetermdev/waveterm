@@ -19,8 +19,8 @@ import type {
     LineType,
     TermContextUnion,
     RendererContainerType,
-} from "../../../types";
-import * as T from "../../../types";
+} from "../../../types/types";
+import * as T from "../../../types/types";
 import { PacketDataBuffer } from "../../../terminal/ptydata";
 import { debounce, throttle } from "throttle-debounce";
 import * as util from "../../../util/util";

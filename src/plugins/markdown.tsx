@@ -3,7 +3,7 @@ import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
 import cn from "classnames";
 import { If, For, When, Otherwise, Choose } from "tsx-control-statements/components";
-import { WindowSize, RendererContext, TermOptsType, LineType, RendererOpts } from "../types";
+import { WindowSize, RendererContext, TermOptsType, LineType, RendererOpts } from "../types/types";
 import { sprintf } from "sprintf-js";
 import { Markdown } from "../common/common";
 

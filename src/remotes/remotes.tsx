@@ -6,7 +6,7 @@ import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, RemotesModalModel } from "../model";
 import { Toggle, RemoteStatusLight, InfoMessage } from "../common/common";
-import { RemoteType, RemoteEditType } from "../types";
+import { RemoteType, RemoteEditType } from "../types/types";
 import * as util from "../util/util";
 import * as textmeasure from "../util/textmeasure";
 

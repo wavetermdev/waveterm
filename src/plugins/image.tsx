@@ -1,7 +1,7 @@
 import * as React from "react";
 import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
-import { RendererContext, RendererOpts } from "../types";
+import { RendererContext, RendererOpts } from "../types/types";
 
 import "./plugins.less";
 

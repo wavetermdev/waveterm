@@ -6,7 +6,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import cn from "classnames";
 import { If } from "tsx-control-statements/components";
-import type { RemoteType } from "../types";
+import type { RemoteType } from "../types/types";
 
 import "./common.less";
 
