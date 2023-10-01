@@ -3,10 +3,10 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner } from "../../model";
-import { getMonoFontSize } from "../../util/textmeasure";
-import { isModKeyPress, hasNoModifiers } from "../../util/util";
-import "./sessionview.less";
+import { GlobalModel, GlobalCommandRunner } from "../../../model";
+import { getMonoFontSize } from "../../../util/textmeasure";
+import { isModKeyPress, hasNoModifiers } from "../../../util/util";
+import "../sessionview.less";
 
 function pageSize(div: any): number {
     if (div == null) {
@@ -534,9 +534,9 @@ class TextAreaInput extends React.Component<{ onHeightChange: () => void }, {}> 
         if (activeScreen != null) {
             activeScreen.focusType.get(); // for reaction
         }
-        let computedHeight = displayLines * 24 + 14 + 2; // 24 = height of line, 14 = padding, 2 = border
+        let computedHeight = displayLines * GlobalModel.termFontSize.get();
         return (
-            <div className="control cmd-input-control is-expanded" ref={this.controlRef}>
+            <div className="control is-expanded" ref={this.controlRef} style={{ height: computedHeight }}>
                 <textarea
                     key="main"
                     ref={this.mainInputRef}

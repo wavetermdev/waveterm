@@ -30,6 +30,7 @@ import { FullRenderer } from "./renderer/fullrenderer";
 import { TerminalRenderer } from "../../common/terminal/Terminal";
 import { isBlank } from "../../util/util";
 import { PluginModel } from "../../plugins/plugins";
+import { Prompt } from "../../terminal/prompt";
 import * as lineutil from "./lineutil";
 
 import "./lines.less";
@@ -798,16 +799,13 @@ class LineCmd extends React.Component<
                             className="cmd-rtnstate"
                             style={{
                                 visibility: cmd.getStatus() == "done" ? "visible" : "hidden",
-                                fontSize: GlobalModel.termFontSize.get(),
                             }}
                         >
                             <If condition={rsdiff == null || rsdiff == ""}>
                                 <div className="cmd-rtnstate-label">state unchanged</div>
-                                <div className="cmd-rtnstate-sep"></div>
                             </If>
                             <If condition={rsdiff != null && rsdiff != ""}>
                                 <div className="cmd-rtnstate-label">new state</div>
-                                <div className="cmd-rtnstate-sep"></div>
                                 <div className="cmd-rtnstate-diff">{this.rtnStateDiff.get()}</div>
                             </If>
                         </div>
@@ -851,78 +849,6 @@ class Line extends React.Component<
             return <LineCmd {...this.props} />;
         }
         return <div className="line line-invalid">[invalid line type '{line.linetype}']</div>;
-    }
-}
-
-@mobxReact.observer
-class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<string, string> }, {}> {
-    render() {
-        let rptr = this.props.rptr;
-        if (rptr == null || isBlank(rptr.remoteid)) {
-            return <span className={cn("term-prompt", "color-green")}>&nbsp;</span>;
-        }
-        let remote = GlobalModel.getRemote(this.props.rptr.remoteid);
-        let remoteStr = getRemoteStr(rptr);
-        let festate = this.props.festate ?? {};
-        let cwd = getCwdStr(remote, festate);
-        let isRoot = false;
-        if (remote && remote.remotevars) {
-            if (remote.remotevars["sudo"] || remote.remotevars["bestuser"] == "root") {
-                isRoot = true;
-            }
-        }
-        let remoteColorClass = isRoot ? "color-red" : "color-green";
-        if (remote && remote.remoteopts && remote.remoteopts.color) {
-            remoteColorClass = "color-" + remote.remoteopts.color;
-        }
-        // TESTING cwd shortening with triple colon character
-        // if (cwd.startsWith("~/work/gopath/src/github.com/scripthaus-dev")) {
-        //     cwd = cwd.replace("~/work/gopath/src/github.com/scripthaus-dev", "\u22EEscripthaus-dev");
-        // }
-        let remoteTitle: string = null;
-        if (remote && remote.remotecanonicalname) {
-            remoteTitle = "connected to " + remote.remotecanonicalname;
-        }
-        let cwdElem = (
-            <span title="current directory" className="term-prompt-cwd">
-                <i className="fa-solid fa-sharp fa-folder-open" />
-                {cwd}
-            </span>
-        );
-        let remoteElem = (
-            <span title={remoteTitle} className={cn("term-prompt-remote", remoteColorClass)}>
-                [{remoteStr}]{" "}
-            </span>
-        );
-        let rootIndicatorElem = <span className="term-prompt-end">{isRoot ? "#" : "$"}</span>;
-        let branchElem = null;
-        let pythonElem = null;
-        if (!isBlank(festate["PROMPTVAR_GITBRANCH"])) {
-            let branchName = festate["PROMPTVAR_GITBRANCH"];
-            branchElem = (
-                <span title="current git branch" className="term-prompt-branch">
-                    <i className="fa-sharp fa-solid fa-code-branch" />
-                    {branchName}{" "}
-                </span>
-            );
-        }
-        if (!isBlank(festate["VIRTUAL_ENV"])) {
-            let venvDir = festate["VIRTUAL_ENV"];
-            let venv = getShortVEnv(venvDir);
-            pythonElem = (
-                <span title="python venv" className="term-prompt-python">
-                    <i className="fa-brands fa-python" />
-                    {venv}{" "}
-                </span>
-            );
-        }
-        return (
-            <span className="term-prompt">
-                {remoteElem} {pythonElem}
-                {branchElem}
-                {cwdElem} {rootIndicatorElem}
-            </span>
-        );
     }
 }
 
@@ -998,4 +924,4 @@ class LineText extends React.Component<
     }
 }
 
-export { Line, Prompt };
+export { Line };

@@ -5,15 +5,16 @@ import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
 import cn from "classnames";
 import dayjs from "dayjs";
-import type { RemoteType, RemoteInstanceType, RemotePtrType } from "../../types/types";
+import type { RemoteType, RemoteInstanceType, RemotePtrType } from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel, GlobalCommandRunner } from "../../model";
-import { Prompt } from "../line/linecomps";
-import { renderCmdText } from "../../common/common";
+import { GlobalModel, GlobalCommandRunner } from "../../../model";
+import { renderCmdText } from "../../../common/common";
 import { TextAreaInput } from "./TextareaInput";
-import { InfoMsg } from "./InfoMsg";
-import { HistoryInfo } from "./HistoryInfo";
-import "./sessionview.less";
+import { InfoMsg } from "../InfoMsg";
+import { HistoryInfo } from "../HistoryInfo";
+import { Prompt } from "../../../terminal/prompt";
+import { ReactComponent as ExecIcon } from "../../../assets/icons/exec.svg";
+import "./cmdInput.less";
 
 dayjs.extend(localizedFormat);
 
@@ -107,11 +108,7 @@ class CmdInput extends React.Component<{}, {}> {
         return (
             <div
                 ref={this.cmdInputRef}
-                className={cn(
-                    "cmd-input has-background-black",
-                    { "has-info": infoShow },
-                    { "has-history": historyShow }
-                )}
+                className={cn("cmd-input", { "has-info": infoShow }, { "has-history": historyShow })}
             >
                 <div key="focus" className={cn("focus-indicator", { active: focusVal })} />
                 <div key="minmax" onClick={this.onInfoToggle} className="input-minmax-control">
@@ -160,28 +157,23 @@ class CmdInput extends React.Component<{}, {}> {
                         </div>
                     </If>
                     <TextAreaInput key={textAreaInputKey} onHeightChange={this.handleInnerHeightUpdate} />
-                    <div className="control cmd-exec">
-                        <div onClick={inputModel.uiSubmitCommand} className="button" title="Run Command">
-                            <span className="icon">
-                                <i className="fa-sharp fa-solid fa-rocket" />
-                            </span>
-                        </div>
-                    </div>
-                    <div className="cmd-hints">
-                        <div onClick={inputModel.toggleExpandInput} className="hint-item color-white">
+                    <div className="control cmd-exec" onClick={inputModel.uiSubmitCommand}>
+                        {/**<div onClick={inputModel.toggleExpandInput} className="hint-item color-white">
                             {inputModel.inputExpanded.get() ? "shrink" : "expand"} input ({renderCmdText("E")})
-                        </div>
-                        <If condition={!focusVal}>
-                            <div onClick={this.clickFocusInputHint} className="hint-item color-white">
+                        </div>**/}
+                        {!focusVal && (
+                            <div onClick={this.clickFocusInputHint} className="cmd-btn">
                                 focus input ({renderCmdText("I")})
                             </div>
-                        </If>
-                        <If condition={focusVal}>
-                            <div onMouseDown={this.clickHistoryHint} className="hint-item color-green">
-                                <i className={cn("fa-sharp fa-solid", historyShow ? "fa-angle-down" : "fa-angle-up")} />{" "}
+                        )}
+                        {focusVal && (
+                            <div onMouseDown={this.clickHistoryHint} className="cmd-btn">
                                 {historyShow ? "close history (esc)" : "show history (ctrl-r)"}
                             </div>
-                        </If>
+                        )}
+                        <ExecIcon
+                            className={`icon ${inputModel.getCurLine().trim() === "" ? "disabled" : "hoverEffect"}`}
+                        />
                     </div>
                 </div>
             </div>

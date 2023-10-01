@@ -204,6 +204,8 @@ function createMainWindow(clientData) {
         titleBarStyle: "hiddenInset",
         width: bounds.width,
         height: bounds.height,
+        minWidth: 600,
+        minHeight: 400,
         webPreferences: {
             preload: path.join(getAppBasePath(), DistDir, "preload.js"),
         },

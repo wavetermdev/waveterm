@@ -119,7 +119,7 @@
 
     .terminal-wrapper {
         padding: 2px 10px 5px 4px;
-        margin: 4px 8px 0 -4px;
+        margin: 1em 8px 0 -4px;
 
         &.zero-height {
             padding: 0;
@@ -132,7 +132,7 @@
         }
 
         .terminal {
-            margin-right: 8px; /* needed to show scrollbar */
+            margin-right: 8px;
         }
 
         &.cmd-done .terminal .xterm-cursor {
@@ -153,21 +153,12 @@
         .cmd-rtnstate-label {
             position: relative;
             z-index: 2;
-
-            margin-left: 10px;
+            margin: 6px 0 -2px 10px;
             padding: 2px 5px 2px 5px;
             color: #666;
             background-color: @term-black;
             display: inline-block;
-        }
-
-        .cmd-rtnstate-sep {
-            height: 1px;
-            border-bottom: 1px solid #222;
-            position: relative;
-            top: -8px;
-            width: min(300px, 50%);
-            margin-bottom: -4px;
+            font-size: 0.8em;
         }
 
         .cmd-rtnstate-diff {
