@@ -12,7 +12,6 @@ import {
     isModKeyPress,
 } from "./util/util";
 import { TermWrap } from "./common/terminal/term";
-import { v4 as uuidv4 } from "uuid";
 import type {
     SessionDataType,
     LineType,
@@ -451,7 +450,7 @@ class Screen {
     }
 
     getTabColor(): string {
-        let tabColor = "green";
+        let tabColor = "default";
         let screenOpts = this.opts.get();
         if (screenOpts != null && !isBlank(screenOpts.tabcolor)) {
             tabColor = screenOpts.tabcolor;

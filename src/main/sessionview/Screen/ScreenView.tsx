@@ -13,6 +13,10 @@ import { GlobalModel, GlobalCommandRunner, Session, ScreenLines, Screen } from "
 import { Line } from "../../line/linecomps";
 import { renderCmdText } from "../../../common/common";
 import { LinesView } from "../../line/linesview";
+import { ReactComponent as SparkleIcon } from "../../../assets/icons/tab/sparkle.svg";
+import { ReactComponent as ActionsIcon } from "../../../assets/icons/tab/actions.svg";
+import { ReactComponent as AddIcon } from "../../../assets/icons/add.svg";
+
 import "../sessionview.less";
 import "./tabs.less";
 
@@ -335,8 +339,8 @@ class ScreenTabs extends React.Component<{ session: Session }, {}> {
             tabIndex = <div className="tab-index">{renderCmdText(String(index + 1))}</div>;
         }
         let settings = (
-            <div onClick={(e) => this.openScreenSettings(e, screen)} title="Settings" className="tab-gear">
-                <i className="fa-sharp fa-solid fa-gear" />
+            <div onClick={(e) => this.openScreenSettings(e, screen)} title="Actions" className="tab-gear">
+                <ActionsIcon className="icon hoverEffect " />
             </div>
         );
         let archived = screen.archived.get() ? (
@@ -358,7 +362,8 @@ class ScreenTabs extends React.Component<{ session: Session }, {}> {
                 onClick={() => this.handleSwitchScreen(screen.screenId)}
                 onContextMenu={(event) => this.openScreenSettings(event, screen)}
             >
-                <div className="tab-name">
+                <SparkleIcon className="icon" />
+                <div className="tab-name truncate">
                     {archived}
                     {webShared}
                     {screen.name.get()}
@@ -406,7 +411,7 @@ class ScreenTabs extends React.Component<{ session: Session }, {}> {
                         {this.renderTab(screen, activeScreenId, index)}
                     </For>
                     <div key="new-screen" className="screen-tab new-screen" onClick={this.handleNewScreen}>
-                        <i className="fa-sharp fa-solid fa-plus" />
+                        <AddIcon className="icon hoverEffect" />
                     </div>
                 </div>
                 {/**<div className="cmd-hints">
