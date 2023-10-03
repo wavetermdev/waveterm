@@ -329,8 +329,8 @@ class SourceCodeRenderer extends React.Component<
                 onMount={this.handleEditorDidMount}
                 options={{
                     scrollBeyondLastLine: false,
-                    fontSize: GlobalModel.termFontSize.get(),
-                    /* fontFamily: "JetBrains Mono", @check:font */
+                    fontSize: GlobalModel.termFontSize.get() * 0.9,
+                    /* fontFamily: "Martian Mono", */
                     readOnly: !this.getAllowEditing(),
                 }}
                 onChange={this.handleEditorChange}
@@ -379,7 +379,10 @@ class SourceCodeRenderer extends React.Component<
                 </select>
                 {allowEditing && (
                     <div className="cmd-hints">
-                        <div onClick={this.doSave} className={`hint-item ${isSave ? "save-enabled" : "save-disabled"}`}>
+                        <div
+                            onClick={() => this.doSave()}
+                            className={`hint-item ${isSave ? "save-enabled" : "save-disabled"}`}
+                        >
                             {`save (`}
                             {renderCmdText("S")}
                             {`)`}
