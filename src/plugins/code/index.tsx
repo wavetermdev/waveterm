@@ -408,7 +408,6 @@ class SourceCodeRenderer extends React.Component<
                 className="message"
                 style={{
                     fontSize: GlobalModel.termFontSize.get(),
-                    /* fontFamily: "JetBrains Mono", @check:font */
                     background: `${this.state.message.status === "error" ? "red" : "#4e9a06"}`,
                 }}
             >
@@ -435,7 +434,6 @@ class SourceCodeRenderer extends React.Component<
                     className="renderer-container code-renderer"
                     style={{
                         fontSize: GlobalModel.termFontSize.get(),
-                        /* fontFamily: "JetBrains Mono", @check:font */
                         color: "white",
                     }}
                 >

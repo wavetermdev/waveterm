@@ -88,7 +88,6 @@ class TermWrap {
             rows: this.termSize.rows,
             cols: this.termSize.cols,
             fontSize: opts.fontSize,
-            /*fontFamily: "JetBrains Mono", @check:font */
         });
         this.terminal._core._inputHandler._parser.setErrorHandler((state) => {
             this.numParseErrors++;
