@@ -23,6 +23,12 @@ import type {
     RendererModel,
 } from "../../types/types";
 import cn from "classnames";
+
+import { ReactComponent as FavouritesIcon } from "../../assets/icons/favourites.svg";
+import { ReactComponent as PinIcon } from "../../assets/icons/pin.svg";
+import { ReactComponent as PlusIcon } from "../../assets/icons/plus.svg";
+import { ReactComponent as MinusIcon } from "../../assets/icons/minus.svg";
+
 import type { LineContainerModel } from "../../model";
 import { renderCmdText } from "../../common/common";
 import { SimpleBlobRenderer } from "./renderer/simplerenderer";
@@ -30,6 +36,7 @@ import { FullRenderer } from "./renderer/fullrenderer";
 import { TerminalRenderer } from "../../common/terminal/Terminal";
 import { isBlank } from "../../util/util";
 import { PluginModel } from "../../plugins/plugins";
+import { Prompt } from "../../terminal/prompt";
 import * as lineutil from "./lineutil";
 
 import "./lines.less";
@@ -194,7 +201,6 @@ class LineCmd extends React.Component<
         staticRender: boolean;
         visible: OV<boolean>;
         onHeightChange: LineHeightChangeCallbackType;
-        topBorder: boolean;
         renderMode: RenderModeType;
         overrideCollapsed: OV<boolean>;
         noSelect?: boolean;
@@ -460,12 +466,7 @@ class LineCmd extends React.Component<
     }
 
     getTerminalRendererHeight(cmd: Cmd): number {
-        let { screen, line, width, topBorder, renderMode } = this.props;
-        // header is 36px tall, padding+border = 6px
-        // zero-terminal is 0px
-        // terminal-wrapper overhead is 11px (margin/padding)
-        // inner-height, if zero-lines => 42
-        //               else: 53+(lines*lineheight)
+        let { screen, line, width, renderMode } = this.props;
         let height = 36 + 6; // height of zero height terminal
         let usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
         if (usedRows > 0) {
@@ -490,7 +491,7 @@ class LineCmd extends React.Component<
     }
 
     renderSimple() {
-        let { screen, line, topBorder } = this.props;
+        let { screen, line } = this.props;
         let cmd = screen.getCmd(line);
         let height: number = 0;
         if (isBlank(line.renderer) || line.renderer == "terminal") {
@@ -503,9 +504,7 @@ class LineCmd extends React.Component<
             height = (hidePrompt ? 16 + 6 : 36 + 6) + usedRows;
         }
         let formattedTime = lineutil.getLineDateTimeStr(line.ts);
-        let mainDivCn = cn("line", "line-cmd", "line-simple", {
-            "top-border": topBorder,
-        });
+        let mainDivCn = cn("line", "line-cmd", "line-simple");
         return (
             <div
                 className={mainDivCn}
@@ -635,14 +634,11 @@ class LineCmd extends React.Component<
     };
 
     render() {
-        let { screen, line, width, staticRender, visible, topBorder, renderMode } = this.props;
-        let model = GlobalModel;
-        let lineid = line.lineid;
+        let { screen, line, width, staticRender, visible } = this.props;
         let isVisible = visible.get();
         if (staticRender || !isVisible) {
             return this.renderSimple();
         }
-        let formattedTime = lineutil.getLineDateTimeStr(line.ts);
         let cmd = screen.getCmd(line);
         if (cmd == null) {
             return (
@@ -695,10 +691,10 @@ class LineCmd extends React.Component<
         let mainDivCn = cn(
             "line",
             "line-cmd",
-            { focus: isFocused },
+            { selected: isSelected },
+            { active: isSelected && isFocused },
             { "cmd-done": !isRunning },
-            { "has-rtnstate": cmd.getRtnState() },
-            { "top-border": topBorder }
+            { "has-rtnstate": cmd.getRtnState() }
         );
         let rendererPlugin: RendererPluginType = null;
         let isNoneRenderer = line.renderer == "none";
@@ -717,10 +713,6 @@ class LineCmd extends React.Component<
                 data-screenid={line.screenid}
             >
                 <div
-                    key="focus"
-                    className={cn("focus-indicator", { selected: isSelected }, { active: isSelected && isFocused })}
-                />
-                <div
                     key="header"
                     className={cn("line-header", { "is-expanded": isExpanded }, { "hide-prompt": hidePrompt })}
                 >
@@ -735,27 +727,28 @@ class LineCmd extends React.Component<
                         onClick={this.clickPin}
                         style={{ display: "none" }}
                     >
-                        <i className="fa-sharp fa-solid fa-thumbtack" />
+                        <PinIcon className="icon" />
                     </div>
                     <div
                         key="bookmark"
                         title="Bookmark"
-                        className={cn("line-icon", "line-bookmark")}
+                        className={cn("line-icon", "line-bookmark", "hoverEffect")}
                         onClick={this.clickBookmark}
                     >
-                        <i className="fa-sharp fa-regular fa-bookmark" />
+                        <FavouritesIcon className="icon" />
                     </div>
                     <div
                         key="minimise"
                         title={`${this.isMinimised.get() ? "Maximise" : "Minimise"}`}
-                        className={cn("line-icon", "line-minimise", this.isMinimised.get() ? "line-icon-show" : "")}
+                        className={cn(
+                            "line-icon",
+                            "line-minimise",
+                            "hoverEffect",
+                            this.isMinimised.get() ? "line-icon-show" : ""
+                        )}
                         onClick={this.clickMinimise}
                     >
-                        <i
-                            className={`fa-sharp fa-regular ${
-                                this.isMinimised.get() ? "fa-plus-circle" : "fa-minus-circle"
-                            }`}
-                        />
+                        {this.isMinimised.get() ? <PlusIcon className="icon" /> : <MinusIcon className="icon" />}
                     </div>
                 </div>
                 <If condition={!this.isMinimised.get()}>
@@ -798,16 +791,13 @@ class LineCmd extends React.Component<
                             className="cmd-rtnstate"
                             style={{
                                 visibility: cmd.getStatus() == "done" ? "visible" : "hidden",
-                                fontSize: GlobalModel.termFontSize.get(),
                             }}
                         >
                             <If condition={rsdiff == null || rsdiff == ""}>
                                 <div className="cmd-rtnstate-label">state unchanged</div>
-                                <div className="cmd-rtnstate-sep"></div>
                             </If>
                             <If condition={rsdiff != null && rsdiff != ""}>
                                 <div className="cmd-rtnstate-label">new state</div>
-                                <div className="cmd-rtnstate-sep"></div>
                                 <div className="cmd-rtnstate-diff">{this.rtnStateDiff.get()}</div>
                             </If>
                         </div>
@@ -833,7 +823,6 @@ class Line extends React.Component<
         visible: OV<boolean>;
         onHeightChange: LineHeightChangeCallbackType;
         overrideCollapsed: OV<boolean>;
-        topBorder: boolean;
         renderMode: RenderModeType;
         noSelect?: boolean;
     },
@@ -855,84 +844,11 @@ class Line extends React.Component<
 }
 
 @mobxReact.observer
-class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<string, string> }, {}> {
-    render() {
-        let rptr = this.props.rptr;
-        if (rptr == null || isBlank(rptr.remoteid)) {
-            return <span className={cn("term-prompt", "color-green")}>&nbsp;</span>;
-        }
-        let remote = GlobalModel.getRemote(this.props.rptr.remoteid);
-        let remoteStr = getRemoteStr(rptr);
-        let festate = this.props.festate ?? {};
-        let cwd = getCwdStr(remote, festate);
-        let isRoot = false;
-        if (remote && remote.remotevars) {
-            if (remote.remotevars["sudo"] || remote.remotevars["bestuser"] == "root") {
-                isRoot = true;
-            }
-        }
-        let remoteColorClass = isRoot ? "color-red" : "color-green";
-        if (remote && remote.remoteopts && remote.remoteopts.color) {
-            remoteColorClass = "color-" + remote.remoteopts.color;
-        }
-        // TESTING cwd shortening with triple colon character
-        // if (cwd.startsWith("~/work/gopath/src/github.com/scripthaus-dev")) {
-        //     cwd = cwd.replace("~/work/gopath/src/github.com/scripthaus-dev", "\u22EEscripthaus-dev");
-        // }
-        let remoteTitle: string = null;
-        if (remote && remote.remotecanonicalname) {
-            remoteTitle = "connected to " + remote.remotecanonicalname;
-        }
-        let cwdElem = (
-            <span title="current directory" className="term-prompt-cwd">
-                <i className="fa-solid fa-sharp fa-folder-open" />
-                {cwd}
-            </span>
-        );
-        let remoteElem = (
-            <span title={remoteTitle} className={cn("term-prompt-remote", remoteColorClass)}>
-                [{remoteStr}]{" "}
-            </span>
-        );
-        let rootIndicatorElem = <span className="term-prompt-end">{isRoot ? "#" : "$"}</span>;
-        let branchElem = null;
-        let pythonElem = null;
-        if (!isBlank(festate["PROMPTVAR_GITBRANCH"])) {
-            let branchName = festate["PROMPTVAR_GITBRANCH"];
-            branchElem = (
-                <span title="current git branch" className="term-prompt-branch">
-                    <i className="fa-sharp fa-solid fa-code-branch" />
-                    {branchName}{" "}
-                </span>
-            );
-        }
-        if (!isBlank(festate["VIRTUAL_ENV"])) {
-            let venvDir = festate["VIRTUAL_ENV"];
-            let venv = getShortVEnv(venvDir);
-            pythonElem = (
-                <span title="python venv" className="term-prompt-python">
-                    <i className="fa-brands fa-python" />
-                    {venv}{" "}
-                </span>
-            );
-        }
-        return (
-            <span className="term-prompt">
-                {remoteElem} {pythonElem}
-                {branchElem}
-                {cwdElem} {rootIndicatorElem}
-            </span>
-        );
-    }
-}
-
-@mobxReact.observer
 class LineText extends React.Component<
     {
         screen: LineContainerModel;
         line: LineType;
         renderMode: RenderModeType;
-        topBorder: boolean;
         noSelect?: boolean;
     },
     {}
@@ -962,7 +878,7 @@ class LineText extends React.Component<
     }
 
     render() {
-        let { screen, line, topBorder, renderMode } = this.props;
+        let { screen, line, renderMode } = this.props;
         let formattedTime = lineutil.getLineDateTimeStr(line.ts);
         let isSelected = mobx
             .computed(() => screen.getSelectedLine() == line.linenum, {
@@ -974,9 +890,7 @@ class LineText extends React.Component<
                 name: "computed-isFocused",
             })
             .get();
-        let mainClass = cn("line", "line-text", "focus-parent", {
-            "top-border": topBorder,
-        });
+        let mainClass = cn("line", "line-text", "focus-parent");
         return (
             <div
                 className={mainClass}
@@ -998,4 +912,4 @@ class LineText extends React.Component<
     }
 }
 
-export { Line, Prompt };
+export { Line };

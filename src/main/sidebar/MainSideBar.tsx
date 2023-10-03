@@ -153,18 +153,17 @@ class MainSideBar extends React.Component<{}, {}> {
         }
         return sessionList.map((session, index) => {
             const isActive = GlobalModel.activeMainView.get() == "session" && activeSessionId == session.sessionId;
+            /** @TODO: Handle archived sessions and talk to Mike about session settings */
             return (
-                <>
-                    {/** @TODO: Handle archived sessions and talk to Mike about session settings */}
-                    <div
-                        className={`item hoverEffect ${isActive ? "active" : ""}`}
-                        onClick={() => this.handleSessionClick(session.sessionId)}
-                    >
-                        <span className="hotkey">^⌘</span>
-                        <span className="index">{index + 1}</span>
-                        <span>{session.name.get()}</span>
-                    </div>
-                </>
+                <div
+                    key={index}
+                    className={`item hoverEffect ${isActive ? "active" : ""}`}
+                    onClick={() => this.handleSessionClick(session.sessionId)}
+                >
+                    <span className="hotkey">^⌘</span>
+                    <span className="index">{index + 1}</span>
+                    <span>{session.name.get()}</span>
+                </div>
             );
         });
     }
@@ -196,7 +195,7 @@ class MainSideBar extends React.Component<{}, {}> {
         return (
             <div className={cn("main-sidebar", { collapsed: isCollapsed }, { "is-dev": GlobalModel.isDev })}>
                 <div className="arrow-container hoverEffect" onClick={this.toggleCollapsed}>
-                    <LeftChevronIcon />
+                    <LeftChevronIcon className="icon" />
                 </div>
                 <div className="contents">
                     <div className="top">
@@ -228,7 +227,7 @@ class MainSideBar extends React.Component<{}, {}> {
                             <AddIcon />
                         </div>
                     </div>
-                    <div className="middle">{this.getSessions()}</div>
+                    <div className="middle hideScrollbarUntillHover">{this.getSessions()}</div>
                     <div className="bottom">
                         <div className="item hoverEffect" onClick={this.handleSettingsClick}>
                             <SettingsIcon className="icon" />

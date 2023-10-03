@@ -135,7 +135,6 @@ class TerminalRenderer extends React.Component<
 
     render() {
         let { screen, line, width, staticRender, visible, collapsed } = this.props;
-        let isVisible = visible.get(); // for reaction
         let isPhysicalFocused = mobx
             .computed(() => screen.getIsFocused(line.linenum), {
                 name: "computed-getIsFocused",
@@ -152,7 +151,7 @@ class TerminalRenderer extends React.Component<
             .get();
         let cmd = screen.getCmd(line); // will not be null
         let usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
-        let termHeight = termHeightFromRows(usedRows, GlobalModel.termFontSize.get());
+        let termHeight = termHeightFromRows(usedRows <= 1 ? usedRows : usedRows + 3, GlobalModel.termFontSize.get());
         let termLoaded = this.termLoaded.get();
         return (
             <div

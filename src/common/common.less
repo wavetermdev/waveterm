@@ -128,65 +128,6 @@
         visibility: visible !important;
     }
 }
-.terminal-wrapper {
-    position: relative;
-
-    .term-block {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: transparent;
-        z-index: 10;
-    }
-
-    .xterm-screen {
-        &::-webkit-scrollbar {
-            display: none;
-        }
-    }
-
-    &.focus .xterm {
-        .xterm-screen {
-            overflow-y: scroll;
-            overscroll-behavior: contain;
-        }
-
-        .xterm-viewport {
-            overscroll-behavior: contain;
-        }
-    }
-
-    &.focus .xterm-viewport {
-        &::-webkit-scrollbar {
-            background-color: #777;
-            width: 5px;
-            height: 5px;
-        }
-
-        &::-webkit-scrollbar-thumb {
-            background: white;
-        }
-    }
-
-    .xterm-viewport {
-        &::-webkit-scrollbar {
-            background-color: #222;
-            width: 5px;
-            height: 5px;
-        }
-
-        &::-webkit-scrollbar-thumb {
-            background: #555;
-        }
-    }
-}
-
-body .xterm .xterm-viewport {
-    overflow-y: auto;
-    width: calc(100% + 5px);
-}
 
 .checkbox-toggle {
     position: relative;
@@ -563,70 +504,6 @@ body .xterm .xterm-viewport {
 .focus-parent:hover .focus-indicator {
     display: block;
     background-color: #222;
-}
-
-#main .term-prompt {
-    i {
-        margin-right: 3px;
-    }
-
-    .term-prompt-branch {
-        color: @term-white;
-    }
-
-    .term-prompt-python {
-        color: @term-bright-magenta;
-    }
-
-    .term-prompt-remote {
-        i {
-            margin-right: 0;
-        }
-    }
-
-    .term-prompt-remote {
-        color: @term-bright-green;
-
-        &.color-green {
-            color: @term-bright-green;
-        }
-
-        &.color-red {
-            color: @term-bright-red;
-        }
-
-        &.color-blue {
-            color: @term-bright-blue;
-        }
-
-        &.color-yellow {
-            color: @term-bright-yellow;
-        }
-
-        &.color-magenta {
-            color: @term-bright-magenta;
-        }
-
-        &.color-cyan {
-            color: @term-bright-cyan;
-        }
-
-        &.color-white {
-            color: @term-bright-white;
-        }
-
-        &.color-orange {
-            color: @tab-orange;
-        }
-    }
-
-    .term-prompt-cwd {
-        color: @term-bright-green;
-    }
-
-    .term-prompt-end {
-        color: @term-bright-green;
-    }
 }
 
 .remote-status {

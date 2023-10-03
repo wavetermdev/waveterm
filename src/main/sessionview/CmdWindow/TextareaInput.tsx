@@ -3,10 +3,10 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner } from "../../model";
-import { getMonoFontSize } from "../../util/textmeasure";
-import { isModKeyPress, hasNoModifiers } from "../../util/util";
-import "./sessionview.less";
+import { GlobalModel, GlobalCommandRunner } from "../../../model";
+import { getMonoFontSize } from "../../../util/textmeasure";
+import { isModKeyPress, hasNoModifiers } from "../../../util/util";
+import "../sessionview.less";
 
 function pageSize(div: any): number {
     if (div == null) {
@@ -534,9 +534,10 @@ class TextAreaInput extends React.Component<{ onHeightChange: () => void }, {}> 
         if (activeScreen != null) {
             activeScreen.focusType.get(); // for reaction
         }
-        let computedHeight = displayLines * 24 + 14 + 2; // 24 = height of line, 14 = padding, 2 = border
+        let computedInnerHeight = (displayLines + 1) * GlobalModel.termFontSize.get();
+        let computedOuterHeight = (displayLines + 2) * GlobalModel.termFontSize.get();
         return (
-            <div className="control cmd-input-control is-expanded" ref={this.controlRef}>
+            <div className="control is-expanded" ref={this.controlRef} style={{ height: computedOuterHeight }}>
                 <textarea
                     key="main"
                     ref={this.mainInputRef}
@@ -546,11 +547,11 @@ class TextAreaInput extends React.Component<{ onHeightChange: () => void }, {}> 
                     id="main-cmd-input"
                     onFocus={this.handleMainFocus}
                     onBlur={this.handleMainBlur}
-                    style={{ height: computedHeight, minHeight: computedHeight }}
+                    style={{ height: computedInnerHeight, minHeight: computedInnerHeight }}
                     value={curLine}
                     onKeyDown={this.onKeyDown}
                     onChange={this.onChange}
-                    className={cn("textarea", { "display-disabled": disabled })}
+                    className={cn("textarea glow", { "display-disabled": disabled })}
                 ></textarea>
                 <input
                     key="history"

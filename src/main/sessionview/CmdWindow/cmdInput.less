@@ -1,0 +1,393 @@
+@import "../../../index.less";
+
+.cmd-input {
+    border-radius: 6px;
+    max-height: max(300px, 40%);
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    width: calc(100% - 32px);
+    padding: 12px;
+    z-index: 100;
+    background: @background-session-components;
+    box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.5), 0px 3px 8px 0px rgba(0, 0, 0, 0.35),
+        0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
+    backdrop-filter: blur(20px);
+    border: 1px solid transparent;
+
+    &.active {
+        border: 1px solid rgba(@prompt-green, 0.8) !important;
+        box-shadow: 0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
+    }
+
+    &.has-info {
+        padding-top: 10px;
+    }
+
+    .focus-indicator {
+        height: 90%;
+        top: 5%;
+        left: 4px;
+    }
+
+    &.has-history {
+        padding-top: 5px;
+        height: max(300px, 40%);
+    }
+
+    &.has-remote {
+        max-height: max(300px, 70%);
+    }
+
+    .remote-status-warning {
+        display: flex;
+        flex-direction: row;
+        color: @term-yellow;
+        align-items: center;
+
+        .button {
+            margin-left: 10px;
+        }
+
+        .remote-name {
+        }
+    }
+
+    .input-minmax-control {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        color: @term-white;
+
+        padding: 5px;
+        cursor: pointer;
+    }
+
+    .cmd-input-grow-spacer {
+        flex-grow: 1;
+    }
+
+    .cmd-input-context {
+        color: #fff;
+        white-space: nowrap;
+    }
+
+    .cmd-input-field {
+        position: relative;
+        padding-right: 22em;
+
+        .cmd-hints {
+            position: absolute;
+            bottom: -14px;
+            right: 0px;
+        }
+        .control {
+            padding: 1em 2px;
+        }
+
+        textarea::-webkit-scrollbar {
+            width: 0;
+            height: 0;
+            display: none;
+        }
+
+        textarea {
+            color: @term-bright-white;
+            background-color: transparent;
+            padding: 0.5em;
+            resize: none;
+            overflow: auto;
+            overflow-wrap: anywhere;
+            border-color: transparent;
+            &.display-disabled {
+                background-color: #444;
+            }
+        }
+
+        input.history-input {
+            border: 0;
+            padding: 0;
+            height: 0;
+        }
+
+        .cmd-quick-context .button {
+            background-color: #000 !important;
+            color: @term-white;
+        }
+
+        &.inputmode-global .cmd-quick-context .button {
+            color: @term-black;
+            background-color: @tab-green !important;
+        }
+
+        &.inputmode-comment .cmd-quick-context .button {
+            color: @term-black;
+            background-color: @tab-blue !important;
+        }
+
+        .cmd-exec {
+            position: absolute;
+            right: 0;
+            bottom: -6px;
+            .icon {
+                margin: 0 8px 0 6px;
+                vertical-align: middle;
+                width: 32px;
+                height: 32px;
+                cursor: pointer;
+                padding: 4px;
+                border-radius: 50%;
+            }
+            .icon.disabled {
+                fill: @disabled;
+                cursor: default;
+            }
+            .cmd-btn {
+                display: inline-block;
+                margin-right: 2em;
+                opacity: 0.5;
+                cursor: pointer;
+                &:hover {
+                    opacity: 1;
+                }
+            }
+        }
+    }
+
+    .cmd-history {
+        color: @term-white;
+        margin-bottom: 5px;
+        overflow: auto;
+        flex-shrink: 1;
+
+        .history-title {
+            position: absolute;
+            z-index: 102;
+            top: 5px;
+            left: 20px;
+            background-color: @term-black;
+            color: @soft-blue;
+            padding-bottom: 4px;
+            display: flex;
+            flex-direction: row;
+            width: calc(100% - 40px);
+            overflow-x: auto;
+
+            .history-opt {
+                white-space: nowrap;
+            }
+
+            .history-clickable-opt {
+                white-space: nowrap;
+                cursor: pointer;
+            }
+
+            .grow-spacer {
+                flex: 1 0 10px;
+            }
+
+            .spacer {
+                flex: 0 0 10px;
+            }
+        }
+
+        .history-items {
+            margin-top: 24px;
+            color: @term-white;
+
+            padding-bottom: 6px;
+
+            .history-line {
+                white-space: pre;
+            }
+
+            .history-item.history-haderror {
+                color: mix(@term-red, @term-white, 50%);
+            }
+
+            .history-line:first-child {
+                margin-left: 0 !important;
+            }
+
+            .history-item {
+                padding-left: 5px;
+                cursor: pointer;
+
+                &:hover {
+                    background-color: #222;
+                }
+            }
+
+            .history-item.is-selected {
+                font-weight: bold;
+                color: @term-bright-white;
+                background-color: #444;
+            }
+
+            .history-item.is-selected.history-haderror {
+                color: mix(@term-bright-red, @term-bright-white, 50%);
+            }
+        }
+    }
+
+    .cmd-input-info {
+        flex-shrink: 1;
+        overflow-y: auto;
+        margin-bottom: 5px;
+
+        .info-msg {
+            color: @soft-blue;
+            padding-bottom: 2px;
+
+            a {
+                color: @term-blue;
+            }
+        }
+
+        .info-title {
+            color: @soft-blue;
+            padding-bottom: 2px;
+        }
+
+        .info-lines {
+            color: @term-white;
+            white-space: pre;
+            padding-bottom: 6px;
+        }
+
+        .info-comps {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            padding-bottom: 5px;
+
+            .info-comp {
+                min-width: 200px;
+                color: @term-white;
+                margin-right: 10px;
+
+                &.has-space {
+                    text-decoration: underline dotted #777;
+                }
+            }
+
+            .metacmd-comp {
+                color: @term-bright-green;
+            }
+        }
+
+        .info-error {
+            color: @term-red;
+            padding-bottom: 2px;
+        }
+
+        .info-remote-showall {
+            table.remotes-table {
+                th {
+                    color: @term-white;
+                    font-weight: bold;
+                }
+
+                th,
+                td {
+                    padding: 3px 8px 3px 8px;
+                }
+
+                td {
+                    cursor: pointer;
+                }
+
+                tr:hover td {
+                    background-color: #333;
+                }
+            }
+        }
+
+        .info-remote {
+            color: #d3d7cf;
+
+            .info-remote-title {
+                font-weight: bold;
+                color: @term-cyan;
+            }
+
+            .info-error,
+            .info-msg {
+                margin-top: 5px;
+                padding: 5px;
+            }
+
+            .remote-field {
+                display: flex;
+                flex-direction: row;
+
+                .remote-field-def {
+                    white-space: pre;
+                    width: 120px;
+                }
+
+                .remote-field-val {
+                    white-space: pre;
+                    display: flex;
+                    flex-direction: row;
+                }
+            }
+
+            .remote-input-field {
+                display: flex;
+                flex-direction: row;
+                height: 25px;
+                align-items: center;
+
+                .remote-field-label {
+                    white-space: pre;
+                    width: 140px;
+                    font-weight: bold;
+                    color: @term-bright-white;
+                }
+
+                .undo-icon {
+                    margin-left: 4px;
+                    cursor: pointer;
+                    padding: 2px;
+                }
+
+                .remote-field-control {
+                    &.text-control {
+                    }
+
+                    &.text-input {
+                        input[type="text"],
+                        input[type="number"],
+                        input[type="password"] {
+                            background-color: @term-black;
+                            color: @term-white;
+                            width: 200px;
+                        }
+                    }
+
+                    &.checkbox-input {
+                        input[type="checkbox"] {
+                            position: relative;
+                            top: 3px;
+                        }
+                    }
+
+                    &.select-input {
+                        select {
+                            width: 200px;
+                            background-color: @term-black;
+                            color: @term-white;
+                        }
+                    }
+                }
+            }
+        }
+
+        .info-remote-showall {
+            color: #d3d7cf;
+        }
+    }
+}

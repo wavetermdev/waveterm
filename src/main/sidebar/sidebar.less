@@ -31,6 +31,11 @@
         border-radius: 50%;
         padding: 2px;
         transition: transform 0.3s ease-in-out;
+
+        svg {
+            width: 16px;
+            height: 16px;
+        }
     }
 
     .top {
@@ -44,7 +49,7 @@
     }
 
     .middle {
-        max-height: calc(100vh - 30em);
+        max-height: calc(100vh - 32em);
         overflow-y: auto;
         padding: 8px 6px;
         border-bottom: 1px solid @base-border;
@@ -73,7 +78,7 @@
 
     .bottom {
         position: absolute;
-        bottom: 6px;
+        bottom: 2em;
         left: 0;
         width: 100%;
     }
@@ -88,6 +93,8 @@
         .icon {
             margin: 0 8px 0 6px;
             vertical-align: middle;
+            width: 16px;
+            height: 16px;
         }
         .hotkey {
             float: right;
