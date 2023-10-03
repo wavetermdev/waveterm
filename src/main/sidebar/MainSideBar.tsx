@@ -17,6 +17,7 @@ import { ReactComponent as AppsIcon } from "../../assets/icons/apps.svg";
 import { ReactComponent as ConnectionsIcon } from "../../assets/icons/connections.svg";
 import { ReactComponent as WorkspacesIcon } from "../../assets/icons/workspaces.svg";
 import { ReactComponent as AddIcon } from "../../assets/icons/add.svg";
+import { ReactComponent as ActionsIcon } from "../../assets/icons/tab/actions.svg";
 
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Session } from "../../model";
@@ -162,7 +163,8 @@ class MainSideBar extends React.Component<{}, {}> {
                 >
                     <span className="hotkey">^⌘</span>
                     <span className="index">{index + 1}</span>
-                    <span>{session.name.get()}</span>
+                    <span className="truncate sessionName">{session.name.get()}</span>
+                    <ActionsIcon className="icon hoverEffect" onClick={(e) => this.openSessionSettings(e, session)} />
                 </div>
             );
         });

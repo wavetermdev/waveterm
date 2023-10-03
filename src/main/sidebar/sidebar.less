@@ -90,11 +90,22 @@
         opacity: 1;
         visibility: visible;
         transition: opacity 0.1s ease-in-out, visibility 0.1s step-end;
-        .icon {
-            margin: 0 8px 0 6px;
+        .sessionName {
+            width: 11rem;
+            display: inline-block;
             vertical-align: middle;
-            width: 16px;
-            height: 16px;
+        }
+        .icon {
+            margin: 0 0.5em;
+            width: 1em;
+            height: 1em;
+            display: inline-block;
+            vertical-align: middle;
+            border-radius: 50%;
+            visibility: hidden;
+        }
+        &:hover .icon {
+            visibility: visible;
         }
         .hotkey {
             float: right;
