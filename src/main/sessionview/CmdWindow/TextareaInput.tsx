@@ -534,9 +534,10 @@ class TextAreaInput extends React.Component<{ onHeightChange: () => void }, {}> 
         if (activeScreen != null) {
             activeScreen.focusType.get(); // for reaction
         }
-        let computedHeight = displayLines * GlobalModel.termFontSize.get();
+        let computedInnerHeight = (displayLines + 1) * GlobalModel.termFontSize.get();
+        let computedOuterHeight = (displayLines + 2) * GlobalModel.termFontSize.get();
         return (
-            <div className="control is-expanded" ref={this.controlRef} style={{ height: computedHeight }}>
+            <div className="control is-expanded" ref={this.controlRef} style={{ height: computedOuterHeight }}>
                 <textarea
                     key="main"
                     ref={this.mainInputRef}
@@ -546,11 +547,11 @@ class TextAreaInput extends React.Component<{ onHeightChange: () => void }, {}> 
                     id="main-cmd-input"
                     onFocus={this.handleMainFocus}
                     onBlur={this.handleMainBlur}
-                    style={{ height: computedHeight, minHeight: computedHeight }}
+                    style={{ height: computedInnerHeight, minHeight: computedInnerHeight }}
                     value={curLine}
                     onKeyDown={this.onKeyDown}
                     onChange={this.onChange}
-                    className={cn("textarea", { "display-disabled": disabled })}
+                    className={cn("textarea glow", { "display-disabled": disabled })}
                 ></textarea>
                 <input
                     key="history"

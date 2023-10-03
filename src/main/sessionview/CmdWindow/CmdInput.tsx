@@ -106,11 +106,7 @@ class CmdInput extends React.Component<{}, {}> {
         let inputMode: string = inputModel.inputMode.get();
         let textAreaInputKey = screen == null ? "null" : screen.screenId;
         return (
-            <div
-                ref={this.cmdInputRef}
-                className={cn("cmd-input", { "has-info": infoShow }, { "has-history": historyShow })}
-            >
-                <div key="focus" className={cn("focus-indicator", { active: focusVal })} />
+            <div ref={this.cmdInputRef} className={cn("cmd-input", { "has-info": infoShow }, { active: focusVal })}>
                 <div key="minmax" onClick={this.onInfoToggle} className="input-minmax-control">
                     <If condition={infoShow || historyShow}>
                         <i className="fa-sharp fa-solid fa-chevron-down" />

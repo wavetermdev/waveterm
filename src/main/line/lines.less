@@ -61,18 +61,13 @@
             visibility: hidden;
             cursor: pointer;
             padding: 3px;
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
         }
 
         .line-icon-show {
             visibility: visible;
-        }
-
-        .line-bookmark:hover {
-            color: @term-white;
-        }
-
-        .line-minimise:hover {
-            color: @term-white;
         }
 
         .line-icon + .line-icon {
@@ -108,9 +103,6 @@
     }
 
     .image-wrapper {
-        padding: 2px 10px 5px 4px;
-        margin: 4px 8px 0 -4px;
-
         .loading-div {
             height: 20px;
             margin-left: 50px;
@@ -118,9 +110,6 @@
     }
 
     .terminal-wrapper {
-        padding: 2px 10px 5px 4px;
-        margin: 1em 8px 0 -4px;
-
         &.zero-height {
             padding: 0;
             margin: 0;
@@ -133,6 +122,7 @@
 
         .terminal {
             margin-right: 8px;
+            padding: 0.25em;
         }
 
         &.cmd-done .terminal .xterm-cursor {
@@ -155,10 +145,9 @@
             z-index: 2;
             margin: 6px 0 -2px 10px;
             padding: 2px 5px 2px 5px;
-            color: #666;
-            background-color: @term-black;
             display: inline-block;
             font-size: 0.8em;
+            opacity: 0.5;
         }
 
         .cmd-rtnstate-diff {
@@ -170,12 +159,25 @@
 }
 
 .line {
-    margin: 0px 5px 0px 5px;
-    padding: 5px 5px 0px 12px;
+    margin: 1em 1em 0 1em;
+    padding: 1em;
+    border-radius: 6px;
     display: flex;
     overflow: hidden;
     flex-shrink: 0;
     position: relative;
+    background: @base-background;
+    border: 1px solid transparent;
+
+    &.selected {
+        border: 1px solid rgba(@base-color, 0.8) !important;
+        box-shadow: 0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
+    }
+
+    &.active {
+        border: 1px solid rgba(@prompt-green, 0.8) !important;
+        box-shadow: 0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
+    }
 
     .focus-indicator {
         height: calc(100% - 7px);
@@ -205,7 +207,6 @@
 
         &.has-rtnstate {
             .linenum {
-                color: @term-white;
                 font-weight: bold;
             }
         }
@@ -245,7 +246,6 @@
     .avatar {
         max-height: 38px;
         width: 38px;
-        background-color: #555;
         display: flex;
         flex-shrink: 0;
         align-items: center;

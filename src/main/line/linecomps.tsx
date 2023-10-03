@@ -23,6 +23,12 @@ import type {
     RendererModel,
 } from "../../types/types";
 import cn from "classnames";
+
+import { ReactComponent as FavouritesIcon } from "../../assets/icons/favourites.svg";
+import { ReactComponent as PinIcon } from "../../assets/icons/pin.svg";
+import { ReactComponent as PlusIcon } from "../../assets/icons/plus.svg";
+import { ReactComponent as MinusIcon } from "../../assets/icons/minus.svg";
+
 import type { LineContainerModel } from "../../model";
 import { renderCmdText } from "../../common/common";
 import { SimpleBlobRenderer } from "./renderer/simplerenderer";
@@ -195,7 +201,6 @@ class LineCmd extends React.Component<
         staticRender: boolean;
         visible: OV<boolean>;
         onHeightChange: LineHeightChangeCallbackType;
-        topBorder: boolean;
         renderMode: RenderModeType;
         overrideCollapsed: OV<boolean>;
         noSelect?: boolean;
@@ -461,12 +466,7 @@ class LineCmd extends React.Component<
     }
 
     getTerminalRendererHeight(cmd: Cmd): number {
-        let { screen, line, width, topBorder, renderMode } = this.props;
-        // header is 36px tall, padding+border = 6px
-        // zero-terminal is 0px
-        // terminal-wrapper overhead is 11px (margin/padding)
-        // inner-height, if zero-lines => 42
-        //               else: 53+(lines*lineheight)
+        let { screen, line, width, renderMode } = this.props;
         let height = 36 + 6; // height of zero height terminal
         let usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
         if (usedRows > 0) {
@@ -491,7 +491,7 @@ class LineCmd extends React.Component<
     }
 
     renderSimple() {
-        let { screen, line, topBorder } = this.props;
+        let { screen, line } = this.props;
         let cmd = screen.getCmd(line);
         let height: number = 0;
         if (isBlank(line.renderer) || line.renderer == "terminal") {
@@ -504,9 +504,7 @@ class LineCmd extends React.Component<
             height = (hidePrompt ? 16 + 6 : 36 + 6) + usedRows;
         }
         let formattedTime = lineutil.getLineDateTimeStr(line.ts);
-        let mainDivCn = cn("line", "line-cmd", "line-simple", {
-            "top-border": topBorder,
-        });
+        let mainDivCn = cn("line", "line-cmd", "line-simple");
         return (
             <div
                 className={mainDivCn}
@@ -636,14 +634,11 @@ class LineCmd extends React.Component<
     };
 
     render() {
-        let { screen, line, width, staticRender, visible, topBorder, renderMode } = this.props;
-        let model = GlobalModel;
-        let lineid = line.lineid;
+        let { screen, line, width, staticRender, visible } = this.props;
         let isVisible = visible.get();
         if (staticRender || !isVisible) {
             return this.renderSimple();
         }
-        let formattedTime = lineutil.getLineDateTimeStr(line.ts);
         let cmd = screen.getCmd(line);
         if (cmd == null) {
             return (
@@ -696,10 +691,10 @@ class LineCmd extends React.Component<
         let mainDivCn = cn(
             "line",
             "line-cmd",
-            { focus: isFocused },
+            { selected: isSelected },
+            { active: isSelected && isFocused },
             { "cmd-done": !isRunning },
-            { "has-rtnstate": cmd.getRtnState() },
-            { "top-border": topBorder }
+            { "has-rtnstate": cmd.getRtnState() }
         );
         let rendererPlugin: RendererPluginType = null;
         let isNoneRenderer = line.renderer == "none";
@@ -718,10 +713,6 @@ class LineCmd extends React.Component<
                 data-screenid={line.screenid}
             >
                 <div
-                    key="focus"
-                    className={cn("focus-indicator", { selected: isSelected }, { active: isSelected && isFocused })}
-                />
-                <div
                     key="header"
                     className={cn("line-header", { "is-expanded": isExpanded }, { "hide-prompt": hidePrompt })}
                 >
@@ -736,27 +727,28 @@ class LineCmd extends React.Component<
                         onClick={this.clickPin}
                         style={{ display: "none" }}
                     >
-                        <i className="fa-sharp fa-solid fa-thumbtack" />
+                        <PinIcon className="icon" />
                     </div>
                     <div
                         key="bookmark"
                         title="Bookmark"
-                        className={cn("line-icon", "line-bookmark")}
+                        className={cn("line-icon", "line-bookmark", "hoverEffect")}
                         onClick={this.clickBookmark}
                     >
-                        <i className="fa-sharp fa-regular fa-bookmark" />
+                        <FavouritesIcon className="icon" />
                     </div>
                     <div
                         key="minimise"
                         title={`${this.isMinimised.get() ? "Maximise" : "Minimise"}`}
-                        className={cn("line-icon", "line-minimise", this.isMinimised.get() ? "line-icon-show" : "")}
+                        className={cn(
+                            "line-icon",
+                            "line-minimise",
+                            "hoverEffect",
+                            this.isMinimised.get() ? "line-icon-show" : ""
+                        )}
                         onClick={this.clickMinimise}
                     >
-                        <i
-                            className={`fa-sharp fa-regular ${
-                                this.isMinimised.get() ? "fa-plus-circle" : "fa-minus-circle"
-                            }`}
-                        />
+                        {this.isMinimised.get() ? <PlusIcon className="icon" /> : <MinusIcon className="icon" />}
                     </div>
                 </div>
                 <If condition={!this.isMinimised.get()}>
@@ -831,7 +823,6 @@ class Line extends React.Component<
         visible: OV<boolean>;
         onHeightChange: LineHeightChangeCallbackType;
         overrideCollapsed: OV<boolean>;
-        topBorder: boolean;
         renderMode: RenderModeType;
         noSelect?: boolean;
     },
@@ -858,7 +849,6 @@ class LineText extends React.Component<
         screen: LineContainerModel;
         line: LineType;
         renderMode: RenderModeType;
-        topBorder: boolean;
         noSelect?: boolean;
     },
     {}
@@ -888,7 +878,7 @@ class LineText extends React.Component<
     }
 
     render() {
-        let { screen, line, topBorder, renderMode } = this.props;
+        let { screen, line, renderMode } = this.props;
         let formattedTime = lineutil.getLineDateTimeStr(line.ts);
         let isSelected = mobx
             .computed(() => screen.getSelectedLine() == line.linenum, {
@@ -900,9 +890,7 @@ class LineText extends React.Component<
                 name: "computed-isFocused",
             })
             .get();
-        let mainClass = cn("line", "line-text", "focus-parent", {
-            "top-border": topBorder,
-        });
+        let mainClass = cn("line", "line-text", "focus-parent");
         return (
             <div
                 className={mainClass}

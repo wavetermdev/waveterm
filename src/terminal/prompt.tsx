@@ -9,7 +9,7 @@ import cn from "classnames";
 import { isBlank } from "../util/util";
 import { ReactComponent as FolderIcon } from "../assets/icons/folder.svg";
 
-import "./prompt.less";
+import "./terminal.less";
 
 dayjs.extend(localizedFormat);
 
