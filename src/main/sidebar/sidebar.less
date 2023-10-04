@@ -102,10 +102,6 @@
             display: inline-block;
             vertical-align: middle;
             border-radius: 50%;
-            visibility: hidden;
-        }
-        &:hover .icon {
-            visibility: visible;
         }
         .hotkey {
             float: right;
@@ -116,15 +112,24 @@
         &:hover .hotkey {
             visibility: visible;
         }
+        .actions {
+            visibility: hidden;
+        }
+        &:hover .actions {
+            visibility: visible;
+        }
         .add_workspace {
             float: right;
-            width: 20px;
-            height: 20px;
+            width: 1.5rem;
+            height: 1.5rem;
             padding: 2px;
             margin-right: 6px;
             border-radius: 50%;
             transition: transform 0.3s ease-in-out;
             vertical-align: middle;
+            svg {
+                fill: @base-color;
+            }
         }
     }
 

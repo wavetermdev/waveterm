@@ -257,6 +257,23 @@ class InfoMessage extends React.Component<{ width: number; children: React.React
     }
 }
 
+function LinkRenderer(props: any): any {
+    let newUrl = "https://extern?" + encodeURIComponent(props.href);
+    return (
+        <a href={newUrl} target="_blank">
+            {props.children}
+        </a>
+    );
+}
+
+function HeaderRenderer(props: any, hnum: number): any {
+    return <div className={cn("title", "is-" + hnum)}>{props.children}</div>;
+}
+
+function CodeRenderer(props: any): any {
+    return <code className={cn({ inline: props.inline })}>{props.children}</code>;
+}
+
 @mobxReact.observer
 class Markdown extends React.Component<{ text: string; style?: any; extraClassName?: string }, {}> {
     render() {

@@ -164,7 +164,10 @@ class MainSideBar extends React.Component<{}, {}> {
                     <span className="hotkey">^⌘</span>
                     <span className="index">{index + 1}</span>
                     <span className="truncate sessionName">{session.name.get()}</span>
-                    <ActionsIcon className="icon hoverEffect" onClick={(e) => this.openSessionSettings(e, session)} />
+                    <ActionsIcon
+                        className="icon hoverEffect actions"
+                        onClick={(e) => this.openSessionSettings(e, session)}
+                    />
                 </div>
             );
         });

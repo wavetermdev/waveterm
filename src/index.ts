@@ -11,7 +11,7 @@ let VERSION = __PROMPT_VERSION__;
 // @ts-ignore
 let BUILD = __PROMPT_BUILD__;
 
-loadFonts();
+//loadFonts();
 
 document.addEventListener("DOMContentLoaded", () => {
     let reactElem = React.createElement(Main, null, null);
