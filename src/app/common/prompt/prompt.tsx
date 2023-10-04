@@ -3,13 +3,13 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel, LineContainerModel } from "../model/model";
+import { GlobalModel, LineContainerModel } from "../../../model/model";
 import type { LineType, RemoteType, RemotePtrType, LineHeightChangeCallbackType } from "../../types/types";
 import cn from "classnames";
-import { isBlank } from "../util/util";
+import { isBlank } from "../../../util/util";
 import { ReactComponent as FolderIcon } from "../assets/icons/folder.svg";
 
-import "./terminal.less";
+import "./prompt.less";
 
 dayjs.extend(localizedFormat);
 

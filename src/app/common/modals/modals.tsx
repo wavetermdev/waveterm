@@ -6,8 +6,8 @@ import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel } from "../../model/model";
-import { Markdown } from "../common/common";
+import { GlobalModel } from "../../../model/model";
+import { Markdown } from "../common";
 
 dayjs.extend(localizedFormat);
 

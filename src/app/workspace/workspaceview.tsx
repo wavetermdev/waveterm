@@ -5,16 +5,16 @@ import cn from "classnames";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "../../model/model";
-import { CmdInput } from "./CmdWindow/CmdInput";
-import { ScreenView, ScreenTabs } from "./Screen/ScreenView";
-import "./sessionview.less";
+import { CmdInput } from "./cmdinput/cmdinput";
+import { ScreenView, ScreenTabs } from "./screen/screenview";
+import "./workspaceview.less";
 
 dayjs.extend(localizedFormat);
 
 type OV<V> = mobx.IObservableValue<V>;
 
 @mobxReact.observer
-class SessionView extends React.Component<{}, {}> {
+class WorkspaceView extends React.Component<{}, {}> {
     render() {
         let model = GlobalModel;
         let session = model.getActiveSession();
@@ -38,4 +38,4 @@ class SessionView extends React.Component<{}, {}> {
     }
 }
 
-export { SessionView };
+export { WorkspaceView };

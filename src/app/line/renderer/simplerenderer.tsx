@@ -21,7 +21,7 @@ import type {
     RendererContainerType,
 } from "../../../types/types";
 import * as T from "../../../types/types";
-import { PacketDataBuffer } from "../../../terminal/ptydata";
+import { PacketDataBuffer } from "../../common/prompt/ptydata";
 import { debounce, throttle } from "throttle-debounce";
 import * as util from "../../../util/util";
 import { GlobalModel } from "../../../model/model";

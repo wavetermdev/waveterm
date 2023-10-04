@@ -9,10 +9,10 @@ import type { RemoteType, RemoteInstanceType, RemotePtrType } from "../../../typ
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner } from "../../../model/model";
 import { renderCmdText } from "../../common/common";
-import { TextAreaInput } from "./TextareaInput";
-import { InfoMsg } from "../InfoMsg";
-import { HistoryInfo } from "../HistoryInfo";
-import { Prompt } from "../../../terminal/prompt";
+import { TextAreaInput } from "./textareainput";
+import { InfoMsg } from "./infomsg";
+import { HistoryInfo } from "./historyinfo";
+import { Prompt } from "../../common/prompt/prompt";
 import { ReactComponent as ExecIcon } from "../../../assets/icons/exec.svg";
 import "./cmdInput.less";
 

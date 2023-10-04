@@ -1,0 +1,61 @@
+@import "../../index.less";
+@import "./xterm.less" .terminal-wrapper {
+    position: relative;
+    margin-top: 1em;
+
+    .term-block {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: transparent;
+        z-index: 10;
+    }
+
+    .xterm-screen {
+        &::-webkit-scrollbar {
+            display: none;
+        }
+    }
+
+    &.focus .xterm {
+        .xterm-screen {
+            overflow-y: scroll;
+            overscroll-behavior: contain;
+        }
+
+        .xterm-viewport {
+            overscroll-behavior: contain;
+        }
+    }
+
+    &.focus .xterm-viewport {
+        &::-webkit-scrollbar {
+            background-color: #777;
+            width: 5px;
+            height: 5px;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            background: white;
+        }
+    }
+
+    .xterm-viewport {
+        &::-webkit-scrollbar {
+            background-color: #222;
+            width: 5px;
+            height: 5px;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            background: #555;
+        }
+    }
+}
+
+body .xterm .xterm-viewport {
+    overflow-y: auto;
+    width: calc(100% + 5px);
+}

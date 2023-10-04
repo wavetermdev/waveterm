@@ -36,7 +36,7 @@ import { FullRenderer } from "./renderer/fullrenderer";
 import { TerminalRenderer } from "../../plugins/terminal/Terminal";
 import { isBlank } from "../../util/util";
 import { PluginModel } from "../../plugins/plugins";
-import { Prompt } from "../../terminal/prompt";
+import { Prompt } from "../common/prompt/prompt";
 import * as lineutil from "./lineutil";
 
 import "./lines.less";

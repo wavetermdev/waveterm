@@ -11,12 +11,17 @@ import { isBlank } from "../util/util";
 import { BookmarksView } from "./bookmarks/bookmarks";
 import { WebShareView } from "../webshare/webshare-client-view";
 import { HistoryView } from "./history/history";
-import { ScreenSettingsModal, SessionSettingsModal, LineSettingsModal, ClientSettingsModal } from "./modals/settings";
+import {
+    ScreenSettingsModal,
+    SessionSettingsModal,
+    LineSettingsModal,
+    ClientSettingsModal,
+} from "./common/modals/settings";
 import { RemotesModal } from "./connections/connections";
-import { TosModal } from "./modals/Modals";
-import { SessionView } from "./sessionview/SessionView";
+import { TosModal } from "./common/modals/modals";
+import { WorkspaceView } from "./workspace/WorkspaceView";
 import { MainSideBar } from "./sidebar/MainSideBar";
-import { DisconnectedModal, ClientStopModal, AlertModal, WelcomeModal } from "./modals/Modals";
+import { DisconnectedModal, ClientStopModal, AlertModal, WelcomeModal } from "./common/modals/modals";
 import "../index.less";
 
 dayjs.extend(localizedFormat);
@@ -102,7 +107,7 @@ class App extends React.Component<{}, {}> {
             <div id="main" onContextMenu={this.handleContextMenu}>
                 <div className="main-content">
                     <MainSideBar />
-                    <SessionView />
+                    <WorkspaceView />
                     <HistoryView />
                     <BookmarksView />
                     <WebShareView />
