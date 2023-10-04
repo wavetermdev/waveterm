@@ -31,8 +31,8 @@ import { ReactComponent as MinusIcon } from "../../assets/icons/minus.svg";
 
 import type { LineContainerModel } from "../../model/model";
 import { renderCmdText } from "../common/common";
-import { SimpleBlobRenderer } from "./renderer/simplerenderer";
-import { FullRenderer } from "./renderer/fullrenderer";
+import { SimpleBlobRenderer } from "../../plugins/renderer/basicrenderer";
+import { IncrementalRenderer } from "../../plugins/renderer/incrementalrenderer";
 import { TerminalRenderer } from "../../plugins/terminal/Terminal";
 import { isBlank } from "../../util/util";
 import { PluginModel } from "../../plugins/plugins";
@@ -776,7 +776,7 @@ class LineCmd extends React.Component<
                         />
                     </If>
                     <If condition={rendererPlugin != null && rendererPlugin.rendererType == "full"}>
-                        <FullRenderer
+                        <IncrementalRenderer
                             rendererContainer={screen}
                             lineId={line.lineid}
                             plugin={rendererPlugin}

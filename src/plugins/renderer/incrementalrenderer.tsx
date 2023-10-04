@@ -6,14 +6,14 @@ import type {
     RendererPluginType,
     RendererModel,
     RendererContainerType,
-} from "../../../types/types";
+} from "../../types/types";
 import { debounce, throttle } from "throttle-debounce";
 
 type OV<V> = mobx.IObservableValue<V>;
 type CV<V> = mobx.IComputedValue<V>;
 
 @mobxReact.observer
-class FullRenderer extends React.Component<
+class IncrementalRenderer extends React.Component<
     {
         rendererContainer: RendererContainerType;
         lineId: string;
@@ -94,4 +94,4 @@ class FullRenderer extends React.Component<
     }
 }
 
-export { FullRenderer };
+export { IncrementalRenderer };
