@@ -9,7 +9,7 @@ import { sprintf } from "sprintf-js";
 import { isBlank } from "../util/util";
 import mustache from "mustache";
 import * as DOMPurify from "dompurify";
-import { GlobalModel } from "../model";
+import { GlobalModel } from "../model/model";
 
 import "./plugins.less";
 

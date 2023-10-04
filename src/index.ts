@@ -2,7 +2,7 @@ import * as mobx from "mobx";
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { sprintf } from "sprintf-js";
-import { Main } from "./main/Main";
+import { Main } from "./app/app";
 import { loadFonts } from "./util/util";
 import * as DOMPurify from "dompurify";
 
