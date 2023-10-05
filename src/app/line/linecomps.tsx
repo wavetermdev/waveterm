@@ -28,9 +28,9 @@ import { ReactComponent as MinusIcon } from "../assets/icons/minus.svg";
 
 import type { LineContainerModel } from "../../model/model";
 import { renderCmdText } from "../common/common";
-import { SimpleBlobRenderer } from "../../plugins/prompt-core/renderer/basicrenderer";
-import { IncrementalRenderer } from "../../plugins/prompt-core/renderer/incrementalrenderer";
-import { TerminalRenderer } from "../../plugins/prompt-core/terminal/terminal";
+import { SimpleBlobRenderer } from "../../plugins/core/basicrenderer";
+import { IncrementalRenderer } from "../../plugins/core/incrementalrenderer";
+import { TerminalRenderer } from "../../plugins/terminal/terminal";
 import { isBlank } from "../../util/util";
 import { PluginModel } from "../../plugins/plugins";
 import { Prompt } from "../common/prompt/prompt";

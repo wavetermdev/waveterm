@@ -11,7 +11,7 @@ import {
     boundInt,
     isModKeyPress,
 } from "../util/util";
-import { TermWrap } from "../plugins/prompt-core/terminal/term";
+import { TermWrap } from "../plugins/terminal/term";
 import type {
     SessionDataType,
     LineType,

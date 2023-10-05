@@ -13,10 +13,10 @@ import type {
     LineStateType,
     TermContextUnion,
     RendererContainerType,
-} from "../../../types/types";
+} from "../../types/types";
 import { debounce, throttle } from "throttle-debounce";
-import * as util from "../../../util/util";
-import { GlobalModel } from "../../../model/model";
+import * as util from "../../util/util";
+import { GlobalModel } from "../../model/model";
 
 type OV<V> = mobx.IObservableValue<V>;
 type CV<V> = mobx.IComputedValue<V>;
