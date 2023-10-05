@@ -5,11 +5,11 @@ import { boundMethod } from "autobind-decorator";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { If } from "tsx-control-statements/components";
-import { GlobalModel, LineContainerModel } from "../../model/model";
-import { termHeightFromRows } from "../../util/textmeasure";
-import type { LineType } from "../../types/types";
+import { GlobalModel, LineContainerModel } from "../../../model/model";
+import { termHeightFromRows } from "../../../util/textmeasure";
+import type { LineType } from "../../../types/types";
 import cn from "classnames";
-import * as lineutil from "../../app/line/lineutil";
+import * as lineutil from "../../../app/line/lineutil";
 
 import "./terminal.less";
 
@@ -150,7 +150,7 @@ class TerminalRenderer extends React.Component<
             .get();
         let cmd = screen.getCmd(line); // will not be null
         let usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
-        let termHeight = termHeightFromRows(usedRows <= 1 ? usedRows : usedRows + 3, GlobalModel.termFontSize.get());
+        let termHeight = termHeightFromRows(usedRows <= 1 ? usedRows : usedRows + 4, GlobalModel.termFontSize.get());
         let termLoaded = this.termLoaded.get();
         return (
             <div

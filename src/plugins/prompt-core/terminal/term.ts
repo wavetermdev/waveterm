@@ -2,8 +2,8 @@ import * as mobx from "mobx";
 import { Terminal } from "xterm";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
-import { windowWidthToCols, windowHeightToRows } from "../../util/textmeasure";
-import { boundInt } from "../../util/util";
+import { windowWidthToCols, windowHeightToRows } from "../../../util/textmeasure";
+import { boundInt } from "../../../util/util";
 import type {
     TermContextUnion,
     TermOptsType,
@@ -11,8 +11,8 @@ import type {
     RendererContext,
     WindowSize,
     PtyDataType,
-} from "../../types/types";
-import { getTheme } from "../../app/common/themes";
+} from "../../../types/types";
+import { getTheme } from "../../../app/common/themes";
 
 type DataUpdate = {
     data: Uint8Array;

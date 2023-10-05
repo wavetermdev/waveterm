@@ -1,13 +1,11 @@
 import * as React from "react";
 import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
-import cn from "classnames";
-import { If, For, When, Otherwise, Choose } from "tsx-control-statements/components";
-import { WindowSize, RendererContext, TermOptsType, LineType, RendererOpts } from "../types/types";
+import { RendererContext, RendererOpts } from "../../types/types";
 import { sprintf } from "sprintf-js";
-import { Markdown } from "../app/common/common";
+import { Markdown } from "../../app/common/common";
 
-import "./plugins.less";
+import "./markdown.less";
 
 type OV<V> = mobx.IObservableValue<V>;
 
@@ -46,10 +44,7 @@ class SimpleMarkdownRenderer extends React.Component<
         let dataBlob = this.props.data;
         if (dataBlob == null || dataBlob.notFound) {
             return (
-                <div
-                    className="renderer-container markdown-renderer"
-                    style={{ fontSize: this.props.opts.termFontSize }}
-                >
+                <div className="markdown-renderer" style={{ fontSize: this.props.opts.termFontSize }}>
                     <div className="load-error-text">
                         ERROR: file {dataBlob && dataBlob.name ? JSON.stringify(dataBlob.name) : ""} not found
                     </div>
@@ -58,33 +53,21 @@ class SimpleMarkdownRenderer extends React.Component<
         }
         if (this.markdownError.get() != null) {
             return (
-                <div
-                    className="renderer-container markdown-renderer"
-                    style={{ fontSize: this.props.opts.termFontSize }}
-                >
+                <div className="markdown-renderer" style={{ fontSize: this.props.opts.termFontSize }}>
                     <div className="load-error-text">{this.markdownError.get()}</div>
                 </div>
             );
         }
         if (this.markdownText.get() == null) {
-            return <div className="renderer-container markdown-renderer" style={{ height: this.props.savedHeight }} />;
+            return <div className="markdown-renderer" style={{ height: this.props.savedHeight }} />;
         }
         let opts = this.props.opts;
-        let markdownText = this.markdownText.get();
-        let maxWidth = opts.maxSize.width;
-        let minWidth = opts.maxSize.width;
-        if (minWidth > 1000) {
-            minWidth = 1000;
-        }
         return (
-            <div className="renderer-container markdown-renderer">
+            <div className="markdown-renderer">
                 <div
                     className="scroller"
                     style={{
                         maxHeight: opts.maxSize.height,
-                        minWidth: minWidth,
-                        width: "min-content",
-                        maxWidth: maxWidth,
                     }}
                 >
                     <Markdown text={this.markdownText.get()} style={{ maxHeight: opts.maxSize.height }} />

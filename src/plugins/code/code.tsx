@@ -7,8 +7,7 @@ import Split from "react-split-it";
 import loader from "@monaco-editor/loader";
 loader.config({ paths: { vs: "./node_modules/monaco-editor/min/vs" } });
 
-import "./split.less";
-import "../plugins.less";
+import "./code.less";
 
 function renderCmdText(text: string): any {
     return <span>&#x2318;{text}</span>;
@@ -425,13 +424,12 @@ class SourceCodeRenderer extends React.Component<
         const { exitcode } = this.props;
         const { code, message, isPreviewerAvailable, showPreview, editorFraction } = this.state;
 
-        if (code == null)
-            return <div className="renderer-container code-renderer" style={{ height: this.props.savedHeight }} />;
+        if (code == null) return <div className="code-renderer" style={{ height: this.props.savedHeight }} />;
 
         if (exitcode === 1)
             return (
                 <div
-                    className="renderer-container code-renderer"
+                    className="code-renderer"
                     style={{
                         fontSize: GlobalModel.termFontSize.get(),
                         color: "white",
@@ -442,7 +440,7 @@ class SourceCodeRenderer extends React.Component<
             );
 
         return (
-            <div className="renderer-container code-renderer">
+            <div className="code-renderer">
                 <Split sizes={[editorFraction, 1 - editorFraction]} onSetSizes={this.setSizes}>
                     {this.getCodeEditor()}
                     {isPreviewerAvailable && showPreview && this.getPreviewer()}

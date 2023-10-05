@@ -1,0 +1,127 @@
+@import "../../index.less";
+
+.code-renderer {
+    .scroller {
+        padding-top: 10px;
+        padding-bottom: 15px;
+    }
+
+    .monaco-editor .monaco-editor-background {
+        background-color: rgba(255, 255, 255, 0.075) !important;
+    }
+    .monaco-editor .scrollbar {
+        height: 4px !important;
+        width: 4px !important;
+    }
+    .monaco-editor .scrollbar .slider {
+        background-color: rgba(255, 255, 255) !important;
+    }
+
+    .cmd-hints,
+    .dropdown {
+        display: inline-block;
+        position: relative;
+        min-width: 6rem;
+        max-width: 6rem;
+        margin-right: 8px;
+    }
+    .hint-item {
+        border-radius: 4px 4px 0 0;
+        padding: 3px 9px 2px 8px;
+        text-align: center;
+    }
+    section {
+        transition: height 0.3s ease-in-out;
+    }
+    .preview {
+        color: #000;
+        background-color: rgb(200, 200, 200);
+    }
+    .preview:hover {
+        background-color: @term-white !important;
+    }
+    .save-enabled {
+        color: @term-white;
+        background-color: #4e9a06;
+    }
+    .save-disabled {
+        color: rgb(52, 52, 52);
+        background-color: #aaaea7;
+        cursor: default !important;
+    }
+    .save-disabled:hover {
+        background-color: #aaaea7;
+    }
+    .close {
+        color: @term-white;
+        background-color: #9e0000;
+    }
+    .message {
+        color: @term-white;
+        border-radius: 6px;
+        margin-bottom: 1rem;
+        padding: 4px 1rem;
+        max-width: 80vw;
+    }
+    .readonly {
+        position: absolute;
+        top: calc(1.5rem + 3px);
+        right: 10rem;
+        border-radius: 5px;
+        background-color: @term-bright-red;
+        color: @term-white;
+        z-index: 1;
+        padding: 0 6px 2px;
+    }
+
+    /** customising react-split-it **/
+    .jsoneditor {
+        border: none !important;
+    }
+
+    .split-horizontal {
+        display: flex;
+        width: 100%;
+        height: 100%;
+    }
+    .split-vertical {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .gutter {
+        flex-shrink: 0;
+        flex-grow: 0;
+        background: rgb(100, 100, 100);
+        max-width: 4px;
+    }
+    .gutter-horizontal {
+        cursor: col-resize;
+    }
+    .gutter-vertical {
+        cursor: row-resize;
+    }
+    .gutter:hover {
+        background: rgb(155, 155, 155);
+    }
+    .gutter-dragging:hover {
+        background: rgb(155, 155, 155);
+    }
+
+    .pane {
+        flex-shrink: 1;
+        flex-grow: 1;
+        position: relative;
+        min-width: 20rem;
+    }
+    .pane-dragging {
+        overflow: hidden;
+    }
+
+    .scrollable {
+        height: 100vh;
+        max-height: 100vh;
+        overflow: auto;
+    }
+}

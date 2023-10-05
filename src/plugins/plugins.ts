@@ -1,9 +1,9 @@
 import { RendererPluginType } from "../types/types";
-import { SimpleImageRenderer } from "./image";
-import { SimpleMarkdownRenderer } from "./markdown";
-import { SourceCodeRenderer } from "./code";
-import { SimpleMustacheRenderer } from "./mustache";
-import { OpenAIRenderer, OpenAIRendererModel } from "./openai";
+import { SimpleImageRenderer } from "./image/image";
+import { SimpleMarkdownRenderer } from "./markdown/markdown";
+import { SourceCodeRenderer } from "./code/code";
+import { SimpleMustacheRenderer } from "./mustache/mustache";
+import { OpenAIRenderer, OpenAIRendererModel } from "./openai/openai";
 import { isBlank } from "../util/util";
 import { sprintf } from "sprintf-js";
 

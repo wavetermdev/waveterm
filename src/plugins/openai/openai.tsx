@@ -1,13 +1,13 @@
 import * as React from "react";
 import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
-import * as T from "../types/types";
+import * as T from "../../types/types";
 import { debounce } from "throttle-debounce";
 import { boundMethod } from "autobind-decorator";
-import { PacketDataBuffer } from "./util/ptydata";
-import { Markdown } from "../app/common/common";
+import { PacketDataBuffer } from "../prompt-core/ptydata";
+import { Markdown } from "../../app/common/common";
 
-import "./plugins.less";
+import "./openai.less";
 
 type OV<V> = mobx.IObservableValue<V>;
 
@@ -227,14 +227,14 @@ class OpenAIRenderer extends React.Component<{ model: OpenAIRendererModel }> {
         let loadError = model.loadError.get();
         if (loadError != null) {
             return (
-                <div className="renderer-container openai-renderer openai-error" style={styleVal}>
+                <div className="openai-renderer openai-error" style={styleVal}>
                     {this.renderPrompt(cmd)}
                     {this.renderError()}
                 </div>
             );
         }
         return (
-            <div className="renderer-container openai-renderer" style={styleVal}>
+            <div className="openai-renderer" style={styleVal}>
                 {this.renderPrompt(cmd)}
                 {this.renderOutput(cmd)}
             </div>

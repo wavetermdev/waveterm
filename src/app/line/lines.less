@@ -45,7 +45,7 @@
     .line-header {
         display: flex;
         flex-direction: row;
-        height: 36px;
+        padding-bottom: 0.7em;
         width: 100%;
 
         &.is-expanded {
@@ -332,8 +332,6 @@
         display: flex;
         flex-direction: row;
 
-        margin-top: -4px;
-
         .simple-line-status {
             margin-top: 5px;
         }
@@ -445,8 +443,7 @@
 .lines {
     display: flex;
     flex-direction: column;
-    height: 80vh;
-    overflow-y: scroll;
+    overflow-y: auto;
     padding: 10px 0 10px 0;
     flex-grow: 1;
     position: relative;
