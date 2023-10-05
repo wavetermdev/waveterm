@@ -1,17 +1,14 @@
 import * as React from "react";
 import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
-import cn from "classnames";
 import { boundMethod } from "autobind-decorator";
-import { If, For, When, Otherwise, Choose } from "tsx-control-statements/components";
-import * as T from "../types/types";
-import { sprintf } from "sprintf-js";
-import { isBlank } from "../util/util";
+import * as T from "../../types/types";
+import { isBlank } from "../../util/util";
 import mustache from "mustache";
 import * as DOMPurify from "dompurify";
-import { GlobalModel } from "../model/model";
+import { GlobalModel } from "../../model/model";
 
-import "./plugins.less";
+import "./mustache.less";
 
 type OV<V> = mobx.IObservableValue<V>;
 
@@ -146,10 +143,7 @@ class SimpleMustacheRenderer extends React.Component<
         let errorMessage = this.dataLoadError.get() ?? this.templateLoadError.get();
         if (errorMessage != null) {
             return (
-                <div
-                    className="renderer-container mustache-renderer"
-                    style={{ fontSize: this.props.opts.termFontSize }}
-                >
+                <div className="mustache-renderer" style={{ fontSize: this.props.opts.termFontSize }}>
                     <div className="load-error-text">ERROR: {errorMessage}</div>
                     {this.renderCmdHints()}
                 </div>
@@ -158,7 +152,7 @@ class SimpleMustacheRenderer extends React.Component<
         if (this.templateLoading.get() || this.dataLoading.get()) {
             return (
                 <div
-                    className="renderer-container mustache-renderer"
+                    className="mustache-renderer"
                     style={{ fontSize: this.props.opts.termFontSize, height: this.props.savedHeight }}
                 >
                     <div className="renderer-loading">
@@ -182,10 +176,7 @@ class SimpleMustacheRenderer extends React.Component<
             renderedText = DOMPurify.sanitize(renderedText);
         } catch (e) {
             return (
-                <div
-                    className="renderer-container mustache-renderer"
-                    style={{ fontSize: this.props.opts.termFontSize }}
-                >
+                <div className="mustache-renderer" style={{ fontSize: this.props.opts.termFontSize }}>
                     <div className="load-error-text">ERROR running template: {e.message}</div>
                     {this.renderCmdHints()}
                 </div>
@@ -193,7 +184,7 @@ class SimpleMustacheRenderer extends React.Component<
         }
         // TODO non-term content font-size (default to 16)
         return (
-            <div className="renderer-container mustache-renderer" style={{ fontSize: 16 }}>
+            <div className="mustache-renderer" style={{ fontSize: 16 }}>
                 <div
                     className="scroller"
                     style={{

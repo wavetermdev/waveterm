@@ -1,9 +1,9 @@
 import * as React from "react";
 import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
-import { RendererContext, RendererOpts } from "../types/types";
+import { RendererContext, RendererOpts } from "../../types/types";
 
-import "./plugins.less";
+import "./image.less";
 
 type OV<V> = mobx.IObservableValue<V>;
 type CV<V> = mobx.IComputedValue<V>;
@@ -64,7 +64,7 @@ class SimpleImageRenderer extends React.Component<
         let dataBlob = this.props.data;
         if (dataBlob == null || dataBlob.notFound) {
             return (
-                <div className="renderer-container image-renderer" style={{ fontSize: this.props.opts.termFontSize }}>
+                <div className="image-renderer" style={{ fontSize: this.props.opts.termFontSize }}>
                     <div className="load-error-text">
                         ERROR: file {dataBlob && dataBlob.name ? JSON.stringify(dataBlob.name) : ""} not found
                     </div>
@@ -80,7 +80,7 @@ class SimpleImageRenderer extends React.Component<
             forceHeight = this.props.savedHeight;
         }
         return (
-            <div className="renderer-container image-renderer" style={{ height: forceHeight }}>
+            <div className="image-renderer" style={{ height: forceHeight }}>
                 <img
                     ref={this.imageRef}
                     style={{ maxHeight: opts.idealSize.height, maxWidth: opts.idealSize.width }}

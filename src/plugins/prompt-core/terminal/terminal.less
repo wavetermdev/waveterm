@@ -1,9 +1,8 @@
-@import "../../index.less";
+@import "../../../index.less";
 @import "./xterm.less";
 
 .terminal-wrapper {
     position: relative;
-    margin-top: 1em;
 
     .term-block {
         position: absolute;
@@ -23,7 +22,7 @@
 
     &.focus .xterm {
         .xterm-screen {
-            overflow-y: scroll;
+            overflow-y: auto;
             overscroll-behavior: contain;
         }
 

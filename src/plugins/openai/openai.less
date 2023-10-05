@@ -1,0 +1,36 @@
+@import "../../index.less";
+
+.openai-renderer {
+    .openai-message {
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+
+        .openai-role {
+            color: @term-bright-green;
+            font-weight: bold;
+            width: 100px;
+        }
+
+        .openai-role.openai-role-assistant {
+            color: @term-bright-white;
+        }
+
+        .openai-content-user {
+            white-space: pre;
+            color: @term-white;
+        }
+
+        .openai-content-assistant {
+            color: @term-white;
+        }
+
+        .openai-role-error {
+            color: @term-bright-red;
+        }
+
+        .openai-content-error {
+            color: @term-bright-red;
+        }
+    }
+}
