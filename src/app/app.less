@@ -1,0 +1,369 @@
+@import "../index.less";
+
+@font-face {
+    font-family: "Martian Mono";
+    src: url("./assets/fonts/MartianMono-VariableFont_wdth,wght.ttf") format("truetype");
+    font-weight: normal;
+    font-style: normal;
+}
+
+:root {
+    --fa-style-family: "Font Awesome 6 Sharp";
+}
+
+html,
+body {
+    overflow: hidden;
+    font-family: "Martian Mono", sans-serif;
+    font-size: 12.5px;
+    font-weight: 300;
+    line-height: 20px;
+    background: @base-background-transparent;
+    color: @base-color;
+}
+
+textarea {
+    overflow: hidden;
+    font-family: "Martian Mono", sans-serif;
+    font-size: 12.5px;
+    font-weight: 300;
+    line-height: 20px;
+    background: @base-background;
+    color: @base-color;
+}
+
+svg.icon {
+    fill: @base-color;
+    width: 100%;
+    height: 100%;
+    display: inline-block;
+}
+
+// styles.less
+
+.hoverEffect {
+    &:hover {
+        cursor: pointer;
+        box-shadow: 0px 2px 2px 0 rgba(255, 255, 255, 0.1), 0px 4px 5px 0 rgba(255, 255, 255, 0.2),
+            0px 0px 5px 2.5px rgba(255, 255, 255, 0.5);
+        transition: box-shadow 0.2s ease;
+    }
+}
+
+.hideScrollbarUntillHover {
+    &::-webkit-scrollbar {
+        width: 0;
+    }
+    &:hover::-webkit-scrollbar {
+        width: 4px;
+    }
+}
+
+.glow {
+    &:focus,
+    &:hover {
+        border: 1px solid rgba(@prompt-green, 0.8) !important;
+        box-shadow: 0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
+    }
+}
+
+.truncate {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#title-bar {
+    -webkit-app-region: drag;
+    height: 30px;
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+.is-dev #title-bar {
+    background: @base-background-dev;
+}
+
+.content {
+    a:hover {
+        color: #485fc7;
+    }
+}
+
+body::-webkit-scrollbar {
+    display: none;
+}
+
+*::-webkit-scrollbar {
+    background-color: #777;
+    width: 5px;
+    height: 5px;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: white;
+}
+
+input[type="checkbox"] {
+    cursor: pointer;
+}
+
+.display-none {
+    display: none;
+}
+
+.flex-spacer {
+    flex-grow: 1;
+}
+
+.flex-centered-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+a.a-block {
+    display: block;
+}
+
+// main layout
+#main {
+    margin-top: 30px;
+    height: calc(100vh - 30px);
+    display: flex;
+    flex-direction: column;
+
+    .main-content {
+        display: flex;
+        flex-direction: row;
+        height: 100%;
+
+        .history-view,
+        .bookmarks-view {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 300px;
+            position: relative;
+
+            &.is-hidden {
+                display: none;
+            }
+        }
+    }
+}
+
+.copied-indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: @term-white;
+    opacity: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    animation-name: fade-in-out;
+    animation-duration: 0.3s;
+}
+
+.loading-spinner {
+    display: inline-block;
+    position: absolute;
+    top: calc(40% - 8px);
+    left: 30px;
+    width: 20px;
+    height: 20px;
+
+    div {
+        box-sizing: border-box;
+        display: block;
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        margin: 2px;
+        border: 2px solid #777;
+        border-radius: 50%;
+        animation: loader-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+        border-color: #777 transparent transparent transparent;
+    }
+
+    div:nth-child(1) {
+        animation-delay: -0.45s;
+    }
+
+    div:nth-child(2) {
+        animation-delay: -0.3s;
+    }
+
+    div:nth-child(3) {
+        animation-delay: -0.15s;
+    }
+}
+
+#measure {
+    position: absolute;
+    z-index: -1;
+    top: -5000px;
+
+    .pre {
+        white-space: pre;
+    }
+}
+
+.text-button {
+    color: @term-white;
+    cursor: pointer;
+    background-color: #171717;
+    outline: 2px solid #171717;
+
+    &:hover,
+    &:focus {
+        color: @term-white;
+        background-color: #333;
+        outline: 2px solid #333;
+    }
+
+    &.connect-button {
+        color: @term-green;
+        &:hover {
+            color: @term-green;
+        }
+    }
+
+    &.disconnect-button {
+        color: @term-red;
+        &:hover {
+            color: @term-red;
+        }
+    }
+
+    &.success-button {
+        color: @term-green;
+        &:hover {
+            color: @term-green;
+        }
+    }
+
+    &.error-button {
+        color: @term-red;
+        &:hover {
+            color: @term-red;
+        }
+    }
+
+    &.grey-button {
+        color: #666;
+        &:hover {
+            color: #666;
+        }
+    }
+
+    &.disabled-button {
+        &:hover,
+        &:focus {
+            outline: none;
+            background-color: #171717;
+        }
+        cursor: default;
+    }
+}
+
+.focus-indicator {
+    position: absolute;
+    display: none;
+    width: 5px;
+    border-radius: 3px;
+    height: calc(100% - 20px);
+    top: 10px;
+    left: 0;
+    z-index: 8;
+
+    &.selected {
+        display: block;
+        background-color: #666 !important;
+    }
+
+    &.active,
+    &.active.selected {
+        display: block;
+        background-color: @tab-blue !important;
+    }
+
+    &.active.selected.fg-focus {
+        display: block;
+        background-color: @tab-green !important;
+    }
+}
+
+.focus-parent:hover .focus-indicator {
+    display: block;
+    background-color: #222;
+}
+
+.remote-status {
+    margin-right: 5px;
+    position: relative;
+    top: -3px;
+    color: #c4a000;
+
+    &.status-init,
+    &.status-disconnected {
+        color: #c4a000;
+    }
+
+    &.status-connecting {
+        color: #c4a000;
+    }
+
+    &.status-connected {
+        color: #4e9a06;
+    }
+
+    &.status-error {
+        color: #cc0000;
+    }
+}
+
+@keyframes loader-ring {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes fade-in {
+    0% {
+        opacity: 0;
+    }
+
+    80% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes fade-in-out {
+    0% {
+        opacity: 0;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+

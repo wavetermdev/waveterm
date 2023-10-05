@@ -21,7 +21,7 @@ import { TosModal } from "./common/modals/modals";
 import { WorkspaceView } from "../app/workspace/workspaceview";
 import { MainSideBar } from "./sidebar/MainSideBar";
 import { DisconnectedModal, ClientStopModal, AlertModal, WelcomeModal } from "./common/modals/modals";
-import "../index.less";
+import "./app.less";
 
 dayjs.extend(localizedFormat);
 
