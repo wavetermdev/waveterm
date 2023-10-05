@@ -1,5 +1,6 @@
 @base-color: #eceeec;
-@base-background: rgba(21, 23, 21, 1);
+@base-background: rgba(21, 23, 21, 1.0);
+@base-background-transparent: rgba(21, 23, 21, 0.7);
 @base-background-dev: rgba(21, 23, 21, 1);
 @base-border: rgba(241, 246, 243, 0.08);
 @background-session: rgba(13, 13, 13, 0.85);
@@ -53,7 +54,16 @@
 }
 
 html,
-body,
+body {
+    overflow: hidden;
+    font-family: "Martian Mono", sans-serif;
+    font-size: 12.5px;
+    font-weight: 300;
+    line-height: 20px;
+    background: @base-background-transparent;
+    color: @base-color;
+}
+
 textarea {
     overflow: hidden;
     font-family: "Martian Mono", sans-serif;
