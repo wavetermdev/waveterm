@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"os/user"
 	"path"
 	"regexp"
 	"runtime"
@@ -35,6 +36,7 @@ const PromptAppPathVarName = "PROMPT_APP_PATH"
 const PromptVersion = "v0.3.1"
 const PromptAuthKeyFileName = "prompt.authkey"
 const MShellVersion = "v0.3.0"
+const DefaultMacOSShell = "/bin/bash"
 
 var SessionDirCache = make(map[string]string)
 var ScreenDirCache = make(map[string]string)
@@ -375,4 +377,31 @@ func MacOSRelease() string {
 		osRelease = macOSRelease()
 	})
 	return osRelease
+}
+
+var userShellRegexp = regexp.MustCompile(`^UserShell: (.*)$`)
+
+// dscl . -read /User/[username] UserShell
+// defaults to /bin/bash
+func MacUserShell() string {
+	osUser, err := user.Current()
+	if err != nil {
+		log.Printf("error getting current user: %v\n", err)
+		return DefaultMacOSShell
+	}
+	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
+	userStr := "/Users/" + osUser.Name
+	out, err := exec.CommandContext(ctx, "dscl", ".", "-read", userStr, "UserShell").CombinedOutput()
+	if err != nil {
+		log.Printf("error executing macos user shell lookup: %v %q\n", err, string(out))
+		return DefaultMacOSShell
+	}
+	outStr := strings.TrimSpace(string(out))
+	m := userShellRegexp.FindStringSubmatch(outStr)
+	if m == nil {
+		log.Printf("error in format of dscl output: %q\n", outStr)
+		return DefaultMacOSShell
+	}
+	return m[1]
 }
