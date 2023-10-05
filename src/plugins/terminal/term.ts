@@ -12,7 +12,7 @@ import type {
     WindowSize,
     PtyDataType,
 } from "../../types/types";
-import { getTheme } from "../../themes";
+import { getTheme } from "../../app/common/themes";
 
 type DataUpdate = {
     data: Uint8Array;

@@ -10,13 +10,10 @@ import { GlobalModel, GlobalCommandRunner, Cmd, getTermPtyData } from "../../mod
 import { termHeightFromRows } from "../../util/textmeasure";
 import type {
     LineType,
-    CmdDataType,
     RemoteType,
     RemotePtrType,
     RenderModeType,
-    RendererContext,
     RendererOpts,
-    SimpleBlobRendererComponent,
     RendererPluginType,
     LineHeightChangeCallbackType,
     RendererModelInitializeParams,
@@ -24,10 +21,10 @@ import type {
 } from "../../types/types";
 import cn from "classnames";
 
-import { ReactComponent as FavouritesIcon } from "../../assets/icons/favourites.svg";
-import { ReactComponent as PinIcon } from "../../assets/icons/pin.svg";
-import { ReactComponent as PlusIcon } from "../../assets/icons/plus.svg";
-import { ReactComponent as MinusIcon } from "../../assets/icons/minus.svg";
+import { ReactComponent as FavouritesIcon } from "../assets/icons/favourites.svg";
+import { ReactComponent as PinIcon } from "../assets/icons/pin.svg";
+import { ReactComponent as PlusIcon } from "../assets/icons/plus.svg";
+import { ReactComponent as MinusIcon } from "../assets/icons/minus.svg";
 
 import type { LineContainerModel } from "../../model/model";
 import { renderCmdText } from "../common/common";

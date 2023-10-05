@@ -204,14 +204,14 @@ function createMainWindow(clientData) {
         titleBarStyle: "hiddenInset",
         width: bounds.width,
         height: bounds.height,
-        minWidth: 600,
-        minHeight: 400,
+        minWidth: 800,
+        minHeight: 600,
         webPreferences: {
             preload: path.join(getAppBasePath(), DistDir, "preload.js"),
         },
     });
     let indexHtml = isDev ? "index-dev.html" : "index.html";
-    win.loadFile(path.join(getAppBasePath(), "static", indexHtml));
+    win.loadFile(path.join(getAppBasePath(), "public", indexHtml));
     win.webContents.on("before-input-event", (e, input) => {
         if (win.isFocused()) {
             wasActive = true;

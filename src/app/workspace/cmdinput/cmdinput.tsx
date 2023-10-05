@@ -13,7 +13,7 @@ import { TextAreaInput } from "./textareainput";
 import { InfoMsg } from "./infomsg";
 import { HistoryInfo } from "./historyinfo";
 import { Prompt } from "../../common/prompt/prompt";
-import { ReactComponent as ExecIcon } from "../../../assets/icons/exec.svg";
+import { ReactComponent as ExecIcon } from "../../assets/icons/exec.svg";
 import "./cmdInput.less";
 
 dayjs.extend(localizedFormat);

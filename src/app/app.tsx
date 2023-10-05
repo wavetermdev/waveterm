@@ -9,7 +9,6 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "../model/model";
 import { isBlank } from "../util/util";
 import { BookmarksView } from "./bookmarks/bookmarks";
-import { WebShareView } from "../webshare/webshare-client-view";
 import { HistoryView } from "./history/history";
 import {
     ScreenSettingsModal,
@@ -19,7 +18,7 @@ import {
 } from "./common/modals/settings";
 import { RemotesModal } from "./connections/connections";
 import { TosModal } from "./common/modals/modals";
-import { WorkspaceView } from "./workspace/WorkspaceView";
+import { WorkspaceView } from "../app/workspace/workspaceview";
 import { MainSideBar } from "./sidebar/MainSideBar";
 import { DisconnectedModal, ClientStopModal, AlertModal, WelcomeModal } from "./common/modals/modals";
 import "../index.less";
@@ -110,7 +109,6 @@ class App extends React.Component<{}, {}> {
                     <WorkspaceView />
                     <HistoryView />
                     <BookmarksView />
-                    <WebShareView />
                 </div>
                 <AlertModal />
                 <If condition={GlobalModel.needsTos()}>

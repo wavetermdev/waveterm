@@ -10,7 +10,7 @@ import { RemoteType, RemoteEditType } from "../../types/types";
 import * as util from "../../util/util";
 import * as textmeasure from "../../util/textmeasure";
 
-import "./remotes.less";
+import "./connections.less";
 
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;

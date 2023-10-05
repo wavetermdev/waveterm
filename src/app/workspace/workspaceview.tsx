@@ -6,8 +6,9 @@ import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "../../model/model";
 import { CmdInput } from "./cmdinput/cmdinput";
-import { ScreenView, ScreenTabs } from "./screen/screenview";
-import "./workspaceview.less";
+import { ScreenView } from "./screen/screenview";
+import { ScreenTabs } from "./screen/tabs";
+import "./workspace.less";
 
 dayjs.extend(localizedFormat);
 

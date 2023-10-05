@@ -9,15 +9,11 @@ import { debounce } from "throttle-debounce";
 import dayjs from "dayjs";
 import type { LineType, RenderModeType, LineFactoryProps } from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel, GlobalCommandRunner, Session, ScreenLines, Screen } from "../../../model/model";
+import { GlobalModel, ScreenLines, Screen } from "../../../model/model";
 import { Line } from "../../line/linecomps";
-import { renderCmdText } from "../../common/common";
 import { LinesView } from "../../line/linesview";
-import { ReactComponent as SparkleIcon } from "../../../assets/icons/tab/sparkle.svg";
-import { ReactComponent as ActionsIcon } from "../../../assets/icons/tab/actions.svg";
-import { ReactComponent as AddIcon } from "../../../assets/icons/add.svg";
 
-import "../sessionview.less";
+import "./screenview.less";
 import "./tabs.less";
 
 dayjs.extend(localizedFormat);

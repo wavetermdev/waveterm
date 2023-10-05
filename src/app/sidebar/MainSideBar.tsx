@@ -2,27 +2,25 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import dayjs from "dayjs";
 import type { RemoteType } from "../../types/types";
 
-import { ReactComponent as LeftChevronIcon } from "../../assets/icons/chevron_left.svg";
-import { ReactComponent as HelpIcon } from "../../assets/icons/help.svg";
-import { ReactComponent as SettingsIcon } from "../../assets/icons/settings.svg";
-import { ReactComponent as DiscordIcon } from "../../assets/icons/discord.svg";
-import { ReactComponent as HistoryIcon } from "../../assets/icons/history.svg";
-import { ReactComponent as FavouritesIcon } from "../../assets/icons/favourites.svg";
-import { ReactComponent as AppsIcon } from "../../assets/icons/apps.svg";
-import { ReactComponent as ConnectionsIcon } from "../../assets/icons/connections.svg";
-import { ReactComponent as WorkspacesIcon } from "../../assets/icons/workspaces.svg";
-import { ReactComponent as AddIcon } from "../../assets/icons/add.svg";
-import { ReactComponent as ActionsIcon } from "../../assets/icons/tab/actions.svg";
+import { ReactComponent as LeftChevronIcon } from "../assets/icons/chevron_left.svg";
+import { ReactComponent as HelpIcon } from "../assets/icons/help.svg";
+import { ReactComponent as SettingsIcon } from "../assets/icons/settings.svg";
+import { ReactComponent as DiscordIcon } from "../assets/icons/discord.svg";
+import { ReactComponent as HistoryIcon } from "../assets/icons/history.svg";
+import { ReactComponent as FavouritesIcon } from "../assets/icons/favourites.svg";
+import { ReactComponent as AppsIcon } from "../assets/icons/apps.svg";
+import { ReactComponent as ConnectionsIcon } from "../assets/icons/connections.svg";
+import { ReactComponent as WorkspacesIcon } from "../assets/icons/workspaces.svg";
+import { ReactComponent as AddIcon } from "../assets/icons/add.svg";
+import { ReactComponent as ActionsIcon } from "../assets/icons/tab/actions.svg";
 
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Session } from "../../model/model";
 import { sortAndFilterRemotes, isBlank, openLink } from "../../util/util";
-import { RemoteStatusLight } from "../common/common";
 
 import "./sidebar.less";
 
