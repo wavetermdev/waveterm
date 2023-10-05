@@ -576,6 +576,7 @@ type InitPacketType struct {
 	HostName      string      `json:"hostname,omitempty"`
 	NotFound      bool        `json:"notfound,omitempty"`
 	UName         string      `json:"uname,omitempty"`
+	Shell         string      `json:"shell,omitempty"`
 	RemoteId      string      `json:"remoteid,omitempty"`
 }
 

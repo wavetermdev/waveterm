@@ -47,6 +47,7 @@ const MinMaxPtySize = 16 * 1024
 const MaxMaxPtySize = 100 * 1024 * 1024
 const MaxRunDataSize = 1024 * 1024
 const MaxTotalRunDataSize = 10 * MaxRunDataSize
+const ShellVarName = "SHELL"
 
 const GetStateTimeout = 5 * time.Second
 
@@ -1432,6 +1433,7 @@ func MakeServerInitPacket() (*packet.InitPacketType, error) {
 		return nil, err
 	}
 	initPacket.State = shellState
+	initPacket.Shell = os.Getenv(ShellVarName)
 	initPacket.RemoteId, err = base.GetRemoteId()
 	if err != nil {
 		return nil, err
