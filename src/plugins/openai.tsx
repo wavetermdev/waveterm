@@ -4,8 +4,8 @@ import * as mobxReact from "mobx-react";
 import * as T from "../types/types";
 import { debounce } from "throttle-debounce";
 import { boundMethod } from "autobind-decorator";
-import { PacketDataBuffer } from "../common/terminal/ptydata";
-import { Markdown } from "../common/common";
+import { PacketDataBuffer } from "./util/ptydata";
+import { Markdown } from "../app/common/common";
 
 import "./plugins.less";
 

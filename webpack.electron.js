@@ -4,7 +4,7 @@ const CopyPlugin = require("copy-webpack-plugin");
 module.exports = {
     mode: "development",
     entry: {
-        emain: ["./src/emain.ts"],
+        emain: ["./src/electron/emain.ts"],
     },
     target: "electron-main",
     output: {
@@ -50,7 +50,7 @@ module.exports = {
     },
     plugins: [
         new CopyPlugin({
-            patterns: [{ from: "src/preload.js", to: "preload.js" }],
+            patterns: [{ from: "src/electron/preload.js", to: "preload.js" }],
         }),
     ],
     resolve: {

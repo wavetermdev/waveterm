@@ -1,0 +1,70 @@
+@import "../../../index.less";
+
+.term-prompt {
+    font-weight: 300;
+    .icon {
+        margin: 0 4px 0 2px;
+        vertical-align: middle;
+        width: 1.2em;
+        height: 1.2em;
+        fill: @prompt-green;
+    }
+
+    .term-prompt-branch {
+        color: @term-white;
+    }
+
+    .term-prompt-python {
+        color: @term-bright-magenta;
+    }
+
+    .term-prompt-remote {
+        i {
+            margin-right: 0;
+        }
+    }
+
+    .term-prompt-remote {
+        color: @term-bright-green;
+
+        &.color-green {
+            color: @term-bright-green;
+        }
+
+        &.color-red {
+            color: @term-bright-red;
+        }
+
+        &.color-blue {
+            color: @term-bright-blue;
+        }
+
+        &.color-yellow {
+            color: @term-bright-yellow;
+        }
+
+        &.color-magenta {
+            color: @term-bright-magenta;
+        }
+
+        &.color-cyan {
+            color: @term-bright-cyan;
+        }
+
+        &.color-white {
+            color: @term-bright-white;
+        }
+
+        &.color-orange {
+            color: @tab-orange;
+        }
+    }
+
+    .term-prompt-cwd {
+        color: @term-bright-green;
+    }
+
+    .term-prompt-end {
+        color: @term-bright-green;
+    }
+}

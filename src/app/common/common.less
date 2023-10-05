@@ -1,0 +1,531 @@
+@import "../../index.less";
+
+.info-message {
+    position: relative;
+    font-weight: normal;
+
+    color: @term-white;
+
+    .message-content {
+        position: absolute;
+        display: none;
+        flex-direction: row;
+        align-items: flex-start;
+        top: -6px;
+        left: -6px;
+        padding: 5px;
+        border: 1px solid #777;
+        background-color: #444;
+        border-radius: 5px;
+        z-index: 5;
+        overflow: hidden;
+
+        .info-icon {
+            margin-right: 5px;
+            width: 12px;
+            flex-shrink: 0;
+        }
+
+        .info-children {
+            flex: 1 0 0;
+            overflow: hidden;
+        }
+    }
+
+    &:hover {
+        .message-content {
+            display: flex;
+        }
+    }
+}
+
+.cmdstr-code {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    padding: 0px 10px 0px 0;
+
+    &.is-large {
+        .use-button {
+            height: 28px;
+            width: 28px;
+        }
+
+        .code-div code {
+        }
+    }
+
+    &.limit-height .code-div {
+        max-height: 58px;
+    }
+
+    &.limit-height.is-large .code-div {
+        max-height: 68px;
+    }
+
+    .use-button {
+        flex-grow: 0;
+        padding: 3px;
+        border-radius: 3px 0 0 3px;
+
+        height: 22px;
+        width: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        align-self: flex-start;
+        cursor: pointer;
+        background-color: @term-black;
+
+        &:hover {
+            background-color: #777;
+        }
+    }
+
+    .code-div {
+        background-color: @term-black;
+        display: flex;
+        flex-direction: row;
+        min-width: 100px;
+        overflow: auto;
+        border-left: 1px solid #777;
+
+        code {
+            flex-shrink: 0;
+            min-width: 100px;
+            color: @term-white;
+            white-space: pre;
+            padding: 2px 8px 2px 8px;
+            background-color: @term-black;
+        }
+    }
+
+    .copy-control {
+        width: 0;
+        position: relative;
+        display: block;
+        visibility: hidden;
+
+        .inner-copy {
+            position: absolute;
+            bottom: -1px;
+            right: -20px;
+
+            padding: 2px;
+            padding-left: 4px;
+            cursor: pointer;
+            width: 20px;
+            background-color: @term-black;
+            border: 1px solid #333;
+            color: #777;
+            &:hover {
+                color: @term-white;
+            }
+        }
+    }
+
+    &:hover .copy-control {
+        visibility: visible !important;
+    }
+}
+
+.checkbox-toggle {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 23px;
+
+    input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        content: "";
+        cursor: pointer;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: #333;
+        transition: 0.5s;
+        border-radius: 33px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: @term-white;
+        transition: 0.5s;
+        border-radius: 50%;
+    }
+
+    input:checked + .slider {
+        background-color: @term-green;
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(18px);
+    }
+}
+
+.button.is-prompt-green {
+    background-color: #222;
+    color: @term-white;
+
+    &:hover {
+        background-color: @term-green;
+        color: @term-bright-white;
+    }
+}
+
+.button.is-plain,
+.button.is-prompt-cancel {
+    background-color: #222;
+    color: @term-white;
+
+    &:hover {
+        background-color: #666;
+        color: @term-bright-white;
+    }
+}
+
+.button.is-prompt-danger {
+    background-color: #222;
+    color: @term-white;
+
+    &:hover {
+        background-color: @tab-red;
+        color: @term-bright-white;
+    }
+}
+
+.button.is-inline-height {
+    height: 22px;
+}
+
+.button input.confirm-checkbox {
+    margin-right: 5px;
+}
+
+.cmd-hints {
+    display: flex;
+    flex-direction: row;
+
+    .hint-item {
+        padding: 0px 5px 0px 5px;
+        border-radius: 0 0 3px 3px;
+        cursor: pointer;
+    }
+
+    .hint-item:not(:last-child) {
+        margin-right: 8px;
+    }
+
+    .hint-item.color-green {
+        color: @term-black;
+        background-color: @tab-green;
+
+        &:hover {
+            color: @term-white;
+        }
+    }
+
+    .hint-item.color-nohover-green {
+        color: @term-black;
+        background-color: @tab-green;
+        cursor: default;
+    }
+
+    .hint-item.color-white {
+        color: @term-black;
+        background-color: @term-white;
+
+        &:hover {
+            background-color: @term-bright-white;
+        }
+    }
+
+    .hint-item.color-nohover-white {
+        color: @term-black;
+        background-color: @term-white;
+        cursor: default;
+    }
+
+    .hint-item.color-blue {
+        color: @term-black;
+        background-color: @tab-blue;
+
+        &:hover {
+            color: @term-white;
+        }
+    }
+
+    .hint-item.color-nohover-blue {
+        color: @term-black;
+        background-color: @tab-blue;
+        cursor: default;
+    }
+}
+
+.markdown {
+    color: @term-white;
+    margin-bottom: 10px;
+
+    code {
+        background-color: @term-black;
+        color: @term-white;
+        padding: 5px;
+    }
+
+    code.inline {
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+
+    .title {
+        color: @term-white;
+        margin-top: 16px;
+        margin-bottom: 8px;
+    }
+
+    strong {
+        color: @term-white;
+    }
+
+    a {
+        color: #32afff;
+    }
+
+    table {
+        tr th {
+            color: @term-white;
+        }
+    }
+
+    ul {
+        list-style-type: disc;
+        list-style-position: outside;
+        margin-left: 16px;
+    }
+
+    ol {
+        list-style-position: outside;
+        margin-left: 19px;
+    }
+
+    blockquote {
+        margin: 4px 10px 4px 10px;
+        border-radius: 3px;
+        background-color: #444;
+        padding: 2px 4px 2px 6px;
+    }
+
+    pre {
+        background-color: inherit;
+        margin: 4px 10px 4px 10px;
+        padding: 2px 4px 2px 6px;
+    }
+
+    .title.is-1 {
+        border-bottom: 1px solid #777;
+        padding-bottom: 6px;
+    }
+    .title.is-2 {
+        border-bottom: 1px solid #777;
+        padding-bottom: 6px;
+    }
+    .title.is-3 {
+    }
+    .title.is-4 {
+    }
+    .title.is-5 {
+    }
+    .title.is-6 {
+    }
+}
+
+.markdown > *:first-child {
+    margin-top: 0 !important;
+}
+
+.copied-indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: @term-white;
+    opacity: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    animation-name: fade-in-out;
+    animation-duration: 0.3s;
+}
+
+.loading-spinner {
+    display: inline-block;
+    position: absolute;
+    top: calc(40% - 8px);
+    left: 30px;
+    width: 20px;
+    height: 20px;
+
+    div {
+        box-sizing: border-box;
+        display: block;
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        margin: 2px;
+        border: 2px solid #777;
+        border-radius: 50%;
+        animation: loader-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+        border-color: #777 transparent transparent transparent;
+    }
+
+    div:nth-child(1) {
+        animation-delay: -0.45s;
+    }
+
+    div:nth-child(2) {
+        animation-delay: -0.3s;
+    }
+
+    div:nth-child(3) {
+        animation-delay: -0.15s;
+    }
+}
+
+#measure {
+    position: absolute;
+    z-index: -1;
+    top: -5000px;
+
+    .pre {
+        white-space: pre;
+    }
+}
+
+.text-button {
+    color: @term-white;
+    cursor: pointer;
+    background-color: #171717;
+    outline: 2px solid #171717;
+
+    &:hover,
+    &:focus {
+        color: @term-white;
+        background-color: #333;
+        outline: 2px solid #333;
+    }
+
+    &.connect-button {
+        color: @term-green;
+        &:hover {
+            color: @term-green;
+        }
+    }
+
+    &.disconnect-button {
+        color: @term-red;
+        &:hover {
+            color: @term-red;
+        }
+    }
+
+    &.success-button {
+        color: @term-green;
+        &:hover {
+            color: @term-green;
+        }
+    }
+
+    &.error-button {
+        color: @term-red;
+        &:hover {
+            color: @term-red;
+        }
+    }
+
+    &.grey-button {
+        color: #666;
+        &:hover {
+            color: #666;
+        }
+    }
+
+    &.disabled-button {
+        &:hover,
+        &:focus {
+            outline: none;
+            background-color: #171717;
+        }
+        cursor: default;
+    }
+}
+
+.focus-indicator {
+    position: absolute;
+    display: none;
+    width: 5px;
+    border-radius: 3px;
+    height: calc(100% - 20px);
+    top: 10px;
+    left: 0;
+    z-index: 8;
+
+    &.selected {
+        display: block;
+        background-color: #666 !important;
+    }
+
+    &.active,
+    &.active.selected {
+        display: block;
+        background-color: @tab-blue !important;
+    }
+
+    &.active.selected.fg-focus {
+        display: block;
+        background-color: @tab-green !important;
+    }
+}
+
+.focus-parent:hover .focus-indicator {
+    display: block;
+    background-color: #222;
+}
+
+.remote-status {
+    margin-right: 5px;
+    position: relative;
+    top: -3px;
+    color: #c4a000;
+
+    &.status-init,
+    &.status-disconnected {
+        color: #c4a000;
+    }
+
+    &.status-connecting {
+        color: #c4a000;
+    }
+
+    &.status-connected {
+        color: #4e9a06;
+    }
+
+    &.status-error {
+        color: #cc0000;
+    }
+}

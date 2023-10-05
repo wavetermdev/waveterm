@@ -1,8 +1,8 @@
 import * as React from "react";
 import { RendererContext, RendererOpts, LineStateType, RendererModelContainerApi } from "../../types/types";
 import Editor from "@monaco-editor/react";
-import { Markdown } from "../../common/common";
-import { GlobalModel, GlobalCommandRunner } from "../../model";
+import { Markdown } from "../../app/common/common";
+import { GlobalModel, GlobalCommandRunner } from "../../model/model";
 import Split from "react-split-it";
 import loader from "@monaco-editor/loader";
 loader.config({ paths: { vs: "./node_modules/monaco-editor/min/vs" } });
