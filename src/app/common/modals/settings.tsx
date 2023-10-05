@@ -9,6 +9,7 @@ import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage } from "../c
 import { LineType, RendererPluginType, ClientDataType, CommandRtnType } from "../../../types/types";
 import { PluginModel } from "../../../plugins/plugins";
 import * as util from "../../../util/util";
+import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
 
 import "./modals.less";
 
@@ -240,10 +241,8 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
                             <div className="settings-input">
                                 <div className="tab-colors">
                                     <div className="tab-color-cur">
-                                        <span className={cn("icon tab-color-icon", "color-" + screen.getTabColor())}>
-                                            <i className="fa-sharp fa-solid fa-square" />
-                                        </span>
-                                        <span>{screen.getTabColor()}</span>
+                                        <SquareIcon className={cn("tab-color-icon", "color-" + screen.getTabColor())}/>
+                                        <span className="tab-color-name">{screen.getTabColor()}</span>
                                     </div>
                                     <div className="tab-color-sep">|</div>
                                     <For each="color" of={TabColors}>
@@ -252,9 +251,7 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
                                             className="tab-color-select"
                                             onClick={() => this.selectTabColor(color)}
                                         >
-                                            <span className={cn("tab-color-icon", "color-" + color)}>
-                                                <i className="fa-sharp fa-solid fa-square" />
-                                            </span>
+                                            <SquareIcon className={cn("tab-color-icon", "color-" + color)}/>
                                         </div>
                                     </For>
                                 </div>

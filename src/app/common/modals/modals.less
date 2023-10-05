@@ -278,32 +278,35 @@
         .control {
         }
 
-        .tab-color-icon.color-green {
-            color: desaturate(@tab-green, 30%);
+        .tab-color-icon.color-default path {
+            fill: @tab-green;
         }
-        .tab-color-icon.color-orange {
-            color: desaturate(@tab-orange, 30%);
+        .tab-color-icon.color-green path {
+            fill: @tab-green;
         }
-        .tab-color-icon.color-red {
-            color: desaturate(@tab-red, 20%);
+        .tab-color-icon.color-orange path {
+            fill: @tab-orange;
         }
-        .tab-color-icon.color-yellow {
-            color: desaturate(@tab-yellow, 30%);
+        .tab-color-icon.color-red path {
+            fill: @tab-red;
         }
-        .tab-color-icon.color-blue {
-            color: desaturate(@tab-blue, 20%);
+        .tab-color-icon.color-yellow path {
+            fill: @tab-yellow;
         }
-        .tab-color-icon.color-magenta {
-            color: desaturate(@tab-magenta, 20%);
+        .tab-color-icon.color-blue path {
+            fill: @tab-blue;
         }
-        .tab-color-icon.color-cyan {
-            color: desaturate(@tab-cyan, 20%);
+        .tab-color-icon.color-magenta path {
+            fill: @tab-magenta;
         }
-        .tab-color-icon.color-white {
-            color: @term-white;
+        .tab-color-icon.color-cyan path {
+            fill: @tab-cyan;
         }
-        .tab-color-icon.color-black {
-            color: lighten(@tab-black, 20%);
+        .tab-color-icon.color-white path {
+            fill: @tab-white;
+        }
+        .tab-color-icon.color-black path {
+            fill: @tab-black
         }
 
         .tab-colors {
@@ -319,6 +322,15 @@
 
             .tab-color-cur {
                 width: 100px;
+            }
+
+            .tab-color-icon {
+                width: 1.1em;
+                vertical-align: middle;
+            }
+
+            .tab-color-name {
+                margin-left: 1em;
             }
 
             .tab-color-select {
