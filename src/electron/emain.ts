@@ -206,6 +206,7 @@ function createMainWindow(clientData) {
         height: bounds.height,
         minWidth: 800,
         minHeight: 600,
+        transparent: true,
         webPreferences: {
             preload: path.join(getAppBasePath(), DistDir, "preload.js"),
         },

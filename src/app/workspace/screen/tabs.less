@@ -1,126 +1,75 @@
 @import "../../../index.less";
 
 #main .screen-tabs .screen-tab {
-    &.color-default {
+    &.is-active {
         color: @tab-white-text;
-        &.is-active {
-            color: @tab-white-text;
-            border-radius: 12px 0px 0px 0px;
-            border-top: 1px solid #58c142;
-            background: linear-gradient(
-                180deg,
-                rgba(88, 193, 66, 0.2) 9.34%,
-                rgba(88, 193, 66, 0.03) 44.16%,
-                rgba(88, 193, 66, 0) 86.79%
-            );
+        border-radius: 12px 0px 0px 0px;
+        border-top: 1px solid #58c142;
+        background: linear-gradient(
+            180deg,
+            rgba(88, 193, 66, 0.2) 9.34%,
+            rgba(88, 193, 66, 0.03) 44.16%,
+            rgba(88, 193, 66, 0) 86.79%
+        );
+    }
+    
+    &.color-default {
+        svg.left-icon path {
+            fill: @tab-green;
         }
     }
 
     &.color-green {
-        color: @tab-white-text;
-        background-color: desaturate(@tab-green, 50%);
-        &:hover {
-            background-color: @tab-green;
-        }
-        &.is-active {
-            color: @term-white;
-            background-color: @tab-green;
+        svg.left-icon path {
+            fill: @tab-green;
         }
     }
 
     &.color-orange {
-        color: @tab-black-text;
-        background-color: desaturate(@tab-orange, 30%);
-        &:hover {
-            background-color: @tab-orange;
-        }
-        &.is-active {
-            color: @term-black;
-            background-color: @tab-orange;
+        svg.left-icon path {
+            fill: @tab-orange;
         }
     }
 
     &.color-red {
-        color: @tab-white-text;
-        background-color: desaturate(@tab-red, 40%);
-        &:hover {
-            background-color: @tab-red;
-        }
-        &.is-active {
-            color: @term-white;
-            background-color: @tab-red;
+        svg.left-icon path {
+            fill: @tab-red;
         }
     }
 
     &.color-yellow {
-        color: @tab-black-text;
-        background-color: desaturate(@tab-yellow, 40%);
-        &:hover {
-            background-color: @tab-yellow;
-        }
-        &.is-active {
-            background-color: @tab-yellow;
-            color: @term-black;
+        svg.left-icon path {
+            fill: @tab-yellow;
         }
     }
 
     &.color-blue {
-        color: @tab-white-text;
-        background-color: desaturate(@tab-blue, 50%);
-        &:hover {
-            background-color: @tab-blue;
-        }
-        &.is-active {
-            color: @term-white;
-            background-color: @tab-blue;
+        svg.left-icon path {
+            fill: @tab-blue;
         }
     }
 
     &.color-magenta {
-        color: @tab-white-text;
-        background-color: desaturate(@tab-magenta, 20%);
-        &:hover {
-            background-color: @tab-magenta;
-        }
-        &.is-active {
-            color: @term-white;
-            background-color: @tab-magenta;
+        svg.left-icon path {
+            fill: @tab-magenta;
         }
     }
 
     &.color-cyan {
-        color: @tab-black-text;
-        background-color: desaturate(@tab-cyan, 20%);
-        &:hover {
-            background-color: @tab-cyan;
-        }
-        &.is-active {
-            color: @term-black;
-            background-color: @tab-cyan;
+        svg.left-icon path {
+            fill: @tab-cyan;
         }
     }
 
     &.color-white {
-        color: @tab-black-text;
-        background-color: @term-white;
-        &:hover {
-            background-color: @tab-white;
-        }
-        &.is-active {
-            color: @term-black;
-            background-color: @tab-white;
+        svg.left-icon path {
+            fill: @tab-white;
         }
     }
 
     &.color-black {
-        color: @tab-white-text;
-        background-color: lighten(@tab-black, 20%);
-        &:hover {
-            background-color: @tab-black;
-        }
-        &.is-active {
-            color: @term-white;
-            background-color: @tab-black;
+        svg.left-icon path {
+            fill: @tab-black;
         }
     }
 
