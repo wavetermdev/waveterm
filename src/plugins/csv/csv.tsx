@@ -9,6 +9,11 @@ import {
     getCoreRowModel,
     useReactTable,
   } from '@tanstack/react-table'
+  import {
+    RankingInfo,
+    rankItem,
+    compareItems,
+  } from '@tanstack/match-sorter-utils'
   
 
 import "./csv.less";

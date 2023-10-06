@@ -5,6 +5,7 @@
     "license": "Proprietary",
     "dependencies": {
         "@monaco-editor/react": "^4.5.1",
+        "@tanstack/match-sorter-utils": "^8.8.4",
         "@tanstack/react-table": "^8.10.3",
         "autobind-decorator": "^2.4.0",
         "classnames": "^2.3.1",
