@@ -3,6 +3,13 @@ import { RendererContext, RendererOpts, LineStateType, RendererModelContainerApi
 import { GlobalModel } from "../../model/model";
 import Split from "react-split-it";
 import Papa from 'papaparse';
+import {
+    createColumnHelper,
+    flexRender,
+    getCoreRowModel,
+    useReactTable,
+  } from '@tanstack/react-table'
+  
 
 import "./csv.less";
 
@@ -35,6 +42,8 @@ interface State {
     showReadonly: boolean;
 }
 
+const columnHelper = createColumnHelper<any>();
+
 const CSVRenderer: FC<Props> = (props: Props) => {
     const csvCacheRef = useRef(new Map<string, string>());
     const [state, setState] = useState<State>({
@@ -47,6 +56,29 @@ const CSVRenderer: FC<Props> = (props: Props) => {
     const filePath = props.lineState["prompt:file"];
     const { screenId, lineId } = props.context;
     const cacheKey = `${screenId}-${lineId}-${filePath}`;
+
+    // Parse the CSV data
+    const parsedData = useMemo(() => {
+        if (state.content) {
+            const results = Papa.parse(state.content, { header: true });
+            return results.data as any[];  // 'any' can be replaced by a type fitting your CSV structure
+        }
+        return [];
+    }, [state.content]);
+
+    // Column Definitions
+    const columns = useMemo(() => {
+        if (parsedData.length === 0) {
+            return [];
+        }
+        const headers = Object.keys(parsedData[0]);
+        return headers.map(header =>
+            columnHelper.accessor(header, {
+                header: () => header,
+                cell: info => info.renderValue(),
+            })
+        );
+    }, [parsedData]);
 
     useEffect(() => {
         const content = csvCacheRef.current.get(cacheKey);
@@ -61,15 +93,6 @@ const CSVRenderer: FC<Props> = (props: Props) => {
 
         console.log("content", content);
     }, []);
-
-    // Parse the CSV data
-    const parsedData = useMemo(() => {
-        if (state.content) {
-            const results = Papa.parse(state.content, { header: true });
-            return results.data as any[];  // 'any' can be replaced by a type fitting your CSV structure
-        }
-        return [];
-    }, [state.content]);
 
     const getMessage = () => (
         <div style={{ position: "absolute", bottom: "-3px", left: "14px" }}>
@@ -88,12 +111,18 @@ const CSVRenderer: FC<Props> = (props: Props) => {
     const { exitcode } = props;
     const { content, message } = state;
 
+    const table = useReactTable({
+        data: parsedData,
+        columns,
+        getCoreRowModel: getCoreRowModel(),
+    });
+
     if (content == null) return <div className="csv-renderer" style={{ height: props.savedHeight }} />;
 
     if (exitcode === 1)
         return (
             <div
-                className="code-renderer"
+                className="csv-renderer"
                 style={{
                     fontSize: GlobalModel.termFontSize.get(),
                     color: "white",
@@ -103,11 +132,38 @@ const CSVRenderer: FC<Props> = (props: Props) => {
             </div>
         );
 
-    // Modify the rendering to include the parsed CSV data. You'd need to adapt this further to render the parsed CSV data effectively.
     return (
-        <div className="code-renderer">
+        <div className="csv-renderer">
             <Split>
-                <>{JSON.stringify(parsedData)}</> {/* This is just a placeholder to show the parsed data. You'd probably want a more sophisticated rendering. */}
+                <table>
+                    <thead>
+                    {table.getHeaderGroups().map(headerGroup => (
+                        <tr key={headerGroup.id}>
+                        {headerGroup.headers.map(header => (
+                            <th key={header.id}>
+                            {header.isPlaceholder
+                                ? null
+                                : flexRender(
+                                    header.column.columnDef.header,
+                                    header.getContext()
+                                )}
+                            </th>
+                        ))}
+                        </tr>
+                    ))}
+                    </thead>
+                    <tbody>
+                        {table.getRowModel().rows.map(row => (
+                            <tr key={row.id}>
+                            {row.getVisibleCells().map(cell => (
+                                <td key={cell.id}>
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                </td>
+                            ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </Split>
             {message && getMessage()}
         </div>
