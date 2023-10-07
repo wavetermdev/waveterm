@@ -8,15 +8,61 @@ import {
     flexRender,
     getCoreRowModel,
     useReactTable,
+    ColumnFiltersState,
+    FilterFn,
+    sortingFns,
+    SortingFn,
+    getFilteredRowModel,
+    getSortedRowModel,
   } from '@tanstack/react-table'
   import {
     RankingInfo,
     rankItem,
     compareItems,
   } from '@tanstack/match-sorter-utils'
+import Filter from "./filter";
+import DebouncedInput from "./search";
   
 
 import "./csv.less";
+
+declare module '@tanstack/table-core' {
+    interface FilterFns {
+      fuzzy: FilterFn<unknown>
+    }
+    interface FilterMeta {
+      itemRank: RankingInfo
+    }
+}
+
+const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
+    // Rank the item
+    const itemRank = rankItem(row.getValue(columnId), value)
+  
+    // Store the itemRank info
+    addMeta({
+      itemRank,
+    })
+  
+    // Return if the item should be filtered in/out
+    return itemRank.passed
+  }
+  
+  const fuzzySort: SortingFn<any> = (rowA, rowB, columnId) => {
+    let dir = 0
+  
+    // Only sort by rank if the column has ranking information
+    if (rowA.columnFiltersMeta[columnId]) {
+      dir = compareItems(
+        rowA.columnFiltersMeta[columnId]?.itemRank!,
+        rowB.columnFiltersMeta[columnId]?.itemRank!
+      )
+    }
+  
+    // Provide an alphanumeric fallback for when the item ranks are equal
+    return dir === 0 ? sortingFns.alphanumeric(rowA, rowB, columnId) : dir
+}
+  
 
 interface DataColumn {
     Header: string;
@@ -57,6 +103,10 @@ const CSVRenderer: FC<Props> = (props: Props) => {
         isPreviewerAvailable: false,
         showReadonly: true,
     });
+    const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
+        []
+      )
+    const [globalFilter, setGlobalFilter] = React.useState('')
 
     const filePath = props.lineState["prompt:file"];
     const { screenId, lineId } = props.context;
@@ -95,8 +145,6 @@ const CSVRenderer: FC<Props> = (props: Props) => {
                 csvCacheRef.current.set(cacheKey, content);
             });
         }
-
-        console.log("content", content);
     }, []);
 
     const getMessage = () => (
@@ -119,8 +167,28 @@ const CSVRenderer: FC<Props> = (props: Props) => {
     const table = useReactTable({
         data: parsedData,
         columns,
+        filterFns: {
+            fuzzy: fuzzyFilter,
+        },
+          state: {
+            columnFilters,
+            globalFilter,
+        },
+        onColumnFiltersChange: setColumnFilters,
+        onGlobalFilterChange: setGlobalFilter,
+        globalFilterFn: fuzzyFilter,
         getCoreRowModel: getCoreRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        getSortedRowModel: getSortedRowModel(),
     });
+
+    // useEffect(() => {
+    //     if (table.getState().columnFilters[0]?.id === 'fullName') {
+    //       if (table.getState().sorting[0]?.id !== 'fullName') {
+    //         table.setSorting([{ id: 'fullName', desc: false }])
+    //       }
+    //     }
+    // }, [table.getState().columnFilters[0]?.id])
 
     if (content == null) return <div className="csv-renderer" style={{ height: props.savedHeight }} />;
 
@@ -139,21 +207,51 @@ const CSVRenderer: FC<Props> = (props: Props) => {
 
     return (
         <div className="csv-renderer">
+            <div>
+                <DebouncedInput
+                value={globalFilter ?? ''}
+                onChange={value => setGlobalFilter(String(value))}
+                className="global-search"
+                placeholder="Search all columns..."
+                />
+            </div>
             <Split>
                 <table>
                     <thead>
                     {table.getHeaderGroups().map(headerGroup => (
                         <tr key={headerGroup.id}>
-                        {headerGroup.headers.map(header => (
-                            <th key={header.id}>
-                            {header.isPlaceholder
-                                ? null
-                                : flexRender(
-                                    header.column.columnDef.header,
-                                    header.getContext()
-                                )}
-                            </th>
-                        ))}
+                            {headerGroup.headers.map(header => (
+                                <th key={header.id}>
+                                    {header.isPlaceholder
+                                        ? null
+                                        : (
+                                            <>
+                                                <div
+                                                    {...{
+                                                        className: header.column.getCanSort()
+                                                        ? 'cursor-pointer select-none'
+                                                        : '',
+                                                        onClick: header.column.getToggleSortingHandler(),
+                                                    }}
+                                                >
+                                                    {flexRender(
+                                                        header.column.columnDef.header,
+                                                        header.getContext()
+                                                    )}
+                                                    {{
+                                                        asc: ' 🔼',
+                                                        desc: ' 🔽',
+                                                    }[header.column.getIsSorted() as string] ?? null}
+                                                </div>
+                                                {header.column.getCanFilter() ? (
+                                                    <div>
+                                                        <Filter column={header.column} table={table} />
+                                                    </div>
+                                                ) : null}
+                                            </>
+                                        )}
+                                </th>
+                            ))}
                         </tr>
                     ))}
                     </thead>
