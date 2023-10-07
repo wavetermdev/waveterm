@@ -61,13 +61,18 @@ const Filter: FC<{
     </div>
   ) : (
     <div className="search-renderer">
-      <DebouncedInput
-        type="text"
-        value={(columnFilterValue ?? '') as string}
-        onChange={value => column.setFilterValue(value)}
-        placeholder={`Search...`}
-        list={column.id + 'list'}
-      />
+         <datalist id={column.id + 'list'}>
+            {sortedUniqueValues.slice(0, 5000).map((value: any) => (
+                <option value={value} key={value} />
+            ))}
+        </datalist>
+        <DebouncedInput
+            type="text"
+            value={(columnFilterValue ?? '') as string}
+            onChange={value => column.setFilterValue(value)}
+            placeholder={`Search... (${column.getFacetedUniqueValues().size})`}
+            list={column.id + 'list'}
+        />
     </div>
   );
 };

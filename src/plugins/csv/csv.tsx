@@ -5,14 +5,17 @@ import Papa from 'papaparse';
 import {
     createColumnHelper,
     flexRender,
-    getCoreRowModel,
     useReactTable,
     ColumnFiltersState,
-    FilterFn,
-    sortingFns,
-    SortingFn,
+    getCoreRowModel,
     getFilteredRowModel,
+    getFacetedRowModel,
+    getFacetedUniqueValues,
+    getFacetedMinMaxValues,
+    getPaginationRowModel,
+    sortingFns,
     getSortedRowModel,
+    FilterFn,
   } from '@tanstack/react-table'
   import {
     RankingInfo,
@@ -33,6 +36,10 @@ declare module '@tanstack/table-core' {
       itemRank: RankingInfo
     }
 }
+
+type CSVRow = {
+    [key: string]: string | number;
+};
 
 const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
     // Rank the item
@@ -112,13 +119,25 @@ const CSVRenderer: FC<Props> = (props: Props) => {
     const cacheKey = `${screenId}-${lineId}-${filePath}`;
 
     // Parse the CSV data
-    const parsedData = useMemo(() => {
-        if (state.content) {
-            const results = Papa.parse(state.content, { header: true });
-            return results.data as any[];  // 'any' can be replaced by a type fitting your CSV structure
-        }
-        return [];
-    }, [state.content]);
+    const parsedData = useMemo<CSVRow[]>(() => {
+        if (!state.content) return [];
+    
+        const results = Papa.parse(state.content, { header: true });
+    
+        return results.data.map(row => {
+            return Object.fromEntries(
+                Object.entries(row as CSVRow).map(([key, value]) => {
+                    if (typeof value === 'string') {
+                        const numberValue = parseFloat(value);
+                        if (!isNaN(numberValue) && String(numberValue) === value) {
+                            return [key, numberValue];
+                        }
+                    }
+                    return [key, value];
+                })
+            ) as CSVRow;
+        });
+    }, [state.content]);    
 
     // Column Definitions
     const columns = useMemo(() => {
@@ -179,6 +198,10 @@ const CSVRenderer: FC<Props> = (props: Props) => {
         getCoreRowModel: getCoreRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
         getSortedRowModel: getSortedRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+        getFacetedRowModel: getFacetedRowModel(),
+        getFacetedUniqueValues: getFacetedUniqueValues(),
+        getFacetedMinMaxValues: getFacetedMinMaxValues(),
     });
 
     if (content == null) return <div className="csv-renderer" style={{ height: props.savedHeight }} />;
