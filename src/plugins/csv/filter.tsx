@@ -58,23 +58,16 @@ const Filter: FC<{
           className="w-24 border shadow rounded"
         />
       </Split>
-      <div className="h-1" />
     </div>
   ) : (
     <div className="search-renderer">
-      <datalist id={column.id + 'list'}>
-        {sortedUniqueValues.slice(0, 5000).map((value: any) => (
-          <option value={value} key={value} />
-        ))}
-      </datalist>
       <DebouncedInput
         type="text"
         value={(columnFilterValue ?? '') as string}
         onChange={value => column.setFilterValue(value)}
-        placeholder={`Search... (${column.getFacetedUniqueValues().size})`}
+        placeholder={`Search...`}
         list={column.id + 'list'}
       />
-      <div className="h-1" />
     </div>
   );
 };

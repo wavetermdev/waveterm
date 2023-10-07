@@ -1,7 +1,6 @@
 import React, { FC, useEffect, useState, useRef, useMemo } from "react";
 import { RendererContext, RendererOpts, LineStateType, RendererModelContainerApi } from "../../types/types";
 import { GlobalModel } from "../../model/model";
-import Split from "react-split-it";
 import Papa from 'papaparse';
 import {
     createColumnHelper,
@@ -22,8 +21,8 @@ import {
   } from '@tanstack/match-sorter-utils'
 import Filter from "./filter";
 import DebouncedInput from "./search";
+import Pagination from "./pagination";
   
-
 import "./csv.less";
 
 declare module '@tanstack/table-core' {
@@ -182,14 +181,6 @@ const CSVRenderer: FC<Props> = (props: Props) => {
         getSortedRowModel: getSortedRowModel(),
     });
 
-    // useEffect(() => {
-    //     if (table.getState().columnFilters[0]?.id === 'fullName') {
-    //       if (table.getState().sorting[0]?.id !== 'fullName') {
-    //         table.setSorting([{ id: 'fullName', desc: false }])
-    //       }
-    //     }
-    // }, [table.getState().columnFilters[0]?.id])
-
     if (content == null) return <div className="csv-renderer" style={{ height: props.savedHeight }} />;
 
     if (exitcode === 1)
@@ -215,7 +206,7 @@ const CSVRenderer: FC<Props> = (props: Props) => {
                 placeholder="Search all columns..."
                 />
             </div>
-            <Split>
+            <div>
                 <table>
                     <thead>
                     {table.getHeaderGroups().map(headerGroup => (
@@ -267,7 +258,8 @@ const CSVRenderer: FC<Props> = (props: Props) => {
                         ))}
                     </tbody>
                 </table>
-            </Split>
+                <Pagination table={table} />
+            </div>
             {message && getMessage()}
         </div>
     );
