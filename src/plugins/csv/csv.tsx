@@ -229,60 +229,58 @@ const CSVRenderer: FC<Props> = (props: Props) => {
                 placeholder="Search all columns..."
                 />
             </div>
-            <div>
-                <table>
-                    <thead>
-                    {table.getHeaderGroups().map(headerGroup => (
-                        <tr key={headerGroup.id}>
-                            {headerGroup.headers.map(header => (
-                                <th key={header.id}>
-                                    {header.isPlaceholder
-                                        ? null
-                                        : (
-                                            <>
-                                                <div
-                                                    {...{
-                                                        className: header.column.getCanSort()
-                                                        ? 'cursor-pointer select-none'
-                                                        : '',
-                                                        onClick: header.column.getToggleSortingHandler(),
-                                                    }}
-                                                >
-                                                    {flexRender(
-                                                        header.column.columnDef.header,
-                                                        header.getContext()
-                                                    )}
-                                                    {{
-                                                        asc: ' 🔼',
-                                                        desc: ' 🔽',
-                                                    }[header.column.getIsSorted() as string] ?? null}
+            <table>
+                <thead>
+                {table.getHeaderGroups().map(headerGroup => (
+                    <tr key={headerGroup.id}>
+                        {headerGroup.headers.map(header => (
+                            <th key={header.id}>
+                                {header.isPlaceholder
+                                    ? null
+                                    : (
+                                        <>
+                                            <div
+                                                {...{
+                                                    className: header.column.getCanSort()
+                                                    ? 'cursor-pointer select-none'
+                                                    : '',
+                                                    onClick: header.column.getToggleSortingHandler(),
+                                                }}
+                                            >
+                                                {flexRender(
+                                                    header.column.columnDef.header,
+                                                    header.getContext()
+                                                )}
+                                                {{
+                                                    asc: ' 🔼',
+                                                    desc: ' 🔽',
+                                                }[header.column.getIsSorted() as string] ?? null}
+                                            </div>
+                                            {header.column.getCanFilter() ? (
+                                                <div>
+                                                    <Filter column={header.column} table={table} />
                                                 </div>
-                                                {header.column.getCanFilter() ? (
-                                                    <div>
-                                                        <Filter column={header.column} table={table} />
-                                                    </div>
-                                                ) : null}
-                                            </>
-                                        )}
-                                </th>
-                            ))}
+                                            ) : null}
+                                        </>
+                                    )}
+                            </th>
+                        ))}
+                    </tr>
+                ))}
+                </thead>
+                <tbody>
+                    {table.getRowModel().rows.map(row => (
+                        <tr key={row.id}>
+                        {row.getVisibleCells().map(cell => (
+                            <td key={cell.id}>
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </td>
+                        ))}
                         </tr>
                     ))}
-                    </thead>
-                    <tbody>
-                        {table.getRowModel().rows.map(row => (
-                            <tr key={row.id}>
-                            {row.getVisibleCells().map(cell => (
-                                <td key={cell.id}>
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                </td>
-                            ))}
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-                <Pagination table={table} />
-            </div>
+                </tbody>
+            </table>
+            <Pagination table={table} />
             {message && getMessage()}
         </div>
     );

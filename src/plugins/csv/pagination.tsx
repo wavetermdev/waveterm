@@ -9,7 +9,7 @@ type PaginationProps = {
 
 const Pagination: FC<PaginationProps> = ({ table }) => {
   return (
-    <div className="flex items-center gap-2">
+    <div className="pagination-renderer flex items-center gap-2">
       <button
         className="border rounded p-1"
         onClick={() => table.setPageIndex(0)}
@@ -38,14 +38,14 @@ const Pagination: FC<PaginationProps> = ({ table }) => {
       >
         {'>>'}
       </button>
-      <span className="flex items-center gap-1">
+      <span className="flex items-center gap-1 page-label">
         <div>Page</div>
         <strong>
           {table.getState().pagination.pageIndex + 1} of{' '}
           {table.getPageCount()}
         </strong>
       </span>
-      <span className="flex items-center gap-1">
+      <span className="flex items-center gap-1 go-to-page-label">
         | Go to page:
         <input
           type="number"
