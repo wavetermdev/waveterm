@@ -221,7 +221,7 @@ const CSVRenderer: FC<Props> = (props: Props) => {
 
     return (
         <div className="csv-renderer">
-            <div>
+            <div className="global-search-render">
                 <DebouncedInput
                 value={globalFilter ?? ''}
                 onChange={value => setGlobalFilter(String(value))}
