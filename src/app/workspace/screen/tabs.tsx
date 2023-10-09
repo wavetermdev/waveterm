@@ -11,7 +11,6 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Session, ScreenLines, Screen } from "../../../model/model";
 import { renderCmdText } from "../../common/common";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
-import { ReactComponent as SparkleIcon } from "../../assets/icons/tab/sparkle.svg";
 import { ReactComponent as ActionsIcon } from "../../assets/icons/tab/actions.svg";
 import { ReactComponent as AddIcon } from "../../assets/icons/add.svg";
 
@@ -177,7 +176,7 @@ class ScreenTabs extends React.Component<{ session: Session }, {}> {
                     <For each="screen" index="index" of={showingScreens}>
                         {this.renderTab(screen, activeScreenId, index)}
                     </For>
-                    <div key="new-screen" className="screen-tab new-screen" onClick={this.handleNewScreen}>
+                    <div key="new-screen" className="new-screen" onClick={this.handleNewScreen}>
                         <AddIcon className="icon hoverEffect" />
                     </div>
                 </div>

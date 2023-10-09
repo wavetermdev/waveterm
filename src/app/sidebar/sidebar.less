@@ -3,43 +3,38 @@
 .main-sidebar {
     padding: 0;
     width: 20rem;
-    min-width: 20rem;
     display: flex;
     flex-direction: column;
     position: relative;
-    transition: width 0.2s ease;
 
     &.collapsed {
-        width: 4em;
+        width: 6em;
         .arrow-container {
             transform: rotate(180deg);
         }
         .contents {
             opacity: 0;
             visibility: hidden;
-            transition: opacity 0.1s ease-in-out, visibility 0.1s step-start;
         }
         overflow: hidden;
     }
 
     .arrow-container {
         position: absolute;
-        top: 8px;
-        right: 18px;
-        width: 20px;
-        height: 20px;
+        top: 2em;
+        right: 2em;
+        width: 1.5em;
+        height: 1.5em;
         border-radius: 50%;
-        padding: 2px;
         transition: transform 0.3s ease-in-out;
-
         svg {
-            width: 16px;
-            height: 16px;
+            width: 1.5em;
+            height: 1.5em;
         }
     }
 
     .top {
-        margin-top: 32px;
+        margin-top: 4em;
     }
 
     .separator {

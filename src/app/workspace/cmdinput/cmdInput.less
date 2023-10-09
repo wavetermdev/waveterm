@@ -124,15 +124,15 @@
         .cmd-exec {
             position: absolute;
             right: 0;
-            bottom: -6px;
             .icon {
-                margin: 0 8px 0 6px;
-                vertical-align: middle;
-                width: 32px;
-                height: 32px;
+                vertical-align: bottom;
+                margin-right: 1em;
+                width: 2.5em;
+                height: 2.5em;
                 cursor: pointer;
-                padding: 4px;
                 border-radius: 50%;
+                fill: @prompt-green;
+                padding: 0.25em;
             }
             .icon.disabled {
                 fill: @disabled-background;
@@ -140,9 +140,12 @@
             }
             .cmd-btn {
                 display: inline-block;
-                margin-right: 2em;
+                margin-right: 1em;
+                padding: 0.2em 0.7rem;
                 opacity: 0.5;
                 cursor: pointer;
+                border-radius: 4px;
+                vertical-align: super;
                 &:hover {
                     opacity: 1;
                 }

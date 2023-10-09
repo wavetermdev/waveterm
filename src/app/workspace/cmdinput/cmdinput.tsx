@@ -158,12 +158,12 @@ class CmdInput extends React.Component<{}, {}> {
                             {inputModel.inputExpanded.get() ? "shrink" : "expand"} input ({renderCmdText("E")})
                         </div>**/}
                         {!focusVal && (
-                            <div onClick={this.clickFocusInputHint} className="cmd-btn">
+                            <div onClick={this.clickFocusInputHint} className="cmd-btn hoverEffect">
                                 focus input ({renderCmdText("I")})
                             </div>
                         )}
                         {focusVal && (
-                            <div onMouseDown={this.clickHistoryHint} className="cmd-btn">
+                            <div onMouseDown={this.clickHistoryHint} className="cmd-btn hoverEffect">
                                 {historyShow ? "close history (esc)" : "show history (ctrl-r)"}
                             </div>
                         )}

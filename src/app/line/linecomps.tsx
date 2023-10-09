@@ -36,6 +36,15 @@ import { PluginModel } from "../../plugins/plugins";
 import { Prompt } from "../common/prompt/prompt";
 import * as lineutil from "./lineutil";
 
+import { ReactComponent as CheckIcon } from "../assets/icons/line/check.svg";
+import { ReactComponent as CommentIcon } from "../assets/icons/line/comment.svg";
+import { ReactComponent as QuestionIcon } from "../assets/icons/line/question.svg";
+import { ReactComponent as RotateIcon } from "../assets/icons/line/rotate.svg";
+import { ReactComponent as WarningIcon } from "../assets/icons/line/triangle-exclamation.svg";
+import { ReactComponent as XmarkIcon } from "../assets/icons/line/xmark.svg";
+import { ReactComponent as FillIcon } from "../assets/icons/line/fill.svg";
+import { ReactComponent as GearIcon } from "../assets/icons/line/gear.svg";
+
 import "./lines.less";
 
 dayjs.extend(localizedFormat);
@@ -51,35 +60,37 @@ class SmallLineAvatar extends React.Component<{ line: LineType; cmd: Cmd; onRigh
         let rtnstate = cmd != null ? cmd.getRtnState() : false;
         let exitcode = cmd != null ? cmd.getExitCode() : 0;
         let isComment = line.linetype == "text";
-        let icon: string = null;
+        let icon = null;
         let iconTitle = null;
-        let iconColor = null;
         if (isComment) {
-            icon = "fa-comment";
+            icon = <CommentIcon />;
             iconTitle = "comment";
         } else if (status == "done") {
-            icon = exitcode === 0 ? "fa-check" : "fa-xmark";
-            iconTitle = exitcode === 0 ? "success" : "fail";
-            iconColor = exitcode === 0 ? "color-green" : "color-red";
+            if (exitcode === 0) {
+                icon = <CheckIcon className="success" />;
+                iconTitle = "success";
+            } else {
+                icon = <XmarkIcon className="fail" />;
+                iconTitle = "fail";
+            }
         } else if (status == "hangup" || status == "error") {
-            icon = "fa-triangle-exclamation";
+            icon = <WarningIcon className="warning" />;
             iconTitle = status;
-            iconColor = "color-yellow";
         } else if (status == "running" || "detached") {
-            icon = "fa-rotate fa-spin";
+            icon = <RotateIcon className="warning spin" />;
             iconTitle = "running";
-            iconColor = "color-green";
         } else {
-            icon = "fa-square-question";
+            icon = <QuestionIcon />;
             iconTitle = "unknown";
         }
         return (
             <div
                 onContextMenu={this.props.onRightClick}
+                title={iconTitle}
                 className={cn("simple-line-status", "status-" + status, rtnstate ? "has-rtnstate" : null)}
             >
                 <span className="linenum">{lineNumStr}</span>
-                <i title={iconTitle} className={cn("fa-sharp fa-solid", icon, iconColor)} />
+                <div className="avatar">{icon}</div>
             </div>
         );
     }
@@ -437,15 +448,15 @@ class LineCmd extends React.Component<
                 <div>&nbsp;</div>
                 <If condition={!isBlank(renderer) && renderer != "terminal"}>
                     <div className="renderer">
-                        <i className="fa-sharp fa-solid fa-fill" />
+                        <FillIcon />
                         {renderer}&nbsp;
                     </div>
                 </If>
                 <div className="termopts">
                     ({termOpts.rows}x{termOpts.cols})
                 </div>
-                <div className="settings" onClick={this.handleLineSettings}>
-                    <i className="fa-sharp fa-solid fa-gear" />
+                <div className="settings hoverEffect" onClick={this.handleLineSettings}>
+                    <GearIcon />
                 </div>
             </div>
         );
@@ -641,7 +652,7 @@ class LineCmd extends React.Component<
                         )}
                         onClick={this.clickMinimise}
                     >
-                        {this.isMinimised.get() ? <PlusIcon className="icon" /> : <MinusIcon className="icon" />}
+                        {this.isMinimised.get() ? <PlusIcon className="icon plus" /> : <MinusIcon className="icon" />}
                     </div>
                 </div>
                 <If condition={!this.isMinimised.get()}>
