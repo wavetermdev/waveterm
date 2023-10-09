@@ -18,8 +18,12 @@ body {
     font-size: 12.5px;
     font-weight: 300;
     line-height: 20px;
-    background: @base-background-transparent;
+    background: @base-background;
     color: @base-color;
+}
+
+body.is-dev {
+    background-color: @base-background-dev;
 }
 
 textarea {
@@ -39,8 +43,6 @@ svg.icon {
     display: inline-block;
 }
 
-// styles.less
-
 .hoverEffect {
     &:hover {
         cursor: pointer;
@@ -51,19 +53,32 @@ svg.icon {
 }
 
 .hideScrollbarUntillHover {
-    &::-webkit-scrollbar {
-        width: 0;
+    overflow: hidden;
+    &:hover,
+    &:focus,
+    &:focus-within {
+        overflow: auto;
     }
-    &:hover::-webkit-scrollbar {
-        width: 4px;
-    }
+}
+
+*::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+
+*::-webkit-scrollbar-track {
+    background-color: @scrollbar-background !important;
+}
+
+*::-webkit-scrollbar-thumb {
+    background-color: @scrollbar-thumb !important;
 }
 
 .glow {
     &:focus,
     &:hover {
-        border: 1px solid rgba(@prompt-green, 0.8) !important;
-        box-shadow: 0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
+        border: 1px solid @background-session-components !important;
+        box-shadow: 0px 0px 2px rgba(255, 255, 255, 0.5) inset, 0px 0px 2px rgba(255, 255, 255, 0.2) inset;
     }
 }
 
@@ -86,20 +101,6 @@ svg.icon {
     a:hover {
         color: #485fc7;
     }
-}
-
-body::-webkit-scrollbar {
-    display: none;
-}
-
-*::-webkit-scrollbar {
-    background-color: #777;
-    width: 5px;
-    height: 5px;
-}
-
-*::-webkit-scrollbar-thumb {
-    background: white;
 }
 
 input[type="checkbox"] {

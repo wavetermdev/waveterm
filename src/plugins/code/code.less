@@ -1,20 +1,23 @@
 @import "../../index.less";
 
 .code-renderer {
+    .monaco-editor {
+        .monaco-editor-background,
+        .margin-view-overlays {
+            background-color: @base-background !important;
+        }
+        .scrollbar {
+            height: 4px !important;
+            width: 4px !important;
+            .slider {
+                background-color: @scrollbar-thumb !important;
+            }
+        }
+    }
+
     .scroller {
         padding-top: 10px;
         padding-bottom: 15px;
-    }
-
-    .monaco-editor .monaco-editor-background {
-        background-color: rgba(255, 255, 255, 0.075) !important;
-    }
-    .monaco-editor .scrollbar {
-        height: 4px !important;
-        width: 4px !important;
-    }
-    .monaco-editor .scrollbar .slider {
-        background-color: rgba(255, 255, 255) !important;
     }
 
     .cmd-hints,

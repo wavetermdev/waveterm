@@ -534,7 +534,7 @@ class TextAreaInput extends React.Component<{ onHeightChange: () => void }, {}> 
         if (activeScreen != null) {
             activeScreen.focusType.get(); // for reaction
         }
-        let computedInnerHeight = (displayLines + 1) * GlobalModel.termFontSize.get();
+        let computedInnerHeight = (displayLines + 1) * GlobalModel.termFontSize.get() + 4;
         let computedOuterHeight = (displayLines + 2) * GlobalModel.termFontSize.get();
         return (
             <div className="control is-expanded" ref={this.controlRef} style={{ height: computedOuterHeight }}>

@@ -4,7 +4,6 @@
     padding: 0;
     width: 20rem;
     min-width: 20rem;
-    overflow-x: hidden;
     display: flex;
     flex-direction: column;
     position: relative;
@@ -51,7 +50,6 @@
 
     .middle {
         max-height: calc(100vh - 32em);
-        overflow-y: auto;
         padding: 8px 6px;
         border-bottom: 1px solid @base-border;
         .item {
@@ -253,8 +251,4 @@
             top: -3px;
         }
     }
-}
-
-.is-dev .main-sidebar {
-    background-color: @base-background-dev;
 }

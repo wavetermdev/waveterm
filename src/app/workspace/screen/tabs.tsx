@@ -129,7 +129,7 @@ class ScreenTabs extends React.Component<{ session: Session }, {}> {
                 onClick={() => this.handleSwitchScreen(screen.screenId)}
                 onContextMenu={(event) => this.openScreenSettings(event, screen)}
             >
-                <SquareIcon className="icon left-icon"/>
+                <SquareIcon className="icon left-icon" />
                 <div className="tab-name truncate">
                     {archived}
                     {webShared}
