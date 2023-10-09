@@ -3,6 +3,7 @@ import { SimpleImageRenderer } from "./image/image";
 import { SimpleMarkdownRenderer } from "./markdown/markdown";
 import { SourceCodeRenderer } from "./code/code";
 import { SimpleMustacheRenderer } from "./mustache/mustache";
+import { CSVRenderer } from "./csv/csv";
 import { OpenAIRenderer, OpenAIRendererModel } from "./openai/openai";
 import { isBlank } from "../util/util";
 import { sprintf } from "sprintf-js";
@@ -64,6 +65,17 @@ const OpenAIPlugin: RendererPluginType = {
     modelCtor: () => new OpenAIRendererModel(),
 };
 
+const CSVPlugin: RendererPluginType = {
+    name: "csv",
+    rendererType: "simple",
+    heightType: "pixels",
+    dataType: "blob",
+    collapseType: "hide",
+    globalCss: null,
+    mimeTypes: ["text/csv"],
+    simpleComponent: CSVRenderer,
+};
+
 class PluginModelClass {
     rendererPlugins: RendererPluginType[] = [];
 
@@ -100,6 +112,7 @@ if ((window as any).PluginModel == null) {
     PluginModel.registerRendererPlugin(CodePlugin);
     PluginModel.registerRendererPlugin(OpenAIPlugin);
     PluginModel.registerRendererPlugin(MustachePlugin);
+    PluginModel.registerRendererPlugin(CSVPlugin);
     (window as any).PluginModel = PluginModel;
 }
 

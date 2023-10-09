@@ -1,0 +1,123 @@
+@import "../../index.less";
+
+.csv-renderer {
+    .cursor-pointer {
+        cursor: pointer;
+    }
+    
+    .select-none {
+        user-select: none;
+    }
+
+    /* Flexbox utilities */
+    .flex {
+        display: flex;
+    }
+  
+    .items-center {
+        align-items: center;
+    }
+  
+    .gap-2 {
+        gap: 8px; 
+    }
+  
+    /* Button styles */
+    button.border {
+        border: 1px solid #ccc;
+    }
+    
+    button.rounded {
+        border-radius: 4px;
+    }
+    
+    button.p-1 {
+        padding: 4px; 
+    }
+  
+    /* Disabling styles for buttons */
+    button[disabled] {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+  
+    /* Input styles */
+    input.border, select.border {
+        border: 1px solid #ccc;
+    }
+    
+    input.rounded, select.rounded {
+        border-radius: 4px;
+    }
+    
+    input.p-1, select.p-1 {
+        padding: 4px;
+    }
+    
+    input.w-16 {
+        width: 64px; 
+    }
+    
+    /* Text styles */
+    strong {
+        font-weight: bold;
+    }
+  
+    .global-search-render {
+        margin-bottom: 10px;
+    }
+
+    table {
+        border: 1px solid rgb(146, 146, 146);
+        margin-bottom: 10px;
+      
+        tbody {
+          border-bottom: 1px solid rgb(146, 146, 146);
+        }
+      
+        th {
+          color: white;
+          border-bottom: 1px solid rgb(146, 146, 146);
+          border-right: 1px solid rgb(146, 146, 146);
+          padding: 2px 10px 4px 10px;
+
+          .min-max-renderer {
+            min-width: 200px;
+            display: flex;
+
+            .search-renderer {
+              flex: 1;
+
+              input {
+                width: 99%;
+              }
+            }
+
+            .search-renderer:first-child {
+              margin-right: 3px;
+            }
+          }
+        }
+
+        tr {
+            td {
+                border-right: 1px solid rgb(146, 146, 146);
+                padding: 2px 10px;
+            }
+            td:last-child {
+                border-right: none;
+            } 
+        }
+    }
+
+    .pagination-renderer {
+        .page-label {
+            div {
+                padding-right: 6px;
+            }
+            strong {
+                color: white;
+            }
+        }
+    }
+}
