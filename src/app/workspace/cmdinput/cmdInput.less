@@ -8,7 +8,7 @@
     position: absolute;
     bottom: 16px;
     right: 16px;
-    width: calc(100% - 32px);
+    width: calc(100% - 28px);
     padding: 12px;
     z-index: 100;
     background: @background-session-components;
@@ -87,12 +87,6 @@
             padding: 1em 2px;
         }
 
-        textarea::-webkit-scrollbar {
-            width: 0;
-            height: 0;
-            display: none;
-        }
-
         textarea {
             color: @term-bright-white;
             background-color: transparent;
@@ -130,25 +124,28 @@
         .cmd-exec {
             position: absolute;
             right: 0;
-            bottom: -6px;
             .icon {
-                margin: 0 8px 0 6px;
-                vertical-align: middle;
-                width: 32px;
-                height: 32px;
+                vertical-align: bottom;
+                margin-right: 1em;
+                width: 2.5em;
+                height: 2.5em;
                 cursor: pointer;
-                padding: 4px;
                 border-radius: 50%;
+                fill: @prompt-green;
+                padding: 0.25em;
             }
             .icon.disabled {
-                fill: @disabled;
+                fill: @disabled-background;
                 cursor: default;
             }
             .cmd-btn {
                 display: inline-block;
-                margin-right: 2em;
+                margin-right: 1em;
+                padding: 0.2em 0.7rem;
                 opacity: 0.5;
                 cursor: pointer;
+                border-radius: 4px;
+                vertical-align: super;
                 &:hover {
                     opacity: 1;
                 }

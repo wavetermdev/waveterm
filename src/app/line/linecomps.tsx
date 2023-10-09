@@ -36,115 +36,20 @@ import { PluginModel } from "../../plugins/plugins";
 import { Prompt } from "../common/prompt/prompt";
 import * as lineutil from "./lineutil";
 
+import { ReactComponent as CheckIcon } from "../assets/icons/line/check.svg";
+import { ReactComponent as CommentIcon } from "../assets/icons/line/comment.svg";
+import { ReactComponent as QuestionIcon } from "../assets/icons/line/question.svg";
+import { ReactComponent as RotateIcon } from "../assets/icons/line/rotate.svg";
+import { ReactComponent as WarningIcon } from "../assets/icons/line/triangle-exclamation.svg";
+import { ReactComponent as XmarkIcon } from "../assets/icons/line/xmark.svg";
+import { ReactComponent as FillIcon } from "../assets/icons/line/fill.svg";
+import { ReactComponent as GearIcon } from "../assets/icons/line/gear.svg";
+
 import "./lines.less";
 
 dayjs.extend(localizedFormat);
 
 type OV<V> = mobx.IObservableValue<V>;
-type OArr<V> = mobx.IObservableArray<V>;
-type OMap<K, V> = mobx.ObservableMap<K, V>;
-
-type RendererComponentProps = {
-    screen: LineContainerModel;
-    line: LineType;
-    width: number;
-    staticRender: boolean;
-    visible: OV<boolean>;
-    onHeightChange: LineHeightChangeCallbackType;
-    collapsed: boolean;
-};
-type RendererComponentType = {
-    new (props: RendererComponentProps): React.Component<RendererComponentProps, {}>;
-};
-
-function getShortVEnv(venvDir: string): string {
-    if (isBlank(venvDir)) {
-        return "";
-    }
-    let lastSlash = venvDir.lastIndexOf("/");
-    if (lastSlash == -1) {
-        return venvDir;
-    }
-    return venvDir.substr(lastSlash + 1);
-}
-
-function makeFullRemoteRef(ownerName: string, remoteRef: string, name: string): string {
-    if (isBlank(ownerName) && isBlank(name)) {
-        return remoteRef;
-    }
-    if (!isBlank(ownerName) && isBlank(name)) {
-        return ownerName + ":" + remoteRef;
-    }
-    if (isBlank(ownerName) && !isBlank(name)) {
-        return remoteRef + ":" + name;
-    }
-    return ownerName + ":" + remoteRef + ":" + name;
-}
-
-function getRemoteStr(rptr: RemotePtrType): string {
-    if (rptr == null || isBlank(rptr.remoteid)) {
-        return "(invalid remote)";
-    }
-    let username = isBlank(rptr.ownerid) ? null : GlobalModel.resolveUserIdToName(rptr.ownerid);
-    let remoteRef = GlobalModel.resolveRemoteIdToRef(rptr.remoteid);
-    let fullRef = makeFullRemoteRef(username, remoteRef, rptr.name);
-    return fullRef;
-}
-
-function replaceHomePath(path: string, homeDir: string): string {
-    if (path == homeDir) {
-        return "~";
-    }
-    if (path.startsWith(homeDir + "/")) {
-        return "~" + path.substr(homeDir.length);
-    }
-    return path;
-}
-
-function getCwdStr(remote: RemoteType, state: Record<string, string>): string {
-    if (state == null || isBlank(state.cwd)) {
-        return "~";
-    }
-    let cwd = state.cwd;
-    if (remote && remote.remotevars.home) {
-        cwd = replaceHomePath(cwd, remote.remotevars.home);
-    }
-    return cwd;
-}
-
-@mobxReact.observer
-class LineAvatar extends React.Component<{ line: LineType; cmd: Cmd; onRightClick?: (e: any) => void }, {}> {
-    render() {
-        let { line, cmd } = this.props;
-        let lineNumStr = (line.linenumtemp ? "~" : "") + String(line.linenum);
-        let status = cmd != null ? cmd.getStatus() : "done";
-        let rtnstate = cmd != null ? cmd.getRtnState() : false;
-        let isComment = line.linetype == "text";
-        return (
-            <div
-                onContextMenu={this.props.onRightClick}
-                className={cn(
-                    "avatar",
-                    "num-" + lineNumStr.length,
-                    "status-" + status,
-                    { ephemeral: line.ephemeral },
-                    { rtnstate: rtnstate }
-                )}
-            >
-                {lineNumStr}
-                <If condition={status == "hangup" || status == "error"}>
-                    <i className="fa-sharp fa-solid fa-triangle-exclamation status-icon" />
-                </If>
-                <If condition={status == "detached"}>
-                    <i className="fa-sharp fa-solid fa-rotate status-icon" />
-                </If>
-                <If condition={isComment}>
-                    <i className="fa-sharp fa-solid fa-comment comment-icon" />
-                </If>
-            </div>
-        );
-    }
-}
 
 @mobxReact.observer
 class SmallLineAvatar extends React.Component<{ line: LineType; cmd: Cmd; onRightClick?: (e: any) => void }, {}> {
@@ -155,35 +60,37 @@ class SmallLineAvatar extends React.Component<{ line: LineType; cmd: Cmd; onRigh
         let rtnstate = cmd != null ? cmd.getRtnState() : false;
         let exitcode = cmd != null ? cmd.getExitCode() : 0;
         let isComment = line.linetype == "text";
-        let icon: string = null;
+        let icon = null;
         let iconTitle = null;
-        let iconColor = null;
         if (isComment) {
-            icon = "fa-comment";
+            icon = <CommentIcon />;
             iconTitle = "comment";
         } else if (status == "done") {
-            icon = exitcode === 0 ? "fa-check" : "fa-xmark";
-            iconTitle = exitcode === 0 ? "success" : "fail";
-            iconColor = exitcode === 0 ? "color-green" : "color-red";
+            if (exitcode === 0) {
+                icon = <CheckIcon className="success" />;
+                iconTitle = "success";
+            } else {
+                icon = <XmarkIcon className="fail" />;
+                iconTitle = "fail";
+            }
         } else if (status == "hangup" || status == "error") {
-            icon = "fa-triangle-exclamation";
+            icon = <WarningIcon className="warning" />;
             iconTitle = status;
-            iconColor = "color-yellow";
         } else if (status == "running" || "detached") {
-            icon = "fa-rotate fa-spin";
+            icon = <RotateIcon className="warning spin" />;
             iconTitle = "running";
-            iconColor = "color-green";
         } else {
-            icon = "fa-square-question";
+            icon = <QuestionIcon />;
             iconTitle = "unknown";
         }
         return (
             <div
                 onContextMenu={this.props.onRightClick}
+                title={iconTitle}
                 className={cn("simple-line-status", "status-" + status, rtnstate ? "has-rtnstate" : null)}
             >
                 <span className="linenum">{lineNumStr}</span>
-                <i title={iconTitle} className={cn("fa-sharp fa-solid", icon, iconColor)} />
+                <div className="avatar">{icon}</div>
             </div>
         );
     }
@@ -541,15 +448,15 @@ class LineCmd extends React.Component<
                 <div>&nbsp;</div>
                 <If condition={!isBlank(renderer) && renderer != "terminal"}>
                     <div className="renderer">
-                        <i className="fa-sharp fa-solid fa-fill" />
+                        <FillIcon />
                         {renderer}&nbsp;
                     </div>
                 </If>
                 <div className="termopts">
                     ({termOpts.rows}x{termOpts.cols})
                 </div>
-                <div className="settings" onClick={this.handleLineSettings}>
-                    <i className="fa-sharp fa-solid fa-gear" />
+                <div className="settings hoverEffect" onClick={this.handleLineSettings}>
+                    <GearIcon />
                 </div>
             </div>
         );
@@ -745,7 +652,7 @@ class LineCmd extends React.Component<
                         )}
                         onClick={this.clickMinimise}
                     >
-                        {this.isMinimised.get() ? <PlusIcon className="icon" /> : <MinusIcon className="icon" />}
+                        {this.isMinimised.get() ? <PlusIcon className="icon plus" /> : <MinusIcon className="icon" />}
                     </div>
                 </div>
                 <If condition={!this.isMinimised.get()}>

@@ -1,10 +1,11 @@
 @import "../../../index.less";
 
 #main .screen-tabs .screen-tab {
+    border-radius: 12px 0px 0px 0px;
+    border-top: 1px solid transparent;
+
     &.is-active {
-        color: @tab-white-text;
-        border-radius: 12px 0px 0px 0px;
-        border-top: 1px solid #58c142;
+        border-color: @prompt-green;
         background: linear-gradient(
             180deg,
             rgba(88, 193, 66, 0.2) 9.34%,
@@ -12,7 +13,7 @@
             rgba(88, 193, 66, 0) 86.79%
         );
     }
-    
+
     &.color-default {
         svg.left-icon path {
             fill: @tab-green;
@@ -83,24 +84,12 @@
 .screen-tabs {
     display: flex;
     flex-direction: row;
-    overflow-x: overlay;
-    overflow-y: visible;
+    overflow-x: hidden;
     align-items: center;
 
-    &::-webkit-scrollbar {
-        display: none;
-        z-index: 5;
-        background-color: #fff;
-        height: 4px;
-        width: 0;
-    }
-
-    &::-webkit-scrollbar-thumb {
-        background: #777;
-    }
-
-    &.scrolling::-webkit-scrollbar {
-        display: block;
+    &:hover,
+    &:focus {
+        overflow-x: auto;
     }
 
     .screen-tab {
@@ -141,6 +130,7 @@
         }
 
         &:hover {
+            border-color: @prompt-green !important;
             .tab-gear {
                 display: block;
             }
@@ -156,9 +146,10 @@
         display: none;
     }
 
-    .screen-tab.new-screen {
+    .new-screen {
         width: 3em;
         min-width: 3em;
+        margin-left: 1em;
         cursor: pointer;
 
         .icon {

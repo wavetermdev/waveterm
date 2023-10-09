@@ -8,8 +8,13 @@
     &.is-hidden {
         display: none;
     }
+    max-width: calc(100% - 20.5em);
     background: @background-session;
     border: 1px solid @base-border;
     border-radius: 8px;
-    margin: 0 16px 16px 0;
+    margin-bottom: 1em;
+    transition: width 0.2s ease;
+}
+.collapsed + .session-view {
+    max-width: calc(100% - 6.7em);
 }

@@ -359,10 +359,10 @@ class SourceCodeRenderer extends React.Component<
         const { selectedLanguage, isSave, languages, isPreviewerAvailable, showPreview } = this.state;
         let allowEditing = this.getAllowEditing();
         return (
-            <div style={{ position: "absolute", bottom: "-3px", right: "8px" }}>
+            <div className="buttonContainer">
                 {isPreviewerAvailable && (
-                    <div className="cmd-hints" style={{ minWidth: "8rem", maxWidth: "8rem" }}>
-                        <div onClick={this.togglePreview} className={`hint-item preview`}>
+                    <div className="button">
+                        <div onClick={this.togglePreview} className={`preview`}>
                             {`${showPreview ? "hide" : "show"} preview (`}
                             {renderCmdText("P")}
                             {`)`}
@@ -377,11 +377,8 @@ class SourceCodeRenderer extends React.Component<
                     ))}
                 </select>
                 {allowEditing && (
-                    <div className="cmd-hints">
-                        <div
-                            onClick={() => this.doSave()}
-                            className={`hint-item ${isSave ? "save-enabled" : "save-disabled"}`}
-                        >
+                    <div className={`button ${isSave ? "" : "disabled"}`}>
+                        <div onClick={() => this.doSave()}>
                             {`save (`}
                             {renderCmdText("S")}
                             {`)`}
@@ -389,8 +386,8 @@ class SourceCodeRenderer extends React.Component<
                     </div>
                 )}
                 {allowEditing && (
-                    <div className="cmd-hints">
-                        <div onClick={this.doClose} className={`hint-item close`}>
+                    <div className="button">
+                        <div onClick={this.doClose} className={`close`}>
                             {`close (`}
                             {renderCmdText("D")}
                             {`)`}
@@ -402,14 +399,8 @@ class SourceCodeRenderer extends React.Component<
     };
 
     getMessage = () => (
-        <div style={{ position: "absolute", bottom: "-3px", left: "14px" }}>
-            <div
-                className="message"
-                style={{
-                    fontSize: GlobalModel.termFontSize.get(),
-                    background: `${this.state.message.status === "error" ? "red" : "#4e9a06"}`,
-                }}
-            >
+        <div className="messageContainer">
+            <div className={`message ${this.state.message.status === "error" ? "error" : ""}`}>
                 {this.state.message.text}
             </div>
         </div>
