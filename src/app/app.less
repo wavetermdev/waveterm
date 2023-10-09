@@ -88,6 +88,32 @@ svg.icon {
     text-overflow: ellipsis;
 }
 
+.dropdown,
+.button {
+    display: inline-block;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: @button-background;
+    color: @prompt-green;
+    .hoverEffect;
+    &:hover {
+        color: @prompt-green;
+    }
+    &.disabled {
+        color: fade(@disabled-color, 60%);
+        background: @disabled-background;
+        cursor: initial;
+        &:hover {
+            box-shadow: none;
+        }
+    }
+}
+.dropdown {
+    padding-left: 0.5rem;
+    outline: none !important;
+}
+
 #title-bar {
     -webkit-app-region: drag;
     height: 30px;
