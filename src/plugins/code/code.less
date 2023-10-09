@@ -1,67 +1,69 @@
 @import "../../index.less";
 
 .code-renderer {
+    .monaco-editor {
+        .monaco-editor-background,
+        .margin-view-overlays {
+            background-color: @base-background !important;
+        }
+        .scrollbar {
+            height: 4px !important;
+            width: 4px !important;
+            .slider {
+                background-color: @scrollbar-thumb !important;
+            }
+        }
+    }
+    .buttonContainer {
+        opacity: 0;
+        transition: opacity 0.2s;
+        position: absolute;
+        padding: 0.5rem;
+        right: 0;
+        bottom: 0;
+        .dropdown,
+        .button {
+            position: relative;
+            font-size: 0.8rem;
+            min-height: 1.5rem;
+            max-height: 1.5rem;
+            margin-right: 0.5rem;
+            line-height: 1rem;
+        }
+        .dropdown {
+            max-width: 7rem;
+        }
+    }
     .scroller {
         padding-top: 10px;
         padding-bottom: 15px;
+        overflow: hidden;
     }
-
-    .monaco-editor .monaco-editor-background {
-        background-color: rgba(255, 255, 255, 0.075) !important;
-    }
-    .monaco-editor .scrollbar {
-        height: 4px !important;
-        width: 4px !important;
-    }
-    .monaco-editor .scrollbar .slider {
-        background-color: rgba(255, 255, 255) !important;
-    }
-
-    .cmd-hints,
-    .dropdown {
-        display: inline-block;
-        position: relative;
-        min-width: 6rem;
-        max-width: 6rem;
-        margin-right: 8px;
-    }
-    .hint-item {
-        border-radius: 4px 4px 0 0;
-        padding: 3px 9px 2px 8px;
-        text-align: center;
+    &:hover {
+        .buttonContainer {
+            opacity: 1;
+        }
+        .scroller {
+            overflow: auto;
+        }
     }
     section {
         transition: height 0.3s ease-in-out;
     }
-    .preview {
-        color: #000;
-        background-color: rgb(200, 200, 200);
-    }
-    .preview:hover {
-        background-color: @term-white !important;
-    }
-    .save-enabled {
-        color: @term-white;
-        background-color: #4e9a06;
-    }
-    .save-disabled {
-        color: rgb(52, 52, 52);
-        background-color: #aaaea7;
-        cursor: default !important;
-    }
-    .save-disabled:hover {
-        background-color: #aaaea7;
-    }
-    .close {
-        color: @term-white;
-        background-color: #9e0000;
-    }
-    .message {
-        color: @term-white;
-        border-radius: 6px;
-        margin-bottom: 1rem;
-        padding: 4px 1rem;
-        max-width: 80vw;
+    .messageContainer {
+        position: absolute;
+        bottom: -3px;
+        left: 14px;
+        .message {
+            background: @success-green;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            padding: 4px 1rem;
+            max-width: 80vw;
+            &.error {
+                background: @error-red;
+            }
+        }
     }
     .readonly {
         position: absolute;
@@ -93,8 +95,8 @@
     .gutter {
         flex-shrink: 0;
         flex-grow: 0;
-        background: rgb(100, 100, 100);
-        max-width: 4px;
+        background: fade(@prompt-green, 40%);
+        max-width: 3px;
     }
     .gutter-horizontal {
         cursor: col-resize;
@@ -103,10 +105,10 @@
         cursor: row-resize;
     }
     .gutter:hover {
-        background: rgb(155, 155, 155);
+        background: @prompt-green;
     }
     .gutter-dragging:hover {
-        background: rgb(155, 155, 155);
+        background: @prompt-green;
     }
 
     .pane {
@@ -117,11 +119,5 @@
     }
     .pane-dragging {
         overflow: hidden;
-    }
-
-    .scrollable {
-        height: 100vh;
-        max-height: 100vh;
-        overflow: auto;
     }
 }
