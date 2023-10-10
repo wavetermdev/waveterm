@@ -4,16 +4,6 @@
     border-radius: 12px 0px 0px 0px;
     border-top: 1px solid transparent;
 
-    &.is-active {
-        border-color: @prompt-green;
-        background: linear-gradient(
-            180deg,
-            rgba(88, 193, 66, 0.2) 9.34%,
-            rgba(88, 193, 66, 0.03) 44.16%,
-            rgba(88, 193, 66, 0) 86.79%
-        );
-    }
-
     &.color-default {
         svg.left-icon path {
             fill: @tab-green;
@@ -130,10 +120,12 @@
         }
 
         &:hover {
-            border-color: @prompt-green !important;
             .tab-gear {
                 display: block;
             }
+        }
+        &:hover:not(.is-active) {
+            border-color: @disabled-color !important;
         }
     }
 

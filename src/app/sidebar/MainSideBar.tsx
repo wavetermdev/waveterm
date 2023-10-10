@@ -202,11 +202,11 @@ class MainSideBar extends React.Component<{}, {}> {
                 </div>
                 <div className="contents">
                     <div className="top">
-                        <div className="item hoverEffect">
+                        {/*<div className="item disabled">
                             <AppsIcon className="icon" />
                             Apps
                             <span className="hotkey">&#x2318;A</span>
-                        </div>
+                        </div>*/}
                         <div className="item hoverEffect" onClick={this.handleHistoryClick}>
                             <HistoryIcon className="icon" />
                             History
