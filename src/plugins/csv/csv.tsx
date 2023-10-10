@@ -6,7 +6,6 @@ import {
     createColumnHelper,
     flexRender,
     useReactTable,
-    ColumnFiltersState,
     getCoreRowModel,
     getFilteredRowModel,
     getFacetedRowModel,
@@ -20,11 +19,8 @@ import {
   import {
     RankingInfo,
     rankItem,
-    compareItems,
   } from '@tanstack/match-sorter-utils'
-import Filter from "./filter";
 import DebouncedInput from "./search";
-import Pagination from "./pagination";
   
 import "./csv.less";
 
@@ -52,23 +48,7 @@ const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
   
     // Return if the item should be filtered in/out
     return itemRank.passed
-  }
-  
-  const fuzzySort: SortingFn<any> = (rowA, rowB, columnId) => {
-    let dir = 0
-  
-    // Only sort by rank if the column has ranking information
-    if (rowA.columnFiltersMeta[columnId]) {
-      dir = compareItems(
-        rowA.columnFiltersMeta[columnId]?.itemRank!,
-        rowB.columnFiltersMeta[columnId]?.itemRank!
-      )
-    }
-  
-    // Provide an alphanumeric fallback for when the item ranks are equal
-    return dir === 0 ? sortingFns.alphanumeric(rowA, rowB, columnId) : dir
 }
-  
 
 interface DataColumn {
     Header: string;
@@ -97,21 +77,22 @@ interface State {
     message: { status: string; text: string } | null;
     isPreviewerAvailable: boolean;
     showReadonly: boolean;
+    totalHeight: number;
 }
 
 const columnHelper = createColumnHelper<any>();
 
 const CSVRenderer: FC<Props> = (props: Props) => {
     const csvCacheRef = useRef(new Map<string, string>());
+    const rowRef = useRef<(HTMLTableRowElement | null)[]>([]);
+    const headerRef = useRef<HTMLTableRowElement | null>(null);
     const [state, setState] = useState<State>({
         content: null,
         message: null,
         isPreviewerAvailable: false,
         showReadonly: true,
+        totalHeight: 0,
     });
-    const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-        []
-      )
     const [globalFilter, setGlobalFilter] = React.useState('')
 
     const filePath = props.lineState["prompt:file"];
@@ -165,6 +146,21 @@ const CSVRenderer: FC<Props> = (props: Props) => {
         }
     }, []);
 
+    // Effect to compute height after rendering
+    useEffect(() => {
+        if (headerRef.current && rowRef.current && rowRef.current[0]) {
+            const headerHeight = headerRef.current.offsetHeight;
+            const rowHeight = rowRef.current[0]?.offsetHeight ?? 0; // Using optional chaining
+            const totalHeight = headerHeight + rowHeight * parsedData.length;
+
+            setState((prevState) => ({ ...prevState, totalHeight }));
+    
+            // Do something with totalHeight here
+            console.log(headerHeight, rowHeight, parsedData.length, totalHeight);
+        }
+    }, [parsedData]);
+    
+
     const getMessage = () => (
         <div style={{ position: "absolute", bottom: "-3px", left: "14px" }}>
             <div
@@ -189,10 +185,8 @@ const CSVRenderer: FC<Props> = (props: Props) => {
             fuzzy: fuzzyFilter,
         },
           state: {
-            columnFilters,
             globalFilter,
         },
-        onColumnFiltersChange: setColumnFilters,
         onGlobalFilterChange: setGlobalFilter,
         globalFilterFn: fuzzyFilter,
         getCoreRowModel: getCoreRowModel(),
@@ -220,7 +214,7 @@ const CSVRenderer: FC<Props> = (props: Props) => {
         );
 
     return (
-        <div className="csv-renderer">
+        <div className="csv-renderer" style={{"height": `${state.totalHeight}px`}}>
             <div className="global-search-render">
                 <DebouncedInput
                 value={globalFilter ?? ''}
@@ -231,14 +225,13 @@ const CSVRenderer: FC<Props> = (props: Props) => {
             </div>
             <table>
                 <thead>
-                {table.getHeaderGroups().map(headerGroup => (
-                    <tr key={headerGroup.id}>
-                        {headerGroup.headers.map(header => (
-                            <th key={header.id}>
-                                {header.isPlaceholder
-                                    ? null
-                                    : (
-                                        <>
+                    {table.getHeaderGroups().map(headerGroup => (
+                        <tr key={headerGroup.id} ref={headerRef}>
+                            {headerGroup.headers.map(header => (
+                                <th key={header.id}>
+                                    {header.isPlaceholder
+                                        ? null
+                                        : (
                                             <div
                                                 {...{
                                                     className: header.column.getCanSort()
@@ -256,31 +249,24 @@ const CSVRenderer: FC<Props> = (props: Props) => {
                                                     desc: ' 🔽',
                                                 }[header.column.getIsSorted() as string] ?? null}
                                             </div>
-                                            {header.column.getCanFilter() ? (
-                                                <div>
-                                                    <Filter column={header.column} table={table} />
-                                                </div>
-                                            ) : null}
-                                        </>
-                                    )}
-                            </th>
-                        ))}
-                    </tr>
-                ))}
+                                        )}
+                                </th>
+                            ))}
+                        </tr>
+                    ))}
                 </thead>
                 <tbody>
-                    {table.getRowModel().rows.map(row => (
-                        <tr key={row.id}>
-                        {row.getVisibleCells().map(cell => (
-                            <td key={cell.id}>
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                            </td>
-                        ))}
+                    {table.getRowModel().rows.map((row, index) => (
+                        <tr key={row.id} ref={el => rowRef.current[index] = el}>
+                            {row.getVisibleCells().map(cell => (
+                                <td key={cell.id}>
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                </td>
+                            ))}
                         </tr>
                     ))}
                 </tbody>
             </table>
-            <Pagination table={table} />
             {message && getMessage()}
         </div>
     );
