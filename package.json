@@ -59,7 +59,7 @@
         "babel-plugin-jsx-control-statements": "^4.1.2",
         "copy-webpack-plugin": "^11.0.0",
         "css-loader": "^6.7.1",
-        "electron": "25.4.0",
+        "electron": "27.0.0",
         "electron-rebuild": "^3.2.8",
         "file-loader": "^6.2.0",
         "http-server": "^14.1.1",
