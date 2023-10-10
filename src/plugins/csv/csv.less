@@ -12,28 +12,6 @@
         user-select: none;
     }
   
-    /* Input styles */
-    input.border {
-        border: 1px solid @scrollbar-thumb;
-    }
-    
-    input.rounded, select.rounded {
-        border-radius: 4px;
-    }
-    
-    input.p-1, select.p-1 {
-        padding: 4px;
-    }
-    
-    input.w-16 {
-        width: 64px; 
-    }
-    
-    /* Text styles */
-    strong {
-        font-weight: bold;
-    }
-  
     .global-search-render {
         margin-bottom: 10px;
     }
@@ -62,6 +40,10 @@
                     display: block;
                     text-align:left;
 
+                    &:hover .resizer {
+                        opacity: 1;
+                    }
+
                     .resizer {
                         position: absolute;
                         right: 0;
@@ -79,10 +61,6 @@
                         background: @tab-green;
                         opacity: 1;
                     }
-                }
-
-                th:hover .resizer {
-                    opacity: 1;
                 }
             }
         }
@@ -110,11 +88,11 @@
                 white-space: nowrap;
                 display: block;
             }
-        }
 
-        tr:last-child {
-            td {
-                border-bottom: 1px solid @scrollbar-thumb;
+            &:last-child {
+                td {
+                    border-bottom: 1px solid @scrollbar-thumb;
+                }
             }
         }
     }
