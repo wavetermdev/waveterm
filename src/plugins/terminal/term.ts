@@ -89,6 +89,7 @@ class TermWrap {
             rows: this.termSize.rows,
             cols: this.termSize.cols,
             fontSize: opts.fontSize,
+            fontFamily: "JetBrains Mono",
             theme: { foreground: terminal.foreground, background: terminal.background },
         });
         this.terminal._core._inputHandler._parser.setErrorHandler((state) => {
