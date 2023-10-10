@@ -8,10 +8,6 @@ import {
     useReactTable,
     getCoreRowModel,
     getFilteredRowModel,
-    getFacetedRowModel,
-    getFacetedUniqueValues,
-    getFacetedMinMaxValues,
-    getPaginationRowModel,
     getSortedRowModel,
     FilterFn,
   } from '@tanstack/react-table'
@@ -23,6 +19,7 @@ import DebouncedInput from "./search";
 import "./csv.less";
 
 const MAX_HEIGHT = 600
+const MAX_DATA_SIZE = 10 * 1024 * 1024 // 10MB in bytes
 
 type CSVRow = {
     [key: string]: string | number;
@@ -79,7 +76,8 @@ const CSVRenderer: FC<Props> = (props: Props) => {
         showReadonly: true,
         totalHeight: 0,
     });
-    const [globalFilter, setGlobalFilter] = React.useState('')
+    const [globalFilter, setGlobalFilter] = useState('')
+    const [isFileTooLarge, setIsFileTooLarge] = useState<boolean>(false);
 
     const filePath = props.lineState["prompt:file"];
     const { screenId, lineId } = props.context;
@@ -125,12 +123,19 @@ const CSVRenderer: FC<Props> = (props: Props) => {
         if (content) {
             setState((prevState) => ({ ...prevState, content }));
         } else {
+            console.log("props.data.size", props.data.size)
+            // Check if the file size exceeds 10MB
+            if (props.data.size > MAX_DATA_SIZE) { // 10MB in bytes
+                setIsFileTooLarge(true);
+                return;
+            }
+            
             props.data.text().then((content: string) => {
                 setState((prevState) => ({ ...prevState, content }));
                 csvCacheRef.current.set(cacheKey, content);
             });
         }
-    }, []);
+    }, []);    
 
     // Effect to compute height after rendering
     useEffect(() => {
@@ -180,6 +185,10 @@ const CSVRenderer: FC<Props> = (props: Props) => {
         getFilteredRowModel: getFilteredRowModel(),
         getSortedRowModel: getSortedRowModel(),
     });
+
+    if (isFileTooLarge) {
+        return <div className="csv-renderer" style={{ fontSize: GlobalModel.termFontSize.get(), color: "white" }}>The file size exceeds 10MB and cannot be displayed.</div>;
+    }
 
     if (content == null) return <div className="csv-renderer" style={{ height: props.savedHeight }} />;
 
