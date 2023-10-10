@@ -266,31 +266,31 @@ function incObs(inum: mobx.IObservableValue<number>) {
 
 // @check:font
 function loadFonts() {
-    let jbmFontNormal = new FontFace("JetBrains Mono", "url('static/fonts/jetbrains-mono-v13-latin-regular.woff2')", {
+    let jbmFontNormal = new FontFace("JetBrains Mono", "url('public/fonts/jetbrains-mono-v13-latin-regular.woff2')", {
         style: "normal",
         weight: "400",
     });
-    let jbmFont200 = new FontFace("JetBrains Mono", "url('static/fonts/jetbrains-mono-v13-latin-200.woff2')", {
+    let jbmFont200 = new FontFace("JetBrains Mono", "url('public/fonts/jetbrains-mono-v13-latin-200.woff2')", {
         style: "normal",
         weight: "200",
     });
-    let jbmFont700 = new FontFace("JetBrains Mono", "url('static/fonts/jetbrains-mono-v13-latin-700.woff2')", {
+    let jbmFont700 = new FontFace("JetBrains Mono", "url('public/fonts/jetbrains-mono-v13-latin-700.woff2')", {
         style: "normal",
         weight: "700",
     });
-    let faFont = new FontFace("FontAwesome", "url(static/fonts/fontawesome-webfont-4.7.woff2)", {
-        style: "normal",
-        weight: "normal",
-    });
+    // let faFont = new FontFace("FontAwesome", "url(static/fonts/fontawesome-webfont-4.7.woff2)", {
+    //     style: "normal",
+    //     weight: "normal",
+    // });
     let docFonts: any = document.fonts; // work around ts typing issue
     docFonts.add(jbmFontNormal);
     docFonts.add(jbmFont200);
     docFonts.add(jbmFont700);
-    docFonts.add(faFont);
+    // docFonts.add(faFont);
     jbmFontNormal.load();
     jbmFont200.load();
     jbmFont700.load();
-    faFont.load();
+    // faFont.load();
 }
 
 const DOW_STRS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
