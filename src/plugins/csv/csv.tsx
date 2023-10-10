@@ -177,8 +177,10 @@ const CSVRenderer: FC<Props> = (props: Props) => {
           state: {
             globalFilter,
         },
-        onGlobalFilterChange: setGlobalFilter,
+        enableColumnResizing: true,
+        columnResizeMode: 'onChange',
         globalFilterFn: fuzzyFilter,
+        onGlobalFilterChange: setGlobalFilter,
         getCoreRowModel: getCoreRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
         getSortedRowModel: getSortedRowModel(),
@@ -218,7 +220,11 @@ const CSVRenderer: FC<Props> = (props: Props) => {
                     {table.getHeaderGroups().map(headerGroup => (
                         <tr key={headerGroup.id} ref={headerRef}>
                             {headerGroup.headers.map(header => (
-                                <th key={header.id}>
+                                <th 
+                                    key={header.id}
+                                    colSpan={header.colSpan}
+                                    style={{ position: 'relative', width: header.getSize() }}
+                                >
                                     {header.isPlaceholder
                                         ? null
                                         : (
@@ -240,6 +246,15 @@ const CSVRenderer: FC<Props> = (props: Props) => {
                                                 }[header.column.getIsSorted() as string] ?? null}
                                             </div>
                                         )}
+                                    {header.column.getCanResize() && (
+                                        <div
+                                            onMouseDown={header.getResizeHandler()}
+                                            onTouchStart={header.getResizeHandler()}
+                                            className={`resizer ${
+                                            header.column.getIsResizing() ? 'isResizing' : ''
+                                            }`}
+                                        ></div>
+                                    )}
                                 </th>
                             ))}
                         </tr>
