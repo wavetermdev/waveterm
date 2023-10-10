@@ -41,11 +41,6 @@ const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
     return itemRank.passed
 }
 
-interface DataColumn {
-    Header: string;
-    accessor: string;
-}
-
 interface Props {
     data: Blob;
     cmdstr: string;
@@ -184,10 +179,6 @@ const CSVRenderer: FC<Props> = (props: Props) => {
         getCoreRowModel: getCoreRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
         getSortedRowModel: getSortedRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
-        getFacetedRowModel: getFacetedRowModel(),
-        getFacetedUniqueValues: getFacetedUniqueValues(),
-        getFacetedMinMaxValues: getFacetedMinMaxValues(),
     });
 
     if (content == null) return <div className="csv-renderer" style={{ height: props.savedHeight }} />;
