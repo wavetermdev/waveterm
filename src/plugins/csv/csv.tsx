@@ -251,7 +251,7 @@ const CSVRenderer: FC<Props> = (props: Props) => {
                                             onMouseDown={header.getResizeHandler()}
                                             onTouchStart={header.getResizeHandler()}
                                             className={`resizer ${
-                                            header.column.getIsResizing() ? 'isResizing' : ''
+                                                header.column.getIsResizing() ? 'isResizing' : ''
                                             }`}
                                         ></div>
                                     )}
