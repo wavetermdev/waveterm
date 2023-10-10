@@ -206,7 +206,7 @@ const CSVRenderer: FC<Props> = (props: Props) => {
         );
 
     return (
-        <div className="csv-renderer" style={{"height": `${state.totalHeight}px`}}>
+        <div className="csv-renderer">
             <div className="global-search-render">
                 <DebouncedInput
                 value={globalFilter ?? ''}
@@ -260,7 +260,7 @@ const CSVRenderer: FC<Props> = (props: Props) => {
                         </tr>
                     ))}
                 </thead>
-                <tbody>
+                <tbody style={{"height": `${state.totalHeight}px`}}>
                     {table.getRowModel().rows.map((row, index) => (
                         <tr key={row.id} ref={el => rowRef.current[index] = el}>
                             {row.getVisibleCells().map(cell => (
