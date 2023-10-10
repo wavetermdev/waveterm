@@ -12,26 +12,17 @@ import {
     getFacetedUniqueValues,
     getFacetedMinMaxValues,
     getPaginationRowModel,
-    sortingFns,
     getSortedRowModel,
     FilterFn,
   } from '@tanstack/react-table'
   import {
-    RankingInfo,
     rankItem,
   } from '@tanstack/match-sorter-utils'
 import DebouncedInput from "./search";
   
 import "./csv.less";
 
-declare module '@tanstack/table-core' {
-    interface FilterFns {
-      fuzzy: FilterFn<unknown>
-    }
-    interface FilterMeta {
-      itemRank: RankingInfo
-    }
-}
+const MAX_HEIGHT = 600
 
 type CSVRow = {
     [key: string]: string | number;
@@ -151,12 +142,10 @@ const CSVRenderer: FC<Props> = (props: Props) => {
         if (headerRef.current && rowRef.current && rowRef.current[0]) {
             const headerHeight = headerRef.current.offsetHeight;
             const rowHeight = rowRef.current[0]?.offsetHeight ?? 0; // Using optional chaining
-            const totalHeight = headerHeight + rowHeight * parsedData.length;
+            const totalHeight = (headerHeight + rowHeight * parsedData.length) + 22; // 22 is the height of the global search bar
+            const th = Math.min(totalHeight, MAX_HEIGHT);
 
-            setState((prevState) => ({ ...prevState, totalHeight }));
-    
-            // Do something with totalHeight here
-            console.log(headerHeight, rowHeight, parsedData.length, totalHeight);
+            setState((prevState) => ({ ...prevState, totalHeight: th }));
         }
     }, [parsedData]);
     
@@ -179,6 +168,7 @@ const CSVRenderer: FC<Props> = (props: Props) => {
     const { content, message } = state;
 
     const table = useReactTable({
+        manualPagination: true,
         data: parsedData,
         columns,
         filterFns: {

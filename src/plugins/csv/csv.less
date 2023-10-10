@@ -71,54 +71,39 @@
 
     table {
         border: 1px solid rgb(146, 146, 146);
-        margin-bottom: 10px;
+        border-collapse: collapse;            
+        overflow-x: auto;   
+
+        thead {
+            tr {
+                position: sticky;
+                top: 0;
+                z-index: 1000;   
+                background-color: #151715;    
+                border: 1px solid rgb(146, 146, 146);         
+
+                th {
+                    color: white;
+                    border-bottom: 1px solid rgb(146, 146, 146);
+                    border-right: 1px solid rgb(146, 146, 146);
+
+                    div {
+                        border-top: 1px solid rgb(146, 146, 146);
+                        border-bottom: 1px solid rgb(146, 146, 146);
+                        padding: 2px 10px 4px 10px;
+                    }
+                }
+            }
+        }
       
         tbody {
           border-bottom: 1px solid rgb(146, 146, 146);
-        }
-      
-        th {
-          color: white;
-          border-bottom: 1px solid rgb(146, 146, 146);
-          border-right: 1px solid rgb(146, 146, 146);
-          padding: 2px 10px 4px 10px;
-
-          .min-max-renderer {
-            min-width: 200px;
-            display: flex;
-
-            .search-renderer {
-              flex: 1;
-
-              input {
-                width: 99%;
-              }
-            }
-
-            .search-renderer:first-child {
-              margin-right: 3px;
-            }
-          }
         }
 
         tr {
             td {
                 border-right: 1px solid rgb(146, 146, 146);
                 padding: 2px 10px;
-            }
-            td:last-child {
-                border-right: none;
-            } 
-        }
-    }
-
-    .pagination-renderer {
-        .page-label {
-            div {
-                padding-right: 6px;
-            }
-            strong {
-                color: white;
             }
         }
     }
