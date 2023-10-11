@@ -86,9 +86,25 @@ const CSVRenderer: FC<Props> = (props: Props) => {
     // Parse the CSV data
     const parsedData = useMemo<CSVRow[]>(() => {
         if (!state.content) return [];
-    
-        const results = Papa.parse(state.content, { header: true });
-    
+
+        // This checks for headers based on the first row's content. Adjust as needed.
+        const hasHeaders = !!state.content.split('\n')[0].match(/^[a-zA-Z]/);
+
+        const results = Papa.parse(state.content, { header: hasHeaders });
+
+        // Check for non-header CSVs
+        if (!hasHeaders && Array.isArray(results.data) && Array.isArray(results.data[0])) {
+            const dataArray = results.data as string[][];  // Asserting the type
+            const headers = Array.from({ length: dataArray[0].length }, (_, i) => `Column ${i + 1}`);
+            results.data = dataArray.map(row => {
+                const newRow: CSVRow = {};
+                row.forEach((value, index) => {
+                    newRow[headers[index]] = value;
+                });
+                return newRow;
+            });
+        }
+        
         return results.data.map(row => {
             return Object.fromEntries(
                 Object.entries(row as CSVRow).map(([key, value]) => {
@@ -102,7 +118,7 @@ const CSVRenderer: FC<Props> = (props: Props) => {
                 })
             ) as CSVRow;
         });
-    }, [state.content]);    
+    }, [state.content]);
 
     // Column Definitions
     const columns = useMemo(() => {
