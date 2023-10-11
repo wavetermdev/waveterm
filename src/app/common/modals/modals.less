@@ -128,14 +128,16 @@
 
         .close-icon {
             position: absolute;
-            right: 10px;
-            top: 6px;
+            right: 1em;
+            top: 0.8em;
             cursor: pointer;
-            padding: 3px;
-            color: #aaa;
-
-            &:hover {
-                color: #fff;
+            width: 1.5em;
+            height: 1.5em;
+            border-radius: 50%;
+            svg {
+                width: 1.5em;
+                height: 1.5em;
+                fill: @base-color;
             }
         }
     }
@@ -306,7 +308,7 @@
             fill: @tab-white;
         }
         .tab-color-icon.color-black path {
-            fill: @tab-black
+            fill: @tab-black;
         }
 
         .tab-colors {

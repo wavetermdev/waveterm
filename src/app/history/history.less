@@ -1,18 +1,20 @@
 @import "../../index.less";
 
 .history-view {
-    color: @term-white;
+    background-color: @background-session;
 
     .close-div {
-        padding-top: 10px;
-
-        i {
-            padding: 5px 5px 5px 10px;
-            cursor: pointer;
-        }
-
-        i:hover {
-            color: #fff;
+        position: absolute;
+        right: 1em;
+        top: 0.8em;
+        cursor: pointer;
+        width: 1.5em;
+        height: 1.5em;
+        border-radius: 50%;
+        svg {
+            width: 1.5em;
+            height: 1.5em;
+            fill: @base-color;
         }
     }
 
@@ -31,7 +33,7 @@
         input {
             background-color: #333;
             color: @term-white;
-
+            width: calc(100% - 3em);
             i {
                 color: @term-white;
             }

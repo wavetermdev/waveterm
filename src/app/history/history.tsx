@@ -1,7 +1,7 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
-import { If, For, When, Otherwise, Choose } from "tsx-control-statements/components";
+import { If, For } from "tsx-control-statements/components";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
@@ -12,6 +12,16 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { Line } from "../line/linecomps";
 import { CmdStrCode } from "../common/common";
+
+import { ReactComponent as XmarkIcon } from "../assets/icons/line/xmark.svg";
+import { ReactComponent as AngleDownIcon } from "../assets/icons/history/angle-down.svg";
+import { ReactComponent as ChevronLeftIcon } from "../assets/icons/history/chevron-left.svg";
+import { ReactComponent as ChevronRightIcon } from "../assets/icons/history/chevron-right.svg";
+import { ReactComponent as RightIcon } from "../assets/icons/history/right.svg";
+import { ReactComponent as SearchIcon } from "../assets/icons/history/search.svg";
+import { ReactComponent as SquareCheckIcon } from "../assets/icons/history/square-check.svg";
+import { ReactComponent as SquareMinusIcon } from "../assets/icons/history/square-minus.svg";
+import { ReactComponent as SquareIcon } from "../assets/icons/history/square.svg";
 
 import "./history.less";
 
@@ -333,7 +343,7 @@ class HistoryView extends React.Component<{}, {}> {
         let remoteIds = Object.keys(rnames);
         let remoteId: string = null;
         return (
-            <div className={cn("history-view", "alt-view", { "is-hidden": isHidden })}>
+            <div className={cn("history-view", { "is-hidden": isHidden })}>
                 <div className="header">
                     <div className="history-title">HISTORY</div>
                     <div className="history-search">
@@ -474,8 +484,8 @@ class HistoryView extends React.Component<{}, {}> {
                             </div>
                         </div>
                     </div>
-                    <div className="close-div">
-                        <i onClick={this.clickCloseHandler} className="fa-sharp fa-solid fa-xmark" />
+                    <div className="close-div hoverEffect" title="Close (Escape)" onClick={this.clickCloseHandler}>
+                        <XmarkIcon />
                     </div>
                 </div>
                 <div className={cn("control-bar", "is-top", { "is-hidden": items.length == 0 })}>

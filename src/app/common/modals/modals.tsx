@@ -9,6 +9,8 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "../../../model/model";
 import { Markdown } from "../common";
 
+import { ReactComponent as XmarkIcon } from "../../assets/icons/line/xmark.svg";
+
 dayjs.extend(localizedFormat);
 
 type OV<V> = mobx.IObservableValue<V>;
@@ -176,8 +178,8 @@ class AlertModal extends React.Component<{}, {}> {
                         <p className="modal-title">
                             <i className="fa-sharp fa-solid fa-triangle-exclamation" /> {title}
                         </p>
-                        <div className="close-icon">
-                            <i onClick={this.closeModal} className="fa-sharp fa-solid fa-times" />
+                        <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
+                            <XmarkIcon />
                         </div>
                     </header>
                     <If condition={message.markdown}>
@@ -259,8 +261,8 @@ class WelcomeModal extends React.Component<{}, {}> {
                 <div className="modal-content">
                     <header>
                         <div className="modal-title">welcome to [prompt]</div>
-                        <div className="close-icon">
-                            <i onClick={this.closeModal} className="fa-sharp fa-solid fa-times" />
+                        <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
+                            <XmarkIcon />
                         </div>
                     </header>
                     <div className={cn("inner-content content", { "is-hidden": pageNum != 1 })}>

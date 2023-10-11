@@ -1,6 +1,29 @@
 @import "../../index.less";
 
 .bookmarks-view {
+    background-color: @background-session;
+
+    .close-button {
+        position: absolute;
+        right: 1em;
+        top: 0.8em;
+        cursor: pointer;
+        width: 1.5em;
+        height: 1.5em;
+        border-radius: 50%;
+        svg {
+            width: 1.5em;
+            height: 1.5em;
+            fill: @base-color;
+        }
+    }
+
+    .icon {
+        width: 1em;
+        height: 1em;
+        fill: @base-color;
+    }
+
     .bookmarks-list {
         color: @term-white;
         margin: 4px 10px 5px 5px;
