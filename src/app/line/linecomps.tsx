@@ -704,9 +704,11 @@ class LineCmd extends React.Component<
                         >
                             <If condition={rsdiff == null || rsdiff == ""}>
                                 <div className="cmd-rtnstate-label">state unchanged</div>
+                                <div className="cmd-rtnstate-sep"></div>
                             </If>
                             <If condition={rsdiff != null && rsdiff != ""}>
-                                <div className="cmd-rtnstate-label" style={{fontSize: rtnStateDiffSize-1}}>new state</div>
+                                <div className="cmd-rtnstate-label">new state</div>
+                                <div className="cmd-rtnstate-sep"></div>
                                 <div className="cmd-rtnstate-diff" style={{fontSize: rtnStateDiffSize}}>{this.rtnStateDiff.get()}</div>
                             </If>
                         </div>
