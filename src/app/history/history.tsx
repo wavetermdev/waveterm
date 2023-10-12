@@ -347,7 +347,7 @@ class HistoryView extends React.Component<{}, {}> {
         return (
             <div className={cn("history-view", { "is-hidden": isHidden })}>
                 <div className="header">
-                    <div className="history-title">HISTORY</div>
+                    <div className="history-title">History</div>
                     <div className="history-search">
                         <div className="main-search field">
                             <p className="control has-icons-left">

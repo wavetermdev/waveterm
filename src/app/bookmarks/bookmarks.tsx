@@ -191,12 +191,11 @@ class BookmarksView extends React.Component<{}, {}> {
         let bookmark: BookmarkType = null;
         return (
             <div className={cn("bookmarks-view", { "is-hidden": isHidden })}>
-                <div className="close-button hoverEffect" title="Close (Escape)" onClick={this.closeView}>
-                    <XmarkIcon className={"icon"} />
-                </div>
-                <div className="alt-title">
-                    <FavouritesIcon className={"icon"} style={{ marginRight: 10 }} />
-                    Favourites
+                <div className="header">
+                    <div className="bookmarks-title">Favourites</div>
+                    <div className="close-button hoverEffect" title="Close (Escape)" onClick={this.closeView}>
+                        <XmarkIcon className={"icon"} />
+                    </div>
                 </div>
                 <div className="bookmarks-list">
                     <For index="idx" each="bookmark" of={bookmarks}>
