@@ -14,7 +14,8 @@ import {
   import {
     rankItem,
   } from '@tanstack/match-sorter-utils'
-import DebouncedInput from "./search";
+import SortUpIcon from './img/sort-up-solid.svg';
+import SortDownIcon from './img/sort-down-solid.svg';
   
 import "./csv.less";
 
@@ -87,10 +88,14 @@ const CSVRenderer: FC<Props> = (props: Props) => {
     const parsedData = useMemo<CSVRow[]>(() => {
         if (!state.content) return [];
 
-        // This checks for headers based on the first row's content. Adjust as needed.
-        const hasHeaders = !!state.content.split('\n')[0].match(/^[a-zA-Z]/);
+        // Trim the content and then check for headers based on the first row's content.
+        const trimmedContent = state.content.trim();
+        const firstRow = trimmedContent.split('\n')[0];
 
-        const results = Papa.parse(state.content, { header: hasHeaders });
+        // This checks if the first row starts with a letter or a quote
+        const hasHeaders = !!firstRow.match(/^[a-zA-Z"]/);
+
+        const results = Papa.parse(trimmedContent, { header: hasHeaders });
 
         // Check for non-header CSVs
         if (!hasHeaders && Array.isArray(results.data) && Array.isArray(results.data[0])) {
@@ -193,8 +198,6 @@ const CSVRenderer: FC<Props> = (props: Props) => {
           state: {
             globalFilter,
         },
-        enableColumnResizing: true,
-        columnResizeMode: 'onChange',
         globalFilterFn: fuzzyFilter,
         onGlobalFilterChange: setGlobalFilter,
         getCoreRowModel: getCoreRowModel(),
@@ -223,14 +226,14 @@ const CSVRenderer: FC<Props> = (props: Props) => {
 
     return (
         <div className="csv-renderer">
-            <div className="global-search-render">
+            {/* <div className="global-search-render">
                 <DebouncedInput
                 value={globalFilter ?? ''}
                 onChange={value => setGlobalFilter(String(value))}
                 className="global-search"
                 placeholder="Search all columns..."
                 />
-            </div>
+            </div> */}
             <table>
                 <thead>
                     {table.getHeaderGroups().map(headerGroup => (
@@ -239,7 +242,7 @@ const CSVRenderer: FC<Props> = (props: Props) => {
                                 <th 
                                     key={header.id}
                                     colSpan={header.colSpan}
-                                    style={{ position: 'relative', width: header.getSize() }}
+                                    style={{ width: header.getSize() }}
                                 >
                                     {header.isPlaceholder
                                         ? null
@@ -247,7 +250,7 @@ const CSVRenderer: FC<Props> = (props: Props) => {
                                             <div
                                                 {...{
                                                     className: header.column.getCanSort()
-                                                    ? 'cursor-pointer select-none'
+                                                    ? 'inner cursor-pointer select-none'
                                                     : '',
                                                     onClick: header.column.getToggleSortingHandler(),
                                                 }}
@@ -256,21 +259,12 @@ const CSVRenderer: FC<Props> = (props: Props) => {
                                                     header.column.columnDef.header,
                                                     header.getContext()
                                                 )}
-                                                {{
-                                                    asc: ' 🔼',
-                                                    desc: ' 🔽',
-                                                }[header.column.getIsSorted() as string] ?? null}
+                                                {
+                                                    header.column.getIsSorted() === 'asc' ? <img src={SortUpIcon} className="sort-icon sort-up-icon" alt="Ascending"  /> :
+                                                    header.column.getIsSorted() === 'desc' ? <img src={SortDownIcon} className="sort-icon sort-down-icon" alt="Descending"  /> : null
+                                                }
                                             </div>
                                         )}
-                                    {header.column.getCanResize() && (
-                                        <div
-                                            onMouseDown={header.getResizeHandler()}
-                                            onTouchStart={header.getResizeHandler()}
-                                            className={`resizer ${
-                                                header.column.getIsResizing() ? 'isResizing' : ''
-                                            }`}
-                                        ></div>
-                                    )}
                                 </th>
                             ))}
                         </tr>

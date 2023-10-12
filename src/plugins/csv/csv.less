@@ -26,12 +26,11 @@
             width: 100%;
             overflow-y: scroll;
 
-            tr { 
-                background-color: #151715;    
+            tr {  
                 border-bottom: 1px solid @scrollbar-thumb;         
 
                 th {
-                    color: white;
+                    color:@term-white;
                     border: 1px solid @scrollbar-thumb;
                     border-bottom: none;
                     padding: 2px 10px 4px 10px;
@@ -39,27 +38,25 @@
                     flex-grow:2;
                     display: block;
                     text-align:left;
+                    position: relative;
 
-                    &:hover .resizer {
-                        opacity: 1;
-                    }
+                    .inner {
+                        display: block;
+                        text-align:left;
+                        text-overflow: ellipsis;
+                        overflow: hidden;
+                        white-space: nowrap;
+                        display: block;
+                        padding-right: 15px;
+                        position: relative;
 
-                    .resizer {
-                        position: absolute;
-                        right: 0;
-                        top: 0;
-                        height: 100%;
-                        width: 3px;
-                        background: @term-white;
-                        cursor: col-resize;
-                        user-select: none;
-                        touch-action: none;
-                        opacity: 0;
-                    }
-
-                    .resizer.isResizing {
-                        background: @tab-green;
-                        opacity: 1;
+                        .sort-icon {
+                            filter: invert(100%);
+                            position: absolute;
+                            right: 0px;
+                            top: 2px;
+                            width: 9px;
+                        }
                     }
                 }
             }

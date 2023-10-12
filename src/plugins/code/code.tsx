@@ -109,7 +109,7 @@ class SourceCodeRenderer extends React.Component<
 
     saveLineState = (kvp) => {
         const { screenId, lineId } = this.props.context;
-        GlobalCommandRunner.setLineState(screenId, lineId, { ...this.props.lineState, ...kvp }, false);
+        GlobalModel.setLineState(screenId, lineId, { ...this.props.lineState, ...kvp }, false);
     };
 
     setInitialLanguage = (editor) => {
@@ -258,7 +258,7 @@ class SourceCodeRenderer extends React.Component<
                 this.setState({ code: this.originalCode, isSave: false }, this.doClose);
             });
         const { screenId, lineId } = this.props.context;
-        GlobalCommandRunner.setLineState(screenId, lineId, { ...this.props.lineState, "prompt:closed": true }, false)
+        GlobalModel.setLineState(screenId, lineId, { ...this.props.lineState, "prompt:closed": true }, false)
             .then(() => {
                 this.setState({
                     isClosed: true,

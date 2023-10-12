@@ -3682,6 +3682,15 @@ class Model {
                 return;
             });
     }
+
+    setLineState(
+        screenId: string, 
+        lineId: string, 
+        state: T.LineStateType, 
+        interactive: boolean
+    ): Promise<CommandRtnType> {        
+        return GlobalCommandRunner.setLineState(screenId, lineId, state, interactive);
+    }
 }
 
 class CommandRunner {
@@ -3996,6 +4005,7 @@ class CommandRunner {
         state: T.LineStateType,
         interactive: boolean
     ): Promise<CommandRtnType> {
+        console.log("clientData", GlobalModel.getClientData())
         let stateStr = JSON.stringify(state);
         return GlobalModel.submitCommand(
             "line",
