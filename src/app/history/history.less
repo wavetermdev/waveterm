@@ -1,7 +1,19 @@
-@import "../../index.less";
+@import "../../app/app.less";
 
 .history-view {
     background-color: @background-session;
+
+    .icon {
+        width: 1.5em !important;
+        height: 1.5em !important;
+        fill: @base-color;
+    }
+
+    .is-left {
+        position: absolute;
+        left: 0.5em;
+        top: 0.5em;
+    }
 
     .close-div {
         position: absolute;
@@ -19,31 +31,23 @@
     }
 
     .header {
-        display: flex;
-        flex-direction: row;
         margin: 10px;
-        align-items: flex-start;
 
         .history-title {
-            margin-top: 5px;
+            margin-top: 0.3em;
             font-weight: bold;
-            color: @term-white;
+            font-size: 1.5em;
         }
 
         input {
-            background-color: #333;
-            color: @term-white;
-            width: calc(100% - 3em);
-            i {
-                color: @term-white;
-            }
+            background-color: @background-session-components;
+            color: @base-color;
         }
     }
 
     .history-search {
         flex-grow: 1;
         margin-top: 5px;
-        margin-left: 15px;
 
         .main-search {
             .field {
