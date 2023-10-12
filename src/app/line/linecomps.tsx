@@ -371,10 +371,10 @@ class LineCmd extends React.Component<
 
     getTerminalRendererHeight(cmd: Cmd): number {
         let { screen, line, width, renderMode } = this.props;
-        let height = 36 + 6; // height of zero height terminal
+        let height = 45 + 24; // height of zero height terminal
         let usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
         if (usedRows > 0) {
-            height = 36 + 6 + 11 + termHeightFromRows(usedRows, GlobalModel.termFontSize.get());
+            height = 48 + 24 + termHeightFromRows(usedRows, GlobalModel.termFontSize.get());
         }
         return height;
     }
