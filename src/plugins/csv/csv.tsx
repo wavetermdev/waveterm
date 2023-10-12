@@ -19,7 +19,6 @@ import SortDownIcon from './img/sort-down-solid.svg';
   
 import "./csv.less";
 
-const MAX_HEIGHT = 600
 const MAX_DATA_SIZE = 10 * 1024 * 1024 // 10MB in bytes
 
 type CSVRow = {
@@ -144,7 +143,6 @@ const CSVRenderer: FC<Props> = (props: Props) => {
         if (content) {
             setState((prevState) => ({ ...prevState, content }));
         } else {
-            console.log("props.data.size", props.data.size)
             // Check if the file size exceeds 10MB
             if (props.data.size > MAX_DATA_SIZE) { // 10MB in bytes
                 setIsFileTooLarge(true);
@@ -163,11 +161,11 @@ const CSVRenderer: FC<Props> = (props: Props) => {
         if (headerRef.current && rowRef.current && rowRef.current[0]) {
             const rowHeight = rowRef.current[0]?.offsetHeight ?? 0; // Using optional chaining
             const totalHeight =  rowHeight * parsedData.length; 
-            const th = Math.min(totalHeight, MAX_HEIGHT);
+            const th = Math.min(totalHeight, props.opts.maxSize.height);
 
             setState((prevState) => ({ ...prevState, totalHeight: th }));
         }
-    }, [parsedData]);
+    }, [parsedData, props.opts]);
     
 
     const getMessage = () => (
@@ -205,34 +203,17 @@ const CSVRenderer: FC<Props> = (props: Props) => {
     });
 
     if (isFileTooLarge) {
-        return <div className="csv-renderer" style={{ fontSize: GlobalModel.termFontSize.get(), color: "white" }}>The file size exceeds 10MB and cannot be displayed.</div>;
+        return (
+            <div className="csv-renderer" style={{ fontSize: GlobalModel.termFontSize.get() }}>
+                <div className="load-error-text">The file size exceeds 10MB and cannot be displayed.</div>
+            </div>
+        );
     }
 
     if (content == null) return <div className="csv-renderer" style={{ height: props.savedHeight }} />;
 
-    if (exitcode === 1)
-        return (
-            <div
-                className="csv-renderer"
-                style={{
-                    fontSize: GlobalModel.termFontSize.get(),
-                    color: "white",
-                }}
-            >
-                {content}
-            </div>
-        );
-
     return (
         <div className="csv-renderer">
-            {/* <div className="global-search-render">
-                <DebouncedInput
-                value={globalFilter ?? ''}
-                onChange={value => setGlobalFilter(String(value))}
-                className="global-search"
-                placeholder="Search all columns..."
-                />
-            </div> */}
             <table>
                 <thead>
                     {table.getHeaderGroups().map(headerGroup => (
