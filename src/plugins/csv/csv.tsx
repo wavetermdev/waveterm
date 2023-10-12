@@ -161,9 +161,8 @@ const CSVRenderer: FC<Props> = (props: Props) => {
     // Effect to compute height after rendering
     useEffect(() => {
         if (headerRef.current && rowRef.current && rowRef.current[0]) {
-            const headerHeight = headerRef.current.offsetHeight;
             const rowHeight = rowRef.current[0]?.offsetHeight ?? 0; // Using optional chaining
-            const totalHeight = (headerHeight + rowHeight * parsedData.length) + 22; // 22 is the height of the global search bar
+            const totalHeight =  rowHeight * parsedData.length; 
             const th = Math.min(totalHeight, MAX_HEIGHT);
 
             setState((prevState) => ({ ...prevState, totalHeight: th }));

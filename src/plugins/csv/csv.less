@@ -26,6 +26,7 @@
     table {
         border-collapse: collapse;            
         overflow-x: auto;   
+        border: 1px solid @scrollbar-thumb;
 
         thead {
             position:relative;
@@ -84,12 +85,6 @@
                 display: block;
                 text-align:left;
                 .ellipsis();
-            }
-
-            &:last-child {
-                td {
-                    border-bottom: 1px solid @scrollbar-thumb;
-                }
             }
         }
     }
