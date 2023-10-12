@@ -1,6 +1,13 @@
 @import "../../index.less";
 
 .csv-renderer {
+    .ellipsis() {
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
     overflow-x: auto;
     overflow-y: hidden;
 
@@ -41,14 +48,10 @@
                     position: relative;
 
                     .inner {
-                        display: block;
                         text-align:left;
-                        text-overflow: ellipsis;
-                        overflow: hidden;
-                        white-space: nowrap;
-                        display: block;
                         padding-right: 15px;
                         position: relative;
+                        .ellipsis();
 
                         .sort-icon {
                             filter: invert(100%);
@@ -80,10 +83,7 @@
                 flex-grow:2;
                 display: block;
                 text-align:left;
-                text-overflow: ellipsis;
-                overflow: hidden;
-                white-space: nowrap;
-                display: block;
+                .ellipsis();
             }
 
             &:last-child {

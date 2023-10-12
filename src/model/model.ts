@@ -4089,4 +4089,3 @@ export {
     getTermPtyData,
     RemotesModalModel,
 };
-export type { LineContainerModel };
