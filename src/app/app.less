@@ -1,4 +1,4 @@
-@import "../index.less";
+@import "./common/themes/themes.less";
 
 @font-face {
     font-family: "Martian Mono";
@@ -94,7 +94,7 @@ svg.icon {
     border: none;
     border-radius: 5px;
     cursor: pointer;
-    background-color: @button-background;
+    background-color: @button-background !important;
     color: @prompt-green;
     .hoverEffect;
     &:hover {
@@ -169,9 +169,8 @@ a.a-block {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
-            min-width: 300px;
+            margin-right: 0.5em;
             position: relative;
-
             &.is-hidden {
                 display: none;
             }
@@ -393,59 +392,5 @@ a.a-block {
 
     100% {
         opacity: 0;
-    }
-}
-
-.alt-view {
-    background-color: #111;
-    overflow-y: auto;
-    flex-grow: 1;
-
-    .alt-title {
-        margin: 20px 10px 0px 5px;
-        padding-left: 10px;
-        padding-bottom: 12px;
-        color: @term-bright-white;
-        border-bottom: 1px solid white;
-    }
-
-    .alt-list {
-        color: @term-white;
-        margin: 4px 10px 5px 5px;
-        border-bottom: 1px solid white;
-    }
-
-    .no-content {
-        color: @term-white;
-        padding: 30px 10px 35px 10px;
-        border-bottom: 1px solid white;
-    }
-
-    .close-button {
-        position: absolute;
-        padding: 4px;
-
-        color: #aaa;
-        right: 15px;
-        top: 18px;
-        cursor: pointer;
-
-        &:hover {
-            color: #fff;
-        }
-    }
-
-    .alt-help {
-        color: @term-white;
-        margin-top: 20px;
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-
-        margin-bottom: 10px;
-
-        .help-entry {
-            margin-left: 20px;
-        }
     }
 }

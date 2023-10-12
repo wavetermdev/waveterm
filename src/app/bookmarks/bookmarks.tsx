@@ -8,6 +8,12 @@ import type { BookmarkType } from "../../types/types";
 import { GlobalModel } from "../../model/model";
 import { CmdStrCode, Markdown } from "../common/common";
 
+import { ReactComponent as XmarkIcon } from "../assets/icons/line/xmark.svg";
+import { ReactComponent as CopyIcon } from "../assets/icons/favourites/copy.svg";
+import { ReactComponent as PenIcon } from "../assets/icons/favourites/pen.svg";
+import { ReactComponent as TrashIcon } from "../assets/icons/favourites/trash.svg";
+import { ReactComponent as FavouritesIcon } from "../assets/icons/favourites.svg";
+
 import "./bookmarks.less";
 
 @mobxReact.observer
@@ -157,10 +163,10 @@ class Bookmark extends React.Component<{ bookmark: BookmarkType }, {}> {
                 </div>
                 <div className="bookmark-controls">
                     <div className="bookmark-control" onClick={this.handleEditClick}>
-                        <i className="fa-sharp fa-solid fa-pen" />
+                        <PenIcon className={"icon"} />
                     </div>
                     <div className="bookmark-control" onClick={this.handleDeleteClick}>
-                        <i className="fa-sharp fa-solid fa-trash" />
+                        <TrashIcon className={"icon"} />
                     </div>
                 </div>
             </div>
@@ -184,13 +190,13 @@ class BookmarksView extends React.Component<{}, {}> {
         let idx: number = 0;
         let bookmark: BookmarkType = null;
         return (
-            <div className={cn("bookmarks-view", "alt-view", { "is-hidden": isHidden })}>
-                <div className="close-button" onClick={this.closeView}>
-                    <i className="fa-sharp fa-solid fa-xmark"></i>
+            <div className={cn("bookmarks-view", { "is-hidden": isHidden })}>
+                <div className="close-button hoverEffect" title="Close (Escape)" onClick={this.closeView}>
+                    <XmarkIcon className={"icon"} />
                 </div>
                 <div className="alt-title">
-                    <i className="fa-sharp fa-solid fa-bookmark" style={{ marginRight: 10 }} />
-                    BOOKMARKS
+                    <FavouritesIcon className={"icon"} style={{ marginRight: 10 }} />
+                    Favourites
                 </div>
                 <div className="bookmarks-list">
                     <For index="idx" each="bookmark" of={bookmarks}>
@@ -200,8 +206,7 @@ class BookmarksView extends React.Component<{}, {}> {
                         <div className="no-content">
                             No Bookmarks.
                             <br />
-                            Use the <i className="fa-sharp fa-solid fa-bookmark" /> icon on commands to add your first
-                            bookmark.
+                            Use the <FavouritesIcon className={"icon"} /> icon on commands to add your first bookmark.
                         </div>
                     </If>
                 </div>
@@ -210,13 +215,13 @@ class BookmarksView extends React.Component<{}, {}> {
                         <div className="help-entry">
                             [Enter] to Use Bookmark
                             <br />
-                            [Backspace/Delete]x2 or <i className="fa-sharp fa-solid fa-trash" /> to Delete
+                            [Backspace/Delete]x2 or <TrashIcon className={"icon"} /> to Delete
                             <br />
                             [Arrow Up]/[Arrow Down]/[PageUp]/[PageDown] to Move in List
                             <br />
-                            [e] or <i className="fa-sharp fa-solid fa-pen" /> to Edit
+                            [e] or <PenIcon className={"icon"} /> to Edit
                             <br />
-                            [c] or <i className="fa-sharp fa-regular fa-copy" /> to Copy
+                            [c] or <CopyIcon className={"icon"} /> to Copy
                             <br />
                         </div>
                     </div>

@@ -1,4 +1,4 @@
-@import "../../index.less";
+@import "../../app/app.less";
 
 .code-renderer {
     .monaco-editor {
@@ -68,11 +68,11 @@
     }
     .readonly {
         position: absolute;
-        top: 0;
+        top: 0.2em;
         right: 12rem;
         border-radius: 5px;
         background-color: @button-background;
-        color: @prompt-green;
+        color: @error-red;
         z-index: 1;
         padding: 0 0.8em;
         font-size: 0.8em;

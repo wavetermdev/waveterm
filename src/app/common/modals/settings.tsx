@@ -10,6 +10,7 @@ import { LineType, RendererPluginType, ClientDataType, CommandRtnType } from "..
 import { PluginModel } from "../../../plugins/plugins";
 import * as util from "../../../util/util";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
+import { ReactComponent as XmarkIcon } from "../../assets/icons/line/xmark.svg";
 
 import "./modals.less";
 
@@ -214,8 +215,8 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
                     </If>
                     <header>
                         <div className="modal-title">screen settings ({screen.name.get()})</div>
-                        <div className="close-icon">
-                            <i onClick={this.closeModal} className="fa-sharp fa-solid fa-times" />
+                        <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
+                            <XmarkIcon />
                         </div>
                     </header>
                     <div className="inner-content">
@@ -241,7 +242,7 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
                             <div className="settings-input">
                                 <div className="tab-colors">
                                     <div className="tab-color-cur">
-                                        <SquareIcon className={cn("tab-color-icon", "color-" + screen.getTabColor())}/>
+                                        <SquareIcon className={cn("tab-color-icon", "color-" + screen.getTabColor())} />
                                         <span className="tab-color-name">{screen.getTabColor()}</span>
                                     </div>
                                     <div className="tab-color-sep">|</div>
@@ -251,7 +252,7 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
                                             className="tab-color-select"
                                             onClick={() => this.selectTabColor(color)}
                                         >
-                                            <SquareIcon className={cn("tab-color-icon", "color-" + color)}/>
+                                            <SquareIcon className={cn("tab-color-icon", "color-" + color)} />
                                         </div>
                                     </For>
                                 </div>
@@ -378,8 +379,8 @@ class SessionSettingsModal extends React.Component<{ sessionId: string }, {}> {
                 <div className="modal-content">
                     <header>
                         <div className="modal-title">session settings ({session.name.get()})</div>
-                        <div className="close-icon">
-                            <i onClick={this.closeModal} className="fa-sharp fa-solid fa-times" />
+                        <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
+                            <XmarkIcon />
                         </div>
                     </header>
                     <div className="inner-content">
@@ -544,8 +545,8 @@ class LineSettingsModal extends React.Component<{ linenum: number }, {}> {
                 <div className="modal-content">
                     <header>
                         <div className="modal-title">line settings ({line.linenum})</div>
-                        <div className="close-icon">
-                            <i onClick={this.closeModal} className="fa-sharp fa-solid fa-times" />
+                        <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
+                            <XmarkIcon />
                         </div>
                     </header>
                     <div className="inner-content">
@@ -696,8 +697,8 @@ class ClientSettingsModal extends React.Component<{}, {}> {
                 <div className="modal-content">
                     <header>
                         <div className="modal-title">client settings</div>
-                        <div className="close-icon">
-                            <i onClick={this.closeModal} className="fa-sharp fa-solid fa-times" />
+                        <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
+                            <XmarkIcon />
                         </div>
                     </header>
                     <div className="inner-content">

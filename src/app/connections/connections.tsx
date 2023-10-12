@@ -10,6 +10,8 @@ import { RemoteType, RemoteEditType } from "../../types/types";
 import * as util from "../../util/util";
 import * as textmeasure from "../../util/textmeasure";
 
+import { ReactComponent as XmarkIcon } from "../assets/icons/line/xmark.svg";
+
 import "./connections.less";
 
 type OV<V> = mobx.IObservableValue<V>;
@@ -1155,12 +1157,8 @@ class RemotesModal extends React.Component<{ model: RemotesModalModel }, {}> {
                 <div className="modal-content">
                     <header>
                         <div className="modal-title">Connections</div>
-                        <div className="close-icon">
-                            <i
-                                title="Close (Escape)"
-                                onClick={this.closeModal}
-                                className="fa-sharp fa-solid fa-times"
-                            />
+                        <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
+                            <XmarkIcon />
                         </div>
                     </header>
                     <div className="inner-content">
