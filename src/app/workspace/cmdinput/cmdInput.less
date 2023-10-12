@@ -89,14 +89,20 @@
 
         textarea {
             color: @term-bright-white;
-            background-color: transparent;
+            background-color: @textarea-background;
             padding: 0.5em;
             resize: none;
             overflow: auto;
             overflow-wrap: anywhere;
             border-color: transparent;
+            border: none;
             &.display-disabled {
                 background-color: #444;
+            }
+            
+            &:focus {
+                box-shadow: none;
+                border: none;
             }
         }
 
