@@ -241,7 +241,7 @@ class ScreenWindowView extends React.Component<{ screen: Screen }, {}> {
                     <div key="window-empty" className="window-empty">
                         <div>
                             <code>
-                                [session="{session.name.get()}" screen="{screen.name.get()}"]
+                                [workspace="{session.name.get()}" screen="{screen.name.get()}"]
                             </code>
                         </div>
                     </div>
