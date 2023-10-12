@@ -4,8 +4,8 @@
     background-color: @background-session;
 
     .icon {
-        width: 1.5em !important;
-        height: 1.5em !important;
+        width: 1.3em !important;
+        height: 1.3em !important;
         fill: @base-color;
     }
 
@@ -40,6 +40,10 @@
         }
 
         input {
+            border: none;
+            border-radius: 4px;
+            font-size: 1em;
+            padding: 0.5em 1em;
             background-color: @background-session-components;
             color: @base-color;
         }
@@ -64,6 +68,20 @@
             flex-direction: row;
             align-items: center;
 
+            .dropdown {
+                font-size: 0.8em;
+                padding: 0.5em 1em;
+                .label {
+                    display: inline;
+                    vertical-align: middle;
+                    color: @base-color;
+                }
+                .icon {
+                    vertical-align: middle;
+                    margin-left: 1em;
+                }
+            }
+
             .session-dropdown,
             .remote-dropdown {
                 .dropdown-item {
@@ -75,8 +93,8 @@
                 }
 
                 .dropdown-content {
-                    border: 1px solid #333;
-                    border-radius: 3px;
+                    border-radius: 0 0 4px 4px;
+                    width: 16em;
                 }
             }
 
@@ -86,9 +104,9 @@
 
             .search-checkbox {
                 margin-left: 15px;
-                border: 1px solid #777;
                 padding: 5px 10px 5px 10px;
-
+                background: @base-border;
+                border-radius: 4px;
                 display: flex;
                 flex-direction: row;
                 align-items: center;
@@ -119,15 +137,9 @@
             }
 
             .reset-button {
-                cursor: pointer;
-                margin-left: 15px;
-
-                border: 1px solid #777;
-                padding: 5px 10px 5px 10px;
-
-                &:hover {
-                    background-color: #666;
-                }
+                margin-left: 1em;
+                color: @base-color;
+                line-height: 1.75em;
             }
         }
     }
@@ -151,21 +163,17 @@
         }
 
         .control-checkbox {
-            cursor: pointer;
-            color: #777;
-
-            width: 24px;
-            margin-left: 14px;
-
-            &:hover {
-                color: @term-white;
-            }
+            margin: 0.3em 1.2em;
         }
 
         .control-button {
             cursor: pointer;
             color: #aaa;
             margin-left: 10px;
+
+            .icon {
+                vertical-align: text-bottom;
+            }
 
             &.is-disabled {
                 cursor: default;
@@ -297,33 +305,29 @@
             td.selectbox {
                 flex: 0 0 auto;
                 flex-basis: 24px;
-
+                margin-right: 1em;
                 cursor: pointer;
             }
 
             td.bookmark {
                 flex: 0 0 auto;
                 flex-basis: 20px;
-
+                margin-right: 1em;
                 cursor: pointer;
-
-                i {
-                    position: relative;
-                    top: 1px;
-                    display: none;
-                }
             }
 
             td.ts {
                 flex: 0 0 auto;
                 flex-basis: 65px;
                 font-weight: bold;
+                margin-right: 1em;
             }
 
             td.session {
                 flex: 0 0 auto;
                 flex-basis: 120px;
                 text-overflow: ellipsis;
+                margin-right: 1em;
             }
 
             td.remote {
@@ -333,6 +337,7 @@
                 padding-right: 5px;
                 max-width: 150px;
                 overflow: hidden;
+                margin-right: 2em;
             }
 
             td.cmdstr {
@@ -357,5 +362,9 @@
                 }
             }
         }
+    }
+
+    .help-entry {
+        margin: 1em 2em;
     }
 }

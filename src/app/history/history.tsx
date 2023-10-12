@@ -327,12 +327,12 @@ class HistoryView extends React.Component<{}, {}> {
         let hasMore = hvm.hasMore.get();
         let offset = hvm.offset.get();
         let numSelected = hvm.selectedItems.size;
-        let controlCheckboxIcon = <SquareIcon />;
+        let controlCheckboxIcon = <SquareIcon className="icon" />;
         if (numSelected > 0) {
-            controlCheckboxIcon = <SquareMinusIcon />;
+            controlCheckboxIcon = <SquareMinusIcon className="icon" />;
         }
         if (numSelected > 0 && numSelected == items.length) {
-            controlCheckboxIcon = <SquareCheckIcon />;
+            controlCheckboxIcon = <SquareCheckIcon className="icon" />;
         }
         let activeItemId = hvm.activeItem.get();
         let activeItem = hvm.getHistoryItemById(activeItemId);
@@ -370,17 +370,13 @@ class HistoryView extends React.Component<{}, {}> {
                                     "is-active": this.sessionDropdownActive.get(),
                                 })}
                             >
-                                <div className="dropdown-trigger">
-                                    <button onClick={this.toggleSessionDropdown} className="button is-small is-dark">
-                                        <span>
-                                            {hvm.searchSessionId.get() == null
-                                                ? "Limit Session"
-                                                : formatSessionName(snames, hvm.searchSessionId.get())}
-                                        </span>
-                                        <span className="icon is-small">
-                                            <AngleDownIcon className="icon" />
-                                        </span>
-                                    </button>
+                                <div onClick={this.toggleSessionDropdown}>
+                                    <span className="label">
+                                        {hvm.searchSessionId.get() == null
+                                            ? "Limit Session"
+                                            : formatSessionName(snames, hvm.searchSessionId.get())}
+                                    </span>
+                                    <AngleDownIcon className="icon" />
                                 </div>
                                 <div className="dropdown-menu" role="menu">
                                     <div className="dropdown-content has-background-black-ter">
@@ -408,17 +404,13 @@ class HistoryView extends React.Component<{}, {}> {
                                     "is-active": this.remoteDropdownActive.get(),
                                 })}
                             >
-                                <div className="dropdown-trigger">
-                                    <button onClick={this.toggleRemoteDropdown} className="button is-small is-dark">
-                                        <span>
-                                            {hvm.searchRemoteId.get() == null
-                                                ? "Limit Remote"
-                                                : formatRemoteName(rnames, { remoteid: hvm.searchRemoteId.get() })}
-                                        </span>
-                                        <span className="icon is-small">
-                                            <AngleDownIcon className="icon" />
-                                        </span>
-                                    </button>
+                                <div onClick={this.toggleRemoteDropdown}>
+                                    <span className="label">
+                                        {hvm.searchRemoteId.get() == null
+                                            ? "Limit Remote"
+                                            : formatRemoteName(rnames, { remoteid: hvm.searchRemoteId.get() })}
+                                    </span>
+                                    <AngleDownIcon className="icon" />
                                 </div>
                                 <div className="dropdown-menu" role="menu">
                                     <div className="dropdown-content has-background-black-ter">
@@ -441,7 +433,7 @@ class HistoryView extends React.Component<{}, {}> {
                                     </div>
                                 </div>
                             </div>
-                            <div className="allow-meta search-checkbox">
+                            <div className="allow-meta search-checkbox hoverEffect">
                                 <div className="checkbox-container">
                                     <input
                                         onChange={this.toggleShowMeta}
@@ -457,17 +449,16 @@ class HistoryView extends React.Component<{}, {}> {
                                 <div onClick={this.toggleShowMeta} className="fromts-text">
                                     From:&nbsp;
                                 </div>
-                                <div>
+                                <div className="hoverEffect">
                                     <input
                                         type="date"
                                         onChange={this.handleFromTsChange}
                                         value={this.searchFromTsInputValue()}
-                                        className="input is-small"
                                     />
                                 </div>
                             </div>
                             <div
-                                className="filter-cmds search-checkbox"
+                                className="filter-cmds search-checkbox hoverEffect"
                                 title="Filter common commands like 'ls' and 'cd' from the results"
                             >
                                 <div className="checkbox-container">
@@ -481,7 +472,7 @@ class HistoryView extends React.Component<{}, {}> {
                                     Filter Cmds
                                 </div>
                             </div>
-                            <div onClick={this.resetAllFilters} className="reset-button">
+                            <div onClick={this.resetAllFilters} className="button reset-button hoverEffect">
                                 Reset All
                             </div>
                         </div>
@@ -502,7 +493,10 @@ class HistoryView extends React.Component<{}, {}> {
                         )}
                         onClick={this.handleClickDelete}
                     >
-                        <TrashIcon className="icon" title="Purge Selected Items" /> <span>Delete Items</span>
+                        <span>
+                            <TrashIcon className="icon" title="Purge Selected Items" />
+                            &nbsp;Delete Items
+                        </span>
                     </div>
                     <div className="spacer" />
                     <div className="showing-text">
@@ -593,10 +587,7 @@ class HistoryView extends React.Component<{}, {}> {
                     </div>
                 </If>
                 <div className="alt-help">
-                    <div className="help-entry">
-                        [Esc] to Close
-                        <br />
-                    </div>
+                    <div className="help-entry">[Esc] to Close</div>
                 </div>
             </div>
         );
