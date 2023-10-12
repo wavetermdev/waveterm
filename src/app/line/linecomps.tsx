@@ -607,6 +607,11 @@ class LineCmd extends React.Component<
         }
         let rendererType = lineutil.getRendererType(line);
         let hidePrompt = rendererPlugin != null && rendererPlugin.hidePrompt;
+        let termFontSize = GlobalModel.termFontSize.get();
+        let rtnStateDiffSize = termFontSize - 2;
+        if (rtnStateDiffSize < 10) {
+            rtnStateDiffSize = Math.max(termFontSize, 10);
+        }
         return (
             <div
                 className={mainDivCn}
@@ -701,8 +706,8 @@ class LineCmd extends React.Component<
                                 <div className="cmd-rtnstate-label">state unchanged</div>
                             </If>
                             <If condition={rsdiff != null && rsdiff != ""}>
-                                <div className="cmd-rtnstate-label">new state</div>
-                                <div className="cmd-rtnstate-diff">{this.rtnStateDiff.get()}</div>
+                                <div className="cmd-rtnstate-label" style={{fontSize: rtnStateDiffSize-1}}>new state</div>
+                                <div className="cmd-rtnstate-diff" style={{fontSize: rtnStateDiffSize}}>{this.rtnStateDiff.get()}</div>
                             </If>
                         </div>
                     </If>
