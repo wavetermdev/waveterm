@@ -532,7 +532,7 @@ func InsertSessionWithName(ctx context.Context, sessionName string, activate boo
 	newSessionId := scbase.GenPromptUUID()
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		names := tx.SelectStrings(`SELECT name FROM session`)
-		sessionName = fmtUniqueName(sessionName, "session-%d", len(names)+1, names)
+		sessionName = fmtUniqueName(sessionName, "workspace-%d", len(names)+1, names)
 		maxSessionIdx := tx.GetInt(`SELECT COALESCE(max(sessionidx), 0) FROM session`)
 		query := `INSERT INTO session (sessionid, name, activescreenid, sessionidx, notifynum, archived, archivedts, sharemode)
                                VALUES (?,         ?,    '',             ?,          0,         0,        0,          ?)`
