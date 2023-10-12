@@ -639,9 +639,10 @@ class Screen {
             let height = termHeightFromRows(25, GlobalModel.termFontSize.get());
             return { width, height };
         }
+        // TODO calculate these sizes more deliberately
         let winSize = this.lastScreenSize;
         let width = boundInt(winSize.width - 50, 100, 5000);
-        let height = boundInt(winSize.height - 100, 100, 5000);
+        let height = boundInt(winSize.height - 120, 100, 5000);
         return { width, height };
     }
 
