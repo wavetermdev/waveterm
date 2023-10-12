@@ -442,5 +442,4 @@ class SourceCodeRenderer extends React.Component<
         );
     }
 }
-
 export { SourceCodeRenderer };
