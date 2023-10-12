@@ -13,7 +13,7 @@ import customParseFormat from "dayjs/plugin/customParseFormat";
 import { Line } from "../line/linecomps";
 import { CmdStrCode } from "../common/common";
 
-import { ReactComponent as FavouritesIcon } from "../assets/icons/favourites.svg";
+import { ReactComponent as FavoritesIcon } from "../assets/icons/favourites.svg";
 import { ReactComponent as XmarkIcon } from "../assets/icons/line/xmark.svg";
 import { ReactComponent as AngleDownIcon } from "../assets/icons/history/angle-down.svg";
 import { ReactComponent as ChevronLeftIcon } from "../assets/icons/history/chevron-left.svg";
@@ -532,7 +532,7 @@ class HistoryView extends React.Component<{}, {}> {
                                     </If>
                                 </td>
                                 <td className="bookmark" style={{ display: "none" }}>
-                                    <FavouritesIcon className="icon" />
+                                    <FavoritesIcon className="icon" />
                                 </td>
                                 <td className="ts">{getHistoryViewTs(nowDate, item.ts)}</td>
                                 <td className="session">{formatSSName(snames, scrnames, item)}</td>

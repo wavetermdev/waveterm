@@ -10,6 +10,9 @@ import type { RemoteType } from "../../types/types";
 
 import { ReactComponent as CheckIcon } from "../assets/icons/line/check.svg";
 import { ReactComponent as CopyIcon } from "../assets/icons/history/copy.svg";
+import { ReactComponent as CircleIcon } from "../assets/icons/circle.svg";
+import { ReactComponent as KeyIcon } from "../assets/icons/key.svg";
+import { ReactComponent as RotateIcon } from "../assets/icons/rotate_left.svg";
 
 import "./common.less";
 
@@ -100,11 +103,11 @@ class RemoteStatusLight extends React.Component<{ remote: RemoteType }, {}> {
             status = remote.status;
             wfp = remote.waitingforpassword;
         }
-        let icon = "fa-sharp fa-solid fa-circle";
         if (status == "connecting") {
-            icon = wfp ? "fa-sharp fa-solid fa-key" : "fa-sharp fa-solid fa-rotate";
+            if (wfp) return <KeyIcon className={`remote-status status-${status}`} />;
+            else return <RotateIcon className={`remote-status status-${status}`} />;
         }
-        return <i className={cn("remote-status", icon, "status-" + status)} />;
+        return <CircleIcon className={`remote-status status-${status}`} />;
     }
 }
 

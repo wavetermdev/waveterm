@@ -11,7 +11,7 @@ import { ReactComponent as HelpIcon } from "../assets/icons/help.svg";
 import { ReactComponent as SettingsIcon } from "../assets/icons/settings.svg";
 import { ReactComponent as DiscordIcon } from "../assets/icons/discord.svg";
 import { ReactComponent as HistoryIcon } from "../assets/icons/history.svg";
-import { ReactComponent as FavouritesIcon } from "../assets/icons/favourites.svg";
+import { ReactComponent as FavoritesIcon } from "../assets/icons/favourites.svg";
 import { ReactComponent as AppsIcon } from "../assets/icons/apps.svg";
 import { ReactComponent as ConnectionsIcon } from "../assets/icons/connections.svg";
 import { ReactComponent as WorkspacesIcon } from "../assets/icons/workspaces.svg";
@@ -213,8 +213,8 @@ class MainSideBar extends React.Component<{}, {}> {
                             <span className="hotkey">&#x2318;H</span>
                         </div>
                         <div className="item hoverEffect" onClick={this.handleBookmarksClick}>
-                            <FavouritesIcon className="icon" />
-                            Favourites
+                            <FavoritesIcon className="icon" />
+                            Favorites
                             <span className="hotkey">&#x2318;B</span>
                         </div>
                         <div className="item hoverEffect" onClick={this.handleConnectionsClick}>

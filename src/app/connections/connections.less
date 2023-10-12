@@ -4,7 +4,11 @@
     .modal-content {
         min-width: 850px;
     }
-
+    .icon {
+        width: 1em;
+        height: 1em;
+        fill: @base-color;
+    }
     .inner-content {
         display: flex;
         flex-direction: row;
@@ -14,14 +18,12 @@
 
         .remotes-menu {
             flex: 0 0 200px;
-            min-height: 450px;
-            border-right: 1px solid #666;
+            border-right: 1px solid @disabled-color;
             overflow-y: auto;
-            height: 100px;
 
             .remote-menu-item {
-                border-top: 1px solid #666;
-                padding: 5px;
+                border-top: 1px solid @disabled-color;
+                padding: 0.5em;
                 display: flex;
                 flex-direction: row;
                 cursor: pointer;
@@ -47,8 +49,9 @@
                 }
 
                 .remote-status-light {
-                    width: 15px;
-                    margin-top: -2px;
+                    width: 2em;
+                    margin-top: 0.7em;
+                    font-size: 0.8em;
                 }
 
                 .remote-name {
@@ -56,10 +59,12 @@
 
                     .remote-name-primary {
                         font-weight: bold;
+                        max-width: 10em;
                     }
 
                     .remote-name-secondary {
-                        color: #777;
+                        color: @disabled-color;
+                        max-width: 14em;
                     }
                 }
             }
@@ -73,7 +78,7 @@
             flex-direction: column;
 
             .settings-field {
-                margin-top: 5px;
+                margin-top: 0.75em;
             }
 
             * {
@@ -87,7 +92,7 @@
 
             .title {
                 color: @term-white;
-                padding-bottom: 8px;
+                padding: 0.75em 0;
                 margin-bottom: 0;
                 border-bottom: 1px solid #777;
             }
@@ -117,17 +122,13 @@
                 border-radius: 5px 5px 0 0;
                 background-color: #333;
 
-                i.fa-check {
-                    color: @term-green;
-                }
-
-                &.is-ok {
-                }
-
                 .message-row {
                     display: flex;
                     flex-direction: row;
                     align-items: center;
+                    svg {
+                        vertical-align: text-bottom;
+                    }
                 }
 
                 .remote-status {
@@ -174,7 +175,7 @@
                     display: flex;
                     flex-direction: row;
                     align-items: center;
-                    width: 135px;
+                    width: 12em !important;
                 }
 
                 .settings-field .settings-input .undo-icon {

@@ -257,7 +257,7 @@ class WelcomeModal extends React.Component<{}, {}> {
         let pageNum = this.pageNum.get();
         return (
             <div className={cn("modal welcome-modal prompt-modal is-active")}>
-                <div className="modal-background" />
+                <div className="modal-background" onClick={this.closeModal} />
                 <div className="modal-content">
                     <header>
                         <div className="modal-title">welcome to [prompt]</div>

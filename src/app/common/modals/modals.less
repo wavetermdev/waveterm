@@ -6,16 +6,13 @@
     z-index: 105;
 
     .modal-background {
-        background-color: rgba(10, 10, 10, 0.6);
+        background-color: @base-background-transparent;
     }
 }
 
 .tos-modal {
     a:hover {
         text-decoration: underline;
-    }
-
-    .content {
     }
 }
 
@@ -112,18 +109,20 @@
 .modal.prompt-modal {
     .modal-content {
         border-radius: 5px;
-        border: 5px solid #333;
+        background: @base-background;
+        box-shadow: 0px 2px 2px 0 rgba(255, 255, 255, 0.1), 0px 4px 5px 0 rgba(255, 255, 255, 0.2),
+            0px 0px 5px 2.5px rgba(255, 255, 255, 0.5);
     }
 
     header {
-        background-color: #000;
         display: flex;
         flex-direction: row;
         padding: 10px;
         position: relative;
 
         .modal-title {
-            color: @prompt-green;
+            color: @base-color;
+            font-size: 1.5em;
         }
 
         .close-icon {
@@ -143,12 +142,9 @@
     }
 
     .inner-content {
-        background-color: #222;
-        padding: 15px 10px 15px 10px;
-        color: @term-white;
-
+        padding: 1em;
         margin: 0;
-
+        border-top: 1px solid fade(@base-border, 50%);
         &.is-hidden {
             display: none;
         }
@@ -229,8 +225,7 @@
 
     .settings-label {
         font-weight: bold;
-        color: #fff;
-        width: 120px;
+        width: 12em;
         display: flex;
         flex-direction: row;
         align-items: center;

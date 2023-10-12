@@ -12,7 +12,7 @@ import { ReactComponent as XmarkIcon } from "../assets/icons/line/xmark.svg";
 import { ReactComponent as CopyIcon } from "../assets/icons/favourites/copy.svg";
 import { ReactComponent as PenIcon } from "../assets/icons/favourites/pen.svg";
 import { ReactComponent as TrashIcon } from "../assets/icons/favourites/trash.svg";
-import { ReactComponent as FavouritesIcon } from "../assets/icons/favourites.svg";
+import { ReactComponent as FavoritesIcon } from "../assets/icons/favourites.svg";
 
 import "./bookmarks.less";
 
@@ -192,7 +192,7 @@ class BookmarksView extends React.Component<{}, {}> {
         return (
             <div className={cn("bookmarks-view", { "is-hidden": isHidden })}>
                 <div className="header">
-                    <div className="bookmarks-title">Favourites</div>
+                    <div className="bookmarks-title">Favorites</div>
                     <div className="close-button hoverEffect" title="Close (Escape)" onClick={this.closeView}>
                         <XmarkIcon className={"icon"} />
                     </div>
@@ -205,7 +205,7 @@ class BookmarksView extends React.Component<{}, {}> {
                         <div className="no-content">
                             No Bookmarks.
                             <br />
-                            Use the <FavouritesIcon className={"icon"} /> icon on commands to add your first bookmark.
+                            Use the <FavoritesIcon className={"icon"} /> icon on commands to add your first bookmark.
                         </div>
                     </If>
                 </div>
