@@ -132,21 +132,32 @@
         .cmd-rtnstate-label {
             font-family: @terminal-font;
             position: relative;
+            font-size: 10px;
             z-index: 2;
-            margin: 6px 0 -2px 10px;
-            padding: 2px 5px 2px 0px;
+            margin: 6px 0 2px 10px;
+            padding: 2px 5px 0px 5px;
             display: inline-block;
             font-size: 0.8em;
-            opacity: 0.5;
+            color: @term-white;
+            background-color: #151715;
         }
 
         .cmd-rtnstate-diff {
             font-family: @terminal-font;
             color: @term-white;
             white-space: pre;
-            margin-left: 15px;
+            margin-left: 20px;
             font-size: 11px;
             line-height: 1.2;
+        }
+
+        .cmd-rtnstate-sep {
+            height: 1px;
+            border-bottom: 1px solid #333;
+            position: relative;
+            top: -10px;
+            width: min(300px, 50%);
+            margin-bottom: -4px;
         }
     }
 }
