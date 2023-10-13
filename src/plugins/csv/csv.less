@@ -1,125 +1,91 @@
 @import "../../app/common/themes/themes.less";
 
 .csv-renderer {
+    .ellipsis() {
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    overflow-x: auto;
+    overflow-y: hidden;
+
     .cursor-pointer {
         cursor: pointer;
     }
-
+    
     .select-none {
         user-select: none;
     }
-
-    /* Flexbox utilities */
-    .flex {
-        display: flex;
-    }
-
-    .items-center {
-        align-items: center;
-    }
-
-    .gap-2 {
-        gap: 8px;
-    }
-
-    /* Button styles */
-    button.border {
-        border: 1px solid #ccc;
-    }
-
-    button.rounded {
-        border-radius: 4px;
-    }
-
-    button.p-1 {
-        padding: 4px;
-    }
-
-    /* Disabling styles for buttons */
-    button[disabled] {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
-
-    /* Input styles */
-    input.border,
-    select.border {
-        border: 1px solid #ccc;
-    }
-
-    input.rounded,
-    select.rounded {
-        border-radius: 4px;
-    }
-
-    input.p-1,
-    select.p-1 {
-        padding: 4px;
-    }
-
-    input.w-16 {
-        width: 64px;
-    }
-
-    /* Text styles */
-    strong {
-        font-weight: bold;
-    }
-
+  
     .global-search-render {
         margin-bottom: 10px;
     }
 
     table {
-        border: 1px solid rgb(146, 146, 146);
-        margin-bottom: 10px;
+        border-collapse: collapse;            
+        overflow-x: auto;   
+        border: 1px solid @scrollbar-thumb;
 
-        tbody {
-            border-bottom: 1px solid rgb(146, 146, 146);
-        }
+        thead {
+            position:relative;
+            display: block;
+            width: 100%;
+            overflow-y: scroll;
 
-        th {
-            color: white;
-            border-bottom: 1px solid rgb(146, 146, 146);
-            border-right: 1px solid rgb(146, 146, 146);
-            padding: 2px 10px 4px 10px;
+            tr {  
+                border-bottom: 1px solid @scrollbar-thumb;         
 
-            .min-max-renderer {
-                min-width: 200px;
-                display: flex;
+                th {
+                    color:@term-white;
+                    border: 1px solid @scrollbar-thumb;
+                    border-bottom: none;
+                    padding: 2px 10px 4px 10px;
+                    flex-basis:100%;
+                    flex-grow:2;
+                    display: block;
+                    text-align:left;
+                    position: relative;
 
-                .search-renderer {
-                    flex: 1;
+                    .inner {
+                        text-align:left;
+                        padding-right: 15px;
+                        position: relative;
+                        .ellipsis();
 
-                    input {
-                        width: 99%;
+                        .sort-icon {
+                            filter: invert(100%);
+                            position: absolute;
+                            right: 0px;
+                            top: 2px;
+                            width: 9px;
+                        }
                     }
                 }
-
-                .search-renderer:first-child {
-                    margin-right: 3px;
-                }
             }
+        }
+      
+        tbody {
+            display: block; 
+            position:relative;
+            overflow-y: scroll;
+            overscroll-behavior: contain;
         }
 
         tr {
-            td {
-                border-right: 1px solid rgb(146, 146, 146);
-                padding: 2px 10px;
-            }
-            td:last-child {
-                border-right: none;
-            }
-        }
-    }
+            width: 100%;
+            display:flex;
 
-    .pagination-renderer {
-        .page-label {
-            div {
-                padding-right: 6px;
-            }
-            strong {
-                color: white;
+            td {
+                border-right: 1px solid @scrollbar-thumb;
+                border-left: 1px solid @scrollbar-thumb;
+                padding: 2px 10px;
+                flex-basis:100%;
+                flex-grow:2;
+                display: block;
+                text-align:left;
+                .ellipsis();
             }
         }
     }
