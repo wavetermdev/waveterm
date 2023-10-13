@@ -1,7 +1,7 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
-import { If, For, When, Otherwise, Choose } from "tsx-control-statements/components";
+import { If, For } from "tsx-control-statements/components";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
@@ -12,6 +12,18 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { Line } from "../line/linecomps";
 import { CmdStrCode } from "../common/common";
+
+import { ReactComponent as FavoritesIcon } from "../assets/icons/favourites.svg";
+import { ReactComponent as XmarkIcon } from "../assets/icons/line/xmark.svg";
+import { ReactComponent as AngleDownIcon } from "../assets/icons/history/angle-down.svg";
+import { ReactComponent as ChevronLeftIcon } from "../assets/icons/history/chevron-left.svg";
+import { ReactComponent as ChevronRightIcon } from "../assets/icons/history/chevron-right.svg";
+import { ReactComponent as RightIcon } from "../assets/icons/history/right.svg";
+import { ReactComponent as SearchIcon } from "../assets/icons/history/search.svg";
+import { ReactComponent as SquareCheckIcon } from "../assets/icons/history/square-check.svg";
+import { ReactComponent as SquareMinusIcon } from "../assets/icons/history/square-minus.svg";
+import { ReactComponent as SquareIcon } from "../assets/icons/history/square.svg";
+import { ReactComponent as TrashIcon } from "../assets/icons/trash.svg";
 
 import "./history.less";
 
@@ -315,12 +327,12 @@ class HistoryView extends React.Component<{}, {}> {
         let hasMore = hvm.hasMore.get();
         let offset = hvm.offset.get();
         let numSelected = hvm.selectedItems.size;
-        let controlCheckboxIcon = "fa-sharp fa-regular fa-square";
+        let controlCheckboxIcon = <SquareIcon className="icon" />;
         if (numSelected > 0) {
-            controlCheckboxIcon = "fa-sharp fa-regular fa-square-minus";
+            controlCheckboxIcon = <SquareMinusIcon className="icon" />;
         }
         if (numSelected > 0 && numSelected == items.length) {
-            controlCheckboxIcon = "fa-sharp fa-regular fa-square-check";
+            controlCheckboxIcon = <SquareCheckIcon className="icon" />;
         }
         let activeItemId = hvm.activeItem.get();
         let activeItem = hvm.getHistoryItemById(activeItemId);
@@ -333,9 +345,9 @@ class HistoryView extends React.Component<{}, {}> {
         let remoteIds = Object.keys(rnames);
         let remoteId: string = null;
         return (
-            <div className={cn("history-view", "alt-view", { "is-hidden": isHidden })}>
+            <div className={cn("history-view", { "is-hidden": isHidden })}>
                 <div className="header">
-                    <div className="history-title">HISTORY</div>
+                    <div className="history-title">History</div>
                     <div className="history-search">
                         <div className="main-search field">
                             <p className="control has-icons-left">
@@ -347,8 +359,8 @@ class HistoryView extends React.Component<{}, {}> {
                                     onChange={this.changeSearchText}
                                     onKeyDown={this.searchKeyDown}
                                 />
-                                <span className="icon is-small is-left">
-                                    <i className="fa-sharp fa-solid fa-search" />
+                                <span className="is-small is-left">
+                                    <SearchIcon className="icon" />
                                 </span>
                             </p>
                         </div>
@@ -358,17 +370,13 @@ class HistoryView extends React.Component<{}, {}> {
                                     "is-active": this.sessionDropdownActive.get(),
                                 })}
                             >
-                                <div className="dropdown-trigger">
-                                    <button onClick={this.toggleSessionDropdown} className="button is-small is-dark">
-                                        <span>
-                                            {hvm.searchSessionId.get() == null
-                                                ? "Limit Session"
-                                                : formatSessionName(snames, hvm.searchSessionId.get())}
-                                        </span>
-                                        <span className="icon is-small">
-                                            <i className="fa-sharp fa-regular fa-angle-down" aria-hidden="true"></i>
-                                        </span>
-                                    </button>
+                                <div onClick={this.toggleSessionDropdown}>
+                                    <span className="label">
+                                        {hvm.searchSessionId.get() == null
+                                            ? "Limit Session"
+                                            : formatSessionName(snames, hvm.searchSessionId.get())}
+                                    </span>
+                                    <AngleDownIcon className="icon" />
                                 </div>
                                 <div className="dropdown-menu" role="menu">
                                     <div className="dropdown-content has-background-black-ter">
@@ -396,17 +404,13 @@ class HistoryView extends React.Component<{}, {}> {
                                     "is-active": this.remoteDropdownActive.get(),
                                 })}
                             >
-                                <div className="dropdown-trigger">
-                                    <button onClick={this.toggleRemoteDropdown} className="button is-small is-dark">
-                                        <span>
-                                            {hvm.searchRemoteId.get() == null
-                                                ? "Limit Remote"
-                                                : formatRemoteName(rnames, { remoteid: hvm.searchRemoteId.get() })}
-                                        </span>
-                                        <span className="icon is-small">
-                                            <i className="fa-sharp fa-regular fa-angle-down" aria-hidden="true"></i>
-                                        </span>
-                                    </button>
+                                <div onClick={this.toggleRemoteDropdown}>
+                                    <span className="label">
+                                        {hvm.searchRemoteId.get() == null
+                                            ? "Limit Remote"
+                                            : formatRemoteName(rnames, { remoteid: hvm.searchRemoteId.get() })}
+                                    </span>
+                                    <AngleDownIcon className="icon" />
                                 </div>
                                 <div className="dropdown-menu" role="menu">
                                     <div className="dropdown-content has-background-black-ter">
@@ -429,7 +433,7 @@ class HistoryView extends React.Component<{}, {}> {
                                     </div>
                                 </div>
                             </div>
-                            <div className="allow-meta search-checkbox">
+                            <div className="allow-meta search-checkbox hoverEffect">
                                 <div className="checkbox-container">
                                     <input
                                         onChange={this.toggleShowMeta}
@@ -445,17 +449,16 @@ class HistoryView extends React.Component<{}, {}> {
                                 <div onClick={this.toggleShowMeta} className="fromts-text">
                                     From:&nbsp;
                                 </div>
-                                <div>
+                                <div className="hoverEffect">
                                     <input
                                         type="date"
                                         onChange={this.handleFromTsChange}
                                         value={this.searchFromTsInputValue()}
-                                        className="input is-small"
                                     />
                                 </div>
                             </div>
                             <div
-                                className="filter-cmds search-checkbox"
+                                className="filter-cmds search-checkbox hoverEffect"
                                 title="Filter common commands like 'ls' and 'cd' from the results"
                             >
                                 <div className="checkbox-container">
@@ -469,18 +472,18 @@ class HistoryView extends React.Component<{}, {}> {
                                     Filter Cmds
                                 </div>
                             </div>
-                            <div onClick={this.resetAllFilters} className="reset-button">
+                            <div onClick={this.resetAllFilters} className="button reset-button hoverEffect">
                                 Reset All
                             </div>
                         </div>
                     </div>
-                    <div className="close-div">
-                        <i onClick={this.clickCloseHandler} className="fa-sharp fa-solid fa-xmark" />
+                    <div className="close-div hoverEffect" title="Close (Escape)" onClick={this.clickCloseHandler}>
+                        <XmarkIcon />
                     </div>
                 </div>
                 <div className={cn("control-bar", "is-top", { "is-hidden": items.length == 0 })}>
-                    <div className="control-checkbox" onClick={this.handleControlCheckbox}>
-                        <i className={controlCheckboxIcon} title="Toggle Selection" />
+                    <div className="control-checkbox" onClick={this.handleControlCheckbox} title="Toggle Selection">
+                        {controlCheckboxIcon}
                     </div>
                     <div
                         className={cn(
@@ -490,8 +493,10 @@ class HistoryView extends React.Component<{}, {}> {
                         )}
                         onClick={this.handleClickDelete}
                     >
-                        <i className="fa-sharp fa-solid fa-trash" title="Purge Selected Items" />{" "}
-                        <span>Delete Items</span>
+                        <span>
+                            <TrashIcon className="icon" title="Purge Selected Items" />
+                            &nbsp;Delete Items
+                        </span>
                     </div>
                     <div className="spacer" />
                     <div className="showing-text">
@@ -501,14 +506,14 @@ class HistoryView extends React.Component<{}, {}> {
                         className={cn("showing-btn", { "is-disabled": offset == 0 })}
                         onClick={offset != 0 ? this.handlePrev : null}
                     >
-                        <i className="fa-sharp fa-solid fa-chevron-left" />
+                        <ChevronLeftIcon className="icon" />
                     </div>
                     <div className="btn-spacer" />
                     <div
                         className={cn("showing-btn", { "is-disabled": !hasMore })}
                         onClick={hasMore ? this.handleNext : null}
                     >
-                        <i className="fa-sharp fa-solid fa-chevron-right" />
+                        <ChevronRightIcon className="icon" />
                     </div>
                 </div>
                 <table className="history-table" cellSpacing="0" cellPadding="0" border={0} ref={this.tableRef}>
@@ -520,14 +525,14 @@ class HistoryView extends React.Component<{}, {}> {
                             >
                                 <td className="selectbox" onClick={() => this.handleSelect(item.historyid)}>
                                     <If condition={hvm.selectedItems.get(item.historyid)}>
-                                        <i className="fa-sharp fa-regular fa-square-check"></i>
+                                        <SquareCheckIcon className="icon" />
                                     </If>
                                     <If condition={!hvm.selectedItems.get(item.historyid)}>
-                                        <i className="fa-sharp fa-regular fa-square"></i>
+                                        <SquareIcon className="icon" />
                                     </If>
                                 </td>
                                 <td className="bookmark" style={{ display: "none" }}>
-                                    <i className="fa-sharp fa-regular fa-bookmark" />
+                                    <FavoritesIcon className="icon" />
                                 </td>
                                 <td className="ts">{getHistoryViewTs(nowDate, item.ts)}</td>
                                 <td className="session">{formatSSName(snames, scrnames, item)}</td>
@@ -566,14 +571,14 @@ class HistoryView extends React.Component<{}, {}> {
                         className={cn("showing-btn", { "is-disabled": offset == 0 })}
                         onClick={offset != 0 ? this.handlePrev : null}
                     >
-                        <i className="fa-sharp fa-solid fa-chevron-left" />
+                        <ChevronLeftIcon className="icon" />
                     </div>
                     <div className="btn-spacer" />
                     <div
                         className={cn("showing-btn", { "is-disabled": !hasMore })}
                         onClick={hasMore ? this.handleNext : null}
                     >
-                        <i className="fa-sharp fa-solid fa-chevron-right" />
+                        <ChevronRightIcon className="icon" />
                     </div>
                 </div>
                 <If condition={items.length == 0}>
@@ -582,10 +587,7 @@ class HistoryView extends React.Component<{}, {}> {
                     </div>
                 </If>
                 <div className="alt-help">
-                    <div className="help-entry">
-                        [Esc] to Close
-                        <br />
-                    </div>
+                    <div className="help-entry">[Esc] to Close</div>
                 </div>
             </div>
         );
@@ -655,7 +657,7 @@ class LineContainer extends React.Component<{ historyId: string; width: number }
                 <If condition={canViewInContext}>
                     <div className="line-context">
                         <div title="View in Context" className="vic-btn" onClick={this.viewInContext}>
-                            <i className="fa-sharp fa-solid fa-right" /> {ssStr}
+                            <RightIcon className="icon" /> {ssStr}
                         </div>
                     </div>
                 </If>

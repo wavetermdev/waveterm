@@ -1,6 +1,39 @@
-@import "../../index.less";
+@import "../../app/common/themes/themes.less";
 
 .bookmarks-view {
+    background-color: @background-session;
+
+    .close-button {
+        position: absolute;
+        right: 1em;
+        top: 0.8em;
+        cursor: pointer;
+        width: 1.5em;
+        height: 1.5em;
+        border-radius: 50%;
+        svg {
+            width: 1.5em;
+            height: 1.5em;
+            fill: @base-color;
+        }
+    }
+
+    .header {
+        margin: 1.5em 1.5em 0.5em;
+
+        .bookmarks-title {
+            margin-bottom: 0.5em;
+            font-weight: bold;
+            font-size: 1.5em;
+        }
+    }
+
+    .icon {
+        width: 1em;
+        height: 1em;
+        fill: @base-color;
+    }
+
     .bookmarks-list {
         color: @term-white;
         margin: 4px 10px 5px 5px;
@@ -56,9 +89,10 @@
         .bookmark-id-div {
             display: none;
             position: absolute;
-            color: #666;
+            color: @disabled-color;
             right: 5px;
             bottom: 2px;
+            font-size: 0.8em;
         }
 
         &:hover .bookmark-id-div {
@@ -90,5 +124,8 @@
         &:hover .bookmark-controls {
             visibility: visible;
         }
+    }
+    .help-entry {
+        margin: 1em 2em;
     }
 }

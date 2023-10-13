@@ -1,4 +1,4 @@
-@import "../../../index.less";
+@import "../../../app/common/themes/themes.less";
 
 .cmd-input {
     border-radius: 6px;
@@ -76,7 +76,7 @@
 
     .cmd-input-field {
         position: relative;
-        padding-right: 22em;
+        padding-right: 17em;
 
         .cmd-hints {
             position: absolute;
@@ -99,7 +99,7 @@
             &.display-disabled {
                 background-color: #444;
             }
-            
+
             &:focus {
                 box-shadow: none;
                 border: none;
@@ -146,7 +146,7 @@
             }
             .cmd-btn {
                 display: inline-block;
-                margin-right: 1em;
+                margin-right: 0;
                 padding: 0.2em 0.7rem;
                 opacity: 0.5;
                 cursor: pointer;
@@ -170,7 +170,7 @@
             z-index: 102;
             top: 5px;
             left: 20px;
-            background-color: @term-black;
+            background-color: @background-session-components-solid;
             color: @soft-blue;
             padding-bottom: 4px;
             display: flex;

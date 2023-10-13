@@ -150,7 +150,11 @@ class TerminalRenderer extends React.Component<
             .get();
         let cmd = screen.getCmd(line); // will not be null
         let usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
-        let termHeight = termHeightFromRows(usedRows, GlobalModel.termFontSize.get());
+        // TODO: replace the +2 with some calculation based on termFontSize.  the +2 is for descenders, which get cut off without this.
+        let termHeight = termHeightFromRows(usedRows, GlobalModel.termFontSize.get()) + 2;
+        if (usedRows === 0) {
+            termHeight = 0;
+        }
         let termLoaded = this.termLoaded.get();
         return (
             <div

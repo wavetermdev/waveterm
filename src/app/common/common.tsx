@@ -8,6 +8,12 @@ import cn from "classnames";
 import { If } from "tsx-control-statements/components";
 import type { RemoteType } from "../../types/types";
 
+import { ReactComponent as CheckIcon } from "../assets/icons/line/check.svg";
+import { ReactComponent as CopyIcon } from "../assets/icons/history/copy.svg";
+import { ReactComponent as CircleIcon } from "../assets/icons/circle.svg";
+import { ReactComponent as KeyIcon } from "../assets/icons/key.svg";
+import { ReactComponent as RotateIcon } from "../assets/icons/rotate_left.svg";
+
 import "./common.less";
 
 type OV<V> = mobx.IObservableValue<V>;
@@ -52,15 +58,15 @@ class CmdStrCode extends React.Component<
                         <div>copied</div>
                     </div>
                 </If>
-                <div key="use" className="use-button" title="Use Command" onClick={this.handleUse}>
-                    <i className="fa-sharp fa-solid fa-check" />
+                <div key="use" className="use-button hoverEffect" title="Use Command" onClick={this.handleUse}>
+                    <CheckIcon className="icon" />
                 </div>
                 <div key="code" className="code-div">
                     <code>{cmdstr}</code>
                 </div>
-                <div key="copy" className="copy-control">
-                    <div className="inner-copy" onClick={this.handleCopy}>
-                        <i title="copy" className="fa-sharp fa-regular fa-copy" />
+                <div key="copy" className="copy-control hoverEffect">
+                    <div className="inner-copy" onClick={this.handleCopy} title="copy">
+                        <CopyIcon className="icon" />
                     </div>
                 </div>
             </div>
@@ -97,11 +103,11 @@ class RemoteStatusLight extends React.Component<{ remote: RemoteType }, {}> {
             status = remote.status;
             wfp = remote.waitingforpassword;
         }
-        let icon = "fa-sharp fa-solid fa-circle";
         if (status == "connecting") {
-            icon = wfp ? "fa-sharp fa-solid fa-key" : "fa-sharp fa-solid fa-rotate";
+            if (wfp) return <KeyIcon className={`remote-status status-${status}`} />;
+            else return <RotateIcon className={`remote-status status-${status}`} />;
         }
-        return <i className={cn("remote-status", icon, "status-" + status)} />;
+        return <CircleIcon className={`remote-status status-${status}`} />;
     }
 }
 

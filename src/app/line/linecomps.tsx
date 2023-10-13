@@ -21,7 +21,7 @@ import type {
 } from "../../types/types";
 import cn from "classnames";
 
-import { ReactComponent as FavouritesIcon } from "../assets/icons/favourites.svg";
+import { ReactComponent as FavoritesIcon } from "../assets/icons/favourites.svg";
 import { ReactComponent as PinIcon } from "../assets/icons/pin.svg";
 import { ReactComponent as PlusIcon } from "../assets/icons/plus.svg";
 import { ReactComponent as MinusIcon } from "../assets/icons/minus.svg";
@@ -371,10 +371,10 @@ class LineCmd extends React.Component<
 
     getTerminalRendererHeight(cmd: Cmd): number {
         let { screen, line, width, renderMode } = this.props;
-        let height = 36 + 6; // height of zero height terminal
+        let height = 45 + 24; // height of zero height terminal
         let usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
         if (usedRows > 0) {
-            height = 36 + 6 + 11 + termHeightFromRows(usedRows, GlobalModel.termFontSize.get());
+            height = 48 + 24 + termHeightFromRows(usedRows, GlobalModel.termFontSize.get());
         }
         return height;
     }
@@ -607,6 +607,11 @@ class LineCmd extends React.Component<
         }
         let rendererType = lineutil.getRendererType(line);
         let hidePrompt = rendererPlugin != null && rendererPlugin.hidePrompt;
+        let termFontSize = GlobalModel.termFontSize.get();
+        let rtnStateDiffSize = termFontSize - 2;
+        if (rtnStateDiffSize < 10) {
+            rtnStateDiffSize = Math.max(termFontSize, 10);
+        }
         return (
             <div
                 className={mainDivCn}
@@ -639,7 +644,7 @@ class LineCmd extends React.Component<
                         className={cn("line-icon", "line-bookmark", "hoverEffect")}
                         onClick={this.clickBookmark}
                     >
-                        <FavouritesIcon className="icon" />
+                        <FavoritesIcon className="icon" />
                     </div>
                     <div
                         key="minimise"
@@ -699,10 +704,14 @@ class LineCmd extends React.Component<
                         >
                             <If condition={rsdiff == null || rsdiff == ""}>
                                 <div className="cmd-rtnstate-label">state unchanged</div>
+                                <div className="cmd-rtnstate-sep"></div>
                             </If>
                             <If condition={rsdiff != null && rsdiff != ""}>
                                 <div className="cmd-rtnstate-label">new state</div>
-                                <div className="cmd-rtnstate-diff">{this.rtnStateDiff.get()}</div>
+                                <div className="cmd-rtnstate-sep"></div>
+                                <div className="cmd-rtnstate-diff" style={{ fontSize: rtnStateDiffSize }}>
+                                    {this.rtnStateDiff.get()}
+                                </div>
                             </If>
                         </div>
                     </If>

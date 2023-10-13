@@ -1,14 +1,16 @@
-@import "../../index.less";
+@import "../../app/common/themes/themes.less";
 
 .main-sidebar {
     padding: 0;
-    width: 20rem;
+    min-width: 20rem;
+    max-width: 20rem;
     display: flex;
     flex-direction: column;
     position: relative;
 
     &.collapsed {
         width: 6em;
+        min-width: 6em;
         .arrow-container {
             transform: rotate(180deg);
         }
@@ -90,18 +92,27 @@
             vertical-align: middle;
         }
         .icon {
-            margin: 0 0.5em;
+            margin: 0 0.5em 2px 0.5em;
             width: 1em;
             height: 1em;
             display: inline-block;
             vertical-align: middle;
             border-radius: 50%;
+
+            &.discord {
+                width: 1.2em;
+                height: 1.2em;
+                margin: 0 0.4em 2px 0.4em;
+            }
         }
         .hotkey {
             float: right;
             margin-right: 6px;
             visibility: hidden;
             letter-spacing: 6px;
+        }
+        .disabled .hotkey {
+            display: none;
         }
         &:hover .hotkey {
             visibility: visible;

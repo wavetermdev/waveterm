@@ -9,6 +9,9 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "../../../model/model";
 import { Markdown } from "../common";
 
+import { ReactComponent as XmarkIcon } from "../../assets/icons/line/xmark.svg";
+import { ReactComponent as WarningIcon } from "../../assets/icons/line/triangle-exclamation.svg";
+
 dayjs.extend(localizedFormat);
 
 type OV<V> = mobx.IObservableValue<V>;
@@ -86,9 +89,7 @@ class DisconnectedModal extends React.Component<{}, {}> {
                             <span>Try Reconnect</span>
                         </button>
                         <button onClick={this.restartServer} className="button is-danger" style={{ marginLeft: 10 }}>
-                            <span className="icon">
-                                <i className="fa-sharp fa-solid fa-triangle-exclamation" />
-                            </span>
+                            <WarningIcon className="icon" />
                             <span>Restart Server</span>
                         </button>
                     </footer>
@@ -174,10 +175,11 @@ class AlertModal extends React.Component<{}, {}> {
                 <div className="modal-content">
                     <header>
                         <p className="modal-title">
-                            <i className="fa-sharp fa-solid fa-triangle-exclamation" /> {title}
+                            <WarningIcon className="icon" />
+                            {title}
                         </p>
-                        <div className="close-icon">
-                            <i onClick={this.closeModal} className="fa-sharp fa-solid fa-times" />
+                        <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
+                            <XmarkIcon />
                         </div>
                     </header>
                     <If condition={message.markdown}>
@@ -255,12 +257,12 @@ class WelcomeModal extends React.Component<{}, {}> {
         let pageNum = this.pageNum.get();
         return (
             <div className={cn("modal welcome-modal prompt-modal is-active")}>
-                <div className="modal-background" />
+                <div className="modal-background" onClick={this.closeModal} />
                 <div className="modal-content">
                     <header>
                         <div className="modal-title">welcome to [prompt]</div>
-                        <div className="close-icon">
-                            <i onClick={this.closeModal} className="fa-sharp fa-solid fa-times" />
+                        <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
+                            <XmarkIcon />
                         </div>
                     </header>
                     <div className={cn("inner-content content", { "is-hidden": pageNum != 1 })}>
