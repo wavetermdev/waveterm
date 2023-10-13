@@ -55,7 +55,7 @@ module.exports = {
             "node_modules/fs-ext/**",
             "node_modules/fsevents/**",
         ],
-        icon: "icon/Prompt.icns",
+        icon: "public/Prompt.icns",
         osxNotarize: {
             tool: "notarytool",
             keychainProfile: "notarytool-creds",
