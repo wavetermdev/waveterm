@@ -12,8 +12,10 @@ import { ReactComponent as CheckIcon } from "../assets/icons/line/check.svg";
 import { ReactComponent as CopyIcon } from "../assets/icons/history/copy.svg";
 import { ReactComponent as CircleIcon } from "../assets/icons/circle.svg";
 import { ReactComponent as KeyIcon } from "../assets/icons/key.svg";
+import { ReactComponent as XMarkIcon } from "../assets/icons/line/xmark.svg";
 import { ReactComponent as RotateIcon } from "../assets/icons/rotate_left.svg";
 import { ReactComponent as CircleInfoIcon } from "../assets/icons/circle_info.svg";
+import { ReactComponent as PenIcon } from "../assets/icons/favourites/pen.svg";
 
 import "./common.less";
 
@@ -212,9 +214,7 @@ class InlineSettingsTextEdit extends React.Component<
                                 title="Cancel (Esc)"
                                 className="button is-prompt-danger is-outlined is-small"
                             >
-                                <span className="icon is-small">
-                                    <i className="fa-sharp fa-solid fa-xmark" />
-                                </span>
+                                <XMarkIcon className="icon" />
                             </div>
                         </div>
                         <div className="control">
@@ -223,9 +223,7 @@ class InlineSettingsTextEdit extends React.Component<
                                 title="Confirm (Enter)"
                                 className="button is-prompt-green is-outlined is-small"
                             >
-                                <span className="icon is-small">
-                                    <i className="fa-sharp fa-solid fa-check" />
-                                </span>
+                                <CheckIcon className="icon" />
                             </div>
                         </div>
                     </div>
@@ -236,8 +234,7 @@ class InlineSettingsTextEdit extends React.Component<
                 <div onClick={this.clickEdit} className={cn("settings-input inline-edit", "edit-not-active")}>
                     {this.props.text}
                     <If condition={this.props.showIcon}>
-                        {" "}
-                        <i className="fa-sharp fa-solid fa-pen" />
+                        <PenIcon className="icon" />
                     </If>
                 </div>
             );

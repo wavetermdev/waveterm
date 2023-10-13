@@ -11,6 +11,7 @@ import { PluginModel } from "../../../plugins/plugins";
 import * as util from "../../../util/util";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
 import { ReactComponent as XmarkIcon } from "../../assets/icons/line/xmark.svg";
+import { ReactComponent as AngleDownIcon } from "../../assets/icons/history/angle-down.svg";
 
 import "./modals.less";
 
@@ -635,11 +636,9 @@ class ClientSettingsModal extends React.Component<{}, {}> {
         return (
             <div className={cn("dropdown", "font-size-dropdown", { "is-active": this.fontSizeDropdownActive.get() })}>
                 <div className="dropdown-trigger">
-                    <button onClick={this.togglefontSizeDropdown} className="button is-small is-dark">
+                    <button onClick={this.togglefontSizeDropdown} className="button">
                         <span>{this.tempFontSize.get()}px</span>
-                        <span className="icon is-small">
-                            <i className="fa-sharp fa-regular fa-angle-down" aria-hidden="true"></i>
-                        </span>
+                        <AngleDownIcon className="icon" />
                     </button>
                 </div>
                 <div className="dropdown-menu" role="menu">
@@ -696,7 +695,7 @@ class ClientSettingsModal extends React.Component<{}, {}> {
                 <div className="modal-background" />
                 <div className="modal-content">
                     <header>
-                        <div className="modal-title">client settings</div>
+                        <div className="modal-title">Client settings</div>
                         <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
                             <XmarkIcon />
                         </div>

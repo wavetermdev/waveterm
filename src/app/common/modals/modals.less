@@ -154,8 +154,24 @@
         padding: 1em;
         margin: 0;
         border-top: 1px solid fade(@base-border, 50%);
+        .icon {
+            display: inline;
+            width: 1em;
+            height: 1em;
+            margin: 0 0.25em 0 1em;
+            vertical-align: middle;
+        }
         &.is-hidden {
             display: none;
+        }
+        .dropdown-trigger button {
+            justify-content: flex-start;
+            display: flex;
+            color: @base-color;
+            border: none !important;
+            &:hover {
+                box-shadow: none;
+            }
         }
     }
 
@@ -196,6 +212,10 @@
     .settings-field {
         .settings-label {
             width: 150px;
+        }
+        .dropdown-menu {
+            min-width: 7.25em;
+            max-width: 7.25em;
         }
     }
 }
@@ -245,6 +265,16 @@
         flex-direction: row;
         align-items: center;
 
+        &.inline-edit {
+            .icon {
+                display: inline;
+                width: 1em;
+                height: 1em;
+                margin-left: 1em;
+                vertical-align: middle;
+            }
+        }
+
         &.inline-edit.edit-not-active {
             cursor: pointer;
 
@@ -279,6 +309,11 @@
         }
 
         .control {
+            .icon {
+                width: 1.5em;
+                height: 1.5em;
+                margin: 0;
+            }
         }
 
         .tab-color-icon.color-default path {
