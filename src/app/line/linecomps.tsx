@@ -21,7 +21,7 @@ import type {
 } from "../../types/types";
 import cn from "classnames";
 
-import { ReactComponent as FavouritesIcon } from "../assets/icons/favourites.svg";
+import { ReactComponent as FavoritesIcon } from "../assets/icons/favourites.svg";
 import { ReactComponent as PinIcon } from "../assets/icons/pin.svg";
 import { ReactComponent as PlusIcon } from "../assets/icons/plus.svg";
 import { ReactComponent as MinusIcon } from "../assets/icons/minus.svg";
@@ -644,7 +644,7 @@ class LineCmd extends React.Component<
                         className={cn("line-icon", "line-bookmark", "hoverEffect")}
                         onClick={this.clickBookmark}
                     >
-                        <FavouritesIcon className="icon" />
+                        <FavoritesIcon className="icon" />
                     </div>
                     <div
                         key="minimise"
@@ -709,7 +709,9 @@ class LineCmd extends React.Component<
                             <If condition={rsdiff != null && rsdiff != ""}>
                                 <div className="cmd-rtnstate-label">new state</div>
                                 <div className="cmd-rtnstate-sep"></div>
-                                <div className="cmd-rtnstate-diff" style={{fontSize: rtnStateDiffSize}}>{this.rtnStateDiff.get()}</div>
+                                <div className="cmd-rtnstate-diff" style={{ fontSize: rtnStateDiffSize }}>
+                                    {this.rtnStateDiff.get()}
+                                </div>
                             </If>
                         </div>
                     </If>

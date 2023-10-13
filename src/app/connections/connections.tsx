@@ -11,6 +11,9 @@ import * as util from "../../util/util";
 import * as textmeasure from "../../util/textmeasure";
 
 import { ReactComponent as XmarkIcon } from "../assets/icons/line/xmark.svg";
+import { ReactComponent as AngleDownIcon } from "../assets/icons/history/angle-down.svg";
+import { ReactComponent as RotateLeftIcon } from "../assets/icons/rotate_left.svg";
+import { ReactComponent as AddIcon } from "../assets/icons/add.svg";
 
 import "./connections.less";
 
@@ -59,12 +62,10 @@ class AuthModeDropdown extends React.Component<{ tempVal: OV<string> }, {}> {
         return (
             <div className={cn("dropdown", "editremote-dropdown", { "is-active": this.active.get() })}>
                 <div className="dropdown-trigger">
-                    <button onClick={this.toggleActive} className="button is-small is-dark">
+                    <button onClick={this.toggleActive} className="button">
                         <span>{this.props.tempVal.get()}</span>
                         <div className="flex-spacer" />
-                        <span className="icon is-small">
-                            <i className="fa-sharp fa-regular fa-angle-down" aria-hidden="true"></i>
-                        </span>
+                        <AngleDownIcon className="icon" />
                     </button>
                 </div>
                 <div className="dropdown-menu" role="menu">
@@ -115,12 +116,10 @@ class ConnectModeDropdown extends React.Component<{ tempVal: OV<string> }, {}> {
         return (
             <div className={cn("dropdown", "editremote-dropdown", { "is-active": this.active.get() })}>
                 <div className="dropdown-trigger">
-                    <button onClick={this.toggleActive} className="button is-small is-dark">
+                    <button onClick={this.toggleActive} className="button">
                         <span>{this.props.tempVal.get()}</span>
                         <div className="flex-spacer" />
-                        <span className="icon is-small">
-                            <i className="fa-sharp fa-regular fa-angle-down" aria-hidden="true"></i>
-                        </span>
+                        <AngleDownIcon className="icon" />
                     </button>
                 </div>
                 <div className="dropdown-menu" role="menu">
@@ -700,8 +699,8 @@ class EditRemoteSettings extends React.Component<
                                 maxLength={400}
                             />
                             <If condition={this.canResetPw()}>
-                                <div className="undo-icon" title="restore to original password">
-                                    <i onClick={this.resetPw} className="icon fa-sharp fa-solid fa-rotate-left" />
+                                <div className="undo-icon" title="restore to original password" onClick={this.resetPw}>
+                                    <RotateLeftIcon className="icon" />
                                 </div>
                             </If>
                         </div>
@@ -1117,8 +1116,8 @@ class RemotesModal extends React.Component<{ model: RemotesModalModel }, {}> {
                 </If>
                 <If condition={!util.isBlank(remote.remotealias)}>
                     <div className="remote-name">
-                        <div className="remote-name-primary">{remote.remotealias}</div>
-                        <div className="remote-name-secondary">{remote.remotecanonicalname}</div>
+                        <div className="remote-name-primary truncate">{remote.remotealias}</div>
+                        <div className="remote-name-secondary truncate">{remote.remotecanonicalname}</div>
                     </div>
                 </If>
             </div>
@@ -1128,8 +1127,8 @@ class RemotesModal extends React.Component<{ model: RemotesModalModel }, {}> {
     renderAddRemoteMenuItem(): any {
         return (
             <div key="add" onClick={this.clickAddRemote} className={cn("remote-menu-item add-remote")}>
-                <div>
-                    <i className="fa-sharp fa-solid fa-plus" /> Add SSH Connection
+                <div className="hoverEffect" style={{ padding: "0.5em", borderRadius: "4px" }}>
+                    <AddIcon className="icon" /> Add SSH Connection
                 </div>
             </div>
         );
