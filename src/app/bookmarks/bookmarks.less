@@ -1,4 +1,4 @@
-@import "../../app/app.less";
+@import "../../app/common/themes/themes.less";
 
 .bookmarks-view {
     background-color: @background-session;
@@ -15,6 +15,16 @@
             width: 1.5em;
             height: 1.5em;
             fill: @base-color;
+        }
+    }
+
+    .header {
+        margin: 1.5em 1.5em 0.5em;
+
+        .bookmarks-title {
+            margin-bottom: 0.5em;
+            font-weight: bold;
+            font-size: 1.5em;
         }
     }
 
@@ -79,9 +89,10 @@
         .bookmark-id-div {
             display: none;
             position: absolute;
-            color: #666;
+            color: @disabled-color;
             right: 5px;
             bottom: 2px;
+            font-size: 0.8em;
         }
 
         &:hover .bookmark-id-div {
@@ -113,5 +124,8 @@
         &:hover .bookmark-controls {
             visibility: visible;
         }
+    }
+    .help-entry {
+        margin: 1em 2em;
     }
 }
