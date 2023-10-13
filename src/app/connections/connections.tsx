@@ -62,7 +62,7 @@ class AuthModeDropdown extends React.Component<{ tempVal: OV<string> }, {}> {
         return (
             <div className={cn("dropdown", "editremote-dropdown", { "is-active": this.active.get() })}>
                 <div className="dropdown-trigger">
-                    <button onClick={this.toggleActive} className="button is-small is-dark">
+                    <button onClick={this.toggleActive} className="button">
                         <span>{this.props.tempVal.get()}</span>
                         <div className="flex-spacer" />
                         <AngleDownIcon className="icon" />
@@ -116,7 +116,7 @@ class ConnectModeDropdown extends React.Component<{ tempVal: OV<string> }, {}> {
         return (
             <div className={cn("dropdown", "editremote-dropdown", { "is-active": this.active.get() })}>
                 <div className="dropdown-trigger">
-                    <button onClick={this.toggleActive} className="button is-small is-dark">
+                    <button onClick={this.toggleActive} className="button">
                         <span>{this.props.tempVal.get()}</span>
                         <div className="flex-spacer" />
                         <AngleDownIcon className="icon" />

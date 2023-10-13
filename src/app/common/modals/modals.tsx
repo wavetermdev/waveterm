@@ -10,6 +10,7 @@ import { GlobalModel } from "../../../model/model";
 import { Markdown } from "../common";
 
 import { ReactComponent as XmarkIcon } from "../../assets/icons/line/xmark.svg";
+import { ReactComponent as WarningIcon } from "../../assets/icons/line/triangle-exclamation.svg";
 
 dayjs.extend(localizedFormat);
 
@@ -88,9 +89,7 @@ class DisconnectedModal extends React.Component<{}, {}> {
                             <span>Try Reconnect</span>
                         </button>
                         <button onClick={this.restartServer} className="button is-danger" style={{ marginLeft: 10 }}>
-                            <span className="icon">
-                                <i className="fa-sharp fa-solid fa-triangle-exclamation" />
-                            </span>
+                            <WarningIcon className="icon" />
                             <span>Restart Server</span>
                         </button>
                     </footer>
@@ -176,7 +175,8 @@ class AlertModal extends React.Component<{}, {}> {
                 <div className="modal-content">
                     <header>
                         <p className="modal-title">
-                            <i className="fa-sharp fa-solid fa-triangle-exclamation" /> {title}
+                            <WarningIcon className="icon" />
+                            {title}
                         </p>
                         <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
                             <XmarkIcon />

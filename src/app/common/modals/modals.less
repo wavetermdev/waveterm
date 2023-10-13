@@ -112,6 +112,7 @@
         background: @base-background;
         box-shadow: 0px 2px 2px 0 rgba(255, 255, 255, 0.1), 0px 4px 5px 0 rgba(255, 255, 255, 0.2),
             0px 0px 5px 2.5px rgba(255, 255, 255, 0.5);
+        padding-bottom: 0.5em;
     }
 
     header {
@@ -119,10 +120,18 @@
         flex-direction: row;
         padding: 10px;
         position: relative;
+        background-color: @background-session-components-solid;
 
         .modal-title {
             color: @base-color;
             font-size: 1.5em;
+            .icon {
+                display: inline;
+                width: 1em;
+                height: 1em;
+                margin-right: 1em;
+                vertical-align: middle;
+            }
         }
 
         .close-icon {
@@ -154,10 +163,7 @@
         display: flex;
         flex-direction: row;
         align-items: center;
-        color: @term-white;
-        background-color: #222;
         padding: 15px 10px 10px 10px;
-        border-top: 1px solid #666;
     }
 }
 
