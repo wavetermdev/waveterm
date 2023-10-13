@@ -577,17 +577,8 @@ class LineSettingsModal extends React.Component<{ linenum: number }, {}> {
 
 @mobxReact.observer
 class ClientSettingsModal extends React.Component<{}, {}> {
-    tempFontSize: OV<number>;
     fontSizeDropdownActive: OV<boolean> = mobx.observable.box(false, { name: "clientSettings-fontSizeDropdownActive" });
     errorMessage: OV<string> = mobx.observable.box(null, { name: "ClientSettings-errorMessage" });
-
-    constructor(props: any) {
-        super(props);
-        let cdata = GlobalModel.clientData.get();
-        this.tempFontSize = mobx.observable.box(GlobalModel.termFontSize.get(), {
-            name: "clientSettings-tempFontSize",
-        });
-    }
 
     @boundMethod
     closeModal(): void {
@@ -605,6 +596,7 @@ class ClientSettingsModal extends React.Component<{}, {}> {
 
     @boundMethod
     handleChangeFontSize(newFontSize: number): void {
+        this.fontSizeDropdownActive.set(false);
         if (GlobalModel.termFontSize.get() == newFontSize) {
             return;
         }
@@ -633,11 +625,12 @@ class ClientSettingsModal extends React.Component<{}, {}> {
     renderFontSizeDropdown(): any {
         let availableFontSizes = [8, 9, 10, 11, 12, 13, 14, 15];
         let fsize: number = 0;
+        let curSize = GlobalModel.termFontSize.get()
         return (
             <div className={cn("dropdown", "font-size-dropdown", { "is-active": this.fontSizeDropdownActive.get() })}>
                 <div className="dropdown-trigger">
                     <button onClick={this.togglefontSizeDropdown} className="button">
-                        <span>{this.tempFontSize.get()}px</span>
+                        <span>{curSize}px</span>
                         <AngleDownIcon className="icon" />
                     </button>
                 </div>
