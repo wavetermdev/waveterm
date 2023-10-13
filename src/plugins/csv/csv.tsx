@@ -6,36 +6,20 @@ import {
     createColumnHelper,
     flexRender,
     useReactTable,
-    ColumnFiltersState,
     getCoreRowModel,
     getFilteredRowModel,
-    getFacetedRowModel,
-    getFacetedUniqueValues,
-    getFacetedMinMaxValues,
-    getPaginationRowModel,
-    sortingFns,
     getSortedRowModel,
     FilterFn,
   } from '@tanstack/react-table'
   import {
-    RankingInfo,
     rankItem,
-    compareItems,
   } from '@tanstack/match-sorter-utils'
-import Filter from "./filter";
-import DebouncedInput from "./search";
-import Pagination from "./pagination";
+import SortUpIcon from './img/sort-up-solid.svg';
+import SortDownIcon from './img/sort-down-solid.svg';
   
 import "./csv.less";
 
-declare module '@tanstack/table-core' {
-    interface FilterFns {
-      fuzzy: FilterFn<unknown>
-    }
-    interface FilterMeta {
-      itemRank: RankingInfo
-    }
-}
+const MAX_DATA_SIZE = 10 * 1024 * 1024 // 10MB in bytes
 
 type CSVRow = {
     [key: string]: string | number;
@@ -52,27 +36,6 @@ const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
   
     // Return if the item should be filtered in/out
     return itemRank.passed
-  }
-  
-  const fuzzySort: SortingFn<any> = (rowA, rowB, columnId) => {
-    let dir = 0
-  
-    // Only sort by rank if the column has ranking information
-    if (rowA.columnFiltersMeta[columnId]) {
-      dir = compareItems(
-        rowA.columnFiltersMeta[columnId]?.itemRank!,
-        rowB.columnFiltersMeta[columnId]?.itemRank!
-      )
-    }
-  
-    // Provide an alphanumeric fallback for when the item ranks are equal
-    return dir === 0 ? sortingFns.alphanumeric(rowA, rowB, columnId) : dir
-}
-  
-
-interface DataColumn {
-    Header: string;
-    accessor: string;
 }
 
 interface Props {
@@ -97,22 +60,24 @@ interface State {
     message: { status: string; text: string } | null;
     isPreviewerAvailable: boolean;
     showReadonly: boolean;
+    totalHeight: number;
 }
 
 const columnHelper = createColumnHelper<any>();
 
 const CSVRenderer: FC<Props> = (props: Props) => {
     const csvCacheRef = useRef(new Map<string, string>());
+    const rowRef = useRef<(HTMLTableRowElement | null)[]>([]);
+    const headerRef = useRef<HTMLTableRowElement | null>(null);
     const [state, setState] = useState<State>({
         content: null,
         message: null,
         isPreviewerAvailable: false,
         showReadonly: true,
+        totalHeight: 0,
     });
-    const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-        []
-      )
-    const [globalFilter, setGlobalFilter] = React.useState('')
+    const [globalFilter, setGlobalFilter] = useState('')
+    const [isFileTooLarge, setIsFileTooLarge] = useState<boolean>(false);
 
     const filePath = props.lineState["prompt:file"];
     const { screenId, lineId } = props.context;
@@ -121,9 +86,29 @@ const CSVRenderer: FC<Props> = (props: Props) => {
     // Parse the CSV data
     const parsedData = useMemo<CSVRow[]>(() => {
         if (!state.content) return [];
-    
-        const results = Papa.parse(state.content, { header: true });
-    
+
+        // Trim the content and then check for headers based on the first row's content.
+        const trimmedContent = state.content.trim();
+        const firstRow = trimmedContent.split('\n')[0];
+
+        // This checks if the first row starts with a letter or a quote
+        const hasHeaders = !!firstRow.match(/^[a-zA-Z"]/);
+
+        const results = Papa.parse(trimmedContent, { header: hasHeaders });
+
+        // Check for non-header CSVs
+        if (!hasHeaders && Array.isArray(results.data) && Array.isArray(results.data[0])) {
+            const dataArray = results.data as string[][];  // Asserting the type
+            const headers = Array.from({ length: dataArray[0].length }, (_, i) => `Column ${i + 1}`);
+            results.data = dataArray.map(row => {
+                const newRow: CSVRow = {};
+                row.forEach((value, index) => {
+                    newRow[headers[index]] = value;
+                });
+                return newRow;
+            });
+        }
+        
         return results.data.map(row => {
             return Object.fromEntries(
                 Object.entries(row as CSVRow).map(([key, value]) => {
@@ -137,7 +122,7 @@ const CSVRenderer: FC<Props> = (props: Props) => {
                 })
             ) as CSVRow;
         });
-    }, [state.content]);    
+    }, [state.content]);
 
     // Column Definitions
     const columns = useMemo(() => {
@@ -158,12 +143,30 @@ const CSVRenderer: FC<Props> = (props: Props) => {
         if (content) {
             setState((prevState) => ({ ...prevState, content }));
         } else {
+            // Check if the file size exceeds 10MB
+            if (props.data.size > MAX_DATA_SIZE) { // 10MB in bytes
+                setIsFileTooLarge(true);
+                return;
+            }
+            
             props.data.text().then((content: string) => {
                 setState((prevState) => ({ ...prevState, content }));
                 csvCacheRef.current.set(cacheKey, content);
             });
         }
-    }, []);
+    }, []);    
+
+    // Effect to compute height after rendering
+    useEffect(() => {
+        if (headerRef.current && rowRef.current && rowRef.current[0]) {
+            const rowHeight = rowRef.current[0]?.offsetHeight ?? 0; // Using optional chaining
+            const totalHeight =  rowHeight * parsedData.length; 
+            const th = Math.min(totalHeight, props.opts.maxSize.height);
+
+            setState((prevState) => ({ ...prevState, totalHeight: th }));
+        }
+    }, [parsedData, props.opts]);
+    
 
     const getMessage = () => (
         <div style={{ position: "absolute", bottom: "-3px", left: "14px" }}>
@@ -183,66 +186,51 @@ const CSVRenderer: FC<Props> = (props: Props) => {
     const { content, message } = state;
 
     const table = useReactTable({
+        manualPagination: true,
         data: parsedData,
         columns,
         filterFns: {
             fuzzy: fuzzyFilter,
         },
           state: {
-            columnFilters,
             globalFilter,
         },
-        onColumnFiltersChange: setColumnFilters,
-        onGlobalFilterChange: setGlobalFilter,
         globalFilterFn: fuzzyFilter,
+        onGlobalFilterChange: setGlobalFilter,
         getCoreRowModel: getCoreRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
         getSortedRowModel: getSortedRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
-        getFacetedRowModel: getFacetedRowModel(),
-        getFacetedUniqueValues: getFacetedUniqueValues(),
-        getFacetedMinMaxValues: getFacetedMinMaxValues(),
     });
+
+    if (isFileTooLarge) {
+        return (
+            <div className="csv-renderer" style={{ fontSize: GlobalModel.termFontSize.get() }}>
+                <div className="load-error-text">The file size exceeds 10MB and cannot be displayed.</div>
+            </div>
+        );
+    }
 
     if (content == null) return <div className="csv-renderer" style={{ height: props.savedHeight }} />;
 
-    if (exitcode === 1)
-        return (
-            <div
-                className="csv-renderer"
-                style={{
-                    fontSize: GlobalModel.termFontSize.get(),
-                    color: "white",
-                }}
-            >
-                {content}
-            </div>
-        );
-
     return (
         <div className="csv-renderer">
-            <div className="global-search-render">
-                <DebouncedInput
-                value={globalFilter ?? ''}
-                onChange={value => setGlobalFilter(String(value))}
-                className="global-search"
-                placeholder="Search all columns..."
-                />
-            </div>
             <table>
                 <thead>
-                {table.getHeaderGroups().map(headerGroup => (
-                    <tr key={headerGroup.id}>
-                        {headerGroup.headers.map(header => (
-                            <th key={header.id}>
-                                {header.isPlaceholder
-                                    ? null
-                                    : (
-                                        <>
+                    {table.getHeaderGroups().map(headerGroup => (
+                        <tr key={headerGroup.id} ref={headerRef}>
+                            {headerGroup.headers.map(header => (
+                                <th 
+                                    key={header.id}
+                                    colSpan={header.colSpan}
+                                    style={{ width: header.getSize() }}
+                                >
+                                    {header.isPlaceholder
+                                        ? null
+                                        : (
                                             <div
                                                 {...{
                                                     className: header.column.getCanSort()
-                                                    ? 'cursor-pointer select-none'
+                                                    ? 'inner cursor-pointer select-none'
                                                     : '',
                                                     onClick: header.column.getToggleSortingHandler(),
                                                 }}
@@ -251,36 +239,29 @@ const CSVRenderer: FC<Props> = (props: Props) => {
                                                     header.column.columnDef.header,
                                                     header.getContext()
                                                 )}
-                                                {{
-                                                    asc: ' 🔼',
-                                                    desc: ' 🔽',
-                                                }[header.column.getIsSorted() as string] ?? null}
+                                                {
+                                                    header.column.getIsSorted() === 'asc' ? <img src={SortUpIcon} className="sort-icon sort-up-icon" alt="Ascending"  /> :
+                                                    header.column.getIsSorted() === 'desc' ? <img src={SortDownIcon} className="sort-icon sort-down-icon" alt="Descending"  /> : null
+                                                }
                                             </div>
-                                            {header.column.getCanFilter() ? (
-                                                <div>
-                                                    <Filter column={header.column} table={table} />
-                                                </div>
-                                            ) : null}
-                                        </>
-                                    )}
-                            </th>
-                        ))}
-                    </tr>
-                ))}
+                                        )}
+                                </th>
+                            ))}
+                        </tr>
+                    ))}
                 </thead>
-                <tbody>
-                    {table.getRowModel().rows.map(row => (
-                        <tr key={row.id}>
-                        {row.getVisibleCells().map(cell => (
-                            <td key={cell.id}>
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                            </td>
-                        ))}
+                <tbody style={{"height": `${state.totalHeight}px`}}>
+                    {table.getRowModel().rows.map((row, index) => (
+                        <tr key={row.id} ref={el => rowRef.current[index] = el}>
+                            {row.getVisibleCells().map(cell => (
+                                <td key={cell.id}>
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                </td>
+                            ))}
                         </tr>
                     ))}
                 </tbody>
             </table>
-            <Pagination table={table} />
             {message && getMessage()}
         </div>
     );
