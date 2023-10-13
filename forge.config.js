@@ -1,7 +1,7 @@
 var AllowedFirstParts = {
     "package.json": true,
     dist: true,
-    static: true,
+    public: true,
     node_modules: true,
     bin: true,
 };
@@ -50,7 +50,7 @@ module.exports = {
         files: [
             "package.json",
             "dist/*",
-            "static/*",
+            "public/*",
             "node_modules/lzma-native/**",
             "node_modules/fs-ext/**",
             "node_modules/fsevents/**",
