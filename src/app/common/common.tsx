@@ -13,6 +13,7 @@ import { ReactComponent as CopyIcon } from "../assets/icons/history/copy.svg";
 import { ReactComponent as CircleIcon } from "../assets/icons/circle.svg";
 import { ReactComponent as KeyIcon } from "../assets/icons/key.svg";
 import { ReactComponent as RotateIcon } from "../assets/icons/rotate_left.svg";
+import { ReactComponent as CircleInfoIcon } from "../assets/icons/circle_info.svg";
 
 import "./common.less";
 
@@ -250,11 +251,11 @@ class InfoMessage extends React.Component<{ width: number; children: React.React
         return (
             <div className="info-message">
                 <div className="message-icon">
-                    <i className="fa-sharp fa-solid fa-circle-info" />
+                    <CircleInfoIcon className="icon" />
                 </div>
                 <div className="message-content" style={{ width: this.props.width }}>
                     <div className="info-icon">
-                        <i className="fa-sharp fa-solid fa-circle-info" />
+                        <CircleInfoIcon className="icon" />
                     </div>
                     <div className="info-children">{this.props.children}</div>
                 </div>
