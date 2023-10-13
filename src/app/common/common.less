@@ -91,6 +91,8 @@
             white-space: pre;
             padding: 2px 8px 2px 8px;
             background-color: @term-black;
+            font-size: 1em;
+            font-family: @fixed-font;
         }
     }
 
@@ -269,16 +271,20 @@
 .markdown {
     color: @term-white;
     margin-bottom: 10px;
+    font-family: @markdown-font;
+    font-size: 14px;
 
     code {
-        background-color: @term-black;
+        background-color: @markdown-highlight;
         color: @term-white;
-        padding: 5px;
+        font-family: @terminal-font;
+        display: inline-block;
     }
 
     code.inline {
         padding-top: 0;
         padding-bottom: 0;
+        font-family: @terminal-font;
     }
 
     .title {
@@ -315,14 +321,14 @@
     blockquote {
         margin: 4px 10px 4px 10px;
         border-radius: 3px;
-        background-color: #444;
+        background-color: @markdown-highlight;
         padding: 2px 4px 2px 6px;
     }
 
     pre {
-        background-color: inherit;
+        background-color: @markdown-highlight;
         margin: 4px 10px 4px 10px;
-        padding: 2px 4px 2px 6px;
+        padding: 6px 6px 6px 10px;
     }
 
     .title.is-1 {

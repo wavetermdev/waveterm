@@ -164,7 +164,7 @@ class CmdInput extends React.Component<{}, {}> {
                         )}
                         {focusVal && (
                             <div onMouseDown={this.clickHistoryHint} className="cmd-btn hoverEffect">
-                                {historyShow ? "close history (esc)" : "show history (ctrl-r)"}
+                                {historyShow ? "close (esc)" : "history (crtl-r)"}
                             </div>
                         )}
                         <ExecIcon

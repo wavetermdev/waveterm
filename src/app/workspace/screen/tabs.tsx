@@ -121,7 +121,7 @@ class ScreenTabs extends React.Component<{ session: Session }, {}> {
         const style = { borderColor: "transparent", background: "none" };
         if (screen.isActive()) {
             let tabColor = screen.getTabColor();
-            if (tabColor === "default") tabColor = "rgb(0, 128, 0)"; //TODO: this is the color of @tab-green in index.css. hardcoding since I cant think of an easy way out
+            if (tabColor === "default") tabColor = "green";
             style.borderColor = tabColor;
             style.background = generateBackgroundWithGradient(tabColor);
         }

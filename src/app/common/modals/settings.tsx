@@ -378,7 +378,7 @@ class SessionSettingsModal extends React.Component<{ sessionId: string }, {}> {
                 <div className="modal-background" />
                 <div className="modal-content">
                     <header>
-                        <div className="modal-title">session settings ({session.name.get()})</div>
+                        <div className="modal-title">workspace settings ({session.name.get()})</div>
                         <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
                             <XmarkIcon />
                         </div>
