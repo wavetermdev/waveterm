@@ -8,6 +8,15 @@
     flex-direction: column;
     position: relative;
 
+    .title-bar-drag {
+        -webkit-app-region: drag;
+        height: 20px;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+    }
+
     &.collapsed {
         width: 6em;
         min-width: 6em;

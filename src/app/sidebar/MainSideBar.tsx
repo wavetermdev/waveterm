@@ -197,6 +197,7 @@ class MainSideBar extends React.Component<{}, {}> {
         let mainView = GlobalModel.activeMainView.get();
         return (
             <div className={cn("main-sidebar", { collapsed: isCollapsed }, { "is-dev": GlobalModel.isDev })}>
+                <div className="title-bar-drag"/>
                 <div className="arrow-container hoverEffect" onClick={this.toggleCollapsed}>
                     <LeftChevronIcon className="icon" />
                 </div>
@@ -206,7 +207,7 @@ class MainSideBar extends React.Component<{}, {}> {
                             <AppsIcon className="icon" />
                             Apps
                             <span className="hotkey">&#x2318;A</span>
-                        </div>*/}
+                            </div>*/}
                         <div className="item hoverEffect" onClick={this.handleHistoryClick}>
                             <HistoryIcon className="icon" />
                             History
