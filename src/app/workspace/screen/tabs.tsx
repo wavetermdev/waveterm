@@ -187,8 +187,8 @@ class ScreenTabs extends React.Component<{ session: Session }, {}> {
                     <For each="screen" index="index" of={showingScreens}>
                         {this.renderTab(screen, activeScreenId, index)}
                     </For>
-                    <div key="new-screen" className="new-screen hover-effect-base" onClick={this.handleNewScreen}>
-                        <AddIcon className="icon hover-effect-target" />
+                    <div key="new-screen" className="new-screen" onClick={this.handleNewScreen}>
+                        <AddIcon className="icon hoverEffect" />
                     </div>
                 </div>
                 {/**<div className="cmd-hints">
