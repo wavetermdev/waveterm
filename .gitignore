@@ -16,4 +16,7 @@ build/
 *.dmg
 webshare/dist/
 webshare/dist-dev/
+temp.sql
+.idea/
+test/
 
