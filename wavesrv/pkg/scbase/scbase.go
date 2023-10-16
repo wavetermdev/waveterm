@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/commandlinedev/apishell/pkg/base"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/google/uuid"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sys/unix"

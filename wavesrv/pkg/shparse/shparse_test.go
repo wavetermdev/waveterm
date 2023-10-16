@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/commandlinedev/prompt-server/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
 )
 
 // $(ls f[*]); ./x

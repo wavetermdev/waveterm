@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	sh2db "github.com/commandlinedev/prompt-server/db"
+	sh2db "github.com/wavetermdev/waveterm/wavesrv/db"
 	_ "github.com/golang-migrate/migrate/v4/database/sqlite3"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/golang-migrate/migrate/v4/source/iofs"

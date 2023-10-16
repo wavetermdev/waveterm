@@ -25,17 +25,17 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 
-	"github.com/commandlinedev/apishell/pkg/packet"
-	"github.com/commandlinedev/apishell/pkg/server"
-	"github.com/commandlinedev/prompt-server/pkg/cmdrunner"
-	"github.com/commandlinedev/prompt-server/pkg/pcloud"
-	"github.com/commandlinedev/prompt-server/pkg/remote"
-	"github.com/commandlinedev/prompt-server/pkg/rtnstate"
-	"github.com/commandlinedev/prompt-server/pkg/scbase"
-	"github.com/commandlinedev/prompt-server/pkg/scpacket"
-	"github.com/commandlinedev/prompt-server/pkg/scws"
-	"github.com/commandlinedev/prompt-server/pkg/sstore"
-	"github.com/commandlinedev/prompt-server/pkg/wsshell"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/server"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/cmdrunner"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/pcloud"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/rtnstate"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scws"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/wsshell"
 )
 
 type WebFnType = func(http.ResponseWriter, *http.Request)

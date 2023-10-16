@@ -10,8 +10,8 @@ import (
 	"os"
 	"path"
 
-	"github.com/commandlinedev/apishell/pkg/cirfile"
-	"github.com/commandlinedev/prompt-server/pkg/scbase"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/cirfile"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 	"github.com/google/uuid"
 )
 

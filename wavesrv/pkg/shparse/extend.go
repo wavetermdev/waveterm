@@ -5,7 +5,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/commandlinedev/prompt-server/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
 )
 
 var noEscChars []bool

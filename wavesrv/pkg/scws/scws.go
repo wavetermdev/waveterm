@@ -8,12 +8,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/commandlinedev/apishell/pkg/packet"
-	"github.com/commandlinedev/prompt-server/pkg/mapqueue"
-	"github.com/commandlinedev/prompt-server/pkg/remote"
-	"github.com/commandlinedev/prompt-server/pkg/scpacket"
-	"github.com/commandlinedev/prompt-server/pkg/sstore"
-	"github.com/commandlinedev/prompt-server/pkg/wsshell"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/mapqueue"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/wsshell"
 )
 
 const WSStatePacketChSize = 20

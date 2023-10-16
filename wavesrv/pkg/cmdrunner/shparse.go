@@ -6,10 +6,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/commandlinedev/apishell/pkg/shexec"
-	"github.com/commandlinedev/apishell/pkg/simpleexpand"
-	"github.com/commandlinedev/prompt-server/pkg/scpacket"
-	"github.com/commandlinedev/prompt-server/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/simpleexpand"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
 	"mvdan.cc/sh/v3/expand"
 	"mvdan.cc/sh/v3/syntax"
 )

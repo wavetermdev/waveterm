@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/commandlinedev/prompt-server/pkg/remote"
-	"github.com/commandlinedev/prompt-server/pkg/scpacket"
-	"github.com/commandlinedev/prompt-server/pkg/sstore"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 	"github.com/google/uuid"
 )
 

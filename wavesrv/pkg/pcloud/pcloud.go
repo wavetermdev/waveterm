@@ -15,10 +15,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/commandlinedev/prompt-server/pkg/dbutil"
-	"github.com/commandlinedev/prompt-server/pkg/rtnstate"
-	"github.com/commandlinedev/prompt-server/pkg/scbase"
-	"github.com/commandlinedev/prompt-server/pkg/sstore"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/rtnstate"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 )
 
 const PCloudEndpoint = "https://api.getprompt.dev/central"

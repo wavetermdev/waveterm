@@ -6,8 +6,8 @@ import (
 	"io"
 
 	openaiapi "github.com/sashabaranov/go-openai"
-	"github.com/commandlinedev/apishell/pkg/packet"
-	"github.com/commandlinedev/prompt-server/pkg/sstore"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 )
 
 // https://github.com/tiktoken-go/tokenizer

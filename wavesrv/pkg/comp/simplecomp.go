@@ -6,9 +6,9 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/commandlinedev/apishell/pkg/packet"
-	"github.com/commandlinedev/prompt-server/pkg/remote"
-	"github.com/commandlinedev/prompt-server/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
 )
 
 var globalLock = &sync.Mutex{}

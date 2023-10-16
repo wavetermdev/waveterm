@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/commandlinedev/prompt-server/pkg/scbase"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 )
 
 const MigrationChunkSize = 10

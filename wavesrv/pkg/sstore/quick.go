@@ -1,7 +1,7 @@
 package sstore
 
 import (
-	"github.com/commandlinedev/prompt-server/pkg/dbutil"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 )
 
 var quickSetStr = dbutil.QuickSetStr

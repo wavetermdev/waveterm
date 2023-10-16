@@ -1,7 +1,7 @@
 package remote
 
 import (
-	"github.com/commandlinedev/apishell/pkg/base"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 )
 
 func startCmdWait(ck base.CommandKey) {

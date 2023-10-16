@@ -5,11 +5,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/commandlinedev/apishell/pkg/base"
-	"github.com/commandlinedev/apishell/pkg/packet"
-	"github.com/commandlinedev/apishell/pkg/shexec"
-	"github.com/commandlinedev/prompt-server/pkg/remote"
-	"github.com/commandlinedev/prompt-server/pkg/sstore"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 )
 
 // PTERM=MxM,Mx25

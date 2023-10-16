@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/commandlinedev/prompt-server/pkg/remote"
-	"github.com/commandlinedev/prompt-server/pkg/rtnstate"
-	"github.com/commandlinedev/prompt-server/pkg/sstore"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/rtnstate"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 )
 
 type NoTelemetryInputType struct {

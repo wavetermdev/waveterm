@@ -3,7 +3,7 @@ package shparse
 import (
 	"strings"
 
-	"github.com/commandlinedev/prompt-server/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
 )
 
 const (

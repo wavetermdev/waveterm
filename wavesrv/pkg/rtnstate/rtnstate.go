@@ -7,11 +7,11 @@ import (
 	"strings"
 
 	"github.com/alessio/shellescape"
-	"github.com/commandlinedev/apishell/pkg/packet"
-	"github.com/commandlinedev/apishell/pkg/shexec"
-	"github.com/commandlinedev/apishell/pkg/simpleexpand"
-	"github.com/commandlinedev/prompt-server/pkg/sstore"
-	"github.com/commandlinedev/prompt-server/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/simpleexpand"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
 	"mvdan.cc/sh/v3/syntax"
 )
 
