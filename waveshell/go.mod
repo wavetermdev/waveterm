@@ -1,4 +1,4 @@
-module github.com/commandlinedev/apishell
+module github.com/wavetermdev/waveterm/waveshell
 
 go 1.18
 

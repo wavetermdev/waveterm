@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/commandlinedev/apishell/pkg/binpack"
-	"github.com/commandlinedev/apishell/pkg/statediff"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/binpack"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/statediff"
 )
 
 const ShellStatePackVersion = 0

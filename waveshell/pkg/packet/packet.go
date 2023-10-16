@@ -12,7 +12,7 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/commandlinedev/apishell/pkg/base"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 )
 
 // single          : <init, >run, >cmddata, >cmddone, <cmdstart, <>data, <>dataack, <cmddone

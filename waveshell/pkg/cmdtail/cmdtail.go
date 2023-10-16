@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/commandlinedev/apishell/pkg/base"
-	"github.com/commandlinedev/apishell/pkg/packet"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 )
 
 const MaxDataBytes = 4096

@@ -9,10 +9,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/commandlinedev/apishell/pkg/base"
-	"github.com/commandlinedev/apishell/pkg/packet"
-	"github.com/commandlinedev/apishell/pkg/server"
-	"github.com/commandlinedev/apishell/pkg/shexec"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/server"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
 	"golang.org/x/sys/unix"
 )
 

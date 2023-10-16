@@ -9,9 +9,9 @@ import (
 	"strings"
 
 	"github.com/alessio/shellescape"
-	"github.com/commandlinedev/apishell/pkg/packet"
-	"github.com/commandlinedev/apishell/pkg/simpleexpand"
-	"github.com/commandlinedev/apishell/pkg/statediff"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/simpleexpand"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/statediff"
 	"mvdan.cc/sh/v3/expand"
 	"mvdan.cc/sh/v3/syntax"
 )

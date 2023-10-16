@@ -15,9 +15,9 @@ import (
 	"time"
 
 	"github.com/alessio/shellescape"
-	"github.com/commandlinedev/apishell/pkg/base"
-	"github.com/commandlinedev/apishell/pkg/packet"
-	"github.com/commandlinedev/apishell/pkg/shexec"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
 )
 
 const MaxFileDataPacketSize = 16 * 1024

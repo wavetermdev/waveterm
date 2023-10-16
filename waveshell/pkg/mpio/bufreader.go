@@ -4,7 +4,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/commandlinedev/apishell/pkg/packet"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 )
 
 type FdReader struct {
