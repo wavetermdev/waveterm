@@ -3,9 +3,12 @@ dist-dev/
 node_modules/
 *~
 *.log
+*.out
 out/
 .DS_Store
 bin/
+waveshell/bin/
+wavesrv/bin/
 dev-bin
 local-server-bin
 *.pw
@@ -13,3 +16,4 @@ build/
 *.dmg
 webshare/dist/
 webshare/dist-dev/
+
