@@ -2,7 +2,7 @@
     "name": "Prompt",
     "version": "0.4.0",
     "main": "dist/emain.js",
-    "license": "Proprietary",
+    "license": "Apache-2.0",
     "dependencies": {
         "@monaco-editor/react": "^4.5.1",
         "@tanstack/match-sorter-utils": "^8.8.4",
