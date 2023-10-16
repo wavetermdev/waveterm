@@ -339,7 +339,7 @@ class TosModal extends React.Component<{}, {}> {
                                 features).
                             </p>
                             <p>
-                                <a target="_blank" href={util.makeExternLink("https://www.commandline.dev/tos.html")}>
+                                <a target="_blank" href={util.makeExternLink("https://www.commandline.dev/tos")}>
                                     Full Terms of Service
                                 </a>
                             </p>
