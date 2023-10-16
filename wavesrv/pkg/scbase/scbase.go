@@ -18,8 +18,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sys/unix"
 )
@@ -73,7 +73,7 @@ func MShellBinaryDir() string {
 		appPath = "."
 	}
 	if IsDevMode() {
-		return path.Join(appPath, "dev-bin")
+		return path.Join(appPath, "waveshell", "bin")
 	}
 	return path.Join(appPath, "bin", "mshell")
 }

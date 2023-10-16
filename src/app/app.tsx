@@ -75,7 +75,7 @@ class App extends React.Component<{}, {}> {
         let lineSettingsModal = GlobalModel.lineSettingsModal.get();
         let clientSettingsModal = GlobalModel.clientSettingsModal.get();
         let remotesModal = GlobalModel.remotesModalModel.isOpen();
-        let disconnected = !GlobalModel.ws.open.get() || !GlobalModel.localServerRunning.get();
+        let disconnected = !GlobalModel.ws.open.get() || !GlobalModel.waveSrvRunning.get();
         let hasClientStop = GlobalModel.getHasClientStop();
         let dcWait = this.dcWait.get();
         if (disconnected || hasClientStop) {

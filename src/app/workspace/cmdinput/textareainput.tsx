@@ -21,6 +21,17 @@ function pageSize(div: any): number {
     return size;
 }
 
+function scrollDiv(div: any, amt: number) {
+    if (div == null) {
+        return;
+    }
+    let newScrollTop = div.scrollTop + amt;
+    if (newScrollTop < 0) {
+        newScrollTop = 0;
+    }
+    div.scrollTo({ top: newScrollTop, behavior: "smooth" });
+}
+
 @mobxReact.observer
 class TextAreaInput extends React.Component<{ onHeightChange: () => void }, {}> {
     lastTab: boolean = false;

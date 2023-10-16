@@ -4,8 +4,8 @@ contextBridge.exposeInMainWorld("api", {
     getId: () => ipcRenderer.sendSync("get-id"),
     getIsDev: () => ipcRenderer.sendSync("get-isdev"),
     getAuthKey: () => ipcRenderer.sendSync("get-authkey"),
-    getLocalServerStatus: () => ipcRenderer.sendSync("local-server-status"),
-    restartLocalServer: () => ipcRenderer.sendSync("restart-server"),
+    getWaveSrvStatus: () => ipcRenderer.sendSync("wavesrv-status"),
+    restartWaveSrv: () => ipcRenderer.sendSync("restart-server"),
     reloadWindow: () => ipcRenderer.sendSync("reload-window"),
     onTCmd: (callback) => ipcRenderer.on("t-cmd", callback),
     onICmd: (callback) => ipcRenderer.on("i-cmd", callback),
@@ -20,5 +20,5 @@ contextBridge.exposeInMainWorld("api", {
     onDigitCmd: (callback) => ipcRenderer.on("digit-cmd", callback),
     contextScreen: (screenOpts, position) => ipcRenderer.send("context-screen", screenOpts, position),
     contextEditMenu: (position, opts) => ipcRenderer.send("context-editmenu", position, opts),
-    onLocalServerStatusChange: (callback) => ipcRenderer.on("local-server-status-change", callback),
+    onWaveSrvStatusChange: (callback) => ipcRenderer.on("wavesrv-status-change", callback),
 });

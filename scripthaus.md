@@ -85,9 +85,9 @@ GO_LDFLAGS="-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')"
 (cd ../apishell; GOOS=darwin GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../prompt-client/bin/mshell/mshell-v0.3-darwin.arm64 main-mshell.go)
 (cd ../apishell; GOOS=linux GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../prompt-client/bin/mshell/mshell-v0.3-linux.amd64 main-mshell.go)
 (cd ../apishell; GOOS=linux GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../prompt-client/bin/mshell/mshell-v0.3-linux.arm64 main-mshell.go)
-(cd ../prompt-server; GOOS=darwin GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../prompt-client/build/prompt-local-server.amd64 ./cmd)
-(cd ../prompt-server; GOOS=darwin GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../prompt-client/build/prompt-local-server.arm64 ./cmd)
-lipo -create -output bin/prompt-local-server build/prompt-local-server.amd64 build/prompt-local-server.arm64
+(cd wavesrv; GOOS=darwin GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../build/wavesrv.amd64 ./cmd)
+(cd wavesrv; GOOS=darwin GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../build/wavesrv.arm64 ./cmd)
+lipo -create -output bin/wavesrv build/wavesrv.amd64 build/wavesrv.arm64
 node_modules/.bin/electron-forge make
 ```
 
@@ -152,7 +152,7 @@ aws --profile prompt-s3 s3 sync webshare/dist s3://prompt-share-static/dist --ca
 ```bash
 # @scripthaus command build-wavesrv
 cd wavesrv
-go build -ldflags "-X main.BuildTime=$(date +'%Y%m%d%H%M')" -o bin/local-server ./cmd
+go build -ldflags "-X main.BuildTime=$(date +'%Y%m%d%H%M')" -o bin/wavesrv ./cmd
 ```
 
 ```bash

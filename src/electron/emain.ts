@@ -68,8 +68,8 @@ if (isDev) {
 }
 let app = electron.app;
 app.setName(isDev ? "Prompt (Dev)" : "Prompt");
-let localServerProc = null;
-let localServerShouldRestart = false;
+let waveSrvProc = null;
+let waveSrvShouldRestart = false;
 
 electron.dialog.showErrorBox = (title, content) => {
     oldConsoleLog("ERROR", title, content);
@@ -101,21 +101,21 @@ function getBaseHostPort() {
     return ProdServerEndpoint;
 }
 
-function getLocalServerPath() {
+function getWaveSrvPath() {
     if (isDev) {
-        return path.join(getAppBasePath(), "local-server-bin", "local-server");
+        return path.join(getAppBasePath(), "wavesrv", "bin", "wavesrv");
     }
-    return path.join(getAppBasePath(), "bin", "prompt-local-server");
+    return path.join(getAppBasePath(), "bin", "wavesrv");
 }
 
-function getLocalServerCmd() {
-    let localServerPath = getLocalServerPath();
+function getWaveSrvCmd() {
+    let waveSrvPath = getWaveSrvPath();
     let scHome = getPromptHomeDir();
-    let logFile = path.join(scHome, "local-server.log");
-    return `${localServerPath} >> "${logFile}" 2>&1`;
+    let logFile = path.join(scHome, "wavesrv.log");
+    return `${waveSrvPath} >> "${logFile}" 2>&1`;
 }
 
-function getLocalServerCwd() {
+function getWaveSrvCwd() {
     let scHome = getPromptHomeDir();
     return scHome;
 }
@@ -406,18 +406,18 @@ electron.ipcMain.on("get-authkey", (event) => {
     return;
 });
 
-electron.ipcMain.on("local-server-status", (event) => {
-    event.returnValue = localServerProc != null;
+electron.ipcMain.on("wavesrv-status", (event) => {
+    event.returnValue = waveSrvProc != null;
     return;
 });
 
 electron.ipcMain.on("restart-server", (event) => {
-    if (localServerProc != null) {
-        localServerProc.kill();
-        localServerShouldRestart = true;
+    if (waveSrvProc != null) {
+        waveSrvProc.kill();
+        waveSrvShouldRestart = true;
         return;
     } else {
-        runLocalServer();
+        runWaveSrv();
     }
     event.returnValue = true;
     return;
@@ -467,25 +467,25 @@ function getClientData(willRetry: boolean, retryNum: number) {
         })
         .catch((err) => {
             if (willRetry) {
-                console.log("error getting client-data from local-server, will retry", "(" + retryNum + ")");
+                console.log("error getting client-data from wavesrv, will retry", "(" + retryNum + ")");
                 return null;
             }
-            console.log("error getting client-data from local-server, failed: ", err);
+            console.log("error getting client-data from wavesrv, failed: ", err);
             return null;
         });
 }
 
-function sendLSSC() {
+function sendWSSC() {
     if (MainWindow != null) {
-        if (localServerProc == null) {
-            MainWindow.webContents.send("local-server-status-change", false);
+        if (waveSrvProc == null) {
+            MainWindow.webContents.send("wavesrv-status-change", false);
             return;
         }
-        MainWindow.webContents.send("local-server-status-change", true, localServerProc.pid);
+        MainWindow.webContents.send("wavesrv-status-change", true, waveSrvProc.pid);
     }
 }
 
-function runLocalServer() {
+function runWaveSrv() {
     let pResolve = null;
     let pReject = null;
     let rtnPromise = new Promise((argResolve, argReject) => {
@@ -497,31 +497,31 @@ function runLocalServer() {
     if (isDev) {
         envCopy[PromptDevVarName] = "1";
     }
-    console.log("trying to run local server", getLocalServerPath());
-    let proc = child_process.spawn("/bin/bash", ["-c", getLocalServerCmd()], {
-        cwd: getLocalServerCwd(),
+    console.log("trying to run local server", getWaveSrvPath());
+    let proc = child_process.spawn("/bin/bash", ["-c", getWaveSrvCmd()], {
+        cwd: getWaveSrvCwd(),
         env: envCopy,
     });
     proc.on("exit", (e) => {
-        console.log("local-server exit", e);
-        localServerProc = null;
-        sendLSSC();
-        pReject(new Error(sprintf("failed to start local server (%s)", getLocalServerPath())));
-        if (localServerShouldRestart) {
-            localServerShouldRestart = false;
-            this.runLocalServer();
+        console.log("wavesrv exit", e);
+        waveSrvProc = null;
+        sendWSSC();
+        pReject(new Error(sprintf("failed to start local server (%s)", getWaveSrvPath())));
+        if (waveSrvShouldRestart) {
+            waveSrvShouldRestart = false;
+            this.runWaveSrv();
         }
     });
     proc.on("spawn", (e) => {
-        console.log("spawnned local-server");
-        localServerProc = proc;
+        console.log("spawnned wavesrv");
+        waveSrvProc = proc;
         pResolve(true);
         setTimeout(() => {
-            sendLSSC();
+            sendWSSC();
         }, 100);
     });
     proc.on("error", (e) => {
-        console.log("error running local-server", e);
+        console.log("error running wavesrv", e);
     });
     proc.stdout.on("data", (output) => {
         return;
@@ -561,7 +561,7 @@ async function createMainWindowWrap() {
     try {
         clientData = await getClientDataPoll(1);
     } catch (e) {
-        console.log("error getting local-server clientdata", e.toString());
+        console.log("error getting wavesrv clientdata", e.toString());
     }
     MainWindow = createMainWindow(clientData);
     if (clientData && clientData.winsize.fullscreen) {
@@ -604,7 +604,7 @@ function runActiveTimer() {
     }
     GlobalAuthKey = readAuthKey();
     try {
-        await runLocalServer();
+        await runWaveSrv();
     } catch (e) {
         console.log(e.toString());
     }

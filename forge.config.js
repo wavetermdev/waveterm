@@ -63,7 +63,7 @@ module.exports = {
         osxSign: {
             "hardened-runtime": true,
             binaries: [
-                "Contents/Resources/app/bin/prompt-local-server",
+                "Contents/Resources/app/bin/wavesrv",
                 "Contents/Resources/app/bin/mshell/mshell-v0.2-linux.amd64",
                 "Contents/Resources/app/bin/mshell/mshell-v0.2-linux.arm64",
                 "Contents/Resources/app/bin/mshell/mshell-v0.2-darwin.amd64",

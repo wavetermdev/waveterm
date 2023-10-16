@@ -166,8 +166,8 @@ type ElectronApi = {
     getId: () => string;
     getIsDev: () => boolean;
     getAuthKey: () => string;
-    getLocalServerStatus: () => boolean;
-    restartLocalServer: () => boolean;
+    getWaveSrvStatus: () => boolean;
+    restartWaveSrv: () => boolean;
     reloadWindow: () => void;
     onTCmd: (callback: (mods: KeyModsType) => void) => void;
     onICmd: (callback: (mods: KeyModsType) => void) => void;
@@ -181,7 +181,7 @@ type ElectronApi = {
     onDigitCmd: (callback: (event: any, arg: { digit: number }, mods: KeyModsType) => void) => void;
     contextScreen: (screenOpts: { screenId: string }, position: { x: number; y: number }) => void;
     contextEditMenu: (position: { x: number; y: number }, opts: ContextMenuOpts) => void;
-    onLocalServerStatusChange: (callback: (status: boolean, pid: number) => void) => void;
+    onWaveSrvStatusChange: (callback: (status: boolean, pid: number) => void) => void;
 };
 
 function getApi(): ElectronApi {
@@ -2637,7 +2637,7 @@ class Model {
     termUsedRowsCache: Record<string, number> = {}; // key = "screenid/lineid"
     debugCmds: number = 0;
     debugScreen: OV<boolean> = mobx.observable.box(false);
-    localServerRunning: OV<boolean>;
+    waveSrvRunning: OV<boolean>;
     authKey: string;
     isDev: boolean;
     activeMainView: OV<"session" | "history" | "bookmarks" | "webshare"> = mobx.observable.box("session", {
@@ -2687,9 +2687,9 @@ class Model {
         this.bookmarksModel = new BookmarksModel();
         this.historyViewModel = new HistoryViewModel();
         this.remotesModalModel = new RemotesModalModel();
-        let isLocalServerRunning = getApi().getLocalServerStatus();
-        this.localServerRunning = mobx.observable.box(isLocalServerRunning, {
-            name: "model-local-server-running",
+        let isWaveSrvRunning = getApi().getWaveSrvStatus();
+        this.waveSrvRunning = mobx.observable.box(isWaveSrvRunning, {
+            name: "model-wavesrv-running",
         });
         this.termFontSize = mobx.computed(() => {
             let cdata = this.clientData.get();
@@ -2715,7 +2715,7 @@ class Model {
         getApi().onMetaPageDown(this.onMetaPageDown.bind(this));
         getApi().onBracketCmd(this.onBracketCmd.bind(this));
         getApi().onDigitCmd(this.onDigitCmd.bind(this));
-        getApi().onLocalServerStatusChange(this.onLocalServerStatusChange.bind(this));
+        getApi().onWaveSrvStatusChange(this.onWaveSrvStatusChange.bind(this));
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
         document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
         setTimeout(() => this.getClientDataLoop(1), 10);
@@ -2923,8 +2923,8 @@ class Model {
         return didSomething;
     }
 
-    restartLocalServer(): void {
-        getApi().restartLocalServer();
+    restartWaveSrv(): void {
+        getApi().restartWaveSrv();
     }
 
     getLocalRemote(): RemoteType {
@@ -2944,9 +2944,9 @@ class Model {
         return screen.getCurRemoteInstance();
     }
 
-    onLocalServerStatusChange(status: boolean): void {
+    onWaveSrvStatusChange(status: boolean): void {
         mobx.action(() => {
-            this.localServerRunning.set(status);
+            this.waveSrvRunning.set(status);
         })();
     }
 
