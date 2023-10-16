@@ -172,3 +172,12 @@ GOOS=linux GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o bin/mshell-v0.3-linux
 GOOS=darwin GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o bin/mshell-v0.3-darwin.amd64 main-waveshell.go
 GOOS=darwin GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o bin/mshell-v0.3-darwin.arm64 main-waveshell.go
 ```
+
+```bash
+# @scripthaus command build-backend
+# @scripthaus cd :playbook
+echo building waveshell
+scripthaus run fullbuild-waveshell
+echo building wavesrv
+scripthaus run build-wavesrv
+```
