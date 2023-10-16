@@ -148,3 +148,27 @@ aws --profile prompt-s3 s3 sync webshare/dist-dev s3://prompt-devshare-static/di
 aws --profile prompt-s3 s3 sync webshare/static s3://prompt-share-static/static --cache-control 'no-cache'
 aws --profile prompt-s3 s3 sync webshare/dist s3://prompt-share-static/dist --cache-control 'no-cache'
 ```
+
+```bash
+# @scripthaus command build-wavesrv
+cd wavesrv
+go build -ldflags "-X main.BuildTime=$(date +'%Y%m%d%H%M')" -o bin/local-server ./cmd
+```
+
+```bash
+# @scripthaus command build-waveshell
+cd waveshell
+GO_LDFLAGS="-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')"
+go build -ldflags="$GO_LDFLAGS" -o bin/mshell-v0.3-darwin.amd64 main-waveshell.go
+```
+
+```bash
+# @scripthaus command fullbuild-waveshell
+cd waveshell
+GO_LDFLAGS="-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')"
+go build -ldflags="$GO_LDFLAGS" -o ~/.mshell/mshell-v0.2 main-waveshell.go
+GOOS=linux GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o bin/mshell-v0.3-linux.amd64 main-waveshell.go
+GOOS=linux GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o bin/mshell-v0.3-linux.arm64 main-waveshell.go
+GOOS=darwin GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o bin/mshell-v0.3-darwin.amd64 main-waveshell.go
+GOOS=darwin GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o bin/mshell-v0.3-darwin.arm64 main-waveshell.go
+```
