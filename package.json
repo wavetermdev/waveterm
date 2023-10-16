@@ -78,8 +78,5 @@
         "webpack-merge": "^5.8.0"
     },
     "scripts": {
-        "start": "electron-forge start",
-        "package": "electron-forge package",
-        "make": "electron-forge make"
     }
 }
