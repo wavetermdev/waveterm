@@ -3,25 +3,25 @@
 ```bash
 # @scripthaus command webpack-watch
 # @scripthaus cd :playbook
-node_modules/.bin/webpack --watch --config webpack.dev.js
+node_modules/.bin/webpack --watch --config webpack/webpack.dev.js
 ```
 
 ```bash
 # @scripthaus command webpack-build
 # @scripthaus cd :playbook
-node_modules/.bin/webpack --config webpack.dev.js
+node_modules/.bin/webpack --config webpack/webpack.dev.js
 ```
 
 ```bash
 # @scripthaus command webpack-electron-watch
 # @scripthaus cd :playbook
-node_modules/.bin/webpack --watch --config webpack.electron.js
+node_modules/.bin/webpack --watch --config webpack/webpack.electron.js
 ```
 
 ```bash
 # @scripthaus command webpack-electron-build
 # @scripthaus cd :playbook
-node_modules/.bin/webpack --config webpack.electron.js
+node_modules/.bin/webpack --config webpack/webpack.electron.js
 ```
 
 ```bash
@@ -39,25 +39,25 @@ PROMPT_DEV=1 PCLOUD_ENDPOINT="https://ot2e112zx5.execute-api.us-west-2.amazonaws
 ```bash
 # @scripthaus command devserver
 # @scripthaus cd :playbook
-node_modules/.bin/webpack-dev-server --config webpack.dev.js --host 0.0.0.0
+node_modules/.bin/webpack-dev-server --config webpack/webpack.dev.js --host 0.0.0.0
 ```
 
 ```bash
 # @scripthaus command webshare-devserver
 # @scripthaus cd :playbook
-node_modules/.bin/webpack-dev-server --config webpack.share.dev.js --host 127.0.0.1
+node_modules/.bin/webpack-dev-server --config webpack/webpack.share.dev.js --host 127.0.0.1
 ```
 
 ```bash
 # @scripthaus command webshare-build
 # @scripthaus cd :playbook
-node_modules/.bin/webpack --config webpack.share.dev.js
+node_modules/.bin/webpack --config webpack/webpack.share.dev.js
 ```
 
 ```bash
 # @scripthaus command webshare-build-prod
 # @scripthaus cd :playbook
-node_modules/.bin/webpack --config webpack.share.prod.js
+node_modules/.bin/webpack --config webpack/webpack.share.prod.js
 ```
 
 ```bash
@@ -78,8 +78,8 @@ node_modules/.bin/tsc --jsx preserve --noEmit --esModuleInterop --target ES5 --e
 rm -rf dist/
 rm -rf bin/
 rm -rf build/
-node_modules/.bin/webpack --config webpack.prod.js
-node_modules/.bin/webpack --config webpack.electron.prod.js
+node_modules/.bin/webpack --config webpack/webpack.prod.js
+node_modules/.bin/webpack --config webpack/webpack.electron.prod.js
 GO_LDFLAGS="-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')"
 (cd ../apishell; GOOS=darwin GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../prompt-client/bin/mshell/mshell-v0.3-darwin.amd64 main-mshell.go)
 (cd ../apishell; GOOS=darwin GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../prompt-client/bin/mshell/mshell-v0.3-darwin.arm64 main-mshell.go)

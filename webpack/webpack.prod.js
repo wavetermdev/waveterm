@@ -3,7 +3,7 @@ const merge = require("webpack-merge");
 const common = require("./webpack.common.js");
 const moment = require("dayjs");
 const path = require("path");
-const VERSION = require("./version.js");
+const VERSION = require("../version.js");
 
 function makeBuildStr() {
     let buildStr = moment().format("YYYYMMDD-HHmmss");
