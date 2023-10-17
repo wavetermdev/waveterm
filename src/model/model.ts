@@ -180,6 +180,7 @@ type ElectronApi = {
     onICmd: (callback: (mods: KeyModsType) => void) => void;
     onLCmd: (callback: (mods: KeyModsType) => void) => void;
     onHCmd: (callback: (mods: KeyModsType) => void) => void;
+    onMenuItemAbout: (callback: () => void) => void;
     onMetaArrowUp: (callback: () => void) => void;
     onMetaArrowDown: (callback: () => void) => void;
     onMetaPageUp: (callback: () => void) => void;
@@ -2759,6 +2760,7 @@ class Model {
         getApi().onICmd(this.onICmd.bind(this));
         getApi().onLCmd(this.onLCmd.bind(this));
         getApi().onHCmd(this.onHCmd.bind(this));
+        getApi().onMenuItemAbout(this.onMenuItemAbout.bind(this));
         getApi().onMetaArrowUp(this.onMetaArrowUp.bind(this));
         getApi().onMetaArrowDown(this.onMetaArrowDown.bind(this));
         getApi().onMetaPageUp(this.onMetaPageUp.bind(this));
@@ -3104,6 +3106,10 @@ class Model {
                 }
             }
         }
+    }
+
+    onMenuItemAbout(): void {
+        console.log("triggered")
     }
 
     onMetaPageUp(): void {

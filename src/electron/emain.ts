@@ -143,9 +143,19 @@ function readAuthKey() {
     return authKeyStr.trim();
 }
 
+function customAboutRole() {
+    return {
+        label: 'Custom About',
+        click: () => {
+            MainWindow?.webContents.send('menu-item-about');
+        }
+    };
+}
+
 let menuTemplate = [
     {
         role: "appMenu",
+        submenu: [{ role: "about" }, customAboutRole()],
     },
     {
         label: "File",
@@ -165,7 +175,7 @@ let menuTemplate = [
 let menu = electron.Menu.buildFromTemplate(menuTemplate);
 electron.Menu.setApplicationMenu(menu);
 
-let MainWindow = null;
+let MainWindow: Electron.BrowserWindow | null = null;
 
 function getMods(input: any) {
     return { meta: input.meta, shift: input.shift, ctrl: input.control, alt: input.alt };
