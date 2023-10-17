@@ -127,6 +127,9 @@ class App extends React.Component<{}, {}> {
                 <If condition={GlobalModel.welcomeModalOpen.get()}>
                     <WelcomeModal />
                 </If>
+                <If condition={GlobalModel.aboutModalOpen.get()}>
+                    <AboutModal />
+                </If>
                 <If condition={screenSettingsModal != null}>
                     <ScreenSettingsModal
                         key={screenSettingsModal.sessionId + ":" + screenSettingsModal.screenId}

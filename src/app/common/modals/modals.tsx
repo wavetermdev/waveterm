@@ -429,4 +429,60 @@ class TosModal extends React.Component<{}, {}> {
     }
 }
 
-export { WelcomeModal, LoadingSpinner, ClientStopModal, AlertModal, DisconnectedModal, TosModal };
+@mobxReact.observer
+class AboutModal extends React.Component<{}, {}> {
+    @boundMethod
+    closeModal(): void {
+        mobx.action(() => {
+            GlobalModel.aboutModalOpen.set(false);
+        })();
+    }
+
+    render() {
+        return (
+            <div className={cn("modal tos-modal prompt-modal is-active")}>
+                <div className="modal-background" />
+                <div className="modal-content">
+                    <header>
+                        <div className="modal-title">About Wave Terminal</div>
+                        <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
+                            <XmarkIcon />
+                        </div>
+                    </header>
+                    <div className="inner-content">
+                        <div className="content">
+                            <p>
+                                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. 
+                                Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.{" "}
+                                <a target="_blank" href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}>
+                                    discord&nbsp;server
+                                </a>
+                                .
+                            </p>
+                            <p>
+                                Prompt is free to use, no email or registration required (unless you're using the cloud
+                                features).
+                            </p>
+                        </div>
+                    </div>
+                    <footer>
+                        <div className="flex-spacer" />
+                        <div onClick={this.closeModal} className="button is-prompt-green is-outlined is-small">
+                            Close
+                        </div>
+                    </footer>
+                </div>
+            </div>
+        );
+    }
+}
+
+export { 
+    WelcomeModal, 
+    LoadingSpinner, 
+    ClientStopModal, 
+    AlertModal, 
+    DisconnectedModal, 
+    TosModal, 
+    AboutModal, 
+};

@@ -2700,6 +2700,9 @@ class Model {
     welcomeModalOpen: OV<boolean> = mobx.observable.box(false, {
         name: "welcomeModalOpen",
     });
+    aboutModalOpen: OV<boolean> = mobx.observable.box(false, {
+        name: "aboutModalOpen",
+    });
     screenSettingsModal: OV<{ sessionId: string; screenId: string }> = mobx.observable.box(null, {
         name: "screenSettingsModal",
     });
@@ -2979,6 +2982,10 @@ class Model {
                 GlobalModel.welcomeModalOpen.set(false);
                 didSomething = true;
             }
+            if (GlobalModel.welcomeModalOpen.get()) {
+                GlobalModel.welcomeModalOpen.set(false);
+                didSomething = true;
+            }
         })();
         return didSomething;
     }
@@ -3110,6 +3117,9 @@ class Model {
 
     onMenuItemAbout(): void {
         console.log("triggered")
+        mobx.action(() => {
+            this.aboutModalOpen.set(true);
+        })();
     }
 
     onMetaPageUp(): void {

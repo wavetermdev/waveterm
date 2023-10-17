@@ -143,19 +143,17 @@ function readAuthKey() {
     return authKeyStr.trim();
 }
 
-function customAboutRole() {
-    return {
-        label: 'Custom About',
-        click: () => {
-            MainWindow?.webContents.send('menu-item-about');
-        }
-    };
-}
-
 let menuTemplate = [
     {
         role: "appMenu",
-        submenu: [{ role: "about" }, customAboutRole()],
+        submenu: [
+            {
+                label: 'About Wave Terminal',
+                click: () => {
+                    MainWindow?.webContents.send('menu-item-about');
+                }
+            }
+        ],
     },
     {
         label: "File",
