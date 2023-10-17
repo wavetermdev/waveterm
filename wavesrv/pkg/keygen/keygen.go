@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 // Utility functions for generating and reading public/private keypairs.
 package keygen
 

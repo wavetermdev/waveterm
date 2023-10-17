@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import React, { FC, useEffect, useState } from "react";
 
 const DebouncedInput: FC<{
