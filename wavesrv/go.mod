@@ -3,7 +3,6 @@ module github.com/wavetermdev/waveterm/wavesrv
 go 1.18
 
 require (
-	github.com/wavetermdev/waveterm/waveshell v0.0.0
 	github.com/alessio/shellescape v1.4.1
 	github.com/armon/circbuf v0.0.0-20190214190532-5111143e8da2
 	github.com/creack/pty v1.1.18
@@ -15,6 +14,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/sashabaranov/go-openai v1.9.0
 	github.com/sawka/txwrap v0.1.2
+	github.com/wavetermdev/waveterm/waveshell v0.0.0
 	golang.org/x/crypto v0.7.0
 	golang.org/x/mod v0.10.0
 	golang.org/x/sys v0.10.0
