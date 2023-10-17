@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import React, { FC, useEffect, useState, useRef, useMemo } from "react";
 import { RendererContext, RendererOpts, LineStateType, RendererModelContainerApi } from "../../types/types";
 import { GlobalModel } from "../../model/model";

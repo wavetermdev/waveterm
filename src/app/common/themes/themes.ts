@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * The file contains barebones of styling to appy themes to Prompt.
  * @TODO: Find a way to change the theme system-wide. atm, we are captruing colors in main.less
