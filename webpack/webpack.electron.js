@@ -8,7 +8,7 @@ module.exports = {
     },
     target: "electron-main",
     output: {
-        path: path.resolve(__dirname, "dist-dev"),
+        path: path.resolve(__dirname, "../dist-dev"),
         filename: "[name].js",
     },
     externals: {

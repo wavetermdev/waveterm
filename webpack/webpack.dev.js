@@ -8,7 +8,7 @@ const VERSION = require("../version.js");
 var merged = merge.merge(common, {
     mode: "development",
     output: {
-        path: path.resolve(__dirname, "dist-dev"),
+        path: path.resolve(__dirname, "../dist-dev"),
         filename: "[name].js",
     },
     devtool: "source-map",
