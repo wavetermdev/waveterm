@@ -1,7 +1,7 @@
-# Build Instructions for Wave Terminal
+# Build Instructions for Wave Terminal on Linux
 
-These instructions are for setting up the build on MacOS. 
-If you're developing on Linux please use the [Linux Build Instructions](./build-linux.md).
+These instructions are for setting up the build on Linux. 
+If you're developing on MacOS please use the [MacOS Build Instructions](./BUILD.md).
 
 ## Running the Development Version of Wave
 
@@ -11,16 +11,25 @@ If you install the production version of Wave, you'll see a semi-transparent sid
 
 Download and install Go (must be at least go 1.18):
 ```
-brew install go
+sudo snap install go --classic
 ```
 
-Download and install ScriptHaus (to run the build commands):
+Download and install [ScriptHaus](https://github.com/scripthaus-dev/scripthaus) (to run the build commands):
+
 ```
-brew tap scripthaus-dev/scripthaus
-brew install scripthaus
+git clone https://github.com/scripthaus-dev/scripthaus.git
+cd scripthaus
+CGO_ENABLED=1 go build -o scripthaus cmd/main.go
 ```
 
-## Clone the Repo
+You'll now have to move the built `scripthaus` binary to a directory in your path (e.g. /usr/local/bin):
+
+```
+sudo cp scripthaus /usr/local/bin
+```
+
+
+## Clone the Wave Repo
 
 ```
 git clone git@github.com:wavetermdev/waveterm.git
@@ -34,9 +43,25 @@ scripthaus run build-backend
 
 This builds the Golang backends for Wave.  The binaries will put in waveshell/bin and wavesrv/bin respectively.  If you're working on a new plugin or other pure frontend changes to Wave, you won't need to rebuild these unless you pull new code from the Wave Repository.
 
+## Install nodejs, npm, and yarn
+
+We use [nvm](https://github.com/nvm-sh/nvm) to install nodejs on Linux (you can use an alternate installer if you wish).  You must have a relatively recent version of node in order to build the terminal.  Different distributions and shells will require different setup instructions.  These instructions work for Ubuntu 22 using bash (will install node v20.8.1):
+
+```
+wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
+source ~/.bashrc
+nvm install v20.8.1
+```
+
+Now we can install yarn:
+
+```
+sudo npm install -g yarn
+```
+
 ## One-Time Setup
 
-Install modules (we use yarn):
+Install Wave modules (we use yarn):
 ```
 yarn
 ```
