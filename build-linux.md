@@ -1,7 +1,8 @@
 # Build Instructions for Wave Terminal on Linux
 
-These instructions are for setting up the build on Linux. 
+These instructions are for setting up the build on Linux (Ubuntu). 
 If you're developing on MacOS please use the [MacOS Build Instructions](./BUILD.md).
+If you are working on a different Linux distribution, you may need to adapt some of these instructions to fit your environment.
 
 ## Running the Development Version of Wave
 
@@ -9,9 +10,10 @@ If you install the production version of Wave, you'll see a semi-transparent sid
 
 ## Prereqs and Tools
 
-Download and install Go (must be at least go 1.18):
+Download and install Go (must be at least go 1.18).  We also need gcc installed to run a CGO build (for Golang):
 ```
 sudo snap install go --classic
+sudo apt-get install gcc
 ```
 
 Download and install [ScriptHaus](https://github.com/scripthaus-dev/scripthaus) (to run the build commands):
@@ -28,21 +30,6 @@ You'll now have to move the built `scripthaus` binary to a directory in your pat
 sudo cp scripthaus /usr/local/bin
 ```
 
-
-## Clone the Wave Repo
-
-```
-git clone git@github.com:wavetermdev/waveterm.git
-```
-
-## Building WaveShell / WaveSrv
-
-```
-scripthaus run build-backend
-```
-
-This builds the Golang backends for Wave.  The binaries will put in waveshell/bin and wavesrv/bin respectively.  If you're working on a new plugin or other pure frontend changes to Wave, you won't need to rebuild these unless you pull new code from the Wave Repository.
-
 ## Install nodejs, npm, and yarn
 
 We use [nvm](https://github.com/nvm-sh/nvm) to install nodejs on Linux (you can use an alternate installer if you wish).  You must have a relatively recent version of node in order to build the terminal.  Different distributions and shells will require different setup instructions.  These instructions work for Ubuntu 22 using bash (will install node v20.8.1):
@@ -56,8 +43,28 @@ nvm install v20.8.1
 Now we can install yarn:
 
 ```
-sudo npm install -g yarn
+npm install -g yarn
 ```
+
+
+## Clone the Wave Repo
+
+Move out of the `scripthaus` directory if you're still in it.  Clone the wave repository into the directory that you'd like to use for development.
+
+```
+git clone git@github.com:wavetermdev/waveterm.git
+```
+
+## Building WaveShell / WaveSrv
+
+cd into the waveterm directory (if you haven't already) and run the build-backend command using `scripthaus`.
+
+```
+cd waveterm
+scripthaus run build-backend
+```
+
+This builds the Golang backends for Wave.  The binaries will put in waveshell/bin and wavesrv/bin respectively.  If you're working on a new plugin or other pure frontend changes to Wave, you won't need to rebuild these unless you pull new code from the Wave Repository.
 
 ## One-Time Setup
 
