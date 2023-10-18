@@ -3116,7 +3116,6 @@ class Model {
     }
 
     onMenuItemAbout(): void {
-        console.log("triggered")
         mobx.action(() => {
             this.aboutModalOpen.set(true);
         })();

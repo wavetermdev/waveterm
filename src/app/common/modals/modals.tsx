@@ -23,6 +23,9 @@ import github from "../../assets/icons/github.svg";
 
 dayjs.extend(localizedFormat);
 
+// @ts-ignore
+const VERSION = __PROMPT_VERSION__;
+
 type OV<V> = mobx.IObservableValue<V>;
 
 @mobxReact.observer
@@ -440,7 +443,7 @@ class AboutModal extends React.Component<{}, {}> {
 
     render() {
         return (
-            <div className={cn("modal tos-modal prompt-modal is-active")}>
+            <div className={cn("modal about-modal prompt-modal is-active")}>
                 <div className="modal-background" />
                 <div className="modal-content">
                     <header>
@@ -452,16 +455,24 @@ class AboutModal extends React.Component<{}, {}> {
                     <div className="inner-content">
                         <div className="content">
                             <p>
-                                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. 
-                                Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.{" "}
-                                <a target="_blank" href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}>
-                                    discord&nbsp;server
-                                </a>
-                                .
+                               Version: {VERSION}
                             </p>
                             <p>
-                                Prompt is free to use, no email or registration required (unless you're using the cloud
-                                features).
+                                <a target="_blank" href={util.makeExternLink("https://github.com/wavetermdev/waveterm")}>
+                                    View&nbsp;on&nbsp;Github
+                                </a>
+                            </p>
+
+                            <p>
+                                <a target="_blank" href={util.makeExternLink("https://commandline.dev")}>
+                                    Official&nbsp;Website
+                                </a>
+                            </p>
+
+                            <p>
+                                <a target="_blank" href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}>
+                                    Join&nbsp;us&nbsp;on&nbsp;Discord
+                                </a>
                             </p>
                         </div>
                     </div>
