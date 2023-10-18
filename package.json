@@ -46,6 +46,7 @@
         "@electron-forge/cli": "^6.0.0-beta.70",
         "@electron-forge/maker-deb": "^6.0.0-beta.70",
         "@electron-forge/maker-rpm": "^6.0.0-beta.70",
+        "@electron-forge/maker-snap": "^6.4.2",
         "@electron-forge/maker-squirrel": "^6.0.0-beta.70",
         "@electron-forge/maker-zip": "^6.0.0-beta.70",
         "@svgr/webpack": "^8.1.0",
@@ -77,6 +78,5 @@
         "webpack-dev-server": "^4.9.1",
         "webpack-merge": "^5.8.0"
     },
-    "scripts": {
-    }
+    "scripts": {}
 }

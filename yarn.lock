@@ -1217,6 +1217,16 @@
   optionalDependencies:
     electron-installer-redhat "^3.2.0"
 
+"@electron-forge/maker-snap@^6.4.2":
+  version "6.4.2"
+  resolved "https://registry.yarnpkg.com/@electron-forge/maker-snap/-/maker-snap-6.4.2.tgz#6a87e92ee07d460e91697064e0d8369c55114aba"
+  integrity sha512-07ge28xLdcUpLQFu9POuNuaR8rWjU3c9r2PX8dMrvgAi00DooVaLuZFF7DIOPRDxFO5JfX1BwgzjO7KZhMA3og==
+  dependencies:
+    "@electron-forge/maker-base" "6.4.2"
+    "@electron-forge/shared-types" "6.4.2"
+  optionalDependencies:
+    electron-installer-snap "^5.2.0"
+
 "@electron-forge/maker-squirrel@^6.0.0-beta.70":
   version "6.4.2"
   resolved "https://registry.yarnpkg.com/@electron-forge/maker-squirrel/-/maker-squirrel-6.4.2.tgz#92d44fc6cadf6ff23c65dc901c8044d7c8b53f95"
@@ -2264,6 +2274,13 @@ are-we-there-yet@^3.0.0:
     delegates "^1.0.0"
     readable-stream "^3.6.0"
 
+argparse@^1.0.7:
+  version "1.0.10"
+  resolved "https://registry.yarnpkg.com/argparse/-/argparse-1.0.10.tgz#bcd6791ea5ae09725e17e5ad988134cd40b3d911"
+  integrity sha512-o5Roy6tNG4SL/FOkCAN6RzjiakZS25RLYFrcMttJqbdd8BWrnA+fGz57iN5Pb06pvBGvl5gQ0B48dJlslXvoTg==
+  dependencies:
+    sprintf-js "~1.0.2"
+
 argparse@^2.0.1:
   version "2.0.1"
   resolved "https://registry.yarnpkg.com/argparse/-/argparse-2.0.1.tgz#246f50f3ca78a3240f6c997e8a9bd1eac49e4b38"
@@ -3277,6 +3294,22 @@ electron-installer-redhat@^3.2.0:
     word-wrap "^1.2.3"
     yargs "^16.0.2"
 
+electron-installer-snap@^5.2.0:
+  version "5.2.0"
+  resolved "https://registry.yarnpkg.com/electron-installer-snap/-/electron-installer-snap-5.2.0.tgz#8dd637dc94d4279d790d728b7bdb23fe9415377d"
+  integrity sha512-SRm7pCpNHMXV545JjScV8fLC9NhFli5r8L8Ju4EHdXwRh76+mwrJoUEDLItixBudZ5Mcgz1SJcDPJfWpEQWX7Q==
+  dependencies:
+    "@malept/cross-spawn-promise" "^1.0.0"
+    debug "^4.3.4"
+    electron-installer-common "^0.10.2"
+    fs-extra "^9.0.0"
+    js-yaml "^3.10.0"
+    lodash "^4.17.15"
+    semver "^7.1.1"
+    tmp-promise "^3.0.2"
+    which "^2.0.1"
+    yargs "^16.0.2"
+
 electron-packager@^17.1.2:
   version "17.1.2"
   resolved "https://registry.yarnpkg.com/electron-packager/-/electron-packager-17.1.2.tgz#18030b28024d242b706d0a8a67ed4cd1a57311aa"
@@ -3477,6 +3510,11 @@ eslint-scope@5.1.1:
   dependencies:
     esrecurse "^4.3.0"
     estraverse "^4.1.1"
+
+esprima@^4.0.0:
+  version "4.0.1"
+  resolved "https://registry.yarnpkg.com/esprima/-/esprima-4.0.1.tgz#13b04cdb3e6c5d19df91ab6987a8695619b0aa71"
+  integrity sha512-eGuFFw7Upda+g4p+QHvnW0RyTX/SVeJBDM/gCtMARO0cLuT2HcEKnTPvhjV6aGeqrCB/sbNop0Kszm0jsaWU4A==
 
 esrecurse@^4.3.0:
   version "4.3.0"
@@ -4608,6 +4646,14 @@ jest-worker@^27.4.5:
   version "4.0.0"
   resolved "https://registry.yarnpkg.com/js-tokens/-/js-tokens-4.0.0.tgz#19203fb59991df98e3a287050d4647cdeaf32499"
   integrity sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==
+
+js-yaml@^3.10.0:
+  version "3.14.1"
+  resolved "https://registry.yarnpkg.com/js-yaml/-/js-yaml-3.14.1.tgz#dae812fdb3825fa306609a8717383c50c36a0537"
+  integrity sha512-okMH7OXXJ7YrN9Ok3/SXrnu4iX9yOk+25nqX4imS2npuvTYDmo/QEZoqwZkYaIDk3jVvBOTOIEgEhaLOynBS9g==
+  dependencies:
+    argparse "^1.0.7"
+    esprima "^4.0.0"
 
 js-yaml@^4.1.0:
   version "4.1.0"
@@ -7144,6 +7190,11 @@ sprintf-js@^1.1.2:
   version "1.1.3"
   resolved "https://registry.yarnpkg.com/sprintf-js/-/sprintf-js-1.1.3.tgz#4914b903a2f8b685d17fdf78a70e917e872e444a"
   integrity sha512-Oo+0REFV59/rz3gfJNKQiBlwfHaSESl1pcGyABQsnnIfWOFt6JNj5gCog2U6MLZ//IGYD+nA8nI+mTShREReaA==
+
+sprintf-js@~1.0.2:
+  version "1.0.3"
+  resolved "https://registry.yarnpkg.com/sprintf-js/-/sprintf-js-1.0.3.tgz#04e6926f662895354f3dd015203633b857297e2c"
+  integrity sha512-D9cPgkvLlV3t3IzL0D0YLvGA9Ahk4PcvVwUbN0dSGr1aP0Nrt4AEnTUbuGvquEC0mA64Gqt1fzirlRs5ibXx8g==
 
 ssri@^10.0.0:
   version "10.0.5"
