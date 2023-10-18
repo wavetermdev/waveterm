@@ -456,6 +456,9 @@ class AboutModal extends React.Component<{}, {}> {
                         <div className="content">
                             <p>
                                 <div className="logo">[prompt]</div>
+                               
+                            </p>
+                            <p>
                                 Wave&nbsp;Terminal
                             </p>
                             <p>
