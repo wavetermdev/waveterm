@@ -454,6 +454,9 @@ class AboutModal extends React.Component<{}, {}> {
                     </header>
                     <div className="inner-content">
                         <div className="content">
+                            <p className="logo">
+                                [prompt]
+                            </p>
                             <p>
                                Version: {VERSION}
                             </p>
