@@ -294,11 +294,11 @@ function createMainWindow(clientData) {
     win.webContents.on("will-navigate", shNavHandler);
     win.webContents.on("will-frame-navigate", shFrameNavHandler);
     win.on(
-        "resized",
+        "resize",
         debounce(400, (e) => mainResizeHandler(e, win))
     );
     win.on(
-        "moved",
+        "move",
         debounce(400, (e) => mainResizeHandler(e, win))
     );
     win.on("focus", () => {
@@ -350,7 +350,7 @@ function mainResizeHandler(e, win) {
 function calcBounds(clientData) {
     let primaryDisplay = electron.screen.getPrimaryDisplay();
     let pdBounds = primaryDisplay.bounds;
-    let size = { x: 50, y: 50, width: pdBounds.width - 150, height: pdBounds.height - 150 };
+    let size = { x: 100, y: 100, width: pdBounds.width - 200, height: pdBounds.height - 200 };
     if (clientData != null && clientData.winsize != null && clientData.winsize.width > 0) {
         let cwinSize = clientData.winsize;
         if (cwinSize.width > 0) {
