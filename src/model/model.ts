@@ -3394,6 +3394,9 @@ class Model {
                 console.trace();
             }
         }
+        if (cmdPacketString(cmdPk).includes("cr ")) {
+            debugger;
+        }
         let url = sprintf(GlobalModel.getBaseHostPort() + "/api/run-command");
         let fetchHeaders = this.getFetchHeaders();
         let prtn = fetch(url, {
@@ -3455,7 +3458,7 @@ class Model {
             interactive: interactive,
             rawstr: cmdStr,
         };
-        if (!addToHistory) {
+        if (!addToHistory && pk.kwargs) {
             pk.kwargs["nohist"] = "1";
         }
         return this.submitCommandPacket(pk, interactive);

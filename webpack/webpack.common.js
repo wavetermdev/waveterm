@@ -8,7 +8,7 @@ module.exports = {
         prompt: ["./src/index.ts", "./src/app/app.less"],
     },
     output: {
-        path: path.resolve(__dirname, "dist"),
+        path: path.resolve(__dirname, "../dist"),
         filename: "[name].js",
     },
     module: {

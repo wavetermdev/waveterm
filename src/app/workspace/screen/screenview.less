@@ -78,25 +78,18 @@
                 }
             }
         }
+    }
 
-        .window-empty {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            padding: 10px;
-            height: 100%;
-            color: @term-white;
-
-            code {
-                color: @prompt-green;
-                background-color: transparent;
-                font-family: @fixed-font;
-            }
-
-            &.should-fade {
-                opacity: 1;
-                animation: fade-in 2.5s;
+    .screen-settings-inline {
+        padding: 2em;
+        .settings-field {
+            display: block;
+            padding: 1.5em 1em;
+            margin-top: 0;
+            line-height: 2.5em;
+            border-top: 1px solid @base-border;
+            &:first-child {
+                border-top: none;
             }
         }
     }

@@ -1200,4 +1200,92 @@ class RemotesModal extends React.Component<{ model: RemotesModalModel }, {}> {
     }
 }
 
-export { RemotesModal };
+@mobxReact.observer
+class RemotesSelector extends React.Component<{ model: RemotesModalModel; isChangeRemoteOnSelect?: boolean }, {}> {
+    constructor(props: any) {
+        super(props);
+        this.state = {
+            isOpen: false,
+        };
+    }
+
+    @boundMethod
+    selectRemote(remoteId: string, remoteAlias: string): void {
+        this.props.model.selectRemote(remoteId);
+        if (this.props.isChangeRemoteOnSelect) GlobalModel.submitRawCommand(`cr ${remoteAlias}`, false, false);
+        this.setState({ isOpen: false });
+    }
+
+    @boundMethod
+    clickAddRemote(): void {
+        GlobalCommandRunner.openCreateRemote();
+    }
+
+    renderRemoteMenuItem(remote: RemoteType, selectedId: string): any {
+        return (
+            <div
+                key={remote.remoteid}
+                onClick={() => this.selectRemote(remote.remoteid, remote.remotealias)}
+                className={cn("dropdown-item remote-menu-item hoverEffect", {
+                    "is-selected": remote.remoteid == selectedId,
+                })}
+            >
+                <div className="remote-status-light">
+                    <RemoteStatusLight remote={remote} />
+                </div>
+                <If condition={util.isBlank(remote.remotealias)}>
+                    <div className="remote-name">
+                        <div className="remote-name-primary">{remote.remotecanonicalname}</div>
+                    </div>
+                </If>
+                <If condition={!util.isBlank(remote.remotealias)}>
+                    <div className="remote-name">
+                        <div className="remote-name-primary">{remote.remotealias}</div>
+                        <div className="remote-name-secondary">{remote.remotecanonicalname}</div>
+                    </div>
+                </If>
+            </div>
+        );
+    }
+
+    render() {
+        const allRemotes = util.sortAndFilterRemotes(GlobalModel.remotes.slice());
+        console.dir(allRemotes);
+        const remote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
+        const selectedRemoteDiv = (
+            <div className="remote-name">
+                <div className="remote-status-light">
+                    <RemoteStatusLight remote={remote} />
+                </div>
+                <div className="remote-name-primary">{remote.remotealias}</div>
+                <div className="remote-name-secondary">{remote.remotecanonicalname}</div>
+            </div>
+        );
+        return (
+            <div className={"remotes-inline"}>
+                <div className="remotes-menu">
+                    <div className={`dropdown ${this.state.isOpen ? "is-active" : ""}`}>
+                        <div className="dropdown-trigger">
+                            <button className="button" onClick={() => this.setState({ isOpen: !this.state.isOpen })}>
+                                {selectedRemoteDiv}
+                                <AngleDownIcon className="icon" />
+                            </button>
+                        </div>
+                        <div className="dropdown-menu" id="dropdown-menu3" role="menu">
+                            <div className="dropdown-content">
+                                {allRemotes
+                                    .filter(({ remoteid }) => remoteid !== remote.remoteid)
+                                    .map((remote) => this.renderRemoteMenuItem(remote, remote.remoteid))}
+                                <div onClick={this.clickAddRemote} className=".dropdown-item hoverEffect">
+                                    <AddIcon className="icon" /> Add SSH Connection
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+}
+
+export { RemotesModal, RemotesSelector };
