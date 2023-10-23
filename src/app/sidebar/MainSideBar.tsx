@@ -78,7 +78,7 @@ class MainSideBar extends React.Component<{}, {}> {
 
     @boundMethod
     handleAddRemote(): void {
-        GlobalCommandRunner.openCreateRemote();
+        GlobalCommandRunner.openCreateRemote(false);
     }
 
     @boundMethod
@@ -200,7 +200,7 @@ class MainSideBar extends React.Component<{}, {}> {
         let mainView = GlobalModel.activeMainView.get();
         return (
             <div className={cn("main-sidebar", { collapsed: isCollapsed }, { "is-dev": GlobalModel.isDev })}>
-                <div className="title-bar-drag"/>
+                <div className="title-bar-drag" />
                 <div className="arrow-container hoverEffect" onClick={this.toggleCollapsed}>
                     <LeftChevronIcon className="icon" />
                 </div>

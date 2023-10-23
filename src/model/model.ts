@@ -2426,6 +2426,9 @@ class RemotesModalModel {
     openState: OV<boolean> = mobx.observable.box(false, {
         name: "RemotesModalModel-isOpen",
     });
+    onlyAddNewRemote: OV<boolean> = mobx.observable.box(false, {
+        name: "RemotesModalModel-onlyAddNewRemote",
+    });
     selectedRemoteId: OV<string> = mobx.observable.box(null, {
         name: "RemotesModalModel-selectedRemoteId",
     });
@@ -2467,8 +2470,9 @@ class RemotesModalModel {
         })();
     }
 
-    openModalForEdit(redit: RemoteEditType): void {
+    openModalForEdit(redit: RemoteEditType, originalCmd: FeCmdPacketType): void {
         mobx.action(() => {
+            this.onlyAddNewRemote.set(originalCmd && originalCmd.args && originalCmd.args.includes("onlyAddNewRemote"));
             this.openState.set(true);
             this.selectedRemoteId.set(redit.remoteid);
             this.remoteEdit.set(redit);
@@ -2497,6 +2501,11 @@ class RemotesModalModel {
     cancelEditAuth(): void {
         mobx.action(() => {
             this.remoteEdit.set(null);
+            if (this.onlyAddNewRemote) {
+                this.onlyAddNewRemote.set(false);
+                this.openState.set(false);
+                return;
+            }
             if (this.selectedRemoteId.get() == null) {
                 this.openModal();
             }
@@ -2512,6 +2521,7 @@ class RemotesModalModel {
     }
 
     closeModal(): void {
+        debugger;
         if (!this.openState.get()) {
             return;
         }
@@ -3204,7 +3214,7 @@ class Model {
             if (rview.remoteshowall) {
                 this.remotesModalModel.openModal();
             } else if (rview.remoteedit != null) {
-                this.remotesModalModel.openModalForEdit(rview.remoteedit);
+                this.remotesModalModel.openModalForEdit(rview.remoteedit, update.originalCmd);
             } else if (rview.ptyremoteid) {
                 this.remotesModalModel.openModal(rview.ptyremoteid);
             }
@@ -3394,9 +3404,6 @@ class Model {
                 console.trace();
             }
         }
-        if (cmdPacketString(cmdPk).includes("cr ")) {
-            debugger;
-        }
         let url = sprintf(GlobalModel.getBaseHostPort() + "/api/run-command");
         let fetchHeaders = this.getFetchHeaders();
         let prtn = fetch(url, {
@@ -3409,13 +3416,14 @@ class Model {
                 mobx.action(() => {
                     let update = data.data;
                     if (update != null) {
+                        update.originalCmd = cmdPk;
                         this.runUpdate(update, interactive);
                     }
                     if (interactive && !this.isInfoUpdate(update)) {
                         GlobalModel.inputModel.clearInfoMsg(true);
                     }
                 })();
-                return { success: true };
+                return { success: true, originalCmd: cmdPk };
             })
             .catch((err) => {
                 this.errorHandler("calling run-command", err, interactive);
@@ -3444,7 +3452,13 @@ class Model {
             uicontext: this.getUIContext(),
             interactive: interactive,
         };
-        // console.log("CMD", pk.metacmd + (pk.metasubcmd != null ? ":" + pk.metasubcmd : ""), pk.args, pk.kwargs, pk.interactive);
+        console.log(
+            "CMD",
+            pk.metacmd + (pk.metasubcmd != null ? ":" + pk.metasubcmd : ""),
+            pk.args,
+            pk.kwargs,
+            pk.interactive
+        );
         return this.submitCommandPacket(pk, interactive);
     }
 
@@ -3813,14 +3827,20 @@ class CommandRunner {
         GlobalModel.submitCommand("remote", "installcancel", null, { nohist: "1", remote: remoteid }, true);
     }
 
-    createRemote(cname: string, kwargsArg: Record<string, string>) {
+    createRemote(cname: string, kwargsArg: Record<string, string>): Promise<CommandRtnType> {
         let kwargs = Object.assign({}, kwargsArg);
         kwargs["nohist"] = "1";
-        GlobalModel.submitCommand("remote", "new", [cname], kwargs, true);
+        return GlobalModel.submitCommand("remote", "new", [cname], kwargs, true);
     }
 
-    openCreateRemote(): void {
-        GlobalModel.submitCommand("remote", "new", null, { nohist: "1", visual: "1" }, true);
+    openCreateRemote(onlyAddNewRemote?: boolean): void {
+        GlobalModel.submitCommand(
+            "remote",
+            "new",
+            onlyAddNewRemote ? ["onlyAddNewRemote"] : null,
+            { nohist: "1", visual: "1" },
+            true
+        );
     }
 
     editRemote(remoteid: string, kwargsArg: Record<string, string>): void {

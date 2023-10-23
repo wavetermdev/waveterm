@@ -226,7 +226,16 @@ class CreateRemote extends React.Component<{ model: RemotesModalModel; remoteEdi
         kwargs["autoinstall"] = this.tempAutoInstall.get() ? "1" : "0";
         kwargs["visual"] = "1";
         kwargs["submit"] = "1";
-        GlobalCommandRunner.createRemote(cname, kwargs);
+        GlobalCommandRunner.createRemote(cname, kwargs).then(({ success, originalCmd }) => {
+            if (!success || !originalCmd) return; //TODO: Handle error condition
+            const newRemote = util
+                .sortAndFilterRemotes(GlobalModel.remotes.slice())
+                .find(({ remotealias }) => remotealias === originalCmd.kwargs.alias);
+            console.dir(newRemote);
+            this.props.model.selectRemote(newRemote.remoteid);
+            this.props.model.closeModal();
+            GlobalModel.submitRawCommand(`cr ${newRemote.remotealias}`, false, false);
+        });
     }
 
     @boundMethod
@@ -1153,6 +1162,7 @@ class RemotesModal extends React.Component<{ model: RemotesModalModel }, {}> {
         let isAuthEditMode = model.isAuthEditMode();
         let selectedRemote = GlobalModel.getRemote(selectedRemoteId);
         let remoteEdit = model.remoteEdit.get();
+        let onlyAddNewRemote = model.onlyAddNewRemote.get();
         return (
             <div className={cn("modal remotes-modal settings-modal prompt-modal is-active")}>
                 <div className="modal-background" />
@@ -1164,19 +1174,21 @@ class RemotesModal extends React.Component<{ model: RemotesModalModel }, {}> {
                         </div>
                     </header>
                     <div className="inner-content">
-                        <div className="remotes-menu">
-                            {this.renderAddRemoteMenuItem()}
-                            <For each="remote" of={allRemotes}>
-                                {this.renderRemoteMenuItem(remote, selectedRemoteId)}
-                            </For>
-                        </div>
+                        <If condition={!onlyAddNewRemote}>
+                            <div className="remotes-menu">
+                                {this.renderAddRemoteMenuItem()}
+                                <For each="remote" of={allRemotes}>
+                                    {this.renderRemoteMenuItem(remote, selectedRemoteId)}
+                                </For>
+                            </div>{" "}
+                        </If>
                         <If condition={selectedRemote == null}>
                             <If condition={remoteEdit != null}>
                                 <CreateRemote model={model} remoteEdit={remoteEdit} />
                             </If>
                             <If condition={remoteEdit == null}>{this.renderEmptyDetail()}</If>
                         </If>
-                        <If condition={selectedRemote != null}>
+                        <If condition={selectedRemote != null && !onlyAddNewRemote}>
                             <If condition={!isAuthEditMode}>
                                 <RemoteDetailView
                                     key={"remotedetail-" + selectedRemoteId}
@@ -1204,6 +1216,7 @@ class RemotesModal extends React.Component<{ model: RemotesModalModel }, {}> {
 class RemotesSelector extends React.Component<{ model: RemotesModalModel; isChangeRemoteOnSelect?: boolean }, {}> {
     constructor(props: any) {
         super(props);
+        //TODO: Make this isOpen as global state, so that the modal can be closed from anywhere
         this.state = {
             isOpen: false,
         };
@@ -1218,7 +1231,7 @@ class RemotesSelector extends React.Component<{ model: RemotesModalModel; isChan
 
     @boundMethod
     clickAddRemote(): void {
-        GlobalCommandRunner.openCreateRemote();
+        GlobalCommandRunner.openCreateRemote(true);
     }
 
     renderRemoteMenuItem(remote: RemoteType, selectedId: string): any {
@@ -1250,7 +1263,6 @@ class RemotesSelector extends React.Component<{ model: RemotesModalModel; isChan
 
     render() {
         const allRemotes = util.sortAndFilterRemotes(GlobalModel.remotes.slice());
-        console.dir(allRemotes);
         const remote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
         const selectedRemoteDiv = (
             <div className="remote-name">

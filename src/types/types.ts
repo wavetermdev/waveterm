@@ -252,6 +252,7 @@ type ModelUpdateType = {
     screenlines?: ScreenLinesType;
     line?: LineType;
     lines?: LineType[];
+    originalCmd?: FeCmdPacketType;
     cmd?: CmdDataType;
     info?: InfoType;
     cmdline?: CmdLineUpdateType;
@@ -600,6 +601,7 @@ type RendererContainerType = {
 type CommandRtnType = {
     success: boolean;
     error?: string;
+    originalCmd?: FeCmdPacketType;
 };
 
 type LineHeightChangeCallbackType = (lineNum: number, newHeight: number, oldHeight: number) => void;
