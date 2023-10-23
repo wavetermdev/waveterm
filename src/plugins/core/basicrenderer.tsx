@@ -19,10 +19,34 @@ import type {
 } from "../../types/types";
 import { debounce, throttle } from "throttle-debounce";
 import * as util from "../../util/util";
-import { GlobalModel } from "../../model/model";
+import { GlobalCommandRunner, GlobalModel } from "../../model/model";
+import { ErrorBoundary } from "react-error-boundary";
 
 type OV<V> = mobx.IObservableValue<V>;
 type CV<V> = mobx.IComputedValue<V>;
+
+class ErrorFallback extends React.Component<
+    {
+        context: RendererContext;
+        lineState: LineStateType;
+        error: Error;
+    },
+    {}
+> {
+    componentDidMount() {
+        const { context, lineState, error } = this.props;
+        const { screenId, lineId } = context;
+
+        // Switch to "debug" plugin
+        GlobalCommandRunner.lineSet(lineId, { renderer: "terminal" });
+        // Set line state
+        GlobalCommandRunner.setLineState(screenId, lineId, { ...lineState, error }, false);
+    }
+
+    render() {
+        return null;
+    }
+}
 
 class SimpleBlobRendererModel {
     context: RendererContext;
@@ -267,22 +291,28 @@ class SimpleBlobRenderer extends React.Component<
         let { festate, cmdstr, exitcode } = this.props.initParams.rawCmd;
         return (
             <div ref={this.wrapperDivRef} className="sr-wrapper">
-                <Comp
-                    cwd={festate.cwd}
-                    cmdstr={cmdstr}
-                    exitcode={exitcode}
-                    data={model.dataBlob}
-                    readOnly={model.readOnly}
-                    notFound={model.notFound}
-                    lineState={model.lineState}
-                    context={model.context}
-                    opts={model.opts}
-                    savedHeight={model.savedHeight}
-                    scrollToBringIntoViewport={this.props.scrollToBringIntoViewport}
-                    isSelected={this.props.isSelected}
-                    shouldFocus={this.props.shouldFocus}
-                    rendererApi={model.api}
-                />
+                <ErrorBoundary
+                    FallbackComponent={(props) => (
+                        <ErrorFallback {...props} context={model.context} lineState={model.lineState} />
+                    )}
+                >
+                    <Comp
+                        cwd={festate.cwd}
+                        cmdstr={cmdstr}
+                        exitcode={exitcode}
+                        data={model.dataBlob}
+                        readOnly={model.readOnly}
+                        notFound={model.notFound}
+                        lineState={model.lineState}
+                        context={model.context}
+                        opts={model.opts}
+                        savedHeight={model.savedHeight}
+                        scrollToBringIntoViewport={this.props.scrollToBringIntoViewport}
+                        isSelected={this.props.isSelected}
+                        shouldFocus={this.props.shouldFocus}
+                        rendererApi={model.api}
+                    />
+                </ErrorBoundary>
             </div>
         );
     }

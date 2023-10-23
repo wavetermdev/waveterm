@@ -7,6 +7,7 @@ import { SimpleMarkdownRenderer } from "./markdown/markdown";
 import { SourceCodeRenderer } from "./code/code";
 import { SimpleMustacheRenderer } from "./mustache/mustache";
 import { CSVRenderer } from "./csv/csv";
+import { DebugRenderer } from "./debug/debug";
 import { OpenAIRenderer, OpenAIRendererModel } from "./openai/openai";
 import { isBlank } from "../util/util";
 import { sprintf } from "sprintf-js";
@@ -79,6 +80,16 @@ const CSVPlugin: RendererPluginType = {
     simpleComponent: CSVRenderer,
 };
 
+const DebugPlugin: RendererPluginType = {
+    name: "debug",
+    rendererType: "simple",
+    heightType: "pixels",
+    dataType: "json", // Can this optional?
+    collapseType: "hide",
+    globalCss: null,
+    simpleComponent: DebugRenderer,
+};
+
 class PluginModelClass {
     rendererPlugins: RendererPluginType[] = [];
 
@@ -116,6 +127,7 @@ if ((window as any).PluginModel == null) {
     PluginModel.registerRendererPlugin(OpenAIPlugin);
     PluginModel.registerRendererPlugin(MustachePlugin);
     PluginModel.registerRendererPlugin(CSVPlugin);
+    PluginModel.registerRendererPlugin(DebugPlugin);
     (window as any).PluginModel = PluginModel;
 }
 

@@ -379,6 +379,7 @@ type RendererPluginType = {
     globalCss?: string;
     mimeTypes?: string[];
     modelCtor?: () => RendererModel;
+    propagateError?: (e: any) => void;
     simpleComponent?: SimpleBlobRendererComponent;
     fullComponent?: FullRendererComponent;
 };
