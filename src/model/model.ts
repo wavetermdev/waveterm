@@ -2529,6 +2529,7 @@ class RemotesModalModel {
             this.openState.set(false);
             this.selectedRemoteId.set(null);
             this.remoteEdit.set(null);
+            this.onlyAddNewRemote.set(false);
         })();
         setTimeout(() => GlobalModel.refocus(), 10);
     }
@@ -3398,6 +3399,7 @@ class Model {
     }
 
     submitCommandPacket(cmdPk: FeCmdPacketType, interactive: boolean): Promise<CommandRtnType> {
+        debugger;
         if (this.debugCmds > 0) {
             console.log("[cmd]", cmdPacketString(cmdPk));
             if (this.debugCmds > 1) {
@@ -3413,6 +3415,7 @@ class Model {
         })
             .then((resp) => handleJsonFetchResponse(url, resp))
             .then((data) => {
+                debugger;
                 mobx.action(() => {
                     let update = data.data;
                     if (update != null) {
@@ -3423,6 +3426,7 @@ class Model {
                         GlobalModel.inputModel.clearInfoMsg(true);
                     }
                 })();
+                debugger;
                 return { success: true, originalCmd: cmdPk };
             })
             .catch((err) => {
@@ -3459,6 +3463,7 @@ class Model {
             pk.kwargs,
             pk.interactive
         );
+        debugger;
         return this.submitCommandPacket(pk, interactive);
     }
 

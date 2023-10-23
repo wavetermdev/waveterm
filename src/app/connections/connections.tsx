@@ -227,11 +227,15 @@ class CreateRemote extends React.Component<{ model: RemotesModalModel; remoteEdi
         kwargs["visual"] = "1";
         kwargs["submit"] = "1";
         GlobalCommandRunner.createRemote(cname, kwargs).then(({ success, originalCmd }) => {
+            debugger;
             if (!success || !originalCmd) return; //TODO: Handle error condition
+            const onlyAddNewRemote = this.props.model.onlyAddNewRemote.get();
+            if (!onlyAddNewRemote) return;
             const newRemote = util
                 .sortAndFilterRemotes(GlobalModel.remotes.slice())
                 .find(({ remotealias }) => remotealias === originalCmd.kwargs.alias);
             console.dir(newRemote);
+            debugger;
             this.props.model.selectRemote(newRemote.remoteid);
             this.props.model.closeModal();
             GlobalModel.submitRawCommand(`cr ${newRemote.remotealias}`, false, false);
