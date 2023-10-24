@@ -203,7 +203,7 @@ class ScreenWindowView extends React.Component<{ screen: Screen }, {}> {
                         </If>
                     </div>
                 </div>
-                <If condition={lines.length <= 1}>
+                <If condition={lines.length == 0}>
                     <ScreenSettingsModal
                         key={screen.sessionId + ":" + screen.screenId}
                         sessionId={screen.sessionId}

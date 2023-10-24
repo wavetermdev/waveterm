@@ -1204,7 +1204,7 @@ class RemotesModal extends React.Component<{ model: RemotesModalModel }, {}> {
 }
 
 @mobxReact.observer
-class RemotesSelector extends React.Component<{ model: RemotesModalModel; isChangeRemoteOnSelect?: boolean }, {}> {
+class RemotesSelector extends React.Component<{ model: RemotesModalModel; isChangeRemoteOnSelect?: boolean }, { isOpen: boolean }> {
     constructor(props: any) {
         super(props);
         //TODO: Make this isOpen as global state, so that the modal can be closed from anywhere
@@ -1222,7 +1222,7 @@ class RemotesSelector extends React.Component<{ model: RemotesModalModel; isChan
 
     @boundMethod
     clickAddRemote(): void {
-        GlobalCommandRunner.openCreateRemote(true);
+        GlobalModel.remotesModalModel.openModalForEdit({remoteedit: true}, true);
         this.setState({ isOpen: false });
     }
 

@@ -77,11 +77,6 @@ class MainSideBar extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    handleAddRemote(): void {
-        GlobalCommandRunner.openCreateRemote(false);
-    }
-
-    @boundMethod
     handleHistoryClick(): void {
         if (GlobalModel.activeMainView.get() == "history") {
             mobx.action(() => {

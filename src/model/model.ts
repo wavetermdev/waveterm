@@ -2471,9 +2471,9 @@ class RemotesModalModel {
         })();
     }
 
-    openModalForEdit(redit: RemoteEditType, originalCmd: FeCmdPacketType): void {
+    openModalForEdit(redit: RemoteEditType, onlyAddNewRemote: boolean): void {
         mobx.action(() => {
-            this.onlyAddNewRemote.set(originalCmd && originalCmd.args && originalCmd.args.includes("onlyAddNewRemote"));
+            this.onlyAddNewRemote.set(onlyAddNewRemote);
             this.openState.set(true);
             this.selectedRemoteId.set(redit.remoteid);
             this.remoteEdit.set(redit);
@@ -2502,7 +2502,7 @@ class RemotesModalModel {
     cancelEditAuth(): void {
         mobx.action(() => {
             this.remoteEdit.set(null);
-            if (this.onlyAddNewRemote) {
+            if (this.onlyAddNewRemote.get()) {
                 this.onlyAddNewRemote.set(false);
                 this.openState.set(false);
                 return;
@@ -3215,7 +3215,7 @@ class Model {
             if (rview.remoteshowall) {
                 this.remotesModalModel.openModal();
             } else if (rview.remoteedit != null) {
-                this.remotesModalModel.openModalForEdit(rview.remoteedit, update.originalCmd);
+                this.remotesModalModel.openModalForEdit(rview.remoteedit, false);
             } else if (rview.ptyremoteid) {
                 this.remotesModalModel.openModal(rview.ptyremoteid);
             }
@@ -3417,14 +3417,13 @@ class Model {
                 mobx.action(() => {
                     let update = data.data;
                     if (update != null) {
-                        update.originalCmd = cmdPk;
                         this.runUpdate(update, interactive);
                     }
                     if (interactive && !this.isInfoUpdate(update)) {
                         GlobalModel.inputModel.clearInfoMsg(true);
                     }
                 })();
-                return { success: true, originalCmd: cmdPk };
+                return { success: true };
             })
             .catch((err) => {
                 this.errorHandler("calling run-command", err, interactive);
@@ -3840,11 +3839,11 @@ class CommandRunner {
         remotesModalModel.closeModal();
     }
 
-    openCreateRemote(onlyAddNewRemote?: boolean): void {
+    openCreateRemote(): void {
         GlobalModel.submitCommand(
             "remote",
             "new",
-            onlyAddNewRemote ? ["onlyAddNewRemote"] : null,
+            null,
             { nohist: "1", visual: "1" },
             true
         );
