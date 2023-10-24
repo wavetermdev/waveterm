@@ -43,48 +43,40 @@ const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
 
 interface Props {
     data: Blob;
-    cmdstr: string;
-    cwd: string;
     readOnly: boolean;
-    notFound: boolean;
-    exitcode: number;
     context: RendererContext;
     opts: RendererOpts;
     savedHeight: number;
     scrollToBringIntoViewport: () => void;
     lineState: LineStateType;
-    isSelected: boolean;
-    shouldFocus: boolean;
-    rendererApi: RendererModelContainerApi;
 }
 
 interface State {
     content: string | null;
-    message: { status: string; text: string } | null;
-    isPreviewerAvailable: boolean;
     showReadonly: boolean;
-    totalHeight: number;
 }
 
 const columnHelper = createColumnHelper<any>();
 
 const CSVRenderer: FC<Props> = (props: Props) => {
+    const { data, opts, lineState, context, savedHeight } = props;
+    const { height: maxHeight } = opts.maxSize;
+
     const csvCacheRef = useRef(new Map<string, string>());
     const rowRef = useRef<(HTMLTableRowElement | null)[]>([]);
     const headerRef = useRef<HTMLTableRowElement | null>(null);
+    const probeRef = useRef<HTMLTableRowElement | null>(null);
     const [state, setState] = useState<State>({
         content: null,
-        message: null,
-        isPreviewerAvailable: false,
         showReadonly: true,
-        totalHeight: 0,
     });
     const [globalFilter, setGlobalFilter] = useState('')
     const [isFileTooLarge, setIsFileTooLarge] = useState<boolean>(false);
 
-    const filePath = props.lineState["prompt:file"];
-    const { screenId, lineId } = props.context;
+    const filePath = lineState["prompt:file"];
+    const { screenId, lineId } = context;
     const cacheKey = `${screenId}-${lineId}-${filePath}`;
+    const rowHeight = probeRef.current?.offsetHeight as number;
 
     // Parse the CSV data
     const parsedData = useMemo<CSVRow[]>(() => {
@@ -127,6 +119,8 @@ const CSVRenderer: FC<Props> = (props: Props) => {
         });
     }, [state.content]);
 
+    const tbodyHeight = rowHeight * parsedData.length;
+
     // Column Definitions
     const columns = useMemo(() => {
         if (parsedData.length === 0) {
@@ -147,46 +141,20 @@ const CSVRenderer: FC<Props> = (props: Props) => {
             setState((prevState) => ({ ...prevState, content }));
         } else {
             // Check if the file size exceeds 10MB
-            if (props.data.size > MAX_DATA_SIZE) { // 10MB in bytes
+            if (data.size > MAX_DATA_SIZE) { // 10MB in bytes
                 setIsFileTooLarge(true);
                 return;
             }
             
-            props.data.text().then((content: string) => {
+            data.text().then((content: string) => {
                 setState((prevState) => ({ ...prevState, content }));
                 csvCacheRef.current.set(cacheKey, content);
             });
         }
     }, []);    
 
-    // Effect to compute height after rendering
-    useEffect(() => {
-        if (headerRef.current && rowRef.current && rowRef.current[0]) {
-            const rowHeight = rowRef.current[0]?.offsetHeight ?? 0; // Using optional chaining
-            const totalHeight =  rowHeight * parsedData.length; 
-            const th = Math.min(totalHeight, props.opts.maxSize.height);
 
-            setState((prevState) => ({ ...prevState, totalHeight: th }));
-        }
-    }, [parsedData, props.opts]);
-    
-
-    const getMessage = () => (
-        <div style={{ position: "absolute", bottom: "-3px", left: "14px" }}>
-            <div
-                className="message"
-                style={{
-                    fontSize: GlobalModel.termFontSize.get(),
-                    background: `${state.message?.status === "error" ? "red" : "#4e9a06"}`,
-                }}
-            >
-                {state.message?.text}
-            </div>
-        </div>
-    );
-
-    const { exitcode } = props;
-    const { content, message } = state;
+    const { content } = state;
 
     const table = useReactTable({
         manualPagination: true,
@@ -213,10 +181,13 @@ const CSVRenderer: FC<Props> = (props: Props) => {
         );
     }
 
-    if (content == null) return <div className="csv-renderer" style={{ height: props.savedHeight }} />;
+    if (content == null) return <div className="csv-renderer" style={{ height: savedHeight }} />;
 
     return (
         <div className="csv-renderer">
+            <table className="probe">
+                <tbody><tr ref={probeRef}><td>dummy data</td></tr></tbody>
+            </table>
             <table>
                 <thead>
                     {table.getHeaderGroups().map(headerGroup => (
@@ -253,7 +224,7 @@ const CSVRenderer: FC<Props> = (props: Props) => {
                         </tr>
                     ))}
                 </thead>
-                <tbody style={{"height": `${state.totalHeight}px`}}>
+                <tbody style={{"height": `${Math.min(tbodyHeight, maxHeight)}px`}}>
                     {table.getRowModel().rows.map((row, index) => (
                         <tr key={row.id} ref={el => rowRef.current[index] = el}>
                             {row.getVisibleCells().map(cell => (
@@ -265,9 +236,9 @@ const CSVRenderer: FC<Props> = (props: Props) => {
                     ))}
                 </tbody>
             </table>
-            {message && getMessage()}
         </div>
     );
 }
 
 export { CSVRenderer };
+
