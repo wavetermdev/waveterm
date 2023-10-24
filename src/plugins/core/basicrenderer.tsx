@@ -29,7 +29,7 @@ class ErrorFallback extends React.Component<
     {
         context: RendererContext;
         lineState: LineStateType;
-        error: Error;
+        error: any;
     },
     {}
 > {
@@ -37,14 +37,21 @@ class ErrorFallback extends React.Component<
         const { context, lineState, error } = this.props;
         const { screenId, lineId } = context;
 
-        // Switch to "debug" plugin
-        GlobalCommandRunner.lineSet(lineId, { renderer: "terminal" });
-        // Set line state
-        GlobalCommandRunner.setLineState(screenId, lineId, { ...lineState, error }, false);
+        // save error to server
     }
 
     render() {
-        return null;
+        const lines = this.props.error.stack.toString().split("\n");
+
+        return (
+            <div className="stack-trace">
+                {lines.map((line: string, index: number) => (
+                    <div key={index} className="load-error-text">
+                        {line.trim()}
+                    </div>
+                ))}
+            </div>
+        );
     }
 }
 
