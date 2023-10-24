@@ -226,7 +226,29 @@ class CreateRemote extends React.Component<{ model: RemotesModalModel; remoteEdi
         kwargs["autoinstall"] = this.tempAutoInstall.get() ? "1" : "0";
         kwargs["visual"] = "1";
         kwargs["submit"] = "1";
-        GlobalCommandRunner.createRemote(cname, kwargs);
+        let model = this.props.model;
+        let shouldCr = model.onlyAddNewRemote.get();
+        let prtn = GlobalCommandRunner.createRemote(cname, kwargs, false);
+        prtn.then((crtn) => {
+            if (crtn.success) {
+                if (shouldCr) {
+                    let crRtn = GlobalCommandRunner.screenSetRemote(cname, true, false);
+                    crRtn.then((crcrtn) => {
+                        if (crcrtn.success) {
+                            model.closeModal();
+                            return;
+                        }
+                        mobx.action(() => {
+                            this.errorStr.set(crcrtn.error);
+                        })();
+                    });
+                }
+                return;
+            }
+            mobx.action(() => {
+                this.errorStr.set(crtn.error);
+            })();
+        });
     }
 
     @boundMethod
@@ -1105,7 +1127,7 @@ class RemotesModal extends React.Component<{ model: RemotesModalModel }, {}> {
     renderRemoteMenuItem(remote: RemoteType, selectedId: string): any {
         return (
             <div
-                key={remote.remoteid}
+                key={remote.remotecanonicalname}
                 onClick={() => this.selectRemote(remote.remoteid)}
                 className={cn("remote-menu-item", { "is-selected": remote.remoteid == selectedId })}
             >
@@ -1153,6 +1175,7 @@ class RemotesModal extends React.Component<{ model: RemotesModalModel }, {}> {
         let isAuthEditMode = model.isAuthEditMode();
         let selectedRemote = GlobalModel.getRemote(selectedRemoteId);
         let remoteEdit = model.remoteEdit.get();
+        let onlyAddNewRemote = model.onlyAddNewRemote.get();
         return (
             <div className={cn("modal remotes-modal settings-modal prompt-modal is-active")}>
                 <div className="modal-background" />
@@ -1164,19 +1187,21 @@ class RemotesModal extends React.Component<{ model: RemotesModalModel }, {}> {
                         </div>
                     </header>
                     <div className="inner-content">
-                        <div className="remotes-menu">
-                            {this.renderAddRemoteMenuItem()}
-                            <For each="remote" of={allRemotes}>
-                                {this.renderRemoteMenuItem(remote, selectedRemoteId)}
-                            </For>
-                        </div>
+                        <If condition={!onlyAddNewRemote}>
+                            <div className="remotes-menu">
+                                {this.renderAddRemoteMenuItem()}
+                                <For each="remote" of={allRemotes}>
+                                    {this.renderRemoteMenuItem(remote, selectedRemoteId)}
+                                </For>
+                            </div>{" "}
+                        </If>
                         <If condition={selectedRemote == null}>
                             <If condition={remoteEdit != null}>
                                 <CreateRemote model={model} remoteEdit={remoteEdit} />
                             </If>
                             <If condition={remoteEdit == null}>{this.renderEmptyDetail()}</If>
                         </If>
-                        <If condition={selectedRemote != null}>
+                        <If condition={selectedRemote != null && !onlyAddNewRemote}>
                             <If condition={!isAuthEditMode}>
                                 <RemoteDetailView
                                     key={"remotedetail-" + selectedRemoteId}
@@ -1200,4 +1225,95 @@ class RemotesModal extends React.Component<{ model: RemotesModalModel }, {}> {
     }
 }
 
-export { RemotesModal };
+@mobxReact.observer
+class RemotesSelector extends React.Component<{ model: RemotesModalModel; isChangeRemoteOnSelect?: boolean }, { isOpen: boolean }> {
+    constructor(props: any) {
+        super(props);
+        this.state = {
+            isOpen: false,
+        };
+    }
+
+    @boundMethod
+    selectRemote(remoteid: string, remotecanonicalname: string): void {
+        this.props.model.selectRemote(remoteid);
+        if (this.props.isChangeRemoteOnSelect) {
+            let prtn = GlobalCommandRunner.screenSetRemote(remotecanonicalname, true, false);
+            // TODO: see settings.tsx.  use prtn to set error message
+        }
+        this.setState({ isOpen: false });
+    }
+
+    @boundMethod
+    clickAddRemote(): void {
+        GlobalModel.remotesModalModel.openModalForEdit({remoteedit: true}, true);
+        this.setState({ isOpen: false });
+    }
+
+    renderRemoteMenuItem(remote: RemoteType, selectedId: string): any {
+        return (
+            <div
+                key={remote.remoteid}
+                onClick={() => this.selectRemote(remote.remoteid, remote.remotecanonicalname)}
+                className={cn("dropdown-item remote-menu-item hoverEffect", {
+                    "is-selected": remote.remoteid == selectedId,
+                })}
+            >
+                <div className="remote-status-light">
+                    <RemoteStatusLight remote={remote} />
+                </div>
+                <If condition={util.isBlank(remote.remotealias)}>
+                    <div className="remote-name">
+                        <div className="remote-name-primary">{remote.remotecanonicalname}</div>
+                    </div>
+                </If>
+                <If condition={!util.isBlank(remote.remotealias)}>
+                    <div className="remote-name">
+                        <div className="remote-name-primary">{remote.remotealias}</div>
+                        <div className="remote-name-secondary">{remote.remotecanonicalname}</div>
+                    </div>
+                </If>
+            </div>
+        );
+    }
+
+    render() {
+        const allRemotes = util.sortAndFilterRemotes(GlobalModel.remotes.slice());
+        const remote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
+        const selectedRemoteDiv = (
+            <div className="remote-name">
+                <div className="remote-status-light">
+                    <RemoteStatusLight remote={remote} />
+                </div>
+                <div className="remote-name-primary">{remote.remotealias}</div>
+                <div className="remote-name-secondary">{remote.remotecanonicalname}</div>
+            </div>
+        );
+        return (
+            <div className={"remotes-inline"}>
+                <div className="remotes-menu">
+                    <div className={`dropdown ${this.state.isOpen ? "is-active" : ""}`}>
+                        <div className="dropdown-trigger">
+                            <button className="button" onClick={() => this.setState({ isOpen: !this.state.isOpen })}>
+                                {selectedRemoteDiv}
+                                <AngleDownIcon className="icon" />
+                            </button>
+                        </div>
+                        <div className="dropdown-menu" id="dropdown-menu3" role="menu">
+                            <div className="dropdown-content">
+                                {allRemotes
+                                    .filter(({ remoteid }) => remoteid !== remote.remoteid)
+                                    .map((remote) => this.renderRemoteMenuItem(remote, remote.remoteid))}
+                                <div onClick={this.clickAddRemote} className=".dropdown-item hoverEffect">
+                                    <AddIcon className="icon" /> Add SSH Connection
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+}
+
+export { RemotesModal, RemotesSelector };
