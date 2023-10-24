@@ -3829,14 +3829,10 @@ class CommandRunner {
         GlobalModel.submitCommand("remote", "installcancel", null, { nohist: "1", remote: remoteid }, true);
     }
 
-    async createRemote(cname: string, kwargsArg: Record<string, string>) {
+    createRemote(cname: string, kwargsArg: Record<string, string>, interactive: boolean): Promise<CommandRtnType> {
         let kwargs = Object.assign({}, kwargsArg);
         kwargs["nohist"] = "1";
-        const { success } = await GlobalModel.submitCommand("remote", "new", [cname], kwargs, true);
-        const { remotesModalModel } = GlobalModel;
-        if (!success) return; //TODO: Handle error condition
-        if (remotesModalModel.onlyAddNewRemote.get()) GlobalModel.submitRawCommand(`cr ${cname}`, false, false);
-        remotesModalModel.closeModal();
+        return GlobalModel.submitCommand("remote", "new", [cname], kwargs, interactive);
     }
 
     openCreateRemote(): void {
@@ -3847,6 +3843,14 @@ class CommandRunner {
             { nohist: "1", visual: "1" },
             true
         );
+    }
+
+    screenSetRemote(remoteArg: string, nohist: boolean, interactive: boolean): Promise<CommandRtnType> {
+        let kwargs = {};
+        if (nohist) {
+            kwargs["nohist"] = "1";
+        }
+        return GlobalModel.submitCommand("connect", null, [remoteArg], kwargs, interactive);
     }
 
     editRemote(remoteid: string, kwargsArg: Record<string, string>): void {

@@ -226,7 +226,29 @@ class CreateRemote extends React.Component<{ model: RemotesModalModel; remoteEdi
         kwargs["autoinstall"] = this.tempAutoInstall.get() ? "1" : "0";
         kwargs["visual"] = "1";
         kwargs["submit"] = "1";
-        GlobalCommandRunner.createRemote(cname, kwargs);
+        let model = this.props.model;
+        let shouldCr = model.onlyAddNewRemote.get();
+        let prtn = GlobalCommandRunner.createRemote(cname, kwargs, false);
+        prtn.then((crtn) => {
+            if (crtn.success) {
+                if (shouldCr) {
+                    let crRtn = GlobalCommandRunner.screenSetRemote(cname, true, false);
+                    crRtn.then((crcrtn) => {
+                        if (crcrtn.success) {
+                            model.closeModal();
+                            return;
+                        }
+                        mobx.action(() => {
+                            this.errorStr.set(crcrtn.error);
+                        })();
+                    });
+                }
+                return;
+            }
+            mobx.action(() => {
+                this.errorStr.set(crtn.error);
+            })();
+        });
     }
 
     @boundMethod
@@ -1207,7 +1229,6 @@ class RemotesModal extends React.Component<{ model: RemotesModalModel }, {}> {
 class RemotesSelector extends React.Component<{ model: RemotesModalModel; isChangeRemoteOnSelect?: boolean }, { isOpen: boolean }> {
     constructor(props: any) {
         super(props);
-        //TODO: Make this isOpen as global state, so that the modal can be closed from anywhere
         this.state = {
             isOpen: false,
         };
@@ -1216,7 +1237,10 @@ class RemotesSelector extends React.Component<{ model: RemotesModalModel; isChan
     @boundMethod
     selectRemote(remoteid: string, remotecanonicalname: string): void {
         this.props.model.selectRemote(remoteid);
-        if (this.props.isChangeRemoteOnSelect) GlobalModel.submitRawCommand(`cr ${remotecanonicalname}`, false, false);
+        if (this.props.isChangeRemoteOnSelect) {
+            let prtn = GlobalCommandRunner.screenSetRemote(remotecanonicalname, true, false);
+            // TODO: see settings.tsx.  use prtn to set error message
+        }
         this.setState({ isOpen: false });
     }
 
