@@ -1,6 +1,9 @@
 @import "../../app/common/themes/themes.less";
 
 .csv-renderer {
+    transition: opacity 0.1s ease;
+    opacity: 0; /* Start with an opacity of 0, meaning it's invisible */
+
     .ellipsis() {
         display: block;
         white-space: nowrap;
@@ -14,11 +17,11 @@
     .cursor-pointer {
         cursor: pointer;
     }
-    
+
     .select-none {
         user-select: none;
     }
-  
+
     .global-search-render {
         margin-bottom: 10px;
     }
@@ -29,17 +32,17 @@
     }
 
     table {
-        border-collapse: collapse;            
-        overflow-x: auto;   
+        border-collapse: collapse;
+        overflow-x: auto;
         border: 1px solid @scrollbar-thumb;
 
         thead {
-            position:relative;
+            position: relative;
             display: block;
             width: 100%;
             overflow-y: scroll;
 
-            tr {  
+            tr {
                 border-bottom: 1px solid @scrollbar-thumb;
 
                 th {
@@ -54,7 +57,7 @@
                     position: relative;
 
                     .inner {
-                        text-align:left;
+                        text-align: left;
                         padding-right: 15px;
                         position: relative;
                         .ellipsis();
@@ -70,23 +73,23 @@
                 }
             }
         }
-      
+
         tbody {
-            display: block; 
-            position:relative;
+            display: block;
+            position: relative;
             overflow-y: scroll;
             overscroll-behavior: contain;
         }
 
         tr {
             width: 100%;
-            display:flex;
+            display: flex;
 
             td {
                 border-right: 1px solid @scrollbar-thumb;
                 border-left: 1px solid @scrollbar-thumb;
                 padding: 3px 10px;
-                flex-basis:100%;
+                flex-basis: 100%;
                 flex-grow: 2;
                 display: block;
                 text-align: left;
@@ -94,4 +97,8 @@
             }
         }
     }
+}
+
+.csv-renderer.loaded {
+    opacity: 1; /* When loaded class is added, set the opacity to 1, making it visible */
 }

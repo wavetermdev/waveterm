@@ -17,6 +17,7 @@ import {
 import { rankItem } from "@tanstack/match-sorter-utils";
 import SortUpIcon from "./img/sort-up-solid.svg";
 import SortDownIcon from "./img/sort-down-solid.svg";
+import cn from "classnames";
 
 import "./csv.less";
 
@@ -73,6 +74,7 @@ const CSVRenderer: FC<Props> = (props: Props) => {
     });
     const [globalFilter, setGlobalFilter] = useState("");
     const [isFileTooLarge, setIsFileTooLarge] = useState<boolean>(false);
+    const [isRendererLoaded, setRendererLoaded] = useState(false);
 
     const filePath = lineState["prompt:file"];
     const { screenId, lineId } = context;
@@ -165,6 +167,19 @@ const CSVRenderer: FC<Props> = (props: Props) => {
         }
     }, [probeRef, headerRef, maxHeight, parsedData]);
 
+    // Makes sure rows are rendered before setting the renderer as loaded
+    useEffect(() => {
+        let timer: any;
+
+        if (rowRef.current.length === parsedData.length) {
+            timer = setTimeout(() => {
+                setRendererLoaded(true);
+            }, 100); // Delay a bit to make sure the rows are rendered
+        }
+
+        return () => clearTimeout(timer);
+    }, [rowRef, parsedData]);
+
     const table = useReactTable({
         manualPagination: true,
         data: parsedData,
@@ -191,7 +206,7 @@ const CSVRenderer: FC<Props> = (props: Props) => {
     }
 
     return (
-        <div className="csv-renderer">
+        <div className={cn("csv-renderer", { loaded: isRendererLoaded })}>
             <table className="probe">
                 <tbody>
                     <tr ref={probeRef}>
