@@ -23,6 +23,11 @@
         margin-bottom: 10px;
     }
 
+    table.probe {
+        position: absolute;
+        visibility: hidden;
+    }
+
     table {
         border-collapse: collapse;            
         overflow-x: auto;   
@@ -35,17 +40,17 @@
             overflow-y: scroll;
 
             tr {  
-                border-bottom: 1px solid @scrollbar-thumb;         
+                border-bottom: 1px solid @scrollbar-thumb;
 
                 th {
-                    color:@term-white;
-                    border: 1px solid @scrollbar-thumb;
+                    color: @term-white;
+                    border-right: 1px solid @scrollbar-thumb;
                     border-bottom: none;
-                    padding: 2px 10px 4px 10px;
-                    flex-basis:100%;
-                    flex-grow:2;
+                    padding: 2px 10px;
+                    flex-basis: 100%;
+                    flex-grow: 2;
                     display: block;
-                    text-align:left;
+                    text-align: left;
                     position: relative;
 
                     .inner {
@@ -80,11 +85,11 @@
             td {
                 border-right: 1px solid @scrollbar-thumb;
                 border-left: 1px solid @scrollbar-thumb;
-                padding: 2px 10px;
+                padding: 3px 10px;
                 flex-basis:100%;
-                flex-grow:2;
+                flex-grow: 2;
                 display: block;
-                text-align:left;
+                text-align: left;
                 .ellipsis();
             }
         }
