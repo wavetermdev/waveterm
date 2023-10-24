@@ -226,20 +226,7 @@ class CreateRemote extends React.Component<{ model: RemotesModalModel; remoteEdi
         kwargs["autoinstall"] = this.tempAutoInstall.get() ? "1" : "0";
         kwargs["visual"] = "1";
         kwargs["submit"] = "1";
-        GlobalCommandRunner.createRemote(cname, kwargs).then(({ success, originalCmd }) => {
-            debugger;
-            if (!success || !originalCmd) return; //TODO: Handle error condition
-            const onlyAddNewRemote = this.props.model.onlyAddNewRemote.get();
-            if (!onlyAddNewRemote) return;
-            const newRemote = util
-                .sortAndFilterRemotes(GlobalModel.remotes.slice())
-                .find(({ remotealias }) => remotealias === originalCmd.kwargs.alias);
-            console.dir(newRemote);
-            debugger;
-            this.props.model.selectRemote(newRemote.remoteid);
-            this.props.model.closeModal();
-            GlobalModel.submitRawCommand(`cr ${newRemote.remotealias}`, false, false);
-        });
+        GlobalCommandRunner.createRemote(cname, kwargs);
     }
 
     @boundMethod
@@ -1118,7 +1105,7 @@ class RemotesModal extends React.Component<{ model: RemotesModalModel }, {}> {
     renderRemoteMenuItem(remote: RemoteType, selectedId: string): any {
         return (
             <div
-                key={remote.remoteid}
+                key={remote.remotecanonicalname}
                 onClick={() => this.selectRemote(remote.remoteid)}
                 className={cn("remote-menu-item", { "is-selected": remote.remoteid == selectedId })}
             >
@@ -1227,22 +1214,23 @@ class RemotesSelector extends React.Component<{ model: RemotesModalModel; isChan
     }
 
     @boundMethod
-    selectRemote(remoteId: string, remoteAlias: string): void {
-        this.props.model.selectRemote(remoteId);
-        if (this.props.isChangeRemoteOnSelect) GlobalModel.submitRawCommand(`cr ${remoteAlias}`, false, false);
+    selectRemote(remoteid: string, remotecanonicalname: string): void {
+        this.props.model.selectRemote(remoteid);
+        if (this.props.isChangeRemoteOnSelect) GlobalModel.submitRawCommand(`cr ${remotecanonicalname}`, false, false);
         this.setState({ isOpen: false });
     }
 
     @boundMethod
     clickAddRemote(): void {
         GlobalCommandRunner.openCreateRemote(true);
+        this.setState({ isOpen: false });
     }
 
     renderRemoteMenuItem(remote: RemoteType, selectedId: string): any {
         return (
             <div
                 key={remote.remoteid}
-                onClick={() => this.selectRemote(remote.remoteid, remote.remotealias)}
+                onClick={() => this.selectRemote(remote.remoteid, remote.remotecanonicalname)}
                 className={cn("dropdown-item remote-menu-item hoverEffect", {
                     "is-selected": remote.remoteid == selectedId,
                 })}

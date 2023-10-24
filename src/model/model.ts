@@ -75,6 +75,7 @@ import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { getRendererContext, cmdStatusIsRunning } from "../app/line/lineutil";
+import { sortAndFilterRemotes } from "../util/util";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(localizedFormat);
@@ -2521,7 +2522,6 @@ class RemotesModalModel {
     }
 
     closeModal(): void {
-        debugger;
         if (!this.openState.get()) {
             return;
         }
@@ -3399,7 +3399,6 @@ class Model {
     }
 
     submitCommandPacket(cmdPk: FeCmdPacketType, interactive: boolean): Promise<CommandRtnType> {
-        debugger;
         if (this.debugCmds > 0) {
             console.log("[cmd]", cmdPacketString(cmdPk));
             if (this.debugCmds > 1) {
@@ -3415,7 +3414,6 @@ class Model {
         })
             .then((resp) => handleJsonFetchResponse(url, resp))
             .then((data) => {
-                debugger;
                 mobx.action(() => {
                     let update = data.data;
                     if (update != null) {
@@ -3426,7 +3424,6 @@ class Model {
                         GlobalModel.inputModel.clearInfoMsg(true);
                     }
                 })();
-                debugger;
                 return { success: true, originalCmd: cmdPk };
             })
             .catch((err) => {
@@ -3456,6 +3453,7 @@ class Model {
             uicontext: this.getUIContext(),
             interactive: interactive,
         };
+        /**
         console.log(
             "CMD",
             pk.metacmd + (pk.metasubcmd != null ? ":" + pk.metasubcmd : ""),
@@ -3463,7 +3461,7 @@ class Model {
             pk.kwargs,
             pk.interactive
         );
-        debugger;
+         */
         return this.submitCommandPacket(pk, interactive);
     }
 
@@ -3832,10 +3830,14 @@ class CommandRunner {
         GlobalModel.submitCommand("remote", "installcancel", null, { nohist: "1", remote: remoteid }, true);
     }
 
-    createRemote(cname: string, kwargsArg: Record<string, string>): Promise<CommandRtnType> {
+    async createRemote(cname: string, kwargsArg: Record<string, string>) {
         let kwargs = Object.assign({}, kwargsArg);
         kwargs["nohist"] = "1";
-        return GlobalModel.submitCommand("remote", "new", [cname], kwargs, true);
+        const { success } = await GlobalModel.submitCommand("remote", "new", [cname], kwargs, true);
+        const { remotesModalModel } = GlobalModel;
+        if (!success) return; //TODO: Handle error condition
+        if (remotesModalModel.onlyAddNewRemote.get()) GlobalModel.submitRawCommand(`cr ${cname}`, false, false);
+        remotesModalModel.closeModal();
     }
 
     openCreateRemote(onlyAddNewRemote?: boolean): void {
