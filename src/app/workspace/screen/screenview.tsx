@@ -243,7 +243,9 @@ class ScreenWindowView extends React.Component<{ screen: Screen }, {}> {
                 <If condition={lines.length == 0}>
                     <div key="window-empty" className="window-empty">
                         <div>
-                            <code>[workspace="{session.name.get()}" screen="{screen.name.get()}"]</code>
+                            <code>
+                                [workspace="{session.name.get()}" screen="{screen.name.get()}"]
+                            </code>
                         </div>
                     </div>
                 </If>

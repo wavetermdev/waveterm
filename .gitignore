@@ -19,4 +19,4 @@ webshare/dist-dev/
 temp.sql
 .idea/
 test/
-
+.vscode/
