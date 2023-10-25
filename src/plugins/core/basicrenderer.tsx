@@ -20,6 +20,8 @@ import type {
 import { debounce, throttle } from "throttle-debounce";
 import * as util from "../../util/util";
 import { GlobalModel } from "../../model/model";
+import { ErrorBoundary } from "react-error-boundary";
+import { ErrorFallback } from "../../app/common/error/errorfallback";
 
 type OV<V> = mobx.IObservableValue<V>;
 type CV<V> = mobx.IComputedValue<V>;
@@ -267,22 +269,24 @@ class SimpleBlobRenderer extends React.Component<
         let { festate, cmdstr, exitcode } = this.props.initParams.rawCmd;
         return (
             <div ref={this.wrapperDivRef} className="sr-wrapper">
-                <Comp
-                    cwd={festate.cwd}
-                    cmdstr={cmdstr}
-                    exitcode={exitcode}
-                    data={model.dataBlob}
-                    readOnly={model.readOnly}
-                    notFound={model.notFound}
-                    lineState={model.lineState}
-                    context={model.context}
-                    opts={model.opts}
-                    savedHeight={model.savedHeight}
-                    scrollToBringIntoViewport={this.props.scrollToBringIntoViewport}
-                    isSelected={this.props.isSelected}
-                    shouldFocus={this.props.shouldFocus}
-                    rendererApi={model.api}
-                />
+                <ErrorBoundary FallbackComponent={(props) => <ErrorFallback {...props} />}>
+                    <Comp
+                        cwd={festate.cwd}
+                        cmdstr={cmdstr}
+                        exitcode={exitcode}
+                        data={model.dataBlob}
+                        readOnly={model.readOnly}
+                        notFound={model.notFound}
+                        lineState={model.lineState}
+                        context={model.context}
+                        opts={model.opts}
+                        savedHeight={model.savedHeight}
+                        scrollToBringIntoViewport={this.props.scrollToBringIntoViewport}
+                        isSelected={this.props.isSelected}
+                        shouldFocus={this.props.shouldFocus}
+                        rendererApi={model.api}
+                    />
+                </ErrorBoundary>
             </div>
         );
     }

@@ -1,0 +1,164 @@
+diff --git a/src/plugins/csv/csv.less b/src/plugins/csv/csv.less
+index 800d85e..d51b232 100644
+--- a/src/plugins/csv/csv.less
++++ b/src/plugins/csv/csv.less
+@@ -1,6 +1,8 @@
+ @import "../../app/common/themes/themes.less";
+ 
+ .csv-renderer {
++    opacity: 0; /* Start with an opacity of 0, meaning it's invisible */
++
+     .ellipsis() {
+         display: block;
+         white-space: nowrap;
+@@ -14,11 +16,11 @@
+     .cursor-pointer {
+         cursor: pointer;
+     }
+-    
++
+     .select-none {
+         user-select: none;
+     }
+-  
++
+     .global-search-render {
+         margin-bottom: 10px;
+     }
+@@ -29,17 +31,17 @@
+     }
+ 
+     table {
+-        border-collapse: collapse;            
+-        overflow-x: auto;   
++        border-collapse: collapse;
++        overflow-x: auto;
+         border: 1px solid @scrollbar-thumb;
+ 
+         thead {
+-            position:relative;
++            position: relative;
+             display: block;
+             width: 100%;
+             overflow-y: scroll;
+ 
+-            tr {  
++            tr {
+                 border-bottom: 1px solid @scrollbar-thumb;
+ 
+                 th {
+@@ -54,7 +56,7 @@
+                     position: relative;
+ 
+                     .inner {
+-                        text-align:left;
++                        text-align: left;
+                         padding-right: 15px;
+                         position: relative;
+                         .ellipsis();
+@@ -70,23 +72,23 @@
+                 }
+             }
+         }
+-      
++
+         tbody {
+-            display: block; 
+-            position:relative;
++            display: block;
++            position: relative;
+             overflow-y: scroll;
+             overscroll-behavior: contain;
+         }
+ 
+         tr {
+             width: 100%;
+-            display:flex;
++            display: flex;
+ 
+             td {
+                 border-right: 1px solid @scrollbar-thumb;
+                 border-left: 1px solid @scrollbar-thumb;
+                 padding: 3px 10px;
+-                flex-basis:100%;
++                flex-basis: 100%;
+                 flex-grow: 2;
+                 display: block;
+                 text-align: left;
+@@ -94,4 +96,8 @@
+             }
+         }
+     }
+-}
+\ No newline at end of file
++}
++
++.csv-renderer.loaded {
++    opacity: 1; /* When loaded class is added, set the opacity to 1, making it visible */
++}
+diff --git a/src/plugins/csv/csv.tsx b/src/plugins/csv/csv.tsx
+index 3e26626..3336201 100644
+--- a/src/plugins/csv/csv.tsx
++++ b/src/plugins/csv/csv.tsx
+@@ -17,6 +17,7 @@ import {
+ import { rankItem } from "@tanstack/match-sorter-utils";
+ import SortUpIcon from "./img/sort-up-solid.svg";
+ import SortDownIcon from "./img/sort-down-solid.svg";
++import cn from "classnames";
+ 
+ import "./csv.less";
+ 
+@@ -73,6 +74,7 @@ const CSVRenderer: FC<Props> = (props: Props) => {
+     });
+     const [globalFilter, setGlobalFilter] = useState("");
+     const [isFileTooLarge, setIsFileTooLarge] = useState<boolean>(false);
++    const [isRendererLoaded, setRendererLoaded] = useState(false);
+ 
+     const filePath = lineState["prompt:file"];
+     const { screenId, lineId } = context;
+@@ -156,15 +158,32 @@ const CSVRenderer: FC<Props> = (props: Props) => {
+         if (probeRef.current && headerRef.current && parsedData.length) {
+             const rowHeight = probeRef.current.offsetHeight;
+             const tbodyHeight = rowHeight * parsedData.length - rowHeight;
+-            const headerHeight = headerRef.current.offsetHeight;
+-            const maxHeightLessHeader = maxHeight - headerHeight;
++            const headerHeight = headerRef.current.offsetHeight; // For some reason, if we subtract this from maxHeight, the table is too short
+             const tbodyHeightLessHeader = tbodyHeight - headerHeight;
+-            const maxTbodyHeight = Math.min(maxHeightLessHeader, tbodyHeightLessHeader);
++            const maxTbodyHeight = Math.min(maxHeight, tbodyHeightLessHeader);
+ 
+-            setState((prevState) => ({ ...prevState, tbodyHeight: maxTbodyHeight }));
++            setState((prevState) => {
++                if (prevState.tbodyHeight === maxTbodyHeight) {
++                    return prevState;
++                }
++                return { ...prevState, tbodyHeight: maxTbodyHeight };
++            });
+         }
+     }, [probeRef, headerRef, maxHeight, parsedData]);
+ 
++    // Makes sure rows are rendered before setting the renderer as loaded
++    useEffect(() => {
++        let timer: any;
++
++        if (rowRef.current.length === parsedData.length) {
++            timer = setTimeout(() => {
++                setRendererLoaded(true);
++            }, 100); // Delay a bit to make sure the rows are rendered
++        }
++
++        return () => clearTimeout(timer);
++    }, [rowRef, parsedData]);
++
+     const table = useReactTable({
+         manualPagination: true,
+         data: parsedData,
+@@ -191,7 +210,7 @@ const CSVRenderer: FC<Props> = (props: Props) => {
+     }
+ 
+     return (
+-        <div className="csv-renderer">
++        <div className={cn("csv-renderer", { loaded: isRendererLoaded })}>
+             <table className="probe">
+                 <tbody>
+                     <tr ref={probeRef}>
