@@ -169,6 +169,7 @@ type KeyModsType = {
 type ElectronApi = {
     getId: () => string;
     getIsDev: () => boolean;
+    getPlatform: () => string;
     getAuthKey: () => string;
     getWaveSrvStatus: () => boolean;
     restartWaveSrv: () => boolean;
@@ -1980,7 +1981,7 @@ class HistoryViewModel {
             return;
         }
         let prtn = GlobalModel.showAlert({
-            message: "Deleting lines from history also deletes their content from your sessions.",
+            message: "Deleting lines from history also deletes their content from your workspaces.",
             confirm: true,
         });
         prtn.then((result) => {
@@ -2654,6 +2655,7 @@ class Model {
     waveSrvRunning: OV<boolean>;
     authKey: string;
     isDev: boolean;
+    platform: string;
     activeMainView: OV<"session" | "history" | "bookmarks" | "webshare"> = mobx.observable.box("session", {
         name: "activeMainView",
     });
@@ -2733,6 +2735,14 @@ class Model {
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
         document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
         setTimeout(() => this.getClientDataLoop(1), 10);
+    }
+
+    getPlatform(): string {
+        if (this.platform != null) {
+            return this.platform;
+        }
+        this.platform = getApi().getPlatform();
+        return this.platform;
     }
 
     needsTos(): boolean {
@@ -3836,13 +3846,7 @@ class CommandRunner {
     }
 
     openCreateRemote(): void {
-        GlobalModel.submitCommand(
-            "remote",
-            "new",
-            null,
-            { nohist: "1", visual: "1" },
-            true
-        );
+        GlobalModel.submitCommand("remote", "new", null, { nohist: "1", visual: "1" }, true);
     }
 
     screenSetRemote(remoteArg: string, nohist: boolean, interactive: boolean): Promise<CommandRtnType> {

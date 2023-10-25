@@ -1,20 +1,28 @@
+const webpack = require("webpack");
+const webpackMerge = require("webpack-merge");
 const path = require("path");
+const moment = require("dayjs");
+const VERSION = require("../version.js");
 const CopyPlugin = require("copy-webpack-plugin");
 
-module.exports = {
-    mode: "development",
+function makeBuildStr() {
+    let buildStr = moment().format("YYYYMMDD-HHmmss");
+    // console.log("waveterm:electron " + VERSION + " build " + buildStr);
+    return buildStr;
+}
+
+const BUILD = makeBuildStr();
+
+var electronCommon = {
     entry: {
         emain: ["./src/electron/emain.ts"],
     },
     target: "electron-main",
-    output: {
-        path: path.resolve(__dirname, "../dist-dev"),
-        filename: "[name].js",
-    },
     externals: {
         fs: "require('fs')",
         "fs-ext": "require('fs-ext')",
     },
+    devtool: "source-map",
     module: {
         rules: [
             {
@@ -48,12 +56,48 @@ module.exports = {
             },
         ],
     },
-    plugins: [
-        new CopyPlugin({
-            patterns: [{ from: "src/electron/preload.js", to: "preload.js" }],
-        }),
-    ],
     resolve: {
         extensions: [".ts", ".tsx", ".js"],
     },
 };
+
+var electronDev = webpackMerge.merge(electronCommon, {
+    mode: "development",
+    output: {
+        path: path.resolve(__dirname, "../dist-dev"),
+        filename: "[name].js",
+    },
+    plugins: [
+        new CopyPlugin({
+            patterns: [{ from: "src/electron/preload.js", to: "preload.js" }],
+        }),
+        new webpack.DefinePlugin({
+            __PROMPT_DEV__: "true",
+            __PROMPT_VERSION__: JSON.stringify(VERSION),
+            __PROMPT_BUILD__: JSON.stringify("devbuild"),
+        }),
+    ],
+});
+
+var electronProd = webpackMerge.merge(electronCommon, {
+    mode: "production",
+    output: {
+        path: path.resolve(__dirname, "../dist"),
+        filename: "[name].js",
+    },
+    plugins: [
+        new CopyPlugin({
+            patterns: [{ from: "src/electron/preload.js", to: "preload.js" }],
+        }),
+        new webpack.DefinePlugin({
+            __PROMPT_DEV__: "false",
+            __PROMPT_VERSION__: JSON.stringify(VERSION),
+            __PROMPT_BUILD__: JSON.stringify(BUILD),
+        }),
+    ],
+    optimization: {
+        minimize: true,
+    },
+});
+
+module.exports = {electronDev: electronDev, electronProd: electronProd};
