@@ -1,7 +1,6 @@
 import React, { Component, ReactNode } from "react";
 import { RendererContext } from "../../../plugins/types/types";
 import cn from "classnames";
-import "./errorboundary.less";
 
 interface ErrorBoundaryState {
     hasError: boolean;
@@ -55,7 +54,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
         const { plugin } = this.props;
 
         return (
-            <div className={cn("load-error-text", { "screen-view-error": !plugin })}>
+            <div className={cn("load-error-text", { "view-error": !plugin })}>
                 <div>{`${error?.message}`}</div>
                 {plugin && <div>An error occurred in the {plugin} plugin</div>}
             </div>
