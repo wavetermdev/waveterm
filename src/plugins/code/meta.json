@@ -1,1 +1,5 @@
-{}
+{
+    "title": "Code Viewer",
+    "vendor": "Wave",
+    "summary": "View and Edit source code with syntax highlightng and code completion."
+}

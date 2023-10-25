@@ -11,8 +11,6 @@ import { OpenAIRenderer, OpenAIRendererModel } from "./openai/openai";
 import { isBlank } from "../util/util";
 import { sprintf } from "sprintf-js";
 
-import code_meta from "./code/meta.json";
-
 const ImagePlugin: RendererPluginType = {
     name: "image",
     rendererType: "simple",
@@ -22,7 +20,6 @@ const ImagePlugin: RendererPluginType = {
     globalCss: null,
     mimeTypes: ["image/*"],
     simpleComponent: SimpleImageRenderer,
-    meta: code_meta,
 };
 
 const MarkdownPlugin: RendererPluginType = {
@@ -97,6 +94,9 @@ class PluginModelClass {
             throw new Error(sprintf("plugin with name %s already registered", plugin.name));
         }
         this.rendererPlugins.push(plugin);
+        // use dynamic import to attach the meta and icon. ensure that the 'name' matches the dir the plugin is in
+        import(`../plugins/${plugin.name}/icon.svg`).then((icon) => (plugin.getIcon = icon.ReactComponent));
+        import(`../plugins/${plugin.name}/meta.json`).then((json) => Object.assign(plugin, json));
     }
 
     getRendererPluginByName(name: string): RendererPluginType {
@@ -107,6 +107,10 @@ class PluginModelClass {
             }
         }
         return null;
+    }
+
+    allPlugins() {
+        return this.rendererPlugins;
     }
 }
 

@@ -28,20 +28,62 @@
         }
     }
 
-    .icon {
-        width: 1em;
-        height: 1em;
-        fill: @base-color;
-    }
-
-    .bookmarks-list {
-        color: @term-white;
-        margin: 4px 10px 5px 5px;
-
-        .no-bookmarks {
-            color: @term-white;
-            padding: 30px 10px 35px 10px;
-            border-bottom: 1px solid white;
+    .body {
+        display: flex;
+        .plugins-list {
+            padding: 1em;
+            border-right: 1px solid @base-border;
+            min-height: calc(100vh - 6em);
+            max-height: calc(100vh - 6em);
+            overflow-y: auto;
+            flex: 0 0 auto;
+            .plugin-summary {
+                display: block;
+                padding: 10px;
+                min-width: 323px;
+                max-width: 323px;
+                min-height: 118px;
+                max-height: 118px;
+                overflow-y: auto;
+                border-radius: 8px;
+                margin-bottom: 1em;
+                border: 1px solid @base-border;
+                .plugin-summary-header {
+                    display: flex;
+                    .plugin-summary-icon {
+                        flex: 0 0 auto;
+                        width: 32px;
+                        height: 32px;
+                        border-radius: 8px;
+                        background: linear-gradient(135deg, #5460cf 0%, #0011b0 100%);
+                        svg {
+                            width: 16px;
+                            height: 16px;
+                            fill: white;
+                            margin: 8px;
+                        }
+                    }
+                    .plugin-summary-info {
+                        flex: 1;
+                        margin: 0 12px;
+                        .plugin-summary-title {
+                        }
+                        .plugin-summary-vendor {
+                            font-size: 0.8em;
+                        }
+                    }
+                }
+                .plugin-summary-body {
+                    margin-top: 8px;
+                    min-height: 54px;
+                    max-height: 54px;
+                    overflow-y: auto;
+                }
+            }
+        }
+        .plugins-details {
+            flex: 1;
+            margin-right: 1em;
         }
     }
 }
