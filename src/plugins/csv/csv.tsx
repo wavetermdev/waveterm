@@ -47,10 +47,10 @@ interface Props {
     context: RendererContext;
     opts: RendererOpts;
     savedHeight: number;
-    scrollToBringIntoViewport: () => void;
     lineState: LineStateType;
     shouldFocus: boolean;
     rendererApi: RendererModelContainerApi;
+    scrollToBringIntoViewport: () => void;
 }
 
 interface State {
@@ -62,7 +62,7 @@ interface State {
 const columnHelper = createColumnHelper<any>();
 
 const CSVRenderer: FC<Props> = (props: Props) => {
-    const { data, opts, lineState, context, shouldFocus, rendererApi } = props;
+    const { data, opts, lineState, context, shouldFocus, rendererApi, savedHeight } = props;
     const { height: maxHeight } = opts.maxSize;
 
     const csvCacheRef = useRef(new Map<string, string>());
@@ -73,7 +73,7 @@ const CSVRenderer: FC<Props> = (props: Props) => {
     const [state, setState] = useState<State>({
         content: null,
         showReadonly: true,
-        tbodyHeight: maxHeight,
+        tbodyHeight: savedHeight,
     });
     const [globalFilter, setGlobalFilter] = useState("");
     const [isFileTooLarge, setIsFileTooLarge] = useState<boolean>(false);
@@ -177,7 +177,7 @@ const CSVRenderer: FC<Props> = (props: Props) => {
         if (rowRef.current.length === parsedData.length) {
             timer = setTimeout(() => {
                 setRendererLoaded(true);
-            }, 100); // Delay a bit to make sure the rows are rendered
+            }, 50); // Delay a bit to make sure the rows are rendered
         }
 
         return () => clearTimeout(timer);
