@@ -1981,7 +1981,7 @@ class HistoryViewModel {
             return;
         }
         let prtn = GlobalModel.showAlert({
-            message: "Deleting lines from history also deletes their content from your sessions.",
+            message: "Deleting lines from history also deletes their content from your workspaces.",
             confirm: true,
         });
         prtn.then((result) => {
@@ -3846,13 +3846,7 @@ class CommandRunner {
     }
 
     openCreateRemote(): void {
-        GlobalModel.submitCommand(
-            "remote",
-            "new",
-            null,
-            { nohist: "1", visual: "1" },
-            true
-        );
+        GlobalModel.submitCommand("remote", "new", null, { nohist: "1", visual: "1" }, true);
     }
 
     screenSetRemote(remoteArg: string, nohist: boolean, interactive: boolean): Promise<CommandRtnType> {
