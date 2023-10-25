@@ -83,7 +83,8 @@ function termWidthFromCols(cols: number, fontSize: number): number {
 
 function termHeightFromRows(rows: number, fontSize: number): number {
     let dr = getMonoFontSize(fontSize);
-    return Math.ceil(dr.height * rows);
+    // TODO: replace the +3 with some calculation based on termFontSize.  the +3 is for descenders, which get cut off without this.
+    return Math.ceil(dr.height * rows) + 3;
 }
 
 export { measureText, getMonoFontSize, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows };

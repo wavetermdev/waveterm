@@ -391,11 +391,16 @@ function calcBounds(clientData) {
 }
 
 app.on("window-all-closed", () => {
-    if (process.platform !== "darwin") app.quit();
+    if (unamePlatform !== "darwin") app.quit();
 });
 
 electron.ipcMain.on("get-id", (event) => {
     event.returnValue = instanceId + ":" + event.processId;
+    return;
+});
+
+electron.ipcMain.on("get-platform", (event) => {
+    event.returnValue = unamePlatform;
     return;
 });
 

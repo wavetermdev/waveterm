@@ -1,15 +1,28 @@
+const webpack = require("webpack");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const LodashModuleReplacementPlugin = require("lodash-webpack-plugin");
+const CopyPlugin = require("copy-webpack-plugin");
+const webpackMerge = require("webpack-merge");
 const path = require("path");
+const moment = require("dayjs");
+const VERSION = require("../version.js");
 
-module.exports = {
-    mode: "development",
+function makeBuildStr() {
+    let buildStr = moment().format("YYYYMMDD-HHmmss");
+    // console.log("waveterm:web      " + VERSION + " build " + buildStr);
+    return buildStr;
+}
+
+const BUILD = makeBuildStr();
+
+let BundleAnalyzerPlugin = null;
+if (process.env.WEBPACK_ANALYZE) {
+    BundleAnalyzerPlugin = require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
+}
+
+var webCommon = {
     entry: {
         prompt: ["./src/index.ts", "./src/app/app.less"],
-    },
-    output: {
-        path: path.resolve(__dirname, "dist"),
-        filename: "[name].js",
     },
     module: {
         rules: [
@@ -56,11 +69,63 @@ module.exports = {
             },
         ],
     },
-    plugins: [
-        new MiniCssExtractPlugin({ filename: "[name].css", ignoreOrder: true }),
-        new LodashModuleReplacementPlugin(),
-    ],
     resolve: {
         extensions: [".ts", ".tsx", ".js", ".mjs", ".cjs", ".wasm", ".json", ".less", ".css"],
     },
 };
+
+var webDev = webpackMerge.merge(webCommon, {
+    mode: "development",
+    output: {
+        path: path.resolve(__dirname, "../dist-dev"),
+        filename: "[name].js",
+    },
+    devtool: "source-map",
+    devServer: {
+        static: {
+            directory: path.join(__dirname, "../public"),
+        },
+        port: 9000,
+        headers: {
+            "Cache-Control": "no-store",
+        },
+    },
+    plugins: [
+        new MiniCssExtractPlugin({ filename: "[name].css", ignoreOrder: true }),
+        new LodashModuleReplacementPlugin(),
+        new webpack.DefinePlugin({
+            __PROMPT_DEV__: "true",
+            __PROMPT_VERSION__: JSON.stringify(VERSION),
+            __PROMPT_BUILD__: JSON.stringify("devbuild"),
+        }),
+    ],
+    watchOptions: {
+        aggregateTimeout: 200,
+    },
+});
+
+var webProd = webpackMerge.merge(webCommon, {
+    mode: "production",
+    output: {
+        path: path.resolve(__dirname, "../dist"),
+        filename: "[name].js",
+    },
+    devtool: false,
+    plugins: [
+        new MiniCssExtractPlugin({ filename: "[name].css", ignoreOrder: true }),
+        new LodashModuleReplacementPlugin(),
+        new webpack.DefinePlugin({
+            __PROMPT_DEV__: "false",
+            __PROMPT_VERSION__: JSON.stringify(VERSION),
+            __PROMPT_BUILD__: JSON.stringify(BUILD),
+        }),
+    ],
+    optimization: {
+        minimize: true,
+    },
+});
+if (BundleAnalyzerPlugin != null) {
+    webProd.plugins.push(new BundleAnalyzerPlugin());
+}
+
+module.exports = {webDev: webDev, webProd: webProd};

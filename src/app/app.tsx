@@ -82,12 +82,13 @@ class App extends React.Component<{}, {}> {
         let disconnected = !GlobalModel.ws.open.get() || !GlobalModel.waveSrvRunning.get();
         let hasClientStop = GlobalModel.getHasClientStop();
         let dcWait = this.dcWait.get();
+        let platform = GlobalModel.getPlatform();
         if (disconnected || hasClientStop) {
             if (!dcWait) {
                 setTimeout(() => this.updateDcWait(true), 1500);
             }
             return (
-                <div id="main" onContextMenu={this.handleContextMenu}>
+                <div id="main" className={"platform-" + platform} onContextMenu={this.handleContextMenu}>
                     <div className="main-content">
                         <MainSideBar />
                         <div className="session-view" />
@@ -107,7 +108,7 @@ class App extends React.Component<{}, {}> {
             setTimeout(() => this.updateDcWait(false), 0);
         }
         return (
-            <div id="main" onContextMenu={this.handleContextMenu}>
+            <div id="main" className={"platform-" + platform} onContextMenu={this.handleContextMenu}>
                 <div className="main-content">
                     <MainSideBar />
                     <ErrorBoundary>

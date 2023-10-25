@@ -75,6 +75,7 @@ import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { getRendererContext, cmdStatusIsRunning } from "../app/line/lineutil";
+import { sortAndFilterRemotes } from "../util/util";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(localizedFormat);
@@ -168,6 +169,7 @@ type KeyModsType = {
 type ElectronApi = {
     getId: () => string;
     getIsDev: () => boolean;
+    getPlatform: () => string;
     getAuthKey: () => string;
     getWaveSrvStatus: () => boolean;
     restartWaveSrv: () => boolean;
@@ -1979,7 +1981,7 @@ class HistoryViewModel {
             return;
         }
         let prtn = GlobalModel.showAlert({
-            message: "Deleting lines from history also deletes their content from your sessions.",
+            message: "Deleting lines from history also deletes their content from your workspaces.",
             confirm: true,
         });
         prtn.then((result) => {
@@ -2426,6 +2428,9 @@ class RemotesModalModel {
     openState: OV<boolean> = mobx.observable.box(false, {
         name: "RemotesModalModel-isOpen",
     });
+    onlyAddNewRemote: OV<boolean> = mobx.observable.box(false, {
+        name: "RemotesModalModel-onlyAddNewRemote",
+    });
     selectedRemoteId: OV<string> = mobx.observable.box(null, {
         name: "RemotesModalModel-selectedRemoteId",
     });
@@ -2467,8 +2472,9 @@ class RemotesModalModel {
         })();
     }
 
-    openModalForEdit(redit: RemoteEditType): void {
+    openModalForEdit(redit: RemoteEditType, onlyAddNewRemote: boolean): void {
         mobx.action(() => {
+            this.onlyAddNewRemote.set(onlyAddNewRemote);
             this.openState.set(true);
             this.selectedRemoteId.set(redit.remoteid);
             this.remoteEdit.set(redit);
@@ -2497,6 +2503,11 @@ class RemotesModalModel {
     cancelEditAuth(): void {
         mobx.action(() => {
             this.remoteEdit.set(null);
+            if (this.onlyAddNewRemote.get()) {
+                this.onlyAddNewRemote.set(false);
+                this.openState.set(false);
+                return;
+            }
             if (this.selectedRemoteId.get() == null) {
                 this.openModal();
             }
@@ -2519,6 +2530,7 @@ class RemotesModalModel {
             this.openState.set(false);
             this.selectedRemoteId.set(null);
             this.remoteEdit.set(null);
+            this.onlyAddNewRemote.set(false);
         })();
         setTimeout(() => GlobalModel.refocus(), 10);
     }
@@ -2643,6 +2655,7 @@ class Model {
     waveSrvRunning: OV<boolean>;
     authKey: string;
     isDev: boolean;
+    platform: string;
     activeMainView: OV<"session" | "history" | "bookmarks" | "webshare"> = mobx.observable.box("session", {
         name: "activeMainView",
     });
@@ -2722,6 +2735,14 @@ class Model {
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
         document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
         setTimeout(() => this.getClientDataLoop(1), 10);
+    }
+
+    getPlatform(): string {
+        if (this.platform != null) {
+            return this.platform;
+        }
+        this.platform = getApi().getPlatform();
+        return this.platform;
     }
 
     needsTos(): boolean {
@@ -3204,7 +3225,7 @@ class Model {
             if (rview.remoteshowall) {
                 this.remotesModalModel.openModal();
             } else if (rview.remoteedit != null) {
-                this.remotesModalModel.openModalForEdit(rview.remoteedit);
+                this.remotesModalModel.openModalForEdit(rview.remoteedit, false);
             } else if (rview.ptyremoteid) {
                 this.remotesModalModel.openModal(rview.ptyremoteid);
             }
@@ -3441,7 +3462,15 @@ class Model {
             uicontext: this.getUIContext(),
             interactive: interactive,
         };
-        // console.log("CMD", pk.metacmd + (pk.metasubcmd != null ? ":" + pk.metasubcmd : ""), pk.args, pk.kwargs, pk.interactive);
+        /**
+        console.log(
+            "CMD",
+            pk.metacmd + (pk.metasubcmd != null ? ":" + pk.metasubcmd : ""),
+            pk.args,
+            pk.kwargs,
+            pk.interactive
+        );
+         */
         return this.submitCommandPacket(pk, interactive);
     }
 
@@ -3455,7 +3484,7 @@ class Model {
             interactive: interactive,
             rawstr: cmdStr,
         };
-        if (!addToHistory) {
+        if (!addToHistory && pk.kwargs) {
             pk.kwargs["nohist"] = "1";
         }
         return this.submitCommandPacket(pk, interactive);
@@ -3810,14 +3839,22 @@ class CommandRunner {
         GlobalModel.submitCommand("remote", "installcancel", null, { nohist: "1", remote: remoteid }, true);
     }
 
-    createRemote(cname: string, kwargsArg: Record<string, string>) {
+    createRemote(cname: string, kwargsArg: Record<string, string>, interactive: boolean): Promise<CommandRtnType> {
         let kwargs = Object.assign({}, kwargsArg);
         kwargs["nohist"] = "1";
-        GlobalModel.submitCommand("remote", "new", [cname], kwargs, true);
+        return GlobalModel.submitCommand("remote", "new", [cname], kwargs, interactive);
     }
 
     openCreateRemote(): void {
         GlobalModel.submitCommand("remote", "new", null, { nohist: "1", visual: "1" }, true);
+    }
+
+    screenSetRemote(remoteArg: string, nohist: boolean, interactive: boolean): Promise<CommandRtnType> {
+        let kwargs = {};
+        if (nohist) {
+            kwargs["nohist"] = "1";
+        }
+        return GlobalModel.submitCommand("connect", null, [remoteArg], kwargs, interactive);
     }
 
     editRemote(remoteid: string, kwargsArg: Record<string, string>): void {
