@@ -11,92 +11,97 @@ import { OpenAIRenderer, OpenAIRendererModel } from "./openai/openai";
 import { isBlank } from "../util/util";
 import { sprintf } from "sprintf-js";
 
-const ImagePlugin: RendererPluginType = {
-    name: "image",
-    rendererType: "simple",
-    heightType: "pixels",
-    dataType: "blob",
-    collapseType: "hide",
-    globalCss: null,
-    mimeTypes: ["image/*"],
-    simpleComponent: SimpleImageRenderer,
-};
-
-const MarkdownPlugin: RendererPluginType = {
-    name: "markdown",
-    rendererType: "simple",
-    heightType: "pixels",
-    dataType: "blob",
-    collapseType: "hide",
-    globalCss: null,
-    mimeTypes: ["text/markdown"],
-    simpleComponent: SimpleMarkdownRenderer,
-};
-
-const MustachePlugin: RendererPluginType = {
-    name: "mustache",
-    rendererType: "simple",
-    heightType: "pixels",
-    dataType: "blob",
-    collapseType: "hide",
-    globalCss: null,
-    mimeTypes: ["text/plain"],
-    simpleComponent: SimpleMustacheRenderer,
-};
-
-const CodePlugin: RendererPluginType = {
-    name: "code",
-    rendererType: "simple",
-    heightType: "pixels",
-    dataType: "blob",
-    collapseType: "hide",
-    globalCss: null,
-    mimeTypes: ["text/plain"],
-    simpleComponent: SourceCodeRenderer,
-};
-
-const OpenAIPlugin: RendererPluginType = {
-    name: "openai",
-    rendererType: "full",
-    heightType: "pixels",
-    dataType: "model",
-    collapseType: "remove",
-    hidePrompt: true,
-    globalCss: null,
-    mimeTypes: ["application/json"],
-    fullComponent: OpenAIRenderer,
-    modelCtor: () => new OpenAIRendererModel(),
-};
-
-const CSVPlugin: RendererPluginType = {
-    name: "csv",
-    rendererType: "simple",
-    heightType: "pixels",
-    dataType: "blob",
-    collapseType: "hide",
-    globalCss: null,
-    mimeTypes: ["text/csv"],
-    simpleComponent: CSVRenderer,
-};
+// TODO: @mike - I did refactoring with the though that I can move config out of this plugins.ts file to a
+// plugins.json file. This way, adding a new plugin would reuire adding an entry to the json config. At a later
+// stage, a plugin can become a self-contained-bundle, which would have my_plugin.json into it. it will be easy to
+// merge this my_plugin.json into th ebig plugins.json. I got stuck while defining 'simpleComponent: SimpleImageRenderer'
+// in a json definition (something like Java.Reflection can be used to compose a class from its name. will try later)
+const PluginConfigs: RendererPluginType[] = [
+    {
+        name: "image",
+        rendererType: "simple",
+        heightType: "pixels",
+        dataType: "blob",
+        collapseType: "hide",
+        globalCss: null,
+        mimeTypes: ["image/*"],
+        simpleComponent: SimpleImageRenderer,
+    },
+    {
+        name: "markdown",
+        rendererType: "simple",
+        heightType: "pixels",
+        dataType: "blob",
+        collapseType: "hide",
+        globalCss: null,
+        mimeTypes: ["text/markdown"],
+        simpleComponent: SimpleMarkdownRenderer,
+    },
+    {
+        name: "mustache",
+        rendererType: "simple",
+        heightType: "pixels",
+        dataType: "blob",
+        collapseType: "hide",
+        globalCss: null,
+        mimeTypes: ["text/plain"],
+        simpleComponent: SimpleMustacheRenderer,
+    },
+    {
+        name: "code",
+        rendererType: "simple",
+        heightType: "pixels",
+        dataType: "blob",
+        collapseType: "hide",
+        globalCss: null,
+        mimeTypes: ["text/plain"],
+        simpleComponent: SourceCodeRenderer,
+    },
+    {
+        name: "openai",
+        rendererType: "full",
+        heightType: "pixels",
+        dataType: "model",
+        collapseType: "remove",
+        hidePrompt: true,
+        globalCss: null,
+        mimeTypes: ["application/json"],
+        fullComponent: OpenAIRenderer,
+        modelCtor: () => new OpenAIRendererModel(),
+    },
+    {
+        name: "csv",
+        rendererType: "simple",
+        heightType: "pixels",
+        dataType: "blob",
+        collapseType: "hide",
+        globalCss: null,
+        mimeTypes: ["text/csv"],
+        simpleComponent: CSVRenderer,
+    },
+];
 
 class PluginModelClass {
     rendererPlugins: RendererPluginType[] = [];
 
-    registerRendererPlugin(plugin: RendererPluginType) {
-        if (isBlank(plugin.name)) {
-            throw new Error("invalid plugin, no name");
-        }
-        if (plugin.name == "terminal" || plugin.name == "none") {
-            throw new Error(sprintf("invalid plugin, name '%s' is reserved", plugin.name));
-        }
-        let existingPlugin = this.getRendererPluginByName(plugin.name);
-        if (existingPlugin != null) {
-            throw new Error(sprintf("plugin with name %s already registered", plugin.name));
-        }
-        this.rendererPlugins.push(plugin);
-        // use dynamic import to attach the meta and icon. ensure that the 'name' matches the dir the plugin is in
-        import(`../plugins/${plugin.name}/icon.svg`).then((icon) => (plugin.getIcon = icon.ReactComponent));
-        import(`../plugins/${plugin.name}/meta.json`).then((json) => Object.assign(plugin, json));
+    constructor(pluginConfigs: RendererPluginType[]) {
+        this.rendererPlugins = pluginConfigs.map((plugin: RendererPluginType): RendererPluginType => {
+            if (isBlank(plugin.name)) {
+                throw new Error("invalid plugin, no name");
+            }
+            if (plugin.name == "terminal" || plugin.name == "none") {
+                throw new Error(sprintf("invalid plugin, name '%s' is reserved", plugin.name));
+            }
+            let existingPlugin = this.getRendererPluginByName(plugin.name);
+            if (existingPlugin != null) {
+                throw new Error(sprintf("plugin with name %s already registered", plugin.name));
+            }
+            this.rendererPlugins.push(plugin);
+            // use dynamic import to attach the meta and icon. ensure that the 'name' matches the dir the plugin is in
+            import(`../plugins/${plugin.name}/icon.svg`).then((icon) => (plugin.getIcon = icon.ReactComponent));
+            import(`../plugins/${plugin.name}/meta.json`).then((json) => Object.assign(plugin, json));
+            return plugin;
+        });
     }
 
     getRendererPluginByName(name: string): RendererPluginType {
@@ -116,13 +121,7 @@ class PluginModelClass {
 
 let PluginModel: PluginModelClass = null;
 if ((window as any).PluginModel == null) {
-    PluginModel = new PluginModelClass();
-    PluginModel.registerRendererPlugin(ImagePlugin);
-    PluginModel.registerRendererPlugin(MarkdownPlugin);
-    PluginModel.registerRendererPlugin(CodePlugin);
-    PluginModel.registerRendererPlugin(OpenAIPlugin);
-    PluginModel.registerRendererPlugin(MustachePlugin);
-    PluginModel.registerRendererPlugin(CSVPlugin);
+    PluginModel = new PluginModelClass(PluginConfigs);
     (window as any).PluginModel = PluginModel;
 }
 
