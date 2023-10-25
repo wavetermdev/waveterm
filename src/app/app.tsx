@@ -11,6 +11,8 @@ import type { ContextMenuOpts } from "../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "../model/model";
 import { isBlank } from "../util/util";
+import { WorkspaceView } from "./workspace/workspaceview";
+import { PluginsView } from "./pluginsview/pluginsview";
 import { BookmarksView } from "./bookmarks/bookmarks";
 import { HistoryView } from "./history/history";
 import {
@@ -21,7 +23,6 @@ import {
 } from "./common/modals/settings";
 import { RemotesModal } from "./connections/connections";
 import { TosModal } from "./common/modals/modals";
-import { WorkspaceView } from "../app/workspace/workspaceview";
 import { MainSideBar } from "./sidebar/MainSideBar";
 import { DisconnectedModal, ClientStopModal, AlertModal, WelcomeModal } from "./common/modals/modals";
 import "./app.less";
@@ -105,10 +106,12 @@ class App extends React.Component<{}, {}> {
         if (dcWait) {
             setTimeout(() => this.updateDcWait(false), 0);
         }
+        //console.log(`GlobalModel.activeMainView.get() = ${GlobalModel.activeMainView.get()}`); // @mike - if I remove this, I cant see plugins
         return (
             <div id="main" onContextMenu={this.handleContextMenu}>
                 <div className="main-content">
                     <MainSideBar />
+                    <PluginsView />
                     <WorkspaceView />
                     <HistoryView />
                     <BookmarksView />

@@ -11,6 +11,8 @@ import { OpenAIRenderer, OpenAIRendererModel } from "./openai/openai";
 import { isBlank } from "../util/util";
 import { sprintf } from "sprintf-js";
 
+import code_meta from "./code/meta.json";
+
 const ImagePlugin: RendererPluginType = {
     name: "image",
     rendererType: "simple",
@@ -20,6 +22,7 @@ const ImagePlugin: RendererPluginType = {
     globalCss: null,
     mimeTypes: ["image/*"],
     simpleComponent: SimpleImageRenderer,
+    meta: code_meta,
 };
 
 const MarkdownPlugin: RendererPluginType = {

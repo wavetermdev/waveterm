@@ -1865,6 +1865,8 @@ class SpecialHistoryViewLineContainer {
     }
 }
 
+class PluginsViewModel {}
+
 const HistoryPageSize = 50;
 
 class HistoryViewModel {
@@ -2423,6 +2425,24 @@ class BookmarksModel {
     return;
 }
 
+class PluginsModel {
+    showPluginsView(): void {
+        mobx.action(() => {
+            this.reset();
+            GlobalModel.activeMainView.set("plugins");
+        })();
+    }
+
+    reset(): void {
+        mobx.action(() => {})();
+    }
+
+    closeView(): void {
+        GlobalModel.showSessionView();
+        setTimeout(() => GlobalModel.inputModel.giveFocus(), 50);
+    }
+}
+
 class RemotesModalModel {
     openState: OV<boolean> = mobx.observable.box(false, {
         name: "RemotesModalModel-isOpen",
@@ -2654,7 +2674,7 @@ class Model {
     waveSrvRunning: OV<boolean>;
     authKey: string;
     isDev: boolean;
-    activeMainView: OV<"session" | "history" | "bookmarks" | "webshare"> = mobx.observable.box("session", {
+    activeMainView: OV<"plugins" | "session" | "history" | "bookmarks" | "webshare"> = mobx.observable.box("session", {
         name: "activeMainView",
     });
     termFontSize: CV<number>;
@@ -2680,6 +2700,7 @@ class Model {
     remotesModalModel: RemotesModalModel;
 
     inputModel: InputModel;
+    pluginsModel: PluginsModel;
     bookmarksModel: BookmarksModel;
     historyViewModel: HistoryViewModel;
     clientData: OV<ClientDataType> = mobx.observable.box(null, {
@@ -2698,6 +2719,7 @@ class Model {
         );
         this.ws.reconnect();
         this.inputModel = new InputModel();
+        this.pluginsModel = new PluginsModel();
         this.bookmarksModel = new BookmarksModel();
         this.historyViewModel = new HistoryViewModel();
         this.remotesModalModel = new RemotesModalModel();
@@ -3191,7 +3213,9 @@ class Model {
             this.updateRemotes(update.remotes);
         }
         if ("mainview" in update) {
-            if (update.mainview == "bookmarks") {
+            if (update.mainview == "plugins") {
+                this.pluginsModel.showPluginsView();
+            } else if (update.mainview == "bookmarks") {
                 this.bookmarksModel.showBookmarksView(update.bookmarks, update.selectedbookmark);
             } else if (update.mainview == "session") {
                 this.activeMainView.set("session");
@@ -3836,13 +3860,7 @@ class CommandRunner {
     }
 
     openCreateRemote(): void {
-        GlobalModel.submitCommand(
-            "remote",
-            "new",
-            null,
-            { nohist: "1", visual: "1" },
-            true
-        );
+        GlobalModel.submitCommand("remote", "new", null, { nohist: "1", visual: "1" }, true);
     }
 
     screenSetRemote(remoteArg: string, nohist: boolean, interactive: boolean): Promise<CommandRtnType> {

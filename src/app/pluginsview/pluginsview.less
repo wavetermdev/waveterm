@@ -1,0 +1,47 @@
+@import "../../app/common/themes/themes.less";
+
+.plugins-view {
+    background-color: @background-session;
+
+    .header {
+        margin: 1.5em 1.5em 0.5em;
+
+        .plugins-title {
+            margin-bottom: 0.5em;
+            font-weight: bold;
+            font-size: 1.5em;
+        }
+
+        .close-button {
+            position: absolute;
+            right: 1em;
+            top: 0.8em;
+            cursor: pointer;
+            width: 1.5em;
+            height: 1.5em;
+            border-radius: 50%;
+            svg {
+                width: 1.5em;
+                height: 1.5em;
+                fill: @base-color;
+            }
+        }
+    }
+
+    .icon {
+        width: 1em;
+        height: 1em;
+        fill: @base-color;
+    }
+
+    .bookmarks-list {
+        color: @term-white;
+        margin: 4px 10px 5px 5px;
+
+        .no-bookmarks {
+            color: @term-white;
+            padding: 30px 10px 35px 10px;
+            border-bottom: 1px solid white;
+        }
+    }
+}
