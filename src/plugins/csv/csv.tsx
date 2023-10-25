@@ -10,12 +10,10 @@ import {
     flexRender,
     useReactTable,
     getCoreRowModel,
-    getFilteredRowModel,
     getSortedRowModel,
     FilterFn,
 } from "@tanstack/react-table";
 import { useTableNav } from "@table-nav/react";
-import { rankItem } from "@tanstack/match-sorter-utils";
 import SortUpIcon from "./img/sort-up-solid.svg";
 import SortDownIcon from "./img/sort-down-solid.svg";
 import cn from "classnames";
@@ -26,19 +24,6 @@ const MAX_DATA_SIZE = 10 * 1024 * 1024; // 10MB in bytes
 
 type CSVRow = {
     [key: string]: string | number;
-};
-
-const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
-    // Rank the item
-    const itemRank = rankItem(row.getValue(columnId), value);
-
-    // Store the itemRank info
-    addMeta({
-        itemRank,
-    });
-
-    // Return if the item should be filtered in/out
-    return itemRank.passed;
 };
 
 interface Props {
@@ -75,7 +60,6 @@ const CSVRenderer: FC<Props> = (props: Props) => {
         showReadonly: true,
         tbodyHeight: savedHeight,
     });
-    const [globalFilter, setGlobalFilter] = useState("");
     const [isFileTooLarge, setIsFileTooLarge] = useState<boolean>(false);
     const [isRendererLoaded, setRendererLoaded] = useState(false);
     const { listeners } = useTableNav();
@@ -193,16 +177,7 @@ const CSVRenderer: FC<Props> = (props: Props) => {
         manualPagination: true,
         data: parsedData,
         columns,
-        filterFns: {
-            fuzzy: fuzzyFilter,
-        },
-        state: {
-            globalFilter,
-        },
-        globalFilterFn: fuzzyFilter,
-        onGlobalFilterChange: setGlobalFilter,
         getCoreRowModel: getCoreRowModel(),
-        getFilteredRowModel: getFilteredRowModel(),
         getSortedRowModel: getSortedRowModel(),
     });
 
