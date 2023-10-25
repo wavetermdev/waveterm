@@ -169,6 +169,7 @@ type KeyModsType = {
 type ElectronApi = {
     getId: () => string;
     getIsDev: () => boolean;
+    getPlatform: () => string;
     getAuthKey: () => string;
     getWaveSrvStatus: () => boolean;
     restartWaveSrv: () => boolean;
@@ -2654,6 +2655,7 @@ class Model {
     waveSrvRunning: OV<boolean>;
     authKey: string;
     isDev: boolean;
+    platform: string;
     activeMainView: OV<"session" | "history" | "bookmarks" | "webshare"> = mobx.observable.box("session", {
         name: "activeMainView",
     });
@@ -2733,6 +2735,14 @@ class Model {
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
         document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
         setTimeout(() => this.getClientDataLoop(1), 10);
+    }
+
+    getPlatform(): string {
+        if (this.platform != null) {
+            return this.platform;
+        }
+        this.platform = getApi().getPlatform();
+        return this.platform;
     }
 
     needsTos(): boolean {
