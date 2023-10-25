@@ -11,8 +11,7 @@ import { GlobalModel } from "../../model/model";
 import { CmdInput } from "./cmdinput/cmdinput";
 import { ScreenView } from "./screen/screenview";
 import { ScreenTabs } from "./screen/tabs";
-import { ErrorBoundary } from "react-error-boundary";
-import { ErrorFallback } from "../common/error/errorfallback";
+import { ErrorBoundary } from "../../app/common/error/errorboundary";
 import "./workspace.less";
 
 dayjs.extend(localizedFormat);
@@ -36,7 +35,7 @@ class WorkspaceView extends React.Component<{}, {}> {
         return (
             <div className={cn("session-view", { "is-hidden": isHidden })} data-sessionid={session.sessionId}>
                 <ScreenTabs session={session} />
-                <ErrorBoundary FallbackComponent={(props) => <ErrorFallback {...props} />}>
+                <ErrorBoundary>
                     <ScreenView screen={activeScreen} />
                 </ErrorBoundary>
                 <div style={{ height: cmdInputHeight }}></div>
