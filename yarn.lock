@@ -1631,6 +1631,16 @@
   dependencies:
     defer-to-connect "^2.0.0"
 
+"@table-nav/core@^0.0.7":
+  version "0.0.7"
+  resolved "https://registry.yarnpkg.com/@table-nav/core/-/core-0.0.7.tgz#2d7f58eb81aacf5bdd1b40a823dbef5a88792995"
+  integrity sha512-pCh18jHDRe3tw9sJZXfKi4cSD6VjHbn40CYdqhp5X91SIX7rakDEQAsTx6F7Fv9TUv265l+5rUDcYNaJ0N0cqQ==
+
+"@table-nav/react@^0.0.7":
+  version "0.0.7"
+  resolved "https://registry.yarnpkg.com/@table-nav/react/-/react-0.0.7.tgz#a97699a490e31713fccd5f624ddb62e9fdc06a82"
+  integrity sha512-S+DsD/qDqp50Z4dqt5tZFMWA3sRu0OOT/grMQuq/z/52jPEKJB+b9t+YSH8Ms55vCJOJ0DxuYldJpYrJLMG5ew==
+
 "@tanstack/match-sorter-utils@^8.8.4":
   version "8.8.4"
   resolved "https://registry.yarnpkg.com/@tanstack/match-sorter-utils/-/match-sorter-utils-8.8.4.tgz#0b2864d8b7bac06a9f84cb903d405852cc40a457"

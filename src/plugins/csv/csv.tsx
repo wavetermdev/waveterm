@@ -14,6 +14,7 @@ import {
     getSortedRowModel,
     FilterFn,
 } from "@tanstack/react-table";
+import { useTableNav } from "@table-nav/react";
 import { rankItem } from "@tanstack/match-sorter-utils";
 import SortUpIcon from "./img/sort-up-solid.svg";
 import SortDownIcon from "./img/sort-down-solid.svg";
@@ -48,6 +49,8 @@ interface Props {
     savedHeight: number;
     scrollToBringIntoViewport: () => void;
     lineState: LineStateType;
+    shouldFocus: boolean;
+    rendererApi: RendererModelContainerApi;
 }
 
 interface State {
@@ -59,7 +62,7 @@ interface State {
 const columnHelper = createColumnHelper<any>();
 
 const CSVRenderer: FC<Props> = (props: Props) => {
-    const { data, opts, lineState, context, savedHeight } = props;
+    const { data, opts, lineState, context, shouldFocus, rendererApi } = props;
     const { height: maxHeight } = opts.maxSize;
 
     const csvCacheRef = useRef(new Map<string, string>());
@@ -75,6 +78,7 @@ const CSVRenderer: FC<Props> = (props: Props) => {
     const [globalFilter, setGlobalFilter] = useState("");
     const [isFileTooLarge, setIsFileTooLarge] = useState<boolean>(false);
     const [isRendererLoaded, setRendererLoaded] = useState(false);
+    const { listeners } = useTableNav();
 
     const filePath = lineState["prompt:file"];
     const { screenId, lineId } = context;
@@ -179,6 +183,12 @@ const CSVRenderer: FC<Props> = (props: Props) => {
         return () => clearTimeout(timer);
     }, [rowRef, parsedData]);
 
+    useEffect(() => {
+        if (shouldFocus) {
+            rendererApi.onFocusChanged(true);
+        }
+    }, [shouldFocus]);
+
     const table = useReactTable({
         manualPagination: true,
         data: parsedData,
@@ -213,12 +223,18 @@ const CSVRenderer: FC<Props> = (props: Props) => {
                     </tr>
                 </tbody>
             </table>
-            <table>
+            <table {...listeners}>
                 <thead>
-                    {table.getHeaderGroups().map((headerGroup) => (
-                        <tr key={headerGroup.id} ref={headerRef}>
-                            {headerGroup.headers.map((header) => (
-                                <th key={header.id} colSpan={header.colSpan} style={{ width: header.getSize() }}>
+                    {table.getHeaderGroups().map((headerGroup, index) => (
+                        <tr key={headerGroup.id} ref={headerRef} id={headerGroup.id} tabIndex={index}>
+                            {headerGroup.headers.map((header, index) => (
+                                <th
+                                    key={header.id}
+                                    colSpan={header.colSpan}
+                                    id={header.id}
+                                    tabIndex={index}
+                                    style={{ width: header.getSize() }}
+                                >
                                     {header.isPlaceholder ? null : (
                                         <div
                                             {...{
@@ -251,9 +267,11 @@ const CSVRenderer: FC<Props> = (props: Props) => {
                 </thead>
                 <tbody style={{ height: `${state.tbodyHeight}px` }} ref={tbodyRef}>
                     {table.getRowModel().rows.map((row, index) => (
-                        <tr key={row.id} ref={(el) => (rowRef.current[index] = el)}>
+                        <tr key={row.id} ref={(el) => (rowRef.current[index] = el)} id={row.id} tabIndex={index}>
                             {row.getVisibleCells().map((cell) => (
-                                <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+                                <td key={cell.id} id={cell.id} tabIndex={index}>
+                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                </td>
                             ))}
                         </tr>
                     ))}
