@@ -3,25 +3,19 @@
 ```bash
 # @scripthaus command webpack-watch
 # @scripthaus cd :playbook
-node_modules/.bin/webpack --watch --config webpack/webpack.dev.js
+node_modules/.bin/webpack --env dev --watch
 ```
 
 ```bash
 # @scripthaus command webpack-build
 # @scripthaus cd :playbook
-node_modules/.bin/webpack --config webpack/webpack.dev.js
+node_modules/.bin/webpack --env dev
 ```
 
 ```bash
-# @scripthaus command webpack-electron-watch
+# @scripthaus command webpack-build-prod
 # @scripthaus cd :playbook
-node_modules/.bin/webpack --watch --config webpack/webpack.electron.js
-```
-
-```bash
-# @scripthaus command webpack-electron-build
-# @scripthaus cd :playbook
-node_modules/.bin/webpack --config webpack/webpack.electron.js
+node_modules/.bin/webpack --env prod
 ```
 
 ```bash
@@ -37,39 +31,9 @@ PROMPT_DEV=1 PCLOUD_ENDPOINT="https://ot2e112zx5.execute-api.us-west-2.amazonaws
 ```
 
 ```bash
-# @scripthaus command devserver
-# @scripthaus cd :playbook
-node_modules/.bin/webpack-dev-server --config webpack/webpack.dev.js --host 0.0.0.0
-```
-
-```bash
-# @scripthaus command webshare-devserver
-# @scripthaus cd :playbook
-node_modules/.bin/webpack-dev-server --config webpack/webpack.share.dev.js --host 127.0.0.1
-```
-
-```bash
-# @scripthaus command webshare-build
-# @scripthaus cd :playbook
-node_modules/.bin/webpack --config webpack/webpack.share.dev.js
-```
-
-```bash
-# @scripthaus command webshare-build-prod
-# @scripthaus cd :playbook
-node_modules/.bin/webpack --config webpack/webpack.share.prod.js
-```
-
-```bash
 # @scripthaus command typecheck
 # @scripthaus cd :playbook
 node_modules/.bin/tsc --jsx preserve --noEmit --esModuleInterop --target ES5 --experimentalDecorators --downlevelIteration src/index.ts
-```
-
-```bash
-# @scripthaus command typecheck-webshare
-# @scripthaus cd :playbook
-node_modules/.bin/tsc --jsx preserve --noEmit --esModuleInterop --target ES5 --experimentalDecorators --downlevelIteration src/webshare.ts
 ```
 
 ```bash
@@ -78,13 +42,12 @@ node_modules/.bin/tsc --jsx preserve --noEmit --esModuleInterop --target ES5 --e
 rm -rf dist/
 rm -rf bin/
 rm -rf build/
-node_modules/.bin/webpack --config webpack/webpack.prod.js
-node_modules/.bin/webpack --config webpack/webpack.electron.prod.js
+node_modules/.bin/webpack --env prod
 GO_LDFLAGS="-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')"
-(cd ../apishell; GOOS=darwin GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../prompt-client/bin/mshell/mshell-v0.3-darwin.amd64 main-mshell.go)
-(cd ../apishell; GOOS=darwin GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../prompt-client/bin/mshell/mshell-v0.3-darwin.arm64 main-mshell.go)
-(cd ../apishell; GOOS=linux GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../prompt-client/bin/mshell/mshell-v0.3-linux.amd64 main-mshell.go)
-(cd ../apishell; GOOS=linux GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../prompt-client/bin/mshell/mshell-v0.3-linux.arm64 main-mshell.go)
+(cd ../waveshell; GOOS=darwin GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-darwin.amd64 main-waveshell.go)
+(cd ../waveshell; GOOS=darwin GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-darwin.arm64 main-waveshell.go)
+(cd ../waveshell; GOOS=linux GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-linux.amd64 main-waveshell.go)
+(cd ../waveshell; GOOS=linux GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-linux.arm64 main-waveshell.go)
 (cd wavesrv; GOOS=darwin GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../build/wavesrv.amd64 ./cmd)
 (cd wavesrv; GOOS=darwin GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../build/wavesrv.arm64 ./cmd)
 lipo -create -output bin/wavesrv build/wavesrv.amd64 build/wavesrv.arm64
