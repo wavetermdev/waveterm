@@ -1738,8 +1738,20 @@ func simpleCompCommandMeta(ctx context.Context, prefix string, compCtx comp.Comp
 		compsMeta, _ := simpleCompMeta(ctx, prefix, compCtx, nil)
 		return comp.CombineCompReturn(comp.CGTypeCommandMeta, compsCmd, compsMeta), nil
 	} else {
-		return comp.DoSimpleComp(ctx, comp.CGTypeCommand, prefix, compCtx, nil)
+		compsCmd, _ := comp.DoSimpleComp(ctx, comp.CGTypeCommand, prefix, compCtx, nil)
+		compsBareCmd, _ := simpleCompBareCmds(ctx, prefix, compCtx, nil)
+		return comp.CombineCompReturn(comp.CGTypeCommand, compsCmd, compsBareCmd), nil
 	}
+}
+
+func simpleCompBareCmds(ctx context.Context, prefix string, compCtx comp.CompContext, args []interface{}) (*comp.CompReturn, error) {
+	rtn := comp.CompReturn{}
+	for _, bmc := range BareMetaCmds {
+		if strings.HasPrefix(bmc.CmdStr, prefix) {
+			rtn.Entries = append(rtn.Entries, comp.CompEntry{Word: bmc.CmdStr, IsMetaCmd: true})
+		}
+	}
+	return &rtn, nil
 }
 
 func simpleCompMeta(ctx context.Context, prefix string, compCtx comp.CompContext, args []interface{}) (*comp.CompReturn, error) {
