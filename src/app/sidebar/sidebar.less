@@ -56,9 +56,13 @@
         background-color: @base-border;
     }
 
+    .item.workspaces-item {
+        margin-bottom: -4px;
+    }
+
     .middle {
         max-height: calc(100vh - 32em);
-        padding: 8px 6px;
+        padding: 4px 6px 8px 6px;
         border-bottom: 1px solid @base-border;
         .item {
             &.active {
@@ -98,7 +102,7 @@
         visibility: visible;
         transition: opacity 0.1s ease-in-out, visibility 0.1s step-end;
         .sessionName {
-            width: 11rem;
+            width: 12rem;
             display: inline-block;
             vertical-align: middle;
         }
@@ -109,12 +113,9 @@
             display: inline-block;
             vertical-align: middle;
             border-radius: 50%;
-
-            &.discord {
-                width: 1.2em;
-                height: 1.2em;
-                margin: 0 0.4em 2px 0.4em;
-            }
+        }
+        .actions.icon {
+            margin-left: 8px;
         }
         .hotkey {
             float: right;

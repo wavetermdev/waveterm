@@ -157,7 +157,6 @@ class MainSideBar extends React.Component<{}, {}> {
                     className={`item hoverEffect ${isActive ? "active" : ""}`}
                     onClick={() => this.handleSessionClick(session.sessionId)}
                 >
-                    <span className="hotkey">^⌘</span>
                     <span className="index">{index + 1}</span>
                     <span className="truncate sessionName">{session.name.get()}</span>
                     <ActionsIcon
@@ -222,7 +221,7 @@ class MainSideBar extends React.Component<{}, {}> {
                         </div>
                     </div>
                     <div className="separator" />
-                    <div className="item">
+                    <div className="item workspaces-item">
                         <WorkspacesIcon className="icon" />
                         Workspaces
                         <div className="add_workspace hoverEffect" onClick={this.handleNewSession}>
