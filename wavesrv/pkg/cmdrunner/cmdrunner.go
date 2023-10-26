@@ -1047,7 +1047,6 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 		err := fmt.Errorf("invalid connectmode %q: valid modes are %s", connectMode, formatStrs([]string{sstore.ConnectModeStartup, sstore.ConnectModeAuto, sstore.ConnectModeManual}, "or", false))
 		return nil, err
 	}
-	autoInstall := resolveBool(pk.Kwargs["autoinstall"], true)
 	keyFile, err := resolveFile(pk.Kwargs["key"])
 	if err != nil {
 		return nil, fmt.Errorf("invalid ssh keyfile %q: %v", pk.Kwargs["key"], err)
@@ -1076,9 +1075,6 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 		}
 		editMap[sstore.RemoteField_ConnectMode] = connectMode
 	}
-	if _, found := pk.Kwargs[sstore.RemoteField_AutoInstall]; found {
-		editMap[sstore.RemoteField_AutoInstall] = autoInstall
-	}
 	if _, found := pk.Kwargs["key"]; found {
 		if isLocal {
 			return nil, fmt.Errorf("Cannot edit ssh key file for 'local' remote")
@@ -1099,7 +1095,7 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 		SSHOpts:       sshOpts,
 		ConnectMode:   connectMode,
 		Alias:         alias,
-		AutoInstall:   autoInstall,
+		AutoInstall:   true,
 		CanonicalName: canonicalName,
 		SSHKeyFile:    keyFile,
 		SSHPassword:   sshPassword,

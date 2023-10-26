@@ -153,7 +153,6 @@ class CreateRemote extends React.Component<{ model: RemotesModalModel; remoteEdi
     tempManualMode: OV<boolean>;
     tempPassword: OV<string>;
     tempKeyFile: OV<string>;
-    tempAutoInstall: OV<boolean>;
     errorStr: OV<string>;
 
     constructor(props: any) {
@@ -166,7 +165,6 @@ class CreateRemote extends React.Component<{ model: RemotesModalModel; remoteEdi
         this.tempConnectMode = mobx.observable.box("auto", { name: "CreateRemote-connectMode" });
         this.tempKeyFile = mobx.observable.box("", { name: "CreateRemote-keystr" });
         this.tempPassword = mobx.observable.box("", { name: "CreateRemote-password" });
-        this.tempAutoInstall = mobx.observable.box(true, { name: "CreateRemote-autoinstall" });
         this.errorStr = mobx.observable.box(remoteEdit.errorstr, { name: "CreateRemote-errorStr" });
     }
 
@@ -223,7 +221,6 @@ class CreateRemote extends React.Component<{ model: RemotesModalModel; remoteEdi
             kwargs["password"] = "";
         }
         kwargs["connectmode"] = this.tempConnectMode.get();
-        kwargs["autoinstall"] = this.tempAutoInstall.get() ? "1" : "0";
         kwargs["visual"] = "1";
         kwargs["submit"] = "1";
         let model = this.props.model;
@@ -283,13 +280,6 @@ class CreateRemote extends React.Component<{ model: RemotesModalModel; remoteEdi
     handleChangeHostName(e: any): void {
         mobx.action(() => {
             this.tempHostName.set(e.target.value);
-        })();
-    }
-
-    @boundMethod
-    handleChangeAutoInstall(val: boolean): void {
-        mobx.action(() => {
-            this.tempAutoInstall.set(val);
         })();
     }
 
@@ -438,19 +428,6 @@ class CreateRemote extends React.Component<{ model: RemotesModalModel; remoteEdi
                         </div>
                     </div>
                 </div>
-                <div className="settings-field" style={{ marginTop: 10 }}>
-                    <div className="settings-label">
-                        <div>Auto Install</div>
-                        <div className="flex-spacer" />
-                        <InfoMessage width={350}>
-                            If selected, will try to auto-install the mshell client if it is not installed or out of
-                            date.
-                        </InfoMessage>
-                    </div>
-                    <div className="settings-input">
-                        <Toggle checked={this.tempAutoInstall.get()} onChange={this.handleChangeAutoInstall} />
-                    </div>
-                </div>
                 <If condition={!util.isBlank(this.getErrorStr())}>
                     <div className="settings-field settings-error">Error: {this.getErrorStr()}</div>
                 </If>
@@ -484,7 +461,6 @@ class EditRemoteSettings extends React.Component<
     tempManualMode: OV<boolean>;
     tempPassword: OV<string>;
     tempKeyFile: OV<string>;
-    tempAutoInstall: OV<boolean>;
 
     constructor(props: any) {
         super(props);
@@ -496,7 +472,6 @@ class EditRemoteSettings extends React.Component<
         this.tempPassword = mobx.observable.box(remoteEdit.haspassword ? PasswordUnchangedSentinel : "", {
             name: "EditRemoteSettings-password",
         });
-        this.tempAutoInstall = mobx.observable.box(!!remote.autoinstall, { name: "EditRemoteSettings-autoinstall" });
     }
 
     componentDidUpdate() {
@@ -553,13 +528,6 @@ class EditRemoteSettings extends React.Component<
     }
 
     @boundMethod
-    handleChangeAutoInstall(val: boolean): void {
-        mobx.action(() => {
-            this.tempAutoInstall.set(val);
-        })();
-    }
-
-    @boundMethod
     canResetPw(): boolean {
         let { remoteEdit } = this.props;
         if (remoteEdit == null) {
@@ -608,9 +576,6 @@ class EditRemoteSettings extends React.Component<
         }
         if (!util.isStrEq(this.tempConnectMode.get(), remote.connectmode)) {
             kwargs["connectmode"] = this.tempConnectMode.get();
-        }
-        if (!util.isBoolEq(this.tempAutoInstall.get(), remote.autoinstall)) {
-            kwargs["autoinstall"] = this.tempAutoInstall.get() ? "1" : "0";
         }
         if (Object.keys(kwargs).length == 0) {
             return;
@@ -758,19 +723,6 @@ class EditRemoteSettings extends React.Component<
                         </div>
                     </div>
                 </div>
-                <div className="settings-field" style={{ marginTop: 10 }}>
-                    <div className="settings-label">
-                        <div>Auto Install</div>
-                        <div className="flex-spacer" />
-                        <InfoMessage width={350}>
-                            If selected, will try to auto-install the mshell client if it is not installed or out of
-                            date.
-                        </InfoMessage>
-                    </div>
-                    <div className="settings-input">
-                        <Toggle checked={this.tempAutoInstall.get()} onChange={this.handleChangeAutoInstall} />
-                    </div>
-                </div>
                 <div className="settings-field mt-3">
                     <div className="settings-label">Actions</div>
                     <div className="settings-input">
@@ -890,9 +842,6 @@ class RemoteDetailView extends React.Component<{ model: RemotesModalModel; remot
         }
         if (statusStr == null) {
             return null;
-        }
-        if (remote.autoinstall) {
-            statusStr = statusStr + " (autoinstall)";
         }
         return (
             <div key="install-status" className="settings-field">
