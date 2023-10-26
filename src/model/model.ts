@@ -15,6 +15,7 @@ import {
     isModKeyPress,
 } from "../util/util";
 import { TermWrap } from "../plugins/terminal/term";
+import { PluginModel } from "../plugins/plugins";
 import type {
     SessionDataType,
     LineType,
@@ -1865,8 +1866,6 @@ class SpecialHistoryViewLineContainer {
     }
 }
 
-class PluginsViewModel {}
-
 const HistoryPageSize = 50;
 
 class HistoryViewModel {
@@ -2422,19 +2421,30 @@ class BookmarksModel {
             return;
         }
     }
-    return;
 }
 
 class PluginsModel {
+    selectedPlugin: OV<RendererPluginType> = mobx.observable.box(null, { name: "selectedPlugin" });
+
     showPluginsView(): void {
         mobx.action(() => {
             this.reset();
             GlobalModel.activeMainView.set("plugins");
+            const allPlugins = PluginModel.allPlugins();
+            this.selectedPlugin.set(allPlugins.length > 0 ? allPlugins[0] : null);
+        })();
+    }
+
+    setSelectedPlugin(plugin: RendererPluginType): void {
+        mobx.action(() => {
+            this.selectedPlugin.set(plugin);
         })();
     }
 
     reset(): void {
-        mobx.action(() => {})();
+        mobx.action(() => {
+            this.selectedPlugin.set(null);
+        })();
     }
 
     closeView(): void {

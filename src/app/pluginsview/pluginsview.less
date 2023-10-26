@@ -43,7 +43,11 @@
                 max-width: 323px;
                 border-radius: 8px;
                 margin-bottom: 1em;
-                border: 1px solid @base-border;
+                border: 1px solid transparent;
+                &.selected {
+                    border-color: @prompt-green;
+                }
+
                 .plugin-summary-header {
                     display: flex;
                     .plugin-summary-icon {

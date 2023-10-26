@@ -328,6 +328,29 @@ class SettingsError extends React.Component<{ errorMessage: OV<string> }, {}> {
     }
 }
 
+class ImageDisplay extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            imageUrl: null,
+        };
+    }
+
+    componentDidMount() {
+        import(this.props.path)
+            .then((image) => this.setState({ imageUrl: image.default }))
+            .catch((error) => {
+                console.error("Image not found:", error);
+                this.setState({ imageUrl: null });
+            });
+    }
+
+    render() {
+        if (!this.state.imageUrl) return null;
+        return <img src={this.state.imageUrl} alt={this.props.imageName} />;
+    }
+}
+
 export {
     CmdStrCode,
     Toggle,
@@ -337,4 +360,5 @@ export {
     InfoMessage,
     Markdown,
     SettingsError,
+    ImageDisplay,
 };

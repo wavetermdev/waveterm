@@ -7,6 +7,7 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { GlobalModel } from "../../model/model";
 import { PluginModel } from "../../plugins/plugins";
+import { ImageDisplay } from "../common/common";
 
 import { ReactComponent as XmarkIcon } from "../assets/icons/line/xmark.svg";
 
@@ -16,19 +17,40 @@ import "./pluginsview.less";
 class PluginsView extends React.Component<{}, {}> {
     @boundMethod
     closeView(): void {
-        GlobalModel.bookmarksModel.closeView();
-    }
-
-    async getSVG(path: string) {
-        // '../../plugins/markdown/icon.svg'
-        const icon = await import(path);
-        return icon.ReactComponent;
+        GlobalModel.pluginsModel.closeView();
     }
 
     render() {
         if (GlobalModel.activeMainView.get() !== "plugins") {
             return <></>;
         }
+        const { pluginsModel } = GlobalModel;
+        console.log(`rendering ${pluginsModel.selectedPlugin.get().name}`);
+        const PluginList = () => (
+            <div className="plugins-list">
+                {PluginModel.allPlugins().map((plugin, i) => (
+                    <div
+                        key={i}
+                        className={`plugin-summary hoverEffect ${
+                            plugin.name === pluginsModel.selectedPlugin.get().name ? "selected" : ""
+                        }`}
+                        onClick={() => pluginsModel.setSelectedPlugin(plugin)}
+                    >
+                        <div className="plugin-summary-header">
+                            <div className="plugin-summary-icon">{plugin.getIcon()}</div>
+                            <div className="plugin-summary-info">
+                                <div className="plugin-summary-title">{plugin.title}</div>
+                                <div className="plugin-summary-vendor">{plugin.vendor}</div>
+                            </div>
+                        </div>
+                        <div className="plugin-summary-body">{plugin.summary}</div>
+                    </div>
+                ))}
+            </div>
+        );
+
+        const PluginDetails = () => <div className="plugins-details"></div>;
+
         return (
             <div className="plugins-view">
                 <div className="header">
@@ -38,21 +60,8 @@ class PluginsView extends React.Component<{}, {}> {
                     </div>
                 </div>
                 <div className="body">
-                    <div className="plugins-list">
-                        {PluginModel.allPlugins().map(({ title, vendor, summary, getIcon }, i) => (
-                            <div key={i} className="plugin-summary">
-                                <div className="plugin-summary-header">
-                                    <div className="plugin-summary-icon">{getIcon()}</div>
-                                    <div className="plugin-summary-info">
-                                        <div className="plugin-summary-title">{title}</div>
-                                        <div className="plugin-summary-vendor">{vendor}</div>
-                                    </div>
-                                </div>
-                                <div className="plugin-summary-body">{summary}</div>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="plugins-details"></div>
+                    <PluginList />
+                    <PluginDetails />
                 </div>
             </div>
         );
