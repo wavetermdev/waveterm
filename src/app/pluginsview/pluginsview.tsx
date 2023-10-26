@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { GlobalModel } from "../../model/model";
 import { PluginModel } from "../../plugins/plugins";
-import { ImageDisplay } from "../common/common";
+import { ImageDisplay, Markdown } from "../common/common";
 
 import { ReactComponent as XmarkIcon } from "../assets/icons/line/xmark.svg";
 
@@ -62,6 +62,9 @@ class PluginsView extends React.Component<{}, {}> {
                     </div>
                     <div className="plugin-summary-body">{plugin.summary}</div>
                     <div className="plugin-screenshots"></div>
+                    <div className="plugin-readme">
+                        <Markdown text={plugin.readme} />
+                    </div>
                 </div>
             );
         };

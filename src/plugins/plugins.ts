@@ -97,12 +97,25 @@ class PluginModelClass {
                 throw new Error(sprintf("plugin with name %s already registered", plugin.name));
             }
             this.rendererPlugins.push(plugin);
-            // use dynamic import to attach the meta, icon and screenshot. ensure that the 'name' matches the dir the plugin is in
-            plugin.screenshotPath = `../plugins/code/screenshots/1.png`;
-            import(`../plugins/${plugin.name}/icon.svg`).then((icon) => (plugin.getIcon = icon.ReactComponent));
-            import(`../plugins/${plugin.name}/meta.json`).then((json) => Object.assign(plugin, json));
+            // use dynamic import to attach the icon etc. ensure that the 'name' matches the dir the plugin is in
+            this.loadPluginResources(plugin).then(() => console.log(`Plugin ${plugin.name} is ready`));
             return plugin;
         });
+    }
+
+    async loadPluginResources(plugin) {
+        const handleImportError = (error, resourceType) =>
+            console.warn(`Failed to load ${resourceType} for plugin ${plugin.name}:`, error);
+        const iconPromise = import(`../plugins/${plugin.name}/icon.svg`)
+            .then((icon) => (plugin.getIcon = icon.ReactComponent))
+            .catch((error) => handleImportError(error, "icon"));
+        const readmePromise = import(`../plugins/${plugin.name}/readme.md`)
+            .then((content) => (plugin.readme = content.default))
+            .catch((error) => handleImportError(error, "readme"));
+        const metaPromise = import(`../plugins/${plugin.name}/meta.json`)
+            .then((json) => Object.assign(plugin, json))
+            .catch((error) => handleImportError(error, "meta"));
+        return Promise.allSettled([iconPromise, readmePromise, metaPromise]);
     }
 
     getRendererPluginByName(name: string): RendererPluginType {

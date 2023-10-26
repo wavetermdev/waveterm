@@ -67,6 +67,10 @@ var webCommon = {
                 test: /\.svg$/,
                 use: ["@svgr/webpack", "file-loader"],
             },
+            {
+                test: /\.md$/,
+                use: "raw-loader",
+            },
         ],
     },
     resolve: {
@@ -128,4 +132,4 @@ if (BundleAnalyzerPlugin != null) {
     webProd.plugins.push(new BundleAnalyzerPlugin());
 }
 
-module.exports = {webDev: webDev, webProd: webProd};
+module.exports = { webDev: webDev, webProd: webProd };
