@@ -33,9 +33,9 @@ All commands and output will be deleted, and removed from history.  To hide the 
 `.trim();
 
 const SessionDeleteMessage = `
-Are you sure you want to delete this session?
+Are you sure you want to delete this workspace?
 
-All commands and output will be deleted, and removed from history.  To hide the session, and retain the commands in history, use 'archive'.
+All commands and output will be deleted, and removed from history.  To hide the workspace, and retain the commands in history, use 'archive'.
 `.trim();
 
 const WebShareConfirmMarkdown = `
@@ -427,7 +427,7 @@ class SessionSettingsModal extends React.Component<{ sessionId: string }, {}> {
                             <div className="settings-label">
                                 <div>Archived</div>
                                 <InfoMessage width={400}>
-                                    Archive will hide the session from the active menu. Commands and output will be
+                                    Archive will hide the workspace from the active menu. Commands and output will be
                                     retained in history.
                                 </InfoMessage>
                             </div>
@@ -439,7 +439,7 @@ class SessionSettingsModal extends React.Component<{ sessionId: string }, {}> {
                             <div className="settings-label">
                                 <div>Actions</div>
                                 <InfoMessage width={400}>
-                                    Delete will remove the session, removing all commands and output from history.
+                                    Delete will remove the workspace, removing all commands and output from history.
                                 </InfoMessage>
                             </div>
                             <div className="settings-input">
@@ -447,7 +447,7 @@ class SessionSettingsModal extends React.Component<{ sessionId: string }, {}> {
                                     onClick={this.handleDeleteSession}
                                     className="button is-prompt-danger is-outlined is-small"
                                 >
-                                    Delete Session
+                                    Delete Workspace
                                 </div>
                             </div>
                         </div>
