@@ -58,10 +58,10 @@ const CSVRenderer: FC<Props> = (props: Props) => {
     const [state, setState] = useState<State>({
         content: null,
         showReadonly: true,
-        tbodyHeight: savedHeight,
+        tbodyHeight: 0,
     });
     const [isFileTooLarge, setIsFileTooLarge] = useState<boolean>(false);
-    const [isRendererLoaded, setRendererLoaded] = useState(false);
+    const [tableLoaded, setTableLoaded] = useState(false);
     const { listeners } = useTableNav();
 
     const filePath = lineState["prompt:file"];
@@ -160,7 +160,7 @@ const CSVRenderer: FC<Props> = (props: Props) => {
 
         if (rowRef.current.length === parsedData.length) {
             timer = setTimeout(() => {
-                setRendererLoaded(true);
+                setTableLoaded(true);
             }, 50); // Delay a bit to make sure the rows are rendered
         }
 
@@ -190,7 +190,10 @@ const CSVRenderer: FC<Props> = (props: Props) => {
     }
 
     return (
-        <div className={cn("csv-renderer", { loaded: isRendererLoaded })}>
+        <div
+            className={cn("csv-renderer", { show: tableLoaded })}
+            style={{ height: tableLoaded ? "auto" : savedHeight }}
+        >
             <table className="probe">
                 <tbody>
                     <tr ref={probeRef}>
