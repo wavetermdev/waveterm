@@ -67,6 +67,7 @@
                 .remote-status-light {
                     width: 2em;
                     margin-top: 0.7em;
+                    margin-right: 0.7em;
                     font-size: 0.8em;
                 }
 
@@ -76,6 +77,7 @@
                     .remote-name-primary {
                         font-weight: bold;
                         max-width: 10em;
+                        margin-right: 1em;
                     }
 
                     .remote-name-secondary {
@@ -264,6 +266,69 @@
             color: @term-white;
             z-index: 110;
             padding: 4px;
+        }
+    }
+}
+
+.remotes-inline {
+    .icon {
+        width: 1em;
+        height: 1em;
+        fill: @base-color;
+        margin: 0 0 0 1em !important;
+        vertical-align: middle;
+    }
+    .dropdown {
+        margin-top: 1em;
+        .button {
+            color: @base-color;
+            border: none !important;
+            padding: 0 1em 0 0.2em;
+            &:hover,
+            &:focus {
+                border: none !important;
+                box-shadow: none;
+            }
+            .remote-name {
+                vertical-align: bottom;
+                .remote-status {
+                    top: -2px;
+                    left: 4px;
+                    vertical-align: middle;
+                    font-size: 0.85em;
+                }
+            }
+        }
+        .dropdown-content {
+            background: @background-session-components-solid;
+        }
+        .dropdown-item {
+            min-width: max-content;
+        }
+        &.is-active:hover {
+            box-shadow: none;
+        }
+    }
+    .remote-status-light {
+        display: inline;
+        margin-right: 0.5em;
+    }
+    .remote-name {
+        display: inline;
+        flex-grow: 1;
+        vertical-align: super;
+
+        .remote-name-primary {
+            color: @base-color;
+            max-width: inherit;
+            margin-right: 1em;
+            display: inline;
+        }
+
+        .remote-name-secondary {
+            color: @disabled-color;
+            max-width: inherit;
+            display: inline;
         }
     }
 }

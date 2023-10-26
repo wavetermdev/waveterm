@@ -6,15 +6,18 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
-import { If, For } from "tsx-control-statements/components";
+import { If } from "tsx-control-statements/components";
 import cn from "classnames";
 import { debounce } from "throttle-debounce";
 import dayjs from "dayjs";
-import type { LineType, RenderModeType, LineFactoryProps } from "../../../types/types";
+import { GlobalCommandRunner } from "../../../model/model";
+import type { LineType, RenderModeType, LineFactoryProps, CommandRtnType } from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
+import { InlineSettingsTextEdit } from "../../common/common";
 import { GlobalModel, ScreenLines, Screen } from "../../../model/model";
 import { Line } from "../../line/linecomps";
 import { LinesView } from "../../line/linesview";
+import { ScreenSettingsModal } from "../../common/modals/settings";
 
 import "./screenview.less";
 import "./tabs.less";
@@ -181,11 +184,7 @@ class ScreenWindowView extends React.Component<{ screen: Screen }, {}> {
         if (cdata == null) {
             return this.renderError("loading client data", true);
         }
-        let idx = 0;
-        let line: LineType = null;
-        let session = GlobalModel.getSessionById(screen.sessionId);
         let isActive = screen.isActive();
-        let selectedLine = screen.getSelectedLine();
         let lines = win.getNonArchivedLines();
         let renderMode = this.renderMode.get();
         return (
@@ -204,6 +203,14 @@ class ScreenWindowView extends React.Component<{ screen: Screen }, {}> {
                         </If>
                     </div>
                 </div>
+                <If condition={lines.length == 0}>
+                    <ScreenSettingsModal
+                        key={screen.sessionId + ":" + screen.screenId}
+                        sessionId={screen.sessionId}
+                        screenId={screen.screenId}
+                        inline={true}
+                    />
+                </If>
                 <If condition={screen.isWebShared()}>
                     <div key="share-tag" className="share-tag">
                         <If condition={this.shareCopied.get()}>
@@ -239,15 +246,6 @@ class ScreenWindowView extends React.Component<{ screen: Screen }, {}> {
                         renderMode={renderMode}
                         lineFactory={this.buildLineComponent}
                     />
-                </If>
-                <If condition={lines.length == 0}>
-                    <div key="window-empty" className="window-empty">
-                        <div>
-                            <code>
-                                [workspace="{session.name.get()}" screen="{screen.name.get()}"]
-                            </code>
-                        </div>
-                    </div>
                 </If>
             </div>
         );

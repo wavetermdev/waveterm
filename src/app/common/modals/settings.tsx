@@ -10,6 +10,7 @@ import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, TabColors } from "../../../model/model";
 import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage } from "../common";
 import { LineType, RendererPluginType, ClientDataType, CommandRtnType } from "../../../types/types";
+import { RemotesSelector } from "../../connections/connections";
 import { PluginModel } from "../../../plugins/plugins";
 import * as util from "../../../util/util";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
@@ -32,9 +33,9 @@ All commands and output will be deleted, and removed from history.  To hide the 
 `.trim();
 
 const SessionDeleteMessage = `
-Are you sure you want to delete this session?
+Are you sure you want to delete this workspace?
 
-All commands and output will be deleted, and removed from history.  To hide the session, and retain the commands in history, use 'archive'.
+All commands and output will be deleted, and removed from history.  To hide the workspace, and retain the commands in history, use 'archive'.
 `.trim();
 
 const WebShareConfirmMarkdown = `
@@ -59,7 +60,7 @@ function commandRtnHandler(prtn: Promise<CommandRtnType>, errorMessage: OV<strin
 }
 
 @mobxReact.observer
-class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId: string }, {}> {
+class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId: string; inline?: boolean }, {}> {
     shareCopied: OV<boolean> = mobx.observable.box(false, { name: "ScreenSettings-shareCopied" });
     errorMessage: OV<string> = mobx.observable.box(null, { name: "ScreenSettings-errorMessage" });
 
@@ -204,30 +205,38 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
     }
 
     render() {
-        let { sessionId, screenId } = this.props;
+        let { sessionId, screenId, inline } = this.props;
         let screen = GlobalModel.getScreenById(sessionId, screenId);
         if (screen == null) {
             return null;
         }
         let color: string = null;
         return (
-            <div className={cn("modal screen-settings-modal settings-modal prompt-modal is-active")}>
-                <div className="modal-background" />
-                <div className="modal-content">
-                    <If condition={this.shareCopied.get()}>
-                        <div className="copied-indicator" />
-                    </If>
-                    <header>
-                        <div className="modal-title">screen settings ({screen.name.get()})</div>
-                        <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
-                            <XmarkIcon />
-                        </div>
-                    </header>
+            <div
+                className={
+                    inline
+                        ? "screen-settings-inline"
+                        : cn("modal screen-settings-modal settings-modal prompt-modal is-active")
+                }
+            >
+                {!inline && <div className="modal-background" />}
+                <div className={inline ? "inline-content" : "modal-content"}>
+                    {this.shareCopied.get() && <div className="copied-indicator" />}
+                    {!inline && (
+                        <header>
+                            <div className="modal-title">screen settings ({screen.name.get()})</div>
+                            <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
+                                <XmarkIcon />
+                            </div>
+                        </header>
+                    )}
                     <div className="inner-content">
-                        <div className="settings-field">
-                            <div className="settings-label">Screen Id</div>
-                            <div className="settings-input">{screen.screenId}</div>
-                        </div>
+                        {!inline && (
+                            <div className="settings-field">
+                                <div className="settings-label">Screen Id</div>
+                                <div className="settings-input">{screen.screenId}</div>
+                            </div>
+                        )}
                         <div className="settings-field">
                             <div className="settings-label">Name</div>
                             <div className="settings-input">
@@ -263,39 +272,52 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
                             </div>
                         </div>
                         <div className="settings-field">
-                            <div className="settings-label">
-                                <div>Archived</div>
-                                <InfoMessage width={400}>
-                                    Archive will hide the screen tab. Commands and output will be retained in history.
-                                </InfoMessage>
-                            </div>
+                            <div className="settings-label">Connection</div>
                             <div className="settings-input">
-                                <Toggle checked={screen.archived.get()} onChange={this.handleChangeArchived} />
+                                <RemotesSelector model={GlobalModel.remotesModalModel} isChangeRemoteOnSelect={true} />
                             </div>
                         </div>
-                        <div className="settings-field">
-                            <div className="settings-label">
-                                <div>Actions</div>
-                                <InfoMessage width={400}>
-                                    Delete will remove the screen, removing all commands and output from history.
-                                </InfoMessage>
-                            </div>
-                            <div className="settings-input">
-                                <div
-                                    onClick={this.handleDeleteScreen}
-                                    className="button is-prompt-danger is-outlined is-small"
-                                >
-                                    Delete Screen
+                        {!inline && (
+                            <div className="settings-field">
+                                <div className="settings-label">
+                                    <div>Archived</div>
+                                    <InfoMessage width={400}>
+                                        Archive will hide the screen tab. Commands and output will be retained in
+                                        history.
+                                    </InfoMessage>
+                                </div>
+                                <div className="settings-input">
+                                    <Toggle checked={screen.archived.get()} onChange={this.handleChangeArchived} />
                                 </div>
                             </div>
-                        </div>
+                        )}
+                        {!inline && (
+                            <div className="settings-field">
+                                <div className="settings-label">
+                                    <div>Actions</div>
+                                    <InfoMessage width={400}>
+                                        Delete will remove the screen, removing all commands and output from history.
+                                    </InfoMessage>
+                                </div>
+                                <div className="settings-input">
+                                    <div
+                                        onClick={this.handleDeleteScreen}
+                                        className="button is-prompt-danger is-outlined is-small"
+                                    >
+                                        Delete Screen
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                         <SettingsError errorMessage={this.errorMessage} />
                     </div>
-                    <footer>
-                        <div onClick={this.closeModal} className="button is-prompt-green is-outlined is-small">
-                            Close
-                        </div>
-                    </footer>
+                    {!inline && (
+                        <footer>
+                            <div onClick={this.closeModal} className="button is-prompt-green is-outlined is-small">
+                                Close
+                            </div>
+                        </footer>
+                    )}
                 </div>
             </div>
         );
@@ -405,7 +427,7 @@ class SessionSettingsModal extends React.Component<{ sessionId: string }, {}> {
                             <div className="settings-label">
                                 <div>Archived</div>
                                 <InfoMessage width={400}>
-                                    Archive will hide the session from the active menu. Commands and output will be
+                                    Archive will hide the workspace from the active menu. Commands and output will be
                                     retained in history.
                                 </InfoMessage>
                             </div>
@@ -417,7 +439,7 @@ class SessionSettingsModal extends React.Component<{ sessionId: string }, {}> {
                             <div className="settings-label">
                                 <div>Actions</div>
                                 <InfoMessage width={400}>
-                                    Delete will remove the session, removing all commands and output from history.
+                                    Delete will remove the workspace, removing all commands and output from history.
                                 </InfoMessage>
                             </div>
                             <div className="settings-input">
@@ -425,7 +447,7 @@ class SessionSettingsModal extends React.Component<{ sessionId: string }, {}> {
                                     onClick={this.handleDeleteSession}
                                     className="button is-prompt-danger is-outlined is-small"
                                 >
-                                    Delete Session
+                                    Delete Workspace
                                 </div>
                             </div>
                         </div>
@@ -628,7 +650,7 @@ class ClientSettingsModal extends React.Component<{}, {}> {
     renderFontSizeDropdown(): any {
         let availableFontSizes = [8, 9, 10, 11, 12, 13, 14, 15];
         let fsize: number = 0;
-        let curSize = GlobalModel.termFontSize.get()
+        let curSize = GlobalModel.termFontSize.get();
         return (
             <div className={cn("dropdown", "font-size-dropdown", { "is-active": this.fontSizeDropdownActive.get() })}>
                 <div className="dropdown-trigger">

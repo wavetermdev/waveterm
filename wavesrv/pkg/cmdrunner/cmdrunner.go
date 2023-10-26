@@ -21,6 +21,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
@@ -33,7 +34,6 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
-	"github.com/google/uuid"
 )
 
 const (
@@ -1116,7 +1116,7 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	}
 	editArgs, err := parseRemoteEditArgs(true, pk, false)
 	if err != nil {
-		return makeRemoteEditErrorReturn_new(visualEdit, fmt.Errorf("/remote:new %v", err))
+		return nil, fmt.Errorf("/remote:new %v", err)
 	}
 	r := &sstore.RemoteType{
 		RemoteId:            scbase.GenPromptUUID(),
@@ -1134,7 +1134,7 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	}
 	err = remote.AddRemote(ctx, r, true)
 	if err != nil {
-		return makeRemoteEditErrorReturn_new(visualEdit, fmt.Errorf("cannot create remote %q: %v", r.RemoteCanonicalName, err))
+		return nil, fmt.Errorf("cannot create remote %q: %v", r.RemoteCanonicalName, err)
 	}
 	// SUCCESS
 	return &sstore.ModelUpdate{
@@ -1579,6 +1579,18 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 	err = sstore.UpdateCurRemote(ctx, ids.ScreenId, *rptr)
 	if err != nil {
 		return nil, fmt.Errorf("/%s error: cannot update curremote: %w", GetCmdStr(pk), err)
+	}
+	noHist := resolveBool(pk.Kwargs["nohist"], false)
+	if noHist {
+		screen, err := sstore.GetScreenById(ctx, ids.ScreenId)
+		if err != nil {
+			return nil, fmt.Errorf("/% error: cannot resolve screen for update: %w", err)
+		}
+		update := &sstore.ModelUpdate{
+			Screens:     []*sstore.ScreenType{screen},
+			Interactive: pk.Interactive,
+		}
+		return update, nil
 	}
 	outputStr := fmt.Sprintf("connected to %s", GetFullRemoteDisplayName(rptr, rstate))
 	cmd, err := makeStaticCmd(ctx, GetCmdStr(pk), ids, pk.GetRawStr(), []byte(outputStr))
