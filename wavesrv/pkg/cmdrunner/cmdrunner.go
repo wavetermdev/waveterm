@@ -1047,7 +1047,6 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 		err := fmt.Errorf("invalid connectmode %q: valid modes are %s", connectMode, formatStrs([]string{sstore.ConnectModeStartup, sstore.ConnectModeAuto, sstore.ConnectModeManual}, "or", false))
 		return nil, err
 	}
-	autoInstall := resolveBool(pk.Kwargs["autoinstall"], true)
 	keyFile, err := resolveFile(pk.Kwargs["key"])
 	if err != nil {
 		return nil, fmt.Errorf("invalid ssh keyfile %q: %v", pk.Kwargs["key"], err)
@@ -1076,9 +1075,6 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 		}
 		editMap[sstore.RemoteField_ConnectMode] = connectMode
 	}
-	if _, found := pk.Kwargs[sstore.RemoteField_AutoInstall]; found {
-		editMap[sstore.RemoteField_AutoInstall] = autoInstall
-	}
 	if _, found := pk.Kwargs["key"]; found {
 		if isLocal {
 			return nil, fmt.Errorf("Cannot edit ssh key file for 'local' remote")
@@ -1099,7 +1095,7 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 		SSHOpts:       sshOpts,
 		ConnectMode:   connectMode,
 		Alias:         alias,
-		AutoInstall:   autoInstall,
+		AutoInstall:   true,
 		CanonicalName: canonicalName,
 		SSHKeyFile:    keyFile,
 		SSHPassword:   sshPassword,
@@ -1742,8 +1738,20 @@ func simpleCompCommandMeta(ctx context.Context, prefix string, compCtx comp.Comp
 		compsMeta, _ := simpleCompMeta(ctx, prefix, compCtx, nil)
 		return comp.CombineCompReturn(comp.CGTypeCommandMeta, compsCmd, compsMeta), nil
 	} else {
-		return comp.DoSimpleComp(ctx, comp.CGTypeCommand, prefix, compCtx, nil)
+		compsCmd, _ := comp.DoSimpleComp(ctx, comp.CGTypeCommand, prefix, compCtx, nil)
+		compsBareCmd, _ := simpleCompBareCmds(ctx, prefix, compCtx, nil)
+		return comp.CombineCompReturn(comp.CGTypeCommand, compsCmd, compsBareCmd), nil
 	}
+}
+
+func simpleCompBareCmds(ctx context.Context, prefix string, compCtx comp.CompContext, args []interface{}) (*comp.CompReturn, error) {
+	rtn := comp.CompReturn{}
+	for _, bmc := range BareMetaCmds {
+		if strings.HasPrefix(bmc.CmdStr, prefix) {
+			rtn.Entries = append(rtn.Entries, comp.CompEntry{Word: bmc.CmdStr, IsMetaCmd: true})
+		}
+	}
+	return &rtn, nil
 }
 
 func simpleCompMeta(ctx context.Context, prefix string, compCtx comp.CompContext, args []interface{}) (*comp.CompReturn, error) {

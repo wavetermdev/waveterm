@@ -499,7 +499,7 @@ func getCompType(compPos shparse.CompletionPos) string {
 		return CGTypeCommandMeta
 
 	case shparse.CompTypeCommand:
-		return CGTypeCommand
+		return CGTypeCommandMeta
 
 	case shparse.CompTypeVar:
 		return CGTypeVariable

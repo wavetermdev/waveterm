@@ -25,6 +25,7 @@ import { RemotesModal } from "./connections/connections";
 import { TosModal } from "./common/modals/modals";
 import { MainSideBar } from "./sidebar/MainSideBar";
 import { DisconnectedModal, ClientStopModal, AlertModal, WelcomeModal } from "./common/modals/modals";
+import { ErrorBoundary } from "./common/error/errorboundary";
 import "./app.less";
 
 dayjs.extend(localizedFormat);
@@ -82,12 +83,13 @@ class App extends React.Component<{}, {}> {
         let disconnected = !GlobalModel.ws.open.get() || !GlobalModel.waveSrvRunning.get();
         let hasClientStop = GlobalModel.getHasClientStop();
         let dcWait = this.dcWait.get();
+        let platform = GlobalModel.getPlatform();
         if (disconnected || hasClientStop) {
             if (!dcWait) {
                 setTimeout(() => this.updateDcWait(true), 1500);
             }
             return (
-                <div id="main" onContextMenu={this.handleContextMenu}>
+                <div id="main" className={"platform-" + platform} onContextMenu={this.handleContextMenu}>
                     <div className="main-content">
                         <MainSideBar />
                         <div className="session-view" />
@@ -108,13 +110,15 @@ class App extends React.Component<{}, {}> {
         }
         //console.log(`GlobalModel.activeMainView.get() = ${GlobalModel.activeMainView.get()}`); // @mike - if I remove this, I cant see plugins
         return (
-            <div id="main" onContextMenu={this.handleContextMenu}>
+            <div id="main" className={"platform-" + platform} onContextMenu={this.handleContextMenu}>
                 <div className="main-content">
                     <MainSideBar />
-                    <PluginsView />
-                    <WorkspaceView />
-                    <HistoryView />
-                    <BookmarksView />
+                    <ErrorBoundary>
+                        <PluginsView />
+                        <WorkspaceView />
+                        <HistoryView />
+                        <BookmarksView />
+                    </ErrorBoundary>
                 </div>
                 <AlertModal />
                 <If condition={GlobalModel.needsTos()}>

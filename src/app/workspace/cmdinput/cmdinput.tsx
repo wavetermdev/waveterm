@@ -68,6 +68,11 @@ class CmdInput extends React.Component<{}, {}> {
     }
 
     @boundMethod
+    cmdInputClick(): void {
+        GlobalModel.inputModel.giveFocus();
+    }
+
+    @boundMethod
     clickHistoryHint(e: any): void {
         e.preventDefault();
         e.stopPropagation();
@@ -109,7 +114,11 @@ class CmdInput extends React.Component<{}, {}> {
         let inputMode: string = inputModel.inputMode.get();
         let textAreaInputKey = screen == null ? "null" : screen.screenId;
         return (
-            <div ref={this.cmdInputRef} className={cn("cmd-input", { "has-info": infoShow }, { active: focusVal })}>
+            <div
+                ref={this.cmdInputRef}
+                className={cn("cmd-input", { "has-info": infoShow }, { active: focusVal })}
+                onClick={this.cmdInputClick}
+            >
                 <div key="minmax" onClick={this.onInfoToggle} className="input-minmax-control">
                     <If condition={infoShow || historyShow}>
                         <i className="fa-sharp fa-solid fa-chevron-down" />
@@ -156,10 +165,10 @@ class CmdInput extends React.Component<{}, {}> {
                         </div>
                     </If>
                     <TextAreaInput key={textAreaInputKey} onHeightChange={this.handleInnerHeightUpdate} />
-                    <div className="control cmd-exec" onClick={inputModel.uiSubmitCommand}>
+                    <div className="control cmd-exec">
                         {/**<div onClick={inputModel.toggleExpandInput} className="hint-item color-white">
                             {inputModel.inputExpanded.get() ? "shrink" : "expand"} input ({renderCmdText("E")})
-                        </div>**/}
+                            </div>**/}
                         {!focusVal && (
                             <div onClick={this.clickFocusInputHint} className="cmd-btn hoverEffect">
                                 focus input ({renderCmdText("I")})
@@ -171,6 +180,7 @@ class CmdInput extends React.Component<{}, {}> {
                             </div>
                         )}
                         <ExecIcon
+                            onClick={inputModel.uiSubmitCommand}
                             className={`icon ${inputModel.getCurLine().trim() === "" ? "disabled" : "hoverEffect"}`}
                         />
                     </div>

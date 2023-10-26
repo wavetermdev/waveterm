@@ -19,6 +19,9 @@ class InfoMsg extends React.Component<{}, {}> {
         if (s.startsWith("^/")) {
             return s.substr(1);
         }
+        if (s.startsWith("^")) {
+            return s.substr(1);
+        }
         let slashIdx = s.lastIndexOf("/");
         if (slashIdx == s.length - 1) {
             slashIdx = s.lastIndexOf("/", slashIdx - 1);

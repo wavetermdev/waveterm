@@ -9,9 +9,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/wavetermdev/waveterm/waveshell/pkg/binpack"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/statediff"
+	"golang.org/x/mod/semver"
 )
 
 const ShellStatePackVersion = 0
@@ -61,6 +63,18 @@ func (state ShellState) EncodeAndHash() (string, []byte) {
 	binpack.PackValue(&buf, []byte(state.Funcs))
 	binpack.PackValue(&buf, []byte(state.Error))
 	return sha1Hash(buf.Bytes()), buf.Bytes()
+}
+
+// returns a string like "v4" ("" is an unparseable version)
+func GetBashMajorVersion(versionStr string) string {
+	if versionStr == "" {
+		return ""
+	}
+	fields := strings.Split(versionStr, " ")
+	if len(fields) < 2 {
+		return ""
+	}
+	return semver.Major(fields[1])
 }
 
 func (state ShellState) MarshalJSON() ([]byte, error) {

@@ -77,6 +77,7 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { getRendererContext, cmdStatusIsRunning } from "../app/line/lineutil";
 import { sortAndFilterRemotes } from "../util/util";
+import { MagicLayout } from "../app/magiclayout";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(localizedFormat);
@@ -170,6 +171,7 @@ type KeyModsType = {
 type ElectronApi = {
     getId: () => string;
     getIsDev: () => boolean;
+    getPlatform: () => string;
     getAuthKey: () => string;
     getWaveSrvStatus: () => boolean;
     restartWaveSrv: () => boolean;
@@ -644,10 +646,11 @@ class Screen {
             let height = termHeightFromRows(25, GlobalModel.termFontSize.get());
             return { width, height };
         }
-        // TODO calculate these sizes more deliberately
         let winSize = this.lastScreenSize;
-        let width = boundInt(winSize.width - 50, 100, 5000);
-        let height = boundInt(winSize.height - 120, 100, 5000);
+        let minSize = MagicLayout.ScreenMinContentSize;
+        let maxSize = MagicLayout.ScreenMaxContentSize;
+        let width = boundInt(winSize.width - MagicLayout.ScreenMaxContentWidthBuffer, minSize, maxSize);
+        let height = boundInt(winSize.height - MagicLayout.ScreenMaxContentHeightBuffer, minSize, maxSize);
         return { width, height };
     }
 
@@ -1981,7 +1984,7 @@ class HistoryViewModel {
             return;
         }
         let prtn = GlobalModel.showAlert({
-            message: "Deleting lines from history also deletes their content from your sessions.",
+            message: "Deleting lines from history also deletes their content from your workspaces.",
             confirm: true,
         });
         prtn.then((result) => {
@@ -2684,6 +2687,7 @@ class Model {
     waveSrvRunning: OV<boolean>;
     authKey: string;
     isDev: boolean;
+    platform: string;
     activeMainView: OV<"plugins" | "session" | "history" | "bookmarks" | "webshare"> = mobx.observable.box("session", {
         name: "activeMainView",
     });
@@ -2765,6 +2769,14 @@ class Model {
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
         document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
         setTimeout(() => this.getClientDataLoop(1), 10);
+    }
+
+    getPlatform(): string {
+        if (this.platform != null) {
+            return this.platform;
+        }
+        this.platform = getApi().getPlatform();
+        return this.platform;
     }
 
     needsTos(): boolean {
