@@ -664,7 +664,7 @@ class LineCmd extends React.Component<
                     </div>
                 </div>
                 <If condition={!this.isMinimised.get()}>
-                    <ErrorBoundary plugin={rendererPlugin.name} lineContext={lineutil.getRendererContext(line)}>
+                    <ErrorBoundary plugin={rendererPlugin?.name} lineContext={lineutil.getRendererContext(line)}>
                         <If condition={rendererPlugin == null && !isNoneRenderer}>
                             <TerminalRenderer
                                 screen={screen}

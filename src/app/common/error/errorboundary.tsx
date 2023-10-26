@@ -32,17 +32,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
             console.log(`${JSON.stringify(lineContext, null, 4)}\n`);
         }
 
-        console.log(`Error: ${error.message}\n`);
-        console.log(`Stack Trace: \n`);
-
-        const { componentStack } = errorInfo;
-        if (componentStack) {
-            const stackLines = componentStack.split("\n").filter((line) => line.trim() !== "");
-
-            stackLines.forEach((line) => {
-                console.log(line.trim());
-            });
-        }
+        console.log(error);
     }
 
     resetErrorBoundary = (): void => {
