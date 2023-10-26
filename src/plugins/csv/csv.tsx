@@ -145,7 +145,7 @@ const CSVRenderer: FC<Props> = (props: Props) => {
     useEffect(() => {
         if (probeRef.current && headerRef.current && parsedData.length) {
             const rowHeight = probeRef.current.offsetHeight;
-            const tbodyHeight = rowHeight * parsedData.length - rowHeight;
+            const tbodyHeight = rowHeight * parsedData.length;
             const headerHeight = headerRef.current.offsetHeight; // For some reason, if we subtract this from maxHeight, the table is too short
             const tbodyHeightLessHeader = tbodyHeight - headerHeight;
             const maxTbodyHeight = Math.min(maxHeight, tbodyHeightLessHeader);
