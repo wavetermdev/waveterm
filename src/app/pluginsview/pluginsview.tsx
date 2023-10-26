@@ -61,9 +61,7 @@ class PluginsView extends React.Component<{}, {}> {
                         </div>
                     </div>
                     <div className="plugin-summary-body">{plugin.summary}</div>
-                    <div className="plugin-screenshots">
-                        <ImageDisplay path={plugin.screenshotPath} />
-                    </div>
+                    <div className="plugin-screenshots"></div>
                 </div>
             );
         };
