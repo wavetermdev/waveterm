@@ -76,6 +76,7 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { getRendererContext, cmdStatusIsRunning } from "../app/line/lineutil";
 import { sortAndFilterRemotes } from "../util/util";
+import { MagicLayout } from "../app/magiclayout";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(localizedFormat);
@@ -644,10 +645,11 @@ class Screen {
             let height = termHeightFromRows(25, GlobalModel.termFontSize.get());
             return { width, height };
         }
-        // TODO calculate these sizes more deliberately
         let winSize = this.lastScreenSize;
-        let width = boundInt(winSize.width - 50, 100, 5000);
-        let height = boundInt(winSize.height - 120, 100, 5000);
+        let minSize = MagicLayout.ScreenMinContentSize;
+        let maxSize = MagicLayout.ScreenMaxContentSize;
+        let width = boundInt(winSize.width - MagicLayout.ScreenMaxContentWidthBuffer, minSize, maxSize);
+        let height = boundInt(winSize.height - MagicLayout.ScreenMaxContentHeightBuffer, minSize, maxSize);
         return { width, height };
     }
 

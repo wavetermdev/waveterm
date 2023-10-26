@@ -339,7 +339,7 @@ function mainResizeHandler(e, win) {
         return;
     }
     let bounds = win.getBounds();
-    console.log("resize/move", win.getBounds());
+    // console.log("resize/move", win.getBounds());
     let winSize = { width: bounds.width, height: bounds.height, top: bounds.y, left: bounds.x };
     let url = getBaseHostPort() + "/api/set-winsize";
     let fetchHeaders = getFetchHeaders();
