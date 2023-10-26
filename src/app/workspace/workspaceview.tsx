@@ -11,6 +11,7 @@ import { GlobalModel } from "../../model/model";
 import { CmdInput } from "./cmdinput/cmdinput";
 import { ScreenView } from "./screen/screenview";
 import { ScreenTabs } from "./screen/tabs";
+import { ErrorBoundary } from "../../app/common/error/errorboundary";
 import "./workspace.less";
 
 dayjs.extend(localizedFormat);
@@ -31,12 +32,15 @@ class WorkspaceView extends React.Component<{}, {}> {
             cmdInputHeight = 110;
         }
         let isHidden = GlobalModel.activeMainView.get() != "session";
+
         return (
             <div className={cn("session-view", { "is-hidden": isHidden })} data-sessionid={session.sessionId}>
                 <ScreenTabs session={session} />
-                <ScreenView screen={activeScreen} />
-                <div style={{ height: cmdInputHeight }}></div>
-                <CmdInput />
+                <ErrorBoundary>
+                    <ScreenView screen={activeScreen} />
+                    <div style={{ height: cmdInputHeight }}></div>
+                    <CmdInput />
+                </ErrorBoundary>
             </div>
         );
     }

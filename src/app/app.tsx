@@ -24,6 +24,7 @@ import { TosModal } from "./common/modals/modals";
 import { WorkspaceView } from "../app/workspace/workspaceview";
 import { MainSideBar } from "./sidebar/MainSideBar";
 import { DisconnectedModal, ClientStopModal, AlertModal, WelcomeModal } from "./common/modals/modals";
+import { ErrorBoundary } from "./common/error/errorboundary";
 import "./app.less";
 
 dayjs.extend(localizedFormat);
@@ -110,9 +111,11 @@ class App extends React.Component<{}, {}> {
             <div id="main" className={"platform-" + platform} onContextMenu={this.handleContextMenu}>
                 <div className="main-content">
                     <MainSideBar />
-                    <WorkspaceView />
-                    <HistoryView />
-                    <BookmarksView />
+                    <ErrorBoundary>
+                        <WorkspaceView />
+                        <HistoryView />
+                        <BookmarksView />
+                    </ErrorBoundary>
                 </div>
                 <AlertModal />
                 <If condition={GlobalModel.needsTos()}>
