@@ -10,11 +10,10 @@ import {
     flexRender,
     useReactTable,
     getCoreRowModel,
-    getFilteredRowModel,
     getSortedRowModel,
     FilterFn,
 } from "@tanstack/react-table";
-import { rankItem } from "@tanstack/match-sorter-utils";
+import { useTableNav } from "@table-nav/react";
 import SortUpIcon from "./img/sort-up-solid.svg";
 import SortDownIcon from "./img/sort-down-solid.svg";
 import cn from "classnames";
@@ -27,27 +26,16 @@ type CSVRow = {
     [key: string]: string | number;
 };
 
-const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
-    // Rank the item
-    const itemRank = rankItem(row.getValue(columnId), value);
-
-    // Store the itemRank info
-    addMeta({
-        itemRank,
-    });
-
-    // Return if the item should be filtered in/out
-    return itemRank.passed;
-};
-
 interface Props {
     data: Blob;
     readOnly: boolean;
     context: RendererContext;
     opts: RendererOpts;
     savedHeight: number;
-    scrollToBringIntoViewport: () => void;
     lineState: LineStateType;
+    shouldFocus: boolean;
+    rendererApi: RendererModelContainerApi;
+    scrollToBringIntoViewport: () => void;
 }
 
 interface State {
@@ -59,7 +47,7 @@ interface State {
 const columnHelper = createColumnHelper<any>();
 
 const CSVRenderer: FC<Props> = (props: Props) => {
-    const { data, opts, lineState, context, savedHeight } = props;
+    const { data, opts, lineState, context, shouldFocus, rendererApi, savedHeight } = props;
     const { height: maxHeight } = opts.maxSize;
 
     const csvCacheRef = useRef(new Map<string, string>());
@@ -70,11 +58,11 @@ const CSVRenderer: FC<Props> = (props: Props) => {
     const [state, setState] = useState<State>({
         content: null,
         showReadonly: true,
-        tbodyHeight: maxHeight,
+        tbodyHeight: 0,
     });
-    const [globalFilter, setGlobalFilter] = useState("");
     const [isFileTooLarge, setIsFileTooLarge] = useState<boolean>(false);
-    const [isRendererLoaded, setRendererLoaded] = useState(false);
+    const [tableLoaded, setTableLoaded] = useState(false);
+    const { listeners } = useTableNav();
 
     const filePath = lineState["prompt:file"];
     const { screenId, lineId } = context;
@@ -157,12 +145,12 @@ const CSVRenderer: FC<Props> = (props: Props) => {
     useEffect(() => {
         if (probeRef.current && headerRef.current && parsedData.length) {
             const rowHeight = probeRef.current.offsetHeight;
-            const tbodyHeight = rowHeight * parsedData.length - rowHeight;
-            const headerHeight = headerRef.current.offsetHeight; // For some reason, if we subtract this from maxHeight, the table is too short
-            const tbodyHeightLessHeader = tbodyHeight - headerHeight;
-            const maxTbodyHeight = Math.min(maxHeight, tbodyHeightLessHeader);
+            const fullTBodyHeight = rowHeight * parsedData.length;
+            const headerHeight = headerRef.current.offsetHeight;
+            const maxHeightLessHeader = maxHeight - headerHeight;
+            const tbodyHeight = Math.min(maxHeightLessHeader, fullTBodyHeight);
 
-            setState((prevState) => ({ ...prevState, tbodyHeight: maxTbodyHeight }));
+            setState((prevState) => ({ ...prevState, tbodyHeight }));
         }
     }, [probeRef, headerRef, maxHeight, parsedData]);
 
@@ -172,27 +160,24 @@ const CSVRenderer: FC<Props> = (props: Props) => {
 
         if (rowRef.current.length === parsedData.length) {
             timer = setTimeout(() => {
-                setRendererLoaded(true);
-            }, 100); // Delay a bit to make sure the rows are rendered
+                setTableLoaded(true);
+            }, 50); // Delay a bit to make sure the rows are rendered
         }
 
         return () => clearTimeout(timer);
     }, [rowRef, parsedData]);
 
+    useEffect(() => {
+        if (shouldFocus) {
+            rendererApi.onFocusChanged(true);
+        }
+    }, [shouldFocus]);
+
     const table = useReactTable({
         manualPagination: true,
         data: parsedData,
         columns,
-        filterFns: {
-            fuzzy: fuzzyFilter,
-        },
-        state: {
-            globalFilter,
-        },
-        globalFilterFn: fuzzyFilter,
-        onGlobalFilterChange: setGlobalFilter,
         getCoreRowModel: getCoreRowModel(),
-        getFilteredRowModel: getFilteredRowModel(),
         getSortedRowModel: getSortedRowModel(),
     });
 
@@ -205,7 +190,10 @@ const CSVRenderer: FC<Props> = (props: Props) => {
     }
 
     return (
-        <div className={cn("csv-renderer", { loaded: isRendererLoaded })}>
+        <div
+            className={cn("csv-renderer", { show: tableLoaded })}
+            style={{ height: tableLoaded ? "auto" : savedHeight }}
+        >
             <table className="probe">
                 <tbody>
                     <tr ref={probeRef}>
@@ -213,12 +201,18 @@ const CSVRenderer: FC<Props> = (props: Props) => {
                     </tr>
                 </tbody>
             </table>
-            <table>
+            <table {...listeners}>
                 <thead>
-                    {table.getHeaderGroups().map((headerGroup) => (
-                        <tr key={headerGroup.id} ref={headerRef}>
-                            {headerGroup.headers.map((header) => (
-                                <th key={header.id} colSpan={header.colSpan} style={{ width: header.getSize() }}>
+                    {table.getHeaderGroups().map((headerGroup, index) => (
+                        <tr key={headerGroup.id} ref={headerRef} id={headerGroup.id} tabIndex={index}>
+                            {headerGroup.headers.map((header, index) => (
+                                <th
+                                    key={header.id}
+                                    colSpan={header.colSpan}
+                                    id={header.id}
+                                    tabIndex={index}
+                                    style={{ width: header.getSize() }}
+                                >
                                     {header.isPlaceholder ? null : (
                                         <div
                                             {...{
@@ -251,9 +245,11 @@ const CSVRenderer: FC<Props> = (props: Props) => {
                 </thead>
                 <tbody style={{ height: `${state.tbodyHeight}px` }} ref={tbodyRef}>
                     {table.getRowModel().rows.map((row, index) => (
-                        <tr key={row.id} ref={(el) => (rowRef.current[index] = el)}>
+                        <tr key={row.id} ref={(el) => (rowRef.current[index] = el)} id={row.id} tabIndex={index}>
                             {row.getVisibleCells().map((cell) => (
-                                <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+                                <td key={cell.id} id={cell.id} tabIndex={index}>
+                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                </td>
                             ))}
                         </tr>
                     ))}
