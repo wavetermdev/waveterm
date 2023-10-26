@@ -49,7 +49,24 @@ class PluginsView extends React.Component<{}, {}> {
             </div>
         );
 
-        const PluginDetails = () => <div className="plugins-details"></div>;
+        const PluginDetails = () => {
+            const plugin = pluginsModel.selectedPlugin.get();
+            return (
+                <div className="plugins-details">
+                    <div className="plugin-summary-header">
+                        <div className="plugin-summary-icon">{plugin.getIcon()}</div>
+                        <div className="plugin-summary-info">
+                            <div className="plugin-summary-title">{plugin.title}</div>
+                            <div className="plugin-summary-vendor">{plugin.vendor}</div>
+                        </div>
+                    </div>
+                    <div className="plugin-summary-body">{plugin.summary}</div>
+                    <div className="plugin-screenshots">
+                        <ImageDisplay path={plugin.screenshotPath} />
+                    </div>
+                </div>
+            );
+        };
 
         return (
             <div className="plugins-view">

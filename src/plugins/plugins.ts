@@ -97,7 +97,8 @@ class PluginModelClass {
                 throw new Error(sprintf("plugin with name %s already registered", plugin.name));
             }
             this.rendererPlugins.push(plugin);
-            // use dynamic import to attach the meta and icon. ensure that the 'name' matches the dir the plugin is in
+            // use dynamic import to attach the meta, icon and screenshot. ensure that the 'name' matches the dir the plugin is in
+            plugin.screenshotPath = `../plugins/code/screenshots/1.png`;
             import(`../plugins/${plugin.name}/icon.svg`).then((icon) => (plugin.getIcon = icon.ReactComponent));
             import(`../plugins/${plugin.name}/meta.json`).then((json) => Object.assign(plugin, json));
             return plugin;

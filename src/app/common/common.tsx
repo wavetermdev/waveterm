@@ -335,16 +335,18 @@ class ImageDisplay extends React.Component {
             imageUrl: null,
         };
     }
-
     componentDidMount() {
-        import(this.props.path)
-            .then((image) => this.setState({ imageUrl: image.default }))
+        import("../../plugins/code/screenshots/1.png")
+            .then((image) => {
+                debugger;
+                return this.setState({ imageUrl: image.default });
+            })
             .catch((error) => {
+                debugger;
                 console.error("Image not found:", error);
                 this.setState({ imageUrl: null });
             });
     }
-
     render() {
         if (!this.state.imageUrl) return null;
         return <img src={this.state.imageUrl} alt={this.props.imageName} />;

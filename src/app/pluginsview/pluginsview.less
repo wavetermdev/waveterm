@@ -47,7 +47,6 @@
                 &.selected {
                     border-color: @prompt-green;
                 }
-
                 .plugin-summary-header {
                     display: flex;
                     .plugin-summary-icon {
@@ -76,8 +75,37 @@
             }
         }
         .plugins-details {
-            flex: 1;
-            margin-right: 1em;
+            flex: 1 !important;
+            padding: 2em;
+            min-height: calc(100vh - 6em);
+            max-height: calc(100vh - 6em);
+            overflow-y: auto;
+            flex: 0 0 auto;
+            .plugin-summary-header {
+                display: flex;
+                .plugin-summary-icon {
+                    svg {
+                        width: 48px;
+                        height: 48px;
+                        fill: white;
+                    }
+                }
+                .plugin-summary-info {
+                    flex: 1;
+                    margin: 0 12px;
+                    .plugin-summary-title {
+                        font-size: 1.1em;
+                        margin-top: 0.3em;
+                    }
+                    .plugin-summary-vendor {
+                        font-size: 0.9em;
+                        margin-top: 0.4em;
+                    }
+                }
+            }
+            .plugin-summary-body {
+                margin-top: 8px;
+            }
         }
     }
 }
