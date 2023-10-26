@@ -22,7 +22,7 @@ if (process.env.WEBPACK_ANALYZE) {
 
 var webCommon = {
     entry: {
-        prompt: ["./src/index.ts", "./src/app/app.less"],
+        waveterm: ["./src/index.ts", "./src/app/app.less"],
     },
     module: {
         rules: [
