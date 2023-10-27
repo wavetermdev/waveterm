@@ -65,11 +65,15 @@ var webCommon = {
             },
             {
                 test: /\.svg$/,
-                use: ["@svgr/webpack", "file-loader"],
+                use: [{ loader: "@svgr/webpack", options: { icon: true, svgo: false } }, "file-loader"],
             },
             {
                 test: /\.md$/,
                 use: "raw-loader",
+            },
+            {
+                test: /\.(png|jpe?g|gif)$/i,
+                use: "file-loader",
             },
         ],
     },

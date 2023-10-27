@@ -1,4 +1,4 @@
-# Code Editor fo Wave Terminal
+# Code Editor for Wave Terminal
 
 These instructions are for setting up the build on MacOS.
 If you're developing on Linux please use the [Linux Build Instructions](./build-linux.md).

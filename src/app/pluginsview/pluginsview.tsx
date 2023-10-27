@@ -25,7 +25,7 @@ class PluginsView extends React.Component<{}, {}> {
             return <></>;
         }
         const { pluginsModel } = GlobalModel;
-        console.log(`rendering ${pluginsModel.selectedPlugin.get().name}`);
+        console.log(`rendering details for ${pluginsModel.selectedPlugin.get().name}`);
         const PluginList = () => (
             <div className="plugins-list">
                 {PluginModel.allPlugins().map((plugin, i) => (
@@ -61,10 +61,22 @@ class PluginsView extends React.Component<{}, {}> {
                         </div>
                     </div>
                     <div className="plugin-summary-body">{plugin.summary}</div>
-                    <div className="plugin-screenshots"></div>
-                    <div className="plugin-readme">
-                        <Markdown text={plugin.readme} />
-                    </div>
+                    {plugin.screenshots && plugin.screenshots.length > 0 && (
+                        <div className="plugin-screenshots-container">
+                            <div className="plugin-label">{"Screenshots"}</div>
+                            <div className="plugin-screenshots">
+                                {plugin.screenshots.map((path, index) => (
+                                    <img key={index} src={path} alt={`Screenshot ${index}`} />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {plugin.readme && (
+                        <div className="plugin-readme">
+                            <div className="plugin-label">{"Readme"}</div>
+                            <Markdown text={plugin.readme} />
+                        </div>
+                    )}
                 </div>
             );
         };

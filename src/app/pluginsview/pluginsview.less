@@ -50,6 +50,10 @@
                 .plugin-summary-header {
                     display: flex;
                     .plugin-summary-icon {
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        height: 100%;
                         svg {
                             width: 32px;
                             height: 32px;
@@ -81,6 +85,10 @@
             max-height: calc(100vh - 6em);
             overflow-y: auto;
             flex: 0 0 auto;
+            .plugin-label {
+                min-width: 100%;
+                margin-bottom: 1em;
+            }
             .plugin-summary-header {
                 display: flex;
                 .plugin-summary-icon {
@@ -104,7 +112,25 @@
                 }
             }
             .plugin-summary-body {
-                margin-top: 8px;
+                margin-top: 1em;
+            }
+            .plugin-screenshots-container {
+                margin-top: 3em;
+                .plugin-screenshots {
+                    display: flex;
+                    overflow-x: auto;
+                    width: 100%;
+                    white-space: nowrap;
+                    align-items: flex-start;
+                    img {
+                        flex-shrink: 0;
+                        margin-right: 10px;
+                        max-height: 50vh;
+                    }
+                }
+            }
+            .plugin-readme {
+                margin-top: 3em;
             }
         }
     }

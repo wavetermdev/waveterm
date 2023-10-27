@@ -14,19 +14,9 @@ import { sprintf } from "sprintf-js";
 // TODO: @mike - I did refactoring with the though that I can move config out of this plugins.ts file to a
 // plugins.json file. This way, adding a new plugin would reuire adding an entry to the json config. At a later
 // stage, a plugin can become a self-contained-bundle, which would have my_plugin.json into it. it will be easy to
-// merge this my_plugin.json into th ebig plugins.json. I got stuck while defining 'simpleComponent: SimpleImageRenderer'
+// merge this my_plugin.json into the big plugins.json. I got stuck while defining 'simpleComponent: SimpleImageRenderer'
 // in a json definition (something like Java.Reflection can be used to compose a class from its name. will try later)
 const PluginConfigs: RendererPluginType[] = [
-    {
-        name: "image",
-        rendererType: "simple",
-        heightType: "pixels",
-        dataType: "blob",
-        collapseType: "hide",
-        globalCss: null,
-        mimeTypes: ["image/*"],
-        simpleComponent: SimpleImageRenderer,
-    },
     {
         name: "markdown",
         rendererType: "simple",
@@ -79,6 +69,16 @@ const PluginConfigs: RendererPluginType[] = [
         mimeTypes: ["text/csv"],
         simpleComponent: CSVRenderer,
     },
+    {
+        name: "image",
+        rendererType: "simple",
+        heightType: "pixels",
+        dataType: "blob",
+        collapseType: "hide",
+        globalCss: null,
+        mimeTypes: ["image/*"],
+        simpleComponent: SimpleImageRenderer,
+    },
 ];
 
 class PluginModelClass {
@@ -97,15 +97,60 @@ class PluginModelClass {
                 throw new Error(sprintf("plugin with name %s already registered", plugin.name));
             }
             this.rendererPlugins.push(plugin);
-            // use dynamic import to attach the icon etc. ensure that the 'name' matches the dir the plugin is in
-            this.loadPluginResources(plugin).then(() => console.log(`Plugin ${plugin.name} is ready`));
+            this.loadPluginResources(plugin);
             return plugin;
         });
     }
 
+    // attach all screenshots. webpack doesnt allow dynamic paths, hence, we have to put static paths for each plugin
+    attachScreenshots(plugin) {
+        let screenshotsContext;
+        let imagePaths = [];
+        try {
+            switch (plugin.name) {
+                case "image":
+                    screenshotsContext = require.context(`../plugins/image/screenshots`, false, /\.(png|jpe?g|gif)$/);
+                    break;
+                case "markdown":
+                    screenshotsContext = require.context(
+                        `../plugins/markdown/screenshots`,
+                        false,
+                        /\.(png|jpe?g|gif)$/
+                    );
+                    break;
+                case "mustache":
+                    screenshotsContext = require.context(
+                        `../plugins/mustache/screenshots`,
+                        false,
+                        /\.(png|jpe?g|gif)$/
+                    );
+                    break;
+                case "code":
+                    screenshotsContext = require.context(`../plugins/code/screenshots`, false, /\.(png|jpe?g|gif)$/);
+                    break;
+                case "openai":
+                    screenshotsContext = require.context(`../plugins/openai/screenshots`, false, /\.(png|jpe?g|gif)$/);
+                    break;
+                case "csv":
+                    screenshotsContext = require.context(`../plugins/csv/screenshots`, false, /\.(png|jpe?g|gif)$/);
+                    break;
+                default:
+                    return;
+            }
+
+            imagePaths = screenshotsContext.keys().map(screenshotsContext);
+        } catch (error) {
+            console.error(`Failed to load screenshots for plugin ${plugin.name}`);
+        }
+        plugin.screenshots = imagePaths.map((path) => path.default);
+    }
+
+    // use dynamic import to attach the icon etc. ensure that the 'name' matches the dir the plugin is in
     async loadPluginResources(plugin) {
+        this.attachScreenshots(plugin);
+        // attach other resources
         const handleImportError = (error, resourceType) =>
-            console.warn(`Failed to load ${resourceType} for plugin ${plugin.name}:`, error);
+            console.error(`Failed to load ${resourceType} for plugin ${plugin.name}`);
         const iconPromise = import(`../plugins/${plugin.name}/icon.svg`)
             .then((icon) => (plugin.getIcon = icon.ReactComponent))
             .catch((error) => handleImportError(error, "icon"));
