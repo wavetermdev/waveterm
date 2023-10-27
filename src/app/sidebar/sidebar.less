@@ -7,6 +7,8 @@
     display: flex;
     flex-direction: column;
     position: relative;
+    font-size: 12.5px;
+    line-height: 20px;
 
     .title-bar-drag {
         -webkit-app-region: drag;
@@ -32,7 +34,7 @@
 
     .arrow-container {
         position: absolute;
-        top: 2em;
+        top: 1em;
         right: 2em;
         width: 1.5em;
         height: 1.5em;
@@ -45,7 +47,7 @@
     }
 
     .top {
-        margin-top: 4em;
+        margin-top: 32px;
     }
 
     .separator {
@@ -54,9 +56,13 @@
         background-color: @base-border;
     }
 
+    .item.workspaces-item {
+        margin-bottom: -4px;
+    }
+
     .middle {
         max-height: calc(100vh - 32em);
-        padding: 8px 6px;
+        padding: 4px 6px 8px 6px;
         border-bottom: 1px solid @base-border;
         .item {
             &.active {
@@ -89,30 +95,27 @@
     }
 
     .item {
-        padding: 6px;
+        padding: 5px;
         margin: 0 6px;
         border-radius: 4px;
         opacity: 1;
         visibility: visible;
         transition: opacity 0.1s ease-in-out, visibility 0.1s step-end;
         .sessionName {
-            width: 11rem;
+            width: 12rem;
             display: inline-block;
             vertical-align: middle;
         }
         .icon {
-            margin: 0 0.5em 2px 0.5em;
-            width: 1em;
-            height: 1em;
+            margin: -2px 8px 0px 4px;
+            width: 16px;
+            height: 16px;
             display: inline-block;
             vertical-align: middle;
             border-radius: 50%;
-
-            &.discord {
-                width: 1.2em;
-                height: 1.2em;
-                margin: 0 0.4em 2px 0.4em;
-            }
+        }
+        .actions.icon {
+            margin-left: 8px;
         }
         .hotkey {
             float: right;
