@@ -16,7 +16,7 @@ import * as util from "../../../util/util";
 import { ReactComponent as XmarkIcon } from "../../assets/icons/line/xmark.svg";
 import { ReactComponent as WarningIcon } from "../../assets/icons/line/triangle-exclamation.svg";
 import { ReactComponent as ShieldCheck } from "../../assets/icons/line/shield_check.svg";
-import { ReactComponent as Help } from "../../assets/icons/line/help.svg";
+import { ReactComponent as Help } from "../../assets/icons/line/help_filled.svg";
 import { ReactComponent as Github } from "../../assets/icons/line/github.svg";
 
 dayjs.extend(localizedFormat);
@@ -335,42 +335,21 @@ class TosModal extends React.Component<{}, {}> {
                                 <ShieldCheck />
                                 <div className="item-inner">
                                     <div className="item-title">Telemetry</div>
-                                    <div className="item-text">
-                                        We don’t collect any personal info, only crash logs and IP address to make Wave
-                                        better. If you like, you can disable telemetry now or late.
-                                    </div>
                                 </div>
                             </div>
                             <div className="item">
                                 <Help />
-                                <div className="item-inner">
-                                    <div className="item-title">Help</div>
-                                    <div className="item-text">
-                                        If you need any help or you have feature request, you can join{" "}
-                                        <a target="_blank" href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}>
-                                            our Discord
-                                        </a>
-                                        .
-                                    </div>
-                                </div>
+                                <div className="item-inner"></div>
                             </div>
                             <div className="item">
                                 <Github />
-                                <div className="item-inner">
-                                    <div className="item-title">Like Wave? Give us a star</div>
-                                    <div className="item-text">
-                                        Rankings are very important for small startups like us, it helps other people to
-                                        know about us. If you like Wave, please consider giving us a star on our{" "}
-                                        <a
-                                            target="_blank"
-                                            href={util.makeExternLink("https://github.com/wavetermdev/waveterm")}
-                                        >
-                                            Github Repository
-                                        </a>
-                                        .
-                                    </div>
-                                </div>
+                                <div className="item-inner"></div>
                             </div>
+                            {/* <p>
+								<a target="_blank" href={util.makeExternLink("https://www.commandline.dev/tos")}>
+									Full Terms of Service
+								</a>
+							</p> */}
                         </div>
                         <footer>
                             <div className="flex-spacer" />
