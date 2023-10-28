@@ -12,6 +12,8 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner } from "../../../model/model";
 import { Markdown } from "../common";
 import * as util from "../../../util/util";
+import { Toggle } from "../common";
+import { ClientDataType } from "../../../types/types";
 
 import { ReactComponent as XmarkIcon } from "../../assets/icons/line/xmark.svg";
 import { ReactComponent as WarningIcon } from "../../assets/icons/line/triangle-exclamation.svg";
@@ -320,7 +322,21 @@ class TosModal extends React.Component<{}, {}> {
         GlobalCommandRunner.clientAcceptTos();
     }
 
+    @boundMethod
+    handleChangeTelemetry(val: boolean): void {
+        console.log("val: ", val);
+        if (val) {
+            console.log("here 1");
+            GlobalCommandRunner.telemetryOn();
+        } else {
+            console.log("here 2");
+            GlobalCommandRunner.telemetryOff();
+        }
+    }
+
     render() {
+        let cdata: ClientDataType = GlobalModel.clientData.get();
+
         return (
             <div className={cn("modal tos-modal wave-modal is-active")}>
                 <div className="modal-background" />
@@ -338,6 +354,13 @@ class TosModal extends React.Component<{}, {}> {
                                     <div className="item-text">
                                         We don’t collect any personal info, only crash logs and IP address to make Wave
                                         better. If you like, you can disable telemetry now or late.
+                                    </div>
+                                    <div className="item-field">
+                                        <Toggle
+                                            checked={!cdata.clientopts.notelemetry}
+                                            onChange={this.handleChangeTelemetry}
+                                        />
+                                        <div className="item-label">Basic Telemetry</div>
                                     </div>
                                 </div>
                             </div>
