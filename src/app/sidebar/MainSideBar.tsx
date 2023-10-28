@@ -77,11 +77,18 @@ class MainSideBar extends React.Component<{}, {}> {
     }
 
     @boundMethod
+    handlePluginsClick(): void {
+        if (GlobalModel.activeMainView.get() == "plugins") {
+            GlobalModel.showSessionView();
+            return;
+        }
+        GlobalModel.pluginsModel.showPluginsView();
+    }
+
+    @boundMethod
     handleHistoryClick(): void {
         if (GlobalModel.activeMainView.get() == "history") {
-            mobx.action(() => {
-                GlobalModel.activeMainView.set("session");
-            })();
+            GlobalModel.showSessionView();
             return;
         }
         GlobalModel.historyViewModel.reSearch();
@@ -150,7 +157,6 @@ class MainSideBar extends React.Component<{}, {}> {
         }
         return sessionList.map((session, index) => {
             const isActive = GlobalModel.activeMainView.get() == "session" && activeSessionId == session.sessionId;
-            /** @TODO: Handle archived sessions and talk to Mike about session settings */
             return (
                 <div
                     key={index}
@@ -200,11 +206,11 @@ class MainSideBar extends React.Component<{}, {}> {
                 </div>
                 <div className="contents">
                     <div className="top">
-                        {/*<div className="item disabled">
+                        <div className="item hoverEffect" onClick={this.handlePluginsClick}>
                             <AppsIcon className="icon" />
                             Apps
                             <span className="hotkey">&#x2318;A</span>
-                            </div>*/}
+                        </div>
                         <div className="item hoverEffect" onClick={this.handleHistoryClick}>
                             <HistoryIcon className="icon" />
                             History

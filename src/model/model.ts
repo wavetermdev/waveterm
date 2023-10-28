@@ -15,6 +15,7 @@ import {
     isModKeyPress,
 } from "../util/util";
 import { TermWrap } from "../plugins/terminal/term";
+import { PluginModel } from "../plugins/plugins";
 import type {
     SessionDataType,
     LineType,
@@ -2423,7 +2424,36 @@ class BookmarksModel {
             return;
         }
     }
-    return;
+}
+
+class PluginsModel {
+    selectedPlugin: OV<RendererPluginType> = mobx.observable.box(null, { name: "selectedPlugin" });
+
+    showPluginsView(): void {
+        mobx.action(() => {
+            this.reset();
+            GlobalModel.activeMainView.set("plugins");
+            const allPlugins = PluginModel.allPlugins();
+            this.selectedPlugin.set(allPlugins.length > 0 ? allPlugins[0] : null);
+        })();
+    }
+
+    setSelectedPlugin(plugin: RendererPluginType): void {
+        mobx.action(() => {
+            this.selectedPlugin.set(plugin);
+        })();
+    }
+
+    reset(): void {
+        mobx.action(() => {
+            this.selectedPlugin.set(null);
+        })();
+    }
+
+    closeView(): void {
+        GlobalModel.showSessionView();
+        setTimeout(() => GlobalModel.inputModel.giveFocus(), 50);
+    }
 }
 
 class RemotesModalModel {
@@ -2658,7 +2688,7 @@ class Model {
     authKey: string;
     isDev: boolean;
     platform: string;
-    activeMainView: OV<"session" | "history" | "bookmarks" | "webshare"> = mobx.observable.box("session", {
+    activeMainView: OV<"plugins" | "session" | "history" | "bookmarks" | "webshare"> = mobx.observable.box("session", {
         name: "activeMainView",
     });
     termFontSize: CV<number>;
@@ -2684,6 +2714,7 @@ class Model {
     remotesModalModel: RemotesModalModel;
 
     inputModel: InputModel;
+    pluginsModel: PluginsModel;
     bookmarksModel: BookmarksModel;
     historyViewModel: HistoryViewModel;
     clientData: OV<ClientDataType> = mobx.observable.box(null, {
@@ -2702,6 +2733,7 @@ class Model {
         );
         this.ws.reconnect();
         this.inputModel = new InputModel();
+        this.pluginsModel = new PluginsModel();
         this.bookmarksModel = new BookmarksModel();
         this.historyViewModel = new HistoryViewModel();
         this.remotesModalModel = new RemotesModalModel();
@@ -3203,7 +3235,9 @@ class Model {
             this.updateRemotes(update.remotes);
         }
         if ("mainview" in update) {
-            if (update.mainview == "bookmarks") {
+            if (update.mainview == "plugins") {
+                this.pluginsModel.showPluginsView();
+            } else if (update.mainview == "bookmarks") {
                 this.bookmarksModel.showBookmarksView(update.bookmarks, update.selectedbookmark);
             } else if (update.mainview == "session") {
                 this.activeMainView.set("session");
