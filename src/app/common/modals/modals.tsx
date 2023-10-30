@@ -12,7 +12,7 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner } from "../../../model/model";
 import { Markdown } from "../common";
 import * as util from "../../../util/util";
-import { Toggle } from "../common";
+import { Toggle, Checkbox } from "../common";
 import { ClientDataType } from "../../../types/types";
 
 import { ReactComponent as XmarkIcon } from "../../assets/icons/line/xmark.svg";
@@ -317,6 +317,15 @@ class WelcomeModal extends React.Component<{}, {}> {
 
 @mobxReact.observer
 class TosModal extends React.Component<{}, {}> {
+    state = {
+        isChecked: false,
+    };
+
+    @boundMethod
+    handleCheckboxChange(checked: boolean): void {
+        this.setState({ isChecked: checked });
+    }
+
     @boundMethod
     acceptTos(): void {
         GlobalCommandRunner.clientAcceptTos();
@@ -324,13 +333,10 @@ class TosModal extends React.Component<{}, {}> {
 
     @boundMethod
     handleChangeTelemetry(val: boolean): void {
-        console.log("val: ", val);
         if (val) {
-            console.log("here 1");
-            GlobalCommandRunner.telemetryOn();
+            GlobalCommandRunner.telemetryOn(false);
         } else {
-            console.log("here 2");
-            GlobalCommandRunner.telemetryOff();
+            GlobalCommandRunner.telemetryOff(false);
         }
     }
 
@@ -396,9 +402,24 @@ class TosModal extends React.Component<{}, {}> {
                             </div>
                         </div>
                         <footer>
-                            <div className="flex-spacer" />
-                            <div onClick={this.acceptTos} className="button is-prompt-green is-outlined is-small">
-                                Accept Terms of Service
+                            <div>
+                                <Checkbox
+                                    checked={this.state.isChecked}
+                                    label="I accept the Terms of Service"
+                                    id="accept-tos"
+                                    onChange={this.handleCheckboxChange}
+                                />
+                            </div>
+                            <div className="button-wrapper">
+                                <button
+                                    onClick={this.acceptTos}
+                                    className={cn("button is-wave-green is-outlined is-small", {
+                                        "disabled-button": !this.state.isChecked,
+                                    })}
+                                    disabled={!this.state.isChecked}
+                                >
+                                    Continue
+                                </button>
                             </div>
                         </footer>
                     </div>

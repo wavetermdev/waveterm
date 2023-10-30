@@ -232,6 +232,7 @@
                 align-items: flex-start;
                 gap: 32px;
                 width: 100%;
+                margin-bottom: 0;
 
                 .item {
                     display: flex;
@@ -264,6 +265,19 @@
                             gap: 8px;
                         }
                     }
+                }
+            }
+        }
+
+        footer {
+            .button-wrapper {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+
+                button.button {
+                    cursor: not-allowed;
                 }
             }
         }
