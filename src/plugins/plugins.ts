@@ -152,7 +152,7 @@ class PluginModelClass {
         const handleImportError = (error, resourceType) =>
             console.error(`Failed to load ${resourceType} for plugin ${plugin.name}`);
         const iconPromise = import(`../plugins/${plugin.name}/icon.svg`)
-            .then((icon) => (plugin.getIcon = icon.ReactComponent))
+            .then((icon) => (plugin.iconComp = icon.ReactComponent))
             .catch((error) => handleImportError(error, "icon"));
         const readmePromise = import(`../plugins/${plugin.name}/readme.md`)
             .then((content) => (plugin.readme = content.default))

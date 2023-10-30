@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { GlobalModel } from "../../model/model";
 import { PluginModel } from "../../plugins/plugins";
-import { ImageDisplay, Markdown } from "../common/common";
+import { Markdown } from "../common/common";
 
 import { ReactComponent as XmarkIcon } from "../assets/icons/line/xmark.svg";
 
@@ -18,6 +18,11 @@ class PluginsView extends React.Component<{}, {}> {
     @boundMethod
     closeView(): void {
         GlobalModel.pluginsModel.closeView();
+    }
+
+    renderPluginIcon(plugin): any {
+        let Comp = plugin.iconComp;
+        return <Comp/>;
     }
 
     render() {
@@ -37,7 +42,7 @@ class PluginsView extends React.Component<{}, {}> {
                         onClick={() => pluginsModel.setSelectedPlugin(plugin)}
                     >
                         <div className="plugin-summary-header">
-                            <div className="plugin-summary-icon">{plugin.getIcon()}</div>
+                            <div className="plugin-summary-icon">{this.renderPluginIcon(plugin)}</div>
                             <div className="plugin-summary-info">
                                 <div className="plugin-summary-title">{plugin.title}</div>
                                 <div className="plugin-summary-vendor">{plugin.vendor}</div>
@@ -54,7 +59,7 @@ class PluginsView extends React.Component<{}, {}> {
             return (
                 <div className="plugins-details">
                     <div className="plugin-summary-header">
-                        <div className="plugin-summary-icon">{plugin.getIcon()}</div>
+                        <div className="plugin-summary-icon">{this.renderPluginIcon(plugin)}</div>
                         <div className="plugin-summary-info">
                             <div className="plugin-summary-title">{plugin.title}</div>
                             <div className="plugin-summary-vendor">{plugin.vendor}</div>

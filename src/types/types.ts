@@ -381,6 +381,12 @@ type RendererPluginType = {
     modelCtor?: () => RendererModel;
     simpleComponent?: SimpleBlobRendererComponent;
     fullComponent?: FullRendererComponent;
+    readme?: string;
+    screenshots?: any[];
+    vendor?: string;
+    summary?: string;
+    title?: string;
+    iconComp?: React.Component<{}, {}>;
 };
 
 type RendererModelContainerApi = {
@@ -412,7 +418,7 @@ type RendererModel = {
 };
 
 type SimpleBlobRendererComponent = React.ComponentType<{
-    data: Blob;
+    data: ExtBlob;
     readOnly?: boolean;
     notFound?: boolean;
     isSelected?: boolean;
@@ -624,6 +630,14 @@ type FileInfoType = {
     notfound: boolean;
 };
 
+type ExtBlob = Blob & {
+    notFound: boolean;
+};
+
+type ExtFile = File & {
+    notFound: boolean;
+};
+
 export type {
     SessionDataType,
     LineStateType,
@@ -693,4 +707,6 @@ export type {
     CommandRtnType,
     OpenAIPacketType,
     FileInfoType,
+    ExtBlob,
+    ExtFile,
 };

@@ -29,6 +29,6 @@ let m = MagicLayout;
 // add up all the line overhead + padding.  subtract 2 so we don't see the border of neighboring line
 m.ScreenMaxContentHeightBuffer = m.LineHeaderHeight + m.LinePadding + m.WindowHeightOffset + m.LinesBottomPadding + m.LineMarginTop - 2;
 
-window.MagicLayout = MagicLayout;
+(window as any).MagicLayout = MagicLayout;
 
 export { MagicLayout };

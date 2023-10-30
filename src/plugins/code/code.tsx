@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import { RendererContext, RendererOpts, LineStateType, RendererModelContainerApi } from "../../types/types";
+import * as T from "../../types/types";
 import Editor from "@monaco-editor/react";
 import { Markdown } from "../../app/common/common";
 import { GlobalModel, GlobalCommandRunner } from "../../model/model";
@@ -21,20 +21,20 @@ declare var monaco: any;
 
 class SourceCodeRenderer extends React.Component<
     {
-        data: Blob;
+        data: T.ExtBlob;
         cmdstr: string;
         cwd: string;
         readOnly: boolean;
         notFound: boolean;
         exitcode: number;
-        context: RendererContext;
-        opts: RendererOpts;
+        context: T.RendererContext;
+        opts: T.RendererOpts;
         savedHeight: number;
         scrollToBringIntoViewport: () => void;
-        lineState: LineStateType;
+        lineState: T.LineStateType;
         isSelected: boolean;
         shouldFocus: boolean;
-        rendererApi: RendererModelContainerApi;
+        rendererApi: T.RendererModelContainerApi;
     },
     {
         code: string;
