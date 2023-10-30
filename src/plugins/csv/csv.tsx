@@ -3,6 +3,7 @@
 
 import React, { FC, useEffect, useState, useRef, useMemo } from "react";
 import { RendererContext, RendererOpts, LineStateType, RendererModelContainerApi } from "../../types/types";
+import * as T from "../../types/types";
 import { GlobalModel } from "../../model/model";
 import Papa from "papaparse";
 import {
@@ -27,14 +28,14 @@ type CSVRow = {
 };
 
 interface Props {
-    data: Blob;
+    data: T.ExtBlob;
     readOnly: boolean;
-    context: RendererContext;
-    opts: RendererOpts;
+    context: T.RendererContext;
+    opts: T.RendererOpts;
     savedHeight: number;
-    lineState: LineStateType;
+    lineState: T.LineStateType;
     shouldFocus: boolean;
-    rendererApi: RendererModelContainerApi;
+    rendererApi: T.RendererModelContainerApi;
     scrollToBringIntoViewport: () => void;
 }
 

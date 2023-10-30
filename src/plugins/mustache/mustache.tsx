@@ -17,7 +17,7 @@ type OV<V> = mobx.IObservableValue<V>;
 
 @mobxReact.observer
 class SimpleMustacheRenderer extends React.Component<
-    { data: Blob; context: T.RendererContext; opts: T.RendererOpts; savedHeight: number; lineState: T.LineStateType },
+    { data: T.ExtBlob; context: T.RendererContext; opts: T.RendererOpts; savedHeight: number; lineState: T.LineStateType },
     {}
 > {
     templateLoading: OV<boolean> = mobx.observable.box(true, { name: "templateLoading" });

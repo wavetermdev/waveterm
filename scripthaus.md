@@ -33,7 +33,7 @@ PROMPT_DEV=1 PCLOUD_ENDPOINT="https://ot2e112zx5.execute-api.us-west-2.amazonaws
 ```bash
 # @scripthaus command typecheck
 # @scripthaus cd :playbook
-node_modules/.bin/tsc --jsx preserve --noEmit --esModuleInterop --target ES5 --experimentalDecorators --downlevelIteration src/index.ts
+node_modules/.bin/tsc --jsx preserve --noEmit --esModuleInterop --target ES5 --experimentalDecorators --downlevelIteration src/index.ts src/types/custom.d.ts
 ```
 
 ```bash
@@ -101,7 +101,7 @@ rm *.dmg
 DMG_VERSION=$(node -e 'console.log(require("./version.js"))')
 DMG_NAME="waveterm-macos-arm64-${DMG_VERSION}.dmg"
 rm *.dmg
-../../create-dmg/create-dmg/create-dmg \
+/Users/sawka/work/gopath/src/github.com/create-dmg/create-dmg/create-dmg \
   --volname "WaveTerm" \
   --window-pos 200 120 \
   --window-size 600 300 \

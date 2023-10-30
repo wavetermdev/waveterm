@@ -6,7 +6,7 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
-import { If } from "tsx-control-statements/components";
+import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { debounce } from "throttle-debounce";
 import dayjs from "dayjs";
@@ -15,6 +15,7 @@ import type { LineType, RenderModeType, LineFactoryProps, CommandRtnType } from 
 import * as T from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { InlineSettingsTextEdit, RemoteStatusLight } from "../../common/common";
+import { getRemoteStr } from "../../common/prompt/prompt";
 import { GlobalModel, ScreenLines, Screen } from "../../../model/model";
 import { Line } from "../../line/linecomps";
 import { LinesView } from "../../line/linesview";
@@ -61,7 +62,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
         if (screen.getTabColor() == color) {
             return;
         }
-        let prtn = GlobalCommandRunner.screenSetSettings(this.props.screenId, { tabcolor: color }, false);
+        let prtn = GlobalCommandRunner.screenSetSettings(screen.screenId, { tabcolor: color }, false);
         util.commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -71,7 +72,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
         if (util.isStrEq(val, screen.name.get())) {
             return;
         }
-        let prtn = GlobalCommandRunner.screenSetSettings(this.props.screenId, { name: val }, false);
+        let prtn = GlobalCommandRunner.screenSetSettings(screen.screenId, { name: val }, false);
         util.commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -102,7 +103,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
     renderConnDropdown(): any {
         let { screen } = this.props;
         let allRemotes = util.sortAndFilterRemotes(GlobalModel.remotes.slice());
-        let remote: RemoteType = null;
+        let remote: T.RemoteType = null;
         let curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
         // TODO no remote?
         return (
@@ -173,7 +174,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
             <div className="newtab-container">
                 <div className="newtab-section conn-section">
                     <div className="text-s1">
-                        You're connected to [{util.getRemoteStr(rptr)}].  Do you want to change it?
+                        You're connected to [{getRemoteStr(rptr)}].  Do you want to change it?
                     </div>
                     <div>
                         {this.renderConnDropdown()}

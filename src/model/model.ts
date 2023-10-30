@@ -3676,7 +3676,7 @@ class Model {
         return remote.remotecanonicalname;
     }
 
-    readRemoteFile(screenId: string, lineId: string, path: string): Promise<File> {
+    readRemoteFile(screenId: string, lineId: string, path: string): Promise<T.ExtFile> {
         let urlParams = {
             screenid: screenId,
             lineid: lineId,
@@ -3711,7 +3711,7 @@ class Model {
                     let isWriteable = (fileInfo.perm & 0o222) > 0; // checks for unix permission "w" bits
                     (file as any).readOnly = !isWriteable;
                     (file as any).notFound = !!fileInfo.notfound;
-                    return file;
+                    return file as T.ExtFile;
                 } else {
                     let textError: string = blobOrText;
                     if (textError == null || textError.length == 0) {

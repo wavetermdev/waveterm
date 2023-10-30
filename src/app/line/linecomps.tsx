@@ -743,6 +743,7 @@ class Line extends React.Component<
         overrideCollapsed: OV<boolean>;
         renderMode: RenderModeType;
         noSelect?: boolean;
+        topBorder: boolean;
     },
     {}
 > {
