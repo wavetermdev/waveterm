@@ -101,7 +101,7 @@ rm *.dmg
 DMG_VERSION=$(node -e 'console.log(require("./version.js"))')
 DMG_NAME="waveterm-macos-arm64-${DMG_VERSION}.dmg"
 rm *.dmg
-../../create-dmg/create-dmg/create-dmg \
+/Users/sawka/work/gopath/src/github.com/create-dmg/create-dmg/create-dmg \
   --volname "WaveTerm" \
   --window-pos 200 120 \
   --window-size 600 300 \
