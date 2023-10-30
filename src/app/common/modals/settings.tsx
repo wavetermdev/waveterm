@@ -13,6 +13,7 @@ import { LineType, RendererPluginType, ClientDataType, CommandRtnType } from "..
 import { RemotesSelector } from "../../connections/connections";
 import { PluginModel } from "../../../plugins/plugins";
 import * as util from "../../../util/util";
+import { commandRtnHandler } from "../../../util/util";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
 import { ReactComponent as XmarkIcon } from "../../assets/icons/line/xmark.svg";
 import { ReactComponent as AngleDownIcon } from "../../assets/icons/history/angle-down.svg";
@@ -47,17 +48,6 @@ You are responsible for what you are sharing, be smart.
 const WebStopShareConfirmMarkdown = `
 Are you sure you want to stop web-sharing this screen?
 `.trim();
-
-function commandRtnHandler(prtn: Promise<CommandRtnType>, errorMessage: OV<string>) {
-    prtn.then((crtn) => {
-        if (crtn.success) {
-            return;
-        }
-        mobx.action(() => {
-            errorMessage.set(crtn.error);
-        })();
-    });
-}
 
 @mobxReact.observer
 class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId: string; inline?: boolean }, {}> {
@@ -269,12 +259,6 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
                                         </div>
                                     </For>
                                 </div>
-                            </div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">Connection</div>
-                            <div className="settings-input">
-                                <RemotesSelector model={GlobalModel.remotesModalModel} isChangeRemoteOnSelect={true} />
                             </div>
                         </div>
                         {!inline && (

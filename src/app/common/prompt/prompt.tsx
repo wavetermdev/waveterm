@@ -9,7 +9,7 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, LineContainerModel } from "../../../model/model";
 import type { LineType, RemoteType, RemotePtrType, LineHeightChangeCallbackType } from "../../../types/types";
 import cn from "classnames";
-import { isBlank } from "../../../util/util";
+import { isBlank, getRemoteStr } from "../../../util/util";
 import { ReactComponent as FolderIcon } from "../../assets/icons/folder.svg";
 
 import "./prompt.less";
@@ -42,29 +42,6 @@ function getShortVEnv(venvDir: string): string {
         return venvDir;
     }
     return venvDir.substr(lastSlash + 1);
-}
-
-function makeFullRemoteRef(ownerName: string, remoteRef: string, name: string): string {
-    if (isBlank(ownerName) && isBlank(name)) {
-        return remoteRef;
-    }
-    if (!isBlank(ownerName) && isBlank(name)) {
-        return ownerName + ":" + remoteRef;
-    }
-    if (isBlank(ownerName) && !isBlank(name)) {
-        return remoteRef + ":" + name;
-    }
-    return ownerName + ":" + remoteRef + ":" + name;
-}
-
-function getRemoteStr(rptr: RemotePtrType): string {
-    if (rptr == null || isBlank(rptr.remoteid)) {
-        return "(invalid remote)";
-    }
-    let username = isBlank(rptr.ownerid) ? null : GlobalModel.resolveUserIdToName(rptr.ownerid);
-    let remoteRef = GlobalModel.resolveRemoteIdToRef(rptr.remoteid);
-    let fullRef = makeFullRemoteRef(username, remoteRef, rptr.name);
-    return fullRef;
 }
 
 function replaceHomePath(path: string, homeDir: string): string {

@@ -401,6 +401,40 @@ function generateBackgroundWithGradient(colorName = "white", decay = 3) {
     return `linear-gradient(180deg, rgba(${r}, ${g}, ${b}, ${opacities[0]}) ${percentages[0]}%, rgba(${r}, ${g}, ${b}, ${opacities[1]}) ${percentages[1]}%, rgba(${r}, ${g}, ${b}, 0) ${percentages[2]}%)`;
 }
 
+function makeFullRemoteRef(ownerName: string, remoteRef: string, name: string): string {
+    if (isBlank(ownerName) && isBlank(name)) {
+        return remoteRef;
+    }
+    if (!isBlank(ownerName) && isBlank(name)) {
+        return ownerName + ":" + remoteRef;
+    }
+    if (isBlank(ownerName) && !isBlank(name)) {
+        return remoteRef + ":" + name;
+    }
+    return ownerName + ":" + remoteRef + ":" + name;
+}
+
+function getRemoteStr(rptr: RemotePtrType): string {
+    if (rptr == null || isBlank(rptr.remoteid)) {
+        return "(invalid remote)";
+    }
+    let username = isBlank(rptr.ownerid) ? null : GlobalModel.resolveUserIdToName(rptr.ownerid);
+    let remoteRef = GlobalModel.resolveRemoteIdToRef(rptr.remoteid);
+    let fullRef = makeFullRemoteRef(username, remoteRef, rptr.name);
+    return fullRef;
+}
+
+function commandRtnHandler(prtn: Promise<CommandRtnType>, errorMessage: OV<string>) {
+    prtn.then((crtn) => {
+        if (crtn.success) {
+            return;
+        }
+        mobx.action(() => {
+            errorMessage.set(crtn.error);
+        })();
+    });
+}
+
 export {
     handleJsonFetchResponse,
     base64ToArray,
@@ -424,4 +458,6 @@ export {
     openLink,
     generateBackgroundWithGradient,
     getColorRGB,
+    getRemoteStr,
+    commandRtnHandler,
 };
