@@ -9,7 +9,7 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, LineContainerModel } from "../../../model/model";
 import type { LineType, RemoteType, RemotePtrType, LineHeightChangeCallbackType } from "../../../types/types";
 import cn from "classnames";
-import { isBlank, getRemoteStr } from "../../../util/util";
+import { isBlank } from "../../../util/util";
 import { ReactComponent as FolderIcon } from "../../assets/icons/folder.svg";
 
 import "./prompt.less";
