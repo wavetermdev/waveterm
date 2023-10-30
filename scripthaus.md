@@ -1,4 +1,4 @@
-# Prompt Commands
+# WaveTerm Commands
 
 ```bash
 # @scripthaus command webpack-watch
@@ -74,43 +74,43 @@ node_modules/.bin/electron-forge make
 ```bash
 # @scripthaus command open-electron-package
 # @scripthaus cd :playbook
-open out/Prompt-darwin-x64/Prompt.app
+open out/Wave-darwin-x64/Wave.app
 ```
 
 ```bash
 # @scripthaus command create-dmg
 # @scripthaus cd :playbook
 DMG_VERSION=$(node -e 'console.log(require("./version.js"))')
-DMG_NAME="prompt-macos-x86-${DMG_VERSION}.dmg"
+DMG_NAME="waveterm-macos-x86-${DMG_VERSION}.dmg"
 rm *.dmg
 /Users/mike/work/gopath/src/github.com/create-dmg/create-dmg/create-dmg \
-  --volname "Prompt" \
+  --volname "WaveTerm" \
   --window-pos 200 120 \
   --window-size 600 300 \
   --icon-size 100 \
-  --icon "Prompt.app" 200 130 \
-  --hide-extension "Prompt.app" \
+  --icon "Wave.app" 200 130 \
+  --hide-extension "Wave.app" \
   --app-drop-link 400 125 \
   $DMG_NAME \
-  "out/Prompt-darwin-x64/Prompt.app"
+  "out/Wave-darwin-x64/Wave.app"
 ```
 
 ```bash
 # @scripthaus command create-dmg-m1
 # @scripthaus cd :playbook
 DMG_VERSION=$(node -e 'console.log(require("./version.js"))')
-DMG_NAME="prompt-macos-arm64-${DMG_VERSION}.dmg"
+DMG_NAME="waveterm-macos-arm64-${DMG_VERSION}.dmg"
 rm *.dmg
 ../../create-dmg/create-dmg/create-dmg \
-  --volname "Prompt" \
+  --volname "WaveTerm" \
   --window-pos 200 120 \
   --window-size 600 300 \
   --icon-size 100 \
-  --icon "Prompt.app" 200 130 \
-  --hide-extension "Prompt.app" \
+  --icon "Wave.app" 200 130 \
+  --hide-extension "Wave.app" \
   --app-drop-link 400 125 \
   $DMG_NAME \
-  "out/Prompt-darwin-arm64/Prompt.app"
+  "out/Wave-darwin-arm64/Wave.app"
 ```
 
 ```bash
