@@ -9,7 +9,7 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, LineContainerModel } from "../../../model/model";
 import type { LineType, RemoteType, RemotePtrType, LineHeightChangeCallbackType } from "../../../types/types";
 import cn from "classnames";
-import { isBlank, getRemoteStr } from "../../../util/util";
+import { isBlank } from "../../../util/util";
 import { ReactComponent as FolderIcon } from "../../assets/icons/folder.svg";
 
 import "./prompt.less";
@@ -32,6 +32,29 @@ type RendererComponentProps = {
 type RendererComponentType = {
     new (props: RendererComponentProps): React.Component<RendererComponentProps, {}>;
 };
+
+function makeFullRemoteRef(ownerName: string, remoteRef: string, name: string): string {
+    if (isBlank(ownerName) && isBlank(name)) {
+        return remoteRef;
+    }
+    if (!isBlank(ownerName) && isBlank(name)) {
+        return ownerName + ":" + remoteRef;
+    }
+    if (isBlank(ownerName) && !isBlank(name)) {
+        return remoteRef + ":" + name;
+    }
+    return ownerName + ":" + remoteRef + ":" + name;
+}
+
+function getRemoteStr(rptr: RemotePtrType): string {
+    if (rptr == null || isBlank(rptr.remoteid)) {
+        return "(invalid remote)";
+    }
+    let username = isBlank(rptr.ownerid) ? null : GlobalModel.resolveUserIdToName(rptr.ownerid);
+    let remoteRef = GlobalModel.resolveRemoteIdToRef(rptr.remoteid);
+    let fullRef = makeFullRemoteRef(username, remoteRef, rptr.name);
+    return fullRef;
+}
 
 function getShortVEnv(venvDir: string): string {
     if (isBlank(venvDir)) {
@@ -133,4 +156,4 @@ class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<stri
     }
 }
 
-export { Prompt };
+export { Prompt, getRemoteStr };

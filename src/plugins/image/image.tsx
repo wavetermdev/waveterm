@@ -4,7 +4,7 @@
 import * as React from "react";
 import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
-import { RendererContext, RendererOpts } from "../../types/types";
+import * as T from "../../types/types";
 
 import "./image.less";
 
@@ -13,7 +13,7 @@ type CV<V> = mobx.IComputedValue<V>;
 
 @mobxReact.observer
 class SimpleImageRenderer extends React.Component<
-    { data: Blob; context: RendererContext; opts: RendererOpts; savedHeight: number },
+    { data: T.ExtBlob; context: T.RendererContext; opts: T.RendererOpts; savedHeight: number },
     {}
 > {
     objUrl: string = null;

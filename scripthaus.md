@@ -33,7 +33,7 @@ PROMPT_DEV=1 PCLOUD_ENDPOINT="https://ot2e112zx5.execute-api.us-west-2.amazonaws
 ```bash
 # @scripthaus command typecheck
 # @scripthaus cd :playbook
-node_modules/.bin/tsc --jsx preserve --noEmit --esModuleInterop --target ES5 --experimentalDecorators --downlevelIteration src/index.ts
+node_modules/.bin/tsc --jsx preserve --noEmit --esModuleInterop --target ES5 --experimentalDecorators --downlevelIteration src/index.ts src/types/custom.d.ts
 ```
 
 ```bash

@@ -5,7 +5,9 @@ import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import type { RemoteType } from "../types/types";
+import type { RemoteType, CommandRtnType } from "../types/types";
+
+type OV<V> = mobx.IObservableValue<V>;
 
 dayjs.extend(localizedFormat);
 
@@ -401,29 +403,6 @@ function generateBackgroundWithGradient(colorName = "white", decay = 3) {
     return `linear-gradient(180deg, rgba(${r}, ${g}, ${b}, ${opacities[0]}) ${percentages[0]}%, rgba(${r}, ${g}, ${b}, ${opacities[1]}) ${percentages[1]}%, rgba(${r}, ${g}, ${b}, 0) ${percentages[2]}%)`;
 }
 
-function makeFullRemoteRef(ownerName: string, remoteRef: string, name: string): string {
-    if (isBlank(ownerName) && isBlank(name)) {
-        return remoteRef;
-    }
-    if (!isBlank(ownerName) && isBlank(name)) {
-        return ownerName + ":" + remoteRef;
-    }
-    if (isBlank(ownerName) && !isBlank(name)) {
-        return remoteRef + ":" + name;
-    }
-    return ownerName + ":" + remoteRef + ":" + name;
-}
-
-function getRemoteStr(rptr: RemotePtrType): string {
-    if (rptr == null || isBlank(rptr.remoteid)) {
-        return "(invalid remote)";
-    }
-    let username = isBlank(rptr.ownerid) ? null : GlobalModel.resolveUserIdToName(rptr.ownerid);
-    let remoteRef = GlobalModel.resolveRemoteIdToRef(rptr.remoteid);
-    let fullRef = makeFullRemoteRef(username, remoteRef, rptr.name);
-    return fullRef;
-}
-
 function commandRtnHandler(prtn: Promise<CommandRtnType>, errorMessage: OV<string>) {
     prtn.then((crtn) => {
         if (crtn.success) {
@@ -458,6 +437,5 @@ export {
     openLink,
     generateBackgroundWithGradient,
     getColorRGB,
-    getRemoteStr,
     commandRtnHandler,
 };
