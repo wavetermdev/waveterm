@@ -99,6 +99,32 @@ class Toggle extends React.Component<{ checked: boolean; onChange: (value: boole
     }
 }
 
+class Checkbox extends React.Component<
+    { checked: boolean; onChange: (value: boolean) => void; label: string; id: string },
+    {}
+> {
+    render() {
+        const { checked, onChange, label, id } = this.props;
+
+        return (
+            <div className="checkbox">
+                <input
+                    type="checkbox"
+                    id={id}
+                    checked={checked}
+                    onChange={(e) => onChange(e.target.checked)}
+                    aria-checked={checked}
+                    role="checkbox"
+                />
+                <label htmlFor={id}>
+                    <span></span>
+                    {label}
+                </label>
+            </div>
+        );
+    }
+}
+
 @mobxReact.observer
 class RemoteStatusLight extends React.Component<{ remote: RemoteType }, {}> {
     render() {
@@ -331,6 +357,7 @@ class SettingsError extends React.Component<{ errorMessage: OV<string> }, {}> {
 export {
     CmdStrCode,
     Toggle,
+    Checkbox,
     renderCmdText,
     RemoteStatusLight,
     InlineSettingsTextEdit,

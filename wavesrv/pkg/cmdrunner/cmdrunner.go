@@ -3677,12 +3677,13 @@ func setNoTelemetry(ctx context.Context, clientData *sstore.ClientData, noTeleme
 		return fmt.Errorf("error trying to update client telemetry: %v", err)
 	}
 	log.Printf("client no-telemetry setting updated to %v\n", noTelemetryVal)
-	err = pcloud.SendNoTelemetryUpdate(ctx, clientOpts.NoTelemetry)
-	if err != nil {
-		// ignore error, just log
-		log.Printf("[error] sending no-telemetry update: %v\n", err)
-		log.Printf("note that telemetry update has still taken effect locally, and will be respected by the client\n")
-	}
+	go func() {
+		err := pcloud.SendNoTelemetryUpdate(ctx, clientOpts.NoTelemetry)
+		if err != nil {
+			log.Printf("[error] sending no-telemetry update: %v\n", err)
+			log.Printf("note that telemetry update has still taken effect locally, and will be respected by the client\n")
+		}
+	}()
 	return nil
 }
 
@@ -3698,11 +3699,13 @@ func TelemetryOnCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if err != nil {
 		return nil, err
 	}
-	err = pcloud.SendTelemetry(ctx, false)
-	if err != nil {
-		// ignore error, but log
-		log.Printf("[error] sending telemetry update (in /telemetry:on): %v\n", err)
-	}
+	go func() {
+		err := pcloud.SendTelemetry(ctx, false)
+		if err != nil {
+			// ignore error, but log
+			log.Printf("[error] sending telemetry update (in /telemetry:on): %v\n", err)
+		}
+	}()
 	clientData, err = sstore.EnsureClientData(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)

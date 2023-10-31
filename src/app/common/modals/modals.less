@@ -181,6 +181,109 @@
     }
 }
 
+.modal.wave-modal {
+    .modal-content {
+        display: flex;
+        padding: 32px 48px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        border-radius: 10px;
+        background: var(--olive-dark-1, #151715);
+        box-shadow: 0px 3px 5px 0px rgba(0, 0, 0, 0.35), 0px 10px 24px 0px rgba(0, 0, 0, 0.45),
+            0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
+
+        .modal-content-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+            width: 100%;
+
+            header {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: var(--sizing-sm, 12px);
+                width: 100%;
+
+                .modal-title {
+                    color: @term-bright-white;
+                    text-align: center;
+                    font-size: 20px;
+                    font-style: normal;
+                    font-weight: 300;
+                    line-height: 20px;
+                }
+
+                .modal-subtitle {
+                    color: @term-white;
+                    text-align: center;
+
+                    font-style: normal;
+                    font-weight: 300;
+                    line-height: 20px;
+                }
+            }
+
+            .content {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 32px;
+                width: 100%;
+                margin-bottom: 0;
+
+                .item {
+                    display: flex;
+                    width: 100%;
+                    align-items: center;
+                    gap: 16px;
+
+                    .item-inner {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: flex-start;
+                        gap: 4px;
+                        flex: 1 0 0;
+
+                        .item-title {
+                            color: @term-bright-white;
+                            font-style: normal;
+                            line-height: 20px;
+                        }
+
+                        .item-text {
+                            color: @term-white;
+                            font-style: normal;
+                            line-height: 20px;
+                        }
+
+                        .item-field {
+                            display: flex;
+                            align-items: center;
+                            gap: 8px;
+                        }
+                    }
+                }
+            }
+        }
+
+        footer {
+            .button-wrapper {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+
+                button.disabled-button {
+                    cursor: default;
+                }
+            }
+        }
+    }
+}
+
 .modal.welcome-modal {
     footer {
         .prev-button {
