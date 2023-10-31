@@ -11,7 +11,7 @@
         flex-direction: column;
         position: absolute;
         width: 100%;
-        height: calc(100% - 3em);
+        height: calc(100% - 0.5rem);
         overflow-x: hidden;
 
         .rendermode-tag {
@@ -78,25 +78,209 @@
                 }
             }
         }
+    }
 
-        .window-empty {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            padding: 10px;
-            height: 100%;
-            color: @term-white;
+    .screen-settings-inline {
+        padding: 2em;
+        .settings-field {
+            display: block;
+            padding: 1.5em 1em;
+            margin-top: 0;
+            line-height: 2.5em;
+            border-top: 1px solid @base-border;
+            &:first-child {
+                border-top: none;
+            }
+        }
+    }
+}
 
-            code {
-                color: @prompt-green;
-                background-color: transparent;
-                font-family: @fixed-font;
+.newtab-container {
+    margin: 16px;
+
+    .newtab-section {
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+
+        &.conn-section {
+            gap: 8px;
+        }
+    }
+
+    .newtab-spacer {
+        height: 1px;
+        background: rgba(241, 246, 243, 0.15);
+    }
+
+    .control-iconlist {
+        display: flex;
+        padding: 8px 0;
+        align-items: flex-start;
+        gap: 27px;
+        
+        .icondiv {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            position: relative;
+            
+            .icon {
+                width: 16px;
+                height: 16px;
             }
 
-            &.should-fade {
-                opacity: 1;
-                animation: fade-in 2.5s;
+            .check-icon {
+                width: 12px;
+                height: 12px;
+                position: absolute;
+                top: 2px;
+                left: 2px;
+            }
+
+            .icon.color-white + .check-icon {
+                path {
+                    fill: black;
+                }
+            }
+        }
+    }
+
+    .dropdown.conn-dropdown {
+        padding-left: 0;
+        border-radius: 8px;
+        background-color: rgba(241, 246, 243, 0.08);
+
+        .conn-dd-trigger {
+            display: flex;
+            flex-direction: row;
+            width: 413px;
+            padding: 6px 8px 6px 12px;
+            align-items: center;
+            height: 42px;
+
+            .lefticon {
+                margin-right: 8px;
+                margin-top: 4px;
+                position: relative;
+
+                .status-icon {
+                    width: 10px;
+                    height: 10px;
+                    stroke-width: 2px;
+                    stroke: @status-outline;
+                    position: absolute;
+                    bottom: 3px;
+                    right: -2px;
+                }
+            }
+
+            .dd-control {
+                display: flex;
+                padding: 4px;
+                align-items: center;
+
+                .icon {
+                    height: 16px;
+                    width: 16px;
+                }
+            }
+
+            .globe-icon {
+                width: 16px;
+                height: 16px;
+                flex-shrink: 0;
+            }
+
+            .conntext {
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: flex-start;
+                flex: 1 0 0;
+
+                .conntext-solo {
+                    color: @text-primary;
+                    text-overflow: ellipsis;
+                }
+
+                .conntext-1 {
+                    color: @text-primary;
+                    text-overflow: ellipsis;
+                }
+
+                .conntext-2 {
+                    color: @text-secondary;
+                    text-overflow: ellipsis;
+                }
+            }
+        }
+
+        .conn-dd-menu {
+            display: flex;
+            width: 413px;
+            padding: 6px;
+            flex-direction: column;
+            align-items: flex-start;
+            border-radius: 8px;
+            background-color: @dropdown-menu;
+
+            .dropdown-item {
+                display: flex;
+                padding: 5px 12px 5px 8px;
+                align-items: center;
+                gap: 8px;
+                align-self: stretch;
+                border-radius: 6px;
+
+                .status-div {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 16px;
+                    height: 16px;
+                    padding: 3px;
+
+                    svg.status-icon {
+                        width: 10px;
+                        height: 10px;
+                    }
+                }
+
+                .add-div {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 16px;
+                    height: 16px;
+                    
+                    svg.add-icon {
+                        width: 16px;
+                        height: 16px;
+
+                        path {
+                            fill: @text-primary;
+                        }
+                    }
+                }
+
+                .text-standard {
+                    color: @text-secondary;
+                }
+
+                .text-caption {
+                    color: @text-caption;
+                }
+
+                .ellipsis {
+                    text-overflow: ellipsis;
+                }
+
+                &:hover {
+                    background-color: rgba(241, 246, 243, 0.08);
+                }
             }
         }
     }

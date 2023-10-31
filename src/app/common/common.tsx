@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
@@ -92,6 +95,32 @@ class Toggle extends React.Component<{ checked: boolean; onChange: (value: boole
                 <input type="checkbox" checked={this.props.checked} onChange={this.handleChange} />
                 <span className="slider" />
             </label>
+        );
+    }
+}
+
+class Checkbox extends React.Component<
+    { checked: boolean; onChange: (value: boolean) => void; label: string; id: string },
+    {}
+> {
+    render() {
+        const { checked, onChange, label, id } = this.props;
+
+        return (
+            <div className="checkbox">
+                <input
+                    type="checkbox"
+                    id={id}
+                    checked={checked}
+                    onChange={(e) => onChange(e.target.checked)}
+                    aria-checked={checked}
+                    role="checkbox"
+                />
+                <label htmlFor={id}>
+                    <span></span>
+                    {label}
+                </label>
+            </div>
         );
     }
 }
@@ -328,6 +357,7 @@ class SettingsError extends React.Component<{ errorMessage: OV<string> }, {}> {
 export {
     CmdStrCode,
     Toggle,
+    Checkbox,
     renderCmdText,
     RemoteStatusLight,
     InlineSettingsTextEdit,

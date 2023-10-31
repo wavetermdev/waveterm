@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 package shexec
 
 import (
@@ -10,6 +13,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"os/user"
+	"path"
 	"runtime"
 	"strconv"
 	"strings"
@@ -18,11 +22,12 @@ import (
 	"time"
 
 	"github.com/alessio/shellescape"
+	"github.com/creack/pty"
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/cirfile"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/mpio"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
-	"github.com/creack/pty"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sys/unix"
 )
@@ -46,6 +51,12 @@ const ShellVarName = "SHELL"
 const GetStateTimeout = 5 * time.Second
 
 const BaseBashOpts = `set +m; set +H; shopt -s extglob`
+
+const ShellVersionCmdStr = `echo bash v${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}.${BASH_VERSINFO[2]}`
+
+// do not use these directly, call GetLocalBashMajorVersion()
+var LocalBashMajorVersionOnce = &sync.Once{}
+var LocalBashMajorVersion = ""
 
 var GetShellStateCmds = []string{
 	`echo bash v${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}.${BASH_VERSINFO[2]};`,
@@ -122,6 +133,7 @@ type ShExecType struct {
 	MsgSender      *packet.PacketSender // where to send out-of-band messages back to calling proceess
 	ReturnState    *ReturnStateBuf
 	Exited         bool // locked via Lock
+	TmpRcFileName  string
 }
 
 type StdContext struct{}
@@ -236,6 +248,9 @@ func (c *ShExecType) Close() {
 	}
 	if c.ReturnState != nil {
 		c.ReturnState.Reader.Close()
+	}
+	if c.TmpRcFileName != "" {
+		os.Remove(c.TmpRcFileName)
 	}
 }
 
@@ -1084,14 +1099,37 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 			base.Logf("error writing %s: %v\n", debugRcFileName, err)
 		}
 	}
-	rcFileFdNum, err := AddRunData(pk, rcFileStr, "rcfile")
-	if err != nil {
-		return nil, err
+	bashVersion := GetLocalBashMajorVersion()
+	isOldBashVersion := (semver.Compare(bashVersion, "v4") < 0)
+	var rcFileName string
+	if isOldBashVersion {
+		rcFileDir, err := base.EnsureRcFilesDir()
+		if err != nil {
+			return nil, err
+		}
+		rcFileName = path.Join(rcFileDir, uuid.New().String())
+		err = os.WriteFile(rcFileName, []byte(rcFileStr), 0600)
+		if err != nil {
+			return nil, fmt.Errorf("could not write temp rcfile: %w", err)
+		}
+		cmd.TmpRcFileName = rcFileName
+		go func() {
+			// cmd.Close() will also remove rcFileName
+			// adding this to also try to proactively clean up after 1-second.
+			time.Sleep(1 * time.Second)
+			os.Remove(rcFileName)
+		}()
+	} else {
+		rcFileFdNum, err := AddRunData(pk, rcFileStr, "rcfile")
+		if err != nil {
+			return nil, err
+		}
+		rcFileName = fmt.Sprintf("/dev/fd/%d", rcFileFdNum)
 	}
 	if pk.UsePty {
-		cmd.Cmd = exec.Command("bash", "--rcfile", fmt.Sprintf("/dev/fd/%d", rcFileFdNum), "-i", "-c", pk.Command)
+		cmd.Cmd = exec.Command("bash", "--rcfile", rcFileName, "-i", "-c", pk.Command)
 	} else {
-		cmd.Cmd = exec.Command("bash", "--rcfile", fmt.Sprintf("/dev/fd/%d", rcFileFdNum), "-c", pk.Command)
+		cmd.Cmd = exec.Command("bash", "--rcfile", rcFileName, "-c", pk.Command)
 	}
 	if !pk.StateComplete {
 		cmd.Cmd.Env = os.Environ()
@@ -1100,7 +1138,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 	if state.Cwd != "" {
 		cmd.Cmd.Dir = base.ExpandHomeDir(state.Cwd)
 	}
-	err = ValidateRemoteFds(pk.Fds)
+	err := ValidateRemoteFds(pk.Fds)
 	if err != nil {
 		return nil, err
 	}
@@ -1521,7 +1559,8 @@ func GetShellStateRedirectCommandStr(outputFdNum int) string {
 }
 
 func GetShellState() (*packet.ShellState, error) {
-	ctx, _ := context.WithTimeout(context.Background(), GetStateTimeout)
+	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
+	defer cancelFn()
 	cmdStr := BaseBashOpts + "; " + GetShellStateCmd()
 	ecmd := exec.CommandContext(ctx, "bash", "-l", "-i", "-c", cmdStr)
 	outputBytes, err := runSimpleCmdInPty(ecmd)
@@ -1539,4 +1578,28 @@ func MShellEnvVars(termType string) map[string]string {
 	rtn["MSHELL"], _ = os.Executable()
 	rtn["MSHELL_VERSION"] = base.MShellVersion
 	return rtn
+}
+
+func ExecGetLocalShellVersion() string {
+	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
+	defer cancelFn()
+	ecmd := exec.CommandContext(ctx, "bash", "-c", ShellVersionCmdStr)
+	out, err := ecmd.Output()
+	if err != nil {
+		return ""
+	}
+	versionStr := strings.TrimSpace(string(out))
+	if strings.Index(versionStr, "bash ") == -1 {
+		// invalid shell version (only bash is supported)
+		return ""
+	}
+	return versionStr
+}
+
+func GetLocalBashMajorVersion() string {
+	LocalBashMajorVersionOnce.Do(func() {
+		fullVersion := ExecGetLocalShellVersion()
+		LocalBashMajorVersion = packet.GetBashMajorVersion(fullVersion)
+	})
+	return LocalBashMajorVersion
 }

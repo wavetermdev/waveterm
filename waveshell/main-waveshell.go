@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 package main
 
 import (
@@ -539,15 +542,6 @@ func main() {
 	} else if firstArg == "--version" {
 		fmt.Printf("mshell %s+%s\n", base.MShellVersion, base.BuildTime)
 		return
-	} else if firstArg == "--test-env" {
-		state, err := shexec.GetShellState()
-		if state != nil {
-
-		}
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "[error] %v\n", err)
-			os.Exit(1)
-		}
 	} else if firstArg == "--single" {
 		base.InitDebugLog("single")
 		handleSingle(false)

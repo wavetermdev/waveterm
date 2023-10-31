@@ -1,33 +1,19 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import * as React from "react";
 import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
-import { RendererContext, RendererOpts } from "../../types/types";
+import * as T from "../../types/types";
 
 import "./image.less";
 
 type OV<V> = mobx.IObservableValue<V>;
 type CV<V> = mobx.IComputedValue<V>;
 
-// ctor(RendererContext, RenderOpts, isDone);
-// type RendererModel = {
-//     dispose : () => void,
-//     reload : (delayMs : number) => void,
-//     receiveData : (pos : number, data : Uint8Array, reason? : string) => void,
-//     cmdDone : () => void,
-//     resizeWindow : (size : WindowSize) => void,
-//     resizeCols : (cols : number) => void,
-//     giveFocus : () => void,
-//     getUsedRows : () => number,
-// };
-
-// two types of renderers
-//     JSON
-//     blob
-//
-
 @mobxReact.observer
 class SimpleImageRenderer extends React.Component<
-    { data: Blob; context: RendererContext; opts: RendererOpts; savedHeight: number },
+    { data: T.ExtBlob; context: T.RendererContext; opts: T.RendererOpts; savedHeight: number },
     {}
 > {
     objUrl: string = null;

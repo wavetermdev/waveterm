@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
@@ -35,6 +38,7 @@ import { isBlank } from "../../util/util";
 import { PluginModel } from "../../plugins/plugins";
 import { Prompt } from "../common/prompt/prompt";
 import * as lineutil from "./lineutil";
+import { ErrorBoundary } from "../../app/common/error/errorboundary";
 
 import { ReactComponent as CheckIcon } from "../assets/icons/line/check.svg";
 import { ReactComponent as CommentIcon } from "../assets/icons/line/comment.svg";
@@ -591,7 +595,6 @@ class LineCmd extends React.Component<
         let isRunning = cmd.isRunning();
         let isExpanded = this.isCmdExpanded.get();
         let rsdiff = this.rtnStateDiff.get();
-        // console.log("render", "#" + line.linenum, termHeight, usedRows, cmd.getStatus(), (this.rtnStateDiff.get() != null), (!cmd.isRunning() ? "cmd-done" : "running"));
         let mainDivCn = cn(
             "line",
             "line-cmd",
@@ -661,39 +664,41 @@ class LineCmd extends React.Component<
                     </div>
                 </div>
                 <If condition={!this.isMinimised.get()}>
-                    <If condition={rendererPlugin == null && !isNoneRenderer}>
-                        <TerminalRenderer
-                            screen={screen}
-                            line={line}
-                            width={width}
-                            staticRender={staticRender}
-                            visible={visible}
-                            onHeightChange={this.handleHeightChange}
-                            collapsed={false}
-                        />
-                    </If>
-                    <If condition={rendererPlugin != null && rendererPlugin.rendererType == "simple"}>
-                        <SimpleBlobRenderer
-                            rendererContainer={screen}
-                            lineId={line.lineid}
-                            plugin={rendererPlugin}
-                            onHeightChange={this.handleHeightChange}
-                            initParams={this.makeRendererModelInitializeParams()}
-                            scrollToBringIntoViewport={this.scrollToBringIntoViewport}
-                            isSelected={isSelected}
-                            shouldFocus={shouldCmdFocus}
-                        />
-                    </If>
-                    <If condition={rendererPlugin != null && rendererPlugin.rendererType == "full"}>
-                        <IncrementalRenderer
-                            rendererContainer={screen}
-                            lineId={line.lineid}
-                            plugin={rendererPlugin}
-                            onHeightChange={this.handleHeightChange}
-                            initParams={this.makeRendererModelInitializeParams()}
-                            isSelected={isSelected}
-                        />
-                    </If>
+                    <ErrorBoundary plugin={rendererPlugin?.name} lineContext={lineutil.getRendererContext(line)}>
+                        <If condition={rendererPlugin == null && !isNoneRenderer}>
+                            <TerminalRenderer
+                                screen={screen}
+                                line={line}
+                                width={width}
+                                staticRender={staticRender}
+                                visible={visible}
+                                onHeightChange={this.handleHeightChange}
+                                collapsed={false}
+                            />
+                        </If>
+                        <If condition={rendererPlugin != null && rendererPlugin.rendererType == "simple"}>
+                            <SimpleBlobRenderer
+                                rendererContainer={screen}
+                                lineId={line.lineid}
+                                plugin={rendererPlugin}
+                                onHeightChange={this.handleHeightChange}
+                                initParams={this.makeRendererModelInitializeParams()}
+                                scrollToBringIntoViewport={this.scrollToBringIntoViewport}
+                                isSelected={isSelected}
+                                shouldFocus={shouldCmdFocus}
+                            />
+                        </If>
+                        <If condition={rendererPlugin != null && rendererPlugin.rendererType == "full"}>
+                            <IncrementalRenderer
+                                rendererContainer={screen}
+                                lineId={line.lineid}
+                                plugin={rendererPlugin}
+                                onHeightChange={this.handleHeightChange}
+                                initParams={this.makeRendererModelInitializeParams()}
+                                isSelected={isSelected}
+                            />
+                        </If>
+                    </ErrorBoundary>
                     <If condition={cmd.getRtnState()}>
                         <div
                             key="rtnstate"
@@ -738,6 +743,7 @@ class Line extends React.Component<
         overrideCollapsed: OV<boolean>;
         renderMode: RenderModeType;
         noSelect?: boolean;
+        topBorder: boolean;
     },
     {}
 > {

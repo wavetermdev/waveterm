@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
@@ -12,6 +15,7 @@ import {
     isModKeyPress,
 } from "../util/util";
 import { TermWrap } from "../plugins/terminal/term";
+import { PluginModel } from "../plugins/plugins";
 import type {
     SessionDataType,
     LineType,
@@ -72,6 +76,8 @@ import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { getRendererContext, cmdStatusIsRunning } from "../app/line/lineutil";
+import { sortAndFilterRemotes } from "../util/util";
+import { MagicLayout } from "../app/magiclayout";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(localizedFormat);
@@ -88,7 +94,7 @@ const MinFontSize = 8;
 const MaxFontSize = 15;
 const InputChunkSize = 500;
 const RemoteColors = ["red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"];
-const TabColors = ["red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange", "black"];
+const TabColors = ["green", "blue", "yellow", "pink", "magenta", "cyan", "violet", "orange", "red", "white"];
 
 // @ts-ignore
 const VERSION = __PROMPT_VERSION__;
@@ -640,10 +646,11 @@ class Screen {
             let height = termHeightFromRows(25, GlobalModel.termFontSize.get());
             return { width, height };
         }
-        // TODO calculate these sizes more deliberately
         let winSize = this.lastScreenSize;
-        let width = boundInt(winSize.width - 50, 100, 5000);
-        let height = boundInt(winSize.height - 120, 100, 5000);
+        let minSize = MagicLayout.ScreenMinContentSize;
+        let maxSize = MagicLayout.ScreenMaxContentSize;
+        let width = boundInt(winSize.width - MagicLayout.ScreenMaxContentWidthBuffer, minSize, maxSize);
+        let height = boundInt(winSize.height - MagicLayout.ScreenMaxContentHeightBuffer, minSize, maxSize);
         return { width, height };
     }
 
@@ -1977,7 +1984,7 @@ class HistoryViewModel {
             return;
         }
         let prtn = GlobalModel.showAlert({
-            message: "Deleting lines from history also deletes their content from your sessions.",
+            message: "Deleting lines from history also deletes their content from your workspaces.",
             confirm: true,
         });
         prtn.then((result) => {
@@ -2417,12 +2424,44 @@ class BookmarksModel {
             return;
         }
     }
-    return;
+}
+
+class PluginsModel {
+    selectedPlugin: OV<RendererPluginType> = mobx.observable.box(null, { name: "selectedPlugin" });
+
+    showPluginsView(): void {
+        mobx.action(() => {
+            this.reset();
+            GlobalModel.activeMainView.set("plugins");
+            const allPlugins = PluginModel.allPlugins();
+            this.selectedPlugin.set(allPlugins.length > 0 ? allPlugins[0] : null);
+        })();
+    }
+
+    setSelectedPlugin(plugin: RendererPluginType): void {
+        mobx.action(() => {
+            this.selectedPlugin.set(plugin);
+        })();
+    }
+
+    reset(): void {
+        mobx.action(() => {
+            this.selectedPlugin.set(null);
+        })();
+    }
+
+    closeView(): void {
+        GlobalModel.showSessionView();
+        setTimeout(() => GlobalModel.inputModel.giveFocus(), 50);
+    }
 }
 
 class RemotesModalModel {
     openState: OV<boolean> = mobx.observable.box(false, {
         name: "RemotesModalModel-isOpen",
+    });
+    onlyAddNewRemote: OV<boolean> = mobx.observable.box(false, {
+        name: "RemotesModalModel-onlyAddNewRemote",
     });
     selectedRemoteId: OV<string> = mobx.observable.box(null, {
         name: "RemotesModalModel-selectedRemoteId",
@@ -2465,8 +2504,9 @@ class RemotesModalModel {
         })();
     }
 
-    openModalForEdit(redit: RemoteEditType): void {
+    openModalForEdit(redit: RemoteEditType, onlyAddNewRemote: boolean): void {
         mobx.action(() => {
+            this.onlyAddNewRemote.set(onlyAddNewRemote);
             this.openState.set(true);
             this.selectedRemoteId.set(redit.remoteid);
             this.remoteEdit.set(redit);
@@ -2495,6 +2535,11 @@ class RemotesModalModel {
     cancelEditAuth(): void {
         mobx.action(() => {
             this.remoteEdit.set(null);
+            if (this.onlyAddNewRemote.get()) {
+                this.onlyAddNewRemote.set(false);
+                this.openState.set(false);
+                return;
+            }
             if (this.selectedRemoteId.get() == null) {
                 this.openModal();
             }
@@ -2517,6 +2562,7 @@ class RemotesModalModel {
             this.openState.set(false);
             this.selectedRemoteId.set(null);
             this.remoteEdit.set(null);
+            this.onlyAddNewRemote.set(false);
         })();
         setTimeout(() => GlobalModel.refocus(), 10);
     }
@@ -2642,7 +2688,7 @@ class Model {
     authKey: string;
     isDev: boolean;
     platform: string;
-    activeMainView: OV<"session" | "history" | "bookmarks" | "webshare"> = mobx.observable.box("session", {
+    activeMainView: OV<"plugins" | "session" | "history" | "bookmarks" | "webshare"> = mobx.observable.box("session", {
         name: "activeMainView",
     });
     termFontSize: CV<number>;
@@ -2668,6 +2714,7 @@ class Model {
     remotesModalModel: RemotesModalModel;
 
     inputModel: InputModel;
+    pluginsModel: PluginsModel;
     bookmarksModel: BookmarksModel;
     historyViewModel: HistoryViewModel;
     clientData: OV<ClientDataType> = mobx.observable.box(null, {
@@ -2686,6 +2733,7 @@ class Model {
         );
         this.ws.reconnect();
         this.inputModel = new InputModel();
+        this.pluginsModel = new PluginsModel();
         this.bookmarksModel = new BookmarksModel();
         this.historyViewModel = new HistoryViewModel();
         this.remotesModalModel = new RemotesModalModel();
@@ -3187,7 +3235,9 @@ class Model {
             this.updateRemotes(update.remotes);
         }
         if ("mainview" in update) {
-            if (update.mainview == "bookmarks") {
+            if (update.mainview == "plugins") {
+                this.pluginsModel.showPluginsView();
+            } else if (update.mainview == "bookmarks") {
                 this.bookmarksModel.showBookmarksView(update.bookmarks, update.selectedbookmark);
             } else if (update.mainview == "session") {
                 this.activeMainView.set("session");
@@ -3211,7 +3261,7 @@ class Model {
             if (rview.remoteshowall) {
                 this.remotesModalModel.openModal();
             } else if (rview.remoteedit != null) {
-                this.remotesModalModel.openModalForEdit(rview.remoteedit);
+                this.remotesModalModel.openModalForEdit(rview.remoteedit, false);
             } else if (rview.ptyremoteid) {
                 this.remotesModalModel.openModal(rview.ptyremoteid);
             }
@@ -3448,7 +3498,15 @@ class Model {
             uicontext: this.getUIContext(),
             interactive: interactive,
         };
-        // console.log("CMD", pk.metacmd + (pk.metasubcmd != null ? ":" + pk.metasubcmd : ""), pk.args, pk.kwargs, pk.interactive);
+        /**
+        console.log(
+            "CMD",
+            pk.metacmd + (pk.metasubcmd != null ? ":" + pk.metasubcmd : ""),
+            pk.args,
+            pk.kwargs,
+            pk.interactive
+        );
+         */
         return this.submitCommandPacket(pk, interactive);
     }
 
@@ -3462,7 +3520,7 @@ class Model {
             interactive: interactive,
             rawstr: cmdStr,
         };
-        if (!addToHistory) {
+        if (!addToHistory && pk.kwargs) {
             pk.kwargs["nohist"] = "1";
         }
         return this.submitCommandPacket(pk, interactive);
@@ -3618,7 +3676,7 @@ class Model {
         return remote.remotecanonicalname;
     }
 
-    readRemoteFile(screenId: string, lineId: string, path: string): Promise<File> {
+    readRemoteFile(screenId: string, lineId: string, path: string): Promise<T.ExtFile> {
         let urlParams = {
             screenid: screenId,
             lineid: lineId,
@@ -3653,7 +3711,7 @@ class Model {
                     let isWriteable = (fileInfo.perm & 0o222) > 0; // checks for unix permission "w" bits
                     (file as any).readOnly = !isWriteable;
                     (file as any).notFound = !!fileInfo.notfound;
-                    return file;
+                    return file as T.ExtFile;
                 } else {
                     let textError: string = blobOrText;
                     if (textError == null || textError.length == 0) {
@@ -3817,14 +3875,22 @@ class CommandRunner {
         GlobalModel.submitCommand("remote", "installcancel", null, { nohist: "1", remote: remoteid }, true);
     }
 
-    createRemote(cname: string, kwargsArg: Record<string, string>) {
+    createRemote(cname: string, kwargsArg: Record<string, string>, interactive: boolean): Promise<CommandRtnType> {
         let kwargs = Object.assign({}, kwargsArg);
         kwargs["nohist"] = "1";
-        GlobalModel.submitCommand("remote", "new", [cname], kwargs, true);
+        return GlobalModel.submitCommand("remote", "new", [cname], kwargs, interactive);
     }
 
     openCreateRemote(): void {
         GlobalModel.submitCommand("remote", "new", null, { nohist: "1", visual: "1" }, true);
+    }
+
+    screenSetRemote(remoteArg: string, nohist: boolean, interactive: boolean): Promise<CommandRtnType> {
+        let kwargs = {};
+        if (nohist) {
+            kwargs["nohist"] = "1";
+        }
+        return GlobalModel.submitCommand("connect", null, [remoteArg], kwargs, interactive);
     }
 
     editRemote(remoteid: string, kwargsArg: Record<string, string>): void {

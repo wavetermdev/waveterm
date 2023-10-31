@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import * as mobx from "mobx";
 import { Terminal } from "xterm";
 import { sprintf } from "sprintf-js";
@@ -185,6 +188,10 @@ class TermWrap {
         let termNumLines = termBuf.lines.length;
         let termYPos = termBuf.y;
         if (termNumLines > term.rows) {
+            // TODO: there is a weird case here.  for commands that output more than term.rows rows of output
+            //   they get an "extra" blank line at the bottom because the cursor is positioned on the next line!
+            //   hard problem to solve because the line is already written to the buffer.  we only want to "fix"
+            //   this when the command is no longer running.
             return term.rows;
         }
         let usedRows = this.isRunning ? 1 : 0;

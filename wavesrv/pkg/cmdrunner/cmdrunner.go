@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 package cmdrunner
 
 import (
@@ -18,6 +21,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
@@ -30,7 +34,6 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
-	"github.com/google/uuid"
 )
 
 const (
@@ -68,7 +71,7 @@ const (
 	KwArgLang     = "lang"
 )
 
-var ColorNames = []string{"black", "red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
+var ColorNames = []string{"yellow", "blue", "pink", "magenta", "cyan", "violet", "orange", "green", "red", "white"}
 var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
 var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}
 
@@ -1044,7 +1047,6 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 		err := fmt.Errorf("invalid connectmode %q: valid modes are %s", connectMode, formatStrs([]string{sstore.ConnectModeStartup, sstore.ConnectModeAuto, sstore.ConnectModeManual}, "or", false))
 		return nil, err
 	}
-	autoInstall := resolveBool(pk.Kwargs["autoinstall"], true)
 	keyFile, err := resolveFile(pk.Kwargs["key"])
 	if err != nil {
 		return nil, fmt.Errorf("invalid ssh keyfile %q: %v", pk.Kwargs["key"], err)
@@ -1073,9 +1075,6 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 		}
 		editMap[sstore.RemoteField_ConnectMode] = connectMode
 	}
-	if _, found := pk.Kwargs[sstore.RemoteField_AutoInstall]; found {
-		editMap[sstore.RemoteField_AutoInstall] = autoInstall
-	}
 	if _, found := pk.Kwargs["key"]; found {
 		if isLocal {
 			return nil, fmt.Errorf("Cannot edit ssh key file for 'local' remote")
@@ -1096,7 +1095,7 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 		SSHOpts:       sshOpts,
 		ConnectMode:   connectMode,
 		Alias:         alias,
-		AutoInstall:   autoInstall,
+		AutoInstall:   true,
 		CanonicalName: canonicalName,
 		SSHKeyFile:    keyFile,
 		SSHPassword:   sshPassword,
@@ -1113,7 +1112,7 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	}
 	editArgs, err := parseRemoteEditArgs(true, pk, false)
 	if err != nil {
-		return makeRemoteEditErrorReturn_new(visualEdit, fmt.Errorf("/remote:new %v", err))
+		return nil, fmt.Errorf("/remote:new %v", err)
 	}
 	r := &sstore.RemoteType{
 		RemoteId:            scbase.GenPromptUUID(),
@@ -1131,7 +1130,7 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	}
 	err = remote.AddRemote(ctx, r, true)
 	if err != nil {
-		return makeRemoteEditErrorReturn_new(visualEdit, fmt.Errorf("cannot create remote %q: %v", r.RemoteCanonicalName, err))
+		return nil, fmt.Errorf("cannot create remote %q: %v", r.RemoteCanonicalName, err)
 	}
 	// SUCCESS
 	return &sstore.ModelUpdate{
@@ -1577,6 +1576,18 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 	if err != nil {
 		return nil, fmt.Errorf("/%s error: cannot update curremote: %w", GetCmdStr(pk), err)
 	}
+	noHist := resolveBool(pk.Kwargs["nohist"], false)
+	if noHist {
+		screen, err := sstore.GetScreenById(ctx, ids.ScreenId)
+		if err != nil {
+			return nil, fmt.Errorf("/% error: cannot resolve screen for update: %w", err)
+		}
+		update := &sstore.ModelUpdate{
+			Screens:     []*sstore.ScreenType{screen},
+			Interactive: pk.Interactive,
+		}
+		return update, nil
+	}
 	outputStr := fmt.Sprintf("connected to %s", GetFullRemoteDisplayName(rptr, rstate))
 	cmd, err := makeStaticCmd(ctx, GetCmdStr(pk), ids, pk.GetRawStr(), []byte(outputStr))
 	if err != nil {
@@ -1727,8 +1738,20 @@ func simpleCompCommandMeta(ctx context.Context, prefix string, compCtx comp.Comp
 		compsMeta, _ := simpleCompMeta(ctx, prefix, compCtx, nil)
 		return comp.CombineCompReturn(comp.CGTypeCommandMeta, compsCmd, compsMeta), nil
 	} else {
-		return comp.DoSimpleComp(ctx, comp.CGTypeCommand, prefix, compCtx, nil)
+		compsCmd, _ := comp.DoSimpleComp(ctx, comp.CGTypeCommand, prefix, compCtx, nil)
+		compsBareCmd, _ := simpleCompBareCmds(ctx, prefix, compCtx, nil)
+		return comp.CombineCompReturn(comp.CGTypeCommand, compsCmd, compsBareCmd), nil
 	}
+}
+
+func simpleCompBareCmds(ctx context.Context, prefix string, compCtx comp.CompContext, args []interface{}) (*comp.CompReturn, error) {
+	rtn := comp.CompReturn{}
+	for _, bmc := range BareMetaCmds {
+		if strings.HasPrefix(bmc.CmdStr, prefix) {
+			rtn.Entries = append(rtn.Entries, comp.CompEntry{Word: bmc.CmdStr, IsMetaCmd: true})
+		}
+	}
+	return &rtn, nil
 }
 
 func simpleCompMeta(ctx context.Context, prefix string, compCtx comp.CompContext, args []interface{}) (*comp.CompReturn, error) {
@@ -3654,12 +3677,13 @@ func setNoTelemetry(ctx context.Context, clientData *sstore.ClientData, noTeleme
 		return fmt.Errorf("error trying to update client telemetry: %v", err)
 	}
 	log.Printf("client no-telemetry setting updated to %v\n", noTelemetryVal)
-	err = pcloud.SendNoTelemetryUpdate(ctx, clientOpts.NoTelemetry)
-	if err != nil {
-		// ignore error, just log
-		log.Printf("[error] sending no-telemetry update: %v\n", err)
-		log.Printf("note that telemetry update has still taken effect locally, and will be respected by the client\n")
-	}
+	go func() {
+		err := pcloud.SendNoTelemetryUpdate(ctx, clientOpts.NoTelemetry)
+		if err != nil {
+			log.Printf("[error] sending no-telemetry update: %v\n", err)
+			log.Printf("note that telemetry update has still taken effect locally, and will be respected by the client\n")
+		}
+	}()
 	return nil
 }
 
@@ -3675,11 +3699,13 @@ func TelemetryOnCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if err != nil {
 		return nil, err
 	}
-	err = pcloud.SendTelemetry(ctx, false)
-	if err != nil {
-		// ignore error, but log
-		log.Printf("[error] sending telemetry update (in /telemetry:on): %v\n", err)
-	}
+	go func() {
+		err := pcloud.SendTelemetry(ctx, false)
+		if err != nil {
+			// ignore error, but log
+			log.Printf("[error] sending telemetry update (in /telemetry:on): %v\n", err)
+		}
+	}()
 	clientData, err = sstore.EnsureClientData(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)

@@ -1,8 +1,13 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import type { RemoteType } from "../types/types";
+import type { RemoteType, CommandRtnType } from "../types/types";
+
+type OV<V> = mobx.IObservableValue<V>;
 
 dayjs.extend(localizedFormat);
 
@@ -398,6 +403,17 @@ function generateBackgroundWithGradient(colorName = "white", decay = 3) {
     return `linear-gradient(180deg, rgba(${r}, ${g}, ${b}, ${opacities[0]}) ${percentages[0]}%, rgba(${r}, ${g}, ${b}, ${opacities[1]}) ${percentages[1]}%, rgba(${r}, ${g}, ${b}, 0) ${percentages[2]}%)`;
 }
 
+function commandRtnHandler(prtn: Promise<CommandRtnType>, errorMessage: OV<string>) {
+    prtn.then((crtn) => {
+        if (crtn.success) {
+            return;
+        }
+        mobx.action(() => {
+            errorMessage.set(crtn.error);
+        })();
+    });
+}
+
 export {
     handleJsonFetchResponse,
     base64ToArray,
@@ -421,4 +437,5 @@ export {
     openLink,
     generateBackgroundWithGradient,
     getColorRGB,
+    commandRtnHandler,
 };

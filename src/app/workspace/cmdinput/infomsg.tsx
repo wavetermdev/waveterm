@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import { If, For } from "tsx-control-statements/components";
@@ -14,6 +17,9 @@ dayjs.extend(localizedFormat);
 class InfoMsg extends React.Component<{}, {}> {
     getAfterSlash(s: string): string {
         if (s.startsWith("^/")) {
+            return s.substr(1);
+        }
+        if (s.startsWith("^")) {
             return s.substr(1);
         }
         let slashIdx = s.lastIndexOf("/");

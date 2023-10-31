@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import * as electron from "electron";
 import * as path from "path";
 import * as fs from "fs";
@@ -40,7 +43,7 @@ let loggerConfig = {
         winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
         winston.format.printf((info) => `${info.timestamp} ${info.message}`)
     ),
-    transports: [new winston.transports.File({ filename: path.join(scHome, "prompt-app.log"), level: "info" })],
+    transports: [new winston.transports.File({ filename: path.join(scHome, "waveterm-app.log"), level: "info" })],
 };
 if (isDev) {
     loggerConfig.transports.push(new winston.transports.Console());
@@ -56,7 +59,7 @@ function log(...msg) {
 console.log = log;
 console.log(
     sprintf(
-        "prompt-app starting, PROMPT_HOME=%s, apppath=%s arch=%s/%s",
+        "waveterm-app starting, PROMPT_HOME=%s, apppath=%s arch=%s/%s",
         scHome,
         getAppBasePath(),
         unamePlatform,
@@ -67,7 +70,7 @@ if (isDev) {
     console.log("prompt-app PROMPT_DEV set");
 }
 let app = electron.app;
-app.setName(isDev ? "Prompt (Dev)" : "Prompt");
+app.setName(isDev ? "Wave (Dev)" : "Wave");
 let waveSrvProc = null;
 let waveSrvShouldRestart = false;
 
@@ -336,7 +339,7 @@ function mainResizeHandler(e, win) {
         return;
     }
     let bounds = win.getBounds();
-    console.log("resize/move", win.getBounds());
+    // console.log("resize/move", win.getBounds());
     let winSize = { width: bounds.width, height: bounds.height, top: bounds.y, left: bounds.x };
     let url = getBaseHostPort() + "/api/set-winsize";
     let fetchHeaders = getFetchHeaders();
@@ -603,7 +606,7 @@ function runActiveTimer() {
 (async () => {
     let instanceLock = app.requestSingleInstanceLock();
     if (!instanceLock) {
-        console.log("prompt-app could not get single-instance-lock, shutting down");
+        console.log("waveterm-app could not get single-instance-lock, shutting down");
         app.quit();
         return;
     }

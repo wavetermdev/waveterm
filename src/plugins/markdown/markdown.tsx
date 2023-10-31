@@ -1,7 +1,10 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import * as React from "react";
 import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
-import { RendererContext, RendererOpts } from "../../types/types";
+import * as T from "../../types/types";
 import { sprintf } from "sprintf-js";
 import { Markdown } from "../../app/common/common";
 
@@ -13,7 +16,7 @@ const MaxMarkdownSize = 200000;
 
 @mobxReact.observer
 class SimpleMarkdownRenderer extends React.Component<
-    { data: Blob; context: RendererContext; opts: RendererOpts; savedHeight: number },
+    { data: T.ExtBlob; context: T.RendererContext; opts: T.RendererOpts; savedHeight: number },
     {}
 > {
     markdownText: OV<string> = mobx.observable.box(null, { name: "markdownText" });

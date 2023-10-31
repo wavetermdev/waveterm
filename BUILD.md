@@ -57,27 +57,23 @@ scripthaus run electron-rebuild
 
 ## Running WebPack
 
-Two webpacks are required to run the client.  One webpack will build the React code that runs inside of Electron.  The other webpack builds the node.js code for the Electron App Wrapper.
+We use webpack to build both the React and Electron App Wrapper code.  They are both run together using:
 
-For the React code:
 ```
 scripthaus run webpack-watch
 ```
 
-For the Electron App:
-```
-scripthaus run webpack-electron-watch
-```
+## Running the WaveTerm Dev Client
 
-## Running the Prompt Dev Client
-
-Now that webpack is running (and watching for file changes) we can finally run the Prompt Dev Client!  To start the client run:
+Now that webpack is running (and watching for file changes) we can finally run the WaveTerm Dev Client!  To start the client run:
 ```
 scripthaus run electron
 ```
 
 To kill the client, either exit the Electron App normally or just Ctrl-C the ```scripthaus run electron``` command.
 
-Because we're running webpack in watch mode, any changes you make to the typescript will be automatically picked up by the client after a refresh.  Note that I've disabled hot-reloading in the webpack config, so to pick up new changes you'll have to manually refresh the Prompt Client window.  To do that use "Command-Shift-R" (Command-R is used internally by Prompt and will not force a refresh).
+Because we're running webpack in watch mode, any changes you make to the typescript will be automatically picked up by the client after a refresh.  Note that I've disabled hot-reloading in the webpack config, so to pick up new changes you'll have to manually refresh the WaveTerm Client window.  To do that use "Command-Shift-R" (Command-R is used internally by WaveTerm and will not force a refresh).
 
+## Debugging the Dev Client
 
+You can use the regular Chrome DevTools to debug the frontend application.  You can open the DevTools using the keyboard shortcut `Cmd-Option-I`.

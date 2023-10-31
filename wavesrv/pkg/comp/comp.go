@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 // scripthaus completion
 package comp
 
@@ -496,7 +499,7 @@ func getCompType(compPos shparse.CompletionPos) string {
 		return CGTypeCommandMeta
 
 	case shparse.CompTypeCommand:
-		return CGTypeCommand
+		return CGTypeCommandMeta
 
 	case shparse.CompTypeVar:
 		return CGTypeVariable

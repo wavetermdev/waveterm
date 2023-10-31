@@ -1,8 +1,12 @@
 @import "../../../app/common/themes/themes.less";
 
 #main .screen-tabs .screen-tab {
-    border-radius: 12px 0px 0px 0px;
     border-top: 1px solid transparent;
+    font-size: 12.5px;
+
+    &:first-child {
+        border-radius: 12px 0px 0px 0px;
+    }
 
     &.color-default {
         svg.left-icon path {
@@ -58,9 +62,15 @@
         }
     }
 
-    &.color-black {
+    &.color-violet {
         svg.left-icon path {
-            fill: @tab-black;
+            fill: @tab-violet;
+        }
+    }
+
+    &.color-pink {
+        svg.left-icon path {
+            fill: @tab-pink;
         }
     }
 
@@ -139,7 +149,9 @@
     }
 
     .new-screen {
+        flex-shrink: 0;
         margin-left: 1em;
+        margin-right: 1em;
         cursor: pointer;
         .icon {
             height: 2rem;

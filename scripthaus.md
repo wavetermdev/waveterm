@@ -1,27 +1,21 @@
-# Prompt Commands
+# WaveTerm Commands
 
 ```bash
 # @scripthaus command webpack-watch
 # @scripthaus cd :playbook
-node_modules/.bin/webpack --watch --config webpack.dev.js
+node_modules/.bin/webpack --env dev --watch
 ```
 
 ```bash
 # @scripthaus command webpack-build
 # @scripthaus cd :playbook
-node_modules/.bin/webpack --config webpack.dev.js
+node_modules/.bin/webpack --env dev
 ```
 
 ```bash
-# @scripthaus command webpack-electron-watch
+# @scripthaus command webpack-build-prod
 # @scripthaus cd :playbook
-node_modules/.bin/webpack --watch --config webpack.electron.js
-```
-
-```bash
-# @scripthaus command webpack-electron-build
-# @scripthaus cd :playbook
-node_modules/.bin/webpack --config webpack.electron.js
+node_modules/.bin/webpack --env prod
 ```
 
 ```bash
@@ -37,39 +31,9 @@ PROMPT_DEV=1 PCLOUD_ENDPOINT="https://ot2e112zx5.execute-api.us-west-2.amazonaws
 ```
 
 ```bash
-# @scripthaus command devserver
-# @scripthaus cd :playbook
-node_modules/.bin/webpack-dev-server --config webpack.dev.js --host 0.0.0.0
-```
-
-```bash
-# @scripthaus command webshare-devserver
-# @scripthaus cd :playbook
-node_modules/.bin/webpack-dev-server --config webpack.share.dev.js --host 127.0.0.1
-```
-
-```bash
-# @scripthaus command webshare-build
-# @scripthaus cd :playbook
-node_modules/.bin/webpack --config webpack.share.dev.js
-```
-
-```bash
-# @scripthaus command webshare-build-prod
-# @scripthaus cd :playbook
-node_modules/.bin/webpack --config webpack.share.prod.js
-```
-
-```bash
 # @scripthaus command typecheck
 # @scripthaus cd :playbook
-node_modules/.bin/tsc --jsx preserve --noEmit --esModuleInterop --target ES5 --experimentalDecorators --downlevelIteration src/index.ts
-```
-
-```bash
-# @scripthaus command typecheck-webshare
-# @scripthaus cd :playbook
-node_modules/.bin/tsc --jsx preserve --noEmit --esModuleInterop --target ES5 --experimentalDecorators --downlevelIteration src/webshare.ts
+node_modules/.bin/tsc --jsx preserve --noEmit --esModuleInterop --target ES5 --experimentalDecorators --downlevelIteration src/index.ts src/types/custom.d.ts
 ```
 
 ```bash
@@ -78,8 +42,7 @@ node_modules/.bin/tsc --jsx preserve --noEmit --esModuleInterop --target ES5 --e
 rm -rf dist/
 rm -rf bin/
 rm -rf build/
-node_modules/.bin/webpack --config webpack.prod.js
-node_modules/.bin/webpack --config webpack.electron.prod.js
+node_modules/.bin/webpack --env prod
 GO_LDFLAGS="-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')"
 (cd waveshell; GOOS=darwin GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-darwin.amd64 main-waveshell.go)
 (cd waveshell; GOOS=darwin GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-darwin.arm64 main-waveshell.go)
@@ -111,43 +74,43 @@ node_modules/.bin/electron-forge make
 ```bash
 # @scripthaus command open-electron-package
 # @scripthaus cd :playbook
-open out/Prompt-darwin-x64/Prompt.app
+open out/Wave-darwin-x64/Wave.app
 ```
 
 ```bash
 # @scripthaus command create-dmg
 # @scripthaus cd :playbook
 DMG_VERSION=$(node -e 'console.log(require("./version.js"))')
-DMG_NAME="prompt-macos-x86-${DMG_VERSION}.dmg"
+DMG_NAME="waveterm-macos-x86-${DMG_VERSION}.dmg"
 rm *.dmg
 /Users/mike/work/gopath/src/github.com/create-dmg/create-dmg/create-dmg \
-  --volname "Prompt" \
+  --volname "WaveTerm" \
   --window-pos 200 120 \
   --window-size 600 300 \
   --icon-size 100 \
-  --icon "Prompt.app" 200 130 \
-  --hide-extension "Prompt.app" \
+  --icon "Wave.app" 200 130 \
+  --hide-extension "Wave.app" \
   --app-drop-link 400 125 \
   $DMG_NAME \
-  "out/Prompt-darwin-x64/Prompt.app"
+  "out/Wave-darwin-x64/Wave.app"
 ```
 
 ```bash
 # @scripthaus command create-dmg-m1
 # @scripthaus cd :playbook
 DMG_VERSION=$(node -e 'console.log(require("./version.js"))')
-DMG_NAME="prompt-macos-arm64-${DMG_VERSION}.dmg"
+DMG_NAME="waveterm-macos-arm64-${DMG_VERSION}.dmg"
 rm *.dmg
-../../create-dmg/create-dmg/create-dmg \
-  --volname "Prompt" \
+/Users/sawka/work/gopath/src/github.com/create-dmg/create-dmg/create-dmg \
+  --volname "WaveTerm" \
   --window-pos 200 120 \
   --window-size 600 300 \
   --icon-size 100 \
-  --icon "Prompt.app" 200 130 \
-  --hide-extension "Prompt.app" \
+  --icon "Wave.app" 200 130 \
+  --hide-extension "Wave.app" \
   --app-drop-link 400 125 \
   $DMG_NAME \
-  "out/Prompt-darwin-arm64/Prompt.app"
+  "out/Wave-darwin-arm64/Wave.app"
 ```
 
 ```bash
@@ -181,6 +144,7 @@ go build -ldflags="$GO_LDFLAGS" -o bin/mshell-v0.3-darwin.amd64 main-waveshell.g
 
 ```bash
 # @scripthaus command fullbuild-waveshell
+set -e
 cd waveshell
 GO_LDFLAGS="-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')"
 go build -ldflags="$GO_LDFLAGS" -o ~/.mshell/mshell-v0.2 main-waveshell.go

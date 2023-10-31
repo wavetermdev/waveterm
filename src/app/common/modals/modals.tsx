@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
@@ -9,9 +12,14 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner } from "../../../model/model";
 import { Markdown } from "../common";
 import * as util from "../../../util/util";
+import { Toggle, Checkbox } from "../common";
+import { ClientDataType } from "../../../types/types";
 
 import { ReactComponent as XmarkIcon } from "../../assets/icons/line/xmark.svg";
 import { ReactComponent as WarningIcon } from "../../assets/icons/line/triangle-exclamation.svg";
+import shield from "../../assets/icons/shield_check.svg";
+import help from "../../assets/icons/help_filled.svg";
+import github from "../../assets/icons/github.svg";
 
 dayjs.extend(localizedFormat);
 
@@ -309,48 +317,112 @@ class WelcomeModal extends React.Component<{}, {}> {
 
 @mobxReact.observer
 class TosModal extends React.Component<{}, {}> {
+    state = {
+        isChecked: false,
+    };
+
+    @boundMethod
+    handleCheckboxChange(checked: boolean): void {
+        this.setState({ isChecked: checked });
+    }
+
     @boundMethod
     acceptTos(): void {
         GlobalCommandRunner.clientAcceptTos();
     }
 
+    @boundMethod
+    handleChangeTelemetry(val: boolean): void {
+        if (val) {
+            GlobalCommandRunner.telemetryOn(false);
+        } else {
+            GlobalCommandRunner.telemetryOff(false);
+        }
+    }
+
     render() {
+        let cdata: ClientDataType = GlobalModel.clientData.get();
+
         return (
-            <div className={cn("modal tos-modal prompt-modal is-active")}>
+            <div className={cn("modal tos-modal wave-modal is-active")}>
                 <div className="modal-background" />
                 <div className="modal-content">
-                    <header>
-                        <div className="modal-title">Welcome to [prompt]</div>
-                    </header>
-                    <div className="inner-content">
+                    <div className="modal-content-wrapper">
+                        <header>
+                            <div className="modal-title">Welcome to Wave Terminal!</div>
+                            <div className="modal-subtitle">Lets set everything for you</div>
+                        </header>
                         <div className="content">
-                            <p>Thank you for downloading Prompt!</p>
-                            <p>
-                                Prompt is a new terminal designed to help you save time and organize your command life.
-                                Prompt is currently in beta. If you'd like to give feedback, run into problems, have
-                                questions, or need help, please join the Prompt{" "}
-                                <a target="_blank" href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}>
-                                    discord&nbsp;server
-                                </a>
-                                .
-                            </p>
-                            <p>
-                                Prompt is free to use, no email or registration required (unless you're using the cloud
-                                features).
-                            </p>
-                            <p>
-                                <a target="_blank" href={util.makeExternLink("https://www.commandline.dev/tos")}>
-                                    Full Terms of Service
-                                </a>
-                            </p>
+                            <div className="item">
+                                <img src={shield} alt="Privacy" />
+                                <div className="item-inner">
+                                    <div className="item-title">Telemetry</div>
+                                    <div className="item-text">
+                                        We don’t collect any personal info, only crash logs and IP address to make Wave
+                                        better. If you like, you can disable telemetry now or late.
+                                    </div>
+                                    <div className="item-field">
+                                        <Toggle
+                                            checked={!cdata.clientopts.notelemetry}
+                                            onChange={this.handleChangeTelemetry}
+                                        />
+                                        <div className="item-label">Basic Telemetry</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="item">
+                                <img src={help} alt="Help" />
+                                <div className="item-inner">
+                                    <div className="item-title">Help</div>
+                                    <div className="item-text">
+                                        If you need any help or you have feature request, you can join{" "}
+                                        <a target="_blank" href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}>
+                                            our Discord
+                                        </a>
+                                        .
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="item">
+                                <img src={github} alt="Github" />
+                                <div className="item-inner">
+                                    <div className="item-title">Like Wave? Give us a star</div>
+                                    <div className="item-text">
+                                        Rankings are very important for small startups like us, it helps other people to
+                                        know about us. If you like Wave, please consider giving us a star on our{" "}
+                                        <a
+                                            target="_blank"
+                                            href={util.makeExternLink("https://github.com/wavetermdev/waveterm")}
+                                        >
+                                            Github Repository
+                                        </a>
+                                        .
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+                        <footer>
+                            <div>
+                                <Checkbox
+                                    checked={this.state.isChecked}
+                                    label="I accept the Terms of Service"
+                                    id="accept-tos"
+                                    onChange={this.handleCheckboxChange}
+                                />
+                            </div>
+                            <div className="button-wrapper">
+                                <button
+                                    onClick={this.acceptTos}
+                                    className={cn("button is-wave-green is-outlined is-small", {
+                                        "disabled-button": !this.state.isChecked,
+                                    })}
+                                    disabled={!this.state.isChecked}
+                                >
+                                    Continue
+                                </button>
+                            </div>
+                        </footer>
                     </div>
-                    <footer>
-                        <div className="flex-spacer" />
-                        <div onClick={this.acceptTos} className="button is-prompt-green is-outlined is-small">
-                            Accept Terms of Service
-                        </div>
-                    </footer>
                 </div>
             </div>
         );

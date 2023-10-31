@@ -1,0 +1,137 @@
+@import "../../app/common/themes/themes.less";
+
+.plugins-view {
+    background-color: @background-session;
+
+    .header {
+        margin: 1.5em 1.5em 0.5em;
+
+        .plugins-title {
+            margin-bottom: 0.5em;
+            font-weight: bold;
+            font-size: 1.5em;
+        }
+
+        .close-button {
+            position: absolute;
+            right: 1em;
+            top: 0.8em;
+            cursor: pointer;
+            width: 1.5em;
+            height: 1.5em;
+            border-radius: 50%;
+            svg {
+                width: 1.5em;
+                height: 1.5em;
+                fill: @base-color;
+            }
+        }
+    }
+
+    .body {
+        display: flex;
+        .plugins-list {
+            padding: 1em;
+            border-right: 1px solid @base-border;
+            min-height: calc(100vh - 6em);
+            max-height: calc(100vh - 6em);
+            overflow-y: auto;
+            flex: 0 0 auto;
+            .plugin-summary {
+                display: block;
+                padding: 10px;
+                max-width: 323px;
+                border-radius: 8px;
+                margin-bottom: 1em;
+                border: 1px solid transparent;
+                &.selected {
+                    border-color: @prompt-green;
+                }
+                .plugin-summary-header {
+                    display: flex;
+                    .plugin-summary-icon {
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        height: 100%;
+                        svg {
+                            width: 32px;
+                            height: 32px;
+                            fill: white;
+                        }
+                    }
+                    .plugin-summary-info {
+                        flex: 1;
+                        margin: 0 12px;
+                        .plugin-summary-title {
+                        }
+                        .plugin-summary-vendor {
+                            font-size: 0.8em;
+                        }
+                    }
+                }
+                .plugin-summary-body {
+                    margin-top: 8px;
+                    min-height: 54px;
+                    max-height: 54px;
+                    overflow-y: auto;
+                }
+            }
+        }
+        .plugins-details {
+            flex: 1 !important;
+            padding: 2em;
+            min-height: calc(100vh - 6em);
+            max-height: calc(100vh - 6em);
+            overflow-y: auto;
+            flex: 0 0 auto;
+            .plugin-label {
+                min-width: 100%;
+                margin-bottom: 1em;
+            }
+            .plugin-summary-header {
+                display: flex;
+                .plugin-summary-icon {
+                    svg {
+                        width: 48px;
+                        height: 48px;
+                        fill: white;
+                    }
+                }
+                .plugin-summary-info {
+                    flex: 1;
+                    margin: 0 12px;
+                    .plugin-summary-title {
+                        font-size: 1.1em;
+                        margin-top: 0.3em;
+                    }
+                    .plugin-summary-vendor {
+                        font-size: 0.9em;
+                        margin-top: 0.4em;
+                    }
+                }
+            }
+            .plugin-summary-body {
+                margin-top: 1em;
+            }
+            .plugin-screenshots-container {
+                margin-top: 3em;
+                .plugin-screenshots {
+                    display: flex;
+                    overflow-x: auto;
+                    width: 100%;
+                    white-space: nowrap;
+                    align-items: flex-start;
+                    img {
+                        flex-shrink: 0;
+                        margin-right: 10px;
+                        max-height: 50vh;
+                    }
+                }
+            }
+            .plugin-readme {
+                margin-top: 3em;
+            }
+        }
+    }
+}

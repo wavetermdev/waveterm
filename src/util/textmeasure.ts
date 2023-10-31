@@ -1,4 +1,8 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import { boundInt } from "./util";
+import { MagicLayout } from "../app/magiclayout";
 
 const MinTermCols = 10;
 const MaxTermCols = 1024;
@@ -59,14 +63,14 @@ function measureText(
 
 function windowWidthToCols(width: number, fontSize: number): number {
     let dr = getMonoFontSize(fontSize);
-    let cols = Math.trunc((width - 50) / dr.width) - 1;
+    let cols = Math.trunc((width - MagicLayout.ScreenMaxContentWidthBuffer) / dr.width) - 1;
     cols = boundInt(cols, MinTermCols, MaxTermCols);
     return cols;
 }
 
 function windowHeightToRows(height: number, fontSize: number): number {
     let dr = getMonoFontSize(fontSize);
-    let rows = Math.floor((height - 80) / dr.height) - 1;
+    let rows = Math.floor((height - MagicLayout.ScreenMaxContentHeightBuffer) / dr.height) - 1;
     if (rows <= 0) {
         rows = 1;
     }
@@ -75,12 +79,13 @@ function windowHeightToRows(height: number, fontSize: number): number {
 
 function termWidthFromCols(cols: number, fontSize: number): number {
     let dr = getMonoFontSize(fontSize);
-    return Math.ceil(dr.width * cols) + 15;
+    return Math.ceil(dr.width * cols) + MagicLayout.TermWidthBuffer;
 }
 
 function termHeightFromRows(rows: number, fontSize: number): number {
     let dr = getMonoFontSize(fontSize);
-    return Math.ceil(dr.height * rows);
+    // TODO: replace the TermDescendersHeight with some calculation based on termFontSize.
+    return Math.ceil(dr.height * rows) + MagicLayout.TermDescendersHeight;
 }
 
 export { measureText, getMonoFontSize, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows };

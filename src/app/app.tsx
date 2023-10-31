@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
@@ -8,6 +11,8 @@ import type { ContextMenuOpts } from "../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "../model/model";
 import { isBlank } from "../util/util";
+import { WorkspaceView } from "./workspace/workspaceview";
+import { PluginsView } from "./pluginsview/pluginsview";
 import { BookmarksView } from "./bookmarks/bookmarks";
 import { HistoryView } from "./history/history";
 import {
@@ -18,9 +23,9 @@ import {
 } from "./common/modals/settings";
 import { RemotesModal } from "./connections/connections";
 import { TosModal } from "./common/modals/modals";
-import { WorkspaceView } from "../app/workspace/workspaceview";
 import { MainSideBar } from "./sidebar/MainSideBar";
 import { DisconnectedModal, ClientStopModal, AlertModal, WelcomeModal } from "./common/modals/modals";
+import { ErrorBoundary } from "./common/error/errorboundary";
 import "./app.less";
 
 dayjs.extend(localizedFormat);
@@ -103,13 +108,17 @@ class App extends React.Component<{}, {}> {
         if (dcWait) {
             setTimeout(() => this.updateDcWait(false), 0);
         }
+        //console.log(`GlobalModel.activeMainView.get() = ${GlobalModel.activeMainView.get()}`); // @mike - if I remove this, I cant see plugins
         return (
             <div id="main" className={"platform-" + platform} onContextMenu={this.handleContextMenu}>
                 <div className="main-content">
                     <MainSideBar />
-                    <WorkspaceView />
-                    <HistoryView />
-                    <BookmarksView />
+                    <ErrorBoundary>
+                        <PluginsView />
+                        <WorkspaceView />
+                        <HistoryView />
+                        <BookmarksView />
+                    </ErrorBoundary>
                 </div>
                 <AlertModal />
                 <If condition={GlobalModel.needsTos()}>

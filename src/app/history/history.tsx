@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
@@ -373,7 +376,7 @@ class HistoryView extends React.Component<{}, {}> {
                                 <div onClick={this.toggleSessionDropdown}>
                                     <span className="label">
                                         {hvm.searchSessionId.get() == null
-                                            ? "Limit Session"
+                                            ? "Limit Workspace"
                                             : formatSessionName(snames, hvm.searchSessionId.get())}
                                     </span>
                                     <AngleDownIcon className="icon" />
@@ -385,7 +388,7 @@ class HistoryView extends React.Component<{}, {}> {
                                             key="all"
                                             className="dropdown-item"
                                         >
-                                            (all sessions)
+                                            (all workspaces)
                                         </div>
                                         <For each="sessionId" of={sessionIds}>
                                             <div
@@ -535,7 +538,7 @@ class HistoryView extends React.Component<{}, {}> {
                                     <FavoritesIcon className="icon" />
                                 </td>
                                 <td className="ts">{getHistoryViewTs(nowDate, item.ts)}</td>
-                                <td className="session">{formatSSName(snames, scrnames, item)}</td>
+                                <td className="workspace">{formatSSName(snames, scrnames, item)}</td>
                                 <td className="remote">{formatRemoteName(rnames, item.remote)}</td>
                                 <td className="cmdstr" onClick={() => this.activateItem(item.historyid)}>
                                     <CmdStrCode

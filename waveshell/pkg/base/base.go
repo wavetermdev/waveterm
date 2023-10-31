@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 package base
 
 import (
@@ -26,6 +29,7 @@ const MShellInstallBinVarName = "MSHELL_INSTALLBIN_PATH"
 const SSHCommandVarName = "SSH_COMMAND"
 const MShellDebugVarName = "MSHELL_DEBUG"
 const SessionsDirBaseName = "sessions"
+const RcFilesDirBaseName = "rcfiles"
 const MShellVersion = "v0.3.0"
 const RemoteIdFile = "remoteid"
 const DefaultMShellInstallBinDir = "/opt/mshell/bin"
@@ -35,7 +39,8 @@ const ForceDebugLog = false
 const DebugFlag_LogRcFile = "logrc"
 const LogRcFileName = "debug.rcfile"
 
-var sessionDirCache = make(map[string]string)
+// keys are sessionids (also the key RcFilesDirBaseName)
+var ensureDirCache = make(map[string]bool)
 var baseLock = &sync.Mutex{}
 var DebugLogEnabled = false
 var DebugLogger *log.Logger
@@ -222,35 +227,26 @@ func GetSessionsDir() string {
 	return sdir
 }
 
+func EnsureRcFilesDir() (string, error) {
+	mhome := GetMShellHomeDir()
+	dirName := path.Join(mhome, RcFilesDirBaseName)
+	err := CacheEnsureDir(dirName, RcFilesDirBaseName, 0700, "rcfiles dir")
+	if err != nil {
+		return "", err
+	}
+	return dirName, nil
+}
+
 func EnsureSessionDir(sessionId string) (string, error) {
 	if sessionId == "" {
 		return "", fmt.Errorf("Bad sessionid, cannot be empty")
 	}
-	baseLock.Lock()
-	sdir, ok := sessionDirCache[sessionId]
-	baseLock.Unlock()
-	if ok {
-		return sdir, nil
-	}
 	mhome := GetMShellHomeDir()
-	sdir = path.Join(mhome, SessionsDirBaseName, sessionId)
-	info, err := os.Stat(sdir)
-	if errors.Is(err, fs.ErrNotExist) {
-		err = os.MkdirAll(sdir, 0777)
-		if err != nil {
-			return "", fmt.Errorf("cannot make mshell session directory[%s]: %w", sdir, err)
-		}
-		info, err = os.Stat(sdir)
-	}
+	sdir := path.Join(mhome, SessionsDirBaseName, sessionId)
+	err := CacheEnsureDir(sdir, sessionId, 0777, "mshell session dir")
 	if err != nil {
 		return "", err
 	}
-	if !info.IsDir() {
-		return "", fmt.Errorf("session dir '%s' must be a directory", sdir)
-	}
-	baseLock.Lock()
-	sessionDirCache[sessionId] = sdir
-	baseLock.Unlock()
 	return sdir, nil
 }
 
@@ -378,4 +374,39 @@ func BoundInt64(ival int64, minVal int64, maxVal int64) int64 {
 		return maxVal
 	}
 	return ival
+}
+
+func CacheEnsureDir(dirName string, cacheKey string, perm os.FileMode, dirDesc string) error {
+	baseLock.Lock()
+	ok := ensureDirCache[cacheKey]
+	baseLock.Unlock()
+	if ok {
+		return nil
+	}
+	err := TryMkdirs(dirName, perm, dirDesc)
+	if err != nil {
+		return err
+	}
+	baseLock.Lock()
+	ensureDirCache[cacheKey] = true
+	baseLock.Unlock()
+	return nil
+}
+
+func TryMkdirs(dirName string, perm os.FileMode, dirDesc string) error {
+	info, err := os.Stat(dirName)
+	if errors.Is(err, fs.ErrNotExist) {
+		err = os.MkdirAll(dirName, perm)
+		if err != nil {
+			return fmt.Errorf("cannot make %s %q: %w", dirDesc, dirName, err)
+		}
+		info, err = os.Stat(dirName)
+	}
+	if err != nil {
+		return fmt.Errorf("error trying to stat %s: %w", dirDesc, err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("%s %q must be a directory", dirDesc, dirName)
+	}
+	return nil
 }

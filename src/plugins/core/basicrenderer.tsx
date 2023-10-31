@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
@@ -14,6 +17,7 @@ import type {
     TermContextUnion,
     RendererContainerType,
 } from "../../types/types";
+import * as T from "../../types/types";
 import { debounce, throttle } from "throttle-debounce";
 import * as util from "../../util/util";
 import { GlobalModel } from "../../model/model";
@@ -34,7 +38,7 @@ class SimpleBlobRendererModel {
     lineState: LineStateType;
     ptyData: PtyDataType;
     ptyDataSource: (termContext: TermContextUnion) => Promise<PtyDataType>;
-    dataBlob: Blob;
+    dataBlob: T.ExtBlob;
     readOnly: boolean;
     notFound: boolean;
 
@@ -143,7 +147,9 @@ class SimpleBlobRendererModel {
         }
         rtnp.then((ptydata) => {
             this.ptyData = ptydata;
-            this.dataBlob = new Blob([this.ptyData.data]);
+            let blob: T.ExtBlob = new Blob([this.ptyData.data]) as T.ExtBlob;
+            blob.notFound = false;
+            this.dataBlob = blob;
             mobx.action(() => {
                 this.loading.set(false);
                 this.loadError.set(null);

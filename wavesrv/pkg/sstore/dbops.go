@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 package sstore
 
 import (
@@ -10,14 +13,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
+	"github.com/sawka/txwrap"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
-	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
-	"github.com/sawka/txwrap"
 )
 
 const HistoryCols = "h.historyid, h.ts, h.userid, h.sessionid, h.screenid, h.lineid, h.haderror, h.cmdstr, h.remoteownerid, h.remoteid, h.remotename, h.ismetacmd, h.incognito, h.linenum"
@@ -1641,7 +1644,6 @@ func GetSessionStats(ctx context.Context, sessionId string) (*SessionStatsType, 
 const (
 	RemoteField_Alias       = "alias"       // string
 	RemoteField_ConnectMode = "connectmode" // string
-	RemoteField_AutoInstall = "autoinstall" // bool
 	RemoteField_SSHKey      = "sshkey"      // string
 	RemoteField_SSHPassword = "sshpassword" // string
 	RemoteField_Color       = "color"       // string
@@ -1666,10 +1668,6 @@ func UpdateRemote(ctx context.Context, remoteId string, editMap map[string]inter
 		if mode, found := editMap[RemoteField_ConnectMode]; found {
 			query = `UPDATE remote SET connectmode = ? WHERE remoteid = ?`
 			tx.Exec(query, mode, remoteId)
-		}
-		if autoInstall, found := editMap[RemoteField_AutoInstall]; found {
-			query = `UPDATE remote SET autoinstall = ? WHERE remoteid = ?`
-			tx.Exec(query, autoInstall, remoteId)
 		}
 		if sshKey, found := editMap[RemoteField_SSHKey]; found {
 			query = `UPDATE remote SET sshopts = json_set(sshopts, '$.sshidentity', ?) WHERE remoteid = ?`

@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
@@ -30,17 +33,6 @@ type RendererComponentType = {
     new (props: RendererComponentProps): React.Component<RendererComponentProps, {}>;
 };
 
-function getShortVEnv(venvDir: string): string {
-    if (isBlank(venvDir)) {
-        return "";
-    }
-    let lastSlash = venvDir.lastIndexOf("/");
-    if (lastSlash == -1) {
-        return venvDir;
-    }
-    return venvDir.substr(lastSlash + 1);
-}
-
 function makeFullRemoteRef(ownerName: string, remoteRef: string, name: string): string {
     if (isBlank(ownerName) && isBlank(name)) {
         return remoteRef;
@@ -62,6 +54,17 @@ function getRemoteStr(rptr: RemotePtrType): string {
     let remoteRef = GlobalModel.resolveRemoteIdToRef(rptr.remoteid);
     let fullRef = makeFullRemoteRef(username, remoteRef, rptr.name);
     return fullRef;
+}
+
+function getShortVEnv(venvDir: string): string {
+    if (isBlank(venvDir)) {
+        return "";
+    }
+    let lastSlash = venvDir.lastIndexOf("/");
+    if (lastSlash == -1) {
+        return venvDir;
+    }
+    return venvDir.substr(lastSlash + 1);
 }
 
 function replaceHomePath(path: string, homeDir: string): string {
@@ -153,4 +156,4 @@ class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<stri
     }
 }
 
-export { Prompt };
+export { Prompt, getRemoteStr };

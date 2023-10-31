@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
@@ -191,11 +194,6 @@ class ScreenTabs extends React.Component<{ session: Session }, {}> {
                         <AddIcon className="icon hoverEffect" />
                     </div>
                 </div>
-                {/**<div className="cmd-hints">
-                    <div className="hint-item color-green">move left {renderCmdText("[")}</div>
-                    <div className="hint-item color-green">move right {renderCmdText("]")}</div>
-                    <div className="hint-item color-green">new tab {renderCmdText("T")}</div>
-        </div>*/}
             </div>
         );
     }

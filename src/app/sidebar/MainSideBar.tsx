@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
@@ -74,16 +77,18 @@ class MainSideBar extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    handleAddRemote(): void {
-        GlobalCommandRunner.openCreateRemote();
+    handlePluginsClick(): void {
+        if (GlobalModel.activeMainView.get() == "plugins") {
+            GlobalModel.showSessionView();
+            return;
+        }
+        GlobalModel.pluginsModel.showPluginsView();
     }
 
     @boundMethod
     handleHistoryClick(): void {
         if (GlobalModel.activeMainView.get() == "history") {
-            mobx.action(() => {
-                GlobalModel.activeMainView.set("session");
-            })();
+            GlobalModel.showSessionView();
             return;
         }
         GlobalModel.historyViewModel.reSearch();
@@ -152,14 +157,12 @@ class MainSideBar extends React.Component<{}, {}> {
         }
         return sessionList.map((session, index) => {
             const isActive = GlobalModel.activeMainView.get() == "session" && activeSessionId == session.sessionId;
-            /** @TODO: Handle archived sessions and talk to Mike about session settings */
             return (
                 <div
                     key={index}
                     className={`item hoverEffect ${isActive ? "active" : ""}`}
                     onClick={() => this.handleSessionClick(session.sessionId)}
                 >
-                    <span className="hotkey">^⌘</span>
                     <span className="index">{index + 1}</span>
                     <span className="truncate sessionName">{session.name.get()}</span>
                     <ActionsIcon
@@ -197,17 +200,17 @@ class MainSideBar extends React.Component<{}, {}> {
         let mainView = GlobalModel.activeMainView.get();
         return (
             <div className={cn("main-sidebar", { collapsed: isCollapsed }, { "is-dev": GlobalModel.isDev })}>
-                <div className="title-bar-drag"/>
+                <div className="title-bar-drag" />
                 <div className="arrow-container hoverEffect" onClick={this.toggleCollapsed}>
                     <LeftChevronIcon className="icon" />
                 </div>
                 <div className="contents">
                     <div className="top">
-                        {/*<div className="item disabled">
+                        <div className="item hoverEffect" onClick={this.handlePluginsClick}>
                             <AppsIcon className="icon" />
                             Apps
                             <span className="hotkey">&#x2318;A</span>
-                            </div>*/}
+                        </div>
                         <div className="item hoverEffect" onClick={this.handleHistoryClick}>
                             <HistoryIcon className="icon" />
                             History
@@ -224,7 +227,7 @@ class MainSideBar extends React.Component<{}, {}> {
                         </div>
                     </div>
                     <div className="separator" />
-                    <div className="item">
+                    <div className="item workspaces-item">
                         <WorkspacesIcon className="icon" />
                         Workspaces
                         <div className="add_workspace hoverEffect" onClick={this.handleNewSession}>

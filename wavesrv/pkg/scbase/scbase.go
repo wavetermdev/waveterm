@@ -1,3 +1,6 @@
+// Copyright 2023, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 package scbase
 
 import (
@@ -33,7 +36,7 @@ const PromptLockFile = "prompt.lock"
 const PromptDirName = "prompt"
 const PromptDevDirName = "prompt-dev"
 const PromptAppPathVarName = "PROMPT_APP_PATH"
-const PromptVersion = "v0.4.0"
+const PromptVersion = "v0.5.0"
 const PromptAuthKeyFileName = "prompt.authkey"
 const MShellVersion = "v0.3.0"
 const DefaultMacOSShell = "/bin/bash"
