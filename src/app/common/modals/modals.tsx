@@ -15,11 +15,12 @@ import * as util from "../../../util/util";
 import { Toggle, Checkbox } from "../common";
 import { ClientDataType } from "../../../types/types";
 
-import { ReactComponent as XmarkIcon } from "../../assets/icons/line/xmark.svg";
+import close from "../../assets/icons/close.svg";
 import { ReactComponent as WarningIcon } from "../../assets/icons/line/triangle-exclamation.svg";
 import shield from "../../assets/icons/shield_check.svg";
 import help from "../../assets/icons/help_filled.svg";
 import github from "../../assets/icons/github.svg";
+import logo from "../../assets/waveterm-logo-with-bg.svg";
 
 dayjs.extend(localizedFormat);
 
@@ -272,7 +273,7 @@ class WelcomeModal extends React.Component<{}, {}> {
                 <div className="modal-background" onClick={this.closeModal} />
                 <div className="modal-content">
                     <header>
-                        <div className="modal-title">welcome to [prompt]</div>
+                        <div className="modal-title">About</div>
                         <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
                             <XmarkIcon />
                         </div>
@@ -349,13 +350,13 @@ class TosModal extends React.Component<{}, {}> {
         return (
             <div className={cn("modal tos-modal wave-modal is-active")}>
                 <div className="modal-background" />
-                <div className="modal-content">
+                <div className="modal-content tos-modal-content">
                     <div className="modal-content-wrapper">
-                        <header>
+                        <header className="tos-header">
                             <div className="modal-title">Welcome to Wave Terminal!</div>
                             <div className="modal-subtitle">Lets set everything for you</div>
                         </header>
-                        <div className="content">
+                        <div className="content tos-content">
                             <div className="item">
                                 <img src={shield} alt="Privacy" />
                                 <div className="item-inner">
@@ -443,64 +444,45 @@ class AboutModal extends React.Component<{}, {}> {
 
     render() {
         return (
-            <div className={cn("modal about-modal prompt-modal is-active")}>
+            <div className={cn("modal about-modal wave-modal is-active")}>
                 <div className="modal-background" />
                 <div className="modal-content">
-                    <header>
-                        <div className="modal-title">About Wave Terminal</div>
-                        <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
-                            <XmarkIcon />
+                    <div className="modal-content-wrapper">
+                        <header className="common-header">
+                            <div className="modal-title">About</div>
+                            <div className="close-icon-wrapper" onClick={this.closeModal}>
+                                <img src={close} alt="Close (Escape)" />
+                            </div>
+                        </header>
+                        <div className="content common-content">
+                            <section>
+                                <div className="logo-wrapper">
+                                    <img src={logo} alt="logo" />
+                                </div>
+                                <div className="text-wrapper">
+                                    <div className="upper">Wave Terminal</div>
+                                    <div className="bottom">Modern Terminal for Seamless Workflow</div>
+                                </div>
+                            </section>
                         </div>
-                    </header>
-                    <div className="inner-content">
-                        <div className="content">
-                            <p>
-                                <div className="logo">[prompt]</div>
-                               
-                            </p>
-                            <p>
-                                Wave&nbsp;Terminal
-                            </p>
-                            <p>
-                               Version: {VERSION}
-                            </p>
-                            <p>
-                                <a target="_blank" href={util.makeExternLink("https://github.com/wavetermdev/waveterm")}>
-                                    View&nbsp;on&nbsp;Github
-                                </a>
-                            </p>
-
-                            <p>
-                                <a target="_blank" href={util.makeExternLink("https://commandline.dev")}>
-                                    Official&nbsp;Website
-                                </a>
-                            </p>
-
-                            <p>
-                                <a target="_blank" href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}>
-                                    Join&nbsp;us&nbsp;on&nbsp;Discord
-                                </a>
-                            </p>
-                        </div>
+                        <footer>
+                            <div className="button-wrapper">
+                                {/* <button
+                                    onClick={this.acceptTos}
+                                    className={cn("button is-wave-green is-outlined is-small", {
+                                        "disabled-button": !this.state.isChecked,
+                                    })}
+                                    disabled={!this.state.isChecked}
+                                >
+                                    Continue
+                                </button> */}
+                            </div>
+                        </footer>
                     </div>
-                    <footer>
-                        <div className="flex-spacer" />
-                        <div onClick={this.closeModal} className="button is-prompt-green is-outlined is-small">
-                            Close
-                        </div>
-                    </footer>
                 </div>
             </div>
         );
     }
 }
 
-export { 
-    WelcomeModal, 
-    LoadingSpinner, 
-    ClientStopModal, 
-    AlertModal, 
-    DisconnectedModal, 
-    TosModal, 
-    AboutModal, 
-};
+export { WelcomeModal, LoadingSpinner, ClientStopModal, AlertModal, DisconnectedModal, TosModal, AboutModal };
