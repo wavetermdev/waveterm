@@ -283,19 +283,19 @@ function loadFonts() {
         style: "normal",
         weight: "700",
     });
-    // let faFont = new FontFace("FontAwesome", "url(static/fonts/fontawesome-webfont-4.7.woff2)", {
-    //     style: "normal",
-    //     weight: "normal",
-    // });
+    let faFont = new FontFace("FontAwesome", "url(public/fonts/fontawesome-webfont-4.7.woff2)", {
+        style: "normal",
+        weight: "normal",
+    });
     let docFonts: any = document.fonts; // work around ts typing issue
     docFonts.add(jbmFontNormal);
     docFonts.add(jbmFont200);
     docFonts.add(jbmFont700);
-    // docFonts.add(faFont);
+    docFonts.add(faFont);
     jbmFontNormal.load();
     jbmFont200.load();
     jbmFont700.load();
-    // faFont.load();
+    faFont.load();
 }
 
 const DOW_STRS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
