@@ -179,7 +179,7 @@ class AlertModal extends React.Component<{}, {}> {
         let title = message.title ?? (message.confirm ? "Confirm" : "Alert");
         let isConfirm = message.confirm;
         return (
-            <div className="modal prompt-modal wave-modal is-active alert-modal">
+            <div className="modal prompt-modal is-active alert-modal">
                 <div className="modal-background" />
                 <div className="modal-content">
                     <header>
