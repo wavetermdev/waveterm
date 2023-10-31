@@ -1,9 +1,9 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./src/app/assets/wave-logo_horizontal-coloronwhite.svg">
-    <source media="(prefers-color-scheme: light)" srcset="./src/app/assets/wave-logo_horizontal-coloronblack.svg">
-    <img alt="Wave Terminal Logo" src="./src/app/assets/wave-logo_horizontal-coloronblack.svg" width="352" height="59" style="max-width: 100%;">
+    <source media="(prefers-color-scheme: dark)" srcset="./src/app/assets/wave-logo_horizontal-coloronblack.svg">
+    <source media="(prefers-color-scheme: light)" srcset="./src/app/assets/wave-logo_horizontal-coloronwhite.svg">
+    <img alt="Wave Terminal Logo" src="./src/app/assets/wave-logo_horizontal-coloronwhite.svg" width="352" height="59" style="max-width: 100%;">
   </picture>
   <br/>
 </p>
@@ -35,16 +35,16 @@ A quick start guide is available at [docs.getprompt.dev/quickstart/](https://doc
 Documentation is available at [docs.getprompt.dev](https://docs.getprompt.dev/)
 
 ## Community
-  * Joins us on Discord
+  * Joins us on [Discord](https://discord.gg/XfvZ334gwU)
 
 ## Contributing
 
 Wave uses Github Project for tracking issues. 
 
-Find more information in our [Contributions Guide](), which includes:
+Find more information in our [Contributions Guide](CONTRIBUTING.md), which includes:
 
-  * Ways to contribute
-  * How to build and run from source
-  * Contribution guidelines
+  * [Ways to contribute](CONTRIBUTING.md#contributing-to-wave-terminal)
+  * [How to build and run from source](CONTRIBUTING.md#development-environment)
+  * [Contribution guidelines](CONTRIBUTING.md#before-you-start)
 
 
