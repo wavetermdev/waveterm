@@ -238,6 +238,14 @@
                 justify-content: space-between;
                 align-items: center;
                 line-height: 20px;
+                border-bottom: 1px solid rgba(250, 250, 250, 0.1);
+
+                .close-icon-wrapper {
+                    display: flex;
+                    padding: 4px;
+                    align-items: center;
+                    gap: 8px;
+                }
             }
 
             .content.common-content {
@@ -245,7 +253,7 @@
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 24px;
-                width: 94%;
+                width: 87%;
 
                 section {
                     display: flex;
@@ -266,24 +274,22 @@
 
                     .text-wrapper {
                         display: flex;
-                        align-items: center;
-                        gap: 16px;
+                        align-items: flex-start;
+                        flex-direction: column;
+                        gap: 4px;
                         align-self: stretch;
+                        font-style: normal;
+                        line-height: 20px;
 
                         .upper {
                             color: @term-bright-white;
                             font-size: 14.5px;
-                            font-style: normal;
-                            font-weight: 300;
-                            line-height: 20px; /* 137.931% */
                         }
 
                         .bottom {
                             color: @term-white;
                             font-size: 12.5px;
-                            font-style: normal;
-                            font-weight: 300;
-                            line-height: 20px; /* 160% */
+                            text-align: left;
                         }
                     }
                 }
@@ -349,6 +355,10 @@
     .modal-content.tos-modal-content {
         padding: 32px 48px;
         gap: 8px;
+    }
+
+    .modal-content.about-modal-content {
+        width: 401px;
     }
 }
 

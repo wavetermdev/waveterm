@@ -446,7 +446,7 @@ class AboutModal extends React.Component<{}, {}> {
         return (
             <div className={cn("modal about-modal wave-modal is-active")}>
                 <div className="modal-background" />
-                <div className="modal-content">
+                <div className="modal-content about-modal-content">
                     <div className="modal-content-wrapper">
                         <header className="common-header">
                             <div className="modal-title">About</div>
