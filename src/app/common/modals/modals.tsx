@@ -17,9 +17,9 @@ import { ClientDataType } from "../../../types/types";
 
 import { ReactComponent as XmarkIcon } from "../../assets/icons/line/xmark.svg";
 import { ReactComponent as WarningIcon } from "../../assets/icons/line/triangle-exclamation.svg";
-import { ReactComponent as ShieldCheck } from "../../assets/icons/line/shield_check.svg";
-import { ReactComponent as Help } from "../../assets/icons/line/help.svg";
-import { ReactComponent as Github } from "../../assets/icons/line/github.svg";
+import shield from "../../assets/icons/shield_check.svg";
+import help from "../../assets/icons/help_filled.svg";
+import github from "../../assets/icons/github.svg";
 
 dayjs.extend(localizedFormat);
 
@@ -354,7 +354,7 @@ class TosModal extends React.Component<{}, {}> {
                         </header>
                         <div className="content">
                             <div className="item">
-                                <ShieldCheck />
+                                <img src={shield} alt="Privacy" />
                                 <div className="item-inner">
                                     <div className="item-title">Telemetry</div>
                                     <div className="item-text">
@@ -371,7 +371,7 @@ class TosModal extends React.Component<{}, {}> {
                                 </div>
                             </div>
                             <div className="item">
-                                <Help />
+                                <img src={help} alt="Help" />
                                 <div className="item-inner">
                                     <div className="item-title">Help</div>
                                     <div className="item-text">
@@ -384,7 +384,7 @@ class TosModal extends React.Component<{}, {}> {
                                 </div>
                             </div>
                             <div className="item">
-                                <Github />
+                                <img src={github} alt="Github" />
                                 <div className="item-inner">
                                     <div className="item-title">Like Wave? Give us a star</div>
                                     <div className="item-text">
