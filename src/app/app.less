@@ -94,20 +94,11 @@ svg.icon {
 .hoverEffect {
     &:hover {
         cursor: pointer;
-        box-shadow: 0px 2px 2px 0 rgba(255, 255, 255, 0.1), 0px 4px 5px 0 rgba(255, 255, 255, 0.2),
-            0px 0px 5px 2.5px rgba(255, 255, 255, 0.5);
-        transition: box-shadow 0.2s ease;
     }
 }
 
 .hover-effect-base:hover {
     cursor: pointer;
-
-    .hover-effect-target {
-        box-shadow: 0px 2px 2px 0 rgba(255, 255, 255, 0.1), 0px 4px 5px 0 rgba(255, 255, 255, 0.2),
-            0px 0px 5px 2.5px rgba(255, 255, 255, 0.5);
-        transition: box-shadow 0.2s ease;
-    }
 }
 
 .hideScrollbarUntillHover {
@@ -546,4 +537,8 @@ a.a-block {
     path, circle {
         fill: @status-error;
     }
+}
+
+.unselectable {
+    user-select: none;
 }
