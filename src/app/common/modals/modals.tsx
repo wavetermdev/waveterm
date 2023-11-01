@@ -15,13 +15,17 @@ import * as util from "../../../util/util";
 import { Toggle, Checkbox } from "../common";
 import { ClientDataType } from "../../../types/types";
 
-import { ReactComponent as XmarkIcon } from "../../assets/icons/line/xmark.svg";
+import close from "../../assets/icons/close.svg";
 import { ReactComponent as WarningIcon } from "../../assets/icons/line/triangle-exclamation.svg";
 import shield from "../../assets/icons/shield_check.svg";
 import help from "../../assets/icons/help_filled.svg";
 import github from "../../assets/icons/github.svg";
+import logo from "../../assets/waveterm-logo-with-bg.svg";
 
 dayjs.extend(localizedFormat);
+
+// @ts-ignore
+const VERSION = __PROMPT_VERSION__;
 
 type OV<V> = mobx.IObservableValue<V>;
 
@@ -269,7 +273,7 @@ class WelcomeModal extends React.Component<{}, {}> {
                 <div className="modal-background" onClick={this.closeModal} />
                 <div className="modal-content">
                     <header>
-                        <div className="modal-title">welcome to [prompt]</div>
+                        <div className="modal-title">About</div>
                         <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
                             <XmarkIcon />
                         </div>
@@ -346,13 +350,13 @@ class TosModal extends React.Component<{}, {}> {
         return (
             <div className={cn("modal tos-modal wave-modal is-active")}>
                 <div className="modal-background" />
-                <div className="modal-content">
+                <div className="modal-content tos-modal-content">
                     <div className="modal-content-wrapper">
-                        <header>
+                        <header className="tos-header">
                             <div className="modal-title">Welcome to Wave Terminal!</div>
                             <div className="modal-subtitle">Lets set everything for you</div>
                         </header>
-                        <div className="content">
+                        <div className="content tos-content">
                             <div className="item">
                                 <img src={shield} alt="Privacy" />
                                 <div className="item-inner">
@@ -429,4 +433,112 @@ class TosModal extends React.Component<{}, {}> {
     }
 }
 
-export { WelcomeModal, LoadingSpinner, ClientStopModal, AlertModal, DisconnectedModal, TosModal };
+@mobxReact.observer
+class AboutModal extends React.Component<{}, {}> {
+    @boundMethod
+    closeModal(): void {
+        mobx.action(() => {
+            GlobalModel.aboutModalOpen.set(false);
+        })();
+    }
+
+    @boundMethod
+    isUpToDate(): boolean {
+        return true;
+    }
+
+    @boundMethod
+    updateApp(): void {
+        // GlobalCommandRunner.updateApp();
+    }
+
+    @boundMethod
+    getStatus(isUpToDate: boolean): JSX.Element {
+        if (isUpToDate) {
+            return (
+                <div className="status updated">
+                    <div>
+                        <i className="fa-sharp fa-solid fa-circle-check" />
+                        <span>Up to Date</span>
+                    </div>
+                    <div>Client Version v0.4.0 20231016-110014</div>
+                </div>
+            );
+        }
+        return (
+            <div className="status outdated">
+                <div>
+                    <i className="fa-sharp fa-solid fa-triangle-exclamation" />
+                    <span>Outdated Version</span>
+                </div>
+                <div>Client Version v0.4.0 20231016-110014</div>
+                <div>
+                    <button onClick={this.updateApp} className="button color-green text-secondary">
+                        Update
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    render() {
+        return (
+            <div className={cn("modal about-modal wave-modal is-active")}>
+                <div className="modal-background" />
+                <div className="modal-content about-modal-content">
+                    <div className="modal-content-wrapper">
+                        <header className="common-header">
+                            <div className="modal-title">About</div>
+                            <div className="close-icon-wrapper" onClick={this.closeModal}>
+                                <img src={close} alt="Close (Escape)" />
+                            </div>
+                        </header>
+                        <div className="content about-content">
+                            <section>
+                                <div className="logo-wrapper">
+                                    <img src={logo} alt="logo" />
+                                </div>
+                                <div className="text-wrapper">
+                                    <div>Wave Terminal</div>
+                                    <div className="text-standard">Modern Terminal for Seamless Workflow</div>
+                                </div>
+                            </section>
+                            <section className="text-standard">{this.getStatus(this.isUpToDate())}</section>
+                            <section>
+                                <a
+                                    className="button button-link color-standard"
+                                    href={util.makeExternLink("https://github.com/wavetermdev/waveterm")}
+                                    target="_blank"
+                                >
+                                    <i className="fa-brands fa-github"></i>
+                                    Github
+                                </a>
+                                <a
+                                    className="button button-link color-standard"
+                                    href={util.makeExternLink("https://www.commandline.dev/")}
+                                    target="_blank"
+                                >
+                                    <i className="fa-sharp fa-light fa-globe"></i>
+                                    Website
+                                </a>
+                                <a
+                                    className="button button-link color-standard"
+                                    href={util.makeExternLink(
+                                        "https://github.com/wavetermdev/waveterm/blob/main/LICENSE"
+                                    )}
+                                    target="_blank"
+                                >
+                                    <i className="fa-sharp fa-light fa-book-blank"></i>
+                                    License
+                                </a>
+                            </section>
+                            <section className="text-standard">Copyright © 2023 Command Line Inc.</section>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+}
+
+export { WelcomeModal, LoadingSpinner, ClientStopModal, AlertModal, DisconnectedModal, TosModal, AboutModal };

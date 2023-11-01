@@ -180,6 +180,7 @@ type ElectronApi = {
     onICmd: (callback: (mods: KeyModsType) => void) => void;
     onLCmd: (callback: (mods: KeyModsType) => void) => void;
     onHCmd: (callback: (mods: KeyModsType) => void) => void;
+    onMenuItemAbout: (callback: () => void) => void;
     onMetaArrowUp: (callback: () => void) => void;
     onMetaArrowDown: (callback: () => void) => void;
     onMetaPageUp: (callback: () => void) => void;
@@ -2699,6 +2700,9 @@ class Model {
     welcomeModalOpen: OV<boolean> = mobx.observable.box(false, {
         name: "welcomeModalOpen",
     });
+    aboutModalOpen: OV<boolean> = mobx.observable.box(false, {
+        name: "aboutModalOpen",
+    });
     screenSettingsModal: OV<{ sessionId: string; screenId: string }> = mobx.observable.box(null, {
         name: "screenSettingsModal",
     });
@@ -2759,6 +2763,7 @@ class Model {
         getApi().onICmd(this.onICmd.bind(this));
         getApi().onLCmd(this.onLCmd.bind(this));
         getApi().onHCmd(this.onHCmd.bind(this));
+        getApi().onMenuItemAbout(this.onMenuItemAbout.bind(this));
         getApi().onMetaArrowUp(this.onMetaArrowUp.bind(this));
         getApi().onMetaArrowDown(this.onMetaArrowDown.bind(this));
         getApi().onMetaPageUp(this.onMetaPageUp.bind(this));
@@ -2977,6 +2982,10 @@ class Model {
                 GlobalModel.welcomeModalOpen.set(false);
                 didSomething = true;
             }
+            if (GlobalModel.welcomeModalOpen.get()) {
+                GlobalModel.welcomeModalOpen.set(false);
+                didSomething = true;
+            }
         })();
         return didSomething;
     }
@@ -3104,6 +3113,12 @@ class Model {
                 }
             }
         }
+    }
+
+    onMenuItemAbout(): void {
+        mobx.action(() => {
+            this.aboutModalOpen.set(true);
+        })();
     }
 
     onMetaPageUp(): void {

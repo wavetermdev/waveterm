@@ -184,10 +184,9 @@
 .modal.wave-modal {
     .modal-content {
         display: flex;
-        padding: 32px 48px;
         flex-direction: column;
         align-items: flex-start;
-        gap: 8px;
+        gap: 16px;
         border-radius: 10px;
         background: var(--olive-dark-1, #151715);
         box-shadow: 0px 3px 5px 0px rgba(0, 0, 0, 0.35), 0px 10px 24px 0px rgba(0, 0, 0, 0.45),
@@ -201,28 +200,26 @@
             width: 100%;
 
             header {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: var(--sizing-sm, 12px);
                 width: 100%;
+                display: flex;
+                align-items: center;
+                padding: 12px 20px;
+                justify-content: space-between;
+                line-height: 20px;
+                border-bottom: 1px solid rgba(250, 250, 250, 0.1);
 
                 .modal-title {
                     color: @term-bright-white;
-                    text-align: center;
-                    font-size: 20px;
                     font-style: normal;
-                    font-weight: 300;
                     line-height: 20px;
+                    font-size: 13px;
                 }
 
-                .modal-subtitle {
-                    color: @term-white;
-                    text-align: center;
-
-                    font-style: normal;
-                    font-weight: 300;
-                    line-height: 20px;
+                .close-icon-wrapper {
+                    display: flex;
+                    padding: 4px;
+                    align-items: center;
+                    gap: 8px;
                 }
             }
 
@@ -230,40 +227,77 @@
                 display: flex;
                 flex-direction: column;
                 align-items: flex-start;
-                gap: 32px;
+                gap: 24px;
+                width: 87%;
+            }
+        }
+    }
+}
+
+.modal.tos-modal {
+    .modal-content.tos-modal-content {
+        padding: 32px 48px;
+        gap: 8px;
+
+        header.tos-header {
+            flex-direction: column;
+            gap: var(--sizing-sm, 12px);
+            border-bottom: none;
+            padding: 0;
+
+            .modal-title {
+                text-align: center;
+                font-size: 20px;
+                font-weight: 300;
+            }
+
+            .modal-subtitle {
+                color: @term-white;
+                text-align: center;
+
+                font-style: normal;
+                font-weight: 300;
+                line-height: 20px;
+            }
+        }
+
+        .content.tos-content {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 32px;
+            width: 100%;
+            margin-bottom: 0;
+
+            .item {
+                display: flex;
                 width: 100%;
-                margin-bottom: 0;
+                align-items: center;
+                gap: 16px;
 
-                .item {
+                .item-inner {
                     display: flex;
-                    width: 100%;
-                    align-items: center;
-                    gap: 16px;
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 4px;
+                    flex: 1 0 0;
 
-                    .item-inner {
+                    .item-title {
+                        color: @term-bright-white;
+                        font-style: normal;
+                        line-height: 20px;
+                    }
+
+                    .item-text {
+                        color: @term-white;
+                        font-style: normal;
+                        line-height: 20px;
+                    }
+
+                    .item-field {
                         display: flex;
-                        flex-direction: column;
-                        align-items: flex-start;
-                        gap: 4px;
-                        flex: 1 0 0;
-
-                        .item-title {
-                            color: @term-bright-white;
-                            font-style: normal;
-                            line-height: 20px;
-                        }
-
-                        .item-text {
-                            color: @term-white;
-                            font-style: normal;
-                            line-height: 20px;
-                        }
-
-                        .item-field {
-                            display: flex;
-                            align-items: center;
-                            gap: 8px;
-                        }
+                        align-items: center;
+                        gap: 8px;
                     }
                 }
             }
@@ -276,12 +310,167 @@
                 align-items: center;
                 justify-content: center;
 
+                button {
+                    font-size: 12.5px !important;
+                    margin-top: 16px;
+                }
+
                 button.disabled-button {
                     cursor: default;
                 }
             }
         }
     }
+}
+
+.modal.about-modal {
+    .modal-content.about-modal-content {
+        width: 401px;
+
+        .about-content {
+            margin-bottom: 0;
+
+            section {
+                .logo-wrapper {
+                    width: 72px;
+                    height: 72px;
+                    flex-shrink: 0;
+
+                    img {
+                        border-radius: 10px;
+                    }
+                }
+
+                .text-wrapper {
+                    display: flex;
+                    align-items: flex-start;
+                    flex-direction: column;
+                    gap: 4px;
+                    align-self: stretch;
+                    font-style: normal;
+                    line-height: 20px;
+
+                    div:first-child {
+                        color: @term-bright-white;
+                        font-size: 14.5px;
+                    }
+
+                    div:last-child {
+                        color: @term-white;
+                        text-align: left;
+                    }
+                }
+
+                .status {
+                    div {
+                        display: flex;
+                        align-items: center;
+                        margin-bottom: 5px;
+
+                        i {
+                            font-size: 16px;
+                            margin-right: 10px;
+                        }
+                    }
+
+                    div:first-child + div {
+                        color: @term-white;
+                    }
+                }
+
+                .status.updated {
+                    div {
+                        display: flex;
+                        align-items: center;
+                        margin-bottom: 5px;
+
+                        i {
+                            color: @term-green;
+                        }
+                    }
+                }
+
+                .status.outdated {
+                    div {
+                        i {
+                            color: @term-yellow;
+                        }
+                    }
+
+                    button {
+                        margin-top: 5px;
+                    }
+                }
+            }
+
+            section:nth-child(3) {
+                display: flex;
+                align-items: flex-start;
+                gap: 10px;
+
+                .button-link {
+                    display: flex;
+                    align-items: center;
+
+                    i {
+                        font-size: 16px;
+                    }
+                }
+            }
+
+            section:last-child {
+                margin-bottom: 24px;
+                color: @term-white;
+            }
+        }
+    }
+}
+
+.button {
+    display: flex;
+    padding: 6px 16px;
+    align-items: center;
+    gap: var(--sizing-2-xs, 4px);
+    border-radius: 6px;
+    height: auto;
+}
+
+.button.color-green {
+    color: @term-bright-white;
+    background: @term-green !important; // !important is needed to override the default button color
+    box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
+        0px 0px 0.5px 0px rgba(255, 255, 255, 0.8) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.6) inset;
+
+    &:hover {
+        color: @term-bright-white;
+    }
+}
+
+.button.color-standard {
+    color: @term-white;
+    background: var(--overlays-white-6, rgba(255, 255, 255, 0.12));
+
+    &:hover {
+        color: @term-white;
+    }
+}
+
+.button-link {
+    display: flex;
+    padding: 6px 16px;
+    align-items: center;
+    gap: var(--sizing-2-xs, 4px);
+    border-radius: 6px;
+    background: var(--overlays-white-6, rgba(255, 255, 255, 0.12));
+    cursor: pointer;
+}
+
+section {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    align-self: stretch;
+    width: 100%;
 }
 
 .modal.welcome-modal {
