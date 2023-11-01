@@ -507,7 +507,7 @@ class AboutModal extends React.Component<{}, {}> {
                             <section>
                                 <a
                                     className="button button-link color-standard"
-                                    href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}
+                                    href={util.makeExternLink("https://github.com/wavetermdev/waveterm")}
                                     target="_blank"
                                 >
                                     <i className="fa-brands fa-github"></i>
@@ -515,7 +515,7 @@ class AboutModal extends React.Component<{}, {}> {
                                 </a>
                                 <a
                                     className="button button-link color-standard"
-                                    href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}
+                                    href={util.makeExternLink("https://www.commandline.dev/")}
                                     target="_blank"
                                 >
                                     <i className="fa-sharp fa-light fa-globe"></i>
