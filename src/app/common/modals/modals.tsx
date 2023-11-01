@@ -448,27 +448,36 @@ class AboutModal extends React.Component<{}, {}> {
     }
 
     @boundMethod
+    updateApp(): void {
+        // GlobalCommandRunner.updateApp();
+    }
+
+    @boundMethod
     getStatus(isUpToDate: boolean): JSX.Element {
         if (isUpToDate) {
             return (
-                <>
+                <div className="status updated">
                     <div>
                         <i className="fa-sharp fa-solid fa-circle-check" />
                         <span>Up to Date</span>
                     </div>
                     <div>Client Version v0.4.0 20231016-110014</div>
-                </>
+                </div>
             );
         }
         return (
-            <>
+            <div className="status outdated">
                 <div>
                     <i className="fa-sharp fa-solid fa-triangle-exclamation" />
                     <span>Outdated Version</span>
                 </div>
                 <div>Client Version v0.4.0 20231016-110014</div>
-                <div></div>
-            </>
+                <div>
+                    <button onClick={this.updateApp} className="button is-wave-green is-outlined text-secondary">
+                        Update
+                    </button>
+                </div>
+            </div>
         );
     }
 
@@ -494,9 +503,7 @@ class AboutModal extends React.Component<{}, {}> {
                                     <div className="text-standard">Modern Terminal for Seamless Workflow</div>
                                 </div>
                             </section>
-                            <section className="text-standard">
-                                <div className="status">{this.getStatus(this.isUpToDate())}</div>
-                            </section>
+                            <section className="text-standard">{this.getStatus(this.isUpToDate())}</section>
                         </div>
                         <footer>
                             <div className="button-wrapper">

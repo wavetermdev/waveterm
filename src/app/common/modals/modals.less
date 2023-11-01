@@ -318,6 +318,11 @@
                 align-items: center;
                 justify-content: center;
 
+                button {
+                    font-size: 12.5px !important;
+                    margin-top: 16px;
+                }
+
                 button.disabled-button {
                     cursor: default;
                 }
@@ -369,13 +374,36 @@
 
                     i {
                         font-size: 16px;
-                        color: @term-green;
                         margin-right: 10px;
                     }
                 }
 
-                div:last-child {
+                div:first-child + div {
                     color: @term-white;
+                }
+            }
+
+            .status.updated {
+                div {
+                    display: flex;
+                    align-items: center;
+                    margin-bottom: 5px;
+
+                    i {
+                        color: @term-green;
+                    }
+                }
+            }
+
+            .status.outdated {
+                div {
+                    i {
+                        color: @term-yellow;
+                    }
+                }
+
+                button {
+                    margin-top: 5px;
                 }
             }
         }
