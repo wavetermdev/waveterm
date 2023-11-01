@@ -327,83 +327,101 @@
     .modal-content.about-modal-content {
         width: 401px;
 
-        section {
-            .logo-wrapper {
-                width: 72px;
-                height: 72px;
-                flex-shrink: 0;
+        .about-content {
+            margin-bottom: 0;
 
-                img {
-                    border-radius: 10px;
+            section {
+                .logo-wrapper {
+                    width: 72px;
+                    height: 72px;
+                    flex-shrink: 0;
+
+                    img {
+                        border-radius: 10px;
+                    }
+                }
+
+                .text-wrapper {
+                    display: flex;
+                    align-items: flex-start;
+                    flex-direction: column;
+                    gap: 4px;
+                    align-self: stretch;
+                    font-style: normal;
+                    line-height: 20px;
+
+                    div:first-child {
+                        color: @term-bright-white;
+                        font-size: 14.5px;
+                    }
+
+                    div:last-child {
+                        color: @term-white;
+                        text-align: left;
+                    }
+                }
+
+                .status {
+                    div {
+                        display: flex;
+                        align-items: center;
+                        margin-bottom: 5px;
+
+                        i {
+                            font-size: 16px;
+                            margin-right: 10px;
+                        }
+                    }
+
+                    div:first-child + div {
+                        color: @term-white;
+                    }
+                }
+
+                .status.updated {
+                    div {
+                        display: flex;
+                        align-items: center;
+                        margin-bottom: 5px;
+
+                        i {
+                            color: @term-green;
+                        }
+                    }
+                }
+
+                .status.outdated {
+                    div {
+                        i {
+                            color: @term-yellow;
+                        }
+                    }
+
+                    button {
+                        margin-top: 5px;
+                    }
                 }
             }
 
-            .text-wrapper {
+            section:nth-child(3) {
                 display: flex;
                 align-items: flex-start;
-                flex-direction: column;
-                gap: 4px;
-                align-self: stretch;
-                font-style: normal;
-                line-height: 20px;
+                gap: 10px;
 
-                div:first-child {
-                    color: @term-bright-white;
-                    font-size: 14.5px;
-                }
-
-                div:last-child {
-                    color: @term-white;
-                    text-align: left;
-                }
-            }
-
-            .status {
-                div {
+                .button-link {
                     display: flex;
                     align-items: center;
-                    margin-bottom: 5px;
 
                     i {
                         font-size: 16px;
-                        margin-right: 10px;
-                    }
-                }
-
-                div:first-child + div {
-                    color: @term-white;
-                }
-            }
-
-            .status.updated {
-                div {
-                    display: flex;
-                    align-items: center;
-                    margin-bottom: 5px;
-
-                    i {
-                        color: @term-green;
                     }
                 }
             }
 
-            .status.outdated {
-                div {
-                    i {
-                        color: @term-yellow;
-                    }
-                }
-
-                button {
-                    margin-top: 5px;
-                }
+            section:last-child {
+                margin-bottom: 24px;
+                color: @term-white;
             }
-        }
-
-        section:last-child {
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
         }
     }
 }
@@ -444,6 +462,7 @@
     gap: var(--sizing-2-xs, 4px);
     border-radius: 6px;
     background: var(--overlays-white-6, rgba(255, 255, 255, 0.12));
+    cursor: pointer;
 }
 
 section {

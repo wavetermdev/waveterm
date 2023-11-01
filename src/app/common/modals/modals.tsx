@@ -444,7 +444,7 @@ class AboutModal extends React.Component<{}, {}> {
 
     @boundMethod
     isUpToDate(): boolean {
-        return false;
+        return true;
     }
 
     @boundMethod
@@ -510,6 +510,7 @@ class AboutModal extends React.Component<{}, {}> {
                                     href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}
                                     target="_blank"
                                 >
+                                    <i className="fa-brands fa-github"></i>
                                     Github
                                 </a>
                                 <a
@@ -517,6 +518,7 @@ class AboutModal extends React.Component<{}, {}> {
                                     href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}
                                     target="_blank"
                                 >
+                                    <i className="fa-sharp fa-light fa-globe"></i>
                                     Website
                                 </a>
                                 <a
@@ -524,23 +526,12 @@ class AboutModal extends React.Component<{}, {}> {
                                     href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}
                                     target="_blank"
                                 >
+                                    <i className="fa-sharp fa-light fa-book-blank"></i>
                                     License
                                 </a>
                             </section>
+                            <section className="text-standard">Copyright © 2023 Command Line Inc.</section>
                         </div>
-                        <footer>
-                            <div className="button-wrapper">
-                                {/* <button
-                                    onClick={this.acceptTos}
-                                    className={cn("button is-wave-green is-outlined is-small", {
-                                        "disabled-button": !this.state.isChecked,
-                                    })}
-                                    disabled={!this.state.isChecked}
-                                >
-                                    Continue
-                                </button> */}
-                            </div>
-                        </footer>
                     </div>
                 </div>
             </div>
