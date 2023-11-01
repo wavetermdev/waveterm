@@ -2696,9 +2696,6 @@ class Model {
         name: "alertMessage",
     });
     alertPromiseResolver: (result: boolean) => void;
-    welcomeModalOpen: OV<boolean> = mobx.observable.box(false, {
-        name: "welcomeModalOpen",
-    });
     screenSettingsModal: OV<{ sessionId: string; screenId: string }> = mobx.observable.box(null, {
         name: "screenSettingsModal",
     });
@@ -2971,10 +2968,6 @@ class Model {
             }
             if (GlobalModel.lineSettingsModal.get()) {
                 GlobalModel.lineSettingsModal.set(null);
-                didSomething = true;
-            }
-            if (GlobalModel.welcomeModalOpen.get()) {
-                GlobalModel.welcomeModalOpen.set(false);
                 didSomething = true;
             }
         })();

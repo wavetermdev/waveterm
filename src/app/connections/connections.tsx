@@ -408,13 +408,13 @@ class CreateRemote extends React.Component<{ model: RemotesModalModel; remoteEdi
                         <InfoMessage width={350}>
                             <ul>
                                 <li>
-                                    <b>startup</b> - connect when [prompt] starts.
+                                    <b>startup</b> - Connect when Wave Terminal starts.
                                 </li>
                                 <li>
-                                    <b>auto</b> - connect when you first run a command using this connection.
+                                    <b>auto</b> - Connect when you first run a command using this connection.
                                 </li>
                                 <li>
-                                    <b>manual</b> - connect manually. Note, if your connection requires manual input,
+                                    <b>manual</b> - Connect manually. Note, if your connection requires manual input,
                                     like an OPT code, you must use this setting.
                                 </li>
                             </ul>
@@ -703,13 +703,13 @@ class EditRemoteSettings extends React.Component<
                         <InfoMessage width={350}>
                             <ul>
                                 <li>
-                                    <b>startup</b> - connect when [prompt] starts.
+                                    <b>startup</b> - Connect when Wave Terminal starts.
                                 </li>
                                 <li>
-                                    <b>auto</b> - connect when you first run a command using this connection.
+                                    <b>auto</b> - Connect when you first run a command using this connection.
                                 </li>
                                 <li>
-                                    <b>manual</b> - connect manually. Note, if your connection requires manual input,
+                                    <b>manual</b> - Connect manually. Note, if your connection requires manual input,
                                     like an OPT code, you must use this setting.
                                 </li>
                             </ul>

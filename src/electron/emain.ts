@@ -20,8 +20,8 @@ const DevServerEndpoint = "http://127.0.0.1:8090";
 const ProdServerEndpoint = "http://127.0.0.1:1619";
 
 let isDev = process.env[WaveDevVarName] != null;
-let scHome = getWaveHomeDir();
-ensureDir(scHome);
+let waveHome = getWaveHomeDir();
+ensureDir(waveHome);
 let DistDir = isDev ? "dist-dev" : "dist";
 let GlobalAuthKey = "";
 let instanceId = uuidv4();
@@ -43,7 +43,7 @@ let loggerConfig = {
         winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
         winston.format.printf((info) => `${info.timestamp} ${info.message}`)
     ),
-    transports: [new winston.transports.File({ filename: path.join(scHome, "waveterm-app.log"), level: "info" })],
+    transports: [new winston.transports.File({ filename: path.join(waveHome, "waveterm-app.log"), level: "info" })],
 };
 if (isDev) {
     loggerConfig.transports.push(new winston.transports.Console());
@@ -60,7 +60,7 @@ console.log = log;
 console.log(
     sprintf(
         "waveterm-app starting, WAVETERM_HOME=%s, apppath=%s arch=%s/%s",
-        scHome,
+        waveHome,
         getAppBasePath(),
         unamePlatform,
         unameArch
@@ -80,18 +80,18 @@ electron.dialog.showErrorBox = (title, content) => {
 
 // must match golang
 function getWaveHomeDir() {
-    let scHome = process.env.WAVETERM_HOME;
-    if (scHome == null) {
+    let waveHome = process.env.WAVETERM_HOME;
+    if (waveHome == null) {
         let homeDir = process.env.HOME;
         if (homeDir == null) {
             homeDir = "/";
         }
-        scHome = path.join(homeDir, isDev ? "prompt-dev" : "prompt");
+        waveHome = path.join(homeDir, isDev ? ".waveterm-dev" : ".waveterm");
     }
-    return scHome;
+    return waveHome;
 }
 
-// for dev, this is just the github.com/commandlinedev/prompt-client directory
+// for dev, this is just the waveterm directory
 // for prod, this is .../Wave.app/Contents/Resources/app
 function getAppBasePath() {
     return path.dirname(__dirname);
@@ -113,14 +113,14 @@ function getWaveSrvPath() {
 
 function getWaveSrvCmd() {
     let waveSrvPath = getWaveSrvPath();
-    let scHome = getWaveHomeDir();
-    let logFile = path.join(scHome, "wavesrv.log");
+    let waveHome = getWaveHomeDir();
+    let logFile = path.join(waveHome, "wavesrv.log");
     return `${waveSrvPath} >> "${logFile}" 2>&1`;
 }
 
 function getWaveSrvCwd() {
-    let scHome = getWaveHomeDir();
-    return scHome;
+    let waveHome = getWaveHomeDir();
+    return waveHome;
 }
 
 function ensureDir(dir) {

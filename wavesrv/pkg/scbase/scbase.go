@@ -33,8 +33,8 @@ const WaveDevVarName = "WAVETERM_DEV"
 const SessionsDirBaseName = "sessions"
 const ScreensDirBaseName = "screens"
 const WaveLockFile = "waveterm.lock"
-const PromptDirName = "prompt"
-const PromptDevDirName = "prompt-dev"
+const WaveDirName = ".waveterm"        // must match emain.ts
+const WaveDevDirName = ".waveterm-dev" // must match emain.ts
 const WaveAppPathVarName = "WAVETERM_APP_PATH"
 const WaveVersion = "v0.5.0"
 const WaveAuthKeyFileName = "waveterm.authkey"
@@ -61,9 +61,9 @@ func GetWaveHomeDir() string {
 		}
 		pdev := os.Getenv(WaveDevVarName)
 		if pdev != "" {
-			scHome = path.Join(homeVar, PromptDevDirName)
+			scHome = path.Join(homeVar, WaveDevDirName)
 		} else {
-			scHome = path.Join(homeVar, PromptDirName)
+			scHome = path.Join(homeVar, WaveDirName)
 		}
 
 	}

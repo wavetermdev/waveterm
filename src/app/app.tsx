@@ -124,9 +124,6 @@ class App extends React.Component<{}, {}> {
                 <If condition={GlobalModel.needsTos()}>
                     <TosModal />
                 </If>
-                <If condition={GlobalModel.welcomeModalOpen.get()}>
-                    <WelcomeModal />
-                </If>
                 <If condition={screenSettingsModal != null}>
                     <ScreenSettingsModal
                         key={screenSettingsModal.sessionId + ":" + screenSettingsModal.screenId}
