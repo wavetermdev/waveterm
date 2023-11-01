@@ -13,13 +13,13 @@ import * as util from "util";
 import { sprintf } from "sprintf-js";
 import { v4 as uuidv4 } from "uuid";
 
-const PromptAppPathVarName = "WAVETERM_APP_PATH";
-const PromptDevVarName = "WAVETERM_DEV";
-const AuthKeyFile = "prompt.authkey";
+const WaveAppPathVarName = "WAVETERM_APP_PATH";
+const WaveDevVarName = "WAVETERM_DEV";
+const AuthKeyFile = "waveterm.authkey";
 const DevServerEndpoint = "http://127.0.0.1:8090";
 const ProdServerEndpoint = "http://127.0.0.1:1619";
 
-let isDev = process.env[PromptDevVarName] != null;
+let isDev = process.env[WaveDevVarName] != null;
 let scHome = getWaveHomeDir();
 ensureDir(scHome);
 let DistDir = isDev ? "dist-dev" : "dist";
@@ -92,7 +92,7 @@ function getWaveHomeDir() {
 }
 
 // for dev, this is just the github.com/commandlinedev/prompt-client directory
-// for prod, this is .../Prompt.app/Contents/Resources/app
+// for prod, this is .../Wave.app/Contents/Resources/app
 function getAppBasePath() {
     return path.dirname(__dirname);
 }
@@ -501,9 +501,9 @@ function runWaveSrv() {
         pReject = argReject;
     });
     let envCopy = Object.assign({}, process.env);
-    envCopy[PromptAppPathVarName] = getAppBasePath();
+    envCopy[WaveAppPathVarName] = getAppBasePath();
     if (isDev) {
-        envCopy[PromptDevVarName] = "1";
+        envCopy[WaveDevVarName] = "1";
     }
     console.log("trying to run local server", getWaveSrvPath());
     let proc = child_process.spawn("/bin/bash", ["-c", getWaveSrvCmd()], {

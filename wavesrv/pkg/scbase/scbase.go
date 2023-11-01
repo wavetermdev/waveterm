@@ -32,12 +32,12 @@ const WaveHomeVarName = "WAVETERM_HOME"
 const WaveDevVarName = "WAVETERM_DEV"
 const SessionsDirBaseName = "sessions"
 const ScreensDirBaseName = "screens"
-const PromptLockFile = "prompt.lock"
+const WaveLockFile = "waveterm.lock"
 const PromptDirName = "prompt"
 const PromptDevDirName = "prompt-dev"
 const WaveAppPathVarName = "WAVETERM_APP_PATH"
 const WaveVersion = "v0.5.0"
-const WaveAuthKeyFileName = "prompt.authkey"
+const WaveAuthKeyFileName = "waveterm.authkey"
 const MShellVersion = "v0.3.0"
 const DefaultMacOSShell = "/bin/bash"
 
@@ -158,7 +158,7 @@ func AcquireWaveLock() (*os.File, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot find/create WAVETERM_HOME directory %q", homeDir)
 	}
-	lockFileName := path.Join(homeDir, PromptLockFile)
+	lockFileName := path.Join(homeDir, WaveLockFile)
 	fd, err := os.Create(lockFileName)
 	if err != nil {
 		return nil, err
