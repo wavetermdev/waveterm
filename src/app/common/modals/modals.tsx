@@ -467,7 +467,7 @@ class AboutModal extends React.Component<{}, {}> {
                                 <img src={close} alt="Close (Escape)" />
                             </div>
                         </header>
-                        <div className="content common-content">
+                        <div className="content about-content">
                             <section>
                                 <div className="logo-wrapper">
                                     <img src={logo} alt="logo" />
