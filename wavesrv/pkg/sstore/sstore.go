@@ -33,8 +33,8 @@ import (
 )
 
 const LineNoHeight = -1
-const DBFileName = "prompt.db"
-const DBFileNameBackup = "backup.prompt.db"
+const DBFileName = "waveterm.db"
+const DBFileNameBackup = "backup.waveterm.db"
 const MaxWebShareLineCount = 50
 const MaxWebShareScreenCount = 3
 const MaxLineStateSize = 4 * 1024 // 4k for now, can raise if needed
