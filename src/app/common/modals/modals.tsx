@@ -25,7 +25,7 @@ import logo from "../../assets/waveterm-logo-with-bg.svg";
 dayjs.extend(localizedFormat);
 
 // @ts-ignore
-const VERSION = __PROMPT_VERSION__;
+const VERSION = __WAVETERM_VERSION__;
 
 type OV<V> = mobx.IObservableValue<V>;
 
@@ -352,60 +352,66 @@ class TosModal extends React.Component<{}, {}> {
                 <div className="modal-background" />
                 <div className="modal-content tos-modal-content">
                     <div className="modal-content-wrapper">
-                        <header className="tos-header">
+                        <header className="tos-header unselectable">
                             <div className="modal-title">Welcome to Wave Terminal!</div>
                             <div className="modal-subtitle">Lets set everything for you</div>
                         </header>
-                        <div className="content tos-content">
+                        <div className="content tos-content unselectable">
                             <div className="item">
                                 <img src={shield} alt="Privacy" />
                                 <div className="item-inner">
                                     <div className="item-title">Telemetry</div>
                                     <div className="item-text">
-                                        We don’t collect any personal info, only crash logs and IP address to make Wave
-                                        better. If you like, you can disable telemetry now or late.
+                                        We only collect minimal <i>anonymous</i> telemetry data to help us
+                                        understand how many people are using Wave.
                                     </div>
-                                    <div className="item-field">
+                                    <div className="item-field" style={{marginTop: 2}}>
                                         <Toggle
                                             checked={!cdata.clientopts.notelemetry}
                                             onChange={this.handleChangeTelemetry}
                                         />
-                                        <div className="item-label">Basic Telemetry</div>
+                                        <div className="item-label">Telemetry {cdata.clientopts.notelemetry ? "Disabled" : "Enabled"}</div>
                                     </div>
                                 </div>
                             </div>
                             <div className="item">
-                                <img src={help} alt="Help" />
+                                <a target="_blank" href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}>
+                                    <img src={help} alt="Help" />
+                                </a>
                                 <div className="item-inner">
-                                    <div className="item-title">Help</div>
+                                    <div className="item-title">Join our Community</div>
                                     <div className="item-text">
-                                        If you need any help or you have feature request, you can join{" "}
+                                        Get help, submit feature requests, report bugs,
+                                        or just chat with fellow terminal enthusiasts.<br/>
                                         <a target="_blank" href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}>
-                                            our Discord
+                                            Join the Wave&nbsp;Discord&nbsp;Channel
                                         </a>
-                                        .
                                     </div>
                                 </div>
                             </div>
                             <div className="item">
-                                <img src={github} alt="Github" />
+                                <a
+                                    target="_blank"
+                                    href={util.makeExternLink("https://github.com/wavetermdev/waveterm")}
+                                >
+                                    <img src={github} alt="Github" />
+                                </a>
                                 <div className="item-inner">
-                                    <div className="item-title">Like Wave? Give us a star</div>
+                                    <div className="item-title">Support us on GitHub</div>
                                     <div className="item-text">
-                                        Rankings are very important for small startups like us, it helps other people to
-                                        know about us. If you like Wave, please consider giving us a star on our{" "}
+                                        We're <i>open source</i> and committed to providing a free terminal for individual
+                                        users.  Please show your support us by giving us a star on{" "}
                                         <a
                                             target="_blank"
                                             href={util.makeExternLink("https://github.com/wavetermdev/waveterm")}
                                         >
-                                            Github Repository
+                                            Github&nbsp;(wavetermdev/waveterm)
                                         </a>
-                                        .
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <footer>
+                        <footer className="unselectable">
                             <div>
                                 <Checkbox
                                     checked={this.state.isChecked}

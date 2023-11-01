@@ -152,11 +152,18 @@ let menuTemplate = [
                 click: () => {
                     MainWindow?.webContents.send('menu-item-about');
                 }
-            }
+            },
+            { type: "separator" },
+            { role: "services" },
+            { type: "separator" },
+            { role: "hide" },
+            { role: "hideOthers" },
+            { type: "separator" },
+            { role: "quit" },
         ],
     },
     {
-        label: "File",
+        label: "Filemenu",
         submenu: [{ role: "close" }, { role: "forceReload" }],
     },
     {
