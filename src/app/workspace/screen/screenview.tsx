@@ -38,14 +38,14 @@ type OV<V> = mobx.IObservableValue<V>;
 @mobxReact.observer
 class ScreenView extends React.Component<{ screen: Screen }, {}> {
     render() {
-        let { screen } = this.props;
+        let { session, screen } = this.props;
         if (screen == null) {
             return <div className="screen-view">(no screen found)</div>;
         }
         let fontSize = GlobalModel.termFontSize.get();
         return (
             <div className="screen-view" data-screenid={screen.screenId}>
-                <ScreenWindowView key={screen.screenId + ":" + fontSize} screen={screen} />
+                <ScreenWindowView key={screen.screenId + ":" + fontSize} session={session} screen={screen} />
             </div>
         );
     }
@@ -303,7 +303,7 @@ class ScreenWindowView extends React.Component<{ screen: Screen }, {}> {
             <div className="window-view" ref={this.windowViewRef} data-screenid={screen.screenId}>
                 <div key="lines" className="lines"></div>
                 <div key="window-empty" className={cn("window-empty", { "should-fade": fade })}>
-                    <div>{message}</div>
+                    <div className="text-standard">{message}</div>
                 </div>
             </div>
         );
@@ -344,7 +344,7 @@ class ScreenWindowView extends React.Component<{ screen: Screen }, {}> {
     }
 
     render() {
-        let { screen } = this.props;
+        let { session, screen } = this.props;
         let win = this.getScreenLines();
         if (win == null || !win.loaded.get()) {
             return this.renderError("...", true);
@@ -379,7 +379,17 @@ class ScreenWindowView extends React.Component<{ screen: Screen }, {}> {
                     </div>
                 </div>
                 <If condition={lines.length == 0}>
-                    <NewTabSettings screen={screen}/>
+                    <If condition={true}>
+                        <NewTabSettings screen={screen}/>
+                    </If>
+                    <If condition={false}>
+                        <div className="window-view" ref={this.windowViewRef} data-screenid={screen.screenId}>
+                            <div key="lines" className="lines"></div>
+                            <div key="window-empty" className={cn("window-empty")}>
+                                <div><code className="text-standard">[workspace="{session.name.get()}" screen="{screen.name.get()}"]</code></div>
+                            </div>
+                        </div>
+                    </If>
                 </If>
                 <If condition={screen.isWebShared()}>
                     <div key="share-tag" className="share-tag">

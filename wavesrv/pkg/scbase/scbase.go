@@ -29,13 +29,13 @@ import (
 
 const HomeVarName = "HOME"
 const PromptHomeVarName = "PROMPT_HOME"
-const PromptDevVarName = "PROMPT_DEV"
+const WaveDevVarName = "WAVETERM_DEV"
 const SessionsDirBaseName = "sessions"
 const ScreensDirBaseName = "screens"
 const PromptLockFile = "prompt.lock"
 const PromptDirName = "prompt"
 const PromptDevDirName = "prompt-dev"
-const PromptAppPathVarName = "PROMPT_APP_PATH"
+const WaveAppPathVarName = "WAVETERM_APP_PATH"
 const PromptVersion = "v0.5.0"
 const PromptAuthKeyFileName = "prompt.authkey"
 const MShellVersion = "v0.3.0"
@@ -47,7 +47,7 @@ var BaseLock = &sync.Mutex{}
 var BuildTime = "-"
 
 func IsDevMode() bool {
-	pdev := os.Getenv(PromptDevVarName)
+	pdev := os.Getenv(WaveDevVarName)
 	return pdev != ""
 }
 
@@ -59,7 +59,7 @@ func GetPromptHomeDir() string {
 		if homeVar == "" {
 			homeVar = "/"
 		}
-		pdev := os.Getenv(PromptDevVarName)
+		pdev := os.Getenv(WaveDevVarName)
 		if pdev != "" {
 			scHome = path.Join(homeVar, PromptDevDirName)
 		} else {
@@ -71,7 +71,7 @@ func GetPromptHomeDir() string {
 }
 
 func MShellBinaryDir() string {
-	appPath := os.Getenv(PromptAppPathVarName)
+	appPath := os.Getenv(WaveAppPathVarName)
 	if appPath == "" {
 		appPath = "."
 	}

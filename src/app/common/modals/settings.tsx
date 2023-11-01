@@ -23,9 +23,9 @@ import "./modals.less";
 type OV<V> = mobx.IObservableValue<V>;
 
 // @ts-ignore
-const VERSION = __PROMPT_VERSION__;
+const VERSION = __WAVETERM_VERSION__;
 // @ts-ignore
-const BUILD = __PROMPT_BUILD__;
+const BUILD = __WAVETERM_BUILD__;
 
 const ScreenDeleteMessage = `
 Are you sure you want to delete this screen/tab?

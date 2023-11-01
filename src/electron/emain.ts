@@ -13,8 +13,8 @@ import * as util from "util";
 import { sprintf } from "sprintf-js";
 import { v4 as uuidv4 } from "uuid";
 
-const PromptAppPathVarName = "PROMPT_APP_PATH";
-const PromptDevVarName = "PROMPT_DEV";
+const PromptAppPathVarName = "WAVETERM_APP_PATH";
+const PromptDevVarName = "WAVETERM_DEV";
 const AuthKeyFile = "prompt.authkey";
 const DevServerEndpoint = "http://127.0.0.1:8090";
 const ProdServerEndpoint = "http://127.0.0.1:1619";
@@ -67,7 +67,7 @@ console.log(
     )
 );
 if (isDev) {
-    console.log("prompt-app PROMPT_DEV set");
+    console.log("waveterm-app WAVETERM_DEV set");
 }
 let app = electron.app;
 app.setName(isDev ? "Wave (Dev)" : "Wave");
