@@ -20,7 +20,7 @@ const DevServerEndpoint = "http://127.0.0.1:8090";
 const ProdServerEndpoint = "http://127.0.0.1:1619";
 
 let isDev = process.env[PromptDevVarName] != null;
-let scHome = getPromptHomeDir();
+let scHome = getWaveHomeDir();
 ensureDir(scHome);
 let DistDir = isDev ? "dist-dev" : "dist";
 let GlobalAuthKey = "";
@@ -59,7 +59,7 @@ function log(...msg) {
 console.log = log;
 console.log(
     sprintf(
-        "waveterm-app starting, PROMPT_HOME=%s, apppath=%s arch=%s/%s",
+        "waveterm-app starting, WAVETERM_HOME=%s, apppath=%s arch=%s/%s",
         scHome,
         getAppBasePath(),
         unamePlatform,
@@ -79,8 +79,8 @@ electron.dialog.showErrorBox = (title, content) => {
 };
 
 // must match golang
-function getPromptHomeDir() {
-    let scHome = process.env.PROMPT_HOME;
+function getWaveHomeDir() {
+    let scHome = process.env.WAVETERM_HOME;
     if (scHome == null) {
         let homeDir = process.env.HOME;
         if (homeDir == null) {
@@ -113,13 +113,13 @@ function getWaveSrvPath() {
 
 function getWaveSrvCmd() {
     let waveSrvPath = getWaveSrvPath();
-    let scHome = getPromptHomeDir();
+    let scHome = getWaveHomeDir();
     let logFile = path.join(scHome, "wavesrv.log");
     return `${waveSrvPath} >> "${logFile}" 2>&1`;
 }
 
 function getWaveSrvCwd() {
-    let scHome = getPromptHomeDir();
+    let scHome = getWaveHomeDir();
     return scHome;
 }
 
@@ -128,7 +128,7 @@ function ensureDir(dir) {
 }
 
 function readAuthKey() {
-    let homeDir = getPromptHomeDir();
+    let homeDir = getWaveHomeDir();
     let authKeyFileName = path.join(homeDir, AuthKeyFile);
     if (!fs.existsSync(authKeyFileName)) {
         let authKeyStr = String(uuidv4());

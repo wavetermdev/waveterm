@@ -22,6 +22,8 @@ import (
 	"time"
 
 	"github.com/armon/circbuf"
+	"github.com/creack/pty"
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
@@ -29,8 +31,6 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
-	"github.com/creack/pty"
-	"github.com/google/uuid"
 	"golang.org/x/mod/semver"
 )
 
@@ -1133,7 +1133,7 @@ func addScVarsToState(state *packet.ShellState) *packet.ShellState {
 	rtn := *state
 	envMap := shexec.DeclMapFromState(&rtn)
 	envMap["PROMPT"] = &shexec.DeclareDeclType{Name: "PROMPT", Value: "1", Args: "x"}
-	envMap["PROMPT_VERSION"] = &shexec.DeclareDeclType{Name: "PROMPT_VERSION", Value: scbase.PromptVersion, Args: "x"}
+	envMap["PROMPT_VERSION"] = &shexec.DeclareDeclType{Name: "PROMPT_VERSION", Value: scbase.WaveVersion, Args: "x"}
 	rtn.ShellVars = shexec.SerializeDeclMap(envMap)
 	return &rtn
 }
