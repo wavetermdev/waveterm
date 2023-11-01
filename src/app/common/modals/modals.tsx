@@ -444,7 +444,7 @@ class AboutModal extends React.Component<{}, {}> {
 
     @boundMethod
     isUpToDate(): boolean {
-        return true;
+        return false;
     }
 
     @boundMethod
@@ -473,7 +473,7 @@ class AboutModal extends React.Component<{}, {}> {
                 </div>
                 <div>Client Version v0.4.0 20231016-110014</div>
                 <div>
-                    <button onClick={this.updateApp} className="button is-wave-green is-outlined text-secondary">
+                    <button onClick={this.updateApp} className="button color-green text-secondary">
                         Update
                     </button>
                 </div>
@@ -504,6 +504,29 @@ class AboutModal extends React.Component<{}, {}> {
                                 </div>
                             </section>
                             <section className="text-standard">{this.getStatus(this.isUpToDate())}</section>
+                            <section>
+                                <a
+                                    className="button button-link color-standard"
+                                    href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}
+                                    target="_blank"
+                                >
+                                    Github
+                                </a>
+                                <a
+                                    className="button button-link color-standard"
+                                    href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}
+                                    target="_blank"
+                                >
+                                    Website
+                                </a>
+                                <a
+                                    className="button button-link color-standard"
+                                    href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}
+                                    target="_blank"
+                                >
+                                    License
+                                </a>
+                            </section>
                         </div>
                         <footer>
                             <div className="button-wrapper">

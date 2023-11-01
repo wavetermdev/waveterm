@@ -229,14 +229,6 @@
                 align-items: flex-start;
                 gap: 24px;
                 width: 87%;
-
-                section {
-                    display: flex;
-                    align-items: center;
-                    gap: 16px;
-                    align-self: stretch;
-                    width: 100%;
-                }
             }
         }
     }
@@ -407,7 +399,59 @@
                 }
             }
         }
+
+        section:last-child {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
     }
+}
+
+.button {
+    display: flex;
+    padding: 6px 16px;
+    align-items: center;
+    gap: var(--sizing-2-xs, 4px);
+    border-radius: 6px;
+    height: auto;
+}
+
+.button.color-green {
+    color: @term-bright-white;
+    background: @term-green !important; // !important is needed to override the default button color
+    box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
+        0px 0px 0.5px 0px rgba(255, 255, 255, 0.8) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.6) inset;
+
+    &:hover {
+        color: @term-bright-white;
+    }
+}
+
+.button.color-standard {
+    color: @term-white;
+    background: var(--overlays-white-6, rgba(255, 255, 255, 0.12));
+
+    &:hover {
+        color: @term-white;
+    }
+}
+
+.button-link {
+    display: flex;
+    padding: 6px 16px;
+    align-items: center;
+    gap: var(--sizing-2-xs, 4px);
+    border-radius: 6px;
+    background: var(--overlays-white-6, rgba(255, 255, 255, 0.12));
+}
+
+section {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    align-self: stretch;
+    width: 100%;
 }
 
 .modal.welcome-modal {
