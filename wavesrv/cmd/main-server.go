@@ -48,8 +48,8 @@ const HttpWriteTimeout = 21 * time.Second
 const HttpMaxHeaderBytes = 60000
 const HttpTimeoutDuration = 21 * time.Second
 
-const MainServerAddr = "127.0.0.1:1619"      // PromptServer,  P=16, S=19, PS=1619
-const WebSocketServerAddr = "127.0.0.1:1623" // PromptWebsock, P=16, W=23, PW=1623
+const MainServerAddr = "127.0.0.1:1619"      // wavesrv,  P=16, S=19, PS=1619
+const WebSocketServerAddr = "127.0.0.1:1623" // wavesrv:websocket, P=16, W=23, PW=1623
 const MainServerDevAddr = "127.0.0.1:8090"
 const WebSocketServerDevAddr = "127.0.0.1:8091"
 const WSStateReconnectTime = 30 * time.Second
@@ -763,11 +763,11 @@ func installSignalHandlers() {
 
 func doShutdown(reason string) {
 	shutdownOnce.Do(func() {
-		log.Printf("[prompt] local server %v, start shutdown\n", reason)
+		log.Printf("[wave] local server %v, start shutdown\n", reason)
 		sendTelemetryWrapper()
-		log.Printf("[prompt] closing db connection\n")
+		log.Printf("[wave] closing db connection\n")
 		sstore.CloseDB()
-		log.Printf("[prompt] *** shutting down local server\n")
+		log.Printf("[wave] *** shutting down local server\n")
 		time.Sleep(1 * time.Second)
 		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 		time.Sleep(5 * time.Second)
@@ -787,14 +787,13 @@ func main() {
 		return
 	}
 
-	scHomeDir := scbase.GetPromptHomeDir()
-	log.Printf("[prompt] *** starting local server\n")
-	log.Printf("[prompt] local server version %s+%s\n", scbase.PromptVersion, scbase.BuildTime)
-	log.Printf("[prompt] homedir = %q\n", scHomeDir)
+	scHomeDir := scbase.GetWaveHomeDir()
+	log.Printf("[wave] *** starting wavesrv version %s+%s\n", scbase.WaveVersion, scbase.BuildTime)
+	log.Printf("[wave] homedir = %q\n", scHomeDir)
 
-	scLock, err := scbase.AcquirePromptLock()
+	scLock, err := scbase.AcquireWaveLock()
 	if err != nil || scLock == nil {
-		log.Printf("[error] cannot acquire prompt lock: %v\n", err)
+		log.Printf("[error] cannot acquire wave lock: %v\n", err)
 		return
 	}
 	if len(os.Args) >= 2 && strings.HasPrefix(os.Args[1], "--migrate") {
@@ -804,7 +803,7 @@ func main() {
 		}
 		return
 	}
-	authKey, err := scbase.ReadPromptAuthKey()
+	authKey, err := scbase.ReadWaveAuthKey()
 	if err != nil {
 		log.Printf("[error] %v\n", err)
 		return

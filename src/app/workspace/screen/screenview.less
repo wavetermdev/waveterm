@@ -41,6 +41,26 @@
             }
         }
 
+        .window-empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 10px;
+            height: 100%;
+            color: #ccc;
+            
+            code {
+                background-color: transparent;
+                color: #4e9a06;
+            }
+            
+            &.should-fade {
+                opacity: 1;
+                animation: fade-in 2.5s;
+            }
+        }
+
         .share-tag {
             color: @term-white;
             position: absolute;

@@ -20,21 +20,21 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
+	"github.com/sawka/txwrap"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
-	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
-	"github.com/sawka/txwrap"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
 const LineNoHeight = -1
-const DBFileName = "prompt.db"
-const DBFileNameBackup = "backup.prompt.db"
+const DBFileName = "waveterm.db"
+const DBFileNameBackup = "backup.waveterm.db"
 const MaxWebShareLineCount = 50
 const MaxWebShareScreenCount = 3
 const MaxLineStateSize = 4 * 1024 // 4k for now, can raise if needed
@@ -145,12 +145,12 @@ func lineIdFromCK(ck base.CommandKey) string {
 }
 
 func GetDBName() string {
-	scHome := scbase.GetPromptHomeDir()
+	scHome := scbase.GetWaveHomeDir()
 	return path.Join(scHome, DBFileName)
 }
 
 func GetDBBackupName() string {
-	scHome := scbase.GetPromptHomeDir()
+	scHome := scbase.GetWaveHomeDir()
 	return path.Join(scHome, DBFileNameBackup)
 }
 
@@ -1091,7 +1091,7 @@ func makeNewLineText(screenId string, userId string, text string) *LineType {
 	rtn := &LineType{}
 	rtn.ScreenId = screenId
 	rtn.UserId = userId
-	rtn.LineId = scbase.GenPromptUUID()
+	rtn.LineId = scbase.GenWaveUUID()
 	rtn.Ts = time.Now().UnixMilli()
 	rtn.LineLocal = true
 	rtn.LineType = LineTypeText
@@ -1160,7 +1160,7 @@ func EnsureLocalRemote(ctx context.Context) error {
 	}
 	// create the local remote
 	localRemote := &RemoteType{
-		RemoteId:            scbase.GenPromptUUID(),
+		RemoteId:            scbase.GenWaveUUID(),
 		RemoteType:          RemoteTypeSsh,
 		RemoteAlias:         LocalRemoteAlias,
 		RemoteCanonicalName: fmt.Sprintf("%s@%s", user.Username, hostName),
@@ -1177,7 +1177,7 @@ func EnsureLocalRemote(ctx context.Context) error {
 	}
 	log.Printf("[db] added local remote '%s', id=%s\n", localRemote.RemoteCanonicalName, localRemote.RemoteId)
 	sudoRemote := &RemoteType{
-		RemoteId:            scbase.GenPromptUUID(),
+		RemoteId:            scbase.GenWaveUUID(),
 		RemoteType:          RemoteTypeSsh,
 		RemoteAlias:         "sudo",
 		RemoteCanonicalName: fmt.Sprintf("sudo@%s@%s", user.Username, hostName),

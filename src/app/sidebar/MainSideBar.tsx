@@ -119,13 +119,6 @@ class MainSideBar extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    handleWelcomeClick(): void {
-        mobx.action(() => {
-            GlobalModel.welcomeModalOpen.set(true);
-        })();
-    }
-
-    @boundMethod
     handleSettingsClick(): void {
         mobx.action(() => {
             GlobalModel.clientSettingsModal.set(true);

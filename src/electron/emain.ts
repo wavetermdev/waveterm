@@ -13,15 +13,15 @@ import * as util from "util";
 import { sprintf } from "sprintf-js";
 import { v4 as uuidv4 } from "uuid";
 
-const PromptAppPathVarName = "PROMPT_APP_PATH";
-const PromptDevVarName = "PROMPT_DEV";
-const AuthKeyFile = "prompt.authkey";
+const WaveAppPathVarName = "WAVETERM_APP_PATH";
+const WaveDevVarName = "WAVETERM_DEV";
+const AuthKeyFile = "waveterm.authkey";
 const DevServerEndpoint = "http://127.0.0.1:8090";
 const ProdServerEndpoint = "http://127.0.0.1:1619";
 
-let isDev = process.env[PromptDevVarName] != null;
-let scHome = getPromptHomeDir();
-ensureDir(scHome);
+let isDev = process.env[WaveDevVarName] != null;
+let waveHome = getWaveHomeDir();
+ensureDir(waveHome);
 let DistDir = isDev ? "dist-dev" : "dist";
 let GlobalAuthKey = "";
 let instanceId = uuidv4();
@@ -43,7 +43,7 @@ let loggerConfig = {
         winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
         winston.format.printf((info) => `${info.timestamp} ${info.message}`)
     ),
-    transports: [new winston.transports.File({ filename: path.join(scHome, "waveterm-app.log"), level: "info" })],
+    transports: [new winston.transports.File({ filename: path.join(waveHome, "waveterm-app.log"), level: "info" })],
 };
 if (isDev) {
     loggerConfig.transports.push(new winston.transports.Console());
@@ -59,15 +59,15 @@ function log(...msg) {
 console.log = log;
 console.log(
     sprintf(
-        "waveterm-app starting, PROMPT_HOME=%s, apppath=%s arch=%s/%s",
-        scHome,
+        "waveterm-app starting, WAVETERM_HOME=%s, apppath=%s arch=%s/%s",
+        waveHome,
         getAppBasePath(),
         unamePlatform,
         unameArch
     )
 );
 if (isDev) {
-    console.log("prompt-app PROMPT_DEV set");
+    console.log("waveterm-app WAVETERM_DEV set");
 }
 let app = electron.app;
 app.setName(isDev ? "Wave (Dev)" : "Wave");
@@ -79,20 +79,20 @@ electron.dialog.showErrorBox = (title, content) => {
 };
 
 // must match golang
-function getPromptHomeDir() {
-    let scHome = process.env.PROMPT_HOME;
-    if (scHome == null) {
+function getWaveHomeDir() {
+    let waveHome = process.env.WAVETERM_HOME;
+    if (waveHome == null) {
         let homeDir = process.env.HOME;
         if (homeDir == null) {
             homeDir = "/";
         }
-        scHome = path.join(homeDir, isDev ? "prompt-dev" : "prompt");
+        waveHome = path.join(homeDir, isDev ? ".waveterm-dev" : ".waveterm");
     }
-    return scHome;
+    return waveHome;
 }
 
-// for dev, this is just the github.com/commandlinedev/prompt-client directory
-// for prod, this is .../Prompt.app/Contents/Resources/app
+// for dev, this is just the waveterm directory
+// for prod, this is .../Wave.app/Contents/Resources/app
 function getAppBasePath() {
     return path.dirname(__dirname);
 }
@@ -113,14 +113,14 @@ function getWaveSrvPath() {
 
 function getWaveSrvCmd() {
     let waveSrvPath = getWaveSrvPath();
-    let scHome = getPromptHomeDir();
-    let logFile = path.join(scHome, "wavesrv.log");
+    let waveHome = getWaveHomeDir();
+    let logFile = path.join(waveHome, "wavesrv.log");
     return `${waveSrvPath} >> "${logFile}" 2>&1`;
 }
 
 function getWaveSrvCwd() {
-    let scHome = getPromptHomeDir();
-    return scHome;
+    let waveHome = getWaveHomeDir();
+    return waveHome;
 }
 
 function ensureDir(dir) {
@@ -128,7 +128,7 @@ function ensureDir(dir) {
 }
 
 function readAuthKey() {
-    let homeDir = getPromptHomeDir();
+    let homeDir = getWaveHomeDir();
     let authKeyFileName = path.join(homeDir, AuthKeyFile);
     if (!fs.existsSync(authKeyFileName)) {
         let authKeyStr = String(uuidv4());
@@ -152,11 +152,18 @@ let menuTemplate = [
                 click: () => {
                     MainWindow?.webContents.send('menu-item-about');
                 }
-            }
+            },
+            { type: "separator" },
+            { role: "services" },
+            { type: "separator" },
+            { role: "hide" },
+            { role: "hideOthers" },
+            { type: "separator" },
+            { role: "quit" },
         ],
     },
     {
-        label: "File",
+        label: "Filemenu",
         submenu: [{ role: "close" }, { role: "forceReload" }],
     },
     {
@@ -509,9 +516,9 @@ function runWaveSrv() {
         pReject = argReject;
     });
     let envCopy = Object.assign({}, process.env);
-    envCopy[PromptAppPathVarName] = getAppBasePath();
+    envCopy[WaveAppPathVarName] = getAppBasePath();
     if (isDev) {
-        envCopy[PromptDevVarName] = "1";
+        envCopy[WaveDevVarName] = "1";
     }
     console.log("trying to run local server", getWaveSrvPath());
     let proc = child_process.spawn("/bin/bash", ["-c", getWaveSrvCmd()], {

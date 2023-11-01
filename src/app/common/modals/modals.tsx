@@ -17,6 +17,7 @@ import { ClientDataType } from "../../../types/types";
 
 import close from "../../assets/icons/close.svg";
 import { ReactComponent as WarningIcon } from "../../assets/icons/line/triangle-exclamation.svg";
+import { ReactComponent as XmarkIcon } from "../../assets/icons/line/xmark.svg";
 import shield from "../../assets/icons/shield_check.svg";
 import help from "../../assets/icons/help_filled.svg";
 import github from "../../assets/icons/github.svg";
@@ -25,7 +26,7 @@ import logo from "../../assets/waveterm-logo-with-bg.svg";
 dayjs.extend(localizedFormat);
 
 // @ts-ignore
-const VERSION = __PROMPT_VERSION__;
+const VERSION = __WAVETERM_VERSION__;
 
 type OV<V> = mobx.IObservableValue<V>;
 
@@ -72,7 +73,7 @@ class DisconnectedModal extends React.Component<{}, {}> {
                 <div className="modal-background"></div>
                 <div className="modal-content">
                     <div className="message-header">
-                        <div className="modal-title">Prompt Client Disconnected</div>
+                        <div className="modal-title">Wave Client Disconnected</div>
                     </div>
                     <If condition={this.showLog.get()}>
                         <div className="inner-content">
@@ -128,7 +129,7 @@ class ClientStopModal extends React.Component<{}, {}> {
                 <div className="modal-background"></div>
                 <div className="modal-content">
                     <div className="message-header">
-                        <div className="modal-title">[prompt] {title}</div>
+                        <div className="modal-title">{title}</div>
                     </div>
                     <div className="inner-content">
                         <If condition={cdata == null}>
@@ -225,101 +226,6 @@ class AlertModal extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
-class WelcomeModal extends React.Component<{}, {}> {
-    totalPages: number = 3;
-    pageNum: OV<number> = mobx.observable.box(1, { name: "welcome-pagenum" });
-
-    @boundMethod
-    closeModal(): void {
-        mobx.action(() => {
-            GlobalModel.welcomeModalOpen.set(false);
-        })();
-    }
-
-    @boundMethod
-    goNext(): void {
-        mobx.action(() => {
-            this.pageNum.set(this.pageNum.get() + 1);
-        })();
-    }
-
-    @boundMethod
-    goPrev(): void {
-        mobx.action(() => {
-            this.pageNum.set(this.pageNum.get() - 1);
-        })();
-    }
-
-    renderDot(num: number): any {
-        if (num == this.pageNum.get()) {
-            return <i key={String(num)} className="fa-sharp fa-solid fa-circle" />;
-        }
-        return <i key={String(num)} className="fa-sharp fa-regular fa-circle" />;
-    }
-
-    renderDots(): any {
-        let elems: any = [];
-        for (let i = 1; i <= this.totalPages; i++) {
-            let elem = this.renderDot(i);
-            elems.push(elem);
-        }
-        return elems;
-    }
-
-    render() {
-        let pageNum = this.pageNum.get();
-        return (
-            <div className={cn("modal welcome-modal prompt-modal is-active")}>
-                <div className="modal-background" onClick={this.closeModal} />
-                <div className="modal-content">
-                    <header>
-                        <div className="modal-title">About</div>
-                        <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
-                            <XmarkIcon />
-                        </div>
-                    </header>
-                    <div className={cn("inner-content content", { "is-hidden": pageNum != 1 })}>
-                        <p>
-                            Prompt is a new terminal to help save you time and keep your command-line life organized.
-                            Here's a couple quick tips to get your started!
-                        </p>
-                    </div>
-                    <footer>
-                        <If condition={pageNum > 1}>
-                            <button className={cn("button is-dark prev-button is-small")} onClick={this.goPrev}>
-                                <span className="icon is-small">
-                                    <i className="fa-sharp fa-regular fa-angle-left" />
-                                </span>
-                                <span>Prev</span>
-                            </button>
-                        </If>
-                        <If condition={pageNum == 1}>
-                            <div className="prev-spacer" />
-                        </If>
-                        <div className="flex-spacer" />
-                        <div className="dots">{this.renderDots()}</div>
-                        <div className="flex-spacer" />
-                        <If condition={pageNum < this.totalPages}>
-                            <button className="button is-dark next-button is-small" onClick={this.goNext}>
-                                <span>Next</span>
-                                <span className="icon is-small">
-                                    <i className="fa-sharp fa-regular fa-angle-right" />
-                                </span>
-                            </button>
-                        </If>
-                        <If condition={pageNum == this.totalPages}>
-                            <button className="button is-dark next-button is-small" onClick={this.closeModal}>
-                                <span>Done</span>
-                            </button>
-                        </If>
-                    </footer>
-                </div>
-            </div>
-        );
-    }
-}
-
-@mobxReact.observer
 class TosModal extends React.Component<{}, {}> {
     state = {
         isChecked: false,
@@ -352,60 +258,66 @@ class TosModal extends React.Component<{}, {}> {
                 <div className="modal-background" />
                 <div className="modal-content tos-modal-content">
                     <div className="modal-content-wrapper">
-                        <header className="tos-header">
+                        <header className="tos-header unselectable">
                             <div className="modal-title">Welcome to Wave Terminal!</div>
                             <div className="modal-subtitle">Lets set everything for you</div>
                         </header>
-                        <div className="content tos-content">
+                        <div className="content tos-content unselectable">
                             <div className="item">
                                 <img src={shield} alt="Privacy" />
                                 <div className="item-inner">
                                     <div className="item-title">Telemetry</div>
                                     <div className="item-text">
-                                        We don’t collect any personal info, only crash logs and IP address to make Wave
-                                        better. If you like, you can disable telemetry now or late.
+                                        We only collect minimal <i>anonymous</i> telemetry data to help us
+                                        understand how many people are using Wave.
                                     </div>
-                                    <div className="item-field">
+                                    <div className="item-field" style={{marginTop: 2}}>
                                         <Toggle
                                             checked={!cdata.clientopts.notelemetry}
                                             onChange={this.handleChangeTelemetry}
                                         />
-                                        <div className="item-label">Basic Telemetry</div>
+                                        <div className="item-label">Telemetry {cdata.clientopts.notelemetry ? "Disabled" : "Enabled"}</div>
                                     </div>
                                 </div>
                             </div>
                             <div className="item">
-                                <img src={help} alt="Help" />
+                                <a target="_blank" href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}>
+                                    <img src={help} alt="Help" />
+                                </a>
                                 <div className="item-inner">
-                                    <div className="item-title">Help</div>
+                                    <div className="item-title">Join our Community</div>
                                     <div className="item-text">
-                                        If you need any help or you have feature request, you can join{" "}
+                                        Get help, submit feature requests, report bugs,
+                                        or just chat with fellow terminal enthusiasts.<br/>
                                         <a target="_blank" href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}>
-                                            our Discord
+                                            Join the Wave&nbsp;Discord&nbsp;Channel
                                         </a>
-                                        .
                                     </div>
                                 </div>
                             </div>
                             <div className="item">
-                                <img src={github} alt="Github" />
+                                <a
+                                    target="_blank"
+                                    href={util.makeExternLink("https://github.com/wavetermdev/waveterm")}
+                                >
+                                    <img src={github} alt="Github" />
+                                </a>
                                 <div className="item-inner">
-                                    <div className="item-title">Like Wave? Give us a star</div>
+                                    <div className="item-title">Support us on GitHub</div>
                                     <div className="item-text">
-                                        Rankings are very important for small startups like us, it helps other people to
-                                        know about us. If you like Wave, please consider giving us a star on our{" "}
+                                        We're <i>open source</i> and committed to providing a free terminal for individual
+                                        users.  Please show your support us by giving us a star on{" "}
                                         <a
                                             target="_blank"
                                             href={util.makeExternLink("https://github.com/wavetermdev/waveterm")}
                                         >
-                                            Github Repository
+                                            Github&nbsp;(wavetermdev/waveterm)
                                         </a>
-                                        .
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <footer>
+                        <footer className="unselectable">
                             <div>
                                 <Checkbox
                                     checked={this.state.isChecked}
@@ -541,4 +453,4 @@ class AboutModal extends React.Component<{}, {}> {
     }
 }
 
-export { WelcomeModal, LoadingSpinner, ClientStopModal, AlertModal, DisconnectedModal, TosModal, AboutModal };
+export { LoadingSpinner, ClientStopModal, AlertModal, DisconnectedModal, TosModal, AboutModal };

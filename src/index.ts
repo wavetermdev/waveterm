@@ -10,9 +10,9 @@ import * as DOMPurify from "dompurify";
 import { loadFonts } from "./util/util";
 
 // @ts-ignore
-let VERSION = __PROMPT_VERSION__;
+let VERSION = __WAVETERM_VERSION__;
 // @ts-ignore
-let BUILD = __PROMPT_BUILD__;
+let BUILD = __WAVETERM_BUILD__;
 
 loadFonts();
 
@@ -34,4 +34,4 @@ document.addEventListener("DOMContentLoaded", () => {
 (window as any).sprintf = sprintf;
 (window as any).DOMPurify = DOMPurify;
 
-console.log("PROMPT", VERSION, BUILD);
+console.log("WaveTerm", VERSION, BUILD);

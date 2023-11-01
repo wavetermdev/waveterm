@@ -97,9 +97,9 @@ const RemoteColors = ["red", "green", "yellow", "blue", "magenta", "cyan", "whit
 const TabColors = ["green", "blue", "yellow", "pink", "magenta", "cyan", "violet", "orange", "red", "white"];
 
 // @ts-ignore
-const VERSION = __PROMPT_VERSION__;
+const VERSION = __WAVETERM_VERSION__;
 // @ts-ignore
-const BUILD = __PROMPT_BUILD__;
+const BUILD = __WAVETERM_BUILD__;
 
 type LineContainerModel = {
     loadTerminalRenderer: (elem: Element, line: LineType, cmd: Cmd, width: number) => void;
@@ -2697,9 +2697,6 @@ class Model {
         name: "alertMessage",
     });
     alertPromiseResolver: (result: boolean) => void;
-    welcomeModalOpen: OV<boolean> = mobx.observable.box(false, {
-        name: "welcomeModalOpen",
-    });
     aboutModalOpen: OV<boolean> = mobx.observable.box(false, {
         name: "aboutModalOpen",
     });
@@ -2976,14 +2973,6 @@ class Model {
             }
             if (GlobalModel.lineSettingsModal.get()) {
                 GlobalModel.lineSettingsModal.set(null);
-                didSomething = true;
-            }
-            if (GlobalModel.welcomeModalOpen.get()) {
-                GlobalModel.welcomeModalOpen.set(false);
-                didSomething = true;
-            }
-            if (GlobalModel.welcomeModalOpen.get()) {
-                GlobalModel.welcomeModalOpen.set(false);
                 didSomething = true;
             }
         })();
