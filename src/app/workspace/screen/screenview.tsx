@@ -16,7 +16,7 @@ import * as T from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { InlineSettingsTextEdit, RemoteStatusLight } from "../../common/common";
 import { getRemoteStr } from "../../common/prompt/prompt";
-import { GlobalModel, ScreenLines, Screen } from "../../../model/model";
+import { GlobalModel, ScreenLines, Screen, Session } from "../../../model/model";
 import { Line } from "../../line/linecomps";
 import { LinesView } from "../../line/linesview";
 import * as util from  "../../../util/util";
@@ -36,7 +36,7 @@ dayjs.extend(localizedFormat);
 type OV<V> = mobx.IObservableValue<V>;
 
 @mobxReact.observer
-class ScreenView extends React.Component<{ screen: Screen }, {}> {
+class ScreenView extends React.Component<{ session: Session, screen: Screen }, {}> {
     render() {
         let { session, screen } = this.props;
         if (screen == null) {
@@ -219,7 +219,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
 
 // screen is not null
 @mobxReact.observer
-class ScreenWindowView extends React.Component<{ screen: Screen }, {}> {
+class ScreenWindowView extends React.Component<{ session: Session, screen: Screen }, {}> {
     rszObs: any;
     windowViewRef: React.RefObject<any>;
 

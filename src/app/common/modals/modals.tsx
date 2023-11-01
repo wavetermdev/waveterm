@@ -17,6 +17,7 @@ import { ClientDataType } from "../../../types/types";
 
 import close from "../../assets/icons/close.svg";
 import { ReactComponent as WarningIcon } from "../../assets/icons/line/triangle-exclamation.svg";
+import { ReactComponent as XmarkIcon } from "../../assets/icons/line/xmark.svg";
 import shield from "../../assets/icons/shield_check.svg";
 import help from "../../assets/icons/help_filled.svg";
 import github from "../../assets/icons/github.svg";
@@ -216,101 +217,6 @@ class AlertModal extends React.Component<{}, {}> {
                             <div onClick={this.handleOK} className="button is-prompt-green is-small">
                                 OK
                             </div>
-                        </If>
-                    </footer>
-                </div>
-            </div>
-        );
-    }
-}
-
-@mobxReact.observer
-class WelcomeModal extends React.Component<{}, {}> {
-    totalPages: number = 3;
-    pageNum: OV<number> = mobx.observable.box(1, { name: "welcome-pagenum" });
-
-    @boundMethod
-    closeModal(): void {
-        mobx.action(() => {
-            GlobalModel.welcomeModalOpen.set(false);
-        })();
-    }
-
-    @boundMethod
-    goNext(): void {
-        mobx.action(() => {
-            this.pageNum.set(this.pageNum.get() + 1);
-        })();
-    }
-
-    @boundMethod
-    goPrev(): void {
-        mobx.action(() => {
-            this.pageNum.set(this.pageNum.get() - 1);
-        })();
-    }
-
-    renderDot(num: number): any {
-        if (num == this.pageNum.get()) {
-            return <i key={String(num)} className="fa-sharp fa-solid fa-circle" />;
-        }
-        return <i key={String(num)} className="fa-sharp fa-regular fa-circle" />;
-    }
-
-    renderDots(): any {
-        let elems: any = [];
-        for (let i = 1; i <= this.totalPages; i++) {
-            let elem = this.renderDot(i);
-            elems.push(elem);
-        }
-        return elems;
-    }
-
-    render() {
-        let pageNum = this.pageNum.get();
-        return (
-            <div className={cn("modal welcome-modal prompt-modal is-active")}>
-                <div className="modal-background" onClick={this.closeModal} />
-                <div className="modal-content">
-                    <header>
-                        <div className="modal-title">About</div>
-                        <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
-                            <XmarkIcon />
-                        </div>
-                    </header>
-                    <div className={cn("inner-content content", { "is-hidden": pageNum != 1 })}>
-                        <p>
-                            Prompt is a new terminal to help save you time and keep your command-line life organized.
-                            Here's a couple quick tips to get your started!
-                        </p>
-                    </div>
-                    <footer>
-                        <If condition={pageNum > 1}>
-                            <button className={cn("button is-dark prev-button is-small")} onClick={this.goPrev}>
-                                <span className="icon is-small">
-                                    <i className="fa-sharp fa-regular fa-angle-left" />
-                                </span>
-                                <span>Prev</span>
-                            </button>
-                        </If>
-                        <If condition={pageNum == 1}>
-                            <div className="prev-spacer" />
-                        </If>
-                        <div className="flex-spacer" />
-                        <div className="dots">{this.renderDots()}</div>
-                        <div className="flex-spacer" />
-                        <If condition={pageNum < this.totalPages}>
-                            <button className="button is-dark next-button is-small" onClick={this.goNext}>
-                                <span>Next</span>
-                                <span className="icon is-small">
-                                    <i className="fa-sharp fa-regular fa-angle-right" />
-                                </span>
-                            </button>
-                        </If>
-                        <If condition={pageNum == this.totalPages}>
-                            <button className="button is-dark next-button is-small" onClick={this.closeModal}>
-                                <span>Done</span>
-                            </button>
                         </If>
                     </footer>
                 </div>
@@ -547,4 +453,4 @@ class AboutModal extends React.Component<{}, {}> {
     }
 }
 
-export { WelcomeModal, LoadingSpinner, ClientStopModal, AlertModal, DisconnectedModal, TosModal, AboutModal };
+export { LoadingSpinner, ClientStopModal, AlertModal, DisconnectedModal, TosModal, AboutModal };

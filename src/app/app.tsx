@@ -24,7 +24,7 @@ import {
 import { RemotesModal } from "./connections/connections";
 import { TosModal } from "./common/modals/modals";
 import { MainSideBar } from "./sidebar/MainSideBar";
-import { DisconnectedModal, ClientStopModal, AlertModal, WelcomeModal, AboutModal } from "./common/modals/modals";
+import { DisconnectedModal, ClientStopModal, AlertModal, AboutModal } from "./common/modals/modals";
 import { ErrorBoundary } from "./common/error/errorboundary";
 import "./app.less";
 
