@@ -357,8 +357,25 @@
 
                 div:last-child {
                     color: @term-white;
-                    font-size: 12.5px;
                     text-align: left;
+                }
+            }
+
+            .status {
+                div {
+                    display: flex;
+                    align-items: center;
+                    margin-bottom: 5px;
+
+                    i {
+                        font-size: 16px;
+                        color: @term-green;
+                        margin-right: 10px;
+                    }
+                }
+
+                div:last-child {
+                    color: @term-white;
                 }
             }
         }

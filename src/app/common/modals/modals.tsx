@@ -448,11 +448,28 @@ class AboutModal extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    getIcon(isUpToDate: boolean): JSX.Element {
+    getStatus(isUpToDate: boolean): JSX.Element {
         if (isUpToDate) {
-            return <i className="fa-sharp fa-solid fa-circle-check"></i>;
+            return (
+                <>
+                    <div>
+                        <i className="fa-sharp fa-solid fa-circle-check" />
+                        <span>Up to Date</span>
+                    </div>
+                    <div>Client Version v0.4.0 20231016-110014</div>
+                </>
+            );
         }
-        return <i className="fa-sharp fa-solid fa-triangle-exclamation"></i>;
+        return (
+            <>
+                <div>
+                    <i className="fa-sharp fa-solid fa-triangle-exclamation" />
+                    <span>Outdated Version</span>
+                </div>
+                <div>Client Version v0.4.0 20231016-110014</div>
+                <div></div>
+            </>
+        );
     }
 
     render() {
@@ -474,11 +491,11 @@ class AboutModal extends React.Component<{}, {}> {
                                 </div>
                                 <div className="text-wrapper">
                                     <div>Wave Terminal</div>
-                                    <div>Modern Terminal for Seamless Workflow</div>
+                                    <div className="text-standard">Modern Terminal for Seamless Workflow</div>
                                 </div>
                             </section>
-                            <section>
-                                <div className="status">{this.getIcon(this.isUpToDate())}</div>
+                            <section className="text-standard">
+                                <div className="status">{this.getStatus(this.isUpToDate())}</div>
                             </section>
                         </div>
                         <footer>
