@@ -24,7 +24,7 @@ import {
 import { RemotesModal } from "./connections/connections";
 import { TosModal } from "./common/modals/modals";
 import { MainSideBar } from "./sidebar/MainSideBar";
-import { DisconnectedModal, ClientStopModal, AlertModal, WelcomeModal } from "./common/modals/modals";
+import { DisconnectedModal, ClientStopModal, AlertModal, WelcomeModal, AboutModal } from "./common/modals/modals";
 import { ErrorBoundary } from "./common/error/errorboundary";
 import "./app.less";
 
@@ -123,6 +123,9 @@ class App extends React.Component<{}, {}> {
                 <AlertModal />
                 <If condition={GlobalModel.needsTos()}>
                     <TosModal />
+                </If>
+                <If condition={GlobalModel.aboutModalOpen.get()}>
+                    <AboutModal />
                 </If>
                 <If condition={screenSettingsModal != null}>
                     <ScreenSettingsModal

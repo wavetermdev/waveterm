@@ -146,6 +146,14 @@ function readAuthKey() {
 let menuTemplate = [
     {
         role: "appMenu",
+        submenu: [
+            {
+                label: 'About Wave Terminal',
+                click: () => {
+                    MainWindow?.webContents.send('menu-item-about');
+                }
+            }
+        ],
     },
     {
         label: "File",
@@ -165,7 +173,7 @@ let menuTemplate = [
 let menu = electron.Menu.buildFromTemplate(menuTemplate);
 electron.Menu.setApplicationMenu(menu);
 
-let MainWindow = null;
+let MainWindow: Electron.BrowserWindow | null = null;
 
 function getMods(input: any) {
     return { meta: input.meta, shift: input.shift, ctrl: input.control, alt: input.alt };
