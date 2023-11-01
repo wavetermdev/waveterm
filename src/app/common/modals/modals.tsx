@@ -442,6 +442,19 @@ class AboutModal extends React.Component<{}, {}> {
         })();
     }
 
+    @boundMethod
+    isUpToDate(): boolean {
+        return true;
+    }
+
+    @boundMethod
+    getIcon(isUpToDate: boolean): JSX.Element {
+        if (isUpToDate) {
+            return <i className="fa-sharp fa-solid fa-circle-check"></i>;
+        }
+        return <i className="fa-sharp fa-solid fa-triangle-exclamation"></i>;
+    }
+
     render() {
         return (
             <div className={cn("modal about-modal wave-modal is-active")}>
@@ -460,9 +473,12 @@ class AboutModal extends React.Component<{}, {}> {
                                     <img src={logo} alt="logo" />
                                 </div>
                                 <div className="text-wrapper">
-                                    <div className="upper">Wave Terminal</div>
-                                    <div className="bottom">Modern Terminal for Seamless Workflow</div>
+                                    <div>Wave Terminal</div>
+                                    <div>Modern Terminal for Seamless Workflow</div>
                                 </div>
+                            </section>
+                            <section>
+                                <div className="status">{this.getIcon(this.isUpToDate())}</div>
                             </section>
                         </div>
                         <footer>

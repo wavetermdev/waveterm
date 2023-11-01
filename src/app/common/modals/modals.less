@@ -213,26 +213,6 @@
                 }
             }
 
-            header.tos-header {
-                flex-direction: column;
-                gap: var(--sizing-sm, 12px);
-
-                .modal-title {
-                    text-align: center;
-                    font-size: 20px;
-                    font-weight: 300;
-                }
-
-                .modal-subtitle {
-                    color: @term-white;
-                    text-align: center;
-
-                    font-style: normal;
-                    font-weight: 300;
-                    line-height: 20px;
-                }
-            }
-
             header.common-header {
                 display: flex;
                 justify-content: space-between;
@@ -261,78 +241,74 @@
                     gap: 16px;
                     align-self: stretch;
                     width: 100%;
-
-                    .logo-wrapper {
-                        width: 72px;
-                        height: 72px;
-                        flex-shrink: 0;
-
-                        img {
-                            border-radius: 10px;
-                        }
-                    }
-
-                    .text-wrapper {
-                        display: flex;
-                        align-items: flex-start;
-                        flex-direction: column;
-                        gap: 4px;
-                        align-self: stretch;
-                        font-style: normal;
-                        line-height: 20px;
-
-                        .upper {
-                            color: @term-bright-white;
-                            font-size: 14.5px;
-                        }
-
-                        .bottom {
-                            color: @term-white;
-                            font-size: 12.5px;
-                            text-align: left;
-                        }
-                    }
                 }
             }
+        }
+    }
+}
 
-            .content.tos-content {
+.modal.tos-modal {
+    .modal-content.tos-modal-content {
+        padding: 32px 48px;
+        gap: 8px;
+
+        header.tos-header {
+            flex-direction: column;
+            gap: var(--sizing-sm, 12px);
+
+            .modal-title {
+                text-align: center;
+                font-size: 20px;
+                font-weight: 300;
+            }
+
+            .modal-subtitle {
+                color: @term-white;
+                text-align: center;
+
+                font-style: normal;
+                font-weight: 300;
+                line-height: 20px;
+            }
+        }
+
+        .content.tos-content {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 32px;
+            width: 100%;
+            margin-bottom: 0;
+
+            .item {
                 display: flex;
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 32px;
                 width: 100%;
-                margin-bottom: 0;
+                align-items: center;
+                gap: 16px;
 
-                .item {
+                .item-inner {
                     display: flex;
-                    width: 100%;
-                    align-items: center;
-                    gap: 16px;
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 4px;
+                    flex: 1 0 0;
 
-                    .item-inner {
+                    .item-title {
+                        color: @term-bright-white;
+                        font-style: normal;
+                        line-height: 20px;
+                    }
+
+                    .item-text {
+                        color: @term-white;
+                        font-style: normal;
+                        line-height: 20px;
+                    }
+
+                    .item-field {
                         display: flex;
-                        flex-direction: column;
-                        align-items: flex-start;
-                        gap: 4px;
-                        flex: 1 0 0;
-
-                        .item-title {
-                            color: @term-bright-white;
-                            font-style: normal;
-                            line-height: 20px;
-                        }
-
-                        .item-text {
-                            color: @term-white;
-                            font-style: normal;
-                            line-height: 20px;
-                        }
-
-                        .item-field {
-                            display: flex;
-                            align-items: center;
-                            gap: 8px;
-                        }
+                        align-items: center;
+                        gap: 8px;
                     }
                 }
             }
@@ -351,14 +327,44 @@
             }
         }
     }
+}
 
-    .modal-content.tos-modal-content {
-        padding: 32px 48px;
-        gap: 8px;
-    }
-
+.modal.about-modal {
     .modal-content.about-modal-content {
         width: 401px;
+
+        section {
+            .logo-wrapper {
+                width: 72px;
+                height: 72px;
+                flex-shrink: 0;
+
+                img {
+                    border-radius: 10px;
+                }
+            }
+
+            .text-wrapper {
+                display: flex;
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 4px;
+                align-self: stretch;
+                font-style: normal;
+                line-height: 20px;
+
+                div:first-child {
+                    color: @term-bright-white;
+                    font-size: 14.5px;
+                }
+
+                div:last-child {
+                    color: @term-white;
+                    font-size: 12.5px;
+                    text-align: left;
+                }
+            }
+        }
     }
 }
 
@@ -384,24 +390,6 @@
                 margin-left: 5px;
             }
         }
-    }
-}
-
-.modal.about-modal {
-    .content {
-        text-align: center;
-
-        .logo {
-            color: rgba(0, 177, 10, 1);
-            font-size: 30px;
-        }
-    }
-
-    footer {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 15px 10px 10px 10px;
     }
 }
 
