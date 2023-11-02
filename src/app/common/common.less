@@ -647,11 +647,11 @@
 
         .textfield-label {
             position: absolute;
-            left: 16px; // This will be changed dynamically via JavaScript
-            top: 16px; // This will be changed dynamically via JavaScript
-            font-size: 12.5px; // This will be changed dynamically via JavaScript
+            left: 16px;
+            top: 16px;
+            font-size: 12.5px;
             transition: all 0.3s;
-            color: var(--text-secondary, var(--grays-olive-8));
+            color: @term-white;
             line-height: 10px;
         }
 
@@ -659,14 +659,18 @@
             width: 100%;
             height: 30px;
             border: none;
-            padding: 5px 0 5px 16px; // This will be changed dynamically via JavaScript
+            padding: 5px 0 5px 16px;
             font-size: 16px;
             outline: none;
             background-color: transparent;
-            color: #fff;
+            color: @term-bright-white;
             line-height: 20px;
         }
     }
+}
+
+.textfield.error {
+    border-color: @term-red;
 }
 
 .input-decoration {

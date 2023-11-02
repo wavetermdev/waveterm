@@ -174,6 +174,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                 <div className="newtab-section name-section">
                     <TextField
                         label="Title"
+                        required={true}
                         decoration={{
                             endDecoration: (
                                 <InputDecoration>

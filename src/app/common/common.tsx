@@ -150,11 +150,13 @@ interface TextFieldProps {
     placeholder?: string;
     defaultValue?: string;
     decoration?: TextFieldDecorationProps;
+    required?: boolean;
 }
 
 interface TextFieldState {
     focused: boolean;
     internalValue: string;
+    error: boolean;
 }
 
 @mobxReact.observer
@@ -166,6 +168,7 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
         this.state = {
             focused: Boolean(props.value || props.defaultValue),
             internalValue: props.defaultValue || "",
+            error: false,
         };
         this.inputRef = React.createRef();
     }
@@ -182,8 +185,14 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
     };
 
     handleBlur = () => {
-        if (this.inputRef.current && !this.inputRef.current.value) {
-            this.setState({ focused: false });
+        const { required } = this.props;
+        if (this.inputRef.current) {
+            const value = this.inputRef.current.value;
+            if (required && !value) {
+                this.setState({ error: true, focused: false });
+            } else {
+                this.setState({ error: false, focused: Boolean(value) });
+            }
         }
     };
 
@@ -200,13 +209,13 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
 
     render() {
         const { label, value, placeholder, decoration, className } = this.props;
-        const { focused, internalValue } = this.state;
+        const { focused, internalValue, error } = this.state;
 
         // Decide if the input should behave as controlled or uncontrolled
         const inputValue = value !== undefined ? value : internalValue;
 
         return (
-            <div className={cn(`textfield ${className}`, { focused: focused })}>
+            <div className={cn(`textfield ${className}`, { focused: focused, error: error })}>
                 {decoration?.startDecoration && <>{decoration.startDecoration}</>}
                 <div className="textfield-wrapper">
                     <label
