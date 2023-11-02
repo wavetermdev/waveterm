@@ -382,10 +382,10 @@ class ScreenWindowView extends React.Component<{ session: Session, screen: Scree
                     </div>
                 </div>
                 <If condition={lines.length == 0}>
-                    <If condition={true}>
+                    <If condition={screen.nextLineNum.get() == 1}>
                         <NewTabSettings screen={screen}/>
                     </If>
-                    <If condition={false}>
+                    <If condition={screen.nextLineNum.get() != 1}>
                         <div className="window-view" ref={this.windowViewRef} data-screenid={screen.screenId}>
                             <div key="lines" className="lines"></div>
                             <div key="window-empty" className={cn("window-empty")}>
