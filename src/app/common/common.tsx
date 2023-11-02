@@ -134,35 +134,9 @@ class InputDecoration extends React.Component<InputDecorationProps, {}> {
     render() {
         const { children } = this.props;
 
-        const baseStyle = {
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "0 8px",
-        };
-
-        const combinedStyle = { ...baseStyle, margin: "8px" };
-
-        return <div style={combinedStyle}>{children}</div>;
+        return <div className="input-decoration">{children}</div>;
     }
 }
-
-const containerStyle = {
-    display: "flex",
-    alignItems: "center",
-    border: "1px solid #c4c4c4", // Add a border around the box
-    borderRadius: "4px", // Optional, to round the edges
-    position: "relative",
-    marginBottom: "1rem",
-    backgroundColor: "transparent", // Ensure background is transparent by default
-};
-
-const inputContainerStyle = {
-    display: "flex",
-    alignItems: "flex-end",
-    height: "100%",
-    position: "relative",
-};
 
 interface TextFieldDecorationProps {
     startDecoration?: React.ReactNode;
@@ -232,27 +206,22 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
         const inputValue = value !== undefined ? value : internalValue;
 
         return (
-            <div
-                className={className}
-                style={{ ...containerStyle, height: "44px", borderColor: focused ? "green" : "white" }}
-            >
+            <div className={cn(`textfield ${className}`, { focused: focused })}>
                 {decoration?.startDecoration && <>{decoration.startDecoration}</>}
-                <div style={inputContainerStyle}>
+                <div className="textfield-wrapper">
                     <label
+                        className="textfield-label"
                         htmlFor={label}
                         style={{
-                            position: "absolute",
                             left: decoration?.startDecoration ? "0" : "16px",
                             top: focused || placeholder ? "5px" : "16px",
                             fontSize: focused || placeholder ? "10px" : "12.5px",
-                            transition: "all 0.3s",
-                            color: "var(--text-secondary, var(--grays-olive-8, #C3C8C2))",
-                            lineHeight: "10px",
                         }}
                     >
                         {label}
                     </label>
                     <input
+                        className="textfield-input"
                         ref={this.inputRef}
                         id={label}
                         value={inputValue}
@@ -261,15 +230,7 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
                         onBlur={this.handleBlur}
                         placeholder={placeholder}
                         style={{
-                            width: "100%",
-                            height: "30px",
-                            border: "none",
                             padding: decoration?.startDecoration ? "5px 16px 5px 0" : "5px 0 5px 16px",
-                            fontSize: "16px",
-                            outline: "none",
-                            backgroundColor: "transparent",
-                            color: "#fff",
-                            lineHeight: "20px",
                         }}
                     />
                 </div>
