@@ -19,6 +19,7 @@ import { getRemoteStr } from "../../common/prompt/prompt";
 import { GlobalModel, ScreenLines, Screen, Session } from "../../../model/model";
 import { Line } from "../../line/linecomps";
 import { LinesView } from "../../line/linesview";
+import { ConnectionDropdown } from "../../connections/connections";
 import * as util from  "../../../util/util";
 import { ReactComponent as EllipseIcon } from "../../assets/icons/ellipse.svg";
 import { ReactComponent as Check12Icon } from "../../assets/icons/check12.svg";
@@ -53,7 +54,6 @@ class ScreenView extends React.Component<{ session: Session, screen: Screen }, {
 
 @mobxReact.observer
 class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
-    connDropdownActive: OV<boolean> = mobx.observable.box(false, { name: "NewTabSettings-connDropdownActive" });
     errorMessage: OV<string> = mobx.observable.box(null, { name: "NewTabSettings-errorMessage" });
     
     @boundMethod
@@ -77,91 +77,16 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
     }
 
     @boundMethod
-    toggleConnDropdown(): void {
-        mobx.action(() => {
-            this.connDropdownActive.set(!this.connDropdownActive.get());
-        })();
-    }
-
-    @boundMethod
     selectRemote(cname: string): void {
-        mobx.action(() => {
-            this.connDropdownActive.set(false);
-        })();
         let prtn = GlobalCommandRunner.screenSetRemote(cname, true, false);
         util.commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
     clickNewConnection(): void {
-        mobx.action(() => {
-            this.connDropdownActive.set(false);
-        })();
         GlobalModel.remotesModalModel.openModalForEdit({remoteedit: true}, true);
     }
 
-    renderConnDropdown(): any {
-        let { screen } = this.props;
-        let allRemotes = util.sortAndFilterRemotes(GlobalModel.remotes.slice());
-        let remote: T.RemoteType = null;
-        let curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
-        // TODO no remote?
-        return (
-            <div className={cn("dropdown", "conn-dropdown", { "is-active": this.connDropdownActive.get() })}>
-                <div className="dropdown-trigger" onClick={this.toggleConnDropdown}>
-                    <div className="conn-dd-trigger">
-                        <div className="lefticon">
-                            <GlobeIcon className="globe-icon"/>
-                            <StatusCircleIcon className={cn("status-icon", "status-" + curRemote.status)}/>
-                        </div>
-                        <div className="conntext">
-                            <If condition={util.isBlank(curRemote.remotealias)}>
-                                <div className="text-standard conntext-solo">
-                                    {curRemote.remotecanonicalname}
-                                </div>
-                            </If>
-                            <If condition={!util.isBlank(curRemote.remotealias)}>
-                                <div className="text-secondary conntext-1">
-                                    {curRemote.remotealias}
-                                </div>
-                                <div className="text-caption conntext-2">
-                                    {curRemote.remotecanonicalname}
-                                </div>
-                            </If>
-                        </div>
-                        <div className="dd-control">
-                            <ArrowsUpDownIcon className="icon"/>
-                        </div>
-                    </div>
-                </div>
-                <div className="dropdown-menu" role="menu">
-                    <div className="dropdown-content conn-dd-menu">
-                        <For each="remote" of={allRemotes}>
-                            <div className="dropdown-item" key={remote.remoteid} onClick={() => this.selectRemote(remote.remotecanonicalname)}>
-                                <div className="status-div">
-                                    <CircleIcon className={cn("status-icon", "status-" + remote.status)}/>
-                                </div>
-                                <If condition={util.isBlank(remote.remotealias)}>
-                                    <div className="text-standard">{remote.remotecanonicalname}</div>
-                                </If>
-                                <If condition={!util.isBlank(remote.remotealias)}>
-                                    <div className="text-standard">{remote.remotealias}</div>
-                                    <div className="text-caption">{remote.remotecanonicalname}</div>
-                                </If>
-                            </div>
-                        </For>
-                        <div className="dropdown-item" onClick={this.clickNewConnection}>
-                            <div className="add-div">
-                                <AddIcon className="add-icon"/>
-                            </div>
-                            <div className="text-standard">New Connection</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-    
     render() {
         let { screen } = this.props;
         let rptr = screen.curRemote.get();
@@ -170,6 +95,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
             curColor = "green";
         }
         let color: string = null;
+        let curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
         return (
             <div className="newtab-container">
                 <div className="newtab-section conn-section">
@@ -177,7 +103,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                         You're connected to [{getRemoteStr(rptr)}].  Do you want to change it?
                     </div>
                     <div>
-                        {this.renderConnDropdown()}
+                        <ConnectionDropdown curRemote={curRemote} allowNewConn={true} onSelectRemote={this.selectRemote} onNewConn={this.clickNewConnection}/>
                     </div>
                     <div className="text-caption cr-help-text">
                         To change connection from the command line use `cr [alias|user@host]`

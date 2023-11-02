@@ -332,7 +332,7 @@ class Screen {
     name: OV<string>;
     archived: OV<boolean>;
     curRemote: OV<RemotePtrType>;
-    nextLineNum: OV<int>;
+    nextLineNum: OV<number>;
     lastScreenSize: WindowSize;
     lastCols: number;
     lastRows: number;
