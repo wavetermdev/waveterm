@@ -29,12 +29,6 @@ type OV<V> = mobx.IObservableValue<V>;
 class CmdInput extends React.Component<{}, {}> {
     cmdInputRef: React.RefObject<any> = React.createRef();
 
-    @boundMethod
-    onInfoToggle(): void {
-        GlobalModel.inputModel.toggleInfoMsg();
-        return;
-    }
-
     componentDidMount() {
         this.updateCmdInputHeight();
     }
@@ -119,14 +113,6 @@ class CmdInput extends React.Component<{}, {}> {
                 className={cn("cmd-input", { "has-info": infoShow }, { active: focusVal })}
                 onClick={this.cmdInputClick}
             >
-                <div key="minmax" onClick={this.onInfoToggle} className="input-minmax-control">
-                    <If condition={infoShow || historyShow}>
-                        <i className="fa-sharp fa-solid fa-chevron-down" />
-                    </If>
-                    <If condition={!(infoShow || historyShow) && hasInfo}>
-                        <i className="fa-sharp fa-solid fa-chevron-up" />
-                    </If>
-                </div>
                 <If condition={historyShow}>
                     <div className="cmd-input-grow-spacer"></div>
                     <HistoryInfo />

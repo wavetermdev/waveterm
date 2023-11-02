@@ -72,9 +72,9 @@ var electronDev = webpackMerge.merge(electronCommon, {
             patterns: [{ from: "src/electron/preload.js", to: "preload.js" }],
         }),
         new webpack.DefinePlugin({
-            __PROMPT_DEV__: "true",
-            __PROMPT_VERSION__: JSON.stringify(VERSION),
-            __PROMPT_BUILD__: JSON.stringify("devbuild"),
+            __WAVETERM_DEV__: "true",
+            __WAVETERM_VERSION__: JSON.stringify(VERSION),
+            __WAVETERM_BUILD__: JSON.stringify("devbuild"),
         }),
     ],
 });
@@ -90,9 +90,9 @@ var electronProd = webpackMerge.merge(electronCommon, {
             patterns: [{ from: "src/electron/preload.js", to: "preload.js" }],
         }),
         new webpack.DefinePlugin({
-            __PROMPT_DEV__: "false",
-            __PROMPT_VERSION__: JSON.stringify(VERSION),
-            __PROMPT_BUILD__: JSON.stringify(BUILD),
+            __WAVETERM_DEV__: "false",
+            __WAVETERM_VERSION__: JSON.stringify(VERSION),
+            __WAVETERM_BUILD__: JSON.stringify(BUILD),
         }),
     ],
     optimization: {

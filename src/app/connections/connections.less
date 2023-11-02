@@ -270,65 +270,139 @@
     }
 }
 
-.remotes-inline {
-    .icon {
-        width: 1em;
-        height: 1em;
-        fill: @base-color;
-        margin: 0 0 0 1em !important;
-        vertical-align: middle;
-    }
-    .dropdown {
-        margin-top: 1em;
-        .button {
-            color: @base-color;
-            border: none !important;
-            padding: 0 1em 0 0.2em;
-            &:hover,
-            &:focus {
-                border: none !important;
-                box-shadow: none;
+.dropdown.conn-dropdown {
+    padding-left: 0;
+    border-radius: 8px;
+    background-color: rgba(241, 246, 243, 0.08);
+
+    .conn-dd-trigger {
+        display: flex;
+        flex-direction: row;
+        width: 413px;
+        padding: 6px 8px 6px 12px;
+        align-items: center;
+        height: 42px;
+
+        .lefticon {
+            margin-right: 8px;
+            margin-top: 4px;
+            position: relative;
+
+            .status-icon {
+                width: 10px;
+                height: 10px;
+                stroke-width: 2px;
+                stroke: @status-outline;
+                position: absolute;
+                bottom: 3px;
+                right: -2px;
             }
-            .remote-name {
-                vertical-align: bottom;
-                .remote-status {
-                    top: -2px;
-                    left: 4px;
-                    vertical-align: middle;
-                    font-size: 0.85em;
+        }
+
+        .dd-control {
+            display: flex;
+            padding: 4px;
+            align-items: center;
+
+            .icon {
+                height: 16px;
+                width: 16px;
+            }
+        }
+
+        .globe-icon {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        .conntext {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            flex: 1 0 0;
+
+            .conntext-solo {
+                color: @text-primary;
+                text-overflow: ellipsis;
+            }
+
+            .conntext-1 {
+                color: @text-primary;
+                text-overflow: ellipsis;
+            }
+
+            .conntext-2 {
+                color: @text-secondary;
+                text-overflow: ellipsis;
+            }
+        }
+    }
+
+    .conn-dd-menu {
+        display: flex;
+        width: 413px;
+        padding: 6px;
+        flex-direction: column;
+        align-items: flex-start;
+        border-radius: 8px;
+        background-color: @dropdown-menu;
+
+        .dropdown-item {
+            display: flex;
+            padding: 5px 12px 5px 8px;
+            align-items: center;
+            gap: 8px;
+            align-self: stretch;
+            border-radius: 6px;
+
+            .status-div {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 16px;
+                height: 16px;
+                padding: 3px;
+
+                svg.status-icon {
+                    width: 10px;
+                    height: 10px;
                 }
             }
-        }
-        .dropdown-content {
-            background: @background-session-components-solid;
-        }
-        .dropdown-item {
-            min-width: max-content;
-        }
-        &.is-active:hover {
-            box-shadow: none;
-        }
-    }
-    .remote-status-light {
-        display: inline;
-        margin-right: 0.5em;
-    }
-    .remote-name {
-        display: inline;
-        flex-grow: 1;
-        vertical-align: super;
 
-        .remote-name-primary {
-            color: @base-color;
-            max-width: inherit;
-            margin-right: 1em;
-            display: inline;
-        }
+            .add-div {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 16px;
+                height: 16px;
+                
+                svg.add-icon {
+                    width: 16px;
+                    height: 16px;
 
-        .remote-name-secondary {
-            color: @disabled-color;
-            max-width: inherit;
-            display: inline;
+                    path {
+                        fill: @text-primary;
+                    }
+                }
+            }
+
+            .text-standard {
+                color: @text-secondary;
+            }
+
+            .text-caption {
+                color: @text-caption;
+            }
+
+            .ellipsis {
+                text-overflow: ellipsis;
+            }
+
+            &:hover {
+                background-color: rgba(241, 246, 243, 0.08);
+            }
         }
     }
 }

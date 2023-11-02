@@ -30,7 +30,6 @@ class PluginsView extends React.Component<{}, {}> {
             return <></>;
         }
         const { pluginsModel } = GlobalModel;
-        console.log(`rendering details for ${pluginsModel.selectedPlugin.get().name}`);
         const PluginList = () => (
             <div className="plugins-list">
                 {PluginModel.allPlugins().map((plugin, i) => (

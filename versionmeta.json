@@ -1,0 +1,22 @@
+{
+    "packages": [
+        {
+            "type": "dmg",
+            "arch": "macos-arm64",
+            "channel": "stable",
+            "updated": "2023-10-31",
+            "version": "v0.4.0",
+            "sha": "016876cf3e9fb600d6798891c8566a7ac5d1446a",
+            "url": "https://www.getprompt.dev/download/prompt-macos-arm64-v0.4.0.dmg"
+        },
+        {
+            "type": "dmg",
+            "arch": "macos-amd64",
+            "channel": "stable",
+            "updated": "2023-10-31",
+            "version": "v0.4.0",
+            "sha": "d0bc280e4630a716126e47e700d8d4364db966e6",
+            "url": "https://www.getprompt.dev/download/prompt-macos-x86-v0.4.0.dmg"
+        }
+    ]
+}

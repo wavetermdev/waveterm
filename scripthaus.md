@@ -27,7 +27,7 @@ node_modules/.bin/electron-rebuild
 ```bash
 # @scripthaus command electron
 # @scripthaus cd :playbook
-PROMPT_DEV=1 PCLOUD_ENDPOINT="https://ot2e112zx5.execute-api.us-west-2.amazonaws.com/dev" node_modules/.bin/electron dist-dev/emain.js
+WAVETERM_DEV=1 PCLOUD_ENDPOINT="https://ot2e112zx5.execute-api.us-west-2.amazonaws.com/dev" node_modules/.bin/electron dist-dev/emain.js
 ```
 
 ```bash
@@ -60,8 +60,7 @@ node_modules/.bin/electron-forge make
 rm -rf dist/
 rm -rf bin/
 rm -rf build/
-node_modules/.bin/webpack --config webpack.prod.js
-node_modules/.bin/webpack --config webpack.electron.prod.js
+node_modules/.bin/webpack --env prod
 GO_LDFLAGS="-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')"
 (cd waveshell; GOOS=darwin GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-darwin.amd64 main-waveshell.go)
 (cd waveshell; GOOS=darwin GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-darwin.arm64 main-waveshell.go)
@@ -111,22 +110,6 @@ rm *.dmg
   --app-drop-link 400 125 \
   $DMG_NAME \
   "out/Wave-darwin-arm64/Wave.app"
-```
-
-```bash
-# @scripthaus command sync-webshare-dev
-# @scripthaus cd :playbook
-# no-cache for dev
-aws --profile prompt-s3 s3 sync webshare/static s3://prompt-devshare-static/static --cache-control 'no-cache'
-aws --profile prompt-s3 s3 sync webshare/dist-dev s3://prompt-devshare-static/dist-dev --cache-control 'no-cache'
-```
-
-```bash
-# @scripthaus command sync-webshare
-# @scripthaus cd :playbook
-# no-cache for dev
-aws --profile prompt-s3 s3 sync webshare/static s3://prompt-share-static/static --cache-control 'no-cache'
-aws --profile prompt-s3 s3 sync webshare/dist s3://prompt-share-static/dist --cache-control 'no-cache'
 ```
 
 ```bash

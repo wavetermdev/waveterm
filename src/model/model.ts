@@ -94,12 +94,12 @@ const MinFontSize = 8;
 const MaxFontSize = 15;
 const InputChunkSize = 500;
 const RemoteColors = ["red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"];
-const TabColors = ["green", "blue", "yellow", "pink", "magenta", "cyan", "violet", "orange", "red", "white"];
+const TabColors = ["red", "orange", "yellow", "green", "mint", "cyan", "blue", "violet", "pink", "white"];
 
 // @ts-ignore
-const VERSION = __PROMPT_VERSION__;
+const VERSION = __WAVETERM_VERSION__;
 // @ts-ignore
-const BUILD = __PROMPT_BUILD__;
+const BUILD = __WAVETERM_BUILD__;
 
 type LineContainerModel = {
     loadTerminalRenderer: (elem: Element, line: LineType, cmd: Cmd, width: number) => void;
@@ -180,6 +180,7 @@ type ElectronApi = {
     onICmd: (callback: (mods: KeyModsType) => void) => void;
     onLCmd: (callback: (mods: KeyModsType) => void) => void;
     onHCmd: (callback: (mods: KeyModsType) => void) => void;
+    onMenuItemAbout: (callback: () => void) => void;
     onMetaArrowUp: (callback: () => void) => void;
     onMetaArrowDown: (callback: () => void) => void;
     onMetaPageUp: (callback: () => void) => void;
@@ -331,6 +332,7 @@ class Screen {
     name: OV<string>;
     archived: OV<boolean>;
     curRemote: OV<RemotePtrType>;
+    nextLineNum: OV<number>;
     lastScreenSize: WindowSize;
     lastCols: number;
     lastRows: number;
@@ -348,6 +350,7 @@ class Screen {
         this.sessionId = sdata.sessionid;
         this.screenId = sdata.screenid;
         this.name = mobx.observable.box(sdata.name, { name: "screen-name" });
+        this.nextLineNum = mobx.observable.box(sdata.nextlinenum, { name: "screen-nextlinenum" });
         this.screenIdx = mobx.observable.box(sdata.screenidx, {
             name: "screen-screenidx",
         });
@@ -423,6 +426,7 @@ class Screen {
             this.screenIdx.set(data.screenidx);
             this.opts.set(data.screenopts);
             this.name.set(data.name);
+            this.nextLineNum.set(data.nextlinenum);
             this.archived.set(!!data.archived);
             let oldSelectedLine = this.selectedLine.get();
             let oldFocusType = this.focusType.get();
@@ -2696,8 +2700,8 @@ class Model {
         name: "alertMessage",
     });
     alertPromiseResolver: (result: boolean) => void;
-    welcomeModalOpen: OV<boolean> = mobx.observable.box(false, {
-        name: "welcomeModalOpen",
+    aboutModalOpen: OV<boolean> = mobx.observable.box(false, {
+        name: "aboutModalOpen",
     });
     screenSettingsModal: OV<{ sessionId: string; screenId: string }> = mobx.observable.box(null, {
         name: "screenSettingsModal",
@@ -2759,6 +2763,7 @@ class Model {
         getApi().onICmd(this.onICmd.bind(this));
         getApi().onLCmd(this.onLCmd.bind(this));
         getApi().onHCmd(this.onHCmd.bind(this));
+        getApi().onMenuItemAbout(this.onMenuItemAbout.bind(this));
         getApi().onMetaArrowUp(this.onMetaArrowUp.bind(this));
         getApi().onMetaArrowDown(this.onMetaArrowDown.bind(this));
         getApi().onMetaPageUp(this.onMetaPageUp.bind(this));
@@ -2973,10 +2978,6 @@ class Model {
                 GlobalModel.lineSettingsModal.set(null);
                 didSomething = true;
             }
-            if (GlobalModel.welcomeModalOpen.get()) {
-                GlobalModel.welcomeModalOpen.set(false);
-                didSomething = true;
-            }
         })();
         return didSomething;
     }
@@ -3104,6 +3105,12 @@ class Model {
                 }
             }
         }
+    }
+
+    onMenuItemAbout(): void {
+        mobx.action(() => {
+            this.aboutModalOpen.set(true);
+        })();
     }
 
     onMetaPageUp(): void {

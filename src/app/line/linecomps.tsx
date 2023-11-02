@@ -422,8 +422,10 @@ class LineCmd extends React.Component<
                 data-screenid={line.screenid}
                 style={{ height: height }}
             >
-                <SmallLineAvatar line={line} cmd={cmd} />
-                <div className="ts">{formattedTime}</div>
+                <div className="simple-line-header">
+                    <SmallLineAvatar line={line} cmd={cmd} />
+                    <div className="ts">{formattedTime}</div>
+                </div>
             </div>
         );
     }

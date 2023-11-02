@@ -25,7 +25,11 @@ class WorkspaceView extends React.Component<{}, {}> {
         let model = GlobalModel;
         let session = model.getActiveSession();
         if (session == null) {
-            return <div className="session-view">(no active session)</div>;
+            return (
+                <div className="session-view">
+                    <div className="center-message"><div>(no active workspace)</div></div>
+                </div>
+            );
         }
         let activeScreen = session.getActiveScreen();
         let cmdInputHeight = model.inputModel.cmdInputHeight.get();
@@ -39,7 +43,7 @@ class WorkspaceView extends React.Component<{}, {}> {
             <div className={cn("session-view", { "is-hidden": isHidden })} data-sessionid={session.sessionId}>
                 <ScreenTabs session={session} />
                 <ErrorBoundary>
-                    <ScreenView screen={activeScreen} />
+                    <ScreenView session={session} screen={activeScreen} />
                     <div className="cmdinput-height-placeholder" style={{ height: cmdInputHeight }}></div>
                     <CmdInput />
                 </ErrorBoundary>

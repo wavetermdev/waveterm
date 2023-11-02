@@ -69,11 +69,11 @@ var webCommon = {
             },
             {
                 test: /\.md$/,
-                use: "raw-loader",
+                type: "asset/source",
             },
             {
                 test: /\.(png|jpe?g|gif)$/i,
-                use: "file-loader",
+                type: "asset/resource",
             },
         ],
     },
@@ -102,9 +102,9 @@ var webDev = webpackMerge.merge(webCommon, {
         new MiniCssExtractPlugin({ filename: "[name].css", ignoreOrder: true }),
         new LodashModuleReplacementPlugin(),
         new webpack.DefinePlugin({
-            __PROMPT_DEV__: "true",
-            __PROMPT_VERSION__: JSON.stringify(VERSION),
-            __PROMPT_BUILD__: JSON.stringify("devbuild"),
+            __WAVETERM_DEV__: "true",
+            __WAVETERM_VERSION__: JSON.stringify(VERSION),
+            __WAVETERM_BUILD__: JSON.stringify("devbuild"),
         }),
     ],
     watchOptions: {
@@ -118,14 +118,14 @@ var webProd = webpackMerge.merge(webCommon, {
         path: path.resolve(__dirname, "../dist"),
         filename: "[name].js",
     },
-    devtool: false,
+    devtool: "source-map",
     plugins: [
         new MiniCssExtractPlugin({ filename: "[name].css", ignoreOrder: true }),
         new LodashModuleReplacementPlugin(),
         new webpack.DefinePlugin({
-            __PROMPT_DEV__: "false",
-            __PROMPT_VERSION__: JSON.stringify(VERSION),
-            __PROMPT_BUILD__: JSON.stringify(BUILD),
+            __WAVETERM_DEV__: "false",
+            __WAVETERM_VERSION__: JSON.stringify(VERSION),
+            __WAVETERM_BUILD__: JSON.stringify(BUILD),
         }),
     ],
     optimization: {

@@ -71,7 +71,7 @@ const (
 	KwArgLang     = "lang"
 )
 
-var ColorNames = []string{"yellow", "blue", "pink", "magenta", "cyan", "violet", "orange", "green", "red", "white"}
+var ColorNames = []string{"yellow", "blue", "pink", "mint", "cyan", "violet", "orange", "green", "red", "white"}
 var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
 var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}
 
@@ -379,7 +379,7 @@ func doCmdHistoryExpansion(ctx context.Context, ids resolvedIds, cmdStr string) 
 		return doHistoryExpansion(ctx, ids, -1)
 	}
 	if strings.HasPrefix(cmdStr, "!-") {
-		return "", fmt.Errorf("prompt does not support negative history offsets, use a stable positive history offset instead: '![linenum]'")
+		return "", fmt.Errorf("wave does not support negative history offsets, use a stable positive history offset instead: '![linenum]'")
 	}
 	m := histExpansionRe.FindStringSubmatch(cmdStr)
 	if m == nil {
@@ -435,7 +435,7 @@ func SyncCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 	}
 	runPacket := packet.MakeRunPacket()
 	runPacket.ReqId = uuid.New().String()
-	runPacket.CK = base.MakeCommandKey(ids.ScreenId, scbase.GenPromptUUID())
+	runPacket.CK = base.MakeCommandKey(ids.ScreenId, scbase.GenWaveUUID())
 	runPacket.UsePty = true
 	ptermVal := defaultStr(pk.Kwargs["pterm"], DefaultPTERM)
 	runPacket.TermOpts, err = GetUITermOpts(pk.UIContext.WinSize, ptermVal)
@@ -531,7 +531,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	// runPacket.State is set in remote.RunCommand()
 	runPacket := packet.MakeRunPacket()
 	runPacket.ReqId = uuid.New().String()
-	runPacket.CK = base.MakeCommandKey(ids.ScreenId, scbase.GenPromptUUID())
+	runPacket.CK = base.MakeCommandKey(ids.ScreenId, scbase.GenWaveUUID())
 	runPacket.UsePty = true
 	ptermVal := defaultStr(pk.Kwargs["pterm"], DefaultPTERM)
 	runPacket.TermOpts, err = GetUITermOpts(pk.UIContext.WinSize, ptermVal)
@@ -575,7 +575,7 @@ func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, history
 		return fmt.Errorf("cannot add to history, error looking up incognito status of screen: %v", err)
 	}
 	hitem := &sstore.HistoryItemType{
-		HistoryId: scbase.GenPromptUUID(),
+		HistoryId: scbase.GenWaveUUID(),
 		Ts:        time.Now().UnixMilli(),
 		UserId:    DefaultUserId,
 		SessionId: ids.SessionId,
@@ -1115,7 +1115,7 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		return nil, fmt.Errorf("/remote:new %v", err)
 	}
 	r := &sstore.RemoteType{
-		RemoteId:            scbase.GenPromptUUID(),
+		RemoteId:            scbase.GenWaveUUID(),
 		RemoteType:          sstore.RemoteTypeSsh,
 		RemoteAlias:         editArgs.Alias,
 		RemoteCanonicalName: editArgs.CanonicalName,
@@ -1606,7 +1606,7 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 func makeDynCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr string, termOpts sstore.TermOpts) (*sstore.CmdType, error) {
 	cmd := &sstore.CmdType{
 		ScreenId:  ids.ScreenId,
-		LineId:    scbase.GenPromptUUID(),
+		LineId:    scbase.GenWaveUUID(),
 		CmdStr:    cmdStr,
 		RawCmdStr: cmdStr,
 		Remote:    ids.Remote.RemotePtr,
@@ -1631,7 +1631,7 @@ func makeDynCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr str
 func makeStaticCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr string, cmdOutput []byte) (*sstore.CmdType, error) {
 	cmd := &sstore.CmdType{
 		ScreenId:  ids.ScreenId,
-		LineId:    scbase.GenPromptUUID(),
+		LineId:    scbase.GenWaveUUID(),
 		CmdStr:    cmdStr,
 		RawCmdStr: cmdStr,
 		Remote:    ids.Remote.RemotePtr,
@@ -3654,7 +3654,7 @@ func ClientShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "telemetry", boolToStr(clientData.ClientOpts.NoTelemetry, "off", "on")))
 	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "db-version", dbVersion))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "client-version", clientVersion))
-	buf.WriteString(fmt.Sprintf("  %-15s %s %s\n", "server-version", scbase.PromptVersion, scbase.BuildTime))
+	buf.WriteString(fmt.Sprintf("  %-15s %s %s\n", "server-version", scbase.WaveVersion, scbase.BuildTime))
 	buf.WriteString(fmt.Sprintf("  %-15s %s (%s)\n", "arch", scbase.ClientArch(), scbase.MacOSRelease()))
 	update := &sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{

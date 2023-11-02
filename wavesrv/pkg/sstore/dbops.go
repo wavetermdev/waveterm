@@ -507,6 +507,15 @@ func GetSessionById(ctx context.Context, id string) (*SessionType, error) {
 	return nil, nil
 }
 
+// counts non-archived sessions
+func GetSessionCount(ctx context.Context) (int, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (int, error) {
+		query := `SELECT COALESCE(count(*), 0) FROM session WHERE NOT archived`
+		numSessions := tx.GetInt(query)
+		return numSessions, nil
+	})
+}
+
 func GetSessionByName(ctx context.Context, name string) (*SessionType, error) {
 	var session *SessionType
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
@@ -532,7 +541,7 @@ func GetSessionByName(ctx context.Context, name string) (*SessionType, error) {
 // if sessionName == "", it will be generated
 func InsertSessionWithName(ctx context.Context, sessionName string, activate bool) (*ModelUpdate, error) {
 	var newScreen *ScreenType
-	newSessionId := scbase.GenPromptUUID()
+	newSessionId := scbase.GenWaveUUID()
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		names := tx.SelectStrings(`SELECT name FROM session`)
 		sessionName = fmtUniqueName(sessionName, "workspace-%d", len(names)+1, names)
@@ -684,7 +693,7 @@ func InsertScreen(ctx context.Context, sessionId string, origScreenName string, 
 				return fmt.Errorf("cannot create screen, base screen not found")
 			}
 		}
-		newScreenId = scbase.GenPromptUUID()
+		newScreenId = scbase.GenWaveUUID()
 		screen := &ScreenType{
 			SessionId:    sessionId,
 			ScreenId:     newScreenId,
@@ -1258,7 +1267,7 @@ func UpdateRemoteState(ctx context.Context, sessionId string, screenId string, r
 		ri = dbutil.GetMapGen[*RemoteInstance](tx, query, sessionId, screenId, remotePtr.OwnerId, remotePtr.RemoteId, remotePtr.Name)
 		if ri == nil {
 			ri = &RemoteInstance{
-				RIId:          scbase.GenPromptUUID(),
+				RIId:          scbase.GenWaveUUID(),
 				Name:          remotePtr.Name,
 				SessionId:     sessionId,
 				ScreenId:      screenId,
@@ -2035,7 +2044,7 @@ func UpdateCurrentActivity(ctx context.Context, update ActivityUpdate) error {
 			if len(tzName) > MaxTzNameLen {
 				tzName = tzName[0:MaxTzNameLen]
 			}
-			tx.Exec(query, dayStr, tdata, tzName, tzOffset, scbase.PromptVersion, scbase.ClientArch(), scbase.BuildTime, scbase.MacOSRelease())
+			tx.Exec(query, dayStr, tdata, tzName, tzOffset, scbase.WaveVersion, scbase.ClientArch(), scbase.BuildTime, scbase.MacOSRelease())
 		}
 		tdata.NumCommands += update.NumCommands
 		tdata.FgMinutes += update.FgMinutes
@@ -2052,7 +2061,7 @@ func UpdateCurrentActivity(ctx context.Context, update ActivityUpdate) error {
                      clientversion = ?,
                      buildtime = ?
                  WHERE day = ?`
-		tx.Exec(query, tdata, scbase.PromptVersion, scbase.BuildTime, dayStr)
+		tx.Exec(query, tdata, scbase.WaveVersion, scbase.BuildTime, dayStr)
 		return nil
 	})
 	if txErr != nil {

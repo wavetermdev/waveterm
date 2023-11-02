@@ -137,10 +137,9 @@ class PluginModelClass {
                 default:
                     return;
             }
-
             imagePaths = screenshotsContext.keys().map(screenshotsContext);
         } catch (error) {
-            console.error(`Failed to load screenshots for plugin ${plugin.name}`);
+            // this is no longer an error.  we don't need to require screenshots
         }
         plugin.screenshots = imagePaths.map((path) => path.default);
     }
@@ -148,7 +147,7 @@ class PluginModelClass {
     // use dynamic import to attach the icon etc. ensure that the 'name' matches the dir the plugin is in
     async loadPluginResources(plugin) {
         this.attachScreenshots(plugin);
-        // attach other resources
+        // attach other resources, these show an error because all plugins should have an icon, readme, and meta
         const handleImportError = (error, resourceType) =>
             console.error(`Failed to load ${resourceType} for plugin ${plugin.name}`);
         const iconPromise = import(`../plugins/${plugin.name}/icon.svg`)

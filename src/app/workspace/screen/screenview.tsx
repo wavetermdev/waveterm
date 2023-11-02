@@ -16,9 +16,10 @@ import * as T from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { InlineSettingsTextEdit, RemoteStatusLight } from "../../common/common";
 import { getRemoteStr } from "../../common/prompt/prompt";
-import { GlobalModel, ScreenLines, Screen } from "../../../model/model";
+import { GlobalModel, ScreenLines, Screen, Session } from "../../../model/model";
 import { Line } from "../../line/linecomps";
 import { LinesView } from "../../line/linesview";
+import { ConnectionDropdown } from "../../connections/connections";
 import * as util from  "../../../util/util";
 import { ReactComponent as EllipseIcon } from "../../assets/icons/ellipse.svg";
 import { ReactComponent as Check12Icon } from "../../assets/icons/check12.svg";
@@ -36,16 +37,16 @@ dayjs.extend(localizedFormat);
 type OV<V> = mobx.IObservableValue<V>;
 
 @mobxReact.observer
-class ScreenView extends React.Component<{ screen: Screen }, {}> {
+class ScreenView extends React.Component<{ session: Session, screen: Screen }, {}> {
     render() {
-        let { screen } = this.props;
+        let { session, screen } = this.props;
         if (screen == null) {
             return <div className="screen-view">(no screen found)</div>;
         }
         let fontSize = GlobalModel.termFontSize.get();
         return (
             <div className="screen-view" data-screenid={screen.screenId}>
-                <ScreenWindowView key={screen.screenId + ":" + fontSize} screen={screen} />
+                <ScreenWindowView key={screen.screenId + ":" + fontSize} session={session} screen={screen} />
             </div>
         );
     }
@@ -53,7 +54,6 @@ class ScreenView extends React.Component<{ screen: Screen }, {}> {
 
 @mobxReact.observer
 class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
-    connDropdownActive: OV<boolean> = mobx.observable.box(false, { name: "NewTabSettings-connDropdownActive" });
     errorMessage: OV<string> = mobx.observable.box(null, { name: "NewTabSettings-errorMessage" });
     
     @boundMethod
@@ -77,91 +77,16 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
     }
 
     @boundMethod
-    toggleConnDropdown(): void {
-        mobx.action(() => {
-            this.connDropdownActive.set(!this.connDropdownActive.get());
-        })();
-    }
-
-    @boundMethod
     selectRemote(cname: string): void {
-        mobx.action(() => {
-            this.connDropdownActive.set(false);
-        })();
         let prtn = GlobalCommandRunner.screenSetRemote(cname, true, false);
         util.commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
     clickNewConnection(): void {
-        mobx.action(() => {
-            this.connDropdownActive.set(false);
-        })();
         GlobalModel.remotesModalModel.openModalForEdit({remoteedit: true}, true);
     }
 
-    renderConnDropdown(): any {
-        let { screen } = this.props;
-        let allRemotes = util.sortAndFilterRemotes(GlobalModel.remotes.slice());
-        let remote: T.RemoteType = null;
-        let curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
-        // TODO no remote?
-        return (
-            <div className={cn("dropdown", "conn-dropdown", { "is-active": this.connDropdownActive.get() })}>
-                <div className="dropdown-trigger" onClick={this.toggleConnDropdown}>
-                    <div className="conn-dd-trigger">
-                        <div className="lefticon">
-                            <GlobeIcon className="globe-icon"/>
-                            <StatusCircleIcon className={cn("status-icon", "status-" + curRemote.status)}/>
-                        </div>
-                        <div className="conntext">
-                            <If condition={util.isBlank(curRemote.remotealias)}>
-                                <div className="text-standard conntext-solo">
-                                    {curRemote.remotecanonicalname}
-                                </div>
-                            </If>
-                            <If condition={!util.isBlank(curRemote.remotealias)}>
-                                <div className="text-secondary conntext-1">
-                                    {curRemote.remotealias}
-                                </div>
-                                <div className="text-caption conntext-2">
-                                    {curRemote.remotecanonicalname}
-                                </div>
-                            </If>
-                        </div>
-                        <div className="dd-control">
-                            <ArrowsUpDownIcon className="icon"/>
-                        </div>
-                    </div>
-                </div>
-                <div className="dropdown-menu" role="menu">
-                    <div className="dropdown-content conn-dd-menu">
-                        <For each="remote" of={allRemotes}>
-                            <div className="dropdown-item" key={remote.remoteid} onClick={() => this.selectRemote(remote.remotecanonicalname)}>
-                                <div className="status-div">
-                                    <CircleIcon className={cn("status-icon", "status-" + remote.status)}/>
-                                </div>
-                                <If condition={util.isBlank(remote.remotealias)}>
-                                    <div className="text-standard">{remote.remotecanonicalname}</div>
-                                </If>
-                                <If condition={!util.isBlank(remote.remotealias)}>
-                                    <div className="text-standard">{remote.remotealias}</div>
-                                    <div className="text-caption">{remote.remotecanonicalname}</div>
-                                </If>
-                            </div>
-                        </For>
-                        <div className="dropdown-item" onClick={this.clickNewConnection}>
-                            <div className="add-div">
-                                <AddIcon className="add-icon"/>
-                            </div>
-                            <div className="text-standard">New Connection</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-    
     render() {
         let { screen } = this.props;
         let rptr = screen.curRemote.get();
@@ -170,19 +95,23 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
             curColor = "green";
         }
         let color: string = null;
+        let curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
         return (
             <div className="newtab-container">
                 <div className="newtab-section conn-section">
-                    <div className="text-s1">
+                    <div className="text-s1 unselectable">
                         You're connected to [{getRemoteStr(rptr)}].  Do you want to change it?
                     </div>
                     <div>
-                        {this.renderConnDropdown()}
+                        <ConnectionDropdown curRemote={curRemote} allowNewConn={true} onSelectRemote={this.selectRemote} onNewConn={this.clickNewConnection}/>
+                    </div>
+                    <div className="text-caption cr-help-text">
+                        To change connection from the command line use `cr [alias|user@host]`
                     </div>
                 </div>
                 <div className="newtab-spacer"/>
                 <div className="newtab-section settings-field">
-                    <div className="text-s1">
+                    <div className="text-s1 unselectable">
                         Name
                     </div>
                     <div className="settings-input">
@@ -198,7 +127,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                 </div>
                 <div className="newtab-spacer"/>
                 <div className="newtab-section">
-                    <div className="text-s1">
+                    <div className="text-s1 unselectable">
                         Select the color
                     </div>
                     <div className="control-iconlist">
@@ -219,7 +148,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
 
 // screen is not null
 @mobxReact.observer
-class ScreenWindowView extends React.Component<{ screen: Screen }, {}> {
+class ScreenWindowView extends React.Component<{ session: Session, screen: Screen }, {}> {
     rszObs: any;
     windowViewRef: React.RefObject<any>;
 
@@ -303,7 +232,7 @@ class ScreenWindowView extends React.Component<{ screen: Screen }, {}> {
             <div className="window-view" ref={this.windowViewRef} data-screenid={screen.screenId}>
                 <div key="lines" className="lines"></div>
                 <div key="window-empty" className={cn("window-empty", { "should-fade": fade })}>
-                    <div>{message}</div>
+                    <div className="text-standard">{message}</div>
                 </div>
             </div>
         );
@@ -344,7 +273,7 @@ class ScreenWindowView extends React.Component<{ screen: Screen }, {}> {
     }
 
     render() {
-        let { screen } = this.props;
+        let { session, screen } = this.props;
         let win = this.getScreenLines();
         if (win == null || !win.loaded.get()) {
             return this.renderError("...", true);
@@ -379,7 +308,17 @@ class ScreenWindowView extends React.Component<{ screen: Screen }, {}> {
                     </div>
                 </div>
                 <If condition={lines.length == 0}>
-                    <NewTabSettings screen={screen}/>
+                    <If condition={screen.nextLineNum.get() == 1}>
+                        <NewTabSettings screen={screen}/>
+                    </If>
+                    <If condition={screen.nextLineNum.get() != 1}>
+                        <div className="window-view" ref={this.windowViewRef} data-screenid={screen.screenId}>
+                            <div key="lines" className="lines"></div>
+                            <div key="window-empty" className={cn("window-empty")}>
+                                <div><code className="text-standard">[workspace="{session.name.get()}" screen="{screen.name.get()}"]</code></div>
+                            </div>
+                        </div>
+                    </If>
                 </If>
                 <If condition={screen.isWebShared()}>
                     <div key="share-tag" className="share-tag">

@@ -4,8 +4,10 @@
 package sstore
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"os"
 	"strconv"
@@ -40,11 +42,14 @@ func MakeMigrate() (*migrate.Migrate, error) {
 	return m, nil
 }
 
-func copyFile(srcFile string, dstFile string) error {
+func copyFile(srcFile string, dstFile string, notFoundOk bool) error {
 	if srcFile == dstFile {
 		return fmt.Errorf("cannot copy %s to itself", srcFile)
 	}
 	srcFd, err := os.Open(srcFile)
+	if notFoundOk && err != nil && errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
 	if err != nil {
 		return fmt.Errorf("cannot open %s: %v", err)
 	}
@@ -100,9 +105,15 @@ func MigrateUp(targetVersion uint) error {
 	}
 	log.Printf("[db] migrating from %d to %d\n", curVersion, targetVersion)
 	log.Printf("[db] backing up database %s to %s\n", DBFileName, DBFileNameBackup)
-	err = copyFile(GetDBName(), GetDBBackupName())
+	os.Remove(GetDBBackupName())    // don't report error
+	os.Remove(GetDBWALBackupName()) // don't report error
+	err = copyFile(GetDBName(), GetDBBackupName(), false)
 	if err != nil {
 		return fmt.Errorf("error creating database backup: %v", err)
+	}
+	err = copyFile(GetDBWALName(), GetDBWALBackupName(), true)
+	if err != nil {
+		return fmt.Errorf("error creating database(wal) backup: %v", err)
 	}
 	for newVersion := curVersion + 1; newVersion <= targetVersion; newVersion++ {
 		err = MigrateUpStep(m, newVersion)

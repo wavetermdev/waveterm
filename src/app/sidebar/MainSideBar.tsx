@@ -119,13 +119,6 @@ class MainSideBar extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    handleWelcomeClick(): void {
-        mobx.action(() => {
-            GlobalModel.welcomeModalOpen.set(true);
-        })();
-    }
-
-    @boundMethod
     handleSettingsClick(): void {
         mobx.action(() => {
             GlobalModel.clientSettingsModal.set(true);
@@ -206,28 +199,23 @@ class MainSideBar extends React.Component<{}, {}> {
                 </div>
                 <div className="contents">
                     <div className="top">
-                        <div className="item hoverEffect" onClick={this.handlePluginsClick}>
-                            <AppsIcon className="icon" />
-                            Apps
-                            <span className="hotkey">&#x2318;A</span>
-                        </div>
-                        <div className="item hoverEffect" onClick={this.handleHistoryClick}>
+                        <div className="item hoverEffect unselectable" onClick={this.handleHistoryClick}>
                             <HistoryIcon className="icon" />
                             History
                             <span className="hotkey">&#x2318;H</span>
                         </div>
-                        <div className="item hoverEffect" onClick={this.handleBookmarksClick}>
+                        {/* <div className="item hoverEffect unselectable" onClick={this.handleBookmarksClick}>
                             <FavoritesIcon className="icon" />
                             Favorites
                             <span className="hotkey">&#x2318;B</span>
-                        </div>
-                        <div className="item hoverEffect" onClick={this.handleConnectionsClick}>
+                        </div>  */}
+                        <div className="item hoverEffect unselectable" onClick={this.handleConnectionsClick}>
                             <ConnectionsIcon className="icon" />
                             Connections
                         </div>
                     </div>
                     <div className="separator" />
-                    <div className="item workspaces-item">
+                    <div className="item workspaces-item unselectable">
                         <WorkspacesIcon className="icon" />
                         Workspaces
                         <div className="add_workspace hoverEffect" onClick={this.handleNewSession}>
@@ -236,15 +224,20 @@ class MainSideBar extends React.Component<{}, {}> {
                     </div>
                     <div className="middle hideScrollbarUntillHover">{this.getSessions()}</div>
                     <div className="bottom">
-                        <div className="item hoverEffect" onClick={this.handleSettingsClick}>
+                        <div className="item hoverEffect unselectable" onClick={this.handlePluginsClick}>
+                            <AppsIcon className="icon" />
+                            Apps
+                            <span className="hotkey">&#x2318;A</span>
+                        </div>
+                        <div className="item hoverEffect unselectable" onClick={this.handleSettingsClick}>
                             <SettingsIcon className="icon" />
                             Settings
                         </div>
-                        <div className="item hoverEffect" onClick={() => openLink("https://docs.getprompt.dev")}>
+                        <div className="item hoverEffect unselectable" onClick={() => openLink("https://docs.getprompt.dev")}>
                             <HelpIcon className="icon" />
                             Documentation
                         </div>
-                        <div className="item hoverEffect" onClick={() => openLink("https://discord.gg/XfvZ334gwU")}>
+                        <div className="item hoverEffect unselectable" onClick={() => openLink("https://discord.gg/XfvZ334gwU")}>
                             <DiscordIcon className="icon discord" />
                             Talk to us
                         </div>

@@ -9,7 +9,7 @@ import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, RemotesModalModel } from "../../model/model";
 import { Toggle, RemoteStatusLight, InfoMessage } from "../common/common";
-import { RemoteType, RemoteEditType } from "../../types/types";
+import * as T from "../../types/types";
 import * as util from "../../util/util";
 import * as textmeasure from "../../util/textmeasure";
 
@@ -17,6 +17,10 @@ import { ReactComponent as XmarkIcon } from "../assets/icons/line/xmark.svg";
 import { ReactComponent as AngleDownIcon } from "../assets/icons/history/angle-down.svg";
 import { ReactComponent as RotateLeftIcon } from "../assets/icons/rotate_left.svg";
 import { ReactComponent as AddIcon } from "../assets/icons/add.svg";
+import { ReactComponent as GlobeIcon } from "../assets/icons/globe.svg";
+import { ReactComponent as StatusCircleIcon } from "../assets/icons/statuscircle.svg";
+import { ReactComponent as ArrowsUpDownIcon } from "../assets/icons/arrowsupdown.svg";
+import { ReactComponent as CircleIcon } from "../assets/icons/circle.svg";
 
 import "./connections.less";
 
@@ -28,14 +32,14 @@ const RemotePtyRows = 8;
 const RemotePtyCols = 80;
 const PasswordUnchangedSentinel = "--unchanged--";
 
-function getRemoteCNWithPort(remote: RemoteType) {
+function getRemoteCNWithPort(remote: T.RemoteType) {
     if (util.isBlank(remote.remotevars.port) || remote.remotevars.port == "22") {
         return remote.remotecanonicalname;
     }
     return remote.remotecanonicalname + ":" + remote.remotevars.port;
 }
 
-function getRemoteTitle(remote: RemoteType) {
+function getRemoteTitle(remote: T.RemoteType) {
     if (!util.isBlank(remote.remotealias)) {
         return remote.remotealias + " (" + remote.remotecanonicalname + ")";
     }
@@ -144,7 +148,7 @@ class ConnectModeDropdown extends React.Component<{ tempVal: OV<string> }, {}> {
 }
 
 @mobxReact.observer
-class CreateRemote extends React.Component<{ model: RemotesModalModel; remoteEdit: RemoteEditType }, {}> {
+class CreateRemote extends React.Component<{ model: RemotesModalModel; remoteEdit: T.RemoteEditType }, {}> {
     tempAlias: OV<string>;
     tempHostName: OV<string>;
     tempPort: OV<string>;
@@ -408,13 +412,13 @@ class CreateRemote extends React.Component<{ model: RemotesModalModel; remoteEdi
                         <InfoMessage width={350}>
                             <ul>
                                 <li>
-                                    <b>startup</b> - connect when [prompt] starts.
+                                    <b>startup</b> - Connect when Wave Terminal starts.
                                 </li>
                                 <li>
-                                    <b>auto</b> - connect when you first run a command using this connection.
+                                    <b>auto</b> - Connect when you first run a command using this connection.
                                 </li>
                                 <li>
-                                    <b>manual</b> - connect manually. Note, if your connection requires manual input,
+                                    <b>manual</b> - Connect manually. Note, if your connection requires manual input,
                                     like an OPT code, you must use this setting.
                                 </li>
                             </ul>
@@ -452,7 +456,7 @@ class CreateRemote extends React.Component<{ model: RemotesModalModel; remoteEdi
 
 @mobxReact.observer
 class EditRemoteSettings extends React.Component<
-    { model: RemotesModalModel; remote: RemoteType; remoteEdit: RemoteEditType },
+    { model: RemotesModalModel; remote: T.RemoteType; remoteEdit: T.RemoteEditType },
     {}
 > {
     tempAlias: OV<string>;
@@ -703,13 +707,13 @@ class EditRemoteSettings extends React.Component<
                         <InfoMessage width={350}>
                             <ul>
                                 <li>
-                                    <b>startup</b> - connect when [prompt] starts.
+                                    <b>startup</b> - Connect when Wave Terminal starts.
                                 </li>
                                 <li>
-                                    <b>auto</b> - connect when you first run a command using this connection.
+                                    <b>auto</b> - Connect when you first run a command using this connection.
                                 </li>
                                 <li>
-                                    <b>manual</b> - connect manually. Note, if your connection requires manual input,
+                                    <b>manual</b> - Connect manually. Note, if your connection requires manual input,
                                     like an OPT code, you must use this setting.
                                 </li>
                             </ul>
@@ -763,7 +767,7 @@ class EditRemoteSettings extends React.Component<
 }
 
 @mobxReact.observer
-class RemoteDetailView extends React.Component<{ model: RemotesModalModel; remote: RemoteType }, {}> {
+class RemoteDetailView extends React.Component<{ model: RemotesModalModel; remote: T.RemoteType }, {}> {
     termRef: React.RefObject<any> = React.createRef();
 
     componentDidMount() {
@@ -793,7 +797,7 @@ class RemoteDetailView extends React.Component<{ model: RemotesModalModel; remot
         }
     }
 
-    getRemoteTypeStr(remote: RemoteType): string {
+    getRemoteTypeStr(remote: T.RemoteType): string {
         if (!util.isBlank(remote.uname)) {
             let unameStr = remote.uname;
             unameStr = unameStr.replace("|", ", ");
@@ -827,7 +831,7 @@ class RemoteDetailView extends React.Component<{ model: RemotesModalModel; remot
         this.props.model.startEditAuth();
     }
 
-    renderInstallStatus(remote: RemoteType): any {
+    renderInstallStatus(remote: T.RemoteType): any {
         let statusStr: string = null;
         if (remote.installstatus == "disconnected") {
             if (remote.needsmshellupgrade) {
@@ -851,7 +855,7 @@ class RemoteDetailView extends React.Component<{ model: RemotesModalModel; remot
         );
     }
 
-    renderRemoteMessage(remote: RemoteType): any {
+    renderRemoteMessage(remote: T.RemoteType): any {
         let message: string = "";
         let buttons: any[] = [];
         // connect, disconnect, editauth, tryreconnect, install
@@ -1073,7 +1077,7 @@ class RemotesModal extends React.Component<{ model: RemotesModalModel }, {}> {
         GlobalCommandRunner.openCreateRemote();
     }
 
-    renderRemoteMenuItem(remote: RemoteType, selectedId: string): any {
+    renderRemoteMenuItem(remote: T.RemoteType, selectedId: string): any {
         return (
             <div
                 key={remote.remotecanonicalname}
@@ -1120,7 +1124,7 @@ class RemotesModal extends React.Component<{ model: RemotesModalModel }, {}> {
         let model = this.props.model;
         let selectedRemoteId = model.selectedRemoteId.get();
         let allRemotes = util.sortAndFilterRemotes(GlobalModel.remotes.slice());
-        let remote: RemoteType = null;
+        let remote: T.RemoteType = null;
         let isAuthEditMode = model.isAuthEditMode();
         let selectedRemote = GlobalModel.getRemote(selectedRemoteId);
         let remoteEdit = model.remoteEdit.get();
@@ -1175,89 +1179,107 @@ class RemotesModal extends React.Component<{ model: RemotesModalModel }, {}> {
 }
 
 @mobxReact.observer
-class RemotesSelector extends React.Component<{ model: RemotesModalModel; isChangeRemoteOnSelect?: boolean }, { isOpen: boolean }> {
-    constructor(props: any) {
-        super(props);
-        this.state = {
-            isOpen: false,
-        };
+class ConnectionDropdown extends React.Component<{ curRemote: T.RemoteType, onSelectRemote?: (cname: string) => void, allowNewConn: boolean, onNewConn?: () => void }, {}> {
+    connDropdownActive: OV<boolean> = mobx.observable.box(false, { name: "connDropdownActive" });
+
+    @boundMethod
+    toggleConnDropdown(): void {
+        mobx.action(() => {
+            this.connDropdownActive.set(!this.connDropdownActive.get());
+        })();
     }
 
     @boundMethod
-    selectRemote(remoteid: string, remotecanonicalname: string): void {
-        this.props.model.selectRemote(remoteid);
-        if (this.props.isChangeRemoteOnSelect) {
-            let prtn = GlobalCommandRunner.screenSetRemote(remotecanonicalname, true, false);
-            // TODO: see settings.tsx.  use prtn to set error message
+    selectRemote(cname: string): void {
+        mobx.action(() => {
+            this.connDropdownActive.set(false);
+        })();
+        if (this.props.onSelectRemote) {
+            this.props.onSelectRemote(cname);
         }
-        this.setState({ isOpen: false });
     }
 
     @boundMethod
-    clickAddRemote(): void {
-        GlobalModel.remotesModalModel.openModalForEdit({remoteedit: true}, true);
-        this.setState({ isOpen: false });
+    clickNewConnection(): void {
+        mobx.action(() => {
+            this.connDropdownActive.set(false);
+        })();
+        if (this.props.onNewConn) {
+            this.props.onNewConn();
+        }
     }
-
-    renderRemoteMenuItem(remote: RemoteType, selectedId: string): any {
-        return (
-            <div
-                key={remote.remoteid}
-                onClick={() => this.selectRemote(remote.remoteid, remote.remotecanonicalname)}
-                className={cn("dropdown-item remote-menu-item hoverEffect", {
-                    "is-selected": remote.remoteid == selectedId,
-                })}
-            >
-                <div className="remote-status-light">
-                    <RemoteStatusLight remote={remote} />
-                </div>
-                <If condition={util.isBlank(remote.remotealias)}>
-                    <div className="remote-name">
-                        <div className="remote-name-primary">{remote.remotecanonicalname}</div>
-                    </div>
-                </If>
-                <If condition={!util.isBlank(remote.remotealias)}>
-                    <div className="remote-name">
-                        <div className="remote-name-primary">{remote.remotealias}</div>
-                        <div className="remote-name-secondary">{remote.remotecanonicalname}</div>
-                    </div>
-                </If>
-            </div>
-        );
-    }
-
+    
     render() {
-        const allRemotes = util.sortAndFilterRemotes(GlobalModel.remotes.slice());
-        const remote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
-        const selectedRemoteDiv = (
-            <div className="remote-name">
-                <div className="remote-status-light">
-                    <RemoteStatusLight remote={remote} />
-                </div>
-                <div className="remote-name-primary">{remote.remotealias}</div>
-                <div className="remote-name-secondary">{remote.remotecanonicalname}</div>
-            </div>
-        );
+        let { curRemote } = this.props;
+        let remote: T.RemoteType = null;
+        let allRemotes = util.sortAndFilterRemotes(GlobalModel.remotes.slice());
         return (
-            <div className={"remotes-inline"}>
-                <div className="remotes-menu">
-                    <div className={`dropdown ${this.state.isOpen ? "is-active" : ""}`}>
-                        <div className="dropdown-trigger">
-                            <button className="button" onClick={() => this.setState({ isOpen: !this.state.isOpen })}>
-                                {selectedRemoteDiv}
-                                <AngleDownIcon className="icon" />
-                            </button>
-                        </div>
-                        <div className="dropdown-menu" id="dropdown-menu3" role="menu">
-                            <div className="dropdown-content">
-                                {allRemotes
-                                    .filter(({ remoteid }) => remoteid !== remote.remoteid)
-                                    .map((remote) => this.renderRemoteMenuItem(remote, remote.remoteid))}
-                                <div onClick={this.clickAddRemote} className=".dropdown-item hoverEffect">
-                                    <AddIcon className="icon" /> Add SSH Connection
+            <div className={cn("dropdown", "conn-dropdown", { "is-active": this.connDropdownActive.get() })}>
+                <div className="dropdown-trigger" onClick={this.toggleConnDropdown}>
+                    <div className="conn-dd-trigger">
+                        <If condition={curRemote != null}>
+                            <div className="lefticon">
+                                <GlobeIcon className="globe-icon"/>
+                                <StatusCircleIcon className={cn("status-icon", "status-" + curRemote.status)}/>
+                            </div>
+                            <div className="conntext">
+                                <If condition={util.isBlank(curRemote.remotealias)}>
+                                    <div className="text-standard conntext-solo">
+                                        {curRemote.remotecanonicalname}
+                                    </div>
+                                </If>
+                                <If condition={!util.isBlank(curRemote.remotealias)}>
+                                    <div className="text-secondary conntext-1">
+                                        {curRemote.remotealias}
+                                    </div>
+                                    <div className="text-caption conntext-2">
+                                        {curRemote.remotecanonicalname}
+                                    </div>
+                                </If>
+                            </div>
+                            <div className="dd-control">
+                                <ArrowsUpDownIcon className="icon"/>
+                            </div>
+                        </If>
+                        <If condition={curRemote == null}>
+                            <div className="lefticon">
+                                <GlobeIcon className="globe-icon"/>
+                            </div>
+                            <div className="conntext">
+                                <div className="text-standard conntext-solo">
+                                    (no connection)
                                 </div>
                             </div>
-                        </div>
+                            <div className="dd-control">
+                                <ArrowsUpDownIcon className="icon"/>
+                            </div>
+                        </If>
+                    </div>
+                </div>
+                <div className="dropdown-menu" role="menu">
+                    <div className="dropdown-content conn-dd-menu">
+                        <For each="remote" of={allRemotes}>
+                            <div className="dropdown-item" key={remote.remoteid} onClick={() => this.selectRemote(remote.remotecanonicalname)}>
+                                <div className="status-div">
+                                    <CircleIcon className={cn("status-icon", "status-" + remote.status)}/>
+                                </div>
+                                <If condition={util.isBlank(remote.remotealias)}>
+                                    <div className="text-standard">{remote.remotecanonicalname}</div>
+                                </If>
+                                <If condition={!util.isBlank(remote.remotealias)}>
+                                    <div className="text-standard">{remote.remotealias}</div>
+                                    <div className="text-caption">{remote.remotecanonicalname}</div>
+                                </If>
+                            </div>
+                        </For>
+                        <If condition={this.props.allowNewConn}>
+                            <div className="dropdown-item" onClick={this.clickNewConnection}>
+                                <div className="add-div">
+                                    <AddIcon className="add-icon"/>
+                                </div>
+                                <div className="text-standard">New Connection</div>
+                            </div>
+                        </If>
                     </div>
                 </div>
             </div>
@@ -1265,4 +1287,4 @@ class RemotesSelector extends React.Component<{ model: RemotesModalModel; isChan
     }
 }
 
-export { RemotesModal, RemotesSelector };
+export { RemotesModal, ConnectionDropdown };
