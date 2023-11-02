@@ -163,6 +163,7 @@ interface TextFieldState {
 @mobxReact.observer
 class TextField extends React.Component<TextFieldProps, TextFieldState> {
     inputRef: React.RefObject<HTMLInputElement>;
+    state: TextFieldState;
 
     constructor(props: TextFieldProps) {
         super(props);
@@ -170,6 +171,7 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
             focused: Boolean(props.value || props.defaultValue),
             internalValue: props.defaultValue || "",
             error: false,
+            showHelpText: false,
         };
         this.inputRef = React.createRef();
     }
@@ -224,32 +226,30 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
         const inputValue = value !== undefined ? value : internalValue;
 
         return (
-            <div className="textfield-container">
-                <div className={cn(`textfield ${className || ""}`, { focused: focused, error: error })}>
-                    {decoration?.startDecoration && <>{decoration.startDecoration}</>}
-                    <div className="textfield-inner">
-                        <label
-                            className={cn("textfield-label", {
-                                float: focused || placeholder,
-                                start: decoration?.startDecoration,
-                            })}
-                            htmlFor={label}
-                        >
-                            {label}
-                        </label>
-                        <input
-                            className={cn("textfield-input", { start: decoration?.startDecoration })}
-                            ref={this.inputRef}
-                            id={label}
-                            value={inputValue}
-                            onChange={this.handleInputChange}
-                            onFocus={this.handleFocus}
-                            onBlur={this.handleBlur}
-                            placeholder={placeholder}
-                        />
-                    </div>
-                    {decoration?.endDecoration && <div>{decoration.endDecoration}</div>}
+            <div className={cn(`textfield ${className || ""}`, { focused: focused, error: error })}>
+                {decoration?.startDecoration && <>{decoration.startDecoration}</>}
+                <div className="textfield-inner">
+                    <label
+                        className={cn("textfield-label", {
+                            float: focused || placeholder,
+                            start: decoration?.startDecoration,
+                        })}
+                        htmlFor={label}
+                    >
+                        {label}
+                    </label>
+                    <input
+                        className={cn("textfield-input", { start: decoration?.startDecoration })}
+                        ref={this.inputRef}
+                        id={label}
+                        value={inputValue}
+                        onChange={this.handleInputChange}
+                        onFocus={this.handleFocus}
+                        onBlur={this.handleBlur}
+                        placeholder={placeholder}
+                    />
                 </div>
+                {decoration?.endDecoration && <div>{decoration.endDecoration}</div>}
             </div>
         );
     }

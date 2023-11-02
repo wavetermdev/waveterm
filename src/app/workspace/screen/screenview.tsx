@@ -70,9 +70,18 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
     @boundMethod
     inlineUpdateName(val: string): void {
         let { screen } = this.props;
-        if (util.isStrEq(val, screen.name.get())) {
-            return;
-        }
+        console.log(
+            "val: " +
+                val +
+                " screen.name.get(): " +
+                screen.name.get() +
+                " util.isStrEq(val, screen.name.get()): " +
+                util.isStrEq(val, screen.name.get())
+        );
+
+        // if (util.isStrEq(val, screen.name.get())) {
+        //     return;
+        // }
         let prtn = GlobalCommandRunner.screenSetSettings(screen.screenId, { name: val }, false);
         util.commandRtnHandler(prtn, this.errorMessage);
     }
@@ -172,9 +181,12 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
         return (
             <div className="newtab-container">
                 <div className="newtab-section name-section">
+                    <div className="text-standard">Name</div>
                     <TextField
                         label="Title"
                         required={true}
+                        defaultValue={screen.name.get() ?? ""}
+                        onChange={this.inlineUpdateName}
                         decoration={{
                             endDecoration: (
                                 <InputDecoration>
@@ -184,22 +196,28 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                         }}
                     />
                 </div>
+                <div className="newtab-spacer" />
                 <div className="newtab-section conn-section">
                     <div className="text-s1">You're connected to [{getRemoteStr(rptr)}]. Do you want to change it?</div>
                     <div>{this.renderConnDropdown()}</div>
                 </div>
                 <div className="newtab-spacer" />
-                <div className="newtab-section settings-field">
-                    <div className="text-s1">Name</div>
-                    <div className="settings-input">
-                        <InlineSettingsTextEdit
-                            placeholder="name"
-                            text={screen.name.get() ?? "(none)"}
-                            value={screen.name.get() ?? ""}
-                            onChange={this.inlineUpdateName}
-                            maxLength={50}
-                            showIcon={true}
-                        />
+                <div className="newtab-section">
+                    <div className="text-s1">Select the icon</div>
+                    <div className="control-iconlist">
+                        <For each="color" of={TabColors}>
+                            <div
+                                className="icondiv"
+                                key={color}
+                                title={color}
+                                onClick={() => this.selectTabColor(color)}
+                            >
+                                <EllipseIcon className={cn("icon", "color-" + color)} />
+                                <If condition={color == curColor}>
+                                    <Check12Icon className="check-icon" />
+                                </If>
+                            </div>
+                        </For>
                     </div>
                 </div>
                 <div className="newtab-spacer" />
