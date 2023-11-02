@@ -27,6 +27,9 @@ import { ReactComponent as SquareCheckIcon } from "../assets/icons/history/squar
 import { ReactComponent as SquareMinusIcon } from "../assets/icons/history/square-minus.svg";
 import { ReactComponent as SquareIcon } from "../assets/icons/history/square.svg";
 import { ReactComponent as TrashIcon } from "../assets/icons/trash.svg";
+import { ReactComponent as CheckedCheckbox } from "../assets/icons/checked-checkbox.svg";
+import { ReactComponent as CheckIcon } from "../assets/icons/line/check.svg";
+import { ReactComponent as CopyIcon } from "../assets/icons/history/copy.svg";
 
 import "./history.less";
 
@@ -89,6 +92,86 @@ function formatSessionName(snames: Record<string, string>, sessionId: string): s
         return sessionId.substr(0, 8);
     }
     return "#" + sname;
+}
+
+@mobxReact.observer
+class HistoryCheckbox extends React.Component<{ checked: boolean, partialCheck?: boolean, onClick?: () => void }, {}> {
+    @boundMethod
+    clickHandler(): void {
+        if (this.props.onClick) {
+            this.props.onClick();
+        }
+    }
+    
+    render() {
+        if (this.props.checked) {
+            return <CheckedCheckbox onClick={this.clickHandler} className="history-checkbox checkbox-icon" />;
+        }
+        if (this.props.partialCheck) {
+            return (
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <rect x="0.5" y="0.5" width="15" height="15" rx="3.5" fill="#D5FEAF" fill-opacity="0.026"/>
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M4 8C4 6.89543 4.89543 6 6 6H10C11.1046 6 12 6.89543 12 8C12 9.10457 11.1046 10 10 10H6C4.89543 10 4 9.10457 4 8Z" fill="#58C142"/>
+                    <rect x="0.5" y="0.5" width="15" height="15" rx="3.5" stroke="#3B3F3A"/>
+                </svg>
+            );            
+        }
+        else {
+            return <div onClick={this.clickHandler} className="history-checkbox state-unchecked"/>
+        }
+    }
+}
+
+class HistoryCmdStr extends React.Component<
+    {
+        cmdstr: string;
+        onUse: () => void;
+        onCopy: () => void;
+        isCopied: boolean;
+        fontSize: "normal" | "large";
+        limitHeight: boolean;
+    },
+    {}
+> {
+    @boundMethod
+    handleUse(e: any) {
+        e.stopPropagation();
+        if (this.props.onUse != null) {
+            this.props.onUse();
+        }
+    }
+
+    @boundMethod
+    handleCopy(e: any) {
+        e.stopPropagation();
+        if (this.props.onCopy != null) {
+            this.props.onCopy();
+        }
+    }
+
+    render() {
+        let { isCopied, cmdstr, fontSize, limitHeight } = this.props;
+        return (
+            <div className={cn("cmdstr-code", { "is-large": fontSize == "large" }, { "limit-height": limitHeight })}>
+                <If condition={isCopied}>
+                    <div key="copied" className="copied-indicator">
+                        <div>copied</div>
+                    </div>
+                </If>
+                <div key="use" className="use-button hoverEffect" title="Use Command" onClick={this.handleUse}>
+                    <CheckIcon className="icon" />
+                </div>
+                <div key="code" className="code-div">
+                    <code>{cmdstr}</code>
+                </div>
+                <div key="copy" className="copy-control hoverEffect">
+                    <div className="inner-copy" onClick={this.handleCopy} title="copy">
+                        <CopyIcon className="icon" />
+                    </div>
+                </div>
+            </div>
+        );
+    }
 }
 
 @mobxReact.observer
@@ -330,13 +413,6 @@ class HistoryView extends React.Component<{}, {}> {
         let hasMore = hvm.hasMore.get();
         let offset = hvm.offset.get();
         let numSelected = hvm.selectedItems.size;
-        let controlCheckboxIcon = <SquareIcon className="icon" />;
-        if (numSelected > 0) {
-            controlCheckboxIcon = <SquareMinusIcon className="icon" />;
-        }
-        if (numSelected > 0 && numSelected == items.length) {
-            controlCheckboxIcon = <SquareCheckIcon className="icon" />;
-        }
         let activeItemId = hvm.activeItem.get();
         let activeItem = hvm.getHistoryItemById(activeItemId);
         let activeLine: LineType = null;
@@ -376,8 +452,8 @@ class HistoryView extends React.Component<{}, {}> {
                                 <div onClick={this.toggleSessionDropdown}>
                                     <span className="label">
                                         {hvm.searchSessionId.get() == null
-                                            ? "Limit Workspace"
-                                            : formatSessionName(snames, hvm.searchSessionId.get())}
+                                        ? "Limit Workspace"
+                                        : formatSessionName(snames, hvm.searchSessionId.get())}
                                     </span>
                                     <AngleDownIcon className="icon" />
                                 </div>
@@ -410,8 +486,8 @@ class HistoryView extends React.Component<{}, {}> {
                                 <div onClick={this.toggleRemoteDropdown}>
                                     <span className="label">
                                         {hvm.searchRemoteId.get() == null
-                                            ? "Limit Remote"
-                                            : formatRemoteName(rnames, { remoteid: hvm.searchRemoteId.get() })}
+                                        ? "Limit Remote"
+                                        : formatRemoteName(rnames, { remoteid: hvm.searchRemoteId.get() })}
                                     </span>
                                     <AngleDownIcon className="icon" />
                                 </div>
@@ -486,7 +562,7 @@ class HistoryView extends React.Component<{}, {}> {
                 </div>
                 <div className={cn("control-bar", "is-top", { "is-hidden": items.length == 0 })}>
                     <div className="control-checkbox" onClick={this.handleControlCheckbox} title="Toggle Selection">
-                        {controlCheckboxIcon}
+                        <HistoryCheckbox checked={numSelected > 0 && numSelected == items.length} partialCheck={numSelected > 0}/>
                     </div>
                     <div
                         className={cn(
@@ -497,8 +573,8 @@ class HistoryView extends React.Component<{}, {}> {
                         onClick={this.handleClickDelete}
                     >
                         <span>
-                            <TrashIcon className="icon" title="Purge Selected Items" />
-                            &nbsp;Delete Items
+                            <TrashIcon className="trash-icon" title="Purge Selected Items" />
+            &nbsp;Delete Items
                         </span>
                     </div>
                     <div className="spacer" />
@@ -527,21 +603,10 @@ class HistoryView extends React.Component<{}, {}> {
                                 className={cn("history-item", { "is-selected": hvm.selectedItems.get(item.historyid) })}
                             >
                                 <td className="selectbox" onClick={() => this.handleSelect(item.historyid)}>
-                                    <If condition={hvm.selectedItems.get(item.historyid)}>
-                                        <SquareCheckIcon className="icon" />
-                                    </If>
-                                    <If condition={!hvm.selectedItems.get(item.historyid)}>
-                                        <SquareIcon className="icon" />
-                                    </If>
+                                    <HistoryCheckbox checked={hvm.selectedItems.get(item.historyid)}/>
                                 </td>
-                                <td className="bookmark" style={{ display: "none" }}>
-                                    <FavoritesIcon className="icon" />
-                                </td>
-                                <td className="ts">{getHistoryViewTs(nowDate, item.ts)}</td>
-                                <td className="workspace">{formatSSName(snames, scrnames, item)}</td>
-                                <td className="remote">{formatRemoteName(rnames, item.remote)}</td>
-                                <td className="cmdstr" onClick={() => this.activateItem(item.historyid)}>
-                                    <CmdStrCode
+                                <td className="cmdstr">
+                                    <HistoryCmdStr
                                         cmdstr={item.cmdstr}
                                         onUse={() => this.handleUse(item)}
                                         onCopy={() => this.handleCopy(item)}
@@ -549,6 +614,21 @@ class HistoryView extends React.Component<{}, {}> {
                                         fontSize="normal"
                                         limitHeight={true}
                                     />
+                                </td>
+                                <td className="workspace text-standard">{formatSSName(snames, scrnames, item)}</td>
+                                <td className="remote text-standard">{formatRemoteName(rnames, item.remote)}</td>
+                                <td className="ts text-standard">{getHistoryViewTs(nowDate, item.ts)}</td>
+                                <td className="downarrow" onClick={() => this.activateItem(item.historyid)}>
+                                    <If condition={activeItemId != item.historyid}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                            <path d="M12.1297 6.62492C12.3999 6.93881 12.3645 7.41237 12.0506 7.68263L8.48447 10.7531C8.20296 10.9955 7.78645 10.9952 7.50519 10.7526L3.94636 7.68213C3.63274 7.41155 3.59785 6.93796 3.86843 6.62434C4.13901 6.31072 4.6126 6.27583 4.92622 6.54641L7.99562 9.19459L11.0719 6.54591C11.3858 6.27565 11.8594 6.31102 12.1297 6.62492Z" fill="#C3C8C2"/>
+                                        </svg>
+                                    </If>
+                                    <If condition={activeItemId == item.historyid}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                            <path d="M3.87035 9.37508C3.60009 9.06119 3.63546 8.58763 3.94936 8.31737L7.51553 5.24692C7.79704 5.00455 8.21355 5.00476 8.49481 5.24742L12.0536 8.31787C12.3673 8.58845 12.4022 9.06204 12.1316 9.37566C11.861 9.68928 11.3874 9.72417 11.0738 9.45359L8.00438 6.80541L4.92806 9.45409C4.61416 9.72435 4.14061 9.68898 3.87035 9.37508Z" fill="#C3C8C2"/>
+                                        </svg>
+                                    </If>
                                 </td>
                             </tr>
                             <If condition={activeItemId == item.historyid}>
