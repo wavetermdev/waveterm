@@ -94,7 +94,7 @@ const MinFontSize = 8;
 const MaxFontSize = 15;
 const InputChunkSize = 500;
 const RemoteColors = ["red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"];
-const TabColors = ["green", "blue", "yellow", "pink", "magenta", "cyan", "violet", "orange", "red", "white"];
+const TabColors = ["red", "orange", "yellow", "green", "mint", "cyan", "blue", "violet", "pink", "white"];
 
 // @ts-ignore
 const VERSION = __WAVETERM_VERSION__;

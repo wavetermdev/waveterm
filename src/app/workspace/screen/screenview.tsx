@@ -173,16 +173,19 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
         return (
             <div className="newtab-container">
                 <div className="newtab-section conn-section">
-                    <div className="text-s1">
+                    <div className="text-s1 unselectable">
                         You're connected to [{getRemoteStr(rptr)}].  Do you want to change it?
                     </div>
                     <div>
                         {this.renderConnDropdown()}
                     </div>
+                    <div className="text-caption cr-help-text">
+                        To change connection from the command line use `cr [alias|user@host]`
+                    </div>
                 </div>
                 <div className="newtab-spacer"/>
                 <div className="newtab-section settings-field">
-                    <div className="text-s1">
+                    <div className="text-s1 unselectable">
                         Name
                     </div>
                     <div className="settings-input">
@@ -198,7 +201,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                 </div>
                 <div className="newtab-spacer"/>
                 <div className="newtab-section">
-                    <div className="text-s1">
+                    <div className="text-s1 unselectable">
                         Select the color
                     </div>
                     <div className="control-iconlist">

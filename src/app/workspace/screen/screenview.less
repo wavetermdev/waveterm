@@ -130,6 +130,11 @@
         }
     }
 
+    .cr-help-text {
+        color: @text-caption;
+        margin-left: 5px;
+    }
+
     .newtab-spacer {
         height: 1px;
         background: rgba(241, 246, 243, 0.15);
@@ -139,25 +144,29 @@
         display: flex;
         padding: 8px 0;
         align-items: flex-start;
-        gap: 27px;
+        gap: 12px;
         
         .icondiv {
-            width: 16px;
-            height: 16px;
+            width: 20px;
+            height: 20px;
             cursor: pointer;
             position: relative;
             
             .icon {
-                width: 16px;
-                height: 16px;
+                width: 20px;
+                height: 20px;
             }
 
             .check-icon {
                 width: 12px;
                 height: 12px;
                 position: absolute;
-                top: 2px;
-                left: 2px;
+                top: 4px;
+                left: 4px;
+
+                path {
+                    fill: black;
+                }
             }
 
             .icon.color-white + .check-icon {

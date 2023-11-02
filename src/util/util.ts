@@ -390,19 +390,6 @@ function getColorRGB(colorInput) {
     return computedColorStyle;
 }
 
-// usgae witing an element : style={background:generateBackgroundWithGradient('red')}
-function generateBackgroundWithGradient(colorName = "white", decay = 3) {
-    const rgb = getColorRGB(colorName);
-    const rgba = rgb.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+(?:\.\d+)?))?\)$/);
-    const r = rgba[1];
-    const g = rgba[2];
-    const b = rgba[3];
-    const lambda = -Math.log(0.01 * decay) / (0.1 * decay);
-    const percentages = [9.34, 44.16, 86.79];
-    const opacities = percentages.map((p) => Math.exp((-lambda * p) / 100));
-    return `linear-gradient(180deg, rgba(${r}, ${g}, ${b}, ${opacities[0]}) ${percentages[0]}%, rgba(${r}, ${g}, ${b}, ${opacities[1]}) ${percentages[1]}%, rgba(${r}, ${g}, ${b}, 0) ${percentages[2]}%)`;
-}
-
 function commandRtnHandler(prtn: Promise<CommandRtnType>, errorMessage: OV<string>) {
     prtn.then((crtn) => {
         if (crtn.success) {
@@ -435,7 +422,6 @@ export {
     isBoolEq,
     hasNoModifiers,
     openLink,
-    generateBackgroundWithGradient,
     getColorRGB,
     commandRtnHandler,
 };
