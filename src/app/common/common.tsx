@@ -132,7 +132,7 @@ interface InputDecorationProps {
 @mobxReact.observer
 class InputDecoration extends React.Component<InputDecorationProps, {}> {
     render() {
-        const { children } = this.props;
+        const { children, onClick } = this.props;
 
         return <div className="input-decoration">{children}</div>;
     }
@@ -157,6 +157,7 @@ interface TextFieldState {
     focused: boolean;
     internalValue: string;
     error: boolean;
+    showHelpText: boolean;
 }
 
 @mobxReact.observer
@@ -180,11 +181,13 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
         }
     }
 
-    handleFocus = () => {
+    @boundMethod
+    handleFocus() {
         this.setState({ focused: true });
-    };
+    }
 
-    handleBlur = () => {
+    @boundMethod
+    handleBlur() {
         const { required } = this.props;
         if (this.inputRef.current) {
             const value = this.inputRef.current.value;
@@ -194,9 +197,15 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
                 this.setState({ error: false, focused: Boolean(value) });
             }
         }
-    };
+    }
 
-    handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    @boundMethod
+    handleHelpTextClick() {
+        this.setState((prevState) => ({ showHelpText: !prevState.showHelpText }));
+    }
+
+    @boundMethod
+    handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
         const { onChange } = this.props;
 
         // Update the internal state for uncontrolled version
@@ -205,7 +214,7 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
         }
 
         onChange?.(e.target.value);
-    };
+    }
 
     render() {
         const { label, value, placeholder, decoration, className } = this.props;
@@ -215,30 +224,32 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
         const inputValue = value !== undefined ? value : internalValue;
 
         return (
-            <div className={cn(`textfield ${className}`, { focused: focused, error: error })}>
-                {decoration?.startDecoration && <>{decoration.startDecoration}</>}
-                <div className="textfield-wrapper">
-                    <label
-                        className={cn("textfield-label", {
-                            float: focused || placeholder,
-                            start: decoration?.startDecoration,
-                        })}
-                        htmlFor={label}
-                    >
-                        {label}
-                    </label>
-                    <input
-                        className={cn("textfield-input", { start: decoration?.startDecoration })}
-                        ref={this.inputRef}
-                        id={label}
-                        value={inputValue}
-                        onChange={this.handleInputChange}
-                        onFocus={this.handleFocus}
-                        onBlur={this.handleBlur}
-                        placeholder={placeholder}
-                    />
+            <div className="textfield-container">
+                <div className={cn(`textfield ${className || ""}`, { focused: focused, error: error })}>
+                    {decoration?.startDecoration && <>{decoration.startDecoration}</>}
+                    <div className="textfield-inner">
+                        <label
+                            className={cn("textfield-label", {
+                                float: focused || placeholder,
+                                start: decoration?.startDecoration,
+                            })}
+                            htmlFor={label}
+                        >
+                            {label}
+                        </label>
+                        <input
+                            className={cn("textfield-input", { start: decoration?.startDecoration })}
+                            ref={this.inputRef}
+                            id={label}
+                            value={inputValue}
+                            onChange={this.handleInputChange}
+                            onFocus={this.handleFocus}
+                            onBlur={this.handleBlur}
+                            placeholder={placeholder}
+                        />
+                    </div>
+                    {decoration?.endDecoration && <div>{decoration.endDecoration}</div>}
                 </div>
-                {decoration?.endDecoration && <div>{decoration.endDecoration}</div>}
             </div>
         );
     }

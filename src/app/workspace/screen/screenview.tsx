@@ -178,7 +178,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                         decoration={{
                             endDecoration: (
                                 <InputDecoration>
-                                    <div>x</div>
+                                    <i className="fa-sharp fa-regular fa-circle-question"></i>
                                 </InputDecoration>
                             ),
                         }}
