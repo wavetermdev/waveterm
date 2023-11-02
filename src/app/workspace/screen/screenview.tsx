@@ -19,7 +19,8 @@ import { getRemoteStr } from "../../common/prompt/prompt";
 import { GlobalModel, ScreenLines, Screen, Session } from "../../../model/model";
 import { Line } from "../../line/linecomps";
 import { LinesView } from "../../line/linesview";
-import * as util from  "../../../util/util";
+import * as util from "../../../util/util";
+import { TextField, InputDecoration } from "../../common/common";
 import { ReactComponent as EllipseIcon } from "../../assets/icons/ellipse.svg";
 import { ReactComponent as Check12Icon } from "../../assets/icons/check12.svg";
 import { ReactComponent as GlobeIcon } from "../../assets/icons/globe.svg";
@@ -36,7 +37,7 @@ dayjs.extend(localizedFormat);
 type OV<V> = mobx.IObservableValue<V>;
 
 @mobxReact.observer
-class ScreenView extends React.Component<{ session: Session, screen: Screen }, {}> {
+class ScreenView extends React.Component<{ session: Session; screen: Screen }, {}> {
     render() {
         let { session, screen } = this.props;
         if (screen == null) {
@@ -55,7 +56,7 @@ class ScreenView extends React.Component<{ session: Session, screen: Screen }, {
 class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
     connDropdownActive: OV<boolean> = mobx.observable.box(false, { name: "NewTabSettings-connDropdownActive" });
     errorMessage: OV<string> = mobx.observable.box(null, { name: "NewTabSettings-errorMessage" });
-    
+
     @boundMethod
     selectTabColor(color: string): void {
         let { screen } = this.props;
@@ -97,7 +98,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
         mobx.action(() => {
             this.connDropdownActive.set(false);
         })();
-        GlobalModel.remotesModalModel.openModalForEdit({remoteedit: true}, true);
+        GlobalModel.remotesModalModel.openModalForEdit({ remoteedit: true }, true);
     }
 
     renderConnDropdown(): any {
@@ -111,35 +112,33 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                 <div className="dropdown-trigger" onClick={this.toggleConnDropdown}>
                     <div className="conn-dd-trigger">
                         <div className="lefticon">
-                            <GlobeIcon className="globe-icon"/>
-                            <StatusCircleIcon className={cn("status-icon", "status-" + curRemote.status)}/>
+                            <GlobeIcon className="globe-icon" />
+                            <StatusCircleIcon className={cn("status-icon", "status-" + curRemote.status)} />
                         </div>
                         <div className="conntext">
                             <If condition={util.isBlank(curRemote.remotealias)}>
-                                <div className="text-standard conntext-solo">
-                                    {curRemote.remotecanonicalname}
-                                </div>
+                                <div className="text-standard conntext-solo">{curRemote.remotecanonicalname}</div>
                             </If>
                             <If condition={!util.isBlank(curRemote.remotealias)}>
-                                <div className="text-secondary conntext-1">
-                                    {curRemote.remotealias}
-                                </div>
-                                <div className="text-caption conntext-2">
-                                    {curRemote.remotecanonicalname}
-                                </div>
+                                <div className="text-secondary conntext-1">{curRemote.remotealias}</div>
+                                <div className="text-caption conntext-2">{curRemote.remotecanonicalname}</div>
                             </If>
                         </div>
                         <div className="dd-control">
-                            <ArrowsUpDownIcon className="icon"/>
+                            <ArrowsUpDownIcon className="icon" />
                         </div>
                     </div>
                 </div>
                 <div className="dropdown-menu" role="menu">
                     <div className="dropdown-content conn-dd-menu">
                         <For each="remote" of={allRemotes}>
-                            <div className="dropdown-item" key={remote.remoteid} onClick={() => this.selectRemote(remote.remotecanonicalname)}>
+                            <div
+                                className="dropdown-item"
+                                key={remote.remoteid}
+                                onClick={() => this.selectRemote(remote.remotecanonicalname)}
+                            >
                                 <div className="status-div">
-                                    <CircleIcon className={cn("status-icon", "status-" + remote.status)}/>
+                                    <CircleIcon className={cn("status-icon", "status-" + remote.status)} />
                                 </div>
                                 <If condition={util.isBlank(remote.remotealias)}>
                                     <div className="text-standard">{remote.remotecanonicalname}</div>
@@ -152,7 +151,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                         </For>
                         <div className="dropdown-item" onClick={this.clickNewConnection}>
                             <div className="add-div">
-                                <AddIcon className="add-icon"/>
+                                <AddIcon className="add-icon" />
                             </div>
                             <div className="text-standard">New Connection</div>
                         </div>
@@ -161,7 +160,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
             </div>
         );
     }
-    
+
     render() {
         let { screen } = this.props;
         let rptr = screen.curRemote.get();
@@ -172,19 +171,26 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
         let color: string = null;
         return (
             <div className="newtab-container">
-                <div className="newtab-section conn-section">
-                    <div className="text-s1">
-                        You're connected to [{getRemoteStr(rptr)}].  Do you want to change it?
-                    </div>
-                    <div>
-                        {this.renderConnDropdown()}
-                    </div>
+                <div className="newtab-section name-section">
+                    <TextField
+                        label="Title"
+                        placeholder="Placeholder"
+                        decoration={{
+                            endDecoration: (
+                                <InputDecoration>
+                                    <div>x</div>
+                                </InputDecoration>
+                            ),
+                        }}
+                    />
                 </div>
-                <div className="newtab-spacer"/>
+                <div className="newtab-section conn-section">
+                    <div className="text-s1">You're connected to [{getRemoteStr(rptr)}]. Do you want to change it?</div>
+                    <div>{this.renderConnDropdown()}</div>
+                </div>
+                <div className="newtab-spacer" />
                 <div className="newtab-section settings-field">
-                    <div className="text-s1">
-                        Name
-                    </div>
+                    <div className="text-s1">Name</div>
                     <div className="settings-input">
                         <InlineSettingsTextEdit
                             placeholder="name"
@@ -196,17 +202,20 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                         />
                     </div>
                 </div>
-                <div className="newtab-spacer"/>
+                <div className="newtab-spacer" />
                 <div className="newtab-section">
-                    <div className="text-s1">
-                        Select the color
-                    </div>
+                    <div className="text-s1">Select the color</div>
                     <div className="control-iconlist">
                         <For each="color" of={TabColors}>
-                            <div className="icondiv" key={color} title={color} onClick={() => this.selectTabColor(color)}>
-                                <EllipseIcon className={cn("icon", "color-" + color)}/>
+                            <div
+                                className="icondiv"
+                                key={color}
+                                title={color}
+                                onClick={() => this.selectTabColor(color)}
+                            >
+                                <EllipseIcon className={cn("icon", "color-" + color)} />
                                 <If condition={color == curColor}>
-                                    <Check12Icon className="check-icon"/>
+                                    <Check12Icon className="check-icon" />
                                 </If>
                             </div>
                         </For>
@@ -219,7 +228,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
 
 // screen is not null
 @mobxReact.observer
-class ScreenWindowView extends React.Component<{ session: Session, screen: Screen }, {}> {
+class ScreenWindowView extends React.Component<{ session: Session; screen: Screen }, {}> {
     rszObs: any;
     windowViewRef: React.RefObject<any>;
 
@@ -380,13 +389,17 @@ class ScreenWindowView extends React.Component<{ session: Session, screen: Scree
                 </div>
                 <If condition={lines.length == 0}>
                     <If condition={true}>
-                        <NewTabSettings screen={screen}/>
+                        <NewTabSettings screen={screen} />
                     </If>
                     <If condition={false}>
                         <div className="window-view" ref={this.windowViewRef} data-screenid={screen.screenId}>
                             <div key="lines" className="lines"></div>
                             <div key="window-empty" className={cn("window-empty")}>
-                                <div><code className="text-standard">[workspace="{session.name.get()}" screen="{screen.name.get()}"]</code></div>
+                                <div>
+                                    <code className="text-standard">
+                                        [workspace="{session.name.get()}" screen="{screen.name.get()}"]
+                                    </code>
+                                </div>
                             </div>
                         </div>
                     </If>

@@ -125,6 +125,160 @@ class Checkbox extends React.Component<
     }
 }
 
+interface InputDecorationProps {
+    children: React.ReactNode;
+}
+
+@mobxReact.observer
+class InputDecoration extends React.Component<InputDecorationProps, {}> {
+    render() {
+        const { children } = this.props;
+
+        const baseStyle = {
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "0 8px",
+        };
+
+        const combinedStyle = { ...baseStyle, margin: "8px" };
+
+        return <div style={combinedStyle}>{children}</div>;
+    }
+}
+
+const containerStyle = {
+    display: "flex",
+    alignItems: "center",
+    border: "1px solid #c4c4c4", // Add a border around the box
+    borderRadius: "4px", // Optional, to round the edges
+    position: "relative",
+    marginBottom: "1rem",
+    backgroundColor: "transparent", // Ensure background is transparent by default
+};
+
+const inputContainerStyle = {
+    display: "flex",
+    alignItems: "flex-end",
+    height: "100%",
+    position: "relative",
+};
+
+interface TextFieldDecorationProps {
+    startDecoration?: React.ReactNode;
+    endDecoration?: React.ReactNode;
+}
+interface TextFieldProps {
+    label: string;
+    value?: string;
+    className?: string;
+    onChange?: (value: string) => void;
+    placeholder?: string;
+    defaultValue?: string;
+    decoration?: TextFieldDecorationProps;
+}
+
+interface TextFieldState {
+    focused: boolean;
+    internalValue: string;
+}
+
+@mobxReact.observer
+class TextField extends React.Component<TextFieldProps, TextFieldState> {
+    inputRef: React.RefObject<HTMLInputElement>;
+
+    constructor(props: TextFieldProps) {
+        super(props);
+        this.state = {
+            focused: Boolean(props.value || props.defaultValue),
+            internalValue: props.defaultValue || "",
+        };
+        this.inputRef = React.createRef();
+    }
+
+    componentDidUpdate(prevProps: TextFieldProps) {
+        // Only update the focus state if using as controlled
+        if (this.props.value !== undefined && this.props.value !== prevProps.value) {
+            this.setState({ focused: Boolean(this.props.value) });
+        }
+    }
+
+    handleFocus = () => {
+        this.setState({ focused: true });
+    };
+
+    handleBlur = () => {
+        if (this.inputRef.current && !this.inputRef.current.value) {
+            this.setState({ focused: false });
+        }
+    };
+
+    handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { onChange } = this.props;
+
+        // Update the internal state for uncontrolled version
+        if (this.props.value === undefined) {
+            this.setState({ internalValue: e.target.value });
+        }
+
+        onChange?.(e.target.value);
+    };
+
+    render() {
+        const { label, value, placeholder, decoration, className } = this.props;
+        const { focused, internalValue } = this.state;
+
+        // Decide if the input should behave as controlled or uncontrolled
+        const inputValue = value !== undefined ? value : internalValue;
+
+        return (
+            <div
+                className={className}
+                style={{ ...containerStyle, height: "44px", borderColor: focused ? "green" : "white" }}
+            >
+                {decoration?.startDecoration && <>{decoration.startDecoration}</>}
+                <div style={inputContainerStyle}>
+                    <label
+                        htmlFor={label}
+                        style={{
+                            position: "absolute",
+                            left: decoration?.startDecoration ? "0" : "16px",
+                            top: focused || placeholder ? "5px" : "16px",
+                            fontSize: focused || placeholder ? "10px" : "12.5px",
+                            transition: "all 0.3s",
+                            color: "var(--text-secondary, var(--grays-olive-8, #C3C8C2))",
+                            lineHeight: "10px",
+                        }}
+                    >
+                        {label}
+                    </label>
+                    <input
+                        ref={this.inputRef}
+                        id={label}
+                        value={inputValue}
+                        onChange={this.handleInputChange}
+                        onFocus={this.handleFocus}
+                        onBlur={this.handleBlur}
+                        placeholder={placeholder}
+                        style={{
+                            width: "100%",
+                            height: "30px",
+                            border: "none",
+                            padding: decoration?.startDecoration ? "5px 16px 5px 0" : "5px 0 5px 16px",
+                            fontSize: "16px",
+                            outline: "none",
+                            backgroundColor: "transparent",
+                            color: "#fff",
+                            lineHeight: "20px",
+                        }}
+                    />
+                </div>
+                {decoration?.endDecoration && <div>{decoration.endDecoration}</div>}
+            </div>
+        );
+    }
+}
+
 @mobxReact.observer
 class RemoteStatusLight extends React.Component<{ remote: RemoteType }, {}> {
     render() {
@@ -364,4 +518,6 @@ export {
     InfoMessage,
     Markdown,
     SettingsError,
+    TextField,
+    InputDecoration,
 };
