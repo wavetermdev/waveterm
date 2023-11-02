@@ -1197,19 +1197,19 @@ func EnsureLocalRemote(ctx context.Context) error {
 	return nil
 }
 
-func EnsureDefaultSession(ctx context.Context) (*SessionType, error) {
-	session, err := GetSessionByName(ctx, DefaultSessionName)
+func EnsureOneSession(ctx context.Context) error {
+	numSessions, err := GetSessionCount(ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if session != nil {
-		return session, nil
+	if numSessions > 0 {
+		return nil
 	}
 	_, err = InsertSessionWithName(ctx, DefaultSessionName, true)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return GetSessionByName(ctx, DefaultSessionName)
+	return nil
 }
 
 func createClientData(tx *TxWrap) error {

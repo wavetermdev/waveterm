@@ -507,6 +507,15 @@ func GetSessionById(ctx context.Context, id string) (*SessionType, error) {
 	return nil, nil
 }
 
+// counts non-archived sessions
+func GetSessionCount(ctx context.Context) (int, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (int, error) {
+		query := `SELECT COALESCE(count(*), 0) FROM session WHERE NOT archived`
+		numSessions := tx.GetInt(query)
+		return numSessions, nil
+	})
+}
+
 func GetSessionByName(ctx context.Context, name string) (*SessionType, error) {
 	var session *SessionType
 	txErr := WithTx(ctx, func(tx *TxWrap) error {

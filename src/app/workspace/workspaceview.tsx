@@ -25,7 +25,11 @@ class WorkspaceView extends React.Component<{}, {}> {
         let model = GlobalModel;
         let session = model.getActiveSession();
         if (session == null) {
-            return <div className="session-view">(no active session)</div>;
+            return (
+                <div className="session-view">
+                    <div className="center-message"><div>(no active workspace)</div></div>
+                </div>
+            );
         }
         let activeScreen = session.getActiveScreen();
         let cmdInputHeight = model.inputModel.cmdInputHeight.get();
