@@ -219,18 +219,16 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
                 {decoration?.startDecoration && <>{decoration.startDecoration}</>}
                 <div className="textfield-wrapper">
                     <label
-                        className="textfield-label"
+                        className={cn("textfield-label", {
+                            float: focused || placeholder,
+                            start: decoration?.startDecoration,
+                        })}
                         htmlFor={label}
-                        style={{
-                            left: decoration?.startDecoration ? "0" : "16px",
-                            top: focused || placeholder ? "5px" : "16px",
-                            fontSize: focused || placeholder ? "10px" : "12.5px",
-                        }}
                     >
                         {label}
                     </label>
                     <input
-                        className="textfield-input"
+                        className={cn("textfield-input", { start: decoration?.startDecoration })}
                         ref={this.inputRef}
                         id={label}
                         value={inputValue}
@@ -238,9 +236,6 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
                         onFocus={this.handleFocus}
                         onBlur={this.handleBlur}
                         placeholder={placeholder}
-                        style={{
-                            padding: decoration?.startDecoration ? "5px 16px 5px 0" : "5px 0 5px 16px",
-                        }}
                     />
                 </div>
                 {decoration?.endDecoration && <div>{decoration.endDecoration}</div>}

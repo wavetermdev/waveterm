@@ -639,6 +639,10 @@
         border-color: @term-green;
     }
 
+    &.error {
+        border-color: @term-red;
+    }
+
     .textfield-wrapper {
         display: flex;
         align-items: flex-end;
@@ -653,6 +657,15 @@
             transition: all 0.3s;
             color: @term-white;
             line-height: 10px;
+
+            &.float {
+                font-size: 10px;
+                top: 5px;
+            }
+
+            &.start {
+                left: 0;
+            }
         }
 
         .textfield-input {
@@ -665,12 +678,12 @@
             background-color: transparent;
             color: @term-bright-white;
             line-height: 20px;
+
+            &.start {
+                padding: 5px 16px 5px 0;
+            }
         }
     }
-}
-
-.textfield.error {
-    border-color: @term-red;
 }
 
 .input-decoration {
