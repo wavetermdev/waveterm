@@ -103,7 +103,19 @@ class ScreenTabs extends React.Component<{ session: Session }, {}> {
         })();
     }
 
-    renderTab(screen: Screen, activeScreenId: string, index: number): any {
+    renderTabIcon = (screen: Screen): React.ReactNode => {
+        const tabIcon = screen.getTabIcon();
+        if (tabIcon) {
+            return (
+                <div className="icon">
+                    <i className={`fa-sharp fa-solid fa-${tabIcon}`}></i>
+                </div>
+            );
+        }
+        return <SquareIcon className="icon left-icon" />;
+    };
+
+    renderTab(screen: Screen, activeScreenId: string, index: number): React.ReactNode {
         let tabIndex = null;
         if (index + 1 <= 9) {
             tabIndex = <div className="tab-index">{renderCmdText(String(index + 1))}</div>;
@@ -142,7 +154,7 @@ class ScreenTabs extends React.Component<{ session: Session }, {}> {
                 onClick={() => this.handleSwitchScreen(screen.screenId)}
                 onContextMenu={(event) => this.openScreenSettings(event, screen)}
             >
-                <SquareIcon className="icon left-icon" />
+                {this.renderTabIcon(screen)}
                 <div className="tab-name truncate">
                     {archived}
                     {webShared}
@@ -159,7 +171,7 @@ class ScreenTabs extends React.Component<{ session: Session }, {}> {
         if (session == null) {
             return null;
         }
-        let screen: Screen = null;
+        let screen: Screen | null = null;
         let index = 0;
         let showingScreens = [];
         let activeScreenId = session.activeScreenId.get();

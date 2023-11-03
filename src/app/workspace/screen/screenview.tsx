@@ -73,7 +73,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
         if (screen.getTabIcon() == icon) {
             return;
         }
-        let prtn = GlobalCommandRunner.screenSetSettings(screen.screenId, { tabIcon: icon }, false);
+        let prtn = GlobalCommandRunner.screenSetSettings(screen.screenId, { tabicon: icon }, false);
         util.commandRtnHandler(prtn, this.errorMessage);
     }
 

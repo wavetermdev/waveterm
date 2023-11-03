@@ -3523,7 +3523,7 @@ class Model {
             uicontext: this.getUIContext(),
             interactive: interactive,
         };
-        /**
+        /** 
         console.log(
             "CMD",
             pk.metacmd + (pk.metasubcmd != null ? ":" + pk.metasubcmd : ""),
@@ -3531,7 +3531,7 @@ class Model {
             pk.kwargs,
             pk.interactive
         );
-         */
+		 */
         return this.submitCommandPacket(pk, interactive);
     }
 
@@ -3968,7 +3968,7 @@ class CommandRunner {
 
     screenSetSettings(
         screenId: string,
-        settings: { tabcolor?: string; tabIcon?: string; name?: string; sharename?: string },
+        settings: { tabcolor?: string; tabicon?: string; name?: string; sharename?: string },
         interactive: boolean
     ): Promise<CommandRtnType> {
         let kwargs: { [key: string]: any } = Object.assign({}, settings);
