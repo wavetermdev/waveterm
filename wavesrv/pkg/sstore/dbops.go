@@ -1700,6 +1700,7 @@ const (
 	ScreenField_SelectedLine = "selectedline" // int
 	ScreenField_Focus        = "focustype"    // string
 	ScreenField_TabColor     = "tabcolor"     // string
+	ScreenField_TabIcon      = "tabicon"     // string
 	ScreenField_PTerm        = "pterm"        // string
 	ScreenField_Name         = "name"         // string
 	ScreenField_ShareName    = "sharename"    // string
@@ -1733,6 +1734,10 @@ func UpdateScreen(ctx context.Context, screenId string, editMap map[string]inter
 		if tabColor, found := editMap[ScreenField_TabColor]; found {
 			query = `UPDATE screen SET screenopts = json_set(screenopts, '$.tabcolor', ?) WHERE screenid = ?`
 			tx.Exec(query, tabColor, screenId)
+		}
+		if tabIcon, found := editMap[ScreenField_TabIcon]; found {
+			query = `UPDATE screen SET screenopts = json_set(screenopts, '$.tabicon', ?) WHERE screenid = ?`
+			tx.Exec(query, tabIcon, screenId)
 		}
 		if pterm, found := editMap[ScreenField_PTerm]; found {
 			query = `UPDATE screen SET screenopts = json_set(screenopts, '$.pterm', ?) WHERE screenid = ?`

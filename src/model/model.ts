@@ -95,6 +95,18 @@ const MaxFontSize = 15;
 const InputChunkSize = 500;
 const RemoteColors = ["red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"];
 const TabColors = ["green", "blue", "yellow", "pink", "magenta", "cyan", "violet", "orange", "red", "white"];
+const TabIcons = [
+    "sparkle",
+    "fire",
+    "ghost",
+    "cloud",
+    "compass",
+    "crown",
+    "droplet",
+    "graduation-cap",
+    "heart",
+    "file",
+];
 
 // @ts-ignore
 const VERSION = __WAVETERM_VERSION__;
@@ -464,6 +476,15 @@ class Screen {
             tabColor = screenOpts.tabcolor;
         }
         return tabColor;
+    }
+
+    getTabIcon(): string {
+        let tabIcon = "default";
+        let screenOpts = this.opts.get();
+        if (screenOpts != null && !isBlank(screenOpts.tabicon)) {
+            tabIcon = screenOpts.tabicon;
+        }
+        return tabIcon;
     }
 
     getCurRemoteInstance(): RemoteInstanceType {
@@ -3489,7 +3510,7 @@ class Model {
     submitCommand(
         metaCmd: string,
         metaSubCmd: string,
-        args: string[],
+        args: string[] | null,
         kwargs: Record<string, string>,
         interactive: boolean
     ): Promise<CommandRtnType> {
@@ -3947,10 +3968,10 @@ class CommandRunner {
 
     screenSetSettings(
         screenId: string,
-        settings: { tabcolor?: string; name?: string; sharename?: string },
+        settings: { tabcolor?: string; tabIcon?: string; name?: string; sharename?: string },
         interactive: boolean
     ): Promise<CommandRtnType> {
-        let kwargs = Object.assign({}, settings);
+        let kwargs: { [key: string]: any } = Object.assign({}, settings);
         kwargs["nohist"] = "1";
         kwargs["screen"] = screenId;
         return GlobalModel.submitCommand("screen", "set", null, kwargs, interactive);
@@ -4166,6 +4187,7 @@ export {
     Screen,
     riToRPtr,
     TabColors,
+    TabIcons,
     RemoteColors,
     getTermPtyData,
     RemotesModalModel,

@@ -159,6 +159,7 @@ interface TextFieldState {
     internalValue: string;
     error: boolean;
     showHelpText: boolean;
+    hasContent: boolean;
 }
 
 @mobxReact.observer
@@ -168,8 +169,10 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
 
     constructor(props: TextFieldProps) {
         super(props);
+        const hasInitialContent = Boolean(props.value || props.defaultValue);
         this.state = {
-            focused: Boolean(props.value || props.defaultValue),
+            focused: false,
+            hasContent: hasInitialContent,
             internalValue: props.defaultValue || "",
             error: false,
             showHelpText: false,
@@ -197,7 +200,7 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
             if (required && !value) {
                 this.setState({ error: true, focused: false });
             } else {
-                this.setState({ error: false, focused: Boolean(value) });
+                this.setState({ error: false, focused: false });
             }
         }
     }
@@ -214,14 +217,14 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
 
     @boundMethod
     handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-        const { onChange, required } = this.props;
+        const { required } = this.props;
         const inputValue = e.target.value;
 
         // Check if value is empty and the field is required
         if (required && !inputValue) {
-            this.setState({ error: true });
+            this.setState({ error: true, hasContent: false });
         } else {
-            this.setState({ error: false });
+            this.setState({ error: false, hasContent: Boolean(inputValue) });
         }
 
         // Update the internal state for uncontrolled version
@@ -245,7 +248,7 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
                 <div className="textfield-inner">
                     <label
                         className={cn("textfield-label", {
-                            float: focused || placeholder,
+                            float: this.state.hasContent || this.state.focused || placeholder,
                             start: decoration?.startDecoration,
                         })}
                         htmlFor={label}

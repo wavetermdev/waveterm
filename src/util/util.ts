@@ -403,7 +403,7 @@ function generateBackgroundWithGradient(colorName = "white", decay = 3) {
     return `linear-gradient(180deg, rgba(${r}, ${g}, ${b}, ${opacities[0]}) ${percentages[0]}%, rgba(${r}, ${g}, ${b}, ${opacities[1]}) ${percentages[1]}%, rgba(${r}, ${g}, ${b}, 0) ${percentages[2]}%)`;
 }
 
-function commandRtnHandler(prtn: Promise<CommandRtnType>, errorMessage: OV<string>) {
+function commandRtnHandler(prtn: Promise<CommandRtnType>, errorMessage: OV<string | null>) {
     prtn.then((crtn) => {
         if (crtn.success) {
             return;

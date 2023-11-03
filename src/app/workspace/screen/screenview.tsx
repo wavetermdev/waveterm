@@ -10,7 +10,7 @@ import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { debounce } from "throttle-debounce";
 import dayjs from "dayjs";
-import { GlobalCommandRunner, TabColors } from "../../../model/model";
+import { GlobalCommandRunner, TabColors, TabIcons } from "../../../model/model";
 import type { LineType, RenderModeType, LineFactoryProps, CommandRtnType } from "../../../types/types";
 import * as T from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
@@ -55,7 +55,7 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
 @mobxReact.observer
 class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
     connDropdownActive: OV<boolean> = mobx.observable.box(false, { name: "NewTabSettings-connDropdownActive" });
-    errorMessage: OV<string> = mobx.observable.box(null, { name: "NewTabSettings-errorMessage" });
+    errorMessage: OV<string | null> = mobx.observable.box(null, { name: "NewTabSettings-errorMessage" });
 
     @boundMethod
     selectTabColor(color: string): void {
@@ -64,6 +64,16 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
             return;
         }
         let prtn = GlobalCommandRunner.screenSetSettings(screen.screenId, { tabcolor: color }, false);
+        util.commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
+    selectTabIcon(icon: string): void {
+        let { screen } = this.props;
+        if (screen.getTabIcon() == icon) {
+            return;
+        }
+        let prtn = GlobalCommandRunner.screenSetSettings(screen.screenId, { tabIcon: icon }, false);
         util.commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -110,10 +120,10 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
         GlobalModel.remotesModalModel.openModalForEdit({ remoteedit: true }, true);
     }
 
-    renderConnDropdown(): any {
+    renderConnDropdown(): React.ReactNode {
         let { screen } = this.props;
         let allRemotes = util.sortAndFilterRemotes(GlobalModel.remotes.slice());
-        let remote: T.RemoteType = null;
+        let remote: T.RemoteType | null = null;
         let curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
         // TODO no remote?
         return (
@@ -170,14 +180,71 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
         );
     }
 
-    render() {
+    renderTabIconSelector(): React.ReactNode {
         let { screen } = this.props;
-        let rptr = screen.curRemote.get();
+        let curIcon = screen.getTabIcon();
+        if (util.isBlank(curIcon) || curIcon == "default") {
+            curIcon = "square";
+        }
+        let icon: string | null = null;
+
+        return (
+            <>
+                <div className="text-s1">Select the icon</div>
+                <div className="control-iconlist">
+                    <For each="icon" of={TabIcons}>
+                        <div
+                            className="icondiv"
+                            key={icon}
+                            title={icon || ""}
+                            onClick={() => this.selectTabIcon(icon || "")}
+                        >
+                            <i className={`fa-sharp fa-solid fa-${icon}`}></i>
+                        </div>
+                    </For>
+                </div>
+            </>
+        );
+    }
+
+    renderTabColorSelector(): React.ReactNode {
+        let { screen } = this.props;
         let curColor = screen.getTabColor();
         if (util.isBlank(curColor) || curColor == "default") {
             curColor = "green";
         }
-        let color: string = null;
+        let color: string | null = null;
+
+        return (
+            <>
+                <div className="text-s1">Select the color</div>
+                <div className="control-iconlist">
+                    <For each="color" of={TabColors}>
+                        <div
+                            className="icondiv"
+                            key={color}
+                            title={color || ""}
+                            onClick={() => this.selectTabColor(color || "")}
+                        >
+                            <EllipseIcon className={cn("icon", "color-" + color)} />
+                            <If condition={color == curColor}>
+                                <Check12Icon className="check-icon" />
+                            </If>
+                        </div>
+                    </For>
+                </div>
+            </>
+        );
+    }
+
+    render() {
+        let { screen } = this.props;
+        let rptr = screen.curRemote.get();
+        let curIcon = screen.getTabIcon();
+        if (util.isBlank(curIcon) || curIcon == "default") {
+            curIcon = "square";
+        }
+        let icon: string | null = null;
         return (
             <div className="newtab-container">
                 <div className="newtab-section name-section">
@@ -203,41 +270,11 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                 </div>
                 <div className="newtab-spacer" />
                 <div className="newtab-section">
-                    <div className="text-s1">Select the icon</div>
-                    <div className="control-iconlist">
-                        <For each="color" of={TabColors}>
-                            <div
-                                className="icondiv"
-                                key={color}
-                                title={color}
-                                onClick={() => this.selectTabColor(color)}
-                            >
-                                <EllipseIcon className={cn("icon", "color-" + color)} />
-                                <If condition={color == curColor}>
-                                    <Check12Icon className="check-icon" />
-                                </If>
-                            </div>
-                        </For>
-                    </div>
+                    <div>{this.renderTabIconSelector()}</div>
                 </div>
                 <div className="newtab-spacer" />
                 <div className="newtab-section">
-                    <div className="text-s1">Select the color</div>
-                    <div className="control-iconlist">
-                        <For each="color" of={TabColors}>
-                            <div
-                                className="icondiv"
-                                key={color}
-                                title={color}
-                                onClick={() => this.selectTabColor(color)}
-                            >
-                                <EllipseIcon className={cn("icon", "color-" + color)} />
-                                <If condition={color == curColor}>
-                                    <Check12Icon className="check-icon" />
-                                </If>
-                            </div>
-                        </For>
-                    </div>
+                    <div>{this.renderTabColorSelector()}</div>
                 </div>
             </div>
         );

@@ -421,6 +421,7 @@ func (h *HistoryItemType) FromMap(m map[string]interface{}) bool {
 
 type ScreenOptsType struct {
 	TabColor string `json:"tabcolor,omitempty"`
+	TabIcon string `json:"tabicon,omitempty"`
 	PTerm    string `json:"pterm,omitempty"`
 }
 
