@@ -105,17 +105,17 @@ class ScreenTabs extends React.Component<{ session: Session }, {}> {
 
     renderTabIcon = (screen: Screen): React.ReactNode => {
         const tabIcon = screen.getTabIcon();
-        if (tabIcon) {
-            return (
-                <div className="icon">
-                    <i className={`fa-sharp fa-solid fa-${tabIcon}`}></i>
-                </div>
-            );
+        if (tabIcon === "default") {
+            return <SquareIcon className="icon left-icon" />;
         }
-        return <SquareIcon className="icon left-icon" />;
+        return (
+            <div className="icon">
+                <i className={`fa-sharp fa-solid fa-${tabIcon}`}></i>
+            </div>
+        );
     };
 
-    renderTab(screen: Screen, activeScreenId: string, index: number): React.ReactNode {
+    renderTab(screen: Screen, activeScreenId: string, index: number): JSX.Element {
         let tabIndex = null;
         if (index + 1 <= 9) {
             tabIndex = <div className="tab-index">{renderCmdText(String(index + 1))}</div>;
