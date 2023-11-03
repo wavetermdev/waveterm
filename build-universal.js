@@ -14,6 +14,5 @@ console.log("output path", outPath);
         x64AppPath: x64Path,
         arm64AppPath: arm64Path,
         outAppPath: outPath,
-        x64ArchFiles: "Contents/Resources/app/{dist,bin}/**/*",
     });
 })();
