@@ -10,6 +10,7 @@ import remarkGfm from "remark-gfm";
 import cn from "classnames";
 import { If } from "tsx-control-statements/components";
 import type { RemoteType } from "../../types/types";
+import { debounce } from "throttle-debounce";
 
 import { ReactComponent as CheckIcon } from "../assets/icons/line/check.svg";
 import { ReactComponent as CopyIcon } from "../assets/icons/history/copy.svg";
@@ -206,6 +207,11 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
         this.setState((prevState) => ({ showHelpText: !prevState.showHelpText }));
     }
 
+    debouncedOnChange = debounce(300, (value) => {
+        const { onChange } = this.props;
+        onChange?.(value);
+    });
+
     @boundMethod
     handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
         const { onChange, required } = this.props;
@@ -223,7 +229,7 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
             this.setState({ internalValue: inputValue });
         }
 
-        onChange?.(inputValue);
+        this.debouncedOnChange(inputValue);
     }
 
     render() {
