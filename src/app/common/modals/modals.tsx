@@ -268,15 +268,17 @@ class TosModal extends React.Component<{}, {}> {
                                 <div className="item-inner">
                                     <div className="item-title">Telemetry</div>
                                     <div className="item-text">
-                                        We only collect minimal <i>anonymous</i> telemetry data to help us
-                                        understand how many people are using Wave.
+                                        We only collect minimal <i>anonymous</i> telemetry data to help us understand
+                                        how many people are using Wave.
                                     </div>
-                                    <div className="item-field" style={{marginTop: 2}}>
+                                    <div className="item-field" style={{ marginTop: 2 }}>
                                         <Toggle
                                             checked={!cdata.clientopts.notelemetry}
                                             onChange={this.handleChangeTelemetry}
                                         />
-                                        <div className="item-label">Telemetry {cdata.clientopts.notelemetry ? "Disabled" : "Enabled"}</div>
+                                        <div className="item-label">
+                                            Telemetry {cdata.clientopts.notelemetry ? "Disabled" : "Enabled"}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -287,8 +289,9 @@ class TosModal extends React.Component<{}, {}> {
                                 <div className="item-inner">
                                     <div className="item-title">Join our Community</div>
                                     <div className="item-text">
-                                        Get help, submit feature requests, report bugs,
-                                        or just chat with fellow terminal enthusiasts.<br/>
+                                        Get help, submit feature requests, report bugs, or just chat with fellow
+                                        terminal enthusiasts.
+                                        <br />
                                         <a target="_blank" href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}>
                                             Join the Wave&nbsp;Discord&nbsp;Channel
                                         </a>
@@ -305,8 +308,8 @@ class TosModal extends React.Component<{}, {}> {
                                 <div className="item-inner">
                                     <div className="item-title">Support us on GitHub</div>
                                     <div className="item-text">
-                                        We're <i>open source</i> and committed to providing a free terminal for individual
-                                        users.  Please show your support us by giving us a star on{" "}
+                                        We're <i>open source</i> and committed to providing a free terminal for
+                                        individual users. Please show your support us by giving us a star on{" "}
                                         <a
                                             target="_blank"
                                             href={util.makeExternLink("https://github.com/wavetermdev/waveterm")}
@@ -406,7 +409,7 @@ class AboutModal extends React.Component<{}, {}> {
                             </div>
                         </header>
                         <div className="content about-content">
-                            <section>
+                            <section className="wave-section about-section">
                                 <div className="logo-wrapper">
                                     <img src={logo} alt="logo" />
                                 </div>
@@ -415,10 +418,12 @@ class AboutModal extends React.Component<{}, {}> {
                                     <div className="text-standard">Modern Terminal for Seamless Workflow</div>
                                 </div>
                             </section>
-                            <section className="text-standard">{this.getStatus(this.isUpToDate())}</section>
-                            <section>
+                            <section className="wave-section about-section text-standard">
+                                {this.getStatus(this.isUpToDate())}
+                            </section>
+                            <section className="wave-section about-section">
                                 <a
-                                    className="button button-link color-standard"
+                                    className="wave-button wave-button-link color-standard"
                                     href={util.makeExternLink("https://github.com/wavetermdev/waveterm")}
                                     target="_blank"
                                 >
@@ -426,7 +431,7 @@ class AboutModal extends React.Component<{}, {}> {
                                     Github
                                 </a>
                                 <a
-                                    className="button button-link color-standard"
+                                    className="wave-button wave-button-link color-standard"
                                     href={util.makeExternLink("https://www.commandline.dev/")}
                                     target="_blank"
                                 >
@@ -434,7 +439,7 @@ class AboutModal extends React.Component<{}, {}> {
                                     Website
                                 </a>
                                 <a
-                                    className="button button-link color-standard"
+                                    className="wave-button wave-button-link color-standard"
                                     href={util.makeExternLink(
                                         "https://github.com/wavetermdev/waveterm/blob/main/LICENSE"
                                     )}
@@ -444,7 +449,9 @@ class AboutModal extends React.Component<{}, {}> {
                                     License
                                 </a>
                             </section>
-                            <section className="text-standard">Copyright © 2023 Command Line Inc.</section>
+                            <section className="wave-section about-section text-standard">
+                                Copyright © 2023 Command Line Inc.
+                            </section>
                         </div>
                     </div>
                 </div>
