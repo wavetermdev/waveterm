@@ -208,14 +208,22 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
 
     @boundMethod
     handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-        const { onChange } = this.props;
+        const { onChange, required } = this.props;
+        const inputValue = e.target.value;
+
+        // Check if value is empty and the field is required
+        if (required && !inputValue) {
+            this.setState({ error: true });
+        } else {
+            this.setState({ error: false });
+        }
 
         // Update the internal state for uncontrolled version
         if (this.props.value === undefined) {
-            this.setState({ internalValue: e.target.value });
+            this.setState({ internalValue: inputValue });
         }
 
-        onChange?.(e.target.value);
+        onChange?.(inputValue);
     }
 
     render() {
