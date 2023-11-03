@@ -78,20 +78,8 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
     }
 
     @boundMethod
-    inlineUpdateName(val: string): void {
+    updateName(val: string): void {
         let { screen } = this.props;
-        console.log(
-            "val: " +
-                val +
-                " screen.name.get(): " +
-                screen.name.get() +
-                " util.isStrEq(val, screen.name.get()): " +
-                util.isStrEq(val, screen.name.get())
-        );
-
-        // if (util.isStrEq(val, screen.name.get())) {
-        //     return;
-        // }
         let prtn = GlobalCommandRunner.screenSetSettings(screen.screenId, { name: val }, false);
         util.commandRtnHandler(prtn, this.errorMessage);
     }
@@ -253,7 +241,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                         label="Title"
                         required={true}
                         defaultValue={screen.name.get() ?? ""}
-                        onChange={this.inlineUpdateName}
+                        onChange={this.updateName}
                         decoration={{
                             endDecoration: (
                                 <InputDecoration>
