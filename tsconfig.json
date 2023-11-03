@@ -11,6 +11,7 @@
         "moduleResolution": "node",
         "allowSyntheticDefaultImports": true,
         "resolveJsonModule": true,
-        "isolatedModules": true
+        "isolatedModules": true,
+        "experimentalDecorators": true
     }
 }
