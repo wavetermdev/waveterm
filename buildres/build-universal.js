@@ -5,6 +5,7 @@ let x64Path = path.resolve(__dirname, "temp", "x64", "Wave.app")
 let arm64Path = path.resolve(__dirname, "temp", "arm64", "Wave.app")
 let outPath = path.resolve(__dirname, "temp", "Wave.app")
 
+console.log("building universal package");
 console.log("x64 path", x64Path);
 console.log("arm64 path", arm64Path);
 console.log("output path", outPath);
