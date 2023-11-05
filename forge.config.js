@@ -59,21 +59,6 @@ module.exports = {
             "node_modules/fsevents/**",
         ],
         icon: "public/waveterm.icns",
-        // osxNotarize: {
-        //     tool: "notarytool",
-        //     keychainProfile: "notarytool-creds",
-        // },
-        // osxSign: {
-        //     "hardened-runtime": true,
-        //     binaries: [
-        //         "Contents/Resources/app/bin/wavesrv",
-        //         "Contents/Resources/app/bin/mshell/mshell-v0.2-linux.amd64",
-        //         "Contents/Resources/app/bin/mshell/mshell-v0.2-linux.arm64",
-        //         "Contents/Resources/app/bin/mshell/mshell-v0.2-darwin.amd64",
-        //         "Contents/Resources/app/bin/mshell/mshell-v0.2-darwin.arm64",
-        //     ],
-        //     identity: "VYQ48YC2N2",
-        // },
     },
     rebuildConfig: {},
     makers: [
