@@ -1,6 +1,7 @@
 const { notarize } = require('@electron/notarize');
 // DEBUG=electron-notarize
 
+console.log("running osx-notarize");
 notarize({
     appPath: "temp/Wave.app",
     tool: "notarytool",

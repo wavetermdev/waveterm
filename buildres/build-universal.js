@@ -16,4 +16,5 @@ console.log("output path", outPath);
         arm64AppPath: arm64Path,
         outAppPath: outPath,
     });
+    console.log("created macos universal app");
 })();
