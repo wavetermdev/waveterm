@@ -24,13 +24,14 @@ unzip -q $ARM64_ZIP -d temp/arm64
 lipo -create -output temp/wavesrv temp/x64/Wave.app/Contents/Resources/app/bin/wavesrv temp/arm64/Wave.app/Contents/Resources/app/bin/wavesrv
 rm -rf temp/arm64/Wave.app/Contents/Resources/app
 mv temp/x64/Wave.app/Contents/Resources/app temp/
+cp temp/wavesrv temp/app/bin/wavesrv
 mkdir temp/x64/Wave.app/Contents/Resources/app
 mkdir temp/arm64/Wave.app/Contents/Resources/app
 node build-universal.js
 rm -rf temp/Wave.app/Contents/Resources/app
 mv temp/app temp/Wave.app/Contents/Resources/app
 node osx-sign.js
-node osx-notarize.js
+DEBUG=electron-notarize node osx-notarize.js
 echo "universal app creation success (build/sign/notarize)"
 echo "creating universal dmg"
 rm -f *.dmg
@@ -47,3 +48,4 @@ DMG_NAME="waveterm-macos-universal-${DMG_VERSION}.dmg"
   $DMG_NAME \
   "temp/Wave.app"
 echo "success, created $DMG_NAME"
+spctl -a -vvv -t install temp/Wave.app/
