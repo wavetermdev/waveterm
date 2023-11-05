@@ -29,6 +29,11 @@ let oldConsoleLog = console.log;
 let wasActive = true;
 let wasInFg = true;
 
+if (checkPromptMigrate()) {
+    console.log("should migrate prompt -> wave");
+    process.exit(1);
+}
+
 // these are either "darwin/amd64" or "darwin/arm64"
 // normalize darwin/x64 to darwin/amd64 for GOARCH compatibility
 let unamePlatform = process.platform;
@@ -89,6 +94,14 @@ function getWaveHomeDir() {
         waveHome = path.join(homeDir, isDev ? ".waveterm-dev" : ".waveterm");
     }
     return waveHome;
+}
+
+function checkPromptMigrate() {
+    if (isDev || fs.existsSync(getWaveHomeDir())) {
+        return false;
+    }
+    let homeDir = process.env.HOME;
+    return fs.existsSync(path.join(homeDir, "prompt")) && fs.existsSync(homeDir, "prompt", "prompt.db");
 }
 
 // for dev, this is just the waveterm directory
