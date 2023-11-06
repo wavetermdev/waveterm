@@ -71,7 +71,7 @@ const (
 	KwArgLang     = "lang"
 )
 
-var ColorNames = []string{"yellow", "blue", "pink", "magenta", "cyan", "violet", "orange", "green", "red", "white"}
+var ColorNames = []string{"yellow", "blue", "pink", "mint", "cyan", "violet", "orange", "green", "red", "white"}
 var TabIcons = []string{"sparkle", "fire", "ghost", "cloud", "compass", "crown", "droplet", "graduation-cap", "heart", "file"}
 var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
 var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}
