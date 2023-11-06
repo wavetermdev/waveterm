@@ -10,7 +10,7 @@ import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, TabColors } from "../../../model/model";
 import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage } from "../common";
 import { LineType, RendererPluginType, ClientDataType, CommandRtnType } from "../../../types/types";
-import { RemotesSelector } from "../../connections/connections";
+import { ConnectionDropdown } from "../../connections/connections";
 import { PluginModel } from "../../../plugins/plugins";
 import * as util from "../../../util/util";
 import { commandRtnHandler } from "../../../util/util";
@@ -50,7 +50,7 @@ Are you sure you want to stop web-sharing this screen?
 `.trim();
 
 @mobxReact.observer
-class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId: string; inline?: boolean }, {}> {
+class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId: string; }, {}> {
     shareCopied: OV<boolean> = mobx.observable.box(false, { name: "ScreenSettings-shareCopied" });
     errorMessage: OV<string> = mobx.observable.box(null, { name: "ScreenSettings-errorMessage" });
 
@@ -194,39 +194,37 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
         });
     }
 
+    @boundMethod
+    selectRemote(cname: string): void {
+        let prtn = GlobalCommandRunner.screenSetRemote(cname, true, false);
+        util.commandRtnHandler(prtn, this.errorMessage);
+    }
+
     render() {
-        let { sessionId, screenId, inline } = this.props;
+        let { sessionId, screenId } = this.props;
+        let inline = false;
         let screen = GlobalModel.getScreenById(sessionId, screenId);
         if (screen == null) {
             return null;
         }
         let color: string = null;
+        let curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
         return (
-            <div
-                className={
-                    inline
-                        ? "screen-settings-inline"
-                        : cn("modal screen-settings-modal settings-modal prompt-modal is-active")
-                }
-            >
-                {!inline && <div className="modal-background" />}
-                <div className={inline ? "inline-content" : "modal-content"}>
+            <div className={cn("modal screen-settings-modal settings-modal prompt-modal is-active")}>
+                <div className="modal-background"/>
+                <div className="modal-content">
                     {this.shareCopied.get() && <div className="copied-indicator" />}
-                    {!inline && (
-                        <header>
-                            <div className="modal-title">screen settings ({screen.name.get()})</div>
-                            <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
-                                <XmarkIcon />
-                            </div>
-                        </header>
-                    )}
+                    <header>
+                        <div className="modal-title">screen settings ({screen.name.get()})</div>
+                        <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
+                            <XmarkIcon />
+                        </div>
+                    </header>
                     <div className="inner-content">
-                        {!inline && (
-                            <div className="settings-field">
-                                <div className="settings-label">Screen Id</div>
-                                <div className="settings-input">{screen.screenId}</div>
-                            </div>
-                        )}
+                        <div className="settings-field">
+                            <div className="settings-label">Screen Id</div>
+                            <div className="settings-input">{screen.screenId}</div>
+                        </div>
                         <div className="settings-field">
                             <div className="settings-label">Name</div>
                             <div className="settings-input">
@@ -238,6 +236,12 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
                                     maxLength={50}
                                     showIcon={true}
                                 />
+                            </div>
+                        </div>
+                        <div className="settings-field">
+                            <div className="settings-label">Connection</div>
+                            <div className="settings-input">
+                                <ConnectionDropdown curRemote={curRemote} onSelectRemote={this.selectRemote} allowNewConn={false}/>
                             </div>
                         </div>
                         <div className="settings-field">
@@ -261,47 +265,41 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
                                 </div>
                             </div>
                         </div>
-                        {!inline && (
-                            <div className="settings-field">
-                                <div className="settings-label">
-                                    <div>Archived</div>
-                                    <InfoMessage width={400}>
-                                        Archive will hide the screen tab. Commands and output will be retained in
-                                        history.
-                                    </InfoMessage>
-                                </div>
-                                <div className="settings-input">
-                                    <Toggle checked={screen.archived.get()} onChange={this.handleChangeArchived} />
+                        <div className="settings-field">
+                            <div className="settings-label">
+                                <div>Archived</div>
+                                <InfoMessage width={400}>
+                                    Archive will hide the screen tab. Commands and output will be retained in
+                                    history.
+                                </InfoMessage>
+                            </div>
+                            <div className="settings-input">
+                                <Toggle checked={screen.archived.get()} onChange={this.handleChangeArchived} />
+                            </div>
+                        </div>
+                        <div className="settings-field">
+                            <div className="settings-label">
+                                <div>Actions</div>
+                                <InfoMessage width={400}>
+                                    Delete will remove the screen, removing all commands and output from history.
+                                </InfoMessage>
+                            </div>
+                            <div className="settings-input">
+                                <div
+                                    onClick={this.handleDeleteScreen}
+                                    className="button is-prompt-danger is-outlined is-small"
+                                >
+                                    Delete Screen
                                 </div>
                             </div>
-                        )}
-                        {!inline && (
-                            <div className="settings-field">
-                                <div className="settings-label">
-                                    <div>Actions</div>
-                                    <InfoMessage width={400}>
-                                        Delete will remove the screen, removing all commands and output from history.
-                                    </InfoMessage>
-                                </div>
-                                <div className="settings-input">
-                                    <div
-                                        onClick={this.handleDeleteScreen}
-                                        className="button is-prompt-danger is-outlined is-small"
-                                    >
-                                        Delete Screen
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+                        </div>
                         <SettingsError errorMessage={this.errorMessage} />
                     </div>
-                    {!inline && (
-                        <footer>
-                            <div onClick={this.closeModal} className="button is-prompt-green is-outlined is-small">
-                                Close
-                            </div>
-                        </footer>
-                    )}
+                    <footer>
+                        <div onClick={this.closeModal} className="button is-prompt-green is-outlined is-small">
+                            Close
+                        </div>
+                    </footer>
                 </div>
             </div>
         );

@@ -330,7 +330,7 @@
         .about-content {
             margin-bottom: 0;
 
-            section {
+            .wave-section {
                 .logo-wrapper {
                     width: 72px;
                     height: 72px;
@@ -403,12 +403,12 @@
                 }
             }
 
-            section:nth-child(3) {
+            .wave-section:nth-child(3) {
                 display: flex;
                 align-items: flex-start;
                 gap: 10px;
 
-                .button-link {
+                .wave-button-link {
                     display: flex;
                     align-items: center;
 
@@ -418,7 +418,7 @@
                 }
             }
 
-            section:last-child {
+            .wave-section:last-child {
                 margin-bottom: 24px;
                 color: @term-white;
             }
@@ -426,7 +426,7 @@
     }
 }
 
-.button {
+.wave-button {
     display: flex;
     padding: 6px 16px;
     align-items: center;
@@ -435,7 +435,7 @@
     height: auto;
 }
 
-.button.color-green {
+.wave-button.color-green {
     color: @term-bright-white;
     background: @term-green !important; // !important is needed to override the default button color
     box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
@@ -446,7 +446,7 @@
     }
 }
 
-.button.color-standard {
+.wave-button.color-standard {
     color: @term-white;
     background: var(--overlays-white-6, rgba(255, 255, 255, 0.12));
 
@@ -455,7 +455,7 @@
     }
 }
 
-.button-link {
+.wave-button-link {
     display: flex;
     padding: 6px 16px;
     align-items: center;
@@ -465,7 +465,7 @@
     cursor: pointer;
 }
 
-section {
+.wave-section {
     display: flex;
     align-items: center;
     gap: 16px;
@@ -555,29 +555,6 @@ section {
         flex-direction: row;
         align-items: center;
 
-        &.inline-edit {
-            .icon {
-                display: inline;
-                width: 1em;
-                height: 1em;
-                margin-left: 1em;
-                vertical-align: middle;
-            }
-        }
-
-        &.inline-edit.edit-not-active {
-            cursor: pointer;
-
-            i.fa-pen {
-                margin-left: 5px;
-            }
-
-            &:hover {
-                text-decoration: underline;
-                text-decoration-style: dotted;
-            }
-        }
-
         &.settings-clickable {
             cursor: pointer;
         }
@@ -624,8 +601,8 @@ section {
         .tab-color-icon.color-blue path {
             fill: @tab-blue;
         }
-        .tab-color-icon.color-magenta path {
-            fill: @tab-magenta;
+        .tab-color-icon.color-mint path {
+            fill: @tab-mint;
         }
         .tab-color-icon.color-cyan path {
             fill: @tab-cyan;

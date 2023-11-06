@@ -19,8 +19,9 @@ import { getRemoteStr } from "../../common/prompt/prompt";
 import { GlobalModel, ScreenLines, Screen, Session } from "../../../model/model";
 import { Line } from "../../line/linecomps";
 import { LinesView } from "../../line/linesview";
-import * as util from "../../../util/util";
-import { TextField, InputDecoration } from "../../common/common";
+import { ConnectionDropdown } from "../../connections/connections";
+import * as util from  "../../../util/util";
+import { TextField, InputDecoration } from "../../common/common";       
 import { ReactComponent as EllipseIcon } from "../../assets/icons/ellipse.svg";
 import { ReactComponent as Check12Icon } from "../../assets/icons/check12.svg";
 import { ReactComponent as GlobeIcon } from "../../assets/icons/globe.svg";
@@ -93,79 +94,13 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
 
     @boundMethod
     selectRemote(cname: string): void {
-        mobx.action(() => {
-            this.connDropdownActive.set(false);
-        })();
         let prtn = GlobalCommandRunner.screenSetRemote(cname, true, false);
         util.commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
     clickNewConnection(): void {
-        mobx.action(() => {
-            this.connDropdownActive.set(false);
-        })();
-        GlobalModel.remotesModalModel.openModalForEdit({ remoteedit: true }, true);
-    }
-
-    renderConnDropdown(): React.ReactNode {
-        let { screen } = this.props;
-        let allRemotes = util.sortAndFilterRemotes(GlobalModel.remotes.slice());
-        let remote: T.RemoteType | null = null;
-        let curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
-        // TODO no remote?
-        return (
-            <div className={cn("dropdown", "conn-dropdown", { "is-active": this.connDropdownActive.get() })}>
-                <div className="dropdown-trigger" onClick={this.toggleConnDropdown}>
-                    <div className="conn-dd-trigger">
-                        <div className="lefticon">
-                            <GlobeIcon className="globe-icon" />
-                            <StatusCircleIcon className={cn("status-icon", "status-" + curRemote.status)} />
-                        </div>
-                        <div className="conntext">
-                            <If condition={util.isBlank(curRemote.remotealias)}>
-                                <div className="text-standard conntext-solo">{curRemote.remotecanonicalname}</div>
-                            </If>
-                            <If condition={!util.isBlank(curRemote.remotealias)}>
-                                <div className="text-secondary conntext-1">{curRemote.remotealias}</div>
-                                <div className="text-caption conntext-2">{curRemote.remotecanonicalname}</div>
-                            </If>
-                        </div>
-                        <div className="dd-control">
-                            <ArrowsUpDownIcon className="icon" />
-                        </div>
-                    </div>
-                </div>
-                <div className="dropdown-menu" role="menu">
-                    <div className="dropdown-content conn-dd-menu">
-                        <For each="remote" of={allRemotes}>
-                            <div
-                                className="dropdown-item"
-                                key={remote.remoteid}
-                                onClick={() => this.selectRemote(remote.remotecanonicalname)}
-                            >
-                                <div className="status-div">
-                                    <CircleIcon className={cn("status-icon", "status-" + remote.status)} />
-                                </div>
-                                <If condition={util.isBlank(remote.remotealias)}>
-                                    <div className="text-standard">{remote.remotecanonicalname}</div>
-                                </If>
-                                <If condition={!util.isBlank(remote.remotealias)}>
-                                    <div className="text-standard">{remote.remotealias}</div>
-                                    <div className="text-caption">{remote.remotecanonicalname}</div>
-                                </If>
-                            </div>
-                        </For>
-                        <div className="dropdown-item" onClick={this.clickNewConnection}>
-                            <div className="add-div">
-                                <AddIcon className="add-icon" />
-                            </div>
-                            <div className="text-standard">New Connection</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
+        GlobalModel.remotesModalModel.openModalForEdit({remoteedit: true}, true);
     }
 
     renderTabIconSelector(): React.ReactNode {
@@ -178,7 +113,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
 
         return (
             <>
-                <div className="text-s1">Select the icon</div>
+                <div className="text-s1 unselectable">Select the icon</div>
                 <div className="control-iconlist">
                     <For each="icon" of={TabIcons}>
                         <div
@@ -205,7 +140,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
 
         return (
             <>
-                <div className="text-s1">Select the color</div>
+                <div className="text-s1 unselectable">Select the color</div>
                 <div className="control-iconlist">
                     <For each="color" of={TabColors}>
                         <div
@@ -253,8 +188,15 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                 </div>
                 <div className="newtab-spacer" />
                 <div className="newtab-section conn-section">
-                    <div className="text-s1">You're connected to [{getRemoteStr(rptr)}]. Do you want to change it?</div>
-                    <div>{this.renderConnDropdown()}</div>
+                    <div className="text-s1 unselectable">
+                        You're connected to [{getRemoteStr(rptr)}].  Do you want to change it?
+                    </div>
+                    <div>
+                        <ConnectionDropdown curRemote={curRemote} allowNewConn={true} onSelectRemote={this.selectRemote} onNewConn={this.clickNewConnection}/>
+                    </div>
+                    <div className="text-caption cr-help-text">
+                        To change connection from the command line use `cr [alias|user@host]`
+                    </div>
                 </div>
                 <div className="newtab-spacer" />
                 <div className="newtab-section">
@@ -431,10 +373,10 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
                     </div>
                 </div>
                 <If condition={lines.length == 0}>
-                    <If condition={true}>
-                        <NewTabSettings screen={screen} />
+                    <If condition={screen.nextLineNum.get() == 1}>
+                        <NewTabSettings screen={screen}/>
                     </If>
-                    <If condition={false}>
+                    <If condition={screen.nextLineNum.get() != 1}>
                         <div className="window-view" ref={this.windowViewRef} data-screenid={screen.screenId}>
                             <div key="lines" className="lines"></div>
                             <div key="window-empty" className={cn("window-empty")}>

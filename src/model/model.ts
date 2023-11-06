@@ -344,6 +344,7 @@ class Screen {
     name: OV<string>;
     archived: OV<boolean>;
     curRemote: OV<RemotePtrType>;
+    nextLineNum: OV<number>;
     lastScreenSize: WindowSize;
     lastCols: number;
     lastRows: number;
@@ -361,6 +362,7 @@ class Screen {
         this.sessionId = sdata.sessionid;
         this.screenId = sdata.screenid;
         this.name = mobx.observable.box(sdata.name, { name: "screen-name" });
+        this.nextLineNum = mobx.observable.box(sdata.nextlinenum, { name: "screen-nextlinenum" });
         this.screenIdx = mobx.observable.box(sdata.screenidx, {
             name: "screen-screenidx",
         });
@@ -436,6 +438,7 @@ class Screen {
             this.screenIdx.set(data.screenidx);
             this.opts.set(data.screenopts);
             this.name.set(data.name);
+            this.nextLineNum.set(data.nextlinenum);
             this.archived.set(!!data.archived);
             let oldSelectedLine = this.selectedLine.get();
             let oldFocusType = this.focusType.get();

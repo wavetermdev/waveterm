@@ -34,7 +34,9 @@ import (
 
 const LineNoHeight = -1
 const DBFileName = "waveterm.db"
+const DBWALFileName = "waveterm.db-wal"
 const DBFileNameBackup = "backup.waveterm.db"
+const DBWALFileNameBackup = "backup.waveterm.db-wal"
 const MaxWebShareLineCount = 50
 const MaxWebShareScreenCount = 3
 const MaxLineStateSize = 4 * 1024 // 4k for now, can raise if needed
@@ -149,9 +151,19 @@ func GetDBName() string {
 	return path.Join(scHome, DBFileName)
 }
 
+func GetDBWALName() string {
+	scHome := scbase.GetWaveHomeDir()
+	return path.Join(scHome, DBWALFileName)
+}
+
 func GetDBBackupName() string {
 	scHome := scbase.GetWaveHomeDir()
 	return path.Join(scHome, DBFileNameBackup)
+}
+
+func GetDBWALBackupName() string {
+	scHome := scbase.GetWaveHomeDir()
+	return path.Join(scHome, DBWALFileNameBackup)
 }
 
 func IsValidConnectMode(mode string) bool {
@@ -1198,19 +1210,19 @@ func EnsureLocalRemote(ctx context.Context) error {
 	return nil
 }
 
-func EnsureDefaultSession(ctx context.Context) (*SessionType, error) {
-	session, err := GetSessionByName(ctx, DefaultSessionName)
+func EnsureOneSession(ctx context.Context) error {
+	numSessions, err := GetSessionCount(ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if session != nil {
-		return session, nil
+	if numSessions > 0 {
+		return nil
 	}
 	_, err = InsertSessionWithName(ctx, DefaultSessionName, true)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return GetSessionByName(ctx, DefaultSessionName)
+	return nil
 }
 
 func createClientData(tx *TxWrap) error {

@@ -11,7 +11,6 @@ import cn from "classnames";
 import { debounce } from "throttle-debounce";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { generateBackgroundWithGradient } from "../../../util/util";
 import { GlobalModel, GlobalCommandRunner, Session, ScreenLines, Screen } from "../../../model/model";
 import { renderCmdText } from "../../common/common";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
@@ -133,14 +132,6 @@ class ScreenTabs extends React.Component<{ session: Session }, {}> {
             <i title="shared to web" className="fa-sharp fa-solid fa-share-nodes web-share-icon" />
         ) : null;
 
-        const style = { borderColor: "transparent", background: "none" };
-        if (screen.isActive()) {
-            let tabColor = screen.getTabColor();
-            if (tabColor === "default") tabColor = "green";
-            style.borderColor = tabColor;
-            style.background = generateBackgroundWithGradient(tabColor);
-        }
-
         return (
             <div
                 key={screen.screenId}
@@ -150,7 +141,6 @@ class ScreenTabs extends React.Component<{ session: Session }, {}> {
                     { "is-active": activeScreenId == screen.screenId, "is-archived": screen.archived.get() },
                     "color-" + screen.getTabColor()
                 )}
-                style={style}
                 onClick={() => this.handleSwitchScreen(screen.screenId)}
                 onContextMenu={(event) => this.openScreenSettings(event, screen)}
             >

@@ -21,7 +21,6 @@ let MagicLayout = {
     // the 3 is for descenders, which get cut off in the terminal without this
     TermDescendersHeight: 3,
     TermWidthBuffer: 15,
-
 };
 
 let m = MagicLayout;
