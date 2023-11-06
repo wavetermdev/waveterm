@@ -10,11 +10,14 @@ If you install the production version of Wave, you'll see a semi-transparent sid
 
 ## Prereqs and Tools
 
-Download and install Go (must be at least go 1.18).  We also need gcc installed to run a CGO build (for Golang):
+Download and install Go (must be at least go 1.18).  We also need gcc installed to run a CGO build (for Golang).
+zip is required to build linux deployment packages (not required for running and debugging dev builds).
+
 ```
 sudo snap install go --classic
 sudo apt-get update
 sudo apt-get install gcc
+sudo apt-get install zip
 ```
 
 Download and install [ScriptHaus](https://github.com/scripthaus-dev/scripthaus) (to run the build commands):
