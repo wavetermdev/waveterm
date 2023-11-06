@@ -633,6 +633,7 @@ type FileInfoType = {
 
 type ExtBlob = Blob & {
     notFound: boolean;
+    name?: string;
 };
 
 type ExtFile = File & {
