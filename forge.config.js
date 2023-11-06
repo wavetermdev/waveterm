@@ -7,9 +7,6 @@ var AllowedFirstParts = {
 };
 
 var AllowedNodeModules = {
-    // "lzma-native": true,
-    // "fs-ext": true,
-    // "fsevents": true,
     "monaco-editor": true,
 };
 
@@ -54,9 +51,6 @@ module.exports = {
             "package.json",
             "dist/*",
             "public/*",
-            "node_modules/lzma-native/**",
-            "node_modules/fs-ext/**",
-            "node_modules/fsevents/**",
         ],
         icon: "public/waveterm.icns",
     },
