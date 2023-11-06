@@ -20,8 +20,8 @@ import { GlobalModel, ScreenLines, Screen, Session } from "../../../model/model"
 import { Line } from "../../line/linecomps";
 import { LinesView } from "../../line/linesview";
 import { ConnectionDropdown } from "../../connections/connections";
-import * as util from  "../../../util/util";
-import { TextField, InputDecoration } from "../../common/common";       
+import * as util from "../../../util/util";
+import { TextField, InputDecoration } from "../../common/common";
 import { ReactComponent as EllipseIcon } from "../../assets/icons/ellipse.svg";
 import { ReactComponent as Check12Icon } from "../../assets/icons/check12.svg";
 import { ReactComponent as GlobeIcon } from "../../assets/icons/globe.svg";
@@ -100,7 +100,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
 
     @boundMethod
     clickNewConnection(): void {
-        GlobalModel.remotesModalModel.openModalForEdit({remoteedit: true}, true);
+        GlobalModel.remotesModalModel.openModalForEdit({ remoteedit: true }, true);
     }
 
     renderTabIconSelector(): React.ReactNode {
@@ -163,11 +163,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
     render() {
         let { screen } = this.props;
         let rptr = screen.curRemote.get();
-        let curIcon = screen.getTabIcon();
-        if (util.isBlank(curIcon) || curIcon == "default") {
-            curIcon = "square";
-        }
-        let icon: string | null = null;
+        let curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
         return (
             <div className="newtab-container">
                 <div className="newtab-section name-section">
@@ -189,10 +185,15 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                 <div className="newtab-spacer" />
                 <div className="newtab-section conn-section">
                     <div className="text-s1 unselectable">
-                        You're connected to [{getRemoteStr(rptr)}].  Do you want to change it?
+                        You're connected to [{getRemoteStr(rptr)}]. Do you want to change it?
                     </div>
                     <div>
-                        <ConnectionDropdown curRemote={curRemote} allowNewConn={true} onSelectRemote={this.selectRemote} onNewConn={this.clickNewConnection}/>
+                        <ConnectionDropdown
+                            curRemote={curRemote}
+                            allowNewConn={true}
+                            onSelectRemote={this.selectRemote}
+                            onNewConn={this.clickNewConnection}
+                        />
                     </div>
                     <div className="text-caption cr-help-text">
                         To change connection from the command line use `cr [alias|user@host]`
@@ -374,7 +375,7 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
                 </div>
                 <If condition={lines.length == 0}>
                     <If condition={screen.nextLineNum.get() == 1}>
-                        <NewTabSettings screen={screen}/>
+                        <NewTabSettings screen={screen} />
                     </If>
                     <If condition={screen.nextLineNum.get() != 1}>
                         <div className="window-view" ref={this.windowViewRef} data-screenid={screen.screenId}>
