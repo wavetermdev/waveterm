@@ -4,7 +4,7 @@
 // magical layout constants to power TypeScript calculations
 // these need to match the CSS (usually margins, paddings, positions, etc.)
 let MagicLayout = {
-    CmdInputHeight: 92, // height of full cmd-input div
+    CmdInputHeight: 101, // height of full cmd-input div
     CmdInputBottom: 12, // .cmd-input
 
     LineHeaderHeight: 46,   // .line-header
