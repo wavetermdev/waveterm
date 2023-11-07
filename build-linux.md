@@ -10,10 +10,14 @@ If you install the production version of Wave, you'll see a semi-transparent sid
 
 ## Prereqs and Tools
 
-Download and install Go (must be at least go 1.18).  We also need gcc installed to run a CGO build (for Golang):
+Download and install Go (must be at least go 1.18).  We also need gcc installed to run a CGO build (for Golang).
+zip is required to build linux deployment packages (not required for running and debugging dev builds).
+
 ```
 sudo snap install go --classic
+sudo apt-get update
 sudo apt-get install gcc
+sudo apt-get install zip
 ```
 
 Download and install [ScriptHaus](https://github.com/scripthaus-dev/scripthaus) (to run the build commands):
@@ -55,17 +59,6 @@ Move out of the `scripthaus` directory if you're still in it.  Clone the wave re
 git clone git@github.com:wavetermdev/waveterm.git
 ```
 
-## Building WaveShell / WaveSrv
-
-cd into the waveterm directory (if you haven't already) and run the build-backend command using `scripthaus`.
-
-```
-cd waveterm
-scripthaus run build-backend
-```
-
-This builds the Golang backends for Wave.  The binaries will put in waveshell/bin and wavesrv/bin respectively.  If you're working on a new plugin or other pure frontend changes to Wave, you won't need to rebuild these unless you pull new code from the Wave Repository.
-
 ## One-Time Setup
 
 Install Wave modules (we use yarn):
@@ -78,6 +71,18 @@ Electron also requires specific builds of node_modules to work (because Electron
 ```
 scripthaus run electron-rebuild
 ```
+
+## Building WaveShell / WaveSrv
+
+cd into the waveterm directory (if you haven't already) and run the build-backend command using `scripthaus`.
+
+```
+cd waveterm
+scripthaus run build-backend
+```
+
+This builds the Golang backends for Wave.  The binaries will put in waveshell/bin and wavesrv/bin respectively.  If you're working on a new plugin or other pure frontend changes to Wave, you won't need to rebuild these unless you pull new code from the Wave Repository.
+
 
 ## Running WebPack
 

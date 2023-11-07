@@ -21,13 +21,15 @@ const ProdServerEndpoint = "http://127.0.0.1:1619";
 
 let isDev = process.env[WaveDevVarName] != null;
 let waveHome = getWaveHomeDir();
-ensureDir(waveHome);
 let DistDir = isDev ? "dist-dev" : "dist";
 let GlobalAuthKey = "";
 let instanceId = uuidv4();
 let oldConsoleLog = console.log;
 let wasActive = true;
 let wasInFg = true;
+
+checkPromptMigrate();
+ensureDir(waveHome);
 
 // these are either "darwin/amd64" or "darwin/arm64"
 // normalize darwin/x64 to darwin/amd64 for GOARCH compatibility
@@ -89,6 +91,32 @@ function getWaveHomeDir() {
         waveHome = path.join(homeDir, isDev ? ".waveterm-dev" : ".waveterm");
     }
     return waveHome;
+}
+
+function checkPromptMigrate() {
+    let waveHome = getWaveHomeDir();
+    if (isDev || fs.existsSync(waveHome)) {
+        // don't migrate if we're running dev version or if wave home directory already exists
+        return;
+    }
+    let homeDir = process.env.HOME;
+    let promptHome = path.join(homeDir, "prompt");
+    if (!fs.existsSync(promptHome) || !fs.existsSync(path.join(promptHome, "prompt.db"))) {
+        // make sure we have a valid prompt home directory (prompt.db must exist inside)
+        return;
+    }
+    // rename directory, and then rename db and authkey files
+    fs.renameSync(promptHome, waveHome);
+    fs.renameSync(path.join(waveHome, "prompt.db"), path.join(waveHome, "waveterm.db"));
+    if (fs.existsSync(waveHome, "prompt.db-wal")) {
+        fs.renameSync(path.join(waveHome, "prompt.db-wal"), path.join(waveHome, "waveterm.db-wal"));
+    }
+    if (fs.existsSync(waveHome, "prompt.db-shm")) {
+        fs.renameSync(path.join(waveHome, "prompt.db-shm"), path.join(waveHome, "waveterm.db-shm"));
+    }
+    if (fs.existsSync(waveHome, "prompt.authkey")) {
+        fs.renameSync(path.join(waveHome, "prompt.authkey"), path.join(waveHome, "waveterm.authkey"));
+    }
 }
 
 // for dev, this is just the waveterm directory
