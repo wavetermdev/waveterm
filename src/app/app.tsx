@@ -23,7 +23,7 @@ import {
 } from "./common/modals/settings";
 import { RemotesModal } from "./connections/connections";
 import { TosModal } from "./common/modals/modals";
-import { MainSideBar } from "./sidebar/MainSideBar";
+import { MainSideBar } from "./sidebar/sidebar";
 import { DisconnectedModal, ClientStopModal, AlertModal, AboutModal } from "./common/modals/modals";
 import { ErrorBoundary } from "./common/error/errorboundary";
 import "./app.less";

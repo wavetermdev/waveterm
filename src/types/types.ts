@@ -50,6 +50,7 @@ type LineType = {
 
 type ScreenOptsType = {
     tabcolor?: string;
+    tabicon?: string;
     pterm?: string;
 };
 
@@ -167,7 +168,7 @@ type FeCmdPacketType = {
     type: string;
     metacmd: string;
     metasubcmd?: string;
-    args: string[];
+    args: string[] | null;
     kwargs: Record<string, string>;
     rawstr?: string;
     uicontext: UIContextType;
@@ -632,6 +633,7 @@ type FileInfoType = {
 
 type ExtBlob = Blob & {
     notFound: boolean;
+    name?: string;
 };
 
 type ExtFile = File & {

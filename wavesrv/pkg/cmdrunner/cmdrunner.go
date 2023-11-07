@@ -72,6 +72,7 @@ const (
 )
 
 var ColorNames = []string{"yellow", "blue", "pink", "mint", "cyan", "violet", "orange", "green", "red", "white"}
+var TabIcons = []string{"sparkle", "fire", "ghost", "cloud", "compass", "crown", "droplet", "graduation-cap", "heart", "file"}
 var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
 var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}
 
@@ -81,6 +82,7 @@ var GlobalCmds = []string{"session", "screen", "remote", "set", "client", "telem
 
 var SetVarNameMap map[string]string = map[string]string{
 	"tabcolor": "screen.tabcolor",
+	"tabicon": "screen.tabicon",
 	"pterm":    "screen.pterm",
 	"anchor":   "screen.anchor",
 	"focus":    "screen.focus",
@@ -91,7 +93,7 @@ var SetVarScopes = []SetVarScope{
 	SetVarScope{ScopeName: "global", VarNames: []string{}},
 	SetVarScope{ScopeName: "client", VarNames: []string{"telemetry"}},
 	SetVarScope{ScopeName: "session", VarNames: []string{"name", "pos"}},
-	SetVarScope{ScopeName: "screen", VarNames: []string{"name", "tabcolor", "pos", "pterm", "anchor", "focus", "line"}},
+	SetVarScope{ScopeName: "screen", VarNames: []string{"name", "tabcolor", "tabicon", "pos", "pterm", "anchor", "focus", "line"}},
 	SetVarScope{ScopeName: "line", VarNames: []string{}},
 	// connection = remote, remote = remoteinstance
 	SetVarScope{ScopeName: "connection", VarNames: []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}},
@@ -757,6 +759,16 @@ func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		varsUpdated = append(varsUpdated, "tabcolor")
 		setNonAnchor = true
 	}
+	if pk.Kwargs["tabicon"] != "" {
+		icon := pk.Kwargs["tabicon"]
+		err = validateIcon(icon, "screen tabicon")
+		if err != nil {
+			return nil, err
+		}
+		updateMap[sstore.ScreenField_TabIcon] = icon
+		varsUpdated = append(varsUpdated, "tabicon")
+		setNonAnchor = true
+	}
 	if pk.Kwargs["pos"] != "" {
 		varsUpdated = append(varsUpdated, "pos")
 		setNonAnchor = true
@@ -806,7 +818,7 @@ func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		}
 	}
 	if len(varsUpdated) == 0 {
-		return nil, fmt.Errorf("/screen:set no updates, can set %s", formatStrs([]string{"name", "pos", "tabcolor", "focus", "anchor", "line", "sharename"}, "or", false))
+		return nil, fmt.Errorf("/screen:set no updates, can set %s", formatStrs([]string{"name", "pos", "tabcolor", "tabicon", "focus", "anchor", "line", "sharename"}, "or", false))
 	}
 	screen, err := sstore.UpdateScreen(ctx, ids.ScreenId, updateMap)
 	if err != nil {
@@ -1976,6 +1988,15 @@ func validateColor(color string, typeStr string) error {
 		}
 	}
 	return fmt.Errorf("invalid %s, valid colors are: %s", typeStr, formatStrs(ColorNames, "or", false))
+}
+
+func validateIcon(icon string, typeStr string) error {
+	for _, c := range TabIcons {
+		if icon == c {
+			return nil
+		}
+	}
+	return fmt.Errorf("invalid %s, valid icons are: %s", typeStr, formatStrs(TabIcons, "or", false))
 }
 
 func validateRemoteColor(color string, typeStr string) error {
