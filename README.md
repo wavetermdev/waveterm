@@ -10,15 +10,14 @@
 
 # Wave Terminal 
 
-The universal modern terminal for seamless workflows.
+A open-source, cross-platform, modern terminal for seamless workflows.
 
-Wave isn't just another terminal emulator; it's an AI-powered modern terminal designed for developers to never lose focus. With Wave, you can focus on execution, collaboration and context switching seamlessly.   
+Wave isn't just another terminal emulator; it's a rethink on how terminals are built.  Wave combines command line with the power of the open web to help veteran CLI users and new developers alike.
 
-### Features
-
-* Render anything inline: review code, images, even csv files without ever leaving the terminal
-* Save sessions and history
-* AI-powered
+* Inline renderers to cut down on context switching.  Render code, images, markdown, and CSV files without ever leaving the terminal.
+* Persistent sessions that can restore state across network disconnections and reboots
+* Searchable contextual command history across all remote sessions (saved locally)
+* Workspaces, tabs, and command blocks to keep you organized
 
 ## Installation
 
@@ -26,16 +25,12 @@ Wave Terminal works with MacOS and Linux (preliminary).
 
 Install Wave Terminal from: [www.commandline.dev/download](https://www.commandline.dev/download)
 
-## Quick Start
+## Links
 
-A quick start guide is available at [docs.getprompt.dev/quickstart/](https://docs.getprompt.dev/quickstart/)
-
-## Documentation
-
-Documentation is available at [docs.getprompt.dev](https://docs.getprompt.dev/)
-
-## Community
-  * Joins us on [Discord](https://discord.gg/XfvZ334gwU)
+* Homepage &mdash; https://commandline.dev
+* Quick Start Guide &mdash; https://docs.getprompt.dev/quickstart/
+* Documentation &mdash; https://docs.getprompt.dev/
+* Discord Community &mdash; https://discord.gg/XfvZ334gwU
 
 ## Contributing
 
