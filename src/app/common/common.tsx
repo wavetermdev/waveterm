@@ -131,8 +131,7 @@ interface InputDecorationProps {
 @mobxReact.observer
 class InputDecoration extends React.Component<InputDecorationProps, {}> {
     render() {
-        const { children, onClick } = this.props;
-
+        const { children } = this.props;
         return <div className="input-decoration">{children}</div>;
     }
 }
