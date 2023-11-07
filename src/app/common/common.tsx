@@ -387,8 +387,8 @@ interface DropdownState {
 @mobxReact.observer
 class Dropdown extends React.Component<DropdownProps, DropdownState> {
     wrapperRef: React.RefObject<HTMLDivElement>;
-    labelRef: React.RefObject<HTMLDivElement>;
-    displayRef: React.RefObject<HTMLDivElement>;
+    menuRef: React.RefObject<HTMLDivElement>;
+    timeoutId: any;
 
     constructor(props: DropdownProps) {
         super(props);
@@ -398,8 +398,7 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
             highlightedIndex: -1,
         };
         this.wrapperRef = React.createRef();
-        this.labelRef = React.createRef();
-        this.displayRef = React.createRef();
+        this.menuRef = React.createRef();
     }
 
     componentDidMount() {
@@ -408,6 +407,27 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
 
     componentWillUnmount() {
         document.removeEventListener("mousedown", this.handleClickOutside);
+    }
+
+    componentDidUpdate(prevProps: Readonly<DropdownProps>, prevState: Readonly<DropdownState>, snapshot?: any): void {
+        // If the dropdown was open but now is closed, start the timeout
+        if (prevState.isOpen && !this.state.isOpen) {
+            this.timeoutId = setTimeout(() => {
+                if (this.menuRef.current) {
+                    this.menuRef.current.style.display = "none";
+                }
+            }, 300);
+        }
+        // If the dropdown is now open, cancel any existing timeout and show the menu
+        else if (!prevState.isOpen && this.state.isOpen) {
+            if (this.timeoutId !== null) {
+                clearTimeout(this.timeoutId); // Cancel any existing timeout
+                this.timeoutId = null;
+            }
+            if (this.menuRef.current) {
+                this.menuRef.current.style.display = "inline-flex";
+            }
+        }
     }
 
     @boundMethod
@@ -496,7 +516,8 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
             <div
                 className={cn(`wave-dropdown ${className || ""}`, {
                     "wave-dropdown-error": error,
-                    "wave-dropdown-open": this.state.isOpen,
+                    "wave-dropdown-open": isOpen,
+                    "wave-dropdown-close": !isOpen,
                 })}
                 ref={this.wrapperRef}
                 tabIndex={0}
@@ -511,37 +532,30 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
                         float: shouldLabelFloat,
                         start: decoration?.startDecoration,
                     })}
-                    ref={this.labelRef}
                 >
                     {label}
                 </div>
-                <div
-                    className={cn("wave-dropdown-display", { start: decoration?.startDecoration })}
-                    ref={this.displayRef}
-                >
+                <div className={cn("wave-dropdown-display", { start: decoration?.startDecoration })}>
                     {selectedOptionLabel}
                 </div>
                 <div className="wave-dropdown-arrow">
                     <i className="fa-sharp fa-solid fa-chevron-down"></i>
                 </div>
-                {isOpen && (
-                    <div className={cn("wave-dropdown-menu")}>
-                        {options.map((option, index) => (
-                            <div
-                                key={option.value}
-                                className={cn("wave-dropdown-item", {
-                                    "wave-dropdown-item-highlighted": index === highlightedIndex,
-                                })}
-                                onClick={(e) => this.handleSelect(option.value, e)} // Pass the event here
-                                onMouseEnter={() => this.setState({ highlightedIndex: index })}
-                                onMouseLeave={() => this.setState({ highlightedIndex: -1 })}
-                            >
-                                {option.label}
-                            </div>
-                        ))}
-                    </div>
-                )}
-
+                <div className={cn("wave-dropdown-menu")} ref={this.menuRef}>
+                    {options.map((option, index) => (
+                        <div
+                            key={option.value}
+                            className={cn("wave-dropdown-item", {
+                                "wave-dropdown-item-highlighted": index === highlightedIndex,
+                            })}
+                            onClick={(e) => this.handleSelect(option.value, e)}
+                            onMouseEnter={() => this.setState({ highlightedIndex: index })}
+                            onMouseLeave={() => this.setState({ highlightedIndex: -1 })}
+                        >
+                            {option.label}
+                        </div>
+                    ))}
+                </div>
                 {decoration?.endDecoration && (
                     <div className="wave-dropdown-decoration-end">{decoration.endDecoration}</div>
                 )}
