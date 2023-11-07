@@ -116,7 +116,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                             console.log(val);
                         }}
                         decoration={{
-                            // startDecoration: <i className="fa-sharp fa-regular fa-circle-question" />,
+                            startDecoration: <i className="fa-sharp fa-regular fa-circle-question" />,
                             endDecoration: <i className="fa-sharp fa-regular fa-circle-question" />,
                         }}
                     />
