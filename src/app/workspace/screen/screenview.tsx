@@ -14,13 +14,13 @@ import { GlobalCommandRunner, TabColors } from "../../../model/model";
 import type { LineType, RenderModeType, LineFactoryProps, CommandRtnType } from "../../../types/types";
 import * as T from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { InlineSettingsTextEdit, RemoteStatusLight } from "../../common/common";
+import { InlineSettingsTextEdit, RemoteStatusLight, Dropdown } from "../../common/common";
 import { getRemoteStr } from "../../common/prompt/prompt";
 import { GlobalModel, ScreenLines, Screen, Session } from "../../../model/model";
 import { Line } from "../../line/linecomps";
 import { LinesView } from "../../line/linesview";
 import { ConnectionDropdown } from "../../connections/connections";
-import * as util from  "../../../util/util";
+import * as util from "../../../util/util";
 import { ReactComponent as EllipseIcon } from "../../assets/icons/ellipse.svg";
 import { ReactComponent as Check12Icon } from "../../assets/icons/check12.svg";
 import { ReactComponent as GlobeIcon } from "../../assets/icons/globe.svg";
@@ -37,7 +37,7 @@ dayjs.extend(localizedFormat);
 type OV<V> = mobx.IObservableValue<V>;
 
 @mobxReact.observer
-class ScreenView extends React.Component<{ session: Session, screen: Screen }, {}> {
+class ScreenView extends React.Component<{ session: Session; screen: Screen }, {}> {
     render() {
         let { session, screen } = this.props;
         if (screen == null) {
@@ -55,7 +55,7 @@ class ScreenView extends React.Component<{ session: Session, screen: Screen }, {
 @mobxReact.observer
 class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
     errorMessage: OV<string> = mobx.observable.box(null, { name: "NewTabSettings-errorMessage" });
-    
+
     @boundMethod
     selectTabColor(color: string): void {
         let { screen } = this.props;
@@ -84,7 +84,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
 
     @boundMethod
     clickNewConnection(): void {
-        GlobalModel.remotesModalModel.openModalForEdit({remoteedit: true}, true);
+        GlobalModel.remotesModalModel.openModalForEdit({ remoteedit: true }, true);
     }
 
     render() {
@@ -96,24 +96,48 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
         }
         let color: string = null;
         let curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
+
+        const dropdownOptions = [
+            { value: "option1", label: "Option 1" },
+            { value: "option2", label: "Option 2" },
+            { value: "option3", label: "Option 3" },
+            // Add as many options as needed
+        ];
+
         return (
             <div className="newtab-container">
+                <div className="newtab-section test-section unselectable">
+                    <div className="text-standard">Test</div>
+                    <Dropdown
+                        label="Test"
+                        options={dropdownOptions}
+                        // defaultValue="initialValue" // Optionally set an initial value
+                        onChange={(val: string) => {
+                            console.log(val);
+                        }}
+                        // ... other props
+                    />
+                </div>
+
                 <div className="newtab-section conn-section">
                     <div className="text-s1 unselectable">
-                        You're connected to [{getRemoteStr(rptr)}].  Do you want to change it?
+                        You're connected to [{getRemoteStr(rptr)}]. Do you want to change it?
                     </div>
                     <div>
-                        <ConnectionDropdown curRemote={curRemote} allowNewConn={true} onSelectRemote={this.selectRemote} onNewConn={this.clickNewConnection}/>
+                        <ConnectionDropdown
+                            curRemote={curRemote}
+                            allowNewConn={true}
+                            onSelectRemote={this.selectRemote}
+                            onNewConn={this.clickNewConnection}
+                        />
                     </div>
                     <div className="text-caption cr-help-text">
                         To change connection from the command line use `cr [alias|user@host]`
                     </div>
                 </div>
-                <div className="newtab-spacer"/>
+                <div className="newtab-spacer" />
                 <div className="newtab-section settings-field">
-                    <div className="text-s1 unselectable">
-                        Name
-                    </div>
+                    <div className="text-s1 unselectable">Name</div>
                     <div className="settings-input">
                         <InlineSettingsTextEdit
                             placeholder="name"
@@ -125,17 +149,20 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                         />
                     </div>
                 </div>
-                <div className="newtab-spacer"/>
+                <div className="newtab-spacer" />
                 <div className="newtab-section">
-                    <div className="text-s1 unselectable">
-                        Select the color
-                    </div>
+                    <div className="text-s1 unselectable">Select the color</div>
                     <div className="control-iconlist">
                         <For each="color" of={TabColors}>
-                            <div className="icondiv" key={color} title={color} onClick={() => this.selectTabColor(color)}>
-                                <EllipseIcon className={cn("icon", "color-" + color)}/>
+                            <div
+                                className="icondiv"
+                                key={color}
+                                title={color}
+                                onClick={() => this.selectTabColor(color)}
+                            >
+                                <EllipseIcon className={cn("icon", "color-" + color)} />
                                 <If condition={color == curColor}>
-                                    <Check12Icon className="check-icon"/>
+                                    <Check12Icon className="check-icon" />
                                 </If>
                             </div>
                         </For>
@@ -148,7 +175,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
 
 // screen is not null
 @mobxReact.observer
-class ScreenWindowView extends React.Component<{ session: Session, screen: Screen }, {}> {
+class ScreenWindowView extends React.Component<{ session: Session; screen: Screen }, {}> {
     rszObs: any;
     windowViewRef: React.RefObject<any>;
 
@@ -309,13 +336,17 @@ class ScreenWindowView extends React.Component<{ session: Session, screen: Scree
                 </div>
                 <If condition={lines.length == 0}>
                     <If condition={screen.nextLineNum.get() == 1}>
-                        <NewTabSettings screen={screen}/>
+                        <NewTabSettings screen={screen} />
                     </If>
                     <If condition={screen.nextLineNum.get() != 1}>
                         <div className="window-view" ref={this.windowViewRef} data-screenid={screen.screenId}>
                             <div key="lines" className="lines"></div>
                             <div key="window-empty" className={cn("window-empty")}>
-                                <div><code className="text-standard">[workspace="{session.name.get()}" screen="{screen.name.get()}"]</code></div>
+                                <div>
+                                    <code className="text-standard">
+                                        [workspace="{session.name.get()}" screen="{screen.name.get()}"]
+                                    </code>
+                                </div>
                             </div>
                         </div>
                     </If>

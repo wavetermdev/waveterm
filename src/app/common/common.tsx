@@ -241,7 +241,9 @@ class InlineSettingsTextEdit extends React.Component<
                                 title="Cancel (Esc)"
                                 className="button is-prompt-danger is-outlined is-small"
                             >
-                                <span className="icon is-small"><i className="fa-sharp fa-solid fa-xmark"/></span>
+                                <span className="icon is-small">
+                                    <i className="fa-sharp fa-solid fa-xmark" />
+                                </span>
                             </div>
                         </div>
                         <div className="control">
@@ -250,7 +252,9 @@ class InlineSettingsTextEdit extends React.Component<
                                 title="Confirm (Enter)"
                                 className="button is-prompt-green is-outlined is-small"
                             >
-                                <span className="icon is-small"><i className="fa-sharp fa-solid fa-check"/></span>
+                                <span className="icon is-small">
+                                    <i className="fa-sharp fa-solid fa-check" />
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -261,7 +265,7 @@ class InlineSettingsTextEdit extends React.Component<
                 <div onClick={this.clickEdit} className={cn("settings-input inline-edit", "edit-not-active")}>
                     {this.props.text}
                     <If condition={this.props.showIcon}>
-                        <i className="fa-sharp fa-solid fa-pen"/>
+                        <i className="fa-sharp fa-solid fa-pen" />
                     </If>
                 </div>
             );
@@ -352,6 +356,200 @@ class SettingsError extends React.Component<{ errorMessage: OV<string> }, {}> {
     }
 }
 
+interface DropdownDecorationProps {
+    startDecoration?: React.ReactNode;
+    endDecoration?: React.ReactNode;
+}
+
+interface DropdownOption {
+    value: string;
+    label: string;
+}
+
+interface DropdownProps {
+    label: string;
+    options: { value: string; label: string }[];
+    value?: string;
+    className?: string;
+    onChange: (value: string) => void;
+    placeholder?: string;
+    decoration?: DropdownDecorationProps;
+    error?: boolean;
+    defaultValue?: string;
+}
+
+interface DropdownState {
+    isOpen: boolean;
+    internalValue: string;
+    highlightedIndex: number;
+}
+
+@mobxReact.observer
+class Dropdown extends React.Component<DropdownProps, DropdownState> {
+    wrapperRef: React.RefObject<HTMLDivElement>;
+    labelRef: React.RefObject<HTMLDivElement>;
+    displayRef: React.RefObject<HTMLDivElement>;
+
+    constructor(props: DropdownProps) {
+        super(props);
+        this.state = {
+            isOpen: false,
+            internalValue: props.defaultValue || "",
+            highlightedIndex: -1,
+        };
+        this.wrapperRef = React.createRef();
+        this.labelRef = React.createRef();
+        this.displayRef = React.createRef();
+    }
+
+    componentDidMount() {
+        document.addEventListener("mousedown", this.handleClickOutside);
+    }
+
+    componentWillUnmount() {
+        document.removeEventListener("mousedown", this.handleClickOutside);
+    }
+
+    @boundMethod
+    handleClickOutside(event: MouseEvent) {
+        if (this.wrapperRef && !this.wrapperRef.current?.contains(event.target as Node)) {
+            this.setState({ isOpen: false });
+        }
+    }
+
+    @boundMethod
+    handleClick() {
+        this.toggleDropdown();
+    }
+
+    @boundMethod
+    handleKeyDown(event: React.KeyboardEvent) {
+        const { options } = this.props;
+        const { isOpen, highlightedIndex } = this.state;
+
+        switch (event.key) {
+            case "Enter":
+            case " ":
+                if (isOpen) {
+                    const option = options[highlightedIndex];
+                    if (option) {
+                        this.handleSelect(option.value, undefined);
+                    }
+                } else {
+                    this.toggleDropdown();
+                }
+                break;
+            case "Escape":
+                this.setState({ isOpen: false });
+                break;
+            case "ArrowUp":
+                if (isOpen) {
+                    this.setState((prevState) => ({
+                        highlightedIndex:
+                            prevState.highlightedIndex > 0 ? prevState.highlightedIndex - 1 : options.length - 1,
+                    }));
+                }
+                break;
+            case "ArrowDown":
+                if (isOpen) {
+                    this.setState((prevState) => ({
+                        highlightedIndex:
+                            prevState.highlightedIndex < options.length - 1 ? prevState.highlightedIndex + 1 : 0,
+                    }));
+                }
+                break;
+            case "Tab":
+                this.setState({ isOpen: false });
+                break;
+        }
+    }
+
+    @boundMethod
+    handleSelect(value: string, event?: React.MouseEvent | React.KeyboardEvent) {
+        const { onChange } = this.props;
+        if (event) {
+            event.stopPropagation(); // This stops the event from bubbling up to the wrapper
+        }
+
+        if (!("value" in this.props)) {
+            this.setState({ internalValue: value });
+        }
+        onChange(value);
+        this.setState({ isOpen: false });
+    }
+
+    @boundMethod
+    toggleDropdown() {
+        this.setState((prevState) => ({ isOpen: !prevState.isOpen }));
+    }
+
+    render() {
+        const { label, options, value, placeholder, decoration, error, className } = this.props;
+        const { isOpen, internalValue, highlightedIndex } = this.state;
+
+        const currentValue = value !== undefined ? value : internalValue;
+        const selectedOptionLabel =
+            options.find((option) => option.value === currentValue)?.label || placeholder || internalValue;
+        const shouldLabelFloat = value || internalValue || placeholder || isOpen;
+
+        return (
+            <div
+                className={cn(`wave-dropdown ${className || ""}`, {
+                    "wave-dropdown-error": error,
+                    "wave-dropdown-open": this.state.isOpen,
+                })}
+                ref={this.wrapperRef}
+                tabIndex={0}
+                onKeyDown={this.handleKeyDown}
+                onClick={this.handleClick}
+            >
+                {decoration?.startDecoration && (
+                    <div className="wave-dropdown-decoration-start">{decoration.startDecoration}</div>
+                )}
+                <div
+                    className={cn("wave-dropdown-label", {
+                        float: shouldLabelFloat,
+                        start: decoration?.startDecoration,
+                    })}
+                    ref={this.labelRef}
+                >
+                    {label}
+                </div>
+                <div
+                    className={cn("wave-dropdown-display", { start: decoration?.startDecoration })}
+                    ref={this.displayRef}
+                >
+                    {selectedOptionLabel}
+                </div>
+                <div className="wave-dropdown-arrow">
+                    <i className="fa-sharp fa-solid fa-chevron-down"></i>
+                </div>
+                {isOpen && (
+                    <div className={cn("wave-dropdown-menu")}>
+                        {options.map((option, index) => (
+                            <div
+                                key={option.value}
+                                className={cn("wave-dropdown-item", {
+                                    "wave-dropdown-item-highlighted": index === highlightedIndex,
+                                })}
+                                onClick={(e) => this.handleSelect(option.value, e)} // Pass the event here
+                                onMouseEnter={() => this.setState({ highlightedIndex: index })}
+                                onMouseLeave={() => this.setState({ highlightedIndex: -1 })}
+                            >
+                                {option.label}
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {decoration?.endDecoration && (
+                    <div className="wave-dropdown-decoration-end">{decoration.endDecoration}</div>
+                )}
+            </div>
+        );
+    }
+}
+
 export {
     CmdStrCode,
     Toggle,
@@ -362,4 +560,5 @@ export {
     InfoMessage,
     Markdown,
     SettingsError,
+    Dropdown,
 };
