@@ -32,6 +32,11 @@ Install Wave Terminal from: [www.commandline.dev/download](https://www.commandli
 * Documentation &mdash; https://docs.getprompt.dev/
 * Discord Community &mdash; https://discord.gg/XfvZ334gwU
 
+## Building from Source
+
+* [MacOS Build Instructions](./BUILD.md)
+* [Linux Build Instructions](./build-linux.md)
+
 ## Contributing
 
 Wave uses Github Project for tracking issues. 
@@ -39,7 +44,6 @@ Wave uses Github Project for tracking issues.
 Find more information in our [Contributions Guide](CONTRIBUTING.md), which includes:
 
   * [Ways to contribute](CONTRIBUTING.md#contributing-to-wave-terminal)
-  * [How to build and run from source](CONTRIBUTING.md#development-environment)
   * [Contribution guidelines](CONTRIBUTING.md#before-you-start)
 
 
