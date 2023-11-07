@@ -416,7 +416,7 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
                 if (this.menuRef.current) {
                     this.menuRef.current.style.display = "none";
                 }
-            }, 300);
+            }, 300); // Time is equal to the animation duration
         }
         // If the dropdown is now open, cancel any existing timeout and show the menu
         else if (!prevState.isOpen && this.state.isOpen) {
@@ -530,12 +530,12 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
                 <div
                     className={cn("wave-dropdown-label", {
                         float: shouldLabelFloat,
-                        start: decoration?.startDecoration,
+                        "offset-left": decoration?.startDecoration,
                     })}
                 >
                     {label}
                 </div>
-                <div className={cn("wave-dropdown-display", { start: decoration?.startDecoration })}>
+                <div className={cn("wave-dropdown-display", { "offset-left": decoration?.startDecoration })}>
                     {selectedOptionLabel}
                 </div>
                 <div className="wave-dropdown-arrow">
