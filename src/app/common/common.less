@@ -654,12 +654,20 @@
             font-size: 10px;
             top: 5px;
         }
+
+        &.start {
+            left: 47px;
+        }
     }
 
     &-display {
         position: absolute;
         left: 16px;
         bottom: 5px;
+
+        &.start {
+            left: 47px;
+        }
     }
 
     &-arrow {
@@ -730,9 +738,22 @@
 
     &-decoration-start,
     &-decoration-end {
-        display: inline-block;
-        margin-right: 5px;
-        margin-left: 5px;
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+
+        i {
+            font-size: 14px;
+        }
+    }
+
+    &-decoration-start {
+        left: 16px;
+    }
+
+    &-decoration-end {
+        right: 42px;
     }
 
     &-error {

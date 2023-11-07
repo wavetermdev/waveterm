@@ -111,11 +111,14 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                     <Dropdown
                         label="Test"
                         options={dropdownOptions}
-                        // defaultValue="initialValue" // Optionally set an initial value
+                        // defaultValue="option1" // Optionally set an initial value
                         onChange={(val: string) => {
                             console.log(val);
                         }}
-                        // ... other props
+                        decoration={{
+                            // startDecoration: <i className="fa-sharp fa-regular fa-circle-question" />,
+                            endDecoration: <i className="fa-sharp fa-regular fa-circle-question" />,
+                        }}
                     />
                 </div>
 
