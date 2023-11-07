@@ -241,7 +241,7 @@ class MainSideBar extends React.Component<{}, {}> {
                         </div>
                         <div className="item hoverEffect unselectable" onClick={() => openLink("https://discord.gg/XfvZ334gwU")}>
                             <DiscordIcon className="icon discord" />
-                            Talk to us
+                            Discord
                         </div>
                     </div>
                 </div>
