@@ -9,7 +9,6 @@ import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner } from "../../../model/model";
 import { getMonoFontSize } from "../../../util/textmeasure";
 import { isModKeyPress, hasNoModifiers } from "../../../util/util";
-import "./cmdInput.less";
 
 function pageSize(div: any): number {
     if (div == null) {
@@ -72,7 +71,7 @@ class TextAreaInput extends React.Component<{ onHeightChange: () => void }, {}> 
         let borders = parseFloat(cs.borderLeft) + parseFloat(cs.borderRight);
         let contentWidth = taElem.clientWidth - padding - borders;
         let fontSize = getMonoFontSize(parseInt(cs.fontSize));
-        let maxCols = Math.floor(contentWidth / fontSize.width);
+        let maxCols = Math.floor(contentWidth / Math.ceil(fontSize.width));
         return maxCols;
     }
 
@@ -388,7 +387,6 @@ class TextAreaInput extends React.Component<{ onHeightChange: () => void }, {}> 
         let cutValue = value.substr(0, selStart);
         let restValue = value.substr(selStart);
         let cmdLineUpdate = { cmdline: restValue, cursorpos: 0 };
-        console.log("ss", selStart, value, "[" + cutValue + "]", "[" + restValue + "]");
         navigator.clipboard.writeText(cutValue);
         GlobalModel.inputModel.updateCmdLine(cmdLineUpdate);
     }
@@ -426,7 +424,6 @@ class TextAreaInput extends React.Component<{ onHeightChange: () => void }, {}> 
         let initial = true;
         for (; cutSpot >= 0; cutSpot--) {
             let ch = value[cutSpot];
-            console.log(cutSpot, "[" + ch + "]");
             if (ch == " " && initial) {
                 continue;
             }
@@ -440,15 +437,6 @@ class TextAreaInput extends React.Component<{ onHeightChange: () => void }, {}> 
         let prevValue = value.slice(0, cutSpot);
         let restValue = value.slice(selStart);
         let cmdLineUpdate = { cmdline: prevValue + restValue, cursorpos: prevValue.length };
-        console.log(
-            "ss",
-            selStart,
-            value,
-            "prev[" + prevValue + "]",
-            "cut[" + cutValue + "]",
-            "rest[" + restValue + "]"
-        );
-        console.log("  ", cmdLineUpdate);
         navigator.clipboard.writeText(cutValue);
         GlobalModel.inputModel.updateCmdLine(cmdLineUpdate);
     }
@@ -548,7 +536,7 @@ class TextAreaInput extends React.Component<{ onHeightChange: () => void }, {}> 
         if (activeScreen != null) {
             activeScreen.focusType.get(); // for reaction
         }
-        let termFontSize = GlobalModel.termFontSize.get();
+        let termFontSize = 14;
         // fontSize*1.5 (line-height) + 2 * 0.5em padding
         let computedInnerHeight = displayLines * (termFontSize * 1.5) + 2 * 0.5 * termFontSize;
         // inner height + 2*1em padding

@@ -9,7 +9,6 @@ import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "../../../model/model";
 import { makeExternLink } from "../../../util/util";
-import "./cmdInput.less";
 
 dayjs.extend(localizedFormat);
 
