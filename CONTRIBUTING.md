@@ -3,11 +3,11 @@
 We welcome and value contributions to Wave Terminal! Wave is an open source project, always open for contributors. There are several ways you can contribute:
    * Submit issues related to bugs or new feature requests
    * Fix outstanding [issues](https://github.com/wavetermdev/waveterm/issues) with the existing code
-   * Contribute to [documentation]()
-   * Spread the word on social media (tag us on [LinkedIn](), [Twitter/X]())
+   * Contribute to [documentation](https://docs.getprompt.dev/)
+   * Spread the word on social media (tag us on [LinkedIn](https://www.linkedin.com/company/commandlinedev), [Twitter/X](https://twitter.com/commandlinedev))
    * Or simply ⭐️ the repository to show your appreciation
 
-However you choose to contribute, please be mindful and respect our [code of conduct]().
+However you choose to contribute, please be mindful and respect our [code of conduct](./CODE_OF_CONDUCT.md).
 
 > All contributions are highly appreciated! 🥰
 
@@ -28,15 +28,15 @@ Coding style and formatting is automated for each pull request. We use [Prettier
 
   * For minor changes, you are welcome to [open a pull request](https://github.com/wavetermdev/waveterm/pulls). 
   * For major changes, please [create an issue](https://github.com/wavetermdev/waveterm/issues/new) first.
-  * If you are looking for a place to start take a look at [open issues](https://github.com/wavetermdev/waveterm/issues) and [good-first-issues](lh).
-  * Join the [Discord channel]() to collaborate with the community on your contribution.
+  * If you are looking for a place to start take a look at [open issues](https://github.com/wavetermdev/waveterm/issues).
+  * Join the [Discord channel](https://discord.gg/XfvZ334gwU) to collaborate with the community on your contribution.
 
 
 ### Development Environment
 
 To build and run wave term locally see instructions below:
-   * [MacOS build instructions]()
-   * [Linux build instructions]()
+   * [MacOS build instructions](./BUILD.md)
+   * [Linux build instructions](./build-linux.md)
 
 ### Create a Pull Request
 
