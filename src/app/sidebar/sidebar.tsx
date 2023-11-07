@@ -224,11 +224,13 @@ class MainSideBar extends React.Component<{}, {}> {
                     </div>
                     <div className="middle hideScrollbarUntillHover">{this.getSessions()}</div>
                     <div className="bottom">
-                        <div className="item hoverEffect unselectable" onClick={this.handlePluginsClick}>
-                            <AppsIcon className="icon" />
-                            Apps
-                            <span className="hotkey">&#x2318;A</span>
-                        </div>
+                        <If condition={GlobalModel.isDev}>
+                            <div className="item hoverEffect unselectable" onClick={this.handlePluginsClick}>
+                                <AppsIcon className="icon" />
+                                Apps
+                                <span className="hotkey">&#x2318;A</span>
+                            </div>
+                        </If>
                         <div className="item hoverEffect unselectable" onClick={this.handleSettingsClick}>
                             <SettingsIcon className="icon" />
                             Settings
