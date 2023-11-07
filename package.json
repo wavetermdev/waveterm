@@ -58,6 +58,8 @@
         "@types/node": "^20.4.0",
         "@types/papaparse": "^5.3.10",
         "@types/react": "^18.0.12",
+        "@types/sprintf-js": "^1.1.3",
+        "@types/throttle-debounce": "^5.0.1",
         "@types/uuid": "9.0.6",
         "@types/webpack-env": "^1.18.3",
         "babel-loader": "^9.1.3",

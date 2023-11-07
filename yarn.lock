@@ -2083,6 +2083,16 @@
   dependencies:
     "@types/node" "*"
 
+"@types/sprintf-js@^1.1.3":
+  version "1.1.3"
+  resolved "https://registry.yarnpkg.com/@types/sprintf-js/-/sprintf-js-1.1.3.tgz#cdad9076d288921cea5b336ab07b915ab27f7921"
+  integrity sha512-Z9z6EMpwsroPp4BivsuVi/LYWi7jnuMCz9gWD/tZYhlEOSV2MO3fawrwHUEl05mshHyzHejPwe6PM0ZBDQD9yw==
+
+"@types/throttle-debounce@^5.0.1":
+  version "5.0.1"
+  resolved "https://registry.yarnpkg.com/@types/throttle-debounce/-/throttle-debounce-5.0.1.tgz#8ce917e41580b2cf16f8ee840e227947f4152b04"
+  integrity sha512-/fifasjlhpz/r4YsH0r0ZXJvivXFB3F6bmezMnqgsn/NK/fYJn7vN84k7eYn/oALu/aenXo+t8Pv+QlkS6iYBg==
+
 "@types/triple-beam@^1.3.2":
   version "1.3.3"
   resolved "https://registry.yarnpkg.com/@types/triple-beam/-/triple-beam-1.3.3.tgz#726ae98a5f6418c8f24f9b0f2a9f81a8664876ae"
