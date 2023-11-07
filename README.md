@@ -28,6 +28,7 @@ Install Wave Terminal from: [www.commandline.dev/download](https://www.commandli
 ## Links
 
 * Homepage &mdash; https://commandline.dev
+* Download Page &mdash; https://commandline.dev/download
 * Quick Start Guide &mdash; https://docs.getprompt.dev/quickstart/
 * Documentation &mdash; https://docs.getprompt.dev/
 * Discord Community &mdash; https://discord.gg/XfvZ334gwU
