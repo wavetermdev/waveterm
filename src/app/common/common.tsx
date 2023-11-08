@@ -159,6 +159,7 @@ interface TextFieldProps {
     defaultValue?: string;
     decoration?: TextFieldDecorationProps;
     required?: boolean;
+    maxLength?: number;
 }
 
 interface TextFieldState {
@@ -217,14 +218,9 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
         this.setState((prevState) => ({ showHelpText: !prevState.showHelpText }));
     }
 
-    debouncedOnChange = debounce(300, (value) => {
-        const { onChange } = this.props;
-        onChange?.(value);
-    });
-
     @boundMethod
     handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-        const { required } = this.props;
+        const { required, onChange } = this.props;
         const inputValue = e.target.value;
 
         // Check if value is empty and the field is required
@@ -239,11 +235,11 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
             this.setState({ internalValue: inputValue });
         }
 
-        this.debouncedOnChange(inputValue);
+        onChange && onChange(inputValue);
     }
 
     render() {
-        const { label, value, placeholder, decoration, className } = this.props;
+        const { label, value, placeholder, decoration, className, maxLength } = this.props;
         const { focused, internalValue, error } = this.state;
 
         // Decide if the input should behave as controlled or uncontrolled
@@ -271,6 +267,7 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
                         onFocus={this.handleFocus}
                         onBlur={this.handleBlur}
                         placeholder={placeholder}
+                        maxLength={maxLength}
                     />
                 </div>
                 {decoration?.endDecoration && <div>{decoration.endDecoration}</div>}
@@ -279,78 +276,11 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
     }
 }
 
-interface NumberFieldProps {
-    label: string;
-    value?: string;
-    className?: string;
-    onChange?: (value: string) => void;
-    placeholder?: string;
-    defaultValue?: string;
-    decoration?: TextFieldDecorationProps;
-    required?: boolean;
-}
-
-interface NumberFieldState {
-    focused: boolean;
-    internalValue: string;
-    error: boolean;
-    showHelpText: boolean;
-    hasContent: boolean;
-}
-
-@mobxReact.observer
-class NumberField extends React.Component<NumberFieldProps, NumberFieldState> {
-    inputRef: React.RefObject<HTMLInputElement> = React.createRef();
-
-    constructor(props: NumberFieldProps) {
-        super(props);
-        const hasInitialContent = Boolean(props.value || props.defaultValue);
-        this.state = {
-            focused: false,
-            internalValue: props.defaultValue || "",
-            error: false,
-            showHelpText: false,
-            hasContent: hasInitialContent,
-        };
-        this.inputRef = React.createRef();
-    }
-
-    componentDidUpdate(prevProps: NumberFieldProps) {
-        // Only update the focus state if using as controlled
-        if (this.props.value !== undefined && this.props.value !== prevProps.value) {
-            this.setState({ focused: Boolean(this.props.value) });
-        }
-    }
-
-    @boundMethod
-    handleFocus() {
-        this.setState({ focused: true });
-    }
-
-    @boundMethod
-    handleBlur() {
-        const { required } = this.props;
-        if (required && this.state.internalValue === "") {
-            this.setState({ error: true, focused: false });
-        } else {
-            this.setState({ error: false, focused: false });
-        }
-    }
-
-    @boundMethod
-    handleHelpTextClick() {
-        this.setState((prevState) => ({ showHelpText: !prevState.showHelpText }));
-    }
-
-    debouncedOnChange = debounce(300, (value: string) => {
-        const { onChange } = this.props;
-        onChange?.(value);
-    });
-
+class NumberField extends TextField {
     @boundMethod
     handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+        const { required, onChange } = this.props;
         const inputValue = e.target.value;
-        console.log("handleInputChange", inputValue);
 
         // Allow only numeric input
         if (inputValue === "" || /^\d*$/.test(inputValue)) {
@@ -359,8 +289,7 @@ class NumberField extends React.Component<NumberFieldProps, NumberFieldState> {
                 this.setState({ internalValue: inputValue, error: false, hasContent: Boolean(inputValue) });
             }
 
-            // Call the onChange handler with the new value.
-            this.debouncedOnChange(inputValue);
+            onChange && onChange(inputValue);
         }
     }
 
@@ -369,17 +298,12 @@ class NumberField extends React.Component<NumberFieldProps, NumberFieldState> {
         // Allow backspace, delete, tab, escape, and enter
         if (
             [46, 8, 9, 27, 13].includes(event.keyCode) ||
-            // Allow: Ctrl+A
-            (event.keyCode === 65 && event.ctrlKey === true) ||
-            // Allow: Ctrl+C
-            (event.keyCode === 67 && event.ctrlKey === true) ||
-            // Allow: Ctrl+X
-            (event.keyCode === 88 && event.ctrlKey === true) ||
+            // Allow: Ctrl+A, Ctrl+C, Ctrl+X
+            ((event.keyCode === 65 || event.keyCode === 67 || event.keyCode === 88) && event.ctrlKey === true) ||
             // Allow: home, end, left, right
             (event.keyCode >= 35 && event.keyCode <= 39)
         ) {
-            // let it happen, don't do anything
-            return;
+            return; // let it happen, don't do anything
         }
         // Ensure that it is a number and stop the keypress
         if (
@@ -391,42 +315,12 @@ class NumberField extends React.Component<NumberFieldProps, NumberFieldState> {
     }
 
     render() {
-        const { label, value, placeholder, decoration, className } = this.props;
-        const { focused, internalValue, error } = this.state;
+        // Use the render method from TextField but add the onKeyDown handler
+        const renderedTextField = super.render();
 
-        // Decide if the input should behave as controlled or uncontrolled
-        const inputValue = value !== undefined ? value : internalValue;
-
-        console.log("render", inputValue);
-
-        return (
-            <div className={cn(`wave-textfield ${className || ""}`, { focused: focused, error: error })}>
-                {decoration?.startDecoration && <>{decoration.startDecoration}</>}
-                <div className="wave-textfield-inner">
-                    <label
-                        className={cn("wave-textfield-inner-label", {
-                            float: this.state.hasContent || this.state.focused || placeholder,
-                            "offset-left": decoration?.startDecoration,
-                        })}
-                        htmlFor={label}
-                    >
-                        {label}
-                    </label>
-                    <input
-                        className={cn("wave-textfield-inner-input", { "offset-left": decoration?.startDecoration })}
-                        ref={this.inputRef}
-                        id={label}
-                        value={inputValue}
-                        onChange={this.handleInputChange}
-                        onFocus={this.handleFocus}
-                        onBlur={this.handleBlur}
-                        onKeyDown={this.handleKeyDown}
-                        placeholder={placeholder}
-                    />
-                </div>
-                {decoration?.endDecoration && <>{decoration.endDecoration}</>}
-            </div>
-        );
+        return React.cloneElement(renderedTextField, {
+            onKeyDown: this.handleKeyDown,
+        });
     }
 }
 

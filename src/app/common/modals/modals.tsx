@@ -677,16 +677,16 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
     }
 
     @boundMethod
-    handleChangePassword(e: any): void {
+    handleChangePassword(value: string): void {
         mobx.action(() => {
-            this.tempPassword.set(e.target.value);
+            this.tempPassword.set(value);
         })();
     }
 
     @boundMethod
-    handleChangeAlias(e: any): void {
+    handleChangeAlias(value: string): void {
         mobx.action(() => {
-            this.tempAlias.set(e.target.value);
+            this.tempAlias.set(value);
         })();
     }
 
@@ -740,7 +740,7 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
                                     label="Alias"
                                     onChange={this.handleChangeAlias}
                                     value={this.tempAlias.get()}
-                                    // maxLength={40} add support for max length
+                                    maxLength={100}
                                     decoration={{
                                         endDecoration: (
                                             <InputDecoration>
