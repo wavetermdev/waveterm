@@ -10,17 +10,18 @@ import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { debounce } from "throttle-debounce";
 import dayjs from "dayjs";
-import { GlobalCommandRunner, TabColors } from "../../../model/model";
+import { GlobalCommandRunner, TabColors, TabIcons } from "../../../model/model";
 import type { LineType, RenderModeType, LineFactoryProps, CommandRtnType } from "../../../types/types";
 import * as T from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { InlineSettingsTextEdit, RemoteStatusLight, Dropdown } from "../../common/common";
+import { InlineSettingsTextEdit, RemoteStatusLight } from "../../common/common";
 import { getRemoteStr } from "../../common/prompt/prompt";
 import { GlobalModel, ScreenLines, Screen, Session } from "../../../model/model";
 import { Line } from "../../line/linecomps";
 import { LinesView } from "../../line/linesview";
 import { ConnectionDropdown } from "../../connections/connections";
 import * as util from "../../../util/util";
+import { TextField, InputDecoration } from "../../common/common";
 import { ReactComponent as EllipseIcon } from "../../assets/icons/ellipse.svg";
 import { ReactComponent as Check12Icon } from "../../assets/icons/check12.svg";
 import { ReactComponent as GlobeIcon } from "../../assets/icons/globe.svg";
@@ -54,7 +55,8 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
 
 @mobxReact.observer
 class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
-    errorMessage: OV<string> = mobx.observable.box(null, { name: "NewTabSettings-errorMessage" });
+    connDropdownActive: OV<boolean> = mobx.observable.box(false, { name: "NewTabSettings-connDropdownActive" });
+    errorMessage: OV<string | null> = mobx.observable.box(null, { name: "NewTabSettings-errorMessage" });
 
     @boundMethod
     selectTabColor(color: string): void {
@@ -67,13 +69,27 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
     }
 
     @boundMethod
-    inlineUpdateName(val: string): void {
+    selectTabIcon(icon: string): void {
         let { screen } = this.props;
-        if (util.isStrEq(val, screen.name.get())) {
+        if (screen.getTabIcon() == icon) {
             return;
         }
+        let prtn = GlobalCommandRunner.screenSetSettings(screen.screenId, { tabicon: icon }, false);
+        util.commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
+    updateName(val: string): void {
+        let { screen } = this.props;
         let prtn = GlobalCommandRunner.screenSetSettings(screen.screenId, { name: val }, false);
         util.commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
+    toggleConnDropdown(): void {
+        mobx.action(() => {
+            this.connDropdownActive.set(!this.connDropdownActive.get());
+        })();
     }
 
     @boundMethod
@@ -87,41 +103,86 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
         GlobalModel.remotesModalModel.openModalForEdit({ remoteedit: true }, true);
     }
 
-    render() {
+    renderTabIconSelector(): React.ReactNode {
         let { screen } = this.props;
-        let rptr = screen.curRemote.get();
+        let curIcon = screen.getTabIcon();
+        if (util.isBlank(curIcon) || curIcon == "default") {
+            curIcon = "square";
+        }
+        let icon: string | null = null;
+
+        return (
+            <>
+                <div className="text-s1 unselectable">Select the icon</div>
+                <div className="control-iconlist">
+                    <For each="icon" of={TabIcons}>
+                        <div
+                            className="icondiv"
+                            key={icon}
+                            title={icon || ""}
+                            onClick={() => this.selectTabIcon(icon || "")}
+                        >
+                            <i className={`fa-sharp fa-solid fa-${icon}`}></i>
+                        </div>
+                    </For>
+                </div>
+            </>
+        );
+    }
+
+    renderTabColorSelector(): React.ReactNode {
+        let { screen } = this.props;
         let curColor = screen.getTabColor();
         if (util.isBlank(curColor) || curColor == "default") {
             curColor = "green";
         }
-        let color: string = null;
-        let curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
-
-        const dropdownOptions = [
-            { value: "option1", label: "Option 1" },
-            { value: "option2", label: "Option 2" },
-            { value: "option3", label: "Option 3" },
-            // Add as many options as needed
-        ];
+        let color: string | null = null;
 
         return (
+            <>
+                <div className="text-s1 unselectable">Select the color</div>
+                <div className="control-iconlist">
+                    <For each="color" of={TabColors}>
+                        <div
+                            className="icondiv"
+                            key={color}
+                            title={color || ""}
+                            onClick={() => this.selectTabColor(color || "")}
+                        >
+                            <EllipseIcon className={cn("icon", "color-" + color)} />
+                            <If condition={color == curColor}>
+                                <Check12Icon className="check-icon" />
+                            </If>
+                        </div>
+                    </For>
+                </div>
+            </>
+        );
+    }
+
+    render() {
+        let { screen } = this.props;
+        let rptr = screen.curRemote.get();
+        let curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
+        return (
             <div className="newtab-container">
-                <div className="newtab-section test-section unselectable">
-                    <div className="text-standard">Test</div>
-                    <Dropdown
-                        label="Test"
-                        options={dropdownOptions}
-                        // defaultValue="option1" // Optionally set an initial value
-                        onChange={(val: string) => {
-                            console.log(val);
-                        }}
+                <div className="newtab-section name-section">
+                    <div className="text-standard">Name</div>
+                    <TextField
+                        label="Title"
+                        required={true}
+                        defaultValue={screen.name.get() ?? ""}
+                        onChange={this.updateName}
                         decoration={{
-                            startDecoration: <i className="fa-sharp fa-regular fa-circle-question" />,
-                            endDecoration: <i className="fa-sharp fa-regular fa-circle-question" />,
+                            endDecoration: (
+                                <InputDecoration>
+                                    <i className="fa-sharp fa-regular fa-circle-question"></i>
+                                </InputDecoration>
+                            ),
                         }}
                     />
                 </div>
-
+                <div className="newtab-spacer" />
                 <div className="newtab-section conn-section">
                     <div className="text-s1 unselectable">
                         You're connected to [{getRemoteStr(rptr)}]. Do you want to change it?
@@ -139,37 +200,12 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                     </div>
                 </div>
                 <div className="newtab-spacer" />
-                <div className="newtab-section settings-field">
-                    <div className="text-s1 unselectable">Name</div>
-                    <div className="settings-input">
-                        <InlineSettingsTextEdit
-                            placeholder="name"
-                            text={screen.name.get() ?? "(none)"}
-                            value={screen.name.get() ?? ""}
-                            onChange={this.inlineUpdateName}
-                            maxLength={50}
-                            showIcon={true}
-                        />
-                    </div>
+                <div className="newtab-section">
+                    <div>{this.renderTabIconSelector()}</div>
                 </div>
                 <div className="newtab-spacer" />
                 <div className="newtab-section">
-                    <div className="text-s1 unselectable">Select the color</div>
-                    <div className="control-iconlist">
-                        <For each="color" of={TabColors}>
-                            <div
-                                className="icondiv"
-                                key={color}
-                                title={color}
-                                onClick={() => this.selectTabColor(color)}
-                            >
-                                <EllipseIcon className={cn("icon", "color-" + color)} />
-                                <If condition={color == curColor}>
-                                    <Check12Icon className="check-icon" />
-                                </If>
-                            </div>
-                        </For>
-                    </div>
+                    <div>{this.renderTabColorSelector()}</div>
                 </div>
             </div>
         );

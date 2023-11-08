@@ -21,7 +21,12 @@ brew install scripthaus
 ```
 
 You also need a relatively modern nodejs with npm and yarn installed.
-Node can be installed from [here](https://nodejs.org).  npm can install yarn using `npm install -g yarn`.
+   * Node can be installed from [https://nodejs.org](https://nodejs.org).  
+   * npm can install yarn using: 
+
+```
+npm install -g yarn
+```
 
 ## Clone the Repo
 

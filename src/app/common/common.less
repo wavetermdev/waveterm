@@ -774,6 +774,82 @@
     }
 }
 
+.textfield {
+    display: flex;
+    align-items: center;
+    border: 1px solid @term-white;
+    border-radius: 6px;
+    position: relative;
+    margin-bottom: 1rem;
+    background-color: transparent;
+    height: 44px;
+    min-width: 412px;
+    gap: 6px;
+
+    &.focused {
+        border-color: @term-green;
+    }
+
+    &.error {
+        border-color: @term-red;
+    }
+
+    .textfield-inner {
+        display: flex;
+        align-items: flex-end;
+        height: 100%;
+        position: relative;
+        flex-grow: 1;
+
+        .textfield-label {
+            position: absolute;
+            left: 16px;
+            top: 16px;
+            font-size: 12.5px;
+            transition: all 0.3s;
+            color: @term-white;
+            line-height: 10px;
+
+            &.float {
+                font-size: 10px;
+                top: 5px;
+            }
+
+            &.start {
+                left: 0;
+            }
+        }
+
+        .textfield-input {
+            width: 100%;
+            height: 30px;
+            border: none;
+            padding: 5px 0 5px 16px;
+            font-size: 16px;
+            outline: none;
+            background-color: transparent;
+            color: @term-bright-white;
+            line-height: 20px;
+
+            &.start {
+                padding: 5px 16px 5px 0;
+            }
+        }
+    }
+
+    i {
+        font-size: 16px;
+    }
+}
+
+.input-decoration {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px;
+    margin: 8px;
+}
+
 .inline-edit {
     .icon {
         display: inline;

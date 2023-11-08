@@ -48,9 +48,7 @@ GO_LDFLAGS="-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')"
 (cd waveshell; GOOS=darwin GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-darwin.arm64 main-waveshell.go)
 (cd waveshell; GOOS=linux GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-linux.amd64 main-waveshell.go)
 (cd waveshell; GOOS=linux GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-linux.arm64 main-waveshell.go)
-(cd wavesrv; GOOS=darwin GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../build/wavesrv.amd64 ./cmd)
-(cd wavesrv; GOOS=darwin GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../build/wavesrv.arm64 ./cmd)
-lipo -create -output bin/wavesrv build/wavesrv.amd64 build/wavesrv.arm64
+(cd wavesrv; CGO_ENABLED=1 go build -ldflags="$GO_LDFLAGS" -o ../bin/wavesrv ./cmd)
 node_modules/.bin/electron-forge make
 ```
 
@@ -66,7 +64,7 @@ GO_LDFLAGS="-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')"
 (cd waveshell; GOOS=darwin GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-darwin.arm64 main-waveshell.go)
 (cd waveshell; GOOS=linux GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-linux.amd64 main-waveshell.go)
 (cd waveshell; GOOS=linux GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-linux.arm64 main-waveshell.go)
-(cd wavesrv; go build -ldflags="$GO_LDFLAGS" -o ../bin/wavesrv ./cmd)
+(cd wavesrv; CGO_ENABLED=1 go build -ldflags="$GO_LDFLAGS" -o ../bin/wavesrv ./cmd)
 node_modules/.bin/electron-forge make
 ```
 
@@ -77,45 +75,9 @@ open out/Wave-darwin-x64/Wave.app
 ```
 
 ```bash
-# @scripthaus command create-dmg
-# @scripthaus cd :playbook
-DMG_VERSION=$(node -e 'console.log(require("./version.js"))')
-DMG_NAME="waveterm-macos-x86-${DMG_VERSION}.dmg"
-rm *.dmg
-/Users/mike/work/gopath/src/github.com/create-dmg/create-dmg/create-dmg \
-  --volname "WaveTerm" \
-  --window-pos 200 120 \
-  --window-size 600 300 \
-  --icon-size 100 \
-  --icon "Wave.app" 200 130 \
-  --hide-extension "Wave.app" \
-  --app-drop-link 400 125 \
-  $DMG_NAME \
-  "out/Wave-darwin-x64/Wave.app"
-```
-
-```bash
-# @scripthaus command create-dmg-m1
-# @scripthaus cd :playbook
-DMG_VERSION=$(node -e 'console.log(require("./version.js"))')
-DMG_NAME="waveterm-macos-arm64-${DMG_VERSION}.dmg"
-rm *.dmg
-/Users/sawka/work/gopath/src/github.com/create-dmg/create-dmg/create-dmg \
-  --volname "WaveTerm" \
-  --window-pos 200 120 \
-  --window-size 600 300 \
-  --icon-size 100 \
-  --icon "Wave.app" 200 130 \
-  --hide-extension "Wave.app" \
-  --app-drop-link 400 125 \
-  $DMG_NAME \
-  "out/Wave-darwin-arm64/Wave.app"
-```
-
-```bash
 # @scripthaus command build-wavesrv
 cd wavesrv
-go build -ldflags "-X main.BuildTime=$(date +'%Y%m%d%H%M')" -o bin/wavesrv ./cmd
+CGO_ENABLED=1 go build -ldflags "-X main.BuildTime=$(date +'%Y%m%d%H%M')" -o bin/wavesrv ./cmd
 ```
 
 ```bash
