@@ -8,6 +8,7 @@ import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import dayjs from "dayjs";
 import type { RemoteType } from "../../types/types";
+import { If, For } from "tsx-control-statements/components";
 
 import { ReactComponent as LeftChevronIcon } from "../assets/icons/chevron_left.svg";
 import { ReactComponent as HelpIcon } from "../assets/icons/help.svg";
@@ -235,11 +236,17 @@ class MainSideBar extends React.Component<{}, {}> {
                             <SettingsIcon className="icon" />
                             Settings
                         </div>
-                        <div className="item hoverEffect unselectable" onClick={() => openLink("https://docs.getprompt.dev")}>
+                        <div
+                            className="item hoverEffect unselectable"
+                            onClick={() => openLink("https://docs.getprompt.dev")}
+                        >
                             <HelpIcon className="icon" />
                             Documentation
                         </div>
-                        <div className="item hoverEffect unselectable" onClick={() => openLink("https://discord.gg/XfvZ334gwU")}>
+                        <div
+                            className="item hoverEffect unselectable"
+                            onClick={() => openLink("https://discord.gg/XfvZ334gwU")}
+                        >
                             <DiscordIcon className="icon discord" />
                             Discord
                         </div>

@@ -82,6 +82,7 @@ const PluginConfigs: RendererPluginType[] = [
 ];
 
 class PluginModelClass {
+    resourcesLoaded: boolean = false;
     rendererPlugins: RendererPluginType[] = [];
 
     constructor(pluginConfigs: RendererPluginType[]) {
@@ -97,9 +98,19 @@ class PluginModelClass {
                 throw new Error(sprintf("plugin with name %s already registered", plugin.name));
             }
             this.rendererPlugins.push(plugin);
-            this.loadPluginResources(plugin);
+            // this.loadPluginResources(plugin);
             return plugin;
         });
+    }
+
+    loadAllPluginResources() {
+        if (this.resourcesLoaded) {
+            return;
+        }
+        this.resourcesLoaded = true;
+        for (let plugin of this.rendererPlugins) {
+            this.loadPluginResources(plugin);
+        }
     }
 
     // attach all screenshots. webpack doesnt allow dynamic paths, hence, we have to put static paths for each plugin

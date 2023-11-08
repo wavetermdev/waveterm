@@ -2455,6 +2455,7 @@ class PluginsModel {
     selectedPlugin: OV<RendererPluginType> = mobx.observable.box(null, { name: "selectedPlugin" });
 
     showPluginsView(): void {
+        PluginModel.loadAllPluginResources();
         mobx.action(() => {
             this.reset();
             GlobalModel.activeMainView.set("plugins");
