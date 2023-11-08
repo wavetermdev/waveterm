@@ -631,9 +631,8 @@
     height: 44px;
     display: flex;
     width: 412px;
-    flex-direction: column;
-    justify-content: center;
-    align-items: flex-start;
+    flex-direction: row;
+    justify-content: space-between;
     gap: 6px;
     border: 1px solid var(--element-separator, rgba(241, 246, 243, 0.15));
     border-radius: 6px;
@@ -712,7 +711,7 @@
         }
     }
 
-    &-close {
+    &:not(&-open) {
         .wave-dropdown-menu {
             z-index: 0;
             animation: fadeOut 0.3s ease-out;
@@ -736,24 +735,8 @@
         }
     }
 
-    &-decoration-start,
-    &-decoration-end {
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        pointer-events: none;
-
-        i {
-            font-size: 14px;
-        }
-    }
-
-    &-decoration-start {
-        left: 16px;
-    }
-
-    &-decoration-end {
-        right: 42px;
+    .wave-input-decoration.end-position {
+        margin-right: 42px;
     }
 
     &-error {
@@ -774,17 +757,19 @@
     }
 }
 
-.textfield {
+.wave-textfield {
     display: flex;
     align-items: center;
-    border: 1px solid @term-white;
     border-radius: 6px;
     position: relative;
-    margin-bottom: 1rem;
-    background-color: transparent;
     height: 44px;
     min-width: 412px;
     gap: 6px;
+    border: 1px solid var(--element-separator, rgba(241, 246, 243, 0.15));
+    border-radius: 6px;
+    background: var(--element-hover-2, rgba(255, 255, 255, 0.06));
+    box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
+        0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
 
     &.focused {
         border-color: @term-green;
@@ -794,14 +779,14 @@
         border-color: @term-red;
     }
 
-    .textfield-inner {
+    &-inner {
         display: flex;
         align-items: flex-end;
         height: 100%;
         position: relative;
         flex-grow: 1;
 
-        .textfield-label {
+        &-label {
             position: absolute;
             left: 16px;
             top: 16px;
@@ -815,12 +800,12 @@
                 top: 5px;
             }
 
-            &.start {
+            &.offset-left {
                 left: 0;
             }
         }
 
-        .textfield-input {
+        &-input {
             width: 100%;
             height: 30px;
             border: none;
@@ -831,23 +816,29 @@
             color: @term-bright-white;
             line-height: 20px;
 
-            &.start {
+            &.offset-left {
                 padding: 5px 16px 5px 0;
             }
         }
     }
+}
+
+.wave-input-decoration {
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
     i {
         font-size: 16px;
     }
 }
 
-.input-decoration {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 8px;
-    margin: 8px;
+.wave-input-decoration.start-position {
+    margin: 0 4px 0 16px;
+}
+
+.wave-input-decoration.end-position {
+    margin: 0 16px 0 8px;
 }
 
 .inline-edit {

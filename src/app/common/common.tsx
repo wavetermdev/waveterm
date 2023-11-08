@@ -125,15 +125,24 @@ class Checkbox extends React.Component<
 }
 
 interface InputDecorationProps {
+    position?: "start" | "end";
     children: React.ReactNode;
 }
 
 @mobxReact.observer
 class InputDecoration extends React.Component<InputDecorationProps, {}> {
     render() {
-        const { children, onClick } = this.props;
-
-        return <div className="input-decoration">{children}</div>;
+        const { children, position = "end" } = this.props;
+        return (
+            <div
+                className={cn("wave-input-decoration", {
+                    "start-position": position === "start",
+                    "end-position": position === "end",
+                })}
+            >
+                {children}
+            </div>
+        );
     }
 }
 
@@ -241,20 +250,20 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
         const inputValue = value !== undefined ? value : internalValue;
 
         return (
-            <div className={cn(`textfield ${className || ""}`, { focused: focused, error: error })}>
+            <div className={cn(`wave-textfield ${className || ""}`, { focused: focused, error: error })}>
                 {decoration?.startDecoration && <>{decoration.startDecoration}</>}
-                <div className="textfield-inner">
+                <div className="wave-textfield-inner">
                     <label
-                        className={cn("textfield-label", {
+                        className={cn("wave-textfield-inner-label", {
                             float: this.state.hasContent || this.state.focused || placeholder,
-                            start: decoration?.startDecoration,
+                            "offset-left": decoration?.startDecoration,
                         })}
                         htmlFor={label}
                     >
                         {label}
                     </label>
                     <input
-                        className={cn("textfield-input", { start: decoration?.startDecoration })}
+                        className={cn("wave-textfield-inner-input", { "offset-left": decoration?.startDecoration })}
                         ref={this.inputRef}
                         id={label}
                         value={inputValue}
@@ -508,11 +517,6 @@ interface DropdownDecorationProps {
     endDecoration?: React.ReactNode;
 }
 
-interface DropdownOption {
-    value: string;
-    label: string;
-}
-
 interface DropdownProps {
     label: string;
     options: { value: string; label: string }[];
@@ -521,14 +525,15 @@ interface DropdownProps {
     onChange: (value: string) => void;
     placeholder?: string;
     decoration?: DropdownDecorationProps;
-    error?: boolean;
     defaultValue?: string;
+    required?: boolean;
 }
 
 interface DropdownState {
     isOpen: boolean;
     internalValue: string;
     highlightedIndex: number;
+    isTouched: boolean;
 }
 
 @mobxReact.observer
@@ -543,6 +548,7 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
             isOpen: false,
             internalValue: props.defaultValue || "",
             highlightedIndex: -1,
+            isTouched: false,
         };
         this.wrapperRef = React.createRef();
         this.menuRef = React.createRef();
@@ -587,6 +593,11 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
     @boundMethod
     handleClick() {
         this.toggleDropdown();
+    }
+
+    @boundMethod
+    handleFocus() {
+        this.setState({ isTouched: true });
     }
 
     @boundMethod
@@ -642,38 +653,45 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
             this.setState({ internalValue: value });
         }
         onChange(value);
-        this.setState({ isOpen: false });
+        this.setState({ isOpen: false, isTouched: true });
     }
 
     @boundMethod
     toggleDropdown() {
-        this.setState((prevState) => ({ isOpen: !prevState.isOpen }));
+        this.setState((prevState) => ({ isOpen: !prevState.isOpen, isTouched: true }));
     }
 
     render() {
-        const { label, options, value, placeholder, decoration, error, className } = this.props;
-        const { isOpen, internalValue, highlightedIndex } = this.state;
+        const { label, options, value, placeholder, decoration, className, required } = this.props;
+        const { isOpen, internalValue, highlightedIndex, isTouched } = this.state;
 
         const currentValue = value !== undefined ? value : internalValue;
         const selectedOptionLabel =
             options.find((option) => option.value === currentValue)?.label || placeholder || internalValue;
-        const shouldLabelFloat = value || internalValue || placeholder || isOpen;
+
+        // Determine if the dropdown should be marked as having an error
+        const isError =
+            required &&
+            (value === undefined || value === "") &&
+            (internalValue === undefined || internalValue === "") &&
+            isTouched;
+
+        // Determine if the label should float
+        const shouldLabelFloat = !!value || !!internalValue || !!placeholder || isOpen;
 
         return (
             <div
                 className={cn(`wave-dropdown ${className || ""}`, {
-                    "wave-dropdown-error": error,
                     "wave-dropdown-open": isOpen,
-                    "wave-dropdown-close": !isOpen,
+                    "wave-dropdown-error": isError,
                 })}
                 ref={this.wrapperRef}
                 tabIndex={0}
                 onKeyDown={this.handleKeyDown}
                 onClick={this.handleClick}
+                onFocus={this.handleFocus}
             >
-                {decoration?.startDecoration && (
-                    <div className="wave-dropdown-decoration-start">{decoration.startDecoration}</div>
-                )}
+                {decoration?.startDecoration && <>{decoration.startDecoration}</>}
                 <div
                     className={cn("wave-dropdown-label", {
                         float: shouldLabelFloat,
@@ -703,9 +721,7 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
                         </div>
                     ))}
                 </div>
-                {decoration?.endDecoration && (
-                    <div className="wave-dropdown-decoration-end">{decoration.endDecoration}</div>
-                )}
+                {decoration?.endDecoration && <>{decoration.endDecoration}</>}
             </div>
         );
     }
