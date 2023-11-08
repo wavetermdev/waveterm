@@ -309,6 +309,8 @@ type RemoteEditType = {
     infostr?: string;
     keystr?: string;
     haspassword?: boolean;
+    // @TODO: this is a hack to determine which create modal to show
+    old?: boolean;
 };
 
 type InfoType = {

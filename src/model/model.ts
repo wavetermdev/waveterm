@@ -3289,7 +3289,7 @@ class Model {
             if (rview.remoteshowall) {
                 this.remotesModalModel.openModal();
             } else if (rview.remoteedit != null) {
-                this.remotesModalModel.openModalForEdit(rview.remoteedit, false);
+                this.remotesModalModel.openModalForEdit({ ...rview.remoteedit, old: true }, false);
             } else if (rview.ptyremoteid) {
                 this.remotesModalModel.openModal(rview.ptyremoteid);
             }

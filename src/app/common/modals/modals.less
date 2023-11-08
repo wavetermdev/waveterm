@@ -182,7 +182,7 @@
 }
 
 .modal.wave-modal {
-    .modal-content {
+    .wave-modal-content {
         display: flex;
         flex-direction: column;
         align-items: flex-start;
@@ -192,14 +192,14 @@
         box-shadow: 0px 3px 5px 0px rgba(0, 0, 0, 0.35), 0px 10px 24px 0px rgba(0, 0, 0, 0.45),
             0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
 
-        .modal-content-wrapper {
+        .wave-modal-content-inner {
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 24px;
             width: 100%;
 
-            header {
+            .wave-modal-header {
                 width: 100%;
                 display: flex;
                 align-items: center;
@@ -208,14 +208,14 @@
                 line-height: 20px;
                 border-bottom: 1px solid rgba(250, 250, 250, 0.1);
 
-                .modal-title {
+                .wave-modal-title {
                     color: @term-bright-white;
                     font-style: normal;
                     line-height: 20px;
                     font-size: 13px;
                 }
 
-                .close-icon-wrapper {
+                .wave-modal-close {
                     display: flex;
                     padding: 4px;
                     align-items: center;
@@ -223,7 +223,7 @@
                 }
             }
 
-            .content {
+            .wave-modal-body {
                 display: flex;
                 flex-direction: column;
                 align-items: flex-start;
@@ -235,7 +235,7 @@
 }
 
 .modal.tos-modal {
-    .modal-content.tos-modal-content {
+    .modal-content.wave-modal-content {
         padding: 32px 48px;
         gap: 8px;
 
@@ -324,13 +324,13 @@
 }
 
 .modal.about-modal {
-    .modal-content.about-modal-content {
+    .about-wave-modal-content {
         width: 401px;
 
-        .about-content {
+        .about-wave-modal-body {
             margin-bottom: 0;
 
-            .wave-section {
+            .wave-modal-section {
                 .logo-wrapper {
                     width: 72px;
                     height: 72px;
@@ -403,7 +403,7 @@
                 }
             }
 
-            .wave-section:nth-child(3) {
+            .wave-modal-section:nth-child(3) {
                 display: flex;
                 align-items: flex-start;
                 gap: 10px;
@@ -418,11 +418,23 @@
                 }
             }
 
-            .wave-section:last-child {
+            .wave-modal-section:last-child {
                 margin-bottom: 24px;
                 color: @term-white;
             }
         }
+    }
+}
+
+.wave-modal.crconn-modal {
+    .wave-modal-content.crconn-wave-modal-content {
+        display: flex;
+        width: 452px;
+        padding-bottom: 0px;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+        flex-shrink: 0;
     }
 }
 
@@ -465,7 +477,7 @@
     cursor: pointer;
 }
 
-.wave-section {
+.wave-modal-section {
     display: flex;
     align-items: center;
     gap: 16px;

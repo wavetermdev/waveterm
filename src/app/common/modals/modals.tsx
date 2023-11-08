@@ -9,8 +9,9 @@ import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel, GlobalCommandRunner } from "../../../model/model";
-import { Markdown } from "../common";
+import { GlobalModel, GlobalCommandRunner, RemotesModalModel } from "../../../model/model";
+import * as T from "../../../types/types";
+import { Markdown, InfoMessage } from "../common";
 import * as util from "../../../util/util";
 import { Toggle, Checkbox } from "../common";
 import { ClientDataType } from "../../../types/types";
@@ -22,6 +23,7 @@ import shield from "../../assets/icons/shield_check.svg";
 import help from "../../assets/icons/help_filled.svg";
 import github from "../../assets/icons/github.svg";
 import logo from "../../assets/waveterm-logo-with-bg.svg";
+import { ReactComponent as AngleDownIcon } from "../../assets/icons/history/angle-down.svg";
 
 dayjs.extend(localizedFormat);
 
@@ -256,8 +258,8 @@ class TosModal extends React.Component<{}, {}> {
         return (
             <div className={cn("modal tos-modal wave-modal is-active")}>
                 <div className="modal-background" />
-                <div className="modal-content tos-modal-content">
-                    <div className="modal-content-wrapper">
+                <div className="modal-content wave-modal-content tos-wave-modal-content">
+                    <div className="modal-content-inner wave-modal-content-inner tos-wave-modal-content-inner">
                         <header className="tos-header unselectable">
                             <div className="modal-title">Welcome to Wave Terminal!</div>
                             <div className="modal-subtitle">Lets set everything for you</div>
@@ -399,17 +401,17 @@ class AboutModal extends React.Component<{}, {}> {
     render() {
         return (
             <div className={cn("modal about-modal wave-modal is-active")}>
-                <div className="modal-background" />
-                <div className="modal-content about-modal-content">
-                    <div className="modal-content-wrapper">
-                        <header className="common-header">
-                            <div className="modal-title">About</div>
-                            <div className="close-icon-wrapper" onClick={this.closeModal}>
+                <div className="wave-modal-background" />
+                <div className="modal-content wave-modal-content about-wave-modal-content">
+                    <div className="modal-content-inner wave-modal-content-inner about-wave-modal-content-inner">
+                        <header className="wave-modal-header about-wave-modal-header">
+                            <div className="wave-modal-title about-wave-modal-title">About</div>
+                            <div className="wave-modal-close about-wave-modal-close" onClick={this.closeModal}>
                                 <img src={close} alt="Close (Escape)" />
                             </div>
                         </header>
-                        <div className="content about-content">
-                            <section className="wave-section about-section">
+                        <div className="wave-modal-body about-wave-modal-body">
+                            <section className="wave-modal-section about-section">
                                 <div className="logo-wrapper">
                                     <img src={logo} alt="logo" />
                                 </div>
@@ -418,10 +420,10 @@ class AboutModal extends React.Component<{}, {}> {
                                     <div className="text-standard">Modern Terminal for Seamless Workflow</div>
                                 </div>
                             </section>
-                            <section className="wave-section about-section text-standard">
+                            <section className="wave-modal-section about-section text-standard">
                                 {this.getStatus(this.isUpToDate())}
                             </section>
-                            <section className="wave-section about-section">
+                            <section className="wave-modal-section about-section">
                                 <a
                                     className="wave-button wave-button-link color-standard"
                                     href={util.makeExternLink("https://github.com/wavetermdev/waveterm")}
@@ -449,7 +451,7 @@ class AboutModal extends React.Component<{}, {}> {
                                     License
                                 </a>
                             </section>
-                            <section className="wave-section about-section text-standard">
+                            <section className="wave-modal-section about-section text-standard">
                                 Copyright © 2023 Command Line Inc.
                             </section>
                         </div>
@@ -460,4 +462,425 @@ class AboutModal extends React.Component<{}, {}> {
     }
 }
 
-export { LoadingSpinner, ClientStopModal, AlertModal, DisconnectedModal, TosModal, AboutModal };
+@mobxReact.observer
+class AuthModeDropdown extends React.Component<{ tempVal: OV<string> }, {}> {
+    active: OV<boolean> = mobx.observable.box(false, { name: "AuthModeDropdown-active" });
+
+    @boundMethod
+    toggleActive(): void {
+        mobx.action(() => {
+            this.active.set(!this.active.get());
+        })();
+    }
+
+    @boundMethod
+    updateValue(val: string): void {
+        mobx.action(() => {
+            this.props.tempVal.set(val);
+            this.active.set(false);
+        })();
+    }
+
+    render() {
+        return (
+            <div className={cn("dropdown", "editremote-dropdown", { "is-active": this.active.get() })}>
+                <div className="dropdown-trigger">
+                    <button onClick={this.toggleActive} className="button">
+                        <span>{this.props.tempVal.get()}</span>
+                        <div className="flex-spacer" />
+                        <AngleDownIcon className="icon" />
+                    </button>
+                </div>
+                <div className="dropdown-menu" role="menu">
+                    <div className="dropdown-content has-background-black">
+                        <div key="none" onClick={() => this.updateValue("none")} className="dropdown-item">
+                            none
+                        </div>
+                        <div key="key" onClick={() => this.updateValue("key")} className="dropdown-item">
+                            key
+                        </div>
+                        <div key="password" onClick={() => this.updateValue("password")} className="dropdown-item">
+                            password
+                        </div>
+                        <div
+                            key="key+password"
+                            onClick={() => this.updateValue("key+password")}
+                            className="dropdown-item"
+                        >
+                            key+password
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
+class ConnectModeDropdown extends React.Component<{ tempVal: OV<string> }, {}> {
+    active: OV<boolean> = mobx.observable.box(false, { name: "ConnectModeDropdown-active" });
+
+    @boundMethod
+    toggleActive(): void {
+        mobx.action(() => {
+            this.active.set(!this.active.get());
+        })();
+    }
+
+    @boundMethod
+    updateValue(val: string): void {
+        mobx.action(() => {
+            this.props.tempVal.set(val);
+            this.active.set(false);
+        })();
+    }
+
+    render() {
+        return (
+            <div className={cn("dropdown", "editremote-dropdown", { "is-active": this.active.get() })}>
+                <div className="dropdown-trigger">
+                    <button onClick={this.toggleActive} className="button">
+                        <span>{this.props.tempVal.get()}</span>
+                        <div className="flex-spacer" />
+                        <AngleDownIcon className="icon" />
+                    </button>
+                </div>
+                <div className="dropdown-menu" role="menu">
+                    <div className="dropdown-content has-background-black">
+                        <div key="startup" onClick={() => this.updateValue("startup")} className="dropdown-item">
+                            startup
+                        </div>
+                        <div key="auto" onClick={() => this.updateValue("auto")} className="dropdown-item">
+                            auto
+                        </div>
+                        <div key="manual" onClick={() => this.updateValue("manual")} className="dropdown-item">
+                            manual
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+}
+
+class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; remoteEdit: T.RemoteEditType }, {}> {
+    tempAlias: OV<string>;
+    tempHostName: OV<string>;
+    tempPort: OV<string>;
+    tempAuthMode: OV<string>;
+    tempConnectMode: OV<string>;
+    tempManualMode: OV<boolean>;
+    tempPassword: OV<string>;
+    tempKeyFile: OV<string>;
+    errorStr: OV<string>;
+
+    constructor(props: any) {
+        super(props);
+        let { remoteEdit } = this.props;
+        this.tempAlias = mobx.observable.box("", { name: "CreateRemote-alias" });
+        this.tempHostName = mobx.observable.box("", { name: "CreateRemote-hostName" });
+        this.tempPort = mobx.observable.box("", { name: "CreateRemote-port" });
+        this.tempAuthMode = mobx.observable.box("none", { name: "CreateRemote-authMode" });
+        this.tempConnectMode = mobx.observable.box("auto", { name: "CreateRemote-connectMode" });
+        this.tempKeyFile = mobx.observable.box("", { name: "CreateRemote-keystr" });
+        this.tempPassword = mobx.observable.box("", { name: "CreateRemote-password" });
+        this.errorStr = mobx.observable.box(remoteEdit.errorstr, { name: "CreateRemote-errorStr" });
+    }
+
+    remoteCName(): string {
+        let hostName = this.tempHostName.get();
+        if (hostName == "") {
+            return "[no host]";
+        }
+        if (hostName.indexOf("@") == -1) {
+            hostName = "[no user]@" + hostName;
+        }
+        return hostName;
+    }
+
+    getErrorStr(): string {
+        if (this.errorStr.get() != null) {
+            return this.errorStr.get();
+        }
+        return this.props.remoteEdit.errorstr;
+    }
+
+    @boundMethod
+    submitRemote(): void {
+        mobx.action(() => {
+            this.errorStr.set(null);
+        })();
+        let authMode = this.tempAuthMode.get();
+        let cname = this.tempHostName.get();
+        if (cname == "") {
+            this.errorStr.set("You must specify a 'user@host' value to create a new connection");
+            return;
+        }
+        let kwargs: Record<string, string> = {};
+        kwargs["alias"] = this.tempAlias.get();
+        if (this.tempPort.get() != "" && this.tempPort.get() != "22") {
+            kwargs["port"] = this.tempPort.get();
+        }
+        if (authMode == "key" || authMode == "key+password") {
+            if (this.tempKeyFile.get() == "") {
+                this.errorStr.set("When AuthMode is set to 'key', you must supply a valid key file name.");
+                return;
+            }
+            kwargs["key"] = this.tempKeyFile.get();
+        } else {
+            kwargs["key"] = "";
+        }
+        if (authMode == "password" || authMode == "key+password") {
+            if (this.tempPassword.get() == "") {
+                this.errorStr.set("When AuthMode is set to 'password', you must supply a password.");
+                return;
+            }
+            kwargs["password"] = this.tempPassword.get();
+        } else {
+            kwargs["password"] = "";
+        }
+        kwargs["connectmode"] = this.tempConnectMode.get();
+        kwargs["visual"] = "1";
+        kwargs["submit"] = "1";
+        let model = this.props.model;
+        let shouldCr = model.onlyAddNewRemote.get();
+        let prtn = GlobalCommandRunner.createRemote(cname, kwargs, false);
+        prtn.then((crtn) => {
+            if (crtn.success) {
+                if (shouldCr) {
+                    let crRtn = GlobalCommandRunner.screenSetRemote(cname, true, false);
+                    crRtn.then((crcrtn) => {
+                        if (crcrtn.success) {
+                            model.closeModal();
+                            return;
+                        }
+                        mobx.action(() => {
+                            this.errorStr.set(crcrtn.error);
+                        })();
+                    });
+                }
+                return;
+            }
+            mobx.action(() => {
+                this.errorStr.set(crtn.error);
+            })();
+        });
+    }
+
+    @boundMethod
+    handleChangeKeyFile(e: any): void {
+        mobx.action(() => {
+            this.tempKeyFile.set(e.target.value);
+        })();
+    }
+
+    @boundMethod
+    handleChangePassword(e: any): void {
+        mobx.action(() => {
+            this.tempPassword.set(e.target.value);
+        })();
+    }
+
+    @boundMethod
+    handleChangeAlias(e: any): void {
+        mobx.action(() => {
+            this.tempAlias.set(e.target.value);
+        })();
+    }
+
+    @boundMethod
+    handleChangePort(e: any): void {
+        mobx.action(() => {
+            this.tempPort.set(e.target.value);
+        })();
+    }
+
+    @boundMethod
+    handleChangeHostName(e: any): void {
+        mobx.action(() => {
+            this.tempHostName.set(e.target.value);
+        })();
+    }
+
+    render() {
+        let { model, remoteEdit } = this.props;
+        let authMode = this.tempAuthMode.get();
+        return (
+            <div className={cn("modal wave-modal crconn-modal is-active")}>
+                <div className="wave-modal-background" />
+                <div className="modal-content wave-modal-content crconn-wave-modal-content">
+                    <div className="wave-modal-content-inner crconn-wave-modal-content-inner">
+                        <header className="wave-modal-header crconn-wave-modal-header">
+                            <div className="wave-modal-title crconn-wave-modal-title">Add Connection</div>
+                            <div className="wave-modal-close crconn-wave-modal-close" onClick={model.cancelEditAuth}>
+                                <img src={close} alt="Close (Escape)" />
+                            </div>
+                        </header>
+                        <div className="wave-modal-body crconn-wave-modal-body">
+                            <div className="settings-field mt-3">
+                                <div className="settings-label">
+                                    <div>user@host</div>
+                                    <div className="flex-spacer" />
+                                    <InfoMessage width={400}>
+                                        (Required) The user and host that you want to connect with. This is in the same
+                                        format as you would pass to ssh, e.g. "ubuntu@test.mydomain.com".
+                                    </InfoMessage>
+                                </div>
+                                <div className="settings-input">
+                                    <input
+                                        type="text"
+                                        placeholder="user@host"
+                                        onChange={this.handleChangeHostName}
+                                        value={this.tempHostName.get()}
+                                        maxLength={100}
+                                    />
+                                </div>
+                            </div>
+                            <div className="settings-field">
+                                <div className="settings-label">
+                                    <div>Alias</div>
+                                    <div className="flex-spacer" />
+                                    <InfoMessage width={400}>
+                                        (Optional) A short alias to use when selecting or displaying this connection.
+                                    </InfoMessage>
+                                </div>
+                                <div className="settings-input">
+                                    <input
+                                        type="text"
+                                        onChange={this.handleChangeAlias}
+                                        value={this.tempAlias.get()}
+                                        maxLength={40}
+                                    />
+                                </div>
+                            </div>
+                            <div className="settings-field">
+                                <div className="settings-label">
+                                    <div>Port</div>
+                                    <div className="flex-spacer" />
+                                    <InfoMessage width={400}>
+                                        (Optional) Defaults to 22. Set if the server you are connecting to listens to a
+                                        non-standard SSH port.
+                                    </InfoMessage>
+                                </div>
+                                <div className="settings-input">
+                                    <input
+                                        type="number"
+                                        placeholder="22"
+                                        onChange={this.handleChangePort}
+                                        value={this.tempPort.get()}
+                                    />
+                                </div>
+                            </div>
+                            <div className="settings-field align-top">
+                                <div className="settings-label">
+                                    <div>Auth Mode</div>
+                                    <div className="flex-spacer" />
+                                    <InfoMessage width={350}>
+                                        <ul>
+                                            <li>
+                                                <b>none</b> - no authentication, or authentication is already configured
+                                                in your ssh config.
+                                            </li>
+                                            <li>
+                                                <b>key</b> - use a private key.
+                                            </li>
+                                            <li>
+                                                <b>password</b> - use a password.
+                                            </li>
+                                            <li>
+                                                <b>key+password</b> - use a key with a passphrase.
+                                            </li>
+                                        </ul>
+                                    </InfoMessage>
+                                </div>
+                                <div className="settings-input">
+                                    <div className="raw-input">
+                                        <AuthModeDropdown tempVal={this.tempAuthMode} />
+                                    </div>
+                                </div>
+                            </div>
+                            <If condition={authMode == "key" || authMode == "key+password"}>
+                                <div className="settings-field" style={{ marginTop: 10 }}>
+                                    <div className="settings-label">SSH Keyfile</div>
+                                    <div className="settings-input">
+                                        <input
+                                            type="text"
+                                            placeholder="keyfile"
+                                            onChange={this.handleChangeKeyFile}
+                                            value={this.tempKeyFile.get()}
+                                            maxLength={400}
+                                        />
+                                    </div>
+                                </div>
+                            </If>
+                            <If condition={authMode == "password" || authMode == "key+password"}>
+                                <div className="settings-field" style={{ marginTop: 10 }}>
+                                    <div className="settings-label">
+                                        {authMode == "password" ? "SSH Password" : "Key Passphrase"}
+                                    </div>
+                                    <div className="settings-input">
+                                        <input
+                                            type="password"
+                                            placeholder="password"
+                                            onChange={this.handleChangePassword}
+                                            value={this.tempPassword.get()}
+                                            maxLength={400}
+                                        />
+                                    </div>
+                                </div>
+                            </If>
+                            <div className="settings-field align-top" style={{ marginTop: 10 }}>
+                                <div className="settings-label">
+                                    <div>Connect Mode</div>
+                                    <div className="flex-spacer" />
+                                    <InfoMessage width={350}>
+                                        <ul>
+                                            <li>
+                                                <b>startup</b> - Connect when Wave Terminal starts.
+                                            </li>
+                                            <li>
+                                                <b>auto</b> - Connect when you first run a command using this
+                                                connection.
+                                            </li>
+                                            <li>
+                                                <b>manual</b> - Connect manually. Note, if your connection requires
+                                                manual input, like an OPT code, you must use this setting.
+                                            </li>
+                                        </ul>
+                                    </InfoMessage>
+                                </div>
+                                <div className="settings-input">
+                                    <div className="raw-input">
+                                        <div className="raw-input">
+                                            <ConnectModeDropdown tempVal={this.tempConnectMode} />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <If condition={!util.isBlank(this.getErrorStr())}>
+                                <div className="settings-field settings-error">Error: {this.getErrorStr()}</div>
+                            </If>
+                        </div>
+                        <footer className="wave-modal-footer crconn-wave-modal-footer">
+                            <div className="action-buttons">
+                                <div className="flex-spacer" />
+                                <div onClick={model.cancelEditAuth} className="button is-plain is-outlined is-small">
+                                    Cancel
+                                </div>
+                                <div
+                                    style={{ marginLeft: 10, marginRight: 20 }}
+                                    onClick={this.submitRemote}
+                                    className="button is-prompt-green is-outlined is-small"
+                                >
+                                    Create Remote
+                                </div>
+                            </div>
+                        </footer>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+}
+
+export { LoadingSpinner, ClientStopModal, AlertModal, DisconnectedModal, TosModal, AboutModal, CreateRemoteConnModal };
