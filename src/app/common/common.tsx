@@ -279,6 +279,157 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
     }
 }
 
+interface NumberFieldProps {
+    label: string;
+    value?: string;
+    className?: string;
+    onChange?: (value: string) => void;
+    placeholder?: string;
+    defaultValue?: string;
+    decoration?: TextFieldDecorationProps;
+    required?: boolean;
+}
+
+interface NumberFieldState {
+    focused: boolean;
+    internalValue: string;
+    error: boolean;
+    showHelpText: boolean;
+    hasContent: boolean;
+}
+
+@mobxReact.observer
+class NumberField extends React.Component<NumberFieldProps, NumberFieldState> {
+    inputRef: React.RefObject<HTMLInputElement> = React.createRef();
+
+    constructor(props: NumberFieldProps) {
+        super(props);
+        const hasInitialContent = Boolean(props.value || props.defaultValue);
+        this.state = {
+            focused: false,
+            internalValue: props.defaultValue || "",
+            error: false,
+            showHelpText: false,
+            hasContent: hasInitialContent,
+        };
+        this.inputRef = React.createRef();
+    }
+
+    componentDidUpdate(prevProps: NumberFieldProps) {
+        // Only update the focus state if using as controlled
+        if (this.props.value !== undefined && this.props.value !== prevProps.value) {
+            this.setState({ focused: Boolean(this.props.value) });
+        }
+    }
+
+    @boundMethod
+    handleFocus() {
+        this.setState({ focused: true });
+    }
+
+    @boundMethod
+    handleBlur() {
+        const { required } = this.props;
+        if (required && this.state.internalValue === "") {
+            this.setState({ error: true, focused: false });
+        } else {
+            this.setState({ error: false, focused: false });
+        }
+    }
+
+    @boundMethod
+    handleHelpTextClick() {
+        this.setState((prevState) => ({ showHelpText: !prevState.showHelpText }));
+    }
+
+    debouncedOnChange = debounce(300, (value: string) => {
+        const { onChange } = this.props;
+        onChange?.(value);
+    });
+
+    @boundMethod
+    handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+        const inputValue = e.target.value;
+        console.log("handleInputChange", inputValue);
+
+        // Allow only numeric input
+        if (inputValue === "" || /^\d*$/.test(inputValue)) {
+            // Update the internal state only if the component is not controlled.
+            if (this.props.value === undefined) {
+                this.setState({ internalValue: inputValue, error: false, hasContent: Boolean(inputValue) });
+            }
+
+            // Call the onChange handler with the new value.
+            this.debouncedOnChange(inputValue);
+        }
+    }
+
+    @boundMethod
+    handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+        // Allow backspace, delete, tab, escape, and enter
+        if (
+            [46, 8, 9, 27, 13].includes(event.keyCode) ||
+            // Allow: Ctrl+A
+            (event.keyCode === 65 && event.ctrlKey === true) ||
+            // Allow: Ctrl+C
+            (event.keyCode === 67 && event.ctrlKey === true) ||
+            // Allow: Ctrl+X
+            (event.keyCode === 88 && event.ctrlKey === true) ||
+            // Allow: home, end, left, right
+            (event.keyCode >= 35 && event.keyCode <= 39)
+        ) {
+            // let it happen, don't do anything
+            return;
+        }
+        // Ensure that it is a number and stop the keypress
+        if (
+            (event.shiftKey || event.keyCode < 48 || event.keyCode > 57) &&
+            (event.keyCode < 96 || event.keyCode > 105)
+        ) {
+            event.preventDefault();
+        }
+    }
+
+    render() {
+        const { label, value, placeholder, decoration, className } = this.props;
+        const { focused, internalValue, error } = this.state;
+
+        // Decide if the input should behave as controlled or uncontrolled
+        const inputValue = value !== undefined ? value : internalValue;
+
+        console.log("render", inputValue);
+
+        return (
+            <div className={cn(`wave-textfield ${className || ""}`, { focused: focused, error: error })}>
+                {decoration?.startDecoration && <>{decoration.startDecoration}</>}
+                <div className="wave-textfield-inner">
+                    <label
+                        className={cn("wave-textfield-inner-label", {
+                            float: this.state.hasContent || this.state.focused || placeholder,
+                            "offset-left": decoration?.startDecoration,
+                        })}
+                        htmlFor={label}
+                    >
+                        {label}
+                    </label>
+                    <input
+                        className={cn("wave-textfield-inner-input", { "offset-left": decoration?.startDecoration })}
+                        ref={this.inputRef}
+                        id={label}
+                        value={inputValue}
+                        onChange={this.handleInputChange}
+                        onFocus={this.handleFocus}
+                        onBlur={this.handleBlur}
+                        onKeyDown={this.handleKeyDown}
+                        placeholder={placeholder}
+                    />
+                </div>
+                {decoration?.endDecoration && <>{decoration.endDecoration}</>}
+            </div>
+        );
+    }
+}
+
 @mobxReact.observer
 class RemoteStatusLight extends React.Component<{ remote: RemoteType }, {}> {
     render() {
@@ -740,4 +891,5 @@ export {
     Dropdown,
     TextField,
     InputDecoration,
+    NumberField,
 };

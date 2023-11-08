@@ -15,6 +15,7 @@ import { Markdown, InfoMessage } from "../common";
 import * as util from "../../../util/util";
 import { Toggle, Checkbox } from "../common";
 import { ClientDataType } from "../../../types/types";
+import { TextField, NumberField, InputDecoration } from "../common";
 
 import close from "../../assets/icons/close.svg";
 import { ReactComponent as WarningIcon } from "../../assets/icons/line/triangle-exclamation.svg";
@@ -563,6 +564,7 @@ class ConnectModeDropdown extends React.Component<{ tempVal: OV<string> }, {}> {
     }
 }
 
+@mobxReact.observer
 class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; remoteEdit: T.RemoteEditType }, {}> {
     tempAlias: OV<string>;
     tempHostName: OV<string>;
@@ -689,22 +691,23 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
     }
 
     @boundMethod
-    handleChangePort(e: any): void {
+    handleChangePort(value: string): void {
         mobx.action(() => {
-            this.tempPort.set(e.target.value);
+            this.tempPort.set(value);
         })();
     }
 
     @boundMethod
-    handleChangeHostName(e: any): void {
+    handleChangeHostName(value: string): void {
         mobx.action(() => {
-            this.tempHostName.set(e.target.value);
+            this.tempHostName.set(value);
         })();
     }
 
     render() {
         let { model, remoteEdit } = this.props;
         let authMode = this.tempAuthMode.get();
+
         return (
             <div className={cn("modal wave-modal crconn-modal is-active")}>
                 <div className="wave-modal-background" />
@@ -717,6 +720,52 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
                             </div>
                         </header>
                         <div className="wave-modal-body crconn-wave-modal-body">
+                            <div className="user-section">
+                                <TextField
+                                    label="user@host"
+                                    placeholder="user@host"
+                                    value={this.tempHostName.get()}
+                                    onChange={this.handleChangeHostName}
+                                    decoration={{
+                                        endDecoration: (
+                                            <InputDecoration>
+                                                <i className="fa-sharp fa-regular fa-circle-question"></i>
+                                            </InputDecoration>
+                                        ),
+                                    }}
+                                />
+                            </div>
+                            <div className="alias-section">
+                                <TextField
+                                    label="Alias"
+                                    onChange={this.handleChangeAlias}
+                                    value={this.tempAlias.get()}
+                                    // maxLength={40} add support for max length
+                                    decoration={{
+                                        endDecoration: (
+                                            <InputDecoration>
+                                                <i className="fa-sharp fa-regular fa-circle-question"></i>
+                                            </InputDecoration>
+                                        ),
+                                    }}
+                                />
+                            </div>
+                            <div className="port-section">
+                                <NumberField
+                                    label="Port"
+                                    placeholder="22"
+                                    value={this.tempPort.get()}
+                                    onChange={this.handleChangePort}
+                                    decoration={{
+                                        endDecoration: (
+                                            <InputDecoration>
+                                                <i className="fa-sharp fa-regular fa-circle-question"></i>
+                                            </InputDecoration>
+                                        ),
+                                    }}
+                                />
+                            </div>
+
                             <div className="settings-field mt-3">
                                 <div className="settings-label">
                                     <div>user@host</div>

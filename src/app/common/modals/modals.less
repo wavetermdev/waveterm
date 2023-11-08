@@ -428,13 +428,26 @@
 
 .wave-modal.crconn-modal {
     .wave-modal-content.crconn-wave-modal-content {
-        display: flex;
         width: 452px;
-        padding-bottom: 0px;
-        flex-direction: column;
-        align-items: center;
-        gap: 20px;
-        flex-shrink: 0;
+
+        .wave-modal-content-inner.crconn-wave-modal-content-inner {
+            display: flex;
+            padding-bottom: 0px;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            flex-shrink: 0;
+
+            .crconn-wave-modal-body {
+                display: flex;
+                padding: 0px 20px;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+                align-self: stretch;
+                width: 100%;
+            }
+        }
     }
 }
 
