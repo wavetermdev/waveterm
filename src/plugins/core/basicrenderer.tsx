@@ -41,9 +41,11 @@ class SimpleBlobRendererModel {
     dataBlob: T.ExtBlob;
     readOnly: boolean;
     notFound: boolean;
+    isClosed: boolean;
 
     initialize(params: RendererModelInitializeParams): void {
-        this.loading = mobx.observable.box(true, { name: "renderer-loading" });
+        this.isClosed = !!params.lineState["prompt:closed"];
+        this.loading = mobx.observable.box(!this.isClosed, { name: "renderer-loading" });
         this.isDone = mobx.observable.box(params.isDone, {
             name: "renderer-isDone",
         });
@@ -53,8 +55,13 @@ class SimpleBlobRendererModel {
         this.lineState = params.lineState;
         this.savedHeight = params.savedHeight;
         this.ptyDataSource = params.ptyDataSource;
-        if (this.isDone.get()) {
-            setTimeout(() => this.reload(0), 10);
+        if (this.isClosed) {
+            this.dataBlob = new Blob();
+            this.dataBlob.notFound = false; // TODO
+        } else {
+            if (this.isDone.get()) {
+                setTimeout(() => this.reload(0), 10);
+            }
         }
     }
 
