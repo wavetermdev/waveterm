@@ -717,7 +717,7 @@ class LineCmd extends React.Component<
                                 <div className="cmd-rtnstate-label">new state</div>
                                 <div className="cmd-rtnstate-sep"></div>
                                 <div className="cmd-rtnstate-diff" style={{ fontSize: rtnStateDiffSize }}>
-                                    {this.rtnStateDiff.get()}
+                                    <div className="cmd-rtnstate-diff-inner">{this.rtnStateDiff.get()}</div>
                                 </div>
                             </If>
                         </div>
