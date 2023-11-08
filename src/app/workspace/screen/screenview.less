@@ -143,9 +143,14 @@
 
     .control-iconlist {
         display: flex;
-        padding: 8px 0;
+        margin-left: -2px;
+        padding: 8px 0 8px 2px;
         align-items: flex-start;
-        gap: 12px;
+        gap: 14px;
+        
+        &.tabicon-list {
+            gap: 12px;
+        }
 
         .icondiv {
             width: 20px;
@@ -154,9 +159,28 @@
             position: relative;
             font-size: 14px;
 
+            
+            &.tabicon {
+                display: flex;
+                align-items: center;
+                width: 22px;
+            }
+
             .icon {
                 width: 20px;
                 height: 20px;
+            }
+
+            i {
+                padding-left: 3px;
+                padding-right: 3px;
+            }
+
+            .icon.square-icon {
+                position: relative;
+                top: 3px;
+                width: 16px;
+                height: 16px;
             }
 
             .check-icon {

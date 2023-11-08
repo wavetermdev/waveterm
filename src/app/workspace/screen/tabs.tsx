@@ -104,11 +104,15 @@ class ScreenTabs extends React.Component<{ session: Session }, {}> {
 
     renderTabIcon = (screen: Screen): React.ReactNode => {
         const tabIcon = screen.getTabIcon();
-        if (tabIcon === "default") {
-            return <SquareIcon className="icon left-icon" />;
+        if (tabIcon === "default" || tabIcon === "square") {
+            return (
+                <div className="icon svg-icon">
+                    <SquareIcon className="left-icon" />
+                </div>
+            );
         }
         return (
-            <div className="icon">
+            <div className="icon fa-icon">
                 <i className={`fa-sharp fa-solid fa-${tabIcon}`}></i>
             </div>
         );
