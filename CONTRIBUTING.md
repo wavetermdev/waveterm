@@ -3,7 +3,7 @@
 We welcome and value contributions to Wave Terminal! Wave is an open source project, always open for contributors. There are several ways you can contribute:
    * Submit issues related to bugs or new feature requests
    * Fix outstanding [issues](https://github.com/wavetermdev/waveterm/issues) with the existing code
-   * Contribute to [documentation](https://docs.getprompt.dev/)
+   * Contribute to [documentation](https://github.com/wavetermdev/waveterm-docs)
    * Spread the word on social media (tag us on [LinkedIn](https://www.linkedin.com/company/commandlinedev), [Twitter/X](https://twitter.com/commandlinedev))
    * Or simply ⭐️ the repository to show your appreciation
 
@@ -16,8 +16,8 @@ We accept patches in the form of github pull requests. If you are new to github,
 
 ### Contributor License Agreement
 Contributions to this project must be accompanied by a Contributor License Agreement (CLA). You (or your employer) retain the copyright to your contribution, this simply gives us permission to use and redistribute your contributions as part of the project. 
-  * Individuals: On submission of your first pull request you will be prompted to sign the CLA confirming your original code contribution and that you own the intellectual property. 
-  * Companies: Companies may sign a Corporate CLA (link) to allow all employees to contribute. 
+
+> On submission of your first pull request you will be prompted to sign the CLA confirming your original code contribution and that you own the intellectual property. 
 
 ### Style guide
 The project uses American English. 
