@@ -221,7 +221,6 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
     handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
         const { required, onChange } = this.props;
         const inputValue = e.target.value;
-        console.log("handleInputChange", inputValue);
 
         // Check if value is empty and the field is required
         if (required && !inputValue) {

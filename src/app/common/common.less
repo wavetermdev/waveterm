@@ -257,20 +257,28 @@
     }
 }
 
-.button.is-wave-green {
+.wave-button {
     display: flex;
     padding: 6px 16px !important;
-    color: @term-bright-white !important;
+    color: @term-white !important;
     align-items: center;
     gap: 4px;
     border-radius: 6px !important;
     height: auto !important;
+
+    &:hover {
+        color: @term-white !important;
+    }
+}
+
+.wave-button.is-wave-green {
+    color: @term-bright-white !important;
     background: @term-green !important;
-    box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
-        0px 0px 0.5px 0px rgba(255, 255, 255, 0.8) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.6) inset;
 
     &:hover {
         background-color: @term-green;
+        box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
+            0px 0px 0.5px 0px rgba(255, 255, 255, 0.8) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.6) inset;
         color: @term-bright-white !important;
         box-shadow: none;
     }
@@ -698,6 +706,7 @@
             0px 0px 0.5px 0px #fff inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
         animation-fill-mode: forwards;
         opacity: 0;
+        display: none;
     }
 
     &-open {

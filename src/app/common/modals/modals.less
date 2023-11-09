@@ -429,7 +429,8 @@
 .wave-modal.crconn-modal {
     .wave-modal-content.crconn-wave-modal-content {
         width: 452px;
-        min-height: 520px;
+        min-height: 411px;
+        overflow: visible;
 
         .wave-modal-content-inner.crconn-wave-modal-content-inner {
             display: flex;
@@ -447,6 +448,21 @@
                 gap: 12px;
                 align-self: stretch;
                 width: 100%;
+            }
+        }
+
+        .crconn-wave-modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            width: 100%;
+            padding: 0 20px 20px;
+
+            .action-buttons {
+                display: flex;
+
+                div.button {
+                    margin-right: 8px;
+                }
             }
         }
     }

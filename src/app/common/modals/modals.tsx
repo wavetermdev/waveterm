@@ -335,7 +335,7 @@ class TosModal extends React.Component<{}, {}> {
                             <div className="button-wrapper">
                                 <button
                                     onClick={this.acceptTos}
-                                    className={cn("button is-wave-green is-outlined is-small", {
+                                    className={cn("button wave-button is-wave-green is-outlined is-small", {
                                         "disabled-button": !this.state.isChecked,
                                     })}
                                     disabled={!this.state.isChecked}
@@ -577,7 +577,6 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
 
     @boundMethod
     handleChangePassword(value: string): void {
-        console.log("handleChangePassword", value);
         mobx.action(() => {
             this.tempPassword.set(value);
         })();
@@ -740,15 +739,14 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
                         </div>
                         <footer className="wave-modal-footer crconn-wave-modal-footer">
                             <div className="action-buttons">
-                                <div className="flex-spacer" />
-                                <div onClick={model.cancelEditAuth} className="button is-plain is-outlined is-small">
+                                <div onClick={model.cancelEditAuth} className="button wave-button is-plain">
                                     Cancel
                                 </div>
                                 <button
                                     onClick={this.submitRemote}
-                                    className="button is-wave-green is-outlined is-small"
+                                    className="button wave-button is-wave-green text-standard"
                                 >
-                                    Create Remote
+                                    Connect
                                 </button>
                             </div>
                         </footer>
