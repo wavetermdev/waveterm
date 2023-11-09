@@ -258,7 +258,7 @@ class TosModal extends React.Component<{}, {}> {
 
         return (
             <div className={cn("modal tos-modal wave-modal is-active")}>
-                <div className="modal-background" />
+                <div className="modal-background wave-modal-background" />
                 <div className="modal-content wave-modal-content tos-wave-modal-content">
                     <div className="modal-content-inner wave-modal-content-inner tos-wave-modal-content-inner">
                         <header className="tos-header unselectable">
@@ -378,7 +378,7 @@ class AboutModal extends React.Component<{}, {}> {
                 <div className="text-selectable">Client Version v0.4.0 20231016-110014</div>
             </div>
         );
-        
+
         if (isUpToDate) {
             return (
                 <div className="status updated">
@@ -409,7 +409,7 @@ class AboutModal extends React.Component<{}, {}> {
     render() {
         return (
             <div className={cn("modal about-modal wave-modal is-active")}>
-                <div className="wave-modal-background" />
+                <div className="modal-background wave-modal-background" />
                 <div className="modal-content wave-modal-content about-wave-modal-content">
                     <div className="modal-content-inner wave-modal-content-inner about-wave-modal-content-inner">
                         <header className="wave-modal-header about-wave-modal-header">
@@ -613,7 +613,7 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
 
         return (
             <div className={cn("modal wave-modal crconn-modal is-active")}>
-                <div className="wave-modal-background" />
+                <div className="modal-background wave-modal-background" />
                 <div className="modal-content wave-modal-content crconn-wave-modal-content">
                     <div className="wave-modal-content-inner crconn-wave-modal-content-inner">
                         <header className="wave-modal-header crconn-wave-modal-header">
