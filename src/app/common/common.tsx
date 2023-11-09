@@ -10,7 +10,6 @@ import remarkGfm from "remark-gfm";
 import cn from "classnames";
 import { If } from "tsx-control-statements/components";
 import type { RemoteType } from "../../types/types";
-import { debounce } from "throttle-debounce";
 
 import { ReactComponent as CheckIcon } from "../assets/icons/line/check.svg";
 import { ReactComponent as CopyIcon } from "../assets/icons/history/copy.svg";
@@ -222,6 +221,7 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
     handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
         const { required, onChange } = this.props;
         const inputValue = e.target.value;
+        console.log("handleInputChange", inputValue);
 
         // Check if value is empty and the field is required
         if (required && !inputValue) {
@@ -270,7 +270,7 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
                         maxLength={maxLength}
                     />
                 </div>
-                {decoration?.endDecoration && <div>{decoration.endDecoration}</div>}
+                {decoration?.endDecoration && <>{decoration.endDecoration}</>}
             </div>
         );
     }
@@ -286,7 +286,13 @@ class NumberField extends TextField {
         if (inputValue === "" || /^\d*$/.test(inputValue)) {
             // Update the internal state only if the component is not controlled.
             if (this.props.value === undefined) {
-                this.setState({ internalValue: inputValue, error: false, hasContent: Boolean(inputValue) });
+                const isError = required ? inputValue.trim() === "" : false;
+
+                this.setState({
+                    internalValue: inputValue,
+                    error: isError,
+                    hasContent: Boolean(inputValue),
+                });
             }
 
             onChange && onChange(inputValue);
@@ -321,6 +327,93 @@ class NumberField extends TextField {
         return React.cloneElement(renderedTextField, {
             onKeyDown: this.handleKeyDown,
         });
+    }
+}
+
+interface PasswordFieldState extends TextFieldState {
+    passwordVisible: boolean;
+}
+
+@mobxReact.observer
+class PasswordField extends TextField {
+    state: PasswordFieldState;
+
+    constructor(props) {
+        super(props);
+        this.state = {
+            ...this.state,
+            passwordVisible: false,
+        };
+    }
+
+    @boundMethod
+    togglePasswordVisibility() {
+        //@ts-ignore
+        this.setState((prevState) => ({
+            //@ts-ignore
+            passwordVisible: !prevState.passwordVisible,
+        }));
+    }
+
+    @boundMethod
+    handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+        // Call the parent handleInputChange method
+        super.handleInputChange(e);
+    }
+
+    render() {
+        const { decoration, className, placeholder, maxLength, label } = this.props;
+        const { focused, internalValue, error, passwordVisible } = this.state;
+        const inputValue = this.props.value !== undefined ? this.props.value : internalValue;
+
+        // The input should always receive the real value
+        const inputProps = {
+            className: cn("wave-textfield-inner-input", { "offset-left": decoration?.startDecoration }),
+            ref: this.inputRef,
+            id: label,
+            value: inputValue, // Always use the real value here
+            onChange: this.handleInputChange,
+            onFocus: this.handleFocus,
+            onBlur: this.handleBlur,
+            placeholder: placeholder,
+            maxLength: maxLength,
+        };
+
+        return (
+            <div className={cn(`wave-textfield wave-password ${className || ""}`, { focused: focused, error: error })}>
+                {decoration?.startDecoration && <>{decoration.startDecoration}</>}
+                <div className="wave-textfield-inner">
+                    <label
+                        className={cn("wave-textfield-inner-label", {
+                            float: this.state.hasContent || this.state.focused || placeholder,
+                            "offset-left": decoration?.startDecoration,
+                        })}
+                        htmlFor={label}
+                    >
+                        {label}
+                    </label>
+                    <If condition={passwordVisible}>
+                        <input {...inputProps} type="text" />
+                    </If>
+                    <If condition={!passwordVisible}>
+                        <input {...inputProps} type="password" />
+                    </If>
+                    <div
+                        className="wave-textfield-inner-eye"
+                        onClick={this.togglePasswordVisibility}
+                        style={{ cursor: "pointer" }}
+                    >
+                        <If condition={passwordVisible}>
+                            <i className="fa-sharp fa-solid fa-eye"></i>
+                        </If>
+                        <If condition={!passwordVisible}>
+                            <i className="fa-sharp fa-solid fa-eye-slash"></i>
+                        </If>
+                    </div>
+                </div>
+                {decoration?.endDecoration && <>{decoration.endDecoration}</>}
+            </div>
+        );
     }
 }
 
@@ -786,4 +879,5 @@ export {
     TextField,
     InputDecoration,
     NumberField,
+    PasswordField,
 };

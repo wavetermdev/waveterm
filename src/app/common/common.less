@@ -629,11 +629,7 @@
     position: relative;
     background-color: transparent;
     height: 44px;
-    display: flex;
     width: 412px;
-    flex-direction: row;
-    justify-content: space-between;
-    gap: 6px;
     border: 1px solid var(--element-separator, rgba(241, 246, 243, 0.15));
     border-radius: 6px;
     background: var(--element-hover-2, rgba(255, 255, 255, 0.06));
@@ -676,6 +672,10 @@
         transform: translateY(-50%);
         transition: transform 0.3s;
         pointer-events: none;
+
+        i {
+            font-size: 14px;
+        }
     }
 
     &-menu {
@@ -735,8 +735,19 @@
         }
     }
 
+    .wave-input-decoration {
+        position: absolute;
+        top: 0;
+        height: 100%;
+    }
+
     .wave-input-decoration.end-position {
-        margin-right: 42px;
+        margin-right: 44px;
+        right: 0;
+    }
+
+    .wave-input-decoration.start-position {
+        left: 0;
     }
 
     &-error {
@@ -754,6 +765,35 @@
         100% {
             opacity: 0;
         }
+    }
+}
+
+.wave-textfield.wave-password {
+    .wave-textfield-inner-eye {
+        position: absolute;
+        right: 16px;
+        top: 52%;
+        transform: translateY(-50%);
+        transition: transform 0.3s;
+
+        i {
+            font-size: 14px;
+        }
+    }
+
+    .wave-input-decoration {
+        position: absolute;
+        top: 0;
+        height: 100%;
+    }
+
+    .wave-input-decoration.end-position {
+        margin-right: 47px;
+        right: 0;
+    }
+
+    .wave-input-decoration.start-position {
+        left: 0;
     }
 }
 

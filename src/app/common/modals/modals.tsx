@@ -15,7 +15,7 @@ import { Markdown, InfoMessage } from "../common";
 import * as util from "../../../util/util";
 import { Toggle, Checkbox } from "../common";
 import { ClientDataType } from "../../../types/types";
-import { TextField, NumberField, InputDecoration } from "../common";
+import { TextField, NumberField, InputDecoration, Dropdown, PasswordField } from "../common";
 
 import close from "../../assets/icons/close.svg";
 import { ReactComponent as WarningIcon } from "../../assets/icons/line/triangle-exclamation.svg";
@@ -678,6 +678,7 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
 
     @boundMethod
     handleChangePassword(value: string): void {
+        console.log("handleChangePassword", value);
         mobx.action(() => {
             this.tempPassword.set(value);
         })();
@@ -764,6 +765,57 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
                                         ),
                                     }}
                                 />
+                            </div>
+                            <div className="authmode-section">
+                                <Dropdown
+                                    label="Auth Mode"
+                                    options={[
+                                        { value: "none", label: "none" },
+                                        { value: "key", label: "key" },
+                                        { value: "password", label: "password" },
+                                        { value: "key+password", label: "key+password" },
+                                    ]}
+                                    value={this.tempAuthMode.get()}
+                                    onChange={(val: string) => {
+                                        this.tempAuthMode.set(val);
+                                    }}
+                                    decoration={{
+                                        endDecoration: (
+                                            <InputDecoration position="end">
+                                                <i className="fa-sharp fa-regular fa-circle-question" />
+                                            </InputDecoration>
+                                        ),
+                                    }}
+                                />
+                            </div>
+                            <div className="sshkeyfile-section">
+                                <If condition={authMode == "key" || authMode == "key+password"}>
+                                    <TextField
+                                        label="SSH Keyfile"
+                                        placeholder="keyfile"
+                                        onChange={this.handleChangeKeyFile}
+                                        value={this.tempKeyFile.get()}
+                                        maxLength={400}
+                                        decoration={{
+                                            endDecoration: (
+                                                <InputDecoration>
+                                                    <i className="fa-sharp fa-regular fa-circle-question"></i>
+                                                </InputDecoration>
+                                            ),
+                                        }}
+                                    />
+                                </If>
+                            </div>
+                            <div className="password-section">
+                                <If condition={authMode == "password" || authMode == "key+password"}>
+                                    <PasswordField
+                                        label={authMode == "password" ? "SSH Password" : "Key Passphrase"}
+                                        placeholder="password"
+                                        onChange={this.handleChangePassword}
+                                        value={this.tempPassword.get()}
+                                        maxLength={400}
+                                    />
+                                </If>
                             </div>
 
                             <div className="settings-field mt-3">
