@@ -72,7 +72,7 @@ const (
 )
 
 var ColorNames = []string{"yellow", "blue", "pink", "mint", "cyan", "violet", "orange", "green", "red", "white"}
-var TabIcons = []string{"sparkle", "fire", "ghost", "cloud", "compass", "crown", "droplet", "graduation-cap", "heart", "file"}
+var TabIcons = []string{"square", "sparkle", "fire", "ghost", "cloud", "compass", "crown", "droplet", "graduation-cap", "heart", "file"}
 var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
 var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}
 
@@ -82,7 +82,7 @@ var GlobalCmds = []string{"session", "screen", "remote", "set", "client", "telem
 
 var SetVarNameMap map[string]string = map[string]string{
 	"tabcolor": "screen.tabcolor",
-	"tabicon": "screen.tabicon",
+	"tabicon":  "screen.tabicon",
 	"pterm":    "screen.pterm",
 	"anchor":   "screen.anchor",
 	"focus":    "screen.focus",

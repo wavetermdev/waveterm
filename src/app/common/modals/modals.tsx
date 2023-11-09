@@ -372,6 +372,13 @@ class AboutModal extends React.Component<{}, {}> {
 
     @boundMethod
     getStatus(isUpToDate: boolean): JSX.Element {
+        // TODO no up-to-date status reporting
+        return (
+            <div className="status updated">
+                <div className="text-selectable">Client Version v0.4.0 20231016-110014</div>
+            </div>
+        );
+        
         if (isUpToDate) {
             return (
                 <div className="status updated">
@@ -379,7 +386,7 @@ class AboutModal extends React.Component<{}, {}> {
                         <i className="fa-sharp fa-solid fa-circle-check" />
                         <span>Up to Date</span>
                     </div>
-                    <div>Client Version v0.4.0 20231016-110014</div>
+                    <div className="selectable">Client Version v0.4.0 20231016-110014</div>
                 </div>
             );
         }
@@ -389,7 +396,7 @@ class AboutModal extends React.Component<{}, {}> {
                     <i className="fa-sharp fa-solid fa-triangle-exclamation" />
                     <span>Outdated Version</span>
                 </div>
-                <div>Client Version v0.4.0 20231016-110014</div>
+                <div className="selectable">Client Version v0.4.0 20231016-110014</div>
                 <div>
                     <button onClick={this.updateApp} className="button color-green text-secondary">
                         Update

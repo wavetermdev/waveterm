@@ -17,7 +17,7 @@ import { InfoMsg } from "./infomsg";
 import { HistoryInfo } from "./historyinfo";
 import { Prompt } from "../../common/prompt/prompt";
 import { ReactComponent as ExecIcon } from "../../assets/icons/exec.svg";
-import "./cmdInput.less";
+import "./cmdinput.less";
 
 dayjs.extend(localizedFormat);
 
@@ -28,6 +28,7 @@ type OV<V> = mobx.IObservableValue<V>;
 @mobxReact.observer
 class CmdInput extends React.Component<{}, {}> {
     cmdInputRef: React.RefObject<any> = React.createRef();
+    promptRef: React.RefObject<any> = React.createRef();
 
     componentDidMount() {
         this.updateCmdInputHeight();
@@ -62,7 +63,12 @@ class CmdInput extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    cmdInputClick(): void {
+    cmdInputClick(e: any): void {
+        if (this.promptRef.current != null) {
+            if (this.promptRef.current.contains(e.target)) {
+                return;
+            }
+        }
         GlobalModel.inputModel.giveFocus();
     }
 
@@ -135,7 +141,7 @@ class CmdInput extends React.Component<{}, {}> {
                 </If>
                 <div key="prompt" className="cmd-input-context">
                     <div className="has-text-white">
-                        <Prompt rptr={rptr} festate={feState} />
+                        <span ref={this.promptRef}><Prompt rptr={rptr} festate={feState} /></span>
                     </div>
                 </div>
                 <div

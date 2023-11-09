@@ -146,9 +146,18 @@
             font-family: @terminal-font;
             color: @term-white;
             white-space: pre;
-            margin-left: 20px;
+            margin-left: 10px;
+            padding-left: 10px;
+            padding-bottom: 1px;
             font-size: 11px;
             line-height: 1.2;
+            max-height: 50px;
+            overflow-y: auto;
+            direction: rtl;
+
+            .cmd-rtnstate-diff-inner {
+                direction: ltr;
+            }
         }
 
         .cmd-rtnstate-sep {

@@ -71,12 +71,13 @@ class SourceCodeRenderer extends React.Component<
         const editorHeight = Math.max(props.savedHeight - 25, 0); // must subtract the padding/margin to get the real editorHeight
         this.markdownRef = React.createRef();
         this.syncing = false;
+        let isClosed = props.lineState["prompt:closed"];
         this.state = {
             code: null,
             languages: [],
             selectedLanguage: "",
             isSave: false,
-            isClosed: false,
+            isClosed: isClosed,
             editorHeight,
             message: null,
             isPreviewerAvailable: false,
@@ -92,11 +93,11 @@ class SourceCodeRenderer extends React.Component<
         this.cacheKey = `${screenId}-${lineId}-${this.filePath}`;
         const code = SourceCodeRenderer.codeCache.get(this.cacheKey);
         if (code) {
-            this.setState({ code, isClosed: this.props.lineState["prompt:closed"] });
+            this.setState({ code });
         } else {
             this.props.data.text().then((code) => {
                 this.originalCode = code;
-                this.setState({ code, isClosed: this.props.lineState["prompt:closed"] });
+                this.setState({ code });
                 SourceCodeRenderer.codeCache.set(this.cacheKey, code);
             });
         }
@@ -417,10 +418,13 @@ class SourceCodeRenderer extends React.Component<
     render() {
         const { exitcode } = this.props;
         const { code, message, isPreviewerAvailable, showPreview, editorFraction } = this.state;
-
-        if (code == null) return <div className="code-renderer" style={{ height: this.props.savedHeight }} />;
-
-        if (exitcode === 1)
+        if (this.state.isClosed) {
+            return <div className="code-renderer"></div>;
+        }
+        if (code == null) {
+            return <div className="code-renderer" style={{ height: this.props.savedHeight }} />;
+        }
+        if (exitcode === 1) {
             return (
                 <div
                     className="code-renderer"
@@ -432,7 +436,7 @@ class SourceCodeRenderer extends React.Component<
                     {code}
                 </div>
             );
-
+        }
         return (
             <div className="code-renderer">
                 <Split sizes={[editorFraction, 1 - editorFraction]} onSetSizes={this.setSizes}>

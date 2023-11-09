@@ -29,6 +29,7 @@ import { ReactComponent as StatusCircleIcon } from "../../assets/icons/statuscir
 import { ReactComponent as ArrowsUpDownIcon } from "../../assets/icons/arrowsupdown.svg";
 import { ReactComponent as CircleIcon } from "../../assets/icons/circle.svg";
 import { ReactComponent as AddIcon } from "../../assets/icons/add.svg";
+import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
 
 import "./screenview.less";
 import "./tabs.less";
@@ -114,10 +115,13 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
         return (
             <>
                 <div className="text-s1 unselectable">Select the icon</div>
-                <div className="control-iconlist">
+                <div className="control-iconlist tabicon-list">
+                    <div key="square" className="icondiv" title="square" onClick={() => this.selectTabIcon("square")}>
+                        <SquareIcon className="icon square-icon"/>
+                    </div>
                     <For each="icon" of={TabIcons}>
                         <div
-                            className="icondiv"
+                            className="icondiv tabicon"
                             key={icon}
                             title={icon || ""}
                             onClick={() => this.selectTabIcon(icon || "")}
@@ -172,13 +176,6 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                         required={true}
                         defaultValue={screen.name.get() ?? ""}
                         onChange={this.updateName}
-                        decoration={{
-                            endDecoration: (
-                                <InputDecoration>
-                                    <i className="fa-sharp fa-regular fa-circle-question"></i>
-                                </InputDecoration>
-                            ),
-                        }}
                     />
                 </div>
                 <div className="newtab-spacer" />

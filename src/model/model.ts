@@ -2455,6 +2455,7 @@ class PluginsModel {
     selectedPlugin: OV<RendererPluginType> = mobx.observable.box(null, { name: "selectedPlugin" });
 
     showPluginsView(): void {
+        PluginModel.loadAllPluginResources();
         mobx.action(() => {
             this.reset();
             GlobalModel.activeMainView.set("plugins");
@@ -3457,7 +3458,7 @@ class Model {
     }
 
     getClientData(): void {
-        let url = sprintf(GlobalModel.getBaseHostPort() + "/api/get-client-data");
+        let url = new URL(GlobalModel.getBaseHostPort() + "/api/get-client-data");
         let fetchHeaders = this.getFetchHeaders();
         fetch(url, { method: "post", body: null, headers: fetchHeaders })
             .then((resp) => handleJsonFetchResponse(url, resp))
@@ -3479,7 +3480,7 @@ class Model {
                 console.trace();
             }
         }
-        let url = sprintf(GlobalModel.getBaseHostPort() + "/api/run-command");
+        let url = new URL(GlobalModel.getBaseHostPort() + "/api/run-command");
         let fetchHeaders = this.getFetchHeaders();
         let prtn = fetch(url, {
             method: "post",
