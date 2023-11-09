@@ -837,8 +837,6 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
         // Determine if the label should float
         const shouldLabelFloat = !!value || !!internalValue || !!placeholder || isOpen;
 
-        console.log("isOpen", isOpen);
-
         const dropdownMenu = isOpen
             ? ReactDOM.createPortal(
                   <div className={cn("wave-dropdown-menu")} ref={this.menuRef} style={this.calculatePosition()}>
