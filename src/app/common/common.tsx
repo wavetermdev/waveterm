@@ -231,6 +231,7 @@ interface TextFieldProps {
     decoration?: TextFieldDecorationProps;
     required?: boolean;
     maxLength?: number;
+    autoFocus?: boolean;
 }
 
 interface TextFieldState {
@@ -310,7 +311,7 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
     }
 
     render() {
-        const { label, value, placeholder, decoration, className, maxLength } = this.props;
+        const { label, value, placeholder, decoration, className, maxLength, autoFocus } = this.props;
         const { focused, internalValue, error } = this.state;
 
         // Decide if the input should behave as controlled or uncontrolled
@@ -339,6 +340,7 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
                         onBlur={this.handleBlur}
                         placeholder={placeholder}
                         maxLength={maxLength}
+                        autoFocus={autoFocus}
                     />
                 </div>
                 {decoration?.endDecoration && <>{decoration.endDecoration}</>}

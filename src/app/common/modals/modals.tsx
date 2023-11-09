@@ -626,7 +626,7 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
                             <div className="user-section">
                                 <TextField
                                     label="user@host"
-                                    placeholder="user@host"
+                                    autoFocus={true}
                                     value={this.tempHostName.get()}
                                     onChange={this.handleChangeHostName}
                                     required={true}
@@ -732,7 +732,7 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
                             <If condition={authMode == "key" || authMode == "key+password"}>
                                 <TextField
                                     label="SSH Keyfile"
-                                    placeholder="keyfile"
+                                    placeholder="keyfile path"
                                     onChange={this.handleChangeKeyFile}
                                     value={this.tempKeyFile.get()}
                                     maxLength={400}
