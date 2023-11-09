@@ -10,6 +10,7 @@ import remarkGfm from "remark-gfm";
 import cn from "classnames";
 import { If } from "tsx-control-statements/components";
 import type { RemoteType } from "../../types/types";
+import ReactDOM from "react-dom";
 
 import { ReactComponent as CheckIcon } from "../assets/icons/line/check.svg";
 import { ReactComponent as CopyIcon } from "../assets/icons/history/copy.svg";
@@ -722,7 +723,13 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
 
     @boundMethod
     handleClickOutside(event: MouseEvent) {
-        if (this.wrapperRef && !this.wrapperRef.current?.contains(event.target as Node)) {
+        // Check if the click is outside both the wrapper and the menu
+        if (
+            this.wrapperRef.current &&
+            !this.wrapperRef.current.contains(event.target as Node) &&
+            this.menuRef.current &&
+            !this.menuRef.current.contains(event.target as Node)
+        ) {
             this.setState({ isOpen: false });
         }
     }
@@ -798,6 +805,20 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
         this.setState((prevState) => ({ isOpen: !prevState.isOpen, isTouched: true }));
     }
 
+    @boundMethod
+    calculatePosition(): React.CSSProperties {
+        if (this.wrapperRef.current) {
+            const rect = this.wrapperRef.current.getBoundingClientRect();
+            return {
+                position: "absolute",
+                top: `${rect.bottom + window.scrollY}px`,
+                left: `${rect.left + window.scrollX}px`,
+                width: `${rect.width}px`,
+            };
+        }
+        return {};
+    }
+
     render() {
         const { label, options, value, placeholder, decoration, className, required } = this.props;
         const { isOpen, internalValue, highlightedIndex, isTouched } = this.state;
@@ -816,10 +837,32 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
         // Determine if the label should float
         const shouldLabelFloat = !!value || !!internalValue || !!placeholder || isOpen;
 
+        console.log("isOpen", isOpen);
+
+        const dropdownMenu = isOpen
+            ? ReactDOM.createPortal(
+                  <div className={cn("wave-dropdown-menu")} ref={this.menuRef} style={this.calculatePosition()}>
+                      {options.map((option, index) => (
+                          <div
+                              key={option.value}
+                              className={cn("wave-dropdown-item", {
+                                  "wave-dropdown-item-highlighted": index === highlightedIndex,
+                              })}
+                              onClick={(e) => this.handleSelect(option.value, e)}
+                              onMouseEnter={() => this.setState({ highlightedIndex: index })}
+                              onMouseLeave={() => this.setState({ highlightedIndex: -1 })}
+                          >
+                              {option.label}
+                          </div>
+                      ))}
+                  </div>,
+                  document.getElementById("app")!
+              )
+            : null;
+
         return (
             <div
                 className={cn(`wave-dropdown ${className || ""}`, {
-                    "wave-dropdown-open": isOpen,
                     "wave-dropdown-error": isError,
                 })}
                 ref={this.wrapperRef}
@@ -840,24 +883,10 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
                 <div className={cn("wave-dropdown-display", { "offset-left": decoration?.startDecoration })}>
                     {selectedOptionLabel}
                 </div>
-                <div className="wave-dropdown-arrow">
+                <div className={cn("wave-dropdown-arrow", { "wave-dropdown-arrow-rotate": isOpen })}>
                     <i className="fa-sharp fa-solid fa-chevron-down"></i>
                 </div>
-                <div className={cn("wave-dropdown-menu")} ref={this.menuRef}>
-                    {options.map((option, index) => (
-                        <div
-                            key={option.value}
-                            className={cn("wave-dropdown-item", {
-                                "wave-dropdown-item-highlighted": index === highlightedIndex,
-                            })}
-                            onClick={(e) => this.handleSelect(option.value, e)}
-                            onMouseEnter={() => this.setState({ highlightedIndex: index })}
-                            onMouseLeave={() => this.setState({ highlightedIndex: -1 })}
-                        >
-                            {option.label}
-                        </div>
-                    ))}
-                </div>
+                {dropdownMenu}
                 {decoration?.endDecoration && <>{decoration.endDecoration}</>}
             </div>
         );
