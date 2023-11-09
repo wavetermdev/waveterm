@@ -464,107 +464,6 @@ class AboutModal extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
-class AuthModeDropdown extends React.Component<{ tempVal: OV<string> }, {}> {
-    active: OV<boolean> = mobx.observable.box(false, { name: "AuthModeDropdown-active" });
-
-    @boundMethod
-    toggleActive(): void {
-        mobx.action(() => {
-            this.active.set(!this.active.get());
-        })();
-    }
-
-    @boundMethod
-    updateValue(val: string): void {
-        mobx.action(() => {
-            this.props.tempVal.set(val);
-            this.active.set(false);
-        })();
-    }
-
-    render() {
-        return (
-            <div className={cn("dropdown", "editremote-dropdown", { "is-active": this.active.get() })}>
-                <div className="dropdown-trigger">
-                    <button onClick={this.toggleActive} className="button">
-                        <span>{this.props.tempVal.get()}</span>
-                        <div className="flex-spacer" />
-                        <AngleDownIcon className="icon" />
-                    </button>
-                </div>
-                <div className="dropdown-menu" role="menu">
-                    <div className="dropdown-content has-background-black">
-                        <div key="none" onClick={() => this.updateValue("none")} className="dropdown-item">
-                            none
-                        </div>
-                        <div key="key" onClick={() => this.updateValue("key")} className="dropdown-item">
-                            key
-                        </div>
-                        <div key="password" onClick={() => this.updateValue("password")} className="dropdown-item">
-                            password
-                        </div>
-                        <div
-                            key="key+password"
-                            onClick={() => this.updateValue("key+password")}
-                            className="dropdown-item"
-                        >
-                            key+password
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-}
-
-@mobxReact.observer
-class ConnectModeDropdown extends React.Component<{ tempVal: OV<string> }, {}> {
-    active: OV<boolean> = mobx.observable.box(false, { name: "ConnectModeDropdown-active" });
-
-    @boundMethod
-    toggleActive(): void {
-        mobx.action(() => {
-            this.active.set(!this.active.get());
-        })();
-    }
-
-    @boundMethod
-    updateValue(val: string): void {
-        mobx.action(() => {
-            this.props.tempVal.set(val);
-            this.active.set(false);
-        })();
-    }
-
-    render() {
-        return (
-            <div className={cn("dropdown", "editremote-dropdown", { "is-active": this.active.get() })}>
-                <div className="dropdown-trigger">
-                    <button onClick={this.toggleActive} className="button">
-                        <span>{this.props.tempVal.get()}</span>
-                        <div className="flex-spacer" />
-                        <AngleDownIcon className="icon" />
-                    </button>
-                </div>
-                <div className="dropdown-menu" role="menu">
-                    <div className="dropdown-content has-background-black">
-                        <div key="startup" onClick={() => this.updateValue("startup")} className="dropdown-item">
-                            startup
-                        </div>
-                        <div key="auto" onClick={() => this.updateValue("auto")} className="dropdown-item">
-                            auto
-                        </div>
-                        <div key="manual" onClick={() => this.updateValue("manual")} className="dropdown-item">
-                            manual
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-}
-
-@mobxReact.observer
 class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; remoteEdit: T.RemoteEditType }, {}> {
     tempAlias: OV<string>;
     tempHostName: OV<string>;
@@ -670,9 +569,9 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
     }
 
     @boundMethod
-    handleChangeKeyFile(e: any): void {
+    handleChangeKeyFile(value: string): void {
         mobx.action(() => {
-            this.tempKeyFile.set(e.target.value);
+            this.tempKeyFile.set(value);
         })();
     }
 
@@ -788,175 +687,52 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
                                     }}
                                 />
                             </div>
-                            <div className="sshkeyfile-section">
-                                <If condition={authMode == "key" || authMode == "key+password"}>
-                                    <TextField
-                                        label="SSH Keyfile"
-                                        placeholder="keyfile"
-                                        onChange={this.handleChangeKeyFile}
-                                        value={this.tempKeyFile.get()}
-                                        maxLength={400}
-                                        decoration={{
-                                            endDecoration: (
-                                                <InputDecoration>
-                                                    <i className="fa-sharp fa-regular fa-circle-question"></i>
-                                                </InputDecoration>
-                                            ),
-                                        }}
-                                    />
-                                </If>
-                            </div>
-                            <div className="password-section">
-                                <If condition={authMode == "password" || authMode == "key+password"}>
-                                    <PasswordField
-                                        label={authMode == "password" ? "SSH Password" : "Key Passphrase"}
-                                        placeholder="password"
-                                        onChange={this.handleChangePassword}
-                                        value={this.tempPassword.get()}
-                                        maxLength={400}
-                                    />
-                                </If>
-                            </div>
-
-                            <div className="settings-field mt-3">
-                                <div className="settings-label">
-                                    <div>user@host</div>
-                                    <div className="flex-spacer" />
-                                    <InfoMessage width={400}>
-                                        (Required) The user and host that you want to connect with. This is in the same
-                                        format as you would pass to ssh, e.g. "ubuntu@test.mydomain.com".
-                                    </InfoMessage>
-                                </div>
-                                <div className="settings-input">
-                                    <input
-                                        type="text"
-                                        placeholder="user@host"
-                                        onChange={this.handleChangeHostName}
-                                        value={this.tempHostName.get()}
-                                        maxLength={100}
-                                    />
-                                </div>
-                            </div>
-                            <div className="settings-field">
-                                <div className="settings-label">
-                                    <div>Alias</div>
-                                    <div className="flex-spacer" />
-                                    <InfoMessage width={400}>
-                                        (Optional) A short alias to use when selecting or displaying this connection.
-                                    </InfoMessage>
-                                </div>
-                                <div className="settings-input">
-                                    <input
-                                        type="text"
-                                        onChange={this.handleChangeAlias}
-                                        value={this.tempAlias.get()}
-                                        maxLength={40}
-                                    />
-                                </div>
-                            </div>
-                            <div className="settings-field">
-                                <div className="settings-label">
-                                    <div>Port</div>
-                                    <div className="flex-spacer" />
-                                    <InfoMessage width={400}>
-                                        (Optional) Defaults to 22. Set if the server you are connecting to listens to a
-                                        non-standard SSH port.
-                                    </InfoMessage>
-                                </div>
-                                <div className="settings-input">
-                                    <input
-                                        type="number"
-                                        placeholder="22"
-                                        onChange={this.handleChangePort}
-                                        value={this.tempPort.get()}
-                                    />
-                                </div>
-                            </div>
-                            <div className="settings-field align-top">
-                                <div className="settings-label">
-                                    <div>Auth Mode</div>
-                                    <div className="flex-spacer" />
-                                    <InfoMessage width={350}>
-                                        <ul>
-                                            <li>
-                                                <b>none</b> - no authentication, or authentication is already configured
-                                                in your ssh config.
-                                            </li>
-                                            <li>
-                                                <b>key</b> - use a private key.
-                                            </li>
-                                            <li>
-                                                <b>password</b> - use a password.
-                                            </li>
-                                            <li>
-                                                <b>key+password</b> - use a key with a passphrase.
-                                            </li>
-                                        </ul>
-                                    </InfoMessage>
-                                </div>
-                                <div className="settings-input">
-                                    <div className="raw-input">
-                                        <AuthModeDropdown tempVal={this.tempAuthMode} />
-                                    </div>
-                                </div>
-                            </div>
                             <If condition={authMode == "key" || authMode == "key+password"}>
-                                <div className="settings-field" style={{ marginTop: 10 }}>
-                                    <div className="settings-label">SSH Keyfile</div>
-                                    <div className="settings-input">
-                                        <input
-                                            type="text"
-                                            placeholder="keyfile"
-                                            onChange={this.handleChangeKeyFile}
-                                            value={this.tempKeyFile.get()}
-                                            maxLength={400}
-                                        />
-                                    </div>
-                                </div>
+                                <TextField
+                                    label="SSH Keyfile"
+                                    placeholder="keyfile"
+                                    onChange={this.handleChangeKeyFile}
+                                    value={this.tempKeyFile.get()}
+                                    maxLength={400}
+                                    decoration={{
+                                        endDecoration: (
+                                            <InputDecoration>
+                                                <i className="fa-sharp fa-regular fa-circle-question"></i>
+                                            </InputDecoration>
+                                        ),
+                                    }}
+                                />
                             </If>
                             <If condition={authMode == "password" || authMode == "key+password"}>
-                                <div className="settings-field" style={{ marginTop: 10 }}>
-                                    <div className="settings-label">
-                                        {authMode == "password" ? "SSH Password" : "Key Passphrase"}
-                                    </div>
-                                    <div className="settings-input">
-                                        <input
-                                            type="password"
-                                            placeholder="password"
-                                            onChange={this.handleChangePassword}
-                                            value={this.tempPassword.get()}
-                                            maxLength={400}
-                                        />
-                                    </div>
-                                </div>
+                                <PasswordField
+                                    label={authMode == "password" ? "SSH Password" : "Key Passphrase"}
+                                    placeholder="password"
+                                    onChange={this.handleChangePassword}
+                                    value={this.tempPassword.get()}
+                                    maxLength={400}
+                                />
                             </If>
-                            <div className="settings-field align-top" style={{ marginTop: 10 }}>
-                                <div className="settings-label">
-                                    <div>Connect Mode</div>
-                                    <div className="flex-spacer" />
-                                    <InfoMessage width={350}>
-                                        <ul>
-                                            <li>
-                                                <b>startup</b> - Connect when Wave Terminal starts.
-                                            </li>
-                                            <li>
-                                                <b>auto</b> - Connect when you first run a command using this
-                                                connection.
-                                            </li>
-                                            <li>
-                                                <b>manual</b> - Connect manually. Note, if your connection requires
-                                                manual input, like an OPT code, you must use this setting.
-                                            </li>
-                                        </ul>
-                                    </InfoMessage>
-                                </div>
-                                <div className="settings-input">
-                                    <div className="raw-input">
-                                        <div className="raw-input">
-                                            <ConnectModeDropdown tempVal={this.tempConnectMode} />
-                                        </div>
-                                    </div>
-                                </div>
+                            <div className="connectmode-section">
+                                <Dropdown
+                                    label="Connect Mode"
+                                    options={[
+                                        { value: "startup", label: "startup" },
+                                        { value: "key", label: "key" },
+                                        { value: "auto", label: "auto" },
+                                        { value: "manual", label: "manual" },
+                                    ]}
+                                    value={this.tempConnectMode.get()}
+                                    onChange={(val: string) => {
+                                        this.tempConnectMode.set(val);
+                                    }}
+                                    decoration={{
+                                        endDecoration: (
+                                            <InputDecoration position="end">
+                                                <i className="fa-sharp fa-regular fa-circle-question" />
+                                            </InputDecoration>
+                                        ),
+                                    }}
+                                />
                             </div>
                             <If condition={!util.isBlank(this.getErrorStr())}>
                                 <div className="settings-field settings-error">Error: {this.getErrorStr()}</div>
@@ -968,13 +744,12 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
                                 <div onClick={model.cancelEditAuth} className="button is-plain is-outlined is-small">
                                     Cancel
                                 </div>
-                                <div
-                                    style={{ marginLeft: 10, marginRight: 20 }}
+                                <button
                                     onClick={this.submitRemote}
-                                    className="button is-prompt-green is-outlined is-small"
+                                    className="button is-wave-green is-outlined is-small"
                                 >
                                     Create Remote
-                                </div>
+                                </button>
                             </div>
                         </footer>
                     </div>
