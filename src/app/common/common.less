@@ -871,6 +871,28 @@
     margin: 0 16px 0 8px;
 }
 
+.wave-tooltip {
+    display: flex;
+    position: absolute;
+    z-index: 1000;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px;
+    border: 1px solid #777;
+    background-color: #444;
+    border-radius: 5px;
+    overflow: hidden;
+    max-width: 300px;
+
+    i {
+        display: inline;
+        font-size: 16px;
+        fill: @base-color;
+        padding-top: 0.2em;
+    }
+}
+
 .inline-edit {
     .icon {
         display: inline;

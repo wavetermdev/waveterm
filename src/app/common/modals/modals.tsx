@@ -15,7 +15,7 @@ import { Markdown, InfoMessage } from "../common";
 import * as util from "../../../util/util";
 import { Toggle, Checkbox } from "../common";
 import { ClientDataType } from "../../../types/types";
-import { TextField, NumberField, InputDecoration, Dropdown, PasswordField } from "../common";
+import { TextField, NumberField, InputDecoration, Dropdown, PasswordField, Tooltip } from "../common";
 
 import close from "../../assets/icons/close.svg";
 import { ReactComponent as WarningIcon } from "../../assets/icons/line/triangle-exclamation.svg";
@@ -544,22 +544,19 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
         kwargs["visual"] = "1";
         kwargs["submit"] = "1";
         let model = this.props.model;
-        let shouldCr = model.onlyAddNewRemote.get();
         let prtn = GlobalCommandRunner.createRemote(cname, kwargs, false);
         prtn.then((crtn) => {
             if (crtn.success) {
-                if (shouldCr) {
-                    let crRtn = GlobalCommandRunner.screenSetRemote(cname, true, false);
-                    crRtn.then((crcrtn) => {
-                        if (crcrtn.success) {
-                            model.closeModal();
-                            return;
-                        }
-                        mobx.action(() => {
-                            this.errorStr.set(crcrtn.error);
-                        })();
-                    });
-                }
+                let crRtn = GlobalCommandRunner.screenSetRemote(cname, true, false);
+                crRtn.then((crcrtn) => {
+                    if (crcrtn.success) {
+                        model.closeModal();
+                        return;
+                    }
+                    mobx.action(() => {
+                        this.errorStr.set(crcrtn.error);
+                    })();
+                });
                 return;
             }
             mobx.action(() => {
@@ -625,10 +622,17 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
                                     placeholder="user@host"
                                     value={this.tempHostName.get()}
                                     onChange={this.handleChangeHostName}
+                                    required={true}
                                     decoration={{
                                         endDecoration: (
                                             <InputDecoration>
-                                                <i className="fa-sharp fa-regular fa-circle-question"></i>
+                                                <Tooltip
+                                                    message={`(Required) The user and host that you want to connect with. This is in the same format as
+													you would pass to ssh, e.g. "ubuntu@test.mydomain.com".`}
+                                                    icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                                >
+                                                    <i className="fa-sharp fa-regular fa-circle-question" />
+                                                </Tooltip>
                                             </InputDecoration>
                                         ),
                                     }}
@@ -643,7 +647,12 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
                                     decoration={{
                                         endDecoration: (
                                             <InputDecoration>
-                                                <i className="fa-sharp fa-regular fa-circle-question"></i>
+                                                <Tooltip
+                                                    message={`(Optional) A short alias to use when selecting or displaying this connection.`}
+                                                    icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                                >
+                                                    <i className="fa-sharp fa-regular fa-circle-question" />
+                                                </Tooltip>
                                             </InputDecoration>
                                         ),
                                     }}
@@ -658,7 +667,13 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
                                     decoration={{
                                         endDecoration: (
                                             <InputDecoration>
-                                                <i className="fa-sharp fa-regular fa-circle-question"></i>
+                                                <Tooltip
+                                                    message={`(Optional) Defaults to 22. Set if the server you are connecting to listens to a non-standard
+													SSH port.`}
+                                                    icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                                >
+                                                    <i className="fa-sharp fa-regular fa-circle-question" />
+                                                </Tooltip>
                                             </InputDecoration>
                                         ),
                                     }}
@@ -679,8 +694,29 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
                                     }}
                                     decoration={{
                                         endDecoration: (
-                                            <InputDecoration position="end">
-                                                <i className="fa-sharp fa-regular fa-circle-question" />
+                                            <InputDecoration>
+                                                <Tooltip
+                                                    message={
+                                                        <ul>
+                                                            <li>
+                                                                <b>none</b> - no authentication, or authentication is
+                                                                already configured in your ssh config.
+                                                            </li>
+                                                            <li>
+                                                                <b>key</b> - use a private key.
+                                                            </li>
+                                                            <li>
+                                                                <b>password</b> - use a password.
+                                                            </li>
+                                                            <li>
+                                                                <b>key+password</b> - use a key with a passphrase.
+                                                            </li>
+                                                        </ul>
+                                                    }
+                                                    icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                                >
+                                                    <i className="fa-sharp fa-regular fa-circle-question" />
+                                                </Tooltip>
                                             </InputDecoration>
                                         ),
                                     }}
@@ -693,10 +729,16 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
                                     onChange={this.handleChangeKeyFile}
                                     value={this.tempKeyFile.get()}
                                     maxLength={400}
+                                    required={true}
                                     decoration={{
                                         endDecoration: (
                                             <InputDecoration>
-                                                <i className="fa-sharp fa-regular fa-circle-question"></i>
+                                                <Tooltip
+                                                    message={`(Required) The path to your ssh key file.`}
+                                                    icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                                >
+                                                    <i className="fa-sharp fa-regular fa-circle-question" />
+                                                </Tooltip>
                                             </InputDecoration>
                                         ),
                                     }}
@@ -723,13 +765,6 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
                                     value={this.tempConnectMode.get()}
                                     onChange={(val: string) => {
                                         this.tempConnectMode.set(val);
-                                    }}
-                                    decoration={{
-                                        endDecoration: (
-                                            <InputDecoration position="end">
-                                                <i className="fa-sharp fa-regular fa-circle-question" />
-                                            </InputDecoration>
-                                        ),
                                     }}
                                 />
                             </div>
