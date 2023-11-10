@@ -152,7 +152,6 @@ func (ckey CommandKey) Validate(typeStr string) error {
 func HasDebugFlag(envMap map[string]string, flagName string) bool {
 	msDebug := envMap[MShellDebugVarName]
 	flags := strings.Split(msDebug, ",")
-	Logf("hasdebugflag[%s]: %s [%#v]\n", flagName, msDebug, flags)
 	for _, flag := range flags {
 		if strings.TrimSpace(flag) == flagName {
 			return true

@@ -84,7 +84,7 @@ CGO_ENABLED=1 go build -ldflags "-X main.BuildTime=$(date +'%Y%m%d%H%M')" -o ../
 # @scripthaus command build-waveshell
 cd waveshell
 GO_LDFLAGS="-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')"
-go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell-v0.3-darwin.amd64 main-waveshell.go
+go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-darwin.amd64 main-waveshell.go
 ```
 
 ```bash

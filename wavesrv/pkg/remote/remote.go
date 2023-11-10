@@ -1673,6 +1673,8 @@ func (msh *MShellProc) notifyHangups_nolock() {
 		sstore.MainBus.SendScreenUpdate(ck.GetGroupId(), update)
 	}
 	msh.RunningCmds = make(map[base.CommandKey]RunCmdType)
+	msh.PendingStateCmds = make(map[pendingStateKey]base.CommandKey)
+	msh.WaitingCmds = nil
 }
 
 func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {

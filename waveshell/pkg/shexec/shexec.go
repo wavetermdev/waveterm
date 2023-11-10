@@ -47,6 +47,7 @@ const MaxMaxPtySize = 100 * 1024 * 1024
 const MaxRunDataSize = 1024 * 1024
 const MaxTotalRunDataSize = 10 * MaxRunDataSize
 const ShellVarName = "SHELL"
+const SigKillWaitTime = 2 * time.Second
 
 const GetStateTimeout = 5 * time.Second
 
@@ -1040,8 +1041,19 @@ trap _mshell_exittrap EXIT
 }
 
 func (s *ShExecType) SendSignal(sig syscall.Signal) {
-	base.Logf("signal start\n")
+	base.Logf("signal start %v\n", sig)
+	if sig == syscall.SIGKILL {
+		// SIGKILL is special, it also needs to kill waveshell if it's hanging
+		go func() {
+			wsPid := syscall.Getpid()
+			base.Logf("special sigkill handling waveshell-pid:%d\n", wsPid)
+			time.Sleep(SigKillWaitTime)
+			base.Logf("running self-sigkill %d\n", wsPid)
+			syscall.Kill(wsPid, syscall.SIGKILL)
+		}()
+	}
 	if s.Cmd == nil || s.Cmd.Process == nil || s.IsExited() {
+		base.Logf("signal, no cmd or exited (exited:%v)\n", s.IsExited())
 		return
 	}
 	pgroup := false
