@@ -128,9 +128,21 @@ func (ws *WSState) RunUpdates(updateCh chan interface{}) {
 	for update := range updateCh {
 		shell := ws.GetShell()
 		if shell != nil {
-			shell.WriteJson(update)
+			writeJsonProtected(shell, update)
 		}
 	}
+}
+
+func writeJsonProtected(shell *wsshell.WSShell, update any) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+		log.Printf("[error] in scws RunUpdates WriteJson: %v\n", r)
+		return
+	}()
+	shell.WriteJson(update)
 }
 
 func (ws *WSState) ReplaceShell(shell *wsshell.WSShell) {
