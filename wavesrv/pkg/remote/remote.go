@@ -91,6 +91,11 @@ type Store struct {
 	CmdWaitMap map[base.CommandKey][]func()
 }
 
+type pendingStateKey struct {
+	ScreenId  string
+	RemotePtr sstore.RemotePtrType
+}
+
 type MShellProc struct {
 	Lock   *sync.Mutex
 	Remote *sstore.RemoteType
@@ -118,7 +123,7 @@ type MShellProc struct {
 
 	RunningCmds      map[base.CommandKey]RunCmdType
 	WaitingCmds      []RunCmdType
-	PendingStateCmds map[string]base.CommandKey // key=[remoteinstance name]
+	PendingStateCmds map[pendingStateKey]base.CommandKey // key=[remoteinstance name]
 }
 
 type RunCmdType struct {
@@ -678,7 +683,7 @@ func MakeMShell(r *sstore.RemoteType) *MShellProc {
 		PtyBuffer:        buf,
 		InstallStatus:    StatusDisconnected,
 		RunningCmds:      make(map[base.CommandKey]RunCmdType),
-		PendingStateCmds: make(map[string]base.CommandKey),
+		PendingStateCmds: make(map[pendingStateKey]base.CommandKey),
 		StateMap:         make(map[string]*packet.ShellState),
 	}
 	rtn.WriteToPtyBuffer("console for connection [%s]\n", r.GetName())
@@ -1393,28 +1398,30 @@ func makeTermOpts(runPk *packet.RunPacketType) sstore.TermOpts {
 }
 
 // returns (ok, currentPSC)
-func (msh *MShellProc) testAndSetPendingStateCmd(riName string, newCK *base.CommandKey) (bool, *base.CommandKey) {
+func (msh *MShellProc) testAndSetPendingStateCmd(screenId string, rptr sstore.RemotePtrType, newCK *base.CommandKey) (bool, *base.CommandKey) {
+	key := pendingStateKey{ScreenId: screenId, RemotePtr: rptr}
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
-	ck, found := msh.PendingStateCmds[riName]
+	ck, found := msh.PendingStateCmds[key]
 	if found {
 		return false, &ck
 	}
 	if newCK != nil {
-		msh.PendingStateCmds[riName] = *newCK
+		msh.PendingStateCmds[key] = *newCK
 	}
 	return true, nil
 }
 
-func (msh *MShellProc) removePendingStateCmd(riName string, ck base.CommandKey) {
+func (msh *MShellProc) removePendingStateCmd(screenId string, rptr sstore.RemotePtrType, ck base.CommandKey) {
+	key := pendingStateKey{ScreenId: screenId, RemotePtr: rptr}
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
-	existingCK, found := msh.PendingStateCmds[riName]
+	existingCK, found := msh.PendingStateCmds[key]
 	if !found {
 		return
 	}
 	if existingCK == ck {
-		delete(msh.PendingStateCmds, riName)
+		delete(msh.PendingStateCmds, key)
 	}
 }
 
@@ -1446,7 +1453,7 @@ func RunCommand(ctx context.Context, sessionId string, screenId string, remotePt
 	if runPacket.ReturnState {
 		newPSC = &runPacket.CK
 	}
-	ok, existingPSC := msh.testAndSetPendingStateCmd(remotePtr.Name, newPSC)
+	ok, existingPSC := msh.testAndSetPendingStateCmd(screenId, remotePtr, newPSC)
 	if !ok {
 		line, _, err := sstore.GetLineCmdByLineId(ctx, screenId, existingPSC.GetCmdId())
 		if err != nil {
@@ -1462,7 +1469,7 @@ func RunCommand(ctx context.Context, sessionId string, screenId string, remotePt
 		if rtnErr != nil {
 			removeCmdWait(runPacket.CK)
 			if newPSC != nil {
-				msh.removePendingStateCmd(remotePtr.Name, *newPSC)
+				msh.removePendingStateCmd(screenId, remotePtr, *newPSC)
 			}
 		}
 	}()
@@ -1584,9 +1591,9 @@ func (msh *MShellProc) RemoveRunningCmd(ck base.CommandKey) {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
 	delete(msh.RunningCmds, ck)
-	for name, pendingCk := range msh.PendingStateCmds {
+	for key, pendingCk := range msh.PendingStateCmds {
 		if pendingCk == ck {
-			delete(msh.PendingStateCmds, name)
+			delete(msh.PendingStateCmds, key)
 		}
 	}
 }
