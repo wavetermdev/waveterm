@@ -1129,6 +1129,12 @@ class RemotesModal extends React.Component<{ model: RemotesModalModel }, {}> {
         let selectedRemote = GlobalModel.getRemote(selectedRemoteId);
         let remoteEdit = model.remoteEdit.get();
         let onlyAddNewRemote = model.onlyAddNewRemote.get();
+
+        // @TODO: this is a hack to determine which create modal to show
+        if (remoteEdit && !remoteEdit.old) {
+            return null;
+        }
+
         return (
             <div className={cn("modal remotes-modal settings-modal prompt-modal is-active")}>
                 <div className="modal-background" />
@@ -1179,7 +1185,15 @@ class RemotesModal extends React.Component<{ model: RemotesModalModel }, {}> {
 }
 
 @mobxReact.observer
-class ConnectionDropdown extends React.Component<{ curRemote: T.RemoteType, onSelectRemote?: (cname: string) => void, allowNewConn: boolean, onNewConn?: () => void }, {}> {
+class ConnectionDropdown extends React.Component<
+    {
+        curRemote: T.RemoteType;
+        onSelectRemote?: (cname: string) => void;
+        allowNewConn: boolean;
+        onNewConn?: () => void;
+    },
+    {}
+> {
     connDropdownActive: OV<boolean> = mobx.observable.box(false, { name: "connDropdownActive" });
 
     @boundMethod
@@ -1208,7 +1222,7 @@ class ConnectionDropdown extends React.Component<{ curRemote: T.RemoteType, onSe
             this.props.onNewConn();
         }
     }
-    
+
     render() {
         let { curRemote } = this.props;
         let remote: T.RemoteType = null;
@@ -1219,39 +1233,31 @@ class ConnectionDropdown extends React.Component<{ curRemote: T.RemoteType, onSe
                     <div className="conn-dd-trigger">
                         <If condition={curRemote != null}>
                             <div className="lefticon">
-                                <GlobeIcon className="globe-icon"/>
-                                <StatusCircleIcon className={cn("status-icon", "status-" + curRemote.status)}/>
+                                <GlobeIcon className="globe-icon" />
+                                <StatusCircleIcon className={cn("status-icon", "status-" + curRemote.status)} />
                             </div>
                             <div className="conntext">
                                 <If condition={util.isBlank(curRemote.remotealias)}>
-                                    <div className="text-standard conntext-solo">
-                                        {curRemote.remotecanonicalname}
-                                    </div>
+                                    <div className="text-standard conntext-solo">{curRemote.remotecanonicalname}</div>
                                 </If>
                                 <If condition={!util.isBlank(curRemote.remotealias)}>
-                                    <div className="text-secondary conntext-1">
-                                        {curRemote.remotealias}
-                                    </div>
-                                    <div className="text-caption conntext-2">
-                                        {curRemote.remotecanonicalname}
-                                    </div>
+                                    <div className="text-secondary conntext-1">{curRemote.remotealias}</div>
+                                    <div className="text-caption conntext-2">{curRemote.remotecanonicalname}</div>
                                 </If>
                             </div>
                             <div className="dd-control">
-                                <ArrowsUpDownIcon className="icon"/>
+                                <ArrowsUpDownIcon className="icon" />
                             </div>
                         </If>
                         <If condition={curRemote == null}>
                             <div className="lefticon">
-                                <GlobeIcon className="globe-icon"/>
+                                <GlobeIcon className="globe-icon" />
                             </div>
                             <div className="conntext">
-                                <div className="text-standard conntext-solo">
-                                    (no connection)
-                                </div>
+                                <div className="text-standard conntext-solo">(no connection)</div>
                             </div>
                             <div className="dd-control">
-                                <ArrowsUpDownIcon className="icon"/>
+                                <ArrowsUpDownIcon className="icon" />
                             </div>
                         </If>
                     </div>
@@ -1259,9 +1265,13 @@ class ConnectionDropdown extends React.Component<{ curRemote: T.RemoteType, onSe
                 <div className="dropdown-menu" role="menu">
                     <div className="dropdown-content conn-dd-menu">
                         <For each="remote" of={allRemotes}>
-                            <div className="dropdown-item" key={remote.remoteid} onClick={() => this.selectRemote(remote.remotecanonicalname)}>
+                            <div
+                                className="dropdown-item"
+                                key={remote.remoteid}
+                                onClick={() => this.selectRemote(remote.remotecanonicalname)}
+                            >
                                 <div className="status-div">
-                                    <CircleIcon className={cn("status-icon", "status-" + remote.status)}/>
+                                    <CircleIcon className={cn("status-icon", "status-" + remote.status)} />
                                 </div>
                                 <If condition={util.isBlank(remote.remotealias)}>
                                     <div className="text-standard">{remote.remotecanonicalname}</div>
@@ -1275,7 +1285,7 @@ class ConnectionDropdown extends React.Component<{ curRemote: T.RemoteType, onSe
                         <If condition={this.props.allowNewConn}>
                             <div className="dropdown-item" onClick={this.clickNewConnection}>
                                 <div className="add-div">
-                                    <AddIcon className="add-icon"/>
+                                    <AddIcon className="add-icon" />
                                 </div>
                                 <div className="text-standard">New Connection</div>
                             </div>

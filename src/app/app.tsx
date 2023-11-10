@@ -24,7 +24,13 @@ import {
 import { RemotesModal } from "./connections/connections";
 import { TosModal } from "./common/modals/modals";
 import { MainSideBar } from "./sidebar/sidebar";
-import { DisconnectedModal, ClientStopModal, AlertModal, AboutModal } from "./common/modals/modals";
+import {
+    DisconnectedModal,
+    ClientStopModal,
+    AlertModal,
+    AboutModal,
+    CreateRemoteConnModal,
+} from "./common/modals/modals";
 import { ErrorBoundary } from "./common/error/errorboundary";
 import "./app.less";
 
@@ -79,7 +85,10 @@ class App extends React.Component<{}, {}> {
         let sessionSettingsModal = GlobalModel.sessionSettingsModal.get();
         let lineSettingsModal = GlobalModel.lineSettingsModal.get();
         let clientSettingsModal = GlobalModel.clientSettingsModal.get();
-        let remotesModal = GlobalModel.remotesModalModel.isOpen();
+        let remotesModel = GlobalModel.remotesModalModel;
+        let remotesModal = remotesModel.isOpen();
+        let selectedRemoteId = remotesModel.selectedRemoteId.get();
+        let remoteEdit = remotesModel.remoteEdit.get();
         let disconnected = !GlobalModel.ws.open.get() || !GlobalModel.waveSrvRunning.get();
         let hasClientStop = GlobalModel.getHasClientStop();
         let dcWait = this.dcWait.get();
@@ -126,6 +135,9 @@ class App extends React.Component<{}, {}> {
                 </If>
                 <If condition={GlobalModel.aboutModalOpen.get()}>
                     <AboutModal />
+                </If>
+                <If condition={remoteEdit !== null && !remoteEdit.old}>
+                    <CreateRemoteConnModal model={remotesModel} remoteEdit={remoteEdit} />
                 </If>
                 <If condition={screenSettingsModal != null}>
                     <ScreenSettingsModal

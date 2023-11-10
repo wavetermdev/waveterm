@@ -101,7 +101,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
 
     @boundMethod
     clickNewConnection(): void {
-        GlobalModel.remotesModalModel.openModalForEdit({ remoteedit: true }, true);
+        GlobalModel.remotesModalModel.openModalForEdit({ remoteedit: true, old: false }, true);
     }
 
     renderTabIconSelector(): React.ReactNode {
@@ -171,9 +171,8 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
         return (
             <div className="newtab-container">
                 <div className="newtab-section name-section">
-                    <div className="text-standard">Name</div>
                     <TextField
-                        label="Title"
+                        label="Name"
                         required={true}
                         defaultValue={screen.name.get() ?? ""}
                         onChange={this.updateName}

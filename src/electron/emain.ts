@@ -188,7 +188,7 @@ let menuTemplate = [
         ],
     },
     {
-        label: "Filemenu",
+        label: "File",
         submenu: [{ role: "close" }, { role: "forceReload" }],
     },
     {

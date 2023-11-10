@@ -10,7 +10,7 @@ import remarkGfm from "remark-gfm";
 import cn from "classnames";
 import { If } from "tsx-control-statements/components";
 import type { RemoteType } from "../../types/types";
-import { debounce } from "throttle-debounce";
+import ReactDOM from "react-dom";
 
 import { ReactComponent as CheckIcon } from "../assets/icons/line/check.svg";
 import { ReactComponent as CopyIcon } from "../assets/icons/history/copy.svg";
@@ -125,14 +125,95 @@ class Checkbox extends React.Component<
 }
 
 interface InputDecorationProps {
+    position?: "start" | "end";
     children: React.ReactNode;
 }
 
 @mobxReact.observer
 class InputDecoration extends React.Component<InputDecorationProps, {}> {
     render() {
-        const { children } = this.props;
-        return <div className="input-decoration">{children}</div>;
+        const { children, position = "end" } = this.props;
+        return (
+            <div
+                className={cn("wave-input-decoration", {
+                    "start-position": position === "start",
+                    "end-position": position === "end",
+                })}
+            >
+                {children}
+            </div>
+        );
+    }
+}
+
+interface TooltipProps {
+    message: React.ReactNode;
+    icon?: React.ReactNode; // Optional icon property
+    children: React.ReactNode;
+}
+
+interface TooltipState {
+    isVisible: boolean;
+}
+
+@mobxReact.observer
+class Tooltip extends React.Component<TooltipProps, TooltipState> {
+    iconRef: React.RefObject<HTMLDivElement>;
+
+    constructor(props: TooltipProps) {
+        super(props);
+        this.state = {
+            isVisible: false,
+        };
+        this.iconRef = React.createRef();
+    }
+
+    @boundMethod
+    showBubble() {
+        this.setState({ isVisible: true });
+    }
+
+    @boundMethod
+    hideBubble() {
+        this.setState({ isVisible: false });
+    }
+
+    @boundMethod
+    calculatePosition() {
+        // Get the position of the icon element
+        const iconElement = this.iconRef.current;
+        if (iconElement) {
+            const rect = iconElement.getBoundingClientRect();
+            return {
+                top: `${rect.bottom + window.scrollY - 29.5}px`,
+                left: `${rect.left + window.scrollX + rect.width / 2 - 19}px`,
+            };
+        }
+        return {};
+    }
+
+    @boundMethod
+    renderBubble() {
+        if (!this.state.isVisible) return null;
+
+        const style = this.calculatePosition();
+
+        return ReactDOM.createPortal(
+            <div className="wave-tooltip" style={style}>
+                {this.props.icon && <div className="wave-tooltip-icon">{this.props.icon}</div>}
+                <div className="wave-tooltip-message">{this.props.message}</div>
+            </div>,
+            document.getElementById("app")!
+        );
+    }
+
+    render() {
+        return (
+            <div onMouseEnter={this.showBubble} onMouseLeave={this.hideBubble} ref={this.iconRef}>
+                {this.props.children}
+                {this.renderBubble()}
+            </div>
+        );
     }
 }
 
@@ -149,6 +230,8 @@ interface TextFieldProps {
     defaultValue?: string;
     decoration?: TextFieldDecorationProps;
     required?: boolean;
+    maxLength?: number;
+    autoFocus?: boolean;
 }
 
 interface TextFieldState {
@@ -207,14 +290,9 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
         this.setState((prevState) => ({ showHelpText: !prevState.showHelpText }));
     }
 
-    debouncedOnChange = debounce(300, (value) => {
-        const { onChange } = this.props;
-        onChange?.(value);
-    });
-
     @boundMethod
     handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-        const { required } = this.props;
+        const { required, onChange } = this.props;
         const inputValue = e.target.value;
 
         // Check if value is empty and the field is required
@@ -229,31 +307,31 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
             this.setState({ internalValue: inputValue });
         }
 
-        this.debouncedOnChange(inputValue);
+        onChange && onChange(inputValue);
     }
 
     render() {
-        const { label, value, placeholder, decoration, className } = this.props;
+        const { label, value, placeholder, decoration, className, maxLength, autoFocus } = this.props;
         const { focused, internalValue, error } = this.state;
 
         // Decide if the input should behave as controlled or uncontrolled
         const inputValue = value !== undefined ? value : internalValue;
 
         return (
-            <div className={cn(`textfield ${className || ""}`, { focused: focused, error: error })}>
+            <div className={cn(`wave-textfield ${className || ""}`, { focused: focused, error: error })}>
                 {decoration?.startDecoration && <>{decoration.startDecoration}</>}
-                <div className="textfield-inner">
+                <div className="wave-textfield-inner">
                     <label
-                        className={cn("textfield-label", {
+                        className={cn("wave-textfield-inner-label", {
                             float: this.state.hasContent || this.state.focused || placeholder,
-                            start: decoration?.startDecoration,
+                            "offset-left": decoration?.startDecoration,
                         })}
                         htmlFor={label}
                     >
                         {label}
                     </label>
                     <input
-                        className={cn("textfield-input", { start: decoration?.startDecoration })}
+                        className={cn("wave-textfield-inner-input", { "offset-left": decoration?.startDecoration })}
                         ref={this.inputRef}
                         id={label}
                         value={inputValue}
@@ -261,9 +339,152 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
                         onFocus={this.handleFocus}
                         onBlur={this.handleBlur}
                         placeholder={placeholder}
+                        maxLength={maxLength}
+                        autoFocus={autoFocus}
                     />
                 </div>
-                {decoration?.endDecoration && <div>{decoration.endDecoration}</div>}
+                {decoration?.endDecoration && <>{decoration.endDecoration}</>}
+            </div>
+        );
+    }
+}
+
+class NumberField extends TextField {
+    @boundMethod
+    handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+        const { required, onChange } = this.props;
+        const inputValue = e.target.value;
+
+        // Allow only numeric input
+        if (inputValue === "" || /^\d*$/.test(inputValue)) {
+            // Update the internal state only if the component is not controlled.
+            if (this.props.value === undefined) {
+                const isError = required ? inputValue.trim() === "" : false;
+
+                this.setState({
+                    internalValue: inputValue,
+                    error: isError,
+                    hasContent: Boolean(inputValue),
+                });
+            }
+
+            onChange && onChange(inputValue);
+        }
+    }
+
+    @boundMethod
+    handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+        // Allow backspace, delete, tab, escape, and enter
+        if (
+            [46, 8, 9, 27, 13].includes(event.keyCode) ||
+            // Allow: Ctrl+A, Ctrl+C, Ctrl+X
+            ((event.keyCode === 65 || event.keyCode === 67 || event.keyCode === 88) && event.ctrlKey === true) ||
+            // Allow: home, end, left, right
+            (event.keyCode >= 35 && event.keyCode <= 39)
+        ) {
+            return; // let it happen, don't do anything
+        }
+        // Ensure that it is a number and stop the keypress
+        if (
+            (event.shiftKey || event.keyCode < 48 || event.keyCode > 57) &&
+            (event.keyCode < 96 || event.keyCode > 105)
+        ) {
+            event.preventDefault();
+        }
+    }
+
+    render() {
+        // Use the render method from TextField but add the onKeyDown handler
+        const renderedTextField = super.render();
+
+        return React.cloneElement(renderedTextField, {
+            onKeyDown: this.handleKeyDown,
+        });
+    }
+}
+
+interface PasswordFieldState extends TextFieldState {
+    passwordVisible: boolean;
+}
+
+@mobxReact.observer
+class PasswordField extends TextField {
+    state: PasswordFieldState;
+
+    constructor(props) {
+        super(props);
+        this.state = {
+            ...this.state,
+            passwordVisible: false,
+        };
+    }
+
+    @boundMethod
+    togglePasswordVisibility() {
+        //@ts-ignore
+        this.setState((prevState) => ({
+            //@ts-ignore
+            passwordVisible: !prevState.passwordVisible,
+        }));
+    }
+
+    @boundMethod
+    handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+        // Call the parent handleInputChange method
+        super.handleInputChange(e);
+    }
+
+    render() {
+        const { decoration, className, placeholder, maxLength, label } = this.props;
+        const { focused, internalValue, error, passwordVisible } = this.state;
+        const inputValue = this.props.value !== undefined ? this.props.value : internalValue;
+
+        // The input should always receive the real value
+        const inputProps = {
+            className: cn("wave-textfield-inner-input", { "offset-left": decoration?.startDecoration }),
+            ref: this.inputRef,
+            id: label,
+            value: inputValue, // Always use the real value here
+            onChange: this.handleInputChange,
+            onFocus: this.handleFocus,
+            onBlur: this.handleBlur,
+            placeholder: placeholder,
+            maxLength: maxLength,
+        };
+
+        return (
+            <div className={cn(`wave-textfield wave-password ${className || ""}`, { focused: focused, error: error })}>
+                {decoration?.startDecoration && <>{decoration.startDecoration}</>}
+                <div className="wave-textfield-inner">
+                    <label
+                        className={cn("wave-textfield-inner-label", {
+                            float: this.state.hasContent || this.state.focused || placeholder,
+                            "offset-left": decoration?.startDecoration,
+                        })}
+                        htmlFor={label}
+                    >
+                        {label}
+                    </label>
+                    <If condition={passwordVisible}>
+                        <input {...inputProps} type="text" />
+                    </If>
+                    <If condition={!passwordVisible}>
+                        <input {...inputProps} type="password" />
+                    </If>
+                    <div
+                        className="wave-textfield-inner-eye"
+                        onClick={this.togglePasswordVisibility}
+                        style={{ cursor: "pointer" }}
+                    >
+                        <If condition={passwordVisible}>
+                            <i className="fa-sharp fa-solid fa-eye"></i>
+                        </If>
+                        <If condition={!passwordVisible}>
+                            <i className="fa-sharp fa-solid fa-eye-slash"></i>
+                        </If>
+                    </div>
+                </div>
+                {decoration?.endDecoration && <>{decoration.endDecoration}</>}
             </div>
         );
     }
@@ -387,7 +608,9 @@ class InlineSettingsTextEdit extends React.Component<
                                 title="Cancel (Esc)"
                                 className="button is-prompt-danger is-outlined is-small"
                             >
-                                <span className="icon is-small"><i className="fa-sharp fa-solid fa-xmark"/></span>
+                                <span className="icon is-small">
+                                    <i className="fa-sharp fa-solid fa-xmark" />
+                                </span>
                             </div>
                         </div>
                         <div className="control">
@@ -396,7 +619,9 @@ class InlineSettingsTextEdit extends React.Component<
                                 title="Confirm (Enter)"
                                 className="button is-prompt-green is-outlined is-small"
                             >
-                                <span className="icon is-small"><i className="fa-sharp fa-solid fa-check"/></span>
+                                <span className="icon is-small">
+                                    <i className="fa-sharp fa-solid fa-check" />
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -407,7 +632,7 @@ class InlineSettingsTextEdit extends React.Component<
                 <div onClick={this.clickEdit} className={cn("settings-input inline-edit", "edit-not-active")}>
                     {this.props.text}
                     <If condition={this.props.showIcon}>
-                        <i className="fa-sharp fa-solid fa-pen"/>
+                        <i className="fa-sharp fa-solid fa-pen" />
                     </If>
                 </div>
             );
@@ -498,6 +723,247 @@ class SettingsError extends React.Component<{ errorMessage: OV<string> }, {}> {
     }
 }
 
+interface DropdownDecorationProps {
+    startDecoration?: React.ReactNode;
+    endDecoration?: React.ReactNode;
+}
+
+interface DropdownProps {
+    label: string;
+    options: { value: string; label: string }[];
+    value?: string;
+    className?: string;
+    onChange: (value: string) => void;
+    placeholder?: string;
+    decoration?: DropdownDecorationProps;
+    defaultValue?: string;
+    required?: boolean;
+}
+
+interface DropdownState {
+    isOpen: boolean;
+    internalValue: string;
+    highlightedIndex: number;
+    isTouched: boolean;
+}
+
+@mobxReact.observer
+class Dropdown extends React.Component<DropdownProps, DropdownState> {
+    wrapperRef: React.RefObject<HTMLDivElement>;
+    menuRef: React.RefObject<HTMLDivElement>;
+    timeoutId: any;
+
+    constructor(props: DropdownProps) {
+        super(props);
+        this.state = {
+            isOpen: false,
+            internalValue: props.defaultValue || "",
+            highlightedIndex: -1,
+            isTouched: false,
+        };
+        this.wrapperRef = React.createRef();
+        this.menuRef = React.createRef();
+    }
+
+    componentDidMount() {
+        document.addEventListener("mousedown", this.handleClickOutside);
+    }
+
+    componentWillUnmount() {
+        document.removeEventListener("mousedown", this.handleClickOutside);
+    }
+
+    componentDidUpdate(prevProps: Readonly<DropdownProps>, prevState: Readonly<DropdownState>, snapshot?: any): void {
+        // If the dropdown was open but now is closed, start the timeout
+        if (prevState.isOpen && !this.state.isOpen) {
+            this.timeoutId = setTimeout(() => {
+                if (this.menuRef.current) {
+                    this.menuRef.current.style.display = "none";
+                }
+            }, 300); // Time is equal to the animation duration
+        }
+        // If the dropdown is now open, cancel any existing timeout and show the menu
+        else if (!prevState.isOpen && this.state.isOpen) {
+            if (this.timeoutId !== null) {
+                clearTimeout(this.timeoutId); // Cancel any existing timeout
+                this.timeoutId = null;
+            }
+            if (this.menuRef.current) {
+                this.menuRef.current.style.display = "inline-flex";
+            }
+        }
+    }
+
+    @boundMethod
+    handleClickOutside(event: MouseEvent) {
+        // Check if the click is outside both the wrapper and the menu
+        if (
+            this.wrapperRef.current &&
+            !this.wrapperRef.current.contains(event.target as Node) &&
+            this.menuRef.current &&
+            !this.menuRef.current.contains(event.target as Node)
+        ) {
+            this.setState({ isOpen: false });
+        }
+    }
+
+    @boundMethod
+    handleClick() {
+        this.toggleDropdown();
+    }
+
+    @boundMethod
+    handleFocus() {
+        this.setState({ isTouched: true });
+    }
+
+    @boundMethod
+    handleKeyDown(event: React.KeyboardEvent) {
+        const { options } = this.props;
+        const { isOpen, highlightedIndex } = this.state;
+
+        switch (event.key) {
+            case "Enter":
+            case " ":
+                if (isOpen) {
+                    const option = options[highlightedIndex];
+                    if (option) {
+                        this.handleSelect(option.value, undefined);
+                    }
+                } else {
+                    this.toggleDropdown();
+                }
+                break;
+            case "Escape":
+                this.setState({ isOpen: false });
+                break;
+            case "ArrowUp":
+                if (isOpen) {
+                    this.setState((prevState) => ({
+                        highlightedIndex:
+                            prevState.highlightedIndex > 0 ? prevState.highlightedIndex - 1 : options.length - 1,
+                    }));
+                }
+                break;
+            case "ArrowDown":
+                if (isOpen) {
+                    this.setState((prevState) => ({
+                        highlightedIndex:
+                            prevState.highlightedIndex < options.length - 1 ? prevState.highlightedIndex + 1 : 0,
+                    }));
+                }
+                break;
+            case "Tab":
+                this.setState({ isOpen: false });
+                break;
+        }
+    }
+
+    @boundMethod
+    handleSelect(value: string, event?: React.MouseEvent | React.KeyboardEvent) {
+        const { onChange } = this.props;
+        if (event) {
+            event.stopPropagation(); // This stops the event from bubbling up to the wrapper
+        }
+
+        if (!("value" in this.props)) {
+            this.setState({ internalValue: value });
+        }
+        onChange(value);
+        this.setState({ isOpen: false, isTouched: true });
+    }
+
+    @boundMethod
+    toggleDropdown() {
+        this.setState((prevState) => ({ isOpen: !prevState.isOpen, isTouched: true }));
+    }
+
+    @boundMethod
+    calculatePosition(): React.CSSProperties {
+        if (this.wrapperRef.current) {
+            const rect = this.wrapperRef.current.getBoundingClientRect();
+            return {
+                position: "absolute",
+                top: `${rect.bottom + window.scrollY}px`,
+                left: `${rect.left + window.scrollX}px`,
+                width: `${rect.width}px`,
+            };
+        }
+        return {};
+    }
+
+    render() {
+        const { label, options, value, placeholder, decoration, className, required } = this.props;
+        const { isOpen, internalValue, highlightedIndex, isTouched } = this.state;
+
+        const currentValue = value !== undefined ? value : internalValue;
+        const selectedOptionLabel =
+            options.find((option) => option.value === currentValue)?.label || placeholder || internalValue;
+
+        // Determine if the dropdown should be marked as having an error
+        const isError =
+            required &&
+            (value === undefined || value === "") &&
+            (internalValue === undefined || internalValue === "") &&
+            isTouched;
+
+        // Determine if the label should float
+        const shouldLabelFloat = !!value || !!internalValue || !!placeholder || isOpen;
+
+        const dropdownMenu = isOpen
+            ? ReactDOM.createPortal(
+                  <div className={cn("wave-dropdown-menu")} ref={this.menuRef} style={this.calculatePosition()}>
+                      {options.map((option, index) => (
+                          <div
+                              key={option.value}
+                              className={cn("wave-dropdown-item", {
+                                  "wave-dropdown-item-highlighted": index === highlightedIndex,
+                              })}
+                              onClick={(e) => this.handleSelect(option.value, e)}
+                              onMouseEnter={() => this.setState({ highlightedIndex: index })}
+                              onMouseLeave={() => this.setState({ highlightedIndex: -1 })}
+                          >
+                              {option.label}
+                          </div>
+                      ))}
+                  </div>,
+                  document.getElementById("app")!
+              )
+            : null;
+
+        return (
+            <div
+                className={cn(`wave-dropdown ${className || ""}`, {
+                    "wave-dropdown-error": isError,
+                })}
+                ref={this.wrapperRef}
+                tabIndex={0}
+                onKeyDown={this.handleKeyDown}
+                onClick={this.handleClick}
+                onFocus={this.handleFocus}
+            >
+                {decoration?.startDecoration && <>{decoration.startDecoration}</>}
+                <div
+                    className={cn("wave-dropdown-label", {
+                        float: shouldLabelFloat,
+                        "offset-left": decoration?.startDecoration,
+                    })}
+                >
+                    {label}
+                </div>
+                <div className={cn("wave-dropdown-display", { "offset-left": decoration?.startDecoration })}>
+                    {selectedOptionLabel}
+                </div>
+                <div className={cn("wave-dropdown-arrow", { "wave-dropdown-arrow-rotate": isOpen })}>
+                    <i className="fa-sharp fa-solid fa-chevron-down"></i>
+                </div>
+                {dropdownMenu}
+                {decoration?.endDecoration && <>{decoration.endDecoration}</>}
+            </div>
+        );
+    }
+}
+
 export {
     CmdStrCode,
     Toggle,
@@ -508,6 +974,10 @@ export {
     InfoMessage,
     Markdown,
     SettingsError,
+    Dropdown,
     TextField,
     InputDecoration,
+    NumberField,
+    PasswordField,
+    Tooltip,
 };
