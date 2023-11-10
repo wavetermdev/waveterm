@@ -366,7 +366,7 @@ function createMainWindow(clientData) {
             electron.shell.openExternal(newUrl);
         } else if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("file://")) {
             console.log("openExternal fallback", url);
-            electron.shell.openExternal(newUrl);
+            electron.shell.openExternal(url);
         }
         console.log("window-open denied", url);
         return { action: "deny" };

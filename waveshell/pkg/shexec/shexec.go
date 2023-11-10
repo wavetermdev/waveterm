@@ -1597,6 +1597,8 @@ func MShellEnvVars(termType string) map[string]string {
 	}
 	rtn["MSHELL"], _ = os.Executable()
 	rtn["MSHELL_VERSION"] = base.MShellVersion
+	rtn["WAVESHELL"], _ = os.Executable()
+	rtn["WAVESHELL_VERSION"] = base.MShellVersion
 	return rtn
 }
 

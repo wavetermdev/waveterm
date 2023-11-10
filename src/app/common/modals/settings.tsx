@@ -28,9 +28,9 @@ const VERSION = __WAVETERM_VERSION__;
 const BUILD = __WAVETERM_BUILD__;
 
 const ScreenDeleteMessage = `
-Are you sure you want to delete this screen/tab?
+Are you sure you want to delete this tab?
 
-All commands and output will be deleted, and removed from history.  To hide the screen, and retain the commands in history, use 'archive'.
+All commands and output will be deleted, and removed from history.  To hide the tab, and retain the commands in history, use 'archive'.
 `.trim();
 
 const SessionDeleteMessage = `
@@ -46,7 +46,7 @@ You are responsible for what you are sharing, be smart.
 `.trim();
 
 const WebStopShareConfirmMarkdown = `
-Are you sure you want to stop web-sharing this screen?
+Are you sure you want to stop web-sharing this tab?
 `.trim();
 
 @mobxReact.observer
@@ -215,14 +215,14 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
                 <div className="modal-content">
                     {this.shareCopied.get() && <div className="copied-indicator" />}
                     <header>
-                        <div className="modal-title">screen settings ({screen.name.get()})</div>
+                        <div className="modal-title">tab settings ({screen.name.get()})</div>
                         <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
                             <XmarkIcon />
                         </div>
                     </header>
                     <div className="inner-content">
                         <div className="settings-field">
-                            <div className="settings-label">Screen Id</div>
+                            <div className="settings-label">Tab Id</div>
                             <div className="settings-input">{screen.screenId}</div>
                         </div>
                         <div className="settings-field">
@@ -269,7 +269,7 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
                             <div className="settings-label">
                                 <div>Archived</div>
                                 <InfoMessage width={400}>
-                                    Archive will hide the screen tab. Commands and output will be retained in
+                                    Archive will hide the tab. Commands and output will be retained in
                                     history.
                                 </InfoMessage>
                             </div>
@@ -281,7 +281,7 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
                             <div className="settings-label">
                                 <div>Actions</div>
                                 <InfoMessage width={400}>
-                                    Delete will remove the screen, removing all commands and output from history.
+                                    Delete will remove the tab, removing all commands and output from history.
                                 </InfoMessage>
                             </div>
                             <div className="settings-input">
@@ -289,7 +289,7 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
                                     onClick={this.handleDeleteScreen}
                                     className="button is-prompt-danger is-outlined is-small"
                                 >
-                                    Delete Screen
+                                    Delete Tab
                                 </div>
                             </div>
                         </div>

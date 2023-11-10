@@ -105,7 +105,14 @@ func ParseFuncs(funcs string) (map[string]string, error) {
 const MaxDiffKeyLen = 40
 const MaxDiffValLen = 50
 
-var IgnoreVars = map[string]bool{"PROMPT": true, "PROMPT_VERSION": true, "MSHELL": true}
+var IgnoreVars = map[string]bool{
+	"PROMPT":            true,
+	"PROMPT_VERSION":    true,
+	"MSHELL":            true,
+	"MSHELL_VERSION":    true,
+	"WAVESHELL":         true,
+	"WAVESHELL_VERSION": true,
+}
 
 func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newState packet.ShellState) {
 	if newState.Cwd != oldState.Cwd {
