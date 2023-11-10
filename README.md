@@ -23,14 +23,14 @@ Wave isn't just another terminal emulator; it's a rethink on how terminals are b
 
 Wave Terminal works with MacOS and Linux (preliminary).
 
-Install Wave Terminal from: [www.commandline.dev/download](https://www.commandline.dev/download)
+Install Wave Terminal from: [www.waveterm.dev/download](https://www.waveterm.dev/download)
 
 ## Links
 
-* Homepage &mdash; https://commandline.dev
-* Download Page &mdash; https://commandline.dev/download
-* Quick Start Guide &mdash; https://docs.getprompt.dev/quickstart/
-* Documentation &mdash; https://docs.getprompt.dev/
+* Homepage &mdash; https://www.waveterm.dev
+* Download Page &mdash; https://www.waveterm.dev/download
+* Documentation &mdash; https://docs.waveterm.dev/
+* Quick Start Guide &mdash; https://docs.waveterm.dev/quickstart/
 * Discord Community &mdash; https://discord.gg/XfvZ334gwU
 
 ## Building from Source

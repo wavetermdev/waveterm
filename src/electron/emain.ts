@@ -352,7 +352,7 @@ function createMainWindow(clientData) {
         MainWindow = null;
     });
     win.webContents.setWindowOpenHandler(({ url, frameName }) => {
-        if (url.startsWith("https://docs.getprompt.dev/")) {
+        if (url.startsWith("https://docs.waveterm.dev/")) {
             console.log("openExternal docs", url);
             electron.shell.openExternal(url);
         } else if (url.startsWith("https://discord.gg/")) {

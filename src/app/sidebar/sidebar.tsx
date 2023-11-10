@@ -238,7 +238,7 @@ class MainSideBar extends React.Component<{}, {}> {
                         </div>
                         <div
                             className="item hoverEffect unselectable"
-                            onClick={() => openLink("https://docs.getprompt.dev")}
+                            onClick={() => openLink("https://docs.waveterm.dev")}
                         >
                             <HelpIcon className="icon" />
                             Documentation

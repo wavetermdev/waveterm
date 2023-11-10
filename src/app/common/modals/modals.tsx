@@ -30,6 +30,8 @@ dayjs.extend(localizedFormat);
 
 // @ts-ignore
 const VERSION = __WAVETERM_VERSION__;
+// @ts-ignore
+let BUILD = __WAVETERM_BUILD__;
 
 type OV<V> = mobx.IObservableValue<V>;
 
@@ -375,7 +377,7 @@ class AboutModal extends React.Component<{}, {}> {
         // TODO no up-to-date status reporting
         return (
             <div className="status updated">
-                <div className="text-selectable">Client Version v0.4.0 20231016-110014</div>
+                <div className="text-selectable">Client Version {VERSION} ({BUILD})</div>
             </div>
         );
 
@@ -386,7 +388,7 @@ class AboutModal extends React.Component<{}, {}> {
                         <i className="fa-sharp fa-solid fa-circle-check" />
                         <span>Up to Date</span>
                     </div>
-                    <div className="selectable">Client Version v0.4.0 20231016-110014</div>
+                    <div className="selectable">Client Version {VERSION} ({BUILD})</div>
                 </div>
             );
         }
@@ -396,7 +398,7 @@ class AboutModal extends React.Component<{}, {}> {
                     <i className="fa-sharp fa-solid fa-triangle-exclamation" />
                     <span>Outdated Version</span>
                 </div>
-                <div className="selectable">Client Version v0.4.0 20231016-110014</div>
+                <div className="selectable">Client Version {VERSION} ({BUILD})</div>
                 <div>
                     <button onClick={this.updateApp} className="button color-green text-secondary">
                         Update
@@ -425,7 +427,7 @@ class AboutModal extends React.Component<{}, {}> {
                                 </div>
                                 <div className="text-wrapper">
                                     <div>Wave Terminal</div>
-                                    <div className="text-standard">Modern Terminal for Seamless Workflow</div>
+                                    <div className="text-standard">Modern Terminal for<br/>Seamless Workflow</div>
                                 </div>
                             </section>
                             <section className="wave-modal-section about-section text-standard">
@@ -442,7 +444,7 @@ class AboutModal extends React.Component<{}, {}> {
                                 </a>
                                 <a
                                     className="wave-button wave-button-link color-standard"
-                                    href={util.makeExternLink("https://www.commandline.dev/")}
+                                    href={util.makeExternLink("https://www.waveterm.dev/")}
                                     target="_blank"
                                 >
                                     <i className="fa-sharp fa-light fa-globe"></i>
@@ -460,7 +462,7 @@ class AboutModal extends React.Component<{}, {}> {
                                 </a>
                             </section>
                             <section className="wave-modal-section about-section text-standard">
-                                Copyright © 2023 Command Line Inc.
+                                &copy; 2023 Command Line Inc.
                             </section>
                         </div>
                     </div>
