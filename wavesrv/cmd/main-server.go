@@ -18,6 +18,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -793,7 +794,7 @@ func main() {
 
 	scLock, err := scbase.AcquireWaveLock()
 	if err != nil || scLock == nil {
-		log.Printf("[error] cannot acquire wave lock: %v\n", err)
+		log.Printf("[error] cannot acquire wave lock (another instance of wavesrv is likely running): %v\n", err)
 		return
 	}
 	if len(os.Args) >= 2 && strings.HasPrefix(os.Args[1], "--migrate") {
@@ -886,4 +887,5 @@ func main() {
 	if err != nil {
 		log.Printf("ERROR: %v\n", err)
 	}
+	runtime.KeepAlive(scLock)
 }

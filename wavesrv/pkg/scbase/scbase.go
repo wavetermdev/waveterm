@@ -156,7 +156,8 @@ func AcquireWaveLock() (*os.File, error) {
 		return nil, fmt.Errorf("cannot find/create WAVETERM_HOME directory %q", homeDir)
 	}
 	lockFileName := path.Join(homeDir, WaveLockFile)
-	fd, err := os.OpenFile(lockFileName, os.O_WRONLY|os.O_CREATE, 0600)
+	log.Printf("[base] acquiring lock on %s\n", lockFileName)
+	fd, err := os.OpenFile(lockFileName, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
 		return nil, err
 	}
