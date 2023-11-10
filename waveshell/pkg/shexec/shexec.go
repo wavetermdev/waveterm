@@ -48,6 +48,8 @@ const MaxRunDataSize = 1024 * 1024
 const MaxTotalRunDataSize = 10 * MaxRunDataSize
 const ShellVarName = "SHELL"
 const SigKillWaitTime = 2 * time.Second
+const RtnStateFdNum = 20
+const ReturnStateReadWaitTime = 2 * time.Second
 
 const GetStateTimeout = 5 * time.Second
 
@@ -1097,7 +1099,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		}
 		cmd.ReturnState = MakeReturnStateBuf()
 		cmd.ReturnState.Reader = pr
-		cmd.ReturnState.FdNum = 20
+		cmd.ReturnState.FdNum = RtnStateFdNum
 		rtnStateWriter = pw
 		defer pw.Close()
 		trapCmdStr := makeExitTrap(cmd.ReturnState.FdNum)
@@ -1440,6 +1442,12 @@ func (c *ShExecType) WaitForCommand() *packet.CmdDonePacketType {
 	donePacket := packet.MakeCmdDonePacket(c.CK)
 	exitErr := c.ProcWait()
 	if c.ReturnState != nil {
+		// processing ReturnState *should* be fast. strange bug while running [[[ eval $(ssh-agent -s) ]]]
+		// where the process exits, but the ReturnState.Reader does not return EOF!  Limit this to 2 seconds
+		go func() {
+			time.Sleep(ReturnStateReadWaitTime)
+			c.ReturnState.Reader.Close()
+		}()
 		<-c.ReturnState.DoneCh
 		state, _ := ParseShellStateOutput(c.ReturnState.Buf) // TODO what to do with error?
 		donePacket.FinalState = state
