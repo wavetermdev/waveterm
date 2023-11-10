@@ -195,10 +195,24 @@ class MainSideBar extends React.Component<{}, {}> {
         return (
             <div className={cn("main-sidebar", { collapsed: isCollapsed }, { "is-dev": GlobalModel.isDev })}>
                 <div className="title-bar-drag" />
-                <div className="arrow-container hoverEffect" onClick={this.toggleCollapsed}>
-                    <LeftChevronIcon className="icon" />
-                </div>
                 <div className="contents">
+                    <div className="logo">
+                        <If condition={isCollapsed}>
+                            <div className="logo-container" onClick={this.toggleCollapsed}>
+                                <img src="public/logos/wave-logo.png"/>
+                            </div>
+                        </If>
+                        <If condition={!isCollapsed}>
+                            <div className="logo-container">
+                                <img src="public/logos/wave-dark.png"/>
+                            </div>
+                            <div className="spacer"/>
+                            <div className="collapse-button" onClick={this.toggleCollapsed}>
+                                <LeftChevronIcon className="icon" />
+                            </div>
+                        </If>
+                    </div>
+                    <div className="separator" />
                     <div className="top">
                         <div className="item hoverEffect unselectable" onClick={this.handleHistoryClick}>
                             <HistoryIcon className="icon" />
@@ -209,7 +223,7 @@ class MainSideBar extends React.Component<{}, {}> {
                             <FavoritesIcon className="icon" />
                             Favorites
                             <span className="hotkey">&#x2318;B</span>
-                        </div>  */}
+                            </div>  */}
                         <div className="item hoverEffect unselectable" onClick={this.handleConnectionsClick}>
                             <ConnectionsIcon className="icon" />
                             Connections

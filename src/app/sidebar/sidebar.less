@@ -22,32 +22,83 @@
     &.collapsed {
         width: 6em;
         min-width: 6em;
-        .arrow-container {
+        .arrow-container, .collapse-button {
             transform: rotate(180deg);
+            margin-top: 20px;
         }
         .contents {
-            opacity: 0;
-            visibility: hidden;
+            margin-top: 26px;
+            
+            .top, .workspaces-item, .middle, .bottom, .separator {
+                pointer-events: none;
+                opacity: 0;
+                visibility: hidden;
+            }
+
+            .logo {
+                display: flex;
+                flex-direction: column;
+                margin-left: 0;
+                justify-content: center;
+                align-items: center;
+
+                .logo-container img {
+                    width: 45px;
+                }
+
+                .collapse-button {
+                    margin-right: 0;
+                }
+            }
         }
         overflow: hidden;
     }
 
     .arrow-container {
         position: absolute;
-        top: 1em;
-        right: 2em;
+        top: 24px;
+        right: 15px;
         width: 1.5em;
         height: 1.5em;
         border-radius: 50%;
         transition: transform 0.3s ease-in-out;
+        z-index: 2;
         svg {
             width: 1.5em;
             height: 1.5em;
         }
     }
 
+    .contents {
+        margin-top: 36px;
+    }
+
+    .logo {
+        margin-left: 14px;
+        display: flex;
+        flex-direction: row;
+
+        .spacer {
+            flex-grow: 1;
+        }
+        
+        img {
+            width: 100px;
+        }
+
+        .collapse-button {
+            transition: transform 0.3s ease-in-out;
+            margin-right: 14px;
+            
+            svg {
+                margin-top: 3px;
+                width: 1.5em;
+                height: 1.5em;
+            }
+        }
+    }
+
     .top {
-        margin-top: 32px;
     }
 
     .separator {
