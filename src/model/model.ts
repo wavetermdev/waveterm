@@ -1921,7 +1921,7 @@ class HistoryViewModel {
     searchRemoteId: OV<string> = mobx.observable.box(null, {
         name: "historyview-searchRemoteId",
     });
-    searchShowMeta: OV<boolean> = mobx.observable.box(false, {
+    searchShowMeta: OV<boolean> = mobx.observable.box(true, {
         name: "historyview-searchShowMeta",
     });
     searchFromDate: OV<string> = mobx.observable.box(null, {
@@ -2081,7 +2081,7 @@ class HistoryViewModel {
             this.searchSessionId.set(null);
             this.searchRemoteId.set(null);
             this.searchFromDate.set(null);
-            this.searchShowMeta.set(false);
+            this.searchShowMeta.set(true);
             this.searchFilterCmds.set(true);
         })();
         GlobalCommandRunner.historyView(this._getSearchParams(0, 0));

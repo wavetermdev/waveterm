@@ -512,20 +512,8 @@ class HistoryView extends React.Component<{}, {}> {
                                     </div>
                                 </div>
                             </div>
-                            <div className="allow-meta search-checkbox hoverEffect">
-                                <div className="checkbox-container">
-                                    <input
-                                        onChange={this.toggleShowMeta}
-                                        type="checkbox"
-                                        checked={hvm.searchShowMeta.get()}
-                                    />
-                                </div>
-                                <div onClick={this.toggleShowMeta} className="checkbox-text">
-                                    Show MetaCmds
-                                </div>
-                            </div>
                             <div className="fromts">
-                                <div onClick={this.toggleShowMeta} className="fromts-text">
+                                <div className="fromts-text">
                                     From:&nbsp;
                                 </div>
                                 <div className="hoverEffect">
