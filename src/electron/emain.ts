@@ -133,9 +133,6 @@ function getBaseHostPort() {
 }
 
 function getWaveSrvPath() {
-    if (isDev) {
-        return path.join(getAppBasePath(), "wavesrv", "bin", "wavesrv");
-    }
     return path.join(getAppBasePath(), "bin", "wavesrv");
 }
 

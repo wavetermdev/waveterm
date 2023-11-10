@@ -75,9 +75,6 @@ func MShellBinaryDir() string {
 	if appPath == "" {
 		appPath = "."
 	}
-	if IsDevMode() {
-		return path.Join(appPath, "waveshell", "bin")
-	}
 	return path.Join(appPath, "bin", "mshell")
 }
 
@@ -159,7 +156,7 @@ func AcquireWaveLock() (*os.File, error) {
 		return nil, fmt.Errorf("cannot find/create WAVETERM_HOME directory %q", homeDir)
 	}
 	lockFileName := path.Join(homeDir, WaveLockFile)
-	fd, err := os.Create(lockFileName)
+	fd, err := os.OpenFile(lockFileName, os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return nil, err
 	}
