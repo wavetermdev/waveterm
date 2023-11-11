@@ -21,7 +21,7 @@ import {
     LineSettingsModal,
     ClientSettingsModal,
 } from "./common/modals/settings";
-import { RemotesModal } from "./connections/connections";
+import { RemotesModal } from "./connections_deprecated/connections";
 import { TosModal } from "./common/modals/modals";
 import { MainSideBar } from "./sidebar/sidebar";
 import {

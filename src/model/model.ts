@@ -2188,6 +2188,14 @@ class HistoryViewModel {
     }
 }
 
+class ConnectionsViewModel {
+    showConnectionsView(data: HistoryViewDataType): void {
+        mobx.action(() => {
+            GlobalModel.activeMainView.set("connections");
+        })();
+    }
+}
+
 class BookmarksModel {
     bookmarks: OArr<BookmarkType> = mobx.observable.array([], {
         name: "Bookmarks",
@@ -2714,9 +2722,10 @@ class Model {
     authKey: string;
     isDev: boolean;
     platform: string;
-    activeMainView: OV<"plugins" | "session" | "history" | "bookmarks" | "webshare"> = mobx.observable.box("session", {
-        name: "activeMainView",
-    });
+    activeMainView: OV<"plugins" | "session" | "history" | "bookmarks" | "webshare" | "connections"> =
+        mobx.observable.box("session", {
+            name: "activeMainView",
+        });
     termFontSize: CV<number>;
     alertMessage: OV<AlertMessageType> = mobx.observable.box(null, {
         name: "alertMessage",
@@ -2743,6 +2752,7 @@ class Model {
     pluginsModel: PluginsModel;
     bookmarksModel: BookmarksModel;
     historyViewModel: HistoryViewModel;
+    connectionViewModel: ConnectionsViewModel;
     clientData: OV<ClientDataType> = mobx.observable.box(null, {
         name: "clientData",
     });
@@ -2762,6 +2772,7 @@ class Model {
         this.pluginsModel = new PluginsModel();
         this.bookmarksModel = new BookmarksModel();
         this.historyViewModel = new HistoryViewModel();
+        this.connectionViewModel = new ConnectionsViewModel();
         this.remotesModalModel = new RemotesModalModel();
         let isWaveSrvRunning = getApi().getWaveSrvStatus();
         this.waveSrvRunning = mobx.observable.box(isWaveSrvRunning, {
@@ -3272,6 +3283,8 @@ class Model {
                 this.activeMainView.set("session");
             } else if (update.mainview == "history") {
                 this.historyViewModel.showHistoryView(update.historyviewdata);
+            } else if (update.mainview === "connections") {
+                this.activeMainView.set("connections");
             } else {
                 console.log("invalid mainview in update:", update.mainview);
             }

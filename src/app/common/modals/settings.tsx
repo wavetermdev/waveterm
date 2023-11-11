@@ -10,7 +10,7 @@ import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, TabColors } from "../../../model/model";
 import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage } from "../common";
 import { LineType, RendererPluginType, ClientDataType, CommandRtnType } from "../../../types/types";
-import { ConnectionDropdown } from "../../connections/connections";
+import { ConnectionDropdown } from "../../connections_deprecated/connections";
 import { PluginModel } from "../../../plugins/plugins";
 import * as util from "../../../util/util";
 import { commandRtnHandler } from "../../../util/util";
@@ -50,7 +50,7 @@ Are you sure you want to stop web-sharing this tab?
 `.trim();
 
 @mobxReact.observer
-class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId: string; }, {}> {
+class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId: string }, {}> {
     shareCopied: OV<boolean> = mobx.observable.box(false, { name: "ScreenSettings-shareCopied" });
     errorMessage: OV<string> = mobx.observable.box(null, { name: "ScreenSettings-errorMessage" });
 
@@ -211,7 +211,7 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
         let curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
         return (
             <div className={cn("modal screen-settings-modal settings-modal prompt-modal is-active")}>
-                <div className="modal-background"/>
+                <div className="modal-background" />
                 <div className="modal-content">
                     {this.shareCopied.get() && <div className="copied-indicator" />}
                     <header>
@@ -241,7 +241,11 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
                         <div className="settings-field">
                             <div className="settings-label">Connection</div>
                             <div className="settings-input">
-                                <ConnectionDropdown curRemote={curRemote} onSelectRemote={this.selectRemote} allowNewConn={false}/>
+                                <ConnectionDropdown
+                                    curRemote={curRemote}
+                                    onSelectRemote={this.selectRemote}
+                                    allowNewConn={false}
+                                />
                             </div>
                         </div>
                         <div className="settings-field">
@@ -269,8 +273,7 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
                             <div className="settings-label">
                                 <div>Archived</div>
                                 <InfoMessage width={400}>
-                                    Archive will hide the tab. Commands and output will be retained in
-                                    history.
+                                    Archive will hide the tab. Commands and output will be retained in history.
                                 </InfoMessage>
                             </div>
                             <div className="settings-input">
