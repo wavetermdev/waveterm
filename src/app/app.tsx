@@ -31,6 +31,7 @@ import {
     AlertModal,
     AboutModal,
     CreateRemoteConnModal,
+    RemoteConnDetailModal,
 } from "./common/modals/modals";
 import { ErrorBoundary } from "./common/error/errorboundary";
 import "./app.less";
@@ -89,6 +90,9 @@ class App extends React.Component<{}, {}> {
         let remotesModel = GlobalModel.remotesModalModel;
         let remotesModal = remotesModel.isOpen();
         let selectedRemoteId = remotesModel.selectedRemoteId.get();
+        let selectedRemote = GlobalModel.getRemote(selectedRemoteId);
+        let isAuthEditMode = remotesModel.isAuthEditMode();
+        let onlyAddNewRemote = remotesModel.onlyAddNewRemote.get();
         let remoteEdit = remotesModel.remoteEdit.get();
         let disconnected = !GlobalModel.ws.open.get() || !GlobalModel.waveSrvRunning.get();
         let hasClientStop = GlobalModel.getHasClientStop();
@@ -140,6 +144,15 @@ class App extends React.Component<{}, {}> {
                 </If>
                 <If condition={remoteEdit !== null && !remoteEdit.old}>
                     <CreateRemoteConnModal model={remotesModel} remoteEdit={remoteEdit} />
+                </If>
+                <If condition={selectedRemote != null && !onlyAddNewRemote}>
+                    <If condition={!isAuthEditMode}>
+                        <RemoteConnDetailModal
+                            key={"remotedetail-" + selectedRemoteId}
+                            remote={selectedRemote}
+                            model={remotesModel}
+                        />
+                    </If>
                 </If>
                 <If condition={screenSettingsModal != null}>
                     <ScreenSettingsModal

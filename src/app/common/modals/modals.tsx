@@ -800,4 +800,306 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
     }
 }
 
-export { LoadingSpinner, ClientStopModal, AlertModal, DisconnectedModal, TosModal, AboutModal, CreateRemoteConnModal };
+@mobxReact.observer
+class RemoteConnDetailModal extends React.Component<{ model: RemotesModalModel; remote: T.RemoteType }, {}> {
+    termRef: React.RefObject<any> = React.createRef();
+
+    componentDidMount() {
+        let elem = this.termRef.current;
+        if (elem == null) {
+            console.log("ERROR null term-remote element");
+            return;
+        }
+        this.props.model.createTermWrap(elem);
+    }
+
+    componentDidUpdate() {
+        let { remote } = this.props;
+        if (remote == null || remote.archived) {
+            this.props.model.deSelectRemote();
+        }
+    }
+
+    componentWillUnmount() {
+        this.props.model.disposeTerm();
+    }
+
+    @boundMethod
+    clickTermBlock(): void {
+        if (this.props.model.remoteTermWrap != null) {
+            this.props.model.remoteTermWrap.giveFocus();
+        }
+    }
+
+    getRemoteTypeStr(remote: T.RemoteType): string {
+        if (!util.isBlank(remote.uname)) {
+            let unameStr = remote.uname;
+            unameStr = unameStr.replace("|", ", ");
+            return remote.remotetype + " (" + unameStr + ")";
+        }
+        return remote.remotetype;
+    }
+
+    @boundMethod
+    connectRemote(remoteId: string) {
+        GlobalCommandRunner.connectRemote(remoteId);
+    }
+
+    @boundMethod
+    disconnectRemote(remoteId: string) {
+        GlobalCommandRunner.disconnectRemote(remoteId);
+    }
+
+    @boundMethod
+    installRemote(remoteId: string) {
+        GlobalCommandRunner.installRemote(remoteId);
+    }
+
+    @boundMethod
+    cancelInstall(remoteId: string) {
+        GlobalCommandRunner.installCancelRemote(remoteId);
+    }
+
+    @boundMethod
+    editAuthSettings(): void {
+        this.props.model.startEditAuth();
+    }
+
+    renderInstallStatus(remote: T.RemoteType): any {
+        let statusStr: string = null;
+        if (remote.installstatus == "disconnected") {
+            if (remote.needsmshellupgrade) {
+                statusStr = "mshell " + remote.mshellversion + " - needs upgrade";
+            } else if (util.isBlank(remote.mshellversion)) {
+                statusStr = "mshell unknown";
+            } else {
+                statusStr = "mshell " + remote.mshellversion + " - current";
+            }
+        } else {
+            statusStr = remote.installstatus;
+        }
+        if (statusStr == null) {
+            return null;
+        }
+        return (
+            <div key="install-status" className="settings-field">
+                <div className="settings-label"> Install Status</div>
+                <div className="settings-input">{statusStr}</div>
+            </div>
+        );
+    }
+
+    renderRemoteMessage(remote: T.RemoteType): any {
+        let message: string = "";
+        let buttons: any[] = [];
+        // connect, disconnect, editauth, tryreconnect, install
+
+        let disconnectButton = (
+            <div
+                key="disconnect"
+                style={{ marginLeft: 10 }}
+                onClick={() => this.disconnectRemote(remote.remoteid)}
+                className="button is-prompt-danger is-outlined is-small"
+            >
+                Disconnect Now
+            </div>
+        );
+        let connectButton = (
+            <div
+                key="connect"
+                style={{ marginLeft: 10 }}
+                onClick={() => this.connectRemote(remote.remoteid)}
+                className="button is-prompt-green is-outlined is-small"
+            >
+                Connect Now
+            </div>
+        );
+        let tryReconnectButton = (
+            <div
+                key="tryreconnect"
+                style={{ marginLeft: 10 }}
+                onClick={() => this.connectRemote(remote.remoteid)}
+                className="button is-prompt-green is-outlined is-small"
+            >
+                Try Reconnect
+            </div>
+        );
+        let updateAuthButton = (
+            <div
+                key="updateauth"
+                style={{ marginLeft: 10 }}
+                onClick={() => this.editAuthSettings()}
+                className="button is-plain is-outlined is-small"
+            >
+                Update Auth Settings
+            </div>
+        );
+        let cancelInstallButton = (
+            <div
+                key="cancelinstall"
+                style={{ marginLeft: 10 }}
+                onClick={() => this.cancelInstall(remote.remoteid)}
+                className="button is-prompt-danger is-outlined is-small"
+            >
+                Cancel Install
+            </div>
+        );
+        let installNowButton = (
+            <div
+                key="installnow"
+                style={{ marginLeft: 10 }}
+                onClick={() => this.installRemote(remote.remoteid)}
+                className="button is-prompt-green is-outlined is-small"
+            >
+                Install Now
+            </div>
+        );
+        if (remote.local) {
+            installNowButton = null;
+            updateAuthButton = null;
+            cancelInstallButton = null;
+        }
+        if (remote.status == "connected") {
+            message = "Connected and ready to run commands.";
+            buttons = [disconnectButton];
+        } else if (remote.status == "connecting") {
+            message = remote.waitingforpassword ? "Connecting, waiting for user-input..." : "Connecting...";
+            let connectTimeout = remote.connecttimeout ?? 0;
+            message = message + " (" + connectTimeout + "s)";
+            buttons = [disconnectButton];
+        } else if (remote.status == "disconnected") {
+            message = "Disconnected";
+            buttons = [connectButton];
+        } else if (remote.status == "error") {
+            if (remote.noinitpk) {
+                message = "Error, could not connect.";
+                buttons = [tryReconnectButton, updateAuthButton];
+            } else if (remote.needsmshellupgrade) {
+                if (remote.installstatus == "connecting") {
+                    message = "Installing...";
+                    buttons = [cancelInstallButton];
+                } else {
+                    message = "Error, needs install.";
+                    buttons = [installNowButton, updateAuthButton];
+                }
+            } else {
+                message = "Error";
+                buttons = [tryReconnectButton, updateAuthButton];
+            }
+        }
+        let button: any = null;
+        return (
+            <div className="remote-message">
+                <div className="message-row">
+                    <div>
+                        <RemoteStatusLight remote={remote} /> {message}
+                    </div>
+                    <div className="flex-spacer" />
+                    <For each="button" of={buttons}>
+                        {button}
+                    </For>
+                </div>
+            </div>
+        );
+    }
+
+    render() {
+        let { model, remote } = this.props;
+        let isTermFocused = model.remoteTermWrapFocus.get();
+        let termFontSize = GlobalModel.termFontSize.get();
+        let remoteMessage = this.renderRemoteMessage(remote);
+        let termWidth = textmeasure.termWidthFromCols(RemotePtyCols, termFontSize);
+        let remoteAliasText = util.isBlank(remote.remotealias) ? "(none)" : remote.remotealias;
+        return (
+            <div className="remote-detail" style={{ overflow: "hidden" }}>
+                <div className="title is-5">{getRemoteTitle(remote)}</div>
+                <div className="settings-field">
+                    <div className="settings-label">Conn Id</div>
+                    <div className="settings-input">{remote.remoteid}</div>
+                </div>
+                <div className="settings-field">
+                    <div className="settings-label">Type</div>
+                    <div className="settings-input">{this.getRemoteTypeStr(remote)}</div>
+                </div>
+                <div className="settings-field">
+                    <div className="settings-label">Canonical Name</div>
+                    <div className="settings-input">
+                        {remote.remotecanonicalname}
+                        <If condition={!util.isBlank(remote.remotevars.port) && remote.remotevars.port != "22"}>
+                            <span style={{ marginLeft: 5 }}>(port {remote.remotevars.port})</span>
+                        </If>
+                    </div>
+                </div>
+                <div className="settings-field" style={{ minHeight: 24 }}>
+                    <div className="settings-label">Alias</div>
+                    <div className="settings-input">{remoteAliasText}</div>
+                </div>
+                <div className="settings-field">
+                    <div className="settings-label">Auth Type</div>
+                    <div className="settings-input">
+                        <If condition={!remote.local}>{remote.authtype}</If>
+                        <If condition={remote.local}>local</If>
+                    </div>
+                </div>
+                <div className="settings-field">
+                    <div className="settings-label">Connect Mode</div>
+                    <div className="settings-input">{remote.connectmode}</div>
+                </div>
+                {this.renderInstallStatus(remote)}
+                <div className="settings-field">
+                    <div className="settings-label">Actions</div>
+                    <div className="settings-input">
+                        <div
+                            onClick={() => this.editAuthSettings()}
+                            className="button is-prompt-green is-outlined is-small is-inline-height"
+                        >
+                            Edit Connection Settings
+                        </div>
+                    </div>
+                </div>
+                <div className="flex-spacer" style={{ minHeight: 20 }} />
+                <div style={{ width: "100%" }}>{remoteMessage}</div>
+                <div
+                    key="term"
+                    className={cn(
+                        "terminal-wrapper",
+                        { focus: isTermFocused },
+                        remote != null ? "status-" + remote.status : null,
+                        { "has-message": remoteMessage != null }
+                    )}
+                    style={{ width: "100%", overflowX: "auto" }}
+                >
+                    <If condition={!isTermFocused}>
+                        <div key="termblock" className="term-block" onClick={this.clickTermBlock}></div>
+                    </If>
+                    <If condition={model.showNoInputMsg.get()}>
+                        <div key="termtag" className="term-tag">
+                            input is only allowed while status is 'connecting'
+                        </div>
+                    </If>
+                    <div
+                        key="terminal"
+                        className="terminal-connectelem"
+                        ref={this.termRef}
+                        data-remoteid={remote.remoteid}
+                        style={{
+                            height: textmeasure.termHeightFromRows(RemotePtyRows, termFontSize),
+                            width: termWidth,
+                        }}
+                    ></div>
+                </div>
+            </div>
+        );
+    }
+}
+
+export {
+    LoadingSpinner,
+    ClientStopModal,
+    AlertModal,
+    DisconnectedModal,
+    TosModal,
+    AboutModal,
+    CreateRemoteConnModal,
+    RemoteConnDetailModal,
+};
