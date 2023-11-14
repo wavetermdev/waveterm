@@ -217,16 +217,23 @@ class Tooltip extends React.Component<TooltipProps, TooltipState> {
     }
 }
 
+type ButtonVariantType = "outlined" | "solid" | "ghost";
+type ButtonThemeType = "primary" | "secondary";
+
 interface ButtonProps {
-    theme?: string; // optional
+    theme?: ButtonThemeType;
     children: React.ReactNode;
     onClick?: () => void;
     disabled?: boolean;
+    variant?: ButtonVariantType;
+    leftIcon?: React.ReactNode;
+    rightIcon?: React.ReactNode;
 }
 
 class Button extends React.Component<ButtonProps> {
     static defaultProps = {
-        theme: "primary", // Default value for theme
+        theme: "primary",
+        variant: "solid",
     };
 
     @boundMethod
@@ -237,28 +244,11 @@ class Button extends React.Component<ButtonProps> {
     }
 
     render() {
-        const { theme, children, disabled } = this.props;
-        const className = `wave-button ${theme}` + (disabled ? " disabled" : "");
+        const { leftIcon, rightIcon, theme, children, disabled, variant } = this.props;
+        const className = `wave-button ${theme} ${variant}` + (disabled ? " disabled" : "");
 
         return (
             <button className={className} onClick={this.handleClick} disabled={disabled}>
-                {children}
-            </button>
-        );
-    }
-}
-
-interface IconButtonProps extends ButtonProps {
-    leftIcon?: React.ReactNode;
-    rightIcon?: React.ReactNode;
-}
-
-class IconButton extends Button {
-    render() {
-        const { leftIcon, rightIcon, children, theme }: IconButtonProps = this.props;
-
-        return (
-            <button {...this.props} className={`wave-button icon-button ${theme}`}>
                 {leftIcon && <span className="icon-left">{leftIcon}</span>}
                 {children}
                 {rightIcon && <span className="icon-right">{rightIcon}</span>}
@@ -266,8 +256,22 @@ class IconButton extends Button {
         );
     }
 }
+class IconButton extends Button {
+    render() {
+        const { children, theme, variant = "solid" } = this.props;
+        const className = `wave-button icon-button ${theme} ${variant}`;
 
-interface LinkButtonProps extends IconButtonProps {
+        return (
+            <button {...this.props} className={className}>
+                {children}
+            </button>
+        );
+    }
+}
+
+export default IconButton;
+
+interface LinkButtonProps extends ButtonProps {
     href: string;
     target?: string;
 }
@@ -275,11 +279,11 @@ interface LinkButtonProps extends IconButtonProps {
 class LinkButton extends IconButton {
     render() {
         // @ts-ignore
-        const { href, target, leftIcon, rightIcon, children, theme }: LinkButtonProps = this.props;
+        const { href, target, leftIcon, rightIcon, children, theme, variant }: LinkButtonProps = this.props;
 
         return (
-            <a href={href} target={target} className="wave-button link-button">
-                <button {...this.props} className={`icon-button ${theme}`}>
+            <a href={href} target={target} className={`wave-button link-button`}>
+                <button {...this.props} className={`icon-button ${theme} ${variant}`}>
                     {leftIcon && <span className="icon-left">{leftIcon}</span>}
                     {children}
                     {rightIcon && <span className="icon-right">{rightIcon}</span>}

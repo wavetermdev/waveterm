@@ -257,33 +257,6 @@
     }
 }
 
-.wave-button {
-    display: flex;
-    padding: 6px 16px !important;
-    color: @term-white !important;
-    align-items: center;
-    gap: 4px;
-    border-radius: 6px !important;
-    height: auto !important;
-
-    &:hover {
-        color: @term-white !important;
-    }
-}
-
-.wave-button.is-wave-green {
-    color: @term-bright-white !important;
-    background: @term-green !important;
-
-    &:hover {
-        background-color: @term-green;
-        box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
-            0px 0px 0.5px 0px rgba(255, 255, 255, 0.8) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.6) inset;
-        color: @term-bright-white !important;
-        box-shadow: none;
-    }
-}
-
 .button.is-plain,
 .button.is-prompt-cancel {
     background-color: #222;
@@ -944,7 +917,7 @@
     display: flex;
     padding: 6px 16px;
     align-items: center;
-    gap: var(--sizing-2-xs, 4px);
+    gap: 4px;
     border-radius: 6px;
     height: auto;
 
@@ -955,34 +928,68 @@
     i {
         fill: rgba(255, 255, 255, 0.12);
     }
-}
 
-.wave-button.primary {
-    color: @term-bright-white;
-    background: @term-green;
-    box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
-        0px 0px 0.5px 0px rgba(255, 255, 255, 0.8) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.6) inset;
+    &.primary {
+        color: @term-green;
+        background: none;
 
-    &:hover {
-        color: @term-bright-white;
+        i {
+            fill: @term-green;
+        }
+
+        &.solid {
+            color: @term-bright-white;
+            background: @term-green;
+            box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
+                0px 0px 0.5px 0px rgba(255, 255, 255, 0.8) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.6) inset;
+
+            i {
+                fill: @term-white;
+            }
+        }
+
+        &.outlined {
+            border: 1px solid @term-green;
+        }
+
+        &.ghost {
+            // Styles for .ghost are already defined above
+        }
+
+        &:hover {
+            color: @term-bright-white;
+        }
     }
 
-    i {
-        fill: @term-green;
+    &.secondary {
+        color: @term-white;
+        background: none;
+
+        &.solid {
+            background: rgba(255, 255, 255, 0.09);
+            box-shadow: none;
+        }
+
+        &.outlined {
+            border: 1px solid rgba(255, 255, 255, 0.09);
+        }
+
+        &.ghost {
+            padding: 6px 10px;
+
+            i {
+                fill: @term-green;
+            }
+        }
     }
-}
 
-.wave-button.secondary {
-    color: @term-white;
-    background: rgba(255, 255, 255, 0.09);
-}
+    &.disabled {
+        opacity: 0.5;
+    }
 
-.wave-button.link-button {
-    cursor: pointer;
-}
-
-.wave-button.disabled {
-    opacity: 0.5;
+    &.link-button {
+        cursor: pointer;
+    }
 }
 
 .wave-status-container {
