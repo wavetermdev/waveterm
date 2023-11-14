@@ -2,9 +2,19 @@
 
 .connections-view {
     background-color: @background-session;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: auto;
+    margin-bottom: 10px;
+    margin-right: 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(241, 246, 243, 0.08);
+    background: var(--element-window, rgba(13, 13, 13, 0.85));
 
     .header {
-        margin: 1.5em 1.5em 0.5em;
+        margin: 2em 1.5em;
 
         .connections-title {
             color: @term-white;
@@ -24,26 +34,28 @@
     .connections-table {
         margin: 0px 10px 10px 10px;
         table-layout: fixed;
-        border-top: 2px solid #ccc;
+
+        thead {
+            border-radius: var(--sizing-2-xs, 4px);
+            border-top: 1px solid rgba(250, 250, 250, 0.1);
+            border-bottom: 1px solid var(--element-separator, rgba(241, 246, 243, 0.15));
+            background: var(--opacity-zinc-502, rgba(250, 250, 250, 0.02));
+            box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
+                0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
+
+            th {
+                height: 32px;
+                padding: 5px 15px 5px 10px;
+                color: @text-secondary;
+            }
+        }
 
         tr.connections-item {
-            padding: 0 10px 0 10px;
-            display: flex;
-            border-bottom: 1px solid rgba(250, 250, 250, 0.1);
-            align-items: center;
-            height: 40px;
+            border-bottom: 1px solid var(--element-separator, rgba(241, 246, 243, 0.15));
             color: @text-secondary;
 
-            &.is-selected {
-                background-color: #222;
-            }
-
-            &.is-selected:hover {
-                background-color: #333;
-            }
-
             &:hover {
-                background-color: #222;
+                background: var(--element-hover-2, rgba(255, 255, 255, 0.06));
 
                 td.bookmark i {
                     display: block;
@@ -51,9 +63,9 @@
             }
 
             td {
-                padding-top: 5px;
-                padding-bottom: 5px;
-                padding-left: 5px;
+                height: 40px;
+                padding: 5px 15px 5px 10px;
+                vertical-align: middle;
             }
         }
     }

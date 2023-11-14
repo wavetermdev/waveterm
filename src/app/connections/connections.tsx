@@ -16,24 +16,6 @@ import * as textmeasure from "../../util/textmeasure";
 import "./connections.less";
 
 type OV<V> = mobx.IObservableValue<V>;
-type OArr<V> = mobx.IObservableArray<V>;
-type OMap<K, V> = mobx.ObservableMap<K, V>;
-
-const RemotePtyRows = 8;
-const RemotePtyCols = 80;
-const PasswordUnchangedSentinel = "--unchanged--";
-
-class Item extends React.Component<{ width: number }, {}> {
-    render() {
-        let width = this.props.width;
-        width = width - 50;
-        if (width < 400) {
-            width = 400;
-        }
-
-        return <div className="item">Test</div>;
-    }
-}
 
 @mobxReact.observer
 class ConnectionsView extends React.Component<{ model: RemotesModalModel }, {}> {
@@ -66,6 +48,15 @@ class ConnectionsView extends React.Component<{ model: RemotesModalModel }, {}> 
         this.checkWidth();
     }
 
+    @boundMethod
+    getName(item: T.RemoteType) {
+        const { remotealias, remotecanonicalname } = item;
+        if (remotealias) {
+            return `${remotealias}(${remotecanonicalname})`;
+        }
+        return remotecanonicalname;
+    }
+
     componentDidMount() {
         if (this.tableRef.current != null) {
             this.tableRszObs = new ResizeObserver(this.handleTableResize.bind(this));
@@ -84,7 +75,6 @@ class ConnectionsView extends React.Component<{ model: RemotesModalModel }, {}> 
         this.checkWidth();
     }
 
-    @boundMethod
     render() {
         let isHidden = GlobalModel.activeMainView.get() != "connections";
         if (isHidden) {
@@ -94,6 +84,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModalModel }, {}> 
         let model = this.props.model;
         let selectedRemoteId = model.selectedRemoteId.get();
         let items = util.sortAndFilterRemotes(GlobalModel.remotes.slice());
+        console.log("items", items);
         let remote: T.RemoteType = null;
         let isAuthEditMode = model.isAuthEditMode();
         let selectedRemote = GlobalModel.getRemote(selectedRemoteId);
@@ -106,11 +97,30 @@ class ConnectionsView extends React.Component<{ model: RemotesModalModel }, {}> 
                     <div className="connections-title text-standard">Connections</div>
                 </div>
                 <table className="connections-table" cellSpacing="0" cellPadding="0" border={0} ref={this.tableRef}>
+                    <thead>
+                        <tr>
+                            <th className="text-standard" colSpan={6}>
+                                <div>Name</div>
+                            </th>
+                            <th className="text-standard" colSpan={6}>
+                                <div>Type</div>
+                            </th>
+                            <th className="text-standard" colSpan={6}>
+                                <div>Status</div>
+                            </th>
+                        </tr>
+                    </thead>
                     <tbody>
                         <For index="idx" each="item" of={items}>
-                            <tr className="connections-item">
+                            <tr key={item.remoteid} className="connections-item">
                                 <td colSpan={6}>
-                                    <Item key={item.remoteid} width={this.tableWidth.get()} />
+                                    <div>{this.getName(item)}</div>
+                                </td>
+                                <td colSpan={6}>
+                                    <div>{item.remotetype}</div>
+                                </td>
+                                <td colSpan={6}>
+                                    <div>{item.status}</div>
                                 </td>
                             </tr>
                         </For>
@@ -121,9 +131,6 @@ class ConnectionsView extends React.Component<{ model: RemotesModalModel }, {}> 
                         <div>No Connections Items Found</div>
                     </div>
                 </If>
-                <div className="alt-help">
-                    <div className="help-entry">[Esc] to Close</div>
-                </div>
             </div>
         );
     }
