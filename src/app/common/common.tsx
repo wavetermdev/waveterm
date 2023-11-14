@@ -217,6 +217,102 @@ class Tooltip extends React.Component<TooltipProps, TooltipState> {
     }
 }
 
+interface ButtonProps {
+    theme?: string; // optional
+    children: React.ReactNode;
+    onClick?: () => void;
+    disabled?: boolean;
+}
+
+class Button extends React.Component<ButtonProps> {
+    static defaultProps = {
+        theme: "primary", // Default value for theme
+    };
+
+    @boundMethod
+    handleClick() {
+        if (this.props.onClick && !this.props.disabled) {
+            this.props.onClick();
+        }
+    }
+
+    render() {
+        const { theme, children, disabled } = this.props;
+        const className = `wave-button ${theme}` + (disabled ? " disabled" : "");
+
+        return (
+            <button className={className} onClick={this.handleClick} disabled={disabled}>
+                {children}
+            </button>
+        );
+    }
+}
+
+interface IconButtonProps extends ButtonProps {
+    leftIcon?: React.ReactNode;
+    rightIcon?: React.ReactNode;
+}
+
+class IconButton extends Button {
+    render() {
+        const { leftIcon, rightIcon, children, theme }: IconButtonProps = this.props;
+
+        return (
+            <button {...this.props} className={`wave-button icon-button ${theme}`}>
+                {leftIcon && <span className="icon-left">{leftIcon}</span>}
+                {children}
+                {rightIcon && <span className="icon-right">{rightIcon}</span>}
+            </button>
+        );
+    }
+}
+
+interface LinkButtonProps extends IconButtonProps {
+    href: string;
+    target?: string;
+}
+
+class LinkButton extends IconButton {
+    render() {
+        // @ts-ignore
+        const { href, target, leftIcon, rightIcon, children, theme }: LinkButtonProps = this.props;
+
+        return (
+            <a href={href} target={target} className="wave-button link-button">
+                <button {...this.props} className={`icon-button ${theme}`}>
+                    {leftIcon && <span className="icon-left">{leftIcon}</span>}
+                    {children}
+                    {rightIcon && <span className="icon-right">{rightIcon}</span>}
+                </button>
+            </a>
+        );
+    }
+}
+interface StatusProps {
+    status: "online" | "offline" | "away" | "busy" | "idle";
+    text: string;
+}
+
+class Status extends React.Component<StatusProps> {
+    @boundMethod
+    renderDot() {
+        const { status } = this.props;
+
+        return <div className={`dot ${status}`} />;
+    }
+
+    render() {
+        const { text } = this.props;
+
+        return (
+            <div className="wave-status-container">
+                {this.renderDot()}
+                <span>{text}</span>
+            </div>
+        );
+    }
+}
+
 interface TextFieldDecorationProps {
     startDecoration?: React.ReactNode;
     endDecoration?: React.ReactNode;
@@ -980,4 +1076,8 @@ export {
     NumberField,
     PasswordField,
     Tooltip,
+    Button,
+    IconButton,
+    LinkButton,
+    Status,
 };

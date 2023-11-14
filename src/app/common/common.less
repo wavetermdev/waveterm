@@ -931,3 +931,81 @@
         }
     }
 }
+
+.wave-button {
+    background: none;
+    color: inherit;
+    border: none;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+    outline: inherit;
+
+    display: flex;
+    padding: 6px 16px;
+    align-items: center;
+    gap: var(--sizing-2-xs, 4px);
+    border-radius: 6px;
+    height: auto;
+
+    &:hover {
+        color: @term-white;
+    }
+
+    i {
+        fill: rgba(255, 255, 255, 0.12);
+    }
+}
+
+.wave-button.primary {
+    color: @term-bright-white;
+    background: @term-green;
+    box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
+        0px 0px 0.5px 0px rgba(255, 255, 255, 0.8) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.6) inset;
+
+    &:hover {
+        color: @term-bright-white;
+    }
+
+    i {
+        fill: @term-green;
+    }
+}
+
+.wave-button.secondary {
+    color: @term-white;
+    background: rgba(255, 255, 255, 0.09);
+}
+
+.wave-button.link-button {
+    cursor: pointer;
+}
+
+.wave-button.disabled {
+    opacity: 0.5;
+}
+
+.wave-status-container {
+    display: flex;
+    align-items: center;
+
+    .dot {
+        height: 6px;
+        width: 6px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 8px;
+    }
+
+    .dot.green {
+        background-color: green;
+    }
+
+    .dot.red {
+        background-color: red;
+    }
+
+    .dot.gray {
+        background-color: #c3c8c2;
+    }
+}

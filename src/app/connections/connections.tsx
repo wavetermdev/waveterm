@@ -8,7 +8,7 @@ import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, RemotesModalModel } from "../../model/model";
-import { Toggle, RemoteStatusLight, InfoMessage } from "../common/common";
+import { Toggle, RemoteStatusLight, InfoMessage, IconButton, Status } from "../common/common";
 import * as T from "../../types/types";
 import * as util from "../../util/util";
 import * as textmeasure from "../../util/textmeasure";
@@ -57,6 +57,16 @@ class ConnectionsView extends React.Component<{ model: RemotesModalModel }, {}> 
         return remotecanonicalname;
     }
 
+    @boundMethod
+    getStatus(status: string) {
+        if (status === "connected") {
+            return "green";
+        } else if (status === "disconnected") {
+            return "gray";
+        }
+        return "red";
+    }
+
     componentDidMount() {
         if (this.tableRef.current != null) {
             this.tableRszObs = new ResizeObserver(this.handleTableResize.bind(this));
@@ -95,6 +105,11 @@ class ConnectionsView extends React.Component<{ model: RemotesModalModel }, {}> 
             <div className={cn("connections-view")}>
                 <div className="header">
                     <div className="connections-title text-standard">Connections</div>
+                    <div>
+                        <IconButton theme="secondary" leftIcon={<i className="fa-sharp fa-solid fa-plus"></i>}>
+                            New Connection
+                        </IconButton>
+                    </div>
                 </div>
                 <table className="connections-table" cellSpacing="0" cellPadding="0" border={0} ref={this.tableRef}>
                     <thead>
@@ -120,7 +135,9 @@ class ConnectionsView extends React.Component<{ model: RemotesModalModel }, {}> 
                                     <div>{item.remotetype}</div>
                                 </td>
                                 <td colSpan={6}>
-                                    <div>{item.status}</div>
+                                    <div>
+                                        <Status status={this.getStatus(item.status)} text={item.status} />
+                                    </div>
                                 </td>
                             </tr>
                         </For>
