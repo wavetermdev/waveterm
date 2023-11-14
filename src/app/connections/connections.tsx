@@ -59,6 +59,11 @@ class ConnectionsView extends React.Component<{ model: RemotesModalModel }, {}> 
     }
 
     @boundMethod
+    handleAddConnection(): void {
+        GlobalModel.remotesModalModel.openModalForEdit({ remoteedit: true, old: false }, true);
+    }
+
+    @boundMethod
     getStatus(status: string) {
         switch (status) {
             case "connected":
@@ -109,7 +114,11 @@ class ConnectionsView extends React.Component<{ model: RemotesModalModel }, {}> 
                 <div className="header">
                     <div className="connections-title text-standard">Connections</div>
                     <div>
-                        <Button theme="secondary" leftIcon={<i className="fa-sharp fa-solid fa-plus"></i>}>
+                        <Button
+                            theme="secondary"
+                            leftIcon={<i className="fa-sharp fa-solid fa-plus"></i>}
+                            onClick={this.handleAddConnection}
+                        >
                             New Connection
                         </Button>
                     </div>
