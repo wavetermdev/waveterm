@@ -3283,8 +3283,6 @@ class Model {
                 this.activeMainView.set("session");
             } else if (update.mainview == "history") {
                 this.historyViewModel.showHistoryView(update.historyviewdata);
-            } else if (update.mainview === "connections") {
-                this.activeMainView.set("connections");
             } else {
                 console.log("invalid mainview in update:", update.mainview);
             }
@@ -4029,6 +4027,10 @@ class CommandRunner {
 
     bookmarksView() {
         GlobalModel.submitCommand("bookmarks", "show", null, { nohist: "1" }, true);
+    }
+
+    connectionsView() {
+        GlobalModel.connectionViewModel.showConnectionsView();
     }
 
     historyView(params: HistorySearchParams) {

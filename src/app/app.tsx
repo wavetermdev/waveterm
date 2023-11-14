@@ -15,6 +15,7 @@ import { WorkspaceView } from "./workspace/workspaceview";
 import { PluginsView } from "./pluginsview/pluginsview";
 import { BookmarksView } from "./bookmarks/bookmarks";
 import { HistoryView } from "./history/history";
+import { ConnectionsView } from "./connections/connections";
 import {
     ScreenSettingsModal,
     SessionSettingsModal,
@@ -127,6 +128,7 @@ class App extends React.Component<{}, {}> {
                         <WorkspaceView />
                         <HistoryView />
                         <BookmarksView />
+                        <ConnectionsView model={remotesModel} />
                     </ErrorBoundary>
                 </div>
                 <AlertModal />
