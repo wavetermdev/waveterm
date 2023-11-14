@@ -15,7 +15,7 @@ import { Markdown, InfoMessage } from "../common";
 import * as util from "../../../util/util";
 import { Toggle, Checkbox } from "../common";
 import { ClientDataType } from "../../../types/types";
-import { TextField, NumberField, InputDecoration, Dropdown, PasswordField, Tooltip } from "../common";
+import { TextField, NumberField, InputDecoration, Dropdown, PasswordField, Tooltip, Button } from "../common";
 
 import close from "../../assets/icons/close.svg";
 import { ReactComponent as WarningIcon } from "../../assets/icons/line/triangle-exclamation.svg";
@@ -335,15 +335,9 @@ class TosModal extends React.Component<{}, {}> {
                                 />
                             </div>
                             <div className="button-wrapper">
-                                <button
-                                    onClick={this.acceptTos}
-                                    className={cn("button wave-button is-wave-green is-outlined is-small", {
-                                        "disabled-button": !this.state.isChecked,
-                                    })}
-                                    disabled={!this.state.isChecked}
-                                >
+                                <Button onClick={this.acceptTos} disabled={!this.state.isChecked}>
                                     Continue
-                                </button>
+                                </Button>
                             </div>
                         </footer>
                     </div>
@@ -377,7 +371,9 @@ class AboutModal extends React.Component<{}, {}> {
         // TODO no up-to-date status reporting
         return (
             <div className="status updated">
-                <div className="text-selectable">Client Version {VERSION} ({BUILD})</div>
+                <div className="text-selectable">
+                    Client Version {VERSION} ({BUILD})
+                </div>
             </div>
         );
 
@@ -388,7 +384,9 @@ class AboutModal extends React.Component<{}, {}> {
                         <i className="fa-sharp fa-solid fa-circle-check" />
                         <span>Up to Date</span>
                     </div>
-                    <div className="selectable">Client Version {VERSION} ({BUILD})</div>
+                    <div className="selectable">
+                        Client Version {VERSION} ({BUILD})
+                    </div>
                 </div>
             );
         }
@@ -398,7 +396,9 @@ class AboutModal extends React.Component<{}, {}> {
                     <i className="fa-sharp fa-solid fa-triangle-exclamation" />
                     <span>Outdated Version</span>
                 </div>
-                <div className="selectable">Client Version {VERSION} ({BUILD})</div>
+                <div className="selectable">
+                    Client Version {VERSION} ({BUILD})
+                </div>
                 <div>
                     <button onClick={this.updateApp} className="button color-green text-secondary">
                         Update
@@ -427,7 +427,11 @@ class AboutModal extends React.Component<{}, {}> {
                                 </div>
                                 <div className="text-wrapper">
                                     <div>Wave Terminal</div>
-                                    <div className="text-standard">Modern Terminal for<br/>Seamless Workflow</div>
+                                    <div className="text-standard">
+                                        Modern Terminal for
+                                        <br />
+                                        Seamless Workflow
+                                    </div>
                                 </div>
                             </section>
                             <section className="wave-modal-section about-section text-standard">
@@ -783,15 +787,10 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
                         </div>
                         <footer className="wave-modal-footer crconn-wave-modal-footer">
                             <div className="action-buttons">
-                                <div onClick={model.cancelEditAuth} className="button wave-button is-plain">
+                                <Button theme="secondary" onClick={model.cancelEditAuth}>
                                     Cancel
-                                </div>
-                                <button
-                                    onClick={this.submitRemote}
-                                    className="button wave-button is-wave-green text-standard"
-                                >
-                                    Connect
-                                </button>
+                                </Button>
+                                <Button onClick={this.submitRemote}>Connect</Button>
                             </div>
                         </footer>
                     </div>
