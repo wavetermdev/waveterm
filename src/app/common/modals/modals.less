@@ -468,6 +468,128 @@
     }
 }
 
+.wave-modal.rconndetail-modal {
+    .wave-modal-content.rconndetail-wave-modal-content {
+        width: 580px;
+        min-height: 588px;
+        overflow: visible;
+
+        .wave-modal-content-inner.rconndetail-wave-modal-content-inner {
+            display: flex;
+            padding-bottom: 0px;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            flex-shrink: 0;
+
+            .rconndetail-wave-modal-body {
+                display: flex;
+                padding: 0px 20px;
+                align-items: flex-start;
+                width: 100%;
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+                align-self: stretch;
+
+                .name-header-actions-wrapper {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 12px;
+
+                    .rconndetail-name {
+                        color: @term-bright-white;
+                        font-size: 15px;
+                        font-weight: 500;
+                        line-height: 20px;
+                    }
+
+                    .header-actions {
+                        display: flex;
+                        justify-content: flex-end;
+                        align-items: flex-start;
+                        gap: 8px;
+
+                        .wave-button {
+                            padding: 4px 15px;
+                            font-size: 11px;
+                        }
+                    }
+                }
+
+                .remote-detail {
+                    .settings-field {
+                        display: flex;
+                        flex-direction: row;
+                        align-items: center;
+
+                        .settings-label {
+                            font-weight: bold;
+                            width: 12em;
+                            display: flex;
+                            flex-direction: row;
+                            align-items: center;
+                        }
+
+                        .settings-input {
+                            display: flex;
+                            flex-direction: row;
+                            align-items: center;
+                        }
+                    }
+
+                    .settings-field:not(:first-child) {
+                        margin-top: 4px;
+                    }
+
+                    .status {
+                        display: flex;
+                        height: 30px;
+                        padding: 3px 8px;
+                        align-items: center;
+                        gap: 8px;
+                        align-self: stretch;
+                        border-radius: 6px;
+                        background: rgba(241, 246, 243, 0.08);
+                    }
+
+                    .terminal-wrapper {
+                        overflow: hidden;
+                        width: 100%;
+
+                        .xterm-viewport {
+                            display: flex;
+                            padding: 6px 10px;
+                            gap: 8px;
+                            align-items: flex-start;
+                            align-self: stretch;
+                            border-radius: 6px;
+                            border: 1px solid var(--element-separator, rgba(241, 246, 243, 0.15));
+                            background: #080a08;
+                        }
+                    }
+                }
+            }
+        }
+
+        .rconndetail-wave-modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            width: 100%;
+            padding: 0 20px 20px;
+
+            .action-buttons {
+                display: flex;
+
+                button:first-child {
+                    margin-right: 8px;
+                }
+            }
+        }
+    }
+}
+
 .wave-button.color-standard {
     color: @term-white;
     background: rgba(255, 255, 255, 0.12);

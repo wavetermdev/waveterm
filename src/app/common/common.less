@@ -983,6 +983,22 @@
         }
     }
 
+    &.color-red {
+        &.solid {
+            border-color: @term-red;
+            background-color: mix(@term-red, @term-white, 50%);
+            box-shadow: none;
+        }
+
+        &.outlined {
+            color: @term-red;
+            border-color: @term-red;
+        }
+
+        &.ghost {
+        }
+    }
+
     &.disabled {
         opacity: 0.5;
     }

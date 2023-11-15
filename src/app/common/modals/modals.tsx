@@ -16,7 +16,7 @@ import * as util from "../../../util/util";
 import * as textmeasure from "../../../util/textmeasure";
 import { Toggle, Checkbox } from "../common";
 import { ClientDataType } from "../../../types/types";
-import { TextField, NumberField, InputDecoration, Dropdown, PasswordField, Tooltip, Button } from "../common";
+import { TextField, NumberField, InputDecoration, Dropdown, PasswordField, Tooltip, Button, Status } from "../common";
 
 import close from "../../assets/icons/close.svg";
 import { ReactComponent as WarningIcon } from "../../assets/icons/line/triangle-exclamation.svg";
@@ -872,6 +872,18 @@ class RemoteConnDetailModal extends React.Component<{ model: RemotesModel; remot
         return remotealias ? `${remotealias}(${remotecanonicalname})` : remotecanonicalname;
     }
 
+    @boundMethod
+    getStatus(status: string) {
+        switch (status) {
+            case "connected":
+                return "green";
+            case "disconnected":
+                return "gray";
+            default:
+                return "red";
+        }
+    }
+
     renderInstallStatus(remote: T.RemoteType): any {
         let statusStr: string = null;
         if (remote.installstatus == "disconnected") {
@@ -896,115 +908,64 @@ class RemoteConnDetailModal extends React.Component<{ model: RemotesModel; remot
         );
     }
 
-    renderRemoteMessage(remote: T.RemoteType): any {
-        let message: string = "";
-        let buttons: any[] = [];
-        // connect, disconnect, editauth, tryreconnect, install
-
-        let disconnectButton = (
-            <div
-                key="disconnect"
-                style={{ marginLeft: 10 }}
-                onClick={() => this.disconnectRemote(remote.remoteid)}
-                className="button is-prompt-danger is-outlined is-small"
-            >
+    renderHeaderBtns(remote: T.RemoteType): React.ReactNode {
+        let buttons: React.ReactNode[] = [];
+        const disconnectButton = (
+            <Button theme="secondary" onClick={() => this.disconnectRemote(remote.remoteid)}>
                 Disconnect Now
-            </div>
+            </Button>
         );
-        let connectButton = (
-            <div
-                key="connect"
-                style={{ marginLeft: 10 }}
-                onClick={() => this.connectRemote(remote.remoteid)}
-                className="button is-prompt-green is-outlined is-small"
-            >
+        const connectButton = (
+            <Button theme="secondary" onClick={() => this.connectRemote(remote.remoteid)}>
                 Connect Now
-            </div>
+            </Button>
         );
-        let tryReconnectButton = (
-            <div
-                key="tryreconnect"
-                style={{ marginLeft: 10 }}
-                onClick={() => this.connectRemote(remote.remoteid)}
-                className="button is-prompt-green is-outlined is-small"
-            >
+        const tryReconnectButton = (
+            <Button theme="secondary" onClick={() => this.connectRemote(remote.remoteid)}>
                 Try Reconnect
-            </div>
+            </Button>
         );
         let updateAuthButton = (
-            <div
-                key="updateauth"
-                style={{ marginLeft: 10 }}
-                onClick={() => this.editAuthSettings()}
-                className="button is-plain is-outlined is-small"
-            >
+            <Button theme="secondary" onClick={() => this.editAuthSettings()}>
                 Update Auth Settings
-            </div>
+            </Button>
         );
         let cancelInstallButton = (
-            <div
-                key="cancelinstall"
-                style={{ marginLeft: 10 }}
-                onClick={() => this.cancelInstall(remote.remoteid)}
-                className="button is-prompt-danger is-outlined is-small"
-            >
+            <Button theme="secondary" onClick={() => this.cancelInstall(remote.remoteid)}>
                 Cancel Install
-            </div>
+            </Button>
         );
         let installNowButton = (
-            <div
-                key="installnow"
-                style={{ marginLeft: 10 }}
-                onClick={() => this.installRemote(remote.remoteid)}
-                className="button is-prompt-green is-outlined is-small"
-            >
+            <Button theme="secondary" onClick={() => this.installRemote(remote.remoteid)}>
                 Install Now
-            </div>
+            </Button>
         );
         if (remote.local) {
-            installNowButton = null;
-            updateAuthButton = null;
-            cancelInstallButton = null;
+            installNowButton = <></>;
+            updateAuthButton = <></>;
+            cancelInstallButton = <></>;
         }
-        if (remote.status == "connected") {
-            message = "Connected and ready to run commands.";
-            buttons = [disconnectButton];
-        } else if (remote.status == "connecting") {
-            message = remote.waitingforpassword ? "Connecting, waiting for user-input..." : "Connecting...";
-            let connectTimeout = remote.connecttimeout ?? 0;
-            message = message + " (" + connectTimeout + "s)";
-            buttons = [disconnectButton];
+        buttons = [updateAuthButton];
+        if (remote.status == "connected" || remote.status == "connecting") {
+            buttons.push(disconnectButton);
         } else if (remote.status == "disconnected") {
-            message = "Disconnected";
-            buttons = [connectButton];
+            buttons.push(connectButton);
         } else if (remote.status == "error") {
-            if (remote.noinitpk) {
-                message = "Error, could not connect.";
-                buttons = [tryReconnectButton, updateAuthButton];
-            } else if (remote.needsmshellupgrade) {
+            if (remote.needsmshellupgrade) {
                 if (remote.installstatus == "connecting") {
-                    message = "Installing...";
-                    buttons = [cancelInstallButton];
+                    buttons.push(cancelInstallButton);
                 } else {
-                    message = "Error, needs install.";
-                    buttons = [installNowButton, updateAuthButton];
+                    buttons.push(installNowButton);
                 }
             } else {
-                message = "Error";
-                buttons = [tryReconnectButton, updateAuthButton];
+                buttons.push(tryReconnectButton);
             }
         }
-        let button: any = null;
+
         return (
-            <div className="remote-message">
-                <div className="message-row">
-                    <div>{/* <RemoteStatusLight remote={remote} /> {message} */}</div>
-                    <div className="flex-spacer" />
-                    <For each="button" of={buttons}>
-                        {button}
-                    </For>
-                </div>
-            </div>
+            <For each="button" of={buttons}>
+                {button}
+            </For>
         );
     }
 
@@ -1012,22 +973,25 @@ class RemoteConnDetailModal extends React.Component<{ model: RemotesModel; remot
         let { model, remote } = this.props;
         let isTermFocused = model.remoteTermWrapFocus.get();
         let termFontSize = GlobalModel.termFontSize.get();
-        let remoteMessage = this.renderRemoteMessage(remote);
-        let termWidth = textmeasure.termWidthFromCols(80, termFontSize);
+        let termWidth = textmeasure.termWidthFromCols(73, termFontSize);
         let remoteAliasText = util.isBlank(remote.remotealias) ? "(none)" : remote.remotealias;
+
         return (
             <div className={cn("modal wave-modal rconndetail-modal is-active")}>
                 <div className="modal-background wave-modal-background" />
                 <div className="modal-content wave-modal-content rconndetail-wave-modal-content">
                     <div className="wave-modal-content-inner rconndetail-wave-modal-content-inner">
-                        <header className="wave-modal-header crconn-wave-modal-header">
-                            <div className="wave-modal-title crconn-wave-modal-title">Connection</div>
-                            <div className="wave-modal-close crconn-wave-modal-close">
+                        <header className="wave-modal-header rconndetail-wave-modal-header">
+                            <div className="wave-modal-title rconndetail-wave-modal-title">Connection</div>
+                            <div className="wave-modal-close rconndetail-wave-modal-close" onClick={model.closeModal}>
                                 <img src={close} alt="Close (Escape)" />
                             </div>
                         </header>
-                        <div className="wave-modal-body crconn-wave-modal-body">
-                            <div className="title is-5">{this.getName(remote)}</div>
+                        <div className="wave-modal-body rconndetail-wave-modal-body">
+                            <div className="name-header-actions-wrapper">
+                                <div className="name">{this.getName(remote)}</div>
+                                <div className="header-actions">{this.renderHeaderBtns(remote)}</div>
+                            </div>
                             <div className="remote-detail" style={{ overflow: "hidden" }}>
                                 <div className="settings-field">
                                     <div className="settings-label">Conn Id</div>
@@ -1066,28 +1030,17 @@ class RemoteConnDetailModal extends React.Component<{ model: RemotesModel; remot
                                     <div className="settings-input">{remote.connectmode}</div>
                                 </div>
                                 {this.renderInstallStatus(remote)}
-                                <div className="settings-field">
-                                    <div className="settings-label">Actions</div>
-                                    <div className="settings-input">
-                                        <div
-                                            onClick={() => this.editAuthSettings()}
-                                            className="button is-prompt-green is-outlined is-small is-inline-height"
-                                        >
-                                            Edit Connection Settings
-                                        </div>
-                                    </div>
-                                </div>
                                 <div className="flex-spacer" style={{ minHeight: 20 }} />
-                                <div style={{ width: "100%" }}>{remoteMessage}</div>
+                                <div className="status">
+                                    <Status status={this.getStatus(remote.status)} text={remote.status} />
+                                </div>
                                 <div
                                     key="term"
                                     className={cn(
                                         "terminal-wrapper",
                                         { focus: isTermFocused },
-                                        remote != null ? "status-" + remote.status : null,
-                                        { "has-message": remoteMessage != null }
+                                        remote != null ? "status-" + remote.status : null
                                     )}
-                                    style={{ width: "100%", overflowX: "auto" }}
                                 >
                                     <If condition={!isTermFocused}>
                                         <div key="termblock" className="term-block" onClick={this.clickTermBlock}></div>
@@ -1110,12 +1063,12 @@ class RemoteConnDetailModal extends React.Component<{ model: RemotesModel; remot
                                 </div>
                             </div>
                         </div>
-                        <footer className="wave-modal-footer crconn-wave-modal-footer">
+                        <footer className="wave-modal-footer rconndetail-wave-modal-footer">
                             <div className="action-buttons">
                                 <Button theme="secondary" onClick={model.closeModal}>
                                     Cancel
                                 </Button>
-                                <Button onClick={this.submitRemote}>Done</Button>
+                                <Button onClick={model.closeModal}>Done</Button>
                             </div>
                         </footer>
                     </div>
