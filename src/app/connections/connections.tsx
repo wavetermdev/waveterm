@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
-import { GlobalModel, RemotesModalModel } from "../../model/model";
+import { GlobalModel, RemotesModel } from "../../model/model";
 import { Button, IconButton, Status } from "../common/common";
 import * as T from "../../types/types";
 import * as util from "../../util/util";
@@ -17,7 +17,7 @@ import "./connections.less";
 type OV<V> = mobx.IObservableValue<V>;
 
 @mobxReact.observer
-class ConnectionsView extends React.Component<{ model: RemotesModalModel }, {}> {
+class ConnectionsView extends React.Component<{ model: RemotesModel }, {}> {
     tableRef: React.RefObject<any> = React.createRef();
     tableWidth: OV<number> = mobx.observable.box(0, { name: "tableWidth" });
     tableRszObs: ResizeObserver;
@@ -60,7 +60,13 @@ class ConnectionsView extends React.Component<{ model: RemotesModalModel }, {}> 
 
     @boundMethod
     handleAddConnection(): void {
-        GlobalModel.remotesModalModel.openModalForEdit({ remoteedit: true, old: false }, true);
+        GlobalModel.remotesModel.openAddModal({ remoteedit: true });
+    }
+
+    @boundMethod
+    handleReadConnection(remoteId: string): void {
+        console.log("remoteId", remoteId);
+        GlobalModel.remotesModel.openReadModal(remoteId);
     }
 
     @boundMethod
@@ -169,8 +175,12 @@ class ConnectionsView extends React.Component<{ model: RemotesModalModel }, {}> 
                                 </td>
                                 <td style={{ whiteSpace: "nowrap" }}>
                                     <div className="action-buttons">
-                                        <IconButton theme="secondary" variant="ghost">
-                                            <i className="fa-sharp fa-solid fa-pen"></i>
+                                        <IconButton
+                                            theme="secondary"
+                                            variant="ghost"
+                                            onClick={() => this.handleReadConnection(item.remoteid)}
+                                        >
+                                            <i className="fa-sharp fa-solid fa-magnifying-glass"></i>
                                         </IconButton>
                                         <IconButton theme="secondary" variant="ghost">
                                             <i className="fa-sharp fa-solid fa-trash-can"></i>

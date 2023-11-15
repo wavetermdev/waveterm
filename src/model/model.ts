@@ -2693,6 +2693,197 @@ class RemotesModalModel {
     }
 }
 
+class RemotesModel {
+    openState: OV<boolean> = mobx.observable.box(false, {
+        name: "RemotesModel-isModalOpen",
+    });
+    modalMode: OV<"read" | "add" | "edit"> = mobx.observable.box("add", {
+        name: "RemotesModel-modalMode",
+    });
+    selectedRemoteId: OV<string> = mobx.observable.box(null, {
+        name: "RemotesModel-selectedRemoteId",
+    });
+    remoteTermWrap: TermWrap;
+    remoteTermWrapFocus: OV<boolean> = mobx.observable.box(false, {
+        name: "RemotesModel-remoteTermWrapFocus",
+    });
+    showNoInputMsg: OV<boolean> = mobx.observable.box(false, {
+        name: "RemotesModel-showNoInputMg",
+    });
+    showNoInputTimeoutId: any = null;
+    remoteEdit: OV<RemoteEditType> = mobx.observable.box(null, {
+        name: "RemotesModel-remoteEdit",
+    });
+
+    deSelectRemote(): void {
+        mobx.action(() => {
+            this.selectedRemoteId.set(null);
+            this.remoteEdit.set(null);
+        })();
+    }
+
+    openReadModal(remoteId: string): void {
+        mobx.action(() => {
+            this.selectedRemoteId.set(remoteId);
+            this.remoteEdit.set(null);
+            this.modalMode.set("read");
+            this.openState.set(true);
+        })();
+    }
+
+    openAddModal(redit: RemoteEditType): void {
+        mobx.action(() => {
+            this.selectedRemoteId.set(redit.remoteid);
+            this.remoteEdit.set(redit);
+            this.modalMode.set("add");
+            this.openState.set(true);
+        })();
+    }
+
+    openEditModal(redit: RemoteEditType): void {
+        mobx.action(() => {
+            this.selectedRemoteId.set(redit.remoteid);
+            this.remoteEdit.set(redit);
+            this.modalMode.set("edit");
+            this.openState.set(true);
+        })();
+    }
+
+    selectRemote(remoteId: string): void {
+        if (this.selectedRemoteId.get() == remoteId) {
+            return;
+        }
+        mobx.action(() => {
+            this.selectedRemoteId.set(remoteId);
+            this.remoteEdit.set(null);
+        })();
+    }
+
+    @boundMethod
+    startEditAuth(): void {
+        let remoteId = this.selectedRemoteId.get();
+        if (remoteId != null) {
+            GlobalCommandRunner.openEditRemote(remoteId);
+        }
+    }
+
+    isOpen(): boolean {
+        return this.openState.get();
+    }
+
+    getModalMode(): string {
+        return this.modalMode.get();
+    }
+
+    isAuthEditMode(): boolean {
+        return this.remoteEdit.get() != null;
+    }
+
+    @boundMethod
+    closeModal(): void {
+        if (!this.openState.get()) {
+            return;
+        }
+        mobx.action(() => {
+            this.openState.set(false);
+            this.selectedRemoteId.set(null);
+            this.remoteEdit.set(null);
+        })();
+        setTimeout(() => GlobalModel.refocus(), 10);
+    }
+
+    disposeTerm(): void {
+        if (this.remoteTermWrap == null) {
+            return;
+        }
+        this.remoteTermWrap.dispose();
+        this.remoteTermWrap = null;
+        mobx.action(() => {
+            this.remoteTermWrapFocus.set(false);
+        })();
+    }
+
+    receiveData(remoteId: string, ptyPos: number, ptyData: Uint8Array, reason?: string) {
+        if (this.remoteTermWrap == null) {
+            return;
+        }
+        if (this.remoteTermWrap.getContextRemoteId() != remoteId) {
+            return;
+        }
+        this.remoteTermWrap.receiveData(ptyPos, ptyData);
+    }
+
+    @boundMethod
+    setRemoteTermWrapFocus(focus: boolean): void {
+        mobx.action(() => {
+            this.remoteTermWrapFocus.set(focus);
+        })();
+    }
+
+    @boundMethod
+    setShowNoInputMsg(val: boolean) {
+        mobx.action(() => {
+            if (this.showNoInputTimeoutId != null) {
+                clearTimeout(this.showNoInputTimeoutId);
+                this.showNoInputTimeoutId = null;
+            }
+            if (val) {
+                this.showNoInputMsg.set(true);
+                this.showNoInputTimeoutId = setTimeout(() => this.setShowNoInputMsg(false), 2000);
+            } else {
+                this.showNoInputMsg.set(false);
+            }
+        })();
+    }
+
+    @boundMethod
+    termKeyHandler(remoteId: string, event: any, termWrap: TermWrap): void {
+        let remote = GlobalModel.getRemote(remoteId);
+        if (remote == null) {
+            return;
+        }
+        if (remote.status != "connecting" && remote.installstatus != "connecting") {
+            this.setShowNoInputMsg(true);
+            return;
+        }
+        let inputPacket: RemoteInputPacketType = {
+            type: "remoteinput",
+            remoteid: remoteId,
+            inputdata64: btoa(event.key),
+        };
+        GlobalModel.sendInputPacket(inputPacket);
+    }
+
+    createTermWrap(elem: HTMLElement): void {
+        this.disposeTerm();
+        let remoteId = this.selectedRemoteId.get();
+        if (remoteId == null) {
+            return;
+        }
+        let termOpts = {
+            rows: RemotePtyRows,
+            cols: RemotePtyCols,
+            flexrows: false,
+            maxptysize: 64 * 1024,
+        };
+        let termWrap = new TermWrap(elem, {
+            termContext: { remoteId: remoteId },
+            usedRows: RemotePtyRows,
+            termOpts: termOpts,
+            winSize: null,
+            keyHandler: (e, termWrap) => {
+                this.termKeyHandler(remoteId, e, termWrap);
+            },
+            focusHandler: this.setRemoteTermWrapFocus.bind(this),
+            isRunning: true,
+            fontSize: GlobalModel.termFontSize.get(),
+            ptyDataSource: getTermPtyData,
+            onUpdateContentHeight: null,
+        });
+        this.remoteTermWrap = termWrap;
+    }
+}
+
 class Model {
     clientId: string;
     activeSessionId: OV<string> = mobx.observable.box(null, {
@@ -2747,6 +2938,7 @@ class Model {
         name: "lineSettingsModal",
     }); // linenum
     remotesModalModel: RemotesModalModel;
+    remotesModel: RemotesModel;
 
     inputModel: InputModel;
     pluginsModel: PluginsModel;
@@ -2774,6 +2966,7 @@ class Model {
         this.historyViewModel = new HistoryViewModel();
         this.connectionViewModel = new ConnectionsViewModel();
         this.remotesModalModel = new RemotesModalModel();
+        this.remotesModel = new RemotesModel();
         let isWaveSrvRunning = getApi().getWaveSrvStatus();
         this.waveSrvRunning = mobx.observable.box(isWaveSrvRunning, {
             name: "model-wavesrv-running",
@@ -2999,8 +3192,8 @@ class Model {
                 GlobalModel.screenSettingsModal.set(null);
                 didSomething = true;
             }
-            if (GlobalModel.remotesModalModel.isOpen()) {
-                GlobalModel.remotesModalModel.closeModal();
+            if (GlobalModel.remotesModel.isOpen()) {
+                GlobalModel.remotesModel.closeModal();
                 didSomething = true;
             }
             if (GlobalModel.clientSettingsModal.get()) {
@@ -3209,7 +3402,7 @@ class Model {
             } else {
                 // remote update
                 let ptyData = base64ToArray(ptyMsg.ptydata64);
-                this.remotesModalModel.receiveData(ptyMsg.remoteid, ptyMsg.ptypos, ptyData);
+                this.remotesModel.receiveData(ptyMsg.remoteid, ptyMsg.ptypos, ptyData);
             }
             return;
         }
@@ -3296,16 +3489,17 @@ class Model {
             let info: InfoType = update.info;
             this.inputModel.flashInfoMsg(info, info.timeoutms);
         }
-        if (interactive && "remoteview" in update) {
-            let rview: RemoteViewType = update.remoteview;
-            if (rview.remoteshowall) {
-                this.remotesModalModel.openModal();
-            } else if (rview.remoteedit != null) {
-                this.remotesModalModel.openModalForEdit({ ...rview.remoteedit, old: true }, false);
-            } else if (rview.ptyremoteid) {
-                this.remotesModalModel.openModal(rview.ptyremoteid);
-            }
-        }
+        // This no longer needed
+        // if (interactive && "remoteview" in update) {
+        //     let rview: RemoteViewType = update.remoteview;
+        //     if (rview.remoteshowall) {
+        //         this.remotesModel.openModal();
+        //     } else if (rview.remoteedit != null) {
+        //         this.remotesModel.openModalForEdit({ ...rview.remoteedit, old: true }, false);
+        //     } else if (rview.ptyremoteid) {
+        //         this.remotesModel.openModal(rview.ptyremoteid);
+        //     }
+        // }
         if ("cmdline" in update) {
             this.inputModel.updateCmdLine(update.cmdline);
         }
@@ -4210,5 +4404,6 @@ export {
     RemoteColors,
     getTermPtyData,
     RemotesModalModel,
+    RemotesModel,
 };
 export type { LineContainerModel };

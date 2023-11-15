@@ -101,7 +101,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
 
     @boundMethod
     clickNewConnection(): void {
-        GlobalModel.remotesModalModel.openModalForEdit({ remoteedit: true, old: false }, true);
+        GlobalModel.remotesModel.openAddModal({ remoteedit: true });
     }
 
     renderTabIconSelector(): React.ReactNode {

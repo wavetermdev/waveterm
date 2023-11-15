@@ -87,17 +87,18 @@ class App extends React.Component<{}, {}> {
         let sessionSettingsModal = GlobalModel.sessionSettingsModal.get();
         let lineSettingsModal = GlobalModel.lineSettingsModal.get();
         let clientSettingsModal = GlobalModel.clientSettingsModal.get();
-        let remotesModel = GlobalModel.remotesModalModel;
+        let remotesModel = GlobalModel.remotesModel;
         let remotesModal = remotesModel.isOpen();
+        let modalMode = remotesModel.modalMode.get();
         let selectedRemoteId = remotesModel.selectedRemoteId.get();
         let selectedRemote = GlobalModel.getRemote(selectedRemoteId);
         let isAuthEditMode = remotesModel.isAuthEditMode();
-        let onlyAddNewRemote = remotesModel.onlyAddNewRemote.get();
         let remoteEdit = remotesModel.remoteEdit.get();
         let disconnected = !GlobalModel.ws.open.get() || !GlobalModel.waveSrvRunning.get();
         let hasClientStop = GlobalModel.getHasClientStop();
         let dcWait = this.dcWait.get();
         let platform = GlobalModel.getPlatform();
+
         if (disconnected || hasClientStop) {
             if (!dcWait) {
                 setTimeout(() => this.updateDcWait(true), 1500);
@@ -122,7 +123,6 @@ class App extends React.Component<{}, {}> {
         if (dcWait) {
             setTimeout(() => this.updateDcWait(false), 0);
         }
-        //console.log(`GlobalModel.activeMainView.get() = ${GlobalModel.activeMainView.get()}`); // @mike - if I remove this, I cant see plugins
         return (
             <div id="main" className={"platform-" + platform} onContextMenu={this.handleContextMenu}>
                 <div className="main-content">
@@ -142,11 +142,11 @@ class App extends React.Component<{}, {}> {
                 <If condition={GlobalModel.aboutModalOpen.get()}>
                     <AboutModal />
                 </If>
-                <If condition={remoteEdit !== null && !remoteEdit.old}>
+                <If condition={remoteEdit !== null && modalMode === "add"}>
                     <CreateRemoteConnModal model={remotesModel} remoteEdit={remoteEdit} />
                 </If>
-                <If condition={selectedRemote != null && !onlyAddNewRemote}>
-                    <If condition={!isAuthEditMode}>
+                <If condition={selectedRemote != null}>
+                    <If condition={!isAuthEditMode && modalMode === "read"}>
                         <RemoteConnDetailModal
                             key={"remotedetail-" + selectedRemoteId}
                             remote={selectedRemote}
@@ -170,9 +170,9 @@ class App extends React.Component<{}, {}> {
                 <If condition={clientSettingsModal}>
                     <ClientSettingsModal />
                 </If>
-                <If condition={remotesModal}>
+                {/* <If condition={remotesModal}>
                     <RemotesModal model={GlobalModel.remotesModalModel} />
-                </If>
+                </If> */}
             </div>
         );
     }

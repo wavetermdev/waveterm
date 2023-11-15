@@ -9,10 +9,11 @@ import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel, GlobalCommandRunner, RemotesModalModel } from "../../../model/model";
+import { GlobalModel, GlobalCommandRunner, RemotesModel } from "../../../model/model";
 import * as T from "../../../types/types";
 import { Markdown, InfoMessage } from "../common";
 import * as util from "../../../util/util";
+import * as textmeasure from "../../../util/textmeasure";
 import { Toggle, Checkbox } from "../common";
 import { ClientDataType } from "../../../types/types";
 import { TextField, NumberField, InputDecoration, Dropdown, PasswordField, Tooltip, Button } from "../common";
@@ -477,7 +478,7 @@ class AboutModal extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
-class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; remoteEdit: T.RemoteEditType }, {}> {
+class CreateRemoteConnModal extends React.Component<{ model: RemotesModel; remoteEdit: T.RemoteEditType }, {}> {
     tempAlias: OV<string>;
     tempHostName: OV<string>;
     tempPort: OV<string>;
@@ -614,7 +615,7 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
     }
 
     render() {
-        let { model, remoteEdit } = this.props;
+        let { model } = this.props;
         let authMode = this.tempAuthMode.get();
 
         return (
@@ -787,7 +788,7 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
                         </div>
                         <footer className="wave-modal-footer crconn-wave-modal-footer">
                             <div className="action-buttons">
-                                <Button theme="secondary" onClick={model.cancelEditAuth}>
+                                <Button theme="secondary" onClick={model.closeModal}>
                                     Cancel
                                 </Button>
                                 <Button onClick={this.submitRemote}>Connect</Button>
@@ -801,7 +802,7 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
 }
 
 @mobxReact.observer
-class RemoteConnDetailModal extends React.Component<{ model: RemotesModalModel; remote: T.RemoteType }, {}> {
+class RemoteConnDetailModal extends React.Component<{ model: RemotesModel; remote: T.RemoteType }, {}> {
     termRef: React.RefObject<any> = React.createRef();
 
     componentDidMount() {
@@ -863,6 +864,12 @@ class RemoteConnDetailModal extends React.Component<{ model: RemotesModalModel; 
     @boundMethod
     editAuthSettings(): void {
         this.props.model.startEditAuth();
+    }
+
+    @boundMethod
+    getName(remote: T.RemoteType) {
+        const { remotealias, remotecanonicalname } = remote;
+        return remotealias ? `${remotealias}(${remotecanonicalname})` : remotecanonicalname;
     }
 
     renderInstallStatus(remote: T.RemoteType): any {
@@ -991,9 +998,7 @@ class RemoteConnDetailModal extends React.Component<{ model: RemotesModalModel; 
         return (
             <div className="remote-message">
                 <div className="message-row">
-                    <div>
-                        <RemoteStatusLight remote={remote} /> {message}
-                    </div>
+                    <div>{/* <RemoteStatusLight remote={remote} /> {message} */}</div>
                     <div className="flex-spacer" />
                     <For each="button" of={buttons}>
                         {button}
@@ -1008,85 +1013,112 @@ class RemoteConnDetailModal extends React.Component<{ model: RemotesModalModel; 
         let isTermFocused = model.remoteTermWrapFocus.get();
         let termFontSize = GlobalModel.termFontSize.get();
         let remoteMessage = this.renderRemoteMessage(remote);
-        let termWidth = textmeasure.termWidthFromCols(RemotePtyCols, termFontSize);
+        let termWidth = textmeasure.termWidthFromCols(80, termFontSize);
         let remoteAliasText = util.isBlank(remote.remotealias) ? "(none)" : remote.remotealias;
         return (
-            <div className="remote-detail" style={{ overflow: "hidden" }}>
-                <div className="title is-5">{getRemoteTitle(remote)}</div>
-                <div className="settings-field">
-                    <div className="settings-label">Conn Id</div>
-                    <div className="settings-input">{remote.remoteid}</div>
-                </div>
-                <div className="settings-field">
-                    <div className="settings-label">Type</div>
-                    <div className="settings-input">{this.getRemoteTypeStr(remote)}</div>
-                </div>
-                <div className="settings-field">
-                    <div className="settings-label">Canonical Name</div>
-                    <div className="settings-input">
-                        {remote.remotecanonicalname}
-                        <If condition={!util.isBlank(remote.remotevars.port) && remote.remotevars.port != "22"}>
-                            <span style={{ marginLeft: 5 }}>(port {remote.remotevars.port})</span>
-                        </If>
-                    </div>
-                </div>
-                <div className="settings-field" style={{ minHeight: 24 }}>
-                    <div className="settings-label">Alias</div>
-                    <div className="settings-input">{remoteAliasText}</div>
-                </div>
-                <div className="settings-field">
-                    <div className="settings-label">Auth Type</div>
-                    <div className="settings-input">
-                        <If condition={!remote.local}>{remote.authtype}</If>
-                        <If condition={remote.local}>local</If>
-                    </div>
-                </div>
-                <div className="settings-field">
-                    <div className="settings-label">Connect Mode</div>
-                    <div className="settings-input">{remote.connectmode}</div>
-                </div>
-                {this.renderInstallStatus(remote)}
-                <div className="settings-field">
-                    <div className="settings-label">Actions</div>
-                    <div className="settings-input">
-                        <div
-                            onClick={() => this.editAuthSettings()}
-                            className="button is-prompt-green is-outlined is-small is-inline-height"
-                        >
-                            Edit Connection Settings
+            <div className={cn("modal wave-modal rconndetail-modal is-active")}>
+                <div className="modal-background wave-modal-background" />
+                <div className="modal-content wave-modal-content rconndetail-wave-modal-content">
+                    <div className="wave-modal-content-inner rconndetail-wave-modal-content-inner">
+                        <header className="wave-modal-header crconn-wave-modal-header">
+                            <div className="wave-modal-title crconn-wave-modal-title">Connection</div>
+                            <div className="wave-modal-close crconn-wave-modal-close">
+                                <img src={close} alt="Close (Escape)" />
+                            </div>
+                        </header>
+                        <div className="wave-modal-body crconn-wave-modal-body">
+                            <div className="title is-5">{this.getName(remote)}</div>
+                            <div className="remote-detail" style={{ overflow: "hidden" }}>
+                                <div className="settings-field">
+                                    <div className="settings-label">Conn Id</div>
+                                    <div className="settings-input">{remote.remoteid}</div>
+                                </div>
+                                <div className="settings-field">
+                                    <div className="settings-label">Type</div>
+                                    <div className="settings-input">{this.getRemoteTypeStr(remote)}</div>
+                                </div>
+                                <div className="settings-field">
+                                    <div className="settings-label">Canonical Name</div>
+                                    <div className="settings-input">
+                                        {remote.remotecanonicalname}
+                                        <If
+                                            condition={
+                                                !util.isBlank(remote.remotevars.port) && remote.remotevars.port != "22"
+                                            }
+                                        >
+                                            <span style={{ marginLeft: 5 }}>(port {remote.remotevars.port})</span>
+                                        </If>
+                                    </div>
+                                </div>
+                                <div className="settings-field" style={{ minHeight: 24 }}>
+                                    <div className="settings-label">Alias</div>
+                                    <div className="settings-input">{remoteAliasText}</div>
+                                </div>
+                                <div className="settings-field">
+                                    <div className="settings-label">Auth Type</div>
+                                    <div className="settings-input">
+                                        <If condition={!remote.local}>{remote.authtype}</If>
+                                        <If condition={remote.local}>local</If>
+                                    </div>
+                                </div>
+                                <div className="settings-field">
+                                    <div className="settings-label">Connect Mode</div>
+                                    <div className="settings-input">{remote.connectmode}</div>
+                                </div>
+                                {this.renderInstallStatus(remote)}
+                                <div className="settings-field">
+                                    <div className="settings-label">Actions</div>
+                                    <div className="settings-input">
+                                        <div
+                                            onClick={() => this.editAuthSettings()}
+                                            className="button is-prompt-green is-outlined is-small is-inline-height"
+                                        >
+                                            Edit Connection Settings
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex-spacer" style={{ minHeight: 20 }} />
+                                <div style={{ width: "100%" }}>{remoteMessage}</div>
+                                <div
+                                    key="term"
+                                    className={cn(
+                                        "terminal-wrapper",
+                                        { focus: isTermFocused },
+                                        remote != null ? "status-" + remote.status : null,
+                                        { "has-message": remoteMessage != null }
+                                    )}
+                                    style={{ width: "100%", overflowX: "auto" }}
+                                >
+                                    <If condition={!isTermFocused}>
+                                        <div key="termblock" className="term-block" onClick={this.clickTermBlock}></div>
+                                    </If>
+                                    <If condition={model.showNoInputMsg.get()}>
+                                        <div key="termtag" className="term-tag">
+                                            input is only allowed while status is 'connecting'
+                                        </div>
+                                    </If>
+                                    <div
+                                        key="terminal"
+                                        className="terminal-connectelem"
+                                        ref={this.termRef}
+                                        data-remoteid={remote.remoteid}
+                                        style={{
+                                            height: textmeasure.termHeightFromRows(8, termFontSize),
+                                            width: termWidth,
+                                        }}
+                                    ></div>
+                                </div>
+                            </div>
                         </div>
+                        <footer className="wave-modal-footer crconn-wave-modal-footer">
+                            <div className="action-buttons">
+                                <Button theme="secondary" onClick={model.closeModal}>
+                                    Cancel
+                                </Button>
+                                <Button onClick={this.submitRemote}>Done</Button>
+                            </div>
+                        </footer>
                     </div>
-                </div>
-                <div className="flex-spacer" style={{ minHeight: 20 }} />
-                <div style={{ width: "100%" }}>{remoteMessage}</div>
-                <div
-                    key="term"
-                    className={cn(
-                        "terminal-wrapper",
-                        { focus: isTermFocused },
-                        remote != null ? "status-" + remote.status : null,
-                        { "has-message": remoteMessage != null }
-                    )}
-                    style={{ width: "100%", overflowX: "auto" }}
-                >
-                    <If condition={!isTermFocused}>
-                        <div key="termblock" className="term-block" onClick={this.clickTermBlock}></div>
-                    </If>
-                    <If condition={model.showNoInputMsg.get()}>
-                        <div key="termtag" className="term-tag">
-                            input is only allowed while status is 'connecting'
-                        </div>
-                    </If>
-                    <div
-                        key="terminal"
-                        className="terminal-connectelem"
-                        ref={this.termRef}
-                        data-remoteid={remote.remoteid}
-                        style={{
-                            height: textmeasure.termHeightFromRows(RemotePtyRows, termFontSize),
-                            width: termWidth,
-                        }}
-                    ></div>
                 </div>
             </div>
         );
