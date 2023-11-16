@@ -908,6 +908,120 @@ class RemoteConnDetailModal extends React.Component<{ model: RemotesModel; remot
         );
     }
 
+    renderRemoteMessage(remote: T.RemoteType): any {
+        let message: string = "";
+        let buttons: any[] = [];
+        // connect, disconnect, editauth, tryreconnect, install
+
+        let disconnectButton = (
+            <div
+                key="disconnect"
+                style={{ marginLeft: 10 }}
+                onClick={() => this.disconnectRemote(remote.remoteid)}
+                className="button is-prompt-danger is-outlined is-small"
+            >
+                Disconnect Now
+            </div>
+        );
+        let connectButton = (
+            <div
+                key="connect"
+                style={{ marginLeft: 10 }}
+                onClick={() => this.connectRemote(remote.remoteid)}
+                className="button is-prompt-green is-outlined is-small"
+            >
+                Connect Now
+            </div>
+        );
+        let tryReconnectButton = (
+            <div
+                key="tryreconnect"
+                style={{ marginLeft: 10 }}
+                onClick={() => this.connectRemote(remote.remoteid)}
+                className="button is-prompt-green is-outlined is-small"
+            >
+                Try Reconnect
+            </div>
+        );
+        let updateAuthButton = (
+            <div
+                key="updateauth"
+                style={{ marginLeft: 10 }}
+                onClick={() => this.editAuthSettings()}
+                className="button is-plain is-outlined is-small"
+            >
+                Update Auth Settings
+            </div>
+        );
+        let cancelInstallButton = (
+            <div
+                key="cancelinstall"
+                style={{ marginLeft: 10 }}
+                onClick={() => this.cancelInstall(remote.remoteid)}
+                className="button is-prompt-danger is-outlined is-small"
+            >
+                Cancel Install
+            </div>
+        );
+        let installNowButton = (
+            <div
+                key="installnow"
+                style={{ marginLeft: 10 }}
+                onClick={() => this.installRemote(remote.remoteid)}
+                className="button is-prompt-green is-outlined is-small"
+            >
+                Install Now
+            </div>
+        );
+        if (remote.local) {
+            installNowButton = null;
+            updateAuthButton = null;
+            cancelInstallButton = null;
+        }
+        if (remote.status == "connected") {
+            message = "Connected and ready to run commands.";
+            buttons = [disconnectButton];
+        } else if (remote.status == "connecting") {
+            message = remote.waitingforpassword ? "Connecting, waiting for user-input..." : "Connecting...";
+            let connectTimeout = remote.connecttimeout ?? 0;
+            message = message + " (" + connectTimeout + "s)";
+            buttons = [disconnectButton];
+        } else if (remote.status == "disconnected") {
+            message = "Disconnected";
+            buttons = [connectButton];
+        } else if (remote.status == "error") {
+            if (remote.noinitpk) {
+                message = "Error, could not connect.";
+                buttons = [tryReconnectButton, updateAuthButton];
+            } else if (remote.needsmshellupgrade) {
+                if (remote.installstatus == "connecting") {
+                    message = "Installing...";
+                    buttons = [cancelInstallButton];
+                } else {
+                    message = "Error, needs install.";
+                    buttons = [installNowButton, updateAuthButton];
+                }
+            } else {
+                message = "Error";
+                buttons = [tryReconnectButton, updateAuthButton];
+            }
+        }
+        let button: any = null;
+        return (
+            <div className="remote-message">
+                <div className="message-row">
+                    <div>
+                        <RemoteStatusLight remote={remote} /> {message}
+                    </div>
+                    <div className="flex-spacer" />
+                    <For each="button" of={buttons}>
+                        {button}
+                    </For>
+                </div>
+            </div>
+        );
+    }
+
     renderHeaderBtns(remote: T.RemoteType): React.ReactNode {
         let buttons: React.ReactNode[] = [];
         const disconnectButton = (
@@ -927,7 +1041,7 @@ class RemoteConnDetailModal extends React.Component<{ model: RemotesModel; remot
         );
         let updateAuthButton = (
             <Button theme="secondary" onClick={() => this.editAuthSettings()}>
-                Update Auth Settings
+                Edit
             </Button>
         );
         let cancelInstallButton = (
@@ -967,6 +1081,33 @@ class RemoteConnDetailModal extends React.Component<{ model: RemotesModel; remot
                 {button}
             </For>
         );
+    }
+
+    getMessage(remote: T.RemoteType): string {
+        let message = "";
+        if (remote.status == "connected") {
+            message = "Connected and ready to run commands.";
+        } else if (remote.status == "connecting") {
+            message = remote.waitingforpassword ? "Connecting, waiting for user-input..." : "Connecting...";
+            let connectTimeout = remote.connecttimeout ?? 0;
+            message = message + " (" + connectTimeout + "s)";
+        } else if (remote.status == "disconnected") {
+            message = "Disconnected";
+        } else if (remote.status == "error") {
+            if (remote.noinitpk) {
+                message = "Error, could not connect.";
+            } else if (remote.needsmshellupgrade) {
+                if (remote.installstatus == "connecting") {
+                    message = "Installing...";
+                } else {
+                    message = "Error, needs install.";
+                }
+            } else {
+                message = "Error";
+            }
+        }
+
+        return message;
     }
 
     render() {
@@ -1032,7 +1173,7 @@ class RemoteConnDetailModal extends React.Component<{ model: RemotesModel; remot
                                 {this.renderInstallStatus(remote)}
                                 <div className="flex-spacer" style={{ minHeight: 20 }} />
                                 <div className="status">
-                                    <Status status={this.getStatus(remote.status)} text={remote.status} />
+                                    <Status status={this.getStatus(remote.status)} text={this.getMessage(remote)} />
                                 </div>
                                 <div
                                     key="term"
