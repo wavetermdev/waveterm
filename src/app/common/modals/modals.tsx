@@ -1056,7 +1056,7 @@ class RemoteConnDetailModal extends React.Component<{ model: RemotesModel; remot
                                         ref={this.termRef}
                                         data-remoteid={remote.remoteid}
                                         style={{
-                                            height: textmeasure.termHeightFromRows(8, termFontSize),
+                                            height: textmeasure.termHeightFromRows(9, termFontSize),
                                             width: termWidth,
                                         }}
                                     ></div>

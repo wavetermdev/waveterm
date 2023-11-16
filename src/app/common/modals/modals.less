@@ -471,7 +471,7 @@
 .wave-modal.rconndetail-modal {
     .wave-modal-content.rconndetail-wave-modal-content {
         width: 580px;
-        min-height: 588px;
+        min-height: 565px;
         overflow: visible;
 
         .wave-modal-content-inner.rconndetail-wave-modal-content-inner {
@@ -557,16 +557,27 @@
                     .terminal-wrapper {
                         overflow: hidden;
                         width: 100%;
+                        margin-top: 5px;
 
-                        .xterm-viewport {
-                            display: flex;
-                            padding: 6px 10px;
-                            gap: 8px;
-                            align-items: flex-start;
-                            align-self: stretch;
-                            border-radius: 6px;
-                            border: 1px solid var(--element-separator, rgba(241, 246, 243, 0.15));
-                            background: #080a08;
+                        .terminal-connectelem {
+                            height: 163px !important; // Needed to override plugin height
+
+                            .xterm-viewport {
+                                display: flex;
+                                padding: 6px 10px;
+                                gap: 8px;
+                                align-items: flex-start;
+                                align-self: stretch;
+                                border-radius: 6px;
+                                border: 1px solid var(--element-separator, rgba(241, 246, 243, 0.15));
+                                background: #080a08;
+                                height: 163px !important; // Needed to override plugin height
+                            }
+
+                            .xterm-screen {
+                                padding: 10px;
+                                width: 541px !important; // Needed to override plugin width
+                            }
                         }
                     }
                 }
