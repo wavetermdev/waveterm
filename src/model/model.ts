@@ -762,6 +762,15 @@ class Screen {
             navigator.clipboard.writeText(sel);
             return false;
         }
+        if (e.type == "keypress" && e.code == "KeyV" && e.shiftKey && e.ctrlKey) {
+            e.stopPropagation();
+            e.preventDefault();
+            let p = navigator.clipboard.readText();
+            p.then((text) => {
+                termWrap.dataHandler?.(text);
+            });
+            return false;
+        }
         if (termWrap.isRunning) {
             return true;
         }
@@ -3630,11 +3639,15 @@ class Model {
     }
 
     getCmd(line: LineType): Cmd {
-        let slines = this.getScreenLinesById(line.screenid);
+        return this.getCmdByScreenLine(line.screenid, line.lineid);
+    }
+
+    getCmdByScreenLine(screenId: string, lineId: string): Cmd {
+        let slines = this.getScreenLinesById(screenId);
         if (slines == null) {
             return null;
         }
-        return slines.getCmd(line.lineid);
+        return slines.getCmd(lineId);
     }
 
     getActiveLine(screenId: string, lineid: string): SWLinePtr {
