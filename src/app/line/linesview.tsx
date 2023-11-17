@@ -68,7 +68,7 @@ class LinesView extends React.Component<
         });
         this.visibleMap = new Map();
         this.collapsedMap = new Map();
-        this.computeVisibleMap_debounced = debounce(1000, this.computeVisibleMap.bind(this));
+        this.computeVisibleMap_debounced = debounce(100, this.computeVisibleMap.bind(this));
     }
 
     @boundMethod
