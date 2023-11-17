@@ -774,8 +774,16 @@
     box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
         0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
 
+    &:hover {
+        cursor: text;
+    }
+
     &.focused {
         border-color: @term-green;
+    }
+
+    &.disabled {
+        opacity: 0.75;
     }
 
     &.error {

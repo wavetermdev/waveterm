@@ -31,7 +31,8 @@ import {
     AlertModal,
     AboutModal,
     CreateRemoteConnModal,
-    RemoteConnDetailModal,
+    ViewRemoteConnDetailModal,
+    EditRemoteConnModal,
 } from "./common/modals/modals";
 import { ErrorBoundary } from "./common/error/errorboundary";
 import "./app.less";
@@ -88,7 +89,6 @@ class App extends React.Component<{}, {}> {
         let lineSettingsModal = GlobalModel.lineSettingsModal.get();
         let clientSettingsModal = GlobalModel.clientSettingsModal.get();
         let remotesModel = GlobalModel.remotesModel;
-        let remotesModal = remotesModel.isOpen();
         let modalMode = remotesModel.modalMode.get();
         let selectedRemoteId = remotesModel.selectedRemoteId.get();
         let selectedRemote = GlobalModel.getRemote(selectedRemoteId);
@@ -147,10 +147,18 @@ class App extends React.Component<{}, {}> {
                 </If>
                 <If condition={selectedRemote != null}>
                     <If condition={!isAuthEditMode && modalMode === "read"}>
-                        <RemoteConnDetailModal
+                        <ViewRemoteConnDetailModal
                             key={"remotedetail-" + selectedRemoteId}
                             remote={selectedRemote}
                             model={remotesModel}
+                        />
+                    </If>
+                    <If condition={remoteEdit !== null && isAuthEditMode && modalMode === "edit"}>
+                        <EditRemoteConnModal
+                            key={"remotedetail-" + selectedRemoteId}
+                            remote={selectedRemote}
+                            model={remotesModel}
+                            remoteEdit={remoteEdit}
                         />
                     </If>
                 </If>
@@ -170,9 +178,6 @@ class App extends React.Component<{}, {}> {
                 <If condition={clientSettingsModal}>
                     <ClientSettingsModal />
                 </If>
-                {/* <If condition={remotesModal}>
-                    <RemotesModal model={GlobalModel.remotesModalModel} />
-                </If> */}
             </div>
         );
     }

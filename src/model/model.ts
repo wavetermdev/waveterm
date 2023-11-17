@@ -2694,10 +2694,7 @@ class RemotesModalModel {
 }
 
 class RemotesModel {
-    openState: OV<boolean> = mobx.observable.box(false, {
-        name: "RemotesModel-isModalOpen",
-    });
-    modalMode: OV<"read" | "add" | "edit"> = mobx.observable.box("add", {
+    modalMode: OV<null | "read" | "add" | "edit"> = mobx.observable.box(null, {
         name: "RemotesModel-modalMode",
     });
     selectedRemoteId: OV<string> = mobx.observable.box(null, {
@@ -2727,7 +2724,6 @@ class RemotesModel {
             this.selectedRemoteId.set(remoteId);
             this.remoteEdit.set(null);
             this.modalMode.set("read");
-            this.openState.set(true);
         })();
     }
 
@@ -2736,17 +2732,23 @@ class RemotesModel {
             this.selectedRemoteId.set(redit.remoteid);
             this.remoteEdit.set(redit);
             this.modalMode.set("add");
-            this.openState.set(true);
         })();
     }
 
-    openEditModal(redit: RemoteEditType): void {
-        mobx.action(() => {
-            this.selectedRemoteId.set(redit.remoteid);
-            this.remoteEdit.set(redit);
-            this.modalMode.set("edit");
-            this.openState.set(true);
-        })();
+    openEditModal(redit?: RemoteEditType): void {
+        if (redit === undefined) {
+            console.log("openEditModal 1");
+            this.startEditAuth();
+        }
+        if (redit != null) {
+            console.log("openEditModal 2", redit);
+
+            mobx.action(() => {
+                this.selectedRemoteId.set(redit.remoteid);
+                this.remoteEdit.set(redit);
+                this.modalMode.set("edit");
+            })();
+        }
     }
 
     selectRemote(remoteId: string): void {
@@ -2767,10 +2769,6 @@ class RemotesModel {
         }
     }
 
-    isOpen(): boolean {
-        return this.openState.get();
-    }
-
     getModalMode(): string {
         return this.modalMode.get();
     }
@@ -2781,13 +2779,9 @@ class RemotesModel {
 
     @boundMethod
     closeModal(): void {
-        if (!this.openState.get()) {
-            return;
-        }
         mobx.action(() => {
-            this.openState.set(false);
+            this.modalMode.set(null);
             this.selectedRemoteId.set(null);
-            this.remoteEdit.set(null);
         })();
         setTimeout(() => GlobalModel.refocus(), 10);
     }
@@ -3489,17 +3483,12 @@ class Model {
             let info: InfoType = update.info;
             this.inputModel.flashInfoMsg(info, info.timeoutms);
         }
-        // This no longer needed
-        // if (interactive && "remoteview" in update) {
-        //     let rview: RemoteViewType = update.remoteview;
-        //     if (rview.remoteshowall) {
-        //         this.remotesModel.openModal();
-        //     } else if (rview.remoteedit != null) {
-        //         this.remotesModel.openModalForEdit({ ...rview.remoteedit, old: true }, false);
-        //     } else if (rview.ptyremoteid) {
-        //         this.remotesModel.openModal(rview.ptyremoteid);
-        //     }
-        // }
+        if (interactive && "remoteview" in update) {
+            let rview: RemoteViewType = update.remoteview;
+            if (rview.remoteedit != null) {
+                this.remotesModel.openEditModal({ ...rview.remoteedit });
+            }
+        }
         if ("cmdline" in update) {
             this.inputModel.updateCmdLine(update.cmdline);
         }

@@ -65,7 +65,6 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, {}> {
 
     @boundMethod
     handleReadConnection(remoteId: string): void {
-        console.log("remoteId", remoteId);
         GlobalModel.remotesModel.openReadModal(remoteId);
     }
 
@@ -105,15 +104,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, {}> {
             return null;
         }
 
-        let model = this.props.model;
-        let selectedRemoteId = model.selectedRemoteId.get();
         let items = util.sortAndFilterRemotes(GlobalModel.remotes.slice());
-        console.log("items", items);
-        // let remote: T.RemoteType = null;
-        // let isAuthEditMode = model.isAuthEditMode();
-        // let selectedRemote = GlobalModel.getRemote(selectedRemoteId);
-        // let remoteEdit = model.remoteEdit.get();
-        // let onlyAddNewRemote = model.onlyAddNewRemote.get();
 
         return (
             <div className={cn("connections-view")}>

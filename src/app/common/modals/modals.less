@@ -602,6 +602,48 @@
     }
 }
 
+.wave-modal.erconn-modal {
+    .wave-modal-content.erconn-wave-modal-content {
+        width: 452px;
+        min-height: 411px;
+        overflow: visible;
+
+        .wave-modal-content-inner.erconn-wave-modal-content-inner {
+            display: flex;
+            padding-bottom: 0px;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            flex-shrink: 0;
+
+            .erconn-wave-modal-body {
+                display: flex;
+                padding: 0px 20px;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+                align-self: stretch;
+                width: 100%;
+            }
+        }
+
+        .erconn-wave-modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            width: 100%;
+            padding: 0 20px 20px;
+
+            .action-buttons {
+                display: flex;
+
+                button:first-child {
+                    margin-right: 8px;
+                }
+            }
+        }
+    }
+}
+
 .wave-button.color-standard {
     color: @term-white;
     background: rgba(255, 255, 255, 0.12);

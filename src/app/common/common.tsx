@@ -334,6 +334,7 @@ interface TextFieldProps {
     required?: boolean;
     maxLength?: number;
     autoFocus?: boolean;
+    disabled?: boolean;
 }
 
 interface TextFieldState {
@@ -366,6 +367,22 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
         // Only update the focus state if using as controlled
         if (this.props.value !== undefined && this.props.value !== prevProps.value) {
             this.setState({ focused: Boolean(this.props.value) });
+        }
+    }
+
+    // Method to handle focus at the component level
+    @boundMethod
+    handleComponentFocus() {
+        if (this.inputRef.current && !this.inputRef.current.contains(document.activeElement)) {
+            this.inputRef.current.focus();
+        }
+    }
+
+    // Method to handle blur at the component level
+    @boundMethod
+    handleComponentBlur() {
+        if (this.inputRef.current && this.inputRef.current.contains(document.activeElement)) {
+            this.inputRef.current.blur();
         }
     }
 
@@ -413,14 +430,23 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
     }
 
     render() {
-        const { label, value, placeholder, decoration, className, maxLength, autoFocus } = this.props;
+        const { label, value, placeholder, decoration, className, maxLength, autoFocus, disabled } = this.props;
         const { focused, internalValue, error } = this.state;
 
         // Decide if the input should behave as controlled or uncontrolled
         const inputValue = value !== undefined ? value : internalValue;
 
         return (
-            <div className={cn(`wave-textfield ${className || ""}`, { focused: focused, error: error })}>
+            <div
+                className={cn(`wave-textfield ${className || ""}`, {
+                    focused: focused,
+                    error: error,
+                    disabled: disabled,
+                })}
+                onFocus={this.handleComponentFocus}
+                onBlur={this.handleComponentBlur}
+                tabIndex={-1}
+            >
                 {decoration?.startDecoration && <>{decoration.startDecoration}</>}
                 <div className="wave-textfield-inner">
                     <label
@@ -443,6 +469,7 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
                         placeholder={placeholder}
                         maxLength={maxLength}
                         autoFocus={autoFocus}
+                        disabled={disabled}
                     />
                 </div>
                 {decoration?.endDecoration && <>{decoration.endDecoration}</>}

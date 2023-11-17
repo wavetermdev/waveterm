@@ -36,6 +36,10 @@ let BUILD = __WAVETERM_BUILD__;
 
 type OV<V> = mobx.IObservableValue<V>;
 
+const RemotePtyRows = 9;
+const RemotePtyCols = 73;
+const PasswordUnchangedSentinel = "--unchanged--";
+
 @mobxReact.observer
 class DisconnectedModal extends React.Component<{}, {}> {
     logRef: any = React.createRef();
@@ -484,7 +488,6 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModel; remot
     tempPort: OV<string>;
     tempAuthMode: OV<string>;
     tempConnectMode: OV<string>;
-    tempManualMode: OV<boolean>;
     tempPassword: OV<string>;
     tempKeyFile: OV<string>;
     errorStr: OV<string>;
@@ -625,7 +628,7 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModel; remot
                     <div className="wave-modal-content-inner crconn-wave-modal-content-inner">
                         <header className="wave-modal-header crconn-wave-modal-header">
                             <div className="wave-modal-title crconn-wave-modal-title">Add Connection</div>
-                            <div className="wave-modal-close crconn-wave-modal-close" onClick={model.cancelEditAuth}>
+                            <div className="wave-modal-close crconn-wave-modal-close" onClick={model.closeModal}>
                                 <img src={close} alt="Close (Escape)" />
                             </div>
                         </header>
@@ -802,7 +805,7 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModel; remot
 }
 
 @mobxReact.observer
-class RemoteConnDetailModal extends React.Component<{ model: RemotesModel; remote: T.RemoteType }, {}> {
+class ViewRemoteConnDetailModal extends React.Component<{ model: RemotesModel; remote: T.RemoteType }, {}> {
     termRef: React.RefObject<any> = React.createRef();
 
     componentDidMount() {
@@ -862,14 +865,8 @@ class RemoteConnDetailModal extends React.Component<{ model: RemotesModel; remot
     }
 
     @boundMethod
-    editAuthSettings(): void {
-        this.props.model.startEditAuth();
-    }
-
-    @boundMethod
-    getName(remote: T.RemoteType) {
-        const { remotealias, remotecanonicalname } = remote;
-        return remotealias ? `${remotealias}(${remotecanonicalname})` : remotecanonicalname;
+    openEditModal(): void {
+        this.props.model.openEditModal();
     }
 
     @boundMethod
@@ -926,7 +923,7 @@ class RemoteConnDetailModal extends React.Component<{ model: RemotesModel; remot
             </Button>
         );
         let updateAuthButton = (
-            <Button theme="secondary" onClick={() => this.editAuthSettings()}>
+            <Button theme="secondary" onClick={() => this.openEditModal()}>
                 Edit
             </Button>
         );
@@ -963,8 +960,8 @@ class RemoteConnDetailModal extends React.Component<{ model: RemotesModel; remot
         }
 
         return (
-            <For each="button" of={buttons}>
-                {button}
+            <For each="button" of={buttons} index="i">
+                <div key={i}>{button}</div>
             </For>
         );
     }
@@ -1000,7 +997,7 @@ class RemoteConnDetailModal extends React.Component<{ model: RemotesModel; remot
         let { model, remote } = this.props;
         let isTermFocused = model.remoteTermWrapFocus.get();
         let termFontSize = GlobalModel.termFontSize.get();
-        let termWidth = textmeasure.termWidthFromCols(73, termFontSize);
+        let termWidth = textmeasure.termWidthFromCols(RemotePtyCols, termFontSize);
         let remoteAliasText = util.isBlank(remote.remotealias) ? "(none)" : remote.remotealias;
 
         return (
@@ -1016,7 +1013,7 @@ class RemoteConnDetailModal extends React.Component<{ model: RemotesModel; remot
                         </header>
                         <div className="wave-modal-body rconndetail-wave-modal-body">
                             <div className="name-header-actions-wrapper">
-                                <div className="name">{this.getName(remote)}</div>
+                                <div className="name">{getName(remote)}</div>
                                 <div className="header-actions">{this.renderHeaderBtns(remote)}</div>
                             </div>
                             <div className="remote-detail" style={{ overflow: "hidden" }}>
@@ -1083,7 +1080,7 @@ class RemoteConnDetailModal extends React.Component<{ model: RemotesModel; remot
                                         ref={this.termRef}
                                         data-remoteid={remote.remoteid}
                                         style={{
-                                            height: textmeasure.termHeightFromRows(9, termFontSize),
+                                            height: textmeasure.termHeightFromRows(RemotePtyRows, termFontSize),
                                             width: termWidth,
                                         }}
                                     ></div>
@@ -1105,6 +1102,343 @@ class RemoteConnDetailModal extends React.Component<{ model: RemotesModel; remot
     }
 }
 
+@mobxReact.observer
+class EditRemoteConnModal extends React.Component<
+    { model: RemotesModel; remote: T.RemoteType; remoteEdit: T.RemoteEditType },
+    {}
+> {
+    tempAlias: OV<string>;
+    tempAuthMode: OV<string>;
+    tempConnectMode: OV<string>;
+    tempPassword: OV<string>;
+    tempKeyFile: OV<string>;
+    submitted: OV<boolean>;
+
+    constructor(props: any) {
+        super(props);
+        const { remote, remoteEdit } = this.props;
+        console.log("remoteEdit", remoteEdit);
+        this.tempAlias = mobx.observable.box(remote.remotealias ?? "", { name: "EditRemoteSettings-alias" });
+        this.tempAuthMode = mobx.observable.box(remote.authtype, { name: "EditRemoteSettings-authMode" });
+        this.tempConnectMode = mobx.observable.box(remote.connectmode, { name: "EditRemoteSettings-connectMode" });
+        this.tempKeyFile = mobx.observable.box(remoteEdit.keystr ?? "", { name: "EditRemoteSettings-keystr" });
+        this.tempPassword = mobx.observable.box(remoteEdit.haspassword ? PasswordUnchangedSentinel : "", {
+            name: "EditRemoteSettings-password",
+        });
+        this.submitted = mobx.observable.box(false, { name: "EditRemoteSettings-submitted" });
+    }
+
+    componentDidUpdate() {
+        let { remote } = this.props;
+        if (remote == null || remote.archived) {
+            this.props.model.deSelectRemote();
+        }
+    }
+
+    @boundMethod
+    clickArchive(): void {
+        let { remote } = this.props;
+        if (remote.status == "connected") {
+            GlobalModel.showAlert({ message: "Cannot archived a connected remote.  Disconnect and try again." });
+            return;
+        }
+        let prtn = GlobalModel.showAlert({
+            message: "Are you sure you want to archive this connection?",
+            confirm: true,
+        });
+        prtn.then((confirm) => {
+            if (!confirm) {
+                return;
+            }
+            GlobalCommandRunner.archiveRemote(remote.remoteid);
+        });
+    }
+
+    @boundMethod
+    clickForceInstall(): void {
+        let { remote } = this.props;
+        GlobalCommandRunner.installRemote(remote.remoteid);
+    }
+
+    @boundMethod
+    handleChangeKeyFile(value: string): void {
+        mobx.action(() => {
+            this.tempKeyFile.set(value);
+        })();
+    }
+
+    @boundMethod
+    handleChangePassword(value: string): void {
+        mobx.action(() => {
+            this.tempPassword.set(value);
+        })();
+    }
+
+    @boundMethod
+    handleChangeAlias(value: string): void {
+        mobx.action(() => {
+            this.tempAlias.set(value);
+        })();
+    }
+
+    @boundMethod
+    canResetPw(): boolean {
+        let { remoteEdit } = this.props;
+        if (remoteEdit == null) {
+            return false;
+        }
+        return remoteEdit.haspassword && this.tempPassword.get() != PasswordUnchangedSentinel;
+    }
+
+    @boundMethod
+    resetPw(): void {
+        mobx.action(() => {
+            this.tempPassword.set(PasswordUnchangedSentinel);
+        })();
+    }
+
+    @boundMethod
+    onFocusPassword(e: any) {
+        if (this.tempPassword.get() == PasswordUnchangedSentinel) {
+            e.target.select();
+        }
+    }
+
+    @boundMethod
+    submitRemote(): void {
+        let { remote, remoteEdit } = this.props;
+        let authMode = this.tempAuthMode.get();
+        let kwargs: Record<string, string> = {};
+        if (!util.isStrEq(this.tempKeyFile.get(), remoteEdit.keystr)) {
+            if (authMode == "key" || authMode == "key+password") {
+                kwargs["key"] = this.tempKeyFile.get();
+            } else {
+                kwargs["key"] = "";
+            }
+        }
+        if (authMode == "password" || authMode == "key+password") {
+            if (this.tempPassword.get() != PasswordUnchangedSentinel) {
+                kwargs["password"] = this.tempPassword.get();
+            }
+        } else {
+            if (remoteEdit.haspassword) {
+                kwargs["password"] = "";
+            }
+        }
+        if (!util.isStrEq(this.tempAlias.get(), remote.remotealias)) {
+            kwargs["alias"] = this.tempAlias.get();
+        }
+        if (!util.isStrEq(this.tempConnectMode.get(), remote.connectmode)) {
+            kwargs["connectmode"] = this.tempConnectMode.get();
+        }
+        if (Object.keys(kwargs).length == 0) {
+            this.submitted.set(true);
+            return;
+        }
+        kwargs["visual"] = "1";
+        kwargs["submit"] = "1";
+        GlobalCommandRunner.editRemote(remote.remoteid, kwargs);
+        this.submitted.set(true);
+    }
+
+    renderAuthModeMessage(): any {
+        let authMode = this.tempAuthMode.get();
+        if (authMode == "none") {
+            return (
+                <span>
+                    This connection requires no authentication.
+                    <br />
+                    Or authentication is already configured in ssh_config.
+                </span>
+            );
+        }
+        if (authMode == "key") {
+            return <span>Use a public/private keypair.</span>;
+        }
+        if (authMode == "password") {
+            return <span>Use a password.</span>;
+        }
+        if (authMode == "key+password") {
+            return <span>Use a public/private keypair with a passphrase.</span>;
+        }
+        return null;
+    }
+
+    render() {
+        let { model, remote, remoteEdit } = this.props;
+        let authMode = this.tempAuthMode.get();
+
+        if (util.isBlank(remoteEdit.errorstr) && this.submitted.get()) {
+            return null;
+        }
+
+        return (
+            <div className={cn("modal wave-modal erconn-modal is-active")}>
+                <div className="modal-background wave-modal-background" />
+                <div className="modal-content wave-modal-content erconn-wave-modal-content">
+                    <div className="wave-modal-content-inner erconn-wave-modal-content-inner">
+                        <header className="wave-modal-header erconn-wave-modal-header">
+                            <div className="wave-modal-title erconn-wave-modal-title">Edit Connection</div>
+                            <div className="wave-modal-close erconn-wave-modal-close" onClick={model.closeModal}>
+                                <img src={close} alt="Close (Escape)" />
+                            </div>
+                        </header>
+                        <div className="wave-modal-body erconn-wave-modal-body">
+                            <div className="user-section">
+                                <TextField
+                                    label="user@host"
+                                    autoFocus={true}
+                                    value={remote.remotecanonicalname}
+                                    disabled={true}
+                                    required={true}
+                                    decoration={{
+                                        endDecoration: (
+                                            <InputDecoration>
+                                                <Tooltip
+                                                    message={`(Required) The user and host that you want to connect with. This is in the same format as
+													you would pass to ssh, e.g. "ubuntu@test.mydomain.com".`}
+                                                    icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                                >
+                                                    <i className="fa-sharp fa-regular fa-circle-question" />
+                                                </Tooltip>
+                                            </InputDecoration>
+                                        ),
+                                    }}
+                                />
+                            </div>
+                            <div className="alias-section">
+                                <TextField
+                                    label="Alias"
+                                    onChange={this.handleChangeAlias}
+                                    value={this.tempAlias.get()}
+                                    maxLength={100}
+                                    decoration={{
+                                        endDecoration: (
+                                            <InputDecoration>
+                                                <Tooltip
+                                                    message={`(Optional) A short alias to use when selecting or displaying this connection.`}
+                                                    icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                                >
+                                                    <i className="fa-sharp fa-regular fa-circle-question" />
+                                                </Tooltip>
+                                            </InputDecoration>
+                                        ),
+                                    }}
+                                />
+                            </div>
+                            <div className="authmode-section">
+                                <Dropdown
+                                    label="Auth Mode"
+                                    options={[
+                                        { value: "none", label: "none" },
+                                        { value: "key", label: "key" },
+                                        { value: "password", label: "password" },
+                                        { value: "key+password", label: "key+password" },
+                                    ]}
+                                    value={this.tempAuthMode.get()}
+                                    onChange={(val: string) => {
+                                        this.tempAuthMode.set(val);
+                                    }}
+                                    decoration={{
+                                        endDecoration: (
+                                            <InputDecoration>
+                                                <Tooltip
+                                                    message={
+                                                        <ul>
+                                                            <li>
+                                                                <b>none</b> - no authentication, or authentication is
+                                                                already configured in your ssh config.
+                                                            </li>
+                                                            <li>
+                                                                <b>key</b> - use a private key.
+                                                            </li>
+                                                            <li>
+                                                                <b>password</b> - use a password.
+                                                            </li>
+                                                            <li>
+                                                                <b>key+password</b> - use a key with a passphrase.
+                                                            </li>
+                                                        </ul>
+                                                    }
+                                                    icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                                >
+                                                    <i className="fa-sharp fa-regular fa-circle-question" />
+                                                </Tooltip>
+                                            </InputDecoration>
+                                        ),
+                                    }}
+                                />
+                            </div>
+                            <If condition={authMode == "key" || authMode == "key+password"}>
+                                <TextField
+                                    label="SSH Keyfile"
+                                    placeholder="keyfile path"
+                                    onChange={this.handleChangeKeyFile}
+                                    value={this.tempKeyFile.get()}
+                                    maxLength={400}
+                                    required={true}
+                                    decoration={{
+                                        endDecoration: (
+                                            <InputDecoration>
+                                                <Tooltip
+                                                    message={`(Required) The path to your ssh key file.`}
+                                                    icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                                >
+                                                    <i className="fa-sharp fa-regular fa-circle-question" />
+                                                </Tooltip>
+                                            </InputDecoration>
+                                        ),
+                                    }}
+                                />
+                            </If>
+                            <If condition={authMode == "password" || authMode == "key+password"}>
+                                <PasswordField
+                                    label={authMode == "password" ? "SSH Password" : "Key Passphrase"}
+                                    placeholder="password"
+                                    onChange={this.handleChangePassword}
+                                    value={this.tempPassword.get()}
+                                    maxLength={400}
+                                />
+                            </If>
+                            <div className="connectmode-section">
+                                <Dropdown
+                                    label="Connect Mode"
+                                    options={[
+                                        { value: "startup", label: "startup" },
+                                        { value: "key", label: "key" },
+                                        { value: "auto", label: "auto" },
+                                        { value: "manual", label: "manual" },
+                                    ]}
+                                    value={this.tempConnectMode.get()}
+                                    onChange={(val: string) => {
+                                        this.tempConnectMode.set(val);
+                                    }}
+                                />
+                            </div>
+                            <If condition={!util.isBlank(remoteEdit.errorstr)}>
+                                <div className="settings-field settings-error">Error: {remoteEdit.errorstr}</div>
+                            </If>
+                        </div>
+                        <footer className="wave-modal-footer erconn-wave-modal-footer">
+                            <div className="action-buttons">
+                                <Button theme="secondary" onClick={model.closeModal}>
+                                    Cancel
+                                </Button>
+                                <Button onClick={this.submitRemote}>Save & Connect</Button>
+                            </div>
+                        </footer>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+}
+
+const getName = (remote: T.RemoteType) => {
+    const { remotealias, remotecanonicalname } = remote;
+    return remotealias ? `${remotealias}(${remotecanonicalname})` : remotecanonicalname;
+};
+
 export {
     LoadingSpinner,
     ClientStopModal,
@@ -1113,5 +1447,6 @@ export {
     TosModal,
     AboutModal,
     CreateRemoteConnModal,
-    RemoteConnDetailModal,
+    ViewRemoteConnDetailModal,
+    EditRemoteConnModal,
 };
