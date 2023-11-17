@@ -304,7 +304,6 @@ class Cmd {
     }
 
     handleData(data: string, termWrap: TermWrap): void {
-        // console.log("handle data", {data: data});
         if (!this.isRunning()) {
             return;
         }
@@ -756,6 +755,13 @@ class Screen {
     }
 
     termCustomKeyHandler(e: any, termWrap: TermWrap): boolean {
+        if (e.type == "keypress" && e.code == "KeyC" && e.shiftKey && e.ctrlKey) {
+            e.stopPropagation();
+            e.preventDefault();
+            let sel = termWrap.terminal.getSelection();
+            navigator.clipboard.writeText(sel);
+            return false;
+        }
         if (termWrap.isRunning) {
             return true;
         }
