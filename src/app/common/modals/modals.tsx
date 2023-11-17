@@ -1424,7 +1424,7 @@ class EditRemoteConnModal extends React.Component<
                                 <Button theme="secondary" onClick={model.closeModal}>
                                     Cancel
                                 </Button>
-                                <Button onClick={this.submitRemote}>Save & Connect</Button>
+                                <Button onClick={this.submitRemote}>Save</Button>
                             </div>
                         </footer>
                     </div>
