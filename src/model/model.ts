@@ -91,7 +91,7 @@ const DevServerEndpoint = "http://127.0.0.1:8090";
 const DevServerWsEndpoint = "ws://127.0.0.1:8091";
 const DefaultTermFontSize = 12;
 const MinFontSize = 8;
-const MaxFontSize = 15;
+const MaxFontSize = 24;
 const InputChunkSize = 500;
 const RemoteColors = ["red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"];
 const TabColors = ["red", "orange", "yellow", "green", "mint", "cyan", "blue", "violet", "pink", "white"];
@@ -4195,5 +4195,7 @@ export {
     RemoteColors,
     getTermPtyData,
     RemotesModalModel,
+    MinFontSize,
+    MaxFontSize,
 };
 export type { LineContainerModel };

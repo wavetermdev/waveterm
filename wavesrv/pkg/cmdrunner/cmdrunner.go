@@ -61,6 +61,9 @@ const MaxEvalDepth = 5
 const MaxOpenAIAPITokenLen = 100
 const MaxOpenAIModelLen = 100
 
+const TermFontSizeMin = 8
+const TermFontSizeMax = 24
+
 const TsFormatStr = "2006-01-02 15:04:05"
 
 const (
@@ -3554,8 +3557,8 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		if err != nil {
 			return nil, fmt.Errorf("invalid termfontsize, must be a number between 8-15: %v", err)
 		}
-		if newFontSize < 8 || newFontSize > 15 {
-			return nil, fmt.Errorf("invalid termfontsize, must be a number between 8-15")
+		if newFontSize < TermFontSizeMin || newFontSize > TermFontSizeMax {
+			return nil, fmt.Errorf("invalid termfontsize, must be a number between %d-%d", TermFontSizeMin, TermFontSizeMax)
 		}
 		feOpts := clientData.FeOpts
 		feOpts.TermFontSize = newFontSize
