@@ -189,6 +189,8 @@ var literalRtnStateCommands = []string{
 	"deactivate",
 	"eval",
 	"asdf",
+	"nvm",
+	"virtualenv",
 }
 
 func getCallExprLitArg(callExpr *syntax.CallExpr, argNum int) string {
