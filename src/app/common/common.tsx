@@ -247,10 +247,13 @@ class Button extends React.Component<ButtonProps> {
 
     render() {
         const { leftIcon, rightIcon, theme, children, disabled, variant, color } = this.props;
-        const className = `wave-button ${theme} ${variant} ${color}` + (disabled ? " disabled" : "");
 
         return (
-            <button className={className} onClick={this.handleClick} disabled={disabled}>
+            <button
+                className={cn("wave-button", theme, variant, color, { disabled: disabled })}
+                onClick={this.handleClick}
+                disabled={disabled}
+            >
                 {leftIcon && <span className="icon-left">{leftIcon}</span>}
                 {children}
                 {rightIcon && <span className="icon-right">{rightIcon}</span>}
@@ -258,6 +261,7 @@ class Button extends React.Component<ButtonProps> {
         );
     }
 }
+
 class IconButton extends Button {
     render() {
         const { children, theme, variant = "solid" } = this.props;
