@@ -624,6 +624,33 @@
                 gap: 12px;
                 align-self: stretch;
                 width: 100%;
+
+                .name-actions-section {
+                    margin-bottom: 10px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 12px;
+
+                    .name {
+                        color: @term-bright-white;
+                        font-size: 15px;
+                        font-weight: 500;
+                        line-height: 20px;
+                    }
+
+                    .header-actions {
+                        display: flex;
+                        justify-content: flex-end;
+                        align-items: flex-start;
+
+                        .wave-button {
+                            padding: 4px 15px;
+                            font-size: 11px;
+                            margin-right: 8px;
+                        }
+                    }
+                }
             }
         }
 

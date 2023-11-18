@@ -1284,27 +1284,16 @@ class EditRemoteConnModal extends React.Component<
                             </div>
                         </header>
                         <div className="wave-modal-body erconn-wave-modal-body">
-                            <div className="user-section">
-                                <TextField
-                                    label="user@host"
-                                    autoFocus={true}
-                                    value={remote.remotecanonicalname}
-                                    disabled={true}
-                                    required={true}
-                                    decoration={{
-                                        endDecoration: (
-                                            <InputDecoration>
-                                                <Tooltip
-                                                    message={`(Required) The user and host that you want to connect with. This is in the same format as
-													you would pass to ssh, e.g. "ubuntu@test.mydomain.com".`}
-                                                    icon={<i className="fa-sharp fa-regular fa-circle-question" />}
-                                                >
-                                                    <i className="fa-sharp fa-regular fa-circle-question" />
-                                                </Tooltip>
-                                            </InputDecoration>
-                                        ),
-                                    }}
-                                />
+                            <div className="name-actions-section">
+                                <div className="name">{getName(remote)}</div>
+                                <div className="header-actions">
+                                    <Button theme="secondary" onClick={this.clickArchive}>
+                                        Archive
+                                    </Button>
+                                    <Button theme="secondary" onClick={this.clickForceInstall}>
+                                        Force Install
+                                    </Button>
+                                </div>
                             </div>
                             <div className="alias-section">
                                 <TextField

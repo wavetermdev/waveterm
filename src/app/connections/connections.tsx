@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
-import { GlobalModel, RemotesModel } from "../../model/model";
+import { GlobalModel, RemotesModel, GlobalCommandRunner } from "../../model/model";
 import { Button, IconButton, Status } from "../common/common";
 import * as T from "../../types/types";
 import * as util from "../../util/util";
@@ -64,8 +64,27 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, {}> {
     }
 
     @boundMethod
-    handleReadConnection(remoteId: string): void {
+    handleRead(remoteId: string): void {
         GlobalModel.remotesModel.openReadModal(remoteId);
+    }
+
+    @boundMethod
+    handleArchive(remoteId: string): void {
+        let remote = GlobalModel.getRemote(remoteId);
+        if (remote.status == "connected") {
+            GlobalModel.showAlert({ message: "Cannot archived a connected remote.  Disconnect and try again." });
+            return;
+        }
+        let prtn = GlobalModel.showAlert({
+            message: "Are you sure you want to archive this connection?",
+            confirm: true,
+        });
+        prtn.then((confirm) => {
+            if (!confirm) {
+                return;
+            }
+            GlobalCommandRunner.archiveRemote(remote.remoteid);
+        });
     }
 
     @boundMethod
@@ -105,6 +124,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, {}> {
         }
 
         let items = util.sortAndFilterRemotes(GlobalModel.remotes.slice());
+        let remote = this.props.model.selectedRemoteId.get();
 
         return (
             <div className={cn("connections-view")}>
@@ -169,11 +189,15 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, {}> {
                                         <IconButton
                                             theme="secondary"
                                             variant="ghost"
-                                            onClick={() => this.handleReadConnection(item.remoteid)}
+                                            onClick={() => this.handleRead(item.remoteid)}
                                         >
                                             <i className="fa-sharp fa-solid fa-magnifying-glass"></i>
                                         </IconButton>
-                                        <IconButton theme="secondary" variant="ghost">
+                                        <IconButton
+                                            theme="secondary"
+                                            variant="ghost"
+                                            onClick={() => this.handleArchive(item.remoteid)}
+                                        >
                                             <i className="fa-sharp fa-solid fa-trash-can"></i>
                                         </IconButton>
                                     </div>
