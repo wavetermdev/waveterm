@@ -91,7 +91,7 @@ const DevServerEndpoint = "http://127.0.0.1:8090";
 const DevServerWsEndpoint = "ws://127.0.0.1:8091";
 const DefaultTermFontSize = 12;
 const MinFontSize = 8;
-const MaxFontSize = 15;
+const MaxFontSize = 24;
 const InputChunkSize = 500;
 const RemoteColors = ["red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"];
 const TabColors = ["red", "orange", "yellow", "green", "mint", "cyan", "blue", "violet", "pink", "white"];
@@ -304,7 +304,6 @@ class Cmd {
     }
 
     handleData(data: string, termWrap: TermWrap): void {
-        // console.log("handle data", {data: data});
         if (!this.isRunning()) {
             return;
         }
@@ -756,6 +755,22 @@ class Screen {
     }
 
     termCustomKeyHandler(e: any, termWrap: TermWrap): boolean {
+        if (e.type == "keypress" && e.code == "KeyC" && e.shiftKey && e.ctrlKey) {
+            e.stopPropagation();
+            e.preventDefault();
+            let sel = termWrap.terminal.getSelection();
+            navigator.clipboard.writeText(sel);
+            return false;
+        }
+        if (e.type == "keypress" && e.code == "KeyV" && e.shiftKey && e.ctrlKey) {
+            e.stopPropagation();
+            e.preventDefault();
+            let p = navigator.clipboard.readText();
+            p.then((text) => {
+                termWrap.dataHandler?.(text);
+            });
+            return false;
+        }
         if (termWrap.isRunning) {
             return true;
         }
@@ -3818,11 +3833,15 @@ class Model {
     }
 
     getCmd(line: LineType): Cmd {
-        let slines = this.getScreenLinesById(line.screenid);
+        return this.getCmdByScreenLine(line.screenid, line.lineid);
+    }
+
+    getCmdByScreenLine(screenId: string, lineId: string): Cmd {
+        let slines = this.getScreenLinesById(screenId);
         if (slines == null) {
             return null;
         }
-        return slines.getCmd(line.lineid);
+        return slines.getCmd(lineId);
     }
 
     getActiveLine(screenId: string, lineid: string): SWLinePtr {
@@ -4394,5 +4413,7 @@ export {
     getTermPtyData,
     RemotesModalModel,
     RemotesModel,
+    MinFontSize,
+    MaxFontSize,
 };
 export type { LineContainerModel };

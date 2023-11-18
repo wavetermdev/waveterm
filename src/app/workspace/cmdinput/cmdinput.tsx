@@ -117,7 +117,6 @@ class CmdInput extends React.Component<{}, {}> {
             <div
                 ref={this.cmdInputRef}
                 className={cn("cmd-input", { "has-info": infoShow }, { active: focusVal })}
-                onClick={this.cmdInputClick}
             >
                 <If condition={historyShow}>
                     <div className="cmd-input-grow-spacer"></div>

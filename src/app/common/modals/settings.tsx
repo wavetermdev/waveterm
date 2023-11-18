@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner, TabColors } from "../../../model/model";
+import { GlobalModel, GlobalCommandRunner, TabColors, MinFontSize, MaxFontSize } from "../../../model/model";
 import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage } from "../common";
 import { LineType, RendererPluginType, ClientDataType, CommandRtnType } from "../../../types/types";
 import { ConnectionDropdown } from "../../connections_deprecated/connections";
@@ -633,7 +633,10 @@ class ClientSettingsModal extends React.Component<{}, {}> {
     }
 
     renderFontSizeDropdown(): any {
-        let availableFontSizes = [8, 9, 10, 11, 12, 13, 14, 15];
+        let availableFontSizes = [];
+        for (let s = MinFontSize; s <= MaxFontSize; s++) {
+            availableFontSizes.push(s);
+        }
         let fsize: number = 0;
         let curSize = GlobalModel.termFontSize.get();
         return (
