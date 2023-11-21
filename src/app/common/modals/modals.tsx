@@ -1013,7 +1013,7 @@ class ViewRemoteConnDetailModal extends React.Component<{ model: RemotesModel; r
                         </header>
                         <div className="wave-modal-body rconndetail-wave-modal-body">
                             <div className="name-header-actions-wrapper">
-                                <div className="name">{getName(remote)}</div>
+                                <div className="name text-primary">{getName(remote)}</div>
                                 <div className="header-actions">{this.renderHeaderBtns(remote)}</div>
                             </div>
                             <div className="remote-detail" style={{ overflow: "hidden" }}>
@@ -1285,7 +1285,7 @@ class EditRemoteConnModal extends React.Component<
                         </header>
                         <div className="wave-modal-body erconn-wave-modal-body">
                             <div className="name-actions-section">
-                                <div className="name">{getName(remote)}</div>
+                                <div className="name text-primary">{getName(remote)}</div>
                                 <div className="header-actions">
                                     <Button theme="secondary" onClick={this.clickArchive}>
                                         Archive
@@ -1425,7 +1425,7 @@ class EditRemoteConnModal extends React.Component<
 
 const getName = (remote: T.RemoteType) => {
     const { remotealias, remotecanonicalname } = remote;
-    return remotealias ? `${remotealias}(${remotecanonicalname})` : remotecanonicalname;
+    return remotealias ? `${remotealias} [${remotecanonicalname}]` : remotecanonicalname;
 };
 
 export {

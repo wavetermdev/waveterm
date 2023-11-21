@@ -55,7 +55,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, {}> {
     @boundMethod
     getName(item: T.RemoteType) {
         const { remotealias, remotecanonicalname } = item;
-        return remotealias ? `${remotealias} (${remotecanonicalname})` : remotecanonicalname;
+        return remotealias ? `${remotealias} [${remotecanonicalname}]` : remotecanonicalname;
     }
 
     @boundMethod
@@ -129,7 +129,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, {}> {
         return (
             <div className={cn("connections-view")}>
                 <div className="header">
-                    <div className="connections-title text-standard">Connections</div>
+                    <div className="connections-title text-primary">Connections</div>
                     <div>
                         <Button
                             theme="secondary"
