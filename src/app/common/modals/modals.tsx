@@ -881,6 +881,25 @@ class ViewRemoteConnDetailModal extends React.Component<{ model: RemotesModel; r
         }
     }
 
+    @boundMethod
+    clickArchive(): void {
+        let { remote } = this.props;
+        if (remote.status == "connected") {
+            GlobalModel.showAlert({ message: "Cannot archived a connected remote.  Disconnect and try again." });
+            return;
+        }
+        let prtn = GlobalModel.showAlert({
+            message: "Are you sure you want to archive this connection?",
+            confirm: true,
+        });
+        prtn.then((confirm) => {
+            if (!confirm) {
+                return;
+            }
+            GlobalCommandRunner.archiveRemote(remote.remoteid);
+        });
+    }
+
     renderInstallStatus(remote: T.RemoteType): any {
         let statusStr: string = null;
         if (remote.installstatus == "disconnected") {
@@ -907,6 +926,11 @@ class ViewRemoteConnDetailModal extends React.Component<{ model: RemotesModel; r
 
     renderHeaderBtns(remote: T.RemoteType): React.ReactNode {
         let buttons: React.ReactNode[] = [];
+        const archiveButton = (
+            <Button theme="secondary" onClick={() => this.clickArchive()}>
+                Archive
+            </Button>
+        );
         const disconnectButton = (
             <Button theme="secondary" onClick={() => this.disconnectRemote(remote.remoteid)}>
                 Disconnect Now
@@ -942,7 +966,7 @@ class ViewRemoteConnDetailModal extends React.Component<{ model: RemotesModel; r
             updateAuthButton = <></>;
             cancelInstallButton = <></>;
         }
-        buttons = [updateAuthButton];
+        buttons = [archiveButton, updateAuthButton];
         if (remote.status == "connected" || remote.status == "connecting") {
             buttons.push(disconnectButton);
         } else if (remote.status == "disconnected") {
@@ -1413,7 +1437,7 @@ class EditRemoteConnModal extends React.Component<
                         </div>
                         <footer className="wave-modal-footer erconn-wave-modal-footer">
                             <div className="action-buttons">
-                                <Button theme="secondary" onClick={model.closeModal}>
+                                <Button theme="secondary" onClick={() => model.openReadModal(remote.remoteid)}>
                                     Cancel
                                 </Button>
                                 <Button onClick={this.submitRemote}>Save</Button>

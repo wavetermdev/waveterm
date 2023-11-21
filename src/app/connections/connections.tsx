@@ -69,25 +69,6 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
     }
 
     @boundMethod
-    handleArchive(remoteId: string): void {
-        let remote = GlobalModel.getRemote(remoteId);
-        if (remote.status == "connected") {
-            GlobalModel.showAlert({ message: "Cannot archived a connected remote.  Disconnect and try again." });
-            return;
-        }
-        let prtn = GlobalModel.showAlert({
-            message: "Are you sure you want to archive this connection?",
-            confirm: true,
-        });
-        prtn.then((confirm) => {
-            if (!confirm) {
-                return;
-            }
-            GlobalCommandRunner.archiveRemote(remote.remoteid);
-        });
-    }
-
-    @boundMethod
     getStatus(status: string) {
         switch (status) {
             case "connected":
@@ -141,10 +122,9 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
                     style={{ maxWidth: 650 + 120 + 200 + 100 }}
                 >
                     <colgroup>
-                        <col style={{ maxWidth: 650 }} />
-                        <col style={{ width: 120 }} />
-                        <col style={{ width: 200 }} />
-                        <col style={{ width: 100 }} />
+                        <col className="first-col" />
+                        <col className="second-col" />
+                        <col className="third-col" />
                     </colgroup>
                     <thead>
                         <tr>
@@ -156,9 +136,6 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
                             </th>
                             <th className="text-standard col-status">
                                 <div>Status</div>
-                            </th>
-                            <th className="text-standard col-actions" style={{ width: "1%" }}>
-                                {" "}
                             </th>
                         </tr>
                     </thead>
@@ -180,18 +157,6 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
                                 <td className="col-status">
                                     <div>
                                         <Status status={this.getStatus(item.status)} text={item.status} />
-                                    </div>
-                                </td>
-                                <td style={{ whiteSpace: "nowrap" }} className="col-actions">
-                                    <div className="action-buttons">
-                                        {/* Removed the individual read button */}
-                                        <IconButton
-                                            theme="secondary"
-                                            variant="ghost"
-                                            onClick={() => this.handleArchive(item.remoteid)}
-                                        >
-                                            <i className="fa-sharp fa-solid fa-trash-can"></i>
-                                        </IconButton>
                                     </div>
                                 </td>
                             </tr>
