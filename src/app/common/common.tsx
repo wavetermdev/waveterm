@@ -264,11 +264,11 @@ class Button extends React.Component<ButtonProps> {
 
 class IconButton extends Button {
     render() {
-        const { children, theme, variant = "solid" } = this.props;
+        const { children, theme, variant = "solid", ...rest } = this.props;
         const className = `wave-button icon-button ${theme} ${variant}`;
 
         return (
-            <button {...this.props} className={className}>
+            <button {...rest} className={className}>
                 {children}
             </button>
         );
@@ -299,7 +299,7 @@ class LinkButton extends IconButton {
     }
 }
 interface StatusProps {
-    status: "online" | "offline" | "away" | "busy" | "idle";
+    status: "green" | "red" | "gray" | "yellow";
     text: string;
 }
 

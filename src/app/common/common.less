@@ -1029,14 +1029,18 @@
     }
 
     .dot.green {
-        background-color: green;
+        background-color: @status-connected;
     }
 
     .dot.red {
-        background-color: red;
+        background-color: @status-error;
     }
 
     .dot.gray {
-        background-color: #c3c8c2;
+        background-color: @status-disconnected;
+    }
+
+    .dot.yellow {
+        background-color: @status-connecting;
     }
 }

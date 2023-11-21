@@ -89,7 +89,7 @@ class App extends React.Component<{}, {}> {
         let lineSettingsModal = GlobalModel.lineSettingsModal.get();
         let clientSettingsModal = GlobalModel.clientSettingsModal.get();
         let remotesModel = GlobalModel.remotesModel;
-        let modalMode = remotesModel.modalMode.get();
+        let remotesModalMode = remotesModel.modalMode.get();
         let selectedRemoteId = remotesModel.selectedRemoteId.get();
         let selectedRemote = GlobalModel.getRemote(selectedRemoteId);
         let isAuthEditMode = remotesModel.isAuthEditMode();
@@ -142,18 +142,18 @@ class App extends React.Component<{}, {}> {
                 <If condition={GlobalModel.aboutModalOpen.get()}>
                     <AboutModal />
                 </If>
-                <If condition={remoteEdit !== null && modalMode === "add"}>
+                <If condition={remoteEdit !== null && remotesModalMode === "add"}>
                     <CreateRemoteConnModal model={remotesModel} remoteEdit={remoteEdit} />
                 </If>
                 <If condition={selectedRemote != null}>
-                    <If condition={!isAuthEditMode && modalMode === "read"}>
+                    <If condition={!isAuthEditMode && remotesModalMode === "read"}>
                         <ViewRemoteConnDetailModal
                             key={"remotedetail-" + selectedRemoteId}
                             remote={selectedRemote}
                             model={remotesModel}
                         />
                     </If>
-                    <If condition={remoteEdit !== null && isAuthEditMode && modalMode === "edit"}>
+                    <If condition={remoteEdit !== null && isAuthEditMode && remotesModalMode === "edit"}>
                         <EditRemoteConnModal
                             key={"remotedetail-" + selectedRemoteId}
                             remote={selectedRemote}

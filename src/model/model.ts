@@ -767,7 +767,7 @@ class Screen {
             e.preventDefault();
             let p = navigator.clipboard.readText();
             p.then((text) => {
-                termWrap.dataHandler?.(text);
+                termWrap.dataHandler?.(text, termWrap);
             });
             return false;
         }
@@ -2204,7 +2204,7 @@ class HistoryViewModel {
 }
 
 class ConnectionsViewModel {
-    showConnectionsView(data: HistoryViewDataType): void {
+    showConnectionsView(): void {
         mobx.action(() => {
             GlobalModel.activeMainView.set("connections");
         })();
@@ -2726,6 +2726,10 @@ class RemotesModel {
     remoteEdit: OV<RemoteEditType> = mobx.observable.box(null, {
         name: "RemotesModel-remoteEdit",
     });
+
+    isOpen(): boolean {
+        return this.modalMode.get() != null;
+    }
 
     deSelectRemote(): void {
         mobx.action(() => {
