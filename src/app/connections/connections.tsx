@@ -119,7 +119,6 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
                     border={0}
                     ref={this.tableRef}
                     onMouseLeave={this.handleTableHoverLeave}
-                    style={{ maxWidth: 650 + 120 + 200 + 100 }}
                 >
                     <colgroup>
                         <col className="first-col" />
