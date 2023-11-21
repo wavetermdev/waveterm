@@ -959,6 +959,9 @@ class ViewRemoteConnDetailModal extends React.Component<{ model: RemotesModel; r
             }
         }
 
+        let i = 0;
+        let button: React.ReactNode = null;
+
         return (
             <For each="button" of={buttons} index="i">
                 <div key={i}>{button}</div>
