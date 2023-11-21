@@ -37,7 +37,7 @@ let BUILD = __WAVETERM_BUILD__;
 type OV<V> = mobx.IObservableValue<V>;
 
 const RemotePtyRows = 9;
-const RemotePtyCols = 73;
+const RemotePtyCols = 80;
 const PasswordUnchangedSentinel = "--unchanged--";
 
 @mobxReact.observer

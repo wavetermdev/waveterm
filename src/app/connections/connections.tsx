@@ -169,7 +169,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
                                 className={cn("connections-item", {
                                     hovered: this.state.hoveredItemId === item.remoteid,
                                 })}
-                                onMouseEnter={() => this.handleItemHover(item.remoteid)}
+                                onClick={() => this.handleRead(item.remoteid)} // Moved onClick here
                             >
                                 <td className="col-name">
                                     <div>{this.getName(item)}</div>
@@ -184,13 +184,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
                                 </td>
                                 <td style={{ whiteSpace: "nowrap" }} className="col-actions">
                                     <div className="action-buttons">
-                                        <IconButton
-                                            theme="secondary"
-                                            variant="ghost"
-                                            onClick={() => this.handleRead(item.remoteid)}
-                                        >
-                                            <i className="fa-sharp fa-solid fa-magnifying-glass"></i>
-                                        </IconButton>
+                                        {/* Removed the individual read button */}
                                         <IconButton
                                             theme="secondary"
                                             variant="ghost"
