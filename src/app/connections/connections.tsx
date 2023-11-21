@@ -55,7 +55,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, {}> {
     @boundMethod
     getName(item: T.RemoteType) {
         const { remotealias, remotecanonicalname } = item;
-        return remotealias ? `${remotealias}(${remotecanonicalname})` : remotecanonicalname;
+        return remotealias ? `${remotealias} (${remotecanonicalname})` : remotecanonicalname;
     }
 
     @boundMethod
@@ -147,19 +147,26 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, {}> {
                     border={0}
                     ref={this.tableRef}
                     onMouseLeave={this.handleTableHoverLeave}
+                    style={{maxWidth: 650+120+200+100}}
                 >
+                    <colgroup>
+                        <col style={{maxWidth: 650}}/>
+                        <col style={{width: 120}}/>
+                        <col style={{width: 200}}/>
+                        <col style={{width: 100}}/>
+                    </colgroup>
                     <thead>
                         <tr>
-                            <th className="text-standard" colSpan={2}>
+                            <th className="text-standard col-name">
                                 <div>Name</div>
                             </th>
-                            <th className="text-standard">
+                            <th className="text-standard col-type">
                                 <div>Type</div>
                             </th>
-                            <th className="text-standard">
+                            <th className="text-standard col-status">
                                 <div>Status</div>
                             </th>
-                            <th className="text-standard" style={{ width: "1%" }}>
+                            <th className="text-standard col-actions" style={{ width: "1%" }}>
                                 {" "}
                             </th>
                         </tr>
@@ -173,18 +180,18 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, {}> {
                                 })}
                                 onMouseEnter={() => this.handleItemHover(item.remoteid)}
                             >
-                                <td colSpan={2}>
+                                <td className="col-name">
                                     <div>{this.getName(item)}</div>
                                 </td>
-                                <td>
+                                <td className="col-type">
                                     <div>{item.remotetype}</div>
                                 </td>
-                                <td>
+                                <td className="col-status">
                                     <div>
                                         <Status status={this.getStatus(item.status)} text={item.status} />
                                     </div>
                                 </td>
-                                <td style={{ whiteSpace: "nowrap" }}>
+                                <td style={{ whiteSpace: "nowrap" }} className="col-actions">
                                     <div className="action-buttons">
                                         <IconButton
                                             theme="secondary"
