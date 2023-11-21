@@ -128,18 +128,9 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
 
         return (
             <div className={cn("connections-view")}>
-                <div className="header">
+                <header className="header">
                     <div className="connections-title text-primary">Connections</div>
-                    <div>
-                        <Button
-                            theme="secondary"
-                            leftIcon={<i className="fa-sharp fa-solid fa-plus"></i>}
-                            onClick={this.handleAddConnection}
-                        >
-                            New Connection
-                        </Button>
-                    </div>
-                </div>
+                </header>
                 <table
                     className="connections-table"
                     cellSpacing="0"
@@ -213,7 +204,15 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
                         </For>
                     </tbody>
                 </table>
-
+                <footer>
+                    <Button
+                        theme="secondary"
+                        leftIcon={<i className="fa-sharp fa-solid fa-plus"></i>}
+                        onClick={this.handleAddConnection}
+                    >
+                        New Connection
+                    </Button>
+                </footer>
                 <If condition={items.length == 0}>
                     <div className="no-items">
                         <div>No Connections Items Found</div>
