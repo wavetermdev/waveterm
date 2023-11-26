@@ -567,7 +567,6 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModel; remot
                 let crRtn = GlobalCommandRunner.screenSetRemote(cname, true, false);
                 crRtn.then((crcrtn) => {
                     if (crcrtn.success) {
-                        model.closeModal();
                         return;
                     }
                     mobx.action(() => {
@@ -580,6 +579,7 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModel; remot
                 this.errorStr.set(crtn.error);
             })();
         });
+        model.seRecentConnAdded(true);
     }
 
     @boundMethod
@@ -898,6 +898,13 @@ class ViewRemoteConnDetailModal extends React.Component<{ model: RemotesModel; r
             }
             GlobalCommandRunner.archiveRemote(remote.remoteid);
         });
+    }
+
+    @boundMethod
+    handleClose(): void {
+        let { model } = this.props;
+        model.closeModal();
+        model.seRecentConnAdded(false);
     }
 
     renderInstallStatus(remote: T.RemoteType): any {
@@ -1233,7 +1240,7 @@ class EditRemoteConnModal extends React.Component<
 
     @boundMethod
     submitRemote(): void {
-        let { remote, remoteEdit } = this.props;
+        let { remote, remoteEdit, model } = this.props;
         let authMode = this.tempAuthMode.get();
         let kwargs: Record<string, string> = {};
         if (!util.isStrEq(this.tempKeyFile.get(), remoteEdit.keystr)) {
@@ -1266,6 +1273,7 @@ class EditRemoteConnModal extends React.Component<
         kwargs["submit"] = "1";
         GlobalCommandRunner.editRemote(remote.remoteid, kwargs);
         this.submitted.set(true);
+        model.seRecentConnAdded(false);
     }
 
     renderAuthModeMessage(): any {

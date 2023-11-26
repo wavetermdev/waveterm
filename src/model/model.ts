@@ -2726,9 +2726,20 @@ class RemotesModel {
     remoteEdit: OV<RemoteEditType> = mobx.observable.box(null, {
         name: "RemotesModel-remoteEdit",
     });
+    recentConnAddedState: OV<boolean> = mobx.observable.box(false, {
+        name: "RemotesModel-recentlyAdded",
+    });
 
     isOpen(): boolean {
         return this.modalMode.get() != null;
+    }
+
+    get recentConnAdded(): boolean {
+        return this.recentConnAddedState.get();
+    }
+
+    seRecentConnAdded(value: boolean) {
+        this.recentConnAddedState.set(value);
     }
 
     deSelectRemote(): void {
@@ -2748,7 +2759,6 @@ class RemotesModel {
 
     openAddModal(redit: RemoteEditType): void {
         mobx.action(() => {
-            this.selectedRemoteId.set(redit.remoteid);
             this.remoteEdit.set(redit);
             this.modalMode.set("add");
         })();
@@ -3479,6 +3489,9 @@ class Model {
                 this.remotes.clear();
             }
             this.updateRemotes(update.remotes);
+            if (update.remotes?.length && this.remotesModel.recentConnAddedState.get()) {
+                this.remotesModel.openReadModal(update.remotes[0].remoteid);
+            }
         }
         if ("mainview" in update) {
             if (update.mainview == "plugins") {
