@@ -2907,6 +2907,25 @@ class RemotesModel {
     }
 }
 
+interface ModalComponentType {
+    id: string;
+    component: React.ReactNode;
+}
+
+class ModalRegistry {
+    registry: { [key: string]: ModalComponentType } = {};
+
+    @boundMethod
+    registerModal(id: string, component: React.ReactNode) {
+        this.registry[id] = { id, component };
+    }
+
+    @boundMethod
+    getModal(id: string): ModalComponentType | undefined {
+        return this.registry[id];
+    }
+}
+
 class Model {
     clientId: string;
     activeSessionId: OV<string> = mobx.observable.box(null, {
@@ -2968,6 +2987,7 @@ class Model {
     bookmarksModel: BookmarksModel;
     historyViewModel: HistoryViewModel;
     connectionViewModel: ConnectionsViewModel;
+    modalRegistry: ModalRegistry;
     clientData: OV<ClientDataType> = mobx.observable.box(null, {
         name: "clientData",
     });
@@ -2990,6 +3010,7 @@ class Model {
         this.connectionViewModel = new ConnectionsViewModel();
         this.remotesModalModel = new RemotesModalModel();
         this.remotesModel = new RemotesModel();
+        this.modalRegistry = new ModalRegistry();
         let isWaveSrvRunning = getApi().getWaveSrvStatus();
         this.waveSrvRunning = mobx.observable.box(isWaveSrvRunning, {
             name: "model-wavesrv-running",

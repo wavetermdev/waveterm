@@ -1097,6 +1097,108 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
     }
 }
 
+interface ModalHeaderProps {
+    onClose?: () => void;
+    title?: string;
+    children?: React.ReactNode;
+}
+
+interface ModalFooterProps {
+    onClose?: () => void;
+    onOk?: () => void;
+    cancelLabel?: string;
+    okLabel?: string;
+    children?: React.ReactNode;
+}
+
+interface ModalBodyProps {
+    children?: React.ReactNode;
+}
+
+interface ModalProps {
+    onClose?: () => void;
+    onOk?: () => void;
+    cancelLabel?: string;
+    okLabel?: string;
+    className?: string;
+    children?: React.ReactNode;
+}
+const ModalContext = React.createContext<boolean>(false);
+
+class Modal extends React.Component<ModalProps> {
+    static Header: React.FC<ModalHeaderProps> = ({ onClose, title, children }) => (
+        <ModalContext.Consumer>
+            {(isInModal) =>
+                isInModal ? (
+                    <div className="wave-modal-header">
+                        {title && <div>{title}</div>}
+                        {onClose && (
+                            <IconButton variant="ghost" onClick={onClose}>
+                                <i className="fa-sharp fa-solid fa-xmark"></i>
+                            </IconButton>
+                        )}
+                        {children}
+                    </div>
+                ) : null
+            }
+        </ModalContext.Consumer>
+    );
+
+    static Body: React.FC<ModalBodyProps> = ({ children }) => (
+        <ModalContext.Consumer>
+            {(isInModal) => (isInModal ? <div className="wave-modal-body">{children}</div> : null)}
+        </ModalContext.Consumer>
+    );
+
+    static Footer: React.FC<ModalFooterProps> = ({
+        onClose,
+        onOk,
+        cancelLabel = "Cancel",
+        okLabel = "OK",
+        children,
+    }) => (
+        <ModalContext.Consumer>
+            {(isInModal) =>
+                isInModal ? (
+                    <div className="wave-modal-footer">
+                        {onClose && (
+                            <Button theme="secondary" onClick={onClose}>
+                                {cancelLabel}
+                            </Button>
+                        )}
+                        {onOk && <Button onClick={onOk}>{okLabel}</Button>}
+                        {children}
+                    </div>
+                ) : null
+            }
+        </ModalContext.Consumer>
+    );
+
+    renderBackdrop(onClick: (() => void) | undefined) {
+        return <div className="wave-modal-backdrop" onClick={onClick}></div>;
+    }
+
+    renderModal() {
+        const { className, onClose, children } = this.props;
+
+        return (
+            <div className="wave-modal-container">
+                {this.renderBackdrop(onClose)}
+                <div className={`wave-modal ${className}`}>
+                    <div className="wave-modal-content">{children}</div>
+                </div>
+            </div>
+        );
+    }
+
+    render() {
+        return ReactDOM.createPortal(
+            <ModalContext.Provider value={true}>{this.renderModal()}</ModalContext.Provider>,
+            document.getElementById("app") as HTMLElement
+        );
+    }
+}
+
 export {
     CmdStrCode,
     Toggle,
@@ -1117,4 +1219,5 @@ export {
     IconButton,
     LinkButton,
     Status,
+    Modal,
 };

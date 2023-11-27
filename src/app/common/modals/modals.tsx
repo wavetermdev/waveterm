@@ -14,7 +14,7 @@ import * as T from "../../../types/types";
 import { Markdown, InfoMessage } from "../common";
 import * as util from "../../../util/util";
 import * as textmeasure from "../../../util/textmeasure";
-import { Toggle, Checkbox } from "../common";
+import { Toggle, Checkbox, Modal } from "../common";
 import { ClientDataType } from "../../../types/types";
 import { TextField, NumberField, InputDecoration, Dropdown, PasswordField, Tooltip, Button, Status } from "../common";
 
@@ -415,68 +415,57 @@ class AboutModal extends React.Component<{}, {}> {
 
     render() {
         return (
-            <div className={cn("modal about-modal wave-modal is-active")}>
-                <div className="modal-background wave-modal-background" />
-                <div className="modal-content wave-modal-content about-wave-modal-content">
-                    <div className="modal-content-inner wave-modal-content-inner about-wave-modal-content-inner">
-                        <header className="wave-modal-header about-wave-modal-header">
-                            <div className="wave-modal-title about-wave-modal-title">About</div>
-                            <div className="wave-modal-close about-wave-modal-close" onClick={this.closeModal}>
-                                <img src={close} alt="Close (Escape)" />
+            <Modal onClose={this.closeModal} className="about-modal">
+                <Modal.Header>
+                    <div className="wave-modal-title about-wave-modal-title">About</div>
+                    <div className="wave-modal-close about-wave-modal-close" onClick={this.closeModal}>
+                        <img src={close} alt="Close (Escape)" />
+                    </div>
+                </Modal.Header>
+                <Modal.Body>
+                    <div className="about-section">
+                        <div className="logo-wrapper">
+                            <img src={logo} alt="logo" />
+                        </div>
+                        <div className="text-wrapper">
+                            <div>Wave Terminal</div>
+                            <div className="text-standard">
+                                Modern Terminal for
+                                <br />
+                                Seamless Workflow
                             </div>
-                        </header>
-                        <div className="wave-modal-body about-wave-modal-body">
-                            <section className="wave-modal-section about-section">
-                                <div className="logo-wrapper">
-                                    <img src={logo} alt="logo" />
-                                </div>
-                                <div className="text-wrapper">
-                                    <div>Wave Terminal</div>
-                                    <div className="text-standard">
-                                        Modern Terminal for
-                                        <br />
-                                        Seamless Workflow
-                                    </div>
-                                </div>
-                            </section>
-                            <section className="wave-modal-section about-section text-standard">
-                                {this.getStatus(this.isUpToDate())}
-                            </section>
-                            <section className="wave-modal-section about-section">
-                                <a
-                                    className="wave-button wave-button-link color-standard"
-                                    href={util.makeExternLink("https://github.com/wavetermdev/waveterm")}
-                                    target="_blank"
-                                >
-                                    <i className="fa-brands fa-github"></i>
-                                    Github
-                                </a>
-                                <a
-                                    className="wave-button wave-button-link color-standard"
-                                    href={util.makeExternLink("https://www.waveterm.dev/")}
-                                    target="_blank"
-                                >
-                                    <i className="fa-sharp fa-light fa-globe"></i>
-                                    Website
-                                </a>
-                                <a
-                                    className="wave-button wave-button-link color-standard"
-                                    href={util.makeExternLink(
-                                        "https://github.com/wavetermdev/waveterm/blob/main/LICENSE"
-                                    )}
-                                    target="_blank"
-                                >
-                                    <i className="fa-sharp fa-light fa-book-blank"></i>
-                                    License
-                                </a>
-                            </section>
-                            <section className="wave-modal-section about-section text-standard">
-                                &copy; 2023 Command Line Inc.
-                            </section>
                         </div>
                     </div>
-                </div>
-            </div>
+                    <div className="about-section text-standard">{this.getStatus(this.isUpToDate())}</div>
+                    <div className="about-section">
+                        <a
+                            className="wave-button wave-button-link color-standard"
+                            href={util.makeExternLink("https://github.com/wavetermdev/waveterm")}
+                            target="_blank"
+                        >
+                            <i className="fa-brands fa-github"></i>
+                            Github
+                        </a>
+                        <a
+                            className="wave-button wave-button-link color-standard"
+                            href={util.makeExternLink("https://www.waveterm.dev/")}
+                            target="_blank"
+                        >
+                            <i className="fa-sharp fa-light fa-globe"></i>
+                            Website
+                        </a>
+                        <a
+                            className="wave-button wave-button-link color-standard"
+                            href={util.makeExternLink("https://github.com/wavetermdev/waveterm/blob/main/LICENSE")}
+                            target="_blank"
+                        >
+                            <i className="fa-sharp fa-light fa-book-blank"></i>
+                            License
+                        </a>
+                    </div>
+                    <div className="about-section text-standard">&copy; 2023 Command Line Inc.</div>
+                </Modal.Body>
+            </Modal>
         );
     }
 }
