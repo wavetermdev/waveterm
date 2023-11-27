@@ -2907,22 +2907,43 @@ class RemotesModel {
     }
 }
 
-interface ModalComponentType {
-    id: string;
-    component: React.ReactNode;
-}
-
 class ModalRegistry {
-    registry: { [key: string]: ModalComponentType } = {};
+    registry: { [key: string]: () => React.ReactNode } = {};
 
     @boundMethod
-    registerModal(id: string, component: React.ReactNode) {
-        this.registry[id] = { id, component };
+    registerModal(id: string, componentFactory: () => React.ReactNode) {
+        this.registry[id] = componentFactory;
     }
 
     @boundMethod
-    getModal(id: string): ModalComponentType | undefined {
+    getModal(id: string): () => React.ReactNode {
         return this.registry[id];
+    }
+}
+
+class ModalStore {
+    modals: (() => React.ReactNode)[] = [];
+
+    constructor() {
+        mobx.makeAutoObservable(this);
+    }
+
+    pushModal(modalId: string) {
+        const ModalComponent = GlobalModel.modalRegistry.getModal(modalId);
+        // console.log("modalFactory", modalFactory);
+        if (ModalComponent) {
+            // const modalElement = modalFactory();
+            // console.log("modalElement", modalElement);
+            this.modals.push(ModalComponent);
+        }
+    }
+
+    popModal() {
+        this.modals.pop();
+    }
+
+    get activeModal() {
+        return this.modals[this.modals.length - 1] || null;
     }
 }
 
@@ -2988,6 +3009,7 @@ class Model {
     historyViewModel: HistoryViewModel;
     connectionViewModel: ConnectionsViewModel;
     modalRegistry: ModalRegistry;
+    modalStore: ModalStore;
     clientData: OV<ClientDataType> = mobx.observable.box(null, {
         name: "clientData",
     });
@@ -3011,6 +3033,7 @@ class Model {
         this.remotesModalModel = new RemotesModalModel();
         this.remotesModel = new RemotesModel();
         this.modalRegistry = new ModalRegistry();
+        this.modalStore = new ModalStore();
         let isWaveSrvRunning = getApi().getWaveSrvStatus();
         this.waveSrvRunning = mobx.observable.box(isWaveSrvRunning, {
             name: "model-wavesrv-running",
@@ -3379,7 +3402,7 @@ class Model {
 
     onMenuItemAbout(): void {
         mobx.action(() => {
-            this.aboutModalOpen.set(true);
+            this.modalStore.pushModal("about");
         })();
     }
 

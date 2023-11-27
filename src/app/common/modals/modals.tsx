@@ -41,6 +41,14 @@ const RemotePtyCols = 80;
 const PasswordUnchangedSentinel = "--unchanged--";
 
 @mobxReact.observer
+class ModalProvider extends React.Component {
+    render() {
+        const ActiveModal = GlobalModel.modalStore.activeModal;
+        return <>{ActiveModal ? React.createElement(ActiveModal) : null}</>;
+    }
+}
+
+@mobxReact.observer
 class DisconnectedModal extends React.Component<{}, {}> {
     logRef: any = React.createRef();
     showLog: mobx.IObservableValue<boolean> = mobx.observable.box(false);
@@ -357,7 +365,7 @@ class AboutModal extends React.Component<{}, {}> {
     @boundMethod
     closeModal(): void {
         mobx.action(() => {
-            GlobalModel.aboutModalOpen.set(false);
+            GlobalModel.modalStore.popModal();
         })();
     }
 
@@ -1446,4 +1454,5 @@ export {
     CreateRemoteConnModal,
     ViewRemoteConnDetailModal,
     EditRemoteConnModal,
+    ModalProvider,
 };

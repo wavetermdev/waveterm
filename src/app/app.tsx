@@ -33,6 +33,7 @@ import {
     CreateRemoteConnModal,
     ViewRemoteConnDetailModal,
     EditRemoteConnModal,
+    ModalProvider,
 } from "./common/modals/modals";
 import { ErrorBoundary } from "./common/error/errorboundary";
 import "./app.less";
@@ -48,6 +49,10 @@ class App extends React.Component<{}, {}> {
     constructor(props: any) {
         super(props);
         if (GlobalModel.isDev) document.body.className = "is-dev";
+
+        // Register modals
+        const { registerModal } = GlobalModel.modalRegistry;
+        registerModal("about", () => <AboutModal />);
     }
 
     @boundMethod
@@ -139,9 +144,10 @@ class App extends React.Component<{}, {}> {
                 <If condition={GlobalModel.needsTos()}>
                     <TosModal />
                 </If>
-                <If condition={GlobalModel.aboutModalOpen.get()}>
+                {/* <If condition={GlobalModel.aboutModalOpen.get()}>
                     <AboutModal />
-                </If>
+                </If> */}
+                <ModalProvider />
                 <If condition={remoteEdit !== null && remotesModalMode === "add"}>
                     <CreateRemoteConnModal model={remotesModel} remoteEdit={remoteEdit} />
                 </If>
