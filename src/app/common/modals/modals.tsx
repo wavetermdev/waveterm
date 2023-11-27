@@ -415,13 +415,8 @@ class AboutModal extends React.Component<{}, {}> {
 
     render() {
         return (
-            <Modal onClose={this.closeModal} className="about-modal">
-                <Modal.Header>
-                    <div className="wave-modal-title about-wave-modal-title">About</div>
-                    <div className="wave-modal-close about-wave-modal-close" onClick={this.closeModal}>
-                        <img src={close} alt="Close (Escape)" />
-                    </div>
-                </Modal.Header>
+            <Modal onClose={this.closeModal} title="About" className="about-modal">
+                <Modal.Header />
                 <Modal.Body>
                     <div className="about-section">
                         <div className="logo-wrapper">
@@ -611,184 +606,173 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModel; remot
         let authMode = this.tempAuthMode.get();
 
         return (
-            <div className={cn("modal wave-modal crconn-modal is-active")}>
-                <div className="modal-background wave-modal-background" />
-                <div className="modal-content wave-modal-content crconn-wave-modal-content">
-                    <div className="wave-modal-content-inner crconn-wave-modal-content-inner">
-                        <header className="wave-modal-header crconn-wave-modal-header">
-                            <div className="wave-modal-title crconn-wave-modal-title">Add Connection</div>
-                            <div className="wave-modal-close crconn-wave-modal-close" onClick={model.closeModal}>
-                                <img src={close} alt="Close (Escape)" />
-                            </div>
-                        </header>
-                        <div className="wave-modal-body crconn-wave-modal-body">
-                            <div className="user-section">
-                                <TextField
-                                    label="user@host"
-                                    autoFocus={true}
-                                    value={this.tempHostName.get()}
-                                    onChange={this.handleChangeHostName}
-                                    required={true}
-                                    decoration={{
-                                        endDecoration: (
-                                            <InputDecoration>
-                                                <Tooltip
-                                                    message={`(Required) The user and host that you want to connect with. This is in the same format as
+            <Modal
+                onClose={model.closeModal}
+                onOk={this.submitRemote}
+                title="Add Connection"
+                okLabel="Connect"
+                className="crconn-modal"
+            >
+                <Modal.Header />
+                <Modal.Body>
+                    <div className="user-section">
+                        <TextField
+                            label="user@host"
+                            autoFocus={true}
+                            value={this.tempHostName.get()}
+                            onChange={this.handleChangeHostName}
+                            required={true}
+                            decoration={{
+                                endDecoration: (
+                                    <InputDecoration>
+                                        <Tooltip
+                                            message={`(Required) The user and host that you want to connect with. This is in the same format as
 													you would pass to ssh, e.g. "ubuntu@test.mydomain.com".`}
-                                                    icon={<i className="fa-sharp fa-regular fa-circle-question" />}
-                                                >
-                                                    <i className="fa-sharp fa-regular fa-circle-question" />
-                                                </Tooltip>
-                                            </InputDecoration>
-                                        ),
-                                    }}
-                                />
-                            </div>
-                            <div className="alias-section">
-                                <TextField
-                                    label="Alias"
-                                    onChange={this.handleChangeAlias}
-                                    value={this.tempAlias.get()}
-                                    maxLength={100}
-                                    decoration={{
-                                        endDecoration: (
-                                            <InputDecoration>
-                                                <Tooltip
-                                                    message={`(Optional) A short alias to use when selecting or displaying this connection.`}
-                                                    icon={<i className="fa-sharp fa-regular fa-circle-question" />}
-                                                >
-                                                    <i className="fa-sharp fa-regular fa-circle-question" />
-                                                </Tooltip>
-                                            </InputDecoration>
-                                        ),
-                                    }}
-                                />
-                            </div>
-                            <div className="port-section">
-                                <NumberField
-                                    label="Port"
-                                    placeholder="22"
-                                    value={this.tempPort.get()}
-                                    onChange={this.handleChangePort}
-                                    decoration={{
-                                        endDecoration: (
-                                            <InputDecoration>
-                                                <Tooltip
-                                                    message={`(Optional) Defaults to 22. Set if the server you are connecting to listens to a non-standard
-													SSH port.`}
-                                                    icon={<i className="fa-sharp fa-regular fa-circle-question" />}
-                                                >
-                                                    <i className="fa-sharp fa-regular fa-circle-question" />
-                                                </Tooltip>
-                                            </InputDecoration>
-                                        ),
-                                    }}
-                                />
-                            </div>
-                            <div className="authmode-section">
-                                <Dropdown
-                                    label="Auth Mode"
-                                    options={[
-                                        { value: "none", label: "none" },
-                                        { value: "key", label: "key" },
-                                        { value: "password", label: "password" },
-                                        { value: "key+password", label: "key+password" },
-                                    ]}
-                                    value={this.tempAuthMode.get()}
-                                    onChange={(val: string) => {
-                                        this.tempAuthMode.set(val);
-                                    }}
-                                    decoration={{
-                                        endDecoration: (
-                                            <InputDecoration>
-                                                <Tooltip
-                                                    message={
-                                                        <ul>
-                                                            <li>
-                                                                <b>none</b> - no authentication, or authentication is
-                                                                already configured in your ssh config.
-                                                            </li>
-                                                            <li>
-                                                                <b>key</b> - use a private key.
-                                                            </li>
-                                                            <li>
-                                                                <b>password</b> - use a password.
-                                                            </li>
-                                                            <li>
-                                                                <b>key+password</b> - use a key with a passphrase.
-                                                            </li>
-                                                        </ul>
-                                                    }
-                                                    icon={<i className="fa-sharp fa-regular fa-circle-question" />}
-                                                >
-                                                    <i className="fa-sharp fa-regular fa-circle-question" />
-                                                </Tooltip>
-                                            </InputDecoration>
-                                        ),
-                                    }}
-                                />
-                            </div>
-                            <If condition={authMode == "key" || authMode == "key+password"}>
-                                <TextField
-                                    label="SSH Keyfile"
-                                    placeholder="keyfile path"
-                                    onChange={this.handleChangeKeyFile}
-                                    value={this.tempKeyFile.get()}
-                                    maxLength={400}
-                                    required={true}
-                                    decoration={{
-                                        endDecoration: (
-                                            <InputDecoration>
-                                                <Tooltip
-                                                    message={`(Required) The path to your ssh key file.`}
-                                                    icon={<i className="fa-sharp fa-regular fa-circle-question" />}
-                                                >
-                                                    <i className="fa-sharp fa-regular fa-circle-question" />
-                                                </Tooltip>
-                                            </InputDecoration>
-                                        ),
-                                    }}
-                                />
-                            </If>
-                            <If condition={authMode == "password" || authMode == "key+password"}>
-                                <PasswordField
-                                    label={authMode == "password" ? "SSH Password" : "Key Passphrase"}
-                                    placeholder="password"
-                                    onChange={this.handleChangePassword}
-                                    value={this.tempPassword.get()}
-                                    maxLength={400}
-                                />
-                            </If>
-                            <div className="connectmode-section">
-                                <Dropdown
-                                    label="Connect Mode"
-                                    options={[
-                                        { value: "startup", label: "startup" },
-                                        { value: "key", label: "key" },
-                                        { value: "auto", label: "auto" },
-                                        { value: "manual", label: "manual" },
-                                    ]}
-                                    value={this.tempConnectMode.get()}
-                                    onChange={(val: string) => {
-                                        this.tempConnectMode.set(val);
-                                    }}
-                                />
-                            </div>
-                            <If condition={!util.isBlank(this.getErrorStr())}>
-                                <div className="settings-field settings-error">Error: {this.getErrorStr()}</div>
-                            </If>
-                        </div>
-                        <footer className="wave-modal-footer crconn-wave-modal-footer">
-                            <div className="action-buttons">
-                                <Button theme="secondary" onClick={model.closeModal}>
-                                    Cancel
-                                </Button>
-                                <Button onClick={this.submitRemote}>Connect</Button>
-                            </div>
-                        </footer>
+                                            icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                        >
+                                            <i className="fa-sharp fa-regular fa-circle-question" />
+                                        </Tooltip>
+                                    </InputDecoration>
+                                ),
+                            }}
+                        />
                     </div>
-                </div>
-            </div>
+                    <div className="alias-section">
+                        <TextField
+                            label="Alias"
+                            onChange={this.handleChangeAlias}
+                            value={this.tempAlias.get()}
+                            maxLength={100}
+                            decoration={{
+                                endDecoration: (
+                                    <InputDecoration>
+                                        <Tooltip
+                                            message={`(Optional) A short alias to use when selecting or displaying this connection.`}
+                                            icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                        >
+                                            <i className="fa-sharp fa-regular fa-circle-question" />
+                                        </Tooltip>
+                                    </InputDecoration>
+                                ),
+                            }}
+                        />
+                    </div>
+                    <div className="port-section">
+                        <NumberField
+                            label="Port"
+                            placeholder="22"
+                            value={this.tempPort.get()}
+                            onChange={this.handleChangePort}
+                            decoration={{
+                                endDecoration: (
+                                    <InputDecoration>
+                                        <Tooltip
+                                            message={`(Optional) Defaults to 22. Set if the server you are connecting to listens to a non-standard
+													SSH port.`}
+                                            icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                        >
+                                            <i className="fa-sharp fa-regular fa-circle-question" />
+                                        </Tooltip>
+                                    </InputDecoration>
+                                ),
+                            }}
+                        />
+                    </div>
+                    <div className="authmode-section">
+                        <Dropdown
+                            label="Auth Mode"
+                            options={[
+                                { value: "none", label: "none" },
+                                { value: "key", label: "key" },
+                                { value: "password", label: "password" },
+                                { value: "key+password", label: "key+password" },
+                            ]}
+                            value={this.tempAuthMode.get()}
+                            onChange={(val: string) => {
+                                this.tempAuthMode.set(val);
+                            }}
+                            decoration={{
+                                endDecoration: (
+                                    <InputDecoration>
+                                        <Tooltip
+                                            message={
+                                                <ul>
+                                                    <li>
+                                                        <b>none</b> - no authentication, or authentication is already
+                                                        configured in your ssh config.
+                                                    </li>
+                                                    <li>
+                                                        <b>key</b> - use a private key.
+                                                    </li>
+                                                    <li>
+                                                        <b>password</b> - use a password.
+                                                    </li>
+                                                    <li>
+                                                        <b>key+password</b> - use a key with a passphrase.
+                                                    </li>
+                                                </ul>
+                                            }
+                                            icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                        >
+                                            <i className="fa-sharp fa-regular fa-circle-question" />
+                                        </Tooltip>
+                                    </InputDecoration>
+                                ),
+                            }}
+                        />
+                    </div>
+                    <If condition={authMode == "key" || authMode == "key+password"}>
+                        <TextField
+                            label="SSH Keyfile"
+                            placeholder="keyfile path"
+                            onChange={this.handleChangeKeyFile}
+                            value={this.tempKeyFile.get()}
+                            maxLength={400}
+                            required={true}
+                            decoration={{
+                                endDecoration: (
+                                    <InputDecoration>
+                                        <Tooltip
+                                            message={`(Required) The path to your ssh key file.`}
+                                            icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                        >
+                                            <i className="fa-sharp fa-regular fa-circle-question" />
+                                        </Tooltip>
+                                    </InputDecoration>
+                                ),
+                            }}
+                        />
+                    </If>
+                    <If condition={authMode == "password" || authMode == "key+password"}>
+                        <PasswordField
+                            label={authMode == "password" ? "SSH Password" : "Key Passphrase"}
+                            placeholder="password"
+                            onChange={this.handleChangePassword}
+                            value={this.tempPassword.get()}
+                            maxLength={400}
+                        />
+                    </If>
+                    <div className="connectmode-section">
+                        <Dropdown
+                            label="Connect Mode"
+                            options={[
+                                { value: "startup", label: "startup" },
+                                { value: "key", label: "key" },
+                                { value: "auto", label: "auto" },
+                                { value: "manual", label: "manual" },
+                            ]}
+                            value={this.tempConnectMode.get()}
+                            onChange={(val: string) => {
+                                this.tempConnectMode.set(val);
+                            }}
+                        />
+                    </div>
+                    <If condition={!util.isBlank(this.getErrorStr())}>
+                        <div className="settings-field settings-error">Error: {this.getErrorStr()}</div>
+                    </If>
+                </Modal.Body>
+                <Modal.Footer />
+            </Modal>
         );
     }
 }

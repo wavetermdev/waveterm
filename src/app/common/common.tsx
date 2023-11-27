@@ -349,7 +349,6 @@ interface TextFieldState {
     hasContent: boolean;
 }
 
-@mobxReact.observer
 class TextField extends React.Component<TextFieldProps, TextFieldState> {
     inputRef: React.RefObject<HTMLInputElement>;
     state: TextFieldState;
@@ -1120,24 +1119,39 @@ interface ModalProps {
     onOk?: () => void;
     cancelLabel?: string;
     okLabel?: string;
+    title?: string;
     className?: string;
     children?: React.ReactNode;
 }
-const ModalContext = React.createContext<boolean>(false);
+
+interface ModalContextProps {
+    isInModal: boolean;
+    onClose?: () => void;
+    onOk?: () => void;
+    title?: string;
+    cancelLabel?: string;
+    okLabel?: string;
+}
+const ModalContext = React.createContext<ModalContextProps>({ isInModal: false });
 
 class Modal extends React.Component<ModalProps> {
-    static Header: React.FC<ModalHeaderProps> = ({ onClose, title, children }) => (
+    static Header: React.FC<ModalHeaderProps> = ({ children }) => (
         <ModalContext.Consumer>
-            {(isInModal) =>
+            {({ isInModal, onClose, title }) =>
                 isInModal ? (
                     <div className="wave-modal-header">
-                        {title && <div>{title}</div>}
-                        {onClose && (
-                            <IconButton variant="ghost" onClick={onClose}>
-                                <i className="fa-sharp fa-solid fa-xmark"></i>
-                            </IconButton>
+                        {children ? (
+                            children
+                        ) : (
+                            <>
+                                {title && <div>{title}</div>}
+                                {onClose && (
+                                    <IconButton theme="secondary" variant="ghost" onClick={onClose}>
+                                        <i className="fa-sharp fa-solid fa-xmark"></i>
+                                    </IconButton>
+                                )}
+                            </>
                         )}
-                        {children}
                     </div>
                 ) : null
             }
@@ -1150,26 +1164,25 @@ class Modal extends React.Component<ModalProps> {
         </ModalContext.Consumer>
     );
 
-    static Footer: React.FC<ModalFooterProps> = ({
-        onClose,
-        onOk,
-        cancelLabel = "Cancel",
-        okLabel = "OK",
-        children,
-    }) => (
+    static Footer: React.FC<ModalFooterProps> = ({ children }) => (
         <ModalContext.Consumer>
-            {(isInModal) =>
-                isInModal ? (
+            {({ isInModal, onClose, onOk, cancelLabel, okLabel }) =>
+                isInModal && (
                     <div className="wave-modal-footer">
-                        {onClose && (
-                            <Button theme="secondary" onClick={onClose}>
-                                {cancelLabel}
-                            </Button>
+                        {children ? (
+                            children
+                        ) : (
+                            <>
+                                {onClose && (
+                                    <Button theme="secondary" onClick={onClose}>
+                                        {cancelLabel}
+                                    </Button>
+                                )}
+                                {onOk && <Button onClick={onOk}>{okLabel}</Button>}
+                            </>
                         )}
-                        {onOk && <Button onClick={onOk}>{okLabel}</Button>}
-                        {children}
                     </div>
-                ) : null
+                )
             }
         </ModalContext.Consumer>
     );
@@ -1192,8 +1205,12 @@ class Modal extends React.Component<ModalProps> {
     }
 
     render() {
+        const { onClose, onOk, cancelLabel = "Cancel", okLabel = "Ok", title = "Modal" } = this.props;
+
         return ReactDOM.createPortal(
-            <ModalContext.Provider value={true}>{this.renderModal()}</ModalContext.Provider>,
+            <ModalContext.Provider value={{ isInModal: true, onClose, onOk, cancelLabel, okLabel, title }}>
+                {this.renderModal()}
+            </ModalContext.Provider>,
             document.getElementById("app") as HTMLElement
         );
     }
