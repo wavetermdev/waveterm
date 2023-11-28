@@ -60,14 +60,14 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
 
     @boundMethod
     handleAddConnection(): void {
-        GlobalModel.modalStore.pushModal("createRemote", () =>
+        GlobalModel.modalStoreModel.pushModal("createRemote", () =>
             GlobalModel.remotesModel.prepareAddModal({ remoteedit: true })
         );
     }
 
     @boundMethod
     handleRead(remoteId: string): void {
-        GlobalModel.modalStore.pushModal("viewRemote", () => GlobalModel.remotesModel.prepareReadModal(remoteId));
+        GlobalModel.modalStoreModel.pushModal("viewRemote", () => GlobalModel.remotesModel.prepareReadModal(remoteId));
     }
 
     @boundMethod

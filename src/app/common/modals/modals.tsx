@@ -43,7 +43,7 @@ const PasswordUnchangedSentinel = "--unchanged--";
 @mobxReact.observer
 class ModalProvider extends React.Component {
     render() {
-        const ActiveModal = GlobalModel.modalStore.activeModal;
+        const ActiveModal = GlobalModel.modalStoreModel.activeModal;
         return <>{ActiveModal ? <ActiveModal /> : null}</>;
     }
 }
@@ -365,7 +365,7 @@ class AboutModal extends React.Component<{}, {}> {
     @boundMethod
     closeModal(): void {
         mobx.action(() => {
-            GlobalModel.modalStore.popModal();
+            GlobalModel.modalStoreModel.popModal();
         })();
     }
 

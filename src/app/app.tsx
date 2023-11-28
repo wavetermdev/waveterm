@@ -53,7 +53,7 @@ class App extends React.Component<{}, {}> {
 
     componentDidMount() {
         // Register modals
-        const { registerModals } = GlobalModel.modalRegistry;
+        const { registerModals } = GlobalModel.modalRegistryModel;
         registerModals({
             about: () => <AboutModal />,
             createRemote: () => <CreateRemoteConnModal />,

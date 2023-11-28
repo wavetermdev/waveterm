@@ -2809,7 +2809,7 @@ class RemotesModel {
     @boundMethod
     closeModal(): void {
         mobx.action(() => {
-            GlobalModel.modalStore.popModal();
+            GlobalModel.modalStoreModel.popModal();
             this.selectedRemoteId.set(null);
         })();
         setTimeout(() => GlobalModel.refocus(), 10);
@@ -2910,7 +2910,7 @@ class RemotesModel {
     }
 }
 
-class ModalRegistry {
+class ModalRegistryModel {
     registry: { [key: string]: () => React.ReactNode } = {};
 
     @boundMethod
@@ -2928,7 +2928,7 @@ class ModalRegistry {
     }
 }
 
-class ModalStore {
+class ModalStoreModel {
     modals: (() => React.ReactNode)[] = [];
 
     constructor() {
@@ -2937,7 +2937,7 @@ class ModalStore {
 
     pushModal(modalId: string, beforeHook = () => true, afterHook = () => {}) {
         if (beforeHook()) {
-            const ModalComponent = GlobalModel.modalRegistry.getModal(modalId);
+            const ModalComponent = GlobalModel.modalRegistryModel.getModal(modalId);
             if (ModalComponent) {
                 this.modals.push(ModalComponent);
             }
@@ -3015,8 +3015,8 @@ class Model {
     bookmarksModel: BookmarksModel;
     historyViewModel: HistoryViewModel;
     connectionViewModel: ConnectionsViewModel;
-    modalRegistry: ModalRegistry;
-    modalStore: ModalStore;
+    modalRegistryModel: ModalRegistryModel;
+    modalStoreModel: ModalStoreModel;
     clientData: OV<ClientDataType> = mobx.observable.box(null, {
         name: "clientData",
     });
@@ -3039,8 +3039,8 @@ class Model {
         this.connectionViewModel = new ConnectionsViewModel();
         this.remotesModalModel = new RemotesModalModel();
         this.remotesModel = new RemotesModel();
-        this.modalRegistry = new ModalRegistry();
-        this.modalStore = new ModalStore();
+        this.modalRegistryModel = new ModalRegistryModel();
+        this.modalStoreModel = new ModalStoreModel();
         let isWaveSrvRunning = getApi().getWaveSrvStatus();
         this.waveSrvRunning = mobx.observable.box(isWaveSrvRunning, {
             name: "model-wavesrv-running",
@@ -3409,7 +3409,7 @@ class Model {
 
     onMenuItemAbout(): void {
         mobx.action(() => {
-            this.modalStore.pushModal("about");
+            this.modalStoreModel.pushModal("about");
         })();
     }
 
