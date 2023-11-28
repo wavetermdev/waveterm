@@ -767,7 +767,7 @@ class Screen {
             e.preventDefault();
             let p = navigator.clipboard.readText();
             p.then((text) => {
-                termWrap.dataHandler?.(text);
+                termWrap.dataHandler?.(text, termWrap);
             });
             return false;
         }
@@ -2203,6 +2203,14 @@ class HistoryViewModel {
     }
 }
 
+class ConnectionsViewModel {
+    showConnectionsView(): void {
+        mobx.action(() => {
+            GlobalModel.activeMainView.set("connections");
+        })();
+    }
+}
+
 class BookmarksModel {
     bookmarks: OArr<BookmarkType> = mobx.observable.array([], {
         name: "Bookmarks",
@@ -2700,6 +2708,202 @@ class RemotesModalModel {
     }
 }
 
+class RemotesModel {
+    modalMode: OV<null | "read" | "add" | "edit"> = mobx.observable.box(null, {
+        name: "RemotesModel-modalMode",
+    });
+    selectedRemoteId: OV<string> = mobx.observable.box(null, {
+        name: "RemotesModel-selectedRemoteId",
+    });
+    remoteTermWrap: TermWrap;
+    remoteTermWrapFocus: OV<boolean> = mobx.observable.box(false, {
+        name: "RemotesModel-remoteTermWrapFocus",
+    });
+    showNoInputMsg: OV<boolean> = mobx.observable.box(false, {
+        name: "RemotesModel-showNoInputMg",
+    });
+    showNoInputTimeoutId: any = null;
+    remoteEdit: OV<RemoteEditType> = mobx.observable.box(null, {
+        name: "RemotesModel-remoteEdit",
+    });
+    recentConnAddedState: OV<boolean> = mobx.observable.box(false, {
+        name: "RemotesModel-recentlyAdded",
+    });
+
+    isOpen(): boolean {
+        return this.modalMode.get() != null;
+    }
+
+    get recentConnAdded(): boolean {
+        return this.recentConnAddedState.get();
+    }
+
+    seRecentConnAdded(value: boolean) {
+        this.recentConnAddedState.set(value);
+    }
+
+    deSelectRemote(): void {
+        mobx.action(() => {
+            this.selectedRemoteId.set(null);
+            this.remoteEdit.set(null);
+        })();
+    }
+
+    openReadModal(remoteId: string): void {
+        mobx.action(() => {
+            this.selectedRemoteId.set(remoteId);
+            this.remoteEdit.set(null);
+            this.modalMode.set("read");
+        })();
+    }
+
+    openAddModal(redit: RemoteEditType): void {
+        mobx.action(() => {
+            this.remoteEdit.set(redit);
+            this.modalMode.set("add");
+        })();
+    }
+
+    openEditModal(redit?: RemoteEditType): void {
+        if (redit === undefined) {
+            this.startEditAuth();
+        }
+        if (redit != null) {
+            mobx.action(() => {
+                this.selectedRemoteId.set(redit.remoteid);
+                this.remoteEdit.set(redit);
+                this.modalMode.set("edit");
+            })();
+        }
+    }
+
+    selectRemote(remoteId: string): void {
+        if (this.selectedRemoteId.get() == remoteId) {
+            return;
+        }
+        mobx.action(() => {
+            this.selectedRemoteId.set(remoteId);
+            this.remoteEdit.set(null);
+        })();
+    }
+
+    @boundMethod
+    startEditAuth(): void {
+        let remoteId = this.selectedRemoteId.get();
+        if (remoteId != null) {
+            GlobalCommandRunner.openEditRemote(remoteId);
+        }
+    }
+
+    getModalMode(): string {
+        return this.modalMode.get();
+    }
+
+    isAuthEditMode(): boolean {
+        return this.remoteEdit.get() != null;
+    }
+
+    @boundMethod
+    closeModal(): void {
+        mobx.action(() => {
+            this.modalMode.set(null);
+            this.selectedRemoteId.set(null);
+        })();
+        setTimeout(() => GlobalModel.refocus(), 10);
+    }
+
+    disposeTerm(): void {
+        if (this.remoteTermWrap == null) {
+            return;
+        }
+        this.remoteTermWrap.dispose();
+        this.remoteTermWrap = null;
+        mobx.action(() => {
+            this.remoteTermWrapFocus.set(false);
+        })();
+    }
+
+    receiveData(remoteId: string, ptyPos: number, ptyData: Uint8Array, reason?: string) {
+        if (this.remoteTermWrap == null) {
+            return;
+        }
+        if (this.remoteTermWrap.getContextRemoteId() != remoteId) {
+            return;
+        }
+        this.remoteTermWrap.receiveData(ptyPos, ptyData);
+    }
+
+    @boundMethod
+    setRemoteTermWrapFocus(focus: boolean): void {
+        mobx.action(() => {
+            this.remoteTermWrapFocus.set(focus);
+        })();
+    }
+
+    @boundMethod
+    setShowNoInputMsg(val: boolean) {
+        mobx.action(() => {
+            if (this.showNoInputTimeoutId != null) {
+                clearTimeout(this.showNoInputTimeoutId);
+                this.showNoInputTimeoutId = null;
+            }
+            if (val) {
+                this.showNoInputMsg.set(true);
+                this.showNoInputTimeoutId = setTimeout(() => this.setShowNoInputMsg(false), 2000);
+            } else {
+                this.showNoInputMsg.set(false);
+            }
+        })();
+    }
+
+    @boundMethod
+    termKeyHandler(remoteId: string, event: any, termWrap: TermWrap): void {
+        let remote = GlobalModel.getRemote(remoteId);
+        if (remote == null) {
+            return;
+        }
+        if (remote.status != "connecting" && remote.installstatus != "connecting") {
+            this.setShowNoInputMsg(true);
+            return;
+        }
+        let inputPacket: RemoteInputPacketType = {
+            type: "remoteinput",
+            remoteid: remoteId,
+            inputdata64: btoa(event.key),
+        };
+        GlobalModel.sendInputPacket(inputPacket);
+    }
+
+    createTermWrap(elem: HTMLElement): void {
+        this.disposeTerm();
+        let remoteId = this.selectedRemoteId.get();
+        if (remoteId == null) {
+            return;
+        }
+        let termOpts = {
+            rows: RemotePtyRows,
+            cols: RemotePtyCols,
+            flexrows: false,
+            maxptysize: 64 * 1024,
+        };
+        let termWrap = new TermWrap(elem, {
+            termContext: { remoteId: remoteId },
+            usedRows: RemotePtyRows,
+            termOpts: termOpts,
+            winSize: null,
+            keyHandler: (e, termWrap) => {
+                this.termKeyHandler(remoteId, e, termWrap);
+            },
+            focusHandler: this.setRemoteTermWrapFocus.bind(this),
+            isRunning: true,
+            fontSize: GlobalModel.termFontSize.get(),
+            ptyDataSource: getTermPtyData,
+            onUpdateContentHeight: null,
+        });
+        this.remoteTermWrap = termWrap;
+    }
+}
+
 class Model {
     clientId: string;
     activeSessionId: OV<string> = mobx.observable.box(null, {
@@ -2729,9 +2933,10 @@ class Model {
     authKey: string;
     isDev: boolean;
     platform: string;
-    activeMainView: OV<"plugins" | "session" | "history" | "bookmarks" | "webshare"> = mobx.observable.box("session", {
-        name: "activeMainView",
-    });
+    activeMainView: OV<"plugins" | "session" | "history" | "bookmarks" | "webshare" | "connections"> =
+        mobx.observable.box("session", {
+            name: "activeMainView",
+        });
     termFontSize: CV<number>;
     alertMessage: OV<AlertMessageType> = mobx.observable.box(null, {
         name: "alertMessage",
@@ -2753,11 +2958,13 @@ class Model {
         name: "lineSettingsModal",
     }); // linenum
     remotesModalModel: RemotesModalModel;
+    remotesModel: RemotesModel;
 
     inputModel: InputModel;
     pluginsModel: PluginsModel;
     bookmarksModel: BookmarksModel;
     historyViewModel: HistoryViewModel;
+    connectionViewModel: ConnectionsViewModel;
     clientData: OV<ClientDataType> = mobx.observable.box(null, {
         name: "clientData",
     });
@@ -2777,7 +2984,9 @@ class Model {
         this.pluginsModel = new PluginsModel();
         this.bookmarksModel = new BookmarksModel();
         this.historyViewModel = new HistoryViewModel();
+        this.connectionViewModel = new ConnectionsViewModel();
         this.remotesModalModel = new RemotesModalModel();
+        this.remotesModel = new RemotesModel();
         let isWaveSrvRunning = getApi().getWaveSrvStatus();
         this.waveSrvRunning = mobx.observable.box(isWaveSrvRunning, {
             name: "model-wavesrv-running",
@@ -3003,8 +3212,8 @@ class Model {
                 GlobalModel.screenSettingsModal.set(null);
                 didSomething = true;
             }
-            if (GlobalModel.remotesModalModel.isOpen()) {
-                GlobalModel.remotesModalModel.closeModal();
+            if (GlobalModel.remotesModel.isOpen()) {
+                GlobalModel.remotesModel.closeModal();
                 didSomething = true;
             }
             if (GlobalModel.clientSettingsModal.get()) {
@@ -3213,7 +3422,7 @@ class Model {
             } else {
                 // remote update
                 let ptyData = base64ToArray(ptyMsg.ptydata64);
-                this.remotesModalModel.receiveData(ptyMsg.remoteid, ptyMsg.ptypos, ptyData);
+                this.remotesModel.receiveData(ptyMsg.remoteid, ptyMsg.ptypos, ptyData);
             }
             return;
         }
@@ -3277,6 +3486,9 @@ class Model {
                 this.remotes.clear();
             }
             this.updateRemotes(update.remotes);
+            if (update.remotes?.length && this.remotesModel.recentConnAddedState.get()) {
+                this.remotesModel.openReadModal(update.remotes[0].remoteid);
+            }
         }
         if ("mainview" in update) {
             if (update.mainview == "plugins") {
@@ -3302,12 +3514,8 @@ class Model {
         }
         if (interactive && "remoteview" in update) {
             let rview: RemoteViewType = update.remoteview;
-            if (rview.remoteshowall) {
-                this.remotesModalModel.openModal();
-            } else if (rview.remoteedit != null) {
-                this.remotesModalModel.openModalForEdit({ ...rview.remoteedit, old: true }, false);
-            } else if (rview.ptyremoteid) {
-                this.remotesModalModel.openModal(rview.ptyremoteid);
+            if (rview.remoteedit != null) {
+                this.remotesModel.openEditModal({ ...rview.remoteedit });
             }
         }
         if ("cmdline" in update) {
@@ -4037,6 +4245,10 @@ class CommandRunner {
         GlobalModel.submitCommand("bookmarks", "show", null, { nohist: "1" }, true);
     }
 
+    connectionsView() {
+        GlobalModel.connectionViewModel.showConnectionsView();
+    }
+
     historyView(params: HistorySearchParams) {
         let kwargs = { nohist: "1" };
         kwargs["offset"] = String(params.offset);
@@ -4214,6 +4426,7 @@ export {
     RemoteColors,
     getTermPtyData,
     RemotesModalModel,
+    RemotesModel,
     MinFontSize,
     MaxFontSize,
 };

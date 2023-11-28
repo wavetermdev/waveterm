@@ -10,7 +10,7 @@ import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, TabColors, MinFontSize, MaxFontSize } from "../../../model/model";
 import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage } from "../common";
 import { LineType, RendererPluginType, ClientDataType, CommandRtnType } from "../../../types/types";
-import { ConnectionDropdown } from "../../connections/connections";
+import { ConnectionDropdown } from "../../connections_deprecated/connections";
 import { PluginModel } from "../../../plugins/plugins";
 import * as util from "../../../util/util";
 import { commandRtnHandler } from "../../../util/util";

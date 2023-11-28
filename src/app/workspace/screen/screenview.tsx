@@ -19,7 +19,7 @@ import { getRemoteStr } from "../../common/prompt/prompt";
 import { GlobalModel, ScreenLines, Screen, Session } from "../../../model/model";
 import { Line } from "../../line/linecomps";
 import { LinesView } from "../../line/linesview";
-import { ConnectionDropdown } from "../../connections/connections";
+import { ConnectionDropdown } from "../../connections_deprecated/connections";
 import * as util from "../../../util/util";
 import { TextField, InputDecoration } from "../../common/common";
 import { ReactComponent as EllipseIcon } from "../../assets/icons/ellipse.svg";
@@ -101,7 +101,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
 
     @boundMethod
     clickNewConnection(): void {
-        GlobalModel.remotesModalModel.openModalForEdit({ remoteedit: true, old: false }, true);
+        GlobalModel.remotesModel.openAddModal({ remoteedit: true });
     }
 
     renderTabIconSelector(): React.ReactNode {
@@ -117,7 +117,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                 <div className="text-s1 unselectable">Select the icon</div>
                 <div className="control-iconlist tabicon-list">
                     <div key="square" className="icondiv" title="square" onClick={() => this.selectTabIcon("square")}>
-                        <SquareIcon className="icon square-icon"/>
+                        <SquareIcon className="icon square-icon" />
                     </div>
                     <For each="icon" of={TabIcons}>
                         <div

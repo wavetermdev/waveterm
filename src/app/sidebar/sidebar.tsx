@@ -111,6 +111,15 @@ class MainSideBar extends React.Component<{}, {}> {
     }
 
     @boundMethod
+    handleConnectionsClick(): void {
+        if (GlobalModel.activeMainView.get() == "connections") {
+            GlobalModel.showSessionView();
+            return;
+        }
+        GlobalCommandRunner.connectionsView();
+    }
+
+    @boundMethod
     handleWebSharingClick(): void {
         if (GlobalModel.activeMainView.get() == "webshare") {
             GlobalModel.showSessionView();
@@ -124,11 +133,6 @@ class MainSideBar extends React.Component<{}, {}> {
         mobx.action(() => {
             GlobalModel.clientSettingsModal.set(true);
         })();
-    }
-
-    @boundMethod
-    handleConnectionsClick(): void {
-        GlobalModel.remotesModalModel.openModal();
     }
 
     @boundMethod
@@ -199,14 +203,14 @@ class MainSideBar extends React.Component<{}, {}> {
                     <div className="logo">
                         <If condition={isCollapsed}>
                             <div className="logo-container" onClick={this.toggleCollapsed}>
-                                <img src="public/logos/wave-logo.png"/>
+                                <img src="public/logos/wave-logo.png" />
                             </div>
                         </If>
                         <If condition={!isCollapsed}>
                             <div className="logo-container">
-                                <img src="public/logos/wave-dark.png"/>
+                                <img src="public/logos/wave-dark.png" />
                             </div>
-                            <div className="spacer"/>
+                            <div className="spacer" />
                             <div className="collapse-button" onClick={this.toggleCollapsed}>
                                 <LeftChevronIcon className="icon" />
                             </div>

@@ -9,13 +9,14 @@ import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel, GlobalCommandRunner, RemotesModalModel } from "../../../model/model";
+import { GlobalModel, GlobalCommandRunner, RemotesModel } from "../../../model/model";
 import * as T from "../../../types/types";
 import { Markdown, InfoMessage } from "../common";
 import * as util from "../../../util/util";
+import * as textmeasure from "../../../util/textmeasure";
 import { Toggle, Checkbox } from "../common";
 import { ClientDataType } from "../../../types/types";
-import { TextField, NumberField, InputDecoration, Dropdown, PasswordField, Tooltip } from "../common";
+import { TextField, NumberField, InputDecoration, Dropdown, PasswordField, Tooltip, Button, Status } from "../common";
 
 import close from "../../assets/icons/close.svg";
 import { ReactComponent as WarningIcon } from "../../assets/icons/line/triangle-exclamation.svg";
@@ -34,6 +35,10 @@ const VERSION = __WAVETERM_VERSION__;
 let BUILD = __WAVETERM_BUILD__;
 
 type OV<V> = mobx.IObservableValue<V>;
+
+const RemotePtyRows = 9;
+const RemotePtyCols = 80;
+const PasswordUnchangedSentinel = "--unchanged--";
 
 @mobxReact.observer
 class DisconnectedModal extends React.Component<{}, {}> {
@@ -335,15 +340,9 @@ class TosModal extends React.Component<{}, {}> {
                                 />
                             </div>
                             <div className="button-wrapper">
-                                <button
-                                    onClick={this.acceptTos}
-                                    className={cn("button wave-button is-wave-green is-outlined is-small", {
-                                        "disabled-button": !this.state.isChecked,
-                                    })}
-                                    disabled={!this.state.isChecked}
-                                >
+                                <Button onClick={this.acceptTos} disabled={!this.state.isChecked}>
                                     Continue
-                                </button>
+                                </Button>
                             </div>
                         </footer>
                     </div>
@@ -377,7 +376,9 @@ class AboutModal extends React.Component<{}, {}> {
         // TODO no up-to-date status reporting
         return (
             <div className="status updated">
-                <div className="text-selectable">Client Version {VERSION} ({BUILD})</div>
+                <div className="text-selectable">
+                    Client Version {VERSION} ({BUILD})
+                </div>
             </div>
         );
 
@@ -388,7 +389,9 @@ class AboutModal extends React.Component<{}, {}> {
                         <i className="fa-sharp fa-solid fa-circle-check" />
                         <span>Up to Date</span>
                     </div>
-                    <div className="selectable">Client Version {VERSION} ({BUILD})</div>
+                    <div className="selectable">
+                        Client Version {VERSION} ({BUILD})
+                    </div>
                 </div>
             );
         }
@@ -398,7 +401,9 @@ class AboutModal extends React.Component<{}, {}> {
                     <i className="fa-sharp fa-solid fa-triangle-exclamation" />
                     <span>Outdated Version</span>
                 </div>
-                <div className="selectable">Client Version {VERSION} ({BUILD})</div>
+                <div className="selectable">
+                    Client Version {VERSION} ({BUILD})
+                </div>
                 <div>
                     <button onClick={this.updateApp} className="button color-green text-secondary">
                         Update
@@ -427,7 +432,11 @@ class AboutModal extends React.Component<{}, {}> {
                                 </div>
                                 <div className="text-wrapper">
                                     <div>Wave Terminal</div>
-                                    <div className="text-standard">Modern Terminal for<br/>Seamless Workflow</div>
+                                    <div className="text-standard">
+                                        Modern Terminal for
+                                        <br />
+                                        Seamless Workflow
+                                    </div>
                                 </div>
                             </section>
                             <section className="wave-modal-section about-section text-standard">
@@ -473,13 +482,12 @@ class AboutModal extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
-class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; remoteEdit: T.RemoteEditType }, {}> {
+class CreateRemoteConnModal extends React.Component<{ model: RemotesModel; remoteEdit: T.RemoteEditType }, {}> {
     tempAlias: OV<string>;
     tempHostName: OV<string>;
     tempPort: OV<string>;
     tempAuthMode: OV<string>;
     tempConnectMode: OV<string>;
-    tempManualMode: OV<boolean>;
     tempPassword: OV<string>;
     tempKeyFile: OV<string>;
     errorStr: OV<string>;
@@ -559,7 +567,6 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
                 let crRtn = GlobalCommandRunner.screenSetRemote(cname, true, false);
                 crRtn.then((crcrtn) => {
                     if (crcrtn.success) {
-                        model.closeModal();
                         return;
                     }
                     mobx.action(() => {
@@ -572,6 +579,7 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
                 this.errorStr.set(crtn.error);
             })();
         });
+        model.seRecentConnAdded(true);
     }
 
     @boundMethod
@@ -596,6 +604,13 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
     }
 
     @boundMethod
+    handleChangeAuthMode(value: string): void {
+        mobx.action(() => {
+            this.tempAuthMode.set(value);
+        })();
+    }
+
+    @boundMethod
     handleChangePort(value: string): void {
         mobx.action(() => {
             this.tempPort.set(value);
@@ -609,8 +624,15 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
         })();
     }
 
+    @boundMethod
+    handleChangeConnectMode(value: string): void {
+        mobx.action(() => {
+            this.tempConnectMode.set(value);
+        })();
+    }
+
     render() {
-        let { model, remoteEdit } = this.props;
+        let { model } = this.props;
         let authMode = this.tempAuthMode.get();
 
         return (
@@ -620,7 +642,7 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
                     <div className="wave-modal-content-inner crconn-wave-modal-content-inner">
                         <header className="wave-modal-header crconn-wave-modal-header">
                             <div className="wave-modal-title crconn-wave-modal-title">Add Connection</div>
-                            <div className="wave-modal-close crconn-wave-modal-close" onClick={model.cancelEditAuth}>
+                            <div className="wave-modal-close crconn-wave-modal-close" onClick={model.closeModal}>
                                 <img src={close} alt="Close (Escape)" />
                             </div>
                         </header>
@@ -698,9 +720,7 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
                                         { value: "key+password", label: "key+password" },
                                     ]}
                                     value={this.tempAuthMode.get()}
-                                    onChange={(val: string) => {
-                                        this.tempAuthMode.set(val);
-                                    }}
+                                    onChange={this.handleChangeAuthMode}
                                     decoration={{
                                         endDecoration: (
                                             <InputDecoration>
@@ -772,9 +792,7 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
                                         { value: "manual", label: "manual" },
                                     ]}
                                     value={this.tempConnectMode.get()}
-                                    onChange={(val: string) => {
-                                        this.tempConnectMode.set(val);
-                                    }}
+                                    onChange={this.handleChangeConnectMode}
                                 />
                             </div>
                             <If condition={!util.isBlank(this.getErrorStr())}>
@@ -783,15 +801,10 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
                         </div>
                         <footer className="wave-modal-footer crconn-wave-modal-footer">
                             <div className="action-buttons">
-                                <div onClick={model.cancelEditAuth} className="button wave-button is-plain">
+                                <Button theme="secondary" onClick={model.closeModal}>
                                     Cancel
-                                </div>
-                                <button
-                                    onClick={this.submitRemote}
-                                    className="button wave-button is-wave-green text-standard"
-                                >
-                                    Connect
-                                </button>
+                                </Button>
+                                <Button onClick={this.submitRemote}>Connect</Button>
                             </div>
                         </footer>
                     </div>
@@ -801,4 +814,687 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModalModel; 
     }
 }
 
-export { LoadingSpinner, ClientStopModal, AlertModal, DisconnectedModal, TosModal, AboutModal, CreateRemoteConnModal };
+@mobxReact.observer
+class ViewRemoteConnDetailModal extends React.Component<{ model: RemotesModel; remote: T.RemoteType }, {}> {
+    termRef: React.RefObject<any> = React.createRef();
+
+    componentDidMount() {
+        let elem = this.termRef.current;
+        if (elem == null) {
+            console.log("ERROR null term-remote element");
+            return;
+        }
+        this.props.model.createTermWrap(elem);
+    }
+
+    componentDidUpdate() {
+        let { remote } = this.props;
+        if (remote == null || remote.archived) {
+            this.props.model.deSelectRemote();
+        }
+    }
+
+    componentWillUnmount() {
+        this.props.model.disposeTerm();
+    }
+
+    @boundMethod
+    clickTermBlock(): void {
+        if (this.props.model.remoteTermWrap != null) {
+            this.props.model.remoteTermWrap.giveFocus();
+        }
+    }
+
+    getRemoteTypeStr(remote: T.RemoteType): string {
+        if (!util.isBlank(remote.uname)) {
+            let unameStr = remote.uname;
+            unameStr = unameStr.replace("|", ", ");
+            return remote.remotetype + " (" + unameStr + ")";
+        }
+        return remote.remotetype;
+    }
+
+    @boundMethod
+    connectRemote(remoteId: string) {
+        GlobalCommandRunner.connectRemote(remoteId);
+    }
+
+    @boundMethod
+    disconnectRemote(remoteId: string) {
+        GlobalCommandRunner.disconnectRemote(remoteId);
+    }
+
+    @boundMethod
+    installRemote(remoteId: string) {
+        GlobalCommandRunner.installRemote(remoteId);
+    }
+
+    @boundMethod
+    cancelInstall(remoteId: string) {
+        GlobalCommandRunner.installCancelRemote(remoteId);
+    }
+
+    @boundMethod
+    openEditModal(): void {
+        this.props.model.openEditModal();
+    }
+
+    @boundMethod
+    getStatus(status: string) {
+        switch (status) {
+            case "connected":
+                return "green";
+            case "disconnected":
+                return "gray";
+            default:
+                return "red";
+        }
+    }
+
+    @boundMethod
+    clickArchive(): void {
+        let { remote } = this.props;
+        if (remote.status == "connected") {
+            GlobalModel.showAlert({ message: "Cannot delete a connected connection.  Disconnect and try again." });
+            return;
+        }
+        let prtn = GlobalModel.showAlert({
+            message: "Are you sure you want to delete this connection?",
+            confirm: true,
+        });
+        prtn.then((confirm) => {
+            if (!confirm) {
+                return;
+            }
+            GlobalCommandRunner.archiveRemote(remote.remoteid);
+        });
+    }
+
+    @boundMethod
+    handleClose(): void {
+        let { model } = this.props;
+        model.closeModal();
+        model.seRecentConnAdded(false);
+    }
+
+    renderInstallStatus(remote: T.RemoteType): any {
+        let statusStr: string = null;
+        if (remote.installstatus == "disconnected") {
+            if (remote.needsmshellupgrade) {
+                statusStr = "mshell " + remote.mshellversion + " - needs upgrade";
+            } else if (util.isBlank(remote.mshellversion)) {
+                statusStr = "mshell unknown";
+            } else {
+                statusStr = "mshell " + remote.mshellversion + " - current";
+            }
+        } else {
+            statusStr = remote.installstatus;
+        }
+        if (statusStr == null) {
+            return null;
+        }
+        return (
+            <div key="install-status" className="settings-field">
+                <div className="settings-label"> Install Status</div>
+                <div className="settings-input">{statusStr}</div>
+            </div>
+        );
+    }
+
+    renderHeaderBtns(remote: T.RemoteType): React.ReactNode {
+        let buttons: React.ReactNode[] = [];
+        const archiveButton = (
+            <Button theme="secondary" onClick={() => this.clickArchive()}>
+                Delete
+            </Button>
+        );
+        const disconnectButton = (
+            <Button theme="secondary" onClick={() => this.disconnectRemote(remote.remoteid)}>
+                Disconnect Now
+            </Button>
+        );
+        const connectButton = (
+            <Button theme="secondary" onClick={() => this.connectRemote(remote.remoteid)}>
+                Connect Now
+            </Button>
+        );
+        const tryReconnectButton = (
+            <Button theme="secondary" onClick={() => this.connectRemote(remote.remoteid)}>
+                Try Reconnect
+            </Button>
+        );
+        let updateAuthButton = (
+            <Button theme="secondary" onClick={() => this.openEditModal()}>
+                Edit
+            </Button>
+        );
+        let cancelInstallButton = (
+            <Button theme="secondary" onClick={() => this.cancelInstall(remote.remoteid)}>
+                Cancel Install
+            </Button>
+        );
+        let installNowButton = (
+            <Button theme="secondary" onClick={() => this.installRemote(remote.remoteid)}>
+                Install Now
+            </Button>
+        );
+        if (remote.local) {
+            installNowButton = <></>;
+            updateAuthButton = <></>;
+            cancelInstallButton = <></>;
+        }
+        buttons = [archiveButton, updateAuthButton];
+        if (remote.status == "connected" || remote.status == "connecting") {
+            buttons.push(disconnectButton);
+        } else if (remote.status == "disconnected") {
+            buttons.push(connectButton);
+        } else if (remote.status == "error") {
+            if (remote.needsmshellupgrade) {
+                if (remote.installstatus == "connecting") {
+                    buttons.push(cancelInstallButton);
+                } else {
+                    buttons.push(installNowButton);
+                }
+            } else {
+                buttons.push(tryReconnectButton);
+            }
+        }
+
+        let i = 0;
+        let button: React.ReactNode = null;
+
+        return (
+            <For each="button" of={buttons} index="i">
+                <div key={i}>{button}</div>
+            </For>
+        );
+    }
+
+    getMessage(remote: T.RemoteType): string {
+        let message = "";
+        if (remote.status == "connected") {
+            message = "Connected and ready to run commands.";
+        } else if (remote.status == "connecting") {
+            message = remote.waitingforpassword ? "Connecting, waiting for user-input..." : "Connecting...";
+            let connectTimeout = remote.connecttimeout ?? 0;
+            message = message + " (" + connectTimeout + "s)";
+        } else if (remote.status == "disconnected") {
+            message = "Disconnected";
+        } else if (remote.status == "error") {
+            if (remote.noinitpk) {
+                message = "Error, could not connect.";
+            } else if (remote.needsmshellupgrade) {
+                if (remote.installstatus == "connecting") {
+                    message = "Installing...";
+                } else {
+                    message = "Error, needs install.";
+                }
+            } else {
+                message = "Error";
+            }
+        }
+
+        return message;
+    }
+
+    render() {
+        let { model, remote } = this.props;
+        let isTermFocused = model.remoteTermWrapFocus.get();
+        let termFontSize = GlobalModel.termFontSize.get();
+        let termWidth = textmeasure.termWidthFromCols(RemotePtyCols, termFontSize);
+        let remoteAliasText = util.isBlank(remote.remotealias) ? "(none)" : remote.remotealias;
+
+        return (
+            <div className={cn("modal wave-modal rconndetail-modal is-active")}>
+                <div className="modal-background wave-modal-background" />
+                <div className="modal-content wave-modal-content rconndetail-wave-modal-content">
+                    <div className="wave-modal-content-inner rconndetail-wave-modal-content-inner">
+                        <header className="wave-modal-header rconndetail-wave-modal-header">
+                            <div className="wave-modal-title rconndetail-wave-modal-title">Connection</div>
+                            <div className="wave-modal-close rconndetail-wave-modal-close" onClick={model.closeModal}>
+                                <img src={close} alt="Close (Escape)" />
+                            </div>
+                        </header>
+                        <div className="wave-modal-body rconndetail-wave-modal-body">
+                            <div className="name-header-actions-wrapper">
+                                <div className="name text-primary">{getName(remote)}</div>
+                                <div className="header-actions">{this.renderHeaderBtns(remote)}</div>
+                            </div>
+                            <div className="remote-detail" style={{ overflow: "hidden" }}>
+                                <div className="settings-field">
+                                    <div className="settings-label">Conn Id</div>
+                                    <div className="settings-input">{remote.remoteid}</div>
+                                </div>
+                                <div className="settings-field">
+                                    <div className="settings-label">Type</div>
+                                    <div className="settings-input">{this.getRemoteTypeStr(remote)}</div>
+                                </div>
+                                <div className="settings-field">
+                                    <div className="settings-label">Canonical Name</div>
+                                    <div className="settings-input">
+                                        {remote.remotecanonicalname}
+                                        <If
+                                            condition={
+                                                !util.isBlank(remote.remotevars.port) && remote.remotevars.port != "22"
+                                            }
+                                        >
+                                            <span style={{ marginLeft: 5 }}>(port {remote.remotevars.port})</span>
+                                        </If>
+                                    </div>
+                                </div>
+                                <div className="settings-field" style={{ minHeight: 24 }}>
+                                    <div className="settings-label">Alias</div>
+                                    <div className="settings-input">{remoteAliasText}</div>
+                                </div>
+                                <div className="settings-field">
+                                    <div className="settings-label">Auth Type</div>
+                                    <div className="settings-input">
+                                        <If condition={!remote.local}>{remote.authtype}</If>
+                                        <If condition={remote.local}>local</If>
+                                    </div>
+                                </div>
+                                <div className="settings-field">
+                                    <div className="settings-label">Connect Mode</div>
+                                    <div className="settings-input">{remote.connectmode}</div>
+                                </div>
+                                {this.renderInstallStatus(remote)}
+                                <div className="flex-spacer" style={{ minHeight: 20 }} />
+                                <div className="status">
+                                    <Status status={this.getStatus(remote.status)} text={this.getMessage(remote)} />
+                                </div>
+                                <div
+                                    key="term"
+                                    className={cn(
+                                        "terminal-wrapper",
+                                        { focus: isTermFocused },
+                                        remote != null ? "status-" + remote.status : null
+                                    )}
+                                >
+                                    <If condition={!isTermFocused}>
+                                        <div key="termblock" className="term-block" onClick={this.clickTermBlock}></div>
+                                    </If>
+                                    <If condition={model.showNoInputMsg.get()}>
+                                        <div key="termtag" className="term-tag">
+                                            input is only allowed while status is 'connecting'
+                                        </div>
+                                    </If>
+                                    <div
+                                        key="terminal"
+                                        className="terminal-connectelem"
+                                        ref={this.termRef}
+                                        data-remoteid={remote.remoteid}
+                                        style={{
+                                            height: textmeasure.termHeightFromRows(RemotePtyRows, termFontSize),
+                                            width: termWidth,
+                                        }}
+                                    ></div>
+                                </div>
+                            </div>
+                        </div>
+                        <footer className="wave-modal-footer rconndetail-wave-modal-footer">
+                            <div className="action-buttons">
+                                <Button theme="secondary" onClick={model.closeModal}>
+                                    Cancel
+                                </Button>
+                                <Button onClick={model.closeModal}>Done</Button>
+                            </div>
+                        </footer>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
+class EditRemoteConnModal extends React.Component<
+    { model: RemotesModel; remote: T.RemoteType; remoteEdit: T.RemoteEditType },
+    {}
+> {
+    tempAlias: OV<string>;
+    tempAuthMode: OV<string>;
+    tempConnectMode: OV<string>;
+    tempPassword: OV<string>;
+    tempKeyFile: OV<string>;
+    submitted: OV<boolean>;
+
+    constructor(props: any) {
+        super(props);
+        const { remote, remoteEdit } = this.props;
+        // console.log("remoteEdit", remoteEdit);
+        this.tempAlias = mobx.observable.box(remote.remotealias ?? "", { name: "EditRemoteSettings-alias" });
+        this.tempAuthMode = mobx.observable.box(remote.authtype, { name: "EditRemoteSettings-authMode" });
+        this.tempConnectMode = mobx.observable.box(remote.connectmode, { name: "EditRemoteSettings-connectMode" });
+        this.tempKeyFile = mobx.observable.box(remoteEdit.keystr ?? "", { name: "EditRemoteSettings-keystr" });
+        this.tempPassword = mobx.observable.box(remoteEdit.haspassword ? PasswordUnchangedSentinel : "", {
+            name: "EditRemoteSettings-password",
+        });
+        this.submitted = mobx.observable.box(false, { name: "EditRemoteSettings-submitted" });
+    }
+
+    componentDidUpdate() {
+        let { remote } = this.props;
+        if (remote == null || remote.archived) {
+            this.props.model.deSelectRemote();
+        }
+    }
+
+    @boundMethod
+    clickArchive(): void {
+        let { remote } = this.props;
+        if (remote.status == "connected") {
+            GlobalModel.showAlert({ message: "Cannot delete a connected connection.  Disconnect and try again." });
+            return;
+        }
+        let prtn = GlobalModel.showAlert({
+            message: "Are you sure you want to delete this connection?",
+            confirm: true,
+        });
+        prtn.then((confirm) => {
+            if (!confirm) {
+                return;
+            }
+            GlobalCommandRunner.archiveRemote(remote.remoteid);
+        });
+    }
+
+    @boundMethod
+    clickForceInstall(): void {
+        let { remote } = this.props;
+        GlobalCommandRunner.installRemote(remote.remoteid);
+    }
+
+    @boundMethod
+    handleChangeKeyFile(value: string): void {
+        mobx.action(() => {
+            this.tempKeyFile.set(value);
+        })();
+    }
+
+    @boundMethod
+    handleChangePassword(value: string): void {
+        mobx.action(() => {
+            this.tempPassword.set(value);
+        })();
+    }
+
+    @boundMethod
+    handleChangeAlias(value: string): void {
+        mobx.action(() => {
+            this.tempAlias.set(value);
+        })();
+    }
+
+    @boundMethod
+    handleChangeConnectMode(value: string): void {
+        mobx.action(() => {
+            this.tempConnectMode.set(value);
+        })();
+    }
+
+    @boundMethod
+    handleChangeAuthMode(value: string): void {
+        mobx.action(() => {
+            this.tempAuthMode.set(value);
+        })();
+    }
+
+    @boundMethod
+    canResetPw(): boolean {
+        let { remoteEdit } = this.props;
+        if (remoteEdit == null) {
+            return false;
+        }
+        return remoteEdit.haspassword && this.tempPassword.get() != PasswordUnchangedSentinel;
+    }
+
+    @boundMethod
+    resetPw(): void {
+        mobx.action(() => {
+            this.tempPassword.set(PasswordUnchangedSentinel);
+        })();
+    }
+
+    @boundMethod
+    onFocusPassword(e: any) {
+        if (this.tempPassword.get() == PasswordUnchangedSentinel) {
+            e.target.select();
+        }
+    }
+
+    @boundMethod
+    submitRemote(): void {
+        let { remote, remoteEdit, model } = this.props;
+        let authMode = this.tempAuthMode.get();
+        let kwargs: Record<string, string> = {};
+        if (!util.isStrEq(this.tempKeyFile.get(), remoteEdit.keystr)) {
+            if (authMode == "key" || authMode == "key+password") {
+                kwargs["key"] = this.tempKeyFile.get();
+            } else {
+                kwargs["key"] = "";
+            }
+        }
+        if (authMode == "password" || authMode == "key+password") {
+            if (this.tempPassword.get() != PasswordUnchangedSentinel) {
+                kwargs["password"] = this.tempPassword.get();
+            }
+        } else {
+            if (remoteEdit.haspassword) {
+                kwargs["password"] = "";
+            }
+        }
+        if (!util.isStrEq(this.tempAlias.get(), remote.remotealias)) {
+            kwargs["alias"] = this.tempAlias.get();
+        }
+        if (!util.isStrEq(this.tempConnectMode.get(), remote.connectmode)) {
+            kwargs["connectmode"] = this.tempConnectMode.get();
+        }
+        if (Object.keys(kwargs).length == 0) {
+            mobx.action(() => {
+                this.submitted.set(true);
+            })();
+            return;
+        }
+        kwargs["visual"] = "1";
+        kwargs["submit"] = "1";
+        GlobalCommandRunner.editRemote(remote.remoteid, kwargs);
+        mobx.action(() => {
+            this.submitted.set(true);
+        })();
+        model.seRecentConnAdded(false);
+    }
+
+    renderAuthModeMessage(): any {
+        let authMode = this.tempAuthMode.get();
+        if (authMode == "none") {
+            return (
+                <span>
+                    This connection requires no authentication.
+                    <br />
+                    Or authentication is already configured in ssh_config.
+                </span>
+            );
+        }
+        if (authMode == "key") {
+            return <span>Use a public/private keypair.</span>;
+        }
+        if (authMode == "password") {
+            return <span>Use a password.</span>;
+        }
+        if (authMode == "key+password") {
+            return <span>Use a public/private keypair with a passphrase.</span>;
+        }
+        return null;
+    }
+
+    render() {
+        let { model, remote, remoteEdit } = this.props;
+        let authMode = this.tempAuthMode.get();
+
+        if (util.isBlank(remoteEdit.errorstr) && this.submitted.get()) {
+            return null;
+        }
+
+        return (
+            <div className={cn("modal wave-modal erconn-modal is-active")}>
+                <div className="modal-background wave-modal-background" />
+                <div className="modal-content wave-modal-content erconn-wave-modal-content">
+                    <div className="wave-modal-content-inner erconn-wave-modal-content-inner">
+                        <header className="wave-modal-header erconn-wave-modal-header">
+                            <div className="wave-modal-title erconn-wave-modal-title">Edit Connection</div>
+                            <div className="wave-modal-close erconn-wave-modal-close" onClick={model.closeModal}>
+                                <img src={close} alt="Close (Escape)" />
+                            </div>
+                        </header>
+                        <div className="wave-modal-body erconn-wave-modal-body">
+                            <div className="name-actions-section">
+                                <div className="name text-primary">{getName(remote)}</div>
+                                <div className="header-actions">
+                                    <Button theme="secondary" onClick={this.clickArchive}>
+                                        Delete
+                                    </Button>
+                                    <Button theme="secondary" onClick={this.clickForceInstall}>
+                                        Force Install
+                                    </Button>
+                                </div>
+                            </div>
+                            <div className="alias-section">
+                                <TextField
+                                    label="Alias"
+                                    onChange={this.handleChangeAlias}
+                                    value={this.tempAlias.get()}
+                                    maxLength={100}
+                                    decoration={{
+                                        endDecoration: (
+                                            <InputDecoration>
+                                                <Tooltip
+                                                    message={`(Optional) A short alias to use when selecting or displaying this connection.`}
+                                                    icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                                >
+                                                    <i className="fa-sharp fa-regular fa-circle-question" />
+                                                </Tooltip>
+                                            </InputDecoration>
+                                        ),
+                                    }}
+                                />
+                            </div>
+                            <div className="authmode-section">
+                                <Dropdown
+                                    label="Auth Mode"
+                                    options={[
+                                        { value: "none", label: "none" },
+                                        { value: "key", label: "key" },
+                                        { value: "password", label: "password" },
+                                        { value: "key+password", label: "key+password" },
+                                    ]}
+                                    value={this.tempAuthMode.get()}
+                                    onChange={this.handleChangeAuthMode}
+                                    decoration={{
+                                        endDecoration: (
+                                            <InputDecoration>
+                                                <Tooltip
+                                                    message={
+                                                        <ul>
+                                                            <li>
+                                                                <b>none</b> - no authentication, or authentication is
+                                                                already configured in your ssh config.
+                                                            </li>
+                                                            <li>
+                                                                <b>key</b> - use a private key.
+                                                            </li>
+                                                            <li>
+                                                                <b>password</b> - use a password.
+                                                            </li>
+                                                            <li>
+                                                                <b>key+password</b> - use a key with a passphrase.
+                                                            </li>
+                                                        </ul>
+                                                    }
+                                                    icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                                >
+                                                    <i className="fa-sharp fa-regular fa-circle-question" />
+                                                </Tooltip>
+                                            </InputDecoration>
+                                        ),
+                                    }}
+                                />
+                            </div>
+                            <If condition={authMode == "key" || authMode == "key+password"}>
+                                <TextField
+                                    label="SSH Keyfile"
+                                    placeholder="keyfile path"
+                                    onChange={this.handleChangeKeyFile}
+                                    value={this.tempKeyFile.get()}
+                                    maxLength={400}
+                                    required={true}
+                                    decoration={{
+                                        endDecoration: (
+                                            <InputDecoration>
+                                                <Tooltip
+                                                    message={`(Required) The path to your ssh key file.`}
+                                                    icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                                >
+                                                    <i className="fa-sharp fa-regular fa-circle-question" />
+                                                </Tooltip>
+                                            </InputDecoration>
+                                        ),
+                                    }}
+                                />
+                            </If>
+                            <If condition={authMode == "password" || authMode == "key+password"}>
+                                <PasswordField
+                                    label={authMode == "password" ? "SSH Password" : "Key Passphrase"}
+                                    placeholder="password"
+                                    onChange={this.handleChangePassword}
+                                    value={this.tempPassword.get()}
+                                    maxLength={400}
+                                />
+                            </If>
+                            <div className="connectmode-section">
+                                <Dropdown
+                                    label="Connect Mode"
+                                    options={[
+                                        { value: "startup", label: "startup" },
+                                        { value: "key", label: "key" },
+                                        { value: "auto", label: "auto" },
+                                        { value: "manual", label: "manual" },
+                                    ]}
+                                    value={this.tempConnectMode.get()}
+                                    onChange={this.handleChangeConnectMode}
+                                />
+                            </div>
+                            <If condition={!util.isBlank(remoteEdit.errorstr)}>
+                                <div className="settings-field settings-error">Error: {remoteEdit.errorstr}</div>
+                            </If>
+                        </div>
+                        <footer className="wave-modal-footer erconn-wave-modal-footer">
+                            <div className="action-buttons">
+                                <Button theme="secondary" onClick={() => model.openReadModal(remote.remoteid)}>
+                                    Cancel
+                                </Button>
+                                <Button onClick={this.submitRemote}>Save</Button>
+                            </div>
+                        </footer>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+}
+
+const getName = (remote: T.RemoteType) => {
+    const { remotealias, remotecanonicalname } = remote;
+    return remotealias ? `${remotealias} [${remotecanonicalname}]` : remotecanonicalname;
+};
+
+export {
+    LoadingSpinner,
+    ClientStopModal,
+    AlertModal,
+    DisconnectedModal,
+    TosModal,
+    AboutModal,
+    CreateRemoteConnModal,
+    ViewRemoteConnDetailModal,
+    EditRemoteConnModal,
+};
