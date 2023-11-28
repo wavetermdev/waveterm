@@ -2766,12 +2766,9 @@ class RemotesModel {
 
     openEditModal(redit?: RemoteEditType): void {
         if (redit === undefined) {
-            console.log("openEditModal 1");
             this.startEditAuth();
         }
         if (redit != null) {
-            console.log("openEditModal 2", redit);
-
             mobx.action(() => {
                 this.selectedRemoteId.set(redit.remoteid);
                 this.remoteEdit.set(redit);

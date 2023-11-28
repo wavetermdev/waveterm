@@ -885,11 +885,11 @@ class ViewRemoteConnDetailModal extends React.Component<{ model: RemotesModel; r
     clickArchive(): void {
         let { remote } = this.props;
         if (remote.status == "connected") {
-            GlobalModel.showAlert({ message: "Cannot archived a connected remote.  Disconnect and try again." });
+            GlobalModel.showAlert({ message: "Cannot delete a connected connection.  Disconnect and try again." });
             return;
         }
         let prtn = GlobalModel.showAlert({
-            message: "Are you sure you want to archive this connection?",
+            message: "Are you sure you want to delete this connection?",
             confirm: true,
         });
         prtn.then((confirm) => {
@@ -935,7 +935,7 @@ class ViewRemoteConnDetailModal extends React.Component<{ model: RemotesModel; r
         let buttons: React.ReactNode[] = [];
         const archiveButton = (
             <Button theme="secondary" onClick={() => this.clickArchive()}>
-                Archive
+                Delete
             </Button>
         );
         const disconnectButton = (
@@ -1151,7 +1151,7 @@ class EditRemoteConnModal extends React.Component<
     constructor(props: any) {
         super(props);
         const { remote, remoteEdit } = this.props;
-        console.log("remoteEdit", remoteEdit);
+        // console.log("remoteEdit", remoteEdit);
         this.tempAlias = mobx.observable.box(remote.remotealias ?? "", { name: "EditRemoteSettings-alias" });
         this.tempAuthMode = mobx.observable.box(remote.authtype, { name: "EditRemoteSettings-authMode" });
         this.tempConnectMode = mobx.observable.box(remote.connectmode, { name: "EditRemoteSettings-connectMode" });
@@ -1173,11 +1173,11 @@ class EditRemoteConnModal extends React.Component<
     clickArchive(): void {
         let { remote } = this.props;
         if (remote.status == "connected") {
-            GlobalModel.showAlert({ message: "Cannot archived a connected remote.  Disconnect and try again." });
+            GlobalModel.showAlert({ message: "Cannot delete a connected connection.  Disconnect and try again." });
             return;
         }
         let prtn = GlobalModel.showAlert({
-            message: "Are you sure you want to archive this connection?",
+            message: "Are you sure you want to delete this connection?",
             confirm: true,
         });
         prtn.then((confirm) => {
@@ -1323,7 +1323,7 @@ class EditRemoteConnModal extends React.Component<
                                 <div className="name text-primary">{getName(remote)}</div>
                                 <div className="header-actions">
                                     <Button theme="secondary" onClick={this.clickArchive}>
-                                        Archive
+                                        Delete
                                     </Button>
                                     <Button theme="secondary" onClick={this.clickForceInstall}>
                                         Force Install

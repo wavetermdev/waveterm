@@ -106,6 +106,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
 
         let items = util.sortAndFilterRemotes(GlobalModel.remotes.slice());
         let remote = this.props.model.selectedRemoteId.get();
+        let item: T.RemoteType = null;
 
         return (
             <div className={cn("connections-view")}>
