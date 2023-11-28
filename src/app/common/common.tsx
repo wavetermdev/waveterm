@@ -99,7 +99,7 @@ class Toggle extends React.Component<{ checked: boolean; onChange: (value: boole
 }
 
 class Checkbox extends React.Component<
-    { checked: boolean; onChange: (value: boolean) => void; label: string; id: string },
+    { checked: boolean; onChange: (value: boolean) => void; label: React.ReactNode; id: string },
     {}
 > {
     render() {

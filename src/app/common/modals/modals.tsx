@@ -334,7 +334,7 @@ class TosModal extends React.Component<{}, {}> {
                             <div>
                                 <Checkbox
                                     checked={this.state.isChecked}
-                                    label="I accept the Terms of Service"
+                                    label={<>By continuing, I accept the&nbsp;<a href="https://www.waveterm.dev/tos">Terms of Service</a></>}
                                     id="accept-tos"
                                     onChange={this.handleCheckboxChange}
                                 />
