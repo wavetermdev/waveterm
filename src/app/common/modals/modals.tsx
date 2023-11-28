@@ -600,6 +600,13 @@ class CreateRemoteConnModal extends React.Component<{ remotesModel?: RemotesMode
     }
 
     @boundMethod
+    handleChangeAuthMode(value: string): void {
+        mobx.action(() => {
+            this.tempAuthMode.set(value);
+        })();
+    }
+
+    @boundMethod
     handleChangePort(value: string): void {
         mobx.action(() => {
             this.tempPort.set(value);
@@ -610,6 +617,13 @@ class CreateRemoteConnModal extends React.Component<{ remotesModel?: RemotesMode
     handleChangeHostName(value: string): void {
         mobx.action(() => {
             this.tempHostName.set(value);
+        })();
+    }
+
+    @boundMethod
+    handleChangeConnectMode(value: string): void {
+        mobx.action(() => {
+            this.tempConnectMode.set(value);
         })();
     }
 
