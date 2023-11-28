@@ -2709,13 +2709,10 @@ class RemotesModalModel {
 }
 
 class RemotesModel {
-    modalMode: OV<null | "read" | "add" | "edit"> = mobx.observable.box(null, {
-        name: "RemotesModel-modalMode",
-    });
-    selectedRemoteId: OV<string> = mobx.observable.box(null, {
+    selectedRemoteId: OV<string | null> = mobx.observable.box(null, {
         name: "RemotesModel-selectedRemoteId",
     });
-    remoteTermWrap: TermWrap;
+    remoteTermWrap: TermWrap | null = null;
     remoteTermWrapFocus: OV<boolean> = mobx.observable.box(false, {
         name: "RemotesModel-remoteTermWrapFocus",
     });
@@ -2723,16 +2720,12 @@ class RemotesModel {
         name: "RemotesModel-showNoInputMg",
     });
     showNoInputTimeoutId: any = null;
-    remoteEdit: OV<RemoteEditType> = mobx.observable.box(null, {
+    remoteEdit: OV<RemoteEditType | null> = mobx.observable.box(null, {
         name: "RemotesModel-remoteEdit",
     });
     recentConnAddedState: OV<boolean> = mobx.observable.box(false, {
         name: "RemotesModel-recentlyAdded",
     });
-
-    isOpen(): boolean {
-        return this.modalMode.get() != null;
-    }
 
     get recentConnAdded(): boolean {
         return this.recentConnAddedState.get();
@@ -2753,29 +2746,40 @@ class RemotesModel {
         mobx.action(() => {
             this.selectedRemoteId.set(remoteId);
             this.remoteEdit.set(null);
-            this.modalMode.set("read");
         })();
     }
 
     openAddModal(redit: RemoteEditType): void {
         mobx.action(() => {
             this.remoteEdit.set(redit);
-            this.modalMode.set("add");
         })();
+    }
+
+    prepareReadModal(remoteId: string): boolean {
+        mobx.action(() => {
+            this.selectedRemoteId.set(remoteId);
+            this.remoteEdit.set(null);
+        })();
+        return true;
+    }
+
+    prepareAddModal(redit: RemoteEditType): boolean {
+        mobx.action(() => {
+            this.remoteEdit.set(redit);
+        })();
+        return true;
     }
 
     openEditModal(redit?: RemoteEditType): void {
         if (redit === undefined) {
             console.log("openEditModal 1");
             this.startEditAuth();
-        }
-        if (redit != null) {
+        } else {
             console.log("openEditModal 2", redit);
 
             mobx.action(() => {
-                this.selectedRemoteId.set(redit.remoteid);
-                this.remoteEdit.set(redit);
-                this.modalMode.set("edit");
+                this.selectedRemoteId.set(redit?.remoteid ?? null);
+                this.remoteEdit.set(redit ?? null);
             })();
         }
     }
@@ -2798,10 +2802,6 @@ class RemotesModel {
         }
     }
 
-    getModalMode(): string {
-        return this.modalMode.get();
-    }
-
     isAuthEditMode(): boolean {
         return this.remoteEdit.get() != null;
     }
@@ -2809,14 +2809,14 @@ class RemotesModel {
     @boundMethod
     closeModal(): void {
         mobx.action(() => {
-            this.modalMode.set(null);
+            GlobalModel.modalStore.popModal();
             this.selectedRemoteId.set(null);
         })();
         setTimeout(() => GlobalModel.refocus(), 10);
     }
 
     disposeTerm(): void {
-        if (this.remoteTermWrap == null) {
+        if (this.remoteTermWrap == undefined) {
             return;
         }
         this.remoteTermWrap.dispose();
@@ -2827,7 +2827,7 @@ class RemotesModel {
     }
 
     receiveData(remoteId: string, ptyPos: number, ptyData: Uint8Array, reason?: string) {
-        if (this.remoteTermWrap == null) {
+        if (this.remoteTermWrap == undefined) {
             return;
         }
         if (this.remoteTermWrap.getContextRemoteId() != remoteId) {
@@ -2860,7 +2860,10 @@ class RemotesModel {
     }
 
     @boundMethod
-    termKeyHandler(remoteId: string, event: any, termWrap: TermWrap): void {
+    termKeyHandler(remoteId: string | null, event: any, termWrap: TermWrap): void {
+        if (remoteId === null) {
+            return;
+        }
         let remote = GlobalModel.getRemote(remoteId);
         if (remote == null) {
             return;
@@ -2880,7 +2883,7 @@ class RemotesModel {
     createTermWrap(elem: HTMLElement): void {
         this.disposeTerm();
         let remoteId = this.selectedRemoteId.get();
-        if (remoteId == null) {
+        if (remoteId == undefined) {
             return;
         }
         let termOpts = {
@@ -2893,7 +2896,7 @@ class RemotesModel {
             termContext: { remoteId: remoteId },
             usedRows: RemotePtyRows,
             termOpts: termOpts,
-            winSize: null,
+            winSize: undefined,
             keyHandler: (e, termWrap) => {
                 this.termKeyHandler(remoteId, e, termWrap);
             },
@@ -2901,7 +2904,7 @@ class RemotesModel {
             isRunning: true,
             fontSize: GlobalModel.termFontSize.get(),
             ptyDataSource: getTermPtyData,
-            onUpdateContentHeight: null,
+            onUpdateContentHeight: undefined,
         });
         this.remoteTermWrap = termWrap;
     }
@@ -2911,8 +2914,12 @@ class ModalRegistry {
     registry: { [key: string]: () => React.ReactNode } = {};
 
     @boundMethod
-    registerModal(id: string, componentFactory: () => React.ReactNode) {
-        this.registry[id] = componentFactory;
+    registerModals(modalFactories: { [id: string]: () => React.ReactNode }) {
+        for (const id in modalFactories) {
+            if (modalFactories.hasOwnProperty(id)) {
+                this.registry[id] = modalFactories[id];
+            }
+        }
     }
 
     @boundMethod
@@ -2928,13 +2935,13 @@ class ModalStore {
         mobx.makeAutoObservable(this);
     }
 
-    pushModal(modalId: string) {
-        const ModalComponent = GlobalModel.modalRegistry.getModal(modalId);
-        // console.log("modalFactory", modalFactory);
-        if (ModalComponent) {
-            // const modalElement = modalFactory();
-            // console.log("modalElement", modalElement);
-            this.modals.push(ModalComponent);
+    pushModal(modalId: string, beforeHook = () => true, afterHook = () => {}) {
+        if (beforeHook()) {
+            const ModalComponent = GlobalModel.modalRegistry.getModal(modalId);
+            if (ModalComponent) {
+                this.modals.push(ModalComponent);
+            }
+            afterHook();
         }
     }
 
@@ -3862,13 +3869,11 @@ class Model {
         return newWin;
     }
 
-    getRemote(remoteId: string): RemoteType {
-        for (let i = 0; i < this.remotes.length; i++) {
-            if (this.remotes[i].remoteid == remoteId) {
-                return this.remotes[i];
-            }
+    getRemote(remoteId: string | null): RemoteType | null {
+        if (remoteId == null) {
+            return null;
         }
-        return null;
+        return this.remotes.find((remote) => remote.remoteid === remoteId) || null;
     }
 
     getRemoteNames(): Record<string, string> {

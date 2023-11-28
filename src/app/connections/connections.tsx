@@ -17,12 +17,12 @@ import "./connections.less";
 type OV<V> = mobx.IObservableValue<V>;
 
 @mobxReact.observer
-class ConnectionsView extends React.Component<{ model: RemotesModel }, { hoveredItemId: string }> {
+class ConnectionsView extends React.Component<{ model: RemotesModel }, { hoveredItemId: string | null }> {
     tableRef: React.RefObject<any> = React.createRef();
     tableWidth: OV<number> = mobx.observable.box(0, { name: "tableWidth" });
-    tableRszObs: ResizeObserver;
+    tableRszObs: ResizeObserver | null = null;
 
-    constructor(props) {
+    constructor(props: { model: RemotesModel }) {
         super(props);
         this.state = {
             hoveredItemId: null,
@@ -60,12 +60,14 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
 
     @boundMethod
     handleAddConnection(): void {
-        GlobalModel.remotesModel.openAddModal({ remoteedit: true });
+        GlobalModel.modalStore.pushModal("createRemote", () =>
+            GlobalModel.remotesModel.prepareAddModal({ remoteedit: true })
+        );
     }
 
     @boundMethod
     handleRead(remoteId: string): void {
-        GlobalModel.remotesModel.openReadModal(remoteId);
+        GlobalModel.modalStore.pushModal("viewRemote", () => GlobalModel.remotesModel.prepareReadModal(remoteId));
     }
 
     @boundMethod
@@ -105,7 +107,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
         }
 
         let items = util.sortAndFilterRemotes(GlobalModel.remotes.slice());
-        let remote = this.props.model.selectedRemoteId.get();
+        let item: T.RemoteType | null = null;
 
         return (
             <div className={cn("connections-view")}>
@@ -141,21 +143,21 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
                     <tbody>
                         <For index="idx" each="item" of={items}>
                             <tr
-                                key={item.remoteid}
+                                key={item!.remoteid}
                                 className={cn("connections-item", {
-                                    hovered: this.state.hoveredItemId === item.remoteid,
+                                    hovered: this.state.hoveredItemId === item!.remoteid,
                                 })}
-                                onClick={() => this.handleRead(item.remoteid)} // Moved onClick here
+                                onClick={() => this.handleRead(item!.remoteid)} // Moved onClick here
                             >
                                 <td className="col-name">
-                                    <div>{this.getName(item)}</div>
+                                    <div>{this.getName(item!)}</div>
                                 </td>
                                 <td className="col-type">
-                                    <div>{item.remotetype}</div>
+                                    <div>{item!.remotetype}</div>
                                 </td>
                                 <td className="col-status">
                                     <div>
-                                        <Status status={this.getStatus(item.status)} text={item.status} />
+                                        <Status status={this.getStatus(item!.status)} text={item!.status} />
                                     </div>
                                 </td>
                             </tr>

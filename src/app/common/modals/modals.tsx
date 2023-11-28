@@ -44,7 +44,7 @@ const PasswordUnchangedSentinel = "--unchanged--";
 class ModalProvider extends React.Component {
     render() {
         const ActiveModal = GlobalModel.modalStore.activeModal;
-        return <>{ActiveModal ? React.createElement(ActiveModal) : null}</>;
+        return <>{ActiveModal ? <ActiveModal /> : null}</>;
     }
 }
 
@@ -473,8 +473,9 @@ class AboutModal extends React.Component<{}, {}> {
     }
 }
 
+@mobxReact.inject("remotesModel")
 @mobxReact.observer
-class CreateRemoteConnModal extends React.Component<{ model: RemotesModel; remoteEdit: T.RemoteEditType }, {}> {
+class CreateRemoteConnModal extends React.Component<{ remotesModel?: RemotesModel }, {}> {
     tempAlias: OV<string>;
     tempHostName: OV<string>;
     tempPort: OV<string>;
@@ -482,11 +483,14 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModel; remot
     tempConnectMode: OV<string>;
     tempPassword: OV<string>;
     tempKeyFile: OV<string>;
-    errorStr: OV<string>;
+    errorStr: OV<string | null>;
+    remoteEdit: T.RemoteEditType | null;
+    model: RemotesModel;
 
-    constructor(props: any) {
+    constructor(props: { remotesModel?: RemotesModel }) {
         super(props);
-        let { remoteEdit } = this.props;
+        this.model = this.props.remotesModel as RemotesModel;
+        this.remoteEdit = this.model.remoteEdit.get();
         this.tempAlias = mobx.observable.box("", { name: "CreateRemote-alias" });
         this.tempHostName = mobx.observable.box("", { name: "CreateRemote-hostName" });
         this.tempPort = mobx.observable.box("", { name: "CreateRemote-port" });
@@ -494,7 +498,7 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModel; remot
         this.tempConnectMode = mobx.observable.box("auto", { name: "CreateRemote-connectMode" });
         this.tempKeyFile = mobx.observable.box("", { name: "CreateRemote-keystr" });
         this.tempPassword = mobx.observable.box("", { name: "CreateRemote-password" });
-        this.errorStr = mobx.observable.box(remoteEdit.errorstr, { name: "CreateRemote-errorStr" });
+        this.errorStr = mobx.observable.box(this.remoteEdit?.errorstr ?? null, { name: "CreateRemote-errorStr" });
     }
 
     remoteCName(): string {
@@ -508,11 +512,11 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModel; remot
         return hostName;
     }
 
-    getErrorStr(): string {
+    getErrorStr(): string | null {
         if (this.errorStr.get() != null) {
             return this.errorStr.get();
         }
-        return this.props.remoteEdit.errorstr;
+        return this.remoteEdit?.errorstr ?? null;
     }
 
     @boundMethod
@@ -552,7 +556,7 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModel; remot
         kwargs["connectmode"] = this.tempConnectMode.get();
         kwargs["visual"] = "1";
         kwargs["submit"] = "1";
-        let model = this.props.model;
+        let model = this.model;
         let prtn = GlobalCommandRunner.createRemote(cname, kwargs, false);
         prtn.then((crtn) => {
             if (crtn.success) {
@@ -562,13 +566,13 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModel; remot
                         return;
                     }
                     mobx.action(() => {
-                        this.errorStr.set(crcrtn.error);
+                        this.errorStr.set(crcrtn.error ?? null);
                     })();
                 });
                 return;
             }
             mobx.action(() => {
-                this.errorStr.set(crtn.error);
+                this.errorStr.set(crtn.error ?? null);
             })();
         });
         model.seRecentConnAdded(true);
@@ -610,12 +614,15 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModel; remot
     }
 
     render() {
-        let { model } = this.props;
         let authMode = this.tempAuthMode.get();
+
+        if (this.remoteEdit == null) {
+            return null;
+        }
 
         return (
             <Modal
-                onClose={model.closeModal}
+                onClose={this.model.closeModal}
                 onOk={this.submitRemote}
                 title="Add Connection"
                 okLabel="Connect"
@@ -775,7 +782,7 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModel; remot
                             }}
                         />
                     </div>
-                    <If condition={!util.isBlank(this.getErrorStr())}>
+                    <If condition={!util.isBlank(this.getErrorStr() as string)}>
                         <div className="settings-field settings-error">Error: {this.getErrorStr()}</div>
                     </If>
                 </Modal.Body>
@@ -785,9 +792,22 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModel; remot
     }
 }
 
+@mobxReact.inject("remotesModel")
 @mobxReact.observer
-class ViewRemoteConnDetailModal extends React.Component<{ model: RemotesModel; remote: T.RemoteType }, {}> {
+class ViewRemoteConnDetailModal extends React.Component<{ remotesModel?: RemotesModel }, {}> {
     termRef: React.RefObject<any> = React.createRef();
+    model: RemotesModel;
+
+    constructor(props: { remotesModel?: RemotesModel }) {
+        super(props);
+        this.model = this.props.remotesModel as RemotesModel;
+    }
+
+    @mobx.computed
+    get selectedRemote(): T.RemoteType | null {
+        const selectedRemoteId = this.model.selectedRemoteId.get();
+        return GlobalModel.getRemote(selectedRemoteId);
+    }
 
     componentDidMount() {
         let elem = this.termRef.current;
@@ -795,24 +815,23 @@ class ViewRemoteConnDetailModal extends React.Component<{ model: RemotesModel; r
             console.log("ERROR null term-remote element");
             return;
         }
-        this.props.model.createTermWrap(elem);
+        this.model.createTermWrap(elem);
     }
 
     componentDidUpdate() {
-        let { remote } = this.props;
-        if (remote == null || remote.archived) {
-            this.props.model.deSelectRemote();
+        if (this.selectedRemote == null || this.selectedRemote.archived) {
+            this.model.deSelectRemote();
         }
     }
 
     componentWillUnmount() {
-        this.props.model.disposeTerm();
+        this.model.disposeTerm();
     }
 
     @boundMethod
     clickTermBlock(): void {
-        if (this.props.model.remoteTermWrap != null) {
-            this.props.model.remoteTermWrap.giveFocus();
+        if (this.model.remoteTermWrap != null) {
+            this.model.remoteTermWrap.giveFocus();
         }
     }
 
@@ -847,7 +866,7 @@ class ViewRemoteConnDetailModal extends React.Component<{ model: RemotesModel; r
 
     @boundMethod
     openEditModal(): void {
-        this.props.model.openEditModal();
+        this.model.openEditModal();
     }
 
     @boundMethod
@@ -864,8 +883,7 @@ class ViewRemoteConnDetailModal extends React.Component<{ model: RemotesModel; r
 
     @boundMethod
     clickArchive(): void {
-        let { remote } = this.props;
-        if (remote.status == "connected") {
+        if (this.selectedRemote && this.selectedRemote.status == "connected") {
             GlobalModel.showAlert({ message: "Cannot archived a connected remote.  Disconnect and try again." });
             return;
         }
@@ -877,19 +895,20 @@ class ViewRemoteConnDetailModal extends React.Component<{ model: RemotesModel; r
             if (!confirm) {
                 return;
             }
-            GlobalCommandRunner.archiveRemote(remote.remoteid);
+            if (this.selectedRemote) {
+                GlobalCommandRunner.archiveRemote(this.selectedRemote.remoteid);
+            }
         });
     }
 
     @boundMethod
     handleClose(): void {
-        let { model } = this.props;
-        model.closeModal();
-        model.seRecentConnAdded(false);
+        this.model.closeModal();
+        this.model.seRecentConnAdded(false);
     }
 
     renderInstallStatus(remote: T.RemoteType): any {
-        let statusStr: string = null;
+        let statusStr: string | null = null;
         if (remote.installstatus == "disconnected") {
             if (remote.needsmshellupgrade) {
                 statusStr = "mshell " + remote.mshellversion + " - needs upgrade";
@@ -1009,8 +1028,14 @@ class ViewRemoteConnDetailModal extends React.Component<{ model: RemotesModel; r
     }
 
     render() {
-        let { model, remote } = this.props;
-        let isTermFocused = model.remoteTermWrapFocus.get();
+        let remote = this.selectedRemote;
+
+        if (remote == null) {
+            return null;
+        }
+
+        let model = this.model;
+        let isTermFocused = this.model.remoteTermWrapFocus.get();
         let termFontSize = GlobalModel.termFontSize.get();
         let termWidth = textmeasure.termWidthFromCols(RemotePtyCols, termFontSize);
         let remoteAliasText = util.isBlank(remote.remotealias) ? "(none)" : remote.remotealias;

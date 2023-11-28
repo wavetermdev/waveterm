@@ -49,10 +49,16 @@ class App extends React.Component<{}, {}> {
     constructor(props: any) {
         super(props);
         if (GlobalModel.isDev) document.body.className = "is-dev";
+    }
 
+    componentDidMount() {
         // Register modals
-        const { registerModal } = GlobalModel.modalRegistry;
-        registerModal("about", () => <AboutModal />);
+        const { registerModals } = GlobalModel.modalRegistry;
+        registerModals({
+            about: () => <AboutModal />,
+            createRemote: () => <CreateRemoteConnModal />,
+            viewRemote: () => <ViewRemoteConnDetailModal />,
+        });
     }
 
     @boundMethod
@@ -94,7 +100,6 @@ class App extends React.Component<{}, {}> {
         let lineSettingsModal = GlobalModel.lineSettingsModal.get();
         let clientSettingsModal = GlobalModel.clientSettingsModal.get();
         let remotesModel = GlobalModel.remotesModel;
-        let remotesModalMode = remotesModel.modalMode.get();
         let selectedRemoteId = remotesModel.selectedRemoteId.get();
         let selectedRemote = GlobalModel.getRemote(selectedRemoteId);
         let isAuthEditMode = remotesModel.isAuthEditMode();
@@ -129,62 +134,58 @@ class App extends React.Component<{}, {}> {
             setTimeout(() => this.updateDcWait(false), 0);
         }
         return (
-            <div id="main" className={"platform-" + platform} onContextMenu={this.handleContextMenu}>
-                <div className="main-content">
-                    <MainSideBar />
-                    <ErrorBoundary>
-                        <PluginsView />
-                        <WorkspaceView />
-                        <HistoryView />
-                        <BookmarksView />
-                        <ConnectionsView model={remotesModel} />
-                    </ErrorBoundary>
+            <mobxReact.Provider remotesModel={remotesModel}>
+                <div id="main" className={"platform-" + platform} onContextMenu={this.handleContextMenu}>
+                    <div className="main-content">
+                        <MainSideBar />
+                        <ErrorBoundary>
+                            <PluginsView />
+                            <WorkspaceView />
+                            <HistoryView />
+                            <BookmarksView />
+                            <ConnectionsView model={remotesModel} />
+                        </ErrorBoundary>
+                    </div>
+                    <AlertModal />
+                    <If condition={GlobalModel.needsTos()}>
+                        <TosModal />
+                    </If>
+                    <ModalProvider />
+                    <If condition={selectedRemote != null}>
+                        {/* <If condition={!isAuthEditMode && remotesModalMode === "read"}>
+                            <ViewRemoteConnDetailModal
+                                key={"remotedetail-" + selectedRemoteId}
+                                remote={selectedRemote}
+                                model={remotesModel}
+                            />
+                        </If>
+                        <If condition={remoteEdit !== null && isAuthEditMode && remotesModalMode === "edit"}>
+                            <EditRemoteConnModal
+                                key={"remotedetail-" + selectedRemoteId}
+                                remote={selectedRemote}
+                                model={remotesModel}
+                                remoteEdit={remoteEdit}
+                            />
+                        </If> */}
+                    </If>
+                    <If condition={screenSettingsModal != null}>
+                        <ScreenSettingsModal
+                            key={screenSettingsModal.sessionId + ":" + screenSettingsModal.screenId}
+                            sessionId={screenSettingsModal.sessionId}
+                            screenId={screenSettingsModal.screenId}
+                        />
+                    </If>
+                    <If condition={sessionSettingsModal != null}>
+                        <SessionSettingsModal key={sessionSettingsModal} sessionId={sessionSettingsModal} />
+                    </If>
+                    <If condition={lineSettingsModal != null}>
+                        <LineSettingsModal key={String(lineSettingsModal)} linenum={lineSettingsModal} />
+                    </If>
+                    <If condition={clientSettingsModal}>
+                        <ClientSettingsModal />
+                    </If>
                 </div>
-                <AlertModal />
-                <If condition={GlobalModel.needsTos()}>
-                    <TosModal />
-                </If>
-                {/* <If condition={GlobalModel.aboutModalOpen.get()}>
-                    <AboutModal />
-                </If> */}
-                <ModalProvider />
-                <If condition={remoteEdit !== null && remotesModalMode === "add"}>
-                    <CreateRemoteConnModal model={remotesModel} remoteEdit={remoteEdit} />
-                </If>
-                <If condition={selectedRemote != null}>
-                    <If condition={!isAuthEditMode && remotesModalMode === "read"}>
-                        <ViewRemoteConnDetailModal
-                            key={"remotedetail-" + selectedRemoteId}
-                            remote={selectedRemote}
-                            model={remotesModel}
-                        />
-                    </If>
-                    <If condition={remoteEdit !== null && isAuthEditMode && remotesModalMode === "edit"}>
-                        <EditRemoteConnModal
-                            key={"remotedetail-" + selectedRemoteId}
-                            remote={selectedRemote}
-                            model={remotesModel}
-                            remoteEdit={remoteEdit}
-                        />
-                    </If>
-                </If>
-                <If condition={screenSettingsModal != null}>
-                    <ScreenSettingsModal
-                        key={screenSettingsModal.sessionId + ":" + screenSettingsModal.screenId}
-                        sessionId={screenSettingsModal.sessionId}
-                        screenId={screenSettingsModal.screenId}
-                    />
-                </If>
-                <If condition={sessionSettingsModal != null}>
-                    <SessionSettingsModal key={sessionSettingsModal} sessionId={sessionSettingsModal} />
-                </If>
-                <If condition={lineSettingsModal != null}>
-                    <LineSettingsModal key={String(lineSettingsModal)} linenum={lineSettingsModal} />
-                </If>
-                <If condition={clientSettingsModal}>
-                    <ClientSettingsModal />
-                </If>
-            </div>
+            </mobxReact.Provider>
         );
     }
 }
