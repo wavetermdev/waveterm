@@ -604,6 +604,13 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModel; remot
     }
 
     @boundMethod
+    handleChangeAuthMode(value: string): void {
+        mobx.action(() => {
+            this.tempAuthMode.set(value);
+        })();
+    }
+
+    @boundMethod
     handleChangePort(value: string): void {
         mobx.action(() => {
             this.tempPort.set(value);
@@ -614,6 +621,13 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModel; remot
     handleChangeHostName(value: string): void {
         mobx.action(() => {
             this.tempHostName.set(value);
+        })();
+    }
+
+    @boundMethod
+    handleChangeConnectMode(value: string): void {
+        mobx.action(() => {
+            this.tempConnectMode.set(value);
         })();
     }
 
@@ -706,9 +720,7 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModel; remot
                                         { value: "key+password", label: "key+password" },
                                     ]}
                                     value={this.tempAuthMode.get()}
-                                    onChange={(val: string) => {
-                                        this.tempAuthMode.set(val);
-                                    }}
+                                    onChange={this.handleChangeAuthMode}
                                     decoration={{
                                         endDecoration: (
                                             <InputDecoration>
@@ -780,9 +792,7 @@ class CreateRemoteConnModal extends React.Component<{ model: RemotesModel; remot
                                         { value: "manual", label: "manual" },
                                     ]}
                                     value={this.tempConnectMode.get()}
-                                    onChange={(val: string) => {
-                                        this.tempConnectMode.set(val);
-                                    }}
+                                    onChange={this.handleChangeConnectMode}
                                 />
                             </div>
                             <If condition={!util.isBlank(this.getErrorStr())}>
@@ -1216,6 +1226,20 @@ class EditRemoteConnModal extends React.Component<
     }
 
     @boundMethod
+    handleChangeConnectMode(value: string): void {
+        mobx.action(() => {
+            this.tempConnectMode.set(value);
+        })();
+    }
+
+    @boundMethod
+    handleChangeAuthMode(value: string): void {
+        mobx.action(() => {
+            this.tempAuthMode.set(value);
+        })();
+    }
+
+    @boundMethod
     canResetPw(): boolean {
         let { remoteEdit } = this.props;
         if (remoteEdit == null) {
@@ -1266,13 +1290,17 @@ class EditRemoteConnModal extends React.Component<
             kwargs["connectmode"] = this.tempConnectMode.get();
         }
         if (Object.keys(kwargs).length == 0) {
-            this.submitted.set(true);
+            mobx.action(() => {
+                this.submitted.set(true);
+            })();
             return;
         }
         kwargs["visual"] = "1";
         kwargs["submit"] = "1";
         GlobalCommandRunner.editRemote(remote.remoteid, kwargs);
-        this.submitted.set(true);
+        mobx.action(() => {
+            this.submitted.set(true);
+        })();
         model.seRecentConnAdded(false);
     }
 
@@ -1360,9 +1388,7 @@ class EditRemoteConnModal extends React.Component<
                                         { value: "key+password", label: "key+password" },
                                     ]}
                                     value={this.tempAuthMode.get()}
-                                    onChange={(val: string) => {
-                                        this.tempAuthMode.set(val);
-                                    }}
+                                    onChange={this.handleChangeAuthMode}
                                     decoration={{
                                         endDecoration: (
                                             <InputDecoration>
@@ -1434,9 +1460,7 @@ class EditRemoteConnModal extends React.Component<
                                         { value: "manual", label: "manual" },
                                     ]}
                                     value={this.tempConnectMode.get()}
-                                    onChange={(val: string) => {
-                                        this.tempConnectMode.set(val);
-                                    }}
+                                    onChange={this.handleChangeConnectMode}
                                 />
                             </div>
                             <If condition={!util.isBlank(remoteEdit.errorstr)}>
