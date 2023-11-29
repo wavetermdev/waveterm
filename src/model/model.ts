@@ -2756,27 +2756,36 @@ class RemotesModel {
     }
 
     prepareReadModal(remoteId: string): boolean {
-        mobx.action(() => {
+        return mobx.action(() => {
             this.selectedRemoteId.set(remoteId);
             this.remoteEdit.set(null);
+            return true;
         })();
-        return true;
     }
 
     prepareAddModal(redit: RemoteEditType): boolean {
-        mobx.action(() => {
+        return mobx.action(() => {
             this.remoteEdit.set(redit);
+            return true;
         })();
-        return true;
+    }
+
+    prepareEditModal(redit?: RemoteEditType): boolean {
+        if (redit === undefined) {
+            this.startEditAuth();
+            return true;
+        }
+        return mobx.action(() => {
+            this.selectedRemoteId.set(redit?.remoteid ?? null);
+            this.remoteEdit.set(redit ?? null);
+            return true;
+        })();
     }
 
     openEditModal(redit?: RemoteEditType): void {
         if (redit === undefined) {
-            console.log("openEditModal 1");
             this.startEditAuth();
         } else {
-            console.log("openEditModal 2", redit);
-
             mobx.action(() => {
                 this.selectedRemoteId.set(redit?.remoteid ?? null);
                 this.remoteEdit.set(redit ?? null);
@@ -2810,7 +2819,6 @@ class RemotesModel {
     closeModal(): void {
         mobx.action(() => {
             GlobalModel.modalStoreModel.popModal();
-            this.selectedRemoteId.set(null);
         })();
         setTimeout(() => GlobalModel.refocus(), 10);
     }
@@ -2929,7 +2937,7 @@ class ModalRegistryModel {
 }
 
 class ModalStoreModel {
-    modals: (() => React.ReactNode)[] = [];
+    modals: Array<{ id: string; component: () => React.ReactNode }> = [];
 
     constructor() {
         mobx.makeAutoObservable(this);
@@ -2938,9 +2946,12 @@ class ModalStoreModel {
     pushModal(modalId: string, beforeHook = () => true, afterHook = () => {}) {
         if (beforeHook()) {
             const ModalComponent = GlobalModel.modalRegistryModel.getModal(modalId);
-            if (ModalComponent) {
-                this.modals.push(ModalComponent);
+
+            // Check if the modalId is already present in the array
+            if (ModalComponent && !this.modals.some((modal) => modal.id === modalId)) {
+                this.modals.push({ id: modalId, component: ModalComponent });
             }
+
             afterHook();
         }
     }
@@ -2949,8 +2960,8 @@ class ModalStoreModel {
         this.modals.pop();
     }
 
-    get activeModal() {
-        return this.modals[this.modals.length - 1] || null;
+    get activeModals() {
+        return this.modals.slice().map((modal) => modal.component);
     }
 }
 

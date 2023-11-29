@@ -58,6 +58,7 @@ class App extends React.Component<{}, {}> {
             about: () => <AboutModal />,
             createRemote: () => <CreateRemoteConnModal />,
             viewRemote: () => <ViewRemoteConnDetailModal />,
+            editRemote: () => <EditRemoteConnModal />,
         });
     }
 
@@ -151,23 +152,6 @@ class App extends React.Component<{}, {}> {
                         <TosModal />
                     </If>
                     <ModalProvider />
-                    <If condition={selectedRemote != null}>
-                        {/* <If condition={!isAuthEditMode && remotesModalMode === "read"}>
-                            <ViewRemoteConnDetailModal
-                                key={"remotedetail-" + selectedRemoteId}
-                                remote={selectedRemote}
-                                model={remotesModel}
-                            />
-                        </If>
-                        <If condition={remoteEdit !== null && isAuthEditMode && remotesModalMode === "edit"}>
-                            <EditRemoteConnModal
-                                key={"remotedetail-" + selectedRemoteId}
-                                remote={selectedRemote}
-                                model={remotesModel}
-                                remoteEdit={remoteEdit}
-                            />
-                        </If> */}
-                    </If>
                     <If condition={screenSettingsModal != null}>
                         <ScreenSettingsModal
                             key={screenSettingsModal.sessionId + ":" + screenSettingsModal.screenId}
