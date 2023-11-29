@@ -99,7 +99,7 @@ class Toggle extends React.Component<{ checked: boolean; onChange: (value: boole
 }
 
 class Checkbox extends React.Component<
-    { checked: boolean; onChange: (value: boolean) => void; label: string; id: string },
+    { checked: boolean; onChange: (value: boolean) => void; label: React.ReactNode; id: string },
     {}
 > {
     render() {
@@ -750,7 +750,7 @@ class InlineSettingsTextEdit extends React.Component<
                             <div
                                 onClick={this.confirmChange}
                                 title="Confirm (Enter)"
-                                className="button is-prompt-green is-outlined is-small"
+                                className="button is-wave-green is-outlined is-small"
                             >
                                 <span className="icon is-small">
                                     <i className="fa-sharp fa-solid fa-check" />

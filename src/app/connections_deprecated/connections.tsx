@@ -444,7 +444,7 @@ class CreateRemote extends React.Component<{ model: RemotesModalModel; remoteEdi
                     <div
                         style={{ marginLeft: 10, marginRight: 20 }}
                         onClick={this.submitRemote}
-                        className="button is-prompt-green is-outlined is-small"
+                        className="button is-wave-green is-outlined is-small"
                     >
                         Create Remote
                     </div>
@@ -756,7 +756,7 @@ class EditRemoteSettings extends React.Component<
                     <div
                         style={{ marginLeft: 10, marginRight: 20 }}
                         onClick={this.submitRemote}
-                        className="button is-prompt-green is-outlined is-small"
+                        className="button is-wave-green is-outlined is-small"
                     >
                         Submit
                     </div>
@@ -875,7 +875,7 @@ class RemoteDetailView extends React.Component<{ model: RemotesModalModel; remot
                 key="connect"
                 style={{ marginLeft: 10 }}
                 onClick={() => this.connectRemote(remote.remoteid)}
-                className="button is-prompt-green is-outlined is-small"
+                className="button is-wave-green is-outlined is-small"
             >
                 Connect Now
             </div>
@@ -885,7 +885,7 @@ class RemoteDetailView extends React.Component<{ model: RemotesModalModel; remot
                 key="tryreconnect"
                 style={{ marginLeft: 10 }}
                 onClick={() => this.connectRemote(remote.remoteid)}
-                className="button is-prompt-green is-outlined is-small"
+                className="button is-wave-green is-outlined is-small"
             >
                 Try Reconnect
             </div>
@@ -915,7 +915,7 @@ class RemoteDetailView extends React.Component<{ model: RemotesModalModel; remot
                 key="installnow"
                 style={{ marginLeft: 10 }}
                 onClick={() => this.installRemote(remote.remoteid)}
-                className="button is-prompt-green is-outlined is-small"
+                className="button is-wave-green is-outlined is-small"
             >
                 Install Now
             </div>
@@ -1017,7 +1017,7 @@ class RemoteDetailView extends React.Component<{ model: RemotesModalModel; remot
                     <div className="settings-input">
                         <div
                             onClick={() => this.editAuthSettings()}
-                            className="button is-prompt-green is-outlined is-small is-inline-height"
+                            className="button is-wave-green is-outlined is-small is-inline-height"
                         >
                             Edit Connection Settings
                         </div>

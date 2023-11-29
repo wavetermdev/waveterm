@@ -130,7 +130,7 @@ class CmdInput extends React.Component<{}, {}> {
                         &nbsp;is {remote.status}
                         <If condition={remote.status != "connecting"}>
                             <div
-                                className="button is-prompt-green is-outlined is-small"
+                                className="button is-wave-green is-outlined is-small"
                                 onClick={() => this.clickConnectRemote(remote.remoteid)}
                             >
                                 connect now

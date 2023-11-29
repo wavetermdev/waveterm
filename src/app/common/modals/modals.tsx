@@ -219,12 +219,12 @@ class AlertModal extends React.Component<{}, {}> {
                             <div onClick={this.closeModal} className="button is-prompt-cancel is-outlined is-small">
                                 Cancel
                             </div>
-                            <div onClick={this.handleOK} className="button is-prompt-green is-outlined is-small">
+                            <div onClick={this.handleOK} className="button is-wave-green is-outlined is-small">
                                 OK
                             </div>
                         </If>
                         <If condition={!isConfirm}>
-                            <div onClick={this.handleOK} className="button is-prompt-green is-small">
+                            <div onClick={this.handleOK} className="button is-wave-green is-small">
                                 OK
                             </div>
                         </If>
@@ -237,15 +237,6 @@ class AlertModal extends React.Component<{}, {}> {
 
 @mobxReact.observer
 class TosModal extends React.Component<{}, {}> {
-    state = {
-        isChecked: false,
-    };
-
-    @boundMethod
-    handleCheckboxChange(checked: boolean): void {
-        this.setState({ isChecked: checked });
-    }
-
     @boundMethod
     acceptTos(): void {
         GlobalCommandRunner.clientAcceptTos();
@@ -331,18 +322,12 @@ class TosModal extends React.Component<{}, {}> {
                             </div>
                         </div>
                         <footer className="unselectable">
-                            <div>
-                                <Checkbox
-                                    checked={this.state.isChecked}
-                                    label="I accept the Terms of Service"
-                                    id="accept-tos"
-                                    onChange={this.handleCheckboxChange}
-                                />
+                            <div className="item-text">
+                                By continuing, I accept the&nbsp;
+                                <a href="https://www.waveterm.dev/tos">Terms of Service</a>
                             </div>
                             <div className="button-wrapper">
-                                <Button onClick={this.acceptTos} disabled={!this.state.isChecked}>
-                                    Continue
-                                </Button>
+                                <Button onClick={this.acceptTos}>Continue</Button>
                             </div>
                         </footer>
                     </div>
@@ -462,7 +447,7 @@ class AboutModal extends React.Component<{}, {}> {
                                 <a
                                     className="wave-button wave-button-link color-standard"
                                     href={util.makeExternLink(
-                                        "https://github.com/wavetermdev/waveterm/blob/main/LICENSE"
+                                        "https://github.com/wavetermdev/waveterm/blob/main/LICENSE",
                                     )}
                                     target="_blank"
                                 >
@@ -1107,7 +1092,7 @@ class ViewRemoteConnDetailModal extends React.Component<{ model: RemotesModel; r
                                     className={cn(
                                         "terminal-wrapper",
                                         { focus: isTermFocused },
-                                        remote != null ? "status-" + remote.status : null
+                                        remote != null ? "status-" + remote.status : null,
                                     )}
                                 >
                                     <If condition={!isTermFocused}>
