@@ -1401,7 +1401,10 @@ func ArchiveScreenLines(ctx context.Context, screenId string) (*ModelUpdate, err
 			count := tx.GetInt(query, screenId)
 			fmt.Printf("** archive-screen-lines: wrote into screenupdate: %d\n", count)
 		}
-		query = `UPDATE line SET archived = 1 WHERE screenid = ? AND archived = 0`
+		query = `UPDATE line SET archived = 1
+		         WHERE line.archived = 0 AND line.screenid = ? AND NOT EXISTS (SELECT * FROM cmd c
+				 WHERE line.screenid = c.screenid AND line.lineid = c.lineid AND c.status IN ('running', 'detached')
+				 )`
 		tx.Exec(query, screenId)
 		return nil
 	})
@@ -1709,7 +1712,7 @@ const (
 	ScreenField_SelectedLine = "selectedline" // int
 	ScreenField_Focus        = "focustype"    // string
 	ScreenField_TabColor     = "tabcolor"     // string
-	ScreenField_TabIcon      = "tabicon"     // string
+	ScreenField_TabIcon      = "tabicon"      // string
 	ScreenField_PTerm        = "pterm"        // string
 	ScreenField_Name         = "name"         // string
 	ScreenField_ShareName    = "sharename"    // string
