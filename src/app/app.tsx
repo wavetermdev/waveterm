@@ -80,7 +80,7 @@ class App extends React.Component<{}, {}> {
             opts.showCut = true;
         }
         let sel = window.getSelection();
-        if (!isBlank(sel.toString())) {
+        if (!isBlank(sel?.toString() ?? "")) {
             GlobalModel.contextEditMenu(e, opts);
         } else {
             if (isInNonTermInput) {
