@@ -44,10 +44,10 @@ rm -rf bin/
 rm -rf build/
 node_modules/.bin/webpack --env prod
 GO_LDFLAGS="-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')"
-(cd waveshell; GOOS=darwin GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-darwin.amd64 main-waveshell.go)
-(cd waveshell; GOOS=darwin GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-darwin.arm64 main-waveshell.go)
-(cd waveshell; GOOS=linux GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-linux.amd64 main-waveshell.go)
-(cd waveshell; GOOS=linux GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-linux.arm64 main-waveshell.go)
+(cd waveshell; CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-darwin.amd64 main-waveshell.go)
+(cd waveshell; CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-darwin.arm64 main-waveshell.go)
+(cd waveshell; CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-linux.amd64 main-waveshell.go)
+(cd waveshell; CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-linux.arm64 main-waveshell.go)
 (cd wavesrv; CGO_ENABLED=1 go build -ldflags="$GO_LDFLAGS" -o ../bin/wavesrv ./cmd)
 node_modules/.bin/electron-forge make
 ```
@@ -60,10 +60,10 @@ rm -rf bin/
 rm -rf build/
 node_modules/.bin/webpack --env prod
 GO_LDFLAGS="-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')"
-(cd waveshell; GOOS=darwin GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-darwin.amd64 main-waveshell.go)
-(cd waveshell; GOOS=darwin GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-darwin.arm64 main-waveshell.go)
-(cd waveshell; GOOS=linux GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-linux.amd64 main-waveshell.go)
-(cd waveshell; GOOS=linux GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-linux.arm64 main-waveshell.go)
+(cd waveshell; CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-darwin.amd64 main-waveshell.go)
+(cd waveshell; CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-darwin.arm64 main-waveshell.go)
+(cd waveshell; CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-linux.amd64 main-waveshell.go)
+(cd waveshell; CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-linux.arm64 main-waveshell.go)
 (cd wavesrv; CGO_ENABLED=1 go build -ldflags="$GO_LDFLAGS" -o ../bin/wavesrv ./cmd)
 node_modules/.bin/electron-forge make
 ```
@@ -78,13 +78,6 @@ open out/Wave-darwin-x64/Wave.app
 # @scripthaus command build-wavesrv
 cd wavesrv
 CGO_ENABLED=1 go build -ldflags "-X main.BuildTime=$(date +'%Y%m%d%H%M')" -o ../bin/wavesrv ./cmd
-```
-
-```bash
-# @scripthaus command build-waveshell
-cd waveshell
-GO_LDFLAGS="-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')"
-go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.3-darwin.amd64 main-waveshell.go
 ```
 
 ```bash
