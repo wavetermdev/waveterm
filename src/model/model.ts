@@ -2746,49 +2746,26 @@ class RemotesModel {
         mobx.action(() => {
             this.selectedRemoteId.set(remoteId);
             this.remoteEdit.set(null);
+            GlobalModel.modalStoreModel.pushModal("viewRemote");
         })();
     }
 
     openAddModal(redit: RemoteEditType): void {
         mobx.action(() => {
             this.remoteEdit.set(redit);
-        })();
-    }
-
-    prepareReadModal(remoteId: string): boolean {
-        return mobx.action(() => {
-            this.selectedRemoteId.set(remoteId);
-            this.remoteEdit.set(null);
-            return true;
-        })();
-    }
-
-    prepareAddModal(redit: RemoteEditType): boolean {
-        return mobx.action(() => {
-            this.remoteEdit.set(redit);
-            return true;
-        })();
-    }
-
-    prepareEditModal(redit?: RemoteEditType): boolean {
-        if (redit === undefined) {
-            this.startEditAuth();
-            return true;
-        }
-        return mobx.action(() => {
-            this.selectedRemoteId.set(redit?.remoteid ?? null);
-            this.remoteEdit.set(redit ?? null);
-            return true;
+            GlobalModel.modalStoreModel.pushModal("createRemote");
         })();
     }
 
     openEditModal(redit?: RemoteEditType): void {
         if (redit === undefined) {
             this.startEditAuth();
+            GlobalModel.modalStoreModel.pushModal("editRemote");
         } else {
             mobx.action(() => {
                 this.selectedRemoteId.set(redit?.remoteid ?? null);
                 this.remoteEdit.set(redit ?? null);
+                GlobalModel.modalStoreModel.pushModal("editRemote");
             })();
         }
     }
@@ -3551,8 +3528,8 @@ class Model {
                 this.remotes.clear();
             }
             this.updateRemotes(update.remotes);
-            if (update.remotes?.length && this.remotesModel.recentConnAddedState.get()) {
-                this.remotesModel.openReadModal(update.remotes[0].remoteid);
+            if (update.remotes && update.remotes.length && this.remotesModel.recentConnAddedState.get()) {
+                GlobalModel.remotesModel.openReadModal(update.remotes![0].remoteid);
             }
         }
         if ("mainview" in update) {
