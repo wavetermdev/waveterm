@@ -201,47 +201,19 @@ class AlertModal extends React.Component<{ onOk?: () => void }, {}> {
 
     render() {
         let message = GlobalModel.alertMessage.get();
-
         let title = message?.title ?? (message?.confirm ? "Confirm" : "Alert");
-        let isConfirm = message?.confirm;
+
         return (
-            <div className="modal prompt-modal is-active alert-modal">
-                <div className="modal-background" />
-                <div className="modal-content">
-                    <header>
-                        <p className="modal-title">
-                            <WarningIcon className="icon" />
-                            {title}
-                        </p>
-                        <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
-                            <XmarkIcon />
-                        </div>
-                    </header>
+            <Modal onClose={this.closeModal} onOk={this.handleOK} title={title} className="alert-modal">
+                <Modal.Header />
+                <Modal.Body>
                     <If condition={message?.markdown}>
-                        <Markdown text={message?.message ?? ""} extraClassName="inner-content" />
+                        <Markdown text={message?.message ?? ""} />
                     </If>
-                    <If condition={!message?.markdown}>
-                        <div className="inner-content content">
-                            <p>{message?.message}</p>
-                        </div>
-                    </If>
-                    <footer>
-                        <If condition={isConfirm}>
-                            <div onClick={this.closeModal} className="button is-prompt-cancel is-outlined is-small">
-                                Cancel
-                            </div>
-                            <div onClick={this.handleOK} className="button is-prompt-green is-outlined is-small">
-                                OK
-                            </div>
-                        </If>
-                        <If condition={!isConfirm}>
-                            <div onClick={this.handleOK} className="button is-prompt-green is-small">
-                                OK
-                            </div>
-                        </If>
-                    </footer>
-                </div>
-            </div>
+                    <If condition={!message?.markdown}>{message?.message}</If>
+                </Modal.Body>
+                <Modal.Footer />
+            </Modal>
         );
     }
 }
@@ -1058,103 +1030,88 @@ class ViewRemoteConnDetailModal extends React.Component<{ remotesModel?: Remotes
         let remoteAliasText = util.isBlank(remote.remotealias) ? "(none)" : remote.remotealias;
 
         return (
-            <div className={cn("modal wave-modal rconndetail-modal is-active")}>
-                <div className="modal-background wave-modal-background" />
-                <div className="modal-content wave-modal-content rconndetail-wave-modal-content">
-                    <div className="wave-modal-content-inner rconndetail-wave-modal-content-inner">
-                        <header className="wave-modal-header rconndetail-wave-modal-header">
-                            <div className="wave-modal-title rconndetail-wave-modal-title">Connection</div>
-                            <div className="wave-modal-close rconndetail-wave-modal-close" onClick={model.closeModal}>
-                                <img src={close} alt="Close (Escape)" />
-                            </div>
-                        </header>
-                        <div className="wave-modal-body rconndetail-wave-modal-body">
-                            <div className="name-header-actions-wrapper">
-                                <div className="name text-primary">{getName(remote)}</div>
-                                <div className="header-actions">{this.renderHeaderBtns(remote)}</div>
-                            </div>
-                            <div className="remote-detail" style={{ overflow: "hidden" }}>
-                                <div className="settings-field">
-                                    <div className="settings-label">Conn Id</div>
-                                    <div className="settings-input">{remote.remoteid}</div>
-                                </div>
-                                <div className="settings-field">
-                                    <div className="settings-label">Type</div>
-                                    <div className="settings-input">{this.getRemoteTypeStr(remote)}</div>
-                                </div>
-                                <div className="settings-field">
-                                    <div className="settings-label">Canonical Name</div>
-                                    <div className="settings-input">
-                                        {remote.remotecanonicalname}
-                                        <If
-                                            condition={
-                                                !util.isBlank(remote.remotevars.port) && remote.remotevars.port != "22"
-                                            }
-                                        >
-                                            <span style={{ marginLeft: 5 }}>(port {remote.remotevars.port})</span>
-                                        </If>
-                                    </div>
-                                </div>
-                                <div className="settings-field" style={{ minHeight: 24 }}>
-                                    <div className="settings-label">Alias</div>
-                                    <div className="settings-input">{remoteAliasText}</div>
-                                </div>
-                                <div className="settings-field">
-                                    <div className="settings-label">Auth Type</div>
-                                    <div className="settings-input">
-                                        <If condition={!remote.local}>{remote.authtype}</If>
-                                        <If condition={remote.local}>local</If>
-                                    </div>
-                                </div>
-                                <div className="settings-field">
-                                    <div className="settings-label">Connect Mode</div>
-                                    <div className="settings-input">{remote.connectmode}</div>
-                                </div>
-                                {this.renderInstallStatus(remote)}
-                                <div className="flex-spacer" style={{ minHeight: 20 }} />
-                                <div className="status">
-                                    <Status status={this.getStatus(remote.status)} text={this.getMessage(remote)} />
-                                </div>
-                                <div
-                                    key="term"
-                                    className={cn(
-                                        "terminal-wrapper",
-                                        { focus: isTermFocused },
-                                        remote != null ? "status-" + remote.status : null
-                                    )}
-                                >
-                                    <If condition={!isTermFocused}>
-                                        <div key="termblock" className="term-block" onClick={this.clickTermBlock}></div>
-                                    </If>
-                                    <If condition={model.showNoInputMsg.get()}>
-                                        <div key="termtag" className="term-tag">
-                                            input is only allowed while status is 'connecting'
-                                        </div>
-                                    </If>
-                                    <div
-                                        key="terminal"
-                                        className="terminal-connectelem"
-                                        ref={this.termRef}
-                                        data-remoteid={remote.remoteid}
-                                        style={{
-                                            height: textmeasure.termHeightFromRows(RemotePtyRows, termFontSize),
-                                            width: termWidth,
-                                        }}
-                                    ></div>
-                                </div>
+            <Modal
+                onClose={this.model.closeModal}
+                onOk={this.model.closeModal}
+                title="Connection"
+                okLabel="Done"
+                className="rconndetail-modal"
+            >
+                <Modal.Header />
+                <Modal.Body>
+                    <div className="name-header-actions-wrapper">
+                        <div className="name text-primary">{getName(remote)}</div>
+                        <div className="header-actions">{this.renderHeaderBtns(remote)}</div>
+                    </div>
+                    <div className="remote-detail" style={{ overflow: "hidden" }}>
+                        <div className="settings-field">
+                            <div className="settings-label">Conn Id</div>
+                            <div className="settings-input">{remote.remoteid}</div>
+                        </div>
+                        <div className="settings-field">
+                            <div className="settings-label">Type</div>
+                            <div className="settings-input">{this.getRemoteTypeStr(remote)}</div>
+                        </div>
+                        <div className="settings-field">
+                            <div className="settings-label">Canonical Name</div>
+                            <div className="settings-input">
+                                {remote.remotecanonicalname}
+                                <If condition={!util.isBlank(remote.remotevars.port) && remote.remotevars.port != "22"}>
+                                    <span style={{ marginLeft: 5 }}>(port {remote.remotevars.port})</span>
+                                </If>
                             </div>
                         </div>
-                        <footer className="wave-modal-footer rconndetail-wave-modal-footer">
-                            <div className="action-buttons">
-                                <Button theme="secondary" onClick={model.closeModal}>
-                                    Cancel
-                                </Button>
-                                <Button onClick={model.closeModal}>Done</Button>
+                        <div className="settings-field" style={{ minHeight: 24 }}>
+                            <div className="settings-label">Alias</div>
+                            <div className="settings-input">{remoteAliasText}</div>
+                        </div>
+                        <div className="settings-field">
+                            <div className="settings-label">Auth Type</div>
+                            <div className="settings-input">
+                                <If condition={!remote.local}>{remote.authtype}</If>
+                                <If condition={remote.local}>local</If>
                             </div>
-                        </footer>
+                        </div>
+                        <div className="settings-field">
+                            <div className="settings-label">Connect Mode</div>
+                            <div className="settings-input">{remote.connectmode}</div>
+                        </div>
+                        {this.renderInstallStatus(remote)}
+                        <div className="flex-spacer" style={{ minHeight: 20 }} />
+                        <div className="status">
+                            <Status status={this.getStatus(remote.status)} text={this.getMessage(remote)} />
+                        </div>
+                        <div
+                            key="term"
+                            className={cn(
+                                "terminal-wrapper",
+                                { focus: isTermFocused },
+                                remote != null ? "status-" + remote.status : null
+                            )}
+                        >
+                            <If condition={!isTermFocused}>
+                                <div key="termblock" className="term-block" onClick={this.clickTermBlock}></div>
+                            </If>
+                            <If condition={model.showNoInputMsg.get()}>
+                                <div key="termtag" className="term-tag">
+                                    input is only allowed while status is 'connecting'
+                                </div>
+                            </If>
+                            <div
+                                key="terminal"
+                                className="terminal-connectelem"
+                                ref={this.termRef}
+                                data-remoteid={remote.remoteid}
+                                style={{
+                                    height: textmeasure.termHeightFromRows(RemotePtyRows, termFontSize),
+                                    width: termWidth,
+                                }}
+                            ></div>
+                        </div>
                     </div>
-                </div>
-            </div>
+                </Modal.Body>
+                <Modal.Footer />
+            </Modal>
         );
     }
 }

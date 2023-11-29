@@ -59,22 +59,6 @@
     }
 }
 
-.modal.alert-modal {
-    z-index: 205;
-
-    footer {
-        justify-content: center;
-
-        .button {
-            margin-left: 20px;
-        }
-
-        .button:first-child {
-            margin-left: 0;
-        }
-    }
-}
-
 .modal.settings-modal {
     footer {
         justify-content: center;
@@ -181,59 +165,6 @@
     }
 }
 
-.modal.wave-modal {
-    .wave-modal-content {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 16px;
-        border-radius: 10px;
-        background: var(--olive-dark-1, #151715);
-        box-shadow: 0px 3px 5px 0px rgba(0, 0, 0, 0.35), 0px 10px 24px 0px rgba(0, 0, 0, 0.45),
-            0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
-
-        .wave-modal-content-inner {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 24px;
-            width: 100%;
-
-            .wave-modal-header {
-                width: 100%;
-                display: flex;
-                align-items: center;
-                padding: 12px 20px;
-                justify-content: space-between;
-                line-height: 20px;
-                border-bottom: 1px solid rgba(250, 250, 250, 0.1);
-
-                .wave-modal-title {
-                    color: @term-bright-white;
-                    font-style: normal;
-                    line-height: 20px;
-                    font-size: 13px;
-                }
-
-                .wave-modal-close {
-                    display: flex;
-                    padding: 4px;
-                    align-items: center;
-                    gap: 8px;
-                }
-            }
-
-            .wave-modal-body {
-                display: flex;
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 24px;
-                width: 87%;
-            }
-        }
-    }
-}
-
 .modal.tos-modal {
     .modal-content.wave-modal-content {
         padding: 32px 48px;
@@ -335,7 +266,6 @@
             flex-direction: column;
             align-items: flex-start;
             gap: 24px;
-            width: 87%;
 
             .about-section {
                 display: flex;
@@ -444,9 +374,6 @@
     min-height: 411px;
 
     .wave-modal-content {
-        width: 452px;
-        min-height: 411px;
-        overflow: visible;
         gap: 24px;
 
         .wave-modal-body {
@@ -458,144 +385,126 @@
             align-self: stretch;
             width: 100%;
         }
+    }
+}
 
-        .action-buttons {
-            display: flex;
-
-            button:first-child {
-                margin-right: 8px;
-            }
+.alert-modal {
+    .wave-modal-content {
+        .wave-modal-body {
+            padding: 40px 20px;
         }
     }
 }
 
-.wave-modal.rconndetail-modal {
-    .wave-modal-content.rconndetail-wave-modal-content {
-        width: 631px;
-        min-height: 565px;
-        overflow: visible;
+.rconndetail-modal {
+    width: 631px;
+    min-height: 565px;
 
-        .wave-modal-content-inner.rconndetail-wave-modal-content-inner {
+    .wave-modal-content {
+        display: flex;
+        padding-bottom: 0px;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+        flex-shrink: 0;
+
+        .wave-modal-body {
             display: flex;
-            padding-bottom: 0px;
+            padding: 0px 20px;
+            align-items: flex-start;
+            width: 100%;
+            display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 20px;
-            flex-shrink: 0;
+            gap: 16px;
+            align-self: stretch;
 
-            .rconndetail-wave-modal-body {
-                display: flex;
-                padding: 0px 20px;
-                align-items: flex-start;
-                width: 100%;
+            .name-header-actions-wrapper {
                 display: flex;
                 flex-direction: column;
-                gap: 16px;
-                align-self: stretch;
+                align-items: flex-start;
+                gap: 12px;
 
-                .name-header-actions-wrapper {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: flex-start;
-                    gap: 12px;
-
-                    .rconndetail-name {
-                        color: @term-bright-white;
-                        font-size: 15px;
-                        font-weight: 500;
-                        line-height: 20px;
-                    }
-
-                    .header-actions {
-                        display: flex;
-                        justify-content: flex-end;
-                        align-items: flex-start;
-
-                        .wave-button {
-                            padding: 4px 15px;
-                            font-size: 11px;
-                            margin-right: 8px;
-                        }
-                    }
+                .rconndetail-name {
+                    color: @term-bright-white;
+                    font-size: 15px;
+                    font-weight: 500;
+                    line-height: 20px;
                 }
 
-                .remote-detail {
-                    .settings-field {
-                        display: flex;
-                        flex-direction: row;
-                        align-items: center;
+                .header-actions {
+                    display: flex;
+                    justify-content: flex-end;
+                    align-items: flex-start;
 
-                        .settings-label {
-                            font-weight: bold;
-                            width: 12em;
-                            display: flex;
-                            flex-direction: row;
-                            align-items: center;
-                        }
-
-                        .settings-input {
-                            display: flex;
-                            flex-direction: row;
-                            align-items: center;
-                            color: @term-white;
-                        }
-                    }
-
-                    .settings-field:not(:first-child) {
-                        margin-top: 4px;
-                    }
-
-                    .status {
-                        display: flex;
-                        height: 30px;
-                        padding: 3px 8px;
-                        align-items: center;
-                        gap: 8px;
-                        align-self: stretch;
-                        border-radius: 6px;
-                        background: rgba(241, 246, 243, 0.08);
-                    }
-
-                    .terminal-wrapper {
-                        width: 100%;
-                        margin-top: 5px;
-
-                        .terminal-connectelem {
-                            height: 163px !important; // Needed to override plugin height
-
-                            .xterm-viewport {
-                                display: flex;
-                                padding: 6px 10px;
-                                gap: 8px;
-                                align-items: flex-start;
-                                align-self: stretch;
-                                border-radius: 6px;
-                                border: 1px solid var(--element-separator, rgba(241, 246, 243, 0.15));
-                                background: #080a08;
-                                height: 163px !important; // Needed to override plugin height
-                            }
-
-                            .xterm-screen {
-                                padding: 10px;
-                                width: 541px !important; // Needed to override plugin width
-                            }
-                        }
+                    .wave-button {
+                        padding: 4px 15px;
+                        font-size: 11px;
+                        margin-right: 8px;
                     }
                 }
             }
-        }
 
-        .rconndetail-wave-modal-footer {
-            display: flex;
-            justify-content: flex-end;
-            width: 100%;
-            padding: 0 20px 20px;
+            .remote-detail {
+                .settings-field {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
 
-            .action-buttons {
-                display: flex;
+                    .settings-label {
+                        font-weight: bold;
+                        width: 12em;
+                        display: flex;
+                        flex-direction: row;
+                        align-items: center;
+                    }
 
-                button:first-child {
-                    margin-right: 8px;
+                    .settings-input {
+                        display: flex;
+                        flex-direction: row;
+                        align-items: center;
+                        color: @term-white;
+                    }
+                }
+
+                .settings-field:not(:first-child) {
+                    margin-top: 4px;
+                }
+
+                .status {
+                    display: flex;
+                    height: 30px;
+                    padding: 3px 8px;
+                    align-items: center;
+                    gap: 8px;
+                    align-self: stretch;
+                    border-radius: 6px;
+                    background: rgba(241, 246, 243, 0.08);
+                }
+
+                .terminal-wrapper {
+                    width: 100%;
+                    margin-top: 5px;
+
+                    .terminal-connectelem {
+                        height: 163px !important; // Needed to override plugin height
+
+                        .xterm-viewport {
+                            display: flex;
+                            padding: 6px 10px;
+                            gap: 8px;
+                            align-items: flex-start;
+                            align-self: stretch;
+                            border-radius: 6px;
+                            border: 1px solid var(--element-separator, rgba(241, 246, 243, 0.15));
+                            background: #080a08;
+                            height: 163px !important; // Needed to override plugin height
+                        }
+
+                        .xterm-screen {
+                            padding: 10px;
+                            width: 541px !important; // Needed to override plugin width
+                        }
+                    }
                 }
             }
         }
