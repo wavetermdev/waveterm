@@ -1,6 +1,7 @@
 // Copyright 2023, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import React from "react";
 import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
@@ -2896,10 +2897,10 @@ class RemotesModel {
 }
 
 class ModalRegistryModel {
-    registry: { [key: string]: () => React.ReactNode } = {};
+    registry: { [key: string]: () => React.ReactElement } = {};
 
     @boundMethod
-    registerModals(modalFactories: { [id: string]: () => React.ReactNode }) {
+    registerModals(modalFactories: { [id: string]: () => React.ReactElement }) {
         for (const id in modalFactories) {
             if (modalFactories.hasOwnProperty(id)) {
                 this.registry[id] = modalFactories[id];
@@ -2908,25 +2909,32 @@ class ModalRegistryModel {
     }
 
     @boundMethod
-    getModal(id: string): () => React.ReactNode {
+    getModal(id: string): () => React.ReactElement {
         return this.registry[id];
     }
 }
 
 class ModalStoreModel {
-    modals: Array<{ id: string; component: () => React.ReactNode }> = [];
+    modals: Array<{ id: string; component: React.ComponentType<{ onOk?: () => void }> }> = [];
 
     constructor() {
         mobx.makeAutoObservable(this);
     }
 
-    pushModal(modalId: string, beforeHook = () => true, afterHook = () => {}) {
+    pushModal(modalId: string, onOk?: () => void, beforeHook = () => true, afterHook = () => {}) {
         if (beforeHook()) {
-            const ModalComponent = GlobalModel.modalRegistryModel.getModal(modalId);
+            const modalFactory = GlobalModel.modalRegistryModel.getModal(modalId);
 
-            // Check if the modalId is already present in the array
-            if (ModalComponent && !this.modals.some((modal) => modal.id === modalId)) {
-                this.modals.push({ id: modalId, component: ModalComponent });
+            if (modalFactory && !this.modals.some((modal) => modal.id === modalId)) {
+                const ModalComponentWrapper = (props: { onOk?: () => void }) => {
+                    // Call the factory function to get the actual component
+                    const ActualModalComponent = modalFactory();
+
+                    // Clone the component with onOk if it's defined
+                    return onOk ? React.cloneElement(ActualModalComponent, { ...props, onOk }) : ActualModalComponent;
+                };
+
+                this.modals.push({ id: modalId, component: ModalComponentWrapper });
             }
 
             afterHook();
@@ -2938,7 +2946,9 @@ class ModalStoreModel {
     }
 
     get activeModals() {
-        return this.modals.slice().map((modal) => modal.component);
+        return this.modals.slice().map((modal) => {
+            return modal.component;
+        });
     }
 }
 
@@ -2976,10 +2986,10 @@ class Model {
             name: "activeMainView",
         });
     termFontSize: CV<number>;
-    alertMessage: OV<AlertMessageType> = mobx.observable.box(null, {
+    alertMessage: OV<AlertMessageType | null> = mobx.observable.box(null, {
         name: "alertMessage",
     });
-    alertPromiseResolver: (result: boolean) => void;
+    alertPromiseResolver: ((result: boolean) => void) | null = null;
     aboutModalOpen: OV<boolean> = mobx.observable.box(false, {
         name: "aboutModalOpen",
     });
@@ -3117,6 +3127,7 @@ class Model {
     showAlert(alertMessage: AlertMessageType): Promise<boolean> {
         mobx.action(() => {
             this.alertMessage.set(alertMessage);
+            GlobalModel.modalStoreModel.pushModal("alert");
         })();
         let prtn = new Promise<boolean>((resolve, reject) => {
             this.alertPromiseResolver = resolve;
@@ -3127,6 +3138,7 @@ class Model {
     cancelAlert(): void {
         mobx.action(() => {
             this.alertMessage.set(null);
+            GlobalModel.modalStoreModel.popModal();
         })();
         if (this.alertPromiseResolver != null) {
             this.alertPromiseResolver(false);
@@ -3137,6 +3149,7 @@ class Model {
     confirmAlert(): void {
         mobx.action(() => {
             this.alertMessage.set(null);
+            GlobalModel.modalStoreModel.popModal();
         })();
         if (this.alertPromiseResolver != null) {
             this.alertPromiseResolver(true);

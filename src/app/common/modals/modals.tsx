@@ -188,7 +188,7 @@ class LoadingSpinner extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
-class AlertModal extends React.Component<{}, {}> {
+class AlertModal extends React.Component<{ onOk?: () => void }, {}> {
     @boundMethod
     closeModal(): void {
         GlobalModel.cancelAlert();
@@ -201,11 +201,9 @@ class AlertModal extends React.Component<{}, {}> {
 
     render() {
         let message = GlobalModel.alertMessage.get();
-        if (message == null) {
-            return null;
-        }
-        let title = message.title ?? (message.confirm ? "Confirm" : "Alert");
-        let isConfirm = message.confirm;
+
+        let title = message?.title ?? (message?.confirm ? "Confirm" : "Alert");
+        let isConfirm = message?.confirm;
         return (
             <div className="modal prompt-modal is-active alert-modal">
                 <div className="modal-background" />
@@ -219,12 +217,12 @@ class AlertModal extends React.Component<{}, {}> {
                             <XmarkIcon />
                         </div>
                     </header>
-                    <If condition={message.markdown}>
-                        <Markdown text={message.message} extraClassName="inner-content" />
+                    <If condition={message?.markdown}>
+                        <Markdown text={message?.message ?? ""} extraClassName="inner-content" />
                     </If>
-                    <If condition={!message.markdown}>
+                    <If condition={!message?.markdown}>
                         <div className="inner-content content">
-                            <p>{message.message}</p>
+                            <p>{message?.message}</p>
                         </div>
                     </If>
                     <footer>
@@ -1244,6 +1242,7 @@ class EditRemoteConnModal extends React.Component<{ remotesModel?: RemotesModel 
             message: "Are you sure you want to archive this connection?",
             confirm: true,
         });
+
         prtn.then((confirm) => {
             if (!confirm) {
                 return;

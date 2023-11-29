@@ -59,6 +59,7 @@ class App extends React.Component<{}, {}> {
             createRemote: () => <CreateRemoteConnModal />,
             viewRemote: () => <ViewRemoteConnDetailModal />,
             editRemote: () => <EditRemoteConnModal />,
+            alert: () => <AlertModal />,
         });
     }
 
@@ -147,7 +148,6 @@ class App extends React.Component<{}, {}> {
                             <ConnectionsView model={remotesModel} />
                         </ErrorBoundary>
                     </div>
-                    <AlertModal />
                     <If condition={GlobalModel.needsTos()}>
                         <TosModal />
                     </If>
