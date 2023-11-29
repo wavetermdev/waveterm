@@ -568,7 +568,6 @@ class CreateRemoteConnModal extends React.Component<{ remotesModel?: RemotesMode
                 let crRtn = GlobalCommandRunner.screenSetRemote(cname, true, false);
                 crRtn.then((crcrtn) => {
                     if (crcrtn.success) {
-                        this.model.closeModal();
                         return;
                     }
                     mobx.action(() => {

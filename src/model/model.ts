@@ -3529,6 +3529,7 @@ class Model {
             }
             this.updateRemotes(update.remotes);
             if (update.remotes && update.remotes.length && this.remotesModel.recentConnAddedState.get()) {
+                GlobalModel.remotesModel.closeModal();
                 GlobalModel.remotesModel.openReadModal(update.remotes![0].remoteid);
             }
         }
