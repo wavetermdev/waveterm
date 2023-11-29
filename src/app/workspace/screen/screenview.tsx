@@ -395,14 +395,14 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
                             <i title="archived" className="fa-sharp fa-solid fa-share-nodes" /> web shared
                         </div>
                         <div className="share-tag-link">
-                            <div className="button is-prompt-green is-outlined is-small" onClick={this.copyShareLink}>
+                            <div className="button is-wave-green is-outlined is-small" onClick={this.copyShareLink}>
                                 <span>copy link</span>
                                 <span className="icon">
                                     <i className="fa-sharp fa-solid fa-copy" />
                                 </span>
                             </div>
                             <div
-                                className="button is-prompt-green is-outlined is-small"
+                                className="button is-wave-green is-outlined is-small"
                                 onClick={this.openScreenSettings}
                             >
                                 <span>open settings</span>

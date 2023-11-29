@@ -299,7 +299,7 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
                         <SettingsError errorMessage={this.errorMessage} />
                     </div>
                     <footer>
-                        <div onClick={this.closeModal} className="button is-prompt-green is-outlined is-small">
+                        <div onClick={this.closeModal} className="button is-wave-green is-outlined is-small">
                             Close
                         </div>
                     </footer>
@@ -439,7 +439,7 @@ class SessionSettingsModal extends React.Component<{ sessionId: string }, {}> {
                         <SettingsError errorMessage={this.errorMessage} />
                     </div>
                     <footer>
-                        <div onClick={this.closeModal} className="button is-prompt-green is-outlined is-small">
+                        <div onClick={this.closeModal} className="button is-wave-green is-outlined is-small">
                             Close
                         </div>
                     </footer>
@@ -575,7 +575,7 @@ class LineSettingsModal extends React.Component<{ linenum: number }, {}> {
                         <div style={{ height: 50 }} />
                     </div>
                     <footer>
-                        <div onClick={this.closeModal} className="button is-prompt-green is-outlined is-small">
+                        <div onClick={this.closeModal} className="button is-wave-green is-outlined is-small">
                             Close
                         </div>
                     </footer>
@@ -773,7 +773,7 @@ class ClientSettingsModal extends React.Component<{}, {}> {
                         <SettingsError errorMessage={this.errorMessage} />
                     </div>
                     <footer>
-                        <div onClick={this.closeModal} className="button is-prompt-green is-outlined is-small">
+                        <div onClick={this.closeModal} className="button is-wave-green is-outlined is-small">
                             Close
                         </div>
                     </footer>

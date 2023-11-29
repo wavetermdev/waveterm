@@ -219,12 +219,12 @@ class AlertModal extends React.Component<{}, {}> {
                             <div onClick={this.closeModal} className="button is-prompt-cancel is-outlined is-small">
                                 Cancel
                             </div>
-                            <div onClick={this.handleOK} className="button is-prompt-green is-outlined is-small">
+                            <div onClick={this.handleOK} className="button is-wave-green is-outlined is-small">
                                 OK
                             </div>
                         </If>
                         <If condition={!isConfirm}>
-                            <div onClick={this.handleOK} className="button is-prompt-green is-small">
+                            <div onClick={this.handleOK} className="button is-wave-green is-small">
                                 OK
                             </div>
                         </If>
