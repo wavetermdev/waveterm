@@ -920,7 +920,7 @@ class ViewRemoteConnDetailModal extends React.Component<{ remotesModel?: Remotes
         let buttons: React.ReactNode[] = [];
         const archiveButton = (
             <Button theme="secondary" onClick={() => this.clickArchive()}>
-                Archive
+                Delete
             </Button>
         );
         const disconnectButton = (
@@ -1339,7 +1339,7 @@ class EditRemoteConnModal extends React.Component<{ remotesModel?: RemotesModel 
                                 <div className="name text-primary">{getName(this.selectedRemote)}</div>
                                 <div className="header-actions">
                                     <Button theme="secondary" onClick={this.clickArchive}>
-                                        Archive
+                                        Delete
                                     </Button>
                                     <Button theme="secondary" onClick={this.clickForceInstall}>
                                         Force Install
