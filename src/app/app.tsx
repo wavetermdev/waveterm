@@ -136,40 +136,40 @@ class App extends React.Component<{}, {}> {
             setTimeout(() => this.updateDcWait(false), 0);
         }
         return (
-            <mobxReact.Provider remotesModel={remotesModel}>
-                <div id="main" className={"platform-" + platform} onContextMenu={this.handleContextMenu}>
-                    <div className="main-content">
-                        <MainSideBar />
-                        <ErrorBoundary>
-                            <PluginsView />
-                            <WorkspaceView />
-                            <HistoryView />
-                            <BookmarksView />
-                            <ConnectionsView model={remotesModel} />
-                        </ErrorBoundary>
-                    </div>
-                    <If condition={GlobalModel.needsTos()}>
-                        <TosModal />
-                    </If>
-                    <ModalProvider />
-                    <If condition={screenSettingsModal != null}>
-                        <ScreenSettingsModal
-                            key={screenSettingsModal.sessionId + ":" + screenSettingsModal.screenId}
-                            sessionId={screenSettingsModal.sessionId}
-                            screenId={screenSettingsModal.screenId}
-                        />
-                    </If>
-                    <If condition={sessionSettingsModal != null}>
-                        <SessionSettingsModal key={sessionSettingsModal} sessionId={sessionSettingsModal} />
-                    </If>
-                    <If condition={lineSettingsModal != null}>
-                        <LineSettingsModal key={String(lineSettingsModal)} linenum={lineSettingsModal} />
-                    </If>
-                    <If condition={clientSettingsModal}>
-                        <ClientSettingsModal />
-                    </If>
+            <div id="main" className={"platform-" + platform} onContextMenu={this.handleContextMenu}>
+                <div className="main-content">
+                    <MainSideBar />
+                    <ErrorBoundary>
+                        <PluginsView />
+                        <WorkspaceView />
+                        <HistoryView />
+                        <BookmarksView />
+                        <ConnectionsView model={remotesModel} />
+                    </ErrorBoundary>
                 </div>
-            </mobxReact.Provider>
+                <If condition={GlobalModel.needsTos()}>
+                    <TosModal />
+                </If>
+                <mobxReact.Provider remotesModel={remotesModel}>
+                    <ModalProvider />
+                </mobxReact.Provider>
+                <If condition={screenSettingsModal != null}>
+                    <ScreenSettingsModal
+                        key={screenSettingsModal.sessionId + ":" + screenSettingsModal.screenId}
+                        sessionId={screenSettingsModal.sessionId}
+                        screenId={screenSettingsModal.screenId}
+                    />
+                </If>
+                <If condition={sessionSettingsModal != null}>
+                    <SessionSettingsModal key={sessionSettingsModal} sessionId={sessionSettingsModal} />
+                </If>
+                <If condition={lineSettingsModal != null}>
+                    <LineSettingsModal key={String(lineSettingsModal)} linenum={lineSettingsModal} />
+                </If>
+                <If condition={clientSettingsModal}>
+                    <ClientSettingsModal />
+                </If>
+            </div>
         );
     }
 }
