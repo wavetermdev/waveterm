@@ -202,6 +202,7 @@ class AlertModal extends React.Component<{ onOk?: () => void }, {}> {
     render() {
         let message = GlobalModel.alertMessage.get();
         let title = message?.title ?? (message?.confirm ? "Confirm" : "Alert");
+        let isConfirm = message?.confirm ?? false;
 
         return (
             <Modal onClose={this.closeModal} onOk={this.handleOK} title={title} className="alert-modal">
@@ -212,7 +213,17 @@ class AlertModal extends React.Component<{ onOk?: () => void }, {}> {
                     </If>
                     <If condition={!message?.markdown}>{message?.message}</If>
                 </Modal.Body>
-                <Modal.Footer />
+                <Modal.Footer>
+                    <If condition={isConfirm}>
+                        <Button theme="secondary" onClick={this.closeModal}>
+                            Cancel
+                        </Button>
+                        <Button onClick={this.handleOK}>Ok</Button>
+                    </If>
+                    <If condition={!isConfirm}>
+                        <Button onClick={this.handleOK}>Ok</Button>
+                    </If>
+                </Modal.Footer>
             </Modal>
         );
     }
@@ -220,15 +231,6 @@ class AlertModal extends React.Component<{ onOk?: () => void }, {}> {
 
 @mobxReact.observer
 class TosModal extends React.Component<{}, {}> {
-    state = {
-        isChecked: false,
-    };
-
-    @boundMethod
-    handleCheckboxChange(checked: boolean): void {
-        this.setState({ isChecked: checked });
-    }
-
     @boundMethod
     acceptTos(): void {
         GlobalCommandRunner.clientAcceptTos();
@@ -314,18 +316,12 @@ class TosModal extends React.Component<{}, {}> {
                             </div>
                         </div>
                         <footer className="unselectable">
-                            <div>
-                                <Checkbox
-                                    checked={this.state.isChecked}
-                                    label="I accept the Terms of Service"
-                                    id="accept-tos"
-                                    onChange={this.handleCheckboxChange}
-                                />
+                            <div className="item-text">
+                                By continuing, I accept the&nbsp;
+                                <a href="https://www.waveterm.dev/tos">Terms of Service</a>
                             </div>
                             <div className="button-wrapper">
-                                <Button onClick={this.acceptTos} disabled={!this.state.isChecked}>
-                                    Continue
-                                </Button>
+                                <Button onClick={this.acceptTos}>Continue</Button>
                             </div>
                         </footer>
                     </div>
