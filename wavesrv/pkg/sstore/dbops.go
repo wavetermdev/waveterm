@@ -1391,15 +1391,6 @@ func ArchiveScreenLines(ctx context.Context, screenId string) (*ModelUpdate, err
 		if !tx.Exists(query, screenId) {
 			return fmt.Errorf("screen does not exist")
 		}
-		if isWebShare(tx, screenId) {
-			query = `INSERT INTO screenupdate (screenid, lineid, updatetype, updatets)
-                     SELECT screenid, lineid, ?, ? FROM line WHERE screenid = ? AND archived = 0`
-			tx.Exec(query, UpdateType_LineDel, time.Now().UnixMilli(), screenId)
-			NotifyUpdateWriter()
-			query = `SELECT count(*) FROM line WHERE screenid = ? AND archived = 0`
-			count := tx.GetInt(query, screenId)
-			fmt.Printf("** archive-screen-lines: wrote into screenupdate: %d\n", count)
-		}
 		query = `UPDATE line SET archived = 1
 		         WHERE line.archived = 0 AND line.screenid = ? AND NOT EXISTS (SELECT * FROM cmd c
 				 WHERE line.screenid = c.screenid AND line.lineid = c.lineid AND c.status IN ('running', 'detached')
