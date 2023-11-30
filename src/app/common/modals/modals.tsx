@@ -11,7 +11,7 @@ import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, RemotesModel } from "../../../model/model";
 import * as T from "../../../types/types";
-import { Markdown } from "../common";
+import { Markdown, InfoMessage } from "../common";
 import * as util from "../../../util/util";
 import * as textmeasure from "../../../util/textmeasure";
 import { Toggle, Checkbox, Modal } from "../common";
@@ -20,10 +20,12 @@ import { TextField, NumberField, InputDecoration, Dropdown, PasswordField, Toolt
 
 import close from "../../assets/icons/close.svg";
 import { ReactComponent as WarningIcon } from "../../assets/icons/line/triangle-exclamation.svg";
+import { ReactComponent as XmarkIcon } from "../../assets/icons/line/xmark.svg";
 import shield from "../../assets/icons/shield_check.svg";
 import help from "../../assets/icons/help_filled.svg";
 import github from "../../assets/icons/github.svg";
 import logo from "../../assets/waveterm-logo-with-bg.svg";
+import { ReactComponent as AngleDownIcon } from "../../assets/icons/history/angle-down.svg";
 
 dayjs.extend(localizedFormat);
 
@@ -875,7 +877,7 @@ class ViewRemoteConnDetailModal extends React.Component<{ remotesModel?: Remotes
             return;
         }
         let prtn = GlobalModel.showAlert({
-            message: "Are you sure you want to delete this connection?",
+            message: "Are you sure you want to archive this connection?",
             confirm: true,
         });
         prtn.then((confirm) => {
@@ -922,7 +924,7 @@ class ViewRemoteConnDetailModal extends React.Component<{ remotesModel?: Remotes
         let buttons: React.ReactNode[] = [];
         const archiveButton = (
             <Button theme="secondary" onClick={() => this.clickArchive()}>
-                Delete
+                Archive
             </Button>
         );
         const disconnectButton = (
@@ -1194,7 +1196,7 @@ class EditRemoteConnModal extends React.Component<{ remotesModel?: RemotesModel 
             return;
         }
         let prtn = GlobalModel.showAlert({
-            message: "Are you sure you want to delete this connection?",
+            message: "Are you sure you want to archive this connection?",
             confirm: true,
         });
 
@@ -1229,20 +1231,6 @@ class EditRemoteConnModal extends React.Component<{ remotesModel?: RemotesModel 
     handleChangeAlias(value: string): void {
         mobx.action(() => {
             this.tempAlias.set(value);
-        })();
-    }
-
-    @boundMethod
-    handleChangeConnectMode(value: string): void {
-        mobx.action(() => {
-            this.tempConnectMode.set(value);
-        })();
-    }
-
-    @boundMethod
-    handleChangeAuthMode(value: string): void {
-        mobx.action(() => {
-            this.tempAuthMode.set(value);
         })();
     }
 
@@ -1295,9 +1283,7 @@ class EditRemoteConnModal extends React.Component<{ remotesModel?: RemotesModel 
             kwargs["connectmode"] = this.tempConnectMode.get() ?? "";
         }
         if (Object.keys(kwargs).length == 0) {
-            mobx.action(() => {
-                this.submitted.set(true);
-            })();
+            this.submitted.set(true);
             return;
         }
         kwargs["visual"] = "1";
@@ -1357,7 +1343,7 @@ class EditRemoteConnModal extends React.Component<{ remotesModel?: RemotesModel 
                                 <div className="name text-primary">{getName(this.selectedRemote)}</div>
                                 <div className="header-actions">
                                     <Button theme="secondary" onClick={this.clickArchive}>
-                                        Delete
+                                        Archive
                                     </Button>
                                     <Button theme="secondary" onClick={this.clickForceInstall}>
                                         Force Install
