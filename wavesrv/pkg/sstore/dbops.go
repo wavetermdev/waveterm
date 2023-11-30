@@ -1393,8 +1393,7 @@ func ArchiveScreenLines(ctx context.Context, screenId string) (*ModelUpdate, err
 		}
 		query = `UPDATE line SET archived = 1
 		         WHERE line.archived = 0 AND line.screenid = ? AND NOT EXISTS (SELECT * FROM cmd c
-				 WHERE line.screenid = c.screenid AND line.lineid = c.lineid AND c.status IN ('running', 'detached')
-				 )`
+				 WHERE line.screenid = c.screenid AND line.lineid = c.lineid AND c.status IN ('running', 'detached'))`
 		tx.Exec(query, screenId)
 		return nil
 	})
