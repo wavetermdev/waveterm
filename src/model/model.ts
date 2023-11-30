@@ -3267,10 +3267,6 @@ class Model {
                 GlobalModel.screenSettingsModal.set(null);
                 didSomething = true;
             }
-            if (GlobalModel.remotesModel.isOpen()) {
-                GlobalModel.remotesModel.closeModal();
-                didSomething = true;
-            }
             if (GlobalModel.clientSettingsModal.get()) {
                 GlobalModel.clientSettingsModal.set(false);
                 didSomething = true;
