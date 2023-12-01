@@ -1052,6 +1052,7 @@ class Session {
     notifyNum: OV<number> = mobx.observable.box(0);
     remoteInstances: OArr<RemoteInstanceType>;
     archived: OV<boolean>;
+    filtering: OV<boolean>;
 
     constructor(sdata: SessionDataType) {
         this.sessionId = sdata.sessionid;
@@ -2970,6 +2971,9 @@ class Model {
     });
     showLinks: OV<boolean> = mobx.observable.box(true, {
         name: "model-showLinks",
+    });
+    completedFilteredOut: OV<boolean> = mobx.observable.box(false, {
+        name: "model-filtered",
     });
 
     constructor() {

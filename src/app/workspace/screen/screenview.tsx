@@ -422,9 +422,13 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
                         lineFactory={this.buildLineComponent}
                     />
                 </If>
-                <If condition={true}>
+                <If condition={GlobalModel.completedFilteredOut.get()}>
                     <div className=".line">
-                        <Button variant="solid" color="color-red">
+                        <Button
+                          variant="solid"
+                          color="color-red"
+                          onClick={() => GlobalModel.completedFilteredOut.set(false)}
+                        >
                             Filtering # Commands
                         </Button>
                     </div>
