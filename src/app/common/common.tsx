@@ -1104,11 +1104,9 @@ interface ModalHeaderProps {
 const ModalHeader: React.FC<ModalHeaderProps> = ({ onClose, title }) => (
     <div className="wave-modal-header">
         {<div>{title}</div>}
-        {onClose && (
-            <IconButton theme="secondary" variant="ghost" onClick={onClose}>
-                <i className="fa-sharp fa-solid fa-xmark"></i>
-            </IconButton>
-        )}
+        <IconButton theme="secondary" variant="ghost" onClick={onClose}>
+            <i className="fa-sharp fa-solid fa-xmark"></i>
+        </IconButton>
     </div>
 );
 
