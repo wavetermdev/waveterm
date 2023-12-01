@@ -57,7 +57,7 @@ const modalsRegistry: { [key: string]: () => React.ReactElement } = {
 @mobxReact.observer
 class ModalProvider extends React.Component {
     renderModals() {
-        const modals = GlobalModel.modalStoreModel.activeModals;
+        const modals = GlobalModel.modalsModel.activeModals;
 
         return modals.map((ModalComponent, index) => <ModalComponent key={index} />);
     }
@@ -350,7 +350,7 @@ class AboutModal extends React.Component<{}, {}> {
     @boundMethod
     closeModal(): void {
         mobx.action(() => {
-            GlobalModel.modalStoreModel.popModal();
+            GlobalModel.modalsModel.popModal();
         })();
     }
 

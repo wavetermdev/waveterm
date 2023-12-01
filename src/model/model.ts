@@ -2748,26 +2748,26 @@ class RemotesModel {
         mobx.action(() => {
             this.selectedRemoteId.set(remoteId);
             this.remoteEdit.set(null);
-            GlobalModel.modalStoreModel.pushModal("viewRemote");
+            GlobalModel.modalsModel.pushModal("viewRemote");
         })();
     }
 
     openAddModal(redit: RemoteEditType): void {
         mobx.action(() => {
             this.remoteEdit.set(redit);
-            GlobalModel.modalStoreModel.pushModal("createRemote");
+            GlobalModel.modalsModel.pushModal("createRemote");
         })();
     }
 
     openEditModal(redit?: RemoteEditType): void {
         if (redit === undefined) {
             this.startEditAuth();
-            GlobalModel.modalStoreModel.pushModal("editRemote");
+            GlobalModel.modalsModel.pushModal("editRemote");
         } else {
             mobx.action(() => {
                 this.selectedRemoteId.set(redit?.remoteid ?? null);
                 this.remoteEdit.set(redit ?? null);
-                GlobalModel.modalStoreModel.pushModal("editRemote");
+                GlobalModel.modalsModel.pushModal("editRemote");
             })();
         }
     }
@@ -2797,7 +2797,7 @@ class RemotesModel {
     @boundMethod
     closeModal(): void {
         mobx.action(() => {
-            GlobalModel.modalStoreModel.popModal();
+            GlobalModel.modalsModel.popModal();
         })();
         setTimeout(() => GlobalModel.refocus(), 10);
     }
@@ -2897,7 +2897,7 @@ class RemotesModel {
     }
 }
 
-class ModalStoreModel {
+class ModalsModel {
     store: Array<{ id: string; component: React.ComponentType<{ onOk?: () => void }> }> = [];
 
     constructor() {
@@ -2984,7 +2984,7 @@ class Model {
     bookmarksModel: BookmarksModel;
     historyViewModel: HistoryViewModel;
     connectionViewModel: ConnectionsViewModel;
-    modalStoreModel: ModalStoreModel;
+    modalsModel: ModalsModel;
     clientData: OV<ClientDataType> = mobx.observable.box(null, {
         name: "clientData",
     });
@@ -3007,7 +3007,7 @@ class Model {
         this.connectionViewModel = new ConnectionsViewModel();
         this.remotesModalModel = new RemotesModalModel();
         this.remotesModel = new RemotesModel();
-        this.modalStoreModel = new ModalStoreModel();
+        this.modalsModel = new ModalsModel();
         let isWaveSrvRunning = getApi().getWaveSrvStatus();
         this.waveSrvRunning = mobx.observable.box(isWaveSrvRunning, {
             name: "model-wavesrv-running",
@@ -3096,7 +3096,7 @@ class Model {
     showAlert(alertMessage: AlertMessageType): Promise<boolean> {
         mobx.action(() => {
             this.alertMessage.set(alertMessage);
-            GlobalModel.modalStoreModel.pushModal("alert");
+            GlobalModel.modalsModel.pushModal("alert");
         })();
         let prtn = new Promise<boolean>((resolve, reject) => {
             this.alertPromiseResolver = resolve;
@@ -3107,7 +3107,7 @@ class Model {
     cancelAlert(): void {
         mobx.action(() => {
             this.alertMessage.set(null);
-            GlobalModel.modalStoreModel.popModal();
+            GlobalModel.modalsModel.popModal();
         })();
         if (this.alertPromiseResolver != null) {
             this.alertPromiseResolver(false);
@@ -3118,7 +3118,7 @@ class Model {
     confirmAlert(): void {
         mobx.action(() => {
             this.alertMessage.set(null);
-            GlobalModel.modalStoreModel.popModal();
+            GlobalModel.modalsModel.popModal();
         })();
         if (this.alertPromiseResolver != null) {
             this.alertPromiseResolver(true);
@@ -3375,7 +3375,7 @@ class Model {
 
     onMenuItemAbout(): void {
         mobx.action(() => {
-            this.modalStoreModel.pushModal("about");
+            this.modalsModel.pushModal("about");
         })();
     }
 
