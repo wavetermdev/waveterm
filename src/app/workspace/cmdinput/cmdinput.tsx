@@ -5,13 +5,13 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { If } from "tsx-control-statements/components";
+import { If, Choose, When, Otherwise } from "tsx-control-statements/components";
 import cn from "classnames";
 import dayjs from "dayjs";
 import type { RemoteType, RemoteInstanceType, RemotePtrType } from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner } from "../../../model/model";
-import { renderCmdText } from "../../common/common";
+import { renderCmdText, Button } from "../../common/common";
 import { TextAreaInput } from "./textareainput";
 import { InfoMsg } from "./infomsg";
 import { HistoryInfo } from "./historyinfo";
@@ -141,6 +141,18 @@ class CmdInput extends React.Component<{}, {}> {
                 <div key="prompt" className="cmd-input-context">
                     <div className="has-text-white">
                         <span ref={this.promptRef}><Prompt rptr={rptr} festate={feState} /></span>
+                    </div>
+                    <div>
+                        <Button variant={true ? "outlined" : "solid"} color="color-red">
+                            <Choose>
+                                <When condition={true}>
+                                    Filter
+                                </When>
+                                <Otherwise>
+                                    Filtering
+                                </Otherwise>
+                            </Choose>
+                        </Button>
                     </div>
                 </div>
                 <div
