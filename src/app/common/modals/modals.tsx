@@ -40,6 +40,20 @@ const RemotePtyRows = 9;
 const RemotePtyCols = 80;
 const PasswordUnchangedSentinel = "--unchanged--";
 
+const ABOUT = "about";
+const CREATE_REMOTE = "createRemote";
+const VIEW_REMOTE = "viewRemote";
+const EDIT_REMOTE = "editRemote";
+const ALERT = "alert";
+
+const modalsRegistry: { [key: string]: () => React.ReactElement } = {
+    [ABOUT]: () => <AboutModal />,
+    [CREATE_REMOTE]: () => <CreateRemoteConnModal />,
+    [VIEW_REMOTE]: () => <ViewRemoteConnDetailModal />,
+    [EDIT_REMOTE]: () => <EditRemoteConnModal />,
+    [ALERT]: () => <AlertModal />,
+};
+
 @mobxReact.observer
 class ModalProvider extends React.Component {
     renderModals() {
@@ -1495,4 +1509,10 @@ export {
     ViewRemoteConnDetailModal,
     EditRemoteConnModal,
     ModalProvider,
+    ABOUT,
+    CREATE_REMOTE,
+    VIEW_REMOTE,
+    EDIT_REMOTE,
+    ALERT,
+    modalsRegistry,
 };

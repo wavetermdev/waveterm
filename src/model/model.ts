@@ -79,6 +79,7 @@ import customParseFormat from "dayjs/plugin/customParseFormat";
 import { getRendererContext, cmdStatusIsRunning } from "../app/line/lineutil";
 import { sortAndFilterRemotes } from "../util/util";
 import { MagicLayout } from "../app/magiclayout";
+import * as modals from "../app/common/modals/modals";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(localizedFormat);
@@ -2896,57 +2897,27 @@ class RemotesModel {
     }
 }
 
-class ModalRegistryModel {
-    registry: { [key: string]: () => React.ReactElement } = {};
-
-    @boundMethod
-    registerModals(modalFactories: { [id: string]: () => React.ReactElement }) {
-        for (const id in modalFactories) {
-            if (modalFactories.hasOwnProperty(id)) {
-                this.registry[id] = modalFactories[id];
-            }
-        }
-    }
-
-    @boundMethod
-    getModal(id: string): () => React.ReactElement {
-        return this.registry[id];
-    }
-}
-
 class ModalStoreModel {
-    modals: Array<{ id: string; component: React.ComponentType<{ onOk?: () => void }> }> = [];
+    store: Array<{ id: string; component: React.ComponentType<{ onOk?: () => void }> }> = [];
 
     constructor() {
         mobx.makeAutoObservable(this);
     }
 
-    pushModal(modalId: string, onOk?: () => void, beforeHook = () => true, afterHook = () => {}) {
-        if (beforeHook()) {
-            const modalFactory = GlobalModel.modalRegistryModel.getModal(modalId);
+    pushModal(modalId: string) {
+        const modalFactory = modals.modalsRegistry[modalId];
 
-            if (modalFactory && !this.modals.some((modal) => modal.id === modalId)) {
-                const ModalComponentWrapper = (props: { onOk?: () => void }) => {
-                    // Call the factory function to get the actual component
-                    const ActualModalComponent = modalFactory();
-
-                    // Clone the component with onOk if it's defined
-                    return onOk ? React.cloneElement(ActualModalComponent, { ...props, onOk }) : ActualModalComponent;
-                };
-
-                this.modals.push({ id: modalId, component: ModalComponentWrapper });
-            }
-
-            afterHook();
+        if (modalFactory && !this.store.some((modal) => modal.id === modalId)) {
+            this.store.push({ id: modalId, component: modalFactory });
         }
     }
 
     popModal() {
-        this.modals.pop();
+        this.store.pop();
     }
 
     get activeModals() {
-        return this.modals.slice().map((modal) => {
+        return this.store.slice().map((modal) => {
             return modal.component;
         });
     }
@@ -3013,7 +2984,6 @@ class Model {
     bookmarksModel: BookmarksModel;
     historyViewModel: HistoryViewModel;
     connectionViewModel: ConnectionsViewModel;
-    modalRegistryModel: ModalRegistryModel;
     modalStoreModel: ModalStoreModel;
     clientData: OV<ClientDataType> = mobx.observable.box(null, {
         name: "clientData",
@@ -3037,7 +3007,6 @@ class Model {
         this.connectionViewModel = new ConnectionsViewModel();
         this.remotesModalModel = new RemotesModalModel();
         this.remotesModel = new RemotesModel();
-        this.modalRegistryModel = new ModalRegistryModel();
         this.modalStoreModel = new ModalStoreModel();
         let isWaveSrvRunning = getApi().getWaveSrvStatus();
         this.waveSrvRunning = mobx.observable.box(isWaveSrvRunning, {

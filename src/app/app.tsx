@@ -51,18 +51,6 @@ class App extends React.Component<{}, {}> {
         if (GlobalModel.isDev) document.body.className = "is-dev";
     }
 
-    componentDidMount() {
-        // Register modals
-        const { registerModals } = GlobalModel.modalRegistryModel;
-        registerModals({
-            about: () => <AboutModal />,
-            createRemote: () => <CreateRemoteConnModal />,
-            viewRemote: () => <ViewRemoteConnDetailModal />,
-            editRemote: () => <EditRemoteConnModal />,
-            alert: () => <AlertModal />,
-        });
-    }
-
     @boundMethod
     handleContextMenu(e: any) {
         let isInNonTermInput = false;
