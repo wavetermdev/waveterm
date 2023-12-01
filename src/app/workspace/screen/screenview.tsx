@@ -334,6 +334,20 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
         return <Line key={realLine.lineid} screen={screen} line={realLine} {...restProps} />;
     }
 
+    @boundMethod
+    determineVisibleLines(win: ScreenLines): LineType[] {
+        let lines: LineType[];
+        let nonArchivedLines = win.getNonArchivedLines();
+        let runningLines = win.getRunningCmdLines();
+        if (GlobalModel.completedFilteredOut.get()) {
+            lines = runningLines;
+        } else {
+            lines = nonArchivedLines;
+        }
+
+        return lines;
+    }
+
     render() {
         let { session, screen } = this.props;
         let win = this.getScreenLines();
@@ -351,7 +365,7 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
             return this.renderError("loading client data", true);
         }
         let isActive = screen.isActive();
-        let lines = win.getNonArchivedLines();
+        let lines = this.determineVisibleLines(win);
         let renderMode = this.renderMode.get();
         return (
             <div className="window-view" ref={this.windowViewRef}>

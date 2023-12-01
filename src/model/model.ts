@@ -1052,7 +1052,6 @@ class Session {
     notifyNum: OV<number> = mobx.observable.box(0);
     remoteInstances: OArr<RemoteInstanceType>;
     archived: OV<boolean>;
-    filtering: OV<boolean>;
 
     constructor(sdata: SessionDataType) {
         this.sessionId = sdata.sessionid;
