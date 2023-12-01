@@ -22,10 +22,9 @@ import {
     LineSettingsModal,
     ClientSettingsModal,
 } from "./common/modals/settings";
-import { RemotesModal } from "./connections_deprecated/connections";
 import { TosModal } from "./common/modals/modals";
 import { MainSideBar } from "./sidebar/sidebar";
-import { DisconnectedModal, ClientStopModal, ModalProvider } from "./common/modals/modals";
+import { DisconnectedModal, ClientStopModal, ModalsProvider } from "./common/modals/modals";
 import { ErrorBoundary } from "./common/error/errorboundary";
 import "./app.less";
 
@@ -125,7 +124,7 @@ class App extends React.Component<{}, {}> {
                 <If condition={GlobalModel.needsTos()}>
                     <TosModal />
                 </If>
-                <ModalProvider />
+                <ModalsProvider />
                 <If condition={screenSettingsModal != null}>
                     <ScreenSettingsModal
                         key={screenSettingsModal.sessionId + ":" + screenSettingsModal.screenId}

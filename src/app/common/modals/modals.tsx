@@ -55,7 +55,7 @@ const modalsRegistry: { [key: string]: () => React.ReactElement } = {
 };
 
 @mobxReact.observer
-class ModalProvider extends React.Component {
+class ModalsProvider extends React.Component {
     renderModals() {
         const modals = GlobalModel.modalsModel.activeModals;
 
@@ -1471,7 +1471,7 @@ export {
     CreateRemoteConnModal,
     ViewRemoteConnDetailModal,
     EditRemoteConnModal,
-    ModalProvider,
+    ModalsProvider,
     ABOUT,
     CREATE_REMOTE,
     VIEW_REMOTE,
