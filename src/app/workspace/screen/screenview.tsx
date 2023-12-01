@@ -392,7 +392,7 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
                         <NewTabSettings screen={screen} />
                     </If>
                     <If condition={screen.nextLineNum.get() != 1}>
-                        <div className="window-view" ref={this.windowViewRef} data-screenid={screen.screenId}>
+                        <div className="window-empty" ref={this.windowViewRef} data-screenid={screen.screenId}>
                             <div key="lines" className="lines"></div>
                             <div key="window-empty" className={cn("window-empty")}>
                                 <div>
@@ -441,7 +441,7 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
                     />
                 </If>
                 <If condition={GlobalModel.completedFilteredOut.get()}>
-                    <div className=".line">
+                    <div style={{margin: 'auto 1rem 0 1rem'}}>
                         <Button
                           variant="solid"
                           color="color-red"
