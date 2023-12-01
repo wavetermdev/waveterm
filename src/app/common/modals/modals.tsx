@@ -1114,13 +1114,17 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
 
 @mobxReact.observer
 class EditRemoteConnModal extends React.Component<{}, {}> {
-    submitted: OV<boolean>;
+    internalTempAlias: OV<string>;
+    internalTempKeyFile: OV<string>;
+    internalTempPassword: OV<string>;
     model: RemotesModel;
 
     constructor(props: { remotesModel?: RemotesModel }) {
         super(props);
         this.model = GlobalModel.remotesModel;
-        this.submitted = mobx.observable.box(false, { name: "EditRemoteConnModal-submitted" });
+        this.internalTempAlias = mobx.observable.box(null, { name: "EditRemoteSettings-internalTempAlias" });
+        this.internalTempKeyFile = mobx.observable.box(null, { name: "EditRemoteSettings-internalTempKeyFile" });
+        this.internalTempPassword = mobx.observable.box(null, { name: "EditRemoteSettings-internalTempPassword" });
     }
 
     @mobx.computed
@@ -1144,36 +1148,38 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
     }
 
     @mobx.computed
-    get tempAlias(): mobx.IObservableValue<string> {
-        return mobx.observable.box(this.selectedRemote?.remotealias ?? "", {
-            name: "EditRemoteConnModal-alias",
-        });
-    }
-
-    @mobx.computed
     get tempAuthMode(): mobx.IObservableValue<string | null> {
-        return mobx.observable.box(this.selectedRemote?.authtype ?? null, {
+        return mobx.observable.box(this.selectedRemote?.authtype, {
             name: "EditRemoteConnModal-authMode",
         });
     }
 
     @mobx.computed
     get tempConnectMode(): mobx.IObservableValue<string | null> {
-        return mobx.observable.box(this.selectedRemote?.connectmode ?? null, {
+        return mobx.observable.box(this.selectedRemote?.connectmode, {
             name: "EditRemoteConnModal-connectMode",
         });
     }
 
     @mobx.computed
+    get tempAlias(): mobx.IObservableValue<string> {
+        return mobx.observable.box(this.internalTempAlias.get() || this.selectedRemote.remotealias, {
+            name: "EditRemoteConnModal-alias",
+        });
+    }
+
+    @mobx.computed
     get tempKeyFile(): mobx.IObservableValue<string> {
-        return mobx.observable.box(this.remoteEdit?.keystr ?? "", {
+        return mobx.observable.box(this.internalTempKeyFile.get() || this.remoteEdit?.keystr, {
             name: "EditRemoteConnModal-keystr",
         });
     }
 
     @mobx.computed
     get tempPassword(): mobx.IObservableValue<string> {
-        return mobx.observable.box(this.remoteEdit?.haspassword ? PasswordUnchangedSentinel : "", {
+        const oldPassword = this.remoteEdit?.haspassword ? PasswordUnchangedSentinel : "";
+        const newPassword = this.internalTempPassword.get() || oldPassword;
+        return mobx.observable.box(newPassword, {
             name: "EditRemoteConnModal-password",
         });
     }
@@ -1199,33 +1205,33 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
             if (!confirm) {
                 return;
             }
-            GlobalCommandRunner.archiveRemote(this.selectedRemote?.remoteid ?? "");
+            GlobalCommandRunner.archiveRemote(this.selectedRemote?.remoteid);
         });
     }
 
     @boundMethod
     clickForceInstall(): void {
-        GlobalCommandRunner.installRemote(this.selectedRemote?.remoteid ?? "");
+        GlobalCommandRunner.installRemote(this.selectedRemote?.remoteid);
     }
 
     @boundMethod
     handleChangeKeyFile(value: string): void {
         mobx.action(() => {
-            this.tempKeyFile.set(value);
+            this.internalTempKeyFile.set(value);
         })();
     }
 
     @boundMethod
     handleChangePassword(value: string): void {
         mobx.action(() => {
-            this.tempPassword.set(value);
+            this.internalTempPassword.set(value);
         })();
     }
 
     @boundMethod
     handleChangeAlias(value: string): void {
         mobx.action(() => {
-            this.tempAlias.set(value);
+            this.internalTempAlias.set(value);
         })();
     }
 
@@ -1255,7 +1261,7 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
     submitRemote(): void {
         let authMode = this.tempAuthMode.get();
         let kwargs: Record<string, string> = {};
-        if (!util.isStrEq(this.tempKeyFile.get(), this.remoteEdit?.keystr ?? "")) {
+        if (!util.isStrEq(this.tempKeyFile.get(), this.remoteEdit?.keystr)) {
             if (authMode == "key" || authMode == "key+password") {
                 kwargs["key"] = this.tempKeyFile.get();
             } else {
@@ -1271,21 +1277,16 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
                 kwargs["password"] = "";
             }
         }
-        if (!util.isStrEq(this.tempAlias.get(), this.selectedRemote?.remotealias ?? "")) {
+        if (!util.isStrEq(this.tempAlias.get(), this.selectedRemote?.remotealias)) {
             kwargs["alias"] = this.tempAlias.get();
         }
-        if (!util.isStrEq(this.tempConnectMode.get() ?? "", this.selectedRemote?.connectmode ?? "")) {
-            kwargs["connectmode"] = this.tempConnectMode.get() ?? "";
-        }
-        if (Object.keys(kwargs).length == 0) {
-            this.submitted.set(true);
-            return;
+        if (!util.isStrEq(this.tempConnectMode.get(), this.selectedRemote?.connectmode)) {
+            kwargs["connectmode"] = this.tempConnectMode.get();
         }
         kwargs["visual"] = "1";
         kwargs["submit"] = "1";
-        GlobalCommandRunner.editRemote(this.selectedRemote?.remoteid ?? "", kwargs);
-        this.submitted.set(true);
-        this.model.seRecentConnAdded(false);
+        GlobalCommandRunner.editRemote(this.selectedRemote?.remoteid, kwargs);
+        this.model.closeModal();
     }
 
     renderAuthModeMessage(): any {
@@ -1314,11 +1315,7 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
     render() {
         let authMode = this.tempAuthMode.get();
 
-        if (
-            (util.isBlank(this.remoteEdit?.errorstr ?? "") && this.submitted.get()) ||
-            this.remoteEdit === null ||
-            !this.isAuthEditMode
-        ) {
+        if (this.remoteEdit === null || !this.isAuthEditMode) {
             return null;
         }
 
@@ -1366,7 +1363,7 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
                                 { value: "password", label: "password" },
                                 { value: "key+password", label: "key+password" },
                             ]}
-                            value={this.tempAuthMode.get() ?? ""}
+                            value={this.tempAuthMode.get()}
                             onChange={(val: string) => {
                                 this.tempAuthMode.set(val);
                             }}
@@ -1440,14 +1437,14 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
                                 { value: "auto", label: "auto" },
                                 { value: "manual", label: "manual" },
                             ]}
-                            value={this.tempConnectMode.get() ?? ""}
+                            value={this.tempConnectMode.get()}
                             onChange={(val: string) => {
                                 this.tempConnectMode.set(val);
                             }}
                         />
                     </div>
-                    <If condition={!util.isBlank(this.remoteEdit?.errorstr ?? "")}>
-                        <div className="settings-field settings-error">Error: {this.remoteEdit?.errorstr ?? ""}</div>
+                    <If condition={!util.isBlank(this.remoteEdit?.errorstr)}>
+                        <div className="settings-field settings-error">Error: {this.remoteEdit?.errorstr}</div>
                     </If>
                 </div>
                 <Modal.Footer onOk={this.submitRemote} onCancel={this.model.closeModal} okLabel="Save" />
