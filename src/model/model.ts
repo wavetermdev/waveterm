@@ -2748,26 +2748,26 @@ class RemotesModel {
         mobx.action(() => {
             this.selectedRemoteId.set(remoteId);
             this.remoteEdit.set(null);
-            GlobalModel.modalsModel.pushModal("viewRemote");
+            GlobalModel.modalsModel.pushModal(modals.VIEW_REMOTE);
         })();
     }
 
     openAddModal(redit: RemoteEditType): void {
         mobx.action(() => {
             this.remoteEdit.set(redit);
-            GlobalModel.modalsModel.pushModal("createRemote");
+            GlobalModel.modalsModel.pushModal(modals.CREATE_REMOTE);
         })();
     }
 
     openEditModal(redit?: RemoteEditType): void {
-        if (redit === undefined) {
+        if (redit == null) {
             this.startEditAuth();
-            GlobalModel.modalsModel.pushModal("editRemote");
+            GlobalModel.modalsModel.pushModal(modals.EDIT_REMOTE);
         } else {
             mobx.action(() => {
-                this.selectedRemoteId.set(redit?.remoteid ?? null);
-                this.remoteEdit.set(redit ?? null);
-                GlobalModel.modalsModel.pushModal("editRemote");
+                this.selectedRemoteId.set(redit?.remoteid);
+                this.remoteEdit.set(redit);
+                GlobalModel.modalsModel.pushModal(modals.EDIT_REMOTE);
             })();
         }
     }
@@ -3096,7 +3096,7 @@ class Model {
     showAlert(alertMessage: AlertMessageType): Promise<boolean> {
         mobx.action(() => {
             this.alertMessage.set(alertMessage);
-            GlobalModel.modalsModel.pushModal("alert");
+            GlobalModel.modalsModel.pushModal(modals.ALERT);
         })();
         let prtn = new Promise<boolean>((resolve, reject) => {
             this.alertPromiseResolver = resolve;
@@ -3375,7 +3375,7 @@ class Model {
 
     onMenuItemAbout(): void {
         mobx.action(() => {
-            this.modalsModel.pushModal("about");
+            this.modalsModel.pushModal(modals.ABOUT);
         })();
     }
 
