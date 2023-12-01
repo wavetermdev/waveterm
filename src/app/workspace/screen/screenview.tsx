@@ -337,13 +337,17 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
     @boundMethod
     determineVisibleLines(win: ScreenLines): LineType[] {
         let lines: LineType[];
+        let numHidden: number;
         let nonArchivedLines = win.getNonArchivedLines();
         let runningLines = win.getRunningCmdLines();
         if (GlobalModel.completedFilteredOut.get()) {
             lines = runningLines;
+            numHidden = nonArchivedLines.length - runningLines.length;
         } else {
             lines = nonArchivedLines;
+            numHidden = 0;
         }
+        win.numLinesHidden.set(numHidden);
 
         return lines;
     }
@@ -443,7 +447,7 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
                           color="color-red"
                           onClick={() => GlobalModel.completedFilteredOut.set(false)}
                         >
-                            Filtering # Commands
+                            Filtering {win.numLinesHidden.get()} Commands
                         </Button>
                     </div>
                 </If>
