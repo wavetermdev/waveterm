@@ -14,7 +14,7 @@ import { GlobalCommandRunner, TabColors, TabIcons } from "../../../model/model";
 import type { LineType, RenderModeType, LineFactoryProps, CommandRtnType } from "../../../types/types";
 import * as T from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { InlineSettingsTextEdit, RemoteStatusLight } from "../../common/common";
+import { InlineSettingsTextEdit, RemoteStatusLight, Button } from "../../common/common";
 import { getRemoteStr } from "../../common/prompt/prompt";
 import { GlobalModel, ScreenLines, Screen, Session } from "../../../model/model";
 import { Line } from "../../line/linecomps";
@@ -421,6 +421,13 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
                         renderMode={renderMode}
                         lineFactory={this.buildLineComponent}
                     />
+                </If>
+                <If condition={true}>
+                    <div className=".line">
+                        <Button variant="solid" color="color-red">
+                            Filtering # Commands
+                        </Button>
+                    </div>
                 </If>
             </div>
         );
