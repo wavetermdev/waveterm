@@ -202,7 +202,7 @@ class LoadingSpinner extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
-class AlertModal extends React.Component<{ onOk?: () => void }, {}> {
+class AlertModal extends React.Component<{}, {}> {
     @boundMethod
     closeModal(): void {
         GlobalModel.cancelAlert();

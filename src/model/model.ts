@@ -2898,7 +2898,7 @@ class RemotesModel {
 }
 
 class ModalsModel {
-    store: Array<{ id: string; component: React.ComponentType<{ onOk?: () => void }> }> = [];
+    store: Array<{ id: string; component: React.ComponentType }> = [];
 
     constructor() {
         mobx.makeAutoObservable(this);
