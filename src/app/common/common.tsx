@@ -1097,106 +1097,57 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
 }
 
 interface ModalHeaderProps {
-    onClose?: () => void;
-    title?: string;
-    children?: React.ReactNode;
+    onClose: () => void;
+    title: string;
 }
+
+const ModalHeader: React.FC<ModalHeaderProps> = ({ onClose, title }) => (
+    <div className="wave-modal-header">
+        {<div>{title}</div>}
+        {onClose && (
+            <IconButton theme="secondary" variant="ghost" onClick={onClose}>
+                <i className="fa-sharp fa-solid fa-xmark"></i>
+            </IconButton>
+        )}
+    </div>
+);
 
 interface ModalFooterProps {
-    onClose?: () => void;
+    onCancel?: () => void;
     onOk?: () => void;
     cancelLabel?: string;
     okLabel?: string;
-    children?: React.ReactNode;
 }
 
-interface ModalBodyProps {
-    children?: React.ReactNode;
-}
+const ModalFooter: React.FC<ModalFooterProps> = ({ onCancel, onOk, cancelLabel = "Cancel", okLabel = "Ok" }) => (
+    <div className="wave-modal-footer">
+        <Button theme="secondary" onClick={onCancel}>
+            {cancelLabel}
+        </Button>
+        <Button onClick={onOk}>{okLabel}</Button>
+    </div>
+);
 
 interface ModalProps {
-    onClose?: () => void;
-    onOk?: () => void;
-    cancelLabel?: string;
-    okLabel?: string;
-    title?: string;
     className?: string;
     children?: React.ReactNode;
+    onClickBackdrop?: () => void;
 }
-
-interface ModalContextProps {
-    isInModal: boolean;
-    onClose?: () => void;
-    onOk?: () => void;
-    title?: string;
-    cancelLabel?: string;
-    okLabel?: string;
-}
-const ModalContext = React.createContext<ModalContextProps>({ isInModal: false });
 
 class Modal extends React.Component<ModalProps> {
-    static Header: React.FC<ModalHeaderProps> = ({ children }) => (
-        <ModalContext.Consumer>
-            {({ isInModal, onClose, title }) =>
-                isInModal ? (
-                    <div className="wave-modal-header">
-                        {children ? (
-                            children
-                        ) : (
-                            <>
-                                {title && <div>{title}</div>}
-                                {onClose && (
-                                    <IconButton theme="secondary" variant="ghost" onClick={onClose}>
-                                        <i className="fa-sharp fa-solid fa-xmark"></i>
-                                    </IconButton>
-                                )}
-                            </>
-                        )}
-                    </div>
-                ) : null
-            }
-        </ModalContext.Consumer>
-    );
-
-    static Body: React.FC<ModalBodyProps> = ({ children }) => (
-        <ModalContext.Consumer>
-            {(isInModal) => (isInModal ? <div className="wave-modal-body">{children}</div> : null)}
-        </ModalContext.Consumer>
-    );
-
-    static Footer: React.FC<ModalFooterProps> = ({ children }) => (
-        <ModalContext.Consumer>
-            {({ isInModal, onClose, onOk, cancelLabel, okLabel }) =>
-                isInModal && (
-                    <div className="wave-modal-footer">
-                        {children ? (
-                            children
-                        ) : (
-                            <>
-                                {onClose && (
-                                    <Button theme="secondary" onClick={onClose}>
-                                        {cancelLabel}
-                                    </Button>
-                                )}
-                                {onOk && <Button onClick={onOk}>{okLabel}</Button>}
-                            </>
-                        )}
-                    </div>
-                )
-            }
-        </ModalContext.Consumer>
-    );
+    static Header = ModalHeader;
+    static Footer = ModalFooter;
 
     renderBackdrop(onClick: (() => void) | undefined) {
         return <div className="wave-modal-backdrop" onClick={onClick}></div>;
     }
 
     renderModal() {
-        const { className, onClose, children } = this.props;
+        const { className, children } = this.props;
 
         return (
             <div className="wave-modal-container">
-                {this.renderBackdrop(onClose)}
+                {this.renderBackdrop(this.props.onClickBackdrop)}
                 <div className={`wave-modal ${className}`}>
                     <div className="wave-modal-content">{children}</div>
                 </div>
@@ -1205,14 +1156,7 @@ class Modal extends React.Component<ModalProps> {
     }
 
     render() {
-        const { onClose, onOk, cancelLabel = "Cancel", okLabel = "Ok", title = "Modal" } = this.props;
-
-        return ReactDOM.createPortal(
-            <ModalContext.Provider value={{ isInModal: true, onClose, onOk, cancelLabel, okLabel, title }}>
-                {this.renderModal()}
-            </ModalContext.Provider>,
-            document.getElementById("app") as HTMLElement
-        );
+        return ReactDOM.createPortal(this.renderModal(), document.getElementById("app") as HTMLElement);
     }
 }
 

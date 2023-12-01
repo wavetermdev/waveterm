@@ -219,15 +219,15 @@ class AlertModal extends React.Component<{ onOk?: () => void }, {}> {
         let isConfirm = message?.confirm ?? false;
 
         return (
-            <Modal onClose={this.closeModal} onOk={this.handleOK} title={title} className="alert-modal">
-                <Modal.Header />
-                <Modal.Body>
+            <Modal className="alert-modal">
+                <Modal.Header onClose={this.closeModal} title={title} />
+                <div className="wave-modal-body">
                     <If condition={message?.markdown}>
                         <Markdown text={message?.message ?? ""} />
                     </If>
                     <If condition={!message?.markdown}>{message?.message}</If>
-                </Modal.Body>
-                <Modal.Footer>
+                </div>
+                <div className="wave-modal-footer">
                     <If condition={isConfirm}>
                         <Button theme="secondary" onClick={this.closeModal}>
                             Cancel
@@ -237,7 +237,7 @@ class AlertModal extends React.Component<{ onOk?: () => void }, {}> {
                     <If condition={!isConfirm}>
                         <Button onClick={this.handleOK}>Ok</Button>
                     </If>
-                </Modal.Footer>
+                </div>
             </Modal>
         );
     }
@@ -408,9 +408,9 @@ class AboutModal extends React.Component<{}, {}> {
 
     render() {
         return (
-            <Modal onClose={this.closeModal} title="About" className="about-modal">
-                <Modal.Header />
-                <Modal.Body>
+            <Modal className="about-modal">
+                <Modal.Header onClose={this.closeModal} title="About" />
+                <div className="wave-modal-body">
                     <div className="about-section">
                         <div className="logo-wrapper">
                             <img src={logo} alt="logo" />
@@ -452,7 +452,7 @@ class AboutModal extends React.Component<{}, {}> {
                         </a>
                     </div>
                     <div className="about-section text-standard">&copy; 2023 Command Line Inc.</div>
-                </Modal.Body>
+                </div>
             </Modal>
         );
     }
@@ -620,15 +620,9 @@ class CreateRemoteConnModal extends React.Component<{ remotesModel?: RemotesMode
         }
 
         return (
-            <Modal
-                onClose={this.model.closeModal}
-                onOk={this.submitRemote}
-                title="Add Connection"
-                okLabel="Connect"
-                className="crconn-modal"
-            >
-                <Modal.Header />
-                <Modal.Body>
+            <Modal className="crconn-modal">
+                <Modal.Header title="Add Connection" onClose={this.model.closeModal} />
+                <div className="wave-modal-body">
                     <div className="user-section">
                         <TextField
                             label="user@host"
@@ -784,8 +778,8 @@ class CreateRemoteConnModal extends React.Component<{ remotesModel?: RemotesMode
                     <If condition={!util.isBlank(this.getErrorStr() as string)}>
                         <div className="settings-field settings-error">Error: {this.getErrorStr()}</div>
                     </If>
-                </Modal.Body>
-                <Modal.Footer />
+                </div>
+                <Modal.Footer onCancel={this.model.closeModal} onOk={this.submitRemote} okLabel="Connect" />
             </Modal>
         );
     }
@@ -1040,15 +1034,9 @@ class ViewRemoteConnDetailModal extends React.Component<{ remotesModel?: Remotes
         let remoteAliasText = util.isBlank(remote.remotealias) ? "(none)" : remote.remotealias;
 
         return (
-            <Modal
-                onClose={this.model.closeModal}
-                onOk={this.model.closeModal}
-                title="Connection"
-                okLabel="Done"
-                className="rconndetail-modal"
-            >
-                <Modal.Header />
-                <Modal.Body>
+            <Modal className="rconndetail-modal">
+                <Modal.Header title="Connection" onClose={this.model.closeModal} />
+                <div className="wave-modal-body">
                     <div className="name-header-actions-wrapper">
                         <div className="name text-primary">{getName(remote)}</div>
                         <div className="header-actions">{this.renderHeaderBtns(remote)}</div>
@@ -1119,8 +1107,8 @@ class ViewRemoteConnDetailModal extends React.Component<{ remotesModel?: Remotes
                             ></div>
                         </div>
                     </div>
-                </Modal.Body>
-                <Modal.Footer />
+                </div>
+                <Modal.Footer onOk={this.model.closeModal} onCancel={this.model.closeModal} okLabel="Done" />
             </Modal>
         );
     }
@@ -1338,15 +1326,9 @@ class EditRemoteConnModal extends React.Component<{ remotesModel?: RemotesModel 
         }
 
         return (
-            <Modal
-                onClose={this.model.closeModal}
-                onOk={this.submitRemote}
-                title="Edit Connection"
-                okLabel="Save"
-                className="erconn-modal"
-            >
-                <Modal.Header />
-                <Modal.Body>
+            <Modal className="erconn-modal">
+                <Modal.Header title="Edit Connection" onClose={this.model.closeModal} />
+                <div className="wave-modal-body">
                     <div className="name-actions-section">
                         <div className="name text-primary">{getName(this.selectedRemote)}</div>
                         <div className="header-actions">
@@ -1470,157 +1452,9 @@ class EditRemoteConnModal extends React.Component<{ remotesModel?: RemotesModel 
                     <If condition={!util.isBlank(this.remoteEdit?.errorstr ?? "")}>
                         <div className="settings-field settings-error">Error: {this.remoteEdit?.errorstr ?? ""}</div>
                     </If>
-                </Modal.Body>
-                <Modal.Footer />
+                </div>
+                <Modal.Footer onOk={this.submitRemote} onCancel={this.model.closeModal} okLabel="Save" />
             </Modal>
-            // <div className={cn("modal wave-modal erconn-modal is-active")}>
-            //     <div className="modal-background wave-modal-background" />
-            //     <div className="modal-content wave-modal-content erconn-wave-modal-content">
-            //         <div className="wave-modal-content-inner erconn-wave-modal-content-inner">
-            //             <header className="wave-modal-header erconn-wave-modal-header">
-            //                 <div className="wave-modal-title erconn-wave-modal-title">Edit Connection</div>
-            //                 <div className="wave-modal-close erconn-wave-modal-close" onClick={this.model.closeModal}>
-            //                     <img src={close} alt="Close (Escape)" />
-            //                 </div>
-            //             </header>
-            //             <div className="wave-modal-body erconn-wave-modal-body">
-            //                 <div className="name-actions-section">
-            //                     <div className="name text-primary">{getName(this.selectedRemote)}</div>
-            //                     <div className="header-actions">
-            //                         <Button theme="secondary" onClick={this.clickArchive}>
-            //                             Delete
-            //                         </Button>
-            //                         <Button theme="secondary" onClick={this.clickForceInstall}>
-            //                             Force Install
-            //                         </Button>
-            //                     </div>
-            //                 </div>
-            //                 <div className="alias-section">
-            //                     <TextField
-            //                         label="Alias"
-            //                         onChange={this.handleChangeAlias}
-            //                         value={this.tempAlias.get()}
-            //                         maxLength={100}
-            //                         decoration={{
-            //                             endDecoration: (
-            //                                 <InputDecoration>
-            //                                     <Tooltip
-            //                                         message={`(Optional) A short alias to use when selecting or displaying this connection.`}
-            //                                         icon={<i className="fa-sharp fa-regular fa-circle-question" />}
-            //                                     >
-            //                                         <i className="fa-sharp fa-regular fa-circle-question" />
-            //                                     </Tooltip>
-            //                                 </InputDecoration>
-            //                             ),
-            //                         }}
-            //                     />
-            //                 </div>
-            //                 <div className="authmode-section">
-            //                     <Dropdown
-            //                         label="Auth Mode"
-            //                         options={[
-            //                             { value: "none", label: "none" },
-            //                             { value: "key", label: "key" },
-            //                             { value: "password", label: "password" },
-            //                             { value: "key+password", label: "key+password" },
-            //                         ]}
-            //                         value={this.tempAuthMode.get() ?? ""}
-            //                         onChange={(val: string) => {
-            //                             this.tempAuthMode.set(val);
-            //                         }}
-            //                         decoration={{
-            //                             endDecoration: (
-            //                                 <InputDecoration>
-            //                                     <Tooltip
-            //                                         message={
-            //                                             <ul>
-            //                                                 <li>
-            //                                                     <b>none</b> - no authentication, or authentication is
-            //                                                     already configured in your ssh config.
-            //                                                 </li>
-            //                                                 <li>
-            //                                                     <b>key</b> - use a private key.
-            //                                                 </li>
-            //                                                 <li>
-            //                                                     <b>password</b> - use a password.
-            //                                                 </li>
-            //                                                 <li>
-            //                                                     <b>key+password</b> - use a key with a passphrase.
-            //                                                 </li>
-            //                                             </ul>
-            //                                         }
-            //                                         icon={<i className="fa-sharp fa-regular fa-circle-question" />}
-            //                                     >
-            //                                         <i className="fa-sharp fa-regular fa-circle-question" />
-            //                                     </Tooltip>
-            //                                 </InputDecoration>
-            //                             ),
-            //                         }}
-            //                     />
-            //                 </div>
-            //                 <If condition={authMode == "key" || authMode == "key+password"}>
-            //                     <TextField
-            //                         label="SSH Keyfile"
-            //                         placeholder="keyfile path"
-            //                         onChange={this.handleChangeKeyFile}
-            //                         value={this.tempKeyFile.get()}
-            //                         maxLength={400}
-            //                         required={true}
-            //                         decoration={{
-            //                             endDecoration: (
-            //                                 <InputDecoration>
-            //                                     <Tooltip
-            //                                         message={`(Required) The path to your ssh key file.`}
-            //                                         icon={<i className="fa-sharp fa-regular fa-circle-question" />}
-            //                                     >
-            //                                         <i className="fa-sharp fa-regular fa-circle-question" />
-            //                                     </Tooltip>
-            //                                 </InputDecoration>
-            //                             ),
-            //                         }}
-            //                     />
-            //                 </If>
-            //                 <If condition={authMode == "password" || authMode == "key+password"}>
-            //                     <PasswordField
-            //                         label={authMode == "password" ? "SSH Password" : "Key Passphrase"}
-            //                         placeholder="password"
-            //                         onChange={this.handleChangePassword}
-            //                         value={this.tempPassword.get()}
-            //                         maxLength={400}
-            //                     />
-            //                 </If>
-            //                 <div className="connectmode-section">
-            //                     <Dropdown
-            //                         label="Connect Mode"
-            //                         options={[
-            //                             { value: "startup", label: "startup" },
-            //                             { value: "key", label: "key" },
-            //                             { value: "auto", label: "auto" },
-            //                             { value: "manual", label: "manual" },
-            //                         ]}
-            //                         value={this.tempConnectMode.get() ?? ""}
-            //                         onChange={(val: string) => {
-            //                             this.tempConnectMode.set(val);
-            //                         }}
-            //                     />
-            //                 </div>
-            //                 <If condition={!util.isBlank(this.remoteEdit?.errorstr ?? "")}>
-            //                     <div className="settings-field settings-error">
-            //                         Error: {this.remoteEdit?.errorstr ?? ""}
-            //                     </div>
-            //                 </If>
-            //             </div>
-            //             <footer className="wave-modal-footer erconn-wave-modal-footer">
-            //                 <div className="action-buttons">
-            //                     <Button theme="secondary" onClick={this.model.closeModal}>
-            //                         Cancel
-            //                     </Button>
-            //                     <Button onClick={this.submitRemote}>Save</Button>
-            //                 </div>
-            //             </footer>
-            //         </div>
-            //     </div>
-            // </div>
         );
     }
 }
