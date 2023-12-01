@@ -458,9 +458,8 @@ class AboutModal extends React.Component<{}, {}> {
     }
 }
 
-@mobxReact.inject("remotesModel")
 @mobxReact.observer
-class CreateRemoteConnModal extends React.Component<{ remotesModel?: RemotesModel }, {}> {
+class CreateRemoteConnModal extends React.Component<{}, {}> {
     tempAlias: OV<string>;
     tempHostName: OV<string>;
     tempPort: OV<string>;
@@ -474,7 +473,7 @@ class CreateRemoteConnModal extends React.Component<{ remotesModel?: RemotesMode
 
     constructor(props: { remotesModel?: RemotesModel }) {
         super(props);
-        this.model = this.props.remotesModel as RemotesModel;
+        this.model = GlobalModel.remotesModel;
         this.remoteEdit = this.model.remoteEdit.get();
         this.tempAlias = mobx.observable.box("", { name: "CreateRemote-alias" });
         this.tempHostName = mobx.observable.box("", { name: "CreateRemote-hostName" });
@@ -785,15 +784,14 @@ class CreateRemoteConnModal extends React.Component<{ remotesModel?: RemotesMode
     }
 }
 
-@mobxReact.inject("remotesModel")
 @mobxReact.observer
-class ViewRemoteConnDetailModal extends React.Component<{ remotesModel?: RemotesModel }, {}> {
+class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
     termRef: React.RefObject<any> = React.createRef();
     model: RemotesModel;
 
     constructor(props: { remotesModel?: RemotesModel }) {
         super(props);
-        this.model = this.props.remotesModel as RemotesModel;
+        this.model = GlobalModel.remotesModel;
     }
 
     @mobx.computed
@@ -1114,15 +1112,14 @@ class ViewRemoteConnDetailModal extends React.Component<{ remotesModel?: Remotes
     }
 }
 
-@mobxReact.inject("remotesModel")
 @mobxReact.observer
-class EditRemoteConnModal extends React.Component<{ remotesModel?: RemotesModel }, {}> {
+class EditRemoteConnModal extends React.Component<{}, {}> {
     submitted: OV<boolean>;
     model: RemotesModel;
 
     constructor(props: { remotesModel?: RemotesModel }) {
         super(props);
-        this.model = this.props.remotesModel as RemotesModel;
+        this.model = GlobalModel.remotesModel;
         this.submitted = mobx.observable.box(false, { name: "EditRemoteConnModal-submitted" });
     }
 

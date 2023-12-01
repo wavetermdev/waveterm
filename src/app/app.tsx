@@ -25,16 +25,7 @@ import {
 import { RemotesModal } from "./connections_deprecated/connections";
 import { TosModal } from "./common/modals/modals";
 import { MainSideBar } from "./sidebar/sidebar";
-import {
-    DisconnectedModal,
-    ClientStopModal,
-    AlertModal,
-    AboutModal,
-    CreateRemoteConnModal,
-    ViewRemoteConnDetailModal,
-    EditRemoteConnModal,
-    ModalProvider,
-} from "./common/modals/modals";
+import { DisconnectedModal, ClientStopModal, ModalProvider } from "./common/modals/modals";
 import { ErrorBoundary } from "./common/error/errorboundary";
 import "./app.less";
 
@@ -90,10 +81,6 @@ class App extends React.Component<{}, {}> {
         let lineSettingsModal = GlobalModel.lineSettingsModal.get();
         let clientSettingsModal = GlobalModel.clientSettingsModal.get();
         let remotesModel = GlobalModel.remotesModel;
-        let selectedRemoteId = remotesModel.selectedRemoteId.get();
-        let selectedRemote = GlobalModel.getRemote(selectedRemoteId);
-        let isAuthEditMode = remotesModel.isAuthEditMode();
-        let remoteEdit = remotesModel.remoteEdit.get();
         let disconnected = !GlobalModel.ws.open.get() || !GlobalModel.waveSrvRunning.get();
         let hasClientStop = GlobalModel.getHasClientStop();
         let dcWait = this.dcWait.get();
@@ -138,9 +125,7 @@ class App extends React.Component<{}, {}> {
                 <If condition={GlobalModel.needsTos()}>
                     <TosModal />
                 </If>
-                <mobxReact.Provider remotesModel={remotesModel}>
-                    <ModalProvider />
-                </mobxReact.Provider>
+                <ModalProvider />
                 <If condition={screenSettingsModal != null}>
                     <ScreenSettingsModal
                         key={screenSettingsModal.sessionId + ":" + screenSettingsModal.screenId}
