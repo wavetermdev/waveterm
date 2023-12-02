@@ -22,7 +22,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
     tableWidth: OV<number> = mobx.observable.box(0, { name: "tableWidth" });
     tableRszObs: ResizeObserver = null;
 
-    constructor(props: { model: RemotesModel }) {
+    constructor(props) {
         super(props);
         this.state = {
             hoveredItemId: null,
@@ -141,21 +141,21 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
                     <tbody>
                         <For index="idx" each="item" of={items}>
                             <tr
-                                key={item!.remoteid}
+                                key={item.remoteid}
                                 className={cn("connections-item", {
-                                    hovered: this.state.hoveredItemId === item!.remoteid,
+                                    hovered: this.state.hoveredItemId === item.remoteid,
                                 })}
-                                onClick={() => this.handleRead(item!.remoteid)} // Moved onClick here
+                                onClick={() => this.handleRead(item.remoteid)} // Moved onClick here
                             >
                                 <td className="col-name">
-                                    <div>{this.getName(item!)}</div>
+                                    <div>{this.getName(item)}</div>
                                 </td>
                                 <td className="col-type">
-                                    <div>{item!.remotetype}</div>
+                                    <div>{item.remotetype}</div>
                                 </td>
                                 <td className="col-status">
                                     <div>
-                                        <Status status={this.getStatus(item!.status)} text={item!.status} />
+                                        <Status status={this.getStatus(item.status)} text={item.status} />
                                     </div>
                                 </td>
                             </tr>

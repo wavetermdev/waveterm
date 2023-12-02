@@ -2847,9 +2847,6 @@ class RemotesModel {
 
     @boundMethod
     termKeyHandler(remoteId: string, event: any, termWrap: TermWrap): void {
-        if (remoteId === null) {
-            return;
-        }
         let remote = GlobalModel.getRemote(remoteId);
         if (remote == null) {
             return;
@@ -2959,7 +2956,7 @@ class Model {
     alertMessage: OV<AlertMessageType> = mobx.observable.box(null, {
         name: "alertMessage",
     });
-    alertPromiseResolver: (result: boolean) => void = null;
+    alertPromiseResolver: (result: boolean) => void;
     aboutModalOpen: OV<boolean> = mobx.observable.box(false, {
         name: "aboutModalOpen",
     });

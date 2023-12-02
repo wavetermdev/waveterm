@@ -858,11 +858,11 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
     @boundMethod
     clickArchive(): void {
         if (this.selectedRemote && this.selectedRemote.status == "connected") {
-            GlobalModel.showAlert({ message: "Cannot archived a connected remote.  Disconnect and try again." });
+            GlobalModel.showAlert({ message: "Cannot delete when connected.  Disconnect and try again." });
             return;
         }
         let prtn = GlobalModel.showAlert({
-            message: "Are you sure you want to archive this connection?",
+            message: "Are you sure you want to delete this connection?",
             confirm: true,
         });
         prtn.then((confirm) => {
@@ -1176,11 +1176,11 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
     @boundMethod
     clickArchive(): void {
         if (this.selectedRemote?.status == "connected") {
-            GlobalModel.showAlert({ message: "Cannot archived a connected remote.  Disconnect and try again." });
+            GlobalModel.showAlert({ message: "Cannot delete while connected.  Disconnect and try again." });
             return;
         }
         let prtn = GlobalModel.showAlert({
-            message: "Are you sure you want to archive this connection?",
+            message: "Are you sure you want to delete this connection?",
             confirm: true,
         });
 
