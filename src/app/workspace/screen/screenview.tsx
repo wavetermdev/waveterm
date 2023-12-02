@@ -441,13 +441,15 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
                     />
                 </If>
                 <If condition={GlobalModel.completedFilteredOut.get()}>
-                    <div style={{margin: 'auto 1rem 0 1rem'}}>
+                    <div className='filter-running'>
                         <Button
-                          variant="solid"
-                          color="color-red"
+                          variant="outlined"
+                          color="color-yellow"
+                          style={{borderRadius: '999px'}}
                           onClick={() => GlobalModel.completedFilteredOut.set(false)}
                         >
-                            Filtering {win.numLinesHidden.get()} Commands
+                            Showing Running Commands &nbsp;
+                            <i className="fa-sharp fa-solid fa-xmark" />
                         </Button>
                     </div>
                 </If>

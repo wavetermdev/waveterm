@@ -229,6 +229,7 @@ interface ButtonProps {
     leftIcon?: React.ReactNode;
     rightIcon?: React.ReactNode;
     color?: string;
+    style?: React.CSSProperties;
 }
 
 class Button extends React.Component<ButtonProps> {
@@ -236,6 +237,7 @@ class Button extends React.Component<ButtonProps> {
         theme: "primary",
         variant: "solid",
         color: "",
+        style: {},
     };
 
     @boundMethod
@@ -246,13 +248,14 @@ class Button extends React.Component<ButtonProps> {
     }
 
     render() {
-        const { leftIcon, rightIcon, theme, children, disabled, variant, color } = this.props;
+        const { leftIcon, rightIcon, theme, children, disabled, variant, color, style } = this.props;
 
         return (
             <button
                 className={cn("wave-button", theme, variant, color, { disabled: disabled })}
                 onClick={this.handleClick}
                 disabled={disabled}
+                style={style}
             >
                 {leftIcon && <span className="icon-left">{leftIcon}</span>}
                 {children}
