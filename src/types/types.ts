@@ -168,7 +168,7 @@ type FeCmdPacketType = {
     type: string;
     metacmd: string;
     metasubcmd?: string;
-    args: string[] | null;
+    args: string[];
     kwargs: Record<string, string>;
     rawstr?: string;
     uicontext: UIContextType;

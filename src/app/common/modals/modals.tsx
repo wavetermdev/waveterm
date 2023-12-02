@@ -11,21 +11,18 @@ import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, RemotesModel } from "../../../model/model";
 import * as T from "../../../types/types";
-import { Markdown, InfoMessage } from "../common";
+import { Markdown } from "../common";
 import * as util from "../../../util/util";
 import * as textmeasure from "../../../util/textmeasure";
-import { Toggle, Checkbox, Modal } from "../common";
+import { Toggle, Modal } from "../common";
 import { ClientDataType } from "../../../types/types";
 import { TextField, NumberField, InputDecoration, Dropdown, PasswordField, Tooltip, Button, Status } from "../common";
 
-import close from "../../assets/icons/close.svg";
 import { ReactComponent as WarningIcon } from "../../assets/icons/line/triangle-exclamation.svg";
-import { ReactComponent as XmarkIcon } from "../../assets/icons/line/xmark.svg";
 import shield from "../../assets/icons/shield_check.svg";
 import help from "../../assets/icons/help_filled.svg";
 import github from "../../assets/icons/github.svg";
 import logo from "../../assets/waveterm-logo-with-bg.svg";
-import { ReactComponent as AngleDownIcon } from "../../assets/icons/history/angle-down.svg";
 
 dayjs.extend(localizedFormat);
 
@@ -39,20 +36,6 @@ type OV<V> = mobx.IObservableValue<V>;
 const RemotePtyRows = 9;
 const RemotePtyCols = 80;
 const PasswordUnchangedSentinel = "--unchanged--";
-
-const ABOUT = "about";
-const CREATE_REMOTE = "createRemote";
-const VIEW_REMOTE = "viewRemote";
-const EDIT_REMOTE = "editRemote";
-const ALERT = "alert";
-
-const modalsRegistry: { [key: string]: () => React.ReactElement } = {
-    [ABOUT]: () => <AboutModal />,
-    [CREATE_REMOTE]: () => <CreateRemoteConnModal />,
-    [VIEW_REMOTE]: () => <ViewRemoteConnDetailModal />,
-    [EDIT_REMOTE]: () => <EditRemoteConnModal />,
-    [ALERT]: () => <AlertModal />,
-};
 
 @mobxReact.observer
 class ModalsProvider extends React.Component {
@@ -103,7 +86,7 @@ class DisconnectedModal extends React.Component<{}, {}> {
 
     render() {
         let model = GlobalModel;
-        let logLine: string | null = null;
+        let logLine: string = null;
         let idx: number = 0;
         return (
             <div className="prompt-modal disconnected-modal modal is-active">
@@ -467,8 +450,8 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
     tempConnectMode: OV<string>;
     tempPassword: OV<string>;
     tempKeyFile: OV<string>;
-    errorStr: OV<string | null>;
-    remoteEdit: T.RemoteEditType | null;
+    errorStr: OV<string>;
+    remoteEdit: T.RemoteEditType;
     model: RemotesModel;
 
     constructor(props: { remotesModel?: RemotesModel }) {
@@ -496,7 +479,7 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
         return hostName;
     }
 
-    getErrorStr(): string | null {
+    getErrorStr(): string {
         if (this.errorStr.get() != null) {
             return this.errorStr.get();
         }
@@ -795,7 +778,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
     }
 
     @mobx.computed
-    get selectedRemote(): T.RemoteType | null {
+    get selectedRemote(): T.RemoteType {
         const selectedRemoteId = this.model.selectedRemoteId.get();
         return GlobalModel.getRemote(selectedRemoteId);
     }
@@ -899,7 +882,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
     }
 
     renderInstallStatus(remote: T.RemoteType): any {
-        let statusStr: string | null = null;
+        let statusStr: string = null;
         if (remote.installstatus == "disconnected") {
             if (remote.needsmshellupgrade) {
                 statusStr = "mshell " + remote.mshellversion + " - needs upgrade";
@@ -1133,12 +1116,12 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
     }
 
     @mobx.computed
-    get selectedRemote(): T.RemoteType | null {
+    get selectedRemote(): T.RemoteType {
         return GlobalModel.getRemote(this.selectedRemoteId);
     }
 
     @mobx.computed
-    get remoteEdit(): T.RemoteEditType | null {
+    get remoteEdit(): T.RemoteEditType {
         return this.model.remoteEdit.get();
     }
 
@@ -1148,14 +1131,14 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
     }
 
     @mobx.computed
-    get tempAuthMode(): mobx.IObservableValue<string | null> {
+    get tempAuthMode(): mobx.IObservableValue<string> {
         return mobx.observable.box(this.selectedRemote?.authtype, {
             name: "EditRemoteConnModal-authMode",
         });
     }
 
     @mobx.computed
-    get tempConnectMode(): mobx.IObservableValue<string | null> {
+    get tempConnectMode(): mobx.IObservableValue<string> {
         return mobx.observable.box(this.selectedRemote?.connectmode, {
             name: "EditRemoteConnModal-connectMode",
         });
@@ -1453,7 +1436,7 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
     }
 }
 
-const getName = (remote: T.RemoteType | null): string => {
+const getName = (remote: T.RemoteType): string => {
     if (remote == null) {
         return "";
     }
@@ -1472,10 +1455,4 @@ export {
     ViewRemoteConnDetailModal,
     EditRemoteConnModal,
     ModalsProvider,
-    ABOUT,
-    CREATE_REMOTE,
-    VIEW_REMOTE,
-    EDIT_REMOTE,
-    ALERT,
-    modalsRegistry,
 };

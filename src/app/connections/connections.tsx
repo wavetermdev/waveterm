@@ -17,10 +17,10 @@ import "./connections.less";
 type OV<V> = mobx.IObservableValue<V>;
 
 @mobxReact.observer
-class ConnectionsView extends React.Component<{ model: RemotesModel }, { hoveredItemId: string | null }> {
+class ConnectionsView extends React.Component<{ model: RemotesModel }, { hoveredItemId: string }> {
     tableRef: React.RefObject<any> = React.createRef();
     tableWidth: OV<number> = mobx.observable.box(0, { name: "tableWidth" });
-    tableRszObs: ResizeObserver | null = null;
+    tableRszObs: ResizeObserver = null;
 
     constructor(props: { model: RemotesModel }) {
         super(props);
@@ -105,7 +105,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
         }
 
         let items = util.sortAndFilterRemotes(GlobalModel.remotes.slice());
-        let item: T.RemoteType | null = null;
+        let item: T.RemoteType = null;
 
         return (
             <div className={cn("connections-view")}>
