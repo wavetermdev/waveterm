@@ -17,6 +17,7 @@ import { InfoMsg } from "./infomsg";
 import { HistoryInfo } from "./historyinfo";
 import { Prompt } from "../../common/prompt/prompt";
 import { ReactComponent as ExecIcon } from "../../assets/icons/exec.svg";
+import { ReactComponent as RotateIcon } from "../../assets/icons/line/rotate.svg";
 import "./cmdinput.less";
 
 dayjs.extend(localizedFormat);
@@ -113,6 +114,8 @@ class CmdInput extends React.Component<{}, {}> {
         let focusVal = inputModel.physicalInputFocused.get();
         let inputMode: string = inputModel.inputMode.get();
         let textAreaInputKey = screen == null ? "null" : screen.screenId;
+        let win = GlobalModel.getScreenLinesById(screen.screenId) ?? GlobalModel.loadScreenLines(screen.screenId);
+        let numRunningLines = win.getRunningCmdLines().length;
         return (
             <div
                 ref={this.cmdInputRef}
@@ -142,9 +145,14 @@ class CmdInput extends React.Component<{}, {}> {
                     <div className="has-text-white">
                         <span ref={this.promptRef}><Prompt rptr={rptr} festate={feState} /></span>
                     </div>
-                    <div className="cmd-input-filter">
-                        TODO
-                    </div>
+                    <If condition={numRunningLines > 0}>
+                        <div className="cmd-input-filter">
+                            {numRunningLines}
+                            <div className="avatar">
+                                <RotateIcon className="warning spin" />
+                            </div>
+                        </div>
+                    </If>
                 </div>
                 <div
                     key="input"

@@ -83,6 +83,32 @@
         &:hover {
             opacity: 1.0;
         }
+
+        .avatar {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            margin: 0 0.5em;
+            vertical-align: text-top;
+            fill: @base-color;
+        }
+
+        .warning {
+            fill: @warning-yellow;
+        }
+
+        @keyframes infiniteRotate {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spin {
+            animation: infiniteRotate 2s linear infinite;
+        }
     }
 
     .cmd-input-field {
