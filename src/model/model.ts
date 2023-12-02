@@ -2954,10 +2954,10 @@ class Model {
             name: "activeMainView",
         });
     termFontSize: CV<number>;
-    alertMessage: OV<AlertMessageType | null> = mobx.observable.box(null, {
+    alertMessage: OV<AlertMessageType> = mobx.observable.box(null, {
         name: "alertMessage",
     });
-    alertPromiseResolver: ((result: boolean) => void) | null = null;
+    alertPromiseResolver: ((result: boolean) => void) = null;
     aboutModalOpen: OV<boolean> = mobx.observable.box(false, {
         name: "aboutModalOpen",
     });
@@ -3833,11 +3833,11 @@ class Model {
         return newWin;
     }
 
-    getRemote(remoteId: string | null): RemoteType | null {
+    getRemote(remoteId: string): RemoteType {
         if (remoteId == null) {
             return null;
         }
-        return this.remotes.find((remote) => remote.remoteid === remoteId) || null;
+        return this.remotes.find((remote) => remote.remoteid === remoteId);
     }
 
     getRemoteNames(): Record<string, string> {
