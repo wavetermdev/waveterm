@@ -142,21 +142,8 @@ class CmdInput extends React.Component<{}, {}> {
                     <div className="has-text-white">
                         <span ref={this.promptRef}><Prompt rptr={rptr} festate={feState} /></span>
                     </div>
-                    <div>
-                        <Button 
-                            variant={GlobalModel.completedFilteredOut.get() ? "solid" : "outlined"}
-                            color="color-red"
-                            onClick={ () => GlobalModel.completedFilteredOut.set(!GlobalModel.completedFilteredOut.get())}
-                        >
-                            <Choose>
-                                <When condition={GlobalModel.completedFilteredOut.get()}>
-                                    Filtering
-                                </When>
-                                <Otherwise>
-                                    Filter
-                                </Otherwise>
-                            </Choose>
-                        </Button>
+                    <div className="cmd-input-filter">
+                        TODO
                     </div>
                 </div>
                 <div
