@@ -22,18 +22,9 @@ import {
     LineSettingsModal,
     ClientSettingsModal,
 } from "./common/modals/settings";
-import { RemotesModal } from "./connections_deprecated/connections";
 import { TosModal } from "./common/modals/modals";
 import { MainSideBar } from "./sidebar/sidebar";
-import {
-    DisconnectedModal,
-    ClientStopModal,
-    AlertModal,
-    AboutModal,
-    CreateRemoteConnModal,
-    ViewRemoteConnDetailModal,
-    EditRemoteConnModal,
-} from "./common/modals/modals";
+import { DisconnectedModal, ClientStopModal, ModalsProvider } from "./common/modals/modals";
 import { ErrorBoundary } from "./common/error/errorboundary";
 import "./app.less";
 
@@ -67,7 +58,7 @@ class App extends React.Component<{}, {}> {
             opts.showCut = true;
         }
         let sel = window.getSelection();
-        if (!isBlank(sel.toString())) {
+        if (!isBlank(sel?.toString())) {
             GlobalModel.contextEditMenu(e, opts);
         } else {
             if (isInNonTermInput) {
@@ -89,11 +80,6 @@ class App extends React.Component<{}, {}> {
         let lineSettingsModal = GlobalModel.lineSettingsModal.get();
         let clientSettingsModal = GlobalModel.clientSettingsModal.get();
         let remotesModel = GlobalModel.remotesModel;
-        let remotesModalMode = remotesModel.modalMode.get();
-        let selectedRemoteId = remotesModel.selectedRemoteId.get();
-        let selectedRemote = GlobalModel.getRemote(selectedRemoteId);
-        let isAuthEditMode = remotesModel.isAuthEditMode();
-        let remoteEdit = remotesModel.remoteEdit.get();
         let disconnected = !GlobalModel.ws.open.get() || !GlobalModel.waveSrvRunning.get();
         let hasClientStop = GlobalModel.getHasClientStop();
         let dcWait = this.dcWait.get();
@@ -135,33 +121,10 @@ class App extends React.Component<{}, {}> {
                         <ConnectionsView model={remotesModel} />
                     </ErrorBoundary>
                 </div>
-                <AlertModal />
                 <If condition={GlobalModel.needsTos()}>
                     <TosModal />
                 </If>
-                <If condition={GlobalModel.aboutModalOpen.get()}>
-                    <AboutModal />
-                </If>
-                <If condition={remoteEdit !== null && remotesModalMode === "add"}>
-                    <CreateRemoteConnModal model={remotesModel} remoteEdit={remoteEdit} />
-                </If>
-                <If condition={selectedRemote != null}>
-                    <If condition={!isAuthEditMode && remotesModalMode === "read"}>
-                        <ViewRemoteConnDetailModal
-                            key={"remotedetail-" + selectedRemoteId}
-                            remote={selectedRemote}
-                            model={remotesModel}
-                        />
-                    </If>
-                    <If condition={remoteEdit !== null && isAuthEditMode && remotesModalMode === "edit"}>
-                        <EditRemoteConnModal
-                            key={"remotedetail-" + selectedRemoteId}
-                            remote={selectedRemote}
-                            model={remotesModel}
-                            remoteEdit={remoteEdit}
-                        />
-                    </If>
-                </If>
+                <ModalsProvider />
                 <If condition={screenSettingsModal != null}>
                     <ScreenSettingsModal
                         key={screenSettingsModal.sessionId + ":" + screenSettingsModal.screenId}

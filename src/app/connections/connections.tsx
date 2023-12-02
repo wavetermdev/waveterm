@@ -20,7 +20,7 @@ type OV<V> = mobx.IObservableValue<V>;
 class ConnectionsView extends React.Component<{ model: RemotesModel }, { hoveredItemId: string }> {
     tableRef: React.RefObject<any> = React.createRef();
     tableWidth: OV<number> = mobx.observable.box(0, { name: "tableWidth" });
-    tableRszObs: ResizeObserver;
+    tableRszObs: ResizeObserver = null;
 
     constructor(props) {
         super(props);
@@ -105,7 +105,6 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
         }
 
         let items = util.sortAndFilterRemotes(GlobalModel.remotes.slice());
-        let remote = this.props.model.selectedRemoteId.get();
         let item: T.RemoteType = null;
 
         return (

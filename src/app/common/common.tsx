@@ -349,7 +349,6 @@ interface TextFieldState {
     hasContent: boolean;
 }
 
-@mobxReact.observer
 class TextField extends React.Component<TextFieldProps, TextFieldState> {
     inputRef: React.RefObject<HTMLInputElement>;
     state: TextFieldState;
@@ -1097,6 +1096,68 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
     }
 }
 
+interface ModalHeaderProps {
+    onClose: () => void;
+    title: string;
+}
+
+const ModalHeader: React.FC<ModalHeaderProps> = ({ onClose, title }) => (
+    <div className="wave-modal-header">
+        {<div>{title}</div>}
+        <IconButton theme="secondary" variant="ghost" onClick={onClose}>
+            <i className="fa-sharp fa-solid fa-xmark"></i>
+        </IconButton>
+    </div>
+);
+
+interface ModalFooterProps {
+    onCancel?: () => void;
+    onOk?: () => void;
+    cancelLabel?: string;
+    okLabel?: string;
+}
+
+const ModalFooter: React.FC<ModalFooterProps> = ({ onCancel, onOk, cancelLabel = "Cancel", okLabel = "Ok" }) => (
+    <div className="wave-modal-footer">
+        <Button theme="secondary" onClick={onCancel}>
+            {cancelLabel}
+        </Button>
+        <Button onClick={onOk}>{okLabel}</Button>
+    </div>
+);
+
+interface ModalProps {
+    className?: string;
+    children?: React.ReactNode;
+    onClickBackdrop?: () => void;
+}
+
+class Modal extends React.Component<ModalProps> {
+    static Header = ModalHeader;
+    static Footer = ModalFooter;
+
+    renderBackdrop(onClick: (() => void) | undefined) {
+        return <div className="wave-modal-backdrop" onClick={onClick}></div>;
+    }
+
+    renderModal() {
+        const { className, children } = this.props;
+
+        return (
+            <div className="wave-modal-container">
+                {this.renderBackdrop(this.props.onClickBackdrop)}
+                <div className={`wave-modal ${className}`}>
+                    <div className="wave-modal-content">{children}</div>
+                </div>
+            </div>
+        );
+    }
+
+    render() {
+        return ReactDOM.createPortal(this.renderModal(), document.getElementById("app") as HTMLElement);
+    }
+}
+
 export {
     CmdStrCode,
     Toggle,
@@ -1117,4 +1178,5 @@ export {
     IconButton,
     LinkButton,
     Status,
+    Modal,
 };
