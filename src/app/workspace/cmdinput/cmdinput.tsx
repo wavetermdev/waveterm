@@ -10,7 +10,7 @@ import cn from "classnames";
 import dayjs from "dayjs";
 import type { RemoteType, RemoteInstanceType, RemotePtrType } from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel, GlobalCommandRunner, ScreenLines } from "../../../model/model";
+import { GlobalModel, GlobalCommandRunner, Screen, ScreenLines } from "../../../model/model";
 import { renderCmdText, Button } from "../../common/common";
 import { TextAreaInput } from "./textareainput";
 import { InfoMsg } from "./infomsg";
@@ -92,9 +92,9 @@ class CmdInput extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    toggleFilter(win: ScreenLines) {
+    toggleFilter(screen: Screen) {
         mobx.action(() => {
-            win.completedFilteredOut.set(!win.completedFilteredOut.get());
+            screen.filterRunning.set(!screen.filterRunning.get());
         })();
     }
 
@@ -153,7 +153,7 @@ class CmdInput extends React.Component<{}, {}> {
                         <span ref={this.promptRef}><Prompt rptr={rptr} festate={feState} /></span>
                     </div>
                     <If condition={numRunningLines > 0}>
-                        <div onClick={() => this.toggleFilter(win)}className="cmd-input-filter">
+                        <div onClick={() => this.toggleFilter(screen)}className="cmd-input-filter">
                             {numRunningLines}
                             <div className="avatar">
                                 <RotateIcon className="warning spin" />
