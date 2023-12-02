@@ -334,18 +334,18 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
         return <Line key={realLine.lineid} screen={screen} line={realLine} {...restProps} />;
     }
 
-    @boundMethod
     determineVisibleLines(win: ScreenLines): LineType[] {
-        let lines: LineType[];
-        let nonArchivedLines = win.getNonArchivedLines();
-        let runningLines = win.getRunningCmdLines();
-        if (GlobalModel.completedFilteredOut.get()) {
-            lines = runningLines;
-        } else {
-            lines = nonArchivedLines;
+        if (win.completedFilteredOut.get()) {
+            return win.getRunningCmdLines();
         }
+        return win.getNonArchivedLines();
+    }
 
-        return lines;
+    @boundMethod
+    disableFilter(win: ScreenLines) {
+        mobx.action(() => {
+            win.completedFilteredOut.set(false);
+        })();
     }
 
     render() {
@@ -436,13 +436,13 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
                         lineFactory={this.buildLineComponent}
                     />
                 </If>
-                <If condition={GlobalModel.completedFilteredOut.get()}>
+                <If condition={win.completedFilteredOut.get()}>
                     <div className='filter-running'>
                         <Button
                           variant="outlined"
                           color="color-yellow"
                           style={{borderRadius: '999px'}}
-                          onClick={() => GlobalModel.completedFilteredOut.set(false)}
+                          onClick={() => this.disableFilter(win)}
                         >
                             Showing Running Commands &nbsp;
                             <i className="fa-sharp fa-solid fa-xmark" />

@@ -914,6 +914,9 @@ class ScreenLines {
         deep: false,
     });
     cmds: Record<string, Cmd> = {}; // lineid => Cmd
+    completedFilteredOut: OV<boolean> = mobx.observable.box(false, {
+        name: "cmds-filtered",
+    });
 
     constructor(screenId: string) {
         this.screenId = screenId;
@@ -2970,9 +2973,6 @@ class Model {
     });
     showLinks: OV<boolean> = mobx.observable.box(true, {
         name: "model-showLinks",
-    });
-    completedFilteredOut: OV<boolean> = mobx.observable.box(false, {
-        name: "model-filtered",
     });
 
     constructor() {
