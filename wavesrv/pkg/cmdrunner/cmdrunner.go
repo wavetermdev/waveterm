@@ -104,7 +104,7 @@ var SetVarScopes = []SetVarScope{
 }
 
 var hostNameRe = regexp.MustCompile("^[a-z][a-z0-9.-]*$")
-var userHostRe = regexp.MustCompile("^(sudo@)?([a-z][a-z0-9_.-]*)@([a-z0-9][a-z0-9.-]*)(?::([0-9]+))?$")
+var userHostRe = regexp.MustCompile("^(sudo@)?([a-z][a-z0-9._-]*)@([a-z0-9][a-z0-9.-]*)(?::([0-9]+))?$")
 var remoteAliasRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_-]*$")
 var genericNameRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_ .()<>,/\"'\\[\\]{}=+$@!*-]*$")
 var rendererRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_.:-]*$")
@@ -442,10 +442,10 @@ func SyncCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 	runPacket.ReqId = uuid.New().String()
 	runPacket.CK = base.MakeCommandKey(ids.ScreenId, scbase.GenWaveUUID())
 	runPacket.UsePty = true
-	ptermVal := defaultStr(pk.Kwargs["pterm"], DefaultPTERM)
+	ptermVal := defaultStr(pk.Kwargs["wterm"], DefaultPTERM)
 	runPacket.TermOpts, err = GetUITermOpts(pk.UIContext.WinSize, ptermVal)
 	if err != nil {
-		return nil, fmt.Errorf("/sync error, invalid 'pterm' value %q: %v", ptermVal, err)
+		return nil, fmt.Errorf("/sync error, invalid 'wterm' value %q: %v", ptermVal, err)
 	}
 	runPacket.Command = ":"
 	runPacket.ReturnState = true
@@ -538,7 +538,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	runPacket.ReqId = uuid.New().String()
 	runPacket.CK = base.MakeCommandKey(ids.ScreenId, scbase.GenWaveUUID())
 	runPacket.UsePty = true
-	ptermVal := defaultStr(pk.Kwargs["pterm"], DefaultPTERM)
+	ptermVal := defaultStr(pk.Kwargs["wterm"], DefaultPTERM)
 	runPacket.TermOpts, err = GetUITermOpts(pk.UIContext.WinSize, ptermVal)
 	if err != nil {
 		return nil, fmt.Errorf("/run error, invalid 'pterm' value %q: %v", ptermVal, err)
@@ -1535,7 +1535,7 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	if promptStr == "" {
 		return nil, fmt.Errorf("openai error, prompt string is blank")
 	}
-	ptermVal := defaultStr(pk.Kwargs["pterm"], DefaultPTERM)
+	ptermVal := defaultStr(pk.Kwargs["wterm"], DefaultPTERM)
 	pkTermOpts, err := GetUITermOpts(pk.UIContext.WinSize, ptermVal)
 	if err != nil {
 		return nil, fmt.Errorf("openai error, invalid 'pterm' value %q: %v", ptermVal, err)
