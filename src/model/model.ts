@@ -2714,7 +2714,7 @@ class RemotesModel {
     selectedRemoteId: OV<string | null> = mobx.observable.box(null, {
         name: "RemotesModel-selectedRemoteId",
     });
-    remoteTermWrap: TermWrap | null = null;
+    remoteTermWrap: TermWrap = null;
     remoteTermWrapFocus: OV<boolean> = mobx.observable.box(false, {
         name: "RemotesModel-remoteTermWrapFocus",
     });
@@ -2722,7 +2722,7 @@ class RemotesModel {
         name: "RemotesModel-showNoInputMg",
     });
     showNoInputTimeoutId: any = null;
-    remoteEdit: OV<RemoteEditType | null> = mobx.observable.box(null, {
+    remoteEdit: OV<RemoteEditType> = mobx.observable.box(null, {
         name: "RemotesModel-remoteEdit",
     });
     recentConnAddedState: OV<boolean> = mobx.observable.box(false, {
@@ -2803,7 +2803,7 @@ class RemotesModel {
     }
 
     disposeTerm(): void {
-        if (this.remoteTermWrap == undefined) {
+        if (this.remoteTermWrap == null) {
             return;
         }
         this.remoteTermWrap.dispose();
@@ -2814,7 +2814,7 @@ class RemotesModel {
     }
 
     receiveData(remoteId: string, ptyPos: number, ptyData: Uint8Array, reason?: string) {
-        if (this.remoteTermWrap == undefined) {
+        if (this.remoteTermWrap == null) {
             return;
         }
         if (this.remoteTermWrap.getContextRemoteId() != remoteId) {
@@ -2848,9 +2848,6 @@ class RemotesModel {
 
     @boundMethod
     termKeyHandler(remoteId: string | null, event: any, termWrap: TermWrap): void {
-        if (remoteId === null) {
-            return;
-        }
         let remote = GlobalModel.getRemote(remoteId);
         if (remote == null) {
             return;
@@ -2870,7 +2867,7 @@ class RemotesModel {
     createTermWrap(elem: HTMLElement): void {
         this.disposeTerm();
         let remoteId = this.selectedRemoteId.get();
-        if (remoteId == undefined) {
+        if (remoteId == null) {
             return;
         }
         let termOpts = {
@@ -2883,7 +2880,7 @@ class RemotesModel {
             termContext: { remoteId: remoteId },
             usedRows: RemotePtyRows,
             termOpts: termOpts,
-            winSize: undefined,
+            winSize: null,
             keyHandler: (e, termWrap) => {
                 this.termKeyHandler(remoteId, e, termWrap);
             },
@@ -2891,7 +2888,7 @@ class RemotesModel {
             isRunning: true,
             fontSize: GlobalModel.termFontSize.get(),
             ptyDataSource: getTermPtyData,
-            onUpdateContentHeight: undefined,
+            onUpdateContentHeight: null,
         });
         this.remoteTermWrap = termWrap;
     }
