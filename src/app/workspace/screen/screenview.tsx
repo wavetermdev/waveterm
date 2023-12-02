@@ -337,17 +337,13 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
     @boundMethod
     determineVisibleLines(win: ScreenLines): LineType[] {
         let lines: LineType[];
-        let numHidden: number;
         let nonArchivedLines = win.getNonArchivedLines();
         let runningLines = win.getRunningCmdLines();
         if (GlobalModel.completedFilteredOut.get()) {
             lines = runningLines;
-            numHidden = nonArchivedLines.length - runningLines.length;
         } else {
             lines = nonArchivedLines;
-            numHidden = 0;
         }
-        win.numLinesHidden.set(numHidden);
 
         return lines;
     }

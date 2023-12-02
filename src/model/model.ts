@@ -914,7 +914,6 @@ class ScreenLines {
         deep: false,
     });
     cmds: Record<string, Cmd> = {}; // lineid => Cmd
-    numLinesHidden: OV<number> = mobx.observable.box(0, { name: "num-hidden" });
 
     constructor(screenId: string) {
         this.screenId = screenId;
