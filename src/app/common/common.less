@@ -992,6 +992,26 @@
         }
     }
 
+    &.color-yellow {
+        &.solid {
+            border-color: @warning-yellow;
+            background-color: mix(@warning-yellow, @term-white, 50%);
+            box-shadow: none;
+        }
+
+        &.outlined {
+            color: @warning-yellow;
+            border-color: @warning-yellow;
+            &:hover {
+                color: @term-white;
+                border-color: @term-white;
+            }
+        }
+
+        &.ghost {
+        }
+    }
+
     &.color-red {
         &.solid {
             border-color: @term-red;

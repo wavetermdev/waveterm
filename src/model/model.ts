@@ -357,6 +357,7 @@ class Screen {
     renderers: Record<string, RendererModel> = {}; // lineid => RendererModel
     shareMode: OV<string>;
     webShareOpts: OV<WebShareOpts>;
+    filterRunning: OV<boolean>;
 
     constructor(sdata: ScreenDataType) {
         this.sessionId = sdata.sessionid;
@@ -393,6 +394,9 @@ class Screen {
         this.webShareOpts = mobx.observable.box(sdata.webshareopts, {
             name: "screen-webShareOpts",
         });
+        this.filterRunning = mobx.observable.box(false, {
+            name: "screen-filter-running",
+        })
     }
 
     dispose() {}

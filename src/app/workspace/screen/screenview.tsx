@@ -14,7 +14,7 @@ import { GlobalCommandRunner, TabColors, TabIcons } from "../../../model/model";
 import type { LineType, RenderModeType, LineFactoryProps, CommandRtnType } from "../../../types/types";
 import * as T from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { InlineSettingsTextEdit, RemoteStatusLight } from "../../common/common";
+import { InlineSettingsTextEdit, RemoteStatusLight, Button } from "../../common/common";
 import { getRemoteStr } from "../../common/prompt/prompt";
 import { GlobalModel, ScreenLines, Screen, Session } from "../../../model/model";
 import { Line } from "../../line/linecomps";
@@ -334,6 +334,22 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
         return <Line key={realLine.lineid} screen={screen} line={realLine} {...restProps} />;
     }
 
+    determineVisibleLines(win: ScreenLines): LineType[] {
+        let { screen } = this.props;
+        if (screen.filterRunning.get()) {
+            return win.getRunningCmdLines();
+        }
+        return win.getNonArchivedLines();
+    }
+
+    @boundMethod
+    disableFilter() {
+        let { screen } = this.props;
+        mobx.action(() => {
+            screen.filterRunning.set(false);
+        })();
+    }
+
     render() {
         let { session, screen } = this.props;
         let win = this.getScreenLines();
@@ -351,7 +367,7 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
             return this.renderError("loading client data", true);
         }
         let isActive = screen.isActive();
-        let lines = win.getNonArchivedLines();
+        let lines = this.determineVisibleLines(win);
         let renderMode = this.renderMode.get();
         return (
             <div className="window-view" ref={this.windowViewRef}>
@@ -374,7 +390,7 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
                         <NewTabSettings screen={screen} />
                     </If>
                     <If condition={screen.nextLineNum.get() != 1}>
-                        <div className="window-view" ref={this.windowViewRef} data-screenid={screen.screenId}>
+                        <div className="window-empty" ref={this.windowViewRef} data-screenid={screen.screenId}>
                             <div key="lines" className="lines"></div>
                             <div key="window-empty" className={cn("window-empty")}>
                                 <div>
@@ -421,6 +437,19 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
                         renderMode={renderMode}
                         lineFactory={this.buildLineComponent}
                     />
+                </If>
+                <If condition={screen.filterRunning.get()}>
+                    <div className='filter-running'>
+                        <Button
+                          variant="outlined"
+                          color="color-yellow"
+                          style={{borderRadius: '999px'}}
+                          onClick={this.disableFilter}
+                        >
+                            Showing Running Commands &nbsp;
+                            <i className="fa-sharp fa-solid fa-xmark" />
+                        </Button>
+                    </div>
                 </If>
             </div>
         );
