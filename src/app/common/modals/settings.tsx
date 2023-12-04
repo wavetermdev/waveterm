@@ -7,7 +7,15 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner, TabColors, MinFontSize, MaxFontSize } from "../../../model/model";
+import {
+    GlobalModel,
+    GlobalCommandRunner,
+    TabColors,
+    MinFontSize,
+    MaxFontSize,
+    TabIcons,
+    Screen,
+} from "../../../model/model";
 import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage, Modal } from "../common";
 import { LineType, RendererPluginType, ClientDataType, CommandRtnType } from "../../../types/types";
 import { ConnectionDropdown } from "../../connections_deprecated/connections";
@@ -53,12 +61,13 @@ Are you sure you want to stop web-sharing this tab?
 class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId: string }, {}> {
     shareCopied: OV<boolean> = mobx.observable.box(false, { name: "ScreenSettings-shareCopied" });
     errorMessage: OV<string> = mobx.observable.box(null, { name: "ScreenSettings-errorMessage" });
+    screen: Screen;
 
     constructor(props: any) {
         super(props);
         let { sessionId, screenId } = props;
-        let screen = GlobalModel.getScreenById(sessionId, screenId);
-        if (screen == null) {
+        this.screen = GlobalModel.getScreenById(sessionId, screenId);
+        if (this.screen == null) {
             return;
         }
     }
@@ -82,6 +91,15 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
         }
         let prtn = GlobalCommandRunner.screenSetSettings(this.props.screenId, { tabcolor: color }, false);
         commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
+    selectTabIcon(icon: string): void {
+        if (this.screen.getTabIcon() == icon) {
+            return;
+        }
+        let prtn = GlobalCommandRunner.screenSetSettings(this.screen.screenId, { tabicon: icon }, false);
+        util.commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
@@ -203,11 +221,13 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
     render() {
         let { sessionId, screenId } = this.props;
         let inline = false;
-        let screen = GlobalModel.getScreenById(sessionId, screenId);
+        let screen = this.screen;
         if (screen == null) {
             return null;
         }
+        console.log("screen.getTabIcon()", screen.getTabIcon());
         let color: string = null;
+        let icon: string = null;
         let curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
         return (
             <Modal className="screen-settings-modal">
@@ -256,6 +276,32 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
                                         onClick={() => this.selectTabColor(color)}
                                     >
                                         <SquareIcon className={cn("tab-color-icon", "color-" + color)} />
+                                    </div>
+                                </For>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Tab Icon</div>
+                        <div className="settings-input">
+                            <div className="tab-icons">
+                                <div className="tab-icon-cur">
+                                    <If condition={screen.getTabIcon() == "default"}>
+                                        <SquareIcon className={cn("tab-color-icon", "color-white")} />
+                                    </If>
+                                    <If condition={screen.getTabIcon() != "default"}>
+                                        <i className={`fa-sharp fa-solid fa-${screen.getTabIcon()}`}></i>
+                                    </If>
+                                    <span className="tab-icon-name">{screen.getTabIcon()}</span>
+                                </div>
+                                <div className="tab-icon-sep">|</div>
+                                <For each="icon" of={TabIcons}>
+                                    <div
+                                        key={color}
+                                        className="tab-icon-select"
+                                        onClick={() => this.selectTabIcon(icon)}
+                                    >
+                                        <i className={`fa-sharp fa-solid fa-${icon}`}></i>
                                     </div>
                                 </For>
                             </div>

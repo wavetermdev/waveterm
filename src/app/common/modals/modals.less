@@ -751,31 +751,32 @@
             fill: @tab-pink;
         }
 
-        .tab-colors {
+        .tab-colors,
+        .tab-icons {
             display: flex;
             flex-direction: row;
             align-items: center;
 
-            .tab-color-sep {
+            .tab-color-sep,
+            .tab-icon-sep {
                 padding-left: 10px;
                 padding-right: 10px;
                 font-weight: bold;
             }
 
-            .tab-color-cur {
-                width: 100px;
-            }
-
-            .tab-color-icon {
+            .tab-color-icon,
+            .tab-icon-icon {
                 width: 1.1em;
                 vertical-align: middle;
             }
 
-            .tab-color-name {
+            .tab-color-name,
+            .tab-icon-name {
                 margin-left: 1em;
             }
 
-            .tab-color-select {
+            .tab-color-select,
+            .tab-icon-select {
                 cursor: pointer;
                 margin: 5px;
                 &:hover {
