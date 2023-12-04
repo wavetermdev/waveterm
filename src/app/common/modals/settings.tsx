@@ -8,7 +8,7 @@ import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, TabColors, MinFontSize, MaxFontSize } from "../../../model/model";
-import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage } from "../common";
+import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage, Modal } from "../common";
 import { LineType, RendererPluginType, ClientDataType, CommandRtnType } from "../../../types/types";
 import { ConnectionDropdown } from "../../connections_deprecated/connections";
 import { PluginModel } from "../../../plugins/plugins";
@@ -210,101 +210,88 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
         let color: string = null;
         let curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
         return (
-            <div className={cn("modal screen-settings-modal settings-modal prompt-modal is-active")}>
-                <div className="modal-background" />
-                <div className="modal-content">
-                    {this.shareCopied.get() && <div className="copied-indicator" />}
-                    <header>
-                        <div className="modal-title">tab settings ({screen.name.get()})</div>
-                        <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
-                            <XmarkIcon />
-                        </div>
-                    </header>
-                    <div className="inner-content">
-                        <div className="settings-field">
-                            <div className="settings-label">Tab Id</div>
-                            <div className="settings-input">{screen.screenId}</div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">Name</div>
-                            <div className="settings-input">
-                                <InlineSettingsTextEdit
-                                    placeholder="name"
-                                    text={screen.name.get() ?? "(none)"}
-                                    value={screen.name.get() ?? ""}
-                                    onChange={this.inlineUpdateName}
-                                    maxLength={50}
-                                    showIcon={true}
-                                />
-                            </div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">Connection</div>
-                            <div className="settings-input">
-                                <ConnectionDropdown
-                                    curRemote={curRemote}
-                                    onSelectRemote={this.selectRemote}
-                                    allowNewConn={false}
-                                />
-                            </div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">Tab Color</div>
-                            <div className="settings-input">
-                                <div className="tab-colors">
-                                    <div className="tab-color-cur">
-                                        <SquareIcon className={cn("tab-color-icon", "color-" + screen.getTabColor())} />
-                                        <span className="tab-color-name">{screen.getTabColor()}</span>
-                                    </div>
-                                    <div className="tab-color-sep">|</div>
-                                    <For each="color" of={TabColors}>
-                                        <div
-                                            key={color}
-                                            className="tab-color-select"
-                                            onClick={() => this.selectTabColor(color)}
-                                        >
-                                            <SquareIcon className={cn("tab-color-icon", "color-" + color)} />
-                                        </div>
-                                    </For>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">
-                                <div>Archived</div>
-                                <InfoMessage width={400}>
-                                    Archive will hide the tab. Commands and output will be retained in history.
-                                </InfoMessage>
-                            </div>
-                            <div className="settings-input">
-                                <Toggle checked={screen.archived.get()} onChange={this.handleChangeArchived} />
-                            </div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">
-                                <div>Actions</div>
-                                <InfoMessage width={400}>
-                                    Delete will remove the tab, removing all commands and output from history.
-                                </InfoMessage>
-                            </div>
-                            <div className="settings-input">
-                                <div
-                                    onClick={this.handleDeleteScreen}
-                                    className="button is-prompt-danger is-outlined is-small"
-                                >
-                                    Delete Tab
-                                </div>
-                            </div>
-                        </div>
-                        <SettingsError errorMessage={this.errorMessage} />
+            <Modal className="screen-settings-modal">
+                <Modal.Header onClose={this.closeModal} title={`tab settings (${screen.name.get()})`} />
+                <div className="wave-modal-body">
+                    <div className="settings-field">
+                        <div className="settings-label">Tab Id</div>
+                        <div className="settings-input">{screen.screenId}</div>
                     </div>
-                    <footer>
-                        <div onClick={this.closeModal} className="button is-wave-green is-outlined is-small">
-                            Close
+                    <div className="settings-field">
+                        <div className="settings-label">Name</div>
+                        <div className="settings-input">
+                            <InlineSettingsTextEdit
+                                placeholder="name"
+                                text={screen.name.get() ?? "(none)"}
+                                value={screen.name.get() ?? ""}
+                                onChange={this.inlineUpdateName}
+                                maxLength={50}
+                                showIcon={true}
+                            />
                         </div>
-                    </footer>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Connection</div>
+                        <div className="settings-input">
+                            <ConnectionDropdown
+                                curRemote={curRemote}
+                                onSelectRemote={this.selectRemote}
+                                allowNewConn={false}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Tab Color</div>
+                        <div className="settings-input">
+                            <div className="tab-colors">
+                                <div className="tab-color-cur">
+                                    <SquareIcon className={cn("tab-color-icon", "color-" + screen.getTabColor())} />
+                                    <span className="tab-color-name">{screen.getTabColor()}</span>
+                                </div>
+                                <div className="tab-color-sep">|</div>
+                                <For each="color" of={TabColors}>
+                                    <div
+                                        key={color}
+                                        className="tab-color-select"
+                                        onClick={() => this.selectTabColor(color)}
+                                    >
+                                        <SquareIcon className={cn("tab-color-icon", "color-" + color)} />
+                                    </div>
+                                </For>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">
+                            <div>Archived</div>
+                            <InfoMessage width={400}>
+                                Archive will hide the tab. Commands and output will be retained in history.
+                            </InfoMessage>
+                        </div>
+                        <div className="settings-input">
+                            <Toggle checked={screen.archived.get()} onChange={this.handleChangeArchived} />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">
+                            <div>Actions</div>
+                            <InfoMessage width={400}>
+                                Delete will remove the tab, removing all commands and output from history.
+                            </InfoMessage>
+                        </div>
+                        <div className="settings-input">
+                            <div
+                                onClick={this.handleDeleteScreen}
+                                className="button is-prompt-danger is-outlined is-small"
+                            >
+                                Delete Tab
+                            </div>
+                        </div>
+                    </div>
+                    <SettingsError errorMessage={this.errorMessage} />
                 </div>
-            </div>
+                <Modal.Footer cancelLabel="Close" onCancel={this.closeModal} />
+            </Modal>
         );
     }
 }
