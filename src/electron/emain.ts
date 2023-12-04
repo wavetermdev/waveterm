@@ -250,6 +250,7 @@ function createMainWindow(clientData) {
         minWidth: 800,
         minHeight: 600,
         transparent: true,
+        icon: "public/logos/wave-logo-dark.png",
         webPreferences: {
             preload: path.join(getAppBasePath(), DistDir, "preload.js"),
         },
