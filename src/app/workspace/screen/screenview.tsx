@@ -11,24 +11,19 @@ import cn from "classnames";
 import { debounce } from "throttle-debounce";
 import dayjs from "dayjs";
 import { GlobalCommandRunner, TabColors, TabIcons } from "../../../model/model";
-import type { LineType, RenderModeType, LineFactoryProps, CommandRtnType } from "../../../types/types";
+import type { LineType, RenderModeType, LineFactoryProps } from "../../../types/types";
 import * as T from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { InlineSettingsTextEdit, RemoteStatusLight, Button } from "../../common/common";
+import { Button } from "../../common/common";
 import { getRemoteStr } from "../../common/prompt/prompt";
 import { GlobalModel, ScreenLines, Screen, Session } from "../../../model/model";
 import { Line } from "../../line/linecomps";
 import { LinesView } from "../../line/linesview";
 import { ConnectionDropdown } from "../../connections_deprecated/connections";
 import * as util from "../../../util/util";
-import { TextField, InputDecoration } from "../../common/common";
+import { TextField } from "../../common/common";
 import { ReactComponent as EllipseIcon } from "../../assets/icons/ellipse.svg";
 import { ReactComponent as Check12Icon } from "../../assets/icons/check12.svg";
-import { ReactComponent as GlobeIcon } from "../../assets/icons/globe.svg";
-import { ReactComponent as StatusCircleIcon } from "../../assets/icons/statuscircle.svg";
-import { ReactComponent as ArrowsUpDownIcon } from "../../assets/icons/arrowsupdown.svg";
-import { ReactComponent as CircleIcon } from "../../assets/icons/circle.svg";
-import { ReactComponent as AddIcon } from "../../assets/icons/add.svg";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
 
 import "./screenview.less";
@@ -439,12 +434,12 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
                     />
                 </If>
                 <If condition={screen.filterRunning.get()}>
-                    <div className='filter-running'>
+                    <div className="filter-running">
                         <Button
-                          variant="outlined"
-                          color="color-yellow"
-                          style={{borderRadius: '999px'}}
-                          onClick={this.disableFilter}
+                            variant="outlined"
+                            color="color-yellow"
+                            style={{ borderRadius: "999px" }}
+                            onClick={this.disableFilter}
                         >
                             Showing Running Commands &nbsp;
                             <i className="fa-sharp fa-solid fa-xmark" />

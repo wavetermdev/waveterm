@@ -1122,10 +1122,12 @@ interface ModalFooterProps {
 
 const ModalFooter: React.FC<ModalFooterProps> = ({ onCancel, onOk, cancelLabel = "Cancel", okLabel = "Ok" }) => (
     <div className="wave-modal-footer">
-        <Button theme="secondary" onClick={onCancel}>
-            {cancelLabel}
-        </Button>
-        <Button onClick={onOk}>{okLabel}</Button>
+        {onCancel && (
+            <Button theme="secondary" onClick={onCancel}>
+                {cancelLabel}
+            </Button>
+        )}
+        {onOk && <Button onClick={onOk}>{okLabel}</Button>}
     </div>
 );
 

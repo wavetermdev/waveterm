@@ -764,10 +764,6 @@ func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	}
 	if pk.Kwargs["tabicon"] != "" {
 		icon := pk.Kwargs["tabicon"]
-		err = validateIcon(icon, "screen tabicon")
-		if err != nil {
-			return nil, err
-		}
 		updateMap[sstore.ScreenField_TabIcon] = icon
 		varsUpdated = append(varsUpdated, "tabicon")
 		setNonAnchor = true
@@ -1991,15 +1987,6 @@ func validateColor(color string, typeStr string) error {
 		}
 	}
 	return fmt.Errorf("invalid %s, valid colors are: %s", typeStr, formatStrs(ColorNames, "or", false))
-}
-
-func validateIcon(icon string, typeStr string) error {
-	for _, c := range TabIcons {
-		if icon == c {
-			return nil
-		}
-	}
-	return fmt.Errorf("invalid %s, valid icons are: %s", typeStr, formatStrs(TabIcons, "or", false))
 }
 
 func validateRemoteColor(color string, typeStr string) error {
