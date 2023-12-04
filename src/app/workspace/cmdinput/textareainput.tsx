@@ -433,6 +433,9 @@ class TextAreaInput extends React.Component<{ onHeightChange: () => void }, {}> 
                 break;
             }
         }
+        if (cutSpot == -1) {
+            cutSpot = 0;
+        }
         let cutValue = value.slice(cutSpot, selStart);
         let prevValue = value.slice(0, cutSpot);
         let restValue = value.slice(selStart);

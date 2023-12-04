@@ -59,22 +59,6 @@
     }
 }
 
-.modal.alert-modal {
-    z-index: 205;
-
-    footer {
-        justify-content: center;
-
-        .button {
-            margin-left: 20px;
-        }
-
-        .button:first-child {
-            margin-left: 0;
-        }
-    }
-}
-
 .modal.settings-modal {
     footer {
         justify-content: center;
@@ -181,59 +165,6 @@
     }
 }
 
-.modal.wave-modal {
-    .wave-modal-content {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 16px;
-        border-radius: 10px;
-        background: var(--olive-dark-1, #151715);
-        box-shadow: 0px 3px 5px 0px rgba(0, 0, 0, 0.35), 0px 10px 24px 0px rgba(0, 0, 0, 0.45),
-            0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
-
-        .wave-modal-content-inner {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 24px;
-            width: 100%;
-
-            .wave-modal-header {
-                width: 100%;
-                display: flex;
-                align-items: center;
-                padding: 12px 20px;
-                justify-content: space-between;
-                line-height: 20px;
-                border-bottom: 1px solid rgba(250, 250, 250, 0.1);
-
-                .wave-modal-title {
-                    color: @term-bright-white;
-                    font-style: normal;
-                    line-height: 20px;
-                    font-size: 13px;
-                }
-
-                .wave-modal-close {
-                    display: flex;
-                    padding: 4px;
-                    align-items: center;
-                    gap: 8px;
-                }
-            }
-
-            .wave-modal-body {
-                display: flex;
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 24px;
-                width: 87%;
-            }
-        }
-    }
-}
-
 .modal.tos-modal {
     .modal-content.wave-modal-content {
         padding: 32px 48px;
@@ -323,14 +254,26 @@
     }
 }
 
-.modal.about-modal {
-    .about-wave-modal-content {
-        width: 401px;
+.about-modal {
+    width: 382px;
 
-        .about-wave-modal-body {
+    .wave-modal-content {
+        gap: 24px;
+
+        .wave-modal-body {
             margin-bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 24px;
 
-            .wave-modal-section {
+            .about-section {
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                align-self: stretch;
+                width: 100%;
+
                 .logo-wrapper {
                     width: 72px;
                     height: 72px;
@@ -403,7 +346,7 @@
                 }
             }
 
-            .wave-modal-section:nth-child(3) {
+            .about-section:nth-child(3) {
                 display: flex;
                 align-items: flex-start;
                 gap: 10px;
@@ -418,7 +361,7 @@
                 }
             }
 
-            .wave-modal-section:last-child {
+            .about-section:last-child {
                 margin-bottom: 24px;
                 color: @term-white;
             }
@@ -426,71 +369,220 @@
     }
 }
 
-.wave-modal.crconn-modal {
-    .wave-modal-content.crconn-wave-modal-content {
-        width: 452px;
-        min-height: 411px;
-        overflow: visible;
+.crconn-modal {
+    width: 452px;
+    min-height: 411px;
 
-        .wave-modal-content-inner.crconn-wave-modal-content-inner {
+    .wave-modal-content {
+        gap: 24px;
+
+        .wave-modal-body {
             display: flex;
-            padding-bottom: 0px;
+            padding: 0px 20px;
             flex-direction: column;
-            align-items: center;
-            gap: 20px;
-            flex-shrink: 0;
+            align-items: flex-start;
+            gap: 12px;
+            align-self: stretch;
+            width: 100%;
+        }
+    }
+}
 
-            .crconn-wave-modal-body {
+.screen-settings-modal {
+    width: 640px;
+    min-height: 329px;
+
+    .wave-modal-content {
+        gap: 24px;
+
+        .wave-modal-body {
+            display: flex;
+            padding: 0px 20px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+            align-self: stretch;
+            width: 100%;
+        }
+    }
+}
+
+.erconn-modal {
+    width: 502px;
+    min-height: 411px;
+
+    .wave-modal-content {
+        gap: 20px;
+
+        .wave-modal-body {
+            display: flex;
+            padding: 0px 20px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+            align-self: stretch;
+            width: 100%;
+
+            > div {
+                width: 100%;
+            }
+
+            .name-actions-section {
+                margin-bottom: 10px;
                 display: flex;
-                padding: 0px 20px;
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 12px;
-                align-self: stretch;
-                width: 100%;
-            }
-        }
 
-        .crconn-wave-modal-footer {
-            display: flex;
-            justify-content: flex-end;
-            width: 100%;
-            padding: 0 20px 20px;
+                .name {
+                    color: @term-bright-white;
+                    font-size: 15px;
+                    font-weight: 500;
+                    line-height: 20px;
+                }
 
-            .action-buttons {
-                display: flex;
+                .header-actions {
+                    display: flex;
+                    justify-content: flex-end;
+                    align-items: flex-start;
 
-                div.button {
-                    margin-right: 8px;
+                    .wave-button {
+                        padding: 4px 15px;
+                        font-size: 11px;
+                        margin-right: 8px;
+                    }
                 }
             }
         }
     }
 }
 
-.wave-button {
-    display: flex;
-    padding: 6px 16px;
-    align-items: center;
-    gap: var(--sizing-2-xs, 4px);
-    border-radius: 6px;
-    height: auto;
+.alert-modal {
+    .wave-modal-content {
+        .wave-modal-body {
+            padding: 40px 20px;
+        }
+    }
 }
 
-.wave-button.color-green {
-    color: @term-bright-white;
-    background: @term-green !important; // !important is needed to override the default button color
-    box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
-        0px 0px 0.5px 0px rgba(255, 255, 255, 0.8) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.6) inset;
+.rconndetail-modal {
+    width: 631px;
+    min-height: 565px;
 
-    &:hover {
-        color: @term-bright-white;
+    .wave-modal-content {
+        display: flex;
+        padding-bottom: 0px;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+        flex-shrink: 0;
+
+        .wave-modal-body {
+            display: flex;
+            padding: 0px 20px;
+            align-items: flex-start;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            align-self: stretch;
+
+            .name-header-actions-wrapper {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+
+                .rconndetail-name {
+                    color: @term-bright-white;
+                    font-size: 15px;
+                    font-weight: 500;
+                    line-height: 20px;
+                }
+
+                .header-actions {
+                    display: flex;
+                    justify-content: flex-end;
+                    align-items: flex-start;
+
+                    .wave-button {
+                        padding: 4px 15px;
+                        font-size: 11px;
+                        margin-right: 8px;
+                    }
+                }
+            }
+
+            .remote-detail {
+                .settings-field {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+
+                    .settings-label {
+                        font-weight: bold;
+                        width: 12em;
+                        display: flex;
+                        flex-direction: row;
+                        align-items: center;
+                    }
+
+                    .settings-input {
+                        display: flex;
+                        flex-direction: row;
+                        align-items: center;
+                        color: @term-white;
+                    }
+                }
+
+                .settings-field:not(:first-child) {
+                    margin-top: 4px;
+                }
+
+                .status {
+                    display: flex;
+                    height: 30px;
+                    padding: 3px 8px;
+                    align-items: center;
+                    gap: 8px;
+                    align-self: stretch;
+                    border-radius: 6px;
+                    background: rgba(241, 246, 243, 0.08);
+                }
+
+                .terminal-wrapper {
+                    width: 100%;
+                    margin-top: 5px;
+
+                    .terminal-connectelem {
+                        height: 163px !important; // Needed to override plugin height
+
+                        .xterm-viewport {
+                            display: flex;
+                            padding: 6px 10px;
+                            gap: 8px;
+                            align-items: flex-start;
+                            align-self: stretch;
+                            border-radius: 6px;
+                            border: 1px solid var(--element-separator, rgba(241, 246, 243, 0.15));
+                            background: #080a08;
+                            height: 163px !important; // Needed to override plugin height
+                        }
+
+                        .xterm-screen {
+                            padding: 10px;
+                            width: 541px !important; // Needed to override plugin width
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
 .wave-button.color-standard {
     color: @term-white;
-    background: var(--overlays-white-6, rgba(255, 255, 255, 0.12));
+    background: rgba(255, 255, 255, 0.12);
 
     &:hover {
         color: @term-white;
@@ -659,31 +751,32 @@
             fill: @tab-pink;
         }
 
-        .tab-colors {
+        .tab-colors,
+        .tab-icons {
             display: flex;
             flex-direction: row;
             align-items: center;
 
-            .tab-color-sep {
+            .tab-color-sep,
+            .tab-icon-sep {
                 padding-left: 10px;
                 padding-right: 10px;
                 font-weight: bold;
             }
 
-            .tab-color-cur {
-                width: 100px;
-            }
-
-            .tab-color-icon {
+            .tab-color-icon,
+            .tab-icon-icon {
                 width: 1.1em;
                 vertical-align: middle;
             }
 
-            .tab-color-name {
+            .tab-color-name,
+            .tab-icon-name {
                 margin-left: 1em;
             }
 
-            .tab-color-select {
+            .tab-color-select,
+            .tab-icon-select {
                 cursor: pointer;
                 margin: 5px;
                 &:hover {

@@ -15,22 +15,16 @@ import { WorkspaceView } from "./workspace/workspaceview";
 import { PluginsView } from "./pluginsview/pluginsview";
 import { BookmarksView } from "./bookmarks/bookmarks";
 import { HistoryView } from "./history/history";
+import { ConnectionsView } from "./connections/connections";
 import {
     ScreenSettingsModal,
     SessionSettingsModal,
     LineSettingsModal,
     ClientSettingsModal,
 } from "./common/modals/settings";
-import { RemotesModal } from "./connections/connections";
 import { TosModal } from "./common/modals/modals";
 import { MainSideBar } from "./sidebar/sidebar";
-import {
-    DisconnectedModal,
-    ClientStopModal,
-    AlertModal,
-    AboutModal,
-    CreateRemoteConnModal,
-} from "./common/modals/modals";
+import { DisconnectedModal, ClientStopModal, ModalsProvider } from "./common/modals/modals";
 import { ErrorBoundary } from "./common/error/errorboundary";
 import "./app.less";
 
@@ -64,7 +58,7 @@ class App extends React.Component<{}, {}> {
             opts.showCut = true;
         }
         let sel = window.getSelection();
-        if (!isBlank(sel.toString())) {
+        if (!isBlank(sel?.toString())) {
             GlobalModel.contextEditMenu(e, opts);
         } else {
             if (isInNonTermInput) {
@@ -85,14 +79,12 @@ class App extends React.Component<{}, {}> {
         let sessionSettingsModal = GlobalModel.sessionSettingsModal.get();
         let lineSettingsModal = GlobalModel.lineSettingsModal.get();
         let clientSettingsModal = GlobalModel.clientSettingsModal.get();
-        let remotesModel = GlobalModel.remotesModalModel;
-        let remotesModal = remotesModel.isOpen();
-        let selectedRemoteId = remotesModel.selectedRemoteId.get();
-        let remoteEdit = remotesModel.remoteEdit.get();
+        let remotesModel = GlobalModel.remotesModel;
         let disconnected = !GlobalModel.ws.open.get() || !GlobalModel.waveSrvRunning.get();
         let hasClientStop = GlobalModel.getHasClientStop();
         let dcWait = this.dcWait.get();
         let platform = GlobalModel.getPlatform();
+
         if (disconnected || hasClientStop) {
             if (!dcWait) {
                 setTimeout(() => this.updateDcWait(true), 1500);
@@ -117,7 +109,6 @@ class App extends React.Component<{}, {}> {
         if (dcWait) {
             setTimeout(() => this.updateDcWait(false), 0);
         }
-        //console.log(`GlobalModel.activeMainView.get() = ${GlobalModel.activeMainView.get()}`); // @mike - if I remove this, I cant see plugins
         return (
             <div id="main" className={"platform-" + platform} onContextMenu={this.handleContextMenu}>
                 <div className="main-content">
@@ -127,18 +118,13 @@ class App extends React.Component<{}, {}> {
                         <WorkspaceView />
                         <HistoryView />
                         <BookmarksView />
+                        <ConnectionsView model={remotesModel} />
                     </ErrorBoundary>
                 </div>
-                <AlertModal />
                 <If condition={GlobalModel.needsTos()}>
                     <TosModal />
                 </If>
-                <If condition={GlobalModel.aboutModalOpen.get()}>
-                    <AboutModal />
-                </If>
-                <If condition={remoteEdit !== null && !remoteEdit.old}>
-                    <CreateRemoteConnModal model={remotesModel} remoteEdit={remoteEdit} />
-                </If>
+                <ModalsProvider />
                 <If condition={screenSettingsModal != null}>
                     <ScreenSettingsModal
                         key={screenSettingsModal.sessionId + ":" + screenSettingsModal.screenId}
@@ -154,9 +140,6 @@ class App extends React.Component<{}, {}> {
                 </If>
                 <If condition={clientSettingsModal}>
                     <ClientSettingsModal />
-                </If>
-                <If condition={remotesModal}>
-                    <RemotesModal model={GlobalModel.remotesModalModel} />
                 </If>
             </div>
         );

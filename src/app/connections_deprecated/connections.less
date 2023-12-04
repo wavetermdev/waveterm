@@ -1,0 +1,408 @@
+@import "../../app/common/themes/themes.less";
+
+.modal.prompt-modal.remotes-modal {
+    .modal-content {
+        min-width: 850px;
+    }
+    .icon {
+        width: 1em;
+        height: 1em;
+        fill: @base-color;
+        margin: 0;
+    }
+    .button {
+        svg {
+            float: right;
+            margin-top: 0.3em;
+            margin-right: 0;
+        }
+    }
+    .dropdown,
+    .button {
+        display: inline-flex;
+    }
+    .dropdown .button {
+        border: none !important;
+    }
+    .inner-content {
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+        padding: 0;
+        min-height: 45em;
+        max-height: 45em;
+
+        .remotes-menu {
+            flex: 0 0 200px;
+            border-right: 1px solid @disabled-color;
+            overflow-y: auto;
+
+            .remote-menu-item {
+                border-top: 1px solid @disabled-color;
+                padding: 0.5em;
+                display: flex;
+                flex-direction: row;
+                cursor: pointer;
+
+                &.add-remote {
+                    padding: 10px 5px 10px 5px;
+                }
+
+                &:hover {
+                    background-color: #333;
+                }
+
+                &.is-selected {
+                    background-color: @active-menu-color;
+
+                    .remote-name .remote-name-secondary {
+                        color: @term-white;
+                    }
+                }
+
+                &:first-child {
+                    border-top: 0;
+                }
+
+                .remote-status-light {
+                    width: 2em;
+                    margin-top: 0.7em;
+                    margin-right: 0.7em;
+                    font-size: 0.8em;
+                }
+
+                .remote-name {
+                    flex-grow: 1;
+
+                    .remote-name-primary {
+                        font-weight: bold;
+                        max-width: 10em;
+                        margin-right: 1em;
+                    }
+
+                    .remote-name-secondary {
+                        color: @disabled-color;
+                        max-width: 14em;
+                    }
+                }
+            }
+        }
+
+        .remote-detail {
+            padding: 10px;
+            flex-grow: 1;
+
+            display: flex;
+            flex-direction: column;
+
+            .settings-field {
+                margin-top: 0.75em;
+            }
+
+            * {
+                flex-shrink: 0;
+            }
+
+            .detail-subtitle {
+                margin-bottom: 10px;
+                margin-top: 10px;
+            }
+
+            .title {
+                color: @term-white;
+                padding: 0.75em 0;
+                margin-bottom: 0;
+                border-bottom: 1px solid #777;
+            }
+
+            .terminal-wrapper {
+                margin-left: 0;
+                margin-bottom: 0;
+                &.has-message {
+                    margin-top: 0;
+                }
+                box-shadow: none;
+                border: 1px solid #777;
+                border-radius: 0 0 5px 5px;
+                .xterm-rows {
+                    padding-top: 0.5em;
+                }
+            }
+
+            .action-buttons {
+                display: flex;
+                flex-direction: row;
+                gap: 10px;
+                margin-top: 2px;
+            }
+
+            .remote-message {
+                margin-top: 5px;
+                padding: 8px;
+                border-radius: 5px 5px 0 0;
+                background-color: #333;
+                border: 1px solid #777;
+                border-bottom: none;
+
+                .message-row {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                    svg {
+                        vertical-align: text-bottom;
+                    }
+                }
+
+                .remote-status {
+                    position: relative;
+                    top: -1px;
+                }
+
+                .button {
+                    height: 22px;
+                }
+            }
+
+            .settings-field {
+                .update-auth-button {
+                    visibility: hidden;
+                }
+
+                &:hover {
+                    .update-auth-button {
+                        visibility: visible;
+                    }
+
+                    .hide-hover {
+                        display: none;
+                    }
+                }
+            }
+
+            &.auth-editing,
+            &.create-remote {
+                .settings-field.align-top {
+                    align-items: flex-start;
+
+                    .settings-label {
+                        margin-top: 8px;
+                    }
+
+                    .settings-input {
+                        align-items: flex-start;
+                    }
+                }
+
+                .settings-label {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                    width: 12em !important;
+                }
+
+                .settings-field .settings-input .undo-icon {
+                    cursor: pointer;
+
+                    margin-left: 5px;
+                }
+
+                .editremote-dropdown .dropdown-trigger button {
+                    width: 120px;
+                    justify-content: flex-start;
+                    color: @base-color;
+                    border: none;
+                    &:hover {
+                        box-shadow: none;
+                    }
+                }
+
+                .settings-field .raw-input {
+                    width: 120px;
+                }
+
+                .settings-input input {
+                    background: rgba(255, 255, 255, 0.8);
+                    width: 250px;
+                    outline: none;
+                }
+
+                .dropdown .dropdown-item {
+                    padding: 5px 5px 5px 12px;
+                }
+
+                .dropdown .dropdown-content {
+                    max-width: 10.6em;
+                }
+
+                .settings-input {
+                    .info-message {
+                        margin-left: 22px;
+                    }
+                }
+
+                .settings-label {
+                    .info-message {
+                        margin-right: 15px;
+                    }
+                }
+            }
+        }
+    }
+
+    .terminal-wrapper {
+        position: relative;
+        padding: 2px 10px 5px 4px;
+        margin: 5px 5px 10px 5px;
+        box-shadow: 0 0 1px 1px rgba(255, 255, 255, 0.3);
+        &.focus {
+            box-shadow: 0 0 3px 3px rgba(255, 255, 255, 0.3);
+        }
+
+        .term-tag {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background-color: @term-red;
+            color: @term-white;
+            z-index: 110;
+            padding: 4px;
+        }
+    }
+}
+
+.dropdown.conn-dropdown {
+    padding-left: 0;
+    border-radius: 8px;
+    background-color: rgba(241, 246, 243, 0.08);
+
+    .conn-dd-trigger {
+        display: flex;
+        flex-direction: row;
+        width: 413px;
+        padding: 6px 8px 6px 12px;
+        align-items: center;
+        height: 42px;
+
+        .lefticon {
+            margin-right: 8px;
+            margin-top: 4px;
+            position: relative;
+
+            .status-icon {
+                width: 10px;
+                height: 10px;
+                stroke-width: 2px;
+                stroke: @status-outline;
+                position: absolute;
+                bottom: 3px;
+                right: -2px;
+            }
+        }
+
+        .dd-control {
+            display: flex;
+            padding: 4px;
+            align-items: center;
+
+            .icon {
+                height: 16px;
+                width: 16px;
+            }
+        }
+
+        .globe-icon {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        .conntext {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            flex: 1 0 0;
+
+            .conntext-solo {
+                color: @text-primary;
+                text-overflow: ellipsis;
+            }
+
+            .conntext-1 {
+                color: @text-primary;
+                text-overflow: ellipsis;
+            }
+
+            .conntext-2 {
+                color: @text-secondary;
+                text-overflow: ellipsis;
+            }
+        }
+    }
+
+    .conn-dd-menu {
+        display: flex;
+        width: 413px;
+        padding: 6px;
+        flex-direction: column;
+        align-items: flex-start;
+        border-radius: 8px;
+        background-color: @dropdown-menu;
+
+        .dropdown-item {
+            display: flex;
+            padding: 5px 12px 5px 8px;
+            align-items: center;
+            gap: 8px;
+            align-self: stretch;
+            border-radius: 6px;
+
+            .status-div {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 16px;
+                height: 16px;
+                padding: 3px;
+
+                svg.status-icon {
+                    width: 10px;
+                    height: 10px;
+                }
+            }
+
+            .add-div {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 16px;
+                height: 16px;
+                
+                svg.add-icon {
+                    width: 16px;
+                    height: 16px;
+
+                    path {
+                        fill: @text-primary;
+                    }
+                }
+            }
+
+            .text-standard {
+                color: @text-secondary;
+            }
+
+            .text-caption {
+                color: @text-caption;
+            }
+
+            .ellipsis {
+                text-overflow: ellipsis;
+            }
+
+            &:hover {
+                background-color: rgba(241, 246, 243, 0.08);
+            }
+        }
+    }
+}

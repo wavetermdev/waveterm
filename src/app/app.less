@@ -49,6 +49,14 @@ textarea {
     }
 }
 
+.text-primary {
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 20px;
+    font-family: @text-s1-font;
+    color: @text-primary;
+}
+
 .text-standard {
     font-size: 12.5px;
     font-weight: 300;
@@ -78,6 +86,15 @@ textarea {
 .text-s1.icon {
     width: 16px;
     height: 16px;
+}
+
+body a {
+    color: @wave-green;
+    cursor: pointer;
+    text-decoration: none;
+    &:hover {
+        color: @wave-green;
+    }
 }
 
 body code {
@@ -148,10 +165,10 @@ svg.icon {
     border-radius: 5px;
     cursor: pointer;
     background-color: @button-background !important;
-    color: @prompt-green;
+    color: @wave-green;
     .hoverEffect;
     &:hover {
-        color: @prompt-green;
+        color: @wave-green;
     }
     &.disabled {
         color: fade(@disabled-color, 60%);
@@ -174,12 +191,6 @@ svg.icon {
     position: absolute;
     top: 0;
     left: 0;
-}
-
-.content {
-    a:hover {
-        color: #485fc7;
-    }
 }
 
 input[type="checkbox"] {
@@ -219,7 +230,8 @@ a.a-block {
 
         .history-view,
         .bookmarks-view,
-        .plugins-view {
+        .plugins-view,
+        .connections-view {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
@@ -465,85 +477,99 @@ a.a-block {
 }
 
 .icon.color-red {
-    path, circle {
+    path,
+    circle {
         fill: @tab-red;
     }
 }
 
 .icon.color-green {
-    path, circle {
+    path,
+    circle {
         fill: @tab-green;
     }
 }
 
 .icon.color-orange {
-    path, circle {
+    path,
+    circle {
         fill: @tab-orange;
     }
 }
 
 .icon.color-blue {
-    path, circle {
+    path,
+    circle {
         fill: @tab-blue;
     }
 }
 
 .icon.color-yellow {
-    path, circle {
+    path,
+    circle {
         fill: @tab-yellow;
     }
 }
 
 .icon.color-pink {
-    path, circle {
+    path,
+    circle {
         fill: @tab-pink;
     }
 }
 
 .icon.color-mint {
-    path, circle {
+    path,
+    circle {
         fill: @tab-mint;
     }
 }
 
 .icon.color-cyan {
-    path, circle {
+    path,
+    circle {
         fill: @tab-cyan;
     }
 }
 
 .icon.color-violet {
-    path, circle {
+    path,
+    circle {
         fill: @tab-violet;
     }
 }
 
 .icon.color-white {
-    path, circle {
+    path,
+    circle {
         fill: @tab-white;
     }
 }
 
 .status-icon.status-connected {
-    path, circle {
+    path,
+    circle {
         fill: @status-connected;
     }
 }
 
 .status-icon.status-connecting {
-    path, circle {
+    path,
+    circle {
         fill: @status-connecting;
     }
 }
 
 .status-icon.status-disconnected {
-    path, circle {
+    path,
+    circle {
         fill: @status-disconnected;
     }
 }
 
 .status-icon.status-error {
-    path, circle {
+    path,
+    circle {
         fill: @status-error;
     }
 }

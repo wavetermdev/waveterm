@@ -61,6 +61,7 @@ class TermWrap {
     onUpdateContentHeight: (termContext: RendererContext, height: number) => void;
     ptyDataSource: (termContext: TermContextUnion) => Promise<PtyDataType>;
     initializing: boolean;
+    dataHandler?: (data: string, termWrap: TermWrap) => void;
 
     constructor(elem: Element, opts: TermWrapOpts) {
         opts = opts ?? ({} as any);
@@ -104,6 +105,7 @@ class TermWrap {
             this.terminal.onKey((e) => opts.keyHandler(e, this));
         }
         if (opts.dataHandler != null) {
+            this.dataHandler = opts.dataHandler;
             this.terminal.onData((e) => opts.dataHandler(e, this));
         }
         this.terminal.textarea.addEventListener("focus", () => {

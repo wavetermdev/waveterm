@@ -61,6 +61,9 @@ const MaxEvalDepth = 5
 const MaxOpenAIAPITokenLen = 100
 const MaxOpenAIModelLen = 100
 
+const TermFontSizeMin = 8
+const TermFontSizeMax = 24
+
 const TsFormatStr = "2006-01-02 15:04:05"
 
 const (
@@ -439,10 +442,10 @@ func SyncCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 	runPacket.ReqId = uuid.New().String()
 	runPacket.CK = base.MakeCommandKey(ids.ScreenId, scbase.GenWaveUUID())
 	runPacket.UsePty = true
-	ptermVal := defaultStr(pk.Kwargs["pterm"], DefaultPTERM)
+	ptermVal := defaultStr(pk.Kwargs["wterm"], DefaultPTERM)
 	runPacket.TermOpts, err = GetUITermOpts(pk.UIContext.WinSize, ptermVal)
 	if err != nil {
-		return nil, fmt.Errorf("/sync error, invalid 'pterm' value %q: %v", ptermVal, err)
+		return nil, fmt.Errorf("/sync error, invalid 'wterm' value %q: %v", ptermVal, err)
 	}
 	runPacket.Command = ":"
 	runPacket.ReturnState = true
@@ -535,7 +538,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	runPacket.ReqId = uuid.New().String()
 	runPacket.CK = base.MakeCommandKey(ids.ScreenId, scbase.GenWaveUUID())
 	runPacket.UsePty = true
-	ptermVal := defaultStr(pk.Kwargs["pterm"], DefaultPTERM)
+	ptermVal := defaultStr(pk.Kwargs["wterm"], DefaultPTERM)
 	runPacket.TermOpts, err = GetUITermOpts(pk.UIContext.WinSize, ptermVal)
 	if err != nil {
 		return nil, fmt.Errorf("/run error, invalid 'pterm' value %q: %v", ptermVal, err)
@@ -761,10 +764,6 @@ func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	}
 	if pk.Kwargs["tabicon"] != "" {
 		icon := pk.Kwargs["tabicon"]
-		err = validateIcon(icon, "screen tabicon")
-		if err != nil {
-			return nil, err
-		}
 		updateMap[sstore.ScreenField_TabIcon] = icon
 		varsUpdated = append(varsUpdated, "tabicon")
 		setNonAnchor = true
@@ -1532,7 +1531,7 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	if promptStr == "" {
 		return nil, fmt.Errorf("openai error, prompt string is blank")
 	}
-	ptermVal := defaultStr(pk.Kwargs["pterm"], DefaultPTERM)
+	ptermVal := defaultStr(pk.Kwargs["wterm"], DefaultPTERM)
 	pkTermOpts, err := GetUITermOpts(pk.UIContext.WinSize, ptermVal)
 	if err != nil {
 		return nil, fmt.Errorf("openai error, invalid 'pterm' value %q: %v", ptermVal, err)
@@ -1988,15 +1987,6 @@ func validateColor(color string, typeStr string) error {
 		}
 	}
 	return fmt.Errorf("invalid %s, valid colors are: %s", typeStr, formatStrs(ColorNames, "or", false))
-}
-
-func validateIcon(icon string, typeStr string) error {
-	for _, c := range TabIcons {
-		if icon == c {
-			return nil
-		}
-	}
-	return fmt.Errorf("invalid %s, valid icons are: %s", typeStr, formatStrs(TabIcons, "or", false))
 }
 
 func validateRemoteColor(color string, typeStr string) error {
@@ -3554,8 +3544,8 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		if err != nil {
 			return nil, fmt.Errorf("invalid termfontsize, must be a number between 8-15: %v", err)
 		}
-		if newFontSize < 8 || newFontSize > 15 {
-			return nil, fmt.Errorf("invalid termfontsize, must be a number between 8-15")
+		if newFontSize < TermFontSizeMin || newFontSize > TermFontSizeMax {
+			return nil, fmt.Errorf("invalid termfontsize, must be a number between %d-%d", TermFontSizeMin, TermFontSizeMax)
 		}
 		feOpts := clientData.FeOpts
 		feOpts.TermFontSize = newFontSize

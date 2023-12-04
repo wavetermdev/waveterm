@@ -179,7 +179,19 @@ func setBracketArgs(argMap map[string]string, bracketStr string) error {
 	return nil
 }
 
-var literalRtnStateCommands = []string{".", "source", "unset", "cd", "alias", "unalias", "deactivate", "eval"}
+var literalRtnStateCommands = []string{
+	".",
+	"source",
+	"unset",
+	"cd",
+	"alias",
+	"unalias",
+	"deactivate",
+	"eval",
+	"asdf",
+	"nvm",
+	"virtualenv",
+}
 
 func getCallExprLitArg(callExpr *syntax.CallExpr, argNum int) string {
 	if len(callExpr.Args) <= argNum {

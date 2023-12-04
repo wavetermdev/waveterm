@@ -99,7 +99,7 @@ class Toggle extends React.Component<{ checked: boolean; onChange: (value: boole
 }
 
 class Checkbox extends React.Component<
-    { checked: boolean; onChange: (value: boolean) => void; label: string; id: string },
+    { checked: boolean; onChange: (value: boolean) => void; label: React.ReactNode; id: string },
     {}
 > {
     render() {
@@ -217,6 +217,115 @@ class Tooltip extends React.Component<TooltipProps, TooltipState> {
     }
 }
 
+type ButtonVariantType = "outlined" | "solid" | "ghost";
+type ButtonThemeType = "primary" | "secondary";
+
+interface ButtonProps {
+    theme?: ButtonThemeType;
+    children: React.ReactNode;
+    onClick?: () => void;
+    disabled?: boolean;
+    variant?: ButtonVariantType;
+    leftIcon?: React.ReactNode;
+    rightIcon?: React.ReactNode;
+    color?: string;
+    style?: React.CSSProperties;
+}
+
+class Button extends React.Component<ButtonProps> {
+    static defaultProps = {
+        theme: "primary",
+        variant: "solid",
+        color: "",
+        style: {},
+    };
+
+    @boundMethod
+    handleClick() {
+        if (this.props.onClick && !this.props.disabled) {
+            this.props.onClick();
+        }
+    }
+
+    render() {
+        const { leftIcon, rightIcon, theme, children, disabled, variant, color, style } = this.props;
+
+        return (
+            <button
+                className={cn("wave-button", theme, variant, color, { disabled: disabled })}
+                onClick={this.handleClick}
+                disabled={disabled}
+                style={style}
+            >
+                {leftIcon && <span className="icon-left">{leftIcon}</span>}
+                {children}
+                {rightIcon && <span className="icon-right">{rightIcon}</span>}
+            </button>
+        );
+    }
+}
+
+class IconButton extends Button {
+    render() {
+        const { children, theme, variant = "solid", ...rest } = this.props;
+        const className = `wave-button icon-button ${theme} ${variant}`;
+
+        return (
+            <button {...rest} className={className}>
+                {children}
+            </button>
+        );
+    }
+}
+
+export default IconButton;
+
+interface LinkButtonProps extends ButtonProps {
+    href: string;
+    target?: string;
+}
+
+class LinkButton extends IconButton {
+    render() {
+        // @ts-ignore
+        const { href, target, leftIcon, rightIcon, children, theme, variant }: LinkButtonProps = this.props;
+
+        return (
+            <a href={href} target={target} className={`wave-button link-button`}>
+                <button {...this.props} className={`icon-button ${theme} ${variant}`}>
+                    {leftIcon && <span className="icon-left">{leftIcon}</span>}
+                    {children}
+                    {rightIcon && <span className="icon-right">{rightIcon}</span>}
+                </button>
+            </a>
+        );
+    }
+}
+interface StatusProps {
+    status: "green" | "red" | "gray" | "yellow";
+    text: string;
+}
+
+class Status extends React.Component<StatusProps> {
+    @boundMethod
+    renderDot() {
+        const { status } = this.props;
+
+        return <div className={`dot ${status}`} />;
+    }
+
+    render() {
+        const { text } = this.props;
+
+        return (
+            <div className="wave-status-container">
+                {this.renderDot()}
+                <span>{text}</span>
+            </div>
+        );
+    }
+}
+
 interface TextFieldDecorationProps {
     startDecoration?: React.ReactNode;
     endDecoration?: React.ReactNode;
@@ -232,6 +341,7 @@ interface TextFieldProps {
     required?: boolean;
     maxLength?: number;
     autoFocus?: boolean;
+    disabled?: boolean;
 }
 
 interface TextFieldState {
@@ -242,7 +352,6 @@ interface TextFieldState {
     hasContent: boolean;
 }
 
-@mobxReact.observer
 class TextField extends React.Component<TextFieldProps, TextFieldState> {
     inputRef: React.RefObject<HTMLInputElement>;
     state: TextFieldState;
@@ -264,6 +373,22 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
         // Only update the focus state if using as controlled
         if (this.props.value !== undefined && this.props.value !== prevProps.value) {
             this.setState({ focused: Boolean(this.props.value) });
+        }
+    }
+
+    // Method to handle focus at the component level
+    @boundMethod
+    handleComponentFocus() {
+        if (this.inputRef.current && !this.inputRef.current.contains(document.activeElement)) {
+            this.inputRef.current.focus();
+        }
+    }
+
+    // Method to handle blur at the component level
+    @boundMethod
+    handleComponentBlur() {
+        if (this.inputRef.current && this.inputRef.current.contains(document.activeElement)) {
+            this.inputRef.current.blur();
         }
     }
 
@@ -311,14 +436,23 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
     }
 
     render() {
-        const { label, value, placeholder, decoration, className, maxLength, autoFocus } = this.props;
+        const { label, value, placeholder, decoration, className, maxLength, autoFocus, disabled } = this.props;
         const { focused, internalValue, error } = this.state;
 
         // Decide if the input should behave as controlled or uncontrolled
         const inputValue = value !== undefined ? value : internalValue;
 
         return (
-            <div className={cn(`wave-textfield ${className || ""}`, { focused: focused, error: error })}>
+            <div
+                className={cn(`wave-textfield ${className || ""}`, {
+                    focused: focused,
+                    error: error,
+                    disabled: disabled,
+                })}
+                onFocus={this.handleComponentFocus}
+                onBlur={this.handleComponentBlur}
+                tabIndex={-1}
+            >
                 {decoration?.startDecoration && <>{decoration.startDecoration}</>}
                 <div className="wave-textfield-inner">
                     <label
@@ -341,6 +475,7 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
                         placeholder={placeholder}
                         maxLength={maxLength}
                         autoFocus={autoFocus}
+                        disabled={disabled}
                     />
                 </div>
                 {decoration?.endDecoration && <>{decoration.endDecoration}</>}
@@ -617,7 +752,7 @@ class InlineSettingsTextEdit extends React.Component<
                             <div
                                 onClick={this.confirmChange}
                                 title="Confirm (Enter)"
-                                className="button is-prompt-green is-outlined is-small"
+                                className="button is-wave-green is-outlined is-small"
                             >
                                 <span className="icon is-small">
                                     <i className="fa-sharp fa-solid fa-check" />
@@ -964,6 +1099,70 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
     }
 }
 
+interface ModalHeaderProps {
+    onClose: () => void;
+    title: string;
+}
+
+const ModalHeader: React.FC<ModalHeaderProps> = ({ onClose, title }) => (
+    <div className="wave-modal-header">
+        {<div>{title}</div>}
+        <IconButton theme="secondary" variant="ghost" onClick={onClose}>
+            <i className="fa-sharp fa-solid fa-xmark"></i>
+        </IconButton>
+    </div>
+);
+
+interface ModalFooterProps {
+    onCancel?: () => void;
+    onOk?: () => void;
+    cancelLabel?: string;
+    okLabel?: string;
+}
+
+const ModalFooter: React.FC<ModalFooterProps> = ({ onCancel, onOk, cancelLabel = "Cancel", okLabel = "Ok" }) => (
+    <div className="wave-modal-footer">
+        {onCancel && (
+            <Button theme="secondary" onClick={onCancel}>
+                {cancelLabel}
+            </Button>
+        )}
+        {onOk && <Button onClick={onOk}>{okLabel}</Button>}
+    </div>
+);
+
+interface ModalProps {
+    className?: string;
+    children?: React.ReactNode;
+    onClickBackdrop?: () => void;
+}
+
+class Modal extends React.Component<ModalProps> {
+    static Header = ModalHeader;
+    static Footer = ModalFooter;
+
+    renderBackdrop(onClick: (() => void) | undefined) {
+        return <div className="wave-modal-backdrop" onClick={onClick}></div>;
+    }
+
+    renderModal() {
+        const { className, children } = this.props;
+
+        return (
+            <div className="wave-modal-container">
+                {this.renderBackdrop(this.props.onClickBackdrop)}
+                <div className={`wave-modal ${className}`}>
+                    <div className="wave-modal-content">{children}</div>
+                </div>
+            </div>
+        );
+    }
+
+    render() {
+        return ReactDOM.createPortal(this.renderModal(), document.getElementById("app") as HTMLElement);
+    }
+}
+
 export {
     CmdStrCode,
     Toggle,
@@ -980,4 +1179,9 @@ export {
     NumberField,
     PasswordField,
     Tooltip,
+    Button,
+    IconButton,
+    LinkButton,
+    Status,
+    Modal,
 };

@@ -247,40 +247,13 @@
     }
 }
 
-.button.is-prompt-green {
+.button.is-wave-green {
     background-color: #222;
     color: @term-white;
 
     &:hover {
         background-color: @term-green;
         color: @term-bright-white;
-    }
-}
-
-.wave-button {
-    display: flex;
-    padding: 6px 16px !important;
-    color: @term-white !important;
-    align-items: center;
-    gap: 4px;
-    border-radius: 6px !important;
-    height: auto !important;
-
-    &:hover {
-        color: @term-white !important;
-    }
-}
-
-.wave-button.is-wave-green {
-    color: @term-bright-white !important;
-    background: @term-green !important;
-
-    &:hover {
-        background-color: @term-green;
-        box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
-            0px 0px 0.5px 0px rgba(255, 255, 255, 0.8) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.6) inset;
-        color: @term-bright-white !important;
-        box-shadow: none;
     }
 }
 
@@ -637,7 +610,8 @@
     position: relative;
     background-color: transparent;
     height: 44px;
-    width: 412px;
+    min-width: 412px;
+    width: 100%;
     border: 1px solid var(--element-separator, rgba(241, 246, 243, 0.15));
     border-radius: 6px;
     background: var(--element-hover-2, rgba(255, 255, 255, 0.06));
@@ -801,8 +775,16 @@
     box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
         0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
 
+    &:hover {
+        cursor: text;
+    }
+
     &.focused {
         border-color: @term-green;
+    }
+
+    &.disabled {
+        opacity: 0.75;
     }
 
     &.error {
@@ -928,6 +910,231 @@
 
         .button {
             height: 20px;
+        }
+    }
+}
+
+.wave-button {
+    background: none;
+    color: inherit;
+    border: none;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+    outline: inherit;
+
+    display: flex;
+    padding: 6px 16px;
+    align-items: center;
+    gap: 4px;
+    border-radius: 6px;
+    height: auto;
+
+    &:hover {
+        color: @term-white;
+    }
+
+    i {
+        fill: rgba(255, 255, 255, 0.12);
+    }
+
+    &.primary {
+        color: @term-green;
+        background: none;
+
+        i {
+            fill: @term-green;
+        }
+
+        &.solid {
+            color: @term-bright-white;
+            background: @term-green;
+            box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
+                0px 0px 0.5px 0px rgba(255, 255, 255, 0.8) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.6) inset;
+
+            i {
+                fill: @term-white;
+            }
+        }
+
+        &.outlined {
+            border: 1px solid @term-green;
+        }
+
+        &.ghost {
+            // Styles for .ghost are already defined above
+        }
+
+        &:hover {
+            color: @term-bright-white;
+        }
+    }
+
+    &.secondary {
+        color: @term-white;
+        background: none;
+
+        &.solid {
+            background: rgba(255, 255, 255, 0.09);
+            box-shadow: none;
+        }
+
+        &.outlined {
+            border: 1px solid rgba(255, 255, 255, 0.09);
+        }
+
+        &.ghost {
+            padding: 6px 10px;
+
+            i {
+                fill: @term-green;
+            }
+        }
+    }
+
+    &.color-yellow {
+        &.solid {
+            border-color: @warning-yellow;
+            background-color: mix(@warning-yellow, @term-white, 50%);
+            box-shadow: none;
+        }
+
+        &.outlined {
+            color: @warning-yellow;
+            border-color: @warning-yellow;
+            &:hover {
+                color: @term-white;
+                border-color: @term-white;
+            }
+        }
+
+        &.ghost {
+        }
+    }
+
+    &.color-red {
+        &.solid {
+            border-color: @term-red;
+            background-color: mix(@term-red, @term-white, 50%);
+            box-shadow: none;
+        }
+
+        &.outlined {
+            color: @term-red;
+            border-color: @term-red;
+        }
+
+        &.ghost {
+        }
+    }
+
+    &.disabled {
+        opacity: 0.5;
+    }
+
+    &.link-button {
+        cursor: pointer;
+    }
+}
+
+.wave-status-container {
+    display: flex;
+    align-items: center;
+
+    .dot {
+        height: 6px;
+        width: 6px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 8px;
+    }
+
+    .dot.green {
+        background-color: @status-connected;
+    }
+
+    .dot.red {
+        background-color: @status-error;
+    }
+
+    .dot.gray {
+        background-color: @status-disconnected;
+    }
+
+    .dot.yellow {
+        background-color: @status-connecting;
+    }
+}
+
+.wave-modal-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 500;
+
+    .wave-modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(21, 23, 21, 0.7);
+        z-index: 1;
+    }
+}
+
+.wave-modal {
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    border-radius: 10px;
+    background: #151715;
+    box-shadow: 0px 3px 5px 0px rgba(0, 0, 0, 0.35), 0px 10px 24px 0px rgba(0, 0, 0, 0.45),
+        0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
+
+    .wave-modal-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+
+        .wave-modal-header {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            padding: 12px 14px 12px 20px;
+            justify-content: space-between;
+            line-height: 20px;
+            border-bottom: 1px solid rgba(250, 250, 250, 0.1);
+
+            button {
+                i {
+                    font-size: 18px;
+                }
+            }
+        }
+
+        .wave-modal-body {
+            width: 100%;
+            padding: 0px 20px;
+        }
+
+        .wave-modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            width: 100%;
+            padding: 0 20px 20px;
+
+            button:first-child {
+                margin-right: 8px;
+            }
         }
     }
 }

@@ -19,7 +19,7 @@
     border: 1px solid transparent;
 
     &.active {
-        border: 1px solid rgba(@prompt-green, 0.8) !important;
+        border: 1px solid rgba(@wave-green, 0.8) !important;
         box-shadow: 0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
     }
 
@@ -73,6 +73,42 @@
     .cmd-input-context {
         color: #fff;
         white-space: nowrap;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .cmd-input-filter {
+        opacity: 0.5;
+        &:hover {
+            opacity: 1.0;
+        }
+
+        .avatar {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            margin: 0 0.5em;
+            vertical-align: text-top;
+            fill: @base-color;
+        }
+
+        .warning {
+            fill: @warning-yellow;
+        }
+
+        @keyframes infiniteRotate {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spin {
+            animation: infiniteRotate 2s linear infinite;
+        }
     }
 
     .cmd-input-field {
@@ -139,7 +175,7 @@
                 height: 2.5em;
                 cursor: pointer;
                 border-radius: 50%;
-                fill: @prompt-green;
+                fill: @wave-green;
                 padding: 0.25em;
             }
             .icon.disabled {

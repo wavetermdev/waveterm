@@ -11,7 +11,7 @@ import cn from "classnames";
 import { debounce } from "throttle-debounce";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel, GlobalCommandRunner, Session, ScreenLines, Screen } from "../../../model/model";
+import { GlobalModel, GlobalCommandRunner, Session, Screen, TabIcons } from "../../../model/model";
 import { renderCmdText } from "../../common/common";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
 import { ReactComponent as ActionsIcon } from "../../assets/icons/tab/actions.svg";
