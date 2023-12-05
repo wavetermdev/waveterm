@@ -7,19 +7,21 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
 )
 
-func parseToSP(s string) StrWithPos {
+func parseToSP(s string) utilfn.StrWithPos {
 	idx := strings.Index(s, "[*]")
 	if idx == -1 {
-		return StrWithPos{Str: s}
+		return utilfn.StrWithPos{Str: s}
 	}
-	return StrWithPos{Str: s[0:idx] + s[idx+3:], Pos: idx}
+	return utilfn.StrWithPos{Str: s[0:idx] + s[idx+3:], Pos: idx}
 }
 
 func testParse(cmdStr string, pos int) {
-	fmt.Printf("cmd: %s\n", strWithCursor(cmdStr, pos))
-	p := ParseCompPoint(StrWithPos{Str: cmdStr, Pos: pos})
+	fmt.Printf("cmd: %s\n", utilfn.StrWithPos{Str: cmdStr, Pos: pos})
+	p := ParseCompPoint(utilfn.StrWithPos{Str: cmdStr, Pos: pos})
 	p.dump()
 }
 
@@ -64,9 +66,9 @@ func Test2(t *testing.T) {
 	testMiniExtend(t, p, "foo's", true, `$'foo\'s[*]more`)
 }
 
-func testParseRT(t *testing.T, origSP StrWithPos) {
+func testParseRT(t *testing.T, origSP utilfn.StrWithPos) {
 	p := ParseCompPoint(origSP)
-	newSP := StrWithPos{Str: p.getOrigStr(), Pos: p.getOrigPos()}
+	newSP := utilfn.StrWithPos{Str: p.getOrigStr(), Pos: p.getOrigPos()}
 	if origSP != newSP {
 		t.Fatalf("not equal: [%s] != [%s]", origSP, newSP)
 	}

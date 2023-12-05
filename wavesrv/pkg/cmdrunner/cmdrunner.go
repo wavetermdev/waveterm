@@ -1591,7 +1591,7 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 	if noHist {
 		screen, err := sstore.GetScreenById(ctx, ids.ScreenId)
 		if err != nil {
-			return nil, fmt.Errorf("/% error: cannot resolve screen for update: %w", err)
+			return nil, fmt.Errorf("/%s error: cannot resolve screen for update: %w", GetCmdStr(pk), err)
 		}
 		update := &sstore.ModelUpdate{
 			Screens:     []*sstore.ScreenType{screen},

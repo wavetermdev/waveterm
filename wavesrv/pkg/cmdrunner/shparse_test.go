@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"os"
 	"testing"
+
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/rtnstate"
 )
 
 func xTestParseAliases(t *testing.T) {
-	m, err := ParseAliases(`
+	m, err := rtnstate.ParseAliases(`
 alias cdg='cd work/gopath/src/github.com/sawka'
 alias s='scripthaus'
 alias x='ls;ls"'
@@ -29,7 +31,7 @@ func xTestParseFuncs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error reading linux-decls: %v", err)
 	}
-	m, err := ParseFuncs(string(file))
+	m, err := rtnstate.ParseFuncs(string(file))
 	if err != nil {
 		t.Fatalf("error parsing funcs: %v", err)
 	}
