@@ -58,16 +58,21 @@ Are you sure you want to stop web-sharing this tab?
 `.trim();
 
 @mobxReact.observer
-class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId: string }, {}> {
+class ScreenSettingsModal extends React.Component<{}, {}> {
     shareCopied: OV<boolean> = mobx.observable.box(false, { name: "ScreenSettings-shareCopied" });
     errorMessage: OV<string> = mobx.observable.box(null, { name: "ScreenSettings-errorMessage" });
     screen: Screen;
+    sessionId: string;
+    screenId: string;
 
-    constructor(props: any) {
+    constructor(props) {
         super(props);
-        let { sessionId, screenId } = props;
+        let screenSettingsModal = GlobalModel.screenSettingsModal.get();
+        let { sessionId, screenId } = screenSettingsModal;
+        this.sessionId = sessionId;
+        this.screenId = screenId;
         this.screen = GlobalModel.getScreenById(sessionId, screenId);
-        if (this.screen == null) {
+        if (this.screen == null || sessionId == null || screenId == null) {
             return;
         }
     }
@@ -77,19 +82,19 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
         mobx.action(() => {
             GlobalModel.screenSettingsModal.set(null);
         })();
+        GlobalModel.modalsModel.popModal();
     }
 
     @boundMethod
     selectTabColor(color: string): void {
-        let { sessionId, screenId } = this.props;
-        let screen = GlobalModel.getScreenById(sessionId, screenId);
+        let screen = GlobalModel.getScreenById(this.sessionId, this.screenId);
         if (screen == null) {
             return;
         }
         if (screen.getTabColor() == color) {
             return;
         }
-        let prtn = GlobalCommandRunner.screenSetSettings(this.props.screenId, { tabcolor: color }, false);
+        let prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { tabcolor: color }, false);
         commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -104,22 +109,20 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
 
     @boundMethod
     handleChangeArchived(val: boolean): void {
-        let { sessionId, screenId } = this.props;
-        let screen = GlobalModel.getScreenById(sessionId, screenId);
+        let screen = GlobalModel.getScreenById(this.sessionId, this.screenId);
         if (screen == null) {
             return;
         }
         if (screen.archived.get() == val) {
             return;
         }
-        let prtn = GlobalCommandRunner.screenArchive(this.props.screenId, val);
+        let prtn = GlobalCommandRunner.screenArchive(this.screenId, val);
         commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
     handleChangeWebShare(val: boolean): void {
-        let { sessionId, screenId } = this.props;
-        let screen = GlobalModel.getScreenById(sessionId, screenId);
+        let screen = GlobalModel.getScreenById(this.sessionId, this.screenId);
         if (screen == null) {
             return;
         }
@@ -139,8 +142,7 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
 
     @boundMethod
     copyShareLink(): void {
-        let { sessionId, screenId } = this.props;
-        let screen = GlobalModel.getScreenById(sessionId, screenId);
+        let screen = GlobalModel.getScreenById(this.sessionId, this.screenId);
         if (screen == null) {
             return null;
         }
@@ -161,29 +163,27 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
 
     @boundMethod
     inlineUpdateName(val: string): void {
-        let { sessionId, screenId } = this.props;
-        let screen = GlobalModel.getScreenById(sessionId, screenId);
+        let screen = GlobalModel.getScreenById(this.sessionId, this.screenId);
         if (screen == null) {
             return;
         }
         if (util.isStrEq(val, screen.name.get())) {
             return;
         }
-        let prtn = GlobalCommandRunner.screenSetSettings(this.props.screenId, { name: val }, false);
+        let prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { name: val }, false);
         commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
     inlineUpdateShareName(val: string): void {
-        let { sessionId, screenId } = this.props;
-        let screen = GlobalModel.getScreenById(sessionId, screenId);
+        let screen = GlobalModel.getScreenById(this.sessionId, this.screenId);
         if (screen == null) {
             return;
         }
         if (util.isStrEq(val, screen.getShareName())) {
             return;
         }
-        let prtn = GlobalCommandRunner.screenSetSettings(this.props.screenId, { sharename: val }, false);
+        let prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { sharename: val }, false);
         commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -196,8 +196,7 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
 
     @boundMethod
     handleDeleteScreen(): void {
-        let { sessionId, screenId } = this.props;
-        let screen = GlobalModel.getScreenById(sessionId, screenId);
+        let screen = GlobalModel.getScreenById(this.sessionId, this.screenId);
         if (screen == null) {
             return;
         }
@@ -207,7 +206,7 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
             if (!result) {
                 return;
             }
-            let prtn = GlobalCommandRunner.screenPurge(screenId);
+            let prtn = GlobalCommandRunner.screenPurge(this.screenId);
             commandRtnHandler(prtn, this.errorMessage);
         });
     }
@@ -219,15 +218,13 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
     }
 
     render() {
-        let { sessionId, screenId } = this.props;
-        let inline = false;
         let screen = this.screen;
         if (screen == null) {
             return null;
         }
-        console.log("screen.getTabIcon()", screen.getTabIcon());
         let color: string = null;
         let icon: string = null;
+        let index: number = 0;
         let curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
         return (
             <Modal className="screen-settings-modal">
@@ -295,9 +292,9 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
                                     <span className="tab-icon-name">{screen.getTabIcon()}</span>
                                 </div>
                                 <div className="tab-icon-sep">|</div>
-                                <For each="icon" of={TabIcons}>
+                                <For each="icon" index="index" of={TabIcons}>
                                     <div
-                                        key={color}
+                                        key={`${color}-${index}`}
                                         className="tab-icon-select"
                                         onClick={() => this.selectTabIcon(icon)}
                                     >

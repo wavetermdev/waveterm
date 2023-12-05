@@ -11,11 +11,12 @@ import cn from "classnames";
 import { debounce } from "throttle-debounce";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel, GlobalCommandRunner, Session, Screen, TabIcons } from "../../../model/model";
+import { GlobalModel, GlobalCommandRunner, Session, Screen } from "../../../model/model";
 import { renderCmdText } from "../../common/common";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
 import { ReactComponent as ActionsIcon } from "../../assets/icons/tab/actions.svg";
 import { ReactComponent as AddIcon } from "../../assets/icons/add.svg";
+import * as constants from "../../appconst";
 
 import "../workspace.less";
 import "./tabs.less";
@@ -100,6 +101,7 @@ class ScreenTabs extends React.Component<{ session: Session }, {}> {
         mobx.action(() => {
             GlobalModel.screenSettingsModal.set({ sessionId: screen.sessionId, screenId: screen.screenId });
         })();
+        GlobalModel.modalsModel.pushModal(constants.SCREEN_SETTINGS);
     }
 
     renderTabIcon = (screen: Screen): React.ReactNode => {

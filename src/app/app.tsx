@@ -74,7 +74,6 @@ class App extends React.Component<{}, {}> {
     }
 
     render() {
-        let screenSettingsModal = GlobalModel.screenSettingsModal.get();
         let sessionSettingsModal = GlobalModel.sessionSettingsModal.get();
         let lineSettingsModal = GlobalModel.lineSettingsModal.get();
         let clientSettingsModal = GlobalModel.clientSettingsModal.get();
@@ -121,13 +120,6 @@ class App extends React.Component<{}, {}> {
                     </ErrorBoundary>
                 </div>
                 <ModalsProvider />
-                <If condition={screenSettingsModal != null}>
-                    <ScreenSettingsModal
-                        key={screenSettingsModal.sessionId + ":" + screenSettingsModal.screenId}
-                        sessionId={screenSettingsModal.sessionId}
-                        screenId={screenSettingsModal.screenId}
-                    />
-                </If>
                 <If condition={sessionSettingsModal != null}>
                     <SessionSettingsModal key={sessionSettingsModal} sessionId={sessionSettingsModal} />
                 </If>
