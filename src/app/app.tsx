@@ -22,7 +22,6 @@ import {
     LineSettingsModal,
     ClientSettingsModal,
 } from "./common/modals/settings";
-import { TosModal } from "./common/modals/modals";
 import { MainSideBar } from "./sidebar/sidebar";
 import { DisconnectedModal, ClientStopModal, ModalsProvider } from "./common/modals/modals";
 import { ErrorBoundary } from "./common/error/errorboundary";
@@ -121,9 +120,6 @@ class App extends React.Component<{}, {}> {
                         <ConnectionsView model={remotesModel} />
                     </ErrorBoundary>
                 </div>
-                <If condition={GlobalModel.needsTos()}>
-                    <TosModal />
-                </If>
                 <ModalsProvider />
                 <If condition={screenSettingsModal != null}>
                     <ScreenSettingsModal

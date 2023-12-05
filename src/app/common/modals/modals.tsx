@@ -42,6 +42,10 @@ class ModalsProvider extends React.Component {
     renderModals() {
         const modals = GlobalModel.modalsModel.activeModals;
 
+        if (GlobalModel.needsTos()) {
+            return <TosModal />;
+        }
+
         return modals.map((ModalComponent, index) => <ModalComponent key={index} />);
     }
 
@@ -231,6 +235,7 @@ class TosModal extends React.Component<{}, {}> {
     @boundMethod
     acceptTos(): void {
         GlobalCommandRunner.clientAcceptTos();
+        GlobalModel.modalsModel.popModal();
     }
 
     @boundMethod
@@ -246,10 +251,9 @@ class TosModal extends React.Component<{}, {}> {
         let cdata: ClientDataType = GlobalModel.clientData.get();
 
         return (
-            <div className={cn("modal tos-modal wave-modal is-active")}>
-                <div className="modal-background wave-modal-background" />
-                <div className="modal-content wave-modal-content tos-wave-modal-content">
-                    <div className="modal-content-inner wave-modal-content-inner tos-wave-modal-content-inner">
+            <Modal className="tos-modal">
+                <div className="wave-modal-body">
+                    <div className="wave-modal-body-inner">
                         <header className="tos-header unselectable">
                             <div className="modal-title">Welcome to Wave Terminal!</div>
                             <div className="modal-subtitle">Lets set everything for you</div>
@@ -323,7 +327,7 @@ class TosModal extends React.Component<{}, {}> {
                         </footer>
                     </div>
                 </div>
-            </div>
+            </Modal>
         );
     }
 }
