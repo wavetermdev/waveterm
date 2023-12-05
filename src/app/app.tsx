@@ -41,6 +41,12 @@ class App extends React.Component<{}, {}> {
         if (GlobalModel.isDev) document.body.className = "is-dev";
     }
 
+    componentDidUpdate(): void {
+        if (GlobalModel.needsTos()) {
+            GlobalModel.modalsModel.pushModal("tos");
+        }
+    }
+
     @boundMethod
     handleContextMenu(e: any) {
         let isInNonTermInput = false;
@@ -121,9 +127,6 @@ class App extends React.Component<{}, {}> {
                         <ConnectionsView model={remotesModel} />
                     </ErrorBoundary>
                 </div>
-                <If condition={GlobalModel.needsTos()}>
-                    <TosModal />
-                </If>
                 <ModalsProvider />
                 <If condition={screenSettingsModal != null}>
                     <ScreenSettingsModal
