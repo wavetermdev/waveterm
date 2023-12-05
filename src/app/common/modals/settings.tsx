@@ -87,11 +87,10 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
 
     @boundMethod
     selectTabColor(color: string): void {
-        let screen = GlobalModel.getScreenById(this.sessionId, this.screenId);
-        if (screen == null) {
+        if (this.screen == null) {
             return;
         }
-        if (screen.getTabColor() == color) {
+        if (this.screen.getTabColor() == color) {
             return;
         }
         let prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { tabcolor: color }, false);
@@ -109,11 +108,10 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
 
     @boundMethod
     handleChangeArchived(val: boolean): void {
-        let screen = GlobalModel.getScreenById(this.sessionId, this.screenId);
-        if (screen == null) {
+        if (this.screen == null) {
             return;
         }
-        if (screen.archived.get() == val) {
+        if (this.screen.archived.get() == val) {
             return;
         }
         let prtn = GlobalCommandRunner.screenArchive(this.screenId, val);
@@ -122,11 +120,10 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
 
     @boundMethod
     handleChangeWebShare(val: boolean): void {
-        let screen = GlobalModel.getScreenById(this.sessionId, this.screenId);
-        if (screen == null) {
+        if (this.screen == null) {
             return;
         }
-        if (screen.isWebShared() == val) {
+        if (this.screen.isWebShared() == val) {
             return;
         }
         let message = val ? WebShareConfirmMarkdown : WebStopShareConfirmMarkdown;
@@ -135,18 +132,17 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
             if (!result) {
                 return;
             }
-            let prtn = GlobalCommandRunner.screenWebShare(screen.screenId, val);
+            let prtn = GlobalCommandRunner.screenWebShare(this.screen.screenId, val);
             commandRtnHandler(prtn, this.errorMessage);
         });
     }
 
     @boundMethod
     copyShareLink(): void {
-        let screen = GlobalModel.getScreenById(this.sessionId, this.screenId);
-        if (screen == null) {
+        if (this.screen == null) {
             return null;
         }
-        let shareLink = screen.getWebShareUrl();
+        let shareLink = this.screen.getWebShareUrl();
         if (shareLink == null) {
             return;
         }
@@ -163,11 +159,10 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
 
     @boundMethod
     inlineUpdateName(val: string): void {
-        let screen = GlobalModel.getScreenById(this.sessionId, this.screenId);
-        if (screen == null) {
+        if (this.screen == null) {
             return;
         }
-        if (util.isStrEq(val, screen.name.get())) {
+        if (util.isStrEq(val, this.screen.name.get())) {
             return;
         }
         let prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { name: val }, false);
@@ -176,11 +171,10 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
 
     @boundMethod
     inlineUpdateShareName(val: string): void {
-        let screen = GlobalModel.getScreenById(this.sessionId, this.screenId);
-        if (screen == null) {
+        if (this.screen == null) {
             return;
         }
-        if (util.isStrEq(val, screen.getShareName())) {
+        if (util.isStrEq(val, this.screen.getShareName())) {
             return;
         }
         let prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { sharename: val }, false);
@@ -196,8 +190,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
 
     @boundMethod
     handleDeleteScreen(): void {
-        let screen = GlobalModel.getScreenById(this.sessionId, this.screenId);
-        if (screen == null) {
+        if (this.screen == null) {
             return;
         }
         let message = ScreenDeleteMessage;
