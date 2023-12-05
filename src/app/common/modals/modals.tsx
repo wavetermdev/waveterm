@@ -42,6 +42,10 @@ class ModalsProvider extends React.Component {
     renderModals() {
         const modals = GlobalModel.modalsModel.activeModals;
 
+        if (GlobalModel.needsTos()) {
+            return <TosModal />;
+        }
+
         return modals.map((ModalComponent, index) => <ModalComponent key={index} />);
     }
 

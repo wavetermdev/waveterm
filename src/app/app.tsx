@@ -41,12 +41,6 @@ class App extends React.Component<{}, {}> {
         if (GlobalModel.isDev) document.body.className = "is-dev";
     }
 
-    componentDidUpdate(): void {
-        if (GlobalModel.needsTos()) {
-            GlobalModel.modalsModel.pushModal("tos");
-        }
-    }
-
     @boundMethod
     handleContextMenu(e: any) {
         let isInNonTermInput = false;

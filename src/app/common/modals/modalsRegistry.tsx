@@ -8,7 +8,6 @@ import {
     ViewRemoteConnDetailModal,
     EditRemoteConnModal,
     AlertModal,
-    TosModal,
 } from "./modals";
 import * as constants from "../../appconst";
 
@@ -18,7 +17,6 @@ const modalsRegistry: { [key: string]: () => React.ReactElement } = {
     [constants.VIEW_REMOTE]: () => <ViewRemoteConnDetailModal />,
     [constants.EDIT_REMOTE]: () => <EditRemoteConnModal />,
     [constants.ALERT]: () => <AlertModal />,
-    [constants.TOS]: () => <TosModal />,
 };
 
 export { modalsRegistry };
