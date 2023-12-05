@@ -137,7 +137,7 @@ func (t *Tailer) addSessionWatcher(sessionId string) error {
 	defer t.Lock.Unlock()
 
 	if t.Sessions[sessionId] {
-		return
+		return nil
 	}
 	sdir := t.Gen.SessionDir(sessionId)
 	err := t.Watcher.Add(sdir)
@@ -351,7 +351,6 @@ func (t *Tailer) Run() {
 			t.Sender.SendPacket(packet.FmtMessagePacket("error in tailer: %v", err))
 		}
 	}
-	return
 }
 
 func (t *Tailer) Close() error {

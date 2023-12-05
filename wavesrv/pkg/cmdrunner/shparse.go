@@ -25,16 +25,16 @@ type BareMetaCmdDecl struct {
 }
 
 var BareMetaCmds = []BareMetaCmdDecl{
-	BareMetaCmdDecl{"cr", "cr"},
-	BareMetaCmdDecl{"connect", "cr"},
-	BareMetaCmdDecl{"clear", "clear"},
-	BareMetaCmdDecl{"reset", "reset"},
-	BareMetaCmdDecl{"codeedit", "codeedit"},
-	BareMetaCmdDecl{"codeview", "codeview"},
-	BareMetaCmdDecl{"imageview", "imageview"},
-	BareMetaCmdDecl{"markdownview", "markdownview"},
-	BareMetaCmdDecl{"mdview", "markdownview"},
-	BareMetaCmdDecl{"csvview", "csvview"},
+	{"cr", "cr"},
+	{"connect", "cr"},
+	{"clear", "clear"},
+	{"reset", "reset"},
+	{"codeedit", "codeedit"},
+	{"codeview", "codeview"},
+	{"imageview", "imageview"},
+	{"markdownview", "markdownview"},
+	{"mdview", "markdownview"},
+	{"csvview", "csvview"},
 }
 
 const (

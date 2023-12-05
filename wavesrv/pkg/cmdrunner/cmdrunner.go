@@ -93,14 +93,14 @@ var SetVarNameMap map[string]string = map[string]string{
 }
 
 var SetVarScopes = []SetVarScope{
-	SetVarScope{ScopeName: "global", VarNames: []string{}},
-	SetVarScope{ScopeName: "client", VarNames: []string{"telemetry"}},
-	SetVarScope{ScopeName: "session", VarNames: []string{"name", "pos"}},
-	SetVarScope{ScopeName: "screen", VarNames: []string{"name", "tabcolor", "tabicon", "pos", "pterm", "anchor", "focus", "line"}},
-	SetVarScope{ScopeName: "line", VarNames: []string{}},
+	{ScopeName: "global", VarNames: []string{}},
+	{ScopeName: "client", VarNames: []string{"telemetry"}},
+	{ScopeName: "session", VarNames: []string{"name", "pos"}},
+	{ScopeName: "screen", VarNames: []string{"name", "tabcolor", "tabicon", "pos", "pterm", "anchor", "focus", "line"}},
+	{ScopeName: "line", VarNames: []string{}},
 	// connection = remote, remote = remoteinstance
-	SetVarScope{ScopeName: "connection", VarNames: []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}},
-	SetVarScope{ScopeName: "remote", VarNames: []string{}},
+	{ScopeName: "connection", VarNames: []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}},
+	{ScopeName: "remote", VarNames: []string{}},
 }
 
 var hostNameRe = regexp.MustCompile("^[a-z][a-z0-9.-]*$")
