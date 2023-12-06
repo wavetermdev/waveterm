@@ -458,15 +458,25 @@ class SessionSettingsModal extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
-class LineSettingsModal extends React.Component<{ linenum: number }, {}> {
+class LineSettingsModal extends React.Component<{}, {}> {
     rendererDropdownActive: OV<boolean> = mobx.observable.box(false, { name: "lineSettings-rendererDropdownActive" });
     errorMessage: OV<string> = mobx.observable.box(null, { name: "ScreenSettings-errorMessage" });
+    linenum: number;
+
+    constructor(props: any) {
+        super(props);
+        this.linenum = GlobalModel.lineSettingsModal.get();
+        if (this.linenum == null) {
+            return;
+        }
+    }
 
     @boundMethod
     closeModal(): void {
         mobx.action(() => {
             GlobalModel.lineSettingsModal.set(null);
         })();
+        GlobalModel.modalsModel.popModal();
     }
 
     @boundMethod
@@ -491,7 +501,7 @@ class LineSettingsModal extends React.Component<{ linenum: number }, {}> {
         if (screen == null) {
             return;
         }
-        return screen.getLineByNum(this.props.linenum);
+        return screen.getLineByNum(this.linenum);
     }
 
     @boundMethod

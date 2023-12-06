@@ -39,6 +39,7 @@ import { PluginModel } from "../../plugins/plugins";
 import { Prompt } from "../common/prompt/prompt";
 import * as lineutil from "./lineutil";
 import { ErrorBoundary } from "../../app/common/error/errorboundary";
+import * as constants from "../appconst";
 
 import { ReactComponent as CheckIcon } from "../assets/icons/line/check.svg";
 import { ReactComponent as CommentIcon } from "../assets/icons/line/comment.svg";
@@ -439,6 +440,7 @@ class LineCmd extends React.Component<
             mobx.action(() => {
                 GlobalModel.lineSettingsModal.set(line.linenum);
             })();
+            GlobalModel.modalsModel.pushModal(constants.LINE_SETTINGS);
         }
     }
 

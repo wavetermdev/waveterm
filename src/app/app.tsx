@@ -74,7 +74,6 @@ class App extends React.Component<{}, {}> {
     }
 
     render() {
-        let lineSettingsModal = GlobalModel.lineSettingsModal.get();
         let clientSettingsModal = GlobalModel.clientSettingsModal.get();
         let remotesModel = GlobalModel.remotesModel;
         let disconnected = !GlobalModel.ws.open.get() || !GlobalModel.waveSrvRunning.get();
@@ -119,9 +118,6 @@ class App extends React.Component<{}, {}> {
                     </ErrorBoundary>
                 </div>
                 <ModalsProvider />
-                <If condition={lineSettingsModal != null}>
-                    <LineSettingsModal key={String(lineSettingsModal)} linenum={lineSettingsModal} />
-                </If>
                 <If condition={clientSettingsModal}>
                     <ClientSettingsModal />
                 </If>
