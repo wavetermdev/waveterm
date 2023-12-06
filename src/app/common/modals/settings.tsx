@@ -598,9 +598,7 @@ class ClientSettingsModal extends React.Component<{}, {}> {
 
     @boundMethod
     closeModal(): void {
-        mobx.action(() => {
-            GlobalModel.clientSettingsModal.set(false);
-        })();
+        GlobalModel.modalsModel.popModal();
     }
 
     @boundMethod
@@ -703,88 +701,76 @@ class ClientSettingsModal extends React.Component<{}, {}> {
             openAIOpts.maxtokens == null || openAIOpts.maxtokens == 0 ? 1000 : openAIOpts.maxtokens
         );
         return (
-            <div className={cn("modal client-settings-modal settings-modal prompt-modal is-active")}>
-                <div className="modal-background" />
-                <div className="modal-content">
-                    <header>
-                        <div className="modal-title">Client settings</div>
-                        <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
-                            <XmarkIcon />
-                        </div>
-                    </header>
-                    <div className="inner-content">
-                        <div className="settings-field">
-                            <div className="settings-label">Term Font Size</div>
-                            <div className="settings-input">{this.renderFontSizeDropdown()}</div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">Client ID</div>
-                            <div className="settings-input">{cdata.clientid}</div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">Client Version</div>
-                            <div className="settings-input">
-                                {VERSION} {BUILD}
-                            </div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">DB Version</div>
-                            <div className="settings-input">{cdata.dbversion}</div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">Basic Telemetry</div>
-                            <div className="settings-input">
-                                <Toggle checked={!cdata.clientopts.notelemetry} onChange={this.handleChangeTelemetry} />
-                            </div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">OpenAI Token</div>
-                            <div className="settings-input">
-                                <InlineSettingsTextEdit
-                                    placeholder=""
-                                    text={apiTokenStr}
-                                    value={""}
-                                    onChange={this.inlineUpdateOpenAIToken}
-                                    maxLength={100}
-                                    showIcon={true}
-                                />
-                            </div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">OpenAI Model</div>
-                            <div className="settings-input">
-                                <InlineSettingsTextEdit
-                                    placeholder="gpt-3.5-turbo"
-                                    text={util.isBlank(openAIOpts.model) ? "gpt-3.5-turbo" : openAIOpts.model}
-                                    value={openAIOpts.model ?? ""}
-                                    onChange={this.inlineUpdateOpenAIModel}
-                                    maxLength={100}
-                                    showIcon={true}
-                                />
-                            </div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">OpenAI MaxTokens</div>
-                            <div className="settings-input">
-                                <InlineSettingsTextEdit
-                                    placeholder=""
-                                    text={maxTokensStr}
-                                    value={maxTokensStr}
-                                    onChange={this.inlineUpdateOpenAIMaxTokens}
-                                    maxLength={10}
-                                    showIcon={true}
-                                />
-                            </div>
-                        </div>
-                        <SettingsError errorMessage={this.errorMessage} />
+            <Modal className="client-settings-modal">
+                <Modal.Header onClose={this.closeModal} title="Client settings" />
+                <div className="wave-modal-body">
+                    <div className="settings-field">
+                        <div className="settings-label">Term Font Size</div>
+                        <div className="settings-input">{this.renderFontSizeDropdown()}</div>
                     </div>
-                    <footer>
-                        <div onClick={this.closeModal} className="button is-wave-green is-outlined is-small">
-                            Close
+                    <div className="settings-field">
+                        <div className="settings-label">Client ID</div>
+                        <div className="settings-input">{cdata.clientid}</div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Client Version</div>
+                        <div className="settings-input">
+                            {VERSION} {BUILD}
                         </div>
-                    </footer>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">DB Version</div>
+                        <div className="settings-input">{cdata.dbversion}</div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Basic Telemetry</div>
+                        <div className="settings-input">
+                            <Toggle checked={!cdata.clientopts.notelemetry} onChange={this.handleChangeTelemetry} />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">OpenAI Token</div>
+                        <div className="settings-input">
+                            <InlineSettingsTextEdit
+                                placeholder=""
+                                text={apiTokenStr}
+                                value={""}
+                                onChange={this.inlineUpdateOpenAIToken}
+                                maxLength={100}
+                                showIcon={true}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">OpenAI Model</div>
+                        <div className="settings-input">
+                            <InlineSettingsTextEdit
+                                placeholder="gpt-3.5-turbo"
+                                text={util.isBlank(openAIOpts.model) ? "gpt-3.5-turbo" : openAIOpts.model}
+                                value={openAIOpts.model ?? ""}
+                                onChange={this.inlineUpdateOpenAIModel}
+                                maxLength={100}
+                                showIcon={true}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">OpenAI MaxTokens</div>
+                        <div className="settings-input">
+                            <InlineSettingsTextEdit
+                                placeholder=""
+                                text={maxTokensStr}
+                                value={maxTokensStr}
+                                onChange={this.inlineUpdateOpenAIMaxTokens}
+                                maxLength={10}
+                                showIcon={true}
+                            />
+                        </div>
+                    </div>
+                    <SettingsError errorMessage={this.errorMessage} />
                 </div>
-            </div>
+                <Modal.Footer cancelLabel="Close" onCancel={this.closeModal} />
+            </Modal>
         );
     }
 }

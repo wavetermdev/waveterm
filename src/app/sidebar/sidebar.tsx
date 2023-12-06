@@ -130,9 +130,7 @@ class MainSideBar extends React.Component<{}, {}> {
 
     @boundMethod
     handleSettingsClick(): void {
-        mobx.action(() => {
-            GlobalModel.clientSettingsModal.set(true);
-        })();
+        GlobalModel.modalsModel.pushModal(constants.CLIENT_SETTINGS);
     }
 
     @boundMethod

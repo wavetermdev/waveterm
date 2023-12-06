@@ -402,7 +402,6 @@
 
 .screen-settings-modal {
     width: 640px;
-    min-height: 329px;
 
     .wave-modal-content {
         gap: 24px;
@@ -421,7 +420,6 @@
 
 .session-settings-modal {
     width: 640px;
-    min-height: 209px;
 
     .wave-modal-content {
         gap: 24px;
@@ -440,7 +438,24 @@
 
 .line-settings-modal {
     width: 640px;
-    min-height: 233px;
+
+    .wave-modal-content {
+        gap: 24px;
+
+        .wave-modal-body {
+            display: flex;
+            padding: 0px 20px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+            align-self: stretch;
+            width: 100%;
+        }
+    }
+}
+
+.client-settings-modal {
+    width: 640px;
 
     .wave-modal-content {
         gap: 24px;

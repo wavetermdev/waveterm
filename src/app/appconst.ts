@@ -6,3 +6,4 @@ export const ALERT = "alert";
 export const SCREEN_SETTINGS = "screenSettings";
 export const SESSION_SETTINGS = "sessionSettings";
 export const LINE_SETTINGS = "lineSettings";
+export const CLIENT_SETTINGS = "clientSettings";

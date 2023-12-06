@@ -118,9 +118,6 @@ class App extends React.Component<{}, {}> {
                     </ErrorBoundary>
                 </div>
                 <ModalsProvider />
-                <If condition={clientSettingsModal}>
-                    <ClientSettingsModal />
-                </If>
             </div>
         );
     }
