@@ -74,7 +74,6 @@ class App extends React.Component<{}, {}> {
     }
 
     render() {
-        let sessionSettingsModal = GlobalModel.sessionSettingsModal.get();
         let lineSettingsModal = GlobalModel.lineSettingsModal.get();
         let clientSettingsModal = GlobalModel.clientSettingsModal.get();
         let remotesModel = GlobalModel.remotesModel;
@@ -120,9 +119,6 @@ class App extends React.Component<{}, {}> {
                     </ErrorBoundary>
                 </div>
                 <ModalsProvider />
-                <If condition={sessionSettingsModal != null}>
-                    <SessionSettingsModal key={sessionSettingsModal} sessionId={sessionSettingsModal} />
-                </If>
                 <If condition={lineSettingsModal != null}>
                     <LineSettingsModal key={String(lineSettingsModal)} linenum={lineSettingsModal} />
                 </If>

@@ -15,6 +15,7 @@ import {
     MaxFontSize,
     TabIcons,
     Screen,
+    Session,
 } from "../../../model/model";
 import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage, Modal } from "../common";
 import { LineType, RendererPluginType, ClientDataType, CommandRtnType } from "../../../types/types";
@@ -333,14 +334,16 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
-class SessionSettingsModal extends React.Component<{ sessionId: string }, {}> {
+class SessionSettingsModal extends React.Component<{}, {}> {
     errorMessage: OV<string> = mobx.observable.box(null, { name: "ScreenSettings-errorMessage" });
+    session: Session;
+    sessionId: string;
 
     constructor(props: any) {
         super(props);
-        let { sessionId } = props;
-        let session = GlobalModel.getSessionById(sessionId);
-        if (session == null) {
+        let sessionId = GlobalModel.sessionSettingsModal.get();
+        this.session = GlobalModel.getSessionById(sessionId);
+        if (this.session == null) {
             return;
         }
     }
@@ -350,46 +353,42 @@ class SessionSettingsModal extends React.Component<{ sessionId: string }, {}> {
         mobx.action(() => {
             GlobalModel.sessionSettingsModal.set(null);
         })();
+        GlobalModel.modalsModel.popModal();
     }
 
     @boundMethod
     handleInlineChangeName(newVal: string): void {
-        let { sessionId } = this.props;
-        let session = GlobalModel.getSessionById(sessionId);
-        if (session == null) {
+        if (this.session == null) {
             return;
         }
-        if (util.isStrEq(newVal, session.name.get())) {
+        if (util.isStrEq(newVal, this.session.name.get())) {
             return;
         }
-        let prtn = GlobalCommandRunner.sessionSetSettings(this.props.sessionId, { name: newVal }, false);
+        let prtn = GlobalCommandRunner.sessionSetSettings(this.sessionId, { name: newVal }, false);
         commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
     handleChangeArchived(val: boolean): void {
-        let { sessionId } = this.props;
-        let session = GlobalModel.getSessionById(sessionId);
-        if (session == null) {
+        if (this.session == null) {
             return;
         }
-        if (session.archived.get() == val) {
+        if (this.session.archived.get() == val) {
             return;
         }
-        let prtn = GlobalCommandRunner.sessionArchive(this.props.sessionId, val);
+        let prtn = GlobalCommandRunner.sessionArchive(this.sessionId, val);
         commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
     handleDeleteSession(): void {
-        let { sessionId } = this.props;
         let message = SessionDeleteMessage;
         let alertRtn = GlobalModel.showAlert({ message: message, confirm: true, markdown: true });
         alertRtn.then((result) => {
             if (!result) {
                 return;
             }
-            let prtn = GlobalCommandRunner.sessionPurge(this.props.sessionId);
+            let prtn = GlobalCommandRunner.sessionPurge(this.sessionId);
             commandRtnHandler(prtn, this.errorMessage);
         });
     }
@@ -402,9 +401,7 @@ class SessionSettingsModal extends React.Component<{ sessionId: string }, {}> {
     }
 
     render() {
-        let { sessionId } = this.props;
-        let session = GlobalModel.getSessionById(sessionId);
-        if (session == null) {
+        if (this.session == null) {
             return null;
         }
         return (
@@ -412,7 +409,7 @@ class SessionSettingsModal extends React.Component<{ sessionId: string }, {}> {
                 <div className="modal-background" />
                 <div className="modal-content">
                     <header>
-                        <div className="modal-title">workspace settings ({session.name.get()})</div>
+                        <div className="modal-title">workspace settings ({this.session.name.get()})</div>
                         <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
                             <XmarkIcon />
                         </div>
@@ -423,8 +420,8 @@ class SessionSettingsModal extends React.Component<{ sessionId: string }, {}> {
                             <div className="settings-input">
                                 <InlineSettingsTextEdit
                                     placeholder="name"
-                                    text={session.name.get() ?? "(none)"}
-                                    value={session.name.get() ?? ""}
+                                    text={this.session.name.get() ?? "(none)"}
+                                    value={this.session.name.get() ?? ""}
                                     onChange={this.handleInlineChangeName}
                                     maxLength={50}
                                     showIcon={true}
@@ -440,7 +437,7 @@ class SessionSettingsModal extends React.Component<{ sessionId: string }, {}> {
                                 </InfoMessage>
                             </div>
                             <div className="settings-input">
-                                <Toggle checked={session.archived.get()} onChange={this.handleChangeArchived} />
+                                <Toggle checked={this.session.archived.get()} onChange={this.handleChangeArchived} />
                             </div>
                         </div>
                         <div className="settings-field">
