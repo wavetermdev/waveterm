@@ -880,6 +880,11 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
     }
 
     @boundMethod
+    clickReinstall(): void {
+        GlobalCommandRunner.installRemote(this.selectedRemote?.remoteid);
+    }
+
+    @boundMethod
     handleClose(): void {
         this.model.closeModal();
         this.model.seRecentConnAdded(false);
@@ -911,11 +916,6 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
 
     renderHeaderBtns(remote: T.RemoteType): React.ReactNode {
         let buttons: React.ReactNode[] = [];
-        const archiveButton = (
-            <Button theme="secondary" onClick={() => this.clickArchive()}>
-                Delete
-            </Button>
-        );
         const disconnectButton = (
             <Button theme="secondary" onClick={() => this.disconnectRemote(remote.remoteid)}>
                 Disconnect Now
@@ -946,12 +946,21 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                 Install Now
             </Button>
         );
+        const archiveButton = (
+            <Button theme="secondary" onClick={() => this.clickArchive()}>
+                Delete
+            </Button>
+        );
+        const reinstallButton = (
+            <Button theme="secondary" onClick={this.clickReinstall}>
+                Reinstall
+            </Button>
+        );
         if (remote.local) {
-            installNowButton = <></>;
+        installNowButton = <></>;
             updateAuthButton = <></>;
             cancelInstallButton = <></>;
         }
-        buttons = [archiveButton, updateAuthButton];
         if (remote.status == "connected" || remote.status == "connecting") {
             buttons.push(disconnectButton);
         } else if (remote.status == "disconnected") {
@@ -967,6 +976,9 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                 buttons.push(tryReconnectButton);
             }
         }
+        buttons.push(reinstallButton);
+        buttons.push(updateAuthButton);
+        buttons.push(archiveButton);
 
         let i = 0;
         let button: React.ReactNode = null;
@@ -1178,30 +1190,6 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    clickArchive(): void {
-        if (this.selectedRemote?.status == "connected") {
-            GlobalModel.showAlert({ message: "Cannot delete while connected.  Disconnect and try again." });
-            return;
-        }
-        let prtn = GlobalModel.showAlert({
-            message: "Are you sure you want to delete this connection?",
-            confirm: true,
-        });
-
-        prtn.then((confirm) => {
-            if (!confirm) {
-                return;
-            }
-            GlobalCommandRunner.archiveRemote(this.selectedRemote?.remoteid);
-        });
-    }
-
-    @boundMethod
-    clickForceInstall(): void {
-        GlobalCommandRunner.installRemote(this.selectedRemote?.remoteid);
-    }
-
-    @boundMethod
     handleChangeKeyFile(value: string): void {
         mobx.action(() => {
             this.internalTempKeyFile.set(value);
@@ -1312,14 +1300,6 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
                 <div className="wave-modal-body">
                     <div className="name-actions-section">
                         <div className="name text-primary">{getName(this.selectedRemote)}</div>
-                        <div className="header-actions">
-                            <Button theme="secondary" onClick={this.clickArchive}>
-                                Delete
-                            </Button>
-                            <Button theme="secondary" onClick={this.clickForceInstall}>
-                                Force Install
-                            </Button>
-                        </div>
                     </div>
                     <div className="alias-section">
                         <TextField
