@@ -569,36 +569,24 @@ class LineSettingsModal extends React.Component<{}, {}> {
             return null;
         }
         return (
-            <div className={cn("modal line-settings-modal settings-modal prompt-modal is-active")}>
-                <div className="modal-background" />
-                <div className="modal-content">
-                    <header>
-                        <div className="modal-title">line settings ({line.linenum})</div>
-                        <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
-                            <XmarkIcon />
-                        </div>
-                    </header>
-                    <div className="inner-content">
-                        <div className="settings-field">
-                            <div className="settings-label">Renderer</div>
-                            <div className="settings-input">{this.renderRendererDropdown()}</div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">Archived</div>
-                            <div className="settings-input">
-                                <Toggle checked={!!line.archived} onChange={this.handleChangeArchived} />
-                            </div>
-                        </div>
-                        <SettingsError errorMessage={this.errorMessage} />
-                        <div style={{ height: 50 }} />
+            <Modal className="line-settings-modal">
+                <Modal.Header onClose={this.closeModal} title={`line settings (${line.linenum})`} />
+                <div className="wave-modal-body">
+                    <div className="settings-field">
+                        <div className="settings-label">Renderer</div>
+                        <div className="settings-input">{this.renderRendererDropdown()}</div>
                     </div>
-                    <footer>
-                        <div onClick={this.closeModal} className="button is-wave-green is-outlined is-small">
-                            Close
+                    <div className="settings-field">
+                        <div className="settings-label">Archived</div>
+                        <div className="settings-input">
+                            <Toggle checked={!!line.archived} onChange={this.handleChangeArchived} />
                         </div>
-                    </footer>
+                    </div>
+                    <SettingsError errorMessage={this.errorMessage} />
+                    <div style={{ height: 50 }} />
                 </div>
-            </div>
+                <Modal.Footer cancelLabel="Close" onCancel={this.closeModal} />
+            </Modal>
         );
     }
 }
