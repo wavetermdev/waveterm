@@ -405,66 +405,54 @@ class SessionSettingsModal extends React.Component<{}, {}> {
             return null;
         }
         return (
-            <div className={cn("modal session-settings-modal settings-modal prompt-modal is-active")}>
-                <div className="modal-background" />
-                <div className="modal-content">
-                    <header>
-                        <div className="modal-title">workspace settings ({this.session.name.get()})</div>
-                        <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
-                            <XmarkIcon />
+            <Modal className="session-settings-modal">
+                <Modal.Header onClose={this.closeModal} title={`workspace settings (${this.session.name.get()})`} />
+                <div className="wave-modal-body">
+                    <div className="settings-field">
+                        <div className="settings-label">Name</div>
+                        <div className="settings-input">
+                            <InlineSettingsTextEdit
+                                placeholder="name"
+                                text={this.session.name.get() ?? "(none)"}
+                                value={this.session.name.get() ?? ""}
+                                onChange={this.handleInlineChangeName}
+                                maxLength={50}
+                                showIcon={true}
+                            />
                         </div>
-                    </header>
-                    <div className="inner-content">
-                        <div className="settings-field">
-                            <div className="settings-label">Name</div>
-                            <div className="settings-input">
-                                <InlineSettingsTextEdit
-                                    placeholder="name"
-                                    text={this.session.name.get() ?? "(none)"}
-                                    value={this.session.name.get() ?? ""}
-                                    onChange={this.handleInlineChangeName}
-                                    maxLength={50}
-                                    showIcon={true}
-                                />
-                            </div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">
-                                <div>Archived</div>
-                                <InfoMessage width={400}>
-                                    Archive will hide the workspace from the active menu. Commands and output will be
-                                    retained in history.
-                                </InfoMessage>
-                            </div>
-                            <div className="settings-input">
-                                <Toggle checked={this.session.archived.get()} onChange={this.handleChangeArchived} />
-                            </div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">
-                                <div>Actions</div>
-                                <InfoMessage width={400}>
-                                    Delete will remove the workspace, removing all commands and output from history.
-                                </InfoMessage>
-                            </div>
-                            <div className="settings-input">
-                                <div
-                                    onClick={this.handleDeleteSession}
-                                    className="button is-prompt-danger is-outlined is-small"
-                                >
-                                    Delete Workspace
-                                </div>
-                            </div>
-                        </div>
-                        <SettingsError errorMessage={this.errorMessage} />
                     </div>
-                    <footer>
-                        <div onClick={this.closeModal} className="button is-wave-green is-outlined is-small">
-                            Close
+                    <div className="settings-field">
+                        <div className="settings-label">
+                            <div>Archived</div>
+                            <InfoMessage width={400}>
+                                Archive will hide the workspace from the active menu. Commands and output will be
+                                retained in history.
+                            </InfoMessage>
                         </div>
-                    </footer>
+                        <div className="settings-input">
+                            <Toggle checked={this.session.archived.get()} onChange={this.handleChangeArchived} />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">
+                            <div>Actions</div>
+                            <InfoMessage width={400}>
+                                Delete will remove the workspace, removing all commands and output from history.
+                            </InfoMessage>
+                        </div>
+                        <div className="settings-input">
+                            <div
+                                onClick={this.handleDeleteSession}
+                                className="button is-prompt-danger is-outlined is-small"
+                            >
+                                Delete Workspace
+                            </div>
+                        </div>
+                    </div>
+                    <SettingsError errorMessage={this.errorMessage} />
                 </div>
-            </div>
+                <Modal.Footer cancelLabel="Close" onCancel={this.closeModal} />
+            </Modal>
         );
     }
 }
