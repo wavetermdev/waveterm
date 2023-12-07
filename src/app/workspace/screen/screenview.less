@@ -131,6 +131,25 @@
         gap: 8px;
         align-self: stretch;
 
+        .lefticon {
+            position: absolute;
+            top: 50%;
+            left: 16px;
+            transform: translateY(-50%);
+
+            .globe-icon {
+                width: 16px;
+                height: 16px;
+                flex-shrink: 0;
+            }
+
+            .status-icon {
+                position: absolute;
+                left: 7px;
+                top: 8px;
+            }
+        }
+
         &.conn-section {
             gap: 8px;
         }
@@ -152,7 +171,7 @@
         padding: 8px 0 8px 2px;
         align-items: flex-start;
         gap: 14px;
-        
+
         &.tabicon-list {
             gap: 12px;
         }
@@ -164,7 +183,6 @@
             position: relative;
             font-size: 14px;
 
-            
             &.tabicon {
                 display: flex;
                 align-items: center;

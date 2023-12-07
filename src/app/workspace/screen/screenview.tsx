@@ -19,12 +19,13 @@ import { getRemoteStr } from "../../common/prompt/prompt";
 import { GlobalModel, ScreenLines, Screen, Session } from "../../../model/model";
 import { Line } from "../../line/linecomps";
 import { LinesView } from "../../line/linesview";
-import { ConnectionDropdown } from "../../connections_deprecated/connections";
 import * as util from "../../../util/util";
-import { TextField } from "../../common/common";
+import { TextField, Dropdown } from "../../common/common";
 import { ReactComponent as EllipseIcon } from "../../assets/icons/ellipse.svg";
 import { ReactComponent as Check12Icon } from "../../assets/icons/check12.svg";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
+import { ReactComponent as GlobeIcon } from "../../assets/icons/globe.svg";
+import { ReactComponent as StatusCircleIcon } from "../../assets/icons/statuscircle.svg";
 
 import "./screenview.less";
 import "./tabs.less";
@@ -53,6 +54,12 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
 class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
     connDropdownActive: OV<boolean> = mobx.observable.box(false, { name: "NewTabSettings-connDropdownActive" });
     errorMessage: OV<string | null> = mobx.observable.box(null, { name: "NewTabSettings-errorMessage" });
+    remotes: T.RemoteType[];
+
+    constructor(props) {
+        super(props);
+        this.remotes = GlobalModel.remotes;
+    }
 
     @boundMethod
     selectTabColor(color: string): void {
@@ -97,6 +104,28 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
     @boundMethod
     clickNewConnection(): void {
         GlobalModel.remotesModel.openAddModal({ remoteedit: true });
+    }
+
+    @boundMethod
+    getOptions(): { label: string; value: string }[] {
+        return this.remotes
+            .filter((r) => !r.archived)
+            .map((remote) => ({
+                ...remote,
+                label:
+                    remote.remotealias && !util.isBlank(remote.remotealias)
+                        ? `${remote.remotecanonicalname}`
+                        : remote.remotecanonicalname,
+                value: remote.remotecanonicalname,
+            }))
+            .sort((a, b) => {
+                let connValA = util.getRemoteConnVal(a);
+                let connValB = util.getRemoteConnVal(b);
+                if (connValA !== connValB) {
+                    return connValA - connValB;
+                }
+                return a.remoteidx - b.remoteidx;
+            });
     }
 
     renderTabIconSelector(): React.ReactNode {
@@ -163,6 +192,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
         let { screen } = this.props;
         let rptr = screen.curRemote.get();
         let curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
+
         return (
             <div className="newtab-container">
                 <div className="newtab-section name-section">
@@ -179,11 +209,19 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                         You're connected to [{getRemoteStr(rptr)}]. Do you want to change it?
                     </div>
                     <div>
-                        <ConnectionDropdown
-                            curRemote={curRemote}
-                            allowNewConn={true}
-                            onSelectRemote={this.selectRemote}
-                            onNewConn={this.clickNewConnection}
+                        <Dropdown
+                            label={curRemote.remotealias}
+                            options={this.getOptions()}
+                            defaultValue={curRemote.remotecanonicalname}
+                            onChange={this.selectRemote}
+                            decoration={{
+                                startDecoration: (
+                                    <div className="lefticon">
+                                        <GlobeIcon className="globe-icon" />
+                                        <StatusCircleIcon className={cn("status-icon", "status-" + curRemote.status)} />
+                                    </div>
+                                ),
+                            }}
                         />
                     </div>
                     <div className="text-caption cr-help-text">
