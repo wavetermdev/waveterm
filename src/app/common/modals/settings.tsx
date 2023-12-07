@@ -17,15 +17,15 @@ import {
     Screen,
     Session,
 } from "../../../model/model";
-import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage, Modal } from "../common";
-import { LineType, RendererPluginType, ClientDataType, CommandRtnType } from "../../../types/types";
-import { ConnectionDropdown } from "../../connections_deprecated/connections";
+import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage, Modal, Dropdown } from "../common";
+import { LineType, RendererPluginType, ClientDataType, CommandRtnType, RemoteType } from "../../../types/types";
 import { PluginModel } from "../../../plugins/plugins";
 import * as util from "../../../util/util";
 import { commandRtnHandler } from "../../../util/util";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
-import { ReactComponent as XmarkIcon } from "../../assets/icons/line/xmark.svg";
 import { ReactComponent as AngleDownIcon } from "../../assets/icons/history/angle-down.svg";
+import { ReactComponent as GlobeIcon } from "../../assets/icons/globe.svg";
+import { ReactComponent as StatusCircleIcon } from "../../assets/icons/statuscircle.svg";
 
 import "./modals.less";
 
@@ -65,6 +65,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
     screen: Screen;
     sessionId: string;
     screenId: string;
+    remotes: RemoteType[];
 
     constructor(props) {
         super(props);
@@ -76,6 +77,29 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         if (this.screen == null || sessionId == null || screenId == null) {
             return;
         }
+        this.remotes = GlobalModel.remotes;
+    }
+
+    @boundMethod
+    getOptions(): { label: string; value: string }[] {
+        return this.remotes
+            .filter((r) => !r.archived)
+            .map((remote) => ({
+                ...remote,
+                label:
+                    remote.remotealias && !util.isBlank(remote.remotealias)
+                        ? `${remote.remotecanonicalname}`
+                        : remote.remotecanonicalname,
+                value: remote.remotecanonicalname,
+            }))
+            .sort((a, b) => {
+                let connValA = util.getRemoteConnVal(a);
+                let connValB = util.getRemoteConnVal(b);
+                if (connValA !== connValB) {
+                    return connValA - connValB;
+                }
+                return a.remoteidx - b.remoteidx;
+            });
     }
 
     @boundMethod
@@ -221,6 +245,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         let icon: string = null;
         let index: number = 0;
         let curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
+
         return (
             <Modal className="screen-settings-modal">
                 <Modal.Header onClose={this.closeModal} title={`tab settings (${screen.name.get()})`} />
@@ -245,10 +270,21 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                     <div className="settings-field">
                         <div className="settings-label">Connection</div>
                         <div className="settings-input">
-                            <ConnectionDropdown
-                                curRemote={curRemote}
-                                onSelectRemote={this.selectRemote}
-                                allowNewConn={false}
+                            <Dropdown
+                                label={curRemote.remotealias}
+                                options={this.getOptions()}
+                                defaultValue={curRemote.remotecanonicalname}
+                                onChange={this.selectRemote}
+                                decoration={{
+                                    startDecoration: (
+                                        <div className="lefticon">
+                                            <GlobeIcon className="globe-icon" />
+                                            <StatusCircleIcon
+                                                className={cn("status-icon", "status-" + curRemote.status)}
+                                            />
+                                        </div>
+                                    ),
+                                }}
                             />
                         </div>
                     </div>

@@ -390,7 +390,7 @@ function getColorRGB(colorInput) {
     return computedColorStyle;
 }
 
-function commandRtnHandler(prtn: Promise<CommandRtnType>, errorMessage: OV<string>) { 
+function commandRtnHandler(prtn: Promise<CommandRtnType>, errorMessage: OV<string>) {
     prtn.then((crtn) => {
         if (crtn.success) {
             return;
@@ -424,4 +424,5 @@ export {
     openLink,
     getColorRGB,
     commandRtnHandler,
+    getRemoteConnVal,
 };
