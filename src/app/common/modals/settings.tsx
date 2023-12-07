@@ -202,6 +202,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
             }
             let prtn = GlobalCommandRunner.screenPurge(this.screenId);
             commandRtnHandler(prtn, this.errorMessage);
+            GlobalModel.modalsModel.popModal();
         });
     }
 
