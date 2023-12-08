@@ -74,9 +74,6 @@ class App extends React.Component<{}, {}> {
     }
 
     render() {
-        let screenSettingsModal = GlobalModel.screenSettingsModal.get();
-        let sessionSettingsModal = GlobalModel.sessionSettingsModal.get();
-        let lineSettingsModal = GlobalModel.lineSettingsModal.get();
         let clientSettingsModal = GlobalModel.clientSettingsModal.get();
         let remotesModel = GlobalModel.remotesModel;
         let disconnected = !GlobalModel.ws.open.get() || !GlobalModel.waveSrvRunning.get();
@@ -121,22 +118,6 @@ class App extends React.Component<{}, {}> {
                     </ErrorBoundary>
                 </div>
                 <ModalsProvider />
-                <If condition={screenSettingsModal != null}>
-                    <ScreenSettingsModal
-                        key={screenSettingsModal.sessionId + ":" + screenSettingsModal.screenId}
-                        sessionId={screenSettingsModal.sessionId}
-                        screenId={screenSettingsModal.screenId}
-                    />
-                </If>
-                <If condition={sessionSettingsModal != null}>
-                    <SessionSettingsModal key={sessionSettingsModal} sessionId={sessionSettingsModal} />
-                </If>
-                <If condition={lineSettingsModal != null}>
-                    <LineSettingsModal key={String(lineSettingsModal)} linenum={lineSettingsModal} />
-                </If>
-                <If condition={clientSettingsModal}>
-                    <ClientSettingsModal />
-                </If>
             </div>
         );
     }

@@ -396,13 +396,109 @@
             gap: 12px;
             align-self: stretch;
             width: 100%;
+
+            > div {
+                width: 100%;
+            }
         }
     }
 }
 
 .screen-settings-modal {
     width: 640px;
-    min-height: 329px;
+
+    .wave-modal-content {
+        gap: 24px;
+
+        .wave-modal-body {
+            display: flex;
+            padding: 0px 20px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+            align-self: stretch;
+            width: 100%;
+
+            .screen-settings-dropdown {
+                width: 412px;
+
+                .lefticon {
+                    position: absolute;
+                    top: 50%;
+                    left: 16px;
+                    transform: translateY(-50%);
+
+                    .globe-icon {
+                        width: 16px;
+                        height: 16px;
+                        flex-shrink: 0;
+                    }
+
+                    .status-icon {
+                        position: absolute;
+                        left: 7px;
+                        top: 8px;
+                    }
+                }
+            }
+
+            .archived-label,
+            .actions-label {
+                div:first-child {
+                    margin-right: 5px;
+                }
+                div:last-child i {
+                    font-size: 13px;
+                }
+            }
+        }
+    }
+}
+
+.screen-settings-tooltip .wave-tooltip-icon {
+    i {
+        font-size: 13px;
+    }
+}
+
+.session-settings-modal {
+    width: 640px;
+
+    .wave-modal-content {
+        gap: 24px;
+
+        .wave-modal-body {
+            display: flex;
+            padding: 0px 20px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+            align-self: stretch;
+            width: 100%;
+        }
+    }
+}
+
+.line-settings-modal {
+    width: 640px;
+
+    .wave-modal-content {
+        gap: 24px;
+
+        .wave-modal-body {
+            display: flex;
+            padding: 0px 20px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+            align-self: stretch;
+            width: 100%;
+        }
+    }
+}
+
+.client-settings-modal {
+    width: 640px;
 
     .wave-modal-content {
         gap: 24px;
@@ -470,6 +566,8 @@
 }
 
 .alert-modal {
+    width: 500px;
+
     .wave-modal-content {
         .wave-modal-body {
             padding: 40px 20px;

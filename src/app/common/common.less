@@ -610,13 +610,17 @@
     position: relative;
     background-color: transparent;
     height: 44px;
-    min-width: 412px;
+    min-width: 150px;
     width: 100%;
     border: 1px solid var(--element-separator, rgba(241, 246, 243, 0.15));
     border-radius: 6px;
     background: var(--element-hover-2, rgba(255, 255, 255, 0.06));
     box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
         0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
+
+    &.no-label {
+        height: 34px;
+    }
 
     &-label {
         position: absolute;
@@ -841,7 +845,7 @@
     justify-content: center;
 
     i {
-        font-size: 16px;
+        font-size: 13px;
     }
 }
 
@@ -865,11 +869,11 @@
     background-color: #444;
     border-radius: 5px;
     overflow: hidden;
-    max-width: 300px;
+    width: 300px;
 
     i {
         display: inline;
-        font-size: 16px;
+        font-size: 13px;
         fill: @base-color;
         padding-top: 0.2em;
     }
@@ -1114,6 +1118,11 @@
             line-height: 20px;
             border-bottom: 1px solid rgba(250, 250, 250, 0.1);
 
+            .wave-modal-title {
+                color: #eceeec;
+                font-size: 15px;
+            }
+
             button {
                 i {
                     font-size: 18px;
@@ -1132,8 +1141,8 @@
             width: 100%;
             padding: 0 20px 20px;
 
-            button:first-child {
-                margin-right: 8px;
+            button:last-child {
+                margin-left: 8px;
             }
         }
     }

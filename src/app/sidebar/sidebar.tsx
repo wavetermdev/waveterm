@@ -15,7 +15,6 @@ import { ReactComponent as HelpIcon } from "../assets/icons/help.svg";
 import { ReactComponent as SettingsIcon } from "../assets/icons/settings.svg";
 import { ReactComponent as DiscordIcon } from "../assets/icons/discord.svg";
 import { ReactComponent as HistoryIcon } from "../assets/icons/history.svg";
-import { ReactComponent as FavoritesIcon } from "../assets/icons/favourites.svg";
 import { ReactComponent as AppsIcon } from "../assets/icons/apps.svg";
 import { ReactComponent as ConnectionsIcon } from "../assets/icons/connections.svg";
 import { ReactComponent as WorkspacesIcon } from "../assets/icons/workspaces.svg";
@@ -25,6 +24,7 @@ import { ReactComponent as ActionsIcon } from "../assets/icons/tab/actions.svg";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Session } from "../../model/model";
 import { sortAndFilterRemotes, isBlank, openLink } from "../../util/util";
+import * as constants from "../appconst";
 
 import "./sidebar.less";
 
@@ -130,9 +130,7 @@ class MainSideBar extends React.Component<{}, {}> {
 
     @boundMethod
     handleSettingsClick(): void {
-        mobx.action(() => {
-            GlobalModel.clientSettingsModal.set(true);
-        })();
+        GlobalModel.modalsModel.pushModal(constants.CLIENT_SETTINGS);
     }
 
     @boundMethod
@@ -142,6 +140,7 @@ class MainSideBar extends React.Component<{}, {}> {
         mobx.action(() => {
             GlobalModel.sessionSettingsModal.set(session.sessionId);
         })();
+        GlobalModel.modalsModel.pushModal(constants.SESSION_SETTINGS);
     }
 
     getSessions() {

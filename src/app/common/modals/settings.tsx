@@ -15,16 +15,17 @@ import {
     MaxFontSize,
     TabIcons,
     Screen,
+    Session,
 } from "../../../model/model";
-import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage, Modal } from "../common";
-import { LineType, RendererPluginType, ClientDataType, CommandRtnType } from "../../../types/types";
-import { ConnectionDropdown } from "../../connections_deprecated/connections";
+import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage, Modal, Dropdown, Tooltip } from "../common";
+import { LineType, RendererPluginType, ClientDataType, CommandRtnType, RemoteType } from "../../../types/types";
 import { PluginModel } from "../../../plugins/plugins";
 import * as util from "../../../util/util";
 import { commandRtnHandler } from "../../../util/util";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
-import { ReactComponent as XmarkIcon } from "../../assets/icons/line/xmark.svg";
 import { ReactComponent as AngleDownIcon } from "../../assets/icons/history/angle-down.svg";
+import { ReactComponent as GlobeIcon } from "../../assets/icons/globe.svg";
+import { ReactComponent as StatusCircleIcon } from "../../assets/icons/statuscircle.svg";
 
 import "./modals.less";
 
@@ -58,18 +59,47 @@ Are you sure you want to stop web-sharing this tab?
 `.trim();
 
 @mobxReact.observer
-class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId: string }, {}> {
+class ScreenSettingsModal extends React.Component<{}, {}> {
     shareCopied: OV<boolean> = mobx.observable.box(false, { name: "ScreenSettings-shareCopied" });
     errorMessage: OV<string> = mobx.observable.box(null, { name: "ScreenSettings-errorMessage" });
     screen: Screen;
+    sessionId: string;
+    screenId: string;
+    remotes: RemoteType[];
 
-    constructor(props: any) {
+    constructor(props) {
         super(props);
-        let { sessionId, screenId } = props;
+        let screenSettingsModal = GlobalModel.screenSettingsModal.get();
+        let { sessionId, screenId } = screenSettingsModal;
+        this.sessionId = sessionId;
+        this.screenId = screenId;
         this.screen = GlobalModel.getScreenById(sessionId, screenId);
-        if (this.screen == null) {
+        if (this.screen == null || sessionId == null || screenId == null) {
             return;
         }
+        this.remotes = GlobalModel.remotes;
+    }
+
+    @boundMethod
+    getOptions(): { label: string; value: string }[] {
+        return this.remotes
+            .filter((r) => !r.archived)
+            .map((remote) => ({
+                ...remote,
+                label:
+                    remote.remotealias && !util.isBlank(remote.remotealias)
+                        ? `${remote.remotecanonicalname}`
+                        : remote.remotecanonicalname,
+                value: remote.remotecanonicalname,
+            }))
+            .sort((a, b) => {
+                let connValA = util.getRemoteConnVal(a);
+                let connValB = util.getRemoteConnVal(b);
+                if (connValA !== connValB) {
+                    return connValA - connValB;
+                }
+                return a.remoteidx - b.remoteidx;
+            });
     }
 
     @boundMethod
@@ -77,19 +107,18 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
         mobx.action(() => {
             GlobalModel.screenSettingsModal.set(null);
         })();
+        GlobalModel.modalsModel.popModal();
     }
 
     @boundMethod
     selectTabColor(color: string): void {
-        let { sessionId, screenId } = this.props;
-        let screen = GlobalModel.getScreenById(sessionId, screenId);
-        if (screen == null) {
+        if (this.screen == null) {
             return;
         }
-        if (screen.getTabColor() == color) {
+        if (this.screen.getTabColor() == color) {
             return;
         }
-        let prtn = GlobalCommandRunner.screenSetSettings(this.props.screenId, { tabcolor: color }, false);
+        let prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { tabcolor: color }, false);
         commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -104,26 +133,22 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
 
     @boundMethod
     handleChangeArchived(val: boolean): void {
-        let { sessionId, screenId } = this.props;
-        let screen = GlobalModel.getScreenById(sessionId, screenId);
-        if (screen == null) {
+        if (this.screen == null) {
             return;
         }
-        if (screen.archived.get() == val) {
+        if (this.screen.archived.get() == val) {
             return;
         }
-        let prtn = GlobalCommandRunner.screenArchive(this.props.screenId, val);
+        let prtn = GlobalCommandRunner.screenArchive(this.screenId, val);
         commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
     handleChangeWebShare(val: boolean): void {
-        let { sessionId, screenId } = this.props;
-        let screen = GlobalModel.getScreenById(sessionId, screenId);
-        if (screen == null) {
+        if (this.screen == null) {
             return;
         }
-        if (screen.isWebShared() == val) {
+        if (this.screen.isWebShared() == val) {
             return;
         }
         let message = val ? WebShareConfirmMarkdown : WebStopShareConfirmMarkdown;
@@ -132,19 +157,17 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
             if (!result) {
                 return;
             }
-            let prtn = GlobalCommandRunner.screenWebShare(screen.screenId, val);
+            let prtn = GlobalCommandRunner.screenWebShare(this.screen.screenId, val);
             commandRtnHandler(prtn, this.errorMessage);
         });
     }
 
     @boundMethod
     copyShareLink(): void {
-        let { sessionId, screenId } = this.props;
-        let screen = GlobalModel.getScreenById(sessionId, screenId);
-        if (screen == null) {
+        if (this.screen == null) {
             return null;
         }
-        let shareLink = screen.getWebShareUrl();
+        let shareLink = this.screen.getWebShareUrl();
         if (shareLink == null) {
             return;
         }
@@ -161,29 +184,25 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
 
     @boundMethod
     inlineUpdateName(val: string): void {
-        let { sessionId, screenId } = this.props;
-        let screen = GlobalModel.getScreenById(sessionId, screenId);
-        if (screen == null) {
+        if (this.screen == null) {
             return;
         }
-        if (util.isStrEq(val, screen.name.get())) {
+        if (util.isStrEq(val, this.screen.name.get())) {
             return;
         }
-        let prtn = GlobalCommandRunner.screenSetSettings(this.props.screenId, { name: val }, false);
+        let prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { name: val }, false);
         commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
     inlineUpdateShareName(val: string): void {
-        let { sessionId, screenId } = this.props;
-        let screen = GlobalModel.getScreenById(sessionId, screenId);
-        if (screen == null) {
+        if (this.screen == null) {
             return;
         }
-        if (util.isStrEq(val, screen.getShareName())) {
+        if (util.isStrEq(val, this.screen.getShareName())) {
             return;
         }
-        let prtn = GlobalCommandRunner.screenSetSettings(this.props.screenId, { sharename: val }, false);
+        let prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { sharename: val }, false);
         commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -196,9 +215,7 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
 
     @boundMethod
     handleDeleteScreen(): void {
-        let { sessionId, screenId } = this.props;
-        let screen = GlobalModel.getScreenById(sessionId, screenId);
-        if (screen == null) {
+        if (this.screen == null) {
             return;
         }
         let message = ScreenDeleteMessage;
@@ -207,8 +224,9 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
             if (!result) {
                 return;
             }
-            let prtn = GlobalCommandRunner.screenPurge(screenId);
+            let prtn = GlobalCommandRunner.screenPurge(this.screenId);
             commandRtnHandler(prtn, this.errorMessage);
+            GlobalModel.modalsModel.popModal();
         });
     }
 
@@ -219,16 +237,15 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
     }
 
     render() {
-        let { sessionId, screenId } = this.props;
-        let inline = false;
         let screen = this.screen;
         if (screen == null) {
             return null;
         }
-        console.log("screen.getTabIcon()", screen.getTabIcon());
         let color: string = null;
         let icon: string = null;
+        let index: number = 0;
         let curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
+
         return (
             <Modal className="screen-settings-modal">
                 <Modal.Header onClose={this.closeModal} title={`tab settings (${screen.name.get()})`} />
@@ -253,10 +270,22 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
                     <div className="settings-field">
                         <div className="settings-label">Connection</div>
                         <div className="settings-input">
-                            <ConnectionDropdown
-                                curRemote={curRemote}
-                                onSelectRemote={this.selectRemote}
-                                allowNewConn={false}
+                            <Dropdown
+                                className="screen-settings-dropdown"
+                                label={curRemote.remotealias}
+                                options={this.getOptions()}
+                                defaultValue={curRemote.remotecanonicalname}
+                                onChange={this.selectRemote}
+                                decoration={{
+                                    startDecoration: (
+                                        <div className="lefticon">
+                                            <GlobeIcon className="globe-icon" />
+                                            <StatusCircleIcon
+                                                className={cn("status-icon", "status-" + curRemote.status)}
+                                            />
+                                        </div>
+                                    ),
+                                }}
                             />
                         </div>
                     </div>
@@ -295,9 +324,9 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
                                     <span className="tab-icon-name">{screen.getTabIcon()}</span>
                                 </div>
                                 <div className="tab-icon-sep">|</div>
-                                <For each="icon" of={TabIcons}>
+                                <For each="icon" index="index" of={TabIcons}>
                                     <div
-                                        key={color}
+                                        key={`${color}-${index}`}
                                         className="tab-icon-select"
                                         onClick={() => this.selectTabIcon(icon)}
                                     >
@@ -308,22 +337,30 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
                         </div>
                     </div>
                     <div className="settings-field">
-                        <div className="settings-label">
-                            <div>Archived</div>
-                            <InfoMessage width={400}>
-                                Archive will hide the tab. Commands and output will be retained in history.
-                            </InfoMessage>
+                        <div className="settings-label archived-label">
+                            <div className="">Archived</div>
+                            <Tooltip
+                                message={`Archive will hide the tab. Commands and output will be retained in history.`}
+                                icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                className="screen-settings-tooltip"
+                            >
+                                <i className="fa-sharp fa-regular fa-circle-question" />
+                            </Tooltip>
                         </div>
                         <div className="settings-input">
                             <Toggle checked={screen.archived.get()} onChange={this.handleChangeArchived} />
                         </div>
                     </div>
                     <div className="settings-field">
-                        <div className="settings-label">
+                        <div className="settings-label actions-label">
                             <div>Actions</div>
-                            <InfoMessage width={400}>
-                                Delete will remove the tab, removing all commands and output from history.
-                            </InfoMessage>
+                            <Tooltip
+                                message={`Delete will remove the tab, removing all commands and output from history.`}
+                                icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                className="screen-settings-tooltip"
+                            >
+                                <i className="fa-sharp fa-regular fa-circle-question" />
+                            </Tooltip>
                         </div>
                         <div className="settings-input">
                             <div
@@ -343,14 +380,16 @@ class ScreenSettingsModal extends React.Component<{ sessionId: string; screenId:
 }
 
 @mobxReact.observer
-class SessionSettingsModal extends React.Component<{ sessionId: string }, {}> {
+class SessionSettingsModal extends React.Component<{}, {}> {
     errorMessage: OV<string> = mobx.observable.box(null, { name: "ScreenSettings-errorMessage" });
+    session: Session;
+    sessionId: string;
 
     constructor(props: any) {
         super(props);
-        let { sessionId } = props;
-        let session = GlobalModel.getSessionById(sessionId);
-        if (session == null) {
+        let sessionId = GlobalModel.sessionSettingsModal.get();
+        this.session = GlobalModel.getSessionById(sessionId);
+        if (this.session == null) {
             return;
         }
     }
@@ -360,46 +399,42 @@ class SessionSettingsModal extends React.Component<{ sessionId: string }, {}> {
         mobx.action(() => {
             GlobalModel.sessionSettingsModal.set(null);
         })();
+        GlobalModel.modalsModel.popModal();
     }
 
     @boundMethod
     handleInlineChangeName(newVal: string): void {
-        let { sessionId } = this.props;
-        let session = GlobalModel.getSessionById(sessionId);
-        if (session == null) {
+        if (this.session == null) {
             return;
         }
-        if (util.isStrEq(newVal, session.name.get())) {
+        if (util.isStrEq(newVal, this.session.name.get())) {
             return;
         }
-        let prtn = GlobalCommandRunner.sessionSetSettings(this.props.sessionId, { name: newVal }, false);
+        let prtn = GlobalCommandRunner.sessionSetSettings(this.sessionId, { name: newVal }, false);
         commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
     handleChangeArchived(val: boolean): void {
-        let { sessionId } = this.props;
-        let session = GlobalModel.getSessionById(sessionId);
-        if (session == null) {
+        if (this.session == null) {
             return;
         }
-        if (session.archived.get() == val) {
+        if (this.session.archived.get() == val) {
             return;
         }
-        let prtn = GlobalCommandRunner.sessionArchive(this.props.sessionId, val);
+        let prtn = GlobalCommandRunner.sessionArchive(this.sessionId, val);
         commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
     handleDeleteSession(): void {
-        let { sessionId } = this.props;
         let message = SessionDeleteMessage;
         let alertRtn = GlobalModel.showAlert({ message: message, confirm: true, markdown: true });
         alertRtn.then((result) => {
             if (!result) {
                 return;
             }
-            let prtn = GlobalCommandRunner.sessionPurge(this.props.sessionId);
+            let prtn = GlobalCommandRunner.sessionPurge(this.sessionId);
             commandRtnHandler(prtn, this.errorMessage);
         });
     }
@@ -412,86 +447,82 @@ class SessionSettingsModal extends React.Component<{ sessionId: string }, {}> {
     }
 
     render() {
-        let { sessionId } = this.props;
-        let session = GlobalModel.getSessionById(sessionId);
-        if (session == null) {
+        if (this.session == null) {
             return null;
         }
         return (
-            <div className={cn("modal session-settings-modal settings-modal prompt-modal is-active")}>
-                <div className="modal-background" />
-                <div className="modal-content">
-                    <header>
-                        <div className="modal-title">workspace settings ({session.name.get()})</div>
-                        <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
-                            <XmarkIcon />
+            <Modal className="session-settings-modal">
+                <Modal.Header onClose={this.closeModal} title={`workspace settings (${this.session.name.get()})`} />
+                <div className="wave-modal-body">
+                    <div className="settings-field">
+                        <div className="settings-label">Name</div>
+                        <div className="settings-input">
+                            <InlineSettingsTextEdit
+                                placeholder="name"
+                                text={this.session.name.get() ?? "(none)"}
+                                value={this.session.name.get() ?? ""}
+                                onChange={this.handleInlineChangeName}
+                                maxLength={50}
+                                showIcon={true}
+                            />
                         </div>
-                    </header>
-                    <div className="inner-content">
-                        <div className="settings-field">
-                            <div className="settings-label">Name</div>
-                            <div className="settings-input">
-                                <InlineSettingsTextEdit
-                                    placeholder="name"
-                                    text={session.name.get() ?? "(none)"}
-                                    value={session.name.get() ?? ""}
-                                    onChange={this.handleInlineChangeName}
-                                    maxLength={50}
-                                    showIcon={true}
-                                />
-                            </div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">
-                                <div>Archived</div>
-                                <InfoMessage width={400}>
-                                    Archive will hide the workspace from the active menu. Commands and output will be
-                                    retained in history.
-                                </InfoMessage>
-                            </div>
-                            <div className="settings-input">
-                                <Toggle checked={session.archived.get()} onChange={this.handleChangeArchived} />
-                            </div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">
-                                <div>Actions</div>
-                                <InfoMessage width={400}>
-                                    Delete will remove the workspace, removing all commands and output from history.
-                                </InfoMessage>
-                            </div>
-                            <div className="settings-input">
-                                <div
-                                    onClick={this.handleDeleteSession}
-                                    className="button is-prompt-danger is-outlined is-small"
-                                >
-                                    Delete Workspace
-                                </div>
-                            </div>
-                        </div>
-                        <SettingsError errorMessage={this.errorMessage} />
                     </div>
-                    <footer>
-                        <div onClick={this.closeModal} className="button is-wave-green is-outlined is-small">
-                            Close
+                    <div className="settings-field">
+                        <div className="settings-label">
+                            <div>Archived</div>
+                            <InfoMessage width={400}>
+                                Archive will hide the workspace from the active menu. Commands and output will be
+                                retained in history.
+                            </InfoMessage>
                         </div>
-                    </footer>
+                        <div className="settings-input">
+                            <Toggle checked={this.session.archived.get()} onChange={this.handleChangeArchived} />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">
+                            <div>Actions</div>
+                            <InfoMessage width={400}>
+                                Delete will remove the workspace, removing all commands and output from history.
+                            </InfoMessage>
+                        </div>
+                        <div className="settings-input">
+                            <div
+                                onClick={this.handleDeleteSession}
+                                className="button is-prompt-danger is-outlined is-small"
+                            >
+                                Delete Workspace
+                            </div>
+                        </div>
+                    </div>
+                    <SettingsError errorMessage={this.errorMessage} />
                 </div>
-            </div>
+                <Modal.Footer cancelLabel="Close" onCancel={this.closeModal} />
+            </Modal>
         );
     }
 }
 
 @mobxReact.observer
-class LineSettingsModal extends React.Component<{ linenum: number }, {}> {
+class LineSettingsModal extends React.Component<{}, {}> {
     rendererDropdownActive: OV<boolean> = mobx.observable.box(false, { name: "lineSettings-rendererDropdownActive" });
     errorMessage: OV<string> = mobx.observable.box(null, { name: "ScreenSettings-errorMessage" });
+    linenum: number;
+
+    constructor(props: any) {
+        super(props);
+        this.linenum = GlobalModel.lineSettingsModal.get();
+        if (this.linenum == null) {
+            return;
+        }
+    }
 
     @boundMethod
     closeModal(): void {
         mobx.action(() => {
             GlobalModel.lineSettingsModal.set(null);
         })();
+        GlobalModel.modalsModel.popModal();
     }
 
     @boundMethod
@@ -516,7 +547,7 @@ class LineSettingsModal extends React.Component<{ linenum: number }, {}> {
         if (screen == null) {
             return;
         }
-        return screen.getLineByNum(this.props.linenum);
+        return screen.getLineByNum(this.linenum);
     }
 
     @boundMethod
@@ -532,47 +563,42 @@ class LineSettingsModal extends React.Component<{ linenum: number }, {}> {
         })();
     }
 
-    renderRendererDropdown(): any {
-        let line = this.getLine();
-        if (line == null) {
-            return null;
-        }
-        let plugins = PluginModel.rendererPlugins;
-        let plugin: RendererPluginType = null;
-        let renderer = line.renderer ?? "terminal";
-        return (
-            <div className={cn("dropdown", "renderer-dropdown", { "is-active": this.rendererDropdownActive.get() })}>
-                <div className="dropdown-trigger">
-                    <button onClick={this.toggleRendererDropdown} className="button is-small is-dark">
-                        <span>
-                            <i className="fa-sharp fa-solid fa-fill" /> {renderer}
-                        </span>
-                        <span className="icon is-small">
-                            <i className="fa-sharp fa-regular fa-angle-down" aria-hidden="true"></i>
-                        </span>
-                    </button>
-                </div>
-                <div className="dropdown-menu" role="menu">
-                    <div className="dropdown-content has-background-black">
-                        <div onClick={() => this.clickSetRenderer(null)} key="terminal" className="dropdown-item">
-                            terminal
-                        </div>
-                        <For each="plugin" of={plugins}>
-                            <div
-                                onClick={() => this.clickSetRenderer(plugin.name)}
-                                key={plugin.name}
-                                className="dropdown-item"
-                            >
-                                {plugin.name}
-                            </div>
-                        </For>
-                        <div onClick={() => this.clickSetRenderer("none")} key="none" className="dropdown-item">
-                            none
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
+    getOptions(plugins: RendererPluginType[]) {
+        // Add label and value to each object in the array
+        const options = plugins.map((item) => ({
+            ...item,
+            label: item.name,
+            value: item.name,
+        }));
+
+        // Create an additional object with label "terminal" and value null
+        const terminalItem = {
+            label: "terminal",
+            value: null,
+            name: null,
+            rendererType: null,
+            heightType: null,
+            dataType: null,
+            collapseType: null,
+            globalCss: null,
+            mimeTypes: null,
+        };
+
+        // Create an additional object with label "none" and value none
+        const noneItem = {
+            label: "none",
+            value: "none",
+            name: null,
+            rendererType: null,
+            heightType: null,
+            dataType: null,
+            collapseType: null,
+            globalCss: null,
+            mimeTypes: null,
+        };
+
+        // Combine the options with the terminal item
+        return [terminalItem, ...options, noneItem];
     }
 
     render() {
@@ -583,37 +609,35 @@ class LineSettingsModal extends React.Component<{ linenum: number }, {}> {
             }, 0);
             return null;
         }
+        let plugins = PluginModel.rendererPlugins;
+        let renderer = line.renderer ?? "terminal";
+
         return (
-            <div className={cn("modal line-settings-modal settings-modal prompt-modal is-active")}>
-                <div className="modal-background" />
-                <div className="modal-content">
-                    <header>
-                        <div className="modal-title">line settings ({line.linenum})</div>
-                        <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
-                            <XmarkIcon />
+            <Modal className="line-settings-modal">
+                <Modal.Header onClose={this.closeModal} title={`line settings (${line.linenum})`} />
+                <div className="wave-modal-body">
+                    <div className="settings-field">
+                        <div className="settings-label">Renderer</div>
+                        <div className="settings-input">
+                            <Dropdown
+                                className="renderer-dropdown"
+                                options={this.getOptions(plugins)}
+                                defaultValue={renderer}
+                                onChange={this.clickSetRenderer}
+                            />
                         </div>
-                    </header>
-                    <div className="inner-content">
-                        <div className="settings-field">
-                            <div className="settings-label">Renderer</div>
-                            <div className="settings-input">{this.renderRendererDropdown()}</div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">Archived</div>
-                            <div className="settings-input">
-                                <Toggle checked={!!line.archived} onChange={this.handleChangeArchived} />
-                            </div>
-                        </div>
-                        <SettingsError errorMessage={this.errorMessage} />
-                        <div style={{ height: 50 }} />
                     </div>
-                    <footer>
-                        <div onClick={this.closeModal} className="button is-wave-green is-outlined is-small">
-                            Close
+                    <div className="settings-field">
+                        <div className="settings-label">Archived</div>
+                        <div className="settings-input">
+                            <Toggle checked={!!line.archived} onChange={this.handleChangeArchived} />
                         </div>
-                    </footer>
+                    </div>
+                    <SettingsError errorMessage={this.errorMessage} />
+                    <div style={{ height: 50 }} />
                 </div>
-            </div>
+                <Modal.Footer cancelLabel="Close" onCancel={this.closeModal} />
+            </Modal>
         );
     }
 }
@@ -625,9 +649,7 @@ class ClientSettingsModal extends React.Component<{}, {}> {
 
     @boundMethod
     closeModal(): void {
-        mobx.action(() => {
-            GlobalModel.clientSettingsModal.set(false);
-        })();
+        GlobalModel.modalsModel.popModal();
     }
 
     @boundMethod
@@ -638,7 +660,8 @@ class ClientSettingsModal extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    handleChangeFontSize(newFontSize: number): void {
+    handleChangeFontSize(fontSize: string): void {
+        let newFontSize = Number(fontSize);
         this.fontSizeDropdownActive.set(false);
         if (GlobalModel.termFontSize.get() == newFontSize) {
             return;
@@ -665,36 +688,12 @@ class ClientSettingsModal extends React.Component<{}, {}> {
         commandRtnHandler(prtn, this.errorMessage);
     }
 
-    renderFontSizeDropdown(): any {
-        let availableFontSizes = [];
+    getFontSizes(): any {
+        let availableFontSizes: { label: string; value: number }[] = [];
         for (let s = MinFontSize; s <= MaxFontSize; s++) {
-            availableFontSizes.push(s);
+            availableFontSizes.push({ label: s + "px", value: s });
         }
-        let fsize: number = 0;
-        let curSize = GlobalModel.termFontSize.get();
-        return (
-            <div className={cn("dropdown", "font-size-dropdown", { "is-active": this.fontSizeDropdownActive.get() })}>
-                <div className="dropdown-trigger">
-                    <button onClick={this.togglefontSizeDropdown} className="button">
-                        <span>{curSize}px</span>
-                        <AngleDownIcon className="icon" />
-                    </button>
-                </div>
-                <div className="dropdown-menu" role="menu">
-                    <div className="dropdown-content has-background-black">
-                        <For each="fsize" of={availableFontSizes}>
-                            <div
-                                onClick={() => this.handleChangeFontSize(fsize)}
-                                key={fsize + "px"}
-                                className="dropdown-item"
-                            >
-                                {fsize}px
-                            </div>
-                        </For>
-                    </div>
-                </div>
-            </div>
-        );
+        return availableFontSizes;
     }
 
     @boundMethod
@@ -729,89 +728,85 @@ class ClientSettingsModal extends React.Component<{}, {}> {
         let maxTokensStr = String(
             openAIOpts.maxtokens == null || openAIOpts.maxtokens == 0 ? 1000 : openAIOpts.maxtokens
         );
+        let curFontSize = GlobalModel.termFontSize.get();
         return (
-            <div className={cn("modal client-settings-modal settings-modal prompt-modal is-active")}>
-                <div className="modal-background" />
-                <div className="modal-content">
-                    <header>
-                        <div className="modal-title">Client settings</div>
-                        <div className="close-icon hoverEffect" title="Close (Escape)" onClick={this.closeModal}>
-                            <XmarkIcon />
+            <Modal className="client-settings-modal">
+                <Modal.Header onClose={this.closeModal} title="Client settings" />
+                <div className="wave-modal-body">
+                    <div className="settings-field">
+                        <div className="settings-label">Term Font Size</div>
+                        <div className="settings-input">
+                            <Dropdown
+                                className="font-size-dropdown"
+                                options={this.getFontSizes()}
+                                defaultValue={`${curFontSize}px`}
+                                onChange={this.handleChangeFontSize}
+                            />
                         </div>
-                    </header>
-                    <div className="inner-content">
-                        <div className="settings-field">
-                            <div className="settings-label">Term Font Size</div>
-                            <div className="settings-input">{this.renderFontSizeDropdown()}</div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">Client ID</div>
-                            <div className="settings-input">{cdata.clientid}</div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">Client Version</div>
-                            <div className="settings-input">
-                                {VERSION} {BUILD}
-                            </div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">DB Version</div>
-                            <div className="settings-input">{cdata.dbversion}</div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">Basic Telemetry</div>
-                            <div className="settings-input">
-                                <Toggle checked={!cdata.clientopts.notelemetry} onChange={this.handleChangeTelemetry} />
-                            </div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">OpenAI Token</div>
-                            <div className="settings-input">
-                                <InlineSettingsTextEdit
-                                    placeholder=""
-                                    text={apiTokenStr}
-                                    value={""}
-                                    onChange={this.inlineUpdateOpenAIToken}
-                                    maxLength={100}
-                                    showIcon={true}
-                                />
-                            </div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">OpenAI Model</div>
-                            <div className="settings-input">
-                                <InlineSettingsTextEdit
-                                    placeholder="gpt-3.5-turbo"
-                                    text={util.isBlank(openAIOpts.model) ? "gpt-3.5-turbo" : openAIOpts.model}
-                                    value={openAIOpts.model ?? ""}
-                                    onChange={this.inlineUpdateOpenAIModel}
-                                    maxLength={100}
-                                    showIcon={true}
-                                />
-                            </div>
-                        </div>
-                        <div className="settings-field">
-                            <div className="settings-label">OpenAI MaxTokens</div>
-                            <div className="settings-input">
-                                <InlineSettingsTextEdit
-                                    placeholder=""
-                                    text={maxTokensStr}
-                                    value={maxTokensStr}
-                                    onChange={this.inlineUpdateOpenAIMaxTokens}
-                                    maxLength={10}
-                                    showIcon={true}
-                                />
-                            </div>
-                        </div>
-                        <SettingsError errorMessage={this.errorMessage} />
                     </div>
-                    <footer>
-                        <div onClick={this.closeModal} className="button is-wave-green is-outlined is-small">
-                            Close
+                    <div className="settings-field">
+                        <div className="settings-label">Client ID</div>
+                        <div className="settings-input">{cdata.clientid}</div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Client Version</div>
+                        <div className="settings-input">
+                            {VERSION} {BUILD}
                         </div>
-                    </footer>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">DB Version</div>
+                        <div className="settings-input">{cdata.dbversion}</div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Basic Telemetry</div>
+                        <div className="settings-input">
+                            <Toggle checked={!cdata.clientopts.notelemetry} onChange={this.handleChangeTelemetry} />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">OpenAI Token</div>
+                        <div className="settings-input">
+                            <InlineSettingsTextEdit
+                                placeholder=""
+                                text={apiTokenStr}
+                                value={""}
+                                onChange={this.inlineUpdateOpenAIToken}
+                                maxLength={100}
+                                showIcon={true}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">OpenAI Model</div>
+                        <div className="settings-input">
+                            <InlineSettingsTextEdit
+                                placeholder="gpt-3.5-turbo"
+                                text={util.isBlank(openAIOpts.model) ? "gpt-3.5-turbo" : openAIOpts.model}
+                                value={openAIOpts.model ?? ""}
+                                onChange={this.inlineUpdateOpenAIModel}
+                                maxLength={100}
+                                showIcon={true}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">OpenAI MaxTokens</div>
+                        <div className="settings-input">
+                            <InlineSettingsTextEdit
+                                placeholder=""
+                                text={maxTokensStr}
+                                value={maxTokensStr}
+                                onChange={this.inlineUpdateOpenAIMaxTokens}
+                                maxLength={10}
+                                showIcon={true}
+                            />
+                        </div>
+                    </div>
+                    <SettingsError errorMessage={this.errorMessage} />
                 </div>
-            </div>
+                <Modal.Footer cancelLabel="Close" onCancel={this.closeModal} />
+            </Modal>
         );
     }
 }

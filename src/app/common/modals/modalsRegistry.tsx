@@ -9,6 +9,7 @@ import {
     EditRemoteConnModal,
     AlertModal,
 } from "./modals";
+import { ScreenSettingsModal, SessionSettingsModal, LineSettingsModal, ClientSettingsModal } from "./settings";
 import * as constants from "../../appconst";
 
 const modalsRegistry: { [key: string]: () => React.ReactElement } = {
@@ -17,6 +18,10 @@ const modalsRegistry: { [key: string]: () => React.ReactElement } = {
     [constants.VIEW_REMOTE]: () => <ViewRemoteConnDetailModal />,
     [constants.EDIT_REMOTE]: () => <EditRemoteConnModal />,
     [constants.ALERT]: () => <AlertModal />,
+    [constants.SCREEN_SETTINGS]: () => <ScreenSettingsModal />,
+    [constants.SESSION_SETTINGS]: () => <SessionSettingsModal />,
+    [constants.LINE_SETTINGS]: () => <LineSettingsModal />,
+    [constants.CLIENT_SETTINGS]: () => <ClientSettingsModal />,
 };
 
 export { modalsRegistry };
