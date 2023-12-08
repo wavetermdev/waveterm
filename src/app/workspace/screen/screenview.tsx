@@ -42,9 +42,36 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
             return <div className="screen-view">(no screen found)</div>;
         }
         let fontSize = GlobalModel.termFontSize.get();
+        let hasSidebar = true;
+        let winWidth = "100%";
+        let sidebarWidth = "0px";
+        if (hasSidebar) {
+            winWidth = "calc(100% - 400px)";
+            sidebarWidth = "calc(400px - 5px)"; // 300 minus 5px of margin
+        }
         return (
             <div className="screen-view" data-screenid={screen.screenId}>
-                <ScreenWindowView key={screen.screenId + ":" + fontSize} session={session} screen={screen} />
+                <ScreenWindowView
+                    key={screen.screenId + ":" + fontSize}
+                    session={session}
+                    screen={screen}
+                    width={winWidth}
+                />
+                <If condition={hasSidebar}>
+                    <ScreenSidebar screen={screen} width={sidebarWidth}/>
+                </If>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
+class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {}> {
+    render() {
+        return (
+            <div className="screen-sidebar" style={{ width: this.props.width }}>
+                <div className="screen-sidebar-section">hello</div>
+                <div className="screen-sidebar-section">hello2</div>
             </div>
         );
     }
@@ -244,7 +271,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
 
 // screen is not null
 @mobxReact.observer
-class ScreenWindowView extends React.Component<{ session: Session; screen: Screen }, {}> {
+class ScreenWindowView extends React.Component<{ session: Session; screen: Screen; width: string }, {}> {
     rszObs: any;
     windowViewRef: React.RefObject<any>;
 
@@ -404,7 +431,7 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
         let lines = this.determineVisibleLines(win);
         let renderMode = this.renderMode.get();
         return (
-            <div className="window-view" ref={this.windowViewRef}>
+            <div className="window-view" ref={this.windowViewRef} style={{ width: this.props.width }}>
                 <div
                     key="rendermode-tag"
                     className={cn("rendermode-tag", { "is-active": isActive })}
