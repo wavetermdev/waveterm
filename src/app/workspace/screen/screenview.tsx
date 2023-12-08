@@ -210,6 +210,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                     </div>
                     <div>
                         <Dropdown
+                            className="conn-dropdown"
                             label={curRemote.remotealias}
                             options={this.getOptions()}
                             defaultValue={curRemote.remotecanonicalname}
