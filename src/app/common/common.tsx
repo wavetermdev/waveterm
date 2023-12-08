@@ -150,6 +150,7 @@ interface TooltipProps {
     message: React.ReactNode;
     icon?: React.ReactNode; // Optional icon property
     children: React.ReactNode;
+    className?: string;
 }
 
 interface TooltipState {
@@ -185,8 +186,8 @@ class Tooltip extends React.Component<TooltipProps, TooltipState> {
         if (iconElement) {
             const rect = iconElement.getBoundingClientRect();
             return {
-                top: `${rect.bottom + window.scrollY - 29.5}px`,
-                left: `${rect.left + window.scrollX + rect.width / 2 - 19}px`,
+                top: `${rect.bottom + window.scrollY - 29}px`,
+                left: `${rect.left + window.scrollX + rect.width / 2 - 17.5}px`,
             };
         }
         return {};
@@ -199,7 +200,7 @@ class Tooltip extends React.Component<TooltipProps, TooltipState> {
         const style = this.calculatePosition();
 
         return ReactDOM.createPortal(
-            <div className="wave-tooltip" style={style}>
+            <div className={`wave-tooltip ${this.props.className}`} style={style}>
                 {this.props.icon && <div className="wave-tooltip-icon">{this.props.icon}</div>}
                 <div className="wave-tooltip-message">{this.props.message}</div>
             </div>,
@@ -1051,7 +1052,7 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
                       {options.map((option, index) => (
                           <div
                               key={option.value}
-                              className={cn("wave-dropdown-item", {
+                              className={cn("wave-dropdown-item unselectable", {
                                   "wave-dropdown-item-highlighted": index === highlightedIndex,
                               })}
                               onClick={(e) => this.handleSelect(option.value, e)}
@@ -1079,14 +1080,16 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
             >
                 {decoration?.startDecoration && <>{decoration.startDecoration}</>}
                 <div
-                    className={cn("wave-dropdown-label", {
+                    className={cn("wave-dropdown-label unselectable", {
                         float: shouldLabelFloat,
                         "offset-left": decoration?.startDecoration,
                     })}
                 >
                     {label}
                 </div>
-                <div className={cn("wave-dropdown-display", { "offset-left": decoration?.startDecoration })}>
+                <div
+                    className={cn("wave-dropdown-display unselectable", { "offset-left": decoration?.startDecoration })}
+                >
                     {selectedOptionLabel}
                 </div>
                 <div className={cn("wave-dropdown-arrow", { "wave-dropdown-arrow-rotate": isOpen })}>

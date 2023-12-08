@@ -17,7 +17,7 @@ import {
     Screen,
     Session,
 } from "../../../model/model";
-import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage, Modal, Dropdown } from "../common";
+import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage, Modal, Dropdown, Tooltip } from "../common";
 import { LineType, RendererPluginType, ClientDataType, CommandRtnType, RemoteType } from "../../../types/types";
 import { PluginModel } from "../../../plugins/plugins";
 import * as util from "../../../util/util";
@@ -336,22 +336,30 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                         </div>
                     </div>
                     <div className="settings-field">
-                        <div className="settings-label">
-                            <div>Archived</div>
-                            <InfoMessage width={400}>
-                                Archive will hide the tab. Commands and output will be retained in history.
-                            </InfoMessage>
+                        <div className="settings-label archived-label">
+                            <div className="">Archived</div>
+                            <Tooltip
+                                message={`Archive will hide the tab. Commands and output will be retained in history.`}
+                                icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                className="screen-settings-tooltip"
+                            >
+                                <i className="fa-sharp fa-regular fa-circle-question" />
+                            </Tooltip>
                         </div>
                         <div className="settings-input">
                             <Toggle checked={screen.archived.get()} onChange={this.handleChangeArchived} />
                         </div>
                     </div>
                     <div className="settings-field">
-                        <div className="settings-label">
+                        <div className="settings-label actions-label">
                             <div>Actions</div>
-                            <InfoMessage width={400}>
-                                Delete will remove the tab, removing all commands and output from history.
-                            </InfoMessage>
+                            <Tooltip
+                                message={`Delete will remove the tab, removing all commands and output from history.`}
+                                icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                className="screen-settings-tooltip"
+                            >
+                                <i className="fa-sharp fa-regular fa-circle-question" />
+                            </Tooltip>
                         </div>
                         <div className="settings-input">
                             <div
