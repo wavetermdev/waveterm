@@ -1358,7 +1358,7 @@ func (state RemoteRuntimeState) ExpandHomeDir(pathStr string) (string, error) {
 func (msh *MShellProc) IsCmdRunning(ck base.CommandKey) bool {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
-	for runningCk, _ := range msh.RunningCmds {
+	for runningCk := range msh.RunningCmds {
 		if runningCk == ck {
 			return true
 		}
@@ -1664,7 +1664,7 @@ func makeDataAckPacket(ck base.CommandKey, fdNum int, ackLen int, err error) *pa
 }
 
 func (msh *MShellProc) notifyHangups_nolock() {
-	for ck, _ := range msh.RunningCmds {
+	for ck := range msh.RunningCmds {
 		cmd, err := sstore.GetCmdByScreenId(context.Background(), ck.GetGroupId(), ck.GetCmdId())
 		if err != nil {
 			continue
@@ -2053,7 +2053,7 @@ func (msh *MShellProc) getFullState(stateDiff *packet.ShellStateDiff) (*packet.S
 		}
 		return &newState, nil
 	} else {
-		fullState, err := sstore.GetFullState(context.Background(), sstore.ShellStatePtr{stateDiff.BaseHash, stateDiff.DiffHashArr})
+		fullState, err := sstore.GetFullState(context.Background(), sstore.ShellStatePtr{BaseHash: stateDiff.BaseHash, DiffHashArr: stateDiff.DiffHashArr})
 		if err != nil {
 			return nil, err
 		}
@@ -2072,7 +2072,7 @@ func (msh *MShellProc) getFeStateFromDiff(stateDiff *packet.ShellStateDiff) (map
 		}
 		return sstore.FeStateFromShellState(&newState), nil
 	} else {
-		fullState, err := sstore.GetFullState(context.Background(), sstore.ShellStatePtr{stateDiff.BaseHash, stateDiff.DiffHashArr})
+		fullState, err := sstore.GetFullState(context.Background(), sstore.ShellStatePtr{BaseHash: stateDiff.BaseHash, DiffHashArr: stateDiff.DiffHashArr})
 		if err != nil {
 			return nil, err
 		}
