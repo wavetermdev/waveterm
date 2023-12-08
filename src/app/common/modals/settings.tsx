@@ -271,6 +271,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                         <div className="settings-label">Connection</div>
                         <div className="settings-input">
                             <Dropdown
+                                className="screen-settings-dropdown"
                                 label={curRemote.remotealias}
                                 options={this.getOptions()}
                                 defaultValue={curRemote.remotecanonicalname}
