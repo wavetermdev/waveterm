@@ -200,7 +200,7 @@ class Tooltip extends React.Component<TooltipProps, TooltipState> {
         const style = this.calculatePosition();
 
         return ReactDOM.createPortal(
-            <div className={`wave-tooltip ${this.props.className}`} style={style}>
+            <div className={cn("wave-tooltip", this.props.className)} style={style}>
                 {this.props.icon && <div className="wave-tooltip-icon">{this.props.icon}</div>}
                 <div className="wave-tooltip-message">{this.props.message}</div>
             </div>,
@@ -1069,7 +1069,7 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
 
         return (
             <div
-                className={cn(`wave-dropdown ${className || ""}`, {
+                className={cn("wave-dropdown", className, {
                     "wave-dropdown-error": isError,
                     "no-label": !label,
                 })}
