@@ -219,7 +219,7 @@ func (bus *UpdateBus) SendScreenUpdate(screenId string, update UpdatePacket) {
 
 func MakeSessionsUpdateForRemote(sessionId string, ri *RemoteInstance) []*SessionType {
 	return []*SessionType{
-		&SessionType{
+		{
 			SessionId: sessionId,
 			Remotes:   []*RemoteInstance{ri},
 		},
