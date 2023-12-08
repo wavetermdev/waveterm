@@ -654,7 +654,8 @@ class ClientSettingsModal extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    handleChangeFontSize(newFontSize: number): void {
+    handleChangeFontSize(fontSize: string): void {
+        let newFontSize = Number(fontSize);
         this.fontSizeDropdownActive.set(false);
         if (GlobalModel.termFontSize.get() == newFontSize) {
             return;
@@ -681,36 +682,12 @@ class ClientSettingsModal extends React.Component<{}, {}> {
         commandRtnHandler(prtn, this.errorMessage);
     }
 
-    renderFontSizeDropdown(): any {
-        let availableFontSizes = [];
+    getFontSizes(): any {
+        let availableFontSizes: { label: string; value: number }[] = [];
         for (let s = MinFontSize; s <= MaxFontSize; s++) {
-            availableFontSizes.push(s);
+            availableFontSizes.push({ label: s + "px", value: s });
         }
-        let fsize: number = 0;
-        let curSize = GlobalModel.termFontSize.get();
-        return (
-            <div className={cn("dropdown", "font-size-dropdown", { "is-active": this.fontSizeDropdownActive.get() })}>
-                <div className="dropdown-trigger">
-                    <button onClick={this.togglefontSizeDropdown} className="button">
-                        <span>{curSize}px</span>
-                        <AngleDownIcon className="icon" />
-                    </button>
-                </div>
-                <div className="dropdown-menu" role="menu">
-                    <div className="dropdown-content has-background-black">
-                        <For each="fsize" of={availableFontSizes}>
-                            <div
-                                onClick={() => this.handleChangeFontSize(fsize)}
-                                key={fsize + "px"}
-                                className="dropdown-item"
-                            >
-                                {fsize}px
-                            </div>
-                        </For>
-                    </div>
-                </div>
-            </div>
-        );
+        return availableFontSizes;
     }
 
     @boundMethod
@@ -745,13 +722,22 @@ class ClientSettingsModal extends React.Component<{}, {}> {
         let maxTokensStr = String(
             openAIOpts.maxtokens == null || openAIOpts.maxtokens == 0 ? 1000 : openAIOpts.maxtokens
         );
+        let curFontSize = GlobalModel.termFontSize.get();
         return (
             <Modal className="client-settings-modal">
                 <Modal.Header onClose={this.closeModal} title="Client settings" />
                 <div className="wave-modal-body">
                     <div className="settings-field">
                         <div className="settings-label">Term Font Size</div>
-                        <div className="settings-input">{this.renderFontSizeDropdown()}</div>
+                        {/* <div className="settings-input">{this.renderFontSizeDropdown()}</div> */}
+                        <div className="settings-input">
+                            <Dropdown
+                                className="font-size-dropdown"
+                                options={this.getFontSizes()}
+                                defaultValue={`${curFontSize}px`}
+                                onChange={this.handleChangeFontSize}
+                            />
+                        </div>
                     </div>
                     <div className="settings-field">
                         <div className="settings-label">Client ID</div>

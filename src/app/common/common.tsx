@@ -865,7 +865,7 @@ interface DropdownDecorationProps {
 }
 
 interface DropdownProps {
-    label: string;
+    label?: string;
     options: { value: string; label: string }[];
     value?: string;
     className?: string;
@@ -1071,6 +1071,7 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
             <div
                 className={cn(`wave-dropdown ${className || ""}`, {
                     "wave-dropdown-error": isError,
+                    "no-label": !label,
                 })}
                 ref={this.wrapperRef}
                 tabIndex={0}
@@ -1079,14 +1080,16 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
                 onFocus={this.handleFocus}
             >
                 {decoration?.startDecoration && <>{decoration.startDecoration}</>}
-                <div
-                    className={cn("wave-dropdown-label unselectable", {
-                        float: shouldLabelFloat,
-                        "offset-left": decoration?.startDecoration,
-                    })}
-                >
-                    {label}
-                </div>
+                <If condition={label}>
+                    <div
+                        className={cn("wave-dropdown-label unselectable", {
+                            float: shouldLabelFloat,
+                            "offset-left": decoration?.startDecoration,
+                        })}
+                    >
+                        {label}
+                    </div>
+                </If>
                 <div
                     className={cn("wave-dropdown-display unselectable", { "offset-left": decoration?.startDecoration })}
                 >
