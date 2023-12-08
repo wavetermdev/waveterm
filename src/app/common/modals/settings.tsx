@@ -562,47 +562,42 @@ class LineSettingsModal extends React.Component<{}, {}> {
         })();
     }
 
-    renderRendererDropdown(): any {
-        let line = this.getLine();
-        if (line == null) {
-            return null;
-        }
-        let plugins = PluginModel.rendererPlugins;
-        let plugin: RendererPluginType = null;
-        let renderer = line.renderer ?? "terminal";
-        return (
-            <div className={cn("dropdown", "renderer-dropdown", { "is-active": this.rendererDropdownActive.get() })}>
-                <div className="dropdown-trigger">
-                    <button onClick={this.toggleRendererDropdown} className="button is-small is-dark">
-                        <span>
-                            <i className="fa-sharp fa-solid fa-fill" /> {renderer}
-                        </span>
-                        <span className="icon is-small">
-                            <i className="fa-sharp fa-regular fa-angle-down" aria-hidden="true"></i>
-                        </span>
-                    </button>
-                </div>
-                <div className="dropdown-menu" role="menu">
-                    <div className="dropdown-content has-background-black">
-                        <div onClick={() => this.clickSetRenderer(null)} key="terminal" className="dropdown-item">
-                            terminal
-                        </div>
-                        <For each="plugin" of={plugins}>
-                            <div
-                                onClick={() => this.clickSetRenderer(plugin.name)}
-                                key={plugin.name}
-                                className="dropdown-item"
-                            >
-                                {plugin.name}
-                            </div>
-                        </For>
-                        <div onClick={() => this.clickSetRenderer("none")} key="none" className="dropdown-item">
-                            none
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
+    getOptions(plugins: RendererPluginType[]) {
+        // Add label and value to each object in the array
+        const options = plugins.map((item) => ({
+            ...item,
+            label: item.name,
+            value: item.name,
+        }));
+
+        // Create an additional object with label "terminal" and value null
+        const terminalItem = {
+            label: "terminal",
+            value: null,
+            name: null,
+            rendererType: null,
+            heightType: null,
+            dataType: null,
+            collapseType: null,
+            globalCss: null,
+            mimeTypes: null,
+        };
+
+        // Create an additional object with label "none" and value none
+        const noneItem = {
+            label: "none",
+            value: "none",
+            name: null,
+            rendererType: null,
+            heightType: null,
+            dataType: null,
+            collapseType: null,
+            globalCss: null,
+            mimeTypes: null,
+        };
+
+        // Combine the options with the terminal item
+        return [terminalItem, ...options, noneItem];
     }
 
     render() {
@@ -613,13 +608,23 @@ class LineSettingsModal extends React.Component<{}, {}> {
             }, 0);
             return null;
         }
+        let plugins = PluginModel.rendererPlugins;
+        let renderer = line.renderer ?? "terminal";
+
         return (
             <Modal className="line-settings-modal">
                 <Modal.Header onClose={this.closeModal} title={`line settings (${line.linenum})`} />
                 <div className="wave-modal-body">
                     <div className="settings-field">
                         <div className="settings-label">Renderer</div>
-                        <div className="settings-input">{this.renderRendererDropdown()}</div>
+                        <div className="settings-input">
+                            <Dropdown
+                                className="renderer-dropdown"
+                                options={this.getOptions(plugins)}
+                                defaultValue={renderer}
+                                onChange={this.clickSetRenderer}
+                            />
+                        </div>
                     </div>
                     <div className="settings-field">
                         <div className="settings-label">Archived</div>
@@ -729,7 +734,6 @@ class ClientSettingsModal extends React.Component<{}, {}> {
                 <div className="wave-modal-body">
                     <div className="settings-field">
                         <div className="settings-label">Term Font Size</div>
-                        {/* <div className="settings-input">{this.renderFontSizeDropdown()}</div> */}
                         <div className="settings-input">
                             <Dropdown
                                 className="font-size-dropdown"
