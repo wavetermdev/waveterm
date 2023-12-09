@@ -1150,7 +1150,7 @@ func PurgeScreen(ctx context.Context, screenId string, sessionDel bool) (UpdateP
 		return nil, nil
 	}
 	update := &ModelUpdate{}
-	update.Screens = []*ScreenType{&ScreenType{SessionId: sessionId, ScreenId: screenId, Remove: true}}
+	update.Screens = []*ScreenType{{SessionId: sessionId, ScreenId: screenId, Remove: true}}
 	if isActive {
 		bareSession, err := GetBareSessionById(ctx, sessionId)
 		if err != nil {

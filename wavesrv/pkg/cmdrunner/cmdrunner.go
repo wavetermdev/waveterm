@@ -201,6 +201,8 @@ func init() {
 
 	registerCmdFn("sidebar:open", SidebarOpenCommand)
 	registerCmdFn("sidebar:close", SidebarCloseCommand)
+	registerCmdFn("sidebar:add", SidebarAddCommand)
+	registerCmdFn("sidebar:remove", SidebarRemoveCommand)
 
 	registerCmdFn("telemetry", TelemetryCommand)
 	registerCmdFn("telemetry:on", TelemetryOnCommand)
@@ -862,9 +864,9 @@ func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 
 var sidebarWidthRe = regexp.MustCompile("^\\d+(px|%)$")
 
-func sidebarSetOpen(ctx context.Context, cmdStr string, screenId string, open bool, width string) (sstore.UpdatePacket, error) {
+func sidebarSetOpen(ctx context.Context, cmdStr string, screenId string, open bool, width string) (*sstore.ScreenType, error) {
 	if width != "" && !sidebarWidthRe.MatchString(width) {
-		return nil, fmt.Errorf("/%s invalid width specified, must be either a px value or a percent (e.g. '300px' or '50%')", cmdStr)
+		return nil, fmt.Errorf("/%s invalid width specified, must be either a px value or a percent (e.g. '300px' or '50%%')", cmdStr)
 	}
 	screen, err := sstore.GetScreenById(ctx, screenId)
 	if err != nil {
@@ -881,23 +883,109 @@ func sidebarSetOpen(ctx context.Context, cmdStr string, screenId string, open bo
 	if err != nil {
 		return nil, fmt.Errorf("/%s error updating screenviewopts: %v", cmdStr, err)
 	}
-	return &sstore.ModelUpdate{Screens: []*sstore.ScreenType{screen}}, nil
+	return screen, nil
 }
 
 func SidebarOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Screen)
 	if err != nil {
-		return nil, fmt.Errorf("/sidebar:open cannot resolve screen")
+		return nil, err
 	}
-	return sidebarSetOpen(ctx, GetCmdStr(pk), ids.ScreenId, true, pk.Kwargs["width"])
+	screen, err := sidebarSetOpen(ctx, GetCmdStr(pk), ids.ScreenId, true, pk.Kwargs["width"])
+	if err != nil {
+		return nil, err
+	}
+	return &sstore.ModelUpdate{Screens: []*sstore.ScreenType{screen}}, nil
 }
 
 func SidebarCloseCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Screen)
 	if err != nil {
-		return nil, fmt.Errorf("/sidebar:close cannot resolve screen")
+		return nil, err
 	}
-	return sidebarSetOpen(ctx, GetCmdStr(pk), ids.ScreenId, false, "")
+	screen, err := sidebarSetOpen(ctx, GetCmdStr(pk), ids.ScreenId, false, "")
+	if err != nil {
+		return nil, err
+	}
+	return &sstore.ModelUpdate{Screens: []*sstore.ScreenType{screen}}, nil
+}
+
+func sidebarCheckDupLines(sections []sstore.ScreenSidebarSectionType, lineId string) bool {
+	for _, section := range sections {
+		if section.LineId == lineId {
+			return true
+		}
+	}
+	return false
+}
+
+func SidebarAddCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Screen)
+	if err != nil {
+		return nil, err
+	}
+	var addLineId string
+	if lineArg, ok := pk.Kwargs["line"]; ok {
+		lineId, err := sstore.FindLineIdByArg(ctx, ids.ScreenId, lineArg)
+		if err != nil {
+			return nil, fmt.Errorf("error looking up lineid: %v", err)
+		}
+		addLineId = lineId
+	}
+	if addLineId == "" {
+		return nil, fmt.Errorf("/%s must specify line=[lineid] to add to the sidebar", GetCmdStr(pk))
+	}
+	screen, err := sidebarSetOpen(ctx, GetCmdStr(pk), ids.ScreenId, true, pk.Kwargs["width"])
+	if err != nil {
+		return nil, err
+	}
+	sections := screen.ScreenViewOpts.Sidebar.Sections
+	hasDup := sidebarCheckDupLines(sections, addLineId)
+	if hasDup {
+		return nil, fmt.Errorf("/%s cannot add duplicate lineid to sidebar", GetCmdStr(pk))
+	}
+	sections = append(sections, sstore.ScreenSidebarSectionType{SectionType: "line", LineId: addLineId})
+	screen.ScreenViewOpts.Sidebar.Sections = sections
+	err = sstore.ScreenUpdateViewOpts(ctx, ids.ScreenId, screen.ScreenViewOpts)
+	if err != nil {
+		return nil, fmt.Errorf("/%s error updating screenviewopts: %v", GetCmdStr(pk), err)
+	}
+	return &sstore.ModelUpdate{Screens: []*sstore.ScreenType{screen}}, nil
+}
+
+func SidebarRemoveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Screen)
+	if err != nil {
+		return nil, err
+	}
+	screen, err := sstore.GetScreenById(ctx, ids.ScreenId)
+	if err != nil {
+		return nil, fmt.Errorf("/%s cannot get screeen: %v", GetCmdStr(pk), err)
+	}
+	sidebar := screen.ScreenViewOpts.Sidebar
+	if sidebar == nil {
+		return nil, nil
+	}
+	if len(sidebar.Sections) <= 1 || resolveBool(pk.Kwargs["all"], false) {
+		sidebar.Sections = nil
+		sidebar.Open = false
+	} else {
+		sectionNum, err := resolvePosInt(pk.Kwargs["section"], len(sidebar.Sections))
+		if err != nil {
+			return nil, fmt.Errorf("/%s invalid section passed: %v", GetCmdStr(pk), err)
+		}
+		if sectionNum > len(sidebar.Sections) {
+			sectionNum = len(sidebar.Sections)
+		}
+		// removes elem at sectionNum (subtract 1 to convert to 0-indexed value)
+		sectionNum0 := sectionNum - 1
+		sidebar.Sections = append(sidebar.Sections[:sectionNum0], sidebar.Sections[sectionNum0+1:]...)
+	}
+	err = sstore.ScreenUpdateViewOpts(ctx, ids.ScreenId, screen.ScreenViewOpts)
+	if err != nil {
+		return nil, fmt.Errorf("/%s error updating screenviewopts: %v", GetCmdStr(pk), err)
+	}
+	return &sstore.ModelUpdate{Screens: []*sstore.ScreenType{screen}}, nil
 }
 
 func RemoteInstallCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {

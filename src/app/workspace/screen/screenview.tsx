@@ -33,7 +33,6 @@ import "./tabs.less";
 dayjs.extend(localizedFormat);
 
 type OV<V> = mobx.IObservableValue<V>;
-window.sprintf = sprintf;
 
 @mobxReact.observer
 class ScreenView extends React.Component<{ session: Session; screen: Screen }, {}> {
@@ -48,12 +47,12 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
         let winWidth = "100%";
         let sidebarWidth = "0px";
         if (hasSidebar) {
-            let sidebarWidth = viewOpts?.sidebar?.width;
-            if (util.isBlank(sidebarWidth)) {
-                sidebarWidth = "400px";
+            let width = viewOpts?.sidebar?.width;
+            if (util.isBlank(width)) {
+                width = "400px";
             }
-            winWidth = sprintf("calc(100%% - %s)", sidebarWidth);
-            sidebarWidth = sprintf("calc(%s - 5px)", sidebarWidth); // 5px of margin
+            winWidth = sprintf("calc(100%% - %s)", width);
+            sidebarWidth = sprintf("calc(%s - 5px)", width); // 5px of margin
         }
         return (
             <div className="screen-view" data-screenid={screen.screenId}>
@@ -64,7 +63,7 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
                     width={winWidth}
                 />
                 <If condition={hasSidebar}>
-                    <ScreenSidebar screen={screen} width={sidebarWidth}/>
+                    <ScreenSidebar screen={screen} width={sidebarWidth} />
                 </If>
             </div>
         );
@@ -74,10 +73,20 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
 @mobxReact.observer
 class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {}> {
     render() {
+        let { screen, width } = this.props;
+        let viewOpts = screen.viewOpts.get();
+        let sections: T.ScreenSidebarSectionType[] = viewOpts?.sidebar?.sections ?? [];
+        let section: T.ScreenSidebarSectionType = null;
         return (
-            <div className="screen-sidebar" style={{ width: this.props.width }}>
-                <div className="screen-sidebar-section">hello</div>
-                <div className="screen-sidebar-section">hello2</div>
+            <div className="screen-sidebar" style={{ width: width }}>
+                <If condition={sections.length == 0}>
+                    No Sidebar Sections
+                </If>
+                <If condition={sections.length > 0}>
+                    <For each="section" of={sections}>
+                        <div className="screen-sidebar-section">hello</div>
+                    </For>
+                </If>
             </div>
         );
     }
