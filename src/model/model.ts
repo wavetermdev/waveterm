@@ -130,6 +130,7 @@ type LineContainerModel = {
     setContentHeight: (context: RendererContext, height: number) => void;
     getMaxContentSize(): WindowSize;
     getIdealContentSize(): WindowSize;
+    isLineIdInSidebar(lineId: string): boolean;
 };
 
 type SWLinePtr = {
@@ -369,7 +370,7 @@ class Screen {
             name: "screen-screenidx",
         });
         this.opts = mobx.observable.box(sdata.screenopts, { name: "screen-opts" });
-        this.viewOpts = mobx.observable.box(sdata.screenviewopts, {name: "viewOpts"});
+        this.viewOpts = mobx.observable.box(sdata.screenviewopts, { name: "viewOpts" });
         this.archived = mobx.observable.box(!!sdata.archived, {
             name: "screen-archived",
         });
@@ -398,13 +399,30 @@ class Screen {
         });
         this.filterRunning = mobx.observable.box(false, {
             name: "screen-filter-running",
-        })
+        });
     }
 
     dispose() {}
 
     isWebShared(): boolean {
         return this.shareMode.get() == "web" && this.webShareOpts.get() != null;
+    }
+
+    isLineIdInSidebar(lineId: string): boolean {
+        let viewOpts = this.viewOpts.get();
+        if (viewOpts == null) {
+            return false;
+        }
+        let sections = viewOpts.sidebar?.sections;
+        if (sections == null) {
+            return false;
+        }
+        for (let i = 0; i < sections.length; i++) {
+            if (sections[i].lineid == lineId) {
+                return true;
+            }
+        }
+        return false;
     }
 
     getShareName(): string {
@@ -469,6 +487,10 @@ class Screen {
 
     getCmd(line: LineType): Cmd {
         return GlobalModel.getCmd(line);
+    }
+
+    getCmdById(lineId: string): Cmd {
+        return GlobalModel.getCmdByScreenLine(this.screenId, lineId);
     }
 
     getAnchorStr(): string {
@@ -587,6 +609,26 @@ class Screen {
         }
         for (let i = 0; i < lines.length; i++) {
             if (lines[i].linenum == lineNum) {
+                return lines[i];
+            }
+        }
+        return null;
+    }
+
+    getLineById(lineId: string): LineType {
+        if (lineId == null) {
+            return null;
+        }
+        let win = this.getScreenLines();
+        if (win == null) {
+            return null;
+        }
+        let lines = win.lines;
+        if (lines == null || lines.length == 0) {
+            return null;
+        }
+        for (let i = 0; i < lines.length; i++) {
+            if (lines[i].lineid == lineId) {
                 return lines[i];
             }
         }
@@ -1782,21 +1824,33 @@ type LineFocusType = {
     screenid?: string;
 };
 
-class SpecialHistoryViewLineContainer {
-    historyItem: HistoryItem;
+type CmdFinder = {
+    getCmdById(cmdId: string): Cmd;
+};
+
+class SpecialLineContainer {
+    wsize: T.WindowSize;
+    allowInput: boolean;
     terminal: TermWrap;
     renderer: RendererModel;
     cmd: Cmd;
+    cmdFinder: CmdFinder;
 
-    constructor(hitem: HistoryItem) {
-        this.historyItem = hitem;
+    constructor(cmdFinder: CmdFinder, wsize: T.WindowSize, allowInput: boolean) {
+        this.cmdFinder = cmdFinder;
+        this.wsize = wsize;
+        this.allowInput = allowInput;
     }
 
     getCmd(line: LineType): Cmd {
         if (this.cmd == null) {
-            this.cmd = GlobalModel.historyViewModel.getCmdById(line.lineid);
+            this.cmd = this.cmdFinder.getCmdById(line.lineid);
         }
         return this.cmd;
+    }
+
+    isLineIdInSidebar(lineId: string): boolean {
+        return false;
     }
 
     setLineFocus(lineNum: number, focus: boolean): void {
@@ -1808,15 +1862,11 @@ class SpecialHistoryViewLineContainer {
     }
 
     getMaxContentSize(): WindowSize {
-        let width = termWidthFromCols(80, GlobalModel.termFontSize.get());
-        let height = termHeightFromRows(25, GlobalModel.termFontSize.get());
-        return { width, height };
+        return this.wsize;
     }
 
     getIdealContentSize(): WindowSize {
-        let width = termWidthFromCols(80, GlobalModel.termFontSize.get());
-        let height = termHeightFromRows(25, GlobalModel.termFontSize.get());
-        return { width, height };
+        return this.wsize;
     }
 
     loadTerminalRenderer(elem: Element, line: LineType, cmd: Cmd, width: number): void {
@@ -1959,7 +2009,7 @@ class HistoryViewModel {
     historyItemLines: LineType[] = [];
     historyItemCmds: CmdDataType[] = [];
 
-    specialLineContainer: SpecialHistoryViewLineContainer;
+    specialLineContainer: SpecialLineContainer;
 
     constructor() {}
 
@@ -2018,7 +2068,9 @@ class HistoryViewModel {
                 this.specialLineContainer = null;
             } else {
                 this.activeItem.set(hitem.historyid);
-                this.specialLineContainer = new SpecialHistoryViewLineContainer(hitem);
+                let width = termWidthFromCols(80, GlobalModel.termFontSize.get());
+                let height = termHeightFromRows(25, GlobalModel.termFontSize.get());
+                this.specialLineContainer = new SpecialLineContainer(this, { width, height }, false);
             }
         })();
     }
@@ -4451,5 +4503,6 @@ export {
     RemotesModel,
     MinFontSize,
     MaxFontSize,
+    SpecialLineContainer,
 };
 export type { LineContainerModel };

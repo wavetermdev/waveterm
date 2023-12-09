@@ -10,7 +10,7 @@ import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { debounce } from "throttle-debounce";
 import dayjs from "dayjs";
-import { GlobalCommandRunner, TabColors, TabIcons } from "../../../model/model";
+import { GlobalCommandRunner, TabColors, TabIcons, SpecialLineContainer } from "../../../model/model";
 import type { LineType, RenderModeType, LineFactoryProps } from "../../../types/types";
 import * as T from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
@@ -26,6 +26,7 @@ import { ReactComponent as Check12Icon } from "../../assets/icons/check12.svg";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
 import { ReactComponent as GlobeIcon } from "../../assets/icons/globe.svg";
 import { ReactComponent as StatusCircleIcon } from "../../assets/icons/statuscircle.svg";
+import { termWidthFromCols, termHeightFromRows } from "../../../util/textmeasure";
 
 import "./screenview.less";
 import "./tabs.less";
@@ -71,6 +72,54 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
 }
 
 @mobxReact.observer
+class ScreenSidebarSection extends React.Component<{ screen: Screen; section: T.ScreenSidebarSectionType }, {}> {
+    overrideCollapsed: OV<boolean> = mobx.observable.box(false, { name: "overrideCollapsed" });
+    visible: OV<boolean> = mobx.observable.box(true, { name: "visible" });
+    container: SpecialLineContainer;
+
+    handleHeightChange() {}
+
+    componentDidMount() {
+        let { screen } = this.props;
+        let width = termWidthFromCols(80, GlobalModel.termFontSize.get());
+        let height = termHeightFromRows(25, GlobalModel.termFontSize.get());
+        this.container = new SpecialLineContainer(screen, { width, height }, false);
+    }
+
+    componentWillUnmount(): void {
+        if (this.container != null) {
+            let { section } = this.props;
+            this.container.unloadRenderer(section.lineid);
+        }
+    }
+
+    render() {
+        let { screen, section } = this.props;
+        let width = 400;
+        let specialLineContainer = null;
+        let line = screen.getLineById(section.lineid);
+        return (
+            <div className="screen-sidebar-section">
+                <If condition={this.container != null && line != null}>
+                    <Line
+                        screen={this.container}
+                        line={line}
+                        width={width}
+                        staticRender={false}
+                        visible={this.visible}
+                        onHeightChange={this.handleHeightChange}
+                        overrideCollapsed={this.overrideCollapsed}
+                        topBorder={false}
+                        renderMode="normal"
+                        noSelect={true}
+                    />
+                </If>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
 class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {}> {
     render() {
         let { screen, width } = this.props;
@@ -79,12 +128,10 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
         let section: T.ScreenSidebarSectionType = null;
         return (
             <div className="screen-sidebar" style={{ width: width }}>
-                <If condition={sections.length == 0}>
-                    No Sidebar Sections
-                </If>
+                <If condition={sections.length == 0}>No Sidebar Sections</If>
                 <If condition={sections.length > 0}>
                     <For each="section" of={sections}>
-                        <div className="screen-sidebar-section">hello</div>
+                        <ScreenSidebarSection key={section.lineid} screen={screen} section={section} />
                     </For>
                 </If>
             </div>
