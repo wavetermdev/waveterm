@@ -932,6 +932,22 @@ func (msh *MShellProc) isWaitingForPassword_nolock() bool {
 	return pwIdx != -1
 }
 
+func (msh *MShellProc) isWaitingForPassphrase_nolock() bool {
+	barr := msh.PtyBuffer.Bytes()
+	if len(barr) == 0 {
+		return false
+	}
+	nlIdx := bytes.LastIndex(barr, []byte{'\n'})
+	var lastLine string
+	if nlIdx == -1 {
+		lastLine = string(barr)
+	} else {
+		lastLine = string(barr[nlIdx+1:])
+	}
+	pwIdx := strings.Index(lastLine, "Enter passphrase for key")
+	return pwIdx != -1
+}
+
 func (msh *MShellProc) RunPtyReadLoop(cmdPty *os.File) {
 	buf := make([]byte, PtyReadBufSize)
 	var isWaiting bool
@@ -964,8 +980,13 @@ func (msh *MShellProc) WaitAndSendPassword(pw string) {
 		var isWaiting bool
 		var isConnecting bool
 		msh.WithLock(func() {
-			isWaiting = msh.isWaitingForPassword_nolock()
+			if msh.Remote.SSHOpts.GetAuthType() == sstore.RemoteAuthTypeKeyPassword {
+				isWaiting = msh.isWaitingForPassphrase_nolock()
+			} else {
+				isWaiting = msh.isWaitingForPassword_nolock()
+			}
 			isConnecting = msh.Status == StatusConnecting
+			fmt.Printf("\nstuck with status \"%s\"", msh.Status)
 		})
 		if !isConnecting {
 			break
