@@ -860,7 +860,12 @@ func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	return update, nil
 }
 
-func sidebarSetOpen(ctx context.Context, cmdStr string, screenId string, open bool) (sstore.UpdatePacket, error) {
+var sidebarWidthRe = regexp.MustCompile("^\\d+(px|%)$")
+
+func sidebarSetOpen(ctx context.Context, cmdStr string, screenId string, open bool, width string) (sstore.UpdatePacket, error) {
+	if width != "" && !sidebarWidthRe.MatchString(width) {
+		return nil, fmt.Errorf("/%s invalid width specified, must be either a px value or a percent (e.g. '300px' or '50%')", cmdStr)
+	}
 	screen, err := sstore.GetScreenById(ctx, screenId)
 	if err != nil {
 		return nil, fmt.Errorf("/%s cannot get screen: %v", cmdStr, err)
@@ -869,6 +874,9 @@ func sidebarSetOpen(ctx context.Context, cmdStr string, screenId string, open bo
 		screen.ScreenViewOpts.Sidebar = &sstore.ScreenSidebarOptsType{}
 	}
 	screen.ScreenViewOpts.Sidebar.Open = open
+	if width != "" {
+		screen.ScreenViewOpts.Sidebar.Width = width
+	}
 	err = sstore.ScreenUpdateViewOpts(ctx, screenId, screen.ScreenViewOpts)
 	if err != nil {
 		return nil, fmt.Errorf("/%s error updating screenviewopts: %v", cmdStr, err)
@@ -881,7 +889,7 @@ func SidebarOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if err != nil {
 		return nil, fmt.Errorf("/sidebar:open cannot resolve screen")
 	}
-	return sidebarSetOpen(ctx, GetCmdStr(pk), ids.ScreenId, true)
+	return sidebarSetOpen(ctx, GetCmdStr(pk), ids.ScreenId, true, pk.Kwargs["width"])
 }
 
 func SidebarCloseCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -889,7 +897,7 @@ func SidebarCloseCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	if err != nil {
 		return nil, fmt.Errorf("/sidebar:close cannot resolve screen")
 	}
-	return sidebarSetOpen(ctx, GetCmdStr(pk), ids.ScreenId, false)
+	return sidebarSetOpen(ctx, GetCmdStr(pk), ids.ScreenId, false, "")
 }
 
 func RemoteInstallCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {

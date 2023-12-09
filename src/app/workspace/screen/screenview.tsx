@@ -33,6 +33,7 @@ import "./tabs.less";
 dayjs.extend(localizedFormat);
 
 type OV<V> = mobx.IObservableValue<V>;
+window.sprintf = sprintf;
 
 @mobxReact.observer
 class ScreenView extends React.Component<{ session: Session; screen: Screen }, {}> {
@@ -47,8 +48,12 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
         let winWidth = "100%";
         let sidebarWidth = "0px";
         if (hasSidebar) {
-            winWidth = "calc(100% - 400px)";
-            sidebarWidth = "calc(400px - 5px)"; // 300 minus 5px of margin
+            let sidebarWidth = viewOpts?.sidebar?.width;
+            if (util.isBlank(sidebarWidth)) {
+                sidebarWidth = "400px";
+            }
+            winWidth = sprintf("calc(100%% - %s)", sidebarWidth);
+            sidebarWidth = sprintf("calc(%s - 5px)", sidebarWidth); // 5px of margin
         }
         return (
             <div className="screen-view" data-screenid={screen.screenId}>

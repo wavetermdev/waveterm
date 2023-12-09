@@ -65,6 +65,13 @@ type ScreenViewOptsType = {
 
 type ScreenSidebarOptsType = {
     open: boolean;
+    width: string;
+    sections: SidebarSectionType[];
+};
+
+type SidebarSectionType = {
+    sectiontype: "line" | "markdown";
+    lineid: string;
 };
 
 type ScreenDataType = {
