@@ -59,6 +59,14 @@ type WebShareOpts = {
     viewkey: string;
 };
 
+type ScreenViewOptsType = {
+    sidebar: ScreenSidebarOptsType;
+};
+
+type ScreenSidebarOptsType = {
+    open: boolean;
+};
+
 type ScreenDataType = {
     sessionid: string;
     screenid: string;
@@ -68,6 +76,7 @@ type ScreenDataType = {
     webshareopts?: WebShareOpts;
     archived?: boolean;
     screenopts: ScreenOptsType;
+    screenviewopts: ScreenViewOptsType;
     curremote: RemotePtrType;
     nextlinenum: number;
     selectedline: number;
@@ -654,6 +663,8 @@ export type {
     FeCmdPacketType,
     TermOptsType,
     CmdDataType,
+    ScreenViewOptsType,
+    ScreenSidebarOptsType,
     ScreenDataType,
     ScreenOptsType,
     PtyDataUpdateType,

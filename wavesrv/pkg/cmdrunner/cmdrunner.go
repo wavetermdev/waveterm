@@ -199,6 +199,9 @@ func init() {
 	registerCmdFn("client:notifyupdatewriter", ClientNotifyUpdateWriterCommand)
 	registerCmdFn("client:accepttos", ClientAcceptTosCommand)
 
+	registerCmdFn("sidebar:open", SidebarOpenCommand)
+	registerCmdFn("sidebar:close", SidebarCloseCommand)
+
 	registerCmdFn("telemetry", TelemetryCommand)
 	registerCmdFn("telemetry:on", TelemetryOnCommand)
 	registerCmdFn("telemetry:off", TelemetryOffCommand)
@@ -723,6 +726,8 @@ func ScreenOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	return update, nil
 }
 
+var screenAnchorRe = regexp.MustCompile("^(\\d+)(?::(-?\\d+))?$")
+
 func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
 	if err != nil {
@@ -855,7 +860,37 @@ func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	return update, nil
 }
 
-var screenAnchorRe = regexp.MustCompile("^(\\d+)(?::(-?\\d+))?$")
+func sidebarSetOpen(ctx context.Context, cmdStr string, screenId string, open bool) (sstore.UpdatePacket, error) {
+	screen, err := sstore.GetScreenById(ctx, screenId)
+	if err != nil {
+		return nil, fmt.Errorf("/%s cannot get screen: %v", cmdStr, err)
+	}
+	if screen.ScreenViewOpts.Sidebar == nil {
+		screen.ScreenViewOpts.Sidebar = &sstore.ScreenSidebarOptsType{}
+	}
+	screen.ScreenViewOpts.Sidebar.Open = open
+	err = sstore.ScreenUpdateViewOpts(ctx, screenId, screen.ScreenViewOpts)
+	if err != nil {
+		return nil, fmt.Errorf("/%s error updating screenviewopts: %v", cmdStr, err)
+	}
+	return &sstore.ModelUpdate{Screens: []*sstore.ScreenType{screen}}, nil
+}
+
+func SidebarOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Screen)
+	if err != nil {
+		return nil, fmt.Errorf("/sidebar:open cannot resolve screen")
+	}
+	return sidebarSetOpen(ctx, GetCmdStr(pk), ids.ScreenId, true)
+}
+
+func SidebarCloseCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Screen)
+	if err != nil {
+		return nil, fmt.Errorf("/sidebar:close cannot resolve screen")
+	}
+	return sidebarSetOpen(ctx, GetCmdStr(pk), ids.ScreenId, false)
+}
 
 func RemoteInstallCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Remote)

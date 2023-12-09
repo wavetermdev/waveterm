@@ -710,8 +710,8 @@ func InsertScreen(ctx context.Context, sessionId string, origScreenName string, 
 			Archived:     false,
 			ArchivedTs:   0,
 		}
-		query = `INSERT INTO screen ( sessionid, screenid, name, screenidx, screenopts, ownerid, sharemode, webshareopts, curremoteownerid, curremoteid, curremotename, nextlinenum, selectedline, anchor, focustype, archived, archivedts)
-                             VALUES (:sessionid,:screenid,:name,:screenidx,:screenopts,:ownerid,:sharemode,:webshareopts,:curremoteownerid,:curremoteid,:curremotename,:nextlinenum,:selectedline,:anchor,:focustype,:archived,:archivedts)`
+		query = `INSERT INTO screen ( sessionid, screenid, name, screenidx, screenopts, screenviewopts, ownerid, sharemode, webshareopts, curremoteownerid, curremoteid, curremotename, nextlinenum, selectedline, anchor, focustype, archived, archivedts)
+                             VALUES (:sessionid,:screenid,:name,:screenidx,:screenopts,:screenviewopts,:ownerid,:sharemode,:webshareopts,:curremoteownerid,:curremoteid,:curremotename,:nextlinenum,:selectedline,:anchor,:focustype,:archived,:archivedts)`
 		tx.NamedExec(query, screen.ToMap())
 		if activate {
 			query = `UPDATE session SET activescreenid = ? WHERE sessionid = ?`
@@ -1762,6 +1762,14 @@ func UpdateScreen(ctx context.Context, screenId string, editMap map[string]inter
 		return nil, txErr
 	}
 	return GetScreenById(ctx, screenId)
+}
+
+func ScreenUpdateViewOpts(ctx context.Context, screenId string, viewOpts ScreenViewOptsType) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		query := `UPDATE screen SET screenviewopts = ? WHERE screenid = ?`
+		tx.Exec(query, quickJson(viewOpts), screenId)
+		return nil
+	})
 }
 
 func GetLineResolveItems(ctx context.Context, screenId string) ([]ResolveItem, error) {

@@ -341,6 +341,7 @@ class Screen {
     screenId: string;
     screenIdx: OV<number>;
     opts: OV<ScreenOptsType>;
+    viewOpts: OV<T.ScreenViewOptsType>;
     name: OV<string>;
     archived: OV<boolean>;
     curRemote: OV<RemotePtrType>;
@@ -368,6 +369,7 @@ class Screen {
             name: "screen-screenidx",
         });
         this.opts = mobx.observable.box(sdata.screenopts, { name: "screen-opts" });
+        this.viewOpts = mobx.observable.box(sdata.screenviewopts, {name: "viewOpts"});
         this.archived = mobx.observable.box(!!sdata.archived, {
             name: "screen-archived",
         });
@@ -441,6 +443,7 @@ class Screen {
         mobx.action(() => {
             this.screenIdx.set(data.screenidx);
             this.opts.set(data.screenopts);
+            this.viewOpts.set(data.screenviewopts);
             this.name.set(data.name);
             this.nextLineNum.set(data.nextlinenum);
             this.archived.set(!!data.archived);
