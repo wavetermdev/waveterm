@@ -39,7 +39,7 @@ func CreatePrivateKey(keyFileName string) (*ecdsa.PrivateKey, error) {
 	curve := elliptic.P384() // secp384r1
 	privateKey, err := ecdsa.GenerateKey(curve, rand.Reader)
 	if err != nil {
-		return nil, fmt.Errorf("Error generating P-384 key err:%w", err)
+		return nil, fmt.Errorf("error generating P-384 key err:%w", err)
 	}
 	keyFile, err := os.Create(keyFileName)
 	if err != nil {
@@ -48,11 +48,11 @@ func CreatePrivateKey(keyFileName string) (*ecdsa.PrivateKey, error) {
 	defer keyFile.Close()
 	pkBytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
 	if err != nil {
-		return nil, fmt.Errorf("Error MarshalPKCS8PrivateKey err:%w", err)
+		return nil, fmt.Errorf("error MarshalPKCS8PrivateKey err:%w", err)
 	}
 	paramsBytes, err := base64.StdEncoding.DecodeString(p384Params)
 	if err != nil {
-		return nil, fmt.Errorf("Error decoding bytes for P-384 EC PARAMETERS err:%w", err)
+		return nil, fmt.Errorf("error decoding bytes for P-384 EC PARAMETERS err:%w", err)
 	}
 	var pemParamsBlock = &pem.Block{
 		Type:  "EC PARAMETERS",
@@ -60,7 +60,7 @@ func CreatePrivateKey(keyFileName string) (*ecdsa.PrivateKey, error) {
 	}
 	err = pem.Encode(keyFile, pemParamsBlock)
 	if err != nil {
-		return nil, fmt.Errorf("Error writing EC PARAMETERS pem block err:%w", err)
+		return nil, fmt.Errorf("error writing EC PARAMETERS pem block err:%w", err)
 	}
 	var pemPrivateBlock = &pem.Block{
 		Type:  "EC PRIVATE KEY",
