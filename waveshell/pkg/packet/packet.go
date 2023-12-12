@@ -676,6 +676,7 @@ type TermOpts struct {
 	Cols       int    `json:"cols"`
 	Term       string `json:"term"`
 	MaxPtySize int64  `json:"maxptysize,omitempty"`
+	FlexRows   bool   `json:"flexrows,omitempty"`
 }
 
 type RemoteFd struct {
