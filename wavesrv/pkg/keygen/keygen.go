@@ -35,7 +35,7 @@ func CreateKeyPair(keyFileName string, certFileName string, id string) error {
 }
 
 // Creates a private key at keyFileName (ECDSA, secp384r1 (P-384)), PEM format
-func CreatePrivateKey() (*ecdsa.PrivateKey, error) {
+func CreatePrivateKey(keyFileName string) (*ecdsa.PrivateKey, error) {
 	curve := elliptic.P384() // secp384r1
 	privateKey, err := ecdsa.GenerateKey(curve, rand.Reader)
 	if err != nil {
