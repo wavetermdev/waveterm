@@ -986,7 +986,6 @@ func (msh *MShellProc) WaitAndSendPassword(pw string) {
 				isWaiting = msh.isWaitingForPassword_nolock()
 			}
 			isConnecting = msh.Status == StatusConnecting
-			fmt.Printf("\nstuck with status \"%s\"", msh.Status)
 		})
 		if !isConnecting {
 			break
