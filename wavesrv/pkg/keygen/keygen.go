@@ -68,7 +68,7 @@ func CreatePrivateKey(keyFileName string) (*ecdsa.PrivateKey, error) {
 	}
 	err = pem.Encode(keyFile, pemPrivateBlock)
 	if err != nil {
-		return nil, fmt.Errorf("Error writing EC PRIVATE KEY pem block err:%w", err)
+		return nil, fmt.Errorf("error writing EC PRIVATE KEY pem block err:%w", err)
 	}
 	return privateKey, nil
 }
@@ -77,15 +77,15 @@ func CreatePrivateKey(keyFileName string) (*ecdsa.PrivateKey, error) {
 func CreateCertificate(certFileName string, privateKey *ecdsa.PrivateKey, id string) error {
 	serialNumber, err := rand.Int(rand.Reader, big.NewInt(1000000000000))
 	if err != nil {
-		return fmt.Errorf("Cannot generate serial number err:%w", err)
+		return fmt.Errorf("cannot generate serial number err:%w", err)
 	}
 	notBefore, err := time.Parse("Jan 2 15:04:05 2006", "Jan 1 00:00:00 2020")
 	if err != nil {
-		return fmt.Errorf("Cannot Parse Date err:%w", err)
+		return fmt.Errorf("cannot Parse Date err:%w", err)
 	}
 	notAfter, err := time.Parse("Jan 2 15:04:05 2006", "Jan 1 00:00:00 2030")
 	if err != nil {
-		return fmt.Errorf("Cannot Parse Date err:%w", err)
+		return fmt.Errorf("cannot Parse Date err:%w", err)
 	}
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
@@ -100,16 +100,16 @@ func CreateCertificate(certFileName string, privateKey *ecdsa.PrivateKey, id str
 	}
 	certBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
 	if err != nil {
-		return fmt.Errorf("Error running x509.CreateCertificate err:%v\n", err)
+		return fmt.Errorf("error running x509.CreateCertificate err:%v", err)
 	}
 	certFile, err := os.Create(certFileName)
 	if err != nil {
-		return fmt.Errorf("Error opening file:%s err:%w", certFileName, err)
+		return fmt.Errorf("error opening file:%s err:%w", certFileName, err)
 	}
 	defer certFile.Close()
 	err = pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: certBytes})
 	if err != nil {
-		return fmt.Errorf("Error writing CERTIFICATE pem block err:%w", err)
+		return fmt.Errorf("error writing CERTIFICATE pem block err:%w", err)
 	}
 	return nil
 }
