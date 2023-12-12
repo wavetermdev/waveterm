@@ -547,7 +547,7 @@ function runWaveSrv() {
         envCopy[WaveDevVarName] = "1";
     }
     console.log("trying to run local server", getWaveSrvPath());
-    let proc = child_process.spawn("/bin/bash", ["-c", getWaveSrvCmd()], {
+    let proc = child_process.spawn("bash", ["-c", getWaveSrvCmd()], {
         cwd: getWaveSrvCwd(),
         env: envCopy,
     });
