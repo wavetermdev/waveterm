@@ -1414,7 +1414,7 @@ func (msh *MShellProc) SendFileData(dataPk *packet.FileDataPacketType) error {
 }
 
 func makeTermOpts(runPk *packet.RunPacketType) sstore.TermOpts {
-	return sstore.TermOpts{Rows: int64(runPk.TermOpts.Rows), Cols: int64(runPk.TermOpts.Cols), FlexRows: true, MaxPtySize: DefaultMaxPtySize}
+	return sstore.TermOpts{Rows: int64(runPk.TermOpts.Rows), Cols: int64(runPk.TermOpts.Cols), FlexRows: runPk.TermOpts.FlexRows, MaxPtySize: DefaultMaxPtySize}
 }
 
 // returns (ok, currentPSC)

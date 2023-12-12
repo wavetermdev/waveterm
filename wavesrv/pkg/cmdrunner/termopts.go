@@ -110,6 +110,7 @@ func GetUITermOpts(winSize *packet.WinSize, ptermStr string) (*packet.TermOpts, 
 	termOpts.MaxPtySize = base.BoundInt64(termOpts.MaxPtySize, shexec.MinMaxPtySize, shexec.MaxMaxPtySize)
 	termOpts.Cols = base.BoundInt(termOpts.Cols, shexec.MinTermCols, shexec.MaxTermCols)
 	termOpts.Rows = base.BoundInt(termOpts.Rows, shexec.MinTermRows, shexec.MaxTermRows)
+	termOpts.FlexRows = opts.RowsFlex
 	return termOpts, nil
 }
 
@@ -117,7 +118,7 @@ func convertTermOpts(pkto *packet.TermOpts) *sstore.TermOpts {
 	return &sstore.TermOpts{
 		Rows:       int64(pkto.Rows),
 		Cols:       int64(pkto.Cols),
-		FlexRows:   true,
+		FlexRows:   pkto.FlexRows,
 		MaxPtySize: pkto.MaxPtySize,
 	}
 }
