@@ -60,6 +60,7 @@ const MaxSignalNum = 64
 const MaxEvalDepth = 5
 const MaxOpenAIAPITokenLen = 100
 const MaxOpenAIModelLen = 100
+const MaxSidebarSections = 5
 
 const TermFontSizeMin = 8
 const TermFontSizeMax = 24
@@ -940,6 +941,9 @@ func SidebarAddCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 		return nil, err
 	}
 	sections := screen.ScreenViewOpts.Sidebar.Sections
+	if len(sections) >= MaxSidebarSections {
+		return nil, fmt.Errorf("/%s cannot add more than %d sidebar sections", GetCmdStr(pk), MaxSidebarSections)
+	}
 	hasDup := sidebarCheckDupLines(sections, addLineId)
 	if hasDup {
 		return nil, fmt.Errorf("/%s cannot add duplicate lineid to sidebar", GetCmdStr(pk))

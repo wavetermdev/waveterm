@@ -351,7 +351,7 @@ class LinesView extends React.Component<
         }
     }
 
-    handleResize(entries: any) {
+    handleResize(entries: ResizeObserverEntry[]) {
         let linesElem = this.linesRef.current;
         if (linesElem == null) {
             return;

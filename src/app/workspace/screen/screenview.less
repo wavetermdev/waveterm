@@ -16,27 +16,31 @@
         overflow: hidden;
         margin-left: 5px;
         padding-left: 5px;
+        overflow-y: auto;
 
         .screen-sidebar-close {
-            position: absolute;
-            right: 5px;
-            top: 0px;
-            padding: 5px;
-            display: none;
+            margin-top: 10px;
         }
 
         &:hover {
-            .screen-sidebar-close {
-                display: block;
+            .screen-sidebar-section.close-section {
+                visibility: visible;
             }
         }
 
         .screen-sidebar-section {
-            flex-grow: 1;
-            border-bottom: 1px solid #666;
+            &.close-section {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                margin-top: 10px;
+                margin-bottom: 10px;
+                visibility: hidden;
+            }
 
             &:last-child {
-                border-bottom: none;
+                padding-bottom: 0;
             }
         }
 

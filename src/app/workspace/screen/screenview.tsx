@@ -72,7 +72,10 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
 }
 
 @mobxReact.observer
-class ScreenSidebarSection extends React.Component<{ screen: Screen; section: T.ScreenSidebarSectionType }, {}> {
+class ScreenSidebarSection extends React.Component<
+    { screen: Screen; section: T.ScreenSidebarSectionType; winSize: T.WindowSize },
+    {}
+> {
     overrideCollapsed: OV<boolean> = mobx.observable.box(false, { name: "overrideCollapsed" });
     visible: OV<boolean> = mobx.observable.box(true, { name: "visible" });
     container: SpecialLineContainer;
@@ -80,10 +83,8 @@ class ScreenSidebarSection extends React.Component<{ screen: Screen; section: T.
     handleHeightChange() {}
 
     componentDidMount() {
-        let { screen } = this.props;
-        let width = termWidthFromCols(80, GlobalModel.termFontSize.get());
-        let height = termHeightFromRows(25, GlobalModel.termFontSize.get());
-        this.container = new SpecialLineContainer(screen, { width, height }, false);
+        let { screen, winSize } = this.props;
+        this.container = new SpecialLineContainer(screen, winSize, false);
     }
 
     componentWillUnmount(): void {
@@ -94,8 +95,7 @@ class ScreenSidebarSection extends React.Component<{ screen: Screen; section: T.
     }
 
     render() {
-        let { screen, section } = this.props;
-        let width = 400;
+        let { screen, section, winSize } = this.props;
         let specialLineContainer = null;
         let line = screen.getLineById(section.lineid);
         return (
@@ -104,7 +104,7 @@ class ScreenSidebarSection extends React.Component<{ screen: Screen; section: T.
                     <Line
                         screen={this.container}
                         line={line}
-                        width={width}
+                        width={winSize.width}
                         staticRender={false}
                         visible={this.visible}
                         onHeightChange={this.handleHeightChange}
@@ -121,6 +121,42 @@ class ScreenSidebarSection extends React.Component<{ screen: Screen; section: T.
 
 @mobxReact.observer
 class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {}> {
+    rszObs: ResizeObserver;
+    sidebarSize: OV<T.WindowSize> = mobx.observable.box({ height: 0, width: 0 }, { name: "sidebarSize" });
+    sidebarRef: React.RefObject<any> = React.createRef();
+    handleResize_debounced: (entries: ResizeObserverEntry[]) => void;
+
+    constructor(props: any) {
+        super(props);
+        this.handleResize_debounced = debounce(100, this.handleResize.bind(this));
+    }
+
+    componentDidMount(): void {
+        let sidebarElem = this.sidebarRef.current;
+        if (sidebarElem != null) {
+            this.rszObs = new ResizeObserver(this.handleResize_debounced);
+            this.rszObs.observe(sidebarElem);
+            this.handleResize([]);
+        }
+    }
+
+    componentWillUnmount(): void {
+        if (this.rszObs != null) {
+            this.rszObs.disconnect();
+        }
+    }
+
+    @boundMethod
+    handleResize(entries: ResizeObserverEntry[]): void {
+        // dont use entries (just use the ref) -- we call it with an empty array in componentDidMount to initialize it
+        let sidebarElem = this.sidebarRef.current;
+        if (sidebarElem == null) {
+            return;
+        }
+        let size = { height: sidebarElem.offsetHeight, width: sidebarElem.offsetWidth };
+        mobx.action(() => this.sidebarSize.set(size))();
+    }
+
     @boundMethod
     sidebarClose(): void {
         GlobalCommandRunner.screenSidebarClose();
@@ -131,11 +167,10 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
         let viewOpts = screen.viewOpts.get();
         let sections: T.ScreenSidebarSectionType[] = viewOpts?.sidebar?.sections ?? [];
         let section: T.ScreenSidebarSectionType = null;
+        let numSections = sections.length;
+        let sidebarSize = this.sidebarSize.get();
         return (
-            <div className="screen-sidebar" style={{ width: width }}>
-                <div onClick={this.sidebarClose} className="screen-sidebar-close">
-                    <i className="fa-sharp fa-solid fa-xmark" />
-                </div>
+            <div className="screen-sidebar" style={{ width: width }} ref={this.sidebarRef}>
                 <If condition={sections.length == 0}>
                     <div className="empty-sidebar">
                         <div className="sidebar-main-text">No Sections</div>
@@ -149,11 +184,21 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
                         </div>
                     </div>
                 </If>
-                <If condition={sections.length > 0}>
+                <If condition={sections.length > 0 && sidebarSize.width > 0 && sidebarSize.height > 0}>
                     <For each="section" of={sections}>
-                        <ScreenSidebarSection key={section.lineid} screen={screen} section={section} />
+                        <ScreenSidebarSection
+                            key={section.lineid}
+                            screen={screen}
+                            section={section}
+                            winSize={sidebarSize}
+                        />
                     </For>
                 </If>
+                <div onClick={this.sidebarClose} className="screen-sidebar-section close-section">
+                    <Button theme="secondary" onClick={this.sidebarClose}>
+                        Close Sidebar
+                    </Button>
+                </div>
             </div>
         );
     }
