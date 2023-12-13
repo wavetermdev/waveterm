@@ -3639,8 +3639,21 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 			return nil, fmt.Errorf("error updating client openai maxchoices: %v", err)
 		}
 	}
+	if aiBaseURL, found := pk.Kwargs["openaibaseurl"]; found {
+		aiOpts := clientData.OpenAIOpts
+		if aiOpts == nil {
+			aiOpts = &sstore.OpenAIOptsType{}
+			clientData.OpenAIOpts = aiOpts
+		}
+		aiOpts.BaseURL = aiBaseURL
+		varsUpdated = append(varsUpdated, "openaibaseurl")
+		err = sstore.UpdateClientOpenAIOpts(ctx, *aiOpts)
+		if err != nil {
+			return nil, fmt.Errorf("error updating client openai base url: %v", err)
+		}
+	}
 	if len(varsUpdated) == 0 {
-		return nil, fmt.Errorf("/client:set requires a value to set: %s", formatStrs([]string{"termfontsize", "openaiapitoken", "openaimodel", "openaimaxtokens", "openaimaxchoices"}, "or", false))
+		return nil, fmt.Errorf("/client:set requires a value to set: %s", formatStrs([]string{"termfontsize", "openaiapitoken", "openaimodel", "openaibaseurl", "openaimaxtokens", "openaimaxchoices"}, "or", false))
 	}
 	clientData, err = sstore.EnsureClientData(ctx)
 	if err != nil {
