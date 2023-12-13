@@ -433,7 +433,7 @@ func (h *HistoryItemType) FromMap(m map[string]interface{}) bool {
 
 type ScreenOptsType struct {
 	TabColor string `json:"tabcolor,omitempty"`
-	TabIcon string `json:"tabicon,omitempty"`
+	TabIcon  string `json:"tabicon,omitempty"`
 	PTerm    string `json:"pterm,omitempty"`
 }
 
@@ -924,6 +924,7 @@ type RemoteOptsType struct {
 type OpenAIOptsType struct {
 	Model      string `json:"model"`
 	APIToken   string `json:"apitoken"`
+	BaseURL    string `json:"baseurl,omitempty"`
 	MaxTokens  int    `json:"maxtokens,omitempty"`
 	MaxChoices int    `json:"maxchoices,omitempty"`
 }
