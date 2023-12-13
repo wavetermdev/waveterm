@@ -17,6 +17,7 @@ import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg"
 import { ReactComponent as ActionsIcon } from "../../assets/icons/tab/actions.svg";
 import { ReactComponent as AddIcon } from "../../assets/icons/add.svg";
 import * as constants from "../../appconst";
+import { Reorder, AnimatePresence } from "framer-motion";
 
 import "../workspace.less";
 import "./tabs.less";
@@ -26,17 +27,64 @@ dayjs.extend(localizedFormat);
 type OV<V> = mobx.IObservableValue<V>;
 
 @mobxReact.observer
-class ScreenTabs extends React.Component<{ session: Session }, {}> {
+class ScreenTabs extends React.Component<{ session: Session }, { showingScreens: Screen[] }> {
     tabsRef: React.RefObject<any> = React.createRef();
     lastActiveScreenId: string = null;
     scrolling: OV<boolean> = mobx.observable.box(false, { name: "screentabs-scrolling" });
 
+    screensReactionDisposer = null;
     stopScrolling_debounced: () => void;
 
     constructor(props: any) {
         super(props);
         this.stopScrolling_debounced = debounce(1500, this.stopScrolling.bind(this));
+        this.state = {
+            showingScreens: this.screens,
+        };
     }
+
+    @mobx.computed
+    get activeScreenId(): string {
+        let { session } = this.props;
+        if (session) {
+            return session.activeScreenId.get();
+        }
+    }
+
+    @mobx.computed
+    get screens(): Screen[] {
+        if (this.activeScreenId) {
+            let showingScreens = [];
+            console.log("this.activeScreenId", this.activeScreenId);
+            let screens = GlobalModel.getSessionScreens(this.props.session.sessionId);
+            console.log("screens", screens);
+
+            for (let screen of screens) {
+                if (!screen.archived.get() || this.activeScreenId == screen.screenId) {
+                    showingScreens.push(screen);
+                }
+            }
+            return showingScreens;
+        }
+    }
+
+    // updateShowingScreens() {
+    //     let { session } = this.props;
+    //     if (session) {
+    //         let activeScreenId = session.activeScreenId.get();
+    //         let screens = GlobalModel.getSessionScreens(session.sessionId);
+    //         let showingScreens = [];
+    //         // let showingScreens = screens.filter(screen =>
+    //         //     !screen.archived.get() || activeScreenId === screen.screenId
+    //         // ).sort((a, b) => a.screenIdx.get() - b.screenIdx.get());
+    //         for (let screen of screens) {
+    //             if (!screen.archived.get() || activeScreenId == screen.screenId) {
+    //                 showingScreens.push(screen);
+    //             }
+    //         }
+    //         this.setState({ showingScreens });
+    //     }
+    // }
 
     @boundMethod
     handleNewScreen() {
@@ -61,22 +109,52 @@ class ScreenTabs extends React.Component<{ session: Session }, {}> {
     }
 
     componentDidMount(): void {
+        // Set up a reaction to update showingScreens when screens changes.
+        this.screensReactionDisposer = mobx.reaction(
+            () => this.screens,
+            (screens) => {
+                this.setState({ showingScreens: screens });
+            }
+        );
         this.componentDidUpdate();
+    }
+
+    componentWillUnmount() {
+        // Dispose the reaction when the component unmounts.
+        if (this.screensReactionDisposer) {
+            this.screensReactionDisposer();
+        }
     }
 
     componentDidUpdate(): void {
         let { session } = this.props;
         let activeScreenId = session.activeScreenId.get();
-        if (activeScreenId != this.lastActiveScreenId && this.tabsRef.current) {
-            let tabElem = this.tabsRef.current.querySelector(
-                sprintf('.screen-tab[data-screenid="%s"]', activeScreenId)
-            );
-            if (tabElem != null) {
-                tabElem.scrollIntoView();
+        if (activeScreenId !== this.lastActiveScreenId) {
+            if (this.tabsRef.current) {
+                let tabElem = this.tabsRef.current.querySelector(
+                    sprintf('.screen-tab[data-screenid="%s"]', activeScreenId)
+                );
+                if (tabElem) {
+                    tabElem.scrollIntoView();
+                }
             }
+            this.lastActiveScreenId = activeScreenId;
         }
-        this.lastActiveScreenId = activeScreenId;
     }
+
+    // componentDidUpdate(): void {
+    //     let { session } = this.props;
+    //     let activeScreenId = session.activeScreenId.get();
+    //     if (activeScreenId != this.lastActiveScreenId && this.tabsRef.current) {
+    //         let tabElem = this.tabsRef.current.querySelector(
+    //             sprintf('.screen-tab[data-screenid="%s"]', activeScreenId)
+    //         );
+    //         if (tabElem != null) {
+    //             tabElem.scrollIntoView();
+    //         }
+    //     }
+    //     this.lastActiveScreenId = activeScreenId;
+    // }
 
     stopScrolling(): void {
         mobx.action(() => {
@@ -139,15 +217,29 @@ class ScreenTabs extends React.Component<{ session: Session }, {}> {
         ) : null;
 
         return (
-            <div
-                key={screen.screenId}
+            <Reorder.Item
+                value={screen}
+                id={screen.name.get()}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{
+                    opacity: 1,
+                    // backgroundColor: isSelected ? "#f3f3f3" : "#fff",
+                    y: 0,
+                    transition: { duration: 0.15 },
+                }}
+                exit={{ opacity: 0, y: 20, transition: { duration: 0.3 } }}
+                whileDrag={{
+                    backgroundColor:
+                        "linear-gradient(180deg, rgba(88, 193, 66, 0.2) 9.34%, rgba(88, 193, 66, 0.03) 44.16%, rgba(88, 193, 66, 0) 86.79%)",
+                }}
+                // className={isSelected ? "selected" : ""}
                 data-screenid={screen.screenId}
                 className={cn(
                     "screen-tab",
                     { "is-active": activeScreenId == screen.screenId, "is-archived": screen.archived.get() },
                     "color-" + screen.getTabColor()
                 )}
-                onClick={() => this.handleSwitchScreen(screen.screenId)}
+                onPointerDown={() => this.handleSwitchScreen(screen.screenId)}
                 onContextMenu={(event) => this.openScreenSettings(event, screen)}
             >
                 {this.renderTabIcon(screen)}
@@ -156,38 +248,60 @@ class ScreenTabs extends React.Component<{ session: Session }, {}> {
                     {webShared}
                     {screen.name.get()}
                 </div>
-                {tabIndex}
+                {/* {tabIndex} */}
                 {settings}
-            </div>
+            </Reorder.Item>
+            // <div
+            //     key={screen.screenId}
+            //     data-screenid={screen.screenId}
+            //     className={cn(
+            //         "screen-tab",
+            //         { "is-active": activeScreenId == screen.screenId, "is-archived": screen.archived.get() },
+            //         "color-" + screen.getTabColor()
+            //     )}
+            //     onClick={() => this.handleSwitchScreen(screen.screenId)}
+            //     onContextMenu={(event) => this.openScreenSettings(event, screen)}
+            // >
+            //     {this.renderTabIcon(screen)}
+            //     <div className="tab-name truncate">
+            //         {archived}
+            //         {webShared}
+            //         {screen.name.get()}
+            //     </div>
+            //     {tabIndex}
+            //     {settings}
+            // </div>
         );
     }
 
     render() {
+        let { showingScreens } = this.state;
+        console.log("showingScreens", showingScreens);
         let { session } = this.props;
         if (session == null) {
             return null;
         }
         let screen: Screen | null = null;
         let index = 0;
-        let showingScreens = [];
+        // let showingScreens = [];
         let activeScreenId = session.activeScreenId.get();
-        let screens = GlobalModel.getSessionScreens(session.sessionId);
-        for (let screen of screens) {
-            if (!screen.archived.get() || activeScreenId == screen.screenId) {
-                showingScreens.push(screen);
-            }
-        }
-        showingScreens.sort((a, b) => {
-            let aidx = a.screenIdx.get();
-            let bidx = b.screenIdx.get();
-            if (aidx < bidx) {
-                return -1;
-            }
-            if (aidx > bidx) {
-                return 1;
-            }
-            return 0;
-        });
+        // let screens = GlobalModel.getSessionScreens(session.sessionId);
+        // for (let screen of screens) {
+        //     if (!screen.archived.get() || activeScreenId == screen.screenId) {
+        //         showingScreens.push(screen);
+        //     }
+        // }
+        // showingScreens.sort((a, b) => {
+        //     let aidx = a.screenIdx.get();
+        //     let bidx = b.screenIdx.get();
+        //     if (aidx < bidx) {
+        //         return -1;
+        //     }
+        //     if (aidx > bidx) {
+        //         return 1;
+        //     }
+        //     return 0;
+        // });
         return (
             <div className="screen-tabs-container">
                 <div
@@ -195,9 +309,24 @@ class ScreenTabs extends React.Component<{ session: Session }, {}> {
                     ref={this.tabsRef}
                     onScroll={this.handleScroll}
                 >
-                    <For each="screen" index="index" of={showingScreens}>
+                    <Reorder.Group
+                        as="ul"
+                        axis="x"
+                        onReorder={(tabs: Screen[]) => {
+                            this.setState({ showingScreens: tabs });
+                        }}
+                        className="tabs"
+                        values={showingScreens}
+                    >
+                        <For each="screen" index="index" of={showingScreens}>
+                            <React.Fragment key={screen.screenId}>
+                                {this.renderTab(screen, activeScreenId, index)}
+                            </React.Fragment>
+                        </For>
+                    </Reorder.Group>
+                    {/* <For each="screen" index="index" of={showingScreens}>
                         {this.renderTab(screen, activeScreenId, index)}
-                    </For>
+                    </For> */}
                     <div key="new-screen" className="new-screen" onClick={this.handleNewScreen}>
                         <AddIcon className="icon hoverEffect" />
                     </div>

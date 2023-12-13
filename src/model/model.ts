@@ -396,7 +396,7 @@ class Screen {
         });
         this.filterRunning = mobx.observable.box(false, {
             name: "screen-filter-running",
-        })
+        });
     }
 
     dispose() {}
@@ -3796,6 +3796,7 @@ class Model {
         if (!addToHistory && pk.kwargs) {
             pk.kwargs["nohist"] = "1";
         }
+        console.log("pk", pk);
         return this.submitCommandPacket(pk, interactive);
     }
 
@@ -4055,6 +4056,7 @@ class CommandRunner {
     }
 
     switchScreen(screen: string) {
+        console.log("got here");
         mobx.action(() => {
             GlobalModel.activeMainView.set("session");
         })();
@@ -4192,6 +4194,15 @@ class CommandRunner {
             kwargs["focus"] = focusVal;
         }
         GlobalModel.submitCommand("screen", "set", null, kwargs, false);
+    }
+
+    screenReorder(screenId: string, index: string) {
+        let kwargs: Record<string, string> = {
+            nohist: "1",
+            screenId: screenId,
+            index: index,
+        };
+        GlobalModel.submitCommand("screen", "reorder", null, kwargs, false);
     }
 
     setTermUsedRows(termContext: RendererContext, height: number) {
