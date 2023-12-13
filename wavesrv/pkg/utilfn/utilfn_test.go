@@ -68,13 +68,18 @@ func testArithmetic(t *testing.T, fn func() (int, error), shouldError bool, expe
 	}
 }
 
-func testAddInt(t *testing.T, a int, b int, shouldError bool, expected int) {
+func testAddInt(t *testing.T, shouldError bool, expected int, a int, b int) {
 	testArithmetic(t, func() (int, error) { return AddInt(a, b) }, shouldError, expected)
 }
 
 func TestAddInt(t *testing.T) {
-	testAddInt(t, 1, 2, false, 3)
-	testAddInt(t, 1, math.MaxInt, true, 0)
+	testAddInt(t, false, 3, 1, 2)
+	testAddInt(t, true, 0, 1, math.MaxInt)
+	testAddInt(t, true, 0, math.MinInt, -1)
+	testAddInt(t, false, math.MaxInt-1, math.MaxInt, -1)
+	testAddInt(t, false, math.MinInt+1, math.MinInt, 1)
+	testAddInt(t, false, math.MaxInt, math.MaxInt, 0)
+	testAddInt(t, true, 0, math.MinInt, -1)
 }
 
 func testAddIntSlice(t *testing.T, shouldError bool, expected int, vals ...int) {
@@ -89,4 +94,10 @@ func TestAddIntSlice(t *testing.T) {
 	testAddIntSlice(t, true, 0, 1, math.MaxInt)
 	testAddIntSlice(t, true, 0, 1, 2, math.MaxInt)
 	testAddIntSlice(t, true, 0, math.MaxInt, 2, 1)
+	testAddIntSlice(t, false, math.MaxInt, 0, 0, math.MaxInt)
+	testAddIntSlice(t, true, 0, math.MinInt, -1)
+	testAddIntSlice(t, false, math.MaxInt, math.MaxInt-3, 1, 2)
+	testAddIntSlice(t, true, 0, math.MaxInt-2, 1, 2)
+	testAddIntSlice(t, false, math.MinInt, math.MinInt+3, -1, -2)
+	testAddIntSlice(t, true, 0, math.MinInt+2, -1, -2)
 }

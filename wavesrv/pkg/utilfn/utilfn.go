@@ -221,7 +221,7 @@ func AddInt(left, right int) (int, error) {
 			return 0, ErrOverflow
 		}
 	} else {
-		if left < math.MaxInt-right {
+		if left < math.MinInt-right {
 			return 0, ErrOverflow
 		}
 	}
