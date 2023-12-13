@@ -11,12 +11,10 @@ import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, RemotesModel } from "../../../model/model";
 import * as T from "../../../types/types";
-import { Markdown } from "../common";
+import { Markdown, Toggle, Modal } from "../common";
 import * as util from "../../../util/util";
 import * as textmeasure from "../../../util/textmeasure";
-import { Toggle, Modal } from "../common";
 import { ClientDataType } from "../../../types/types";
-import { TextField, NumberField, InputDecoration, Dropdown, PasswordField, Tooltip, Button, Status } from "../common";
 
 import { ReactComponent as WarningIcon } from "../../assets/icons/line/triangle-exclamation.svg";
 import shield from "../../assets/icons/shield_check.svg";
@@ -279,7 +277,7 @@ class TosModal extends React.Component<{}, {}> {
                                 </div>
                             </div>
                             <div className="item">
-                                <a target="_blank" href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}>
+                                <a target="_blank" href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}  rel={"noopener"}>
                                     <img src={help} alt="Help" />
                                 </a>
                                 <div className="item-inner">
@@ -288,7 +286,7 @@ class TosModal extends React.Component<{}, {}> {
                                         Get help, submit feature requests, report bugs, or just chat with fellow
                                         terminal enthusiasts.
                                         <br />
-                                        <a target="_blank" href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}>
+                                        <a target="_blank" href={util.makeExternLink("https://discord.gg/XfvZ334gwU")} rel={"noopener"}>
                                             Join the Wave&nbsp;Discord&nbsp;Channel
                                         </a>
                                     </div>
@@ -298,6 +296,7 @@ class TosModal extends React.Component<{}, {}> {
                                 <a
                                     target="_blank"
                                     href={util.makeExternLink("https://github.com/wavetermdev/waveterm")}
+                                    rel={"noopener"}
                                 >
                                     <img src={github} alt="Github" />
                                 </a>
@@ -309,6 +308,7 @@ class TosModal extends React.Component<{}, {}> {
                                         <a
                                             target="_blank"
                                             href={util.makeExternLink("https://github.com/wavetermdev/waveterm")}
+                                            rel={"noopener"}
                                         >
                                             Github&nbsp;(wavetermdev/waveterm)
                                         </a>
@@ -416,6 +416,7 @@ class AboutModal extends React.Component<{}, {}> {
                         <a
                             className="wave-button wave-button-link color-standard"
                             href={util.makeExternLink("https://github.com/wavetermdev/waveterm")}
+                            rel={"noopener"}
                             target="_blank"
                         >
                             <i className="fa-brands fa-github"></i>
@@ -424,6 +425,7 @@ class AboutModal extends React.Component<{}, {}> {
                         <a
                             className="wave-button wave-button-link color-standard"
                             href={util.makeExternLink("https://www.waveterm.dev/")}
+                            rel={"noopener"}
                             target="_blank"
                         >
                             <i className="fa-sharp fa-light fa-globe"></i>
@@ -432,6 +434,7 @@ class AboutModal extends React.Component<{}, {}> {
                         <a
                             className="wave-button wave-button-link color-standard"
                             href={util.makeExternLink("https://github.com/wavetermdev/waveterm/blob/main/LICENSE")}
+                            rel={"noopener"}
                             target="_blank"
                         >
                             <i className="fa-sharp fa-light fa-book-blank"></i>
