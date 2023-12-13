@@ -598,7 +598,7 @@ class LineCmd extends React.Component<
         let isInSidebar = mobx
             .computed(
                 () => {
-                    return screen.isLineIdInSidebar(line.lineid);
+                    return screen.isSidebarOpen() && screen.isLineIdInSidebar(line.lineid);
                 },
                 { name: "computed-isInSidebar" }
             )

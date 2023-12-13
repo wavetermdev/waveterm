@@ -130,6 +130,7 @@ type LineContainerModel = {
     setContentHeight: (context: RendererContext, height: number) => void;
     getMaxContentSize(): WindowSize;
     getIdealContentSize(): WindowSize;
+    isSidebarOpen(): boolean;
     isLineIdInSidebar(lineId: string): boolean;
 };
 
@@ -406,6 +407,14 @@ class Screen {
 
     isWebShared(): boolean {
         return this.shareMode.get() == "web" && this.webShareOpts.get() != null;
+    }
+
+    isSidebarOpen(): boolean {
+        let viewOpts = this.viewOpts.get();
+        if (viewOpts == null) {
+            return false;
+        }
+        return viewOpts.sidebar?.open;
     }
 
     isLineIdInSidebar(lineId: string): boolean {
@@ -1847,6 +1856,10 @@ class SpecialLineContainer {
             this.cmd = this.cmdFinder.getCmdById(line.lineid);
         }
         return this.cmd;
+    }
+
+    isSidebarOpen(): boolean {
+        return false;
     }
 
     isLineIdInSidebar(lineId: string): boolean {
@@ -3779,7 +3792,9 @@ class Model {
                 console.trace();
             }
         }
-        let url = new URL(GlobalModel.getBaseHostPort() + "/api/run-command");
+        // adding cmdStr for debugging only (easily filter run-command calls in the network tab of debugger)
+        let cmdStr = cmdPk.metacmd + (cmdPk.metasubcmd ? ":" + cmdPk.metasubcmd : "");
+        let url = new URL(GlobalModel.getBaseHostPort() + "/api/run-command?cmd=" + cmdStr);
         let fetchHeaders = this.getFetchHeaders();
         let prtn = fetch(url, {
             method: "post",
