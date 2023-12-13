@@ -49,7 +49,11 @@ func RunCompletion(ctx context.Context, opts *sstore.OpenAIOptsType, prompt []ss
 	if opts.APIToken == "" {
 		return nil, fmt.Errorf("no api token")
 	}
-	client := openaiapi.NewClient(opts.APIToken)
+	clientConfig := openaiapi.DefaultConfig(opts.APIToken)
+	if opts.BaseURL != "" {
+		clientConfig.BaseURL = opts.BaseURL
+	}
+	client := openaiapi.NewClientWithConfig(clientConfig)
 	req := openaiapi.ChatCompletionRequest{
 		Model:     opts.Model,
 		Messages:  convertPrompt(prompt),
@@ -78,7 +82,11 @@ func RunCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, promp
 	if opts.APIToken == "" {
 		return nil, fmt.Errorf("no api token")
 	}
-	client := openaiapi.NewClient(opts.APIToken)
+	clientConfig := openaiapi.DefaultConfig(opts.APIToken)
+	if opts.BaseURL != "" {
+		clientConfig.BaseURL = opts.BaseURL
+	}
+	client := openaiapi.NewClientWithConfig(clientConfig)
 	req := openaiapi.ChatCompletionRequest{
 		Model:     opts.Model,
 		Messages:  convertPrompt(prompt),
