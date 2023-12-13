@@ -29,9 +29,11 @@ type OV<V> = mobx.IObservableValue<V>;
 @mobxReact.observer
 class ScreenTabs extends React.Component<{ session: Session }, { showingScreens: Screen[] }> {
     tabsRef: React.RefObject<any> = React.createRef();
+    tabRefs: { [screenId: string]: React.RefObject<any> } = {};
     lastActiveScreenId: string = null;
     scrolling: OV<boolean> = mobx.observable.box(false, { name: "screentabs-scrolling" });
 
+    dragEndTimeout = null;
     screensReactionDisposer = null;
     stopScrolling_debounced: () => void;
 
@@ -41,6 +43,9 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
         this.state = {
             showingScreens: this.screens,
         };
+        this.screens.forEach((screen) => {
+            this.tabRefs[screen.screenId] = React.createRef();
+        });
     }
 
     @mobx.computed
@@ -55,9 +60,9 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
     get screens(): Screen[] {
         if (this.activeScreenId) {
             let showingScreens = [];
-            console.log("this.activeScreenId", this.activeScreenId);
+            // console.log("this.activeScreenId", this.activeScreenId);
             let screens = GlobalModel.getSessionScreens(this.props.session.sessionId);
-            console.log("screens", screens);
+            // console.log("screens", screens);
 
             for (let screen of screens) {
                 if (!screen.archived.get() || this.activeScreenId == screen.screenId) {
@@ -109,13 +114,18 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
     }
 
     componentDidMount(): void {
-        // Set up a reaction to update showingScreens when screens changes.
-        this.screensReactionDisposer = mobx.reaction(
-            () => this.screens,
-            (screens) => {
-                this.setState({ showingScreens: screens });
-            }
-        );
+        // // Set up a reaction to update showingScreens when screens changes.
+        // this.screensReactionDisposer = mobx.reaction(
+        //     () => this.screens,
+        //     (screens) => {
+        //         // Initialize tabRefs with refs for each screen
+        //         screens.forEach((screen) => {
+        //             this.tabRefs[screen.screenId] = React.createRef();
+        //         });
+        //         console.log("this.tabRefs=========", this.tabRefs);
+        //         // this.setState({ showingScreens: screens });
+        //     }
+        // );
         this.componentDidUpdate();
     }
 
@@ -123,6 +133,10 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
         // Dispose the reaction when the component unmounts.
         if (this.screensReactionDisposer) {
             this.screensReactionDisposer();
+        }
+
+        if (this.dragEndTimeout) {
+            clearTimeout(this.dragEndTimeout);
         }
     }
 
@@ -172,6 +186,62 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
         this.stopScrolling_debounced();
     }
 
+    // @boundMethod
+    // handleDragEnd(event, info, screenId) {
+    //     const TAB_WIDTH = 175; // Width of each tab
+    //     const draggedTabOffset = Math.floor(info.point.x); // Dragged distance in pixels
+
+    //     // Original position of the dragged tab (0-indexed)
+    //     const draggedTabIndex = this.screens.findIndex((tab) => tab.screenId === screenId);
+
+    //     // Calculate the index change based on the dragged offset
+    //     console.log("draggedTabOffset", draggedTabOffset);
+    //     let indexChange;
+    //     if (draggedTabOffset < 0) {
+    //         indexChange = Math.floor(draggedTabOffset / TAB_WIDTH);
+    //         console.log("neg", draggedTabOffset / TAB_WIDTH);
+    //     } else {
+    //         indexChange = Math.ceil(draggedTabOffset / TAB_WIDTH);
+    //         console.log("pos", draggedTabOffset / TAB_WIDTH);
+    //     }
+
+    //     console.log("Math.floor(draggedTabOffset / TAB_WIDTH)", Math.floor(draggedTabOffset / TAB_WIDTH));
+
+    //     console.log("indexChange", indexChange);
+    //     // Calculate the new index
+    //     let newIndex = indexChange;
+
+    //     // Clamp the new index within the valid range
+    //     newIndex = Math.max(0, Math.min(indexChange, this.screens.length - 1));
+
+    //     console.log("newIndex", newIndex);
+
+    //     // Update your state or model with the new index
+    // }
+
+    @boundMethod
+    handleDragEnd(event, info, screenId) {
+        if (this.dragEndTimeout) {
+            clearTimeout(this.dragEndTimeout);
+        }
+
+        // Wait for the potential animation to complete
+        this.dragEndTimeout = setTimeout(() => {
+            const TAB_WIDTH = 175;
+            console.log("this.tabRefs", this.tabRefs);
+            const tabElement = this.tabRefs[screenId].current;
+            const finalTabPosition = tabElement.offsetLeft;
+
+            // Calculate the new index based on the final position
+            const newIndex = Math.floor(finalTabPosition / TAB_WIDTH);
+
+            console.log("newIndex", newIndex + 1);
+
+            // Update your state or model with the new index
+            // Remember to handle any necessary adjustments if your indexing is not 0-based
+        }, 100); // Replace ANIMATION_DURATION with the duration of your tab movement animation
+    }
+
     @boundMethod
     openScreenSettings(e: any, screen: Screen): void {
         e.preventDefault();
@@ -218,6 +288,7 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
 
         return (
             <Reorder.Item
+                ref={this.tabRefs[screen.screenId]}
                 value={screen}
                 id={screen.name.get()}
                 initial={{ opacity: 0, y: 30 }}
@@ -228,10 +299,10 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
                     transition: { duration: 0.15 },
                 }}
                 exit={{ opacity: 0, y: 20, transition: { duration: 0.3 } }}
-                whileDrag={{
-                    backgroundColor:
-                        "linear-gradient(180deg, rgba(88, 193, 66, 0.2) 9.34%, rgba(88, 193, 66, 0.03) 44.16%, rgba(88, 193, 66, 0) 86.79%)",
-                }}
+                // whileDrag={{
+                //     backgroundColor:
+                //         "linear-gradient(180deg, rgba(88, 193, 66, 0.2) 9.34%, rgba(88, 193, 66, 0.03) 44.16%, rgba(88, 193, 66, 0) 86.79%)",
+                // }}
                 // className={isSelected ? "selected" : ""}
                 data-screenid={screen.screenId}
                 className={cn(
@@ -241,6 +312,10 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
                 )}
                 onPointerDown={() => this.handleSwitchScreen(screen.screenId)}
                 onContextMenu={(event) => this.openScreenSettings(event, screen)}
+                onDragEnd={(event, info) => {
+                    console.log("onDragEnd==============");
+                    this.handleDragEnd(event, info, screen.screenId);
+                }}
             >
                 {this.renderTabIcon(screen)}
                 <div className="tab-name truncate">
