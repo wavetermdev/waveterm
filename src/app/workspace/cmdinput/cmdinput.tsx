@@ -121,8 +121,11 @@ class CmdInput extends React.Component<{}, {}> {
         let focusVal = inputModel.physicalInputFocused.get();
         let inputMode: string = inputModel.inputMode.get();
         let textAreaInputKey = screen == null ? "null" : screen.screenId;
-        let win = GlobalModel.getScreenLinesById(screen.screenId) ?? GlobalModel.loadScreenLines(screen.screenId);
-        let numRunningLines = win.getRunningCmdLines().length;
+        let win = GlobalModel.getScreenLinesById(screen.screenId);
+        let numRunningLines = 0;
+        if (win != null) {
+            numRunningLines = mobx.computed(() => win.getRunningCmdLines().length).get();
+        }
         return (
             <div
                 ref={this.cmdInputRef}
