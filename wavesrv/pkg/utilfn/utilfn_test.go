@@ -51,25 +51,25 @@ func TestDiff(t *testing.T) {
 	testDiff(t, Str3, Str1)
 }
 
-const unexpectedError = "unexpected error"
-const expectedError = "expected error"
-const wrongRetVal = "wrong return value"
-
-func testAddInt(t *testing.T, a int, b int, shouldError bool, expected int) {
-	retVal, err := AddInt(a, b)
+func testArithmetic(t *testing.T, fn func() (int, error), shouldError bool, expected int) { // nolint: unparam
+	retVal, err := fn()
 	if err != nil {
 		if !shouldError {
-			t.Errorf(unexpectedError)
+			t.Errorf("unexpected error")
 		}
 		return
 	}
 	if shouldError {
-		t.Errorf(expectedError)
+		t.Errorf("expected error")
 		return
 	}
 	if retVal != expected {
-		t.Errorf(wrongRetVal)
+		t.Errorf("wrong return value")
 	}
+}
+
+func testAddInt(t *testing.T, a int, b int, shouldError bool, expected int) {
+	testArithmetic(t, func() (int, error) { return AddInt(a, b) }, shouldError, expected)
 }
 
 func TestAddInt(t *testing.T) {
@@ -78,20 +78,7 @@ func TestAddInt(t *testing.T) {
 }
 
 func testAddIntSlice(t *testing.T, shouldError bool, expected int, vals ...int) {
-	retVal, err := AddIntSlice(vals...)
-	if err != nil {
-		if !shouldError {
-			t.Errorf(unexpectedError)
-		}
-		return
-	}
-	if shouldError {
-		t.Errorf(expectedError)
-		return
-	}
-	if retVal != expected {
-		t.Errorf(wrongRetVal)
-	}
+	testArithmetic(t, func() (int, error) { return AddIntSlice(vals...) }, shouldError, expected)
 }
 
 func TestAddIntSlice(t *testing.T) {
