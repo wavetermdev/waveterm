@@ -393,15 +393,14 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
                         className="tabs"
                         values={showingScreens}
                     >
-                        <For each="screen" index="index" of={showingScreens}>
-                            <React.Fragment key={screen.screenId}>
-                                {this.renderTab(screen, activeScreenId, index)}
-                            </React.Fragment>
-                        </For>
+                        <AnimatePresence initial={false}>
+                            <For each="screen" index="index" of={showingScreens}>
+                                <React.Fragment key={screen.screenId}>
+                                    {this.renderTab(screen, activeScreenId, index)}
+                                </React.Fragment>
+                            </For>
+                        </AnimatePresence>
                     </Reorder.Group>
-                    {/* <For each="screen" index="index" of={showingScreens}>
-                        {this.renderTab(screen, activeScreenId, index)}
-                    </For> */}
                     <div key="new-screen" className="new-screen" onClick={this.handleNewScreen}>
                         <AddIcon className="icon hoverEffect" />
                     </div>
