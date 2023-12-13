@@ -396,7 +396,7 @@ class Screen {
         });
         this.filterRunning = mobx.observable.box(false, {
             name: "screen-filter-running",
-        })
+        });
     }
 
     dispose() {}
@@ -3724,7 +3724,9 @@ class Model {
                 console.trace();
             }
         }
-        let url = new URL(GlobalModel.getBaseHostPort() + "/api/run-command");
+        // adding cmdStr for debugging only (easily filter run-command calls in the network tab of debugger)
+        let cmdStr = cmdPk.metacmd + (cmdPk.metasubcmd ? ":" + cmdPk.metasubcmd : "");
+        let url = new URL(GlobalModel.getBaseHostPort() + "/api/run-command?cmd=" + cmdStr);
         let fetchHeaders = this.getFetchHeaders();
         let prtn = fetch(url, {
             method: "post",
