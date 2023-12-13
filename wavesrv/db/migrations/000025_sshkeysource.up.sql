@@ -1,2 +1,2 @@
 UPDATE remote
-SET sshopts = json_set(sshopts, '$.sshconfigsrc', json('waveterm-manual'));
+SET sshopts = json_set(sshopts, '$.sshconfigsrc', 'waveterm-manual');
