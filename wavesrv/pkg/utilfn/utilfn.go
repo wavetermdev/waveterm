@@ -6,6 +6,8 @@ package utilfn
 import (
 	"crypto/sha1"
 	"encoding/base64"
+	"errors"
+	"math"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -208,4 +210,33 @@ func ChunkSlice[T any](s []T, chunkSize int) [][]T {
 		s = s[chunkSize:]
 	}
 	return rtn
+}
+
+var ErrOverflow = errors.New("integer overflow")
+
+// Add two int values, returning an error if the result overflows.
+func AddInt(left, right int) (int, error) {
+	if right > 0 {
+		if left > math.MaxInt-right {
+			return 0, ErrOverflow
+		}
+	} else {
+		if left < math.MaxInt-right {
+			return 0, ErrOverflow
+		}
+	}
+	return left + right, nil
+}
+
+// Add a slice of ints, returning an error if the result overflows.
+func AddIntSlice(vals ...int) (int, error) {
+	var rtn int
+	for _, v := range vals {
+		var err error
+		rtn, err = AddInt(rtn, v)
+		if err != nil {
+			return 0, err
+		}
+	}
+	return rtn, nil
 }

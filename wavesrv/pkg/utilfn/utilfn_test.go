@@ -5,6 +5,7 @@ package utilfn
 
 import (
 	"fmt"
+	"math"
 	"testing"
 )
 
@@ -48,4 +49,57 @@ func TestDiff(t *testing.T) {
 	testDiff(t, Str2, Str3)
 	testDiff(t, Str1, Str3)
 	testDiff(t, Str3, Str1)
+}
+
+const unexpectedError = "unexpected error"
+const expectedError = "expected error"
+const wrongRetVal = "wrong return value"
+
+func testAddInt(t *testing.T, a int, b int, shouldError bool, expected int) {
+	retVal, err := AddInt(a, b)
+	if err != nil {
+		if !shouldError {
+			t.Errorf(unexpectedError)
+		}
+		return
+	}
+	if shouldError {
+		t.Errorf(expectedError)
+		return
+	}
+	if retVal != expected {
+		t.Errorf(wrongRetVal)
+	}
+}
+
+func TestAddInt(t *testing.T) {
+	testAddInt(t, 1, 2, false, 3)
+	testAddInt(t, 1, math.MaxInt, true, 0)
+}
+
+func testAddIntSlice(t *testing.T, shouldError bool, expected int, vals ...int) {
+	retVal, err := AddIntSlice(vals...)
+	if err != nil {
+		if !shouldError {
+			t.Errorf(unexpectedError)
+		}
+		return
+	}
+	if shouldError {
+		t.Errorf(expectedError)
+		return
+	}
+	if retVal != expected {
+		t.Errorf(wrongRetVal)
+	}
+}
+
+func TestAddIntSlice(t *testing.T) {
+	testAddIntSlice(t, false, 0)
+	testAddIntSlice(t, false, 1, 1)
+	testAddIntSlice(t, false, 3, 1, 2)
+	testAddIntSlice(t, false, 6, 1, 2, 3)
+	testAddIntSlice(t, true, 0, 1, math.MaxInt)
+	testAddIntSlice(t, true, 0, 1, 2, math.MaxInt)
+	testAddIntSlice(t, true, 0, math.MaxInt, 2, 1)
 }
