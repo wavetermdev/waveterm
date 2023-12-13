@@ -12,6 +12,7 @@ import (
 	"io"
 	"reflect"
 
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
 	ccp "golang.org/x/crypto/chacha20poly1305"
 )
 
@@ -65,9 +66,13 @@ func MakeEncryptorB64(key64 string) (*Encryptor, error) {
 }
 
 func (enc *Encryptor) EncryptData(plainText []byte, odata string) ([]byte, error) {
-	outputBuf := make([]byte, enc.AEAD.NonceSize()+enc.AEAD.Overhead()+len(plainText))
+	bufSize, err := utilfn.AddIntSlice(enc.AEAD.NonceSize(), enc.AEAD.Overhead(), len(plainText))
+	if err != nil {
+		return nil, err
+	}
+	outputBuf := make([]byte, bufSize)
 	nonce := outputBuf[0:enc.AEAD.NonceSize()]
-	_, err := io.ReadFull(rand.Reader, nonce)
+	_, err = io.ReadFull(rand.Reader, nonce)
 	if err != nil {
 		return nil, err
 	}
