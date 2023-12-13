@@ -51,7 +51,7 @@ func TestDiff(t *testing.T) {
 	testDiff(t, Str3, Str1)
 }
 
-func testArithmetic(t *testing.T, fn func() (int, error), shouldError bool, expected int) { // nolint: unparam
+func testArithmetic(t *testing.T, fn func() (int, error), shouldError bool, expected int) {
 	retVal, err := fn()
 	if err != nil {
 		if !shouldError {
