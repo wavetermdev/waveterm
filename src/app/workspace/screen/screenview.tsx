@@ -334,7 +334,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
 // screen is not null
 @mobxReact.observer
 class ScreenWindowView extends React.Component<{ session: Session; screen: Screen; width: string }, {}> {
-    rszObs: any;
+    rszObs: ResizeObserver;
     windowViewRef: React.RefObject<any>;
 
     width: mobx.IObservableValue<number> = mobx.observable.box(0, { name: "sw-view-width" });
@@ -414,7 +414,12 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
     renderError(message: string, fade: boolean) {
         let { screen } = this.props;
         return (
-            <div className="window-view" ref={this.windowViewRef} data-screenid={screen.screenId}>
+            <div
+                className="window-view"
+                ref={this.windowViewRef}
+                data-screenid={screen.screenId}
+                style={{ width: this.props.width }}
+            >
                 <div key="lines" className="lines"></div>
                 <div key="window-empty" className={cn("window-empty", { "should-fade": fade })}>
                     <div className="text-standard">{message}</div>
