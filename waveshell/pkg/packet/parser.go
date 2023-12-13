@@ -177,13 +177,22 @@ func (p *PacketParser) SetErr(err error) {
 	}
 }
 
-func MakePacketParser(input io.Reader, rpcHandler bool) *PacketParser {
+type PacketParserOpts struct {
+	RpcHandler       bool
+	IgnoreUntilValid bool
+}
+
+func MakePacketParser(input io.Reader, opts *PacketParserOpts) *PacketParser {
+	if opts == nil {
+		opts = &PacketParserOpts{}
+	}
 	parser := &PacketParser{
 		Lock:       &sync.Mutex{},
 		MainCh:     make(chan PacketType),
 		RpcMap:     make(map[string]*RpcEntry),
-		RpcHandler: rpcHandler,
+		RpcHandler: opts.RpcHandler,
 	}
+	ignoreUntilValid := opts.IgnoreUntilValid
 	bufReader := bufio.NewReader(input)
 	go func() {
 		defer func() {
@@ -204,11 +213,15 @@ func MakePacketParser(input io.Reader, rpcHandler bool) *PacketParser {
 			// ##[len][json]\n
 			// ##14{"hello":true}\n
 			// ##N{...}
+			hasPrefix := strings.HasPrefix(line, "##")
 			bracePos := strings.Index(line, "{")
-			if !strings.HasPrefix(line, "##") || bracePos == -1 {
-				parser.MainCh <- MakeRawPacket(line[:len(line)-1])
+			if !hasPrefix || bracePos == -1 {
+				if !ignoreUntilValid {
+					parser.MainCh <- MakeRawPacket(line[:len(line)-1])
+				}
 				continue
 			}
+			ignoreUntilValid = false
 			packetLen := -1
 			if line[2:bracePos] != "N" {
 				packetLen, err = strconv.Atoi(line[2:bracePos])

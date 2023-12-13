@@ -717,7 +717,7 @@ func RunServer() (int, error) {
 	if debug {
 		packet.GlobalDebug = true
 	}
-	server.MainInput = packet.MakePacketParser(os.Stdin, false)
+	server.MainInput = packet.MakePacketParser(os.Stdin, nil)
 	server.Sender = packet.MakePacketSender(os.Stdout, server.packetSenderErrorHandler)
 	defer server.Close()
 	var err error
