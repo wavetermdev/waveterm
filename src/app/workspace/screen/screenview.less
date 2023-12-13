@@ -17,12 +17,39 @@
         margin-left: 5px;
         padding-left: 5px;
 
+        .screen-sidebar-close {
+            position: absolute;
+            right: 5px;
+            top: 0px;
+            padding: 5px;
+            display: none;
+        }
+
+        &:hover {
+            .screen-sidebar-close {
+                display: block;
+            }
+        }
+
         .screen-sidebar-section {
             flex-grow: 1;
             border-bottom: 1px solid #666;
 
             &:last-child {
                 border-bottom: none;
+            }
+        }
+
+        .empty-sidebar {
+            align-self: center;
+            margin-top: 20%;
+
+            .sidebar-help-text {
+                margin-top: 20px;
+                padding: 5px 10px;
+                background-color: #333;
+                border-radius: 5px;
+                font-family: @fixed-font;
             }
         }
     }

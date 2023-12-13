@@ -4431,6 +4431,14 @@ class CommandRunner {
             interactive
         );
     }
+
+    screenSidebarClose(): void {
+        GlobalModel.submitCommand("sidebar", "close", null, { nohist: "1" }, false);
+    }
+
+    screenSidebarOpen(): void {
+        GlobalModel.submitCommand("sidebar", "open", null, { nohist: "1" }, false);
+    }
 }
 
 function cmdPacketString(pk: FeCmdPacketType): string {

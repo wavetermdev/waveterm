@@ -121,6 +121,11 @@ class ScreenSidebarSection extends React.Component<{ screen: Screen; section: T.
 
 @mobxReact.observer
 class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {}> {
+    @boundMethod
+    sidebarClose(): void {
+        GlobalCommandRunner.screenSidebarClose();
+    }
+
     render() {
         let { screen, width } = this.props;
         let viewOpts = screen.viewOpts.get();
@@ -128,7 +133,22 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
         let section: T.ScreenSidebarSectionType = null;
         return (
             <div className="screen-sidebar" style={{ width: width }}>
-                <If condition={sections.length == 0}>No Sidebar Sections</If>
+                <div onClick={this.sidebarClose} className="screen-sidebar-close">
+                    <i className="fa-sharp fa-solid fa-xmark" />
+                </div>
+                <If condition={sections.length == 0}>
+                    <div className="empty-sidebar">
+                        <div className="sidebar-main-text">No Sections</div>
+                        <div className="sidebar-help-text">
+                            /sidebar:open
+                            <br />
+                            /sidebar:close
+                            <br />
+                            /sidebar:add line=[linenum]
+                            <br />
+                        </div>
+                    </div>
+                </If>
                 <If condition={sections.length > 0}>
                     <For each="section" of={sections}>
                         <ScreenSidebarSection key={section.lineid} screen={screen} section={section} />
