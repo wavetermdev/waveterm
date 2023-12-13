@@ -25,6 +25,11 @@ Wave Terminal works with MacOS and Linux (preliminary).
 
 Install Wave Terminal from: [www.waveterm.dev/download](https://www.waveterm.dev/download)
 
+Also available as a homebrew cask for MacOS:
+```
+brew install --cask wave
+```
+
 ## Links
 
 * Homepage &mdash; https://www.waveterm.dev
