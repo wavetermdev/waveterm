@@ -8,7 +8,6 @@ import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import { For } from "tsx-control-statements/components";
 import cn from "classnames";
-import { debounce } from "throttle-debounce";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Session, Screen } from "../../../model/model";
@@ -143,7 +142,7 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
             clearTimeout(this.dragEndTimeout);
         }
 
-        // Wait for the potential animation to complete
+        // Wait for the animation to complete
         this.dragEndTimeout = setTimeout(() => {
             const tabElement = this.tabRefs[screenId].current;
             const finalTabPosition = tabElement.offsetLeft;
@@ -209,19 +208,16 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
                 ref={this.tabRefs[screen.screenId]}
                 value={screen}
                 id={screen.name.get()}
-                initial={{ opacity: 0, y: 30 }}
+                initial={{ opacity: 0, y: 0 }}
                 animate={{
                     opacity: 1,
-                    // backgroundColor: isSelected ? "#f3f3f3" : "#fff",
                     y: 0,
                     transition: { duration: 0.15 },
                 }}
                 exit={{ opacity: 0, y: 20, transition: { duration: 0.3 } }}
-                // whileDrag={{
-                //     backgroundColor:
-                //         "linear-gradient(180deg, rgba(88, 193, 66, 0.2) 9.34%, rgba(88, 193, 66, 0.03) 44.16%, rgba(88, 193, 66, 0) 86.79%)",
-                // }}
-                // className={isSelected ? "selected" : ""}
+                whileDrag={{
+                    backgroundColor: "rgba(13, 13, 13, 0.85)",
+                }}
                 data-screenid={screen.screenId}
                 className={cn(
                     "screen-tab",
@@ -265,13 +261,11 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
                     }}
                     values={showingScreens}
                 >
-                    <AnimatePresence initial={false}>
-                        <For each="screen" index="index" of={showingScreens}>
-                            <React.Fragment key={screen.screenId}>
-                                {this.renderTab(screen, activeScreenId, index)}
-                            </React.Fragment>
-                        </For>
-                    </AnimatePresence>
+                    <For each="screen" index="index" of={showingScreens}>
+                        <React.Fragment key={screen.screenId}>
+                            {this.renderTab(screen, activeScreenId, index)}
+                        </React.Fragment>
+                    </For>
                 </Reorder.Group>
                 <div key="new-screen" className="new-screen" onClick={this.handleNewScreen}>
                     <AddIcon className="icon hoverEffect" />
