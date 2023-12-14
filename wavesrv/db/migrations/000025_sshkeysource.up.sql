@@ -1,2 +1,1 @@
-UPDATE remote
-SET sshopts = json_set(sshopts, '$.sshconfigsrc', 'waveterm-manual');
+ALTER TABLE remote ADD COLUMN sshconfigsrc varchar(36) NOT NULL DEFAULT 'waveterm-manual';
