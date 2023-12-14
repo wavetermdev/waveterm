@@ -54,13 +54,10 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
     @mobx.computed
     get screens(): Screen[] {
         if (this.activeScreenId) {
-            let showingScreens = [];
             let screens = GlobalModel.getSessionScreens(this.props.session.sessionId);
-            for (let screen of screens) {
-                if (!screen.archived.get() || this.activeScreenId == screen.screenId) {
-                    showingScreens.push(screen);
-                }
-            }
+            let showingScreens = screens
+                .filter((screen) => !screen.archived.get() || this.activeScreenId === screen.screenId)
+                .sort((a, b) => a.screenIdx.get() - b.screenIdx.get());
             return showingScreens;
         }
     }
@@ -128,11 +125,9 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
         }
 
         // Set the showingScreens state if it's not set or if the number of screens has changed.
+        // Individual screen update are handled automatically by mobx.
         if (this.screens && this.state.showingScreens.length !== this.screens.length) {
-            console.log("this.screens", this.screens);
-            console.log("showingScreens", this.state.showingScreens);
-            let screens = this.screens.sort((a, b) => a.screenIdx.get() - b.screenIdx.get());
-            this.setState({ showingScreens: screens });
+            this.setState({ showingScreens: this.screens });
         }
     }
 
