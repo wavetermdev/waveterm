@@ -220,7 +220,7 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
     // }
 
     @boundMethod
-    handleDragEnd(event, info, screenId) {
+    handleDragEnd(screenId) {
         if (this.dragEndTimeout) {
             clearTimeout(this.dragEndTimeout);
         }
@@ -235,11 +235,8 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
             // Calculate the new index based on the final position
             const newIndex = Math.floor(finalTabPosition / TAB_WIDTH);
 
-            console.log("newIndex", newIndex + 1);
-
-            // Update your state or model with the new index
-            // Remember to handle any necessary adjustments if your indexing is not 0-based
-        }, 100); // Replace ANIMATION_DURATION with the duration of your tab movement animation
+            GlobalCommandRunner.screenReorder(screenId, `${newIndex + 1}`);
+        }, 100);
     }
 
     @boundMethod
@@ -312,10 +309,7 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
                 )}
                 onPointerDown={() => this.handleSwitchScreen(screen.screenId)}
                 onContextMenu={(event) => this.openScreenSettings(event, screen)}
-                onDragEnd={(event, info) => {
-                    console.log("onDragEnd==============");
-                    this.handleDragEnd(event, info, screen.screenId);
-                }}
+                onDragEnd={() => this.handleDragEnd(screen.screenId)}
             >
                 {this.renderTabIcon(screen)}
                 <div className="tab-name truncate">
@@ -323,7 +317,7 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
                     {webShared}
                     {screen.name.get()}
                 </div>
-                {/* {tabIndex} */}
+                {tabIndex}
                 {settings}
             </Reorder.Item>
             // <div
