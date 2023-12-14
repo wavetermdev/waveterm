@@ -749,20 +749,20 @@ func ScreenReorderCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
         return nil, fmt.Errorf("error updating screen index: %v", err)
     }
 
-    // Optionally, retrieve the updated screen information to send back as a response
-    screen, err := sstore.GetScreenById(ctx, screenId)
+    // Retrieve all session screens
+    screens, err := sstore.GetSessionScreens(ctx, ids.SessionId)
     if err != nil {
         return nil, fmt.Errorf("error retrieving updated screen: %v", err)
     }
 
-    // Prepare the update packet to send back to the client
-    update := &sstore.ModelUpdate{
-        Screens: []*sstore.ScreenType{screen},
-        Info: &sstore.InfoMsgType{
-            InfoMsg:   "screen index updated successfully",
-            TimeoutMs: 2000,
-        },
-    }
+	// Prepare the update packet to send back to the client
+	update := &sstore.ModelUpdate{
+		Screens: screens,
+		Info: &sstore.InfoMsgType{
+			InfoMsg:   "screen indices updated successfully",
+			TimeoutMs: 2000,
+		},
+	}
 
     return update, nil
 }

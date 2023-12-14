@@ -33,15 +33,12 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
     tabsRef: React.RefObject<any> = React.createRef();
     tabRefs: { [screenId: string]: React.RefObject<any> } = {};
     lastActiveScreenId: string = null;
-    scrolling: OV<boolean> = mobx.observable.box(false, { name: "ScreenTabs-scrolling" });
 
     dragEndTimeout = null;
     screensReactionDisposer = null;
-    stopScrolling_debounced: () => void;
 
     constructor(props: any) {
         super(props);
-        this.stopScrolling_debounced = debounce(1500, this.stopScrolling.bind(this));
         this.state = {
             showingScreens: [],
         };
@@ -71,7 +68,6 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
 
     @boundMethod
     handleNewScreen() {
-        let { session } = this.props;
         GlobalCommandRunner.createNewScreen();
     }
 
@@ -91,8 +87,24 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
         GlobalCommandRunner.switchScreen(screenId);
     }
 
+    @boundMethod
+    handleWheel(event: WheelEvent) {
+        if (!this.tabsRef.current) return;
+
+        // Prevent the default vertical scrolling
+        event.preventDefault();
+
+        // Scroll horizontally instead
+        this.tabsRef.current.scrollLeft += event.deltaY;
+    }
+
     componentDidMount(): void {
         this.componentDidUpdate();
+
+        // Add the wheel event listener to the tabsRef
+        if (this.tabsRef.current) {
+            this.tabsRef.current.addEventListener("wheel", this.handleWheel, { passive: false });
+        }
     }
 
     componentWillUnmount() {
@@ -118,24 +130,11 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
 
         // Set the showingScreens state if it's not set or if the number of screens has changed.
         if (this.screens && this.state.showingScreens.length !== this.screens.length) {
-            this.setState({ showingScreens: this.screens });
+            console.log("this.screens", this.screens);
+            console.log("showingScreens", this.state.showingScreens);
+            let screens = this.screens.sort((a, b) => a.screenIdx.get() - b.screenIdx.get());
+            this.setState({ showingScreens: screens });
         }
-    }
-
-    stopScrolling(): void {
-        mobx.action(() => {
-            this.scrolling.set(false);
-        })();
-    }
-
-    @boundMethod
-    handleScroll() {
-        if (!this.scrolling.get()) {
-            mobx.action(() => {
-                this.scrolling.set(true);
-            })();
-        }
-        this.stopScrolling_debounced();
     }
 
     @boundMethod
@@ -256,31 +255,26 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
         let activeScreenId = session.activeScreenId.get();
         return (
             <div className="screen-tabs-container">
-                <div
-                    className={cn("screen-tabs", { scrolling: this.scrolling.get() })}
+                <Reorder.Group
+                    className="screen-tabs"
                     ref={this.tabsRef}
-                    onScroll={this.handleScroll}
+                    as="ul"
+                    axis="x"
+                    onReorder={(tabs: Screen[]) => {
+                        this.setState({ showingScreens: tabs });
+                    }}
+                    values={showingScreens}
                 >
-                    <Reorder.Group
-                        as="ul"
-                        axis="x"
-                        onReorder={(tabs: Screen[]) => {
-                            this.setState({ showingScreens: tabs });
-                        }}
-                        className="tabs"
-                        values={showingScreens}
-                    >
-                        <AnimatePresence initial={false}>
-                            <For each="screen" index="index" of={showingScreens}>
-                                <React.Fragment key={screen.screenId}>
-                                    {this.renderTab(screen, activeScreenId, index)}
-                                </React.Fragment>
-                            </For>
-                        </AnimatePresence>
-                    </Reorder.Group>
-                    <div key="new-screen" className="new-screen" onClick={this.handleNewScreen}>
-                        <AddIcon className="icon hoverEffect" />
-                    </div>
+                    <AnimatePresence initial={false}>
+                        <For each="screen" index="index" of={showingScreens}>
+                            <React.Fragment key={screen.screenId}>
+                                {this.renderTab(screen, activeScreenId, index)}
+                            </React.Fragment>
+                        </For>
+                    </AnimatePresence>
+                </Reorder.Group>
+                <div key="new-screen" className="new-screen" onClick={this.handleNewScreen}>
+                    <AddIcon className="icon hoverEffect" />
                 </div>
             </div>
         );

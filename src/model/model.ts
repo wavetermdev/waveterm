@@ -3451,6 +3451,8 @@ class Model {
             if (update.connect) {
                 this.screenMap.clear();
             }
+            console.log("this.screenMap", this.screenMap);
+            console.log("update.screens", update.screens);
             let mods = genMergeDataMap(
                 this.screenMap,
                 update.screens,
@@ -3458,6 +3460,7 @@ class Model {
                 (sdata: ScreenDataType) => sdata.screenid,
                 (sdata: ScreenDataType) => new Screen(sdata)
             );
+            console.log("mods", mods);
             for (let i = 0; i < mods.removed.length; i++) {
                 this.removeScreenLinesByScreenId(mods.removed[i]);
             }
@@ -3736,6 +3739,7 @@ class Model {
                 mobx.action(() => {
                     let update = data.data;
                     if (update != null) {
+                        console.log("update", update);
                         this.runUpdate(update, interactive);
                     }
                     if (interactive && !this.isInfoUpdate(update)) {
