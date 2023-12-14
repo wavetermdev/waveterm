@@ -433,7 +433,7 @@ func (h *HistoryItemType) FromMap(m map[string]interface{}) bool {
 
 type ScreenOptsType struct {
 	TabColor string `json:"tabcolor,omitempty"`
-	TabIcon string `json:"tabicon,omitempty"`
+	TabIcon  string `json:"tabicon,omitempty"`
 	PTerm    string `json:"pterm,omitempty"`
 }
 
@@ -939,13 +939,14 @@ type RemoteType struct {
 	Archived            bool            `json:"archived"`
 
 	// SSH fields
-	Local       bool              `json:"local"`
-	RemoteUser  string            `json:"remoteuser"`
-	RemoteHost  string            `json:"remotehost"`
-	ConnectMode string            `json:"connectmode"`
-	AutoInstall bool              `json:"autoinstall"`
-	SSHOpts     *SSHOpts          `json:"sshopts"`
-	StateVars   map[string]string `json:"statevars"`
+	Local        bool              `json:"local"`
+	RemoteUser   string            `json:"remoteuser"`
+	RemoteHost   string            `json:"remotehost"`
+	ConnectMode  string            `json:"connectmode"`
+	AutoInstall  bool              `json:"autoinstall"`
+	SSHOpts      *SSHOpts          `json:"sshopts"`
+	StateVars    map[string]string `json:"statevars"`
+	SSHConfigSrc string            `json:"sshconfigsrc"`
 
 	// OpenAI fields
 	OpenAIOpts *OpenAIOptsType `json:"openaiopts,omitempty"`
