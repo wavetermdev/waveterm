@@ -3451,8 +3451,6 @@ class Model {
             if (update.connect) {
                 this.screenMap.clear();
             }
-            console.log("this.screenMap", this.screenMap);
-            console.log("update.screens", update.screens);
             let mods = genMergeDataMap(
                 this.screenMap,
                 update.screens,
