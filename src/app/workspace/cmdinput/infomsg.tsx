@@ -83,7 +83,7 @@ class InfoMsg extends React.Component<{}, {}> {
                         </For>
                     </div>
                 </If>
-                <If condition={infoMsg.infocomps?.length > 0}>
+                <If condition={infoMsg?.infocomps?.length > 0}>
                     <div key="infocomps" className="info-comps">
                         <For each="istr" index="idx" of={infoMsg.infocomps}>
                             <div
