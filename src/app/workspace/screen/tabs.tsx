@@ -32,9 +32,7 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
     tabsRef: React.RefObject<any> = React.createRef();
     tabRefs: { [screenId: string]: React.RefObject<any> } = {};
     lastActiveScreenId: string = null;
-
     dragEndTimeout = null;
-    screensReactionDisposer = null;
 
     constructor(props: any) {
         super(props);
