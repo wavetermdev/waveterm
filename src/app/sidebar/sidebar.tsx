@@ -244,7 +244,7 @@ class MainSideBar extends React.Component<{}, {}> {
                     </div>
                     <div className="middle hideScrollbarUntillHover">{this.getSessions()}</div>
                     <div className="bottom">
-                        <If condition = {!clientData?.clientopts.noreleasecheck && clientData?.releaseinfo && compareLoose(VERSION, clientData?.releaseinfo?.latestversion) < 0} >
+                        <If condition = {!clientData?.clientopts.noreleasecheck && clientData?.releaseinfo && compareLoose(VERSION, clientData.releaseinfo.latestversion) < 0} >
                             <div
                                 className="item hoverEffect unselectable updateBanner"
                                 onClick={() => openLink("https://www.waveterm.dev/download")}
