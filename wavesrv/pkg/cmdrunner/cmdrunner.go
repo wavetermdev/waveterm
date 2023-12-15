@@ -1544,18 +1544,11 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, 
 	var ch chan *packet.OpenAIPacketType
 	var err error
 	if opts.APIToken == "" {
-		clientData, err := sstore.EnsureClientData(ctx)
-		if err != nil {
-			writeErrorToPty(cmd, fmt.Sprintf("error getting client data: %v", err), outputPos)
-			return
-		}
-		if clientData.ClientOpts.NoTelemetry {
-			writeErrorToPty(cmd, fmt.Sprintf(OpenAICloudCompletionTelemetryOffErrorMsg), outputPos)
-			return
-		}
 		var conn *websocket.Conn
 		ch, conn, err = openai.RunCloudCompletionStream(ctx, opts, prompt)
-		defer conn.Close()
+		if conn != nil {
+			defer conn.Close()
+		}
 	} else {
 		ch, err = openai.RunCompletionStream(ctx, opts, prompt)
 	}
@@ -1607,6 +1600,11 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		return nil, fmt.Errorf("error retrieving client open ai options")
 	}
 	opts := clientData.OpenAIOpts
+	if opts.APIToken == "" {
+		if clientData.ClientOpts.NoTelemetry {
+			return nil, fmt.Errorf(OpenAICloudCompletionTelemetryOffErrorMsg)
+		}
+	}
 	if opts.Model == "" {
 		opts.Model = openai.DefaultModel
 	}

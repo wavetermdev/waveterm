@@ -8,13 +8,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"time"
 
 	"github.com/gorilla/websocket"
 
 	openaiapi "github.com/sashabaranov/go-openai"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/pcloud"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 )
 
@@ -80,14 +80,12 @@ func RunCompletion(ctx context.Context, opts *sstore.OpenAIOptsType, prompt []ss
 }
 
 func RunCloudCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, prompt []sstore.OpenAIPromptMessageType) (chan *packet.OpenAIPacketType, *websocket.Conn, error) {
-	const AWSLambdaCentralWSAddr = "wss://5lfzlg5crl.execute-api.us-west-2.amazonaws.com/dev/"
 	if opts == nil {
 		return nil, nil, fmt.Errorf("no openai opts found")
 	}
 	websocketContext, _ := context.WithTimeout(context.Background(), CloudWebsocketConnectTimeout)
-	conn, _, err := websocket.DefaultDialer.DialContext(websocketContext, AWSLambdaCentralWSAddr, nil)
+	conn, _, err := websocket.DefaultDialer.DialContext(websocketContext, pcloud.GetWSEndpoint(), nil)
 	if err != nil {
-		log.Printf("Websocket error: %v", err)
 		return nil, nil, fmt.Errorf("Websocket error: %v", err)
 	}
 	cloudCompletionRequestConfig := sstore.OpenAICloudCompletionRequest{
