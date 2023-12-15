@@ -35,7 +35,6 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
-	"golang.org/x/mod/semver"
 )
 
 const (
@@ -3814,7 +3813,7 @@ func ReleaseCheckOnCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
 	}
-	if !clientData.ClientOpts.NoTelemetry {
+	if !clientData.ClientOpts.NoReleaseCheck {
 		return sstore.InfoMsgUpdate("release check is already on"), nil
 	}
 	err = setNoReleaseCheck(ctx, clientData, false)
@@ -3838,7 +3837,7 @@ func ReleaseCheckOffCommand(ctx context.Context, pk *scpacket.FeCommandPacketTyp
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
 	}
-	if clientData.ClientOpts.NoTelemetry {
+	if clientData.ClientOpts.NoReleaseCheck {
 		return sstore.InfoMsgUpdate("release check is already off"), nil
 	}
 	err = setNoReleaseCheck(ctx, clientData, true)
@@ -3855,14 +3854,21 @@ func ReleaseCheckOffCommand(ctx context.Context, pk *scpacket.FeCommandPacketTyp
 }
 
 func ReleaseCheckCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	releasechecker.CheckNewRelease(true)
+	rslt, err := releasechecker.CheckNewRelease(true)
+
+	if err != nil {
+		return nil, fmt.Errorf("error checking for new release: %v", err)
+	}
+
+	if rslt == releasechecker.Failure {
+		return nil, fmt.Errorf("error checking for new release, see log for details")
+	}
+
 	clientData, err := sstore.EnsureClientData(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
 	}
-	if semver.Compare(scbase.WaveVersion, clientData.ReleaseInfo.InstalledVersion) != 0 {
-		return nil, fmt.Errorf("release check failed, last successful check showed that the latest release was %s", clientData.ReleaseInfo.LatestVersion)
-	}
+
 	rsp := fmt.Sprintf("installed version: %s; latest release version: %s", clientData.ReleaseInfo.InstalledVersion, clientData.ReleaseInfo.LatestVersion)
 	return sstore.InfoMsgUpdate(rsp), nil
 }

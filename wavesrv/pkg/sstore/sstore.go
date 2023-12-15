@@ -271,9 +271,9 @@ type FeOptsType struct {
 }
 
 type ReleaseInfoType struct {
-	InstalledVersion string `json:"installedversion,omitempty"`
-	LatestVersion    string `json:"latestversion,omitempty"`
-	ReleaseAvailable bool   `json:"releaseavailable,omitempty"`
+	InstalledVersion string `json:"installedversion"`
+	LatestVersion    string `json:"latestversion"`
+	ReleaseAvailable bool   `json:"releaseavailable"`
 }
 
 type ClientData struct {
@@ -1258,8 +1258,8 @@ func createClientData(tx *TxWrap) error {
 		CmdStoreType:        CmdStoreTypeScreen,
 		ReleaseInfo:         ReleaseInfoType{},
 	}
-	query := `INSERT INTO client ( clientid, userid, activesessionid, userpublickeybytes, userprivatekeybytes, winsize, cmdstoretype, latestreleaseversion) 
-                          VALUES (:clientid,:userid,:activesessionid,:userpublickeybytes,:userprivatekeybytes,:winsize,:cmdstoretype,:latestreleaseversion)`
+	query := `INSERT INTO client ( clientid, userid, activesessionid, userpublickeybytes, userprivatekeybytes, winsize, cmdstoretype, releaseinfo) 
+                          VALUES (:clientid,:userid,:activesessionid,:userpublickeybytes,:userprivatekeybytes,:winsize,:cmdstoretype,:releaseinfo)`
 	tx.NamedExec(query, dbutil.ToDBMap(c, false))
 	log.Printf("create new clientid[%s] userid[%s] with public/private keypair\n", c.ClientId, c.UserId)
 	return nil
@@ -1323,7 +1323,7 @@ func SetClientOpts(ctx context.Context, clientOpts ClientOptsType) error {
 func SetReleaseInfo(ctx context.Context, releaseInfo ReleaseInfoType) error {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `UPDATE client SET releaseinfo = ?`
-		tx.Exec(query, releaseInfo)
+		tx.Exec(query, quickJson(releaseInfo))
 		return nil
 	})
 	return txErr
