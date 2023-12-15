@@ -3848,6 +3848,8 @@ func runReleaseCheck(force bool) error {
 	if rslt == releasechecker.Failure {
 		return fmt.Errorf("error checking for new release, see log for details")
 	}
+
+	return nil
 }
 
 func setNoReleaseCheck(ctx context.Context, clientData *sstore.ClientData, noReleaseCheckValue bool) error {
