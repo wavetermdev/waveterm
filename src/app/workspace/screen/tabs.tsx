@@ -112,10 +112,10 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
         }
 
         // Scroll the active screen into view
-        this.scrollIntoViewTimeout = setTimeout(() => {
-            let { session } = this.props;
-            let activeScreenId = session.activeScreenId.get();
-            if (activeScreenId !== this.lastActiveScreenId) {
+        let { session } = this.props;
+        let activeScreenId = session.activeScreenId.get();
+        if (activeScreenId !== this.lastActiveScreenId) {
+            this.scrollIntoViewTimeout = setTimeout(() => {
                 if (this.tabsRef.current) {
                     let tabElem = this.tabsRef.current.querySelector(
                         sprintf('.screen-tab[data-screenid="%s"]', activeScreenId)
@@ -125,8 +125,8 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
                     }
                 }
                 this.lastActiveScreenId = activeScreenId;
-            }
-        }, 100);
+            }, 100);
+        }
 
         // Set the showingScreens state if it's not set or if the number of screens has changed.
         // Individual screen update are handled automatically by mobx.
