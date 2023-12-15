@@ -24,7 +24,7 @@ const DefaultMaxTokens = 1000
 const DefaultModel = "gpt-3.5-turbo"
 const DefaultStreamChanSize = 10
 
-const CloudWebsocketConnectTimeout = 20 * time.Second
+const CloudWebsocketConnectTimeout = 5 * time.Second
 
 func convertUsage(resp openaiapi.ChatCompletionResponse) *packet.OpenAIUsageType {
 	if resp.Usage.TotalTokens == 0 {
@@ -117,9 +117,14 @@ func RunCloudCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, 
 			if err != nil {
 				errPk := CreateErrorPacket(fmt.Sprintf("Websocket response json decode error: %v", err))
 				rtn <- errPk
+				break
 			}
 			if streamResp.Error == packet.PacketEOFStr {
 				// got eof packet from socket
+				break
+			} else if streamResp.Error != "" {
+				errPk := CreateErrorPacket(fmt.Sprintf("OpenAI Completion error: %v", err))
+				rtn <- errPk
 				break
 			}
 			rtn <- streamResp
