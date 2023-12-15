@@ -3838,6 +3838,18 @@ func TelemetrySendCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	return sstore.InfoMsgUpdate("telemetry sent"), nil
 }
 
+func runReleaseCheck(force bool) error {
+	rslt, err := releasechecker.CheckNewRelease(force)
+
+	if err != nil {
+		return fmt.Errorf("error checking for new release: %v", err)
+	}
+
+	if rslt == releasechecker.Failure {
+		return fmt.Errorf("error checking for new release, see log for details")
+	}
+}
+
 func setNoReleaseCheck(ctx context.Context, clientData *sstore.ClientData, noReleaseCheckValue bool) error {
 	clientOpts := clientData.ClientOpts
 	clientOpts.NoReleaseCheck = noReleaseCheckValue
@@ -3861,9 +3873,12 @@ func ReleaseCheckOnCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	if err != nil {
 		return nil, err
 	}
-	go func() {
-		releasechecker.CheckNewRelease(false)
-	}()
+
+	err = runReleaseCheck(true)
+	if err != nil {
+		return nil, err
+	}
+
 	clientData, err = sstore.EnsureClientData(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
@@ -3895,14 +3910,9 @@ func ReleaseCheckOffCommand(ctx context.Context, pk *scpacket.FeCommandPacketTyp
 }
 
 func ReleaseCheckCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	rslt, err := releasechecker.CheckNewRelease(true)
-
+	err := runReleaseCheck(true)
 	if err != nil {
-		return nil, fmt.Errorf("error checking for new release: %v", err)
-	}
-
-	if rslt == releasechecker.Failure {
-		return nil, fmt.Errorf("error checking for new release, see log for details")
+		return nil, err
 	}
 
 	clientData, err := sstore.EnsureClientData(ctx)

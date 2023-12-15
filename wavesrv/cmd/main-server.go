@@ -725,6 +725,22 @@ func sendTelemetryWrapper() {
 	}
 }
 
+func checkNewReleaseWrapper() {
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+		log.Printf("[error] in checkNewReleaseWrapper: %v\n", r)
+		debug.PrintStack()
+	}()
+	_, err := releasechecker.CheckNewRelease(false)
+	if err != nil {
+		log.Printf("[error] checking for new release: %v\n", err)
+		return
+	}
+}
+
 func telemetryLoop() {
 	var lastSent time.Time
 	time.Sleep(InitialTelemetryWait)
@@ -733,7 +749,7 @@ func telemetryLoop() {
 		if lastSent.IsZero() || dur >= TelemetryInterval {
 			lastSent = time.Now()
 			sendTelemetryWrapper()
-			releasechecker.CheckNewRelease(false)
+			checkNewReleaseWrapper()
 		}
 		time.Sleep(TelemetryTick)
 	}

@@ -248,6 +248,7 @@ class MainSideBar extends React.Component<{}, {}> {
                                 className="item hoverEffect unselectable updateBanner"
                                 onClick={() => openLink("https://www.waveterm.dev/download")}
                             >
+                                <i className="fa-sharp fa-regular fa-circle-up icon" />
                                 Update Available!
                             </div>
                         </If>

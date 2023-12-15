@@ -62,7 +62,7 @@ func CheckNewRelease(force bool) (ReleaseCheckResult, error) {
 	}
 
 	releaseInfoLatest.LatestVersion = *release.TagName
-	if semver.Compare(scbase.WaveVersion, releaseInfoLatest.LatestVersion) < 0 {
+	if true || semver.Compare(scbase.WaveVersion, releaseInfoLatest.LatestVersion) < 0 {
 		log.Printf("[releasechecker] New release available: %s", releaseInfoLatest.LatestVersion)
 		releaseInfoLatest.ReleaseAvailable = true
 	}
