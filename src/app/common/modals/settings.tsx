@@ -689,12 +689,12 @@ class ClientSettingsModal extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    handleChangeUpdateCheck(val: boolean): void {
+    handleChangeReleaseCheck(val: boolean): void {
         let prtn: Promise<CommandRtnType> = null;
         if (val) {
-            prtn = GlobalCommandRunner.updateCheckOn(false);
+            prtn = GlobalCommandRunner.releaseCheckAutoOn(false);
         } else {
-            prtn = GlobalCommandRunner.updateCheckOff(false);
+            prtn = GlobalCommandRunner.releaseCheckAutoOff(false);
         }
         commandRtnHandler(prtn, this.errorMessage);
     }
@@ -778,7 +778,7 @@ class ClientSettingsModal extends React.Component<{}, {}> {
                     <div className="settings-field">
                         <div className="settings-label">Check for Updates Automatically</div>
                         <div className="settings-input">
-                            <Toggle checked={!cdata.clientopts.noupdatecheck} onChange={this.handleChangeUpdateCheck} />
+                            <Toggle checked={!cdata.clientopts.noreleasecheck} onChange={this.handleChangeReleaseCheck} />
                         </div>
                     </div>
                     <div className="settings-field">

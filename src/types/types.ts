@@ -454,7 +454,7 @@ type FeOptsType = {
 
 type ClientOptsType = {
     notelemetry: boolean;
-    noupdatecheck: boolean;
+    noreleasecheck: boolean;
     acceptedtos: number;
 };
 

@@ -733,7 +733,7 @@ func telemetryLoop() {
 		if lastSent.IsZero() || dur >= TelemetryInterval {
 			lastSent = time.Now()
 			sendTelemetryWrapper()
-			releasechecker.CheckNewRelease()
+			releasechecker.CheckNewRelease(false)
 		}
 		time.Sleep(TelemetryTick)
 	}

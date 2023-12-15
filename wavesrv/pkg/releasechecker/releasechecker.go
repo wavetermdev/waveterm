@@ -10,15 +10,15 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 )
 
-func CheckNewRelease() {
+func CheckNewRelease(force bool) {
 	// Check for the latest release in the DB
 	// latestRelease, err := dbutil.g
 	ctx := context.Background()
 	clientData, err := sstore.EnsureClientData(ctx)
-	if clientData.ClientOpts.NoUpdateCheck {
+	if !force && clientData.ClientOpts.NoReleaseCheck {
 		return
 	}
-	if err == nil && clientData.ReleaseInfo.ReleaseAvailable && semver.Compare(scbase.WaveVersion, clientData.ReleaseInfo.InstalledVersion) != 0 {
+	if !force && err == nil && clientData.ReleaseInfo.ReleaseAvailable && semver.Compare(scbase.WaveVersion, clientData.ReleaseInfo.InstalledVersion) != 0 {
 		// We have already notified the frontend about a new release and the record is fresh. There is no need to check again.
 		return
 	}

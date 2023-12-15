@@ -28,12 +28,14 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/comp"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/pcloud"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/releasechecker"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote/openai"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
+	"golang.org/x/mod/semver"
 )
 
 const (
@@ -204,6 +206,10 @@ func init() {
 	registerCmdFn("telemetry:off", TelemetryOffCommand)
 	registerCmdFn("telemetry:send", TelemetrySendCommand)
 	registerCmdFn("telemetry:show", TelemetryShowCommand)
+
+	registerCmdFn("releaseCheck", ReleaseCheckCommand)
+	registerCmdFn("releaseCheck:autoOn", ReleaseCheckOnCommand)
+	registerCmdFn("releaseCheck:autoOff", ReleaseCheckOffCommand)
 
 	registerCmdFn("history", HistoryCommand)
 	registerCmdFn("history:viewall", HistoryViewAllCommand)
@@ -3789,6 +3795,75 @@ func TelemetrySendCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		return nil, fmt.Errorf("failed to send telemetry: %v", err)
 	}
 	return sstore.InfoMsgUpdate("telemetry sent"), nil
+}
+
+func setNoReleaseCheck(ctx context.Context, clientData *sstore.ClientData, noReleaseCheckValue bool) error {
+	clientOpts := clientData.ClientOpts
+	clientOpts.NoReleaseCheck = noReleaseCheckValue
+	err := sstore.SetClientOpts(ctx, clientOpts)
+	if err != nil {
+		return fmt.Errorf("error trying to update client releaseCheck setting: %v", err)
+	}
+	log.Printf("client no-release-check setting updated to %v\n", noReleaseCheckValue)
+	return nil
+}
+
+func ReleaseCheckOnCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
+	}
+	if !clientData.ClientOpts.NoTelemetry {
+		return sstore.InfoMsgUpdate("release check is already on"), nil
+	}
+	err = setNoReleaseCheck(ctx, clientData, false)
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		releasechecker.CheckNewRelease(false)
+	}()
+	clientData, err = sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
+	}
+	update := sstore.InfoMsgUpdate("automatic release checking is now on")
+	update.ClientData = clientData
+	return update, nil
+}
+
+func ReleaseCheckOffCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
+	}
+	if clientData.ClientOpts.NoTelemetry {
+		return sstore.InfoMsgUpdate("release check is already off"), nil
+	}
+	err = setNoReleaseCheck(ctx, clientData, true)
+	if err != nil {
+		return nil, err
+	}
+	clientData, err = sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
+	}
+	update := sstore.InfoMsgUpdate("automatic release checking is now off")
+	update.ClientData = clientData
+	return update, nil
+}
+
+func ReleaseCheckCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	releasechecker.CheckNewRelease(true)
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
+	}
+	if semver.Compare(scbase.WaveVersion, clientData.ReleaseInfo.InstalledVersion) != 0 {
+		return nil, fmt.Errorf("release check failed, last successful check showed that the latest release was %s", clientData.ReleaseInfo.LatestVersion)
+	}
+	rsp := fmt.Sprintf("installed version: %s; latest release version: %s", clientData.ReleaseInfo.InstalledVersion, clientData.ReleaseInfo.LatestVersion)
+	return sstore.InfoMsgUpdate(rsp), nil
 }
 
 func formatTermOpts(termOpts sstore.TermOpts) string {
