@@ -35,6 +35,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
+	"golang.org/x/mod/semver"
 )
 
 const (
@@ -3922,7 +3923,13 @@ func ReleaseCheckCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
 	}
 
-	rsp := fmt.Sprintf("installed version: %s; latest release version: %s", scbase.WaveVersion, clientData.ReleaseInfo.LatestVersion)
+	var rsp string
+	if semver.Compare(scbase.WaveVersion, clientData.ReleaseInfo.LatestVersion) < 0 {
+		rsp = "new release available to download: https://www.waveterm.dev/download"
+	} else {
+		rsp = "no new release available"
+	}
+
 	update := sstore.InfoMsgUpdate(rsp)
 	update.ClientData = clientData
 	return update, nil

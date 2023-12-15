@@ -29,6 +29,11 @@ func CheckNewRelease(force bool) (ReleaseCheckResult, error) {
 	defer cancelFn()
 
 	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		log.Printf("[releasechecker] Error getting client data: %v", err)
+		return Failure, err
+	}
+
 	if !force && clientData.ClientOpts.NoReleaseCheck {
 		log.Print("[releasechecker] Release check disabled by user preference")
 		return Disabled, nil
@@ -36,7 +41,7 @@ func CheckNewRelease(force bool) (ReleaseCheckResult, error) {
 
 	log.Printf("[releasechecker] Existing ReleaseInfo values: %v", clientData.ReleaseInfo)
 
-	if !force && err == nil && clientData.ReleaseInfo.ReleaseAvailable && semver.Compare(scbase.WaveVersion, clientData.ReleaseInfo.LatestVersion) < 0 {
+	if !force && semver.Compare(scbase.WaveVersion, clientData.ReleaseInfo.LatestVersion) < 0 {
 		// We have already notified the frontend about a new release and the record is fresh. There is no need to check again.
 		log.Print("[releasechecker] Release check not needed")
 		return NotNeeded, nil
@@ -47,8 +52,7 @@ func CheckNewRelease(force bool) (ReleaseCheckResult, error) {
 	release, rsp, err := client.Repositories.GetLatestRelease(ctx, "wavetermdev", "waveterm")
 
 	releaseInfoLatest := sstore.ReleaseInfoType{
-		ReleaseAvailable: false,
-		LatestVersion:    scbase.WaveVersion,
+		LatestVersion: scbase.WaveVersion,
 	}
 
 	if err != nil {
@@ -62,10 +66,6 @@ func CheckNewRelease(force bool) (ReleaseCheckResult, error) {
 	}
 
 	releaseInfoLatest.LatestVersion = *release.TagName
-	if semver.Compare(scbase.WaveVersion, releaseInfoLatest.LatestVersion) < 0 {
-		log.Printf("[releasechecker] New release available: %s", releaseInfoLatest.LatestVersion)
-		releaseInfoLatest.ReleaseAvailable = true
-	}
 
 	// Update the release info in the DB
 	log.Printf("[releasechecker] Updating release info: %v", releaseInfoLatest)
@@ -74,6 +74,13 @@ func CheckNewRelease(force bool) (ReleaseCheckResult, error) {
 		log.Printf("[releasechecker] Error updating release info: %v", err)
 		return Failure, err
 	}
+
+	clientData, err = sstore.EnsureClientData(ctx)
+	if err != nil {
+		log.Printf("[releasechecker] Error getting updated client data: %v", err)
+		return Failure, err
+	}
+
 	update := &sstore.ModelUpdate{
 		ClientData: clientData,
 	}

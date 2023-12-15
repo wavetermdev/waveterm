@@ -4467,5 +4467,6 @@ export {
     RemotesModel,
     MinFontSize,
     MaxFontSize,
+    VERSION
 };
 export type { LineContainerModel };

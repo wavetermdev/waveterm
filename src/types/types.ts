@@ -459,7 +459,6 @@ type ClientOptsType = {
 };
 
 type ReleaseInfoType = { 
-    releaseavailable: boolean;
     latestversion: string;
 };
 

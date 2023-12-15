@@ -271,8 +271,7 @@ type FeOptsType struct {
 }
 
 type ReleaseInfoType struct {
-	LatestVersion    string `json:"latestversion,omitempty"`
-	ReleaseAvailable bool   `json:"releaseavailable"`
+	LatestVersion string `json:"latestversion,omitempty"`
 }
 
 type ClientData struct {

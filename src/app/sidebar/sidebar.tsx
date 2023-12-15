@@ -8,7 +8,8 @@ import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import dayjs from "dayjs";
 import type { RemoteType } from "../../types/types";
-import { If, For } from "tsx-control-statements/components";
+import { If } from "tsx-control-statements/components";
+import { compareLoose } from "semver";
 
 import { ReactComponent as LeftChevronIcon } from "../assets/icons/chevron_left.svg";
 import { ReactComponent as HelpIcon } from "../assets/icons/help.svg";
@@ -22,7 +23,7 @@ import { ReactComponent as AddIcon } from "../assets/icons/add.svg";
 import { ReactComponent as ActionsIcon } from "../assets/icons/tab/actions.svg";
 
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel, GlobalCommandRunner, Session } from "../../model/model";
+import { GlobalModel, GlobalCommandRunner, Session, VERSION } from "../../model/model";
 import { sortAndFilterRemotes, isBlank, openLink } from "../../util/util";
 import * as constants from "../appconst";
 
@@ -243,7 +244,7 @@ class MainSideBar extends React.Component<{}, {}> {
                     </div>
                     <div className="middle hideScrollbarUntillHover">{this.getSessions()}</div>
                     <div className="bottom">
-                        <If condition = {clientData?.releaseinfo?.releaseavailable}>
+                        <If condition = {!clientData?.clientopts.noreleasecheck && clientData?.releaseinfo && compareLoose(VERSION, clientData?.releaseinfo?.latestversion) < 0} >
                             <div
                                 className="item hoverEffect unselectable updateBanner"
                                 onClick={() => openLink("https://www.waveterm.dev/download")}
