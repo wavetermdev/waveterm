@@ -195,6 +195,7 @@ class MainSideBar extends React.Component<{}, {}> {
         }
         let isCollapsed = this.collapsed.get();
         let mainView = GlobalModel.activeMainView.get();
+        let clientData = GlobalModel.clientData.get();
         return (
             <div className={cn("main-sidebar", { collapsed: isCollapsed }, { "is-dev": GlobalModel.isDev })}>
                 <div className="title-bar-drag" />
@@ -242,6 +243,14 @@ class MainSideBar extends React.Component<{}, {}> {
                     </div>
                     <div className="middle hideScrollbarUntillHover">{this.getSessions()}</div>
                     <div className="bottom">
+                        <If condition = {clientData?.releaseinfo?.releaseavailable}>
+                            <div
+                                className="item hoverEffect unselectable updateBanner"
+                                onClick={() => openLink("https://www.waveterm.dev/download")}
+                            >
+                                Update Available!
+                            </div>
+                        </If>
                         <If condition={GlobalModel.isDev}>
                             <div className="item hoverEffect unselectable" onClick={this.handlePluginsClick}>
                                 <AppsIcon className="icon" />
