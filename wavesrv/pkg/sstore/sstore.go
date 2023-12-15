@@ -779,7 +779,6 @@ type OpenAIPromptMessageType struct {
 }
 
 type OpenAICloudCompletionRequest struct {
-	Model      string                    `json:"model"`
 	Prompt     []OpenAIPromptMessageType `json:"prompt"`
 	MaxTokens  int                       `json:"maxtokens,omitempty"`
 	MaxChoices int                       `json:"maxchoices,omitempty"`

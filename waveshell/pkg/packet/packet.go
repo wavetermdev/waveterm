@@ -65,6 +65,8 @@ const (
 
 const PacketSenderQueueSize = 20
 
+const PacketEOFStr = "EOF"
+
 var TypeStrToFactory map[string]reflect.Type
 
 func init() {

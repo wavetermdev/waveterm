@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net/http"
+	"time"
 
 	"github.com/gorilla/websocket"
 
@@ -24,6 +24,8 @@ import (
 const DefaultMaxTokens = 1000
 const DefaultModel = "gpt-3.5-turbo"
 const DefaultStreamChanSize = 10
+
+const CloudWebsocketConnectTimeout = 20 * time.Second
 
 func convertUsage(resp openaiapi.ChatCompletionResponse) *packet.OpenAIUsageType {
 	if resp.Usage.TotalTokens == 0 {
@@ -78,45 +80,6 @@ func RunCompletion(ctx context.Context, opts *sstore.OpenAIOptsType, prompt []ss
 	return marshalResponse(apiResp), nil
 }
 
-func RunCloudCompletion(ctx context.Context, opts *sstore.OpenAIOptsType, prompt []sstore.OpenAIPromptMessageType) ([]*packet.OpenAIPacketType, error) {
-	if opts == nil {
-		return nil, fmt.Errorf("no openai opts found")
-	}
-	if opts.Model == "" {
-		return nil, fmt.Errorf("no openai model specified")
-	}
-	cloudCompletionRequestConfig := sstore.OpenAICloudCompletionRequest{
-		Model:      opts.Model,
-		Prompt:     prompt,
-		MaxTokens:  opts.MaxTokens,
-		MaxChoices: opts.MaxChoices,
-	}
-	const cloudTestAddr = "http://127.0.0.1:7999/api/chat-completion"
-	payloadBuf := new(bytes.Buffer)
-	json.NewEncoder(payloadBuf).Encode(cloudCompletionRequestConfig)
-	httpreq, err := http.NewRequest("POST", cloudTestAddr, payloadBuf)
-	if err != nil {
-		return nil, fmt.Errorf("request create err: %v", err)
-	}
-	httpresp, err := http.DefaultClient.Do(httpreq)
-	if err != nil {
-		return nil, fmt.Errorf("request err: %v", err)
-	}
-	defer httpresp.Body.Close()
-	body, err := io.ReadAll(httpresp.Body)
-	var apiResp openaiapi.ChatCompletionResponse
-	type jsonResponse struct {
-		Data openaiapi.ChatCompletionResponse
-	}
-	var httpjsonresp jsonResponse
-	err = json.Unmarshal(body, &httpjsonresp)
-	if err != nil {
-		return nil, fmt.Errorf("error decoding json output %v", err)
-	}
-	apiResp = httpjsonresp.Data
-	return marshalResponse(apiResp), nil
-}
-
 func RunCloudCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, prompt []sstore.OpenAIPromptMessageType) (chan *packet.OpenAIPacketType, error) {
 	const AWSLambdaCentralWSAddr = "wss://5lfzlg5crl.execute-api.us-west-2.amazonaws.com/dev/"
 	if opts == nil {
@@ -125,13 +88,13 @@ func RunCloudCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, 
 	if opts.Model == "" {
 		return nil, fmt.Errorf("no openai model specified")
 	}
-	conn, _, err := websocket.DefaultDialer.Dial(AWSLambdaCentralWSAddr, nil)
+	websocketContext, _ := context.WithTimeout(context.Background(), CloudWebsocketConnectTimeout)
+	conn, _, err := websocket.DefaultDialer.DialContext(websocketContext, AWSLambdaCentralWSAddr, nil)
 	if err != nil {
 		log.Printf("Websocket error: %v", err)
 		return nil, fmt.Errorf("Websocket error: %v", err)
 	}
 	cloudCompletionRequestConfig := sstore.OpenAICloudCompletionRequest{
-		Model:      opts.Model,
 		Prompt:     prompt,
 		MaxTokens:  opts.MaxTokens,
 		MaxChoices: opts.MaxChoices,
@@ -145,6 +108,7 @@ func RunCloudCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, 
 	rtn := make(chan *packet.OpenAIPacketType, DefaultStreamChanSize)
 	go func() {
 		defer close(rtn)
+		defer conn.Close()
 		for {
 			_, socketMessage, err := conn.ReadMessage()
 			if err == io.EOF {
@@ -161,6 +125,10 @@ func RunCloudCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, 
 			if err != nil {
 				errPk := CreateErrorPacket(fmt.Sprintf("Websocket response json decode error: %v", err))
 				rtn <- errPk
+			}
+			if streamResp.Error == packet.PacketEOFStr {
+				// got eof packet from socket
+				break
 			}
 			rtn <- streamResp
 		}

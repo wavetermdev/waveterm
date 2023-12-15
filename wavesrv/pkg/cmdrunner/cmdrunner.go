@@ -66,6 +66,8 @@ const TermFontSizeMax = 24
 
 const TsFormatStr = "2006-01-02 15:04:05"
 
+const OpenAIPacketTimeout = 10 * time.Second
+
 const (
 	KwArgRenderer = "renderer"
 	KwArgView     = "view"
@@ -1487,13 +1489,8 @@ func doOpenAICompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, prompt
 	var respPks []*packet.OpenAIPacketType
 	var err error
 	log.Printf("TODO: fix this condition - short circuited to access cloud code path\n")
-	if true || opts.APIToken == "" {
-		// run open ai completion in the cloud
-		respPks, err = openai.RunCloudCompletion(ctx, opts, prompt)
-	} else {
-		// run open ai completion locally
-		respPks, err = openai.RunCompletion(ctx, opts, prompt)
-	}
+	// run open ai completion locally
+	respPks, err = openai.RunCompletion(ctx, opts, prompt)
 	if err != nil {
 		writeErrorToPty(cmd, fmt.Sprintf("error calling OpenAI API: %v", err), outputPos)
 		return
@@ -1545,7 +1542,16 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, 
 	var ch chan *packet.OpenAIPacketType
 	var err error
 	log.Printf("TODO: fix this condition - short circuited to access cloud code path\n")
-	if true || opts.APIToken == "" {
+	if opts.APIToken == "" {
+		clientData, err := sstore.EnsureClientData(ctx)
+		if err != nil {
+			writeErrorToPty(cmd, fmt.Sprintf("error getting client data: %v", err), outputPos)
+			return
+		}
+		if clientData.ClientOpts.NoTelemetry {
+			writeErrorToPty(cmd, fmt.Sprintf("Error: must have telemetry enabled to use wave cloud"), outputPos)
+			return
+		}
 		// run open ai completion in the cloud
 		ch, err = openai.RunCloudCompletionStream(ctx, opts, prompt)
 	} else {
@@ -1556,11 +1562,32 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, 
 		writeErrorToPty(cmd, fmt.Sprintf("error calling OpenAI API: %v", err), outputPos)
 		return
 	}
-	for pk := range ch {
-		err = writePacketToPty(ctx, cmd, pk, &outputPos)
-		if err != nil {
-			writeErrorToPty(cmd, fmt.Sprintf("error writing response to ptybuffer: %v", err), outputPos)
-			return
+	doneWaitingForPackets := false
+	for doneWaitingForPackets == false {
+		select {
+		case <-time.After(OpenAIPacketTimeout):
+			// timeout reading from channel
+			timeoutPk := openai.CreateErrorPacket(fmt.Sprintf("Server timed out waiting for packets"))
+			err = writePacketToPty(ctx, cmd, timeoutPk, &outputPos)
+			if err != nil {
+				writeErrorToPty(cmd, fmt.Sprintf("error writing response to ptybuffer: %v", err), outputPos)
+				return
+			}
+			doneWaitingForPackets = true
+			break
+		case pk, ok := <-ch:
+			if ok {
+				// got a packet
+				err = writePacketToPty(ctx, cmd, pk, &outputPos)
+				if err != nil {
+					writeErrorToPty(cmd, fmt.Sprintf("error writing response to ptybuffer: %v", err), outputPos)
+					return
+				}
+			} else {
+				// channel closed
+				doneWaitingForPackets = true
+				break
+			}
 		}
 	}
 	return
@@ -1575,8 +1602,8 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
 	}
-	if clientData.OpenAIOpts == nil || clientData.OpenAIOpts.APIToken == "" {
-		return nil, fmt.Errorf("no openai API token found, configure in client settings")
+	if clientData.OpenAIOpts == nil {
+		return nil, fmt.Errorf("error retrieving client open ai options")
 	}
 	opts := clientData.OpenAIOpts
 	if opts.Model == "" {
@@ -1604,11 +1631,7 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		return nil, fmt.Errorf("cannot add new line: %v", err)
 	}
 	prompt := []sstore.OpenAIPromptMessageType{{Role: sstore.OpenAIRoleUser, Content: promptStr}}
-	if resolveBool(pk.Kwargs["stream"], true) {
-		go doOpenAIStreamCompletion(cmd, opts, prompt)
-	} else {
-		go doOpenAICompletion(cmd, opts, prompt)
-	}
+	go doOpenAIStreamCompletion(cmd, opts, prompt)
 	updateHistoryContext(ctx, line, cmd)
 	updateMap := make(map[string]interface{})
 	updateMap[sstore.ScreenField_SelectedLine] = line.LineNum
@@ -3562,9 +3585,6 @@ func ClientAcceptTosCommand(ctx context.Context, pk *scpacket.FeCommandPacketTyp
 }
 
 func validateOpenAIAPIToken(key string) error {
-	if len(key) == 0 {
-		return fmt.Errorf("invalid openai token, zero length")
-	}
 	if len(key) > MaxOpenAIAPITokenLen {
 		return fmt.Errorf("invalid openai token, too long")
 	}
