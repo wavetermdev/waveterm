@@ -107,6 +107,23 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
     }
 
     componentDidUpdate(): void {
+        // Scroll the active screen into view
+        this.scrollIntoViewTimeout = setTimeout(() => {
+            let { session } = this.props;
+            let activeScreenId = session.activeScreenId.get();
+            if (activeScreenId !== this.lastActiveScreenId) {
+                if (this.tabsRef.current) {
+                    let tabElem = this.tabsRef.current.querySelector(
+                        sprintf('.screen-tab[data-screenid="%s"]', activeScreenId)
+                    );
+                    if (tabElem) {
+                        tabElem.scrollIntoView();
+                    }
+                }
+                this.lastActiveScreenId = activeScreenId;
+            }
+        }, 100);
+
         // Set the showingScreens state if it's not set or if the number of screens has changed.
         // Individual screen update are handled automatically by mobx.
         if (this.screens && this.state.showingScreens.length !== this.screens.length) {
@@ -115,23 +132,6 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
             if (this.scrollIntoViewTimeout) {
                 clearTimeout(this.scrollIntoViewTimeout);
             }
-
-            // Scroll the active screen into view
-            this.scrollIntoViewTimeout = setTimeout(() => {
-                let { session } = this.props;
-                let activeScreenId = session.activeScreenId.get();
-                if (activeScreenId !== this.lastActiveScreenId) {
-                    if (this.tabsRef.current) {
-                        let tabElem = this.tabsRef.current.querySelector(
-                            sprintf('.screen-tab[data-screenid="%s"]', activeScreenId)
-                        );
-                        if (tabElem) {
-                            tabElem.scrollIntoView();
-                        }
-                    }
-                    this.lastActiveScreenId = activeScreenId;
-                }
-            }, 100);
         }
     }
 
