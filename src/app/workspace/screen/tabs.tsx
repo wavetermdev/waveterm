@@ -107,6 +107,10 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
     }
 
     componentDidUpdate(): void {
+        if (this.scrollIntoViewTimeout) {
+            clearTimeout(this.scrollIntoViewTimeout);
+        }
+
         // Scroll the active screen into view
         this.scrollIntoViewTimeout = setTimeout(() => {
             let { session } = this.props;
@@ -128,10 +132,6 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
         // Individual screen update are handled automatically by mobx.
         if (this.screens && this.state.showingScreens.length !== this.screens.length) {
             this.setState({ showingScreens: this.screens });
-
-            if (this.scrollIntoViewTimeout) {
-                clearTimeout(this.scrollIntoViewTimeout);
-            }
         }
     }
 
