@@ -33,6 +33,7 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
     tabRefs: { [screenId: string]: React.RefObject<any> } = {};
     lastActiveScreenId: string = null;
     dragEndTimeout = null;
+    scrollIntoViewTimeout = null;
 
     constructor(props: any) {
         super(props);
@@ -108,19 +109,25 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
     }
 
     componentDidUpdate(): void {
-        let { session } = this.props;
-        let activeScreenId = session.activeScreenId.get();
-        if (activeScreenId !== this.lastActiveScreenId) {
-            if (this.tabsRef.current) {
-                let tabElem = this.tabsRef.current.querySelector(
-                    sprintf('.screen-tab[data-screenid="%s"]', activeScreenId)
-                );
-                if (tabElem) {
-                    tabElem.scrollIntoView();
-                }
-            }
-            this.lastActiveScreenId = activeScreenId;
+        if (this.scrollIntoViewTimeout) {
+            clearTimeout(this.scrollIntoViewTimeout);
         }
+
+        this.scrollIntoViewTimeout = setTimeout(() => {
+            let { session } = this.props;
+            let activeScreenId = session.activeScreenId.get();
+            if (activeScreenId !== this.lastActiveScreenId) {
+                if (this.tabsRef.current) {
+                    let tabElem = this.tabsRef.current.querySelector(
+                        sprintf('.screen-tab[data-screenid="%s"]', activeScreenId)
+                    );
+                    if (tabElem) {
+                        tabElem.scrollIntoView();
+                    }
+                }
+                this.lastActiveScreenId = activeScreenId;
+            }
+        }, 100);
 
         // Set the showingScreens state if it's not set or if the number of screens has changed.
         // Individual screen update are handled automatically by mobx.
@@ -243,7 +250,7 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
         let index = 0;
         let activeScreenId = session.activeScreenId.get();
         return (
-            <div className="screen-tabs-container">
+            <div className="screen-tabs-container" style={{ width: `calc(100vw - )` }}>
                 <Reorder.Group
                     className="screen-tabs"
                     ref={this.tabsRef}
