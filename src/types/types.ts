@@ -457,6 +457,12 @@ type ClientOptsType = {
     acceptedtos: number;
 };
 
+type ReleaseInfoType = { 
+    releaseavailable: boolean;
+    installedversion: string;
+    latestversion: string;
+};
+
 type ClientDataType = {
     clientid: string;
     userid: string;
@@ -465,6 +471,7 @@ type ClientDataType = {
     cmdstoretype: "session" | "screen";
     dbversion: number;
     openaiopts?: OpenAIOptsType;
+    releaseinfo?: ReleaseInfoType;
 };
 
 type OpenAIOptsType = {
