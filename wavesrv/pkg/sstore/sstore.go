@@ -261,8 +261,9 @@ func (tdata *TelemetryData) Scan(val interface{}) error {
 }
 
 type ClientOptsType struct {
-	NoTelemetry bool  `json:"notelemetry,omitempty"`
-	AcceptedTos int64 `json:"acceptedtos,omitempty"`
+	NoTelemetry   bool  `json:"notelemetry,omitempty"`
+	NoUpdateCheck bool  `json:"noupdatecheck,omitempty"`
+	AcceptedTos   int64 `json:"acceptedtos,omitempty"`
 }
 
 type FeOptsType struct {

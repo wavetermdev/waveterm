@@ -15,6 +15,9 @@ func CheckNewRelease() {
 	// latestRelease, err := dbutil.g
 	ctx := context.Background()
 	clientData, err := sstore.EnsureClientData(ctx)
+	if clientData.ClientOpts.NoUpdateCheck {
+		return
+	}
 	if err == nil && clientData.ReleaseInfo.ReleaseAvailable && semver.Compare(scbase.WaveVersion, clientData.ReleaseInfo.InstalledVersion) != 0 {
 		// We have already notified the frontend about a new release and the record is fresh. There is no need to check again.
 		return

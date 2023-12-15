@@ -4303,6 +4303,14 @@ class CommandRunner {
         return GlobalModel.submitCommand("telemetry", "on", null, { nohist: "1" }, interactive);
     }
 
+    updateCheckOff(interactive: boolean): Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("updateCheck", "off", null, { nohist: "1" }, interactive);
+    }
+
+    updateCheckOn(interactive: boolean): Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("updateCheck", "on", null, { nohist: "1" }, interactive);
+    }
+
     setTermFontSize(fsize: number, interactive: boolean): Promise<CommandRtnType> {
         let kwargs = {
             nohist: "1",

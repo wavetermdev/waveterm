@@ -688,6 +688,17 @@ class ClientSettingsModal extends React.Component<{}, {}> {
         commandRtnHandler(prtn, this.errorMessage);
     }
 
+    @boundMethod
+    handleChangeUpdateCheck(val: boolean): void {
+        let prtn: Promise<CommandRtnType> = null;
+        if (val) {
+            prtn = GlobalCommandRunner.updateCheckOn(false);
+        } else {
+            prtn = GlobalCommandRunner.updateCheckOff(false);
+        }
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
     getFontSizes(): any {
         let availableFontSizes: { label: string; value: number }[] = [];
         for (let s = MinFontSize; s <= MaxFontSize; s++) {
@@ -762,6 +773,12 @@ class ClientSettingsModal extends React.Component<{}, {}> {
                         <div className="settings-label">Basic Telemetry</div>
                         <div className="settings-input">
                             <Toggle checked={!cdata.clientopts.notelemetry} onChange={this.handleChangeTelemetry} />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Check for Updates Automatically</div>
+                        <div className="settings-input">
+                            <Toggle checked={!cdata.clientopts.noupdatecheck} onChange={this.handleChangeUpdateCheck} />
                         </div>
                     </div>
                     <div className="settings-field">
