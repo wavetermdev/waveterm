@@ -1488,7 +1488,6 @@ func doOpenAICompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, prompt
 	}()
 	var respPks []*packet.OpenAIPacketType
 	var err error
-	log.Printf("TODO: fix this condition - short circuited to access cloud code path\n")
 	// run open ai completion locally
 	respPks, err = openai.RunCompletion(ctx, opts, prompt)
 	if err != nil {
@@ -1541,7 +1540,6 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, 
 	}()
 	var ch chan *packet.OpenAIPacketType
 	var err error
-	log.Printf("TODO: fix this condition - short circuited to access cloud code path\n")
 	if opts.APIToken == "" {
 		clientData, err := sstore.EnsureClientData(ctx)
 		if err != nil {
@@ -1552,10 +1550,8 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, 
 			writeErrorToPty(cmd, fmt.Sprintf("Error: must have telemetry enabled to use wave cloud"), outputPos)
 			return
 		}
-		// run open ai completion in the cloud
 		ch, err = openai.RunCloudCompletionStream(ctx, opts, prompt)
 	} else {
-		// run open ai completion locally
 		ch, err = openai.RunCompletionStream(ctx, opts, prompt)
 	}
 	if err != nil {
@@ -1631,7 +1627,11 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		return nil, fmt.Errorf("cannot add new line: %v", err)
 	}
 	prompt := []sstore.OpenAIPromptMessageType{{Role: sstore.OpenAIRoleUser, Content: promptStr}}
-	go doOpenAIStreamCompletion(cmd, opts, prompt)
+	if resolveBool(pk.Kwargs["stream"], true) {
+		go doOpenAIStreamCompletion(cmd, opts, prompt)
+	} else {
+		go doOpenAICompletion(cmd, opts, prompt)
+	}
 	updateHistoryContext(ctx, line, cmd)
 	updateMap := make(map[string]interface{})
 	updateMap[sstore.ScreenField_SelectedLine] = line.LineNum
