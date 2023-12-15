@@ -1557,7 +1557,7 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, 
 		return
 	}
 	doneWaitingForPackets := false
-	for doneWaitingForPackets == false {
+	for !doneWaitingForPackets {
 		select {
 		case <-time.After(OpenAIPacketTimeout):
 			// timeout reading from channel
