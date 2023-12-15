@@ -105,6 +105,7 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
     componentWillUnmount() {
         if (this.dragEndTimeout) {
             clearTimeout(this.dragEndTimeout);
+            clearTimeout(this.scrollIntoViewTimeout);
         }
     }
 
