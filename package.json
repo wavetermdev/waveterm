@@ -30,7 +30,6 @@
         "react-markdown": "^9.0.0",
         "remark": "^15.0.1",
         "remark-gfm": "^4.0.0",
-        "semver": "^7.5.4",
         "sprintf-js": "^1.1.2",
         "throttle-debounce": "^5.0.0",
         "tsx-control-statements": "^4.1.1",
