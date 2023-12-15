@@ -79,16 +79,16 @@ func RunCompletion(ctx context.Context, opts *sstore.OpenAIOptsType, prompt []ss
 	return marshalResponse(apiResp), nil
 }
 
-func RunCloudCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, prompt []sstore.OpenAIPromptMessageType) (chan *packet.OpenAIPacketType, error) {
+func RunCloudCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, prompt []sstore.OpenAIPromptMessageType) (chan *packet.OpenAIPacketType, *websocket.Conn, error) {
 	const AWSLambdaCentralWSAddr = "wss://5lfzlg5crl.execute-api.us-west-2.amazonaws.com/dev/"
 	if opts == nil {
-		return nil, fmt.Errorf("no openai opts found")
+		return nil, nil, fmt.Errorf("no openai opts found")
 	}
 	websocketContext, _ := context.WithTimeout(context.Background(), CloudWebsocketConnectTimeout)
 	conn, _, err := websocket.DefaultDialer.DialContext(websocketContext, AWSLambdaCentralWSAddr, nil)
 	if err != nil {
 		log.Printf("Websocket error: %v", err)
-		return nil, fmt.Errorf("Websocket error: %v", err)
+		return nil, nil, fmt.Errorf("Websocket error: %v", err)
 	}
 	cloudCompletionRequestConfig := sstore.OpenAICloudCompletionRequest{
 		Prompt:     prompt,
@@ -98,7 +98,7 @@ func RunCloudCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, 
 	configMessageBuf, err := json.Marshal(cloudCompletionRequestConfig)
 	err = conn.WriteMessage(websocket.TextMessage, configMessageBuf)
 	if err != nil {
-		return nil, fmt.Errorf("Websocker write config error: %v", err)
+		return nil, nil, fmt.Errorf("Websocker write config error: %v", err)
 	}
 	rtn := make(chan *packet.OpenAIPacketType, DefaultStreamChanSize)
 	go func() {
@@ -127,7 +127,7 @@ func RunCloudCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, 
 			rtn <- streamResp
 		}
 	}()
-	return rtn, err
+	return rtn, conn, err
 }
 
 func RunCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, prompt []sstore.OpenAIPromptMessageType) (chan *packet.OpenAIPacketType, error) {

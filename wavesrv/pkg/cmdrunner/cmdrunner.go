@@ -22,6 +22,7 @@ import (
 	"unicode"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
@@ -1550,7 +1551,9 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, 
 			writeErrorToPty(cmd, fmt.Sprintf("In order to protect against abuse, you must have telemetry turned on in order to use Wave's free AI features.  If you do not want to turn telemetry on, you can still use Wave's AI features by adding your own OpenAI key in Settings.  Note that when you use your own key, requests are not proxied through Wave's servers and will be sent directly to the OpenAI API."), outputPos)
 			return
 		}
-		ch, err = openai.RunCloudCompletionStream(ctx, opts, prompt)
+		var conn *websocket.Conn
+		ch, conn, err = openai.RunCloudCompletionStream(ctx, opts, prompt)
+		defer conn.Close()
 	} else {
 		ch, err = openai.RunCompletionStream(ctx, opts, prompt)
 	}
