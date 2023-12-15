@@ -1484,7 +1484,16 @@ func doOpenAICompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, prompt
 		}
 		sstore.MainBus.SendScreenUpdate(cmd.ScreenId, update)
 	}()
-	respPks, err := openai.RunCompletion(ctx, opts, prompt)
+	var respPks []*packet.OpenAIPacketType
+	var err error
+	log.Printf("TODO: fix this condition - short circuited to access cloud code path\n")
+	if true || opts.APIToken == "" {
+		// run open ai completion in the cloud
+		respPks, err = openai.RunCloudCompletion(ctx, opts, prompt)
+	} else {
+		// run open ai completion locally
+		respPks, err = openai.RunCompletion(ctx, opts, prompt)
+	}
 	if err != nil {
 		writeErrorToPty(cmd, fmt.Sprintf("error calling OpenAI API: %v", err), outputPos)
 		return
@@ -1533,7 +1542,16 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, 
 		}
 		sstore.MainBus.SendScreenUpdate(cmd.ScreenId, update)
 	}()
-	ch, err := openai.RunCompletionStream(ctx, opts, prompt)
+	var ch chan *packet.OpenAIPacketType
+	var err error
+	log.Printf("TODO: fix this condition - short circuited to access cloud code path\n")
+	if true || opts.APIToken == "" {
+		// run open ai completion in the cloud
+		ch, err = openai.RunCloudCompletionStream(ctx, opts, prompt)
+	} else {
+		// run open ai completion locally
+		ch, err = openai.RunCompletionStream(ctx, opts, prompt)
+	}
 	if err != nil {
 		writeErrorToPty(cmd, fmt.Sprintf("error calling OpenAI API: %v", err), outputPos)
 		return
