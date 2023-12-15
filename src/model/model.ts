@@ -3458,7 +3458,6 @@ class Model {
                 (sdata: ScreenDataType) => sdata.screenid,
                 (sdata: ScreenDataType) => new Screen(sdata)
             );
-            console.log("mods", mods);
             for (let i = 0; i < mods.removed.length; i++) {
                 this.removeScreenLinesByScreenId(mods.removed[i]);
             }
@@ -3737,7 +3736,6 @@ class Model {
                 mobx.action(() => {
                     let update = data.data;
                     if (update != null) {
-                        console.log("update", update);
                         this.runUpdate(update, interactive);
                     }
                     if (interactive && !this.isInfoUpdate(update)) {
@@ -3798,7 +3796,6 @@ class Model {
         if (!addToHistory && pk.kwargs) {
             pk.kwargs["nohist"] = "1";
         }
-        console.log("pk", pk);
         return this.submitCommandPacket(pk, interactive);
     }
 
@@ -4058,7 +4055,6 @@ class CommandRunner {
     }
 
     switchScreen(screen: string) {
-        console.log("got here");
         mobx.action(() => {
             GlobalModel.activeMainView.set("session");
         })();
