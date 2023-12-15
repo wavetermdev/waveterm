@@ -3,6 +3,7 @@ package releasechecker
 import (
 	"context"
 	"log"
+	"time"
 
 	"github.com/google/go-github/v57/github"
 	"golang.org/x/mod/semver"
@@ -23,7 +24,10 @@ const (
 func CheckNewRelease(force bool) (ReleaseCheckResult, error) {
 	// Check for the latest release in the DB
 	// latestRelease, err := dbutil.g
-	ctx := context.Background()
+
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+
 	clientData, err := sstore.EnsureClientData(ctx)
 	if !force && clientData.ClientOpts.NoReleaseCheck {
 		log.Print("[releasechecker] Release check disabled by user preference")
@@ -32,7 +36,7 @@ func CheckNewRelease(force bool) (ReleaseCheckResult, error) {
 
 	log.Printf("[releasechecker] Existing ReleaseInfo values: %v", clientData.ReleaseInfo)
 
-	if !force && err == nil && clientData.ReleaseInfo.ReleaseAvailable && semver.Compare(scbase.WaveVersion, clientData.ReleaseInfo.InstalledVersion) != 0 {
+	if !force && err == nil && clientData.ReleaseInfo.ReleaseAvailable && semver.Compare(scbase.WaveVersion, clientData.ReleaseInfo.LatestVersion) < 0 {
 		// We have already notified the frontend about a new release and the record is fresh. There is no need to check again.
 		log.Print("[releasechecker] Release check not needed")
 		return NotNeeded, nil
@@ -44,7 +48,6 @@ func CheckNewRelease(force bool) (ReleaseCheckResult, error) {
 
 	releaseInfoLatest := sstore.ReleaseInfoType{
 		ReleaseAvailable: false,
-		InstalledVersion: scbase.WaveVersion,
 		LatestVersion:    scbase.WaveVersion,
 	}
 
@@ -59,7 +62,7 @@ func CheckNewRelease(force bool) (ReleaseCheckResult, error) {
 	}
 
 	releaseInfoLatest.LatestVersion = *release.TagName
-	if semver.Compare(releaseInfoLatest.InstalledVersion, releaseInfoLatest.LatestVersion) < 0 {
+	if semver.Compare(scbase.WaveVersion, releaseInfoLatest.LatestVersion) < 0 {
 		log.Printf("[releasechecker] New release available: %s", releaseInfoLatest.LatestVersion)
 		releaseInfoLatest.ReleaseAvailable = true
 	}

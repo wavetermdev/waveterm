@@ -3910,7 +3910,7 @@ func ReleaseCheckCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
 	}
 
-	rsp := fmt.Sprintf("installed version: %s; latest release version: %s", clientData.ReleaseInfo.InstalledVersion, clientData.ReleaseInfo.LatestVersion)
+	rsp := fmt.Sprintf("installed version: %s; latest release version: %s", scbase.WaveVersion, clientData.ReleaseInfo.LatestVersion)
 	update := sstore.InfoMsgUpdate(rsp)
 	update.ClientData = clientData
 	return update, nil

@@ -271,7 +271,6 @@ type FeOptsType struct {
 }
 
 type ReleaseInfoType struct {
-	InstalledVersion string `json:"installedversion,omitempty"`
 	LatestVersion    string `json:"latestversion,omitempty"`
 	ReleaseAvailable bool   `json:"releaseavailable"`
 }
