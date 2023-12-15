@@ -251,7 +251,7 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
         let index = 0;
         let activeScreenId = session.activeScreenId.get();
         return (
-            <div className="screen-tabs-container" style={{ width: `calc(100vw - )` }}>
+            <div className="screen-tabs-container">
                 <Reorder.Group
                     className="screen-tabs"
                     ref={this.tabsRef}
