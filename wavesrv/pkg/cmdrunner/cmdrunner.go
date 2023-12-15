@@ -207,9 +207,9 @@ func init() {
 	registerCmdFn("telemetry:send", TelemetrySendCommand)
 	registerCmdFn("telemetry:show", TelemetryShowCommand)
 
-	registerCmdFn("releaseCheck", ReleaseCheckCommand)
-	registerCmdFn("releaseCheck:autoOn", ReleaseCheckOnCommand)
-	registerCmdFn("releaseCheck:autoOff", ReleaseCheckOffCommand)
+	registerCmdFn("releasecheck", ReleaseCheckCommand)
+	registerCmdFn("releasecheck:autoon", ReleaseCheckOnCommand)
+	registerCmdFn("releasecheck:autooff", ReleaseCheckOffCommand)
 
 	registerCmdFn("history", HistoryCommand)
 	registerCmdFn("history:viewall", HistoryViewAllCommand)
@@ -3681,6 +3681,7 @@ func ClientShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "userid", clientData.UserId))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "clientid", clientData.ClientId))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "telemetry", boolToStr(clientData.ClientOpts.NoTelemetry, "off", "on")))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "release-check", boolToStr(clientData.ClientOpts.NoReleaseCheck, "off", "on")))
 	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "db-version", dbVersion))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "client-version", clientVersion))
 	buf.WriteString(fmt.Sprintf("  %-15s %s %s\n", "server-version", scbase.WaveVersion, scbase.BuildTime))

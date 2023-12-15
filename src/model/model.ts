@@ -4304,11 +4304,11 @@ class CommandRunner {
     }
 
     releaseCheckAutoOff(interactive: boolean): Promise<CommandRtnType> {
-        return GlobalModel.submitCommand("releaseCheck", "autoOff", null, { nohist: "1" }, interactive);
+        return GlobalModel.submitCommand("releasecheck", "autooff", null, { nohist: "1" }, interactive);
     }
 
     releaseCheckAutoOn(interactive: boolean): Promise<CommandRtnType> {
-        return GlobalModel.submitCommand("releaseCheck", "autoOn", null, { nohist: "1" }, interactive);
+        return GlobalModel.submitCommand("releasecheck", "autoon", null, { nohist: "1" }, interactive);
     }
 
     setTermFontSize(fsize: number, interactive: boolean): Promise<CommandRtnType> {
