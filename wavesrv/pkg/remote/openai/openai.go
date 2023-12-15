@@ -4,7 +4,6 @@
 package openai
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -99,9 +98,8 @@ func RunCloudCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, 
 		MaxTokens:  opts.MaxTokens,
 		MaxChoices: opts.MaxChoices,
 	}
-	configMessageBuf := new(bytes.Buffer)
-	json.NewEncoder(configMessageBuf).Encode(cloudCompletionRequestConfig)
-	err = conn.WriteMessage(websocket.TextMessage, configMessageBuf.Bytes())
+	configMessageBuf, err := json.Marshal(cloudCompletionRequestConfig)
+	err = conn.WriteMessage(websocket.TextMessage, configMessageBuf)
 	if err != nil {
 		return nil, fmt.Errorf("Websocker write config error: %v", err)
 	}
@@ -119,9 +117,8 @@ func RunCloudCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, 
 				rtn <- errPk
 				break
 			}
-			decoder := json.NewDecoder(bytes.NewReader(socketMessage))
 			var streamResp *packet.OpenAIPacketType
-			err = decoder.Decode(&streamResp)
+			err = json.Unmarshal(socketMessage, &streamResp)
 			if err != nil {
 				errPk := CreateErrorPacket(fmt.Sprintf("Websocket response json decode error: %v", err))
 				rtn <- errPk
