@@ -271,8 +271,8 @@ type FeOptsType struct {
 }
 
 type ReleaseInfoType struct {
-	InstalledVersion string `json:"installedversion"`
-	LatestVersion    string `json:"latestversion"`
+	InstalledVersion string `json:"installedversion,omitempty"`
+	LatestVersion    string `json:"latestversion,omitempty"`
 	ReleaseAvailable bool   `json:"releaseavailable"`
 }
 
@@ -290,7 +290,7 @@ type ClientData struct {
 	CmdStoreType        string            `json:"cmdstoretype"`
 	DBVersion           int               `json:"dbversion" dbmap:"-"`
 	OpenAIOpts          *OpenAIOptsType   `json:"openaiopts,omitempty" dbmap:"openaiopts"`
-	ReleaseInfo         ReleaseInfoType   `json:"releaseinfo" dbmap:"releaseinfo"`
+	ReleaseInfo         ReleaseInfoType   `json:"releaseinfo"`
 }
 
 func (ClientData) UseDBMap() {}

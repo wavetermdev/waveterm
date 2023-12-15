@@ -26,15 +26,15 @@ func CheckNewRelease(force bool) (ReleaseCheckResult, error) {
 	ctx := context.Background()
 	clientData, err := sstore.EnsureClientData(ctx)
 	if !force && clientData.ClientOpts.NoReleaseCheck {
-		log.Print("Release check disabled by user preference")
+		log.Print("[releasechecker] Release check disabled by user preference")
 		return Disabled, nil
 	}
 
-	log.Printf("Existing ReleaseInfo values: %v", clientData.ReleaseInfo)
+	log.Printf("[releasechecker] Existing ReleaseInfo values: %v", clientData.ReleaseInfo)
 
 	if !force && err == nil && clientData.ReleaseInfo.ReleaseAvailable && semver.Compare(scbase.WaveVersion, clientData.ReleaseInfo.InstalledVersion) != 0 {
 		// We have already notified the frontend about a new release and the record is fresh. There is no need to check again.
-		log.Print("Release check not needed")
+		log.Print("[releasechecker] Release check not needed")
 		return NotNeeded, nil
 	}
 	// Initialize an unauthenticated client
@@ -49,23 +49,32 @@ func CheckNewRelease(force bool) (ReleaseCheckResult, error) {
 	}
 
 	if err != nil {
-		log.Printf("Error getting latest release: %v", err)
+		log.Printf("[releasechecker] Error getting latest release: %v", err)
 		return Failure, err
 	}
 
 	if rsp.StatusCode != 200 {
-		log.Printf("Response from Github is not success: %v", rsp)
+		log.Printf("[releasechecker] Response from Github is not success: %v", rsp)
 		return Failure, nil
 	}
 
 	releaseInfoLatest.LatestVersion = *release.TagName
 	if semver.Compare(releaseInfoLatest.InstalledVersion, releaseInfoLatest.LatestVersion) < 0 {
-		log.Printf("New release available: %s", releaseInfoLatest.LatestVersion)
+		log.Printf("[releasechecker] New release available: %s", releaseInfoLatest.LatestVersion)
 		releaseInfoLatest.ReleaseAvailable = true
 	}
 
 	// Update the release info in the DB
-	log.Printf("Updating release info: %v", releaseInfoLatest)
-	sstore.SetReleaseInfo(ctx, releaseInfoLatest)
+	log.Printf("[releasechecker] Updating release info: %v", releaseInfoLatest)
+	err = sstore.SetReleaseInfo(ctx, releaseInfoLatest)
+	if err != nil {
+		log.Printf("[releasechecker] Error updating release info: %v", err)
+		return Failure, err
+	}
+	update := &sstore.ModelUpdate{
+		ClientData: clientData,
+	}
+	sstore.MainBus.SendUpdate(update)
+
 	return Success, nil
 }

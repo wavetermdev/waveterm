@@ -3870,7 +3870,9 @@ func ReleaseCheckCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	}
 
 	rsp := fmt.Sprintf("installed version: %s; latest release version: %s", clientData.ReleaseInfo.InstalledVersion, clientData.ReleaseInfo.LatestVersion)
-	return sstore.InfoMsgUpdate(rsp), nil
+	update := sstore.InfoMsgUpdate(rsp)
+	update.ClientData = clientData
+	return update, nil
 }
 
 func formatTermOpts(termOpts sstore.TermOpts) string {
