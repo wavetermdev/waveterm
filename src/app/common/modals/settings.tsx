@@ -218,6 +218,11 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         if (this.screen == null) {
             return;
         }
+        if (this.screen.getScreenLines().lines.length == 0) {
+            GlobalCommandRunner.screenPurge(this.screenId);
+            GlobalModel.modalsModel.popModal();
+            return;
+        }
         let message = ScreenDeleteMessage;
         let alertRtn = GlobalModel.showAlert({ message: message, confirm: true, markdown: true });
         alertRtn.then((result) => {
