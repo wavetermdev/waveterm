@@ -249,7 +249,7 @@ class MainSideBar extends React.Component<{}, {}> {
                                 onClick={() => openLink("https://www.waveterm.dev/download")}
                             >
                                 <i className="fa-sharp fa-regular fa-circle-up icon" />
-                                Update Available!
+                                Update Available
                             </div>
                         </If>
                         <If condition={GlobalModel.isDev}>
