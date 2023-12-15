@@ -79,24 +79,24 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
         GlobalCommandRunner.switchScreen(screenId);
     }
 
-    @boundMethod
-    handleWheel(event: WheelEvent) {
-        if (!this.tabsRef.current) return;
+    // @boundMethod
+    // handleWheel(event: WheelEvent) {
+    //     if (!this.tabsRef.current) return;
 
-        // Prevent the default vertical scrolling
-        event.preventDefault();
+    //     // Prevent the default vertical scrolling
+    //     event.preventDefault();
 
-        // Scroll horizontally instead
-        this.tabsRef.current.scrollLeft += event.deltaY;
-    }
+    //     // Scroll horizontally instead
+    //     this.tabsRef.current.scrollLeft += event.deltaY;
+    // }
 
     componentDidMount(): void {
         this.componentDidUpdate();
 
-        // Add the wheel event listener to the tabsRef
-        if (this.tabsRef.current) {
-            this.tabsRef.current.addEventListener("wheel", this.handleWheel, { passive: false });
-        }
+        // // Add the wheel event listener to the tabsRef
+        // if (this.tabsRef.current) {
+        //     this.tabsRef.current.addEventListener("wheel", this.handleWheel, { passive: false });
+        // }
     }
 
     componentWillUnmount() {
