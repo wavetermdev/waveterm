@@ -14,6 +14,7 @@ import (
 	"os/signal"
 	"os/user"
 	"path"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -52,6 +53,8 @@ const RtnStateFdNum = 20
 const ReturnStateReadWaitTime = 2 * time.Second
 
 const GetStateTimeout = 5 * time.Second
+const RemoteBashPath = "bash"
+const DefaultMacOSShell = "/bin/bash"
 
 const BaseBashOpts = `set +m; set +H; shopt -s extglob`
 
@@ -62,7 +65,7 @@ var LocalBashMajorVersionOnce = &sync.Once{}
 var LocalBashMajorVersion = ""
 
 var GetShellStateCmds = []string{
-	`echo bash v${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}.${BASH_VERSINFO[2]};`,
+	ShellVersionCmdStr + ";",
 	`pwd;`,
 	`declare -p $(compgen -A variable);`,
 	`alias -p;`,
@@ -101,6 +104,7 @@ func MakeInstallCommandStr() string {
 	return strings.ReplaceAll(InstallCommandFmt, "[%VERSION%]", semver.MajorMinor(base.MShellVersion))
 }
 
+// TODO fix bash path in these constants
 const RunCommandFmt = `%s`
 const RunSudoCommandFmt = `sudo -n -C %d bash /dev/fd/%d`
 const RunSudoPasswordCommandFmt = `cat /dev/fd/%d | sudo -k -S -C %d bash -c "echo '[from-mshell]'; exec %d>&-; bash /dev/fd/%d < /dev/fd/%d"`
@@ -177,6 +181,16 @@ type FdContext interface {
 type ShExecUPR struct {
 	ShExec *ShExecType
 	UPR    packet.UnknownPacketReporter
+}
+
+func GetLocalBashPath() string {
+	if runtime.GOOS == "darwin" {
+		macShell := GetMacUserShell()
+		if strings.Index(macShell, "bash") != -1 {
+			return shellescape.Quote(macShell)
+		}
+	}
+	return "bash"
 }
 
 func GetShellStateCmd() string {
@@ -320,7 +334,7 @@ func MakeDetachedExecCmd(pk *packet.RunPacketType, cmdTty *os.File) (*exec.Cmd, 
 	if state == nil {
 		state = &packet.ShellState{}
 	}
-	ecmd := exec.Command("bash", "-c", pk.Command)
+	ecmd := exec.Command(GetLocalBashPath(), "-c", pk.Command)
 	if !pk.StateComplete {
 		ecmd.Env = os.Environ()
 	}
@@ -525,7 +539,7 @@ func (opts SSHOpts) MakeSSHExecCmd(remoteCommand string) *exec.Cmd {
 		if homeDir == "" {
 			homeDir = "/"
 		}
-		ecmd := exec.Command("bash", "-c", remoteCommand)
+		ecmd := exec.Command(GetLocalBashPath(), "-c", remoteCommand)
 		ecmd.Dir = homeDir
 		return ecmd
 	} else {
@@ -552,7 +566,7 @@ func (opts SSHOpts) MakeSSHExecCmd(remoteCommand string) *exec.Cmd {
 		}
 		// note that SSHOptsStr is *not* escaped
 		sshCmd := fmt.Sprintf("ssh %s %s %s %s", strings.Join(moreSSHOpts, " "), opts.SSHOptsStr, shellescape.Quote(opts.SSHHost), shellescape.Quote(remoteCommand))
-		ecmd := exec.Command("bash", "-c", sshCmd)
+		ecmd := exec.Command(RemoteBashPath, "-c", sshCmd)
 		return ecmd
 	}
 }
@@ -1141,9 +1155,9 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		rcFileName = fmt.Sprintf("/dev/fd/%d", rcFileFdNum)
 	}
 	if pk.UsePty {
-		cmd.Cmd = exec.Command("bash", "--rcfile", rcFileName, "-i", "-c", pk.Command)
+		cmd.Cmd = exec.Command(GetLocalBashPath(), "--rcfile", rcFileName, "-i", "-c", pk.Command)
 	} else {
-		cmd.Cmd = exec.Command("bash", "--rcfile", rcFileName, "-c", pk.Command)
+		cmd.Cmd = exec.Command(GetLocalBashPath(), "--rcfile", rcFileName, "-c", pk.Command)
 	}
 	if !pk.StateComplete {
 		cmd.Cmd.Env = os.Environ()
@@ -1582,7 +1596,7 @@ func GetShellState() (*packet.ShellState, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
 	defer cancelFn()
 	cmdStr := BaseBashOpts + "; " + GetShellStateCmd()
-	ecmd := exec.CommandContext(ctx, "bash", "-l", "-i", "-c", cmdStr)
+	ecmd := exec.CommandContext(ctx, GetLocalBashPath(), "-l", "-i", "-c", cmdStr)
 	outputBytes, err := runSimpleCmdInPty(ecmd)
 	if err != nil {
 		return nil, err
@@ -1624,4 +1638,41 @@ func GetLocalBashMajorVersion() string {
 		LocalBashMajorVersion = packet.GetBashMajorVersion(fullVersion)
 	})
 	return LocalBashMajorVersion
+}
+
+var userShellRegexp = regexp.MustCompile(`^UserShell: (.*)$`)
+
+var cachedMacUserShell string
+var macUserShellOnce = &sync.Once{}
+
+func GetMacUserShell() string {
+	if runtime.GOOS != "darwin" {
+		return ""
+	}
+	macUserShellOnce.Do(func() {
+		cachedMacUserShell = internalMacUserShell()
+	})
+	return cachedMacUserShell
+}
+
+// dscl . -read /User/[username] UserShell
+// defaults to /bin/bash
+func internalMacUserShell() string {
+	osUser, err := user.Current()
+	if err != nil {
+		return DefaultMacOSShell
+	}
+	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
+	userStr := "/Users/" + osUser.Username
+	out, err := exec.CommandContext(ctx, "dscl", ".", "-read", userStr, "UserShell").CombinedOutput()
+	if err != nil {
+		return DefaultMacOSShell
+	}
+	outStr := strings.TrimSpace(string(out))
+	m := userShellRegexp.FindStringSubmatch(outStr)
+	if m == nil {
+		return DefaultMacOSShell
+	}
+	return m[1]
 }
