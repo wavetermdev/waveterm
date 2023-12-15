@@ -16,16 +16,13 @@ import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg"
 import { ReactComponent as ActionsIcon } from "../../assets/icons/tab/actions.svg";
 import { ReactComponent as AddIcon } from "../../assets/icons/add.svg";
 import * as constants from "../../appconst";
-import { Reorder, AnimatePresence } from "framer-motion";
+import { Reorder } from "framer-motion";
+import { MagicLayout } from "../../magiclayout";
 
 import "../workspace.less";
 import "./tabs.less";
 
 dayjs.extend(localizedFormat);
-
-const TAB_WIDTH = 175;
-
-type OV<V> = mobx.IObservableValue<V>;
 
 @mobxReact.observer
 class ScreenTabs extends React.Component<{ session: Session }, { showingScreens: Screen[] }> {
@@ -150,7 +147,7 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
             const finalTabPosition = tabElement.offsetLeft;
 
             // Calculate the new index based on the final position
-            const newIndex = Math.floor(finalTabPosition / TAB_WIDTH);
+            const newIndex = Math.floor(finalTabPosition / MagicLayout.TabWidth);
 
             GlobalCommandRunner.screenReorder(screenId, `${newIndex + 1}`);
         }, 100);
