@@ -107,14 +107,13 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
     }
 
     componentDidUpdate(): void {
-        if (this.scrollIntoViewTimeout) {
-            clearTimeout(this.scrollIntoViewTimeout);
-        }
-
         // Scroll the active screen into view
         let { session } = this.props;
         let activeScreenId = session.activeScreenId.get();
         if (activeScreenId !== this.lastActiveScreenId) {
+            if (this.scrollIntoViewTimeout) {
+                clearTimeout(this.scrollIntoViewTimeout);
+            }
             this.scrollIntoViewTimeout = setTimeout(() => {
                 if (this.tabsRef.current) {
                     let tabElem = this.tabsRef.current.querySelector(
