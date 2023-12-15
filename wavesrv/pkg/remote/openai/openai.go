@@ -84,9 +84,6 @@ func RunCloudCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, 
 	if opts == nil {
 		return nil, fmt.Errorf("no openai opts found")
 	}
-	if opts.Model == "" {
-		return nil, fmt.Errorf("no openai model specified")
-	}
 	websocketContext, _ := context.WithTimeout(context.Background(), CloudWebsocketConnectTimeout)
 	conn, _, err := websocket.DefaultDialer.DialContext(websocketContext, AWSLambdaCentralWSAddr, nil)
 	if err != nil {
