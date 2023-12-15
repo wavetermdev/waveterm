@@ -735,13 +735,10 @@ func ScreenReorderCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
     // Extract the screen ID and the new index from the packet
     screenId := ids.ScreenId
     newScreenIdxStr := pk.Kwargs["index"]
-    if newScreenIdxStr == "" {
-        return nil, fmt.Errorf("missing new screen index")
-    }
-    newScreenIdx, err := strconv.Atoi(newScreenIdxStr)
-    if err != nil {
-        return nil, fmt.Errorf("invalid new screen index: %v", err)
-    }
+	newScreenIdx, err := resolvePosInt(newScreenIdxStr, 1)
+	if err != nil {
+		return nil, fmt.Errorf("invalid new screen index: %v", err)
+	}
 
     // Call SetScreenIdx to update the screen's index in the database
     err = sstore.SetScreenIdx(ctx, ids.SessionId, screenId, newScreenIdx)
