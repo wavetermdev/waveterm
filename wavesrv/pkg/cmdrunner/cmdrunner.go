@@ -90,13 +90,14 @@ var SetVarNameMap map[string]string = map[string]string{
 	"anchor":   "screen.anchor",
 	"focus":    "screen.focus",
 	"line":     "screen.line",
+	"index":    "screen.index",
 }
 
 var SetVarScopes = []SetVarScope{
 	{ScopeName: "global", VarNames: []string{}},
 	{ScopeName: "client", VarNames: []string{"telemetry"}},
 	{ScopeName: "session", VarNames: []string{"name", "pos"}},
-	{ScopeName: "screen", VarNames: []string{"name", "tabcolor", "tabicon", "pos", "pterm", "anchor", "focus", "line"}},
+	{ScopeName: "screen", VarNames: []string{"name", "tabcolor", "tabicon", "pos", "pterm", "anchor", "focus", "line", "index"}},
 	{ScopeName: "line", VarNames: []string{}},
 	// connection = remote, remote = remoteinstance
 	{ScopeName: "connection", VarNames: []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}},
@@ -167,6 +168,7 @@ func init() {
 	registerCmdFn("screen:showall", ScreenShowAllCommand)
 	registerCmdFn("screen:reset", ScreenResetCommand)
 	registerCmdFn("screen:webshare", ScreenWebShareCommand)
+	registerCmdFn("screen:reorder", ScreenReorderCommand)
 
 	registerCmdAlias("remote", RemoteCommand)
 	registerCmdFn("remote:show", RemoteShowCommand)
@@ -720,6 +722,45 @@ func ScreenOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	if err != nil {
 		return nil, err
 	}
+	return update, nil
+}
+
+func ScreenReorderCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	// Resolve the UI IDs for the session and screen
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract the screen ID and the new index from the packet
+	screenId := ids.ScreenId
+	newScreenIdxStr := pk.Kwargs["index"]
+	newScreenIdx, err := resolvePosInt(newScreenIdxStr, 1)
+	if err != nil {
+		return nil, fmt.Errorf("invalid new screen index: %v", err)
+	}
+
+	// Call SetScreenIdx to update the screen's index in the database
+	err = sstore.SetScreenIdx(ctx, ids.SessionId, screenId, newScreenIdx)
+	if err != nil {
+		return nil, fmt.Errorf("error updating screen index: %v", err)
+	}
+
+	// Retrieve all session screens
+	screens, err := sstore.GetSessionScreens(ctx, ids.SessionId)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving updated screen: %v", err)
+	}
+
+	// Prepare the update packet to send back to the client
+	update := &sstore.ModelUpdate{
+		Screens: screens,
+		Info: &sstore.InfoMsgType{
+			InfoMsg:   "screen indices updated successfully",
+			TimeoutMs: 2000,
+		},
+	}
+
 	return update, nil
 }
 

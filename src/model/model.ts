@@ -4196,6 +4196,15 @@ class CommandRunner {
         GlobalModel.submitCommand("screen", "set", null, kwargs, false);
     }
 
+    screenReorder(screenId: string, index: string) {
+        let kwargs: Record<string, string> = {
+            nohist: "1",
+            screenId: screenId,
+            index: index,
+        };
+        GlobalModel.submitCommand("screen", "reorder", null, kwargs, false);
+    }
+
     setTermUsedRows(termContext: RendererContext, height: number) {
         let kwargs: Record<string, string> = {};
         kwargs["screen"] = termContext.screenId;
