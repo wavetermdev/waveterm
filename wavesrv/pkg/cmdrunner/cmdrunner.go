@@ -3878,7 +3878,7 @@ func ReleaseCheckOnCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 
 	err = runReleaseCheck(true)
 	if err != nil {
-		return nil, err
+		log.Printf("error checking for new release after enabling auto release check: %v\n", err)
 	}
 
 	clientData, err = sstore.EnsureClientData(ctx)
