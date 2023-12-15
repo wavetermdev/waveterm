@@ -90,7 +90,7 @@ var SetVarNameMap map[string]string = map[string]string{
 	"anchor":   "screen.anchor",
 	"focus":    "screen.focus",
 	"line":     "screen.line",
-	"index":     "screen.index",
+	"index":    "screen.index",
 }
 
 var SetVarScopes = []SetVarScope{
@@ -726,31 +726,31 @@ func ScreenOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 }
 
 func ScreenReorderCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-    // Resolve the UI IDs for the session and screen
-    ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
-    if err != nil {
-        return nil, err
-    }
+	// Resolve the UI IDs for the session and screen
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
+	if err != nil {
+		return nil, err
+	}
 
-    // Extract the screen ID and the new index from the packet
-    screenId := ids.ScreenId
-    newScreenIdxStr := pk.Kwargs["index"]
+	// Extract the screen ID and the new index from the packet
+	screenId := ids.ScreenId
+	newScreenIdxStr := pk.Kwargs["index"]
 	newScreenIdx, err := resolvePosInt(newScreenIdxStr, 1)
 	if err != nil {
 		return nil, fmt.Errorf("invalid new screen index: %v", err)
 	}
 
-    // Call SetScreenIdx to update the screen's index in the database
-    err = sstore.SetScreenIdx(ctx, ids.SessionId, screenId, newScreenIdx)
-    if err != nil {
-        return nil, fmt.Errorf("error updating screen index: %v", err)
-    }
+	// Call SetScreenIdx to update the screen's index in the database
+	err = sstore.SetScreenIdx(ctx, ids.SessionId, screenId, newScreenIdx)
+	if err != nil {
+		return nil, fmt.Errorf("error updating screen index: %v", err)
+	}
 
-    // Retrieve all session screens
-    screens, err := sstore.GetSessionScreens(ctx, ids.SessionId)
-    if err != nil {
-        return nil, fmt.Errorf("error retrieving updated screen: %v", err)
-    }
+	// Retrieve all session screens
+	screens, err := sstore.GetSessionScreens(ctx, ids.SessionId)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving updated screen: %v", err)
+	}
 
 	// Prepare the update packet to send back to the client
 	update := &sstore.ModelUpdate{
@@ -761,9 +761,8 @@ func ScreenReorderCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		},
 	}
 
-    return update, nil
+	return update, nil
 }
-
 
 func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
