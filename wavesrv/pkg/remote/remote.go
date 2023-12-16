@@ -355,6 +355,7 @@ func ArchiveRemote(ctx context.Context, remoteId string) error {
 		RemoteCanonicalName: rcopy.RemoteCanonicalName,
 		ConnectMode:         sstore.ConnectModeManual,
 		Archived:            true,
+		SSHConfigSrc:        rcopy.SSHConfigSrc,
 	}
 	err := sstore.UpsertRemote(ctx, archivedRemote)
 	if err != nil {
