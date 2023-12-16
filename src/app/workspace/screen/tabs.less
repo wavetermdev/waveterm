@@ -220,96 +220,10 @@
     }
 }
 
-.screen-tabs {
-    display: flex;
-    flex-direction: row;
-    overflow-x: hidden;
-    align-items: center;
-
-    &:hover,
-    &:focus {
-        overflow-x: auto;
-    }
-
-    .screen-tab {
-        display: flex;
-        height: 3em;
-        min-width: 14em;
-        max-width: 14em;
-        align-items: center;
-        cursor: pointer;
-        position: relative;
-
-        .icon.svg-icon {
-            margin: 0 12px;
-
-            svg {
-                width: 14px;
-                height: 14px;
-            }
-        }
-
-        .icon.fa-icon {
-            font-size: 16px;
-            margin: 0 12px;
-        }
-
-        .tab-name {
-            width: 8rem;
-        }
-
-        &.is-active {
-            border-top: none;
-            opacity: 1;
-        }
-
-        &.is-archived {
-            .fa.fa-archive {
-                margin-right: 4px;
-            }
-        }
-
-        .tab-index,
-        .tab-gear {
-            display: none;
-            .icon {
-                border-radius: 50%;
-            }
-        }
-
-        &:hover {
-            .tab-gear {
-                display: block;
-            }
-        }
-    }
-
-    &:hover .screen-tab .tab-index {
-        display: block;
-        font-size: 0.8em;
-    }
-
-    &:hover .screen-tab:hover .tab-index {
-        display: none;
-    }
-
-    .new-screen {
-        flex-shrink: 0;
-        margin-left: 1em;
-        margin-right: 1em;
-        cursor: pointer;
-        .icon {
-            height: 2rem;
-            height: 2rem;
-            border-radius: 50%;
-            padding: 0.4em;
-            vertical-align: middle;
-        }
-    }
-}
-
 .screen-tabs-container {
+    display: flex;
     position: relative;
+    overflow: hidden;
 
     &:hover {
         z-index: 200;
@@ -324,5 +238,96 @@
         bottom: -18px;
         left: 0px;
         display: flex;
+    }
+
+    .screen-tabs {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        overflow-x: hidden;
+
+        &:hover,
+        &:focus {
+            overflow-x: overlay;
+        }
+
+        .screen-tab {
+            display: flex;
+            height: 3em;
+            min-width: 14em;
+            max-width: 14em;
+            align-items: center;
+            cursor: pointer;
+            position: relative;
+
+            .icon.svg-icon {
+                margin: 0 12px;
+
+                svg {
+                    width: 14px;
+                    height: 14px;
+                }
+            }
+
+            .icon.fa-icon {
+                font-size: 16px;
+                margin: 0 12px;
+            }
+
+            .tab-name {
+                width: 8rem;
+            }
+
+            &.is-active {
+                border-top: none;
+                opacity: 1;
+            }
+
+            &.is-archived {
+                .fa.fa-archive {
+                    margin-right: 4px;
+                }
+            }
+
+            .tab-index,
+            .tab-gear {
+                display: none;
+                .icon {
+                    border-radius: 50%;
+                }
+            }
+
+            &:hover {
+                .tab-gear {
+                    display: block;
+                }
+            }
+        }
+
+        &:hover .screen-tab .tab-index {
+            display: block;
+            font-size: 0.8em;
+        }
+
+        &:hover .screen-tab:hover .tab-index {
+            display: none;
+        }
+    }
+
+    .new-screen {
+        flex-shrink: 0;
+        margin-left: 1em;
+        margin-right: 1em;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+
+        .icon {
+            height: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            padding: 0.4em;
+            vertical-align: middle;
+        }
     }
 }

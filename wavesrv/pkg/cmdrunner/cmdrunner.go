@@ -23,6 +23,7 @@ import (
 	"unicode"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 	"github.com/kevinburke/ssh_config"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
@@ -30,12 +31,14 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/comp"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/pcloud"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/releasechecker"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote/openai"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
+	"golang.org/x/mod/semver"
 )
 
 const (
@@ -68,6 +71,11 @@ const TermFontSizeMax = 24
 
 const TsFormatStr = "2006-01-02 15:04:05"
 
+const OpenAIPacketTimeout = 10 * time.Second
+const OpenAIStreamTimeout = 5 * time.Minute
+
+const OpenAICloudCompletionTelemetryOffErrorMsg = "In order to protect against abuse, you must have telemetry turned on in order to use Wave's free AI features.  If you do not want to turn telemetry on, you can still use Wave's AI features by adding your own OpenAI key in Settings.  Note that when you use your own key, requests are not proxied through Wave's servers and will be sent directly to the OpenAI API."
+
 const (
 	KwArgRenderer = "renderer"
 	KwArgView     = "view"
@@ -92,13 +100,14 @@ var SetVarNameMap map[string]string = map[string]string{
 	"anchor":   "screen.anchor",
 	"focus":    "screen.focus",
 	"line":     "screen.line",
+	"index":    "screen.index",
 }
 
 var SetVarScopes = []SetVarScope{
 	{ScopeName: "global", VarNames: []string{}},
 	{ScopeName: "client", VarNames: []string{"telemetry"}},
 	{ScopeName: "session", VarNames: []string{"name", "pos"}},
-	{ScopeName: "screen", VarNames: []string{"name", "tabcolor", "tabicon", "pos", "pterm", "anchor", "focus", "line"}},
+	{ScopeName: "screen", VarNames: []string{"name", "tabcolor", "tabicon", "pos", "pterm", "anchor", "focus", "line", "index"}},
 	{ScopeName: "line", VarNames: []string{}},
 	// connection = remote, remote = remoteinstance
 	{ScopeName: "connection", VarNames: []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}},
@@ -169,6 +178,7 @@ func init() {
 	registerCmdFn("screen:showall", ScreenShowAllCommand)
 	registerCmdFn("screen:reset", ScreenResetCommand)
 	registerCmdFn("screen:webshare", ScreenWebShareCommand)
+	registerCmdFn("screen:reorder", ScreenReorderCommand)
 
 	registerCmdAlias("remote", RemoteCommand)
 	registerCmdFn("remote:show", RemoteShowCommand)
@@ -207,6 +217,10 @@ func init() {
 	registerCmdFn("telemetry:off", TelemetryOffCommand)
 	registerCmdFn("telemetry:send", TelemetrySendCommand)
 	registerCmdFn("telemetry:show", TelemetryShowCommand)
+
+	registerCmdFn("releasecheck", ReleaseCheckCommand)
+	registerCmdFn("releasecheck:autoon", ReleaseCheckOnCommand)
+	registerCmdFn("releasecheck:autooff", ReleaseCheckOffCommand)
 
 	registerCmdFn("history", HistoryCommand)
 	registerCmdFn("history:viewall", HistoryViewAllCommand)
@@ -723,6 +737,45 @@ func ScreenOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	if err != nil {
 		return nil, err
 	}
+	return update, nil
+}
+
+func ScreenReorderCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	// Resolve the UI IDs for the session and screen
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract the screen ID and the new index from the packet
+	screenId := ids.ScreenId
+	newScreenIdxStr := pk.Kwargs["index"]
+	newScreenIdx, err := resolvePosInt(newScreenIdxStr, 1)
+	if err != nil {
+		return nil, fmt.Errorf("invalid new screen index: %v", err)
+	}
+
+	// Call SetScreenIdx to update the screen's index in the database
+	err = sstore.SetScreenIdx(ctx, ids.SessionId, screenId, newScreenIdx)
+	if err != nil {
+		return nil, fmt.Errorf("error updating screen index: %v", err)
+	}
+
+	// Retrieve all session screens
+	screens, err := sstore.GetSessionScreens(ctx, ids.SessionId)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving updated screen: %v", err)
+	}
+
+	// Prepare the update packet to send back to the client
+	update := &sstore.ModelUpdate{
+		Screens: screens,
+		Info: &sstore.InfoMsgType{
+			InfoMsg:   "screen indices updated successfully",
+			TimeoutMs: 2000,
+		},
+	}
+
 	return update, nil
 }
 
@@ -1599,7 +1652,7 @@ func writePacketToPty(ctx context.Context, cmd *sstore.CmdType, pk packet.Packet
 	return nil
 }
 
-func doOpenAICompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, prompt []sstore.OpenAIPromptMessageType) {
+func doOpenAICompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, prompt []packet.OpenAIPromptMessageType) {
 	var outputPos int64
 	var hadError bool
 	startTime := time.Now()
@@ -1633,7 +1686,10 @@ func doOpenAICompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, prompt
 		}
 		sstore.MainBus.SendScreenUpdate(cmd.ScreenId, update)
 	}()
-	respPks, err := openai.RunCompletion(ctx, opts, prompt)
+	var respPks []*packet.OpenAIPacketType
+	var err error
+	// run open ai completion locally
+	respPks, err = openai.RunCompletion(ctx, opts, prompt)
 	if err != nil {
 		writeErrorToPty(cmd, fmt.Sprintf("error calling OpenAI API: %v", err), outputPos)
 		return
@@ -1648,11 +1704,11 @@ func doOpenAICompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, prompt
 	return
 }
 
-func doOpenAIStreamCompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, prompt []sstore.OpenAIPromptMessageType) {
+func doOpenAIStreamCompletion(cmd *sstore.CmdType, clientId string, opts *sstore.OpenAIOptsType, prompt []packet.OpenAIPromptMessageType) {
 	var outputPos int64
 	var hadError bool
 	startTime := time.Now()
-	ctx, cancelFn := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancelFn := context.WithTimeout(context.Background(), OpenAIStreamTimeout)
 	defer cancelFn()
 	defer func() {
 		r := recover()
@@ -1682,16 +1738,52 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, 
 		}
 		sstore.MainBus.SendScreenUpdate(cmd.ScreenId, update)
 	}()
-	ch, err := openai.RunCompletionStream(ctx, opts, prompt)
+	var ch chan *packet.OpenAIPacketType
+	var err error
+	if opts.APIToken == "" {
+		var conn *websocket.Conn
+		ch, conn, err = openai.RunCloudCompletionStream(ctx, clientId, opts, prompt)
+		if conn != nil {
+			defer conn.Close()
+		}
+	} else {
+		ch, err = openai.RunCompletionStream(ctx, opts, prompt)
+	}
 	if err != nil {
 		writeErrorToPty(cmd, fmt.Sprintf("error calling OpenAI API: %v", err), outputPos)
 		return
 	}
-	for pk := range ch {
-		err = writePacketToPty(ctx, cmd, pk, &outputPos)
-		if err != nil {
-			writeErrorToPty(cmd, fmt.Sprintf("error writing response to ptybuffer: %v", err), outputPos)
-			return
+	doneWaitingForPackets := false
+	for !doneWaitingForPackets {
+		select {
+		case <-time.After(OpenAIPacketTimeout):
+			// timeout reading from channel
+			hadError = true
+			pk := openai.CreateErrorPacket(fmt.Sprintf("timeout waiting for server response"))
+			err = writePacketToPty(ctx, cmd, pk, &outputPos)
+			if err != nil {
+				log.Printf("error writing response to ptybuffer: %v", err)
+				return
+			}
+			doneWaitingForPackets = true
+			break
+		case pk, ok := <-ch:
+			if ok {
+				// got a packet
+				if pk.Error != "" {
+					hadError = true
+				}
+				err = writePacketToPty(ctx, cmd, pk, &outputPos)
+				if err != nil {
+					hadError = true
+					log.Printf("error writing response to ptybuffer: %v", err)
+					return
+				}
+			} else {
+				// channel closed
+				doneWaitingForPackets = true
+				break
+			}
 		}
 	}
 	return
@@ -1706,10 +1798,15 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
 	}
-	if clientData.OpenAIOpts == nil || clientData.OpenAIOpts.APIToken == "" {
-		return nil, fmt.Errorf("no openai API token found, configure in client settings")
+	if clientData.OpenAIOpts == nil {
+		return nil, fmt.Errorf("error retrieving client open ai options")
 	}
 	opts := clientData.OpenAIOpts
+	if opts.APIToken == "" {
+		if clientData.ClientOpts.NoTelemetry {
+			return nil, fmt.Errorf(OpenAICloudCompletionTelemetryOffErrorMsg)
+		}
+	}
 	if opts.Model == "" {
 		opts.Model = openai.DefaultModel
 	}
@@ -1734,9 +1831,9 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	if err != nil {
 		return nil, fmt.Errorf("cannot add new line: %v", err)
 	}
-	prompt := []sstore.OpenAIPromptMessageType{{Role: sstore.OpenAIRoleUser, Content: promptStr}}
+	prompt := []packet.OpenAIPromptMessageType{{Role: sstore.OpenAIRoleUser, Content: promptStr}}
 	if resolveBool(pk.Kwargs["stream"], true) {
-		go doOpenAIStreamCompletion(cmd, opts, prompt)
+		go doOpenAIStreamCompletion(cmd, clientData.ClientId, opts, prompt)
 	} else {
 		go doOpenAICompletion(cmd, opts, prompt)
 	}
@@ -3693,9 +3790,6 @@ func ClientAcceptTosCommand(ctx context.Context, pk *scpacket.FeCommandPacketTyp
 }
 
 func validateOpenAIAPIToken(key string) error {
-	if len(key) == 0 {
-		return fmt.Errorf("invalid openai token, zero length")
-	}
 	if len(key) > MaxOpenAIAPITokenLen {
 		return fmt.Errorf("invalid openai token, too long")
 	}
@@ -3818,8 +3912,21 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 			return nil, fmt.Errorf("error updating client openai maxchoices: %v", err)
 		}
 	}
+	if aiBaseURL, found := pk.Kwargs["openaibaseurl"]; found {
+		aiOpts := clientData.OpenAIOpts
+		if aiOpts == nil {
+			aiOpts = &sstore.OpenAIOptsType{}
+			clientData.OpenAIOpts = aiOpts
+		}
+		aiOpts.BaseURL = aiBaseURL
+		varsUpdated = append(varsUpdated, "openaibaseurl")
+		err = sstore.UpdateClientOpenAIOpts(ctx, *aiOpts)
+		if err != nil {
+			return nil, fmt.Errorf("error updating client openai base url: %v", err)
+		}
+	}
 	if len(varsUpdated) == 0 {
-		return nil, fmt.Errorf("/client:set requires a value to set: %s", formatStrs([]string{"termfontsize", "openaiapitoken", "openaimodel", "openaimaxtokens", "openaimaxchoices"}, "or", false))
+		return nil, fmt.Errorf("/client:set requires a value to set: %s", formatStrs([]string{"termfontsize", "openaiapitoken", "openaimodel", "openaibaseurl", "openaimaxtokens", "openaimaxchoices"}, "or", false))
 	}
 	clientData, err = sstore.EnsureClientData(ctx)
 	if err != nil {
@@ -3852,6 +3959,7 @@ func ClientShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "userid", clientData.UserId))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "clientid", clientData.ClientId))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "telemetry", boolToStr(clientData.ClientOpts.NoTelemetry, "off", "on")))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "release-check", boolToStr(clientData.ClientOpts.NoReleaseCheck, "off", "on")))
 	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "db-version", dbVersion))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "client-version", clientVersion))
 	buf.WriteString(fmt.Sprintf("  %-15s %s %s\n", "server-version", scbase.WaveVersion, scbase.BuildTime))
@@ -3966,6 +4074,102 @@ func TelemetrySendCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		return nil, fmt.Errorf("failed to send telemetry: %v", err)
 	}
 	return sstore.InfoMsgUpdate("telemetry sent"), nil
+}
+
+func runReleaseCheck(ctx context.Context, force bool) error {
+	rslt, err := releasechecker.CheckNewRelease(ctx, force)
+
+	if err != nil {
+		return fmt.Errorf("error checking for new release: %v", err)
+	}
+
+	if rslt == releasechecker.Failure {
+		return fmt.Errorf("error checking for new release, see log for details")
+	}
+
+	return nil
+}
+
+func setNoReleaseCheck(ctx context.Context, clientData *sstore.ClientData, noReleaseCheckValue bool) error {
+	clientOpts := clientData.ClientOpts
+	clientOpts.NoReleaseCheck = noReleaseCheckValue
+	err := sstore.SetClientOpts(ctx, clientOpts)
+	if err != nil {
+		return fmt.Errorf("error trying to update client releaseCheck setting: %v", err)
+	}
+	log.Printf("client no-release-check setting updated to %v\n", noReleaseCheckValue)
+	return nil
+}
+
+func ReleaseCheckOnCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
+	}
+	if !clientData.ClientOpts.NoReleaseCheck {
+		return sstore.InfoMsgUpdate("release check is already on"), nil
+	}
+	err = setNoReleaseCheck(ctx, clientData, false)
+	if err != nil {
+		return nil, err
+	}
+
+	err = runReleaseCheck(ctx, true)
+	if err != nil {
+		log.Printf("error checking for new release after enabling auto release check: %v\n", err)
+	}
+
+	clientData, err = sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
+	}
+	update := sstore.InfoMsgUpdate("automatic release checking is now on")
+	update.ClientData = clientData
+	return update, nil
+}
+
+func ReleaseCheckOffCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
+	}
+	if clientData.ClientOpts.NoReleaseCheck {
+		return sstore.InfoMsgUpdate("release check is already off"), nil
+	}
+	err = setNoReleaseCheck(ctx, clientData, true)
+	if err != nil {
+		return nil, err
+	}
+	clientData, err = sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
+	}
+	update := sstore.InfoMsgUpdate("automatic release checking is now off")
+	update.ClientData = clientData
+	return update, nil
+}
+
+func ReleaseCheckCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	err := runReleaseCheck(ctx, true)
+	if err != nil {
+		return nil, err
+	}
+
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
+	}
+
+	var rsp string
+	if semver.Compare(scbase.WaveVersion, clientData.ReleaseInfo.LatestVersion) < 0 {
+		rsp = "new release available to download: https://www.waveterm.dev/download"
+	} else {
+		rsp = "no new release available"
+	}
+
+	update := sstore.InfoMsgUpdate(rsp)
+	update.ClientData = clientData
+	return update, nil
 }
 
 func formatTermOpts(termOpts sstore.TermOpts) string {

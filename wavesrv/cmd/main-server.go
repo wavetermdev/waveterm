@@ -33,6 +33,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/server"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/cmdrunner"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/pcloud"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/releasechecker"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/rtnstate"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
@@ -715,7 +716,6 @@ func sendTelemetryWrapper() {
 		}
 		log.Printf("[error] in sendTelemetryWrapper: %v\n", r)
 		debug.PrintStack()
-		return
 	}()
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
@@ -725,14 +725,35 @@ func sendTelemetryWrapper() {
 	}
 }
 
+func checkNewReleaseWrapper() {
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+		log.Printf("[error] in checkNewReleaseWrapper: %v\n", r)
+		debug.PrintStack()
+	}()
+
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+
+	_, err := releasechecker.CheckNewRelease(ctx, false)
+	if err != nil {
+		log.Printf("[error] checking for new release: %v\n", err)
+		return
+	}
+}
+
 func telemetryLoop() {
 	var lastSent time.Time
 	time.Sleep(InitialTelemetryWait)
 	for {
-		dur := time.Now().Sub(lastSent)
+		dur := time.Since(lastSent)
 		if lastSent.IsZero() || dur >= TelemetryInterval {
 			lastSent = time.Now()
 			sendTelemetryWrapper()
+			checkNewReleaseWrapper()
 		}
 		time.Sleep(TelemetryTick)
 	}

@@ -388,7 +388,7 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
     // Method to handle blur at the component level
     @boundMethod
     handleComponentBlur() {
-        if (this.inputRef.current && this.inputRef.current.contains(document.activeElement)) {
+        if (this.inputRef.current?.contains(document.activeElement)) {
             this.inputRef.current.blur();
         }
     }
@@ -441,7 +441,7 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
         const { focused, internalValue, error } = this.state;
 
         // Decide if the input should behave as controlled or uncontrolled
-        const inputValue = value !== undefined ? value : internalValue;
+        const inputValue = value ?? internalValue;
 
         return (
             <div
@@ -573,7 +573,7 @@ class PasswordField extends TextField {
     render() {
         const { decoration, className, placeholder, maxLength, label } = this.props;
         const { focused, internalValue, error, passwordVisible } = this.state;
-        const inputValue = this.props.value !== undefined ? this.props.value : internalValue;
+        const inputValue = this.props.value ?? internalValue;
 
         // The input should always receive the real value
         const inputProps = {
@@ -798,7 +798,7 @@ class InfoMessage extends React.Component<{ width: number; children: React.React
 function LinkRenderer(props: any): any {
     let newUrl = "https://extern?" + encodeURIComponent(props.href);
     return (
-        <a href={newUrl} target="_blank">
+        <a href={newUrl} target="_blank"  rel={"noopener"}>
             {props.children}
         </a>
     );
@@ -1032,7 +1032,7 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
         const { label, options, value, placeholder, decoration, className, required } = this.props;
         const { isOpen, internalValue, highlightedIndex, isTouched } = this.state;
 
-        const currentValue = value !== undefined ? value : internalValue;
+        const currentValue = value ?? internalValue;
         const selectedOptionLabel =
             options.find((option) => option.value === currentValue)?.label || placeholder || internalValue;
 
@@ -1165,7 +1165,7 @@ class Modal extends React.Component<ModalProps> {
     }
 
     render() {
-        return ReactDOM.createPortal(this.renderModal(), document.getElementById("app") as HTMLElement);
+        return ReactDOM.createPortal(this.renderModal(), document.getElementById("app") );
     }
 }
 
