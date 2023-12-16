@@ -1290,10 +1290,10 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 	}
 
 	for _, alias := range aliases {
-		userName, userNameErr := ssh_config.GetStrict(alias, "User")
+		userName, _ := ssh_config.GetStrict(alias, "User")
 		hostName, _ := ssh_config.GetStrict(alias, "Hostname")
 
-		if userNameErr != nil {
+		if userName == "" {
 			// we cannot store a remote with a missing user
 			// in the current setup
 			log.Printf("sshconfig import could not parse \"%s\" - no User in config\n", alias)
@@ -1315,10 +1315,10 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 			continue
 		}
 
-		portStr, remotePortErr := ssh_config.GetStrict(alias, "Port")
+		portStr, _ := ssh_config.GetStrict(alias, "Port")
 		var portVal int
 		var err error
-		if remotePortErr != nil {
+		if portStr != "" {
 			portVal, err = strconv.Atoi(portStr)
 			if err != nil {
 				// do not make assumptions about port if incorrectly configured
