@@ -470,7 +470,12 @@ type FeOptsType = {
 
 type ClientOptsType = {
     notelemetry: boolean;
+    noreleasecheck: boolean;
     acceptedtos: number;
+};
+
+type ReleaseInfoType = { 
+    latestversion: string;
 };
 
 type ClientDataType = {
@@ -481,6 +486,7 @@ type ClientDataType = {
     cmdstoretype: "session" | "screen";
     dbversion: number;
     openaiopts?: OpenAIOptsType;
+    releaseinfo?: ReleaseInfoType;
 };
 
 type OpenAIOptsType = {

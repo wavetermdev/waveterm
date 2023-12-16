@@ -218,6 +218,11 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         if (this.screen == null) {
             return;
         }
+        if (this.screen.getScreenLines().lines.length == 0) {
+            GlobalCommandRunner.screenPurge(this.screenId);
+            GlobalModel.modalsModel.popModal();
+            return;
+        }
         let message = ScreenDeleteMessage;
         let alertRtn = GlobalModel.showAlert({ message: message, confirm: true, markdown: true });
         alertRtn.then((result) => {
@@ -688,6 +693,17 @@ class ClientSettingsModal extends React.Component<{}, {}> {
         commandRtnHandler(prtn, this.errorMessage);
     }
 
+    @boundMethod
+    handleChangeReleaseCheck(val: boolean): void {
+        let prtn: Promise<CommandRtnType> = null;
+        if (val) {
+            prtn = GlobalCommandRunner.releaseCheckAutoOn(false);
+        } else {
+            prtn = GlobalCommandRunner.releaseCheckAutoOff(false);
+        }
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
     getFontSizes(): any {
         let availableFontSizes: { label: string; value: number }[] = [];
         for (let s = MinFontSize; s <= MaxFontSize; s++) {
@@ -762,6 +778,12 @@ class ClientSettingsModal extends React.Component<{}, {}> {
                         <div className="settings-label">Basic Telemetry</div>
                         <div className="settings-input">
                             <Toggle checked={!cdata.clientopts.notelemetry} onChange={this.handleChangeTelemetry} />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Check for Updates Automatically</div>
+                        <div className="settings-input">
+                            <Toggle checked={!cdata.clientopts.noreleasecheck} onChange={this.handleChangeReleaseCheck} />
                         </div>
                     </div>
                     <div className="settings-field">

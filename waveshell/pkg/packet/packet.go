@@ -60,10 +60,13 @@ const (
 	WriteFileDonePacketStr  = "writefiledone"  // rpc-response
 	FileDataPacketStr       = "filedata"
 
-	OpenAIPacketStr = "openai" // other
+	OpenAIPacketStr   = "openai" // other
+	OpenAICloudReqStr = "openai-cloudreq"
 )
 
 const PacketSenderQueueSize = 20
+
+const PacketEOFStr = "EOF"
 
 var TypeStrToFactory map[string]reflect.Type
 
@@ -837,6 +840,30 @@ func MakeWriteFileDonePacket(reqId string) *WriteFileDonePacketType {
 	return &WriteFileDonePacketType{
 		Type:   WriteFileDonePacketStr,
 		RespId: reqId,
+	}
+}
+
+type OpenAIPromptMessageType struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+	Name    string `json:"name,omitempty"`
+}
+
+type OpenAICloudReqPacketType struct {
+	Type       string                    `json:"type"`
+	ClientId   string                    `json:"clientid"`
+	Prompt     []OpenAIPromptMessageType `json:"prompt"`
+	MaxTokens  int                       `json:"maxtokens,omitempty"`
+	MaxChoices int                       `json:"maxchoices,omitempty"`
+}
+
+func (*OpenAICloudReqPacketType) GetType() string {
+	return OpenAICloudReqStr
+}
+
+func MakeOpenAICloudReqPacket() *OpenAICloudReqPacketType {
+	return &OpenAICloudReqPacketType{
+		Type: OpenAICloudReqStr,
 	}
 }
 

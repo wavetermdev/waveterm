@@ -29,6 +29,7 @@ class OpenAIRendererModel {
     savedHeight: number;
     loading: OV<boolean>;
     loadError: OV<string> = mobx.observable.box(null, { name: "renderer-loadError" });
+    chatError: OV<string> = mobx.observable.box(null, { name: "renderer-chatError" });
     updateHeight_debounced: (newHeight: number) => void;
     ptyDataSource: (termContext: T.TermContextUnion) => Promise<T.PtyDataType>;
     packetData: PacketDataBuffer;
@@ -64,7 +65,7 @@ class OpenAIRendererModel {
         // console.log("got packet", packet);
         if (packet.error != null) {
             mobx.action(() => {
-                this.loadError.set(packet.error);
+                this.chatError.set(packet.error);
                 this.version.set(this.version.get() + 1);
             })();
             return;
@@ -131,6 +132,7 @@ class OpenAIRendererModel {
         mobx.action(() => {
             this.loading.set(true);
             this.loadError.set(null);
+            this.chatError.set(null);
         })();
         let rtnp = this.ptyDataSource(this.context);
         if (rtnp == null) {
@@ -186,13 +188,13 @@ class OpenAIRenderer extends React.Component<{ model: OpenAIRendererModel }> {
         );
     }
 
-    renderOutput(cmd: T.WebCmd) {
-        let output = this.props.model.output.get();
-        let message = "";
-        if (output != null) {
-            message = output.message ?? "";
-        }
+    renderOutput() {
         let model = this.props.model;
+        let output = model.output.get();
+        if (output == null || output.message == null || output.message == "") {
+            return null;
+        }
+        let message = output.message;
         let opts = model.opts;
         let maxWidth = opts.maxSize.width;
         let minWidth = opts.maxSize.width;
@@ -219,6 +221,20 @@ class OpenAIRenderer extends React.Component<{ model: OpenAIRendererModel }> {
         );
     }
 
+    renderChatError() {
+        let model = this.props.model;
+        let chatError = model.chatError.get();
+        if (chatError == null) {
+            return null;
+        }
+        return (
+            <div className="openai-message">
+                <div className="openai-role openai-role-error">[error]</div>
+                <div className="openai-content-error">{chatError}</div>
+            </div>
+        );
+    }
+
     render() {
         let model: OpenAIRendererModel = this.props.model;
         let cmd = model.rawCmd;
@@ -239,7 +255,8 @@ class OpenAIRenderer extends React.Component<{ model: OpenAIRendererModel }> {
         return (
             <div className="openai-renderer" style={styleVal}>
                 {this.renderPrompt(cmd)}
-                {this.renderOutput(cmd)}
+                {this.renderOutput()}
+                {this.renderChatError()}
             </div>
         );
     }

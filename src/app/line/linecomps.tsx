@@ -76,11 +76,14 @@ class SmallLineAvatar extends React.Component<{ line: LineType; cmd: Cmd; onRigh
                 iconTitle = "success";
             } else {
                 icon = <XmarkIcon className="fail" />;
-                iconTitle = "fail";
+                iconTitle = "exitcode " + exitcode;
             }
-        } else if (status == "hangup" || status == "error") {
+        } else if (status == "hangup") {
             icon = <WarningIcon className="warning" />;
             iconTitle = status;
+        } else if (status == "error") {
+            icon = <XmarkIcon className="fail" />;
+            iconTitle = "error";
         } else if (status == "running" || "detached") {
             icon = <RotateIcon className="warning spin" />;
             iconTitle = "running";

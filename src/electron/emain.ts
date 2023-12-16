@@ -108,13 +108,13 @@ function checkPromptMigrate() {
     // rename directory, and then rename db and authkey files
     fs.renameSync(promptHome, waveHome);
     fs.renameSync(path.join(waveHome, "prompt.db"), path.join(waveHome, "waveterm.db"));
-    if (fs.existsSync(waveHome, "prompt.db-wal")) {
+    if (fs.existsSync(path.join(waveHome, "prompt.db-wal"))) {
         fs.renameSync(path.join(waveHome, "prompt.db-wal"), path.join(waveHome, "waveterm.db-wal"));
     }
-    if (fs.existsSync(waveHome, "prompt.db-shm")) {
+    if (fs.existsSync(path.join(waveHome, "prompt.db-shm"))) {
         fs.renameSync(path.join(waveHome, "prompt.db-shm"), path.join(waveHome, "waveterm.db-shm"));
     }
-    if (fs.existsSync(waveHome, "prompt.authkey")) {
+    if (fs.existsSync(path.join(waveHome, "prompt.authkey"))) {
         fs.renameSync(path.join(waveHome, "prompt.authkey"), path.join(waveHome, "waveterm.authkey"));
     }
 }
@@ -382,7 +382,7 @@ function mainResizeHandler(e, win) {
     let bounds = win.getBounds();
     // console.log("resize/move", win.getBounds());
     let winSize = { width: bounds.width, height: bounds.height, top: bounds.y, left: bounds.x };
-    let url = getBaseHostPort() + "/api/set-winsize";
+    let url = new URL(getBaseHostPort() + "/api/set-winsize");
     let fetchHeaders = getFetchHeaders();
     fetch(url, { method: "post", body: JSON.stringify(winSize), headers: fetchHeaders })
         .then((resp) => handleJsonFetchResponse(url, resp))
@@ -504,7 +504,7 @@ async function getClientDataPoll(loopNum: number) {
 }
 
 function getClientData(willRetry: boolean, retryNum: number) {
-    let url = getBaseHostPort() + "/api/get-client-data";
+    let url = new URL(getBaseHostPort() + "/api/get-client-data");
     let fetchHeaders = getFetchHeaders();
     return fetch(url, { headers: fetchHeaders })
         .then((resp) => handleJsonFetchResponse(url, resp))
@@ -547,7 +547,7 @@ function runWaveSrv() {
         envCopy[WaveDevVarName] = "1";
     }
     console.log("trying to run local server", getWaveSrvPath());
-    let proc = child_process.spawn("/bin/bash", ["-c", getWaveSrvCmd()], {
+    let proc = child_process.spawn("bash", ["-c", getWaveSrvCmd()], {
         cwd: getWaveSrvCwd(),
         env: envCopy,
     });
@@ -624,7 +624,7 @@ async function sleep(ms) {
 
 function logActiveState() {
     let activeState = { fg: wasInFg, active: wasActive, open: true };
-    let url = getBaseHostPort() + "/api/log-active-state";
+    let url = new URL(getBaseHostPort() + "/api/log-active-state");
     let fetchHeaders = getFetchHeaders();
     fetch(url, { method: "post", body: JSON.stringify(activeState), headers: fetchHeaders })
         .then((resp) => handleJsonFetchResponse(url, resp))

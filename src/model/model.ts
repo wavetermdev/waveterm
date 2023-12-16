@@ -4264,6 +4264,15 @@ class CommandRunner {
         GlobalModel.submitCommand("screen", "set", null, kwargs, false);
     }
 
+    screenReorder(screenId: string, index: string) {
+        let kwargs: Record<string, string> = {
+            nohist: "1",
+            screenId: screenId,
+            index: index,
+        };
+        GlobalModel.submitCommand("screen", "reorder", null, kwargs, false);
+    }
+
     setTermUsedRows(termContext: RendererContext, height: number) {
         let kwargs: Record<string, string> = {};
         kwargs["screen"] = termContext.screenId;
@@ -4369,6 +4378,14 @@ class CommandRunner {
 
     telemetryOn(interactive: boolean): Promise<CommandRtnType> {
         return GlobalModel.submitCommand("telemetry", "on", null, { nohist: "1" }, interactive);
+    }
+
+    releaseCheckAutoOff(interactive: boolean): Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("releasecheck", "autooff", null, { nohist: "1" }, interactive);
+    }
+
+    releaseCheckAutoOn(interactive: boolean): Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("releasecheck", "autoon", null, { nohist: "1" }, interactive);
     }
 
     setTermFontSize(fsize: number, interactive: boolean): Promise<CommandRtnType> {
@@ -4527,5 +4544,6 @@ export {
     MinFontSize,
     MaxFontSize,
     SpecialLineContainer,
+    VERSION,
 };
 export type { LineContainerModel };
