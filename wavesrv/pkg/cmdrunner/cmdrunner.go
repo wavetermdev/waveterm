@@ -1302,12 +1302,17 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 			isSudo = true
 		}
 
+		sshKeyFile, sshKeyFileErr := ssh_config.GetStrict(alias, "IdentityFile")
+
 		sshOpts := &sstore.SSHOpts{
 			Local:   false,
 			SSHHost: hostName,
 			SSHUser: userName,
 			IsSudo:  isSudo,
 			SSHPort: portVal,
+		}
+		if sshKeyFileErr != nil {
+			sshOpts.SSHIdentity = sshKeyFile
 		}
 
 		alreadyStoredImportRemote := importedRemotesNotVisited[canonicalName]
@@ -1318,7 +1323,15 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 			// it needs to be updated and removed from the not
 			// visited map
 
-			//TODO edit existing
+			editMap := make(map[string]interface{})
+			editMap[sstore.RemoteField_Alias] = alias
+			if sshKeyFileErr != nil {
+				editMap[sstore.RemoteField_SSHKey] = sshKeyFile
+			} else {
+				editMap[sstore.RemoteField_SSHKey] = nil
+			}
+
+			sstore.UpdateRemote(ctx, alreadyStoredImportRemote.RemoteId, editMap)
 			log.Printf("remote with name \"%s\" being updated\n", canonicalName)
 			delete(importedRemotesNotVisited, canonicalName)
 		} else if alreadyStoredRemote != nil {
@@ -1358,24 +1371,6 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 			return nil, fmt.Errorf("archiving remote: %v", err)
 		}
 	}
-	return nil, nil
-}
-
-func createRemoteFromImport(alias string) (sstore.UpdatePacket, error) {
-	/*
-		r := &sstore.RemoteType{
-			RemoteId:            scbase.GenWaveUUID(),
-			RemoteType:          sstore.RemoteTypeSsh,
-			RemoteAlias:         editArgs.Alias,
-			RemoteCanonicalName: editArgs.CanonicalName,
-			RemoteUser:          editArgs.SSHOpts.SSHUser,
-			RemoteHost:          editArgs.SSHOpts.SSHHost,
-			ConnectMode:         editArgs.ConnectMode,
-			AutoInstall:         editArgs.AutoInstall,
-			SSHOpts:             editArgs.SSHOpts,
-			SSHConfigSrc:        "waveterm-manual",
-		}
-	*/
 	return nil, nil
 }
 
