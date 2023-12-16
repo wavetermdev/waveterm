@@ -10,7 +10,7 @@ import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { debounce } from "throttle-debounce";
 import dayjs from "dayjs";
-import { GlobalCommandRunner, TabColors, TabIcons, SpecialLineContainer } from "../../../model/model";
+import { GlobalCommandRunner, TabColors, TabIcons, ForwardLineContainer } from "../../../model/model";
 import type { LineType, RenderModeType, LineFactoryProps } from "../../../types/types";
 import * as T from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
@@ -73,7 +73,7 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
 
 @mobxReact.observer
 class SidebarLineContainer extends React.Component<{ screen: Screen; winSize: T.WindowSize; lineId: string }, {}> {
-    container: SpecialLineContainer;
+    container: ForwardLineContainer;
     overrideCollapsed: OV<boolean> = mobx.observable.box(false, { name: "overrideCollapsed" });
     visible: OV<boolean> = mobx.observable.box(true, { name: "visible" });
     ready: OV<boolean> = mobx.observable.box(false, {name: "ready"});
@@ -82,20 +82,18 @@ class SidebarLineContainer extends React.Component<{ screen: Screen; winSize: T.
         let { screen, winSize } = this.props;
         // TODO this is a hack for now to make the timing work out.
         setTimeout(() => {
-            this.container = new SpecialLineContainer(screen, winSize, false);
-            mobx.action(() => this.ready.set(true))();
-        }, 500)
-    }
-
-    componentWillUnmount(): void {
-        this.container.unloadRenderer(this.props.lineId);
+            mobx.action(() => {
+                this.container = new ForwardLineContainer(screen, winSize);
+                this.ready.set(true);
+            })();
+        }, 100);
     }
 
     @boundMethod
     handleHeightChange() {}
 
     render() {
-        if (this.container == null || !this.ready.get()) {
+        if (!this.ready.get() || this.container == null) {
             return null;
         }
         let { screen, winSize, lineId } = this.props;
@@ -103,6 +101,7 @@ class SidebarLineContainer extends React.Component<{ screen: Screen; winSize: T.
         if (line == null) {
             return null;
         }
+        console.log("linewidth", winSize.width);
         return (
             <Line
                 screen={this.container}

@@ -648,21 +648,12 @@ class LineCmd extends React.Component<
                         <If condition={!hidePrompt}>{this.renderCmdText(cmd)}</If>
                     </div>
                     <div
-                        key="pin"
-                        title="Pin"
-                        className={cn("line-icon", { active: line.pinned })}
-                        onClick={this.clickPin}
-                        style={{ display: "none" }}
-                    >
-                        <PinIcon className="icon" />
-                    </div>
-                    <div
                         key="bookmark"
                         title="Bookmark"
                         className={cn("line-icon", "line-bookmark", "hoverEffect")}
                         onClick={this.clickBookmark}
                     >
-                        <FavoritesIcon className="icon" />
+                        <i className="fa-sharp fa-regular fa-bookmark" />
                     </div>
                     <div
                         key="minimise"
@@ -675,7 +666,12 @@ class LineCmd extends React.Component<
                         )}
                         onClick={this.clickMinimise}
                     >
-                        {this.isMinimized.get() ? <PlusIcon className="icon plus" /> : <MinusIcon className="icon" />}
+                        <If condition={this.isMinimized.get()}>
+                            <i className="fa-sharp fa-regular fa-circle-plus" />
+                        </If>
+                        <If condition={!this.isMinimized.get()}>
+                            <i className="fa-sharp fa-regular fa-circle-minus" />
+                        </If>
                     </div>
                 </div>
                 <If condition={isInSidebar}>

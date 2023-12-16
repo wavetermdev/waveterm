@@ -750,7 +750,10 @@ class Screen {
         this.lastRows = rows;
         this.lastCols = cols;
         for (let lineid in this.terminals) {
-            this.terminals[lineid].resizeCols(cols);
+            let inSidebar = this.isLineIdInSidebar(lineid);
+            if (!inSidebar) {
+                this.terminals[lineid].resizeCols(cols);
+            }
         }
         GlobalCommandRunner.resizeScreen(this.screenId, rows, cols);
     }
@@ -1828,6 +1831,84 @@ type CmdFinder = {
     getCmdById(cmdId: string): Cmd;
 };
 
+class ForwardLineContainer {
+    winSize: T.WindowSize;
+    screen: Screen;
+
+    constructor(screen: Screen, winSize: T.WindowSize) {
+        this.screen = screen;
+        this.winSize = winSize;
+    }
+
+    getCmd(line: LineType): Cmd {
+        return this.screen.getCmd(line);
+    }
+
+    isSidebarOpen(): boolean {
+        return false;
+    }
+
+    isLineIdInSidebar(lineId: string): boolean {
+        return false;
+    }
+
+    setLineFocus(lineNum: number, focus: boolean): void {
+        this.screen.setLineFocus(lineNum, focus);
+    }
+
+    setContentHeight(context: RendererContext, height: number): void {
+        return;
+    }
+
+    getMaxContentSize(): WindowSize {
+        return this.winSize;
+    }
+
+    getIdealContentSize(): WindowSize {
+        return this.winSize;
+    }
+
+    loadTerminalRenderer(elem: Element, line: LineType, cmd: Cmd, width: number): void {
+        this.screen.loadTerminalRenderer(elem, line, cmd, width);
+    }
+
+    registerRenderer(lineId: string, renderer: RendererModel): void {
+        this.screen.registerRenderer(lineId, renderer);
+    }
+
+    unloadRenderer(lineId: string): void {
+        this.screen.unloadRenderer(lineId);
+    }
+
+    getContentHeight(context: RendererContext): number {
+        return this.screen.getContentHeight(context);
+    }
+
+    getUsedRows(context: RendererContext, line: LineType, cmd: Cmd, width: number): number {
+        return this.screen.getUsedRows(context, line, cmd, width);
+    }
+
+    getIsFocused(lineNum: number): boolean {
+        return this.screen.getIsFocused(lineNum);
+    }
+
+    getRenderer(lineId: string): RendererModel {
+        return this.screen.getRenderer(lineId);
+    }
+
+    getTermWrap(lineId: string): TermWrap {
+        return this.screen.getTermWrap(lineId);
+    }
+
+    getFocusType(): FocusTypeStrs {
+        return this.screen.getFocusType();
+    }
+
+    getSelectedLine(): number {
+        return this.screen.getSelectedLine();
+    }
+}
+
 class SpecialLineContainer {
     wsize: T.WindowSize;
     allowInput: boolean;
@@ -1874,6 +1955,7 @@ class SpecialLineContainer {
     }
 
     loadTerminalRenderer(elem: Element, line: LineType, cmd: Cmd, width: number): void {
+        console.log("load-term renderer (in SVC)")
         this.unloadRenderer(null);
         let lineId = cmd.lineId;
         let termWrap = this.getTermWrap(lineId);
@@ -4535,6 +4617,7 @@ export {
     MinFontSize,
     MaxFontSize,
     SpecialLineContainer,
+    ForwardLineContainer,
     VERSION,
 };
 export type { LineContainerModel };
