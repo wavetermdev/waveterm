@@ -964,15 +964,6 @@ func SidebarCloseCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	return &sstore.ModelUpdate{Screens: []*sstore.ScreenType{screen}}, nil
 }
 
-func sidebarCheckDupLines(sections []sstore.ScreenSidebarSectionType, lineId string) bool {
-	for _, section := range sections {
-		if section.LineId == lineId {
-			return true
-		}
-	}
-	return false
-}
-
 func SidebarAddCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Screen)
 	if err != nil {
@@ -993,16 +984,7 @@ func SidebarAddCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	if err != nil {
 		return nil, err
 	}
-	sections := screen.ScreenViewOpts.Sidebar.Sections
-	if len(sections) >= MaxSidebarSections {
-		return nil, fmt.Errorf("/%s cannot add more than %d sidebar sections", GetCmdStr(pk), MaxSidebarSections)
-	}
-	hasDup := sidebarCheckDupLines(sections, addLineId)
-	if hasDup {
-		return nil, fmt.Errorf("/%s cannot add duplicate lineid to sidebar", GetCmdStr(pk))
-	}
-	sections = append(sections, sstore.ScreenSidebarSectionType{SectionType: "line", LineId: addLineId})
-	screen.ScreenViewOpts.Sidebar.Sections = sections
+	screen.ScreenViewOpts.Sidebar.SidebarLineId = addLineId
 	err = sstore.ScreenUpdateViewOpts(ctx, ids.ScreenId, screen.ScreenViewOpts)
 	if err != nil {
 		return nil, fmt.Errorf("/%s error updating screenviewopts: %v", GetCmdStr(pk), err)
@@ -1023,21 +1005,8 @@ func SidebarRemoveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	if sidebar == nil {
 		return nil, nil
 	}
-	if len(sidebar.Sections) <= 1 || resolveBool(pk.Kwargs["all"], false) {
-		sidebar.Sections = nil
-		sidebar.Open = false
-	} else {
-		sectionNum, err := resolvePosInt(pk.Kwargs["section"], len(sidebar.Sections))
-		if err != nil {
-			return nil, fmt.Errorf("/%s invalid section passed: %v", GetCmdStr(pk), err)
-		}
-		if sectionNum > len(sidebar.Sections) {
-			sectionNum = len(sidebar.Sections)
-		}
-		// removes elem at sectionNum (subtract 1 to convert to 0-indexed value)
-		sectionNum0 := sectionNum - 1
-		sidebar.Sections = append(sidebar.Sections[:sectionNum0], sidebar.Sections[sectionNum0+1:]...)
-	}
+	sidebar.SidebarLineId = ""
+	sidebar.Open = false
 	err = sstore.ScreenUpdateViewOpts(ctx, ids.ScreenId, screen.ScreenViewOpts)
 	if err != nil {
 		return nil, fmt.Errorf("/%s error updating screenviewopts: %v", GetCmdStr(pk), err)

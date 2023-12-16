@@ -72,59 +72,14 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
 }
 
 @mobxReact.observer
-class ScreenSidebarSection extends React.Component<
-    { screen: Screen; section: T.ScreenSidebarSectionType; winSize: T.WindowSize },
-    {}
-> {
-    overrideCollapsed: OV<boolean> = mobx.observable.box(false, { name: "overrideCollapsed" });
-    visible: OV<boolean> = mobx.observable.box(true, { name: "visible" });
-    container: SpecialLineContainer;
-
-    handleHeightChange() {}
-
-    componentDidMount() {
-        let { screen, winSize } = this.props;
-        this.container = new SpecialLineContainer(screen, winSize, false);
-    }
-
-    componentWillUnmount(): void {
-        if (this.container != null) {
-            let { section } = this.props;
-            this.container.unloadRenderer(section.lineid);
-        }
-    }
-
-    render() {
-        let { screen, section, winSize } = this.props;
-        let specialLineContainer = null;
-        let line = screen.getLineById(section.lineid);
-        return (
-            <div className="screen-sidebar-section">
-                <If condition={this.container != null && line != null}>
-                    <Line
-                        screen={this.container}
-                        line={line}
-                        width={winSize.width}
-                        staticRender={false}
-                        visible={this.visible}
-                        onHeightChange={this.handleHeightChange}
-                        overrideCollapsed={this.overrideCollapsed}
-                        topBorder={false}
-                        renderMode="normal"
-                        noSelect={true}
-                    />
-                </If>
-            </div>
-        );
-    }
-}
-
-@mobxReact.observer
 class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {}> {
     rszObs: ResizeObserver;
     sidebarSize: OV<T.WindowSize> = mobx.observable.box({ height: 0, width: 0 }, { name: "sidebarSize" });
     sidebarRef: React.RefObject<any> = React.createRef();
     handleResize_debounced: (entries: ResizeObserverEntry[]) => void;
+    container: SpecialLineContainer;
+    overrideCollapsed: OV<boolean> = mobx.observable.box(false, { name: "overrideCollapsed" });
+    visible: OV<boolean> = mobx.observable.box(true, { name: "visible" });
 
     constructor(props: any) {
         super(props);
@@ -132,19 +87,29 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
     }
 
     componentDidMount(): void {
+        let {screen} = this.props;
         let sidebarElem = this.sidebarRef.current;
         if (sidebarElem != null) {
             this.rszObs = new ResizeObserver(this.handleResize_debounced);
             this.rszObs.observe(sidebarElem);
             this.handleResize([]);
         }
+        let size = this.sidebarSize.get();
+        this.container = new SpecialLineContainer(screen, size, false);
     }
 
     componentWillUnmount(): void {
         if (this.rszObs != null) {
             this.rszObs.disconnect();
         }
+        if (this.container != null) {
+            let sidebar = this.getSidebarConfig();
+            this.container.unloadRenderer(sidebar?.sidebarlineid);
+        }
     }
+
+    @boundMethod
+    handleHeightChange() {}
 
     @boundMethod
     handleResize(entries: ResizeObserverEntry[]): void {
@@ -162,16 +127,23 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
         GlobalCommandRunner.screenSidebarClose();
     }
 
+    getSidebarConfig(): T.ScreenSidebarOptsType {
+        let { screen } = this.props;
+        let viewOpts = screen.viewOpts.get();
+        return viewOpts?.sidebar;
+    }
+
     render() {
         let { screen, width } = this.props;
         let viewOpts = screen.viewOpts.get();
-        let sections: T.ScreenSidebarSectionType[] = viewOpts?.sidebar?.sections ?? [];
-        let section: T.ScreenSidebarSectionType = null;
-        let numSections = sections.length;
         let sidebarSize = this.sidebarSize.get();
+        let sidebar = this.getSidebarConfig();
+        let lineId = sidebar?.sidebarlineid;
+        let line = screen.getLineById(lineId);
+        let sidebarOk = (line != null && this.container != null && sidebarSize != null && sidebarSize.width > 0);
         return (
             <div className="screen-sidebar" style={{ width: width }} ref={this.sidebarRef}>
-                <If condition={sections.length == 0}>
+                <If condition={!sidebarOk}>
                     <div className="empty-sidebar">
                         <div className="sidebar-main-text">No Sections</div>
                         <div className="sidebar-help-text">
@@ -184,15 +156,19 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
                         </div>
                     </div>
                 </If>
-                <If condition={sections.length > 0 && sidebarSize.width > 0 && sidebarSize.height > 0}>
-                    <For each="section" of={sections}>
-                        <ScreenSidebarSection
-                            key={section.lineid}
-                            screen={screen}
-                            section={section}
-                            winSize={sidebarSize}
-                        />
-                    </For>
+                <If condition={sidebarOk}>
+                    <Line
+                        screen={this.container}
+                        line={line}
+                        width={sidebarSize.width}
+                        staticRender={false}
+                        visible={this.visible}
+                        onHeightChange={this.handleHeightChange}
+                        overrideCollapsed={this.overrideCollapsed}
+                        topBorder={false}
+                        renderMode="normal"
+                        noSelect={true}
+                    />
                 </If>
                 <div onClick={this.sidebarClose} className="screen-sidebar-section close-section">
                     <Button theme="secondary" onClick={this.sidebarClose}>

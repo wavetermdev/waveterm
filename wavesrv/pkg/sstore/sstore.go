@@ -468,14 +468,11 @@ func (sco ScreenCreateOpts) HasCopy() bool {
 }
 
 type ScreenSidebarOptsType struct {
-	Open     bool                       `json:"open,omitempty"`
-	Width    string                     `json:"width"`
-	Sections []ScreenSidebarSectionType `json:"sections"`
-}
+	Open  bool   `json:"open,omitempty"`
+	Width string `json:"width"`
 
-type ScreenSidebarSectionType struct {
-	SectionType string `json:"sectiontype"`
-	LineId      string `json:"lineid,omitempty"`
+	// this used to be more complicated (sections with types).  simplified for this release
+	SidebarLineId string `json:"sidebarlineid,omitempty"`
 }
 
 type ScreenViewOptsType struct {

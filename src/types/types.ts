@@ -66,12 +66,7 @@ type ScreenViewOptsType = {
 type ScreenSidebarOptsType = {
     open: boolean;
     width: string;
-    sections: ScreenSidebarSectionType[];
-};
-
-type ScreenSidebarSectionType = {
-    sectiontype: "line" | "markdown";
-    lineid: string;
+    sidebarlineid: string;
 };
 
 type ScreenDataType = {
@@ -678,7 +673,6 @@ export type {
     CmdDataType,
     ScreenViewOptsType,
     ScreenSidebarOptsType,
-    ScreenSidebarSectionType,
     ScreenDataType,
     ScreenOptsType,
     PtyDataUpdateType,
