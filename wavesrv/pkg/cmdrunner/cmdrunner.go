@@ -22,6 +22,7 @@ import (
 	"unicode"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
@@ -67,6 +68,11 @@ const TermFontSizeMin = 8
 const TermFontSizeMax = 24
 
 const TsFormatStr = "2006-01-02 15:04:05"
+
+const OpenAIPacketTimeout = 10 * time.Second
+const OpenAIStreamTimeout = 5 * time.Minute
+
+const OpenAICloudCompletionTelemetryOffErrorMsg = "In order to protect against abuse, you must have telemetry turned on in order to use Wave's free AI features.  If you do not want to turn telemetry on, you can still use Wave's AI features by adding your own OpenAI key in Settings.  Note that when you use your own key, requests are not proxied through Wave's servers and will be sent directly to the OpenAI API."
 
 const (
 	KwArgRenderer = "renderer"
@@ -1490,7 +1496,10 @@ func doOpenAICompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, prompt
 		}
 		sstore.MainBus.SendScreenUpdate(cmd.ScreenId, update)
 	}()
-	respPks, err := openai.RunCompletion(ctx, opts, prompt)
+	var respPks []*packet.OpenAIPacketType
+	var err error
+	// run open ai completion locally
+	respPks, err = openai.RunCompletion(ctx, opts, prompt)
 	if err != nil {
 		writeErrorToPty(cmd, fmt.Sprintf("error calling OpenAI API: %v", err), outputPos)
 		return
@@ -1509,7 +1518,7 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, 
 	var outputPos int64
 	var hadError bool
 	startTime := time.Now()
-	ctx, cancelFn := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancelFn := context.WithTimeout(context.Background(), OpenAIStreamTimeout)
 	defer cancelFn()
 	defer func() {
 		r := recover()
@@ -1539,16 +1548,52 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, 
 		}
 		sstore.MainBus.SendScreenUpdate(cmd.ScreenId, update)
 	}()
-	ch, err := openai.RunCompletionStream(ctx, opts, prompt)
+	var ch chan *packet.OpenAIPacketType
+	var err error
+	if opts.APIToken == "" {
+		var conn *websocket.Conn
+		ch, conn, err = openai.RunCloudCompletionStream(ctx, opts, prompt)
+		if conn != nil {
+			defer conn.Close()
+		}
+	} else {
+		ch, err = openai.RunCompletionStream(ctx, opts, prompt)
+	}
 	if err != nil {
 		writeErrorToPty(cmd, fmt.Sprintf("error calling OpenAI API: %v", err), outputPos)
 		return
 	}
-	for pk := range ch {
-		err = writePacketToPty(ctx, cmd, pk, &outputPos)
-		if err != nil {
-			writeErrorToPty(cmd, fmt.Sprintf("error writing response to ptybuffer: %v", err), outputPos)
-			return
+	doneWaitingForPackets := false
+	for !doneWaitingForPackets {
+		select {
+		case <-time.After(OpenAIPacketTimeout):
+			// timeout reading from channel
+			hadError = true
+			pk := openai.CreateErrorPacket(fmt.Sprintf("timeout waiting for server response"))
+			err = writePacketToPty(ctx, cmd, pk, &outputPos)
+			if err != nil {
+				log.Printf("error writing response to ptybuffer: %v", err)
+				return
+			}
+			doneWaitingForPackets = true
+			break
+		case pk, ok := <-ch:
+			if ok {
+				// got a packet
+				if pk.Error != "" {
+					hadError = true
+				}
+				err = writePacketToPty(ctx, cmd, pk, &outputPos)
+				if err != nil {
+					hadError = true
+					log.Printf("error writing response to ptybuffer: %v", err)
+					return
+				}
+			} else {
+				// channel closed
+				doneWaitingForPackets = true
+				break
+			}
 		}
 	}
 	return
@@ -1563,10 +1608,15 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
 	}
-	if clientData.OpenAIOpts == nil || clientData.OpenAIOpts.APIToken == "" {
-		return nil, fmt.Errorf("no openai API token found, configure in client settings")
+	if clientData.OpenAIOpts == nil {
+		return nil, fmt.Errorf("error retrieving client open ai options")
 	}
 	opts := clientData.OpenAIOpts
+	if opts.APIToken == "" {
+		if clientData.ClientOpts.NoTelemetry {
+			return nil, fmt.Errorf(OpenAICloudCompletionTelemetryOffErrorMsg)
+		}
+	}
 	if opts.Model == "" {
 		opts.Model = openai.DefaultModel
 	}
@@ -3550,9 +3600,6 @@ func ClientAcceptTosCommand(ctx context.Context, pk *scpacket.FeCommandPacketTyp
 }
 
 func validateOpenAIAPIToken(key string) error {
-	if len(key) == 0 {
-		return fmt.Errorf("invalid openai token, zero length")
-	}
 	if len(key) > MaxOpenAIAPITokenLen {
 		return fmt.Errorf("invalid openai token, too long")
 	}
