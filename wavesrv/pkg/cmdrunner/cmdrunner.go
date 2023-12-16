@@ -1267,14 +1267,6 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 	if err != nil {
 		return nil, err
 	}
-	/*
-		localRemote := remote.GetLocalRemote()
-		if localRemote == nil {
-			return nil, fmt.Errorf("error getting local remote (not found)")
-		}
-		localState := localRemote.GetRemoteRuntimeState()
-		_ = localState.RemoteVars["home"]
-	*/
 
 	home := base.GetHomeDir()
 	localConfig := filepath.Join(home, ".ssh", "config")
