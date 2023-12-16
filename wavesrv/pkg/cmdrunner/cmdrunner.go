@@ -1340,9 +1340,8 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 		}
 
 		alreadyStoredImportRemote := importedRemotesNotVisited[canonicalName]
-		alreadyStoredRemote, _ := sstore.GetRemoteByCanonicalName(ctx, canonicalName)
 
-		if alreadyStoredImportRemote != nil {
+		if alreadyStoredImportRemote != nil && !alreadyStoredImportRemote.Archived {
 			// this already existed and was created via import
 			// it needs to be updated and removed from the not
 			// visited map
@@ -1361,10 +1360,6 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 			sstore.UpdateRemote(ctx, alreadyStoredImportRemote.RemoteId, editMap)
 			log.Printf("sshconfig import found previously imported remote with canonical name \"%s\": it has been updated\n", canonicalName)
 			delete(importedRemotesNotVisited, canonicalName)
-		} else if alreadyStoredRemote != nil {
-			// this already existed but was created manually
-			// it should not be overwritten
-			log.Printf("sshconfig import found manually created remote with canonical name \"%s\": it has been skipped\n", canonicalName)
 		} else {
 			// this is new and must be created for the first time
 			r := &sstore.RemoteType{
@@ -1392,6 +1387,9 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 	// the previous loop
 	for _, remoteRemovedFromConfig := range importedRemotesNotVisited {
 		var err error
+		if remoteRemovedFromConfig.Archived {
+			continue
+		}
 		err = remote.ArchiveRemote(ctx, remoteRemovedFromConfig.RemoteId)
 		if err != nil {
 			log.Printf("sshconfig import failed to remove remote \"%s\" (%s)\n", remoteRemovedFromConfig.RemoteAlias, remoteRemovedFromConfig.RemoteCanonicalName)
