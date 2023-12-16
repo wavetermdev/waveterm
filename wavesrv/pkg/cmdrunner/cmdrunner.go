@@ -68,7 +68,7 @@ const TermFontSizeMax = 24
 const TsFormatStr = "2006-01-02 15:04:05"
 
 const OpenAIPacketTimeout = 10 * time.Second
-const OpenAIStreamTimeout = 60 * time.Second
+const OpenAIStreamTimeout = 5 * time.Minute
 
 const OpenAICloudCompletionTelemetryOffErrorMsg = "In order to protect against abuse, you must have telemetry turned on in order to use Wave's free AI features.  If you do not want to turn telemetry on, you can still use Wave's AI features by adding your own OpenAI key in Settings.  Note that when you use your own key, requests are not proxied through Wave's servers and will be sent directly to the OpenAI API."
 
