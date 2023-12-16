@@ -1280,8 +1280,10 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 	if aliasErr == nil {
 		return nil, aliasErr
 	}
-
-	importedRemotesNotVisited, _ := sstore.GetAllImportedRemotes(ctx)
+	importedRemotesNotVisited, dbQueryErr := sstore.GetAllImportedRemotes(ctx)
+	if dbQueryErr != nil {
+		return nil, dbQueryErr
+	}
 
 	for _, alias := range aliases {
 		userName, userNameErr := ssh_config.GetStrict(alias, "User")
@@ -1290,6 +1292,7 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 		if userNameErr != nil {
 			// we cannot store a remote with a missing user
 			// in the current setup
+			log.Printf("sshconfig import could not parse \"%s\" - no User in config\n", alias)
 			continue
 		}
 
@@ -1304,7 +1307,8 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 		// check if user and host are okay
 		m := userHostRe.FindStringSubmatch(canonicalName)
 		if m == nil || m[2] == "" || m[3] == "" {
-			return nil, fmt.Errorf("invalid format of user@host argument")
+			log.Printf("sshconfig import could not parse \"%s\" - %s did not fit user@host requirement\n", alias, canonicalName)
+			continue
 		}
 
 		portStr, remotePortErr := ssh_config.GetStrict(alias, "Port")
@@ -1314,6 +1318,7 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 			portVal, err = strconv.Atoi(portStr)
 			if err != nil {
 				// do not make assumptions about port if incorrectly configured
+				log.Printf("sshconfig import could not parse \"%s\" (%s) - %s could not be converted to a valid port\n", alias, canonicalName, portStr)
 				continue
 			}
 		} else {
@@ -1355,12 +1360,12 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 			}
 
 			sstore.UpdateRemote(ctx, alreadyStoredImportRemote.RemoteId, editMap)
-			log.Printf("remote with name \"%s\" being updated\n", canonicalName)
+			log.Printf("sshconfig import found previously imported remote with canonical name \"%s\": it has been updated\n", canonicalName)
 			delete(importedRemotesNotVisited, canonicalName)
 		} else if alreadyStoredRemote != nil {
 			// this already existed but was created manually
 			// it should not be overwritten
-			log.Printf("remote with name \"%s\" already exists ... skipping\n", canonicalName)
+			log.Printf("sshconfig import found manually created remote with canonical name \"%s\": it has been skipped\n", canonicalName)
 		} else {
 			// this is new and must be created for the first time
 			r := &sstore.RemoteType{
@@ -1377,11 +1382,10 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 			}
 			err = remote.AddRemote(ctx, r, false)
 			if err != nil {
-				return nil, fmt.Errorf("cannot create remote %q: %v", r.RemoteCanonicalName, err)
+				log.Printf("sshconfig import failed to add remote \"%s\" (%s): it is being skipped\n", alias, canonicalName)
+				continue
 			}
-
-			log.Printf("remote with name \"%s\" being updated\n", canonicalName)
-			//TODO return response
+			log.Printf("sshconfig import created remote \"%s\" (%s)\n", alias, canonicalName)
 		}
 	}
 
@@ -1391,10 +1395,12 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 		var err error
 		err = remote.ArchiveRemote(ctx, remoteRemovedFromConfig.RemoteId)
 		if err != nil {
-			return nil, fmt.Errorf("archiving remote: %v", err)
+			log.Printf("sshconfig import failed to remove remote \"%s\" (%s)\n", remoteRemovedFromConfig.RemoteAlias, remoteRemovedFromConfig.RemoteCanonicalName)
 		}
 	}
-	return nil, nil
+	rstate := msh.GetRemoteRuntimeState()
+	update := &sstore.ModelUpdate{Remotes: []interface{}{rstate}}
+	return update, nil
 }
 
 func ScreenShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
