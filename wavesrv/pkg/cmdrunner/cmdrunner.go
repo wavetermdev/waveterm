@@ -1291,7 +1291,7 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 
 	for _, alias := range aliases {
 		userName, userNameErr := ssh_config.GetStrict(alias, "User")
-		hostName, hostNameErr := ssh_config.GetStrict(alias, "Hostname")
+		hostName, _ := ssh_config.GetStrict(alias, "Hostname")
 
 		if userNameErr != nil {
 			// we cannot store a remote with a missing user
@@ -1302,7 +1302,7 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 
 		// no HostKeyAlias support yet
 		// if no hostname is found, try the host instead
-		if hostNameErr != nil {
+		if hostName == "" {
 			hostName = alias
 		}
 
