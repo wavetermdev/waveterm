@@ -1353,6 +1353,9 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 
 			editMap := make(map[string]interface{})
 			editMap[sstore.RemoteField_Alias] = alias
+			// changing port is unique to imports because it lets us avoid conflicts
+			// if the port is changed in the ssh config
+			editMap[sstore.RemoteField_SSHPort] = portVal
 			if sshKeyFileErr != nil {
 				editMap[sstore.RemoteField_SSHKey] = sshKeyFile
 			} else {

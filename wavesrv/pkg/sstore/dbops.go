@@ -1666,6 +1666,7 @@ const (
 	RemoteField_ConnectMode = "connectmode" // string
 	RemoteField_SSHKey      = "sshkey"      // string
 	RemoteField_SSHPassword = "sshpassword" // string
+	RemoteField_SSHPort     = "sshport"     // string
 	RemoteField_Color       = "color"       // string
 )
 
@@ -1696,6 +1697,10 @@ func UpdateRemote(ctx context.Context, remoteId string, editMap map[string]inter
 		if sshPassword, found := editMap[RemoteField_SSHPassword]; found {
 			query = `UPDATE remote SET sshopts = json_set(sshopts, '$.sshpassword', ?) WHERE remoteid = ?`
 			tx.Exec(query, sshPassword, remoteId)
+		}
+		if sshPort, found := editMap[RemoteField_SSHPort]; found {
+			query = `UPDATE remote SET remoteopts = json_set(remoteopts, '$.sshport', ?) WHERE remoteid = ?`
+			tx.Exec(query, sshPort, remoteId)
 		}
 		if color, found := editMap[RemoteField_Color]; found {
 			query = `UPDATE remote SET remoteopts = json_set(remoteopts, '$.color', ?) WHERE remoteid = ?`
