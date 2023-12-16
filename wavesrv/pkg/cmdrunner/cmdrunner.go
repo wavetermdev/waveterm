@@ -1229,10 +1229,18 @@ func resolveConfigSshAliases(configFiles []string) ([]string, error) {
 	var aliases []string
 	alreadyUsed := make(map[string]bool)
 	alreadyUsed[""] = true // this excludes the empty string from potential alias
+	var openedFiles []fs.File
+
+	defer func() {
+		for _, openedFile := range openedFiles {
+			openedFile.Close()
+		}
+	}()
 
 	var errs []error
 	for _, configFile := range configFiles {
 		fd, openErr := os.Open(configFile)
+		openedFiles = append(openedFiles, fd)
 		if fd == nil {
 			errs = append(errs, openErr)
 			continue
