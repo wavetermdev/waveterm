@@ -1263,6 +1263,10 @@ func resolveConfigSshAliases(configFiles []string) ([]string, error) {
 }
 
 func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Remote)
+	if err != nil {
+		return nil, err
+	}
 	/*
 		localRemote := remote.GetLocalRemote()
 		if localRemote == nil {
@@ -1401,8 +1405,7 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 			log.Printf("sshconfig import failed to remove remote \"%s\" (%s)\n", remoteRemovedFromConfig.RemoteAlias, remoteRemovedFromConfig.RemoteCanonicalName)
 		}
 	}
-	rstate := msh.GetRemoteRuntimeState()
-	update := &sstore.ModelUpdate{Remotes: []interface{}{rstate}}
+	update := &sstore.ModelUpdate{Remotes: []interface{}{ids.Remote}}
 	return update, nil
 }
 
