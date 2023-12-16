@@ -132,6 +132,7 @@ type LineContainerModel = {
     getIdealContentSize(): WindowSize;
     isSidebarOpen(): boolean;
     isLineIdInSidebar(lineId: string): boolean;
+    getContainerType(): string;
 };
 
 type SWLinePtr = {
@@ -423,6 +424,10 @@ class Screen {
             return false;
         }
         return viewOpts?.sidebar?.sidebarlineid == lineId;
+    }
+
+    getContainerType(): string {
+        return "screen";
     }
 
     getShareName(): string {
@@ -1834,10 +1839,15 @@ type CmdFinder = {
 class ForwardLineContainer {
     winSize: T.WindowSize;
     screen: Screen;
+    containerType: string;
 
-    constructor(screen: Screen, winSize: T.WindowSize) {
+    constructor(screen: Screen, winSize: T.WindowSize, containerType: string) {
         this.screen = screen;
         this.winSize = winSize;
+    }
+
+    getContainerType(): string {
+        return this.containerType;
     }
 
     getCmd(line: LineType): Cmd {
@@ -1916,8 +1926,9 @@ class SpecialLineContainer {
     renderer: RendererModel;
     cmd: Cmd;
     cmdFinder: CmdFinder;
+    containerType: string;
 
-    constructor(cmdFinder: CmdFinder, wsize: T.WindowSize, allowInput: boolean) {
+    constructor(cmdFinder: CmdFinder, wsize: T.WindowSize, allowInput: boolean, containerType: string) {
         this.cmdFinder = cmdFinder;
         this.wsize = wsize;
         this.allowInput = allowInput;
@@ -1928,6 +1939,10 @@ class SpecialLineContainer {
             this.cmd = this.cmdFinder.getCmdById(line.lineid);
         }
         return this.cmd;
+    }
+
+    getContainerType(): string {
+        return this.containerType;
     }
 
     isSidebarOpen(): boolean {
@@ -1955,7 +1970,6 @@ class SpecialLineContainer {
     }
 
     loadTerminalRenderer(elem: Element, line: LineType, cmd: Cmd, width: number): void {
-        console.log("load-term renderer (in SVC)")
         this.unloadRenderer(null);
         let lineId = cmd.lineId;
         let termWrap = this.getTermWrap(lineId);
@@ -2156,7 +2170,7 @@ class HistoryViewModel {
                 this.activeItem.set(hitem.historyid);
                 let width = termWidthFromCols(80, GlobalModel.termFontSize.get());
                 let height = termHeightFromRows(25, GlobalModel.termFontSize.get());
-                this.specialLineContainer = new SpecialLineContainer(this, { width, height }, false);
+                this.specialLineContainer = new SpecialLineContainer(this, { width, height }, false, "history");
             }
         })();
     }
@@ -4520,6 +4534,14 @@ class CommandRunner {
             { screen: screenId, nohist: "1", state: stateStr },
             interactive
         );
+    }
+
+    screenSidebarAddLine(lineId: string) {
+        GlobalModel.submitCommand("sidebar", "add", null, { nohist: "1", line: lineId }, false);
+    }
+
+    screenSidebarRemove() {
+        GlobalModel.submitCommand("sidebar", "remove", null, { nohist: "1" }, false);
     }
 
     screenSidebarClose(): void {

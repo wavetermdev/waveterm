@@ -50,7 +50,7 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
         if (hasSidebar) {
             let width = viewOpts?.sidebar?.width;
             if (util.isBlank(width)) {
-                width = "400px";
+                width = "50%";
             }
             winWidth = sprintf("calc(100%% - %s)", width);
             sidebarWidth = sprintf("calc(%s - 5px)", width); // 5px of margin
@@ -83,7 +83,7 @@ class SidebarLineContainer extends React.Component<{ screen: Screen; winSize: T.
         // TODO this is a hack for now to make the timing work out.
         setTimeout(() => {
             mobx.action(() => {
-                this.container = new ForwardLineContainer(screen, winSize);
+                this.container = new ForwardLineContainer(screen, winSize, "sidebar");
                 this.ready.set(true);
             })();
         }, 100);

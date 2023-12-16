@@ -355,10 +355,21 @@ class LineCmd extends React.Component<
     }
 
     @boundMethod
-    clickMinimise() {
+    clickMinimize() {
         mobx.action(() => {
             this.isMinimized.set(!this.isMinimized.get());
         })();
+    }
+
+    @boundMethod
+    clickMoveToSidebar() {
+        let { line } = this.props;
+        GlobalCommandRunner.screenSidebarAddLine(line.lineid);
+    }
+
+    @boundMethod
+    clickRemoveFromSidebar() {
+        GlobalCommandRunner.screenSidebarRemove();
     }
 
     @boundMethod
@@ -630,6 +641,7 @@ class LineCmd extends React.Component<
         if (rtnStateDiffSize < 10) {
             rtnStateDiffSize = Math.max(termFontSize, 10);
         }
+        let containerType = screen.getContainerType();
         return (
             <div
                 className={mainDivCn}
@@ -664,7 +676,7 @@ class LineCmd extends React.Component<
                             "hoverEffect",
                             this.isMinimized.get() ? "line-icon-show" : ""
                         )}
-                        onClick={this.clickMinimise}
+                        onClick={this.clickMinimize}
                     >
                         <If condition={this.isMinimized.get()}>
                             <i className="fa-sharp fa-regular fa-circle-plus" />
@@ -673,6 +685,24 @@ class LineCmd extends React.Component<
                             <i className="fa-sharp fa-regular fa-circle-minus" />
                         </If>
                     </div>
+                    <If condition={!isInSidebar}>
+                        <div
+                            className="line-icon line-sidebar"
+                            onClick={this.clickMoveToSidebar}
+                            title="Move to Sidebar"
+                        >
+                            <i className="fa-sharp fa-solid fa-right-to-line" />
+                        </div>
+                    </If>
+                    <If condition={isInSidebar}>
+                        <div
+                            className="line-icon line-sidebar"
+                            onClick={this.clickRemoveFromSidebar}
+                            title="Move to Sidebar"
+                        >
+                            <i className="fa-sharp fa-solid fa-left-to-line" />
+                        </div>
+                    </If>
                 </div>
                 <If condition={isInSidebar}>
                     <div className="sidebar-message" style={{ fontSize: termFontSize }}>
