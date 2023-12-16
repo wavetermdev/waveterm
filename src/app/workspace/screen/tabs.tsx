@@ -24,8 +24,12 @@ import "./tabs.less";
 
 dayjs.extend(localizedFormat);
 
+type OV<V> = mobx.IObservableValue<V>;
 @mobxReact.observer
-class ScreenTabs extends React.Component<{ session: Session }, { showingScreens: Screen[] }> {
+class ScreenTabs extends React.Component<
+    { session: Session },
+    { showingScreens: Screen[]; screenIndices: OV<number>[] }
+> {
     tabsRef: React.RefObject<any> = React.createRef();
     tabRefs: { [screenId: string]: React.RefObject<any> } = {};
     lastActiveScreenId: string = null;
@@ -36,6 +40,7 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
         super(props);
         this.state = {
             showingScreens: [],
+            screenIndices: [],
         };
     }
 
@@ -127,11 +132,38 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
             }, 100);
         }
 
-        // Set the showingScreens state if it's not set or if the number of screens has changed.
-        // Individual screen update are handled automatically by mobx.
-        if (this.screens && this.state.showingScreens.length !== this.screens.length) {
-            this.setState({ showingScreens: this.screens });
+        // Update the showingScreens state if either the number of screens has changed or their indices have switched.
+        // MobX handles individual screen updates automatically. The snapshot of screens and their indices are used
+        // to detect changes in the order of screens.
+        if (
+            this.screens &&
+            (this.state.showingScreens.length !== this.screens.length || this.haveScreensSwitchedIdx())
+        ) {
+            let screensSnapshot = mobx.toJS(this.screens);
+            let screenIndicesSnapshot = screensSnapshot.map((screen) => screen.screenIdx);
+            this.setState({
+                showingScreens: screensSnapshot,
+                screenIndices: screenIndicesSnapshot,
+            });
         }
+    }
+
+    @boundMethod
+    haveScreensSwitchedIdx() {
+        if (!this.state.screenIndices) {
+            return true; // Initial case when there's no snapshot yet
+        }
+
+        for (let i = 0; i < this.screens.length; i++) {
+            const currentScreen = this.screens[i];
+            const previousIndex = this.state.screenIndices[i];
+
+            if (currentScreen.screenIdx !== previousIndex) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     @boundMethod
