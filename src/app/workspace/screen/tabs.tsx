@@ -31,6 +31,7 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
     lastActiveScreenId: string = null;
     dragEndTimeout = null;
     scrollIntoViewTimeout = null;
+    deltaYHistory = [];
 
     constructor(props: any) {
         super(props);
@@ -79,24 +80,36 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
         GlobalCommandRunner.switchScreen(screenId);
     }
 
-    // @boundMethod
-    // handleWheel(event: WheelEvent) {
-    //     if (!this.tabsRef.current) return;
+    @boundMethod
+    handleWheel(event: WheelEvent) {
+        if (!this.tabsRef.current) return;
 
-    //     // Prevent the default vertical scrolling
-    //     event.preventDefault();
+        // Add the current deltaY to the history
+        this.deltaYHistory.push(Math.abs(event.deltaY));
+        if (this.deltaYHistory.length > 5) {
+            this.deltaYHistory.shift(); // Keep only the last 5 entries
+        }
 
-    //     // Scroll horizontally instead
-    //     this.tabsRef.current.scrollLeft += event.deltaY;
-    // }
+        // Check if any of the last 5 deltaY values are greater than a threshold
+        let isMouseWheel = this.deltaYHistory.some((deltaY) => deltaY > 0);
+
+        if (isMouseWheel) {
+            // It's likely a mouse wheel event, so handle it for horizontal scrolling
+            this.tabsRef.current.scrollLeft += event.deltaY;
+
+            // Prevent default vertical scroll
+            event.preventDefault();
+        }
+        // For touchpad events, do nothing and let the browser handle it
+    }
 
     componentDidMount(): void {
         this.componentDidUpdate();
 
-        // // Add the wheel event listener to the tabsRef
-        // if (this.tabsRef.current) {
-        //     this.tabsRef.current.addEventListener("wheel", this.handleWheel, { passive: false });
-        // }
+        // Add the wheel event listener to the tabsRef
+        if (this.tabsRef.current) {
+            this.tabsRef.current.addEventListener("wheel", this.handleWheel, { passive: false });
+        }
     }
 
     componentWillUnmount() {
