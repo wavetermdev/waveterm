@@ -261,12 +261,17 @@ func (tdata *TelemetryData) Scan(val interface{}) error {
 }
 
 type ClientOptsType struct {
-	NoTelemetry bool  `json:"notelemetry,omitempty"`
-	AcceptedTos int64 `json:"acceptedtos,omitempty"`
+	NoTelemetry    bool  `json:"notelemetry,omitempty"`
+	NoReleaseCheck bool  `json:"noreleasecheck,omitempty"`
+	AcceptedTos    int64 `json:"acceptedtos,omitempty"`
 }
 
 type FeOptsType struct {
 	TermFontSize int `json:"termfontsize,omitempty"`
+}
+
+type ReleaseInfoType struct {
+	LatestVersion string `json:"latestversion,omitempty"`
 }
 
 type ClientData struct {
@@ -283,6 +288,7 @@ type ClientData struct {
 	CmdStoreType        string            `json:"cmdstoretype"`
 	DBVersion           int               `json:"dbversion" dbmap:"-"`
 	OpenAIOpts          *OpenAIOptsType   `json:"openaiopts,omitempty" dbmap:"openaiopts"`
+	ReleaseInfo         ReleaseInfoType   `json:"releaseinfo"`
 }
 
 func (ClientData) UseDBMap() {}
@@ -1248,9 +1254,10 @@ func createClientData(tx *TxWrap) error {
 		ActiveSessionId:     "",
 		WinSize:             ClientWinSizeType{},
 		CmdStoreType:        CmdStoreTypeScreen,
+		ReleaseInfo:         ReleaseInfoType{},
 	}
-	query := `INSERT INTO client ( clientid, userid, activesessionid, userpublickeybytes, userprivatekeybytes, winsize, cmdstoretype) 
-                          VALUES (:clientid,:userid,:activesessionid,:userpublickeybytes,:userprivatekeybytes,:winsize,:cmdstoretype)`
+	query := `INSERT INTO client ( clientid, userid, activesessionid, userpublickeybytes, userprivatekeybytes, winsize, cmdstoretype, releaseinfo) 
+                          VALUES (:clientid,:userid,:activesessionid,:userpublickeybytes,:userprivatekeybytes,:winsize,:cmdstoretype,:releaseinfo)`
 	tx.NamedExec(query, dbutil.ToDBMap(c, false))
 	log.Printf("create new clientid[%s] userid[%s] with public/private keypair\n", c.ClientId, c.UserId)
 	return nil
@@ -1306,6 +1313,15 @@ func SetClientOpts(ctx context.Context, clientOpts ClientOptsType) error {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `UPDATE client SET clientopts = ?`
 		tx.Exec(query, quickJson(clientOpts))
+		return nil
+	})
+	return txErr
+}
+
+func SetReleaseInfo(ctx context.Context, releaseInfo ReleaseInfoType) error {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `UPDATE client SET releaseinfo = ?`
+		tx.Exec(query, quickJson(releaseInfo))
 		return nil
 	})
 	return txErr

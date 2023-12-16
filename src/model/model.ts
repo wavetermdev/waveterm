@@ -4312,6 +4312,14 @@ class CommandRunner {
         return GlobalModel.submitCommand("telemetry", "on", null, { nohist: "1" }, interactive);
     }
 
+    releaseCheckAutoOff(interactive: boolean): Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("releasecheck", "autooff", null, { nohist: "1" }, interactive);
+    }
+
+    releaseCheckAutoOn(interactive: boolean): Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("releasecheck", "autoon", null, { nohist: "1" }, interactive);
+    }
+
     setTermFontSize(fsize: number, interactive: boolean): Promise<CommandRtnType> {
         let kwargs = {
             nohist: "1",
@@ -4459,5 +4467,6 @@ export {
     RemotesModel,
     MinFontSize,
     MaxFontSize,
+    VERSION
 };
 export type { LineContainerModel };

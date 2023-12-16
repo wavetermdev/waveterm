@@ -28,12 +28,14 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/comp"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/pcloud"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/releasechecker"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote/openai"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
+	"golang.org/x/mod/semver"
 )
 
 const (
@@ -206,6 +208,10 @@ func init() {
 	registerCmdFn("telemetry:off", TelemetryOffCommand)
 	registerCmdFn("telemetry:send", TelemetrySendCommand)
 	registerCmdFn("telemetry:show", TelemetryShowCommand)
+
+	registerCmdFn("releasecheck", ReleaseCheckCommand)
+	registerCmdFn("releasecheck:autoon", ReleaseCheckOnCommand)
+	registerCmdFn("releasecheck:autooff", ReleaseCheckOffCommand)
 
 	registerCmdFn("history", HistoryCommand)
 	registerCmdFn("history:viewall", HistoryViewAllCommand)
@@ -3716,6 +3722,7 @@ func ClientShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "userid", clientData.UserId))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "clientid", clientData.ClientId))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "telemetry", boolToStr(clientData.ClientOpts.NoTelemetry, "off", "on")))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "release-check", boolToStr(clientData.ClientOpts.NoReleaseCheck, "off", "on")))
 	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "db-version", dbVersion))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "client-version", clientVersion))
 	buf.WriteString(fmt.Sprintf("  %-15s %s %s\n", "server-version", scbase.WaveVersion, scbase.BuildTime))
@@ -3830,6 +3837,102 @@ func TelemetrySendCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		return nil, fmt.Errorf("failed to send telemetry: %v", err)
 	}
 	return sstore.InfoMsgUpdate("telemetry sent"), nil
+}
+
+func runReleaseCheck(ctx context.Context, force bool) error {
+	rslt, err := releasechecker.CheckNewRelease(ctx, force)
+
+	if err != nil {
+		return fmt.Errorf("error checking for new release: %v", err)
+	}
+
+	if rslt == releasechecker.Failure {
+		return fmt.Errorf("error checking for new release, see log for details")
+	}
+
+	return nil
+}
+
+func setNoReleaseCheck(ctx context.Context, clientData *sstore.ClientData, noReleaseCheckValue bool) error {
+	clientOpts := clientData.ClientOpts
+	clientOpts.NoReleaseCheck = noReleaseCheckValue
+	err := sstore.SetClientOpts(ctx, clientOpts)
+	if err != nil {
+		return fmt.Errorf("error trying to update client releaseCheck setting: %v", err)
+	}
+	log.Printf("client no-release-check setting updated to %v\n", noReleaseCheckValue)
+	return nil
+}
+
+func ReleaseCheckOnCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
+	}
+	if !clientData.ClientOpts.NoReleaseCheck {
+		return sstore.InfoMsgUpdate("release check is already on"), nil
+	}
+	err = setNoReleaseCheck(ctx, clientData, false)
+	if err != nil {
+		return nil, err
+	}
+
+	err = runReleaseCheck(ctx, true)
+	if err != nil {
+		log.Printf("error checking for new release after enabling auto release check: %v\n", err)
+	}
+
+	clientData, err = sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
+	}
+	update := sstore.InfoMsgUpdate("automatic release checking is now on")
+	update.ClientData = clientData
+	return update, nil
+}
+
+func ReleaseCheckOffCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
+	}
+	if clientData.ClientOpts.NoReleaseCheck {
+		return sstore.InfoMsgUpdate("release check is already off"), nil
+	}
+	err = setNoReleaseCheck(ctx, clientData, true)
+	if err != nil {
+		return nil, err
+	}
+	clientData, err = sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
+	}
+	update := sstore.InfoMsgUpdate("automatic release checking is now off")
+	update.ClientData = clientData
+	return update, nil
+}
+
+func ReleaseCheckCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	err := runReleaseCheck(ctx, true)
+	if err != nil {
+		return nil, err
+	}
+
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
+	}
+
+	var rsp string
+	if semver.Compare(scbase.WaveVersion, clientData.ReleaseInfo.LatestVersion) < 0 {
+		rsp = "new release available to download: https://www.waveterm.dev/download"
+	} else {
+		rsp = "no new release available"
+	}
+
+	update := sstore.InfoMsgUpdate(rsp)
+	update.ClientData = clientData
+	return update, nil
 }
 
 func formatTermOpts(termOpts sstore.TermOpts) string {
