@@ -1281,7 +1281,7 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 	systemConfig := filepath.Join("/", "ssh", "config")
 	sshConfigFiles := []string{localConfig, systemConfig}
 	aliases, aliasErr := resolveConfigSshAliases(sshConfigFiles)
-	if aliasErr == nil {
+	if aliasErr != nil {
 		return nil, aliasErr
 	}
 	importedRemotesNotVisited, dbQueryErr := sstore.GetAllImportedRemotes(ctx)
