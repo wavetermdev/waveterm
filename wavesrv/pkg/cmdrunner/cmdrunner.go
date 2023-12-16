@@ -1393,6 +1393,8 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 		err = remote.ArchiveRemote(ctx, remoteRemovedFromConfig.RemoteId)
 		if err != nil {
 			log.Printf("sshconfig import failed to remove remote \"%s\" (%s)\n", remoteRemovedFromConfig.RemoteAlias, remoteRemovedFromConfig.RemoteCanonicalName)
+		} else {
+			log.Printf("sshconfig import archiving remote \"%s\" (%s)\n", remoteRemovedFromConfig.RemoteAlias, remoteRemovedFromConfig.RemoteCanonicalName)
 		}
 	}
 	update := &sstore.ModelUpdate{Remotes: []interface{}{ids.Remote}}
