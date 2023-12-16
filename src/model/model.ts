@@ -422,16 +422,7 @@ class Screen {
         if (viewOpts == null) {
             return false;
         }
-        let sections = viewOpts.sidebar?.sections;
-        if (sections == null) {
-            return false;
-        }
-        for (let i = 0; i < sections.length; i++) {
-            if (sections[i].lineid == lineId) {
-                return true;
-            }
-        }
-        return false;
+        return viewOpts?.sidebar?.sidebarlineid == lineId;
     }
 
     getShareName(): string {

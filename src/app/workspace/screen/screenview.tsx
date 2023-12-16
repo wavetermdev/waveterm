@@ -72,14 +72,60 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
 }
 
 @mobxReact.observer
+class SidebarLineContainer extends React.Component<{ screen: Screen; winSize: T.WindowSize; lineId: string }, {}> {
+    container: SpecialLineContainer;
+    overrideCollapsed: OV<boolean> = mobx.observable.box(false, { name: "overrideCollapsed" });
+    visible: OV<boolean> = mobx.observable.box(true, { name: "visible" });
+    ready: OV<boolean> = mobx.observable.box(false, {name: "ready"});
+
+    componentDidMount(): void {
+        let { screen, winSize } = this.props;
+        // TODO this is a hack for now to make the timing work out.
+        setTimeout(() => {
+            this.container = new SpecialLineContainer(screen, winSize, false);
+            mobx.action(() => this.ready.set(true))();
+        }, 500)
+    }
+
+    componentWillUnmount(): void {
+        this.container.unloadRenderer(this.props.lineId);
+    }
+
+    @boundMethod
+    handleHeightChange() {}
+
+    render() {
+        if (this.container == null || !this.ready.get()) {
+            return null;
+        }
+        let { screen, winSize, lineId } = this.props;
+        let line = screen.getLineById(lineId);
+        if (line == null) {
+            return null;
+        }
+        return (
+            <Line
+                screen={this.container}
+                line={line}
+                width={winSize.width}
+                staticRender={false}
+                visible={this.visible}
+                onHeightChange={this.handleHeightChange}
+                overrideCollapsed={this.overrideCollapsed}
+                topBorder={false}
+                renderMode="normal"
+                noSelect={true}
+            />
+        );
+    }
+}
+
+@mobxReact.observer
 class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {}> {
     rszObs: ResizeObserver;
     sidebarSize: OV<T.WindowSize> = mobx.observable.box({ height: 0, width: 0 }, { name: "sidebarSize" });
     sidebarRef: React.RefObject<any> = React.createRef();
     handleResize_debounced: (entries: ResizeObserverEntry[]) => void;
-    container: SpecialLineContainer;
-    overrideCollapsed: OV<boolean> = mobx.observable.box(false, { name: "overrideCollapsed" });
-    visible: OV<boolean> = mobx.observable.box(true, { name: "visible" });
 
     constructor(props: any) {
         super(props);
@@ -87,7 +133,7 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
     }
 
     componentDidMount(): void {
-        let {screen} = this.props;
+        let { screen } = this.props;
         let sidebarElem = this.sidebarRef.current;
         if (sidebarElem != null) {
             this.rszObs = new ResizeObserver(this.handleResize_debounced);
@@ -95,21 +141,13 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
             this.handleResize([]);
         }
         let size = this.sidebarSize.get();
-        this.container = new SpecialLineContainer(screen, size, false);
     }
 
     componentWillUnmount(): void {
         if (this.rszObs != null) {
             this.rszObs.disconnect();
         }
-        if (this.container != null) {
-            let sidebar = this.getSidebarConfig();
-            this.container.unloadRenderer(sidebar?.sidebarlineid);
-        }
     }
-
-    @boundMethod
-    handleHeightChange() {}
 
     @boundMethod
     handleResize(entries: ResizeObserverEntry[]): void {
@@ -135,12 +173,10 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
 
     render() {
         let { screen, width } = this.props;
-        let viewOpts = screen.viewOpts.get();
         let sidebarSize = this.sidebarSize.get();
         let sidebar = this.getSidebarConfig();
         let lineId = sidebar?.sidebarlineid;
-        let line = screen.getLineById(lineId);
-        let sidebarOk = (line != null && this.container != null && sidebarSize != null && sidebarSize.width > 0);
+        let sidebarOk = sidebarSize != null && sidebarSize.width > 0;
         return (
             <div className="screen-sidebar" style={{ width: width }} ref={this.sidebarRef}>
                 <If condition={!sidebarOk}>
@@ -157,18 +193,7 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
                     </div>
                 </If>
                 <If condition={sidebarOk}>
-                    <Line
-                        screen={this.container}
-                        line={line}
-                        width={sidebarSize.width}
-                        staticRender={false}
-                        visible={this.visible}
-                        onHeightChange={this.handleHeightChange}
-                        overrideCollapsed={this.overrideCollapsed}
-                        topBorder={false}
-                        renderMode="normal"
-                        noSelect={true}
-                    />
+                    <SidebarLineContainer key={lineId} screen={screen} winSize={sidebarSize} lineId={lineId} />
                 </If>
                 <div onClick={this.sidebarClose} className="screen-sidebar-section close-section">
                     <Button theme="secondary" onClick={this.sidebarClose}>
