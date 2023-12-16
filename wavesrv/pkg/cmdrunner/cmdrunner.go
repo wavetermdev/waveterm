@@ -22,6 +22,7 @@ import (
 	"unicode"
 
 	"github.com/google/uuid"
+	"github.com/kevinburke/ssh_config"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
@@ -179,6 +180,7 @@ func init() {
 	registerCmdFn("remote:install", RemoteInstallCommand)
 	registerCmdFn("remote:installcancel", RemoteInstallCancelCommand)
 	registerCmdFn("remote:reset", RemoteResetCommand)
+	registerCmdFn("remote:parse", RemoteConfigParseCommand)
 
 	registerCmdFn("screen:resize", ScreenResizeCommand)
 
@@ -1218,6 +1220,163 @@ func RemoteShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 			RemoteShowAll: true,
 		},
 	}, nil
+}
+
+/*
+func resolveConfigSshHosts(configFiles []string) ([]ssh_config.Host) {
+
+}
+*/
+
+func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	/*
+		localRemote := remote.GetLocalRemote()
+		if localRemote == nil {
+			return nil, fmt.Errorf("error getting local remote (not found)")
+		}
+		localState := localRemote.GetRemoteRuntimeState()
+		_ = localState.RemoteVars["home"]
+	*/
+
+	home := base.GetHomeDir()
+	fmt.Printf("test: %s\n\n", home)
+	localConfig := filepath.Join(home, ".ssh", "config")
+	fd, _ := os.Open(localConfig)
+	if fd == nil {
+		return nil, fmt.Errorf("error getting .ssh/config file (not found)")
+	}
+
+	cfg, _ := ssh_config.Decode(fd)
+
+	importedRemotesNotVisited, _ := sstore.GetAllImportedRemotes(ctx)
+	// TODO combine results from ~/.ssh/config with /etc/ssh/config
+	// (remove any duplicates)
+	for _, host := range cfg.Hosts {
+		fmt.Printf("patterns: %s\n", host.Patterns)
+
+		// assuming the first pattern is the one we want
+		alias := host.Patterns[0].String()
+
+		if strings.Index(alias, "*") != -1 {
+			// we don't handle wildcard patterns at this point
+			continue
+		}
+		userName, userNameErr := ssh_config.GetStrict(alias, "User")
+		hostName, hostNameErr := ssh_config.GetStrict(alias, "Hostname")
+
+		if userNameErr != nil {
+			// we cannot store a remote with a missing user
+			// in the current setup
+			continue
+		}
+
+		// no HostKeyAlias support yet
+		// if no hostname is found, try the host instead
+		if hostNameErr != nil {
+			hostName = alias
+		}
+
+		canonicalName := strings.Join([]string{userName, hostName}, "@")
+
+		// check if user and host are okay
+		m := userHostRe.FindStringSubmatch(canonicalName)
+		if m == nil || m[2] == "" || m[3] == "" {
+			return nil, fmt.Errorf("invalid format of user@host argument")
+		}
+
+		portStr, remotePortErr := ssh_config.GetStrict(alias, "Port")
+		var portVal int
+		var err error
+		if remotePortErr != nil {
+			portVal, err = strconv.Atoi(portStr)
+			if err != nil {
+				// do not make assumptions about port if incorrectly configured
+				continue
+			}
+		} else {
+			portVal = 22
+		}
+
+		var isSudo bool
+		if userName == "root" {
+			isSudo = true
+		}
+
+		sshOpts := &sstore.SSHOpts{
+			Local:   false,
+			SSHHost: hostName,
+			SSHUser: userName,
+			IsSudo:  isSudo,
+			SSHPort: portVal,
+		}
+
+		alreadyStoredImportRemote := importedRemotesNotVisited[canonicalName]
+		alreadyStoredRemote, _ := sstore.GetRemoteByCanonicalName(ctx, canonicalName)
+
+		if alreadyStoredImportRemote != nil {
+			// this already existed and was created via import
+			// it needs to be updated and removed from the not
+			// visited map
+
+			//TODO edit existing
+			log.Printf("remote with name \"%s\" being updated\n", canonicalName)
+			delete(importedRemotesNotVisited, canonicalName)
+		} else if alreadyStoredRemote != nil {
+			// this already existed but was created manually
+			// it should not be overwritten
+			log.Printf("remote with name \"%s\" already exists ... skipping\n", canonicalName)
+		} else {
+			// this is new and must be created for the first time
+			r := &sstore.RemoteType{
+				RemoteId:            scbase.GenWaveUUID(),
+				RemoteType:          sstore.RemoteTypeSsh,
+				RemoteAlias:         alias,
+				RemoteCanonicalName: canonicalName,
+				RemoteUser:          userName,
+				RemoteHost:          hostName,
+				ConnectMode:         sstore.ConnectModeManual,
+				AutoInstall:         true,
+				SSHOpts:             sshOpts,
+				SSHConfigSrc:        "sshconfig-import",
+			}
+			err = remote.AddRemote(ctx, r, false)
+			if err != nil {
+				return nil, fmt.Errorf("cannot create remote %q: %v", r.RemoteCanonicalName, err)
+			}
+
+			log.Printf("remote with name \"%s\" being updated\n", canonicalName)
+			//TODO return response
+		}
+	}
+
+	// remove all imported remotes that were not visited in
+	// the previous loop
+	for _, remoteRemovedFromConfig := range importedRemotesNotVisited {
+		var err error
+		err = remote.ArchiveRemote(ctx, remoteRemovedFromConfig.RemoteId)
+		if err != nil {
+			return nil, fmt.Errorf("archiving remote: %v", err)
+		}
+	}
+	return nil, nil
+}
+
+func createRemoteFromImport(alias string) (sstore.UpdatePacket, error) {
+	/*
+		r := &sstore.RemoteType{
+			RemoteId:            scbase.GenWaveUUID(),
+			RemoteType:          sstore.RemoteTypeSsh,
+			RemoteAlias:         editArgs.Alias,
+			RemoteCanonicalName: editArgs.CanonicalName,
+			RemoteUser:          editArgs.SSHOpts.SSHUser,
+			RemoteHost:          editArgs.SSHOpts.SSHHost,
+			ConnectMode:         editArgs.ConnectMode,
+			AutoInstall:         editArgs.AutoInstall,
+			SSHOpts:             editArgs.SSHOpts,
+			SSHConfigSrc:        "waveterm-manual",
+		}
+	*/
+	return nil, nil
 }
 
 func ScreenShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {

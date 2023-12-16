@@ -113,6 +113,25 @@ func GetAllRemotes(ctx context.Context) ([]*RemoteType, error) {
 	return rtn, nil
 }
 
+func GetAllImportedRemotes(ctx context.Context) (map[string]*RemoteType, error) {
+	var rtn (map[string]*RemoteType)
+	err := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT * FROM remote
+		          WHERE sshconfigsrc = "sshconfig-import"
+				  ORDER BY remoteidx`
+		marr := tx.SelectMaps(query)
+		for _, m := range marr {
+			remote := dbutil.FromMap[*RemoteType](m)
+			rtn[remote.RemoteCanonicalName] = remote
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return rtn, nil
+}
+
 func GetRemoteByAlias(ctx context.Context, alias string) (*RemoteType, error) {
 	var remote *RemoteType
 	err := WithTx(ctx, func(tx *TxWrap) error {
