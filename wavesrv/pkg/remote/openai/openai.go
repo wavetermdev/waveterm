@@ -124,7 +124,7 @@ func RunCloudCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, 
 				break
 			} else if streamResp.Error != "" {
 				// use error from server directly
-				errPk := CreateErrorPacket(fmt.Sprintf(err.Error()))
+				errPk := CreateErrorPacket(streamResp.Error)
 				rtn <- errPk
 				break
 			}
