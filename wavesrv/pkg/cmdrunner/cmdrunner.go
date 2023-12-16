@@ -3839,8 +3839,8 @@ func TelemetrySendCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	return sstore.InfoMsgUpdate("telemetry sent"), nil
 }
 
-func runReleaseCheck(force bool) error {
-	rslt, err := releasechecker.CheckNewRelease(force)
+func runReleaseCheck(ctx context.Context, force bool) error {
+	rslt, err := releasechecker.CheckNewRelease(ctx, force)
 
 	if err != nil {
 		return fmt.Errorf("error checking for new release: %v", err)
@@ -3877,7 +3877,7 @@ func ReleaseCheckOnCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 		return nil, err
 	}
 
-	err = runReleaseCheck(true)
+	err = runReleaseCheck(ctx, true)
 	if err != nil {
 		log.Printf("error checking for new release after enabling auto release check: %v\n", err)
 	}
@@ -3913,7 +3913,7 @@ func ReleaseCheckOffCommand(ctx context.Context, pk *scpacket.FeCommandPacketTyp
 }
 
 func ReleaseCheckCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	err := runReleaseCheck(true)
+	err := runReleaseCheck(ctx, true)
 	if err != nil {
 		return nil, err
 	}

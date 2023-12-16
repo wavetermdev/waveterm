@@ -2,8 +2,7 @@ package releasechecker
 
 import (
 	"context"
-	"log"
-	"time"
+	"fmt"
 
 	"github.com/google/go-github/v57/github"
 	"golang.org/x/mod/semver"
@@ -21,29 +20,20 @@ const (
 	Disabled  ReleaseCheckResult = 3
 )
 
-func CheckNewRelease(force bool) (ReleaseCheckResult, error) {
-	// Check for the latest release in the DB
-	// latestRelease, err := dbutil.g
-
-	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancelFn()
-
+// CheckNewRelease checks for a new release and updates the release info in the DB.
+// If force is true, the release info is updated even if it is fresh or if the automatic release check is disabled.
+func CheckNewRelease(ctx context.Context, force bool) (ReleaseCheckResult, error) {
 	clientData, err := sstore.EnsureClientData(ctx)
 	if err != nil {
-		log.Printf("[releasechecker] Error getting client data: %v", err)
-		return Failure, err
+		return Failure, fmt.Errorf("error getting client data: %w", err)
 	}
 
 	if !force && clientData.ClientOpts.NoReleaseCheck {
-		log.Print("[releasechecker] Release check disabled by user preference")
 		return Disabled, nil
 	}
 
-	log.Printf("[releasechecker] Existing ReleaseInfo values: %v", clientData.ReleaseInfo)
-
 	if !force && semver.Compare(scbase.WaveVersion, clientData.ReleaseInfo.LatestVersion) < 0 {
 		// We have already notified the frontend about a new release and the record is fresh. There is no need to check again.
-		log.Print("[releasechecker] Release check not needed")
 		return NotNeeded, nil
 	}
 	// Initialize an unauthenticated client
@@ -56,29 +46,24 @@ func CheckNewRelease(force bool) (ReleaseCheckResult, error) {
 	}
 
 	if err != nil {
-		log.Printf("[releasechecker] Error getting latest release: %v", err)
-		return Failure, err
+		return Failure, fmt.Errorf("error getting latest release: %w", err)
 	}
 
 	if rsp.StatusCode != 200 {
-		log.Printf("[releasechecker] Response from Github is not success: %v", rsp)
-		return Failure, nil
+		return Failure, fmt.Errorf("response from Github is not success: %v", rsp)
 	}
 
 	releaseInfoLatest.LatestVersion = *release.TagName
 
 	// Update the release info in the DB
-	log.Printf("[releasechecker] Updating release info: %v", releaseInfoLatest)
 	err = sstore.SetReleaseInfo(ctx, releaseInfoLatest)
 	if err != nil {
-		log.Printf("[releasechecker] Error updating release info: %v", err)
-		return Failure, err
+		return Failure, fmt.Errorf("error updating release info: %w", err)
 	}
 
 	clientData, err = sstore.EnsureClientData(ctx)
 	if err != nil {
-		log.Printf("[releasechecker] Error getting updated client data: %v", err)
-		return Failure, err
+		return Failure, fmt.Errorf("error getting updated client data: %w", err)
 	}
 
 	update := &sstore.ModelUpdate{
