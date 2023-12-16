@@ -218,3 +218,9 @@ func CreateErrorPacket(errStr string) *packet.OpenAIPacketType {
 	errPk.Error = errStr
 	return errPk
 }
+
+func CreateTextPacket(text string) *packet.OpenAIPacketType {
+	pk := packet.MakeOpenAIPacket()
+	pk.Text = text
+	return pk
+}

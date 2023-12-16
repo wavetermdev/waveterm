@@ -1561,7 +1561,7 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, 
 		select {
 		case <-time.After(OpenAIPacketTimeout):
 			// timeout reading from channel
-			timeoutPk := openai.CreateErrorPacket(fmt.Sprintf("Server timed out waiting for packets"))
+			timeoutPk := openai.CreateTextPacket(fmt.Sprintf("... (timed out waiting for server response)"))
 			err = writePacketToPty(ctx, cmd, timeoutPk, &outputPos)
 			if err != nil {
 				log.Printf("error writing response to ptybuffer: %v", err)
