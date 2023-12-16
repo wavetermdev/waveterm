@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log"
@@ -1222,11 +1223,44 @@ func RemoteShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	}, nil
 }
 
-/*
-func resolveConfigSshHosts(configFiles []string) ([]ssh_config.Host) {
+func resolveConfigSshAliases(configFiles []string) ([]string, error) {
+	// using two separate containers to track order and have O(1) lookups
+	// since go does not have an ordered map primitive
+	var aliases []string
+	alreadyUsed := make(map[string]bool)
+	alreadyUsed[""] = true // this excludes the empty string from potential alias
 
+	var errs []error
+	for _, configFile := range configFiles {
+		fd, openErr := os.Open(configFile)
+		if fd == nil {
+			errs = append(errs, openErr)
+			continue
+		}
+
+		cfg, _ := ssh_config.Decode(fd)
+		for _, host := range cfg.Hosts {
+			// for each host, find the first good alias
+			for _, aliasPattern := range host.Patterns {
+				alias := aliasPattern.String()
+				if strings.Index(alias, "*") == -1 || alreadyUsed[alias] == true {
+					aliases = append(aliases, alias)
+					alreadyUsed[alias] = true
+					break
+				}
+			}
+		}
+	}
+	if len(errs) == len(configFiles) {
+		errs = append([]error{fmt.Errorf("no ssh config files could be opened:\n")}, errs...)
+		return nil, errors.Join(errs...)
+	}
+	if len(aliases) == 0 {
+		return nil, fmt.Errorf("no compatible hostnames found in ssh config files")
+	}
+
+	return aliases, nil
 }
-*/
 
 func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	/*
@@ -1239,28 +1273,17 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 	*/
 
 	home := base.GetHomeDir()
-	fmt.Printf("test: %s\n\n", home)
 	localConfig := filepath.Join(home, ".ssh", "config")
-	fd, _ := os.Open(localConfig)
-	if fd == nil {
-		return nil, fmt.Errorf("error getting .ssh/config file (not found)")
+	systemConfig := filepath.Join("/", "ssh", "config")
+	sshConfigFiles := []string{localConfig, systemConfig}
+	aliases, aliasErr := resolveConfigSshAliases(sshConfigFiles)
+	if aliasErr == nil {
+		return nil, aliasErr
 	}
 
-	cfg, _ := ssh_config.Decode(fd)
-
 	importedRemotesNotVisited, _ := sstore.GetAllImportedRemotes(ctx)
-	// TODO combine results from ~/.ssh/config with /etc/ssh/config
-	// (remove any duplicates)
-	for _, host := range cfg.Hosts {
-		fmt.Printf("patterns: %s\n", host.Patterns)
 
-		// assuming the first pattern is the one we want
-		alias := host.Patterns[0].String()
-
-		if strings.Index(alias, "*") != -1 {
-			// we don't handle wildcard patterns at this point
-			continue
-		}
+	for _, alias := range aliases {
 		userName, userNameErr := ssh_config.GetStrict(alias, "User")
 		hostName, hostNameErr := ssh_config.GetStrict(alias, "Hostname")
 

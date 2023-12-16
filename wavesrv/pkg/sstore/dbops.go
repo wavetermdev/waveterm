@@ -114,7 +114,7 @@ func GetAllRemotes(ctx context.Context) ([]*RemoteType, error) {
 }
 
 func GetAllImportedRemotes(ctx context.Context) (map[string]*RemoteType, error) {
-	var rtn (map[string]*RemoteType)
+	rtn := make(map[string]*RemoteType)
 	err := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT * FROM remote
 		          WHERE sshconfigsrc = "sshconfig-import"
