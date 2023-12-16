@@ -37,7 +37,7 @@ func convertUsage(resp openaiapi.ChatCompletionResponse) *packet.OpenAIUsageType
 	}
 }
 
-func ConvertPrompt(prompt []sstore.OpenAIPromptMessageType) []openaiapi.ChatCompletionMessage {
+func ConvertPrompt(prompt []packet.OpenAIPromptMessageType) []openaiapi.ChatCompletionMessage {
 	var rtn []openaiapi.ChatCompletionMessage
 	for _, p := range prompt {
 		msg := openaiapi.ChatCompletionMessage{Role: p.Role, Content: p.Content, Name: p.Name}
@@ -46,7 +46,7 @@ func ConvertPrompt(prompt []sstore.OpenAIPromptMessageType) []openaiapi.ChatComp
 	return rtn
 }
 
-func RunCompletion(ctx context.Context, opts *sstore.OpenAIOptsType, prompt []sstore.OpenAIPromptMessageType) ([]*packet.OpenAIPacketType, error) {
+func RunCompletion(ctx context.Context, opts *sstore.OpenAIOptsType, prompt []packet.OpenAIPromptMessageType) ([]*packet.OpenAIPacketType, error) {
 	if opts == nil {
 		return nil, fmt.Errorf("no openai opts found")
 	}
@@ -79,21 +79,22 @@ func RunCompletion(ctx context.Context, opts *sstore.OpenAIOptsType, prompt []ss
 	return marshalResponse(apiResp), nil
 }
 
-func RunCloudCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, prompt []sstore.OpenAIPromptMessageType) (chan *packet.OpenAIPacketType, *websocket.Conn, error) {
+func RunCloudCompletionStream(ctx context.Context, clientId string, opts *sstore.OpenAIOptsType, prompt []packet.OpenAIPromptMessageType) (chan *packet.OpenAIPacketType, *websocket.Conn, error) {
 	if opts == nil {
 		return nil, nil, fmt.Errorf("no openai opts found")
 	}
-	websocketContext, _ := context.WithTimeout(context.Background(), CloudWebsocketConnectTimeout)
+	websocketContext, dialCancelFn := context.WithTimeout(context.Background(), CloudWebsocketConnectTimeout)
+	defer dialCancelFn()
 	conn, _, err := websocket.DefaultDialer.DialContext(websocketContext, pcloud.GetWSEndpoint(), nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("OpenAI request, websocket connect error: %v", err)
 	}
-	cloudCompletionRequestConfig := sstore.OpenAICloudCompletionRequest{
-		Prompt:     prompt,
-		MaxTokens:  opts.MaxTokens,
-		MaxChoices: opts.MaxChoices,
-	}
-	configMessageBuf, err := json.Marshal(cloudCompletionRequestConfig)
+	reqPk := packet.MakeOpenAICloudReqPacket()
+	reqPk.ClientId = clientId
+	reqPk.Prompt = prompt
+	reqPk.MaxTokens = opts.MaxTokens
+	reqPk.MaxChoices = opts.MaxChoices
+	configMessageBuf, err := json.Marshal(reqPk)
 	err = conn.WriteMessage(websocket.TextMessage, configMessageBuf)
 	if err != nil {
 		return nil, nil, fmt.Errorf("OpenAI request, websocket write config error: %v", err)
@@ -134,7 +135,7 @@ func RunCloudCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, 
 	return rtn, conn, err
 }
 
-func RunCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, prompt []sstore.OpenAIPromptMessageType) (chan *packet.OpenAIPacketType, error) {
+func RunCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, prompt []packet.OpenAIPromptMessageType) (chan *packet.OpenAIPacketType, error) {
 	if opts == nil {
 		return nil, fmt.Errorf("no openai opts found")
 	}

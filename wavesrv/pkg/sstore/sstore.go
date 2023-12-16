@@ -778,18 +778,6 @@ type OpenAIResponse struct {
 	Choices []OpenAIChoiceType `json:"choices,omitempty"`
 }
 
-type OpenAIPromptMessageType struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-	Name    string `json:"name,omitempty"`
-}
-
-type OpenAICloudCompletionRequest struct {
-	Prompt     []OpenAIPromptMessageType `json:"prompt"`
-	MaxTokens  int                       `json:"maxtokens,omitempty"`
-	MaxChoices int                       `json:"maxchoices,omitempty"`
-}
-
 type PlaybookType struct {
 	PlaybookId   string   `json:"playbookid"`
 	PlaybookName string   `json:"playbookname"`
