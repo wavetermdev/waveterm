@@ -93,6 +93,11 @@ const (
 )
 
 const (
+	SSHConfigSrcTypeManual = "waveterm-manual"
+	SSHConfigSrcTypeImport = "sshconfig-import"
+)
+
+const (
 	ShareModeLocal = "local"
 	ShareModeWeb   = "web"
 )
@@ -1186,6 +1191,7 @@ func EnsureLocalRemote(ctx context.Context) error {
 		AutoInstall:         true,
 		SSHOpts:             &SSHOpts{Local: true},
 		Local:               true,
+		SSHConfigSrc:        SSHConfigSrcTypeManual,
 	}
 	err = UpsertRemote(ctx, localRemote)
 	if err != nil {
@@ -1204,6 +1210,7 @@ func EnsureLocalRemote(ctx context.Context) error {
 		SSHOpts:             &SSHOpts{Local: true, IsSudo: true},
 		RemoteOpts:          &RemoteOptsType{Color: "red"},
 		Local:               true,
+		SSHConfigSrc:        SSHConfigSrcTypeManual,
 	}
 	err = UpsertRemote(ctx, sudoRemote)
 	if err != nil {

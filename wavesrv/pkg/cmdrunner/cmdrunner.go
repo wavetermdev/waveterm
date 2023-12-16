@@ -1137,7 +1137,7 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		ConnectMode:         editArgs.ConnectMode,
 		AutoInstall:         editArgs.AutoInstall,
 		SSHOpts:             editArgs.SSHOpts,
-		SSHConfigSrc:        "waveterm-manual",
+		SSHConfigSrc:        sstore.SSHConfigSrcTypeManual,
 	}
 	if editArgs.Color != "" {
 		r.RemoteOpts = &sstore.RemoteOptsType{Color: editArgs.Color}
@@ -1372,7 +1372,7 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 				ConnectMode:         sstore.ConnectModeManual,
 				AutoInstall:         true,
 				SSHOpts:             sshOpts,
-				SSHConfigSrc:        "sshconfig-import",
+				SSHConfigSrc:        sstore.SSHConfigSrcTypeImport,
 			}
 			err = remote.AddRemote(ctx, r, false)
 			if err != nil {
@@ -1394,7 +1394,7 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 		if err != nil {
 			log.Printf("sshconfig import failed to remove remote \"%s\" (%s)\n", remoteRemovedFromConfig.RemoteAlias, remoteRemovedFromConfig.RemoteCanonicalName)
 		} else {
-			log.Printf("sshconfig import archiving remote \"%s\" (%s)\n", remoteRemovedFromConfig.RemoteAlias, remoteRemovedFromConfig.RemoteCanonicalName)
+			log.Printf("sshconfig import archived remote \"%s\" (%s)\n", remoteRemovedFromConfig.RemoteAlias, remoteRemovedFromConfig.RemoteCanonicalName)
 		}
 	}
 	update := &sstore.ModelUpdate{Remotes: []interface{}{ids.Remote}}
