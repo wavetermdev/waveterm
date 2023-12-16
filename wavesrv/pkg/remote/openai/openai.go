@@ -86,7 +86,7 @@ func RunCloudCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, 
 	websocketContext, _ := context.WithTimeout(context.Background(), CloudWebsocketConnectTimeout)
 	conn, _, err := websocket.DefaultDialer.DialContext(websocketContext, pcloud.GetWSEndpoint(), nil)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Websocket error: %v", err)
+		return nil, nil, fmt.Errorf("OpenAI request, websocket connect error: %v", err)
 	}
 	cloudCompletionRequestConfig := sstore.OpenAICloudCompletionRequest{
 		Prompt:     prompt,
@@ -96,7 +96,7 @@ func RunCloudCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, 
 	configMessageBuf, err := json.Marshal(cloudCompletionRequestConfig)
 	err = conn.WriteMessage(websocket.TextMessage, configMessageBuf)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Websocker write config error: %v", err)
+		return nil, nil, fmt.Errorf("OpenAI request, websocket write config error: %v", err)
 	}
 	rtn := make(chan *packet.OpenAIPacketType, DefaultStreamChanSize)
 	go func() {
@@ -108,14 +108,14 @@ func RunCloudCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, 
 				break
 			}
 			if err != nil {
-				errPk := CreateErrorPacket(fmt.Sprintf("Websocket error: %v", err))
+				errPk := CreateErrorPacket(fmt.Sprintf("OpenAI request, websocket error reading message: %v", err))
 				rtn <- errPk
 				break
 			}
 			var streamResp *packet.OpenAIPacketType
 			err = json.Unmarshal(socketMessage, &streamResp)
 			if err != nil {
-				errPk := CreateErrorPacket(fmt.Sprintf("Websocket response json decode error: %v", err))
+				errPk := CreateErrorPacket(fmt.Sprintf("OpenAI request, websocket response json decode error: %v", err))
 				rtn <- errPk
 				break
 			}
@@ -123,7 +123,8 @@ func RunCloudCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, 
 				// got eof packet from socket
 				break
 			} else if streamResp.Error != "" {
-				errPk := CreateErrorPacket(fmt.Sprintf("OpenAI Completion error: %v", err))
+				// use error from server directly
+				errPk := CreateErrorPacket(fmt.Sprintf(err.Error()))
 				rtn <- errPk
 				break
 			}

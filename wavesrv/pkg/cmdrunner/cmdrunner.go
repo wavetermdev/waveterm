@@ -1564,7 +1564,7 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, 
 			timeoutPk := openai.CreateErrorPacket(fmt.Sprintf("Server timed out waiting for packets"))
 			err = writePacketToPty(ctx, cmd, timeoutPk, &outputPos)
 			if err != nil {
-				writeErrorToPty(cmd, fmt.Sprintf("error writing response to ptybuffer: %v", err), outputPos)
+				log.Printf("error writing response to ptybuffer: %v", err)
 				return
 			}
 			doneWaitingForPackets = true
@@ -1574,7 +1574,7 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, 
 				// got a packet
 				err = writePacketToPty(ctx, cmd, pk, &outputPos)
 				if err != nil {
-					writeErrorToPty(cmd, fmt.Sprintf("error writing response to ptybuffer: %v", err), outputPos)
+					log.Printf("error writing response to ptybuffer: %v", err)
 					return
 				}
 			} else {
