@@ -1462,7 +1462,7 @@ func writePacketToPty(ctx context.Context, cmd *sstore.CmdType, pk packet.Packet
 	return nil
 }
 
-func doOpenAICompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, prompt []sstore.OpenAIPromptMessageType) {
+func doOpenAICompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, prompt []packet.OpenAIPromptMessageType) {
 	var outputPos int64
 	var hadError bool
 	startTime := time.Now()
@@ -1514,7 +1514,7 @@ func doOpenAICompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, prompt
 	return
 }
 
-func doOpenAIStreamCompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, prompt []sstore.OpenAIPromptMessageType) {
+func doOpenAIStreamCompletion(cmd *sstore.CmdType, clientId string, opts *sstore.OpenAIOptsType, prompt []packet.OpenAIPromptMessageType) {
 	var outputPos int64
 	var hadError bool
 	startTime := time.Now()
@@ -1552,7 +1552,7 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, 
 	var err error
 	if opts.APIToken == "" {
 		var conn *websocket.Conn
-		ch, conn, err = openai.RunCloudCompletionStream(ctx, opts, prompt)
+		ch, conn, err = openai.RunCloudCompletionStream(ctx, clientId, opts, prompt)
 		if conn != nil {
 			defer conn.Close()
 		}
@@ -1641,9 +1641,9 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	if err != nil {
 		return nil, fmt.Errorf("cannot add new line: %v", err)
 	}
-	prompt := []sstore.OpenAIPromptMessageType{{Role: sstore.OpenAIRoleUser, Content: promptStr}}
+	prompt := []packet.OpenAIPromptMessageType{{Role: sstore.OpenAIRoleUser, Content: promptStr}}
 	if resolveBool(pk.Kwargs["stream"], true) {
-		go doOpenAIStreamCompletion(cmd, opts, prompt)
+		go doOpenAIStreamCompletion(cmd, clientData.ClientId, opts, prompt)
 	} else {
 		go doOpenAICompletion(cmd, opts, prompt)
 	}
