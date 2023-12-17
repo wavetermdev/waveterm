@@ -3152,9 +3152,10 @@ class Model {
         this.clientId = getApi().getId();
         this.isDev = getApi().getIsDev();
         this.authKey = getApi().getAuthKey();
-        this.ws = new WSControl(this.getBaseWsHostPort(), this.clientId, this.authKey, (message: any) =>
-            this.runUpdate(message, false)
-        );
+        this.ws = new WSControl(this.getBaseWsHostPort(), this.clientId, this.authKey, (message: any) => {
+            let interactive = message?.interactive ?? false;
+            this.runUpdate(message, interactive);
+        });
         this.ws.reconnect();
         this.inputModel = new InputModel();
         this.pluginsModel = new PluginsModel();

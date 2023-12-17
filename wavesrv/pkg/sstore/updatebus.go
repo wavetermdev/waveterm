@@ -69,6 +69,26 @@ func (update *ModelUpdate) Clean() {
 	update.ClientData = update.ClientData.Clean()
 }
 
+func (update *ModelUpdate) UpdateScreen(newScreen *ScreenType) {
+	if newScreen == nil {
+		return
+	}
+	for idx, screen := range update.Screens {
+		if screen.ScreenId == newScreen.ScreenId {
+			update.Screens[idx] = newScreen
+			return
+		}
+	}
+	update.Screens = append(update.Screens, newScreen)
+}
+
+func (update *ModelUpdate) AddInfoError(errStr string) {
+	if update.Info == nil {
+		update.Info = &InfoMsgType{}
+	}
+	update.Info.InfoError = errStr
+}
+
 type RemoteViewType struct {
 	RemoteShowAll bool            `json:"remoteshowall,omitempty"`
 	PtyRemoteId   string          `json:"ptyremoteid,omitempty"`
