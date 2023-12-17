@@ -2171,7 +2171,12 @@ class HistoryViewModel {
                 this.activeItem.set(hitem.historyid);
                 let width = termWidthFromCols(80, GlobalModel.termFontSize.get());
                 let height = termHeightFromRows(25, GlobalModel.termFontSize.get());
-                this.specialLineContainer = new SpecialLineContainer(this, { width, height }, false, "history");
+                this.specialLineContainer = new SpecialLineContainer(
+                    this,
+                    { width, height },
+                    false,
+                    appconst.LineContainer_History
+                );
             }
         })();
     }
