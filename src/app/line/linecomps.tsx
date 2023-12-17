@@ -39,7 +39,7 @@ import { PluginModel } from "../../plugins/plugins";
 import { Prompt } from "../common/prompt/prompt";
 import * as lineutil from "./lineutil";
 import { ErrorBoundary } from "../../app/common/error/errorboundary";
-import * as constants from "../appconst";
+import * as appconst from "../appconst";
 
 import { ReactComponent as CheckIcon } from "../assets/icons/line/check.svg";
 import { ReactComponent as CommentIcon } from "../assets/icons/line/comment.svg";
@@ -454,7 +454,7 @@ class LineCmd extends React.Component<
             mobx.action(() => {
                 GlobalModel.lineSettingsModal.set(line.linenum);
             })();
-            GlobalModel.modalsModel.pushModal(constants.LINE_SETTINGS);
+            GlobalModel.modalsModel.pushModal(appconst.LINE_SETTINGS);
         }
     }
 
@@ -667,25 +667,25 @@ class LineCmd extends React.Component<
                     >
                         <i className="fa-sharp fa-regular fa-bookmark" />
                     </div>
-                    <div
-                        key="minimise"
-                        title={`${this.isMinimized.get() ? "Maximise" : "Minimise"}`}
-                        className={cn(
-                            "line-icon",
-                            "line-minimise",
-                            "hoverEffect",
-                            this.isMinimized.get() ? "line-icon-show" : ""
-                        )}
-                        onClick={this.clickMinimize}
-                    >
-                        <If condition={this.isMinimized.get()}>
-                            <i className="fa-sharp fa-regular fa-circle-plus" />
-                        </If>
-                        <If condition={!this.isMinimized.get()}>
-                            <i className="fa-sharp fa-regular fa-circle-minus" />
-                        </If>
-                    </div>
-                    <If condition={!isInSidebar}>
+                    <If condition={containerType == appconst.LineContainer_Main}>
+                        <div
+                            key="minimize"
+                            title={`${this.isMinimized.get() ? "Maximise" : "Minimize"}`}
+                            className={cn(
+                                "line-icon",
+                                "line-minimize",
+                                "hoverEffect",
+                                this.isMinimized.get() ? "line-icon-show" : ""
+                            )}
+                            onClick={this.clickMinimize}
+                        >
+                            <If condition={this.isMinimized.get()}>
+                                <i className="fa-sharp fa-regular fa-circle-plus" />
+                            </If>
+                            <If condition={!this.isMinimized.get()}>
+                                <i className="fa-sharp fa-regular fa-circle-minus" />
+                            </If>
+                        </div>
                         <div
                             className="line-icon line-sidebar"
                             onClick={this.clickMoveToSidebar}
@@ -694,7 +694,7 @@ class LineCmd extends React.Component<
                             <i className="fa-sharp fa-solid fa-right-to-line" />
                         </div>
                     </If>
-                    <If condition={isInSidebar}>
+                    <If condition={containerType == appconst.LineContainer_Sidebar}>
                         <div
                             className="line-icon line-sidebar"
                             onClick={this.clickRemoveFromSidebar}

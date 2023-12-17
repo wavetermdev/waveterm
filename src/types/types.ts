@@ -8,6 +8,7 @@ type ShareModeType = "local" | "web";
 type FocusTypeStrs = "input" | "cmd";
 type HistoryTypeStrs = "global" | "session" | "screen";
 type RemoteStatusTypeStrs = "connected" | "connecting" | "disconnected" | "error";
+type LineContainerStrs = "main" | "sidebar" | "history";
 
 type OV<V> = mobx.IObservableValue<V>;
 
@@ -732,4 +733,5 @@ export type {
     FileInfoType,
     ExtBlob,
     ExtFile,
+    LineContainerStrs,
 };

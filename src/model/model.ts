@@ -78,7 +78,7 @@ import customParseFormat from "dayjs/plugin/customParseFormat";
 import { getRendererContext, cmdStatusIsRunning } from "../app/line/lineutil";
 import { MagicLayout } from "../app/magiclayout";
 import { modalsRegistry } from "../app/common/modals/modalsRegistry";
-import * as constants from "../app/appconst";
+import * as appconst from "../app/appconst";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(localizedFormat);
@@ -132,7 +132,7 @@ type LineContainerModel = {
     getIdealContentSize(): WindowSize;
     isSidebarOpen(): boolean;
     isLineIdInSidebar(lineId: string): boolean;
-    getContainerType(): string;
+    getContainerType(): T.LineContainerStrs;
 };
 
 type SWLinePtr = {
@@ -426,8 +426,8 @@ class Screen {
         return viewOpts?.sidebar?.sidebarlineid == lineId;
     }
 
-    getContainerType(): string {
-        return "screen";
+    getContainerType(): T.LineContainerStrs {
+        return appconst.LineContainer_Main;
     }
 
     getShareName(): string {
@@ -1839,14 +1839,15 @@ type CmdFinder = {
 class ForwardLineContainer {
     winSize: T.WindowSize;
     screen: Screen;
-    containerType: string;
+    containerType: T.LineContainerStrs;
 
-    constructor(screen: Screen, winSize: T.WindowSize, containerType: string) {
+    constructor(screen: Screen, winSize: T.WindowSize, containerType: T.LineContainerStrs) {
         this.screen = screen;
         this.winSize = winSize;
+        this.containerType = containerType;
     }
 
-    getContainerType(): string {
+    getContainerType(): T.LineContainerStrs {
         return this.containerType;
     }
 
@@ -1926,9 +1927,9 @@ class SpecialLineContainer {
     renderer: RendererModel;
     cmd: Cmd;
     cmdFinder: CmdFinder;
-    containerType: string;
+    containerType: T.LineContainerStrs;
 
-    constructor(cmdFinder: CmdFinder, wsize: T.WindowSize, allowInput: boolean, containerType: string) {
+    constructor(cmdFinder: CmdFinder, wsize: T.WindowSize, allowInput: boolean, containerType: T.LineContainerStrs) {
         this.cmdFinder = cmdFinder;
         this.wsize = wsize;
         this.allowInput = allowInput;
@@ -1941,7 +1942,7 @@ class SpecialLineContainer {
         return this.cmd;
     }
 
-    getContainerType(): string {
+    getContainerType(): T.LineContainerStrs {
         return this.containerType;
     }
 
@@ -2906,26 +2907,26 @@ class RemotesModel {
         mobx.action(() => {
             this.selectedRemoteId.set(remoteId);
             this.remoteEdit.set(null);
-            GlobalModel.modalsModel.pushModal(constants.VIEW_REMOTE);
+            GlobalModel.modalsModel.pushModal(appconst.VIEW_REMOTE);
         })();
     }
 
     openAddModal(redit: RemoteEditType): void {
         mobx.action(() => {
             this.remoteEdit.set(redit);
-            GlobalModel.modalsModel.pushModal(constants.CREATE_REMOTE);
+            GlobalModel.modalsModel.pushModal(appconst.CREATE_REMOTE);
         })();
     }
 
     openEditModal(redit?: RemoteEditType): void {
         if (redit == null) {
             this.startEditAuth();
-            GlobalModel.modalsModel.pushModal(constants.EDIT_REMOTE);
+            GlobalModel.modalsModel.pushModal(appconst.EDIT_REMOTE);
         } else {
             mobx.action(() => {
                 this.selectedRemoteId.set(redit?.remoteid);
                 this.remoteEdit.set(redit);
-                GlobalModel.modalsModel.pushModal(constants.EDIT_REMOTE);
+                GlobalModel.modalsModel.pushModal(appconst.EDIT_REMOTE);
             })();
         }
     }
@@ -3251,7 +3252,7 @@ class Model {
     showAlert(alertMessage: AlertMessageType): Promise<boolean> {
         mobx.action(() => {
             this.alertMessage.set(alertMessage);
-            GlobalModel.modalsModel.pushModal(constants.ALERT);
+            GlobalModel.modalsModel.pushModal(appconst.ALERT);
         })();
         let prtn = new Promise<boolean>((resolve, reject) => {
             this.alertPromiseResolver = resolve;
@@ -3530,7 +3531,7 @@ class Model {
 
     onMenuItemAbout(): void {
         mobx.action(() => {
-            this.modalsModel.pushModal(constants.ABOUT);
+            this.modalsModel.pushModal(appconst.ABOUT);
         })();
     }
 

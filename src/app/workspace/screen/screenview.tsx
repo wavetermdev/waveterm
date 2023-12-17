@@ -27,6 +27,7 @@ import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg"
 import { ReactComponent as GlobeIcon } from "../../assets/icons/globe.svg";
 import { ReactComponent as StatusCircleIcon } from "../../assets/icons/statuscircle.svg";
 import { termWidthFromCols, termHeightFromRows } from "../../../util/textmeasure";
+import * as appconst from "../../appconst";
 
 import "./screenview.less";
 import "./tabs.less";
@@ -83,7 +84,7 @@ class SidebarLineContainer extends React.Component<{ screen: Screen; winSize: T.
         // TODO this is a hack for now to make the timing work out.
         setTimeout(() => {
             mobx.action(() => {
-                this.container = new ForwardLineContainer(screen, winSize, "sidebar");
+                this.container = new ForwardLineContainer(screen, winSize, appconst.LineContainer_Sidebar);
                 this.ready.set(true);
             })();
         }, 100);
@@ -101,7 +102,6 @@ class SidebarLineContainer extends React.Component<{ screen: Screen; winSize: T.
         if (line == null) {
             return null;
         }
-        console.log("linewidth", winSize.width);
         return (
             <Line
                 screen={this.container}
