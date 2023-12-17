@@ -567,14 +567,14 @@ func InsertSessionWithName(ctx context.Context, sessionName string, activate boo
 	if err != nil {
 		return nil, err
 	}
-	update := ModelUpdate{
+	update := &ModelUpdate{
 		Sessions: []*SessionType{session},
 		Screens:  []*ScreenType{newScreen},
 	}
 	if activate {
 		update.ActiveSessionId = newSessionId
 	}
-	return &update, nil
+	return update, nil
 }
 
 func SetActiveSessionId(ctx context.Context, sessionId string) error {

@@ -534,7 +534,6 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	if err != nil {
 		return nil, fmt.Errorf("/run error, invalid lang: %w", err)
 	}
-	runInSidebar := resolveBool(pk.Kwargs["sidebar"], false)
 	cmdStr := firstArg(pk)
 	expandedCmdStr, err := doCmdHistoryExpansion(ctx, ids, cmdStr)
 	if err != nil {
@@ -584,38 +583,21 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	if err != nil {
 		return nil, err
 	}
-	var sidebarErr string
-	if runInSidebar {
-		screen, err := implementRunInSidebar(ctx, ids, cmd.LineId)
-		if err == nil {
-			update.UpdateScreen(screen)
-		} else {
-			sidebarErr = fmt.Sprintf("cannot move command to sidebar: %v", err)
-		}
-	}
 	update.Interactive = pk.Interactive
 	// this update is sent asynchronously for timing issues.  the cmd update comes async as well
 	// so if we return this directly it sometimes gets evaluated first.  by pushing it on the MainBus
 	// it ensures it happens after the command creation event.
 	sstore.MainBus.SendScreenUpdate(ids.ScreenId, update)
-
-	// transmit sidebarErr with main return (otherwise it gets cleared by GlobalCommandRunner fe code)
-	if sidebarErr != "" {
-		specialRtn := &sstore.ModelUpdate{
-			Info: &sstore.InfoMsgType{InfoError: sidebarErr},
-		}
-		return specialRtn, nil
-	}
 	return nil, nil
 }
 
-func implementRunInSidebar(ctx context.Context, ids resolvedIds, lineId string) (*sstore.ScreenType, error) {
-	screen, err := sidebarSetOpen(ctx, "run", ids.ScreenId, true, "")
+func implementRunInSidebar(ctx context.Context, screenId string, lineId string) (*sstore.ScreenType, error) {
+	screen, err := sidebarSetOpen(ctx, "run", screenId, true, "")
 	if err != nil {
 		return nil, err
 	}
 	screen.ScreenViewOpts.Sidebar.SidebarLineId = lineId
-	err = sstore.ScreenUpdateViewOpts(ctx, ids.ScreenId, screen.ScreenViewOpts)
+	err = sstore.ScreenUpdateViewOpts(ctx, screenId, screen.ScreenViewOpts)
 	if err != nil {
 		return nil, fmt.Errorf("/run error updating screenviewopts: %v", err)
 	}
@@ -681,10 +663,34 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 		update, rtnErr = HandleCommand(ctxWithHistory, newPk)
 	}
 	if !resolveBool(pk.Kwargs["nohist"], false) {
+		// TODO should this be "pk" or "newPk" (2nd arg)
 		err := addToHistory(ctx, pk, historyContext, (newPk.MetaCmd != "run"), (rtnErr != nil))
 		if err != nil {
 			log.Printf("[error] adding to history: %v\n", err)
 			// fall through (non-fatal error)
+		}
+	}
+	var hasModelUpdate bool
+	var modelUpdate *sstore.ModelUpdate
+	if update == nil {
+		hasModelUpdate = true
+		modelUpdate = &sstore.ModelUpdate{}
+		update = modelUpdate
+	} else if mu, ok := update.(*sstore.ModelUpdate); ok {
+		hasModelUpdate = true
+		modelUpdate = mu
+	}
+	if resolveBool(newPk.Kwargs["sidebar"], false) && historyContext.LineId != "" && hasModelUpdate {
+		ids, resolveErr := resolveUiIds(ctx, newPk, R_Session|R_Screen)
+		// we are ignoring resolveErr (if not nil).  obviously can't add to sidebar and
+		// either another error already happened, or this command was never about the sidebar
+		if resolveErr == nil {
+			screen, sidebarErr := implementRunInSidebar(ctx, ids.ScreenId, historyContext.LineId)
+			if sidebarErr == nil {
+				modelUpdate.UpdateScreen(screen)
+			} else {
+				modelUpdate.AddInfoError(fmt.Sprintf("cannot move command to sidebar: %v", sidebarErr))
+			}
 		}
 	}
 	return update, rtnErr

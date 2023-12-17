@@ -82,11 +82,14 @@ func (update *ModelUpdate) UpdateScreen(newScreen *ScreenType) {
 	update.Screens = append(update.Screens, newScreen)
 }
 
+// only sets InfoError if InfoError is not already set
 func (update *ModelUpdate) AddInfoError(errStr string) {
 	if update.Info == nil {
 		update.Info = &InfoMsgType{}
 	}
-	update.Info.InfoError = errStr
+	if update.Info.InfoError == "" {
+		update.Info.InfoError = errStr
+	}
 }
 
 type RemoteViewType struct {
