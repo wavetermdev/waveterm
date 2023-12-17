@@ -179,12 +179,12 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
         let sidebarSize = this.sidebarSize.get();
         let sidebar = this.getSidebarConfig();
         let lineId = sidebar?.sidebarlineid;
-        let sidebarOk = sidebarSize != null && sidebarSize.width > 0;
+        let sidebarOk = sidebarSize != null && sidebarSize.width > 0 && !util.isBlank(sidebar?.sidebarlineid);
         return (
             <div className="screen-sidebar" style={{ width: width }} ref={this.sidebarRef}>
                 <If condition={!sidebarOk}>
                     <div className="empty-sidebar">
-                        <div className="sidebar-main-text">No Sections</div>
+                        <div className="sidebar-main-text">No Sidebar Line Selected</div>
                         <div className="sidebar-help-text">
                             /sidebar:open
                             <br />
@@ -192,6 +192,11 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
                             <br />
                             /sidebar:add line=[linenum]
                             <br />
+                        </div>
+                        <div onClick={this.sidebarClose} className="close-button-container">
+                            <Button theme="secondary" onClick={this.sidebarClose}>
+                                Close Sidebar
+                            </Button>
                         </div>
                     </div>
                 </If>

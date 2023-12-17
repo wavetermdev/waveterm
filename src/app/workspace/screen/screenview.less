@@ -22,23 +22,16 @@
             margin-top: 10px;
         }
 
-        &:hover {
-            .screen-sidebar-section.close-section {
-                visibility: visible;
-            }
+        .close-button-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-top: 20px;
+            margin-bottom: 10px;
         }
 
         .screen-sidebar-section {
-            &.close-section {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                margin-top: 10px;
-                margin-bottom: 10px;
-                visibility: hidden;
-            }
-
             &:last-child {
                 padding-bottom: 0;
             }
