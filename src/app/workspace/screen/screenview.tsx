@@ -31,6 +31,7 @@ import * as appconst from "../../appconst";
 
 import "./screenview.less";
 import "./tabs.less";
+import { MagicLayout } from "../../magiclayout";
 
 dayjs.extend(localizedFormat);
 
@@ -77,7 +78,7 @@ class SidebarLineContainer extends React.Component<{ screen: Screen; winSize: T.
     container: ForwardLineContainer;
     overrideCollapsed: OV<boolean> = mobx.observable.box(false, { name: "overrideCollapsed" });
     visible: OV<boolean> = mobx.observable.box(true, { name: "visible" });
-    ready: OV<boolean> = mobx.observable.box(false, {name: "ready"});
+    ready: OV<boolean> = mobx.observable.box(false, { name: "ready" });
 
     componentDidMount(): void {
         let { screen, winSize } = this.props;
@@ -155,7 +156,10 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
         if (sidebarElem == null) {
             return;
         }
-        let size = { height: sidebarElem.offsetHeight, width: sidebarElem.offsetWidth };
+        let size = {
+            width: sidebarElem.offsetWidth - MagicLayout.ScreenMaxContentWidthBuffer,
+            height: sidebarElem.offsetHeight - MagicLayout.ScreenMaxContentHeightBuffer,
+        };
         mobx.action(() => this.sidebarSize.set(size))();
     }
 
@@ -194,11 +198,6 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
                 <If condition={sidebarOk}>
                     <SidebarLineContainer key={lineId} screen={screen} winSize={sidebarSize} lineId={lineId} />
                 </If>
-                <div onClick={this.sidebarClose} className="screen-sidebar-section close-section">
-                    <Button theme="secondary" onClick={this.sidebarClose}>
-                        Close Sidebar
-                    </Button>
-                </div>
             </div>
         );
     }
