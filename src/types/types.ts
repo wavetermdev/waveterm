@@ -470,7 +470,7 @@ type ClientOptsType = {
     acceptedtos: number;
 };
 
-type ReleaseInfoType = { 
+type ReleaseInfoType = {
     latestversion: string;
 };
 
