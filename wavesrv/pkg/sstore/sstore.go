@@ -934,6 +934,73 @@ type OpenAIOptsType struct {
 	MaxChoices int    `json:"maxchoices,omitempty"`
 }
 
+const (
+	RemoteStatus_Connected    = "connected"
+	RemoteStatus_Connecting   = "connecting"
+	RemoteStatus_Disconnected = "disconnected"
+	RemoteStatus_Error        = "error"
+)
+
+type RemoteRuntimeState struct {
+	RemoteType          string            `json:"remotetype"`
+	RemoteId            string            `json:"remoteid"`
+	RemoteAlias         string            `json:"remotealias,omitempty"`
+	RemoteCanonicalName string            `json:"remotecanonicalname"`
+	RemoteVars          map[string]string `json:"remotevars"`
+	DefaultFeState      map[string]string `json:"defaultfestate"`
+	Status              string            `json:"status"`
+	ConnectTimeout      int               `json:"connecttimeout,omitempty"`
+	ErrorStr            string            `json:"errorstr,omitempty"`
+	InstallStatus       string            `json:"installstatus"`
+	InstallErrorStr     string            `json:"installerrorstr,omitempty"`
+	NeedsMShellUpgrade  bool              `json:"needsmshellupgrade,omitempty"`
+	NoInitPk            bool              `json:"noinitpk,omitempty"`
+	AuthType            string            `json:"authtype,omitempty"`
+	ConnectMode         string            `json:"connectmode"`
+	AutoInstall         bool              `json:"autoinstall"`
+	Archived            bool              `json:"archived,omitempty"`
+	RemoteIdx           int64             `json:"remoteidx"`
+	UName               string            `json:"uname"`
+	MShellVersion       string            `json:"mshellversion"`
+	WaitingForPassword  bool              `json:"waitingforpassword,omitempty"`
+	Local               bool              `json:"local,omitempty"`
+	RemoteOpts          *RemoteOptsType   `json:"remoteopts,omitempty"`
+	CanComplete         bool              `json:"cancomplete,omitempty"`
+}
+
+func (state RemoteRuntimeState) IsConnected() bool {
+	return state.Status == RemoteStatus_Connected
+}
+
+func (state RemoteRuntimeState) GetBaseDisplayName() string {
+	if state.RemoteAlias != "" {
+		return state.RemoteAlias
+	}
+	return state.RemoteCanonicalName
+}
+
+func (state RemoteRuntimeState) GetDisplayName(rptr *RemotePtrType) string {
+	baseDisplayName := state.GetBaseDisplayName()
+	if rptr == nil {
+		return baseDisplayName
+	}
+	return rptr.GetDisplayName(baseDisplayName)
+}
+
+func (state RemoteRuntimeState) ExpandHomeDir(pathStr string) (string, error) {
+	if pathStr != "~" && !strings.HasPrefix(pathStr, "~/") {
+		return pathStr, nil
+	}
+	homeDir := state.RemoteVars["home"]
+	if homeDir == "" {
+		return "", fmt.Errorf("remote does not have HOME set, cannot do ~ expansion")
+	}
+	if pathStr == "~" {
+		return homeDir, nil
+	}
+	return path.Join(homeDir, pathStr[2:]), nil
+}
+
 type RemoteType struct {
 	RemoteId            string          `json:"remoteid"`
 	RemoteType          string          `json:"remotetype"`

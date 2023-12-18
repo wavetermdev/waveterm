@@ -1324,11 +1324,6 @@ func resolveConfigSshAliases(configFiles []string) ([]string, error) {
 }
 
 func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Remote)
-	if err != nil {
-		return nil, err
-	}
-
 	home := base.GetHomeDir()
 	localConfig := filepath.Join(home, ".ssh", "config")
 	systemConfig := filepath.Join("/", "ssh", "config")
@@ -1342,6 +1337,7 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 		return nil, dbQueryErr
 	}
 
+	var updatedRemotes []string
 	for _, alias := range aliases {
 		userName, _ := ssh_config.GetStrict(alias, "User")
 		hostName, _ := ssh_config.GetStrict(alias, "Hostname")
@@ -1382,13 +1378,9 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 			portVal = 22
 		}
 
-		var isSudo bool
-		if userName == "root" {
-			isSudo = true
-		}
+		isSudo := false
 
-		sshKeyFile, sshKeyFileErr := ssh_config.GetStrict(alias, "IdentityFile")
-
+		sshKeyFile, _ := ssh_config.GetStrict(alias, "IdentityFile")
 		sshOpts := &sstore.SSHOpts{
 			Local:   false,
 			SSHHost: hostName,
@@ -1396,12 +1388,13 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 			IsSudo:  isSudo,
 			SSHPort: portVal,
 		}
-		if sshKeyFileErr != nil {
+		if sshKeyFile != "" {
 			sshOpts.SSHIdentity = sshKeyFile
 		}
 
 		alreadyStoredImportRemote := importedRemotesNotVisited[canonicalName]
 
+		updatedRemotes = append(updatedRemotes, canonicalName)
 		if alreadyStoredImportRemote != nil && !alreadyStoredImportRemote.Archived {
 			// this already existed and was created via import
 			// it needs to be updated and removed from the not
@@ -1412,13 +1405,18 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 			// changing port is unique to imports because it lets us avoid conflicts
 			// if the port is changed in the ssh config
 			editMap[sstore.RemoteField_SSHPort] = portVal
-			if sshKeyFileErr != nil {
+			if sshKeyFile != "" {
 				editMap[sstore.RemoteField_SSHKey] = sshKeyFile
-			} else {
-				editMap[sstore.RemoteField_SSHKey] = nil
 			}
-
-			sstore.UpdateRemote(ctx, alreadyStoredImportRemote.RemoteId, editMap)
+			msh := remote.GetRemoteById(alreadyStoredImportRemote.RemoteId)
+			if msh == nil {
+				log.Printf("strange, msh for remote %s [%s] not found\n", canonicalName, alreadyStoredImportRemote.RemoteId)
+			} else {
+				err := msh.UpdateRemote(ctx, editMap)
+				if err != nil {
+					log.Printf("error updating remote[%s]: %v\n", canonicalName, err)
+				}
+			}
 			log.Printf("sshconfig import found previously imported remote with canonical name \"%s\": it has been updated\n", canonicalName)
 			delete(importedRemotesNotVisited, canonicalName)
 		} else {
@@ -1458,7 +1456,13 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 			log.Printf("sshconfig import archived remote \"%s\" (%s)\n", remoteRemovedFromConfig.RemoteAlias, remoteRemovedFromConfig.RemoteCanonicalName)
 		}
 	}
-	update := &sstore.ModelUpdate{Remotes: []interface{}{ids.Remote}}
+	update := &sstore.ModelUpdate{Remotes: remote.GetAllRemoteRuntimeState()}
+	update.Info = &sstore.InfoMsgType{}
+	if len(updatedRemotes) == 0 {
+		update.Info.InfoMsg = "no connections imported from ssh config."
+	} else {
+		update.Info.InfoMsg = fmt.Sprintf("imported %d connection(s) from ssh config file: %s\n", len(updatedRemotes), strings.Join(updatedRemotes, ", "))
+	}
 	return update, nil
 }
 

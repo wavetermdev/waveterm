@@ -165,11 +165,7 @@ func (ws *WSState) handleConnection() error {
 		return fmt.Errorf("getting sessions: %w", err)
 	}
 	remotes := remote.GetAllRemoteRuntimeState()
-	ifarr := make([]interface{}, len(remotes))
-	for idx, r := range remotes {
-		ifarr[idx] = r
-	}
-	update.Remotes = ifarr
+	update.Remotes = remotes
 	update.Connect = true
 	err = ws.Shell.WriteJson(update)
 	if err != nil {
