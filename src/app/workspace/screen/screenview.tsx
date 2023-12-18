@@ -39,10 +39,53 @@ type OV<V> = mobx.IObservableValue<V>;
 
 @mobxReact.observer
 class ScreenView extends React.Component<{ session: Session; screen: Screen }, {}> {
+    rszObs: ResizeObserver;
+    screenViewRef: React.RefObject<any> = React.createRef();
+    width: OV<number> = mobx.observable.box(null, { name: "screenview-width" });
+    handleResize_debounced: () => void;
+
+    constructor(props: any) {
+        super(props);
+        this.handleResize_debounced = debounce(100, this.handleResize.bind(this));
+    }
+
+    componentDidMount(): void {
+        let elem = this.screenViewRef.current;
+        if (elem != null) {
+            this.rszObs = new ResizeObserver(this.handleResize_debounced);
+            this.rszObs.observe(elem);
+            this.handleResize();
+        }
+    }
+
+    componentWillUnmount(): void {
+        if (this.rszObs != null) {
+            this.rszObs.disconnect();
+        }
+    }
+
+    handleResize() {
+        let elem = this.screenViewRef.current;
+        if (elem == null) {
+            return;
+        }
+        mobx.action(() => {
+            this.width.set(elem.offsetWidth);
+        })();
+    }
+
     render() {
         let { session, screen } = this.props;
         if (screen == null) {
-            return <div className="screen-view">(no screen found)</div>;
+            return (
+                <div className="screen-view" ref={this.screenViewRef}>
+                    (no screen found)
+                </div>
+            );
+        }
+        let screenWidth = this.width.get();
+        if (screenWidth == null) {
+            return <div className="screen-view" ref={this.screenViewRef}></div>;
         }
         let fontSize = GlobalModel.termFontSize.get();
         let viewOpts = screen.viewOpts.get();
@@ -50,15 +93,28 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
         let winWidth = "100%";
         let sidebarWidth = "0px";
         if (hasSidebar) {
-            let width = viewOpts?.sidebar?.width;
-            if (util.isBlank(width)) {
-                width = "50%";
+            let targetWidth = viewOpts?.sidebar?.width;
+            let realWidth = 0;
+            if (util.isBlank(targetWidth) || screenWidth < (MagicLayout.ScreenSidebarMinWidth * 2)) {
+                realWidth = Math.floor(screenWidth / 2) - MagicLayout.ScreenSidebarWidthPadding;
+            } else if (targetWidth.indexOf("%") != -1) {
+                let targetPercent = parseInt(targetWidth);
+                if (targetPercent > 100) {
+                    targetPercent = 100;
+                }
+                let targetMul = targetPercent / 100;
+                realWidth = Math.floor((screenWidth * targetPercent) / 100);
+                realWidth = util.boundInt(realWidth, MagicLayout.ScreenSidebarMinWidth, screenWidth - MagicLayout.ScreenSidebarMinWidth);
+            } else {
+                // screen is at least 400px wide
+                let targetWidthNum = parseInt(targetWidth);
+                realWidth = util.boundInt(targetWidthNum, MagicLayout.ScreenSidebarMinWidth, screenWidth - MagicLayout.ScreenSidebarMinWidth);
             }
-            winWidth = sprintf("calc(100%% - %s)", width);
-            sidebarWidth = sprintf("calc(%s - 5px)", width); // 5px of margin
+            winWidth = screenWidth - realWidth + "px";
+            sidebarWidth = realWidth - MagicLayout.ScreenSidebarWidthPadding + "px";
         }
         return (
-            <div className="screen-view" data-screenid={screen.screenId}>
+            <div className="screen-view" data-screenid={screen.screenId} ref={this.screenViewRef}>
                 <ScreenWindowView
                     key={screen.screenId + ":" + fontSize}
                     session={session}
@@ -176,7 +232,7 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
         }
         let size = {
             width: sidebarElem.offsetWidth - MagicLayout.ScreenMaxContentWidthBuffer,
-            height: sidebarElem.offsetHeight - MagicLayout.ScreenMaxContentHeightBuffer,
+            height: sidebarElem.offsetHeight - MagicLayout.ScreenMaxContentHeightBuffer - MagicLayout.ScreenSidebarHeaderHeight,
         };
         mobx.action(() => this.sidebarSize.set(size))();
     }
@@ -184,6 +240,16 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
     @boundMethod
     sidebarClose(): void {
         GlobalCommandRunner.screenSidebarClose();
+    }
+
+    @boundMethod
+    sidebarOpenHalf(): void {
+        GlobalCommandRunner.screenSidebarOpen("50%");
+    }
+
+    @boundMethod
+    sidebarOpenPartial(): void {
+        GlobalCommandRunner.screenSidebarOpen("500px");
     }
 
     getSidebarConfig(): T.ScreenSidebarOptsType {
@@ -200,11 +266,23 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
         let sidebarOk = sidebarSize != null && sidebarSize.width > 0 && !util.isBlank(sidebar?.sidebarlineid);
         return (
             <div className="screen-sidebar" style={{ width: width }} ref={this.sidebarRef}>
+                <div className="sidebar-header">
+                    <div className="flex-spacer" />
+                    <div onClick={this.sidebarOpenHalf} title="Set Sidebar Width to 50%">
+                        <i className="fa-sharp fa-solid fa-table-columns" />
+                    </div>
+                    <div onClick={this.sidebarOpenPartial} title="Set Sidebar Width to 500px">
+                        <i className="fa-sharp fa-solid fa-sidebar-flip" />
+                    </div>
+                    <div onClick={this.sidebarClose} style={{ marginLeft: 5 }}>
+                        <i className="fa-sharp fa-solid fa-xmark" />
+                    </div>
+                </div>
                 <If condition={!sidebarOk}>
                     <div className="empty-sidebar">
                         <div className="sidebar-main-text">No Sidebar Line Selected</div>
                         <div className="sidebar-help-text">
-                            /sidebar:open
+                            /sidebar:open [width=[50%|500px]]
                             <br />
                             /sidebar:close
                             <br />

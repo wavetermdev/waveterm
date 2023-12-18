@@ -3401,6 +3401,23 @@ class Model {
             e.preventDefault();
             GlobalCommandRunner.bookmarksView();
         }
+        if (
+            this.activeMainView.get() == "session" &&
+            e.code == "KeyS" &&
+            e.getModifierState("Meta") &&
+            e.getModifierState("Control")
+        ) {
+            e.preventDefault();
+            let activeScreen = this.getActiveScreen();
+            if (activeScreen != null) {
+                let isSidebarOpen = activeScreen.isSidebarOpen();
+                if (isSidebarOpen) {
+                    GlobalCommandRunner.screenSidebarClose();
+                } else {
+                    GlobalCommandRunner.screenSidebarOpen();
+                }
+            }
+        }
     }
 
     clearModals(): boolean {
@@ -4584,8 +4601,12 @@ class CommandRunner {
         GlobalModel.submitCommand("sidebar", "close", null, { nohist: "1" }, false);
     }
 
-    screenSidebarOpen(): void {
-        GlobalModel.submitCommand("sidebar", "open", null, { nohist: "1" }, false);
+    screenSidebarOpen(width?: string): void {
+        let kwargs: Record<string, string> = { nohist: "1" };
+        if (width != null) {
+            kwargs.width = width;
+        }
+        GlobalModel.submitCommand("sidebar", "open", null, kwargs, false);
     }
 }
 

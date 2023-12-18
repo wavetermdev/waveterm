@@ -976,6 +976,18 @@ func sidebarSetOpen(ctx context.Context, cmdStr string, screenId string, open bo
 	if width != "" && !sidebarWidthRe.MatchString(width) {
 		return nil, fmt.Errorf("/%s invalid width specified, must be either a px value or a percent (e.g. '300px' or '50%%')", cmdStr)
 	}
+	if strings.HasSuffix(width, "%") {
+		percentNum, _ := strconv.Atoi(width[:len(width)-1])
+		if percentNum < 10 || percentNum > 90 {
+			return nil, fmt.Errorf("/%s invalid width specified, percentage must be between 10%% and 90%%", cmdStr)
+		}
+	}
+	if strings.HasSuffix(width, "px") {
+		pxNum, _ := strconv.Atoi(width[:len(width)-2])
+		if pxNum < 200 {
+			return nil, fmt.Errorf("/%s invalid width specified, minimum sizebar width is 200px", cmdStr)
+		}
+	}
 	screen, err := sstore.GetScreenById(ctx, screenId)
 	if err != nil {
 		return nil, fmt.Errorf("/%s cannot get screen: %v", cmdStr, err)
