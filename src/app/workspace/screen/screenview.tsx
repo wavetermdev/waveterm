@@ -73,19 +73,27 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
     }
 }
 
+type SidebarLineContainerPropsType = {
+    screen: Screen;
+    winSize: T.WindowSize;
+    lineId: string;
+};
+
+// note a new SidebarLineContainer will be made for every lineId (so lineId prop should never change)
+// implemented using a 'key' in parent
 @mobxReact.observer
-class SidebarLineContainer extends React.Component<{ screen: Screen; winSize: T.WindowSize; lineId: string }, {}> {
+class SidebarLineContainer extends React.Component<SidebarLineContainerPropsType, {}> {
     container: ForwardLineContainer;
     overrideCollapsed: OV<boolean> = mobx.observable.box(false, { name: "overrideCollapsed" });
     visible: OV<boolean> = mobx.observable.box(true, { name: "visible" });
     ready: OV<boolean> = mobx.observable.box(false, { name: "ready" });
 
     componentDidMount(): void {
-        let { screen, winSize } = this.props;
+        let { screen, winSize, lineId } = this.props;
         // TODO this is a hack for now to make the timing work out.
         setTimeout(() => {
             mobx.action(() => {
-                this.container = new ForwardLineContainer(screen, winSize, appconst.LineContainer_Sidebar);
+                this.container = new ForwardLineContainer(screen, winSize, appconst.LineContainer_Sidebar, lineId);
                 this.ready.set(true);
             })();
         }, 100);
@@ -93,6 +101,16 @@ class SidebarLineContainer extends React.Component<{ screen: Screen; winSize: T.
 
     @boundMethod
     handleHeightChange() {}
+
+    componentDidUpdate(prevProps: SidebarLineContainerPropsType): void {
+        let prevWinSize = prevProps.winSize;
+        let winSize = this.props.winSize;
+        if (prevWinSize.width != winSize.width || prevWinSize.height != winSize.height) {
+            if (this.container != null) {
+                this.container.screenSizeCallback(mobx.toJS(winSize));
+            }
+        }
+    }
 
     render() {
         if (!this.ready.get() || this.container == null) {

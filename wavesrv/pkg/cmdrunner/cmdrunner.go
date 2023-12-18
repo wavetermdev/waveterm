@@ -314,6 +314,20 @@ func argN(pk *scpacket.FeCommandPacketType, n int) string {
 	return pk.Args[n]
 }
 
+// will trim strings for whitespace
+func resolveCommaSepListToMap(arg string) map[string]bool {
+	if arg == "" {
+		return nil
+	}
+	rtn := make(map[string]bool)
+	fields := strings.Split(arg, ",")
+	for _, field := range fields {
+		field = strings.TrimSpace(field)
+		rtn[field] = true
+	}
+	return rtn
+}
+
 func resolveBool(arg string, def bool) bool {
 	if arg == "" {
 		return def
@@ -2773,7 +2787,15 @@ func ScreenResizeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	if len(runningCmds) == 0 {
 		return nil, nil
 	}
+	includeMap := resolveCommaSepListToMap(pk.Kwargs["include"])
+	excludeMap := resolveCommaSepListToMap(pk.Kwargs["exclude"])
 	for _, cmd := range runningCmds {
+		if excludeMap[cmd.LineId] {
+			continue
+		}
+		if len(includeMap) > 0 && !includeMap[cmd.LineId] {
+			continue
+		}
 		if int(cmd.TermOpts.Cols) != cols {
 			resizeRunningCommand(ctx, cmd, cols)
 		}

@@ -423,6 +423,9 @@ class Screen {
         if (viewOpts == null) {
             return false;
         }
+        if (!viewOpts.sidebar?.open) {
+            return false;
+        }
         return viewOpts?.sidebar?.sidebarlineid == lineId;
     }
 
@@ -754,13 +757,16 @@ class Screen {
         }
         this.lastRows = rows;
         this.lastCols = cols;
+        let exclude = [];
         for (let lineid in this.terminals) {
             let inSidebar = this.isLineIdInSidebar(lineid);
             if (!inSidebar) {
                 this.terminals[lineid].resizeCols(cols);
+            } else {
+                exclude.push(lineid);
             }
         }
-        GlobalCommandRunner.resizeScreen(this.screenId, rows, cols);
+        GlobalCommandRunner.resizeScreen(this.screenId, rows, cols, { exclude });
     }
 
     getTermWrap(lineId: string): TermWrap {
@@ -1840,11 +1846,21 @@ class ForwardLineContainer {
     winSize: T.WindowSize;
     screen: Screen;
     containerType: T.LineContainerStrs;
+    lineId: string;
 
-    constructor(screen: Screen, winSize: T.WindowSize, containerType: T.LineContainerStrs) {
+    constructor(screen: Screen, winSize: T.WindowSize, containerType: T.LineContainerStrs, lineId: string) {
         this.screen = screen;
         this.winSize = winSize;
         this.containerType = containerType;
+        this.lineId = lineId;
+    }
+
+    screenSizeCallback(winSize: WindowSize): void {
+        this.winSize = winSize;
+        let termWrap = this.getTermWrap(this.lineId);
+        if (termWrap != null) {
+            termWrap.resizeWindow(winSize);
+        }
     }
 
     getContainerType(): T.LineContainerStrs {
@@ -4260,7 +4276,22 @@ class CommandRunner {
         GlobalModel.submitCommand("screen", "close", [screen], { nohist: "1" }, false);
     }
 
-    resizeScreen(screenId: string, rows: number, cols: number) {
+    // include is lineIds to include, exclude is lineIds to exclude
+    // if include is given then it *only* does those ids.  if exclude is given (or not),
+    // it does all running commands in the screen except for excluded.
+    resizeScreen(screenId: string, rows: number, cols: number, opts?: { include?: string[]; exclude?: string[] }) {
+        let kwargs: Record<string, string> = {
+            nohist: "1",
+            screen: screenId,
+            cols: String(cols),
+            rows: String(rows),
+        };
+        if (opts?.include != null && opts?.include.length > 0) {
+            kwargs.include = opts.include.join(",");
+        }
+        if (opts?.exclude != null && opts?.exclude.length > 0) {
+            kwargs.exclude = opts.exclude.join(",");
+        }
         GlobalModel.submitCommand(
             "screen",
             "resize",
