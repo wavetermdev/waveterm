@@ -508,34 +508,10 @@ class NumberField extends TextField {
         }
     }
 
-    @boundMethod
-    handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-        // Allow backspace, delete, tab, escape, and enter
-        if (
-            [46, 8, 9, 27, 13].includes(event.keyCode) ||
-            // Allow: Ctrl+A, Ctrl+C, Ctrl+X
-            ((event.keyCode === 65 || event.keyCode === 67 || event.keyCode === 88) && event.ctrlKey === true) ||
-            // Allow: home, end, left, right
-            (event.keyCode >= 35 && event.keyCode <= 39)
-        ) {
-            return; // let it happen, don't do anything
-        }
-        // Ensure that it is a number and stop the keypress
-        if (
-            (event.shiftKey || event.keyCode < 48 || event.keyCode > 57) &&
-            (event.keyCode < 96 || event.keyCode > 105)
-        ) {
-            event.preventDefault();
-        }
-    }
-
     render() {
         // Use the render method from TextField but add the onKeyDown handler
         const renderedTextField = super.render();
-
-        return React.cloneElement(renderedTextField, {
-            onKeyDown: this.handleKeyDown,
-        });
+        return React.cloneElement(renderedTextField);
     }
 }
 
