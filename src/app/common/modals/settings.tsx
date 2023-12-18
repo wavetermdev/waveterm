@@ -781,7 +781,7 @@ class ClientSettingsModal extends React.Component<{}, {}> {
                         </div>
                     </div>
                     <div className="settings-field">
-                        <div className="settings-label">Check for Updates Automatically</div>
+                        <div className="settings-label">Check for Updates</div>
                         <div className="settings-input">
                             <Toggle checked={!cdata.clientopts.noreleasecheck} onChange={this.handleChangeReleaseCheck} />
                         </div>
