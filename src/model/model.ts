@@ -1859,7 +1859,11 @@ class ForwardLineContainer {
         this.winSize = winSize;
         let termWrap = this.getTermWrap(this.lineId);
         if (termWrap != null) {
-            termWrap.resizeWindow(winSize);
+            let fontSize = GlobalModel.termFontSize.get();
+            let cols = windowWidthToCols(winSize.width, fontSize);
+            let rows = windowHeightToRows(winSize.height, fontSize);
+            termWrap.resizeCols(cols);
+            GlobalCommandRunner.resizeScreen(this.screen.screenId, rows, cols, { include: [this.lineId] });
         }
     }
 
@@ -4292,13 +4296,7 @@ class CommandRunner {
         if (opts?.exclude != null && opts?.exclude.length > 0) {
             kwargs.exclude = opts.exclude.join(",");
         }
-        GlobalModel.submitCommand(
-            "screen",
-            "resize",
-            null,
-            { nohist: "1", screen: screenId, cols: String(cols), rows: String(rows) },
-            false
-        );
+        GlobalModel.submitCommand("screen", "resize", null, kwargs, false);
     }
 
     screenArchive(screenId: string, shouldArchive: boolean): Promise<CommandRtnType> {
