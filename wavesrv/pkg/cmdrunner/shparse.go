@@ -208,6 +208,45 @@ func getCallExprLitArg(callExpr *syntax.CallExpr, argNum int) string {
 	return lit.Value
 }
 
+func isRtnStateCmd(cmd syntax.Command) bool {
+	if cmd == nil {
+		return false
+	}
+	if _, ok := cmd.(*syntax.FuncDecl); ok {
+		return true
+	}
+	if blockExpr, ok := cmd.(*syntax.Block); ok {
+		for _, stmt := range blockExpr.Stmts {
+			if isRtnStateCmd(stmt.Cmd) {
+				return true
+			}
+		}
+		return false
+	}
+	if binExpr, ok := cmd.(*syntax.BinaryCmd); ok {
+		if isRtnStateCmd(binExpr.X.Cmd) || isRtnStateCmd(binExpr.Y.Cmd) {
+			return true
+		}
+	} else if callExpr, ok := cmd.(*syntax.CallExpr); ok {
+		if len(callExpr.Assigns) > 0 && len(callExpr.Args) == 0 {
+			return true
+		}
+		arg0 := getCallExprLitArg(callExpr, 0)
+		if arg0 != "" && utilfn.ContainsStr(literalRtnStateCommands, arg0) {
+			return true
+		}
+		if arg0 == "git" {
+			arg1 := getCallExprLitArg(callExpr, 1)
+			if arg1 == "checkout" || arg1 == "switch" {
+				return true
+			}
+		}
+	} else if _, ok := cmd.(*syntax.DeclClause); ok {
+		return true
+	}
+	return false
+}
+
 // detects: export, declare, ., source, X=1, unset
 func IsReturnStateCommand(cmdStr string) bool {
 	cmdReader := strings.NewReader(cmdStr)
@@ -217,21 +256,7 @@ func IsReturnStateCommand(cmdStr string) bool {
 		return false
 	}
 	for _, stmt := range file.Stmts {
-		if callExpr, ok := stmt.Cmd.(*syntax.CallExpr); ok {
-			if len(callExpr.Assigns) > 0 && len(callExpr.Args) == 0 {
-				return true
-			}
-			arg0 := getCallExprLitArg(callExpr, 0)
-			if arg0 != "" && utilfn.ContainsStr(literalRtnStateCommands, arg0) {
-				return true
-			}
-			if arg0 == "git" {
-				arg1 := getCallExprLitArg(callExpr, 1)
-				if arg1 == "checkout" || arg1 == "switch" {
-					return true
-				}
-			}
-		} else if _, ok := stmt.Cmd.(*syntax.DeclClause); ok {
+		if isRtnStateCmd(stmt.Cmd) {
 			return true
 		}
 	}
