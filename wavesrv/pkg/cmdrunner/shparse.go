@@ -241,6 +241,12 @@ func isRtnStateCmd(cmd syntax.Command) bool {
 				return true
 			}
 		}
+		if arg0 == "conda" {
+			arg1 := getCallExprLitArg(callExpr, 1)
+			if arg1 == "activate" || arg1 == "deactivate" {
+				return true
+			}
+		}
 	} else if _, ok := cmd.(*syntax.DeclClause); ok {
 		return true
 	}
