@@ -218,7 +218,7 @@ class ScreenTabs extends React.Component<{ session: Session }, { showingScreens:
             <Reorder.Item
                 ref={this.tabRefs[screen.screenId]}
                 value={screen}
-                id={screen.name.get()}
+                id={"screen-" + screen.screenId}
                 whileDrag={{
                     backgroundColor: "rgba(13, 13, 13, 0.85)",
                 }}
