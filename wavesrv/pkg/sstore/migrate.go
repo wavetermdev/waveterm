@@ -22,7 +22,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 )
 
-const MaxMigration = 25
+const MaxMigration = 26
 const MigratePrimaryScreenVersion = 9
 const CmdScreenSpecialMigration = 13
 const CmdLineSpecialMigration = 20
@@ -51,12 +51,12 @@ func copyFile(srcFile string, dstFile string, notFoundOk bool) error {
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("cannot open %s: %v", err)
+		return fmt.Errorf("cannot open %s: %v", srcFile, err)
 	}
 	defer srcFd.Close()
 	dstFd, err := os.OpenFile(dstFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		return fmt.Errorf("cannot open destination file %s: %v", err)
+		return fmt.Errorf("cannot open destination file %s: %v", dstFile, err)
 	}
 	_, err = io.Copy(dstFd, srcFd)
 	if err != nil {

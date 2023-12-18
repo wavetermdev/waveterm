@@ -10,7 +10,7 @@ import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { debounce } from "throttle-debounce";
 import dayjs from "dayjs";
-import { GlobalCommandRunner, TabColors, TabIcons } from "../../../model/model";
+import { GlobalCommandRunner, TabColors, TabIcons, ForwardLineContainer } from "../../../model/model";
 import type { LineType, RenderModeType, LineFactoryProps } from "../../../types/types";
 import * as T from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
@@ -26,9 +26,12 @@ import { ReactComponent as Check12Icon } from "../../assets/icons/check12.svg";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
 import { ReactComponent as GlobeIcon } from "../../assets/icons/globe.svg";
 import { ReactComponent as StatusCircleIcon } from "../../assets/icons/statuscircle.svg";
+import { termWidthFromCols, termHeightFromRows } from "../../../util/textmeasure";
+import * as appconst from "../../appconst";
 
 import "./screenview.less";
 import "./tabs.less";
+import { MagicLayout } from "../../magiclayout";
 
 dayjs.extend(localizedFormat);
 
@@ -36,15 +39,266 @@ type OV<V> = mobx.IObservableValue<V>;
 
 @mobxReact.observer
 class ScreenView extends React.Component<{ session: Session; screen: Screen }, {}> {
+    rszObs: ResizeObserver;
+    screenViewRef: React.RefObject<any> = React.createRef();
+    width: OV<number> = mobx.observable.box(null, { name: "screenview-width" });
+    handleResize_debounced: () => void;
+
+    constructor(props: any) {
+        super(props);
+        this.handleResize_debounced = debounce(100, this.handleResize.bind(this));
+    }
+
+    componentDidMount(): void {
+        let elem = this.screenViewRef.current;
+        if (elem != null) {
+            this.rszObs = new ResizeObserver(this.handleResize_debounced);
+            this.rszObs.observe(elem);
+            this.handleResize();
+        }
+    }
+
+    componentWillUnmount(): void {
+        if (this.rszObs != null) {
+            this.rszObs.disconnect();
+        }
+    }
+
+    handleResize() {
+        let elem = this.screenViewRef.current;
+        if (elem == null) {
+            return;
+        }
+        mobx.action(() => {
+            this.width.set(elem.offsetWidth);
+        })();
+    }
+
     render() {
         let { session, screen } = this.props;
         if (screen == null) {
-            return <div className="screen-view">(no screen found)</div>;
+            return (
+                <div className="screen-view" ref={this.screenViewRef}>
+                    (no screen found)
+                </div>
+            );
+        }
+        let screenWidth = this.width.get();
+        if (screenWidth == null) {
+            return <div className="screen-view" ref={this.screenViewRef}></div>;
         }
         let fontSize = GlobalModel.termFontSize.get();
+        let viewOpts = screen.viewOpts.get();
+        let hasSidebar = viewOpts?.sidebar?.open;
+        let winWidth = "100%";
+        let sidebarWidth = "0px";
+        if (hasSidebar) {
+            let targetWidth = viewOpts?.sidebar?.width;
+            let realWidth = 0;
+            if (util.isBlank(targetWidth) || screenWidth < (MagicLayout.ScreenSidebarMinWidth * 2)) {
+                realWidth = Math.floor(screenWidth / 2) - MagicLayout.ScreenSidebarWidthPadding;
+            } else if (targetWidth.indexOf("%") != -1) {
+                let targetPercent = parseInt(targetWidth);
+                if (targetPercent > 100) {
+                    targetPercent = 100;
+                }
+                let targetMul = targetPercent / 100;
+                realWidth = Math.floor((screenWidth * targetPercent) / 100);
+                realWidth = util.boundInt(realWidth, MagicLayout.ScreenSidebarMinWidth, screenWidth - MagicLayout.ScreenSidebarMinWidth);
+            } else {
+                // screen is at least 400px wide
+                let targetWidthNum = parseInt(targetWidth);
+                realWidth = util.boundInt(targetWidthNum, MagicLayout.ScreenSidebarMinWidth, screenWidth - MagicLayout.ScreenSidebarMinWidth);
+            }
+            winWidth = screenWidth - realWidth + "px";
+            sidebarWidth = realWidth - MagicLayout.ScreenSidebarWidthPadding + "px";
+        }
         return (
-            <div className="screen-view" data-screenid={screen.screenId}>
-                <ScreenWindowView key={screen.screenId + ":" + fontSize} session={session} screen={screen} />
+            <div className="screen-view" data-screenid={screen.screenId} ref={this.screenViewRef}>
+                <ScreenWindowView
+                    key={screen.screenId + ":" + fontSize}
+                    session={session}
+                    screen={screen}
+                    width={winWidth}
+                />
+                <If condition={hasSidebar}>
+                    <ScreenSidebar screen={screen} width={sidebarWidth} />
+                </If>
+            </div>
+        );
+    }
+}
+
+type SidebarLineContainerPropsType = {
+    screen: Screen;
+    winSize: T.WindowSize;
+    lineId: string;
+};
+
+// note a new SidebarLineContainer will be made for every lineId (so lineId prop should never change)
+// implemented using a 'key' in parent
+@mobxReact.observer
+class SidebarLineContainer extends React.Component<SidebarLineContainerPropsType, {}> {
+    container: ForwardLineContainer;
+    overrideCollapsed: OV<boolean> = mobx.observable.box(false, { name: "overrideCollapsed" });
+    visible: OV<boolean> = mobx.observable.box(true, { name: "visible" });
+    ready: OV<boolean> = mobx.observable.box(false, { name: "ready" });
+
+    componentDidMount(): void {
+        let { screen, winSize, lineId } = this.props;
+        // TODO this is a hack for now to make the timing work out.
+        setTimeout(() => {
+            mobx.action(() => {
+                this.container = new ForwardLineContainer(screen, winSize, appconst.LineContainer_Sidebar, lineId);
+                this.ready.set(true);
+            })();
+        }, 100);
+    }
+
+    @boundMethod
+    handleHeightChange() {}
+
+    componentDidUpdate(prevProps: SidebarLineContainerPropsType): void {
+        let prevWinSize = prevProps.winSize;
+        let winSize = this.props.winSize;
+        if (prevWinSize.width != winSize.width || prevWinSize.height != winSize.height) {
+            if (this.container != null) {
+                this.container.screenSizeCallback(mobx.toJS(winSize));
+            }
+        }
+    }
+
+    render() {
+        if (!this.ready.get() || this.container == null) {
+            return null;
+        }
+        let { screen, winSize, lineId } = this.props;
+        let line = screen.getLineById(lineId);
+        if (line == null) {
+            return null;
+        }
+        return (
+            <Line
+                screen={this.container}
+                line={line}
+                width={winSize.width}
+                staticRender={false}
+                visible={this.visible}
+                onHeightChange={this.handleHeightChange}
+                overrideCollapsed={this.overrideCollapsed}
+                topBorder={false}
+                renderMode="normal"
+                noSelect={true}
+            />
+        );
+    }
+}
+
+@mobxReact.observer
+class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {}> {
+    rszObs: ResizeObserver;
+    sidebarSize: OV<T.WindowSize> = mobx.observable.box({ height: 0, width: 0 }, { name: "sidebarSize" });
+    sidebarRef: React.RefObject<any> = React.createRef();
+    handleResize_debounced: (entries: ResizeObserverEntry[]) => void;
+
+    constructor(props: any) {
+        super(props);
+        this.handleResize_debounced = debounce(100, this.handleResize.bind(this));
+    }
+
+    componentDidMount(): void {
+        let { screen } = this.props;
+        let sidebarElem = this.sidebarRef.current;
+        if (sidebarElem != null) {
+            this.rszObs = new ResizeObserver(this.handleResize_debounced);
+            this.rszObs.observe(sidebarElem);
+            this.handleResize([]);
+        }
+        let size = this.sidebarSize.get();
+    }
+
+    componentWillUnmount(): void {
+        if (this.rszObs != null) {
+            this.rszObs.disconnect();
+        }
+    }
+
+    @boundMethod
+    handleResize(entries: ResizeObserverEntry[]): void {
+        // dont use entries (just use the ref) -- we call it with an empty array in componentDidMount to initialize it
+        let sidebarElem = this.sidebarRef.current;
+        if (sidebarElem == null) {
+            return;
+        }
+        let size = {
+            width: sidebarElem.offsetWidth - MagicLayout.ScreenMaxContentWidthBuffer,
+            height: sidebarElem.offsetHeight - MagicLayout.ScreenMaxContentHeightBuffer - MagicLayout.ScreenSidebarHeaderHeight,
+        };
+        mobx.action(() => this.sidebarSize.set(size))();
+    }
+
+    @boundMethod
+    sidebarClose(): void {
+        GlobalCommandRunner.screenSidebarClose();
+    }
+
+    @boundMethod
+    sidebarOpenHalf(): void {
+        GlobalCommandRunner.screenSidebarOpen("50%");
+    }
+
+    @boundMethod
+    sidebarOpenPartial(): void {
+        GlobalCommandRunner.screenSidebarOpen("500px");
+    }
+
+    getSidebarConfig(): T.ScreenSidebarOptsType {
+        let { screen } = this.props;
+        let viewOpts = screen.viewOpts.get();
+        return viewOpts?.sidebar;
+    }
+
+    render() {
+        let { screen, width } = this.props;
+        let sidebarSize = this.sidebarSize.get();
+        let sidebar = this.getSidebarConfig();
+        let lineId = sidebar?.sidebarlineid;
+        let sidebarOk = sidebarSize != null && sidebarSize.width > 0 && !util.isBlank(sidebar?.sidebarlineid);
+        return (
+            <div className="screen-sidebar" style={{ width: width }} ref={this.sidebarRef}>
+                <div className="sidebar-header">
+                    <div className="flex-spacer" />
+                    <div onClick={this.sidebarOpenHalf} title="Set Sidebar Width to 50%">
+                        <i className="fa-sharp fa-solid fa-table-columns" />
+                    </div>
+                    <div onClick={this.sidebarOpenPartial} title="Set Sidebar Width to 500px">
+                        <i className="fa-sharp fa-solid fa-sidebar-flip" />
+                    </div>
+                    <div onClick={this.sidebarClose} style={{ marginLeft: 5 }}>
+                        <i className="fa-sharp fa-solid fa-xmark" />
+                    </div>
+                </div>
+                <If condition={!sidebarOk}>
+                    <div className="empty-sidebar">
+                        <div className="sidebar-main-text">No Sidebar Line Selected</div>
+                        <div className="sidebar-help-text">
+                            /sidebar:open [width=[50%|500px]]
+                            <br />
+                            /sidebar:close
+                            <br />
+                            /sidebar:add line=[linenum]
+                            <br />
+                        </div>
+                        <div onClick={this.sidebarClose} className="close-button-container">
+                            <Button theme="secondary" onClick={this.sidebarClose}>
+                                Close Sidebar
+                            </Button>
+                        </div>
+                    </div>
+                </If>
+                <If condition={sidebarOk}>
+                    <SidebarLineContainer key={lineId} screen={screen} winSize={sidebarSize} lineId={lineId} />
+                </If>
             </div>
         );
     }
@@ -244,8 +498,8 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
 
 // screen is not null
 @mobxReact.observer
-class ScreenWindowView extends React.Component<{ session: Session; screen: Screen }, {}> {
-    rszObs: any;
+class ScreenWindowView extends React.Component<{ session: Session; screen: Screen; width: string }, {}> {
+    rszObs: ResizeObserver;
     windowViewRef: React.RefObject<any>;
 
     width: mobx.IObservableValue<number> = mobx.observable.box(0, { name: "sw-view-width" });
@@ -325,7 +579,12 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
     renderError(message: string, fade: boolean) {
         let { screen } = this.props;
         return (
-            <div className="window-view" ref={this.windowViewRef} data-screenid={screen.screenId}>
+            <div
+                className="window-view"
+                ref={this.windowViewRef}
+                data-screenid={screen.screenId}
+                style={{ width: this.props.width }}
+            >
                 <div key="lines" className="lines"></div>
                 <div key="window-empty" className={cn("window-empty", { "should-fade": fade })}>
                     <div className="text-standard">{message}</div>
@@ -404,7 +663,7 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
         let lines = this.determineVisibleLines(win);
         let renderMode = this.renderMode.get();
         return (
-            <div className="window-view" ref={this.windowViewRef}>
+            <div className="window-view" ref={this.windowViewRef} style={{ width: this.props.width }}>
                 <div
                     key="rendermode-tag"
                     className={cn("rendermode-tag", { "is-active": isActive })}

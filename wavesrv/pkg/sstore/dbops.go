@@ -567,14 +567,14 @@ func InsertSessionWithName(ctx context.Context, sessionName string, activate boo
 	if err != nil {
 		return nil, err
 	}
-	update := ModelUpdate{
+	update := &ModelUpdate{
 		Sessions: []*SessionType{session},
 		Screens:  []*ScreenType{newScreen},
 	}
 	if activate {
 		update.ActiveSessionId = newSessionId
 	}
-	return &update, nil
+	return update, nil
 }
 
 func SetActiveSessionId(ctx context.Context, sessionId string) error {
@@ -710,8 +710,8 @@ func InsertScreen(ctx context.Context, sessionId string, origScreenName string, 
 			Archived:     false,
 			ArchivedTs:   0,
 		}
-		query = `INSERT INTO screen ( sessionid, screenid, name, screenidx, screenopts, ownerid, sharemode, webshareopts, curremoteownerid, curremoteid, curremotename, nextlinenum, selectedline, anchor, focustype, archived, archivedts)
-                             VALUES (:sessionid,:screenid,:name,:screenidx,:screenopts,:ownerid,:sharemode,:webshareopts,:curremoteownerid,:curremoteid,:curremotename,:nextlinenum,:selectedline,:anchor,:focustype,:archived,:archivedts)`
+		query = `INSERT INTO screen ( sessionid, screenid, name, screenidx, screenopts, screenviewopts, ownerid, sharemode, webshareopts, curremoteownerid, curremoteid, curremotename, nextlinenum, selectedline, anchor, focustype, archived, archivedts)
+                             VALUES (:sessionid,:screenid,:name,:screenidx,:screenopts,:screenviewopts,:ownerid,:sharemode,:webshareopts,:curremoteownerid,:curremoteid,:curremotename,:nextlinenum,:selectedline,:anchor,:focustype,:archived,:archivedts)`
 		tx.NamedExec(query, screen.ToMap())
 		if activate {
 			query = `UPDATE session SET activescreenid = ? WHERE sessionid = ?`
@@ -1150,7 +1150,7 @@ func PurgeScreen(ctx context.Context, screenId string, sessionDel bool) (UpdateP
 		return nil, nil
 	}
 	update := &ModelUpdate{}
-	update.Screens = []*ScreenType{&ScreenType{SessionId: sessionId, ScreenId: screenId, Remove: true}}
+	update.Screens = []*ScreenType{{SessionId: sessionId, ScreenId: screenId, Remove: true}}
 	if isActive {
 		bareSession, err := GetBareSessionById(ctx, sessionId)
 		if err != nil {
@@ -1762,6 +1762,14 @@ func UpdateScreen(ctx context.Context, screenId string, editMap map[string]inter
 		return nil, txErr
 	}
 	return GetScreenById(ctx, screenId)
+}
+
+func ScreenUpdateViewOpts(ctx context.Context, screenId string, viewOpts ScreenViewOptsType) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		query := `UPDATE screen SET screenviewopts = ? WHERE screenid = ?`
+		tx.Exec(query, quickJson(viewOpts), screenId)
+		return nil
+	})
 }
 
 func GetLineResolveItems(ctx context.Context, screenId string) ([]ResolveItem, error) {

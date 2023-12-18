@@ -23,6 +23,10 @@ let MagicLayout = {
     TermWidthBuffer: 15,
 
     TabWidth: 175,
+
+    ScreenSidebarWidthPadding: 5,
+    ScreenSidebarMinWidth: 200,
+    ScreenSidebarHeaderHeight: 28,
 };
 
 let m = MagicLayout;

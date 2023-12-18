@@ -8,6 +8,7 @@ type ShareModeType = "local" | "web";
 type FocusTypeStrs = "input" | "cmd";
 type HistoryTypeStrs = "global" | "session" | "screen";
 type RemoteStatusTypeStrs = "connected" | "connecting" | "disconnected" | "error";
+type LineContainerStrs = "main" | "sidebar" | "history";
 
 type OV<V> = mobx.IObservableValue<V>;
 
@@ -59,6 +60,16 @@ type WebShareOpts = {
     viewkey: string;
 };
 
+type ScreenViewOptsType = {
+    sidebar: ScreenSidebarOptsType;
+};
+
+type ScreenSidebarOptsType = {
+    open: boolean;
+    width: string;
+    sidebarlineid: string;
+};
+
 type ScreenDataType = {
     sessionid: string;
     screenid: string;
@@ -68,6 +79,7 @@ type ScreenDataType = {
     webshareopts?: WebShareOpts;
     archived?: boolean;
     screenopts: ScreenOptsType;
+    screenviewopts: ScreenViewOptsType;
     curremote: RemotePtrType;
     nextlinenum: number;
     selectedline: number;
@@ -458,7 +470,7 @@ type ClientOptsType = {
     acceptedtos: number;
 };
 
-type ReleaseInfoType = { 
+type ReleaseInfoType = {
     latestversion: string;
 };
 
@@ -660,6 +672,8 @@ export type {
     FeCmdPacketType,
     TermOptsType,
     CmdDataType,
+    ScreenViewOptsType,
+    ScreenSidebarOptsType,
     ScreenDataType,
     ScreenOptsType,
     PtyDataUpdateType,
@@ -719,4 +733,5 @@ export type {
     FileInfoType,
     ExtBlob,
     ExtFile,
+    LineContainerStrs,
 };

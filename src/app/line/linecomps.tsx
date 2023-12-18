@@ -39,7 +39,7 @@ import { PluginModel } from "../../plugins/plugins";
 import { Prompt } from "../common/prompt/prompt";
 import * as lineutil from "./lineutil";
 import { ErrorBoundary } from "../../app/common/error/errorboundary";
-import * as constants from "../appconst";
+import * as appconst from "../appconst";
 
 import { ReactComponent as CheckIcon } from "../assets/icons/line/check.svg";
 import { ReactComponent as CommentIcon } from "../assets/icons/line/comment.svg";
@@ -130,7 +130,7 @@ class LineCmd extends React.Component<
     isOverflow: OV<boolean> = mobx.observable.box(false, {
         name: "line-overflow",
     });
-    isMinimised: OV<boolean> = mobx.observable.box(false, {
+    isMinimized: OV<boolean> = mobx.observable.box(false, {
         name: "line-minimised",
     });
     isCmdExpanded: OV<boolean> = mobx.observable.box(false, {
@@ -355,10 +355,21 @@ class LineCmd extends React.Component<
     }
 
     @boundMethod
-    clickMinimise() {
+    clickMinimize() {
         mobx.action(() => {
-            this.isMinimised.set(!this.isMinimised.get());
+            this.isMinimized.set(!this.isMinimized.get());
         })();
+    }
+
+    @boundMethod
+    clickMoveToSidebar() {
+        let { line } = this.props;
+        GlobalCommandRunner.screenSidebarAddLine(line.lineid);
+    }
+
+    @boundMethod
+    clickRemoveFromSidebar() {
+        GlobalCommandRunner.screenSidebarRemove();
     }
 
     @boundMethod
@@ -443,7 +454,7 @@ class LineCmd extends React.Component<
             mobx.action(() => {
                 GlobalModel.lineSettingsModal.set(line.linenum);
             })();
-            GlobalModel.modalsModel.pushModal(constants.LINE_SETTINGS);
+            GlobalModel.modalsModel.pushModal(appconst.LINE_SETTINGS);
         }
     }
 
@@ -598,6 +609,14 @@ class LineCmd extends React.Component<
                 { name: "computed-shouldCmdFocus" }
             )
             .get();
+        let isInSidebar = mobx
+            .computed(
+                () => {
+                    return screen.isSidebarOpen() && screen.isLineIdInSidebar(line.lineid);
+                },
+                { name: "computed-isInSidebar" }
+            )
+            .get();
         let isStatic = staticRender;
         let isRunning = cmd.isRunning();
         let isExpanded = this.isCmdExpanded.get();
@@ -622,6 +641,7 @@ class LineCmd extends React.Component<
         if (rtnStateDiffSize < 10) {
             rtnStateDiffSize = Math.max(termFontSize, 10);
         }
+        let containerType = screen.getContainerType();
         return (
             <div
                 className={mainDivCn}
@@ -640,37 +660,56 @@ class LineCmd extends React.Component<
                         <If condition={!hidePrompt}>{this.renderCmdText(cmd)}</If>
                     </div>
                     <div
-                        key="pin"
-                        title="Pin"
-                        className={cn("line-icon", { active: line.pinned })}
-                        onClick={this.clickPin}
-                        style={{ display: "none" }}
-                    >
-                        <PinIcon className="icon" />
-                    </div>
-                    <div
                         key="bookmark"
                         title="Bookmark"
                         className={cn("line-icon", "line-bookmark", "hoverEffect")}
                         onClick={this.clickBookmark}
                     >
-                        <FavoritesIcon className="icon" />
+                        <i className="fa-sharp fa-regular fa-bookmark" />
                     </div>
-                    <div
-                        key="minimise"
-                        title={`${this.isMinimised.get() ? "Maximise" : "Minimise"}`}
-                        className={cn(
-                            "line-icon",
-                            "line-minimise",
-                            "hoverEffect",
-                            this.isMinimised.get() ? "line-icon-show" : ""
-                        )}
-                        onClick={this.clickMinimise}
-                    >
-                        {this.isMinimised.get() ? <PlusIcon className="icon plus" /> : <MinusIcon className="icon" />}
-                    </div>
+                    <If condition={containerType == appconst.LineContainer_Main}>
+                        <div
+                            key="minimize"
+                            title={`${this.isMinimized.get() ? "Maximise" : "Minimize"}`}
+                            className={cn(
+                                "line-icon",
+                                "line-minimize",
+                                "hoverEffect",
+                                this.isMinimized.get() ? "line-icon-show" : ""
+                            )}
+                            onClick={this.clickMinimize}
+                        >
+                            <If condition={this.isMinimized.get()}>
+                                <i className="fa-sharp fa-regular fa-circle-plus" />
+                            </If>
+                            <If condition={!this.isMinimized.get()}>
+                                <i className="fa-sharp fa-regular fa-circle-minus" />
+                            </If>
+                        </div>
+                        <div
+                            className="line-icon line-sidebar"
+                            onClick={this.clickMoveToSidebar}
+                            title="Move to Sidebar"
+                        >
+                            <i className="fa-sharp fa-solid fa-right-to-line" />
+                        </div>
+                    </If>
+                    <If condition={containerType == appconst.LineContainer_Sidebar}>
+                        <div
+                            className="line-icon line-sidebar"
+                            onClick={this.clickRemoveFromSidebar}
+                            title="Move to Sidebar"
+                        >
+                            <i className="fa-sharp fa-solid fa-left-to-line" />
+                        </div>
+                    </If>
                 </div>
-                <If condition={!this.isMinimised.get()}>
+                <If condition={isInSidebar}>
+                    <div className="sidebar-message" style={{ fontSize: termFontSize }}>
+                        &nbsp;&nbsp;showing in sidebar =&gt;
+                    </div>
+                </If>
+                <If condition={!this.isMinimized.get() && !isInSidebar}>
                     <ErrorBoundary plugin={rendererPlugin?.name} lineContext={lineutil.getRendererContext(line)}>
                         <If condition={rendererPlugin == null && !isNoneRenderer}>
                             <TerminalRenderer
