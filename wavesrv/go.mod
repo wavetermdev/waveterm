@@ -15,9 +15,9 @@ require (
 	github.com/sashabaranov/go-openai v1.9.0
 	github.com/sawka/txwrap v0.1.2
 	github.com/wavetermdev/waveterm/waveshell v0.0.0
-	golang.org/x/crypto v0.7.0
+	golang.org/x/crypto v0.17.0
 	golang.org/x/mod v0.10.0
-	golang.org/x/sys v0.10.0
+	golang.org/x/sys v0.15.0
 	mvdan.cc/sh/v3 v3.7.0
 )
 
