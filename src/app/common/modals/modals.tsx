@@ -754,7 +754,6 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
                             label="Connect Mode"
                             options={[
                                 { value: "startup", label: "startup" },
-                                { value: "key", label: "key" },
                                 { value: "auto", label: "auto" },
                                 { value: "manual", label: "manual" },
                             ]}
@@ -1403,7 +1402,6 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
                             label="Connect Mode"
                             options={[
                                 { value: "startup", label: "startup" },
-                                { value: "key", label: "key" },
                                 { value: "auto", label: "auto" },
                                 { value: "manual", label: "manual" },
                             ]}

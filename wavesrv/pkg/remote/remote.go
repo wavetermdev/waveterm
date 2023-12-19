@@ -1240,7 +1240,6 @@ func (msh *MShellProc) Launch(interactive bool) {
 			msh.WriteToPtyBuffer("*error, cannot find local mshell binary: %v\n", err)
 			return
 		}
-		log.Printf("local mshell binary: %s\n", cmdStr)
 	} else {
 		cmdStr = MakeServerCommandStr()
 	}
