@@ -4,6 +4,7 @@
 import type React from "react";
 import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
+import { v4 as uuidv4 } from "uuid";
 import { boundMethod } from "autobind-decorator";
 import { debounce } from "throttle-debounce";
 import {
@@ -1892,7 +1893,7 @@ class ForwardLineContainer {
     }
 
     getMaxContentSize(): WindowSize {
-        let rtn = {width: this.winSize.width, height: this.winSize.height};
+        let rtn = { width: this.winSize.width, height: this.winSize.height };
         rtn.width = rtn.width - MagicLayout.ScreenMaxContentWidthBuffer;
         return rtn;
     }
@@ -2946,16 +2947,11 @@ class RemotesModel {
     }
 
     openEditModal(redit?: RemoteEditType): void {
-        if (redit == null) {
-            this.startEditAuth();
+        mobx.action(() => {
+            this.selectedRemoteId.set(redit?.remoteid);
+            this.remoteEdit.set(redit);
             GlobalModel.modalsModel.pushModal(appconst.EDIT_REMOTE);
-        } else {
-            mobx.action(() => {
-                this.selectedRemoteId.set(redit?.remoteid);
-                this.remoteEdit.set(redit);
-                GlobalModel.modalsModel.pushModal(appconst.EDIT_REMOTE);
-            })();
-        }
+        })();
     }
 
     selectRemote(remoteId: string): void {
@@ -3081,28 +3077,22 @@ class RemotesModel {
 }
 
 class ModalsModel {
-    store: Array<{ id: string; component: React.ComponentType }> = [];
-
-    constructor() {
-        mobx.makeAutoObservable(this);
-    }
+    store: OArr<T.ModalStoreEntry> = mobx.observable.array([], { name: "ModalsModel-store" });
 
     pushModal(modalId: string) {
         const modalFactory = modalsRegistry[modalId];
 
         if (modalFactory && !this.store.some((modal) => modal.id === modalId)) {
-            this.store.push({ id: modalId, component: modalFactory });
+            mobx.action(() => {
+                this.store.push({ id: modalId, component: modalFactory, uniqueKey: uuidv4() });
+            })();
         }
     }
 
     popModal() {
-        this.store.pop();
-    }
-
-    get activeModals() {
-        return this.store.slice().map((modal) => {
-            return modal.component;
-        });
+        mobx.action(() => {
+            this.store.pop();
+        })();
     }
 }
 
