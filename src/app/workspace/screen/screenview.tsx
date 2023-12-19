@@ -43,6 +43,8 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
     screenViewRef: React.RefObject<any> = React.createRef();
     width: OV<number> = mobx.observable.box(null, { name: "screenview-width" });
     handleResize_debounced: () => void;
+    sidebarShowing: OV<boolean> = mobx.observable.box(false, { name: "screenview-sidebarShowing" });
+    sidebarShowingTimeoutId: any = null;
 
     constructor(props: any) {
         super(props);
@@ -50,11 +52,37 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
     }
 
     componentDidMount(): void {
+        let { screen } = this.props;
         let elem = this.screenViewRef.current;
         if (elem != null) {
             this.rszObs = new ResizeObserver(this.handleResize_debounced);
             this.rszObs.observe(elem);
             this.handleResize();
+        }
+        let viewOpts = screen.viewOpts.get();
+        let hasSidebar = viewOpts?.sidebar?.open;
+        if (hasSidebar) {
+            mobx.action(() => this.sidebarShowing.set(true))();
+        }
+    }
+
+    componentDidUpdate(): void {
+        let { screen } = this.props;
+        let viewOpts = screen.viewOpts.get();
+        let hasSidebar = viewOpts?.sidebar?.open;
+        if (hasSidebar && !this.sidebarShowing.get()) {
+            this.sidebarShowingTimeoutId = setTimeout(() => {
+                mobx.action(() => {
+                    this.sidebarShowingTimeoutId = null;
+                    this.sidebarShowing.set(true);
+                })();
+            }, 500);
+        } else if (!hasSidebar) {
+            if (this.sidebarShowingTimeoutId != null) {
+                clearTimeout(this.sidebarShowingTimeoutId);
+                this.sidebarShowingTimeoutId = null;
+            }
+            mobx.action(() => this.sidebarShowing.set(false))();
         }
     }
 
@@ -95,7 +123,7 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
         if (hasSidebar) {
             let targetWidth = viewOpts?.sidebar?.width;
             let realWidth = 0;
-            if (util.isBlank(targetWidth) || screenWidth < (MagicLayout.ScreenSidebarMinWidth * 2)) {
+            if (util.isBlank(targetWidth) || screenWidth < MagicLayout.ScreenSidebarMinWidth * 2) {
                 realWidth = Math.floor(screenWidth / 2) - MagicLayout.ScreenSidebarWidthPadding;
             } else if (targetWidth.indexOf("%") != -1) {
                 let targetPercent = parseInt(targetWidth);
@@ -104,11 +132,19 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
                 }
                 let targetMul = targetPercent / 100;
                 realWidth = Math.floor((screenWidth * targetPercent) / 100);
-                realWidth = util.boundInt(realWidth, MagicLayout.ScreenSidebarMinWidth, screenWidth - MagicLayout.ScreenSidebarMinWidth);
+                realWidth = util.boundInt(
+                    realWidth,
+                    MagicLayout.ScreenSidebarMinWidth,
+                    screenWidth - MagicLayout.ScreenSidebarMinWidth
+                );
             } else {
                 // screen is at least 400px wide
                 let targetWidthNum = parseInt(targetWidth);
-                realWidth = util.boundInt(targetWidthNum, MagicLayout.ScreenSidebarMinWidth, screenWidth - MagicLayout.ScreenSidebarMinWidth);
+                realWidth = util.boundInt(
+                    targetWidthNum,
+                    MagicLayout.ScreenSidebarMinWidth,
+                    screenWidth - MagicLayout.ScreenSidebarMinWidth
+                );
             }
             winWidth = screenWidth - realWidth + "px";
             sidebarWidth = realWidth - MagicLayout.ScreenSidebarWidthPadding + "px";
@@ -121,7 +157,7 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
                     screen={screen}
                     width={winWidth}
                 />
-                <If condition={hasSidebar}>
+                <If condition={hasSidebar && this.sidebarShowing.get()}>
                     <ScreenSidebar screen={screen} width={sidebarWidth} />
                 </If>
             </div>
@@ -231,8 +267,11 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
             return;
         }
         let size = {
-            width: sidebarElem.offsetWidth - MagicLayout.ScreenMaxContentWidthBuffer,
-            height: sidebarElem.offsetHeight - MagicLayout.ScreenMaxContentHeightBuffer - MagicLayout.ScreenSidebarHeaderHeight,
+            width: sidebarElem.offsetWidth,
+            height:
+                sidebarElem.offsetHeight -
+                MagicLayout.ScreenMaxContentHeightBuffer -
+                MagicLayout.ScreenSidebarHeaderHeight,
         };
         mobx.action(() => this.sidebarSize.set(size))();
     }

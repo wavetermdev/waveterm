@@ -1892,7 +1892,9 @@ class ForwardLineContainer {
     }
 
     getMaxContentSize(): WindowSize {
-        return this.winSize;
+        let rtn = {width: this.winSize.width, height: this.winSize.height};
+        rtn.width = rtn.width - MagicLayout.ScreenMaxContentWidthBuffer;
+        return rtn;
     }
 
     getIdealContentSize(): WindowSize {
