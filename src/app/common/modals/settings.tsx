@@ -392,8 +392,8 @@ class SessionSettingsModal extends React.Component<{}, {}> {
 
     constructor(props: any) {
         super(props);
-        let sessionId = GlobalModel.sessionSettingsModal.get();
-        this.session = GlobalModel.getSessionById(sessionId);
+        this.sessionId = GlobalModel.sessionSettingsModal.get();
+        this.session = GlobalModel.getSessionById(this.sessionId);
         if (this.session == null) {
             return;
         }
