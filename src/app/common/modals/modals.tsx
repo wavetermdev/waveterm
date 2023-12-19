@@ -11,7 +11,19 @@ import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, RemotesModel } from "../../../model/model";
 import * as T from "../../../types/types";
-import { Markdown, Toggle, Modal, TextField, NumberField, InputDecoration, Dropdown, PasswordField, Tooltip, Button, Status } from "../common";
+import {
+    Markdown,
+    Toggle,
+    Modal,
+    TextField,
+    NumberField,
+    InputDecoration,
+    Dropdown,
+    PasswordField,
+    Tooltip,
+    Button,
+    Status,
+} from "../common";
 import * as util from "../../../util/util";
 import * as textmeasure from "../../../util/textmeasure";
 import { ClientDataType } from "../../../types/types";
@@ -42,8 +54,8 @@ class ModalsProvider extends React.Component {
         if (GlobalModel.needsTos()) {
             return <TosModal />;
         }
-        let rtn : JSX.Element[] = [];
-        for (let i=0; i<store.length; i++) {
+        let rtn: JSX.Element[] = [];
+        for (let i = 0; i < store.length; i++) {
             let entry = store[i];
             let Comp = entry.component;
             rtn.push(<Comp key={entry.uniqueKey} />);
@@ -277,7 +289,11 @@ class TosModal extends React.Component<{}, {}> {
                                 </div>
                             </div>
                             <div className="item">
-                                <a target="_blank" href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}  rel={"noopener"}>
+                                <a
+                                    target="_blank"
+                                    href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}
+                                    rel={"noopener"}
+                                >
                                     <img src={help} alt="Help" />
                                 </a>
                                 <div className="item-inner">
@@ -286,7 +302,11 @@ class TosModal extends React.Component<{}, {}> {
                                         Get help, submit feature requests, report bugs, or just chat with fellow
                                         terminal enthusiasts.
                                         <br />
-                                        <a target="_blank" href={util.makeExternLink("https://discord.gg/XfvZ334gwU")} rel={"noopener"}>
+                                        <a
+                                            target="_blank"
+                                            href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}
+                                            rel={"noopener"}
+                                        >
                                             Join the Wave&nbsp;Discord&nbsp;Channel
                                         </a>
                                     </div>
@@ -959,7 +979,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
             </Button>
         );
         if (remote.local) {
-        installNowButton = <></>;
+            installNowButton = <></>;
             updateAuthButton = <></>;
             cancelInstallButton = <></>;
         }
@@ -1230,8 +1250,7 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
             if (!keyStrEq) {
                 kwargs["key"] = this.tempKeyFile.get();
             }
-        }
-        else {
+        } else {
             if (!util.isBlank(this.tempKeyFile.get())) {
                 kwargs["key"] = "";
             }
