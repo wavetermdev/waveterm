@@ -660,6 +660,12 @@ type ExtFile = File & {
     notFound: boolean;
 };
 
+type ModalStoreEntry = {
+    id: string;
+    component: React.ComponentType;
+    uniqueKey: string;
+};
+
 export type {
     SessionDataType,
     LineStateType,
@@ -734,4 +740,5 @@ export type {
     ExtBlob,
     ExtFile,
     LineContainerStrs,
+    ModalStoreEntry,
 };
