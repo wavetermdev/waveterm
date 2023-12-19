@@ -4109,9 +4109,9 @@ func ReleaseCheckOnCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	go func() {
 		releaseCheckCtx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancelFn()
-		err = runReleaseCheck(releaseCheckCtx, true)
-		if err != nil {
-			log.Printf("error checking for new release after enabling auto release check: %v\n", err)
+		releaseCheckErr := runReleaseCheck(releaseCheckCtx, true)
+		if releaseCheckErr != nil {
+			log.Printf("error checking for new release after enabling auto release check: %v\n", releaseCheckErr)
 		}
 	}()
 
