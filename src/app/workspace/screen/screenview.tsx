@@ -267,7 +267,7 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
             return;
         }
         let size = {
-            width: sidebarElem.offsetWidth - MagicLayout.ScreenMaxContentWidthBuffer,
+            width: sidebarElem.offsetWidth,
             height:
                 sidebarElem.offsetHeight -
                 MagicLayout.ScreenMaxContentHeightBuffer -
