@@ -41,11 +41,11 @@ class WorkspaceView extends React.Component<{}, {}> {
 
         return (
             <div className={cn("session-view", { "is-hidden": isHidden })} data-sessionid={session.sessionId}>
-                <ScreenTabs session={session} />
+                <ScreenTabs key={"tabs-" + session.sessionId} session={session} />
                 <ErrorBoundary>
-                    <ScreenView session={session} screen={activeScreen} />
+                    <ScreenView key={"screenview-" + session.sessionId} session={session} screen={activeScreen} />
                     <div className="cmdinput-height-placeholder" style={{ height: cmdInputHeight }}></div>
-                    <CmdInput />
+                    <CmdInput key={"cmdinput-" + session.sessionId} />
                 </ErrorBoundary>
             </div>
         );
