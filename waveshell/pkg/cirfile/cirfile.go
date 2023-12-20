@@ -102,6 +102,8 @@ var cfRegex = regexp.MustCompile(`([^.\v]+[\\|\/])+([^.\v]+.cf)`)
 var tempDir = os.TempDir()
 var waveHomeDir = scbase.GetWaveHomeDir()
 
+const unableToValidateCirFilePath = "unable to validate cirfile path[%s]: %w"
+
 // returns error if the filename is not a valid cirfile path
 func ValidateCirFilePath(fileName string) error {
 	// Check that the file path matches the regex
@@ -125,7 +127,7 @@ func ValidateCirFilePath(fileName string) error {
 func OpenCirFile(fileName string) (*File, error) {
 	err := ValidateCirFilePath(fileName)
 	if err != nil {
-		return nil, fmt.Errorf("unable to validate cirfile path[%s]: %w", fileName, err)
+		return nil, fmt.Errorf(unableToValidateCirFilePath, fileName, err)
 	}
 
 	fd, err := os.OpenFile(fileName, os.O_RDWR, 0777)
@@ -168,10 +170,15 @@ func StatCirFile(ctx context.Context, fileName string) (*Stat, error) {
 //	they both might get no error, but only one file will be valid.  if this is a concern, this call
 //	should be externally synchronized.
 func CreateCirFile(fileName string, maxSize int64) (*File, error) {
+	err := ValidateCirFilePath(fileName)
+	if err != nil {
+		return nil, fmt.Errorf(unableToValidateCirFilePath, fileName, err)
+	}
+
 	if maxSize <= 0 {
 		return nil, fmt.Errorf("invalid maxsize[%d]", maxSize)
 	}
-	_, err := os.Stat(fileName)
+	_, err = os.Stat(fileName)
 	if err == nil {
 		return nil, fmt.Errorf("file[%s] already exists", fileName)
 	}
