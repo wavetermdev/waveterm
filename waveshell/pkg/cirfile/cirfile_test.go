@@ -353,8 +353,8 @@ func getWaveHomeDir(t *testing.T) string {
 }
 
 func TestValidateCirFilePath(t *testing.T) {
-	testValidateCirFilePath(t, "testdata/empty.cf", true)
-	testValidateCirFilePath(t, "testdata/empty", true)
+	testValidateCirFilePath(t, "testdata/invalid.cf", true)
+	testValidateCirFilePath(t, "testdata/invalid", true)
 	testValidateCirFilePath(t, "", true)
 	testValidateCirFilePath(t, "invalid.cf", true)
 
