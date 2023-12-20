@@ -125,16 +125,16 @@ func ValidateCirFilePath(fileName string) error {
 func OpenCirFile(fileName string) (*File, error) {
 	err := ValidateCirFilePath(fileName)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to validate cirfile path[%s]: %w", fileName, err)
 	}
 
 	fd, err := os.OpenFile(fileName, os.O_RDWR, 0777)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot open file: %w", err)
 	}
 	finfo, err := fd.Stat()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot get file info: %w", err)
 	}
 	if finfo.Size() < HeaderLen {
 		return nil, fmt.Errorf("invalid cirfile, file length[%d] less than HeaderLen[%d]", finfo.Size(), HeaderLen)
