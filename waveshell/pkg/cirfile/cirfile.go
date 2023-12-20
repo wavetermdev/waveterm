@@ -57,7 +57,9 @@ func (f *File) flock(ctx context.Context, lockType int) error {
 	if err != syscall.EWOULDBLOCK {
 		return err
 	}
-	if ctx == nil {
+
+	// Do not busy-wait unless we have a way to cancel the context
+	if ctx == nil || ctx.Done() == nil {
 		return syscall.EWOULDBLOCK
 	}
 	// busy-wait with context

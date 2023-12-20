@@ -205,11 +205,12 @@ func TestFlock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot lock fd: %v", err)
 	}
-	err = f.AppendData(nil, []byte("hello"))
+	err = f.AppendData(context.TODO(), []byte("hello"))
 	if err != syscall.EWOULDBLOCK {
 		t.Fatalf("append should fail with EWOULDBLOCK")
 	}
-	timeoutCtx, _ := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	timeoutCtx, cancelFn := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancelFn()
 	startTs := time.Now()
 	err = f.ReadMeta(timeoutCtx)
 	if err != context.DeadlineExceeded {
@@ -228,7 +229,7 @@ func TestFlock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot flock: %v", err)
 	}
-	err = f.AppendData(nil, []byte("hello"))
+	err = f.AppendData(context.TODO(), []byte("hello"))
 	if err != syscall.EWOULDBLOCK {
 		t.Fatalf("append should fail with EWOULDBLOCK")
 	}
@@ -237,7 +238,7 @@ func TestFlock(t *testing.T) {
 		t.Fatalf("readmeta err (should work because LOCK_SH): %v", err)
 	}
 	fd2.Close()
-	err = f.AppendData(nil, []byte("hello"))
+	err = f.AppendData(context.TODO(), []byte("hello"))
 	if err != nil {
 		t.Fatalf("append error (should work fd2 was closed): %v", err)
 	}
