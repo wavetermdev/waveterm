@@ -100,9 +100,32 @@ var cfRegex = regexp.MustCompile(`([^.\v]+[\\|\/])+([^.\v]+.cf)`)
 var tempDir = os.TempDir()
 var waveHomeDir = scbase.GetWaveHomeDir()
 
+// returns error if the filename is not a valid cirfile path
+func ValidateCirFilePath(fileName string) error {
+	// Check that the file path matches the regex
+	if !cfRegex.MatchString(fileName) {
+		return fmt.Errorf("invalid cirfile path[%s]", fileName)
+	}
+
+	// Check that the file is in the wavehomedir or tempdir, these are the only places we allow cirfiles to be created
+	absPath, err := filepath.Abs(fileName)
+	if err != nil {
+		return fmt.Errorf("cannot get absolute path for file[%s]: %w", fileName, err)
+	}
+	if !strings.HasPrefix(absPath, waveHomeDir) && !strings.HasPrefix(absPath, tempDir) {
+		return fmt.Errorf("invalid cirfile path[%s], must be in wavehomedir[%s] or tempdir[%s]", fileName, waveHomeDir, tempDir)
+	}
+	return nil
+}
+
 // does not read metadata because locking could block/fail.  we want to be able
 // to return a valid file struct without blocking.
 func OpenCirFile(fileName string) (*File, error) {
+	err := ValidateCirFilePath(fileName)
+	if err != nil {
+		return nil, err
+	}
+
 	if !cfRegex.MatchString(fileName) {
 		return nil, fmt.Errorf("invalid cirfile path[%s]", fileName)
 	}
