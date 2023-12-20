@@ -217,8 +217,8 @@ func UpsertRemote(ctx context.Context, r *RemoteType) error {
 		maxRemoteIdx := tx.GetInt(query)
 		r.RemoteIdx = int64(maxRemoteIdx + 1)
 		query = `INSERT INTO remote
-            ( remoteid, remotetype, remotealias, remotecanonicalname, remoteuser, remotehost, connectmode, autoinstall, sshopts, remoteopts, lastconnectts, archived, remoteidx, local, statevars, openaiopts, sshconfigsrc) VALUES
-            (:remoteid,:remotetype,:remotealias,:remotecanonicalname,:remoteuser,:remotehost,:connectmode,:autoinstall,:sshopts,:remoteopts,:lastconnectts,:archived,:remoteidx,:local,:statevars,:openaiopts,:sshconfigsrc)`
+            ( remoteid, remotetype, remotealias, remotecanonicalname, remoteuser, remotehost, connectmode, autoinstall, sshopts, remoteopts, lastconnectts, archived, remoteidx, local, statevars, sshconfigsrc, openaiopts) VALUES
+            (:remoteid,:remotetype,:remotealias,:remotecanonicalname,:remoteuser,:remotehost,:connectmode,:autoinstall,:sshopts,:remoteopts,:lastconnectts,:archived,:remoteidx,:local,:statevars,:sshconfigsrc,:openaiopts)`
 		tx.NamedExec(query, r.ToMap())
 		return nil
 	})

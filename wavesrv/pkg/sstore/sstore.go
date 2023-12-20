@@ -1075,8 +1075,8 @@ func (r *RemoteType) ToMap() map[string]interface{} {
 	rtn["remoteidx"] = r.RemoteIdx
 	rtn["local"] = r.Local
 	rtn["statevars"] = quickJson(r.StateVars)
-	rtn["openaiopts"] = quickJson(r.OpenAIOpts)
 	rtn["sshconfigsrc"] = r.SSHConfigSrc
+	rtn["openaiopts"] = quickJson(r.OpenAIOpts)
 	return rtn
 }
 
@@ -1096,8 +1096,8 @@ func (r *RemoteType) FromMap(m map[string]interface{}) bool {
 	quickSetInt64(&r.RemoteIdx, m, "remoteidx")
 	quickSetBool(&r.Local, m, "local")
 	quickSetJson(&r.StateVars, m, "statevars")
+	quickSetStr(&r.SSHConfigSrc, m, "sshconfigsrc")
 	quickSetJson(&r.OpenAIOpts, m, "openaiopts")
-	quickSetJson(&r.SSHConfigSrc, m, "sshconfigsrc")
 	return true
 }
 
