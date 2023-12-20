@@ -8,8 +8,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
 	"syscall"
 	"time"
+
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 )
 
 // CBUF[version] [maxsize] [fileoffset] [startpos] [endpos]
@@ -67,6 +72,7 @@ func (f *File) flock(ctx context.Context, lockType int) error {
 		}
 		select {
 		case <-time.After(timeout):
+			// TODO: Ineffective break statement
 			break
 		case <-ctx.Done():
 			return ctx.Err()
@@ -80,7 +86,6 @@ func (f *File) flock(ctx context.Context, lockType int) error {
 			return err
 		}
 	}
-	return fmt.Errorf("could not acquire lock")
 }
 
 func (f *File) unflock() {
@@ -88,12 +93,25 @@ func (f *File) unflock() {
 		syscall.Flock(int(f.OSFile.Fd()), syscall.LOCK_UN) // ignore error (nothing to do about it anyway)
 		f.FlockStatus = 0
 	}
-	return
 }
+
+var cfRegex = regexp.MustCompile(`([^.\v]+[\\|\/])+([^.\v]+.cf)`)
 
 // does not read metadata because locking could block/fail.  we want to be able
 // to return a valid file struct without blocking.
 func OpenCirFile(fileName string) (*File, error) {
+	waveHomeDir := scbase.GetWaveHomeDir()
+	tempDir := os.TempDir()
+	if !cfRegex.MatchString(fileName) {
+		return nil, fmt.Errorf("invalid cirfile path[%s]", fileName)
+	}
+	absPath, err := filepath.Abs(fileName)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get absolute path for file[%s]: %w", fileName, err)
+	}
+	if !strings.HasPrefix(absPath, waveHomeDir) && !strings.HasPrefix(absPath, tempDir) {
+		return nil, fmt.Errorf("invalid cirfile path[%s], must be in wavehomedir[%s] or tempdir[%s]", fileName, waveHomeDir, tempDir)
+	}
 	fd, err := os.OpenFile(fileName, os.O_RDWR, 0777)
 	if err != nil {
 		return nil, err
@@ -130,8 +148,9 @@ func StatCirFile(ctx context.Context, fileName string) (*Stat, error) {
 
 // if the file already exists, it is an error.
 // there is a race condition if two goroutines try to create the same file between Stat() and Create(), so
-//   they both might get no error, but only one file will be valid.  if this is a concern, this call
-//   should be externally synchronized.
+//
+//	they both might get no error, but only one file will be valid.  if this is a concern, this call
+//	should be externally synchronized.
 func CreateCirFile(fileName string, maxSize int64) (*File, error) {
 	if maxSize <= 0 {
 		return nil, fmt.Errorf("invalid maxsize[%d]", maxSize)
@@ -148,7 +167,7 @@ func CreateCirFile(fileName string, maxSize int64) (*File, error) {
 		return nil, err
 	}
 	rtn := &File{OSFile: fd, Version: CurrentVersion, MaxSize: maxSize, StartPos: FilePosEmpty}
-	err = rtn.flock(nil, syscall.LOCK_EX)
+	err = rtn.flock(context.TODO(), syscall.LOCK_EX)
 	if err != nil {
 		return nil, err
 	}
@@ -214,10 +233,7 @@ func (f *File) readMeta() error {
 		return fmt.Errorf("invalid cbuf version[%d]", f.Version)
 	}
 	// possible incomplete write, fix start/end pos to be within filesize
-	if f.FileDataSize == 0 {
-		f.StartPos = FilePosEmpty
-		f.EndPos = 0
-	} else if f.StartPos >= f.FileDataSize && f.EndPos >= f.FileDataSize {
+	if f.FileDataSize == 0 || (f.StartPos >= f.FileDataSize && f.EndPos >= f.FileDataSize) {
 		f.StartPos = FilePosEmpty
 		f.EndPos = 0
 	} else if f.StartPos >= f.FileDataSize {
@@ -309,23 +325,23 @@ func (f *File) getFileChunks() []fileChunk {
 		return nil
 	}
 	if f.EndPos >= f.StartPos {
-		return []fileChunk{fileChunk{f.StartPos, f.EndPos - f.StartPos + 1}}
+		return []fileChunk{{f.StartPos, f.EndPos - f.StartPos + 1}}
 	}
 	return []fileChunk{
-		fileChunk{f.StartPos, f.FileDataSize - f.StartPos},
-		fileChunk{0, f.EndPos + 1},
+		{f.StartPos, f.FileDataSize - f.StartPos},
+		{0, f.EndPos + 1},
 	}
 }
 
 func (f *File) getFreeChunks() []fileChunk {
 	if f.StartPos == FilePosEmpty {
-		return []fileChunk{fileChunk{0, f.MaxSize}}
+		return []fileChunk{{0, f.MaxSize}}
 	}
 	if (f.EndPos == f.StartPos-1) || (f.StartPos == 0 && f.EndPos == f.MaxSize-1) {
 		return nil
 	}
 	if f.EndPos < f.StartPos {
-		return []fileChunk{fileChunk{f.EndPos + 1, f.StartPos - f.EndPos - 1}}
+		return []fileChunk{{f.EndPos + 1, f.StartPos - f.EndPos - 1}}
 	}
 	var rtn []fileChunk
 	if f.EndPos < f.MaxSize-1 {
