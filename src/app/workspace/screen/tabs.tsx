@@ -25,7 +25,7 @@ type OV<V> = mobx.IObservableValue<V>;
 @mobxReact.observer
 class ScreenTabs extends React.Component<
     { session: Session },
-    { showingScreens: Screen[]; screenIndices: OV<number>[] }
+    { showingScreens: Screen[]; scrollIntoViewTimeout: number }
 > {
     tabsRef: React.RefObject<any> = React.createRef();
     tabRefs: { [screenId: string]: React.RefObject<any> } = {};
@@ -39,36 +39,8 @@ class ScreenTabs extends React.Component<
         super(props);
         this.state = {
             showingScreens: [],
-            screenIndices: [],
+            scrollIntoViewTimeout: null,
         };
-    }
-
-    getActiveScreenId(): string {
-        let { session } = this.props;
-        if (session) {
-            return session.activeScreenId.get();
-        }
-    }
-
-    @mobx.computed
-    getScreens(): Screen[] {
-        let activeScreenId = this.getActiveScreenId();
-        if (!activeScreenId) {
-            return [];
-        }
-
-        let screens = GlobalModel.getSessionScreens(this.props.session.sessionId);
-        let showingScreens = [];
-
-        for (const screen of screens) {
-            if (!screen.archived.get() || activeScreenId === screen.screenId) {
-                showingScreens.push(screen);
-            }
-        }
-
-        showingScreens.sort((a, b) => a.screenIdx.get() - b.screenIdx.get());
-
-        return showingScreens;
     }
 
     componentDidMount(): void {
@@ -78,7 +50,11 @@ class ScreenTabs extends React.Component<
         this.disposeScreensReaction = mobx.reaction(
             () => this.getScreens(),
             (screens) => {
-                this.setState({ showingScreens: screens });
+                let timeout = 100;
+                if (screens.length < this.state.showingScreens.length) {
+                    timeout = 400;
+                }
+                this.setState({ showingScreens: screens, scrollIntoViewTimeout: timeout });
             }
         );
 
@@ -105,6 +81,7 @@ class ScreenTabs extends React.Component<
             if (this.scrollIntoViewTimeout) {
                 clearTimeout(this.scrollIntoViewTimeout);
             }
+
             this.scrollIntoViewTimeout = setTimeout(() => {
                 if (this.tabsRef.current) {
                     let tabElem = this.tabsRef.current.querySelector(
@@ -115,7 +92,7 @@ class ScreenTabs extends React.Component<
                     }
                 }
                 this.lastActiveScreenId = activeScreenId;
-            }, 100);
+            }, this.state.scrollIntoViewTimeout);
         }
 
         // Populate showingScreens state if it's empty
@@ -123,6 +100,36 @@ class ScreenTabs extends React.Component<
         if (screens && this.state.showingScreens.length == 0) {
             this.setState({ showingScreens: screens });
         }
+    }
+
+    @boundMethod
+    getActiveScreenId(): string {
+        let { session } = this.props;
+        if (session) {
+            return session.activeScreenId.get();
+        }
+    }
+
+    @mobx.computed
+    @boundMethod
+    getScreens(): Screen[] {
+        let activeScreenId = this.getActiveScreenId();
+        if (!activeScreenId) {
+            return [];
+        }
+
+        let screens = GlobalModel.getSessionScreens(this.props.session.sessionId);
+        let showingScreens = [];
+
+        for (const screen of screens) {
+            if (!screen.archived.get() || activeScreenId === screen.screenId) {
+                showingScreens.push(screen);
+            }
+        }
+
+        showingScreens.sort((a, b) => a.screenIdx.get() - b.screenIdx.get());
+
+        return showingScreens;
     }
 
     @boundMethod
@@ -167,25 +174,6 @@ class ScreenTabs extends React.Component<
             event.preventDefault();
         }
         // For touchpad events, do nothing and let the browser handle it
-    }
-
-    @boundMethod
-    haveScreensSwitchedIdx() {
-        if (!this.state.screenIndices) {
-            return true; // Initial case when there's no snapshot yet
-        }
-
-        let screens = this.state.showingScreens;
-        for (let i = 0; i < screens.length; i++) {
-            const currentScreen = screens[i];
-            const previousIndex = this.state.screenIndices[i];
-
-            if (currentScreen.screenIdx !== previousIndex) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     @boundMethod
