@@ -128,18 +128,6 @@ func OpenCirFile(fileName string) (*File, error) {
 		return nil, err
 	}
 
-	if !cfRegex.MatchString(fileName) {
-		return nil, fmt.Errorf("invalid cirfile path[%s]", fileName)
-	}
-
-	// Check that the file is in the wavehomedir or tempdir, these are the only places we allow cirfiles to be created
-	absPath, err := filepath.Abs(fileName)
-	if err != nil {
-		return nil, fmt.Errorf("cannot get absolute path for file[%s]: %w", fileName, err)
-	}
-	if !strings.HasPrefix(absPath, waveHomeDir) && !strings.HasPrefix(absPath, tempDir) {
-		return nil, fmt.Errorf("invalid cirfile path[%s], must be in wavehomedir[%s] or tempdir[%s]", fileName, waveHomeDir, tempDir)
-	}
 	fd, err := os.OpenFile(fileName, os.O_RDWR, 0777)
 	if err != nil {
 		return nil, err
