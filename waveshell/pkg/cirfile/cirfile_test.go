@@ -387,7 +387,9 @@ func TestOpenCirFile(t *testing.T) {
 	waveHomeDir := getWaveHomeDir(t)
 	waveHomeCirFileUuid := uuid.New().String()
 	waveHomeCirFilePath := path.Join(waveHomeDir, waveHomeCirFileUuid+".cf")
-	defer os.Remove(waveHomeCirFilePath)
+	t.Cleanup(func() {
+		os.Remove(waveHomeCirFilePath)
+	})
 	testOpenCirFile(t, waveHomeCirFilePath, true)
 	_, err = CreateCirFile(waveHomeCirFilePath, 100)
 	if err != nil {
