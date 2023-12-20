@@ -195,14 +195,16 @@ func CreateCirFile(fileName string, maxSize int64) (*File, error) {
 		return nil, err
 	}
 	rtn := &File{OSFile: fd, Version: CurrentVersion, MaxSize: maxSize, StartPos: FilePosEmpty}
-	err = rtn.flock(context.TODO(), syscall.LOCK_EX)
+	timeoutContext, cancelFn := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancelFn()
+	err = rtn.flock(timeoutContext, syscall.LOCK_EX)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot lock file: %w", err)
 	}
 	defer rtn.unflock()
 	err = rtn.writeMeta()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot write metadata: %w", err)
 	}
 	return rtn, nil
 }
