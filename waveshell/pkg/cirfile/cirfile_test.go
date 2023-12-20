@@ -361,10 +361,14 @@ func TestValidateCirFilePath(t *testing.T) {
 	tempDir := t.TempDir()
 	testValidateCirFilePath(t, filepath.Join(tempDir, "no-such-file"), true)
 	testValidateCirFilePath(t, filepath.Join(tempDir, "should-succeed.cf"), false)
+	testValidateCirFilePath(t, filepath.Join(tempDir, "should-succeed.ptyout.cf"), false)
+	testValidateCirFilePath(t, filepath.Join(tempDir, "should-fail.x.ptyout.cf"), true)
 
 	waveHomeDir := getWaveHomeDir(t)
 	testValidateCirFilePath(t, filepath.Join(waveHomeDir, "no-such-file"), true)
 	testValidateCirFilePath(t, filepath.Join(waveHomeDir, "should-succeed.cf"), false)
+	testValidateCirFilePath(t, filepath.Join(tempDir, "should-succeed.ptyout.cf"), false)
+	testValidateCirFilePath(t, filepath.Join(tempDir, "should-fail.x.ptyout.cf"), true)
 
 }
 
