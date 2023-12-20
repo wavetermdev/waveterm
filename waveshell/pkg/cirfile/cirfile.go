@@ -95,16 +95,19 @@ func (f *File) unflock() {
 	}
 }
 
+// cf path must not be in the root directory and must not contain more than one period (.) in the filename
 var cfRegex = regexp.MustCompile(`([^.\v]+[\\|\/])+([^.\v]+.cf)`)
+var tempDir = os.TempDir()
+var waveHomeDir = scbase.GetWaveHomeDir()
 
 // does not read metadata because locking could block/fail.  we want to be able
 // to return a valid file struct without blocking.
 func OpenCirFile(fileName string) (*File, error) {
-	waveHomeDir := scbase.GetWaveHomeDir()
-	tempDir := os.TempDir()
 	if !cfRegex.MatchString(fileName) {
 		return nil, fmt.Errorf("invalid cirfile path[%s]", fileName)
 	}
+
+	// Check that the file is in the wavehomedir or tempdir, these are the only places we allow cirfiles to be created
 	absPath, err := filepath.Abs(fileName)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get absolute path for file[%s]: %w", fileName, err)

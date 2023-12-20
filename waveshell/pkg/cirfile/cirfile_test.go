@@ -326,6 +326,8 @@ func TestOpenCirFile(t *testing.T) {
 	testOpenCirFile(t, noSuchFile, true)
 	testOpenCirFile(t, "testdata/empty.cf", true)
 	testOpenCirFile(t, "", true)
+
+	// Test whether we can open a file in the temp dir
 	testOpenCirFile(t, filepath.Join(os.TempDir(), noSuchFile), true)
 	_, fPath, err := createTestFile(t, "f1.cf")
 	if err != nil {
@@ -333,6 +335,17 @@ func TestOpenCirFile(t *testing.T) {
 	}
 	testOpenCirFile(t, fPath, false)
 
+	// Test whether we can open a file in the wave home dir
+	waveHomeDir := scbase.GetWaveHomeDir()
+	// this could happen on test agents
+	if waveHomeDir == "" {
+		userHomeDir, err := os.UserHomeDir()
+		if err != nil {
+			t.Fatalf("cannot get user home dir as fallback for missing waveHomeDir env var: %v", err)
+		}
+		os.Setenv(scbase.WaveHomeVarName, userHomeDir)
+		defer os.Unsetenv(scbase.WaveHomeVarName)
+	}
 	waveHomeCirFileUuid := uuid.New().String()
 	waveHomeCirFilePath := path.Join(scbase.GetWaveHomeDir(), waveHomeCirFileUuid+".cf")
 	defer os.Remove(waveHomeCirFilePath)
