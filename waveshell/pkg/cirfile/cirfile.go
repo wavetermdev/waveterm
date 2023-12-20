@@ -97,7 +97,7 @@ func (f *File) unflock() {
 	}
 }
 
-// cf path must not be in the root directory and must not contain more than one period (.) in the filename
+// cirfile path must not be in the root directory and must not contain more than one period (.) in the filename
 var cfRegex = regexp.MustCompile(`([^.\v]+[\\|\/])+([^.\v]+.cf)`)
 var tempDir = os.TempDir()
 var waveHomeDir = scbase.GetWaveHomeDir()
