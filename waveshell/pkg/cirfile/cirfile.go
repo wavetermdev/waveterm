@@ -8,13 +8,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
-	"regexp"
-	"strings"
 	"syscall"
 	"time"
-
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 )
 
 // CBUF[version] [maxsize] [fileoffset] [startpos] [endpos]
@@ -97,39 +92,9 @@ func (f *File) unflock() {
 	}
 }
 
-// cirfile path must not be in the root directory and must not contain more than one period (.) in the filename
-var cfRegex = regexp.MustCompile(`([^.\n\v]+[\\|\/])+(([^.\n\v]+.){1,2}cf)`)
-var tempDir = os.TempDir()
-var waveHomeDir = scbase.GetWaveHomeDir()
-
-const unableToValidateCirFilePath = "unable to validate cirfile path[%s]: %w"
-
-// returns error if the filename is not a valid cirfile path
-func ValidateCirFilePath(fileName string) error {
-	// Check that the file path matches the regex
-	if !cfRegex.MatchString(fileName) {
-		return fmt.Errorf("invalid cirfile path[%s]", fileName)
-	}
-
-	// Check that the file is in the wavehomedir or tempdir, these are the only places we allow cirfiles to be created
-	absPath, err := filepath.Abs(fileName)
-	if err != nil {
-		return fmt.Errorf("cannot get absolute path for file[%s]: %w", fileName, err)
-	}
-	if !strings.HasPrefix(absPath, waveHomeDir) && !strings.HasPrefix(absPath, tempDir) {
-		return fmt.Errorf("invalid cirfile path[%s], must be in wavehomedir[%s] or tempdir[%s]", fileName, waveHomeDir, tempDir)
-	}
-	return nil
-}
-
 // does not read metadata because locking could block/fail.  we want to be able
 // to return a valid file struct without blocking.
 func OpenCirFile(fileName string) (*File, error) {
-	err := ValidateCirFilePath(fileName)
-	if err != nil {
-		return nil, fmt.Errorf(unableToValidateCirFilePath, fileName, err)
-	}
-
 	fd, err := os.OpenFile(fileName, os.O_RDWR, 0777)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open file: %w", err)
@@ -170,15 +135,10 @@ func StatCirFile(ctx context.Context, fileName string) (*Stat, error) {
 //	they both might get no error, but only one file will be valid.  if this is a concern, this call
 //	should be externally synchronized.
 func CreateCirFile(fileName string, maxSize int64) (*File, error) {
-	err := ValidateCirFilePath(fileName)
-	if err != nil {
-		return nil, fmt.Errorf(unableToValidateCirFilePath, fileName, err)
-	}
-
 	if maxSize <= 0 {
 		return nil, fmt.Errorf("invalid maxsize[%d]", maxSize)
 	}
-	_, err = os.Stat(fileName)
+	_, err := os.Stat(fileName)
 	if err == nil {
 		return nil, fmt.Errorf("file[%s] already exists", fileName)
 	}

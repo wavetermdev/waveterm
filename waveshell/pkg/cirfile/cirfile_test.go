@@ -12,9 +12,6 @@ import (
 	"syscall"
 	"testing"
 	"time"
-
-	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 )
 
 func validateFileSize(t *testing.T, name string, size int) {
@@ -303,101 +300,4 @@ func TestWriteAt(t *testing.T) {
 		t.Fatalf("appenddata error: %v", err)
 	}
 	dumpFile(fPath)
-}
-
-func testOpenCirFile(t *testing.T, fileName string, shouldError bool) {
-	f, err := OpenCirFile(fileName)
-	if shouldError {
-		if err == nil {
-			t.Fatalf("should be an error opening file[%s]", fileName)
-		}
-		return
-	}
-	if err != nil {
-		t.Fatalf("unexpected error opening file[%s]: %v", fileName, err)
-	}
-	if f == nil {
-		t.Fatalf("nil file returned")
-	}
-}
-
-func testValidateCirFilePath(t *testing.T, fileName string, shouldError bool) {
-	err := ValidateCirFilePath(fileName)
-	if shouldError {
-		if err == nil {
-			t.Fatalf("should be an error validating cirfile path[%s]", fileName)
-		}
-		return
-	}
-	if err != nil {
-		t.Fatalf("unexpected error validating cirfile path[%s]: %v", fileName, err)
-	}
-}
-
-// Get the wave home dir, creating the env var if necessary
-func getWaveHomeDir(t *testing.T) string {
-	// Test whether we can open a file in the wave home dir
-	waveHomeDir := scbase.GetWaveHomeDir()
-	// this could happen on test agents
-	if waveHomeDir == "" {
-		userHomeDir, err := os.UserHomeDir()
-		if err != nil {
-			t.Fatalf("cannot get user home dir as fallback for missing waveHomeDir env var: %v", err)
-		}
-		os.Setenv(scbase.WaveHomeVarName, userHomeDir)
-		t.Cleanup(func() {
-			os.Unsetenv(scbase.WaveHomeVarName)
-		})
-	}
-	return waveHomeDir
-}
-
-func TestValidateCirFilePath(t *testing.T) {
-	testValidateCirFilePath(t, "testdata/invalid.cf", true)
-	testValidateCirFilePath(t, "testdata/invalid", true)
-	testValidateCirFilePath(t, "", true)
-	testValidateCirFilePath(t, "invalid.cf", true)
-
-	tempDir := t.TempDir()
-	testValidateCirFilePath(t, filepath.Join(tempDir, "no-such-file"), true)
-	testValidateCirFilePath(t, filepath.Join(tempDir, "should-succeed.cf"), false)
-	testValidateCirFilePath(t, filepath.Join(tempDir, "should-succeed.ptyout.cf"), false)
-	testValidateCirFilePath(t, filepath.Join(tempDir, "should-fail.x.ptyout.cf"), true)
-
-	waveHomeDir := getWaveHomeDir(t)
-	testValidateCirFilePath(t, filepath.Join(waveHomeDir, "no-such-file"), true)
-	testValidateCirFilePath(t, filepath.Join(waveHomeDir, "should-succeed.cf"), false)
-	testValidateCirFilePath(t, filepath.Join(tempDir, "should-succeed.ptyout.cf"), false)
-	testValidateCirFilePath(t, filepath.Join(tempDir, "should-fail.x.ptyout.cf"), true)
-
-}
-
-func TestOpenCirFile(t *testing.T) {
-	const noSuchFile = "no such file"
-	testOpenCirFile(t, noSuchFile, true)
-	testOpenCirFile(t, "testdata/empty.cf", true)
-	testOpenCirFile(t, "", true)
-	testOpenCirFile(t, "invalid.cf", true)
-
-	// Test whether we can open a file in the temp dir
-	testOpenCirFile(t, filepath.Join(os.TempDir(), noSuchFile), true)
-	_, fPath, err := createTestFile(t, "f1.cf")
-	if err != nil {
-		t.Fatalf(cannotCreateCirFile, fPath, err)
-	}
-	testOpenCirFile(t, fPath, false)
-
-	// Test whether we can open a file in the wave home dir
-	waveHomeDir := getWaveHomeDir(t)
-	waveHomeCirFileUuid := uuid.New().String()
-	waveHomeCirFilePath := filepath.Join(waveHomeDir, waveHomeCirFileUuid+".cf")
-	t.Cleanup(func() {
-		os.Remove(waveHomeCirFilePath)
-	})
-	testOpenCirFile(t, waveHomeCirFilePath, true)
-	_, err = CreateCirFile(waveHomeCirFilePath, 100)
-	if err != nil {
-		t.Fatalf(cannotCreateCirFile, waveHomeCirFilePath, err)
-	}
-	testOpenCirFile(t, waveHomeCirFilePath, false)
 }
