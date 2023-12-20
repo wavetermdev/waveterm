@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -59,7 +58,7 @@ func makeData(size int) string {
 
 func testFilePath(t *testing.T, name string) string {
 	tempDir := t.TempDir()
-	return path.Join(tempDir, name)
+	return filepath.Join(tempDir, name)
 }
 
 func createTestFile(t *testing.T, name string) (*File, string, error) {
@@ -360,12 +359,12 @@ func TestValidateCirFilePath(t *testing.T) {
 	testValidateCirFilePath(t, "invalid.cf", true)
 
 	tempDir := t.TempDir()
-	testValidateCirFilePath(t, path.Join(tempDir, "no-such-file"), true)
-	testValidateCirFilePath(t, path.Join(tempDir, "should-succeed.cf"), false)
+	testValidateCirFilePath(t, filepath.Join(tempDir, "no-such-file"), true)
+	testValidateCirFilePath(t, filepath.Join(tempDir, "should-succeed.cf"), false)
 
 	waveHomeDir := getWaveHomeDir(t)
-	testValidateCirFilePath(t, path.Join(waveHomeDir, "no-such-file"), true)
-	testValidateCirFilePath(t, path.Join(waveHomeDir, "should-succeed.cf"), false)
+	testValidateCirFilePath(t, filepath.Join(waveHomeDir, "no-such-file"), true)
+	testValidateCirFilePath(t, filepath.Join(waveHomeDir, "should-succeed.cf"), false)
 
 }
 
@@ -387,7 +386,7 @@ func TestOpenCirFile(t *testing.T) {
 	// Test whether we can open a file in the wave home dir
 	waveHomeDir := getWaveHomeDir(t)
 	waveHomeCirFileUuid := uuid.New().String()
-	waveHomeCirFilePath := path.Join(waveHomeDir, waveHomeCirFileUuid+".cf")
+	waveHomeCirFilePath := filepath.Join(waveHomeDir, waveHomeCirFileUuid+".cf")
 	t.Cleanup(func() {
 		os.Remove(waveHomeCirFilePath)
 	})
