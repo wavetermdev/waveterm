@@ -50,6 +50,7 @@ class ScreenTabs extends React.Component<
         this.disposeScreensReaction = mobx.reaction(
             () => this.getScreens(),
             (screens) => {
+                // Different timeout for when screens are added vs removed
                 let timeout = 100;
                 if (screens.length < this.state.showingScreens.length) {
                     timeout = 400;
