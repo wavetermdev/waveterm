@@ -25,7 +25,7 @@ import "./tabs.less";
 dayjs.extend(localizedFormat);
 
 @mobxReact.observer
-class ScreenTab extends React.Component<{ screen: Screen, activeScreenId: string, index: number, onSwitchScreen }, {}> {
+class ScreenTab extends React.Component<{ screen: Screen; activeScreenId: string; index: number; onSwitchScreen }, {}> {
     tabRefs: { [screenId: string]: React.RefObject<any> } = {};
     dragEndTimeout = null;
     scrollIntoViewTimeout = null;
@@ -81,7 +81,7 @@ class ScreenTab extends React.Component<{ screen: Screen, activeScreenId: string
     };
 
     render() {
-        let { screen, activeScreenId, index, onSwitchScreen } = this.props
+        let { screen, activeScreenId, index, onSwitchScreen } = this.props;
 
         let tabIndex = null;
         if (index + 1 <= 9) {

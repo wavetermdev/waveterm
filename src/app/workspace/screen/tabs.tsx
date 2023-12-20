@@ -43,11 +43,40 @@ class ScreenTabs extends React.Component<
         };
     }
 
+    getActiveScreenId(): string {
+        let { session } = this.props;
+        if (session) {
+            return session.activeScreenId.get();
+        }
+    }
+
+    @mobx.computed
+    getScreens(): Screen[] {
+        let activeScreenId = this.getActiveScreenId();
+        if (!activeScreenId) {
+            return [];
+        }
+
+        let screens = GlobalModel.getSessionScreens(this.props.session.sessionId);
+        let showingScreens = [];
+
+        for (const screen of screens) {
+            if (!screen.archived.get() || activeScreenId === screen.screenId) {
+                showingScreens.push(screen);
+            }
+        }
+
+        showingScreens.sort((a, b) => a.screenIdx.get() - b.screenIdx.get());
+
+        return showingScreens;
+    }
+
     componentDidMount(): void {
         this.componentDidUpdate();
 
+        // Update showingScreens state when the screens change
         this.disposeScreensReaction = mobx.reaction(
-            () => this.screens,
+            () => this.getScreens(),
             (screens) => {
                 this.setState({ showingScreens: screens });
             }
@@ -71,8 +100,7 @@ class ScreenTabs extends React.Component<
 
     componentDidUpdate(): void {
         // Scroll the active screen into view
-        let { session } = this.props;
-        let activeScreenId = session.activeScreenId.get();
+        let activeScreenId = this.getActiveScreenId();
         if (activeScreenId !== this.lastActiveScreenId) {
             if (this.scrollIntoViewTimeout) {
                 clearTimeout(this.scrollIntoViewTimeout);
@@ -83,48 +111,18 @@ class ScreenTabs extends React.Component<
                         sprintf('.screen-tab[data-screenid="%s"]', activeScreenId)
                     );
                     if (tabElem) {
-                        // tabElem.scrollIntoView();
+                        tabElem.scrollIntoView();
                     }
                 }
                 this.lastActiveScreenId = activeScreenId;
             }, 100);
         }
 
-        // Set the showingScreens state if it's not set or if the number of screens has changed.
-        // Individual screen update are handled automatically by mobx.
-        if (this.screens && this.state.showingScreens.length !== this.screens.length) {
-            this.setState({ showingScreens: this.screens });
+        // Populate showingScreens state if it's empty
+        let screens = this.getScreens();
+        if (screens && this.state.showingScreens.length == 0) {
+            this.setState({ showingScreens: screens });
         }
-    }
-
-    @mobx.computed
-    get activeScreenId(): string {
-        let { session } = this.props;
-        if (session) {
-            return session.activeScreenId.get();
-        }
-    }
-
-    @mobx.computed
-    get screens(): Screen[] {
-        if (!this.activeScreenId) {
-            return [];
-        }
-
-        let screens = GlobalModel.getSessionScreens(this.props.session.sessionId);
-        let showingScreens = [];
-
-        // First, filter and collect relevant screens
-        for (const screen of screens) {
-            if (!screen.archived.get() || this.activeScreenId === screen.screenId) {
-                showingScreens.push(screen);
-            }
-        }
-
-        // Then, sort the filtered screens
-        showingScreens.sort((a, b) => a.screenIdx.get() - b.screenIdx.get());
-
-        return showingScreens;
     }
 
     @boundMethod
@@ -177,8 +175,9 @@ class ScreenTabs extends React.Component<
             return true; // Initial case when there's no snapshot yet
         }
 
-        for (let i = 0; i < this.screens.length; i++) {
-            const currentScreen = this.screens[i];
+        let screens = this.state.showingScreens;
+        for (let i = 0; i < screens.length; i++) {
+            const currentScreen = screens[i];
             const previousIndex = this.state.screenIndices[i];
 
             if (currentScreen.screenIdx !== previousIndex) {
@@ -207,7 +206,7 @@ class ScreenTabs extends React.Component<
         }
         let screen: Screen | null = null;
         let index = 0;
-        let activeScreenId = session.activeScreenId.get();
+        let activeScreenId = this.getActiveScreenId();
 
         return (
             <div className="screen-tabs-container">
