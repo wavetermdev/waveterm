@@ -660,6 +660,16 @@ function runActiveTimer() {
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
     await app.whenReady();
     await createMainWindowWrap();
+    electron.globalShortcut.register("CommandOrControl+Shift+Z", () => {
+        if (MainWindow != null) {
+            if (!MainWindow.isVisible()) {
+                MainWindow.show();
+            }
+            else {
+                MainWindow.hide();
+            }
+        }
+    });
     app.on("activate", () => {
         if (electron.BrowserWindow.getAllWindows().length === 0) {
             createMainWindowWrap().then();
