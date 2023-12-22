@@ -1279,7 +1279,7 @@ func RemoteShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 func resolveConfigSshAliases(configFiles []string) ([]string, error) {
 	// using two separate containers to track order and have O(1) lookups
 	// since go does not have an ordered map primitive
-	var aliases []string
+	var discoveredPatterns []string
 	alreadyUsed := make(map[string]bool)
 	alreadyUsed[""] = true // this excludes the empty string from potential alias
 	var openedFiles []fs.File
@@ -1302,11 +1302,11 @@ func resolveConfigSshAliases(configFiles []string) ([]string, error) {
 		cfg, _ := ssh_config.Decode(fd)
 		for _, host := range cfg.Hosts {
 			// for each host, find the first good alias
-			for _, aliasPattern := range host.Patterns {
-				alias := aliasPattern.String()
-				if strings.Index(alias, "*") == -1 || alreadyUsed[alias] == true {
-					aliases = append(aliases, alias)
-					alreadyUsed[alias] = true
+			for _, hostPattern := range host.Patterns {
+				hostPatternStr := hostPattern.String()
+				if strings.Index(hostPatternStr, "*") == -1 || alreadyUsed[hostPatternStr] == true {
+					discoveredPatterns = append(discoveredPatterns, hostPatternStr)
+					alreadyUsed[hostPatternStr] = true
 					break
 				}
 			}
@@ -1316,11 +1316,69 @@ func resolveConfigSshAliases(configFiles []string) ([]string, error) {
 		errs = append([]error{fmt.Errorf("no ssh config files could be opened:\n")}, errs...)
 		return nil, errors.Join(errs...)
 	}
-	if len(aliases) == 0 {
+	if len(discoveredPatterns) == 0 {
 		return nil, fmt.Errorf("no compatible hostnames found in ssh config files")
 	}
 
-	return aliases, nil
+	return discoveredPatterns, nil
+}
+
+type HostInfoType struct {
+	Host          string
+	User          string
+	CanonicalName string
+	Port          int
+	SshKeyFile    string
+}
+
+func NewHostInfo(hostPattern string) (*HostInfoType, error) {
+	userName, _ := ssh_config.GetStrict(hostPattern, "User")
+	if userName == "" {
+		// we cannot store a remote with a missing user
+		// in the current setup
+		return nil, fmt.Errorf("could not parse \"%s\" - no User in config\n", hostPattern)
+	}
+
+	hostName, _ := ssh_config.GetStrict(hostPattern, "Hostname")
+	// no HostKeyAlias support yet
+	// if no hostname is found, try the host instead
+	// TODO: fix this later - always use user@alias
+	if hostName == "" {
+		hostName = hostPattern
+	}
+
+	canonicalName := strings.Join([]string{userName, hostName}, "@")
+
+	// check if user and host are okay
+	m := userHostRe.FindStringSubmatch(canonicalName)
+	if m == nil || m[2] == "" || m[3] == "" {
+		return nil, fmt.Errorf("could not parse \"%s\" - %s did not fit user@host requirement\n", hostPattern, canonicalName)
+	}
+
+	portStr, _ := ssh_config.GetStrict(hostPattern, "Port")
+	var portVal int
+	if portStr != "" {
+		portVal, err := strconv.Atoi(portStr)
+		if err != nil {
+			// do not make assumptions about port if incorrectly configured
+			return nil, fmt.Errorf("could not parse \"%s\" (%s) - %s could not be converted to a valid port\n", hostPattern, canonicalName, portStr)
+		}
+		if int(int16(portVal)) != portVal {
+			return nil, fmt.Errorf("could not parse port \"%d\": number is not valid for a port\n", portVal)
+		}
+	} else {
+		portVal = 22
+	}
+
+	sshKeyFile, _ := ssh_config.GetStrict(hostPattern, "IdentityFile")
+
+	outHostInfo := new(HostInfoType)
+	outHostInfo.Host = hostName
+	outHostInfo.User = userName
+	outHostInfo.CanonicalName = canonicalName
+	outHostInfo.Port = portVal
+	outHostInfo.SshKeyFile = sshKeyFile
+	return outHostInfo, nil
 }
 
 func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -1332,130 +1390,102 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 	if aliasErr != nil {
 		return nil, aliasErr
 	}
-	importedRemotesNotVisited, dbQueryErr := sstore.GetAllImportedRemotes(ctx)
+	previouslyImportedRemotes, dbQueryErr := sstore.GetAllImportedRemotes(ctx)
 	if dbQueryErr != nil {
 		return nil, dbQueryErr
 	}
 
-	var updatedRemotes []string
-	for _, alias := range aliases {
-		userName, _ := ssh_config.GetStrict(alias, "User")
-		hostName, _ := ssh_config.GetStrict(alias, "Hostname")
-
-		if userName == "" {
-			// we cannot store a remote with a missing user
-			// in the current setup
-			log.Printf("sshconfig import could not parse \"%s\" - no User in config\n", alias)
+	var parsedHostData []*HostInfoType
+	canonicalNamesInConfig := make(map[string]bool)
+	for _, hostPattern := range aliases {
+		hostInfo, hostInfoErr := NewHostInfo(hostPattern)
+		if hostInfoErr != nil {
+			log.Printf("sshconfig-import: %e", hostInfoErr)
 			continue
 		}
+		parsedHostData = append(parsedHostData, hostInfo)
+		canonicalNamesInConfig[hostInfo.CanonicalName] = true
+	}
 
-		// no HostKeyAlias support yet
-		// if no hostname is found, try the host instead
-		if hostName == "" {
-			hostName = alias
-		}
-
-		canonicalName := strings.Join([]string{userName, hostName}, "@")
-
-		// check if user and host are okay
-		m := userHostRe.FindStringSubmatch(canonicalName)
-		if m == nil || m[2] == "" || m[3] == "" {
-			log.Printf("sshconfig import could not parse \"%s\" - %s did not fit user@host requirement\n", alias, canonicalName)
-			continue
-		}
-
-		portStr, _ := ssh_config.GetStrict(alias, "Port")
-		var portVal int
+	// remove all previously imported remotes that
+	// no longer have a canonical pattern in the config files
+	for importedRemoteCanonicalName, importedRemote := range previouslyImportedRemotes {
 		var err error
-		if portStr != "" {
-			portVal, err = strconv.Atoi(portStr)
-			if err != nil {
-				// do not make assumptions about port if incorrectly configured
-				log.Printf("sshconfig import could not parse \"%s\" (%s) - %s could not be converted to a valid port\n", alias, canonicalName, portStr)
-				continue
-			}
-		} else {
-			portVal = 22
+		if importedRemote.Archived || canonicalNamesInConfig[importedRemoteCanonicalName] {
+			continue
 		}
+		err = remote.ArchiveRemote(ctx, importedRemote.RemoteId)
+		if err != nil {
+			log.Printf("sshconfig-import: failed to remove remote \"%s\" (%s)\n", importedRemote.RemoteAlias, importedRemote.RemoteCanonicalName)
+		} else {
+			log.Printf("sshconfig-import: archived remote \"%s\" (%s)\n", importedRemote.RemoteAlias, importedRemote.RemoteCanonicalName)
+		}
+	}
 
-		isSudo := false
+	var updatedRemotes []string
+	for _, hostInfo := range parsedHostData {
 
-		sshKeyFile, _ := ssh_config.GetStrict(alias, "IdentityFile")
 		sshOpts := &sstore.SSHOpts{
 			Local:   false,
-			SSHHost: hostName,
-			SSHUser: userName,
-			IsSudo:  isSudo,
-			SSHPort: portVal,
+			SSHHost: hostInfo.Host,
+			SSHUser: hostInfo.User,
+			IsSudo:  false,
+			SSHPort: hostInfo.Port,
 		}
-		if sshKeyFile != "" {
-			sshOpts.SSHIdentity = sshKeyFile
+		if hostInfo.SshKeyFile != "" {
+			sshOpts.SSHIdentity = hostInfo.SshKeyFile
 		}
 
-		alreadyStoredImportRemote := importedRemotesNotVisited[canonicalName]
+		previouslyImportedRemote := previouslyImportedRemotes[hostInfo.CanonicalName]
 
-		updatedRemotes = append(updatedRemotes, canonicalName)
-		if alreadyStoredImportRemote != nil && !alreadyStoredImportRemote.Archived {
+		updatedRemotes = append(updatedRemotes, hostInfo.CanonicalName)
+		if previouslyImportedRemote != nil && !previouslyImportedRemote.Archived {
 			// this already existed and was created via import
-			// it needs to be updated and removed from the not
-			// visited map
+			// it needs to be updated instead of created
 
 			editMap := make(map[string]interface{})
-			editMap[sstore.RemoteField_Alias] = alias
+			editMap[sstore.RemoteField_Alias] = hostInfo.Host
 			// changing port is unique to imports because it lets us avoid conflicts
 			// if the port is changed in the ssh config
-			editMap[sstore.RemoteField_SSHPort] = portVal
-			if sshKeyFile != "" {
-				editMap[sstore.RemoteField_SSHKey] = sshKeyFile
+			editMap[sstore.RemoteField_SSHPort] = hostInfo.Port
+			if hostInfo.SshKeyFile != "" {
+				editMap[sstore.RemoteField_SSHKey] = hostInfo.SshKeyFile
 			}
-			msh := remote.GetRemoteById(alreadyStoredImportRemote.RemoteId)
+			msh := remote.GetRemoteById(previouslyImportedRemote.RemoteId)
 			if msh == nil {
-				log.Printf("strange, msh for remote %s [%s] not found\n", canonicalName, alreadyStoredImportRemote.RemoteId)
+				log.Printf("strange, msh for remote %s [%s] not found\n", hostInfo.CanonicalName, previouslyImportedRemote.RemoteId)
+				continue
 			} else {
 				err := msh.UpdateRemote(ctx, editMap)
 				if err != nil {
-					log.Printf("error updating remote[%s]: %v\n", canonicalName, err)
+					log.Printf("error updating remote[%s]: %v\n", hostInfo.CanonicalName, err)
+					continue
 				}
 			}
-			log.Printf("sshconfig import found previously imported remote with canonical name \"%s\": it has been updated\n", canonicalName)
-			delete(importedRemotesNotVisited, canonicalName)
+			log.Printf("sshconfig-import: found previously imported remote with canonical name \"%s\": it has been updated\n", hostInfo.CanonicalName)
 		} else {
 			// this is new and must be created for the first time
 			r := &sstore.RemoteType{
 				RemoteId:            scbase.GenWaveUUID(),
 				RemoteType:          sstore.RemoteTypeSsh,
-				RemoteAlias:         alias,
-				RemoteCanonicalName: canonicalName,
-				RemoteUser:          userName,
-				RemoteHost:          hostName,
+				RemoteAlias:         hostInfo.Host,
+				RemoteCanonicalName: hostInfo.CanonicalName,
+				RemoteUser:          hostInfo.User,
+				RemoteHost:          hostInfo.Host,
 				ConnectMode:         sstore.ConnectModeManual,
 				AutoInstall:         true,
 				SSHOpts:             sshOpts,
 				SSHConfigSrc:        sstore.SSHConfigSrcTypeImport,
 			}
-			err = remote.AddRemote(ctx, r, false)
+			err := remote.AddRemote(ctx, r, false)
 			if err != nil {
-				log.Printf("sshconfig import failed to add remote \"%s\" (%s): it is being skipped\n", alias, canonicalName)
+				log.Printf("sshconfig import failed to add remote \"%s\" (%s): it is being skipped\n", hostInfo.Host, hostInfo.CanonicalName)
 				continue
 			}
-			log.Printf("sshconfig import created remote \"%s\" (%s)\n", alias, canonicalName)
+			log.Printf("sshconfig import created remote \"%s\" (%s)\n", hostInfo.Host, hostInfo.CanonicalName)
 		}
 	}
 
-	// remove all imported remotes that were not visited in
-	// the previous loop
-	for _, remoteRemovedFromConfig := range importedRemotesNotVisited {
-		var err error
-		if remoteRemovedFromConfig.Archived {
-			continue
-		}
-		err = remote.ArchiveRemote(ctx, remoteRemovedFromConfig.RemoteId)
-		if err != nil {
-			log.Printf("sshconfig import failed to remove remote \"%s\" (%s)\n", remoteRemovedFromConfig.RemoteAlias, remoteRemovedFromConfig.RemoteCanonicalName)
-		} else {
-			log.Printf("sshconfig import archived remote \"%s\" (%s)\n", remoteRemovedFromConfig.RemoteAlias, remoteRemovedFromConfig.RemoteCanonicalName)
-		}
-	}
 	update := &sstore.ModelUpdate{Remotes: remote.GetAllRemoteRuntimeState()}
 	update.Info = &sstore.InfoMsgType{}
 	if len(updatedRemotes) == 0 {
