@@ -31,7 +31,7 @@ class ScreenTabs extends React.Component<
     tabRefs: { [screenId: string]: React.RefObject<any> } = {};
     lastActiveScreenId: string = null;
     dragEndTimeout = null;
-    scrollIntoViewTimeout = null;
+    scrollIntoViewTimeoutId = null;
     deltaYHistory = [];
     disposeScreensReaction = null;
 
@@ -39,13 +39,16 @@ class ScreenTabs extends React.Component<
         super(props);
         this.state = {
             showingScreens: [],
-            scrollIntoViewTimeout: null,
+            scrollIntoViewTimeout: 0,
         };
     }
 
     componentDidMount(): void {
+        // handle initial scrollIntoView
         this.componentDidUpdate();
 
+        // populate showingScreens state
+        this.setState({ showingScreens: this.getScreens() });
         // Update showingScreens state when the screens change
         this.disposeScreensReaction = mobx.reaction(
             () => this.getScreens(),
@@ -79,27 +82,22 @@ class ScreenTabs extends React.Component<
         // Scroll the active screen into view
         let activeScreenId = this.getActiveScreenId();
         if (activeScreenId !== this.lastActiveScreenId) {
-            if (this.scrollIntoViewTimeout) {
-                clearTimeout(this.scrollIntoViewTimeout);
+            if (this.scrollIntoViewTimeoutId) {
+                clearTimeout(this.scrollIntoViewTimeoutId);
             }
-
-            this.scrollIntoViewTimeout = setTimeout(() => {
-                if (this.tabsRef.current) {
-                    let tabElem = this.tabsRef.current.querySelector(
-                        sprintf('.screen-tab[data-screenid="%s"]', activeScreenId)
-                    );
-                    if (tabElem) {
-                        tabElem.scrollIntoView();
-                    }
+            this.lastActiveScreenId = activeScreenId;
+            this.scrollIntoViewTimeoutId = setTimeout(() => {
+                if (!this.tabsRef.current) {
+                    return;
                 }
-                this.lastActiveScreenId = activeScreenId;
+                let tabElem = this.tabsRef.current.querySelector(
+                    sprintf('.screen-tab[data-screenid="%s"]', activeScreenId)
+                );
+                if (!tabElem) {
+                    return;
+                }
+                tabElem.scrollIntoView();
             }, this.state.scrollIntoViewTimeout);
-        }
-
-        // Populate showingScreens state if it's empty
-        let screens = this.getScreens();
-        if (screens && this.state.showingScreens.length == 0) {
-            this.setState({ showingScreens: screens });
         }
     }
 
@@ -109,6 +107,7 @@ class ScreenTabs extends React.Component<
         if (session) {
             return session.activeScreenId.get();
         }
+        return null;
     }
 
     @mobx.computed
@@ -210,15 +209,13 @@ class ScreenTabs extends React.Component<
                     values={showingScreens}
                 >
                     <For each="screen" index="index" of={showingScreens}>
-                        <React.Fragment key={screen.screenId}>
-                            <ScreenTab
-                                key={screen.screenId}
-                                screen={screen}
-                                activeScreenId={activeScreenId}
-                                index={index}
-                                onSwitchScreen={this.handleSwitchScreen}
-                            />
-                        </React.Fragment>
+                        <ScreenTab
+                            key={screen.screenId}
+                            screen={screen}
+                            activeScreenId={activeScreenId}
+                            index={index}
+                            onSwitchScreen={this.handleSwitchScreen}
+                        />
                     </For>
                 </Reorder.Group>
                 <div key="new-screen" className="new-screen" onClick={this.handleNewScreen}>
