@@ -29,7 +29,7 @@ class ScreenTab extends React.Component<
     { screen: Screen; activeScreenId: string; index: number; onSwitchScreen: (screenId: string) => void },
     {}
 > {
-    tabRefs: { [screenId: string]: React.RefObject<any> } = {};
+    tabRef = React.createRef<HTMLUListElement>();
     dragEndTimeout = null;
     scrollIntoViewTimeout = null;
 
@@ -40,20 +40,22 @@ class ScreenTab extends React.Component<
     }
 
     @boundMethod
-    handleDragEnd(screenId: string) {
+    handleDragEnd() {
         if (this.dragEndTimeout) {
             clearTimeout(this.dragEndTimeout);
         }
 
         // Wait for the animation to complete
         this.dragEndTimeout = setTimeout(() => {
-            const tabElement = this.tabRefs[screenId].current;
-            const finalTabPosition = tabElement.offsetLeft;
+            const tabElement = this.tabRef.current;
+            if (tabElement) {
+                const finalTabPosition = tabElement.offsetLeft;
 
-            // Calculate the new index based on the final position
-            const newIndex = Math.floor(finalTabPosition / MagicLayout.TabWidth);
+                // Calculate the new index based on the final position
+                const newIndex = Math.floor(finalTabPosition / MagicLayout.TabWidth);
 
-            GlobalCommandRunner.screenReorder(screenId, `${newIndex + 1}`);
+                GlobalCommandRunner.screenReorder(this.props.screen.screenId, `${newIndex + 1}`);
+            }
         }, 100);
     }
 
@@ -103,14 +105,9 @@ class ScreenTab extends React.Component<
             <i title="shared to web" className="fa-sharp fa-solid fa-share-nodes web-share-icon" />
         ) : null;
 
-        // Create a ref for the tab if it doesn't exist
-        if (!this.tabRefs[screen.screenId]) {
-            this.tabRefs[screen.screenId] = React.createRef();
-        }
-
         return (
             <Reorder.Item
-                ref={this.tabRefs[screen.screenId]}
+                ref={this.tabRef}
                 value={screen}
                 id={"screentab-" + screen.screenId}
                 whileDrag={{
@@ -124,7 +121,7 @@ class ScreenTab extends React.Component<
                 )}
                 onPointerDown={() => onSwitchScreen(screen.screenId)}
                 onContextMenu={(event) => this.openScreenSettings(event, screen)}
-                onDragEnd={() => this.handleDragEnd(screen.screenId)}
+                onDragEnd={this.handleDragEnd}
             >
                 {this.renderTabIcon(screen)}
                 <div className="tab-name truncate">
