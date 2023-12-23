@@ -150,9 +150,7 @@ func CreateCirFile(fileName string, maxSize int64) (*File, error) {
 		return nil, err
 	}
 	rtn := &File{OSFile: fd, Version: CurrentVersion, MaxSize: maxSize, StartPos: FilePosEmpty}
-	timeoutContext, cancelFn := context.WithTimeout(context.Background(), 20*time.Millisecond)
-	defer cancelFn()
-	err = rtn.flock(timeoutContext, syscall.LOCK_EX)
+	err = rtn.flock(nil, syscall.LOCK_EX) // pass nil context here for a fast fail if someone else is also creating the same file
 	if err != nil {
 		return nil, fmt.Errorf("cannot lock file: %w", err)
 	}
