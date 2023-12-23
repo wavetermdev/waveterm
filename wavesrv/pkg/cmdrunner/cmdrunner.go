@@ -1276,7 +1276,7 @@ func RemoteShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	}, nil
 }
 
-func resolveConfigSshAliases(configFiles []string) ([]string, error) {
+func resolveSshConfigPatterns(configFiles []string) ([]string, error) {
 	// using two separate containers to track order and have O(1) lookups
 	// since go does not have an ordered map primitive
 	var discoveredPatterns []string
@@ -1331,45 +1331,36 @@ type HostInfoType struct {
 	SshKeyFile    string
 }
 
-func NewHostInfo(hostPattern string) (*HostInfoType, error) {
-	userName, _ := ssh_config.GetStrict(hostPattern, "User")
+func NewHostInfo(hostName string) (*HostInfoType, error) {
+	userName, _ := ssh_config.GetStrict(hostName, "User")
 	if userName == "" {
 		// we cannot store a remote with a missing user
 		// in the current setup
-		return nil, fmt.Errorf("could not parse \"%s\" - no User in config\n", hostPattern)
+		return nil, fmt.Errorf("could not parse \"%s\" - no User in config\n", hostName)
 	}
-
-	hostName, _ := ssh_config.GetStrict(hostPattern, "Hostname")
-	// no HostKeyAlias support yet
-	// if no hostname is found, try the host instead
-	// TODO: fix this later - always use user@alias
-	if hostName == "" {
-		hostName = hostPattern
-	}
-
-	canonicalName := strings.Join([]string{userName, hostName}, "@")
+	canonicalName := userName + "@" + hostName
 
 	// check if user and host are okay
 	m := userHostRe.FindStringSubmatch(canonicalName)
 	if m == nil || m[2] == "" || m[3] == "" {
-		return nil, fmt.Errorf("could not parse \"%s\" - %s did not fit user@host requirement\n", hostPattern, canonicalName)
+		return nil, fmt.Errorf("could not parse \"%s\" - %s did not fit user@host requirement\n", hostName, canonicalName)
 	}
 
-	portStr, _ := ssh_config.GetStrict(hostPattern, "Port")
+	portStr, _ := ssh_config.GetStrict(hostName, "Port")
 	var portVal int
 	if portStr != "" {
 		var err error
 		portVal, err = strconv.Atoi(portStr)
 		if err != nil {
 			// do not make assumptions about port if incorrectly configured
-			return nil, fmt.Errorf("could not parse \"%s\" (%s) - %s could not be converted to a valid port\n", hostPattern, canonicalName, portStr)
+			return nil, fmt.Errorf("could not parse \"%s\" (%s) - %s could not be converted to a valid port\n", hostName, canonicalName, portStr)
 		}
 		if int(int16(portVal)) != portVal {
 			return nil, fmt.Errorf("could not parse port \"%d\": number is not valid for a port\n", portVal)
 		}
 	}
 
-	sshKeyFile, _ := ssh_config.GetStrict(hostPattern, "IdentityFile")
+	sshKeyFile, _ := ssh_config.GetStrict(hostName, "IdentityFile")
 
 	outHostInfo := new(HostInfoType)
 	outHostInfo.Host = hostName
@@ -1385,9 +1376,9 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 	localConfig := filepath.Join(home, ".ssh", "config")
 	systemConfig := filepath.Join("/", "ssh", "config")
 	sshConfigFiles := []string{localConfig, systemConfig}
-	aliases, aliasErr := resolveConfigSshAliases(sshConfigFiles)
-	if aliasErr != nil {
-		return nil, aliasErr
+	hostPatterns, hostPatternsErr := resolveSshConfigPatterns(sshConfigFiles)
+	if hostPatternsErr != nil {
+		return nil, hostPatternsErr
 	}
 	previouslyImportedRemotes, dbQueryErr := sstore.GetAllImportedRemotes(ctx)
 	if dbQueryErr != nil {
@@ -1396,7 +1387,7 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 
 	var parsedHostData []*HostInfoType
 	canonicalNamesInConfig := make(map[string]bool)
-	for _, hostPattern := range aliases {
+	for _, hostPattern := range hostPatterns {
 		hostInfo, hostInfoErr := NewHostInfo(hostPattern)
 		if hostInfoErr != nil {
 			log.Printf("sshconfig-import: %e", hostInfoErr)
