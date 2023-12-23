@@ -390,9 +390,12 @@ function getColorRGB(colorInput) {
     return computedColorStyle;
 }
 
-function commandRtnHandler(prtn: Promise<CommandRtnType>, errorMessage: OV<string>) {
+function commandRtnHandler(prtn: Promise<CommandRtnType>, errorMessage: OV<string>, onSuccess?: () => void) {
     prtn.then((crtn) => {
         if (crtn.success) {
+            if (onSuccess) {
+                onSuccess();
+            }
             return;
         }
         mobx.action(() => {

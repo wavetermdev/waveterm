@@ -440,8 +440,7 @@ class SessionSettingsModal extends React.Component<{}, {}> {
                 return;
             }
             let prtn = GlobalCommandRunner.sessionPurge(this.sessionId);
-            commandRtnHandler(prtn, this.errorMessage);
-            GlobalModel.modalsModel.popModal();
+            commandRtnHandler(prtn, this.errorMessage, () => GlobalModel.modalsModel.popModal());
         });
     }
 
