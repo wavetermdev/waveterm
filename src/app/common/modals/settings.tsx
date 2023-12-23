@@ -440,7 +440,7 @@ class SessionSettingsModal extends React.Component<{}, {}> {
                 return;
             }
             let prtn = GlobalCommandRunner.sessionPurge(this.sessionId);
-            commandRtnHandler(prtn, this.errorMessage);
+            commandRtnHandler(prtn, this.errorMessage, () => GlobalModel.modalsModel.popModal());
         });
     }
 
@@ -783,7 +783,10 @@ class ClientSettingsModal extends React.Component<{}, {}> {
                     <div className="settings-field">
                         <div className="settings-label">Check for Updates</div>
                         <div className="settings-input">
-                            <Toggle checked={!cdata.clientopts.noreleasecheck} onChange={this.handleChangeReleaseCheck} />
+                            <Toggle
+                                checked={!cdata.clientopts.noreleasecheck}
+                                onChange={this.handleChangeReleaseCheck}
+                            />
                         </div>
                     </div>
                     <div className="settings-field">
