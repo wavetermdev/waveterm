@@ -8,21 +8,13 @@ import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import { For } from "tsx-control-statements/components";
 import cn from "classnames";
-import dayjs from "dayjs";
-import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Session, Screen } from "../../../model/model";
 import { renderCmdText } from "../../common/common";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
 import { ReactComponent as ActionsIcon } from "../../assets/icons/tab/actions.svg";
-import { ReactComponent as AddIcon } from "../../assets/icons/add.svg";
 import * as constants from "../../appconst";
 import { Reorder } from "framer-motion";
 import { MagicLayout } from "../../magiclayout";
-
-import "../workspace.less";
-import "./tabs.less";
-
-dayjs.extend(localizedFormat);
 
 @mobxReact.observer
 class ScreenTab extends React.Component<
