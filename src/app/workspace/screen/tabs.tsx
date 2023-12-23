@@ -7,20 +7,13 @@ import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import { For } from "tsx-control-statements/components";
-import dayjs from "dayjs";
-import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Session, Screen } from "../../../model/model";
 import { ReactComponent as AddIcon } from "../../assets/icons/add.svg";
 import * as constants from "../../appconst";
 import { Reorder } from "framer-motion";
 import { ScreenTab } from "./tab";
 
-import "../workspace.less";
 import "./tabs.less";
-
-dayjs.extend(localizedFormat);
-
-type OV<V> = mobx.IObservableValue<V>;
 
 @mobxReact.observer
 class ScreenTabs extends React.Component<
