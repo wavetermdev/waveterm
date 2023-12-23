@@ -1358,7 +1358,8 @@ func NewHostInfo(hostPattern string) (*HostInfoType, error) {
 	portStr, _ := ssh_config.GetStrict(hostPattern, "Port")
 	var portVal int
 	if portStr != "" {
-		portVal, err := strconv.Atoi(portStr)
+		var err error
+		portVal, err = strconv.Atoi(portStr)
 		if err != nil {
 			// do not make assumptions about port if incorrectly configured
 			return nil, fmt.Errorf("could not parse \"%s\" (%s) - %s could not be converted to a valid port\n", hostPattern, canonicalName, portStr)
@@ -1366,8 +1367,6 @@ func NewHostInfo(hostPattern string) (*HostInfoType, error) {
 		if int(int16(portVal)) != portVal {
 			return nil, fmt.Errorf("could not parse port \"%d\": number is not valid for a port\n", portVal)
 		}
-	} else {
-		portVal = 22
 	}
 
 	sshKeyFile, _ := ssh_config.GetStrict(hostPattern, "IdentityFile")

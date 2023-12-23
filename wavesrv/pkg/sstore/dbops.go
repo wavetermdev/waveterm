@@ -1699,7 +1699,7 @@ func UpdateRemote(ctx context.Context, remoteId string, editMap map[string]inter
 			tx.Exec(query, sshPassword, remoteId)
 		}
 		if sshPort, found := editMap[RemoteField_SSHPort]; found {
-			query = `UPDATE remote SET remoteopts = json_set(remoteopts, '$.sshport', ?) WHERE remoteid = ?`
+			query = `UPDATE remote SET sshopts = json_set(sshopts, '$.sshport', ?) WHERE remoteid = ?`
 			tx.Exec(query, sshPort, remoteId)
 		}
 		if color, found := editMap[RemoteField_Color]; found {
