@@ -52,7 +52,9 @@ func (f *File) flock(ctx context.Context, lockType int) error {
 	if err != syscall.EWOULDBLOCK {
 		return err
 	}
-	if ctx == nil {
+
+	// Do not busy-wait unless we have a way to cancel the context
+	if ctx == nil || ctx.Done() == nil {
 		return syscall.EWOULDBLOCK
 	}
 	// busy-wait with context
@@ -67,6 +69,7 @@ func (f *File) flock(ctx context.Context, lockType int) error {
 		}
 		select {
 		case <-time.After(timeout):
+			// TODO: Ineffective break statement
 			break
 		case <-ctx.Done():
 			return ctx.Err()
@@ -80,7 +83,6 @@ func (f *File) flock(ctx context.Context, lockType int) error {
 			return err
 		}
 	}
-	return fmt.Errorf("could not acquire lock")
 }
 
 func (f *File) unflock() {
@@ -88,7 +90,6 @@ func (f *File) unflock() {
 		syscall.Flock(int(f.OSFile.Fd()), syscall.LOCK_UN) // ignore error (nothing to do about it anyway)
 		f.FlockStatus = 0
 	}
-	return
 }
 
 // does not read metadata because locking could block/fail.  we want to be able
@@ -96,11 +97,11 @@ func (f *File) unflock() {
 func OpenCirFile(fileName string) (*File, error) {
 	fd, err := os.OpenFile(fileName, os.O_RDWR, 0777)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot open file: %w", err)
 	}
 	finfo, err := fd.Stat()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot get file info: %w", err)
 	}
 	if finfo.Size() < HeaderLen {
 		return nil, fmt.Errorf("invalid cirfile, file length[%d] less than HeaderLen[%d]", finfo.Size(), HeaderLen)
@@ -130,8 +131,9 @@ func StatCirFile(ctx context.Context, fileName string) (*Stat, error) {
 
 // if the file already exists, it is an error.
 // there is a race condition if two goroutines try to create the same file between Stat() and Create(), so
-//   they both might get no error, but only one file will be valid.  if this is a concern, this call
-//   should be externally synchronized.
+//
+//	they both might get no error, but only one file will be valid.  if this is a concern, this call
+//	should be externally synchronized.
 func CreateCirFile(fileName string, maxSize int64) (*File, error) {
 	if maxSize <= 0 {
 		return nil, fmt.Errorf("invalid maxsize[%d]", maxSize)
@@ -148,14 +150,14 @@ func CreateCirFile(fileName string, maxSize int64) (*File, error) {
 		return nil, err
 	}
 	rtn := &File{OSFile: fd, Version: CurrentVersion, MaxSize: maxSize, StartPos: FilePosEmpty}
-	err = rtn.flock(nil, syscall.LOCK_EX)
+	err = rtn.flock(nil, syscall.LOCK_EX) // pass nil context here for a fast fail if someone else is also creating the same file
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot lock file: %w", err)
 	}
 	defer rtn.unflock()
 	err = rtn.writeMeta()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot write metadata: %w", err)
 	}
 	return rtn, nil
 }
@@ -214,10 +216,7 @@ func (f *File) readMeta() error {
 		return fmt.Errorf("invalid cbuf version[%d]", f.Version)
 	}
 	// possible incomplete write, fix start/end pos to be within filesize
-	if f.FileDataSize == 0 {
-		f.StartPos = FilePosEmpty
-		f.EndPos = 0
-	} else if f.StartPos >= f.FileDataSize && f.EndPos >= f.FileDataSize {
+	if f.FileDataSize == 0 || (f.StartPos >= f.FileDataSize && f.EndPos >= f.FileDataSize) {
 		f.StartPos = FilePosEmpty
 		f.EndPos = 0
 	} else if f.StartPos >= f.FileDataSize {
@@ -309,23 +308,23 @@ func (f *File) getFileChunks() []fileChunk {
 		return nil
 	}
 	if f.EndPos >= f.StartPos {
-		return []fileChunk{fileChunk{f.StartPos, f.EndPos - f.StartPos + 1}}
+		return []fileChunk{{f.StartPos, f.EndPos - f.StartPos + 1}}
 	}
 	return []fileChunk{
-		fileChunk{f.StartPos, f.FileDataSize - f.StartPos},
-		fileChunk{0, f.EndPos + 1},
+		{f.StartPos, f.FileDataSize - f.StartPos},
+		{0, f.EndPos + 1},
 	}
 }
 
 func (f *File) getFreeChunks() []fileChunk {
 	if f.StartPos == FilePosEmpty {
-		return []fileChunk{fileChunk{0, f.MaxSize}}
+		return []fileChunk{{0, f.MaxSize}}
 	}
 	if (f.EndPos == f.StartPos-1) || (f.StartPos == 0 && f.EndPos == f.MaxSize-1) {
 		return nil
 	}
 	if f.EndPos < f.StartPos {
-		return []fileChunk{fileChunk{f.EndPos + 1, f.StartPos - f.EndPos - 1}}
+		return []fileChunk{{f.EndPos + 1, f.StartPos - f.EndPos - 1}}
 	}
 	var rtn []fileChunk
 	if f.EndPos < f.MaxSize-1 {
