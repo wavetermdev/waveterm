@@ -1425,6 +1425,37 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
     }
 }
 
+@mobxReact.observer
+class TabSwitcherModal extends React.Component<{}, {}> {
+    componentDidMount() {
+        document.addEventListener("keydown", this.handleKeyDown);
+    }
+
+    componentWillUnmount() {
+        document.removeEventListener("keydown", this.handleKeyDown);
+    }
+
+    @boundMethod
+    handleKeyDown(e) {
+        if (e.key === "Escape") {
+            this.closeModal();
+        }
+    }
+
+    @boundMethod
+    closeModal(): void {
+        GlobalModel.modalsModel.popModal();
+    }
+
+    render() {
+        return (
+            <Modal className="tabswitcher-modal">
+                <div className="wave-modal-body">Tab Switcher</div>
+            </Modal>
+        );
+    }
+}
+
 const getName = (remote: T.RemoteType): string => {
     if (remote == null) {
         return "";
@@ -1444,4 +1475,5 @@ export {
     ViewRemoteConnDetailModal,
     EditRemoteConnModal,
     ModalsProvider,
+    TabSwitcherModal,
 };
