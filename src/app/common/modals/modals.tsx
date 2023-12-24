@@ -453,15 +453,6 @@ class AboutModal extends React.Component<{}, {}> {
                         </a>
                         <a
                             className="wave-button wave-button-link color-standard"
-                            href={util.makeExternLink("https://github.com/wavetermdev/waveterm/blob/main/LICENSE")}
-                            rel={"noopener"}
-                            target="_blank"
-                        >
-                            <i className="fa-sharp fa-light fa-book-blank"></i>
-                            License
-                        </a>
-                        <a
-                            className="wave-button wave-button-link color-standard"
                             href={util.makeExternLink("https://github.com/wavetermdev/waveterm/blob/main/acknowledgements/README.md")}
                             rel={"noopener"}
                             target="_blank"
