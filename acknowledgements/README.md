@@ -1,14 +1,12 @@
 # Open-Source Acknowledgements
 
-We make use of many amazing open-source projects to build Wave Terminal. This document describes the process for generating acknowledgements for the dependencies for each of our components, including disclaimers of the licensing terms for each dependency.
-
-Here are the links to the latest acknowledgements for each of our components:
+We make use of many amazing open-source projects to build Wave Terminal. Here are the links to the latest acknowledgements for each of our components, including license disclaimers for each dependency:
 
 - [Frontend](./disclaimers/frontend.md)
 - [`wavesrv` backend](./disclaimers/wavesrv.md)
 - [`waveshell` backend](./disclaimers/waveshell.md)
 
-## Generating disclaimer files
+## Generating license disclaimers
 
 The license disclaimers for the backend are generated using the [go-licenses](https://github.com/google/go-licenses) tool. We supply a template file ([`go_licenses_report.tpl`](./go_licenses_report.tpl)) to generate a pretty print of the disclaimers for each dependency. Due to a limitation in the tool, we run it separately for `wavesrv` and `waveterm`, meaning there are separate disclaimer files, `wavesrv.md` and `waveterm.md` respectively.
 
