@@ -1233,7 +1233,12 @@ function getDefaultHistoryQueryOpts(): HistoryQueryOpts {
 class InputModel {
     historyShow: OV<boolean> = mobx.observable.box(false);
     infoShow: OV<boolean> = mobx.observable.box(false);
+    aIChatShow: OV<boolean> = mobx.observable.box(false);
     cmdInputHeight: OV<number> = mobx.observable.box(0);
+    
+    AIChatItems: mobx.IObservableArray<string> = mobx.observable.array(["AI Chat Message"], {
+        name: "AIChatItems"
+    }); 
 
     historyType: mobx.IObservableValue<HistoryTypeStrs> = mobx.observable.box("screen");
     historyLoading: mobx.IObservableValue<boolean> = mobx.observable.box(false);
@@ -1272,7 +1277,7 @@ class InputModel {
             return this._getFilteredHistoryItems();
         });
     }
-
+    
     setInputMode(inputMode: null | "comment" | "global"): void {
         mobx.action(() => {
             this.inputMode.set(inputMode);
@@ -1393,6 +1398,27 @@ class InputModel {
             setTimeout(() => this.setHistoryIndex(bestIndex, true), 10);
             return;
         })();
+    }
+    
+    setAIChatShow(show: boolean): void {
+        if(this.aIChatShow.get() == show) {
+            return
+        }
+        mobx.action(() => {
+            this.aIChatShow.set(show);
+            if(this.hasFocus()) {
+                this.giveFocus();
+            }
+        })
+        
+    }
+     
+    addAIChatMessage(messageStr:string): void {
+        console.log("mk3")
+        mobx.action(() => {
+            console.log("mk4");
+            this.AIChatItems.push(messageStr);            
+        });
     }
 
     setHistoryShow(show: boolean): void {
@@ -1681,6 +1707,11 @@ class InputModel {
                 this.clearInfoMsg(false);
             }, timeoutMs);
         }
+    }
+    
+    openAIAssistantChat(): void {
+        console.log("Opening AI Assistant chat");
+        this.aIChatShow.set(true);
     }
 
     hasScrollingInfoMsg(): boolean {
