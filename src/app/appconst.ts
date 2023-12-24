@@ -11,3 +11,5 @@ export const CLIENT_SETTINGS = "clientSettings";
 export const LineContainer_Main = "main";
 export const LineContainer_History = "history";
 export const LineContainer_Sidebar = "sidebar";
+
+export const NoStrPos = -1;

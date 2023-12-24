@@ -176,7 +176,7 @@ class CmdInput extends React.Component<{}, {}> {
                             <div className="button is-static">{inputMode}</div>
                         </div>
                     </If>
-                    <TextAreaInput key={textAreaInputKey} onHeightChange={this.handleInnerHeightUpdate} />
+                    <TextAreaInput key={textAreaInputKey} screen={screen} onHeightChange={this.handleInnerHeightUpdate} />
                     <div className="control cmd-exec">
                         {/**<div onClick={inputModel.toggleExpandInput} className="hint-item color-white">
                             {inputModel.inputExpanded.get() ? "shrink" : "expand"} input ({renderCmdText("E")})
