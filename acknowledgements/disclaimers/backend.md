@@ -1,4 +1,4 @@
-# Acknowledgements
+# Wave Terminal Backend Acknowledgements
 
 The following sets forth attribution notices for third party software that may be contained in portions of the Wave Terminal product.
 
