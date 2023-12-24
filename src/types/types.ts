@@ -210,6 +210,13 @@ type WatchScreenPacketType = {
     authkey: string;
 };
 
+type CmdInputTextPacketType = {
+    type: string;
+    seqnum: number;
+    screenid: string;
+    text: StrWithPos;
+};
+
 type TermWinSize = {
     rows: number;
     cols: number;
@@ -666,6 +673,11 @@ type ModalStoreEntry = {
     uniqueKey: string;
 };
 
+type StrWithPos = {
+    str: string;
+    pos: number;
+};
+
 export type {
     SessionDataType,
     LineStateType,
@@ -741,4 +753,6 @@ export type {
     ExtFile,
     LineContainerStrs,
     ModalStoreEntry,
+    StrWithPos,
+    CmdInputTextPacketType,
 };

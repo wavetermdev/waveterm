@@ -147,8 +147,8 @@ func IsPrefix(strs []string, test string) bool {
 }
 
 type StrWithPos struct {
-	Str string
-	Pos int // this is a 'rune' position (not a byte position)
+	Str string `json:"str"`
+	Pos int    `json:"pos"` // this is a 'rune' position (not a byte position)
 }
 
 func (sp StrWithPos) String() string {

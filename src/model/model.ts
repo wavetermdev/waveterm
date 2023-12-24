@@ -3164,6 +3164,7 @@ class Model {
     showLinks: OV<boolean> = mobx.observable.box(true, {
         name: "model-showLinks",
     });
+    packetSeqNum: number = 0;
 
     constructor() {
         this.clientId = getApi().getId();
@@ -3215,6 +3216,11 @@ class Model {
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
         document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
         setTimeout(() => this.getClientDataLoop(1), 10);
+    }
+
+    getNextPacketSeqNum(): number {
+        this.packetSeqNum++;
+        return this.packetSeqNum;
     }
 
     getPlatform(): string {
@@ -4116,6 +4122,16 @@ class Model {
 
     sendInputPacket(inputPacket: any) {
         this.ws.pushMessage(inputPacket);
+    }
+
+    sendCmdInputText(screenId: string, sp: T.StrWithPos) {
+        let pk: T.CmdInputTextPacketType = {
+            type: "cmdinputtext",
+            seqnum: this.getNextPacketSeqNum(),
+            screenid: screenId,
+            text: sp,
+        };
+        this.ws.pushMessage(pk);
     }
 
     resolveUserIdToName(userid: string): string {

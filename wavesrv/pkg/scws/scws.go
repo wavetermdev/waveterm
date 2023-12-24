@@ -276,6 +276,16 @@ func (ws *WSState) RunWSRead() {
 			}()
 			continue
 		}
+		if pk.GetType() == scpacket.CmdInputTextPacketStr {
+			cmdInputPk := pk.(*scpacket.CmdInputTextPacketType)
+			if cmdInputPk.ScreenId == "" {
+				log.Printf("[error] invalid cmdinput packet, screenid is not set\n")
+				continue
+			}
+			// no need for goroutine for memory ops
+			sstore.ScreenMemSetCmdInputText(cmdInputPk.ScreenId, cmdInputPk.Text)
+			continue
+		}
 		log.Printf("got ws bad message: %v\n", pk.GetType())
 	}
 }
