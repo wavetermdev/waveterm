@@ -103,14 +103,13 @@ scripthaus run build-wavesrv
 
 ```bash
 # @scripthaus command generate-license-disclaimers
-DISCLAIMER_DIR="./license_disclaimers"
-DISCLAIMER_OUTPUT_DIR="$DISCLAIMER_DIR/output"
+DISCLAIMER_DIR="./acknowledgements"
+DISCLAIMER_OUTPUT_DIR="$DISCLAIMER_DIR/disclaimers"
 if [ -d "$DISCLAIMER_OUTPUT_DIR" ]; then
     rm -rf "$DISCLAIMER_OUTPUT_DIR"
 fi
 mkdir "$DISCLAIMER_OUTPUT_DIR"
-go run github.com/google/go-licenses@latest report ./wavesrv/... --template "$DISCLAIMER_DIR/go_licenses_report.tpl" --ignore github.com/wavetermdev/waveterm > "$DISCLAIMER_OUTPUT_DIR/wavesrv.txt"
-go run github.com/google/go-licenses@latest report ./waveshell/... --template "$DISCLAIMER_DIR/go_licenses_report.tpl" --ignore github.com/wavetermdev/waveterm > "$DISCLAIMER_OUTPUT_DIR/waveshell.txt"
-yarn licenses generate-disclaimer > "$DISCLAIMER_OUTPUT_DIR/frontend.txt"
-tar -czvf "$DISCLAIMER_DIR/disclaimers.tar.gz" "$DISCLAIMER_OUTPUT_DIR"
+go run github.com/google/go-licenses@latest report ./wavesrv/... --template "$DISCLAIMER_DIR/go_licenses_report.tpl" --ignore github.com/wavetermdev/waveterm > "$DISCLAIMER_OUTPUT_DIR/wavesrv.md"
+go run github.com/google/go-licenses@latest report ./waveshell/... --template "$DISCLAIMER_DIR/go_licenses_report.tpl" --ignore github.com/wavetermdev/waveterm > "$DISCLAIMER_OUTPUT_DIR/waveshell.md"
+yarn licenses generate-disclaimer > "$DISCLAIMER_OUTPUT_DIR/frontend.md"
 ```
