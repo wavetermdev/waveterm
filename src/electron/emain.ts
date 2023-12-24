@@ -173,10 +173,10 @@ let menuTemplate = [
         role: "appMenu",
         submenu: [
             {
-                label: 'About Wave Terminal',
+                label: "About Wave Terminal",
                 click: () => {
-                    MainWindow?.webContents.send('menu-item-about');
-                }
+                    MainWindow?.webContents.send("menu-item-about");
+                },
             },
             { type: "separator" },
             { role: "services" },
@@ -250,7 +250,7 @@ function createMainWindow(clientData) {
         minWidth: 800,
         minHeight: 600,
         transparent: true,
-        icon: (unamePlatform == "linux") ? "public/logos/wave-logo-dark.png" : undefined,
+        icon: unamePlatform == "linux" ? "public/logos/wave-logo-dark.png" : undefined,
         webPreferences: {
             preload: path.join(getAppBasePath(), DistDir, "preload.js"),
         },
@@ -299,6 +299,11 @@ function createMainWindow(clientData) {
         }
         if (input.code == "KeyH" && input.meta) {
             win.webContents.send("h-cmd", mods);
+            e.preventDefault();
+            return;
+        }
+        if (input.code == "KeyP" && input.meta) {
+            win.webContents.send("p-cmd", mods);
             e.preventDefault();
             return;
         }
