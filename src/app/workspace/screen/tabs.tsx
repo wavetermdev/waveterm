@@ -28,6 +28,7 @@ class ScreenTabs extends React.Component<
     scrollIntoViewTimeoutId = null;
     deltaYHistory = [];
     disposeScreensReaction = null;
+    debouncedHandleWheel: Function;
 
     constructor(props: any) {
         super(props);
@@ -58,8 +59,8 @@ class ScreenTabs extends React.Component<
 
         // Add the wheel event listener to the tabsRef
         if (this.tabsRef.current) {
-            let handleWheel = debounce(300, this.handleWheel);
-            this.tabsRef.current.addEventListener("wheel", handleWheel, { passive: false });
+            this.debouncedHandleWheel = debounce(300, this.handleWheel);
+            this.tabsRef.current.addEventListener("wheel", this.debouncedHandleWheel, { passive: false });
         }
     }
 
@@ -70,6 +71,10 @@ class ScreenTabs extends React.Component<
 
         if (this.disposeScreensReaction) {
             this.disposeScreensReaction(); // Clean up the reaction
+        }
+
+        if (this.tabsRef.current && this.debouncedHandleWheel) {
+            this.tabsRef.current.removeEventListener("wheel", this.debouncedHandleWheel);
         }
     }
 
