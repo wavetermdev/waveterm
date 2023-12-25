@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -214,6 +215,76 @@ func (ws *WSState) handleWatchScreen(wsPk *scpacket.WatchScreenPacketType) error
 	return nil
 }
 
+func (ws *WSState) processMessage(msgBytes []byte) error {
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+		log.Printf("[scws] panic in processMessage: %v\n", r)
+		debug.PrintStack()
+	}()
+
+	pk, err := packet.ParseJsonPacket(msgBytes)
+	if err != nil {
+		return fmt.Errorf("error unmarshalling ws message: %w", err)
+	}
+	if pk.GetType() == scpacket.WatchScreenPacketStr {
+		wsPk := pk.(*scpacket.WatchScreenPacketType)
+		err := ws.handleWatchScreen(wsPk)
+		if err != nil {
+			return fmt.Errorf("client:%s error %w", ws.ClientId, err)
+		}
+		return nil
+	}
+	isAuth := ws.IsAuthenticated()
+	if !isAuth {
+		return fmt.Errorf("cannot process ws-packet[%s], not authenticated", pk.GetType())
+	}
+	if pk.GetType() == scpacket.FeInputPacketStr {
+		feInputPk := pk.(*scpacket.FeInputPacketType)
+		if feInputPk.Remote.OwnerId != "" {
+			return fmt.Errorf("error cannot send input to remote with ownerid")
+		}
+		if feInputPk.Remote.RemoteId == "" {
+			return fmt.Errorf("error invalid input packet, remoteid is not set")
+		}
+		err := RemoteInputMapQueue.Enqueue(feInputPk.Remote.RemoteId, func() {
+			sendErr := sendCmdInput(feInputPk)
+			if sendErr != nil {
+				log.Printf("[scws] sending command input: %v\n", err)
+			}
+		})
+		if err != nil {
+			return fmt.Errorf("[error] could not queue sendCmdInput: %w", err)
+		}
+		return nil
+	}
+	if pk.GetType() == scpacket.RemoteInputPacketStr {
+		inputPk := pk.(*scpacket.RemoteInputPacketType)
+		if inputPk.RemoteId == "" {
+			return fmt.Errorf("error invalid remoteinput packet, remoteid is not set")
+		}
+		go func() {
+			sendErr := remote.SendRemoteInput(inputPk)
+			if sendErr != nil {
+				log.Printf("[scws] error processing remote input: %v\n", err)
+			}
+		}()
+		return nil
+	}
+	if pk.GetType() == scpacket.CmdInputTextPacketStr {
+		cmdInputPk := pk.(*scpacket.CmdInputTextPacketType)
+		if cmdInputPk.ScreenId == "" {
+			return fmt.Errorf("error invalid cmdinput packet, screenid is not set")
+		}
+		// no need for goroutine for memory ops
+		sstore.ScreenMemSetCmdInputText(cmdInputPk.ScreenId, cmdInputPk.Text, cmdInputPk.SeqNum)
+		return nil
+	}
+	return fmt.Errorf("got ws bad message: %v", pk.GetType())
+}
+
 func (ws *WSState) RunWSRead() {
 	shell := ws.GetShell()
 	if shell == nil {
@@ -221,72 +292,11 @@ func (ws *WSState) RunWSRead() {
 	}
 	shell.WriteJson(map[string]interface{}{"type": "hello"}) // let client know we accepted this connection, ignore error
 	for msgBytes := range shell.ReadChan {
-		pk, err := packet.ParseJsonPacket(msgBytes)
+		err := ws.processMessage(msgBytes)
 		if err != nil {
-			log.Printf("error unmarshalling ws message: %v\n", err)
-			continue
+			// TODO send errors back to client? likely unrecoverable
+			log.Printf("[scws] %v\n", err)
 		}
-		if pk.GetType() == scpacket.WatchScreenPacketStr {
-			wsPk := pk.(*scpacket.WatchScreenPacketType)
-			err := ws.handleWatchScreen(wsPk)
-			if err != nil {
-				// TODO send errors back to client, likely unrecoverable
-				log.Printf("[ws %s] error %v\n", ws.ClientId, err)
-			}
-			continue
-		}
-		isAuth := ws.IsAuthenticated()
-		if !isAuth {
-			log.Printf("[error] cannot process ws-packet[%s], not authenticated\n", pk.GetType())
-			continue
-		}
-		if pk.GetType() == scpacket.FeInputPacketStr {
-			feInputPk := pk.(*scpacket.FeInputPacketType)
-			if feInputPk.Remote.OwnerId != "" {
-				log.Printf("[error] cannot send input to remote with ownerid\n")
-				continue
-			}
-			if feInputPk.Remote.RemoteId == "" {
-				log.Printf("[error] invalid input packet, remoteid is not set\n")
-				continue
-			}
-			err := RemoteInputMapQueue.Enqueue(feInputPk.Remote.RemoteId, func() {
-				err = sendCmdInput(feInputPk)
-				if err != nil {
-					log.Printf("[error] sending command input: %v\n", err)
-				}
-			})
-			if err != nil {
-				log.Printf("[error] could not queue sendCmdInput: %v\n", err)
-				continue
-			}
-			continue
-		}
-		if pk.GetType() == scpacket.RemoteInputPacketStr {
-			inputPk := pk.(*scpacket.RemoteInputPacketType)
-			if inputPk.RemoteId == "" {
-				log.Printf("[error] invalid remoteinput packet, remoteid is not set\n")
-				continue
-			}
-			go func() {
-				err = remote.SendRemoteInput(inputPk)
-				if err != nil {
-					log.Printf("[error] processing remote input: %v\n", err)
-				}
-			}()
-			continue
-		}
-		if pk.GetType() == scpacket.CmdInputTextPacketStr {
-			cmdInputPk := pk.(*scpacket.CmdInputTextPacketType)
-			if cmdInputPk.ScreenId == "" {
-				log.Printf("[error] invalid cmdinput packet, screenid is not set\n")
-				continue
-			}
-			// no need for goroutine for memory ops
-			sstore.ScreenMemSetCmdInputText(cmdInputPk.ScreenId, cmdInputPk.Text)
-			continue
-		}
-		log.Printf("got ws bad message: %v\n", pk.GetType())
 	}
 }
 

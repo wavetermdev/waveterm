@@ -20,6 +20,7 @@ class WSControl {
     wsLog: mobx.IObservableArray<string> = mobx.observable.array([], { name: "wsLog" });
     authKey: string;
     baseHostPort: string;
+    lastReconnectTime: number = 0;
 
     constructor(baseHostPort: string, clientId: string, authKey: string, messageCallback: (any) => void) {
         this.baseHostPort = baseHostPort;
@@ -51,6 +52,7 @@ class WSControl {
         if (this.open.get()) {
             return;
         }
+        this.lastReconnectTime = Date.now();
         this.log(sprintf("try reconnect (%s)", desc));
         this.opening = true;
         this.wsConn = new WebSocket(this.baseHostPort + "/ws?clientid=" + this.clientId);
@@ -77,6 +79,9 @@ class WSControl {
         let timeout = 60;
         if (this.reconnectTimes < timeoutArr.length) {
             timeout = timeoutArr[this.reconnectTimes];
+        }
+        if (Date.now() - this.lastReconnectTime < 500) {
+            timeout = 1;
         }
         if (timeout > 0) {
             this.log(sprintf("sleeping %ds", timeout));
