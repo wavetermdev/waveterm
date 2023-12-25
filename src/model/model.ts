@@ -1444,10 +1444,12 @@ class InputModel {
         }
     }
 
-    updateCmdLine(cmdLine: CmdLineUpdateType): void {
+    updateCmdLine(cmdLine: T.StrWithPos): void {
         mobx.action(() => {
-            this.setCurLine(cmdLine.cmdline);
-            this.forceCursorPos.set(cmdLine.cursorpos);
+            this.setCurLine(cmdLine.str);
+            if (cmdLine.pos != appconst.NoStrPos) {
+                this.forceCursorPos.set(cmdLine.pos);
+            }
         })();
     }
 
@@ -3682,6 +3684,7 @@ class Model {
             if (oldActiveSessionId != newActiveSessionId || oldActiveScreenId != newActiveScreenId) {
                 this.activeMainView.set("session");
                 this.deactivateScreenLines();
+                debugger;
                 this.ws.watchScreen(newActiveSessionId, newActiveScreenId);
             }
         }
@@ -4003,8 +4006,8 @@ class Model {
         let activeSession = this.getActiveSession();
         let activeScreen = this.getActiveScreen();
         return [
-            activeSession == null ? null : activeSession.sessionId,
-            activeScreen == null ? null : activeScreen.screenId,
+            activeSession?.sessionId,
+            activeScreen?.screenId,
         ];
     }
 

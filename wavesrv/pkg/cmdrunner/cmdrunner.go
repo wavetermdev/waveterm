@@ -2142,7 +2142,7 @@ func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		return nil, nil
 	}
 	update := &sstore.ModelUpdate{
-		CmdLine: &sstore.CmdLineType{CmdLine: newSP.Str, CursorPos: newSP.Pos},
+		CmdLine: &utilfn.StrWithPos{Str: newSP.Str, Pos: newSP.Pos},
 	}
 	return update, nil
 }

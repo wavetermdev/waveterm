@@ -140,10 +140,11 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             this.lastFocusType = focusType;
         }
         let inputModel = GlobalModel.inputModel;
-        if (inputModel.forceCursorPos.get() != null) {
+        let fcpos = inputModel.forceCursorPos.get();
+        if (fcpos != null && fcpos != appconst.NoStrPos) {
             if (this.mainInputRef.current != null) {
-                this.mainInputRef.current.selectionStart = inputModel.forceCursorPos.get();
-                this.mainInputRef.current.selectionEnd = inputModel.forceCursorPos.get();
+                this.mainInputRef.current.selectionStart = fcpos;
+                this.mainInputRef.current.selectionEnd = fcpos;
             }
             mobx.action(() => inputModel.forceCursorPos.set(null))();
         }
@@ -420,7 +421,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         }
         let cutValue = value.substr(0, selStart);
         let restValue = value.substr(selStart);
-        let cmdLineUpdate = { cmdline: restValue, cursorpos: 0 };
+        let cmdLineUpdate = { str: restValue, pos: 0 };
         navigator.clipboard.writeText(cutValue);
         GlobalModel.inputModel.updateCmdLine(cmdLineUpdate);
     }
@@ -473,7 +474,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         let cutValue = value.slice(cutSpot, selStart);
         let prevValue = value.slice(0, cutSpot);
         let restValue = value.slice(selStart);
-        let cmdLineUpdate = { cmdline: prevValue + restValue, cursorpos: prevValue.length };
+        let cmdLineUpdate = { str: prevValue + restValue, pos: prevValue.length };
         navigator.clipboard.writeText(cutValue);
         GlobalModel.inputModel.updateCmdLine(cmdLineUpdate);
     }
@@ -493,7 +494,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 return;
             }
             let newValue = value.substr(0, selStart) + clipText + value.substr(selEnd);
-            let cmdLineUpdate = { cmdline: newValue, cursorpos: selStart + clipText.length };
+            let cmdLineUpdate = { str: newValue, pos: selStart + clipText.length };
             GlobalModel.inputModel.updateCmdLine(cmdLineUpdate);
         });
     }

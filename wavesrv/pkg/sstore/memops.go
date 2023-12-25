@@ -38,15 +38,20 @@ type ScreenMemState struct {
 	NumRunningCommands int               `json:"numrunningcommands,omitempty"`
 	IndicatorType      string            `json:"indicatortype,omitempty"`
 	CmdInputText       utilfn.StrWithPos `json:"cmdinputtext,omitempty"`
+	CmdInputSeqNum     int               `json:"cmdinputseqnum,omitempty"`
 }
 
-func ScreenMemSetCmdInputText(screenId string, sp utilfn.StrWithPos) {
+func ScreenMemSetCmdInputText(screenId string, sp utilfn.StrWithPos, seqNum int) {
 	MemLock.Lock()
 	defer MemLock.Unlock()
 	if ScreenMemStore[screenId] == nil {
 		ScreenMemStore[screenId] = &ScreenMemState{}
 	}
+	if seqNum <= ScreenMemStore[screenId].CmdInputSeqNum {
+		return
+	}
 	ScreenMemStore[screenId].CmdInputText = sp
+	ScreenMemStore[screenId].CmdInputSeqNum = seqNum
 }
 
 func ScreenMemSetNumRunningCommands(screenId string, num int) {

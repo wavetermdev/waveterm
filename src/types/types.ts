@@ -274,7 +274,7 @@ type ModelUpdateType = {
     lines?: LineType[];
     cmd?: CmdDataType;
     info?: InfoType;
-    cmdline?: CmdLineUpdateType;
+    cmdline?: StrWithPos;
     remotes?: RemoteType[];
     history?: HistoryInfoType;
     connect?: boolean;
