@@ -21,6 +21,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alessio/shellescape"
 	"github.com/armon/circbuf"
 	"github.com/creack/pty"
 	"github.com/google/uuid"
@@ -66,9 +67,9 @@ func MakeLocalMShellCommandStr(isSudo bool) (string, error) {
 		return "", err
 	}
 	if isSudo {
-		return fmt.Sprintf(`%s; sudo %s --server`, PrintPingPacket, mshellPath), nil
+		return fmt.Sprintf(`%s; sudo %s --server`, PrintPingPacket, shellescape.Quote(mshellPath)), nil
 	} else {
-		return fmt.Sprintf(`%s; %s --server`, PrintPingPacket, mshellPath), nil
+		return fmt.Sprintf(`%s; %s --server`, PrintPingPacket, shellescape.Quote(mshellPath)), nil
 	}
 }
 

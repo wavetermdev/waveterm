@@ -140,7 +140,7 @@ function getWaveSrvCmd() {
     let waveSrvPath = getWaveSrvPath();
     let waveHome = getWaveHomeDir();
     let logFile = path.join(waveHome, "wavesrv.log");
-    return `${waveSrvPath} >> "${logFile}" 2>&1`;
+    return `"${waveSrvPath}" >> "${logFile}" 2>&1`;
 }
 
 function getWaveSrvCwd() {
@@ -535,8 +535,8 @@ function sendWSSC() {
 }
 
 function runWaveSrv() {
-    let pResolve = null;
-    let pReject = null;
+    let pResolve: (value: unknown) => void;
+    let pReject: (reason?: any) => void;
     let rtnPromise = new Promise((argResolve, argReject) => {
         pResolve = argResolve;
         pReject = argReject;
@@ -546,16 +546,18 @@ function runWaveSrv() {
     if (isDev) {
         envCopy[WaveDevVarName] = "1";
     }
-    console.log("trying to run local server", getWaveSrvPath());
-    let proc = child_process.spawn("bash", ["-c", getWaveSrvCmd()], {
+    let wavePath = `"${getWaveSrvPath()}"`;
+    console.log("trying to run local server", wavePath);
+    let proc = child_process.spawn("bash", ["-c", wavePath], {
         cwd: getWaveSrvCwd(),
         env: envCopy,
+        windowsVerbatimArguments: true,
     });
     proc.on("exit", (e) => {
         console.log("wavesrv exit", e);
         waveSrvProc = null;
         sendWSSC();
-        pReject(new Error(sprintf("failed to start local server (%s)", getWaveSrvPath())));
+        pReject(new Error(sprintf("failed to start local server (%s)", wavePath)));
         if (waveSrvShouldRestart) {
             waveSrvShouldRestart = false;
             this.runWaveSrv();
