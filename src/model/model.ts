@@ -3626,6 +3626,12 @@ class Model {
             let newContext = this.getUIContext();
             if (oldContext.sessionid != newContext.sessionid || oldContext.screenid != newContext.screenid) {
                 this.inputModel.resetInput();
+                if ("cmdline" in genUpdate) {
+                    // TODO a bit of a hack since this update gets applied in runUpdate_internal.
+                    //   we then undo that update with the resetInput, and then redo it with the line below
+                    //   not sure how else to handle this for now though
+                    this.inputModel.updateCmdLine(genUpdate.cmdline);
+                }
             } else if (remotePtrToString(oldContext.remote) != remotePtrToString(newContext.remote)) {
                 this.inputModel.resetHistory();
             }
@@ -3684,7 +3690,6 @@ class Model {
             if (oldActiveSessionId != newActiveSessionId || oldActiveScreenId != newActiveScreenId) {
                 this.activeMainView.set("session");
                 this.deactivateScreenLines();
-                debugger;
                 this.ws.watchScreen(newActiveSessionId, newActiveScreenId);
             }
         }
@@ -4005,10 +4010,7 @@ class Model {
     getActiveIds(): [string, string] {
         let activeSession = this.getActiveSession();
         let activeScreen = this.getActiveScreen();
-        return [
-            activeSession?.sessionId,
-            activeScreen?.screenId,
-        ];
+        return [activeSession?.sessionId, activeScreen?.screenId];
     }
 
     _loadScreenLinesAsync(newWin: ScreenLines) {

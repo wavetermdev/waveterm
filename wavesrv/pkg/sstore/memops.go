@@ -5,6 +5,7 @@
 package sstore
 
 import (
+	"log"
 	"sync"
 
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
@@ -27,6 +28,14 @@ var screenIndicatorLevels map[string]int = map[string]int{
 	ScreenIndicator_Output:  1,
 	ScreenIndicator_Success: 2,
 	ScreenIndicator_Error:   3,
+}
+
+func dumpScreenMemStore() {
+	MemLock.Lock()
+	defer MemLock.Unlock()
+	for k, v := range ScreenMemStore {
+		log.Printf("  ScreenMemStore[%s] = %+v\n", k, v)
+	}
 }
 
 // returns true if i1 > i2
