@@ -127,10 +127,7 @@ class CmdInput extends React.Component<{}, {}> {
             numRunningLines = mobx.computed(() => win.getRunningCmdLines().length).get();
         }
         return (
-            <div
-                ref={this.cmdInputRef}
-                className={cn("cmd-input", { "has-info": infoShow }, { active: focusVal })}
-            >
+            <div ref={this.cmdInputRef} className={cn("cmd-input", { "has-info": infoShow }, { active: focusVal })}>
                 <If condition={historyShow}>
                     <div className="cmd-input-grow-spacer"></div>
                     <HistoryInfo />
@@ -153,10 +150,12 @@ class CmdInput extends React.Component<{}, {}> {
                 </If>
                 <div key="prompt" className="cmd-input-context">
                     <div className="has-text-white">
-                        <span ref={this.promptRef}><Prompt rptr={rptr} festate={feState} /></span>
+                        <span ref={this.promptRef}>
+                            <Prompt rptr={rptr} festate={feState} />
+                        </span>
                     </div>
                     <If condition={numRunningLines > 0}>
-                        <div onClick={() => this.toggleFilter(screen)}className="cmd-input-filter">
+                        <div onClick={() => this.toggleFilter(screen)} className="cmd-input-filter">
                             {numRunningLines}
                             <div className="avatar">
                                 <RotateIcon className="warning spin" />
@@ -176,7 +175,11 @@ class CmdInput extends React.Component<{}, {}> {
                             <div className="button is-static">{inputMode}</div>
                         </div>
                     </If>
-                    <TextAreaInput key={textAreaInputKey} screen={screen} onHeightChange={this.handleInnerHeightUpdate} />
+                    <TextAreaInput
+                        key={textAreaInputKey}
+                        screen={screen}
+                        onHeightChange={this.handleInnerHeightUpdate}
+                    />
                     <div className="control cmd-exec">
                         {/**<div onClick={inputModel.toggleExpandInput} className="hint-item color-white">
                             {inputModel.inputExpanded.get() ? "shrink" : "expand"} input ({renderCmdText("E")})
