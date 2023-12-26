@@ -146,9 +146,12 @@ func IsPrefix(strs []string, test string) bool {
 	return false
 }
 
+// sentinel value for StrWithPos.Pos to indicate no position
+const NoStrPos = -1
+
 type StrWithPos struct {
-	Str string
-	Pos int // this is a 'rune' position (not a byte position)
+	Str string `json:"str"`
+	Pos int    `json:"pos"` // this is a 'rune' position (not a byte position)
 }
 
 func (sp StrWithPos) String() string {
@@ -158,22 +161,26 @@ func (sp StrWithPos) String() string {
 func ParseToSP(s string) StrWithPos {
 	idx := strings.Index(s, "[*]")
 	if idx == -1 {
-		return StrWithPos{Str: s}
+		return StrWithPos{Str: s, Pos: NoStrPos}
 	}
 	return StrWithPos{Str: s[0:idx] + s[idx+3:], Pos: utf8.RuneCountInString(s[0:idx])}
 }
 
 func strWithCursor(str string, pos int) string {
+	if pos == NoStrPos {
+		return str
+	}
 	if pos < 0 {
+		// invalid position
 		return "[*]_" + str
 	}
-	if pos >= len(str) {
-		if pos > len(str) {
-			return str + "_[*]"
-		}
+	if pos > len(str) {
+		// invalid position
+		return str + "_[*]"
+	}
+	if pos == len(str) {
 		return str + "[*]"
 	}
-
 	var rtn []rune
 	for _, ch := range str {
 		if len(rtn) == pos {

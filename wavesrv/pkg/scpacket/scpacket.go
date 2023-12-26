@@ -12,12 +12,14 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
 )
 
 const FeCommandPacketStr = "fecmd"
 const WatchScreenPacketStr = "watchscreen"
 const FeInputPacketStr = "feinput"
 const RemoteInputPacketStr = "remoteinput"
+const CmdInputTextPacketStr = "cmdinputtext"
 
 type FeCommandPacketType struct {
 	Type        string            `json:"type"`
@@ -83,11 +85,27 @@ type WatchScreenPacketType struct {
 	AuthKey   string `json:"authkey"`
 }
 
+type CmdInputTextPacketType struct {
+	Type     string            `json:"type"`
+	SeqNum   int               `json:"seqnum"`
+	ScreenId string            `json:"screenid"`
+	Text     utilfn.StrWithPos `json:"text"`
+}
+
 func init() {
 	packet.RegisterPacketType(FeCommandPacketStr, reflect.TypeOf(FeCommandPacketType{}))
 	packet.RegisterPacketType(WatchScreenPacketStr, reflect.TypeOf(WatchScreenPacketType{}))
 	packet.RegisterPacketType(FeInputPacketStr, reflect.TypeOf(FeInputPacketType{}))
 	packet.RegisterPacketType(RemoteInputPacketStr, reflect.TypeOf(RemoteInputPacketType{}))
+	packet.RegisterPacketType(CmdInputTextPacketStr, reflect.TypeOf(CmdInputTextPacketType{}))
+}
+
+func (*CmdInputTextPacketType) GetType() string {
+	return CmdInputTextPacketStr
+}
+
+func MakeCmdInputTextPacket(screenId string) *CmdInputTextPacketType {
+	return &CmdInputTextPacketType{Type: CmdInputTextPacketStr, ScreenId: screenId}
 }
 
 func (*FeCommandPacketType) GetType() string {

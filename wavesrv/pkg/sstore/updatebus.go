@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log"
 	"sync"
+
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
 )
 
 var MainBus *UpdateBus = MakeUpdateBus()
@@ -36,26 +38,26 @@ func (*PtyDataUpdate) UpdateType() string {
 func (pdu *PtyDataUpdate) Clean() {}
 
 type ModelUpdate struct {
-	Sessions         []*SessionType   `json:"sessions,omitempty"`
-	ActiveSessionId  string           `json:"activesessionid,omitempty"`
-	Screens          []*ScreenType    `json:"screens,omitempty"`
-	ScreenLines      *ScreenLinesType `json:"screenlines,omitempty"`
-	Line             *LineType        `json:"line,omitempty"`
-	Lines            []*LineType      `json:"lines,omitempty"`
-	Cmd              *CmdType         `json:"cmd,omitempty"`
-	CmdLine          *CmdLineType     `json:"cmdline,omitempty"`
-	Info             *InfoMsgType     `json:"info,omitempty"`
-	ClearInfo        bool             `json:"clearinfo,omitempty"`
-	Remotes          []interface{}    `json:"remotes,omitempty"` // []*remote.RemoteState
-	History          *HistoryInfoType `json:"history,omitempty"`
-	Interactive      bool             `json:"interactive"`
-	Connect          bool             `json:"connect,omitempty"`
-	MainView         string           `json:"mainview,omitempty"`
-	Bookmarks        []*BookmarkType  `json:"bookmarks,omitempty"`
-	SelectedBookmark string           `json:"selectedbookmark,omitempty"`
-	HistoryViewData  *HistoryViewData `json:"historyviewdata,omitempty"`
-	ClientData       *ClientData      `json:"clientdata,omitempty"`
-	RemoteView       *RemoteViewType  `json:"remoteview,omitempty"`
+	Sessions         []*SessionType     `json:"sessions,omitempty"`
+	ActiveSessionId  string             `json:"activesessionid,omitempty"`
+	Screens          []*ScreenType      `json:"screens,omitempty"`
+	ScreenLines      *ScreenLinesType   `json:"screenlines,omitempty"`
+	Line             *LineType          `json:"line,omitempty"`
+	Lines            []*LineType        `json:"lines,omitempty"`
+	Cmd              *CmdType           `json:"cmd,omitempty"`
+	CmdLine          *utilfn.StrWithPos `json:"cmdline,omitempty"`
+	Info             *InfoMsgType       `json:"info,omitempty"`
+	ClearInfo        bool               `json:"clearinfo,omitempty"`
+	Remotes          []interface{}      `json:"remotes,omitempty"` // []*remote.RemoteState
+	History          *HistoryInfoType   `json:"history,omitempty"`
+	Interactive      bool               `json:"interactive"`
+	Connect          bool               `json:"connect,omitempty"`
+	MainView         string             `json:"mainview,omitempty"`
+	Bookmarks        []*BookmarkType    `json:"bookmarks,omitempty"`
+	SelectedBookmark string             `json:"selectedbookmark,omitempty"`
+	HistoryViewData  *HistoryViewData   `json:"historyviewdata,omitempty"`
+	ClientData       *ClientData        `json:"clientdata,omitempty"`
+	RemoteView       *RemoteViewType    `json:"remoteview,omitempty"`
 }
 
 func (*ModelUpdate) UpdateType() string {
@@ -142,11 +144,6 @@ type HistoryInfoType struct {
 	ScreenId    string             `json:"screenid,omitempty"`
 	Items       []*HistoryItemType `json:"items"`
 	Show        bool               `json:"show"`
-}
-
-type CmdLineType struct {
-	CmdLine   string `json:"cmdline"`
-	CursorPos int    `json:"cursorpos"`
 }
 
 type UpdateChannel struct {

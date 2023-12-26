@@ -1015,7 +1015,12 @@ func SwitchScreenById(ctx context.Context, sessionId string, screenId string) (*
 	if err != nil {
 		return nil, err
 	}
-	return &ModelUpdate{ActiveSessionId: sessionId, Sessions: []*SessionType{bareSession}}, nil
+	update := &ModelUpdate{ActiveSessionId: sessionId, Sessions: []*SessionType{bareSession}}
+	memState := GetScreenMemState(screenId)
+	if memState != nil {
+		update.CmdLine = &memState.CmdInputText
+	}
+	return update, nil
 }
 
 // screen may not exist at this point (so don't query screen table)
