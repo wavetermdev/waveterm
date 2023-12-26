@@ -468,8 +468,130 @@
             align-self: stretch;
             width: 100%;
 
-            > div {
+            .options-list {
                 width: 100%;
+                padding-top: 10px;
+
+                .search-option {
+                    padding: 5px 5px 5px 15px;
+                    display: flex;
+                    align-items: center;
+
+                    span {
+                        display: inline-block;
+                    }
+
+                    span:first-child {
+                        width: 20px;
+                    }
+                }
+
+                .selected-option {
+                    outline: 1px solid rgba(241, 246, 243, 0.15);
+                    border-radius: 4px;
+                    background: rgba(255, 255, 255, 0.06);
+                }
+
+                .color-green,
+                .color-default {
+                    svg.left-icon path {
+                        fill: @tab-green;
+                    }
+
+                    i {
+                        color: @tab-green;
+                    }
+                }
+
+                .color-orange {
+                    svg.left-icon path {
+                        fill: @tab-orange;
+                    }
+
+                    i {
+                        color: @tab-orange;
+                    }
+                }
+
+                .color-red {
+                    svg.left-icon path {
+                        fill: @tab-red;
+                    }
+
+                    i {
+                        color: @tab-red;
+                    }
+                }
+
+                .color-yellow {
+                    svg.left-icon path {
+                        fill: @tab-yellow;
+                    }
+
+                    i {
+                        color: @tab-yellow;
+                    }
+                }
+
+                .color-blue {
+                    svg.left-icon path {
+                        fill: @tab-blue;
+                    }
+
+                    i {
+                        color: @tab-blue;
+                    }
+                }
+
+                .color-mint {
+                    svg.left-icon path {
+                        fill: @tab-mint;
+                    }
+
+                    i {
+                        color: @tab-mint;
+                    }
+                }
+
+                .color-cyan {
+                    svg.left-icon path {
+                        fill: @tab-cyan;
+                    }
+
+                    i {
+                        color: @tab-cyan;
+                    }
+                }
+
+                .color-white {
+                    svg.left-icon path {
+                        fill: @tab-white;
+                    }
+
+                    i {
+                        color: @tab-white;
+                    }
+                }
+
+                .color-violet {
+                    svg.left-icon path {
+                        fill: @tab-violet;
+                    }
+
+                    i {
+                        color: @tab-violet;
+                    }
+                }
+
+                .color-pink {
+                    svg.left-icon path {
+                        fill: @tab-pink;
+                    }
+
+                    i {
+                        color: @tab-pink;
+                    }
+                }
             }
         }
     }

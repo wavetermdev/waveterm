@@ -28,7 +28,7 @@ import * as util from "../../../util/util";
 import * as textmeasure from "../../../util/textmeasure";
 import { ClientDataType } from "../../../types/types";
 import { Session, Screen } from "../../../model/model";
-import Fuse from "fuse.js";
+import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
 
 import { ReactComponent as WarningIcon } from "../../assets/icons/line/triangle-exclamation.svg";
 import shield from "../../assets/icons/shield_check.svg";
@@ -1447,7 +1447,9 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     sOptions: OArr<SwitcherDataType> = mobx.observable.array(null, {
         name: "TabSwitcherModal-sOptions",
     });
+    selectedIdx: OV<number> = mobx.observable.box(0, { name: "TabSwitcherModal-selectedIdx" });
     activeSessionIdx: number;
+    optionRefs = [];
 
     componentDidMount() {
         this.activeSessionIdx = GlobalModel.getActiveSession().sessionIdx.get();
@@ -1507,9 +1509,24 @@ class TabSwitcherModal extends React.Component<{}, {}> {
 
     @boundMethod
     handleKeyDown(e) {
-        if (e.key == "Escape") {
+        if (e.key === "Escape") {
             this.closeModal();
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            const newIndex = Math.max(this.selectedIdx.get() - 1, 0);
+            this.setSelectedIndex(newIndex);
+        } else if (e.key === "ArrowDown") {
+            e.preventDefault();
+            const newIndex = Math.min(this.selectedIdx.get() + 1, this.sOptions.length - 1);
+            this.setSelectedIndex(newIndex);
         }
+    }
+
+    @boundMethod
+    setSelectedIndex(index) {
+        mobx.action(() => {
+            this.selectedIdx.set(index);
+        })();
     }
 
     @boundMethod
@@ -1579,9 +1596,15 @@ class TabSwitcherModal extends React.Component<{}, {}> {
         });
     }
 
-    render() {
-        console.log("this.sOptions", this.sOptions);
+    renderIcon = (option: SwitcherDataType): React.ReactNode => {
+        const tabIcon = option.icon;
+        if (tabIcon === "default" || tabIcon === "square") {
+            return <SquareIcon className="left-icon" />;
+        }
+        return <i className={`fa-sharp fa-solid fa-${tabIcon}`}></i>;
+    };
 
+    render() {
         return (
             <Modal className="tabswitcher-modal">
                 <div className="wave-modal-body">
@@ -1603,14 +1626,29 @@ class TabSwitcherModal extends React.Component<{}, {}> {
                             ),
                         }}
                     />
-                    <div>
-                        <div>
-                            {this.sOptions.map((option, index) => (
-                                <div key={index}>
-                                    {option.sessionName} - {option.screenName}
+                    <div className="options-list">
+                        {this.sOptions.map((option, index) => {
+                            if (!this.optionRefs[index]) {
+                                this.optionRefs[index] = React.createRef();
+                            }
+
+                            return (
+                                <div
+                                    key={index}
+                                    ref={this.optionRefs[index]}
+                                    className={cn(
+                                        `search-option`,
+                                        { "selected-option": this.selectedIdx.get() === index },
+                                        "color-" + option.color
+                                    )}
+                                >
+                                    <span>{this.renderIcon(option)}</span>
+                                    <span>
+                                        #{option.sessionName} - {option.screenName}
+                                    </span>
                                 </div>
-                            ))}
-                        </div>
+                            );
+                        })}
                     </div>
                 </div>
             </Modal>
