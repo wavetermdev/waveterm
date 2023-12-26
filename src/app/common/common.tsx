@@ -332,7 +332,7 @@ interface TextFieldDecorationProps {
     endDecoration?: React.ReactNode;
 }
 interface TextFieldProps {
-    label: string;
+    label?: string;
     value?: string;
     className?: string;
     onChange?: (value: string) => void;
@@ -456,15 +456,17 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
             >
                 {decoration?.startDecoration && <>{decoration.startDecoration}</>}
                 <div className="wave-textfield-inner">
-                    <label
-                        className={cn("wave-textfield-inner-label", {
-                            float: this.state.hasContent || this.state.focused || placeholder,
-                            "offset-left": decoration?.startDecoration,
-                        })}
-                        htmlFor={label}
-                    >
-                        {label}
-                    </label>
+                    <If condition={label}>
+                        <label
+                            className={cn("wave-textfield-inner-label", {
+                                float: this.state.hasContent || this.state.focused || placeholder,
+                                "offset-left": decoration?.startDecoration,
+                            })}
+                            htmlFor={label}
+                        >
+                            {label}
+                        </label>
+                    </If>
                     <input
                         className={cn("wave-textfield-inner-input", { "offset-left": decoration?.startDecoration })}
                         ref={this.inputRef}
@@ -774,7 +776,7 @@ class InfoMessage extends React.Component<{ width: number; children: React.React
 function LinkRenderer(props: any): any {
     let newUrl = "https://extern?" + encodeURIComponent(props.href);
     return (
-        <a href={newUrl} target="_blank"  rel={"noopener"}>
+        <a href={newUrl} target="_blank" rel={"noopener"}>
             {props.children}
         </a>
     );
@@ -1141,7 +1143,7 @@ class Modal extends React.Component<ModalProps> {
     }
 
     render() {
-        return ReactDOM.createPortal(this.renderModal(), document.getElementById("app") );
+        return ReactDOM.createPortal(this.renderModal(), document.getElementById("app"));
     }
 }
 

@@ -18,6 +18,7 @@
         "dompurify": "^3.0.2",
         "electron-squirrel-startup": "^1.0.0",
         "framer-motion": "^10.16.16",
+        "fuse.js": "^7.0.0",
         "mobx": "6.12",
         "mobx-react": "^7.5.0",
         "monaco-editor": "^0.44.0",

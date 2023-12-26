@@ -27,6 +27,8 @@ import {
 import * as util from "../../../util/util";
 import * as textmeasure from "../../../util/textmeasure";
 import { ClientDataType } from "../../../types/types";
+import { Session, Screen } from "../../../model/model";
+import Fuse from "fuse.js";
 
 import { ReactComponent as WarningIcon } from "../../assets/icons/line/triangle-exclamation.svg";
 import shield from "../../assets/icons/shield_check.svg";
@@ -42,6 +44,7 @@ const VERSION = __WAVETERM_VERSION__;
 let BUILD = __WAVETERM_BUILD__;
 
 type OV<V> = mobx.IObservableValue<V>;
+type OArr<V> = mobx.IObservableArray<V>;
 
 const RemotePtyRows = 9;
 const RemotePtyCols = 80;
@@ -1425,9 +1428,56 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
     }
 }
 
+type SwitcherDataType = {
+    sessionId: string;
+    sessionName: string;
+    sessionIdx: number;
+    screenId: string;
+    screenIdx: number;
+    screenName: string;
+    icon: string;
+    color: string;
+};
+
 @mobxReact.observer
 class TabSwitcherModal extends React.Component<{}, {}> {
+    screens: Map<string, OV<string>>[];
+    sessions: Map<string, OV<string>>[];
+    options: SwitcherDataType[] = [];
+    sOptions: OArr<SwitcherDataType> = mobx.observable.array(null, {
+        name: "TabSwitcherModal-sOptions",
+    });
+    activeSessionIdx: number;
+
     componentDidMount() {
+        this.activeSessionIdx = GlobalModel.getActiveSession().sessionIdx.get();
+        console.log("activeSessionIdx", this.activeSessionIdx);
+        let oSessions = GlobalModel.sessionList;
+        let oScreens = GlobalModel.screenMap;
+        oScreens.forEach((oScreen) => {
+            // Find the matching session in the observable array
+            let foundSession = oSessions.find((s) => {
+                if (s.sessionId === oScreen.sessionId && s.archived.get() == false) {
+                    return true;
+                }
+                return false;
+            });
+
+            if (foundSession) {
+                let data: SwitcherDataType = {
+                    sessionName: foundSession.name.get(),
+                    sessionId: foundSession.sessionId,
+                    sessionIdx: foundSession.sessionIdx.get(),
+                    screenName: oScreen.name.get(),
+                    screenId: oScreen.screenId,
+                    screenIdx: oScreen.screenIdx.get(),
+                    icon: this.getTabIcon(oScreen),
+                    color: this.getTabColor(oScreen),
+                };
+                this.options.push(data);
+            }
+        });
+
         document.addEventListener("keydown", this.handleKeyDown);
     }
 
@@ -1436,8 +1486,28 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     }
 
     @boundMethod
+    getTabIcon(screen: Screen): string {
+        let tabIcon = "default";
+        let screenOpts = screen.opts.get();
+        if (screenOpts != null && !util.isBlank(screenOpts.tabicon)) {
+            tabIcon = screenOpts.tabicon;
+        }
+        return tabIcon;
+    }
+
+    @boundMethod
+    getTabColor(screen: Screen): string {
+        let tabColor = "default";
+        let screenOpts = screen.opts.get();
+        if (screenOpts != null && !util.isBlank(screenOpts.tabcolor)) {
+            tabColor = screenOpts.tabcolor;
+        }
+        return tabColor;
+    }
+
+    @boundMethod
     handleKeyDown(e) {
-        if (e.key === "Escape") {
+        if (e.key == "Escape") {
             this.closeModal();
         }
     }
@@ -1447,10 +1517,102 @@ class TabSwitcherModal extends React.Component<{}, {}> {
         GlobalModel.modalsModel.popModal();
     }
 
+    @boundMethod
+    handleSearch(val: string): void {
+        let sOptions = this.sortAndFilter(val);
+        mobx.action(() => {
+            this.sOptions.replace(sOptions);
+        })();
+    }
+
+    @mobx.computed
+    @boundMethod
+    sortAndFilter(searchInput: string) {
+        let filteredScreens = [];
+
+        for (let i = 0; i < this.options.length; i++) {
+            const tab = this.options[i];
+            let match = false;
+
+            if (searchInput.includes("/")) {
+                const [sessionFilter, screenFilter] = searchInput.split("/").map((s) => s.trim().toLowerCase());
+                match =
+                    tab.sessionName.toLowerCase().includes(sessionFilter) &&
+                    tab.screenName.toLowerCase().includes(screenFilter);
+            } else {
+                match =
+                    tab.sessionName.toLowerCase().includes(searchInput) ||
+                    tab.screenName.toLowerCase().includes(searchInput);
+            }
+
+            // Add tab to filtered list if it matches the criteria
+            if (match) {
+                filteredScreens.push(tab);
+            }
+        }
+
+        // Sort the filtered tabs
+        return filteredScreens.sort((a, b) => {
+            const aInCurrentSession = a.sessionIdx === this.activeSessionIdx;
+            const bInCurrentSession = b.sessionIdx === this.activeSessionIdx;
+
+            // Tabs in the current session are sorted by screenIdx
+            if (aInCurrentSession && bInCurrentSession) {
+                return a.screenIdx - b.screenIdx;
+            }
+            // a is in the current session and b is not, so a comes first
+            else if (aInCurrentSession) {
+                return -1;
+            }
+            // b is in the current session and a is not, so b comes first
+            else if (bInCurrentSession) {
+                return 1;
+            }
+            // Both are in different, non-current sessions - sort by sessionIdx and then by screenIdx
+            else {
+                if (a.sessionIdx === b.sessionIdx) {
+                    return a.screenIdx - b.screenIdx;
+                } else {
+                    return a.sessionIdx - b.sessionIdx;
+                }
+            }
+        });
+    }
+
     render() {
+        console.log("this.sOptions", this.sOptions);
+
         return (
             <Modal className="tabswitcher-modal">
-                <div className="wave-modal-body">Tab Switcher</div>
+                <div className="wave-modal-body">
+                    <TextField
+                        placeholder="Switch to "
+                        onChange={this.handleSearch}
+                        maxLength={400}
+                        autoFocus={true}
+                        decoration={{
+                            endDecoration: (
+                                <InputDecoration>
+                                    <Tooltip
+                                        message={`Search workspaces and tabs.`}
+                                        icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                    >
+                                        <i className="fa-sharp fa-regular fa-circle-question" />
+                                    </Tooltip>
+                                </InputDecoration>
+                            ),
+                        }}
+                    />
+                    <div>
+                        <div>
+                            {this.sOptions.map((option, index) => (
+                                <div key={index}>
+                                    {option.sessionName} - {option.screenName}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
             </Modal>
         );
     }
