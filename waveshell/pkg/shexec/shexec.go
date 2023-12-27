@@ -51,8 +51,6 @@ const SigKillWaitTime = 2 * time.Second
 const RtnStateFdNum = 20
 const ReturnStateReadWaitTime = 2 * time.Second
 
-const RemoteBashPath = "bash"
-
 const ClientCommandFmt = `
 PATH=$PATH:~/.mshell;
 which mshell > /dev/null;
@@ -83,11 +81,6 @@ fi
 func MakeInstallCommandStr() string {
 	return strings.ReplaceAll(InstallCommandFmt, "[%VERSION%]", semver.MajorMinor(base.MShellVersion))
 }
-
-// TODO fix bash path in these constants
-const RunCommandFmt = `%s`
-const RunSudoCommandFmt = `sudo -n -C %d bash /dev/fd/%d`
-const RunSudoPasswordCommandFmt = `cat /dev/fd/%d | sudo -k -S -C %d bash -c "echo '[from-mshell]'; exec %d>&-; bash /dev/fd/%d < /dev/fd/%d"`
 
 type MShellBinaryReaderFn func(version string, goos string, goarch string) (io.ReadCloser, error)
 
@@ -496,7 +489,7 @@ func (opts SSHOpts) MakeSSHExecCmd(remoteCommand string) *exec.Cmd {
 		}
 		// note that SSHOptsStr is *not* escaped
 		sshCmd := fmt.Sprintf("ssh %s %s %s %s", strings.Join(moreSSHOpts, " "), opts.SSHOptsStr, shellescape.Quote(opts.SSHHost), shellescape.Quote(remoteCommand))
-		ecmd := exec.Command(RemoteBashPath, "-c", sshCmd)
+		ecmd := exec.Command(shellapi.RemoteBashPath, "-c", sshCmd)
 		return ecmd
 	}
 }
@@ -556,7 +549,7 @@ func (opts *ClientOpts) MakeRunPacket() (*packet.RunPacketType, error) {
 	}
 	if !opts.Sudo {
 		// normal, non-sudo command
-		runPacket.Command = fmt.Sprintf(RunCommandFmt, opts.Command)
+		runPacket.Command = fmt.Sprintf(shellapi.RunCommandFmt, opts.Command)
 		return runPacket, nil
 	}
 	if opts.SudoWithPass {
@@ -575,7 +568,7 @@ func (opts *ClientOpts) MakeRunPacket() (*packet.RunPacketType, error) {
 		commandStdinRfd := packet.RemoteFd{FdNum: commandStdinFdNum, Read: true, DupStdin: true}
 		runPacket.Fds = append(runPacket.Fds, commandStdinRfd)
 		maxFdNum := MaxFdNumInPacket(runPacket)
-		runPacket.Command = fmt.Sprintf(RunSudoPasswordCommandFmt, pwFdNum, maxFdNum+1, pwFdNum, commandFdNum, commandStdinFdNum)
+		runPacket.Command = fmt.Sprintf(shellapi.RunBashSudoPasswordCommandFmt, pwFdNum, maxFdNum+1, pwFdNum, commandFdNum, commandStdinFdNum)
 		return runPacket, nil
 	} else {
 		commandFdNum, err := AddRunData(runPacket, opts.Command, "command")
@@ -583,7 +576,7 @@ func (opts *ClientOpts) MakeRunPacket() (*packet.RunPacketType, error) {
 			return nil, err
 		}
 		maxFdNum := MaxFdNumInPacket(runPacket)
-		runPacket.Command = fmt.Sprintf(RunSudoCommandFmt, maxFdNum+1, commandFdNum)
+		runPacket.Command = fmt.Sprintf(shellapi.RunBashSudoCommandFmt, maxFdNum+1, commandFdNum)
 		return runPacket, nil
 	}
 }
@@ -974,17 +967,6 @@ func makeRcFileStr(pk *packet.RunPacketType) string {
 	return rcBuf.String()
 }
 
-func makeExitTrap(fdNum int) string {
-	stateCmd := GetShellStateRedirectCommandStr(fdNum)
-	fmtStr := `
-_mshell_exittrap () {
-    %s
-}
-trap _mshell_exittrap EXIT
-`
-	return fmt.Sprintf(fmtStr, stateCmd)
-}
-
 func (s *ShExecType) SendSignal(sig syscall.Signal) {
 	base.Logf("signal start %v\n", sig)
 	if sig == syscall.SIGKILL {
@@ -1045,7 +1027,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		cmd.ReturnState.FdNum = RtnStateFdNum
 		rtnStateWriter = pw
 		defer pw.Close()
-		trapCmdStr := makeExitTrap(cmd.ReturnState.FdNum)
+		trapCmdStr := shellapi.MakeBashExitTrap(cmd.ReturnState.FdNum)
 		rcFileStr += trapCmdStr
 	}
 	shellVarMap := shellenv.ShellVarMapFromState(state)
@@ -1083,11 +1065,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		}
 		rcFileName = fmt.Sprintf("/dev/fd/%d", rcFileFdNum)
 	}
-	if pk.UsePty {
-		cmd.Cmd = exec.Command(shellapi.GetLocalBashPath(), "--rcfile", rcFileName, "-i", "-c", pk.Command)
-	} else {
-		cmd.Cmd = exec.Command(shellapi.GetLocalBashPath(), "--rcfile", rcFileName, "-c", pk.Command)
-	}
+	cmd.Cmd = shellapi.MakeBashShExecCommand(pk.Command, rcFileName, pk.UsePty)
 	if !pk.StateComplete {
 		cmd.Cmd.Env = os.Environ()
 	}
@@ -1478,8 +1456,4 @@ func getStderr(err error) string {
 		return lines[0][0:100]
 	}
 	return lines[0]
-}
-
-func GetShellStateRedirectCommandStr(outputFdNum int) string {
-	return fmt.Sprintf("cat <(%s) > /dev/fd/%d", shellapi.GetBashShellStateCmd(), outputFdNum)
 }

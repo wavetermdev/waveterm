@@ -5,6 +5,7 @@ package shellapi
 
 import (
 	"context"
+	"fmt"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -18,6 +19,11 @@ import (
 const BaseBashOpts = `set +m; set +H; shopt -s extglob`
 
 const BashShellVersionCmdStr = `echo bash v${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}.${BASH_VERSINFO[2]}`
+const RemoteBashPath = "bash"
+
+// TODO fix bash path in these constants
+const RunBashSudoCommandFmt = `sudo -n -C %d bash /dev/fd/%d`
+const RunBashSudoPasswordCommandFmt = `cat /dev/fd/%d | sudo -k -S -C %d bash -c "echo '[from-mshell]'; exec %d>&-; bash /dev/fd/%d < /dev/fd/%d"`
 
 // do not use these directly, call GetLocalBashMajorVersion()
 var localBashMajorVersionOnce = &sync.Once{}
@@ -80,4 +86,27 @@ func GetLocalBashPath() string {
 		}
 	}
 	return "bash"
+}
+
+func GetBashShellStateRedirectCommandStr(outputFdNum int) string {
+	return fmt.Sprintf("cat <(%s) > /dev/fd/%d", GetBashShellStateCmd(), outputFdNum)
+}
+
+func MakeBashExitTrap(fdNum int) string {
+	stateCmd := GetBashShellStateRedirectCommandStr(fdNum)
+	fmtStr := `
+_mshell_exittrap () {
+    %s
+}
+trap _mshell_exittrap EXIT
+`
+	return fmt.Sprintf(fmtStr, stateCmd)
+}
+
+func MakeBashShExecCommand(cmdStr string, rcFileName string, usePty bool) *exec.Cmd {
+	if usePty {
+		return exec.Command(GetLocalBashPath(), "--rcfile", rcFileName, "-i", "-c", cmdStr)
+	} else {
+		return exec.Command(GetLocalBashPath(), "--rcfile", rcFileName, "-c", cmdStr)
+	}
 }

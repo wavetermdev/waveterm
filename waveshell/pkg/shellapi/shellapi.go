@@ -24,6 +24,7 @@ import (
 
 const GetStateTimeout = 5 * time.Second
 const GetGitBranchCmdStr = `printf "GITBRANCH %s\x00" "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"`
+const RunCommandFmt = `%s`
 
 var userShellRegexp = regexp.MustCompile(`^UserShell: (.*)$`)
 
