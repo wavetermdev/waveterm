@@ -20,6 +20,7 @@ import (
 	"github.com/alessio/shellescape"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
 )
@@ -151,7 +152,7 @@ func runSingleCompGen(cwd string, compType string, prefix string) ([]string, boo
 		return nil, false, fmt.Errorf("invalid compgen type '%s'", compType)
 	}
 	compGenCmdStr := fmt.Sprintf("cd %s; compgen -A %s -- %s | sort | uniq | head -n %d", shellescape.Quote(cwd), shellescape.Quote(compType), shellescape.Quote(prefix), packet.MaxCompGenValues+1)
-	ecmd := exec.Command(shexec.GetLocalBashPath(), "-c", compGenCmdStr)
+	ecmd := exec.Command(shellapi.GetLocalBashPath(), "-c", compGenCmdStr)
 	outputBytes, err := ecmd.Output()
 	if err != nil {
 		return nil, false, fmt.Errorf("compgen error: %w", err)

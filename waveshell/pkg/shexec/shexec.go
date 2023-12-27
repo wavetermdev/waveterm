@@ -14,7 +14,6 @@ import (
 	"os/signal"
 	"os/user"
 	"path"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -29,20 +28,19 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/cirfile"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/mpio"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sys/unix"
 )
 
-const DefaultTermRows = 24
-const DefaultTermCols = 80
 const MinTermRows = 2
 const MinTermCols = 10
 const MaxTermRows = 1024
 const MaxTermCols = 1024
 const MaxFdNum = 1023
 const FirstExtraFilesFdNum = 3
-const DefaultTermType = "xterm-256color"
 const DefaultMaxPtySize = 1024 * 1024
 const MinMaxPtySize = 16 * 1024
 const MaxMaxPtySize = 100 * 1024 * 1024
@@ -53,26 +51,7 @@ const SigKillWaitTime = 2 * time.Second
 const RtnStateFdNum = 20
 const ReturnStateReadWaitTime = 2 * time.Second
 
-const GetStateTimeout = 5 * time.Second
 const RemoteBashPath = "bash"
-const DefaultMacOSShell = "/bin/bash"
-
-const BaseBashOpts = `set +m; set +H; shopt -s extglob`
-
-const ShellVersionCmdStr = `echo bash v${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}.${BASH_VERSINFO[2]}`
-
-// do not use these directly, call GetLocalBashMajorVersion()
-var LocalBashMajorVersionOnce = &sync.Once{}
-var LocalBashMajorVersion = ""
-
-var GetShellStateCmds = []string{
-	ShellVersionCmdStr + ";",
-	`pwd;`,
-	`declare -p $(compgen -A variable);`,
-	`alias -p;`,
-	`declare -f;`,
-	`printf "GITBRANCH %s\x00" "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"`,
-}
 
 const ClientCommandFmt = `
 PATH=$PATH:~/.mshell;
@@ -184,20 +163,6 @@ type ShExecUPR struct {
 	UPR    packet.UnknownPacketReporter
 }
 
-func GetLocalBashPath() string {
-	if runtime.GOOS == "darwin" {
-		macShell := GetMacUserShell()
-		if strings.Index(macShell, "bash") != -1 {
-			return shellescape.Quote(macShell)
-		}
-	}
-	return "bash"
-}
-
-func GetShellStateCmd() string {
-	return strings.Join(GetShellStateCmds, ` printf "\x00\x00";`)
-}
-
 func (s *ShExecType) processSpecialInputPacket(pk *packet.SpecialInputPacketType) error {
 	base.Logf("processSpecialInputPacket: %#v\n", pk)
 	if pk.WinSize != nil {
@@ -281,42 +246,6 @@ func (c *ShExecType) MakeCmdStartPacket(reqId string) *packet.CmdStartPacketType
 	return startPacket
 }
 
-func getEnvStrKey(envStr string) string {
-	eqIdx := strings.Index(envStr, "=")
-	if eqIdx == -1 {
-		return envStr
-	}
-	return envStr[0:eqIdx]
-}
-
-func UpdateCmdEnv(cmd *exec.Cmd, envVars map[string]string) {
-	if len(envVars) == 0 {
-		return
-	}
-	found := make(map[string]bool)
-	var newEnv []string
-	for _, envStr := range cmd.Env {
-		envKey := getEnvStrKey(envStr)
-		newEnvVal, ok := envVars[envKey]
-		if ok {
-			if newEnvVal == "" {
-				continue
-			}
-			newEnv = append(newEnv, envKey+"="+newEnvVal)
-			found[envKey] = true
-		} else {
-			newEnv = append(newEnv, envStr)
-		}
-	}
-	for envKey, envVal := range envVars {
-		if found[envKey] {
-			continue
-		}
-		newEnv = append(newEnv, envKey+"="+envVal)
-	}
-	cmd.Env = newEnv
-}
-
 // returns (pr, err)
 func MakeSimpleStaticWriterPipe(data []byte) (*os.File, error) {
 	pr, pw, err := os.Pipe()
@@ -330,17 +259,26 @@ func MakeSimpleStaticWriterPipe(data []byte) (*os.File, error) {
 	return pr, err
 }
 
+func MakeRunnerExec(ck base.CommandKey) (*exec.Cmd, error) {
+	msPath, err := base.GetMShellPath()
+	if err != nil {
+		return nil, err
+	}
+	ecmd := exec.Command(msPath, string(ck))
+	return ecmd, nil
+}
+
 func MakeDetachedExecCmd(pk *packet.RunPacketType, cmdTty *os.File) (*exec.Cmd, error) {
 	state := pk.State
 	if state == nil {
 		state = &packet.ShellState{}
 	}
-	ecmd := exec.Command(GetLocalBashPath(), "-c", pk.Command)
+	ecmd := exec.Command(shellapi.GetLocalBashPath(), "-c", pk.Command)
 	if !pk.StateComplete {
 		ecmd.Env = os.Environ()
 	}
-	UpdateCmdEnv(ecmd, shellenv.EnvMapFromBashState(state))
-	UpdateCmdEnv(ecmd, MShellEnvVars(getTermType(pk)))
+	shellutil.UpdateCmdEnv(ecmd, shellenv.EnvMapFromBashState(state))
+	shellutil.UpdateCmdEnv(ecmd, shellutil.MShellEnvVars(getTermType(pk)))
 	if state.Cwd != "" {
 		ecmd.Dir = base.ExpandHomeDir(state.Cwd)
 	}
@@ -371,15 +309,6 @@ func MakeDetachedExecCmd(pk *packet.RunPacketType, cmdTty *os.File) (*exec.Cmd, 
 	if len(extraFiles) > FirstExtraFilesFdNum {
 		ecmd.ExtraFiles = extraFiles[FirstExtraFilesFdNum:]
 	}
-	return ecmd, nil
-}
-
-func MakeRunnerExec(ck base.CommandKey) (*exec.Cmd, error) {
-	msPath, err := base.GetMShellPath()
-	if err != nil {
-		return nil, err
-	}
-	ecmd := exec.Command(msPath, string(ck))
 	return ecmd, nil
 }
 
@@ -458,8 +387,8 @@ func ValidateRunPacket(pk *packet.RunPacketType) error {
 }
 
 func GetWinsize(p *packet.RunPacketType) *pty.Winsize {
-	rows := DefaultTermRows
-	cols := DefaultTermCols
+	rows := shellutil.DefaultTermRows
+	cols := shellutil.DefaultTermCols
 	if p.TermOpts != nil {
 		rows = base.BoundInt(p.TermOpts.Rows, MinTermRows, MaxTermRows)
 		cols = base.BoundInt(p.TermOpts.Cols, MinTermCols, MaxTermCols)
@@ -540,7 +469,7 @@ func (opts SSHOpts) MakeSSHExecCmd(remoteCommand string) *exec.Cmd {
 		if homeDir == "" {
 			homeDir = "/"
 		}
-		ecmd := exec.Command(GetLocalBashPath(), "-c", remoteCommand)
+		ecmd := exec.Command(shellapi.GetLocalBashPath(), "-c", remoteCommand)
 		ecmd.Dir = homeDir
 		return ecmd
 	} else {
@@ -1016,7 +945,7 @@ func (cmd *ShExecType) RunRemoteIOAndWait(packetParser *packet.PacketParser, sen
 }
 
 func getTermType(pk *packet.RunPacketType) string {
-	termType := DefaultTermType
+	termType := shellutil.DefaultTermType
 	if pk.TermOpts != nil && pk.TermOpts.Term != "" {
 		termType = pk.TermOpts.Term
 	}
@@ -1025,7 +954,7 @@ func getTermType(pk *packet.RunPacketType) string {
 
 func makeRcFileStr(pk *packet.RunPacketType) string {
 	var rcBuf bytes.Buffer
-	rcBuf.WriteString(BaseBashOpts + "\n")
+	rcBuf.WriteString(shellapi.BaseBashOpts + "\n")
 	varDecls := shellenv.VarDeclsFromState(pk.State)
 	for _, varDecl := range varDecls {
 		if varDecl.IsExport() || varDecl.IsReadOnly() {
@@ -1127,7 +1056,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 			base.Logf("error writing %s: %v\n", debugRcFileName, err)
 		}
 	}
-	bashVersion := GetLocalBashMajorVersion()
+	bashVersion := shellapi.GetLocalBashMajorVersion()
 	isOldBashVersion := (semver.Compare(bashVersion, "v4") < 0)
 	var rcFileName string
 	if isOldBashVersion {
@@ -1155,14 +1084,14 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		rcFileName = fmt.Sprintf("/dev/fd/%d", rcFileFdNum)
 	}
 	if pk.UsePty {
-		cmd.Cmd = exec.Command(GetLocalBashPath(), "--rcfile", rcFileName, "-i", "-c", pk.Command)
+		cmd.Cmd = exec.Command(shellapi.GetLocalBashPath(), "--rcfile", rcFileName, "-i", "-c", pk.Command)
 	} else {
-		cmd.Cmd = exec.Command(GetLocalBashPath(), "--rcfile", rcFileName, "-c", pk.Command)
+		cmd.Cmd = exec.Command(shellapi.GetLocalBashPath(), "--rcfile", rcFileName, "-c", pk.Command)
 	}
 	if !pk.StateComplete {
 		cmd.Cmd.Env = os.Environ()
 	}
-	UpdateCmdEnv(cmd.Cmd, shellenv.EnvMapFromBashState(state))
+	shellutil.UpdateCmdEnv(cmd.Cmd, shellenv.EnvMapFromBashState(state))
 	if state.Cwd != "" {
 		cmd.Cmd.Dir = base.ExpandHomeDir(state.Cwd)
 	}
@@ -1182,7 +1111,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 			cmdTty.Close()
 		}()
 		cmd.CmdPty = cmdPty
-		UpdateCmdEnv(cmd.Cmd, MShellEnvVars(getTermType(pk)))
+		shellutil.UpdateCmdEnv(cmd.Cmd, shellutil.MShellEnvVars(getTermType(pk)))
 	}
 	if cmdTty != nil {
 		cmd.Cmd.Stdin = cmdTty
@@ -1494,7 +1423,7 @@ func MakeInitPacket() *packet.InitPacketType {
 func MakeServerInitPacket() (*packet.InitPacketType, error) {
 	var err error
 	initPacket := MakeInitPacket()
-	shellState, err := GetShellState()
+	shellState, err := shellapi.GetBashShellState()
 	if err != nil {
 		return nil, err
 	}
@@ -1551,128 +1480,6 @@ func getStderr(err error) string {
 	return lines[0]
 }
 
-func runSimpleCmdInPty(ecmd *exec.Cmd) ([]byte, error) {
-	ecmd.Env = os.Environ()
-	UpdateCmdEnv(ecmd, MShellEnvVars(DefaultTermType))
-	cmdPty, cmdTty, err := pty.Open()
-	if err != nil {
-		return nil, fmt.Errorf("opening new pty: %w", err)
-	}
-	pty.Setsize(cmdPty, &pty.Winsize{Rows: DefaultTermRows, Cols: DefaultTermCols})
-	ecmd.Stdin = cmdTty
-	ecmd.Stdout = cmdTty
-	ecmd.Stderr = cmdTty
-	ecmd.SysProcAttr = &syscall.SysProcAttr{}
-	ecmd.SysProcAttr.Setsid = true
-	ecmd.SysProcAttr.Setctty = true
-	err = ecmd.Start()
-	if err != nil {
-		cmdTty.Close()
-		cmdPty.Close()
-		return nil, err
-	}
-	cmdTty.Close()
-	defer cmdPty.Close()
-	ioDone := make(chan bool)
-	var outputBuf bytes.Buffer
-	go func() {
-		// ignore error (/dev/ptmx has read error when process is done)
-		io.Copy(&outputBuf, cmdPty)
-		close(ioDone)
-	}()
-	exitErr := ecmd.Wait()
-	if exitErr != nil {
-		return nil, exitErr
-	}
-	<-ioDone
-	return outputBuf.Bytes(), nil
-}
-
 func GetShellStateRedirectCommandStr(outputFdNum int) string {
-	return fmt.Sprintf("cat <(%s) > /dev/fd/%d", GetShellStateCmd(), outputFdNum)
-}
-
-func GetShellState() (*packet.ShellState, error) {
-	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
-	defer cancelFn()
-	cmdStr := BaseBashOpts + "; " + GetShellStateCmd()
-	ecmd := exec.CommandContext(ctx, GetLocalBashPath(), "-l", "-i", "-c", cmdStr)
-	outputBytes, err := runSimpleCmdInPty(ecmd)
-	if err != nil {
-		return nil, err
-	}
-	return shellenv.ParseShellStateOutput(outputBytes, packet.ShellType_bash)
-}
-
-func MShellEnvVars(termType string) map[string]string {
-	rtn := make(map[string]string)
-	if termType != "" {
-		rtn["TERM"] = termType
-	}
-	rtn["MSHELL"], _ = os.Executable()
-	rtn["MSHELL_VERSION"] = base.MShellVersion
-	rtn["WAVESHELL"], _ = os.Executable()
-	rtn["WAVESHELL_VERSION"] = base.MShellVersion
-	return rtn
-}
-
-func ExecGetLocalShellVersion() string {
-	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
-	defer cancelFn()
-	ecmd := exec.CommandContext(ctx, "bash", "-c", ShellVersionCmdStr)
-	out, err := ecmd.Output()
-	if err != nil {
-		return ""
-	}
-	versionStr := strings.TrimSpace(string(out))
-	if strings.Index(versionStr, "bash ") == -1 {
-		// invalid shell version (only bash is supported)
-		return ""
-	}
-	return versionStr
-}
-
-func GetLocalBashMajorVersion() string {
-	LocalBashMajorVersionOnce.Do(func() {
-		fullVersion := ExecGetLocalShellVersion()
-		LocalBashMajorVersion = packet.GetBashMajorVersion(fullVersion)
-	})
-	return LocalBashMajorVersion
-}
-
-var userShellRegexp = regexp.MustCompile(`^UserShell: (.*)$`)
-
-var cachedMacUserShell string
-var macUserShellOnce = &sync.Once{}
-
-func GetMacUserShell() string {
-	if runtime.GOOS != "darwin" {
-		return ""
-	}
-	macUserShellOnce.Do(func() {
-		cachedMacUserShell = internalMacUserShell()
-	})
-	return cachedMacUserShell
-}
-
-// dscl . -read /User/[username] UserShell
-// defaults to /bin/bash
-func internalMacUserShell() string {
-	osUser, err := user.Current()
-	if err != nil {
-		return DefaultMacOSShell
-	}
-	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancelFn()
-	userStr := "/Users/" + osUser.Username
-	out, err := exec.CommandContext(ctx, "dscl", ".", "-read", userStr, "UserShell").CombinedOutput()
-	if err != nil {
-		return DefaultMacOSShell
-	}
-	outStr := strings.TrimSpace(string(out))
-	m := userShellRegexp.FindStringSubmatch(outStr)
-	if m == nil {
-		return DefaultMacOSShell
-	}
-	return m[1]
+	return fmt.Sprintf("cat <(%s) > /dev/fd/%d", shellapi.GetBashShellStateCmd(), outputFdNum)
 }
