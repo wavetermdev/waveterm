@@ -1505,6 +1505,7 @@ type HostInfoType struct {
 	Port          int
 	SshKeyFile    string
 	ConnectMode   string
+	Skip          bool
 }
 
 func NewHostInfo(hostName string) (*HostInfoType, error) {
@@ -1537,15 +1538,22 @@ func NewHostInfo(hostName string) (*HostInfoType, error) {
 	}
 
 	identityFile, _ := ssh_config.GetStrict(hostName, "IdentityFile")
-	kbdInteractive, _ := ssh_config.GetStrict(hostName, "KbdInteractiveAuthentication")
 	passwordAuth, _ := ssh_config.GetStrict(hostName, "PasswordAuthentication")
+
+	cfgWaveOptionsStr, _ := ssh_config.GetStrict(hostName, "WaveOptions")
+	cfgWaveOptions := make(map[string]string)
+	setBracketArgs(cfgWaveOptions, cfgWaveOptionsStr)
+
+	shouldSkip := false
+	if result, _ := strconv.ParseBool(cfgWaveOptions["ignore"]); result {
+		shouldSkip = true
+	}
 
 	var sshKeyFile string
 	connectMode := sstore.ConnectModeAuto
-	if kbdInteractive == "yes" {
+	if cfgWaveOptions["connectmode"] == "manual" {
 		connectMode = sstore.ConnectModeManual
 	} else if _, err := os.Stat(identityFile); err == nil {
-		log.Printf("%s: %s\n", hostName, identityFile)
 		sshKeyFile = identityFile
 	} else if passwordAuth == "yes" {
 		connectMode = sstore.ConnectModeManual
@@ -1558,6 +1566,7 @@ func NewHostInfo(hostName string) (*HostInfoType, error) {
 	outHostInfo.Port = portVal
 	outHostInfo.SshKeyFile = sshKeyFile
 	outHostInfo.ConnectMode = connectMode
+	outHostInfo.Skip = shouldSkip
 	return outHostInfo, nil
 }
 
@@ -1580,7 +1589,7 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 	for _, hostPattern := range hostPatterns {
 		hostInfo, hostInfoErr := NewHostInfo(hostPattern)
 		if hostInfoErr != nil {
-			log.Printf("sshconfig-import: %e", hostInfoErr)
+			log.Printf("sshconfig-import: %s", hostInfoErr)
 			continue
 		}
 		parsedHostData = append(parsedHostData, hostInfo)
@@ -1658,10 +1667,10 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 			}
 			err := remote.AddRemote(ctx, r, false)
 			if err != nil {
-				log.Printf("sshconfig import failed to add remote \"%s\" (%s): it is being skipped\n", hostInfo.Host, hostInfo.CanonicalName)
+				log.Printf("sshconfig-import: failed to add remote \"%s\" (%s): it is being skipped\n", hostInfo.Host, hostInfo.CanonicalName)
 				continue
 			}
-			log.Printf("sshconfig import created remote \"%s\" (%s)\n", hostInfo.Host, hostInfo.CanonicalName)
+			log.Printf("sshconfig-import: created remote \"%s\" (%s)\n", hostInfo.Host, hostInfo.CanonicalName)
 		}
 	}
 
