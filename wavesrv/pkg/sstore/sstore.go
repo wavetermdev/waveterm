@@ -329,6 +329,14 @@ type SessionType struct {
 	Full   bool `json:"full,omitempty"`
 }
 
+type SessionTombstoneType struct {
+	SessionId string `json:"sessionid"`
+	Name      string `json:"name"`
+	DeletedTs int64  `json:"deletedts"`
+}
+
+func (SessionTombstoneType) UseDBMap() {}
+
 type SessionStatsType struct {
 	SessionId          string              `json:"sessionid"`
 	NumScreens         int                 `json:"numscreens"`
@@ -555,6 +563,16 @@ func (s *ScreenType) FromMap(m map[string]interface{}) bool {
 	quickSetInt64(&s.ArchivedTs, m, "archivedts")
 	return true
 }
+
+type ScreenTombstoneType struct {
+	ScreenId   string         `json:"screenid"`
+	SessionId  string         `json:"sessionid"`
+	Name       string         `json:"name"`
+	DeletedTs  int64          `json:"deletedts"`
+	ScreenOpts ScreenOptsType `json:"screenopts"`
+}
+
+func (ScreenTombstoneType) UseDBMap() {}
 
 const (
 	LayoutFull = "full"

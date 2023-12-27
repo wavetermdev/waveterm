@@ -39,13 +39,13 @@ const BUILD = __WAVETERM_BUILD__;
 const ScreenDeleteMessage = `
 Are you sure you want to delete this tab?
 
-All commands and output will be deleted, and removed from history.  To hide the tab, and retain the commands in history, use 'archive'.
+All commands and output will be deleted.  To hide the tab, and retain the commands and output, use 'archive'.
 `.trim();
 
 const SessionDeleteMessage = `
 Are you sure you want to delete this workspace?
 
-All commands and output will be deleted, and removed from history.  To hide the workspace, and retain the commands in history, use 'archive'.
+All commands and output will be deleted.  To hide the workspace, and retain the commands and output, use 'archive'.
 `.trim();
 
 const WebShareConfirmMarkdown = `
@@ -219,7 +219,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
             return;
         }
         if (this.screen.getScreenLines().lines.length == 0) {
-            GlobalCommandRunner.screenPurge(this.screenId);
+            GlobalCommandRunner.screenDelete(this.screenId);
             GlobalModel.modalsModel.popModal();
             return;
         }
@@ -229,7 +229,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
             if (!result) {
                 return;
             }
-            let prtn = GlobalCommandRunner.screenPurge(this.screenId);
+            let prtn = GlobalCommandRunner.screenDelete(this.screenId);
             commandRtnHandler(prtn, this.errorMessage);
             GlobalModel.modalsModel.popModal();
         });
@@ -439,7 +439,7 @@ class SessionSettingsModal extends React.Component<{}, {}> {
             if (!result) {
                 return;
             }
-            let prtn = GlobalCommandRunner.sessionPurge(this.sessionId);
+            let prtn = GlobalCommandRunner.sessionDelete(this.sessionId);
             commandRtnHandler(prtn, this.errorMessage, () => GlobalModel.modalsModel.popModal());
         });
     }

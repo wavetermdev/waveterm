@@ -12,10 +12,11 @@ import (
 	"log"
 	"os"
 	"path"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/cirfile"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
-	"github.com/google/uuid"
 )
 
 func CreateCmdPtyFile(ctx context.Context, screenId string, lineId string, maxSize int64) error {
@@ -177,11 +178,28 @@ func DeletePtyOutFile(ctx context.Context, screenId string, lineId string) error
 	return err
 }
 
+func GoDeleteScreenDirs(screenIds ...string) {
+	go func() {
+		for _, screenId := range screenIds {
+			deleteScreenDirMakeCtx(screenId)
+		}
+	}()
+}
+
+func deleteScreenDirMakeCtx(screenId string) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), time.Minute)
+	defer cancelFn()
+	err := DeleteScreenDir(ctx, screenId)
+	if err != nil {
+		log.Printf("error deleting screendir %s: %v\n", screenId, err)
+	}
+}
+
 func DeleteScreenDir(ctx context.Context, screenId string) error {
 	screenDir, err := scbase.EnsureScreenDir(screenId)
 	if err != nil {
 		return fmt.Errorf("error getting screendir: %w", err)
 	}
-	log.Printf("remove-all %s\n", screenDir)
+	log.Printf("delete screen dir, remove-all %s\n", screenDir)
 	return os.RemoveAll(screenDir)
 }

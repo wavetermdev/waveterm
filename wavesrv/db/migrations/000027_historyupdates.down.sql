@@ -4,3 +4,7 @@ ALTER TABLE history DROP COLUMN durationms;
 ALTER TABLE history DROP COLUMN festate;
 ALTER TABLE history DROP COLUMN tags;
 ALTER TABLE history DROP COLUMN status;
+
+DROP TABLE session_tombstone;
+DROP TABLE screen_tombstone;
+

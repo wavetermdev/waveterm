@@ -1105,25 +1105,30 @@ func UnArchiveScreen(ctx context.Context, sessionId string, screenId string) err
 	return txErr
 }
 
-func PurgeScreen(ctx context.Context, screenId string, sessionDel bool) (UpdatePacket, error) {
+// if sessionDel is passed, we do *not* delete the screen directory (session delete will handle that)
+func DeleteScreen(ctx context.Context, screenId string, sessionDel bool) (*ModelUpdate, error) {
 	var sessionId string
 	var isActive bool
+	var screenTombstone *ScreenTombstoneType
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT screenid FROM screen WHERE screenid = ?`
-		if !tx.Exists(query, screenId) {
-			return fmt.Errorf("cannot purge screen (not found)")
+		screen, err := GetScreenById(tx.Context(), screenId)
+		if err != nil {
+			return fmt.Errorf("cannot get screen to delete: %w", err)
+		}
+		if screen == nil {
+			return fmt.Errorf("cannot delete screen (not found)")
 		}
 		webSharing := isWebShare(tx, screenId)
 		if !sessionDel {
-			query = `SELECT sessionid FROM screen WHERE screenid = ?`
+			query := `SELECT sessionid FROM screen WHERE screenid = ?`
 			sessionId = tx.GetString(query, screenId)
 			if sessionId == "" {
-				return fmt.Errorf("cannot purge screen (no sessionid)")
+				return fmt.Errorf("cannot delete screen (no sessionid)")
 			}
 			query = `SELECT count(*) FROM screen WHERE sessionid = ? AND NOT archived`
 			numScreens := tx.GetInt(query, sessionId)
 			if numScreens <= 1 {
-				return fmt.Errorf("cannot purge the last screen in a session")
+				return fmt.Errorf("cannot delete the last screen in a session")
 			}
 			isActive = tx.Exists(`SELECT sessionid FROM session WHERE sessionid = ? AND activescreenid = ?`, sessionId, screenId)
 			if isActive {
@@ -1132,13 +1137,23 @@ func PurgeScreen(ctx context.Context, screenId string, sessionDel bool) (UpdateP
 				tx.Exec(`UPDATE session SET activescreenid = ? WHERE sessionid = ?`, nextId, sessionId)
 			}
 		}
+		screenTombstone = &ScreenTombstoneType{
+			ScreenId:   screen.ScreenId,
+			SessionId:  screen.SessionId,
+			Name:       screen.Name,
+			DeletedTs:  time.Now().UnixMilli(),
+			ScreenOpts: screen.ScreenOpts,
+		}
+		query := `INSERT INTO screen_tombstone ( screenid, sessionid, name, deletedts, screenopts)
+		                                VALUES (:screenid,:sessionid,:name,:deletedts,:screenopts)`
+		tx.NamedExec(query, dbutil.ToDBMap(screenTombstone, false))
 		query = `DELETE FROM screen WHERE screenid = ?`
-		tx.Exec(query, screenId)
-		query = `DELETE FROM history WHERE screenid = ?`
 		tx.Exec(query, screenId)
 		query = `DELETE FROM line WHERE screenid = ?`
 		tx.Exec(query, screenId)
 		query = `DELETE FROM cmd WHERE screenid = ?`
+		tx.Exec(query, screenId)
+		query = `UPDATE history SET lineid = '', linenum = 0 WHERE screenid = ?`
 		tx.Exec(query, screenId)
 		if webSharing {
 			insertScreenDelUpdate(tx, screenId)
@@ -1148,14 +1163,10 @@ func PurgeScreen(ctx context.Context, screenId string, sessionDel bool) (UpdateP
 	if txErr != nil {
 		return nil, txErr
 	}
-	delErr := DeleteScreenDir(ctx, screenId)
-	if delErr != nil {
-		log.Printf("error removing screendir")
+	if !sessionDel {
+		GoDeleteScreenDirs(screenId)
 	}
-	if sessionDel {
-		return nil, nil
-	}
-	update := &ModelUpdate{}
+	update := &ModelUpdate{ScreenTombstones: []*ScreenTombstoneType{screenTombstone}}
 	update.Screens = []*ScreenType{{SessionId: sessionId, ScreenId: screenId, Remove: true}}
 	if isActive {
 		bareSession, err := GetBareSessionById(ctx, sessionId)
@@ -1413,14 +1424,14 @@ func ArchiveScreenLines(ctx context.Context, screenId string) (*ModelUpdate, err
 	return &ModelUpdate{ScreenLines: screenLines}, nil
 }
 
-func PurgeScreenLines(ctx context.Context, screenId string) (*ModelUpdate, error) {
+func DeleteScreenLines(ctx context.Context, screenId string) (*ModelUpdate, error) {
 	var lineIds []string
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT lineid FROM line WHERE screenid = ?`
 		lineIds = tx.SelectStrings(query, screenId)
 		query = `DELETE FROM line WHERE screenid = ?`
 		tx.Exec(query, screenId)
-		query = `DELETE FROM history WHERE screenid = ?`
+		query = `UPDATE history SET lineid = '', linenum = 0 WHERE screenid = ?`
 		tx.Exec(query, screenId)
 		query = `UPDATE screen SET nextlinenum = 1 WHERE screenid = ?`
 		tx.Exec(query, screenId)
@@ -1429,7 +1440,11 @@ func PurgeScreenLines(ctx context.Context, screenId string) (*ModelUpdate, error
 	if txErr != nil {
 		return nil, txErr
 	}
-	go cleanScreenCmds(context.Background(), screenId)
+	go func() {
+		cleanCtx, cancelFn := context.WithTimeout(context.Background(), time.Minute)
+		defer cancelFn()
+		cleanScreenCmds(cleanCtx, screenId)
+	}()
 	screen, err := GetScreenById(ctx, screenId)
 	if err != nil {
 		return nil, err
@@ -1493,38 +1508,55 @@ func ScreenReset(ctx context.Context, screenId string) ([]*RemoteInstance, error
 	})
 }
 
-func PurgeSession(ctx context.Context, sessionId string) (UpdatePacket, error) {
+func DeleteSession(ctx context.Context, sessionId string) (UpdatePacket, error) {
 	var newActiveSessionId string
 	var screenIds []string
+	var sessionTombstone *SessionTombstoneType
+	update := &ModelUpdate{}
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT sessionid FROM session WHERE sessionid = ?`
-		if !tx.Exists(query, sessionId) {
-			return fmt.Errorf("session does not exist")
+		bareSession, err := GetBareSessionById(tx.Context(), sessionId)
+		if err != nil {
+			return fmt.Errorf("cannot get session to delete: %w", err)
 		}
-		query = `SELECT screenid FROM screen WHERE sessionid = ?`
+		if bareSession == nil {
+			return fmt.Errorf("cannot delete session (not found)")
+		}
+		query := `SELECT screenid FROM screen WHERE sessionid = ?`
 		screenIds = tx.SelectStrings(query, sessionId)
 		for _, screenId := range screenIds {
-			_, err := PurgeScreen(tx.Context(), screenId, true)
+			screenUpdate, err := DeleteScreen(tx.Context(), screenId, true)
 			if err != nil {
-				return fmt.Errorf("error purging screen[%s]: %v", screenId, err)
+				return fmt.Errorf("error deleting screen[%s]: %v", screenId, err)
+			}
+			if len(screenUpdate.Screens) > 0 {
+				update.Screens = append(update.Screens, screenUpdate.Screens...)
+			}
+			if len(screenUpdate.ScreenTombstones) > 0 {
+				update.ScreenTombstones = append(update.ScreenTombstones, screenUpdate.ScreenTombstones...)
 			}
 		}
 		query = `DELETE FROM session WHERE sessionid = ?`
 		tx.Exec(query, sessionId)
 		newActiveSessionId, _ = fixActiveSessionId(tx.Context())
+		sessionTombstone = &SessionTombstoneType{
+			SessionId: sessionId,
+			Name:      bareSession.Name,
+			DeletedTs: time.Now().UnixMilli(),
+		}
+		query = `INSERT INTO session_tombstone ( sessionid, name, deletedts)
+		                                VALUES (:sessionid,:name,:deletedts)`
+		tx.NamedExec(query, dbutil.ToDBMap(sessionTombstone, false))
 		return nil
 	})
 	if txErr != nil {
 		return nil, txErr
 	}
-	update := &ModelUpdate{}
+	GoDeleteScreenDirs(screenIds...)
 	if newActiveSessionId != "" {
 		update.ActiveSessionId = newActiveSessionId
 	}
 	update.Sessions = append(update.Sessions, &SessionType{SessionId: sessionId, Remove: true})
-	for _, screenId := range screenIds {
-		update.Screens = append(update.Screens, &ScreenType{ScreenId: screenId, Remove: true})
-	}
+	update.SessionTombstones = []*SessionTombstoneType{sessionTombstone}
 	return update, nil
 }
 
@@ -1988,31 +2020,24 @@ func SetLineArchivedById(ctx context.Context, screenId string, lineId string, ar
 	return txErr
 }
 
-func purgeCmdByScreenId(ctx context.Context, screenId string, lineId string) error {
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `DELETE FROM cmd WHERE screenid = ? AND lineid = ?`
-		tx.Exec(query, screenId, lineId)
-		if tx.Err != nil {
-			// short circuit here because we don't want to delete the ptyfile when the tx will be rolled back
-			return tx.Err
-		}
-		return DeletePtyOutFile(tx.Context(), screenId, lineId)
-	})
-	return txErr
-}
-
-func PurgeLinesByIds(ctx context.Context, screenId string, lineIds []string) error {
+func DeleteLinesByIds(ctx context.Context, screenId string, lineIds []string) error {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		isWS := isWebShare(tx, screenId)
 		for _, lineId := range lineIds {
-			query := `DELETE FROM line WHERE screenid = ? AND lineid = ?`
-			tx.Exec(query, screenId, lineId)
-			query = `DELETE FROM history WHERE screenid = ? AND lineid = ?`
-			tx.Exec(query, screenId, lineId)
-			err := purgeCmdByScreenId(tx.Context(), screenId, lineId)
-			if err != nil {
-				return err
+			query := `SELECT status FROM cmd WHERE screenid = ? AND lineid = ?`
+			cmdStatus := tx.GetString(query, screenId, lineId)
+			if cmdStatus == CmdStatusRunning {
+				return fmt.Errorf("cannot delete line[%s:%s], cmd is running", screenId, lineId)
 			}
+
+			query = `DELETE FROM line WHERE screenid = ? AND lineid = ?`
+			tx.Exec(query, screenId, lineId)
+			query = `DELETE FROM cmd WHERE screenid = ? AND lineid = ?`
+			tx.Exec(query, screenId, lineId)
+			// don't delete history anymore, just remove lineid reference
+			query = `UPDATE history SET lineid = '', linenum = 0 WHERE screenid = ? AND lineid = ?`
+			tx.Exec(query, screenId, lineId)
+
 			if isWS {
 				insertScreenLineUpdate(tx, screenId, lineId, UpdateType_LineDel)
 			}
@@ -2431,21 +2456,11 @@ func GetLineCmdsFromHistoryItems(ctx context.Context, historyItems []*HistoryIte
 	})
 }
 
-func PurgeHistoryByIds(ctx context.Context, historyIds []string) ([]*HistoryItemType, error) {
-	return WithTxRtn(ctx, func(tx *TxWrap) ([]*HistoryItemType, error) {
-		query := `SELECT * FROM history WHERE historyid IN (SELECT value FROM json_each(?))`
-		rtn := dbutil.SelectMapsGen[*HistoryItemType](tx, query, quickJsonArr(historyIds))
-		query = `DELETE FROM history WHERE historyid IN (SELECT value FROM json_each(?))`
+func PurgeHistoryByIds(ctx context.Context, historyIds []string) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		query := `DELETE FROM history WHERE historyid IN (SELECT value FROM json_each(?))`
 		tx.Exec(query, quickJsonArr(historyIds))
-		for _, hitem := range rtn {
-			if hitem.LineId != "" {
-				err := PurgeLinesByIds(tx.Context(), hitem.ScreenId, []string{hitem.LineId})
-				if err != nil {
-					return nil, err
-				}
-			}
-		}
-		return rtn, nil
+		return nil
 	})
 }
 

@@ -22,4 +22,18 @@ UPDATE history
 SET status = 'done'
 WHERE lineid = '';
 
+CREATE TABLE session_tombstone (
+    sessionid varchar(36) PRIMARY KEY,
+    deletedts bigint NOT NULL,
+    name varchar(50) NOT NULL
+);
+
+CREATE TABLE screen_tombstone (
+    screenid varchar(36) PRIMARY KEY,
+    sessionid varchar(36) NOT NULL,
+    deletedts bigint NOT NULL,
+    screenopts json NOT NULL,
+    name varchar(50) NOT NULL
+);
+
 
