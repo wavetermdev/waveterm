@@ -64,6 +64,11 @@ const (
 	OpenAICloudReqStr = "openai-cloudreq"
 )
 
+const (
+	ShellType_bash = "bash"
+	ShellType_zsh  = "zsh"
+)
+
 const PacketSenderQueueSize = 20
 
 const PacketEOFStr = "EOF"
@@ -699,6 +704,7 @@ type RunPacketType struct {
 	Type          string          `json:"type"`
 	ReqId         string          `json:"reqid"`
 	CK            base.CommandKey `json:"ck"`
+	ShellType     string          `json:"shelltype"` // new in v0.6.0 (either "bash" or "zsh")
 	Command       string          `json:"command"`
 	State         *ShellState     `json:"state,omitempty"`
 	StateDiff     *ShellStateDiff `json:"statediff,omitempty"`

@@ -1463,7 +1463,7 @@ func (c *ShExecType) WaitForCommand() *packet.CmdDonePacketType {
 			c.ReturnState.Reader.Close()
 		}()
 		<-c.ReturnState.DoneCh
-		state, _ := shellenv.ParseShellStateOutput(c.ReturnState.Buf, shellenv.ShellType_bash) // TODO what to do with error?
+		state, _ := shellenv.ParseShellStateOutput(c.ReturnState.Buf, packet.ShellType_bash) // TODO what to do with error?
 		donePacket.FinalState = state
 	}
 	endTs := time.Now()
@@ -1601,7 +1601,7 @@ func GetShellState() (*packet.ShellState, error) {
 	if err != nil {
 		return nil, err
 	}
-	return shellenv.ParseShellStateOutput(outputBytes, shellenv.ShellType_bash)
+	return shellenv.ParseShellStateOutput(outputBytes, packet.ShellType_bash)
 }
 
 func MShellEnvVars(termType string) map[string]string {

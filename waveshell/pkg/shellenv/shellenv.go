@@ -15,11 +15,6 @@ import (
 )
 
 const (
-	ShellType_bash = "bash"
-	ShellType_zsh  = "zsh"
-)
-
-const (
 	DeclTypeArray      = "array"
 	DeclTypeAssocArray = "assoc"
 	DeclTypeInt        = "int"
@@ -83,7 +78,7 @@ func DeclsEqual(compareName bool, d1 *DeclareDeclType, d2 *DeclareDeclType) bool
 }
 
 func ParseShellStateOutput(outputBytes []byte, shellType string) (*packet.ShellState, error) {
-	if shellType == ShellType_bash {
+	if shellType == packet.ShellType_bash {
 		return parseBashShellStateOutput(outputBytes)
 	}
 	return nil, fmt.Errorf("unknown shell type: %s", shellType)
