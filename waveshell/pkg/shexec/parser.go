@@ -43,7 +43,7 @@ func (e *ParseEnviron) Get(name string) expand.Variable {
 }
 
 func (e *ParseEnviron) Each(fn func(name string, vr expand.Variable) bool) {
-	for key, _ := range e.Env {
+	for key := range e.Env {
 		rtn := fn(key, e.Get(key))
 		if !rtn {
 			break
@@ -124,6 +124,7 @@ var NoStoreVarNames = map[string]bool{
 	"HISTTIMEFORMAT":        true,
 	"SRANDOM":               true,
 	"COLUMNS":               true,
+	"LINES":                 true,
 
 	// we want these in our remote state object
 	// "EUID":                  true,
@@ -228,7 +229,7 @@ func strMapToShellStateVars(varMap map[string]string) []byte {
 
 func getOrderedKeysStrMap(m map[string]string) []string {
 	keys := make([]string, 0, len(m))
-	for key, _ := range m {
+	for key := range m {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
@@ -237,7 +238,7 @@ func getOrderedKeysStrMap(m map[string]string) []string {
 
 func getOrderedKeysDeclMap(m map[string]*DeclareDeclType) []string {
 	keys := make([]string, 0, len(m))
-	for key, _ := range m {
+	for key := range m {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
@@ -455,7 +456,6 @@ func ParseShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
 	if strings.Index(rtn.Version, "bash") == -1 {
 		return nil, fmt.Errorf("invalid shell state output, only bash is supported")
 	}
-	rtn.Version = rtn.Version
 	cwdStr := string(fields[1])
 	if strings.HasSuffix(cwdStr, "\r\n") {
 		cwdStr = cwdStr[0 : len(cwdStr)-2]
@@ -511,7 +511,7 @@ func (d *DeclareDeclType) normalizeAssocArrayDecl() error {
 		return err
 	}
 	keys := make([]string, 0, len(varMap))
-	for key, _ := range varMap {
+	for key := range varMap {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
@@ -573,7 +573,7 @@ func strMapsEqual(m1 map[string]string, m2 map[string]string) bool {
 			return false
 		}
 	}
-	for key, _ := range m2 {
+	for key := range m2 {
 		_, found := m1[key]
 		if !found {
 			return false

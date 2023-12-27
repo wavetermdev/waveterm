@@ -38,7 +38,7 @@ func makeMapDiff(oldMap map[string]string, newMap map[string]string) MapDiffType
 			continue
 		}
 	}
-	for name, _ := range oldMap {
+	for name := range oldMap {
 		_, found := newMap[name]
 		if !found {
 			rtn.ToRemove = append(rtn.ToRemove, name)

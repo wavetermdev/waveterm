@@ -4,6 +4,7 @@
 import type React from "react";
 import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
+import { v4 as uuidv4 } from "uuid";
 import { boundMethod } from "autobind-decorator";
 import { debounce } from "throttle-debounce";
 import {
@@ -78,7 +79,7 @@ import customParseFormat from "dayjs/plugin/customParseFormat";
 import { getRendererContext, cmdStatusIsRunning } from "../app/line/lineutil";
 import { MagicLayout } from "../app/magiclayout";
 import { modalsRegistry } from "../app/common/modals/modalsRegistry";
-import * as constants from "../app/appconst";
+import * as appconst from "../app/appconst";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(localizedFormat);
@@ -130,6 +131,9 @@ type LineContainerModel = {
     setContentHeight: (context: RendererContext, height: number) => void;
     getMaxContentSize(): WindowSize;
     getIdealContentSize(): WindowSize;
+    isSidebarOpen(): boolean;
+    isLineIdInSidebar(lineId: string): boolean;
+    getContainerType(): T.LineContainerStrs;
 };
 
 type SWLinePtr = {
@@ -341,6 +345,7 @@ class Screen {
     screenId: string;
     screenIdx: OV<number>;
     opts: OV<ScreenOptsType>;
+    viewOpts: OV<T.ScreenViewOptsType>;
     name: OV<string>;
     archived: OV<boolean>;
     curRemote: OV<RemotePtrType>;
@@ -368,6 +373,7 @@ class Screen {
             name: "screen-screenidx",
         });
         this.opts = mobx.observable.box(sdata.screenopts, { name: "screen-opts" });
+        this.viewOpts = mobx.observable.box(sdata.screenviewopts, { name: "viewOpts" });
         this.archived = mobx.observable.box(!!sdata.archived, {
             name: "screen-archived",
         });
@@ -403,6 +409,29 @@ class Screen {
 
     isWebShared(): boolean {
         return this.shareMode.get() == "web" && this.webShareOpts.get() != null;
+    }
+
+    isSidebarOpen(): boolean {
+        let viewOpts = this.viewOpts.get();
+        if (viewOpts == null) {
+            return false;
+        }
+        return viewOpts.sidebar?.open;
+    }
+
+    isLineIdInSidebar(lineId: string): boolean {
+        let viewOpts = this.viewOpts.get();
+        if (viewOpts == null) {
+            return false;
+        }
+        if (!viewOpts.sidebar?.open) {
+            return false;
+        }
+        return viewOpts?.sidebar?.sidebarlineid == lineId;
+    }
+
+    getContainerType(): T.LineContainerStrs {
+        return appconst.LineContainer_Main;
     }
 
     getShareName(): string {
@@ -441,6 +470,7 @@ class Screen {
         mobx.action(() => {
             this.screenIdx.set(data.screenidx);
             this.opts.set(data.screenopts);
+            this.viewOpts.set(data.screenviewopts);
             this.name.set(data.name);
             this.nextLineNum.set(data.nextlinenum);
             this.archived.set(!!data.archived);
@@ -466,6 +496,10 @@ class Screen {
 
     getCmd(line: LineType): Cmd {
         return GlobalModel.getCmd(line);
+    }
+
+    getCmdById(lineId: string): Cmd {
+        return GlobalModel.getCmdByScreenLine(this.screenId, lineId);
     }
 
     getAnchorStr(): string {
@@ -590,6 +624,26 @@ class Screen {
         return null;
     }
 
+    getLineById(lineId: string): LineType {
+        if (lineId == null) {
+            return null;
+        }
+        let win = this.getScreenLines();
+        if (win == null) {
+            return null;
+        }
+        let lines = win.lines;
+        if (lines == null || lines.length == 0) {
+            return null;
+        }
+        for (let i = 0; i < lines.length; i++) {
+            if (lines[i].lineid == lineId) {
+                return lines[i];
+            }
+        }
+        return null;
+    }
+
     getPresentLineNum(lineNum: number): number {
         let win = this.getScreenLines();
         if (win == null || !win.loaded.get()) {
@@ -704,10 +758,16 @@ class Screen {
         }
         this.lastRows = rows;
         this.lastCols = cols;
+        let exclude = [];
         for (let lineid in this.terminals) {
-            this.terminals[lineid].resizeCols(cols);
+            let inSidebar = this.isLineIdInSidebar(lineid);
+            if (!inSidebar) {
+                this.terminals[lineid].resizeCols(cols);
+            } else {
+                exclude.push(lineid);
+            }
         }
-        GlobalCommandRunner.resizeScreen(this.screenId, rows, cols);
+        GlobalCommandRunner.resizeScreen(this.screenId, rows, cols, { exclude });
     }
 
     getTermWrap(lineId: string): TermWrap {
@@ -1384,10 +1444,12 @@ class InputModel {
         }
     }
 
-    updateCmdLine(cmdLine: CmdLineUpdateType): void {
+    updateCmdLine(cmdLine: T.StrWithPos): void {
         mobx.action(() => {
-            this.setCurLine(cmdLine.cmdline);
-            this.forceCursorPos.set(cmdLine.cursorpos);
+            this.setCurLine(cmdLine.str);
+            if (cmdLine.pos != appconst.NoStrPos) {
+                this.forceCursorPos.set(cmdLine.pos);
+            }
         })();
     }
 
@@ -1779,21 +1841,142 @@ type LineFocusType = {
     screenid?: string;
 };
 
-class SpecialHistoryViewLineContainer {
-    historyItem: HistoryItem;
+type CmdFinder = {
+    getCmdById(cmdId: string): Cmd;
+};
+
+class ForwardLineContainer {
+    winSize: T.WindowSize;
+    screen: Screen;
+    containerType: T.LineContainerStrs;
+    lineId: string;
+
+    constructor(screen: Screen, winSize: T.WindowSize, containerType: T.LineContainerStrs, lineId: string) {
+        this.screen = screen;
+        this.winSize = winSize;
+        this.containerType = containerType;
+        this.lineId = lineId;
+    }
+
+    screenSizeCallback(winSize: WindowSize): void {
+        this.winSize = winSize;
+        let termWrap = this.getTermWrap(this.lineId);
+        if (termWrap != null) {
+            let fontSize = GlobalModel.termFontSize.get();
+            let cols = windowWidthToCols(winSize.width, fontSize);
+            let rows = windowHeightToRows(winSize.height, fontSize);
+            termWrap.resizeCols(cols);
+            GlobalCommandRunner.resizeScreen(this.screen.screenId, rows, cols, { include: [this.lineId] });
+        }
+    }
+
+    getContainerType(): T.LineContainerStrs {
+        return this.containerType;
+    }
+
+    getCmd(line: LineType): Cmd {
+        return this.screen.getCmd(line);
+    }
+
+    isSidebarOpen(): boolean {
+        return false;
+    }
+
+    isLineIdInSidebar(lineId: string): boolean {
+        return false;
+    }
+
+    setLineFocus(lineNum: number, focus: boolean): void {
+        this.screen.setLineFocus(lineNum, focus);
+    }
+
+    setContentHeight(context: RendererContext, height: number): void {
+        return;
+    }
+
+    getMaxContentSize(): WindowSize {
+        let rtn = { width: this.winSize.width, height: this.winSize.height };
+        rtn.width = rtn.width - MagicLayout.ScreenMaxContentWidthBuffer;
+        return rtn;
+    }
+
+    getIdealContentSize(): WindowSize {
+        return this.winSize;
+    }
+
+    loadTerminalRenderer(elem: Element, line: LineType, cmd: Cmd, width: number): void {
+        this.screen.loadTerminalRenderer(elem, line, cmd, width);
+    }
+
+    registerRenderer(lineId: string, renderer: RendererModel): void {
+        this.screen.registerRenderer(lineId, renderer);
+    }
+
+    unloadRenderer(lineId: string): void {
+        this.screen.unloadRenderer(lineId);
+    }
+
+    getContentHeight(context: RendererContext): number {
+        return this.screen.getContentHeight(context);
+    }
+
+    getUsedRows(context: RendererContext, line: LineType, cmd: Cmd, width: number): number {
+        return this.screen.getUsedRows(context, line, cmd, width);
+    }
+
+    getIsFocused(lineNum: number): boolean {
+        return this.screen.getIsFocused(lineNum);
+    }
+
+    getRenderer(lineId: string): RendererModel {
+        return this.screen.getRenderer(lineId);
+    }
+
+    getTermWrap(lineId: string): TermWrap {
+        return this.screen.getTermWrap(lineId);
+    }
+
+    getFocusType(): FocusTypeStrs {
+        return this.screen.getFocusType();
+    }
+
+    getSelectedLine(): number {
+        return this.screen.getSelectedLine();
+    }
+}
+
+class SpecialLineContainer {
+    wsize: T.WindowSize;
+    allowInput: boolean;
     terminal: TermWrap;
     renderer: RendererModel;
     cmd: Cmd;
+    cmdFinder: CmdFinder;
+    containerType: T.LineContainerStrs;
 
-    constructor(hitem: HistoryItem) {
-        this.historyItem = hitem;
+    constructor(cmdFinder: CmdFinder, wsize: T.WindowSize, allowInput: boolean, containerType: T.LineContainerStrs) {
+        this.cmdFinder = cmdFinder;
+        this.wsize = wsize;
+        this.allowInput = allowInput;
     }
 
     getCmd(line: LineType): Cmd {
         if (this.cmd == null) {
-            this.cmd = GlobalModel.historyViewModel.getCmdById(line.lineid);
+            this.cmd = this.cmdFinder.getCmdById(line.lineid);
         }
         return this.cmd;
+    }
+
+    getContainerType(): T.LineContainerStrs {
+        return this.containerType;
+    }
+
+    isSidebarOpen(): boolean {
+        return false;
+    }
+
+    isLineIdInSidebar(lineId: string): boolean {
+        return false;
     }
 
     setLineFocus(lineNum: number, focus: boolean): void {
@@ -1805,15 +1988,11 @@ class SpecialHistoryViewLineContainer {
     }
 
     getMaxContentSize(): WindowSize {
-        let width = termWidthFromCols(80, GlobalModel.termFontSize.get());
-        let height = termHeightFromRows(25, GlobalModel.termFontSize.get());
-        return { width, height };
+        return this.wsize;
     }
 
     getIdealContentSize(): WindowSize {
-        let width = termWidthFromCols(80, GlobalModel.termFontSize.get());
-        let height = termHeightFromRows(25, GlobalModel.termFontSize.get());
-        return { width, height };
+        return this.wsize;
     }
 
     loadTerminalRenderer(elem: Element, line: LineType, cmd: Cmd, width: number): void {
@@ -1956,7 +2135,7 @@ class HistoryViewModel {
     historyItemLines: LineType[] = [];
     historyItemCmds: CmdDataType[] = [];
 
-    specialLineContainer: SpecialHistoryViewLineContainer;
+    specialLineContainer: SpecialLineContainer;
 
     constructor() {}
 
@@ -2015,7 +2194,14 @@ class HistoryViewModel {
                 this.specialLineContainer = null;
             } else {
                 this.activeItem.set(hitem.historyid);
-                this.specialLineContainer = new SpecialHistoryViewLineContainer(hitem);
+                let width = termWidthFromCols(80, GlobalModel.termFontSize.get());
+                let height = termHeightFromRows(25, GlobalModel.termFontSize.get());
+                this.specialLineContainer = new SpecialLineContainer(
+                    this,
+                    { width, height },
+                    false,
+                    appconst.LineContainer_History
+                );
             }
         })();
     }
@@ -2751,28 +2937,23 @@ class RemotesModel {
         mobx.action(() => {
             this.selectedRemoteId.set(remoteId);
             this.remoteEdit.set(null);
-            GlobalModel.modalsModel.pushModal(constants.VIEW_REMOTE);
+            GlobalModel.modalsModel.pushModal(appconst.VIEW_REMOTE);
         })();
     }
 
     openAddModal(redit: RemoteEditType): void {
         mobx.action(() => {
             this.remoteEdit.set(redit);
-            GlobalModel.modalsModel.pushModal(constants.CREATE_REMOTE);
+            GlobalModel.modalsModel.pushModal(appconst.CREATE_REMOTE);
         })();
     }
 
     openEditModal(redit?: RemoteEditType): void {
-        if (redit == null) {
-            this.startEditAuth();
-            GlobalModel.modalsModel.pushModal(constants.EDIT_REMOTE);
-        } else {
-            mobx.action(() => {
-                this.selectedRemoteId.set(redit?.remoteid);
-                this.remoteEdit.set(redit);
-                GlobalModel.modalsModel.pushModal(constants.EDIT_REMOTE);
-            })();
-        }
+        mobx.action(() => {
+            this.selectedRemoteId.set(redit?.remoteid);
+            this.remoteEdit.set(redit);
+            GlobalModel.modalsModel.pushModal(appconst.EDIT_REMOTE);
+        })();
     }
 
     selectRemote(remoteId: string): void {
@@ -2898,28 +3079,22 @@ class RemotesModel {
 }
 
 class ModalsModel {
-    store: Array<{ id: string; component: React.ComponentType }> = [];
-
-    constructor() {
-        mobx.makeAutoObservable(this);
-    }
+    store: OArr<T.ModalStoreEntry> = mobx.observable.array([], { name: "ModalsModel-store" });
 
     pushModal(modalId: string) {
         const modalFactory = modalsRegistry[modalId];
 
         if (modalFactory && !this.store.some((modal) => modal.id === modalId)) {
-            this.store.push({ id: modalId, component: modalFactory });
+            mobx.action(() => {
+                this.store.push({ id: modalId, component: modalFactory, uniqueKey: uuidv4() });
+            })();
         }
     }
 
     popModal() {
-        this.store.pop();
-    }
-
-    get activeModals() {
-        return this.store.slice().map((modal) => {
-            return modal.component;
-        });
+        mobx.action(() => {
+            this.store.pop();
+        })();
     }
 }
 
@@ -2991,14 +3166,16 @@ class Model {
     showLinks: OV<boolean> = mobx.observable.box(true, {
         name: "model-showLinks",
     });
+    packetSeqNum: number = 0;
 
     constructor() {
         this.clientId = getApi().getId();
         this.isDev = getApi().getIsDev();
         this.authKey = getApi().getAuthKey();
-        this.ws = new WSControl(this.getBaseWsHostPort(), this.clientId, this.authKey, (message: any) =>
-            this.runUpdate(message, false)
-        );
+        this.ws = new WSControl(this.getBaseWsHostPort(), this.clientId, this.authKey, (message: any) => {
+            let interactive = message?.interactive ?? false;
+            this.runUpdate(message, interactive);
+        });
         this.ws.reconnect();
         this.inputModel = new InputModel();
         this.pluginsModel = new PluginsModel();
@@ -3041,6 +3218,11 @@ class Model {
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
         document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
         setTimeout(() => this.getClientDataLoop(1), 10);
+    }
+
+    getNextPacketSeqNum(): number {
+        this.packetSeqNum++;
+        return this.packetSeqNum;
     }
 
     getPlatform(): string {
@@ -3096,7 +3278,7 @@ class Model {
     showAlert(alertMessage: AlertMessageType): Promise<boolean> {
         mobx.action(() => {
             this.alertMessage.set(alertMessage);
-            GlobalModel.modalsModel.pushModal(constants.ALERT);
+            GlobalModel.modalsModel.pushModal(appconst.ALERT);
         })();
         let prtn = new Promise<boolean>((resolve, reject) => {
             this.alertPromiseResolver = resolve;
@@ -3218,6 +3400,23 @@ class Model {
         if (e.code == "KeyB" && e.getModifierState("Meta")) {
             e.preventDefault();
             GlobalCommandRunner.bookmarksView();
+        }
+        if (
+            this.activeMainView.get() == "session" &&
+            e.code == "KeyS" &&
+            e.getModifierState("Meta") &&
+            e.getModifierState("Control")
+        ) {
+            e.preventDefault();
+            let activeScreen = this.getActiveScreen();
+            if (activeScreen != null) {
+                let isSidebarOpen = activeScreen.isSidebarOpen();
+                if (isSidebarOpen) {
+                    GlobalCommandRunner.screenSidebarClose();
+                } else {
+                    GlobalCommandRunner.screenSidebarOpen();
+                }
+            }
         }
     }
 
@@ -3375,7 +3574,7 @@ class Model {
 
     onMenuItemAbout(): void {
         mobx.action(() => {
-            this.modalsModel.pushModal(constants.ABOUT);
+            this.modalsModel.pushModal(appconst.ABOUT);
         })();
     }
 
@@ -3427,6 +3626,12 @@ class Model {
             let newContext = this.getUIContext();
             if (oldContext.sessionid != newContext.sessionid || oldContext.screenid != newContext.screenid) {
                 this.inputModel.resetInput();
+                if ("cmdline" in genUpdate) {
+                    // TODO a bit of a hack since this update gets applied in runUpdate_internal.
+                    //   we then undo that update with the resetInput, and then redo it with the line below
+                    //   not sure how else to handle this for now though
+                    this.inputModel.updateCmdLine(genUpdate.cmdline);
+                }
             } else if (remotePtrToString(oldContext.remote) != remotePtrToString(newContext.remote)) {
                 this.inputModel.resetHistory();
             }
@@ -3805,10 +4010,7 @@ class Model {
     getActiveIds(): [string, string] {
         let activeSession = this.getActiveSession();
         let activeScreen = this.getActiveScreen();
-        return [
-            activeSession == null ? null : activeSession.sessionId,
-            activeScreen == null ? null : activeScreen.screenId,
-        ];
+        return [activeSession?.sessionId, activeScreen?.screenId];
     }
 
     _loadScreenLinesAsync(newWin: ScreenLines) {
@@ -3925,6 +4127,16 @@ class Model {
 
     sendInputPacket(inputPacket: any) {
         this.ws.pushMessage(inputPacket);
+    }
+
+    sendCmdInputText(screenId: string, sp: T.StrWithPos) {
+        let pk: T.CmdInputTextPacketType = {
+            type: "cmdinputtext",
+            seqnum: this.getNextPacketSeqNum(),
+            screenid: screenId,
+            text: sp,
+        };
+        this.ws.pushMessage(pk);
     }
 
     resolveUserIdToName(userid: string): string {
@@ -4098,14 +4310,23 @@ class CommandRunner {
         GlobalModel.submitCommand("screen", "close", [screen], { nohist: "1" }, false);
     }
 
-    resizeScreen(screenId: string, rows: number, cols: number) {
-        GlobalModel.submitCommand(
-            "screen",
-            "resize",
-            null,
-            { nohist: "1", screen: screenId, cols: String(cols), rows: String(rows) },
-            false
-        );
+    // include is lineIds to include, exclude is lineIds to exclude
+    // if include is given then it *only* does those ids.  if exclude is given (or not),
+    // it does all running commands in the screen except for excluded.
+    resizeScreen(screenId: string, rows: number, cols: number, opts?: { include?: string[]; exclude?: string[] }) {
+        let kwargs: Record<string, string> = {
+            nohist: "1",
+            screen: screenId,
+            cols: String(cols),
+            rows: String(rows),
+        };
+        if (opts?.include != null && opts?.include.length > 0) {
+            kwargs.include = opts.include.join(",");
+        }
+        if (opts?.exclude != null && opts?.exclude.length > 0) {
+            kwargs.exclude = opts.exclude.join(",");
+        }
+        GlobalModel.submitCommand("screen", "resize", null, kwargs, false);
     }
 
     screenArchive(screenId: string, shouldArchive: boolean): Promise<CommandRtnType> {
@@ -4380,6 +4601,26 @@ class CommandRunner {
             interactive
         );
     }
+
+    screenSidebarAddLine(lineId: string) {
+        GlobalModel.submitCommand("sidebar", "add", null, { nohist: "1", line: lineId }, false);
+    }
+
+    screenSidebarRemove() {
+        GlobalModel.submitCommand("sidebar", "remove", null, { nohist: "1" }, false);
+    }
+
+    screenSidebarClose(): void {
+        GlobalModel.submitCommand("sidebar", "close", null, { nohist: "1" }, false);
+    }
+
+    screenSidebarOpen(width?: string): void {
+        let kwargs: Record<string, string> = { nohist: "1" };
+        if (width != null) {
+            kwargs.width = width;
+        }
+        GlobalModel.submitCommand("sidebar", "open", null, kwargs, false);
+    }
 }
 
 function cmdPacketString(pk: FeCmdPacketType): string {
@@ -4467,6 +4708,8 @@ export {
     RemotesModel,
     MinFontSize,
     MaxFontSize,
-    VERSION
+    SpecialLineContainer,
+    ForwardLineContainer,
+    VERSION,
 };
 export type { LineContainerModel };

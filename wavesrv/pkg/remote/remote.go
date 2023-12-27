@@ -43,6 +43,11 @@ const RemoteTermCols = 80
 const PtyReadBufSize = 100
 const RemoteConnectTimeout = 15 * time.Second
 
+// we add this ping packet to the MShellServer Commands in order to deal with spurious SSH output
+// basically we guarantee the parser will see a valid packet (either an init error or a ping)
+// so we can pass ignoreUntilValid to PacketParser
+const PrintPingPacket = `printf "\n##N{\"type\": \"ping\"}\n"`
+
 const MShellServerCommandFmt = `
 PATH=$PATH:~/.mshell;
 which mshell-[%VERSION%] > /dev/null;
@@ -50,6 +55,7 @@ if [[ "$?" -ne 0 ]]
 then
   printf "\n##N{\"type\": \"init\", \"notfound\": true, \"uname\": \"%s | %s\"}\n" "$(uname -s)" "$(uname -m)"
 else
+  [%PINGPACKET%]
   mshell-[%VERSION%] --server
 fi
 `
@@ -60,14 +66,16 @@ func MakeLocalMShellCommandStr(isSudo bool) (string, error) {
 		return "", err
 	}
 	if isSudo {
-		return fmt.Sprintf("sudo %s --server", mshellPath), nil
+		return fmt.Sprintf(`%s; sudo %s --server`, PrintPingPacket, mshellPath), nil
 	} else {
-		return fmt.Sprintf("%s --server", mshellPath), nil
+		return fmt.Sprintf(`%s; %s --server`, PrintPingPacket, mshellPath), nil
 	}
 }
 
 func MakeServerCommandStr() string {
-	return strings.ReplaceAll(MShellServerCommandFmt, "[%VERSION%]", semver.MajorMinor(scbase.MShellVersion))
+	rtn := strings.ReplaceAll(MShellServerCommandFmt, "[%VERSION%]", semver.MajorMinor(scbase.MShellVersion))
+	rtn = strings.ReplaceAll(rtn, "[%PINGPACKET%]", PrintPingPacket)
+	return rtn
 }
 
 const (
@@ -1189,7 +1197,6 @@ func (msh *MShellProc) Launch(interactive bool) {
 			msh.WriteToPtyBuffer("*error, cannot find local mshell binary: %v\n", err)
 			return
 		}
-		log.Printf("local mshell binary: %s\n", cmdStr)
 	} else {
 		cmdStr = MakeServerCommandStr()
 	}

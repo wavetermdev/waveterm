@@ -754,7 +754,7 @@ func RunInstallFromCmd(ctx context.Context, ecmd *exec.Cmd, tryDetect bool, mshe
 	if mshellStream != nil {
 		sendMShellBinary(inputWriter, mshellStream)
 	}
-	packetParser := packet.MakePacketParser(stdoutReader, false)
+	packetParser := packet.MakePacketParser(stdoutReader, nil)
 	err = ecmd.Start()
 	if err != nil {
 		return fmt.Errorf("running ssh command: %w", err)
@@ -808,7 +808,6 @@ func RunInstallFromCmd(ctx context.Context, ecmd *exec.Cmd, tryDetect bool, mshe
 		}
 		return fmt.Errorf("invalid response packet '%s' received from client", pk.GetType())
 	}
-	return fmt.Errorf("did not receive version string from client, install not successful")
 }
 
 func RunInstallFromOpts(opts *InstallOpts) error {
@@ -887,8 +886,8 @@ func RunClientSSHCommandAndWait(runPacket *packet.RunPacketType, fdContext FdCon
 		return nil, fmt.Errorf("running ssh command: %w", err)
 	}
 	defer cmd.Close()
-	stdoutPacketParser := packet.MakePacketParser(stdoutReader, false)
-	stderrPacketParser := packet.MakePacketParser(stderrReader, false)
+	stdoutPacketParser := packet.MakePacketParser(stdoutReader, nil)
+	stderrPacketParser := packet.MakePacketParser(stderrReader, nil)
 	packetParser := packet.CombinePacketParsers(stdoutPacketParser, stderrPacketParser, false)
 	sender := packet.MakePacketSender(inputWriter, nil)
 	versionOk := false

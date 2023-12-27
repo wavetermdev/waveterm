@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log"
 	"sync"
+
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
 )
 
 var MainBus *UpdateBus = MakeUpdateBus()
@@ -43,7 +45,7 @@ type ModelUpdate struct {
 	Line             *LineType            `json:"line,omitempty"`
 	Lines            []*LineType          `json:"lines,omitempty"`
 	Cmd              *CmdType             `json:"cmd,omitempty"`
-	CmdLine          *CmdLineType         `json:"cmdline,omitempty"`
+	CmdLine          *utilfn.StrWithPos   `json:"cmdline,omitempty"`
 	Info             *InfoMsgType         `json:"info,omitempty"`
 	ClearInfo        bool                 `json:"clearinfo,omitempty"`
 	Remotes          []RemoteRuntimeState `json:"remotes,omitempty"`
@@ -67,6 +69,29 @@ func (update *ModelUpdate) Clean() {
 		return
 	}
 	update.ClientData = update.ClientData.Clean()
+}
+
+func (update *ModelUpdate) UpdateScreen(newScreen *ScreenType) {
+	if newScreen == nil {
+		return
+	}
+	for idx, screen := range update.Screens {
+		if screen.ScreenId == newScreen.ScreenId {
+			update.Screens[idx] = newScreen
+			return
+		}
+	}
+	update.Screens = append(update.Screens, newScreen)
+}
+
+// only sets InfoError if InfoError is not already set
+func (update *ModelUpdate) AddInfoError(errStr string) {
+	if update.Info == nil {
+		update.Info = &InfoMsgType{}
+	}
+	if update.Info.InfoError == "" {
+		update.Info.InfoError = errStr
+	}
 }
 
 type RemoteViewType struct {
@@ -119,11 +144,6 @@ type HistoryInfoType struct {
 	ScreenId    string             `json:"screenid,omitempty"`
 	Items       []*HistoryItemType `json:"items"`
 	Show        bool               `json:"show"`
-}
-
-type CmdLineType struct {
-	CmdLine   string `json:"cmdline"`
-	CursorPos int    `json:"cursorpos"`
 }
 
 type UpdateChannel struct {
@@ -219,7 +239,7 @@ func (bus *UpdateBus) SendScreenUpdate(screenId string, update UpdatePacket) {
 
 func MakeSessionsUpdateForRemote(sessionId string, ri *RemoteInstance) []*SessionType {
 	return []*SessionType{
-		&SessionType{
+		{
 			SessionId: sessionId,
 			Remotes:   []*RemoteInstance{ri},
 		},

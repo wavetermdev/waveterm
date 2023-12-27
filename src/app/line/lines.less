@@ -35,11 +35,16 @@
         }
     }
 
+    .sidebar-message {
+        color: @term-yellow;
+    }
+
     .line-header {
         display: flex;
         flex-direction: row;
         padding-bottom: 0.7rem;
         width: 100%;
+        line-height: 1.2;
 
         &.is-expanded {
             height: auto;
@@ -54,9 +59,8 @@
             visibility: hidden;
             cursor: pointer;
             padding: 3px;
-            width: 2rem;
-            height: 2rem;
             border-radius: 50%;
+            font-size: 14px;
         }
 
         .line-icon-show {
@@ -305,15 +309,6 @@
             position: absolute;
             top: 0px;
             right: -4px;
-        }
-
-        &.num-4 {
-        }
-
-        &.num-5 {
-        }
-
-        &.num-6 {
         }
 
         &.status-done {

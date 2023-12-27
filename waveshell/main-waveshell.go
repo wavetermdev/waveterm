@@ -156,7 +156,7 @@ func readFullRunPacket(packetParser *packet.PacketParser) (*packet.RunPacketType
 }
 
 func handleSingle(fromServer bool) {
-	packetParser := packet.MakePacketParser(os.Stdin, false)
+	packetParser := packet.MakePacketParser(os.Stdin, nil)
 	sender := packet.MakePacketSender(os.Stdout, nil)
 	defer func() {
 		sender.Close()

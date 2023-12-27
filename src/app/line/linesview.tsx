@@ -28,6 +28,8 @@ type ScreenInterface = {
     setAnchorFields(anchorLine: number, anchorOffset: number, reason: string): void;
     getSelectedLine(): number;
     getAnchor(): { anchorLine: number; anchorOffset: number };
+    isLineIdInSidebar(lineId: string): boolean;
+    getLineByNum(lineNum: number): T.LineType;
 };
 
 // <Line key={line.lineid} line={line} screen={screen} width={width} visible={this.visibleMap.get(lineNumStr)} staticRender={this.staticRender.get()} onHeightChange={this.onHeightChange} overrideCollapsed={this.collapsedMap.get(lineNumStr)} topBorder={topBorder} renderMode={renderMode}/>;
@@ -298,6 +300,10 @@ class LinesView extends React.Component<
         if (newLine == 0) {
             return;
         }
+        let line = screen.getLineByNum(newLine);
+        if (line == null || screen.isLineIdInSidebar(line.lineid)) {
+            return;
+        }
         let lidx = this.findClosestLineIndex(newLine);
         this.setLineVisible(newLine, true);
         // console.log("update selected line", this.lastSelectedLine, "=>", newLine, sprintf("anchor=%d:%d", screen.anchorLine, screen.anchorOffset));
@@ -351,7 +357,7 @@ class LinesView extends React.Component<
         }
     }
 
-    handleResize(entries: any) {
+    handleResize(entries: ResizeObserverEntry[]) {
         let linesElem = this.linesRef.current;
         if (linesElem == null) {
             return;

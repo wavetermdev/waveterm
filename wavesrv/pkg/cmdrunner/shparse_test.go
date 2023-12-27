@@ -58,5 +58,11 @@ func TestIsReturnStateCommand(t *testing.T) {
 	testRSC(t, "unset FOO BAR", true)
 	testRSC(t, "FOO=1; ls", true)
 	testRSC(t, ". ./test", true)
-	testRSC(t, "{ FOO=6; }", false)
+	testRSC(t, "{ FOO=6; }", true)
+	testRSC(t, "cd foo && ls -l", true)
+	testRSC(t, "ls -l && ./foo || git checkout main", true)
+	testRSC(t, "./foo || ./bar", false)
+	testRSC(t, ". foo.sh", true)
+	testRSC(t, "cd work; conda activate myenv", true)
+	testRSC(t, "asdf foo", true)
 }

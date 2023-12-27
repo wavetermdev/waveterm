@@ -196,7 +196,6 @@ class OpenAIRenderer extends React.Component<{ model: OpenAIRendererModel }> {
         }
         let message = output.message;
         let opts = model.opts;
-        let maxWidth = opts.maxSize.width;
         let minWidth = opts.maxSize.width;
         if (minWidth > 1000) {
             minWidth = 1000;
@@ -206,12 +205,9 @@ class OpenAIRenderer extends React.Component<{ model: OpenAIRendererModel }> {
                 <div className="openai-role openai-role-assistant">[assistant]</div>
                 <div className="openai-content-assistant">
                     <div
-                        className="scroller"
                         style={{
                             maxHeight: opts.maxSize.height,
-                            minWidth: minWidth,
-                            width: "min-content",
-                            maxWidth: maxWidth,
+                            paddingRight: 5
                         }}
                     >
                         <Markdown text={message} style={{ maxHeight: opts.maxSize.height }} />
@@ -240,7 +236,19 @@ class OpenAIRenderer extends React.Component<{ model: OpenAIRendererModel }> {
         let cmd = model.rawCmd;
         let styleVal: Record<string, any> = null;
         if (model.loading.get() && model.savedHeight >= 0 && model.isDone) {
-            styleVal = { height: model.savedHeight };
+            styleVal = { 
+                height: model.savedHeight,
+                maxHeight: model.opts.maxSize.height
+            };
+        } else {
+            let maxWidth = model.opts.maxSize.width
+            if(maxWidth > 1000) {
+                maxWidth = 1000
+            }
+            styleVal = { 
+                maxWidth: maxWidth,
+                maxHeight: model.opts.maxSize.height
+            };
         }
         let version = model.version.get();
         let loadError = model.loadError.get();

@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"testing"
@@ -53,25 +53,39 @@ func makeData(size int) string {
 	return rtn
 }
 
-func TestCreate(t *testing.T) {
+func testFilePath(t *testing.T, name string) string {
 	tempDir := t.TempDir()
-	f1Name := path.Join(tempDir, "f1.cf")
-	f, err := OpenCirFile(f1Name)
-	if err == nil || f != nil {
-		t.Fatalf("OpenCirFile f1.cf should fail (no file)")
-	}
-	f, err = CreateCirFile(f1Name, 100)
+	return filepath.Join(tempDir, name)
+}
+
+func createTestFile(t *testing.T, name string) (*File, string, error) {
+	fPath := testFilePath(t, name)
+	f, err := CreateCirFile(fPath, 100)
 	if err != nil {
-		t.Fatalf("CreateCirFile f1.cf failed: %v", err)
+		return nil, fPath, err
+	}
+	return f, fPath, nil
+}
+
+func TestCreate(t *testing.T) {
+	const fName = "f1.cf"
+	fPath := testFilePath(t, fName)
+	f, err := OpenCirFile(fPath)
+	if err == nil || f != nil {
+		t.Fatalf("OpenCirFile %s should fail (no file)", fPath)
+	}
+	f, err = CreateCirFile(fPath, 100)
+	if err != nil {
+		t.Fatalf("CreateCirFile %s failed: %v", fPath, err)
 	}
 	if f == nil {
-		t.Fatalf("CreateCirFile f1.cf returned nil")
+		t.Fatalf("CreateCirFile %s returned nil", fPath)
 	}
 	err = f.ReadMeta(context.Background())
 	if err != nil {
-		t.Fatalf("cannot readmeta from f1.cf: %v", err)
+		t.Fatalf("cannot readmeta from %s: %v", fPath, err)
 	}
-	validateFileSize(t, f1Name, 256)
+	validateFileSize(t, fPath, 256)
 	if f.Version != CurrentVersion || f.MaxSize != 100 || f.FileOffset != 0 || f.StartPos != FilePosEmpty || f.EndPos != 0 || f.FileDataSize != 0 || f.FlockStatus != 0 {
 		t.Fatalf("error with initial metadata #%v", f)
 	}
@@ -84,62 +98,65 @@ func TestCreate(t *testing.T) {
 	if realOffset != 0 || nr != 0 || err != nil {
 		t.Fatalf("error with empty read: real-offset[%d] nr[%d] err[%v]", realOffset, nr, err)
 	}
-	f2, err := CreateCirFile(f1Name, 100)
+	f2, err := CreateCirFile(fPath, 100)
 	if err == nil || f2 != nil {
 		t.Fatalf("should be an error to create duplicate CirFile")
 	}
 }
 
+const cannotAppendData = "cannot append data: %v"
+const cannotReadNext = "cannot readnext: %v"
+const cannotCreateCirFile = "cannot create cirfile [%s]: %v"
+
 func TestFile(t *testing.T) {
-	tempDir := t.TempDir()
-	f1Name := path.Join(tempDir, "f1.cf")
-	f, err := CreateCirFile(f1Name, 100)
+	const fName = "f1.cf"
+	f, fPath, err := createTestFile(t, fName)
 	if err != nil {
-		t.Fatalf("cannot create cirfile: %v", err)
+		t.Fatalf(cannotCreateCirFile, fPath, err)
 	}
 	err = f.AppendData(context.Background(), nil)
 	if err != nil {
-		t.Fatalf("cannot append data: %v", err)
+		t.Fatalf(cannotAppendData, err)
 	}
-	validateFileSize(t, f1Name, HeaderLen)
+	validateFileSize(t, fPath, HeaderLen)
 	validateMeta(t, "1", f, FilePosEmpty, 0, 0, 0)
 	err = f.AppendData(context.Background(), []byte("hello"))
 	if err != nil {
-		t.Fatalf("cannot append data: %v", err)
+		t.Fatalf(cannotAppendData, err)
 	}
-	validateFileSize(t, f1Name, HeaderLen+5)
+	validateFileSize(t, fPath, HeaderLen+5)
 	validateMeta(t, "2", f, 0, 4, 5, 0)
 	err = f.AppendData(context.Background(), []byte(" foo"))
 	if err != nil {
-		t.Fatalf("cannot append data: %v", err)
+		t.Fatalf(cannotAppendData, err)
 	}
-	validateFileSize(t, f1Name, HeaderLen+9)
+	validateFileSize(t, fPath, HeaderLen+9)
 	validateMeta(t, "3", f, 0, 8, 9, 0)
 	err = f.AppendData(context.Background(), []byte("\n"+makeData(20)))
 	if err != nil {
-		t.Fatalf("cannot append data: %v", err)
+		t.Fatalf(cannotAppendData, err)
 	}
-	validateFileSize(t, f1Name, HeaderLen+30)
+	validateFileSize(t, fPath, HeaderLen+30)
 	validateMeta(t, "4", f, 0, 29, 30, 0)
 
 	data120 := makeData(120)
 	err = f.AppendData(context.Background(), []byte(data120))
 	if err != nil {
-		t.Fatalf("cannot append data: %v", err)
+		t.Fatalf(cannotAppendData, err)
 	}
-	validateFileSize(t, f1Name, HeaderLen+100)
+	validateFileSize(t, fPath, HeaderLen+100)
 	validateMeta(t, "5", f, 0, 99, 100, 50)
 	err = f.AppendData(context.Background(), []byte("foo "))
 	if err != nil {
-		t.Fatalf("cannot append data: %v", err)
+		t.Fatalf(cannotAppendData, err)
 	}
-	validateFileSize(t, f1Name, HeaderLen+100)
+	validateFileSize(t, fPath, HeaderLen+100)
 	validateMeta(t, "6", f, 4, 3, 100, 54)
 
 	buf := make([]byte, 5)
 	realOffset, nr, err := f.ReadNext(context.Background(), buf, 0)
 	if err != nil {
-		t.Fatalf("cannot ReadNext: %v", err)
+		t.Fatalf(cannotReadNext, err)
 	}
 	if realOffset != 54 {
 		t.Fatalf("wrong realoffset got[%d] expected[%d]", realOffset, 54)
@@ -152,7 +169,7 @@ func TestFile(t *testing.T) {
 	}
 	realOffset, nr, err = f.ReadNext(context.Background(), buf, 60)
 	if err != nil {
-		t.Fatalf("cannot readnext: %v", err)
+		t.Fatalf(cannotReadNext, err)
 	}
 	if realOffset != 60 && nr != 5 {
 		t.Fatalf("invalid rtn realoffset[%d] nr[%d]", realOffset, nr)
@@ -171,13 +188,12 @@ func TestFile(t *testing.T) {
 }
 
 func TestFlock(t *testing.T) {
-	tempDir := t.TempDir()
-	f1Name := path.Join(tempDir, "f1.cf")
-	f, err := CreateCirFile(f1Name, 100)
+	const fName = "f1.cf"
+	f, fPath, err := createTestFile(t, fName)
 	if err != nil {
-		t.Fatalf("cannot create cirfile: %v", err)
+		t.Fatalf(cannotCreateCirFile, fPath, err)
 	}
-	fd2, err := os.OpenFile(f1Name, os.O_RDWR, 0777)
+	fd2, err := os.OpenFile(fPath, os.O_RDWR, 0777)
 	if err != nil {
 		t.Fatalf("cannot open file: %v", err)
 	}
@@ -185,17 +201,18 @@ func TestFlock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot lock fd: %v", err)
 	}
-	err = f.AppendData(nil, []byte("hello"))
+	err = f.AppendData(context.TODO(), []byte("hello"))
 	if err != syscall.EWOULDBLOCK {
 		t.Fatalf("append should fail with EWOULDBLOCK")
 	}
-	timeoutCtx, _ := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	timeoutCtx, cancelFn := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancelFn()
 	startTs := time.Now()
 	err = f.ReadMeta(timeoutCtx)
 	if err != context.DeadlineExceeded {
 		t.Fatalf("readmeta should fail with context.DeadlineExceeded")
 	}
-	dur := time.Now().Sub(startTs)
+	dur := time.Since(startTs)
 	if dur < 20*time.Millisecond {
 		t.Fatalf("readmeta should take at least 20ms")
 	}
@@ -208,7 +225,7 @@ func TestFlock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot flock: %v", err)
 	}
-	err = f.AppendData(nil, []byte("hello"))
+	err = f.AppendData(context.TODO(), []byte("hello"))
 	if err != syscall.EWOULDBLOCK {
 		t.Fatalf("append should fail with EWOULDBLOCK")
 	}
@@ -217,69 +234,70 @@ func TestFlock(t *testing.T) {
 		t.Fatalf("readmeta err (should work because LOCK_SH): %v", err)
 	}
 	fd2.Close()
-	err = f.AppendData(nil, []byte("hello"))
+	err = f.AppendData(context.TODO(), []byte("hello"))
 	if err != nil {
 		t.Fatalf("append error (should work fd2 was closed): %v", err)
 	}
 }
 
+const writeAtError = "writeat error: %v"
+
 func TestWriteAt(t *testing.T) {
-	tempDir := t.TempDir()
-	f1Name := path.Join(tempDir, "f1.cf")
-	f, err := CreateCirFile(f1Name, 100)
+	const fName = "f1.cf"
+	f, fPath, err := createTestFile(t, fName)
 	if err != nil {
 		t.Fatalf("cannot create cirfile: %v", err)
 	}
-	err = f.WriteAt(nil, []byte("hello\nmike"), 4)
+	err = f.WriteAt(context.TODO(), []byte("hello\nmike"), 4)
 	if err != nil {
-		t.Fatalf("writeat error: %v", err)
+		t.Fatalf(writeAtError, err)
 	}
-	err = f.WriteAt(nil, []byte("t"), 2)
+	err = f.WriteAt(context.TODO(), []byte("t"), 2)
 	if err != nil {
-		t.Fatalf("writeat error: %v", err)
+		t.Fatalf(writeAtError, err)
 	}
-	err = f.WriteAt(nil, []byte("more"), 30)
+	err = f.WriteAt(context.TODO(), []byte("more"), 30)
 	if err != nil {
-		t.Fatalf("writeat error: %v", err)
+		t.Fatalf(writeAtError, err)
 	}
-	err = f.WriteAt(nil, []byte("\n"), 19)
+	err = f.WriteAt(context.TODO(), []byte("\n"), 19)
 	if err != nil {
-		t.Fatalf("writeat error: %v", err)
+		t.Fatalf(writeAtError, err)
 	}
-	dumpFile(f1Name)
-	err = f.WriteAt(nil, []byte("hello"), 200)
+	dumpFile(fPath)
+	err = f.WriteAt(context.TODO(), []byte("hello"), 200)
 	if err != nil {
-		t.Fatalf("writeat error: %v", err)
+		t.Fatalf(writeAtError, err)
 	}
 	buf := make([]byte, 10)
 	realOffset, nr, err := f.ReadNext(context.Background(), buf, 200)
 	if err != nil || realOffset != 200 || nr != 5 || string(buf[0:nr]) != "hello" {
 		t.Fatalf("invalid readnext: err[%v] realoffset[%d] nr[%d] buf[%s]", err, realOffset, nr, string(buf[0:nr]))
 	}
-	err = f.WriteAt(nil, []byte("0123456789\n"), 100)
+	err = f.WriteAt(context.TODO(), []byte("0123456789\n"), 100)
 	if err != nil {
-		t.Fatalf("writeat error: %v", err)
+		t.Fatalf(writeAtError, err)
 	}
-	dumpFile(f1Name)
+	dumpFile(fPath)
 	dataStr := makeData(200)
-	err = f.WriteAt(nil, []byte(dataStr), 50)
+	err = f.WriteAt(context.TODO(), []byte(dataStr), 50)
 	if err != nil {
-		t.Fatalf("writeat error: %v", err)
+		t.Fatalf(writeAtError, err)
 	}
-	dumpFile(f1Name)
+	dumpFile(fPath)
 
 	dataStr = makeData(1000)
-	err = f.WriteAt(nil, []byte(dataStr), 1002)
+	err = f.WriteAt(context.TODO(), []byte(dataStr), 1002)
 	if err != nil {
-		t.Fatalf("writeat error: %v", err)
+		t.Fatalf(writeAtError, err)
 	}
-	err = f.WriteAt(nil, []byte("hello\n"), 2010)
+	err = f.WriteAt(context.TODO(), []byte("hello\n"), 2010)
 	if err != nil {
-		t.Fatalf("writeat error: %v", err)
+		t.Fatalf(writeAtError, err)
 	}
-	err = f.AppendData(nil, []byte("foo\n"))
+	err = f.AppendData(context.TODO(), []byte("foo\n"))
 	if err != nil {
 		t.Fatalf("appenddata error: %v", err)
 	}
-	dumpFile(f1Name)
+	dumpFile(fPath)
 }

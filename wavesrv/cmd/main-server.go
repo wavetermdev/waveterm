@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"io/fs"
 	"log"
@@ -75,6 +76,22 @@ type ClientActiveState struct {
 	Active bool `json:"active"`
 	Open   bool `json:"open"`
 }
+
+// Error constants
+const (
+	ErrorDecodingJson    = "error decoding json: %w"
+	ErrorPanic           = "panic: %v"
+	ErrorInvalidScreenId = "invalid screenid: %v"
+	ErrorInvalidLineId   = "invalid lineid: %v"
+)
+
+// Header constants
+const (
+	CacheControlHeaderKey     = "Cache-Control"
+	CacheControlHeaderNoCache = "no-cache"
+	ContentTypeHeaderKey      = "Content-Type"
+	ContentTypeJson           = "application/json"
+)
 
 func setWSState(state *scws.WSState) {
 	GlobalLock.Lock()
@@ -161,7 +178,6 @@ func HandleGetClientData(w http.ResponseWriter, r *http.Request) {
 	}
 	cdata = cdata.Clean()
 	WriteJsonSuccess(w, cdata)
-	return
 }
 
 func HandleSetWinSize(w http.ResponseWriter, r *http.Request) {
@@ -169,7 +185,7 @@ func HandleSetWinSize(w http.ResponseWriter, r *http.Request) {
 	var winSize sstore.ClientWinSizeType
 	err := decoder.Decode(&winSize)
 	if err != nil {
-		WriteJsonError(w, fmt.Errorf("error decoding json: %w", err))
+		WriteJsonError(w, fmt.Errorf(ErrorDecodingJson, err))
 		return
 	}
 	err = sstore.SetWinSize(r.Context(), winSize)
@@ -178,7 +194,6 @@ func HandleSetWinSize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJsonSuccess(w, true)
-	return
 }
 
 // params: fg, active, open
@@ -187,7 +202,7 @@ func HandleLogActiveState(w http.ResponseWriter, r *http.Request) {
 	var activeState ClientActiveState
 	err := decoder.Decode(&activeState)
 	if err != nil {
-		WriteJsonError(w, fmt.Errorf("error decoding json: %w", err))
+		WriteJsonError(w, fmt.Errorf(ErrorDecodingJson, err))
 		return
 	}
 	activity := sstore.ActivityUpdate{}
@@ -207,7 +222,6 @@ func HandleLogActiveState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJsonSuccess(w, true)
-	return
 }
 
 // params: screenid
@@ -215,7 +229,7 @@ func HandleGetScreenLines(w http.ResponseWriter, r *http.Request) {
 	qvals := r.URL.Query()
 	screenId := qvals.Get("screenid")
 	if _, err := uuid.Parse(screenId); err != nil {
-		WriteJsonError(w, fmt.Errorf("invalid screenid: %w", err))
+		WriteJsonError(w, fmt.Errorf("invalid screenid, err: %w", err))
 		return
 	}
 	screenLines, err := sstore.GetScreenLinesById(r.Context(), screenId)
@@ -224,7 +238,6 @@ func HandleGetScreenLines(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJsonSuccess(w, screenLines)
-	return
 }
 
 func HandleRtnState(w http.ResponseWriter, r *http.Request) {
@@ -236,25 +249,24 @@ func HandleRtnState(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[error] in handlertnstate: %v\n", r)
 		debug.PrintStack()
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("panic: %v", r)))
-		return
+		w.Write([]byte(fmt.Sprintf(ErrorPanic, r)))
 	}()
 	qvals := r.URL.Query()
 	screenId := qvals.Get("screenid")
 	lineId := qvals.Get("lineid")
 	if screenId == "" || lineId == "" {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("must specify screenid and lineid")))
+		w.Write([]byte("must specify screenid and lineid"))
 		return
 	}
 	if _, err := uuid.Parse(screenId); err != nil {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("invalid screenid: %v", err)))
+		w.Write([]byte(fmt.Sprintf(ErrorInvalidScreenId, err)))
 		return
 	}
 	if _, err := uuid.Parse(lineId); err != nil {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("invalid lineid: %v", err)))
+		w.Write([]byte(fmt.Sprintf(ErrorInvalidLineId, err)))
 		return
 	}
 	data, err := rtnstate.GetRtnStateDiff(r.Context(), screenId, lineId)
@@ -265,7 +277,6 @@ func HandleRtnState(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Write(data)
-	return
 }
 
 func HandleRemotePty(w http.ResponseWriter, r *http.Request) {
@@ -273,7 +284,7 @@ func HandleRemotePty(w http.ResponseWriter, r *http.Request) {
 	remoteId := qvals.Get("remoteid")
 	if remoteId == "" {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("must specify remoteid")))
+		w.Write([]byte("must specify remoteid"))
 		return
 	}
 	if _, err := uuid.Parse(remoteId); err != nil {
@@ -290,7 +301,6 @@ func HandleRemotePty(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-PtyDataOffset", strconv.FormatInt(realOffset, 10))
 	w.WriteHeader(http.StatusOK)
 	w.Write(data)
-	return
 }
 
 func HandleGetPtyOut(w http.ResponseWriter, r *http.Request) {
@@ -299,17 +309,17 @@ func HandleGetPtyOut(w http.ResponseWriter, r *http.Request) {
 	lineId := qvals.Get("lineid")
 	if screenId == "" || lineId == "" {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("must specify screenid and lineid")))
+		w.Write([]byte("must specify screenid and lineid"))
 		return
 	}
 	if _, err := uuid.Parse(screenId); err != nil {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("invalid screenid: %v", err)))
+		w.Write([]byte(fmt.Sprintf(ErrorInvalidScreenId, err)))
 		return
 	}
 	if _, err := uuid.Parse(lineId); err != nil {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("invalid lineid: %v", err)))
+		w.Write([]byte(fmt.Sprintf(ErrorInvalidLineId, err)))
 		return
 	}
 	realOffset, data, err := sstore.ReadFullPtyOutFile(r.Context(), screenId, lineId)
@@ -319,7 +329,7 @@ func HandleGetPtyOut(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("error reading ptyout file: %v", err)))
+		w.Write([]byte(html.EscapeString(fmt.Sprintf("error reading ptyout file: %v", err))))
 		return
 	}
 	w.Header().Set("X-PtyDataOffset", strconv.FormatInt(realOffset, 10))
@@ -368,10 +378,9 @@ func HandleWriteFile(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Printf("[error] in write-file: %v\n", r)
 		debug.PrintStack()
-		WriteJsonError(w, fmt.Errorf("panic: %v", r))
-		return
+		WriteJsonError(w, fmt.Errorf(ErrorPanic, r))
 	}()
-	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set(CacheControlHeaderKey, CacheControlHeaderNoCache)
 	params, mpFile, err := parseWriteFileParams(r)
 	if err != nil {
 		WriteJsonError(w, fmt.Errorf("error parsing multipart form params: %w", err))
@@ -382,11 +391,11 @@ func HandleWriteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := uuid.Parse(params.ScreenId); err != nil {
-		WriteJsonError(w, fmt.Errorf("invalid screenid: %v", err))
+		WriteJsonError(w, fmt.Errorf(ErrorInvalidScreenId, err))
 		return
 	}
 	if _, err := uuid.Parse(params.LineId); err != nil {
-		WriteJsonError(w, fmt.Errorf("invalid lineid: %v", err))
+		WriteJsonError(w, fmt.Errorf(ErrorInvalidLineId, err))
 		return
 	}
 	_, cmd, err := sstore.GetLineCmdByLineId(r.Context(), params.ScreenId, params.LineId)
@@ -482,7 +491,6 @@ func HandleWriteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJsonSuccess(w, nil)
-	return
 }
 
 func HandleReadFile(w http.ResponseWriter, r *http.Request) {
@@ -496,27 +504,27 @@ func HandleReadFile(w http.ResponseWriter, r *http.Request) {
 	}
 	if screenId == "" || lineId == "" {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("must specify sessionid, screenid, and lineid")))
+		w.Write([]byte("must specify sessionid, screenid, and lineid"))
 		return
 	}
 	if path == "" {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("must specify path")))
+		w.Write([]byte("must specify path"))
 		return
 	}
 	if _, err := uuid.Parse(screenId); err != nil {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("invalid screenid: %v", err)))
+		w.Write([]byte(fmt.Sprintf(ErrorInvalidScreenId, err)))
 		return
 	}
 	if _, err := uuid.Parse(lineId); err != nil {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("invalid lineid: %v", err)))
+		w.Write([]byte(fmt.Sprintf(ErrorInvalidLineId, err)))
 		return
 	}
 	if !ContentTypeHeaderValidRe.MatchString(contentType) {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("invalid mimetype specified")))
+		w.Write([]byte("invalid mimetype specified"))
 		return
 	}
 	_, cmd, err := sstore.GetLineCmdByLineId(r.Context(), screenId, lineId)
@@ -527,18 +535,18 @@ func HandleReadFile(w http.ResponseWriter, r *http.Request) {
 	}
 	if cmd == nil {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("invalid line, no cmd")))
+		w.Write([]byte("invalid line, no cmd"))
 		return
 	}
 	if cmd.Remote.RemoteId == "" {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("invalid line, no remote")))
+		w.Write([]byte("invalid line, no remote"))
 		return
 	}
 	msh := remote.GetRemoteById(cmd.Remote.RemoteId)
 	if msh == nil {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("invalid line, cannot resolve remote")))
+		w.Write([]byte("invalid line, cannot resolve remote"))
 		return
 	}
 	rrState := msh.GetRemoteRuntimeState()
@@ -581,7 +589,7 @@ func HandleReadFile(w http.ResponseWriter, r *http.Request) {
 	}
 	infoJson, _ := json.Marshal(resp.Info)
 	w.Header().Set("X-FileInfo", base64.StdEncoding.EncodeToString(infoJson))
-	w.Header().Set("Content-Type", contentType)
+	w.Header().Set(ContentTypeHeaderKey, contentType)
 	w.WriteHeader(http.StatusOK)
 	for {
 		dataPkIf, err := iter.Next(r.Context())
@@ -603,21 +611,19 @@ func HandleReadFile(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Write(dataPk.Data)
 	}
-	return
 }
 
 func WriteJsonError(w http.ResponseWriter, errVal error) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(ContentTypeHeaderKey, ContentTypeJson)
 	w.WriteHeader(200)
 	errMap := make(map[string]interface{})
 	errMap["error"] = errVal.Error()
 	barr, _ := json.Marshal(errMap)
 	w.Write(barr)
-	return
 }
 
 func WriteJsonSuccess(w http.ResponseWriter, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(ContentTypeHeaderKey, ContentTypeJson)
 	rtnMap := make(map[string]interface{})
 	rtnMap["success"] = true
 	if data != nil {
@@ -630,7 +636,6 @@ func WriteJsonSuccess(w http.ResponseWriter, data interface{}) {
 	}
 	w.WriteHeader(200)
 	w.Write(barr)
-	return
 }
 
 func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
@@ -641,10 +646,9 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Printf("[error] in run-command: %v\n", r)
 		debug.PrintStack()
-		WriteJsonError(w, fmt.Errorf("panic: %v", r))
-		return
+		WriteJsonError(w, fmt.Errorf(ErrorPanic, r))
 	}()
-	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set(CacheControlHeaderKey, CacheControlHeaderNoCache)
 	decoder := json.NewDecoder(r.Body)
 	var commandPk scpacket.FeCommandPacketType
 	err := decoder.Decode(&commandPk)
@@ -661,7 +665,6 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 		update.Clean()
 	}
 	WriteJsonSuccess(w, update)
-	return
 }
 
 func AuthKeyWrap(fn WebFnType) WebFnType {
@@ -677,7 +680,7 @@ func AuthKeyWrap(fn WebFnType) WebFnType {
 			w.Write([]byte("x-authkey header is invalid"))
 			return
 		}
-		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set(CacheControlHeaderKey, CacheControlHeaderNoCache)
 		fn(w, r)
 	}
 }

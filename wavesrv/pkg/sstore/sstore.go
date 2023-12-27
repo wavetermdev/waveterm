@@ -472,22 +472,35 @@ func (sco ScreenCreateOpts) HasCopy() bool {
 	return sco.CopyRemote || sco.CopyCwd || sco.CopyEnv
 }
 
+type ScreenSidebarOptsType struct {
+	Open  bool   `json:"open,omitempty"`
+	Width string `json:"width,omitempty"`
+
+	// this used to be more complicated (sections with types).  simplified for this release
+	SidebarLineId string `json:"sidebarlineid,omitempty"`
+}
+
+type ScreenViewOptsType struct {
+	Sidebar *ScreenSidebarOptsType `json:"sidebar,omitempty"`
+}
+
 type ScreenType struct {
-	SessionId    string              `json:"sessionid"`
-	ScreenId     string              `json:"screenid"`
-	Name         string              `json:"name"`
-	ScreenIdx    int64               `json:"screenidx"`
-	ScreenOpts   ScreenOptsType      `json:"screenopts"`
-	OwnerId      string              `json:"ownerid"`
-	ShareMode    string              `json:"sharemode"`
-	WebShareOpts *ScreenWebShareOpts `json:"webshareopts,omitempty"`
-	CurRemote    RemotePtrType       `json:"curremote"`
-	NextLineNum  int64               `json:"nextlinenum"`
-	SelectedLine int64               `json:"selectedline"`
-	Anchor       ScreenAnchorType    `json:"anchor"`
-	FocusType    string              `json:"focustype"`
-	Archived     bool                `json:"archived,omitempty"`
-	ArchivedTs   int64               `json:"archivedts,omitempty"`
+	SessionId      string              `json:"sessionid"`
+	ScreenId       string              `json:"screenid"`
+	Name           string              `json:"name"`
+	ScreenIdx      int64               `json:"screenidx"`
+	ScreenOpts     ScreenOptsType      `json:"screenopts"`
+	ScreenViewOpts ScreenViewOptsType  `json:"screenviewopts"`
+	OwnerId        string              `json:"ownerid"`
+	ShareMode      string              `json:"sharemode"`
+	WebShareOpts   *ScreenWebShareOpts `json:"webshareopts,omitempty"`
+	CurRemote      RemotePtrType       `json:"curremote"`
+	NextLineNum    int64               `json:"nextlinenum"`
+	SelectedLine   int64               `json:"selectedline"`
+	Anchor         ScreenAnchorType    `json:"anchor"`
+	FocusType      string              `json:"focustype"`
+	Archived       bool                `json:"archived,omitempty"`
+	ArchivedTs     int64               `json:"archivedts,omitempty"`
 
 	// only for updates
 	Full   bool `json:"full,omitempty"`
@@ -501,6 +514,7 @@ func (s *ScreenType) ToMap() map[string]interface{} {
 	rtn["name"] = s.Name
 	rtn["screenidx"] = s.ScreenIdx
 	rtn["screenopts"] = quickJson(s.ScreenOpts)
+	rtn["screenviewopts"] = quickJson(s.ScreenViewOpts)
 	rtn["ownerid"] = s.OwnerId
 	rtn["sharemode"] = s.ShareMode
 	rtn["webshareopts"] = quickNullableJson(s.WebShareOpts)
@@ -522,6 +536,7 @@ func (s *ScreenType) FromMap(m map[string]interface{}) bool {
 	quickSetStr(&s.Name, m, "name")
 	quickSetInt64(&s.ScreenIdx, m, "screenidx")
 	quickSetJson(&s.ScreenOpts, m, "screenopts")
+	quickSetJson(&s.ScreenViewOpts, m, "screenviewopts")
 	quickSetStr(&s.OwnerId, m, "ownerid")
 	quickSetStr(&s.ShareMode, m, "sharemode")
 	quickSetNullableJson(&s.WebShareOpts, m, "webshareopts")

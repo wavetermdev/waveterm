@@ -65,6 +65,7 @@ const MaxSignalNum = 64
 const MaxEvalDepth = 5
 const MaxOpenAIAPITokenLen = 100
 const MaxOpenAIModelLen = 100
+const MaxSidebarSections = 5
 
 const TermFontSizeMin = 8
 const TermFontSizeMax = 24
@@ -212,6 +213,11 @@ func init() {
 	registerCmdFn("client:notifyupdatewriter", ClientNotifyUpdateWriterCommand)
 	registerCmdFn("client:accepttos", ClientAcceptTosCommand)
 
+	registerCmdFn("sidebar:open", SidebarOpenCommand)
+	registerCmdFn("sidebar:close", SidebarCloseCommand)
+	registerCmdFn("sidebar:add", SidebarAddCommand)
+	registerCmdFn("sidebar:remove", SidebarRemoveCommand)
+
 	registerCmdFn("telemetry", TelemetryCommand)
 	registerCmdFn("telemetry:on", TelemetryOnCommand)
 	registerCmdFn("telemetry:off", TelemetryOffCommand)
@@ -309,6 +315,20 @@ func argN(pk *scpacket.FeCommandPacketType, n int) string {
 		return ""
 	}
 	return pk.Args[n]
+}
+
+// will trim strings for whitespace
+func resolveCommaSepListToMap(arg string) map[string]bool {
+	if arg == "" {
+		return nil
+	}
+	rtn := make(map[string]bool)
+	fields := strings.Split(arg, ",")
+	for _, field := range fields {
+		field = strings.TrimSpace(field)
+		rtn[field] = true
+	}
+	return rtn
 }
 
 func resolveBool(arg string, def bool) bool {
@@ -581,8 +601,24 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 		return nil, err
 	}
 	update.Interactive = pk.Interactive
+	// this update is sent asynchronously for timing issues.  the cmd update comes async as well
+	// so if we return this directly it sometimes gets evaluated first.  by pushing it on the MainBus
+	// it ensures it happens after the command creation event.
 	sstore.MainBus.SendScreenUpdate(ids.ScreenId, update)
 	return nil, nil
+}
+
+func implementRunInSidebar(ctx context.Context, screenId string, lineId string) (*sstore.ScreenType, error) {
+	screen, err := sidebarSetOpen(ctx, "run", screenId, true, "")
+	if err != nil {
+		return nil, err
+	}
+	screen.ScreenViewOpts.Sidebar.SidebarLineId = lineId
+	err = sstore.ScreenUpdateViewOpts(ctx, screenId, screen.ScreenViewOpts)
+	if err != nil {
+		return nil, fmt.Errorf("/run error updating screenviewopts: %v", err)
+	}
+	return screen, nil
 }
 
 func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, historyContext historyContextType, isMetaCmd bool, hadError bool) error {
@@ -644,10 +680,34 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 		update, rtnErr = HandleCommand(ctxWithHistory, newPk)
 	}
 	if !resolveBool(pk.Kwargs["nohist"], false) {
+		// TODO should this be "pk" or "newPk" (2nd arg)
 		err := addToHistory(ctx, pk, historyContext, (newPk.MetaCmd != "run"), (rtnErr != nil))
 		if err != nil {
 			log.Printf("[error] adding to history: %v\n", err)
 			// fall through (non-fatal error)
+		}
+	}
+	var hasModelUpdate bool
+	var modelUpdate *sstore.ModelUpdate
+	if update == nil {
+		hasModelUpdate = true
+		modelUpdate = &sstore.ModelUpdate{}
+		update = modelUpdate
+	} else if mu, ok := update.(*sstore.ModelUpdate); ok {
+		hasModelUpdate = true
+		modelUpdate = mu
+	}
+	if resolveBool(newPk.Kwargs["sidebar"], false) && historyContext.LineId != "" && hasModelUpdate {
+		ids, resolveErr := resolveUiIds(ctx, newPk, R_Session|R_Screen)
+		// we are ignoring resolveErr (if not nil).  obviously can't add to sidebar and
+		// either another error already happened, or this command was never about the sidebar
+		if resolveErr == nil {
+			screen, sidebarErr := implementRunInSidebar(ctx, ids.ScreenId, historyContext.LineId)
+			if sidebarErr == nil {
+				modelUpdate.UpdateScreen(screen)
+			} else {
+				modelUpdate.AddInfoError(fmt.Sprintf("cannot move command to sidebar: %v", sidebarErr))
+			}
 		}
 	}
 	return update, rtnErr
@@ -778,6 +838,8 @@ func ScreenReorderCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 
 	return update, nil
 }
+
+var screenAnchorRe = regexp.MustCompile("^(\\d+)(?::(-?\\d+))?$")
 
 func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
@@ -911,7 +973,115 @@ func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	return update, nil
 }
 
-var screenAnchorRe = regexp.MustCompile("^(\\d+)(?::(-?\\d+))?$")
+var sidebarWidthRe = regexp.MustCompile("^\\d+(px|%)$")
+
+func sidebarSetOpen(ctx context.Context, cmdStr string, screenId string, open bool, width string) (*sstore.ScreenType, error) {
+	if width != "" && !sidebarWidthRe.MatchString(width) {
+		return nil, fmt.Errorf("/%s invalid width specified, must be either a px value or a percent (e.g. '300px' or '50%%')", cmdStr)
+	}
+	if strings.HasSuffix(width, "%") {
+		percentNum, _ := strconv.Atoi(width[:len(width)-1])
+		if percentNum < 10 || percentNum > 90 {
+			return nil, fmt.Errorf("/%s invalid width specified, percentage must be between 10%% and 90%%", cmdStr)
+		}
+	}
+	if strings.HasSuffix(width, "px") {
+		pxNum, _ := strconv.Atoi(width[:len(width)-2])
+		if pxNum < 200 {
+			return nil, fmt.Errorf("/%s invalid width specified, minimum sizebar width is 200px", cmdStr)
+		}
+	}
+	screen, err := sstore.GetScreenById(ctx, screenId)
+	if err != nil {
+		return nil, fmt.Errorf("/%s cannot get screen: %v", cmdStr, err)
+	}
+	if screen.ScreenViewOpts.Sidebar == nil {
+		screen.ScreenViewOpts.Sidebar = &sstore.ScreenSidebarOptsType{}
+	}
+	screen.ScreenViewOpts.Sidebar.Open = open
+	if width != "" {
+		screen.ScreenViewOpts.Sidebar.Width = width
+	}
+	err = sstore.ScreenUpdateViewOpts(ctx, screenId, screen.ScreenViewOpts)
+	if err != nil {
+		return nil, fmt.Errorf("/%s error updating screenviewopts: %v", cmdStr, err)
+	}
+	return screen, nil
+}
+
+func SidebarOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Screen)
+	if err != nil {
+		return nil, err
+	}
+	screen, err := sidebarSetOpen(ctx, GetCmdStr(pk), ids.ScreenId, true, pk.Kwargs["width"])
+	if err != nil {
+		return nil, err
+	}
+	return &sstore.ModelUpdate{Screens: []*sstore.ScreenType{screen}}, nil
+}
+
+func SidebarCloseCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Screen)
+	if err != nil {
+		return nil, err
+	}
+	screen, err := sidebarSetOpen(ctx, GetCmdStr(pk), ids.ScreenId, false, "")
+	if err != nil {
+		return nil, err
+	}
+	return &sstore.ModelUpdate{Screens: []*sstore.ScreenType{screen}}, nil
+}
+
+func SidebarAddCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Screen)
+	if err != nil {
+		return nil, err
+	}
+	var addLineId string
+	if lineArg, ok := pk.Kwargs["line"]; ok {
+		lineId, err := sstore.FindLineIdByArg(ctx, ids.ScreenId, lineArg)
+		if err != nil {
+			return nil, fmt.Errorf("error looking up lineid: %v", err)
+		}
+		addLineId = lineId
+	}
+	if addLineId == "" {
+		return nil, fmt.Errorf("/%s must specify line=[lineid] to add to the sidebar", GetCmdStr(pk))
+	}
+	screen, err := sidebarSetOpen(ctx, GetCmdStr(pk), ids.ScreenId, true, pk.Kwargs["width"])
+	if err != nil {
+		return nil, err
+	}
+	screen.ScreenViewOpts.Sidebar.SidebarLineId = addLineId
+	err = sstore.ScreenUpdateViewOpts(ctx, ids.ScreenId, screen.ScreenViewOpts)
+	if err != nil {
+		return nil, fmt.Errorf("/%s error updating screenviewopts: %v", GetCmdStr(pk), err)
+	}
+	return &sstore.ModelUpdate{Screens: []*sstore.ScreenType{screen}}, nil
+}
+
+func SidebarRemoveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Screen)
+	if err != nil {
+		return nil, err
+	}
+	screen, err := sstore.GetScreenById(ctx, ids.ScreenId)
+	if err != nil {
+		return nil, fmt.Errorf("/%s cannot get screeen: %v", GetCmdStr(pk), err)
+	}
+	sidebar := screen.ScreenViewOpts.Sidebar
+	if sidebar == nil {
+		return nil, nil
+	}
+	sidebar.SidebarLineId = ""
+	sidebar.Open = false
+	err = sstore.ScreenUpdateViewOpts(ctx, ids.ScreenId, screen.ScreenViewOpts)
+	if err != nil {
+		return nil, fmt.Errorf("/%s error updating screenviewopts: %v", GetCmdStr(pk), err)
+	}
+	return &sstore.ModelUpdate{Screens: []*sstore.ScreenType{screen}}, nil
+}
 
 func RemoteInstallCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Remote)
@@ -2186,7 +2356,7 @@ func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		return nil, nil
 	}
 	update := &sstore.ModelUpdate{
-		CmdLine: &sstore.CmdLineType{CmdLine: newSP.Str, CursorPos: newSP.Pos},
+		CmdLine: &utilfn.StrWithPos{Str: newSP.Str, Pos: newSP.Pos},
 	}
 	return update, nil
 }
@@ -2843,7 +3013,15 @@ func ScreenResizeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	if len(runningCmds) == 0 {
 		return nil, nil
 	}
+	includeMap := resolveCommaSepListToMap(pk.Kwargs["include"])
+	excludeMap := resolveCommaSepListToMap(pk.Kwargs["exclude"])
 	for _, cmd := range runningCmds {
+		if excludeMap[cmd.LineId] {
+			continue
+		}
+		if len(includeMap) > 0 && !includeMap[cmd.LineId] {
+			continue
+		}
 		if int(cmd.TermOpts.Cols) != cols {
 			resizeRunningCommand(ctx, cmd, cols)
 		}
@@ -4010,7 +4188,9 @@ func setNoTelemetry(ctx context.Context, clientData *sstore.ClientData, noTeleme
 	}
 	log.Printf("client no-telemetry setting updated to %v\n", noTelemetryVal)
 	go func() {
-		err := pcloud.SendNoTelemetryUpdate(ctx, clientOpts.NoTelemetry)
+		cloudCtx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancelFn()
+		err := pcloud.SendNoTelemetryUpdate(cloudCtx, clientOpts.NoTelemetry)
 		if err != nil {
 			log.Printf("[error] sending no-telemetry update: %v\n", err)
 			log.Printf("note that telemetry update has still taken effect locally, and will be respected by the client\n")
@@ -4032,7 +4212,9 @@ func TelemetryOnCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		return nil, err
 	}
 	go func() {
-		err := pcloud.SendTelemetry(ctx, false)
+		cloudCtx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancelFn()
+		err := pcloud.SendTelemetry(cloudCtx, false)
 		if err != nil {
 			// ignore error, but log
 			log.Printf("[error] sending telemetry update (in /telemetry:on): %v\n", err)
@@ -4138,10 +4320,14 @@ func ReleaseCheckOnCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 		return nil, err
 	}
 
-	err = runReleaseCheck(ctx, true)
-	if err != nil {
-		log.Printf("error checking for new release after enabling auto release check: %v\n", err)
-	}
+	go func() {
+		releaseCheckCtx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelFn()
+		releaseCheckErr := runReleaseCheck(releaseCheckCtx, true)
+		if releaseCheckErr != nil {
+			log.Printf("error checking for new release after enabling auto release check: %v\n", releaseCheckErr)
+		}
+	}()
 
 	clientData, err = sstore.EnsureClientData(ctx)
 	if err != nil {

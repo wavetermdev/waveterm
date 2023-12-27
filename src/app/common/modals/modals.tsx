@@ -11,7 +11,19 @@ import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, RemotesModel } from "../../../model/model";
 import * as T from "../../../types/types";
-import { Markdown, Toggle, Modal, TextField, NumberField, InputDecoration, Dropdown, PasswordField, Tooltip, Button, Status } from "../common";
+import {
+    Markdown,
+    Toggle,
+    Modal,
+    TextField,
+    NumberField,
+    InputDecoration,
+    Dropdown,
+    PasswordField,
+    Tooltip,
+    Button,
+    Status,
+} from "../common";
 import * as util from "../../../util/util";
 import * as textmeasure from "../../../util/textmeasure";
 import { ClientDataType } from "../../../types/types";
@@ -37,18 +49,18 @@ const PasswordUnchangedSentinel = "--unchanged--";
 
 @mobxReact.observer
 class ModalsProvider extends React.Component {
-    renderModals() {
-        const modals = GlobalModel.modalsModel.activeModals;
-
+    render() {
+        let store = GlobalModel.modalsModel.store.slice();
         if (GlobalModel.needsTos()) {
             return <TosModal />;
         }
-
-        return modals.map((ModalComponent, index) => <ModalComponent key={index} />);
-    }
-
-    render() {
-        return <>{this.renderModals()}</>;
+        let rtn: JSX.Element[] = [];
+        for (let i = 0; i < store.length; i++) {
+            let entry = store[i];
+            let Comp = entry.component;
+            rtn.push(<Comp key={entry.uniqueKey} />);
+        }
+        return <>{rtn}</>;
     }
 }
 
@@ -277,7 +289,11 @@ class TosModal extends React.Component<{}, {}> {
                                 </div>
                             </div>
                             <div className="item">
-                                <a target="_blank" href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}  rel={"noopener"}>
+                                <a
+                                    target="_blank"
+                                    href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}
+                                    rel={"noopener"}
+                                >
                                     <img src={help} alt="Help" />
                                 </a>
                                 <div className="item-inner">
@@ -286,7 +302,11 @@ class TosModal extends React.Component<{}, {}> {
                                         Get help, submit feature requests, report bugs, or just chat with fellow
                                         terminal enthusiasts.
                                         <br />
-                                        <a target="_blank" href={util.makeExternLink("https://discord.gg/XfvZ334gwU")} rel={"noopener"}>
+                                        <a
+                                            target="_blank"
+                                            href={util.makeExternLink("https://discord.gg/XfvZ334gwU")}
+                                            rel={"noopener"}
+                                        >
                                             Join the Wave&nbsp;Discord&nbsp;Channel
                                         </a>
                                     </div>
@@ -433,12 +453,12 @@ class AboutModal extends React.Component<{}, {}> {
                         </a>
                         <a
                             className="wave-button wave-button-link color-standard"
-                            href={util.makeExternLink("https://github.com/wavetermdev/waveterm/blob/main/LICENSE")}
+                            href={util.makeExternLink("https://github.com/wavetermdev/waveterm/blob/main/acknowledgements/README.md")}
                             rel={"noopener"}
                             target="_blank"
                         >
-                            <i className="fa-sharp fa-light fa-book-blank"></i>
-                            License
+                            <i className="fa-sharp fa-light fa-heart"></i>
+                            Acknowledgements
                         </a>
                     </div>
                     <div className="about-section text-standard">&copy; 2023 Command Line Inc.</div>
@@ -754,7 +774,6 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
                             label="Connect Mode"
                             options={[
                                 { value: "startup", label: "startup" },
-                                { value: "key", label: "key" },
                                 { value: "auto", label: "auto" },
                                 { value: "manual", label: "manual" },
                             ]}
@@ -847,7 +866,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
 
     @boundMethod
     openEditModal(): void {
-        GlobalModel.remotesModel.openEditModal();
+        GlobalModel.remotesModel.startEditAuth();
     }
 
     @boundMethod
@@ -960,7 +979,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
             </Button>
         );
         if (remote.local) {
-        installNowButton = <></>;
+            installNowButton = <></>;
             updateAuthButton = <></>;
             cancelInstallButton = <></>;
         }
@@ -1116,74 +1135,47 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
 
 @mobxReact.observer
 class EditRemoteConnModal extends React.Component<{}, {}> {
-    internalTempAlias: OV<string>;
-    internalTempKeyFile: OV<string>;
-    internalTempPassword: OV<string>;
+    tempAlias: OV<string>;
+    tempKeyFile: OV<string>;
+    tempPassword: OV<string>;
+    tempConnectMode: OV<string>;
+    tempAuthMode: OV<string>;
     model: RemotesModel;
 
     constructor(props: { remotesModel?: RemotesModel }) {
         super(props);
         this.model = GlobalModel.remotesModel;
-        this.internalTempAlias = mobx.observable.box(null, { name: "EditRemoteSettings-internalTempAlias" });
-        this.internalTempKeyFile = mobx.observable.box(null, { name: "EditRemoteSettings-internalTempKeyFile" });
-        this.internalTempPassword = mobx.observable.box(null, { name: "EditRemoteSettings-internalTempPassword" });
+        this.tempAlias = mobx.observable.box(null, { name: "EditRemoteSettings-tempAlias" });
+        this.tempAuthMode = mobx.observable.box(null, { name: "EditRemoteSettings-tempAuthMode" });
+        this.tempKeyFile = mobx.observable.box(null, { name: "EditRemoteSettings-tempKeyFile" });
+        this.tempPassword = mobx.observable.box(null, { name: "EditRemoteSettings-tempPassword" });
+        this.tempConnectMode = mobx.observable.box(null, { name: "EditRemoteSettings-tempConnectMode" });
     }
 
-    @mobx.computed
     get selectedRemoteId() {
         return this.model.selectedRemoteId.get();
     }
 
-    @mobx.computed
     get selectedRemote(): T.RemoteType {
         return GlobalModel.getRemote(this.selectedRemoteId);
     }
 
-    @mobx.computed
     get remoteEdit(): T.RemoteEditType {
         return this.model.remoteEdit.get();
     }
 
-    @mobx.computed
     get isAuthEditMode(): boolean {
         return this.model.isAuthEditMode();
     }
 
-    @mobx.computed
-    get tempAuthMode(): mobx.IObservableValue<string> {
-        return mobx.observable.box(this.selectedRemote?.authtype, {
-            name: "EditRemoteConnModal-authMode",
-        });
-    }
-
-    @mobx.computed
-    get tempConnectMode(): mobx.IObservableValue<string> {
-        return mobx.observable.box(this.selectedRemote?.connectmode, {
-            name: "EditRemoteConnModal-connectMode",
-        });
-    }
-
-    @mobx.computed
-    get tempAlias(): mobx.IObservableValue<string> {
-        return mobx.observable.box(this.internalTempAlias.get() || this.selectedRemote.remotealias, {
-            name: "EditRemoteConnModal-alias",
-        });
-    }
-
-    @mobx.computed
-    get tempKeyFile(): mobx.IObservableValue<string> {
-        return mobx.observable.box(this.internalTempKeyFile.get() || this.remoteEdit?.keystr, {
-            name: "EditRemoteConnModal-keystr",
-        });
-    }
-
-    @mobx.computed
-    get tempPassword(): mobx.IObservableValue<string> {
-        const oldPassword = this.remoteEdit?.haspassword ? PasswordUnchangedSentinel : "";
-        const newPassword = this.internalTempPassword.get() || oldPassword;
-        return mobx.observable.box(newPassword, {
-            name: "EditRemoteConnModal-password",
-        });
+    componentDidMount(): void {
+        mobx.action(() => {
+            this.tempAlias.set(this.selectedRemote?.remotealias);
+            this.tempKeyFile.set(this.remoteEdit?.keystr);
+            this.tempPassword.set(this.remoteEdit?.haspassword ? PasswordUnchangedSentinel : "");
+            this.tempConnectMode.set(this.selectedRemote?.connectmode);
+            this.tempAuthMode.set(this.selectedRemote?.authtype);
+        })();
     }
 
     componentDidUpdate() {
@@ -1195,21 +1187,35 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
     @boundMethod
     handleChangeKeyFile(value: string): void {
         mobx.action(() => {
-            this.internalTempKeyFile.set(value);
+            this.tempKeyFile.set(value);
         })();
     }
 
     @boundMethod
     handleChangePassword(value: string): void {
         mobx.action(() => {
-            this.internalTempPassword.set(value);
+            this.tempPassword.set(value);
         })();
     }
 
     @boundMethod
     handleChangeAlias(value: string): void {
         mobx.action(() => {
-            this.internalTempAlias.set(value);
+            this.tempAlias.set(value);
+        })();
+    }
+
+    @boundMethod
+    handleChangeAuthMode(value: string): void {
+        mobx.action(() => {
+            this.tempAuthMode.set(value);
+        })();
+    }
+
+    @boundMethod
+    handleChangeConnectMode(value: string): void {
+        mobx.action(() => {
+            this.tempConnectMode.set(value);
         })();
     }
 
@@ -1239,10 +1245,13 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
     submitRemote(): void {
         let authMode = this.tempAuthMode.get();
         let kwargs: Record<string, string> = {};
-        if (!util.isStrEq(this.tempKeyFile.get(), this.remoteEdit?.keystr)) {
-            if (authMode == "key" || authMode == "key+password") {
+        if (authMode == "key" || authMode == "key+password") {
+            let keyStrEq = util.isStrEq(this.tempKeyFile.get(), this.remoteEdit?.keystr);
+            if (!keyStrEq) {
                 kwargs["key"] = this.tempKeyFile.get();
-            } else {
+            }
+        } else {
+            if (!util.isBlank(this.tempKeyFile.get())) {
                 kwargs["key"] = "";
             }
         }
@@ -1292,11 +1301,9 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
 
     render() {
         let authMode = this.tempAuthMode.get();
-
         if (this.remoteEdit === null || !this.isAuthEditMode) {
             return null;
         }
-
         return (
             <Modal className="erconn-modal">
                 <Modal.Header title="Edit Connection" onClose={this.model.closeModal} />
@@ -1334,9 +1341,7 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
                                 { value: "key+password", label: "key+password" },
                             ]}
                             value={this.tempAuthMode.get()}
-                            onChange={(val: string) => {
-                                this.tempAuthMode.set(val);
-                            }}
+                            onChange={this.handleChangeAuthMode}
                             decoration={{
                                 endDecoration: (
                                     <InputDecoration>
@@ -1403,14 +1408,11 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
                             label="Connect Mode"
                             options={[
                                 { value: "startup", label: "startup" },
-                                { value: "key", label: "key" },
                                 { value: "auto", label: "auto" },
                                 { value: "manual", label: "manual" },
                             ]}
                             value={this.tempConnectMode.get()}
-                            onChange={(val: string) => {
-                                this.tempConnectMode.set(val);
-                            }}
+                            onChange={this.handleChangeConnectMode}
                         />
                     </div>
                     <If condition={!util.isBlank(this.remoteEdit?.errorstr)}>
