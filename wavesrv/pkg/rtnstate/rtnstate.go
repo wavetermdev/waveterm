@@ -11,7 +11,7 @@ import (
 
 	"github.com/alessio/shellescape"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
-	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/simpleexpand"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
@@ -119,14 +119,14 @@ func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newSt
 		buf.WriteString(fmt.Sprintf("cwd %s\n", newState.Cwd))
 	}
 	if !bytes.Equal(newState.ShellVars, oldState.ShellVars) {
-		newEnvMap := shexec.DeclMapFromState(&newState)
-		oldEnvMap := shexec.DeclMapFromState(&oldState)
+		newEnvMap := shellenv.DeclMapFromState(&newState)
+		oldEnvMap := shellenv.DeclMapFromState(&oldState)
 		for key, newVal := range newEnvMap {
 			if IgnoreVars[key] {
 				continue
 			}
 			oldVal, found := oldEnvMap[key]
-			if !found || !shexec.DeclsEqual(false, oldVal, newVal) {
+			if !found || !shellenv.DeclsEqual(false, oldVal, newVal) {
 				var exportStr string
 				if newVal.IsExport() {
 					exportStr = "export "
@@ -134,7 +134,7 @@ func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newSt
 				buf.WriteString(fmt.Sprintf("%s%s=%s\n", exportStr, utilfn.EllipsisStr(key, MaxDiffKeyLen), utilfn.EllipsisStr(newVal.Value, MaxDiffValLen)))
 			}
 		}
-		for key, _ := range oldEnvMap {
+		for key := range oldEnvMap {
 			if IgnoreVars[key] {
 				continue
 			}
@@ -153,7 +153,7 @@ func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newSt
 				buf.WriteString(fmt.Sprintf("alias %s\n", utilfn.EllipsisStr(shellescape.Quote(aliasName), MaxDiffKeyLen)))
 			}
 		}
-		for aliasName, _ := range oldAliasMap {
+		for aliasName := range oldAliasMap {
 			_, found := newAliasMap[aliasName]
 			if !found {
 				buf.WriteString(fmt.Sprintf("unalias %s\n", utilfn.EllipsisStr(shellescape.Quote(aliasName), MaxDiffKeyLen)))
@@ -169,7 +169,7 @@ func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newSt
 				buf.WriteString(fmt.Sprintf("function %s\n", utilfn.EllipsisStr(shellescape.Quote(funcName), MaxDiffKeyLen)))
 			}
 		}
-		for funcName, _ := range oldFuncMap {
+		for funcName := range oldFuncMap {
 			_, found := newFuncMap[funcName]
 			if !found {
 				buf.WriteString(fmt.Sprintf("unset -f %s\n", utilfn.EllipsisStr(shellescape.Quote(funcName), MaxDiffKeyLen)))

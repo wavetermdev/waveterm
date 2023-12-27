@@ -29,6 +29,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/cirfile"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/mpio"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sys/unix"
 )
@@ -338,7 +339,7 @@ func MakeDetachedExecCmd(pk *packet.RunPacketType, cmdTty *os.File) (*exec.Cmd, 
 	if !pk.StateComplete {
 		ecmd.Env = os.Environ()
 	}
-	UpdateCmdEnv(ecmd, EnvMapFromState(state))
+	UpdateCmdEnv(ecmd, shellenv.EnvMapFromBashState(state))
 	UpdateCmdEnv(ecmd, MShellEnvVars(getTermType(pk)))
 	if state.Cwd != "" {
 		ecmd.Dir = base.ExpandHomeDir(state.Cwd)
@@ -1025,12 +1026,12 @@ func getTermType(pk *packet.RunPacketType) string {
 func makeRcFileStr(pk *packet.RunPacketType) string {
 	var rcBuf bytes.Buffer
 	rcBuf.WriteString(BaseBashOpts + "\n")
-	varDecls := VarDeclsFromState(pk.State)
+	varDecls := shellenv.VarDeclsFromState(pk.State)
 	for _, varDecl := range varDecls {
 		if varDecl.IsExport() || varDecl.IsReadOnly() {
 			continue
 		}
-		rcBuf.WriteString(varDecl.DeclareStmt())
+		rcBuf.WriteString(varDecl.BashDeclareStmt())
 		rcBuf.WriteString("\n")
 	}
 	if pk.State != nil && pk.State.Funcs != "" {
@@ -1118,7 +1119,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		trapCmdStr := makeExitTrap(cmd.ReturnState.FdNum)
 		rcFileStr += trapCmdStr
 	}
-	shellVarMap := ShellVarMapFromState(state)
+	shellVarMap := shellenv.ShellVarMapFromState(state)
 	if base.HasDebugFlag(shellVarMap, base.DebugFlag_LogRcFile) {
 		debugRcFileName := base.GetDebugRcFileName()
 		err := os.WriteFile(debugRcFileName, []byte(rcFileStr), 0600)
@@ -1161,7 +1162,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 	if !pk.StateComplete {
 		cmd.Cmd.Env = os.Environ()
 	}
-	UpdateCmdEnv(cmd.Cmd, EnvMapFromState(state))
+	UpdateCmdEnv(cmd.Cmd, shellenv.EnvMapFromBashState(state))
 	if state.Cwd != "" {
 		cmd.Cmd.Dir = base.ExpandHomeDir(state.Cwd)
 	}
@@ -1462,7 +1463,7 @@ func (c *ShExecType) WaitForCommand() *packet.CmdDonePacketType {
 			c.ReturnState.Reader.Close()
 		}()
 		<-c.ReturnState.DoneCh
-		state, _ := ParseShellStateOutput(c.ReturnState.Buf) // TODO what to do with error?
+		state, _ := shellenv.ParseShellStateOutput(c.ReturnState.Buf, shellenv.ShellType_bash) // TODO what to do with error?
 		donePacket.FinalState = state
 	}
 	endTs := time.Now()
@@ -1600,7 +1601,7 @@ func GetShellState() (*packet.ShellState, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ParseShellStateOutput(outputBytes)
+	return shellenv.ParseShellStateOutput(outputBytes, shellenv.ShellType_bash)
 }
 
 func MShellEnvVars(termType string) map[string]string {

@@ -26,6 +26,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/statediff"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
@@ -1164,10 +1165,10 @@ func addScVarsToState(state *packet.ShellState) *packet.ShellState {
 		return nil
 	}
 	rtn := *state
-	envMap := shexec.DeclMapFromState(&rtn)
-	envMap["PROMPT"] = &shexec.DeclareDeclType{Name: "PROMPT", Value: "1", Args: "x"}
-	envMap["PROMPT_VERSION"] = &shexec.DeclareDeclType{Name: "PROMPT_VERSION", Value: scbase.WaveVersion, Args: "x"}
-	rtn.ShellVars = shexec.SerializeDeclMap(envMap)
+	envMap := shellenv.DeclMapFromState(&rtn)
+	envMap["PROMPT"] = &shellenv.DeclareDeclType{Name: "PROMPT", Value: "1", Args: "x"}
+	envMap["PROMPT_VERSION"] = &shellenv.DeclareDeclType{Name: "PROMPT_VERSION", Value: scbase.WaveVersion, Args: "x"}
+	rtn.ShellVars = shellenv.SerializeDeclMap(envMap)
 	return &rtn
 }
 
@@ -1177,10 +1178,10 @@ func stripScVarsFromState(state *packet.ShellState) *packet.ShellState {
 	}
 	rtn := *state
 	rtn.HashVal = ""
-	envMap := shexec.DeclMapFromState(&rtn)
+	envMap := shellenv.DeclMapFromState(&rtn)
 	delete(envMap, "PROMPT")
 	delete(envMap, "PROMPT_VERSION")
-	rtn.ShellVars = shexec.SerializeDeclMap(envMap)
+	rtn.ShellVars = shellenv.SerializeDeclMap(envMap)
 	return &rtn
 }
 
@@ -2003,7 +2004,7 @@ func evalPromptEsc(escCode string, vars map[string]string, state *packet.ShellSt
 			return ""
 		}
 		varName := escCode[2 : len(escCode)-1]
-		varMap := shexec.ShellVarMapFromState(state)
+		varMap := shellenv.ShellVarMapFromState(state)
 		return varMap[varName]
 	}
 	if escCode == "h" {
@@ -2074,7 +2075,7 @@ func evalPromptEsc(escCode string, vars map[string]string, state *packet.ShellSt
 func (msh *MShellProc) getFullState(stateDiff *packet.ShellStateDiff) (*packet.ShellState, error) {
 	baseState := msh.GetStateByHash(stateDiff.BaseHash)
 	if baseState != nil && len(stateDiff.DiffHashArr) == 0 {
-		newState, err := shexec.ApplyShellStateDiff(*baseState, *stateDiff)
+		newState, err := shellenv.ApplyShellStateDiff(*baseState, *stateDiff)
 		if err != nil {
 			return nil, err
 		}
@@ -2084,7 +2085,7 @@ func (msh *MShellProc) getFullState(stateDiff *packet.ShellStateDiff) (*packet.S
 		if err != nil {
 			return nil, err
 		}
-		newState, err := shexec.ApplyShellStateDiff(*fullState, *stateDiff)
+		newState, err := shellenv.ApplyShellStateDiff(*fullState, *stateDiff)
 		return &newState, nil
 	}
 }
@@ -2093,7 +2094,7 @@ func (msh *MShellProc) getFullState(stateDiff *packet.ShellStateDiff) (*packet.S
 func (msh *MShellProc) getFeStateFromDiff(stateDiff *packet.ShellStateDiff) (map[string]string, error) {
 	baseState := msh.GetStateByHash(stateDiff.BaseHash)
 	if baseState != nil && len(stateDiff.DiffHashArr) == 0 {
-		newState, err := shexec.ApplyShellStateDiff(*baseState, *stateDiff)
+		newState, err := shellenv.ApplyShellStateDiff(*baseState, *stateDiff)
 		if err != nil {
 			return nil, err
 		}
@@ -2103,7 +2104,7 @@ func (msh *MShellProc) getFeStateFromDiff(stateDiff *packet.ShellStateDiff) (map
 		if err != nil {
 			return nil, err
 		}
-		newState, err := shexec.ApplyShellStateDiff(*fullState, *stateDiff)
+		newState, err := shellenv.ApplyShellStateDiff(*fullState, *stateDiff)
 		if err != nil {
 			return nil, err
 		}

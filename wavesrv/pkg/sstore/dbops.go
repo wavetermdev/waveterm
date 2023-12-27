@@ -18,7 +18,7 @@ import (
 	"github.com/sawka/txwrap"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
-	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 )
@@ -1892,7 +1892,7 @@ func GetFullState(ctx context.Context, ssPtr ShellStatePtr) (*packet.ShellState,
 			if err != nil {
 				return err
 			}
-			newState, err := shexec.ApplyShellStateDiff(*state, ssDiff)
+			newState, err := shellenv.ApplyShellStateDiff(*state, ssDiff)
 			if err != nil {
 				return fmt.Errorf("GetFullState, diff[%d]:%s: %v", idx, diffHash, err)
 			}

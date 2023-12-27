@@ -9,6 +9,7 @@ import (
 	"errors"
 	"math"
 	"regexp"
+	"sort"
 	"strings"
 	"unicode/utf8"
 )
@@ -246,4 +247,32 @@ func AddIntSlice(vals ...int) (int, error) {
 		}
 	}
 	return rtn, nil
+}
+
+func StrMapsEqual(m1 map[string]string, m2 map[string]string) bool {
+	if len(m1) != len(m2) {
+		return false
+	}
+	for key, val1 := range m1 {
+		val2, found := m2[key]
+		if !found || val1 != val2 {
+			return false
+		}
+	}
+	for key := range m2 {
+		_, found := m1[key]
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
+func GetOrderedKeysStrMap[V any](m map[string]V) []string {
+	keys := make([]string, 0, len(m))
+	for key := range m {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
 }

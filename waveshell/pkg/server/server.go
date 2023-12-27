@@ -20,6 +20,7 @@ import (
 	"github.com/alessio/shellescape"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
 )
 
@@ -599,7 +600,7 @@ func (m *MServer) clientPacketCallback(pk packet.PacketType) {
 	if curState == nil {
 		return
 	}
-	diff, err := shexec.MakeShellStateDiff(*curState, stateHash, *donePk.FinalState)
+	diff, err := shellenv.MakeShellStateDiff(*curState, stateHash, *donePk.FinalState)
 	if err != nil {
 		return
 	}

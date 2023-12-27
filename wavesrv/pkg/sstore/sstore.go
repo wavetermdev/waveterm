@@ -25,7 +25,7 @@ import (
 	"github.com/sawka/txwrap"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
-	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 
@@ -704,7 +704,7 @@ func FeStateFromShellState(state *packet.ShellState) map[string]string {
 	}
 	rtn := make(map[string]string)
 	rtn["cwd"] = state.Cwd
-	envMap := shexec.EnvMapFromState(state)
+	envMap := shellenv.EnvMapFromBashState(state)
 	if envMap["VIRTUAL_ENV"] != "" {
 		rtn["VIRTUAL_ENV"] = envMap["VIRTUAL_ENV"]
 	}

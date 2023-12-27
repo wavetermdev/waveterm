@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/simpleexpand"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
@@ -160,7 +160,7 @@ func setBracketArgs(argMap map[string]string, bracketStr string) error {
 			varName = litStr[0:eqIdx]
 			varVal = litStr[eqIdx+1:]
 		}
-		if !shexec.IsValidBashIdentifier(varName) {
+		if !shellenv.IsValidBashIdentifier(varName) {
 			wordErr = fmt.Errorf("invalid identifier %s in bracket args", utilfn.ShellQuote(varName, true, 20))
 			return false
 		}
@@ -353,7 +353,7 @@ func EvalMetaCommand(ctx context.Context, origPk *scpacket.FeCommandPacketType) 
 		return nil, fmt.Errorf("parsing metacmd, position %v", err)
 	}
 	envMap := make(map[string]string) // later we can add vars like session, screen, remote, and user
-	cfg := shexec.GetParserConfig(envMap)
+	cfg := shellenv.GetParserConfig(envMap)
 	// process arguments
 	for idx, w := range words {
 		literalVal, err := expand.Literal(cfg, w)
