@@ -56,7 +56,7 @@ CREATE TABLE remote (
     local boolean NOT NULL,
     archived boolean NOT NULL,
     remoteidx int NOT NULL
-, statevars json NOT NULL DEFAULT '{}', openaiopts json NOT NULL DEFAULT '{}');
+, statevars json NOT NULL DEFAULT '{}', openaiopts json NOT NULL DEFAULT '{}', sshconfigsrc varchar(36) NOT NULL DEFAULT 'waveterm-manual');
 CREATE TABLE history (
     historyid varchar(36) PRIMARY KEY,
     ts bigint NOT NULL,
@@ -70,8 +70,7 @@ CREATE TABLE history (
     haderror boolean NOT NULL,
     cmdstr text NOT NULL,
     ismetacmd boolean,
-    incognito boolean
-, linenum int NOT NULL DEFAULT 0);
+    linenum int NOT NULL DEFAULT 0, exitcode int NULL DEFAULT NULL, durationms int NULL DEFAULT NULL, festate json NOT NULL DEFAULT '{}', tags json NOT NULL DEFAULT '{}', status varchar(10) NOT NULL DEFAULT 'unknown');
 CREATE TABLE activity (
     day varchar(20) PRIMARY KEY,
     uploaded boolean NOT NULL,
@@ -210,4 +209,16 @@ CREATE TABLE cmd_migrate20 (
     lineid varchar(36) NOT NULL,
     cmdid varchar(36) NOT NULL,
     PRIMARY KEY (screenid, lineid)
+);
+CREATE TABLE session_tombstone (
+    sessionid varchar(36) PRIMARY KEY,
+    deletedts bigint NOT NULL,
+    name varchar(50) NOT NULL
+);
+CREATE TABLE screen_tombstone (
+    screenid varchar(36) PRIMARY KEY,
+    sessionid varchar(36) NOT NULL,
+    deletedts bigint NOT NULL,
+    screenopts json NOT NULL,
+    name varchar(50) NOT NULL
 );
