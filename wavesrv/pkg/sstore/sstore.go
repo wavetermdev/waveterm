@@ -73,6 +73,7 @@ const (
 	CmdStatusError    = "error"
 	CmdStatusDone     = "done"
 	CmdStatusHangup   = "hangup"
+	CmdStatusUnknown  = "unknown" // used for history items where we don't have a status
 )
 
 const (
@@ -333,6 +334,14 @@ type SessionType struct {
 	Full   bool `json:"full,omitempty"`
 }
 
+type SessionTombstoneType struct {
+	SessionId string `json:"sessionid"`
+	Name      string `json:"name"`
+	DeletedTs int64  `json:"deletedts"`
+}
+
+func (SessionTombstoneType) UseDBMap() {}
+
 type SessionStatsType struct {
 	SessionId          string              `json:"sessionid"`
 	NumScreens         int                 `json:"numscreens"`
@@ -419,7 +428,11 @@ func (h *HistoryItemType) ToMap() map[string]interface{} {
 	rtn["remoteid"] = h.Remote.RemoteId
 	rtn["remotename"] = h.Remote.Name
 	rtn["ismetacmd"] = h.IsMetaCmd
-	rtn["incognito"] = h.Incognito
+	rtn["exitcode"] = h.ExitCode
+	rtn["durationms"] = h.DurationMs
+	rtn["festate"] = quickJson(h.FeState)
+	rtn["tags"] = quickJson(h.Tags)
+	rtn["status"] = h.Status
 	return rtn
 }
 
@@ -438,7 +451,11 @@ func (h *HistoryItemType) FromMap(m map[string]interface{}) bool {
 	quickSetBool(&h.IsMetaCmd, m, "ismetacmd")
 	quickSetStr(&h.HistoryNum, m, "historynum")
 	quickSetInt64(&h.LineNum, m, "linenum")
-	quickSetBool(&h.Incognito, m, "incognito")
+	dbutil.QuickSetNullableInt64(&h.ExitCode, m, "exitcode")
+	dbutil.QuickSetNullableInt64(&h.DurationMs, m, "durationms")
+	quickSetJson(&h.FeState, m, "festate")
+	quickSetJson(&h.Tags, m, "tags")
+	quickSetStr(&h.Status, m, "status")
 	return true
 }
 
@@ -552,6 +569,16 @@ func (s *ScreenType) FromMap(m map[string]interface{}) bool {
 	return true
 }
 
+type ScreenTombstoneType struct {
+	ScreenId   string         `json:"screenid"`
+	SessionId  string         `json:"sessionid"`
+	Name       string         `json:"name"`
+	DeletedTs  int64          `json:"deletedts"`
+	ScreenOpts ScreenOptsType `json:"screenopts"`
+}
+
+func (ScreenTombstoneType) UseDBMap() {}
+
 const (
 	LayoutFull = "full"
 )
@@ -583,24 +610,28 @@ type ScreenAnchorType struct {
 }
 
 type HistoryItemType struct {
-	HistoryId string        `json:"historyid"`
-	Ts        int64         `json:"ts"`
-	UserId    string        `json:"userid"`
-	SessionId string        `json:"sessionid"`
-	ScreenId  string        `json:"screenid"`
-	LineId    string        `json:"lineid"`
-	HadError  bool          `json:"haderror"`
-	CmdStr    string        `json:"cmdstr"`
-	Remote    RemotePtrType `json:"remote"`
-	IsMetaCmd bool          `json:"ismetacmd"`
-	Incognito bool          `json:"incognito,omitempty"`
+	HistoryId  string          `json:"historyid"`
+	Ts         int64           `json:"ts"`
+	UserId     string          `json:"userid"`
+	SessionId  string          `json:"sessionid"`
+	ScreenId   string          `json:"screenid"`
+	LineId     string          `json:"lineid"`
+	HadError   bool            `json:"haderror"`
+	CmdStr     string          `json:"cmdstr"`
+	Remote     RemotePtrType   `json:"remote"`
+	IsMetaCmd  bool            `json:"ismetacmd"`
+	ExitCode   *int64          `json:"exitcode,omitempty"`
+	DurationMs *int64          `json:"durationms,omitempty"`
+	FeState    FeStateType     `json:"festate,omitempty"`
+	Tags       map[string]bool `json:"tags,omitempty"`
+	LineNum    int64           `json:"linenum" dbmap:"-"`
+	Status     string          `json:"status"`
 
 	// only for updates
-	Remove bool `json:"remove"`
+	Remove bool `json:"remove" dbmap:"-"`
 
 	// transient (string because of different history orderings)
-	HistoryNum string `json:"historynum"`
-	LineNum    int64  `json:"linenum"`
+	HistoryNum string `json:"historynum" dbmap:"-"`
 }
 
 type HistoryQueryOpts struct {
@@ -714,7 +745,7 @@ func FeStateFromShellState(state *packet.ShellState) map[string]string {
 		rtn["VIRTUAL_ENV"] = envMap["VIRTUAL_ENV"]
 	}
 	for key, val := range envMap {
-		if strings.HasPrefix(key, "PROMPTVAR_") {
+		if strings.HasPrefix(key, "PROMPTVAR_") && rtn[key] != "" {
 			rtn[key] = val
 		}
 	}

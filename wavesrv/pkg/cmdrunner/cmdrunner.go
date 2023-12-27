@@ -134,9 +134,11 @@ type SetVarScope struct {
 }
 
 type historyContextType struct {
-	LineId    string
-	LineNum   int64
-	RemotePtr *sstore.RemotePtrType
+	LineId        string
+	LineNum       int64
+	RemotePtr     *sstore.RemotePtrType
+	FeState       sstore.FeStateType
+	InitialStatus string
 }
 
 type MetaCmdFnType = func(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error)
@@ -163,8 +165,7 @@ func init() {
 	registerCmdFn("session:open", SessionOpenCommand)
 	registerCmdAlias("session:new", SessionOpenCommand)
 	registerCmdFn("session:set", SessionSetCommand)
-	registerCmdAlias("session:delete", SessionDeleteCommand)
-	registerCmdFn("session:purge", SessionDeleteCommand)
+	registerCmdFn("session:delete", SessionDeleteCommand)
 	registerCmdFn("session:archive", SessionArchiveCommand)
 	registerCmdFn("session:showall", SessionShowAllCommand)
 	registerCmdFn("session:show", SessionShowCommand)
@@ -172,7 +173,7 @@ func init() {
 
 	registerCmdFn("screen", ScreenCommand)
 	registerCmdFn("screen:archive", ScreenArchiveCommand)
-	registerCmdFn("screen:purge", ScreenPurgeCommand)
+	registerCmdFn("screen:delete", ScreenDeleteCommand)
 	registerCmdFn("screen:open", ScreenOpenCommand)
 	registerCmdAlias("screen:new", ScreenOpenCommand)
 	registerCmdFn("screen:set", ScreenSetCommand)
@@ -202,7 +203,7 @@ func init() {
 	registerCmdFn("line:bookmark", LineBookmarkCommand)
 	registerCmdFn("line:pin", LinePinCommand)
 	registerCmdFn("line:archive", LineArchiveCommand)
-	registerCmdFn("line:purge", LinePurgeCommand)
+	registerCmdFn("line:delete", LineDeleteCommand)
 	registerCmdFn("line:setheight", LineSetHeightCommand)
 	registerCmdFn("line:view", LineViewCommand)
 	registerCmdFn("line:set", LineSetCommand)
@@ -627,10 +628,6 @@ func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, history
 	if err != nil {
 		return err
 	}
-	isIncognito, err := sstore.IsIncognitoScreen(ctx, ids.SessionId, ids.ScreenId)
-	if err != nil {
-		return fmt.Errorf("cannot add to history, error looking up incognito status of screen: %v", err)
-	}
 	hitem := &sstore.HistoryItemType{
 		HistoryId: scbase.GenWaveUUID(),
 		Ts:        time.Now().UnixMilli(),
@@ -642,7 +639,15 @@ func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, history
 		HadError:  hadError,
 		CmdStr:    cmdStr,
 		IsMetaCmd: isMetaCmd,
-		Incognito: isIncognito,
+		FeState:   historyContext.FeState,
+		Status:    historyContext.InitialStatus,
+	}
+	if hitem.Status == "" {
+		if hadError {
+			hitem.Status = sstore.CmdStatusError
+		} else {
+			hitem.Status = "done"
+		}
 	}
 	if !isMetaCmd && historyContext.RemotePtr != nil {
 		hitem.Remote = *historyContext.RemotePtr
@@ -757,23 +762,23 @@ func ScreenArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	}
 }
 
-func ScreenPurgeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+func ScreenDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session) // don't force R_Screen
 	if err != nil {
-		return nil, fmt.Errorf("/screen:purge cannot purge screen: %w", err)
+		return nil, fmt.Errorf("/screen:delete cannot delete screen: %w", err)
 	}
 	screenId := ids.ScreenId
 	if len(pk.Args) > 0 {
 		ri, err := resolveSessionScreen(ctx, ids.SessionId, pk.Args[0], ids.ScreenId)
 		if err != nil {
-			return nil, fmt.Errorf("/screen:purge cannot resolve screen arg: %v", err)
+			return nil, fmt.Errorf("/screen:delete cannot resolve screen arg: %v", err)
 		}
 		screenId = ri.Id
 	}
 	if screenId == "" {
-		return nil, fmt.Errorf("/screen:purge no active screen or screen arg passed")
+		return nil, fmt.Errorf("/screen:delete no active screen or screen arg passed")
 	}
-	update, err := sstore.PurgeScreen(ctx, screenId, false)
+	update, err := sstore.DeleteScreen(ctx, screenId, false)
 	if err != nil {
 		return nil, err
 	}
@@ -2045,7 +2050,7 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	} else {
 		go doOpenAICompletion(cmd, opts, prompt)
 	}
-	updateHistoryContext(ctx, line, cmd)
+	updateHistoryContext(ctx, line, cmd, nil)
 	updateMap := make(map[string]interface{})
 	updateMap[sstore.ScreenField_SelectedLine] = line.LineNum
 	updateMap[sstore.ScreenField_Focus] = sstore.ScreenFocusInput
@@ -2191,11 +2196,11 @@ func addLineForCmd(ctx context.Context, metaCmd string, shouldFocus bool, ids re
 		Cmd:     cmd,
 		Screens: []*sstore.ScreenType{screen},
 	}
-	updateHistoryContext(ctx, rtnLine, cmd)
+	updateHistoryContext(ctx, rtnLine, cmd, cmd.FeState)
 	return update, nil
 }
 
-func updateHistoryContext(ctx context.Context, line *sstore.LineType, cmd *sstore.CmdType) {
+func updateHistoryContext(ctx context.Context, line *sstore.LineType, cmd *sstore.CmdType, feState sstore.FeStateType) {
 	ctxVal := ctx.Value(historyContextKey)
 	if ctxVal == nil {
 		return
@@ -2207,7 +2212,11 @@ func updateHistoryContext(ctx context.Context, line *sstore.LineType, cmd *sstor
 	}
 	if cmd != nil {
 		hctx.RemotePtr = &cmd.Remote
+		hctx.InitialStatus = cmd.Status
+	} else {
+		hctx.InitialStatus = sstore.CmdStatusDone
 	}
+	hctx.FeState = feState
 }
 
 func makeInfoFromComps(compType string, comps []string, hasMore bool) sstore.UpdatePacket {
@@ -2388,7 +2397,7 @@ func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if err != nil {
 		return nil, err
 	}
-	updateHistoryContext(ctx, rtnLine, nil)
+	updateHistoryContext(ctx, rtnLine, nil, nil)
 	updateMap := make(map[string]interface{})
 	updateMap[sstore.ScreenField_SelectedLine] = rtnLine.LineNum
 	updateMap[sstore.ScreenField_Focus] = sstore.ScreenFocusInput
@@ -2534,19 +2543,19 @@ func SessionDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	if len(pk.Args) >= 1 {
 		ritem, err := resolveSession(ctx, pk.Args[0], ids.SessionId)
 		if err != nil {
-			return nil, fmt.Errorf("/session:purge error resolving session %q: %w", pk.Args[0], err)
+			return nil, fmt.Errorf("/session:delete error resolving session %q: %w", pk.Args[0], err)
 		}
 		if ritem == nil {
-			return nil, fmt.Errorf("/session:purge session %q not found", pk.Args[0])
+			return nil, fmt.Errorf("/session:delete session %q not found", pk.Args[0])
 		}
 		sessionId = ritem.Id
 	} else {
 		sessionId = ids.SessionId
 	}
 	if sessionId == "" {
-		return nil, fmt.Errorf("/session:purge no sessionid found")
+		return nil, fmt.Errorf("/session:delete no sessionid found")
 	}
-	update, err := sstore.PurgeSession(ctx, sessionId)
+	update, err := sstore.DeleteSession(ctx, sessionId)
 	if err != nil {
 		return nil, fmt.Errorf("cannot delete session: %v", err)
 	}
@@ -2770,18 +2779,18 @@ func ClearCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 	if err != nil {
 		return nil, err
 	}
-	if resolveBool(pk.Kwargs["purge"], false) {
-		update, err := sstore.PurgeScreenLines(ctx, ids.ScreenId)
+	if resolveBool(pk.Kwargs["archive"], false) {
+		update, err := sstore.ArchiveScreenLines(ctx, ids.ScreenId)
 		if err != nil {
-			return nil, fmt.Errorf("clearing screen: %v", err)
+			return nil, fmt.Errorf("clearing screen (archiving): %v", err)
 		}
 		update.Info = &sstore.InfoMsgType{
-			InfoMsg:   fmt.Sprintf("screen cleared (all lines purged)"),
+			InfoMsg:   fmt.Sprintf("screen cleared (all lines archived)"),
 			TimeoutMs: 2000,
 		}
 		return update, nil
 	} else {
-		update, err := sstore.ArchiveScreenLines(ctx, ids.ScreenId)
+		update, err := sstore.DeleteScreenLines(ctx, ids.ScreenId)
 		if err != nil {
 			return nil, fmt.Errorf("clearing screen: %v", err)
 		}
@@ -2806,23 +2815,11 @@ func HistoryPurgeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 		}
 		historyIds = append(historyIds, historyArg)
 	}
-	historyItemsRemoved, err := sstore.PurgeHistoryByIds(ctx, historyIds)
+	err := sstore.PurgeHistoryByIds(ctx, historyIds)
 	if err != nil {
 		return nil, fmt.Errorf("/history:purge error purging items: %v", err)
 	}
-	update := &sstore.ModelUpdate{}
-	for _, historyItem := range historyItemsRemoved {
-		if historyItem.LineId == "" {
-			continue
-		}
-		lineObj := &sstore.LineType{
-			ScreenId: historyItem.ScreenId,
-			LineId:   historyItem.LineId,
-			Remove:   true,
-		}
-		update.Lines = append(update.Lines, lineObj)
-	}
-	return update, nil
+	return sstore.InfoMsgUpdate("removed history items"), nil
 }
 
 const HistoryViewPageSize = 50
@@ -3044,7 +3041,7 @@ func ScreenResizeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 }
 
 func LineCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	return nil, fmt.Errorf("/line requires a subcommand: %s", formatStrs([]string{"show", "star", "hide", "purge", "setheight", "set"}, "or", false))
+	return nil, fmt.Errorf("/line requires a subcommand: %s", formatStrs([]string{"show", "star", "hide", "delete", "setheight", "set"}, "or", false))
 }
 
 func LineSetHeightCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -3406,13 +3403,13 @@ func LineArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	return &sstore.ModelUpdate{Line: lineObj}, nil
 }
 
-func LinePurgeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+func LineDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
 	if err != nil {
 		return nil, err
 	}
 	if len(pk.Args) == 0 {
-		return nil, fmt.Errorf("/line:purge requires at least one argument (line number or id)")
+		return nil, fmt.Errorf("/line:delete requires at least one argument (line number or id)")
 	}
 	var lineIds []string
 	for _, lineArg := range pk.Args {
@@ -3425,9 +3422,9 @@ func LinePurgeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		}
 		lineIds = append(lineIds, lineId)
 	}
-	err = sstore.PurgeLinesByIds(ctx, ids.ScreenId, lineIds)
+	err = sstore.DeleteLinesByIds(ctx, ids.ScreenId, lineIds)
 	if err != nil {
-		return nil, fmt.Errorf("/line:purge error purging lines: %v", err)
+		return nil, fmt.Errorf("/line:delete error purging lines: %v", err)
 	}
 	update := &sstore.ModelUpdate{}
 	for _, lineId := range lineIds {
