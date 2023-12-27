@@ -2043,7 +2043,12 @@ func evalPromptEsc(escCode string, vars map[string]string, state *packet.ShellSt
 		if err != nil {
 			return escCode
 		}
-		return string([]byte{byte(ival)})
+		if ival >= 0 && ival <= 255 {
+			return string([]byte{byte(ival)})
+		} else {
+			// if it was out of range just return the string (invalid escape)
+			return escCode
+		}
 	}
 	if escCode == "e" {
 		return "\033"
