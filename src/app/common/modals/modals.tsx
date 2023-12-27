@@ -1450,10 +1450,10 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     selectedIdx: OV<number> = mobx.observable.box(0, { name: "TabSwitcherModal-selectedIdx" });
     activeSessionIdx: number;
     optionRefs = [];
+    listWrapperRef = React.createRef<HTMLDivElement>();
 
     componentDidMount() {
         this.activeSessionIdx = GlobalModel.getActiveSession().sessionIdx.get();
-        console.log("activeSessionIdx", this.activeSessionIdx);
         let oSessions = GlobalModel.sessionList;
         let oScreens = GlobalModel.screenMap;
         oScreens.forEach((oScreen) => {
@@ -1531,6 +1531,11 @@ class TabSwitcherModal extends React.Component<{}, {}> {
         mobx.action(() => {
             this.selectedIdx.set(index);
         })();
+
+        if (this.optionRefs[index] && this.optionRefs[index].current) {
+            this.optionRefs[index].current.focus();
+            this.optionRefs[index].current.scrollIntoView({ block: "nearest" });
+        }
     }
 
     @boundMethod
@@ -1632,7 +1637,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
                             decoration={{
                                 startDecoration: (
                                     <InputDecoration position="start">
-                                        <div className="tabswitcher-search-prefix">Switch tabs:</div>
+                                        <div className="tabswitcher-search-prefix">Switch to Tab:</div>
                                     </InputDecoration>
                                 ),
                                 endDecoration: (
@@ -1648,30 +1653,32 @@ class TabSwitcherModal extends React.Component<{}, {}> {
                             }}
                         />
                     </div>
-                    <div className="list-wrapper">
-                        <div className="options-list">
-                            {this.sOptions.map((option, index) => {
-                                if (!this.optionRefs[index]) {
-                                    this.optionRefs[index] = React.createRef();
-                                }
+                    <div className="list-container">
+                        <div ref={this.listWrapperRef} className="list-container-inner">
+                            <div className="options-list">
+                                {this.sOptions.map((option, index) => {
+                                    if (!this.optionRefs[index]) {
+                                        this.optionRefs[index] = React.createRef();
+                                    }
 
-                                return (
-                                    <div
-                                        key={index}
-                                        ref={this.optionRefs[index]}
-                                        className={cn(
-                                            `search-option`,
-                                            { "selected-option": this.selectedIdx.get() === index },
-                                            "color-" + option.color
-                                        )}
-                                    >
-                                        <span>{this.renderIcon(option)}</span>
-                                        <span>
-                                            #{option.sessionName} - {option.screenName}
-                                        </span>
-                                    </div>
-                                );
-                            })}
+                                    return (
+                                        <div
+                                            key={index}
+                                            ref={this.optionRefs[index]}
+                                            className={cn(
+                                                `search-option`,
+                                                { "selected-option": this.selectedIdx.get() === index },
+                                                "color-" + option.color
+                                            )}
+                                        >
+                                            <span>{this.renderIcon(option)}</span>
+                                            <span>
+                                                #{option.sessionName} - {option.screenName}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
                 </div>

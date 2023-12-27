@@ -457,7 +457,7 @@
 
 .tabswitcher-modal {
     width: 452px;
-    min-height: 364px;
+    min-height: 384px;
 
     .wave-modal-content {
         .wave-modal-body {
@@ -481,12 +481,17 @@
                 }
             }
 
-            .list-wrapper {
+            .list-container {
+                overflow: hidden;
+                padding: 10px 0 20px;
                 width: 100%;
-                padding: 0 20px 20px;
-                margin-top: 5px;
-                max-height: 304px;
+            }
+
+            .list-container-inner {
+                width: 100%;
+                max-height: 300px;
                 overflow-y: hidden;
+                padding: 0 20px;
 
                 &:focus,
                 &:hover {
@@ -496,7 +501,6 @@
 
                 .options-list {
                     width: 100%;
-                    padding-top: 5px;
 
                     .search-option {
                         padding: 5px 5px 5px 15px;
@@ -512,8 +516,12 @@
                         }
                     }
 
+                    .search-option {
+                        border: 1px solid transparent;
+                    }
+
                     .selected-option {
-                        outline: 1px solid rgba(241, 246, 243, 0.15);
+                        border: 1px solid rgba(241, 246, 243, 0.15);
                         border-radius: 4px;
                         background: rgba(255, 255, 255, 0.06);
                     }
