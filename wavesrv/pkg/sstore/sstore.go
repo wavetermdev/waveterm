@@ -414,7 +414,6 @@ func (h *HistoryItemType) ToMap() map[string]interface{} {
 	rtn["remoteid"] = h.Remote.RemoteId
 	rtn["remotename"] = h.Remote.Name
 	rtn["ismetacmd"] = h.IsMetaCmd
-	rtn["incognito"] = h.Incognito
 	return rtn
 }
 
@@ -433,7 +432,6 @@ func (h *HistoryItemType) FromMap(m map[string]interface{}) bool {
 	quickSetBool(&h.IsMetaCmd, m, "ismetacmd")
 	quickSetStr(&h.HistoryNum, m, "historynum")
 	quickSetInt64(&h.LineNum, m, "linenum")
-	quickSetBool(&h.Incognito, m, "incognito")
 	return true
 }
 
@@ -588,7 +586,6 @@ type HistoryItemType struct {
 	CmdStr    string        `json:"cmdstr"`
 	Remote    RemotePtrType `json:"remote"`
 	IsMetaCmd bool          `json:"ismetacmd"`
-	Incognito bool          `json:"incognito,omitempty"`
 
 	// only for updates
 	Remove bool `json:"remove"`
@@ -709,7 +706,7 @@ func FeStateFromShellState(state *packet.ShellState) map[string]string {
 		rtn["VIRTUAL_ENV"] = envMap["VIRTUAL_ENV"]
 	}
 	for key, val := range envMap {
-		if strings.HasPrefix(key, "PROMPTVAR_") {
+		if strings.HasPrefix(key, "PROMPTVAR_") && rtn[key] != "" {
 			rtn[key] = val
 		}
 	}

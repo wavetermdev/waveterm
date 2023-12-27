@@ -23,7 +23,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 )
 
-const HistoryCols = "h.historyid, h.ts, h.userid, h.sessionid, h.screenid, h.lineid, h.haderror, h.cmdstr, h.remoteownerid, h.remoteid, h.remotename, h.ismetacmd, h.incognito, h.linenum"
+const HistoryCols = "h.historyid, h.ts, h.userid, h.sessionid, h.screenid, h.lineid, h.haderror, h.cmdstr, h.remoteownerid, h.remoteid, h.remotename, h.ismetacmd, h.linenum"
 const DefaultMaxHistoryItems = 1000
 
 var updateWriterCVar = sync.NewCond(&sync.Mutex{})
@@ -220,16 +220,12 @@ func InsertHistoryItem(ctx context.Context, hitem *HistoryItemType) error {
 	}
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `INSERT INTO history 
-                  ( historyid, ts, userid, sessionid, screenid, lineid, haderror, cmdstr, remoteownerid, remoteid, remotename, ismetacmd, incognito, linenum) VALUES
-                  (:historyid,:ts,:userid,:sessionid,:screenid,:lineid,:haderror,:cmdstr,:remoteownerid,:remoteid,:remotename,:ismetacmd,:incognito,:linenum)`
+                  ( historyid, ts, userid, sessionid, screenid, lineid, haderror, cmdstr, remoteownerid, remoteid, remotename, ismetacmd, linenum) VALUES
+                  (:historyid,:ts,:userid,:sessionid,:screenid,:lineid,:haderror,:cmdstr,:remoteownerid,:remoteid,:remotename,:ismetacmd,:linenum)`
 		tx.NamedExec(query, hitem.ToMap())
 		return nil
 	})
 	return txErr
-}
-
-func IsIncognitoScreen(ctx context.Context, sessionId string, screenId string) (bool, error) {
-	return false, nil
 }
 
 const HistoryQueryChunkSize = 1000

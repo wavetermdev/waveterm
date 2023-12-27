@@ -624,10 +624,6 @@ func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, history
 	if err != nil {
 		return err
 	}
-	isIncognito, err := sstore.IsIncognitoScreen(ctx, ids.SessionId, ids.ScreenId)
-	if err != nil {
-		return fmt.Errorf("cannot add to history, error looking up incognito status of screen: %v", err)
-	}
 	hitem := &sstore.HistoryItemType{
 		HistoryId: scbase.GenWaveUUID(),
 		Ts:        time.Now().UnixMilli(),
@@ -639,7 +635,6 @@ func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, history
 		HadError:  hadError,
 		CmdStr:    cmdStr,
 		IsMetaCmd: isMetaCmd,
-		Incognito: isIncognito,
 	}
 	if !isMetaCmd && historyContext.RemotePtr != nil {
 		hitem.Remote = *historyContext.RemotePtr
