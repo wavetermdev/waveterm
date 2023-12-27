@@ -132,9 +132,11 @@ type SetVarScope struct {
 }
 
 type historyContextType struct {
-	LineId    string
-	LineNum   int64
-	RemotePtr *sstore.RemotePtrType
+	LineId        string
+	LineNum       int64
+	RemotePtr     *sstore.RemotePtrType
+	FeState       sstore.FeStateType
+	InitialStatus string
 }
 
 type MetaCmdFnType = func(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error)
@@ -635,6 +637,8 @@ func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, history
 		HadError:  hadError,
 		CmdStr:    cmdStr,
 		IsMetaCmd: isMetaCmd,
+		FeState:   historyContext.FeState,
+		Status:    historyContext.InitialStatus,
 	}
 	if !isMetaCmd && historyContext.RemotePtr != nil {
 		hitem.Remote = *historyContext.RemotePtr
@@ -1812,7 +1816,7 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	} else {
 		go doOpenAICompletion(cmd, opts, prompt)
 	}
-	updateHistoryContext(ctx, line, cmd)
+	updateHistoryContext(ctx, line, cmd, nil)
 	updateMap := make(map[string]interface{})
 	updateMap[sstore.ScreenField_SelectedLine] = line.LineNum
 	updateMap[sstore.ScreenField_Focus] = sstore.ScreenFocusInput
@@ -1958,11 +1962,11 @@ func addLineForCmd(ctx context.Context, metaCmd string, shouldFocus bool, ids re
 		Cmd:     cmd,
 		Screens: []*sstore.ScreenType{screen},
 	}
-	updateHistoryContext(ctx, rtnLine, cmd)
+	updateHistoryContext(ctx, rtnLine, cmd, cmd.FeState)
 	return update, nil
 }
 
-func updateHistoryContext(ctx context.Context, line *sstore.LineType, cmd *sstore.CmdType) {
+func updateHistoryContext(ctx context.Context, line *sstore.LineType, cmd *sstore.CmdType, feState sstore.FeStateType) {
 	ctxVal := ctx.Value(historyContextKey)
 	if ctxVal == nil {
 		return
@@ -1974,7 +1978,11 @@ func updateHistoryContext(ctx context.Context, line *sstore.LineType, cmd *sstor
 	}
 	if cmd != nil {
 		hctx.RemotePtr = &cmd.Remote
+		hctx.InitialStatus = cmd.Status
+	} else {
+		hctx.InitialStatus = sstore.CmdStatusDone
 	}
+	hctx.FeState = feState
 }
 
 func makeInfoFromComps(compType string, comps []string, hasMore bool) sstore.UpdatePacket {
@@ -2155,7 +2163,7 @@ func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if err != nil {
 		return nil, err
 	}
-	updateHistoryContext(ctx, rtnLine, nil)
+	updateHistoryContext(ctx, rtnLine, nil, nil)
 	updateMap := make(map[string]interface{})
 	updateMap[sstore.ScreenField_SelectedLine] = rtnLine.LineNum
 	updateMap[sstore.ScreenField_Focus] = sstore.ScreenFocusInput

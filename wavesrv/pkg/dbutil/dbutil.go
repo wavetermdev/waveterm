@@ -45,9 +45,29 @@ func QuickSetInt(ival *int, m map[string]interface{}, name string) {
 	}
 }
 
+func QuickSetNullableInt64(ival **int64, m map[string]any, name string) {
+	v, ok := m[name]
+	if !ok {
+		// set to nil
+		return
+	}
+	sqlInt64, ok := v.(int64)
+	if ok {
+		*ival = &sqlInt64
+		return
+	}
+	sqlInt, ok := v.(int)
+	if ok {
+		sqlInt64 = int64(sqlInt)
+		*ival = &sqlInt64
+		return
+	}
+}
+
 func QuickSetInt64(ival *int64, m map[string]interface{}, name string) {
 	v, ok := m[name]
 	if !ok {
+		// leave as zero
 		return
 	}
 	sqlInt64, ok := v.(int64)

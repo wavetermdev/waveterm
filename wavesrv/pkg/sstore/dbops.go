@@ -23,7 +23,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 )
 
-const HistoryCols = "h.historyid, h.ts, h.userid, h.sessionid, h.screenid, h.lineid, h.haderror, h.cmdstr, h.remoteownerid, h.remoteid, h.remotename, h.ismetacmd, h.linenum"
+const HistoryCols = "h.historyid, h.ts, h.userid, h.sessionid, h.screenid, h.lineid, h.haderror, h.cmdstr, h.remoteownerid, h.remoteid, h.remotename, h.ismetacmd, h.linenum, h.exitcode, h.durationms, h.festate, h.tags, h.status"
 const DefaultMaxHistoryItems = 1000
 
 var updateWriterCVar = sync.NewCond(&sync.Mutex{})
@@ -220,8 +220,8 @@ func InsertHistoryItem(ctx context.Context, hitem *HistoryItemType) error {
 	}
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `INSERT INTO history 
-                  ( historyid, ts, userid, sessionid, screenid, lineid, haderror, cmdstr, remoteownerid, remoteid, remotename, ismetacmd, linenum) VALUES
-                  (:historyid,:ts,:userid,:sessionid,:screenid,:lineid,:haderror,:cmdstr,:remoteownerid,:remoteid,:remotename,:ismetacmd,:linenum)`
+                  ( historyid, ts, userid, sessionid, screenid, lineid, haderror, cmdstr, remoteownerid, remoteid, remotename, ismetacmd, linenum, exitcode, durationms, festate, tags, status) VALUES
+                  (:historyid,:ts,:userid,:sessionid,:screenid,:lineid,:haderror,:cmdstr,:remoteownerid,:remoteid,:remotename,:ismetacmd,:linenum,:exitcode,:durationms,:festate,:tags,:status)`
 		tx.NamedExec(query, hitem.ToMap())
 		return nil
 	})
@@ -828,16 +828,11 @@ INSERT INTO cmd  ( screenid, lineid, remoteownerid, remoteid, remotename, cmdstr
 }
 
 func GetCmdByScreenId(ctx context.Context, screenId string, lineId string) (*CmdType, error) {
-	var cmd *CmdType
-	err := WithTx(ctx, func(tx *TxWrap) error {
+	return WithTxRtn(ctx, func(tx *TxWrap) (*CmdType, error) {
 		query := `SELECT * FROM cmd WHERE screenid = ? AND lineid = ?`
-		cmd = dbutil.GetMapGen[*CmdType](tx, query, screenId, lineId)
-		return nil
+		cmd := dbutil.GetMapGen[*CmdType](tx, query, screenId, lineId)
+		return cmd, nil
 	})
-	if err != nil {
-		return nil, err
-	}
-	return cmd, nil
 }
 
 func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, donePk *packet.CmdDonePacketType, status string) (*ModelUpdate, error) {
@@ -850,17 +845,20 @@ func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, donePk *packet.C
 	screenId := ck.GetGroupId()
 	var rtnCmd *CmdType
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		lineId := lineIdFromCK(ck)
 		query := `UPDATE cmd SET status = ?, donets = ?, exitcode = ?, durationms = ? WHERE screenid = ? AND lineid = ?`
-		tx.Exec(query, status, donePk.Ts, donePk.ExitCode, donePk.DurationMs, screenId, lineIdFromCK(ck))
+		tx.Exec(query, status, donePk.Ts, donePk.ExitCode, donePk.DurationMs, screenId, lineId)
+		query = `UPDATE history SET status = ?, exitcode = ?, durationms = ? WHERE screenid = ? AND lineid = ?`
+		tx.Exec(query, status, donePk.ExitCode, donePk.DurationMs, screenId, lineId)
 		var err error
-		rtnCmd, err = GetCmdByScreenId(tx.Context(), screenId, lineIdFromCK(ck))
+		rtnCmd, err = GetCmdByScreenId(tx.Context(), screenId, lineId)
 		if err != nil {
 			return err
 		}
 		if isWebShare(tx, screenId) {
-			insertScreenLineUpdate(tx, screenId, lineIdFromCK(ck), UpdateType_CmdExitCode)
-			insertScreenLineUpdate(tx, screenId, lineIdFromCK(ck), UpdateType_CmdDurationMs)
-			insertScreenLineUpdate(tx, screenId, lineIdFromCK(ck), UpdateType_CmdStatus)
+			insertScreenLineUpdate(tx, screenId, lineId, UpdateType_CmdExitCode)
+			insertScreenLineUpdate(tx, screenId, lineId, UpdateType_CmdDurationMs)
+			insertScreenLineUpdate(tx, screenId, lineId, UpdateType_CmdStatus)
 		}
 		return nil
 	})
@@ -924,6 +922,8 @@ func HangupAllRunningCmds(ctx context.Context) error {
 			if isWebShare(tx, cmdPtr.ScreenId) {
 				insertScreenLineUpdate(tx, cmdPtr.ScreenId, cmdPtr.LineId, UpdateType_CmdStatus)
 			}
+			query = `UPDATE history SET status = ? WHERE screenid = ? AND lineid = ?`
+			tx.Exec(query, CmdStatusHangup, cmdPtr.ScreenId, cmdPtr.LineId)
 		}
 		return nil
 	})
@@ -942,10 +942,13 @@ func HangupRunningCmdsByRemoteId(ctx context.Context, remoteId string) ([]*Scree
 			if isWebShare(tx, cmdPtr.ScreenId) {
 				insertScreenLineUpdate(tx, cmdPtr.ScreenId, cmdPtr.LineId, UpdateType_CmdStatus)
 			}
+			query = `UPDATE history SET status = ? WHERE screenid = ? AND lineid = ?`
+			tx.Exec(query, CmdStatusHangup, cmdPtr.ScreenId, cmdPtr.LineId)
 			screen, err := UpdateScreenFocusForDoneCmd(tx.Context(), cmdPtr.ScreenId, cmdPtr.LineId)
 			if err != nil {
 				return nil, err
 			}
+			// this doesn't add dups because UpdateScreenFocusForDoneCmd will only return a screen once
 			if screen != nil {
 				rtn = append(rtn, screen)
 			}
@@ -958,6 +961,8 @@ func HangupRunningCmdsByRemoteId(ctx context.Context, remoteId string) ([]*Scree
 func HangupCmd(ctx context.Context, ck base.CommandKey) (*ScreenType, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) (*ScreenType, error) {
 		query := `UPDATE cmd SET status = ? WHERE screenid = ? AND lineid = ?`
+		tx.Exec(query, CmdStatusHangup, ck.GetGroupId(), lineIdFromCK(ck))
+		query = `UPDATE history SET status = ? WHERE screenid = ? AND lineid = ?`
 		tx.Exec(query, CmdStatusHangup, ck.GetGroupId(), lineIdFromCK(ck))
 		if isWebShare(tx, ck.GetGroupId()) {
 			insertScreenLineUpdate(tx, ck.GetGroupId(), lineIdFromCK(ck), UpdateType_CmdStatus)
