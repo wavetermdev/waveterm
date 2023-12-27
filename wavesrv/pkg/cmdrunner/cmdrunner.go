@@ -1505,7 +1505,7 @@ type HostInfoType struct {
 	Port          int
 	SshKeyFile    string
 	ConnectMode   string
-	Skip          bool
+	Ignore        bool
 }
 
 func NewHostInfo(hostName string) (*HostInfoType, error) {
@@ -1544,9 +1544,9 @@ func NewHostInfo(hostName string) (*HostInfoType, error) {
 	cfgWaveOptions := make(map[string]string)
 	setBracketArgs(cfgWaveOptions, cfgWaveOptionsStr)
 
-	shouldSkip := false
+	shouldIgnore := false
 	if result, _ := strconv.ParseBool(cfgWaveOptions["ignore"]); result {
-		shouldSkip = true
+		shouldIgnore = true
 	}
 
 	var sshKeyFile string
@@ -1566,7 +1566,7 @@ func NewHostInfo(hostName string) (*HostInfoType, error) {
 	outHostInfo.Port = portVal
 	outHostInfo.SshKeyFile = sshKeyFile
 	outHostInfo.ConnectMode = connectMode
-	outHostInfo.Skip = shouldSkip
+	outHostInfo.Ignore = shouldIgnore
 	return outHostInfo, nil
 }
 
@@ -1585,7 +1585,7 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 	}
 
 	var parsedHostData []*HostInfoType
-	canonicalNamesInConfig := make(map[string]bool)
+	hostInfoInConfig := make(map[string]*HostInfoType)
 	for _, hostPattern := range hostPatterns {
 		hostInfo, hostInfoErr := NewHostInfo(hostPattern)
 		if hostInfoErr != nil {
@@ -1593,21 +1593,21 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 			continue
 		}
 		parsedHostData = append(parsedHostData, hostInfo)
-		canonicalNamesInConfig[hostInfo.CanonicalName] = true
+		hostInfoInConfig[hostInfo.CanonicalName] = hostInfo
 	}
 
 	// remove all previously imported remotes that
 	// no longer have a canonical pattern in the config files
 	for importedRemoteCanonicalName, importedRemote := range previouslyImportedRemotes {
 		var err error
-		if importedRemote.Archived || canonicalNamesInConfig[importedRemoteCanonicalName] {
-			continue
-		}
-		err = remote.ArchiveRemote(ctx, importedRemote.RemoteId)
-		if err != nil {
-			log.Printf("sshconfig-import: failed to remove remote \"%s\" (%s)\n", importedRemote.RemoteAlias, importedRemote.RemoteCanonicalName)
-		} else {
-			log.Printf("sshconfig-import: archived remote \"%s\" (%s)\n", importedRemote.RemoteAlias, importedRemote.RemoteCanonicalName)
+		hostInfo := hostInfoInConfig[importedRemoteCanonicalName]
+		if !importedRemote.Archived && (hostInfo == nil || hostInfo.Ignore) {
+			err = remote.ArchiveRemote(ctx, importedRemote.RemoteId)
+			if err != nil {
+				log.Printf("sshconfig-import: failed to remove remote \"%s\" (%s)\n", importedRemote.RemoteAlias, importedRemote.RemoteCanonicalName)
+			} else {
+				log.Printf("sshconfig-import: archived remote \"%s\" (%s)\n", importedRemote.RemoteAlias, importedRemote.RemoteCanonicalName)
+			}
 		}
 	}
 
@@ -1615,6 +1615,10 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 	for _, hostInfo := range parsedHostData {
 		previouslyImportedRemote := previouslyImportedRemotes[hostInfo.CanonicalName]
 		updatedRemotes = append(updatedRemotes, hostInfo.CanonicalName)
+		if hostInfo.Ignore {
+			log.Printf("sshconfig-import: ignore remote[%s] as specified in config file\n", hostInfo.CanonicalName)
+			continue
+		}
 		if previouslyImportedRemote != nil && !previouslyImportedRemote.Archived {
 			// this already existed and was created via import
 			// it needs to be updated instead of created
