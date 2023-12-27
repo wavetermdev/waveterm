@@ -1499,6 +1499,7 @@ type HostInfoType struct {
 	CanonicalName string
 	Port          int
 	SshKeyFile    string
+	ConnectMode   string
 }
 
 func NewHostInfo(hostName string) (*HostInfoType, error) {
@@ -1530,7 +1531,20 @@ func NewHostInfo(hostName string) (*HostInfoType, error) {
 		}
 	}
 
-	sshKeyFile, _ := ssh_config.GetStrict(hostName, "IdentityFile")
+	identityFile, _ := ssh_config.GetStrict(hostName, "IdentityFile")
+	kbdInteractive, _ := ssh_config.GetStrict(hostName, "KbdInteractiveAuthentication")
+	passwordAuth, _ := ssh_config.GetStrict(hostName, "PasswordAuthentication")
+
+	var sshKeyFile string
+	connectMode := sstore.ConnectModeAuto
+	if kbdInteractive == "yes" {
+		connectMode = sstore.ConnectModeManual
+	} else if _, err := os.Stat(identityFile); err == nil {
+		log.Printf("%s: %s\n", hostName, identityFile)
+		sshKeyFile = identityFile
+	} else if passwordAuth == "yes" {
+		connectMode = sstore.ConnectModeManual
+	}
 
 	outHostInfo := new(HostInfoType)
 	outHostInfo.Host = hostName
@@ -1538,6 +1552,7 @@ func NewHostInfo(hostName string) (*HostInfoType, error) {
 	outHostInfo.CanonicalName = canonicalName
 	outHostInfo.Port = portVal
 	outHostInfo.SshKeyFile = sshKeyFile
+	outHostInfo.ConnectMode = connectMode
 	return outHostInfo, nil
 }
 
@@ -1584,20 +1599,7 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 
 	var updatedRemotes []string
 	for _, hostInfo := range parsedHostData {
-
-		sshOpts := &sstore.SSHOpts{
-			Local:   false,
-			SSHHost: hostInfo.Host,
-			SSHUser: hostInfo.User,
-			IsSudo:  false,
-			SSHPort: hostInfo.Port,
-		}
-		if hostInfo.SshKeyFile != "" {
-			sshOpts.SSHIdentity = hostInfo.SshKeyFile
-		}
-
 		previouslyImportedRemote := previouslyImportedRemotes[hostInfo.CanonicalName]
-
 		updatedRemotes = append(updatedRemotes, hostInfo.CanonicalName)
 		if previouslyImportedRemote != nil && !previouslyImportedRemote.Archived {
 			// this already existed and was created via import
@@ -1605,6 +1607,7 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 
 			editMap := make(map[string]interface{})
 			editMap[sstore.RemoteField_Alias] = hostInfo.Host
+			editMap[sstore.RemoteField_ConnectMode] = hostInfo.ConnectMode
 			// changing port is unique to imports because it lets us avoid conflicts
 			// if the port is changed in the ssh config
 			editMap[sstore.RemoteField_SSHPort] = hostInfo.Port
@@ -1624,6 +1627,17 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 			}
 			log.Printf("sshconfig-import: found previously imported remote with canonical name \"%s\": it has been updated\n", hostInfo.CanonicalName)
 		} else {
+			sshOpts := &sstore.SSHOpts{
+				Local:   false,
+				SSHHost: hostInfo.Host,
+				SSHUser: hostInfo.User,
+				IsSudo:  false,
+				SSHPort: hostInfo.Port,
+			}
+			if hostInfo.SshKeyFile != "" {
+				sshOpts.SSHIdentity = hostInfo.SshKeyFile
+			}
+
 			// this is new and must be created for the first time
 			r := &sstore.RemoteType{
 				RemoteId:            scbase.GenWaveUUID(),
@@ -1632,7 +1646,7 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 				RemoteCanonicalName: hostInfo.CanonicalName,
 				RemoteUser:          hostInfo.User,
 				RemoteHost:          hostInfo.Host,
-				ConnectMode:         sstore.ConnectModeManual,
+				ConnectMode:         hostInfo.ConnectMode,
 				AutoInstall:         true,
 				SSHOpts:             sshOpts,
 				SSHConfigSrc:        sstore.SSHConfigSrcTypeImport,
