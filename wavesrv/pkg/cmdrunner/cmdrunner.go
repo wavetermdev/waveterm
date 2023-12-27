@@ -163,7 +163,7 @@ func init() {
 	registerCmdFn("session:open", SessionOpenCommand)
 	registerCmdAlias("session:new", SessionOpenCommand)
 	registerCmdFn("session:set", SessionSetCommand)
-	registerCmdAlias("session:delete", SessionDeleteCommand)
+	registerCmdFn("session:delete", SessionDeleteCommand)
 	registerCmdFn("session:archive", SessionArchiveCommand)
 	registerCmdFn("session:showall", SessionShowAllCommand)
 	registerCmdFn("session:show", SessionShowCommand)
