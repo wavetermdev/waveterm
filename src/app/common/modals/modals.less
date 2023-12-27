@@ -506,6 +506,13 @@
                         padding: 5px 5px 5px 15px;
                         display: flex;
                         align-items: center;
+                        border: 1px solid transparent;
+
+                        &:hover {
+                            border: 1px solid rgba(241, 246, 243, 0.15);
+                            border-radius: 4px;
+                            background: rgba(255, 255, 255, 0.06);
+                        }
 
                         span {
                             display: flex;
@@ -514,10 +521,6 @@
                         span:first-child {
                             width: 20px;
                         }
-                    }
-
-                    .search-option {
-                        border: 1px solid transparent;
                     }
 
                     .selected-option {
