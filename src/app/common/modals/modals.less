@@ -457,139 +457,166 @@
 
 .tabswitcher-modal {
     width: 452px;
-    min-height: 411px;
+    min-height: 364px;
 
     .wave-modal-content {
         .wave-modal-body {
             display: flex;
-            padding: 20px;
+            padding: 0px;
             flex-direction: column;
             align-items: flex-start;
             align-self: stretch;
             width: 100%;
 
-            .options-list {
+            .textfield-wrapper {
+                padding: 20px 20px 0px;
+
+                .wave-input-decoration.start-position {
+                    height: 100%;
+
+                    .tabswitcher-search-prefix {
+                        opacity: 0.5;
+                        font-size: 13px;
+                    }
+                }
+            }
+
+            .list-wrapper {
                 width: 100%;
-                padding-top: 10px;
+                padding: 0 20px 20px;
+                margin-top: 5px;
+                max-height: 304px;
+                overflow-y: hidden;
 
-                .search-option {
-                    padding: 5px 5px 5px 15px;
-                    display: flex;
-                    align-items: center;
-
-                    span {
-                        display: inline-block;
-                    }
-
-                    span:first-child {
-                        width: 20px;
-                    }
+                &:focus,
+                &:hover {
+                    overflow-y: overlay;
+                    padding-right: 16px;
                 }
 
-                .selected-option {
-                    outline: 1px solid rgba(241, 246, 243, 0.15);
-                    border-radius: 4px;
-                    background: rgba(255, 255, 255, 0.06);
-                }
+                .options-list {
+                    width: 100%;
+                    padding-top: 5px;
 
-                .color-green,
-                .color-default {
-                    svg.left-icon path {
-                        fill: @tab-green;
+                    .search-option {
+                        padding: 5px 5px 5px 15px;
+                        display: flex;
+                        align-items: center;
+
+                        span {
+                            display: flex;
+                        }
+
+                        span:first-child {
+                            width: 20px;
+                        }
                     }
 
-                    i {
-                        color: @tab-green;
-                    }
-                }
-
-                .color-orange {
-                    svg.left-icon path {
-                        fill: @tab-orange;
+                    .selected-option {
+                        outline: 1px solid rgba(241, 246, 243, 0.15);
+                        border-radius: 4px;
+                        background: rgba(255, 255, 255, 0.06);
                     }
 
-                    i {
-                        color: @tab-orange;
-                    }
-                }
+                    .color-green,
+                    .color-default {
+                        svg.left-icon path {
+                            fill: @tab-green;
+                        }
 
-                .color-red {
-                    svg.left-icon path {
-                        fill: @tab-red;
-                    }
-
-                    i {
-                        color: @tab-red;
-                    }
-                }
-
-                .color-yellow {
-                    svg.left-icon path {
-                        fill: @tab-yellow;
+                        i {
+                            color: @tab-green;
+                        }
                     }
 
-                    i {
-                        color: @tab-yellow;
-                    }
-                }
+                    .color-orange {
+                        svg.left-icon path {
+                            fill: @tab-orange;
+                        }
 
-                .color-blue {
-                    svg.left-icon path {
-                        fill: @tab-blue;
-                    }
-
-                    i {
-                        color: @tab-blue;
-                    }
-                }
-
-                .color-mint {
-                    svg.left-icon path {
-                        fill: @tab-mint;
+                        i {
+                            color: @tab-orange;
+                        }
                     }
 
-                    i {
-                        color: @tab-mint;
-                    }
-                }
+                    .color-red {
+                        svg.left-icon path {
+                            fill: @tab-red;
+                        }
 
-                .color-cyan {
-                    svg.left-icon path {
-                        fill: @tab-cyan;
-                    }
-
-                    i {
-                        color: @tab-cyan;
-                    }
-                }
-
-                .color-white {
-                    svg.left-icon path {
-                        fill: @tab-white;
+                        i {
+                            color: @tab-red;
+                        }
                     }
 
-                    i {
-                        color: @tab-white;
-                    }
-                }
+                    .color-yellow {
+                        svg.left-icon path {
+                            fill: @tab-yellow;
+                        }
 
-                .color-violet {
-                    svg.left-icon path {
-                        fill: @tab-violet;
-                    }
-
-                    i {
-                        color: @tab-violet;
-                    }
-                }
-
-                .color-pink {
-                    svg.left-icon path {
-                        fill: @tab-pink;
+                        i {
+                            color: @tab-yellow;
+                        }
                     }
 
-                    i {
-                        color: @tab-pink;
+                    .color-blue {
+                        svg.left-icon path {
+                            fill: @tab-blue;
+                        }
+
+                        i {
+                            color: @tab-blue;
+                        }
+                    }
+
+                    .color-mint {
+                        svg.left-icon path {
+                            fill: @tab-mint;
+                        }
+
+                        i {
+                            color: @tab-mint;
+                        }
+                    }
+
+                    .color-cyan {
+                        svg.left-icon path {
+                            fill: @tab-cyan;
+                        }
+
+                        i {
+                            color: @tab-cyan;
+                        }
+                    }
+
+                    .color-white {
+                        svg.left-icon path {
+                            fill: @tab-white;
+                        }
+
+                        i {
+                            color: @tab-white;
+                        }
+                    }
+
+                    .color-violet {
+                        svg.left-icon path {
+                            fill: @tab-violet;
+                        }
+
+                        i {
+                            color: @tab-violet;
+                        }
+                    }
+
+                    .color-pink {
+                        svg.left-icon path {
+                            fill: @tab-pink;
+                        }
+
+                        i {
+                            color: @tab-pink;
+                        }
                     }
                 }
             }

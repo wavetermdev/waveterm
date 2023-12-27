@@ -1480,6 +1480,10 @@ class TabSwitcherModal extends React.Component<{}, {}> {
             }
         });
 
+        mobx.action(() => {
+            this.sOptions.replace(this.sortOptions(this.options).slice(0, 10));
+        })();
+
         document.addEventListener("keydown", this.handleKeyDown);
     }
 
@@ -1536,7 +1540,14 @@ class TabSwitcherModal extends React.Component<{}, {}> {
 
     @boundMethod
     handleSearch(val: string): void {
-        let sOptions = this.sortAndFilter(val);
+        let sOptions: SwitcherDataType[];
+        if (val == "") {
+            sOptions = this.sortOptions(this.options).slice(0, 10);
+        } else {
+            sOptions = this.filterOptions(val);
+            sOptions = this.sortOptions(sOptions);
+        }
+
         mobx.action(() => {
             this.sOptions.replace(sOptions);
         })();
@@ -1544,7 +1555,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
 
     @mobx.computed
     @boundMethod
-    sortAndFilter(searchInput: string) {
+    filterOptions(searchInput: string): SwitcherDataType[] {
         let filteredScreens = [];
 
         for (let i = 0; i < this.options.length; i++) {
@@ -1568,8 +1579,13 @@ class TabSwitcherModal extends React.Component<{}, {}> {
             }
         }
 
-        // Sort the filtered tabs
-        return filteredScreens.sort((a, b) => {
+        return filteredScreens;
+    }
+
+    @mobx.computed
+    @boundMethod
+    sortOptions(options: SwitcherDataType[]): SwitcherDataType[] {
+        return options.sort((a, b) => {
             const aInCurrentSession = a.sessionIdx === this.activeSessionIdx;
             const bInCurrentSession = b.sessionIdx === this.activeSessionIdx;
 
@@ -1608,47 +1624,55 @@ class TabSwitcherModal extends React.Component<{}, {}> {
         return (
             <Modal className="tabswitcher-modal">
                 <div className="wave-modal-body">
-                    <TextField
-                        placeholder="Switch to "
-                        onChange={this.handleSearch}
-                        maxLength={400}
-                        autoFocus={true}
-                        decoration={{
-                            endDecoration: (
-                                <InputDecoration>
-                                    <Tooltip
-                                        message={`Search workspaces and tabs.`}
-                                        icon={<i className="fa-sharp fa-regular fa-circle-question" />}
-                                    >
-                                        <i className="fa-sharp fa-regular fa-circle-question" />
-                                    </Tooltip>
-                                </InputDecoration>
-                            ),
-                        }}
-                    />
-                    <div className="options-list">
-                        {this.sOptions.map((option, index) => {
-                            if (!this.optionRefs[index]) {
-                                this.optionRefs[index] = React.createRef();
-                            }
+                    <div className="textfield-wrapper">
+                        <TextField
+                            onChange={this.handleSearch}
+                            maxLength={400}
+                            autoFocus={true}
+                            decoration={{
+                                startDecoration: (
+                                    <InputDecoration position="start">
+                                        <div className="tabswitcher-search-prefix">Switch tabs:</div>
+                                    </InputDecoration>
+                                ),
+                                endDecoration: (
+                                    <InputDecoration>
+                                        <Tooltip
+                                            message={`Type to filter workspaces and tabs.`}
+                                            icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                        >
+                                            <i className="fa-sharp fa-regular fa-circle-question" />
+                                        </Tooltip>
+                                    </InputDecoration>
+                                ),
+                            }}
+                        />
+                    </div>
+                    <div className="list-wrapper">
+                        <div className="options-list">
+                            {this.sOptions.map((option, index) => {
+                                if (!this.optionRefs[index]) {
+                                    this.optionRefs[index] = React.createRef();
+                                }
 
-                            return (
-                                <div
-                                    key={index}
-                                    ref={this.optionRefs[index]}
-                                    className={cn(
-                                        `search-option`,
-                                        { "selected-option": this.selectedIdx.get() === index },
-                                        "color-" + option.color
-                                    )}
-                                >
-                                    <span>{this.renderIcon(option)}</span>
-                                    <span>
-                                        #{option.sessionName} - {option.screenName}
-                                    </span>
-                                </div>
-                            );
-                        })}
+                                return (
+                                    <div
+                                        key={index}
+                                        ref={this.optionRefs[index]}
+                                        className={cn(
+                                            `search-option`,
+                                            { "selected-option": this.selectedIdx.get() === index },
+                                            "color-" + option.color
+                                        )}
+                                    >
+                                        <span>{this.renderIcon(option)}</span>
+                                        <span>
+                                            #{option.sessionName} - {option.screenName}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             </Modal>

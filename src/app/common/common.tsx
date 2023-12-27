@@ -445,10 +445,11 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
 
         return (
             <div
-                className={cn(`wave-textfield ${className || ""}`, {
+                className={cn("wave-textfield", className, {
                     focused: focused,
                     error: error,
                     disabled: disabled,
+                    "no-label": !label,
                 })}
                 onFocus={this.handleComponentFocus}
                 onBlur={this.handleComponentBlur}
