@@ -1451,6 +1451,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     activeSessionIdx: number;
     optionRefs = [];
     listWrapperRef = React.createRef<HTMLDivElement>();
+    previousSelectedIdx = 0;
 
     componentDidMount() {
         this.activeSessionIdx = GlobalModel.getActiveSession().sessionIdx.get();
@@ -1491,6 +1492,22 @@ class TabSwitcherModal extends React.Component<{}, {}> {
         document.removeEventListener("keydown", this.handleKeyDown);
     }
 
+    componentDidUpdate() {
+        let currentSelectedIdx = this.selectedIdx.get();
+
+        // Check if selectedIdx has changed
+        if (currentSelectedIdx !== this.previousSelectedIdx) {
+            let optionElement = this.optionRefs[currentSelectedIdx]?.current;
+
+            if (optionElement) {
+                optionElement.scrollIntoView({ block: "nearest" });
+            }
+
+            // Update previousSelectedIdx for the next update cycle
+            this.previousSelectedIdx = currentSelectedIdx;
+        }
+    }
+
     @boundMethod
     getTabIcon(screen: Screen): string {
         let tabIcon = "default";
@@ -1513,15 +1530,16 @@ class TabSwitcherModal extends React.Component<{}, {}> {
 
     @boundMethod
     handleKeyDown(e) {
+        let newIndex;
         if (e.key === "Escape") {
             this.closeModal();
         } else if (e.key === "ArrowUp") {
             e.preventDefault();
-            const newIndex = Math.max(this.selectedIdx.get() - 1, 0);
+            newIndex = Math.max(this.selectedIdx.get() - 1, 0);
             this.setSelectedIndex(newIndex);
         } else if (e.key === "ArrowDown") {
             e.preventDefault();
-            const newIndex = Math.min(this.selectedIdx.get() + 1, this.sOptions.length - 1);
+            newIndex = Math.min(this.selectedIdx.get() + 1, this.sOptions.length - 1);
             this.setSelectedIndex(newIndex);
         }
     }
@@ -1531,16 +1549,18 @@ class TabSwitcherModal extends React.Component<{}, {}> {
         mobx.action(() => {
             this.selectedIdx.set(index);
         })();
-
-        if (this.optionRefs[index] && this.optionRefs[index].current) {
-            this.optionRefs[index].current.focus();
-            this.optionRefs[index].current.scrollIntoView({ block: "nearest" });
-        }
     }
 
     @boundMethod
     closeModal(): void {
         GlobalModel.modalsModel.popModal();
+    }
+
+    @boundMethod
+    handleSelect(index): void {
+        mobx.action(() => {
+            this.selectedIdx.set(index);
+        })();
     }
 
     @boundMethod
@@ -1670,6 +1690,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
                                                 { "selected-option": this.selectedIdx.get() === index },
                                                 "color-" + option.color
                                             )}
+                                            onClick={() => this.handleSelect(index)}
                                         >
                                             <span>{this.renderIcon(option)}</span>
                                             <span>
