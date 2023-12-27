@@ -7,7 +7,7 @@ CREATE TABLE client (
     userpublickeybytes blob NOT NULL,
     userprivatekeybytes blob NOT NULL,
     winsize json NOT NULL
-, clientopts json NOT NULL DEFAULT '', feopts json NOT NULL DEFAULT '{}', cmdstoretype varchar(20) DEFAULT 'session', openaiopts json NOT NULL DEFAULT '{}');
+, clientopts json NOT NULL DEFAULT '', feopts json NOT NULL DEFAULT '{}', cmdstoretype varchar(20) DEFAULT 'session', openaiopts json NOT NULL DEFAULT '{}', releaseinfo json NOT NULL DEFAULT '{}');
 CREATE TABLE session (
     sessionid varchar(36) PRIMARY KEY,
     name varchar(50) NOT NULL,
@@ -146,7 +146,7 @@ CREATE TABLE IF NOT EXISTS "screen" (
     anchor json NOT NULL,
     focustype varchar(12) NOT NULL,
     archived boolean NOT NULL,
-    archivedts bigint NOT NULL, webshareopts json NOT NULL DEFAULT 'null',
+    archivedts bigint NOT NULL, webshareopts json NOT NULL DEFAULT 'null', screenviewopts json DEFAULT '{}',
     PRIMARY KEY (screenid)
 );
 CREATE TABLE IF NOT EXISTS "line" (
@@ -180,12 +180,6 @@ CREATE TABLE webptypos (
     PRIMARY KEY (screenid, lineid)
 );
 CREATE INDEX idx_screenupdate_ids ON screenupdate (screenid, lineid);
-CREATE TABLE cmd_migration (
-    screenid varchar(36) NOT NULL,
-    lineid varchar(36) NOT NULL,
-    cmdid varchar(36) NOT NULL,
-    PRIMARY KEY (screenid, lineid)
-);
 CREATE TABLE IF NOT EXISTS "cmd" (
     screenid varchar(36) NOT NULL,
     lineid varchar(36) NOT NULL,
