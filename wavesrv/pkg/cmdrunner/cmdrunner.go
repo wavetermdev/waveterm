@@ -1553,7 +1553,7 @@ func NewHostInfo(hostName string) (*HostInfoType, error) {
 	connectMode := sstore.ConnectModeAuto
 	if cfgWaveOptions["connectmode"] == "manual" {
 		connectMode = sstore.ConnectModeManual
-	} else if _, err := os.Stat(identityFile); err == nil {
+	} else if _, err := os.Stat(base.ExpandHomeDir(identityFile)); err == nil {
 		sshKeyFile = identityFile
 	} else if passwordAuth == "yes" {
 		connectMode = sstore.ConnectModeManual
