@@ -506,6 +506,7 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		AutoInstall:         msh.Remote.AutoInstall,
 		Archived:            msh.Remote.Archived,
 		RemoteIdx:           msh.Remote.RemoteIdx,
+		SSHConfigSrc:        msh.Remote.SSHConfigSrc,
 		UName:               msh.UName,
 		InstallStatus:       msh.InstallStatus,
 		NeedsMShellUpgrade:  msh.NeedsMShellUpgrade,

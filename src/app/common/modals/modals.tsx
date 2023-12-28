@@ -983,6 +983,15 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
             updateAuthButton = <></>;
             cancelInstallButton = <></>;
         }
+        console.log(remote.sshconfigsrc)
+        if (remote.sshconfigsrc == "sshconfig-import") {
+            updateAuthButton = (
+                <Button theme="secondary" disabled={true}>
+                    Edit
+                    <i className="fa-sharp fa-solid fa-fw fa-ban" />
+                </Button>
+            )
+        }
         if (remote.status == "connected" || remote.status == "connecting") {
             buttons.push(disconnectButton);
         } else if (remote.status == "disconnected") {

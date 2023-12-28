@@ -1006,6 +1006,7 @@ type RemoteRuntimeState struct {
 	AutoInstall         bool              `json:"autoinstall"`
 	Archived            bool              `json:"archived,omitempty"`
 	RemoteIdx           int64             `json:"remoteidx"`
+	SSHConfigSrc        string            `json:"sshconfigsrc"`
 	UName               string            `json:"uname"`
 	MShellVersion       string            `json:"mshellversion"`
 	WaitingForPassword  bool              `json:"waitingforpassword,omitempty"`
