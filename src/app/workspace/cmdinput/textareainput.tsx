@@ -4,11 +4,15 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
+import type * as T from "../../../types/types";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner } from "../../../model/model";
+import { GlobalModel, GlobalCommandRunner, Screen } from "../../../model/model";
 import { getMonoFontSize } from "../../../util/textmeasure";
 import { isModKeyPress, hasNoModifiers } from "../../../util/util";
+import * as appconst from "../../appconst";
+
+type OV<T> = mobx.IObservableValue<T>;
 
 function pageSize(div: any): number {
     if (div == null) {
@@ -35,21 +39,44 @@ function scrollDiv(div: any, amt: number) {
 }
 
 @mobxReact.observer
-class TextAreaInput extends React.Component<{ onHeightChange: () => void }, {}> {
+class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: () => void }, {}> {
     lastTab: boolean = false;
     lastHistoryUpDown: boolean = false;
-    lastTabCurLine: mobx.IObservableValue<string> = mobx.observable.box(null);
+    lastTabCurLine: OV<string> = mobx.observable.box(null);
     lastFocusType: string = null;
-    mainInputRef: React.RefObject<any>;
-    historyInputRef: React.RefObject<any>;
-    controlRef: React.RefObject<any>;
+    mainInputRef: React.RefObject<HTMLTextAreaElement> = React.createRef();
+    historyInputRef: React.RefObject<HTMLInputElement> = React.createRef();
+    controlRef: React.RefObject<HTMLDivElement> = React.createRef();
     lastHeight: number = 0;
+    lastSP: T.StrWithPos = { str: "", pos: appconst.NoStrPos };
+    version: OV<number> = mobx.observable.box(0); // forces render updates
 
-    constructor(props) {
-        super(props);
-        this.mainInputRef = React.createRef();
-        this.historyInputRef = React.createRef();
-        this.controlRef = React.createRef();
+    incVersion(): void {
+        let v = this.version.get();
+        mobx.action(() => this.version.set(v + 1))();
+    }
+
+    getCurSP(): T.StrWithPos {
+        let textarea = this.mainInputRef.current;
+        if (textarea == null) {
+            return this.lastSP;
+        }
+        let str = textarea.value;
+        let pos = textarea.selectionStart;
+        let endPos = textarea.selectionEnd;
+        if (pos != endPos) {
+            return { str, pos: appconst.NoStrPos };
+        }
+        return { str, pos };
+    }
+
+    updateSP(): void {
+        let curSP = this.getCurSP();
+        if (curSP.str == this.lastSP.str && curSP.pos == this.lastSP.pos) {
+            return;
+        }
+        this.lastSP = curSP;
+        GlobalModel.sendCmdInputText(this.props.screen.screenId, curSP);
     }
 
     setFocus(): void {
@@ -100,6 +127,7 @@ class TextAreaInput extends React.Component<{ onHeightChange: () => void }, {}> 
             this.lastFocusType = focusType;
         }
         this.checkHeight(false);
+        this.updateSP();
     }
 
     componentDidUpdate() {
@@ -112,10 +140,11 @@ class TextAreaInput extends React.Component<{ onHeightChange: () => void }, {}> 
             this.lastFocusType = focusType;
         }
         let inputModel = GlobalModel.inputModel;
-        if (inputModel.forceCursorPos.get() != null) {
+        let fcpos = inputModel.forceCursorPos.get();
+        if (fcpos != null && fcpos != appconst.NoStrPos) {
             if (this.mainInputRef.current != null) {
-                this.mainInputRef.current.selectionStart = inputModel.forceCursorPos.get();
-                this.mainInputRef.current.selectionEnd = inputModel.forceCursorPos.get();
+                this.mainInputRef.current.selectionStart = fcpos;
+                this.mainInputRef.current.selectionEnd = fcpos;
             }
             mobx.action(() => inputModel.forceCursorPos.set(null))();
         }
@@ -124,6 +153,7 @@ class TextAreaInput extends React.Component<{ onHeightChange: () => void }, {}> 
             this.setFocus();
         }
         this.checkHeight(true);
+        this.updateSP();
     }
 
     getLinePos(elem: any): { numLines: number; linePos: number } {
@@ -295,6 +325,11 @@ class TextAreaInput extends React.Component<{ onHeightChange: () => void }, {}> 
     }
 
     @boundMethod
+    onSelect(e: any) {
+        this.incVersion();
+    }
+
+    @boundMethod
     onHistoryKeyDown(e: any) {
         let inputModel = GlobalModel.inputModel;
         if (e.code == "Escape") {
@@ -386,7 +421,7 @@ class TextAreaInput extends React.Component<{ onHeightChange: () => void }, {}> 
         }
         let cutValue = value.substr(0, selStart);
         let restValue = value.substr(selStart);
-        let cmdLineUpdate = { cmdline: restValue, cursorpos: 0 };
+        let cmdLineUpdate = { str: restValue, pos: 0 };
         navigator.clipboard.writeText(cutValue);
         GlobalModel.inputModel.updateCmdLine(cmdLineUpdate);
     }
@@ -439,7 +474,7 @@ class TextAreaInput extends React.Component<{ onHeightChange: () => void }, {}> 
         let cutValue = value.slice(cutSpot, selStart);
         let prevValue = value.slice(0, cutSpot);
         let restValue = value.slice(selStart);
-        let cmdLineUpdate = { cmdline: prevValue + restValue, cursorpos: prevValue.length };
+        let cmdLineUpdate = { str: prevValue + restValue, pos: prevValue.length };
         navigator.clipboard.writeText(cutValue);
         GlobalModel.inputModel.updateCmdLine(cmdLineUpdate);
     }
@@ -459,7 +494,7 @@ class TextAreaInput extends React.Component<{ onHeightChange: () => void }, {}> 
                 return;
             }
             let newValue = value.substr(0, selStart) + clipText + value.substr(selEnd);
-            let cmdLineUpdate = { cmdline: newValue, cursorpos: selStart + clipText.length };
+            let cmdLineUpdate = { str: newValue, pos: selStart + clipText.length };
             GlobalModel.inputModel.updateCmdLine(cmdLineUpdate);
         });
     }
@@ -525,6 +560,7 @@ class TextAreaInput extends React.Component<{ onHeightChange: () => void }, {}> 
         let numLines = curLine.split("\n").length;
         let maxCols = this.getTextAreaMaxCols();
         let longLine = false;
+        let version = this.version.get(); // to force reactions
         if (maxCols != 0 && curLine.length >= maxCols - 4) {
             longLine = true;
         }
@@ -559,6 +595,7 @@ class TextAreaInput extends React.Component<{ onHeightChange: () => void }, {}> 
                     value={curLine}
                     onKeyDown={this.onKeyDown}
                     onChange={this.onChange}
+                    onSelect={this.onSelect}
                     className={cn("textarea", { "display-disabled": disabled })}
                 ></textarea>
                 <input

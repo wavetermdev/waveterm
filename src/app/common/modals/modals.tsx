@@ -456,12 +456,12 @@ class AboutModal extends React.Component<{}, {}> {
                         </a>
                         <a
                             className="wave-button wave-button-link color-standard"
-                            href={util.makeExternLink("https://github.com/wavetermdev/waveterm/blob/main/LICENSE")}
+                            href={util.makeExternLink("https://github.com/wavetermdev/waveterm/blob/main/acknowledgements/README.md")}
                             rel={"noopener"}
                             target="_blank"
                         >
-                            <i className="fa-sharp fa-light fa-book-blank"></i>
-                            License
+                            <i className="fa-sharp fa-light fa-heart"></i>
+                            Acknowledgements
                         </a>
                     </div>
                     <div className="about-section text-standard">&copy; 2023 Command Line Inc.</div>

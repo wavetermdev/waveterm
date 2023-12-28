@@ -1445,10 +1445,12 @@ class InputModel {
         }
     }
 
-    updateCmdLine(cmdLine: CmdLineUpdateType): void {
+    updateCmdLine(cmdLine: T.StrWithPos): void {
         mobx.action(() => {
-            this.setCurLine(cmdLine.cmdline);
-            this.forceCursorPos.set(cmdLine.cursorpos);
+            this.setCurLine(cmdLine.str);
+            if (cmdLine.pos != appconst.NoStrPos) {
+                this.forceCursorPos.set(cmdLine.pos);
+            }
         })();
     }
 
@@ -3165,6 +3167,7 @@ class Model {
     showLinks: OV<boolean> = mobx.observable.box(true, {
         name: "model-showLinks",
     });
+    packetSeqNum: number = 0;
 
     constructor() {
         this.clientId = getApi().getId();
@@ -3217,6 +3220,11 @@ class Model {
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
         document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
         setTimeout(() => this.getClientDataLoop(1), 10);
+    }
+
+    getNextPacketSeqNum(): number {
+        this.packetSeqNum++;
+        return this.packetSeqNum;
     }
 
     getPlatform(): string {
@@ -3624,6 +3632,12 @@ class Model {
             let newContext = this.getUIContext();
             if (oldContext.sessionid != newContext.sessionid || oldContext.screenid != newContext.screenid) {
                 this.inputModel.resetInput();
+                if ("cmdline" in genUpdate) {
+                    // TODO a bit of a hack since this update gets applied in runUpdate_internal.
+                    //   we then undo that update with the resetInput, and then redo it with the line below
+                    //   not sure how else to handle this for now though
+                    this.inputModel.updateCmdLine(genUpdate.cmdline);
+                }
             } else if (remotePtrToString(oldContext.remote) != remotePtrToString(newContext.remote)) {
                 this.inputModel.resetHistory();
             }
@@ -4002,10 +4016,7 @@ class Model {
     getActiveIds(): [string, string] {
         let activeSession = this.getActiveSession();
         let activeScreen = this.getActiveScreen();
-        return [
-            activeSession == null ? null : activeSession.sessionId,
-            activeScreen == null ? null : activeScreen.screenId,
-        ];
+        return [activeSession?.sessionId, activeScreen?.screenId];
     }
 
     _loadScreenLinesAsync(newWin: ScreenLines) {
@@ -4122,6 +4133,16 @@ class Model {
 
     sendInputPacket(inputPacket: any) {
         this.ws.pushMessage(inputPacket);
+    }
+
+    sendCmdInputText(screenId: string, sp: T.StrWithPos) {
+        let pk: T.CmdInputTextPacketType = {
+            type: "cmdinputtext",
+            seqnum: this.getNextPacketSeqNum(),
+            screenid: screenId,
+            text: sp,
+        };
+        this.ws.pushMessage(pk);
     }
 
     resolveUserIdToName(userid: string): string {
@@ -4324,8 +4345,8 @@ class CommandRunner {
         );
     }
 
-    screenPurge(screenId: string): Promise<CommandRtnType> {
-        return GlobalModel.submitCommand("screen", "purge", [screenId], { nohist: "1" }, false);
+    screenDelete(screenId: string): Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("screen", "delete", [screenId], { nohist: "1" }, false);
     }
 
     screenWebShare(screenId: string, shouldShare: boolean): Promise<CommandRtnType> {
@@ -4454,8 +4475,8 @@ class CommandRunner {
         );
     }
 
-    sessionPurge(sessionId: string): Promise<CommandRtnType> {
-        return GlobalModel.submitCommand("session", "purge", [sessionId], { nohist: "1" }, false);
+    sessionDelete(sessionId: string): Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("session", "delete", [sessionId], { nohist: "1" }, false);
     }
 
     sessionSetSettings(sessionId: string, settings: { name?: string }, interactive: boolean): Promise<CommandRtnType> {
