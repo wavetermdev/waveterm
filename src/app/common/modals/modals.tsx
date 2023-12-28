@@ -454,7 +454,7 @@ class AboutModal extends React.Component<{}, {}> {
                         <a
                             className="wave-button wave-button-link color-standard"
                             href={util.makeExternLink(
-                                "https://github.com/wavetermdev/waveterm/blob/main/acknowledgements/README.md",
+                                "https://github.com/wavetermdev/waveterm/blob/main/acknowledgements/README.md"
                             )}
                             rel={"noopener"}
                             target="_blank"
@@ -1137,7 +1137,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                             className={cn(
                                 "terminal-wrapper",
                                 { focus: isTermFocused },
-                                remote != null ? "status-" + remote.status : null,
+                                remote != null ? "status-" + remote.status : null
                             )}
                         >
                             <If condition={!isTermFocused}>
