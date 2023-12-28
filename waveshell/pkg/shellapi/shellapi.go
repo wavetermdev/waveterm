@@ -54,6 +54,7 @@ type ShellApi interface {
 	GetShellState() (*packet.ShellState, error)
 	GetBaseShellOpts() string
 	ParseShellStateOutput(output []byte) (*packet.ShellState, error)
+	MakeRcFileStr(pk *packet.RunPacketType) string
 }
 
 func MakeShellApi(shellType string) (ShellApi, error) {

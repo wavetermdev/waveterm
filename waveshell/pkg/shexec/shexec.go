@@ -438,27 +438,13 @@ func (opts SSHOpts) MakeSSHInstallCmd() (*exec.Cmd, error) {
 	return opts.MakeSSHExecCmd(cmdStr, sapi), nil
 }
 
-func (opts SSHOpts) MakeMShellServerCmd() (*exec.Cmd, error) {
-	msPath, err := base.GetMShellPath()
-	if err != nil {
-		return nil, err
-	}
-	ecmd := exec.Command(msPath, "--server")
-	return ecmd, nil
-}
-
-func (opts SSHOpts) MakeMShellSingleCmd(fromServer bool) (*exec.Cmd, error) {
+func (opts SSHOpts) MakeMShellSingleCmd() (*exec.Cmd, error) {
 	if opts.SSHHost == "" {
 		execFile, err := os.Executable()
 		if err != nil {
 			return nil, fmt.Errorf("cannot find local mshell executable: %w", err)
 		}
-		var ecmd *exec.Cmd
-		if fromServer {
-			ecmd = exec.Command(execFile, "--single-from-server")
-		} else {
-			ecmd = exec.Command(execFile, "--single")
-		}
+		ecmd := exec.Command(execFile, "--single-from-server")
 		return ecmd, nil
 	}
 	sapi, err := shellapi.MakeShellApi(packet.ShellType_bash)
@@ -746,31 +732,6 @@ func RunInstallFromCmd(ctx context.Context, ecmd *exec.Cmd, tryDetect bool, mshe
 	}
 }
 
-func RunInstallFromOpts(opts *InstallOpts) error {
-	ecmd, err := opts.SSHOpts.MakeSSHInstallCmd()
-	if err != nil {
-		return err
-	}
-	msgFn := func(str string) {
-		fmt.Printf("%s", str)
-	}
-	var mshellStream *os.File
-	if opts.OptName != "" {
-		mshellStream, err = os.Open(opts.OptName)
-		if err != nil {
-			return fmt.Errorf("cannot open mshell binary %q: %v", opts.OptName, err)
-		}
-		defer mshellStream.Close()
-	}
-	err = RunInstallFromCmd(context.Background(), ecmd, opts.Detect, mshellStream, base.MShellBinaryFromOptDir, msgFn)
-	if err != nil {
-		return err
-	}
-	mmVersion := semver.MajorMinor(base.MShellVersion)
-	fmt.Printf("mshell installed successfully at %s:~/.mshell/mshell%s\n", opts.SSHOpts.SSHHost, mmVersion)
-	return nil
-}
-
 func HasDupStdin(fds []packet.RemoteFd) bool {
 	for _, rfd := range fds {
 		if rfd.Read && rfd.DupStdin {
@@ -778,105 +739,6 @@ func HasDupStdin(fds []packet.RemoteFd) bool {
 		}
 	}
 	return false
-}
-
-func RunClientSSHCommandAndWait(runPacket *packet.RunPacketType, fdContext FdContext, sshOpts SSHOpts, upr packet.UnknownPacketReporter, debug bool) (*packet.CmdDonePacketType, error) {
-	sapi, err := shellapi.MakeShellApi(packet.ShellType_bash)
-	if err != nil {
-		return nil, err
-	}
-	cmd := MakeShExec(runPacket.CK, upr, sapi)
-	ecmd, err := sshOpts.MakeMShellSingleCmd(false)
-	if err != nil {
-		return nil, err
-	}
-	cmd.Cmd = ecmd
-	inputWriter, err := ecmd.StdinPipe()
-	if err != nil {
-		return nil, fmt.Errorf("creating stdin pipe: %v", err)
-	}
-	stdoutReader, err := ecmd.StdoutPipe()
-	if err != nil {
-		return nil, fmt.Errorf("creating stdout pipe: %v", err)
-	}
-	stderrReader, err := ecmd.StderrPipe()
-	if err != nil {
-		return nil, fmt.Errorf("creating stderr pipe: %v", err)
-	}
-	if !HasDupStdin(runPacket.Fds) {
-		cmd.Multiplexer.MakeRawFdReader(0, fdContext.GetReader(0), false, false)
-	}
-	cmd.Multiplexer.MakeRawFdWriter(1, fdContext.GetWriter(1), false, "client")
-	cmd.Multiplexer.MakeRawFdWriter(2, fdContext.GetWriter(2), false, "client")
-	for _, rfd := range runPacket.Fds {
-		if rfd.Read && rfd.DupStdin {
-			cmd.Multiplexer.MakeRawFdReader(rfd.FdNum, fdContext.GetReader(0), false, false)
-			continue
-		}
-		if rfd.Read {
-			fd := fdContext.GetReader(rfd.FdNum)
-			cmd.Multiplexer.MakeRawFdReader(rfd.FdNum, fd, false, false)
-		} else if rfd.Write {
-			fd := fdContext.GetWriter(rfd.FdNum)
-			cmd.Multiplexer.MakeRawFdWriter(rfd.FdNum, fd, true, "client")
-		}
-	}
-	err = ecmd.Start()
-	if err != nil {
-		return nil, fmt.Errorf("running ssh command: %w", err)
-	}
-	defer cmd.Close()
-	stdoutPacketParser := packet.MakePacketParser(stdoutReader, nil)
-	stderrPacketParser := packet.MakePacketParser(stderrReader, nil)
-	packetParser := packet.CombinePacketParsers(stdoutPacketParser, stderrPacketParser, false)
-	sender := packet.MakePacketSender(inputWriter, nil)
-	versionOk := false
-	for pk := range packetParser.MainCh {
-		if pk.GetType() == packet.RawPacketStr {
-			rawPk := pk.(*packet.RawPacketType)
-			fmt.Printf("%s\n", rawPk.Data)
-			continue
-		}
-		if pk.GetType() == packet.InitPacketStr {
-			initPk := pk.(*packet.InitPacketType)
-			mmVersion := semver.MajorMinor(base.MShellVersion)
-			if initPk.NotFound {
-				if sshOpts.SSHHost == "" {
-					return nil, fmt.Errorf("mshell-%s command not found on local server", mmVersion)
-				}
-				if initPk.UName == "" {
-					return nil, fmt.Errorf("mshell-%s command not found on remote server, no uname detected", mmVersion)
-				}
-				goos, goarch, err := DetectGoArch(initPk.UName)
-				if err != nil {
-					return nil, fmt.Errorf("mshell-%s command not found on remote server, architecture cannot be detected (might be incompatible with mshell): %w", mmVersion, err)
-				}
-				sshOptsStr := sshOpts.MakeMShellSSHOpts()
-				return nil, fmt.Errorf("mshell-%s command not found on remote server, can install with 'mshell --install %s %s.%s'", mmVersion, sshOptsStr, goos, goarch)
-			}
-			if semver.MajorMinor(initPk.Version) != semver.MajorMinor(base.MShellVersion) {
-				return nil, fmt.Errorf("invalid remote mshell version '%s', must be '=%s'", initPk.Version, semver.MajorMinor(base.MShellVersion))
-			}
-			versionOk = true
-			if debug {
-				fmt.Printf("VERSION> %s\n", initPk.Version)
-			}
-			break
-		}
-	}
-	if !versionOk {
-		return nil, fmt.Errorf("did not receive version from remote mshell")
-	}
-	SendRunPacketAndRunData(context.Background(), sender, runPacket)
-	if debug {
-		cmd.Multiplexer.Debug = true
-	}
-	remoteDonePacket := cmd.Multiplexer.RunIOAndWait(packetParser, sender, false, true, true)
-	donePacket := cmd.WaitForCommand()
-	if remoteDonePacket != nil {
-		donePacket = remoteDonePacket
-	}
-	return donePacket, nil
 }
 
 func min(v1 int, v2 int) int {
@@ -962,29 +824,6 @@ func getTermType(pk *packet.RunPacketType) string {
 	return termType
 }
 
-// TODO move to shellapi
-func makeRcFileStr(pk *packet.RunPacketType, sapi shellapi.ShellApi) string {
-	var rcBuf bytes.Buffer
-	rcBuf.WriteString(sapi.GetBaseShellOpts() + "\n")
-	varDecls := shellenv.VarDeclsFromState(pk.State)
-	for _, varDecl := range varDecls {
-		if varDecl.IsExport() || varDecl.IsReadOnly() {
-			continue
-		}
-		rcBuf.WriteString(shellapi.BashDeclareStmt(varDecl))
-		rcBuf.WriteString("\n")
-	}
-	if pk.State != nil && pk.State.Funcs != "" {
-		rcBuf.WriteString(pk.State.Funcs)
-		rcBuf.WriteString("\n")
-	}
-	if pk.State != nil && pk.State.Aliases != "" {
-		rcBuf.WriteString(pk.State.Aliases)
-		rcBuf.WriteString("\n")
-	}
-	return rcBuf.String()
-}
-
 func (s *ShExecType) SendSignal(sig syscall.Signal) {
 	base.Logf("signal start %v\n", sig)
 	if sig == syscall.SIGKILL {
@@ -1038,7 +877,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		cmd.MsgSender = sender
 	}
 	var rtnStateWriter *os.File
-	rcFileStr := makeRcFileStr(pk, sapi)
+	rcFileStr := sapi.MakeRcFileStr(pk)
 	if pk.ReturnState {
 		pr, pw, err := os.Pipe()
 		if err != nil {

@@ -4,6 +4,7 @@
 package shellapi
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os/exec"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/alessio/shellescape"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 )
 
 const BaseBashOpts = `set +m; set +H; shopt -s extglob`
@@ -84,6 +86,28 @@ func (b bashShellApi) GetBaseShellOpts() string {
 
 func (b bashShellApi) ParseShellStateOutput(output []byte) (*packet.ShellState, error) {
 	return parseBashShellStateOutput(output)
+}
+
+func (b bashShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
+	var rcBuf bytes.Buffer
+	rcBuf.WriteString(b.GetBaseShellOpts() + "\n")
+	varDecls := shellenv.VarDeclsFromState(pk.State)
+	for _, varDecl := range varDecls {
+		if varDecl.IsExport() || varDecl.IsReadOnly() {
+			continue
+		}
+		rcBuf.WriteString(BashDeclareStmt(varDecl))
+		rcBuf.WriteString("\n")
+	}
+	if pk.State != nil && pk.State.Funcs != "" {
+		rcBuf.WriteString(pk.State.Funcs)
+		rcBuf.WriteString("\n")
+	}
+	if pk.State != nil && pk.State.Aliases != "" {
+		rcBuf.WriteString(pk.State.Aliases)
+		rcBuf.WriteString("\n")
+	}
+	return rcBuf.String()
 }
 
 func GetBashShellStateCmd() string {
