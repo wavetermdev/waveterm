@@ -968,7 +968,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                 Install Now
             </Button>
         );
-        const archiveButton = (
+        let archiveButton = (
             <Button theme="secondary" onClick={() => this.clickArchive()}>
                 Delete
             </Button>
@@ -988,7 +988,23 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
             updateAuthButton = (
                 <Button theme="secondary" disabled={true}>
                     Edit
-                    <i className="fa-sharp fa-solid fa-fw fa-ban" />
+                    <Tooltip
+                        message={`Remotes imported from an ssh config file cannot be edited inside waveterm. To edit these, you must edit the config file and import it again.`}
+                        icon={<i className="fa-sharp fa-regular fa-fw fa-ban" />}
+                    >
+                        <i className="fa-sharp fa-regular fa-fw fa-ban" />
+                    </Tooltip>
+                </Button>
+            )
+            archiveButton = (
+                <Button theme="secondary" onClick={() => this.clickArchive()}>
+                    Delete
+                    <Tooltip
+                        message={<span>Remotes imported from an ssh config file can be deleted, but will come back upon importing again. They will stay removed if you follow <a href="https://docs.waveterm.dev/features/sshconfig-imports">this procedure</a>.</span>}
+                        icon={<i className="fa-sharp fa-regular fa-fw fa-triangle-exclamation" />}
+                    >
+                        <i className="fa-sharp fa-regular fa-fw fa-triangle-exclamation" />
+                    </Tooltip>
                 </Button>
             )
         }
