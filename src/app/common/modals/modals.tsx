@@ -1699,6 +1699,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
                                                 "color-" + option.color
                                             )}
                                             onClick={() => this.handleSelect(index)}
+                                            onMouseEnter={() => this.setFocusedIndex(index)}
                                         >
                                             <span>{this.renderIcon(option)}</span>
                                             <span>
