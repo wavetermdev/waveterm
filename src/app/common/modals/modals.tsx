@@ -1541,6 +1541,9 @@ class TabSwitcherModal extends React.Component<{}, {}> {
             e.preventDefault();
             newIndex = Math.min(this.selectedIdx.get() + 1, this.sOptions.length - 1);
             this.setSelectedIndex(newIndex);
+        } else if (e.key === "Enter") {
+            e.preventDefault();
+            this.handleSelect(this.selectedIdx.get());
         }
     }
 
@@ -1557,10 +1560,15 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    handleSelect(index): void {
-        mobx.action(() => {
-            this.selectedIdx.set(index);
-        })();
+    handleSelect(index: number): void {
+        const selectedOption = this.sOptions[index];
+        if (selectedOption) {
+            GlobalCommandRunner.switchSession(selectedOption.sessionId);
+            setTimeout(() => {
+                GlobalCommandRunner.switchScreen(selectedOption.screenId);
+            }, 10);
+            this.closeModal();
+        }
     }
 
     @boundMethod
