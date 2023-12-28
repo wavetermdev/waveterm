@@ -1387,6 +1387,9 @@ func RemoteSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	if err != nil {
 		return nil, err
 	}
+	if ids.Remote.RState.SSHConfigSrc == sstore.SSHConfigSrcTypeImport {
+		return nil, fmt.Errorf("/remote:new cannot update imported remote")
+	}
 	visualEdit := resolveBool(pk.Kwargs["visual"], false)
 	isSubmitted := resolveBool(pk.Kwargs["submit"], false)
 	editArgs, err := parseRemoteEditArgs(false, pk, ids.Remote.MShell.IsLocal())
