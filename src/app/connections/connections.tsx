@@ -163,9 +163,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
                                 onClick={() => this.handleRead(item.remoteid)} // Moved onClick here
                             >
                                 <td className="col-name">
-                                    <div>
-                                        {this.getName(item)} {this.getImportSymbol(item)}
-                                    </div>
+                                        <Status status={this.getStatus(item.status)} text=""></Status> {this.getName(item)} {this.getImportSymbol(item)}
                                 </td>
                                 <td className="col-type">
                                     <div>{item.remotetype}</div>
