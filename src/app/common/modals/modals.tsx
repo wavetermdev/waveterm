@@ -1449,11 +1449,11 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     sOptions: OArr<SwitcherDataType> = mobx.observable.array(null, {
         name: "TabSwitcherModal-sOptions",
     });
-    selectedIdx: OV<number> = mobx.observable.box(0, { name: "TabSwitcherModal-selectedIdx" });
+    focusedIdx: OV<number> = mobx.observable.box(0, { name: "TabSwitcherModal-selectedIdx" });
     activeSessionIdx: number;
     optionRefs = [];
     listWrapperRef = React.createRef<HTMLDivElement>();
-    previousSelectedIdx = 0;
+    prevFocusedIdx = 0;
 
     componentDidMount() {
         this.activeSessionIdx = GlobalModel.getActiveSession().sessionIdx.get();
@@ -1495,18 +1495,18 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     }
 
     componentDidUpdate() {
-        let currentSelectedIdx = this.selectedIdx.get();
+        let currFocusedIdx = this.focusedIdx.get();
 
         // Check if selectedIdx has changed
-        if (currentSelectedIdx !== this.previousSelectedIdx) {
-            let optionElement = this.optionRefs[currentSelectedIdx]?.current;
+        if (currFocusedIdx !== this.prevFocusedIdx) {
+            let optionElement = this.optionRefs[currFocusedIdx]?.current;
 
             if (optionElement) {
                 optionElement.scrollIntoView({ block: "nearest" });
             }
 
-            // Update previousSelectedIdx for the next update cycle
-            this.previousSelectedIdx = currentSelectedIdx;
+            // Update prevFocusedIdx for the next update cycle
+            this.prevFocusedIdx = currFocusedIdx;
         }
     }
 
@@ -1537,22 +1537,22 @@ class TabSwitcherModal extends React.Component<{}, {}> {
             this.closeModal();
         } else if (e.key === "ArrowUp") {
             e.preventDefault();
-            newIndex = Math.max(this.selectedIdx.get() - 1, 0);
-            this.setSelectedIndex(newIndex);
+            newIndex = Math.max(this.focusedIdx.get() - 1, 0);
+            this.setFocusedIndex(newIndex);
         } else if (e.key === "ArrowDown") {
             e.preventDefault();
-            newIndex = Math.min(this.selectedIdx.get() + 1, this.sOptions.length - 1);
-            this.setSelectedIndex(newIndex);
+            newIndex = Math.min(this.focusedIdx.get() + 1, this.sOptions.length - 1);
+            this.setFocusedIndex(newIndex);
         } else if (e.key === "Enter") {
             e.preventDefault();
-            this.handleSelect(this.selectedIdx.get());
+            this.handleSelect(this.focusedIdx.get());
         }
     }
 
     @boundMethod
-    setSelectedIndex(index) {
+    setFocusedIndex(index) {
         mobx.action(() => {
-            this.selectedIdx.set(index);
+            this.focusedIdx.set(index);
         })();
     }
 
@@ -1695,7 +1695,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
                                             ref={this.optionRefs[index]}
                                             className={cn(
                                                 "search-option unselectable",
-                                                { "selected-option": this.selectedIdx.get() === index },
+                                                { "focused-option": this.focusedIdx.get() === index },
                                                 "color-" + option.color
                                             )}
                                             onClick={() => this.handleSelect(index)}
