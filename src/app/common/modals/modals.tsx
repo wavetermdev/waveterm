@@ -453,7 +453,9 @@ class AboutModal extends React.Component<{}, {}> {
                         </a>
                         <a
                             className="wave-button wave-button-link color-standard"
-                            href={util.makeExternLink("https://github.com/wavetermdev/waveterm/blob/main/acknowledgements/README.md")}
+                            href={util.makeExternLink(
+                                "https://github.com/wavetermdev/waveterm/blob/main/acknowledgements/README.md",
+                            )}
                             rel={"noopener"}
                             target="_blank"
                         >
@@ -983,7 +985,6 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
             updateAuthButton = <></>;
             cancelInstallButton = <></>;
         }
-        console.log(remote.sshconfigsrc)
         if (remote.sshconfigsrc == "sshconfig-import") {
             updateAuthButton = (
                 <Button theme="secondary" disabled={true}>
@@ -995,18 +996,24 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                         <i className="fa-sharp fa-regular fa-fw fa-ban" />
                     </Tooltip>
                 </Button>
-            )
+            );
             archiveButton = (
                 <Button theme="secondary" onClick={() => this.clickArchive()}>
                     Delete
                     <Tooltip
-                        message={<span>Remotes imported from an ssh config file can be deleted, but will come back upon importing again. They will stay removed if you follow <a href="https://docs.waveterm.dev/features/sshconfig-imports">this procedure</a>.</span>}
+                        message={
+                            <span>
+                                Remotes imported from an ssh config file can be deleted, but will come back upon
+                                importing again. They will stay removed if you follow{" "}
+                                <a href="https://docs.waveterm.dev/features/sshconfig-imports">this procedure</a>.
+                            </span>
+                        }
                         icon={<i className="fa-sharp fa-regular fa-fw fa-triangle-exclamation" />}
                     >
                         <i className="fa-sharp fa-regular fa-fw fa-triangle-exclamation" />
                     </Tooltip>
                 </Button>
-            )
+            );
         }
         if (remote.status == "connected" || remote.status == "connecting") {
             buttons.push(disconnectButton);
@@ -1128,7 +1135,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                             className={cn(
                                 "terminal-wrapper",
                                 { focus: isTermFocused },
-                                remote != null ? "status-" + remote.status : null
+                                remote != null ? "status-" + remote.status : null,
                             )}
                         >
                             <If condition={!isTermFocused}>
