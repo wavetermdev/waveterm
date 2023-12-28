@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log"
@@ -23,6 +24,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/kevinburke/ssh_config"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
@@ -191,6 +193,7 @@ func init() {
 	registerCmdFn("remote:install", RemoteInstallCommand)
 	registerCmdFn("remote:installcancel", RemoteInstallCancelCommand)
 	registerCmdFn("remote:reset", RemoteResetCommand)
+	registerCmdFn("remote:parse", RemoteConfigParseCommand)
 
 	registerCmdFn("screen:resize", ScreenResizeCommand)
 
@@ -1362,6 +1365,7 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		ConnectMode:         editArgs.ConnectMode,
 		AutoInstall:         editArgs.AutoInstall,
 		SSHOpts:             editArgs.SSHOpts,
+		SSHConfigSrc:        sstore.SSHConfigSrcTypeManual,
 	}
 	if editArgs.Color != "" {
 		r.RemoteOpts = &sstore.RemoteOptsType{Color: editArgs.Color}
@@ -1382,6 +1386,9 @@ func RemoteSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Remote)
 	if err != nil {
 		return nil, err
+	}
+	if ids.Remote.RState.SSHConfigSrc == sstore.SSHConfigSrcTypeImport {
+		return nil, fmt.Errorf("/remote:new cannot update imported remote")
 	}
 	visualEdit := resolveBool(pk.Kwargs["visual"], false)
 	isSubmitted := resolveBool(pk.Kwargs["submit"], false)
@@ -1445,6 +1452,244 @@ func RemoteShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 			RemoteShowAll: true,
 		},
 	}, nil
+}
+
+func resolveSshConfigPatterns(configFiles []string) ([]string, error) {
+	// using two separate containers to track order and have O(1) lookups
+	// since go does not have an ordered map primitive
+	var discoveredPatterns []string
+	alreadyUsed := make(map[string]bool)
+	alreadyUsed[""] = true // this excludes the empty string from potential alias
+	var openedFiles []fs.File
+
+	defer func() {
+		for _, openedFile := range openedFiles {
+			openedFile.Close()
+		}
+	}()
+
+	var errs []error
+	for _, configFile := range configFiles {
+		fd, openErr := os.Open(configFile)
+		openedFiles = append(openedFiles, fd)
+		if fd == nil {
+			errs = append(errs, openErr)
+			continue
+		}
+
+		cfg, _ := ssh_config.Decode(fd)
+		for _, host := range cfg.Hosts {
+			// for each host, find the first good alias
+			for _, hostPattern := range host.Patterns {
+				hostPatternStr := hostPattern.String()
+				if strings.Index(hostPatternStr, "*") == -1 || alreadyUsed[hostPatternStr] == true {
+					discoveredPatterns = append(discoveredPatterns, hostPatternStr)
+					alreadyUsed[hostPatternStr] = true
+					break
+				}
+			}
+		}
+	}
+	if len(errs) == len(configFiles) {
+		errs = append([]error{fmt.Errorf("no ssh config files could be opened:\n")}, errs...)
+		return nil, errors.Join(errs...)
+	}
+	if len(discoveredPatterns) == 0 {
+		return nil, fmt.Errorf("no compatible hostnames found in ssh config files")
+	}
+
+	return discoveredPatterns, nil
+}
+
+type HostInfoType struct {
+	Host          string
+	User          string
+	CanonicalName string
+	Port          int
+	SshKeyFile    string
+	ConnectMode   string
+	Ignore        bool
+}
+
+func NewHostInfo(hostName string) (*HostInfoType, error) {
+	userName, _ := ssh_config.GetStrict(hostName, "User")
+	if userName == "" {
+		// we cannot store a remote with a missing user
+		// in the current setup
+		return nil, fmt.Errorf("could not parse \"%s\" - no User in config\n", hostName)
+	}
+	canonicalName := userName + "@" + hostName
+
+	// check if user and host are okay
+	m := userHostRe.FindStringSubmatch(canonicalName)
+	if m == nil || m[2] == "" || m[3] == "" {
+		return nil, fmt.Errorf("could not parse \"%s\" - %s did not fit user@host requirement\n", hostName, canonicalName)
+	}
+
+	portStr, _ := ssh_config.GetStrict(hostName, "Port")
+	var portVal int
+	if portStr != "" {
+		var err error
+		portVal, err = strconv.Atoi(portStr)
+		if err != nil {
+			// do not make assumptions about port if incorrectly configured
+			return nil, fmt.Errorf("could not parse \"%s\" (%s) - %s could not be converted to a valid port\n", hostName, canonicalName, portStr)
+		}
+		if int(int16(portVal)) != portVal {
+			return nil, fmt.Errorf("could not parse port \"%d\": number is not valid for a port\n", portVal)
+		}
+	}
+
+	identityFile, _ := ssh_config.GetStrict(hostName, "IdentityFile")
+	passwordAuth, _ := ssh_config.GetStrict(hostName, "PasswordAuthentication")
+
+	cfgWaveOptionsStr, _ := ssh_config.GetStrict(hostName, "WaveOptions")
+	cfgWaveOptionsStr = strings.ToLower(cfgWaveOptionsStr)
+	cfgWaveOptions := make(map[string]string)
+	setBracketArgs(cfgWaveOptions, cfgWaveOptionsStr)
+
+	shouldIgnore := false
+	if result, _ := strconv.ParseBool(cfgWaveOptions["ignore"]); result {
+		shouldIgnore = true
+	}
+
+	var sshKeyFile string
+	connectMode := sstore.ConnectModeAuto
+	if cfgWaveOptions["connectmode"] == "manual" {
+		connectMode = sstore.ConnectModeManual
+	} else if _, err := os.Stat(base.ExpandHomeDir(identityFile)); err == nil {
+		sshKeyFile = identityFile
+	} else if passwordAuth == "yes" {
+		connectMode = sstore.ConnectModeManual
+	}
+
+	outHostInfo := new(HostInfoType)
+	outHostInfo.Host = hostName
+	outHostInfo.User = userName
+	outHostInfo.CanonicalName = canonicalName
+	outHostInfo.Port = portVal
+	outHostInfo.SshKeyFile = sshKeyFile
+	outHostInfo.ConnectMode = connectMode
+	outHostInfo.Ignore = shouldIgnore
+	return outHostInfo, nil
+}
+
+func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	home := base.GetHomeDir()
+	localConfig := filepath.Join(home, ".ssh", "config")
+	systemConfig := filepath.Join("/", "ssh", "config")
+	sshConfigFiles := []string{localConfig, systemConfig}
+	hostPatterns, hostPatternsErr := resolveSshConfigPatterns(sshConfigFiles)
+	if hostPatternsErr != nil {
+		return nil, hostPatternsErr
+	}
+	previouslyImportedRemotes, dbQueryErr := sstore.GetAllImportedRemotes(ctx)
+	if dbQueryErr != nil {
+		return nil, dbQueryErr
+	}
+
+	var parsedHostData []*HostInfoType
+	hostInfoInConfig := make(map[string]*HostInfoType)
+	for _, hostPattern := range hostPatterns {
+		hostInfo, hostInfoErr := NewHostInfo(hostPattern)
+		if hostInfoErr != nil {
+			log.Printf("sshconfig-import: %s", hostInfoErr)
+			continue
+		}
+		parsedHostData = append(parsedHostData, hostInfo)
+		hostInfoInConfig[hostInfo.CanonicalName] = hostInfo
+	}
+
+	// remove all previously imported remotes that
+	// no longer have a canonical pattern in the config files
+	for importedRemoteCanonicalName, importedRemote := range previouslyImportedRemotes {
+		var err error
+		hostInfo := hostInfoInConfig[importedRemoteCanonicalName]
+		if !importedRemote.Archived && (hostInfo == nil || hostInfo.Ignore) {
+			err = remote.ArchiveRemote(ctx, importedRemote.RemoteId)
+			if err != nil {
+				log.Printf("sshconfig-import: failed to remove remote \"%s\" (%s)\n", importedRemote.RemoteAlias, importedRemote.RemoteCanonicalName)
+			} else {
+				log.Printf("sshconfig-import: archived remote \"%s\" (%s)\n", importedRemote.RemoteAlias, importedRemote.RemoteCanonicalName)
+			}
+		}
+	}
+
+	var updatedRemotes []string
+	for _, hostInfo := range parsedHostData {
+		previouslyImportedRemote := previouslyImportedRemotes[hostInfo.CanonicalName]
+		updatedRemotes = append(updatedRemotes, hostInfo.CanonicalName)
+		if hostInfo.Ignore {
+			log.Printf("sshconfig-import: ignore remote[%s] as specified in config file\n", hostInfo.CanonicalName)
+			continue
+		}
+		if previouslyImportedRemote != nil && !previouslyImportedRemote.Archived {
+			// this already existed and was created via import
+			// it needs to be updated instead of created
+
+			editMap := make(map[string]interface{})
+			editMap[sstore.RemoteField_Alias] = hostInfo.Host
+			editMap[sstore.RemoteField_ConnectMode] = hostInfo.ConnectMode
+			// changing port is unique to imports because it lets us avoid conflicts
+			// if the port is changed in the ssh config
+			editMap[sstore.RemoteField_SSHPort] = hostInfo.Port
+			if hostInfo.SshKeyFile != "" {
+				editMap[sstore.RemoteField_SSHKey] = hostInfo.SshKeyFile
+			}
+			msh := remote.GetRemoteById(previouslyImportedRemote.RemoteId)
+			if msh == nil {
+				log.Printf("strange, msh for remote %s [%s] not found\n", hostInfo.CanonicalName, previouslyImportedRemote.RemoteId)
+				continue
+			} else {
+				err := msh.UpdateRemote(ctx, editMap)
+				if err != nil {
+					log.Printf("error updating remote[%s]: %v\n", hostInfo.CanonicalName, err)
+					continue
+				}
+			}
+			log.Printf("sshconfig-import: found previously imported remote with canonical name \"%s\": it has been updated\n", hostInfo.CanonicalName)
+		} else {
+			sshOpts := &sstore.SSHOpts{
+				Local:   false,
+				SSHHost: hostInfo.Host,
+				SSHUser: hostInfo.User,
+				IsSudo:  false,
+				SSHPort: hostInfo.Port,
+			}
+			if hostInfo.SshKeyFile != "" {
+				sshOpts.SSHIdentity = hostInfo.SshKeyFile
+			}
+
+			// this is new and must be created for the first time
+			r := &sstore.RemoteType{
+				RemoteId:            scbase.GenWaveUUID(),
+				RemoteType:          sstore.RemoteTypeSsh,
+				RemoteAlias:         hostInfo.Host,
+				RemoteCanonicalName: hostInfo.CanonicalName,
+				RemoteUser:          hostInfo.User,
+				RemoteHost:          hostInfo.Host,
+				ConnectMode:         hostInfo.ConnectMode,
+				AutoInstall:         true,
+				SSHOpts:             sshOpts,
+				SSHConfigSrc:        sstore.SSHConfigSrcTypeImport,
+			}
+			err := remote.AddRemote(ctx, r, false)
+			if err != nil {
+				log.Printf("sshconfig-import: failed to add remote \"%s\" (%s): it is being skipped\n", hostInfo.Host, hostInfo.CanonicalName)
+				continue
+			}
+			log.Printf("sshconfig-import: created remote \"%s\" (%s)\n", hostInfo.Host, hostInfo.CanonicalName)
+		}
+	}
+
+	update := &sstore.ModelUpdate{Remotes: remote.GetAllRemoteRuntimeState()}
+	update.Info = &sstore.InfoMsgType{}
+	if len(updatedRemotes) == 0 {
+		update.Info.InfoMsg = "no connections imported from ssh config."
+	} else {
+		update.Info.InfoMsg = fmt.Sprintf("imported %d connection(s) from ssh config file: %s\n", len(updatedRemotes), strings.Join(updatedRemotes, ", "))
+	}
+	return update, nil
 }
 
 func ScreenShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {

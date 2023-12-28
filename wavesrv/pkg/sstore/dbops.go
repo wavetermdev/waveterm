@@ -113,6 +113,25 @@ func GetAllRemotes(ctx context.Context) ([]*RemoteType, error) {
 	return rtn, nil
 }
 
+func GetAllImportedRemotes(ctx context.Context) (map[string]*RemoteType, error) {
+	rtn := make(map[string]*RemoteType)
+	err := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT * FROM remote
+		          WHERE sshconfigsrc = "sshconfig-import"
+				  ORDER BY remoteidx`
+		marr := tx.SelectMaps(query)
+		for _, m := range marr {
+			remote := dbutil.FromMap[*RemoteType](m)
+			rtn[remote.RemoteCanonicalName] = remote
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return rtn, nil
+}
+
 func GetRemoteByAlias(ctx context.Context, alias string) (*RemoteType, error) {
 	var remote *RemoteType
 	err := WithTx(ctx, func(tx *TxWrap) error {
@@ -198,8 +217,8 @@ func UpsertRemote(ctx context.Context, r *RemoteType) error {
 		maxRemoteIdx := tx.GetInt(query)
 		r.RemoteIdx = int64(maxRemoteIdx + 1)
 		query = `INSERT INTO remote
-            ( remoteid, remotetype, remotealias, remotecanonicalname, remoteuser, remotehost, connectmode, autoinstall, sshopts, remoteopts, lastconnectts, archived, remoteidx, local, statevars, openaiopts) VALUES
-            (:remoteid,:remotetype,:remotealias,:remotecanonicalname,:remoteuser,:remotehost,:connectmode,:autoinstall,:sshopts,:remoteopts,:lastconnectts,:archived,:remoteidx,:local,:statevars,:openaiopts)`
+            ( remoteid, remotetype, remotealias, remotecanonicalname, remoteuser, remotehost, connectmode, autoinstall, sshopts, remoteopts, lastconnectts, archived, remoteidx, local, statevars, sshconfigsrc, openaiopts) VALUES
+            (:remoteid,:remotetype,:remotealias,:remotecanonicalname,:remoteuser,:remotehost,:connectmode,:autoinstall,:sshopts,:remoteopts,:lastconnectts,:archived,:remoteidx,:local,:statevars,:sshconfigsrc,:openaiopts)`
 		tx.NamedExec(query, r.ToMap())
 		return nil
 	})
@@ -1685,6 +1704,7 @@ const (
 	RemoteField_ConnectMode = "connectmode" // string
 	RemoteField_SSHKey      = "sshkey"      // string
 	RemoteField_SSHPassword = "sshpassword" // string
+	RemoteField_SSHPort     = "sshport"     // string
 	RemoteField_Color       = "color"       // string
 )
 
@@ -1715,6 +1735,10 @@ func UpdateRemote(ctx context.Context, remoteId string, editMap map[string]inter
 		if sshPassword, found := editMap[RemoteField_SSHPassword]; found {
 			query = `UPDATE remote SET sshopts = json_set(sshopts, '$.sshpassword', ?) WHERE remoteid = ?`
 			tx.Exec(query, sshPassword, remoteId)
+		}
+		if sshPort, found := editMap[RemoteField_SSHPort]; found {
+			query = `UPDATE remote SET sshopts = json_set(sshopts, '$.sshport', ?) WHERE remoteid = ?`
+			tx.Exec(query, sshPort, remoteId)
 		}
 		if color, found := editMap[RemoteField_Color]; found {
 			query = `UPDATE remote SET remoteopts = json_set(remoteopts, '$.color', ?) WHERE remoteid = ?`
