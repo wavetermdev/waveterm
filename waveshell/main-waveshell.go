@@ -109,7 +109,7 @@ Options:
     --version              - print version
     --server               - multiplexer to run multiple commands
 	--single               - run a single command (connected to multiplexer)
-	--single --version     - print version in JSON format
+	--single --version     - return an init packet with version info
 
 	--shell [bash|zsh]     - override default shell, force bash or zsh
 
@@ -120,19 +120,26 @@ via a JSON packet format.
 	fmt.Printf("%s\n\n", strings.TrimSpace(usage))
 }
 
-func getShellTypeArg() string {
+// only allows bash or zsh (default is bash)
+// in the future will detect the user's shell and set that as the default
+func getShellType() string {
+	shellType := packet.ShellType_bash
 	for idx, arg := range os.Args {
 		if idx == 0 {
 			continue
 		}
 		if arg == "--shell" {
 			if idx+1 < len(os.Args) {
-				return os.Args[idx+1]
+				shellType = os.Args[idx+1]
+				break
 			}
-			return ""
+			break
 		}
 	}
-	return ""
+	if shellType != packet.ShellType_bash && shellType != packet.ShellType_zsh {
+		shellType = packet.ShellType_bash
+	}
+	return shellType
 }
 
 func main() {
@@ -141,7 +148,7 @@ func main() {
 		handleUsage()
 		return
 	}
-	shellType := getShellTypeArg()
+	shellType := getShellType()
 	firstArg := os.Args[1]
 	if firstArg == "--help" {
 		handleUsage()

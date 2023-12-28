@@ -1263,6 +1263,7 @@ func MakeInitPacket() *packet.InitPacketType {
 	}
 	initPacket.HostName, _ = os.Hostname()
 	initPacket.UName = fmt.Sprintf("%s|%s", runtime.GOOS, runtime.GOARCH)
+	initPacket.Shell = os.Getenv(ShellVarName)
 	return initPacket
 }
 
@@ -1277,7 +1278,6 @@ func MakeServerInitPacket() (*packet.InitPacketType, error) {
 		return nil, err
 	}
 	initPacket.State = shellState
-	initPacket.Shell = os.Getenv(ShellVarName)
 	initPacket.RemoteId, err = base.GetRemoteId()
 	if err != nil {
 		return nil, err

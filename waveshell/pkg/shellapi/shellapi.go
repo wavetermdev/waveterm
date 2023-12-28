@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
@@ -55,6 +56,21 @@ type ShellApi interface {
 	GetBaseShellOpts() string
 	ParseShellStateOutput(output []byte) (*packet.ShellState, error)
 	MakeRcFileStr(pk *packet.RunPacketType) string
+}
+
+func DetectLocalShellType() string {
+	shellPath := GetMacUserShell()
+	if shellPath == "" {
+		shellPath = os.Getenv("SHELL")
+	}
+	if shellPath == "" {
+		return packet.ShellType_bash
+	}
+	_, file := filepath.Split(shellPath)
+	if strings.HasPrefix(file, "zsh") {
+		return packet.ShellType_zsh
+	}
+	return packet.ShellType_bash
 }
 
 func MakeShellApi(shellType string) (ShellApi, error) {
