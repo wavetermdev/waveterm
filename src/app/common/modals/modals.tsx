@@ -456,7 +456,9 @@ class AboutModal extends React.Component<{}, {}> {
                         </a>
                         <a
                             className="wave-button wave-button-link color-standard"
-                            href={util.makeExternLink("https://github.com/wavetermdev/waveterm/blob/main/acknowledgements/README.md")}
+                            href={util.makeExternLink(
+                                "https://github.com/wavetermdev/waveterm/blob/main/acknowledgements/README.md"
+                            )}
                             rel={"noopener"}
                             target="_blank"
                         >
@@ -1060,7 +1062,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                 <Modal.Header title="Connection" onClose={this.model.closeModal} />
                 <div className="wave-modal-body">
                     <div className="name-header-actions-wrapper">
-                        <div className="name text-primary">{getName(remote)}</div>
+                        <div className="name text-primary">{util.getRemoteName(remote)}</div>
                         <div className="header-actions">{this.renderHeaderBtns(remote)}</div>
                     </div>
                     <div className="remote-detail" style={{ overflow: "hidden" }}>
@@ -1312,7 +1314,7 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
                 <Modal.Header title="Edit Connection" onClose={this.model.closeModal} />
                 <div className="wave-modal-body">
                     <div className="name-actions-section">
-                        <div className="name text-primary">{getName(this.selectedRemote)}</div>
+                        <div className="name text-primary">{util.getRemoteName(this.selectedRemote)}</div>
                     </div>
                     <div className="alias-section">
                         <TextField
@@ -1563,10 +1565,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     handleSelect(index: number): void {
         const selectedOption = this.sOptions[index];
         if (selectedOption) {
-            GlobalCommandRunner.switchSession(selectedOption.sessionId);
-            setTimeout(() => {
-                GlobalCommandRunner.switchScreen(selectedOption.screenId);
-            }, 10);
+            GlobalCommandRunner.switchScreen(selectedOption.screenId, selectedOption.sessionId);
             this.closeModal();
         }
     }
@@ -1592,11 +1591,11 @@ class TabSwitcherModal extends React.Component<{}, {}> {
         let filteredScreens = [];
 
         for (let i = 0; i < this.options.length; i++) {
-            const tab = this.options[i];
+            let tab = this.options[i];
             let match = false;
 
             if (searchInput.includes("/")) {
-                const [sessionFilter, screenFilter] = searchInput.split("/").map((s) => s.trim().toLowerCase());
+                let [sessionFilter, screenFilter] = searchInput.split("/").map((s) => s.trim().toLowerCase());
                 match =
                     tab.sessionName.toLowerCase().includes(sessionFilter) &&
                     tab.screenName.toLowerCase().includes(screenFilter);
@@ -1619,8 +1618,8 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     @boundMethod
     sortOptions(options: SwitcherDataType[]): SwitcherDataType[] {
         return options.sort((a, b) => {
-            const aInCurrentSession = a.sessionIdx === this.activeSessionIdx;
-            const bInCurrentSession = b.sessionIdx === this.activeSessionIdx;
+            let aInCurrentSession = a.sessionIdx === this.activeSessionIdx;
+            let bInCurrentSession = b.sessionIdx === this.activeSessionIdx;
 
             // Tabs in the current session are sorted by screenIdx
             if (aInCurrentSession && bInCurrentSession) {
@@ -1645,13 +1644,14 @@ class TabSwitcherModal extends React.Component<{}, {}> {
         });
     }
 
-    renderIcon = (option: SwitcherDataType): React.ReactNode => {
-        const tabIcon = option.icon;
+    @boundMethod
+    renderIcon(option: SwitcherDataType): React.ReactNode {
+        let tabIcon = option.icon;
         if (tabIcon === "default" || tabIcon === "square") {
             return <SquareIcon className="left-icon" />;
         }
         return <i className={`fa-sharp fa-solid fa-${tabIcon}`}></i>;
-    };
+    }
 
     render() {
         return (
@@ -1694,7 +1694,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
                                             key={index}
                                             ref={this.optionRefs[index]}
                                             className={cn(
-                                                `search-option`,
+                                                "search-option unselectable",
                                                 { "selected-option": this.selectedIdx.get() === index },
                                                 "color-" + option.color
                                             )}
@@ -1702,7 +1702,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
                                         >
                                             <span>{this.renderIcon(option)}</span>
                                             <span>
-                                                #{option.sessionName} - {option.screenName}
+                                                #{option.sessionName} / {option.screenName}
                                             </span>
                                         </div>
                                     );
@@ -1715,14 +1715,6 @@ class TabSwitcherModal extends React.Component<{}, {}> {
         );
     }
 }
-
-const getName = (remote: T.RemoteType): string => {
-    if (remote == null) {
-        return "";
-    }
-    const { remotealias, remotecanonicalname } = remote;
-    return remotealias ? `${remotealias} [${remotecanonicalname}]` : remotecanonicalname;
-};
 
 export {
     LoadingSpinner,

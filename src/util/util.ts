@@ -404,6 +404,14 @@ function commandRtnHandler(prtn: Promise<CommandRtnType>, errorMessage: OV<strin
     });
 }
 
+function getRemoteName(remote: RemoteType): string {
+    if (remote == null) {
+        return "";
+    }
+    let { remotealias, remotecanonicalname } = remote;
+    return remotealias ? `${remotealias} [${remotecanonicalname}]` : remotecanonicalname;
+}
+
 export {
     handleJsonFetchResponse,
     base64ToArray,
@@ -428,4 +436,5 @@ export {
     getColorRGB,
     commandRtnHandler,
     getRemoteConnVal,
+    getRemoteName,
 };

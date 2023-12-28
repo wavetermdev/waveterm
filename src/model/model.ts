@@ -4274,11 +4274,15 @@ class CommandRunner {
         GlobalModel.submitCommand("session", null, [session], { nohist: "1" }, false);
     }
 
-    switchScreen(screen: string) {
+    switchScreen(screen: string, session?: string) {
         mobx.action(() => {
             GlobalModel.activeMainView.set("session");
         })();
-        GlobalModel.submitCommand("screen", null, [screen], { nohist: "1" }, false);
+        let kwargs = { nohist: "1" };
+        if (session != null) {
+            kwargs["session"] = session;
+        }
+        GlobalModel.submitCommand("screen", null, [screen], kwargs, false);
     }
 
     lineView(sessionId: string, screenId: string, lineNum?: number) {
