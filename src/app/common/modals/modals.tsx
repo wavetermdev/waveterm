@@ -1089,7 +1089,9 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                 <Modal.Header title="Connection" onClose={this.model.closeModal} />
                 <div className="wave-modal-body">
                     <div className="name-header-actions-wrapper">
-                        <div className="name text-primary">{getName(remote)}</div>
+                        <div className="name text-primary name-wrapper">
+                            {getName(remote)}&nbsp; {getImportTooltip(remote)}
+                        </div>
                         <div className="header-actions">{this.renderHeaderBtns(remote)}</div>
                     </div>
                     <div className="remote-detail" style={{ overflow: "hidden" }}>
@@ -1463,6 +1465,21 @@ const getName = (remote: T.RemoteType): string => {
     }
     const { remotealias, remotecanonicalname } = remote;
     return remotealias ? `${remotealias} [${remotecanonicalname}]` : remotecanonicalname;
+};
+
+const getImportTooltip = (remote: T.RemoteType): React.ReactElement<any, any> => {
+    if (remote.sshconfigsrc == "sshconfig-import") {
+        return (
+            <Tooltip
+                message={`This remote was imported from an SSH config file.`}
+                icon={<i className="fa-sharp fa-solid fa-file-import" />}
+            >
+                <i className="fa-sharp fa-solid fa-file-import" />
+            </Tooltip>
+        );
+    } else {
+        return <></>;
+    }
 };
 
 export {
