@@ -1544,6 +1544,7 @@ func NewHostInfo(hostName string) (*HostInfoType, error) {
 	passwordAuth, _ := ssh_config.GetStrict(hostName, "PasswordAuthentication")
 
 	cfgWaveOptionsStr, _ := ssh_config.GetStrict(hostName, "WaveOptions")
+	cfgWaveOptionsStr = strings.ToLower(cfgWaveOptionsStr)
 	cfgWaveOptions := make(map[string]string)
 	setBracketArgs(cfgWaveOptions, cfgWaveOptionsStr)
 
