@@ -1,7 +1,7 @@
 // Copyright 2023, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package shellenv
+package shellapi
 
 import (
 	"bytes"
@@ -13,9 +13,12 @@ import (
 
 	"github.com/alessio/shellescape"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"mvdan.cc/sh/v3/expand"
 	"mvdan.cc/sh/v3/syntax"
 )
+
+type DeclareDeclType = shellenv.DeclareDeclType
 
 func doCmdSubst(commandStr string, w io.Writer, word *syntax.CmdSubst) error {
 	return nil
@@ -115,7 +118,7 @@ var declareDeclArgsRe = regexp.MustCompile("^[aAxrifx]*$")
 var bashValidIdentifierRe = regexp.MustCompile("^[a-zA-Z_][a-zA-Z0-9_]*$")
 
 func bashValidate(d *DeclareDeclType) error {
-	if len(d.Name) == 0 || !IsValidBashIdentifier(d.Name) {
+	if len(d.Name) == 0 || !isValidBashIdentifier(d.Name) {
 		return fmt.Errorf("invalid shell variable name (invalid bash identifier)")
 	}
 	if strings.Index(d.Value, "\x00") >= 0 {
@@ -127,7 +130,7 @@ func bashValidate(d *DeclareDeclType) error {
 	return nil
 }
 
-func IsValidBashIdentifier(s string) bool {
+func isValidBashIdentifier(s string) bool {
 	return bashValidIdentifierRe.MatchString(s)
 }
 
@@ -215,7 +218,7 @@ func bashParseDeclareOutput(state *packet.ShellState, declareBytes []byte, pvarB
 		decl.Value = shellescape.Quote(pvarFields[1])
 		declMap[decl.Name] = decl
 	}
-	state.ShellVars = SerializeDeclMap(declMap) // this writes out the decls in a canonical order
+	state.ShellVars = shellenv.SerializeDeclMap(declMap) // this writes out the decls in a canonical order
 	if firstParseErr != nil {
 		state.Error = firstParseErr.Error()
 	}
@@ -246,12 +249,12 @@ func parseBashShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
 	}
 	rtn.Aliases = strings.ReplaceAll(string(fields[3]), "\r\n", "\n")
 	rtn.Funcs = strings.ReplaceAll(string(fields[4]), "\r\n", "\n")
-	rtn.Funcs = removeFunc(rtn.Funcs, "_mshell_exittrap")
+	rtn.Funcs = shellenv.RemoveFunc(rtn.Funcs, "_mshell_exittrap")
 	return rtn, nil
 }
 
 func bashNormalize(d *DeclareDeclType) error {
-	if d.DataType() == DeclTypeAssocArray {
+	if d.DataType() == shellenv.DeclTypeAssocArray {
 		return bashNormalizeAssocArrayDecl(d)
 	}
 	return nil
@@ -259,7 +262,7 @@ func bashNormalize(d *DeclareDeclType) error {
 
 // normalizes order of assoc array keys so value is stable
 func bashNormalizeAssocArrayDecl(d *DeclareDeclType) error {
-	if d.DataType() != DeclTypeAssocArray {
+	if d.DataType() != shellenv.DeclTypeAssocArray {
 		return fmt.Errorf("invalid decltype passed to assocArrayDeclToStr: %s", d.DataType())
 	}
 	varMap, err := bashAssocArrayVarToMap(d)
@@ -287,7 +290,7 @@ func bashNormalizeAssocArrayDecl(d *DeclareDeclType) error {
 }
 
 func bashAssocArrayVarToMap(d *DeclareDeclType) (map[string]string, error) {
-	if d.DataType() != DeclTypeAssocArray {
+	if d.DataType() != shellenv.DeclTypeAssocArray {
 		return nil, fmt.Errorf("decl is not an assoc-array")
 	}
 	refStr := "X=" + d.Value
@@ -317,4 +320,14 @@ func bashAssocArrayVarToMap(d *DeclareDeclType) (map[string]string, error) {
 		rtn[indexStr] = valStr
 	}
 	return rtn, nil
+}
+
+func BashDeclareStmt(d *DeclareDeclType) string {
+	var argsStr string
+	if d.Args == "" {
+		argsStr = "--"
+	} else {
+		argsStr = "-" + d.Args
+	}
+	return fmt.Sprintf("declare %s %s=%s", argsStr, d.Name, d.Value)
 }

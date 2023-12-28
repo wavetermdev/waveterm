@@ -53,6 +53,7 @@ type ShellApi interface {
 	MakeShExecCommand(cmdStr string, rcFileName string, usePty bool) *exec.Cmd
 	GetShellState() (*packet.ShellState, error)
 	GetBaseShellOpts() string
+	ParseShellStateOutput(output []byte) (*packet.ShellState, error)
 }
 
 func MakeShellApi(shellType string) (ShellApi, error) {

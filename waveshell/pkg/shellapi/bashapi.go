@@ -13,7 +13,6 @@ import (
 
 	"github.com/alessio/shellescape"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
-	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 )
 
 const BaseBashOpts = `set +m; set +H; shopt -s extglob`
@@ -83,6 +82,10 @@ func (b bashShellApi) GetBaseShellOpts() string {
 	return BaseBashOpts
 }
 
+func (b bashShellApi) ParseShellStateOutput(output []byte) (*packet.ShellState, error) {
+	return parseBashShellStateOutput(output)
+}
+
 func GetBashShellStateCmd() string {
 	return strings.Join(GetBashShellStateCmds, ` printf "\x00\x00";`)
 }
@@ -120,7 +123,7 @@ func GetBashShellState() (*packet.ShellState, error) {
 	if err != nil {
 		return nil, err
 	}
-	return shellenv.ParseShellStateOutput(outputBytes, packet.ShellType_bash)
+	return parseBashShellStateOutput(outputBytes)
 }
 
 func GetLocalBashPath() string {

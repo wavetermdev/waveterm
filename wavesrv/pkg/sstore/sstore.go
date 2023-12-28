@@ -704,7 +704,7 @@ func FeStateFromShellState(state *packet.ShellState) map[string]string {
 	}
 	rtn := make(map[string]string)
 	rtn["cwd"] = state.Cwd
-	envMap := shellenv.EnvMapFromBashState(state)
+	envMap := shellenv.EnvMapFromState(state)
 	if envMap["VIRTUAL_ENV"] != "" {
 		rtn["VIRTUAL_ENV"] = envMap["VIRTUAL_ENV"]
 	}

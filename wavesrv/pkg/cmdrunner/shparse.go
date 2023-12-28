@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/simpleexpand"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
@@ -141,6 +141,12 @@ func onlyRawArgs(metaCmd string, metaSubCmd string) bool {
 	return CmdParseOverrides[metaCmd] == CmdParseTypeRaw
 }
 
+var waveValidIdentifierRe = regexp.MustCompile("^[a-zA-Z_][a-zA-Z0-9_]*$")
+
+func isValidWaveParamName(name string) bool {
+	return waveValidIdentifierRe.MatchString(name)
+}
+
 func setBracketArgs(argMap map[string]string, bracketStr string) error {
 	bracketStr = strings.TrimSpace(bracketStr)
 	if bracketStr == "" {
@@ -160,7 +166,7 @@ func setBracketArgs(argMap map[string]string, bracketStr string) error {
 			varName = litStr[0:eqIdx]
 			varVal = litStr[eqIdx+1:]
 		}
-		if !shellenv.IsValidBashIdentifier(varName) {
+		if !isValidWaveParamName(varName) {
 			wordErr = fmt.Errorf("invalid identifier %s in bracket args", utilfn.ShellQuote(varName, true, 20))
 			return false
 		}
@@ -353,7 +359,7 @@ func EvalMetaCommand(ctx context.Context, origPk *scpacket.FeCommandPacketType) 
 		return nil, fmt.Errorf("parsing metacmd, position %v", err)
 	}
 	envMap := make(map[string]string) // later we can add vars like session, screen, remote, and user
-	cfg := shellenv.GetParserConfig(envMap)
+	cfg := shellapi.GetParserConfig(envMap)
 	// process arguments
 	for idx, w := range words {
 		literalVal, err := expand.Literal(cfg, w)

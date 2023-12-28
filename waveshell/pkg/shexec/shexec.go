@@ -114,6 +114,7 @@ type ShExecType struct {
 	ReturnState    *ReturnStateBuf
 	Exited         bool // locked via Lock
 	TmpRcFileName  string
+	SAPI           shellapi.ShellApi
 }
 
 type StdContext struct{}
@@ -201,12 +202,13 @@ func (s ShExecUPR) UnknownPacket(pk packet.PacketType) {
 	}
 }
 
-func MakeShExec(ck base.CommandKey, upr packet.UnknownPacketReporter) *ShExecType {
+func MakeShExec(ck base.CommandKey, upr packet.UnknownPacketReporter, sapi shellapi.ShellApi) *ShExecType {
 	return &ShExecType{
 		Lock:        &sync.Mutex{},
 		StartTs:     time.Now(),
 		CK:          ck,
 		Multiplexer: mpio.MakeMultiplexer(ck, upr),
+		SAPI:        sapi,
 	}
 }
 
@@ -274,7 +276,7 @@ func MakeDetachedExecCmd(pk *packet.RunPacketType, cmdTty *os.File) (*exec.Cmd, 
 	if !pk.StateComplete {
 		ecmd.Env = os.Environ()
 	}
-	shellutil.UpdateCmdEnv(ecmd, shellenv.EnvMapFromBashState(state))
+	shellutil.UpdateCmdEnv(ecmd, shellenv.EnvMapFromState(state))
 	shellutil.UpdateCmdEnv(ecmd, shellutil.MShellEnvVars(getTermType(pk)))
 	if state.Cwd != "" {
 		ecmd.Dir = base.ExpandHomeDir(state.Cwd)
@@ -779,7 +781,11 @@ func HasDupStdin(fds []packet.RemoteFd) bool {
 }
 
 func RunClientSSHCommandAndWait(runPacket *packet.RunPacketType, fdContext FdContext, sshOpts SSHOpts, upr packet.UnknownPacketReporter, debug bool) (*packet.CmdDonePacketType, error) {
-	cmd := MakeShExec(runPacket.CK, upr)
+	sapi, err := shellapi.MakeShellApi(packet.ShellType_bash)
+	if err != nil {
+		return nil, err
+	}
+	cmd := MakeShExec(runPacket.CK, upr, sapi)
 	ecmd, err := sshOpts.MakeMShellSingleCmd(false)
 	if err != nil {
 		return nil, err
@@ -956,6 +962,7 @@ func getTermType(pk *packet.RunPacketType) string {
 	return termType
 }
 
+// TODO move to shellapi
 func makeRcFileStr(pk *packet.RunPacketType, sapi shellapi.ShellApi) string {
 	var rcBuf bytes.Buffer
 	rcBuf.WriteString(sapi.GetBaseShellOpts() + "\n")
@@ -964,7 +971,7 @@ func makeRcFileStr(pk *packet.RunPacketType, sapi shellapi.ShellApi) string {
 		if varDecl.IsExport() || varDecl.IsReadOnly() {
 			continue
 		}
-		rcBuf.WriteString(varDecl.BashDeclareStmt())
+		rcBuf.WriteString(shellapi.BashDeclareStmt(varDecl))
 		rcBuf.WriteString("\n")
 	}
 	if pk.State != nil && pk.State.Funcs != "" {
@@ -1017,7 +1024,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 	if state == nil {
 		state = &packet.ShellState{}
 	}
-	cmd := MakeShExec(pk.CK, nil)
+	cmd := MakeShExec(pk.CK, nil, sapi)
 	defer func() {
 		// on error, call cmd.Close()
 		if rtnErr != nil {
@@ -1087,7 +1094,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 	if !pk.StateComplete {
 		cmd.Cmd.Env = os.Environ()
 	}
-	shellutil.UpdateCmdEnv(cmd.Cmd, shellenv.EnvMapFromBashState(state))
+	shellutil.UpdateCmdEnv(cmd.Cmd, shellenv.EnvMapFromState(state))
 	if state.Cwd != "" {
 		cmd.Cmd.Dir = base.ExpandHomeDir(state.Cwd)
 	}
@@ -1300,6 +1307,10 @@ func (cmd *ShExecType) DetachedWait(startPacket *packet.CmdStartPacketType) {
 }
 
 func RunCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecType, *packet.CmdStartPacketType, error) {
+	sapi, err := shellapi.MakeShellApi(packet.ShellType_bash)
+	if err != nil {
+		return nil, nil, err
+	}
 	fileNames, err := base.GetCommandFileNames(pk.CK)
 	if err != nil {
 		return nil, nil, err
@@ -1319,7 +1330,7 @@ func RunCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) (
 	defer func() {
 		cmdTty.Close()
 	}()
-	cmd := MakeShExec(pk.CK, nil)
+	cmd := MakeShExec(pk.CK, nil, sapi)
 	cmd.FileNames = fileNames
 	cmd.CmdPty = cmdPty
 	cmd.Detached = true
@@ -1388,7 +1399,7 @@ func (c *ShExecType) WaitForCommand() *packet.CmdDonePacketType {
 			c.ReturnState.Reader.Close()
 		}()
 		<-c.ReturnState.DoneCh
-		state, _ := shellenv.ParseShellStateOutput(c.ReturnState.Buf, packet.ShellType_bash) // TODO what to do with error?
+		state, _ := c.SAPI.ParseShellStateOutput(c.ReturnState.Buf) // TODO what to do with error?
 		donePacket.FinalState = state
 	}
 	endTs := time.Now()
