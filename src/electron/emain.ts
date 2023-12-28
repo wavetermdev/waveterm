@@ -546,12 +546,11 @@ function runWaveSrv() {
     if (isDev) {
         envCopy[WaveDevVarName] = "1";
     }
-    let wavePath = `"${getWaveSrvPath()}"`;
-    console.log("trying to run local server", wavePath);
-    let proc = child_process.spawn("bash", ["-c", wavePath], {
+    let waveSrvCmd = getWaveSrvCmd();
+    console.log("trying to run local server", waveSrvCmd);
+    let proc = child_process.spawn("bash", ["-c", waveSrvCmd], {
         cwd: getWaveSrvCwd(),
         env: envCopy,
-        windowsVerbatimArguments: true,
     });
     proc.on("exit", (e) => {
         console.log("wavesrv exit", e);
