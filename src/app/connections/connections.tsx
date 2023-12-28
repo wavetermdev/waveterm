@@ -59,6 +59,16 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
     }
 
     @boundMethod
+    getImportSymbol(item: T.RemoteType): React.ReactElement<any, any> {
+        const { sshconfigsrc } = item;
+        if (sshconfigsrc == "sshconfig-import") {
+            return <i className="fa-sharp fa-solid fa-file-import" />;
+        } else {
+            return <></>;
+        }
+    }
+
+    @boundMethod
     handleAddConnection(): void {
         GlobalModel.remotesModel.openAddModal({ remoteedit: true });
     }
@@ -148,7 +158,9 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
                                 onClick={() => this.handleRead(item.remoteid)} // Moved onClick here
                             >
                                 <td className="col-name">
-                                    <div>{this.getName(item)}</div>
+                                    <div>
+                                        {this.getName(item)} {this.getImportSymbol(item)}
+                                    </div>
                                 </td>
                                 <td className="col-type">
                                     <div>{item.remotetype}</div>
