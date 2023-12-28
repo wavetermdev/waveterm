@@ -32,7 +32,7 @@ func readFullRunPacket(packetParser *packet.PacketParser) (*packet.RunPacketType
 	return nil, fmt.Errorf("no run packet received")
 }
 
-func handleSingle() {
+func handleSingle(shellType string) {
 	packetParser := packet.MakePacketParser(os.Stdin, nil)
 	sender := packet.MakePacketSender(os.Stdout, nil)
 	defer func() {
@@ -80,7 +80,7 @@ func handleSingle() {
 			}
 		}()
 		defer ticker.Stop()
-		cmd, err := shexec.RunCommandSimple(runPacket, sender, true)
+		cmd, err := shexec.RunCommandSimple(runPacket, sender, true, shellType)
 		if err != nil {
 			sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("error running command: %w", err))
 			return
@@ -141,6 +141,7 @@ func main() {
 		handleUsage()
 		return
 	}
+	shellType := getShellTypeArg()
 	firstArg := os.Args[1]
 	if firstArg == "--help" {
 		handleUsage()
@@ -150,11 +151,11 @@ func main() {
 		return
 	} else if firstArg == "--single" || firstArg == "--single-from-server" {
 		base.InitDebugLog("single")
-		handleSingle()
+		handleSingle(shellType)
 		return
 	} else if firstArg == "--server" {
 		base.InitDebugLog("server")
-		rtnCode, err := server.RunServer()
+		rtnCode, err := server.RunServer(shellType)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[error] %v\n", err)
 		}

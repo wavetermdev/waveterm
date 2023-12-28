@@ -854,7 +854,7 @@ func (s *ShExecType) SendSignal(sig syscall.Signal) {
 	}
 }
 
-func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fromServer bool) (rtnShExec *ShExecType, rtnErr error) {
+func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fromServer bool, shellType string) (rtnShExec *ShExecType, rtnErr error) {
 	sapi, err := shellapi.MakeShellApi(packet.ShellType_bash)
 	if err != nil {
 		return nil, err

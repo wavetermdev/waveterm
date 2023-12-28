@@ -43,6 +43,7 @@ type MServer struct {
 	WriteErrorChOnce    *sync.Once
 	WriteFileContextMap map[string]*WriteFileContext
 	Done                bool
+	ShellType           string
 }
 
 type WriteFileContext struct {
@@ -697,7 +698,7 @@ func (server *MServer) runReadLoop() {
 	}
 }
 
-func RunServer() (int, error) {
+func RunServer(shellType string) (int, error) {
 	debug := false
 	if len(os.Args) >= 3 && os.Args[2] == "--debug" {
 		debug = true
@@ -710,6 +711,7 @@ func RunServer() (int, error) {
 		WriteErrorCh:        make(chan bool),
 		WriteErrorChOnce:    &sync.Once{},
 		WriteFileContextMap: make(map[string]*WriteFileContext),
+		ShellType:           shellType,
 	}
 	go func() {
 		for {
