@@ -386,7 +386,7 @@ class Screen {
         this.setAnchor_debounced = debounce(1000, this.setAnchor.bind(this));
         this.anchor = mobx.observable.box(
             { anchorLine: sdata.selectedline, anchorOffset: 0 },
-            { name: "screen-anchor" }
+            { name: "screen-anchor" },
         );
         this.termLineNumFocus = mobx.observable.box(0, {
             name: "termLineNumFocus",
@@ -457,7 +457,7 @@ class Screen {
             return sprintf(
                 "http://devtest.getprompt.com:9001/static/index-dev.html?screenid=%s&viewkey=%s",
                 this.screenId,
-                viewKey
+                viewKey,
             );
         }
         return sprintf("https://share.getprompt.dev/share/%s?viewkey=%s", this.screenId, viewKey);
@@ -1005,7 +1005,7 @@ class ScreenLines {
                 this.lines,
                 slines.lines,
                 (l: LineType) => String(l.lineid),
-                (l: LineType) => sprintf("%013d:%s", l.ts, l.lineid)
+                (l: LineType) => sprintf("%013d:%s", l.ts, l.lineid),
             );
             let cmds = slines.cmds || [];
             for (let i = 0; i < cmds.length; i++) {
@@ -1137,8 +1137,8 @@ class Session {
                 sprintf(
                     "cannot merge session data, sessionids don't match sid=%s, data-sid=%s",
                     this.sessionId,
-                    sdata.sessionid
-                )
+                    sdata.sessionid,
+                ),
             );
         }
         mobx.action(() => {
@@ -1156,7 +1156,7 @@ class Session {
                 let screen = this.getScreenById(sdata.activescreenid);
                 if (screen == null) {
                     console.log(
-                        sprintf("got session update, activescreenid=%s, screen not found", sdata.activescreenid)
+                        sprintf("got session update, activescreenid=%s, screen not found", sdata.activescreenid),
                     );
                 } else {
                     this.activeScreenId.set(sdata.activescreenid);
@@ -2200,7 +2200,7 @@ class HistoryViewModel {
                     this,
                     { width, height },
                     false,
-                    appconst.LineContainer_History
+                    appconst.LineContainer_History,
                 );
             }
         })();
@@ -2589,7 +2589,7 @@ class BookmarksModel {
                 this.bookmarks,
                 bmArr,
                 (bm: BookmarkType) => bm.bookmarkid,
-                (bm: BookmarkType) => sprintf("%05d", bm.orderidx)
+                (bm: BookmarkType) => sprintf("%05d", bm.orderidx),
             );
         })();
     }
@@ -3661,7 +3661,7 @@ class Model {
                 update.screens,
                 (s: Screen) => s.screenId,
                 (sdata: ScreenDataType) => sdata.screenid,
-                (sdata: ScreenDataType) => new Screen(sdata)
+                (sdata: ScreenDataType) => new Screen(sdata),
             );
             for (let i = 0; i < mods.removed.length; i++) {
                 this.removeScreenLinesByScreenId(mods.removed[i]);
@@ -3678,7 +3678,7 @@ class Model {
                 (s: Session) => s.sessionId,
                 (sdata: SessionDataType) => sdata.sessionid,
                 (sdata: SessionDataType) => new Session(sdata),
-                (s: Session) => s.sessionIdx.get()
+                (s: Session) => s.sessionIdx.get(),
             );
             if ("activesessionid" in update) {
                 let newSessionId = update.activesessionid;
@@ -3967,7 +3967,7 @@ class Model {
         metaSubCmd: string,
         args: string[],
         kwargs: Record<string, string>,
-        interactive: boolean
+        interactive: boolean,
     ): Promise<CommandRtnType> {
         let pk: FeCmdPacketType = {
             type: "fecmd",
@@ -4185,7 +4185,7 @@ class Model {
                     badResponseStr = sprintf(
                         "Bad fetch response for /api/read-file: %d %s",
                         resp.status,
-                        resp.statusText
+                        resp.statusText,
                     );
                     return resp.text() as any;
                 }
@@ -4218,7 +4218,7 @@ class Model {
         lineId: string,
         path: string,
         data: Uint8Array,
-        opts?: { useTemp?: boolean }
+        opts?: { useTemp?: boolean },
     ): Promise<void> {
         opts = opts || {};
         let params = {
@@ -4335,7 +4335,7 @@ class CommandRunner {
             "archive",
             [screenId, shouldArchive ? "1" : "0"],
             { nohist: "1" },
-            false
+            false,
         );
     }
 
@@ -4406,6 +4406,10 @@ class CommandRunner {
         GlobalModel.submitCommand("remote", "archive", null, { remote: remoteid, nohist: "1" }, true);
     }
 
+    importSshConfig() {
+        GlobalModel.submitCommand("remote", "parse", null, null, false);
+    }
+
     screenSelectLine(lineArg: string, focusVal?: string) {
         let kwargs: Record<string, string> = {
             nohist: "1",
@@ -4451,7 +4455,7 @@ class CommandRunner {
     screenSetSettings(
         screenId: string,
         settings: { tabcolor?: string; tabicon?: string; name?: string; sharename?: string },
-        interactive: boolean
+        interactive: boolean,
     ): Promise<CommandRtnType> {
         let kwargs: { [key: string]: any } = Object.assign({}, settings);
         kwargs["nohist"] = "1";
@@ -4465,7 +4469,7 @@ class CommandRunner {
             "archive",
             [sessionId, shouldArchive ? "1" : "0"],
             { nohist: "1" },
-            false
+            false,
         );
     }
 
@@ -4590,7 +4594,7 @@ class CommandRunner {
         screenId: string,
         lineId: string,
         state: T.LineStateType,
-        interactive: boolean
+        interactive: boolean,
     ): Promise<CommandRtnType> {
         let stateStr = JSON.stringify(state);
         return GlobalModel.submitCommand(
@@ -4598,7 +4602,7 @@ class CommandRunner {
             "set",
             [lineId],
             { screen: screenId, nohist: "1", state: stateStr },
-            interactive
+            interactive,
         );
     }
 
@@ -4671,7 +4675,7 @@ function getPtyData(screenId: string, lineId: string, lineNum: number): Promise<
         GlobalModel.getBaseHostPort() + "/api/ptyout?linenum=%d&screenid=%s&lineid=%s",
         lineNum,
         screenId,
-        lineId
+        lineId,
     );
     return _getPtyDataFromUrl(url);
 }

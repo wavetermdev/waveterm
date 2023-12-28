@@ -74,6 +74,11 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
     }
 
     @boundMethod
+    handleImportSshConfig(): void {
+        GlobalCommandRunner.importSshConfig();
+    }
+
+    @boundMethod
     handleRead(remoteId: string): void {
         GlobalModel.remotesModel.openReadModal(remoteId);
     }
@@ -181,6 +186,13 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
                         onClick={this.handleAddConnection}
                     >
                         New Connection
+                    </Button>
+                    <Button
+                        theme="secondary"
+                        leftIcon={<i className="fa-sharp fa-solid fa-fw fa-file-import"></i>}
+                        onClick={this.handleImportSshConfig}
+                    >
+                        Import Config
                     </Button>
                 </footer>
                 <If condition={items.length == 0}>
