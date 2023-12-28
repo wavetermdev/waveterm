@@ -62,7 +62,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
     getImportSymbol(item: T.RemoteType): React.ReactElement<any, any> {
         const { sshconfigsrc } = item;
         if (sshconfigsrc == "sshconfig-import") {
-            return <i className="fa-sharp fa-solid fa-file-import" />;
+            return <i title="Connection Imported from SSH Config" className="fa-sharp fa-solid fa-file-import" />;
         } else {
             return <></>;
         }
@@ -163,7 +163,8 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
                                 onClick={() => this.handleRead(item.remoteid)} // Moved onClick here
                             >
                                 <td className="col-name">
-                                        <Status status={this.getStatus(item.status)} text=""></Status> {this.getName(item)} {this.getImportSymbol(item)}
+                                        <Status status={this.getStatus(item.status)} text=""></Status>
+                                        {this.getName(item)}&nbsp;{this.getImportSymbol(item)}
                                 </td>
                                 <td className="col-type">
                                     <div>{item.remotetype}</div>
