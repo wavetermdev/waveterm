@@ -26,6 +26,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/statediff"
@@ -1041,11 +1042,16 @@ func (msh *MShellProc) RunInstall() {
 		msh.WriteToPtyBuffer("*error: cannot install on remote that is already trying to install, cancel current install to try again\n")
 		return
 	}
+	sapi, err := shellapi.MakeShellApi(packet.ShellType_bash)
+	if err != nil {
+		msh.WriteToPtyBuffer("*error: %v\n", err)
+		return
+	}
 	msh.WriteToPtyBuffer("installing mshell %s to %s...\n", scbase.MShellVersion, remoteCopy.RemoteCanonicalName)
 	sshOpts := convertSSHOpts(remoteCopy.SSHOpts)
 	sshOpts.SSHErrorsToTty = true
 	cmdStr := shexec.MakeInstallCommandStr()
-	ecmd := sshOpts.MakeSSHExecCmd(cmdStr)
+	ecmd := sshOpts.MakeSSHExecCmd(cmdStr, sapi)
 	cmdPty, err := msh.addControllingTty(ecmd)
 	if err != nil {
 		statusErr := fmt.Errorf("cannot attach controlling tty to mshell install command: %w", err)
@@ -1218,6 +1224,11 @@ func (msh *MShellProc) Launch(interactive bool) {
 		msh.WriteToPtyBuffer("remote is already connecting, disconnect before trying to connect again\n")
 		return
 	}
+	sapi, err := shellapi.MakeShellApi(packet.ShellType_bash)
+	if err != nil {
+		msh.WriteToPtyBuffer("*error, %v\n", err)
+		return
+	}
 	istatus := msh.GetInstallStatus()
 	if istatus == StatusConnecting {
 		msh.WriteToPtyBuffer("remote is trying to install, cancel install before trying to connect again\n")
@@ -1244,7 +1255,7 @@ func (msh *MShellProc) Launch(interactive bool) {
 	} else {
 		cmdStr = MakeServerCommandStr()
 	}
-	ecmd := sshOpts.MakeSSHExecCmd(cmdStr)
+	ecmd := sshOpts.MakeSSHExecCmd(cmdStr, sapi)
 	cmdPty, err := msh.addControllingTty(ecmd)
 	if err != nil {
 		statusErr := fmt.Errorf("cannot attach controlling tty to mshell command: %w", err)

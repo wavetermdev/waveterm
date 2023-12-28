@@ -38,6 +38,51 @@ var GetBashShellStateCmds = []string{
 	GetGitBranchCmdStr + ";",
 }
 
+type bashShellApi struct{}
+
+func (b bashShellApi) GetShellType() string {
+	return packet.ShellType_bash
+}
+
+func (b bashShellApi) MakeExitTrap(fdNum int) string {
+	return MakeBashExitTrap(fdNum)
+}
+
+func (b bashShellApi) GetLocalMajorVersion() string {
+	return GetLocalBashMajorVersion()
+}
+
+func (b bashShellApi) GetLocalShellPath() string {
+	return GetLocalBashPath()
+}
+
+func (b bashShellApi) GetRemoteShellPath() string {
+	return RemoteBashPath
+}
+
+func (b bashShellApi) MakeRunCommand(cmdStr string, opts RunCommandOpts) string {
+	if !opts.Sudo {
+		return fmt.Sprintf(RunCommandFmt, cmdStr)
+	}
+	if opts.SudoWithPass {
+		return fmt.Sprintf(RunBashSudoPasswordCommandFmt, opts.PwFdNum, opts.MaxFdNum+1, opts.PwFdNum, opts.CommandFdNum, opts.CommandStdinFdNum)
+	} else {
+		return fmt.Sprintf(RunBashSudoCommandFmt, opts.MaxFdNum+1, opts.CommandFdNum)
+	}
+}
+
+func (b bashShellApi) MakeShExecCommand(cmdStr string, rcFileName string, usePty bool) *exec.Cmd {
+	return MakeBashShExecCommand(cmdStr, rcFileName, usePty)
+}
+
+func (b bashShellApi) GetShellState() (*packet.ShellState, error) {
+	return GetBashShellState()
+}
+
+func (b bashShellApi) GetBaseShellOpts() string {
+	return BaseBashOpts
+}
+
 func GetBashShellStateCmd() string {
 	return strings.Join(GetBashShellStateCmds, ` printf "\x00\x00";`)
 }

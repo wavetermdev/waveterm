@@ -148,11 +148,15 @@ func (m *MServer) ProcessCommandPacket(pk packet.CommandPacketType) {
 }
 
 func runSingleCompGen(cwd string, compType string, prefix string) ([]string, bool, error) {
+	sapi, err := shellapi.MakeShellApi(packet.ShellType_bash)
+	if err != nil {
+		return nil, false, err
+	}
 	if !packet.IsValidCompGenType(compType) {
 		return nil, false, fmt.Errorf("invalid compgen type '%s'", compType)
 	}
 	compGenCmdStr := fmt.Sprintf("cd %s; compgen -A %s -- %s | sort | uniq | head -n %d", shellescape.Quote(cwd), shellescape.Quote(compType), shellescape.Quote(prefix), packet.MaxCompGenValues+1)
-	ecmd := exec.Command(shellapi.GetLocalBashPath(), "-c", compGenCmdStr)
+	ecmd := exec.Command(sapi.GetLocalShellPath(), "-c", compGenCmdStr)
 	outputBytes, err := ecmd.Output()
 	if err != nil {
 		return nil, false, fmt.Errorf("compgen error: %w", err)

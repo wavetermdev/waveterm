@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/creack/pty"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
 )
 
@@ -32,6 +33,34 @@ var cachedMacUserShell string
 var macUserShellOnce = &sync.Once{}
 
 const DefaultMacOSShell = "/bin/bash"
+
+type RunCommandOpts struct {
+	Sudo              bool
+	SudoWithPass      bool
+	MaxFdNum          int // needed for Sudo
+	CommandFdNum      int // needed for Sudo
+	PwFdNum           int // needed for SudoWithPass
+	CommandStdinFdNum int // needed for SudoWithPass
+}
+
+type ShellApi interface {
+	GetShellType() string
+	MakeExitTrap(fdNum int) string
+	GetLocalMajorVersion() string
+	GetLocalShellPath() string
+	GetRemoteShellPath() string
+	MakeRunCommand(cmdStr string, opts RunCommandOpts) string
+	MakeShExecCommand(cmdStr string, rcFileName string, usePty bool) *exec.Cmd
+	GetShellState() (*packet.ShellState, error)
+	GetBaseShellOpts() string
+}
+
+func MakeShellApi(shellType string) (ShellApi, error) {
+	if shellType == packet.ShellType_bash {
+		return &bashShellApi{}, nil
+	}
+	return nil, fmt.Errorf("shell type not supported: %s", shellType)
+}
 
 func GetMacUserShell() string {
 	if runtime.GOOS != "darwin" {

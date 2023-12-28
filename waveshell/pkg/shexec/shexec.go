@@ -262,11 +262,15 @@ func MakeRunnerExec(ck base.CommandKey) (*exec.Cmd, error) {
 }
 
 func MakeDetachedExecCmd(pk *packet.RunPacketType, cmdTty *os.File) (*exec.Cmd, error) {
+	sapi, err := shellapi.MakeShellApi(packet.ShellType_bash)
+	if err != nil {
+		return nil, err
+	}
 	state := pk.State
 	if state == nil {
 		state = &packet.ShellState{}
 	}
-	ecmd := exec.Command(shellapi.GetLocalBashPath(), "-c", pk.Command)
+	ecmd := exec.Command(sapi.GetLocalShellPath(), "-c", pk.Command)
 	if !pk.StateComplete {
 		ecmd.Env = os.Environ()
 	}
@@ -424,8 +428,12 @@ func (opts SSHOpts) MakeSSHInstallCmd() (*exec.Cmd, error) {
 	if opts.SSHHost == "" {
 		return nil, fmt.Errorf("no ssh host provided, can only install to a remote host")
 	}
+	sapi, err := shellapi.MakeShellApi(packet.ShellType_bash)
+	if err != nil {
+		return nil, err
+	}
 	cmdStr := MakeInstallCommandStr()
-	return opts.MakeSSHExecCmd(cmdStr), nil
+	return opts.MakeSSHExecCmd(cmdStr, sapi), nil
 }
 
 func (opts SSHOpts) MakeMShellServerCmd() (*exec.Cmd, error) {
@@ -451,18 +459,22 @@ func (opts SSHOpts) MakeMShellSingleCmd(fromServer bool) (*exec.Cmd, error) {
 		}
 		return ecmd, nil
 	}
+	sapi, err := shellapi.MakeShellApi(packet.ShellType_bash)
+	if err != nil {
+		return nil, err
+	}
 	cmdStr := MakeClientCommandStr()
-	return opts.MakeSSHExecCmd(cmdStr), nil
+	return opts.MakeSSHExecCmd(cmdStr, sapi), nil
 }
 
-func (opts SSHOpts) MakeSSHExecCmd(remoteCommand string) *exec.Cmd {
+func (opts SSHOpts) MakeSSHExecCmd(remoteCommand string, sapi shellapi.ShellApi) *exec.Cmd {
 	remoteCommand = strings.TrimSpace(remoteCommand)
 	if opts.SSHHost == "" {
 		homeDir, _ := os.UserHomeDir() // ignore error
 		if homeDir == "" {
 			homeDir = "/"
 		}
-		ecmd := exec.Command(shellapi.GetLocalBashPath(), "-c", remoteCommand)
+		ecmd := exec.Command(sapi.GetLocalShellPath(), "-c", remoteCommand)
 		ecmd.Dir = homeDir
 		return ecmd
 	} else {
@@ -489,7 +501,7 @@ func (opts SSHOpts) MakeSSHExecCmd(remoteCommand string) *exec.Cmd {
 		}
 		// note that SSHOptsStr is *not* escaped
 		sshCmd := fmt.Sprintf("ssh %s %s %s %s", strings.Join(moreSSHOpts, " "), opts.SSHOptsStr, shellescape.Quote(opts.SSHHost), shellescape.Quote(remoteCommand))
-		ecmd := exec.Command(shellapi.RemoteBashPath, "-c", sshCmd)
+		ecmd := exec.Command(sapi.GetRemoteShellPath(), "-c", sshCmd)
 		return ecmd
 	}
 }
@@ -529,6 +541,10 @@ func GetTerminalSize() (int, int, error) {
 }
 
 func (opts *ClientOpts) MakeRunPacket() (*packet.RunPacketType, error) {
+	sapi, err := shellapi.MakeShellApi(packet.ShellType_bash)
+	if err != nil {
+		return nil, err
+	}
 	runPacket := packet.MakeRunPacket()
 	runPacket.Detached = opts.Detach
 	runPacket.State = &packet.ShellState{}
@@ -547,38 +563,33 @@ func (opts *ClientOpts) MakeRunPacket() (*packet.RunPacketType, error) {
 			runPacket.TermOpts.Term = term
 		}
 	}
-	if !opts.Sudo {
-		// normal, non-sudo command
-		runPacket.Command = fmt.Sprintf(shellapi.RunCommandFmt, opts.Command)
-		return runPacket, nil
-	}
-	if opts.SudoWithPass {
-		pwFdNum, err := AddRunData(runPacket, opts.SudoPw, "sudo pw")
+	rcOpts := shellapi.RunCommandOpts{}
+	rcOpts.Sudo = opts.Sudo
+	rcOpts.SudoWithPass = opts.SudoWithPass
+	if opts.Sudo && opts.SudoWithPass {
+		rcOpts.PwFdNum, err = AddRunData(runPacket, opts.SudoPw, "sudo pw")
 		if err != nil {
 			return nil, err
 		}
-		commandFdNum, err := AddRunData(runPacket, opts.Command, "command")
+		rcOpts.CommandFdNum, err = AddRunData(runPacket, opts.Command, "command")
 		if err != nil {
 			return nil, err
 		}
-		commandStdinFdNum, err := NextFreeFdNum(runPacket)
+		rcOpts.CommandStdinFdNum, err = NextFreeFdNum(runPacket)
 		if err != nil {
 			return nil, err
 		}
-		commandStdinRfd := packet.RemoteFd{FdNum: commandStdinFdNum, Read: true, DupStdin: true}
+		commandStdinRfd := packet.RemoteFd{FdNum: rcOpts.CommandStdinFdNum, Read: true, DupStdin: true}
 		runPacket.Fds = append(runPacket.Fds, commandStdinRfd)
-		maxFdNum := MaxFdNumInPacket(runPacket)
-		runPacket.Command = fmt.Sprintf(shellapi.RunBashSudoPasswordCommandFmt, pwFdNum, maxFdNum+1, pwFdNum, commandFdNum, commandStdinFdNum)
-		return runPacket, nil
-	} else {
-		commandFdNum, err := AddRunData(runPacket, opts.Command, "command")
+	} else if opts.Sudo {
+		rcOpts.CommandFdNum, err = AddRunData(runPacket, opts.Command, "command")
 		if err != nil {
 			return nil, err
 		}
-		maxFdNum := MaxFdNumInPacket(runPacket)
-		runPacket.Command = fmt.Sprintf(shellapi.RunBashSudoCommandFmt, maxFdNum+1, commandFdNum)
-		return runPacket, nil
 	}
+	rcOpts.MaxFdNum = MaxFdNumInPacket(runPacket)
+	runPacket.Command = sapi.MakeRunCommand(opts.Command, rcOpts)
+	return runPacket, nil
 }
 
 func AddRunData(pk *packet.RunPacketType, data string, dataType string) (int, error) {
@@ -945,9 +956,9 @@ func getTermType(pk *packet.RunPacketType) string {
 	return termType
 }
 
-func makeRcFileStr(pk *packet.RunPacketType) string {
+func makeRcFileStr(pk *packet.RunPacketType, sapi shellapi.ShellApi) string {
 	var rcBuf bytes.Buffer
-	rcBuf.WriteString(shellapi.BaseBashOpts + "\n")
+	rcBuf.WriteString(sapi.GetBaseShellOpts() + "\n")
 	varDecls := shellenv.VarDeclsFromState(pk.State)
 	for _, varDecl := range varDecls {
 		if varDecl.IsExport() || varDecl.IsReadOnly() {
@@ -998,6 +1009,10 @@ func (s *ShExecType) SendSignal(sig syscall.Signal) {
 }
 
 func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fromServer bool) (rtnShExec *ShExecType, rtnErr error) {
+	sapi, err := shellapi.MakeShellApi(packet.ShellType_bash)
+	if err != nil {
+		return nil, err
+	}
 	state := pk.State
 	if state == nil {
 		state = &packet.ShellState{}
@@ -1016,7 +1031,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		cmd.MsgSender = sender
 	}
 	var rtnStateWriter *os.File
-	rcFileStr := makeRcFileStr(pk)
+	rcFileStr := makeRcFileStr(pk, sapi)
 	if pk.ReturnState {
 		pr, pw, err := os.Pipe()
 		if err != nil {
@@ -1027,7 +1042,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		cmd.ReturnState.FdNum = RtnStateFdNum
 		rtnStateWriter = pw
 		defer pw.Close()
-		trapCmdStr := shellapi.MakeBashExitTrap(cmd.ReturnState.FdNum)
+		trapCmdStr := sapi.MakeExitTrap(cmd.ReturnState.FdNum)
 		rcFileStr += trapCmdStr
 	}
 	shellVarMap := shellenv.ShellVarMapFromState(state)
@@ -1038,8 +1053,11 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 			base.Logf("error writing %s: %v\n", debugRcFileName, err)
 		}
 	}
-	bashVersion := shellapi.GetLocalBashMajorVersion()
-	isOldBashVersion := (semver.Compare(bashVersion, "v4") < 0)
+	var isOldBashVersion bool
+	if sapi.GetShellType() == packet.ShellType_bash {
+		bashVersion := sapi.GetLocalMajorVersion()
+		isOldBashVersion = (semver.Compare(bashVersion, "v4") < 0)
+	}
 	var rcFileName string
 	if isOldBashVersion {
 		rcFileDir, err := base.EnsureRcFilesDir()
@@ -1065,7 +1083,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		}
 		rcFileName = fmt.Sprintf("/dev/fd/%d", rcFileFdNum)
 	}
-	cmd.Cmd = shellapi.MakeBashShExecCommand(pk.Command, rcFileName, pk.UsePty)
+	cmd.Cmd = sapi.MakeShExecCommand(pk.Command, rcFileName, pk.UsePty)
 	if !pk.StateComplete {
 		cmd.Cmd.Env = os.Environ()
 	}
@@ -1073,7 +1091,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 	if state.Cwd != "" {
 		cmd.Cmd.Dir = base.ExpandHomeDir(state.Cwd)
 	}
-	err := ValidateRemoteFds(pk.Fds)
+	err = ValidateRemoteFds(pk.Fds)
 	if err != nil {
 		return nil, err
 	}
@@ -1399,9 +1417,12 @@ func MakeInitPacket() *packet.InitPacketType {
 }
 
 func MakeServerInitPacket() (*packet.InitPacketType, error) {
-	var err error
+	sapi, err := shellapi.MakeShellApi(packet.ShellType_bash)
+	if err != nil {
+		return nil, err
+	}
 	initPacket := MakeInitPacket()
-	shellState, err := shellapi.GetBashShellState()
+	shellState, err := sapi.GetShellState()
 	if err != nil {
 		return nil, err
 	}
