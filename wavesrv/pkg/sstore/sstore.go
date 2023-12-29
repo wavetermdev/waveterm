@@ -94,6 +94,11 @@ const (
 )
 
 const (
+	SSHConfigSrcTypeManual = "waveterm-manual"
+	SSHConfigSrcTypeImport = "sshconfig-import"
+)
+
+const (
 	ShareModeLocal = "local"
 	ShareModeWeb   = "web"
 )
@@ -975,6 +980,74 @@ type OpenAIOptsType struct {
 	MaxChoices int    `json:"maxchoices,omitempty"`
 }
 
+const (
+	RemoteStatus_Connected    = "connected"
+	RemoteStatus_Connecting   = "connecting"
+	RemoteStatus_Disconnected = "disconnected"
+	RemoteStatus_Error        = "error"
+)
+
+type RemoteRuntimeState struct {
+	RemoteType          string            `json:"remotetype"`
+	RemoteId            string            `json:"remoteid"`
+	RemoteAlias         string            `json:"remotealias,omitempty"`
+	RemoteCanonicalName string            `json:"remotecanonicalname"`
+	RemoteVars          map[string]string `json:"remotevars"`
+	DefaultFeState      map[string]string `json:"defaultfestate"`
+	Status              string            `json:"status"`
+	ConnectTimeout      int               `json:"connecttimeout,omitempty"`
+	ErrorStr            string            `json:"errorstr,omitempty"`
+	InstallStatus       string            `json:"installstatus"`
+	InstallErrorStr     string            `json:"installerrorstr,omitempty"`
+	NeedsMShellUpgrade  bool              `json:"needsmshellupgrade,omitempty"`
+	NoInitPk            bool              `json:"noinitpk,omitempty"`
+	AuthType            string            `json:"authtype,omitempty"`
+	ConnectMode         string            `json:"connectmode"`
+	AutoInstall         bool              `json:"autoinstall"`
+	Archived            bool              `json:"archived,omitempty"`
+	RemoteIdx           int64             `json:"remoteidx"`
+	SSHConfigSrc        string            `json:"sshconfigsrc"`
+	UName               string            `json:"uname"`
+	MShellVersion       string            `json:"mshellversion"`
+	WaitingForPassword  bool              `json:"waitingforpassword,omitempty"`
+	Local               bool              `json:"local,omitempty"`
+	RemoteOpts          *RemoteOptsType   `json:"remoteopts,omitempty"`
+	CanComplete         bool              `json:"cancomplete,omitempty"`
+}
+
+func (state RemoteRuntimeState) IsConnected() bool {
+	return state.Status == RemoteStatus_Connected
+}
+
+func (state RemoteRuntimeState) GetBaseDisplayName() string {
+	if state.RemoteAlias != "" {
+		return state.RemoteAlias
+	}
+	return state.RemoteCanonicalName
+}
+
+func (state RemoteRuntimeState) GetDisplayName(rptr *RemotePtrType) string {
+	baseDisplayName := state.GetBaseDisplayName()
+	if rptr == nil {
+		return baseDisplayName
+	}
+	return rptr.GetDisplayName(baseDisplayName)
+}
+
+func (state RemoteRuntimeState) ExpandHomeDir(pathStr string) (string, error) {
+	if pathStr != "~" && !strings.HasPrefix(pathStr, "~/") {
+		return pathStr, nil
+	}
+	homeDir := state.RemoteVars["home"]
+	if homeDir == "" {
+		return "", fmt.Errorf("remote does not have HOME set, cannot do ~ expansion")
+	}
+	if pathStr == "~" {
+		return homeDir, nil
+	}
+	return path.Join(homeDir, pathStr[2:]), nil
+}
+
 type RemoteType struct {
 	RemoteId            string          `json:"remoteid"`
 	RemoteType          string          `json:"remotetype"`
@@ -986,13 +1059,14 @@ type RemoteType struct {
 	Archived            bool            `json:"archived"`
 
 	// SSH fields
-	Local       bool              `json:"local"`
-	RemoteUser  string            `json:"remoteuser"`
-	RemoteHost  string            `json:"remotehost"`
-	ConnectMode string            `json:"connectmode"`
-	AutoInstall bool              `json:"autoinstall"`
-	SSHOpts     *SSHOpts          `json:"sshopts"`
-	StateVars   map[string]string `json:"statevars"`
+	Local        bool              `json:"local"`
+	RemoteUser   string            `json:"remoteuser"`
+	RemoteHost   string            `json:"remotehost"`
+	ConnectMode  string            `json:"connectmode"`
+	AutoInstall  bool              `json:"autoinstall"`
+	SSHOpts      *SSHOpts          `json:"sshopts"`
+	StateVars    map[string]string `json:"statevars"`
+	SSHConfigSrc string            `json:"sshconfigsrc"`
 
 	// OpenAI fields
 	OpenAIOpts *OpenAIOptsType `json:"openaiopts,omitempty"`
@@ -1048,6 +1122,7 @@ func (r *RemoteType) ToMap() map[string]interface{} {
 	rtn["remoteidx"] = r.RemoteIdx
 	rtn["local"] = r.Local
 	rtn["statevars"] = quickJson(r.StateVars)
+	rtn["sshconfigsrc"] = r.SSHConfigSrc
 	rtn["openaiopts"] = quickJson(r.OpenAIOpts)
 	return rtn
 }
@@ -1068,6 +1143,7 @@ func (r *RemoteType) FromMap(m map[string]interface{}) bool {
 	quickSetInt64(&r.RemoteIdx, m, "remoteidx")
 	quickSetBool(&r.Local, m, "local")
 	quickSetJson(&r.StateVars, m, "statevars")
+	quickSetStr(&r.SSHConfigSrc, m, "sshconfigsrc")
 	quickSetJson(&r.OpenAIOpts, m, "openaiopts")
 	return true
 }
@@ -1230,6 +1306,7 @@ func EnsureLocalRemote(ctx context.Context) error {
 		AutoInstall:         true,
 		SSHOpts:             &SSHOpts{Local: true},
 		Local:               true,
+		SSHConfigSrc:        SSHConfigSrcTypeManual,
 	}
 	err = UpsertRemote(ctx, localRemote)
 	if err != nil {
@@ -1248,6 +1325,7 @@ func EnsureLocalRemote(ctx context.Context) error {
 		SSHOpts:             &SSHOpts{Local: true, IsSudo: true},
 		RemoteOpts:          &RemoteOptsType{Color: "red"},
 		Local:               true,
+		SSHConfigSrc:        SSHConfigSrcTypeManual,
 	}
 	err = UpsertRemote(ctx, sudoRemote)
 	if err != nil {

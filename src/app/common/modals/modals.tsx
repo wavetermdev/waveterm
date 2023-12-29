@@ -973,7 +973,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                 Install Now
             </Button>
         );
-        const archiveButton = (
+        let archiveButton = (
             <Button theme="secondary" onClick={() => this.clickArchive()}>
                 Delete
             </Button>
@@ -987,6 +987,36 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
             installNowButton = <></>;
             updateAuthButton = <></>;
             cancelInstallButton = <></>;
+        }
+        if (remote.sshconfigsrc == "sshconfig-import") {
+            updateAuthButton = (
+                <Button theme="secondary" disabled={true}>
+                    Edit
+                    <Tooltip
+                        message={`Remotes imported from an ssh config file cannot be edited inside waveterm. To edit these, you must edit the config file and import it again.`}
+                        icon={<i className="fa-sharp fa-regular fa-fw fa-ban" />}
+                    >
+                        <i className="fa-sharp fa-regular fa-fw fa-ban" />
+                    </Tooltip>
+                </Button>
+            );
+            archiveButton = (
+                <Button theme="secondary" onClick={() => this.clickArchive()}>
+                    Delete
+                    <Tooltip
+                        message={
+                            <span>
+                                Remotes imported from an ssh config file can be deleted, but will come back upon
+                                importing again. They will stay removed if you follow{" "}
+                                <a href="https://docs.waveterm.dev/features/sshconfig-imports">this procedure</a>.
+                            </span>
+                        }
+                        icon={<i className="fa-sharp fa-regular fa-fw fa-triangle-exclamation" />}
+                    >
+                        <i className="fa-sharp fa-regular fa-fw fa-triangle-exclamation" />
+                    </Tooltip>
+                </Button>
+            );
         }
         if (remote.status == "connected" || remote.status == "connecting") {
             buttons.push(disconnectButton);
@@ -1062,7 +1092,9 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                 <Modal.Header title="Connection" onClose={this.model.closeModal} />
                 <div className="wave-modal-body">
                     <div className="name-header-actions-wrapper">
-                        <div className="name text-primary">{util.getRemoteName(remote)}</div>
+                        <div className="name text-primary name-wrapper">
+                            {getName(remote)}&nbsp; {getImportTooltip(remote)}
+                        </div>
                         <div className="header-actions">{this.renderHeaderBtns(remote)}</div>
                     </div>
                     <div className="remote-detail" style={{ overflow: "hidden" }}>
@@ -1738,6 +1770,21 @@ class TabSwitcherModal extends React.Component<{}, {}> {
         );
     }
 }
+
+const getImportTooltip = (remote: T.RemoteType): React.ReactElement<any, any> => {
+    if (remote.sshconfigsrc == "sshconfig-import") {
+        return (
+            <Tooltip
+                message={`This remote was imported from an SSH config file.`}
+                icon={<i className="fa-sharp fa-solid fa-file-import" />}
+            >
+                <i className="fa-sharp fa-solid fa-file-import" />
+            </Tooltip>
+        );
+    } else {
+        return <></>;
+    }
+};
 
 export {
     LoadingSpinner,

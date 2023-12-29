@@ -4416,6 +4416,10 @@ class CommandRunner {
         GlobalModel.submitCommand("remote", "archive", null, { remote: remoteid, nohist: "1" }, true);
     }
 
+    importSshConfig() {
+        GlobalModel.submitCommand("remote", "parse", null, null, false);
+    }
+
     screenSelectLine(lineArg: string, focusVal?: string) {
         let kwargs: Record<string, string> = {
             nohist: "1",
