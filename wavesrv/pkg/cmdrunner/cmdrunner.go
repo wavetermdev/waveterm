@@ -116,7 +116,7 @@ var SetVarScopes = []SetVarScope{
 }
 
 var userHostRe = regexp.MustCompile("^(sudo@)?([a-z][a-z0-9._@-]*)@([a-z0-9][a-z0-9.-]*)(?::([0-9]+))?$")
-var remoteAliasRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_-]*$")
+var remoteAliasRe = regexp.MustCompile("^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
 var genericNameRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_ .()<>,/\"'\\[\\]{}=+$@!*-]*$")
 var rendererRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_.:-]*$")
 var positionRe = regexp.MustCompile("^((S?\\+|E?-)?[0-9]+|(\\+|-|S|E))$")
