@@ -1746,16 +1746,16 @@ class TabSwitcherModal extends React.Component<{}, {}> {
                                         <div
                                             key={index}
                                             ref={this.optionRefs[index]}
-                                            className={cn(
-                                                "search-option unselectable",
-                                                { "focused-option": this.focusedIdx.get() === index },
-                                                "color-" + option.color
-                                            )}
+                                            className={cn("search-option unselectable", {
+                                                "focused-option": this.focusedIdx.get() === index,
+                                            })}
                                             onClick={() => this.handleSelect(index)}
                                             onMouseEnter={() => this.handleMouseEnter(index)}
                                             onMouseMove={() => this.handleMouseMove()}
                                         >
-                                            <span>{this.renderIcon(option)}</span>
+                                            <span className={cn("icon", "color-" + option.color)}>
+                                                {this.renderIcon(option)}
+                                            </span>
                                             <span>
                                                 #{option.sessionName} / {option.screenName}
                                             </span>
