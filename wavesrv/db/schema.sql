@@ -55,8 +55,10 @@ CREATE TABLE remote (
     lastconnectts bigint NOT NULL,
     local boolean NOT NULL,
     archived boolean NOT NULL,
-    remoteidx int NOT NULL
-, statevars json NOT NULL DEFAULT '{}', openaiopts json NOT NULL DEFAULT '{}', sshconfigsrc varchar(36) NOT NULL DEFAULT 'waveterm-manual');
+    remoteidx int NOT NULL,
+    statevars json NOT NULL DEFAULT '{}',
+    sshconfigsrc varchar(36) NOT NULL DEFAULT 'waveterm-manual',
+    openaiopts json NOT NULL DEFAULT '{}');
 CREATE TABLE history (
     historyid varchar(36) PRIMARY KEY,
     ts bigint NOT NULL,

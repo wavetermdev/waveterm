@@ -48,7 +48,7 @@ type ModelUpdate struct {
 	CmdLine           *utilfn.StrWithPos      `json:"cmdline,omitempty"`
 	Info              *InfoMsgType            `json:"info,omitempty"`
 	ClearInfo         bool                    `json:"clearinfo,omitempty"`
-	Remotes           []interface{}           `json:"remotes,omitempty"` // []*remote.RemoteState
+	Remotes           []RemoteRuntimeState    `json:"remotes,omitempty"`
 	History           *HistoryInfoType        `json:"history,omitempty"`
 	Interactive       bool                    `json:"interactive"`
 	Connect           bool                    `json:"connect,omitempty"`

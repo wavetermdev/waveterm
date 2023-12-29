@@ -59,8 +59,23 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
     }
 
     @boundMethod
+    getImportSymbol(item: T.RemoteType): React.ReactElement<any, any> {
+        const { sshconfigsrc } = item;
+        if (sshconfigsrc == "sshconfig-import") {
+            return <i title="Connection Imported from SSH Config" className="fa-sharp fa-solid fa-file-import" />;
+        } else {
+            return <></>;
+        }
+    }
+
+    @boundMethod
     handleAddConnection(): void {
         GlobalModel.remotesModel.openAddModal({ remoteedit: true });
+    }
+
+    @boundMethod
+    handleImportSshConfig(): void {
+        GlobalCommandRunner.importSshConfig();
     }
 
     @boundMethod
@@ -148,7 +163,8 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
                                 onClick={() => this.handleRead(item.remoteid)} // Moved onClick here
                             >
                                 <td className="col-name">
-                                    <div>{this.getName(item)}</div>
+                                        <Status status={this.getStatus(item.status)} text=""></Status>
+                                        {this.getName(item)}&nbsp;{this.getImportSymbol(item)}
                                 </td>
                                 <td className="col-type">
                                     <div>{item.remotetype}</div>
@@ -169,6 +185,13 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
                         onClick={this.handleAddConnection}
                     >
                         New Connection
+                    </Button>
+                    <Button
+                        theme="secondary"
+                        leftIcon={<i className="fa-sharp fa-solid fa-fw fa-file-import"></i>}
+                        onClick={this.handleImportSshConfig}
+                    >
+                        Import Config
                     </Button>
                 </footer>
                 <If condition={items.length == 0}>
