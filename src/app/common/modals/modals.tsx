@@ -1454,6 +1454,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     optionRefs = [];
     listWrapperRef = React.createRef<HTMLDivElement>();
     prevFocusedIdx = 0;
+    isKeyboardNav = false;
 
     componentDidMount() {
         this.activeSessionIdx = GlobalModel.getActiveSession().sessionIdx.get();
@@ -1535,18 +1536,38 @@ class TabSwitcherModal extends React.Component<{}, {}> {
         let newIndex;
         if (e.key === "Escape") {
             this.closeModal();
-        } else if (e.key === "ArrowUp") {
+        } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
             e.preventDefault();
-            newIndex = Math.max(this.focusedIdx.get() - 1, 0);
-            this.setFocusedIndex(newIndex);
-        } else if (e.key === "ArrowDown") {
-            e.preventDefault();
-            newIndex = Math.min(this.focusedIdx.get() + 1, this.sOptions.length - 1);
+            this.isKeyboardNav = true;
+            newIndex = this.calculateNewIndex(e.key === "ArrowUp");
             this.setFocusedIndex(newIndex);
         } else if (e.key === "Enter") {
             e.preventDefault();
             this.handleSelect(this.focusedIdx.get());
         }
+    }
+
+    @boundMethod
+    calculateNewIndex(isUpKey) {
+        let currentIndex = this.focusedIdx.get();
+        if (isUpKey) {
+            return Math.max(currentIndex - 1, 0);
+        } else {
+            return Math.min(currentIndex + 1, this.sOptions.length - 1);
+        }
+    }
+
+    @boundMethod
+    handleMouseEnter(index) {
+        console.log("got here");
+        if (!this.isKeyboardNav) {
+            this.setFocusedIndex(index);
+        }
+    }
+
+    @boundMethod
+    handleMouseMove() {
+        this.isKeyboardNav = false;
     }
 
     @boundMethod
@@ -1699,7 +1720,8 @@ class TabSwitcherModal extends React.Component<{}, {}> {
                                                 "color-" + option.color
                                             )}
                                             onClick={() => this.handleSelect(index)}
-                                            onMouseEnter={() => this.setFocusedIndex(index)}
+                                            onMouseEnter={() => this.handleMouseEnter(index)}
+                                            onMouseMove={() => this.handleMouseMove()}
                                         >
                                             <span>{this.renderIcon(option)}</span>
                                             <span>
