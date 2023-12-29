@@ -1093,7 +1093,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                 <div className="wave-modal-body">
                     <div className="name-header-actions-wrapper">
                         <div className="name text-primary name-wrapper">
-                            {getName(remote)}&nbsp; {getImportTooltip(remote)}
+                            {util.getRemoteName(remote)}&nbsp; {getImportTooltip(remote)}
                         </div>
                         <div className="header-actions">{this.renderHeaderBtns(remote)}</div>
                     </div>
