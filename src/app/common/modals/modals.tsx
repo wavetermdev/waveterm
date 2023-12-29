@@ -1591,7 +1591,6 @@ class TabSwitcherModal extends React.Component<{}, {}> {
 
     @boundMethod
     handleMouseEnter(index) {
-        console.log("got here");
         if (!this.isKeyboardNav) {
             this.setFocusedIndex(index);
         }
