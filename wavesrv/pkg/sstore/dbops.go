@@ -854,6 +854,18 @@ func GetCmdByScreenId(ctx context.Context, screenId string, lineId string) (*Cmd
 	})
 }
 
+func UpdateWithAddNewOpenAICmdInfoPacket(ctx context.Context, screenId string, pk *packet.OpenAICmdInfoChatMessage) (*ModelUpdate, error) {
+	ScreenMemAddCmdInfoChatMessage(screenId, pk)
+	cmdInfoUpdate := ScreenMemGetCmdInfoChat(screenId).Messages
+	return &ModelUpdate{OpenAICmdInfoChat: cmdInfoUpdate}, nil
+}
+
+func UpdateWithUpdateOpenAICmdInfoPacket(ctx context.Context, screenId string, messageID int, pk *packet.OpenAICmdInfoChatMessage) (*ModelUpdate, error) {
+	ScreenMemUpdateCmdInfoChatMessage(screenId, messageID, pk)
+	cmdInfoUpdate := ScreenMemGetCmdInfoChat(screenId).Messages
+	return &ModelUpdate{OpenAICmdInfoChat: cmdInfoUpdate}, nil
+}
+
 func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, donePk *packet.CmdDonePacketType, status string) (*ModelUpdate, error) {
 	if donePk == nil {
 		return nil, fmt.Errorf("invalid cmddone packet")

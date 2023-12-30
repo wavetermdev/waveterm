@@ -729,6 +729,14 @@ type OpenAIUsageType struct {
 	TotalTokens      int `json:"total_tokens,omitempty"`
 }
 
+type OpenAICmdInfoPacketOutputType struct {
+	Model        string `json:"model,omitempty"`
+	Created      int64  `json:"created,omitempty"`
+	FinishReason string `json:"finish_reason,omitempty"`
+	Message      string `json:"message,omitempty"`
+	Error        string `json:"error,omitempty"`
+}
+
 type OpenAIPacketType struct {
 	Type         string           `json:"type"`
 	Model        string           `json:"model,omitempty"`
@@ -841,6 +849,13 @@ func MakeWriteFileDonePacket(reqId string) *WriteFileDonePacketType {
 		Type:   WriteFileDonePacketStr,
 		RespId: reqId,
 	}
+}
+
+type OpenAICmdInfoChatMessage struct {
+	MessageID           int                            `json:"messageid"`
+	IsAssistantResponse bool                           `json:"isassistantresponse,omitempty"`
+	AssistantResponse   *OpenAICmdInfoPacketOutputType `json:"assistantresponse,omitempty"`
+	UserQuery           string                         `json:"userquery,omitempty"`
 }
 
 type OpenAIPromptMessageType struct {

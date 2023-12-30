@@ -65,6 +65,7 @@ import type {
     CommandRtnType,
     WebCmd,
     WebRemote,
+    OpenAICmdInfoChatMessageType
 } from "../types/types";
 import * as T from "../types/types";
 import { WSControl } from "./ws";
@@ -1236,8 +1237,8 @@ class InputModel {
     aIChatShow: OV<boolean> = mobx.observable.box(false);
     cmdInputHeight: OV<number> = mobx.observable.box(0);
     
-    AIChatItems: mobx.IObservableArray<string> = mobx.observable.array(["AI Chat Message"], {
-        name: "AIChatItems"
+    AICmdInfoChatItems: mobx.IObservableArray<OpenAICmdInfoChatMessageType> = mobx.observable.array([], {
+        name: "aicmdinfo-chat"
     }); 
 
     historyType: mobx.IObservableValue<HistoryTypeStrs> = mobx.observable.box("screen");
@@ -1399,6 +1400,10 @@ class InputModel {
             return;
         })();
     }
+
+    setOpenAICmdInfoChat(chat: OpenAICmdInfoChatMessageType[]): void {
+        this.AICmdInfoChatItems.replace(chat);
+    }
     
     setAIChatShow(show: boolean): void {
         if(this.aIChatShow.get() == show) {
@@ -1413,14 +1418,6 @@ class InputModel {
         
     }
      
-    addAIChatMessage(messageStr:string): void {
-        console.log("mk3")
-        mobx.action(() => {
-            console.log("mk4");
-            this.AIChatItems.push(messageStr);            
-        });
-    }
-
     setHistoryShow(show: boolean): void {
         if (this.historyShow.get() == show) {
             return;
@@ -1713,6 +1710,12 @@ class InputModel {
         console.log("Opening AI Assistant chat");
         this.aIChatShow.set(true);
     }
+
+    closeAIAssistantChat(): void {
+        console.log("Opening AI Assistant chat");
+        this.aIChatShow.set(false);
+    }
+
 
     hasScrollingInfoMsg(): boolean {
         if (!this.infoShow.get()) {
@@ -3720,6 +3723,7 @@ class Model {
     }
 
     runUpdate(genUpdate: UpdateMessage, interactive: boolean) {
+        console.log("Got Update Message: ", genUpdate);
         mobx.action(() => {
             let oldContext = this.getUIContext();
             try {
@@ -3864,6 +3868,9 @@ class Model {
         if ("connect" in update) {
             this.sessionListLoaded.set(true);
             this.remotesLoaded.set(true);
+        }
+        if("openaicmdinfochat" in update) { 
+            this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
         }
         // console.log("run-update>", Date.now(), interactive, update);
     }
@@ -4098,6 +4105,24 @@ class Model {
 		 */
         return this.submitCommandPacket(pk, interactive);
     }
+
+    submitChatInfoCommand(cmdStr: string): Promise<CommandRtnType> {
+        let interactive = false;
+        let pk: FeCmdPacketType = {
+            type: "fecmd",
+            metacmd: "eval",
+            args: [cmdStr],
+            kwargs: {},
+            uicontext: this.getUIContext(),
+            interactive: interactive,
+            rawstr: cmdStr,
+        };
+        pk.kwargs["nohist"] = "1";
+        pk.kwargs["cmdinfo"] = "1";
+        return this.submitCommandPacket(pk, interactive);
+
+    }
+
 
     submitRawCommand(cmdStr: string, addToHistory: boolean, interactive: boolean): Promise<CommandRtnType> {
         let pk: FeCmdPacketType = {

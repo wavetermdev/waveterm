@@ -8,6 +8,7 @@ import (
 	"log"
 	"sync"
 
+	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
 )
 
@@ -43,11 +44,63 @@ func isIndicatorGreater(i1 string, i2 string) bool {
 	return screenIndicatorLevels[i1] > screenIndicatorLevels[i2]
 }
 
+type OpenAICmdInfoChatStore struct {
+	MessageCount int                                `json:"messagecount"`
+	Messages     []*packet.OpenAICmdInfoChatMessage `json:"messages"`
+}
+
 type ScreenMemState struct {
-	NumRunningCommands int               `json:"numrunningcommands,omitempty"`
-	IndicatorType      string            `json:"indicatortype,omitempty"`
-	CmdInputText       utilfn.StrWithPos `json:"cmdinputtext,omitempty"`
-	CmdInputSeqNum     int               `json:"cmdinputseqnum,omitempty"`
+	NumRunningCommands int                     `json:"numrunningcommands,omitempty"`
+	IndicatorType      string                  `json:"indicatortype,omitempty"`
+	CmdInputText       utilfn.StrWithPos       `json:"cmdinputtext,omitempty"`
+	CmdInputSeqNum     int                     `json:"cmdinputseqnum,omitempty"`
+	AICmdInfoChat      *OpenAICmdInfoChatStore `json:"aicmdinfochat,omitempty"`
+}
+
+func ScreenMemInitCmdInfoChat(screenId string) {
+	ScreenMemStore[screenId].AICmdInfoChat = &OpenAICmdInfoChatStore{MessageCount: 0, Messages: []*packet.OpenAICmdInfoChatMessage{}}
+}
+
+func ScreenMemAddCmdInfoChatMessage(screenId string, msg *packet.OpenAICmdInfoChatMessage) {
+	if ScreenMemStore[screenId].AICmdInfoChat == nil {
+		log.Printf("AICmdInfoChat is null, creating")
+		ScreenMemInitCmdInfoChat(screenId)
+	}
+
+	CmdInfoChat := ScreenMemStore[screenId].AICmdInfoChat
+	CmdInfoChat.Messages = append(CmdInfoChat.Messages, msg)
+	CmdInfoChat.MessageCount++
+}
+
+func ScreenMemGetCmdInfoMessageCount(screenId string) int {
+	if ScreenMemStore[screenId].AICmdInfoChat == nil {
+		log.Printf("AICmdInfoChat is null, creating")
+		ScreenMemInitCmdInfoChat(screenId)
+	}
+	return ScreenMemStore[screenId].AICmdInfoChat.MessageCount
+}
+
+func ScreenMemGetCmdInfoChat(screenId string) *OpenAICmdInfoChatStore {
+	if ScreenMemStore[screenId].AICmdInfoChat == nil {
+		log.Printf("AICmdInfoChat is null, creating")
+		ScreenMemInitCmdInfoChat(screenId)
+	}
+	return ScreenMemStore[screenId].AICmdInfoChat
+}
+
+func ScreenMemUpdateCmdInfoChatMessage(screenId string, messageID int, msg *packet.OpenAICmdInfoChatMessage) {
+	if ScreenMemStore[screenId].AICmdInfoChat == nil {
+		log.Printf("AICmdInfoChat is null, creating")
+		ScreenMemInitCmdInfoChat(screenId)
+	}
+	CmdInfoChat := ScreenMemStore[screenId].AICmdInfoChat
+	if messageID >= 0 && messageID < len(CmdInfoChat.Messages) {
+		log.Printf("len of message: %d", len(CmdInfoChat.Messages))
+		CmdInfoChat.Messages[messageID] = msg
+		log.Printf("len of message: %d", len(CmdInfoChat.Messages))
+	} else {
+		log.Printf("Message Id out of range: %d", messageID)
+	}
 }
 
 func ScreenMemSetCmdInputText(screenId string, sp utilfn.StrWithPos, seqNum int) {

@@ -196,6 +196,59 @@
             }
         }
     }
+    
+    .cmd-aichat { 
+        max-height: 250px;
+        display: flex;
+        justify-content: flex-end;
+        flex-flow: column nowrap;
+        margin-bottom: 10px;
+
+        .chat-window {
+            overflow-y: auto;
+            max-height: 200px;
+            margin-bottom: 5px;
+            flex-shrink: 1;
+            flex-direction: column-reverse;
+        }
+        
+        .chat-textarea {
+            color: @term-bright-white;
+            background-color: @textarea-background;
+            padding: 0.5em;
+            overflow: auto;
+            overflow-wrap: anywhere;
+            border-color: transparent;
+            border: none;
+            font-family: @terminal-font;
+            flex-shrink: 0;
+            flex-grow: 1;
+
+            &:focus {
+                box-shadow: none;
+                border: none;
+            }
+        }
+
+        .chat-msg {
+            white-space: pre-line;
+            margin-top:5px;
+            margin-bottom:5px;
+        }
+
+        .chat-msg-assistant {
+            color: @term-white;
+        }
+
+        .chat-msg-user {
+            color: @term-green;
+        }
+        
+
+        .grow-spacer {
+            flex: 1 0 10px;
+        }
+    }
 
     .cmd-history {
         color: @term-white;
