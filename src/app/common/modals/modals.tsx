@@ -1705,7 +1705,34 @@ class TabSwitcherModal extends React.Component<{}, {}> {
         return <i className={`fa-sharp fa-solid fa-${tabIcon}`}></i>;
     }
 
+    @boundMethod
+    renderOption(option: SwitcherDataType, index: number): React.ReactNode {
+        if (!this.optionRefs[index]) {
+            this.optionRefs[index] = React.createRef();
+        }
+
+        return (
+            <div
+                key={index}
+                ref={this.optionRefs[index]}
+                className={cn("search-option unselectable", {
+                    "focused-option": this.focusedIdx.get() === index,
+                })}
+                onClick={() => this.handleSelect(index)}
+                onMouseEnter={() => this.handleMouseEnter(index)}
+                onMouseMove={() => this.handleMouseMove()}
+            >
+                <span className={cn("icon", "color-" + option.color)}>{this.renderIcon(option)}</span>
+                <span>
+                    #{option.sessionName} / {option.screenName}
+                </span>
+            </div>
+        );
+    }
+
     render() {
+        let option: SwitcherDataType;
+        let index: number;
         return (
             <Modal className="tabswitcher-modal">
                 <div className="wave-modal-body">
@@ -1736,31 +1763,9 @@ class TabSwitcherModal extends React.Component<{}, {}> {
                     <div className="list-container">
                         <div ref={this.listWrapperRef} className="list-container-inner">
                             <div className="options-list">
-                                {this.sOptions.map((option, index) => {
-                                    if (!this.optionRefs[index]) {
-                                        this.optionRefs[index] = React.createRef();
-                                    }
-
-                                    return (
-                                        <div
-                                            key={index}
-                                            ref={this.optionRefs[index]}
-                                            className={cn("search-option unselectable", {
-                                                "focused-option": this.focusedIdx.get() === index,
-                                            })}
-                                            onClick={() => this.handleSelect(index)}
-                                            onMouseEnter={() => this.handleMouseEnter(index)}
-                                            onMouseMove={() => this.handleMouseMove()}
-                                        >
-                                            <span className={cn("icon", "color-" + option.color)}>
-                                                {this.renderIcon(option)}
-                                            </span>
-                                            <span>
-                                                #{option.sessionName} / {option.screenName}
-                                            </span>
-                                        </div>
-                                    );
-                                })}
+                                <For each="option" index="index" of={this.sOptions}>
+                                    <React.Fragment>{this.renderOption(option, index)}</React.Fragment>
+                                </For>
                             </div>
                         </div>
                     </div>
