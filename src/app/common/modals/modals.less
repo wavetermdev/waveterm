@@ -503,17 +503,25 @@
                     width: 100%;
 
                     .search-option {
-                        padding: 5px 5px 5px 12px;
+                        padding: 5px 5px 5px 8px;
                         display: flex;
                         align-items: center;
                         border: 1px solid transparent;
+                        width: 100%;
+                        overflow: hidden;
 
-                        span {
-                            display: flex;
+                        div.tabname {
+                            flex-grow: 1;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                            white-space: nowrap;
+                            padding-right: 5px;
                         }
 
-                        span:first-child {
+                        div.icon {
+                            flex-shrink: 0;
                             width: 20px;
+                            margin-right: 6px;
                         }
                     }
 

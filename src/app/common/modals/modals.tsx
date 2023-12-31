@@ -1473,6 +1473,8 @@ type SwitcherDataType = {
     color: string;
 };
 
+const MaxOptionsToDisplay = 100;
+
 @mobxReact.observer
 class TabSwitcherModal extends React.Component<{}, {}> {
     screens: Map<string, OV<string>>[];
@@ -1486,7 +1488,6 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     optionRefs = [];
     listWrapperRef = React.createRef<HTMLDivElement>();
     prevFocusedIdx = 0;
-    isKeyboardNav = false;
 
     componentDidMount() {
         this.activeSessionIdx = GlobalModel.getActiveSession().sessionIdx.get();
@@ -1517,7 +1518,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
         });
 
         mobx.action(() => {
-            this.sOptions.replace(this.sortOptions(this.options).slice(0, 10));
+            this.sOptions.replace(this.sortOptions(this.options).slice(0, MaxOptionsToDisplay));
         })();
 
         document.addEventListener("keydown", this.handleKeyDown);
@@ -1540,6 +1541,9 @@ class TabSwitcherModal extends React.Component<{}, {}> {
 
             // Update prevFocusedIdx for the next update cycle
             this.prevFocusedIdx = currFocusedIdx;
+        }
+        if (currFocusedIdx >= this.sOptions.length && this.sOptions.length > 0) {
+            this.setFocusedIndex(this.sOptions.length - 1);
         }
     }
 
@@ -1565,13 +1569,11 @@ class TabSwitcherModal extends React.Component<{}, {}> {
 
     @boundMethod
     handleKeyDown(e) {
-        let newIndex;
         if (e.key === "Escape") {
             this.closeModal();
         } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
             e.preventDefault();
-            this.isKeyboardNav = true;
-            newIndex = this.calculateNewIndex(e.key === "ArrowUp");
+            let newIndex = this.calculateNewIndex(e.key === "ArrowUp");
             this.setFocusedIndex(newIndex);
         } else if (e.key === "Enter") {
             e.preventDefault();
@@ -1587,18 +1589,6 @@ class TabSwitcherModal extends React.Component<{}, {}> {
         } else {
             return Math.min(currentIndex + 1, this.sOptions.length - 1);
         }
-    }
-
-    @boundMethod
-    handleMouseEnter(index) {
-        if (!this.isKeyboardNav) {
-            this.setFocusedIndex(index);
-        }
-    }
-
-    @boundMethod
-    handleMouseMove() {
-        this.isKeyboardNav = false;
     }
 
     @boundMethod
@@ -1626,14 +1616,17 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     handleSearch(val: string): void {
         let sOptions: SwitcherDataType[];
         if (val == "") {
-            sOptions = this.sortOptions(this.options).slice(0, 10);
+            sOptions = this.sortOptions(this.options).slice(0, MaxOptionsToDisplay);
         } else {
             sOptions = this.filterOptions(val);
             sOptions = this.sortOptions(sOptions);
+            if (sOptions.length > MaxOptionsToDisplay) {
+                sOptions = sOptions.slice(0, MaxOptionsToDisplay);
+            }
         }
-
         mobx.action(() => {
             this.sOptions.replace(sOptions);
+            this.focusedIdx.set(0);
         })();
     }
 
@@ -1706,26 +1699,23 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    renderOption(option: SwitcherDataType, index: number): React.ReactNode {
+    renderOption(option: SwitcherDataType, index: number): JSX.Element {
         if (!this.optionRefs[index]) {
             this.optionRefs[index] = React.createRef();
         }
-
         return (
             <div
-                key={index}
+                key={option.sessionId + "/" + option.screenId}
                 ref={this.optionRefs[index]}
                 className={cn("search-option unselectable", {
                     "focused-option": this.focusedIdx.get() === index,
                 })}
                 onClick={() => this.handleSelect(index)}
-                onMouseEnter={() => this.handleMouseEnter(index)}
-                onMouseMove={() => this.handleMouseMove()}
             >
-                <span className={cn("icon", "color-" + option.color)}>{this.renderIcon(option)}</span>
-                <span>
+                <div className={cn("icon", "color-" + option.color)}>{this.renderIcon(option)}</div>
+                <div className="tabname">
                     #{option.sessionName} / {option.screenName}
-                </span>
+                </div>
             </div>
         );
     }
@@ -1764,7 +1754,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
                         <div ref={this.listWrapperRef} className="list-container-inner">
                             <div className="options-list">
                                 <For each="option" index="index" of={this.sOptions}>
-                                    <React.Fragment>{this.renderOption(option, index)}</React.Fragment>
+                                    {this.renderOption(option, index)}
                                 </For>
                             </div>
                         </div>
