@@ -16,12 +16,6 @@ import { PluginsView } from "./pluginsview/pluginsview";
 import { BookmarksView } from "./bookmarks/bookmarks";
 import { HistoryView } from "./history/history";
 import { ConnectionsView } from "./connections/connections";
-import {
-    ScreenSettingsModal,
-    SessionSettingsModal,
-    LineSettingsModal,
-    ClientSettingsModal,
-} from "./common/modals/settings";
 import { MainSideBar } from "./sidebar/sidebar";
 import { DisconnectedModal, ClientStopModal, ModalsProvider } from "./common/modals/modals";
 import { ErrorBoundary } from "./common/error/errorboundary";
