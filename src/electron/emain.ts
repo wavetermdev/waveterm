@@ -556,7 +556,7 @@ function runWaveSrv() {
         console.log("wavesrv exit", e);
         waveSrvProc = null;
         sendWSSC();
-        pReject(new Error(sprintf("failed to start local server (%s)", wavePath)));
+        pReject(new Error(sprintf("failed to start local server (%s)", waveSrvCmd)));
         if (waveSrvShouldRestart) {
             waveSrvShouldRestart = false;
             this.runWaveSrv();
