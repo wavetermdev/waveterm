@@ -73,6 +73,7 @@ const (
 	CmdStatusError    = "error"
 	CmdStatusDone     = "done"
 	CmdStatusHangup   = "hangup"
+	CmdStatusUnknown  = "unknown" // used for history items where we don't have a status
 )
 
 const (
@@ -90,6 +91,11 @@ const (
 	RemoteAuthTypePassword    = "password"
 	RemoteAuthTypeKey         = "key"
 	RemoteAuthTypeKeyPassword = "key+password"
+)
+
+const (
+	SSHConfigSrcTypeManual = "waveterm-manual"
+	SSHConfigSrcTypeImport = "sshconfig-import"
 )
 
 const (
@@ -328,6 +334,14 @@ type SessionType struct {
 	Full   bool `json:"full,omitempty"`
 }
 
+type SessionTombstoneType struct {
+	SessionId string `json:"sessionid"`
+	Name      string `json:"name"`
+	DeletedTs int64  `json:"deletedts"`
+}
+
+func (SessionTombstoneType) UseDBMap() {}
+
 type SessionStatsType struct {
 	SessionId          string              `json:"sessionid"`
 	NumScreens         int                 `json:"numscreens"`
@@ -414,7 +428,11 @@ func (h *HistoryItemType) ToMap() map[string]interface{} {
 	rtn["remoteid"] = h.Remote.RemoteId
 	rtn["remotename"] = h.Remote.Name
 	rtn["ismetacmd"] = h.IsMetaCmd
-	rtn["incognito"] = h.Incognito
+	rtn["exitcode"] = h.ExitCode
+	rtn["durationms"] = h.DurationMs
+	rtn["festate"] = quickJson(h.FeState)
+	rtn["tags"] = quickJson(h.Tags)
+	rtn["status"] = h.Status
 	return rtn
 }
 
@@ -433,7 +451,11 @@ func (h *HistoryItemType) FromMap(m map[string]interface{}) bool {
 	quickSetBool(&h.IsMetaCmd, m, "ismetacmd")
 	quickSetStr(&h.HistoryNum, m, "historynum")
 	quickSetInt64(&h.LineNum, m, "linenum")
-	quickSetBool(&h.Incognito, m, "incognito")
+	dbutil.QuickSetNullableInt64(&h.ExitCode, m, "exitcode")
+	dbutil.QuickSetNullableInt64(&h.DurationMs, m, "durationms")
+	quickSetJson(&h.FeState, m, "festate")
+	quickSetJson(&h.Tags, m, "tags")
+	quickSetStr(&h.Status, m, "status")
 	return true
 }
 
@@ -547,6 +569,16 @@ func (s *ScreenType) FromMap(m map[string]interface{}) bool {
 	return true
 }
 
+type ScreenTombstoneType struct {
+	ScreenId   string         `json:"screenid"`
+	SessionId  string         `json:"sessionid"`
+	Name       string         `json:"name"`
+	DeletedTs  int64          `json:"deletedts"`
+	ScreenOpts ScreenOptsType `json:"screenopts"`
+}
+
+func (ScreenTombstoneType) UseDBMap() {}
+
 const (
 	LayoutFull = "full"
 )
@@ -578,24 +610,28 @@ type ScreenAnchorType struct {
 }
 
 type HistoryItemType struct {
-	HistoryId string        `json:"historyid"`
-	Ts        int64         `json:"ts"`
-	UserId    string        `json:"userid"`
-	SessionId string        `json:"sessionid"`
-	ScreenId  string        `json:"screenid"`
-	LineId    string        `json:"lineid"`
-	HadError  bool          `json:"haderror"`
-	CmdStr    string        `json:"cmdstr"`
-	Remote    RemotePtrType `json:"remote"`
-	IsMetaCmd bool          `json:"ismetacmd"`
-	Incognito bool          `json:"incognito,omitempty"`
+	HistoryId  string          `json:"historyid"`
+	Ts         int64           `json:"ts"`
+	UserId     string          `json:"userid"`
+	SessionId  string          `json:"sessionid"`
+	ScreenId   string          `json:"screenid"`
+	LineId     string          `json:"lineid"`
+	HadError   bool            `json:"haderror"`
+	CmdStr     string          `json:"cmdstr"`
+	Remote     RemotePtrType   `json:"remote"`
+	IsMetaCmd  bool            `json:"ismetacmd"`
+	ExitCode   *int64          `json:"exitcode,omitempty"`
+	DurationMs *int64          `json:"durationms,omitempty"`
+	FeState    FeStateType     `json:"festate,omitempty"`
+	Tags       map[string]bool `json:"tags,omitempty"`
+	LineNum    int64           `json:"linenum" dbmap:"-"`
+	Status     string          `json:"status"`
 
 	// only for updates
-	Remove bool `json:"remove"`
+	Remove bool `json:"remove" dbmap:"-"`
 
 	// transient (string because of different history orderings)
-	HistoryNum string `json:"historynum"`
-	LineNum    int64  `json:"linenum"`
+	HistoryNum string `json:"historynum" dbmap:"-"`
 }
 
 type HistoryQueryOpts struct {
@@ -709,7 +745,7 @@ func FeStateFromShellState(state *packet.ShellState) map[string]string {
 		rtn["VIRTUAL_ENV"] = envMap["VIRTUAL_ENV"]
 	}
 	for key, val := range envMap {
-		if strings.HasPrefix(key, "PROMPTVAR_") {
+		if strings.HasPrefix(key, "PROMPTVAR_") && rtn[key] != "" {
 			rtn[key] = val
 		}
 	}
@@ -944,6 +980,74 @@ type OpenAIOptsType struct {
 	MaxChoices int    `json:"maxchoices,omitempty"`
 }
 
+const (
+	RemoteStatus_Connected    = "connected"
+	RemoteStatus_Connecting   = "connecting"
+	RemoteStatus_Disconnected = "disconnected"
+	RemoteStatus_Error        = "error"
+)
+
+type RemoteRuntimeState struct {
+	RemoteType          string            `json:"remotetype"`
+	RemoteId            string            `json:"remoteid"`
+	RemoteAlias         string            `json:"remotealias,omitempty"`
+	RemoteCanonicalName string            `json:"remotecanonicalname"`
+	RemoteVars          map[string]string `json:"remotevars"`
+	DefaultFeState      map[string]string `json:"defaultfestate"`
+	Status              string            `json:"status"`
+	ConnectTimeout      int               `json:"connecttimeout,omitempty"`
+	ErrorStr            string            `json:"errorstr,omitempty"`
+	InstallStatus       string            `json:"installstatus"`
+	InstallErrorStr     string            `json:"installerrorstr,omitempty"`
+	NeedsMShellUpgrade  bool              `json:"needsmshellupgrade,omitempty"`
+	NoInitPk            bool              `json:"noinitpk,omitempty"`
+	AuthType            string            `json:"authtype,omitempty"`
+	ConnectMode         string            `json:"connectmode"`
+	AutoInstall         bool              `json:"autoinstall"`
+	Archived            bool              `json:"archived,omitempty"`
+	RemoteIdx           int64             `json:"remoteidx"`
+	SSHConfigSrc        string            `json:"sshconfigsrc"`
+	UName               string            `json:"uname"`
+	MShellVersion       string            `json:"mshellversion"`
+	WaitingForPassword  bool              `json:"waitingforpassword,omitempty"`
+	Local               bool              `json:"local,omitempty"`
+	RemoteOpts          *RemoteOptsType   `json:"remoteopts,omitempty"`
+	CanComplete         bool              `json:"cancomplete,omitempty"`
+}
+
+func (state RemoteRuntimeState) IsConnected() bool {
+	return state.Status == RemoteStatus_Connected
+}
+
+func (state RemoteRuntimeState) GetBaseDisplayName() string {
+	if state.RemoteAlias != "" {
+		return state.RemoteAlias
+	}
+	return state.RemoteCanonicalName
+}
+
+func (state RemoteRuntimeState) GetDisplayName(rptr *RemotePtrType) string {
+	baseDisplayName := state.GetBaseDisplayName()
+	if rptr == nil {
+		return baseDisplayName
+	}
+	return rptr.GetDisplayName(baseDisplayName)
+}
+
+func (state RemoteRuntimeState) ExpandHomeDir(pathStr string) (string, error) {
+	if pathStr != "~" && !strings.HasPrefix(pathStr, "~/") {
+		return pathStr, nil
+	}
+	homeDir := state.RemoteVars["home"]
+	if homeDir == "" {
+		return "", fmt.Errorf("remote does not have HOME set, cannot do ~ expansion")
+	}
+	if pathStr == "~" {
+		return homeDir, nil
+	}
+	return path.Join(homeDir, pathStr[2:]), nil
+}
+
 type RemoteType struct {
 	RemoteId            string          `json:"remoteid"`
 	RemoteType          string          `json:"remotetype"`
@@ -955,13 +1059,14 @@ type RemoteType struct {
 	Archived            bool            `json:"archived"`
 
 	// SSH fields
-	Local       bool              `json:"local"`
-	RemoteUser  string            `json:"remoteuser"`
-	RemoteHost  string            `json:"remotehost"`
-	ConnectMode string            `json:"connectmode"`
-	AutoInstall bool              `json:"autoinstall"`
-	SSHOpts     *SSHOpts          `json:"sshopts"`
-	StateVars   map[string]string `json:"statevars"`
+	Local        bool              `json:"local"`
+	RemoteUser   string            `json:"remoteuser"`
+	RemoteHost   string            `json:"remotehost"`
+	ConnectMode  string            `json:"connectmode"`
+	AutoInstall  bool              `json:"autoinstall"`
+	SSHOpts      *SSHOpts          `json:"sshopts"`
+	StateVars    map[string]string `json:"statevars"`
+	SSHConfigSrc string            `json:"sshconfigsrc"`
 
 	// OpenAI fields
 	OpenAIOpts *OpenAIOptsType `json:"openaiopts,omitempty"`
@@ -1017,6 +1122,7 @@ func (r *RemoteType) ToMap() map[string]interface{} {
 	rtn["remoteidx"] = r.RemoteIdx
 	rtn["local"] = r.Local
 	rtn["statevars"] = quickJson(r.StateVars)
+	rtn["sshconfigsrc"] = r.SSHConfigSrc
 	rtn["openaiopts"] = quickJson(r.OpenAIOpts)
 	return rtn
 }
@@ -1037,6 +1143,7 @@ func (r *RemoteType) FromMap(m map[string]interface{}) bool {
 	quickSetInt64(&r.RemoteIdx, m, "remoteidx")
 	quickSetBool(&r.Local, m, "local")
 	quickSetJson(&r.StateVars, m, "statevars")
+	quickSetStr(&r.SSHConfigSrc, m, "sshconfigsrc")
 	quickSetJson(&r.OpenAIOpts, m, "openaiopts")
 	return true
 }
@@ -1199,6 +1306,7 @@ func EnsureLocalRemote(ctx context.Context) error {
 		AutoInstall:         true,
 		SSHOpts:             &SSHOpts{Local: true},
 		Local:               true,
+		SSHConfigSrc:        SSHConfigSrcTypeManual,
 	}
 	err = UpsertRemote(ctx, localRemote)
 	if err != nil {
@@ -1217,6 +1325,7 @@ func EnsureLocalRemote(ctx context.Context) error {
 		SSHOpts:             &SSHOpts{Local: true, IsSudo: true},
 		RemoteOpts:          &RemoteOptsType{Color: "red"},
 		Local:               true,
+		SSHConfigSrc:        SSHConfigSrcTypeManual,
 	}
 	err = UpsertRemote(ctx, sudoRemote)
 	if err != nil {

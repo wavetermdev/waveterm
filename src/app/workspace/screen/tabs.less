@@ -244,11 +244,15 @@
         display: flex;
         flex-direction: row;
         align-items: center;
-        overflow-x: hidden;
+        overflow-x: scroll;
 
-        &:hover,
-        &:focus {
-            overflow-x: overlay;
+        &::-webkit-scrollbar-thumb,
+        &::-webkit-scrollbar-track {
+            display: none;
+        }
+
+        &:hover::-webkit-scrollbar-thumb {
+            display: block;
         }
 
         .screen-tab {
@@ -321,6 +325,7 @@
         cursor: pointer;
         display: flex;
         align-items: center;
+        height: 37px;
 
         .icon {
             height: 2rem;

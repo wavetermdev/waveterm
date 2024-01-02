@@ -21,6 +21,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alessio/shellescape"
 	"github.com/armon/circbuf"
 	"github.com/creack/pty"
 	"github.com/google/uuid"
@@ -76,9 +77,9 @@ func MakeLocalMShellCommandStr(isSudo bool, shellType string) (string, error) {
 	}
 	shellOverride := makeShellOverrideArg(shellType)
 	if isSudo {
-		return fmt.Sprintf(`%s; sudo %s --server %s`, PrintPingPacket, mshellPath, shellOverride), nil
+		return fmt.Sprintf(`%s; sudo %s --server %s`, PrintPingPacket, shellescape.Quote(mshellPath), shellOverride), nil
 	} else {
-		return fmt.Sprintf(`%s; %s --server %s`, PrintPingPacket, mshellPath, shellOverride), nil
+		return fmt.Sprintf(`%s; %s --server %s`, PrintPingPacket, shellescape.Quote(mshellPath), shellOverride), nil
 	}
 }
 
@@ -91,10 +92,10 @@ func MakeServerCommandStr(shellType string) string {
 }
 
 const (
-	StatusConnected    = "connected"
-	StatusConnecting   = "connecting"
-	StatusDisconnected = "disconnected"
-	StatusError        = "error"
+	StatusConnected    = sstore.RemoteStatus_Connected
+	StatusConnecting   = sstore.RemoteStatus_Connecting
+	StatusDisconnected = sstore.RemoteStatus_Disconnected
+	StatusError        = sstore.RemoteStatus_Error
 )
 
 func init() {
@@ -153,36 +154,7 @@ type RunCmdType struct {
 	RunPacket *packet.RunPacketType
 }
 
-type RemoteRuntimeState struct {
-	RemoteType          string                 `json:"remotetype"`
-	RemoteId            string                 `json:"remoteid"`
-	RemoteAlias         string                 `json:"remotealias,omitempty"`
-	RemoteCanonicalName string                 `json:"remotecanonicalname"`
-	RemoteVars          map[string]string      `json:"remotevars"`
-	DefaultFeState      map[string]string      `json:"defaultfestate"`
-	Status              string                 `json:"status"`
-	ConnectTimeout      int                    `json:"connecttimeout,omitempty"`
-	ErrorStr            string                 `json:"errorstr,omitempty"`
-	InstallStatus       string                 `json:"installstatus"`
-	InstallErrorStr     string                 `json:"installerrorstr,omitempty"`
-	NeedsMShellUpgrade  bool                   `json:"needsmshellupgrade,omitempty"`
-	NoInitPk            bool                   `json:"noinitpk,omitempty"`
-	AuthType            string                 `json:"authtype,omitempty"`
-	ConnectMode         string                 `json:"connectmode"`
-	AutoInstall         bool                   `json:"autoinstall"`
-	Archived            bool                   `json:"archived,omitempty"`
-	RemoteIdx           int64                  `json:"remoteidx"`
-	UName               string                 `json:"uname"`
-	MShellVersion       string                 `json:"mshellversion"`
-	WaitingForPassword  bool                   `json:"waitingforpassword,omitempty"`
-	Local               bool                   `json:"local,omitempty"`
-	RemoteOpts          *sstore.RemoteOptsType `json:"remoteopts,omitempty"`
-	CanComplete         bool                   `json:"cancomplete,omitempty"`
-}
-
-func (state RemoteRuntimeState) IsConnected() bool {
-	return state.Status == StatusConnected
-}
+type RemoteRuntimeState = sstore.RemoteRuntimeState
 
 func CanComplete(remoteType string) bool {
 	switch remoteType {
@@ -235,21 +207,6 @@ func (msh *MShellProc) GetInstallStatus() string {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
 	return msh.InstallStatus
-}
-
-func (state RemoteRuntimeState) GetBaseDisplayName() string {
-	if state.RemoteAlias != "" {
-		return state.RemoteAlias
-	}
-	return state.RemoteCanonicalName
-}
-
-func (state RemoteRuntimeState) GetDisplayName(rptr *sstore.RemotePtrType) string {
-	baseDisplayName := state.GetBaseDisplayName()
-	if rptr == nil {
-		return baseDisplayName
-	}
-	return rptr.GetDisplayName(baseDisplayName)
 }
 
 func LoadRemotes(ctx context.Context) error {
@@ -375,6 +332,7 @@ func ArchiveRemote(ctx context.Context, remoteId string) error {
 		RemoteCanonicalName: rcopy.RemoteCanonicalName,
 		ConnectMode:         sstore.ConnectModeManual,
 		Archived:            true,
+		SSHConfigSrc:        rcopy.SSHConfigSrc,
 	}
 	err := sstore.UpsertRemote(ctx, archivedRemote)
 	if err != nil {
@@ -561,6 +519,7 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		AutoInstall:         msh.Remote.AutoInstall,
 		Archived:            msh.Remote.Archived,
 		RemoteIdx:           msh.Remote.RemoteIdx,
+		SSHConfigSrc:        msh.Remote.SSHConfigSrc,
 		UName:               msh.UName,
 		InstallStatus:       msh.InstallStatus,
 		NeedsMShellUpgrade:  msh.NeedsMShellUpgrade,
@@ -659,7 +618,7 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 
 func (msh *MShellProc) NotifyRemoteUpdate() {
 	rstate := msh.GetRemoteRuntimeState()
-	update := &sstore.ModelUpdate{Remotes: []interface{}{rstate}}
+	update := &sstore.ModelUpdate{Remotes: []RemoteRuntimeState{rstate}}
 	sstore.MainBus.SendUpdate(update)
 }
 
@@ -1390,20 +1349,6 @@ func replaceHomePath(pathStr string, homeDir string) string {
 	return pathStr
 }
 
-func (state RemoteRuntimeState) ExpandHomeDir(pathStr string) (string, error) {
-	if pathStr != "~" && !strings.HasPrefix(pathStr, "~/") {
-		return pathStr, nil
-	}
-	homeDir := state.RemoteVars["home"]
-	if homeDir == "" {
-		return "", fmt.Errorf("remote does not have HOME set, cannot do ~ expansion")
-	}
-	if pathStr == "~" {
-		return homeDir, nil
-	}
-	return path.Join(homeDir, pathStr[2:]), nil
-}
-
 func (msh *MShellProc) IsCmdRunning(ck base.CommandKey) bool {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
@@ -2065,7 +2010,12 @@ func evalPromptEsc(escCode string, vars map[string]string, state *packet.ShellSt
 		if err != nil {
 			return escCode
 		}
-		return string([]byte{byte(ival)})
+		if ival >= 0 && ival <= 255 {
+			return string([]byte{byte(ival)})
+		} else {
+			// if it was out of range just return the string (invalid escape)
+			return escCode
+		}
 	}
 	if escCode == "e" {
 		return "\033"

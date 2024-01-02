@@ -7,7 +7,7 @@ CREATE TABLE client (
     userpublickeybytes blob NOT NULL,
     userprivatekeybytes blob NOT NULL,
     winsize json NOT NULL
-, clientopts json NOT NULL DEFAULT '', feopts json NOT NULL DEFAULT '{}', cmdstoretype varchar(20) DEFAULT 'session', openaiopts json NOT NULL DEFAULT '{}');
+, clientopts json NOT NULL DEFAULT '', feopts json NOT NULL DEFAULT '{}', cmdstoretype varchar(20) DEFAULT 'session', openaiopts json NOT NULL DEFAULT '{}', releaseinfo json NOT NULL DEFAULT '{}');
 CREATE TABLE session (
     sessionid varchar(36) PRIMARY KEY,
     name varchar(50) NOT NULL,
@@ -55,8 +55,10 @@ CREATE TABLE remote (
     lastconnectts bigint NOT NULL,
     local boolean NOT NULL,
     archived boolean NOT NULL,
-    remoteidx int NOT NULL
-, statevars json NOT NULL DEFAULT '{}', openaiopts json NOT NULL DEFAULT '{}');
+    remoteidx int NOT NULL,
+    statevars json NOT NULL DEFAULT '{}',
+    sshconfigsrc varchar(36) NOT NULL DEFAULT 'waveterm-manual',
+    openaiopts json NOT NULL DEFAULT '{}');
 CREATE TABLE history (
     historyid varchar(36) PRIMARY KEY,
     ts bigint NOT NULL,
@@ -70,8 +72,7 @@ CREATE TABLE history (
     haderror boolean NOT NULL,
     cmdstr text NOT NULL,
     ismetacmd boolean,
-    incognito boolean
-, linenum int NOT NULL DEFAULT 0);
+    linenum int NOT NULL DEFAULT 0, exitcode int NULL DEFAULT NULL, durationms int NULL DEFAULT NULL, festate json NOT NULL DEFAULT '{}', tags json NOT NULL DEFAULT '{}', status varchar(10) NOT NULL DEFAULT 'unknown');
 CREATE TABLE activity (
     day varchar(20) PRIMARY KEY,
     uploaded boolean NOT NULL,
@@ -146,7 +147,7 @@ CREATE TABLE IF NOT EXISTS "screen" (
     anchor json NOT NULL,
     focustype varchar(12) NOT NULL,
     archived boolean NOT NULL,
-    archivedts bigint NOT NULL, webshareopts json NOT NULL DEFAULT 'null',
+    archivedts bigint NOT NULL, webshareopts json NOT NULL DEFAULT 'null', screenviewopts json DEFAULT '{}',
     PRIMARY KEY (screenid)
 );
 CREATE TABLE IF NOT EXISTS "line" (
@@ -180,12 +181,6 @@ CREATE TABLE webptypos (
     PRIMARY KEY (screenid, lineid)
 );
 CREATE INDEX idx_screenupdate_ids ON screenupdate (screenid, lineid);
-CREATE TABLE cmd_migration (
-    screenid varchar(36) NOT NULL,
-    lineid varchar(36) NOT NULL,
-    cmdid varchar(36) NOT NULL,
-    PRIMARY KEY (screenid, lineid)
-);
 CREATE TABLE IF NOT EXISTS "cmd" (
     screenid varchar(36) NOT NULL,
     lineid varchar(36) NOT NULL,
@@ -216,4 +211,16 @@ CREATE TABLE cmd_migrate20 (
     lineid varchar(36) NOT NULL,
     cmdid varchar(36) NOT NULL,
     PRIMARY KEY (screenid, lineid)
+);
+CREATE TABLE session_tombstone (
+    sessionid varchar(36) PRIMARY KEY,
+    deletedts bigint NOT NULL,
+    name varchar(50) NOT NULL
+);
+CREATE TABLE screen_tombstone (
+    screenid varchar(36) PRIMARY KEY,
+    sessionid varchar(36) NOT NULL,
+    deletedts bigint NOT NULL,
+    screenopts json NOT NULL,
+    name varchar(50) NOT NULL
 );

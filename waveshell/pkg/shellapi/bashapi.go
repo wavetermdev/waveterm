@@ -160,6 +160,16 @@ func GetLocalBashPath() string {
 	return "bash"
 }
 
+func GetLocalZshPath() string {
+	if runtime.GOOS == "darwin" {
+		macShell := GetMacUserShell()
+		if strings.Index(macShell, "zsh") != -1 {
+			return shellescape.Quote(macShell)
+		}
+	}
+	return "zsh"
+}
+
 func GetBashShellStateRedirectCommandStr(outputFdNum int) string {
 	return fmt.Sprintf("cat <(%s) > /dev/fd/%d", GetBashShellStateCmd(), outputFdNum)
 }

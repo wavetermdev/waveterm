@@ -110,6 +110,7 @@ type RemoteType = {
     connectmode: string;
     autoinstall: boolean;
     remoteidx: number;
+    sshconfigsrc: string;
     archived: boolean;
     uname: string;
     mshellversion: string;

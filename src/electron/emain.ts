@@ -140,7 +140,7 @@ function getWaveSrvCmd() {
     let waveSrvPath = getWaveSrvPath();
     let waveHome = getWaveHomeDir();
     let logFile = path.join(waveHome, "wavesrv.log");
-    return `${waveSrvPath} >> "${logFile}" 2>&1`;
+    return `"${waveSrvPath}" >> "${logFile}" 2>&1`;
 }
 
 function getWaveSrvCwd() {
@@ -173,10 +173,10 @@ let menuTemplate = [
         role: "appMenu",
         submenu: [
             {
-                label: 'About Wave Terminal',
+                label: "About Wave Terminal",
                 click: () => {
-                    MainWindow?.webContents.send('menu-item-about');
-                }
+                    MainWindow?.webContents.send("menu-item-about");
+                },
             },
             { type: "separator" },
             { role: "services" },
@@ -250,7 +250,7 @@ function createMainWindow(clientData) {
         minWidth: 800,
         minHeight: 600,
         transparent: true,
-        icon: (unamePlatform == "linux") ? "public/logos/wave-logo-dark.png" : undefined,
+        icon: unamePlatform == "linux" ? "public/logos/wave-logo-dark.png" : undefined,
         webPreferences: {
             preload: path.join(getAppBasePath(), DistDir, "preload.js"),
         },
@@ -299,6 +299,11 @@ function createMainWindow(clientData) {
         }
         if (input.code == "KeyH" && input.meta) {
             win.webContents.send("h-cmd", mods);
+            e.preventDefault();
+            return;
+        }
+        if (input.code == "KeyP" && input.meta) {
+            win.webContents.send("p-cmd", mods);
             e.preventDefault();
             return;
         }
@@ -535,8 +540,8 @@ function sendWSSC() {
 }
 
 function runWaveSrv() {
-    let pResolve = null;
-    let pReject = null;
+    let pResolve: (value: unknown) => void;
+    let pReject: (reason?: any) => void;
     let rtnPromise = new Promise((argResolve, argReject) => {
         pResolve = argResolve;
         pReject = argReject;
@@ -546,8 +551,9 @@ function runWaveSrv() {
     if (isDev) {
         envCopy[WaveDevVarName] = "1";
     }
-    console.log("trying to run local server", getWaveSrvPath());
-    let proc = child_process.spawn("bash", ["-c", getWaveSrvCmd()], {
+    let waveSrvCmd = getWaveSrvCmd();
+    console.log("trying to run local server", waveSrvCmd);
+    let proc = child_process.spawn("bash", ["-c", waveSrvCmd], {
         cwd: getWaveSrvCwd(),
         env: envCopy,
     });
@@ -555,7 +561,7 @@ function runWaveSrv() {
         console.log("wavesrv exit", e);
         waveSrvProc = null;
         sendWSSC();
-        pReject(new Error(sprintf("failed to start local server (%s)", getWaveSrvPath())));
+        pReject(new Error(sprintf("failed to start local server (%s)", waveSrvCmd)));
         if (waveSrvShouldRestart) {
             waveSrvShouldRestart = false;
             this.runWaveSrv();
