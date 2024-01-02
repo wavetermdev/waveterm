@@ -20,16 +20,21 @@ class AIChat extends React.Component<{}, {}> {
     chatListKeyCount: number = 0;
     textAreaNumLines: mobx.IObservableValue<number> = mobx.observable.box(1, {name: "textAreaNumLines"});
     chatWindowScrollRef: React.RefObject<HTMLDivElement>;
+    textAreaRef: React.RefObject<HTMLTextAreaElement>;
 
     constructor(props: any) {
         super(props);
         this.chatWindowScrollRef = React.createRef();
+        this.textAreaRef = React.createRef();
     }
 
     componentDidMount() {
         if(this.chatWindowScrollRef != null && this.chatWindowScrollRef.current != null){
             this.chatWindowScrollRef.current.scrollTop = this.chatWindowScrollRef.current.scrollHeight;
-        }  
+        }
+        if (this.textAreaRef.current != null) {
+            this.textAreaRef.current.focus();
+        }
         this.requestChatUpdate();
     }       
 
@@ -145,6 +150,7 @@ class AIChat extends React.Component<{}, {}> {
                 {this.renderChatWindow()}
                 <textarea
                     key="main"
+                    ref={this.textAreaRef}
                     autoComplete="off"
                     autoCorrect="off"
                     id="chat-cmd-input"
