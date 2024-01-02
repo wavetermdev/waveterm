@@ -748,6 +748,7 @@ func InsertScreen(ctx context.Context, sessionId string, origScreenName string, 
 			return nil, txErr
 		}
 		update.Sessions = []*SessionType{bareSession}
+		update.OpenAICmdInfoChat = ScreenMemGetCmdInfoChat(newScreenId).Messages
 	}
 	return update, nil
 }
@@ -856,14 +857,17 @@ func GetCmdByScreenId(ctx context.Context, screenId string, lineId string) (*Cmd
 
 func UpdateWithAddNewOpenAICmdInfoPacket(ctx context.Context, screenId string, pk *packet.OpenAICmdInfoChatMessage) (*ModelUpdate, error) {
 	ScreenMemAddCmdInfoChatMessage(screenId, pk)
+	return UpdateWithCurrentOpenAICmdInfoChat(screenId)
+}
+
+func UpdateWithCurrentOpenAICmdInfoChat(screenId string) (*ModelUpdate, error) {
 	cmdInfoUpdate := ScreenMemGetCmdInfoChat(screenId).Messages
 	return &ModelUpdate{OpenAICmdInfoChat: cmdInfoUpdate}, nil
 }
 
 func UpdateWithUpdateOpenAICmdInfoPacket(ctx context.Context, screenId string, messageID int, pk *packet.OpenAICmdInfoChatMessage) (*ModelUpdate, error) {
 	ScreenMemUpdateCmdInfoChatMessage(screenId, messageID, pk)
-	cmdInfoUpdate := ScreenMemGetCmdInfoChat(screenId).Messages
-	return &ModelUpdate{OpenAICmdInfoChat: cmdInfoUpdate}, nil
+	return UpdateWithCurrentOpenAICmdInfoChat(screenId)
 }
 
 func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, donePk *packet.CmdDonePacketType, status string) (*ModelUpdate, error) {
@@ -1051,6 +1055,7 @@ func SwitchScreenById(ctx context.Context, sessionId string, screenId string) (*
 	memState := GetScreenMemState(screenId)
 	if memState != nil {
 		update.CmdLine = &memState.CmdInputText
+		update.OpenAICmdInfoChat = ScreenMemGetCmdInfoChat(screenId).Messages
 	}
 	return update, nil
 }

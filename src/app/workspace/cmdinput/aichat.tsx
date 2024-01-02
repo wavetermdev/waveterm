@@ -27,6 +27,10 @@ class AIChat extends React.Component<{}, {}> {
     }
 
     componentDidMount() {
+        if(this.chatWindowScrollRef != null && this.chatWindowScrollRef.current != null){
+            this.chatWindowScrollRef.current.scrollTop = this.chatWindowScrollRef.current.scrollHeight;
+        }  
+        this.requestChatUpdate();
     }       
 
     componentDidUpdate() {
@@ -34,10 +38,17 @@ class AIChat extends React.Component<{}, {}> {
             this.chatWindowScrollRef.current.scrollTop = this.chatWindowScrollRef.current.scrollHeight;
         } 
     }
+    
+    requestChatUpdate() {
+        this.submitChatMessage("");
+    }
 
     submitChatMessage(messageStr: string) {
+        let model = GlobalModel;
+        let inputModel = model.inputModel;
+        let curLine = inputModel.getCurLine();
         let chatCommand = "/chat " + messageStr;
-        let prtn = GlobalModel.submitChatInfoCommand(chatCommand);
+        let prtn = GlobalModel.submitChatInfoCommand(chatCommand, curLine);
         prtn.then((rtn) => {
             if(rtn.success) {
                 console.log("submit chat command success");

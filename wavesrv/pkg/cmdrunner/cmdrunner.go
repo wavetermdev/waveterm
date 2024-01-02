@@ -2017,7 +2017,18 @@ func updateAsstResponseAndWriteToUpdateBus(ctx context.Context, cmd *sstore.CmdT
 	sstore.MainBus.SendScreenUpdate(cmd.ScreenId, update)
 }
 
-func doOpenAICmdInfoCompletion(cmd *sstore.CmdType, clientId string, opts *sstore.OpenAIOptsType, prompt []packet.OpenAIPromptMessageType) {
+func getCmdInfoEngineeredPrompt(userQuery string, curLineStr string) string {
+	rtn := "You are an expert on the command line terminal. Your task is to help a user write a command."
+	if curLineStr != "" {
+		rtn += "The user's current command is: " + curLineStr + ". Their question is: "
+	} else {
+		rtn += "The user's question is: "
+	}
+	rtn += userQuery
+	return rtn
+}
+
+func doOpenAICmdInfoCompletion(cmd *sstore.CmdType, clientId string, opts *sstore.OpenAIOptsType, prompt []packet.OpenAIPromptMessageType, curLineStr string) {
 	var hadError bool
 	log.Println("had error: ", hadError)
 	ctx, cancelFn := context.WithTimeout(context.Background(), OpenAIStreamTimeout)
@@ -2097,7 +2108,6 @@ func doOpenAICmdInfoCompletion(cmd *sstore.CmdType, clientId string, opts *sstor
 			}
 		}
 	}
-
 }
 
 func doOpenAIStreamCompletion(cmd *sstore.CmdType, clientId string, opts *sstore.OpenAIOptsType, prompt []packet.OpenAIPromptMessageType) {
@@ -2210,9 +2220,6 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		opts.MaxTokens = openai.DefaultMaxTokens
 	}
 	promptStr := firstArg(pk)
-	if promptStr == "" {
-		return nil, fmt.Errorf("openai error, prompt string is blank")
-	}
 	ptermVal := defaultStr(pk.Kwargs["wterm"], DefaultPTERM)
 	pkTermOpts, err := GetUITermOpts(pk.UIContext.WinSize, ptermVal)
 	if err != nil {
@@ -2225,17 +2232,23 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	}
 	prompt := []packet.OpenAIPromptMessageType{{Role: sstore.OpenAIRoleUser, Content: promptStr}}
 	if resolveBool(pk.Kwargs["cmdinfo"], false) {
-		log.Println("COLE TEST Found cmdinfo kwarg")
-		pk := &packet.OpenAICmdInfoChatMessage{UserQuery: prompt[0].Content, MessageID: sstore.ScreenMemGetCmdInfoMessageCount(cmd.ScreenId)}
-		writePacketToUpdateBus(ctx, cmd, pk)
-		if err != nil {
-			return nil, fmt.Errorf("error updating OpenAICmdInfo mem stores: %v", err)
+		if promptStr == "" {
+			// this is requesting an update without wanting an openai query
+			update, err := sstore.UpdateWithCurrentOpenAICmdInfoChat(cmd.ScreenId)
+			return update, err
 		}
-		go doOpenAICmdInfoCompletion(cmd, clientData.ClientId, opts, prompt)
+		curLineStr := defaultStr(pk.Kwargs["curline"], "")
+		userQueryPk := &packet.OpenAICmdInfoChatMessage{UserQuery: promptStr, MessageID: sstore.ScreenMemGetCmdInfoMessageCount(cmd.ScreenId)}
+		writePacketToUpdateBus(ctx, cmd, userQueryPk)
+		engineeredQuery := getCmdInfoEngineeredPrompt(promptStr, curLineStr)
+		prompt[0].Content = engineeredQuery
+		go doOpenAICmdInfoCompletion(cmd, clientData.ClientId, opts, prompt, curLineStr)
 		update := &sstore.ModelUpdate{}
 		return update, nil
 	}
-
+	if promptStr == "" {
+		return nil, fmt.Errorf("openai error, prompt string is blank")
+	}
 	line, err := sstore.AddOpenAILine(ctx, ids.ScreenId, DefaultUserId, cmd)
 	if err != nil {
 		return nil, fmt.Errorf("cannot add new line: %v", err)

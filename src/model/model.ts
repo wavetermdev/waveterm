@@ -4106,19 +4106,20 @@ class Model {
         return this.submitCommandPacket(pk, interactive);
     }
 
-    submitChatInfoCommand(cmdStr: string): Promise<CommandRtnType> {
+    submitChatInfoCommand(chatMsg: string, curLineStr: string): Promise<CommandRtnType> {
         let interactive = false;
         let pk: FeCmdPacketType = {
             type: "fecmd",
             metacmd: "eval",
-            args: [cmdStr],
+            args: [chatMsg],
             kwargs: {},
             uicontext: this.getUIContext(),
             interactive: interactive,
-            rawstr: cmdStr,
+            rawstr: chatMsg,
         };
         pk.kwargs["nohist"] = "1";
         pk.kwargs["cmdinfo"] = "1";
+        pk.kwargs["curline"] = curLineStr;
         return this.submitCommandPacket(pk, interactive);
 
     }

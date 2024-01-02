@@ -58,10 +58,22 @@ type ScreenMemState struct {
 }
 
 func ScreenMemInitCmdInfoChat(screenId string) {
-	ScreenMemStore[screenId].AICmdInfoChat = &OpenAICmdInfoChatStore{MessageCount: 0, Messages: []*packet.OpenAICmdInfoChatMessage{}}
+	greetingMessagePk := &packet.OpenAICmdInfoChatMessage{
+		MessageID:           0,
+		IsAssistantResponse: true,
+		AssistantResponse: &packet.OpenAICmdInfoPacketOutputType{
+			Message: "Hello, do you need help with this command?",
+		},
+	}
+	ScreenMemStore[screenId].AICmdInfoChat = &OpenAICmdInfoChatStore{MessageCount: 1, Messages: []*packet.OpenAICmdInfoChatMessage{greetingMessagePk}}
 }
 
 func ScreenMemAddCmdInfoChatMessage(screenId string, msg *packet.OpenAICmdInfoChatMessage) {
+	MemLock.Lock()
+	defer MemLock.Unlock()
+	if ScreenMemStore[screenId] == nil {
+		ScreenMemStore[screenId] = &ScreenMemState{}
+	}
 	if ScreenMemStore[screenId].AICmdInfoChat == nil {
 		log.Printf("AICmdInfoChat is null, creating")
 		ScreenMemInitCmdInfoChat(screenId)
@@ -73,33 +85,43 @@ func ScreenMemAddCmdInfoChatMessage(screenId string, msg *packet.OpenAICmdInfoCh
 }
 
 func ScreenMemGetCmdInfoMessageCount(screenId string) int {
+	MemLock.Lock()
+	defer MemLock.Unlock()
+	if ScreenMemStore[screenId] == nil {
+		ScreenMemStore[screenId] = &ScreenMemState{}
+	}
 	if ScreenMemStore[screenId].AICmdInfoChat == nil {
-		log.Printf("AICmdInfoChat is null, creating")
 		ScreenMemInitCmdInfoChat(screenId)
 	}
 	return ScreenMemStore[screenId].AICmdInfoChat.MessageCount
 }
 
 func ScreenMemGetCmdInfoChat(screenId string) *OpenAICmdInfoChatStore {
+	MemLock.Lock()
+	defer MemLock.Unlock()
+	if ScreenMemStore[screenId] == nil {
+		ScreenMemStore[screenId] = &ScreenMemState{}
+	}
 	if ScreenMemStore[screenId].AICmdInfoChat == nil {
-		log.Printf("AICmdInfoChat is null, creating")
 		ScreenMemInitCmdInfoChat(screenId)
 	}
 	return ScreenMemStore[screenId].AICmdInfoChat
 }
 
 func ScreenMemUpdateCmdInfoChatMessage(screenId string, messageID int, msg *packet.OpenAICmdInfoChatMessage) {
+	MemLock.Lock()
+	defer MemLock.Unlock()
+	if ScreenMemStore[screenId] == nil {
+		ScreenMemStore[screenId] = &ScreenMemState{}
+	}
 	if ScreenMemStore[screenId].AICmdInfoChat == nil {
-		log.Printf("AICmdInfoChat is null, creating")
 		ScreenMemInitCmdInfoChat(screenId)
 	}
 	CmdInfoChat := ScreenMemStore[screenId].AICmdInfoChat
 	if messageID >= 0 && messageID < len(CmdInfoChat.Messages) {
-		log.Printf("len of message: %d", len(CmdInfoChat.Messages))
 		CmdInfoChat.Messages[messageID] = msg
-		log.Printf("len of message: %d", len(CmdInfoChat.Messages))
 	} else {
-		log.Printf("Message Id out of range: %d", messageID)
+		log.Printf("ScreenMemUpdateCmdInfoChatMessage: error: Message Id out of range: %d", messageID)
 	}
 }
 
