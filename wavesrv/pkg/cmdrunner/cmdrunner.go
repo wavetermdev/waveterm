@@ -1629,13 +1629,9 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 		if previouslyImportedRemote != nil && !previouslyImportedRemote.Archived {
 			// this already existed and was created via import
 			// it needs to be updated instead of created
-
 			editMap := make(map[string]interface{})
 			editMap[sstore.RemoteField_Alias] = hostInfo.Host
 			editMap[sstore.RemoteField_ConnectMode] = hostInfo.ConnectMode
-			// changing port is unique to imports because it lets us avoid conflicts
-			// if the port is changed in the ssh config
-			editMap[sstore.RemoteField_SSHPort] = hostInfo.Port
 			if hostInfo.SshKeyFile != "" {
 				editMap[sstore.RemoteField_SSHKey] = hostInfo.SshKeyFile
 			}
