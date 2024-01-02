@@ -42,6 +42,10 @@
         max-height: max(300px, 70%);
     }
 
+    &.has-aichat {
+        max-height: max(300px, 70%);
+    }
+
     .remote-status-warning {
         display: flex;
         flex-direction: row;
@@ -198,15 +202,15 @@
     }
     
     .cmd-aichat { 
-        max-height: 250px;
         display: flex;
         justify-content: flex-end;
         flex-flow: column nowrap;
         margin-bottom: 10px;
+        flex-shrink: 1;
+        overflow-y: auto;
 
         .chat-window {
             overflow-y: auto;
-            max-height: 200px;
             margin-bottom: 5px;
             flex-shrink: 1;
             flex-direction: column-reverse;
@@ -231,7 +235,6 @@
         }
 
         .chat-msg {
-            white-space: pre-line;
             margin-top:5px;
             margin-bottom:5px;
         }
