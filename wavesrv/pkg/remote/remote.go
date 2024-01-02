@@ -135,6 +135,7 @@ type MShellProc struct {
 	StateMap           map[string]*packet.ShellState // sha1->state
 	CurrentState       string                        // sha1
 	NumTryConnect      int
+	ShellType          string
 
 	// install
 	InstallStatus      string
@@ -1208,6 +1209,10 @@ func (msh *MShellProc) Launch(interactive bool) {
 	} else {
 		msh.WriteToPtyBuffer("connecting to %s...\n", remoteCopy.RemoteCanonicalName)
 	}
+	var shellType string
+	if remoteCopy.SSHOpts != nil {
+		shellType = remoteCopy.SSHOpts.ShellType
+	}
 	sshOpts := convertSSHOpts(remoteCopy.SSHOpts)
 	sshOpts.SSHErrorsToTty = true
 	if remoteCopy.ConnectMode != sstore.ConnectModeManual && remoteCopy.SSHOpts.SSHPassword == "" && !interactive {
@@ -1216,13 +1221,13 @@ func (msh *MShellProc) Launch(interactive bool) {
 	var cmdStr string
 	if sshOpts.SSHHost == "" && remoteCopy.Local {
 		var err error
-		cmdStr, err = MakeLocalMShellCommandStr(remoteCopy.IsSudo(), "")
+		cmdStr, err = MakeLocalMShellCommandStr(remoteCopy.IsSudo(), shellType)
 		if err != nil {
 			msh.WriteToPtyBuffer("*error, cannot find local mshell binary: %v\n", err)
 			return
 		}
 	} else {
-		cmdStr = MakeServerCommandStr("")
+		cmdStr = MakeServerCommandStr(shellType)
 	}
 	ecmd := sshOpts.MakeSSHExecCmd(cmdStr, sapi)
 	cmdPty, err := msh.addControllingTty(ecmd)

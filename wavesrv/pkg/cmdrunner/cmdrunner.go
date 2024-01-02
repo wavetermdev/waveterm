@@ -1199,8 +1199,6 @@ type RemoteEditArgs struct {
 	ConnectMode   string
 	Alias         string
 	AutoInstall   bool
-	SSHPassword   string
-	SSHKeyFile    string
 	Color         string
 	EditMap       map[string]interface{}
 }
@@ -1278,6 +1276,10 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 			return nil, fmt.Errorf("invalid alias format")
 		}
 	}
+	shellType := pk.Kwargs["shell"]
+	if shellType != "" && shellType != packet.ShellType_bash && shellType != packet.ShellType_zsh {
+		return nil, fmt.Errorf("invalid shell type %q, must be %s", shellType, formatStrs([]string{packet.ShellType_bash, packet.ShellType_zsh}, "or", false))
+	}
 	var connectMode string
 	if isNew {
 		connectMode = sstore.ConnectModeAuto
@@ -1304,6 +1306,7 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 	if sshOpts != nil {
 		sshOpts.SSHIdentity = keyFile
 		sshOpts.SSHPassword = sshPassword
+		sshOpts.ShellType = shellType
 	}
 
 	// set up editmap
@@ -1332,6 +1335,9 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 		}
 		editMap[sstore.RemoteField_SSHPassword] = sshPassword
 	}
+	if _, found := pk.Kwargs["shell"]; found {
+		editMap[sstore.RemoteField_ShellType] = shellType
+	}
 
 	return &RemoteEditArgs{
 		SSHOpts:       sshOpts,
@@ -1339,8 +1345,6 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 		Alias:         alias,
 		AutoInstall:   true,
 		CanonicalName: canonicalName,
-		SSHKeyFile:    keyFile,
-		SSHPassword:   sshPassword,
 		Color:         color,
 		EditMap:       editMap,
 	}, nil

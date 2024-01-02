@@ -953,6 +953,9 @@ type SSHOpts struct {
 	SSHIdentity string `json:"sshidentity,omitempty"`
 	SSHPort     int    `json:"sshport,omitempty"`
 	SSHPassword string `json:"sshpassword,omitempty"`
+
+	// if unset, use default.  use packet.ShellType constants (only allows bash or zsh)
+	ShellType string `json:"shelltype,omitempty"`
 }
 
 func (opts SSHOpts) GetAuthType() string {
@@ -1068,7 +1071,7 @@ type RemoteType struct {
 	StateVars    map[string]string `json:"statevars"`
 	SSHConfigSrc string            `json:"sshconfigsrc"`
 
-	// OpenAI fields
+	// OpenAI fields (unused)
 	OpenAIOpts *OpenAIOptsType `json:"openaiopts,omitempty"`
 }
 

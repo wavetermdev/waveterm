@@ -249,7 +249,7 @@ func (m *MServer) setCurrentState(state *packet.ShellState) {
 }
 
 func (m *MServer) reinit(reqId string) {
-	initPk, err := shexec.MakeServerInitPacket()
+	initPk, err := shexec.MakeServerInitPacket(m.ShellType)
 	if err != nil {
 		m.Sender.SendErrorResponse(reqId, fmt.Errorf("error creating init packet: %w", err))
 		return
@@ -729,7 +729,7 @@ func RunServer(shellType string) (int, error) {
 	server.Sender = packet.MakePacketSender(os.Stdout, server.packetSenderErrorHandler)
 	defer server.Close()
 	var err error
-	initPacket, err := shexec.MakeServerInitPacket()
+	initPacket, err := shexec.MakeServerInitPacket(shellType)
 	if err != nil {
 		return 1, err
 	}

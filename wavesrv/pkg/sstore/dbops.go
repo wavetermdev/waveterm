@@ -1706,6 +1706,7 @@ const (
 	RemoteField_SSHPassword = "sshpassword" // string
 	RemoteField_SSHPort     = "sshport"     // string
 	RemoteField_Color       = "color"       // string
+	RemoteField_ShellType   = "shelltype"   // string
 )
 
 // editMap: alias, connectmode, autoinstall, sshkey, color, sshpassword (from constants)
@@ -1739,6 +1740,10 @@ func UpdateRemote(ctx context.Context, remoteId string, editMap map[string]inter
 		if sshPort, found := editMap[RemoteField_SSHPort]; found {
 			query = `UPDATE remote SET sshopts = json_set(sshopts, '$.sshport', ?) WHERE remoteid = ?`
 			tx.Exec(query, sshPort, remoteId)
+		}
+		if shellType, found := editMap[RemoteField_ShellType]; found {
+			query = `UPDATE remote SET sshopts = json_set(sshopts, '$.shelltype', ?) WHERE remoteid = ?`
+			tx.Exec(query, shellType, remoteId)
 		}
 		if color, found := editMap[RemoteField_Color]; found {
 			query = `UPDATE remote SET remoteopts = json_set(remoteopts, '$.color', ?) WHERE remoteid = ?`

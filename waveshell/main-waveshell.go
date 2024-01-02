@@ -39,7 +39,7 @@ func handleSingle(shellType string) {
 		sender.Close()
 		sender.WaitForDone()
 	}()
-	initPacket := shexec.MakeInitPacket()
+	initPacket := shexec.MakeInitPacket(shellType)
 	sender.SendPacket(initPacket)
 	if len(os.Args) >= 3 && os.Args[2] == "--version" {
 		return

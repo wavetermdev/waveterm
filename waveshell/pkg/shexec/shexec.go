@@ -1252,7 +1252,7 @@ func (c *ShExecType) WaitForCommand() *packet.CmdDonePacketType {
 	return donePacket
 }
 
-func MakeInitPacket() *packet.InitPacketType {
+func MakeInitPacket(shellPref string) *packet.InitPacketType {
 	initPacket := packet.MakeInitPacket()
 	initPacket.Version = base.MShellVersion
 	initPacket.BuildTime = base.BuildTime
@@ -1267,12 +1267,12 @@ func MakeInitPacket() *packet.InitPacketType {
 	return initPacket
 }
 
-func MakeServerInitPacket() (*packet.InitPacketType, error) {
+func MakeServerInitPacket(shellPref string) (*packet.InitPacketType, error) {
 	sapi, err := shellapi.MakeShellApi(packet.ShellType_bash)
 	if err != nil {
 		return nil, err
 	}
-	initPacket := MakeInitPacket()
+	initPacket := MakeInitPacket(shellPref)
 	shellState, err := sapi.GetShellState()
 	if err != nil {
 		return nil, err
