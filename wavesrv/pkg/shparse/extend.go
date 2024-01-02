@@ -8,7 +8,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 )
 
 var noEscChars []bool

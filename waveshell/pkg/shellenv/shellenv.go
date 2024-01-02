@@ -11,7 +11,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/simpleexpand"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/statediff"
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 )
 
 const (
@@ -22,11 +22,18 @@ const (
 )
 
 type DeclareDeclType struct {
+	IsZshDecl bool
+
 	Args string
 	Name string
 
 	// this holds the raw quoted value suitable for bash. this is *not* the real expanded variable value
 	Value string
+
+	// special fields for zsh "-T" output.
+	// for bound scalars, "Value" hold everything after the "=" (including the separator character)
+	ZshBoundScalar string // the name of the "scalar" env variable
+	ZshEnvValue    string // unlike Value this *is* the expanded value of scalar env variable
 }
 
 func (d *DeclareDeclType) IsExport() bool {
@@ -35,6 +42,10 @@ func (d *DeclareDeclType) IsExport() bool {
 
 func (d *DeclareDeclType) IsReadOnly() bool {
 	return strings.Index(d.Args, "r") >= 0
+}
+
+func (d *DeclareDeclType) IsZshScalarBound() bool {
+	return strings.Index(d.Args, "T") >= 0
 }
 
 func (d *DeclareDeclType) DataType() string {
@@ -50,8 +61,13 @@ func (d *DeclareDeclType) DataType() string {
 	return DeclTypeNormal
 }
 
-func (d *DeclareDeclType) Serialize() string {
-	return fmt.Sprintf("%s|%s=%s\x00", d.Args, d.Name, d.Value)
+func (d *DeclareDeclType) Serialize() []byte {
+	if d.IsZshDecl {
+		// return fmt.Sprintf("z%s|%s=%s\x00", d.Args, d.Name, d.Value)
+		return nil
+	}
+	rtn := fmt.Sprintf("%s|%s=%s\x00", d.Args, d.Name, d.Value)
+	return []byte(rtn)
 }
 
 func DeclsEqual(compareName bool, d1 *DeclareDeclType, d2 *DeclareDeclType) bool {
@@ -158,7 +174,7 @@ func shellStateVarsToMap(shellVars []byte) map[string]string {
 
 func strMapToShellStateVars(varMap map[string]string) []byte {
 	var buf bytes.Buffer
-	orderedKeys := utilfn.GetOrderedKeysStrMap(varMap)
+	orderedKeys := utilfn.GetOrderedMapKeys(varMap)
 	for _, key := range orderedKeys {
 		val := varMap[key]
 		buf.WriteString(val)
@@ -184,10 +200,10 @@ func DeclMapFromState(state *packet.ShellState) map[string]*DeclareDeclType {
 
 func SerializeDeclMap(declMap map[string]*DeclareDeclType) []byte {
 	var rtn bytes.Buffer
-	orderedKeys := utilfn.GetOrderedKeysStrMap(declMap)
+	orderedKeys := utilfn.GetOrderedMapKeys(declMap)
 	for _, key := range orderedKeys {
 		decl := declMap[key]
-		rtn.WriteString(decl.Serialize())
+		rtn.Write(decl.Serialize())
 	}
 	return rtn.Bytes()
 }

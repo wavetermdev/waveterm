@@ -4,9 +4,11 @@
 package utilfn
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"math"
 	"regexp"
 	"sort"
@@ -249,6 +251,19 @@ func AddIntSlice(vals ...int) (int, error) {
 	return rtn, nil
 }
 
+func StrsEqual(s1arr []string, s2arr []string) bool {
+	if len(s1arr) != len(s2arr) {
+		return false
+	}
+	for i, s1 := range s1arr {
+		s2 := s2arr[i]
+		if s1 != s2 {
+			return false
+		}
+	}
+	return true
+}
+
 func StrMapsEqual(m1 map[string]string, m2 map[string]string) bool {
 	if len(m1) != len(m2) {
 		return false
@@ -268,11 +283,141 @@ func StrMapsEqual(m1 map[string]string, m2 map[string]string) bool {
 	return true
 }
 
-func GetOrderedKeysStrMap[V any](m map[string]V) []string {
+func GetOrderedMapKeys[V any](m map[string]V) []string {
 	keys := make([]string, 0, len(m))
 	for key := range m {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+const (
+	nullEncodeEscByte     = '\\'
+	nullEncodeSepByte     = '|'
+	nullEncodeEqByte      = '='
+	nullEncodeZeroByteEsc = '0'
+	nullEncodeEscByteEsc  = '\\'
+	nullEncodeSepByteEsc  = 's'
+	nullEncodeEqByteEsc   = 'e'
+)
+
+func EncodeStringMap(m map[string]string) []byte {
+	var buf bytes.Buffer
+	for idx, key := range GetOrderedMapKeys(m) {
+		val := m[key]
+		buf.Write(NullEncodeStr(key))
+		buf.WriteByte(nullEncodeEqByte)
+		buf.Write(NullEncodeStr(val))
+		if idx < len(m)-1 {
+			buf.WriteByte(nullEncodeSepByte)
+		}
+	}
+	return buf.Bytes()
+}
+
+func DecodeStringMap(barr []byte) (map[string]string, error) {
+	if len(barr) == 0 {
+		return nil, nil
+	}
+	var rtn = make(map[string]string)
+	for _, b := range bytes.Split(barr, []byte{nullEncodeSepByte}) {
+		keyVal := bytes.SplitN(b, []byte{nullEncodeEqByte}, 2)
+		if len(keyVal) != 2 {
+			return nil, fmt.Errorf("invalid null encoding: %s", string(b))
+		}
+		key, err := NullDecodeStr(keyVal[0])
+		if err != nil {
+			return nil, err
+		}
+		val, err := NullDecodeStr(keyVal[1])
+		if err != nil {
+			return nil, err
+		}
+		rtn[key] = val
+	}
+	return rtn, nil
+}
+
+func EncodeStringArray(arr []string) []byte {
+	var buf bytes.Buffer
+	for idx, s := range arr {
+		buf.Write(NullEncodeStr(s))
+		if idx < len(arr)-1 {
+			buf.WriteByte(nullEncodeSepByte)
+		}
+	}
+	return buf.Bytes()
+}
+
+func DecodeStringArray(barr []byte) ([]string, error) {
+	if len(barr) == 0 {
+		return nil, nil
+	}
+	var rtn []string
+	for _, b := range bytes.Split(barr, []byte{nullEncodeSepByte}) {
+		s, err := NullDecodeStr(b)
+		if err != nil {
+			return nil, err
+		}
+		rtn = append(rtn, s)
+	}
+	return rtn, nil
+}
+
+// encodes a string, removing null/zero bytes (and separators '|')
+// a zero byte is encoded as "\0", a '\' is encoded as "\\", sep is encoded as "\s"
+// allows for easy double splitting (first on \x00, and next on "|")
+func NullEncodeStr(s string) []byte {
+	strBytes := []byte(s)
+	if bytes.IndexByte(strBytes, 0) == -1 &&
+		bytes.IndexByte(strBytes, nullEncodeEscByte) == -1 &&
+		bytes.IndexByte(strBytes, nullEncodeSepByte) == -1 &&
+		bytes.IndexByte(strBytes, nullEncodeEqByte) == -1 {
+		return strBytes
+	}
+	var rtn []byte
+	for _, b := range strBytes {
+		if b == 0 {
+			rtn = append(rtn, nullEncodeEscByte, nullEncodeZeroByteEsc)
+		} else if b == nullEncodeEscByte {
+			rtn = append(rtn, nullEncodeEscByte, nullEncodeEscByteEsc)
+		} else if b == nullEncodeSepByte {
+			rtn = append(rtn, nullEncodeEscByte, nullEncodeSepByteEsc)
+		} else if b == nullEncodeEqByte {
+			rtn = append(rtn, nullEncodeEscByte, nullEncodeEqByteEsc)
+		} else {
+			rtn = append(rtn, b)
+		}
+	}
+	return rtn
+}
+
+func NullDecodeStr(barr []byte) (string, error) {
+	if bytes.IndexByte(barr, nullEncodeEscByte) == -1 {
+		return string(barr), nil
+	}
+	var rtn []byte
+	for i := 0; i < len(barr); i++ {
+		curByte := barr[i]
+		if curByte == nullEncodeEscByte {
+			i++
+			nextByte := barr[i]
+			if nextByte == nullEncodeZeroByteEsc {
+				rtn = append(rtn, 0)
+			} else if nextByte == nullEncodeEscByteEsc {
+				rtn = append(rtn, nullEncodeEscByte)
+			} else if nextByte == nullEncodeSepByteEsc {
+				rtn = append(rtn, nullEncodeSepByte)
+			} else if nextByte == nullEncodeEqByteEsc {
+				rtn = append(rtn, nullEncodeEqByte)
+			} else {
+				// invalid encoding
+				return "", fmt.Errorf("invalid null encoding: %d", nextByte)
+			}
+		} else {
+			rtn = append(rtn, curByte)
+		}
+	}
+	return string(rtn), nil
 }

@@ -101,3 +101,62 @@ func TestAddIntSlice(t *testing.T) {
 	testAddIntSlice(t, false, math.MinInt, math.MinInt+3, -1, -2)
 	testAddIntSlice(t, true, 0, math.MinInt+2, -1, -2)
 }
+
+func testNullEncodeStr(t *testing.T, str string, expected string) {
+	encoded := NullEncodeStr(str)
+	decoded, err := NullDecodeStr(encoded)
+	if err != nil {
+		t.Errorf("error in null encoding: %v", err)
+	} else if decoded != str {
+		t.Errorf("bad null encoding")
+	}
+	if string(encoded) != expected {
+		t.Errorf("bad null encoding, %q != %q", str, expected)
+	}
+}
+
+func TestNullEncodeStr(t *testing.T) {
+	testNullEncodeStr(t, "", "")
+	testNullEncodeStr(t, "hello", "hello")
+	testNullEncodeStr(t, "hello\x00", "hello\\0")
+	testNullEncodeStr(t, "abc|def", "abc\\sdef")
+	testNullEncodeStr(t, "a|b\x00c\\d", "a\\sb\\0c\\\\d")
+	testNullEncodeStr(t, "v==v", "v\\e\\ev")
+}
+
+func testEncodeStringArray(t *testing.T, strs []string) {
+	encoded := EncodeStringArray(strs)
+	decoded, err := DecodeStringArray(encoded)
+	if err != nil {
+		t.Errorf("error in string array encoding: %v", err)
+	} else if !StrsEqual(strs, decoded) {
+		t.Errorf("bad string array encoding: %#v != %#v", strs, decoded)
+	}
+}
+
+func TestEncodeStringArray(t *testing.T) {
+	testEncodeStringArray(t, nil)
+	testEncodeStringArray(t, []string{})
+	testEncodeStringArray(t, []string{"hello"})
+	testEncodeStringArray(t, []string{"hello", "world=bar"})
+	testEncodeStringArray(t, []string{"hello", "wor\x00ld", "fo|\\o", "N\\\x00|||ul==l"})
+}
+
+func testEncodeStringMap(t *testing.T, m map[string]string) {
+	encoded := EncodeStringMap(m)
+	decoded, err := DecodeStringMap(encoded)
+	if err != nil {
+		t.Errorf("error in string map encoding: %v", err)
+	} else if !StrMapsEqual(m, decoded) {
+		t.Errorf("bad string map encoding: %#v != %#v", m, decoded)
+	}
+}
+
+func TestEncodeStringMap(t *testing.T) {
+	testEncodeStringMap(t, nil)
+	testEncodeStringMap(t, map[string]string{})
+	testEncodeStringMap(t, map[string]string{"hello": "world"})
+	testEncodeStringMap(t, map[string]string{"hello": "world", "foo": "bar"})
+	testEncodeStringMap(t, map[string]string{"hello": "world", "fo=o": "b=ar", "a|b": "c\\d"})
+	testEncodeStringMap(t, map[string]string{"hello\x00|": "w\x00orld", "foo": "bar", "a|b": "c\\d", "v==v": "v\\e\\ev"})
+}

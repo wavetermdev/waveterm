@@ -8,7 +8,7 @@ import (
 	"log"
 	"sync"
 
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 )
 
 var MainBus *UpdateBus = MakeUpdateBus()

@@ -13,8 +13,8 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/simpleexpand"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
 	"mvdan.cc/sh/v3/syntax"
 )
 
@@ -106,14 +106,17 @@ const MaxDiffKeyLen = 40
 const MaxDiffValLen = 50
 
 var IgnoreVars = map[string]bool{
-	"PROMPT":            true,
-	"PROMPT_VERSION":    true,
-	"MSHELL":            true,
-	"MSHELL_VERSION":    true,
-	"WAVESHELL":         true,
-	"WAVESHELL_VERSION": true,
-	"WAVETERM":          true,
-	"WAVETERM_VERSION":  true,
+	"PROMPT":               true,
+	"PROMPT_VERSION":       true,
+	"MSHELL":               true,
+	"MSHELL_VERSION":       true,
+	"WAVESHELL":            true,
+	"WAVESHELL_VERSION":    true,
+	"WAVETERM":             true,
+	"WAVETERM_VERSION":     true,
+	"TERM_PROGRAM":         true,
+	"TERM_PROGRAM_VERSION": true,
+	"TERM_SESSION_ID":      true,
 }
 
 func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newState packet.ShellState) {

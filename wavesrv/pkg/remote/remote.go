@@ -46,6 +46,18 @@ const RemoteTermCols = 80
 const PtyReadBufSize = 100
 const RemoteConnectTimeout = 15 * time.Second
 
+var envVarsToStrip map[string]bool = map[string]bool{
+	"PROMPT":               true,
+	"PROMPT_VERSION":       true,
+	"MSHELL":               true,
+	"MSHELL_VERSION":       true,
+	"WAVETERM":             true,
+	"WAVETERM_VERSION":     true,
+	"TERM_PROGRAM":         true,
+	"TERM_PROGRAM_VERSION": true,
+	"TERM_SESSION_ID":      true,
+}
+
 // we add this ping packet to the MShellServer Commands in order to deal with spurious SSH output
 // basically we guarantee the parser will see a valid packet (either an init error or a ping)
 // so we can pass ignoreUntilValid to PacketParser
@@ -1147,6 +1159,8 @@ func addScVarsToState(state *packet.ShellState) *packet.ShellState {
 	envMap := shellenv.DeclMapFromState(&rtn)
 	envMap["WAVETERM"] = &shellenv.DeclareDeclType{Name: "WAVETERM", Value: "1", Args: "x"}
 	envMap["WAVETERM_VERSION"] = &shellenv.DeclareDeclType{Name: "WAVETERM_VERSION", Value: scbase.WaveVersion, Args: "x"}
+	envMap["TERM_PROGRAM"] = &shellenv.DeclareDeclType{Name: "TERM_PROGRAM", Value: "waveterm", Args: "x"}
+	envMap["TERM_PROGRAM_VERSION"] = &shellenv.DeclareDeclType{Name: "TERM_PROGRAM_VERSION", Value: scbase.WaveVersion, Args: "x"}
 	rtn.ShellVars = shellenv.SerializeDeclMap(envMap)
 	return &rtn
 }
@@ -1158,10 +1172,9 @@ func stripScVarsFromState(state *packet.ShellState) *packet.ShellState {
 	rtn := *state
 	rtn.HashVal = ""
 	envMap := shellenv.DeclMapFromState(&rtn)
-	delete(envMap, "PROMPT")
-	delete(envMap, "PROMPT_VERSION")
-	delete(envMap, "WAVETERM")
-	delete(envMap, "WAVETERM_VERSION")
+	for key := range envVarsToStrip {
+		delete(envMap, key)
+	}
 	rtn.ShellVars = shellenv.SerializeDeclMap(envMap)
 	return &rtn
 }
@@ -1178,10 +1191,9 @@ func stripScVarsFromStateDiff(stateDiff *packet.ShellStateDiff) *packet.ShellSta
 		log.Printf("error decoding statediff in stripScVarsFromStateDiff: %v\n", err)
 		return stateDiff
 	}
-	delete(mapDiff.ToAdd, "PROMPT")
-	delete(mapDiff.ToAdd, "PROMPT_VERSION")
-	delete(mapDiff.ToAdd, "WAVETERM")
-	delete(mapDiff.ToAdd, "WAVETERM_VERSION")
+	for key := range envVarsToStrip {
+		delete(mapDiff.ToAdd, key)
+	}
 	rtn.VarsDiff = mapDiff.Encode()
 	return &rtn
 }
