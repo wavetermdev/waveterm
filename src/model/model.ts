@@ -197,6 +197,7 @@ type ElectronApi = {
     onICmd: (callback: (mods: KeyModsType) => void) => void;
     onLCmd: (callback: (mods: KeyModsType) => void) => void;
     onHCmd: (callback: (mods: KeyModsType) => void) => void;
+    onPCmd: (callback: (mods: KeyModsType) => void) => void;
     onMenuItemAbout: (callback: () => void) => void;
     onMetaArrowUp: (callback: () => void) => void;
     onMetaArrowDown: (callback: () => void) => void;
@@ -3207,6 +3208,7 @@ class Model {
         getApi().onICmd(this.onICmd.bind(this));
         getApi().onLCmd(this.onLCmd.bind(this));
         getApi().onHCmd(this.onHCmd.bind(this));
+        getApi().onPCmd(this.onPCmd.bind(this));
         getApi().onMenuItemAbout(this.onMenuItemAbout.bind(this));
         getApi().onMetaArrowUp(this.onMetaArrowUp.bind(this));
         getApi().onMetaArrowDown(this.onMetaArrowDown.bind(this));
@@ -3533,6 +3535,10 @@ class Model {
 
     onHCmd(e: any, mods: KeyModsType) {
         GlobalModel.historyViewModel.reSearch();
+    }
+
+    onPCmd(e: any, mods: KeyModsType) {
+        GlobalModel.modalsModel.pushModal(appconst.TAB_SWITCHER);
     }
 
     getFocusedLine(): LineFocusType {
@@ -4268,11 +4274,15 @@ class CommandRunner {
         GlobalModel.submitCommand("session", null, [session], { nohist: "1" }, false);
     }
 
-    switchScreen(screen: string) {
+    switchScreen(screen: string, session?: string) {
         mobx.action(() => {
             GlobalModel.activeMainView.set("session");
         })();
-        GlobalModel.submitCommand("screen", null, [screen], { nohist: "1" }, false);
+        let kwargs = { nohist: "1" };
+        if (session != null) {
+            kwargs["session"] = session;
+        }
+        GlobalModel.submitCommand("screen", null, [screen], kwargs, false);
     }
 
     lineView(sessionId: string, screenId: string, lineNum?: number) {
