@@ -264,7 +264,7 @@ func MakeRunnerExec(ck base.CommandKey) (*exec.Cmd, error) {
 }
 
 func MakeDetachedExecCmd(pk *packet.RunPacketType, cmdTty *os.File) (*exec.Cmd, error) {
-	sapi, err := shellapi.MakeShellApi(packet.ShellType_bash)
+	sapi, err := shellapi.MakeShellApi(pk.ShellType)
 	if err != nil {
 		return nil, err
 	}
@@ -426,33 +426,13 @@ type ClientOpts struct {
 	UsePty       bool
 }
 
-func (opts SSHOpts) MakeSSHInstallCmd() (*exec.Cmd, error) {
-	if opts.SSHHost == "" {
-		return nil, fmt.Errorf("no ssh host provided, can only install to a remote host")
-	}
-	sapi, err := shellapi.MakeShellApi(packet.ShellType_bash)
+func MakeMShellSingleCmd() (*exec.Cmd, error) {
+	execFile, err := os.Executable()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot find local mshell executable: %w", err)
 	}
-	cmdStr := MakeInstallCommandStr()
-	return opts.MakeSSHExecCmd(cmdStr, sapi), nil
-}
-
-func (opts SSHOpts) MakeMShellSingleCmd() (*exec.Cmd, error) {
-	if opts.SSHHost == "" {
-		execFile, err := os.Executable()
-		if err != nil {
-			return nil, fmt.Errorf("cannot find local mshell executable: %w", err)
-		}
-		ecmd := exec.Command(execFile, "--single-from-server")
-		return ecmd, nil
-	}
-	sapi, err := shellapi.MakeShellApi(packet.ShellType_bash)
-	if err != nil {
-		return nil, err
-	}
-	cmdStr := MakeClientCommandStr()
-	return opts.MakeSSHExecCmd(cmdStr, sapi), nil
+	ecmd := exec.Command(execFile, "--single-from-server")
+	return ecmd, nil
 }
 
 func (opts SSHOpts) MakeSSHExecCmd(remoteCommand string, sapi shellapi.ShellApi) *exec.Cmd {
@@ -526,58 +506,6 @@ func GetTerminalSize() (int, int, error) {
 	}
 	defer fd.Close()
 	return pty.Getsize(fd)
-}
-
-func (opts *ClientOpts) MakeRunPacket() (*packet.RunPacketType, error) {
-	sapi, err := shellapi.MakeShellApi(packet.ShellType_bash)
-	if err != nil {
-		return nil, err
-	}
-	runPacket := packet.MakeRunPacket()
-	runPacket.Detached = opts.Detach
-	runPacket.State = &packet.ShellState{}
-	runPacket.State.Cwd = opts.Cwd
-	runPacket.Fds = opts.Fds
-	if opts.UsePty {
-		runPacket.UsePty = true
-		runPacket.TermOpts = &packet.TermOpts{}
-		rows, cols, err := GetTerminalSize()
-		if err == nil {
-			runPacket.TermOpts.Rows = rows
-			runPacket.TermOpts.Cols = cols
-		}
-		term := os.Getenv("TERM")
-		if term != "" {
-			runPacket.TermOpts.Term = term
-		}
-	}
-	rcOpts := shellapi.RunCommandOpts{}
-	rcOpts.Sudo = opts.Sudo
-	rcOpts.SudoWithPass = opts.SudoWithPass
-	if opts.Sudo && opts.SudoWithPass {
-		rcOpts.PwFdNum, err = AddRunData(runPacket, opts.SudoPw, "sudo pw")
-		if err != nil {
-			return nil, err
-		}
-		rcOpts.CommandFdNum, err = AddRunData(runPacket, opts.Command, "command")
-		if err != nil {
-			return nil, err
-		}
-		rcOpts.CommandStdinFdNum, err = NextFreeFdNum(runPacket)
-		if err != nil {
-			return nil, err
-		}
-		commandStdinRfd := packet.RemoteFd{FdNum: rcOpts.CommandStdinFdNum, Read: true, DupStdin: true}
-		runPacket.Fds = append(runPacket.Fds, commandStdinRfd)
-	} else if opts.Sudo {
-		rcOpts.CommandFdNum, err = AddRunData(runPacket, opts.Command, "command")
-		if err != nil {
-			return nil, err
-		}
-	}
-	rcOpts.MaxFdNum = MaxFdNumInPacket(runPacket)
-	runPacket.Command = sapi.MakeRunCommand(opts.Command, rcOpts)
-	return runPacket, nil
 }
 
 func AddRunData(pk *packet.RunPacketType, data string, dataType string) (int, error) {
@@ -855,7 +783,7 @@ func (s *ShExecType) SendSignal(sig syscall.Signal) {
 }
 
 func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fromServer bool, shellType string) (rtnShExec *ShExecType, rtnErr error) {
-	sapi, err := shellapi.MakeShellApi(packet.ShellType_bash)
+	sapi, err := shellapi.MakeShellApi(pk.ShellType)
 	if err != nil {
 		return nil, err
 	}
@@ -1146,7 +1074,7 @@ func (cmd *ShExecType) DetachedWait(startPacket *packet.CmdStartPacketType) {
 }
 
 func RunCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecType, *packet.CmdStartPacketType, error) {
-	sapi, err := shellapi.MakeShellApi(packet.ShellType_bash)
+	sapi, err := shellapi.MakeShellApi(pk.ShellType)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1263,16 +1191,23 @@ func MakeInitPacket(shellPref string) *packet.InitPacketType {
 	}
 	initPacket.HostName, _ = os.Hostname()
 	initPacket.UName = fmt.Sprintf("%s|%s", runtime.GOOS, runtime.GOARCH)
-	initPacket.Shell = os.Getenv(ShellVarName)
+	var localShell string
+	if shellPref != "" && shellapi.HasShell(shellPref) {
+		localShell = shellPref
+	}
+	if localShell == "" {
+		localShell = shellapi.DetectLocalShellType()
+	}
+	initPacket.Shell = localShell
 	return initPacket
 }
 
 func MakeServerInitPacket(shellPref string) (*packet.InitPacketType, error) {
-	sapi, err := shellapi.MakeShellApi(packet.ShellType_bash)
+	initPacket := MakeInitPacket(shellPref)
+	sapi, err := shellapi.MakeShellApi(initPacket.Shell)
 	if err != nil {
 		return nil, err
 	}
-	initPacket := MakeInitPacket(shellPref)
 	shellState, err := sapi.GetShellState()
 	if err != nil {
 		return nil, err

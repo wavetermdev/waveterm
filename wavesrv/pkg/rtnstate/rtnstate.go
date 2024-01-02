@@ -112,6 +112,8 @@ var IgnoreVars = map[string]bool{
 	"MSHELL_VERSION":    true,
 	"WAVESHELL":         true,
 	"WAVESHELL_VERSION": true,
+	"WAVETERM":          true,
+	"WAVETERM_VERSION":  true,
 }
 
 func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newState packet.ShellState) {

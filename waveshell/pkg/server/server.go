@@ -619,7 +619,7 @@ func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
 		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("server run packets require valid ck: %s", err))
 		return
 	}
-	ecmd, err := shexec.SSHOpts{}.MakeMShellSingleCmd()
+	ecmd, err := shexec.MakeMShellSingleCmd()
 	if err != nil {
 		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("server run packets require valid ck: %s", err))
 		return

@@ -73,9 +73,24 @@ func DetectLocalShellType() string {
 	return packet.ShellType_bash
 }
 
-func MakeShellApi(shellType string) (ShellApi, error) {
+func HasShell(shellType string) bool {
 	if shellType == packet.ShellType_bash {
+		_, err := exec.LookPath("bash")
+		return err != nil
+	}
+	if shellType == packet.ShellType_zsh {
+		_, err := exec.LookPath("zsh")
+		return err != nil
+	}
+	return false
+}
+
+func MakeShellApi(shellType string) (ShellApi, error) {
+	if shellType == "" || shellType == packet.ShellType_bash {
 		return &bashShellApi{}, nil
+	}
+	if shellType == packet.ShellType_zsh {
+		return &zshShellApi{}, nil
 	}
 	return nil, fmt.Errorf("shell type not supported: %s", shellType)
 }

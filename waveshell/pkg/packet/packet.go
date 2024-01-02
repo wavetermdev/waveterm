@@ -704,7 +704,7 @@ type RunPacketType struct {
 	Type          string          `json:"type"`
 	ReqId         string          `json:"reqid"`
 	CK            base.CommandKey `json:"ck"`
-	ShellType     string          `json:"shelltype"` // new in v0.6.0 (either "bash" or "zsh")
+	ShellType     string          `json:"shelltype"` // new in v0.6.0 (either "bash" or "zsh") (set by remote.go)
 	Command       string          `json:"command"`
 	State         *ShellState     `json:"state,omitempty"`
 	StateDiff     *ShellStateDiff `json:"statediff,omitempty"`

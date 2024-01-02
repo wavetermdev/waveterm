@@ -135,7 +135,8 @@ type MShellProc struct {
 	StateMap           map[string]*packet.ShellState // sha1->state
 	CurrentState       string                        // sha1
 	NumTryConnect      int
-	ShellType          string
+	ShellPref          string
+	InitPkShellType    string
 
 	// install
 	InstallStatus      string
@@ -1102,6 +1103,7 @@ func getStateVarsFromInitPk(initPk *packet.InitPacketType) map[string]string {
 	rtn["remoteuser"] = initPk.User
 	rtn["remotehost"] = initPk.HostName
 	rtn["remoteuname"] = initPk.UName
+	rtn["shelltype"] = initPk.Shell
 	return rtn
 }
 
@@ -1127,6 +1129,7 @@ func (msh *MShellProc) ReInit(ctx context.Context) (*packet.InitPacketType, erro
 	msh.WithLock(func() {
 		msh.CurrentState = hval
 		msh.StateMap[hval] = initPk.State
+		msh.InitPkShellType = initPk.Shell
 	})
 	msh.updateRemoteStateVars(ctx, msh.RemoteId, initPk)
 	return initPk, nil
@@ -1142,8 +1145,8 @@ func addScVarsToState(state *packet.ShellState) *packet.ShellState {
 	}
 	rtn := *state
 	envMap := shellenv.DeclMapFromState(&rtn)
-	envMap["PROMPT"] = &shellenv.DeclareDeclType{Name: "PROMPT", Value: "1", Args: "x"}
-	envMap["PROMPT_VERSION"] = &shellenv.DeclareDeclType{Name: "PROMPT_VERSION", Value: scbase.WaveVersion, Args: "x"}
+	envMap["WAVETERM"] = &shellenv.DeclareDeclType{Name: "WAVETERM", Value: "1", Args: "x"}
+	envMap["WAVETERM_VERSION"] = &shellenv.DeclareDeclType{Name: "WAVETERM_VERSION", Value: scbase.WaveVersion, Args: "x"}
 	rtn.ShellVars = shellenv.SerializeDeclMap(envMap)
 	return &rtn
 }
@@ -1157,6 +1160,8 @@ func stripScVarsFromState(state *packet.ShellState) *packet.ShellState {
 	envMap := shellenv.DeclMapFromState(&rtn)
 	delete(envMap, "PROMPT")
 	delete(envMap, "PROMPT_VERSION")
+	delete(envMap, "WAVETERM")
+	delete(envMap, "WAVETERM_VERSION")
 	rtn.ShellVars = shellenv.SerializeDeclMap(envMap)
 	return &rtn
 }
@@ -1175,6 +1180,8 @@ func stripScVarsFromStateDiff(stateDiff *packet.ShellStateDiff) *packet.ShellSta
 	}
 	delete(mapDiff.ToAdd, "PROMPT")
 	delete(mapDiff.ToAdd, "PROMPT_VERSION")
+	delete(mapDiff.ToAdd, "WAVETERM")
+	delete(mapDiff.ToAdd, "WAVETERM_VERSION")
 	rtn.VarsDiff = mapDiff.Encode()
 	return &rtn
 }
@@ -1194,7 +1201,7 @@ func (msh *MShellProc) Launch(interactive bool) {
 		msh.WriteToPtyBuffer("remote is already connecting, disconnect before trying to connect again\n")
 		return
 	}
-	sapi, err := shellapi.MakeShellApi(packet.ShellType_bash)
+	sapi, err := shellapi.MakeShellApi(msh.GetShellType())
 	if err != nil {
 		msh.WriteToPtyBuffer("*error, %v\n", err)
 		return
@@ -1255,6 +1262,7 @@ func (msh *MShellProc) Launch(interactive bool) {
 		msh.MakeClientCancelFn = makeClientCancelFn
 		deadlineTime := time.Now().Add(RemoteConnectTimeout)
 		msh.MakeClientDeadline = &deadlineTime
+		msh.ShellPref = shellType
 		go msh.NotifyRemoteUpdate()
 	})
 	go msh.watchClientDeadlineTime()
@@ -1263,6 +1271,7 @@ func (msh *MShellProc) Launch(interactive bool) {
 	var mshellVersion string
 	var stateBaseHash string
 	var hitDeadline bool
+	var initPkShellType string
 	msh.WithLock(func() {
 		msh.MakeClientCancelFn = nil
 		if time.Now().After(*msh.MakeClientDeadline) {
@@ -1279,6 +1288,8 @@ func (msh *MShellProc) Launch(interactive bool) {
 				// only set NeedsMShellUpgrade if we got an InitPk
 				msh.NeedsMShellUpgrade = true
 			}
+			msh.InitPkShellType = initPk.Shell
+			initPkShellType = initPk.Shell
 		}
 		if initPk != nil && initPk.State != nil {
 			hval := initPk.State.GetHashVal(false)
@@ -1314,7 +1325,7 @@ func (msh *MShellProc) Launch(interactive bool) {
 		return
 	}
 	msh.updateRemoteStateVars(context.Background(), msh.RemoteId, initPk)
-	msh.WriteToPtyBuffer("connected state:%s\n", stateBaseHash)
+	msh.WriteToPtyBuffer("connected shell:%s state:%s\n", initPkShellType, stateBaseHash)
 	msh.WithLock(func() {
 		msh.ServerProc = cproc
 		msh.Status = StatusConnected
@@ -1339,6 +1350,12 @@ func (msh *MShellProc) IsConnected() bool {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
 	return msh.Status == StatusConnected
+}
+
+func (msh *MShellProc) GetShellType() string {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	return msh.InitPkShellType
 }
 
 func replaceHomePath(pathStr string, homeDir string) string {
@@ -1489,6 +1506,7 @@ func RunCommand(ctx context.Context, sessionId string, screenId string, remotePt
 	}
 	runPacket.State = addScVarsToState(currentState)
 	runPacket.StateComplete = true
+	runPacket.ShellType = msh.GetShellType()
 	msh.ServerProc.Output.RegisterRpc(runPacket.ReqId)
 	err = shexec.SendRunPacketAndRunData(ctx, msh.ServerProc.Input, runPacket)
 	if err != nil {
