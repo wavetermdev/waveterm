@@ -226,15 +226,15 @@ func bashParseDeclareOutput(state *packet.ShellState, declareBytes []byte, pvarB
 }
 
 func parseBashShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
-	// 5 fields: version, cwd, env/vars, aliases, funcs
+	// 6 fields: version, cwd, env/vars, aliases, funcs, gitbranch
 	fields := bytes.Split(outputBytes, []byte{0, 0})
 	if len(fields) != 6 {
-		return nil, fmt.Errorf("invalid shell state output, wrong number of fields, fields=%d", len(fields))
+		return nil, fmt.Errorf("invalid bash shell state output, wrong number of fields, fields=%d", len(fields))
 	}
 	rtn := &packet.ShellState{}
 	rtn.Version = strings.TrimSpace(string(fields[0]))
 	if strings.Index(rtn.Version, "bash") == -1 {
-		return nil, fmt.Errorf("invalid shell state output, only bash is supported")
+		return nil, fmt.Errorf("invalid bash shell state output, only bash is supported")
 	}
 	cwdStr := string(fields[1])
 	if strings.HasSuffix(cwdStr, "\r\n") {
@@ -249,7 +249,7 @@ func parseBashShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
 	}
 	rtn.Aliases = strings.ReplaceAll(string(fields[3]), "\r\n", "\n")
 	rtn.Funcs = strings.ReplaceAll(string(fields[4]), "\r\n", "\n")
-	rtn.Funcs = shellenv.RemoveFunc(rtn.Funcs, "_mshell_exittrap")
+	rtn.Funcs = shellenv.RemoveFunc(rtn.Funcs, "_waveshell_exittrap")
 	return rtn, nil
 }
 

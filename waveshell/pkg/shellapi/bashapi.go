@@ -26,7 +26,7 @@ const RemoteBashPath = "bash"
 const RunBashSudoCommandFmt = `sudo -n -C %d bash /dev/fd/%d`
 const RunBashSudoPasswordCommandFmt = `cat /dev/fd/%d | sudo -k -S -C %d bash -c "echo '[from-mshell]'; exec %d>&-; bash /dev/fd/%d < /dev/fd/%d"`
 
-// do not use these directly, call GetLocalBashMajorVersion()
+// do not use these directly, call GetLocalMajorVersion()
 var localBashMajorVersionOnce = &sync.Once{}
 var localBashMajorVersion = ""
 
@@ -114,7 +114,7 @@ func GetBashShellStateCmd() string {
 	return strings.Join(GetBashShellStateCmds, ` printf "\x00\x00";`)
 }
 
-func ExecGetLocalBashShellVersion() string {
+func execGetLocalBashShellVersion() string {
 	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
 	defer cancelFn()
 	ecmd := exec.CommandContext(ctx, "bash", "-c", BashShellVersionCmdStr)
@@ -132,8 +132,8 @@ func ExecGetLocalBashShellVersion() string {
 
 func GetLocalBashMajorVersion() string {
 	localBashMajorVersionOnce.Do(func() {
-		fullVersion := ExecGetLocalBashShellVersion()
-		localBashMajorVersion = packet.GetBashMajorVersion(fullVersion)
+		fullVersion := execGetLocalBashShellVersion()
+		localBashMajorVersion = packet.GetMajorVersion(fullVersion)
 	})
 	return localBashMajorVersion
 }
@@ -177,10 +177,10 @@ func GetBashShellStateRedirectCommandStr(outputFdNum int) string {
 func MakeBashExitTrap(fdNum int) string {
 	stateCmd := GetBashShellStateRedirectCommandStr(fdNum)
 	fmtStr := `
-_mshell_exittrap () {
+_waveshell_exittrap () {
     %s
 }
-trap _mshell_exittrap EXIT
+trap _waveshell_exittrap EXIT
 `
 	return fmt.Sprintf(fmtStr, stateCmd)
 }

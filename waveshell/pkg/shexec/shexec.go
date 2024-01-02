@@ -833,6 +833,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		isOldBashVersion = (semver.Compare(bashVersion, "v4") < 0)
 	}
 	var rcFileName string
+	var zdotdir string
 	if isOldBashVersion {
 		rcFileDir, err := base.EnsureRcFilesDir()
 		if err != nil {
@@ -850,6 +851,19 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 			time.Sleep(1 * time.Second)
 			os.Remove(rcFileName)
 		}()
+	} else if sapi.GetShellType() == packet.ShellType_zsh {
+		rcFileDir, err := base.EnsureRcFilesDir()
+		if err != nil {
+			return nil, err
+		}
+		zdotdir = path.Join(rcFileDir, "test")
+		os.Mkdir(zdotdir, 0700)
+		rcFileName = path.Join(zdotdir, ".zshenv")
+		err = os.WriteFile(rcFileName, []byte(rcFileStr), 0600)
+		if err != nil {
+			return nil, fmt.Errorf("could not write temp rcfile: %w", err)
+		}
+		// TODO cleanup
 	} else {
 		rcFileFdNum, err := AddRunData(pk, rcFileStr, "rcfile")
 		if err != nil {
@@ -862,6 +876,9 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		cmd.Cmd.Env = os.Environ()
 	}
 	shellutil.UpdateCmdEnv(cmd.Cmd, shellenv.EnvMapFromState(state))
+	if sapi.GetShellType() == packet.ShellType_zsh {
+		shellutil.UpdateCmdEnv(cmd.Cmd, map[string]string{"ZDOTDIR": zdotdir})
+	}
 	if state.Cwd != "" {
 		cmd.Cmd.Dir = base.ExpandHomeDir(state.Cwd)
 	}

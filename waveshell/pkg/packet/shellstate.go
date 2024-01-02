@@ -66,7 +66,7 @@ func (state ShellState) EncodeAndHash() (string, []byte) {
 }
 
 // returns a string like "v4" ("" is an unparseable version)
-func GetBashMajorVersion(versionStr string) string {
+func GetMajorVersion(versionStr string) string {
 	if versionStr == "" {
 		return ""
 	}
