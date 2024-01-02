@@ -6,6 +6,8 @@ package statediff
 import (
 	"fmt"
 	"testing"
+
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 )
 
 const Str1 = `
@@ -64,28 +66,9 @@ func TestLineDiff(t *testing.T) {
 	testLineDiff(t, Str3, Str4)
 }
 
-func strMapsEqual(m1 map[string]string, m2 map[string]string) bool {
-	if len(m1) != len(m2) {
-		return false
-	}
-	for key, val := range m1 {
-		val2, ok := m2[key]
-		if !ok || val != val2 {
-			return false
-		}
-	}
-	for key, val := range m2 {
-		val2, ok := m1[key]
-		if !ok || val != val2 {
-			return false
-		}
-	}
-	return true
-}
-
 func TestMapDiff(t *testing.T) {
-	m1 := map[string]string{"a": "5", "b": "hello", "c": "mike"}
-	m2 := map[string]string{"a": "5", "b": "goodbye", "d": "more"}
+	m1 := map[string][]byte{"a": []byte("5"), "b": []byte("hello"), "c": []byte("mike")}
+	m2 := map[string][]byte{"a": []byte("5"), "b": []byte("goodbye"), "d": []byte("more")}
 	diffBytes := MakeMapDiff(m1, m2)
 	fmt.Printf("mapdifflen: %d\n", len(diffBytes))
 	var diff MapDiffType
@@ -95,7 +78,7 @@ func TestMapDiff(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error applying map diff: %v", err)
 	}
-	if !strMapsEqual(m2, mcheck) {
+	if !utilfn.ByteMapsEqual(m2, mcheck) {
 		t.Errorf("maps not equal")
 	}
 	fmt.Printf("%v\n", mcheck)

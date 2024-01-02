@@ -63,11 +63,27 @@ func (d *DeclareDeclType) DataType() string {
 
 func (d *DeclareDeclType) Serialize() []byte {
 	if d.IsZshDecl {
-		// return fmt.Sprintf("z%s|%s=%s\x00", d.Args, d.Name, d.Value)
-		return nil
+		parts := []string{
+			"z1",
+			d.Args,
+			d.Name,
+			d.Value,
+			d.ZshBoundScalar,
+			d.ZshEnvValue,
+		}
+		return utilfn.EncodeStringArray(parts)
+	} else {
+		parts := []string{
+			"b1",
+			d.Args,
+			d.Name,
+			d.Value,
+		}
+		return utilfn.EncodeStringArray(parts)
 	}
-	rtn := fmt.Sprintf("%s|%s=%s\x00", d.Args, d.Name, d.Value)
-	return []byte(rtn)
+	// this is the v0 encoding (keeping here for reference since we still need to decode this)
+	// rtn := fmt.Sprintf("%s|%s=%s\x00", d.Args, d.Name, d.Value)
+	// return []byte(rtn)
 }
 
 func DeclsEqual(compareName bool, d1 *DeclareDeclType, d2 *DeclareDeclType) bool {
@@ -129,7 +145,39 @@ func ApplyShellStateDiff(oldState packet.ShellState, diff packet.ShellStateDiff)
 }
 
 // envline should be valid
-func parseDeclLine(envLine string) *DeclareDeclType {
+func parseDeclLine(envLineBytes []byte) *DeclareDeclType {
+	if utilfn.EncodedStringArrayHasFirstKey(envLineBytes, "z1") {
+		parts, err := utilfn.DecodeStringArray(envLineBytes)
+		if err != nil {
+			return nil
+		}
+		if len(parts) != 6 {
+			return nil
+		}
+		return &DeclareDeclType{
+			IsZshDecl:      true,
+			Args:           parts[1],
+			Name:           parts[2],
+			Value:          parts[3],
+			ZshBoundScalar: parts[4],
+			ZshEnvValue:    parts[5],
+		}
+	} else if utilfn.EncodedStringArrayHasFirstKey(envLineBytes, "b1") {
+		parts, err := utilfn.DecodeStringArray(envLineBytes)
+		if err != nil {
+			return nil
+		}
+		if len(parts) != 4 {
+			return nil
+		}
+		return &DeclareDeclType{
+			Args:  parts[1],
+			Name:  parts[2],
+			Value: parts[3],
+		}
+	}
+	// legacy decoding (v0)
+	envLine := string(envLineBytes)
 	eqIdx := strings.Index(envLine, "=")
 	if eqIdx == -1 {
 		return nil
@@ -148,22 +196,22 @@ func parseDeclLine(envLine string) *DeclareDeclType {
 }
 
 // returns name => full-line
-func parseDeclLineToKV(envLine string) (string, string) {
+func parseDeclLineToKV(envLine []byte) (string, []byte) {
 	decl := parseDeclLine(envLine)
 	if decl == nil {
-		return "", ""
+		return "", nil
 	}
 	return decl.Name, envLine
 }
 
-func shellStateVarsToMap(shellVars []byte) map[string]string {
+func shellStateVarsToMap(shellVars []byte) map[string][]byte {
 	if len(shellVars) == 0 {
 		return nil
 	}
-	rtn := make(map[string]string)
+	rtn := make(map[string][]byte)
 	vars := bytes.Split(shellVars, []byte{0})
 	for _, varLine := range vars {
-		name, val := parseDeclLineToKV(string(varLine))
+		name, val := parseDeclLineToKV(varLine)
 		if name == "" {
 			continue
 		}
@@ -172,12 +220,12 @@ func shellStateVarsToMap(shellVars []byte) map[string]string {
 	return rtn
 }
 
-func strMapToShellStateVars(varMap map[string]string) []byte {
+func strMapToShellStateVars(varMap map[string][]byte) []byte {
 	var buf bytes.Buffer
 	orderedKeys := utilfn.GetOrderedMapKeys(varMap)
 	for _, key := range orderedKeys {
 		val := varMap[key]
-		buf.WriteString(val)
+		buf.Write(val)
 		buf.WriteByte(0)
 	}
 	return buf.Bytes()
@@ -190,7 +238,7 @@ func DeclMapFromState(state *packet.ShellState) map[string]*DeclareDeclType {
 	rtn := make(map[string]*DeclareDeclType)
 	vars := bytes.Split(state.ShellVars, []byte{0})
 	for _, varLine := range vars {
-		decl := parseDeclLine(string(varLine))
+		decl := parseDeclLine(varLine)
 		if decl != nil {
 			rtn[decl.Name] = decl
 		}
@@ -216,7 +264,7 @@ func EnvMapFromState(state *packet.ShellState) map[string]string {
 	ectx := simpleexpand.SimpleExpandContext{}
 	vars := bytes.Split(state.ShellVars, []byte{0})
 	for _, varLine := range vars {
-		decl := parseDeclLine(string(varLine))
+		decl := parseDeclLine(varLine)
 		if decl != nil && decl.IsExport() {
 			rtn[decl.Name], _ = simpleexpand.SimpleExpandPartialWord(ectx, decl.Value, false)
 		}
@@ -232,7 +280,7 @@ func ShellVarMapFromState(state *packet.ShellState) map[string]string {
 	ectx := simpleexpand.SimpleExpandContext{}
 	vars := bytes.Split(state.ShellVars, []byte{0})
 	for _, varLine := range vars {
-		decl := parseDeclLine(string(varLine))
+		decl := parseDeclLine(varLine)
 		if decl != nil {
 			rtn[decl.Name], _ = simpleexpand.SimpleExpandPartialWord(ectx, decl.Value, false)
 		}
@@ -259,7 +307,7 @@ func VarDeclsFromState(state *packet.ShellState) []*DeclareDeclType {
 	var rtn []*DeclareDeclType
 	vars := bytes.Split(state.ShellVars, []byte{0})
 	for _, varLine := range vars {
-		decl := parseDeclLine(string(varLine))
+		decl := parseDeclLine(varLine)
 		if decl != nil {
 			rtn = append(rtn, decl)
 		}

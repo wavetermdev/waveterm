@@ -283,6 +283,25 @@ func StrMapsEqual(m1 map[string]string, m2 map[string]string) bool {
 	return true
 }
 
+func ByteMapsEqual(m1 map[string][]byte, m2 map[string][]byte) bool {
+	if len(m1) != len(m2) {
+		return false
+	}
+	for key, val1 := range m1 {
+		val2, found := m2[key]
+		if !found || !bytes.Equal(val1, val2) {
+			return false
+		}
+	}
+	for key := range m2 {
+		_, found := m1[key]
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
 func GetOrderedMapKeys[V any](m map[string]V) []string {
 	keys := make([]string, 0, len(m))
 	for key := range m {
@@ -363,6 +382,17 @@ func DecodeStringArray(barr []byte) ([]string, error) {
 		rtn = append(rtn, s)
 	}
 	return rtn, nil
+}
+
+func EncodedStringArrayHasFirstKey(encoded []byte, firstKey string) bool {
+	firstKeyBytes := NullEncodeStr(firstKey)
+	if !bytes.HasPrefix(encoded, firstKeyBytes) {
+		return false
+	}
+	if len(encoded) == len(firstKeyBytes) || encoded[len(firstKeyBytes)] == nullEncodeSepByte {
+		return true
+	}
+	return false
 }
 
 // encodes a string, removing null/zero bytes (and separators '|')
