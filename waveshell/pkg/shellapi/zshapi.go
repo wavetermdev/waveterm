@@ -7,12 +7,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"os/exec"
 	"strings"
 	"sync"
 
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 )
 
 const BaseZshOpts = ``
@@ -20,7 +22,14 @@ const BaseZshOpts = ``
 const ZshShellVersionCmdStr = `echo zsh v$ZSH_VERSION`
 
 var ZshIgnoreVars = map[string]bool{
-	"_": true,
+	"_":        true,
+	"0":        true,
+	"terminfo": true,
+	"RANDOM":   true,
+	"COLUMNS":  true,
+	"LINES":    true,
+	"argv":     true,
+	"SECONDS":  true,
 }
 
 // do not use these directly, call GetLocalMajorVersion()
@@ -54,7 +63,7 @@ func (z zshShellApi) MakeRunCommand(cmdStr string, opts RunCommandOpts) string {
 }
 
 func (z zshShellApi) MakeShExecCommand(cmdStr string, rcFileName string, usePty bool) *exec.Cmd {
-	return exec.Command(GetLocalZshPath(), "-d", "-c", cmdStr)
+	return exec.Command(GetLocalZshPath(), "-l", "-i", "-c", cmdStr)
 }
 
 func (z zshShellApi) GetShellState() (*packet.ShellState, error) {
@@ -66,7 +75,11 @@ func (z zshShellApi) GetShellState() (*packet.ShellState, error) {
 	if err != nil {
 		return nil, err
 	}
-	return parseZshShellStateOutput(outputBytes)
+	rtn, err := parseZshShellStateOutput(outputBytes)
+	if err != nil {
+		return nil, err
+	}
+	return rtn, nil
 }
 
 func (z zshShellApi) GetBaseShellOpts() string {
@@ -77,10 +90,39 @@ func (z zshShellApi) ParseShellStateOutput(output []byte) (*packet.ShellState, e
 	return parseZshShellStateOutput(output)
 }
 
+func makeZshTypesetStmt(varDecl *shellenv.DeclareDeclType) string {
+	if !varDecl.IsZshDecl {
+		// not sure what to do here?
+		return ""
+	}
+	var argsStr string
+	if varDecl.Args == "" {
+		argsStr = "--"
+	} else {
+		argsStr = "-" + varDecl.Args
+	}
+	if varDecl.IsZshScalarBound() {
+		// varDecl.Value contains the extra "separator" field (if present in the original typeset def)
+		return fmt.Sprintf("typeset %s %s %s=%s", argsStr, varDecl.ZshBoundScalar, varDecl.Name, varDecl.Value)
+	} else {
+		return fmt.Sprintf("typeset %s %s=%s", argsStr, varDecl.Name, varDecl.Value)
+	}
+}
+
 func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 	var rcBuf bytes.Buffer
 	rcBuf.WriteString(z.GetBaseShellOpts() + "\n")
 	rcBuf.WriteString("unsetopt GLOBAL_RCS\n")
+	varDecls := shellenv.VarDeclsFromState(pk.State)
+	log.Printf("MakeRCFile: num-decls: %d", len(varDecls))
+	for _, varDecl := range varDecls {
+		stmt := makeZshTypesetStmt(varDecl)
+		if stmt == "" {
+			continue
+		}
+		rcBuf.WriteString(makeZshTypesetStmt(varDecl))
+		rcBuf.WriteString("\n")
+	}
 	return rcBuf.String()
 }
 
@@ -167,6 +209,7 @@ func parseZshShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
 			decl.ZshEnvValue = zshEnv[decl.ZshBoundScalar]
 		}
 	}
+	rtn.ShellVars = shellenv.SerializeDeclMap(zshDecls)
 	return rtn, nil
 }
 
@@ -222,6 +265,9 @@ func parseZshDeclAssignment(declStr string, decl *DeclareDeclType) error {
 }
 
 func parseZshDeclLine(line string) (*DeclareDeclType, error) {
+	if strings.HasSuffix(line, "\r") {
+		line = line[0 : len(line)-1]
+	}
 	if strings.HasPrefix(line, "export ") {
 		exportLine := line[7:]
 		var exportArgs string
@@ -235,6 +281,8 @@ func parseZshDeclLine(line string) (*DeclareDeclType, error) {
 			if strings.Index(exportArgs, "x") == -1 {
 				exportArgs = "x" + exportArgs
 			}
+		} else {
+			exportArgs = "x"
 		}
 		rtn := &DeclareDeclType{IsZshDecl: true, Args: exportArgs}
 		err := parseZshDeclAssignment(exportLine, rtn)
@@ -264,10 +312,26 @@ func parseZshDeclLine(line string) (*DeclareDeclType, error) {
 	}
 }
 
-func parseZshDecls(output []byte) ([]*DeclareDeclType, error) {
+// combine decl2 INTO decl1
+func combineTiedZshDecls(decl1 *DeclareDeclType, decl2 *DeclareDeclType) {
+	if decl2.IsExport() {
+		decl1.AddFlag("x")
+	}
+	if decl2.IsArray() {
+		decl1.AddFlag("a")
+	}
+}
+
+func parseZshDecls(output []byte) (map[string]*DeclareDeclType, error) {
+	// NOTES:
+	// - we get extra \r characters in the output (trimmed in parseZshDeclLine) (we get \r\n)
+	// - tied variables (-T) are printed twice! this is especially confusing for exported vars:
+	//       (1) `export -T PATH path=( ... )`
+	//       (2) `typeset -aT PATH path=( ... )`
+	//    we have to "combine" these two lines into one decl.
 	outputStr := string(output)
 	lines := strings.Split(outputStr, "\n")
-	var rtn []*DeclareDeclType
+	rtn := make(map[string]*DeclareDeclType)
 	for _, line := range lines {
 		if line == "" {
 			continue
@@ -280,7 +344,14 @@ func parseZshDecls(output []byte) ([]*DeclareDeclType, error) {
 		if decl == nil {
 			continue
 		}
-		rtn = append(rtn, decl)
+		if ZshIgnoreVars[decl.Name] {
+			continue
+		}
+		if rtn[decl.Name] != nil && decl.IsZshScalarBound() {
+			combineTiedZshDecls(rtn[decl.Name], decl)
+			continue
+		}
+		rtn[decl.Name] = decl
 	}
 	return rtn, nil
 }

@@ -48,6 +48,21 @@ func (d *DeclareDeclType) IsZshScalarBound() bool {
 	return strings.Index(d.Args, "T") >= 0
 }
 
+func (d *DeclareDeclType) IsArray() bool {
+	return strings.Index(d.Args, "a") >= 0
+}
+
+func (d *DeclareDeclType) IsAssocArray() bool {
+	return strings.Index(d.Args, "A") >= 0
+}
+
+func (d *DeclareDeclType) AddFlag(flag string) {
+	if strings.Index(d.Args, flag) >= 0 {
+		return
+	}
+	d.Args += flag
+}
+
 func (d *DeclareDeclType) DataType() string {
 	if strings.Index(d.Args, "a") >= 0 {
 		return DeclTypeArray
@@ -61,6 +76,7 @@ func (d *DeclareDeclType) DataType() string {
 	return DeclTypeNormal
 }
 
+// NOTE Serialize no longer writes the final null byte
 func (d *DeclareDeclType) Serialize() []byte {
 	if d.IsZshDecl {
 		parts := []string{
@@ -252,6 +268,7 @@ func SerializeDeclMap(declMap map[string]*DeclareDeclType) []byte {
 	for _, key := range orderedKeys {
 		decl := declMap[key]
 		rtn.Write(decl.Serialize())
+		rtn.WriteByte(0)
 	}
 	return rtn.Bytes()
 }

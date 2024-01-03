@@ -41,6 +41,13 @@ type ShellStateDiff struct {
 	HashVal     string   `json:"-"`
 }
 
+func (state ShellState) GetShellType() string {
+	if strings.HasPrefix(state.Version, "zsh") {
+		return ShellType_zsh
+	}
+	return ShellType_bash
+}
+
 func (state ShellState) IsEmpty() bool {
 	return state.Version == "" && state.Cwd == "" && len(state.ShellVars) == 0 && state.Aliases == "" && state.Funcs == "" && state.Error == ""
 }
