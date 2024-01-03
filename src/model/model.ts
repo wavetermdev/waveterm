@@ -1714,6 +1714,7 @@ class InputModel {
     closeAIAssistantChat(): void {
         console.log("Opening AI Assistant chat");
         this.aIChatShow.set(false);
+        this.giveFocus();
     }
 
 
