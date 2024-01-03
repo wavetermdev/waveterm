@@ -745,7 +745,7 @@ func FeStateFromShellState(state *packet.ShellState) map[string]string {
 		rtn["VIRTUAL_ENV"] = envMap["VIRTUAL_ENV"]
 	}
 	for key, val := range envMap {
-		if strings.HasPrefix(key, "PROMPTVAR_") && rtn[key] != "" {
+		if strings.HasPrefix(key, "PROMPTVAR_") && envMap[key] != "" {
 			rtn[key] = val
 		}
 	}

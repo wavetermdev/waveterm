@@ -355,10 +355,16 @@ func DumpVarMapFromState(state *packet.ShellState) {
 		fmt.Printf("  nil\n")
 		return
 	}
-	vars := bytes.Split(state.ShellVars, []byte{0})
-	for _, varLine := range vars {
-		fmt.Printf("  %s\n", varLine)
+	decls := VarDeclsFromState(state)
+	for _, decl := range decls {
+		fmt.Printf("  %s %#v\n", decl.Name, decl)
 	}
+	envMap := EnvMapFromState(state)
+	fmt.Printf("DUMP-STATE-ENV:\n")
+	for k, v := range envMap {
+		fmt.Printf("  %s=%s\n", k, v)
+	}
+	fmt.Printf("\n\n")
 }
 
 func VarDeclsFromState(state *packet.ShellState) []*DeclareDeclType {

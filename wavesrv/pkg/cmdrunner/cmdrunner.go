@@ -27,6 +27,7 @@ import (
 	"github.com/kevinburke/ssh_config"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
@@ -242,6 +243,7 @@ func init() {
 	registerCmdFn("chat", OpenAICommand)
 
 	registerCmdFn("_killserver", KillServerCommand)
+	registerCmdFn("_dumpstate", DumpStateCommand)
 
 	registerCmdFn("set", SetCommand)
 
@@ -3979,6 +3981,20 @@ func KillServerCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 	}()
 	return nil, nil
+}
+
+func DumpStateCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Remote)
+	if err != nil {
+		return nil, err
+	}
+	currentState, err := sstore.GetFullState(ctx, *ids.Remote.StatePtr)
+	if err != nil {
+		return nil, fmt.Errorf("error getting state: %v", err)
+	}
+	feState := sstore.FeStateFromShellState(currentState)
+	shellenv.DumpVarMapFromState(currentState)
+	return sstore.InfoMsgUpdate("current connection state sent to log.  festate: %s", dbutil.QuickJson(feState)), nil
 }
 
 func ClientCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
