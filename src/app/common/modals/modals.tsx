@@ -27,10 +27,9 @@ import {
 import * as util from "../../../util/util";
 import * as textmeasure from "../../../util/textmeasure";
 import { ClientDataType } from "../../../types/types";
-import { Session, Screen } from "../../../model/model";
+import { Screen } from "../../../model/model";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
 
-import { ReactComponent as WarningIcon } from "../../assets/icons/line/triangle-exclamation.svg";
 import shield from "../../assets/icons/shield_check.svg";
 import help from "../../assets/icons/help_filled.svg";
 import github from "../../assets/icons/github.svg";
@@ -108,12 +107,9 @@ class DisconnectedModal extends React.Component<{}, {}> {
             25,
             mobx.action((logs) => {
                 this.logs.set(logs);
-                // Ensure this runs after the DOM has been updated
-                setTimeout(() => {
-                    if (this.logRef.current != null) {
-                        this.logRef.current.scrollTop = this.logRef.current.scrollHeight;
-                    }
-                }, 0);
+                if (this.logRef.current != null) {
+                    this.logRef.current.scrollTop = this.logRef.current.scrollHeight;
+                }
             })
         );
     }
@@ -125,8 +121,8 @@ class DisconnectedModal extends React.Component<{}, {}> {
                 <div className="wave-modal-body">
                     <div className="modal-content">
                         <div className="inner-content">
-                            <div className="log">
-                                <pre ref={this.logRef}>{this.logs.get()}</pre>
+                            <div className="log" ref={this.logRef}>
+                                <pre>{this.logs.get()}</pre>
                             </div>
                         </div>
                     </div>

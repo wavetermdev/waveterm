@@ -31,10 +31,10 @@
             }
 
             .inner-content {
-                pre {
-                    color: @term-white;
-                    background-color: @term-black;
+                .log {
                     height: 335px;
+                    margin-bottom: 20px;
+                    overflow: auto;
 
                     &::-webkit-scrollbar-track,
                     &::-webkit-scrollbar-thumb,
@@ -45,13 +45,16 @@
                     &:hover::-webkit-scrollbar-thumb {
                         display: block;
                     }
+
+                    pre {
+                        color: @term-white;
+                        background-color: @term-black;
+                    }
                 }
             }
         }
 
         .wave-modal-footer {
-            margin-top: 20px;
-
             button:first-child {
                 color: @term-green;
             }
