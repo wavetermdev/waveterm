@@ -68,12 +68,13 @@ class App extends React.Component<{}, {}> {
     }
 
     render() {
-        let clientSettingsModal = GlobalModel.clientSettingsModal.get();
         let remotesModel = GlobalModel.remotesModel;
         let disconnected = !GlobalModel.ws.open.get() || !GlobalModel.waveSrvRunning.get();
         let hasClientStop = GlobalModel.getHasClientStop();
         let dcWait = this.dcWait.get();
         let platform = GlobalModel.getPlatform();
+
+        return <DisconnectedModal />;
 
         if (disconnected || hasClientStop) {
             if (!dcWait) {

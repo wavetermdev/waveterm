@@ -70,7 +70,8 @@ class ModalsProvider extends React.Component {
 @mobxReact.observer
 class DisconnectedModal extends React.Component<{}, {}> {
     logRef: any = React.createRef();
-    showLog: mobx.IObservableValue<boolean> = mobx.observable.box(false);
+    logs: mobx.IObservableValue<string> = mobx.observable.box("");
+    logInterval: NodeJS.Timeout = null;
 
     @boundMethod
     restartServer() {
@@ -83,8 +84,16 @@ class DisconnectedModal extends React.Component<{}, {}> {
     }
 
     componentDidMount() {
-        if (this.logRef.current != null) {
-            this.logRef.current.scrollTop = this.logRef.current.scrollHeight;
+        this.fetchLogs();
+
+        this.logInterval = setInterval(() => {
+            this.fetchLogs();
+        }, 5000);
+    }
+
+    componentWillUnmount() {
+        if (this.logInterval) {
+            clearInterval(this.logInterval);
         }
     }
 
@@ -94,58 +103,55 @@ class DisconnectedModal extends React.Component<{}, {}> {
         }
     }
 
-    @boundMethod
-    handleShowLog(): void {
-        mobx.action(() => {
-            this.showLog.set(!this.showLog.get());
-        })();
+    fetchLogs() {
+        GlobalModel.getLastLogs(
+            25,
+            mobx.action((logs) => {
+                this.logs.set(logs);
+                // Ensure this runs after the DOM has been updated
+                setTimeout(() => {
+                    if (this.logRef.current != null) {
+                        this.logRef.current.scrollTop = this.logRef.current.scrollHeight;
+                    }
+                }, 0);
+            })
+        );
     }
 
     render() {
-        let model = GlobalModel;
-        let logLine: string = null;
-        let idx: number = 0;
         return (
-            <div className="prompt-modal disconnected-modal modal is-active">
-                <div className="modal-background"></div>
-                <div className="modal-content">
-                    <div className="message-header">
-                        <div className="modal-title">Wave Client Disconnected</div>
-                    </div>
-                    <If condition={this.showLog.get()}>
+            <Modal className="disconnected-modal">
+                <Modal.Header title="Wave Client Disconnected" />
+                <div className="wave-modal-body">
+                    <div className="modal-content">
                         <div className="inner-content">
-                            <div className="ws-log" ref={this.logRef}>
-                                <For each="logLine" index="idx" of={GlobalModel.ws.wsLog}>
-                                    <div key={idx} className="ws-logline">
-                                        {logLine}
-                                    </div>
-                                </For>
+                            <div className="log">
+                                <pre ref={this.logRef}>{this.logs.get()}</pre>
                             </div>
                         </div>
-                    </If>
-                    <footer>
-                        <div className="footer-text-link" style={{ marginLeft: 10 }} onClick={this.handleShowLog}>
-                            <If condition={!this.showLog.get()}>
-                                <i className="fa-sharp fa-solid fa-plus" /> Show Log
-                            </If>
-                            <If condition={this.showLog.get()}>
-                                <i className="fa-sharp fa-solid fa-minus" /> Hide Log
-                            </If>
-                        </div>
-                        <div className="flex-spacer" />
-                        <button onClick={this.tryReconnect} className="button">
+                    </div>
+                </div>
+                <div className="wave-modal-footer">
+                    <Button
+                        theme="secondary"
+                        onClick={this.tryReconnect}
+                        leftIcon={
                             <span className="icon">
                                 <i className="fa-sharp fa-solid fa-rotate" />
                             </span>
-                            <span>Try Reconnect</span>
-                        </button>
-                        <button onClick={this.restartServer} className="button is-danger" style={{ marginLeft: 10 }}>
-                            <WarningIcon className="icon" />
-                            <span>Restart Server</span>
-                        </button>
-                    </footer>
+                        }
+                    >
+                        Try Reconnect
+                    </Button>
+                    <Button
+                        theme="secondary"
+                        onClick={this.restartServer}
+                        leftIcon={<i className="fa-sharp fa-solid fa-triangle-exclamation"></i>}
+                    >
+                        Restart Server
+                    </Button>
                 </div>
-            </div>
+            </Modal>
         );
     }
 }
@@ -1473,8 +1479,6 @@ type SwitcherDataType = {
     color: string;
 };
 
-const MaxOptionsToDisplay = 100;
-
 @mobxReact.observer
 class TabSwitcherModal extends React.Component<{}, {}> {
     screens: Map<string, OV<string>>[];
@@ -1488,6 +1492,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     optionRefs = [];
     listWrapperRef = React.createRef<HTMLDivElement>();
     prevFocusedIdx = 0;
+    isKeyboardNav = false;
 
     componentDidMount() {
         this.activeSessionIdx = GlobalModel.getActiveSession().sessionIdx.get();
@@ -1518,7 +1523,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
         });
 
         mobx.action(() => {
-            this.sOptions.replace(this.sortOptions(this.options).slice(0, MaxOptionsToDisplay));
+            this.sOptions.replace(this.sortOptions(this.options).slice(0, 10));
         })();
 
         document.addEventListener("keydown", this.handleKeyDown);
@@ -1541,9 +1546,6 @@ class TabSwitcherModal extends React.Component<{}, {}> {
 
             // Update prevFocusedIdx for the next update cycle
             this.prevFocusedIdx = currFocusedIdx;
-        }
-        if (currFocusedIdx >= this.sOptions.length && this.sOptions.length > 0) {
-            this.setFocusedIndex(this.sOptions.length - 1);
         }
     }
 
@@ -1569,11 +1571,13 @@ class TabSwitcherModal extends React.Component<{}, {}> {
 
     @boundMethod
     handleKeyDown(e) {
+        let newIndex;
         if (e.key === "Escape") {
             this.closeModal();
         } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
             e.preventDefault();
-            let newIndex = this.calculateNewIndex(e.key === "ArrowUp");
+            this.isKeyboardNav = true;
+            newIndex = this.calculateNewIndex(e.key === "ArrowUp");
             this.setFocusedIndex(newIndex);
         } else if (e.key === "Enter") {
             e.preventDefault();
@@ -1589,6 +1593,18 @@ class TabSwitcherModal extends React.Component<{}, {}> {
         } else {
             return Math.min(currentIndex + 1, this.sOptions.length - 1);
         }
+    }
+
+    @boundMethod
+    handleMouseEnter(index) {
+        if (!this.isKeyboardNav) {
+            this.setFocusedIndex(index);
+        }
+    }
+
+    @boundMethod
+    handleMouseMove() {
+        this.isKeyboardNav = false;
     }
 
     @boundMethod
@@ -1616,17 +1632,14 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     handleSearch(val: string): void {
         let sOptions: SwitcherDataType[];
         if (val == "") {
-            sOptions = this.sortOptions(this.options).slice(0, MaxOptionsToDisplay);
+            sOptions = this.sortOptions(this.options).slice(0, 10);
         } else {
             sOptions = this.filterOptions(val);
             sOptions = this.sortOptions(sOptions);
-            if (sOptions.length > MaxOptionsToDisplay) {
-                sOptions = sOptions.slice(0, MaxOptionsToDisplay);
-            }
         }
+
         mobx.action(() => {
             this.sOptions.replace(sOptions);
-            this.focusedIdx.set(0);
         })();
     }
 
@@ -1699,23 +1712,26 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    renderOption(option: SwitcherDataType, index: number): JSX.Element {
+    renderOption(option: SwitcherDataType, index: number): React.ReactNode {
         if (!this.optionRefs[index]) {
             this.optionRefs[index] = React.createRef();
         }
+
         return (
             <div
-                key={option.sessionId + "/" + option.screenId}
+                key={index}
                 ref={this.optionRefs[index]}
                 className={cn("search-option unselectable", {
                     "focused-option": this.focusedIdx.get() === index,
                 })}
                 onClick={() => this.handleSelect(index)}
+                onMouseEnter={() => this.handleMouseEnter(index)}
+                onMouseMove={() => this.handleMouseMove()}
             >
-                <div className={cn("icon", "color-" + option.color)}>{this.renderIcon(option)}</div>
-                <div className="tabname">
+                <span className={cn("icon", "color-" + option.color)}>{this.renderIcon(option)}</span>
+                <span>
                     #{option.sessionName} / {option.screenName}
-                </div>
+                </span>
             </div>
         );
     }
@@ -1754,7 +1770,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
                         <div ref={this.listWrapperRef} className="list-container-inner">
                             <div className="options-list">
                                 <For each="option" index="index" of={this.sOptions}>
-                                    {this.renderOption(option, index)}
+                                    <React.Fragment>{this.renderOption(option, index)}</React.Fragment>
                                 </For>
                             </div>
                         </div>

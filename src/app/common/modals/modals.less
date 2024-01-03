@@ -17,24 +17,43 @@
 }
 
 .disconnected-modal {
-    .modal-content {
-        footer {
-            .footer-text-link {
-                color: @term-white;
-                cursor: pointer;
+    .wave-modal-content {
+        .wave-modal-body {
+            padding: 0;
+
+            .modal-content {
+                footer {
+                    .footer-text-link {
+                        color: @term-white;
+                        cursor: pointer;
+                    }
+                }
+            }
+
+            .inner-content {
+                pre {
+                    color: @term-white;
+                    background-color: @term-black;
+                    height: 335px;
+
+                    &::-webkit-scrollbar-track,
+                    &::-webkit-scrollbar-thumb,
+                    &::-webkit-scrollbar-corner {
+                        display: none;
+                    }
+
+                    &:hover::-webkit-scrollbar-thumb {
+                        display: block;
+                    }
+                }
             }
         }
-    }
 
-    .inner-content {
-        .ws-log {
-            padding: 5px;
-            background-color: @term-black;
-            height: 250px;
-            overflow: auto;
+        .wave-modal-footer {
+            margin-top: 20px;
 
-            .ws-logline {
-                color: @term-white;
+            button:first-child {
+                color: @term-green;
             }
         }
     }
