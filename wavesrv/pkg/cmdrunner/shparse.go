@@ -198,6 +198,13 @@ var literalRtnStateCommands = []string{
 	"nvm",
 	"virtualenv",
 	"builtin",
+	"typeset",
+	"declare",
+	"float",
+	"functions",
+	"integer",
+	"local",
+	"readonly",
 }
 
 func getCallExprLitArg(callExpr *syntax.CallExpr, argNum int) string {

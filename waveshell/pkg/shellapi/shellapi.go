@@ -19,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alessio/shellescape"
 	"github.com/creack/pty"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
@@ -162,4 +163,24 @@ func RunSimpleCmdInPty(ecmd *exec.Cmd) ([]byte, error) {
 	}
 	<-ioDone
 	return outputBuf.Bytes(), nil
+}
+
+func parsePVarOutput(pvarBytes []byte, isZsh bool) map[string]*DeclareDeclType {
+	declMap := make(map[string]*DeclareDeclType)
+	pvars := bytes.Split(pvarBytes, []byte{0})
+	for _, pvarBA := range pvars {
+		pvarStr := string(pvarBA)
+		pvarFields := strings.SplitN(pvarStr, " ", 2)
+		if len(pvarFields) != 2 {
+			continue
+		}
+		if pvarFields[0] == "" {
+			continue
+		}
+		decl := &DeclareDeclType{IsZshDecl: isZsh, Args: "x"}
+		decl.Name = "PROMPTVAR_" + pvarFields[0]
+		decl.Value = shellescape.Quote(pvarFields[1])
+		declMap[decl.Name] = decl
+	}
+	return declMap
 }

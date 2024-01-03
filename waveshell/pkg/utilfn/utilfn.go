@@ -451,3 +451,18 @@ func NullDecodeStr(barr []byte) (string, error) {
 	}
 	return string(rtn), nil
 }
+
+func SortStringRunes(s string) string {
+	runes := []rune(s)
+	sort.Slice(runes, func(i, j int) bool {
+		return runes[i] < runes[j]
+	})
+	return string(runes)
+}
+
+// will overwrite m1 with m2's values
+func CombineMaps[V any](m1 map[string]V, m2 map[string]V) {
+	for key, val := range m2 {
+		m1[key] = val
+	}
+}

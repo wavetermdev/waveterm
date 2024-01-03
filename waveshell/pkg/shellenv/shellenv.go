@@ -63,6 +63,40 @@ func (d *DeclareDeclType) AddFlag(flag string) {
 	d.Args += flag
 }
 
+func (d *DeclareDeclType) SortZshFlags() {
+	// x is always first (or g)
+	// T is always last
+	// the 'i' flags are tricky (they shouldn't be sorted, because the order matters, e.g. i10)
+	var hasX, hasG, hasT bool
+	var newArgs []rune
+	for _, r := range d.Args {
+		if r == 'x' {
+			hasX = true
+			continue
+		}
+		if r == 'g' {
+			hasG = true
+			continue
+		}
+		if r == 'T' {
+			hasT = true
+			continue
+		}
+		newArgs = append(newArgs, r)
+	}
+	newArgsStr := string(newArgs)
+	if hasG {
+		newArgsStr = "g" + newArgsStr
+	}
+	if hasX {
+		newArgsStr = "x" + newArgsStr
+	}
+	if hasT {
+		newArgsStr += "T"
+	}
+	d.Args = newArgsStr
+}
+
 func (d *DeclareDeclType) DataType() string {
 	if strings.Index(d.Args, "a") >= 0 {
 		return DeclTypeArray
@@ -88,6 +122,7 @@ func FindVarDecl(decls []*DeclareDeclType, name string) *DeclareDeclType {
 // NOTE Serialize no longer writes the final null byte
 func (d *DeclareDeclType) Serialize() []byte {
 	if d.IsZshDecl {
+		d.SortZshFlags()
 		parts := []string{
 			"z1",
 			d.Args,

@@ -12,9 +12,11 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/alessio/shellescape"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 )
 
 const BaseZshOpts = ``
@@ -22,15 +24,25 @@ const BaseZshOpts = ``
 const ZshShellVersionCmdStr = `echo zsh v$ZSH_VERSION`
 
 var ZshIgnoreVars = map[string]bool{
-	"_":        true,
-	"0":        true,
-	"terminfo": true,
-	"RANDOM":   true,
-	"COLUMNS":  true,
-	"LINES":    true,
-	"argv":     true,
-	"SECONDS":  true,
-	"PWD":      true,
+	"_":                    true,
+	"0":                    true,
+	"terminfo":             true,
+	"RANDOM":               true,
+	"COLUMNS":              true,
+	"LINES":                true,
+	"argv":                 true,
+	"SECONDS":              true,
+	"PWD":                  true,
+	"HISTCHARS":            true,
+	"HISTFILE":             true,
+	"HISTSIZE":             true,
+	"SAVEHIST":             true,
+	"ZSH_EXECUTION_STRING": true,
+}
+
+var ZshUnsetVars = []string{
+	"HISTFILE",
+	"ZSH_EXECUTION_STRING",
 }
 
 // do not use these directly, call GetLocalMajorVersion()
@@ -128,7 +140,9 @@ func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 		rcBuf.WriteString("unset ZDOTDIR\n")
 		rcBuf.WriteString("\n")
 	}
-
+	for _, varName := range ZshUnsetVars {
+		rcBuf.WriteString("unset " + shellescape.Quote(varName) + "\n")
+	}
 	return rcBuf.String()
 }
 
@@ -188,7 +202,7 @@ func GetLocalZshMajorVersion() string {
 }
 
 func parseZshShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
-	// 5 fields: version, cwd, env, vars, gitbrach
+	// 5 fields: version [0], cwd [1], env [2], vars [3], pvars [4]
 	fields := bytes.Split(outputBytes, []byte{0, 0})
 	if len(fields) != 5 {
 		return nil, fmt.Errorf("invalid zsh shell state output, wrong number of fields, fields=%d", len(fields))
@@ -215,6 +229,8 @@ func parseZshShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
 			decl.ZshEnvValue = zshEnv[decl.ZshBoundScalar]
 		}
 	}
+	pvarMap := parsePVarOutput(fields[4], true)
+	utilfn.CombineMaps(zshDecls, pvarMap)
 	rtn.ShellVars = shellenv.SerializeDeclMap(zshDecls)
 	return rtn, nil
 }

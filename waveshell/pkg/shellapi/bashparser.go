@@ -14,6 +14,7 @@ import (
 	"github.com/alessio/shellescape"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 	"mvdan.cc/sh/v3/expand"
 	"mvdan.cc/sh/v3/syntax"
 )
@@ -203,21 +204,8 @@ func bashParseDeclareOutput(state *packet.ShellState, declareBytes []byte, pvarB
 			declMap[decl.Name] = decl
 		}
 	}
-	pvars := bytes.Split(pvarBytes, []byte{0})
-	for _, pvarBA := range pvars {
-		pvarStr := string(pvarBA)
-		pvarFields := strings.SplitN(pvarStr, " ", 2)
-		if len(pvarFields) != 2 {
-			continue
-		}
-		if pvarFields[0] == "" {
-			continue
-		}
-		decl := &DeclareDeclType{Args: "x"}
-		decl.Name = "PROMPTVAR_" + pvarFields[0]
-		decl.Value = shellescape.Quote(pvarFields[1])
-		declMap[decl.Name] = decl
-	}
+	pvarMap := parsePVarOutput(pvarBytes, false)
+	utilfn.CombineMaps(declMap, pvarMap)
 	state.ShellVars = shellenv.SerializeDeclMap(declMap) // this writes out the decls in a canonical order
 	if firstParseErr != nil {
 		state.Error = firstParseErr.Error()
@@ -226,7 +214,7 @@ func bashParseDeclareOutput(state *packet.ShellState, declareBytes []byte, pvarB
 }
 
 func parseBashShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
-	// 6 fields: version, cwd, env/vars, aliases, funcs, gitbranch
+	// 6 fields: version [0], cwd [1], env/vars [2], aliases [3], funcs [4], pvars [5]
 	fields := bytes.Split(outputBytes, []byte{0, 0})
 	if len(fields) != 6 {
 		return nil, fmt.Errorf("invalid bash shell state output, wrong number of fields, fields=%d", len(fields))
