@@ -498,13 +498,16 @@ electron.ipcMain.on("get-last-logs", async (event, numberOfLines) => {
 
 function readLastLinesOfFile(filePath, lineCount) {
     return new Promise((resolve, reject) => {
-        fs.readFile(filePath, "utf8", (err, data) => {
+        child_process.exec(`tail -n ${lineCount} "${filePath}"`, (err, stdout, stderr) => {
             if (err) {
-                reject(err);
+                reject(err.message);
                 return;
             }
-            let lines = data.trim().split("\n");
-            resolve(lines.slice(-lineCount).join("\n"));
+            if (stderr) {
+                reject(stderr);
+                return;
+            }
+            resolve(stdout);
         });
     });
 }
