@@ -74,8 +74,6 @@ class App extends React.Component<{}, {}> {
         let dcWait = this.dcWait.get();
         let platform = GlobalModel.getPlatform();
 
-        return <DisconnectedModal />;
-
         if (disconnected || hasClientStop) {
             if (!dcWait) {
                 setTimeout(() => this.updateDcWait(true), 1500);
