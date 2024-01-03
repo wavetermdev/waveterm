@@ -22,4 +22,8 @@ func TestParseZshDecl(t *testing.T) {
 	testSingleDecl(declStr)
 	declStr = `typeset -aT RC rc=(80 25) 'x'`
 	testSingleDecl(declStr)
+	declStr = `typeset -g -A foo=( [bar]=baz [quux]=quuux )`
+	testSingleDecl(declStr)
+	declStr = `typeset -x -g -aT FOO foo=( 1 2 3 )`
+	testSingleDecl(declStr)
 }

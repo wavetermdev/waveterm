@@ -30,6 +30,7 @@ var ZshIgnoreVars = map[string]bool{
 	"LINES":    true,
 	"argv":     true,
 	"SECONDS":  true,
+	"PWD":      true,
 }
 
 // do not use these directly, call GetLocalMajorVersion()
@@ -123,6 +124,11 @@ func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 		rcBuf.WriteString(makeZshTypesetStmt(varDecl))
 		rcBuf.WriteString("\n")
 	}
+	if shellenv.FindVarDecl(varDecls, "ZDOTDIR") == nil {
+		rcBuf.WriteString("unset ZDOTDIR\n")
+		rcBuf.WriteString("\n")
+	}
+
 	return rcBuf.String()
 }
 
@@ -264,45 +270,45 @@ func parseZshDeclAssignment(declStr string, decl *DeclareDeclType) error {
 	return parseStandardZshAssignment(declStr, decl)
 }
 
+// returns (newDeclStr, argsStr, err)
+func parseZshDeclArgs(declStr string, isExport bool) (string, string, error) {
+	origDeclStr := declStr
+	var argsStr string
+	if isExport {
+		argsStr = "x"
+	}
+	declStr = strings.TrimLeft(declStr, " ")
+	for strings.HasPrefix(declStr, "-") {
+		spaceIdx := strings.Index(declStr, " ")
+		if spaceIdx == -1 {
+			return "", "", fmt.Errorf("invalid zsh export line: %q", origDeclStr)
+		}
+		newArgsStr := strings.TrimSpace(declStr[1:spaceIdx])
+		argsStr = argsStr + newArgsStr
+		declStr = declStr[spaceIdx+1:]
+		declStr = strings.TrimLeft(declStr, " ")
+	}
+	return declStr, argsStr, nil
+}
+
 func parseZshDeclLine(line string) (*DeclareDeclType, error) {
 	if strings.HasSuffix(line, "\r") {
 		line = line[0 : len(line)-1]
 	}
 	if strings.HasPrefix(line, "export ") {
 		exportLine := line[7:]
-		var exportArgs string
-		if strings.HasPrefix(exportLine, "-") {
-			spaceIdx := strings.Index(exportLine, " ")
-			if spaceIdx == -1 {
-				return nil, fmt.Errorf("invalid zsh export line: %q", line)
-			}
-			exportArgs = strings.TrimSpace(exportLine[1:spaceIdx])
-			exportLine = exportLine[spaceIdx+1:]
-			if strings.Index(exportArgs, "x") == -1 {
-				exportArgs = "x" + exportArgs
-			}
-		} else {
-			exportArgs = "x"
-		}
+		assignLine, exportArgs, err := parseZshDeclArgs(exportLine, true)
 		rtn := &DeclareDeclType{IsZshDecl: true, Args: exportArgs}
-		err := parseZshDeclAssignment(exportLine, rtn)
+		err = parseZshDeclAssignment(assignLine, rtn)
 		if err != nil {
 			return nil, err
 		}
 		return rtn, nil
 	} else if strings.HasPrefix(line, "typeset ") {
 		typesetLine := line[8:]
-		var typesetArgs string
-		if strings.HasPrefix(typesetLine, "-") {
-			spaceIdx := strings.Index(typesetLine, " ")
-			if spaceIdx == -1 {
-				return nil, fmt.Errorf("invalid zsh typeset line: %q", line)
-			}
-			typesetArgs = strings.TrimSpace(typesetLine[1:spaceIdx])
-			typesetLine = typesetLine[spaceIdx+1:]
-		}
+		assignLine, typesetArgs, err := parseZshDeclArgs(typesetLine, false)
 		rtn := &DeclareDeclType{IsZshDecl: true, Args: typesetArgs}
-		err := parseZshDeclAssignment(typesetLine, rtn)
+		err = parseZshDeclAssignment(assignLine, rtn)
 		if err != nil {
 			return nil, err
 		}

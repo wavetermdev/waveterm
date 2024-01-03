@@ -76,6 +76,15 @@ func (d *DeclareDeclType) DataType() string {
 	return DeclTypeNormal
 }
 
+func FindVarDecl(decls []*DeclareDeclType, name string) *DeclareDeclType {
+	for _, decl := range decls {
+		if decl.Name == name {
+			return decl
+		}
+	}
+	return nil
+}
+
 // NOTE Serialize no longer writes the final null byte
 func (d *DeclareDeclType) Serialize() []byte {
 	if d.IsZshDecl {
