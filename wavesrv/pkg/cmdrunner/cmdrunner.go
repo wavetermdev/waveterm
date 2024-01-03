@@ -2018,13 +2018,11 @@ func updateAsstResponseAndWriteToUpdateBus(ctx context.Context, cmd *sstore.CmdT
 }
 
 func getCmdInfoEngineeredPrompt(userQuery string, curLineStr string) string {
-	rtn := "You are an expert on the command line terminal. Your task is to help a user write a command."
+	rtn := "You are an expert on the command line terminal. Your task is to help me write a command."
 	if curLineStr != "" {
-		rtn += "The user's current command is: " + curLineStr + ". Their question is: "
-	} else {
-		rtn += "The user's question is: "
+		rtn += "My current command is: " + curLineStr
 	}
-	rtn += userQuery
+	rtn += ". My question is: " + userQuery + "."
 	return rtn
 }
 
@@ -2244,6 +2242,7 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		userQueryPk := &packet.OpenAICmdInfoChatMessage{UserQuery: promptStr, MessageID: sstore.ScreenMemGetCmdInfoMessageCount(cmd.ScreenId)}
 		writePacketToUpdateBus(ctx, cmd, userQueryPk)
 		engineeredQuery := getCmdInfoEngineeredPrompt(promptStr, curLineStr)
+		userQueryPk.UserEngineeredQuery = engineeredQuery
 		prompt[0].Content = engineeredQuery
 		go doOpenAICmdInfoCompletion(cmd, clientData.ClientId, opts, prompt, curLineStr)
 		update := &sstore.ModelUpdate{}

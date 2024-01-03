@@ -858,6 +858,7 @@ type OpenAICmdInfoChatMessage struct {
 	IsAssistantResponse bool                           `json:"isassistantresponse,omitempty"`
 	AssistantResponse   *OpenAICmdInfoPacketOutputType `json:"assistantresponse,omitempty"`
 	UserQuery           string                         `json:"userquery,omitempty"`
+	UserEngineeredQuery string                         `json:"userengineeredquery,omitempty"`
 }
 
 type OpenAIPromptMessageType struct {

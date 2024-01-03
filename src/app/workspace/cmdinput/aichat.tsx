@@ -36,7 +36,7 @@ class AIChat extends React.Component<{}, {}> {
         }
         if (this.textAreaRef.current != null) {
             this.textAreaRef.current.focus();
-            inputModel.setCmdInfoChatTextAreaRef(this.textAreaRef);
+            inputModel.setCmdInfoChatTextAreaRef(this.textAreaRef)
         }
         this.requestChatUpdate();
     }       
@@ -164,6 +164,7 @@ class AIChat extends React.Component<{}, {}> {
                     onKeyDown={this.onKeyDown}
                     style={{height: textAreaInnerHeight, maxHeight: textAreaMaxHeight, fontSize: termFontSize }}
                     className={cn("chat-textarea")}
+                    placeholder="Send a Message to ChatGPT..."
                 ></textarea>
             </div>
 

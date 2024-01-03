@@ -1699,7 +1699,7 @@ class InputModel {
     }
     
     setAIChatFocus() {
-        if (this.aiChatTextAreaRef.current != null) {
+        if (this.aiChatTextAreaRef != null && this.aiChatTextAreaRef.current != null) {
             this.aiChatTextAreaRef.current.focus();
         }
     }
