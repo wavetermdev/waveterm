@@ -195,6 +195,7 @@ var literalRtnStateCommands = []string{
 	"deactivate",
 	"eval",
 	"asdf",
+	"sdk",
 	"nvm",
 	"virtualenv",
 	"builtin",
