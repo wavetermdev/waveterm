@@ -855,6 +855,11 @@ func GetCmdByScreenId(ctx context.Context, screenId string, lineId string) (*Cmd
 	})
 }
 
+func UpdateWithClearOpenAICmdInfo(screenId string) (*ModelUpdate, error) {
+	ScreenMemClearCmdInfoChat(screenId)
+	return UpdateWithCurrentOpenAICmdInfoChat(screenId)
+}
+
 func UpdateWithAddNewOpenAICmdInfoPacket(ctx context.Context, screenId string, pk *packet.OpenAICmdInfoChatMessage) (*ModelUpdate, error) {
 	ScreenMemAddCmdInfoChatMessage(screenId, pk)
 	return UpdateWithCurrentOpenAICmdInfoChat(screenId)

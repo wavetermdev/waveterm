@@ -62,10 +62,19 @@ func ScreenMemInitCmdInfoChat(screenId string) {
 		MessageID:           0,
 		IsAssistantResponse: true,
 		AssistantResponse: &packet.OpenAICmdInfoPacketOutputType{
-			Message: "Hello, do you need help with this command?",
+			Message: packet.OpenAICmdInfoChatGreetingMessage,
 		},
 	}
 	ScreenMemStore[screenId].AICmdInfoChat = &OpenAICmdInfoChatStore{MessageCount: 1, Messages: []*packet.OpenAICmdInfoChatMessage{greetingMessagePk}}
+}
+
+func ScreenMemClearCmdInfoChat(screenId string) {
+	MemLock.Lock()
+	defer MemLock.Unlock()
+	if ScreenMemStore[screenId] == nil {
+		ScreenMemStore[screenId] = &ScreenMemState{}
+	}
+	ScreenMemInitCmdInfoChat(screenId)
 }
 
 func ScreenMemAddCmdInfoChatMessage(screenId string, msg *packet.OpenAICmdInfoChatMessage) {

@@ -29,11 +29,14 @@ class AIChat extends React.Component<{}, {}> {
     }
 
     componentDidMount() {
+        let model = GlobalModel;
+        let inputModel = model.inputModel;
         if(this.chatWindowScrollRef != null && this.chatWindowScrollRef.current != null){
             this.chatWindowScrollRef.current.scrollTop = this.chatWindowScrollRef.current.scrollHeight;
         }
         if (this.textAreaRef.current != null) {
             this.textAreaRef.current.focus();
+            inputModel.setCmdInfoChatTextAreaRef(this.textAreaRef);
         }
         this.requestChatUpdate();
     }       
@@ -52,8 +55,7 @@ class AIChat extends React.Component<{}, {}> {
         let model = GlobalModel;
         let inputModel = model.inputModel;
         let curLine = inputModel.getCurLine();
-        let chatCommand = "/chat " + messageStr;
-        let prtn = GlobalModel.submitChatInfoCommand(chatCommand, curLine);
+        let prtn = GlobalModel.submitChatInfoCommand(messageStr, curLine, false);
         prtn.then((rtn) => {
             if(rtn.success) {
                 console.log("submit chat command success");
@@ -90,6 +92,11 @@ class AIChat extends React.Component<{}, {}> {
                 e.stopPropagation();
                 inputModel.closeAIAssistantChat();
             }
+            if(e.code = "KeyL" && e.getModifierState("Control")) {
+                e.preventDefault();
+                e.stopPropagation();
+                inputModel.clearAIAssistantChat()
+            }
 
             // set height of textarea based on number of newlines
             this.textAreaNumLines.set(e.target.value.split(/\n/).length); 
@@ -102,7 +109,7 @@ class AIChat extends React.Component<{}, {}> {
         let senderClassName = chatItem.isassistantresponse ? "chat-msg-assistant" : "chat-msg-user";
         let msgClassName = "chat-msg " + senderClassName;
         let innerHTML: React.JSX.Element = (
-            <p>{chatItem.userquery}</p>
+            <p style={{whiteSpace:'pre-wrap'}}>{chatItem.userquery}</p>
         );
         if(chatItem.isassistantresponse) {
             innerHTML = (

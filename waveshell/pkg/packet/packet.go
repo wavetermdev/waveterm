@@ -70,6 +70,8 @@ const PacketEOFStr = "EOF"
 
 var TypeStrToFactory map[string]reflect.Type
 
+const OpenAICmdInfoChatGreetingMessage = "Hello, may I help you with this command? \n(Press ESC to close and Ctrl+L to clear chat buffer)"
+
 func init() {
 	TypeStrToFactory = make(map[string]reflect.Type)
 	TypeStrToFactory[RunPacketStr] = reflect.TypeOf(RunPacketType{})

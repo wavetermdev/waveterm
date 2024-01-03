@@ -2235,7 +2235,10 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		if promptStr == "" {
 			// this is requesting an update without wanting an openai query
 			update, err := sstore.UpdateWithCurrentOpenAICmdInfoChat(cmd.ScreenId)
-			return update, err
+			if err != nil {
+				return nil, fmt.Errorf("error getting update for CmdInfoChat %v", err)
+			}
+			return update, nil
 		}
 		curLineStr := defaultStr(pk.Kwargs["curline"], "")
 		userQueryPk := &packet.OpenAICmdInfoChatMessage{UserQuery: promptStr, MessageID: sstore.ScreenMemGetCmdInfoMessageCount(cmd.ScreenId)}
@@ -2244,6 +2247,14 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		prompt[0].Content = engineeredQuery
 		go doOpenAICmdInfoCompletion(cmd, clientData.ClientId, opts, prompt, curLineStr)
 		update := &sstore.ModelUpdate{}
+		return update, nil
+	}
+	log.Println("Do we make it here?")
+	if resolveBool(pk.Kwargs["cmdinfoclear"], false) {
+		update, err := sstore.UpdateWithClearOpenAICmdInfo(cmd.ScreenId)
+		if err != nil {
+			return nil, fmt.Errorf("error clearing CmdInfoChat: %v", err)
+		}
 		return update, nil
 	}
 	if promptStr == "" {

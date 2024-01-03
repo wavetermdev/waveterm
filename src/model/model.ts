@@ -1236,6 +1236,7 @@ class InputModel {
     infoShow: OV<boolean> = mobx.observable.box(false);
     aIChatShow: OV<boolean> = mobx.observable.box(false);
     cmdInputHeight: OV<number> = mobx.observable.box(0);
+    aiChatTextAreaRef: React.RefObject<HTMLTextAreaElement>;
     
     AICmdInfoChatItems: mobx.IObservableArray<OpenAICmdInfoChatMessageType> = mobx.observable.array([], {
         name: "aicmdinfo-chat"
@@ -1403,19 +1404,6 @@ class InputModel {
 
     setOpenAICmdInfoChat(chat: OpenAICmdInfoChatMessageType[]): void {
         this.AICmdInfoChatItems.replace(chat);
-    }
-    
-    setAIChatShow(show: boolean): void {
-        if(this.aIChatShow.get() == show) {
-            return
-        }
-        mobx.action(() => {
-            this.aIChatShow.set(show);
-            if(this.hasFocus()) {
-                this.giveFocus();
-            }
-        })
-        
     }
      
     setHistoryShow(show: boolean): void {
@@ -1706,15 +1694,41 @@ class InputModel {
         }
     }
     
+    setCmdInfoChatTextAreaRef(textAreaRef: React.RefObject<HTMLTextAreaElement>) {
+        this.aiChatTextAreaRef = textAreaRef;
+    }
+    
+    setAIChatFocus() {
+        if (this.aiChatTextAreaRef.current != null) {
+            this.aiChatTextAreaRef.current.focus();
+        }
+    }
+    
     openAIAssistantChat(): void {
         console.log("Opening AI Assistant chat");
         this.aIChatShow.set(true);
+        this.setAIChatFocus();
     }
 
     closeAIAssistantChat(): void {
         console.log("Opening AI Assistant chat");
         this.aIChatShow.set(false);
         this.giveFocus();
+    }
+    
+    clearAIAssistantChat(): void { 
+        console.log("AI Assistant test");
+        let prtn = GlobalModel.submitChatInfoCommand("", "", true);
+        prtn.then((rtn) => {
+            if(rtn.success) {
+                console.log("Clear AI Assistant chat submit chat command success");
+            } else {
+                console.log("submit chat command error: " + rtn.error);
+            }
+        })
+        .catch((error) => {
+            console.log("submit chat command error: ", error);
+        });
     }
 
 
@@ -1777,6 +1791,7 @@ class InputModel {
                 return;
             }
             this.resetInput();
+            this.clearAIAssistantChat();
             GlobalModel.submitRawCommand(commandStr, true, true);
         })();
     }
@@ -1813,6 +1828,7 @@ class InputModel {
     resetInput(): void {
         mobx.action(() => {
             this.setHistoryShow(false);
+            this.closeAIAssistantChat();
             this.infoShow.set(false);
             this.inputMode.set(null);
             this.resetHistory();
@@ -4107,19 +4123,24 @@ class Model {
         return this.submitCommandPacket(pk, interactive);
     }
 
-    submitChatInfoCommand(chatMsg: string, curLineStr: string): Promise<CommandRtnType> {
+    submitChatInfoCommand(chatMsg: string, curLineStr: string, clear: boolean): Promise<CommandRtnType> {
+        let commandStr = "/chat " + chatMsg;
         let interactive = false;
         let pk: FeCmdPacketType = {
             type: "fecmd",
             metacmd: "eval",
-            args: [chatMsg],
+            args: [commandStr],
             kwargs: {},
             uicontext: this.getUIContext(),
             interactive: interactive,
             rawstr: chatMsg,
         };
         pk.kwargs["nohist"] = "1";
-        pk.kwargs["cmdinfo"] = "1";
+        if(clear) {
+            pk.kwargs["cmdinfoclear"] = "1";
+        } else {
+            pk.kwargs["cmdinfo"] = "1";
+        }
         pk.kwargs["curline"] = curLineStr;
         return this.submitCommandPacket(pk, interactive);
 
