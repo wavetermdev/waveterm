@@ -47,6 +47,7 @@ type OArr<V> = mobx.IObservableArray<V>;
 
 const RemotePtyRows = 9;
 const RemotePtyCols = 80;
+const NumOfLines = 50;
 const PasswordUnchangedSentinel = "--unchanged--";
 
 @mobxReact.observer
@@ -104,7 +105,7 @@ class DisconnectedModal extends React.Component<{}, {}> {
 
     fetchLogs() {
         GlobalModel.getLastLogs(
-            25,
+            NumOfLines,
             mobx.action((logs) => {
                 this.logs.set(logs);
                 if (this.logRef.current != null) {
