@@ -9,6 +9,8 @@ import { boundMethod } from "autobind-decorator";
 import { debounce } from "throttle-debounce";
 import {
     handleJsonFetchResponse,
+    base64ToString,
+    stringToBase64,
     base64ToArray,
     genMergeData,
     genMergeDataMap,
@@ -335,7 +337,7 @@ class Cmd {
             type: "feinput",
             ck: this.screenId + "/" + this.lineId,
             remote: this.remote,
-            inputdata64: btoa(data),
+            inputdata64: stringToBase64(data),
         };
         GlobalModel.sendInputPacket(inputPacket);
     }
@@ -2865,7 +2867,7 @@ class RemotesModalModel {
         let inputPacket: RemoteInputPacketType = {
             type: "remoteinput",
             remoteid: remoteId,
-            inputdata64: btoa(event.key),
+            inputdata64: stringToBase64(event.key),
         };
         GlobalModel.sendInputPacket(inputPacket);
     }
@@ -3044,7 +3046,7 @@ class RemotesModel {
         let inputPacket: RemoteInputPacketType = {
             type: "remoteinput",
             remoteid: remoteId,
-            inputdata64: btoa(event.key),
+            inputdata64: stringToBase64(event.key),
         };
         GlobalModel.sendInputPacket(inputPacket);
     }
@@ -4196,7 +4198,7 @@ class Model {
                     return resp.text() as any;
                 }
                 contentType = resp.headers.get("Content-Type");
-                fileInfo = JSON.parse(atob(resp.headers.get("X-FileInfo")));
+                fileInfo = JSON.parse(base64ToString(resp.headers.get("X-FileInfo")));
                 return resp.blob();
             })
             .then((blobOrText: any) => {

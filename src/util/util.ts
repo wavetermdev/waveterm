@@ -6,6 +6,7 @@ import { sprintf } from "sprintf-js";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import type { RemoteType, CommandRtnType } from "../types/types";
+import base64 from "base64-js";
 
 type OV<V> = mobx.IObservableValue<V>;
 
@@ -68,6 +69,16 @@ function handleJsonFetchResponse(url: URL, resp: any): Promise<any> {
     }
     let rtnData = fetchJsonData(resp, true);
     return rtnData;
+}
+
+function base64ToString(b64: string): string {
+    let stringBytes = base64.toByteArray(b64)
+    return new TextDecoder().decode(stringBytes)
+}
+
+function stringToBase64(input: string): string {
+    let stringBytes = new TextEncoder().encode(input)
+    return base64.fromByteArray(stringBytes)
 }
 
 function base64ToArray(b64: string): Uint8Array {
@@ -225,26 +236,6 @@ function genMergeDataMap<ObjType extends IObjType<DataType>, DataType extends ID
             continue;
         }
         obj.mergeData(dataItem);
-    }
-    return rtn;
-}
-
-function parseEnv0(envStr64: string): Map<string, string> {
-    let envStr = atob(envStr64);
-    let parts = envStr.split("\x00");
-    let rtn: Map<string, string> = new Map();
-    for (let i = 0; i < parts.length; i++) {
-        let part = parts[i];
-        if (part == "") {
-            continue;
-        }
-        let eqIdx = part.indexOf("=");
-        if (eqIdx == -1) {
-            continue;
-        }
-        let varName = part.substr(0, eqIdx);
-        let varVal = part.substr(eqIdx + 1);
-        rtn.set(varName, varVal);
     }
     return rtn;
 }
@@ -414,11 +405,12 @@ function getRemoteName(remote: RemoteType): string {
 
 export {
     handleJsonFetchResponse,
+    base64ToString,
+    stringToBase64,
     base64ToArray,
     genMergeData,
     genMergeDataMap,
     genMergeSimpleData,
-    parseEnv0,
     boundInt,
     isModKeyPress,
     incObs,
