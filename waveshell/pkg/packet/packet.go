@@ -927,14 +927,6 @@ func ParseJsonPacket(jsonBuf []byte) (PacketType, error) {
 	return pk, nil
 }
 
-func sanitizeBytes(buf []byte) {
-	for idx, b := range buf {
-		if b >= 127 || (b < 32 && b != 10 && b != 13) {
-			buf[idx] = '?'
-		}
-	}
-}
-
 type SendError struct {
 	IsWriteError   bool // fatal
 	IsMarshalError bool // not fatal
@@ -970,7 +962,6 @@ func MarshalPacket(packet PacketType) ([]byte, error) {
 	outBuf.Write(jsonBytes)
 	outBuf.WriteByte('\n')
 	outBytes := outBuf.Bytes()
-	sanitizeBytes(outBytes)
 	return outBytes, nil
 }
 
