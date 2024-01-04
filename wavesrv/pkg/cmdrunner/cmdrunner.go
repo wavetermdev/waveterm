@@ -2193,6 +2193,20 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, clientId string, opts *sstore
 	return
 }
 
+func BuildOpenAIPromptArrayWithContext(messages []*packet.OpenAICmdInfoChatMessage) []packet.OpenAIPromptMessageType {
+	rtn := make([]packet.OpenAIPromptMessageType, 0)
+	for _, msg := range messages {
+		content := msg.UserEngineeredQuery
+		msgRole := sstore.OpenAIRoleUser
+		if msg.IsAssistantResponse {
+			msgRole = sstore.OpenAIRoleAssistant
+			content = msg.AssistantResponse.Message
+		}
+		rtn = append(rtn, packet.OpenAIPromptMessageType{Role: msgRole, Content: content})
+	}
+	return rtn
+}
+
 func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
 	if err != nil {
@@ -2228,7 +2242,6 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	if err != nil {
 		return nil, fmt.Errorf("openai error, cannot make dyn cmd")
 	}
-	prompt := []packet.OpenAIPromptMessageType{{Role: sstore.OpenAIRoleUser, Content: promptStr}}
 	if resolveBool(pk.Kwargs["cmdinfo"], false) {
 		if promptStr == "" {
 			// this is requesting an update without wanting an openai query
@@ -2240,15 +2253,15 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		}
 		curLineStr := defaultStr(pk.Kwargs["curline"], "")
 		userQueryPk := &packet.OpenAICmdInfoChatMessage{UserQuery: promptStr, MessageID: sstore.ScreenMemGetCmdInfoMessageCount(cmd.ScreenId)}
-		writePacketToUpdateBus(ctx, cmd, userQueryPk)
 		engineeredQuery := getCmdInfoEngineeredPrompt(promptStr, curLineStr)
 		userQueryPk.UserEngineeredQuery = engineeredQuery
-		prompt[0].Content = engineeredQuery
+		writePacketToUpdateBus(ctx, cmd, userQueryPk)
+		prompt := BuildOpenAIPromptArrayWithContext(sstore.ScreenMemGetCmdInfoChat(cmd.ScreenId).Messages)
 		go doOpenAICmdInfoCompletion(cmd, clientData.ClientId, opts, prompt, curLineStr)
 		update := &sstore.ModelUpdate{}
 		return update, nil
 	}
-	log.Println("Do we make it here?")
+	prompt := []packet.OpenAIPromptMessageType{{Role: sstore.OpenAIRoleUser, Content: promptStr}}
 	if resolveBool(pk.Kwargs["cmdinfoclear"], false) {
 		update, err := sstore.UpdateWithClearOpenAICmdInfo(cmd.ScreenId)
 		if err != nil {
