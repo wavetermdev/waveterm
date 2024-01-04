@@ -2197,6 +2197,9 @@ func BuildOpenAIPromptArrayWithContext(messages []*packet.OpenAICmdInfoChatMessa
 	rtn := make([]packet.OpenAIPromptMessageType, 0)
 	for _, msg := range messages {
 		content := msg.UserEngineeredQuery
+		if msg.UserEngineeredQuery == "" {
+			content = msg.UserQuery
+		}
 		msgRole := sstore.OpenAIRoleUser
 		if msg.IsAssistantResponse {
 			msgRole = sstore.OpenAIRoleAssistant
