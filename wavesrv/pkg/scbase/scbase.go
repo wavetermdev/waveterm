@@ -377,3 +377,30 @@ func MacOSRelease() string {
 	})
 	return osRelease
 }
+
+var osLangOnce = &sync.Once{}
+var osLang string
+
+func determineLang() string {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
+	if runtime.GOOS == "darwin" {
+		out, err := exec.CommandContext(ctx, "defaults", "read", "-g", "AppleLocale").CombinedOutput()
+		if err != nil {
+			log.Printf("error executing 'defaults read -g AppleLocale': %v\n", err)
+			return ""
+		}
+		return strings.TrimSpace(string(out)) + ".UTF-8"
+	} else {
+		// this is specifically to get the wavesrv LANG so waveshell
+		// on a remote uses the same LANG
+		return os.Getenv("LANG")
+	}
+}
+
+func DetermineLang() string {
+	osLangOnce.Do(func() {
+		osLang = determineLang()
+	})
+	return osLang
+}
