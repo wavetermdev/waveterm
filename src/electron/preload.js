@@ -6,6 +6,10 @@ contextBridge.exposeInMainWorld("api", {
     getIsDev: () => ipcRenderer.sendSync("get-isdev"),
     getAuthKey: () => ipcRenderer.sendSync("get-authkey"),
     getWaveSrvStatus: () => ipcRenderer.sendSync("wavesrv-status"),
+    getLastLogs: (numberOfLines, callback) => {
+        ipcRenderer.send("get-last-logs", numberOfLines);
+        ipcRenderer.once("last-logs", (event, data) => callback(data));
+    },
     restartWaveSrv: () => ipcRenderer.sendSync("restart-server"),
     reloadWindow: () => ipcRenderer.sendSync("reload-window"),
     onTCmd: (callback) => ipcRenderer.on("t-cmd", callback),
