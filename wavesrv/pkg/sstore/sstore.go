@@ -270,6 +270,7 @@ type ClientOptsType struct {
 	NoTelemetry    bool  `json:"notelemetry,omitempty"`
 	NoReleaseCheck bool  `json:"noreleasecheck,omitempty"`
 	AcceptedTos    int64 `json:"acceptedtos,omitempty"`
+	ConfirmFlags map[string]bool `json:"confirmflags,omitempty"`
 }
 
 type FeOptsType struct {

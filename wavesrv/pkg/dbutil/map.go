@@ -5,6 +5,7 @@ package dbutil
 
 import (
 	"fmt"
+	"log"
 	"reflect"
 	"strings"
 
@@ -65,6 +66,9 @@ func GetMappable[PT DBMappablePtr[T], T any](tx *txwrap.TxWrap, query string, ar
 	if len(m) == 0 {
 		return nil
 	}
+
+	log.Printf("Raw data from DB: %+v\n", m)
+
 	rtn := PT(new(T))
 	FromDBMap(rtn, m)
 	return rtn
@@ -208,6 +212,7 @@ func FromDBMap(v DBMappable, m map[string]interface{}) {
 		if dbName == "" {
 			dbName = strings.ToLower(field.Name)
 		}
+		log.Printf("Processing field: %s, DB Name: %s, Value: %+v\n", field.Name, dbName, m[dbName])
 		if dbName == "-" {
 			continue
 		}

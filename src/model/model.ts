@@ -3738,6 +3738,7 @@ class Model {
             this.bookmarksModel.mergeBookmarks(update.bookmarks);
         }
         if ("clientdata" in update) {
+            console.log("update", update);
             this.clientData.set(update.clientdata);
         }
         if (interactive && "info" in update) {
@@ -3984,6 +3985,11 @@ class Model {
             uicontext: this.getUIContext(),
             interactive: interactive,
         };
+        console.log("metaCmd", metaSubCmd);
+        console.log("metaSubCmd", metaSubCmd);
+        console.log("args", args);
+        console.log("kwargs", kwargs);
+        console.log("interactive", interactive);
         /** 
         console.log(
             "CMD",
@@ -4581,6 +4587,12 @@ class CommandRunner {
 
     clientAcceptTos(): void {
         GlobalModel.submitCommand("client", "accepttos", null, { nohist: "1" }, true);
+    }
+
+    clientSetConfirmFlag(flag: string, value: boolean): Promise<CommandRtnType> {
+        let kwargs = { nohist: "1" };
+        let valueStr = value ? "1" : "0";
+        return GlobalModel.submitCommand("client", "setconfirmflag", [flag, valueStr], kwargs, false);
     }
 
     editBookmark(bookmarkId: string, desc: string, cmdstr: string) {

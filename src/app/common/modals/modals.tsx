@@ -213,8 +213,13 @@ class AlertModal extends React.Component<{}, {}> {
         GlobalModel.confirmAlert();
     }
 
+    handleTest(): void {
+        GlobalCommandRunner.clientSetConfirmFlag("installshell", true);
+    }
+
     render() {
         let message = GlobalModel.alertMessage.get();
+        console.log("message", message);
         let title = message?.title ?? (message?.confirm ? "Confirm" : "Alert");
         let isConfirm = message?.confirm ?? false;
 
@@ -226,6 +231,7 @@ class AlertModal extends React.Component<{}, {}> {
                         <Markdown text={message?.message ?? ""} />
                     </If>
                     <If condition={!message?.markdown}>{message?.message}</If>
+                    <Button onClick={this.handleTest}>Test</Button>
                 </div>
                 <div className="wave-modal-footer">
                     <If condition={isConfirm}>
@@ -821,6 +827,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
             return;
         }
         this.model.createTermWrap(elem);
+        GlobalModel.getClientData();
     }
 
     componentDidUpdate() {
@@ -895,6 +902,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
         let prtn = GlobalModel.showAlert({
             message: "Are you sure you want to delete this connection?",
             confirm: true,
+            installShell: true,
         });
         prtn.then((confirm) => {
             if (!confirm) {
@@ -1086,6 +1094,8 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
         let termFontSize = GlobalModel.termFontSize.get();
         let termWidth = textmeasure.termWidthFromCols(RemotePtyCols, termFontSize);
         let remoteAliasText = util.isBlank(remote.remotealias) ? "(none)" : remote.remotealias;
+
+        console.log("GlobalModel", GlobalModel.clientData.get().clientopts.confirmflags);
 
         return (
             <Modal className="rconndetail-modal">

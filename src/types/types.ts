@@ -472,10 +472,15 @@ type FeOptsType = {
     termfontsize: number;
 };
 
+type ConfirmFlagsType = {
+    installshell: boolean;
+};
+
 type ClientOptsType = {
     notelemetry: boolean;
     noreleasecheck: boolean;
     acceptedtos: number;
+    confirmflags: ConfirmFlagsType;
 };
 
 type ReleaseInfoType = {
@@ -524,6 +529,7 @@ type AlertMessageType = {
     message: string;
     confirm?: boolean;
     markdown?: boolean;
+    installShell?: boolean;
 };
 
 type HistorySearchParams = {
