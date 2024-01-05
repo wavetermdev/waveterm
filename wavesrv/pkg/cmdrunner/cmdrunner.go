@@ -2050,10 +2050,6 @@ func doOpenAICmdInfoCompletion(cmd *sstore.CmdType, clientId string, opts *sstor
 	} else {
 		ch, err = openai.RunCompletionStream(ctx, opts, prompt)
 	}
-	if err != nil {
-		log.Printf("Run stream error, figure out what to do here")
-		return
-	}
 	asstOutputPk := &packet.OpenAICmdInfoPacketOutputType{
 		Model:        "",
 		Created:      0,
@@ -2062,6 +2058,11 @@ func doOpenAICmdInfoCompletion(cmd *sstore.CmdType, clientId string, opts *sstor
 	}
 	asstOutputMessageID := sstore.ScreenMemGetCmdInfoMessageCount(cmd.ScreenId)
 	asstMessagePk := &packet.OpenAICmdInfoChatMessage{IsAssistantResponse: true, AssistantResponse: asstOutputPk, MessageID: asstOutputMessageID}
+	if err != nil {
+		asstOutputPk.Error = fmt.Sprintf("Error calling OpenAI API: %v", err)
+		writePacketToUpdateBus(ctx, cmd, asstMessagePk)
+		return
+	}
 	writePacketToUpdateBus(ctx, cmd, asstMessagePk)
 	doneWaitingForPackets := false
 	for !doneWaitingForPackets {
@@ -2069,14 +2070,16 @@ func doOpenAICmdInfoCompletion(cmd *sstore.CmdType, clientId string, opts *sstor
 		case <-time.After(OpenAIPacketTimeout):
 			// timeout reading from channel
 			hadError = true
-			log.Printf("We need to figure out what to do about these errors; error in doOpenAICmdInfoCompletion")
 			doneWaitingForPackets = true
+			asstOutputPk.Error = "timeout waiting for server response"
+			updateAsstResponseAndWriteToUpdateBus(ctx, cmd, asstMessagePk, asstOutputMessageID)
 			break
 		case pk, ok := <-ch:
 			if ok {
 				// got a packet
 				if pk.Error != "" {
 					hadError = true
+					asstOutputPk.Error = pk.Error
 				}
 				if pk.Model != "" && pk.Index == 0 {
 					asstOutputPk.Model = pk.Model

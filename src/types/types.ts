@@ -270,6 +270,7 @@ type OpenAIPacketOutputType = {
     created: number;
     finish_reason: string;
     message: string;
+    error?: string;
 }
 
 type OpenAICmdInfoChatMessageType = {

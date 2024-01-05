@@ -895,7 +895,6 @@ class Markdown extends React.Component<{ text: string; style?: any; extraClassNa
     render() {
         let text = this.props.text;
         let codeSelect = this.props.codeSelect;
-        console.log("codeSelect value: ", codeSelect);
         let markdownComponents = {
             a: LinkRenderer,
             h1: (props) => HeaderRenderer(props, 1),

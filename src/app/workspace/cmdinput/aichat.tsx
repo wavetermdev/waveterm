@@ -135,6 +135,13 @@ class AIChat extends React.Component<{}, {}> {
         })()
     }
     
+    renderError(err: string): any {
+        return (
+                <div className="chat-msg-error">{err}</div>
+        );
+
+    }
+    
     renderChatMessage(chatItem: OpenAICmdInfoChatMessageType): any {
         let curKey = "chatmsg-" + (this.chatListKeyCount);
         this.chatListKeyCount++;
@@ -143,10 +150,15 @@ class AIChat extends React.Component<{}, {}> {
         let innerHTML: React.JSX.Element = (
             <p style={{whiteSpace:'pre-wrap'}}>{chatItem.userquery}</p>
         );
+        console.log(chatItem);
         if(chatItem.isassistantresponse) {
-            innerHTML = (
-                <Markdown text={chatItem.assistantresponse.message} codeSelect/> 
-            );
+            if(chatItem.assistantresponse.error != null && chatItem.assistantresponse.error != "") {
+                innerHTML = this.renderError(chatItem.assistantresponse.error);
+            } else {
+                innerHTML = (
+                    <Markdown text={chatItem.assistantresponse.message} codeSelect/> 
+                );
+            }
         }         
 
         return(
