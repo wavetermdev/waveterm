@@ -1681,14 +1681,27 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 		}
 	}
 
-	update := &sstore.ModelUpdate{Remotes: remote.GetAllRemoteRuntimeState()}
-	update.Info = &sstore.InfoMsgType{}
+	var outMsg string
 	if len(updatedRemotes) == 0 {
-		update.Info.InfoMsg = "no connections imported from ssh config."
+		outMsg = "no connections imported from ssh config."
 	} else {
-		update.Info.InfoMsg = fmt.Sprintf("imported %d connection(s) from ssh config file: %s\n", len(updatedRemotes), strings.Join(updatedRemotes, ", "))
+		outMsg = fmt.Sprintf("imported %d connection(s) from ssh config file: %s\n", len(updatedRemotes), strings.Join(updatedRemotes, ", "))
 	}
-	return update, nil
+
+	visualEdit := resolveBool(pk.Kwargs["visual"], false)
+	if visualEdit {
+		update := &sstore.ModelUpdate{}
+		update.AlertMessage = &sstore.AlertMessageType{
+			Title:   "SSH Config Import",
+			Message: outMsg,
+		}
+		return update, nil
+	} else {
+		update := &sstore.ModelUpdate{}
+		update.Info = &sstore.InfoMsgType{}
+		update.Info.InfoMsg = outMsg
+		return update, nil
+	}
 }
 
 func ScreenShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
