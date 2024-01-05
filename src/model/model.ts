@@ -3985,11 +3985,6 @@ class Model {
             uicontext: this.getUIContext(),
             interactive: interactive,
         };
-        console.log("metaCmd", metaSubCmd);
-        console.log("metaSubCmd", metaSubCmd);
-        console.log("args", args);
-        console.log("kwargs", kwargs);
-        console.log("interactive", interactive);
         /** 
         console.log(
             "CMD",
