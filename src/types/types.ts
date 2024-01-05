@@ -473,7 +473,7 @@ type FeOptsType = {
 };
 
 type ConfirmFlagsType = {
-    installshell: boolean;
+    showShellPrompt: boolean;
 };
 
 type ClientOptsType = {
@@ -529,7 +529,7 @@ type AlertMessageType = {
     message: string;
     confirm?: boolean;
     markdown?: boolean;
-    installShell?: boolean;
+    showShellPrompt?: boolean;
 };
 
 type HistorySearchParams = {

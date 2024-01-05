@@ -27,7 +27,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 
@@ -173,7 +172,6 @@ func writeToFifo(fifoName string, data []byte) error {
 
 func HandleGetClientData(w http.ResponseWriter, r *http.Request) {
 	cdata, err := sstore.EnsureClientData(r.Context())
-	spew.Dump("HandleGetClientData", cdata)
 	if err != nil {
 		WriteJsonError(w, err)
 		return

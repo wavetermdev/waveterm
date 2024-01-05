@@ -212,7 +212,6 @@ func FromDBMap(v DBMappable, m map[string]interface{}) {
 		if dbName == "" {
 			dbName = strings.ToLower(field.Name)
 		}
-		log.Printf("Processing field: %s, DB Name: %s, Value: %+v\n", field.Name, dbName, m[dbName])
 		if dbName == "-" {
 			continue
 		}

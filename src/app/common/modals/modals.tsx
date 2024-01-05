@@ -23,6 +23,7 @@ import {
     Tooltip,
     Button,
     Status,
+    Checkbox,
 } from "../common";
 import * as util from "../../../util/util";
 import * as textmeasure from "../../../util/textmeasure";
@@ -213,13 +214,12 @@ class AlertModal extends React.Component<{}, {}> {
         GlobalModel.confirmAlert();
     }
 
-    handleTest(): void {
-        GlobalCommandRunner.clientSetConfirmFlag("installshell", true);
-    }
+    handleShowShellPrompt = (checked: boolean) => {
+        GlobalCommandRunner.clientSetConfirmFlag("showShellPrompt", !checked);
+    };
 
     render() {
         let message = GlobalModel.alertMessage.get();
-        console.log("message", message);
         let title = message?.title ?? (message?.confirm ? "Confirm" : "Alert");
         let isConfirm = message?.confirm ?? false;
 
@@ -231,7 +231,13 @@ class AlertModal extends React.Component<{}, {}> {
                         <Markdown text={message?.message ?? ""} />
                     </If>
                     <If condition={!message?.markdown}>{message?.message}</If>
-                    <Button onClick={this.handleTest}>Test</Button>
+                    <If condition={message.showShellPrompt}>
+                        <Checkbox
+                            onChange={this.handleShowShellPrompt}
+                            label={"Don't show me this again"}
+                            className="show-shell-prompt"
+                        />
+                    </If>
                 </div>
                 <div className="wave-modal-footer">
                     <If condition={isConfirm}>
@@ -506,6 +512,10 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
         this.errorStr = mobx.observable.box(this.remoteEdit?.errorstr ?? null, { name: "CreateRemote-errorStr" });
     }
 
+    componentDidMount(): void {
+        GlobalModel.getClientData();
+    }
+
     remoteCName(): string {
         let hostName = this.tempHostName.get();
         if (hostName == "") {
@@ -522,6 +532,33 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
             return this.errorStr.get();
         }
         return this.remoteEdit?.errorstr ?? null;
+    }
+
+    @boundMethod
+    handleOk(): void {
+        let cdata = GlobalModel.clientData.get();
+        let { showShellPrompt } = cdata.clientopts.confirmflags;
+        if (showShellPrompt) {
+            this.showShellPrompt(this.submitRemote);
+        } else {
+            this.submitRemote();
+        }
+    }
+
+    @boundMethod
+    showShellPrompt(cb: () => void): void {
+        let prtn = GlobalModel.showAlert({
+            message:
+                "You are about to install WaveShell on a remote machine. Please be aware that WaveShell will be executed on the remote system.",
+            confirm: true,
+            showShellPrompt: true,
+        });
+        prtn.then((confirm) => {
+            if (!confirm) {
+                return;
+            }
+            cb();
+        });
     }
 
     @boundMethod
@@ -798,7 +835,7 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
                         <div className="settings-field settings-error">Error: {this.getErrorStr()}</div>
                     </If>
                 </div>
-                <Modal.Footer onCancel={this.model.closeModal} onOk={this.submitRemote} okLabel="Connect" />
+                <Modal.Footer onCancel={this.model.closeModal} onOk={this.handleOk} okLabel="Connect" />
             </Modal>
         );
     }
@@ -827,7 +864,6 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
             return;
         }
         this.model.createTermWrap(elem);
-        GlobalModel.getClientData();
     }
 
     componentDidUpdate() {
@@ -902,7 +938,6 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
         let prtn = GlobalModel.showAlert({
             message: "Are you sure you want to delete this connection?",
             confirm: true,
-            installShell: true,
         });
         prtn.then((confirm) => {
             if (!confirm) {
@@ -1094,8 +1129,6 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
         let termFontSize = GlobalModel.termFontSize.get();
         let termWidth = textmeasure.termWidthFromCols(RemotePtyCols, termFontSize);
         let remoteAliasText = util.isBlank(remote.remotealias) ? "(none)" : remote.remotealias;
-
-        console.log("GlobalModel", GlobalModel.clientData.get().clientopts.confirmflags);
 
         return (
             <Modal className="rconndetail-modal">
