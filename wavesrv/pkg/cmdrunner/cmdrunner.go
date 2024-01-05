@@ -4021,58 +4021,58 @@ func ClientAcceptTosCommand(ctx context.Context, pk *scpacket.FeCommandPacketTyp
 }
 
 func ClientConfirmFlagCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-    // Check for valid arguments length
-    if len(pk.Args) < 2 {
-        return nil, fmt.Errorf("invalid arguments: expected at least 2, got %d", len(pk.Args))
-    }
+	// Check for valid arguments length
+	if len(pk.Args) < 2 {
+		return nil, fmt.Errorf("invalid arguments: expected at least 2, got %d", len(pk.Args))
+	}
 
-    // Extract key and value from pk.Args
-    key := pk.Args[0]
-    value, err := strconv.ParseBool(pk.Args[1])
-    if err != nil {
-        return nil, fmt.Errorf("error parsing argument value to bool: %v", err)
-    }
+	// Extract key and value from pk.Args
+	key := pk.Args[0]
+	value, err := strconv.ParseBool(pk.Args[1])
+	if err != nil {
+		return nil, fmt.Errorf("error parsing argument value to bool: %v", err)
+	}
 
 	validKey := false
-    for _, v := range ConfirmFlags {
-        if key == v {
-            validKey = true
-            break
-        }
-    }
-    if !validKey {
-        return nil, fmt.Errorf("invalid confirm flag key: %s", key)
-    }
+	for _, v := range ConfirmFlags {
+		if key == v {
+			validKey = true
+			break
+		}
+	}
+	if !validKey {
+		return nil, fmt.Errorf("invalid confirm flag key: %s", key)
+	}
 
-    clientData, err := sstore.EnsureClientData(ctx)
-    if err != nil {
-        return nil, fmt.Errorf("cannot retrieve client data: %v", err)
-    }
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
+	}
 
-    // Initialize ConfirmFlags if it's nil
-    if clientData.ClientOpts.ConfirmFlags == nil {
-        clientData.ClientOpts.ConfirmFlags = make(map[string]bool)
-    }
+	// Initialize ConfirmFlags if it's nil
+	if clientData.ClientOpts.ConfirmFlags == nil {
+		clientData.ClientOpts.ConfirmFlags = make(map[string]bool)
+	}
 
-    // Set the confirm flag
-    clientData.ClientOpts.ConfirmFlags[key] = value
+	// Set the confirm flag
+	clientData.ClientOpts.ConfirmFlags[key] = value
 
-    err = sstore.SetClientOpts(ctx, clientData.ClientOpts)
-    if err != nil {
-        return nil, fmt.Errorf("error updating client data: %v", err)
-    }
+	err = sstore.SetClientOpts(ctx, clientData.ClientOpts)
+	if err != nil {
+		return nil, fmt.Errorf("error updating client data: %v", err)
+	}
 
-    // Retrieve updated client data
-    clientData, err = sstore.EnsureClientData(ctx)
-    if err != nil {
-        return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
-    }
+	// Retrieve updated client data
+	clientData, err = sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
+	}
 
-    update := &sstore.ModelUpdate{
-        ClientData: clientData,
-    }
+	update := &sstore.ModelUpdate{
+		ClientData: clientData,
+	}
 
-    return update, nil
+	return update, nil
 }
 
 func validateOpenAIAPIToken(key string) error {
