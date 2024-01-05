@@ -485,6 +485,33 @@ electron.ipcMain.on("reload-window", (event) => {
     return;
 });
 
+electron.ipcMain.on("get-last-logs", async (event, numberOfLines) => {
+    try {
+        const logPath = path.join(getWaveHomeDir(), "wavesrv.log");
+        const lastLines = await readLastLinesOfFile(logPath, numberOfLines);
+        event.reply("last-logs", lastLines);
+    } catch (err) {
+        console.error("Error reading log file:", err);
+        event.reply("last-logs", "Error reading log file.");
+    }
+});
+
+function readLastLinesOfFile(filePath, lineCount) {
+    return new Promise((resolve, reject) => {
+        child_process.exec(`tail -n ${lineCount} "${filePath}"`, (err, stdout, stderr) => {
+            if (err) {
+                reject(err.message);
+                return;
+            }
+            if (stderr) {
+                reject(stderr);
+                return;
+            }
+            resolve(stdout);
+        });
+    });
+}
+
 function getContextMenu(): any {
     let menu = new electron.Menu();
     let menuItem = new electron.MenuItem({ label: "Testing", click: () => console.log("click testing!") });
