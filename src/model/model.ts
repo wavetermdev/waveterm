@@ -3743,7 +3743,6 @@ class Model {
             this.bookmarksModel.mergeBookmarks(update.bookmarks);
         }
         if ("clientdata" in update) {
-            console.log("update", update);
             this.clientData.set(update.clientdata);
         }
         if (interactive && "info" in update) {
