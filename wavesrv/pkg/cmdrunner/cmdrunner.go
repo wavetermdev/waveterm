@@ -2054,7 +2054,6 @@ func doOpenAICmdInfoCompletion(cmd *sstore.CmdType, clientId string, opts *sstor
 		log.Printf("Run stream error, figure out what to do here")
 		return
 	}
-
 	asstOutputPk := &packet.OpenAICmdInfoPacketOutputType{
 		Model:        "",
 		Created:      0,
@@ -2064,7 +2063,6 @@ func doOpenAICmdInfoCompletion(cmd *sstore.CmdType, clientId string, opts *sstor
 	asstOutputMessageID := sstore.ScreenMemGetCmdInfoMessageCount(cmd.ScreenId)
 	asstMessagePk := &packet.OpenAICmdInfoChatMessage{IsAssistantResponse: true, AssistantResponse: asstOutputPk, MessageID: asstOutputMessageID}
 	writePacketToUpdateBus(ctx, cmd, asstMessagePk)
-
 	doneWaitingForPackets := false
 	for !doneWaitingForPackets {
 		select {

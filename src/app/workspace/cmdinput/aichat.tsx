@@ -67,6 +67,12 @@ class AIChat extends React.Component<{}, {}> {
         });
     }
 
+    getLinePos(elem: any): { numLines: number; linePos: number } {
+        let numLines = elem.value.split("\n").length;
+        let linePos = elem.value.substr(0, elem.selectionStart).split("\n").length;
+        return { numLines, linePos };
+    }
+
     @mobx.action
     @boundMethod
     onKeyDown(e: any) {
@@ -74,14 +80,19 @@ class AIChat extends React.Component<{}, {}> {
             let model = GlobalModel;
             let inputModel = model.inputModel;
             let ctrlMod = e.getModifierState("Control") || e.getModifierState("Meta") || e.getModifierState("Shift");
+            let resetCodeSelect = !ctrlMod;
             
             if (e.code == "Enter") {
                 e.preventDefault();
                 if (!ctrlMod) { 
-                    let messageStr = e.target.value;
-                    console.log("target value?:", messageStr);
-                    this.submitChatMessage(messageStr);
-                    e.target.value = "";
+                    if(inputModel.getCodeSelectSelectedIndex() == -1) {
+                        let messageStr = e.target.value;
+                        console.log("target value?:", messageStr);
+                        this.submitChatMessage(messageStr);
+                        e.target.value = "";
+                    } else {
+                        inputModel.grabCodeSelectSelection(); 
+                    }
                 } else {
                     e.target.setRangeText("\n", e.target.selectionStart, e.target.selectionEnd, "end");
                     console.log("shift enter - target value: ", e.target.value);
@@ -92,10 +103,31 @@ class AIChat extends React.Component<{}, {}> {
                 e.stopPropagation();
                 inputModel.closeAIAssistantChat();
             }
-            if(e.code = "KeyL" && e.getModifierState("Control")) {
+            if(e.code == "KeyL" && e.getModifierState("Control")) {
                 e.preventDefault();
                 e.stopPropagation();
                 inputModel.clearAIAssistantChat()
+            } 
+            if(e.code == "ArrowUp") {
+                if(this.getLinePos(e.target).linePos > 1) {
+                    // normal up arrow
+                    return;
+                }
+                e.preventDefault();
+                inputModel.codeSelectIncrementCodeBlock();
+                resetCodeSelect = false;
+            }
+            if(e.code == "ArrowDown") {
+                if(inputModel.getCodeSelectSelectedIndex() == -1) {
+                    return; 
+                }
+                e.preventDefault();
+                inputModel.codeSelectDecrementCodeBlock();
+                resetCodeSelect = false;
+            }
+            
+            if(resetCodeSelect) {
+                inputModel.codeSelectDeselectAll();
             }
 
             // set height of textarea based on number of newlines
@@ -113,7 +145,7 @@ class AIChat extends React.Component<{}, {}> {
         );
         if(chatItem.isassistantresponse) {
             innerHTML = (
-                <Markdown text={chatItem.assistantresponse.message} /> 
+                <Markdown text={chatItem.assistantresponse.message} codeSelect/> 
             );
         }         
 

@@ -11,6 +11,7 @@ import cn from "classnames";
 import { If } from "tsx-control-statements/components";
 import type { RemoteType } from "../../types/types";
 import ReactDOM from "react-dom";
+import { GlobalModel } from "../../model/model";
 
 import { ReactComponent as CheckIcon } from "../assets/icons/line/check.svg";
 import { ReactComponent as CopyIcon } from "../assets/icons/history/copy.svg";
@@ -823,14 +824,78 @@ function HeaderRenderer(props: any, hnum: number): any {
     return <div className={cn("title", "is-" + hnum)}>{props.children}</div>;
 }
 
-function CodeRenderer(props: any): any {
-    return <code className={cn({ inline: props.inline })}>{props.children}</code>;
-}
-
 @mobxReact.observer
-class Markdown extends React.Component<{ text: string; style?: any; extraClassName?: string }, {}> {
+class Markdown extends React.Component<{ text: string; style?: any; extraClassName?: string; codeSelect?: boolean}, {}> {
+    codeBlockList: Array<React.RefObject<HTMLElement>>    
+    codeSelectMarkdownID: number;
+
+    constructor(props: any) {
+        super(props);  
+        this.codeBlockList = [];
+        if(this.props.codeSelect) {
+            let model = GlobalModel;
+            let inputModel = model.inputModel; 
+            this.codeSelectMarkdownID = inputModel.registerCodeSelectMarkdown();   
+        }
+    }  
+
+   CodeRenderer(props: any, codeSelect: boolean): any { 
+        let codeText = props.children;
+        if(codeText) {
+            codeText = codeText.replace(/\n$/, "") // remove trailing newline        
+        }
+        let blockRef: React.RefObject<HTMLElement> = React.createRef();
+        let clickHandler: (e: React.MouseEvent<HTMLElement>, blockIndex: number) => void;
+        let curBlockIndex: number;
+        if(codeSelect) {
+            let model = GlobalModel;
+            let inputModel = model.inputModel;
+            curBlockIndex = inputModel.addCodeBlockToCodeSelect(blockRef, this.codeSelectMarkdownID);
+            clickHandler = (e: React.MouseEvent<HTMLElement>, blockIndex: number) => {
+                inputModel.setCodeSelectSelectedCodeBlock(blockIndex, this.codeSelectMarkdownID);
+            };
+        } else {
+            clickHandler = (e: React.MouseEvent<HTMLElement>, blockIndex: number) => {
+                navigator.clipboard.writeText(codeText);
+            };
+            curBlockIndex = this.addCodeBlockToList(blockRef);
+        }
+        return (
+            <code className={cn({ inline: props.inline})} ref={blockRef} onClick={(event) => clickHandler(event, curBlockIndex)}>{props.children}</code>
+        )
+    
+    }
+    
+    setSelectedCodeBlock(selectIndex: number) {
+        for(let index = 0; index < this.codeBlockList.length; index++) {
+            let curBlockRef = this.codeBlockList[index];
+            if(curBlockRef != null && curBlockRef.current != null) {
+                if(index == selectIndex) {
+                    curBlockRef.current.style.background = "yellow";
+                } else {
+                    curBlockRef.current.style.background = "";
+                }
+            }
+        }  
+    }
+     
+    getCodeBlockWithIndex(index: number): React.RefObject<HTMLElement> {
+        if(index >= 0 && index < this.codeBlockList.length) {
+            return this.codeBlockList[index];
+        }
+        return null;
+    }
+    
+    addCodeBlockToList(ref: React.RefObject<HTMLElement>): number {
+        let rtn = this.codeBlockList.length;
+        this.codeBlockList.push(ref)  
+        return rtn;
+    }
+
     render() {
         let text = this.props.text;
+        let codeSelect = this.props.codeSelect;
+        console.log("codeSelect value: ", codeSelect);
         let markdownComponents = {
             a: LinkRenderer,
             h1: (props) => HeaderRenderer(props, 1),
@@ -839,7 +904,7 @@ class Markdown extends React.Component<{ text: string; style?: any; extraClassNa
             h4: (props) => HeaderRenderer(props, 4),
             h5: (props) => HeaderRenderer(props, 5),
             h6: (props) => HeaderRenderer(props, 6),
-            code: CodeRenderer,
+            code: (props) => this.CodeRenderer(props, codeSelect),
         };
         return (
             <div className={cn("markdown content", this.props.extraClassName)} style={this.props.style}>

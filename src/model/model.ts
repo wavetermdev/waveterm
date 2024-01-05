@@ -1237,6 +1237,9 @@ class InputModel {
     aIChatShow: OV<boolean> = mobx.observable.box(false);
     cmdInputHeight: OV<number> = mobx.observable.box(0);
     aiChatTextAreaRef: React.RefObject<HTMLTextAreaElement>;
+    codeSelectBlockRefArray: Array<React.RefObject<HTMLElement>>;
+    codeSelectMarkdownID: number;
+    codeSelectSelectedIndex: number;
     
     AICmdInfoChatItems: mobx.IObservableArray<OpenAICmdInfoChatMessageType> = mobx.observable.array([], {
         name: "aicmdinfo-chat"
@@ -1278,6 +1281,8 @@ class InputModel {
         this.filteredHistoryItems = mobx.computed(() => {
             return this._getFilteredHistoryItems();
         });
+        this.codeSelectMarkdownID = 0;
+        this.codeSelectSelectedIndex = -1;
     }
     
     setInputMode(inputMode: null | "comment" | "global"): void {
@@ -1704,6 +1709,92 @@ class InputModel {
         }
     }
     
+    grabCodeSelectSelection() {
+        if(this.codeSelectSelectedIndex >= 0 && this.codeSelectSelectedIndex < this.codeSelectBlockRefArray.length) {
+            let curBlockRef = this.codeSelectBlockRefArray[this.codeSelectSelectedIndex]
+            let codeText = curBlockRef.current.innerText;
+            codeText = codeText.replace(/\n$/, "") // remove trailing newline        
+            let newLineValue = this.getCurLine() + " " + codeText;
+            this.setCurLine(newLineValue);
+            this.giveFocus();
+        }
+    }
+    
+    registerCodeSelectMarkdown(): number {
+        this.codeSelectBlockRefArray = [];
+        this.codeSelectMarkdownID++;
+        return this.codeSelectMarkdownID; 
+    }
+    
+    addCodeBlockToCodeSelect(blockRef: React.RefObject<HTMLElement>, markdownID: number): number {
+        let rtn = -1;
+        if(markdownID == this.codeSelectMarkdownID) {
+            rtn = this.codeSelectBlockRefArray.length;            
+            this.codeSelectBlockRefArray.push(blockRef);
+            this.codeSelectDeselectAll();
+        }
+        return rtn;
+    }
+    
+    codeSelectDeselectCodeBlock(blockIndex: number, markdownID: number) {
+        if(markdownID != this.codeSelectMarkdownID) {
+            return;
+        }
+        if(blockIndex >= 0 && blockIndex < this.codeSelectBlockRefArray.length) {
+            this.codeSelectBlockRefArray[blockIndex].current.style.background = "";
+        }  
+    }
+
+    setCodeSelectSelectedCodeBlock(blockIndex:number, markdownID:number) { 
+        if(markdownID != this.codeSelectMarkdownID) {
+            return;
+        }
+        if(blockIndex >= 0 && blockIndex < this.codeSelectBlockRefArray.length) {
+            this.codeSelectDeselectCodeBlock(this.codeSelectSelectedIndex, markdownID);
+            this.codeSelectSelectedIndex = blockIndex;
+            this.codeSelectBlockRefArray[blockIndex].current.style.background = "yellow";
+            this.setAIChatFocus();
+        }  
+    }
+    
+    codeSelectDecrementCodeBlock() {
+        let incBlockIndex = this.codeSelectSelectedIndex + 1;
+        if(this.codeSelectSelectedIndex == this.codeSelectBlockRefArray.length-1) {
+            this.codeSelectDeselectCodeBlock(this.codeSelectSelectedIndex, this.codeSelectMarkdownID);
+            this.codeSelectSelectedIndex = -1;
+        }
+        if(incBlockIndex >= 0 && incBlockIndex < this.codeSelectBlockRefArray.length) {
+            this.codeSelectDeselectCodeBlock(this.codeSelectSelectedIndex, this.codeSelectMarkdownID);
+            this.setCodeSelectSelectedCodeBlock(incBlockIndex, this.codeSelectMarkdownID);
+        }
+    }
+    
+    codeSelectIncrementCodeBlock() {
+        if(this.codeSelectSelectedIndex == -1) {
+            if(this.codeSelectBlockRefArray.length > 0) {
+                this.codeSelectSelectedIndex = this.codeSelectBlockRefArray.length;
+            } else {
+                return;
+            }
+        }
+        let decBlockIndex = this.codeSelectSelectedIndex - 1;
+        if(decBlockIndex >= 0 && decBlockIndex < this.codeSelectBlockRefArray.length) {
+            this.codeSelectDeselectCodeBlock(this.codeSelectSelectedIndex, this.codeSelectMarkdownID);
+            this.setCodeSelectSelectedCodeBlock(decBlockIndex, this.codeSelectMarkdownID);
+        }  
+    }
+    
+    getCodeSelectSelectedIndex() {
+        return this.codeSelectSelectedIndex;
+    }
+    
+    codeSelectDeselectAll() {
+        if(this.codeSelectSelectedIndex >= 0 && this.codeSelectSelectedIndex < this.codeSelectBlockRefArray.length) { 
+            this.codeSelectDeselectCodeBlock(this.codeSelectSelectedIndex, this.codeSelectMarkdownID); 
+        }
+        this.codeSelectSelectedIndex = -1;
+    }
+
     openAIAssistantChat(): void {
         console.log("Opening AI Assistant chat");
         this.aIChatShow.set(true);
@@ -3740,7 +3831,6 @@ class Model {
     }
 
     runUpdate(genUpdate: UpdateMessage, interactive: boolean) {
-        console.log("Got Update Message: ", genUpdate);
         mobx.action(() => {
             let oldContext = this.getUIContext();
             try {
