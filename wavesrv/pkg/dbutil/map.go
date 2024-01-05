@@ -5,7 +5,6 @@ package dbutil
 
 import (
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 
@@ -66,8 +65,6 @@ func GetMappable[PT DBMappablePtr[T], T any](tx *txwrap.TxWrap, query string, ar
 	if len(m) == 0 {
 		return nil
 	}
-
-	log.Printf("Raw data from DB: %+v\n", m)
 
 	rtn := PT(new(T))
 	FromDBMap(rtn, m)
