@@ -3421,6 +3421,17 @@ class Model {
                 }
             }
         }
+        if (e.code == "KeyD" && e.getModifierState("Meta")) {
+            let activeScreen = this.getActiveScreen();
+            if (activeScreen != null && activeScreen.getFocusType() == "cmd") {
+                let selectedLine = activeScreen.selectedLine.get();
+                if (selectedLine != null && selectedLine >= 0) {
+                    e.preventDefault();
+                    GlobalCommandRunner.lineDelete(String(selectedLine))
+                    return;
+                }
+            }
+        }
     }
 
     clearModals(): boolean {
@@ -4303,6 +4314,10 @@ class CommandRunner {
         let kwargs = { nohist: "1" };
         let archiveStr = archive ? "1" : "0";
         return GlobalModel.submitCommand("line", "archive", [lineArg, archiveStr], kwargs, false);
+    }
+
+    lineDelete(lineArg: string): Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("line", "delete", [lineArg], { nohist: "1" }, false);
     }
 
     lineSet(lineArg: string, opts: { renderer?: string }): Promise<CommandRtnType> {
