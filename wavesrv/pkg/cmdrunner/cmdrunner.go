@@ -1514,6 +1514,47 @@ type HostInfoType struct {
 	Ignore        bool
 }
 
+func createSshImportSummary(changeList map[string][]string) string {
+	totalNumChanges := len(changeList["create"]) + len(changeList["delete"]) + len(changeList["update"]) + len(changeList["createErr"]) + len(changeList["deleteErr"]) + len(changeList["updateErr"])
+	if totalNumChanges == 0 {
+		return "No changes made from ssh config import"
+	}
+	remoteStatusMsgs := map[string]string{
+		"delete":    "Deleted %d remote%s: %s",
+		"create":    "Created %d remote%s: %s",
+		"update":    "Edited %d remote%s: %s",
+		"deleteErr": "Error deleting %d remote%s: %s",
+		"createErr": "Error creating %d remote%s: %s",
+		"updateErr": "Error editing %d remote%s: %s",
+	}
+
+	changeTypeKeys := []string{"delete", "create", "update", "deleteErr", "createErr", "updateErr"}
+
+	var outMsgs []string
+	for _, changeTypeKey := range changeTypeKeys {
+		changes := changeList[changeTypeKey]
+		if len(changes) > 0 {
+			rawStatusMsg := remoteStatusMsgs[changeTypeKey]
+			var pluralize string
+			if len(changes) == 1 {
+				pluralize = ""
+			} else {
+				pluralize = "s"
+			}
+			newMsg := fmt.Sprintf(rawStatusMsg, len(changes), pluralize, strings.Join(changes, ", "))
+			outMsgs = append(outMsgs, newMsg)
+		}
+	}
+
+	var pluralize string
+	if totalNumChanges == 1 {
+		pluralize = ""
+	} else {
+		pluralize = "s"
+	}
+	return fmt.Sprintf("%d remote%s changed:\n\n%s", totalNumChanges, pluralize, strings.Join(outMsgs, "\n\n"))
+}
+
 func NewHostInfo(hostName string) (*HostInfoType, error) {
 	userName, _ := ssh_config.GetStrict(hostName, "User")
 	if userName == "" {
@@ -1603,6 +1644,8 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 		hostInfoInConfig[hostInfo.CanonicalName] = hostInfo
 	}
 
+	remoteChangeList := make(map[string][]string)
+
 	// remove all previously imported remotes that
 	// no longer have a canonical pattern in the config files
 	for importedRemoteCanonicalName, importedRemote := range previouslyImportedRemotes {
@@ -1611,17 +1654,17 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 		if !importedRemote.Archived && (hostInfo == nil || hostInfo.Ignore) {
 			err = remote.ArchiveRemote(ctx, importedRemote.RemoteId)
 			if err != nil {
+				remoteChangeList["deleteErr"] = append(remoteChangeList["deleteErr"], importedRemote.RemoteCanonicalName)
 				log.Printf("sshconfig-import: failed to remove remote \"%s\" (%s)\n", importedRemote.RemoteAlias, importedRemote.RemoteCanonicalName)
 			} else {
+				remoteChangeList["delete"] = append(remoteChangeList["delete"], importedRemote.RemoteCanonicalName)
 				log.Printf("sshconfig-import: archived remote \"%s\" (%s)\n", importedRemote.RemoteAlias, importedRemote.RemoteCanonicalName)
 			}
 		}
 	}
 
-	var updatedRemotes []string
 	for _, hostInfo := range parsedHostData {
 		previouslyImportedRemote := previouslyImportedRemotes[hostInfo.CanonicalName]
-		updatedRemotes = append(updatedRemotes, hostInfo.CanonicalName)
 		if hostInfo.Ignore {
 			log.Printf("sshconfig-import: ignore remote[%s] as specified in config file\n", hostInfo.CanonicalName)
 			continue
@@ -1637,15 +1680,23 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 			}
 			msh := remote.GetRemoteById(previouslyImportedRemote.RemoteId)
 			if msh == nil {
+				remoteChangeList["updateErr"] = append(remoteChangeList["updateErr"], hostInfo.CanonicalName)
 				log.Printf("strange, msh for remote %s [%s] not found\n", hostInfo.CanonicalName, previouslyImportedRemote.RemoteId)
 				continue
-			} else {
-				err := msh.UpdateRemote(ctx, editMap)
-				if err != nil {
-					log.Printf("error updating remote[%s]: %v\n", hostInfo.CanonicalName, err)
-					continue
-				}
 			}
+
+			if msh.Remote.ConnectMode == hostInfo.ConnectMode && msh.Remote.SSHOpts.SSHIdentity == hostInfo.SshKeyFile && msh.Remote.RemoteAlias == hostInfo.Host {
+				// silently skip this one. it didn't fail, but no changes were needed
+				continue
+			}
+
+			err := msh.UpdateRemote(ctx, editMap)
+			if err != nil {
+				remoteChangeList["updateErr"] = append(remoteChangeList["updateErr"], hostInfo.CanonicalName)
+				log.Printf("error updating remote[%s]: %v\n", hostInfo.CanonicalName, err)
+				continue
+			}
+			remoteChangeList["update"] = append(remoteChangeList["update"], hostInfo.CanonicalName)
 			log.Printf("sshconfig-import: found previously imported remote with canonical name \"%s\": it has been updated\n", hostInfo.CanonicalName)
 		} else {
 			sshOpts := &sstore.SSHOpts{
@@ -1674,26 +1725,23 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 			}
 			err := remote.AddRemote(ctx, r, false)
 			if err != nil {
+				remoteChangeList["createErr"] = append(remoteChangeList["createErr"], hostInfo.CanonicalName)
 				log.Printf("sshconfig-import: failed to add remote \"%s\" (%s): it is being skipped\n", hostInfo.Host, hostInfo.CanonicalName)
 				continue
 			}
+			remoteChangeList["create"] = append(remoteChangeList["create"], hostInfo.CanonicalName)
 			log.Printf("sshconfig-import: created remote \"%s\" (%s)\n", hostInfo.Host, hostInfo.CanonicalName)
 		}
 	}
 
-	var outMsg string
-	if len(updatedRemotes) == 0 {
-		outMsg = "no connections imported from ssh config."
-	} else {
-		outMsg = fmt.Sprintf("imported %d connection(s) from ssh config file: %s\n", len(updatedRemotes), strings.Join(updatedRemotes, ", "))
-	}
-
+	outMsg := createSshImportSummary(remoteChangeList)
 	visualEdit := resolveBool(pk.Kwargs["visual"], false)
 	if visualEdit {
 		update := &sstore.ModelUpdate{}
 		update.AlertMessage = &sstore.AlertMessageType{
-			Title:   "SSH Config Import",
-			Message: outMsg,
+			Title:    "SSH Config Import",
+			Message:  outMsg,
+			Markdown: true,
 		}
 		return update, nil
 	} else {
