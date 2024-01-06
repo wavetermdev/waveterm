@@ -1255,6 +1255,10 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 		if portVal == 0 && uhPort != 0 {
 			portVal = uhPort
 		}
+		if portVal < 0 || portVal > 65535 {
+			// 0 is used as a sentinel value for the default in this case
+			return nil, fmt.Errorf("invalid port argument, \"%d\" is not in the range of 1 to 65535", portVal)
+		}
 		sshOpts.SSHPort = portVal
 		canonicalName = remoteUser + "@" + remoteHost
 		if portVal != 0 && portVal != 22 {
@@ -1580,7 +1584,7 @@ func NewHostInfo(hostName string) (*HostInfoType, error) {
 			// do not make assumptions about port if incorrectly configured
 			return nil, fmt.Errorf("could not parse \"%s\" (%s) - %s could not be converted to a valid port\n", hostName, canonicalName, portStr)
 		}
-		if int(int16(portVal)) != portVal {
+		if portVal <= 0 || portVal > 65535 {
 			return nil, fmt.Errorf("could not parse port \"%d\": number is not valid for a port\n", portVal)
 		}
 	}
