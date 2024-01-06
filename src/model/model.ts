@@ -1752,7 +1752,7 @@ class InputModel {
         if(blockIndex >= 0 && blockIndex < this.codeSelectBlockRefArray.length) {
             this.codeSelectDeselectCodeBlock(this.codeSelectSelectedIndex, markdownID);
             this.codeSelectSelectedIndex = blockIndex;
-            this.codeSelectBlockRefArray[blockIndex].current.style.background = "yellow";
+            this.codeSelectBlockRefArray[blockIndex].current.style.backgroundColor = "rgba(252, 226, 5, 0.4)";
             this.setAIChatFocus();
         }  
     }
@@ -1882,7 +1882,6 @@ class InputModel {
                 return;
             }
             this.resetInput();
-            this.clearAIAssistantChat();
             GlobalModel.submitRawCommand(commandStr, true, true);
         })();
     }
