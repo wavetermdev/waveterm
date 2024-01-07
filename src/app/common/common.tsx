@@ -231,6 +231,7 @@ interface ButtonProps {
     rightIcon?: React.ReactNode;
     color?: string;
     style?: React.CSSProperties;
+    autoFocus?: boolean;
 }
 
 class Button extends React.Component<ButtonProps> {
@@ -257,6 +258,7 @@ class Button extends React.Component<ButtonProps> {
                 onClick={this.handleClick}
                 disabled={disabled}
                 style={style}
+                autoFocus={this.props.autoFocus}
             >
                 {leftIcon && <span className="icon-left">{leftIcon}</span>}
                 {children}
