@@ -3422,16 +3422,36 @@ class Model {
             }
         }
         if (e.code == "KeyD" && e.getModifierState("Meta")) {
-            let activeScreen = this.getActiveScreen();
-            if (activeScreen != null && activeScreen.getFocusType() == "cmd") {
-                let selectedLine = activeScreen.selectedLine.get();
-                if (selectedLine != null && selectedLine >= 0) {
-                    e.preventDefault();
-                    GlobalCommandRunner.lineDelete(String(selectedLine))
-                    return;
-                }
+            let ranDelete = this.deleteActiveLine();
+            if (ranDelete) {
+                e.preventDefault();
             }
         }
+    }
+
+    deleteActiveLine(): boolean {
+        let activeScreen = this.getActiveScreen();
+        if (activeScreen == null || activeScreen.getFocusType() != "cmd") {
+            return false;
+        }
+        let selectedLine = activeScreen.selectedLine.get();
+        if (selectedLine == null || selectedLine <= 0) {
+            return false;
+        }
+        let line = activeScreen.getLineByNum(selectedLine);
+        if (line == null) {
+            return false;
+        }
+        let cmd = activeScreen.getCmd(line);
+        if (cmd != null) {
+            if (cmd.isRunning()) {
+                let info: T.InfoType = { infomsg: "Cannot delete a running command" };
+                this.inputModel.flashInfoMsg(info, 2000);
+                return false;
+            }
+        }
+        GlobalCommandRunner.lineDelete(String(selectedLine), true);
+        return true;
     }
 
     clearModals(): boolean {
@@ -4316,8 +4336,8 @@ class CommandRunner {
         return GlobalModel.submitCommand("line", "archive", [lineArg, archiveStr], kwargs, false);
     }
 
-    lineDelete(lineArg: string): Promise<CommandRtnType> {
-        return GlobalModel.submitCommand("line", "delete", [lineArg], { nohist: "1" }, false);
+    lineDelete(lineArg: string, interactive: boolean): Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("line", "delete", [lineArg], { nohist: "1" }, interactive);
     }
 
     lineSet(lineArg: string, opts: { renderer?: string }): Promise<CommandRtnType> {

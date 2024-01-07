@@ -17,7 +17,16 @@ import {
     Screen,
     Session,
 } from "../../../model/model";
-import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage, Modal, Dropdown, Tooltip } from "../common";
+import {
+    Toggle,
+    InlineSettingsTextEdit,
+    SettingsError,
+    InfoMessage,
+    Modal,
+    Dropdown,
+    Tooltip,
+    Button,
+} from "../common";
 import { LineType, RendererPluginType, ClientDataType, CommandRtnType, RemoteType } from "../../../types/types";
 import { PluginModel } from "../../../plugins/plugins";
 import * as util from "../../../util/util";
@@ -630,12 +639,6 @@ class LineSettingsModal extends React.Component<{}, {}> {
                                 defaultValue={renderer}
                                 onChange={this.clickSetRenderer}
                             />
-                        </div>
-                    </div>
-                    <div className="settings-field">
-                        <div className="settings-label">Archived</div>
-                        <div className="settings-input">
-                            <Toggle checked={!!line.archived} onChange={this.handleChangeArchived} />
                         </div>
                     </div>
                     <SettingsError errorMessage={this.errorMessage} />

@@ -2069,9 +2069,8 @@ func DeleteLinesByIds(ctx context.Context, screenId string, lineIds []string) er
 			query := `SELECT status FROM cmd WHERE screenid = ? AND lineid = ?`
 			cmdStatus := tx.GetString(query, screenId, lineId)
 			if cmdStatus == CmdStatusRunning {
-				return fmt.Errorf("cannot delete line[%s:%s], cmd is running", screenId, lineId)
+				return fmt.Errorf("cannot delete line[%s], cmd is running", lineId)
 			}
-
 			query = `DELETE FROM line WHERE screenid = ? AND lineid = ?`
 			tx.Exec(query, screenId, lineId)
 			query = `DELETE FROM cmd WHERE screenid = ? AND lineid = ?`
