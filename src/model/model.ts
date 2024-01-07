@@ -3359,7 +3359,7 @@ class Model {
         // nothing for now
     }
 
-    docKeyDownHandler(e: any) {
+    docKeyDownHandler(e: KeyboardEvent) {
         if (isModKeyPress(e)) {
             return;
         }

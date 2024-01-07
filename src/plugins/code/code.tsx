@@ -3,7 +3,8 @@
 
 import * as React from "react";
 import * as T from "../../types/types";
-import Editor from "@monaco-editor/react";
+import Editor, { Monaco } from "@monaco-editor/react";
+import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
 import { Markdown } from "../../app/common/common";
 import { GlobalModel, GlobalCommandRunner } from "../../model/model";
 import Split from "react-split-it";
@@ -146,21 +147,24 @@ class SourceCodeRenderer extends React.Component<
         }
     };
 
-    handleEditorDidMount = (editor, monaco) => {
+    handleEditorDidMount = (editor: MonacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco) => {
         this.monacoEditor = editor;
         this.setInitialLanguage(editor);
         this.setEditorHeight();
-        editor.onKeyDown((e) => {
-            if (e.code === "KeyS" && (e.ctrlKey || e.metaKey) && this.state.isSave) {
+        editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
+            if (e.code === "KeyS" && e.metaKey && this.state.isSave) {
                 e.preventDefault();
+                e.stopPropagation();
                 this.doSave();
             }
-            if (e.code === "KeyD" && (e.ctrlKey || e.metaKey)) {
+            if (e.code === "KeyD" && e.metaKey) {
                 e.preventDefault();
+                e.stopPropagation();
                 this.doClose();
             }
-            if (e.code === "KeyP" && (e.ctrlKey || e.metaKey)) {
+            if (e.code === "KeyP" && e.metaKey) {
                 e.preventDefault();
+                e.stopPropagation();
                 this.togglePreview();
             }
         });
