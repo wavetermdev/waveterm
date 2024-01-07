@@ -219,7 +219,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
             return;
         }
         if (this.screen.getScreenLines().lines.length == 0) {
-            GlobalCommandRunner.screenDelete(this.screenId);
+            GlobalCommandRunner.screenDelete(this.screenId, false);
             GlobalModel.modalsModel.popModal();
             return;
         }
@@ -229,7 +229,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
             if (!result) {
                 return;
             }
-            let prtn = GlobalCommandRunner.screenDelete(this.screenId);
+            let prtn = GlobalCommandRunner.screenDelete(this.screenId, false);
             commandRtnHandler(prtn, this.errorMessage);
             GlobalModel.modalsModel.popModal();
         });

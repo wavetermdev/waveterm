@@ -235,10 +235,10 @@ class AlertModal extends React.Component<{}, {}> {
                         <Button theme="secondary" onClick={this.closeModal}>
                             Cancel
                         </Button>
-                        <Button onClick={this.handleOK}>Ok</Button>
+                        <Button autoFocus={true} onClick={this.handleOK}>Ok</Button>
                     </If>
                     <If condition={!isConfirm}>
-                        <Button onClick={this.handleOK}>Ok</Button>
+                        <Button autoFocus={true} onClick={this.handleOK}>Ok</Button>
                     </If>
                 </div>
             </Modal>
