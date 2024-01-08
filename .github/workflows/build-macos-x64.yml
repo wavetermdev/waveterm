@@ -1,10 +1,10 @@
-name: "Build MacOS x86"
+name: "Build MacOS x64"
 on: workflow_dispatch
 env:
     WAVETERM_VERSION: 0.5.3
 jobs:
     runbuild:
-        name: "Build MacOS x86"
+        name: "Build MacOS x64"
         runs-on: macos-latest
         steps:
             - uses: actions/checkout@v4
@@ -13,12 +13,16 @@ jobs:
                 go-version: '1.21.5'
             - run: brew tap scripthaus-dev/scripthaus
             - run: brew install scripthaus
+            - uses: actions/setup-node@v4
+              with:
+                node-version: '21.5.0'
+                cache: 'yarn'
             - run: yarn --frozen-lockfile
             - run: scripthaus run build-package
             - uses: actions/upload-artifact@v3
               with:
-                name: waveterm-build-darwin-x86
-                path: out/make/zip/darwin/x86/*.zip
-                retention_days: 2
+                name: waveterm-build-darwin-x64
+                path: out/make/zip/darwin/x64/*.zip
+                retention-days: 2
 
 
