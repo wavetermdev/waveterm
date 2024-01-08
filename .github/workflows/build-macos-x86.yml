@@ -1,5 +1,7 @@
 name: "Build MacOS x86"
 on: workflow_dispatch
+env:
+    WAVETERM_VERSION: 0.5.3
 jobs:
     runbuild:
         name: "Build MacOS x86"
@@ -13,5 +15,10 @@ jobs:
             - run: brew install scripthaus
             - run: yarn --frozen-lockfile
             - run: scripthaus run build-package
+            - uses: actions/upload-artifact@v3
+              with:
+                name: waveterm-build-darwin-x86
+                path: out/make/zip/darwin/x86/*.zip
+                retention_days: 2
 
 
