@@ -570,20 +570,19 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
                         return;
                     }
                     mobx.action(() => {
-                        this.errorStr.set(crcrtn.error ?? null);
+                        this.errorStr.set(crcrtn.error);
                     })();
                 });
                 return;
             }
             mobx.action(() => {
-                this.errorStr.set(crtn.error ?? null);
+                this.errorStr.set(crtn.error);
             })();
         });
     }
 
     @boundMethod
     handleClose(): void {
-        console.log("handleClose");
         this.model.closeModal();
         this.model.seRecentConnAdded(false);
     }
