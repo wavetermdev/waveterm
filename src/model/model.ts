@@ -210,6 +210,7 @@ type ElectronApi = {
     contextScreen: (screenOpts: { screenId: string }, position: { x: number; y: number }) => void;
     contextEditMenu: (position: { x: number; y: number }, opts: ContextMenuOpts) => void;
     onWaveSrvStatusChange: (callback: (status: boolean, pid: number) => void) => void;
+    getLastLogs: (numOfLines: number, callback: (logs: any) => void) => void;
 };
 
 function getApi(): ElectronApi {
@@ -3476,6 +3477,10 @@ class Model {
         mobx.action(() => {
             this.waveSrvRunning.set(status);
         })();
+    }
+
+    getLastLogs(numbOfLines: number, cb: (logs: any) => void): void {
+        getApi().getLastLogs(numbOfLines, cb);
     }
 
     getContentHeight(context: RendererContext): number {
