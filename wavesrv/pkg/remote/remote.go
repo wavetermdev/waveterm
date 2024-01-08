@@ -1126,7 +1126,7 @@ func addScVarsToState(state *packet.ShellState) *packet.ShellState {
 	envMap := shexec.DeclMapFromState(&rtn)
 	envMap["PROMPT"] = &shexec.DeclareDeclType{Name: "PROMPT", Value: "1", Args: "x"}
 	envMap["PROMPT_VERSION"] = &shexec.DeclareDeclType{Name: "PROMPT_VERSION", Value: scbase.WaveVersion, Args: "x"}
-	if os.Getenv("LANG") == "" {
+	if _, exists := envMap["LANG"]; !exists {
 		envMap["LANG"] = &shexec.DeclareDeclType{Name: "LANG", Value: scbase.DetermineLang(), Args: "x"}
 	}
 	rtn.ShellVars = shexec.SerializeDeclMap(envMap)
