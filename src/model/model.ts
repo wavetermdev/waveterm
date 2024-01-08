@@ -2924,8 +2924,11 @@ class RemotesModel {
         return this.recentConnAddedState.get();
     }
 
+    @boundMethod
     seRecentConnAdded(value: boolean) {
-        this.recentConnAddedState.set(value);
+        mobx.action(() => {
+            this.recentConnAddedState.set(value);
+        })();
     }
 
     deSelectRemote(): void {
@@ -3722,8 +3725,8 @@ class Model {
                 this.remotes.clear();
             }
             this.updateRemotes(update.remotes);
+            // This code's purpose is to show view remote connection modal when a new connection is added
             if (update.remotes && update.remotes.length && this.remotesModel.recentConnAddedState.get()) {
-                GlobalModel.remotesModel.closeModal();
                 GlobalModel.remotesModel.openReadModal(update.remotes![0].remoteid);
             }
         }
