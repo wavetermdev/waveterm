@@ -1,0 +1,57 @@
+name: "Build MacOS x64"
+on: workflow_dispatch
+env:
+    WAVETERM_VERSION: 0.5.3
+    GO_VERSION: '1.21.5'
+    NODE_VERSION: '21.5.0'
+jobs:
+    runbuild-x64:
+        name: "Build MacOS x64"
+        runs-on: macos-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-go@v4
+              with:
+                go-version: ${{env.GO_VERSION}}
+                cache-dependency-path: |
+                    wavesrv/go.sum
+                    waveshell/go.sum
+            - run: brew tap scripthaus-dev/scripthaus
+            - run: brew install scripthaus
+            - uses: actions/setup-node@v4
+              with:
+                node-version: ${{env.NODE_VERSION}}
+                cache: 'yarn'
+            - run: yarn --frozen-lockfile
+            - run: scripthaus run build-package
+            - uses: actions/upload-artifact@v3
+              with:
+                name: waveterm-build-darwin-x64
+                path: out/make/zip/darwin/x64/*.zip
+                retention-days: 2
+    runbuild-arm64:
+        name: "Build MacOS arm64"
+        runs-on: macos-latest-xlarge
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-go@v4
+              with:
+                go-version: ${{env.GO_VERSION}}
+                cache-dependency-path: |
+                    wavesrv/go.sum
+                    waveshell/go.sum
+            - run: brew tap scripthaus-dev/scripthaus
+            - run: brew install scripthaus
+            - uses: actions/setup-node@v4
+              with:
+                node-version: ${{env.NODE_VERSION}}
+                cache: 'yarn'
+            - run: yarn --frozen-lockfile
+            - run: scripthaus run build-package
+            - uses: actions/upload-artifact@v3
+              with:
+                name: waveterm-build-darwin-arm64
+                path: out/make/zip/darwin/arm64/*.zip
+                retention-days: 2
+
+
