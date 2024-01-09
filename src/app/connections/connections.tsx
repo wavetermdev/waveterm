@@ -74,8 +74,35 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
     }
 
     @boundMethod
-    handleImportSshConfig(): void {
+    importSshConfig(): void {
         GlobalCommandRunner.importSshConfig();
+    }
+
+    @boundMethod
+    handleImportSshConfig(): void {
+        let cdata = GlobalModel.clientData.get();
+        let { hideShellPrompt } = cdata.clientopts.confirmflags;
+        if (hideShellPrompt) {
+            this.showShellPrompt(this.importSshConfig);
+        } else {
+            this.importSshConfig();
+        }
+    }
+
+    @boundMethod
+    showShellPrompt(cb: () => void): void {
+        let prtn = GlobalModel.showAlert({
+            message:
+                "You are about to install WaveShell on a remote machine. Please be aware that WaveShell will be executed on the remote system.",
+            confirm: true,
+            hideShellPrompt: false,
+        });
+        prtn.then((confirm) => {
+            if (!confirm) {
+                return;
+            }
+            cb();
+        });
     }
 
     @boundMethod
@@ -163,8 +190,8 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
                                 onClick={() => this.handleRead(item.remoteid)} // Moved onClick here
                             >
                                 <td className="col-name">
-                                        <Status status={this.getStatus(item.status)} text=""></Status>
-                                        {this.getName(item)}&nbsp;{this.getImportSymbol(item)}
+                                    <Status status={this.getStatus(item.status)} text=""></Status>
+                                    {this.getName(item)}&nbsp;{this.getImportSymbol(item)}
                                 </td>
                                 <td className="col-type">
                                     <div>{item.remotetype}</div>

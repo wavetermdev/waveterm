@@ -218,7 +218,7 @@ class AlertModal extends React.Component<{}, {}> {
     }
 
     handleShowShellPrompt = (checked: boolean) => {
-        GlobalCommandRunner.clientSetConfirmFlag("showShellPrompt", !checked);
+        GlobalCommandRunner.clientSetConfirmFlag("hideShellPrompt", checked);
     };
 
     render() {
@@ -234,7 +234,7 @@ class AlertModal extends React.Component<{}, {}> {
                         <Markdown text={message?.message ?? ""} />
                     </If>
                     <If condition={!message?.markdown}>{message?.message}</If>
-                    <If condition={message.showShellPrompt}>
+                    <If condition={!message.hideShellPrompt}>
                         <Checkbox
                             onChange={this.handleShowShellPrompt}
                             label={"Don't show me this again"}
@@ -540,11 +540,11 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
     @boundMethod
     handleOk(): void {
         let cdata = GlobalModel.clientData.get();
-        let { showShellPrompt } = cdata.clientopts.confirmflags;
-        if (showShellPrompt) {
-            this.showShellPrompt(this.submitRemote);
-        } else {
+        let { hideShellPrompt } = cdata.clientopts.confirmflags;
+        if (hideShellPrompt == true || hideShellPrompt == null) {
             this.submitRemote();
+        } else {
+            this.showShellPrompt(this.submitRemote);
         }
     }
 
@@ -554,7 +554,7 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
             message:
                 "You are about to install WaveShell on a remote machine. Please be aware that WaveShell will be executed on the remote system.",
             confirm: true,
-            showShellPrompt: true,
+            hideShellPrompt: false,
         });
         prtn.then((confirm) => {
             if (!confirm) {
