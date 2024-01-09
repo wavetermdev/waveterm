@@ -3281,6 +3281,13 @@ class Model {
     }
 
     showAlert(alertMessage: AlertMessageType): Promise<boolean> {
+        if (alertMessage.confirmflag != null) {
+            let cdata = GlobalModel.clientData.get();
+            let noConfirm = cdata.clientopts?.confirmflags?.[alertMessage.confirmflag];
+            if (noConfirm) {
+                return Promise.resolve(true);
+            }
+        }
         mobx.action(() => {
             this.alertMessage.set(alertMessage);
             GlobalModel.modalsModel.pushModal(appconst.ALERT);

@@ -529,7 +529,7 @@ type AlertMessageType = {
     message: string;
     confirm?: boolean;
     markdown?: boolean;
-    confirmkey?: string;
+    confirmflag?: string;
 };
 
 type HistorySearchParams = {

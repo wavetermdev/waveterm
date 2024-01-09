@@ -81,13 +81,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
 
     @boundMethod
     handleImportSshConfig(): void {
-        let cdata = GlobalModel.clientData.get();
-        let noConfirm = cdata.clientopts.confirmflags[appconst.ConfirmKey_HideShellPrompt];
-        if (noConfirm) {
-            this.importSshConfig();
-        } else {
-            this.showShellPrompt(this.importSshConfig);
-        }
+        this.showShellPrompt(this.importSshConfig);
     }
 
     @boundMethod
@@ -96,7 +90,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
             message:
                 "You are about to install WaveShell on a remote machine. Please be aware that WaveShell will be executed on the remote system.",
             confirm: true,
-            confirmkey: appconst.ConfirmKey_HideShellPrompt,
+            confirmflag: appconst.ConfirmKey_HideShellPrompt,
         });
         prtn.then((confirm) => {
             if (!confirm) {
