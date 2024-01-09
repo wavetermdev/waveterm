@@ -561,7 +561,7 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
         let prtn = GlobalCommandRunner.createRemote(cname, kwargs, false);
         prtn.then((crtn) => {
             if (crtn.success) {
-                this.model.seRecentConnAdded(true);
+                this.model.setRecentConnAdded(true);
                 this.model.closeModal();
 
                 let crRtn = GlobalCommandRunner.screenSetRemote(cname, true, false);
@@ -584,7 +584,7 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
     @boundMethod
     handleClose(): void {
         this.model.closeModal();
-        this.model.seRecentConnAdded(false);
+        this.model.setRecentConnAdded(false);
     }
 
     @boundMethod
@@ -925,7 +925,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
     @boundMethod
     handleClose(): void {
         this.model.closeModal();
-        this.model.seRecentConnAdded(false);
+        this.model.setRecentConnAdded(false);
     }
 
     renderInstallStatus(remote: T.RemoteType): any {

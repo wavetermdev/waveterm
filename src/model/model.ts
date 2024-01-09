@@ -2925,7 +2925,7 @@ class RemotesModel {
     }
 
     @boundMethod
-    seRecentConnAdded(value: boolean) {
+    setRecentConnAdded(value: boolean) {
         mobx.action(() => {
             this.recentConnAddedState.set(value);
         })();
@@ -2940,6 +2940,7 @@ class RemotesModel {
 
     openReadModal(remoteId: string): void {
         mobx.action(() => {
+            this.setRecentConnAdded(false);
             this.selectedRemoteId.set(remoteId);
             this.remoteEdit.set(null);
             GlobalModel.modalsModel.pushModal(appconst.VIEW_REMOTE);
