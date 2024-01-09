@@ -3440,7 +3440,7 @@ func LineDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	}
 	err = sstore.DeleteLinesByIds(ctx, ids.ScreenId, lineIds)
 	if err != nil {
-		return nil, fmt.Errorf("/line:delete error purging lines: %v", err)
+		return nil, fmt.Errorf("/line:delete error deleting lines: %v", err)
 	}
 	update := &sstore.ModelUpdate{}
 	for _, lineId := range lineIds {
@@ -3451,6 +3451,11 @@ func LineDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 		}
 		update.Lines = append(update.Lines, lineObj)
 	}
+	screen, err := sstore.FixupScreenSelectedLine(ctx, ids.ScreenId)
+	if err != nil {
+		return nil, fmt.Errorf("/line:delete error fixing up screen: %v", err)
+	}
+	update.Screens = []*sstore.ScreenType{screen}
 	return update, nil
 }
 
