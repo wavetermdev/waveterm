@@ -473,7 +473,7 @@ type FeOptsType = {
 };
 
 type ConfirmFlagsType = {
-    hideShellPrompt: boolean;
+    [k: string]: boolean;
 };
 
 type ClientOptsType = {
@@ -529,7 +529,7 @@ type AlertMessageType = {
     message: string;
     confirm?: boolean;
     markdown?: boolean;
-    hideShellPrompt?: boolean;
+    confirmkey?: string;
 };
 
 type HistorySearchParams = {

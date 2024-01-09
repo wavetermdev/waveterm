@@ -11,6 +11,7 @@ import { GlobalModel, RemotesModel, GlobalCommandRunner } from "../../model/mode
 import { Button, IconButton, Status } from "../common/common";
 import * as T from "../../types/types";
 import * as util from "../../util/util";
+import * as appconst from "../appconst";
 
 import "./connections.less";
 
@@ -81,8 +82,8 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
     @boundMethod
     handleImportSshConfig(): void {
         let cdata = GlobalModel.clientData.get();
-        let { hideShellPrompt } = cdata.clientopts.confirmflags;
-        if (hideShellPrompt == true || hideShellPrompt == null) {
+        let noConfirm = cdata.clientopts.confirmflags[appconst.ConfirmKey_HideShellPrompt];
+        if (noConfirm) {
             this.importSshConfig();
         } else {
             this.showShellPrompt(this.importSshConfig);
@@ -95,7 +96,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
             message:
                 "You are about to install WaveShell on a remote machine. Please be aware that WaveShell will be executed on the remote system.",
             confirm: true,
-            hideShellPrompt: false,
+            confirmkey: appconst.ConfirmKey_HideShellPrompt,
         });
         prtn.then((confirm) => {
             if (!confirm) {

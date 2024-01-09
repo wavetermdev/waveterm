@@ -27,6 +27,7 @@ import {
 } from "../common";
 import * as util from "../../../util/util";
 import * as textmeasure from "../../../util/textmeasure";
+import * as appconst from "../../appconst";
 import { ClientDataType } from "../../../types/types";
 import { Screen } from "../../../model/model";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
@@ -217,8 +218,13 @@ class AlertModal extends React.Component<{}, {}> {
         GlobalModel.confirmAlert();
     }
 
-    handleHideShellPrompt = (checked: boolean) => {
-        GlobalCommandRunner.clientSetConfirmFlag("hideShellPrompt", checked);
+    @boundMethod
+    handleDontShowAgain(checked: boolean) {
+        let message = GlobalModel.alertMessage.get();
+        if (message.confirmkey == null) {
+            return;
+        }
+        GlobalCommandRunner.clientSetConfirmFlag(message.confirmkey, checked);
     };
 
     render() {
@@ -234,11 +240,11 @@ class AlertModal extends React.Component<{}, {}> {
                         <Markdown text={message?.message ?? ""} />
                     </If>
                     <If condition={!message?.markdown}>{message?.message}</If>
-                    <If condition={!message.hideShellPrompt}>
+                    <If condition={!message.confirmkey}>
                         <Checkbox
-                            onChange={this.handleHideShellPrompt}
+                            onChange={this.handleDontShowAgain}
                             label={"Don't show me this again"}
-                            className="show-shell-prompt"
+                            className="dontshowagain-text"
                         />
                     </If>
                 </div>
@@ -540,8 +546,8 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
     @boundMethod
     handleOk(): void {
         let cdata = GlobalModel.clientData.get();
-        let { hideShellPrompt } = cdata.clientopts.confirmflags;
-        if (hideShellPrompt == true || hideShellPrompt == null) {
+        let noConfirm = cdata.clientopts.confirmflags[appconst.ConfirmKey_HideShellPrompt];
+        if (noConfirm) {
             this.submitRemote();
         } else {
             this.showShellPrompt(this.submitRemote);
@@ -554,7 +560,7 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
             message:
                 "You are about to install WaveShell on a remote machine. Please be aware that WaveShell will be executed on the remote system.",
             confirm: true,
-            hideShellPrompt: false,
+            confirmkey: appconst.ConfirmKey_HideShellPrompt,
         });
         prtn.then((confirm) => {
             if (!confirm) {
