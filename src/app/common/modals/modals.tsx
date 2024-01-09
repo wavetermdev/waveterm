@@ -217,7 +217,7 @@ class AlertModal extends React.Component<{}, {}> {
         GlobalModel.confirmAlert();
     }
 
-    handleShowShellPrompt = (checked: boolean) => {
+    handleHideShellPrompt = (checked: boolean) => {
         GlobalCommandRunner.clientSetConfirmFlag("hideShellPrompt", checked);
     };
 
@@ -236,7 +236,7 @@ class AlertModal extends React.Component<{}, {}> {
                     <If condition={!message?.markdown}>{message?.message}</If>
                     <If condition={!message.hideShellPrompt}>
                         <Checkbox
-                            onChange={this.handleShowShellPrompt}
+                            onChange={this.handleHideShellPrompt}
                             label={"Don't show me this again"}
                             className="show-shell-prompt"
                         />

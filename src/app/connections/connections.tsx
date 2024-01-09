@@ -82,10 +82,10 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
     handleImportSshConfig(): void {
         let cdata = GlobalModel.clientData.get();
         let { hideShellPrompt } = cdata.clientopts.confirmflags;
-        if (hideShellPrompt) {
-            this.showShellPrompt(this.importSshConfig);
-        } else {
+        if (hideShellPrompt == true || hideShellPrompt == null) {
             this.importSshConfig();
+        } else {
+            this.showShellPrompt(this.importSshConfig);
         }
     }
 
