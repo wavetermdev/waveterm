@@ -2,8 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import { ViewRemoteConnDetailModal, EditRemoteConnModal, TabSwitcherModal } from "./modals";
-import { AboutModal, AlertModal, CreateRemoteConnModal } from "../modals";
+import {
+    AboutModal,
+    AlertModal,
+    CreateRemoteConnModal,
+    ViewRemoteConnDetailModal,
+    EditRemoteConnModal,
+    TabSwitcherModal,
+} from "../modals";
 import { ScreenSettingsModal, SessionSettingsModal, LineSettingsModal, ClientSettingsModal } from "./settings";
 import * as constants from "../../appconst";
 
