@@ -65,7 +65,6 @@ func GetMappable[PT DBMappablePtr[T], T any](tx *txwrap.TxWrap, query string, ar
 	if len(m) == 0 {
 		return nil
 	}
-
 	rtn := PT(new(T))
 	FromDBMap(rtn, m)
 	return rtn
