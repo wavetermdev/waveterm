@@ -3,13 +3,13 @@
 
 import * as React from "react";
 import {
-    AboutModal,
     CreateRemoteConnModal,
     ViewRemoteConnDetailModal,
     EditRemoteConnModal,
     AlertModal,
     TabSwitcherModal,
 } from "./modals";
+import { AboutModal } from "../modals";
 import { ScreenSettingsModal, SessionSettingsModal, LineSettingsModal, ClientSettingsModal } from "./settings";
 import * as constants from "../../appconst";
 

@@ -1,0 +1,1 @@
+export { AboutModal } from "./about";
