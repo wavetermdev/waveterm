@@ -200,6 +200,7 @@ type ElectronApi = {
     onLCmd: (callback: (mods: KeyModsType) => void) => void;
     onHCmd: (callback: (mods: KeyModsType) => void) => void;
     onPCmd: (callback: (mods: KeyModsType) => void) => void;
+    onWCmd: (callback: (mods: KeyModsType) => void) => void;
     onMenuItemAbout: (callback: () => void) => void;
     onMetaArrowUp: (callback: () => void) => void;
     onMetaArrowDown: (callback: () => void) => void;
@@ -3216,6 +3217,7 @@ class Model {
         getApi().onLCmd(this.onLCmd.bind(this));
         getApi().onHCmd(this.onHCmd.bind(this));
         getApi().onPCmd(this.onPCmd.bind(this));
+        getApi().onWCmd(this.onWCmd.bind(this));
         getApi().onMenuItemAbout(this.onMenuItemAbout.bind(this));
         getApi().onMetaArrowUp(this.onMetaArrowUp.bind(this));
         getApi().onMetaArrowDown(this.onMetaArrowDown.bind(this));
@@ -3458,6 +3460,23 @@ class Model {
         }
         GlobalCommandRunner.lineDelete(String(selectedLine), true);
         return true;
+    }
+
+    onWCmd(e: any, mods: KeyModsType) {
+        let activeScreen = this.getActiveScreen();
+        if (activeScreen == null) {
+            return;
+        }
+        let rtnp = this.showAlert({
+            message: "Are you sure you want to delete this screen?",
+            confirm: true,
+        });
+        rtnp.then((result) => {
+            if (!result) {
+                return;
+            }
+            GlobalCommandRunner.screenDelete(activeScreen.screenId, true);
+        });
     }
 
     clearModals(): boolean {
@@ -4395,8 +4414,8 @@ class CommandRunner {
         );
     }
 
-    screenDelete(screenId: string): Promise<CommandRtnType> {
-        return GlobalModel.submitCommand("screen", "delete", [screenId], { nohist: "1" }, false);
+    screenDelete(screenId: string, interactive: boolean): Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("screen", "delete", [screenId], { nohist: "1" }, interactive);
     }
 
     screenWebShare(screenId: string, shouldShare: boolean): Promise<CommandRtnType> {
