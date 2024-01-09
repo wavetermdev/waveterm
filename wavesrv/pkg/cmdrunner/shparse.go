@@ -189,6 +189,7 @@ var literalRtnStateCommands = []string{
 	".",
 	"source",
 	"unset",
+	"unsetopt",
 	"cd",
 	"alias",
 	"unalias",
@@ -206,6 +207,8 @@ var literalRtnStateCommands = []string{
 	"integer",
 	"local",
 	"readonly",
+	"unfunction",
+	"shopt",
 }
 
 func getCallExprLitArg(callExpr *syntax.CallExpr, argNum int) string {

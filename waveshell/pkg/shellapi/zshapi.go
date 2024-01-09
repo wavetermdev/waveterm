@@ -7,8 +7,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"log"
+	"os"
 	"os/exec"
+	"path"
 	"strings"
 	"sync"
 
@@ -38,6 +39,44 @@ var ZshIgnoreVars = map[string]bool{
 	"HISTSIZE":             true,
 	"SAVEHIST":             true,
 	"ZSH_EXECUTION_STRING": true,
+	"EPOCHSECONDS":         true,
+	"EPOCHREALTIME":        true,
+	"TTY":                  true,
+	"epochtime":            true,
+	"langinfo":             true,
+
+	"aliases":              true,
+	"dis_aliases":          true,
+	"saliases":             true,
+	"dis_saliases":         true,
+	"galiases":             true,
+	"dis_galiases":         true,
+	"builtins":             true,
+	"dis_builtins":         true,
+	"modules":              true,
+	"history":              true,
+	"historywords":         true,
+	"jobdirs":              true,
+	"jobstates":            true,
+	"jobtexts":             true,
+	"funcfiletrace":        true,
+	"funcsourcetrace":      true,
+	"funcstack":            true,
+	"functrace":            true,
+	"parameters":           true,
+	"commands":             true,
+	"functions":            true,
+	"dis_functions":        true,
+	"functions_source":     true,
+	"dis_functions_source": true,
+	"_comps":               true,
+	"_patcomps":            true,
+	"_postpatcomps":        true,
+}
+
+var ZshUniqueArrayVars = map[string]bool{
+	"path":  true,
+	"fpath": true,
 }
 
 var ZshUnsetVars = []string{
@@ -126,9 +165,15 @@ func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 	var rcBuf bytes.Buffer
 	rcBuf.WriteString(z.GetBaseShellOpts() + "\n")
 	rcBuf.WriteString("unsetopt GLOBAL_RCS\n")
+	rcBuf.WriteString("unset KSH_ARRAYS\n")
 	varDecls := shellenv.VarDeclsFromState(pk.State)
-	log.Printf("MakeRCFile: num-decls: %d", len(varDecls))
 	for _, varDecl := range varDecls {
+		if ZshIgnoreVars[varDecl.Name] {
+			continue
+		}
+		if ZshUniqueArrayVars[varDecl.Name] && !varDecl.IsUniqueArray() {
+			varDecl.AddFlag("U")
+		}
 		stmt := makeZshTypesetStmt(varDecl)
 		if stmt == "" {
 			continue
@@ -171,7 +216,7 @@ func GetZshShellStateRedirectCommandStr(outputFdNum int) string {
 func MakeZshExitTrap(fdNum int) string {
 	stateCmd := GetZshShellStateRedirectCommandStr(fdNum)
 	fmtStr := `
-TRAPEXIT () {
+zshexit () {
     %s
 }
 `
@@ -199,6 +244,13 @@ func GetLocalZshMajorVersion() string {
 		localZshMajorVersion = packet.GetMajorVersion(fullVersion)
 	})
 	return localZshMajorVersion
+}
+
+// for debugging (not for production use)
+func writeZshStateToFile(outputBytes []byte) error {
+	msHome := base.GetMShellHomeDir()
+	stateFileName := path.Join(msHome, "state.txt")
+	os.WriteFile(stateFileName, outputBytes, 0644)
 }
 
 func parseZshShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {

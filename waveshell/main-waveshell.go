@@ -157,10 +157,12 @@ func main() {
 		fmt.Printf("mshell %s+%s\n", base.MShellVersion, base.BuildTime)
 		return
 	} else if firstArg == "--single" || firstArg == "--single-from-server" {
+		base.ProcessType = base.ProcessType_WaveShellSingle
 		base.InitDebugLog("single")
 		handleSingle(shellType)
 		return
 	} else if firstArg == "--server" {
+		base.ProcessType = base.ProcessType_WaveShellServer
 		base.InitDebugLog("server")
 		rtnCode, err := server.RunServer(shellType)
 		if err != nil {

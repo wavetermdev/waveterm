@@ -56,6 +56,10 @@ func (d *DeclareDeclType) IsAssocArray() bool {
 	return strings.Index(d.Args, "A") >= 0
 }
 
+func (d *DeclareDeclType) IsUniqueArray() bool {
+	return d.IsArray() && strings.Index(d.Args, "U") >= 0
+}
+
 func (d *DeclareDeclType) AddFlag(flag string) {
 	if strings.Index(d.Args, flag) >= 0 {
 		return
