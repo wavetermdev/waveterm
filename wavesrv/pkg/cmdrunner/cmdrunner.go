@@ -1524,12 +1524,12 @@ func createSshImportSummary(changeList map[string][]string) string {
 		return "No changes made from ssh config import"
 	}
 	remoteStatusMsgs := map[string]string{
-		"delete":    "Deleted %d remote%s: %s",
-		"create":    "Created %d remote%s: %s",
-		"update":    "Edited %d remote%s: %s",
-		"deleteErr": "Error deleting %d remote%s: %s",
-		"createErr": "Error creating %d remote%s: %s",
-		"updateErr": "Error editing %d remote%s: %s",
+		"delete":    "Deleted %d connection%s: %s",
+		"create":    "Created %d connection%s: %s",
+		"update":    "Edited %d connection%s: %s",
+		"deleteErr": "Error deleting %d connection%s: %s",
+		"createErr": "Error creating %d connection%s: %s",
+		"updateErr": "Error editing %d connection%s: %s",
 	}
 
 	changeTypeKeys := []string{"delete", "create", "update", "deleteErr", "createErr", "updateErr"}
