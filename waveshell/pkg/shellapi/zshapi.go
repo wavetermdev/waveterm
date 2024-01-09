@@ -251,6 +251,7 @@ func writeZshStateToFile(outputBytes []byte) error {
 	msHome := base.GetMShellHomeDir()
 	stateFileName := path.Join(msHome, "state.txt")
 	os.WriteFile(stateFileName, outputBytes, 0644)
+	return nil
 }
 
 func parseZshShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
