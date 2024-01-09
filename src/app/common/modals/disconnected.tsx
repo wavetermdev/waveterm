@@ -5,11 +5,10 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import dayjs from "dayjs";
-import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "../../../model/model";
 import { Modal, Button } from "../common";
-dayjs.extend(localizedFormat);
+
+import "./disconnected.less";
 
 const NumOfLines = 50;
 

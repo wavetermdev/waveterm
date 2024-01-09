@@ -17,7 +17,7 @@ import { BookmarksView } from "./bookmarks/bookmarks";
 import { HistoryView } from "./history/history";
 import { ConnectionsView } from "./connections/connections";
 import { MainSideBar } from "./sidebar/sidebar";
-import { DisconnectedModal, ClientStopModal } from "./common/modals/modals";
+import { DisconnectedModal, ClientStopModal } from "./common/modals";
 import { ModalsProvider } from "./common/modals/provider";
 import { ErrorBoundary } from "./common/error/errorboundary";
 import "./app.less";
