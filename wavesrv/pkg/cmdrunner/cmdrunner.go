@@ -4028,18 +4028,8 @@ func ClientConfirmFlagCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 
 	// Extract key and value from pk.Args
 	key := pk.Args[0]
-	value, err := strconv.ParseBool(pk.Args[1])
-	if err != nil {
-		return nil, fmt.Errorf("error parsing argument value to bool: %v", err)
-	}
-
-	validKey := false
-	for _, v := range ConfirmFlags {
-		if key == v {
-			validKey = true
-			break
-		}
-	}
+	value := resolveBool(pk.Args[1], true)
+	validKey := utilfn.ContainsStr(ConfirmFlags, key)
 	if !validKey {
 		return nil, fmt.Errorf("invalid confirm flag key: %s", key)
 	}
