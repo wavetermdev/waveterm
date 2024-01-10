@@ -13,6 +13,8 @@ import * as util from "../../../util/util";
 import { Screen } from "../../../model/model";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
 
+import "./tabswitcher.less";
+
 type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
 
