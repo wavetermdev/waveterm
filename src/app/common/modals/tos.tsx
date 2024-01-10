@@ -13,6 +13,8 @@ import shield from "../../assets/icons/shield_check.svg";
 import help from "../../assets/icons/help_filled.svg";
 import github from "../../assets/icons/github.svg";
 
+import "./tos.less";
+
 @mobxReact.observer
 class TosModal extends React.Component<{}, {}> {
     @boundMethod

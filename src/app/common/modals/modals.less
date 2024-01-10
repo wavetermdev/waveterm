@@ -10,12 +10,6 @@
     }
 }
 
-.tos-modal {
-    a:hover {
-        text-decoration: underline;
-    }
-}
-
 .modal.settings-modal {
     footer {
         justify-content: center;
@@ -119,130 +113,6 @@
         flex-direction: row;
         align-items: center;
         padding: 15px 10px 10px 10px;
-    }
-}
-
-.tos-modal {
-    width: 640px;
-
-    .wave-modal-content .wave-modal-body {
-        padding: 32px 48px;
-        gap: 8px;
-
-        .wave-modal-body-inner {
-            gap: 24px;
-            display: flex;
-            flex-direction: column;
-
-            header.tos-header {
-                flex-direction: column;
-                gap: var(--sizing-sm, 12px);
-                border-bottom: none;
-                padding: 0;
-
-                .modal-title {
-                    text-align: center;
-                    font-size: 20px;
-                    font-weight: 300;
-                }
-
-                .modal-subtitle {
-                    color: @term-white;
-                    text-align: center;
-
-                    font-style: normal;
-                    font-weight: 300;
-                    line-height: 20px;
-                }
-            }
-
-            .content.tos-content {
-                display: flex;
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 32px;
-                width: 100%;
-                margin-bottom: 0;
-
-                .item {
-                    display: flex;
-                    width: 100%;
-                    align-items: center;
-                    gap: 16px;
-
-                    .item-inner {
-                        display: flex;
-                        flex-direction: column;
-                        align-items: flex-start;
-                        gap: 4px;
-                        flex: 1 0 0;
-
-                        .item-title {
-                            color: @term-bright-white;
-                            font-style: normal;
-                            line-height: 20px;
-                        }
-
-                        .item-text {
-                            color: @term-white;
-                            font-style: normal;
-                            line-height: 20px;
-                        }
-
-                        .item-field {
-                            display: flex;
-                            align-items: center;
-                            gap: 8px;
-                        }
-                    }
-                }
-            }
-
-            footer {
-                .item-text {
-                    text-align: center;
-                }
-
-                .button-wrapper {
-                    display: flex;
-                    flex-direction: row;
-                    align-items: center;
-                    justify-content: center;
-
-                    button {
-                        font-size: 12.5px !important;
-                        margin-top: 16px;
-                    }
-
-                    button.disabled-button {
-                        cursor: default;
-                    }
-                }
-            }
-        }
-    }
-}
-
-.crconn-modal {
-    width: 452px;
-    min-height: 411px;
-
-    .wave-modal-content {
-        gap: 24px;
-
-        .wave-modal-body {
-            display: flex;
-            padding: 0px 20px;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 12px;
-            align-self: stretch;
-            width: 100%;
-
-            > div {
-                width: 100%;
-            }
-        }
     }
 }
 
@@ -357,57 +227,39 @@
     }
 }
 
-.wave-button.color-standard {
-    color: @term-white;
-    background: rgba(255, 255, 255, 0.12);
+// .wave-button.color-standard {
+//     color: @term-white;
+//     background: rgba(255, 255, 255, 0.12);
 
-    &:hover {
-        color: @term-white;
-    }
-}
+//     &:hover {
+//         color: @term-white;
+//     }
+// }
 
-.wave-button-link {
-    display: flex;
-    padding: 6px 16px;
-    align-items: center;
-    gap: var(--sizing-2-xs, 4px);
-    border-radius: 6px;
-    background: var(--overlays-white-6, rgba(255, 255, 255, 0.12));
-    cursor: pointer;
-}
+// .modal.welcome-modal {
+//     footer {
+//         .prev-button {
+//             margin-left: 15px;
+//             width: 100px;
+//         }
 
-.wave-modal-section {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    align-self: stretch;
-    width: 100%;
-}
+//         .prev-spacer {
+//             margin-left: 15px;
+//             width: 100px;
+//         }
 
-.modal.welcome-modal {
-    footer {
-        .prev-button {
-            margin-left: 15px;
-            width: 100px;
-        }
+//         .next-button {
+//             margin-right: 15px;
+//             width: 100px;
+//         }
 
-        .prev-spacer {
-            margin-left: 15px;
-            width: 100px;
-        }
-
-        .next-button {
-            margin-right: 15px;
-            width: 100px;
-        }
-
-        .dots {
-            i {
-                margin-left: 5px;
-            }
-        }
-    }
-}
+//         .dots {
+//             i {
+//                 margin-left: 5px;
+//             }
+//         }
+//     }
+// }
 
 .client-settings-modal {
     .settings-field {

@@ -13,7 +13,7 @@ import { Modal, Tooltip, Button, Status } from "../common";
 import * as util from "../../../util/util";
 import * as textmeasure from "../../../util/textmeasure";
 
-import "./viewremoteconn.less";
+import "./viewremoteconndetail.less";
 
 const RemotePtyRows = 9;
 const RemotePtyCols = 80;

@@ -6,6 +6,7 @@ import * as mobxReact from "mobx-react";
 import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
 import { GlobalModel } from "../../../model/model";
+import { Modal, Button } from "../common";
 
 import "./clientstop.less";
 
@@ -19,29 +20,28 @@ class ClientStopModal extends React.Component<{}, {}> {
     render() {
         let model = GlobalModel;
         let cdata = model.clientData.get();
-        let title = "Client Not Ready";
         return (
-            <div className="prompt-modal client-stop-modal modal is-active">
-                <div className="modal-background"></div>
-                <div className="modal-content">
-                    <div className="message-header">
-                        <div className="modal-title">{title}</div>
+            <Modal className="clientstop-modal">
+                <Modal.Header title="Client Not Ready" />
+                <div className="wave-modal-body">
+                    <div className="modal-content">
+                        <div className="inner-content">
+                            <If condition={cdata == null}>
+                                <div>Cannot get client data.</div>
+                            </If>
+                            <div>
+                                <Button
+                                    theme="secondary"
+                                    onClick={this.refreshClient}
+                                    leftIcon={<i className="fa-sharp fa-solid fa-rotate"></i>}
+                                >
+                                    Hard Refresh Client
+                                </Button>
+                            </div>
+                        </div>
                     </div>
-                    <div className="inner-content">
-                        <If condition={cdata == null}>
-                            <div>Cannot get client data.</div>
-                        </If>
-                    </div>
-                    <footer>
-                        <button onClick={this.refreshClient} className="button">
-                            <span className="icon">
-                                <i className="fa-sharp fa-solid fa-rotate" />
-                            </span>
-                            <span>Hard Refresh Client</span>
-                        </button>
-                    </footer>
                 </div>
-            </div>
+            </Modal>
         );
     }
 }

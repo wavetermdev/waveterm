@@ -1,36 +1,11 @@
 @import "../../../app/common/themes/themes.less";
 
-// modal css (also includes settings-field)
-
-.modal {
-    z-index: 105;
-
-    .modal-background {
-        background-color: @base-background-transparent;
-    }
-}
-
-.tos-modal {
-    a:hover {
-        text-decoration: underline;
-    }
-}
-
-.modal.prompt-modal.client-stop-modal {
-    footer {
-        justify-content: center;
-    }
-
+.clientstop-modal {
     .inner-content {
         display: flex;
         flex-direction: column;
-        padding: 20px;
-        .progress-container {
-            margin-top: 20px;
-        }
-        .progress-text {
-            color: @term-white;
-            align-self: center;
-        }
+        padding: 30px;
+        gap: 20px;
+        align-items: center;
     }
 }
