@@ -36,7 +36,7 @@ class AIChat extends React.Component<{}, {}> {
         }
         if (this.textAreaRef.current != null) {
             this.textAreaRef.current.focus();
-            inputModel.setCmdInfoChatTextAreaRef(this.textAreaRef)
+            inputModel.setCmdInfoChatRefs(this.textAreaRef, this.chatWindowScrollRef)
         }
         this.requestChatUpdate();
     }       
@@ -57,9 +57,7 @@ class AIChat extends React.Component<{}, {}> {
         let curLine = inputModel.getCurLine();
         let prtn = GlobalModel.submitChatInfoCommand(messageStr, curLine, false);
         prtn.then((rtn) => {
-            if(rtn.success) {
-                console.log("submit chat command success");
-            } else {
+            if(!rtn.success) {
                 console.log("submit chat command error: " + rtn.error);
             }
         })
@@ -87,7 +85,6 @@ class AIChat extends React.Component<{}, {}> {
                 if (!ctrlMod) { 
                     if(inputModel.getCodeSelectSelectedIndex() == -1) {
                         let messageStr = e.target.value;
-                        console.log("target value?:", messageStr);
                         this.submitChatMessage(messageStr);
                         e.target.value = "";
                     } else {
@@ -95,7 +92,6 @@ class AIChat extends React.Component<{}, {}> {
                     }
                 } else {
                     e.target.setRangeText("\n", e.target.selectionStart, e.target.selectionEnd, "end");
-                    console.log("shift enter - target value: ", e.target.value);
                 }
             }
             if (e.code == "Escape") {
@@ -150,7 +146,6 @@ class AIChat extends React.Component<{}, {}> {
         let innerHTML: React.JSX.Element = (
             <p style={{whiteSpace:'pre-wrap'}}>{chatItem.userquery}</p>
         );
-        console.log(chatItem);
         if(chatItem.isassistantresponse) {
             if(chatItem.assistantresponse.error != null && chatItem.assistantresponse.error != "") {
                 innerHTML = this.renderError(chatItem.assistantresponse.error);

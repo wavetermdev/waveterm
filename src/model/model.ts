@@ -1237,8 +1237,8 @@ class InputModel {
     aIChatShow: OV<boolean> = mobx.observable.box(false);
     cmdInputHeight: OV<number> = mobx.observable.box(0);
     aiChatTextAreaRef: React.RefObject<HTMLTextAreaElement>;
+    aiChatWindowRef: React.RefObject<HTMLDivElement>;
     codeSelectBlockRefArray: Array<React.RefObject<HTMLElement>>;
-    codeSelectMarkdownID: number;
     codeSelectSelectedIndex: number;
     
     AICmdInfoChatItems: mobx.IObservableArray<OpenAICmdInfoChatMessageType> = mobx.observable.array([], {
@@ -1281,8 +1281,8 @@ class InputModel {
         this.filteredHistoryItems = mobx.computed(() => {
             return this._getFilteredHistoryItems();
         });
-        this.codeSelectMarkdownID = 0;
         this.codeSelectSelectedIndex = -1;
+        this.codeSelectBlockRefArray = [];
     }
     
     setInputMode(inputMode: null | "comment" | "global"): void {
@@ -1409,6 +1409,7 @@ class InputModel {
 
     setOpenAICmdInfoChat(chat: OpenAICmdInfoChatMessageType[]): void {
         this.AICmdInfoChatItems.replace(chat);
+        this.codeSelectBlockRefArray = [];
     }
      
     setHistoryShow(show: boolean): void {
@@ -1699,8 +1700,9 @@ class InputModel {
         }
     }
     
-    setCmdInfoChatTextAreaRef(textAreaRef: React.RefObject<HTMLTextAreaElement>) {
+    setCmdInfoChatRefs(textAreaRef: React.RefObject<HTMLTextAreaElement>, chatWindowRef: React.RefObject<HTMLDivElement>) {
         this.aiChatTextAreaRef = textAreaRef;
+        this.aiChatWindowRef = chatWindowRef;
     }
     
     setAIChatFocus() {
@@ -1719,40 +1721,44 @@ class InputModel {
             this.giveFocus();
         }
     }
-    
-    registerCodeSelectMarkdown(): number {
-        this.codeSelectBlockRefArray = [];
-        this.codeSelectMarkdownID++;
-        return this.codeSelectMarkdownID; 
-    }
-    
-    addCodeBlockToCodeSelect(blockRef: React.RefObject<HTMLElement>, markdownID: number): number {
+     
+    addCodeBlockToCodeSelect(blockRef: React.RefObject<HTMLElement>): number {
         let rtn = -1;
-        if(markdownID == this.codeSelectMarkdownID) {
-            rtn = this.codeSelectBlockRefArray.length;            
-            this.codeSelectBlockRefArray.push(blockRef);
-            this.codeSelectDeselectAll();
-        }
+        rtn = this.codeSelectBlockRefArray.length;            
+        this.codeSelectBlockRefArray.push(blockRef);
+        this.codeSelectDeselectAll();
         return rtn;
     }
     
-    codeSelectDeselectCodeBlock(blockIndex: number, markdownID: number) {
-        if(markdownID != this.codeSelectMarkdownID) {
-            return;
-        }
+    codeSelectDeselectCodeBlock(blockIndex: number) {
         if(blockIndex >= 0 && blockIndex < this.codeSelectBlockRefArray.length) {
-            this.codeSelectBlockRefArray[blockIndex].current.style.background = "";
+            let currentRef = this.codeSelectBlockRefArray[blockIndex].current;
+            if(currentRef != null) {
+                currentRef.classList.remove("selected");
+            }
         }  
     }
+    
 
-    setCodeSelectSelectedCodeBlock(blockIndex:number, markdownID:number) { 
-        if(markdownID != this.codeSelectMarkdownID) {
-            return;
-        }
+    setCodeSelectSelectedCodeBlock(blockIndex:number) { 
         if(blockIndex >= 0 && blockIndex < this.codeSelectBlockRefArray.length) {
-            this.codeSelectDeselectCodeBlock(this.codeSelectSelectedIndex, markdownID);
+            this.codeSelectDeselectCodeBlock(this.codeSelectSelectedIndex);
             this.codeSelectSelectedIndex = blockIndex;
-            this.codeSelectBlockRefArray[blockIndex].current.style.backgroundColor = "rgba(252, 226, 5, 0.4)";
+            let currentRef = this.codeSelectBlockRefArray[blockIndex].current;
+            if(currentRef != null) {
+                currentRef.classList.add("selected");
+                if(this.aiChatWindowRef != null && this.aiChatWindowRef.current != null) {
+                    let chatWindowTop = this.aiChatWindowRef.current.scrollTop;
+                    let chatWindowBottom = chatWindowTop + this.aiChatWindowRef.current.clientHeight;
+                    let elemTop = currentRef.offsetTop;
+                    let elemBottom = elemTop - currentRef.offsetHeight;
+                    let elementIsInView = (elemBottom < chatWindowBottom && elemTop > chatWindowTop);
+                    console.log(chatWindowBottom, chatWindowTop, elemBottom, elemTop);
+                    if(!elementIsInView) {
+                        this.aiChatWindowRef.current.scrollTop = elemBottom - (this.aiChatWindowRef.current.clientHeight / 3);                        
+                    }
+                }
+            }
             this.setAIChatFocus();
         }  
     }
@@ -1760,12 +1766,15 @@ class InputModel {
     codeSelectDecrementCodeBlock() {
         let incBlockIndex = this.codeSelectSelectedIndex + 1;
         if(this.codeSelectSelectedIndex == this.codeSelectBlockRefArray.length-1) {
-            this.codeSelectDeselectCodeBlock(this.codeSelectSelectedIndex, this.codeSelectMarkdownID);
+            this.codeSelectDeselectCodeBlock(this.codeSelectSelectedIndex);
             this.codeSelectSelectedIndex = -1;
+            if(this.aiChatWindowRef != null && this.aiChatWindowRef.current != null) {
+                this.aiChatWindowRef.current.scrollTop = this.aiChatWindowRef.current.scrollHeight;
+            }
         }
         if(incBlockIndex >= 0 && incBlockIndex < this.codeSelectBlockRefArray.length) {
-            this.codeSelectDeselectCodeBlock(this.codeSelectSelectedIndex, this.codeSelectMarkdownID);
-            this.setCodeSelectSelectedCodeBlock(incBlockIndex, this.codeSelectMarkdownID);
+            this.codeSelectDeselectCodeBlock(this.codeSelectSelectedIndex);
+            this.setCodeSelectSelectedCodeBlock(incBlockIndex);
         }
     }
     
@@ -1778,9 +1787,16 @@ class InputModel {
             }
         }
         let decBlockIndex = this.codeSelectSelectedIndex - 1;
+        if(decBlockIndex < 0) {
+            decBlockIndex = 0;
+            if(this.aiChatWindowRef != null && this.aiChatWindowRef.current != null) {
+                this.aiChatWindowRef.current.scrollTop = 0;
+            }
+        }
+        console.log("dec block index", decBlockIndex);
         if(decBlockIndex >= 0 && decBlockIndex < this.codeSelectBlockRefArray.length) {
-            this.codeSelectDeselectCodeBlock(this.codeSelectSelectedIndex, this.codeSelectMarkdownID);
-            this.setCodeSelectSelectedCodeBlock(decBlockIndex, this.codeSelectMarkdownID);
+            this.codeSelectDeselectCodeBlock(this.codeSelectSelectedIndex);
+            this.setCodeSelectSelectedCodeBlock(decBlockIndex);
         }  
     }
     
@@ -1790,7 +1806,7 @@ class InputModel {
     
     codeSelectDeselectAll() {
         if(this.codeSelectSelectedIndex >= 0 && this.codeSelectSelectedIndex < this.codeSelectBlockRefArray.length) { 
-            this.codeSelectDeselectCodeBlock(this.codeSelectSelectedIndex, this.codeSelectMarkdownID); 
+            this.codeSelectDeselectCodeBlock(this.codeSelectSelectedIndex); 
         }
         this.codeSelectSelectedIndex = -1;
     }
