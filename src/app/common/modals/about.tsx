@@ -6,7 +6,7 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { GlobalModel } from "../../../model/model";
-import { Modal } from "../common";
+import { Modal, LinkButton } from "../common";
 import * as util from "../../../util/util";
 
 import logo from "../../assets/waveterm-logo-with-bg.svg";
@@ -98,35 +98,33 @@ class AboutModal extends React.Component<{}, {}> {
                     </div>
                     <div className="about-section text-standard">{this.getStatus(this.isUpToDate())}</div>
                     <div className="about-section">
-                        <a
-                            className="wave-button wave-button-link color-standard"
+                        <LinkButton
+                            className="secondary solid"
                             href={util.makeExternLink("https://github.com/wavetermdev/waveterm")}
-                            rel={"noopener"}
                             target="_blank"
+                            leftIcon={<i className="fa-brands fa-github"></i>}
                         >
-                            <i className="fa-brands fa-github"></i>
                             Github
-                        </a>
-                        <a
-                            className="wave-button wave-button-link color-standard"
+                        </LinkButton>
+                        <LinkButton
+                            className="secondary solid"
                             href={util.makeExternLink("https://www.waveterm.dev/")}
-                            rel={"noopener"}
                             target="_blank"
+                            leftIcon={<i className="fa-sharp fa-light fa-globe"></i>}
                         >
-                            <i className="fa-sharp fa-light fa-globe"></i>
                             Website
-                        </a>
-                        <a
-                            className="wave-button wave-button-link color-standard"
+                        </LinkButton>
+                        <LinkButton
+                            className="secondary solid"
                             href={util.makeExternLink(
                                 "https://github.com/wavetermdev/waveterm/blob/main/acknowledgements/README.md"
                             )}
-                            rel={"noopener"}
                             target="_blank"
+                            rel={"noopener"}
+                            leftIcon={<i className="fa-sharp fa-light fa-heart"></i>}
                         >
-                            <i className="fa-sharp fa-light fa-heart"></i>
                             Acknowledgements
-                        </a>
+                        </LinkButton>
                     </div>
                     <div className="about-section text-standard">&copy; 2023 Command Line Inc.</div>
                 </div>

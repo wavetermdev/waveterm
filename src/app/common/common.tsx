@@ -232,6 +232,7 @@ interface ButtonProps {
     color?: string;
     style?: React.CSSProperties;
     autoFocus?: boolean;
+    className?: string;
 }
 
 class Button extends React.Component<ButtonProps> {
@@ -285,25 +286,24 @@ export default IconButton;
 
 interface LinkButtonProps extends ButtonProps {
     href: string;
+    rel?: string;
     target?: string;
 }
 
-class LinkButton extends IconButton {
+class LinkButton extends React.Component<LinkButtonProps> {
     render() {
-        // @ts-ignore
-        const { href, target, leftIcon, rightIcon, children, theme, variant }: LinkButtonProps = this.props;
+        const { leftIcon, rightIcon, children, className, ...rest } = this.props;
 
         return (
-            <a href={href} target={target} className={`wave-button link-button`}>
-                <button {...this.props} className={`icon-button ${theme} ${variant}`}>
-                    {leftIcon && <span className="icon-left">{leftIcon}</span>}
-                    {children}
-                    {rightIcon && <span className="icon-right">{rightIcon}</span>}
-                </button>
+            <a {...rest} className={cn(`wave-button link-button`, className)}>
+                {leftIcon && <span className="icon-left">{leftIcon}</span>}
+                {children}
+                {rightIcon && <span className="icon-right">{rightIcon}</span>}
             </a>
         );
     }
 }
+
 interface StatusProps {
     status: "green" | "red" | "gray" | "yellow";
     text: string;
