@@ -1138,6 +1138,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
         let termFontSize = GlobalModel.termFontSize.get();
         let termWidth = textmeasure.termWidthFromCols(RemotePtyCols, termFontSize);
         let remoteAliasText = util.isBlank(remote.remotealias) ? "(none)" : remote.remotealias;
+        let selectedRemoteStatus = this.getSelectedRemote().status;
 
         return (
             <Modal className="rconndetail-modal">
@@ -1219,12 +1220,12 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                 <div className="wave-modal-footer">
                     <Button
                         theme="secondary"
-                        disabled={this.getSelectedRemote().status == "connecting"}
+                        disabled={selectedRemoteStatus == "connecting"}
                         onClick={this.handleClose}
                     >
                         Cancel
                     </Button>
-                    <Button disabled={this.getSelectedRemote().status == "connecting"} onClick={this.handleClose}>
+                    <Button disabled={selectedRemoteStatus == "connecting"} onClick={this.handleClose}>
                         Done
                     </Button>
                 </div>
