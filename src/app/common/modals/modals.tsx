@@ -23,9 +23,11 @@ import {
     Tooltip,
     Button,
     Status,
+    Checkbox,
 } from "../common";
 import * as util from "../../../util/util";
 import * as textmeasure from "../../../util/textmeasure";
+import * as appconst from "../../appconst";
 import { ClientDataType } from "../../../types/types";
 import { Screen } from "../../../model/model";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
@@ -216,6 +218,15 @@ class AlertModal extends React.Component<{}, {}> {
         GlobalModel.confirmAlert();
     }
 
+    @boundMethod
+    handleDontShowAgain(checked: boolean) {
+        let message = GlobalModel.alertMessage.get();
+        if (message.confirmflag == null) {
+            return;
+        }
+        GlobalCommandRunner.clientSetConfirmFlag(message.confirmflag, checked);
+    }
+
     render() {
         let message = GlobalModel.alertMessage.get();
         let title = message?.title ?? (message?.confirm ? "Confirm" : "Alert");
@@ -229,16 +240,27 @@ class AlertModal extends React.Component<{}, {}> {
                         <Markdown text={message?.message ?? ""} />
                     </If>
                     <If condition={!message?.markdown}>{message?.message}</If>
+                    <If condition={message.confirmflag}>
+                        <Checkbox
+                            onChange={this.handleDontShowAgain}
+                            label={"Don't show me this again"}
+                            className="dontshowagain-text"
+                        />
+                    </If>
                 </div>
                 <div className="wave-modal-footer">
                     <If condition={isConfirm}>
                         <Button theme="secondary" onClick={this.closeModal}>
                             Cancel
                         </Button>
-                        <Button autoFocus={true} onClick={this.handleOK}>Ok</Button>
+                        <Button autoFocus={true} onClick={this.handleOK}>
+                            Ok
+                        </Button>
                     </If>
                     <If condition={!isConfirm}>
-                        <Button autoFocus={true} onClick={this.handleOK}>Ok</Button>
+                        <Button autoFocus={true} onClick={this.handleOK}>
+                            Ok
+                        </Button>
                     </If>
                 </div>
             </Modal>
@@ -503,6 +525,10 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
         this.errorStr = mobx.observable.box(this.remoteEdit?.errorstr ?? null, { name: "CreateRemote-errorStr" });
     }
 
+    componentDidMount(): void {
+        GlobalModel.getClientData();
+    }
+
     remoteCName(): string {
         let hostName = this.tempHostName.get();
         if (hostName == "") {
@@ -519,6 +545,27 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
             return this.errorStr.get();
         }
         return this.remoteEdit?.errorstr ?? null;
+    }
+
+    @boundMethod
+    handleOk(): void {
+        this.showShellPrompt(this.submitRemote);
+    }
+
+    @boundMethod
+    showShellPrompt(cb: () => void): void {
+        let prtn = GlobalModel.showAlert({
+            message:
+                "You are about to install WaveShell on a remote machine. Please be aware that WaveShell will be executed on the remote system.",
+            confirm: true,
+            confirmflag: appconst.ConfirmKey_HideShellPrompt,
+        });
+        prtn.then((confirm) => {
+            if (!confirm) {
+                return;
+            }
+            cb();
+        });
     }
 
     @boundMethod
@@ -579,12 +626,6 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
                 this.errorStr.set(crtn.error);
             })();
         });
-    }
-
-    @boundMethod
-    handleClose(): void {
-        this.model.closeModal();
-        this.model.setRecentConnAdded(false);
     }
 
     @boundMethod
@@ -802,7 +843,7 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
                         <div className="settings-field settings-error">Error: {this.getErrorStr()}</div>
                     </If>
                 </div>
-                <Modal.Footer onCancel={this.handleClose} onOk={this.submitRemote} okLabel="Connect" />
+                <Modal.Footer onCancel={this.model.closeModal} onOk={this.handleOk} okLabel="Connect" />
             </Modal>
         );
     }
@@ -1097,6 +1138,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
         let termFontSize = GlobalModel.termFontSize.get();
         let termWidth = textmeasure.termWidthFromCols(RemotePtyCols, termFontSize);
         let remoteAliasText = util.isBlank(remote.remotealias) ? "(none)" : remote.remotealias;
+        let selectedRemoteStatus = this.getSelectedRemote().status;
 
         return (
             <Modal className="rconndetail-modal">
@@ -1175,7 +1217,18 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                         </div>
                     </div>
                 </div>
-                <Modal.Footer onOk={this.handleClose} onCancel={this.handleClose} okLabel="Done" />
+                <div className="wave-modal-footer">
+                    <Button
+                        theme="secondary"
+                        disabled={selectedRemoteStatus == "connecting"}
+                        onClick={this.handleClose}
+                    >
+                        Cancel
+                    </Button>
+                    <Button disabled={selectedRemoteStatus == "connecting"} onClick={this.handleClose}>
+                        Done
+                    </Button>
+                </div>
             </Modal>
         );
     }

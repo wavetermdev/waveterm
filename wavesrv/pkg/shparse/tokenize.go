@@ -240,7 +240,8 @@ func (c *parseContext) tokenizeDQ() ([]*WordType, bool) {
 
 // returns (words, eofexit)
 // backticks (WordTypeBQ) handle backslash in a special way, but that seems to mainly effect execution (not completion)
-//     de_backslash => removes initial backslash in \`, \\, and \$ before execution
+//
+//	de_backslash => removes initial backslash in \`, \\, and \$ before execution
 func (c *parseContext) tokenizeRaw() ([]*WordType, bool) {
 	state := &tokenizeOutputState{}
 	isExpSubShell := c.QC.cur() == WordTypeDP

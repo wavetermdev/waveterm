@@ -3287,6 +3287,13 @@ class Model {
     }
 
     showAlert(alertMessage: AlertMessageType): Promise<boolean> {
+        if (alertMessage.confirmflag != null) {
+            let cdata = GlobalModel.clientData.get();
+            let noConfirm = cdata.clientopts?.confirmflags?.[alertMessage.confirmflag];
+            if (noConfirm) {
+                return Promise.resolve(true);
+            }
+        }
         mobx.action(() => {
             this.alertMessage.set(alertMessage);
             GlobalModel.modalsModel.pushModal(appconst.ALERT);
@@ -4650,6 +4657,12 @@ class CommandRunner {
 
     clientAcceptTos(): void {
         GlobalModel.submitCommand("client", "accepttos", null, { nohist: "1" }, true);
+    }
+
+    clientSetConfirmFlag(flag: string, value: boolean): Promise<CommandRtnType> {
+        let kwargs = { nohist: "1" };
+        let valueStr = value ? "1" : "0";
+        return GlobalModel.submitCommand("client", "setconfirmflag", [flag, valueStr], kwargs, false);
     }
 
     editBookmark(bookmarkId: string, desc: string, cmdstr: string) {

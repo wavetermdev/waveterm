@@ -188,14 +188,14 @@
         position: relative;
         display: flex;
         align-items: center;
-        color: #9e9e9e;
+        color: @term-bright-white;
         transition: color 250ms cubic-bezier(0.4, 0, 0.23, 1);
     }
     input[type="checkbox"] + label > span {
         display: flex;
         justify-content: center;
         align-items: center;
-        margin-right: 16px;
+        margin-right: 10px;
         width: 20px;
         height: 20px;
         background: transparent;
@@ -205,10 +205,6 @@
         transition: all 250ms cubic-bezier(0.4, 0, 0.23, 1);
     }
 
-    input[type="checkbox"] + label:hover,
-    input[type="checkbox"]:focus + label {
-        color: #fff;
-    }
     input[type="checkbox"] + label:hover > span,
     input[type="checkbox"]:focus + label > span {
         background: rgba(255, 255, 255, 0.1);

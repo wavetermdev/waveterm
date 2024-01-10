@@ -89,6 +89,7 @@ var ColorNames = []string{"yellow", "blue", "pink", "mint", "cyan", "violet", "o
 var TabIcons = []string{"square", "sparkle", "fire", "ghost", "cloud", "compass", "crown", "droplet", "graduation-cap", "heart", "file"}
 var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
 var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}
+var ConfirmFlags = []string{"hideshellprompt"}
 
 var ScreenCmds = []string{"run", "comment", "cd", "cr", "clear", "sw", "reset", "signal", "chat"}
 var NoHistCmds = []string{"_compgen", "line", "history", "_killserver"}
@@ -213,6 +214,7 @@ func init() {
 	registerCmdFn("client:set", ClientSetCommand)
 	registerCmdFn("client:notifyupdatewriter", ClientNotifyUpdateWriterCommand)
 	registerCmdFn("client:accepttos", ClientAcceptTosCommand)
+	registerCmdFn("client:setconfirmflag", ClientConfirmFlagCommand)
 
 	registerCmdFn("sidebar:open", SidebarOpenCommand)
 	registerCmdFn("sidebar:close", SidebarCloseCommand)
@@ -4086,6 +4088,57 @@ func ClientAcceptTosCommand(ctx context.Context, pk *scpacket.FeCommandPacketTyp
 	update := &sstore.ModelUpdate{
 		ClientData: clientData,
 	}
+	return update, nil
+}
+
+var confirmKeyRe = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
+
+// confirm flags must be all lowercase and only contain letters, numbers, and underscores (and start with letter)
+func ClientConfirmFlagCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	// Check for valid arguments length
+	if len(pk.Args) < 2 {
+		return nil, fmt.Errorf("invalid arguments: expected at least 2, got %d", len(pk.Args))
+	}
+
+	// Extract confirmKey and value from pk.Args
+	confirmKey := pk.Args[0]
+	if !confirmKeyRe.MatchString(confirmKey) {
+		return nil, fmt.Errorf("invalid confirm flag key: %s", confirmKey)
+	}
+	value := resolveBool(pk.Args[1], true)
+	validKey := utilfn.ContainsStr(ConfirmFlags, confirmKey)
+	if !validKey {
+		return nil, fmt.Errorf("invalid confirm flag key: %s", confirmKey)
+	}
+
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
+	}
+
+	// Initialize ConfirmFlags if it's nil
+	if clientData.ClientOpts.ConfirmFlags == nil {
+		clientData.ClientOpts.ConfirmFlags = make(map[string]bool)
+	}
+
+	// Set the confirm flag
+	clientData.ClientOpts.ConfirmFlags[confirmKey] = value
+
+	err = sstore.SetClientOpts(ctx, clientData.ClientOpts)
+	if err != nil {
+		return nil, fmt.Errorf("error updating client data: %v", err)
+	}
+
+	// Retrieve updated client data
+	clientData, err = sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
+	}
+
+	update := &sstore.ModelUpdate{
+		ClientData: clientData,
+	}
+
 	return update, nil
 }
 
