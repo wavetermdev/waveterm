@@ -1216,7 +1216,18 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                         </div>
                     </div>
                 </div>
-                <Modal.Footer onOk={this.handleClose} onCancel={this.handleClose} okLabel="Done" />
+                <div className="wave-modal-footer">
+                    <Button
+                        theme="secondary"
+                        disabled={this.getSelectedRemote().status == "connecting"}
+                        onClick={this.handleClose}
+                    >
+                        Cancel
+                    </Button>
+                    <Button disabled={this.getSelectedRemote().status == "connecting"} onClick={this.handleClose}>
+                        Done
+                    </Button>
+                </div>
             </Modal>
         );
     }
