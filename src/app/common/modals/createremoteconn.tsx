@@ -10,6 +10,7 @@ import { GlobalModel, GlobalCommandRunner, RemotesModel } from "../../../model/m
 import * as T from "../../../types/types";
 import { Modal, TextField, NumberField, InputDecoration, Dropdown, PasswordField, Tooltip } from "../common";
 import * as util from "../../../util/util";
+import * as appconst from "../../appconst";
 
 import "./createremoteconn.less";
 
@@ -42,6 +43,10 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
         this.errorStr = mobx.observable.box(this.remoteEdit?.errorstr ?? null, { name: "CreateRemote-errorStr" });
     }
 
+    componentDidMount(): void {
+        GlobalModel.getClientData();
+    }
+
     remoteCName(): string {
         let hostName = this.tempHostName.get();
         if (hostName == "") {
@@ -58,6 +63,27 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
             return this.errorStr.get();
         }
         return this.remoteEdit?.errorstr ?? null;
+    }
+
+    @boundMethod
+    handleOk(): void {
+        this.showShellPrompt(this.submitRemote);
+    }
+
+    @boundMethod
+    showShellPrompt(cb: () => void): void {
+        let prtn = GlobalModel.showAlert({
+            message:
+                "You are about to install WaveShell on a remote machine. Please be aware that WaveShell will be executed on the remote system.",
+            confirm: true,
+            confirmflag: appconst.ConfirmKey_HideShellPrompt,
+        });
+        prtn.then((confirm) => {
+            if (!confirm) {
+                return;
+            }
+            cb();
+        });
     }
 
     @boundMethod
@@ -97,26 +123,27 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
         kwargs["connectmode"] = this.tempConnectMode.get();
         kwargs["visual"] = "1";
         kwargs["submit"] = "1";
-        let model = this.model;
         let prtn = GlobalCommandRunner.createRemote(cname, kwargs, false);
         prtn.then((crtn) => {
             if (crtn.success) {
+                this.model.setRecentConnAdded(true);
+                this.model.closeModal();
+
                 let crRtn = GlobalCommandRunner.screenSetRemote(cname, true, false);
                 crRtn.then((crcrtn) => {
                     if (crcrtn.success) {
                         return;
                     }
                     mobx.action(() => {
-                        this.errorStr.set(crcrtn.error ?? null);
+                        this.errorStr.set(crcrtn.error);
                     })();
                 });
                 return;
             }
             mobx.action(() => {
-                this.errorStr.set(crtn.error ?? null);
+                this.errorStr.set(crtn.error);
             })();
         });
-        model.seRecentConnAdded(true);
     }
 
     @boundMethod
@@ -334,7 +361,7 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
                         <div className="settings-field settings-error">Error: {this.getErrorStr()}</div>
                     </If>
                 </div>
-                <Modal.Footer onCancel={this.model.closeModal} onOk={this.submitRemote} okLabel="Connect" />
+                <Modal.Footer onCancel={this.model.closeModal} onOk={this.handleOk} okLabel="Connect" />
             </Modal>
         );
     }

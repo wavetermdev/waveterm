@@ -134,7 +134,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
     @boundMethod
     handleClose(): void {
         this.model.closeModal();
-        this.model.seRecentConnAdded(false);
+        this.model.setRecentConnAdded(false);
     }
 
     renderInstallStatus(remote: T.RemoteType): any {
