@@ -11,6 +11,8 @@ import * as T from "../../../types/types";
 import { Modal, TextField, NumberField, InputDecoration, Dropdown, PasswordField, Tooltip } from "../common";
 import * as util from "../../../util/util";
 
+import "./createremoteconn.less";
+
 type OV<V> = mobx.IObservableValue<V>;
 
 @mobxReact.observer
