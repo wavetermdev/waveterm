@@ -1627,6 +1627,7 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 	localConfig := filepath.Join(home, ".ssh", "config")
 	systemConfig := filepath.Join("/", "ssh", "config")
 	sshConfigFiles := []string{localConfig, systemConfig}
+	ssh_config.ReloadConfigs()
 	hostPatterns, hostPatternsErr := resolveSshConfigPatterns(sshConfigFiles)
 	if hostPatternsErr != nil {
 		return nil, hostPatternsErr
