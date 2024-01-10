@@ -1556,7 +1556,7 @@ func createSshImportSummary(changeList map[string][]string) string {
 	} else {
 		pluralize = "s"
 	}
-	return fmt.Sprintf("%d remote%s changed:\n\n%s", totalNumChanges, pluralize, strings.Join(outMsgs, "\n\n"))
+	return fmt.Sprintf("%d connection%s changed:\n\n%s", totalNumChanges, pluralize, strings.Join(outMsgs, "\n\n"))
 }
 
 func NewHostInfo(hostName string) (*HostInfoType, error) {
