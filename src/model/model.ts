@@ -200,6 +200,7 @@ type ElectronApi = {
     onLCmd: (callback: (mods: KeyModsType) => void) => void;
     onHCmd: (callback: (mods: KeyModsType) => void) => void;
     onPCmd: (callback: (mods: KeyModsType) => void) => void;
+    onWCmd: (callback: (mods: KeyModsType) => void) => void;
     onMenuItemAbout: (callback: () => void) => void;
     onMetaArrowUp: (callback: () => void) => void;
     onMetaArrowDown: (callback: () => void) => void;
@@ -2926,8 +2927,11 @@ class RemotesModel {
         return this.recentConnAddedState.get();
     }
 
-    seRecentConnAdded(value: boolean) {
-        this.recentConnAddedState.set(value);
+    @boundMethod
+    setRecentConnAdded(value: boolean) {
+        mobx.action(() => {
+            this.recentConnAddedState.set(value);
+        })();
     }
 
     deSelectRemote(): void {
@@ -2939,6 +2943,7 @@ class RemotesModel {
 
     openReadModal(remoteId: string): void {
         mobx.action(() => {
+            this.setRecentConnAdded(false);
             this.selectedRemoteId.set(remoteId);
             this.remoteEdit.set(null);
             GlobalModel.modalsModel.pushModal(appconst.VIEW_REMOTE);
@@ -3212,6 +3217,7 @@ class Model {
         getApi().onLCmd(this.onLCmd.bind(this));
         getApi().onHCmd(this.onHCmd.bind(this));
         getApi().onPCmd(this.onPCmd.bind(this));
+        getApi().onWCmd(this.onWCmd.bind(this));
         getApi().onMenuItemAbout(this.onMenuItemAbout.bind(this));
         getApi().onMetaArrowUp(this.onMetaArrowUp.bind(this));
         getApi().onMetaArrowDown(this.onMetaArrowDown.bind(this));
@@ -3368,7 +3374,7 @@ class Model {
         // nothing for now
     }
 
-    docKeyDownHandler(e: any) {
+    docKeyDownHandler(e: KeyboardEvent) {
         if (isModKeyPress(e)) {
             return;
         }
@@ -3430,6 +3436,54 @@ class Model {
                 }
             }
         }
+        if (e.code == "KeyD" && e.getModifierState("Meta")) {
+            let ranDelete = this.deleteActiveLine();
+            if (ranDelete) {
+                e.preventDefault();
+            }
+        }
+    }
+
+    deleteActiveLine(): boolean {
+        let activeScreen = this.getActiveScreen();
+        if (activeScreen == null || activeScreen.getFocusType() != "cmd") {
+            return false;
+        }
+        let selectedLine = activeScreen.selectedLine.get();
+        if (selectedLine == null || selectedLine <= 0) {
+            return false;
+        }
+        let line = activeScreen.getLineByNum(selectedLine);
+        if (line == null) {
+            return false;
+        }
+        let cmd = activeScreen.getCmd(line);
+        if (cmd != null) {
+            if (cmd.isRunning()) {
+                let info: T.InfoType = { infomsg: "Cannot delete a running command" };
+                this.inputModel.flashInfoMsg(info, 2000);
+                return false;
+            }
+        }
+        GlobalCommandRunner.lineDelete(String(selectedLine), true);
+        return true;
+    }
+
+    onWCmd(e: any, mods: KeyModsType) {
+        let activeScreen = this.getActiveScreen();
+        if (activeScreen == null) {
+            return;
+        }
+        let rtnp = this.showAlert({
+            message: "Are you sure you want to delete this screen?",
+            confirm: true,
+        });
+        rtnp.then((result) => {
+            if (!result) {
+                return;
+            }
+            GlobalCommandRunner.screenDelete(activeScreen.screenId, true);
+        });
     }
 
     clearModals(): boolean {
@@ -3731,8 +3785,8 @@ class Model {
                 this.remotes.clear();
             }
             this.updateRemotes(update.remotes);
+            // This code's purpose is to show view remote connection modal when a new connection is added
             if (update.remotes && update.remotes.length && this.remotesModel.recentConnAddedState.get()) {
-                GlobalModel.remotesModel.closeModal();
                 GlobalModel.remotesModel.openReadModal(update.remotes![0].remoteid);
             }
         }
@@ -3763,6 +3817,10 @@ class Model {
             if (rview.remoteedit != null) {
                 this.remotesModel.openEditModal({ ...rview.remoteedit });
             }
+        }
+        if (interactive && "alertmessage" in update) {
+            let alertMessage: AlertMessageType = update.alertmessage;
+            this.showAlert(alertMessage);
         }
         if ("cmdline" in update) {
             this.inputModel.updateCmdLine(update.cmdline);
@@ -4314,6 +4372,10 @@ class CommandRunner {
         return GlobalModel.submitCommand("line", "archive", [lineArg, archiveStr], kwargs, false);
     }
 
+    lineDelete(lineArg: string, interactive: boolean): Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("line", "delete", [lineArg], { nohist: "1" }, interactive);
+    }
+
     lineSet(lineArg: string, opts: { renderer?: string }): Promise<CommandRtnType> {
         let kwargs = { nohist: "1" };
         if ("renderer" in opts) {
@@ -4363,8 +4425,8 @@ class CommandRunner {
         );
     }
 
-    screenDelete(screenId: string): Promise<CommandRtnType> {
-        return GlobalModel.submitCommand("screen", "delete", [screenId], { nohist: "1" }, false);
+    screenDelete(screenId: string, interactive: boolean): Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("screen", "delete", [screenId], { nohist: "1" }, interactive);
     }
 
     screenWebShare(screenId: string, shouldShare: boolean): Promise<CommandRtnType> {
@@ -4431,7 +4493,7 @@ class CommandRunner {
     }
 
     importSshConfig() {
-        GlobalModel.submitCommand("remote", "parse", null, null, false);
+        GlobalModel.submitCommand("remote", "parse", null, { nohist: "1", visual: "1" }, true);
     }
 
     screenSelectLine(lineArg: string, focusVal?: string) {

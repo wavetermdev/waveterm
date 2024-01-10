@@ -285,6 +285,7 @@ type ModelUpdateType = {
     clientdata?: ClientDataType;
     historyviewdata?: HistoryViewDataType;
     remoteview?: RemoteViewType;
+    alertmessage?: AlertMessageType;
 };
 
 type HistoryViewDataType = {

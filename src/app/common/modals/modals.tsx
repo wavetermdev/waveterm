@@ -225,7 +225,7 @@ class AlertModal extends React.Component<{}, {}> {
             return;
         }
         GlobalCommandRunner.clientSetConfirmFlag(message.confirmflag, checked);
-    };
+    }
 
     render() {
         let message = GlobalModel.alertMessage.get();
@@ -253,10 +253,14 @@ class AlertModal extends React.Component<{}, {}> {
                         <Button theme="secondary" onClick={this.closeModal}>
                             Cancel
                         </Button>
-                        <Button onClick={this.handleOK}>Ok</Button>
+                        <Button autoFocus={true} onClick={this.handleOK}>
+                            Ok
+                        </Button>
                     </If>
                     <If condition={!isConfirm}>
-                        <Button onClick={this.handleOK}>Ok</Button>
+                        <Button autoFocus={true} onClick={this.handleOK}>
+                            Ok
+                        </Button>
                     </If>
                 </div>
             </Modal>
@@ -601,26 +605,27 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
         kwargs["connectmode"] = this.tempConnectMode.get();
         kwargs["visual"] = "1";
         kwargs["submit"] = "1";
-        let model = this.model;
         let prtn = GlobalCommandRunner.createRemote(cname, kwargs, false);
         prtn.then((crtn) => {
             if (crtn.success) {
+                this.model.setRecentConnAdded(true);
+                this.model.closeModal();
+
                 let crRtn = GlobalCommandRunner.screenSetRemote(cname, true, false);
                 crRtn.then((crcrtn) => {
                     if (crcrtn.success) {
                         return;
                     }
                     mobx.action(() => {
-                        this.errorStr.set(crcrtn.error ?? null);
+                        this.errorStr.set(crcrtn.error);
                     })();
                 });
                 return;
             }
             mobx.action(() => {
-                this.errorStr.set(crtn.error ?? null);
+                this.errorStr.set(crtn.error);
             })();
         });
-        model.seRecentConnAdded(true);
     }
 
     @boundMethod
@@ -855,7 +860,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
     }
 
     @mobx.computed
-    get selectedRemote(): T.RemoteType {
+    getSelectedRemote(): T.RemoteType {
         const selectedRemoteId = this.model.selectedRemoteId.get();
         return GlobalModel.getRemote(selectedRemoteId);
     }
@@ -870,7 +875,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
     }
 
     componentDidUpdate() {
-        if (this.selectedRemote == null || this.selectedRemote.archived) {
+        if (this.getSelectedRemote() == null || this.getSelectedRemote().archived) {
             this.model.deSelectRemote();
         }
     }
@@ -934,7 +939,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
 
     @boundMethod
     clickArchive(): void {
-        if (this.selectedRemote && this.selectedRemote.status == "connected") {
+        if (this.getSelectedRemote() && this.getSelectedRemote().status == "connected") {
             GlobalModel.showAlert({ message: "Cannot delete when connected.  Disconnect and try again." });
             return;
         }
@@ -946,21 +951,22 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
             if (!confirm) {
                 return;
             }
-            if (this.selectedRemote) {
-                GlobalCommandRunner.archiveRemote(this.selectedRemote.remoteid);
+            if (this.getSelectedRemote()) {
+                GlobalCommandRunner.archiveRemote(this.getSelectedRemote().remoteid);
             }
+            GlobalModel.modalsModel.popModal();
         });
     }
 
     @boundMethod
     clickReinstall(): void {
-        GlobalCommandRunner.installRemote(this.selectedRemote?.remoteid);
+        GlobalCommandRunner.installRemote(this.getSelectedRemote().remoteid);
     }
 
     @boundMethod
     handleClose(): void {
         this.model.closeModal();
-        this.model.seRecentConnAdded(false);
+        this.model.setRecentConnAdded(false);
     }
 
     renderInstallStatus(remote: T.RemoteType): any {
@@ -1039,7 +1045,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                 <Button theme="secondary" disabled={true}>
                     Edit
                     <Tooltip
-                        message={`Remotes imported from an ssh config file cannot be edited inside waveterm. To edit these, you must edit the config file and import it again.`}
+                        message={`Connections imported from an ssh config file cannot be edited inside waveterm. To edit these, you must edit the config file and import it again.`}
                         icon={<i className="fa-sharp fa-regular fa-fw fa-ban" />}
                     >
                         <i className="fa-sharp fa-regular fa-fw fa-ban" />
@@ -1052,7 +1058,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                     <Tooltip
                         message={
                             <span>
-                                Remotes imported from an ssh config file can be deleted, but will come back upon
+                                Connections imported from an ssh config file can be deleted, but will come back upon
                                 importing again. They will stay removed if you follow{" "}
                                 <a href="https://docs.waveterm.dev/features/sshconfig-imports">this procedure</a>.
                             </span>
@@ -1121,7 +1127,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
     }
 
     render() {
-        let remote = this.selectedRemote;
+        let remote = this.getSelectedRemote();
 
         if (remote == null) {
             return null;
@@ -1135,7 +1141,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
 
         return (
             <Modal className="rconndetail-modal">
-                <Modal.Header title="Connection" onClose={this.model.closeModal} />
+                <Modal.Header title="Connection" onClose={this.handleClose} />
                 <div className="wave-modal-body">
                     <div className="name-header-actions-wrapper">
                         <div className="name text-primary name-wrapper">
@@ -1210,7 +1216,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                         </div>
                     </div>
                 </div>
-                <Modal.Footer onOk={this.model.closeModal} onCancel={this.model.closeModal} okLabel="Done" />
+                <Modal.Footer onOk={this.handleClose} onCancel={this.handleClose} okLabel="Done" />
             </Modal>
         );
     }
