@@ -1004,7 +1004,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                 <Button theme="secondary" disabled={true}>
                     Edit
                     <Tooltip
-                        message={`Remotes imported from an ssh config file cannot be edited inside waveterm. To edit these, you must edit the config file and import it again.`}
+                        message={`Connections imported from an ssh config file cannot be edited inside waveterm. To edit these, you must edit the config file and import it again.`}
                         icon={<i className="fa-sharp fa-regular fa-fw fa-ban" />}
                     >
                         <i className="fa-sharp fa-regular fa-fw fa-ban" />
@@ -1017,7 +1017,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                     <Tooltip
                         message={
                             <span>
-                                Remotes imported from an ssh config file can be deleted, but will come back upon
+                                Connections imported from an ssh config file can be deleted, but will come back upon
                                 importing again. They will stay removed if you follow{" "}
                                 <a href="https://docs.waveterm.dev/features/sshconfig-imports">this procedure</a>.
                             </span>

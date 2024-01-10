@@ -3811,6 +3811,10 @@ class Model {
                 this.remotesModel.openEditModal({ ...rview.remoteedit });
             }
         }
+        if (interactive && "alertmessage" in update) {
+            let alertMessage: AlertMessageType = update.alertmessage;
+            this.showAlert(alertMessage);
+        }
         if ("cmdline" in update) {
             this.inputModel.updateCmdLine(update.cmdline);
         }
@@ -4482,7 +4486,7 @@ class CommandRunner {
     }
 
     importSshConfig() {
-        GlobalModel.submitCommand("remote", "parse", null, null, false);
+        GlobalModel.submitCommand("remote", "parse", null, { nohist: "1", visual: "1" }, true);
     }
 
     screenSelectLine(lineArg: string, focusVal?: string) {
