@@ -60,6 +60,7 @@ type ModelUpdate struct {
 	RemoteView        *RemoteViewType         `json:"remoteview,omitempty"`
 	ScreenTombstones  []*ScreenTombstoneType  `json:"screentombstones,omitempty"`
 	SessionTombstones []*SessionTombstoneType `json:"sessiontombstones,omitempty"`
+	AlertMessage      *AlertMessageType       `json:"alertmessage,omitempty"`
 }
 
 func (*ModelUpdate) UpdateType() string {
@@ -126,6 +127,13 @@ type RemoteEditType struct {
 	InfoStr     string `json:"infostr,omitempty"`
 	KeyStr      string `json:"keystr,omitempty"`
 	HasPassword bool   `json:"haspassword,omitempty"`
+}
+
+type AlertMessageType struct {
+	Title    string `json:"title,omitempty"`
+	Message  string `json:"message"`
+	Confirm  bool   `json:"confirm,omitempty"`
+	Markdown bool   `json:"markdown,omitempty"`
 }
 
 type InfoMsgType struct {

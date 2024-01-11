@@ -285,6 +285,7 @@ type ModelUpdateType = {
     clientdata?: ClientDataType;
     historyviewdata?: HistoryViewDataType;
     remoteview?: RemoteViewType;
+    alertmessage?: AlertMessageType;
 };
 
 type HistoryViewDataType = {
@@ -472,10 +473,15 @@ type FeOptsType = {
     termfontsize: number;
 };
 
+type ConfirmFlagsType = {
+    [k: string]: boolean;
+};
+
 type ClientOptsType = {
     notelemetry: boolean;
     noreleasecheck: boolean;
     acceptedtos: number;
+    confirmflags: ConfirmFlagsType;
 };
 
 type ReleaseInfoType = {
@@ -524,6 +530,7 @@ type AlertMessageType = {
     message: string;
     confirm?: boolean;
     markdown?: boolean;
+    confirmflag?: string;
 };
 
 type HistorySearchParams = {

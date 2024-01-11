@@ -80,7 +80,7 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { getRendererContext, cmdStatusIsRunning } from "../app/line/lineutil";
 import { MagicLayout } from "../app/magiclayout";
-import { modalsRegistry } from "../app/common/modals/modalsRegistry";
+import { modalsRegistry } from "../app/common/modals/registry";
 import * as appconst from "../app/appconst";
 
 dayjs.extend(customParseFormat);
@@ -3287,6 +3287,13 @@ class Model {
     }
 
     showAlert(alertMessage: AlertMessageType): Promise<boolean> {
+        if (alertMessage.confirmflag != null) {
+            let cdata = GlobalModel.clientData.get();
+            let noConfirm = cdata.clientopts?.confirmflags?.[alertMessage.confirmflag];
+            if (noConfirm) {
+                return Promise.resolve(true);
+            }
+        }
         mobx.action(() => {
             this.alertMessage.set(alertMessage);
             GlobalModel.modalsModel.pushModal(appconst.ALERT);
@@ -3810,6 +3817,10 @@ class Model {
             if (rview.remoteedit != null) {
                 this.remotesModel.openEditModal({ ...rview.remoteedit });
             }
+        }
+        if (interactive && "alertmessage" in update) {
+            let alertMessage: AlertMessageType = update.alertmessage;
+            this.showAlert(alertMessage);
         }
         if ("cmdline" in update) {
             this.inputModel.updateCmdLine(update.cmdline);
@@ -4482,7 +4493,7 @@ class CommandRunner {
     }
 
     importSshConfig() {
-        GlobalModel.submitCommand("remote", "parse", null, null, false);
+        GlobalModel.submitCommand("remote", "parse", null, { nohist: "1", visual: "1" }, true);
     }
 
     screenSelectLine(lineArg: string, focusVal?: string) {
@@ -4646,6 +4657,12 @@ class CommandRunner {
 
     clientAcceptTos(): void {
         GlobalModel.submitCommand("client", "accepttos", null, { nohist: "1" }, true);
+    }
+
+    clientSetConfirmFlag(flag: string, value: boolean): Promise<CommandRtnType> {
+        let kwargs = { nohist: "1" };
+        let valueStr = value ? "1" : "0";
+        return GlobalModel.submitCommand("client", "setconfirmflag", [flag, valueStr], kwargs, false);
     }
 
     editBookmark(bookmarkId: string, desc: string, cmdstr: string) {
