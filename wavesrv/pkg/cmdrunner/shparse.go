@@ -209,6 +209,8 @@ var literalRtnStateCommands = []string{
 	"readonly",
 	"unfunction",
 	"shopt",
+	"enable",
+	"disable",
 }
 
 func getCallExprLitArg(callExpr *syntax.CallExpr, argNum int) string {

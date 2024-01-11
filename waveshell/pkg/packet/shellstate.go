@@ -48,6 +48,13 @@ func (state ShellState) GetShellType() string {
 	return ShellType_bash
 }
 
+func (state ShellState) GetLineDiffSplitString() string {
+	if state.GetShellType() == ShellType_zsh {
+		return "\x00"
+	}
+	return "\n"
+}
+
 func (state ShellState) IsEmpty() bool {
 	return state.Version == "" && state.Cwd == "" && len(state.ShellVars) == 0 && state.Aliases == "" && state.Funcs == "" && state.Error == ""
 }

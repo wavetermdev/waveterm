@@ -88,6 +88,11 @@ var ZshUnsetVars = []string{
 var localZshMajorVersionOnce = &sync.Once{}
 var localZshMajorVersion = ""
 
+type ZshAliasKey struct {
+	AliasType string // "aliases", "dis_aliases", "saliases", "dis_saliases", "galiases", "dis_galiases"
+	AliasName string
+}
+
 type zshShellApi struct{}
 
 func (z zshShellApi) GetShellType() string {
@@ -127,7 +132,7 @@ func (z zshShellApi) GetShellState() (*packet.ShellState, error) {
 	if err != nil {
 		return nil, err
 	}
-	rtn, err := parseZshShellStateOutput(outputBytes)
+	rtn, err := z.ParseShellStateOutput(outputBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -136,10 +141,6 @@ func (z zshShellApi) GetShellState() (*packet.ShellState, error) {
 
 func (z zshShellApi) GetBaseShellOpts() string {
 	return BaseZshOpts
-}
-
-func (z zshShellApi) ParseShellStateOutput(output []byte) (*packet.ShellState, error) {
-	return parseZshShellStateOutput(output)
 }
 
 func makeZshTypesetStmt(varDecl *shellenv.DeclareDeclType) string {
@@ -188,6 +189,14 @@ func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 	for _, varName := range ZshUnsetVars {
 		rcBuf.WriteString("unset " + shellescape.Quote(varName) + "\n")
 	}
+
+	// aliases
+	aliasMap := ParseZshAliases([]byte(pk.State.Aliases))
+	for aliasKey, aliasValue := range aliasMap {
+		// tricky here, don't quote AliasName (it gets implicit quotes, and quoting doesn't work as expected)
+		aliasStr := fmt.Sprintf("%s[%s]=%s\n", aliasKey.AliasType, aliasKey.AliasName, shellescape.Quote(aliasValue))
+		rcBuf.WriteString(aliasStr)
+	}
 	return rcBuf.String()
 }
 
@@ -200,6 +209,33 @@ printf "\x00\x00";
 env -0;
 printf "\x00";
 typeset -p +H -m '*';
+printf "\x00\x00";
+for var in "${(@k)aliases}"; do
+	printf "aliases %s\x00" $var
+	printf "%s\x00" ${aliases[$var]}
+done
+for var in "${(@k)dis_aliases}"; do
+	printf "dis_aliases %s\x00" $var
+	printf "%s\x00" ${dis_aliases[$var]}
+done
+for var in "${(@k)saliases}"; do
+    printf "saliases %s\x00" $var
+	printf "%s\x00" ${saliases[$var]}
+done
+for var in "${(@k)dis_saliases}"; do
+	printf "dis_saliases %s\x00" $var
+	printf "%s\x00" ${dis_saliases[$var]}
+done
+for var in "${(@k)galiases}"; do
+	printf "galiases %s\x00" $var
+	printf "%s\x00" ${galiases[$var]}
+done
+for var in "${(@k)dis_galiases}"; do
+	printf "dis_galiases %s\x00" $var
+	printf "%s\x00" ${dis_galiases[$var]}
+done
+printf "\x00\x00";
+echo "functions"
 printf "\x00\x00";
 [%GITBRANCH%]
 `
@@ -254,10 +290,31 @@ func writeZshStateToFile(outputBytes []byte) error {
 	return nil
 }
 
-func parseZshShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
-	// 5 fields: version [0], cwd [1], env [2], vars [3], pvars [4]
+func ParseZshAliases(aliasBytes []byte) map[ZshAliasKey]string {
+	aliasParts := bytes.Split(aliasBytes, []byte{0})
+	rtn := make(map[ZshAliasKey]string)
+	for aliasPartIdx := 0; aliasPartIdx < len(aliasParts); aliasPartIdx += 2 {
+		aliasNameAndType := string(aliasParts[aliasPartIdx])
+		aliasNameAndTypeParts := strings.SplitN(aliasNameAndType, " ", 2)
+		if len(aliasNameAndTypeParts) != 2 {
+			continue
+		}
+		aliasKey := ZshAliasKey{AliasType: aliasNameAndTypeParts[0], AliasName: aliasNameAndTypeParts[1]}
+		aliasValue := string(aliasParts[aliasPartIdx+1])
+		rtn[aliasKey] = aliasValue
+	}
+	return rtn
+}
+
+func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
+	// if scbase.IsDevMode() {
+	// 	writeZshStateToFile(outputBytes)
+	// }
+
+	// 7 fields: version [0], cwd [1], env [2], vars [3], aliases [4], functions [5], pvars [6]
 	fields := bytes.Split(outputBytes, []byte{0, 0})
-	if len(fields) != 5 {
+	if len(fields) != 7 {
+		base.Logf("invalid -- numfields\n")
 		return nil, fmt.Errorf("invalid zsh shell state output, wrong number of fields, fields=%d", len(fields))
 	}
 	rtn := &packet.ShellState{}
@@ -275,6 +332,7 @@ func parseZshShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
 	zshEnv := parseZshEnv(fields[2])
 	zshDecls, err := parseZshDecls(fields[3])
 	if err != nil {
+		base.Logf("invalid - parsedecls %v\n", err)
 		return nil, err
 	}
 	for _, decl := range zshDecls {
@@ -282,7 +340,8 @@ func parseZshShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
 			decl.ZshEnvValue = zshEnv[decl.ZshBoundScalar]
 		}
 	}
-	pvarMap := parsePVarOutput(fields[4], true)
+	rtn.Aliases = string(fields[4])
+	pvarMap := parsePVarOutput(fields[6], true)
 	utilfn.CombineMaps(zshDecls, pvarMap)
 	rtn.ShellVars = shellenv.SerializeDeclMap(zshDecls)
 	return rtn, nil

@@ -177,8 +177,8 @@ func MakeShellStateDiff(oldState packet.ShellState, oldStateHash string, newStat
 	oldVars := shellStateVarsToMap(oldState.ShellVars)
 	newVars := shellStateVarsToMap(newState.ShellVars)
 	rtn.VarsDiff = statediff.MakeMapDiff(oldVars, newVars)
-	rtn.AliasesDiff = statediff.MakeLineDiff(oldState.Aliases, newState.Aliases)
-	rtn.FuncsDiff = statediff.MakeLineDiff(oldState.Funcs, newState.Funcs)
+	rtn.AliasesDiff = statediff.MakeLineDiff(oldState.Aliases, newState.Aliases, oldState.GetLineDiffSplitString())
+	rtn.FuncsDiff = statediff.MakeLineDiff(oldState.Funcs, newState.Funcs, oldState.GetLineDiffSplitString())
 	return rtn, nil
 }
 
