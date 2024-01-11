@@ -167,6 +167,7 @@ func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 	rcBuf.WriteString(z.GetBaseShellOpts() + "\n")
 	rcBuf.WriteString("unsetopt GLOBAL_RCS\n")
 	rcBuf.WriteString("unset KSH_ARRAYS\n")
+	rcBuf.WriteString("zmodload zsh/parameter\n")
 	varDecls := shellenv.VarDeclsFromState(pk.State)
 	for _, varDecl := range varDecls {
 		if ZshIgnoreVars[varDecl.Name] {
@@ -202,6 +203,7 @@ func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 
 func GetZshShellStateCmd() string {
 	cmd := `
+zmodload zsh/parameter;
 [%ZSHVERSION%];
 printf "\x00\x00";
 pwd;
