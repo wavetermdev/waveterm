@@ -871,7 +871,10 @@ func UpdateWithCurrentOpenAICmdInfoChat(screenId string) (*ModelUpdate, error) {
 }
 
 func UpdateWithUpdateOpenAICmdInfoPacket(ctx context.Context, screenId string, messageID int, pk *packet.OpenAICmdInfoChatMessage) (*ModelUpdate, error) {
-	ScreenMemUpdateCmdInfoChatMessage(screenId, messageID, pk)
+	err := ScreenMemUpdateCmdInfoChatMessage(screenId, messageID, pk)
+	if err != nil {
+		return nil, err
+	}
 	return UpdateWithCurrentOpenAICmdInfoChat(screenId)
 }
 

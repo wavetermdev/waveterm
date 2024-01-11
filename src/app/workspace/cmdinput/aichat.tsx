@@ -115,7 +115,6 @@ class AIChat extends React.Component<{}, {}> {
             }
             if(e.code == "ArrowDown") {
                 if(inputModel.getCodeSelectSelectedIndex() == inputModel.codeSelectBottom) {
-                    console.log("code select index is -1, returning");
                     return; 
                 }
                 e.preventDefault();

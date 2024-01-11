@@ -5,6 +5,7 @@
 package sstore
 
 import (
+	"fmt"
 	"log"
 	"sync"
 
@@ -142,7 +143,7 @@ func ScreenMemGetCmdInfoChat(screenId string) *OpenAICmdInfoChatStore {
 	return ScreenMemDeepCopyCmdInfoChatStore(ScreenMemStore[screenId].AICmdInfoChat)
 }
 
-func ScreenMemUpdateCmdInfoChatMessage(screenId string, messageID int, msg *packet.OpenAICmdInfoChatMessage) {
+func ScreenMemUpdateCmdInfoChatMessage(screenId string, messageID int, msg *packet.OpenAICmdInfoChatMessage) error {
 	MemLock.Lock()
 	defer MemLock.Unlock()
 	if ScreenMemStore[screenId] == nil {
@@ -155,8 +156,9 @@ func ScreenMemUpdateCmdInfoChatMessage(screenId string, messageID int, msg *pack
 	if messageID >= 0 && messageID < len(CmdInfoChat.Messages) {
 		CmdInfoChat.Messages[messageID] = msg
 	} else {
-		log.Printf("ScreenMemUpdateCmdInfoChatMessage: error: Message Id out of range: %d", messageID)
+		return fmt.Errorf("ScreenMemUpdateCmdInfoChatMessage: error: Message Id out of range: %d", messageID)
 	}
+	return nil
 }
 
 func ScreenMemSetCmdInputText(screenId string, sp utilfn.StrWithPos, seqNum int) {

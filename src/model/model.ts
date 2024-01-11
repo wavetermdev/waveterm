@@ -1775,7 +1775,6 @@ class InputModel {
                 }
             }
             if(incBlockIndex >= 0 && incBlockIndex < this.codeSelectBlockRefArray.length) {
-                console.log("what the heck", incBlockIndex);
                 this.setCodeSelectSelectedCodeBlock(incBlockIndex);
             }
         })();
@@ -1835,11 +1834,9 @@ class InputModel {
     }
     
     clearAIAssistantChat(): void { 
-        console.log("AI Assistant test");
         let prtn = GlobalModel.submitChatInfoCommand("", "", true);
         prtn.then((rtn) => {
             if(rtn.success) {
-                console.log("Clear AI Assistant chat submit chat command success");
             } else {
                 console.log("submit chat command error: " + rtn.error);
             }

@@ -837,7 +837,6 @@ class CodeBlockMarkdown extends React.Component< {children: React.ReactNode, blo
         super(props);
         this.blockRef = React.createRef();
         this.blockIndex = GlobalModel.inputModel.addCodeBlockToCodeSelect(this.blockRef);
-        console.log("currentl block index: ", this.blockIndex);
     }
     
     render() {
