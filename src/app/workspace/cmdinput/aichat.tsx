@@ -110,15 +110,16 @@ class AIChat extends React.Component<{}, {}> {
                     return;
                 }
                 e.preventDefault();
-                inputModel.codeSelectIncrementCodeBlock();
+                inputModel.codeSelectSelectNextOldestCodeBlock();
                 resetCodeSelect = false;
             }
             if(e.code == "ArrowDown") {
-                if(inputModel.getCodeSelectSelectedIndex() == -1) {
+                if(inputModel.getCodeSelectSelectedIndex() == inputModel.codeSelectBottom) {
+                    console.log("code select index is -1, returning");
                     return; 
                 }
                 e.preventDefault();
-                inputModel.codeSelectDecrementCodeBlock();
+                inputModel.codeSelectSelectNextNewestCodeBlock();
                 resetCodeSelect = false;
             }
             
@@ -135,8 +136,8 @@ class AIChat extends React.Component<{}, {}> {
         return (
                 <div className="chat-msg-error">{err}</div>
         );
-
     }
+    
     
     renderChatMessage(chatItem: OpenAICmdInfoChatMessageType): any {
         let curKey = "chatmsg-" + (this.chatListKeyCount);
@@ -144,14 +145,26 @@ class AIChat extends React.Component<{}, {}> {
         let senderClassName = chatItem.isassistantresponse ? "chat-msg-assistant" : "chat-msg-user";
         let msgClassName = "chat-msg " + senderClassName;
         let innerHTML: React.JSX.Element = (
-            <p style={{whiteSpace:'pre-wrap'}}>{chatItem.userquery}</p>
+            <span>
+                <span style = {{display:"flex"}}>
+                    <i className="fa-sharp fa-solid fa-user" style={{marginRight:"5px", marginTop:"1px"}}></i>
+                    <p style={{marginRight:"5px"}}>You</p>
+                </span>
+                <p className="msg-text">{chatItem.userquery}</p>
+            </span>
         );
         if(chatItem.isassistantresponse) {
             if(chatItem.assistantresponse.error != null && chatItem.assistantresponse.error != "") {
                 innerHTML = this.renderError(chatItem.assistantresponse.error);
             } else {
                 innerHTML = (
-                    <Markdown text={chatItem.assistantresponse.message} codeSelect/> 
+                    <span>
+                        <span style = {{display:"flex"}}>
+                            <i className= "fa-sharp fa-solid fa-headset" style={{marginRight:"5px", marginTop:"1px"}}></i>
+                            <p style={{marginRight:"5px"}}>ChatGPT</p>
+                        </span>
+                        <Markdown text={chatItem.assistantresponse.message} codeSelect/> 
+                    </span>
                 );
             }
         }         

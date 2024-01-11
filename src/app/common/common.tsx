@@ -829,61 +829,58 @@ function CodeRenderer(props:any): any {
 }
 
 @mobxReact.observer
+class CodeBlockMarkdown extends React.Component< {children: React.ReactNode, blockText: string, codeSelectSelectedIndex?: number}, {}> {
+    blockIndex: number;
+    blockRef: React.RefObject<HTMLPreElement>
+    
+    constructor(props) { 
+        super(props);
+        this.blockRef = React.createRef();
+        this.blockIndex = GlobalModel.inputModel.addCodeBlockToCodeSelect(this.blockRef);
+        console.log("currentl block index: ", this.blockIndex);
+    }
+    
+    render() {
+        let codeText = this.props.blockText; 
+        let clickHandler: (e: React.MouseEvent<HTMLElement>, blockIndex: number) => void;
+        let inputModel = GlobalModel.inputModel;
+        clickHandler = (e: React.MouseEvent<HTMLElement>, blockIndex: number) => {
+            inputModel.setCodeSelectSelectedCodeBlock(blockIndex);
+        };        
+        let selected = this.blockIndex == this.props.codeSelectSelectedIndex;
+        return (
+            <pre ref={this.blockRef} className={cn({"selected": selected})} onClick={(event) => clickHandler(event, this.blockIndex)}>{this.props.children}</pre>
+        )
+    } 
+}
+
+@mobxReact.observer
 class Markdown extends React.Component<{ text: string; style?: any; extraClassName?: string; codeSelect?: boolean}, {}> {
-    codeBlockList: Array<React.RefObject<HTMLElement>>    
 
-    constructor(props: any) {
-        super(props);  
-        this.codeBlockList = [];
-        if(this.props.codeSelect) {
-            let model = GlobalModel;
-            let inputModel = model.inputModel; 
-        }
-    }  
-
-    CodeBlockRenderer(props: any, codeSelect: boolean, ): any { 
-        let codeText = props.node.children[0].children[0].value;
+    CodeBlockRenderer(props: any, codeSelect: boolean, codeSelectIndex: number): any { 
+        let codeText = codeSelect ? props.node.children[0].children[0].value : props.children;
         if(codeText) {
             codeText = codeText.replace(/\n$/, "") // remove trailing newline        
         }
-        let blockRef: React.RefObject<HTMLPreElement> = React.createRef();
-        let clickHandler: (e: React.MouseEvent<HTMLElement>, blockIndex: number) => void;
-        let curBlockIndex: number;
         if(codeSelect) {
-            let model = GlobalModel;
-            let inputModel = model.inputModel;
-            curBlockIndex = inputModel.addCodeBlockToCodeSelect(blockRef);
-            clickHandler = (e: React.MouseEvent<HTMLElement>, blockIndex: number) => {
-                inputModel.setCodeSelectSelectedCodeBlock(blockIndex);
-            };
+            return (
+                <CodeBlockMarkdown blockText={codeText} codeSelectSelectedIndex={codeSelectIndex}>{props.children}</CodeBlockMarkdown>
+            )
         } else {
-            clickHandler = (e: React.MouseEvent<HTMLElement>, blockIndex: number) => {
+            let clickHandler = (e: React.MouseEvent<HTMLElement>) => {
                 navigator.clipboard.writeText(codeText);
             };
-            curBlockIndex = this.addCodeBlockToList(blockRef);
+            return (
+                <pre onClick={(event) => clickHandler(event)}>{props.children}</pre>
+            )
         }
-        return (
-            <pre ref={blockRef} onClick={(event) => clickHandler(event, curBlockIndex)}>{props.children}</pre>
-        )
     
-    }
-     
-    getCodeBlockWithIndex(index: number): React.RefObject<HTMLElement> {
-        if(index >= 0 && index < this.codeBlockList.length) {
-            return this.codeBlockList[index];
-        }
-        return null;
-    }
-    
-    addCodeBlockToList(ref: React.RefObject<HTMLElement>): number {
-        let rtn = this.codeBlockList.length;
-        this.codeBlockList.push(ref)  
-        return rtn;
-    }
+    } 
 
     render() {
         let text = this.props.text;
         let codeSelect = this.props.codeSelect;
+        let curCodeSelectIndex = GlobalModel.inputModel.getCodeSelectSelectedIndex();
         let markdownComponents = {
             a: LinkRenderer,
             h1: (props) => HeaderRenderer(props, 1),
@@ -893,7 +890,7 @@ class Markdown extends React.Component<{ text: string; style?: any; extraClassNa
             h5: (props) => HeaderRenderer(props, 5),
             h6: (props) => HeaderRenderer(props, 6),
             code: (props) => CodeRenderer(props), 
-            pre: (props) => this.CodeBlockRenderer(props, codeSelect), 
+            pre: (props) => this.CodeBlockRenderer(props, codeSelect, curCodeSelectIndex), 
         };
         return (
             <div className={cn("markdown content", this.props.extraClassName)} style={this.props.style}>

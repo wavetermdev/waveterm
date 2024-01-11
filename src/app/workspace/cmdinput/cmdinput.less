@@ -246,12 +246,19 @@
             color: @term-white;
         }
 
-        .chat-msg-user {
-            color: @term-green;
+        .chat-msg-user { 
+
+            .msg-text {
+                font-family: @markdown-font;
+                font-size: 14px;
+                white-space: pre-wrap;
+            }
         }
-        
+         
         .chat-msg-error {
             color: @term-bright-red;
+            font-family: @markdown-font;
+            font-size: 14px;
         }
         
 
