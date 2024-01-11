@@ -1,0 +1,51 @@
+@import "../../../app/common/themes/themes.less";
+
+.erconn-modal {
+    width: 502px;
+    min-height: 411px;
+
+    .wave-modal-content {
+        gap: 20px;
+
+        .wave-modal-body {
+            display: flex;
+            padding: 0px 20px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+            align-self: stretch;
+            width: 100%;
+
+            > div {
+                width: 100%;
+            }
+
+            .name-actions-section {
+                margin-bottom: 10px;
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+
+                .name {
+                    color: @term-bright-white;
+                    font-size: 15px;
+                    font-weight: 500;
+                    line-height: 20px;
+                }
+
+                .header-actions {
+                    display: flex;
+                    justify-content: flex-end;
+                    align-items: flex-start;
+
+                    .wave-button {
+                        padding: 4px 15px;
+                        font-size: 11px;
+                        margin-right: 8px;
+                    }
+                }
+            }
+        }
+    }
+}

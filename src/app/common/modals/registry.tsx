@@ -4,12 +4,12 @@
 import * as React from "react";
 import {
     AboutModal,
+    AlertModal,
     CreateRemoteConnModal,
     ViewRemoteConnDetailModal,
     EditRemoteConnModal,
-    AlertModal,
     TabSwitcherModal,
-} from "./modals";
+} from "../modals";
 import { ScreenSettingsModal, SessionSettingsModal, LineSettingsModal, ClientSettingsModal } from "./settings";
 import * as constants from "../../appconst";
 

@@ -80,7 +80,7 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { getRendererContext, cmdStatusIsRunning } from "../app/line/lineutil";
 import { MagicLayout } from "../app/magiclayout";
-import { modalsRegistry } from "../app/common/modals/modalsRegistry";
+import { modalsRegistry } from "../app/common/modals/registry";
 import * as appconst from "../app/appconst";
 
 dayjs.extend(customParseFormat);
