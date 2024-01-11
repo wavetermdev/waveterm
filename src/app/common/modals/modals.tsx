@@ -27,10 +27,9 @@ import {
 import * as util from "../../../util/util";
 import * as textmeasure from "../../../util/textmeasure";
 import { ClientDataType } from "../../../types/types";
-import { Session, Screen } from "../../../model/model";
+import { Screen } from "../../../model/model";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
 
-import { ReactComponent as WarningIcon } from "../../assets/icons/line/triangle-exclamation.svg";
 import shield from "../../assets/icons/shield_check.svg";
 import help from "../../assets/icons/help_filled.svg";
 import github from "../../assets/icons/github.svg";
@@ -48,6 +47,7 @@ type OArr<V> = mobx.IObservableArray<V>;
 
 const RemotePtyRows = 9;
 const RemotePtyCols = 80;
+const NumOfLines = 50;
 const PasswordUnchangedSentinel = "--unchanged--";
 
 @mobxReact.observer
@@ -70,7 +70,8 @@ class ModalsProvider extends React.Component {
 @mobxReact.observer
 class DisconnectedModal extends React.Component<{}, {}> {
     logRef: any = React.createRef();
-    showLog: mobx.IObservableValue<boolean> = mobx.observable.box(false);
+    logs: mobx.IObservableValue<string> = mobx.observable.box("");
+    logInterval: NodeJS.Timeout = null;
 
     @boundMethod
     restartServer() {
@@ -83,8 +84,16 @@ class DisconnectedModal extends React.Component<{}, {}> {
     }
 
     componentDidMount() {
-        if (this.logRef.current != null) {
-            this.logRef.current.scrollTop = this.logRef.current.scrollHeight;
+        this.fetchLogs();
+
+        this.logInterval = setInterval(() => {
+            this.fetchLogs();
+        }, 5000);
+    }
+
+    componentWillUnmount() {
+        if (this.logInterval) {
+            clearInterval(this.logInterval);
         }
     }
 
@@ -94,58 +103,52 @@ class DisconnectedModal extends React.Component<{}, {}> {
         }
     }
 
-    @boundMethod
-    handleShowLog(): void {
-        mobx.action(() => {
-            this.showLog.set(!this.showLog.get());
-        })();
+    fetchLogs() {
+        GlobalModel.getLastLogs(
+            NumOfLines,
+            mobx.action((logs) => {
+                this.logs.set(logs);
+                if (this.logRef.current != null) {
+                    this.logRef.current.scrollTop = this.logRef.current.scrollHeight;
+                }
+            })
+        );
     }
 
     render() {
-        let model = GlobalModel;
-        let logLine: string = null;
-        let idx: number = 0;
         return (
-            <div className="prompt-modal disconnected-modal modal is-active">
-                <div className="modal-background"></div>
-                <div className="modal-content">
-                    <div className="message-header">
-                        <div className="modal-title">Wave Client Disconnected</div>
-                    </div>
-                    <If condition={this.showLog.get()}>
+            <Modal className="disconnected-modal">
+                <Modal.Header title="Wave Client Disconnected" />
+                <div className="wave-modal-body">
+                    <div className="modal-content">
                         <div className="inner-content">
-                            <div className="ws-log" ref={this.logRef}>
-                                <For each="logLine" index="idx" of={GlobalModel.ws.wsLog}>
-                                    <div key={idx} className="ws-logline">
-                                        {logLine}
-                                    </div>
-                                </For>
+                            <div className="log" ref={this.logRef}>
+                                <pre>{this.logs.get()}</pre>
                             </div>
                         </div>
-                    </If>
-                    <footer>
-                        <div className="footer-text-link" style={{ marginLeft: 10 }} onClick={this.handleShowLog}>
-                            <If condition={!this.showLog.get()}>
-                                <i className="fa-sharp fa-solid fa-plus" /> Show Log
-                            </If>
-                            <If condition={this.showLog.get()}>
-                                <i className="fa-sharp fa-solid fa-minus" /> Hide Log
-                            </If>
-                        </div>
-                        <div className="flex-spacer" />
-                        <button onClick={this.tryReconnect} className="button">
+                    </div>
+                </div>
+                <div className="wave-modal-footer">
+                    <Button
+                        theme="secondary"
+                        onClick={this.tryReconnect}
+                        leftIcon={
                             <span className="icon">
                                 <i className="fa-sharp fa-solid fa-rotate" />
                             </span>
-                            <span>Try Reconnect</span>
-                        </button>
-                        <button onClick={this.restartServer} className="button is-danger" style={{ marginLeft: 10 }}>
-                            <WarningIcon className="icon" />
-                            <span>Restart Server</span>
-                        </button>
-                    </footer>
+                        }
+                    >
+                        Try Reconnect
+                    </Button>
+                    <Button
+                        theme="secondary"
+                        onClick={this.restartServer}
+                        leftIcon={<i className="fa-sharp fa-solid fa-triangle-exclamation"></i>}
+                    >
+                        Restart Server
+                    </Button>
                 </div>
-            </div>
+            </Modal>
         );
     }
 }
@@ -232,10 +235,10 @@ class AlertModal extends React.Component<{}, {}> {
                         <Button theme="secondary" onClick={this.closeModal}>
                             Cancel
                         </Button>
-                        <Button onClick={this.handleOK}>Ok</Button>
+                        <Button autoFocus={true} onClick={this.handleOK}>Ok</Button>
                     </If>
                     <If condition={!isConfirm}>
-                        <Button onClick={this.handleOK}>Ok</Button>
+                        <Button autoFocus={true} onClick={this.handleOK}>Ok</Button>
                     </If>
                 </div>
             </Modal>
@@ -555,26 +558,33 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
         kwargs["connectmode"] = this.tempConnectMode.get();
         kwargs["visual"] = "1";
         kwargs["submit"] = "1";
-        let model = this.model;
         let prtn = GlobalCommandRunner.createRemote(cname, kwargs, false);
         prtn.then((crtn) => {
             if (crtn.success) {
+                this.model.setRecentConnAdded(true);
+                this.model.closeModal();
+
                 let crRtn = GlobalCommandRunner.screenSetRemote(cname, true, false);
                 crRtn.then((crcrtn) => {
                     if (crcrtn.success) {
                         return;
                     }
                     mobx.action(() => {
-                        this.errorStr.set(crcrtn.error ?? null);
+                        this.errorStr.set(crcrtn.error);
                     })();
                 });
                 return;
             }
             mobx.action(() => {
-                this.errorStr.set(crtn.error ?? null);
+                this.errorStr.set(crtn.error);
             })();
         });
-        model.seRecentConnAdded(true);
+    }
+
+    @boundMethod
+    handleClose(): void {
+        this.model.closeModal();
+        this.model.setRecentConnAdded(false);
     }
 
     @boundMethod
@@ -792,7 +802,7 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
                         <div className="settings-field settings-error">Error: {this.getErrorStr()}</div>
                     </If>
                 </div>
-                <Modal.Footer onCancel={this.model.closeModal} onOk={this.submitRemote} okLabel="Connect" />
+                <Modal.Footer onCancel={this.handleClose} onOk={this.submitRemote} okLabel="Connect" />
             </Modal>
         );
     }
@@ -809,7 +819,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
     }
 
     @mobx.computed
-    get selectedRemote(): T.RemoteType {
+    getSelectedRemote(): T.RemoteType {
         const selectedRemoteId = this.model.selectedRemoteId.get();
         return GlobalModel.getRemote(selectedRemoteId);
     }
@@ -824,7 +834,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
     }
 
     componentDidUpdate() {
-        if (this.selectedRemote == null || this.selectedRemote.archived) {
+        if (this.getSelectedRemote() == null || this.getSelectedRemote().archived) {
             this.model.deSelectRemote();
         }
     }
@@ -888,7 +898,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
 
     @boundMethod
     clickArchive(): void {
-        if (this.selectedRemote && this.selectedRemote.status == "connected") {
+        if (this.getSelectedRemote() && this.getSelectedRemote().status == "connected") {
             GlobalModel.showAlert({ message: "Cannot delete when connected.  Disconnect and try again." });
             return;
         }
@@ -900,21 +910,22 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
             if (!confirm) {
                 return;
             }
-            if (this.selectedRemote) {
-                GlobalCommandRunner.archiveRemote(this.selectedRemote.remoteid);
+            if (this.getSelectedRemote()) {
+                GlobalCommandRunner.archiveRemote(this.getSelectedRemote().remoteid);
             }
+            GlobalModel.modalsModel.popModal();
         });
     }
 
     @boundMethod
     clickReinstall(): void {
-        GlobalCommandRunner.installRemote(this.selectedRemote?.remoteid);
+        GlobalCommandRunner.installRemote(this.getSelectedRemote().remoteid);
     }
 
     @boundMethod
     handleClose(): void {
         this.model.closeModal();
-        this.model.seRecentConnAdded(false);
+        this.model.setRecentConnAdded(false);
     }
 
     renderInstallStatus(remote: T.RemoteType): any {
@@ -1075,7 +1086,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
     }
 
     render() {
-        let remote = this.selectedRemote;
+        let remote = this.getSelectedRemote();
 
         if (remote == null) {
             return null;
@@ -1089,7 +1100,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
 
         return (
             <Modal className="rconndetail-modal">
-                <Modal.Header title="Connection" onClose={this.model.closeModal} />
+                <Modal.Header title="Connection" onClose={this.handleClose} />
                 <div className="wave-modal-body">
                     <div className="name-header-actions-wrapper">
                         <div className="name text-primary name-wrapper">
@@ -1164,7 +1175,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                         </div>
                     </div>
                 </div>
-                <Modal.Footer onOk={this.model.closeModal} onCancel={this.model.closeModal} okLabel="Done" />
+                <Modal.Footer onOk={this.handleClose} onCancel={this.handleClose} okLabel="Done" />
             </Modal>
         );
     }

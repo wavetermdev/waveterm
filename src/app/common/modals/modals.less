@@ -17,24 +17,46 @@
 }
 
 .disconnected-modal {
-    .modal-content {
-        footer {
-            .footer-text-link {
-                color: @term-white;
-                cursor: pointer;
+    .wave-modal-content {
+        .wave-modal-body {
+            padding: 0;
+
+            .modal-content {
+                footer {
+                    .footer-text-link {
+                        color: @term-white;
+                        cursor: pointer;
+                    }
+                }
+            }
+
+            .inner-content {
+                .log {
+                    height: 335px;
+                    margin-bottom: 20px;
+                    overflow: auto;
+
+                    &::-webkit-scrollbar-track,
+                    &::-webkit-scrollbar-thumb,
+                    &::-webkit-scrollbar-corner {
+                        display: none;
+                    }
+
+                    &:hover::-webkit-scrollbar-thumb {
+                        display: block;
+                    }
+
+                    pre {
+                        color: @term-white;
+                        background-color: @term-black;
+                    }
+                }
             }
         }
-    }
 
-    .inner-content {
-        .ws-log {
-            padding: 5px;
-            background-color: @term-black;
-            height: 250px;
-            overflow: auto;
-
-            .ws-logline {
-                color: @term-white;
+        .wave-modal-footer {
+            button:first-child {
+                color: @term-green;
             }
         }
     }
@@ -574,6 +596,10 @@
             gap: 4px;
             align-self: stretch;
             width: 100%;
+
+            .settings-input .hotkey {
+                color: @text-secondary;
+            }
         }
     }
 }

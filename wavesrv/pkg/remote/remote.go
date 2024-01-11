@@ -1161,6 +1161,9 @@ func addScVarsToState(state *packet.ShellState) *packet.ShellState {
 	envMap["WAVETERM_VERSION"] = &shellenv.DeclareDeclType{Name: "WAVETERM_VERSION", Value: scbase.WaveVersion, Args: "x"}
 	envMap["TERM_PROGRAM"] = &shellenv.DeclareDeclType{Name: "TERM_PROGRAM", Value: "waveterm", Args: "x"}
 	envMap["TERM_PROGRAM_VERSION"] = &shellenv.DeclareDeclType{Name: "TERM_PROGRAM_VERSION", Value: scbase.WaveVersion, Args: "x"}
+	if _, exists := envMap["LANG"]; !exists {
+		envMap["LANG"] = &shellenv.DeclareDeclType{Name: "LANG", Value: scbase.DetermineLang(), Args: "x"}
+	}
 	rtn.ShellVars = shellenv.SerializeDeclMap(envMap)
 	return &rtn
 }

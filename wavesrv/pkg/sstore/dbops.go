@@ -1704,7 +1704,6 @@ const (
 	RemoteField_ConnectMode = "connectmode" // string
 	RemoteField_SSHKey      = "sshkey"      // string
 	RemoteField_SSHPassword = "sshpassword" // string
-	RemoteField_SSHPort     = "sshport"     // string
 	RemoteField_Color       = "color"       // string
 	RemoteField_ShellType   = "shelltype"   // string
 )
@@ -1736,10 +1735,6 @@ func UpdateRemote(ctx context.Context, remoteId string, editMap map[string]inter
 		if sshPassword, found := editMap[RemoteField_SSHPassword]; found {
 			query = `UPDATE remote SET sshopts = json_set(sshopts, '$.sshpassword', ?) WHERE remoteid = ?`
 			tx.Exec(query, sshPassword, remoteId)
-		}
-		if sshPort, found := editMap[RemoteField_SSHPort]; found {
-			query = `UPDATE remote SET sshopts = json_set(sshopts, '$.sshport', ?) WHERE remoteid = ?`
-			tx.Exec(query, sshPort, remoteId)
 		}
 		if shellType, found := editMap[RemoteField_ShellType]; found {
 			query = `UPDATE remote SET sshopts = json_set(sshopts, '$.shelltype', ?) WHERE remoteid = ?`
@@ -2049,6 +2044,29 @@ func SetLineArchivedById(ctx context.Context, screenId string, lineId string, ar
 	return txErr
 }
 
+// returns updated screen (only if updated)
+func FixupScreenSelectedLine(ctx context.Context, screenId string) (*ScreenType, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (*ScreenType, error) {
+		query := `SELECT selectedline FROM screen WHERE screenid = ?`
+		sline := tx.GetInt(query, screenId)
+		query = `SELECT linenum FROM line WHERE screenid = ? AND linenum = ?`
+		if tx.Exists(query, screenId, sline) {
+			// selected line is valid
+			return nil, nil
+		}
+		query = `SELECT min(linenum) FROM line WHERE screenid = ? AND linenum > ?`
+		newSLine := tx.GetInt(query, screenId, sline)
+		if newSLine == 0 {
+			query = `SELECT max(linenum) FROM line WHERE screenid = ? AND linenum < ?`
+			newSLine = tx.GetInt(query, screenId, sline)
+		}
+		// newSLine might be 0, but that's ok (because that means there are no lines)
+		query = `UPDATE screen SET selectedline = ? WHERE screenid = ?`
+		tx.Exec(query, newSLine, screenId)
+		return GetScreenById(tx.Context(), screenId)
+	})
+}
+
 func DeleteLinesByIds(ctx context.Context, screenId string, lineIds []string) error {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		isWS := isWebShare(tx, screenId)
@@ -2056,9 +2074,8 @@ func DeleteLinesByIds(ctx context.Context, screenId string, lineIds []string) er
 			query := `SELECT status FROM cmd WHERE screenid = ? AND lineid = ?`
 			cmdStatus := tx.GetString(query, screenId, lineId)
 			if cmdStatus == CmdStatusRunning {
-				return fmt.Errorf("cannot delete line[%s:%s], cmd is running", screenId, lineId)
+				return fmt.Errorf("cannot delete line[%s], cmd is running", lineId)
 			}
-
 			query = `DELETE FROM line WHERE screenid = ? AND lineid = ?`
 			tx.Exec(query, screenId, lineId)
 			query = `DELETE FROM cmd WHERE screenid = ? AND lineid = ?`
@@ -2066,7 +2083,6 @@ func DeleteLinesByIds(ctx context.Context, screenId string, lineIds []string) er
 			// don't delete history anymore, just remove lineid reference
 			query = `UPDATE history SET lineid = '', linenum = 0 WHERE screenid = ? AND lineid = ?`
 			tx.Exec(query, screenId, lineId)
-
 			if isWS {
 				insertScreenLineUpdate(tx, screenId, lineId, UpdateType_LineDel)
 			}

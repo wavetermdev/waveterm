@@ -117,8 +117,8 @@ var SetVarScopes = []SetVarScope{
 	{ScopeName: "remote", VarNames: []string{}},
 }
 
-var userHostRe = regexp.MustCompile("^(sudo@)?([a-z][a-z0-9._@-]*)@([a-z0-9][a-z0-9.-]*)(?::([0-9]+))?$")
-var remoteAliasRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_-]*$")
+var userHostRe = regexp.MustCompile(`^(sudo@)?([a-z][a-z0-9._@\\-]*)@([a-z0-9][a-z0-9.-]*)(?::([0-9]+))?$`)
+var remoteAliasRe = regexp.MustCompile("^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
 var genericNameRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_ .()<>,/\"'\\[\\]{}=+$@!*-]*$")
 var rendererRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_.:-]*$")
 var positionRe = regexp.MustCompile("^((S?\\+|E?-)?[0-9]+|(\\+|-|S|E))$")
@@ -1258,6 +1258,9 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 		}
 		sshOpts.SSHPort = portVal
 		canonicalName = remoteUser + "@" + remoteHost
+		if portVal != 0 && portVal != 22 {
+			canonicalName = canonicalName + ":" + strconv.Itoa(portVal)
+		}
 		if isSudo {
 			canonicalName = "sudo@" + canonicalName
 		}
@@ -1535,7 +1538,8 @@ func NewHostInfo(hostName string) (*HostInfoType, error) {
 
 	portStr, _ := ssh_config.GetStrict(hostName, "Port")
 	var portVal int
-	if portStr != "" {
+	if portStr != "" && portStr != "22" {
+		canonicalName = canonicalName + ":" + portStr
 		var err error
 		portVal, err = strconv.Atoi(portStr)
 		if err != nil {
@@ -1546,7 +1550,6 @@ func NewHostInfo(hostName string) (*HostInfoType, error) {
 			return nil, fmt.Errorf("could not parse port \"%d\": number is not valid for a port\n", portVal)
 		}
 	}
-
 	identityFile, _ := ssh_config.GetStrict(hostName, "IdentityFile")
 	passwordAuth, _ := ssh_config.GetStrict(hostName, "PasswordAuthentication")
 
@@ -1633,13 +1636,9 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 		if previouslyImportedRemote != nil && !previouslyImportedRemote.Archived {
 			// this already existed and was created via import
 			// it needs to be updated instead of created
-
 			editMap := make(map[string]interface{})
 			editMap[sstore.RemoteField_Alias] = hostInfo.Host
 			editMap[sstore.RemoteField_ConnectMode] = hostInfo.ConnectMode
-			// changing port is unique to imports because it lets us avoid conflicts
-			// if the port is changed in the ssh config
-			editMap[sstore.RemoteField_SSHPort] = hostInfo.Port
 			if hostInfo.SshKeyFile != "" {
 				editMap[sstore.RemoteField_SSHKey] = hostInfo.SshKeyFile
 			}
@@ -3448,7 +3447,7 @@ func LineDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	}
 	err = sstore.DeleteLinesByIds(ctx, ids.ScreenId, lineIds)
 	if err != nil {
-		return nil, fmt.Errorf("/line:delete error purging lines: %v", err)
+		return nil, fmt.Errorf("/line:delete error deleting lines: %v", err)
 	}
 	update := &sstore.ModelUpdate{}
 	for _, lineId := range lineIds {
@@ -3459,6 +3458,11 @@ func LineDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 		}
 		update.Lines = append(update.Lines, lineObj)
 	}
+	screen, err := sstore.FixupScreenSelectedLine(ctx, ids.ScreenId)
+	if err != nil {
+		return nil, fmt.Errorf("/line:delete error fixing up screen: %v", err)
+	}
+	update.Screens = []*sstore.ScreenType{screen}
 	return update, nil
 }
 
