@@ -253,7 +253,6 @@ function createMainWindow(clientData) {
         icon: unamePlatform == "linux" ? "public/logos/wave-logo-dark.png" : undefined,
         webPreferences: {
             preload: path.join(getAppBasePath(), DistDir, "preload.js"),
-            nodeIntegration: true,
         },
     });
     let indexHtml = isDev ? "index-dev.html" : "index.html";
