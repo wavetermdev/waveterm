@@ -3261,7 +3261,7 @@ class Model {
      * Opens a new default browser window to the given url
      * @param {string} url The url to open
      */
-    static openExternalLink(url: string): void {
+    openExternalLink(url: string): void {
         console.log("opening external link: " + url);
         getApi().openExternalLink(url);
         console.log("finished opening external link");

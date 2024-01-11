@@ -12,7 +12,6 @@
         "@tanstack/match-sorter-utils": "^8.8.4",
         "@tanstack/react-table": "^8.10.3",
         "@types/semver": "^7.5.6",
-        "@xterm/addon-web-links": "^0.10.0-beta.1",
         "autobind-decorator": "^2.4.0",
         "base64-js": "^1.5.1",
         "classnames": "^2.3.1",
@@ -37,7 +36,8 @@
         "tsx-control-statements": "^4.1.1",
         "uuid": "^9.0.0",
         "winston": "^3.8.2",
-        "xterm": "^5.0.0"
+        "xterm": "^5.0.0",
+        "xterm-addon-web-links": "^0.9.0"
     },
     "devDependencies": {
         "@babel/cli": "^7.17.10",

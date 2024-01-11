@@ -3,12 +3,13 @@
 
 import * as mobx from "mobx";
 import { Terminal } from "xterm";
-import { WebLinksAddon } from "@xterm/addon-web-links";
+//TODO: replace with `@xterm/addon-web-links` when it's available as stable
+import { WebLinksAddon } from "xterm-addon-web-links";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import { windowWidthToCols, windowHeightToRows } from "../../util/textmeasure";
 import { boundInt } from "../../util/util";
-import { Model } from "../../model/model"
+import { GlobalModel } from "../../model/model"
 import type {
     TermContextUnion,
     TermOptsType,
@@ -100,7 +101,18 @@ class TermWrap {
         });
         this.terminal.loadAddon(new WebLinksAddon((e, uri) => {
             e.preventDefault();
-            Model.openExternalLink(uri);
+            switch (GlobalModel.platform) {
+                case "darwin":
+                    if (e.metaKey) {
+                        GlobalModel.openExternalLink(uri);
+                    }
+                    break;
+                default:
+                    if (e.ctrlKey) {
+                        GlobalModel.openExternalLink(uri);
+                    }
+                    break;
+            }
         }));
         this.terminal._core._inputHandler._parser.setErrorHandler((state) => {
             this.numParseErrors++;
