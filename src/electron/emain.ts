@@ -253,6 +253,7 @@ function createMainWindow(clientData) {
         icon: unamePlatform == "linux" ? "public/logos/wave-logo-dark.png" : undefined,
         webPreferences: {
             preload: path.join(getAppBasePath(), DistDir, "preload.js"),
+            nodeIntegration: true,
         },
     });
     let indexHtml = isDev ? "index-dev.html" : "index.html";
@@ -485,6 +486,14 @@ electron.ipcMain.on("reload-window", (event) => {
     return;
 });
 
+electron.ipcMain.on("open-external-link", async (_, url) => {
+    try {
+        await electron.shell.openExternal(url);
+    } catch (err) {
+        console.warn("error opening external link", err);
+    }
+});
+
 electron.ipcMain.on("get-last-logs", async (event, numberOfLines) => {
     try {
         const logPath = path.join(getWaveHomeDir(), "wavesrv.log");
@@ -674,6 +683,7 @@ function runActiveTimer() {
     logActiveState();
     setTimeout(runActiveTimer, 60000);
 }
+
 
 // ====== MAIN ====== //
 

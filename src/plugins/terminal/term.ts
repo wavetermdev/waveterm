@@ -3,10 +3,12 @@
 
 import * as mobx from "mobx";
 import { Terminal } from "xterm";
+import { WebLinksAddon } from "@xterm/addon-web-links";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import { windowWidthToCols, windowHeightToRows } from "../../util/textmeasure";
 import { boundInt } from "../../util/util";
+import { Model } from "../../model/model"
 import type {
     TermContextUnion,
     TermOptsType,
@@ -96,6 +98,10 @@ class TermWrap {
             fontFamily: "JetBrains Mono",
             theme: { foreground: terminal.foreground, background: terminal.background },
         });
+        this.terminal.loadAddon(new WebLinksAddon((e, uri) => {
+            e.preventDefault();
+            Model.openExternalLink(uri);
+        }));
         this.terminal._core._inputHandler._parser.setErrorHandler((state) => {
             this.numParseErrors++;
             return state;

@@ -12,6 +12,7 @@
         "@tanstack/match-sorter-utils": "^8.8.4",
         "@tanstack/react-table": "^8.10.3",
         "@types/semver": "^7.5.6",
+        "@xterm/addon-web-links": "^0.10.0-beta.1",
         "autobind-decorator": "^2.4.0",
         "base64-js": "^1.5.1",
         "classnames": "^2.3.1",
