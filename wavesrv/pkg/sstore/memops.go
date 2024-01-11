@@ -57,6 +57,31 @@ type ScreenMemState struct {
 	AICmdInfoChat      *OpenAICmdInfoChatStore `json:"aicmdinfochat,omitempty"`
 }
 
+func ScreenMemDeepCopyCmdInfoChatStore(store *OpenAICmdInfoChatStore) *OpenAICmdInfoChatStore {
+	rtnMessages := []*packet.OpenAICmdInfoChatMessage{}
+	for index := 0; index < len(store.Messages); index++ {
+		messageToCopy := store.Messages[index]
+		rtnCurMessage := &packet.OpenAICmdInfoChatMessage{
+			MessageID:           messageToCopy.MessageID,
+			IsAssistantResponse: messageToCopy.IsAssistantResponse,
+			UserQuery:           messageToCopy.UserQuery,
+			UserEngineeredQuery: messageToCopy.UserEngineeredQuery,
+		}
+		if messageToCopy.AssistantResponse != nil {
+			rtnCurMessage.AssistantResponse = &packet.OpenAICmdInfoPacketOutputType{
+				Message:      messageToCopy.AssistantResponse.Message,
+				Model:        messageToCopy.AssistantResponse.Model,
+				FinishReason: messageToCopy.AssistantResponse.FinishReason,
+				Created:      messageToCopy.AssistantResponse.Created,
+				Error:        messageToCopy.AssistantResponse.Error,
+			}
+		}
+		rtnMessages = append(rtnMessages, rtnCurMessage)
+	}
+	rtn := &OpenAICmdInfoChatStore{MessageCount: store.MessageCount, Messages: rtnMessages}
+	return rtn
+}
+
 func ScreenMemInitCmdInfoChat(screenId string) {
 	greetingMessagePk := &packet.OpenAICmdInfoChatMessage{
 		MessageID:           0,
@@ -114,7 +139,7 @@ func ScreenMemGetCmdInfoChat(screenId string) *OpenAICmdInfoChatStore {
 	if ScreenMemStore[screenId].AICmdInfoChat == nil {
 		ScreenMemInitCmdInfoChat(screenId)
 	}
-	return ScreenMemStore[screenId].AICmdInfoChat
+	return ScreenMemDeepCopyCmdInfoChatStore(ScreenMemStore[screenId].AICmdInfoChat)
 }
 
 func ScreenMemUpdateCmdInfoChatMessage(screenId string, messageID int, msg *packet.OpenAICmdInfoChatMessage) {
