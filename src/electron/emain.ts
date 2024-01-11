@@ -683,7 +683,6 @@ function runActiveTimer() {
     setTimeout(runActiveTimer, 60000);
 }
 
-
 // ====== MAIN ====== //
 
 (async () => {
