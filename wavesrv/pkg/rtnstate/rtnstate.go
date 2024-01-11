@@ -143,13 +143,13 @@ func makeZshAlisesDiff(buf *bytes.Buffer, oldAliases string, newAliases string) 
 	for aliasKey, newAliasVal := range newAliasMap {
 		oldAliasVal, found := oldAliasMap[aliasKey]
 		if !found || newAliasVal != oldAliasVal {
-			buf.WriteString(fmt.Sprintf("%s %s=%s\n", aliasKey.AliasType, aliasKey.AliasName, utilfn.EllipsisStr(shellescape.Quote(newAliasVal), MaxDiffKeyLen)))
+			buf.WriteString(fmt.Sprintf("%s %s=%s\n", aliasKey.ParamType, aliasKey.ParamName, utilfn.EllipsisStr(shellescape.Quote(newAliasVal), MaxDiffKeyLen)))
 		}
 	}
 	for aliasKey := range oldAliasMap {
 		_, found := newAliasMap[aliasKey]
 		if !found {
-			buf.WriteString(fmt.Sprintf("remove %s %s\n", aliasKey.AliasType, aliasKey.AliasName))
+			buf.WriteString(fmt.Sprintf("remove %s %s\n", aliasKey.ParamType, aliasKey.ParamName))
 		}
 	}
 

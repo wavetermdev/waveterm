@@ -88,9 +88,11 @@ var ZshUnsetVars = []string{
 var localZshMajorVersionOnce = &sync.Once{}
 var localZshMajorVersion = ""
 
-type ZshAliasKey struct {
-	AliasType string // "aliases", "dis_aliases", "saliases", "dis_saliases", "galiases", "dis_galiases"
-	AliasName string
+type ZshParamKey struct {
+	// "aliases", "dis_aliases", "saliases", "dis_saliases", "galiases", "dis_galiases"
+	// "functions", "dis_functions", "functions_source", "dis_functions_source"
+	ParamType string
+	ParamName string
 }
 
 type zshShellApi struct{}
@@ -195,7 +197,7 @@ func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 	aliasMap := ParseZshAliases([]byte(pk.State.Aliases))
 	for aliasKey, aliasValue := range aliasMap {
 		// tricky here, don't quote AliasName (it gets implicit quotes, and quoting doesn't work as expected)
-		aliasStr := fmt.Sprintf("%s[%s]=%s\n", aliasKey.AliasType, aliasKey.AliasName, shellescape.Quote(aliasValue))
+		aliasStr := fmt.Sprintf("%s[%s]=%s\n", aliasKey.ParamType, aliasKey.ParamName, shellescape.Quote(aliasValue))
 		rcBuf.WriteString(aliasStr)
 	}
 	return rcBuf.String()
@@ -237,7 +239,22 @@ for var in "${(@k)dis_galiases}"; do
 	printf "%s\x00" ${dis_galiases[$var]}
 done
 printf "\x00\x00";
-echo "functions"
+for var in "${(@k)functions}"; do
+	printf "functions %s\x00" $var
+	printf "%s\x00" ${functions[$var]}
+done
+for var in "${(@k)dis_functions}"; do
+	printf "dis_functions %s\x00" $var
+	printf "%s\x00" ${dis_functions[$var]}
+done
+for var in "${(@k)functions_source}"; do
+	printf "functions_source %s\x00" $var
+	printf "%s\x00" ${functions_source[$var]}
+done
+for var in "${(@k)dis_functions_source}"; do
+	printf "dis_functions_source %s\x00" $var
+	printf "%s\x00" ${dis_functions_source[$var]}
+done
 printf "\x00\x00";
 [%GITBRANCH%]
 `
@@ -292,16 +309,16 @@ func writeZshStateToFile(outputBytes []byte) error {
 	return nil
 }
 
-func ParseZshAliases(aliasBytes []byte) map[ZshAliasKey]string {
+func ParseZshAliases(aliasBytes []byte) map[ZshParamKey]string {
 	aliasParts := bytes.Split(aliasBytes, []byte{0})
-	rtn := make(map[ZshAliasKey]string)
+	rtn := make(map[ZshParamKey]string)
 	for aliasPartIdx := 0; aliasPartIdx < len(aliasParts); aliasPartIdx += 2 {
 		aliasNameAndType := string(aliasParts[aliasPartIdx])
 		aliasNameAndTypeParts := strings.SplitN(aliasNameAndType, " ", 2)
 		if len(aliasNameAndTypeParts) != 2 {
 			continue
 		}
-		aliasKey := ZshAliasKey{AliasType: aliasNameAndTypeParts[0], AliasName: aliasNameAndTypeParts[1]}
+		aliasKey := ZshParamKey{ParamType: aliasNameAndTypeParts[0], ParamName: aliasNameAndTypeParts[1]}
 		aliasValue := string(aliasParts[aliasPartIdx+1])
 		rtn[aliasKey] = aliasValue
 	}
