@@ -65,7 +65,7 @@ import type {
     CommandRtnType,
     WebCmd,
     WebRemote,
-    OpenAICmdInfoChatMessageType
+    OpenAICmdInfoChatMessageType,
 } from "../types/types";
 import * as T from "../types/types";
 import { WSControl } from "./ws";
@@ -1240,10 +1240,10 @@ class InputModel {
     aiChatWindowRef: React.RefObject<HTMLDivElement>;
     codeSelectBlockRefArray: Array<React.RefObject<HTMLElement>>;
     codeSelectSelectedIndex: OV<number> = mobx.observable.box(-1);
-    
+
     AICmdInfoChatItems: mobx.IObservableArray<OpenAICmdInfoChatMessageType> = mobx.observable.array([], {
-        name: "aicmdinfo-chat"
-    }); 
+        name: "aicmdinfo-chat",
+    });
     readonly codeSelectTop: number = -2;
     readonly codeSelectBottom: number = -1;
 
@@ -1288,7 +1288,7 @@ class InputModel {
             this.codeSelectBlockRefArray = [];
         })();
     }
-    
+
     setInputMode(inputMode: null | "comment" | "global"): void {
         mobx.action(() => {
             this.inputMode.set(inputMode);
@@ -1415,7 +1415,7 @@ class InputModel {
         this.AICmdInfoChatItems.replace(chat);
         this.codeSelectBlockRefArray = [];
     }
-     
+
     setHistoryShow(show: boolean): void {
         if (this.historyShow.get() == show) {
             return;
@@ -1711,114 +1711,116 @@ class InputModel {
         this.aiChatTextAreaRef = textAreaRef;
         this.aiChatWindowRef = chatWindowRef;
     }
-    
+
     setAIChatFocus() {
         if (this.aiChatTextAreaRef != null && this.aiChatTextAreaRef.current != null) {
             this.aiChatTextAreaRef.current.focus();
         }
     }
-    
+
     grabCodeSelectSelection() {
-        if(this.codeSelectSelectedIndex.get() >= 0 && this.codeSelectSelectedIndex.get() < this.codeSelectBlockRefArray.length) {
-            let curBlockRef = this.codeSelectBlockRefArray[this.codeSelectSelectedIndex.get()]
+        if (
+            this.codeSelectSelectedIndex.get() >= 0 &&
+            this.codeSelectSelectedIndex.get() < this.codeSelectBlockRefArray.length
+        ) {
+            let curBlockRef = this.codeSelectBlockRefArray[this.codeSelectSelectedIndex.get()];
             let codeText = curBlockRef.current.innerText;
-            codeText = codeText.replace(/\n$/, "") // remove trailing newline        
+            codeText = codeText.replace(/\n$/, ""); // remove trailing newline
             let newLineValue = this.getCurLine() + " " + codeText;
             this.setCurLine(newLineValue);
             this.giveFocus();
         }
     }
-     
+
     addCodeBlockToCodeSelect(blockRef: React.RefObject<HTMLElement>): number {
         let rtn = -1;
-        rtn = this.codeSelectBlockRefArray.length;            
+        rtn = this.codeSelectBlockRefArray.length;
         this.codeSelectBlockRefArray.push(blockRef);
         return rtn;
     }
-    
-    
 
-    setCodeSelectSelectedCodeBlock(blockIndex:number) { 
+    setCodeSelectSelectedCodeBlock(blockIndex: number) {
         mobx.action(() => {
-            if(blockIndex >= 0 && blockIndex < this.codeSelectBlockRefArray.length) {
+            if (blockIndex >= 0 && blockIndex < this.codeSelectBlockRefArray.length) {
                 this.codeSelectSelectedIndex.set(blockIndex);
                 let currentRef = this.codeSelectBlockRefArray[blockIndex].current;
-                if(currentRef != null) {
-                    if(this.aiChatWindowRef != null && this.aiChatWindowRef.current != null) {
+                if (currentRef != null) {
+                    if (this.aiChatWindowRef != null && this.aiChatWindowRef.current != null) {
                         let chatWindowTop = this.aiChatWindowRef.current.scrollTop;
                         let chatWindowBottom = chatWindowTop + this.aiChatWindowRef.current.clientHeight - 100;
                         let elemTop = currentRef.offsetTop;
                         let elemBottom = elemTop - currentRef.offsetHeight;
-                        let elementIsInView = (elemBottom < chatWindowBottom && elemTop > chatWindowTop);
-                        if(!elementIsInView) {
-                            this.aiChatWindowRef.current.scrollTop = elemBottom - (this.aiChatWindowRef.current.clientHeight / 3);                        
+                        let elementIsInView = elemBottom < chatWindowBottom && elemTop > chatWindowTop;
+                        if (!elementIsInView) {
+                            this.aiChatWindowRef.current.scrollTop =
+                                elemBottom - this.aiChatWindowRef.current.clientHeight / 3;
                         }
                     }
                 }
                 this.codeSelectBlockRefArray = [];
                 this.setAIChatFocus();
-            }  
+            }
         })();
     }
-    
+
     codeSelectSelectNextNewestCodeBlock() {
         // oldest code block = index 0 in array
         // this decrements codeSelectSelected index
         mobx.action(() => {
-            if(this.codeSelectSelectedIndex.get() == this.codeSelectTop) {
+            if (this.codeSelectSelectedIndex.get() == this.codeSelectTop) {
                 this.codeSelectSelectedIndex.set(this.codeSelectBottom);
             } else if (this.codeSelectSelectedIndex.get() == this.codeSelectBottom) {
                 return;
             }
             let incBlockIndex = this.codeSelectSelectedIndex.get() + 1;
-            if(this.codeSelectSelectedIndex.get() == this.codeSelectBlockRefArray.length-1) {
+            if (this.codeSelectSelectedIndex.get() == this.codeSelectBlockRefArray.length - 1) {
                 this.codeSelectDeselectAll();
-                if(this.aiChatWindowRef != null && this.aiChatWindowRef.current != null) {
+                if (this.aiChatWindowRef != null && this.aiChatWindowRef.current != null) {
                     this.aiChatWindowRef.current.scrollTop = this.aiChatWindowRef.current.scrollHeight;
                 }
             }
-            if(incBlockIndex >= 0 && incBlockIndex < this.codeSelectBlockRefArray.length) {
+            if (incBlockIndex >= 0 && incBlockIndex < this.codeSelectBlockRefArray.length) {
                 this.setCodeSelectSelectedCodeBlock(incBlockIndex);
             }
         })();
     }
-    
+
     codeSelectSelectNextOldestCodeBlock() {
         mobx.action(() => {
-            if(this.codeSelectSelectedIndex.get() == this.codeSelectBottom) {
-                if(this.codeSelectBlockRefArray.length > 0) {
+            if (this.codeSelectSelectedIndex.get() == this.codeSelectBottom) {
+                if (this.codeSelectBlockRefArray.length > 0) {
                     this.codeSelectSelectedIndex.set(this.codeSelectBlockRefArray.length);
                 } else {
                     return;
                 }
-            } else if(this.codeSelectSelectedIndex.get() == this.codeSelectTop) {
+            } else if (this.codeSelectSelectedIndex.get() == this.codeSelectTop) {
                 return;
             }
             let decBlockIndex = this.codeSelectSelectedIndex.get() - 1;
-            if(decBlockIndex < 0) {
+            if (decBlockIndex < 0) {
                 this.codeSelectDeselectAll(this.codeSelectTop);
-                if(this.aiChatWindowRef != null && this.aiChatWindowRef.current != null) {
+                if (this.aiChatWindowRef != null && this.aiChatWindowRef.current != null) {
                     this.aiChatWindowRef.current.scrollTop = 0;
-                } 
+                }
             }
-            if(decBlockIndex >= 0 && decBlockIndex < this.codeSelectBlockRefArray.length) {
+            if (decBlockIndex >= 0 && decBlockIndex < this.codeSelectBlockRefArray.length) {
                 this.setCodeSelectSelectedCodeBlock(decBlockIndex);
-            }  
-        })()
+            }
+        })();
     }
-    
+
     getCodeSelectSelectedIndex() {
         return this.codeSelectSelectedIndex.get();
     }
-    
-    getCodeSelectRefArrayLength(){
+
+    getCodeSelectRefArrayLength() {
         return this.codeSelectBlockRefArray.length;
     }
 
     codeBlockIsSelected(blockIndex: number): boolean {
         return blockIndex == this.codeSelectSelectedIndex.get();
     }
-    
+
     codeSelectDeselectAll(direction: number = this.codeSelectBottom) {
         mobx.action(() => {
             this.codeSelectSelectedIndex.set(direction);
@@ -1835,20 +1837,18 @@ class InputModel {
         this.aIChatShow.set(false);
         this.giveFocus();
     }
-    
-    clearAIAssistantChat(): void { 
+
+    clearAIAssistantChat(): void {
         let prtn = GlobalModel.submitChatInfoCommand("", "", true);
         prtn.then((rtn) => {
-            if(rtn.success) {
+            if (rtn.success) {
             } else {
                 console.log("submit chat command error: " + rtn.error);
             }
-        })
-        .catch((error) => {
+        }).catch((error) => {
             console.log("submit chat command error: ", error);
         });
     }
-
 
     hasScrollingInfoMsg(): boolean {
         if (!this.infoShow.get()) {
@@ -4002,7 +4002,7 @@ class Model {
             this.sessionListLoaded.set(true);
             this.remotesLoaded.set(true);
         }
-        if("openaicmdinfochat" in update) { 
+        if ("openaicmdinfochat" in update) {
             this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
         }
         // console.log("run-update>", Date.now(), interactive, update);
@@ -4252,16 +4252,14 @@ class Model {
             rawstr: chatMsg,
         };
         pk.kwargs["nohist"] = "1";
-        if(clear) {
+        if (clear) {
             pk.kwargs["cmdinfoclear"] = "1";
         } else {
             pk.kwargs["cmdinfo"] = "1";
         }
         pk.kwargs["curline"] = curLineStr;
         return this.submitCommandPacket(pk, interactive);
-
     }
-
 
     submitRawCommand(cmdStr: string, addToHistory: boolean, interactive: boolean): Promise<CommandRtnType> {
         let pk: FeCmdPacketType = {

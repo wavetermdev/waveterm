@@ -824,57 +824,67 @@ function HeaderRenderer(props: any, hnum: number): any {
     return <div className={cn("title", "is-" + hnum)}>{props.children}</div>;
 }
 
-function CodeRenderer(props:any): any {
+function CodeRenderer(props: any): any {
     return <code className={cn({ inline: props.inline })}>{props.children}</code>;
 }
 
 @mobxReact.observer
-class CodeBlockMarkdown extends React.Component< {children: React.ReactNode, blockText: string, codeSelectSelectedIndex?: number}, {}> {
+class CodeBlockMarkdown extends React.Component<
+    { children: React.ReactNode; blockText: string; codeSelectSelectedIndex?: number },
+    {}
+> {
     blockIndex: number;
-    blockRef: React.RefObject<HTMLPreElement>
-    
-    constructor(props) { 
+    blockRef: React.RefObject<HTMLPreElement>;
+
+    constructor(props) {
         super(props);
         this.blockRef = React.createRef();
         this.blockIndex = GlobalModel.inputModel.addCodeBlockToCodeSelect(this.blockRef);
     }
-    
+
     render() {
-        let codeText = this.props.blockText; 
+        let codeText = this.props.blockText;
         let clickHandler: (e: React.MouseEvent<HTMLElement>, blockIndex: number) => void;
         let inputModel = GlobalModel.inputModel;
         clickHandler = (e: React.MouseEvent<HTMLElement>, blockIndex: number) => {
             inputModel.setCodeSelectSelectedCodeBlock(blockIndex);
-        };        
+        };
         let selected = this.blockIndex == this.props.codeSelectSelectedIndex;
         return (
-            <pre ref={this.blockRef} className={cn({"selected": selected})} onClick={(event) => clickHandler(event, this.blockIndex)}>{this.props.children}</pre>
-        )
-    } 
+            <pre
+                ref={this.blockRef}
+                className={cn({ selected: selected })}
+                onClick={(event) => clickHandler(event, this.blockIndex)}
+            >
+                {this.props.children}
+            </pre>
+        );
+    }
 }
 
 @mobxReact.observer
-class Markdown extends React.Component<{ text: string; style?: any; extraClassName?: string; codeSelect?: boolean}, {}> {
-
-    CodeBlockRenderer(props: any, codeSelect: boolean, codeSelectIndex: number): any { 
+class Markdown extends React.Component<
+    { text: string; style?: any; extraClassName?: string; codeSelect?: boolean },
+    {}
+> {
+    CodeBlockRenderer(props: any, codeSelect: boolean, codeSelectIndex: number): any {
         let codeText = codeSelect ? props.node.children[0].children[0].value : props.children;
-        if(codeText) {
-            codeText = codeText.replace(/\n$/, "") // remove trailing newline        
+        if (codeText) {
+            codeText = codeText.replace(/\n$/, ""); // remove trailing newline
         }
-        if(codeSelect) {
+        if (codeSelect) {
             return (
-                <CodeBlockMarkdown blockText={codeText} codeSelectSelectedIndex={codeSelectIndex}>{props.children}</CodeBlockMarkdown>
-            )
+                <CodeBlockMarkdown blockText={codeText} codeSelectSelectedIndex={codeSelectIndex}>
+                    {props.children}
+                </CodeBlockMarkdown>
+            );
         } else {
             let clickHandler = (e: React.MouseEvent<HTMLElement>) => {
                 navigator.clipboard.writeText(codeText);
             };
-            return (
-                <pre onClick={(event) => clickHandler(event)}>{props.children}</pre>
-            )
+            return <pre onClick={(event) => clickHandler(event)}>{props.children}</pre>;
         }
-    
-    } 
+    }
 
     render() {
         let text = this.props.text;
@@ -888,8 +898,8 @@ class Markdown extends React.Component<{ text: string; style?: any; extraClassNa
             h4: (props) => HeaderRenderer(props, 4),
             h5: (props) => HeaderRenderer(props, 5),
             h6: (props) => HeaderRenderer(props, 6),
-            code: (props) => CodeRenderer(props), 
-            pre: (props) => this.CodeBlockRenderer(props, codeSelect, curCodeSelectIndex), 
+            code: (props) => CodeRenderer(props),
+            pre: (props) => this.CodeBlockRenderer(props, codeSelect, curCodeSelectIndex),
         };
         return (
             <div className={cn("markdown content", this.props.extraClassName)} style={this.props.style}>

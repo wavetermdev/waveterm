@@ -314,10 +314,10 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     scrollDiv(div, e.code == "PageUp" ? -amt : amt);
                 }
             }
-            if(e.code == "Space" && e.getModifierState("Control")) {
-               e.preventDefault() 
-               console.log("Ctrl + Space pressed"); 
-               inputModel.openAIAssistantChat();
+            if (e.code == "Space" && e.getModifierState("Control")) {
+                e.preventDefault();
+                console.log("Ctrl + Space pressed");
+                inputModel.openAIAssistantChat();
             }
             // console.log(e.code, e.keyCode, e.key, event.which, ctrlMod, e);
         })();
