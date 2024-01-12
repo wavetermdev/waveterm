@@ -129,7 +129,15 @@ class CmdInput extends React.Component<{}, {}> {
             numRunningLines = mobx.computed(() => win.getRunningCmdLines().length).get();
         }
         return (
-            <div ref={this.cmdInputRef} className={cn("cmd-input", { "has-info": infoShow }, { "has-aichat": aiChatShow }, { active: focusVal })}>
+            <div
+                ref={this.cmdInputRef}
+                className={cn(
+                    "cmd-input",
+                    { "has-info": infoShow },
+                    { "has-aichat": aiChatShow },
+                    { active: focusVal }
+                )}
+            >
                 <If condition={historyShow}>
                     <div className="cmd-input-grow-spacer"></div>
                     <HistoryInfo />

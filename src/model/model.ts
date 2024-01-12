@@ -1703,8 +1703,11 @@ class InputModel {
             }, timeoutMs);
         }
     }
-    
-    setCmdInfoChatRefs(textAreaRef: React.RefObject<HTMLTextAreaElement>, chatWindowRef: React.RefObject<HTMLDivElement>) {
+
+    setCmdInfoChatRefs(
+        textAreaRef: React.RefObject<HTMLTextAreaElement>,
+        chatWindowRef: React.RefObject<HTMLDivElement>
+    ) {
         this.aiChatTextAreaRef = textAreaRef;
         this.aiChatWindowRef = chatWindowRef;
     }
