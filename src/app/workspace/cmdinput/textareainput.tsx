@@ -316,7 +316,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             }
             if (e.code == "Space" && e.getModifierState("Control")) {
                 e.preventDefault();
-                console.log("Ctrl + Space pressed");
                 inputModel.openAIAssistantChat();
             }
             // console.log(e.code, e.keyCode, e.key, event.which, ctrlMod, e);
