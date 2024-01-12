@@ -60,7 +60,7 @@
         "@svgr/webpack": "^8.1.0",
         "@types/classnames": "^2.3.1",
         "@types/electron": "^1.6.10",
-        "@types/node": "20.10.3",
+        "@types/node": "20.11.0",
         "@types/papaparse": "^5.3.10",
         "@types/react": "^18.0.12",
         "@types/sprintf-js": "^1.1.3",
