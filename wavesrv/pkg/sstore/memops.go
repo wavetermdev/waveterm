@@ -61,23 +61,12 @@ type ScreenMemState struct {
 func ScreenMemDeepCopyCmdInfoChatStore(store *OpenAICmdInfoChatStore) *OpenAICmdInfoChatStore {
 	rtnMessages := []*packet.OpenAICmdInfoChatMessage{}
 	for index := 0; index < len(store.Messages); index++ {
-		messageToCopy := store.Messages[index]
-		rtnCurMessage := &packet.OpenAICmdInfoChatMessage{
-			MessageID:           messageToCopy.MessageID,
-			IsAssistantResponse: messageToCopy.IsAssistantResponse,
-			UserQuery:           messageToCopy.UserQuery,
-			UserEngineeredQuery: messageToCopy.UserEngineeredQuery,
-		}
+		messageToCopy := *store.Messages[index]
 		if messageToCopy.AssistantResponse != nil {
-			rtnCurMessage.AssistantResponse = &packet.OpenAICmdInfoPacketOutputType{
-				Message:      messageToCopy.AssistantResponse.Message,
-				Model:        messageToCopy.AssistantResponse.Model,
-				FinishReason: messageToCopy.AssistantResponse.FinishReason,
-				Created:      messageToCopy.AssistantResponse.Created,
-				Error:        messageToCopy.AssistantResponse.Error,
-			}
+			assistantResponseCopy := *messageToCopy.AssistantResponse
+			messageToCopy.AssistantResponse = &assistantResponseCopy
 		}
-		rtnMessages = append(rtnMessages, rtnCurMessage)
+		rtnMessages = append(rtnMessages, &messageToCopy)
 	}
 	rtn := &OpenAICmdInfoChatStore{MessageCount: store.MessageCount, Messages: rtnMessages}
 	return rtn
