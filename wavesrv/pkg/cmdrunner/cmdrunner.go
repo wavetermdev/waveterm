@@ -2001,6 +2001,114 @@ func doOpenAICompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, prompt
 	return
 }
 
+func writePacketToUpdateBus(ctx context.Context, cmd *sstore.CmdType, pk *packet.OpenAICmdInfoChatMessage) {
+	update, err := sstore.UpdateWithAddNewOpenAICmdInfoPacket(ctx, cmd.ScreenId, pk)
+	if err != nil {
+		log.Printf("Open AI Update packet err: %v\n", err)
+	}
+	sstore.MainBus.SendScreenUpdate(cmd.ScreenId, update)
+}
+
+func updateAsstResponseAndWriteToUpdateBus(ctx context.Context, cmd *sstore.CmdType, pk *packet.OpenAICmdInfoChatMessage, messageID int) {
+	update, err := sstore.UpdateWithUpdateOpenAICmdInfoPacket(ctx, cmd.ScreenId, messageID, pk)
+	if err != nil {
+		log.Printf("Open AI Update packet err: %v\n", err)
+	}
+	sstore.MainBus.SendScreenUpdate(cmd.ScreenId, update)
+}
+
+func getCmdInfoEngineeredPrompt(userQuery string, curLineStr string) string {
+	rtn := "You are an expert on the command line terminal. Your task is to help me write a command."
+	if curLineStr != "" {
+		rtn += "My current command is: " + curLineStr
+	}
+	rtn += ". My question is: " + userQuery + "."
+	return rtn
+}
+
+func doOpenAICmdInfoCompletion(cmd *sstore.CmdType, clientId string, opts *sstore.OpenAIOptsType, prompt []packet.OpenAIPromptMessageType, curLineStr string) {
+	var hadError bool
+	log.Println("had error: ", hadError)
+	ctx, cancelFn := context.WithTimeout(context.Background(), OpenAIStreamTimeout)
+	defer cancelFn()
+	defer func() {
+		r := recover()
+		if r != nil {
+			panicMsg := fmt.Sprintf("panic: %v", r)
+			log.Printf("panic in doOpenAICompletion: %s\n", panicMsg)
+			hadError = true
+		}
+	}()
+	var ch chan *packet.OpenAIPacketType
+	var err error
+	if opts.APIToken == "" {
+		var conn *websocket.Conn
+		ch, conn, err = openai.RunCloudCompletionStream(ctx, clientId, opts, prompt)
+		if conn != nil {
+			defer conn.Close()
+		}
+	} else {
+		ch, err = openai.RunCompletionStream(ctx, opts, prompt)
+	}
+	asstOutputPk := &packet.OpenAICmdInfoPacketOutputType{
+		Model:        "",
+		Created:      0,
+		FinishReason: "",
+		Message:      "",
+	}
+	asstOutputMessageID := sstore.ScreenMemGetCmdInfoMessageCount(cmd.ScreenId)
+	asstMessagePk := &packet.OpenAICmdInfoChatMessage{IsAssistantResponse: true, AssistantResponse: asstOutputPk, MessageID: asstOutputMessageID}
+	if err != nil {
+		asstOutputPk.Error = fmt.Sprintf("Error calling OpenAI API: %v", err)
+		writePacketToUpdateBus(ctx, cmd, asstMessagePk)
+		return
+	}
+	writePacketToUpdateBus(ctx, cmd, asstMessagePk)
+	doneWaitingForPackets := false
+	for !doneWaitingForPackets {
+		select {
+		case <-time.After(OpenAIPacketTimeout):
+			// timeout reading from channel
+			hadError = true
+			doneWaitingForPackets = true
+			asstOutputPk.Error = "timeout waiting for server response"
+			updateAsstResponseAndWriteToUpdateBus(ctx, cmd, asstMessagePk, asstOutputMessageID)
+			break
+		case pk, ok := <-ch:
+			if ok {
+				// got a packet
+				if pk.Error != "" {
+					hadError = true
+					asstOutputPk.Error = pk.Error
+				}
+				if pk.Model != "" && pk.Index == 0 {
+					asstOutputPk.Model = pk.Model
+					asstOutputPk.Created = pk.Created
+					asstOutputPk.FinishReason = pk.FinishReason
+					if pk.Text != "" {
+						asstOutputPk.Message += pk.Text
+					}
+				}
+				if pk.Index == 0 {
+					if pk.FinishReason != "" {
+						asstOutputPk.FinishReason = pk.FinishReason
+					}
+					if pk.Text != "" {
+						asstOutputPk.Message += pk.Text
+					}
+				}
+				asstMessagePk.AssistantResponse = asstOutputPk
+				updateAsstResponseAndWriteToUpdateBus(ctx, cmd, asstMessagePk, asstOutputMessageID)
+
+			} else {
+				// channel closed
+				doneWaitingForPackets = true
+				break
+			}
+		}
+	}
+}
+
 func doOpenAIStreamCompletion(cmd *sstore.CmdType, clientId string, opts *sstore.OpenAIOptsType, prompt []packet.OpenAIPromptMessageType) {
 	var outputPos int64
 	var hadError bool
@@ -2086,6 +2194,23 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, clientId string, opts *sstore
 	return
 }
 
+func BuildOpenAIPromptArrayWithContext(messages []*packet.OpenAICmdInfoChatMessage) []packet.OpenAIPromptMessageType {
+	rtn := make([]packet.OpenAIPromptMessageType, 0)
+	for _, msg := range messages {
+		content := msg.UserEngineeredQuery
+		if msg.UserEngineeredQuery == "" {
+			content = msg.UserQuery
+		}
+		msgRole := sstore.OpenAIRoleUser
+		if msg.IsAssistantResponse {
+			msgRole = sstore.OpenAIRoleAssistant
+			content = msg.AssistantResponse.Message
+		}
+		rtn = append(rtn, packet.OpenAIPromptMessageType{Role: msgRole, Content: content})
+	}
+	return rtn
+}
+
 func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
 	if err != nil {
@@ -2111,9 +2236,6 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		opts.MaxTokens = openai.DefaultMaxTokens
 	}
 	promptStr := firstArg(pk)
-	if promptStr == "" {
-		return nil, fmt.Errorf("openai error, prompt string is blank")
-	}
 	ptermVal := defaultStr(pk.Kwargs["wterm"], DefaultPTERM)
 	pkTermOpts, err := GetUITermOpts(pk.UIContext.WinSize, ptermVal)
 	if err != nil {
@@ -2124,11 +2246,40 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	if err != nil {
 		return nil, fmt.Errorf("openai error, cannot make dyn cmd")
 	}
+	if resolveBool(pk.Kwargs["cmdinfo"], false) {
+		if promptStr == "" {
+			// this is requesting an update without wanting an openai query
+			update, err := sstore.UpdateWithCurrentOpenAICmdInfoChat(cmd.ScreenId)
+			if err != nil {
+				return nil, fmt.Errorf("error getting update for CmdInfoChat %v", err)
+			}
+			return update, nil
+		}
+		curLineStr := defaultStr(pk.Kwargs["curline"], "")
+		userQueryPk := &packet.OpenAICmdInfoChatMessage{UserQuery: promptStr, MessageID: sstore.ScreenMemGetCmdInfoMessageCount(cmd.ScreenId)}
+		engineeredQuery := getCmdInfoEngineeredPrompt(promptStr, curLineStr)
+		userQueryPk.UserEngineeredQuery = engineeredQuery
+		writePacketToUpdateBus(ctx, cmd, userQueryPk)
+		prompt := BuildOpenAIPromptArrayWithContext(sstore.ScreenMemGetCmdInfoChat(cmd.ScreenId).Messages)
+		go doOpenAICmdInfoCompletion(cmd, clientData.ClientId, opts, prompt, curLineStr)
+		update := &sstore.ModelUpdate{}
+		return update, nil
+	}
+	prompt := []packet.OpenAIPromptMessageType{{Role: sstore.OpenAIRoleUser, Content: promptStr}}
+	if resolveBool(pk.Kwargs["cmdinfoclear"], false) {
+		update, err := sstore.UpdateWithClearOpenAICmdInfo(cmd.ScreenId)
+		if err != nil {
+			return nil, fmt.Errorf("error clearing CmdInfoChat: %v", err)
+		}
+		return update, nil
+	}
+	if promptStr == "" {
+		return nil, fmt.Errorf("openai error, prompt string is blank")
+	}
 	line, err := sstore.AddOpenAILine(ctx, ids.ScreenId, DefaultUserId, cmd)
 	if err != nil {
 		return nil, fmt.Errorf("cannot add new line: %v", err)
 	}
-	prompt := []packet.OpenAIPromptMessageType{{Role: sstore.OpenAIRoleUser, Content: promptStr}}
 	if resolveBool(pk.Kwargs["stream"], true) {
 		go doOpenAIStreamCompletion(cmd, clientData.ClientId, opts, prompt)
 	} else {

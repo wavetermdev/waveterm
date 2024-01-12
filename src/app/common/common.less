@@ -352,7 +352,7 @@
         background-color: @markdown-highlight;
         color: @term-white;
         font-family: @terminal-font;
-        display: inline-block;
+        border-radius: 4px;
     }
 
     code.inline {
@@ -403,6 +403,13 @@
         background-color: @markdown-highlight;
         margin: 4px 10px 4px 10px;
         padding: 6px 6px 6px 10px;
+        border-radius: 4px;
+    }
+    
+    pre.selected {
+        border-style: solid;
+        outline-width: 2px;
+        border-color: @term-green; 
     }
 
     .title.is-1 {

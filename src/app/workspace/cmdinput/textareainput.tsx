@@ -230,6 +230,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 if (inputModel.inputMode.get() != null) {
                     inputModel.resetInputMode();
                 }
+                inputModel.closeAIAssistantChat();
                 return;
             }
             if (e.code == "KeyE" && e.getModifierState("Meta")) {
@@ -312,6 +313,10 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     let amt = pageSize(div);
                     scrollDiv(div, e.code == "PageUp" ? -amt : amt);
                 }
+            }
+            if (e.code == "Space" && e.getModifierState("Control")) {
+                e.preventDefault();
+                inputModel.openAIAssistantChat();
             }
             // console.log(e.code, e.keyCode, e.key, event.which, ctrlMod, e);
         })();

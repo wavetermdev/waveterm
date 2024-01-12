@@ -65,6 +65,7 @@ import type {
     CommandRtnType,
     WebCmd,
     WebRemote,
+    OpenAICmdInfoChatMessageType,
 } from "../types/types";
 import * as T from "../types/types";
 import { WSControl } from "./ws";
@@ -1233,7 +1234,18 @@ function getDefaultHistoryQueryOpts(): HistoryQueryOpts {
 class InputModel {
     historyShow: OV<boolean> = mobx.observable.box(false);
     infoShow: OV<boolean> = mobx.observable.box(false);
+    aIChatShow: OV<boolean> = mobx.observable.box(false);
     cmdInputHeight: OV<number> = mobx.observable.box(0);
+    aiChatTextAreaRef: React.RefObject<HTMLTextAreaElement>;
+    aiChatWindowRef: React.RefObject<HTMLDivElement>;
+    codeSelectBlockRefArray: Array<React.RefObject<HTMLElement>>;
+    codeSelectSelectedIndex: OV<number> = mobx.observable.box(-1);
+
+    AICmdInfoChatItems: mobx.IObservableArray<OpenAICmdInfoChatMessageType> = mobx.observable.array([], {
+        name: "aicmdinfo-chat",
+    });
+    readonly codeSelectTop: number = -2;
+    readonly codeSelectBottom: number = -1;
 
     historyType: mobx.IObservableValue<HistoryTypeStrs> = mobx.observable.box("screen");
     historyLoading: mobx.IObservableValue<boolean> = mobx.observable.box(false);
@@ -1271,6 +1283,10 @@ class InputModel {
         this.filteredHistoryItems = mobx.computed(() => {
             return this._getFilteredHistoryItems();
         });
+        mobx.action(() => {
+            this.codeSelectSelectedIndex.set(-1);
+            this.codeSelectBlockRefArray = [];
+        })();
     }
 
     setInputMode(inputMode: null | "comment" | "global"): void {
@@ -1393,6 +1409,11 @@ class InputModel {
             setTimeout(() => this.setHistoryIndex(bestIndex, true), 10);
             return;
         })();
+    }
+
+    setOpenAICmdInfoChat(chat: OpenAICmdInfoChatMessageType[]): void {
+        this.AICmdInfoChatItems.replace(chat);
+        this.codeSelectBlockRefArray = [];
     }
 
     setHistoryShow(show: boolean): void {
@@ -1683,6 +1704,152 @@ class InputModel {
         }
     }
 
+    setCmdInfoChatRefs(
+        textAreaRef: React.RefObject<HTMLTextAreaElement>,
+        chatWindowRef: React.RefObject<HTMLDivElement>
+    ) {
+        this.aiChatTextAreaRef = textAreaRef;
+        this.aiChatWindowRef = chatWindowRef;
+    }
+
+    setAIChatFocus() {
+        if (this.aiChatTextAreaRef != null && this.aiChatTextAreaRef.current != null) {
+            this.aiChatTextAreaRef.current.focus();
+        }
+    }
+
+    grabCodeSelectSelection() {
+        if (
+            this.codeSelectSelectedIndex.get() >= 0 &&
+            this.codeSelectSelectedIndex.get() < this.codeSelectBlockRefArray.length
+        ) {
+            let curBlockRef = this.codeSelectBlockRefArray[this.codeSelectSelectedIndex.get()];
+            let codeText = curBlockRef.current.innerText;
+            codeText = codeText.replace(/\n$/, ""); // remove trailing newline
+            let newLineValue = this.getCurLine() + " " + codeText;
+            this.setCurLine(newLineValue);
+            this.giveFocus();
+        }
+    }
+
+    addCodeBlockToCodeSelect(blockRef: React.RefObject<HTMLElement>): number {
+        let rtn = -1;
+        rtn = this.codeSelectBlockRefArray.length;
+        this.codeSelectBlockRefArray.push(blockRef);
+        return rtn;
+    }
+
+    setCodeSelectSelectedCodeBlock(blockIndex: number) {
+        mobx.action(() => {
+            if (blockIndex >= 0 && blockIndex < this.codeSelectBlockRefArray.length) {
+                this.codeSelectSelectedIndex.set(blockIndex);
+                let currentRef = this.codeSelectBlockRefArray[blockIndex].current;
+                if (currentRef != null) {
+                    if (this.aiChatWindowRef != null && this.aiChatWindowRef.current != null) {
+                        let chatWindowTop = this.aiChatWindowRef.current.scrollTop;
+                        let chatWindowBottom = chatWindowTop + this.aiChatWindowRef.current.clientHeight - 100;
+                        let elemTop = currentRef.offsetTop;
+                        let elemBottom = elemTop - currentRef.offsetHeight;
+                        let elementIsInView = elemBottom < chatWindowBottom && elemTop > chatWindowTop;
+                        if (!elementIsInView) {
+                            this.aiChatWindowRef.current.scrollTop =
+                                elemBottom - this.aiChatWindowRef.current.clientHeight / 3;
+                        }
+                    }
+                }
+                this.codeSelectBlockRefArray = [];
+                this.setAIChatFocus();
+            }
+        })();
+    }
+
+    codeSelectSelectNextNewestCodeBlock() {
+        // oldest code block = index 0 in array
+        // this decrements codeSelectSelected index
+        mobx.action(() => {
+            if (this.codeSelectSelectedIndex.get() == this.codeSelectTop) {
+                this.codeSelectSelectedIndex.set(this.codeSelectBottom);
+            } else if (this.codeSelectSelectedIndex.get() == this.codeSelectBottom) {
+                return;
+            }
+            let incBlockIndex = this.codeSelectSelectedIndex.get() + 1;
+            if (this.codeSelectSelectedIndex.get() == this.codeSelectBlockRefArray.length - 1) {
+                this.codeSelectDeselectAll();
+                if (this.aiChatWindowRef != null && this.aiChatWindowRef.current != null) {
+                    this.aiChatWindowRef.current.scrollTop = this.aiChatWindowRef.current.scrollHeight;
+                }
+            }
+            if (incBlockIndex >= 0 && incBlockIndex < this.codeSelectBlockRefArray.length) {
+                this.setCodeSelectSelectedCodeBlock(incBlockIndex);
+            }
+        })();
+    }
+
+    codeSelectSelectNextOldestCodeBlock() {
+        mobx.action(() => {
+            if (this.codeSelectSelectedIndex.get() == this.codeSelectBottom) {
+                if (this.codeSelectBlockRefArray.length > 0) {
+                    this.codeSelectSelectedIndex.set(this.codeSelectBlockRefArray.length);
+                } else {
+                    return;
+                }
+            } else if (this.codeSelectSelectedIndex.get() == this.codeSelectTop) {
+                return;
+            }
+            let decBlockIndex = this.codeSelectSelectedIndex.get() - 1;
+            if (decBlockIndex < 0) {
+                this.codeSelectDeselectAll(this.codeSelectTop);
+                if (this.aiChatWindowRef != null && this.aiChatWindowRef.current != null) {
+                    this.aiChatWindowRef.current.scrollTop = 0;
+                }
+            }
+            if (decBlockIndex >= 0 && decBlockIndex < this.codeSelectBlockRefArray.length) {
+                this.setCodeSelectSelectedCodeBlock(decBlockIndex);
+            }
+        })();
+    }
+
+    getCodeSelectSelectedIndex() {
+        return this.codeSelectSelectedIndex.get();
+    }
+
+    getCodeSelectRefArrayLength() {
+        return this.codeSelectBlockRefArray.length;
+    }
+
+    codeBlockIsSelected(blockIndex: number): boolean {
+        return blockIndex == this.codeSelectSelectedIndex.get();
+    }
+
+    codeSelectDeselectAll(direction: number = this.codeSelectBottom) {
+        mobx.action(() => {
+            this.codeSelectSelectedIndex.set(direction);
+            this.codeSelectBlockRefArray = [];
+        })();
+    }
+
+    openAIAssistantChat(): void {
+        this.aIChatShow.set(true);
+        this.setAIChatFocus();
+    }
+
+    closeAIAssistantChat(): void {
+        this.aIChatShow.set(false);
+        this.giveFocus();
+    }
+
+    clearAIAssistantChat(): void {
+        let prtn = GlobalModel.submitChatInfoCommand("", "", true);
+        prtn.then((rtn) => {
+            if (rtn.success) {
+            } else {
+                console.log("submit chat command error: " + rtn.error);
+            }
+        }).catch((error) => {
+            console.log("submit chat command error: ", error);
+        });
+    }
+
     hasScrollingInfoMsg(): boolean {
         if (!this.infoShow.get()) {
             return false;
@@ -1778,6 +1945,7 @@ class InputModel {
     resetInput(): void {
         mobx.action(() => {
             this.setHistoryShow(false);
+            this.closeAIAssistantChat();
             this.infoShow.set(false);
             this.inputMode.set(null);
             this.resetHistory();
@@ -3834,6 +4002,9 @@ class Model {
             this.sessionListLoaded.set(true);
             this.remotesLoaded.set(true);
         }
+        if ("openaicmdinfochat" in update) {
+            this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
+        }
         // console.log("run-update>", Date.now(), interactive, update);
     }
 
@@ -4065,6 +4236,28 @@ class Model {
             pk.interactive
         );
 		 */
+        return this.submitCommandPacket(pk, interactive);
+    }
+
+    submitChatInfoCommand(chatMsg: string, curLineStr: string, clear: boolean): Promise<CommandRtnType> {
+        let commandStr = "/chat " + chatMsg;
+        let interactive = false;
+        let pk: FeCmdPacketType = {
+            type: "fecmd",
+            metacmd: "eval",
+            args: [commandStr],
+            kwargs: {},
+            uicontext: this.getUIContext(),
+            interactive: interactive,
+            rawstr: chatMsg,
+        };
+        pk.kwargs["nohist"] = "1";
+        if (clear) {
+            pk.kwargs["cmdinfoclear"] = "1";
+        } else {
+            pk.kwargs["cmdinfo"] = "1";
+        }
+        pk.kwargs["curline"] = curLineStr;
         return this.submitCommandPacket(pk, interactive);
     }
 
