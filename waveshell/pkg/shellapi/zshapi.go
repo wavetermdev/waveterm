@@ -88,6 +88,9 @@ var ZshUnsetVars = []string{
 var localZshMajorVersionOnce = &sync.Once{}
 var localZshMajorVersion = ""
 
+// sentinel value for functions that should be autoloaded
+const ZshFnAutoLoad = "autoload"
+
 type ZshParamKey struct {
 	// "aliases", "dis_aliases", "saliases", "dis_saliases", "galiases", "dis_galiases"
 	// "functions", "dis_functions", "functions_source", "dis_functions_source"
@@ -325,6 +328,54 @@ func ParseZshAliases(aliasBytes []byte) map[ZshParamKey]string {
 	return rtn
 }
 
+func isSourceFileInFpath(fpathArr []string, sourceFile string) bool {
+	for _, fpath := range fpathArr {
+		if strings.HasPrefix(sourceFile, fpath) {
+			return true
+		}
+	}
+	return false
+}
+
+func ParseZshFunctions(fpathArr []string, fnBytes []byte) map[ZshParamKey]string {
+	fnBody := make(map[ZshParamKey]string)
+	fnSource := make(map[string]string)
+	fnParts := bytes.Split(fnBytes, []byte{0})
+	for fnPartIdx := 0; fnPartIdx < len(fnParts); fnPartIdx += 2 {
+		fnTypeAndName := string(fnParts[fnPartIdx])
+		fnValue := string(fnParts[fnPartIdx+1])
+		fnTypeAndNameParts := strings.SplitN(fnTypeAndName, " ", 2)
+		if len(fnTypeAndNameParts) != 2 {
+			continue
+		}
+		fnType := fnTypeAndNameParts[0]
+		fnName := fnTypeAndNameParts[1]
+		if fnType == "functions" || fnType == "dis_functions" {
+			fnBody[ZshParamKey{ParamType: fnType, ParamName: fnName}] = fnValue
+		}
+		if fnType == "functions_source" || fnType == "dis_functions_source" {
+			fnSource[fnName] = fnValue
+		}
+	}
+	// ok, so the trick here is that we want to only include functions that are *not* autoloaded
+	// the ones that are pending autoloading or come from a source file in fpath, can just be set to autoload
+	for fnKey := range fnBody {
+		source := fnSource[fnKey.ParamName]
+		if isSourceFileInFpath(fpathArr, source) {
+			fnBody[fnKey] = ZshFnAutoLoad
+		}
+	}
+	return fnBody
+}
+
+func makeZshFuncsStrForShellState(fnMap map[ZshParamKey]string) string {
+	var buf bytes.Buffer
+	for fnKey, fnValue := range fnMap {
+		buf.WriteString(fmt.Sprintf("%s %s %s\x00", fnKey.ParamType, fnKey.ParamName, fnValue))
+	}
+	return buf.String()
+}
+
 func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
 	// if scbase.IsDevMode() {
 	// 	writeZshStateToFile(outputBytes)
@@ -360,6 +411,8 @@ func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellSta
 		}
 	}
 	rtn.Aliases = string(fields[4])
+	zshFuncs := ParseZshFunctions(strings.Split(zshEnv["FPATH"], ":"), fields[5])
+	fmt.Printf("parsed %d functions\n", len(zshFuncs))
 	pvarMap := parsePVarOutput(fields[6], true)
 	utilfn.CombineMaps(zshDecls, pvarMap)
 	rtn.ShellVars = shellenv.SerializeDeclMap(zshDecls)

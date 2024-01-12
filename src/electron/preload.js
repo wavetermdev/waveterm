@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld("api", {
     },
     restartWaveSrv: () => ipcRenderer.sendSync("restart-server"),
     reloadWindow: () => ipcRenderer.sendSync("reload-window"),
+    openExternalLink: (url) => ipcRenderer.send("open-external-link", url),
     onTCmd: (callback) => ipcRenderer.on("t-cmd", callback),
     onICmd: (callback) => ipcRenderer.on("i-cmd", callback),
     onLCmd: (callback) => ipcRenderer.on("l-cmd", callback),

@@ -19,6 +19,7 @@ import { Prompt } from "../../common/prompt/prompt";
 import { ReactComponent as ExecIcon } from "../../assets/icons/exec.svg";
 import { ReactComponent as RotateIcon } from "../../assets/icons/line/rotate.svg";
 import "./cmdinput.less";
+import { AIChat } from "./aichat";
 
 dayjs.extend(localizedFormat);
 
@@ -116,6 +117,7 @@ class CmdInput extends React.Component<{}, {}> {
         }
         let infoShow = inputModel.infoShow.get();
         let historyShow = !infoShow && inputModel.historyShow.get();
+        let aiChatShow = inputModel.aIChatShow.get();
         let infoMsg = inputModel.infoMsg.get();
         let hasInfo = infoMsg != null;
         let focusVal = inputModel.physicalInputFocused.get();
@@ -127,10 +129,22 @@ class CmdInput extends React.Component<{}, {}> {
             numRunningLines = mobx.computed(() => win.getRunningCmdLines().length).get();
         }
         return (
-            <div ref={this.cmdInputRef} className={cn("cmd-input", { "has-info": infoShow }, { active: focusVal })}>
+            <div
+                ref={this.cmdInputRef}
+                className={cn(
+                    "cmd-input",
+                    { "has-info": infoShow },
+                    { "has-aichat": aiChatShow },
+                    { active: focusVal }
+                )}
+            >
                 <If condition={historyShow}>
                     <div className="cmd-input-grow-spacer"></div>
                     <HistoryInfo />
+                </If>
+                <If condition={aiChatShow}>
+                    <div className="cmd-input-grow-spacer"></div>
+                    <AIChat />
                 </If>
                 <InfoMsg key="infomsg" />
                 <If condition={remote && remote.status != "connected"}>
