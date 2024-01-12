@@ -196,6 +196,7 @@ type ElectronApi = {
     getWaveSrvStatus: () => boolean;
     restartWaveSrv: () => boolean;
     reloadWindow: () => void;
+    openExternalLink: (url: string) => void;
     onTCmd: (callback: (mods: KeyModsType) => void) => void;
     onICmd: (callback: (mods: KeyModsType) => void) => void;
     onLCmd: (callback: (mods: KeyModsType) => void) => void;
@@ -3422,6 +3423,16 @@ class Model {
 
     refreshClient(): void {
         getApi().reloadWindow();
+    }
+
+    /**
+     * Opens a new default browser window to the given url
+     * @param {string} url The url to open
+     */
+    openExternalLink(url: string): void {
+        console.log("opening external link: " + url);
+        getApi().openExternalLink(url);
+        console.log("finished opening external link");
     }
 
     refocus() {

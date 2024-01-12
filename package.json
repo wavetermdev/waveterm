@@ -36,7 +36,8 @@
         "tsx-control-statements": "^4.1.1",
         "uuid": "^9.0.0",
         "winston": "^3.8.2",
-        "xterm": "^5.0.0"
+        "xterm": "^5.0.0",
+        "xterm-addon-web-links": "^0.9.0"
     },
     "devDependencies": {
         "@babel/cli": "^7.17.10",

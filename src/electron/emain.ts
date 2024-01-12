@@ -485,6 +485,14 @@ electron.ipcMain.on("reload-window", (event) => {
     return;
 });
 
+electron.ipcMain.on("open-external-link", async (_, url) => {
+    try {
+        await electron.shell.openExternal(url);
+    } catch (err) {
+        console.warn("error opening external link", err);
+    }
+});
+
 electron.ipcMain.on("get-last-logs", async (event, numberOfLines) => {
     try {
         const logPath = path.join(getWaveHomeDir(), "wavesrv.log");
