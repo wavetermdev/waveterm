@@ -4,6 +4,7 @@
 package statediff
 
 import (
+	"encoding/binary"
 	"fmt"
 	"strings"
 	"testing"
@@ -152,5 +153,35 @@ func TestMapDiff(t *testing.T) {
 	if !utilfn.ByteMapsEqual(m2, mcheck) {
 		t.Errorf("maps not equal")
 	}
-	fmt.Printf("%v\n", mcheck)
+
+	// try v0
+	mdiff := makeMapDiff(m1, m2)
+	diffBytes = mdiff.Encode_v0()
+	mcheck, err = ApplyMapDiff(m1, diffBytes)
+	if err != nil {
+		t.Fatalf("error applying map diff: %v", err)
+	}
+	if !utilfn.ByteMapsEqual(m2, mcheck) {
+		t.Errorf("maps not equal")
+	}
+
+	diffBytes = MakeMapDiff(m1, m1)
+	if len(diffBytes) != 0 {
+		t.Errorf("bad diff output (len should be 0)")
+	}
+	mcheck, err = ApplyMapDiff(m1, diffBytes)
+	if err != nil {
+		t.Fatalf("error applying map diff: %v", err)
+	}
+	if !utilfn.ByteMapsEqual(m1, mcheck) {
+		t.Errorf("maps not equal")
+	}
+}
+
+func TestVarint(t *testing.T) {
+	viBuf := make([]byte, 10)
+	viLen := binary.PutVarint(viBuf, 1)
+	fmt.Printf("%#v\n", viBuf[0:viLen])
+	viLen = binary.PutUvarint(viBuf, 1)
+	fmt.Printf("%#v\n", viBuf[0:viLen])
 }

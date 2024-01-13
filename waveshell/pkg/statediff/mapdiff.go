@@ -7,15 +7,23 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+
+	"github.com/wavetermdev/waveterm/waveshell/pkg/binpack"
 )
 
-const MapDiffVersion = 0
+const MapDiffVersion_0 = 0
+const MapDiffVersion = 1
 
 // 0-bytes are not allowed in entries or keys (same as bash)
 
 type MapDiffType struct {
 	ToAdd    map[string][]byte
 	ToRemove []string
+}
+
+func (diff *MapDiffType) Clear() {
+	diff.ToAdd = nil
+	diff.ToRemove = nil
 }
 
 func (diff MapDiffType) Dump() {
@@ -61,10 +69,11 @@ func (diff MapDiffType) apply(oldMap map[string][]byte) map[string][]byte {
 	return rtn
 }
 
-func (diff MapDiffType) Encode() []byte {
+// this is kept for reference
+func (diff MapDiffType) Encode_v0() []byte {
 	var buf bytes.Buffer
 	viBuf := make([]byte, binary.MaxVarintLen64)
-	putUVarint(&buf, viBuf, MapDiffVersion)
+	putUVarint(&buf, viBuf, MapDiffVersion_0)
 	putUVarint(&buf, viBuf, len(diff.ToAdd))
 	for key, val := range diff.ToAdd {
 		buf.WriteString(key)
@@ -79,13 +88,71 @@ func (diff MapDiffType) Encode() []byte {
 	return buf.Bytes()
 }
 
+func (diff MapDiffType) Encode() []byte {
+	var buf bytes.Buffer
+	binpack.PackUInt(&buf, MapDiffVersion)
+	binpack.PackUInt(&buf, uint64(len(diff.ToAdd)))
+	for key, val := range diff.ToAdd {
+		binpack.PackValue(&buf, []byte(key))
+		binpack.PackValue(&buf, val)
+	}
+	binpack.PackUInt(&buf, uint64(len(diff.ToRemove)))
+	for _, val := range diff.ToRemove {
+		binpack.PackValue(&buf, []byte(val))
+	}
+	return buf.Bytes()
+}
+
 func (diff *MapDiffType) Decode(diffBytes []byte) error {
+	diff.Clear()
+	r := bytes.NewBuffer(diffBytes)
+	version, err := binpack.UnpackUInt(r)
+	if err != nil {
+		return fmt.Errorf("invalid diff, cannot read version: %v", err)
+	}
+	if version == MapDiffVersion_0 {
+		return diff.Decode_v0(diffBytes)
+	}
+	if version != MapDiffVersion {
+		return fmt.Errorf("invalid diff, bad version: %d", version)
+	}
+	addLen, err := binpack.UnpackUIntAsInt(r)
+	if err != nil {
+		return fmt.Errorf("invalid diff, cannot read add length: %v", err)
+	}
+	diff.ToAdd = make(map[string][]byte)
+	for i := 0; i < addLen; i++ {
+		key, err := binpack.UnpackValue(r)
+		if err != nil {
+			return fmt.Errorf("invalid diff, cannot read add key %d: %v", i, err)
+		}
+		val, err := binpack.UnpackValue(r)
+		if err != nil {
+			return fmt.Errorf("invalid diff, cannot read add val %d: %v", i, err)
+		}
+		diff.ToAdd[string(key)] = val
+	}
+	removeLen, err := binpack.UnpackUIntAsInt(r)
+	if err != nil {
+		return fmt.Errorf("invalid diff, cannot read remove length: %v", err)
+	}
+	for i := 0; i < removeLen; i++ {
+		val, err := binpack.UnpackValue(r)
+		if err != nil {
+			return fmt.Errorf("invalid diff, cannot read remove val %d: %v", i, err)
+		}
+		diff.ToRemove = append(diff.ToRemove, string(val))
+	}
+	return nil
+}
+
+func (diff *MapDiffType) Decode_v0(diffBytes []byte) error {
 	r := bytes.NewBuffer(diffBytes)
 	version, err := binary.ReadUvarint(r)
 	if err != nil {
 		return fmt.Errorf("invalid diff, cannot read version: %v", err)
 	}
-	if version != MapDiffVersion {
+	if version != MapDiffVersion_0 {
 		return fmt.Errorf("invalid diff, bad version: %d", version)
 	}
 	mapLen64, err := binary.ReadUvarint(r)
