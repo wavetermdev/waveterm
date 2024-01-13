@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/alessio/shellescape"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/binpack"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
@@ -92,11 +94,26 @@ var localZshMajorVersion = ""
 const ZshFnAutoLoad = "autoload"
 
 type ZshParamKey struct {
+	// paramtype cannot contain spaces
 	// "aliases", "dis_aliases", "saliases", "dis_saliases", "galiases", "dis_galiases"
 	// "functions", "dis_functions", "functions_source", "dis_functions_source"
 	ParamType string
 	ParamName string
 }
+
+func (k ZshParamKey) String() string {
+	return k.ParamType + " " + k.ParamName
+}
+
+func ZshParamKeyFromString(s string) (ZshParamKey, error) {
+	parts := strings.SplitN(s, " ", 2)
+	if len(parts) != 2 {
+		return ZshParamKey{}, fmt.Errorf("invalid zsh param key")
+	}
+	return ZshParamKey{ParamType: parts[0], ParamName: parts[1]}, nil
+}
+
+type ZshMap = map[ZshParamKey]string
 
 type zshShellApi struct{}
 
@@ -197,73 +214,88 @@ func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 	}
 
 	// aliases
-	aliasMap := ParseZshAliases([]byte(pk.State.Aliases))
-	for aliasKey, aliasValue := range aliasMap {
-		// tricky here, don't quote AliasName (it gets implicit quotes, and quoting doesn't work as expected)
-		aliasStr := fmt.Sprintf("%s[%s]=%s\n", aliasKey.ParamType, aliasKey.ParamName, shellescape.Quote(aliasValue))
-		rcBuf.WriteString(aliasStr)
+	aliasMap, err := DecodeZshMap([]byte(pk.State.Aliases))
+	if err != nil {
+		base.Logf("error decoding zsh aliases: %v\n", err)
+		rcBuf.WriteString("# error decoding zsh aliases\n")
+	} else {
+		for aliasKey, aliasValue := range aliasMap {
+			// tricky here, don't quote AliasName (it gets implicit quotes, and quoting doesn't work as expected)
+			aliasStr := fmt.Sprintf("%s[%s]=%s\n", aliasKey.ParamType, aliasKey.ParamName, shellescape.Quote(aliasValue))
+			rcBuf.WriteString(aliasStr)
+		}
 	}
 	return rcBuf.String()
 }
 
+const numRandomBytes = 4
+
+// returns (binary-separator, cmd string)
 func GetZshShellStateCmd() string {
+	var sectionSeparator []byte
+	for len(sectionSeparator) < numRandomBytes {
+		// any character *except* null (0)
+		rn := rand.Intn(256)
+		if rn > 0 && rn < 256 { // exclude 0, also helps to suppress security warning to have a guard here
+			sectionSeparator = append(sectionSeparator, byte(rn))
+		}
+	}
+	sectionSeparator = append(sectionSeparator, 0, 0)
+	// we have to use these crazy separators because zsh allows basically anything in
+	// variable names and values (including nulls).
+	// note that we don't need crazy separators for "env" or "typeset".
+	// environment variables *cannot* contain nulls by definition, and "typeset" already escapes nulls.
+	// the raw aliases and functions though need to be handled more carefully
 	cmd := `
+unsetopt SH_WORD_SPLIT;
 zmodload zsh/parameter;
 [%ZSHVERSION%];
-printf "\x00\x00";
+printf "\x00[%SECTIONSEP%]";
 pwd;
-printf "\x00\x00";
+printf "[%SECTIONSEP%]";
 env -0;
-printf "\x00";
+printf "[%SECTIONSEP%]";
 typeset -p +H -m '*';
-printf "\x00\x00";
+printf "[%SECTIONSEP%]";
 for var in "${(@k)aliases}"; do
-	printf "aliases %s\x00" $var
-	printf "%s\x00" ${aliases[$var]}
+	printf "aliases %s[%PARTSEP%]%s[%PARTSEP%]" $var ${aliases[$var]}
 done
 for var in "${(@k)dis_aliases}"; do
-	printf "dis_aliases %s\x00" $var
-	printf "%s\x00" ${dis_aliases[$var]}
+	printf "dis_aliases %s[%PARTSEP%]%s[%PARTSEP%]" $var ${dis_aliases[$var]}
 done
 for var in "${(@k)saliases}"; do
-    printf "saliases %s\x00" $var
-	printf "%s\x00" ${saliases[$var]}
+	printf "saliases %s[%PARTSEP%]%s[%PARTSEP%]" $var ${saliases[$var]}
 done
 for var in "${(@k)dis_saliases}"; do
-	printf "dis_saliases %s\x00" $var
-	printf "%s\x00" ${dis_saliases[$var]}
+	printf "dis_saliases %s[%PARTSEP%]%s[%PARTSEP%]" $var ${dis_saliases[$var]}
 done
 for var in "${(@k)galiases}"; do
-	printf "galiases %s\x00" $var
-	printf "%s\x00" ${galiases[$var]}
+	printf "galiases %s[%PARTSEP%]%s[%PARTSEP%]" $var ${galiases[$var]}
 done
 for var in "${(@k)dis_galiases}"; do
-	printf "dis_galiases %s\x00" $var
-	printf "%s\x00" ${dis_galiases[$var]}
+	printf "dis_galiases %s[%PARTSEP%]%s[%PARTSEP%]" $var ${dis_galiases[$var]}
 done
-printf "\x00\x00";
+printf "[%SECTIONSEP%]";
 for var in "${(@k)functions}"; do
-	printf "functions %s\x00" $var
-	printf "%s\x00" ${functions[$var]}
+    printf "functions %s[%PARTSEP%]%s[%PARTSEP%]" $var ${functions[$var]}
 done
 for var in "${(@k)dis_functions}"; do
-	printf "dis_functions %s\x00" $var
-	printf "%s\x00" ${dis_functions[$var]}
+	printf "dis_functions %s[%PARTSEP%]%s[%PARTSEP%]" $var ${dis_functions[$var]}
 done
 for var in "${(@k)functions_source}"; do
-	printf "functions_source %s\x00" $var
-	printf "%s\x00" ${functions_source[$var]}
+	printf "functions_source %s[%PARTSEP%]%s[%PARTSEP%]" $var ${functions_source[$var]}
 done
 for var in "${(@k)dis_functions_source}"; do
-	printf "dis_functions_source %s\x00" $var
-	printf "%s\x00" ${dis_functions_source[$var]}
+    printf "dis_functions_source %s[%PARTSEP%]%s[%PARTSEP%]" $var ${dis_functions_source[$var]}
 done
-printf "\x00\x00";
+printf "[%SECTIONSEP%]";
 [%GITBRANCH%]
 `
 	cmd = strings.TrimSpace(cmd)
 	cmd = strings.ReplaceAll(cmd, "[%ZSHVERSION%]", ZshShellVersionCmdStr)
 	cmd = strings.ReplaceAll(cmd, "[%GITBRANCH%]", GetGitBranchCmdStr)
+	cmd = strings.ReplaceAll(cmd, "[%PARTSEP%]", utilfn.ShellHexEscape(string(sectionSeparator[0:len(sectionSeparator)-1])))
+	cmd = strings.ReplaceAll(cmd, "[%SECTIONSEP%]", utilfn.ShellHexEscape(string(sectionSeparator)))
 	return cmd
 }
 
@@ -312,10 +344,40 @@ func writeZshStateToFile(outputBytes []byte) error {
 	return nil
 }
 
-func ParseZshAliases(aliasBytes []byte) map[ZshParamKey]string {
-	aliasParts := bytes.Split(aliasBytes, []byte{0})
+func EncodeZshMap(m ZshMap) []byte {
+	var buf bytes.Buffer
+	binpack.PackUInt(&buf, uint64(len(m)))
+	for key, value := range m {
+		binpack.PackValue(&buf, []byte(key.String()))
+		binpack.PackValue(&buf, []byte(value))
+	}
+	return buf.Bytes()
+}
+
+func DecodeZshMap(barr []byte) (ZshMap, error) {
+	rtn := make(ZshMap)
+	buf := bytes.NewBuffer(barr)
+	u := binpack.MakeUnpacker(buf)
+	numEntries := u.UnpackUInt("numEntries")
+	for idx := 0; idx < numEntries; idx++ {
+		key := string(u.UnpackValue("key"))
+		value := string(u.UnpackValue("value"))
+		zshKey, err := ZshParamKeyFromString(key)
+		if err != nil {
+			return nil, err
+		}
+		rtn[zshKey] = value
+	}
+	if u.Error() != nil {
+		return nil, u.Error()
+	}
+	return rtn, nil
+}
+
+func parseZshAliasStateOutput(aliasBytes []byte, partSeparator []byte) map[ZshParamKey]string {
+	aliasParts := bytes.Split(aliasBytes, partSeparator)
 	rtn := make(map[ZshParamKey]string)
-	for aliasPartIdx := 0; aliasPartIdx < len(aliasParts); aliasPartIdx += 2 {
+	for aliasPartIdx := 0; aliasPartIdx < len(aliasParts)-1; aliasPartIdx += 2 {
 		aliasNameAndType := string(aliasParts[aliasPartIdx])
 		aliasNameAndTypeParts := strings.SplitN(aliasNameAndType, " ", 2)
 		if len(aliasNameAndTypeParts) != 2 {
@@ -337,11 +399,11 @@ func isSourceFileInFpath(fpathArr []string, sourceFile string) bool {
 	return false
 }
 
-func ParseZshFunctions(fpathArr []string, fnBytes []byte) map[ZshParamKey]string {
+func ParseZshFunctions(fpathArr []string, fnBytes []byte, partSeparator []byte) map[ZshParamKey]string {
 	fnBody := make(map[ZshParamKey]string)
 	fnSource := make(map[string]string)
-	fnParts := bytes.Split(fnBytes, []byte{0})
-	for fnPartIdx := 0; fnPartIdx < len(fnParts); fnPartIdx += 2 {
+	fnParts := bytes.Split(fnBytes, partSeparator)
+	for fnPartIdx := 0; fnPartIdx < len(fnParts)-1; fnPartIdx += 2 {
 		fnTypeAndName := string(fnParts[fnPartIdx])
 		fnValue := string(fnParts[fnPartIdx+1])
 		fnTypeAndNameParts := strings.SplitN(fnTypeAndName, " ", 2)
@@ -380,15 +442,22 @@ func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellSta
 	// if scbase.IsDevMode() {
 	// 	writeZshStateToFile(outputBytes)
 	// }
-
+	firstZeroIdx := bytes.Index(outputBytes, []byte{0})
+	firstDZeroIdx := bytes.Index(outputBytes, []byte{0, 0})
+	if firstZeroIdx == -1 || firstDZeroIdx == -1 {
+		return nil, fmt.Errorf("invalid zsh shell state output, could not parse separator bytes")
+	}
+	versionStr := string(outputBytes[0:firstZeroIdx])
+	sectionSeparator := outputBytes[firstZeroIdx+1 : firstDZeroIdx+2]
+	// partSeparator := sectionSeparator[0 : len(sectionSeparator)-1]
 	// 7 fields: version [0], cwd [1], env [2], vars [3], aliases [4], functions [5], pvars [6]
-	fields := bytes.Split(outputBytes, []byte{0, 0})
+	fields := bytes.Split(outputBytes, sectionSeparator)
 	if len(fields) != 7 {
 		base.Logf("invalid -- numfields\n")
 		return nil, fmt.Errorf("invalid zsh shell state output, wrong number of fields, fields=%d", len(fields))
 	}
 	rtn := &packet.ShellState{}
-	rtn.Version = strings.TrimSpace(string(fields[0]))
+	rtn.Version = strings.TrimSpace(versionStr)
 	if strings.Index(rtn.Version, "zsh") == -1 {
 		return nil, fmt.Errorf("invalid zsh shell state output, only zsh is supported")
 	}
@@ -411,8 +480,7 @@ func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellSta
 		}
 	}
 	rtn.Aliases = string(fields[4])
-	zshFuncs := ParseZshFunctions(strings.Split(zshEnv["FPATH"], ":"), fields[5])
-	fmt.Printf("parsed %d functions\n", len(zshFuncs))
+	// zshFuncs := ParseZshFunctions(strings.Split(zshEnv["FPATH"], ":"), fields[5], partSeparator)
 	pvarMap := parsePVarOutput(fields[6], true)
 	utilfn.CombineMaps(zshDecls, pvarMap)
 	rtn.ShellVars = shellenv.SerializeDeclMap(zshDecls)

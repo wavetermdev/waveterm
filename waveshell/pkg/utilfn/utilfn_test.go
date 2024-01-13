@@ -160,3 +160,16 @@ func TestEncodeStringMap(t *testing.T) {
 	testEncodeStringMap(t, map[string]string{"hello": "world", "fo=o": "b=ar", "a|b": "c\\d"})
 	testEncodeStringMap(t, map[string]string{"hello\x00|": "w\x00orld", "foo": "bar", "a|b": "c\\d", "v==v": "v\\e\\ev"})
 }
+
+func testShellHexEscape(t *testing.T, s string, expected string) {
+	encoded := ShellHexEscape(s)
+	if encoded != expected {
+		t.Errorf("bad shell hex encoding, %q != %q", encoded, expected)
+	}
+}
+
+func TestShellHexEscape(t *testing.T) {
+	testShellHexEscape(t, "", "")
+	testShellHexEscape(t, "a", `\x61`)
+	testShellHexEscape(t, "\x00\x01abc\x00", `\x00\x01\x61\x62\x63\x00`)
+}

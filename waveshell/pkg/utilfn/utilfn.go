@@ -466,3 +466,12 @@ func CombineMaps[V any](m1 map[string]V, m2 map[string]V) {
 		m1[key] = val
 	}
 }
+
+// returns hex escaped string (\xNN for each byte)
+func ShellHexEscape(s string) string {
+	var rtn []byte
+	for _, ch := range []byte(s) {
+		rtn = append(rtn, []byte(fmt.Sprintf("\\x%02x", ch))...)
+	}
+	return string(rtn)
+}

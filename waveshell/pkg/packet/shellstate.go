@@ -69,7 +69,7 @@ func sha1Hash(data []byte) string {
 // returns (SHA1, encoded-state)
 func (state ShellState) EncodeAndHash() (string, []byte) {
 	var buf bytes.Buffer
-	binpack.PackInt(&buf, ShellStatePackVersion)
+	binpack.PackUInt(&buf, ShellStatePackVersion)
 	binpack.PackValue(&buf, []byte(state.Version))
 	binpack.PackValue(&buf, []byte(state.Cwd))
 	binpack.PackValue(&buf, state.ShellVars)
@@ -108,7 +108,7 @@ func (state *ShellState) DecodeShellState(barr []byte) error {
 	state.HashVal = sha1Hash(barr)
 	buf := bytes.NewBuffer(barr)
 	u := binpack.MakeUnpacker(buf)
-	version := u.UnpackInt("ShellState pack version")
+	version := u.UnpackUInt("ShellState pack version")
 	if version != ShellStatePackVersion {
 		return fmt.Errorf("invalid ShellState pack version: %d", version)
 	}
@@ -132,7 +132,7 @@ func (state *ShellState) UnmarshalJSON(jsonBytes []byte) error {
 
 func (sdiff ShellStateDiff) EncodeAndHash() (string, []byte) {
 	var buf bytes.Buffer
-	binpack.PackInt(&buf, ShellStateDiffPackVersion)
+	binpack.PackUInt(&buf, ShellStateDiffPackVersion)
 	binpack.PackValue(&buf, []byte(sdiff.Version))
 	binpack.PackValue(&buf, []byte(sdiff.BaseHash))
 	binpack.PackStrArr(&buf, sdiff.DiffHashArr)
@@ -153,7 +153,7 @@ func (sdiff *ShellStateDiff) DecodeShellStateDiff(barr []byte) error {
 	sdiff.HashVal = sha1Hash(barr)
 	buf := bytes.NewBuffer(barr)
 	u := binpack.MakeUnpacker(buf)
-	version := u.UnpackInt("ShellState pack version")
+	version := u.UnpackUInt("ShellState pack version")
 	if version != ShellStateDiffPackVersion {
 		return fmt.Errorf("invalid ShellStateDiff pack version: %d", version)
 	}

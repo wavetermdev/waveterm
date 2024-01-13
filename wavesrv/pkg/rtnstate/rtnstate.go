@@ -138,8 +138,14 @@ func makeBashAliasesDiff(buf *bytes.Buffer, oldAliases string, newAliases string
 }
 
 func makeZshAlisesDiff(buf *bytes.Buffer, oldAliases string, newAliases string) {
-	newAliasMap := shellapi.ParseZshAliases([]byte(newAliases))
-	oldAliasMap := shellapi.ParseZshAliases([]byte(oldAliases))
+	newAliasMap, err := shellapi.DecodeZshMap([]byte(newAliases))
+	if err != nil {
+		return
+	}
+	oldAliasMap, err := shellapi.DecodeZshMap([]byte(oldAliases))
+	if err != nil {
+		return
+	}
 	for aliasKey, newAliasVal := range newAliasMap {
 		oldAliasVal, found := oldAliasMap[aliasKey]
 		if !found || newAliasVal != oldAliasVal {
