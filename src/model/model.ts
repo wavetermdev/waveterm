@@ -2576,6 +2576,14 @@ class ConnectionsViewModel {
     }
 }
 
+class ClientSettingsViewModel {
+    showClientSettingsView(): void {
+        mobx.action(() => {
+            GlobalModel.activeMainView.set("clientsettings");
+        })();
+    }
+}
+
 class BookmarksModel {
     bookmarks: OArr<BookmarkType> = mobx.observable.array([], {
         name: "Bookmarks",
@@ -3338,6 +3346,7 @@ class Model {
     bookmarksModel: BookmarksModel;
     historyViewModel: HistoryViewModel;
     connectionViewModel: ConnectionsViewModel;
+    clientSettingsViewModel: ClientSettingsViewModel;
     modalsModel: ModalsModel;
     clientData: OV<ClientDataType> = mobx.observable.box(null, {
         name: "clientData",
@@ -3361,6 +3370,7 @@ class Model {
         this.bookmarksModel = new BookmarksModel();
         this.historyViewModel = new HistoryViewModel();
         this.connectionViewModel = new ConnectionsViewModel();
+        this.clientSettingsViewModel = new ClientSettingsViewModel();
         this.remotesModalModel = new RemotesModalModel();
         this.remotesModel = new RemotesModel();
         this.modalsModel = new ModalsModel();
@@ -4793,6 +4803,10 @@ class CommandRunner {
 
     connectionsView() {
         GlobalModel.connectionViewModel.showConnectionsView();
+    }
+
+    clientSettingsView() {
+        GlobalModel.clientSettingsViewModel.showClientSettingsView();
     }
 
     historyView(params: HistorySearchParams) {

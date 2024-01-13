@@ -129,83 +129,88 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                 <header className="header">
                     <div className="clientsettings-title text-primary">Client Settings</div>
                 </header>
-                <div className="settings-field">
-                    <div className="settings-label">Term Font Size</div>
-                    <div className="settings-input">
-                        <Dropdown
-                            className="font-size-dropdown"
-                            options={this.getFontSizes()}
-                            defaultValue={`${curFontSize}px`}
-                            onChange={this.handleChangeFontSize}
-                        />
+                <div className="content">
+                    <div className="settings-field">
+                        <div className="settings-label">Term Font Size</div>
+                        <div className="settings-input">
+                            <Dropdown
+                                className="font-size-dropdown"
+                                options={this.getFontSizes()}
+                                defaultValue={`${curFontSize}px`}
+                                onChange={this.handleChangeFontSize}
+                            />
+                        </div>
                     </div>
-                </div>
-                <div className="settings-field">
-                    <div className="settings-label">Client ID</div>
-                    <div className="settings-input">{cdata.clientid}</div>
-                </div>
-                <div className="settings-field">
-                    <div className="settings-label">Client Version</div>
-                    <div className="settings-input">
-                        {VERSION} {BUILD}
+                    <div className="settings-field">
+                        <div className="settings-label">Client ID</div>
+                        <div className="settings-input">{cdata.clientid}</div>
                     </div>
-                </div>
-                <div className="settings-field">
-                    <div className="settings-label">DB Version</div>
-                    <div className="settings-input">{cdata.dbversion}</div>
-                </div>
-                <div className="settings-field">
-                    <div className="settings-label">Basic Telemetry</div>
-                    <div className="settings-input">
-                        <Toggle checked={!cdata.clientopts.notelemetry} onChange={this.handleChangeTelemetry} />
+                    <div className="settings-field">
+                        <div className="settings-label">Client Version</div>
+                        <div className="settings-input">
+                            {VERSION} {BUILD}
+                        </div>
                     </div>
-                </div>
-                <div className="settings-field">
-                    <div className="settings-label">Check for Updates</div>
-                    <div className="settings-input">
-                        <Toggle checked={!cdata.clientopts.noreleasecheck} onChange={this.handleChangeReleaseCheck} />
+                    <div className="settings-field">
+                        <div className="settings-label">DB Version</div>
+                        <div className="settings-input">{cdata.dbversion}</div>
                     </div>
-                </div>
-                <div className="settings-field">
-                    <div className="settings-label">OpenAI Token</div>
-                    <div className="settings-input">
-                        <InlineSettingsTextEdit
-                            placeholder=""
-                            text={apiTokenStr}
-                            value={""}
-                            onChange={this.inlineUpdateOpenAIToken}
-                            maxLength={100}
-                            showIcon={true}
-                        />
+                    <div className="settings-field">
+                        <div className="settings-label">Basic Telemetry</div>
+                        <div className="settings-input">
+                            <Toggle checked={!cdata.clientopts.notelemetry} onChange={this.handleChangeTelemetry} />
+                        </div>
                     </div>
-                </div>
-                <div className="settings-field">
-                    <div className="settings-label">OpenAI Model</div>
-                    <div className="settings-input">
-                        <InlineSettingsTextEdit
-                            placeholder="gpt-3.5-turbo"
-                            text={isBlank(openAIOpts.model) ? "gpt-3.5-turbo" : openAIOpts.model}
-                            value={openAIOpts.model ?? ""}
-                            onChange={this.inlineUpdateOpenAIModel}
-                            maxLength={100}
-                            showIcon={true}
-                        />
+                    <div className="settings-field">
+                        <div className="settings-label">Check for Updates</div>
+                        <div className="settings-input">
+                            <Toggle
+                                checked={!cdata.clientopts.noreleasecheck}
+                                onChange={this.handleChangeReleaseCheck}
+                            />
+                        </div>
                     </div>
-                </div>
-                <div className="settings-field">
-                    <div className="settings-label">OpenAI MaxTokens</div>
-                    <div className="settings-input">
-                        <InlineSettingsTextEdit
-                            placeholder=""
-                            text={maxTokensStr}
-                            value={maxTokensStr}
-                            onChange={this.inlineUpdateOpenAIMaxTokens}
-                            maxLength={10}
-                            showIcon={true}
-                        />
+                    <div className="settings-field">
+                        <div className="settings-label">OpenAI Token</div>
+                        <div className="settings-input">
+                            <InlineSettingsTextEdit
+                                placeholder=""
+                                text={apiTokenStr}
+                                value={""}
+                                onChange={this.inlineUpdateOpenAIToken}
+                                maxLength={100}
+                                showIcon={true}
+                            />
+                        </div>
                     </div>
+                    <div className="settings-field">
+                        <div className="settings-label">OpenAI Model</div>
+                        <div className="settings-input">
+                            <InlineSettingsTextEdit
+                                placeholder="gpt-3.5-turbo"
+                                text={isBlank(openAIOpts.model) ? "gpt-3.5-turbo" : openAIOpts.model}
+                                value={openAIOpts.model ?? ""}
+                                onChange={this.inlineUpdateOpenAIModel}
+                                maxLength={100}
+                                showIcon={true}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">OpenAI MaxTokens</div>
+                        <div className="settings-input">
+                            <InlineSettingsTextEdit
+                                placeholder=""
+                                text={maxTokensStr}
+                                value={maxTokensStr}
+                                onChange={this.inlineUpdateOpenAIMaxTokens}
+                                maxLength={10}
+                                showIcon={true}
+                            />
+                        </div>
+                    </div>
+                    <SettingsError errorMessage={this.errorMessage} />
                 </div>
-                <SettingsError errorMessage={this.errorMessage} />
             </div>
         );
     }
