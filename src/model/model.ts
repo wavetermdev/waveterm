@@ -3305,10 +3305,11 @@ class Model {
     authKey: string;
     isDev: boolean;
     platform: string;
-    activeMainView: OV<"plugins" | "session" | "history" | "bookmarks" | "webshare" | "connections"> =
-        mobx.observable.box("session", {
-            name: "activeMainView",
-        });
+    activeMainView: OV<
+        "plugins" | "session" | "history" | "bookmarks" | "webshare" | "connections" | "clientsettings"
+    > = mobx.observable.box("session", {
+        name: "activeMainView",
+    });
     termFontSize: CV<number>;
     alertMessage: OV<AlertMessageType> = mobx.observable.box(null, {
         name: "alertMessage",
