@@ -81,6 +81,11 @@ var ZshUniqueArrayVars = map[string]bool{
 	"fpath": true,
 }
 
+var ZshSpecialDecls = map[string]bool{
+	"precmd_functions":  true,
+	"preexec_functions": true,
+}
+
 var ZshUnsetVars = []string{
 	"HISTFILE",
 	"ZSH_EXECUTION_STRING",
@@ -191,12 +196,17 @@ func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 	rcBuf.WriteString("unset KSH_ARRAYS\n")
 	rcBuf.WriteString("zmodload zsh/parameter\n")
 	varDecls := shellenv.VarDeclsFromState(pk.State)
+	var postDecls []*shellenv.DeclareDeclType
 	for _, varDecl := range varDecls {
 		if ZshIgnoreVars[varDecl.Name] {
 			continue
 		}
 		if ZshUniqueArrayVars[varDecl.Name] && !varDecl.IsUniqueArray() {
 			varDecl.AddFlag("U")
+		}
+		if ZshSpecialDecls[varDecl.Name] {
+			postDecls = append(postDecls, varDecl)
+			continue
 		}
 		stmt := makeZshTypesetStmt(varDecl)
 		if stmt == "" {
@@ -225,7 +235,36 @@ func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 			rcBuf.WriteString(aliasStr)
 		}
 	}
+
+	// functions
+	fnMap, err := DecodeZshMap([]byte(pk.State.Funcs))
+	if err != nil {
+		base.Logf("error decoding zsh functions: %v\n", err)
+		rcBuf.WriteString("# error decoding zsh functions\n")
+	} else {
+		for fnKey, fnValue := range fnMap {
+			if fnValue == ZshFnAutoLoad {
+				rcBuf.WriteString(fmt.Sprintf("autoload %s\n", shellescape.Quote(fnKey.ParamName)))
+			} else {
+				rcBuf.WriteString(fmt.Sprintf("function %s () {\n%s\n}\n", shellescape.Quote(fnKey.ParamName), fnValue))
+				if fnKey.ParamType == "dis_functions" {
+					rcBuf.WriteString(fmt.Sprintf("disable -f %s\n", shellescape.Quote(fnKey.ParamName)))
+				}
+			}
+		}
+	}
+
+	// write postdecls
+	for _, varDecl := range postDecls {
+		rcBuf.WriteString(makeZshTypesetStmt(varDecl))
+		rcBuf.WriteString("\n")
+	}
+
 	return rcBuf.String()
+}
+
+func writeZshId(buf *bytes.Buffer, idStr string) {
+	buf.WriteString(shellescape.Quote(idStr))
 }
 
 const numRandomBytes = 4
@@ -233,6 +272,7 @@ const numRandomBytes = 4
 // returns (binary-separator, cmd string)
 func GetZshShellStateCmd() string {
 	var sectionSeparator []byte
+	sectionSeparator = append(sectionSeparator, byte('\n'))
 	for len(sectionSeparator) < numRandomBytes {
 		// any character *except* null (0)
 		rn := rand.Intn(256)
@@ -276,6 +316,8 @@ for var in "${(@k)dis_galiases}"; do
 	printf "dis_galiases %s[%PARTSEP%]%s[%PARTSEP%]" $var ${dis_galiases[$var]}
 done
 printf "[%SECTIONSEP%]";
+echo $FPATH;
+printf "[%SECTIONSEP%]";
 for var in "${(@k)functions}"; do
     printf "functions %s[%PARTSEP%]%s[%PARTSEP%]" $var ${functions[$var]}
 done
@@ -300,7 +342,7 @@ printf "[%SECTIONSEP%]";
 }
 
 func GetZshShellStateRedirectCommandStr(outputFdNum int) string {
-	return fmt.Sprintf("cat <(%s) > /dev/fd/%d", GetZshShellStateCmd(), outputFdNum)
+	return fmt.Sprintf("cat <(%s) > /dev/fd/%d 2> /dev/null", GetZshShellStateCmd(), outputFdNum)
 }
 
 func MakeZshExitTrap(fdNum int) string {
@@ -392,6 +434,13 @@ func parseZshAliasStateOutput(aliasBytes []byte, partSeparator []byte) map[ZshPa
 
 func isSourceFileInFpath(fpathArr []string, sourceFile string) bool {
 	for _, fpath := range fpathArr {
+		if fpath == "" || fpath == "." {
+			continue
+		}
+		firstChar := fpath[0]
+		if firstChar != '/' && firstChar != '~' {
+			continue
+		}
 		if strings.HasPrefix(sourceFile, fpath) {
 			return true
 		}
@@ -412,6 +461,9 @@ func ParseZshFunctions(fpathArr []string, fnBytes []byte, partSeparator []byte) 
 		}
 		fnType := fnTypeAndNameParts[0]
 		fnName := fnTypeAndNameParts[1]
+		if fnName == "zshexit" {
+			continue
+		}
 		if fnType == "functions" || fnType == "dis_functions" {
 			fnBody[ZshParamKey{ParamType: fnType, ParamName: fnName}] = fnValue
 		}
@@ -439,7 +491,7 @@ func makeZshFuncsStrForShellState(fnMap map[ZshParamKey]string) string {
 }
 
 func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
-	// if scbase.IsDevMode() {
+	// if scbase.IsDevMode() && len(outputBytes) > 0 {
 	// 	writeZshStateToFile(outputBytes)
 	// }
 	firstZeroIdx := bytes.Index(outputBytes, []byte{0})
@@ -449,10 +501,10 @@ func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellSta
 	}
 	versionStr := string(outputBytes[0:firstZeroIdx])
 	sectionSeparator := outputBytes[firstZeroIdx+1 : firstDZeroIdx+2]
-	// partSeparator := sectionSeparator[0 : len(sectionSeparator)-1]
-	// 7 fields: version [0], cwd [1], env [2], vars [3], aliases [4], functions [5], pvars [6]
+	partSeparator := sectionSeparator[0 : len(sectionSeparator)-1]
+	// 8 fields: version [0], cwd [1], env [2], vars [3], aliases [4], fpath [5], functions [6], pvars [7]
 	fields := bytes.Split(outputBytes, sectionSeparator)
-	if len(fields) != 7 {
+	if len(fields) != 8 {
 		base.Logf("invalid -- numfields\n")
 		return nil, fmt.Errorf("invalid zsh shell state output, wrong number of fields, fields=%d", len(fields))
 	}
@@ -461,13 +513,8 @@ func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellSta
 	if strings.Index(rtn.Version, "zsh") == -1 {
 		return nil, fmt.Errorf("invalid zsh shell state output, only zsh is supported")
 	}
-	cwdStr := string(fields[1])
-	if strings.HasSuffix(cwdStr, "\r\n") {
-		cwdStr = cwdStr[0 : len(cwdStr)-2]
-	} else if strings.HasSuffix(cwdStr, "\n") {
-		cwdStr = cwdStr[0 : len(cwdStr)-1]
-	}
-	rtn.Cwd = string(cwdStr)
+	cwdStr := stripNewLineChars(string(fields[1]))
+	rtn.Cwd = cwdStr
 	zshEnv := parseZshEnv(fields[2])
 	zshDecls, err := parseZshDecls(fields[3])
 	if err != nil {
@@ -479,11 +526,16 @@ func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellSta
 			decl.ZshEnvValue = zshEnv[decl.ZshBoundScalar]
 		}
 	}
-	rtn.Aliases = string(fields[4])
-	// zshFuncs := ParseZshFunctions(strings.Split(zshEnv["FPATH"], ":"), fields[5], partSeparator)
-	pvarMap := parsePVarOutput(fields[6], true)
+	aliasMap := parseZshAliasStateOutput(fields[4], partSeparator)
+	rtn.Aliases = string(EncodeZshMap(aliasMap))
+	fpathStr := stripNewLineChars(string(string(fields[5])))
+	fpathArr := strings.Split(fpathStr, ":")
+	zshFuncs := ParseZshFunctions(fpathArr, fields[6], partSeparator)
+	rtn.Funcs = string(EncodeZshMap(zshFuncs))
+	pvarMap := parsePVarOutput(fields[7], true)
 	utilfn.CombineMaps(zshDecls, pvarMap)
 	rtn.ShellVars = shellenv.SerializeDeclMap(zshDecls)
+	base.Logf("parse shellstate done\n")
 	return rtn, nil
 }
 
@@ -559,10 +611,22 @@ func parseZshDeclArgs(declStr string, isExport bool) (string, string, error) {
 	return declStr, argsStr, nil
 }
 
-func parseZshDeclLine(line string) (*DeclareDeclType, error) {
-	if strings.HasSuffix(line, "\r") {
-		line = line[0 : len(line)-1]
+func stripNewLineChars(s string) string {
+	for {
+		if len(s) == 0 {
+			return s
+		}
+		lastChar := s[len(s)-1]
+		if lastChar == '\n' || lastChar == '\r' {
+			s = s[0 : len(s)-1]
+		} else {
+			return s
+		}
 	}
+}
+
+func parseZshDeclLine(line string) (*DeclareDeclType, error) {
+	line = stripNewLineChars(line)
 	if strings.HasPrefix(line, "export ") {
 		exportLine := line[7:]
 		assignLine, exportArgs, err := parseZshDeclArgs(exportLine, true)
