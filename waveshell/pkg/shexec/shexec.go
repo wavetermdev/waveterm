@@ -112,8 +112,8 @@ type ShExecType struct {
 	RunnerOutFd    *os.File
 	MsgSender      *packet.PacketSender // where to send out-of-band messages back to calling proceess
 	ReturnState    *ReturnStateBuf
-	Exited         bool // locked via Lock
-	TmpRcFileName  string
+	Exited         bool   // locked via Lock
+	TmpRcFileName  string // file *or* directory holding temporary rc file(s)
 	SAPI           shellapi.ShellApi
 }
 
@@ -228,7 +228,8 @@ func (c *ShExecType) Close() {
 		c.ReturnState.Reader.Close()
 	}
 	if c.TmpRcFileName != "" {
-		os.Remove(c.TmpRcFileName)
+		// TmpRcFileName can be a file or a directory
+		os.RemoveAll(c.TmpRcFileName)
 	}
 }
 
@@ -845,31 +846,34 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 			return nil, fmt.Errorf("could not write temp rcfile: %w", err)
 		}
 		cmd.TmpRcFileName = rcFileName
-		go func() {
-			// cmd.Close() will also remove rcFileName
-			// adding this to also try to proactively clean up after 1-second.
-			time.Sleep(1 * time.Second)
-			os.Remove(rcFileName)
-		}()
 	} else if sapi.GetShellType() == packet.ShellType_zsh {
 		rcFileDir, err := base.EnsureRcFilesDir()
 		if err != nil {
 			return nil, err
 		}
-		zdotdir = path.Join(rcFileDir, "test")
+		zdotdir = path.Join(rcFileDir, uuid.New().String())
+		base.Logf("temp zdotdir: %q\n", zdotdir)
 		os.Mkdir(zdotdir, 0700)
 		rcFileName = path.Join(zdotdir, ".zshenv")
 		err = os.WriteFile(rcFileName, []byte(rcFileStr), 0600)
 		if err != nil {
 			return nil, fmt.Errorf("could not write temp rcfile: %w", err)
 		}
-		// TODO cleanup
+		cmd.TmpRcFileName = zdotdir
 	} else {
 		rcFileFdNum, err := AddRunData(pk, rcFileStr, "rcfile")
 		if err != nil {
 			return nil, err
 		}
 		rcFileName = fmt.Sprintf("/dev/fd/%d", rcFileFdNum)
+	}
+	if cmd.TmpRcFileName != "" {
+		go func() {
+			// cmd.Close() will also remove rcFileName
+			// adding this to also try to proactively clean up after 2-seconds.
+			time.Sleep(2 * time.Second)
+			os.Remove(cmd.TmpRcFileName)
+		}()
 	}
 	cmd.Cmd = sapi.MakeShExecCommand(pk.Command, rcFileName, pk.UsePty)
 	if !pk.StateComplete {
