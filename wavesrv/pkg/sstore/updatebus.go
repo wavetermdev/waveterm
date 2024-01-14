@@ -261,3 +261,14 @@ func MakeSessionsUpdateForRemote(sessionId string, ri *RemoteInstance) []*Sessio
 type BookmarksViewType struct {
 	Bookmarks []*BookmarkType `json:"bookmarks"`
 }
+
+type ScreenStatusIndicatorUpdateType struct {
+	ScreenId        string `json:"screenid"`
+	StatusIndicator string `json:"statusindicator"`
+}
+
+func (*ScreenStatusIndicatorUpdateType) UpdateType() string {
+	return PtyDataUpdateStr
+}
+
+func (ssi *ScreenStatusIndicatorUpdateType) Clean() {}

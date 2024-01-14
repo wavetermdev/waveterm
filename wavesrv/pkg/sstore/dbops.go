@@ -911,6 +911,16 @@ func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, donePk *packet.C
 	if rtnCmd == nil {
 		return nil, fmt.Errorf("cmd data not found for ck[%s]", ck)
 	}
+
+	// Update in-memory screen indicator status
+	var indicator string
+	if rtnCmd.ExitCode == 0 {
+		indicator = ScreenIndicator_Success
+	} else {
+		indicator = ScreenIndicator_Error
+	}
+	SetStatusIndicator(screenId, indicator)
+
 	return &ModelUpdate{Cmd: rtnCmd}, nil
 }
 

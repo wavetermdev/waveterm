@@ -521,8 +521,9 @@ type ScreenType struct {
 	ArchivedTs     int64               `json:"archivedts,omitempty"`
 
 	// only for updates
-	Full   bool `json:"full,omitempty"`
-	Remove bool `json:"remove,omitempty"`
+	Full            bool   `json:"full,omitempty"`
+	Remove          bool   `json:"remove,omitempty"`
+	StatusIndicator string `json:"statusindicator,omitempty"`
 }
 
 func (s *ScreenType) ToMap() map[string]interface{} {
@@ -1444,4 +1445,15 @@ func SetReleaseInfo(ctx context.Context, releaseInfo ReleaseInfoType) error {
 		return nil
 	})
 	return txErr
+}
+
+// Sets the in-memory status indicator for the given screenId to the given value and updates the frontend
+func SetStatusIndicator(screenId string, statusIndicator string) {
+	ScreenMemCombineIndicator(screenId, statusIndicator)
+
+	status := &ScreenStatusIndicatorUpdateType{
+		ScreenId:        screenId,
+		StatusIndicator: statusIndicator,
+	}
+	MainBus.SendUpdate(status)
 }

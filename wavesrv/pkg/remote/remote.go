@@ -1550,6 +1550,8 @@ func (msh *MShellProc) AddRunningCmd(rct RunCmdType) {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
 	msh.RunningCmds[rct.RunPacket.CK] = rct
+	// TODO: add status indicator to screen
+	sstore.SetStatusIndicator(rct.ScreenId, sstore.ScreenIndicator_Output)
 }
 
 func (msh *MShellProc) GetRunningCmd(ck base.CommandKey) *RunCmdType {
@@ -1666,6 +1668,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 		msh.WriteToPtyBuffer("*error updating cmddone: %v\n", err)
 		return
 	}
+
 	screen, err := sstore.UpdateScreenFocusForDoneCmd(context.Background(), donePk.CK.GetGroupId(), donePk.CK.GetCmdId())
 	if err != nil {
 		msh.WriteToPtyBuffer("*error trying to update screen focus type: %v\n", err)
