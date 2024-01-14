@@ -158,7 +158,29 @@ func makeZshAlisesDiff(buf *bytes.Buffer, oldAliases string, newAliases string) 
 			buf.WriteString(fmt.Sprintf("remove %s %s\n", aliasKey.ParamType, aliasKey.ParamName))
 		}
 	}
+}
 
+func makeZshFuncsDiff(buf *bytes.Buffer, oldFuncs string, newFuncs string) {
+	newFuncMap, err := shellapi.DecodeZshMap([]byte(newFuncs))
+	if err != nil {
+		return
+	}
+	oldFuncMap, err := shellapi.DecodeZshMap([]byte(oldFuncs))
+	if err != nil {
+		return
+	}
+	for funcKey, newFuncVal := range newFuncMap {
+		oldFuncVal, found := oldFuncMap[funcKey]
+		if !found || newFuncVal != oldFuncVal {
+			buf.WriteString(fmt.Sprintf("%s %s\n", funcKey.ParamType, funcKey.ParamName))
+		}
+	}
+	for funcKey := range oldFuncMap {
+		_, found := newFuncMap[funcKey]
+		if !found {
+			buf.WriteString(fmt.Sprintf("remove %s %s\n", funcKey.ParamType, funcKey.ParamName))
+		}
+	}
 }
 
 func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newState packet.ShellState) {
@@ -193,24 +215,29 @@ func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newSt
 	}
 	if newState.GetShellType() == packet.ShellType_zsh {
 		makeZshAlisesDiff(buf, oldState.Aliases, newState.Aliases)
+		makeZshFuncsDiff(buf, oldState.Funcs, newState.Funcs)
 	} else {
 		makeBashAliasesDiff(buf, oldState.Aliases, newState.Aliases)
-
+		makeBashFuncsDiff(newState, oldState, buf)
 	}
-	if newState.Funcs != oldState.Funcs {
-		newFuncMap, _ := ParseFuncs(newState.Funcs)
-		oldFuncMap, _ := ParseFuncs(oldState.Funcs)
-		for funcName, newFuncVal := range newFuncMap {
-			oldFuncVal, found := oldFuncMap[funcName]
-			if !found || newFuncVal != oldFuncVal {
-				buf.WriteString(fmt.Sprintf("function %s\n", utilfn.EllipsisStr(shellescape.Quote(funcName), MaxDiffKeyLen)))
-			}
+}
+
+func makeBashFuncsDiff(newState packet.ShellState, oldState packet.ShellState, buf *bytes.Buffer) {
+	if newState.Funcs == oldState.Funcs {
+		return
+	}
+	newFuncMap, _ := ParseFuncs(newState.Funcs)
+	oldFuncMap, _ := ParseFuncs(oldState.Funcs)
+	for funcName, newFuncVal := range newFuncMap {
+		oldFuncVal, found := oldFuncMap[funcName]
+		if !found || newFuncVal != oldFuncVal {
+			buf.WriteString(fmt.Sprintf("function %s\n", utilfn.EllipsisStr(shellescape.Quote(funcName), MaxDiffKeyLen)))
 		}
-		for funcName := range oldFuncMap {
-			_, found := newFuncMap[funcName]
-			if !found {
-				buf.WriteString(fmt.Sprintf("unset -f %s\n", utilfn.EllipsisStr(shellescape.Quote(funcName), MaxDiffKeyLen)))
-			}
+	}
+	for funcName := range oldFuncMap {
+		_, found := newFuncMap[funcName]
+		if !found {
+			buf.WriteString(fmt.Sprintf("unset -f %s\n", utilfn.EllipsisStr(shellescape.Quote(funcName), MaxDiffKeyLen)))
 		}
 	}
 }

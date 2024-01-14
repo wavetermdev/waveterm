@@ -211,6 +211,7 @@ var literalRtnStateCommands = []string{
 	"shopt",
 	"enable",
 	"disable",
+	"function",
 }
 
 func getCallExprLitArg(callExpr *syntax.CallExpr, argNum int) string {
@@ -232,6 +233,7 @@ func isRtnStateCmd(cmd syntax.Command) bool {
 	if cmd == nil {
 		return false
 	}
+	fmt.Printf("rtnstate cmd: %#v\n", cmd)
 	if _, ok := cmd.(*syntax.FuncDecl); ok {
 		return true
 	}
@@ -255,14 +257,13 @@ func isRtnStateCmd(cmd syntax.Command) bool {
 		if arg0 != "" && utilfn.ContainsStr(literalRtnStateCommands, arg0) {
 			return true
 		}
+		arg1 := getCallExprLitArg(callExpr, 1)
 		if arg0 == "git" {
-			arg1 := getCallExprLitArg(callExpr, 1)
 			if arg1 == "checkout" || arg1 == "switch" {
 				return true
 			}
 		}
 		if arg0 == "conda" {
-			arg1 := getCallExprLitArg(callExpr, 1)
 			if arg1 == "activate" || arg1 == "deactivate" {
 				return true
 			}
@@ -273,12 +274,30 @@ func isRtnStateCmd(cmd syntax.Command) bool {
 	return false
 }
 
+func checkSimpleRtnStateCmd(cmdStr string) bool {
+	cmdStr = strings.TrimSpace(cmdStr)
+	if strings.HasPrefix(cmdStr, "function ") {
+		return true
+	}
+	firstSpace := strings.Index(cmdStr, " ")
+	if firstSpace != -1 {
+		firstWord := strings.TrimSpace(cmdStr[:firstSpace])
+		if strings.HasSuffix(firstWord, "()") {
+			return true
+		}
+	}
+	return false
+}
+
 // detects: export, declare, ., source, X=1, unset
 func IsReturnStateCommand(cmdStr string) bool {
 	cmdReader := strings.NewReader(cmdStr)
 	parser := syntax.NewParser(syntax.Variant(syntax.LangBash))
 	file, err := parser.Parse(cmdReader, "cmd")
 	if err != nil {
+		if checkSimpleRtnStateCmd(cmdStr) {
+			return true
+		}
 		return false
 	}
 	for _, stmt := range file.Stmts {
