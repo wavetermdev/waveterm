@@ -128,6 +128,62 @@ func internalMacUserShell() string {
 	return m[1]
 }
 
+const FirstExtraFilesFdNum = 3
+
+// returns output(stdout+stderr), extraFdOutput, error
+func RunCommandWithExtraFd(ecmd *exec.Cmd, extraFdNum int) ([]byte, []byte, error) {
+	ecmd.Env = os.Environ()
+	shellutil.UpdateCmdEnv(ecmd, shellutil.MShellEnvVars(shellutil.DefaultTermType))
+	cmdPty, cmdTty, err := pty.Open()
+	if err != nil {
+		return nil, nil, fmt.Errorf("opening new pty: %w", err)
+	}
+	defer cmdTty.Close()
+	defer cmdPty.Close()
+	pty.Setsize(cmdPty, &pty.Winsize{Rows: shellutil.DefaultTermRows, Cols: shellutil.DefaultTermCols})
+	ecmd.Stdin = cmdTty
+	ecmd.Stdout = cmdTty
+	ecmd.Stderr = cmdTty
+	ecmd.SysProcAttr = &syscall.SysProcAttr{}
+	ecmd.SysProcAttr.Setsid = true
+	ecmd.SysProcAttr.Setctty = true
+	pipeReader, pipeWriter, err := os.Pipe()
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not create pipe: %w", err)
+	}
+	defer pipeWriter.Close()
+	defer pipeReader.Close()
+	extraFiles := make([]*os.File, extraFdNum+1)
+	extraFiles[extraFdNum] = pipeWriter
+	ecmd.ExtraFiles = extraFiles[FirstExtraFilesFdNum:]
+	defer pipeReader.Close()
+	ecmd.Start()
+	cmdTty.Close()
+	pipeWriter.Close()
+	if err != nil {
+		return nil, nil, err
+	}
+	var outputWg sync.WaitGroup
+	var outputBuf bytes.Buffer
+	var extraFdOutputBuf bytes.Buffer
+	outputWg.Add(2)
+	go func() {
+		// ignore error (/dev/ptmx has read error when process is done)
+		defer outputWg.Done()
+		io.Copy(&outputBuf, cmdPty)
+	}()
+	go func() {
+		defer outputWg.Done()
+		io.Copy(&extraFdOutputBuf, pipeReader)
+	}()
+	exitErr := ecmd.Wait()
+	if exitErr != nil {
+		return nil, nil, exitErr
+	}
+	outputWg.Wait()
+	return outputBuf.Bytes(), extraFdOutputBuf.Bytes(), nil
+}
+
 func RunSimpleCmdInPty(ecmd *exec.Cmd) ([]byte, error) {
 	ecmd.Env = os.Environ()
 	shellutil.UpdateCmdEnv(ecmd, shellutil.MShellEnvVars(shellutil.DefaultTermType))
@@ -143,12 +199,11 @@ func RunSimpleCmdInPty(ecmd *exec.Cmd) ([]byte, error) {
 	ecmd.SysProcAttr.Setsid = true
 	ecmd.SysProcAttr.Setctty = true
 	err = ecmd.Start()
+	cmdTty.Close()
 	if err != nil {
-		cmdTty.Close()
 		cmdPty.Close()
 		return nil, err
 	}
-	cmdTty.Close()
 	defer cmdPty.Close()
 	ioDone := make(chan bool)
 	var outputBuf bytes.Buffer

@@ -25,6 +25,7 @@ import (
 const BaseZshOpts = ``
 
 const ZshShellVersionCmdStr = `echo zsh v$ZSH_VERSION`
+const StateOutputFdNum = 20
 
 var ZshIgnoreVars = map[string]bool{
 	"_":                    true,
@@ -153,9 +154,9 @@ func (z zshShellApi) MakeShExecCommand(cmdStr string, rcFileName string, usePty 
 func (z zshShellApi) GetShellState() (*packet.ShellState, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
 	defer cancelFn()
-	cmdStr := BaseZshOpts + "; " + GetZshShellStateCmd()
+	cmdStr := BaseZshOpts + "; " + GetZshShellStateCmd(StateOutputFdNum)
 	ecmd := exec.CommandContext(ctx, GetLocalZshPath(), "-l", "-i", "-c", cmdStr)
-	outputBytes, err := RunSimpleCmdInPty(ecmd)
+	_, outputBytes, err := RunCommandWithExtraFd(ecmd, StateOutputFdNum)
 	if err != nil {
 		return nil, err
 	}
@@ -246,6 +247,7 @@ func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 			if fnValue == ZshFnAutoLoad {
 				rcBuf.WriteString(fmt.Sprintf("autoload %s\n", shellescape.Quote(fnKey.ParamName)))
 			} else {
+				// careful, no whitespace (except newlines)
 				rcBuf.WriteString(fmt.Sprintf("function %s () {\n%s\n}\n", shellescape.Quote(fnKey.ParamName), fnValue))
 				if fnKey.ParamType == "dis_functions" {
 					rcBuf.WriteString(fmt.Sprintf("disable -f %s\n", shellescape.Quote(fnKey.ParamName)))
@@ -269,9 +271,10 @@ func writeZshId(buf *bytes.Buffer, idStr string) {
 
 const numRandomBytes = 4
 
-// returns (binary-separator, cmd string)
-func GetZshShellStateCmd() string {
+// returns (cmd-string)
+func GetZshShellStateCmd(fdNum int) string {
 	var sectionSeparator []byte
+	// adding this extra "\n" helps with debuging and readability of output
 	sectionSeparator = append(sectionSeparator, byte('\n'))
 	for len(sectionSeparator) < numRandomBytes {
 		// any character *except* null (0)
@@ -286,7 +289,9 @@ func GetZshShellStateCmd() string {
 	// note that we don't need crazy separators for "env" or "typeset".
 	// environment variables *cannot* contain nulls by definition, and "typeset" already escapes nulls.
 	// the raw aliases and functions though need to be handled more carefully
+	// output redirection is necessary to prevent cooked tty options from screwing up the output (funcs especially)
 	cmd := `
+exec > [%OUTPUTFD%]
 unsetopt SH_WORD_SPLIT;
 zmodload zsh/parameter;
 [%ZSHVERSION%];
@@ -338,15 +343,12 @@ printf "[%SECTIONSEP%]";
 	cmd = strings.ReplaceAll(cmd, "[%GITBRANCH%]", GetGitBranchCmdStr)
 	cmd = strings.ReplaceAll(cmd, "[%PARTSEP%]", utilfn.ShellHexEscape(string(sectionSeparator[0:len(sectionSeparator)-1])))
 	cmd = strings.ReplaceAll(cmd, "[%SECTIONSEP%]", utilfn.ShellHexEscape(string(sectionSeparator)))
+	cmd = strings.ReplaceAll(cmd, "[%OUTPUTFD%]", fmt.Sprintf("/dev/fd/%d", fdNum))
 	return cmd
 }
 
-func GetZshShellStateRedirectCommandStr(outputFdNum int) string {
-	return fmt.Sprintf("cat <(%s) > /dev/fd/%d 2> /dev/null", GetZshShellStateCmd(), outputFdNum)
-}
-
 func MakeZshExitTrap(fdNum int) string {
-	stateCmd := GetZshShellStateRedirectCommandStr(fdNum)
+	stateCmd := GetZshShellStateCmd(fdNum)
 	fmtStr := `
 zshexit () {
     %s
