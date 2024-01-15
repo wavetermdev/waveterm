@@ -2987,7 +2987,15 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if err != nil {
 		return nil, err
 	}
-	ssPk, err := ids.Remote.MShell.ReInit(ctx, ids.Remote.ShellType)
+	shellType := ids.Remote.ShellType
+	if pk.Kwargs["shell"] != "" {
+		shellArg := pk.Kwargs["shell"]
+		if shellArg != packet.ShellType_bash && shellArg != packet.ShellType_zsh {
+			return nil, fmt.Errorf("/reset invalid shell type %q", shellArg)
+		}
+		shellType = shellArg
+	}
+	ssPk, err := ids.Remote.MShell.ReInit(ctx, shellType)
 	if err != nil {
 		return nil, err
 	}
@@ -2999,7 +3007,7 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if err != nil {
 		return nil, err
 	}
-	outputStr := "reset remote state"
+	outputStr := fmt.Sprintf("reset remote state (shell:%s)", ssPk.State.GetShellType())
 	cmd, err := makeStaticCmd(ctx, "reset", ids, pk.GetRawStr(), []byte(outputStr))
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output

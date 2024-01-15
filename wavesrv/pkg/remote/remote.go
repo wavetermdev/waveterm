@@ -662,6 +662,7 @@ func MakeMShell(r *sstore.RemoteType) *MShellProc {
 		RunningCmds:      make(map[base.CommandKey]RunCmdType),
 		PendingStateCmds: make(map[pendingStateKey]base.CommandKey),
 		StateMap:         server.MakeShellStateMap(),
+		ShellPref:        ShellTypePref_Detect,
 	}
 	rtn.WriteToPtyBuffer("console for connection [%s]\n", r.GetName())
 	return rtn
@@ -1127,9 +1128,11 @@ func (msh *MShellProc) ReInit(ctx context.Context, shellType string) (*packet.Sh
 	if ssPk.State == nil {
 		return nil, fmt.Errorf("invalid reinit response shellstate packet does not contain remote state")
 	}
-	sstore.StoreStateBase(ctx, ssPk.State)
+	// we no longer call sstore.StoreStateBase() here, the state is saved now on demand during HandleCmdDonePacket
+	//     and explictly during the ResetCommand flow.  note that we only need to *explicitly* store the statebase
+	//     when we are storing a diff, as the flow for storing a full state always calls StoreStateBase()
 	msh.StateMap.SetCurrentState(ssPk.State.GetShellType(), ssPk.State)
-	msh.WriteToPtyBuffer("connected shell:%s state:%s\n", shellType, ssPk.State.GetHashVal(false))
+	msh.WriteToPtyBuffer("initialized shell:%s state:%s\n", shellType, ssPk.State.GetHashVal(false))
 	return ssPk, nil
 }
 
@@ -1269,7 +1272,6 @@ func (msh *MShellProc) Launch(interactive bool) {
 		msh.MakeClientCancelFn = makeClientCancelFn
 		deadlineTime := time.Now().Add(RemoteConnectTimeout)
 		msh.MakeClientDeadline = &deadlineTime
-		msh.ShellPref = ShellTypePref_Detect
 		go msh.NotifyRemoteUpdate()
 	})
 	go msh.watchClientDeadlineTime()
@@ -1520,6 +1522,14 @@ func RunCommand(ctx context.Context, sessionId string, screenId string, remotePt
 	runPacket.State = addScVarsToState(currentState)
 	runPacket.StateComplete = true
 	runPacket.ShellType = currentState.GetShellType()
+	// check to see if shellType is initialized
+	if !msh.StateMap.HasShell(runPacket.ShellType) {
+		// try to reinit the shell
+		_, err := msh.ReInit(ctx, runPacket.ShellType)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error trying to initialize shell %q: %v", runPacket.ShellType, err)
+		}
+	}
 	msh.ServerProc.Output.RegisterRpc(runPacket.ReqId)
 	err = shexec.SendRunPacketAndRunData(ctx, msh.ServerProc.Input, runPacket)
 	if err != nil {
@@ -1708,6 +1718,8 @@ func (msh *MShellProc) notifyHangups_nolock() {
 }
 
 func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
 	// this will remove from RunningCmds and from PendingStateCmds
 	defer msh.RemoveRunningCmd(donePk.CK)
 	if donePk.FinalState != nil {
@@ -1716,12 +1728,12 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 	if donePk.FinalStateDiff != nil {
 		donePk.FinalStateDiff = stripScVarsFromStateDiff(donePk.FinalStateDiff)
 	}
-	update, err := sstore.UpdateCmdDoneInfo(context.Background(), donePk.CK, donePk, sstore.CmdStatusDone)
+	update, err := sstore.UpdateCmdDoneInfo(ctx, donePk.CK, donePk, sstore.CmdStatusDone)
 	if err != nil {
 		msh.WriteToPtyBuffer("*error updating cmddone: %v\n", err)
 		return
 	}
-	screen, err := sstore.UpdateScreenFocusForDoneCmd(context.Background(), donePk.CK.GetGroupId(), donePk.CK.GetCmdId())
+	screen, err := sstore.UpdateScreenFocusForDoneCmd(ctx, donePk.CK.GetGroupId(), donePk.CK.GetCmdId())
 	if err != nil {
 		msh.WriteToPtyBuffer("*error trying to update screen focus type: %v\n", err)
 		// fall-through (nothing to do)
@@ -1733,7 +1745,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 	var statePtr *sstore.ShellStatePtr
 	if donePk.FinalState != nil && rct != nil {
 		feState := sstore.FeStateFromShellState(donePk.FinalState)
-		remoteInst, err := sstore.UpdateRemoteState(context.Background(), rct.SessionId, rct.ScreenId, rct.RemotePtr, feState, donePk.FinalState, nil)
+		remoteInst, err := sstore.UpdateRemoteState(ctx, rct.SessionId, rct.ScreenId, rct.RemotePtr, feState, donePk.FinalState, nil)
 		if err != nil {
 			msh.WriteToPtyBuffer("*error trying to update remotestate: %v\n", err)
 			// fall-through (nothing to do)
@@ -1748,7 +1760,12 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 			msh.WriteToPtyBuffer("*error trying to update remotestate: %v\n", err)
 			// fall-through (nothing to do)
 		} else {
-			remoteInst, err := sstore.UpdateRemoteState(context.Background(), rct.SessionId, rct.ScreenId, rct.RemotePtr, feState, nil, donePk.FinalStateDiff)
+			stateDiff := donePk.FinalStateDiff
+			fullState := msh.StateMap.GetStateByHash(stateDiff.GetShellType(), stateDiff.BaseHash)
+			if fullState != nil {
+				sstore.StoreStateBase(ctx, fullState)
+			}
+			remoteInst, err := sstore.UpdateRemoteState(ctx, rct.SessionId, rct.ScreenId, rct.RemotePtr, feState, nil, stateDiff)
 			if err != nil {
 				msh.WriteToPtyBuffer("*error trying to update remotestate: %v\n", err)
 				// fall-through (nothing to do)
@@ -1762,7 +1779,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 		}
 	}
 	if statePtr != nil {
-		err = sstore.UpdateCmdRtnState(context.Background(), donePk.CK, *statePtr)
+		err = sstore.UpdateCmdRtnState(ctx, donePk.CK, *statePtr)
 		if err != nil {
 			msh.WriteToPtyBuffer("*error trying to update cmd rtnstate: %v\n", err)
 			// fall-through (nothing to do)

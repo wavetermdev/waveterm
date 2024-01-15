@@ -819,3 +819,10 @@ func (sm *ShellStateMap) GetShells() []string {
 	defer sm.Lock.Unlock()
 	return utilfn.GetMapKeys(sm.CurrentStateMap)
 }
+
+func (sm *ShellStateMap) HasShell(shellType string) bool {
+	sm.Lock.Lock()
+	defer sm.Lock.Unlock()
+	_, found := sm.CurrentStateMap[shellType]
+	return found
+}
