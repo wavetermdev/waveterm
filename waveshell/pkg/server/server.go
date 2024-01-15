@@ -629,7 +629,7 @@ func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
 		return
 	}
 	if !m.isShellInitialized(runPacket.ShellType) {
-		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("shell type %s is not initialized", runPacket.ShellType))
+		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("shell type %q is not initialized", runPacket.ShellType))
 		return
 	}
 	ecmd, err := shexec.MakeMShellSingleCmd()

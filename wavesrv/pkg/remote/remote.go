@@ -1521,7 +1521,7 @@ func RunCommand(ctx context.Context, sessionId string, screenId string, remotePt
 	}
 	runPacket.State = addScVarsToState(currentState)
 	runPacket.StateComplete = true
-	runPacket.ShellType = msh.GetShellType()
+	runPacket.ShellType = currentState.GetShellType()
 	msh.ServerProc.Output.RegisterRpc(runPacket.ReqId)
 	err = shexec.SendRunPacketAndRunData(ctx, msh.ServerProc.Input, runPacket)
 	if err != nil {

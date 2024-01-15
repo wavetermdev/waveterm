@@ -694,6 +694,7 @@ type RemoteInstance struct {
 	RemoteOwnerId    string            `json:"remoteownerid"`
 	RemoteId         string            `json:"remoteid"`
 	FeState          map[string]string `json:"festate"`
+	ShellType        string            `json:"shelltype"`
 	StateBaseHash    string            `json:"-"`
 	StateDiffHashArr []string          `json:"-"`
 
@@ -763,6 +764,7 @@ func (ri *RemoteInstance) FromMap(m map[string]interface{}) bool {
 	quickSetJson(&ri.FeState, m, "festate")
 	quickSetStr(&ri.StateBaseHash, m, "statebasehash")
 	quickSetJsonArr(&ri.StateDiffHashArr, m, "statediffhasharr")
+	quickSetStr(&ri.ShellType, m, "shelltype")
 	return true
 }
 
@@ -777,6 +779,7 @@ func (ri *RemoteInstance) ToMap() map[string]interface{} {
 	rtn["festate"] = quickJson(ri.FeState)
 	rtn["statebasehash"] = ri.StateBaseHash
 	rtn["statediffhasharr"] = quickJsonArr(ri.StateDiffHashArr)
+	rtn["shelltype"] = ri.ShellType
 	return rtn
 }
 

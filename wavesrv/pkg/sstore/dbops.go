@@ -1288,11 +1288,12 @@ func GetRemoteInstance(ctx context.Context, sessionId string, screenId string, r
 	return ri, nil
 }
 
-// internal function for UpdateRemoteState
+// internal function for UpdateRemoteState (sets StateBaseHash, StateDiffHashArr, and ShellType)
 func updateRIWithState(ctx context.Context, ri *RemoteInstance, stateBase *packet.ShellState, stateDiff *packet.ShellStateDiff) error {
 	if stateBase != nil {
 		ri.StateBaseHash = stateBase.GetHashVal(false)
 		ri.StateDiffHashArr = nil
+		ri.ShellType = stateBase.GetShellType()
 		err := StoreStateBase(ctx, stateBase)
 		if err != nil {
 			return err
@@ -1300,6 +1301,7 @@ func updateRIWithState(ctx context.Context, ri *RemoteInstance, stateBase *packe
 	} else if stateDiff != nil {
 		ri.StateBaseHash = stateDiff.BaseHash
 		ri.StateDiffHashArr = append(stateDiff.DiffHashArr, stateDiff.GetHashVal(false))
+		ri.ShellType = stateDiff.GetShellType()
 		err := StoreStateDiff(ctx, stateDiff)
 		if err != nil {
 			return err
@@ -1340,18 +1342,18 @@ func UpdateRemoteState(ctx context.Context, sessionId string, screenId string, r
 			if err != nil {
 				return err
 			}
-			query = `INSERT INTO remote_instance ( riid, name, sessionid, screenid, remoteownerid, remoteid, festate, statebasehash, statediffhasharr)
-                                          VALUES (:riid,:name,:sessionid,:screenid,:remoteownerid,:remoteid,:festate,:statebasehash,:statediffhasharr)`
+			query = `INSERT INTO remote_instance ( riid, name, sessionid, screenid, remoteownerid, remoteid, festate, statebasehash, statediffhasharr, shelltype)
+                                          VALUES (:riid,:name,:sessionid,:screenid,:remoteownerid,:remoteid,:festate,:statebasehash,:statediffhasharr,:shelltype)`
 			tx.NamedExec(query, ri.ToMap())
 			return nil
 		} else {
-			query = `UPDATE remote_instance SET festate = ?, statebasehash = ?, statediffhasharr = ? WHERE riid = ?`
+			query = `UPDATE remote_instance SET festate = ?, statebasehash = ?, statediffhasharr = ?, shelltype = ? WHERE riid = ?`
 			ri.FeState = feState
 			err = updateRIWithState(tx.Context(), ri, stateBase, stateDiff)
 			if err != nil {
 				return err
 			}
-			tx.Exec(query, quickJson(ri.FeState), ri.StateBaseHash, quickJsonArr(ri.StateDiffHashArr), ri.RIId)
+			tx.Exec(query, quickJson(ri.FeState), ri.StateBaseHash, quickJsonArr(ri.StateDiffHashArr), ri.ShellType, ri.RIId)
 			return nil
 		}
 	})
