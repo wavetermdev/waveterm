@@ -19,6 +19,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 )
@@ -2759,5 +2760,17 @@ func SetWebPtyPos(ctx context.Context, screenId string, lineId string, ptyPos in
 			tx.Exec(query, screenId, lineId, ptyPos)
 		}
 		return nil
+	})
+}
+
+func GetRemoteActiveShells(ctx context.Context, remoteId string) ([]string, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) ([]string, error) {
+		query := `SELECT * FROM remote_instance WHERE remoteid = ?`
+		riArr := dbutil.SelectMapsGen[*RemoteInstance](tx, query, remoteId)
+		shellTypeMap := make(map[string]bool)
+		for _, ri := range riArr {
+			shellTypeMap[ri.ShellType] = true
+		}
+		return utilfn.GetMapKeys(shellTypeMap), nil
 	})
 }

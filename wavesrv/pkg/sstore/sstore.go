@@ -1017,6 +1017,7 @@ type RemoteRuntimeState struct {
 	Local               bool              `json:"local,omitempty"`
 	RemoteOpts          *RemoteOptsType   `json:"remoteopts,omitempty"`
 	CanComplete         bool              `json:"cancomplete,omitempty"`
+	ActiveShells        []string          `json:"activeshells,omitempty"`
 }
 
 func (state RemoteRuntimeState) IsConnected() bool {

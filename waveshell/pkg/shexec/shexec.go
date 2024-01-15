@@ -1231,16 +1231,8 @@ func MakeShellStatePacket(shellType string) (*packet.ShellStatePacketType, error
 }
 
 func MakeServerInitPacket() (*packet.InitPacketType, error) {
+	var err error
 	initPacket := MakeInitPacket()
-	sapi, err := shellapi.MakeShellApi(initPacket.Shell)
-	if err != nil {
-		return nil, err
-	}
-	shellState, err := sapi.GetShellState()
-	if err != nil {
-		return nil, err
-	}
-	initPacket.State = shellState
 	initPacket.RemoteId, err = base.GetRemoteId()
 	if err != nil {
 		return nil, err

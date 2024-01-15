@@ -627,19 +627,18 @@ func FmtMessagePacket(fmtStr string, args ...interface{}) *MessagePacketType {
 }
 
 type InitPacketType struct {
-	Type          string      `json:"type"`
-	RespId        string      `json:"respid,omitempty"`
-	Version       string      `json:"version"`
-	BuildTime     string      `json:"buildtime,omitempty"`
-	MShellHomeDir string      `json:"mshellhomedir,omitempty"`
-	HomeDir       string      `json:"homedir,omitempty"`
-	State         *ShellState `json:"state,omitempty"`
-	User          string      `json:"user,omitempty"`
-	HostName      string      `json:"hostname,omitempty"`
-	NotFound      bool        `json:"notfound,omitempty"`
-	UName         string      `json:"uname,omitempty"`
-	Shell         string      `json:"shell,omitempty"`
-	RemoteId      string      `json:"remoteid,omitempty"`
+	Type          string `json:"type"`
+	RespId        string `json:"respid,omitempty"`
+	Version       string `json:"version"`
+	BuildTime     string `json:"buildtime,omitempty"`
+	MShellHomeDir string `json:"mshellhomedir,omitempty"`
+	HomeDir       string `json:"homedir,omitempty"`
+	User          string `json:"user,omitempty"`
+	HostName      string `json:"hostname,omitempty"`
+	NotFound      bool   `json:"notfound,omitempty"`
+	UName         string `json:"uname,omitempty"`
+	Shell         string `json:"shell,omitempty"`
+	RemoteId      string `json:"remoteid,omitempty"`
 }
 
 func (*InitPacketType) GetType() string {

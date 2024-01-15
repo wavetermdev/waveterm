@@ -32,6 +32,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/statediff"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
@@ -624,6 +625,7 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		vars["isroot"] = "1"
 	}
 	state.RemoteVars = vars
+	state.ActiveShells = msh.StateMap.GetShells()
 	return state
 }
 
@@ -1127,6 +1129,7 @@ func (msh *MShellProc) ReInit(ctx context.Context, shellType string) (*packet.Sh
 	}
 	sstore.StoreStateBase(ctx, ssPk.State)
 	msh.StateMap.SetCurrentState(ssPk.State.GetShellType(), ssPk.State)
+	msh.WriteToPtyBuffer("connected shell:%s state:%s\n", shellType, ssPk.State.GetHashVal(false))
 	return ssPk, nil
 }
 
@@ -1182,6 +1185,16 @@ func stripScVarsFromStateDiff(stateDiff *packet.ShellStateDiff) *packet.ShellSta
 	}
 	rtn.VarsDiff = mapDiff.Encode()
 	return &rtn
+}
+
+func (msh *MShellProc) getActiveShellTypes(ctx context.Context) ([]string, error) {
+	shellPref := msh.GetShellPref()
+	rtn := []string{shellPref}
+	activeShells, err := sstore.GetRemoteActiveShells(ctx, msh.RemoteId)
+	if err != nil {
+		return nil, err
+	}
+	return utilfn.CombineStrArrays(rtn, activeShells), nil
 }
 
 func (msh *MShellProc) Launch(interactive bool) {
@@ -1263,9 +1276,7 @@ func (msh *MShellProc) Launch(interactive bool) {
 	cproc, initPk, err := shexec.MakeClientProc(makeClientCtx, ecmd)
 	// TODO check if initPk.State is not nil
 	var mshellVersion string
-	var stateBaseHash string
 	var hitDeadline bool
-	var initPkShellType string
 	msh.WithLock(func() {
 		msh.MakeClientCancelFn = nil
 		if time.Now().After(*msh.MakeClientDeadline) {
@@ -1283,16 +1294,8 @@ func (msh *MShellProc) Launch(interactive bool) {
 				msh.NeedsMShellUpgrade = true
 			}
 			msh.InitPkShellType = initPk.Shell
-			initPkShellType = initPk.Shell
 		}
-		if initPk != nil && initPk.State != nil {
-			hval := initPk.State.GetHashVal(false)
-			msh.StateMap.SetCurrentState(initPk.Shell, initPk.State)
-			sstore.StoreStateBase(context.Background(), initPk.State)
-			stateBaseHash = hval
-		} else {
-			msh.StateMap.Clear()
-		}
+		msh.StateMap.Clear()
 		// no notify here, because we'll call notify in either case below
 	})
 	if err == context.Canceled {
@@ -1318,11 +1321,9 @@ func (msh *MShellProc) Launch(interactive bool) {
 		return
 	}
 	msh.updateRemoteStateVars(context.Background(), msh.RemoteId, initPk)
-	msh.WriteToPtyBuffer("connected shell:%s state:%s\n", initPkShellType, stateBaseHash)
 	msh.WithLock(func() {
 		msh.ServerProc = cproc
 		msh.Status = StatusConnected
-		go msh.NotifyRemoteUpdate()
 	})
 	go func() {
 		exitErr := cproc.Cmd.Wait()
@@ -1336,7 +1337,26 @@ func (msh *MShellProc) Launch(interactive bool) {
 		msh.WriteToPtyBuffer("*disconnected exitcode=%d\n", exitCode)
 	}()
 	go msh.ProcessPackets()
+	msh.initActiveShells()
+	go msh.NotifyRemoteUpdate()
 	return
+}
+
+func (msh *MShellProc) initActiveShells() {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	activeShells, err := msh.getActiveShellTypes(ctx)
+	if err != nil {
+		// we're not going to fail the connect for this error (it will be unusable, but technically connected)
+		msh.WriteToPtyBuffer("*error getting active shells: %v\n", err)
+		return
+	}
+	for _, shellType := range activeShells {
+		_, err = msh.ReInit(ctx, shellType)
+		if err != nil {
+			msh.WriteToPtyBuffer("*error reiniting shell %q: %v\n", shellType, err)
+		}
+	}
 }
 
 func (msh *MShellProc) IsConnected() bool {

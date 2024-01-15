@@ -22,6 +22,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 )
 
 const MaxFileDataPacketSize = 16 * 1024
@@ -746,10 +747,6 @@ func RunServer() (int, error) {
 	if err != nil {
 		return 1, err
 	}
-	err = server.StateMap.SetCurrentState(initPacket.Shell, initPacket.State)
-	if err != nil {
-		return 1, err
-	}
 	server.Sender.SendPacket(initPacket)
 	ticker := time.NewTicker(1 * time.Minute)
 	go func() {
@@ -815,4 +812,10 @@ func (sm *ShellStateMap) Clear() {
 	defer sm.Lock.Unlock()
 	sm.StateMap = make(map[shellStateMapKey]*packet.ShellState)
 	sm.CurrentStateMap = make(map[string]string)
+}
+
+func (sm *ShellStateMap) GetShells() []string {
+	sm.Lock.Lock()
+	defer sm.Lock.Unlock()
+	return utilfn.GetMapKeys(sm.CurrentStateMap)
 }

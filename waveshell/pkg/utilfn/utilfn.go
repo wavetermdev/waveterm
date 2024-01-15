@@ -491,3 +491,32 @@ func ShellHexEscape(s string) string {
 	}
 	return string(rtn)
 }
+
+func GetMapKeys[K comparable, V any](m map[K]V) []K {
+	var rtn []K
+	for key := range m {
+		rtn = append(rtn, key)
+	}
+	return rtn
+}
+
+// combines string arrays and removes duplicates (returns a new array)
+func CombineStrArrays(sarr1 []string, sarr2 []string) []string {
+	var rtn []string
+	m := make(map[string]struct{})
+	for _, s := range sarr1 {
+		if _, found := m[s]; found {
+			continue
+		}
+		m[s] = struct{}{}
+		rtn = append(rtn, s)
+	}
+	for _, s := range sarr2 {
+		if _, found := m[s]; found {
+			continue
+		}
+		m[s] = struct{}{}
+		rtn = append(rtn, s)
+	}
+	return rtn
+}
