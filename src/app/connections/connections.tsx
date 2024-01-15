@@ -119,7 +119,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
 
     @boundMethod
     handleClose(): void {
-        GlobalModel.historyViewModel.closeView();
+        GlobalModel.connectionViewModel.closeView();
     }
 
     componentDidMount() {
@@ -150,7 +150,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
         let item: T.RemoteType = null;
 
         return (
-            <div className={cn("connections-view")}>
+            <div className={cn("view connections-view")}>
                 <header className="header">
                     <div className="connections-title text-primary">Connections</div>
                     <div className="close-div hoverEffect" title="Close (Escape)" onClick={this.handleClose}>

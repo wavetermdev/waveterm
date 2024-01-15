@@ -2569,6 +2569,11 @@ class HistoryViewModel {
 }
 
 class ConnectionsViewModel {
+    closeView(): void {
+        GlobalModel.showSessionView();
+        setTimeout(() => GlobalModel.inputModel.giveFocus(), 50);
+    }
+
     showConnectionsView(): void {
         mobx.action(() => {
             GlobalModel.activeMainView.set("connections");
@@ -3595,6 +3600,10 @@ class Model {
             return;
         }
         if (this.activeMainView.get() == "connections") {
+            this.historyViewModel.handleDocKeyDown(e);
+            return;
+        }
+        if (this.activeMainView.get() == "clientsettings") {
             this.historyViewModel.handleDocKeyDown(e);
             return;
         }
