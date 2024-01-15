@@ -14,6 +14,7 @@ import (
 	"os"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 )
@@ -59,6 +60,8 @@ const (
 	WriteFileReadyPacketStr = "writefileready" // rpc-response
 	WriteFileDonePacketStr  = "writefiledone"  // rpc-response
 	FileDataPacketStr       = "filedata"
+	LogPacketStr            = "log" // logging packet (sent from waveshell back to server)
+	ShellStatePacketStr     = "shellstate"
 
 	OpenAIPacketStr   = "openai" // other
 	OpenAICloudReqStr = "openai-cloudreq"
@@ -107,6 +110,8 @@ func init() {
 	TypeStrToFactory[WriteFilePacketStr] = reflect.TypeOf(WriteFilePacketType{})
 	TypeStrToFactory[WriteFileReadyPacketStr] = reflect.TypeOf(WriteFileReadyPacketType{})
 	TypeStrToFactory[WriteFileDonePacketStr] = reflect.TypeOf(WriteFileDonePacketType{})
+	TypeStrToFactory[LogPacketStr] = reflect.TypeOf(LogPacketType{})
+	TypeStrToFactory[ShellStatePacketStr] = reflect.TypeOf(ShellStatePacketType{})
 
 	var _ RpcPacketType = (*RunPacketType)(nil)
 	var _ RpcPacketType = (*GetCmdPacketType)(nil)
@@ -124,6 +129,7 @@ func init() {
 	var _ RpcResponsePacketType = (*FileDataPacketType)(nil)
 	var _ RpcResponsePacketType = (*WriteFileReadyPacketType)(nil)
 	var _ RpcResponsePacketType = (*WriteFileDonePacketType)(nil)
+	var _ RpcResponsePacketType = (*ShellStatePacketType)(nil)
 
 	var _ CommandPacketType = (*DataPacketType)(nil)
 	var _ CommandPacketType = (*DataAckPacketType)(nil)
@@ -387,8 +393,9 @@ func MakeCdPacket() *CdPacketType {
 }
 
 type ReInitPacketType struct {
-	Type  string `json:"type"`
-	ReqId string `json:"reqid"`
+	Type      string `json:"type"`
+	ShellType string `json:"shelltype"`
+	ReqId     string `json:"reqid"`
 }
 
 func (*ReInitPacketType) GetType() string {
@@ -546,6 +553,54 @@ func (p *RawPacketType) String() string {
 
 func MakeRawPacket(val string) *RawPacketType {
 	return &RawPacketType{Type: RawPacketStr, Data: val}
+}
+
+type LogPacketType struct {
+	Type     string `json:"type"`
+	Ts       int64  `json:"ts"`                 // log timestamp
+	ReqId    string `json:"reqid,omitempty"`    // if this log line is related to an rpc request
+	ProcInfo string `json:"procinfo,omitempty"` // server/single
+	LogLine  string `json:"logline"`            // the logline data
+}
+
+func (*LogPacketType) GetType() string {
+	return LogPacketStr
+}
+
+func (p *LogPacketType) String() string {
+	return "log"
+}
+
+func MakeLogPacket() *LogPacketType {
+	return &LogPacketType{Type: LogPacketStr, Ts: time.Now().UnixMilli()}
+}
+
+type ShellStatePacketType struct {
+	Type      string      `json:"type"`
+	ShellType string      `json:"shelltype"`
+	RespId    string      `json:"respid,omitempty"`
+	State     *ShellState `json:"state"`
+	Error     string      `json:"error,omitempty"`
+}
+
+func (*ShellStatePacketType) GetType() string {
+	return ShellStatePacketStr
+}
+
+func (p *ShellStatePacketType) String() string {
+	return fmt.Sprintf("shellstate[%s]", p.ShellType)
+}
+
+func (p *ShellStatePacketType) GetResponseId() string {
+	return p.RespId
+}
+
+func (p *ShellStatePacketType) GetResponseDone() bool {
+	return true
+}
+
+func MakeShellStatePacket() *ShellStatePacketType {
+	return &ShellStatePacketType{Type: ShellStatePacketStr}
 }
 
 type MessagePacketType struct {
