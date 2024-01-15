@@ -32,14 +32,14 @@ func readFullRunPacket(packetParser *packet.PacketParser) (*packet.RunPacketType
 	return nil, fmt.Errorf("no run packet received")
 }
 
-func handleSingle(shellType string) {
+func handleSingle() {
 	packetParser := packet.MakePacketParser(os.Stdin, nil)
 	sender := packet.MakePacketSender(os.Stdout, nil)
 	defer func() {
 		sender.Close()
 		sender.WaitForDone()
 	}()
-	initPacket := shexec.MakeInitPacket(shellType)
+	initPacket := shexec.MakeInitPacket()
 	sender.SendPacket(initPacket)
 	if len(os.Args) >= 3 && os.Args[2] == "--version" {
 		return
@@ -80,7 +80,7 @@ func handleSingle(shellType string) {
 			}
 		}()
 		defer ticker.Stop()
-		cmd, err := shexec.RunCommandSimple(runPacket, sender, true, shellType)
+		cmd, err := shexec.RunCommandSimple(runPacket, sender, true)
 		if err != nil {
 			sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("error running command: %w", err))
 			return
@@ -111,35 +111,11 @@ Options:
 	--single               - run a single command (connected to multiplexer)
 	--single --version     - return an init packet with version info
 
-	--shell [bash|zsh]     - override default shell, force bash or zsh
-
 mshell does not open any external ports and does not require any additional permissions.
 it communicates exclusively through stdin/stdout with an attached process
 via a JSON packet format.
 `
 	fmt.Printf("%s\n\n", strings.TrimSpace(usage))
-}
-
-// only allows bash or zsh (default is bash)
-// in the future will detect the user's shell and set that as the default
-func getShellType() string {
-	shellType := packet.ShellType_bash
-	for idx, arg := range os.Args {
-		if idx == 0 {
-			continue
-		}
-		if arg == "--shell" {
-			if idx+1 < len(os.Args) {
-				shellType = os.Args[idx+1]
-				break
-			}
-			break
-		}
-	}
-	if shellType != packet.ShellType_bash && shellType != packet.ShellType_zsh {
-		shellType = packet.ShellType_bash
-	}
-	return shellType
 }
 
 func main() {
@@ -148,7 +124,6 @@ func main() {
 		handleUsage()
 		return
 	}
-	shellType := getShellType()
 	firstArg := os.Args[1]
 	if firstArg == "--help" {
 		handleUsage()
@@ -159,12 +134,12 @@ func main() {
 	} else if firstArg == "--single" || firstArg == "--single-from-server" {
 		base.ProcessType = base.ProcessType_WaveShellSingle
 		base.InitDebugLog("single")
-		handleSingle(shellType)
+		handleSingle()
 		return
 	} else if firstArg == "--server" {
 		base.ProcessType = base.ProcessType_WaveShellServer
 		base.InitDebugLog("server")
-		rtnCode, err := server.RunServer(shellType)
+		rtnCode, err := server.RunServer()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[error] %v\n", err)
 		}

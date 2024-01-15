@@ -71,35 +71,25 @@ then
   printf "\n##N{\"type\": \"init\", \"notfound\": true, \"uname\": \"%s | %s\"}\n" "$(uname -s)" "$(uname -m)"
 else
   [%PINGPACKET%]
-  mshell-[%VERSION%] --server [%SHELLTYPE%]
+  mshell-[%VERSION%] --server
 fi
 `
 
-func makeShellOverrideArg(shellType string) string {
-	if shellType == "" {
-		return ""
-	}
-	return fmt.Sprintf(" --shelltype %q", shellType)
-}
-
-func MakeLocalMShellCommandStr(isSudo bool, shellType string) (string, error) {
+func MakeLocalMShellCommandStr(isSudo bool) (string, error) {
 	mshellPath, err := scbase.LocalMShellBinaryPath()
 	if err != nil {
 		return "", err
 	}
-	shellOverride := makeShellOverrideArg(shellType)
 	if isSudo {
-		return fmt.Sprintf(`%s; sudo %s --server %s`, PrintPingPacket, shellescape.Quote(mshellPath), shellOverride), nil
+		return fmt.Sprintf(`%s; sudo %s --server`, PrintPingPacket, shellescape.Quote(mshellPath)), nil
 	} else {
-		return fmt.Sprintf(`%s; %s --server %s`, PrintPingPacket, shellescape.Quote(mshellPath), shellOverride), nil
+		return fmt.Sprintf(`%s; %s --server`, PrintPingPacket, shellescape.Quote(mshellPath)), nil
 	}
 }
 
 func MakeServerCommandStr(shellType string) string {
 	rtn := strings.ReplaceAll(MShellServerCommandFmt, "[%VERSION%]", semver.MajorMinor(scbase.MShellVersion))
 	rtn = strings.ReplaceAll(rtn, "[%PINGPACKET%]", PrintPingPacket)
-	shellOverride := makeShellOverrideArg(shellType)
-	rtn = strings.ReplaceAll(rtn, "[%SHELLTYPE%]", shellOverride)
 	return rtn
 }
 
@@ -1243,7 +1233,7 @@ func (msh *MShellProc) Launch(interactive bool) {
 	var cmdStr string
 	if sshOpts.SSHHost == "" && remoteCopy.Local {
 		var err error
-		cmdStr, err = MakeLocalMShellCommandStr(remoteCopy.IsSudo(), shellType)
+		cmdStr, err = MakeLocalMShellCommandStr(remoteCopy.IsSudo())
 		if err != nil {
 			msh.WriteToPtyBuffer("*error, cannot find local mshell binary: %v\n", err)
 			return

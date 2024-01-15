@@ -52,7 +52,6 @@ type MServer struct {
 	WriteErrorChOnce    *sync.Once
 	WriteFileContextMap map[string]*WriteFileContext
 	Done                bool
-	ShellType           string
 }
 
 type WriteFileContext struct {
@@ -247,12 +246,12 @@ func (m *MServer) runCompGen(compPk *packet.CompGenPacketType) {
 }
 
 func (m *MServer) reinit(reqId string) {
-	initPk, err := shexec.MakeServerInitPacket(m.ShellType)
+	initPk, err := shexec.MakeServerInitPacket()
 	if err != nil {
 		m.Sender.SendErrorResponse(reqId, fmt.Errorf("error creating init packet: %w", err))
 		return
 	}
-	err = m.StateMap.SetCurrentState(m.ShellType, initPk.State)
+	err = m.StateMap.SetCurrentState(initPk.State.GetShellType(), initPk.State)
 	if err != nil {
 		m.Sender.SendErrorResponse(reqId, fmt.Errorf("error setting current state: %w", err))
 		return
@@ -713,7 +712,7 @@ func (server *MServer) runReadLoop() {
 	}
 }
 
-func RunServer(shellType string) (int, error) {
+func RunServer() (int, error) {
 	debug := false
 	if len(os.Args) >= 3 && os.Args[2] == "--debug" {
 		debug = true
@@ -726,7 +725,6 @@ func RunServer(shellType string) (int, error) {
 		WriteErrorCh:        make(chan bool),
 		WriteErrorChOnce:    &sync.Once{},
 		WriteFileContextMap: make(map[string]*WriteFileContext),
-		ShellType:           shellType,
 	}
 	go func() {
 		for {
@@ -744,7 +742,7 @@ func RunServer(shellType string) (int, error) {
 	server.Sender = packet.MakePacketSender(os.Stdout, server.packetSenderErrorHandler)
 	defer server.Close()
 	var err error
-	initPacket, err := shexec.MakeServerInitPacket(shellType)
+	initPacket, err := shexec.MakeServerInitPacket()
 	if err != nil {
 		return 1, err
 	}

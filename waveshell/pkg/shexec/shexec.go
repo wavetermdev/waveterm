@@ -783,7 +783,7 @@ func (s *ShExecType) SendSignal(sig syscall.Signal) {
 	}
 }
 
-func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fromServer bool, shellType string) (rtnShExec *ShExecType, rtnErr error) {
+func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fromServer bool) (rtnShExec *ShExecType, rtnErr error) {
 	sapi, err := shellapi.MakeShellApi(pk.ShellType)
 	if err != nil {
 		return nil, err
@@ -1201,7 +1201,7 @@ func (c *ShExecType) WaitForCommand() *packet.CmdDonePacketType {
 	return donePacket
 }
 
-func MakeInitPacket(shellPref string) *packet.InitPacketType {
+func MakeInitPacket() *packet.InitPacketType {
 	initPacket := packet.MakeInitPacket()
 	initPacket.Version = base.MShellVersion
 	initPacket.BuildTime = base.BuildTime
@@ -1212,19 +1212,12 @@ func MakeInitPacket(shellPref string) *packet.InitPacketType {
 	}
 	initPacket.HostName, _ = os.Hostname()
 	initPacket.UName = fmt.Sprintf("%s|%s", runtime.GOOS, runtime.GOARCH)
-	var localShell string
-	if shellPref != "" && shellapi.HasShell(shellPref) {
-		localShell = shellPref
-	}
-	if localShell == "" {
-		localShell = shellapi.DetectLocalShellType()
-	}
-	initPacket.Shell = localShell
+	initPacket.Shell = shellapi.DetectLocalShellType()
 	return initPacket
 }
 
-func MakeServerInitPacket(shellPref string) (*packet.InitPacketType, error) {
-	initPacket := MakeInitPacket(shellPref)
+func MakeServerInitPacket() (*packet.InitPacketType, error) {
+	initPacket := MakeInitPacket()
 	sapi, err := shellapi.MakeShellApi(initPacket.Shell)
 	if err != nil {
 		return nil, err
