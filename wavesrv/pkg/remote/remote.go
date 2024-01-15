@@ -1550,8 +1550,7 @@ func (msh *MShellProc) AddRunningCmd(rct RunCmdType) {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
 	msh.RunningCmds[rct.RunPacket.CK] = rct
-	// TODO: add status indicator to screen
-	sstore.SetStatusIndicator(rct.ScreenId, sstore.ScreenIndicator_Output)
+	sstore.SetStatusIndicator(rct.ScreenId, sstore.ScreenIndicatorLevel_Output)
 }
 
 func (msh *MShellProc) GetRunningCmd(ck base.CommandKey) *RunCmdType {

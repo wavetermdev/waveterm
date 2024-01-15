@@ -1448,7 +1448,7 @@ func SetReleaseInfo(ctx context.Context, releaseInfo ReleaseInfoType) error {
 }
 
 // Sets the in-memory status indicator for the given screenId to the given value and updates the frontend
-func SetStatusIndicator(screenId string, statusIndicator string) {
+func SetStatusIndicator(screenId string, statusIndicator ScreenIndicatorLevel) {
 	ScreenMemCombineIndicator(screenId, statusIndicator)
 
 	status := &ScreenStatusIndicatorUpdateType{
