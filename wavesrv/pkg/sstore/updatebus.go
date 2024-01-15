@@ -63,7 +63,7 @@ type ModelUpdate struct {
 	SessionTombstones     []*SessionTombstoneType            `json:"sessiontombstones,omitempty"`
 	OpenAICmdInfoChat     []*packet.OpenAICmdInfoChatMessage `json:"openaicmdinfochat,omitempty"`
 	AlertMessage          *AlertMessageType                  `json:"alertmessage,omitempty"`
-	ScreenStatusIndicator *ScreenStatusIndicatorUpdateType   `json:"screenstatusindicator,omitempty"`
+	ScreenStatusIndicator *ScreenStatusIndicatorType         `json:"screenstatusindicator,omitempty"`
 }
 
 func (*ModelUpdate) UpdateType() string {
@@ -263,13 +263,7 @@ type BookmarksViewType struct {
 	Bookmarks []*BookmarkType `json:"bookmarks"`
 }
 
-type ScreenStatusIndicatorUpdateType struct {
+type ScreenStatusIndicatorType struct {
 	ScreenId string               `json:"screenid"`
 	Status   StatusIndicatorLevel `json:"status"`
 }
-
-func (*ScreenStatusIndicatorUpdateType) UpdateType() string {
-	return PtyDataUpdateStr
-}
-
-func (ssi *ScreenStatusIndicatorUpdateType) Clean() {}

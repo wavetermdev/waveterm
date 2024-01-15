@@ -625,9 +625,9 @@ class Screen {
         if (lines == null || lines.length == 0) {
             return null;
         }
-        for (let i = 0; i < lines.length; i++) {
-            if (lines[i].linenum == lineNum) {
-                return lines[i];
+        for (const line of lines) {
+            if (line.linenum == lineNum) {
+                return line;
             }
         }
         return null;
@@ -645,9 +645,9 @@ class Screen {
         if (lines == null || lines.length == 0) {
             return null;
         }
-        for (let i = 0; i < lines.length; i++) {
-            if (lines[i].lineid == lineId) {
-                return lines[i];
+        for (const line of lines) {
+            if (line.lineid == lineId) {
+                return line;
             }
         }
         return null;
@@ -665,8 +665,7 @@ class Screen {
         if (lineNum == 0) {
             return null;
         }
-        for (let i = 0; i < lines.length; i++) {
-            let line = lines[i];
+        for (const line of lines) {
             if (line.linenum == lineNum) {
                 return lineNum;
             }
@@ -805,11 +804,11 @@ class Screen {
      * Set the status indicator for the screen.
      * @param indicator The value of the status indicator. One of "none", "error", "success", "output".
      */
-    setStatusIndicator(indicator: number): void {
-        console.log(`screen ${this.screenId}, set-status-indicator ${indicator}`);
-        mobx.action(() => {
-            this.statusIndicator.set(indicator as StatusIndicatorLevel ?? StatusIndicatorLevel.None);
-        });
+    setStatusIndicator(indicator: StatusIndicatorLevel): void {
+        mobx.action(() => {        
+            console.log(`screen ${this.screenId}, set-status-indicator ${indicator}`);
+            this.statusIndicator.set(indicator);
+        })();
     }
 
     termCustomKeyHandlerInternal(e: any, termWrap: TermWrap): void {
@@ -1205,8 +1204,7 @@ class Session {
         if (rptr.name.startsWith("*")) {
             screenId = "";
         }
-        for (let i = 0; i < this.remoteInstances.length; i++) {
-            let rdata = this.remoteInstances[i];
+        for (const rdata of this.remoteInstances) {
             if (
                 rdata.screenid == screenId &&
                 rdata.remoteid == rptr.remoteid &&

@@ -1453,9 +1453,11 @@ func SetStatusIndicator(screenId string, statusIndicator StatusIndicatorLevel) {
 	ScreenMemCombineIndicator(screenId, statusIndicator)
 	newStatus := GetScreenMemState(screenId).IndicatorType
 	fmt.Println("new status", newStatus)
-	status := &ScreenStatusIndicatorUpdateType{
-		ScreenId: screenId,
-		Status:   newStatus,
+	update := &ModelUpdate{
+		ScreenStatusIndicator: &ScreenStatusIndicatorType{
+			ScreenId: screenId,
+			Status:   newStatus,
+		},
 	}
-	MainBus.SendUpdate(status)
+	MainBus.SendUpdate(update)
 }
