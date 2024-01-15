@@ -18,10 +18,22 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
+        padding-bottom: 20px;
+        border-bottom: 1px solid white;
     }
 
     .content {
-        padding: 0 18px;
+        padding: 0 18px 0 30px;
+    }
+
+    .settings-field {
+        &:not(:first-child) {
+            margin-top: 15px;
+        }
+
+        .settings-label {
+            width: 250px;
+        }
     }
 }
 
