@@ -1317,7 +1317,6 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 	if sshOpts != nil {
 		sshOpts.SSHIdentity = keyFile
 		sshOpts.SSHPassword = sshPassword
-		sshOpts.ShellType = shellType
 	}
 
 	// set up editmap
@@ -1888,7 +1887,7 @@ func crShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, ids re
 		if riBaseMap[remoteId] {
 			continue
 		}
-		feState := msh.GetDefaultFeState()
+		feState := msh.GetDefaultFeState(msh.GetShellPref())
 		if feState == nil {
 			continue
 		}
@@ -2984,19 +2983,19 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 }
 
 func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Remote)
 	if err != nil {
 		return nil, err
 	}
-	initPk, err := ids.Remote.MShell.ReInit(ctx)
+	ssPk, err := ids.Remote.MShell.ReInit(ctx, ids.Remote.ShellType)
 	if err != nil {
 		return nil, err
 	}
-	if initPk == nil || initPk.State == nil {
+	if ssPk == nil || ssPk.State == nil {
 		return nil, fmt.Errorf("invalid initpk received from remote (no remote state)")
 	}
-	feState := sstore.FeStateFromShellState(initPk.State)
-	remoteInst, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr, feState, initPk.State, nil)
+	feState := sstore.FeStateFromShellState(ssPk.State)
+	remoteInst, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr, feState, ssPk.State, nil)
 	if err != nil {
 		return nil, err
 	}

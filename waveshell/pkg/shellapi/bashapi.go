@@ -229,6 +229,9 @@ func (bashShellApi) ApplyShellStateDiff(oldState *packet.ShellState, diff *packe
 	rtnState := &packet.ShellState{}
 	var err error
 	rtnState.Version = oldState.Version
+	if diff.Version != rtnState.Version {
+		rtnState.Version = diff.Version
+	}
 	rtnState.Cwd = oldState.Cwd
 	if diff.Cwd != "" {
 		rtnState.Cwd = diff.Cwd

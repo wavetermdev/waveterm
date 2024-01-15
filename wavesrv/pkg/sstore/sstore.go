@@ -957,9 +957,6 @@ type SSHOpts struct {
 	SSHIdentity string `json:"sshidentity,omitempty"`
 	SSHPort     int    `json:"sshport,omitempty"`
 	SSHPassword string `json:"sshpassword,omitempty"`
-
-	// if unset, use default.  use packet.ShellType constants (only allows bash or zsh)
-	ShellType string `json:"shelltype,omitempty"`
 }
 
 func (opts SSHOpts) GetAuthType() string {

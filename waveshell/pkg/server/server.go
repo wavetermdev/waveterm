@@ -245,19 +245,19 @@ func (m *MServer) runCompGen(compPk *packet.CompGenPacketType) {
 	return
 }
 
-func (m *MServer) reinit(reqId string) {
-	initPk, err := shexec.MakeServerInitPacket()
+func (m *MServer) reinit(reqId string, shellType string) {
+	ssPk, err := shexec.MakeShellStatePacket(shellType)
 	if err != nil {
 		m.Sender.SendErrorResponse(reqId, fmt.Errorf("error creating init packet: %w", err))
 		return
 	}
-	err = m.StateMap.SetCurrentState(initPk.State.GetShellType(), initPk.State)
+	err = m.StateMap.SetCurrentState(ssPk.State.GetShellType(), ssPk.State)
 	if err != nil {
 		m.Sender.SendErrorResponse(reqId, fmt.Errorf("error setting current state: %w", err))
 		return
 	}
-	initPk.RespId = reqId
-	m.Sender.SendPacket(initPk)
+	ssPk.RespId = reqId
+	m.Sender.SendPacket(ssPk)
 }
 
 func makeTemp(path string, mode fs.FileMode) (*os.File, error) {
@@ -572,8 +572,8 @@ func (m *MServer) ProcessRpcPacket(pk packet.RpcPacketType) {
 		go m.runCompGen(compPk)
 		return
 	}
-	if _, ok := pk.(*packet.ReInitPacketType); ok {
-		go m.reinit(reqId)
+	if reinitPk, ok := pk.(*packet.ReInitPacketType); ok {
+		go m.reinit(reqId, reinitPk.ShellType)
 		return
 	}
 	if streamPk, ok := pk.(*packet.StreamFilePacketType); ok {
@@ -802,4 +802,17 @@ func (sm *ShellStateMap) SetCurrentState(shellType string, state *packet.ShellSt
 	sm.StateMap[key] = state
 	sm.CurrentStateMap[shellType] = hval
 	return nil
+}
+
+func (sm *ShellStateMap) GetStateByHash(shellType string, hash string) *packet.ShellState {
+	sm.Lock.Lock()
+	defer sm.Lock.Unlock()
+	return sm.StateMap[shellStateMapKey{ShellType: shellType, Hash: hash}]
+}
+
+func (sm *ShellStateMap) Clear() {
+	sm.Lock.Lock()
+	defer sm.Lock.Unlock()
+	sm.StateMap = make(map[shellStateMapKey]*packet.ShellState)
+	sm.CurrentStateMap = make(map[string]string)
 }
