@@ -2569,9 +2569,27 @@ class HistoryViewModel {
 }
 
 class ConnectionsViewModel {
+    closeView(): void {
+        GlobalModel.showSessionView();
+        setTimeout(() => GlobalModel.inputModel.giveFocus(), 50);
+    }
+
     showConnectionsView(): void {
         mobx.action(() => {
             GlobalModel.activeMainView.set("connections");
+        })();
+    }
+}
+
+class ClientSettingsViewModel {
+    closeView(): void {
+        GlobalModel.showSessionView();
+        setTimeout(() => GlobalModel.inputModel.giveFocus(), 50);
+    }
+
+    showClientSettingsView(): void {
+        mobx.action(() => {
+            GlobalModel.activeMainView.set("clientsettings");
         })();
     }
 }
@@ -3305,10 +3323,11 @@ class Model {
     authKey: string;
     isDev: boolean;
     platform: string;
-    activeMainView: OV<"plugins" | "session" | "history" | "bookmarks" | "webshare" | "connections"> =
-        mobx.observable.box("session", {
-            name: "activeMainView",
-        });
+    activeMainView: OV<
+        "plugins" | "session" | "history" | "bookmarks" | "webshare" | "connections" | "clientsettings"
+    > = mobx.observable.box("session", {
+        name: "activeMainView",
+    });
     termFontSize: CV<number>;
     alertMessage: OV<AlertMessageType> = mobx.observable.box(null, {
         name: "alertMessage",
@@ -3337,6 +3356,7 @@ class Model {
     bookmarksModel: BookmarksModel;
     historyViewModel: HistoryViewModel;
     connectionViewModel: ConnectionsViewModel;
+    clientSettingsViewModel: ClientSettingsViewModel;
     modalsModel: ModalsModel;
     clientData: OV<ClientDataType> = mobx.observable.box(null, {
         name: "clientData",
@@ -3360,6 +3380,7 @@ class Model {
         this.bookmarksModel = new BookmarksModel();
         this.historyViewModel = new HistoryViewModel();
         this.connectionViewModel = new ConnectionsViewModel();
+        this.clientSettingsViewModel = new ClientSettingsViewModel();
         this.remotesModalModel = new RemotesModalModel();
         this.remotesModel = new RemotesModel();
         this.modalsModel = new ModalsModel();
@@ -3575,6 +3596,14 @@ class Model {
             return;
         }
         if (this.activeMainView.get() == "history") {
+            this.historyViewModel.handleDocKeyDown(e);
+            return;
+        }
+        if (this.activeMainView.get() == "connections") {
+            this.historyViewModel.handleDocKeyDown(e);
+            return;
+        }
+        if (this.activeMainView.get() == "clientsettings") {
             this.historyViewModel.handleDocKeyDown(e);
             return;
         }
@@ -4792,6 +4821,10 @@ class CommandRunner {
 
     connectionsView() {
         GlobalModel.connectionViewModel.showConnectionsView();
+    }
+
+    clientSettingsView() {
+        GlobalModel.clientSettingsViewModel.showClientSettingsView();
     }
 
     historyView(params: HistorySearchParams) {

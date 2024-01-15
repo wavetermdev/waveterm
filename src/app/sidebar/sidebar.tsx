@@ -131,7 +131,11 @@ class MainSideBar extends React.Component<{}, {}> {
 
     @boundMethod
     handleSettingsClick(): void {
-        GlobalModel.modalsModel.pushModal(constants.CLIENT_SETTINGS);
+        if (GlobalModel.activeMainView.get() == "clientsettings") {
+            GlobalModel.showSessionView();
+            return;
+        }
+        GlobalCommandRunner.clientSettingsView();
     }
 
     @boundMethod
