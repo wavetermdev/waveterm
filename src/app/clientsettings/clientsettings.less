@@ -1,0 +1,200 @@
+@import "../../app/common/themes/themes.less";
+
+.clientsettings-view {
+    background-color: @background-session;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: auto;
+    margin-bottom: 10px;
+    margin-right: 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(241, 246, 243, 0.08);
+    background: rgba(13, 13, 13, 0.85);
+
+    .header {
+        margin: 24px 18px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 20px;
+        border-bottom: 1px solid white;
+    }
+
+    .content {
+        padding: 0 18px 0 30px;
+    }
+
+    // just marked these as important since we're keeping the
+    // settings-field styles below this intact until we figure out what do with them
+    .settings-field {
+        &:not(:first-child) {
+            margin-top: 15px !important;
+        }
+
+        .settings-label {
+            width: 250px !important;
+        }
+    }
+
+    // @TODO: These styles are duplicated in the settings modals
+    .settings-field {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+
+        &.settings-field.sub-field {
+            .settings-label {
+                font-weight: normal;
+
+                text-align: right;
+                padding-right: 20px;
+            }
+        }
+
+        &.settings-error {
+            color: @term-red;
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #200707;
+            border: 1px solid @term-red;
+            font-weight: bold;
+
+            .error-dismiss {
+                padding: 2px;
+                cursor: pointer;
+            }
+        }
+
+        .settings-label {
+            font-weight: bold;
+            width: 12em;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            margin-right: 10px;
+
+            .info-message {
+                margin-left: 5px;
+            }
+        }
+
+        .settings-input {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+
+            &.settings-clickable {
+                cursor: pointer;
+            }
+
+            &.inline-edit.edit-active {
+                input.input {
+                    padding: 0;
+                    height: 20px;
+                }
+
+                .button {
+                    height: 20px;
+                }
+            }
+
+            input {
+                padding: 4px;
+                border-radius: 3px;
+            }
+
+            .control {
+                .icon {
+                    width: 1.5em;
+                    height: 1.5em;
+                    margin: 0;
+                }
+            }
+
+            .tab-color-icon.color-default path {
+                fill: @tab-green;
+            }
+            .tab-color-icon.color-green path {
+                fill: @tab-green;
+            }
+            .tab-color-icon.color-orange path {
+                fill: @tab-orange;
+            }
+            .tab-color-icon.color-red path {
+                fill: @tab-red;
+            }
+            .tab-color-icon.color-yellow path {
+                fill: @tab-yellow;
+            }
+            .tab-color-icon.color-blue path {
+                fill: @tab-blue;
+            }
+            .tab-color-icon.color-mint path {
+                fill: @tab-mint;
+            }
+            .tab-color-icon.color-cyan path {
+                fill: @tab-cyan;
+            }
+            .tab-color-icon.color-white path {
+                fill: @tab-white;
+            }
+            .tab-color-icon.color-violet path {
+                fill: @tab-violet;
+            }
+            .tab-color-icon.color-pink path {
+                fill: @tab-pink;
+            }
+
+            .tab-colors,
+            .tab-icons {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+
+                .tab-color-sep,
+                .tab-icon-sep {
+                    padding-left: 10px;
+                    padding-right: 10px;
+                    font-weight: bold;
+                }
+
+                .tab-color-icon,
+                .tab-icon-icon {
+                    width: 1.1em;
+                    vertical-align: middle;
+                }
+
+                .tab-color-name,
+                .tab-icon-name {
+                    margin-left: 1em;
+                }
+
+                .tab-color-select,
+                .tab-icon-select {
+                    cursor: pointer;
+                    margin: 5px;
+                    &:hover {
+                        outline: 2px solid white;
+                    }
+                }
+            }
+
+            .action-text {
+                margin-left: 20px;
+
+                color: @term-red;
+            }
+
+            .settings-share-link {
+                width: 160px;
+            }
+        }
+
+        &:not(:first-child) {
+            margin-top: 10px;
+        }
+    }
+}
