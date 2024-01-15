@@ -117,6 +117,11 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
         }
     }
 
+    @boundMethod
+    handleClose(): void {
+        GlobalModel.connectionViewModel.closeView();
+    }
+
     componentDidMount() {
         if (this.tableRef.current != null) {
             this.tableRszObs = new ResizeObserver(this.handleTableResize.bind(this));
@@ -145,9 +150,12 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
         let item: T.RemoteType = null;
 
         return (
-            <div className={cn("connections-view")}>
+            <div className={cn("view connections-view")}>
                 <header className="header">
                     <div className="connections-title text-primary">Connections</div>
+                    <div className="close-div hoverEffect" title="Close (Escape)" onClick={this.handleClose}>
+                        <i className="fa-sharp fa-solid fa-xmark"></i>
+                    </div>
                 </header>
                 <table
                     className="connections-table"

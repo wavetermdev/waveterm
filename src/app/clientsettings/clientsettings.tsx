@@ -26,11 +26,6 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     errorMessage: OV<string> = mobx.observable.box(null, { name: "ClientSettings-errorMessage" });
 
     @boundMethod
-    closeModal(): void {
-        GlobalModel.modalsModel.popModal();
-    }
-
-    @boundMethod
     dismissError(): void {
         mobx.action(() => {
             this.errorMessage.set(null);
@@ -110,6 +105,11 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         })();
     }
 
+    @boundMethod
+    handleClose(): void {
+        GlobalModel.clientSettingsViewModel.closeView();
+    }
+
     render() {
         let isHidden = GlobalModel.activeMainView.get() != "clientsettings";
         if (isHidden) {
@@ -125,9 +125,12 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         let curFontSize = GlobalModel.termFontSize.get();
 
         return (
-            <div className={cn("clientsettings-view")}>
+            <div className={cn("view clientsettings-view")}>
                 <header className="header">
                     <div className="clientsettings-title text-primary">Client Settings</div>
+                    <div className="close-div hoverEffect" title="Close (Escape)" onClick={this.handleClose}>
+                        <i className="fa-sharp fa-solid fa-xmark"></i>
+                    </div>
                 </header>
                 <div className="content">
                     <div className="settings-field">
