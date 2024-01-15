@@ -806,7 +806,10 @@ class Screen {
      * @param indicator The value of the status indicator. One of "none", "error", "success", "output".
      */
     setStatusIndicator(indicator: number): void {
-        this.statusIndicator.set(indicator as StatusIndicatorLevel ?? StatusIndicatorLevel.None);
+        console.log(`screen ${this.screenId}, set-status-indicator ${indicator}`);
+        mobx.action(() => {
+            this.statusIndicator.set(indicator as StatusIndicatorLevel ?? StatusIndicatorLevel.None);
+        });
     }
 
     termCustomKeyHandlerInternal(e: any, termWrap: TermWrap): void {
@@ -4027,6 +4030,7 @@ class Model {
             this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
         }
         if ("screenstatusindicator" in update) {
+            console.log("screenstatusindicatorupdate", update.screenstatusindicator);
             this.getScreenById_single(update.screenstatusindicator.screenid).setStatusIndicator(update.screenstatusindicator.status);
         }
         // console.log("run-update>", Date.now(), interactive, update);

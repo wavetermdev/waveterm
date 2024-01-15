@@ -97,6 +97,9 @@ class ScreenTab extends React.Component<
             <i title="shared to web" className="fa-sharp fa-solid fa-share-nodes web-share-icon" />
         ) : null;
 
+        let statusIndicator = screen.statusIndicator.get();
+        console.log(`screen ${screen.screenId} statusIndicator: ${statusIndicator}}`);
+
         return (
             <Reorder.Item
                 ref={this.tabRef}

@@ -913,11 +913,11 @@ func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, donePk *packet.C
 	}
 
 	// Update in-memory screen indicator status
-	var indicator ScreenIndicatorLevel
+	var indicator StatusIndicatorLevel
 	if rtnCmd.ExitCode == 0 {
-		indicator = ScreenIndicatorLevel_None
+		indicator = StatusIndicatorLevel_None
 	} else {
-		indicator = ScreenIndicatorLevel_Error
+		indicator = StatusIndicatorLevel_Error
 	}
 	SetStatusIndicator(screenId, indicator)
 

@@ -264,8 +264,8 @@ type BookmarksViewType struct {
 }
 
 type ScreenStatusIndicatorUpdateType struct {
-	ScreenId        string               `json:"screenid"`
-	StatusIndicator ScreenIndicatorLevel `json:"statusindicator"`
+	ScreenId string               `json:"screenid"`
+	Status   StatusIndicatorLevel `json:"status"`
 }
 
 func (*ScreenStatusIndicatorUpdateType) UpdateType() string {

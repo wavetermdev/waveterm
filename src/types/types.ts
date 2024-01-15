@@ -291,7 +291,7 @@ enum StatusIndicatorLevel {
 
 type ScreenStatusIndicatorUpdateType = {
     screenid: string;
-    status: number;
+    status: StatusIndicatorLevel;
 }
 
 type ModelUpdateType = {

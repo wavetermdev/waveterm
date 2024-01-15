@@ -18,13 +18,13 @@ import (
 var MemLock *sync.Mutex = &sync.Mutex{}
 var ScreenMemStore map[string]*ScreenMemState = make(map[string]*ScreenMemState) // map of screenid -> ScreenMemState
 
-type ScreenIndicatorLevel int
+type StatusIndicatorLevel int
 
 const (
-	ScreenIndicatorLevel_None ScreenIndicatorLevel = iota
-	ScreenIndicatorLevel_Output
-	ScreenIndicatorLevel_Success
-	ScreenIndicatorLevel_Error
+	StatusIndicatorLevel_None StatusIndicatorLevel = iota
+	StatusIndicatorLevel_Output
+	StatusIndicatorLevel_Success
+	StatusIndicatorLevel_Error
 )
 
 func dumpScreenMemStore() {
@@ -42,7 +42,7 @@ type OpenAICmdInfoChatStore struct {
 
 type ScreenMemState struct {
 	NumRunningCommands int                     `json:"numrunningcommands,omitempty"`
-	IndicatorType      ScreenIndicatorLevel    `json:"indicatortype,omitempty"`
+	IndicatorType      StatusIndicatorLevel    `json:"indicatortype,omitempty"`
 	CmdInputText       utilfn.StrWithPos       `json:"cmdinputtext,omitempty"`
 	CmdInputSeqNum     int                     `json:"cmdinputseqnum,omitempty"`
 	AICmdInfoChat      *OpenAICmdInfoChatStore `json:"aicmdinfochat,omitempty"`
@@ -163,7 +163,7 @@ func ScreenMemSetNumRunningCommands(screenId string, num int) {
 }
 
 // combine indicator if higher than current
-func ScreenMemCombineIndicator(screenId string, indicator ScreenIndicatorLevel) {
+func ScreenMemCombineIndicator(screenId string, indicator StatusIndicatorLevel) {
 	MemLock.Lock()
 	defer MemLock.Unlock()
 	if ScreenMemStore[screenId] == nil {
@@ -181,7 +181,7 @@ func ScreenMemResetIndicator(screenId string) {
 	if ScreenMemStore[screenId] == nil {
 		ScreenMemStore[screenId] = &ScreenMemState{}
 	}
-	ScreenMemStore[screenId].IndicatorType = ScreenIndicatorLevel_None
+	ScreenMemStore[screenId].IndicatorType = StatusIndicatorLevel_None
 }
 
 // safe because we return a copy
