@@ -302,6 +302,22 @@ func ByteMapsEqual(m1 map[string][]byte, m2 map[string][]byte) bool {
 	return true
 }
 
+func GetOrderedStringerMapKeys[K interface {
+	comparable
+	fmt.Stringer
+}, V any](m map[K]V) []K {
+	keyStrMap := make(map[K]string)
+	keys := make([]K, 0, len(m))
+	for key := range m {
+		keys = append(keys, key)
+		keyStrMap[key] = key.String()
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keyStrMap[keys[i]] < keyStrMap[keys[j]]
+	})
+	return keys
+}
+
 func GetOrderedMapKeys[V any](m map[string]V) []string {
 	keys := make([]string, 0, len(m))
 	for key := range m {

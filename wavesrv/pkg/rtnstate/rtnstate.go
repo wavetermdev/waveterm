@@ -183,7 +183,7 @@ func makeZshFuncsDiff(buf *bytes.Buffer, oldFuncs string, newFuncs string) {
 	}
 }
 
-func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newState packet.ShellState) {
+func DisplayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newState packet.ShellState) {
 	if newState.Cwd != oldState.Cwd {
 		buf.WriteString(fmt.Sprintf("cwd %s\n", newState.Cwd))
 	}
@@ -265,6 +265,6 @@ func GetRtnStateDiff(ctx context.Context, screenId string, lineId string) ([]byt
 	if err != nil {
 		return nil, fmt.Errorf("getting rtn full state: %v", err)
 	}
-	displayStateUpdateDiff(&outputBytes, *initialState, *rtnState)
+	DisplayStateUpdateDiff(&outputBytes, *initialState, *rtnState)
 	return outputBytes.Bytes(), nil
 }

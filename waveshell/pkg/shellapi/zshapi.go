@@ -44,6 +44,7 @@ var ZshIgnoreVars = map[string]bool{
 	"ZSH_EXECUTION_STRING": true,
 	"EPOCHSECONDS":         true,
 	"EPOCHREALTIME":        true,
+	"SHLVL":                true,
 	"TTY":                  true,
 	"epochtime":            true,
 	"langinfo":             true,
@@ -391,7 +392,9 @@ func writeZshStateToFile(outputBytes []byte) error {
 func EncodeZshMap(m ZshMap) []byte {
 	var buf bytes.Buffer
 	binpack.PackUInt(&buf, uint64(len(m)))
-	for key, value := range m {
+	orderedKeys := utilfn.GetOrderedStringerMapKeys(m)
+	for _, key := range orderedKeys {
+		value := m[key]
 		binpack.PackValue(&buf, []byte(key.String()))
 		binpack.PackValue(&buf, []byte(value))
 	}
