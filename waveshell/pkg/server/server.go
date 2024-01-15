@@ -29,6 +29,17 @@ const WriteFileContextTimeout = 30 * time.Second
 const cleanLoopTime = 5 * time.Second
 const MaxWriteFileContextData = 100
 
+type shellStateMapKey struct {
+	ShellType string
+	Hash      string
+}
+
+type ShellStateMap struct {
+	Lock            *sync.Mutex
+	StateMap        map[shellStateMapKey]*packet.ShellState // shelltype+hash -> state
+	CurrentStateMap map[string]string                       // shelltype -> hash
+}
+
 // TODO create unblockable packet-sender (backed by an array) for clientproc
 type MServer struct {
 	Lock                *sync.Mutex
@@ -36,9 +47,8 @@ type MServer struct {
 	Sender              *packet.PacketSender
 	ClientMap           map[base.CommandKey]*shexec.ClientProc
 	Debug               bool
-	StateMap            map[string]*packet.ShellState // sha1->state
-	CurrentState        string                        // sha1
-	WriteErrorCh        chan bool                     // closed if there is a I/O write error
+	StateMap            *ShellStateMap
+	WriteErrorCh        chan bool // closed if there is a I/O write error
 	WriteErrorChOnce    *sync.Once
 	WriteFileContextMap map[string]*WriteFileContext
 	Done                bool
@@ -236,24 +246,17 @@ func (m *MServer) runCompGen(compPk *packet.CompGenPacketType) {
 	return
 }
 
-func (m *MServer) setCurrentState(state *packet.ShellState) {
-	if state == nil {
-		return
-	}
-	hval, _ := state.EncodeAndHash()
-	m.Lock.Lock()
-	defer m.Lock.Unlock()
-	m.StateMap[hval] = state
-	m.CurrentState = hval
-}
-
 func (m *MServer) reinit(reqId string) {
 	initPk, err := shexec.MakeServerInitPacket(m.ShellType)
 	if err != nil {
 		m.Sender.SendErrorResponse(reqId, fmt.Errorf("error creating init packet: %w", err))
 		return
 	}
-	m.setCurrentState(initPk.State)
+	err = m.StateMap.SetCurrentState(m.ShellType, initPk.State)
+	if err != nil {
+		m.Sender.SendErrorResponse(reqId, fmt.Errorf("error setting current state: %w", err))
+		return
+	}
 	initPk.RespId = reqId
 	m.Sender.SendPacket(initPk)
 }
@@ -587,13 +590,7 @@ func (m *MServer) ProcessRpcPacket(pk packet.RpcPacketType) {
 	return
 }
 
-func (m *MServer) getCurrentState() (string, *packet.ShellState) {
-	m.Lock.Lock()
-	defer m.Lock.Unlock()
-	return m.CurrentState, m.StateMap[m.CurrentState]
-}
-
-func (m *MServer) clientPacketCallback(pk packet.PacketType) {
+func (m *MServer) clientPacketCallback(shellType string, pk packet.PacketType) {
 	if pk.GetType() != packet.CmdDonePacketStr {
 		return
 	}
@@ -601,7 +598,7 @@ func (m *MServer) clientPacketCallback(pk packet.PacketType) {
 	if donePk.FinalState == nil {
 		return
 	}
-	stateHash, curState := m.getCurrentState()
+	stateHash, curState := m.StateMap.GetCurrentState(shellType)
 	if curState == nil {
 		return
 	}
@@ -617,9 +614,22 @@ func (m *MServer) clientPacketCallback(pk packet.PacketType) {
 	donePk.FinalStateDiff = diff
 }
 
+func (m *MServer) isShellInitialized(shellType string) bool {
+	_, curState := m.StateMap.GetCurrentState(shellType)
+	return curState != nil
+}
+
 func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
 	if err := runPacket.CK.Validate("packet"); err != nil {
 		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("server run packets require valid ck: %s", err))
+		return
+	}
+	if runPacket.ShellType == "" {
+		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("server run packets require shell type"))
+		return
+	}
+	if !m.isShellInitialized(runPacket.ShellType) {
+		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("shell type %s is not initialized", runPacket.ShellType))
 		return
 	}
 	ecmd, err := shexec.MakeMShellSingleCmd()
@@ -650,7 +660,9 @@ func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
 			cproc.Close()
 		}()
 		shexec.SendRunPacketAndRunData(context.Background(), cproc.Input, runPacket)
-		cproc.ProxySingleOutput(runPacket.CK, m.Sender, m.clientPacketCallback)
+		cproc.ProxySingleOutput(runPacket.CK, m.Sender, func(pk packet.PacketType) {
+			m.clientPacketCallback(runPacket.ShellType, pk)
+		})
 	}()
 }
 
@@ -709,7 +721,7 @@ func RunServer(shellType string) (int, error) {
 	server := &MServer{
 		Lock:                &sync.Mutex{},
 		ClientMap:           make(map[base.CommandKey]*shexec.ClientProc),
-		StateMap:            make(map[string]*packet.ShellState),
+		StateMap:            MakeShellStateMap(),
 		Debug:               debug,
 		WriteErrorCh:        make(chan bool),
 		WriteErrorChOnce:    &sync.Once{},
@@ -736,7 +748,10 @@ func RunServer(shellType string) (int, error) {
 	if err != nil {
 		return 1, err
 	}
-	server.setCurrentState(initPacket.State)
+	err = server.StateMap.SetCurrentState(initPacket.Shell, initPacket.State)
+	if err != nil {
+		return 1, err
+	}
 	server.Sender.SendPacket(initPacket)
 	ticker := time.NewTicker(1 * time.Minute)
 	go func() {
@@ -758,4 +773,35 @@ func RunServer(shellType string) (int, error) {
 		break
 	}
 	return 0, nil
+}
+
+func MakeShellStateMap() *ShellStateMap {
+	return &ShellStateMap{
+		Lock:            &sync.Mutex{},
+		StateMap:        make(map[shellStateMapKey]*packet.ShellState),
+		CurrentStateMap: make(map[string]string),
+	}
+}
+
+func (sm *ShellStateMap) GetCurrentState(shellType string) (string, *packet.ShellState) {
+	sm.Lock.Lock()
+	defer sm.Lock.Unlock()
+	hval := sm.CurrentStateMap[shellType]
+	return hval, sm.StateMap[shellStateMapKey{ShellType: shellType, Hash: hval}]
+}
+
+func (sm *ShellStateMap) SetCurrentState(shellType string, state *packet.ShellState) error {
+	if state == nil {
+		return fmt.Errorf("cannot set nil state")
+	}
+	if shellType != state.GetShellType() {
+		return fmt.Errorf("shell type mismatch: %s != %s", shellType, state.GetShellType())
+	}
+	sm.Lock.Lock()
+	defer sm.Lock.Unlock()
+	hval, _ := state.EncodeAndHash()
+	key := shellStateMapKey{ShellType: shellType, Hash: hval}
+	sm.StateMap[key] = state
+	sm.CurrentStateMap[shellType] = hval
+	return nil
 }
