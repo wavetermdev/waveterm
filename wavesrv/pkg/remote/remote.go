@@ -2084,18 +2084,23 @@ func evalPromptEsc(escCode string, vars map[string]string, state *packet.ShellSt
 func (msh *MShellProc) getFullState(stateDiff *packet.ShellStateDiff) (*packet.ShellState, error) {
 	baseState := msh.GetStateByHash(stateDiff.BaseHash)
 	if baseState != nil && len(stateDiff.DiffHashArr) == 0 {
-		newState, err := shellenv.ApplyShellStateDiff(*baseState, *stateDiff)
+		sapi, err := shellapi.MakeShellApi(baseState.GetShellType())
+		newState, err := sapi.ApplyShellStateDiff(baseState, stateDiff)
 		if err != nil {
 			return nil, err
 		}
-		return &newState, nil
+		return newState, nil
 	} else {
 		fullState, err := sstore.GetFullState(context.Background(), sstore.ShellStatePtr{BaseHash: stateDiff.BaseHash, DiffHashArr: stateDiff.DiffHashArr})
 		if err != nil {
 			return nil, err
 		}
-		newState, err := shellenv.ApplyShellStateDiff(*fullState, *stateDiff)
-		return &newState, nil
+		sapi, err := shellapi.MakeShellApi(fullState.GetShellType())
+		if err != nil {
+			return nil, err
+		}
+		newState, err := sapi.ApplyShellStateDiff(fullState, stateDiff)
+		return newState, nil
 	}
 }
 
@@ -2103,21 +2108,29 @@ func (msh *MShellProc) getFullState(stateDiff *packet.ShellStateDiff) (*packet.S
 func (msh *MShellProc) getFeStateFromDiff(stateDiff *packet.ShellStateDiff) (map[string]string, error) {
 	baseState := msh.GetStateByHash(stateDiff.BaseHash)
 	if baseState != nil && len(stateDiff.DiffHashArr) == 0 {
-		newState, err := shellenv.ApplyShellStateDiff(*baseState, *stateDiff)
+		sapi, err := shellapi.MakeShellApi(baseState.GetShellType())
 		if err != nil {
 			return nil, err
 		}
-		return sstore.FeStateFromShellState(&newState), nil
+		newState, err := sapi.ApplyShellStateDiff(baseState, stateDiff)
+		if err != nil {
+			return nil, err
+		}
+		return sstore.FeStateFromShellState(newState), nil
 	} else {
 		fullState, err := sstore.GetFullState(context.Background(), sstore.ShellStatePtr{BaseHash: stateDiff.BaseHash, DiffHashArr: stateDiff.DiffHashArr})
 		if err != nil {
 			return nil, err
 		}
-		newState, err := shellenv.ApplyShellStateDiff(*fullState, *stateDiff)
+		sapi, err := shellapi.MakeShellApi(fullState.GetShellType())
 		if err != nil {
 			return nil, err
 		}
-		return sstore.FeStateFromShellState(&newState), nil
+		newState, err := sapi.ApplyShellStateDiff(fullState, stateDiff)
+		if err != nil {
+			return nil, err
+		}
+		return sstore.FeStateFromShellState(newState), nil
 	}
 }
 

@@ -15,6 +15,7 @@ import (
 	"github.com/alessio/shellescape"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/statediff"
 )
 
 const BaseBashOpts = `set +m; set +H; shopt -s extglob`
@@ -191,4 +192,61 @@ func MakeBashShExecCommand(cmdStr string, rcFileName string, usePty bool) *exec.
 	} else {
 		return exec.Command(GetLocalBashPath(), "--rcfile", rcFileName, "-c", cmdStr)
 	}
+}
+
+func (bashShellApi) MakeShellStateDiff(oldState *packet.ShellState, oldStateHash string, newState *packet.ShellState) (*packet.ShellStateDiff, error) {
+	if oldState == nil {
+		return nil, fmt.Errorf("cannot diff, oldState is nil")
+	}
+	if newState == nil {
+		return nil, fmt.Errorf("cannot diff, newState is nil")
+	}
+	if oldState.Version != newState.Version {
+		return nil, fmt.Errorf("cannot diff, states have different versions")
+	}
+	rtn := &packet.ShellStateDiff{}
+	rtn.BaseHash = oldStateHash
+	rtn.Version = newState.Version
+	if oldState.Cwd != newState.Cwd {
+		rtn.Cwd = newState.Cwd
+	}
+	rtn.Error = newState.Error
+	oldVars := shellenv.ShellStateVarsToMap(oldState.ShellVars)
+	newVars := shellenv.ShellStateVarsToMap(newState.ShellVars)
+	rtn.VarsDiff = statediff.MakeMapDiff(oldVars, newVars)
+	rtn.AliasesDiff = statediff.MakeLineDiff(oldState.Aliases, newState.Aliases, oldState.GetLineDiffSplitString())
+	rtn.FuncsDiff = statediff.MakeLineDiff(oldState.Funcs, newState.Funcs, oldState.GetLineDiffSplitString())
+	return rtn, nil
+}
+
+func (bashShellApi) ApplyShellStateDiff(oldState *packet.ShellState, diff *packet.ShellStateDiff) (*packet.ShellState, error) {
+	if oldState == nil {
+		return nil, fmt.Errorf("cannot apply diff, oldState is nil")
+	}
+	if diff == nil {
+		return oldState, nil
+	}
+	rtnState := &packet.ShellState{}
+	var err error
+	rtnState.Version = oldState.Version
+	rtnState.Cwd = oldState.Cwd
+	if diff.Cwd != "" {
+		rtnState.Cwd = diff.Cwd
+	}
+	rtnState.Error = diff.Error
+	oldVars := shellenv.ShellStateVarsToMap(oldState.ShellVars)
+	newVars, err := statediff.ApplyMapDiff(oldVars, diff.VarsDiff)
+	if err != nil {
+		return nil, fmt.Errorf("applying mapdiff 'vars': %v", err)
+	}
+	rtnState.ShellVars = shellenv.StrMapToShellStateVars(newVars)
+	rtnState.Aliases, err = statediff.ApplyLineDiff(oldState.Aliases, diff.AliasesDiff)
+	if err != nil {
+		return nil, fmt.Errorf("applying diff 'aliases': %v", err)
+	}
+	rtnState.Funcs, err = statediff.ApplyLineDiff(oldState.Funcs, diff.FuncsDiff)
+	if err != nil {
+		return nil, fmt.Errorf("applying diff 'funcs': %v", err)
+	}
+	return rtnState, nil
 }

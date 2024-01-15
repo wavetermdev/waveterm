@@ -57,6 +57,8 @@ type ShellApi interface {
 	GetBaseShellOpts() string
 	ParseShellStateOutput(output []byte) (*packet.ShellState, error)
 	MakeRcFileStr(pk *packet.RunPacketType) string
+	MakeShellStateDiff(oldState *packet.ShellState, oldStateHash string, newState *packet.ShellState) (*packet.ShellStateDiff, error)
+	ApplyShellStateDiff(oldState *packet.ShellState, diff *packet.ShellStateDiff) (*packet.ShellState, error)
 }
 
 func DetectLocalShellType() string {

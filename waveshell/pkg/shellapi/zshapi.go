@@ -19,6 +19,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/binpack"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/statediff"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 )
 
@@ -26,6 +27,10 @@ const BaseZshOpts = ``
 
 const ZshShellVersionCmdStr = `echo zsh v$ZSH_VERSION`
 const StateOutputFdNum = 20
+
+// TODO these need updating
+const RunZshSudoCommandFmt = `sudo -n -C %d zsh /dev/fd/%d`
+const RunZshSudoPasswordCommandFmt = `cat /dev/fd/%d | sudo -k -S -C %d zsh -c "echo '[from-mshell]'; exec %d>&-; zsh /dev/fd/%d < /dev/fd/%d"`
 
 var ZshIgnoreVars = map[string]bool{
 	"_":                    true,
@@ -145,7 +150,14 @@ func (z zshShellApi) GetRemoteShellPath() string {
 }
 
 func (z zshShellApi) MakeRunCommand(cmdStr string, opts RunCommandOpts) string {
-	return cmdStr
+	if !opts.Sudo {
+		return cmdStr
+	}
+	if opts.SudoWithPass {
+		return fmt.Sprintf(RunZshSudoPasswordCommandFmt, opts.PwFdNum, opts.MaxFdNum+1, opts.PwFdNum, opts.CommandFdNum, opts.CommandStdinFdNum)
+	} else {
+		return fmt.Sprintf(RunZshSudoCommandFmt, opts.MaxFdNum+1, opts.CommandFdNum)
+	}
 }
 
 func (z zshShellApi) MakeShExecCommand(cmdStr string, rcFileName string, usePty bool) *exec.Cmd {
@@ -401,6 +413,34 @@ func EncodeZshMap(m ZshMap) []byte {
 	return buf.Bytes()
 }
 
+func EncodeZshMapForApply(m map[string][]byte) string {
+	var buf bytes.Buffer
+	binpack.PackUInt(&buf, uint64(len(m)))
+	orderedKeys := utilfn.GetOrderedMapKeys(m)
+	for _, key := range orderedKeys {
+		value := m[key]
+		binpack.PackValue(&buf, []byte(key))
+		binpack.PackValue(&buf, value)
+	}
+	return buf.String()
+}
+
+func DecodeZshMapForDiff(barr []byte) (map[string][]byte, error) {
+	rtn := make(map[string][]byte)
+	buf := bytes.NewBuffer(barr)
+	u := binpack.MakeUnpacker(buf)
+	numEntries := u.UnpackUInt("numEntries")
+	for idx := 0; idx < numEntries; idx++ {
+		key := string(u.UnpackValue("key"))
+		value := u.UnpackValue("value")
+		rtn[key] = value
+	}
+	if u.Error() != nil {
+		return nil, u.Error()
+	}
+	return rtn, nil
+}
+
 func DecodeZshMap(barr []byte) (ZshMap, error) {
 	rtn := make(ZshMap)
 	buf := bytes.NewBuffer(barr)
@@ -515,7 +555,7 @@ func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellSta
 	}
 	rtn := &packet.ShellState{}
 	rtn.Version = strings.TrimSpace(versionStr)
-	if strings.Index(rtn.Version, "zsh") == -1 {
+	if strings.Index(rtn.Version, "zsh ") != 0 {
 		return nil, fmt.Errorf("invalid zsh shell state output, only zsh is supported")
 	}
 	cwdStr := stripNewLineChars(string(fields[1]))
@@ -697,4 +737,92 @@ func parseZshDecls(output []byte) (map[string]*DeclareDeclType, error) {
 		rtn[decl.Name] = decl
 	}
 	return rtn, nil
+}
+
+func makeZshMapDiff(oldMap string, newMap string) ([]byte, error) {
+	oldMapMap, err := DecodeZshMapForDiff([]byte(oldMap))
+	if err != nil {
+		return nil, fmt.Errorf("error zshMapDiff decoding old-zsh map: %v", err)
+	}
+	newMapMap, err := DecodeZshMapForDiff([]byte(newMap))
+	if err != nil {
+		return nil, fmt.Errorf("error zshMapDiff decoding new-zsh map: %v", err)
+	}
+	return statediff.MakeMapDiff(oldMapMap, newMapMap), nil
+}
+
+func applyZshMapDiff(oldMap string, diff []byte) (string, error) {
+	oldMapMap, err := DecodeZshMapForDiff([]byte(oldMap))
+	if err != nil {
+		return "", fmt.Errorf("error zshMapDiff decoding old-zsh map: %v", err)
+	}
+	newMapMap, err := statediff.ApplyMapDiff(oldMapMap, diff)
+	if err != nil {
+		return "", fmt.Errorf("error zshMapDiff applying diff: %v", err)
+	}
+	return EncodeZshMapForApply(newMapMap), nil
+}
+
+func (zshShellApi) MakeShellStateDiff(oldState *packet.ShellState, oldStateHash string, newState *packet.ShellState) (*packet.ShellStateDiff, error) {
+	if oldState == nil {
+		return nil, fmt.Errorf("cannot diff, oldState is nil")
+	}
+	if newState == nil {
+		return nil, fmt.Errorf("cannot diff, newState is nil")
+	}
+	if oldState.Version != newState.Version {
+		return nil, fmt.Errorf("cannot diff, states have different versions")
+	}
+	rtn := &packet.ShellStateDiff{}
+	rtn.BaseHash = oldStateHash
+	rtn.Version = newState.Version
+	if oldState.Cwd != newState.Cwd {
+		rtn.Cwd = newState.Cwd
+	}
+	rtn.Error = newState.Error
+	oldVars := shellenv.ShellStateVarsToMap(oldState.ShellVars)
+	newVars := shellenv.ShellStateVarsToMap(newState.ShellVars)
+	rtn.VarsDiff = statediff.MakeMapDiff(oldVars, newVars)
+	var err error
+	rtn.AliasesDiff, err = makeZshMapDiff(oldState.Aliases, newState.Aliases)
+	if err != nil {
+		return nil, err
+	}
+	rtn.FuncsDiff, err = makeZshMapDiff(oldState.Funcs, newState.Funcs)
+	if err != nil {
+		return nil, err
+	}
+	return rtn, nil
+}
+
+func (zshShellApi) ApplyShellStateDiff(oldState *packet.ShellState, diff *packet.ShellStateDiff) (*packet.ShellState, error) {
+	if oldState == nil {
+		return nil, fmt.Errorf("cannot apply diff, oldState is nil")
+	}
+	if diff == nil {
+		return oldState, nil
+	}
+	rtnState := &packet.ShellState{}
+	var err error
+	rtnState.Version = oldState.Version
+	rtnState.Cwd = oldState.Cwd
+	if diff.Cwd != "" {
+		rtnState.Cwd = diff.Cwd
+	}
+	rtnState.Error = diff.Error
+	oldVars := shellenv.ShellStateVarsToMap(oldState.ShellVars)
+	newVars, err := statediff.ApplyMapDiff(oldVars, diff.VarsDiff)
+	if err != nil {
+		return nil, fmt.Errorf("applying mapdiff 'vars': %v", err)
+	}
+	rtnState.ShellVars = shellenv.StrMapToShellStateVars(newVars)
+	rtnState.Aliases, err = applyZshMapDiff(oldState.Aliases, diff.AliasesDiff)
+	if err != nil {
+		return nil, fmt.Errorf("applying diff 'aliases': %v", err)
+	}
+	rtnState.Funcs, err = applyZshMapDiff(oldState.Funcs, diff.FuncsDiff)
+	if err != nil {
+		return nil, fmt.Errorf("applying diff 'funcs': %v", err)
+	}
+	return rtnState, nil
 }

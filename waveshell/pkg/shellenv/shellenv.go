@@ -10,7 +10,6 @@ import (
 
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/simpleexpand"
-	"github.com/wavetermdev/waveterm/waveshell/pkg/statediff"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 )
 
@@ -163,51 +162,6 @@ func DeclsEqual(compareName bool, d1 *DeclareDeclType, d2 *DeclareDeclType) bool
 	return d1.Value == d2.Value // this works even for assoc arrays because we normalize them when parsing
 }
 
-func MakeShellStateDiff(oldState packet.ShellState, oldStateHash string, newState packet.ShellState) (packet.ShellStateDiff, error) {
-	var rtn packet.ShellStateDiff
-	rtn.BaseHash = oldStateHash
-	if oldState.Version != newState.Version {
-		return rtn, fmt.Errorf("cannot diff, states have different versions")
-	}
-	rtn.Version = newState.Version
-	if oldState.Cwd != newState.Cwd {
-		rtn.Cwd = newState.Cwd
-	}
-	rtn.Error = newState.Error
-	oldVars := shellStateVarsToMap(oldState.ShellVars)
-	newVars := shellStateVarsToMap(newState.ShellVars)
-	rtn.VarsDiff = statediff.MakeMapDiff(oldVars, newVars)
-	rtn.AliasesDiff = statediff.MakeLineDiff(oldState.Aliases, newState.Aliases, oldState.GetLineDiffSplitString())
-	rtn.FuncsDiff = statediff.MakeLineDiff(oldState.Funcs, newState.Funcs, oldState.GetLineDiffSplitString())
-	return rtn, nil
-}
-
-func ApplyShellStateDiff(oldState packet.ShellState, diff packet.ShellStateDiff) (packet.ShellState, error) {
-	var rtnState packet.ShellState
-	var err error
-	rtnState.Version = oldState.Version
-	rtnState.Cwd = oldState.Cwd
-	if diff.Cwd != "" {
-		rtnState.Cwd = diff.Cwd
-	}
-	rtnState.Error = diff.Error
-	oldVars := shellStateVarsToMap(oldState.ShellVars)
-	newVars, err := statediff.ApplyMapDiff(oldVars, diff.VarsDiff)
-	if err != nil {
-		return rtnState, fmt.Errorf("applying mapdiff 'vars': %v", err)
-	}
-	rtnState.ShellVars = strMapToShellStateVars(newVars)
-	rtnState.Aliases, err = statediff.ApplyLineDiff(oldState.Aliases, diff.AliasesDiff)
-	if err != nil {
-		return rtnState, fmt.Errorf("applying diff 'aliases': %v", err)
-	}
-	rtnState.Funcs, err = statediff.ApplyLineDiff(oldState.Funcs, diff.FuncsDiff)
-	if err != nil {
-		return rtnState, fmt.Errorf("applying diff 'funcs': %v", err)
-	}
-	return rtnState, nil
-}
-
 // envline should be valid
 func parseDeclLine(envLineBytes []byte) *DeclareDeclType {
 	if utilfn.EncodedStringArrayHasFirstKey(envLineBytes, "z1") {
@@ -268,7 +222,7 @@ func parseDeclLineToKV(envLine []byte) (string, []byte) {
 	return decl.Name, envLine
 }
 
-func shellStateVarsToMap(shellVars []byte) map[string][]byte {
+func ShellStateVarsToMap(shellVars []byte) map[string][]byte {
 	if len(shellVars) == 0 {
 		return nil
 	}
@@ -284,7 +238,7 @@ func shellStateVarsToMap(shellVars []byte) map[string][]byte {
 	return rtn
 }
 
-func strMapToShellStateVars(varMap map[string][]byte) []byte {
+func StrMapToShellStateVars(varMap map[string][]byte) []byte {
 	var buf bytes.Buffer
 	orderedKeys := utilfn.GetOrderedMapKeys(varMap)
 	for _, key := range orderedKeys {

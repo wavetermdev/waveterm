@@ -18,7 +18,7 @@ import (
 	"github.com/sawka/txwrap"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
-	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 )
@@ -1963,22 +1963,26 @@ func GetFullState(ctx context.Context, ssPtr ShellStatePtr) (*packet.ShellState,
 		if err != nil {
 			return err
 		}
+		sapi, err := shellapi.MakeShellApi(state.GetShellType())
+		if err != nil {
+			return err
+		}
 		for idx, diffHash := range ssPtr.DiffHashArr {
 			query = `SELECT * FROM state_diff WHERE diffhash = ?`
 			stateDiff := dbutil.GetMapGen[*StateDiff](tx, query, diffHash)
 			if stateDiff == nil {
 				return fmt.Errorf("ShellStateDiff %s not found", diffHash)
 			}
-			var ssDiff packet.ShellStateDiff
+			ssDiff := &packet.ShellStateDiff{}
 			err = ssDiff.DecodeShellStateDiff(stateDiff.Data)
 			if err != nil {
 				return err
 			}
-			newState, err := shellenv.ApplyShellStateDiff(*state, ssDiff)
+			newState, err := sapi.ApplyShellStateDiff(state, ssDiff)
 			if err != nil {
 				return fmt.Errorf("GetFullState, diff[%d]:%s: %v", idx, diffHash, err)
 			}
-			state = &newState
+			state = newState
 		}
 		return nil
 	})

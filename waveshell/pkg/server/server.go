@@ -21,7 +21,6 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
-	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
 )
 
@@ -606,12 +605,16 @@ func (m *MServer) clientPacketCallback(pk packet.PacketType) {
 	if curState == nil {
 		return
 	}
-	diff, err := shellenv.MakeShellStateDiff(*curState, stateHash, *donePk.FinalState)
+	sapi, err := shellapi.MakeShellApi(curState.GetShellType())
+	if err != nil {
+		return
+	}
+	diff, err := sapi.MakeShellStateDiff(curState, stateHash, donePk.FinalState)
 	if err != nil {
 		return
 	}
 	donePk.FinalState = nil
-	donePk.FinalStateDiff = &diff
+	donePk.FinalStateDiff = diff
 }
 
 func (m *MServer) runCommand(runPacket *packet.RunPacketType) {

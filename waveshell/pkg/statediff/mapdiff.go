@@ -7,8 +7,10 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"slices"
 
 	"github.com/wavetermdev/waveterm/waveshell/pkg/binpack"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 )
 
 const MapDiffVersion_0 = 0
@@ -88,14 +90,18 @@ func (diff MapDiffType) Encode_v0() []byte {
 	return buf.Bytes()
 }
 
+// we sort map keys and remove values to make the diff deterministic
 func (diff MapDiffType) Encode() []byte {
 	var buf bytes.Buffer
 	binpack.PackUInt(&buf, MapDiffVersion)
 	binpack.PackUInt(&buf, uint64(len(diff.ToAdd)))
-	for key, val := range diff.ToAdd {
+	addKeys := utilfn.GetOrderedMapKeys(diff.ToAdd)
+	for _, key := range addKeys {
+		val := diff.ToAdd[key]
 		binpack.PackValue(&buf, []byte(key))
 		binpack.PackValue(&buf, val)
 	}
+	slices.Sort(diff.ToRemove)
 	binpack.PackUInt(&buf, uint64(len(diff.ToRemove)))
 	for _, val := range diff.ToRemove {
 		binpack.PackValue(&buf, []byte(val))
