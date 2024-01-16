@@ -1478,7 +1478,6 @@ func SetStatusIndicatorLevel_Update(ctx context.Context, update *ModelUpdate, sc
 		}
 	}
 
-	log.Printf("new status %v\n", newStatus)
 	update.ScreenStatusIndicator = &ScreenStatusIndicatorType{
 		ScreenId: screenId,
 		Status:   newStatus,

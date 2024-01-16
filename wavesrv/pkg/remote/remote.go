@@ -1550,7 +1550,6 @@ func (msh *MShellProc) AddRunningCmd(rct RunCmdType) {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
 	msh.RunningCmds[rct.RunPacket.CK] = rct
-	log.Printf("going to set status indicator level %v for screen %v\n", sstore.StatusIndicatorLevel_Output, rct.ScreenId)
 }
 
 func (msh *MShellProc) GetRunningCmd(ck base.CommandKey) *RunCmdType {
