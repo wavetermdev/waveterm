@@ -15,6 +15,7 @@ import { ReactComponent as ActionsIcon } from "../../assets/icons/tab/actions.sv
 import * as constants from "../../appconst";
 import { Reorder } from "framer-motion";
 import { MagicLayout } from "../../magiclayout";
+import { StatusIndicatorLevel } from "../../../types/types";
 
 @mobxReact.observer
 class ScreenTab extends React.Component<
@@ -97,7 +98,24 @@ class ScreenTab extends React.Component<
             <i title="shared to web" className="fa-sharp fa-solid fa-share-nodes web-share-icon" />
         ) : null;
 
-        let statusIndicator = screen.statusIndicator.get();
+        const statusIndicatorLevel = screen.statusIndicator.get();
+        let statusIndicator = null;
+        if (statusIndicatorLevel != StatusIndicatorLevel.None) {
+            let statusIndicatorClass = null;
+            switch (statusIndicatorLevel) {
+                case StatusIndicatorLevel.Output:
+                    statusIndicatorClass = "fa-sharp fa-solid fa-spinner-third status-indicator output";
+                    break;
+                case StatusIndicatorLevel.Success:
+                    statusIndicatorClass = "fa-sharp fa-solid fa-circle-small status-indicator success";
+                    break;
+                case StatusIndicatorLevel.Error:
+                    statusIndicatorClass = "fa-sharp fa-solid fa-circle-small status-indicator error";
+                    break;
+            }
+            statusIndicator = <div className={statusIndicatorClass}></div>;
+        }
+
         console.log(`screen ${screen.screenId} statusIndicator: ${statusIndicator}}`);
 
         return (
@@ -124,6 +142,7 @@ class ScreenTab extends React.Component<
                     {webShared}
                     {screen.name.get()}
                 </div>
+                {statusIndicator}
                 {tabIndex}
                 {settings}
             </Reorder.Item>

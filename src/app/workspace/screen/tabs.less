@@ -218,6 +218,32 @@
         top: 1px;
         margin-right: 3px;
     }
+
+    .status-indicator {
+        position: relative;
+        top: 1px;
+        margin-right: 3px;
+
+        &.error {
+            color: red;
+        }
+        &.success {
+            color: green;
+        }
+        &.output {
+            color: white;            
+            animation: infiniteRotate 2s linear infinite;
+
+            @keyframes infiniteRotate {
+                from {
+                    transform:rotate(0deg);
+                }
+                to {
+                    transform:rotate(360deg);
+                }
+            }
+        }
+    }
 }
 
 .screen-tabs-container {

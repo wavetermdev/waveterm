@@ -162,23 +162,23 @@ func ScreenMemSetNumRunningCommands(screenId string, num int) {
 	ScreenMemStore[screenId].NumRunningCommands = num
 }
 
-// If the new indicator is higher than the current indicator, update the current indicator. Returns true if the indicator was updated.
-func ScreenMemCombineIndicator(screenId string, indicator StatusIndicatorLevel) bool {
+// If the new indicator level is higher than the current indicator, update the current indicator. Returns true if the indicator was updated.
+func ScreenMemCombineIndicatorLevels(screenId string, level StatusIndicatorLevel) bool {
 	MemLock.Lock()
 	defer MemLock.Unlock()
 	if ScreenMemStore[screenId] == nil {
 		ScreenMemStore[screenId] = &ScreenMemState{}
 	}
-	if indicator > ScreenMemStore[screenId].IndicatorType {
-		ScreenMemStore[screenId].IndicatorType = indicator
+	if level > ScreenMemStore[screenId].IndicatorType {
+		ScreenMemStore[screenId].IndicatorType = level
 		return true
 	} else {
 		return false
 	}
 }
 
-// reset indicator to None
-func ScreenMemResetIndicator(screenId string) {
+// Set the indicator to the given level, regardless of the current indicator level.
+func ScreenMemSetIndicatorLevel(screenId string, level StatusIndicatorLevel) {
 	MemLock.Lock()
 	defer MemLock.Unlock()
 	if ScreenMemStore[screenId] == nil {

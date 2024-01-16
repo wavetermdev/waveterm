@@ -1454,6 +1454,7 @@ func SetStatusIndicatorLevel_Update(ctx context.Context, update *ModelUpdate, sc
 
 	if force {
 		// Force the update and set the new status to the given level, regardless of the current status or the active screen
+		ScreenMemSetIndicatorLevel(screenId, level)
 		newStatus = level
 	} else {
 		// Only update the status if the given screen is not the active screen and if the given level is higher than the current level
@@ -1472,10 +1473,10 @@ func SetStatusIndicatorLevel_Update(ctx context.Context, update *ModelUpdate, sc
 		}
 
 		// If we are not forcing the update, follow the rules for combining status indicators
-		if ScreenMemCombineIndicator(screenId, level) {
+		if ScreenMemCombineIndicatorLevels(screenId, level) {
 			newStatus = GetScreenMemState(screenId).IndicatorType
 		} else {
-			log.Printf("The given level %v is not higher than the current level for screen %v, ignoring\n", level, screenId)
+			log.Printf("The given level %v is not higher than the current level %v for screen %v, ignoring\n", level, GetScreenMemState(screenId).IndicatorType, screenId)
 			return nil
 		}
 	}
