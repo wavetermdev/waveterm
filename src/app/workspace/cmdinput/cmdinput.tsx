@@ -170,12 +170,12 @@ class CmdInput extends React.Component<{}, {}> {
                 </If>
                 <If condition={feState["invalidshellstate"]}>
                     <div className="remote-status-warning">
-                        WARNING:&nbsp;
-                        The shell state for this tab is invalid (<a target="_blank" href="https://docs.waveterm.dev/reference/faq">see FAQ</a>). Must reset to continue.
-                        <div
-                            className="button is-wave-green is-outlined is-small"
-                            onClick={this.clickResetState}
-                        >
+                        WARNING:&nbsp; The shell state for this tab is invalid (
+                        <a target="_blank" href="https://docs.waveterm.dev/reference/faq">
+                            see FAQ
+                        </a>
+                        ). Must reset to continue.
+                        <div className="button is-wave-green is-outlined is-small" onClick={this.clickResetState}>
                             reset shell state
                         </div>
                     </div>
