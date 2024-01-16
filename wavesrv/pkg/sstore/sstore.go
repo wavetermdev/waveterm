@@ -1471,8 +1471,9 @@ func SetStatusIndicatorLevel_Update(ctx context.Context, update *ModelUpdate, sc
 		}
 
 		// If we are not forcing the update, follow the rules for combining status indicators
-		if ScreenMemCombineIndicatorLevels(screenId, level) {
-			newStatus = GetScreenMemState(screenId).IndicatorType
+		newLevel := ScreenMemCombineIndicatorLevels(screenId, level)
+		if newLevel == level {
+			newStatus = level
 		} else {
 			return nil
 		}

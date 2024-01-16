@@ -42,7 +42,7 @@ type OpenAICmdInfoChatStore struct {
 
 type ScreenMemState struct {
 	NumRunningCommands int                     `json:"numrunningcommands,omitempty"`
-	IndicatorType      StatusIndicatorLevel    `json:"indicatortype,omitempty"`
+	StatusIndicator    StatusIndicatorLevel    `json:"statusindicator,omitempty"`
 	CmdInputText       utilfn.StrWithPos       `json:"cmdinputtext,omitempty"`
 	CmdInputSeqNum     int                     `json:"cmdinputseqnum,omitempty"`
 	AICmdInfoChat      *OpenAICmdInfoChatStore `json:"aicmdinfochat,omitempty"`
@@ -162,18 +162,19 @@ func ScreenMemSetNumRunningCommands(screenId string, num int) {
 	ScreenMemStore[screenId].NumRunningCommands = num
 }
 
-// If the new indicator level is higher than the current indicator, update the current indicator. Returns true if the indicator was updated.
-func ScreenMemCombineIndicatorLevels(screenId string, level StatusIndicatorLevel) bool {
+// If the new indicator level is higher than the current indicator, update the current indicator. Returns the new indicator level.
+func ScreenMemCombineIndicatorLevels(screenId string, level StatusIndicatorLevel) StatusIndicatorLevel {
 	MemLock.Lock()
 	defer MemLock.Unlock()
 	if ScreenMemStore[screenId] == nil {
 		ScreenMemStore[screenId] = &ScreenMemState{}
 	}
-	if level > ScreenMemStore[screenId].IndicatorType {
-		ScreenMemStore[screenId].IndicatorType = level
-		return true
+	curLevel := ScreenMemStore[screenId].StatusIndicator
+	if level > curLevel {
+		ScreenMemStore[screenId].StatusIndicator = level
+		return level
 	} else {
-		return false
+		return curLevel
 	}
 }
 
@@ -184,7 +185,7 @@ func ScreenMemSetIndicatorLevel(screenId string, level StatusIndicatorLevel) {
 	if ScreenMemStore[screenId] == nil {
 		ScreenMemStore[screenId] = &ScreenMemState{}
 	}
-	ScreenMemStore[screenId].IndicatorType = StatusIndicatorLevel_None
+	ScreenMemStore[screenId].StatusIndicator = StatusIndicatorLevel_None
 }
 
 // safe because we return a copy
