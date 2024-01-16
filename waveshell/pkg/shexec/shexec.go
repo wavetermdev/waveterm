@@ -852,7 +852,6 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 			return nil, err
 		}
 		zdotdir = path.Join(rcFileDir, uuid.New().String())
-		base.Logf("temp zdotdir: %q\n", zdotdir)
 		os.Mkdir(zdotdir, 0700)
 		rcFileName = path.Join(zdotdir, ".zshenv")
 		err = os.WriteFile(rcFileName, []byte(rcFileStr), 0600)

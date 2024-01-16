@@ -1127,9 +1127,13 @@ func (msh *MShellProc) ReInit(ctx context.Context, shellType string) (*packet.Sh
 	if ssPk.State == nil {
 		return nil, fmt.Errorf("invalid reinit response shellstate packet does not contain remote state")
 	}
-	// we no longer call sstore.StoreStateBase() here, the state is saved now on demand during HandleCmdDonePacket
-	//     and explictly during the ResetCommand flow.  note that we only need to *explicitly* store the statebase
-	//     when we are storing a diff, as the flow for storing a full state always calls StoreStateBase()
+	// TODO: maybe we don't need to save statebase here.  should be possible to save it on demand
+	//    when it is actually used.  complication from other functions that try to get the statebase
+	//    from the DB.  probably need to route those through MShellProc.
+	err = sstore.StoreStateBase(ctx, ssPk.State)
+	if err != nil {
+		return nil, fmt.Errorf("error storing remote state: %w", err)
+	}
 	msh.StateMap.SetCurrentState(ssPk.State.GetShellType(), ssPk.State)
 	msh.WriteToPtyBuffer("initialized shell:%s state:%s\n", shellType, ssPk.State.GetHashVal(false))
 	return ssPk, nil
