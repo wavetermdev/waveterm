@@ -201,12 +201,12 @@ func (bashShellApi) MakeShellStateDiff(oldState *packet.ShellState, oldStateHash
 	if newState == nil {
 		return nil, fmt.Errorf("cannot diff, newState is nil")
 	}
-	if oldState.Version != newState.Version {
-		return nil, fmt.Errorf("cannot diff, states have different versions")
+	if !packet.StateVersionsCompatible(oldState.Version, newState.Version) {
+		return nil, fmt.Errorf("cannot diff, incompatible shell versions: %q %q", oldState.Version, newState.Version)
 	}
 	rtn := &packet.ShellStateDiff{}
 	rtn.BaseHash = oldStateHash
-	rtn.Version = newState.Version
+	rtn.Version = newState.Version // always set version in the diff
 	if oldState.Cwd != newState.Cwd {
 		rtn.Cwd = newState.Cwd
 	}

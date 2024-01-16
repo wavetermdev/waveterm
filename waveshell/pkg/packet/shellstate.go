@@ -30,7 +30,7 @@ type ShellState struct {
 }
 
 type ShellStateDiff struct {
-	Version     string   `json:"version"` // [type] [semver]
+	Version     string   `json:"version"` // [type] [semver] (note this should *always* be set even if the same as base)
 	BaseHash    string   `json:"basehash"`
 	DiffHashArr []string `json:"diffhasharr,omitempty"`
 	Cwd         string   `json:"cwd,omitempty"`
@@ -42,17 +42,56 @@ type ShellStateDiff struct {
 }
 
 func (state ShellState) GetShellType() string {
-	if strings.HasPrefix(state.Version, "zsh") {
-		return ShellType_zsh
+	shell, _, _ := ParseShellStateVersion(state.Version)
+	return shell
+}
+
+// returns (shell, version, error)
+func ParseShellStateVersion(fullVersionStr string) (string, string, error) {
+	if fullVersionStr == "" {
+		return "", "", fmt.Errorf("empty shellstate version")
 	}
-	return ShellType_bash
+	fields := strings.Split(fullVersionStr, " ")
+	if len(fields) != 2 {
+		return "", "", fmt.Errorf("invalid shellstate version format: %q", fullVersionStr)
+	}
+	shell := fields[0]
+	version := fields[1]
+	if shell != ShellType_zsh && shell != ShellType_bash {
+		return "", "", fmt.Errorf("invalid shellstate shell type: %q", fullVersionStr)
+	}
+	if !semver.IsValid(version) {
+		return "", "", fmt.Errorf("invalid shellstate semver: %q", fullVersionStr)
+	}
+	return shell, version, nil
+}
+
+// we're going to allow different versions (as long as shelltype is the same)
+// before we required version numbers to match exactly which was too restrictive
+func StateVersionsCompatible(v1 string, v2 string) bool {
+	if v1 == v2 {
+		return true
+	}
+	shell1, version1, err := ParseShellStateVersion(v1)
+	if err != nil {
+		return false
+	}
+	shell2, version2, err := ParseShellStateVersion(v2)
+	if err != nil {
+		return false
+	}
+	if shell1 != shell2 {
+		return false
+	}
+	if semver.Major(version1) != semver.Major(version2) {
+		return false
+	}
+	return true
 }
 
 func (diff ShellStateDiff) GetShellType() string {
-	if strings.HasPrefix(diff.Version, "zsh") {
-		return ShellType_zsh
-	}
-	return ShellType_bash
+	shell, _, _ := ParseShellStateVersion(diff.Version)
+	return shell
 }
 
 func (state ShellState) GetLineDiffSplitString() string {

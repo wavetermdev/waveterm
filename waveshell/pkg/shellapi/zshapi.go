@@ -555,8 +555,11 @@ func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellSta
 	}
 	rtn := &packet.ShellState{}
 	rtn.Version = strings.TrimSpace(versionStr)
-	if strings.Index(rtn.Version, "zsh ") != 0 {
-		return nil, fmt.Errorf("invalid zsh shell state output, only zsh is supported")
+	if rtn.GetShellType() != packet.ShellType_zsh {
+		return nil, fmt.Errorf("invalid zsh shell state output, wrong shell type")
+	}
+	if _, _, err := packet.ParseShellStateVersion(rtn.Version); err != nil {
+		return nil, fmt.Errorf("invalid zsh shell state output, invalid version: %v", err)
 	}
 	cwdStr := stripNewLineChars(string(fields[1]))
 	rtn.Cwd = cwdStr
@@ -775,7 +778,7 @@ func (zshShellApi) MakeShellStateDiff(oldState *packet.ShellState, oldStateHash 
 	}
 	rtn := &packet.ShellStateDiff{}
 	rtn.BaseHash = oldStateHash
-	rtn.Version = newState.Version
+	rtn.Version = newState.Version // always set version
 	if oldState.Cwd != newState.Cwd {
 		rtn.Cwd = newState.Cwd
 	}

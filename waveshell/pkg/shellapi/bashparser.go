@@ -221,8 +221,11 @@ func parseBashShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
 	}
 	rtn := &packet.ShellState{}
 	rtn.Version = strings.TrimSpace(string(fields[0]))
-	if strings.Index(rtn.Version, "bash") == -1 {
-		return nil, fmt.Errorf("invalid bash shell state output, only bash is supported")
+	if rtn.GetShellType() != packet.ShellType_bash {
+		return nil, fmt.Errorf("invalid bash shell state output, wrong shell type")
+	}
+	if _, _, err := packet.ParseShellStateVersion(rtn.Version); err != nil {
+		return nil, fmt.Errorf("invalid bash shell state output, invalid version: %v", err)
 	}
 	cwdStr := string(fields[1])
 	if strings.HasSuffix(cwdStr, "\r\n") {
