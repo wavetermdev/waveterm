@@ -709,6 +709,7 @@ func runWebSocketServer() {
 }
 
 func test() error {
+	return nil
 }
 
 func sendTelemetryWrapper() {
