@@ -622,3 +622,33 @@ a.a-block {
 .text-selectable {
     user-select: text;
 }
+
+.status-indicator {
+    position: relative;
+    top: 1px;
+    margin-right: 3px;
+
+    &.error {
+        color: red;
+    }
+    &.success {
+        color: green;
+    }
+    &.output {
+        &:extend(.spin);
+        color: white;
+    }
+}
+
+@keyframes infiniteRotate {
+    from {
+        transform:rotate(0deg);
+    }
+    to {
+        transform:rotate(360deg);
+    }
+}
+
+.spin {
+    animation: infiniteRotate 2s linear infinite;
+}
