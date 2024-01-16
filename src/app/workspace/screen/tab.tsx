@@ -4,18 +4,15 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
-import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
-import { For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, Session, Screen } from "../../../model/model";
-import { renderCmdText } from "../../common/common";
+import { StatusIndicator, renderCmdText } from "../../common/common";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
 import { ReactComponent as ActionsIcon } from "../../assets/icons/tab/actions.svg";
 import * as constants from "../../appconst";
 import { Reorder } from "framer-motion";
 import { MagicLayout } from "../../magiclayout";
-import { StatusIndicatorLevel } from "../../../types/types";
 
 @mobxReact.observer
 class ScreenTab extends React.Component<
@@ -99,22 +96,6 @@ class ScreenTab extends React.Component<
         ) : null;
 
         const statusIndicatorLevel = screen.statusIndicator.get();
-        let statusIndicator = null;
-        if (statusIndicatorLevel != StatusIndicatorLevel.None) {
-            let statusIndicatorClass = null;
-            switch (statusIndicatorLevel) {
-                case StatusIndicatorLevel.Output:
-                    statusIndicatorClass = "fa-spinner-third output";
-                    break;
-                case StatusIndicatorLevel.Success:
-                    statusIndicatorClass = "fa-circle-small success";
-                    break;
-                case StatusIndicatorLevel.Error:
-                    statusIndicatorClass = "fa-circle-small error";
-                    break;
-            }
-            statusIndicator = <div className={`fa-sharp fa-solid status-indicator ${statusIndicatorClass}`}></div>;
-        }
 
         return (
             <Reorder.Item
@@ -140,7 +121,7 @@ class ScreenTab extends React.Component<
                     {webShared}
                     {screen.name.get()}
                 </div>
-                {statusIndicator}
+                <StatusIndicator level={statusIndicatorLevel} />
                 {tabIndex}
                 {settings}
             </Reorder.Item>

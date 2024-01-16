@@ -9,7 +9,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import cn from "classnames";
 import { If } from "tsx-control-statements/components";
-import type { RemoteType } from "../../types/types";
+import { RemoteType, StatusIndicatorLevel } from "../../types/types";
 import ReactDOM from "react-dom";
 import { GlobalModel } from "../../model/model";
 
@@ -1246,6 +1246,33 @@ class Modal extends React.Component<ModalProps> {
     }
 }
 
+interface StatusIndicatorProps {
+    level: StatusIndicatorLevel
+}
+
+class StatusIndicator extends React.Component<StatusIndicatorProps> {
+    render() {
+        const statusIndicatorLevel = this.props.level;
+        let statusIndicator = null;
+        if (statusIndicatorLevel != StatusIndicatorLevel.None) {
+            let statusIndicatorClass = null;
+            switch (statusIndicatorLevel) {
+                case StatusIndicatorLevel.Output:
+                    statusIndicatorClass = "fa-spinner-third output spin";
+                    break;
+                case StatusIndicatorLevel.Success:
+                    statusIndicatorClass = "fa-circle-small success";
+                    break;
+                case StatusIndicatorLevel.Error:
+                    statusIndicatorClass = "fa-circle-small error";
+                    break;
+            }
+            statusIndicator = <div className={`fa-sharp fa-solid status-indicator ${statusIndicatorClass}`}></div>;
+        }
+        return statusIndicator;
+    }
+}
+
 export {
     CmdStrCode,
     Toggle,
@@ -1267,4 +1294,5 @@ export {
     LinkButton,
     Status,
     Modal,
+    StatusIndicator,
 };

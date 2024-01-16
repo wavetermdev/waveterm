@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import dayjs from "dayjs";
-import type { RemoteType } from "../../types/types";
+import type { RemoteType, StatusIndicatorLevel } from "../../types/types";
 import { If } from "tsx-control-statements/components";
 import { compareLoose } from "semver";
 
@@ -28,6 +28,7 @@ import { sortAndFilterRemotes, isBlank, openLink } from "../../util/util";
 import * as constants from "../appconst";
 
 import "./sidebar.less";
+import { StatusIndicator } from "../common/common";
 
 dayjs.extend(localizedFormat);
 
@@ -163,6 +164,7 @@ class MainSideBar extends React.Component<{}, {}> {
                 >
                     <span className="index">{index + 1}</span>
                     <span className="truncate sessionName">{session.name.get()}</span>
+                    <StatusIndicator level={this.getStatusIndicator(session.sessionId)} />
                     <ActionsIcon
                         className="icon hoverEffect actions"
                         onClick={(e) => this.openSessionSettings(e, session)}
@@ -170,6 +172,12 @@ class MainSideBar extends React.Component<{}, {}> {
                 </div>
             );
         });
+    }
+
+    @mobx.computed
+    getStatusIndicator(sessionId: string): StatusIndicatorLevel {
+        const screens = GlobalModel.getSessionScreens(sessionId);
+        return Math.max(...screens.map((s) => s.statusIndicator.get()));
     }
 
     render() {
@@ -183,10 +191,7 @@ class MainSideBar extends React.Component<{}, {}> {
                 activeRemoteId = rptr.remoteid;
             }
         }
-        let session: Session = null;
         let remotes = model.remotes ?? [];
-        let remote: RemoteType = null;
-        let idx: number = 0;
         remotes = sortAndFilterRemotes(remotes);
         let sessionList = [];
         for (let session of model.sessionList) {
@@ -195,7 +200,6 @@ class MainSideBar extends React.Component<{}, {}> {
             }
         }
         let isCollapsed = this.collapsed.get();
-        let mainView = GlobalModel.activeMainView.get();
         let clientData = GlobalModel.clientData.get();
         let needsUpdate = false;
         if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
