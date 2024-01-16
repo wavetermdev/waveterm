@@ -246,9 +246,9 @@ func parsePVarOutput(pvarBytes []byte, isZsh bool) map[string]*DeclareDeclType {
 }
 
 // for debugging (not for production use)
-func writeStateToFile(outputBytes []byte) error {
+func writeStateToFile(shellType string, outputBytes []byte) error {
 	msHome := base.GetMShellHomeDir()
-	stateFileName := path.Join(msHome, "state.txt")
+	stateFileName := path.Join(msHome, shellType+"-state.txt")
 	os.WriteFile(stateFileName, outputBytes, 0644)
 	return nil
 }

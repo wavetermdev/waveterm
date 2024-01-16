@@ -302,6 +302,7 @@ func GetZshShellStateCmd(fdNum int) string {
 	// environment variables *cannot* contain nulls by definition, and "typeset" already escapes nulls.
 	// the raw aliases and functions though need to be handled more carefully
 	// output redirection is necessary to prevent cooked tty options from screwing up the output (funcs especially)
+	// note we do not need the "extra" separator that bashapi uses because we are reading from OUTPUTFD (which already excludes any spurious stdout/stderr data)
 	cmd := `
 exec > [%OUTPUTFD%]
 unsetopt SH_WORD_SPLIT;
@@ -528,7 +529,7 @@ func makeZshFuncsStrForShellState(fnMap map[ZshParamKey]string) string {
 
 func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
 	if scbase.IsDevMode() && DebugState {
-		writeStateToFile(outputBytes)
+		writeStateToFile(packet.ShellType_zsh, outputBytes)
 	}
 	firstZeroIdx := bytes.Index(outputBytes, []byte{0})
 	firstDZeroIdx := bytes.Index(outputBytes, []byte{0, 0})

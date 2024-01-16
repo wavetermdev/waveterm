@@ -31,6 +31,7 @@ const RunBashSudoPasswordCommandFmt = `cat /dev/fd/%d | sudo -k -S -C %d bash -c
 var localBashMajorVersionOnce = &sync.Once{}
 var localBashMajorVersion = ""
 
+// the "exec 2>" line also adds an extra printf at the *beginning* to strip out spurious rc file output
 var GetBashShellStateCmds = []string{
 	"exec 2> /dev/null;",
 	BashShellVersionCmdStr + ";",
