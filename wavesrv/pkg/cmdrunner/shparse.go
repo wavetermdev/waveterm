@@ -233,7 +233,6 @@ func isRtnStateCmd(cmd syntax.Command) bool {
 	if cmd == nil {
 		return false
 	}
-	fmt.Printf("rtnstate cmd: %#v\n", cmd)
 	if _, ok := cmd.(*syntax.FuncDecl); ok {
 		return true
 	}
