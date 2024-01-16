@@ -231,7 +231,10 @@ func (bashShellApi) ApplyShellStateDiff(oldState *packet.ShellState, diff *packe
 	rtnState := &packet.ShellState{}
 	var err error
 	rtnState.Version = oldState.Version
-	if diff.Version != rtnState.Version {
+	// work around a bug (before v0.6.0) where version could be invalid.
+	// so only overwrite the oldversion if diff version is valid
+	_, _, diffVersionErr := packet.ParseShellStateVersion(diff.Version)
+	if diffVersionErr == nil {
 		rtnState.Version = diff.Version
 	}
 	rtnState.Cwd = oldState.Cwd

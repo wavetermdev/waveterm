@@ -755,6 +755,10 @@ func FeStateFromShellState(state *packet.ShellState) map[string]string {
 			rtn[key] = val
 		}
 	}
+	_, _, err := packet.ParseShellStateVersion(state.Version)
+	if err != nil {
+		rtn["invalidstate"] = "1"
+	}
 	return rtn
 }
 

@@ -4568,6 +4568,10 @@ class CommandRunner {
         GlobalModel.submitCommand("history", null, null, kwargs, true);
     }
 
+    resetShellState() {
+        GlobalModel.submitCommand("reset", null, null, null, true);
+    }
+
     historyPurgeLines(lines: string[]): Promise<CommandRtnType> {
         let prtn = GlobalModel.submitCommand("history", "purge", lines, { nohist: "1" }, false);
         return prtn;
