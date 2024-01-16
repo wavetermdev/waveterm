@@ -709,11 +709,6 @@ func runWebSocketServer() {
 }
 
 func test() error {
-	err := sstore.RunMigration30()
-	if err != nil {
-		log.Printf("error testing migration30: %v\n", err)
-	}
-	return nil
 }
 
 func sendTelemetryWrapper() {
