@@ -1449,7 +1449,6 @@ func SetReleaseInfo(ctx context.Context, releaseInfo ReleaseInfoType) error {
 
 // Sets the in-memory status indicator for the given screenId to the given value and adds it to the ModelUpdate. By default, the active screen will be ignored when updating status. To force a status update for the active screen, set force=true.
 func SetStatusIndicatorLevel_Update(ctx context.Context, update *ModelUpdate, screenId string, level StatusIndicatorLevel, force bool) error {
-	log.Printf("SetStatusIndicatorLevel_Update %v %v\n", screenId, level)
 	var newStatus StatusIndicatorLevel
 
 	if force {
@@ -1468,7 +1467,6 @@ func SetStatusIndicatorLevel_Update(ctx context.Context, update *ModelUpdate, sc
 		}
 		activeScreenId := bareSession.ActiveScreenId
 		if activeScreenId == screenId {
-			log.Printf("ignoring status update for active screen %v\n", screenId)
 			return nil
 		}
 
@@ -1476,7 +1474,6 @@ func SetStatusIndicatorLevel_Update(ctx context.Context, update *ModelUpdate, sc
 		if ScreenMemCombineIndicatorLevels(screenId, level) {
 			newStatus = GetScreenMemState(screenId).IndicatorType
 		} else {
-			log.Printf("The given level %v is not higher than the current level %v for screen %v, ignoring\n", level, GetScreenMemState(screenId).IndicatorType, screenId)
 			return nil
 		}
 	}
@@ -1491,7 +1488,6 @@ func SetStatusIndicatorLevel_Update(ctx context.Context, update *ModelUpdate, sc
 
 // Sets the in-memory status indicator for the given screenId to the given value and pushes the new value to the FE
 func SetStatusIndicatorLevel(ctx context.Context, screenId string, level StatusIndicatorLevel, force bool) {
-	log.Printf("SetStatusIndicatorLevel %v %v\n", screenId, level)
 	update := &ModelUpdate{}
 	err := SetStatusIndicatorLevel_Update(ctx, update, screenId, level, false)
 	if err != nil {

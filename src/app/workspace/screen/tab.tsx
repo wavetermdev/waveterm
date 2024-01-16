@@ -116,8 +116,6 @@ class ScreenTab extends React.Component<
             statusIndicator = <div className={statusIndicatorClass}></div>;
         }
 
-        console.log(`screen ${screen.screenId} statusIndicator: ${statusIndicator}}`);
-
         return (
             <Reorder.Item
                 ref={this.tabRef}

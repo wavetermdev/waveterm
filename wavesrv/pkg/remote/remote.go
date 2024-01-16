@@ -1664,7 +1664,6 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 	}
 	update, err := sstore.UpdateCmdDoneInfo(context.Background(), donePk.CK, donePk, sstore.CmdStatusDone)
 	if err != nil {
-		log.Printf("error updating cmddone: %v\n", err)
 		msh.WriteToPtyBuffer("*error updating cmddone: %v\n", err)
 		return
 	}
@@ -2103,6 +2102,5 @@ func (msh *MShellProc) GetDisplayName() string {
 // Identify the screen for a given CommandKey and push the given status indicator update for that screen
 func pushStatusIndicatorUpdate(ck *base.CommandKey, level sstore.StatusIndicatorLevel) {
 	screenId := ck.GetGroupId()
-	log.Printf("going to set status indicator level %v for screen %v\n", sstore.StatusIndicatorLevel_Output, screenId)
 	sstore.SetStatusIndicatorLevel(context.Background(), screenId, level, false)
 }

@@ -806,7 +806,6 @@ class Screen {
      */
     setStatusIndicator(indicator: StatusIndicatorLevel): void {
         mobx.action(() => {        
-            console.log(`screen ${this.screenId}, set-status-indicator ${indicator}`);
             this.statusIndicator.set(indicator);
         })();
     }
@@ -4028,7 +4027,6 @@ class Model {
             this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
         }
         if ("screenstatusindicator" in update) {
-            console.log("screenstatusindicatorupdate", update.screenstatusindicator);
             this.getScreenById_single(update.screenstatusindicator.screenid).setStatusIndicator(update.screenstatusindicator.status);
         }
         // console.log("run-update>", Date.now(), interactive, update);
