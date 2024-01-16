@@ -1447,17 +1447,67 @@ func SetReleaseInfo(ctx context.Context, releaseInfo ReleaseInfoType) error {
 	return txErr
 }
 
-// Sets the in-memory status indicator for the given screenId to the given value and updates the frontend
-func SetStatusIndicator(screenId string, statusIndicator StatusIndicatorLevel) {
-	fmt.Println("SetStatusIndicator", screenId, statusIndicator)
-	ScreenMemCombineIndicator(screenId, statusIndicator)
-	newStatus := GetScreenMemState(screenId).IndicatorType
-	fmt.Println("new status", newStatus)
-	update := &ModelUpdate{
-		ScreenStatusIndicator: &ScreenStatusIndicatorType{
-			ScreenId: screenId,
-			Status:   newStatus,
-		},
+// Sets the in-memory status indicator for the given screenId to the given value and adds it to the ModelUpdate. By default, the active screen will be ignored when updating status. To force a status update for the active screen, set force=true.
+func SetStatusIndicatorLevel_Update(ctx context.Context, update *ModelUpdate, screenId string, level StatusIndicatorLevel, force bool) error {
+	log.Printf("SetStatusIndicatorLevel_Update %v %v\n", screenId, level)
+	var newStatus StatusIndicatorLevel
+
+	if force {
+		// Force the update and set the new status to the given level, regardless of the current status or the active screen
+		newStatus = level
+	} else {
+		// Only update the status if the given screen is not the active screen and if the given level is higher than the current level
+		activeSessionId, err := GetActiveSessionId(ctx)
+		if err != nil {
+			return fmt.Errorf("error getting active session id: %w", err)
+		}
+		bareSession, err := GetBareSessionById(ctx, activeSessionId)
+		if err != nil {
+			return fmt.Errorf("error getting bare session: %w", err)
+		}
+		activeScreenId := bareSession.ActiveScreenId
+		if activeScreenId == screenId {
+			log.Printf("ignoring status update for active screen %v\n", screenId)
+			return nil
+		}
+
+		// If we are not forcing the update, follow the rules for combining status indicators
+		if ScreenMemCombineIndicator(screenId, level) {
+			newStatus = GetScreenMemState(screenId).IndicatorType
+		} else {
+			log.Printf("The given level %v is not higher than the current level for screen %v, ignoring\n", level, screenId)
+			return nil
+		}
+	}
+
+	log.Printf("new status %v\n", newStatus)
+	update.ScreenStatusIndicator = &ScreenStatusIndicatorType{
+		ScreenId: screenId,
+		Status:   newStatus,
+	}
+	return nil
+}
+
+// Sets the in-memory status indicator for the given screenId to the given value and pushes the new value to the FE
+func SetStatusIndicatorLevel(ctx context.Context, screenId string, level StatusIndicatorLevel, force bool) {
+	log.Printf("SetStatusIndicatorLevel %v %v\n", screenId, level)
+	update := &ModelUpdate{}
+	err := SetStatusIndicatorLevel_Update(ctx, update, screenId, level, false)
+	if err != nil {
+		log.Printf("error setting status indicator level: %v\n", err)
+		return
 	}
 	MainBus.SendUpdate(update)
+}
+
+// Resets the in-memory status indicator for the given screenId to StatusIndicatorLevel_None and adds it to the ModelUpdate
+func ResetStatusIndicator_Update(update *ModelUpdate, screenId string) error {
+	// We do not need to set context when resetting the status indicator because we will not need to call the DB
+	return SetStatusIndicatorLevel_Update(context.TODO(), update, screenId, StatusIndicatorLevel_None, true)
+}
+
+// Resets the in-memory status indicator for the given screenId to StatusIndicatorLevel_None and pushes the new value to the FE
+func ResetStatusIndicator(screenId string) {
+	// We do not need to set context when resetting the status indicator because we will not need to call the DB
+	SetStatusIndicatorLevel(context.TODO(), screenId, StatusIndicatorLevel_None, true)
 }

@@ -912,6 +912,8 @@ func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, donePk *packet.C
 		return nil, fmt.Errorf("cmd data not found for ck[%s]", ck)
 	}
 
+	update := &ModelUpdate{Cmd: rtnCmd}
+
 	// Update in-memory screen indicator status
 	var indicator StatusIndicatorLevel
 	if rtnCmd.ExitCode == 0 {
@@ -919,9 +921,9 @@ func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, donePk *packet.C
 	} else {
 		indicator = StatusIndicatorLevel_Error
 	}
-	SetStatusIndicator(screenId, indicator)
+	SetStatusIndicatorLevel_Update(ctx, update, screenId, indicator, false)
 
-	return &ModelUpdate{Cmd: rtnCmd}, nil
+	return update, nil
 }
 
 func UpdateCmdRtnState(ctx context.Context, ck base.CommandKey, statePtr ShellStatePtr) error {
@@ -1074,6 +1076,9 @@ func SwitchScreenById(ctx context.Context, sessionId string, screenId string) (*
 	if memState != nil {
 		update.CmdLine = &memState.CmdInputText
 		update.OpenAICmdInfoChat = ScreenMemGetCmdInfoChat(screenId).Messages
+
+		// Clear any previous status indicator for this screen
+		ResetStatusIndicator_Update(update, screenId)
 	}
 	return update, nil
 }

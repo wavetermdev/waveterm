@@ -1550,7 +1550,7 @@ func (msh *MShellProc) AddRunningCmd(rct RunCmdType) {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
 	msh.RunningCmds[rct.RunPacket.CK] = rct
-	sstore.SetStatusIndicator(rct.ScreenId, sstore.StatusIndicatorLevel_Output)
+	log.Printf("going to set status indicator level %v for screen %v\n", sstore.StatusIndicatorLevel_Output, rct.ScreenId)
 }
 
 func (msh *MShellProc) GetRunningCmd(ck base.CommandKey) *RunCmdType {
@@ -1664,6 +1664,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 	}
 	update, err := sstore.UpdateCmdDoneInfo(context.Background(), donePk.CK, donePk, sstore.CmdStatusDone)
 	if err != nil {
+		log.Printf("error updating cmddone: %v\n", err)
 		msh.WriteToPtyBuffer("*error updating cmddone: %v\n", err)
 		return
 	}
@@ -1834,6 +1835,7 @@ func (msh *MShellProc) ProcessPackets() {
 		if pk.GetType() == packet.DataPacketStr {
 			dataPk := pk.(*packet.DataPacketType)
 			runCmdUpdateFn(dataPk.CK, msh.makeHandleDataPacketClosure(dataPk, dataPosMap))
+			go pushStatusIndicatorUpdate(&dataPk.CK, sstore.StatusIndicatorLevel_Output)
 			continue
 		}
 		if pk.GetType() == packet.DataAckPacketStr {
@@ -1843,7 +1845,8 @@ func (msh *MShellProc) ProcessPackets() {
 		}
 		if pk.GetType() == packet.CmdDataPacketStr {
 			dataPacket := pk.(*packet.CmdDataPacketType)
-			msh.WriteToPtyBuffer("cmd-data> [remote %s] [%s] pty=%d run=%d\n", msh.GetRemoteName(), dataPacket.CK, dataPacket.PtyDataLen, dataPacket.RunDataLen)
+			go msh.WriteToPtyBuffer("cmd-data> [remote %s] [%s] pty=%d run=%d\n", msh.GetRemoteName(), dataPacket.CK, dataPacket.PtyDataLen, dataPacket.RunDataLen)
+			go pushStatusIndicatorUpdate(&dataPacket.CK, sstore.StatusIndicatorLevel_Output)
 			continue
 		}
 		if pk.GetType() == packet.CmdDonePacketStr {
@@ -2095,4 +2098,11 @@ func (msh *MShellProc) TryAutoConnect() error {
 func (msh *MShellProc) GetDisplayName() string {
 	rcopy := msh.GetRemoteCopy()
 	return rcopy.GetName()
+}
+
+// Identify the screen for a given CommandKey and push the given status indicator update for that screen
+func pushStatusIndicatorUpdate(ck *base.CommandKey, level sstore.StatusIndicatorLevel) {
+	screenId := ck.GetGroupId()
+	log.Printf("going to set status indicator level %v for screen %v\n", sstore.StatusIndicatorLevel_Output, screenId)
+	sstore.SetStatusIndicatorLevel(context.Background(), screenId, level, false)
 }
