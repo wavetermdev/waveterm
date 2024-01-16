@@ -122,6 +122,7 @@ type RemoteType = {
     local: boolean;
     remove?: boolean;
     shellpref: string;
+    defaultshelltype: string;
 };
 
 type RemoteStateType = {
@@ -137,6 +138,7 @@ type RemoteInstanceType = {
     remoteownerid: string;
     remoteid: string;
     festate: Record<string, string>;
+    shelltype: string;
 
     remove?: boolean;
 };

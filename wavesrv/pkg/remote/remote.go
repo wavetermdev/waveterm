@@ -537,6 +537,7 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		NoInitPk:            msh.ErrNoInitPk,
 		AuthType:            sstore.RemoteAuthTypeNone,
 		ShellPref:           msh.Remote.ShellPref,
+		DefaultShellType:    shellPref,
 	}
 	if msh.Remote.SSHOpts != nil {
 		state.AuthType = msh.Remote.SSHOpts.GetAuthType()

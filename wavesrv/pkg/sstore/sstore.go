@@ -1023,6 +1023,7 @@ type RemoteRuntimeState struct {
 	CanComplete         bool              `json:"cancomplete,omitempty"`
 	ActiveShells        []string          `json:"activeshells,omitempty"`
 	ShellPref           string            `json:"shellpref,omitempty"`
+	DefaultShellType    string            `json:"defaultshelltype,omitempty"`
 }
 
 func (state RemoteRuntimeState) IsConnected() bool {

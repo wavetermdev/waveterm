@@ -1213,6 +1213,7 @@ class Session {
                 remoteid: rptr.remoteid,
                 name: rptr.name,
                 festate: remote.defaultfestate,
+                shelltype: remote.defaultshelltype,
             };
         }
         return null;
