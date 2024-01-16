@@ -104,16 +104,16 @@ class ScreenTab extends React.Component<
             let statusIndicatorClass = null;
             switch (statusIndicatorLevel) {
                 case StatusIndicatorLevel.Output:
-                    statusIndicatorClass = "fa-sharp fa-solid fa-spinner-third status-indicator output";
+                    statusIndicatorClass = "fa-spinner-third output";
                     break;
                 case StatusIndicatorLevel.Success:
-                    statusIndicatorClass = "fa-sharp fa-solid fa-circle-small status-indicator success";
+                    statusIndicatorClass = "fa-circle-small success";
                     break;
                 case StatusIndicatorLevel.Error:
-                    statusIndicatorClass = "fa-sharp fa-solid fa-circle-small status-indicator error";
+                    statusIndicatorClass = "fa-circle-small error";
                     break;
             }
-            statusIndicator = <div className={statusIndicatorClass}></div>;
+            statusIndicator = <div className={`fa-sharp fa-solid status-indicator ${statusIndicatorClass}`}></div>;
         }
 
         return (
