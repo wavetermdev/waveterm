@@ -47,6 +47,10 @@ const LocalRemoteAlias = "local"
 const DefaultCwd = "~"
 const APITokenSentinel = "--apitoken--"
 
+// defined here and not in packet.go since this value should never
+// be passed to waveshell (it should always get resolved prior to sending a run packet)
+const ShellTypePref_Detect = "detect"
+
 const (
 	LineTypeCmd    = "cmd"
 	LineTypeText   = "text"
@@ -1018,6 +1022,7 @@ type RemoteRuntimeState struct {
 	RemoteOpts          *RemoteOptsType   `json:"remoteopts,omitempty"`
 	CanComplete         bool              `json:"cancomplete,omitempty"`
 	ActiveShells        []string          `json:"activeshells,omitempty"`
+	ShellPref           string            `json:"shellpref,omitempty"`
 }
 
 func (state RemoteRuntimeState) IsConnected() bool {
@@ -1072,6 +1077,7 @@ type RemoteType struct {
 	SSHOpts      *SSHOpts          `json:"sshopts"`
 	StateVars    map[string]string `json:"statevars"`
 	SSHConfigSrc string            `json:"sshconfigsrc"`
+	ShellPref    string            `json:"shellpref"` // bash, zsh, or detect
 
 	// OpenAI fields (unused)
 	OpenAIOpts *OpenAIOptsType `json:"openaiopts,omitempty"`
@@ -1129,6 +1135,7 @@ func (r *RemoteType) ToMap() map[string]interface{} {
 	rtn["statevars"] = quickJson(r.StateVars)
 	rtn["sshconfigsrc"] = r.SSHConfigSrc
 	rtn["openaiopts"] = quickJson(r.OpenAIOpts)
+	rtn["shellpref"] = r.ShellPref
 	return rtn
 }
 
@@ -1150,6 +1157,7 @@ func (r *RemoteType) FromMap(m map[string]interface{}) bool {
 	quickSetJson(&r.StateVars, m, "statevars")
 	quickSetStr(&r.SSHConfigSrc, m, "sshconfigsrc")
 	quickSetJson(&r.OpenAIOpts, m, "openaiopts")
+	quickSetStr(&r.ShellPref, m, "shellpref")
 	return true
 }
 
@@ -1312,6 +1320,7 @@ func EnsureLocalRemote(ctx context.Context) error {
 		SSHOpts:             &SSHOpts{Local: true},
 		Local:               true,
 		SSHConfigSrc:        SSHConfigSrcTypeManual,
+		ShellPref:           ShellTypePref_Detect,
 	}
 	err = UpsertRemote(ctx, localRemote)
 	if err != nil {
@@ -1331,6 +1340,7 @@ func EnsureLocalRemote(ctx context.Context) error {
 		RemoteOpts:          &RemoteOptsType{Color: "red"},
 		Local:               true,
 		SSHConfigSrc:        SSHConfigSrcTypeManual,
+		ShellPref:           ShellTypePref_Detect,
 	}
 	err = UpsertRemote(ctx, sudoRemote)
 	if err != nil {

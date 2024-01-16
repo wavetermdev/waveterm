@@ -121,6 +121,7 @@ type RemoteType = {
     remoteopts?: RemoteOptsType;
     local: boolean;
     remove?: boolean;
+    shellpref: string;
 };
 
 type RemoteStateType = {

@@ -1204,6 +1204,7 @@ type RemoteEditArgs struct {
 	Alias         string
 	AutoInstall   bool
 	Color         string
+	ShellPref     string
 	EditMap       map[string]interface{}
 }
 
@@ -1287,9 +1288,15 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 			return nil, fmt.Errorf("invalid alias format")
 		}
 	}
-	shellType := pk.Kwargs["shell"]
-	if shellType != "" && shellType != packet.ShellType_bash && shellType != packet.ShellType_zsh {
-		return nil, fmt.Errorf("invalid shell type %q, must be %s", shellType, formatStrs([]string{packet.ShellType_bash, packet.ShellType_zsh}, "or", false))
+	var shellPref string
+	if isNew {
+		shellPref = sstore.ShellTypePref_Detect
+	}
+	if pk.Kwargs["shellpref"] != "" {
+		shellPref = pk.Kwargs["shellpref"]
+	}
+	if shellPref != "" && shellPref != packet.ShellType_bash && shellPref != packet.ShellType_zsh && shellPref != sstore.ShellTypePref_Detect {
+		return nil, fmt.Errorf("invalid shellpref %q, must be %s", shellPref, formatStrs([]string{packet.ShellType_bash, packet.ShellType_zsh, sstore.ShellTypePref_Detect}, "or", false))
 	}
 	var connectMode string
 	if isNew {
@@ -1345,8 +1352,8 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 		}
 		editMap[sstore.RemoteField_SSHPassword] = sshPassword
 	}
-	if _, found := pk.Kwargs["shell"]; found {
-		editMap[sstore.RemoteField_ShellType] = shellType
+	if _, found := pk.Kwargs["shellpref"]; found {
+		editMap[sstore.RemoteField_ShellPref] = shellPref
 	}
 
 	return &RemoteEditArgs{
@@ -1357,6 +1364,7 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 		CanonicalName: canonicalName,
 		Color:         color,
 		EditMap:       editMap,
+		ShellPref:     shellPref,
 	}, nil
 }
 
@@ -1381,6 +1389,7 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		AutoInstall:         editArgs.AutoInstall,
 		SSHOpts:             editArgs.SSHOpts,
 		SSHConfigSrc:        sstore.SSHConfigSrcTypeManual,
+		ShellPref:           editArgs.ShellPref,
 	}
 	if editArgs.Color != "" {
 		r.RemoteOpts = &sstore.RemoteOptsType{Color: editArgs.Color}

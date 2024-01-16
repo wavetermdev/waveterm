@@ -218,8 +218,8 @@ func UpsertRemote(ctx context.Context, r *RemoteType) error {
 		maxRemoteIdx := tx.GetInt(query)
 		r.RemoteIdx = int64(maxRemoteIdx + 1)
 		query = `INSERT INTO remote
-            ( remoteid, remotetype, remotealias, remotecanonicalname, remoteuser, remotehost, connectmode, autoinstall, sshopts, remoteopts, lastconnectts, archived, remoteidx, local, statevars, sshconfigsrc, openaiopts) VALUES
-            (:remoteid,:remotetype,:remotealias,:remotecanonicalname,:remoteuser,:remotehost,:connectmode,:autoinstall,:sshopts,:remoteopts,:lastconnectts,:archived,:remoteidx,:local,:statevars,:sshconfigsrc,:openaiopts)`
+            ( remoteid, remotetype, remotealias, remotecanonicalname, remoteuser, remotehost, connectmode, autoinstall, sshopts, remoteopts, lastconnectts, archived, remoteidx, local, statevars, sshconfigsrc, openaiopts, shellpref) VALUES
+            (:remoteid,:remotetype,:remotealias,:remotecanonicalname,:remoteuser,:remotehost,:connectmode,:autoinstall,:sshopts,:remoteopts,:lastconnectts,:archived,:remoteidx,:local,:statevars,:sshconfigsrc,:openaiopts,:shellpref)`
 		tx.NamedExec(query, r.ToMap())
 		return nil
 	})
@@ -1733,10 +1733,11 @@ const (
 	RemoteField_SSHKey      = "sshkey"      // string
 	RemoteField_SSHPassword = "sshpassword" // string
 	RemoteField_Color       = "color"       // string
-	RemoteField_ShellType   = "shelltype"   // string
+	RemoteField_ShellPref   = "shellpref"   // string
 )
 
 // editMap: alias, connectmode, autoinstall, sshkey, color, sshpassword (from constants)
+// note that all validation should have already happened outside of this function
 func UpdateRemote(ctx context.Context, remoteId string, editMap map[string]interface{}) (*RemoteType, error) {
 	var rtn *RemoteType
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
@@ -1764,9 +1765,9 @@ func UpdateRemote(ctx context.Context, remoteId string, editMap map[string]inter
 			query = `UPDATE remote SET sshopts = json_set(sshopts, '$.sshpassword', ?) WHERE remoteid = ?`
 			tx.Exec(query, sshPassword, remoteId)
 		}
-		if shellType, found := editMap[RemoteField_ShellType]; found {
-			query = `UPDATE remote SET sshopts = json_set(sshopts, '$.shelltype', ?) WHERE remoteid = ?`
-			tx.Exec(query, shellType, remoteId)
+		if shellPref, found := editMap[RemoteField_ShellPref]; found {
+			query = `UPDATE remote SET shellpref = ? WHERE remoteid = ?`
+			tx.Exec(query, shellPref, remoteId)
 		}
 		if color, found := editMap[RemoteField_Color]; found {
 			query = `UPDATE remote SET remoteopts = json_set(remoteopts, '$.color', ?) WHERE remoteid = ?`

@@ -47,7 +47,6 @@ const RemoteTermRows = 8
 const RemoteTermCols = 80
 const PtyReadBufSize = 100
 const RemoteConnectTimeout = 15 * time.Second
-const ShellTypePref_Detect = "detect"
 
 var envVarsToStrip map[string]bool = map[string]bool{
 	"PROMPT":               true,
@@ -139,7 +138,6 @@ type MShellProc struct {
 	MakeClientDeadline *time.Time
 	StateMap           *server.ShellStateMap
 	NumTryConnect      int
-	ShellPref          string
 	InitPkShellType    string
 
 	// install
@@ -511,10 +509,10 @@ func (msh *MShellProc) tryAutoInstall() {
 func (msh *MShellProc) GetShellPref() string {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
-	if msh.ShellPref == ShellTypePref_Detect {
+	if msh.Remote.ShellPref == sstore.ShellTypePref_Detect {
 		return msh.InitPkShellType
 	}
-	return msh.ShellPref
+	return msh.Remote.ShellPref
 }
 
 func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
@@ -538,6 +536,7 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		Local:               msh.Remote.Local,
 		NoInitPk:            msh.ErrNoInitPk,
 		AuthType:            sstore.RemoteAuthTypeNone,
+		ShellPref:           msh.Remote.ShellPref,
 	}
 	if msh.Remote.SSHOpts != nil {
 		state.AuthType = msh.Remote.SSHOpts.GetAuthType()
@@ -662,7 +661,6 @@ func MakeMShell(r *sstore.RemoteType) *MShellProc {
 		RunningCmds:      make(map[base.CommandKey]RunCmdType),
 		PendingStateCmds: make(map[pendingStateKey]base.CommandKey),
 		StateMap:         server.MakeShellStateMap(),
-		ShellPref:        ShellTypePref_Detect,
 	}
 	rtn.WriteToPtyBuffer("console for connection [%s]\n", r.GetName())
 	return rtn
