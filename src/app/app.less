@@ -640,15 +640,15 @@ a.a-block {
     }
 }
 
-@keyframes infiniteRotate {
-    from {
-        transform:rotate(0deg);
-    }
-    to {
-        transform:rotate(360deg);
-    }
-}
-
 .spin {
     animation: infiniteRotate 2s linear infinite;
+    
+    @keyframes infiniteRotate {
+        from {
+            transform:rotate(0deg);
+        }
+        to {
+            transform:rotate(360deg);
+        }
+    }
 }
