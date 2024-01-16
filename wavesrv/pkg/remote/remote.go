@@ -1122,6 +1122,9 @@ func (msh *MShellProc) ReInit(ctx context.Context, shellType string) (*packet.Sh
 	}
 	ssPk, ok := resp.(*packet.ShellStatePacketType)
 	if !ok {
+		if respPk, ok := resp.(*packet.ResponsePacketType); ok && respPk.Error != "" {
+			return nil, fmt.Errorf("error reinitializing remote: %s", respPk.Error)
+		}
 		return nil, fmt.Errorf("invalid reinit response (not an shellstate packet): %T", resp)
 	}
 	if ssPk.State == nil {

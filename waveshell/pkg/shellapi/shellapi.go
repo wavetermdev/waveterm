@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -21,6 +22,7 @@ import (
 
 	"github.com/alessio/shellescape"
 	"github.com/creack/pty"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
 )
@@ -28,6 +30,7 @@ import (
 const GetStateTimeout = 5 * time.Second
 const GetGitBranchCmdStr = `printf "GITBRANCH %s\x00" "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"`
 const RunCommandFmt = `%s`
+const DebugState = false
 
 var userShellRegexp = regexp.MustCompile(`^UserShell: (.*)$`)
 
@@ -240,4 +243,12 @@ func parsePVarOutput(pvarBytes []byte, isZsh bool) map[string]*DeclareDeclType {
 		declMap[decl.Name] = decl
 	}
 	return declMap
+}
+
+// for debugging (not for production use)
+func writeStateToFile(outputBytes []byte) error {
+	msHome := base.GetMShellHomeDir()
+	stateFileName := path.Join(msHome, "state.txt")
+	os.WriteFile(stateFileName, outputBytes, 0644)
+	return nil
 }

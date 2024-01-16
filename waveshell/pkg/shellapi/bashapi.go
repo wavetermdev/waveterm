@@ -32,6 +32,7 @@ var localBashMajorVersionOnce = &sync.Once{}
 var localBashMajorVersion = ""
 
 var GetBashShellStateCmds = []string{
+	"exec 2> /dev/null;",
 	BashShellVersionCmdStr + ";",
 	`pwd;`,
 	`declare -p $(compgen -A variable);`,

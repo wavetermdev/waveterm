@@ -8,9 +8,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"os"
 	"os/exec"
-	"path"
 	"strings"
 	"sync"
 
@@ -21,6 +19,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/statediff"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 )
 
 const BaseZshOpts = ``
@@ -393,14 +392,6 @@ func GetLocalZshMajorVersion() string {
 	return localZshMajorVersion
 }
 
-// for debugging (not for production use)
-func writeZshStateToFile(outputBytes []byte) error {
-	msHome := base.GetMShellHomeDir()
-	stateFileName := path.Join(msHome, "state.txt")
-	os.WriteFile(stateFileName, outputBytes, 0644)
-	return nil
-}
-
 func EncodeZshMap(m ZshMap) []byte {
 	var buf bytes.Buffer
 	binpack.PackUInt(&buf, uint64(len(m)))
@@ -536,9 +527,9 @@ func makeZshFuncsStrForShellState(fnMap map[ZshParamKey]string) string {
 }
 
 func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
-	// if scbase.IsDevMode() && len(outputBytes) > 0 {
-	// 	writeZshStateToFile(outputBytes)
-	// }
+	if scbase.IsDevMode() && DebugState {
+		writeStateToFile(outputBytes)
+	}
 	firstZeroIdx := bytes.Index(outputBytes, []byte{0})
 	firstDZeroIdx := bytes.Index(outputBytes, []byte{0, 0})
 	if firstZeroIdx == -1 || firstDZeroIdx == -1 {

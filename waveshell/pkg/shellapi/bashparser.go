@@ -15,6 +15,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 	"mvdan.cc/sh/v3/expand"
 	"mvdan.cc/sh/v3/syntax"
 )
@@ -214,6 +215,9 @@ func bashParseDeclareOutput(state *packet.ShellState, declareBytes []byte, pvarB
 }
 
 func parseBashShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
+	if scbase.IsDevMode() && DebugState {
+		writeStateToFile(outputBytes)
+	}
 	// 6 fields: version [0], cwd [1], env/vars [2], aliases [3], funcs [4], pvars [5]
 	fields := bytes.Split(outputBytes, []byte{0, 0})
 	if len(fields) != 6 {
@@ -222,7 +226,7 @@ func parseBashShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
 	rtn := &packet.ShellState{}
 	rtn.Version = strings.TrimSpace(string(fields[0]))
 	if rtn.GetShellType() != packet.ShellType_bash {
-		return nil, fmt.Errorf("invalid bash shell state output, wrong shell type")
+		return nil, fmt.Errorf("invalid bash shell state output, wrong shell type: %q", rtn.Version)
 	}
 	if _, _, err := packet.ParseShellStateVersion(rtn.Version); err != nil {
 		return nil, fmt.Errorf("invalid bash shell state output, invalid version: %v", err)

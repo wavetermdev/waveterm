@@ -790,7 +790,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 	}
 	state := pk.State
 	if state == nil {
-		state = &packet.ShellState{}
+		return nil, fmt.Errorf("invalid run packet, no state")
 	}
 	cmd := MakeShExec(pk.CK, nil, sapi)
 	defer func() {
