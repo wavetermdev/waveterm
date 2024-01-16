@@ -3927,8 +3927,8 @@ class Model {
                 (sdata: ScreenDataType) => sdata.screenid,
                 (sdata: ScreenDataType) => new Screen(sdata)
             );
-            for (const element of mods.removed) {
-                this.removeScreenLinesByScreenId(element);
+            for (const screenId of mods.removed) {
+                this.removeScreenLinesByScreenId(screenId);
             }
         }
         if ("sessions" in update || "activesessionid" in update) {
