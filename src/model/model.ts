@@ -1738,8 +1738,7 @@ class InputModel {
             let curBlockRef = this.codeSelectBlockRefArray[this.codeSelectSelectedIndex.get()];
             let codeText = curBlockRef.current.innerText;
             codeText = codeText.replace(/\n$/, ""); // remove trailing newline
-            let newLineValue = this.getCurLine() + " " + codeText;
-            this.setCurLine(newLineValue);
+            this.setCurLine(codeText);
             this.giveFocus();
         }
     }
