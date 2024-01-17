@@ -282,6 +282,21 @@ type OpenAICmdInfoChatMessageType = {
     userquery?: string;
 };
 
+/**
+ * Levels for the screen status indicator
+ */
+enum StatusIndicatorLevel {
+    None = 0,
+    Output = 1,
+    Success = 2,
+    Error = 3,
+}
+
+type ScreenStatusIndicatorUpdateType = {
+    screenid: string;
+    status: StatusIndicatorLevel;
+}
+
 type ModelUpdateType = {
     interactive: boolean;
     sessions?: SessionDataType[];
@@ -304,6 +319,7 @@ type ModelUpdateType = {
     remoteview?: RemoteViewType;
     openaicmdinfochat?: OpenAICmdInfoChatMessageType[];
     alertmessage?: AlertMessageType;
+    screenstatusindicator?: ScreenStatusIndicatorUpdateType;
 };
 
 type HistoryViewDataType = {
@@ -782,4 +798,9 @@ export type {
     StrWithPos,
     CmdInputTextPacketType,
     OpenAICmdInfoChatMessageType,
+    ScreenStatusIndicatorUpdateType,
+};
+
+export {
+    StatusIndicatorLevel,
 };

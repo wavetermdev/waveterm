@@ -9,7 +9,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import cn from "classnames";
 import { If } from "tsx-control-statements/components";
-import type { RemoteType } from "../../types/types";
+import { RemoteType, StatusIndicatorLevel } from "../../types/types";
 import ReactDOM from "react-dom";
 import { GlobalModel } from "../../model/model";
 
@@ -1246,6 +1246,34 @@ class Modal extends React.Component<ModalProps> {
     }
 }
 
+interface StatusIndicatorProps {
+    level: StatusIndicatorLevel
+    className?: string
+}
+
+class StatusIndicator extends React.Component<StatusIndicatorProps> {
+    render() {
+        const statusIndicatorLevel = this.props.level;
+        let statusIndicator = null;
+        if (statusIndicatorLevel != StatusIndicatorLevel.None) {
+            let statusIndicatorClass = null;
+            switch (statusIndicatorLevel) {
+                case StatusIndicatorLevel.Output:
+                    statusIndicatorClass = "output";
+                    break;
+                case StatusIndicatorLevel.Success:
+                    statusIndicatorClass = "success";
+                    break;
+                case StatusIndicatorLevel.Error:
+                    statusIndicatorClass = "error";
+                    break;
+            }
+            statusIndicator = <div className={`${this.props.className} fa-sharp fa-solid fa-circle-small status-indicator ${statusIndicatorClass}`}></div>;
+        }
+        return statusIndicator;
+    }
+}
+
 export {
     CmdStrCode,
     Toggle,
@@ -1267,4 +1295,5 @@ export {
     LinkButton,
     Status,
     Modal,
+    StatusIndicator,
 };

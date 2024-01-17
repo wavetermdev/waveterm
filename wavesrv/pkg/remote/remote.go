@@ -1910,6 +1910,7 @@ func (msh *MShellProc) ProcessPackets() {
 		if pk.GetType() == packet.DataPacketStr {
 			dataPk := pk.(*packet.DataPacketType)
 			runCmdUpdateFn(dataPk.CK, msh.makeHandleDataPacketClosure(dataPk, dataPosMap))
+			go pushStatusIndicatorUpdate(&dataPk.CK, sstore.StatusIndicatorLevel_Output)
 			continue
 		}
 		if pk.GetType() == packet.DataAckPacketStr {
@@ -1919,7 +1920,8 @@ func (msh *MShellProc) ProcessPackets() {
 		}
 		if pk.GetType() == packet.CmdDataPacketStr {
 			dataPacket := pk.(*packet.CmdDataPacketType)
-			msh.WriteToPtyBuffer("cmd-data> [remote %s] [%s] pty=%d run=%d\n", msh.GetRemoteName(), dataPacket.CK, dataPacket.PtyDataLen, dataPacket.RunDataLen)
+			go msh.WriteToPtyBuffer("cmd-data> [remote %s] [%s] pty=%d run=%d\n", msh.GetRemoteName(), dataPacket.CK, dataPacket.PtyDataLen, dataPacket.RunDataLen)
+			go pushStatusIndicatorUpdate(&dataPacket.CK, sstore.StatusIndicatorLevel_Output)
 			continue
 		}
 		if pk.GetType() == packet.CmdDonePacketStr {
@@ -2184,4 +2186,10 @@ func (msh *MShellProc) TryAutoConnect() error {
 func (msh *MShellProc) GetDisplayName() string {
 	rcopy := msh.GetRemoteCopy()
 	return rcopy.GetName()
+}
+
+// Identify the screen for a given CommandKey and push the given status indicator update for that screen
+func pushStatusIndicatorUpdate(ck *base.CommandKey, level sstore.StatusIndicatorLevel) {
+	screenId := ck.GetGroupId()
+	sstore.SetStatusIndicatorLevel(context.Background(), screenId, level, false)
 }

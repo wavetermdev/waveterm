@@ -10,7 +10,7 @@
 
     &.color-green,
     &.color-default {
-        svg.left-icon path {
+        svg.svg-icon-inner path {
             fill: @tab-green;
         }
 
@@ -34,7 +34,7 @@
     }
 
     &.color-orange {
-        svg.left-icon path {
+        svg.svg-icon-inner path {
             fill: @tab-orange;
         }
 
@@ -54,7 +54,7 @@
     }
 
     &.color-red {
-        svg.left-icon path {
+        svg.svg-icon-inner path {
             fill: @tab-red;
         }
 
@@ -74,7 +74,7 @@
     }
 
     &.color-yellow {
-        svg.left-icon path {
+        svg.svg-icon-inner path {
             fill: @tab-yellow;
         }
 
@@ -94,7 +94,7 @@
     }
 
     &.color-blue {
-        svg.left-icon path {
+        svg.svg-icon-inner path {
             fill: @tab-blue;
         }
 
@@ -114,7 +114,7 @@
     }
 
     &.color-mint {
-        svg.left-icon path {
+        svg.svg-icon-inner path {
             fill: @tab-mint;
         }
 
@@ -134,7 +134,7 @@
     }
 
     &.color-cyan {
-        svg.left-icon path {
+        svg.svg-icon-inner path {
             fill: @tab-cyan;
         }
 
@@ -154,7 +154,7 @@
     }
 
     &.color-white {
-        svg.left-icon path {
+        svg.svg-icon-inner path {
             fill: @tab-white;
         }
 
@@ -174,7 +174,7 @@
     }
 
     &.color-violet {
-        svg.left-icon path {
+        svg.svg-icon-inner path {
             fill: @tab-violet;
         }
 
@@ -194,7 +194,7 @@
     }
 
     &.color-pink {
-        svg.left-icon path {
+        svg.svg-icon-inner path {
             fill: @tab-pink;
         }
 
@@ -240,12 +240,8 @@
         display: flex;
     }
 
-    .screen-tabs {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
+    .screen-tabs-container-inner {
         overflow-x: scroll;
-
         &::-webkit-scrollbar-thumb,
         &::-webkit-scrollbar-track {
             display: none;
@@ -254,32 +250,36 @@
         &:hover::-webkit-scrollbar-thumb {
             display: block;
         }
+    }
+
+    .screen-tabs {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
 
         .screen-tab {
             display: flex;
+            flex-direction: row;
             height: 3em;
             min-width: 14em;
             max-width: 14em;
             align-items: center;
             cursor: pointer;
-            position: relative;
 
-            .icon.svg-icon {
+            .front-icon {
                 margin: 0 12px;
-
-                svg {
-                    width: 14px;
-                    height: 14px;
+                .svg-icon svg {
+                        width: 14px;
+                        height: 14px;
                 }
-            }
-
-            .icon.fa-icon {
-                font-size: 16px;
-                margin: 0 12px;
+                .fa-icon {
+                    font-size: 16px;
+                }
+    
             }
 
             .tab-name {
-                width: 8rem;
+                flex-grow: 1;
             }
 
             &.is-active {
@@ -293,11 +293,26 @@
                 }
             }
 
-            .tab-index,
-            .tab-gear {
-                display: none;
+            .end-icon {
+                margin: 0 6px;
                 .icon {
+                    margin: 0;
+                    padding: 0 6px;
+                    width: 0;
                     border-radius: 50%;
+                }
+                .status-indicator {
+                    display: block;
+                }
+                .tab-gear {
+                    display: none;
+                    // Account for the fact that the ellipsis icon is a little taller than the other icons
+                    margin-bottom: -2px;
+                }
+
+                .tab-index {
+                    display: none;
+                    font-size: 0.9em;
                 }
             }
 
@@ -308,9 +323,14 @@
             }
         }
 
-        &:hover .screen-tab .tab-index {
-            display: block;
-            font-size: 0.8em;
+        &:hover .screen-tab {
+            .tab-index {
+                display: block;
+            }
+
+            .status-indicator {
+                display: none;
+            }
         }
 
         &:hover .screen-tab:hover .tab-index {

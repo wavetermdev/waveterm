@@ -20,7 +20,7 @@ import {
 } from "../util/util";
 import { TermWrap } from "../plugins/terminal/term";
 import { PluginModel } from "../plugins/plugins";
-import type {
+import {
     SessionDataType,
     LineType,
     RemoteType,
@@ -30,19 +30,16 @@ import type {
     CmdDataType,
     FeCmdPacketType,
     TermOptsType,
-    RemoteStateType,
     ScreenDataType,
     ScreenOptsType,
     PtyDataUpdateType,
     ModelUpdateType,
     UpdateMessage,
     InfoType,
-    CmdLineUpdateType,
     UIContextType,
     HistoryInfoType,
     HistoryQueryOpts,
     FeInputPacketType,
-    TermWinSize,
     RemoteInputPacketType,
     ContextMenuOpts,
     RendererContext,
@@ -66,6 +63,7 @@ import type {
     WebCmd,
     WebRemote,
     OpenAICmdInfoChatMessageType,
+    StatusIndicatorLevel,
 } from "../types/types";
 import * as T from "../types/types";
 import { WSControl } from "./ws";
@@ -370,6 +368,7 @@ class Screen {
     shareMode: OV<string>;
     webShareOpts: OV<WebShareOpts>;
     filterRunning: OV<boolean>;
+    statusIndicator: OV<StatusIndicatorLevel>;
 
     constructor(sdata: ScreenDataType) {
         this.sessionId = sdata.sessionid;
@@ -409,6 +408,9 @@ class Screen {
         });
         this.filterRunning = mobx.observable.box(false, {
             name: "screen-filter-running",
+        });
+        this.statusIndicator = mobx.observable.box(StatusIndicatorLevel.None, {
+            name: "screen-status-indicator",
         });
     }
 
@@ -623,9 +625,9 @@ class Screen {
         if (lines == null || lines.length == 0) {
             return null;
         }
-        for (let i = 0; i < lines.length; i++) {
-            if (lines[i].linenum == lineNum) {
-                return lines[i];
+        for (const line of lines) {
+            if (line.linenum == lineNum) {
+                return line;
             }
         }
         return null;
@@ -643,9 +645,9 @@ class Screen {
         if (lines == null || lines.length == 0) {
             return null;
         }
-        for (let i = 0; i < lines.length; i++) {
-            if (lines[i].lineid == lineId) {
-                return lines[i];
+        for (const line of lines) {
+            if (line.lineid == lineId) {
+                return line;
             }
         }
         return null;
@@ -663,8 +665,7 @@ class Screen {
         if (lineNum == 0) {
             return null;
         }
-        for (let i = 0; i < lines.length; i++) {
-            let line = lines[i];
+        for (const line of lines) {
             if (line.linenum == lineNum) {
                 return lineNum;
             }
@@ -797,6 +798,16 @@ class Screen {
         } else if (focus && this.focusType.get() == "input") {
             GlobalCommandRunner.screenSetFocus("cmd");
         }
+    }
+
+    /**
+     * Set the status indicator for the screen.
+     * @param indicator The value of the status indicator. One of "none", "error", "success", "output".
+     */
+    setStatusIndicator(indicator: StatusIndicatorLevel): void {
+        mobx.action(() => {        
+            this.statusIndicator.set(indicator);
+        })();
     }
 
     termCustomKeyHandlerInternal(e: any, termWrap: TermWrap): void {
@@ -1192,8 +1203,7 @@ class Session {
         if (rptr.name.startsWith("*")) {
             screenId = "";
         }
-        for (let i = 0; i < this.remoteInstances.length; i++) {
-            let rdata = this.remoteInstances[i];
+        for (const rdata of this.remoteInstances) {
             if (
                 rdata.screenid == screenId &&
                 rdata.remoteid == rptr.remoteid &&
@@ -3946,8 +3956,8 @@ class Model {
                 (sdata: ScreenDataType) => sdata.screenid,
                 (sdata: ScreenDataType) => new Screen(sdata)
             );
-            for (let i = 0; i < mods.removed.length; i++) {
-                this.removeScreenLinesByScreenId(mods.removed[i]);
+            for (const screenId of mods.removed) {
+                this.removeScreenLinesByScreenId(screenId);
             }
         }
         if ("sessions" in update || "activesessionid" in update) {
@@ -4045,6 +4055,9 @@ class Model {
         }
         if ("openaicmdinfochat" in update) {
             this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
+        }
+        if ("screenstatusindicator" in update) {
+            this.getScreenById_single(update.screenstatusindicator.screenid).setStatusIndicator(update.screenstatusindicator.status);
         }
         // console.log("run-update>", Date.now(), interactive, update);
     }

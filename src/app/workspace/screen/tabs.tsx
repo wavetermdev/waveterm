@@ -191,26 +191,29 @@ class ScreenTabs extends React.Component<
 
         return (
             <div className="screen-tabs-container">
-                <Reorder.Group
-                    className="screen-tabs"
-                    ref={this.tabsRef}
-                    as="ul"
-                    axis="x"
-                    onReorder={(tabs: Screen[]) => {
-                        this.setState({ showingScreens: tabs });
-                    }}
-                    values={showingScreens}
-                >
-                    <For each="screen" index="index" of={showingScreens}>
-                        <ScreenTab
-                            key={screen.screenId}
-                            screen={screen}
-                            activeScreenId={activeScreenId}
-                            index={index}
-                            onSwitchScreen={this.handleSwitchScreen}
-                        />
-                    </For>
-                </Reorder.Group>
+                {/* Inner container ensures that hovering over the scrollbar doesn't trigger the hover effect on the tabs. This prevents weird flickering of the icons when the mouse is moved over the scrollbar. */}
+                <div className="screen-tabs-container-inner">
+                    <Reorder.Group
+                        className="screen-tabs"
+                        ref={this.tabsRef}
+                        as="ul"
+                        axis="x"
+                        onReorder={(tabs: Screen[]) => {
+                            this.setState({ showingScreens: tabs });
+                        }}
+                        values={showingScreens}
+                    >
+                        <For each="screen" index="index" of={showingScreens}>
+                            <ScreenTab
+                                key={screen.screenId}
+                                screen={screen}
+                                activeScreenId={activeScreenId}
+                                index={index}
+                                onSwitchScreen={this.handleSwitchScreen}
+                            />
+                        </For>
+                    </Reorder.Group>
+                </div>
                 <div key="new-screen" className="new-screen" onClick={this.handleNewScreen}>
                     <AddIcon className="icon hoverEffect" />
                 </div>

@@ -187,10 +187,7 @@ class MainSideBar extends React.Component<{}, {}> {
                 activeRemoteId = rptr.remoteid;
             }
         }
-        let session: Session = null;
         let remotes = model.remotes ?? [];
-        let remote: RemoteType = null;
-        let idx: number = 0;
         remotes = sortAndFilterRemotes(remotes);
         let sessionList = [];
         for (let session of model.sessionList) {
@@ -199,7 +196,6 @@ class MainSideBar extends React.Component<{}, {}> {
             }
         }
         let isCollapsed = this.collapsed.get();
-        let mainView = GlobalModel.activeMainView.get();
         let clientData = GlobalModel.clientData.get();
         let needsUpdate = false;
         if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {

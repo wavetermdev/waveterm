@@ -18,19 +18,14 @@ import (
 var MemLock *sync.Mutex = &sync.Mutex{}
 var ScreenMemStore map[string]*ScreenMemState = make(map[string]*ScreenMemState) // map of screenid -> ScreenMemState
 
-const (
-	ScreenIndicator_None    = ""
-	ScreenIndicator_Error   = "error"
-	ScreenIndicator_Success = "success"
-	ScreenIndicator_Output  = "output"
-)
+type StatusIndicatorLevel int
 
-var screenIndicatorLevels map[string]int = map[string]int{
-	ScreenIndicator_None:    0,
-	ScreenIndicator_Output:  1,
-	ScreenIndicator_Success: 2,
-	ScreenIndicator_Error:   3,
-}
+const (
+	StatusIndicatorLevel_None StatusIndicatorLevel = iota
+	StatusIndicatorLevel_Output
+	StatusIndicatorLevel_Success
+	StatusIndicatorLevel_Error
+)
 
 func dumpScreenMemStore() {
 	MemLock.Lock()
@@ -40,11 +35,6 @@ func dumpScreenMemStore() {
 	}
 }
 
-// returns true if i1 > i2
-func isIndicatorGreater(i1 string, i2 string) bool {
-	return screenIndicatorLevels[i1] > screenIndicatorLevels[i2]
-}
-
 type OpenAICmdInfoChatStore struct {
 	MessageCount int                                `json:"messagecount"`
 	Messages     []*packet.OpenAICmdInfoChatMessage `json:"messages"`
@@ -52,7 +42,7 @@ type OpenAICmdInfoChatStore struct {
 
 type ScreenMemState struct {
 	NumRunningCommands int                     `json:"numrunningcommands,omitempty"`
-	IndicatorType      string                  `json:"indicatortype,omitempty"`
+	StatusIndicator    StatusIndicatorLevel    `json:"statusindicator,omitempty"`
 	CmdInputText       utilfn.StrWithPos       `json:"cmdinputtext,omitempty"`
 	CmdInputSeqNum     int                     `json:"cmdinputseqnum,omitempty"`
 	AICmdInfoChat      *OpenAICmdInfoChatStore `json:"aicmdinfochat,omitempty"`
@@ -172,15 +162,30 @@ func ScreenMemSetNumRunningCommands(screenId string, num int) {
 	ScreenMemStore[screenId].NumRunningCommands = num
 }
 
-func ScreenMemCombineIndicator(screenId string, indicator string) {
+// If the new indicator level is higher than the current indicator, update the current indicator. Returns the new indicator level.
+func ScreenMemCombineIndicatorLevels(screenId string, level StatusIndicatorLevel) StatusIndicatorLevel {
 	MemLock.Lock()
 	defer MemLock.Unlock()
 	if ScreenMemStore[screenId] == nil {
 		ScreenMemStore[screenId] = &ScreenMemState{}
 	}
-	if isIndicatorGreater(indicator, ScreenMemStore[screenId].IndicatorType) {
-		ScreenMemStore[screenId].IndicatorType = indicator
+	curLevel := ScreenMemStore[screenId].StatusIndicator
+	if level > curLevel {
+		ScreenMemStore[screenId].StatusIndicator = level
+		return level
+	} else {
+		return curLevel
 	}
+}
+
+// Set the indicator to the given level, regardless of the current indicator level.
+func ScreenMemSetIndicatorLevel(screenId string, level StatusIndicatorLevel) {
+	MemLock.Lock()
+	defer MemLock.Unlock()
+	if ScreenMemStore[screenId] == nil {
+		ScreenMemStore[screenId] = &ScreenMemState{}
+	}
+	ScreenMemStore[screenId].StatusIndicator = StatusIndicatorLevel_None
 }
 
 // safe because we return a copy
