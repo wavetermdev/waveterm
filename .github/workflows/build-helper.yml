@@ -71,7 +71,9 @@ jobs:
                     waveshell/go.sum
                     scripthaus/go.sum
             - working-directory: scripthaus
-              run: CGO_ENABLED=1 go build -o ../scripthaus cmd/main.go
+              run: |
+                go mod download
+                CGO_ENABLED=1 go build -o ../scripthaus cmd/main.go
             - uses: actions/setup-node@v4
               with:
                 node-version: ${{env.NODE_VERSION}}
