@@ -164,7 +164,6 @@ class MainSideBar extends React.Component<{}, {}> {
                 >
                     <span className="index">{index + 1}</span>
                     <span className="truncate sessionName">{session.name.get()}</span>
-                    <StatusIndicator level={this.getStatusIndicator(session.sessionId)} />
                     <ActionsIcon
                         className="icon hoverEffect actions"
                         onClick={(e) => this.openSessionSettings(e, session)}
@@ -172,12 +171,6 @@ class MainSideBar extends React.Component<{}, {}> {
                 </div>
             );
         });
-    }
-
-    @mobx.computed
-    getStatusIndicator(sessionId: string): StatusIndicatorLevel {
-        const screens = GlobalModel.getSessionScreens(sessionId);
-        return Math.max(...screens.map((s) => s.statusIndicator.get()));
     }
 
     render() {
