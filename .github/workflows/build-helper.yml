@@ -71,6 +71,7 @@ jobs:
                     waveshell/go.sum
                     scripthaus/go.sum
             - run: |
+                go work use ./scripthaus;
                 cd scripthaus;
                 pwd;
                 ls -l;
