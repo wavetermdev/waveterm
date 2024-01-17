@@ -6,7 +6,7 @@
 
     &:first-child {
         border-radius: 8px 0px 0px 0px;
-        padding-left: 2px;
+        padding-left: 5px;
     }
 
     &.color-green,
@@ -268,7 +268,7 @@
             cursor: pointer;
 
             .front-icon {
-                margin: 0 6px 0 6px;
+                margin: 0 5px 0 5px;
                 .svg-icon svg {
                     width: 14px;
                     height: 14px;
@@ -281,6 +281,7 @@
 
             .tab-name {
                 flex-grow: 1;
+                margin-right: 5px;
             }
 
             &.is-active {
@@ -296,19 +297,20 @@
 
             // Only one of these will be visible at a time
             .end-icon {
-                margin: 0 6px 0 0;
                 .status-indicator {
                     display: block;
                     // The status indicator is a little shorter than the text; this raises it up a bit so it's more centered vertically
                     padding-bottom: 1px;
                     margin-top: -1px;
+                    margin-right: 9px;
                 }
                 .tab-gear {
                     display: none;
                     .icon {    
                         // The ellipsis icon is a little narrower than the other icons; this pushes it to the right a bit so it's more centered horizontally
-                        padding: 0 8px 0 0;
-                        margin: 0 0 -2px 0;
+                        // Using padding instead of margin so the clickable area is larger
+                        padding: 0 14px 0 0;
+                        margin: 0 0 -4px 0;
                         width: 0;
                         border-radius: 50%;
                     }
@@ -316,6 +318,9 @@
                 .tab-index {
                     display: none;
                     font-size: 0.9em;
+                    // Slightly less padding to account for its width.
+                    margin-left: -1px;
+                    padding-right: 5px;
                 }
             }
 
