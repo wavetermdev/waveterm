@@ -190,12 +190,16 @@
                 display: inline-block;
                 margin-right: 0;
                 padding: 0.2em 0.7rem;
-                opacity: 0.5;
-                cursor: pointer;
                 border-radius: 4px;
                 vertical-align: super;
-                &:hover {
-                    opacity: 1;
+
+                .hint-elem {
+                    cursor: pointer;
+                    opacity: 0.5;
+
+                    &:hover {
+                        opacity: 1.0;
+                    }
                 }
             }
         }

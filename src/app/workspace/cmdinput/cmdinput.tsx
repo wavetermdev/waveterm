@@ -75,6 +75,14 @@ class CmdInput extends React.Component<{}, {}> {
     }
 
     @boundMethod
+    clickAIHint(e: any): void {
+        e.preventDefault();
+        e.stopPropagation();
+        let inputModel = GlobalModel.inputModel;
+        inputModel.openAIAssistantChat();
+    }
+
+    @boundMethod
     clickHistoryHint(e: any): void {
         e.preventDefault();
         e.stopPropagation();
@@ -218,12 +226,18 @@ class CmdInput extends React.Component<{}, {}> {
                             </div>**/}
                         {!focusVal && (
                             <div onClick={this.clickFocusInputHint} className="cmd-btn hoverEffect">
-                                focus input ({renderCmdText("I")})
+                                <div className="hint-elem">focus input ({renderCmdText("I")})</div>
                             </div>
                         )}
                         {focusVal && (
-                            <div onMouseDown={this.clickHistoryHint} className="cmd-btn hoverEffect">
-                                {historyShow ? "close (esc)" : "history (ctrl-r)"}
+                            <div className="cmd-btn hoverEffect">
+                                <If condition={historyShow}>
+                                    <div className="hint-elem" onMouseDown={this.clickHistoryHint}>close (esc)</div>
+                                </If>
+                                <If condition={!historyShow}>
+                                    <div className="hint-elem" onMouseDown={this.clickHistoryHint}>history (ctrl-r)</div>
+                                    <div className="hint-elem" onMouseDown={this.clickAIHint}>AI (ctrl-space)</div>
+                                </If>
                             </div>
                         )}
                         <ExecIcon
