@@ -1,7 +1,7 @@
-name: "Build MacOS x64"
+name: "Build Helper"
 on: workflow_dispatch
 env:
-    WAVETERM_VERSION: 0.5.3
+    WAVETERM_VERSION: 0.6.0
     GO_VERSION: '1.21.5'
     NODE_VERSION: '21.5.0'
 jobs:
@@ -30,6 +30,7 @@ jobs:
                 path: out/make/zip/darwin/x64/*.zip
                 retention-days: 2
     runbuild-arm64:
+        if: false
         name: "Build MacOS arm64"
         runs-on: macos-latest-xlarge
         steps:
@@ -52,6 +53,35 @@ jobs:
               with:
                 name: waveterm-build-darwin-arm64
                 path: out/make/zip/darwin/arm64/*.zip
+                retention-days: 2
+    runbuild-linux:
+        name: "Build Linux x64"
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/checkout@v4
+              with:
+                repository: scripthaus-dev/scripthaus
+                path: scripthaus
+            - working-directory: scripthaus
+              run: CGO_ENABLED=1 go build -o ../scripthaus cmd/main.go
+            - uses: actions/setup-go@v4
+              with:
+                go-version: ${{env.GO_VERSION}}
+                cache-dependency-path: |
+                    wavesrv/go.sum
+                    waveshell/go.sum
+                    scripthaus/go.sum
+            - uses: actions/setup-node@v4
+              with:
+                node-version: ${{env.NODE_VERSION}}
+                cache: 'yarn'
+            - run: yarn --frozen-lockfile
+            - run: scripthaus run build-package-linux
+            - uses: actions/upload-artifact@v3
+              with:
+                name: waveterm-build-linux-x64
+                path: out/make/zip/linux/x64/*.zip
                 retention-days: 2
 
 

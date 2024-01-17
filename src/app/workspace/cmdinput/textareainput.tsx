@@ -591,7 +591,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         let screen = GlobalModel.getActiveScreen();
         if (screen != null) {
             let ri = screen.getCurRemoteInstance();
-            console.log("got ri", ri);
             if (ri != null && ri.shelltype != null) {
                 shellType = ri.shelltype;
             }
