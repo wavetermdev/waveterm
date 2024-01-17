@@ -124,9 +124,11 @@ class ScreenTab extends React.Component<
                     {screen.name.get()}
                 </div>
                 <div className="end-icon">
-                    <StatusIndicator level={statusIndicatorLevel} />
-                    {tabIndex}
-                    {settings}
+                    <div className="end-icon-inner">
+                        <StatusIndicator level={statusIndicatorLevel}/>
+                        {tabIndex}
+                        {settings}
+                    </div>
                 </div>
             </Reorder.Item>
         );
