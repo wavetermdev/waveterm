@@ -1240,8 +1240,8 @@ class Modal extends React.Component<ModalProps> {
 }
 
 interface StatusIndicatorProps {
-    level: StatusIndicatorLevel;
-    className?: string;
+    level: StatusIndicatorLevel
+    className?: string
 }
 
 class StatusIndicator extends React.Component<StatusIndicatorProps> {
