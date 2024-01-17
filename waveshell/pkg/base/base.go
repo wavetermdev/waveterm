@@ -30,7 +30,7 @@ const SSHCommandVarName = "SSH_COMMAND"
 const MShellDebugVarName = "MSHELL_DEBUG"
 const SessionsDirBaseName = "sessions"
 const RcFilesDirBaseName = "rcfiles"
-const MShellVersion = "v0.3.0"
+const MShellVersion = "v0.4.0"
 const RemoteIdFile = "remoteid"
 const DefaultMShellInstallBinDir = "/opt/mshell/bin"
 const LogFileName = "mshell.log"
@@ -39,12 +39,21 @@ const ForceDebugLog = false
 const DebugFlag_LogRcFile = "logrc"
 const LogRcFileName = "debug.rcfile"
 
+const (
+	ProcessType_Unknown         = "unknown"
+	ProcessType_WaveSrv         = "wavesrv"
+	ProcessType_WaveShellSingle = "waveshell-single"
+	ProcessType_WaveShellServer = "waveshell-server"
+)
+
 // keys are sessionids (also the key RcFilesDirBaseName)
 var ensureDirCache = make(map[string]bool)
 var baseLock = &sync.Mutex{}
 var DebugLogEnabled = false
 var DebugLogger *log.Logger
 var BuildTime string = "0"
+
+var ProcessType string = ProcessType_Unknown
 
 type CommandFileNames struct {
 	PtyOutFile    string
@@ -56,6 +65,10 @@ type CommandKey string
 
 func SetBuildTime(build string) {
 	BuildTime = build
+}
+
+func IsWaveSrv() bool {
+	return ProcessType == ProcessType_WaveSrv
 }
 
 func MakeCommandKey(sessionId string, cmdId string) CommandKey {

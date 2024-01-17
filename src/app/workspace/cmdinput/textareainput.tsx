@@ -5,6 +5,8 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import type * as T from "../../../types/types";
+import * as util from "../../../util/util";
+import { If } from "tsx-control-statements/components";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, Screen } from "../../../model/model";
@@ -585,8 +587,24 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         let computedInnerHeight = displayLines * (termFontSize * 1.5) + 2 * 0.5 * termFontSize;
         // inner height + 2*1em padding
         let computedOuterHeight = computedInnerHeight + 2 * 1.0 * termFontSize;
+        let shellType: string = "";
+        let screen = GlobalModel.getActiveScreen();
+        if (screen != null) {
+            let ri = screen.getCurRemoteInstance();
+            console.log("got ri", ri);
+            if (ri != null && ri.shelltype != null) {
+                shellType = ri.shelltype;
+            }
+        }
         return (
-            <div className="control is-expanded" ref={this.controlRef} style={{ height: computedOuterHeight }}>
+            <div
+                className="textareainput-div control is-expanded"
+                ref={this.controlRef}
+                style={{ height: computedOuterHeight }}
+            >
+                <If condition={!disabled && !util.isBlank(shellType)}>
+                    <div className="shelltag">{shellType}</div>
+                </If>
                 <textarea
                     key="main"
                     ref={this.mainInputRef}

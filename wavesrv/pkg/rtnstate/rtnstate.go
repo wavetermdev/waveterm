@@ -11,10 +11,11 @@ import (
 
 	"github.com/alessio/shellescape"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
-	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/simpleexpand"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
 	"mvdan.cc/sh/v3/syntax"
 )
 
@@ -106,27 +107,95 @@ const MaxDiffKeyLen = 40
 const MaxDiffValLen = 50
 
 var IgnoreVars = map[string]bool{
-	"PROMPT":            true,
-	"PROMPT_VERSION":    true,
-	"MSHELL":            true,
-	"MSHELL_VERSION":    true,
-	"WAVESHELL":         true,
-	"WAVESHELL_VERSION": true,
+	"PROMPT":               true,
+	"PROMPT_VERSION":       true,
+	"MSHELL":               true,
+	"MSHELL_VERSION":       true,
+	"WAVESHELL":            true,
+	"WAVESHELL_VERSION":    true,
+	"WAVETERM":             true,
+	"WAVETERM_VERSION":     true,
+	"TERM_PROGRAM":         true,
+	"TERM_PROGRAM_VERSION": true,
+	"TERM_SESSION_ID":      true,
 }
 
-func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newState packet.ShellState) {
+func makeBashAliasesDiff(buf *bytes.Buffer, oldAliases string, newAliases string) {
+	newAliasMap, _ := ParseAliases(newAliases)
+	oldAliasMap, _ := ParseAliases(oldAliases)
+	for aliasName, newAliasVal := range newAliasMap {
+		oldAliasVal, found := oldAliasMap[aliasName]
+		if !found || newAliasVal != oldAliasVal {
+			buf.WriteString(fmt.Sprintf("alias %s\n", utilfn.EllipsisStr(shellescape.Quote(aliasName), MaxDiffKeyLen)))
+		}
+	}
+	for aliasName := range oldAliasMap {
+		_, found := newAliasMap[aliasName]
+		if !found {
+			buf.WriteString(fmt.Sprintf("unalias %s\n", utilfn.EllipsisStr(shellescape.Quote(aliasName), MaxDiffKeyLen)))
+		}
+	}
+}
+
+func makeZshAlisesDiff(buf *bytes.Buffer, oldAliases string, newAliases string) {
+	newAliasMap, err := shellapi.DecodeZshMap([]byte(newAliases))
+	if err != nil {
+		return
+	}
+	oldAliasMap, err := shellapi.DecodeZshMap([]byte(oldAliases))
+	if err != nil {
+		return
+	}
+	for aliasKey, newAliasVal := range newAliasMap {
+		oldAliasVal, found := oldAliasMap[aliasKey]
+		if !found || newAliasVal != oldAliasVal {
+			buf.WriteString(fmt.Sprintf("%s %s=%s\n", aliasKey.ParamType, aliasKey.ParamName, utilfn.EllipsisStr(shellescape.Quote(newAliasVal), MaxDiffKeyLen)))
+		}
+	}
+	for aliasKey := range oldAliasMap {
+		_, found := newAliasMap[aliasKey]
+		if !found {
+			buf.WriteString(fmt.Sprintf("remove %s %s\n", aliasKey.ParamType, aliasKey.ParamName))
+		}
+	}
+}
+
+func makeZshFuncsDiff(buf *bytes.Buffer, oldFuncs string, newFuncs string) {
+	newFuncMap, err := shellapi.DecodeZshMap([]byte(newFuncs))
+	if err != nil {
+		return
+	}
+	oldFuncMap, err := shellapi.DecodeZshMap([]byte(oldFuncs))
+	if err != nil {
+		return
+	}
+	for funcKey, newFuncVal := range newFuncMap {
+		oldFuncVal, found := oldFuncMap[funcKey]
+		if !found || newFuncVal != oldFuncVal {
+			buf.WriteString(fmt.Sprintf("%s %s\n", funcKey.ParamType, funcKey.ParamName))
+		}
+	}
+	for funcKey := range oldFuncMap {
+		_, found := newFuncMap[funcKey]
+		if !found {
+			buf.WriteString(fmt.Sprintf("remove %s %s\n", funcKey.ParamType, funcKey.ParamName))
+		}
+	}
+}
+
+func DisplayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newState packet.ShellState) {
 	if newState.Cwd != oldState.Cwd {
 		buf.WriteString(fmt.Sprintf("cwd %s\n", newState.Cwd))
 	}
 	if !bytes.Equal(newState.ShellVars, oldState.ShellVars) {
-		newEnvMap := shexec.DeclMapFromState(&newState)
-		oldEnvMap := shexec.DeclMapFromState(&oldState)
+		newEnvMap := shellenv.DeclMapFromState(&newState)
+		oldEnvMap := shellenv.DeclMapFromState(&oldState)
 		for key, newVal := range newEnvMap {
 			if IgnoreVars[key] {
 				continue
 			}
 			oldVal, found := oldEnvMap[key]
-			if !found || !shexec.DeclsEqual(false, oldVal, newVal) {
+			if !found || !shellenv.DeclsEqual(false, oldVal, newVal) {
 				var exportStr string
 				if newVal.IsExport() {
 					exportStr = "export "
@@ -134,7 +203,7 @@ func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newSt
 				buf.WriteString(fmt.Sprintf("%s%s=%s\n", exportStr, utilfn.EllipsisStr(key, MaxDiffKeyLen), utilfn.EllipsisStr(newVal.Value, MaxDiffValLen)))
 			}
 		}
-		for key, _ := range oldEnvMap {
+		for key := range oldEnvMap {
 			if IgnoreVars[key] {
 				continue
 			}
@@ -144,36 +213,31 @@ func displayStateUpdateDiff(buf *bytes.Buffer, oldState packet.ShellState, newSt
 			}
 		}
 	}
-	if newState.Aliases != oldState.Aliases {
-		newAliasMap, _ := ParseAliases(newState.Aliases)
-		oldAliasMap, _ := ParseAliases(oldState.Aliases)
-		for aliasName, newAliasVal := range newAliasMap {
-			oldAliasVal, found := oldAliasMap[aliasName]
-			if !found || newAliasVal != oldAliasVal {
-				buf.WriteString(fmt.Sprintf("alias %s\n", utilfn.EllipsisStr(shellescape.Quote(aliasName), MaxDiffKeyLen)))
-			}
-		}
-		for aliasName, _ := range oldAliasMap {
-			_, found := newAliasMap[aliasName]
-			if !found {
-				buf.WriteString(fmt.Sprintf("unalias %s\n", utilfn.EllipsisStr(shellescape.Quote(aliasName), MaxDiffKeyLen)))
-			}
+	if newState.GetShellType() == packet.ShellType_zsh {
+		makeZshAlisesDiff(buf, oldState.Aliases, newState.Aliases)
+		makeZshFuncsDiff(buf, oldState.Funcs, newState.Funcs)
+	} else {
+		makeBashAliasesDiff(buf, oldState.Aliases, newState.Aliases)
+		makeBashFuncsDiff(newState, oldState, buf)
+	}
+}
+
+func makeBashFuncsDiff(newState packet.ShellState, oldState packet.ShellState, buf *bytes.Buffer) {
+	if newState.Funcs == oldState.Funcs {
+		return
+	}
+	newFuncMap, _ := ParseFuncs(newState.Funcs)
+	oldFuncMap, _ := ParseFuncs(oldState.Funcs)
+	for funcName, newFuncVal := range newFuncMap {
+		oldFuncVal, found := oldFuncMap[funcName]
+		if !found || newFuncVal != oldFuncVal {
+			buf.WriteString(fmt.Sprintf("function %s\n", utilfn.EllipsisStr(shellescape.Quote(funcName), MaxDiffKeyLen)))
 		}
 	}
-	if newState.Funcs != oldState.Funcs {
-		newFuncMap, _ := ParseFuncs(newState.Funcs)
-		oldFuncMap, _ := ParseFuncs(oldState.Funcs)
-		for funcName, newFuncVal := range newFuncMap {
-			oldFuncVal, found := oldFuncMap[funcName]
-			if !found || newFuncVal != oldFuncVal {
-				buf.WriteString(fmt.Sprintf("function %s\n", utilfn.EllipsisStr(shellescape.Quote(funcName), MaxDiffKeyLen)))
-			}
-		}
-		for funcName, _ := range oldFuncMap {
-			_, found := newFuncMap[funcName]
-			if !found {
-				buf.WriteString(fmt.Sprintf("unset -f %s\n", utilfn.EllipsisStr(shellescape.Quote(funcName), MaxDiffKeyLen)))
-			}
+	for funcName := range oldFuncMap {
+		_, found := newFuncMap[funcName]
+		if !found {
+			buf.WriteString(fmt.Sprintf("unset -f %s\n", utilfn.EllipsisStr(shellescape.Quote(funcName), MaxDiffKeyLen)))
 		}
 	}
 }
@@ -201,6 +265,6 @@ func GetRtnStateDiff(ctx context.Context, screenId string, lineId string) ([]byt
 	if err != nil {
 		return nil, fmt.Errorf("getting rtn full state: %v", err)
 	}
-	displayStateUpdateDiff(&outputBytes, *initialState, *rtnState)
+	DisplayStateUpdateDiff(&outputBytes, *initialState, *rtnState)
 	return outputBytes.Bytes(), nil
 }

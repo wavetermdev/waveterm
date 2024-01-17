@@ -17,22 +17,12 @@ import {
     Screen,
     Session,
 } from "../../../model/model";
-import {
-    Toggle,
-    InlineSettingsTextEdit,
-    SettingsError,
-    InfoMessage,
-    Modal,
-    Dropdown,
-    Tooltip,
-    Button,
-} from "../common";
+import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage, Modal, Dropdown, Tooltip } from "../common";
 import { LineType, RendererPluginType, ClientDataType, CommandRtnType, RemoteType } from "../../../types/types";
 import { PluginModel } from "../../../plugins/plugins";
 import * as util from "../../../util/util";
 import { commandRtnHandler } from "../../../util/util";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
-import { ReactComponent as AngleDownIcon } from "../../assets/icons/history/angle-down.svg";
 import { ReactComponent as GlobeIcon } from "../../assets/icons/globe.svg";
 import { ReactComponent as StatusCircleIcon } from "../../assets/icons/statuscircle.svg";
 

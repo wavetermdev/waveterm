@@ -30,6 +30,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 
+	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/server"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/cmdrunner"
@@ -802,6 +803,7 @@ func doShutdown(reason string) {
 
 func main() {
 	scbase.BuildTime = BuildTime
+	base.ProcessType = base.ProcessType_WaveSrv
 
 	if len(os.Args) >= 2 && os.Args[1] == "--test" {
 		log.Printf("running test fn\n")

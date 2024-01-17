@@ -18,7 +18,8 @@ import (
 	"github.com/sawka/txwrap"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
-	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 )
@@ -217,8 +218,8 @@ func UpsertRemote(ctx context.Context, r *RemoteType) error {
 		maxRemoteIdx := tx.GetInt(query)
 		r.RemoteIdx = int64(maxRemoteIdx + 1)
 		query = `INSERT INTO remote
-            ( remoteid, remotetype, remotealias, remotecanonicalname, remoteuser, remotehost, connectmode, autoinstall, sshopts, remoteopts, lastconnectts, archived, remoteidx, local, statevars, sshconfigsrc, openaiopts) VALUES
-            (:remoteid,:remotetype,:remotealias,:remotecanonicalname,:remoteuser,:remotehost,:connectmode,:autoinstall,:sshopts,:remoteopts,:lastconnectts,:archived,:remoteidx,:local,:statevars,:sshconfigsrc,:openaiopts)`
+            ( remoteid, remotetype, remotealias, remotecanonicalname, remoteuser, remotehost, connectmode, autoinstall, sshopts, remoteopts, lastconnectts, archived, remoteidx, local, statevars, sshconfigsrc, openaiopts, shellpref) VALUES
+            (:remoteid,:remotetype,:remotealias,:remotecanonicalname,:remoteuser,:remotehost,:connectmode,:autoinstall,:sshopts,:remoteopts,:lastconnectts,:archived,:remoteidx,:local,:statevars,:sshconfigsrc,:openaiopts,:shellpref)`
 		tx.NamedExec(query, r.ToMap())
 		return nil
 	})
@@ -1303,11 +1304,12 @@ func GetRemoteInstance(ctx context.Context, sessionId string, screenId string, r
 	return ri, nil
 }
 
-// internal function for UpdateRemoteState
+// internal function for UpdateRemoteState (sets StateBaseHash, StateDiffHashArr, and ShellType)
 func updateRIWithState(ctx context.Context, ri *RemoteInstance, stateBase *packet.ShellState, stateDiff *packet.ShellStateDiff) error {
 	if stateBase != nil {
 		ri.StateBaseHash = stateBase.GetHashVal(false)
 		ri.StateDiffHashArr = nil
+		ri.ShellType = stateBase.GetShellType()
 		err := StoreStateBase(ctx, stateBase)
 		if err != nil {
 			return err
@@ -1315,6 +1317,7 @@ func updateRIWithState(ctx context.Context, ri *RemoteInstance, stateBase *packe
 	} else if stateDiff != nil {
 		ri.StateBaseHash = stateDiff.BaseHash
 		ri.StateDiffHashArr = append(stateDiff.DiffHashArr, stateDiff.GetHashVal(false))
+		ri.ShellType = stateDiff.GetShellType()
 		err := StoreStateDiff(ctx, stateDiff)
 		if err != nil {
 			return err
@@ -1355,18 +1358,18 @@ func UpdateRemoteState(ctx context.Context, sessionId string, screenId string, r
 			if err != nil {
 				return err
 			}
-			query = `INSERT INTO remote_instance ( riid, name, sessionid, screenid, remoteownerid, remoteid, festate, statebasehash, statediffhasharr)
-                                          VALUES (:riid,:name,:sessionid,:screenid,:remoteownerid,:remoteid,:festate,:statebasehash,:statediffhasharr)`
+			query = `INSERT INTO remote_instance ( riid, name, sessionid, screenid, remoteownerid, remoteid, festate, statebasehash, statediffhasharr, shelltype)
+                                          VALUES (:riid,:name,:sessionid,:screenid,:remoteownerid,:remoteid,:festate,:statebasehash,:statediffhasharr,:shelltype)`
 			tx.NamedExec(query, ri.ToMap())
 			return nil
 		} else {
-			query = `UPDATE remote_instance SET festate = ?, statebasehash = ?, statediffhasharr = ? WHERE riid = ?`
+			query = `UPDATE remote_instance SET festate = ?, statebasehash = ?, statediffhasharr = ?, shelltype = ? WHERE riid = ?`
 			ri.FeState = feState
 			err = updateRIWithState(tx.Context(), ri, stateBase, stateDiff)
 			if err != nil {
 				return err
 			}
-			tx.Exec(query, quickJson(ri.FeState), ri.StateBaseHash, quickJsonArr(ri.StateDiffHashArr), ri.RIId)
+			tx.Exec(query, quickJson(ri.FeState), ri.StateBaseHash, quickJsonArr(ri.StateDiffHashArr), ri.ShellType, ri.RIId)
 			return nil
 		}
 	})
@@ -1745,9 +1748,11 @@ const (
 	RemoteField_SSHKey      = "sshkey"      // string
 	RemoteField_SSHPassword = "sshpassword" // string
 	RemoteField_Color       = "color"       // string
+	RemoteField_ShellPref   = "shellpref"   // string
 )
 
 // editMap: alias, connectmode, autoinstall, sshkey, color, sshpassword (from constants)
+// note that all validation should have already happened outside of this function
 func UpdateRemote(ctx context.Context, remoteId string, editMap map[string]interface{}) (*RemoteType, error) {
 	var rtn *RemoteType
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
@@ -1774,6 +1779,10 @@ func UpdateRemote(ctx context.Context, remoteId string, editMap map[string]inter
 		if sshPassword, found := editMap[RemoteField_SSHPassword]; found {
 			query = `UPDATE remote SET sshopts = json_set(sshopts, '$.sshpassword', ?) WHERE remoteid = ?`
 			tx.Exec(query, sshPassword, remoteId)
+		}
+		if shellPref, found := editMap[RemoteField_ShellPref]; found {
+			query = `UPDATE remote SET shellpref = ? WHERE remoteid = ?`
+			tx.Exec(query, shellPref, remoteId)
 		}
 		if color, found := editMap[RemoteField_Color]; found {
 			query = `UPDATE remote SET remoteopts = json_set(remoteopts, '$.color', ?) WHERE remoteid = ?`
@@ -1973,22 +1982,26 @@ func GetFullState(ctx context.Context, ssPtr ShellStatePtr) (*packet.ShellState,
 		if err != nil {
 			return err
 		}
+		sapi, err := shellapi.MakeShellApi(state.GetShellType())
+		if err != nil {
+			return err
+		}
 		for idx, diffHash := range ssPtr.DiffHashArr {
 			query = `SELECT * FROM state_diff WHERE diffhash = ?`
 			stateDiff := dbutil.GetMapGen[*StateDiff](tx, query, diffHash)
 			if stateDiff == nil {
 				return fmt.Errorf("ShellStateDiff %s not found", diffHash)
 			}
-			var ssDiff packet.ShellStateDiff
+			ssDiff := &packet.ShellStateDiff{}
 			err = ssDiff.DecodeShellStateDiff(stateDiff.Data)
 			if err != nil {
 				return err
 			}
-			newState, err := shexec.ApplyShellStateDiff(*state, ssDiff)
+			newState, err := sapi.ApplyShellStateDiff(state, ssDiff)
 			if err != nil {
 				return fmt.Errorf("GetFullState, diff[%d]:%s: %v", idx, diffHash, err)
 			}
-			state = &newState
+			state = newState
 		}
 		return nil
 	})
@@ -2763,5 +2776,17 @@ func SetWebPtyPos(ctx context.Context, screenId string, lineId string, ptyPos in
 			tx.Exec(query, screenId, lineId, ptyPos)
 		}
 		return nil
+	})
+}
+
+func GetRemoteActiveShells(ctx context.Context, remoteId string) ([]string, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) ([]string, error) {
+		query := `SELECT * FROM remote_instance WHERE remoteid = ?`
+		riArr := dbutil.SelectMapsGen[*RemoteInstance](tx, query, remoteId)
+		shellTypeMap := make(map[string]bool)
+		for _, ri := range riArr {
+			shellTypeMap[ri.ShellType] = true
+		}
+		return utilfn.GetMapKeys(shellTypeMap), nil
 	})
 }

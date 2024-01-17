@@ -14,7 +14,6 @@ import (
 	"os/signal"
 	"os/user"
 	"path"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -29,19 +28,19 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/cirfile"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/mpio"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sys/unix"
 )
 
-const DefaultTermRows = 24
-const DefaultTermCols = 80
 const MinTermRows = 2
 const MinTermCols = 10
 const MaxTermRows = 1024
 const MaxTermCols = 1024
 const MaxFdNum = 1023
 const FirstExtraFilesFdNum = 3
-const DefaultTermType = "xterm-256color"
 const DefaultMaxPtySize = 1024 * 1024
 const MinMaxPtySize = 16 * 1024
 const MaxMaxPtySize = 100 * 1024 * 1024
@@ -51,27 +50,6 @@ const ShellVarName = "SHELL"
 const SigKillWaitTime = 2 * time.Second
 const RtnStateFdNum = 20
 const ReturnStateReadWaitTime = 2 * time.Second
-
-const GetStateTimeout = 5 * time.Second
-const RemoteBashPath = "bash"
-const DefaultMacOSShell = "/bin/bash"
-
-const BaseBashOpts = `set +m; set +H; shopt -s extglob`
-
-const ShellVersionCmdStr = `echo bash v${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}.${BASH_VERSINFO[2]}`
-
-// do not use these directly, call GetLocalBashMajorVersion()
-var LocalBashMajorVersionOnce = &sync.Once{}
-var LocalBashMajorVersion = ""
-
-var GetShellStateCmds = []string{
-	ShellVersionCmdStr + ";",
-	`pwd;`,
-	`declare -p $(compgen -A variable);`,
-	`alias -p;`,
-	`declare -f;`,
-	`printf "GITBRANCH %s\x00" "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"`,
-}
 
 const ClientCommandFmt = `
 PATH=$PATH:~/.mshell;
@@ -104,11 +82,6 @@ func MakeInstallCommandStr() string {
 	return strings.ReplaceAll(InstallCommandFmt, "[%VERSION%]", semver.MajorMinor(base.MShellVersion))
 }
 
-// TODO fix bash path in these constants
-const RunCommandFmt = `%s`
-const RunSudoCommandFmt = `sudo -n -C %d bash /dev/fd/%d`
-const RunSudoPasswordCommandFmt = `cat /dev/fd/%d | sudo -k -S -C %d bash -c "echo '[from-mshell]'; exec %d>&-; bash /dev/fd/%d < /dev/fd/%d"`
-
 type MShellBinaryReaderFn func(version string, goos string, goarch string) (io.ReadCloser, error)
 
 type ReturnStateBuf struct {
@@ -139,8 +112,9 @@ type ShExecType struct {
 	RunnerOutFd    *os.File
 	MsgSender      *packet.PacketSender // where to send out-of-band messages back to calling proceess
 	ReturnState    *ReturnStateBuf
-	Exited         bool // locked via Lock
-	TmpRcFileName  string
+	Exited         bool   // locked via Lock
+	TmpRcFileName  string // file *or* directory holding temporary rc file(s)
+	SAPI           shellapi.ShellApi
 }
 
 type StdContext struct{}
@@ -181,20 +155,6 @@ type FdContext interface {
 type ShExecUPR struct {
 	ShExec *ShExecType
 	UPR    packet.UnknownPacketReporter
-}
-
-func GetLocalBashPath() string {
-	if runtime.GOOS == "darwin" {
-		macShell := GetMacUserShell()
-		if strings.Index(macShell, "bash") != -1 {
-			return shellescape.Quote(macShell)
-		}
-	}
-	return "bash"
-}
-
-func GetShellStateCmd() string {
-	return strings.Join(GetShellStateCmds, ` printf "\x00\x00";`)
 }
 
 func (s *ShExecType) processSpecialInputPacket(pk *packet.SpecialInputPacketType) error {
@@ -242,12 +202,13 @@ func (s ShExecUPR) UnknownPacket(pk packet.PacketType) {
 	}
 }
 
-func MakeShExec(ck base.CommandKey, upr packet.UnknownPacketReporter) *ShExecType {
+func MakeShExec(ck base.CommandKey, upr packet.UnknownPacketReporter, sapi shellapi.ShellApi) *ShExecType {
 	return &ShExecType{
 		Lock:        &sync.Mutex{},
 		StartTs:     time.Now(),
 		CK:          ck,
 		Multiplexer: mpio.MakeMultiplexer(ck, upr),
+		SAPI:        sapi,
 	}
 }
 
@@ -267,7 +228,8 @@ func (c *ShExecType) Close() {
 		c.ReturnState.Reader.Close()
 	}
 	if c.TmpRcFileName != "" {
-		os.Remove(c.TmpRcFileName)
+		// TmpRcFileName can be a file or a directory
+		os.RemoveAll(c.TmpRcFileName)
 	}
 }
 
@@ -278,42 +240,6 @@ func (c *ShExecType) MakeCmdStartPacket(reqId string) *packet.CmdStartPacketType
 	startPacket.Pid = c.Cmd.Process.Pid
 	startPacket.MShellPid = os.Getpid()
 	return startPacket
-}
-
-func getEnvStrKey(envStr string) string {
-	eqIdx := strings.Index(envStr, "=")
-	if eqIdx == -1 {
-		return envStr
-	}
-	return envStr[0:eqIdx]
-}
-
-func UpdateCmdEnv(cmd *exec.Cmd, envVars map[string]string) {
-	if len(envVars) == 0 {
-		return
-	}
-	found := make(map[string]bool)
-	var newEnv []string
-	for _, envStr := range cmd.Env {
-		envKey := getEnvStrKey(envStr)
-		newEnvVal, ok := envVars[envKey]
-		if ok {
-			if newEnvVal == "" {
-				continue
-			}
-			newEnv = append(newEnv, envKey+"="+newEnvVal)
-			found[envKey] = true
-		} else {
-			newEnv = append(newEnv, envStr)
-		}
-	}
-	for envKey, envVal := range envVars {
-		if found[envKey] {
-			continue
-		}
-		newEnv = append(newEnv, envKey+"="+envVal)
-	}
-	cmd.Env = newEnv
 }
 
 // returns (pr, err)
@@ -329,17 +255,30 @@ func MakeSimpleStaticWriterPipe(data []byte) (*os.File, error) {
 	return pr, err
 }
 
+func MakeRunnerExec(ck base.CommandKey) (*exec.Cmd, error) {
+	msPath, err := base.GetMShellPath()
+	if err != nil {
+		return nil, err
+	}
+	ecmd := exec.Command(msPath, string(ck))
+	return ecmd, nil
+}
+
 func MakeDetachedExecCmd(pk *packet.RunPacketType, cmdTty *os.File) (*exec.Cmd, error) {
+	sapi, err := shellapi.MakeShellApi(pk.ShellType)
+	if err != nil {
+		return nil, err
+	}
 	state := pk.State
 	if state == nil {
 		state = &packet.ShellState{}
 	}
-	ecmd := exec.Command(GetLocalBashPath(), "-c", pk.Command)
+	ecmd := exec.Command(sapi.GetLocalShellPath(), "-c", pk.Command)
 	if !pk.StateComplete {
 		ecmd.Env = os.Environ()
 	}
-	UpdateCmdEnv(ecmd, EnvMapFromState(state))
-	UpdateCmdEnv(ecmd, MShellEnvVars(getTermType(pk)))
+	shellutil.UpdateCmdEnv(ecmd, shellenv.EnvMapFromState(state))
+	shellutil.UpdateCmdEnv(ecmd, shellutil.MShellEnvVars(getTermType(pk)))
 	if state.Cwd != "" {
 		ecmd.Dir = base.ExpandHomeDir(state.Cwd)
 	}
@@ -370,15 +309,6 @@ func MakeDetachedExecCmd(pk *packet.RunPacketType, cmdTty *os.File) (*exec.Cmd, 
 	if len(extraFiles) > FirstExtraFilesFdNum {
 		ecmd.ExtraFiles = extraFiles[FirstExtraFilesFdNum:]
 	}
-	return ecmd, nil
-}
-
-func MakeRunnerExec(ck base.CommandKey) (*exec.Cmd, error) {
-	msPath, err := base.GetMShellPath()
-	if err != nil {
-		return nil, err
-	}
-	ecmd := exec.Command(msPath, string(ck))
 	return ecmd, nil
 }
 
@@ -457,8 +387,8 @@ func ValidateRunPacket(pk *packet.RunPacketType) error {
 }
 
 func GetWinsize(p *packet.RunPacketType) *pty.Winsize {
-	rows := DefaultTermRows
-	cols := DefaultTermCols
+	rows := shellutil.DefaultTermRows
+	cols := shellutil.DefaultTermCols
 	if p.TermOpts != nil {
 		rows = base.BoundInt(p.TermOpts.Rows, MinTermRows, MaxTermRows)
 		cols = base.BoundInt(p.TermOpts.Cols, MinTermCols, MaxTermCols)
@@ -497,49 +427,23 @@ type ClientOpts struct {
 	UsePty       bool
 }
 
-func (opts SSHOpts) MakeSSHInstallCmd() (*exec.Cmd, error) {
-	if opts.SSHHost == "" {
-		return nil, fmt.Errorf("no ssh host provided, can only install to a remote host")
-	}
-	cmdStr := MakeInstallCommandStr()
-	return opts.MakeSSHExecCmd(cmdStr), nil
-}
-
-func (opts SSHOpts) MakeMShellServerCmd() (*exec.Cmd, error) {
-	msPath, err := base.GetMShellPath()
+func MakeMShellSingleCmd() (*exec.Cmd, error) {
+	execFile, err := os.Executable()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot find local mshell executable: %w", err)
 	}
-	ecmd := exec.Command(msPath, "--server")
+	ecmd := exec.Command(execFile, "--single-from-server")
 	return ecmd, nil
 }
 
-func (opts SSHOpts) MakeMShellSingleCmd(fromServer bool) (*exec.Cmd, error) {
-	if opts.SSHHost == "" {
-		execFile, err := os.Executable()
-		if err != nil {
-			return nil, fmt.Errorf("cannot find local mshell executable: %w", err)
-		}
-		var ecmd *exec.Cmd
-		if fromServer {
-			ecmd = exec.Command(execFile, "--single-from-server")
-		} else {
-			ecmd = exec.Command(execFile, "--single")
-		}
-		return ecmd, nil
-	}
-	cmdStr := MakeClientCommandStr()
-	return opts.MakeSSHExecCmd(cmdStr), nil
-}
-
-func (opts SSHOpts) MakeSSHExecCmd(remoteCommand string) *exec.Cmd {
+func (opts SSHOpts) MakeSSHExecCmd(remoteCommand string, sapi shellapi.ShellApi) *exec.Cmd {
 	remoteCommand = strings.TrimSpace(remoteCommand)
 	if opts.SSHHost == "" {
 		homeDir, _ := os.UserHomeDir() // ignore error
 		if homeDir == "" {
 			homeDir = "/"
 		}
-		ecmd := exec.Command(GetLocalBashPath(), "-c", remoteCommand)
+		ecmd := exec.Command(sapi.GetLocalShellPath(), "-c", remoteCommand)
 		ecmd.Dir = homeDir
 		return ecmd
 	} else {
@@ -566,7 +470,7 @@ func (opts SSHOpts) MakeSSHExecCmd(remoteCommand string) *exec.Cmd {
 		}
 		// note that SSHOptsStr is *not* escaped
 		sshCmd := fmt.Sprintf("ssh %s %s %s %s", strings.Join(moreSSHOpts, " "), opts.SSHOptsStr, shellescape.Quote(opts.SSHHost), shellescape.Quote(remoteCommand))
-		ecmd := exec.Command(RemoteBashPath, "-c", sshCmd)
+		ecmd := exec.Command(sapi.GetRemoteShellPath(), "-c", sshCmd)
 		return ecmd
 	}
 }
@@ -603,59 +507,6 @@ func GetTerminalSize() (int, int, error) {
 	}
 	defer fd.Close()
 	return pty.Getsize(fd)
-}
-
-func (opts *ClientOpts) MakeRunPacket() (*packet.RunPacketType, error) {
-	runPacket := packet.MakeRunPacket()
-	runPacket.Detached = opts.Detach
-	runPacket.State = &packet.ShellState{}
-	runPacket.State.Cwd = opts.Cwd
-	runPacket.Fds = opts.Fds
-	if opts.UsePty {
-		runPacket.UsePty = true
-		runPacket.TermOpts = &packet.TermOpts{}
-		rows, cols, err := GetTerminalSize()
-		if err == nil {
-			runPacket.TermOpts.Rows = rows
-			runPacket.TermOpts.Cols = cols
-		}
-		term := os.Getenv("TERM")
-		if term != "" {
-			runPacket.TermOpts.Term = term
-		}
-	}
-	if !opts.Sudo {
-		// normal, non-sudo command
-		runPacket.Command = fmt.Sprintf(RunCommandFmt, opts.Command)
-		return runPacket, nil
-	}
-	if opts.SudoWithPass {
-		pwFdNum, err := AddRunData(runPacket, opts.SudoPw, "sudo pw")
-		if err != nil {
-			return nil, err
-		}
-		commandFdNum, err := AddRunData(runPacket, opts.Command, "command")
-		if err != nil {
-			return nil, err
-		}
-		commandStdinFdNum, err := NextFreeFdNum(runPacket)
-		if err != nil {
-			return nil, err
-		}
-		commandStdinRfd := packet.RemoteFd{FdNum: commandStdinFdNum, Read: true, DupStdin: true}
-		runPacket.Fds = append(runPacket.Fds, commandStdinRfd)
-		maxFdNum := MaxFdNumInPacket(runPacket)
-		runPacket.Command = fmt.Sprintf(RunSudoPasswordCommandFmt, pwFdNum, maxFdNum+1, pwFdNum, commandFdNum, commandStdinFdNum)
-		return runPacket, nil
-	} else {
-		commandFdNum, err := AddRunData(runPacket, opts.Command, "command")
-		if err != nil {
-			return nil, err
-		}
-		maxFdNum := MaxFdNumInPacket(runPacket)
-		runPacket.Command = fmt.Sprintf(RunSudoCommandFmt, maxFdNum+1, commandFdNum)
-		return runPacket, nil
-	}
 }
 
 func AddRunData(pk *packet.RunPacketType, data string, dataType string) (int, error) {
@@ -810,31 +661,6 @@ func RunInstallFromCmd(ctx context.Context, ecmd *exec.Cmd, tryDetect bool, mshe
 	}
 }
 
-func RunInstallFromOpts(opts *InstallOpts) error {
-	ecmd, err := opts.SSHOpts.MakeSSHInstallCmd()
-	if err != nil {
-		return err
-	}
-	msgFn := func(str string) {
-		fmt.Printf("%s", str)
-	}
-	var mshellStream *os.File
-	if opts.OptName != "" {
-		mshellStream, err = os.Open(opts.OptName)
-		if err != nil {
-			return fmt.Errorf("cannot open mshell binary %q: %v", opts.OptName, err)
-		}
-		defer mshellStream.Close()
-	}
-	err = RunInstallFromCmd(context.Background(), ecmd, opts.Detect, mshellStream, base.MShellBinaryFromOptDir, msgFn)
-	if err != nil {
-		return err
-	}
-	mmVersion := semver.MajorMinor(base.MShellVersion)
-	fmt.Printf("mshell installed successfully at %s:~/.mshell/mshell%s\n", opts.SSHOpts.SSHHost, mmVersion)
-	return nil
-}
-
 func HasDupStdin(fds []packet.RemoteFd) bool {
 	for _, rfd := range fds {
 		if rfd.Read && rfd.DupStdin {
@@ -842,101 +668,6 @@ func HasDupStdin(fds []packet.RemoteFd) bool {
 		}
 	}
 	return false
-}
-
-func RunClientSSHCommandAndWait(runPacket *packet.RunPacketType, fdContext FdContext, sshOpts SSHOpts, upr packet.UnknownPacketReporter, debug bool) (*packet.CmdDonePacketType, error) {
-	cmd := MakeShExec(runPacket.CK, upr)
-	ecmd, err := sshOpts.MakeMShellSingleCmd(false)
-	if err != nil {
-		return nil, err
-	}
-	cmd.Cmd = ecmd
-	inputWriter, err := ecmd.StdinPipe()
-	if err != nil {
-		return nil, fmt.Errorf("creating stdin pipe: %v", err)
-	}
-	stdoutReader, err := ecmd.StdoutPipe()
-	if err != nil {
-		return nil, fmt.Errorf("creating stdout pipe: %v", err)
-	}
-	stderrReader, err := ecmd.StderrPipe()
-	if err != nil {
-		return nil, fmt.Errorf("creating stderr pipe: %v", err)
-	}
-	if !HasDupStdin(runPacket.Fds) {
-		cmd.Multiplexer.MakeRawFdReader(0, fdContext.GetReader(0), false, false)
-	}
-	cmd.Multiplexer.MakeRawFdWriter(1, fdContext.GetWriter(1), false, "client")
-	cmd.Multiplexer.MakeRawFdWriter(2, fdContext.GetWriter(2), false, "client")
-	for _, rfd := range runPacket.Fds {
-		if rfd.Read && rfd.DupStdin {
-			cmd.Multiplexer.MakeRawFdReader(rfd.FdNum, fdContext.GetReader(0), false, false)
-			continue
-		}
-		if rfd.Read {
-			fd := fdContext.GetReader(rfd.FdNum)
-			cmd.Multiplexer.MakeRawFdReader(rfd.FdNum, fd, false, false)
-		} else if rfd.Write {
-			fd := fdContext.GetWriter(rfd.FdNum)
-			cmd.Multiplexer.MakeRawFdWriter(rfd.FdNum, fd, true, "client")
-		}
-	}
-	err = ecmd.Start()
-	if err != nil {
-		return nil, fmt.Errorf("running ssh command: %w", err)
-	}
-	defer cmd.Close()
-	stdoutPacketParser := packet.MakePacketParser(stdoutReader, nil)
-	stderrPacketParser := packet.MakePacketParser(stderrReader, nil)
-	packetParser := packet.CombinePacketParsers(stdoutPacketParser, stderrPacketParser, false)
-	sender := packet.MakePacketSender(inputWriter, nil)
-	versionOk := false
-	for pk := range packetParser.MainCh {
-		if pk.GetType() == packet.RawPacketStr {
-			rawPk := pk.(*packet.RawPacketType)
-			fmt.Printf("%s\n", rawPk.Data)
-			continue
-		}
-		if pk.GetType() == packet.InitPacketStr {
-			initPk := pk.(*packet.InitPacketType)
-			mmVersion := semver.MajorMinor(base.MShellVersion)
-			if initPk.NotFound {
-				if sshOpts.SSHHost == "" {
-					return nil, fmt.Errorf("mshell-%s command not found on local server", mmVersion)
-				}
-				if initPk.UName == "" {
-					return nil, fmt.Errorf("mshell-%s command not found on remote server, no uname detected", mmVersion)
-				}
-				goos, goarch, err := DetectGoArch(initPk.UName)
-				if err != nil {
-					return nil, fmt.Errorf("mshell-%s command not found on remote server, architecture cannot be detected (might be incompatible with mshell): %w", mmVersion, err)
-				}
-				sshOptsStr := sshOpts.MakeMShellSSHOpts()
-				return nil, fmt.Errorf("mshell-%s command not found on remote server, can install with 'mshell --install %s %s.%s'", mmVersion, sshOptsStr, goos, goarch)
-			}
-			if semver.MajorMinor(initPk.Version) != semver.MajorMinor(base.MShellVersion) {
-				return nil, fmt.Errorf("invalid remote mshell version '%s', must be '=%s'", initPk.Version, semver.MajorMinor(base.MShellVersion))
-			}
-			versionOk = true
-			if debug {
-				fmt.Printf("VERSION> %s\n", initPk.Version)
-			}
-			break
-		}
-	}
-	if !versionOk {
-		return nil, fmt.Errorf("did not receive version from remote mshell")
-	}
-	SendRunPacketAndRunData(context.Background(), sender, runPacket)
-	if debug {
-		cmd.Multiplexer.Debug = true
-	}
-	remoteDonePacket := cmd.Multiplexer.RunIOAndWait(packetParser, sender, false, true, true)
-	donePacket := cmd.WaitForCommand()
-	if remoteDonePacket != nil {
-		donePacket = remoteDonePacket
-	}
-	return donePacket, nil
 }
 
 func min(v1 int, v2 int) int {
@@ -1015,44 +746,11 @@ func (cmd *ShExecType) RunRemoteIOAndWait(packetParser *packet.PacketParser, sen
 }
 
 func getTermType(pk *packet.RunPacketType) string {
-	termType := DefaultTermType
+	termType := shellutil.DefaultTermType
 	if pk.TermOpts != nil && pk.TermOpts.Term != "" {
 		termType = pk.TermOpts.Term
 	}
 	return termType
-}
-
-func makeRcFileStr(pk *packet.RunPacketType) string {
-	var rcBuf bytes.Buffer
-	rcBuf.WriteString(BaseBashOpts + "\n")
-	varDecls := VarDeclsFromState(pk.State)
-	for _, varDecl := range varDecls {
-		if varDecl.IsExport() || varDecl.IsReadOnly() {
-			continue
-		}
-		rcBuf.WriteString(varDecl.DeclareStmt())
-		rcBuf.WriteString("\n")
-	}
-	if pk.State != nil && pk.State.Funcs != "" {
-		rcBuf.WriteString(pk.State.Funcs)
-		rcBuf.WriteString("\n")
-	}
-	if pk.State != nil && pk.State.Aliases != "" {
-		rcBuf.WriteString(pk.State.Aliases)
-		rcBuf.WriteString("\n")
-	}
-	return rcBuf.String()
-}
-
-func makeExitTrap(fdNum int) string {
-	stateCmd := GetShellStateRedirectCommandStr(fdNum)
-	fmtStr := `
-_mshell_exittrap () {
-    %s
-}
-trap _mshell_exittrap EXIT
-`
-	return fmt.Sprintf(fmtStr, stateCmd)
 }
 
 func (s *ShExecType) SendSignal(sig syscall.Signal) {
@@ -1086,11 +784,15 @@ func (s *ShExecType) SendSignal(sig syscall.Signal) {
 }
 
 func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fromServer bool) (rtnShExec *ShExecType, rtnErr error) {
+	sapi, err := shellapi.MakeShellApi(pk.ShellType)
+	if err != nil {
+		return nil, err
+	}
 	state := pk.State
 	if state == nil {
-		state = &packet.ShellState{}
+		return nil, fmt.Errorf("invalid run packet, no state")
 	}
-	cmd := MakeShExec(pk.CK, nil)
+	cmd := MakeShExec(pk.CK, nil, sapi)
 	defer func() {
 		// on error, call cmd.Close()
 		if rtnErr != nil {
@@ -1104,7 +806,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		cmd.MsgSender = sender
 	}
 	var rtnStateWriter *os.File
-	rcFileStr := makeRcFileStr(pk)
+	rcFileStr := sapi.MakeRcFileStr(pk)
 	if pk.ReturnState {
 		pr, pw, err := os.Pipe()
 		if err != nil {
@@ -1115,10 +817,10 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		cmd.ReturnState.FdNum = RtnStateFdNum
 		rtnStateWriter = pw
 		defer pw.Close()
-		trapCmdStr := makeExitTrap(cmd.ReturnState.FdNum)
+		trapCmdStr := sapi.MakeExitTrap(cmd.ReturnState.FdNum)
 		rcFileStr += trapCmdStr
 	}
-	shellVarMap := ShellVarMapFromState(state)
+	shellVarMap := shellenv.ShellVarMapFromState(state)
 	if base.HasDebugFlag(shellVarMap, base.DebugFlag_LogRcFile) {
 		debugRcFileName := base.GetDebugRcFileName()
 		err := os.WriteFile(debugRcFileName, []byte(rcFileStr), 0600)
@@ -1126,9 +828,13 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 			base.Logf("error writing %s: %v\n", debugRcFileName, err)
 		}
 	}
-	bashVersion := GetLocalBashMajorVersion()
-	isOldBashVersion := (semver.Compare(bashVersion, "v4") < 0)
+	var isOldBashVersion bool
+	if sapi.GetShellType() == packet.ShellType_bash {
+		bashVersion := sapi.GetLocalMajorVersion()
+		isOldBashVersion = (semver.Compare(bashVersion, "v4") < 0)
+	}
 	var rcFileName string
+	var zdotdir string
 	if isOldBashVersion {
 		rcFileDir, err := base.EnsureRcFilesDir()
 		if err != nil {
@@ -1140,12 +846,19 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 			return nil, fmt.Errorf("could not write temp rcfile: %w", err)
 		}
 		cmd.TmpRcFileName = rcFileName
-		go func() {
-			// cmd.Close() will also remove rcFileName
-			// adding this to also try to proactively clean up after 1-second.
-			time.Sleep(1 * time.Second)
-			os.Remove(rcFileName)
-		}()
+	} else if sapi.GetShellType() == packet.ShellType_zsh {
+		rcFileDir, err := base.EnsureRcFilesDir()
+		if err != nil {
+			return nil, err
+		}
+		zdotdir = path.Join(rcFileDir, uuid.New().String())
+		os.Mkdir(zdotdir, 0700)
+		rcFileName = path.Join(zdotdir, ".zshenv")
+		err = os.WriteFile(rcFileName, []byte(rcFileStr), 0600)
+		if err != nil {
+			return nil, fmt.Errorf("could not write temp rcfile: %w", err)
+		}
+		cmd.TmpRcFileName = zdotdir
 	} else {
 		rcFileFdNum, err := AddRunData(pk, rcFileStr, "rcfile")
 		if err != nil {
@@ -1153,19 +866,26 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		}
 		rcFileName = fmt.Sprintf("/dev/fd/%d", rcFileFdNum)
 	}
-	if pk.UsePty {
-		cmd.Cmd = exec.Command(GetLocalBashPath(), "--rcfile", rcFileName, "-i", "-c", pk.Command)
-	} else {
-		cmd.Cmd = exec.Command(GetLocalBashPath(), "--rcfile", rcFileName, "-c", pk.Command)
+	if cmd.TmpRcFileName != "" {
+		go func() {
+			// cmd.Close() will also remove rcFileName
+			// adding this to also try to proactively clean up after 2-seconds.
+			time.Sleep(2 * time.Second)
+			os.Remove(cmd.TmpRcFileName)
+		}()
 	}
+	cmd.Cmd = sapi.MakeShExecCommand(pk.Command, rcFileName, pk.UsePty)
 	if !pk.StateComplete {
 		cmd.Cmd.Env = os.Environ()
 	}
-	UpdateCmdEnv(cmd.Cmd, EnvMapFromState(state))
+	shellutil.UpdateCmdEnv(cmd.Cmd, shellenv.EnvMapFromState(state))
+	if sapi.GetShellType() == packet.ShellType_zsh {
+		shellutil.UpdateCmdEnv(cmd.Cmd, map[string]string{"ZDOTDIR": zdotdir})
+	}
 	if state.Cwd != "" {
 		cmd.Cmd.Dir = base.ExpandHomeDir(state.Cwd)
 	}
-	err := ValidateRemoteFds(pk.Fds)
+	err = ValidateRemoteFds(pk.Fds)
 	if err != nil {
 		return nil, err
 	}
@@ -1181,7 +901,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 			cmdTty.Close()
 		}()
 		cmd.CmdPty = cmdPty
-		UpdateCmdEnv(cmd.Cmd, MShellEnvVars(getTermType(pk)))
+		shellutil.UpdateCmdEnv(cmd.Cmd, shellutil.MShellEnvVars(getTermType(pk)))
 	}
 	if cmdTty != nil {
 		cmd.Cmd.Stdin = cmdTty
@@ -1374,6 +1094,10 @@ func (cmd *ShExecType) DetachedWait(startPacket *packet.CmdStartPacketType) {
 }
 
 func RunCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecType, *packet.CmdStartPacketType, error) {
+	sapi, err := shellapi.MakeShellApi(pk.ShellType)
+	if err != nil {
+		return nil, nil, err
+	}
 	fileNames, err := base.GetCommandFileNames(pk.CK)
 	if err != nil {
 		return nil, nil, err
@@ -1393,7 +1117,7 @@ func RunCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) (
 	defer func() {
 		cmdTty.Close()
 	}()
-	cmd := MakeShExec(pk.CK, nil)
+	cmd := MakeShExec(pk.CK, nil, sapi)
 	cmd.FileNames = fileNames
 	cmd.CmdPty = cmdPty
 	cmd.Detached = true
@@ -1462,7 +1186,7 @@ func (c *ShExecType) WaitForCommand() *packet.CmdDonePacketType {
 			c.ReturnState.Reader.Close()
 		}()
 		<-c.ReturnState.DoneCh
-		state, _ := ParseShellStateOutput(c.ReturnState.Buf) // TODO what to do with error?
+		state, _ := c.SAPI.ParseShellStateOutput(c.ReturnState.Buf) // TODO what to do with error?
 		donePacket.FinalState = state
 	}
 	endTs := time.Now()
@@ -1487,18 +1211,27 @@ func MakeInitPacket() *packet.InitPacketType {
 	}
 	initPacket.HostName, _ = os.Hostname()
 	initPacket.UName = fmt.Sprintf("%s|%s", runtime.GOOS, runtime.GOARCH)
+	initPacket.Shell = shellapi.DetectLocalShellType()
 	return initPacket
+}
+
+func MakeShellStatePacket(shellType string) (*packet.ShellStatePacketType, error) {
+	sapi, err := shellapi.MakeShellApi(shellType)
+	if err != nil {
+		return nil, err
+	}
+	shellState, err := sapi.GetShellState()
+	if err != nil {
+		return nil, err
+	}
+	rtn := packet.MakeShellStatePacket()
+	rtn.State = shellState
+	return rtn, nil
 }
 
 func MakeServerInitPacket() (*packet.InitPacketType, error) {
 	var err error
 	initPacket := MakeInitPacket()
-	shellState, err := GetShellState()
-	if err != nil {
-		return nil, err
-	}
-	initPacket.State = shellState
-	initPacket.Shell = os.Getenv(ShellVarName)
 	initPacket.RemoteId, err = base.GetRemoteId()
 	if err != nil {
 		return nil, err
@@ -1548,130 +1281,4 @@ func getStderr(err error) string {
 		return lines[0][0:100]
 	}
 	return lines[0]
-}
-
-func runSimpleCmdInPty(ecmd *exec.Cmd) ([]byte, error) {
-	ecmd.Env = os.Environ()
-	UpdateCmdEnv(ecmd, MShellEnvVars(DefaultTermType))
-	cmdPty, cmdTty, err := pty.Open()
-	if err != nil {
-		return nil, fmt.Errorf("opening new pty: %w", err)
-	}
-	pty.Setsize(cmdPty, &pty.Winsize{Rows: DefaultTermRows, Cols: DefaultTermCols})
-	ecmd.Stdin = cmdTty
-	ecmd.Stdout = cmdTty
-	ecmd.Stderr = cmdTty
-	ecmd.SysProcAttr = &syscall.SysProcAttr{}
-	ecmd.SysProcAttr.Setsid = true
-	ecmd.SysProcAttr.Setctty = true
-	err = ecmd.Start()
-	if err != nil {
-		cmdTty.Close()
-		cmdPty.Close()
-		return nil, err
-	}
-	cmdTty.Close()
-	defer cmdPty.Close()
-	ioDone := make(chan bool)
-	var outputBuf bytes.Buffer
-	go func() {
-		// ignore error (/dev/ptmx has read error when process is done)
-		io.Copy(&outputBuf, cmdPty)
-		close(ioDone)
-	}()
-	exitErr := ecmd.Wait()
-	if exitErr != nil {
-		return nil, exitErr
-	}
-	<-ioDone
-	return outputBuf.Bytes(), nil
-}
-
-func GetShellStateRedirectCommandStr(outputFdNum int) string {
-	return fmt.Sprintf("cat <(%s) > /dev/fd/%d", GetShellStateCmd(), outputFdNum)
-}
-
-func GetShellState() (*packet.ShellState, error) {
-	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
-	defer cancelFn()
-	cmdStr := BaseBashOpts + "; " + GetShellStateCmd()
-	ecmd := exec.CommandContext(ctx, GetLocalBashPath(), "-l", "-i", "-c", cmdStr)
-	outputBytes, err := runSimpleCmdInPty(ecmd)
-	if err != nil {
-		return nil, err
-	}
-	return ParseShellStateOutput(outputBytes)
-}
-
-func MShellEnvVars(termType string) map[string]string {
-	rtn := make(map[string]string)
-	if termType != "" {
-		rtn["TERM"] = termType
-	}
-	rtn["MSHELL"], _ = os.Executable()
-	rtn["MSHELL_VERSION"] = base.MShellVersion
-	rtn["WAVESHELL"], _ = os.Executable()
-	rtn["WAVESHELL_VERSION"] = base.MShellVersion
-	return rtn
-}
-
-func ExecGetLocalShellVersion() string {
-	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
-	defer cancelFn()
-	ecmd := exec.CommandContext(ctx, "bash", "-c", ShellVersionCmdStr)
-	out, err := ecmd.Output()
-	if err != nil {
-		return ""
-	}
-	versionStr := strings.TrimSpace(string(out))
-	if strings.Index(versionStr, "bash ") == -1 {
-		// invalid shell version (only bash is supported)
-		return ""
-	}
-	return versionStr
-}
-
-func GetLocalBashMajorVersion() string {
-	LocalBashMajorVersionOnce.Do(func() {
-		fullVersion := ExecGetLocalShellVersion()
-		LocalBashMajorVersion = packet.GetBashMajorVersion(fullVersion)
-	})
-	return LocalBashMajorVersion
-}
-
-var userShellRegexp = regexp.MustCompile(`^UserShell: (.*)$`)
-
-var cachedMacUserShell string
-var macUserShellOnce = &sync.Once{}
-
-func GetMacUserShell() string {
-	if runtime.GOOS != "darwin" {
-		return ""
-	}
-	macUserShellOnce.Do(func() {
-		cachedMacUserShell = internalMacUserShell()
-	})
-	return cachedMacUserShell
-}
-
-// dscl . -read /User/[username] UserShell
-// defaults to /bin/bash
-func internalMacUserShell() string {
-	osUser, err := user.Current()
-	if err != nil {
-		return DefaultMacOSShell
-	}
-	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancelFn()
-	userStr := "/Users/" + osUser.Username
-	out, err := exec.CommandContext(ctx, "dscl", ".", "-read", userStr, "UserShell").CombinedOutput()
-	if err != nil {
-		return DefaultMacOSShell
-	}
-	outStr := strings.TrimSpace(string(out))
-	m := userShellRegexp.FindStringSubmatch(outStr)
-	if m == nil {
-		return DefaultMacOSShell
-	}
-	return m[1]
 }

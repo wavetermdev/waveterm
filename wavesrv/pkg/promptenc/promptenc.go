@@ -12,7 +12,7 @@ import (
 	"io"
 	"reflect"
 
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 	ccp "golang.org/x/crypto/chacha20poly1305"
 )
 

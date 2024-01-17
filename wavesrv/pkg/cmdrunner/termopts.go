@@ -10,6 +10,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
@@ -87,15 +88,15 @@ func GetUITermOpts(winSize *packet.WinSize, ptermStr string) (*packet.TermOpts, 
 	if err != nil {
 		return nil, err
 	}
-	termOpts := &packet.TermOpts{Rows: shexec.DefaultTermRows, Cols: shexec.DefaultTermCols, Term: remote.DefaultTerm, MaxPtySize: shexec.DefaultMaxPtySize}
+	termOpts := &packet.TermOpts{Rows: shellutil.DefaultTermRows, Cols: shellutil.DefaultTermCols, Term: remote.DefaultTerm, MaxPtySize: shexec.DefaultMaxPtySize}
 	if winSize == nil {
-		winSize = &packet.WinSize{Rows: shexec.DefaultTermRows, Cols: shexec.DefaultTermCols}
+		winSize = &packet.WinSize{Rows: shellutil.DefaultTermRows, Cols: shellutil.DefaultTermCols}
 	}
 	if winSize.Rows == 0 {
-		winSize.Rows = shexec.DefaultTermRows
+		winSize.Rows = shellutil.DefaultTermRows
 	}
 	if winSize.Cols == 0 {
-		winSize.Cols = shexec.DefaultTermCols
+		winSize.Cols = shellutil.DefaultTermCols
 	}
 	if opts.Rows == PTermMax {
 		termOpts.Rows = winSize.Rows

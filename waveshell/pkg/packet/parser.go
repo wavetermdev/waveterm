@@ -144,14 +144,20 @@ func (p *PacketParser) getRpcEntry(reqId string) *RpcEntry {
 	return entry
 }
 
+// returns true if sent to an RPC channel.  false if not (which then allows the packet to be sent to MainCh)
+// if GetResponseId() returns "", then this will return false
 func (p *PacketParser) trySendRpcResponse(pk PacketType) bool {
 	respPk, ok := pk.(RpcResponsePacketType)
 	if !ok {
 		return false
 	}
+	respId := respPk.GetResponseId()
+	if respId == "" {
+		return false
+	}
 	p.Lock.Lock()
 	defer p.Lock.Unlock()
-	entry := p.RpcMap[respPk.GetResponseId()]
+	entry := p.RpcMap[respId]
 	if entry == nil {
 		return false
 	}

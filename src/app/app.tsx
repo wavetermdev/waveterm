@@ -16,6 +16,7 @@ import { PluginsView } from "./pluginsview/pluginsview";
 import { BookmarksView } from "./bookmarks/bookmarks";
 import { HistoryView } from "./history/history";
 import { ConnectionsView } from "./connections/connections";
+import { ClientSettingsView } from "./clientsettings/clientsettings";
 import { MainSideBar } from "./sidebar/sidebar";
 import { DisconnectedModal, ClientStopModal } from "./common/modals";
 import { ModalsProvider } from "./common/modals/provider";
@@ -109,6 +110,7 @@ class App extends React.Component<{}, {}> {
                         <HistoryView />
                         <BookmarksView />
                         <ConnectionsView model={remotesModel} />
+                        <ClientSettingsView model={remotesModel} />
                     </ErrorBoundary>
                 </div>
                 <ModalsProvider />

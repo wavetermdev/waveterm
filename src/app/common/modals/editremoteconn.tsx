@@ -24,6 +24,7 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
     tempPassword: OV<string>;
     tempConnectMode: OV<string>;
     tempAuthMode: OV<string>;
+    tempShellPref: OV<string>;
     model: RemotesModel;
 
     constructor(props: { remotesModel?: RemotesModel }) {
@@ -34,6 +35,7 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
         this.tempKeyFile = mobx.observable.box(null, { name: "EditRemoteSettings-tempKeyFile" });
         this.tempPassword = mobx.observable.box(null, { name: "EditRemoteSettings-tempPassword" });
         this.tempConnectMode = mobx.observable.box(null, { name: "EditRemoteSettings-tempConnectMode" });
+        this.tempShellPref = mobx.observable.box(null, { name: "EditRemoteSettings-tempShellPref" });
     }
 
     get selectedRemoteId() {
@@ -52,6 +54,10 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
         return this.model.isAuthEditMode();
     }
 
+    isLocalRemote(): boolean {
+        return this.selectedRemote?.local;
+    }
+
     componentDidMount(): void {
         mobx.action(() => {
             this.tempAlias.set(this.selectedRemote?.remotealias);
@@ -59,6 +65,7 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
             this.tempPassword.set(this.remoteEdit?.haspassword ? PasswordUnchangedSentinel : "");
             this.tempConnectMode.set(this.selectedRemote?.connectmode);
             this.tempAuthMode.set(this.selectedRemote?.authtype);
+            this.tempShellPref.set(this.selectedRemote?.shellpref);
         })();
     }
 
@@ -100,6 +107,13 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
     handleChangeConnectMode(value: string): void {
         mobx.action(() => {
             this.tempConnectMode.set(value);
+        })();
+    }
+
+    @boundMethod
+    handleChangeShellPref(value: string): void {
+        mobx.action(() => {
+            this.tempShellPref.set(value);
         })();
     }
 
@@ -154,6 +168,9 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
         if (!util.isStrEq(this.tempConnectMode.get(), this.selectedRemote?.connectmode)) {
             kwargs["connectmode"] = this.tempConnectMode.get();
         }
+        if (!util.isStrEq(this.tempShellPref.get(), this.selectedRemote?.shellpref)) {
+            kwargs["shellpref"] = this.tempShellPref.get();
+        }
         kwargs["visual"] = "1";
         kwargs["submit"] = "1";
         GlobalCommandRunner.editRemote(this.selectedRemote?.remoteid, kwargs);
@@ -183,11 +200,150 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
         return null;
     }
 
-    render() {
+    renderAlias() {
+        return (
+            <div className="alias-section">
+                <TextField
+                    label="Alias"
+                    onChange={this.handleChangeAlias}
+                    value={this.tempAlias.get()}
+                    maxLength={100}
+                    decoration={{
+                        endDecoration: (
+                            <InputDecoration>
+                                <Tooltip
+                                    message={`(Optional) A short alias to use when selecting or displaying this connection.`}
+                                    icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                >
+                                    <i className="fa-sharp fa-regular fa-circle-question" />
+                                </Tooltip>
+                            </InputDecoration>
+                        ),
+                    }}
+                />
+            </div>
+        );
+    }
+
+    renderConnectMode() {
+        return (
+            <div className="connectmode-section">
+                <Dropdown
+                    label="Connect Mode"
+                    options={[
+                        { value: "startup", label: "startup" },
+                        { value: "auto", label: "auto" },
+                        { value: "manual", label: "manual" },
+                    ]}
+                    value={this.tempConnectMode.get()}
+                    onChange={this.handleChangeConnectMode}
+                />
+            </div>
+        );
+    }
+
+    renderShellPref() {
+        return (
+            <div className="shellpref-section">
+                <Dropdown
+                    label="Shell Preference"
+                    options={[
+                        { value: "detect", label: "detect" },
+                        { value: "bash", label: "bash" },
+                        { value: "zsh", label: "zsh" },
+                    ]}
+                    value={this.tempShellPref.get()}
+                    onChange={this.handleChangeShellPref}
+                />
+            </div>
+        );
+    }
+
+    renderAuthMode() {
         let authMode = this.tempAuthMode.get();
+        return (
+            <>
+                <div className="authmode-section">
+                    <Dropdown
+                        label="Auth Mode"
+                        options={[
+                            { value: "none", label: "none" },
+                            { value: "key", label: "key" },
+                            { value: "password", label: "password" },
+                            { value: "key+password", label: "key+password" },
+                        ]}
+                        value={this.tempAuthMode.get()}
+                        onChange={this.handleChangeAuthMode}
+                        decoration={{
+                            endDecoration: (
+                                <InputDecoration>
+                                    <Tooltip
+                                        message={
+                                            <ul>
+                                                <li>
+                                                    <b>none</b> - no authentication, or authentication is already
+                                                    configured in your ssh config.
+                                                </li>
+                                                <li>
+                                                    <b>key</b> - use a private key.
+                                                </li>
+                                                <li>
+                                                    <b>password</b> - use a password.
+                                                </li>
+                                                <li>
+                                                    <b>key+password</b> - use a key with a passphrase.
+                                                </li>
+                                            </ul>
+                                        }
+                                        icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                    >
+                                        <i className="fa-sharp fa-regular fa-circle-question" />
+                                    </Tooltip>
+                                </InputDecoration>
+                            ),
+                        }}
+                    />
+                </div>
+                <If condition={authMode == "key" || authMode == "key+password"}>
+                    <TextField
+                        label="SSH Keyfile"
+                        placeholder="keyfile path"
+                        onChange={this.handleChangeKeyFile}
+                        value={this.tempKeyFile.get()}
+                        maxLength={400}
+                        required={true}
+                        decoration={{
+                            endDecoration: (
+                                <InputDecoration>
+                                    <Tooltip
+                                        message={`(Required) The path to your ssh key file.`}
+                                        icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                    >
+                                        <i className="fa-sharp fa-regular fa-circle-question" />
+                                    </Tooltip>
+                                </InputDecoration>
+                            ),
+                        }}
+                    />
+                </If>
+                <If condition={authMode == "password" || authMode == "key+password"}>
+                    <PasswordField
+                        label={authMode == "password" ? "SSH Password" : "Key Passphrase"}
+                        placeholder="password"
+                        onChange={this.handleChangePassword}
+                        value={this.tempPassword.get()}
+                        maxLength={400}
+                    />
+                </If>
+            </>
+        );
+    }
+
+    render() {
         if (this.remoteEdit === null || !this.isAuthEditMode) {
             return null;
         }
+        let isLocal = this.isLocalRemote();
         return (
             <Modal className="erconn-modal">
                 <Modal.Header title="Edit Connection" onClose={this.model.closeModal} />
@@ -195,110 +351,10 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
                     <div className="name-actions-section">
                         <div className="name text-primary">{util.getRemoteName(this.selectedRemote)}</div>
                     </div>
-                    <div className="alias-section">
-                        <TextField
-                            label="Alias"
-                            onChange={this.handleChangeAlias}
-                            value={this.tempAlias.get()}
-                            maxLength={100}
-                            decoration={{
-                                endDecoration: (
-                                    <InputDecoration>
-                                        <Tooltip
-                                            message={`(Optional) A short alias to use when selecting or displaying this connection.`}
-                                            icon={<i className="fa-sharp fa-regular fa-circle-question" />}
-                                        >
-                                            <i className="fa-sharp fa-regular fa-circle-question" />
-                                        </Tooltip>
-                                    </InputDecoration>
-                                ),
-                            }}
-                        />
-                    </div>
-                    <div className="authmode-section">
-                        <Dropdown
-                            label="Auth Mode"
-                            options={[
-                                { value: "none", label: "none" },
-                                { value: "key", label: "key" },
-                                { value: "password", label: "password" },
-                                { value: "key+password", label: "key+password" },
-                            ]}
-                            value={this.tempAuthMode.get()}
-                            onChange={this.handleChangeAuthMode}
-                            decoration={{
-                                endDecoration: (
-                                    <InputDecoration>
-                                        <Tooltip
-                                            message={
-                                                <ul>
-                                                    <li>
-                                                        <b>none</b> - no authentication, or authentication is already
-                                                        configured in your ssh config.
-                                                    </li>
-                                                    <li>
-                                                        <b>key</b> - use a private key.
-                                                    </li>
-                                                    <li>
-                                                        <b>password</b> - use a password.
-                                                    </li>
-                                                    <li>
-                                                        <b>key+password</b> - use a key with a passphrase.
-                                                    </li>
-                                                </ul>
-                                            }
-                                            icon={<i className="fa-sharp fa-regular fa-circle-question" />}
-                                        >
-                                            <i className="fa-sharp fa-regular fa-circle-question" />
-                                        </Tooltip>
-                                    </InputDecoration>
-                                ),
-                            }}
-                        />
-                    </div>
-                    <If condition={authMode == "key" || authMode == "key+password"}>
-                        <TextField
-                            label="SSH Keyfile"
-                            placeholder="keyfile path"
-                            onChange={this.handleChangeKeyFile}
-                            value={this.tempKeyFile.get()}
-                            maxLength={400}
-                            required={true}
-                            decoration={{
-                                endDecoration: (
-                                    <InputDecoration>
-                                        <Tooltip
-                                            message={`(Required) The path to your ssh key file.`}
-                                            icon={<i className="fa-sharp fa-regular fa-circle-question" />}
-                                        >
-                                            <i className="fa-sharp fa-regular fa-circle-question" />
-                                        </Tooltip>
-                                    </InputDecoration>
-                                ),
-                            }}
-                        />
-                    </If>
-                    <If condition={authMode == "password" || authMode == "key+password"}>
-                        <PasswordField
-                            label={authMode == "password" ? "SSH Password" : "Key Passphrase"}
-                            placeholder="password"
-                            onChange={this.handleChangePassword}
-                            value={this.tempPassword.get()}
-                            maxLength={400}
-                        />
-                    </If>
-                    <div className="connectmode-section">
-                        <Dropdown
-                            label="Connect Mode"
-                            options={[
-                                { value: "startup", label: "startup" },
-                                { value: "auto", label: "auto" },
-                                { value: "manual", label: "manual" },
-                            ]}
-                            value={this.tempConnectMode.get()}
-                            onChange={this.handleChangeConnectMode}
-                        />
-                    </div>
+                    <If condition={!isLocal}>{this.renderAlias()}</If>
+                    <If condition={!isLocal}>{this.renderAuthMode()}</If>
+                    <If condition={!isLocal}>{this.renderConnectMode()}</If>
+                    {this.renderShellPref()}
                     <If condition={!util.isBlank(this.remoteEdit?.errorstr)}>
                         <div className="settings-field settings-error">Error: {this.remoteEdit?.errorstr}</div>
                     </If>

@@ -131,7 +131,11 @@ class MainSideBar extends React.Component<{}, {}> {
 
     @boundMethod
     handleSettingsClick(): void {
-        GlobalModel.modalsModel.pushModal(constants.CLIENT_SETTINGS);
+        if (GlobalModel.activeMainView.get() == "clientsettings") {
+            GlobalModel.showSessionView();
+            return;
+        }
+        GlobalCommandRunner.clientSettingsView();
     }
 
     @boundMethod
@@ -247,7 +251,7 @@ class MainSideBar extends React.Component<{}, {}> {
                         <If condition={needsUpdate}>
                             <div
                                 className="item hoverEffect unselectable updateBanner"
-                                onClick={() => openLink("https://www.waveterm.dev/download")}
+                                onClick={() => openLink("https://www.waveterm.dev/download?ref=upgrade")}
                             >
                                 <i className="fa-sharp fa-regular fa-circle-up icon" />
                                 Update Available

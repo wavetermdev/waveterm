@@ -635,3 +635,28 @@ a.a-block {
         }
     }
 }
+
+.view {
+    background-color: @background-session;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: auto;
+    margin-bottom: 10px;
+    margin-right: 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(241, 246, 243, 0.08);
+    background: rgba(13, 13, 13, 0.85);
+
+    .header {
+        margin: 24px 18px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+
+        .close-div {
+            font-size: 1.5em;
+        }
+    }
+}

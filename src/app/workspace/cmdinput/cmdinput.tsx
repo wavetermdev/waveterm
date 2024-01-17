@@ -99,6 +99,11 @@ class CmdInput extends React.Component<{}, {}> {
         })();
     }
 
+    @boundMethod
+    clickResetState(): void {
+        GlobalCommandRunner.resetShellState();
+    }
+
     render() {
         let model = GlobalModel;
         let inputModel = model.inputModel;
@@ -115,6 +120,7 @@ class CmdInput extends React.Component<{}, {}> {
             remote = GlobalModel.getRemote(ri.remoteid);
             feState = ri.festate;
         }
+        feState = feState || {};
         let infoShow = inputModel.infoShow.get();
         let historyShow = !infoShow && inputModel.historyShow.get();
         let aiChatShow = inputModel.aIChatShow.get();
@@ -160,6 +166,18 @@ class CmdInput extends React.Component<{}, {}> {
                                 connect now
                             </div>
                         </If>
+                    </div>
+                </If>
+                <If condition={feState["invalidshellstate"]}>
+                    <div className="remote-status-warning">
+                        WARNING:&nbsp; The shell state for this tab is invalid (
+                        <a target="_blank" href="https://docs.waveterm.dev/reference/faq">
+                            see FAQ
+                        </a>
+                        ). Must reset to continue.
+                        <div className="button is-wave-green is-outlined is-small" onClick={this.clickResetState}>
+                            reset shell state
+                        </div>
                     </div>
                 </If>
                 <div key="prompt" className="cmd-input-context">
