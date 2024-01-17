@@ -360,7 +360,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             return;
         }
         if (
-            GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierCommand + ":" + GlobalModel.KeyPressModifierControl + ":" + GlobalModel.KeyPressModifierShift + ":r")
+            GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierCommand + "|" + GlobalModel.KeyPressModifierControl + "|" + GlobalModel.KeyPressModifierShift + ":r")
         ) {
             e.preventDefault();
             let opts = mobx.toJS(inputModel.historyQueryOpts.get());
@@ -374,7 +374,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             inputModel.setHistoryQueryOpts(opts);
             return;
         } 
-        if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierCommand + ":" + GlobalModel.KeyPressModifierControl + ":s")) {
+        if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierCommand + "|" + GlobalModel.KeyPressModifierControl + ":s")) {
             e.preventDefault();
             let opts = mobx.toJS(inputModel.historyQueryOpts.get());
             let htype = opts.queryType;

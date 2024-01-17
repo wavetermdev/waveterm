@@ -3676,7 +3676,7 @@ class Model {
         }
         if (
             this.activeMainView.get() == "session" &&
-            this.checkKeyPressed(e, this.KeyPressModifierCommand + ":" + this.KeyPressModifierControl + ":" + "s")
+            this.checkKeyPressed(e, this.KeyPressModifierCommand + "|" + this.KeyPressModifierControl + ":" + "s")
         ) {
             e.preventDefault();
             let activeScreen = this.getActiveScreen();
