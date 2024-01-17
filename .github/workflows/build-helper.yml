@@ -76,6 +76,8 @@ jobs:
                 ls -l;
                 cat go.mod;
                 ls -l cmd/main.go;
+                go version;
+                go get ./...;
                 CGO_ENABLED=1 go build -o ../scripthaus cmd/main.go
             - uses: actions/setup-node@v4
               with:
