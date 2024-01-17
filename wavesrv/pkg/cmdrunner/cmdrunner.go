@@ -198,8 +198,6 @@ func init() {
 	registerCmdFn("remote:reset", RemoteResetCommand)
 	registerCmdFn("remote:parse", RemoteConfigParseCommand)
 
-	registerCmdFn("copyfile", CopyFileCommand)
-
 	registerCmdFn("screen:resize", ScreenResizeCommand)
 
 	registerCmdFn("line", LineCommand)
@@ -265,7 +263,6 @@ func init() {
 	registerCmdFn("markdownview", MarkdownViewCommand)
 
 	registerCmdFn("csvview", CSVViewCommand)
-
 }
 
 func getValidCommands() []string {
@@ -1094,108 +1091,6 @@ func SidebarRemoveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		return nil, fmt.Errorf("/%s error updating screenviewopts: %v", GetCmdStr(pk), err)
 	}
 	return &sstore.ModelUpdate{Screens: []*sstore.ScreenType{screen}}, nil
-}
-
-func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	if len(pk.Args) == 0 {
-		return nil, fmt.Errorf("usage: /copyfile [file to copy] local=[path to copy to on local]")
-	}
-	path := pk.Args[0]
-	destPath := "~/"
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve UiIds: %v", err)
-	}
-	if pk.Kwargs["local"] != "" {
-		destPath = pk.Kwargs["local"]
-	} else {
-		return nil, fmt.Errorf("no local path given. Usage: /copyfile [file to copy] local=[path to copy to on local]")
-	}
-	localPathWithHome := base.ExpandHomeDir(destPath)
-	log.Printf("localPathWithHome: %v", localPathWithHome)
-	msh := ids.Remote.MShell
-	if msh == nil {
-		return nil, fmt.Errorf("MSH === nil")
-	}
-	rrState := msh.GetRemoteRuntimeState()
-	sourceCwd := ids.Remote.FeState["cwd"]
-	sourcePathWithHome, err := rrState.ExpandHomeDir(path)
-	if err != nil {
-		return nil, fmt.Errorf("expand home dir err: %v", err)
-	}
-	sourceFullPath := sourcePathWithHome
-	if !filepath.IsAbs(sourcePathWithHome) {
-		sourceFullPath = filepath.Join(sourceCwd, sourcePathWithHome)
-	}
-	sourceFileName := filepath.Base(sourceFullPath)
-	destFileInfo, err := os.Stat(localPathWithHome)
-	if err != nil {
-		return nil, fmt.Errorf("error reading specified dest path %v", err)
-	}
-	if destFileInfo.IsDir() {
-		// allow user to not specify filename and get the same filename as source
-		localPathWithHome = filepath.Join(localPathWithHome, sourceFileName)
-	}
-	outputStr := "copy file test"
-	cmd, err := makeStaticCmd(ctx, "copy file", ids, pk.GetRawStr(), []byte(outputStr))
-	if err != nil {
-		// TODO tricky error since the command was a success, but we can't show the output
-		return nil, err
-	}
-	update, err := addLineForCmd(ctx, "/copy file", false, ids, cmd, "", nil)
-	if err != nil {
-		// TODO tricky error since the command was a success, but we can't show the output
-		return nil, err
-	}
-	update.Interactive = pk.Interactive
-	return update, nil
-
-	streamPk := packet.MakeStreamFilePacket()
-	streamPk.ReqId = uuid.New().String()
-	streamPk.Path = sourceFullPath
-	iter, err := msh.StreamFile(ctx, streamPk)
-	if err != nil {
-		return nil, fmt.Errorf("error streaming file: %v", err)
-	}
-	defer iter.Close()
-	respIf, err := iter.Next(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("error getting next file packet: %v", err)
-	}
-	resp, ok := respIf.(*packet.StreamFileResponseType)
-	if !ok {
-		return nil, fmt.Errorf("bad response packet type: %T", respIf)
-	}
-	if resp.Error != "" {
-		return nil, fmt.Errorf("response error: %v", resp.Error)
-	}
-	localFile, err := os.Create(localPathWithHome)
-	if err != nil {
-		return nil, fmt.Errorf("error creating local file: %v", err)
-	}
-	defer localFile.Close()
-	for {
-		dataPkIf, err := iter.Next(ctx)
-		if err != nil {
-			log.Printf("error in read-file while getting data: %v\n", err)
-			break
-		}
-		if dataPkIf == nil {
-			break
-		}
-		dataPk, ok := dataPkIf.(*packet.FileDataPacketType)
-		if !ok {
-			log.Printf("error in read-file, invalid data packet type: %T", dataPkIf)
-			break
-		}
-		if dataPk.Error != "" {
-			log.Printf("in read-file, data packet error: %s", dataPk.Error)
-			break
-		}
-		localFile.Write(dataPk.Data)
-	}
-
-	return nil, fmt.Errorf("copying file %v to %v with cwd: %v, with localPath: %v", sourcePathWithHome, destPath, sourceCwd, localPathWithHome)
 }
 
 func RemoteInstallCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
