@@ -1248,6 +1248,7 @@ class Modal extends React.Component<ModalProps> {
 
 interface StatusIndicatorProps {
     level: StatusIndicatorLevel
+    className?: string
 }
 
 class StatusIndicator extends React.Component<StatusIndicatorProps> {
@@ -1267,7 +1268,7 @@ class StatusIndicator extends React.Component<StatusIndicatorProps> {
                     statusIndicatorClass = "error";
                     break;
             }
-            statusIndicator = <div className={`fa-sharp fa-solid fa-circle-small status-indicator ${statusIndicatorClass}`}></div>;
+            statusIndicator = <div className={`${this.props.className} fa-sharp fa-solid fa-circle-small status-indicator ${statusIndicatorClass}`}></div>;
         }
         return statusIndicator;
     }

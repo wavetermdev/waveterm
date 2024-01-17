@@ -64,7 +64,7 @@ class ScreenTab extends React.Component<
         if (tabIcon === "default" || tabIcon === "square") {
             return (
                 <div className="icon svg-icon">
-                    <SquareIcon className="left-icon" />
+                    <SquareIcon className="svg-icon-inner" />
                 </div>
             );
         }
@@ -82,9 +82,10 @@ class ScreenTab extends React.Component<
         if (index + 1 <= 9) {
             tabIndex = <div className="tab-index">{renderCmdText(String(index + 1))}</div>;
         }
+
         let settings = (
             <div onClick={(e) => this.openScreenSettings(e, screen)} title="Actions" className="tab-gear">
-                <ActionsIcon className="icon hoverEffect " />
+                <div className="icon hoverEffect fa-sharp fa-solid fa-ellipsis-vertical"></div>
             </div>
         );
         let archived = screen.archived.get() ? (
@@ -115,15 +116,19 @@ class ScreenTab extends React.Component<
                 onContextMenu={(event) => this.openScreenSettings(event, screen)}
                 onDragEnd={this.handleDragEnd}
             >
-                {this.renderTabIcon(screen)}
+                <div className="front-icon">
+                    {this.renderTabIcon(screen)}
+                </div>
                 <div className="tab-name truncate">
                     {archived}
                     {webShared}
                     {screen.name.get()}
                 </div>
-                <StatusIndicator level={statusIndicatorLevel} />
-                {tabIndex}
-                {settings}
+                <div className="end-icon">
+                    <StatusIndicator level={statusIndicatorLevel} />
+                    {tabIndex}
+                    {settings}
+                </div>
             </Reorder.Item>
         );
     }
