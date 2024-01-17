@@ -820,7 +820,7 @@ class Screen {
         })();
     }
 
-    termCustomKeyHandlerInternal(e: any, termWrap: TermWrap): void {
+    termCustomKeyHandlerInternal(e: any, termWrap: TermWrap): void { 
         if (GlobalModel.checkKeyPressed(e, "ArrowUp")) {
             termWrap.terminal.scrollLines(-1);
             return;
@@ -872,6 +872,8 @@ class Screen {
                 GlobalModel.KeyPressModifierShift + ":" + GlobalModel.KeyPressModifierControl + ":" + "v"
             )
         ) {
+        
+        if (e.type == "keypress" && GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierShift + ":" + GlobalModel.KeyPressModifierControl + ":" + "v")) {
             e.stopPropagation();
             e.preventDefault();
             let p = navigator.clipboard.readText();
@@ -3590,6 +3592,95 @@ class Model {
             return DevServerEndpoint;
         }
         return ProdServerEndpoint;
+    }
+
+    parseKeyDescription(description: string): Array<string> {
+        let rtn = [];
+        let keys = description.replace(/[()]/g,"").split(":");
+        for (let key of keys) {
+            let orKeys = key.split("|")
+            for (let index = 0; index < orKeys.length; index++) {
+                let orKey = orKeys[index];
+                if(orKey != this.KeyPressAnyModifier && 
+                    orKey != this.KeyPressModifierCommand &&
+                    orKey != this.KeyPressModifierControl && 
+                    orKey != this.KeyPressModifierOption &&
+                    orKey != this.KeyPressModifierShift) {
+                    orKeys[index] = orKey.toLocaleLowerCase();
+                } 
+            }
+            rtn.push(orKeys);
+        }
+        console.log("rtn:", rtn)
+=======
+    parseKeyDescription(description: string): Error | KeyPressType {
+        let rtn: KeyPressType = {
+            modifierCommand: false,
+            modifierControl: false,
+            modifierOption: false,
+            modifierShift: false,
+            anyModifier: false,
+            key: ""
+        };
+        let keys = description.split(":");
+        let keyFound = false;
+        for (let key of keys) {
+            if(key == this.KeyPressModifierCommand) {
+                rtn.modifierCommand = true;
+            } else if (key == this.KeyPressModifierShift) {
+                rtn.modifierShift = true;
+            } else if (key == this.KeyPressModifierControl) {
+                rtn.modifierControl = true;
+            } else if(key == this.KeyPressModifierOption) {
+                rtn.modifierOption = true;
+            } else if (key == this.KeyPressAnyModifier) {
+                rtn.anyModifier = true;  
+            } else {
+                if(keyFound) {
+                    return Error("invalid key description: multiple keys found");
+                } 
+                keyFound = true;
+                // to lower case makes it so shift + e -> "e" rather than "E"
+                rtn.key = key.toLowerCase();
+            }
+        }
+        return rtn;
+    }
+
+    checkKeyPressed(event:any, description:string) {
+        let anyMod = event.getModifierState("Control") || event.getModifierState("Meta") || event.getModifierState("Shift") || event.getModifierState("Alt");
+        let eventKey = event.key.toLocaleLowerCase();
+        let keyPress = this.parseKeyDescription(description);
+        for (let keyCheck of keyPress) {
+            let keyCheckTrue = false; 
+            for (let curKey of keyCheck) {
+                if(curKey == this.KeyPressAnyModifier && anyMod){
+                    keyCheckTrue = true;
+                    break;
+                } else if (curKey == this.KeyPressModifierCommand && event.getModifierState("Command")) {
+                    keyCheckTrue = true;
+                    break;
+                } else if (curKey == this.KeyPressModifierControl && event.getModifierState("Control")) {
+                    keyCheckTrue = true;
+                    break;
+                } else if (curKey == this.KeyPressModifierOption && event.getModifierState("Option")) {
+                    keyCheckTrue = true;
+                    break;
+                } else if (curKey == this.KeyPressModifierShift && event.getModifierState("Shift")) {
+                    keyCheckTrue = true; 
+                    break;
+                } else if(curKey == eventKey) {
+                    keyCheckTrue = true; 
+                    break;
+                }
+            }
+            
+            if(!keyCheckTrue) {
+                return false;
+            } 
+        }
+        
+        return true;
     }
 
     setTermFontSize(fontSize: number) {

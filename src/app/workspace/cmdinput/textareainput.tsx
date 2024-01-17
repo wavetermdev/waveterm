@@ -179,8 +179,11 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
 
             let lastTab = this.lastTab;
             this.lastTab = GlobalModel.checkKeyPressed(e, "Tab");
+            this.lastTab = GlobalModel.checkKeyPressed(e, "Tab");
             let lastHist = this.lastHistoryUpDown;
             this.lastHistoryUpDown = false;
+ 
+            if (GlobalModel.checkKeyPressed(e, "Tab")) {
  
             if (GlobalModel.checkKeyPressed(e, "Tab")) {
                 e.preventDefault();
@@ -205,6 +208,8 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 }
             } 
             if (GlobalModel.checkKeyPressed(e, "Enter")) {
+            } 
+            if (GlobalModel.checkKeyPressed(e, "Enter")) {
                 e.preventDefault();
                 if (!ctrlMod) {
                     if (GlobalModel.inputModel.isEmpty()) {
@@ -225,6 +230,8 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 return;
             } 
             if (GlobalModel.checkKeyPressed(e, "Escape")) {
+            } 
+            if (GlobalModel.checkKeyPressed(e, "Escape")) {
                 e.preventDefault();
                 e.stopPropagation();
                 let inputModel = GlobalModel.inputModel;
@@ -236,10 +243,14 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 return;
             } 
             if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierCommand + ":e")) {
+            } 
+            if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierCommand + ":e")) {
                 e.preventDefault();
                 e.stopPropagation();
                 let inputModel = GlobalModel.inputModel;
                 inputModel.toggleExpandInput();
+            } 
+            if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":c")) {
             } 
             if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":c")) {
                 e.preventDefault();
@@ -247,9 +258,13 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 return;
             } 
             if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":u")) {
+            } 
+            if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":u")) {
                 e.preventDefault();
                 this.controlU();
                 return;
+            } 
+            if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":p")) {
             } 
             if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":p")) {
                 e.preventDefault();
@@ -257,9 +272,13 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 return;
             } 
             if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":n")) {
+            } 
+            if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":n")) {
                 e.preventDefault();
                 this.controlN();
                 return;
+            } 
+            if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":w")) {
             } 
             if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":w")) {
                 e.preventDefault();
@@ -267,9 +286,13 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 return;
             } 
             if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":y")) {
+            } 
+            if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":y")) {
                 e.preventDefault();
                 this.controlY();
                 return;
+            } 
+            if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":r")) {
             } 
             if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":r")) {
                 e.preventDefault();
@@ -277,7 +300,10 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 return;
             } 
             if (GlobalModel.checkKeyPressed(e, "ArrowUp") || GlobalModel.checkKeyPressed(e, "ArrowDown")) {
+            } 
+            if (GlobalModel.checkKeyPressed(e, "ArrowUp") || GlobalModel.checkKeyPressed(e, "ArrowDown")) {
                 if (!inputModel.isHistoryLoaded()) {
+                    if (GlobalModel.checkKeyPressed(e, "ArrowUp")) {
                     if (GlobalModel.checkKeyPressed(e, "ArrowUp")) {
                         this.lastHistoryUpDown = true;
                         inputModel.loadHistory(false, 1, "screen");
@@ -286,6 +312,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 }
                 // invisible history movement
                 let linePos = this.getLinePos(e.target);
+                if (GlobalModel.checkKeyPressed(e, "ArrowUp")) {
                 if (GlobalModel.checkKeyPressed(e, "ArrowUp")) {
                     if (!lastHist && linePos.linePos > 1) {
                         // regular arrow
@@ -296,6 +323,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     this.lastHistoryUpDown = true;
                     return;
                 }
+                if (GlobalModel.checkKeyPressed(e, "ArrowDown")) {
                 if (GlobalModel.checkKeyPressed(e, "ArrowDown")) {
                     if (!lastHist && linePos.linePos < linePos.numLines) {
                         // regular arrow
@@ -308,13 +336,18 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 }
             } 
             if (GlobalModel.checkKeyPressed(e, "PageUp") || GlobalModel.checkKeyPressed(e, "PageDown")) {
+            } 
+            if (GlobalModel.checkKeyPressed(e, "PageUp") || GlobalModel.checkKeyPressed(e, "PageDown")) {
                 e.preventDefault();
                 let infoScroll = inputModel.hasScrollingInfoMsg();
                 if (infoScroll) {
                     let div = document.querySelector(".cmd-input-info");
                     let amt = pageSize(div);
                     scrollDiv(div, GlobalModel.checkKeyPressed(e, "PageUp") ? -amt : amt);
+                    scrollDiv(div, GlobalModel.checkKeyPressed(e, "PageUp") ? -amt : amt);
                 }
+            } 
+            if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ": ")) {
             } 
             if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ": ")) {
                 e.preventDefault();
@@ -340,9 +373,13 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     onHistoryKeyDown(e: any) {
         let inputModel = GlobalModel.inputModel; 
         if (GlobalModel.checkKeyPressed(e, "Escape")) {
+        let inputModel = GlobalModel.inputModel; 
+        if (GlobalModel.checkKeyPressed(e, "Escape")) {
             e.preventDefault();
             inputModel.resetHistory();
             return;
+        } 
+        if (GlobalModel.checkKeyPressed(e, "Enter")) {
         } 
         if (GlobalModel.checkKeyPressed(e, "Enter")) {
             e.preventDefault();
@@ -350,9 +387,13 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             return;
         } 
         if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":g")) {
+        } 
+        if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":g")) {
             e.preventDefault();
             inputModel.resetInput();
             return;
+        } 
+        if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":c")) {
         } 
         if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":c")) {
             e.preventDefault();
@@ -360,7 +401,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             return;
         }
         if (
-            GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierCommand + "|" + GlobalModel.KeyPressModifierControl + "|" + GlobalModel.KeyPressModifierShift + ":r")
+            GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierCommand + ":" + GlobalModel.KeyPressModifierControl + ":" + GlobalModel.KeyPressModifierShift + ":r")
         ) {
             e.preventDefault();
             let opts = mobx.toJS(inputModel.historyQueryOpts.get());
@@ -374,7 +415,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             inputModel.setHistoryQueryOpts(opts);
             return;
         } 
-        if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierCommand + "|" + GlobalModel.KeyPressModifierControl + ":s")) {
+        if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierCommand + ":" + GlobalModel.KeyPressModifierControl + ":s")) {
             e.preventDefault();
             let opts = mobx.toJS(inputModel.historyQueryOpts.get());
             let htype = opts.queryType;
@@ -389,23 +430,35 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             return;
         } 
         if (GlobalModel.checkKeyPressed(e, "Tab")) {
+        } 
+        if (GlobalModel.checkKeyPressed(e, "Tab")) {
             e.preventDefault();
             return;
         } 
         if (GlobalModel.checkKeyPressed(e, "ArrowUp") || GlobalModel.checkKeyPressed(e, "ArrowDown")) {
+        } 
+        if (GlobalModel.checkKeyPressed(e, "ArrowUp") || GlobalModel.checkKeyPressed(e, "ArrowDown")) {
             e.preventDefault();
+            inputModel.moveHistorySelection(GlobalModel.checkKeyPressed(e, "ArrowUp") ? 1 : -1);
             inputModel.moveHistorySelection(GlobalModel.checkKeyPressed(e, "ArrowUp") ? 1 : -1);
             return;
         } 
         if (GlobalModel.checkKeyPressed(e, "PageUp") || GlobalModel.checkKeyPressed(e, "PageDown")) {
+        } 
+        if (GlobalModel.checkKeyPressed(e, "PageUp") || GlobalModel.checkKeyPressed(e, "PageDown")) {
             e.preventDefault();
             inputModel.moveHistorySelection(GlobalModel.checkKeyPressed(e, "PageUp") ? 10 : -10);
+            inputModel.moveHistorySelection(GlobalModel.checkKeyPressed(e, "PageUp") ? 10 : -10);
             return;
+        } 
+        if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":p")) {
         } 
         if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":p")) {
             e.preventDefault();
             inputModel.moveHistorySelection(1);
             return;
+        } 
+        if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":n")) {
         } 
         if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":n")) {
             e.preventDefault();
